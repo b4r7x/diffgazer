@@ -86,8 +86,6 @@ function LayoutTextProbe({ onText }: { onText: (text: string) => void }) {
 }
 
 describe("DiffView", () => {
-  // --- Behavioral ---
-
   it("renders unified mode by default and split mode when specified", () => {
     const { unmount } = render(<DiffView diff={ONE_HUNK} />)
     expect(screen.getByLabelText("Unified diff")).toBeInTheDocument()
@@ -174,8 +172,6 @@ describe("DiffView", () => {
     expect(getLiveRegion()).toHaveTextContent("Hunk 3 of 3")
   })
 
-  // --- Accessibility ---
-
   it("has no a11y violations in unified mode", async () => {
     const { container } = render(<DiffView diff={ONE_HUNK} label="Test diff" />)
     expect(await axe(container)).toHaveNoViolations()
@@ -203,8 +199,6 @@ describe("DiffView", () => {
     expect(container.querySelector("pre code div")).toBeNull()
   })
 
-  // --- Keyboard ---
-
   it("Escape clears active hunk selection", async () => {
     const user = userEvent.setup()
     render(<DiffView diff={THREE_HUNKS} />)
@@ -225,7 +219,6 @@ describe("DiffView", () => {
 
     expect(screen.getByRole("status")).toHaveTextContent("No changes")
 
-    // No focusable diff container exists, but pressing keys should not error
     await user.keyboard("j")
     await user.keyboard("k")
     expect(getLiveRegion()).toHaveTextContent("")
@@ -315,7 +308,7 @@ describe("DiffView", () => {
     expect(parsed.hunks[0].newCount).toBe(600)
   })
 
-  it("uses an aggregate word-diff budget and falls back to line-level segments", () => {
+  it("uses an aggregate word-diff budget and falls back to line-level changes", () => {
     const makeLine = (variant: string, index: number) =>
       Array.from({ length: 18 }, (_, i) => `shared-${i}`)
         .concat(`${variant}-${index}`)
@@ -332,8 +325,7 @@ describe("DiffView", () => {
       oldLine: null,
       newLine: i + 1,
     }))
-    const lastRemovedLine = removes[removes.length - 1].content
-    const { container } = render(
+    render(
       <DiffView
         diff={{
           oldPath: "old.txt",
@@ -350,12 +342,8 @@ describe("DiffView", () => {
       />,
     )
 
-    const changedRemoveSegments = Array.from(container.querySelectorAll("span"))
-      .filter((element) =>
-        element.className.includes("bg-destructive/20") &&
-        element.textContent === lastRemovedLine,
-      )
-    expect(changedRemoveSegments).toHaveLength(1)
+    expect(screen.getByText(removes[removes.length - 1].content)).toBeInTheDocument()
+    expect(screen.getByText(adds[adds.length - 1].content)).toBeInTheDocument()
   })
 
 })

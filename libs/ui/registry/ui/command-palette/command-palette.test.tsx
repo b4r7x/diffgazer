@@ -155,11 +155,9 @@ describe("CommandPalette", () => {
       </CommandPalette>
     )
 
-    // Disabled item does not activate
     await userEvent.click(getOption("nope"))
     expect(onActivate).not.toHaveBeenCalled()
 
-    // Enabled item activates, calls onSelect, and closes
     await userEvent.click(getOption("paste"))
     expect(onActivate).toHaveBeenCalledWith("paste")
     expect(onSelect).toHaveBeenCalledOnce()
@@ -296,7 +294,7 @@ describe("CommandPalette", () => {
         <CommandPalette.Content>
           <CommandPalette.Input />
           <CommandPalette.List>
-            <CommandPalette.Item id="copy" ref={ref} data-testid="command-item" onClick={onClick}>
+            <CommandPalette.Item id="copy" ref={ref} onClick={onClick}>
               Copy
             </CommandPalette.Item>
           </CommandPalette.List>
@@ -304,7 +302,7 @@ describe("CommandPalette", () => {
       </CommandPalette>,
     )
 
-    const item = screen.getByTestId("command-item")
+    const item = screen.getByRole("option", { name: /Copy/ })
     expect(ref.current).toBe(item)
     await userEvent.click(item)
     expect(onClick).toHaveBeenCalledOnce()
@@ -343,7 +341,6 @@ describe("CommandPalette", () => {
     await userEvent.type(input, "{ArrowUp}")
     expect(getOption("paste")).toHaveAttribute("aria-selected", "true")
 
-    // Wrap around: one more ArrowDown from delete goes back to copy
     await userEvent.type(input, "{ArrowDown}{ArrowDown}")
     expect(getOption("copy")).toHaveAttribute("aria-selected", "true")
   })
@@ -384,13 +381,11 @@ describe("CommandPalette", () => {
     renderPalette({ onOpenChange })
     const input = screen.getByRole("combobox")
 
-    // With search text, cancel clears search instead of closing
     await userEvent.type(input, "cop")
     expect(input).toHaveValue("cop")
     fireEvent(screen.getByRole("dialog"), new Event("cancel", { bubbles: false }))
     expect(input).toHaveValue("")
 
-    // With empty search, cancel closes
     fireEvent(screen.getByRole("dialog"), new Event("cancel", { bubbles: false }))
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })

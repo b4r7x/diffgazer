@@ -70,12 +70,13 @@ describe("DiagnosticsPage keyboard footer navigation", () => {
   });
 
   it("activates diagnostics actions selected with left/right arrows", async () => {
+    const user = userEvent.setup();
     renderPage();
 
-    await userEvent.keyboard("{ArrowRight}{Enter}");
+    await user.keyboard("{ArrowRight}{Enter}");
     expect(mockHandleRefreshContext).toHaveBeenCalledOnce();
 
-    await userEvent.keyboard("{ArrowLeft}{Enter}");
+    await user.keyboard("{ArrowLeft}{Enter}");
 
     await waitFor(() => {
       expect(mockRetryServer).toHaveBeenCalledOnce();
@@ -84,9 +85,10 @@ describe("DiagnosticsPage keyboard footer navigation", () => {
   });
 
   it("keeps diagnostics actions active after ArrowUp because there is no content zone", async () => {
+    const user = userEvent.setup();
     renderPage();
 
-    await userEvent.keyboard("{ArrowUp}{Enter}");
+    await user.keyboard("{ArrowUp}{Enter}");
 
     await waitFor(() => {
       expect(mockRetryServer).toHaveBeenCalledOnce();

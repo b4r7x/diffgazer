@@ -83,10 +83,11 @@ describe("TrustPermissionsPage", () => {
   });
 
   it("does not steal focus from the action row when async trust data arrives", async () => {
+    const user = userEvent.setup();
     const { rerender } = renderPage();
 
     await waitFor(() => expect(screen.getByRole("checkbox", { name: /repository access/i })).toHaveFocus());
-    await userEvent.keyboard("{ArrowDown}");
+    await user.keyboard("{ArrowDown}");
     const saveButton = screen.getByRole("button", { name: /save changes/i });
     expect(saveButton).toHaveFocus();
 
@@ -109,21 +110,23 @@ describe("TrustPermissionsPage", () => {
   });
 
   it("focuses the permissions list on entry so arrows work before mouse interaction", async () => {
+    const user = userEvent.setup();
     renderPage();
 
     const readFilesOption = screen.getByRole("checkbox", { name: /repository access/i });
     await waitFor(() => expect(readFilesOption).toHaveFocus());
 
-    await userEvent.keyboard("{ArrowDown}");
+    await user.keyboard("{ArrowDown}");
 
     expect(screen.getByRole("button", { name: /save changes/i })).toHaveFocus();
   });
 
   it("navigates back on Escape", async () => {
+    const user = userEvent.setup();
     renderPage();
 
     await waitFor(() => expect(screen.getByRole("checkbox", { name: /repository access/i })).toHaveFocus());
-    await userEvent.keyboard("{Escape}");
+    await user.keyboard("{Escape}");
 
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/settings" });
   });

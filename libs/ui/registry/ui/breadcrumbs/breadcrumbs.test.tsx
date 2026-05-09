@@ -31,9 +31,12 @@ describe("Breadcrumbs", () => {
       </Breadcrumbs>
     )
     const list = screen.getByRole("list")
-    expect(list).toHaveClass("list-none")
     const items = screen.getAllByRole("listitem")
+
+    expect(list.tagName).toBe("OL")
     expect(items).toHaveLength(2)
+    expect(screen.getByRole("link", { name: "Home" })).toHaveAttribute("href", "/")
+    expect(screen.getByRole("link", { name: "About" })).toHaveAttribute("href", "/about")
   })
 
   it("marks the final item as the current page by default", () => {

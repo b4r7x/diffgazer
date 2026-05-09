@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { KeyboardProvider } from "@diffgazer/keys";
 import type { ResolvedTheme, WebTheme } from "@/types/theme";
@@ -42,6 +42,7 @@ describe("SettingsThemePage keyboard behavior", () => {
   });
 
   it("moves focus independently from selection and reaches button zone at list boundary", async () => {
+    const user = userEvent.setup();
     renderPage();
 
     const autoRadio = screen.getByRole("radio", { name: /auto/i });
@@ -51,42 +52,45 @@ describe("SettingsThemePage keyboard behavior", () => {
     await waitFor(() => expect(autoRadio).toHaveFocus());
     expect(autoRadio.getAttribute("aria-checked")).toBe("true");
 
-    await userEvent.keyboard("{ArrowDown}");
+    await user.keyboard("{ArrowDown}");
     expect(autoRadio.getAttribute("aria-checked")).toBe("true");
     expect(darkRadio.getAttribute("aria-checked")).toBe("false");
 
-    await userEvent.keyboard("{ArrowDown}{ArrowDown}");
+    await user.keyboard("{ArrowDown}{ArrowDown}");
     expect(cancelButton).toHaveFocus();
 
-    await userEvent.keyboard("{Enter}");
+    await user.keyboard("{Enter}");
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/settings" });
   });
 
-  it("keeps focused radio arrow navigation separate from selection", () => {
+  it("keeps focused radio arrow navigation separate from selection", async () => {
+    const user = userEvent.setup();
     renderPage();
 
     const autoRadio = screen.getByRole("radio", { name: /auto/i });
     const darkRadio = screen.getByRole("radio", { name: /dark/i });
 
-    fireEvent.keyDown(autoRadio, { key: "ArrowDown" });
+    autoRadio.focus();
+    await user.keyboard("{ArrowDown}");
 
     expect(autoRadio.getAttribute("aria-checked")).toBe("true");
     expect(darkRadio.getAttribute("aria-checked")).toBe("false");
 
-    fireEvent.keyDown(darkRadio, { key: " " });
+    darkRadio.focus();
+    await user.keyboard(" ");
 
     expect(darkRadio.getAttribute("aria-checked")).toBe("true");
   });
 
-  it("selects focused theme on Space without saving or exiting", () => {
+  it("selects focused theme on Space without saving or exiting", async () => {
+    const user = userEvent.setup();
     renderPage();
 
     const autoRadio = screen.getByRole("radio", { name: /auto/i });
     const darkRadio = screen.getByRole("radio", { name: /dark/i });
     const saveButton = screen.getByRole("button", { name: /^save$/i });
 
-    fireEvent.keyDown(window, { key: "ArrowDown" });
-    fireEvent.keyDown(window, { key: " " });
+    await user.keyboard("{ArrowDown} ");
 
     expect(darkRadio.getAttribute("aria-checked")).toBe("true");
     expect(autoRadio.getAttribute("aria-checked")).toBe("false");
@@ -95,18 +99,18 @@ describe("SettingsThemePage keyboard behavior", () => {
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
-  it("selects focused theme on Enter and saves + exits", () => {
+  it("selects focused theme on Enter and saves + exits", async () => {
+    const user = userEvent.setup();
     renderPage();
 
-    fireEvent.keyDown(window, { key: "ArrowDown" });
-    fireEvent.keyDown(window, { key: "ArrowDown" });
-    fireEvent.keyDown(window, { key: "Enter" });
+    await user.keyboard("{ArrowDown}{ArrowDown}{Enter}");
 
     expect(mockSetTheme).toHaveBeenCalledWith("light");
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/settings" });
   });
 
-  it("keeps preview scoped to the preview panel while focus changes", () => {
+  it("keeps preview scoped to the preview panel while focus changes", async () => {
+    const user = userEvent.setup();
     renderPage();
 
     const preview = screen.getByTestId("theme-preview-root");
@@ -114,36 +118,36 @@ describe("SettingsThemePage keyboard behavior", () => {
     expect(preview.getAttribute("data-theme")).toBe("light");
     expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
 
-    fireEvent.keyDown(window, { key: "ArrowDown" });
+    await user.keyboard("{ArrowDown}");
     expect(preview.getAttribute("data-theme")).toBe("dark");
     expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
 
-    fireEvent.keyDown(window, { key: "ArrowDown" });
+    await user.keyboard("{ArrowDown}");
     expect(preview.getAttribute("data-theme")).toBe("light");
     expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
   });
 
-  it("updates preview on hover from focused list item even after entering button zone", () => {
+  it("updates preview on hover from focused list item even after entering button zone", async () => {
+    const user = userEvent.setup();
     renderPage();
 
     const preview = screen.getByTestId("theme-preview-root");
     const darkRadio = screen.getByRole("radio", { name: /dark/i });
 
-    fireEvent.keyDown(window, { key: "ArrowDown" });
-    fireEvent.keyDown(window, { key: "ArrowDown" });
-    fireEvent.keyDown(window, { key: "ArrowDown" });
+    await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}");
 
-    fireEvent.mouseEnter(darkRadio);
+    await user.hover(darkRadio);
     expect(preview.getAttribute("data-theme")).toBe("dark");
   });
 
-  it("still selects theme by clicking list items", () => {
+  it("still selects theme by clicking list items", async () => {
+    const user = userEvent.setup();
     renderPage();
 
     const darkRadio = screen.getByRole("radio", { name: /dark/i });
     const saveButton = screen.getByRole("button", { name: /^save$/i });
 
-    fireEvent.click(darkRadio);
+    await user.click(darkRadio);
 
     expect(darkRadio.getAttribute("aria-checked")).toBe("true");
     expect(saveButton.getAttribute("disabled")).toBeNull();

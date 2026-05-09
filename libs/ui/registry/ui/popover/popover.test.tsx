@@ -295,7 +295,7 @@ describe("Popover", () => {
     expect(screen.getByRole("dialog", { name: "Outer popover" })).toHaveAttribute("data-state", "open")
     expect(screen.getByRole("dialog", { name: "Inner popover" })).toHaveAttribute("data-state", "open")
 
-    fireEvent.mouseDown(outside)
+    await userEvent.click(outside)
     expect(screen.getByRole("dialog", { name: "Inner popover" })).toHaveAttribute("data-state", "closed")
     expect(screen.getByRole("dialog", { name: "Outer popover" })).toHaveAttribute("data-state", "open")
 
@@ -347,7 +347,7 @@ describe("Popover", () => {
     )).toThrow(/requires aria-label or aria-labelledby/)
   })
 
-  it("composes content handlers and lets prevented Escape keep the popover open", () => {
+  it("composes content handlers and lets prevented Escape keep the popover open", async () => {
     const onMouseEnter = vi.fn()
     const onMouseLeave = vi.fn()
     const onKeyDown = vi.fn((event) => {
@@ -370,8 +370,8 @@ describe("Popover", () => {
     )
 
     const content = screen.getByRole("dialog", { name: "Actions" })
-    fireEvent.mouseEnter(content)
-    fireEvent.mouseLeave(content)
+    await userEvent.hover(content)
+    await userEvent.unhover(content)
     fireEvent.keyDown(content, { key: "Escape" })
 
     expect(onMouseEnter).toHaveBeenCalledOnce()

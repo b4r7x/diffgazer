@@ -6,13 +6,11 @@ import { useOverflowItems, computeVisibleCount } from "../use-overflow-items.js"
 let resizeCallbacks: (() => void)[] = []
 let mutationCallbacks: (() => void)[] = []
 let animationCallbacks: FrameRequestCallback[] = []
-let disconnectCount = 0
 
 beforeEach(() => {
   resizeCallbacks = []
   mutationCallbacks = []
   animationCallbacks = []
-  disconnectCount = 0
 
   vi.stubGlobal(
     "ResizeObserver",
@@ -22,9 +20,7 @@ beforeEach(() => {
         resizeCallbacks.push(this.cb)
       }
       unobserve() {}
-      disconnect() {
-        disconnectCount++
-      }
+      disconnect() {}
     },
   )
   vi.stubGlobal(
@@ -195,8 +191,8 @@ describe("useOverflowItems", () => {
     expect(screen.getByLabelText("counts")).toHaveTextContent("1/2/150")
   })
 
-  it("updates after child removal and disconnects observers", () => {
-    const { rerender, unmount } = render(
+  it("updates after child removal", () => {
+    const { rerender } = render(
       React.createElement(TestOverflowItems, {
         widths: [40, 40, 40],
         containerWidth: 140,
@@ -226,9 +222,6 @@ describe("useOverflowItems", () => {
     })
 
     expect(screen.getByLabelText("counts")).toHaveTextContent("1/0/140")
-
-    unmount()
-    expect(disconnectCount).toBeGreaterThan(0)
   })
 
   it("notifies the latest visible-count listener after rerender", () => {

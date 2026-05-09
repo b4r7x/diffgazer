@@ -1,119 +1,78 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import * as fs from "node:fs";
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { homedir, tmpdir } from "node:os";
 import * as path from "node:path";
-import { homedir } from "node:os";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { getGlobalDiffgazerDir, resolveProjectRoot } from "./paths.js";
 
-vi.mock("node:fs", () => ({
-  existsSync: vi.fn(),
-}));
+let tempRoot: string;
 
-import {
-  resolveProjectRoot,
-  getGlobalDiffgazerDir,
-} from "./paths.js";
-
-const home = homedir();
-
-beforeEach(() => {
-  vi.clearAllMocks();
+beforeEach(async () => {
+  tempRoot = await mkdtemp(path.join(tmpdir(), "diffgazer-paths-"));
   delete process.env.DIFFGAZER_HOME;
 });
 
+afterEach(async () => {
+  delete process.env.DIFFGAZER_HOME;
+  await rm(tempRoot, { recursive: true, force: true });
+});
+
 describe("resolveProjectRoot", () => {
-  it("should prioritize header over env and cwd", () => {
-    const result = resolveProjectRoot({
+  it("prioritizes header, then env, then cwd", () => {
+    const home = homedir();
+
+    expect(resolveProjectRoot({
       header: `${home}/from/header`,
-      env: "/from/env",
-      cwd: "/from/cwd",
-    });
-    expect(result).toBe(`${home}/from/header`);
-  });
+      env: path.join(tempRoot, "env"),
+      cwd: path.join(tempRoot, "cwd"),
+    })).toBe(`${home}/from/header`);
 
-  it("should use env when no header", () => {
-    const result = resolveProjectRoot({
+    expect(resolveProjectRoot({
       header: null,
-      env: "/from/env",
-      cwd: "/from/cwd",
-    });
-    expect(result).toBe("/from/env");
+      env: path.join(tempRoot, "env"),
+      cwd: path.join(tempRoot, "cwd"),
+    })).toBe(path.join(tempRoot, "env"));
   });
 
-  it("should use cwd and find git root when no header or env", () => {
-    vi.mocked(fs.existsSync).mockImplementation((p) => {
-      return p === "/project/.git";
-    });
+  it("walks up from cwd to the nearest git root", async () => {
+    const repoRoot = path.join(tempRoot, "repo");
+    const nested = path.join(repoRoot, "src", "deep");
+    await mkdir(path.join(repoRoot, ".git"), { recursive: true });
+    await mkdir(nested, { recursive: true });
 
-    const result = resolveProjectRoot({
-      header: null,
-      env: null,
-      cwd: "/project/src/deep",
-    });
-    expect(result).toBe("/project");
+    expect(resolveProjectRoot({ header: null, env: null, cwd: nested })).toBe(repoRoot);
   });
 
-  it("should return normalized cwd when no git root found", () => {
-    vi.mocked(fs.existsSync).mockReturnValue(false);
+  it("returns normalized cwd when no git root exists", async () => {
+    const cwd = path.join(tempRoot, "no-git", "child");
+    await mkdir(cwd, { recursive: true });
 
-    const result = resolveProjectRoot({
-      header: null,
-      env: null,
-      cwd: "/no/git/here",
-    });
-    expect(result).toBe("/no/git/here");
+    expect(resolveProjectRoot({ header: null, env: null, cwd })).toBe(cwd);
   });
 
-  it("should trim whitespace from inputs", () => {
-    const result = resolveProjectRoot({
-      header: `  ${home}/spaced/path  `,
-    });
-    expect(result).toBe(`${home}/spaced/path`);
+  it("trims blank inputs and falls back to cwd", async () => {
+    const cwd = path.join(tempRoot, "fallback");
+    await mkdir(cwd, { recursive: true });
+
+    expect(resolveProjectRoot({ header: "  ", env: "", cwd: `  ${cwd}  ` })).toBe(cwd);
   });
 
-  it("should skip empty strings for header and env", () => {
-    vi.mocked(fs.existsSync).mockReturnValue(false);
+  it("rejects header paths outside the home directory unless they are git repositories", async () => {
+    const repoRoot = path.join(tempRoot, "external-repo");
+    await mkdir(path.join(repoRoot, ".git"), { recursive: true });
 
-    const result = resolveProjectRoot({
-      header: "  ",
-      env: "",
-      cwd: "/fallback",
-    });
-    expect(result).toBe("/fallback");
-  });
-
-  it("should reject header paths outside user home without .git", () => {
-    vi.mocked(fs.existsSync).mockReturnValue(false);
-
-    expect(() =>
-      resolveProjectRoot({ header: "/etc/passwd" })
-    ).toThrow("Invalid project root");
-  });
-
-  it("should allow header paths outside home if they have .git", () => {
-    vi.mocked(fs.existsSync).mockImplementation((p) => {
-      return p === "/opt/repo/.git";
-    });
-
-    const result = resolveProjectRoot({ header: "/opt/repo" });
-    expect(result).toBe("/opt/repo");
-  });
-
-  it("should allow header paths under user home", () => {
-    const result = resolveProjectRoot({
-      header: `${home}/projects/my-app`,
-    });
-    expect(result).toBe(`${home}/projects/my-app`);
+    expect(() => resolveProjectRoot({ header: path.join(tempRoot, "external") })).toThrow(
+      "Invalid project root",
+    );
+    expect(resolveProjectRoot({ header: repoRoot })).toBe(repoRoot);
   });
 });
 
 describe("getGlobalDiffgazerDir", () => {
-  it("should use DIFFGAZER_HOME env var when set", () => {
-    process.env.DIFFGAZER_HOME = "/custom/home";
-    expect(getGlobalDiffgazerDir()).toBe("/custom/home");
-  });
+  it("uses DIFFGAZER_HOME when set and otherwise defaults under the user home", () => {
+    process.env.DIFFGAZER_HOME = `  ${tempRoot}  `;
+    expect(getGlobalDiffgazerDir()).toBe(tempRoot);
 
-  it("should default to ~/.diffgazer", () => {
-    const { homedir } = require("node:os");
+    delete process.env.DIFFGAZER_HOME;
     expect(getGlobalDiffgazerDir()).toBe(path.join(homedir(), ".diffgazer"));
   });
 });
-

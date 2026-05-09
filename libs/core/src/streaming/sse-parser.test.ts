@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { parseSSEStream, type SSEParserOptions } from "./sse-parser.js";
+import { parseSSEStream } from "./sse-parser.js";
 
 function createMockReader(chunks: string[]): ReadableStreamDefaultReader<Uint8Array> {
   const encoder = new TextEncoder();
@@ -10,8 +10,7 @@ function createMockReader(chunks: string[]): ReadableStreamDefaultReader<Uint8Ar
       if (index >= chunks.length) {
         return { done: true as const, value: undefined };
       }
-      const value = encoder.encode(chunks[index++]);
-      return { done: false as const, value };
+      return { done: false as const, value: encoder.encode(chunks[index++]) };
     }),
     cancel: vi.fn(),
     releaseLock: vi.fn(),
@@ -21,329 +20,152 @@ function createMockReader(chunks: string[]): ReadableStreamDefaultReader<Uint8Ar
 
 const identity = (data: unknown) => data;
 
+async function parseChunks<T = unknown>(
+  chunks: string[],
+  parseEvent: (data: unknown) => T | undefined = identity as (data: unknown) => T,
+) {
+  const events: T[] = [];
+  const reader = createMockReader(chunks);
+  const result = await parseSSEStream(reader, {
+    parseEvent,
+    onEvent: (event) => events.push(event),
+  });
+  return { events, reader, result };
+}
+
 describe("parseSSEStream", () => {
-  describe("basic SSE parsing", () => {
-    it("should parse single SSE event", async () => {
-      const onEvent = vi.fn();
-      const reader = createMockReader(['data: {"type":"message","content":"hello"}\n']);
+  it.each([
+    {
+      name: "single SSE event",
+      chunks: ['data: {"type":"message","content":"hello"}\n'],
+      events: [{ type: "message", content: "hello" }],
+    },
+    {
+      name: "multiple chunks",
+      chunks: ['data: {"id":1}\n', 'data: {"id":2}\n', 'data: {"id":3}\n'],
+      events: [{ id: 1 }, { id: 2 }, { id: 3 }],
+    },
+    {
+      name: "multiple lines in one chunk",
+      chunks: ['data: {"id":1}\ndata: {"id":2}\ndata: {"id":3}\n'],
+      events: [{ id: 1 }, { id: 2 }, { id: 3 }],
+    },
+    {
+      name: "event split across chunks",
+      chunks: ['data: {"mes', 'sage":"split', ' across chunks"}\n'],
+      events: [{ message: "split across chunks" }],
+    },
+    {
+      name: "partial line at end of chunk",
+      chunks: ['data: {"id":1}\ndata: {"id"', ':2}\n'],
+      events: [{ id: 1 }, { id: 2 }],
+    },
+    {
+      name: "final event without newline",
+      chunks: ['data: {"id":1}\n', 'data: {"id":2}'],
+      events: [{ id: 1 }, { id: 2 }],
+    },
+    {
+      name: "mixed LF and CRLF endings",
+      chunks: ['data: {"id":1}\n', 'data: {"id":2}\r\n', 'data: {"id":3}\n'],
+      events: [{ id: 1 }, { id: 2 }, { id: 3 }],
+    },
+  ])("parses $name", async ({ chunks, events }) => {
+    const result = await parseChunks(chunks);
 
-      const result = await parseSSEStream(reader, { onEvent, parseEvent: identity });
+    expect(result.result.completed).toBe(true);
+    expect(result.events).toEqual(events);
+  });
 
-      expect(result.completed).toBe(true);
-      expect(onEvent).toHaveBeenCalledOnce();
-      expect(onEvent).toHaveBeenCalledWith({ type: "message", content: "hello" });
-    });
+  it("ignores non-data lines, invalid JSON, and empty payloads", async () => {
+    const { events } = await parseChunks([
+      ": comment line\n",
+      "event: message\n",
+      'data: {"valid":true}\n',
+      "id: 123\n",
+      "data: {invalid json\n",
+      "data: \n",
+      "   \n",
+    ]);
 
-    it("should parse multiple SSE events", async () => {
-      const onEvent = vi.fn();
-      const reader = createMockReader([
-        'data: {"id":1}\n',
-        'data: {"id":2}\n',
-        'data: {"id":3}\n',
-      ]);
+    expect(events).toEqual([{ valid: true }]);
+  });
 
-      await parseSSEStream(reader, { onEvent, parseEvent: identity });
-
-      expect(onEvent).toHaveBeenCalledTimes(3);
-      expect(onEvent).toHaveBeenNthCalledWith(1, { id: 1 });
-      expect(onEvent).toHaveBeenNthCalledWith(2, { id: 2 });
-      expect(onEvent).toHaveBeenNthCalledWith(3, { id: 3 });
-    });
-
-    it("should parse events in single chunk with multiple lines", async () => {
-      const onEvent = vi.fn();
-      const reader = createMockReader([
-        'data: {"id":1}\ndata: {"id":2}\ndata: {"id":3}\n',
-      ]);
-
-      await parseSSEStream(reader, { onEvent, parseEvent: identity });
-
-      expect(onEvent).toHaveBeenCalledTimes(3);
-      expect(onEvent).toHaveBeenNthCalledWith(1, { id: 1 });
-      expect(onEvent).toHaveBeenNthCalledWith(2, { id: 2 });
-      expect(onEvent).toHaveBeenNthCalledWith(3, { id: 3 });
-    });
-
-    it("should handle events split across chunks", async () => {
-      const onEvent = vi.fn();
-      const reader = createMockReader([
-        'data: {"mes',
-        'sage":"split',
-        ' across chunks"}\n',
-      ]);
-
-      await parseSSEStream(reader, { onEvent, parseEvent: identity });
-
-      expect(onEvent).toHaveBeenCalledOnce();
-      expect(onEvent).toHaveBeenCalledWith({ message: "split across chunks" });
-    });
-
-    it("should handle partial line at end of chunk", async () => {
-      const onEvent = vi.fn();
-      const reader = createMockReader([
-        'data: {"id":1}\ndata: {"id"',
-        ':2}\n',
-      ]);
-
-      await parseSSEStream(reader, { onEvent, parseEvent: identity });
-
-      expect(onEvent).toHaveBeenCalledTimes(2);
-      expect(onEvent).toHaveBeenNthCalledWith(1, { id: 1 });
-      expect(onEvent).toHaveBeenNthCalledWith(2, { id: 2 });
-    });
-
-    it("should handle event in final buffer without newline", async () => {
-      const onEvent = vi.fn();
-      const reader = createMockReader([
-        'data: {"id":1}\n',
-        'data: {"id":2}',
-      ]);
-
-      await parseSSEStream(reader, { onEvent, parseEvent: identity });
-
-      expect(onEvent).toHaveBeenCalledTimes(2);
-      expect(onEvent).toHaveBeenNthCalledWith(1, { id: 1 });
-      expect(onEvent).toHaveBeenNthCalledWith(2, { id: 2 });
+  it("finishes cleanly for empty streams, whitespace, and truncated final JSON", async () => {
+    await expect(parseChunks([])).resolves.toMatchObject({ events: [], result: { completed: true } });
+    await expect(parseChunks(["   \n"])).resolves.toMatchObject({ events: [], result: { completed: true } });
+    await expect(parseChunks(['data: {"incomplete":'])).resolves.toMatchObject({
+      events: [],
+      result: { completed: true },
     });
   });
 
-  describe("malformed input handling", () => {
-    it("should ignore lines without data prefix", async () => {
-      const onEvent = vi.fn();
-      const reader = createMockReader([
-        ': comment line\n',
-        'event: message\n',
-        'data: {"valid":true}\n',
-        'id: 123\n',
-      ]);
+  it("cancels parsing when the buffered data exceeds the limit", async () => {
+    const onBufferOverflow = vi.fn();
+    const reader = createMockReader(["a".repeat(500 * 1024), "b".repeat(500 * 1024), "c".repeat(500 * 1024)]);
+    const events: unknown[] = [];
 
-      await parseSSEStream(reader, { onEvent, parseEvent: identity });
-
-      expect(onEvent).toHaveBeenCalledOnce();
-      expect(onEvent).toHaveBeenCalledWith({ valid: true });
+    const result = await parseSSEStream(reader, {
+      onEvent: (event) => events.push(event),
+      parseEvent: identity,
+      onBufferOverflow,
     });
 
-    it("should ignore data lines with invalid JSON", async () => {
-      const onEvent = vi.fn();
-      const reader = createMockReader([
-        'data: {invalid json\n',
-        'data: {"valid":true}\n',
-      ]);
-
-      await parseSSEStream(reader, { onEvent, parseEvent: identity });
-
-      expect(onEvent).toHaveBeenCalledOnce();
-      expect(onEvent).toHaveBeenCalledWith({ valid: true });
-    });
-
-    it("should ignore empty data lines", async () => {
-      const onEvent = vi.fn();
-      const reader = createMockReader([
-        'data: \n',
-        'data: {"valid":true}\n',
-      ]);
-
-      await parseSSEStream(reader, { onEvent, parseEvent: identity });
-
-      expect(onEvent).toHaveBeenCalledOnce();
-      expect(onEvent).toHaveBeenCalledWith({ valid: true });
-    });
-
-    it("should handle whitespace-only final buffer", async () => {
-      const onEvent = vi.fn();
-      const reader = createMockReader([
-        'data: {"id":1}\n',
-        '   \n',
-      ]);
-
-      await parseSSEStream(reader, { onEvent, parseEvent: identity });
-
-      expect(onEvent).toHaveBeenCalledOnce();
-    });
-
-    it("should handle truncated JSON in final buffer", async () => {
-      const onEvent = vi.fn();
-      const reader = createMockReader([
-        'data: {"incomplete":',
-      ]);
-
-      await parseSSEStream(reader, { onEvent, parseEvent: identity });
-
-      expect(onEvent).not.toHaveBeenCalled();
-    });
-
-    it("should handle empty stream", async () => {
-      const onEvent = vi.fn();
-      const reader = createMockReader([]);
-
-      const result = await parseSSEStream(reader, { onEvent, parseEvent: identity });
-
-      expect(result.completed).toBe(true);
-      expect(onEvent).not.toHaveBeenCalled();
-    });
+    expect(result).toEqual({ completed: false });
+    expect(events).toEqual([]);
+    expect(onBufferOverflow).toHaveBeenCalledOnce();
+    expect(reader.cancel).toHaveBeenCalledOnce();
   });
 
-  describe("buffer overflow handling", () => {
-    it("should trigger overflow when buffer exceeds 1MB", async () => {
-      const onEvent = vi.fn();
-      const onBufferOverflow = vi.fn();
-      const largeChunk = "x".repeat(1024 * 1024 + 1);
-      const reader = createMockReader([largeChunk]);
-
-      const result = await parseSSEStream(reader, {
-        onEvent,
-        parseEvent: identity,
-        onBufferOverflow,
-      });
-
-      expect(result.completed).toBe(false);
-      expect(onBufferOverflow).toHaveBeenCalledOnce();
-      expect(reader.cancel).toHaveBeenCalledOnce();
+  it("does not require an overflow handler and leaves valid sub-limit data alone", async () => {
+    const overflowReader = createMockReader(["x".repeat(1024 * 1024 + 1)]);
+    const overflow = await parseSSEStream(overflowReader, {
+      onEvent: () => undefined,
+      parseEvent: identity,
     });
 
-    it("should handle overflow callback being undefined", async () => {
-      const onEvent = vi.fn();
-      const largeChunk = "x".repeat(1024 * 1024 + 1);
-      const reader = createMockReader([largeChunk]);
+    expect(overflow).toEqual({ completed: false });
+    expect(overflowReader.cancel).toHaveBeenCalledOnce();
 
-      const result = await parseSSEStream(reader, { onEvent, parseEvent: identity });
-
-      expect(result.completed).toBe(false);
-      expect(reader.cancel).toHaveBeenCalledOnce();
+    const underLimitReader = createMockReader(["x".repeat(1024 * 1024 - 100)]);
+    const underLimit = await parseSSEStream(underLimitReader, {
+      onEvent: () => undefined,
+      parseEvent: identity,
+      onBufferOverflow: vi.fn(),
     });
 
-    it("should not overflow with buffer just under 1MB", async () => {
-      const onEvent = vi.fn();
-      const onBufferOverflow = vi.fn();
-      const largeChunk = "x".repeat(1024 * 1024 - 100);
-      const reader = createMockReader([largeChunk]);
-
-      const result = await parseSSEStream(reader, {
-        onEvent,
-        parseEvent: identity,
-        onBufferOverflow,
-      });
-
-      expect(result.completed).toBe(true);
-      expect(onBufferOverflow).not.toHaveBeenCalled();
-      expect(reader.cancel).not.toHaveBeenCalled();
-    });
-
-    it("should accumulate chunks until overflow", async () => {
-      const onEvent = vi.fn();
-      const onBufferOverflow = vi.fn();
-      const chunkSize = 500 * 1024;
-      const reader = createMockReader([
-        "a".repeat(chunkSize),
-        "b".repeat(chunkSize),
-        "c".repeat(chunkSize),
-      ]);
-
-      const result = await parseSSEStream(reader, {
-        onEvent,
-        parseEvent: identity,
-        onBufferOverflow,
-      });
-
-      expect(result.completed).toBe(false);
-      expect(onBufferOverflow).toHaveBeenCalledOnce();
-    });
+    expect(underLimit).toEqual({ completed: true });
+    expect(underLimitReader.cancel).not.toHaveBeenCalled();
   });
 
-  describe("custom parseEvent handler", () => {
-    it("should use custom parseEvent to transform events", async () => {
-      const onEvent = vi.fn();
-      const parseEvent = (data: unknown): string | undefined => {
-        if (typeof data === "object" && data !== null && "message" in data) {
-          return String((data as { message: string }).message).toUpperCase();
-        }
-        return undefined;
-      };
+  it("uses parseEvent to transform or skip parsed payloads", async () => {
+    const parseEvent = (data: unknown): string | undefined => {
+      if (typeof data === "object" && data !== null && "message" in data) {
+        return String((data as { message: string }).message).toUpperCase();
+      }
+      return undefined;
+    };
 
-      const reader = createMockReader(['data: {"message":"hello"}\n']);
+    const { events } = await parseChunks(
+      ['data: {"message":"hello"}\n', 'data: {"valid":false}\n', 'data: {"message":"bye"}\n'],
+      parseEvent,
+    );
 
-      await parseSSEStream(reader, { onEvent, parseEvent });
-
-      expect(onEvent).toHaveBeenCalledWith("HELLO");
-    });
-
-    it("should skip events when parseEvent returns undefined", async () => {
-      const onEvent = vi.fn();
-      const parseEvent = (data: unknown): { valid: boolean } | undefined => {
-        if (
-          typeof data === "object" &&
-          data !== null &&
-          "valid" in data &&
-          (data as { valid: boolean }).valid
-        ) {
-          return data as { valid: boolean };
-        }
-        return undefined;
-      };
-
-      const reader = createMockReader([
-        'data: {"valid":true}\n',
-        'data: {"valid":false}\n',
-        'data: {"valid":true}\n',
-      ]);
-
-      await parseSSEStream(reader, { onEvent, parseEvent });
-
-      expect(onEvent).toHaveBeenCalledTimes(2);
-      expect(onEvent).toHaveBeenNthCalledWith(1, { valid: true });
-      expect(onEvent).toHaveBeenNthCalledWith(2, { valid: true });
-    });
-
-    it("should handle parseEvent throwing errors", async () => {
-      const onEvent = vi.fn();
-      const parseEvent = (): never => {
-        throw new Error("Parse error");
-      };
-
-      const reader = createMockReader(['data: {"message":"test"}\n']);
-
-      await expect(parseSSEStream(reader, { onEvent, parseEvent })).rejects.toThrow(
-        "Parse error"
-      );
-    });
-
+    expect(events).toEqual(["HELLO", "BYE"]);
   });
 
-  describe("edge cases", () => {
-    it("should handle multiple consecutive newlines", async () => {
-      const onEvent = vi.fn();
-      const reader = createMockReader([
-        'data: {"id":1}\n\n\ndata: {"id":2}\n',
-      ]);
+  it("propagates parseEvent failures", async () => {
+    const parseEvent = (): never => {
+      throw new Error("Parse error");
+    };
 
-      await parseSSEStream(reader, { onEvent, parseEvent: identity });
+    await expect(parseChunks(['data: {"message":"test"}\n'], parseEvent)).rejects.toThrow("Parse error");
+  });
 
-      expect(onEvent).toHaveBeenCalledTimes(2);
-    });
+  it("parses long final lines without a trailing newline", async () => {
+    const longMessage = "x".repeat(10000);
+    const { events } = await parseChunks([`data: {"message":"${longMessage}"}`]);
 
-    it("should handle mixed LF and CRLF line endings", async () => {
-      const onEvent = vi.fn();
-      const reader = createMockReader([
-        'data: {"id":1}\n',
-        'data: {"id":2}\r\n',
-        'data: {"id":3}\n',
-      ]);
-
-      await parseSSEStream(reader, { onEvent, parseEvent: identity });
-
-      expect(onEvent).toHaveBeenCalledTimes(3);
-    });
-
-    it("should handle very long single line without newline", async () => {
-      const onEvent = vi.fn();
-      const longMessage = "x".repeat(10000);
-      const reader = createMockReader([
-        `data: {"message":"${longMessage}"}`,
-      ]);
-
-      await parseSSEStream(reader, { onEvent, parseEvent: identity });
-
-      expect(onEvent).toHaveBeenCalledWith({ message: longMessage });
-    });
+    expect(events).toEqual([{ message: longMessage }]);
   });
 });

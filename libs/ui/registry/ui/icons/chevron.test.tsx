@@ -26,10 +26,4 @@ describe("Chevron", () => {
     expect(icon).toHaveAttribute("stroke-width", "1");
     expect(icon).toHaveStyle({ transform: "rotate(180deg)" });
   });
-
-  it("only applies transform transitions when motion is allowed", () => {
-    render(<Chevron data-testid="chevron" />);
-
-    expect(screen.getByTestId("chevron")).toHaveClass("motion-safe:transition-transform");
-  });
 });

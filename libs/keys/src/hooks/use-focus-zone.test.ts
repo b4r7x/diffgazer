@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { renderHook, render, screen, act, cleanup } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { createElement, useRef, type ReactNode } from "react";
 import { KeyboardProvider } from "../providers/keyboard-provider";
 import { useFocusZone } from "./use-focus-zone";
@@ -8,14 +9,6 @@ import { fireKey } from "../testing/test-utils";
 
 function wrapper({ children }: { children: ReactNode }) {
   return createElement(KeyboardProvider, null, children);
-}
-
-function fireKeyOnElement(element: HTMLElement, key: string) {
-  element.dispatchEvent(new KeyboardEvent("keydown", {
-    key,
-    bubbles: true,
-    cancelable: true,
-  }));
 }
 
 describe("useFocusZone", () => {
@@ -59,11 +52,9 @@ describe("useFocusZone", () => {
         { wrapper },
       );
 
-      // Handler should not fire when zone is "main"
       act(() => fireKey("Enter"));
       expect(handler).not.toHaveBeenCalled();
 
-      // Handler fires after switching to matching zone
       act(() => result.current.setZone("sidebar"));
       act(() => fireKey("Enter"));
       expect(handler).toHaveBeenCalledOnce();
@@ -156,7 +147,7 @@ describe("useFocusZone", () => {
       expect(result.current.zone).toBe("main");
     });
 
-    it("can require transition keys to originate inside a container subtree", () => {
+    it("can require transition keys to originate inside a container subtree", async () => {
       function Host() {
         const containerRef = useRef<HTMLDivElement>(null);
         const focusZone = useFocusZone({
@@ -177,7 +168,7 @@ describe("useFocusZone", () => {
             "div",
             { ref: containerRef },
             createElement("button", { type: "button" }, "Inside"),
-            createElement("output", { "data-testid": "zone" }, focusZone.zone),
+            createElement("output", { "aria-label": "Current zone" }, focusZone.zone),
           ),
           createElement("button", { type: "button" }, "Outside"),
         );
@@ -188,11 +179,13 @@ describe("useFocusZone", () => {
       const outsideButton = screen.getByRole("button", { name: "Outside" });
       const insideButton = screen.getByRole("button", { name: "Inside" });
 
-      act(() => fireKeyOnElement(outsideButton, "ArrowRight"));
-      expect(screen.getByTestId("zone").textContent).toBe("main");
+      outsideButton.focus();
+      await userEvent.keyboard("{ArrowRight}");
+      expect(screen.getByLabelText("Current zone").textContent).toBe("main");
 
-      act(() => fireKeyOnElement(insideButton, "ArrowRight"));
-      expect(screen.getByTestId("zone").textContent).toBe("sidebar");
+      insideButton.focus();
+      await userEvent.keyboard("{ArrowRight}");
+      expect(screen.getByLabelText("Current zone").textContent).toBe("sidebar");
     });
 
     it("does not change zone when transition returns zone not in zones array", () => {
@@ -223,18 +216,15 @@ describe("useFocusZone", () => {
         { wrapper },
       );
 
-      // Forward follows tabCycle order, not zones order
       act(() => fireKey("Tab"));
       expect(result.current.zone).toBe("a");
 
       act(() => fireKey("Tab"));
       expect(result.current.zone).toBe("b");
 
-      // Wraps around
       act(() => fireKey("Tab"));
       expect(result.current.zone).toBe("c");
 
-      // Backward with Shift+Tab
       act(() => fireKey("Tab", { shiftKey: true }));
       expect(result.current.zone).toBe("b");
 

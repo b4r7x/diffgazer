@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { KeyboardProvider } from "@diffgazer/keys";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 
@@ -63,42 +64,55 @@ function renderView() {
 }
 
 describe("ReviewResultsView keyboard regression", () => {
-  it("navigates issue list with ArrowDown immediately in list view", () => {
+  it("navigates issue list with ArrowDown immediately in list view", async () => {
+    const user = userEvent.setup();
     renderView();
 
     const options = screen.getAllByRole("option");
     expect(options[0]).toHaveAttribute("aria-selected", "true");
 
-    fireEvent.keyDown(window, { key: "ArrowDown" });
+    await user.keyboard("{ArrowDown}");
 
     expect(options[1]).toHaveAttribute("aria-selected", "true");
   });
 
-  it("switches right-panel tabs with left/right and scrolls details with up/down", () => {
-    const { container } = renderView();
+  it("switches right-panel tabs with left and right arrows", async () => {
+    const user = userEvent.setup();
+    renderView();
 
-    fireEvent.keyDown(window, { key: "ArrowRight" });
-    fireEvent.keyDown(window, { key: "ArrowRight" });
+    await user.keyboard("{ArrowRight}{ArrowRight}");
     expect(screen.getByRole("tab", { name: "Explain" })).toHaveAttribute("aria-selected", "true");
 
-    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    await user.keyboard("{ArrowLeft}");
     expect(screen.getByRole("tab", { name: "Details" })).toHaveAttribute("aria-selected", "true");
+  });
 
-    const scrollAreas = container.querySelectorAll<HTMLDivElement>(".scrollbar-thin");
-    const detailsScrollArea = scrollAreas[0];
-    expect(detailsScrollArea).toBeTruthy();
-
+  it("scrolls issue details with up and down arrows after moving focus into details", async () => {
+    const user = userEvent.setup();
+    const originalScrollByDescriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollBy");
     const scrollBy = vi.fn();
-    Object.defineProperty(detailsScrollArea, "scrollBy", {
-      value: scrollBy,
+    Object.defineProperty(HTMLElement.prototype, "scrollBy", {
       configurable: true,
-      writable: true,
+      value: scrollBy,
     });
 
-    fireEvent.keyDown(window, { key: "ArrowDown" });
-    fireEvent.keyDown(window, { key: "ArrowUp" });
+    try {
+      renderView();
 
-    expect(scrollBy).toHaveBeenNthCalledWith(1, { top: 80, behavior: "smooth" });
-    expect(scrollBy).toHaveBeenNthCalledWith(2, { top: -80, behavior: "smooth" });
+      await user.keyboard("{ArrowRight}");
+      expect(screen.getByRole("tab", { name: "Details" })).toHaveAttribute("aria-selected", "true");
+
+      await user.keyboard("{ArrowDown}");
+      await user.keyboard("{ArrowUp}");
+
+      expect(scrollBy).toHaveBeenNthCalledWith(1, { top: 80, behavior: "smooth" });
+      expect(scrollBy).toHaveBeenNthCalledWith(2, { top: -80, behavior: "smooth" });
+    } finally {
+      if (originalScrollByDescriptor) {
+        Object.defineProperty(HTMLElement.prototype, "scrollBy", originalScrollByDescriptor);
+      } else {
+        delete HTMLElement.prototype.scrollBy;
+      }
+    }
   });
 });

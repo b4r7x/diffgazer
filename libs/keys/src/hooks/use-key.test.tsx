@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, renderHook, cleanup, fireEvent, act } from "@testing-library/react";
+import { render, renderHook, cleanup, act } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { StrictMode, useState, type ReactNode } from "react";
 import { KeyboardProvider } from "../providers/keyboard-provider";
 import { useKey } from "./use-key";
@@ -31,22 +32,18 @@ describe("useKey", () => {
       { wrapper },
     );
 
-    // disabled — does not fire
     fireKey("Escape");
     expect(handler).not.toHaveBeenCalled();
 
-    // re-enable — fires for matching key with correct event
     enabled = true;
     rerender();
     fireKey("Escape");
     expect(handler).toHaveBeenCalledWith(expect.any(KeyboardEvent));
 
-    // non-matching key ignored
     handler.mockClear();
     fireKey("Enter");
     expect(handler).not.toHaveBeenCalled();
 
-    // cleans up on unmount
     unmount();
     fireKey("Escape");
     expect(handler).not.toHaveBeenCalled();
@@ -240,10 +237,10 @@ describe("useKey", () => {
   });
 
   describe("without KeyboardProvider", () => {
-    it("does not throw when used without KeyboardProvider", () => {
+    it("does not throw when used without KeyboardProvider", async () => {
       const handler = vi.fn();
       const { unmount } = renderHook(() => useKey("a", handler));
-      fireEvent.keyDown(document, { key: "a" });
+      await userEvent.keyboard("a");
       expect(handler).not.toHaveBeenCalled();
       unmount();
     });

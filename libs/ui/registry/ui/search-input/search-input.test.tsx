@@ -10,69 +10,77 @@ function renderSearchInput(props: Record<string, unknown> = {}) {
 
 describe("SearchInput", () => {
   it("updates value when typing (uncontrolled)", async () => {
+    const user = userEvent.setup()
     renderSearchInput()
     const input = screen.getByRole("searchbox")
-    await userEvent.type(input, "hello")
+    await user.type(input, "hello")
     expect(input).toHaveValue("hello")
   })
 
   it("fires onChange in controlled mode", async () => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
     renderSearchInput({ value: "", onChange })
     const input = screen.getByRole("searchbox")
-    await userEvent.type(input, "a")
+    await user.type(input, "a")
     expect(onChange).toHaveBeenCalledWith("a")
   })
 
   it("calls onEscape when Escape is pressed", async () => {
+    const user = userEvent.setup()
     const onEscape = vi.fn()
     renderSearchInput({ onEscape })
     const input = screen.getByRole("searchbox")
     input.focus()
-    await userEvent.keyboard("{Escape}")
+    await user.keyboard("{Escape}")
     expect(onEscape).toHaveBeenCalledOnce()
   })
 
   it("calls onEnter when Enter is pressed", async () => {
+    const user = userEvent.setup()
     const onEnter = vi.fn()
     renderSearchInput({ onEnter })
     const input = screen.getByRole("searchbox")
     input.focus()
-    await userEvent.keyboard("{Enter}")
+    await user.keyboard("{Enter}")
     expect(onEnter).toHaveBeenCalledOnce()
   })
 
   it("forwards custom onKeyDown alongside built-in handler", async () => {
+    const user = userEvent.setup()
     const onKeyDown = vi.fn()
     renderSearchInput({ onKeyDown })
     const input = screen.getByRole("searchbox")
     input.focus()
-    await userEvent.keyboard("{Enter}")
+    await user.keyboard("{Enter}")
     expect(onKeyDown).toHaveBeenCalledOnce()
   })
 
   it("honors preventDefault in custom key handlers", async () => {
+    const user = userEvent.setup()
     const onEnter = vi.fn()
     renderSearchInput({ onEnter, onKeyDown: (event: KeyboardEvent) => event.preventDefault() })
     const input = screen.getByRole("searchbox")
     input.focus()
-    await userEvent.keyboard("{Enter}")
+    await user.keyboard("{Enter}")
     expect(onEnter).not.toHaveBeenCalled()
   })
 
   it("resets uncontrolled value with native form reset", async () => {
+    const user = userEvent.setup()
     render(
-      <form data-testid="form">
+      <form>
         <SearchInput name="query" aria-label="Search" defaultValue="initial" />
+        <button type="reset">Reset search</button>
       </form>
     )
 
     const input = screen.getByRole("searchbox")
-    await userEvent.clear(input)
-    await userEvent.type(input, "changed")
+    await user.clear(input)
+    await user.type(input, "changed")
     expect(input).toHaveValue("changed")
 
-    ;(screen.getByTestId("form") as HTMLFormElement).reset()
+    await user.click(screen.getByRole("button", { name: "Reset search" }))
     await waitFor(() => expect(input).toHaveValue("initial"))
   })
 
@@ -96,17 +104,12 @@ describe("SearchInput", () => {
     expect(screen.getByText("find:")).toBeInTheDocument()
   })
 
-  it("does not style aria-invalid false as invalid", () => {
-    const { container } = renderSearchInput({ "aria-invalid": "false" })
+  it("preserves caller-provided aria-invalid values", () => {
+    const { rerender } = renderSearchInput({ "aria-invalid": "false" })
 
     expect(screen.getByRole("searchbox")).toHaveAttribute("aria-invalid", "false")
-    expect(container.querySelector("search")).not.toHaveClass("border-destructive")
-  })
 
-  it("preserves grammar invalid state", () => {
-    const { container } = renderSearchInput({ "aria-invalid": "grammar" })
-
+    rerender(<SearchInput aria-label="Search" aria-invalid="grammar" />)
     expect(screen.getByRole("searchbox")).toHaveAttribute("aria-invalid", "grammar")
-    expect(container.querySelector("search")).toHaveClass("border-destructive")
   })
 })

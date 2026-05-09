@@ -27,12 +27,15 @@ describe("KeyValue", () => {
       </KeyValue>,
     )
 
-    const list = screen.getByText("Status").closest("dl")
-    expect(list).toHaveClass("grid-cols-[minmax(0,1fr)_auto]")
-    expect(screen.getByText("Ready")).toHaveClass("text-right")
+    const label = screen.getByText("Status")
+    const value = screen.getByText("Ready")
+
+    expect(label.tagName).toBe("DT")
+    expect(value.tagName).toBe("DD")
+    expect(label.nextElementSibling).toBe(value)
   })
 
-  it("applies bordered row classes across the label and value", () => {
+  it("renders bordered values without wrapping label-value pairs", () => {
     render(
       <KeyValue bordered>
         <KeyValue.Item label="Status" value="Ready" />
@@ -40,16 +43,11 @@ describe("KeyValue", () => {
       </KeyValue>,
     )
 
-    const firstLabel = screen.getByText("Status")
-    const firstValue = screen.getByText("Ready")
-    const secondLabel = screen.getByText("Owner")
-    const secondValue = screen.getByText("Docs")
+    const list = screen.getByText("Status").closest("dl")
+    expect(list).not.toBeNull()
+    if (!list) return
+    const children = Array.from(list.children).map((child) => child.textContent)
 
-    expect(firstLabel).toHaveClass("border-t")
-    expect(firstLabel).toHaveClass("first:border-t-0")
-    expect(firstValue).toHaveClass("border-t")
-    expect(firstValue).toHaveClass("[&:nth-child(2)]:border-t-0")
-    expect(secondLabel).toHaveClass("border-t")
-    expect(secondValue).toHaveClass("border-t")
+    expect(children).toEqual(["Status", "Ready", "Owner", "Docs"])
   })
 })

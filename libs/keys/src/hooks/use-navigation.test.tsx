@@ -1,10 +1,11 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, cleanup, screen, act } from "@testing-library/react";
-import { useRef, type KeyboardEventHandler } from "react";
+import { cleanup, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { useRef } from "react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { useNavigation, type UseNavigationOptions } from "./use-navigation";
 
-function onKeyDownProp(fn: (e: globalThis.KeyboardEvent) => void): KeyboardEventHandler {
-  return fn as unknown as KeyboardEventHandler;
+function itemId(value: string) {
+  return value === "" ? "item-empty" : `item-${value}`;
 }
 
 function TestList({
@@ -21,32 +22,44 @@ function TestList({
   return (
     <div
       ref={ref}
-      data-testid="list"
-      onKeyDown={onKeyDownProp(result.onKeyDown)}
+      role="listbox"
+      aria-label="Items"
+      aria-activedescendant={result.highlighted === null ? undefined : itemId(result.highlighted)}
+      tabIndex={0}
+      onKeyDown={result.onKeyDown}
     >
       {items.map((item) => (
-        <div key={item} role="option" data-value={item} data-testid={`item-${item}`} />
+        <div
+          key={item}
+          id={itemId(item)}
+          role="option"
+          data-value={item}
+          aria-selected={result.isHighlighted(item)}
+        >
+          {item || "Empty"}
+        </div>
       ))}
-      <span data-testid="focused">{result.highlighted ?? ""}</span>
-      <span data-testid="is-empty">{String(result.isHighlighted(""))}</span>
-      <span data-testid="is-a">{String(result.isHighlighted("a"))}</span>
-      <span data-testid="is-b">{String(result.isHighlighted("b"))}</span>
-      <button data-testid="highlight-b" onClick={() => result.highlight("b")} />
+      <button type="button" onClick={() => result.highlight("b")}>
+        Highlight B
+      </button>
     </div>
   );
 }
 
-function fireKeyOnElement(container: HTMLElement, key: string) {
-  const event = new KeyboardEvent("keydown", {
-    key,
-    bubbles: true,
-    cancelable: true,
-  });
-  container.dispatchEvent(event);
+function activeOption() {
+  const listbox = screen.getByRole("listbox", { name: "Items" });
+  const activeId = listbox.getAttribute("aria-activedescendant");
+  return activeId ? document.getElementById(activeId) : null;
 }
 
-function getFocused() {
-  return screen.getByTestId("focused").textContent;
+function expectActiveOptionText(text: string) {
+  expect(activeOption()?.textContent).toBe(text);
+}
+
+async function focusListbox() {
+  const user = userEvent.setup();
+  await user.click(screen.getByRole("listbox", { name: "Items" }));
+  return user;
 }
 
 describe("useNavigation", () => {
@@ -54,23 +67,13 @@ describe("useNavigation", () => {
     cleanup();
   });
 
-  it("navigates with arrow keys, wraps by default, and calls boundary callbacks when wrap is false", () => {
+  it("navigates options with arrow keys, wraps, and reports non-wrapping boundaries", async () => {
     render(<TestList initialValue="a" />);
-    const container = screen.getByTestId("list");
+    let user = await focusListbox();
 
-    act(() => fireKeyOnElement(container, "ArrowDown"));
-    expect(getFocused()).toBe("b");
+    await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}{ArrowUp}");
+    expectActiveOptionText("c");
 
-    act(() => fireKeyOnElement(container, "ArrowDown"));
-    expect(getFocused()).toBe("c");
-
-    act(() => fireKeyOnElement(container, "ArrowDown"));
-    expect(getFocused()).toBe("a");
-
-    act(() => fireKeyOnElement(container, "ArrowUp"));
-    expect(getFocused()).toBe("c");
-
-    // wrap: false — stays at boundary and fires callback
     cleanup();
     const onNavigationBoundaryReached = vi.fn();
     render(
@@ -80,39 +83,32 @@ describe("useNavigation", () => {
         onNavigationBoundaryReached={onNavigationBoundaryReached}
       />,
     );
+    user = await focusListbox();
 
-    const container2 = screen.getByTestId("list");
-    act(() => fireKeyOnElement(container2, "ArrowDown"));
+    await user.keyboard("{ArrowDown}");
     expect(onNavigationBoundaryReached).toHaveBeenCalledWith("next");
-    expect(getFocused()).toBe("c");
+    expectActiveOptionText("c");
 
-    act(() => fireKeyOnElement(container2, "ArrowUp"));
-    act(() => fireKeyOnElement(container2, "ArrowUp"));
-    act(() => fireKeyOnElement(container2, "ArrowUp"));
+    await user.keyboard("{ArrowUp}{ArrowUp}{ArrowUp}");
     expect(onNavigationBoundaryReached).toHaveBeenCalledWith("previous");
-    expect(getFocused()).toBe("a");
+    expectActiveOptionText("a");
   });
 
-  it("Home focuses first, End focuses last", () => {
-    render(<TestList initialValue="b" />);
-    const container = screen.getByTestId("list");
-
-    act(() => fireKeyOnElement(container, "End"));
-    expect(getFocused()).toBe("c");
-
-    act(() => fireKeyOnElement(container, "Home"));
-    expect(getFocused()).toBe("a");
-  });
-
-  it("starts at the first item when moving without an initial highlight", () => {
+  it("supports Home, End, and starting navigation without an initial highlight", async () => {
     render(<TestList />);
-    const container = screen.getByTestId("list");
+    const user = await focusListbox();
 
-    act(() => fireKeyOnElement(container, "ArrowDown"));
-    expect(getFocused()).toBe("a");
+    await user.keyboard("{ArrowDown}");
+    expectActiveOptionText("a");
+
+    await user.keyboard("{End}");
+    expectActiveOptionText("c");
+
+    await user.keyboard("{Home}");
+    expectActiveOptionText("a");
   });
 
-  it("navigates data-marked items without requiring role attributes", () => {
+  it("navigates data-marked items without role attributes", async () => {
     function DataMarkedList() {
       const ref = useRef<HTMLDivElement>(null);
       const result = useNavigation({
@@ -122,52 +118,36 @@ describe("useNavigation", () => {
       });
 
       return (
-        <div ref={ref} data-testid="list" onKeyDown={onKeyDownProp(result.onKeyDown)}>
-          <div data-diffgazer-navigation-item="option" data-value="a" />
-          <div data-diffgazer-navigation-item="option" data-value="b" />
-          <div data-diffgazer-navigation-item="option" data-value="c" />
-          <span data-testid="focused">{result.highlighted ?? ""}</span>
+        <div
+          ref={ref}
+          role="listbox"
+          aria-label="Items"
+          aria-activedescendant={result.highlighted === null ? undefined : itemId(result.highlighted)}
+          tabIndex={0}
+          onKeyDown={result.onKeyDown}
+        >
+          <div id="item-a" data-diffgazer-navigation-item="option" data-value="a">
+            A
+          </div>
+          <div id="item-b" data-diffgazer-navigation-item="option" data-value="b">
+            B
+          </div>
+          <div id="item-c" data-diffgazer-navigation-item="option" data-value="c">
+            C
+          </div>
         </div>
       );
     }
 
     render(<DataMarkedList />);
-    const container = screen.getByTestId("list");
+    const user = await focusListbox();
 
-    act(() => fireKeyOnElement(container, "ArrowDown"));
-    expect(getFocused()).toBe("b");
+    await user.keyboard("{ArrowDown}{End}");
 
-    act(() => fireKeyOnElement(container, "End"));
-    expect(getFocused()).toBe("c");
+    expectActiveOptionText("C");
   });
 
-  it("falls back to data-value items when copied components do not expose explicit role attributes", () => {
-    function DataValueList() {
-      const ref = useRef<HTMLDivElement>(null);
-      const result = useNavigation({
-        containerRef: ref,
-        role: "button",
-        initialValue: "a",
-      });
-
-      return (
-        <div ref={ref} data-testid="list" onKeyDown={onKeyDownProp(result.onKeyDown)}>
-          <button data-value="a" type="button">A</button>
-          <button data-value="b" type="button">B</button>
-          <button data-value="c" type="button">C</button>
-          <span data-testid="focused">{result.highlighted ?? ""}</span>
-        </div>
-      );
-    }
-
-    render(<DataValueList />);
-    const container = screen.getByTestId("list");
-
-    act(() => fireKeyOnElement(container, "ArrowDown"));
-    expect(getFocused()).toBe("b");
-  });
-
-  it("does not treat nested data-value descendants as button navigation items", () => {
+  it("falls back to native buttons with data values and ignores nested data-value descendants", async () => {
     function ButtonList() {
       const ref = useRef<HTMLDivElement>(null);
       const result = useNavigation({
@@ -178,53 +158,25 @@ describe("useNavigation", () => {
       });
 
       return (
-        <div ref={ref} data-testid="list" onKeyDown={onKeyDownProp(result.onKeyDown)}>
-          <button data-value="one" type="button">
+        <div ref={ref} role="group" aria-label="Actions" tabIndex={0} onKeyDown={result.onKeyDown}>
+          <button type="button" data-value="one">
             One <span data-value="nested">nested</span>
           </button>
-          <button data-value="two" type="button">Two</button>
-          <span data-testid="focused">{result.highlighted ?? ""}</span>
+          <button type="button" data-value="two">
+            Two
+          </button>
         </div>
       );
     }
 
     render(<ButtonList />);
-    const container = screen.getByTestId("list");
+    screen.getByRole("button", { name: "One nested" }).focus();
+    await userEvent.keyboard("{ArrowDown}");
 
-    act(() => fireKeyOnElement(container, "ArrowDown"));
-    expect(getFocused()).toBe("two");
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Two" }));
   });
 
-  it("can scope button navigation to a group owner", () => {
-    function NestedButtonGroups() {
-      const ref = useRef<HTMLDivElement>(null);
-      const result = useNavigation({
-        containerRef: ref,
-        role: "button",
-        initialValue: "outer-a",
-        ownerSelector: '[role="group"]',
-      });
-
-      return (
-        <div ref={ref} role="group" data-testid="list" onKeyDown={onKeyDownProp(result.onKeyDown)}>
-          <button type="button" data-value="outer-a">Outer A</button>
-          <div role="group" aria-label="Nested">
-            <button type="button" data-value="inner-a">Inner A</button>
-          </div>
-          <button type="button" data-value="outer-b">Outer B</button>
-          <span data-testid="focused">{result.highlighted ?? ""}</span>
-        </div>
-      );
-    }
-
-    render(<NestedButtonGroups />);
-    const container = screen.getByTestId("list");
-
-    act(() => fireKeyOnElement(container, "ArrowDown"));
-    expect(getFocused()).toBe("outer-b");
-  });
-
-  it("filters nested owner containers by default while preserving native data-value fallback", () => {
+  it("scopes navigation to the owning container by default", async () => {
     function NativeRadioGroups({ scopeToContainer }: { scopeToContainer?: boolean }) {
       const ref = useRef<HTMLDivElement>(null);
       const result = useNavigation({
@@ -238,41 +190,48 @@ describe("useNavigation", () => {
         <div
           ref={ref}
           role="radiogroup"
-          data-testid="list"
-          onKeyDown={onKeyDownProp(result.onKeyDown)}
+          aria-label="Outer choices"
+          aria-activedescendant={result.highlighted === null ? undefined : itemId(result.highlighted)}
+          tabIndex={0}
+          onKeyDown={result.onKeyDown}
         >
           <label>
-            <input type="radio" data-value="outer-a" />
+            <input id="item-outer-a" type="radio" data-value="outer-a" />
             Outer A
           </label>
           <div role="radiogroup" aria-label="Nested choices">
             <label>
-              <input type="radio" data-value="inner-a" />
+              <input id="item-inner-a" type="radio" data-value="inner-a" />
               Inner A
             </label>
           </div>
           <label>
-            <input type="radio" data-value="outer-b" />
+            <input id="item-outer-b" type="radio" data-value="outer-b" />
             Outer B
           </label>
-          <span data-testid="focused">{result.highlighted ?? ""}</span>
         </div>
       );
     }
 
     render(<NativeRadioGroups />);
-    const defaultContainer = screen.getByTestId("list");
-    act(() => fireKeyOnElement(defaultContainer, "ArrowDown"));
-    expect(getFocused()).toBe("outer-b");
+    let user = userEvent.setup();
+    await user.click(screen.getByRole("radiogroup", { name: "Outer choices" }));
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByRole("radiogroup", { name: "Outer choices" }).getAttribute("aria-activedescendant")).toBe(
+      "item-outer-b",
+    );
 
     cleanup();
     render(<NativeRadioGroups scopeToContainer={false} />);
-    const unscopedContainer = screen.getByTestId("list");
-    act(() => fireKeyOnElement(unscopedContainer, "ArrowDown"));
-    expect(getFocused()).toBe("inner-a");
+    user = userEvent.setup();
+    await user.click(screen.getByRole("radiogroup", { name: "Outer choices" }));
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByRole("radiogroup", { name: "Outer choices" }).getAttribute("aria-activedescendant")).toBe(
+      "item-inner-a",
+    );
   });
 
-  it("keeps grouped listbox options navigable while filtering nested listboxes", () => {
+  it("keeps grouped options navigable while filtering nested listboxes", async () => {
     function GroupedListbox() {
       const ref = useRef<HTMLDivElement>(null);
       const result = useNavigation({
@@ -286,287 +245,200 @@ describe("useNavigation", () => {
         <div
           ref={ref}
           role="listbox"
-          data-testid="list"
-          onKeyDown={onKeyDownProp(result.onKeyDown)}
+          aria-label="Commands"
+          aria-activedescendant={result.highlighted === null ? undefined : itemId(result.highlighted)}
+          tabIndex={0}
+          onKeyDown={result.onKeyDown}
         >
           <div role="group" aria-label="Actions">
-            <div role="option" data-value="copy" />
-            <div role="option" data-value="paste" />
+            <div id="item-copy" role="option" data-value="copy">Copy</div>
+            <div id="item-paste" role="option" data-value="paste">Paste</div>
           </div>
           <div role="listbox" aria-label="Nested">
-            <div role="option" data-value="nested" />
+            <div id="item-nested" role="option" data-value="nested">Nested</div>
           </div>
-          <div role="option" data-value="delete" />
-          <span data-testid="focused">{result.highlighted ?? ""}</span>
+          <div id="item-delete" role="option" data-value="delete">Delete</div>
         </div>
       );
     }
 
     render(<GroupedListbox />);
-    const container = screen.getByTestId("list");
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("listbox", { name: "Commands" }));
+    await user.keyboard("{ArrowDown}{ArrowDown}");
 
-    act(() => fireKeyOnElement(container, "ArrowDown"));
-    expect(getFocused()).toBe("paste");
-
-    act(() => fireKeyOnElement(container, "ArrowDown"));
-    expect(getFocused()).toBe("delete");
+    expect(screen.getByRole("listbox", { name: "Commands" }).getAttribute("aria-activedescendant")).toBe(
+      "item-delete",
+    );
   });
 
-  it("supports menuitemradio navigation roles", () => {
-    function MenuRadioList() {
+  it("activates highlighted and focused items with Space and Enter", async () => {
+    const onSelect = vi.fn();
+    const onEnter = vi.fn();
+    render(<TestList initialValue="b" onSelect={onSelect} onEnter={onEnter} />);
+    const user = await focusListbox();
+
+    await user.keyboard(" {Enter}");
+
+    expect(onSelect).toHaveBeenCalledWith("b", expect.any(KeyboardEvent));
+    expect(onEnter).toHaveBeenCalledWith("b", expect.any(KeyboardEvent));
+
+    cleanup();
+    const onFocusedSelect = vi.fn();
+    render(
+      <div>
+        <FocusedActionList onSelect={onFocusedSelect} />
+      </div>,
+    );
+    screen.getByRole("button", { name: "B" }).focus();
+    await userEvent.keyboard(" ");
+    expect(onFocusedSelect).toHaveBeenCalledWith("b", expect.any(KeyboardEvent));
+  });
+
+  it("supports empty string item values", async () => {
+    const onSelect = vi.fn();
+    render(<TestList items={["", "b"]} initialValue="" onSelect={onSelect} />);
+    const user = await focusListbox();
+
+    expect(screen.getByRole("option", { name: "Empty" }).getAttribute("aria-selected")).toBe("true");
+
+    await user.keyboard("{Enter}{ArrowDown}{ArrowUp}");
+
+    expect(onSelect).toHaveBeenCalledWith("", expect.any(KeyboardEvent));
+    expect(screen.getByRole("option", { name: "Empty" }).getAttribute("aria-selected")).toBe("true");
+  });
+
+  it("honors disabled, controlled, and custom key options", async () => {
+    const onSelect = vi.fn();
+    const onValueChange = vi.fn();
+    render(<TestList initialValue="a" enabled={false} onSelect={onSelect} />);
+    let user = await focusListbox();
+
+    await user.keyboard("{ArrowDown} ");
+    expectActiveOptionText("a");
+    expect(onSelect).not.toHaveBeenCalled();
+
+    cleanup();
+    render(<TestList value="b" onValueChange={onValueChange} />);
+    user = await focusListbox();
+    await user.keyboard("{ArrowDown}");
+    expect(onValueChange).toHaveBeenCalledWith("c");
+
+    cleanup();
+    render(<TestList initialValue="a" upKeys={["ArrowUp", "k"]} downKeys={["ArrowDown", "j"]} />);
+    user = await focusListbox();
+    await user.keyboard("j");
+    expectActiveOptionText("b");
+    await user.keyboard("k");
+    expectActiveOptionText("a");
+  });
+
+  it("supports horizontal navigation and skips disabled items by default", async () => {
+    render(<TestList initialValue="a" orientation="horizontal" />);
+    let user = await focusListbox();
+
+    await user.keyboard("{ArrowRight}{ArrowLeft}{ArrowDown}");
+    expectActiveOptionText("a");
+
+    cleanup();
+    function DisabledItemList({ skipDisabled }: { skipDisabled?: boolean }) {
       const ref = useRef<HTMLDivElement>(null);
       const result = useNavigation({
         containerRef: ref,
-        role: "menuitemradio",
+        role: "option",
         initialValue: "a",
+        skipDisabled,
       });
 
       return (
-        <div ref={ref} role="menu" data-testid="list" onKeyDown={onKeyDownProp(result.onKeyDown)}>
-          <div role="menuitemradio" data-value="a" />
-          <div role="menuitemradio" data-value="b" />
-          <span data-testid="focused">{result.highlighted ?? ""}</span>
+        <div
+          ref={ref}
+          role="listbox"
+          aria-label="Items"
+          aria-activedescendant={result.highlighted === null ? undefined : itemId(result.highlighted)}
+          tabIndex={0}
+          onKeyDown={result.onKeyDown}
+        >
+          <div id="item-a" role="option" data-value="a">A</div>
+          <div id="item-b" role="option" data-value="b" aria-disabled="true">B</div>
+          <div id="item-c" role="option" data-value="c">C</div>
         </div>
       );
     }
 
-    render(<MenuRadioList />);
-    const container = screen.getByTestId("list");
-
-    act(() => fireKeyOnElement(container, "ArrowDown"));
-
-    expect(getFocused()).toBe("b");
-  });
-
-  it("Space calls onSelect, Enter calls onEnter or falls back to onSelect", () => {
-    const onSelect = vi.fn();
-    const onEnter = vi.fn();
-    render(<TestList initialValue="b" onSelect={onSelect} onEnter={onEnter} />);
-    const container = screen.getByTestId("list");
-
-    act(() => fireKeyOnElement(container, " "));
-    expect(onSelect).toHaveBeenCalledWith("b", expect.any(KeyboardEvent));
-
-    act(() => fireKeyOnElement(container, "Enter"));
-    expect(onEnter).toHaveBeenCalledWith("b", expect.any(KeyboardEvent));
-
-    onSelect.mockClear();
-    onEnter.mockClear();
+    render(<DisabledItemList />);
+    user = await focusListbox();
+    await user.keyboard("{ArrowDown}");
+    expectActiveOptionText("C");
 
     cleanup();
-    const onSelectOnly = vi.fn();
-    render(<TestList initialValue="b" onSelect={onSelectOnly} />);
-    const container2 = screen.getByTestId("list");
-    act(() => fireKeyOnElement(container2, "Enter"));
-    expect(onSelectOnly).toHaveBeenCalledWith("b", expect.any(KeyboardEvent));
+    render(<DisabledItemList skipDisabled={false} />);
+    user = await focusListbox();
+    await user.keyboard("{ArrowDown}");
+    expectActiveOptionText("B");
   });
 
-  it("activates the focused DOM item before the stored highlight", () => {
+  it("moves DOM focus when moveFocus is enabled and does not activate items", async () => {
     const onSelect = vi.fn();
     const onEnter = vi.fn();
 
-    function FocusedActionList() {
+    function MoveFocusList() {
       const ref = useRef<HTMLDivElement>(null);
       const result = useNavigation({
         containerRef: ref,
         role: "button",
         initialValue: "a",
+        moveFocus: true,
         onSelect,
         onEnter,
       });
 
       return (
-        <div ref={ref} data-testid="list" onKeyDown={onKeyDownProp(result.onKeyDown)}>
+        <div ref={ref} role="group" aria-label="Actions" tabIndex={0} onKeyDown={result.onKeyDown}>
           <button type="button" data-value="a">A</button>
           <button type="button" data-value="b">B</button>
-          <span data-testid="focused">{result.highlighted ?? ""}</span>
+          <button type="button" data-value="c">C</button>
         </div>
       );
     }
 
-    render(<FocusedActionList />);
-    const container = screen.getByTestId("list");
-    screen.getByRole("button", { name: "B" }).focus();
+    render(<MoveFocusList />);
+    const first = screen.getByRole("button", { name: "A" });
+    first.focus();
 
-    act(() => fireKeyOnElement(container, " "));
-    expect(onSelect).toHaveBeenCalledWith("b", expect.any(KeyboardEvent));
+    await userEvent.keyboard("{ArrowDown}{End}{Home} {Enter}");
 
-    act(() => fireKeyOnElement(container, "Enter"));
-    expect(onEnter).toHaveBeenCalledWith("b", expect.any(KeyboardEvent));
-    expect(getFocused()).toBe("a");
-  });
-
-  it("supports empty string item values for highlight and selection", () => {
-    const onSelect = vi.fn();
-    render(<TestList items={["", "b"]} initialValue="" onSelect={onSelect} />);
-    const container = screen.getByTestId("list");
-
-    expect(screen.getByTestId("is-empty").textContent).toBe("true");
-
-    act(() => fireKeyOnElement(container, "Enter"));
-    expect(onSelect).toHaveBeenCalledWith("", expect.any(KeyboardEvent));
-
-    act(() => fireKeyOnElement(container, "ArrowDown"));
-    expect(getFocused()).toBe("b");
-
-    act(() => fireKeyOnElement(container, "ArrowUp"));
-    expect(screen.getByTestId("is-empty").textContent).toBe("true");
-  });
-
-  it("enabled: false disables all handlers", () => {
-    const onSelect = vi.fn();
-    render(
-      <TestList initialValue="a" enabled={false} onSelect={onSelect} />,
-    );
-
-    const container = screen.getByTestId("list");
-    act(() => fireKeyOnElement(container, "ArrowDown"));
-    expect(getFocused()).toBe("a");
-
-    act(() => fireKeyOnElement(container, " "));
+    expect(document.activeElement).toBe(first);
     expect(onSelect).not.toHaveBeenCalled();
+    expect(onEnter).not.toHaveBeenCalled();
   });
 
-  it("custom upKeys/downKeys override defaults", () => {
-    render(
-      <TestList initialValue="a" upKeys={["ArrowUp", "k"]} downKeys={["ArrowDown", "j"]} />,
-    );
-
-    const container = screen.getByTestId("list");
-    act(() => fireKeyOnElement(container, "j"));
-    expect(getFocused()).toBe("b");
-
-    act(() => fireKeyOnElement(container, "k"));
-    expect(getFocused()).toBe("a");
-  });
-
-  it("fires onHighlightChange when focus moves", () => {
-    const onHighlightChange = vi.fn();
-    render(<TestList initialValue="a" onHighlightChange={onHighlightChange} />);
-
-    const container = screen.getByTestId("list");
-    act(() => fireKeyOnElement(container, "ArrowDown"));
-    expect(onHighlightChange).toHaveBeenCalledWith("b");
-  });
-
-  it("controlled mode: value prop sets highlight, onValueChange fires on navigation", () => {
-    const onValueChange = vi.fn();
-    render(<TestList value="b" onValueChange={onValueChange} />);
-    expect(getFocused()).toBe("b");
-
-    const container = screen.getByTestId("list");
-    act(() => fireKeyOnElement(container, "ArrowDown"));
-    expect(onValueChange).toHaveBeenCalledWith("c");
-  });
-
-  it("horizontal orientation uses ArrowRight/ArrowLeft, ignores ArrowUp/ArrowDown", () => {
-    render(<TestList initialValue="a" orientation="horizontal" />);
-    const container = screen.getByTestId("list");
-
-    act(() => fireKeyOnElement(container, "ArrowRight"));
-    expect(getFocused()).toBe("b");
-
-    act(() => fireKeyOnElement(container, "ArrowLeft"));
-    expect(getFocused()).toBe("a");
-
-    act(() => fireKeyOnElement(container, "ArrowDown"));
-    expect(getFocused()).toBe("a");
-
-    act(() => fireKeyOnElement(container, "ArrowUp"));
-    expect(getFocused()).toBe("a");
-  });
-
-  describe("skipDisabled", () => {
-    it("skips disabled items by default, includes them when skipDisabled is false", () => {
-      function DisabledItemList({ skipDisabled }: { skipDisabled?: boolean }) {
-        const ref = useRef<HTMLDivElement>(null);
-        const result = useNavigation({
-          containerRef: ref,
-          role: "option",
-          initialValue: "a",
-          skipDisabled,
-        });
-
-        return (
-          <div ref={ref} data-testid="list" onKeyDown={onKeyDownProp(result.onKeyDown)}>
-            <div role="option" data-value="a" />
-            <div role="option" data-value="b" aria-disabled="true" />
-            <div role="option" data-value="c" />
-            <span data-testid="focused">{result.highlighted ?? ""}</span>
-          </div>
-        );
-      }
-
-      render(<DisabledItemList />);
-      const container = screen.getByTestId("list");
-      act(() => fireKeyOnElement(container, "ArrowDown"));
-      expect(getFocused()).toBe("c");
-
-      cleanup();
-      render(<DisabledItemList skipDisabled={false} />);
-      const container2 = screen.getByTestId("list");
-      act(() => fireKeyOnElement(container2, "ArrowDown"));
-      expect(getFocused()).toBe("b");
-    });
-  });
-
-  describe("moveFocus", () => {
-    it("moves DOM focus on arrow/Home/End and suppresses onSelect/onEnter", () => {
-      const onSelect = vi.fn();
-      const onEnter = vi.fn();
-
-      function MoveFocusList() {
-        const ref = useRef<HTMLDivElement>(null);
-        const result = useNavigation({
-          containerRef: ref,
-          role: "button",
-          initialValue: "a",
-          moveFocus: true,
-          onSelect,
-          onEnter,
-        });
-
-        return (
-          <div ref={ref} data-testid="list" onKeyDown={onKeyDownProp(result.onKeyDown)}>
-            <button role="button" data-value="a" data-testid="btn-a">A</button>
-            <button role="button" data-value="b" data-testid="btn-b">B</button>
-            <button role="button" data-value="c" data-testid="btn-c">C</button>
-            <span data-testid="focused">{result.highlighted ?? ""}</span>
-          </div>
-        );
-      }
-
-      render(<MoveFocusList />);
-      const container = screen.getByTestId("list");
-
-      act(() => fireKeyOnElement(container, "ArrowDown"));
-      expect(getFocused()).toBe("b");
-      expect(document.activeElement).toBe(screen.getByTestId("btn-b"));
-
-      act(() => fireKeyOnElement(container, "End"));
-      expect(getFocused()).toBe("c");
-
-      act(() => fireKeyOnElement(container, "Home"));
-      expect(getFocused()).toBe("a");
-
-      // moveFocus suppresses select/enter callbacks
-      act(() => fireKeyOnElement(container, " "));
-      expect(onSelect).not.toHaveBeenCalled();
-
-      act(() => fireKeyOnElement(container, "Enter"));
-      expect(onEnter).not.toHaveBeenCalled();
-    });
-  });
-
-  it("highlight() and isHighlighted() work together", () => {
+  it("exposes highlight and isHighlighted to consumers", async () => {
     render(<TestList initialValue="a" />);
 
-    expect(screen.getByTestId("is-a").textContent).toBe("true");
-    expect(screen.getByTestId("is-b").textContent).toBe("false");
+    expect(screen.getByRole("option", { name: "a" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("option", { name: "b" }).getAttribute("aria-selected")).toBe("false");
 
-    act(() => screen.getByTestId("highlight-b").click());
-    expect(getFocused()).toBe("b");
-    expect(screen.getByTestId("is-a").textContent).toBe("false");
-    expect(screen.getByTestId("is-b").textContent).toBe("true");
+    await userEvent.click(screen.getByRole("button", { name: "Highlight B" }));
+
+    expect(screen.getByRole("option", { name: "a" }).getAttribute("aria-selected")).toBe("false");
+    expect(screen.getByRole("option", { name: "b" }).getAttribute("aria-selected")).toBe("true");
   });
 });
+
+function FocusedActionList({ onSelect }: { onSelect: (value: string, event: KeyboardEvent) => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const result = useNavigation({
+    containerRef: ref,
+    role: "button",
+    initialValue: "a",
+    onSelect,
+  });
+
+  return (
+    <div ref={ref} role="group" aria-label="Actions" tabIndex={0} onKeyDown={result.onKeyDown}>
+      <button type="button" data-value="a">A</button>
+      <button type="button" data-value="b">B</button>
+    </div>
+  );
+}

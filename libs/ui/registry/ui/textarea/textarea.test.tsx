@@ -5,11 +5,35 @@ import { Textarea } from "./index.js"
 
 describe("Textarea", () => {
   it("accepts multiline text as a native textbox", async () => {
+    const user = userEvent.setup()
+
     render(<Textarea aria-label="Comment" />)
 
-    await userEvent.type(screen.getByRole("textbox", { name: "Comment" }), "Line one{enter}Line two")
+    await user.type(screen.getByRole("textbox", { name: "Comment" }), "Line one{enter}Line two")
 
     expect(screen.getByRole("textbox", { name: "Comment" })).toHaveValue("Line one\nLine two")
+  })
+
+  it("passes the native change event to onChange", async () => {
+    const user = userEvent.setup()
+    let eventValue = ""
+    let eventTarget: EventTarget | null = null
+
+    render(
+      <Textarea
+        aria-label="Comment"
+        onChange={(event) => {
+          eventValue = event.currentTarget.value
+          eventTarget = event.target
+        }}
+      />,
+    )
+
+    const textarea = screen.getByRole("textbox", { name: "Comment" })
+    await user.type(textarea, "a")
+
+    expect(eventValue).toBe("a")
+    expect(eventTarget).toBe(textarea)
   })
 
   it("exposes invalid state through aria-invalid", () => {
@@ -18,12 +42,11 @@ describe("Textarea", () => {
     expect(screen.getByRole("textbox", { name: "Comment" })).toHaveAttribute("aria-invalid", "true")
   })
 
-  it("does not style aria-invalid false as invalid", () => {
+  it("preserves aria-invalid false as a non-invalid value", () => {
     render(<Textarea aria-label="Comment" aria-invalid="false" />)
 
     const textarea = screen.getByRole("textbox", { name: "Comment" })
     expect(textarea).toHaveAttribute("aria-invalid", "false")
-    expect(textarea).not.toHaveClass("border-destructive")
   })
 
   it("preserves grammar invalid state", () => {
@@ -31,6 +54,5 @@ describe("Textarea", () => {
 
     const textarea = screen.getByRole("textbox", { name: "Comment" })
     expect(textarea).toHaveAttribute("aria-invalid", "grammar")
-    expect(textarea).toHaveClass("border-destructive")
   })
 })

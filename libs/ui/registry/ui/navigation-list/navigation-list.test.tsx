@@ -88,7 +88,6 @@ describe("NavigationList", () => {
       <NavigationList aria-label="Test nav">
         <NavigationList.Item
           id="one"
-          data-testid="nav-item"
           data-state="external"
           style={{ maxWidth: "14px" }}
           onClick={onClick}
@@ -100,7 +99,7 @@ describe("NavigationList", () => {
 
     await userEvent.click(screen.getByRole("option", { name: "One" }))
 
-    const item = screen.getByTestId("nav-item")
+    const item = screen.getByRole("option", { name: "One" })
     expect(onClick).toHaveBeenCalledOnce()
     expect(item).toHaveAttribute("data-state", "selected")
     expect(item).toHaveStyle({ maxWidth: "14px" })

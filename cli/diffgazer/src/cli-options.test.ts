@@ -1,10 +1,25 @@
 import assert from "node:assert/strict";
+import { execFileSync, spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import test, { describe } from "node:test";
 import { setImmediate as waitImmediate } from "node:timers/promises";
+import { fileURLToPath } from "node:url";
 import { getDiffgazerBanner } from "./banner.js";
-import { HELP_TEXT, resolveCliAction } from "./cli-options.js";
+import { resolveCliAction } from "./cli-options.js";
 import { parsePortEnv, openBrowserAddress } from "./lib/servers/server-factories.js";
 import { startWeb } from "./web-launcher.js";
+
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
+const cliEntry = resolve(repoRoot, "cli/diffgazer/src/index.tsx");
+const packageJson = resolve(repoRoot, "cli/diffgazer/package.json");
+
+function runDiffgazer(args: string[]): string {
+  return execFileSync(process.execPath, ["--import", "tsx", cliEntry, ...args], {
+    cwd: repoRoot,
+    encoding: "utf-8",
+  });
+}
 
 describe("resolveCliAction", () => {
   test("starts the web flow by default and opens the browser", () => {
@@ -34,17 +49,31 @@ describe("resolveCliAction", () => {
     });
   });
 
-  test("rejects theme selection outside the TUI flow", () => {
-    assert.throws(
-      () => resolveCliAction(["--theme", "classic"]),
-      /--theme requires --tui\./,
-    );
+});
+
+describe("diffgazer CLI options", () => {
+  test("prints help without starting servers", () => {
+    const output = runDiffgazer(["--help"]);
+
+    assert.match(output, /Usage: diffgazer \[options\]/);
+    assert.match(output, /--tui\s+Start the beta terminal UI \(incomplete; not recommended\)/);
+    assert.match(output, /--theme <theme>\s+Start TUI with a specific theme \(only with --tui\)/);
   });
 
-  test("describes TUI as incomplete beta in help", () => {
-    assert.match(HELP_TEXT, /--tui/);
-    assert.match(HELP_TEXT, /beta terminal UI \(incomplete; not recommended\)/);
-    assert.match(HELP_TEXT, /--theme <theme>\s+Start TUI with a specific theme \(only with --tui\)/);
+  test("prints package version", () => {
+    const metadata = JSON.parse(readFileSync(packageJson, "utf-8")) as { version: string };
+
+    assert.equal(runDiffgazer(["--version"]).trim(), metadata.version);
+  });
+
+  test("exits with an error for invalid options", () => {
+    const result = spawnSync(process.execPath, ["--import", "tsx", cliEntry, "--theme", "classic"], {
+      cwd: repoRoot,
+      encoding: "utf-8",
+    });
+
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /--theme requires --tui\./);
   });
 });
 

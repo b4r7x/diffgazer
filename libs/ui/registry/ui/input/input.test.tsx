@@ -5,11 +5,35 @@ import { Input, InputGroup } from "./index.js"
 
 describe("Input", () => {
   it("accepts typed text as a native textbox", async () => {
+    const user = userEvent.setup()
+
     render(<Input aria-label="Email" />)
 
-    await userEvent.type(screen.getByRole("textbox", { name: "Email" }), "a@example.com")
+    await user.type(screen.getByRole("textbox", { name: "Email" }), "a@example.com")
 
     expect(screen.getByRole("textbox", { name: "Email" })).toHaveValue("a@example.com")
+  })
+
+  it("passes the native change event to onChange", async () => {
+    const user = userEvent.setup()
+    let eventValue = ""
+    let eventTarget: EventTarget | null = null
+
+    render(
+      <Input
+        aria-label="Email"
+        onChange={(event) => {
+          eventValue = event.currentTarget.value
+          eventTarget = event.target
+        }}
+      />,
+    )
+
+    const input = screen.getByRole("textbox", { name: "Email" })
+    await user.type(input, "a")
+
+    expect(eventValue).toBe("a")
+    expect(eventTarget).toBe(input)
   })
 
   it("exposes invalid state through aria-invalid", () => {
@@ -37,9 +61,11 @@ describe("Input", () => {
   })
 
   it("renders prefix and suffix affordances around the input", async () => {
+    const user = userEvent.setup()
+
     render(<InputGroup aria-label="Path" prefix="~/" suffix=".json" />)
 
-    await userEvent.type(screen.getByRole("textbox", { name: "Path" }), "config")
+    await user.type(screen.getByRole("textbox", { name: "Path" }), "config")
 
     expect(screen.getByText("~/")).toBeInTheDocument()
     expect(screen.getByText(".json")).toBeInTheDocument()

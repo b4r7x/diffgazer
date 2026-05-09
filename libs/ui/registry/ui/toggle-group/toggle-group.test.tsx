@@ -174,13 +174,13 @@ describe("ToggleGroup", () => {
 
     render(
       <ToggleGroup label="Options" onChange={onChange}>
-        <ToggleGroup.Item ref={ref} value="a" data-testid="toggle-item" onClick={onClick}>
+        <ToggleGroup.Item ref={ref} value="a" onClick={onClick}>
           Alpha
         </ToggleGroup.Item>
       </ToggleGroup>,
     )
 
-    const item = screen.getByTestId("toggle-item")
+    const item = screen.getByRole("radio", { name: /alpha/i })
     expect(ref.current).toBe(item)
     await userEvent.click(item)
     expect(onClick).toHaveBeenCalledOnce()

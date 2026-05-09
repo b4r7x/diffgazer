@@ -147,6 +147,7 @@ describe("TrustPermissionsContent", () => {
   });
 
   it("does not install a private shortcut scope when rendered without actions", async () => {
+    const user = userEvent.setup();
     const onShortcut = vi.fn();
 
     function Host() {
@@ -174,7 +175,7 @@ describe("TrustPermissionsContent", () => {
       </KeyboardProvider>
     );
 
-    await userEvent.keyboard("s");
+    await user.keyboard("s");
 
     expect(onShortcut).toHaveBeenCalledOnce();
   });

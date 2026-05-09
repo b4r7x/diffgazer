@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, act, cleanup } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { useEffect, useRef, type ReactNode } from "react";
 import { KeyboardProvider } from "./keyboard-provider";
 import { useKeyboardContext, useKeyboardRegistryContext } from "../context/keyboard-context";
@@ -13,7 +14,7 @@ function Wrapper({ children }: { children: ReactNode }) {
 describe("KeyboardProvider", () => {
   afterEach(() => cleanup());
 
-  it("should fire handler only for matching key in active scope", () => {
+  it("should fire handler only for matching key in active scope", async () => {
     const handler = vi.fn();
 
     function Consumer() {
@@ -24,10 +25,10 @@ describe("KeyboardProvider", () => {
 
     render(<Wrapper><Consumer /></Wrapper>);
 
-    act(() => pressKey("b"));
+    await userEvent.keyboard("b");
     expect(handler).not.toHaveBeenCalled();
 
-    act(() => pressKey("a"));
+    await userEvent.keyboard("a");
     expect(handler).toHaveBeenCalledOnce();
   });
 
@@ -57,7 +58,7 @@ describe("KeyboardProvider", () => {
     expect(preventSpyB).toHaveBeenCalledOnce();
   });
 
-  it("should ignore events already handled by local keydown listeners", () => {
+  it("should ignore events already handled by local keydown listeners", async () => {
     const handler = vi.fn();
 
     function Consumer() {
@@ -65,7 +66,6 @@ describe("KeyboardProvider", () => {
       useEffect(() => register("global", "ArrowRight", handler), []);
       return (
         <button
-          data-testid="local-handler"
           onKeyDown={(event) => {
             if (event.key === "ArrowRight") event.preventDefault();
           }}
@@ -77,18 +77,14 @@ describe("KeyboardProvider", () => {
 
     render(<Wrapper><Consumer /></Wrapper>);
 
-    const button = screen.getByTestId("local-handler");
+    const button = screen.getByRole("button", { name: "local" });
     button.focus();
-    act(() => {
-      button.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true, cancelable: true }),
-      );
-    });
+    await userEvent.keyboard("{ArrowRight}");
 
     expect(handler).not.toHaveBeenCalled();
   });
 
-  it("should only fire handlers in the active scope", () => {
+  it("should only fire handlers in the active scope", async () => {
     const globalHandler = vi.fn();
     const modalHandler = vi.fn();
 
@@ -104,7 +100,7 @@ describe("KeyboardProvider", () => {
 
     render(<Wrapper><Consumer /></Wrapper>);
 
-    act(() => pressKey("a"));
+    await userEvent.keyboard("a");
     expect(modalHandler).toHaveBeenCalledOnce();
     expect(globalHandler).not.toHaveBeenCalled();
   });
@@ -154,7 +150,7 @@ describe("KeyboardProvider", () => {
     expect(handler).toHaveBeenCalledOnce();
   });
 
-  it("should ignore keyboard events from input elements unless allowInInput is true", () => {
+  it("should ignore keyboard events from input elements unless allowInInput is true", async () => {
     const blocked = vi.fn();
     const allowed = vi.fn();
 
@@ -164,16 +160,17 @@ describe("KeyboardProvider", () => {
         register("global", "a", blocked);
         register("global", "Escape", allowed, { allowInInput: true });
       }, []);
-      return <input data-testid="test-input" />;
+      return <input aria-label="Search" />;
     }
 
     render(<Wrapper><Consumer /></Wrapper>);
 
-    const input = screen.getByTestId("test-input");
-    act(() => input.dispatchEvent(new KeyboardEvent("keydown", { key: "a", bubbles: true, cancelable: true })));
+    const input = screen.getByRole("textbox", { name: "Search" });
+    input.focus();
+    await userEvent.keyboard("a");
     expect(blocked).not.toHaveBeenCalled();
 
-    act(() => input.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true })));
+    await userEvent.keyboard("{Escape}");
     expect(allowed).toHaveBeenCalledOnce();
   });
 
@@ -389,7 +386,7 @@ describe("KeyboardProvider", () => {
     expect(handler).toHaveBeenCalledOnce();
   });
 
-  it("should only trigger focus-scoped handlers when event target is inside containerRef", () => {
+  it("should only trigger focus-scoped handlers when event target is inside containerRef", async () => {
     const handler = vi.fn();
 
     function Consumer() {
@@ -405,9 +402,9 @@ describe("KeyboardProvider", () => {
 
       return (
         <div>
-          <div data-testid="outside" />
-          <div ref={containerRef} data-testid="inside-container">
-            <button data-testid="inside-button" />
+          <button type="button">Outside</button>
+          <div ref={containerRef}>
+            <button type="button">Inside</button>
           </div>
         </div>
       );
@@ -415,17 +412,15 @@ describe("KeyboardProvider", () => {
 
     render(<Wrapper><Consumer /></Wrapper>);
 
-    const outside = screen.getByTestId("outside");
-    const insideButton = screen.getByTestId("inside-button");
+    const outside = screen.getByRole("button", { name: "Outside" });
+    const insideButton = screen.getByRole("button", { name: "Inside" });
 
-    act(() => {
-      outside.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true, cancelable: true }));
-    });
+    outside.focus();
+    await userEvent.keyboard("{ArrowDown}");
     expect(handler).not.toHaveBeenCalled();
 
-    act(() => {
-      insideButton.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true, cancelable: true }));
-    });
+    insideButton.focus();
+    await userEvent.keyboard("{ArrowDown}");
     expect(handler).toHaveBeenCalledOnce();
   });
 

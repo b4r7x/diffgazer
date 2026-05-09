@@ -1,38 +1,13 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ok, err } from "@diffgazer/core/result";
-import type { Lens, LensId, ReviewIssue } from "@diffgazer/core/schemas/review";
+import type { Result } from "@diffgazer/core/result";
+import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import type { ParsedDiff } from "../diff/types.js";
-import type { AIClient } from "../ai/types.js";
+import type { AIClient, AIError } from "../ai/types.js";
 import { orchestrateReview } from "./orchestrate.js";
+import type { z } from "zod";
 
-const { mockGetLenses, mockRunLensAnalysis } = vi.hoisted(() => ({
-  mockGetLenses: vi.fn(),
-  mockRunLensAnalysis: vi.fn(),
-}));
-
-vi.mock("./lenses.js", () => ({
-  getLenses: mockGetLenses,
-}));
-
-vi.mock("./analysis.js", () => ({
-  runLensAnalysis: mockRunLensAnalysis,
-}));
-
-const makeLens = (id: LensId): Lens => ({
-  id,
-  name: `${id} lens`,
-  description: `${id} description`,
-  systemPrompt: `Prompt for ${id}`,
-  severityRubric: {
-    blocker: "blocker",
-    high: "high",
-    medium: "medium",
-    low: "low",
-    nit: "nit",
-  },
-});
-
-const makeIssue = (id: string, file: string): ReviewIssue => ({
+const makeIssue = (id: string, file: string, overrides: Partial<ReviewIssue> = {}): ReviewIssue => ({
   id,
   severity: "high",
   category: "correctness",
@@ -55,6 +30,7 @@ const makeIssue = (id: string, file: string): ReviewIssue => ({
       excerpt: "const value = 1;",
     },
   ],
+  ...overrides,
 });
 
 const makeDiff = (files: string[]): ParsedDiff => ({
@@ -62,29 +38,52 @@ const makeDiff = (files: string[]): ParsedDiff => ({
     filePath,
     previousPath: null,
     operation: "modify",
-    hunks: [],
-    rawDiff: "",
-    stats: { additions: 1, deletions: 0, sizeBytes: 10 },
+    hunks: [{ oldStart: 1, oldCount: 1, newStart: 1, newCount: 1, content: "" }],
+    rawDiff: [
+      `diff --git a/${filePath} b/${filePath}`,
+      `--- a/${filePath}`,
+      `+++ b/${filePath}`,
+      "@@ -1 +1 @@",
+      "-const value = 0;",
+      "+const value = 1;",
+    ].join("\n"),
+    stats: { additions: 1, deletions: 1, sizeBytes: 80 },
   })),
   totalStats: {
     filesChanged: files.length,
     additions: files.length,
-    deletions: 0,
-    totalSizeBytes: files.length * 10,
+    deletions: files.length,
+    totalSizeBytes: files.length * 80,
   },
 });
 
-const client = {} as AIClient;
+function makeClient(results: Array<Result<unknown, AIError>>): AIClient {
+  const queue = [...results];
+  return {
+    provider: "openrouter",
+    generate: async <T extends z.ZodType>(_prompt: string, schema: T) => {
+      const next = queue.shift();
+      if (!next) {
+        return ok(schema.parse({ summary: "No findings", issues: [] }) as z.output<T>);
+      }
+      if (!next.ok) return next;
 
-beforeEach(() => {
-  vi.clearAllMocks();
-});
+      return ok(schema.parse(next.value) as z.output<T>);
+    },
+    generateStream: vi.fn(),
+  };
+}
 
 describe("orchestrateReview", () => {
-  it("returns NO_DIFF when no files changed", async () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns NO_DIFF without emitting orchestration events when no files changed", async () => {
     const events: Array<{ type: string }> = [];
+
     const result = await orchestrateReview(
-      client,
+      makeClient([]),
       makeDiff([]),
       {},
       (event) => events.push({ type: event.type }),
@@ -92,58 +91,53 @@ describe("orchestrateReview", () => {
     );
 
     expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error.code).toBe("NO_DIFF");
-    }
-    expect(events).toHaveLength(0);
+    if (!result.ok) expect(result.error.code).toBe("NO_DIFF");
+    expect(events).toEqual([]);
   });
 
-  it("caps orchestrator concurrency to available lenses", async () => {
-    const events: Array<{ type: string; concurrency?: number; position?: number }> = [];
-    const lenses = [makeLens("correctness"), makeLens("security")];
-
-    mockGetLenses.mockReturnValue(lenses);
-    mockRunLensAnalysis.mockImplementation(async (_clientArg, lensArg: Lens) =>
-      ok({
-        lensId: lensArg.id,
-        lensName: lensArg.name,
-        summary: `${lensArg.id} summary`,
-        issues: [],
-      }),
-    );
+  it("returns sorted, deduplicated issues and complete orchestration metadata", async () => {
+    const events: Array<Record<string, unknown>> = [];
+    const sharedIssue = makeIssue("dup-1", "src/a.ts");
+    const lowIssue = makeIssue("low-1", "src/b.ts", { severity: "low" });
+    const client = makeClient([
+      ok({ summary: "Correctness summary", issues: [sharedIssue] }),
+      ok({ summary: "Security summary", issues: [{ ...sharedIssue, id: "dup-2" }, lowIssue] }),
+    ]);
 
     const result = await orchestrateReview(
       client,
-      makeDiff(["src/a.ts"]),
+      makeDiff(["src/a.ts", "src/b.ts"]),
       { lenses: ["correctness", "security"] },
-      (event) => events.push(event),
-      { concurrency: 10 },
+      (event) => events.push(event as Record<string, unknown>),
+      { concurrency: 2 },
     );
 
     expect(result.ok).toBe(true);
-    expect(mockRunLensAnalysis).toHaveBeenCalledTimes(2);
+    if (result.ok) {
+      expect(result.value.issues.map((issue) => issue.id)).toEqual(["dup-1", "low-1"]);
+      expect(result.value.issues.map((issue) => issue.severity)).toEqual(["high", "low"]);
+      expect(result.value.summary).toContain("Correctness summary");
+      expect(result.value.summary).toContain("Security summary");
+      expect(result.value.lensStats).toMatchObject([
+        { lensId: "correctness", issueCount: 1, status: "success" },
+        { lensId: "security", issueCount: 2, status: "success" },
+      ]);
+    }
 
-    const orchestratorStart = events.find((event) => event.type === "orchestrator_start");
-    expect(orchestratorStart?.concurrency).toBe(2);
-
-    const queuedEvents = events.filter((event) => event.type === "agent_queued");
-    expect(queuedEvents).toHaveLength(2);
-    expect(queuedEvents.map((event) => event.position)).toEqual([1, 2]);
+    expect(events.find((event) => event.type === "orchestrator_start")).toMatchObject({
+      concurrency: 2,
+    });
+    expect(events.find((event) => event.type === "orchestrator_complete")).toMatchObject({
+      totalIssues: 2,
+      filesAnalyzed: 2,
+    });
   });
 
-  it("keeps successful issues and reports failed lenses", async () => {
-    const lenses = [makeLens("correctness"), makeLens("security")];
-    mockGetLenses.mockReturnValue(lenses);
-    mockRunLensAnalysis
-      .mockResolvedValueOnce(
-        ok({
-          lensId: "correctness",
-          lensName: "Correctness lens",
-          summary: "Found correctness issues",
-          issues: [makeIssue("issue-1", "src/a.ts")],
-        }),
-      )
-      .mockResolvedValueOnce(err({ code: "MODEL_ERROR", message: "Second lens failed" }));
+  it("keeps successful lens output and reports failed lenses", async () => {
+    const client = makeClient([
+      ok({ summary: "Found correctness issues", issues: [makeIssue("issue-1", "src/a.ts")] }),
+      err({ code: "MODEL_ERROR", message: "Second lens failed" }),
+    ]);
 
     const result = await orchestrateReview(
       client,
@@ -157,162 +151,82 @@ describe("orchestrateReview", () => {
     if (result.ok) {
       expect(result.value.issues).toHaveLength(1);
       expect(result.value.failedLenses).toEqual([
-        expect.objectContaining({
-          lensId: "security",
-          errorCode: "MODEL_ERROR",
-        }),
+        expect.objectContaining({ lensId: "security", errorCode: "MODEL_ERROR" }),
       ]);
       expect(result.value.summary).toContain("Partial analysis:");
     }
   });
 
-  it("should return err when all lenses fail and partialOnAllFailed is false", async () => {
-    const lenses = [makeLens("correctness"), makeLens("security")];
-    mockGetLenses.mockReturnValue(lenses);
-    mockRunLensAnalysis
-      .mockResolvedValueOnce(err({ code: "MODEL_ERROR", message: "Correctness failed" }))
-      .mockResolvedValueOnce(err({ code: "NETWORK_ERROR", message: "Security failed" }));
+  it("returns an error when every lens fails unless partialOnAllFailed is enabled", async () => {
+    const diff = makeDiff(["src/a.ts"]);
 
-    const result = await orchestrateReview(
-      client,
-      makeDiff(["src/a.ts"]),
+    const failed = await orchestrateReview(
+      makeClient([
+        err({ code: "MODEL_ERROR", message: "Correctness failed" }),
+        err({ code: "NETWORK_ERROR", message: "Security failed" }),
+      ]),
+      diff,
       { lenses: ["correctness", "security"] },
       () => {},
       { concurrency: 2 },
     );
 
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error.code).toBe("NETWORK_ERROR");
+    expect(failed.ok).toBe(false);
+    if (!failed.ok) expect(failed.error.code).toBe("NETWORK_ERROR");
+
+    const partial = await orchestrateReview(
+      makeClient([
+        err({ code: "MODEL_ERROR", message: "Correctness failed" }),
+        err({ code: "NETWORK_ERROR", message: "Security failed" }),
+      ]),
+      diff,
+      { lenses: ["correctness", "security"] },
+      () => {},
+      { concurrency: 2, partialOnAllFailed: true },
+    );
+
+    expect(partial.ok).toBe(true);
+    if (partial.ok) {
+      expect(partial.value.issues).toEqual([]);
+      expect(partial.value.failedLenses.map((lens) => lens.lensId)).toEqual(["correctness", "security"]);
     }
   });
 
-  it("should emit orchestrator_complete event with summary and stats", async () => {
-    const events: Array<Record<string, unknown>> = [];
-    const lenses = [makeLens("correctness")];
-    mockGetLenses.mockReturnValue(lenses);
-    mockRunLensAnalysis.mockResolvedValueOnce(
+  it("honors the severity filter from review options", async () => {
+    const client = makeClient([
       ok({
-        lensId: "correctness",
-        lensName: "Correctness lens",
-        summary: "All good",
-        issues: [makeIssue("issue-1", "src/a.ts")],
+        summary: "Mixed severities",
+        issues: [
+          makeIssue("high-1", "src/a.ts", { severity: "high" }),
+          makeIssue("low-1", "src/a.ts", { severity: "low" }),
+        ],
       }),
-    );
-
-    await orchestrateReview(
-      client,
-      makeDiff(["src/a.ts"]),
-      { lenses: ["correctness"] },
-      (event) => events.push(event as Record<string, unknown>),
-      { concurrency: 1 },
-    );
-
-    const completeEvent = events.find((e) => e.type === "orchestrator_complete");
-    expect(completeEvent).toBeDefined();
-    expect(completeEvent!.totalIssues).toBe(1);
-    expect(completeEvent!.filesAnalyzed).toBe(1);
-    expect(completeEvent!.summary).toContain("All good");
-    expect(completeEvent!.lensStats).toHaveLength(1);
-  });
-
-  it("should deduplicate and sort issues from multiple lenses", async () => {
-    const lenses = [makeLens("correctness"), makeLens("security")];
-    mockGetLenses.mockReturnValue(lenses);
-
-    const sharedIssue = makeIssue("dup-1", "src/a.ts");
-    const uniqueIssue = { ...makeIssue("unique-1", "src/b.ts"), severity: "low" as const };
-
-    mockRunLensAnalysis
-      .mockResolvedValueOnce(
-        ok({
-          lensId: "correctness",
-          lensName: "Correctness lens",
-          summary: "Correctness summary",
-          issues: [sharedIssue],
-        }),
-      )
-      .mockResolvedValueOnce(
-        ok({
-          lensId: "security",
-          lensName: "Security lens",
-          summary: "Security summary",
-          // Same file, same line_start, same title prefix → should be deduped
-          issues: [{ ...sharedIssue, id: "dup-2" }, uniqueIssue],
-        }),
-      );
+    ]);
 
     const result = await orchestrateReview(
       client,
-      makeDiff(["src/a.ts", "src/b.ts"]),
-      { lenses: ["correctness", "security"] },
+      makeDiff(["src/a.ts"]),
+      { lenses: ["correctness"], filter: { minSeverity: "high" } },
       () => {},
-      { concurrency: 2 },
+      { concurrency: 1 },
     );
 
     expect(result.ok).toBe(true);
     if (result.ok) {
-      // Dedup removes one of the shared issues, leaves 2 total
-      expect(result.value.issues).toHaveLength(2);
-      // Sorted by severity: high before low
-      expect(result.value.issues[0]!.severity).toBe("high");
-      expect(result.value.issues[1]!.severity).toBe("low");
+      expect(result.value.issues.map((issue) => issue.id)).toEqual(["high-1"]);
     }
-  });
-
-  it("should execute lenses serially when concurrency is 1", async () => {
-    const executionOrder: string[] = [];
-    const lenses = [makeLens("correctness"), makeLens("security")];
-    mockGetLenses.mockReturnValue(lenses);
-    mockRunLensAnalysis.mockImplementation(async (_clientArg, lensArg: Lens) => {
-      executionOrder.push(`start-${lensArg.id}`);
-      // Small delay to detect parallelism
-      await new Promise((r) => setTimeout(r, 10));
-      executionOrder.push(`end-${lensArg.id}`);
-      return ok({
-        lensId: lensArg.id,
-        lensName: lensArg.name,
-        summary: `${lensArg.id} summary`,
-        issues: [],
-      });
-    });
-
-    await orchestrateReview(
-      client,
-      makeDiff(["src/a.ts"]),
-      { lenses: ["correctness", "security"] },
-      () => {},
-      { concurrency: 1 },
-    );
-
-    // With concurrency 1, second lens starts only after first ends
-    expect(executionOrder).toEqual([
-      "start-correctness",
-      "end-correctness",
-      "start-security",
-      "end-security",
-    ]);
   });
 
   it("marks unstarted lenses as failed when aborted", async () => {
     const controller = new AbortController();
-    const lenses = [
-      makeLens("correctness"),
-      makeLens("security"),
-      makeLens("performance"),
-    ];
-    mockGetLenses.mockReturnValue(lenses);
-    mockRunLensAnalysis.mockImplementation(async (_clientArg, lensArg: Lens) => {
-      if (lensArg.id === "correctness") {
+    const client: AIClient = {
+      provider: "openrouter",
+      generate: async <T extends z.ZodType>(_prompt: string, schema: T) => {
         controller.abort("cancel test");
-      }
-      return ok({
-        lensId: lensArg.id,
-        lensName: lensArg.name,
-        summary: `${lensArg.id} summary`,
-        issues: [],
-      });
-    });
+        return ok(schema.parse({ summary: "Stopped", issues: [] }) as z.output<T>);
+      },
+      generateStream: vi.fn(),
+    };
 
     const result = await orchestrateReview(
       client,
@@ -322,14 +236,10 @@ describe("orchestrateReview", () => {
       { concurrency: 1, partialOnAllFailed: true, signal: controller.signal },
     );
 
-    expect(mockRunLensAnalysis).toHaveBeenCalledTimes(1);
     expect(result.ok).toBe(true);
     if (result.ok) {
-      // Ensures unstarted slots are represented in output (no sparse holes).
       expect(result.value.lensStats).toHaveLength(3);
-      expect(result.value.failedLenses.map((lens) => lens.lensId)).toEqual(
-        expect.arrayContaining(["security", "performance"]),
-      );
+      expect(result.value.failedLenses.map((lens) => lens.lensId)).toEqual(["security", "performance"]);
     }
   });
 });

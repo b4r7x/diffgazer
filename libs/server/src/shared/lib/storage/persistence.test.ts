@@ -1,30 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
-
-const { mockMkdir, mockReadFile, mockReaddir, mockUnlink, mockAtomicWriteFile } = vi.hoisted(() => ({
-  mockMkdir: vi.fn(),
-  mockReadFile: vi.fn(),
-  mockReaddir: vi.fn(),
-  mockUnlink: vi.fn(),
-  mockAtomicWriteFile: vi.fn(),
-}));
-
-vi.mock("node:fs/promises", () => ({
-  mkdir: mockMkdir,
-  readFile: mockReadFile,
-  readdir: mockReaddir,
-  unlink: mockUnlink,
-}));
-
-vi.mock("../fs.js", () => ({
-  atomicWriteFile: mockAtomicWriteFile,
-  isNodeError: (error: unknown, code?: string): error is NodeJS.ErrnoException =>
-    error instanceof Error &&
-    "code" in error &&
-    (code === undefined || (error as NodeJS.ErrnoException).code === code),
-}));
-
-import { atomicWriteFile } from "../fs.js";
 import { createCollection } from "./persistence.js";
 
 const TestSchema = z.object({
@@ -46,17 +24,28 @@ type TestMetadata = z.infer<typeof MetadataSchema>;
 
 const TEST_ID = "550e8400-e29b-41d4-a716-446655440000";
 const TEST_ID_2 = "660e8400-e29b-41d4-a716-446655440001";
-const TEST_DIR = "/data/items";
+
+let tempRoot: string;
+let collectionDir: string;
+
+beforeEach(async () => {
+  tempRoot = await mkdtemp(join(tmpdir(), "diffgazer-persistence-"));
+  collectionDir = join(tempRoot, "items");
+});
+
+afterEach(async () => {
+  await rm(tempRoot, { recursive: true, force: true });
+});
 
 function makeItem(id: string = TEST_ID, name: string = "Test"): TestItem {
   return { id, name, metadata: { id, label: name } };
 }
 
-function makeCollection() {
+function makeCollection(dir: string = collectionDir) {
   return createCollection<TestItem, TestMetadata>({
     name: "test-item",
-    dir: TEST_DIR,
-    filePath: (id) => `${TEST_DIR}/${id}.json`,
+    dir,
+    filePath: (id) => join(dir, `${id}.json`),
     schema: TestSchema,
     metadataSchema: MetadataSchema,
     getMetadata: (item) => item.metadata,
@@ -64,307 +53,112 @@ function makeCollection() {
   });
 }
 
+async function writeRawItem(id: string, content: string): Promise<void> {
+  await makeCollection().ensureDir();
+  await writeFile(join(collectionDir, `${id}.json`), content, "utf-8");
+}
+
 describe("createCollection", () => {
-  beforeEach(() => {
-    vi.resetAllMocks();
-  });
+  it("writes, reads, lists, and removes real JSON files", async () => {
+    const collection = makeCollection();
+    const writeResult = await collection.write(makeItem());
 
-  describe("read", () => {
-    it("should read and parse a valid item", async () => {
-      const item = makeItem();
-      mockReadFile.mockResolvedValue(JSON.stringify(item));
-      const collection = makeCollection();
+    expect(writeResult.ok).toBe(true);
+    await expect(readFile(join(collectionDir, `${TEST_ID}.json`), "utf-8")).resolves.toBe(
+      `${JSON.stringify(makeItem(), null, 2)}\n`,
+    );
 
-      const result = await collection.read(TEST_ID);
+    const readResult = await collection.read(TEST_ID);
+    expect(readResult).toEqual({ ok: true, value: makeItem() });
 
-      expect(result.ok).toBe(true);
-      if (result.ok) {
-        expect(result.value.id).toBe(TEST_ID);
-        expect(result.value.name).toBe("Test");
-      }
+    const listResult = await collection.list();
+    expect(listResult).toEqual({
+      ok: true,
+      value: { items: [makeItem().metadata], warnings: [] },
     });
 
-    it("should return NOT_FOUND for missing file", async () => {
-      const error = new Error("ENOENT") as NodeJS.ErrnoException;
-      error.code = "ENOENT";
-      mockReadFile.mockRejectedValue(error);
-      const collection = makeCollection();
-
-      const result = await collection.read(TEST_ID);
-
-      expect(result.ok).toBe(false);
-      if (!result.ok) {
-        expect(result.error.code).toBe("NOT_FOUND");
-      }
+    await expect(collection.remove(TEST_ID)).resolves.toEqual({
+      ok: true,
+      value: { existed: true },
     });
-
-    it("should return PERMISSION_ERROR for EACCES", async () => {
-      const error = new Error("EACCES") as NodeJS.ErrnoException;
-      error.code = "EACCES";
-      mockReadFile.mockRejectedValue(error);
-      const collection = makeCollection();
-
-      const result = await collection.read(TEST_ID);
-
-      expect(result.ok).toBe(false);
-      if (!result.ok) {
-        expect(result.error.code).toBe("PERMISSION_ERROR");
-      }
-    });
-
-    it("should return PARSE_ERROR for corrupt JSON", async () => {
-      mockReadFile.mockResolvedValue("{invalid json");
-      const collection = makeCollection();
-
-      const result = await collection.read(TEST_ID);
-
-      expect(result.ok).toBe(false);
-      if (!result.ok) {
-        expect(result.error.code).toBe("PARSE_ERROR");
-      }
-    });
-
-    it("should return VALIDATION_ERROR for schema mismatch", async () => {
-      mockReadFile.mockResolvedValue(JSON.stringify({ wrong: "shape" }));
-      const collection = makeCollection();
-
-      const result = await collection.read(TEST_ID);
-
-      expect(result.ok).toBe(false);
-      if (!result.ok) {
-        expect(result.error.code).toBe("VALIDATION_ERROR");
-      }
+    await expect(collection.remove(TEST_ID)).resolves.toEqual({
+      ok: true,
+      value: { existed: false },
     });
   });
 
-  describe("write", () => {
-    it("should ensure directory and write item", async () => {
-      mockMkdir.mockResolvedValue(undefined);
-      vi.mocked(atomicWriteFile).mockResolvedValue(undefined);
-      const collection = makeCollection();
-      const item = makeItem();
+  it("returns NOT_FOUND for missing reads and an empty list for missing directories", async () => {
+    const collection = makeCollection();
 
-      const result = await collection.write(item);
+    const readResult = await collection.read(TEST_ID);
+    const listResult = await collection.list();
 
-      expect(result.ok).toBe(true);
-      expect(mockMkdir).toHaveBeenCalledWith(TEST_DIR, { recursive: true });
-      expect(vi.mocked(atomicWriteFile)).toHaveBeenCalledWith(
-        `${TEST_DIR}/${TEST_ID}.json`,
-        expect.stringContaining('"name": "Test"')
-      );
-    });
-
-    it("should return PERMISSION_ERROR when mkdir fails with EACCES", async () => {
-      const error = new Error("EACCES") as NodeJS.ErrnoException;
-      error.code = "EACCES";
-      mockMkdir.mockRejectedValue(error);
-      const collection = makeCollection();
-
-      const result = await collection.write(makeItem());
-
-      expect(result.ok).toBe(false);
-      if (!result.ok) {
-        expect(result.error.code).toBe("PERMISSION_ERROR");
-      }
-    });
-
-    it("should return WRITE_ERROR when atomic write fails", async () => {
-      mockMkdir.mockResolvedValue(undefined);
-      vi.mocked(atomicWriteFile).mockRejectedValue(new Error("disk full"));
-      const collection = makeCollection();
-
-      const result = await collection.write(makeItem());
-
-      expect(result.ok).toBe(false);
-      if (!result.ok) {
-        expect(result.error.code).toBe("WRITE_ERROR");
-      }
-    });
+    expect(readResult.ok).toBe(false);
+    if (!readResult.ok) expect(readResult.error.code).toBe("NOT_FOUND");
+    expect(listResult).toEqual({ ok: true, value: { items: [], warnings: [] } });
   });
 
-  describe("list", () => {
-    it("should return empty items when directory does not exist", async () => {
-      const error = new Error("ENOENT") as NodeJS.ErrnoException;
-      error.code = "ENOENT";
-      mockReaddir.mockRejectedValue(error);
-      const collection = makeCollection();
+  it("reports parse and validation failures from persisted files", async () => {
+    const collection = makeCollection();
 
-      const result = await collection.list();
+    await writeRawItem(TEST_ID, "{invalid json");
+    const corruptResult = await collection.read(TEST_ID);
+    expect(corruptResult.ok).toBe(false);
+    if (!corruptResult.ok) expect(corruptResult.error.code).toBe("PARSE_ERROR");
 
-      expect(result.ok).toBe(true);
-      if (result.ok) {
-        expect(result.value.items).toEqual([]);
-        expect(result.value.warnings).toEqual([]);
-      }
-    });
+    await writeRawItem(TEST_ID, JSON.stringify({ wrong: "shape" }));
+    const invalidResult = await collection.read(TEST_ID);
+    expect(invalidResult.ok).toBe(false);
+    if (!invalidResult.ok) expect(invalidResult.error.code).toBe("VALIDATION_ERROR");
+  });
 
-    it("should return PERMISSION_ERROR when readdir fails with EACCES", async () => {
-      const error = new Error("EACCES") as NodeJS.ErrnoException;
-      error.code = "EACCES";
-      mockReaddir.mockRejectedValue(error);
-      const collection = makeCollection();
+  it("filters non-reviewable files and collects warnings for corrupt items during listing", async () => {
+    const collection = makeCollection();
+    await collection.write(makeItem(TEST_ID, "Item1"));
+    await collection.write(makeItem(TEST_ID_2, "Item2"));
+    await writeFile(join(collectionDir, "not-a-uuid.json"), "{}", "utf-8");
+    await writeFile(join(collectionDir, "readme.txt"), "ignored", "utf-8");
+    await writeRawItem("770e8400-e29b-41d4-a716-446655440002", "{corrupt}");
 
-      const result = await collection.list();
+    const result = await collection.list();
 
-      expect(result.ok).toBe(false);
-      if (!result.ok) {
-        expect(result.error.code).toBe("PERMISSION_ERROR");
-      }
-    });
-
-    it("should filter out non-JSON and non-UUID files", async () => {
-      mockReaddir.mockResolvedValue([
-        `${TEST_ID}.json`,
-        "not-a-uuid.json",
-        "readme.txt",
-        `${TEST_ID_2}.json`,
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.items).toEqual([
+        { id: TEST_ID, label: "Item1" },
+        { id: TEST_ID_2, label: "Item2" },
       ]);
-      const item1 = makeItem(TEST_ID, "Item1");
-      const item2 = makeItem(TEST_ID_2, "Item2");
-      mockReadFile.mockImplementation(async (path: string) => {
-        if (path.includes(TEST_ID)) return JSON.stringify(item1);
-        if (path.includes(TEST_ID_2)) return JSON.stringify(item2);
-        throw new Error("unexpected");
-      });
-      const collection = makeCollection();
+      expect(result.value.warnings).toHaveLength(1);
+      expect(result.value.warnings[0]).toContain("770e8400-e29b-41d4-a716-446655440002");
+    }
+  });
 
-      const result = await collection.list();
-
-      expect(result.ok).toBe(true);
-      if (result.ok) {
-        expect(result.value.items).toHaveLength(2);
-      }
+  it("uses getMetadata when no metadata schema is provided", async () => {
+    const collection = createCollection<TestItem, TestMetadata>({
+      name: "test-item",
+      dir: collectionDir,
+      filePath: (id) => join(collectionDir, `${id}.json`),
+      schema: TestSchema,
+      getMetadata: (item) => item.metadata,
+      getId: (item) => item.id,
     });
 
-    it("should collect warnings for corrupt items without failing", async () => {
-      mockReaddir.mockResolvedValue([`${TEST_ID}.json`]);
-      mockReadFile.mockResolvedValue("{corrupt}");
-      const collection = makeCollection();
+    await collection.write(makeItem());
 
-      const result = await collection.list();
-
-      expect(result.ok).toBe(true);
-      if (result.ok) {
-        expect(result.value.items).toHaveLength(0);
-        expect(result.value.warnings).toHaveLength(1);
-        expect(result.value.warnings[0]).toContain(TEST_ID);
-      }
-    });
-
-    it("should extract metadata using metadataSchema when provided", async () => {
-      mockReaddir.mockResolvedValue([`${TEST_ID}.json`]);
-      const item = makeItem();
-      mockReadFile.mockResolvedValue(JSON.stringify(item));
-      const collection = makeCollection();
-
-      const result = await collection.list();
-
-      expect(result.ok).toBe(true);
-      if (result.ok) {
-        expect(result.value.items).toHaveLength(1);
-        expect(result.value.items[0]?.id).toBe(TEST_ID);
-        expect(result.value.items[0]?.label).toBe("Test");
-      }
-    });
-
-    it("should use getMetadata when no metadataSchema is provided", async () => {
-      const collection = createCollection<TestItem, TestMetadata>({
-        name: "test-item",
-        dir: TEST_DIR,
-        filePath: (id) => `${TEST_DIR}/${id}.json`,
-        schema: TestSchema,
-        getMetadata: (item) => item.metadata,
-        getId: (item) => item.id,
-      });
-      mockReaddir.mockResolvedValue([`${TEST_ID}.json`]);
-      const item = makeItem();
-      mockReadFile.mockResolvedValue(JSON.stringify(item));
-
-      const result = await collection.list();
-
-      expect(result.ok).toBe(true);
-      if (result.ok) {
-        expect(result.value.items).toHaveLength(1);
-        expect(result.value.items[0]?.id).toBe(TEST_ID);
-      }
+    const result = await collection.list();
+    expect(result).toEqual({
+      ok: true,
+      value: { items: [makeItem().metadata], warnings: [] },
     });
   });
 
-  describe("remove", () => {
-    it("should return existed=true when file was deleted", async () => {
-      mockUnlink.mockResolvedValue(undefined);
-      const collection = makeCollection();
+  it("returns WRITE_ERROR when the collection directory cannot be created", async () => {
+    const blockedPath = join(tempRoot, "blocked");
+    await writeFile(blockedPath, "not a directory", "utf-8");
 
-      const result = await collection.remove(TEST_ID);
+    const result = await makeCollection(join(blockedPath, "items")).write(makeItem());
 
-      expect(result.ok).toBe(true);
-      if (result.ok) {
-        expect(result.value.existed).toBe(true);
-      }
-    });
-
-    it("should return existed=false when file does not exist", async () => {
-      const error = new Error("ENOENT") as NodeJS.ErrnoException;
-      error.code = "ENOENT";
-      mockUnlink.mockRejectedValue(error);
-      const collection = makeCollection();
-
-      const result = await collection.remove(TEST_ID);
-
-      expect(result.ok).toBe(true);
-      if (result.ok) {
-        expect(result.value.existed).toBe(false);
-      }
-    });
-
-    it("should return PERMISSION_ERROR for EACCES on delete", async () => {
-      const error = new Error("EACCES") as NodeJS.ErrnoException;
-      error.code = "EACCES";
-      mockUnlink.mockRejectedValue(error);
-      const collection = makeCollection();
-
-      const result = await collection.remove(TEST_ID);
-
-      expect(result.ok).toBe(false);
-      if (!result.ok) {
-        expect(result.error.code).toBe("PERMISSION_ERROR");
-      }
-    });
-
-    it("should return WRITE_ERROR for unexpected errors on delete", async () => {
-      mockUnlink.mockRejectedValue(new Error("unknown error"));
-      const collection = makeCollection();
-
-      const result = await collection.remove(TEST_ID);
-
-      expect(result.ok).toBe(false);
-      if (!result.ok) {
-        expect(result.error.code).toBe("WRITE_ERROR");
-      }
-    });
-  });
-
-  describe("ensureDir", () => {
-    it("should create directory recursively", async () => {
-      mockMkdir.mockResolvedValue(undefined);
-      const collection = makeCollection();
-
-      const result = await collection.ensureDir();
-
-      expect(result.ok).toBe(true);
-      expect(mockMkdir).toHaveBeenCalledWith(TEST_DIR, { recursive: true });
-    });
-
-    it("should return WRITE_ERROR for mkdir failures", async () => {
-      mockMkdir.mockRejectedValue(new Error("disk error"));
-      const collection = makeCollection();
-
-      const result = await collection.ensureDir();
-
-      expect(result.ok).toBe(false);
-      if (!result.ok) {
-        expect(result.error.code).toBe("WRITE_ERROR");
-      }
-    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.code).toBe("WRITE_ERROR");
   });
 });

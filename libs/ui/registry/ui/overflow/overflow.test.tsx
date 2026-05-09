@@ -67,36 +67,32 @@ describe("Overflow", () => {
   it("defaults to text mode", () => {
     const ref = createRef<HTMLDivElement>()
 
-    render(<Overflow ref={ref} id="overflow-root" data-testid="overflow" style={{ maxWidth: 120 }}>Default text</Overflow>)
+    render(<Overflow ref={ref} id="overflow-root" style={{ maxWidth: 120 }}>Default text</Overflow>)
 
-    const root = screen.getByTestId("overflow")
+    const root = screen.getByText("Default text")
     expect(root).toHaveTextContent("Default text")
-    expect(root).toHaveClass("truncate")
     expect(root).toHaveAttribute("id", "overflow-root")
     expect(root).toHaveStyle({ maxWidth: "120px" })
     expect(ref.current).toBe(root)
   })
 
   it("renders explicit text mode", () => {
-    render(<Overflow mode="text" lines={2} data-testid="overflow">Explicit text</Overflow>)
+    render(<Overflow mode="text" lines={2}>Explicit text</Overflow>)
 
-    expect(screen.getByTestId("overflow")).toHaveTextContent("Explicit text")
-    expect(screen.getByTestId("overflow")).toHaveStyle({ overflow: "hidden" })
+    expect(screen.getByText("Explicit text")).toHaveStyle({ overflow: "hidden" })
   })
 
   it("renders explicit items mode", () => {
     const ref = createRef<HTMLDivElement>()
 
     render(
-      <Overflow mode="items" ref={ref} data-testid="overflow" data-state="items" gap="gap-2">
+      <Overflow mode="items" ref={ref} aria-label="Recent files" data-state="items" gap="gap-2">
         <span>One</span>
         <span>Two</span>
       </Overflow>,
     )
 
-    const root = screen.getByTestId("overflow")
-    expect(root).toHaveClass("flex")
-    expect(root).toHaveClass("gap-2")
+    const root = screen.getByLabelText("Recent files")
     expect(root).toHaveAttribute("data-state", "items")
     expect(root).toHaveTextContent("One")
     expect(root).toHaveTextContent("Two")

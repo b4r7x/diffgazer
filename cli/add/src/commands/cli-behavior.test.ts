@@ -96,7 +96,9 @@ test("init uses a Vite-only custom alias when TypeScript paths are absent", () =
   assert.equal(config.hooksFsPath, "src/hooks");
 
   runDgadd(["add", "ui/button", "--cwd", root, "--yes", "--skip-install"]);
-  assert.equal(existsSync(join(root, "src/components/ui/button/button.tsx")), true);
+  const buttonSource = join(root, "src/components/ui/button/button.tsx");
+  assert.equal(existsSync(buttonSource), true);
+  assert.match(readFileSync(buttonSource, "utf-8"), /from "~\/lib\/utils"/);
 });
 
 test("list json hides internal items and omits bare aliases by default", () => {
@@ -105,6 +107,8 @@ test("list json hides internal items and omits bare aliases by default", () => {
 
   assert.ok(names.includes("ui/button"));
   assert.ok(!names.includes("button"));
+  assert.ok(!names.includes("ui/theme"));
+  assert.ok(!names.includes("theme"));
   assert.ok(!names.includes("ui/portal"));
   assert.ok(!names.includes("ui/dialog-shell"));
   assert.equal(names.length, new Set(names).size);
@@ -193,6 +197,23 @@ test("copy integration installs keys transitive files with bundler-safe relative
     readFileSync(join(root, "src/hooks/use-navigation.ts"), "utf-8"),
     /from "\.\/internal\/navigation-dispatch"/,
   );
+});
+
+test("none integration is rejected when selected components require keys hooks", () => {
+  assert.throws(
+    () => runDgadd(["add", "ui/select", "--integration", "none", "--cwd", root, "--yes", "--skip-install"]),
+    /require keyboard hooks|Components reference keyboard hooks/,
+  );
+  assert.equal(existsSync(join(root, "src/components/ui/select/select.tsx")), false);
+  assert.equal(existsSync(join(root, "src/hooks/use-navigation.ts")), false);
+});
+
+test("none integration installs components that do not require keys hooks", () => {
+  runDgadd(["add", "ui/button", "--integration", "none", "--cwd", root, "--yes", "--skip-install"]);
+
+  const config = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
+  assert.equal(existsSync(join(root, "src/components/ui/button/button.tsx")), true);
+  assert.equal(config.installedComponents["ui/button"].integrationMode, "none");
 });
 
 test("remove blocks copied keys hooks still required by retained copy-mode UI", () => {

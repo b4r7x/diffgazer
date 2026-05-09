@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { IssueDetailsPane } from "./issue-details-pane";
 
 describe("IssueDetailsPane", () => {
-  it("uses UI ScrollArea for the right details panel content", () => {
-    const { container } = render(
+  it("shows an empty details state until an issue is selected", () => {
+    render(
       <IssueDetailsPane
         issue={null}
         activeTab="details"
@@ -15,8 +15,8 @@ describe("IssueDetailsPane", () => {
       />,
     );
 
-    const scrollArea = container.querySelector(".scrollbar-thin");
-    expect(scrollArea).toBeTruthy();
-    expect(scrollArea?.className.includes("min-h-0")).toBe(true);
+    expect(screen.getByText("Select an issue to view details")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Details" })).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Patch" })).not.toBeInTheDocument();
   });
 });

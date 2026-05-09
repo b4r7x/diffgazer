@@ -1,19 +1,29 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, cleanup, screen, act } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { useRef, type ReactNode } from "react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { KeyboardProvider } from "../providers/keyboard-provider";
 import { useScopedNavigation, type UseScopedNavigationOptions } from "./use-scoped-navigation";
 import { useScope } from "./use-scope";
-import { fireKey } from "../testing/test-utils";
 
 function wrapper({ children }: { children: ReactNode }) {
   return <KeyboardProvider>{children}</KeyboardProvider>;
 }
 
+function itemId(value: string, prefix = "item") {
+  return `${prefix}-${value}`;
+}
+
 function TestList({
   items = ["a", "b", "c"],
+  label = "Items",
+  idPrefix = "item",
   ...options
-}: Partial<UseScopedNavigationOptions> & { items?: string[] }) {
+}: Partial<UseScopedNavigationOptions> & {
+  items?: string[];
+  label?: string;
+  idPrefix?: string;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const result = useScopedNavigation({
     containerRef: ref,
@@ -22,17 +32,36 @@ function TestList({
   });
 
   return (
-    <div ref={ref} data-testid="list">
+    <div
+      ref={ref}
+      role="listbox"
+      aria-label={label}
+      aria-activedescendant={result.highlighted === null ? undefined : itemId(result.highlighted, idPrefix)}
+      tabIndex={0}
+    >
       {items.map((item) => (
-        <div key={item} role="option" data-value={item} data-testid={`item-${item}`} />
+        <div
+          key={item}
+          id={itemId(item, idPrefix)}
+          role="option"
+          data-value={item}
+          aria-selected={result.highlighted === item}
+        >
+          {item}
+        </div>
       ))}
-      <span data-testid="focused">{result.highlighted ?? ""}</span>
     </div>
   );
 }
 
-function getFocused() {
-  return screen.getByTestId("focused").textContent;
+function activeOption(label = "Items") {
+  const listbox = screen.getByRole("listbox", { name: label });
+  const id = listbox.getAttribute("aria-activedescendant");
+  return id ? document.getElementById(id) : null;
+}
+
+function expectActiveOptionText(text: string, label = "Items") {
+  expect(activeOption(label)?.textContent).toBe(text);
 }
 
 describe("useScopedNavigation", () => {
@@ -40,28 +69,16 @@ describe("useScopedNavigation", () => {
     cleanup();
   });
 
-  it("routes navigation through KeyboardProvider: arrows, wrap, Home, End, Space, Enter", () => {
+  it("routes navigation and activation through KeyboardProvider", async () => {
+    const user = userEvent.setup();
     const onSelect = vi.fn();
     const onEnter = vi.fn();
     render(<TestList initialValue="a" onSelect={onSelect} onEnter={onEnter} />, { wrapper });
 
-    act(() => fireKey("ArrowDown"));
-    expect(getFocused()).toBe("b");
+    await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}{End}{Home} {Enter}");
 
-    act(() => fireKey("ArrowDown"));
-    act(() => fireKey("ArrowDown"));
-    expect(getFocused()).toBe("a");
-
-    act(() => fireKey("End"));
-    expect(getFocused()).toBe("c");
-
-    act(() => fireKey("Home"));
-    expect(getFocused()).toBe("a");
-
-    act(() => fireKey(" "));
+    expectActiveOptionText("a");
     expect(onSelect).toHaveBeenCalledWith("a", expect.any(KeyboardEvent));
-
-    act(() => fireKey("Enter"));
     expect(onEnter).toHaveBeenCalledWith("a", expect.any(KeyboardEvent));
   });
 
@@ -73,7 +90,7 @@ describe("useScopedNavigation", () => {
     consoleError.mockRestore();
   });
 
-  it("does not register Space or Enter activation when moveFocus is true", () => {
+  it("moves DOM focus without registering Space or Enter activation when moveFocus is true", async () => {
     const onSelect = vi.fn();
     const onEnter = vi.fn();
 
@@ -89,28 +106,25 @@ describe("useScopedNavigation", () => {
       });
 
       return (
-        <div ref={ref} data-testid="list">
-          <button type="button" data-value="a" data-testid="button-a">A</button>
-          <button type="button" data-value="b" data-testid="button-b">B</button>
-          <span data-testid="focused">{result.highlighted ?? ""}</span>
+        <div ref={ref} role="group" aria-label="Actions">
+          <button type="button" data-value="a">A</button>
+          <button type="button" data-value="b">B</button>
         </div>
       );
     }
 
     render(<MoveFocusList />, { wrapper });
 
-    act(() => fireKey("ArrowDown"));
-    expect(getFocused()).toBe("b");
-    expect(document.activeElement).toBe(screen.getByTestId("button-b"));
+    await userEvent.keyboard("{ArrowDown} {Enter}");
 
-    act(() => fireKey(" "));
-    act(() => fireKey("Enter"));
-
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "B" }));
     expect(onSelect).not.toHaveBeenCalled();
     expect(onEnter).not.toHaveBeenCalled();
   });
 
-  it("only handles keys when its explicit scope is active", () => {
+  it("only handles keys when its explicit scope is active", async () => {
+    const user = userEvent.setup();
+
     function ScopedList({ active }: { active: boolean }) {
       useScope("scoped-list", { enabled: active });
       return <TestList scope="scoped-list" initialValue="a" />;
@@ -118,21 +132,23 @@ describe("useScopedNavigation", () => {
 
     const { rerender } = render(<ScopedList active={false} />, { wrapper });
 
-    act(() => fireKey("ArrowDown"));
-    expect(getFocused()).toBe("a");
+    await user.keyboard("{ArrowDown}");
+    expectActiveOptionText("a");
 
     rerender(<ScopedList active />);
 
-    act(() => fireKey("ArrowDown"));
-    expect(getFocused()).toBe("b");
+    await user.keyboard("{ArrowDown}");
+    expectActiveOptionText("b");
   });
 
-  it("pauses outer scoped navigation while an inner scope is active and resumes after unmount", () => {
+  it("pauses outer scoped navigation while an inner scope is active and resumes after unmount", async () => {
+    const user = userEvent.setup();
+
     function ScopedHarness({ showInner }: { showInner: boolean }) {
       useScope("outer");
       return (
         <>
-          <TestList scope="outer" initialValue="a" items={["a", "b"]} />
+          <TestList scope="outer" initialValue="a" items={["a", "b"]} label="Outer items" idPrefix="outer" />
           {showInner && <InnerList />}
         </>
       );
@@ -140,32 +156,18 @@ describe("useScopedNavigation", () => {
 
     function InnerList() {
       useScope("inner");
-      const ref = useRef<HTMLDivElement>(null);
-      const result = useScopedNavigation({
-        containerRef: ref,
-        scope: "inner",
-        role: "option",
-        initialValue: "x",
-      });
-
-      return (
-        <div ref={ref}>
-          <div role="option" data-value="x" />
-          <div role="option" data-value="y" />
-          <span data-testid="inner-focused">{result.highlighted ?? ""}</span>
-        </div>
-      );
+      return <TestList scope="inner" initialValue="x" items={["x", "y"]} label="Inner items" idPrefix="inner" />;
     }
 
     const { rerender } = render(<ScopedHarness showInner />, { wrapper });
 
-    act(() => fireKey("ArrowDown"));
-    expect(getFocused()).toBe("a");
-    expect(screen.getByTestId("inner-focused").textContent).toBe("y");
+    await user.keyboard("{ArrowDown}");
+    expectActiveOptionText("a", "Outer items");
+    expectActiveOptionText("y", "Inner items");
 
     rerender(<ScopedHarness showInner={false} />);
 
-    act(() => fireKey("ArrowDown"));
-    expect(getFocused()).toBe("b");
+    await user.keyboard("{ArrowDown}");
+    expectActiveOptionText("b", "Outer items");
   });
 });

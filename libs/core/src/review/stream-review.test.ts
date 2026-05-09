@@ -1,215 +1,148 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { buildReviewQueryParams, processReviewStream } from "./stream-review.js";
-
-describe("buildReviewQueryParams", () => {
-  it("defaults mode to unstaged", () => {
-    const params = buildReviewQueryParams({});
-
-    expect(params.mode).toBe("unstaged");
-  });
-
-  it("uses provided mode", () => {
-    const params = buildReviewQueryParams({ mode: "staged" });
-
-    expect(params.mode).toBe("staged");
-  });
-
-  it("joins files with commas", () => {
-    const params = buildReviewQueryParams({ files: ["a.ts", "b.ts"] });
-
-    expect(params.files).toBe("a.ts,b.ts");
-  });
-
-  it("omits files when empty array", () => {
-    const params = buildReviewQueryParams({ files: [] });
-
-    expect(params.files).toBeUndefined();
-  });
-
-  it("omits files when undefined", () => {
-    const params = buildReviewQueryParams({});
-
-    expect(params.files).toBeUndefined();
-  });
-
-  it("joins lenses with commas", () => {
-    const params = buildReviewQueryParams({ lenses: ["correctness", "security"] });
-
-    expect(params.lenses).toBe("correctness,security");
-  });
-
-  it("omits lenses when empty array", () => {
-    const params = buildReviewQueryParams({ lenses: [] });
-
-    expect(params.lenses).toBeUndefined();
-  });
-
-  it("includes profile when provided", () => {
-    const params = buildReviewQueryParams({ profile: "thorough" });
-
-    expect(params.profile).toBe("thorough");
-  });
-
-  it("omits profile when undefined", () => {
-    const params = buildReviewQueryParams({});
-
-    expect(params.profile).toBeUndefined();
-  });
-
-  it("builds params with all options", () => {
-    const params = buildReviewQueryParams({
-      mode: "files",
-      files: ["x.ts"],
-      lenses: ["security"],
-      profile: "quick",
-    });
-
-    expect(params).toEqual({
-      mode: "files",
-      files: "x.ts",
-      lenses: "security",
-      profile: "quick",
-    });
-  });
-});
 
 function createSSEReader(events: unknown[]): ReadableStreamDefaultReader<Uint8Array> {
   const encoder = new TextEncoder();
-  const lines = events.map((e) => `data: ${JSON.stringify(e)}\n\n`).join("");
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
-      controller.enqueue(encoder.encode(lines));
+      for (const event of events) {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+      }
       controller.close();
     },
   });
   return stream.getReader();
 }
 
+const reviewResult = {
+  summary: "All good",
+  issues: [],
+};
+
+const agentStarted = {
+  type: "agent_start",
+  agent: {
+    id: "detective",
+    name: "Detective",
+    lens: "correctness",
+    badgeLabel: "DET",
+    badgeVariant: "info",
+    description: "Finds bugs",
+  },
+  timestamp: "2025-01-01T00:00:00Z",
+};
+
+describe("buildReviewQueryParams", () => {
+  it.each([
+    [{}, { mode: "unstaged" }],
+    [{ mode: "staged" as const }, { mode: "staged" }],
+    [{ files: ["a.ts", "b.ts"] }, { mode: "unstaged", files: "a.ts,b.ts" }],
+    [{ files: [] }, { mode: "unstaged" }],
+    [{ lenses: ["correctness", "security"] }, { mode: "unstaged", lenses: "correctness,security" }],
+    [{ lenses: [] }, { mode: "unstaged" }],
+    [{ profile: "strict" as const }, { mode: "unstaged", profile: "strict" }],
+    [
+      { mode: "files" as const, files: ["x.ts"], lenses: ["security"], profile: "quick" as const },
+      { mode: "files", files: "x.ts", lenses: "security", profile: "quick" },
+    ],
+  ])("builds %j as %j", (options, expected) => {
+    expect(buildReviewQueryParams(options)).toEqual(expected);
+  });
+});
+
 describe("processReviewStream", () => {
-  const mockReviewResult = {
-    summary: "All good",
-    issues: [],
-  };
-
-  it("should return ok result with reviewResult and reviewId on complete event", async () => {
-    const reader = createSSEReader([
-      { type: "complete", reviewId: "r1", result: mockReviewResult },
-    ]);
-
-    const result = await processReviewStream(reader, {});
+  it("returns the complete review result and collected agent events", async () => {
+    const result = await processReviewStream(
+      createSSEReader([
+        agentStarted,
+        { type: "complete", reviewId: "r1", result: reviewResult },
+      ]),
+      {},
+    );
 
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.value.reviewId).toBe("r1");
-      expect(result.value.result).toEqual(mockReviewResult);
+      expect(result.value).toEqual({
+        reviewId: "r1",
+        result: reviewResult,
+        agentEvents: [expect.objectContaining({ type: "agent_start" })],
+      });
     }
   });
 
-  it("should return err result when error event is received", async () => {
-    const reader = createSSEReader([
-      { type: "error", error: { code: "AI_ERROR", message: "AI failed" } },
-    ]);
-
-    const result = await processReviewStream(reader, {});
-
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error.code).toBe("AI_ERROR");
-      expect(result.error.message).toBe("AI failed");
-    }
-  });
-
-  it("should return STREAM_ERROR when stream ends without complete event", async () => {
-    const reader = createSSEReader([
-      { type: "review_started", reviewId: "r1", filesTotal: 3, timestamp: "2025-01-01T00:00:00Z" },
-    ]);
-
-    const result = await processReviewStream(reader, {});
-
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error.code).toBe("STREAM_ERROR");
-      expect(result.error.message).toBe("Stream ended without complete event");
-    }
-  });
-
-  it("should collect agent events in agentEvents array", async () => {
-    const agentEvent = {
-      type: "agent_start",
-      agent: { id: "detective", name: "Detective", lens: "correctness", badgeLabel: "DET", badgeVariant: "info", description: "Finds bugs" },
-      timestamp: "2025-01-01T00:00:00Z",
-    };
-    const reader = createSSEReader([
-      agentEvent,
-      { type: "complete", reviewId: "r1", result: mockReviewResult },
-    ]);
-
-    const result = await processReviewStream(reader, {});
-
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.value.agentEvents).toHaveLength(1);
-      expect(result.value.agentEvents[0].type).toBe("agent_start");
-    }
-  });
-
-  it("should call onStepEvent for review_started event", async () => {
-    const onStepEvent = vi.fn();
-    const reader = createSSEReader([
-      { type: "review_started", reviewId: "r1", filesTotal: 5, timestamp: "2025-01-01T00:00:00Z" },
-      { type: "complete", reviewId: "r1", result: mockReviewResult },
-    ]);
-
-    await processReviewStream(reader, { onStepEvent });
-
-    expect(onStepEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ type: "review_started", reviewId: "r1" })
+  it("returns stream errors from error events and incomplete streams", async () => {
+    const errorResult = await processReviewStream(
+      createSSEReader([{ type: "error", error: { code: "AI_ERROR", message: "AI failed" } }]),
+      {},
     );
-  });
 
-  it("should forward step events to onStepEvent callback", async () => {
-    const onStepEvent = vi.fn();
-    const reader = createSSEReader([
-      { type: "step_start", step: "diff", timestamp: "2025-01-01T00:00:00Z" },
-      { type: "step_complete", step: "diff", timestamp: "2025-01-01T00:00:01Z" },
-      { type: "complete", reviewId: "r1", result: mockReviewResult },
-    ]);
+    expect(errorResult.ok).toBe(false);
+    if (!errorResult.ok) {
+      expect(errorResult.error).toEqual({ code: "AI_ERROR", message: "AI failed" });
+    }
 
-    await processReviewStream(reader, { onStepEvent });
-
-    expect(onStepEvent).toHaveBeenCalledTimes(2);
-  });
-
-  it("should forward enrich events to onEnrichEvent callback", async () => {
-    const onEnrichEvent = vi.fn();
-    const reader = createSSEReader([
-      { type: "enrich_progress", issueId: "i1", enrichmentType: "blame", status: "started", timestamp: "2025-01-01T00:00:00Z" },
-      { type: "complete", reviewId: "r1", result: mockReviewResult },
-    ]);
-
-    await processReviewStream(reader, { onEnrichEvent });
-
-    expect(onEnrichEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ type: "enrich_progress", issueId: "i1" })
+    const incompleteResult = await processReviewStream(
+      createSSEReader([
+        { type: "review_started", reviewId: "r1", filesTotal: 3, timestamp: "2025-01-01T00:00:00Z" },
+      ]),
+      {},
     );
+
+    expect(incompleteResult.ok).toBe(false);
+    if (!incompleteResult.ok) {
+      expect(incompleteResult.error).toEqual({
+        code: "STREAM_ERROR",
+        message: "Stream ended without complete event",
+      });
+    }
   });
 
-  it("should forward agent events to onAgentEvent callback", async () => {
-    const onAgentEvent = vi.fn();
-    const reader = createSSEReader([
+  it("forwards step, enrich, agent, chunk, and lens events", async () => {
+    const stepEvents: unknown[] = [];
+    const enrichEvents: unknown[] = [];
+    const agentEvents: unknown[] = [];
+    const chunks: string[] = [];
+    const lensesStarted: unknown[] = [];
+    const lensesCompleted: string[] = [];
+
+    const result = await processReviewStream(
+      createSSEReader([
+        { type: "review_started", reviewId: "r1", filesTotal: 5, timestamp: "2025-01-01T00:00:00Z" },
+        { type: "step_start", step: "diff", timestamp: "2025-01-01T00:00:00Z" },
+        { type: "step_complete", step: "diff", timestamp: "2025-01-01T00:00:01Z" },
+        agentStarted,
+        {
+          type: "enrich_progress",
+          issueId: "i1",
+          enrichmentType: "blame",
+          status: "started",
+          timestamp: "2025-01-01T00:00:02Z",
+        },
+        { type: "chunk", content: "partial" },
+        { type: "lens_start", lens: "security", index: 1, total: 2 },
+        { type: "lens_complete", lens: "security" },
+        { type: "complete", reviewId: "r1", result: reviewResult },
+      ]),
       {
-        type: "agent_start",
-        agent: { id: "detective", name: "Detective", lens: "correctness", badgeLabel: "DET", badgeVariant: "info", description: "Finds bugs" },
-        timestamp: "2025-01-01T00:00:00Z",
+        onStepEvent: (event) => stepEvents.push(event),
+        onEnrichEvent: (event) => enrichEvents.push(event),
+        onAgentEvent: (event) => agentEvents.push(event),
+        onChunk: (content) => chunks.push(content),
+        onLensStart: (lens, index, total) => lensesStarted.push({ lens, index, total }),
+        onLensComplete: (lens) => lensesCompleted.push(lens),
       },
-      { type: "complete", reviewId: "r1", result: mockReviewResult },
-    ]);
-
-    await processReviewStream(reader, { onAgentEvent });
-
-    expect(onAgentEvent).toHaveBeenCalledTimes(1);
-    expect(onAgentEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ type: "agent_start" })
     );
+
+    expect(result.ok).toBe(true);
+    expect(stepEvents).toEqual([
+      expect.objectContaining({ type: "review_started", reviewId: "r1" }),
+      expect.objectContaining({ type: "step_start", step: "diff" }),
+      expect.objectContaining({ type: "step_complete", step: "diff" }),
+    ]);
+    expect(agentEvents).toEqual([expect.objectContaining({ type: "agent_start" })]);
+    expect(enrichEvents).toEqual([expect.objectContaining({ type: "enrich_progress", issueId: "i1" })]);
+    expect(chunks).toEqual(["partial"]);
+    expect(lensesStarted).toEqual([{ lens: "security", index: 1, total: 2 }]);
+    expect(lensesCompleted).toEqual(["security"]);
   });
 });

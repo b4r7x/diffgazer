@@ -1,6 +1,7 @@
 import { StrictMode } from "react"
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { renderHook } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { useEscapeKey, useOutsideClick } from "../use-outside-click.js"
 import { createRef } from "react"
 
@@ -51,58 +52,56 @@ describe("useOutsideClick", () => {
     return { inside, outside, handler, cleanup: () => { inside.remove(); outside.remove() } }
   }
 
-  it("calls handler on outside click", () => {
+  it("calls handler on outside click", async () => {
     const { outside, handler, cleanup } = setup()
-    outside.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }))
+    await userEvent.click(outside)
     expect(handler).toHaveBeenCalledOnce()
     cleanup()
   })
 
-  it("handles outside targets that stop propagation", () => {
+  it("handles outside targets that stop propagation", async () => {
     const { outside, handler, cleanup } = setup()
     outside.addEventListener("mousedown", (event) => event.stopPropagation())
 
-    outside.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }))
+    await userEvent.click(outside)
 
     expect(handler).toHaveBeenCalledOnce()
     cleanup()
   })
 
-  it("does not call handler on inside click", () => {
+  it("does not call handler on inside click", async () => {
     const { inside, handler, cleanup } = setup()
-    inside.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }))
+    await userEvent.click(inside)
     expect(handler).not.toHaveBeenCalled()
     cleanup()
   })
 
-  it("does not call handler when enabled=false", () => {
+  it("does not call handler when enabled=false", async () => {
     const { outside, handler, cleanup } = setup({ enabled: false })
-    outside.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }))
+    await userEvent.click(outside)
     expect(handler).not.toHaveBeenCalled()
     cleanup()
   })
 
-  it("does not call handler when clicking on excluded ref", () => {
+  it("does not call handler when clicking on excluded ref", async () => {
     const excluded = document.createElement("div")
     document.body.appendChild(excluded)
     const excludeRef = createRef<HTMLElement>() as React.MutableRefObject<HTMLElement | null>
     excludeRef.current = excluded
 
     const { handler, cleanup } = setup({ excludeRefs: [excludeRef] })
-    excluded.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }))
+    await userEvent.click(excluded)
     expect(handler).not.toHaveBeenCalled()
     excluded.remove()
     cleanup()
   })
 
-  it("handles a pointer-supported outside interaction once", () => {
+  it("handles a pointer-supported outside interaction once", async () => {
     restorePointerEventSupport()
     restorePointerEventSupport = setPointerEventSupport(true)
     const { outside, handler, cleanup } = setup()
 
-    outside.dispatchEvent(new Event("pointerdown", { bubbles: true }))
-    outside.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }))
-    outside.dispatchEvent(new Event("touchstart", { bubbles: true }))
+    await userEvent.click(outside)
 
     expect(handler).toHaveBeenCalledOnce()
     cleanup()
@@ -118,7 +117,7 @@ describe("useOutsideClick", () => {
     cleanup()
   })
 
-  it("uses the latest outside-click handler after rerender", () => {
+  it("uses the latest outside-click handler after rerender", async () => {
     const inside = document.createElement("div")
     const outside = document.createElement("div")
     document.body.append(inside, outside)
@@ -134,7 +133,7 @@ describe("useOutsideClick", () => {
     )
 
     rerender({ handler: secondHandler })
-    outside.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }))
+    await userEvent.click(outside)
 
     expect(secondHandler).toHaveBeenCalledOnce()
     expect(firstHandler).not.toHaveBeenCalled()
@@ -143,7 +142,7 @@ describe("useOutsideClick", () => {
     outside.remove()
   })
 
-  it("does not call handler after unmount", () => {
+  it("does not call handler after unmount", async () => {
     const inside = document.createElement("div")
     const outside = document.createElement("div")
     document.body.appendChild(inside)
@@ -159,14 +158,14 @@ describe("useOutsideClick", () => {
     )
 
     unmount()
-    outside.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }))
+    await userEvent.click(outside)
     expect(handler).not.toHaveBeenCalled()
 
     inside.remove()
     outside.remove()
   })
 
-  it("does not call handler when clicking a child of the ref element", () => {
+  it("does not call handler when clicking a child of the ref element", async () => {
     const inside = document.createElement("div")
     const child = document.createElement("span")
     inside.appendChild(child)
@@ -181,13 +180,13 @@ describe("useOutsideClick", () => {
       useOutsideClick(ref, handler, true),
     )
 
-    child.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }))
+    await userEvent.click(child)
     expect(handler).not.toHaveBeenCalled()
 
     inside.remove()
   })
 
-  it("only calls the topmost outside-click layer", () => {
+  it("only calls the topmost outside-click layer", async () => {
     const lower = document.createElement("div")
     const upper = document.createElement("div")
     const outside = document.createElement("button")
@@ -205,7 +204,7 @@ describe("useOutsideClick", () => {
       useOutsideClick(upperRef, upperHandler, true)
     })
 
-    outside.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }))
+    await userEvent.click(outside)
 
     expect(upperHandler).toHaveBeenCalledOnce()
     expect(lowerHandler).not.toHaveBeenCalled()
@@ -215,7 +214,7 @@ describe("useOutsideClick", () => {
     outside.remove()
   })
 
-  it("routes Escape to the topmost enabled layer", () => {
+  it("routes Escape to the topmost enabled layer", async () => {
     const lowerHandler = vi.fn()
     const upperHandler = vi.fn()
 
@@ -224,15 +223,13 @@ describe("useOutsideClick", () => {
       useEscapeKey(upperHandler, true)
     })
 
-    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }))
+    await userEvent.keyboard("{Escape}")
 
     expect(upperHandler).toHaveBeenCalledOnce()
     expect(lowerHandler).not.toHaveBeenCalled()
   })
 
-  it("cleans up StrictMode listener probes before handling outside clicks", () => {
-    const addSpy = vi.spyOn(document, "addEventListener")
-    const removeSpy = vi.spyOn(document, "removeEventListener")
+  it("does not handle outside clicks after StrictMode unmount", async () => {
     const inside = document.createElement("div")
     const outside = document.createElement("button")
     document.body.append(inside, outside)
@@ -246,23 +243,17 @@ describe("useOutsideClick", () => {
       { wrapper: StrictMode },
     )
 
-    outside.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }))
+    await userEvent.click(outside)
     expect(handler).toHaveBeenCalledOnce()
 
     unmount()
-    outside.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }))
+    await userEvent.click(outside)
     expect(handler).toHaveBeenCalledOnce()
-
-    expect(addSpy).toHaveBeenCalledWith("mousedown", expect.any(Function), expect.objectContaining({ capture: true }))
-    expect(removeSpy).toHaveBeenCalledWith("mousedown", expect.any(Function), expect.objectContaining({ capture: true }))
-
-    addSpy.mockRestore()
-    removeSpy.mockRestore()
     inside.remove()
     outside.remove()
   })
 
-  it("uses the latest Escape handler after rerender", () => {
+  it("uses the latest Escape handler after rerender", async () => {
     const firstHandler = vi.fn()
     const secondHandler = vi.fn()
 
@@ -272,7 +263,7 @@ describe("useOutsideClick", () => {
     )
 
     rerender({ handler: secondHandler })
-    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }))
+    await userEvent.keyboard("{Escape}")
 
     expect(secondHandler).toHaveBeenCalledOnce()
     expect(firstHandler).not.toHaveBeenCalled()

@@ -15,10 +15,8 @@ describe("useApiKeyForm", () => {
   it("should have canSubmit true when method is env", () => {
     const { result } = renderHook(() => useApiKeyForm(defaultProps()));
 
-    // Default method is "paste" with empty value, so canSubmit is false
     expect(result.current.canSubmit).toBe(false);
 
-    // Switch to env
     act(() => result.current.setMethod("env"));
     expect(result.current.canSubmit).toBe(true);
   });
@@ -60,10 +58,8 @@ describe("useApiKeyForm", () => {
       useApiKeyForm(defaultProps({ onSubmit }))
     );
 
-    // Set method to env so canSubmit is true and value check passes
     act(() => result.current.setMethod("env"));
 
-    // First submission
     let submitPromise: Promise<void>;
     act(() => {
       submitPromise = result.current.handleSubmit();
@@ -72,13 +68,11 @@ describe("useApiKeyForm", () => {
     expect(result.current.isSubmitting).toBe(true);
     expect(onSubmit).toHaveBeenCalledOnce();
 
-    // Second submission while first is in flight — should be ignored
     await act(async () => {
       await result.current.handleSubmit();
     });
     expect(onSubmit).toHaveBeenCalledOnce();
 
-    // Resolve the first submission
     await act(async () => {
       resolveSubmit();
       await submitPromise!;

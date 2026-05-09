@@ -1,267 +1,155 @@
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import * as path from "node:path";
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { tmpdir } from "node:os";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../fs.js");
+let tempHome: string;
 
-const TEST_HOME = "/tmp/diffgazer-test";
+beforeEach(async () => {
+  tempHome = await mkdtemp(path.join(tmpdir(), "diffgazer-state-"));
+  process.env.DIFFGAZER_HOME = tempHome;
+  vi.resetModules();
+});
 
-import { readJsonFileSync, writeJsonFileSync, removeFileSync } from "../fs.js";
-import {
-  loadConfig,
-  loadSecrets,
-  loadTrust,
-  persistConfig,
-  persistSecrets,
-  persistTrust,
-  removeSecretsFile,
-  syncProvidersWithSecrets,
-  readOrCreateProjectFile,
-  DEFAULT_SETTINGS,
-  DEFAULT_PROVIDERS,
-} from "./state.js";
+afterEach(async () => {
+  delete process.env.DIFFGAZER_HOME;
+  await rm(tempHome, { recursive: true, force: true });
+});
+
+async function loadState() {
+  return import("./state.js");
+}
+
+async function writeJson(fileName: string, data: unknown): Promise<void> {
+  await writeFile(path.join(tempHome, fileName), `${JSON.stringify(data, null, 2)}\n`, "utf-8");
+}
+
+async function readJson<T>(filePath: string): Promise<T> {
+  return JSON.parse(await readFile(filePath, "utf-8")) as T;
+}
 
 describe("config state", () => {
-  beforeEach(() => {
-    process.env.DIFFGAZER_HOME = TEST_HOME;
-    vi.resetAllMocks();
+  it("loads default config, secrets, and trust when no files exist", async () => {
+    const { loadConfig, loadSecrets, loadTrust, DEFAULT_PROVIDERS, DEFAULT_SETTINGS } = await loadState();
+
+    expect(loadConfig()).toEqual({
+      settings: DEFAULT_SETTINGS,
+      providers: DEFAULT_PROVIDERS,
+    });
+    expect(loadSecrets()).toEqual({ providers: {} });
+    expect(loadTrust()).toEqual({ projects: {} });
   });
 
-  afterEach(() => {
-    delete process.env.DIFFGAZER_HOME;
+  it("merges stored config with defaults and removes invalid providers", async () => {
+    await writeJson("config.json", {
+      settings: { theme: "dark" },
+      providers: [
+        { provider: "gemini", hasApiKey: true, isActive: true, model: "gemini-2.5-flash" },
+        { provider: "invalid-provider", hasApiKey: true, isActive: true },
+      ],
+    });
+    const { loadConfig, DEFAULT_SETTINGS } = await loadState();
+
+    const config = loadConfig();
+
+    expect(config.settings).toEqual({ ...DEFAULT_SETTINGS, theme: "dark" });
+    expect(config.providers.find((provider) => provider.provider === "gemini")).toMatchObject({
+      hasApiKey: true,
+      isActive: true,
+      model: "gemini-2.5-flash",
+    });
+    const providerNames: string[] = config.providers.map((provider) => provider.provider);
+    expect(providerNames).not.toContain("invalid-provider");
   });
 
-  describe("loadConfig", () => {
-    it("should return defaults when no config file exists", () => {
-      vi.mocked(readJsonFileSync).mockReturnValue(null);
+  it("loads file-backed secrets", async () => {
+    await writeJson("secrets.json", { providers: { gemini: "key-123" } });
+    const { loadSecrets } = await loadState();
 
-      const config = loadConfig();
-
-      expect(config.settings).toEqual(DEFAULT_SETTINGS);
-      expect(config.providers).toHaveLength(DEFAULT_PROVIDERS.length);
-    });
-
-    it("should merge stored settings with defaults", () => {
-      vi.mocked(readJsonFileSync).mockReturnValue({
-        settings: { theme: "dark" },
-        providers: [],
-      });
-
-      const config = loadConfig();
-
-      expect(config.settings.theme).toBe("dark");
-      expect(config.settings.secretsStorage).toBe(DEFAULT_SETTINGS.secretsStorage);
-    });
-
-    it("should normalize providers to include all known providers", () => {
-      vi.mocked(readJsonFileSync).mockReturnValue({
-        settings: {},
-        providers: [
-          { provider: "gemini", hasApiKey: true, isActive: true, model: "gemini-2.5-flash" },
-        ],
-      });
-
-      const config = loadConfig();
-
-      // Should include all default providers
-      expect(config.providers.length).toBeGreaterThanOrEqual(4);
-      const gemini = config.providers.find((p) => p.provider === "gemini");
-      expect(gemini?.hasApiKey).toBe(true);
-      expect(gemini?.isActive).toBe(true);
-    });
-
-    it("should filter out invalid provider IDs", () => {
-      vi.mocked(readJsonFileSync).mockReturnValue({
-        settings: {},
-        providers: [
-          { provider: "invalid-provider", hasApiKey: true, isActive: true },
-        ],
-      });
-
-      const config = loadConfig();
-
-      const invalid = config.providers.find((p) => p.provider === ("invalid-provider" as string));
-      expect(invalid).toBeUndefined();
-    });
+    expect(loadSecrets()).toEqual({ providers: { gemini: "key-123" } });
   });
 
-  describe("loadSecrets", () => {
-    it("should return empty providers when no secrets file exists", () => {
-      vi.mocked(readJsonFileSync).mockReturnValue(null);
-
-      const secrets = loadSecrets();
-
-      expect(secrets.providers).toEqual({});
-    });
-
-    it("should load stored secrets", () => {
-      vi.mocked(readJsonFileSync).mockReturnValue({
-        providers: { gemini: "key-123" },
-      });
-
-      const secrets = loadSecrets();
-
-      expect(secrets.providers.gemini).toBe("key-123");
-    });
-  });
-
-  describe("loadTrust", () => {
-    it("should return empty projects when no trust file exists", () => {
-      vi.mocked(readJsonFileSync).mockReturnValue(null);
-
-      const trust = loadTrust();
-
-      expect(trust.projects).toEqual({});
-    });
-
-    it("should normalize trust capabilities with defaults", () => {
-      vi.mocked(readJsonFileSync).mockReturnValue({
-        projects: {
-          "proj-1": {
-            projectId: "proj-1",
-            projectPath: "/proj",
-            capabilities: null,
-          },
+  it("normalizes trust capabilities while preserving stored values", async () => {
+    await writeJson("trust.json", {
+      projects: {
+        "proj-1": {
+          projectId: "proj-1",
+          projectPath: "/proj-1",
+          capabilities: null,
         },
-      });
-
-      const trust = loadTrust();
-
-      expect(trust.projects["proj-1"]?.capabilities).toEqual({
-        readFiles: false,
-        runCommands: false,
-      });
-    });
-
-    it("should preserve existing capability values", () => {
-      vi.mocked(readJsonFileSync).mockReturnValue({
-        projects: {
-          "proj-1": {
-            projectId: "proj-1",
-            projectPath: "/proj",
-            capabilities: { readFiles: true, runCommands: false },
-          },
+        "proj-2": {
+          projectId: "proj-2",
+          projectPath: "/proj-2",
+          capabilities: { readFiles: true, runCommands: false },
         },
-      });
+      },
+    });
+    const { loadTrust } = await loadState();
 
-      const trust = loadTrust();
-
-      expect(trust.projects["proj-1"]?.capabilities).toEqual({
-        readFiles: true,
-        runCommands: false,
-      });
+    expect(loadTrust()).toMatchObject({
+      projects: {
+        "proj-1": { capabilities: { readFiles: false, runCommands: false } },
+        "proj-2": { capabilities: { readFiles: true, runCommands: false } },
+      },
     });
   });
 
-  describe("persistConfig", () => {
-    it("should write config with 0o600 permissions", () => {
-      persistConfig({ settings: DEFAULT_SETTINGS, providers: [] });
+  it("persists config, secrets, and trust as real JSON files", async () => {
+    const { persistConfig, persistSecrets, persistTrust, DEFAULT_SETTINGS } = await loadState();
 
-      expect(vi.mocked(writeJsonFileSync)).toHaveBeenCalledWith(
-        path.join(TEST_HOME, "config.json"),
-        { settings: DEFAULT_SETTINGS, providers: [] },
-        0o600
-      );
+    persistConfig({ settings: DEFAULT_SETTINGS, providers: [] });
+    persistSecrets({ providers: { gemini: "key" } });
+    persistTrust({ projects: {} });
+
+    await expect(readJson(path.join(tempHome, "config.json"))).resolves.toEqual({
+      settings: DEFAULT_SETTINGS,
+      providers: [],
     });
+    await expect(readJson(path.join(tempHome, "secrets.json"))).resolves.toEqual({
+      providers: { gemini: "key" },
+    });
+    await expect(readJson(path.join(tempHome, "trust.json"))).resolves.toEqual({ projects: {} });
   });
 
-  describe("persistSecrets", () => {
-    it("should write secrets with 0o600 permissions", () => {
-      persistSecrets({ providers: { gemini: "key" } });
+  it("removes the secrets file when it exists", async () => {
+    await writeJson("secrets.json", { providers: { gemini: "key" } });
+    const { removeSecretsFile } = await loadState();
 
-      expect(vi.mocked(writeJsonFileSync)).toHaveBeenCalledWith(
-        path.join(TEST_HOME, "secrets.json"),
-        { providers: { gemini: "key" } },
-        0o600
-      );
-    });
+    expect(removeSecretsFile()).toBe(true);
+    expect(removeSecretsFile()).toBe(false);
   });
 
-  describe("removeSecretsFile", () => {
-    it("should call removeFileSync with secrets path", () => {
-      vi.mocked(removeFileSync).mockReturnValue(true);
+  it("syncs providers with file secrets and ignores file secrets for keyring storage", async () => {
+    const { syncProvidersWithSecrets } = await loadState();
+    const providers = [{ provider: "gemini" as const, hasApiKey: false, isActive: false }];
+    const secrets = { providers: { gemini: "key", zai: "key2" } };
 
-      const result = removeSecretsFile();
-
-      expect(result).toBe(true);
-      expect(vi.mocked(removeFileSync)).toHaveBeenCalledWith(path.join(TEST_HOME, "secrets.json"));
-    });
+    expect(syncProvidersWithSecrets(providers, secrets, "file")).toEqual([
+      { provider: "gemini", hasApiKey: true, isActive: false },
+      { provider: "zai", hasApiKey: true, isActive: false },
+    ]);
+    expect(syncProvidersWithSecrets(providers, secrets, "keyring")).toEqual(providers);
   });
 
-  describe("syncProvidersWithSecrets", () => {
-    it("should mark providers as having API key when secret exists", () => {
-      const providers = [
-        { provider: "gemini" as const, hasApiKey: false, isActive: false },
-      ];
-      const secrets = { providers: { gemini: "key-123" } };
+  it("reads an existing project file or creates one under the project .diffgazer directory", async () => {
+    const { readOrCreateProjectFile } = await loadState();
+    const projectRoot = path.join(tempHome, "project");
+    const projectFile = path.join(projectRoot, ".diffgazer", "project.json");
+    await mkdir(path.dirname(projectFile), { recursive: true });
+    await writeFile(projectFile, JSON.stringify({
+      projectId: "existing-id",
+      repoRoot: projectRoot,
+      createdAt: "2024-01-01",
+    }), "utf-8");
 
-      const synced = syncProvidersWithSecrets(providers, secrets, "file");
+    expect(readOrCreateProjectFile(projectRoot).projectId).toBe("existing-id");
 
-      expect(synced[0]?.hasApiKey).toBe(true);
-    });
-
-    it("should mark providers as not having API key when secret is missing", () => {
-      const providers = [
-        { provider: "gemini" as const, hasApiKey: true, isActive: true },
-      ];
-      const secrets = { providers: {} };
-
-      const synced = syncProvidersWithSecrets(providers, secrets, "file");
-
-      expect(synced[0]?.hasApiKey).toBe(false);
-    });
-
-    it("should pass through providers unchanged when storage is keyring", () => {
-      const providers = [
-        { provider: "gemini" as const, hasApiKey: false, isActive: false },
-      ];
-      const secrets = { providers: { gemini: "key-123" } };
-
-      const synced = syncProvidersWithSecrets(providers, secrets, "keyring");
-
-      expect(synced[0]?.hasApiKey).toBe(false);
-    });
-
-    it("should add providers found in secrets but not in providers list", () => {
-      const providers = [
-        { provider: "gemini" as const, hasApiKey: false, isActive: false },
-      ];
-      const secrets = { providers: { gemini: "key", zai: "key2" } };
-
-      const synced = syncProvidersWithSecrets(providers, secrets, "file");
-
-      const zai = synced.find((p) => p.provider === "zai");
-      expect(zai).toBeDefined();
-      expect(zai?.hasApiKey).toBe(true);
-    });
-  });
-
-  describe("readOrCreateProjectFile", () => {
-    it("should return existing project file when found", () => {
-      const existing = {
-        projectId: "existing-id",
-        repoRoot: "/projects/foo",
-        createdAt: "2024-01-01",
-      };
-      vi.mocked(readJsonFileSync).mockReturnValue(existing);
-
-      const result = readOrCreateProjectFile("/projects/foo");
-
-      expect(result.projectId).toBe("existing-id");
-      expect(vi.mocked(writeJsonFileSync)).not.toHaveBeenCalled();
-    });
-
-    it("should create new project file when not found", () => {
-      vi.mocked(readJsonFileSync).mockReturnValue(null);
-
-      const result = readOrCreateProjectFile("/projects/new");
-
-      expect(result.projectId).toBeDefined();
-      expect(result.repoRoot).toBe("/projects/new");
-      expect(vi.mocked(writeJsonFileSync)).toHaveBeenCalledWith(
-        "/projects/new/.diffgazer/project.json",
-        expect.objectContaining({ repoRoot: "/projects/new" }),
-        0o600
-      );
+    const newRoot = path.join(tempHome, "new-project");
+    const created = readOrCreateProjectFile(newRoot);
+    expect(created).toMatchObject({ repoRoot: newRoot });
+    await expect(readJson(path.join(newRoot, ".diffgazer", "project.json"))).resolves.toMatchObject({
+      projectId: created.projectId,
+      repoRoot: newRoot,
     });
   });
 });

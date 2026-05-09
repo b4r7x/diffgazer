@@ -1,26 +1,89 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { mkdtemp, rm } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ok, err } from "@diffgazer/core/result";
-
-vi.mock("../../shared/lib/storage/reviews.js");
-vi.mock("../../shared/lib/git/service.js");
-vi.mock("../../shared/lib/diff/parser.js");
-vi.mock("../../shared/lib/review/prompts.js");
-
-import {
-  getReview as getStoredReview,
-  addDrilldownToReview,
-} from "../../shared/lib/storage/reviews.js";
-import { createGitService } from "../../shared/lib/git/service.js";
-import { parseDiff } from "../../shared/lib/diff/parser.js";
-import { buildDrilldownPrompt } from "../../shared/lib/review/prompts.js";
+import type { Result } from "@diffgazer/core/result";
 import type { AIClient } from "../../shared/lib/ai/types.js";
+import type { AIError } from "../../shared/lib/ai/types.js";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
-import type { ParsedDiff, FileDiff } from "../../shared/lib/diff/types.js";
-import {
-  drilldownIssue,
-  drilldownIssueById,
-  handleDrilldownRequest,
-} from "./drilldown.js";
+import type { ParsedDiff } from "../../shared/lib/diff/types.js";
+import { parseDiff } from "../../shared/lib/diff/parser.js";
+import type { DrilldownAIResponse } from "./schemas.js";
+import type { z } from "zod";
+
+vi.mock("../../shared/lib/git/service.js", () => ({
+  createGitService: vi.fn(),
+}));
+
+import { createGitService } from "../../shared/lib/git/service.js";
+
+type GitService = ReturnType<typeof createGitService>;
+
+const REVIEW_ID = "550e8400-e29b-41d4-a716-446655440000";
+let tempHome: string;
+let failNextDiff = false;
+
+const DIFF = [
+  "diff --git a/src/app.ts b/src/app.ts",
+  "index 1111111..2222222 100644",
+  "--- a/src/app.ts",
+  "+++ b/src/app.ts",
+  "@@ -1,2 +1,3 @@",
+  " export const a = 1;",
+  "+export const b = 2;",
+  " export const c = 3;",
+  "",
+].join("\n");
+
+function makeGitService(overrides: Partial<GitService> = {}): GitService {
+  return {
+    getStatus: vi.fn(async () => ({
+      isGitRepo: true,
+      branch: "main",
+      remoteBranch: null,
+      ahead: 0,
+      behind: 0,
+      files: { staged: [], unstaged: [], untracked: [] },
+      hasChanges: true,
+      conflicted: [],
+    })),
+    getDiff: async () => {
+      if (failNextDiff) {
+        failNextDiff = false;
+        throw new Error("git failed");
+      }
+      return DIFF;
+    },
+    isGitInstalled: vi.fn(async () => true),
+    getBlame: vi.fn(async () => null),
+    getFileLines: vi.fn(async () => []),
+    getHeadCommit: vi.fn(async () => ok("HEAD")),
+    getStatusHash: vi.fn(async () => "hash-1"),
+    ...overrides,
+  };
+}
+
+beforeEach(async () => {
+  tempHome = await mkdtemp(join(tmpdir(), "diffgazer-drilldown-"));
+  process.env.DIFFGAZER_HOME = tempHome;
+  failNextDiff = false;
+  vi.resetModules();
+  vi.mocked(createGitService).mockReturnValue(makeGitService());
+});
+
+afterEach(async () => {
+  delete process.env.DIFFGAZER_HOME;
+  await rm(tempHome, { recursive: true, force: true });
+});
+
+async function loadDrilldown() {
+  return import("./drilldown.js");
+}
+
+async function loadReviewStorage() {
+  return import("../../shared/lib/storage/reviews.js");
+}
 
 function makeIssue(overrides: Partial<ReviewIssue> = {}): ReviewIssue {
   return {
@@ -29,8 +92,8 @@ function makeIssue(overrides: Partial<ReviewIssue> = {}): ReviewIssue {
     category: "correctness",
     title: "Test issue",
     file: "src/app.ts",
-    line_start: 10,
-    line_end: 15,
+    line_start: 1,
+    line_end: 2,
     rationale: "rationale",
     recommendation: "fix it",
     suggested_patch: null,
@@ -42,25 +105,7 @@ function makeIssue(overrides: Partial<ReviewIssue> = {}): ReviewIssue {
   };
 }
 
-function makeFileDiff(filePath: string): FileDiff {
-  return {
-    filePath,
-    previousPath: null,
-    operation: "modify",
-    hunks: [{ oldStart: 1, oldCount: 10, newStart: 1, newCount: 12, content: "" }],
-    rawDiff: "line1\nline2\nline3",
-    stats: { additions: 2, deletions: 0, sizeBytes: 30 },
-  };
-}
-
-function makeParsedDiff(files: FileDiff[] = []): ParsedDiff {
-  return {
-    files,
-    totalStats: { filesChanged: files.length, additions: 0, deletions: 0, totalSizeBytes: 0 },
-  };
-}
-
-function makeMockClient(generateResult = ok({
+function makeMockClient(generateResult: Result<DrilldownAIResponse, AIError> = ok({
   detailedAnalysis: "analysis",
   rootCause: "cause",
   impact: "impact",
@@ -71,86 +116,124 @@ function makeMockClient(generateResult = ok({
 })): AIClient {
   return {
     provider: "openrouter",
-    generate: vi.fn().mockResolvedValue(generateResult),
+    generate: async <T extends z.ZodType>(_prompt: string, schema: T) => {
+      if (!generateResult.ok) {
+        return generateResult;
+      }
+
+      return ok(schema.parse(generateResult.value) as z.output<T>);
+    },
     generateStream: vi.fn(),
   };
 }
 
+async function saveReviewWithIssues(issues: ReviewIssue[]): Promise<void> {
+  const { saveReview } = await loadReviewStorage();
+  const result = await saveReview({
+    reviewId: REVIEW_ID,
+    projectPath: "/project",
+    mode: "unstaged",
+    branch: "main",
+    commit: "abc123",
+    lenses: ["correctness"],
+    diff: parseDiff(DIFF),
+    result: { summary: "summary", issues },
+  });
+  expect(result.ok).toBe(true);
+}
+
 describe("drilldownIssue", () => {
-  beforeEach(() => {
-    vi.resetAllMocks();
-    vi.mocked(buildDrilldownPrompt).mockReturnValue("prompt");
-  });
-
-  it("should find target file and emit tool events", async () => {
-    const issue = makeIssue({ file: "src/app.ts", line_start: 10, line_end: 15 });
-    const fileDiff = makeFileDiff("src/app.ts");
-    const diff = makeParsedDiff([fileDiff]);
+  it("uses the parsed diff context and returns the AI analysis with trace events", async () => {
+    const { drilldownIssue } = await loadDrilldown();
+    const issue = makeIssue();
+    const diff = parseDiff(DIFF);
     const client = makeMockClient();
     const events: unknown[] = [];
 
     const result = await drilldownIssue(client, issue, diff, [], {
-      onEvent: (e) => events.push(e),
+      onEvent: (event) => events.push(event),
     });
 
     expect(result.ok).toBe(true);
-    expect(events).toHaveLength(2);
-    expect(events[0]).toMatchObject({
-      type: "tool_call",
-      agent: "detective",
-      tool: "readFileContext",
-      input: "src/app.ts:10-15",
-    });
-    expect(events[1]).toMatchObject({
-      type: "tool_result",
-      agent: "detective",
-      tool: "readFileContext",
-    });
+    if (result.ok) {
+      expect(result.value).toMatchObject({
+        issueId: "issue-1",
+        issue,
+        detailedAnalysis: "analysis",
+        rootCause: "cause",
+      });
+    }
+    expect(events).toMatchObject([
+      {
+        type: "tool_call",
+        agent: "detective",
+        tool: "readFileContext",
+        input: "src/app.ts:1-2",
+      },
+      {
+        type: "tool_result",
+        agent: "detective",
+        tool: "readFileContext",
+        summary: expect.stringContaining("src/app.ts"),
+      },
+    ]);
   });
 
-  it("should handle missing target file gracefully", async () => {
-    const issue = makeIssue({ file: "nonexistent.ts" });
-    const diff = makeParsedDiff([makeFileDiff("other.ts")]);
+  it("does not emit file-context events when the issue file is absent from the diff", async () => {
+    const { drilldownIssue } = await loadDrilldown();
+    const issue = makeIssue({ file: "src/missing.ts" });
     const client = makeMockClient();
     const events: unknown[] = [];
 
-    const result = await drilldownIssue(client, issue, diff, [], {
-      onEvent: (e) => events.push(e),
+    const result = await drilldownIssue(client, issue, parseDiff(DIFF), [], {
+      onEvent: (event) => events.push(event),
     });
 
     expect(result.ok).toBe(true);
-    // No tool_call/tool_result events when file not found
-    expect(events).toHaveLength(0);
+    expect(events).toEqual([]);
+  });
+
+  it("returns AI generation failures", async () => {
+    const { drilldownIssue } = await loadDrilldown();
+    const result = await drilldownIssue(
+      makeMockClient(err({ code: "MODEL_ERROR", message: "model failed" })),
+      makeIssue(),
+      parseDiff(DIFF),
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      error: { code: "MODEL_ERROR", message: "model failed" },
+    });
   });
 });
 
 describe("drilldownIssueById", () => {
-  beforeEach(() => {
-    vi.resetAllMocks();
-    vi.mocked(buildDrilldownPrompt).mockReturnValue("prompt");
-  });
-
-  it("should return error when issue not found", async () => {
-    const client = makeMockClient();
+  it("returns ISSUE_NOT_FOUND when the requested issue is absent", async () => {
+    const { drilldownIssueById } = await loadDrilldown();
     const reviewResult = { summary: "summary", issues: [makeIssue({ id: "issue-1" })] };
-    const diff = makeParsedDiff();
 
-    const result = await drilldownIssueById(client, "nonexistent", reviewResult, diff);
+    const result = await drilldownIssueById(
+      makeMockClient(),
+      "missing",
+      reviewResult,
+      parseDiff(DIFF),
+    );
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.error.code).toBe("ISSUE_NOT_FOUND");
-      expect(result.error.message).toContain("nonexistent");
+      expect(result.error.message).toContain("missing");
     }
   });
 
-  it("should delegate to drilldownIssue for found issues", async () => {
+  it("returns drilldown analysis for the matching issue", async () => {
+    const { drilldownIssueById } = await loadDrilldown();
     const issue = makeIssue({ id: "issue-1" });
-    const client = makeMockClient();
     const reviewResult = { summary: "summary", issues: [issue] };
-    const diff = makeParsedDiff([makeFileDiff("src/app.ts")]);
+    const diff: ParsedDiff = parseDiff(DIFF);
 
-    const result = await drilldownIssueById(client, "issue-1", reviewResult, diff);
+    const result = await drilldownIssueById(makeMockClient(), "issue-1", reviewResult, diff);
 
     expect(result.ok).toBe(true);
     if (result.ok) {
@@ -161,65 +244,51 @@ describe("drilldownIssueById", () => {
 });
 
 describe("handleDrilldownRequest", () => {
-  const mockGetDiff = vi.fn();
-
-  beforeEach(() => {
-    vi.resetAllMocks();
-    vi.mocked(buildDrilldownPrompt).mockReturnValue("prompt");
-    vi.mocked(createGitService).mockReturnValue({
-      getDiff: mockGetDiff,
-    } as unknown as ReturnType<typeof createGitService>);
-    vi.mocked(parseDiff).mockReturnValue(makeParsedDiff([makeFileDiff("src/app.ts")]));
-  });
-
-  it("should load review from storage and produce drilldown", async () => {
+  it("loads a persisted review, parses the current git diff, and stores the drilldown", async () => {
     const issue = makeIssue({ id: "issue-1" });
-    const savedReview = {
-      metadata: {
-        id: "review-1",
-        projectPath: "/project",
-        createdAt: new Date().toISOString(),
-        mode: "unstaged" as const,
-        staged: false,
-        branch: "main",
-        profile: null,
-        lenses: [],
-        issueCount: 1,
-        blockerCount: 0,
-        highCount: 1,
-        mediumCount: 0,
-        lowCount: 0,
-        nitCount: 0,
-        fileCount: 1,
-      },
-      result: { summary: "summary", issues: [issue] },
-      gitContext: { branch: "main", commit: "abc", fileCount: 1, additions: 1, deletions: 0 },
-      drilldowns: [],
-    };
+    await saveReviewWithIssues([issue]);
+    const { handleDrilldownRequest } = await loadDrilldown();
+    const { getReview } = await loadReviewStorage();
 
-    vi.mocked(getStoredReview).mockResolvedValue(ok(savedReview));
-    mockGetDiff.mockResolvedValue("diff content");
-    vi.mocked(addDrilldownToReview).mockResolvedValue(ok(undefined));
-
-    const client = makeMockClient();
-    const result = await handleDrilldownRequest(client, "review-1", "issue-1", "/project");
-
-    expect(result.ok).toBe(true);
-    expect(getStoredReview).toHaveBeenCalledWith("review-1");
-    expect(addDrilldownToReview).toHaveBeenCalled();
-  });
-
-  it("should return error on storage failure", async () => {
-    vi.mocked(getStoredReview).mockResolvedValue(
-      err({ code: "NOT_FOUND" as const, message: "Review not found" }),
+    const result = await handleDrilldownRequest(
+      makeMockClient(),
+      REVIEW_ID,
+      "issue-1",
+      "/project",
     );
 
-    const client = makeMockClient();
-    const result = await handleDrilldownRequest(client, "bad-id", "issue-1", "/project");
-
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error.code).toBe("NOT_FOUND");
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toMatchObject({
+        issueId: "issue-1",
+        detailedAnalysis: "analysis",
+      });
     }
+
+    const stored = await getReview(REVIEW_ID);
+    expect(stored.ok).toBe(true);
+    if (stored.ok) {
+      expect(stored.value.drilldowns).toMatchObject([
+        { issueId: "issue-1", detailedAnalysis: "analysis" },
+      ]);
+    }
+  });
+
+  it("returns storage, git, and issue lookup failures as observable errors", async () => {
+    const { handleDrilldownRequest } = await loadDrilldown();
+
+    const missingReview = await handleDrilldownRequest(makeMockClient(), REVIEW_ID, "issue-1", "/project");
+    expect(missingReview.ok).toBe(false);
+    if (!missingReview.ok) expect(missingReview.error.code).toBe("NOT_FOUND");
+
+    await saveReviewWithIssues([makeIssue()]);
+    failNextDiff = true;
+    const gitFailure = await handleDrilldownRequest(makeMockClient(), REVIEW_ID, "issue-1", "/project");
+    expect(gitFailure.ok).toBe(false);
+    if (!gitFailure.ok) expect(gitFailure.error.code).toBe("COMMAND_FAILED");
+
+    const missingIssue = await handleDrilldownRequest(makeMockClient(), REVIEW_ID, "missing", "/project");
+    expect(missingIssue.ok).toBe(false);
+    if (!missingIssue.ok) expect(missingIssue.error.code).toBe("ISSUE_NOT_FOUND");
   });
 });

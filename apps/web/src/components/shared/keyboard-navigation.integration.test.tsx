@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { describe, it, expect } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { CheckboxGroup, CheckboxItem } from "@diffgazer/ui/components/checkbox";
 import { Menu, MenuItem } from "@diffgazer/ui/components/menu";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
@@ -29,6 +30,7 @@ function CheckboxGroupWithKeyboard() {
   return (
     <CheckboxGroup
       ref={containerRef}
+      tabIndex={0}
       value={value}
       onChange={setValue}
       onKeyDown={onKeyDown}
@@ -57,6 +59,7 @@ function RadioGroupWithKeyboard() {
   return (
     <RadioGroup
       ref={containerRef}
+      tabIndex={0}
       value={value}
       onChange={setValue}
       onKeyDown={onKeyDown}
@@ -80,35 +83,36 @@ function MenuWithKeyboard({ onActivate }: { onActivate: (id: string) => void }) 
 }
 
 describe("UI keyboard navigation integration", () => {
-  it("moves focus with ArrowDown and toggles focused checkbox with Space", () => {
+  it("moves focus with ArrowDown and toggles focused checkbox with Space", async () => {
+    const user = userEvent.setup();
     render(<KeyboardProvider><CheckboxGroupWithKeyboard /></KeyboardProvider>);
 
-    const group = screen.getByRole("group");
     const options = screen.getAllByRole("checkbox");
     expect(options[0]?.getAttribute("aria-checked")).toBe("false");
 
-    fireEvent.keyDown(group, { key: "ArrowDown" });
-    fireEvent.keyDown(group, { key: " " });
+    await user.tab();
+    await user.keyboard("{ArrowDown} ");
 
     expect(options[0]?.getAttribute("aria-checked")).toBe("true");
   });
 
-  it("moves focus with ArrowDown and selects focused radio with Enter", () => {
+  it("moves focus with ArrowDown and selects focused radio with Enter", async () => {
+    const user = userEvent.setup();
     render(<KeyboardProvider><RadioGroupWithKeyboard /></KeyboardProvider>);
 
-    const group = screen.getByRole("radiogroup");
     const options = screen.getAllByRole("radio");
     expect(options[0]?.getAttribute("aria-checked")).toBe("true");
     expect(options[1]?.getAttribute("aria-checked")).toBe("false");
 
-    fireEvent.keyDown(group, { key: "ArrowDown" });
-    fireEvent.keyDown(group, { key: "Enter" });
+    await user.tab();
+    await user.keyboard("{ArrowDown}{Enter}");
 
     expect(options[0]?.getAttribute("aria-checked")).toBe("false");
     expect(options[1]?.getAttribute("aria-checked")).toBe("true");
   });
 
-  it("handles ArrowDown and Enter for Menu via onKeyDown", () => {
+  it("handles ArrowDown and Enter for Menu via onKeyDown", async () => {
+    const user = userEvent.setup();
     const activated: string[] = [];
 
     render(
@@ -117,15 +121,16 @@ describe("UI keyboard navigation integration", () => {
 
     const listbox = screen.getByRole("menu");
 
-    fireEvent.keyDown(listbox, { key: "ArrowDown" });
-    fireEvent.keyDown(listbox, { key: "Enter" });
+    listbox.focus();
+    await user.keyboard("{ArrowDown}{Enter}");
 
     expect(activated).toEqual(["alpha"]);
     expect(screen.getByText("Alpha").closest('[role="menuitem"]')?.getAttribute("data-active")).toBe("true");
     expect(screen.getByText("Beta").closest('[role="menuitem"]')).not.toHaveAttribute("data-active");
   });
 
-  it("keeps keyboard focus when a different Menu item is hovered", () => {
+  it("keeps keyboard focus when a different Menu item is hovered", async () => {
+    const user = userEvent.setup();
     render(
       <KeyboardProvider><MenuWithKeyboard onActivate={() => {}} /></KeyboardProvider>
     );
@@ -134,10 +139,11 @@ describe("UI keyboard navigation integration", () => {
     const alpha = screen.getByText("Alpha").closest('[role="menuitem"]')!;
     const beta = screen.getByText("Beta").closest('[role="menuitem"]')!;
 
-    fireEvent.keyDown(menu, { key: "ArrowDown" });
+    menu.focus();
+    await user.keyboard("{ArrowDown}");
     expect(menu).toHaveAttribute("aria-activedescendant", alpha.id);
 
-    fireEvent.mouseOver(beta);
+    await user.hover(beta);
     expect(menu).toHaveAttribute("aria-activedescendant", alpha.id);
   });
 });

@@ -12,6 +12,7 @@ function StorageSelectorHarness() {
 
 describe("StorageSelectorContent", () => {
   it("moves highlight with arrows and selects with Space", async () => {
+    const user = userEvent.setup();
     render(<StorageSelectorHarness />);
 
     expect(screen.getByRole("radiogroup", { name: /select storage method/i })).toBeInTheDocument();
@@ -19,29 +20,31 @@ describe("StorageSelectorContent", () => {
     const keyringRadio = screen.getByRole("radio", { name: /system keyring/i });
 
     await waitFor(() => expect(fileRadio).toHaveFocus());
-    await userEvent.keyboard("{ArrowDown}");
+    await user.keyboard("{ArrowDown}");
     expect(fileRadio.getAttribute("aria-checked")).toBe("true");
     expect(keyringRadio.getAttribute("aria-checked")).toBe("false");
 
-    await userEvent.keyboard(" ");
+    await user.keyboard(" ");
 
     expect(screen.getByRole("radio", { name: /file storage/i })).toHaveAttribute("aria-checked", "false");
     expect(screen.getByRole("radio", { name: /system keyring/i })).toHaveAttribute("aria-checked", "true");
   });
 
   it("does not call onEnter when Space selects the highlighted storage", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     const onEnter = vi.fn();
     render(<StorageSelectorContent value="file" onChange={onChange} onEnter={onEnter} autoFocusList />);
 
     await waitFor(() => expect(screen.getByRole("radio", { name: /file storage/i })).toHaveFocus());
-    await userEvent.keyboard("{ArrowDown} ");
+    await user.keyboard("{ArrowDown} ");
 
     expect(onChange).toHaveBeenCalledWith("keyring");
     expect(onEnter).not.toHaveBeenCalled();
   });
 
   it("commits the focused storage with Enter after a controlled value change", async () => {
+    const user = userEvent.setup();
     const onChange = vi.fn();
     const onEnter = vi.fn();
     const { rerender } = render(
@@ -49,11 +52,11 @@ describe("StorageSelectorContent", () => {
     );
 
     await waitFor(() => expect(screen.getByRole("radio", { name: /file storage/i })).toHaveFocus());
-    await userEvent.keyboard("{ArrowDown}");
+    await user.keyboard("{ArrowDown}");
     expect(screen.getByRole("radio", { name: /system keyring/i })).toHaveFocus();
 
     rerender(<StorageSelectorContent value="file" onChange={onChange} onEnter={onEnter} autoFocusList />);
-    await userEvent.keyboard("{Enter}");
+    await user.keyboard("{Enter}");
 
     expect(onEnter).toHaveBeenCalledWith("keyring");
     expect(onChange).toHaveBeenCalledWith("keyring");

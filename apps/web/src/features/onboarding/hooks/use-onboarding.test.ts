@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import { AVAILABLE_PROVIDERS } from "@diffgazer/core/schemas/config";
 
 const {
@@ -66,5 +66,84 @@ describe("useOnboarding initial state", () => {
     expect(mockSaveConfigMutateAsync).toHaveBeenCalledTimes(1);
     expect(mockRefresh).toHaveBeenCalledWith(true);
     expect(mockSetConfiguredGuardCache).toHaveBeenCalledWith(true);
+  });
+
+  it("saves onboarding payloads from the selected wizard settings", async () => {
+    mockSaveSettingsMutateAsync.mockResolvedValue(undefined);
+    mockSaveConfigMutateAsync.mockResolvedValue(undefined);
+    mockRefresh.mockResolvedValue(undefined);
+
+    const { result } = renderHook(() => useOnboarding());
+
+    act(() => {
+      result.current.updateData({
+        secretsStorage: "keyring",
+        provider: "gemini",
+        inputMethod: "env",
+        apiKey: "ignored-paste-value",
+        model: "gemini-2.5-pro",
+        defaultLenses: ["security"],
+        agentExecution: "parallel",
+      });
+    });
+
+    await act(async () => {
+      await result.current.complete();
+    });
+
+    expect(mockSaveSettingsMutateAsync).toHaveBeenCalledWith({
+      secretsStorage: "keyring",
+      defaultLenses: ["security"],
+      agentExecution: "parallel",
+    });
+    expect(mockSaveConfigMutateAsync).toHaveBeenCalledWith({
+      provider: "gemini",
+      apiKey: "env",
+      model: "gemini-2.5-pro",
+    });
+  });
+
+  it("exposes submitting state while completion is pending", async () => {
+    let resolveConfig: (() => void) | undefined;
+    mockSaveSettingsMutateAsync.mockResolvedValue(undefined);
+    mockSaveConfigMutateAsync.mockReturnValue(
+      new Promise<void>((resolve) => {
+        resolveConfig = resolve;
+      }),
+    );
+    mockRefresh.mockResolvedValue(undefined);
+
+    const { result } = renderHook(() => useOnboarding());
+    let completion = Promise.resolve();
+
+    await act(async () => {
+      completion = result.current.complete();
+      await Promise.resolve();
+    });
+
+    expect(result.current.isSubmitting).toBe(true);
+
+    await act(async () => {
+      resolveConfig?.();
+      await completion;
+    });
+
+    expect(result.current.isSubmitting).toBe(false);
+  });
+
+  it("keeps the setup incomplete and reports errors when completion fails", async () => {
+    mockSaveSettingsMutateAsync.mockResolvedValue(undefined);
+    mockSaveConfigMutateAsync.mockRejectedValue(new Error("Save failed"));
+
+    const { result } = renderHook(() => useOnboarding());
+
+    await act(async () => {
+      await expect(result.current.complete()).rejects.toThrow("Save failed");
+    });
+
+    expect(result.current.error).toBe("Save failed");
+    expect(result.current.isSubmitting).toBe(false);
+    expect(mockRefresh).not.toHaveBeenCalled();
+    expect(mockSetConfiguredGuardCache).not.toHaveBeenCalled();
   });
 });

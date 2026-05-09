@@ -29,7 +29,7 @@ function Listbox(
   const getDomItemId = opts.getItemId ?? getEncodedListboxItemId
 
   return (
-    <div {...getContainerProps()} data-testid="listbox" aria-label="Test listbox">
+    <div {...getContainerProps()} aria-label="Test listbox">
       {items.map((item) => (
         <div
           key={item.id}

@@ -195,11 +195,11 @@ describe("Toast", () => {
   it("does not steal focus when a toast appears", () => {
     const { container } = render(
       <div>
-        <input data-testid="focused-input" />
+        <input aria-label="Focused input" />
         <Toaster />
       </div>
     )
-    const input = screen.getByTestId("focused-input")
+    const input = screen.getByRole("textbox", { name: "Focused input" })
     input.focus()
     expect(document.activeElement).toBe(input)
 

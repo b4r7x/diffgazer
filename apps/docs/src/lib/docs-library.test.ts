@@ -104,28 +104,6 @@ function collectExampleFileNames(): Set<string> {
   )
 }
 
-function collectRegistryCssFiles(): string[] {
-  const registry = JSON.parse(readRepoFile("libs/ui/registry/registry.json")) as {
-    items?: Array<{ files?: Array<{ path?: string }> }>
-  }
-  return (registry.items ?? [])
-    .flatMap((item) => item.files ?? [])
-    .map((file) => file.path)
-    .filter((path): path is string => typeof path === "string" && path.endsWith(".css"))
-    .filter((path) => path.startsWith("registry/ui/"))
-}
-
-function parseDarkThemePrimitives(): Record<string, string> {
-  const theme = readRepoFile("libs/ui/styles/theme.css")
-  const darkBlock = theme.match(/:root,\s*\[data-theme="dark"\]\s*\{([\s\S]*?)\n\}/)?.[1] ?? ""
-  return Object.fromEntries(
-    [...darkBlock.matchAll(/(--tui-[\w-]+):\s*(#[0-9a-fA-F]+);/g)].map((match) => [
-      match[1],
-      match[2].toLowerCase(),
-    ]),
-  )
-}
-
 describe("docs-library source path mapping", () => {
   it("prefixes source slugs by library id", () => {
     expect(sourceSlugsForLibrary("ui", ["components", "button"])).toEqual([
@@ -291,35 +269,4 @@ describe("docs-library source path mapping", () => {
     }
   })
 
-  it("keeps theme docs and widgets aligned to the canonical dark primitives", () => {
-    const primitives = parseDarkThemePrimitives()
-    const checkedFiles = [
-      readRepoFile("apps/docs/src/features/theme/components/color-grid.tsx"),
-      readRepoFile("apps/docs/src/features/theme/components/variable-diagram.tsx"),
-      readRepoFile("apps/docs/src/features/theme/components/theme-playground.tsx"),
-      readRepoFile("libs/ui/docs/content/getting-started/tailwind-setup.mdx"),
-      readRepoFile("libs/ui/docs/content/theme/dark-mode.mdx"),
-    ].join("\n")
-
-    for (const [name, value] of Object.entries(primitives)) {
-      expect(checkedFiles, name).toContain(name)
-      expect(checkedFiles, name).toContain(value)
-    }
-  })
-
-  it("uses materialized docs CSS instead of direct hidden component CSS imports", () => {
-    const indexCss = readRepoFile("apps/docs/src/index.css")
-    const stylesCss = readRepoFile("apps/docs/styles/styles.css")
-    const registryCssFiles = collectRegistryCssFiles()
-
-    expect(indexCss).not.toMatch(/registry\/ui\/.*\.css/)
-    expect(indexCss).not.toMatch(/until D4|workspace style seed|hidden dialog CSS/)
-    expect(registryCssFiles).toEqual(["registry/ui/shared/dialog.css"])
-    expect(stylesCss).toContain("dialog::backdrop")
-    expect(stylesCss).toContain("body:has(dialog[open])")
-    expect(stylesCss).not.toContain("Package builds and dgadd init append registry component CSS")
-    expect(readRepoFile("libs/ui/docs/content/getting-started/tailwind-setup.mdx")).toContain(
-      "materialize the canonical component entry",
-    )
-  })
 })

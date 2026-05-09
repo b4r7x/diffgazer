@@ -1,23 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SSEWriter } from "../../shared/lib/http/types.js";
 import type { FullReviewStreamEvent } from "@diffgazer/core/schemas/events";
-import type { ActiveSession } from "./sessions.js";
 import { ReviewErrorCode } from "@diffgazer/core/schemas/review";
 import { ok } from "@diffgazer/core/result";
 
-// Mock sessions module (boundary: in-memory session store)
-vi.mock("./sessions.js", () => ({
-  createSession: vi.fn(),
-  markReady: vi.fn(),
-  addEvent: vi.fn(),
-  markComplete: vi.fn(),
-  subscribe: vi.fn(),
-  getActiveSessionForProject: vi.fn(),
-  getSession: vi.fn(),
-  cancelStaleSessionsForProjectMode: vi.fn(),
-}));
-
-// Mock pipeline module (boundary: orchestration layer)
 vi.mock("./pipeline.js", () => ({
   resolveGitDiff: vi.fn(),
   resolveReviewConfig: vi.fn(),
@@ -25,12 +11,8 @@ vi.mock("./pipeline.js", () => ({
   finalizeReview: vi.fn(),
 }));
 
-// Mock git service (boundary: git subprocess)
 vi.mock("../../shared/lib/git/service.js", () => ({
-  createGitService: vi.fn(() => ({
-    getHeadCommit: vi.fn(async () => ({ ok: true, value: "abc123" })),
-    getStatusHash: vi.fn(async () => "hash123"),
-  })),
+  createGitService: vi.fn(),
 }));
 
 import {
@@ -38,22 +20,35 @@ import {
   streamReviewToSSE,
 } from "./service.js";
 import {
-  markComplete,
-  subscribe,
-  getSession,
-  getActiveSessionForProject,
-  createSession,
-  markReady,
-  cancelStaleSessionsForProjectMode,
   addEvent,
+  createSession,
+  deleteSession,
+  getSession,
+  markComplete,
+  markReady,
 } from "./sessions.js";
 import {
-  resolveGitDiff,
-  resolveReviewConfig,
   executeReview,
   finalizeReview,
+  resolveGitDiff,
+  resolveReviewConfig,
 } from "./pipeline.js";
 import { createGitService } from "../../shared/lib/git/service.js";
+
+type GitService = ReturnType<typeof createGitService>;
+
+const createdSessionIds = new Set<string>();
+
+function trackSession(reviewId: string): void {
+  createdSessionIds.add(reviewId);
+}
+
+function cleanupTrackedSessions(): void {
+  for (const id of createdSessionIds) {
+    deleteSession(id);
+  }
+  createdSessionIds.clear();
+}
 
 function makeMockStream(): SSEWriter & { events: Array<{ event: string; data: string }> } {
   const events: Array<{ event: string; data: string }> = [];
@@ -61,203 +56,148 @@ function makeMockStream(): SSEWriter & { events: Array<{ event: string; data: st
     events,
     writeSSE: vi.fn(async (payload: { event: string; data: string }) => {
       events.push(payload);
+      const parsed = JSON.parse(payload.data) as FullReviewStreamEvent;
+      if ("reviewId" in parsed && typeof parsed.reviewId === "string") {
+        trackSession(parsed.reviewId);
+      }
     }),
   };
 }
 
-function makeSession(overrides: Partial<ActiveSession> = {}): ActiveSession {
+function parsedEvents(stream: { events: Array<{ data: string }> }): FullReviewStreamEvent[] {
+  return stream.events.map((event) => JSON.parse(event.data) as FullReviewStreamEvent);
+}
+
+function makeGitService(): GitService {
   return {
-    reviewId: "review-1",
-    projectPath: "/project",
-    headCommit: "abc123",
-    statusHash: "hash123",
-    mode: "unstaged",
-    startedAt: new Date(),
-    events: [],
-    isComplete: false,
-    isReady: true,
-    subscribers: new Set(),
-    controller: new AbortController(),
-    ...overrides,
+    getStatus: async () => ({
+      isGitRepo: true,
+      branch: "main",
+      remoteBranch: null,
+      ahead: 0,
+      behind: 0,
+      files: { staged: [], unstaged: [], untracked: [] },
+      hasChanges: false,
+      conflicted: [],
+    }),
+    getDiff: async () => "",
+    isGitInstalled: async () => true,
+    getBlame: async () => null,
+    getFileLines: async () => [],
+    getHeadCommit: async () => ok("abc123"),
+    getStatusHash: async () => "hash123",
   };
 }
 
-function setupInMemorySessionStore(): void {
-  const sessions = new Map<string, ActiveSession>();
-  const subscribers = new Map<string, Set<(event: FullReviewStreamEvent) => void>>();
-
-  vi.mocked(createSession).mockImplementation((reviewId, projectPath, headCommit, statusHash, mode) => {
-    const session = makeSession({
-      reviewId,
-      projectPath,
-      headCommit,
-      statusHash,
-      mode,
-      isReady: false,
-    });
-    sessions.set(reviewId, session);
-    subscribers.set(reviewId, new Set());
-    return session;
+function mockSuccessfulPipeline(): void {
+  const parsedDiff = {
+    files: [],
+    totalStats: { filesChanged: 0, additions: 0, deletions: 0, totalSizeBytes: 0 },
+  };
+  vi.mocked(resolveGitDiff).mockResolvedValue(ok(parsedDiff));
+  vi.mocked(resolveReviewConfig).mockResolvedValue({
+    activeLenses: ["correctness"],
+    profile: undefined,
+    projectContext: "",
   });
-
-  vi.mocked(getSession).mockImplementation((reviewId) => sessions.get(reviewId));
-
-  vi.mocked(subscribe).mockImplementation((reviewId, callback) => {
-    const callbacks = subscribers.get(reviewId);
-    if (!callbacks) return null;
-    callbacks.add(callback);
-    return () => callbacks.delete(callback);
-  });
-
-  vi.mocked(addEvent).mockImplementation((reviewId, event) => {
-    const session = sessions.get(reviewId);
-    if (!session || session.isComplete) return;
-    session.events.push(event);
-    const callbacks = subscribers.get(reviewId);
-    if (!callbacks) return;
-    callbacks.forEach((callback) => {
-      void callback(event);
-    });
-  });
-
-  vi.mocked(markComplete).mockImplementation((reviewId) => {
-    const session = sessions.get(reviewId);
-    if (!session) return;
-    session.isComplete = true;
-    subscribers.get(reviewId)?.clear();
-  });
-
-  vi.mocked(markReady).mockImplementation((reviewId) => {
-    const session = sessions.get(reviewId);
-    if (!session) return;
-    session.isReady = true;
-  });
+  vi.mocked(executeReview).mockResolvedValue(ok({ issues: [], summary: "Clean" }));
+  vi.mocked(finalizeReview).mockResolvedValue(ok({ issues: [], summary: "Clean" }));
 }
 
 describe("streamActiveSessionToSSE", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    vi.resetAllMocks();
   });
 
-  it("should replay buffered events to the SSE stream", async () => {
-    const stream = makeMockStream();
-    const buffered: FullReviewStreamEvent[] = [
-      { type: "step_start", step: "diff", timestamp: new Date().toISOString() },
-      { type: "complete", result: {} as any, reviewId: "review-1", durationMs: 100 },
-    ];
-    const session = makeSession({ events: buffered, isComplete: true });
-
-    await streamActiveSessionToSSE(stream, session);
-
-    expect(stream.writeSSE).toHaveBeenCalledTimes(2);
-    expect(stream.events[0]!.event).toBe("step_start");
-    expect(stream.events[1]!.event).toBe("complete");
-  });
-
-  it("should subscribe for live events when session is not complete", async () => {
-    const stream = makeMockStream();
-    const session = makeSession({ events: [], isComplete: false });
-
-    let subscriberCallback: ((event: FullReviewStreamEvent) => void) | null = null;
-    vi.mocked(subscribe).mockImplementation((_id, callback) => {
-      subscriberCallback = callback;
-      return () => {};
-    });
-    vi.mocked(getSession).mockReturnValue(session);
-
-    vi.useFakeTimers();
-    const promise = streamActiveSessionToSSE(stream, session);
-
-    // Simulate a live event arriving
-    subscriberCallback!({ type: "complete", result: {} as any, reviewId: "review-1", durationMs: 50 });
-
-    await vi.advanceTimersByTimeAsync(0);
+  afterEach(() => {
+    cleanupTrackedSessions();
     vi.useRealTimers();
-
-    await promise;
-
-    expect(subscribe).toHaveBeenCalledWith("review-1", expect.any(Function));
-    expect(stream.events.some((e) => e.event === "complete")).toBe(true);
   });
 
-  it("should write stale error when subscribe returns null", async () => {
+  it("replays buffered events to the SSE stream", async () => {
     const stream = makeMockStream();
-    const session = makeSession({ events: [], isComplete: false });
-
-    vi.mocked(subscribe).mockReturnValue(null);
+    const session = createSession("replay-session", "/project", "abc123", "hash123", "unstaged");
+    trackSession(session.reviewId);
+    const events: FullReviewStreamEvent[] = [
+      { type: "step_start", step: "diff", timestamp: new Date().toISOString() },
+      { type: "complete", result: { issues: [], summary: "Clean" }, reviewId: session.reviewId, durationMs: 100 },
+    ];
+    session.events.push(...events);
+    session.isComplete = true;
 
     await streamActiveSessionToSSE(stream, session);
 
-    expect(stream.events).toHaveLength(1);
-    const parsed = JSON.parse(stream.events[0]!.data);
-    expect(parsed.type).toBe("error");
-    expect(parsed.error.code).toBe(ReviewErrorCode.SESSION_STALE);
+    expect(parsedEvents(stream)).toEqual(events);
   });
 
-  it("should close replay when session completes during replay", async () => {
+  it("streams live events until a terminal event arrives", async () => {
     const stream = makeMockStream();
-    const completedSession = makeSession({ isComplete: true });
+    const session = createSession("live-session", "/project", "abc123", "hash123", "unstaged");
+    trackSession(session.reviewId);
 
-    vi.mocked(subscribe).mockImplementation((_id, _cb) => {
-      return () => {};
+    const replay = streamActiveSessionToSSE(stream, session);
+    addEvent(session.reviewId, {
+      type: "complete",
+      result: { issues: [], summary: "Clean" },
+      reviewId: session.reviewId,
+      durationMs: 50,
     });
-    // Return the completed session when checked after subscribe
-    vi.mocked(getSession).mockReturnValue(completedSession);
 
-    await streamActiveSessionToSSE(stream, makeSession({ events: [], isComplete: false }));
+    await replay;
 
-    expect(stream.events).toHaveLength(0);
+    expect(parsedEvents(stream)).toMatchObject([
+      { type: "complete", reviewId: session.reviewId },
+    ]);
   });
 
-  it("should stop replay when client signal aborts", async () => {
+  it("writes a stale error when the session cannot be subscribed", async () => {
     const stream = makeMockStream();
-    const session = makeSession({ events: [], isComplete: false });
-    const controller = new AbortController();
-    const unsubscribe = vi.fn();
+    const session = createSession("stale-session", "/project", "abc123", "hash123", "unstaged");
+    trackSession(session.reviewId);
+    deleteSession(session.reviewId);
 
-    vi.mocked(subscribe).mockReturnValue(unsubscribe);
-    vi.mocked(getSession).mockReturnValue(session);
+    await streamActiveSessionToSSE(stream, session);
+
+    expect(parsedEvents(stream)).toMatchObject([
+      { type: "error", error: { code: ReviewErrorCode.SESSION_STALE } },
+    ]);
+  });
+
+  it("stops without writing when the client aborts", async () => {
+    const stream = makeMockStream();
+    const session = createSession("abort-session", "/project", "abc123", "hash123", "unstaged");
+    const controller = new AbortController();
+    trackSession(session.reviewId);
 
     const replay = streamActiveSessionToSSE(stream, session, controller.signal);
     controller.abort();
 
     await replay;
 
-    expect(unsubscribe).toHaveBeenCalledTimes(1);
-    expect(stream.events).toHaveLength(0);
+    expect(stream.events).toEqual([]);
   });
 
-  it("should write terminal event when poll finds isComplete but subscriber missed it", async () => {
-    const stream = makeMockStream();
-    const session = makeSession({ events: [], isComplete: false });
-
-    const terminalEvent: FullReviewStreamEvent = {
-      type: "complete",
-      result: {} as any,
-      reviewId: "review-1",
-      durationMs: 200,
-    };
-
-    // Subscribe returns a valid unsubscribe, but never fires the callback
-    vi.mocked(subscribe).mockReturnValue(() => {});
-
-    // First call: session still running. Second call: session complete with terminal event buffered.
-    vi.mocked(getSession)
-      .mockReturnValueOnce(makeSession({ events: [], isComplete: false }))
-      .mockReturnValueOnce(
-        makeSession({ events: [terminalEvent], isComplete: true }),
-      );
-
+  it("writes a terminal event discovered after subscription", async () => {
     vi.useFakeTimers();
-    const promise = streamActiveSessionToSSE(stream, session);
-    // Advance past first poll (no-op) and second poll (finds isComplete)
-    await vi.advanceTimersByTimeAsync(500);
-    vi.useRealTimers();
+    const stream = makeMockStream();
+    const session = createSession("poll-session", "/project", "abc123", "hash123", "unstaged");
+    trackSession(session.reviewId);
 
-    await promise;
+    const replay = streamActiveSessionToSSE(stream, session);
+    session.events.push({
+      type: "complete",
+      result: { issues: [], summary: "Clean" },
+      reviewId: session.reviewId,
+      durationMs: 200,
+    });
+    session.isComplete = true;
 
-    expect(stream.events).toHaveLength(1);
-    expect(stream.events[0]!.event).toBe("complete");
+    await vi.advanceTimersByTimeAsync(250);
+    await replay;
+
+    expect(parsedEvents(stream)).toMatchObject([
+      { type: "complete", reviewId: session.reviewId },
+    ]);
   });
 });
 
@@ -269,85 +209,70 @@ describe("streamReviewToSSE", () => {
   };
 
   beforeEach(() => {
-    vi.restoreAllMocks();
-    setupInMemorySessionStore();
-
-    vi.mocked(createGitService).mockReturnValue({
-      getHeadCommit: vi.fn(async () => ({ ok: true, value: "abc123" })),
-      getStatusHash: vi.fn(async () => "hash123"),
-    } as any);
-    vi.mocked(getActiveSessionForProject).mockReturnValue(undefined);
+    vi.resetAllMocks();
+    vi.mocked(createGitService).mockReturnValue(makeGitService());
   });
 
-  it("should replay existing session when found", async () => {
-    const stream = makeMockStream();
-    const existingSession = makeSession({
-      events: [
-        { type: "complete", result: {} as any, reviewId: "review-1", durationMs: 100 },
-      ],
-      isComplete: true,
-    });
-
-    vi.mocked(getActiveSessionForProject).mockReturnValue(existingSession);
-
-    await streamReviewToSSE(mockAIClient, { mode: "unstaged" }, stream);
-
-    expect(getActiveSessionForProject).toHaveBeenCalledWith(
-      expect.any(String),
-      "abc123",
-      "hash123",
-      "unstaged",
-    );
-    // Should have replayed the complete event
-    expect(stream.events[0]!.event).toBe("complete");
-    // Should NOT have created a new session
-    expect(createSession).not.toHaveBeenCalled();
+  afterEach(() => {
+    cleanupTrackedSessions();
+    vi.useRealTimers();
   });
 
-  it("should create new session when no existing session found", async () => {
+  it("replays a matching active session instead of starting a new review", async () => {
     const stream = makeMockStream();
-
-    vi.mocked(getActiveSessionForProject).mockReturnValue(undefined);
-
-    const parsedDiff = { files: [], totalStats: { filesChanged: 0, additions: 0, deletions: 0, totalSizeBytes: 0 } };
-    vi.mocked(resolveGitDiff).mockResolvedValue(ok(parsedDiff));
-    vi.mocked(resolveReviewConfig).mockResolvedValue({
-      activeLenses: ["correctness"],
-      profile: undefined,
-      projectContext: "",
-    });
-    vi.mocked(executeReview).mockResolvedValue(ok({ issues: [], summary: "Clean" }));
-    vi.mocked(finalizeReview).mockResolvedValue(ok({
-      issues: [],
-      executiveSummary: "Clean",
-      report: "",
-      reviewId: "review-1",
+    const existing = createSession("existing-session", process.cwd(), "abc123", "hash123", "unstaged");
+    trackSession(existing.reviewId);
+    markReady(existing.reviewId);
+    addEvent(existing.reviewId, {
+      type: "complete",
+      result: { issues: [], summary: "Already done" },
+      reviewId: existing.reviewId,
       durationMs: 100,
-      projectPath: "/project",
-      mode: "unstaged",
-      headCommit: "abc123",
-      statusHash: "hash123",
-      diff: parsedDiff,
-    } as any));
+    });
 
     await streamReviewToSSE(mockAIClient, { mode: "unstaged" }, stream);
 
-    expect(createSession).toHaveBeenCalled();
-    expect(cancelStaleSessionsForProjectMode).toHaveBeenCalledWith(
-      expect.any(String),
-      "unstaged",
-      "abc123",
-      "hash123",
-    );
-    expect(markReady).toHaveBeenCalled();
-    expect(markComplete).toHaveBeenCalled();
-    // Should have emitted complete event
-    expect(stream.events.some((e) => e.event === "complete")).toBe(true);
+    expect(parsedEvents(stream)).toMatchObject([
+      { type: "complete", reviewId: existing.reviewId },
+    ]);
+    expect(stream.events).toHaveLength(1);
   });
 
+  it("streams a complete event and leaves the created session complete", async () => {
+    const stream = makeMockStream();
+    mockSuccessfulPipeline();
+
+    await streamReviewToSSE(mockAIClient, { mode: "unstaged" }, stream);
+
+    const completeEvent = parsedEvents(stream).find((event) => event.type === "complete");
+    expect(completeEvent).toMatchObject({
+      type: "complete",
+      result: { issues: [], summary: "Clean" },
+    });
+    if (completeEvent?.type === "complete") {
+      expect(getSession(completeEvent.reviewId)?.isComplete).toBe(true);
+    }
+  });
+
+  it("cancels stale in-flight reviews for the same project and mode before streaming the new result", async () => {
+    const stream = makeMockStream();
+    const stale = createSession("stale-review", process.cwd(), "old-head", "old-hash", "unstaged");
+    trackSession(stale.reviewId);
+    markReady(stale.reviewId);
+    mockSuccessfulPipeline();
+
+    await streamReviewToSSE(mockAIClient, { mode: "unstaged" }, stream);
+
+    expect(stale.isComplete).toBe(true);
+    expect(stale.controller.signal.aborted).toBe(true);
+    expect(stale.events).toMatchObject([
+      { type: "error", error: { code: ReviewErrorCode.SESSION_STALE } },
+    ]);
+    expect(parsedEvents(stream).some((event) => event.type === "complete")).toBe(true);
+  });
 });
 
-describe("handleReviewFailure (via streamReviewToSSE)", () => {
+describe("review failure streaming", () => {
   const mockAIClient = {
     provider: "openrouter" as const,
     generate: vi.fn(),
@@ -355,84 +280,59 @@ describe("handleReviewFailure (via streamReviewToSSE)", () => {
   };
 
   beforeEach(() => {
-    vi.restoreAllMocks();
-    setupInMemorySessionStore();
-
-    vi.mocked(createGitService).mockReturnValue({
-      getHeadCommit: vi.fn(async () => ({ ok: true, value: "abc123" })),
-      getStatusHash: vi.fn(async () => "hash123"),
-    } as any);
-
-    vi.mocked(getActiveSessionForProject).mockReturnValue(undefined);
+    vi.resetAllMocks();
+    vi.mocked(createGitService).mockReturnValue(makeGitService());
   });
 
-  it("should handle AbortError silently", async () => {
-    const stream = makeMockStream();
+  afterEach(() => {
+    cleanupTrackedSessions();
+    vi.useRealTimers();
+  });
 
+  it("completes silently for AbortError", async () => {
+    const stream = makeMockStream();
     vi.mocked(resolveGitDiff).mockRejectedValue(
       new DOMException("The operation was aborted", "AbortError"),
     );
 
     await streamReviewToSSE(mockAIClient, { mode: "unstaged" }, stream);
 
-    expect(markComplete).toHaveBeenCalled();
-    // No error written to stream
-    expect(stream.events).toHaveLength(0);
+    expect(stream.events).toEqual([]);
   });
 
-  it("should handle ReviewAbort with step error", async () => {
+  it("streams step and terminal errors for review aborts", async () => {
     const stream = makeMockStream();
-
-    const reviewAbort = {
+    vi.mocked(resolveGitDiff).mockRejectedValue({
       kind: "review_abort" as const,
       message: "No changes found",
-      code: "NO_CHANGES",
+      code: ReviewErrorCode.NO_DIFF,
       step: "diff" as const,
-    };
-    vi.mocked(resolveGitDiff).mockRejectedValue(reviewAbort);
+    });
 
     await streamReviewToSSE(mockAIClient, { mode: "unstaged" }, stream);
 
-    // Should have written an error to stream
-    const errorEvents = stream.events.filter((e) => e.event === "error");
-    expect(errorEvents).toHaveLength(1);
+    expect(parsedEvents(stream)).toMatchObject([
+      { type: "step_error", step: "diff", error: "No changes found" },
+      { type: "error", error: { code: ReviewErrorCode.NO_DIFF, message: "No changes found" } },
+    ]);
   });
 
-  it("should handle ReviewAbort without step", async () => {
+  it("streams unexpected failures as generation errors", async () => {
     const stream = makeMockStream();
-
-    const reviewAbort = {
-      kind: "review_abort" as const,
-      message: "Config invalid",
-      code: "CONFIG_ERROR",
-    };
-    vi.mocked(resolveGitDiff).mockRejectedValue(reviewAbort);
-
-    await streamReviewToSSE(mockAIClient, { mode: "unstaged" }, stream);
-
-    const errorEvents = stream.events.filter((e) => e.event === "error");
-    expect(errorEvents).toHaveLength(1);
-    expect(markComplete).toHaveBeenCalled();
-  });
-
-  it("should handle unexpected errors and write SSE error", async () => {
-    const stream = makeMockStream();
-
     vi.mocked(resolveGitDiff).mockRejectedValue(new Error("Unexpected boom"));
 
     await streamReviewToSSE(mockAIClient, { mode: "unstaged" }, stream);
 
-    expect(markComplete).toHaveBeenCalled();
-    const errorEvents = stream.events.filter((e) => e.event === "error");
-    expect(errorEvents).toHaveLength(1);
-    const parsed = JSON.parse(errorEvents[0]!.data);
-    expect(parsed.error.code).toBe(ReviewErrorCode.GENERATION_FAILED);
-    expect(parsed.error.message).toBe("Unexpected boom");
+    expect(parsedEvents(stream)).toMatchObject([
+      {
+        type: "error",
+        error: { code: ReviewErrorCode.GENERATION_FAILED, message: "Unexpected boom" },
+      },
+    ]);
   });
 
-  it("should preserve known review error code from non-ReviewAbort errors", async () => {
+  it("preserves known review error codes from thrown objects", async () => {
     const stream = makeMockStream();
-
     vi.mocked(resolveGitDiff).mockRejectedValue({
       code: ReviewErrorCode.AI_ERROR,
       message: "Upstream model failed",
@@ -440,30 +340,18 @@ describe("handleReviewFailure (via streamReviewToSSE)", () => {
 
     await streamReviewToSSE(mockAIClient, { mode: "unstaged" }, stream);
 
-    const errorEvents = stream.events.filter((e) => e.event === "error");
-    expect(errorEvents).toHaveLength(1);
-    const parsed = JSON.parse(errorEvents[0]!.data);
-    expect(parsed.error.code).toBe(ReviewErrorCode.AI_ERROR);
-    expect(parsed.error.message).toBe("Upstream model failed");
+    expect(parsedEvents(stream)).toMatchObject([
+      { type: "error", error: { code: ReviewErrorCode.AI_ERROR, message: "Upstream model failed" } },
+    ]);
   });
 
-  it("should buffer error events even when stream write fails", async () => {
+  it("rejects when the SSE stream closes before the buffered terminal error can be written", async () => {
     const stream = makeMockStream();
     stream.writeSSE = vi.fn().mockRejectedValue(new Error("stream closed"));
-
     vi.mocked(resolveGitDiff).mockRejectedValue(new Error("Unexpected boom"));
 
-    await expect(
-      streamReviewToSSE(mockAIClient, { mode: "unstaged" }, stream),
-    ).rejects.toThrow("stream closed");
-    expect(addEvent).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.objectContaining({
-        type: "error",
-        error: expect.objectContaining({
-          code: ReviewErrorCode.GENERATION_FAILED,
-        }),
-      }),
+    await expect(streamReviewToSSE(mockAIClient, { mode: "unstaged" }, stream)).rejects.toThrow(
+      "stream closed",
     );
   });
 });

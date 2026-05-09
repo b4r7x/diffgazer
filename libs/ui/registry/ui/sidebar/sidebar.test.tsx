@@ -214,7 +214,7 @@ describe("SidebarSection collapsible", () => {
       <Sidebar.Provider>
         <Sidebar>
           <Sidebar.Content>
-            <Sidebar.Section data-testid="section">
+            <Sidebar.Section>
               <Sidebar.Item>Item</Sidebar.Item>
             </Sidebar.Section>
           </Sidebar.Content>
@@ -222,7 +222,7 @@ describe("SidebarSection collapsible", () => {
       </Sidebar.Provider>,
     )
 
-    expect(screen.getByTestId("section")).not.toHaveAttribute("aria-labelledby")
+    expect(screen.getByRole("group")).not.toHaveAttribute("aria-labelledby")
   })
 
   it("toggles section open/closed with aria-expanded", async () => {

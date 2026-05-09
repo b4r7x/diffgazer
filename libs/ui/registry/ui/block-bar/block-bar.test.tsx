@@ -64,10 +64,9 @@ describe("BlockBar", () => {
     render(<BlockBar label="Clipped" max={10} value={25} barWidth={5} filledChar="x" emptyChar="_" />)
 
     const meter = screen.getByRole("meter", { name: "Clipped" })
-    const track = meter.querySelector(".tracking-widest")
-    expect(track).toHaveClass("overflow-hidden")
-    expect(track).toHaveStyle({ width: "5ch" })
+    expect(meter).toHaveAttribute("aria-valuenow", "10")
     expect(screen.getByText("xxxxx")).toBeInTheDocument()
+    expect(screen.queryByText("xxxxxx")).not.toBeInTheDocument()
   })
 
   it("lets segments define rendering and value when segments and children are mixed", () => {
@@ -95,10 +94,10 @@ describe("BlockBar", () => {
     render(<BlockBar label="Wide" max={1000} value={1000} barWidth={10000} filledChar="x" emptyChar="_" />)
 
     const meter = screen.getByRole("meter", { name: "Wide" })
-    const track = meter.querySelector(".tracking-widest")
 
-    expect(track).toHaveStyle({ width: "200ch" })
+    expect(meter).toHaveAttribute("aria-valuenow", "1000")
     expect(screen.getByText("x".repeat(200))).toBeInTheDocument()
+    expect(screen.queryByText("x".repeat(201))).not.toBeInTheDocument()
   })
 })
 

@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, act, waitFor, screen, cleanup } from "@testing-library/react";
+import { render, waitFor, screen, cleanup } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createApi, type BoundApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
 import { useConfigData, useConfigActions, ConfigProvider } from "./config-provider";
 
@@ -37,39 +39,40 @@ function makeProviderStatus() {
   ];
 }
 
-function createMockApi(overrides: Record<string, ReturnType<typeof vi.fn>> = {}) {
+function createMockApi() {
+  const api = createApi({ baseUrl: "http://localhost" });
+
   return {
+    ...api,
     loadInit: vi.fn().mockResolvedValue(makeInitResponse()),
     getProviderStatus: vi.fn().mockResolvedValue(makeProviderStatus()),
     activateProvider: vi.fn().mockResolvedValue({ provider: "gemini", model: "gemini-2.5-pro" }),
     saveConfig: vi.fn().mockResolvedValue(undefined),
     deleteProviderCredentials: vi.fn().mockResolvedValue({ deleted: true }),
-    ...overrides,
-  } as any;
+  } satisfies BoundApi;
 }
 
-// Consumer component that exposes context values for assertions
 function ConfigConsumer() {
   const data = useConfigData();
   const actions = useConfigActions();
 
   return (
     <div>
-      <span data-testid="provider">{data.provider ?? "none"}</span>
-      <span data-testid="model">{data.model ?? "none"}</span>
-      <span data-testid="isConfigured">{String(data.isConfigured)}</span>
-      <span data-testid="isLoading">{String(actions.isLoading)}</span>
-      <span data-testid="isSaving">{String(actions.isSaving)}</span>
-      <span data-testid="error">{actions.error ?? "none"}</span>
-      <span data-testid="projectId">{data.projectId ?? "none"}</span>
-      <button data-testid="activate" onClick={() => actions.activateProvider("gemini", "gemini-2.5-pro")}>
-        activate
+      <p>Provider: {data.provider ?? "none"}</p>
+      <p>Model: {data.model ?? "none"}</p>
+      <p>Configured: {String(data.isConfigured)}</p>
+      <p>Loading: {String(actions.isLoading)}</p>
+      <p>Saving: {String(actions.isSaving)}</p>
+      <p>Error: {actions.error ?? "none"}</p>
+      <p>Project: {data.projectId ?? "none"}</p>
+      <button type="button" onClick={() => actions.activateProvider("gemini", "gemini-2.5-pro")}>
+        Activate Gemini
       </button>
-      <button data-testid="save" onClick={() => actions.saveCredentials("gemini", "sk-key", "gemini-2.5-flash")}>
-        save
+      <button type="button" onClick={() => actions.saveCredentials("gemini", "sk-key", "gemini-2.5-flash")}>
+        Save Gemini credentials
       </button>
-      <button data-testid="delete" onClick={() => actions.deleteProviderCredentials("gemini")}>
-        delete
+      <button type="button" onClick={() => actions.deleteProviderCredentials("gemini")}>
+        Delete Gemini credentials
       </button>
     </div>
   );
@@ -106,27 +109,26 @@ describe("ConfigProvider", () => {
     queryClient.clear();
   });
 
-  it("should fetch config on initial mount", async () => {
+  it("shows initial config after loading", async () => {
     renderWithProvider();
 
     await waitFor(() => {
-      expect(screen.getByTestId("isLoading").textContent).toBe("false");
+      expect(screen.getByText("Loading: false")).toBeInTheDocument();
     });
 
-    expect(mockApi.loadInit).toHaveBeenCalledOnce();
-    expect(screen.getByTestId("provider").textContent).toBe("gemini");
-    expect(screen.getByTestId("model").textContent).toBe("gemini-2.5-flash");
-    expect(screen.getByTestId("projectId").textContent).toBe("proj-1");
+    expect(screen.getByText("Provider: gemini")).toBeInTheDocument();
+    expect(screen.getByText("Model: gemini-2.5-flash")).toBeInTheDocument();
+    expect(screen.getByText("Project: proj-1")).toBeInTheDocument();
   });
 
   it("should set isConfigured=true when setup status says configured", async () => {
     renderWithProvider();
 
     await waitFor(() => {
-      expect(screen.getByTestId("isLoading").textContent).toBe("false");
+      expect(screen.getByText("Loading: false")).toBeInTheDocument();
     });
 
-    expect(screen.getByTestId("isConfigured").textContent).toBe("true");
+    expect(screen.getByText("Configured: true")).toBeInTheDocument();
   });
 
   it("should set isConfigured=false when no provider configured", async () => {
@@ -140,11 +142,11 @@ describe("ConfigProvider", () => {
     renderWithProvider();
 
     await waitFor(() => {
-      expect(screen.getByTestId("isLoading").textContent).toBe("false");
+      expect(screen.getByText("Loading: false")).toBeInTheDocument();
     });
 
-    expect(screen.getByTestId("isConfigured").textContent).toBe("false");
-    expect(screen.getByTestId("provider").textContent).toBe("none");
+    expect(screen.getByText("Configured: false")).toBeInTheDocument();
+    expect(screen.getByText("Provider: none")).toBeInTheDocument();
   });
 
   it("should set error when loadInit fails", async () => {
@@ -153,10 +155,10 @@ describe("ConfigProvider", () => {
     renderWithProvider();
 
     await waitFor(() => {
-      expect(screen.getByTestId("isLoading").textContent).toBe("false");
+      expect(screen.getByText("Loading: false")).toBeInTheDocument();
     });
 
-    expect(screen.getByTestId("error").textContent).toBe("Server down");
+    expect(screen.getByText("Error: Server down")).toBeInTheDocument();
   });
 
   it("should show loading state initially", async () => {
@@ -165,40 +167,56 @@ describe("ConfigProvider", () => {
 
     renderWithProvider();
 
-    expect(screen.getByTestId("isLoading").textContent).toBe("true");
+    expect(screen.getByText("Loading: true")).toBeInTheDocument();
   });
 
-  it("should call activateProvider and refresh state", async () => {
+  it("shows the refreshed active model after activating a provider", async () => {
+    const user = userEvent.setup();
+    mockApi.loadInit
+      .mockResolvedValueOnce(makeInitResponse())
+      .mockResolvedValueOnce(
+        makeInitResponse({
+          config: { provider: "gemini", model: "gemini-2.5-pro" },
+        }),
+      );
+
     renderWithProvider();
 
     await waitFor(() => {
-      expect(screen.getByTestId("isLoading").textContent).toBe("false");
+      expect(screen.getByText("Loading: false")).toBeInTheDocument();
     });
 
-    await act(async () => {
-      screen.getByTestId("activate").click();
-    });
+    await user.click(screen.getByRole("button", { name: /activate gemini/i }));
 
     await waitFor(() => {
-      expect(screen.getByTestId("isSaving").textContent).toBe("false");
+      expect(screen.getByText("Model: gemini-2.5-pro")).toBeInTheDocument();
     });
 
     expect(mockApi.activateProvider).toHaveBeenCalledWith("gemini", "gemini-2.5-pro");
   });
 
-  it("should call saveConfig and refresh state on saveCredentials", async () => {
+  it("shows the saved provider state after saving credentials", async () => {
+    const user = userEvent.setup();
+    mockApi.loadInit
+      .mockResolvedValueOnce(
+        makeInitResponse({
+          config: null,
+          setup: makeSetupStatus({ isConfigured: false, hasProvider: false, hasModel: false }),
+        }),
+      )
+      .mockResolvedValueOnce(makeInitResponse());
+
     renderWithProvider();
 
     await waitFor(() => {
-      expect(screen.getByTestId("isLoading").textContent).toBe("false");
+      expect(screen.getByText("Loading: false")).toBeInTheDocument();
     });
+    expect(screen.getByText("Provider: none")).toBeInTheDocument();
 
-    await act(async () => {
-      screen.getByTestId("save").click();
-    });
+    await user.click(screen.getByRole("button", { name: /save gemini credentials/i }));
 
     await waitFor(() => {
-      expect(screen.getByTestId("isSaving").textContent).toBe("false");
+      expect(screen.getByText("Provider: gemini")).toBeInTheDocument();
     });
 
     expect(mockApi.saveConfig).toHaveBeenCalledWith({
@@ -206,44 +224,52 @@ describe("ConfigProvider", () => {
       apiKey: "sk-key",
       model: "gemini-2.5-flash",
     });
+    expect(screen.getByText("Configured: true")).toBeInTheDocument();
   });
 
-  it("should call deleteProviderCredentials and refresh state", async () => {
+  it("shows the cleared provider state after deleting credentials", async () => {
+    const user = userEvent.setup();
+    mockApi.loadInit
+      .mockResolvedValueOnce(makeInitResponse())
+      .mockResolvedValueOnce(
+        makeInitResponse({
+          config: null,
+          providers: [{ provider: "gemini", hasApiKey: false, isActive: false }],
+          setup: makeSetupStatus({ isConfigured: false, hasProvider: false, hasModel: false }),
+        }),
+      );
+
     renderWithProvider();
 
     await waitFor(() => {
-      expect(screen.getByTestId("isLoading").textContent).toBe("false");
+      expect(screen.getByText("Loading: false")).toBeInTheDocument();
     });
 
-    await act(async () => {
-      screen.getByTestId("delete").click();
-    });
+    await user.click(screen.getByRole("button", { name: /delete gemini credentials/i }));
 
     await waitFor(() => {
-      expect(screen.getByTestId("isSaving").textContent).toBe("false");
+      expect(screen.getByText("Provider: none")).toBeInTheDocument();
     });
 
     expect(mockApi.deleteProviderCredentials).toHaveBeenCalledWith("gemini");
+    expect(screen.getByText("Configured: false")).toBeInTheDocument();
   });
 
   it("should set error when activateProvider fails", async () => {
+    const user = userEvent.setup();
     mockApi.activateProvider.mockRejectedValue(new Error("Activation failed"));
 
     renderWithProvider();
 
     await waitFor(() => {
-      expect(screen.getByTestId("isLoading").textContent).toBe("false");
+      expect(screen.getByText("Loading: false")).toBeInTheDocument();
     });
 
-    await act(async () => {
-      screen.getByTestId("activate").click();
-    });
+    await user.click(screen.getByRole("button", { name: /activate gemini/i }));
 
     await waitFor(() => {
-      expect(screen.getByTestId("isSaving").textContent).toBe("false");
+      expect(screen.getByText("Error: Activation failed")).toBeInTheDocument();
     });
-
-    expect(screen.getByTestId("error").textContent).toBe("Activation failed");
   });
 
   it("should throw when useConfigData is used outside provider", () => {
