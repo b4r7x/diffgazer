@@ -1,4 +1,5 @@
 import { cn } from "@diffgazer/core/cn";
+import { Checkbox } from "@diffgazer/ui/components/checkbox";
 import type { FixPlanStep } from "@diffgazer/core/schemas/review";
 
 export interface FixPlanChecklistProps {
@@ -14,18 +15,14 @@ export function FixPlanChecklist({ steps, completedSteps, onToggle, className }:
       {steps.map((step) => {
         const isComplete = completedSteps.has(step.step);
         return (
-          <button
-            type="button"
+          <Checkbox
             key={step.step}
-            className="flex gap-2 cursor-pointer w-full text-left"
-            onClick={() => onToggle(step.step)}
-            aria-pressed={isComplete}
-          >
-            <span className={isComplete ? "text-tui-green" : "text-tui-fg"} aria-hidden="true">
-              [{isComplete ? "x" : " "}]
-            </span>
-            <span className={isComplete ? "text-tui-muted line-through" : ""}>{step.action}</span>
-          </button>
+            checked={isComplete}
+            onChange={() => onToggle(step.step)}
+            label={step.action}
+            strikethrough
+            className="w-full"
+          />
         );
       })}
     </div>

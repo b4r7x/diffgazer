@@ -18,5 +18,8 @@ tmp/
 **/dist/
 **/.output/
 **/.turbo/
+/cli/add/src/generated/
+/libs/keys/docs/generated/
+/libs/ui/docs/generated/
 *.tgz
 *.tsbuildinfo

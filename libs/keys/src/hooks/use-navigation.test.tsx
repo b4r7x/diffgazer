@@ -54,7 +54,7 @@ describe("useNavigation", () => {
     cleanup();
   });
 
-  it("navigates with arrow keys, wraps by default, and calls onBoundaryReached when wrap is false", () => {
+  it("navigates with arrow keys, wraps by default, and calls boundary callbacks when wrap is false", () => {
     render(<TestList initialValue="a" />);
     const container = screen.getByTestId("list");
 
@@ -72,20 +72,24 @@ describe("useNavigation", () => {
 
     // wrap: false — stays at boundary and fires callback
     cleanup();
-    const onBoundaryReached = vi.fn();
+    const onNavigationBoundaryReached = vi.fn();
     render(
-      <TestList initialValue="c" wrap={false} onBoundaryReached={onBoundaryReached} />,
+      <TestList
+        initialValue="c"
+        wrap={false}
+        onNavigationBoundaryReached={onNavigationBoundaryReached}
+      />,
     );
 
     const container2 = screen.getByTestId("list");
     act(() => fireKeyOnElement(container2, "ArrowDown"));
-    expect(onBoundaryReached).toHaveBeenCalledWith("down");
+    expect(onNavigationBoundaryReached).toHaveBeenCalledWith("next");
     expect(getFocused()).toBe("c");
 
     act(() => fireKeyOnElement(container2, "ArrowUp"));
     act(() => fireKeyOnElement(container2, "ArrowUp"));
     act(() => fireKeyOnElement(container2, "ArrowUp"));
-    expect(onBoundaryReached).toHaveBeenCalledWith("up");
+    expect(onNavigationBoundaryReached).toHaveBeenCalledWith("previous");
     expect(getFocused()).toBe("a");
   });
 
@@ -163,8 +167,170 @@ describe("useNavigation", () => {
     expect(getFocused()).toBe("b");
   });
 
+  it("does not treat nested data-value descendants as button navigation items", () => {
+    function ButtonList() {
+      const ref = useRef<HTMLDivElement>(null);
+      const result = useNavigation({
+        containerRef: ref,
+        role: "button",
+        initialValue: "one",
+        moveFocus: true,
+      });
+
+      return (
+        <div ref={ref} data-testid="list" onKeyDown={onKeyDownProp(result.onKeyDown)}>
+          <button data-value="one" type="button">
+            One <span data-value="nested">nested</span>
+          </button>
+          <button data-value="two" type="button">Two</button>
+          <span data-testid="focused">{result.highlighted ?? ""}</span>
+        </div>
+      );
+    }
+
+    render(<ButtonList />);
+    const container = screen.getByTestId("list");
+
+    act(() => fireKeyOnElement(container, "ArrowDown"));
+    expect(getFocused()).toBe("two");
+  });
+
+  it("can scope button navigation to a group owner", () => {
+    function NestedButtonGroups() {
+      const ref = useRef<HTMLDivElement>(null);
+      const result = useNavigation({
+        containerRef: ref,
+        role: "button",
+        initialValue: "outer-a",
+        ownerSelector: '[role="group"]',
+      });
+
+      return (
+        <div ref={ref} role="group" data-testid="list" onKeyDown={onKeyDownProp(result.onKeyDown)}>
+          <button type="button" data-value="outer-a">Outer A</button>
+          <div role="group" aria-label="Nested">
+            <button type="button" data-value="inner-a">Inner A</button>
+          </div>
+          <button type="button" data-value="outer-b">Outer B</button>
+          <span data-testid="focused">{result.highlighted ?? ""}</span>
+        </div>
+      );
+    }
+
+    render(<NestedButtonGroups />);
+    const container = screen.getByTestId("list");
+
+    act(() => fireKeyOnElement(container, "ArrowDown"));
+    expect(getFocused()).toBe("outer-b");
+  });
+
+  it("filters nested owner containers by default while preserving native data-value fallback", () => {
+    function NativeRadioGroups({ scopeToContainer }: { scopeToContainer?: boolean }) {
+      const ref = useRef<HTMLDivElement>(null);
+      const result = useNavigation({
+        containerRef: ref,
+        role: "radio",
+        initialValue: "outer-a",
+        scopeToContainer,
+      });
+
+      return (
+        <div
+          ref={ref}
+          role="radiogroup"
+          data-testid="list"
+          onKeyDown={onKeyDownProp(result.onKeyDown)}
+        >
+          <label>
+            <input type="radio" data-value="outer-a" />
+            Outer A
+          </label>
+          <div role="radiogroup" aria-label="Nested choices">
+            <label>
+              <input type="radio" data-value="inner-a" />
+              Inner A
+            </label>
+          </div>
+          <label>
+            <input type="radio" data-value="outer-b" />
+            Outer B
+          </label>
+          <span data-testid="focused">{result.highlighted ?? ""}</span>
+        </div>
+      );
+    }
+
+    render(<NativeRadioGroups />);
+    const defaultContainer = screen.getByTestId("list");
+    act(() => fireKeyOnElement(defaultContainer, "ArrowDown"));
+    expect(getFocused()).toBe("outer-b");
+
+    cleanup();
+    render(<NativeRadioGroups scopeToContainer={false} />);
+    const unscopedContainer = screen.getByTestId("list");
+    act(() => fireKeyOnElement(unscopedContainer, "ArrowDown"));
+    expect(getFocused()).toBe("inner-a");
+  });
+
+  it("keeps grouped listbox options navigable while filtering nested listboxes", () => {
+    function GroupedListbox() {
+      const ref = useRef<HTMLDivElement>(null);
+      const result = useNavigation({
+        containerRef: ref,
+        role: "option",
+        initialValue: "copy",
+        scopeToContainer: true,
+      });
+
+      return (
+        <div
+          ref={ref}
+          role="listbox"
+          data-testid="list"
+          onKeyDown={onKeyDownProp(result.onKeyDown)}
+        >
+          <div role="group" aria-label="Actions">
+            <div role="option" data-value="copy" />
+            <div role="option" data-value="paste" />
+          </div>
+          <div role="listbox" aria-label="Nested">
+            <div role="option" data-value="nested" />
+          </div>
+          <div role="option" data-value="delete" />
+          <span data-testid="focused">{result.highlighted ?? ""}</span>
+        </div>
+      );
+    }
+
+    render(<GroupedListbox />);
+    const container = screen.getByTestId("list");
+
+    act(() => fireKeyOnElement(container, "ArrowDown"));
+    expect(getFocused()).toBe("paste");
+
+    act(() => fireKeyOnElement(container, "ArrowDown"));
+    expect(getFocused()).toBe("delete");
+  });
+
   it("supports menuitemradio navigation roles", () => {
-    render(<TestList role="menuitemradio" initialValue="a" />);
+    function MenuRadioList() {
+      const ref = useRef<HTMLDivElement>(null);
+      const result = useNavigation({
+        containerRef: ref,
+        role: "menuitemradio",
+        initialValue: "a",
+      });
+
+      return (
+        <div ref={ref} role="menu" data-testid="list" onKeyDown={onKeyDownProp(result.onKeyDown)}>
+          <div role="menuitemradio" data-value="a" />
+          <div role="menuitemradio" data-value="b" />
+          <span data-testid="focused">{result.highlighted ?? ""}</span>
+        </div>
+      );
+    }
+
+    render(<MenuRadioList />);
     const container = screen.getByTestId("list");
 
     act(() => fireKeyOnElement(container, "ArrowDown"));
@@ -193,6 +359,41 @@ describe("useNavigation", () => {
     const container2 = screen.getByTestId("list");
     act(() => fireKeyOnElement(container2, "Enter"));
     expect(onSelectOnly).toHaveBeenCalledWith("b", expect.any(KeyboardEvent));
+  });
+
+  it("activates the focused DOM item before the stored highlight", () => {
+    const onSelect = vi.fn();
+    const onEnter = vi.fn();
+
+    function FocusedActionList() {
+      const ref = useRef<HTMLDivElement>(null);
+      const result = useNavigation({
+        containerRef: ref,
+        role: "button",
+        initialValue: "a",
+        onSelect,
+        onEnter,
+      });
+
+      return (
+        <div ref={ref} data-testid="list" onKeyDown={onKeyDownProp(result.onKeyDown)}>
+          <button type="button" data-value="a">A</button>
+          <button type="button" data-value="b">B</button>
+          <span data-testid="focused">{result.highlighted ?? ""}</span>
+        </div>
+      );
+    }
+
+    render(<FocusedActionList />);
+    const container = screen.getByTestId("list");
+    screen.getByRole("button", { name: "B" }).focus();
+
+    act(() => fireKeyOnElement(container, " "));
+    expect(onSelect).toHaveBeenCalledWith("b", expect.any(KeyboardEvent));
+
+    act(() => fireKeyOnElement(container, "Enter"));
+    expect(onEnter).toHaveBeenCalledWith("b", expect.any(KeyboardEvent));
+    expect(getFocused()).toBe("a");
   });
 
   it("supports empty string item values for highlight and selection", () => {

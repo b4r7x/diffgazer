@@ -13,8 +13,6 @@ interface SelectBaseProps extends Omit<ComponentPropsWithoutRef<"div">, "default
   defaultOpen?: boolean;
   highlighted?: string | null;
   onHighlightChange?: (value: string | null) => void;
-  /** @deprecated Use `onHighlightChange` for controlled highlight updates. */
-  onHighlight?: (value: string | null) => void;
   disabled?: boolean;
   variant?: "default" | "card";
   /** Sets the width of the Select container. "full" fills the parent. */
@@ -30,8 +28,6 @@ interface SelectBaseProps extends Omit<ComponentPropsWithoutRef<"div">, "default
 interface SelectSingleProps extends SelectBaseProps {
   multiple?: false;
   value?: string;
-  onValueChange?: (value: string) => void;
-  /** @deprecated Use `onValueChange` for controlled value updates. */
   onChange?: (value: string) => void;
   defaultValue?: string;
 }
@@ -39,8 +35,6 @@ interface SelectSingleProps extends SelectBaseProps {
 interface SelectMultipleProps extends SelectBaseProps {
   multiple: true;
   value?: string[];
-  onValueChange?: (value: string[]) => void;
-  /** @deprecated Use `onValueChange` for controlled value updates. */
   onChange?: (value: string[]) => void;
   defaultValue?: string[];
 }
@@ -60,12 +54,10 @@ export function Select(props: SelectProps) {
     onOpenChange,
     defaultOpen,
     value,
-    onValueChange,
     onChange,
     defaultValue,
     highlighted,
     onHighlightChange,
-    onHighlight,
     multiple,
     disabled = false,
     variant = "default",
@@ -83,21 +75,19 @@ export function Select(props: SelectProps) {
   const highlightedControlled = "highlighted" in props;
   const options = useMemo(() => collectSelectOptions(children), [children]);
 
-  const stateOptions = props.multiple
+  const stateOptions = multiple
     ? {
         open,
         openControlled,
         onOpenChange,
         defaultOpen,
-        value: props.value,
+        value: value as string[] | undefined,
         valueControlled,
-        onValueChange: props.onValueChange,
-        onChange: props.onChange,
-        defaultValue: props.defaultValue,
+        onChange: onChange as ((value: string[]) => void) | undefined,
+        defaultValue: defaultValue as string[] | undefined,
         highlighted,
         highlightedControlled,
         onHighlightChange,
-        onHighlight,
         multiple: true as const,
         disabled,
         variant,
@@ -110,15 +100,13 @@ export function Select(props: SelectProps) {
         openControlled,
         onOpenChange,
         defaultOpen,
-        value: props.value,
+        value: value as string | undefined,
         valueControlled,
-        onValueChange: props.onValueChange,
-        onChange: props.onChange,
-        defaultValue: props.defaultValue,
+        onChange: onChange as ((value: string) => void) | undefined,
+        defaultValue: defaultValue as string | undefined,
         highlighted,
         highlightedControlled,
         onHighlightChange,
-        onHighlight,
         multiple: false as const,
         disabled,
         variant,

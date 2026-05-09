@@ -20,6 +20,7 @@ export function ReviewResultsView({ issues, reviewId }: ReviewResultsViewProps) 
     setSeverityFilter,
     focusZone,
     focusedFilterIndex,
+    setFocusedFilterIndex,
     focusedValue,
     listRef,
     detailsScrollRef,
@@ -45,6 +46,7 @@ export function ReviewResultsView({ issues, reviewId }: ReviewResultsViewProps) 
           isFocused={focusZone === "list"}
           isFilterFocused={focusZone === "filters"}
           focusedFilterIndex={focusedFilterIndex}
+          onFocusedFilterIndexChange={setFocusedFilterIndex}
           focusedValue={focusedValue}
           listRef={listRef}
         />

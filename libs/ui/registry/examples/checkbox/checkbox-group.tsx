@@ -9,7 +9,7 @@ export default function CheckboxGroupDemo() {
   return (
     <CheckboxGroup
       value={value}
-      onValueChange={setValue}
+      onChange={setValue}
     >
       <CheckboxItem value="typescript" label="TypeScript" />
       <CheckboxItem value="react" label="React" />

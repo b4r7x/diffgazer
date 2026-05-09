@@ -456,8 +456,11 @@ try {
 
   const dgadd = `node ${JSON.stringify(resolve(root, "cli/add/dist/index.js"))}`;
   run(`${dgadd} init --cwd ${JSON.stringify(fixture)} --yes --skip-install`);
-  run(`${dgadd} add ui/button ui/dialog ui/select ui/form-reset keys/navigation --cwd ${JSON.stringify(fixture)} --yes --skip-install`);
+  run(`${dgadd} add ui/button ui/dialog ui/select ui/checkbox ui/radio ui/toggle-group ui/form-reset keys/navigation --cwd ${JSON.stringify(fixture)} --yes --skip-install`);
   assertCopyFirstCssInstall(fixture);
+  if (!existsSync(join(fixture, "src/lib/selectable-collection.ts"))) {
+    throw new Error("selectable-collection helper was not copied for selectable UI components");
+  }
   writeCopyFirstApp(fixture);
   run(`${dgadd} list --installed --json --cwd ${JSON.stringify(fixture)}`);
   run(`${dgadd} diff --cwd ${JSON.stringify(fixture)}`);

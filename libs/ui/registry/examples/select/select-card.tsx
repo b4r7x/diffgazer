@@ -12,7 +12,7 @@ export default function SelectCard() {
   const [value, setValue] = useState<string[]>(["svelte"])
   return (
     <div className="w-72">
-      <Select multiple variant="card" value={value} onValueChange={setValue}>
+      <Select multiple variant="card" value={value} onChange={setValue}>
         <SelectTrigger>
           <span>Choose Framework</span>
         </SelectTrigger>

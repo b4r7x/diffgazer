@@ -9,7 +9,7 @@ export default function RadioGroupDefault() {
   return (
     <RadioGroup
       value={value}
-      onValueChange={setValue}
+      onChange={setValue}
       label="Framework"
     >
       <RadioGroupItem value="react" label="React" />

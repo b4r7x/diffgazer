@@ -79,16 +79,16 @@ The following components expose keyboard integration points:
 |---|---|
 | `Menu` | `onKeyDown`, `highlightedId`, `onHighlightChange`, `selectedId`, `onSelect` |
 | `NavigationList` | `onKeyDown`, `highlightedId`, `onHighlightChange`, `focused`, `selectedId`, `onSelect` |
-| `CheckboxGroup` | `onKeyDown`, `highlighted`, `onHighlightChange`, `onValueChange` |
-| `RadioGroup` | `onKeyDown`, `highlighted`, `onHighlightChange`, `onValueChange`, `orientation` |
-| `ToggleGroup` | `onKeyDown`, `highlighted`, `onHighlightChange`, `onValueChange` |
-| `TabsList` + `Tabs` | `onKeyDown` (TabsList) + controlled `value`/`onValueChange` (Tabs) |
+| `CheckboxGroup` | `onKeyDown`, `highlighted`, `onHighlightChange`, `onChange` |
+| `RadioGroup` | `onKeyDown`, `highlighted`, `onHighlightChange`, `onChange`, `orientation` |
+| `ToggleGroup` | `onKeyDown`, `highlighted`, `onHighlightChange`, `onChange` |
+| `TabsList` + `Tabs` | `onKeyDown` (TabsList) + controlled `value`/`onChange` (Tabs) |
 | `Select` + `SelectContent` | controlled `highlighted`/`onHighlightChange` + `onKeyDown` on content |
 | `CommandPalette` stack | controlled `highlightedId`/`onHighlightChange` + `onKeyDown` on input |
 
 - **highlight state / `highlightedId`** -- controls which item appears highlighted
 - **`onKeyDown`** -- receives keyboard events for app-level handlers
-- **`selectedId`** -- the currently selected item; for `CommandPalette`, use `highlightedId` because `selectedId` is only a deprecated highlight-state alias
+- **`selectedId`** -- the currently selected item; for `CommandPalette`, use `highlightedId` because command palettes track highlight rather than selection
 - **`onSelect`** -- called when an item is selected (via click or Enter/Space)
 - **`focused`** (NavigationList only) -- whether item highlight visuals are shown while the list is active
 

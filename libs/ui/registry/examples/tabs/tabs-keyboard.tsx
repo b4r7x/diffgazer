@@ -26,7 +26,7 @@ export default function TabsKeyboard() {
 
   return (
     <div ref={containerRef} onKeyDown={onKeyDown}>
-      <Tabs value={value} onValueChange={setValue}>
+      <Tabs value={value} onChange={setValue}>
         <TabsList>
           {sections.map((s) => (
             <TabsTrigger key={s.value} value={s.value}>{s.label}</TabsTrigger>

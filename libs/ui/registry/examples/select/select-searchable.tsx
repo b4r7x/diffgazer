@@ -17,7 +17,7 @@ export default function SelectSearchable() {
     <div className="w-64">
       <Select
         value={value}
-        onValueChange={setValue}
+        onChange={setValue}
       >
         <SelectTrigger>
           <SelectValue placeholder="Search commands..." />

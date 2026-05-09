@@ -8,13 +8,13 @@ Think of an IDE layout. Enter in the file sidebar opens a file. Enter in the edi
 
 ## Basic setup
 
-Define your zones as a union type, list them out, set up transitions, and use `forZone` to scope your key handlers.
+Define your zones as a union type, list them out, set up transitions, and use `getKeyOptions` to scope your key handlers.
 
 ```tsx
 type Zone = "sidebar" | "content" | "preview";
 
 function ThreePanelLayout() {
-  const { zone, forZone, inZone } = useFocusZone<Zone>({
+  const { zone, getKeyOptions, isZone } = useFocusZone<Zone>({
     initial: "sidebar",
     zones: ["sidebar", "content", "preview"],
     transitions: ({ zone, key }) => {
@@ -32,51 +32,51 @@ function ThreePanelLayout() {
   });
 
   // Each useKey only fires when its zone is active
-  useKey("Enter", () => openFile(), forZone("sidebar"));
-  useKey("Enter", () => editLine(), forZone("content"));
-  useKey("Enter", () => runPreview(), forZone("preview"));
+  useKey("Enter", () => openFile(), getKeyOptions("sidebar"));
+  useKey("Enter", () => editLine(), getKeyOptions("content"));
+  useKey("Enter", () => runPreview(), getKeyOptions("preview"));
 
   return (
     <div>
-      <Sidebar active={inZone("sidebar")} />
-      <Content active={inZone("content")} />
-      <Preview active={inZone("preview")} />
+      <Sidebar active={isZone("sidebar")} />
+      <Content active={isZone("content")} />
+      <Preview active={isZone("preview")} />
     </div>
   );
 }
 ```
 
-## forZone + useKey pattern
+## getKeyOptions + useKey pattern
 
-`forZone` returns a `UseKeyOptions` object that you pass directly as the options argument to `useKey`. Its job is simple: set `enabled` to `true` only when the current zone matches the target.
+`getKeyOptions` returns a `UseKeyOptions` object that you pass directly as the options argument to `useKey`. Its job is simple: set `enabled` to `true` only when the current zone matches the requested zone.
 
 ```ts
-forZone("sidebar")
+getKeyOptions("sidebar")
 // returns: { enabled: true }   -- when zone is "sidebar"
 // returns: { enabled: false }  -- when zone is anything else
 ```
 
-You can pass extra options as the second argument. `forZone` spreads them and ANDs the `enabled` values:
+You can pass extra options as the second argument. `getKeyOptions` spreads them and ANDs the `enabled` values:
 
 ```ts
-forZone("sidebar", { preventDefault: true, enabled: isOpen })
+getKeyOptions("sidebar", { preventDefault: true, enabled: isOpen })
 // returns: { preventDefault: true, enabled: zone === "sidebar" && isOpen }
 ```
 
 This means you can compose conditions naturally:
 
 ```tsx
-useKey("Enter", handleOpen, forZone("sidebar", { enabled: hasSelection }));
+useKey("Enter", handleOpen, getKeyOptions("sidebar", { enabled: hasSelection }));
 // Enter only fires when: in sidebar zone AND hasSelection is true
 ```
 
-Without `forZone`, you'd write:
+Without `getKeyOptions`, you'd write:
 
 ```tsx
 useKey("Enter", handleOpen, { enabled: zone === "sidebar" && hasSelection });
 ```
 
-Same result, but `forZone` reads better when you have many zone-scoped handlers and it's less error-prone when zones are referenced across multiple hooks.
+Same result, but `getKeyOptions` reads better when you have many zone-scoped handlers and it's less error-prone when zones are referenced across multiple hooks.
 
 ## Transitions
 
@@ -129,7 +129,7 @@ By default, `useFocusZone` manages the active zone internally. Pass `zone` to co
 ```tsx
 const [activeZone, setActiveZone] = useState<Zone>("sidebar");
 
-const { forZone, inZone } = useFocusZone<Zone>({
+const { getKeyOptions, isZone } = useFocusZone<Zone>({
   initial: "sidebar", // still needed as a type hint, but zone prop takes precedence
   zones: ["sidebar", "content", "preview"],
   zone: activeZone,
@@ -186,7 +186,7 @@ If `scope` is omitted, no scope is pushed.
 
 ## Edge cases
 
-**Invalid initial zone**: If `initial` isn't in the `zones` array, you get a `console.error` in development and the hook falls back to `zones[0]`.
+**Invalid initial zone**: If `initial` isn't in the `zones` array, the hook falls back to `zones[0]`.
 
 **Single zone**: Works fine. Transitions and tab cycling become no-ops since there's nowhere to go.
 
@@ -194,8 +194,8 @@ If `scope` is omitted, no scope is pushed.
 
 **Empty tabCycle**: Tab/Shift+Tab handlers are only registered when `tabCycle` is provided and non-empty.
 
-**`inZone` with multiple arguments**: `inZone("sidebar", "content")` returns true if the current zone is either sidebar or content. Useful for shared UI state:
+**`isZone` with multiple arguments**: `isZone("sidebar", "content")` returns true if the current zone is either sidebar or content. Useful for shared UI state:
 
 ```tsx
-const showEditor = inZone("content", "preview");
+const showEditor = isZone("content", "preview");
 ```

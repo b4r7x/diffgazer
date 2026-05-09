@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "prepare:generated": "node ./scripts/sync-artifacts.mjs",
+    "prepare:generated": "node ./scripts/prepare-generated.mjs",
     "predev": "pnpm prepare:generated",
     "dev": "vite dev",
     "prebuild": "pnpm prepare:generated",

@@ -1,9 +1,9 @@
 import { type ReactNode } from 'react';
 import { cn } from '@diffgazer/core/cn';
+import { Stepper } from "@diffgazer/ui/components/stepper";
 import { ProgressStep } from './progress-step';
 import type { ProgressStepData as BaseProgressStepData } from '@diffgazer/core/schemas/ui';
 
-// Extend with ReactNode content for runtime use
 export interface ProgressStepData extends BaseProgressStepData {
   content?: ReactNode;
 }
@@ -21,8 +21,17 @@ export function ProgressList({
   onToggle,
   className,
 }: ProgressListProps) {
+  const handleExpandedChange = (nextExpandedIds: string[]) => {
+    const toggled = steps.find((step) => expandedIds.includes(step.id) !== nextExpandedIds.includes(step.id));
+    if (toggled) onToggle?.(toggled.id);
+  };
+
   return (
-    <div className={cn('space-y-4', className)}>
+    <Stepper
+      expandedIds={expandedIds}
+      onExpandedChange={handleExpandedChange}
+      className={cn('space-y-4', className)}
+    >
       {steps.map((step) => (
         <ProgressStep
           key={step.id}
@@ -30,13 +39,10 @@ export function ProgressList({
           label={step.label}
           status={step.status}
           substeps={step.substeps}
-          isExpanded={expandedIds.includes(step.id)}
-          onToggle={onToggle}
         >
           {step.content}
         </ProgressStep>
       ))}
-    </div>
+    </Stepper>
   );
 }
-

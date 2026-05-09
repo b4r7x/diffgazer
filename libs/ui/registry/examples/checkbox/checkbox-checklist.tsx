@@ -7,7 +7,7 @@ export default function CheckboxChecklist() {
   const [value, setValue] = useState(["setup", "tailwind"])
 
   return (
-    <Checkbox.Group value={value} onValueChange={setValue} strikethrough>
+    <Checkbox.Group value={value} onChange={setValue} strikethrough>
       <Checkbox.Item value="setup" label="Set up project structure" />
       <Checkbox.Item value="typescript" label="Configure TypeScript" />
       <Checkbox.Item value="tailwind" label="Add Tailwind CSS" />

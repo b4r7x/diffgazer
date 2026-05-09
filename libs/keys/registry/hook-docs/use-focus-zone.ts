@@ -5,7 +5,7 @@ export const useFocusZoneDoc: HookDoc = {
     "Manage focus across multiple zones with arrow key and Tab transitions. Supports controlled and uncontrolled zone state.",
   usage: {
     code: [
-      `const { zone, inZone, forZone } = useFocusZone({`,
+      `const { zone, isZone, getKeyOptions } = useFocusZone({`,
       `  initial: "sidebar",`,
       `  zones: ["sidebar", "main", "footer"] as const,`,
       `})`,
@@ -71,6 +71,33 @@ export const useFocusZoneDoc: HookDoc = {
       description: "Keyboard scope name to push while the focus zone is active.",
     },
     {
+      name: "containerRef",
+      type: "RefObject<HTMLElement | null>",
+      required: false,
+      description:
+        "Optional DOM subtree used to scope registered focus-zone keys.",
+    },
+    {
+      name: "focusWithinOnly",
+      type: "boolean",
+      required: false,
+      description:
+        "When true, focus-zone keys only run while focus is inside containerRef.",
+    },
+    {
+      name: "allowInInput",
+      type: "boolean",
+      required: false,
+      description: "Whether focus-zone keys may run when an input-like element has focus.",
+    },
+    {
+      name: "preventDefault",
+      type: "boolean",
+      required: false,
+      description:
+        "Default preventDefault behavior inherited by transition keys and getKeyOptions helpers.",
+    },
+    {
       name: "enabled",
       type: "boolean",
       required: false,
@@ -96,22 +123,22 @@ export const useFocusZoneDoc: HookDoc = {
         description: "Imperatively set the active zone.",
       },
       {
-        name: "inZone",
+        name: "isZone",
         type: "(...zones: T[]) => boolean",
         required: true,
         description:
           "Returns true if the current zone matches any of the provided zones.",
       },
       {
-        name: "forZone",
-        type: "(target: T, extra?: UseKeyOptions) => UseKeyOptions",
+        name: "getKeyOptions",
+        type: "(zone: T, extra?: UseKeyOptions) => UseKeyOptions",
         required: true,
         description:
           "Returns UseKeyOptions scoped to a specific zone, merging with optional extra options.",
       },
       {
-        name: "zoneProps",
-        type: '(target: T) => { "data-focused": true | undefined }',
+        name: "getZoneProps",
+        type: '(zone: T) => { "data-focused": true | undefined }',
         required: true,
         description:
           "Returns DOM attributes for a zone's container element. Sets data-focused when the zone is active.",
@@ -128,6 +155,11 @@ export const useFocusZoneDoc: HookDoc = {
       title: "Controlled and uncontrolled",
       content:
         "Pass zone + onZoneChange for controlled mode, or rely on initial for uncontrolled mode.",
+    },
+    {
+      title: "Scoped DOM handling",
+      content:
+        "Use containerRef + focusWithinOnly when multiple keyboard regions share a page-level scope.",
     },
     {
       title: "Requires KeyboardProvider",

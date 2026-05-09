@@ -10,7 +10,7 @@ type KeyboardHistoryFocusZone = (typeof ZONES)[number];
 interface UseHistoryKeyboardOptions {
   focusZone: HistoryFocusZone;
   setFocusZone: (zone: HistoryFocusZone) => void;
-  selectedRunId: string | null;
+  activeRunId: string | null;
   searchInputRef: RefObject<HTMLInputElement | null>;
 }
 
@@ -49,7 +49,7 @@ export function getHistoryFooter(focusZone: HistoryFocusZone) {
 export function useHistoryKeyboard({
   focusZone,
   setFocusZone,
-  selectedRunId,
+  activeRunId,
   searchInputRef,
 }: UseHistoryKeyboardOptions) {
   const navigate = useNavigate();
@@ -85,8 +85,8 @@ export function useHistoryKeyboard({
   }, { enabled: focusZone !== "search" });
 
   const navigateToSelectedRun = () => {
-    if (selectedRunId) {
-      navigate({ to: "/review/{-$reviewId}", params: { reviewId: selectedRunId } });
+    if (activeRunId) {
+      navigate({ to: "/review/{-$reviewId}", params: { reviewId: activeRunId } });
     }
   };
 

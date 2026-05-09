@@ -14,8 +14,8 @@ Passed to `register()` in the keyboard context. You won't use this directly — 
 ```ts
 interface HandlerOptions {
   allowInInput?: boolean;
-  targetRef?: RefObject<HTMLElement | null>;
-  requireFocusWithin?: boolean;
+  containerRef?: RefObject<HTMLElement | null>;
+  focusWithinOnly?: boolean;
   preventDefault?: boolean;
 }
 ```
@@ -27,9 +27,10 @@ Options for [useKey](/keys/docs/hooks/use-key).
 ```ts
 interface UseKeyOptions {
   enabled?: boolean;
+  scope?: string;
   allowInInput?: boolean;
-  targetRef?: RefObject<HTMLElement | null>;
-  requireFocusWithin?: boolean;
+  containerRef?: RefObject<HTMLElement | null>;
+  focusWithinOnly?: boolean;
   preventDefault?: boolean;
 }
 ```

@@ -1,4 +1,6 @@
 import type { ModelInfo } from "@diffgazer/core/schemas/config";
+import { EmptyState } from "@diffgazer/ui/components/empty-state";
+import { Spinner } from "@diffgazer/ui/components/spinner";
 import { ModelListItem } from "./model-list-item";
 
 interface ModelListProps {
@@ -32,9 +34,16 @@ export function ModelList({
         aria-label="Available models"
         className="px-4 py-3 max-h-60 overflow-y-auto scrollbar-thin"
       >
-        <div className="text-center text-tui-muted py-8 text-sm">
-          {isLoading ? "Loading models..." : emptyLabel ?? "No models match your search"}
-        </div>
+        <EmptyState size="sm" live>
+          {isLoading ? (
+            <>
+              <Spinner size="sm" aria-hidden="true" />
+              <EmptyState.Message>Loading models...</EmptyState.Message>
+            </>
+          ) : (
+            <EmptyState.Message>{emptyLabel ?? "No models match your search"}</EmptyState.Message>
+          )}
+        </EmptyState>
       </div>
     );
   }

@@ -1,6 +1,7 @@
 import { cn } from "@diffgazer/core/cn";
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
+import { Button } from "@diffgazer/ui/components/button";
 import { SeverityBreakdown } from "@/components/ui/severity/severity-breakdown";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { SEVERITY_CONFIG } from "@/components/ui/severity/constants";
@@ -39,7 +40,6 @@ export function HistoryInsightsPane({
       </div>
 
       <ScrollArea className="flex-1 min-h-0 p-4 pr-2 space-y-6">
-        {/* Severity Breakdown */}
         {severityCounts && (
           <div>
             <SectionHeader className="border-b border-tui-border pb-1">
@@ -51,7 +51,6 @@ export function HistoryInsightsPane({
           </div>
         )}
 
-        {/* Issues */}
         {issues.length > 0 && (
           <div>
             <SectionHeader className="border-b border-tui-border pb-1">
@@ -66,13 +65,14 @@ export function HistoryInsightsPane({
                     </span>
                     <span className="text-tui-muted font-mono">L:{issue.line_start}</span>
                   </div>
-                  <button
-                    type="button"
-                    className="text-tui-muted truncate cursor-pointer hover:text-tui-fg text-left w-full"
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-auto justify-start px-0 py-0 text-tui-muted truncate hover:text-tui-fg text-left w-full"
                     onClick={() => onIssueClick?.(issue.id)}
                   >
                     {issue.title}
-                  </button>
+                  </Button>
                 </div>
               ))}
             </div>
@@ -80,7 +80,6 @@ export function HistoryInsightsPane({
         )}
       </ScrollArea>
 
-      {/* Duration footer */}
       {duration && (
         <div className="border-t border-tui-border p-3 bg-tui-selection/10">
           <div className="text-[10px] text-tui-muted uppercase tracking-wider mb-1">Duration</div>

@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it } from "vitest"
-import { Input } from "./index.js"
+import { Input, InputGroup } from "./index.js"
 
 describe("Input", () => {
   it("accepts typed text as a native textbox", async () => {
@@ -22,12 +22,11 @@ describe("Input", () => {
     expect(screen.getByRole("textbox", { name: "Email" })).toHaveAttribute("aria-invalid", "true")
   })
 
-  it("does not style aria-invalid false as invalid", () => {
+  it("preserves aria-invalid false as a non-invalid value", () => {
     render(<Input aria-label="Email" aria-invalid="false" />)
 
     const input = screen.getByRole("textbox", { name: "Email" })
     expect(input).toHaveAttribute("aria-invalid", "false")
-    expect(input).not.toHaveClass("border-destructive")
   })
 
   it("preserves grammar invalid state", () => {
@@ -35,6 +34,21 @@ describe("Input", () => {
 
     const input = screen.getByRole("textbox", { name: "Email" })
     expect(input).toHaveAttribute("aria-invalid", "grammar")
-    expect(input).toHaveClass("border-destructive")
+  })
+
+  it("renders prefix and suffix affordances around the input", async () => {
+    render(<InputGroup aria-label="Path" prefix="~/" suffix=".json" />)
+
+    await userEvent.type(screen.getByRole("textbox", { name: "Path" }), "config")
+
+    expect(screen.getByText("~/")).toBeInTheDocument()
+    expect(screen.getByText(".json")).toBeInTheDocument()
+    expect(screen.getByRole("textbox", { name: "Path" })).toHaveValue("config")
+  })
+
+  it("exposes InputGroup invalid state through the nested input", () => {
+    render(<InputGroup aria-label="Path" invalid />)
+
+    expect(screen.getByRole("textbox", { name: "Path" })).toHaveAttribute("aria-invalid", "true")
   })
 })

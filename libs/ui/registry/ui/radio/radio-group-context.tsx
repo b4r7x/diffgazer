@@ -1,22 +1,22 @@
 "use client";
 
-import { createContext, useContext, type RefObject } from "react";
+import { createContext, useContext } from "react";
 import type { RadioSize } from "./radio";
 import type { SelectableVariant } from "@/lib/selectable-variants";
 
 export interface RadioGroupContextValue {
   value?: string;
   onChange: (value: string) => void;
-  onHighlightChange: (value: string) => void;
+  registerItem: (itemId: string, itemValue: string, disabled: boolean, element: HTMLElement | null) => void;
+  unregisterItem: (itemId: string) => void;
   disabled: boolean;
+  keyboardNavigation: boolean;
   size: RadioSize;
   variant: SelectableVariant;
   highlightedValue: string | null;
   name?: string;
   required?: boolean;
-  requiredInvalid: boolean;
   onRequiredInvalid: () => void;
-  containerRef: RefObject<HTMLDivElement | null>;
   tabTargetValue: string | null;
 }
 

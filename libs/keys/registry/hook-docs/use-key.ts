@@ -2,7 +2,7 @@ import type { HookDoc } from "@diffgazer/registry"
 
 export const useKeyDoc: HookDoc = {
   description:
-    "Bind keyboard shortcuts to handlers with scoped, document-level, or element-targeted listening. Supports single key, array of keys, or key map overloads.",
+    "Bind keyboard shortcuts to handlers with scoped, document-level, or container-scoped listening. Supports single key, array of keys, or key map overloads.",
   usage: {
     code: `useKey("Escape", () => setOpen(false))`,
     lang: "tsx",
@@ -30,6 +30,13 @@ export const useKeyDoc: HookDoc = {
       defaultValue: "true",
     },
     {
+      name: "options.scope",
+      type: "string",
+      required: false,
+      description:
+        "Explicit keyboard scope to register the binding under. Defaults to the active KeyboardProvider scope.",
+    },
+    {
       name: "options.allowInInput",
       type: "boolean",
       required: false,
@@ -38,18 +45,18 @@ export const useKeyDoc: HookDoc = {
       defaultValue: "false",
     },
     {
-      name: "options.targetRef",
+      name: "options.containerRef",
       type: "RefObject<HTMLElement | null>",
       required: false,
       description:
-        "Scope listening to a specific DOM element instead of the document.",
+        "DOM boundary used by focusWithinOnly to restrict when the handler fires.",
     },
     {
-      name: "options.requireFocusWithin",
+      name: "options.focusWithinOnly",
       type: "boolean",
       required: false,
       description:
-        "Only fire the handler when focus is within the target element.",
+        "Only fire the handler when focus is within the container element.",
       defaultValue: "false",
     },
     {
@@ -71,9 +78,9 @@ export const useKeyDoc: HookDoc = {
         "useKey supports three call signatures: single key + handler, array of keys + handler, and a Record<string, KeyHandler> map (no separate handler argument).",
     },
     {
-      title: "Requires KeyboardProvider",
+      title: "Provider-dependent",
       content:
-        "useKey is a provider-dependent hook. Wrap your component tree with <KeyboardProvider> before using it.",
+        "useKey registers handlers when a KeyboardProvider is present. Without a provider it is a no-op.",
     },
     {
       title: "Scope-aware",

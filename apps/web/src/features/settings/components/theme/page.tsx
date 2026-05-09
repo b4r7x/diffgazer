@@ -11,10 +11,19 @@ import { useTheme } from "@/hooks/use-theme";
 import { useKey, useScope } from "@diffgazer/keys";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useFooterNavigation } from "@/hooks/use-footer-navigation.js";
-import { cn } from "@diffgazer/core/cn";
 
 function resolveTheme(theme: WebTheme, systemResolved?: ResolvedTheme | null): ResolvedTheme {
   return theme === "auto" ? (systemResolved ?? "dark") : theme;
+}
+
+function isWebTheme(value: string | null): value is WebTheme {
+  return value === "auto" || value === "dark" || value === "light";
+}
+
+function clearCurrentFocus() {
+  const activeElement = document.activeElement;
+  const View = document.defaultView;
+  if (View && activeElement instanceof View.HTMLElement) activeElement.blur();
 }
 
 export function SettingsThemePage() {
@@ -95,13 +104,13 @@ function SettingsThemeEditor({
   };
 
   const handleChange = (value: string) => {
-    selectTheme(value as WebTheme);
+    if (isWebTheme(value)) selectTheme(value);
   };
 
   const handleEnterOnList = (value: string) => {
-    const theme = value as WebTheme;
-    selectTheme(theme);
-    setTheme(theme);
+    if (!isWebTheme(value)) return;
+    selectTheme(value);
+    setTheme(value);
     navigate({ to: "/settings" });
   };
 
@@ -116,7 +125,9 @@ function SettingsThemeEditor({
       footer.enterFooter();
       return;
     }
-    setFocusedTheme(themeOptions[next]!);
+    const nextTheme = themeOptions[next];
+    if (!nextTheme) return;
+    setFocusedTheme(nextTheme);
   };
 
   useKey("Escape", handleCancel);
@@ -138,21 +149,24 @@ function SettingsThemeEditor({
     <div className="flex-1 flex flex-col p-6 min-h-0">
       <div className="grid grid-cols-[2fr_3fr] gap-6 w-full h-full min-h-0">
         <Panel className="relative pt-4 flex flex-col h-full">
-          <div className="absolute -top-3 left-4 bg-tui-bg px-2 text-xs font-bold uppercase tracking-wider text-tui-violet">
-            Theme Settings
-          </div>
+          <Panel.Legend tone="accent">Theme Settings</Panel.Legend>
           <PanelContent className="flex-1 flex flex-col">
             <ThemeSelectorContent
               value={selectedTheme}
               focusedValue={focusedTheme}
-              onFocusedValueChange={(v) => setFocusedTheme(v as WebTheme)}
-              onPreviewValueChange={(v) => setHoveredTheme(v as WebTheme | null)}
+              onFocusedValueChange={(value) => {
+                if (isWebTheme(value)) setFocusedTheme(value);
+              }}
+              onPreviewValueChange={(value) => {
+                setHoveredTheme(isWebTheme(value) ? value : null);
+              }}
               onChange={handleChange}
               onEnter={handleEnterOnList}
               onSelect={handleChange}
               enabled={!footer.inFooter}
               onBoundaryReached={(direction) => {
                 if (direction === "down") {
+                  clearCurrentFocus();
                   footer.enterFooter();
                 }
               }}
@@ -165,17 +179,19 @@ function SettingsThemeEditor({
 
               <div className="flex justify-end gap-3">
                 <Button
+                  {...footer.getButtonProps(0)}
                   variant="ghost"
                   onClick={handleCancel}
-                  className={cn(footer.inFooter && footer.focusedIndex === 0 && "ring-2 ring-tui-blue")}
+                  highlighted={footer.inFooter && footer.focusedIndex === 0}
                 >
                   Cancel
                 </Button>
                 <Button
+                  {...footer.getButtonProps(1)}
                   variant="success"
                   onClick={handleSave}
                   disabled={!canSave}
-                  className={cn(footer.inFooter && footer.focusedIndex === 1 && "ring-2 ring-tui-blue")}
+                  highlighted={footer.inFooter && footer.focusedIndex === 1}
                 >
                   Save
                 </Button>
@@ -185,9 +201,7 @@ function SettingsThemeEditor({
         </Panel>
 
         <Panel className="relative pt-4 flex flex-col h-full overflow-hidden">
-          <div className="absolute -top-3 left-4 bg-tui-bg px-2 text-xs font-bold uppercase tracking-wider text-tui-blue">
-            Live Preview
-          </div>
+          <Panel.Legend tone="info">Live Preview</Panel.Legend>
           <PanelContent className="flex-1 flex items-center justify-center p-0">
             <ThemePreviewCard previewTheme={previewResolved} />
           </PanelContent>

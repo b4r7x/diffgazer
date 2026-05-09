@@ -1,4 +1,4 @@
-import type { RefObject } from "react";
+import type { RefCallback, RefObject } from "react";
 import { Input } from "@diffgazer/ui/components/input";
 import { Radio } from "@diffgazer/ui/components/radio";
 import { cn } from "@diffgazer/core/cn";
@@ -16,6 +16,9 @@ interface ApiKeyMethodSelectorProps {
   focused: FocusElement;
   onFocus: (element: FocusElement) => void;
   onKeySubmit: () => void;
+  getMethodOptionProps?: (method: InputMethod) => {
+    ref: RefCallback<HTMLDivElement>;
+  };
 }
 
 export function ApiKeyMethodSelector({
@@ -29,14 +32,22 @@ export function ApiKeyMethodSelector({
   focused,
   onFocus,
   onKeySubmit,
+  getMethodOptionProps,
 }: ApiKeyMethodSelectorProps) {
+  const pasteOptionProps = getMethodOptionProps?.("paste");
+  const envOptionProps = getMethodOptionProps?.("env");
+
   return (
     <div aria-label="API key input method">
       <div className="space-y-2 mb-4">
         <Radio
+          ref={pasteOptionProps?.ref}
           checked={method === "paste"}
           onChange={() => {
             onMethodChange("paste");
+            onFocus("paste");
+          }}
+          onFocus={() => {
             onFocus("paste");
           }}
           label="Paste Key Now"
@@ -83,9 +94,13 @@ export function ApiKeyMethodSelector({
         )}
       >
         <Radio
+          ref={envOptionProps?.ref}
           checked={method === "env"}
           onChange={() => {
             onMethodChange("env");
+            onFocus("env");
+          }}
+          onFocus={() => {
             onFocus("env");
           }}
           label="Import from Env"

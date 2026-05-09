@@ -82,7 +82,7 @@ Icon primitives ship from `@diffgazer/ui`; there is no `lucide-react` peer or ru
 
 - React `>=19.2.0`
 - React DOM `>=19.2.0`
-- `@diffgazer/keys >= 0.1`
+- `@diffgazer/keys >= 0.1.1`
 
 ## Versioning and Migration
 

@@ -223,18 +223,16 @@ describe("docs-library source path mapping", () => {
     expect(missing).toEqual([])
   })
 
-  it("keeps public examples on preferred value and highlight props", () => {
+  it("keeps public examples off deprecated value-change props", () => {
     const exampleSources = listRepoFiles("libs/ui/registry/examples", ".tsx")
       .map((file) => readAbsolute(file))
       .join("\n")
 
     expect(exampleSources).not.toMatch(/<CommandPalette\b[^>]*\bselectedId=/)
     expect(exampleSources).not.toContain("onSelectedIdChange=")
-    expect(exampleSources).not.toMatch(/<Select\b[^>]*\bonChange=/)
-    expect(exampleSources).not.toMatch(/<ToggleGroup\b[^>]*\bonChange=/)
-    expect(exampleSources).not.toMatch(/<RadioGroup\b[^>]*\bonChange=/)
-    expect(exampleSources).not.toMatch(/<CheckboxGroup\b[\s\S]{0,300}\bonChange=/)
-    expect(exampleSources).not.toMatch(/<Checkbox\.Group\b[\s\S]{0,300}\bonChange=/)
+    expect(exampleSources).not.toContain("onValueChange=")
+    expect(exampleSources).not.toMatch(/<Checkbox\b[^>]*\bonCheckedChange=/)
+    expect(exampleSources).not.toMatch(/<Radio\b[^>]*\bonCheckedChange=/)
   })
 
   it("keeps public docs on current highlight and keyboard prop names", () => {

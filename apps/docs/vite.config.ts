@@ -112,6 +112,7 @@ const config = defineConfig(() => {
         "@/components/ui": resolve(import.meta.dirname, "registry/ui"),
         "@/hooks": resolve(import.meta.dirname, "registry/hooks"),
         "@/lib/compose-refs": resolve(import.meta.dirname, "registry/lib/compose-refs"),
+        "@/lib/selectable-collection": resolve(import.meta.dirname, "registry/lib/selectable-collection"),
         "@/lib/selectable-variants": resolve(import.meta.dirname, "registry/lib/selectable-variants"),
         "@/lib/input-variants": resolve(import.meta.dirname, "registry/lib/input-variants"),
         "@/lib/resolve-tab-target": resolve(import.meta.dirname, "registry/lib/resolve-tab-target"),

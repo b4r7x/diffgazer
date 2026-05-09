@@ -27,9 +27,7 @@ export function HelpPage() {
     <div className="flex-1 flex flex-col items-center justify-center px-4 pb-12">
       <div className="w-full max-w-2xl">
         <Panel className="bg-tui-bg shadow-2xl">
-          <div className="absolute -top-3 left-4 bg-tui-bg px-2 text-xs font-bold uppercase tracking-wider text-tui-muted">
-            HELP
-          </div>
+          <Panel.Legend>HELP</Panel.Legend>
           <PanelContent>
             <div className="flex flex-col gap-6 pt-2">
               <section>

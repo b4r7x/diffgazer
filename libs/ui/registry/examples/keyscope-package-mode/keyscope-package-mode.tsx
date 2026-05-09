@@ -40,7 +40,7 @@ function AppContent() {
   const mainRef = useRef<HTMLDivElement>(null)
 
   // Focus zones: sidebar and main content
-  const { inZone, forZone } = useFocusZone({
+  const { isZone, getKeyOptions } = useFocusZone({
     initial: "sidebar",
     zones: ["sidebar", "main"] as const,
     tabCycle: ["sidebar", "main"] as const,
@@ -56,17 +56,17 @@ function AppContent() {
   useKey("mod+d", () => setDialogOpen(true), { preventDefault: true })
 
   // Sidebar-only shortcut
-  useKey("n", () => setSelectedFile("new"), forZone("sidebar"))
+  useKey("n", () => setSelectedFile("new"), getKeyOptions("sidebar"))
 
   return (
     <div className="flex gap-4 w-full max-w-3xl">
       {/* Sidebar zone */}
       <div
         ref={sidebarRef}
-        className={`w-64 shrink-0 border border-border ${inZone("sidebar") ? "ring-1 ring-foreground" : ""}`}
+        className={`w-64 shrink-0 border border-border ${isZone("sidebar") ? "ring-1 ring-foreground" : ""}`}
       >
         <div className="p-2 text-xs text-muted-foreground border-b border-border font-mono">
-          FILES {inZone("sidebar") && <span className="text-foreground">[active]</span>}
+          FILES {isZone("sidebar") && <span className="text-foreground">[active]</span>}
         </div>
         <Menu
           selectedId={selectedFile}
@@ -84,14 +84,14 @@ function AppContent() {
       {/* Main content zone */}
       <div
         ref={mainRef}
-        className={`flex-1 border border-border ${inZone("main") ? "ring-1 ring-foreground" : ""}`}
+        className={`flex-1 border border-border ${isZone("main") ? "ring-1 ring-foreground" : ""}`}
       >
         <div className="p-2 text-xs text-muted-foreground border-b border-border font-mono">
-          EDITOR {inZone("main") && <span className="text-foreground">[active]</span>}
+          EDITOR {isZone("main") && <span className="text-foreground">[active]</span>}
         </div>
         <div className="p-4 space-y-4">
           <div className="w-48">
-            <Select value={branch} onValueChange={setBranch}>
+            <Select value={branch} onChange={setBranch}>
               <SelectTrigger>
                 <SelectValue placeholder="Branch..." />
               </SelectTrigger>

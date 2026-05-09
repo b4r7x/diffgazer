@@ -5,7 +5,7 @@ interface StorageStepProps {
   value: SecretsStorage;
   onChange: (value: SecretsStorage) => void;
   onCommit?: (value: SecretsStorage) => void;
-  enabled?: boolean;
+  keyboardNavigation?: boolean;
   onBoundaryReached?: (direction: "up" | "down") => void;
 }
 
@@ -13,7 +13,7 @@ export function StorageStep({
   value,
   onChange,
   onCommit,
-  enabled = true,
+  keyboardNavigation = true,
   onBoundaryReached,
 }: StorageStepProps) {
   return (
@@ -25,7 +25,8 @@ export function StorageStep({
         value={value}
         onChange={onChange}
         onEnter={onCommit}
-        enabled={enabled}
+        keyboardNavigation={keyboardNavigation}
+        autoFocusList={keyboardNavigation}
         onBoundaryReached={onBoundaryReached}
       />
     </div>

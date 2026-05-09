@@ -45,6 +45,7 @@ export function getEncodedListboxItemId(idPrefix: string, id: string): string {
 function hasEnabledItem(
   container: HTMLElement | null,
   itemRole: string,
+  containerRole: "listbox" | "menu",
   idPrefix: string,
   id: string | null,
   getItemId: (idPrefix: string, id: string) => string,
@@ -53,6 +54,8 @@ function hasEnabledItem(
   const element = container.ownerDocument.getElementById(getItemId(idPrefix, id));
   return Boolean(
     element &&
+      container.contains(element) &&
+      isOwnedListboxItem(element, container, containerRole) &&
       element.getAttribute("role") === itemRole &&
       element.dataset.value === id &&
       element.getAttribute("aria-disabled") !== "true" &&
@@ -91,6 +94,30 @@ function getAccessibleText(el: HTMLElement): string {
     }
   }
   return text;
+}
+
+function getListboxOwnerSelector(containerRole: "listbox" | "menu") {
+  return containerRole === "listbox" ? '[role="listbox"]' : '[role="menu"]';
+}
+
+function isOwnedListboxItem(
+  element: HTMLElement,
+  container: HTMLElement,
+  containerRole: "listbox" | "menu",
+) {
+  const owner = element.closest(getListboxOwnerSelector(containerRole));
+  return owner === null || owner === container;
+}
+
+function getEnabledListboxItems(
+  container: HTMLElement | null,
+  itemRole: string,
+  containerRole: "listbox" | "menu",
+) {
+  if (!container) return [];
+  return Array.from(container.querySelectorAll<HTMLElement>(
+    `[role="${itemRole}"]:not([aria-disabled="true"]):not([data-disabled])`,
+  )).filter((item) => isOwnedListboxItem(item, container, containerRole));
 }
 
 export function useListbox({
@@ -137,7 +164,7 @@ export function useListbox({
 
   const syncDomActiveDescendant = useEffectEvent(() => {
     if (items) return;
-    const next = hasEnabledItem(containerRef.current, itemRole, idPrefix, activeDescendantCandidate, getItemId)
+    const next = hasEnabledItem(containerRef.current, itemRole, containerRole, idPrefix, activeDescendantCandidate, getItemId)
       ? activeDescendantCandidate
       : null;
     setDomActiveDescendant((current) => (current === next ? current : next));
@@ -162,12 +189,12 @@ export function useListbox({
       attributeFilter: ["aria-disabled", "data-disabled", "data-value", "id", "role"],
     });
     return () => observer.disconnect();
-  }, [getItemId, idPrefix, itemRole, items]);
+  }, [containerRole, getItemId, idPrefix, itemRole, items]);
 
   const handleItemActivate = (next: string) => {
     const enabled = items
       ? hasEnabledMetadataItem(items, next)
-      : hasEnabledItem(containerRef.current, itemRole, idPrefix, next, getItemId);
+      : hasEnabledItem(containerRef.current, itemRole, containerRole, idPrefix, next, getItemId);
     if (!enabled) return;
     setSelectedId(next);
     setHighlightedId(next);
@@ -181,6 +208,7 @@ export function useListbox({
     onValueChange: setHighlightedId,
     onEnter: handleItemActivate,
     onSelect: handleItemActivate,
+    scopeToContainer: true,
   });
 
   const handleTypeahead = (key: string): void => {
@@ -192,10 +220,7 @@ export function useListbox({
     }, TYPEAHEAD_RESET_MS);
 
     const query = typeaheadBuffer.current.toLowerCase();
-    const items = containerRef.current?.querySelectorAll<HTMLElement>(
-      `[role="${itemRole}"]:not([aria-disabled="true"])`,
-    );
-    if (!items) return;
+    const items = getEnabledListboxItems(containerRef.current, itemRole, containerRole);
     for (const item of items) {
       const label = getAccessibleText(item).trim().toLowerCase();
       if (label.startsWith(query) && item.dataset.value !== undefined) {

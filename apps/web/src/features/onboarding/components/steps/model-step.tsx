@@ -48,15 +48,23 @@ function StaticModelList({
   };
 
   const handleKeyDown = (e: KeyboardEvent) => {
+    if (!enabled) return;
     if (e.key === "Enter" && effectiveHighlighted) {
+      e.preventDefault();
       onChange(effectiveHighlighted);
       onCommit?.(effectiveHighlighted);
       return;
     }
     if (!onBoundaryReached) return;
     const idx = modelIds.indexOf(effectiveHighlighted ?? "");
-    if (e.key === "ArrowUp" && idx === 0) onBoundaryReached("up");
-    if (e.key === "ArrowDown" && idx === modelIds.length - 1) onBoundaryReached("down");
+    if (e.key === "ArrowUp" && idx === 0) {
+      e.preventDefault();
+      onBoundaryReached("up");
+    }
+    if (e.key === "ArrowDown" && idx === modelIds.length - 1) {
+      e.preventDefault();
+      onBoundaryReached("down");
+    }
   };
 
   return (
@@ -68,8 +76,11 @@ function StaticModelList({
         value={value ?? undefined}
         onChange={handleChange}
         highlighted={enabled ? effectiveHighlighted : null}
-        onHighlightChange={setHighlighted}
+        onNavigate={setHighlighted}
         onKeyDown={handleKeyDown}
+        keyboardNavigation={enabled}
+        autoFocus={enabled}
+        activationMode="manual"
         wrap={false}
         className="space-y-1"
       >
@@ -121,15 +132,23 @@ function OpenRouterModelList({
   };
 
   const handleKeyDown = (e: KeyboardEvent) => {
+    if (!enabled) return;
     if (e.key === "Enter" && effectiveHighlighted) {
+      e.preventDefault();
       onChange(effectiveHighlighted);
       onCommit?.(effectiveHighlighted);
       return;
     }
     if (!onBoundaryReached) return;
     const idx = modelIds.indexOf(effectiveHighlighted ?? "");
-    if (e.key === "ArrowUp" && idx === 0) onBoundaryReached("up");
-    if (e.key === "ArrowDown" && idx === modelIds.length - 1) onBoundaryReached("down");
+    if (e.key === "ArrowUp" && idx === 0) {
+      e.preventDefault();
+      onBoundaryReached("up");
+    }
+    if (e.key === "ArrowDown" && idx === modelIds.length - 1) {
+      e.preventDefault();
+      onBoundaryReached("down");
+    }
   };
 
   if (loading) {
@@ -158,8 +177,11 @@ function OpenRouterModelList({
           value={value ?? undefined}
           onChange={handleChange}
           highlighted={enabled ? effectiveHighlighted : null}
-          onHighlightChange={setHighlighted}
+          onNavigate={setHighlighted}
           onKeyDown={handleKeyDown}
+          keyboardNavigation={enabled}
+          autoFocus={enabled}
+          activationMode="manual"
           wrap={false}
           className="space-y-1"
         >

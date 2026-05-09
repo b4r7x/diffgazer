@@ -1,5 +1,6 @@
 import { Button } from "@diffgazer/ui/components/button";
 import { cn } from "@diffgazer/core/cn";
+import type { RefCallback } from "react";
 
 interface Hint {
   key: string;
@@ -12,6 +13,10 @@ interface DialogFooterActionsProps {
   canConfirm: boolean;
   cancelFocused: boolean;
   confirmFocused: boolean;
+  getButtonProps: (index: number) => {
+    ref: RefCallback<HTMLButtonElement>;
+    onFocus: () => void;
+  };
   hints: Hint[];
 }
 
@@ -21,6 +26,7 @@ export function DialogFooterActions({
   canConfirm,
   cancelFocused,
   confirmFocused,
+  getButtonProps,
   hints,
 }: DialogFooterActionsProps) {
   return (
@@ -34,6 +40,7 @@ export function DialogFooterActions({
       </div>
       <div className="flex gap-3 items-center">
         <Button
+          {...getButtonProps(0)}
           variant="ghost"
           size="sm"
           onClick={onCancel}
@@ -45,6 +52,7 @@ export function DialogFooterActions({
           [Esc] Cancel
         </Button>
         <Button
+          {...getButtonProps(1)}
           variant="primary"
           size="sm"
           onClick={onConfirm}

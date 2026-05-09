@@ -1,113 +1,161 @@
-import { useState, type RefObject } from "react";
-import { useKey } from "@diffgazer/keys";
+import { useCallback, useEffect, useRef, useState, type RefCallback, type RefObject } from "react";
+import { useFocusZone, useKey } from "@diffgazer/keys";
 
 type FooterNavigationZone = "content" | "footer";
+const FOOTER_NAVIGATION_ZONES = ["content", "footer"] as const;
 
 interface UseFooterNavigationOptions {
   enabled: boolean;
   buttonCount: number;
   onAction: (index: number) => void;
-  targetRef?: RefObject<HTMLElement | null>;
+  containerRef?: RefObject<HTMLElement | null>;
   allowInInput?: boolean;
   wrap?: boolean;
   defaultZone?: FooterNavigationZone;
   defaultIndex?: number;
+  canExitFooter?: boolean;
+  onEnterFooter?: (index: number) => void;
+  onExitFooter?: () => void;
+}
+
+function getNextFooterIndex(
+  currentIndex: number,
+  direction: -1 | 1,
+  buttonCount: number,
+  wrap: boolean,
+) {
+  if (buttonCount <= 0) return 0;
+
+  const nextIndex = currentIndex + direction;
+  if (nextIndex >= 0 && nextIndex < buttonCount) return nextIndex;
+  if (!wrap) return currentIndex;
+  return direction < 0 ? buttonCount - 1 : 0;
 }
 
 export function useFooterNavigation({
   enabled,
   buttonCount,
   onAction,
-  targetRef,
+  containerRef,
   allowInInput = false,
   wrap = false,
   defaultZone = "content",
   defaultIndex = 0,
+  canExitFooter = true,
+  onEnterFooter,
+  onExitFooter,
 }: UseFooterNavigationOptions) {
-  const [inFooter, setInFooter] = useState(defaultZone === "footer");
   const [focusedIndex, setFocusedIndex] = useState(defaultIndex);
+  const buttonRefs = useRef(new Map<number, HTMLElement>());
+  const hasFocusedDefaultFooterRef = useRef(false);
+
+  const focusZone = useFocusZone<FooterNavigationZone>({
+    initial: defaultZone,
+    zones: FOOTER_NAVIGATION_ZONES,
+    enabled,
+    containerRef,
+    focusWithinOnly: Boolean(containerRef),
+    allowInInput,
+  });
+  const inFooter = focusZone.isZone("footer");
+
+  const focusButton = useCallback((index: number) => {
+    setFocusedIndex(index);
+    buttonRefs.current.get(index)?.focus();
+  }, []);
+
+  useEffect(() => {
+    if (!enabled || defaultZone !== "footer" || !inFooter || hasFocusedDefaultFooterRef.current) return;
+    if (!buttonRefs.current.has(defaultIndex)) return;
+
+    focusButton(defaultIndex);
+    hasFocusedDefaultFooterRef.current = true;
+  }, [defaultIndex, defaultZone, enabled, focusButton, inFooter]);
 
   const reset = (initialIndex: number = 0) => {
-    setInFooter(false);
+    focusZone.setZone("content");
     setFocusedIndex(initialIndex);
   };
 
   const enterFooter = (index: number = 0) => {
-    setInFooter(true);
-    setFocusedIndex(index);
+    focusZone.setZone("footer");
+    focusButton(index);
+    onEnterFooter?.(index);
   };
 
   const exitFooter = () => {
-    setInFooter(false);
+    if (!canExitFooter) return;
+    focusZone.setZone("content");
     setFocusedIndex(0);
+    onExitFooter?.();
   };
 
-  const keyOptions = {
-    enabled: enabled && inFooter,
-    targetRef,
-    requireFocusWithin: Boolean(targetRef),
-    allowInInput,
-  } as const;
+  const keyOptions = focusZone.getKeyOptions("footer");
+  const enterOptions = focusZone.getKeyOptions("content");
+  const isRegisteredButtonFocused = () => {
+    const button = buttonRefs.current.get(focusedIndex);
+    const activeElement = button?.ownerDocument.activeElement;
+    const View = button?.ownerDocument.defaultView;
+    return Boolean(button && View && activeElement instanceof View.HTMLElement && button.contains(activeElement));
+  };
 
-  const enterOptions = {
-    enabled: enabled && !inFooter,
-    targetRef,
-    requireFocusWithin: Boolean(targetRef),
-    allowInInput,
-  } as const;
+  const activateFocusedButton = () => {
+    if (isRegisteredButtonFocused()) return;
+    onAction(focusedIndex);
+  };
 
-  // ArrowDown enters footer actions when focus is outside the footer.
-  useKey("ArrowDown", () => enterFooter(0), enterOptions);
-
-  // ArrowUp returns to options
-  useKey("ArrowUp", exitFooter, keyOptions);
-
-  // ArrowLeft to navigate between buttons
   useKey(
     "ArrowLeft",
-    () => {
-      setFocusedIndex((prev) =>
-        wrap ? (prev > 0 ? prev - 1 : buttonCount - 1) : Math.max(0, prev - 1)
-      );
-    },
-    keyOptions
+    () => focusButton(getNextFooterIndex(focusedIndex, -1, buttonCount, wrap)),
+    keyOptions,
   );
 
-  // ArrowRight to navigate between buttons
   useKey(
     "ArrowRight",
-    () => {
-      setFocusedIndex((prev) =>
-        wrap
-          ? prev < buttonCount - 1
-            ? prev + 1
-            : 0
-          : Math.min(buttonCount - 1, prev + 1)
-      );
-    },
-    keyOptions
+    () => focusButton(getNextFooterIndex(focusedIndex, 1, buttonCount, wrap)),
+    keyOptions,
   );
 
-  // Enter triggers focused button
+  useKey("ArrowDown", () => enterFooter(0), enterOptions);
+
+  useKey("ArrowUp", exitFooter, keyOptions);
+
   useKey(
     "Enter",
-    () => onAction(focusedIndex),
+    activateFocusedButton,
     keyOptions
   );
 
-  // Space triggers focused button
   useKey(
     " ",
-    () => onAction(focusedIndex),
+    activateFocusedButton,
     keyOptions
   );
+
+  const getButtonProps = (index: number): {
+    ref: RefCallback<HTMLButtonElement>;
+    "data-footer-action-index": number;
+    onFocus: () => void;
+    onClick: () => void;
+  } => ({
+    ref: (node) => {
+      if (node) buttonRefs.current.set(index, node);
+      else buttonRefs.current.delete(index);
+    },
+    "data-footer-action-index": index,
+    onFocus: () => {
+      focusZone.setZone("footer");
+      setFocusedIndex(index);
+    },
+    onClick: () => onAction(index),
+  });
 
   return {
     inFooter,
     focusedIndex,
-    setFocusedIndex,
     enterFooter,
     exitFooter,
     reset,
+    getButtonProps,
   };
 }

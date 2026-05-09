@@ -12,7 +12,7 @@ export const selectableVariantsDoc: ComponentDoc = {
     {
       title: "Highlight Indicator",
       content:
-        "When highlighted is true, the item gets a bold left-edge bar (before pseudo-element) mimicking terminal-style selection. This is the visual cue for keyboard navigation focus.",
+        "When highlighted is true, the item gets a bold left-edge bar (before pseudo-element) mimicking terminal-style selection. Keyboard focus uses the same visual contract instead of a full-row outline.",
     },
     {
       title: "Size Variants",

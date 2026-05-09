@@ -17,8 +17,6 @@ interface UseSelectStateBaseOptions {
   highlighted?: string | null;
   highlightedControlled?: boolean;
   onHighlightChange?: (value: string | null) => void;
-  /** @deprecated Use `onHighlightChange` for controlled highlight updates. */
-  onHighlight?: (value: string | null) => void;
   disabled?: boolean;
   variant?: "default" | "card";
   ariaInvalid?: AriaAttributes["aria-invalid"];
@@ -30,8 +28,6 @@ interface UseSelectStateSingleOptions extends UseSelectStateBaseOptions {
   multiple?: false;
   value?: string;
   valueControlled?: boolean;
-  onValueChange?: (value: string) => void;
-  /** @deprecated Use `onValueChange` for controlled value updates. */
   onChange?: (value: string) => void;
   defaultValue?: string;
 }
@@ -40,8 +36,6 @@ interface UseSelectStateMultipleOptions extends UseSelectStateBaseOptions {
   multiple: true;
   value?: string[];
   valueControlled?: boolean;
-  onValueChange?: (value: string[]) => void;
-  /** @deprecated Use `onValueChange` for controlled value updates. */
   onChange?: (value: string[]) => void;
   defaultValue?: string[];
 }
@@ -59,24 +53,6 @@ function getDefaultSelectValue(multiple: boolean, defaultValue: SelectValue | un
   return defaultValue ?? (multiple ? [] : null);
 }
 
-function getSelectValueChangeHandler(options: UseSelectStateOptions) {
-  if (options.multiple) {
-    const onValueChange = options.onValueChange ?? options.onChange;
-    return onValueChange
-      ? (nextValue: SelectValue) => {
-          if (Array.isArray(nextValue)) onValueChange(nextValue);
-        }
-      : undefined;
-  }
-
-  const onValueChange = options.onValueChange ?? options.onChange;
-  return onValueChange
-    ? (nextValue: SelectValue) => {
-        if (typeof nextValue === "string") onValueChange(nextValue);
-      }
-    : undefined;
-}
-
 export function useSelectState(options: UseSelectStateOptions): UseSelectStateReturn {
   const {
     open: controlledOpen,
@@ -88,7 +64,6 @@ export function useSelectState(options: UseSelectStateOptions): UseSelectStateRe
     defaultValue,
     highlighted: controlledHighlighted,
     highlightedControlled,
-    onHighlight,
     onHighlightChange,
     multiple = false,
     disabled = false,
@@ -101,10 +76,15 @@ export function useSelectState(options: UseSelectStateOptions): UseSelectStateRe
     () => getDefaultSelectValue(multiple, defaultValue),
     [defaultValue, multiple],
   );
-  const valueChangeHandler = useMemo(
-    () => getSelectValueChangeHandler(options),
-    [multiple, options.onChange, options.onValueChange],
-  );
+  const onSingleChange = options.multiple ? undefined : options.onChange;
+  const onMultipleChange = options.multiple ? options.onChange : undefined;
+  const valueChangeHandler = useCallback((nextValue: SelectValue) => {
+    if (multiple) {
+      if (Array.isArray(nextValue)) onMultipleChange?.(nextValue);
+      return;
+    }
+    if (typeof nextValue === "string") onSingleChange?.(nextValue);
+  }, [multiple, onMultipleChange, onSingleChange]);
   const isOpenControlled = openControlled ?? controlledOpen !== undefined;
   const isValueControlled = valueControlled ?? controlledValue !== undefined;
   const isHighlightedControlled = highlightedControlled ?? controlledHighlighted !== undefined;
@@ -127,7 +107,7 @@ export function useSelectState(options: UseSelectStateOptions): UseSelectStateRe
     value: isHighlightedControlled ? controlledHighlighted ?? null : controlledHighlighted,
     controlled: isHighlightedControlled,
     defaultValue: null,
-    onChange: onHighlightChange ?? onHighlight,
+    onChange: onHighlightChange,
   });
 
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -195,7 +175,7 @@ export function useSelectState(options: UseSelectStateOptions): UseSelectStateRe
     searchQuery,
     onSearchChange,
     highlighted,
-    onHighlight: setHighlighted,
+    setHighlighted,
     selectItem,
     options: optionMetadata,
     triggerRef,

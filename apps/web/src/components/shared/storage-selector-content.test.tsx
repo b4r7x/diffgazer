@@ -1,42 +1,61 @@
 import { useState } from "react";
-import { describe, expect, it } from "vitest";
-import { fireEvent, render } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { SecretsStorage } from "@diffgazer/core/schemas/config";
 import { StorageSelectorContent } from "./storage-selector-content";
 
-function hasClassToken(element: Element, token: string): boolean {
-  return element.className.split(/\s+/).includes(token);
-}
-
-function getRadio(value: SecretsStorage) {
-  const radio = document.querySelector(`[role="radio"][data-value="${value}"]`);
-  if (!radio) {
-    throw new Error(`Missing radio with data-value="${value}"`);
-  }
-  return radio as HTMLElement;
-}
-
 function StorageSelectorHarness() {
   const [value, setValue] = useState<SecretsStorage | null>("file");
-  return <StorageSelectorContent value={value} onChange={setValue} />;
+  return <StorageSelectorContent value={value} onChange={setValue} autoFocusList />;
 }
 
 describe("StorageSelectorContent", () => {
-  it("moves highlight with arrows and selects with Space", () => {
+  it("moves highlight with arrows and selects with Space", async () => {
     render(<StorageSelectorHarness />);
 
-    const fileRadio = getRadio("file");
-    const keyringRadio = getRadio("keyring");
+    expect(screen.getByRole("radiogroup", { name: /select storage method/i })).toBeInTheDocument();
+    const fileRadio = screen.getByRole("radio", { name: /file storage/i });
+    const keyringRadio = screen.getByRole("radio", { name: /system keyring/i });
 
-    fireEvent.keyDown(fileRadio, { key: "ArrowDown" });
-
-    expect(hasClassToken(keyringRadio, "bg-secondary")).toBe(true);
+    await waitFor(() => expect(fileRadio).toHaveFocus());
+    await userEvent.keyboard("{ArrowDown}");
     expect(fileRadio.getAttribute("aria-checked")).toBe("true");
     expect(keyringRadio.getAttribute("aria-checked")).toBe("false");
 
-    fireEvent.keyDown(keyringRadio, { key: " " });
+    await userEvent.keyboard(" ");
 
-    expect(getRadio("file").getAttribute("aria-checked")).toBe("false");
-    expect(getRadio("keyring").getAttribute("aria-checked")).toBe("true");
+    expect(screen.getByRole("radio", { name: /file storage/i })).toHaveAttribute("aria-checked", "false");
+    expect(screen.getByRole("radio", { name: /system keyring/i })).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("does not call onEnter when Space selects the highlighted storage", async () => {
+    const onChange = vi.fn();
+    const onEnter = vi.fn();
+    render(<StorageSelectorContent value="file" onChange={onChange} onEnter={onEnter} autoFocusList />);
+
+    await waitFor(() => expect(screen.getByRole("radio", { name: /file storage/i })).toHaveFocus());
+    await userEvent.keyboard("{ArrowDown} ");
+
+    expect(onChange).toHaveBeenCalledWith("keyring");
+    expect(onEnter).not.toHaveBeenCalled();
+  });
+
+  it("commits the focused storage with Enter after a controlled value change", async () => {
+    const onChange = vi.fn();
+    const onEnter = vi.fn();
+    const { rerender } = render(
+      <StorageSelectorContent value={null} onChange={onChange} onEnter={onEnter} autoFocusList />,
+    );
+
+    await waitFor(() => expect(screen.getByRole("radio", { name: /file storage/i })).toHaveFocus());
+    await userEvent.keyboard("{ArrowDown}");
+    expect(screen.getByRole("radio", { name: /system keyring/i })).toHaveFocus();
+
+    rerender(<StorageSelectorContent value="file" onChange={onChange} onEnter={onEnter} autoFocusList />);
+    await userEvent.keyboard("{Enter}");
+
+    expect(onEnter).toHaveBeenCalledWith("keyring");
+    expect(onChange).toHaveBeenCalledWith("keyring");
   });
 });

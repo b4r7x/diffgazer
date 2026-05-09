@@ -29,6 +29,10 @@ const STEP_TITLES: Record<string, string> = {
   execution: "Agent Execution",
 };
 
+function clearCurrentFocus() {
+  if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+}
+
 function getStepShortcuts(currentStep: string, isButtonsZone: boolean): Shortcut[] {
   if (isButtonsZone) {
     return [
@@ -155,6 +159,7 @@ export function OnboardingWizard() {
 
   const handleStepBoundary = (direction: "up" | "down") => {
     if (direction !== "down") return;
+    clearCurrentFocus();
     footer.enterFooter();
   };
 
@@ -163,6 +168,7 @@ export function OnboardingWizard() {
     if (!canProceedForStep(currentStep, projectedData)) return;
 
     if (isLastStep) {
+      clearCurrentFocus();
       footer.enterFooter(primaryButtonIndex);
       return;
     }
@@ -178,7 +184,7 @@ export function OnboardingWizard() {
             value={wizardData.secretsStorage}
             onChange={(secretsStorage) => updateData({ secretsStorage })}
             onCommit={(secretsStorage) => handleStepCommit({ secretsStorage })}
-            enabled={!footer.inFooter}
+            keyboardNavigation={!footer.inFooter}
             onBoundaryReached={handleStepBoundary}
           />
         );
@@ -247,6 +253,7 @@ export function OnboardingWizard() {
         <>
           {!isFirstStep && (
             <Button
+              {...footer.getButtonProps(0)}
               variant="secondary"
               size="sm"
               onClick={back}
@@ -258,6 +265,7 @@ export function OnboardingWizard() {
           )}
           {isLastStep ? (
             <Button
+              {...footer.getButtonProps(primaryButtonIndex)}
               variant="success"
               size="sm"
               onClick={handlePrimaryAction}
@@ -268,6 +276,7 @@ export function OnboardingWizard() {
             </Button>
           ) : (
             <Button
+              {...footer.getButtonProps(primaryButtonIndex)}
               size="sm"
               onClick={handlePrimaryAction}
               disabled={!canProceed}

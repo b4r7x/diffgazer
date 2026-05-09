@@ -168,7 +168,7 @@ const [open, setOpen] = useState(false)
 The same pattern applies across components:
 
 - **Dialog**: `open` / `onOpenChange`
-- **Tabs**: `value` / `onValueChange`
+- **Tabs**: `value` / `onChange`
 - **Menu**: `selectedId` / `onSelect`
 - **NavigationList**: `selectedId` / `onSelect`
 
@@ -252,7 +252,7 @@ Keep `StepperContent` directly inside `StepperStep` when the trigger should expo
 | Component | Root | Sub-components | Shared State |
 |-----------|------|---------------|--------------|
 | Dialog | `Dialog` | `DialogTrigger`, `DialogContent`, `DialogHeader`, `DialogTitle`, `DialogDescription`, `DialogBody`, `DialogFooter`, `DialogClose` | `open`, `onOpenChange`, `titleId`, `descriptionId` |
-| Tabs | `Tabs` | `TabsList`, `TabsTrigger`, `TabsContent` | `value`, `onValueChange`, `orientation` |
+| Tabs | `Tabs` | `TabsList`, `TabsTrigger`, `TabsContent` | `value`, `onChange`, `orientation` |
 | Menu | `Menu` | `MenuItem`, `MenuDivider` | `selectedId`, `highlightedId`, `onHighlightChange`, `onSelect`, `variant` |
 | NavigationList | `NavigationList` | `NavigationListItem`, `NavigationListItemTitle`, `NavigationListItemStatus`, `NavigationListItemMeta`, `NavigationListBadge`, `NavigationListSubtitle` | `selectedId`, `highlightedId`, `onHighlightChange`, `onSelect`, `focused` |
 | Toast | `Toaster` | none | Shared toast store through `toast()` helpers |

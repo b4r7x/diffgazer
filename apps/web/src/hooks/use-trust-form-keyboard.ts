@@ -1,64 +1,105 @@
-import { useKey, useScope } from "@diffgazer/keys";
+import { useCallback, useRef } from "react";
+import { useFocusZone, useKey, useScopedNavigation } from "@diffgazer/keys";
 
-type FocusZone = "list" | "buttons";
+export type TrustFormFocusZone = "list" | "buttons";
+export type TrustFormAction = "save" | "revoke";
+
+const TRUST_FORM_ZONES = ["list", "buttons"] as const;
+const TRUST_FORM_ACTIONS = ["save", "revoke"] as const;
 
 interface UseTrustFormKeyboardOptions {
   enabled?: boolean;
-  focusZone: FocusZone;
-  buttonIndex: number;
-  buttonsCount: number;
-  onButtonIndexChange: (index: number) => void;
-  onFocusZoneChange: (zone: FocusZone) => void;
+  scope?: string;
+  onListFocusRequest?: () => void;
   onSave?: () => void;
   onRevoke?: () => void;
 }
 
+function isTrustFormAction(value: string | null | undefined): value is TrustFormAction {
+  return TRUST_FORM_ACTIONS.some((action) => action === value);
+}
+
+function getActionButton(container: HTMLElement | null, action: TrustFormAction) {
+  return container?.querySelector<HTMLButtonElement>(`button[data-value="${action}"]`) ?? null;
+}
+
+function getFocusedAction(container: HTMLElement | null): TrustFormAction | null {
+  if (!container) return null;
+  const activeElement = container.ownerDocument.activeElement;
+  if (!(activeElement instanceof HTMLElement) || !container.contains(activeElement)) return null;
+
+  const action = activeElement.closest<HTMLButtonElement>("button[data-value]")?.dataset.value;
+  return isTrustFormAction(action) ? action : null;
+}
+
 export function useTrustFormKeyboard({
   enabled = true,
-  focusZone,
-  buttonIndex,
-  buttonsCount,
-  onButtonIndexChange,
-  onFocusZoneChange,
+  scope,
+  onListFocusRequest,
   onSave,
   onRevoke,
 }: UseTrustFormKeyboardOptions) {
-  useScope("trust-form");
-
-  const isButtonsZone = focusZone === "buttons" && enabled;
-
-  useKey("ArrowUp", () => {
-    onFocusZoneChange("list");
-    onButtonIndexChange(0);
-  }, { enabled: isButtonsZone });
-
-  useKey("ArrowDown", () => {}, { enabled: isButtonsZone });
-
-  useKey("ArrowLeft", () => onButtonIndexChange(Math.max(0, buttonIndex - 1)), {
-    enabled: isButtonsZone,
+  const actionRowRef = useRef<HTMLDivElement>(null);
+  const { zone, setZone, getKeyOptions } = useFocusZone<TrustFormFocusZone>({
+    initial: "list",
+    zones: TRUST_FORM_ZONES,
+    enabled,
+    scope,
+    preventDefault: true,
+    containerRef: actionRowRef,
+    focusWithinOnly: true,
   });
 
-  useKey(
-    "ArrowRight",
-    () => onButtonIndexChange(Math.min(buttonsCount - 1, buttonIndex + 1)),
-    { enabled: isButtonsZone }
-  );
+  const { highlighted, highlight } = useScopedNavigation({
+    containerRef: actionRowRef,
+    role: "button",
+    initialValue: "save",
+    orientation: "horizontal",
+    moveFocus: true,
+    wrap: false,
+    enabled: enabled && zone === "buttons",
+    scope,
+    focusWithinOnly: true,
+  });
+  const focusedAction = isTrustFormAction(highlighted)
+    ? highlighted
+    : "save";
 
-  useKey(
-    "Enter",
-    () => {
-      if (buttonIndex === 0 && onSave) onSave();
-      else if (buttonIndex === 1 && onRevoke) onRevoke();
-    },
-    { enabled: isButtonsZone }
-  );
+  const enterListZone = useCallback(() => {
+    setZone("list");
+    onListFocusRequest?.();
+  }, [onListFocusRequest, setZone]);
 
-  useKey(
-    " ",
-    () => {
-      if (buttonIndex === 0 && onSave) onSave();
-      else if (buttonIndex === 1 && onRevoke) onRevoke();
-    },
-    { enabled: isButtonsZone }
-  );
+  const handlePermissionFocus = useCallback(() => {
+    setZone("list");
+  }, [setZone]);
+
+  const focusActionButton = useCallback((action: TrustFormAction = focusedAction) => {
+    setZone("buttons");
+    highlight(action);
+    getActionButton(actionRowRef.current, action)?.focus();
+  }, [focusedAction, highlight, setZone]);
+
+  const handleActionFocus = useCallback((action: TrustFormAction) => {
+    setZone("buttons");
+    highlight(action);
+  }, [highlight, setZone]);
+
+  const activateCurrentAction = useCallback(() => {
+    const action = getFocusedAction(actionRowRef.current) ?? focusedAction;
+    if (action === "save") onSave?.();
+    else onRevoke?.();
+  }, [focusedAction, onSave, onRevoke]);
+
+  useKey("ArrowUp", enterListZone, getKeyOptions("buttons"));
+  useKey(["Enter", " "], activateCurrentAction, getKeyOptions("buttons"));
+
+  return {
+    actionRowRef,
+    focusZone: zone,
+    focusedAction,
+    handlePermissionFocus,
+    focusActionButton,
+    handleActionFocus,
+  };
 }

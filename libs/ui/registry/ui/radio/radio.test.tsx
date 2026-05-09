@@ -1,8 +1,15 @@
-import { render, screen, waitFor } from "@testing-library/react"
+import { act, render, screen, waitFor } from "@testing-library/react"
+import { useState } from "react"
 import userEvent from "@testing-library/user-event"
 import { axe } from "../../../testing/utils.js"
 import { describe, it, expect, vi } from "vitest"
 import { Radio, RadioGroup } from "./index.js"
+
+function getForm(): HTMLFormElement {
+  const form = screen.getByTestId("form")
+  if (!(form instanceof HTMLFormElement)) throw new Error("Expected form test element")
+  return form
+}
 
 describe("Radio", () => {
   it("selects on click", async () => {
@@ -22,9 +29,11 @@ describe("Radio", () => {
 
   it("does not select when disabled", async () => {
     const onChange = vi.fn()
-    render(<Radio disabled onChange={onChange} label="Option A" />)
+    const onClick = vi.fn()
+    render(<Radio disabled onChange={onChange} onClick={onClick} label="Option A" />)
     await userEvent.click(screen.getByRole("radio"))
     expect(onChange).not.toHaveBeenCalled()
+    expect(onClick).not.toHaveBeenCalled()
   })
 
   it("works in uncontrolled mode with defaultChecked", async () => {
@@ -64,12 +73,33 @@ describe("Radio", () => {
     )
 
     await userEvent.click(screen.getByRole("radio"))
-    const form = screen.getByTestId("form") as HTMLFormElement
+    const form = getForm()
     expect(new FormData(form).get("choice")).toBe("on")
 
     form.reset()
     await waitFor(() => expect(new FormData(form).has("choice")).toBe(false))
     expect(screen.getByRole("radio")).toHaveAttribute("aria-checked", "false")
+  })
+
+  it("keeps custom and empty submitted values aligned with data-value", async () => {
+    render(
+      <form data-testid="form">
+        <Radio name="choice" value="custom" label="Custom" />
+        <Radio name="choice" value="" label="Empty" />
+      </form>
+    )
+
+    const custom = screen.getByRole("radio", { name: /custom/i })
+    const empty = screen.getByRole("radio", { name: /empty/i })
+
+    expect(custom).toHaveAttribute("data-value", "custom")
+    expect(empty).toHaveAttribute("data-value", "")
+
+    await userEvent.click(custom)
+    expect(new FormData(getForm()).get("choice")).toBe("custom")
+
+    await userEvent.click(empty)
+    expect(new FormData(getForm()).get("choice")).toBe("")
   })
 
   it("focuses the visible radio when native required validation fails", async () => {
@@ -79,7 +109,7 @@ describe("Radio", () => {
       </form>
     )
 
-    const form = screen.getByTestId("form") as HTMLFormElement
+    const form = getForm()
     const radio = screen.getByRole("radio", { name: /option a/i })
 
     expect(form.reportValidity()).toBe(false)
@@ -94,7 +124,7 @@ describe("Radio", () => {
       </form>
     )
 
-    const form = screen.getByTestId("form") as HTMLFormElement
+    const form = getForm()
     const radio = screen.getByRole("radio", { name: /option a/i })
 
     expect(form.reportValidity()).toBe(false)
@@ -116,7 +146,7 @@ describe("Radio", () => {
     )
     const small = screen.getByRole("radio", { name: /small/i })
     const large = screen.getByRole("radio", { name: /large/i })
-    const form = screen.getByTestId("form") as HTMLFormElement
+    const form = getForm()
 
     await userEvent.click(small)
     expect(small).toHaveAttribute("aria-checked", "true")
@@ -141,15 +171,104 @@ describe("Radio", () => {
       expect(screen.getByRole("radio", { name: /small/i })).toHaveAttribute("aria-checked", "false")
       expect(screen.getByRole("radio", { name: /large/i })).toHaveAttribute("aria-checked", "true")
     })
-    expect(new FormData(screen.getByTestId("form") as HTMLFormElement).get("size")).toBe("large")
+    expect(new FormData(getForm()).get("size")).toBe("large")
+  })
+
+  it("unchecks uncontrolled same-name radios when a controlled radio becomes checked", async () => {
+    function MixedRadios() {
+      const [smallChecked, setSmallChecked] = useState(false)
+
+      return (
+        <form data-testid="form">
+          <Radio
+            name="size"
+            value="small"
+            checked={smallChecked}
+            onChange={() => setSmallChecked(true)}
+            label="Small"
+          />
+          <Radio name="size" value="large" defaultChecked label="Large" />
+          <button type="button" onClick={() => setSmallChecked(true)}>
+            Choose small
+          </button>
+        </form>
+      )
+    }
+
+    render(<MixedRadios />)
+
+    await userEvent.click(screen.getByRole("button", { name: /choose small/i }))
+
+    await waitFor(() => {
+      expect(screen.getByRole("radio", { name: /small/i })).toHaveAttribute("aria-checked", "true")
+      expect(screen.getByRole("radio", { name: /large/i })).toHaveAttribute("aria-checked", "false")
+    })
+  })
+
+  it("passes native root props and composes root handlers", async () => {
+    const onClick = vi.fn()
+    const onKeyDown = vi.fn()
+    render(
+      <Radio
+        label="Option A"
+        data-testid="radio-root"
+        data-source="external"
+        style={{ maxWidth: "16px" }}
+        onClick={onClick}
+        onKeyDown={onKeyDown}
+      />,
+    )
+
+    const radio = screen.getByRole("radio", { name: /option a/i })
+    await userEvent.click(radio)
+    radio.focus()
+    await userEvent.keyboard(" ")
+
+    expect(onClick).toHaveBeenCalledOnce()
+    expect(onKeyDown).toHaveBeenCalled()
+    expect(screen.getByTestId("radio-root")).toHaveAttribute("data-source", "external")
+    expect(screen.getByTestId("radio-root")).toHaveStyle({ maxWidth: "16px" })
+  })
+
+  it("lets consumer click handlers prevent the built-in selection", async () => {
+    const onChange = vi.fn()
+    render(
+      <Radio
+        label="Option A"
+        onChange={onChange}
+        onClick={(event) => event.preventDefault()}
+      />,
+    )
+
+    await userEvent.click(screen.getByRole("radio", { name: /option a/i }))
+
+    expect(onChange).not.toHaveBeenCalled()
+    expect(screen.getByRole("radio", { name: /option a/i })).toHaveAttribute("aria-checked", "false")
+  })
+
+  it("lets consumer keyboard handlers prevent the built-in Space selection", async () => {
+    const onChange = vi.fn()
+    render(
+      <Radio
+        label="Option A"
+        onChange={onChange}
+        onKeyDown={(event) => event.preventDefault()}
+      />,
+    )
+
+    screen.getByRole("radio", { name: /option a/i }).focus()
+    await userEvent.keyboard(" ")
+
+    expect(onChange).not.toHaveBeenCalled()
+    expect(screen.getByRole("radio", { name: /option a/i })).toHaveAttribute("aria-checked", "false")
   })
 })
 
 describe("RadioGroup", () => {
   it("supports direct namespaced items with custom label UI", async () => {
-    const onValueChange = vi.fn()
+    const onChange = vi.fn()
     render(
-      <RadioGroup onValueChange={onValueChange} label="Colors">
+      <RadioGroup onChange={onChange} label="Colors">
         <RadioGroup.Item value="red" label={<span>Red</span>} description={<span>Warm</span>} />
         <RadioGroup.Item value="blue" label={<span>Blue</span>} />
       </RadioGroup>
@@ -157,7 +276,7 @@ describe("RadioGroup", () => {
 
     await userEvent.click(screen.getByRole("radio", { name: /blue/i }))
 
-    expect(onValueChange).toHaveBeenCalledWith("blue")
+    expect(onChange).toHaveBeenCalledWith("blue")
     expect(screen.getByText("Warm")).toBeInTheDocument()
   })
 
@@ -171,19 +290,6 @@ describe("RadioGroup", () => {
     )
     await userEvent.click(screen.getByText("Blue"))
     expect(onChange).toHaveBeenCalledWith("blue")
-  })
-
-  it("calls onValueChange as the preferred group callback", async () => {
-    const onValueChange = vi.fn()
-    render(
-      <RadioGroup onValueChange={onValueChange} label="Colors">
-        <RadioGroup.Item value="red" label="Red" />
-        <RadioGroup.Item value="blue" label="Blue" />
-      </RadioGroup>
-    )
-
-    await userEvent.click(screen.getByRole("radio", { name: /blue/i }))
-    expect(onValueChange).toHaveBeenCalledWith("blue")
   })
 
   it("does not select disabled items", async () => {
@@ -210,8 +316,8 @@ describe("RadioGroup", () => {
     await userEvent.hover(screen.getByRole("radio", { name: /blue/i }))
 
     expect(onHighlight).not.toHaveBeenCalled()
-    expect(screen.getByRole("radio", { name: /red/i })).toHaveClass("bg-secondary")
-    expect(screen.getByRole("radio", { name: /blue/i })).not.toHaveClass("bg-secondary")
+    expect(screen.getByRole("radio", { name: /red/i })).toHaveAttribute("data-highlighted", "true")
+    expect(screen.getByRole("radio", { name: /blue/i })).not.toHaveAttribute("data-highlighted")
   })
 
   it("exposes one tabbable enabled item when unselected and skips disabled items", async () => {
@@ -241,13 +347,109 @@ describe("RadioGroup", () => {
 
     const radios = screen.getAllByRole("radio")
     expect(radios.map((radio) => radio.getAttribute("tabindex"))).toEqual(["-1", "0", "-1"])
-    expect(screen.getByRole("radio", { name: /red/i })).not.toHaveClass("bg-secondary")
+    expect(screen.getByRole("radio", { name: /red/i })).not.toHaveAttribute("data-highlighted")
 
     await userEvent.tab()
     expect(screen.getByRole("radio", { name: /blue/i })).toHaveFocus()
   })
 
-  it("keeps the tabbable item aligned with a valid controlled highlight", () => {
+  it("keeps fallback tab target aligned with DOM order after reordering items", async () => {
+    function Options({ order }: { order: string[] }) {
+      return order.map((value) => (
+        <RadioGroup.Item key={value} value={value} label={value === "red" ? "Red" : "Blue"} />
+      ))
+    }
+
+    const { rerender } = render(
+      <RadioGroup label="Colors" value="missing">
+        <Options order={["red", "blue"]} />
+      </RadioGroup>
+    )
+
+    await waitFor(() => expect(screen.getByRole("radio", { name: /red/i })).toHaveAttribute("tabindex", "0"))
+
+    rerender(
+      <RadioGroup label="Colors" value="missing">
+        <Options order={["blue", "red"]} />
+      </RadioGroup>
+    )
+
+    await waitFor(() => expect(screen.getByRole("radio", { name: /blue/i })).toHaveAttribute("tabindex", "0"))
+    expect(screen.getByRole("radio", { name: /red/i })).toHaveAttribute("tabindex", "-1")
+  })
+
+  it("keeps fallback tab target aligned when a wrapper reorders items internally", async () => {
+    let reorder!: () => void
+    function ReorderingOptions() {
+      const [order, setOrder] = useState(["red", "blue"])
+      reorder = () => setOrder(["blue", "red"])
+
+      return order.map((value) => (
+        <RadioGroup.Item key={value} value={value} label={value === "red" ? "Red" : "Blue"} />
+      ))
+    }
+
+    render(
+      <RadioGroup label="Colors" value="missing">
+        <ReorderingOptions />
+      </RadioGroup>
+    )
+
+    await waitFor(() => expect(screen.getByRole("radio", { name: /red/i })).toHaveAttribute("tabindex", "0"))
+
+    act(() => reorder())
+
+    await waitFor(() => expect(screen.getByRole("radio", { name: /blue/i })).toHaveAttribute("tabindex", "0"))
+    expect(screen.getByRole("radio", { name: /red/i })).toHaveAttribute("tabindex", "-1")
+
+    screen.getByRole("radio", { name: /blue/i }).focus()
+    await userEvent.keyboard("{ArrowDown}")
+    expect(screen.getByRole("radio", { name: /red/i })).toHaveFocus()
+  })
+
+  it("keeps arrow navigation scoped away from nested radio groups", async () => {
+    const onOuterChange = vi.fn()
+    const onInnerChange = vi.fn()
+    render(
+      <RadioGroup label="Outer" onChange={onOuterChange}>
+        <RadioGroup.Item value="outer-a" label="Outer A" />
+        <RadioGroup label="Inner" onChange={onInnerChange}>
+          <RadioGroup.Item value="inner-a" label="Inner A" />
+        </RadioGroup>
+        <RadioGroup.Item value="outer-b" label="Outer B" />
+      </RadioGroup>
+    )
+
+    screen.getByRole("radio", { name: /outer a/i }).focus()
+    await userEvent.keyboard("{ArrowDown}")
+
+    expect(screen.getByRole("radio", { name: /outer b/i })).toHaveFocus()
+    expect(onOuterChange).toHaveBeenCalledWith("outer-b")
+    expect(onInnerChange).not.toHaveBeenCalled()
+  })
+
+  it("does not handle arrow events bubbling from a nested group with suspended keyboard navigation", async () => {
+    const onOuterChange = vi.fn()
+    const onInnerChange = vi.fn()
+    render(
+      <RadioGroup label="Outer" onChange={onOuterChange}>
+        <RadioGroup.Item value="outer-a" label="Outer A" />
+        <RadioGroup label="Inner" onChange={onInnerChange} keyboardNavigation={false}>
+          <RadioGroup.Item value="inner-a" label="Inner A" />
+        </RadioGroup>
+        <RadioGroup.Item value="outer-b" label="Outer B" />
+      </RadioGroup>
+    )
+
+    screen.getByRole("radio", { name: /inner a/i }).focus()
+    await userEvent.keyboard("{ArrowDown}")
+
+    expect(screen.getByRole("radio", { name: /inner a/i })).toHaveFocus()
+    expect(onOuterChange).not.toHaveBeenCalled()
+    expect(onInnerChange).not.toHaveBeenCalled()
+  })
+
+  it("keeps the checked item tabbable even when a different item is highlighted", () => {
     render(
       <RadioGroup label="Colors" value="red" highlighted="blue">
         <RadioGroup.Item value="red" label="Red" />
@@ -258,9 +460,9 @@ describe("RadioGroup", () => {
     const red = screen.getByRole("radio", { name: /red/i })
     const blue = screen.getByRole("radio", { name: /blue/i })
     expect(red).toHaveAttribute("aria-checked", "true")
-    expect(red).toHaveAttribute("tabindex", "-1")
-    expect(blue).toHaveAttribute("tabindex", "0")
-    expect(blue).toHaveClass("bg-secondary")
+    expect(red).toHaveAttribute("tabindex", "0")
+    expect(blue).toHaveAttribute("tabindex", "-1")
+    expect(blue).toHaveAttribute("data-highlighted", "true")
   })
 
   it("respects controlled value", async () => {
@@ -273,7 +475,6 @@ describe("RadioGroup", () => {
     )
     await userEvent.click(screen.getByText("Blue"))
     expect(onChange).toHaveBeenCalledWith("blue")
-    // controlled: DOM should not change
     expect(screen.getAllByRole("radio")[0]).toHaveAttribute("aria-checked", "true")
     expect(screen.getAllByRole("radio")[1]).toHaveAttribute("aria-checked", "false")
   })
@@ -321,13 +522,188 @@ describe("RadioGroup", () => {
         <RadioGroup.Item value="green" label="Green" />
       </RadioGroup>
     )
-    screen.getAllByRole("radio")[0].focus()
+    const red = screen.getByRole("radio", { name: /red/i })
+    const blue = screen.getByRole("radio", { name: /blue/i })
+    const green = screen.getByRole("radio", { name: /green/i })
+
+    red.focus()
     await userEvent.keyboard("{ArrowDown}")
     expect(onChange).toHaveBeenLastCalledWith("blue")
+    expect(blue).toHaveFocus()
+    expect(blue).toHaveAttribute("aria-checked", "true")
+
     await userEvent.keyboard("{ArrowDown}")
     expect(onChange).toHaveBeenLastCalledWith("green")
+    expect(green).toHaveFocus()
+    expect(green).toHaveAttribute("aria-checked", "true")
+
     await userEvent.keyboard("{ArrowDown}")
     expect(onChange).toHaveBeenLastCalledWith("red")
+    expect(red).toHaveFocus()
+    expect(red).toHaveAttribute("aria-checked", "true")
+  })
+
+  it("can suspend keyboard navigation without disabling items", async () => {
+    const onChange = vi.fn()
+    render(
+      <RadioGroup onChange={onChange} label="Colors" keyboardNavigation={false}>
+        <RadioGroup.Item value="red" label="Red" />
+        <RadioGroup.Item value="blue" label="Blue" />
+      </RadioGroup>
+    )
+
+    const red = screen.getByRole("radio", { name: /red/i })
+    const blue = screen.getByRole("radio", { name: /blue/i })
+    expect(red).toHaveAttribute("tabindex", "0")
+    expect(blue).toHaveAttribute("tabindex", "0")
+
+    red.focus()
+    await userEvent.keyboard("{ArrowDown}")
+    expect(onChange).not.toHaveBeenCalled()
+    expect(red).toHaveFocus()
+
+    await userEvent.tab()
+    expect(blue).toHaveFocus()
+
+    await userEvent.click(blue)
+    expect(onChange).toHaveBeenCalledWith("blue")
+    expect(screen.getByRole("radiogroup")).not.toHaveAttribute("aria-disabled")
+  })
+
+  it("reports keyboard boundary when wrapping is disabled", async () => {
+    const onNavigationBoundaryReached = vi.fn()
+    render(
+      <RadioGroup
+        label="Colors"
+        value="blue"
+        wrap={false}
+        onNavigationBoundaryReached={onNavigationBoundaryReached}
+      >
+        <RadioGroup.Item value="red" label="Red" />
+        <RadioGroup.Item value="blue" label="Blue" />
+      </RadioGroup>
+    )
+
+    screen.getByRole("radio", { name: /blue/i }).focus()
+    await userEvent.keyboard("{ArrowDown}")
+
+    expect(onNavigationBoundaryReached).toHaveBeenCalledWith("next")
+  })
+
+  it("reports top keyboard boundary when wrapping is disabled", async () => {
+    const onNavigationBoundaryReached = vi.fn()
+    render(
+      <RadioGroup
+        label="Colors"
+        value="red"
+        wrap={false}
+        onNavigationBoundaryReached={onNavigationBoundaryReached}
+      >
+        <RadioGroup.Item value="red" label="Red" />
+        <RadioGroup.Item value="blue" label="Blue" />
+      </RadioGroup>
+    )
+
+    screen.getByRole("radio", { name: /red/i }).focus()
+    await userEvent.keyboard("{ArrowUp}")
+
+    expect(onNavigationBoundaryReached).toHaveBeenCalledWith("previous")
+  })
+
+  it("jumps to first and last item with Home and End", async () => {
+    const onChange = vi.fn()
+    render(
+      <RadioGroup label="Colors" onChange={onChange}>
+        <RadioGroup.Item value="red" label="Red" />
+        <RadioGroup.Item value="blue" label="Blue" />
+        <RadioGroup.Item value="green" label="Green" />
+      </RadioGroup>
+    )
+
+    screen.getByRole("radio", { name: /red/i }).focus()
+    await userEvent.keyboard("{End}")
+    expect(screen.getByRole("radio", { name: /green/i })).toHaveFocus()
+    expect(onChange).toHaveBeenLastCalledWith("green")
+
+    await userEvent.keyboard("{Home}")
+    expect(screen.getByRole("radio", { name: /red/i })).toHaveFocus()
+    expect(onChange).toHaveBeenLastCalledWith("red")
+  })
+
+  it("calls onEnter with the focused value", async () => {
+    const onChange = vi.fn()
+    const onEnter = vi.fn()
+    render(
+      <RadioGroup
+        label="Colors"
+        value="red"
+        onChange={onChange}
+        onEnter={onEnter}
+        activationMode="manual"
+      >
+        <RadioGroup.Item value="red" label="Red" />
+        <RadioGroup.Item value="blue" label="Blue" />
+      </RadioGroup>
+    )
+
+    screen.getByRole("radio", { name: /red/i }).focus()
+    await userEvent.keyboard("{ArrowDown}{Enter}")
+
+    expect(onEnter).toHaveBeenCalledWith("blue", expect.any(Object))
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it("can separate keyboard navigation from value changes during manual activation", async () => {
+    const onChange = vi.fn()
+    const onNavigate = vi.fn()
+    const onHighlight = vi.fn()
+    render(
+      <RadioGroup
+        label="Colors"
+        value="red"
+        onChange={onChange}
+        onNavigate={onNavigate}
+        onHighlightChange={onHighlight}
+        activationMode="manual"
+      >
+        <RadioGroup.Item value="red" label="Red" />
+        <RadioGroup.Item value="blue" label="Blue" />
+      </RadioGroup>
+    )
+
+    const red = screen.getByRole("radio", { name: /red/i })
+    const blue = screen.getByRole("radio", { name: /blue/i })
+
+    red.focus()
+    await userEvent.keyboard("{ArrowDown}")
+
+    expect(blue).toHaveFocus()
+    expect(red).toHaveAttribute("aria-checked", "true")
+    expect(blue).toHaveAttribute("aria-checked", "false")
+    expect(onHighlight).toHaveBeenCalledWith("blue")
+    expect(onNavigate).toHaveBeenCalledWith("blue", "next")
+    expect(onChange).not.toHaveBeenCalled()
+
+    await userEvent.keyboard(" ")
+    expect(onChange).toHaveBeenCalledWith("blue")
+  })
+
+  it("focuses the highlighted item when autofocus is enabled", async () => {
+    render(
+      <RadioGroup
+        label="Colors"
+        value="red"
+        highlighted="blue"
+        activationMode="manual"
+        autoFocus
+      >
+        <RadioGroup.Item value="red" label="Red" />
+        <RadioGroup.Item value="blue" label="Blue" />
+      </RadioGroup>
+    )
+
+    await waitFor(() => expect(screen.getByRole("radio", { name: /blue/i })).toHaveFocus())
+    expect(screen.getByRole("radio", { name: /red/i })).toHaveAttribute("aria-checked", "true")
   })
 
   it("does not move focus to disabled radio items with arrow keys", async () => {
@@ -355,12 +731,20 @@ describe("RadioGroup", () => {
         <RadioGroup.Item value="blue" label="Blue" />
       </RadioGroup>
     )
-    screen.getAllByRole("radio")[0].focus()
+    const red = screen.getByRole("radio", { name: /red/i })
+    const blue = screen.getByRole("radio", { name: /blue/i })
+
+    red.focus()
     await userEvent.keyboard("{ArrowRight}")
     expect(onChange).toHaveBeenCalledWith("blue")
+    expect(blue).toHaveFocus()
+    expect(blue).toHaveAttribute("aria-checked", "true")
+
     onChange.mockClear()
     await userEvent.keyboard("{ArrowLeft}")
     expect(onChange).toHaveBeenCalledWith("red")
+    expect(red).toHaveFocus()
+    expect(red).toHaveAttribute("aria-checked", "true")
   })
 
   it("resets uncontrolled group value with native form reset", async () => {
@@ -374,7 +758,7 @@ describe("RadioGroup", () => {
     )
 
     await userEvent.click(screen.getByRole("radio", { name: /blue/i }))
-    const form = screen.getByTestId("form") as HTMLFormElement
+    const form = getForm()
     expect(new FormData(form).get("color")).toBe("blue")
 
     form.reset()
@@ -395,12 +779,9 @@ describe("RadioGroup", () => {
     for (const radio of screen.getAllByRole("radio")) {
       expect(radio).not.toHaveAttribute("aria-required")
     }
-    for (const input of screen.getByTestId("form").querySelectorAll("input[required]")) {
-      expect(input).toHaveAttribute("aria-hidden", "true")
-    }
     expect(screen.getAllByRole("radio")).toHaveLength(2)
 
-    const form = screen.getByTestId("form") as HTMLFormElement
+    const form = getForm()
     expect(form.reportValidity()).toBe(false)
     expect(screen.getByRole("radio", { name: /red/i })).toHaveFocus()
     await waitFor(() => expect(screen.getByRole("radiogroup")).toHaveAttribute("aria-invalid", "true"))
@@ -414,6 +795,43 @@ describe("RadioGroup", () => {
     expect(new FormData(form).get("color")).toBe("blue")
   })
 
+  it("does not satisfy required validation with a stale controlled value", async () => {
+    render(
+      <form data-testid="form">
+        <RadioGroup name="color" required label="Colors" value="missing">
+          <RadioGroup.Item value="red" label="Red" />
+          <RadioGroup.Item value="blue" label="Blue" />
+        </RadioGroup>
+      </form>
+    )
+
+    const form = getForm()
+    expect(form.checkValidity()).toBe(false)
+    expect(new FormData(form).has("color")).toBe(false)
+
+    expect(form.reportValidity()).toBe(false)
+    expect(screen.getByRole("radio", { name: /red/i })).toHaveFocus()
+    await waitFor(() => expect(screen.getByRole("radiogroup")).toHaveAttribute("aria-invalid", "true"))
+  })
+
+  it("validates required groups with items rendered through wrapper components", () => {
+    function WrappedBlue() {
+      return <RadioGroup.Item value="blue" label="Blue" />
+    }
+
+    render(
+      <form data-testid="form">
+        <RadioGroup name="color" required label="Colors" value="blue">
+          <WrappedBlue />
+        </RadioGroup>
+      </form>
+    )
+
+    const form = getForm()
+    expect(form.checkValidity()).toBe(true)
+    expect(new FormData(form).get("color")).toBe("blue")
+  })
+
   it("validates required unnamed groups without contributing FormData", async () => {
     render(
       <form data-testid="form">
@@ -424,7 +842,7 @@ describe("RadioGroup", () => {
       </form>
     )
 
-    const form = screen.getByTestId("form") as HTMLFormElement
+    const form = getForm()
     expect(form.reportValidity()).toBe(false)
     expect(screen.getByRole("radio", { name: /red/i })).toHaveFocus()
     await waitFor(() => expect(screen.getByRole("radiogroup")).toHaveAttribute("aria-invalid", "true"))
@@ -438,4 +856,26 @@ describe("RadioGroup", () => {
     expect(screen.getByRole("radiogroup")).not.toHaveAttribute("aria-invalid")
     expect(new FormData(form).entries().next().done).toBe(true)
   })
+
+  it("does not call the public value callback with undefined on native reset", async () => {
+    const onChange = vi.fn()
+    render(
+      <form data-testid="form">
+        <RadioGroup name="color" onChange={onChange} label="Colors">
+          <RadioGroup.Item value="red" label="Red" />
+          <RadioGroup.Item value="blue" label="Blue" />
+        </RadioGroup>
+      </form>
+    )
+
+    await userEvent.click(screen.getByRole("radio", { name: /blue/i }))
+    expect(onChange).toHaveBeenCalledWith("blue")
+
+    const form = getForm()
+    form.reset()
+
+    await waitFor(() => expect(screen.getByRole("radio", { name: /blue/i })).toHaveAttribute("aria-checked", "false"))
+    expect(onChange).toHaveBeenCalledTimes(1)
+  })
+
 })

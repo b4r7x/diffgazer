@@ -55,7 +55,7 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
   const router = useRouter();
   const [focusZone, setFocusZone] = useState<FocusZone>("list");
 
-  const { severityFilter, setSeverityFilter, filteredIssues, focusedFilterIndex, toggleSeverityFilter, moveFocusedFilter } =
+  const { severityFilter, setSeverityFilter, filteredIssues, focusedFilterIndex, setFocusedFilterIndex, toggleSeverityFilter, moveFocusedFilter } =
     useSeverityFilter({ issues });
 
   const { selectedIssue, selectedIssueId, setSelectedIssueId, focusedValue, listRef, moveIssue } =
@@ -134,6 +134,7 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
     setSeverityFilter,
     focusZone,
     focusedFilterIndex,
+    setFocusedFilterIndex,
     focusedValue,
     listRef,
     detailsScrollRef,

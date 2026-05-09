@@ -1,6 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useId, useRef, useState, type AriaAttributes, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type Ref } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type AriaAttributes,
+  type ComponentPropsWithRef,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
+  type ReactNode,
+  type Ref,
+} from "react";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { useFormReset } from "@/hooks/use-form-reset";
 import { composeRefs } from "@/lib/compose-refs";
@@ -48,12 +60,28 @@ function dispatchRadioCheck(source: HTMLElement, name: string) {
   }));
 }
 
-export interface RadioProps {
+type RadioRootProps = Omit<
+  ComponentPropsWithRef<"div">,
+  | "children"
+  | "role"
+  | "aria-checked"
+  | "aria-disabled"
+  | "aria-invalid"
+  | "aria-label"
+  | "aria-labelledby"
+  | "aria-describedby"
+  | "tabIndex"
+  | "onChange"
+  | "className"
+  | "ref"
+  | "data-value"
+>;
+
+export interface RadioProps extends RadioRootProps {
   checked?: boolean;
   defaultChecked?: boolean;
   isTabTarget?: boolean;
   onChange?: (checked: boolean) => void;
-  onMouseEnter?: () => void;
   label?: ReactNode;
   description?: ReactNode;
   disabled?: boolean;
@@ -77,6 +105,8 @@ export function Radio({
   defaultChecked = false,
   isTabTarget = true,
   onChange,
+  onClick,
+  onKeyDown,
   onMouseEnter,
   label,
   description,
@@ -94,6 +124,7 @@ export function Radio({
   className,
   ref,
   "data-value": dataValue,
+  ...rootProps
 }: RadioProps) {
   const generatedId = useId();
   const labelId = `${generatedId}-label`;
@@ -111,9 +142,9 @@ export function Radio({
   useFormReset(rootRef, defaultChecked, setIsChecked, checked === undefined);
 
   const notifySameNameRadios = useCallback(() => {
-    if (!name || isControlled || !rootRef.current) return;
+    if (!name || !rootRef.current) return;
     dispatchRadioCheck(rootRef.current, name);
-  }, [isControlled, name]);
+  }, [name]);
 
   useEffect(() => {
     if (!name || isControlled) return;
@@ -122,8 +153,9 @@ export function Radio({
     if (!ownerDocument) return;
 
     const handleRadioCheck = (event: Event) => {
-      const { detail } = event as CustomEvent<RadioCheckEventDetail>;
+      const detail = (event as CustomEvent<Partial<RadioCheckEventDetail> | undefined>).detail;
       if (
+        !detail ||
         detail.name !== name ||
         detail.source === rootRef.current ||
         detail.form !== (rootRef.current?.closest("form") ?? null)
@@ -146,11 +178,24 @@ export function Radio({
     if (disabled) return;
     setNativeInvalid(false);
     setIsChecked(true);
-    notifySameNameRadios();
   };
 
-  const handleKeyDown = (e: ReactKeyboardEvent) => {
-    if (disabled) return;
+  const handleClick = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (disabled) {
+      event.preventDefault();
+      return;
+    }
+    onClick?.(event);
+    if (!event.defaultPrevented) toggle();
+  };
+
+  const handleKeyDown = (e: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (disabled) {
+      e.preventDefault();
+      return;
+    }
+    onKeyDown?.(e);
+    if (e.defaultPrevented) return;
     if (e.key === " ") {
       e.preventDefault();
       toggle();
@@ -183,9 +228,11 @@ export function Radio({
         />
       )}
       <div
+        {...rootProps}
         ref={composeRefs(rootRef, ref)}
         role="radio"
         data-value={dataValue ?? value}
+        data-highlighted={highlighted ? "true" : undefined}
         aria-checked={isChecked}
         aria-disabled={disabled || undefined}
         aria-invalid={resolvedAriaInvalid}
@@ -193,7 +240,7 @@ export function Radio({
         aria-labelledby={!ariaLabel && label ? labelId : undefined}
         aria-describedby={description ? descriptionId : undefined}
         tabIndex={!disabled && isTabTarget ? 0 : -1}
-        onClick={toggle}
+        onClick={handleClick}
         onKeyDown={handleKeyDown}
         onMouseEnter={onMouseEnter}
         className={cn(

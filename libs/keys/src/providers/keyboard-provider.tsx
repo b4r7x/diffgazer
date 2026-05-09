@@ -17,8 +17,8 @@ type Handler = (event: KeyboardEvent) => void;
 
 export interface HandlerOptions {
   allowInInput?: boolean;
-  targetRef?: RefObject<HTMLElement | null>;
-  requireFocusWithin?: boolean;
+  containerRef?: RefObject<HTMLElement | null>;
+  focusWithinOnly?: boolean;
   preventDefault?: boolean;
 }
 
@@ -33,18 +33,43 @@ type HandlerMap = Map<string, HandlerEntry[]>;
 interface ScopeStackEntry {
   name: string;
   id: number;
+  order: string;
+}
+
+const IMPERATIVE_SCOPE_ORDER_PREFIX = "\uffff";
+const REACT_ID_RADIX = 32;
+
+function getScopeOrderSegments(order: string) {
+  return (order.toLowerCase().match(/[0-9a-v]+/g) ?? []).map((segment) => parseInt(segment, REACT_ID_RADIX));
+}
+
+function compareScopeEntries(a: ScopeStackEntry, b: ScopeStackEntry) {
+  const aImperative = a.order.startsWith(IMPERATIVE_SCOPE_ORDER_PREFIX);
+  const bImperative = b.order.startsWith(IMPERATIVE_SCOPE_ORDER_PREFIX);
+  if (aImperative !== bImperative) return aImperative ? 1 : -1;
+  if (aImperative && bImperative) return a.id - b.id;
+
+  const aSegments = getScopeOrderSegments(a.order);
+  const bSegments = getScopeOrderSegments(b.order);
+  const length = Math.max(aSegments.length, bSegments.length);
+  for (let index = 0; index < length; index += 1) {
+    const aValue = aSegments[index] ?? -1;
+    const bValue = bSegments[index] ?? -1;
+    if (aValue !== bValue) return aValue - bValue;
+  }
+  return a.id - b.id;
 }
 
 export interface KeyboardContextValue {
   activeScope: string | null;
   getActiveScope: () => string | null;
-  pushScope: (scope: string) => () => void;
+  pushScope: (scope: string, order?: string) => () => void;
   register: (scope: string, hotkey: string, handler: Handler, options?: HandlerOptions) => () => void;
 }
 
 export interface KeyboardRegistryContextValue {
   getActiveScope: () => string | null;
-  pushScope: (scope: string) => () => void;
+  pushScope: (scope: string, order?: string) => () => void;
   register: (scope: string, hotkey: string, handler: Handler, options?: HandlerOptions) => () => void;
 }
 
@@ -55,15 +80,18 @@ export interface KeyboardScopeContextValue {
 export const KeyboardRegistryContext = createContext<KeyboardRegistryContextValue | undefined>(undefined);
 export const KeyboardScopeContext = createContext<KeyboardScopeContextValue | undefined>(undefined);
 
-function isWithinTarget(eventTarget: EventTarget | null, options?: HandlerOptions): boolean {
-  if (!options?.targetRef || !options.requireFocusWithin) return true;
-  const targetElement = options.targetRef.current;
-  if (!targetElement || !(eventTarget instanceof Node)) return false;
-  return targetElement.contains(eventTarget);
+function isEventWithinContainer(eventTarget: EventTarget | null, options?: HandlerOptions): boolean {
+  const containerRef = options?.containerRef;
+  const focusWithinOnly = options?.focusWithinOnly;
+  if (!containerRef || !focusWithinOnly) return true;
+  const container = containerRef.current;
+  const View = container?.ownerDocument.defaultView;
+  if (!View || !(eventTarget instanceof View.Node)) return false;
+  return container.contains(eventTarget);
 }
 
 export function KeyboardProvider({ children }: { children: ReactNode }) {
-  const [scopeStack, setScopeStack] = useState<ScopeStackEntry[]>(() => [{ name: "global", id: 0 }]);
+  const [scopeStack, setScopeStack] = useState<ScopeStackEntry[]>(() => [{ name: "global", id: 0, order: "" }]);
   const scopeStackRef = useRef(scopeStack);
   const handlers = useRef(new Map<string, HandlerMap>());
   const nextHandlerId = useRef(1);
@@ -73,9 +101,11 @@ export function KeyboardProvider({ children }: { children: ReactNode }) {
 
   const getActiveScope = useCallback(() => scopeStackRef.current[scopeStackRef.current.length - 1]?.name ?? null, []);
 
-  const pushScope = useCallback((scope: string) => {
+  const pushScope = useCallback((scope: string, order?: string) => {
     const id = nextScopeId.current++;
-    const next = [...scopeStackRef.current, { name: scope, id }];
+    const scopeOrder = order ?? `${IMPERATIVE_SCOPE_ORDER_PREFIX}${String(id).padStart(8, "0")}`;
+    const next = [...scopeStackRef.current, { name: scope, id, order: scopeOrder }]
+      .sort(compareScopeEntries);
     scopeStackRef.current = next;
     setScopeStack(next);
 
@@ -103,7 +133,7 @@ export function KeyboardProvider({ children }: { children: ReactNode }) {
       for (let idx = entries.length - 1; idx >= 0; idx -= 1) {
         const entry = entries[idx]!;
         if (isInput && !entry.options?.allowInInput) continue;
-        if (!isWithinTarget(event.target, entry.options)) continue;
+        if (!isEventWithinContainer(event.target, entry.options)) continue;
 
         if (entry.options?.preventDefault) {
           event.preventDefault();

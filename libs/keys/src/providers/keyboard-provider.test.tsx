@@ -3,6 +3,7 @@ import { render, screen, act, cleanup } from "@testing-library/react";
 import { useEffect, useRef, type ReactNode } from "react";
 import { KeyboardProvider } from "./keyboard-provider";
 import { useKeyboardContext, useKeyboardRegistryContext } from "../context/keyboard-context";
+import { useScope } from "../hooks/use-scope";
 import { fireKey as pressKey } from "../testing/test-utils";
 
 function Wrapper({ children }: { children: ReactNode }) {
@@ -301,6 +302,46 @@ describe("KeyboardProvider", () => {
     expect(first).toHaveBeenCalledOnce();
   });
 
+  it("should keep imperative pushScope on top of hook scopes until popped", () => {
+    const panelHandler = vi.fn();
+    const manualHandler = vi.fn();
+    const pushManualRef = { current: () => () => {} };
+
+    function Consumer() {
+      useScope("panel");
+      const { register, pushScope } = useKeyboardContext();
+
+      useEffect(() => {
+        const unregisterPanel = register("panel", "a", panelHandler);
+        const unregisterManual = register("manual", "a", manualHandler);
+        pushManualRef.current = () => pushScope("manual");
+        return () => {
+          unregisterPanel();
+          unregisterManual();
+        };
+      }, [pushScope, register]);
+
+      return <div>consumer</div>;
+    }
+
+    render(<Wrapper><Consumer /></Wrapper>);
+
+    act(() => pressKey("a"));
+    expect(panelHandler).toHaveBeenCalledOnce();
+    expect(manualHandler).not.toHaveBeenCalled();
+
+    let popManual = () => {};
+    act(() => {
+      popManual = pushManualRef.current();
+    });
+    act(() => pressKey("a"));
+    expect(manualHandler).toHaveBeenCalledOnce();
+
+    act(() => popManual());
+    act(() => pressKey("a"));
+    expect(panelHandler).toHaveBeenCalledTimes(2);
+  });
+
   it("should keep registry consumers stable when active scope changes", () => {
     const registryRender = vi.fn();
     const pushScopeRef = { current: (_scope: string) => () => {} };
@@ -348,24 +389,24 @@ describe("KeyboardProvider", () => {
     expect(handler).toHaveBeenCalledOnce();
   });
 
-  it("should only trigger focus-scoped handlers when event target is inside targetRef", () => {
+  it("should only trigger focus-scoped handlers when event target is inside containerRef", () => {
     const handler = vi.fn();
 
     function Consumer() {
       const { register } = useKeyboardContext();
-      const targetRef = useRef<HTMLDivElement>(null);
+      const containerRef = useRef<HTMLDivElement>(null);
 
       useEffect(() => {
         return register("global", "ArrowDown", handler, {
-          targetRef,
-          requireFocusWithin: true,
+          containerRef,
+          focusWithinOnly: true,
         });
       }, [register]);
 
       return (
         <div>
           <div data-testid="outside" />
-          <div ref={targetRef} data-testid="inside-container">
+          <div ref={containerRef} data-testid="inside-container">
             <button data-testid="inside-button" />
           </div>
         </div>
@@ -387,4 +428,5 @@ describe("KeyboardProvider", () => {
     });
     expect(handler).toHaveBeenCalledOnce();
   });
+
 });

@@ -1,4 +1,5 @@
 import { Button } from "@diffgazer/ui/components/button";
+import { InputGroup } from "@diffgazer/ui/components/input";
 
 interface ModelSearchInputProps {
   value: string;
@@ -26,34 +27,32 @@ export function ModelSearchInput({
   return (
     <div className="px-4 pt-3 pb-2">
       <div className="flex gap-2 items-center">
-        <div className="relative flex-1">
-          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-tui-muted text-xs">
-            /
-          </span>
-          <input
-            ref={ref}
-            type="text"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            onFocus={onFocus}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") {
-                onEscape();
-                e.stopPropagation();
-              }
-              if (e.key === "ArrowDown") {
-                onArrowDown();
-                e.preventDefault();
-              }
-              if (e.key === "Enter" && showCustomAction && onUseCustom && canUseCustom) {
-                onUseCustom();
-                e.preventDefault();
-              }
-            }}
-            placeholder="Search models..."
-            className="w-full bg-tui-input-bg border border-tui-border px-3 py-1.5 pl-6 text-xs focus:border-tui-blue focus:outline-none placeholder:text-muted-foreground"
-          />
-        </div>
+        <InputGroup
+          ref={ref}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onFocus={onFocus}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              onEscape();
+              e.stopPropagation();
+            }
+            if (e.key === "ArrowDown") {
+              onArrowDown();
+              e.preventDefault();
+            }
+            if (e.key === "Enter" && showCustomAction && onUseCustom && canUseCustom) {
+              onUseCustom();
+              e.preventDefault();
+            }
+          }}
+          aria-label="Search models"
+          placeholder="Search models..."
+          prefix={<span aria-hidden="true">/</span>}
+          size="sm"
+          className="flex-1 bg-tui-input-bg border-tui-border"
+          inputClassName="text-xs"
+        />
         {showCustomAction && (
           <Button
             size="sm"

@@ -23,16 +23,16 @@ class RouteErrorBoundary extends React.Component<
           <div className="text-center">
             <p className="text-tui-red mb-2">Something went wrong</p>
             <p className="text-tui-muted text-sm">{this.state.error.message}</p>
-            <button
-              type="button"
-              className="mt-4 px-4 py-2 border border-tui-border text-sm hover:bg-tui-border/20"
+            <Button
+              variant="secondary"
+              className="mt-4"
               onClick={() => {
                 this.setState({ error: null });
                 window.location.reload();
               }}
             >
               Reload
-            </button>
+            </Button>
           </div>
         </div>
       );

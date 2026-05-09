@@ -56,7 +56,7 @@ describe("resolveIntegrations", () => {
 
   test("rejects none mode for components with required keyboard hook imports", async () => {
     await assert.rejects(
-      () => resolveIntegrations(["radio"], "none", false),
+      () => resolveIntegrations(["accordion"], "none", false),
       /require keyboard hooks/,
     );
   });

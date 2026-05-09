@@ -38,7 +38,7 @@ export function IssueDetailsPane({
   return (
     <div data-focused={isFocused || undefined} className={cn("w-3/5 flex flex-col pl-4 min-h-0", className)}>
       <div className="flex flex-1 min-h-0 flex-col">
-        <Tabs value={activeTab} onValueChange={onTabChange as (value: string) => void} className="flex flex-1 min-h-0 flex-col">
+        <Tabs value={activeTab} onChange={onTabChange as (value: string) => void} className="flex flex-1 min-h-0 flex-col">
           <TabsList className="border-b border-tui-border pb-2 pt-2 mb-4">
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="explain">Explain</TabsTrigger>

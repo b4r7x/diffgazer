@@ -1,10 +1,10 @@
-import { useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { NavigationList } from "@diffgazer/ui/components/navigation-list";
+import { SearchInput } from "@diffgazer/ui/components/search-input";
 import { matchQueryState } from "@diffgazer/core/api/hooks";
-import { RunAccordionItem } from "@/features/history/components/run-accordion-item";
 import { TimelineList } from "@/features/history/components/timeline-list";
 import { HistoryInsightsPane } from "@/features/history/components/history-insights-pane";
-import { SearchInput } from "@/features/history/components/search-input";
+import { useHistoryKeyboard } from "@/features/history/hooks/use-history-keyboard";
 import { useHistoryPage } from "@/features/history/hooks/use-history-page";
 
 export function HistoryPage() {
@@ -36,12 +36,30 @@ export function HistoryPage() {
   } = useHistoryPage();
 
   const [runsFocusedValue, setRunsFocusedValue] = useState<string | null>(null);
+  const runsListRef = useRef<HTMLDivElement>(null);
+  const runsHighlightedId = mappedRuns.some((run) => run.id === runsFocusedValue)
+    ? runsFocusedValue
+    : null;
+  const activeRunId = runsHighlightedId ?? selectedRunId;
+
+  useHistoryKeyboard({
+    focusZone,
+    setFocusZone,
+    activeRunId,
+    searchInputRef,
+  });
 
   const handleRunsKeyDown = (event: KeyboardEvent) => {
+    if ((event.key === "Enter" || event.key === " ") && activeRunId) {
+      event.preventDefault();
+      handleRunActivate(activeRunId);
+      return;
+    }
+
     if (
       event.key === "ArrowUp" &&
       mappedRuns.length > 0 &&
-      (runsFocusedValue === mappedRuns[0]?.id || runsFocusedValue === null)
+      (activeRunId === mappedRuns[0]?.id || activeRunId === null)
     ) {
       event.preventDefault();
       handleRunsBoundary("up");
@@ -62,6 +80,21 @@ export function HistoryPage() {
     success: () => null,
   });
 
+  const isReady = guard === null;
+
+  useEffect(() => {
+    if (!isReady || focusZone !== "runs") return;
+
+    const runsList = runsListRef.current;
+    if (!runsList) return;
+
+    const activeElement = runsList.ownerDocument.activeElement;
+    const View = runsList.ownerDocument.defaultView;
+    if (View && activeElement instanceof View.HTMLElement && runsList.contains(activeElement)) return;
+
+    runsList.focus();
+  }, [focusZone, isReady, mappedRuns.length]);
+
   if (guard) return guard;
 
   return (
@@ -76,7 +109,17 @@ export function HistoryPage() {
         onChange={setSearchQuery}
         onFocus={() => setFocusZone("search")}
         onEscape={handleSearchEscape}
-        onArrowDown={handleSearchArrowDown}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            event.stopPropagation();
+          } else if (event.key === "ArrowDown") {
+            event.preventDefault();
+            handleSearchArrowDown();
+          }
+        }}
+        placeholder="Search runs by ID..."
+        prefix={<span aria-hidden="true" className="text-tui-blue font-bold">/</span>}
+        className="border-tui-border bg-tui-bg text-sm"
       />
 
       <div className="flex flex-1 overflow-hidden border-x border-b border-tui-border">
@@ -91,7 +134,10 @@ export function HistoryPage() {
             <TimelineList
               items={timelineItems}
               selectedId={selectedDateId}
-              onSelect={setSelectedDateId}
+              onSelect={(id) => {
+                setFocusZone("timeline");
+                setSelectedDateId(id);
+              }}
               keyboardEnabled={focusZone === "timeline"}
               onBoundaryReached={handleTimelineBoundary}
             />
@@ -109,25 +155,37 @@ export function HistoryPage() {
           <div className="flex-1 overflow-y-auto">
             {mappedRuns.length > 0 ? (
               <NavigationList
+                ref={runsListRef}
+                aria-label="Review runs"
                 selectedId={selectedRunId}
-                highlightedId={focusZone === "runs" ? runsFocusedValue : null}
-                onSelect={handleRunActivate}
+                highlightedId={focusZone === "runs" ? runsHighlightedId : null}
+                onSelect={setSelectedRunId}
                 onHighlightChange={setRunsFocusedValue}
                 onKeyDown={handleRunsKeyDown}
                 wrap={false}
                 focused={focusZone === "runs"}
               >
                 {mappedRuns.map((run) => (
-                  <RunAccordionItem
+                  <NavigationList.Item
                     key={run.id}
-                    run={run}
-                    isSelected={run.id === selectedRunId}
-                    isActive={
-                      focusZone === "runs" && run.id === runsFocusedValue
-                    }
-                    onSelect={() => setSelectedRunId(run.id)}
-                    onOpen={() => handleRunActivate(run.id)}
-                  />
+                    id={run.id}
+                    onDoubleClick={() => handleRunActivate(run.id)}
+                    className="border-b border-tui-border"
+                  >
+                    <NavigationList.Title>{run.displayId}</NavigationList.Title>
+                    <NavigationList.Status className="text-tui-muted group-data-[active]:text-primary-foreground/70">
+                      {run.timestamp}
+                    </NavigationList.Status>
+                    <NavigationList.Meta className="min-w-0 flex-wrap">
+                      <NavigationList.Badge variant="neutral" size="sm">
+                        {run.branch}
+                      </NavigationList.Badge>
+                      <NavigationList.Subtitle>{run.provider}</NavigationList.Subtitle>
+                      <span className="min-w-full line-clamp-2 text-sm text-muted-foreground group-data-[active]:text-primary-foreground/85">
+                        {run.summary}
+                      </span>
+                    </NavigationList.Meta>
+                  </NavigationList.Item>
                 ))}
               </NavigationList>
             ) : (

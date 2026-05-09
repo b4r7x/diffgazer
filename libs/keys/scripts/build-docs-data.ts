@@ -19,7 +19,7 @@ const loadHookDoc = createHookDocLoader(
 )
 
 const PROVIDER_HOOKS: HookRegistryItem[] = [
-  { name: "use-key", title: "useKey", description: "Bind keyboard shortcuts to handlers with scoped, document-level, or element-targeted listening", files: [{ path: "src/hooks/use-key.ts" }] },
+  { name: "use-key", title: "useKey", description: "Bind keyboard shortcuts to handlers with scoped, document-level, or container-scoped listening", files: [{ path: "src/hooks/use-key.ts" }] },
   { name: "use-scope", title: "useScope", description: "Push a named scope onto the keyboard scope stack", files: [{ path: "src/hooks/use-scope.ts" }] },
   { name: "use-scoped-navigation", title: "useScopedNavigation", description: "Scope-aware keyboard navigation registered via KeyboardProvider", files: [{ path: "src/hooks/use-scoped-navigation.ts" }] },
   { name: "use-focus-zone", title: "useFocusZone", description: "Manage focus across multiple zones with arrow key and Tab transitions", files: [{ path: "src/hooks/use-focus-zone.ts" }] },

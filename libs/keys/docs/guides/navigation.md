@@ -13,10 +13,12 @@ The main hook. Handles arrow key navigation, selection, and focus tracking for a
 Three things need to be true about your HTML:
 
 1. A **container element** with a ref
-2. Child elements with a matching **`role`** attribute (`"option"`, `"menuitem"`, `"radio"`, `"checkbox"`, `"button"`, or `"tab"`)
+2. Child elements with a matching **`role`** attribute (`"option"`, `"menuitem"`, `"menuitemradio"`, `"radio"`, `"checkbox"`, `"button"`, or `"tab"`)
 3. Each child has a **`data-value`** attribute -- this is how the hook tracks which item is focused
 
 Disabled items use `aria-disabled="true"` (not the HTML `disabled` attribute). When `skipDisabled` is true (the default), the selector becomes `[role="option"]:not([aria-disabled="true"])`, so disabled items get skipped during navigation.
+
+If a collection can contain another collection of the same family, keep `scopeToContainer: true` (the default). For example, an outer radiogroup ignores radios inside a nested radiogroup, while a listbox can still use `role="group"` sections for headings.
 
 ```tsx
 const containerRef = useRef<HTMLDivElement>(null);
@@ -74,7 +76,7 @@ import { useScopedNavigation } from "@diffgazer/keys";
 const { highlighted, isHighlighted, highlight } = useScopedNavigation({
   containerRef,
   role: "option",
-  requireFocusWithin: true, // only respond when focus is inside container
+  focusWithinOnly: true, // only respond when focus is inside container
 });
 ```
 
@@ -157,15 +159,15 @@ Home always jumps to the first item, End to the last. These aren't configurable.
 When the user presses down on the last item (or up on the first):
 
 - **`wrap: true`** (default): focus wraps to the other end of the list
-- **`wrap: false`**: nothing happens, but `onBoundaryReached` fires with `"up"` or `"down"`
+- **`wrap: false`**: nothing happens, but `onNavigationBoundaryReached` fires with `"previous"` or `"next"`
 
 ```tsx
 useNavigation({
   containerRef,
   role: "option",
   wrap: false,
-  onBoundaryReached: (direction) => {
-    if (direction === "down") focusNextSection();
+  onNavigationBoundaryReached: (direction) => {
+    if (direction === "next") focusNextSection();
   },
 });
 ```
@@ -203,17 +205,20 @@ interface UseNavigationOptions {
   wrap?: boolean;                   // default: true
   enabled?: boolean;                // default: true
   preventDefault?: boolean;         // default: true
-  onBoundaryReached?: (direction: "up" | "down") => void;
+  onNavigationBoundaryReached?: (direction: "previous" | "next") => void;
   initialValue?: string | null;     // default: null
   orientation?: "vertical" | "horizontal";  // default: "vertical"
   skipDisabled?: boolean;           // default: true
+  moveFocus?: boolean;              // default: false
+  scopeToContainer?: boolean;       // default: true
+  ownerSelector?: string | null;    // advanced owner override
   upKeys?: string[];                // default: ["ArrowUp"] or ["ArrowLeft"]
   downKeys?: string[];              // default: ["ArrowDown"] or ["ArrowRight"]
 }
 
 // useScopedNavigation extends the same options:
 interface UseScopedNavigationOptions extends UseNavigationOptions {
-  requireFocusWithin?: boolean;     // default: false
+  focusWithinOnly?: boolean;     // default: false
 }
 ```
 

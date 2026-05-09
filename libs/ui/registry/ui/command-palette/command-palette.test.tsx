@@ -15,8 +15,6 @@ interface RenderOptions {
   onOpenChange?: (open: boolean) => void
   search?: string
   onSearchChange?: (value: string) => void
-  selectedId?: string | null
-  onSelectedIdChange?: (id: string | null) => void
   highlightedId?: string | null
   onHighlightChange?: (id: string | null) => void
   onActivate?: (id: string) => void
@@ -70,7 +68,7 @@ describe("CommandPalette", () => {
     expect(onActivate).toHaveBeenCalledWith("paste")
   })
 
-  it("documents that opaque wrapper-generated items are not keyboard metadata", async () => {
+  it("supports keyboard activation for items rendered by wrappers", async () => {
     const onActivate = vi.fn()
     function WrappedCommandItem() {
       return <CommandPalette.Item id="wrapped">Wrapped</CommandPalette.Item>
@@ -92,8 +90,7 @@ describe("CommandPalette", () => {
 
     await userEvent.type(screen.getByRole("combobox"), "wrapped{Enter}")
 
-    expect(onActivate).not.toHaveBeenCalled()
-    expect(screen.getByRole("option", { name: /wrapped/i })).toHaveAttribute("aria-selected", "false")
+    expect(onActivate).toHaveBeenCalledWith("wrapped")
   })
 
   it("does not render content when closed", () => {
@@ -208,14 +205,6 @@ describe("CommandPalette", () => {
     expect(input).toHaveValue("")
   })
 
-  it("controlled selectedId calls onSelectedIdChange on navigation", async () => {
-    const onSelectedIdChange = vi.fn()
-    renderPalette({ selectedId: "copy", onSelectedIdChange })
-    const input = screen.getByRole("combobox")
-    await userEvent.type(input, "{ArrowDown}")
-    expect(onSelectedIdChange).toHaveBeenCalled()
-  })
-
   it("controlled highlightedId calls onHighlightChange on navigation", async () => {
     const onHighlightChange = vi.fn()
     renderPalette({ highlightedId: "copy", onHighlightChange })
@@ -224,8 +213,8 @@ describe("CommandPalette", () => {
     expect(onHighlightChange).toHaveBeenCalledWith("paste")
   })
 
-  it("lets highlightedId null override deprecated selectedId", () => {
-    renderPalette({ highlightedId: null, selectedId: "copy" })
+  it("keeps controlled null highlight unselected", () => {
+    renderPalette({ highlightedId: null })
     expect(screen.getByRole("combobox")).not.toHaveAttribute("aria-activedescendant")
     expect(getOption("copy")).toHaveAttribute("aria-selected", "false")
   })

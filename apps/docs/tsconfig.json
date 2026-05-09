@@ -27,6 +27,7 @@
       "@/*": ["./src/*"],
       "@/lib/utils": ["./src/lib/utils.ts"],
       "@/lib/compose-refs": ["./registry/lib/compose-refs.ts"],
+      "@/lib/selectable-collection": ["./registry/lib/selectable-collection.ts"],
       "@/lib/selectable-variants": ["./registry/lib/selectable-variants.ts"],
       "@/lib/input-variants": ["./registry/lib/input-variants.ts"],
       "@/lib/resolve-tab-target": ["./registry/lib/resolve-tab-target.ts"],

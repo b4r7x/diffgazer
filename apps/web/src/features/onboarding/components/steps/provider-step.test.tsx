@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AVAILABLE_PROVIDERS } from "@diffgazer/core/schemas/config";
 import type { AIProvider } from "@diffgazer/core/schemas/config";
@@ -25,7 +25,9 @@ describe("ProviderStep", () => {
       />,
     );
 
-    screen.getByRole("radio", { name: new RegExp(escapeRegExp(selectedProvider.name)) }).focus();
+    await waitFor(() => expect(
+      screen.getByRole("radio", { name: new RegExp(escapeRegExp(selectedProvider.name)) }),
+    ).toHaveFocus());
     await user.keyboard("{Enter}");
 
     expect(onCommit).toHaveBeenCalledWith(selectedProvider.id);

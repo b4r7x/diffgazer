@@ -36,7 +36,7 @@ export const useScopedNavigationDoc: HookDoc = {
       name: "onValueChange",
       type: "(value: string) => void",
       required: false,
-      description: "Called when the selected value changes.",
+      description: "Called when the controlled highlight value should change.",
     },
     {
       name: "onSelect",
@@ -78,11 +78,11 @@ export const useScopedNavigationDoc: HookDoc = {
       defaultValue: "true",
     },
     {
-      name: "onBoundaryReached",
-      type: '(direction: "up" | "down") => void',
+      name: "onNavigationBoundaryReached",
+      type: '(direction: "previous" | "next") => void',
       required: false,
       description:
-        "Called when the user tries to navigate past the first or last item.",
+        "Called when the user tries to navigate past the first or last item using orientation-neutral direction names.",
     },
     {
       name: "initialValue",
@@ -118,7 +118,35 @@ export const useScopedNavigationDoc: HookDoc = {
       defaultValue: "true",
     },
     {
-      name: "requireFocusWithin",
+      name: "moveFocus",
+      type: "boolean",
+      required: false,
+      description: "Move DOM focus to the next item instead of only updating highlight state.",
+      defaultValue: "false",
+    },
+    {
+      name: "scopeToContainer",
+      type: "boolean",
+      required: false,
+      description:
+        "Ignore items owned by nested collection containers such as nested radiogroups, listboxes, menus, or tablists.",
+      defaultValue: "true",
+    },
+    {
+      name: "ownerSelector",
+      type: "string | null",
+      required: false,
+      description:
+        "Advanced owner selector override for scoping roles that do not have a standard composite owner.",
+    },
+    {
+      name: "scope",
+      type: "string",
+      required: false,
+      description: "Keyboard scope name to register navigation handlers under.",
+    },
+    {
+      name: "focusWithinOnly",
       type: "boolean",
       required: false,
       description:

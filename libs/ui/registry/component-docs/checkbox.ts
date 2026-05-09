@@ -29,7 +29,7 @@ export const checkboxDoc: ComponentDoc = {
     {
       title: "Built-in Navigation",
       content:
-        "CheckboxGroup handles arrow-key focus with wrapping through useNavigation. Use highlighted, onHighlightChange, and onKeyDown only when coordinating highlight state or composing extra shortcuts. Space toggling is handled by each CheckboxItem.",
+        "CheckboxGroup handles arrow-key navigation with real focus movement through useNavigation. Use autoFocus to focus the highlighted, selected, or first enabled item when the group becomes active. Use highlighted, onHighlightChange, keyboardNavigation, and onNavigationBoundaryReached when coordinating highlight state across adjacent UI. Every item value must be unique within a group. Space toggling is handled by each CheckboxItem.",
     },
     {
       title: "Strikethrough (Checklist Mode)",
@@ -46,7 +46,7 @@ export const checkboxDoc: ComponentDoc = {
   ],
   keyboard: {
     description:
-      "CheckboxGroup includes arrow-key navigation with wrapping. Control highlighted/onHighlightChange when external state coordination is needed, and use onKeyDown for additional shortcuts. Standalone Checkbox responds to Space when focused.",
+      "CheckboxGroup includes arrow-key navigation with wrapping and real focus movement. Control highlighted/onHighlightChange when external state coordination is needed, use autoFocus when activating a composite region, use keyboardNavigation to suspend only arrow handling, and use onNavigationBoundaryReached for composite focus handoff. Standalone Checkbox responds to Space when focused.",
     examples: [
       { name: "checkbox-group", title: "Group with built-in keyboard navigation" },
     ],

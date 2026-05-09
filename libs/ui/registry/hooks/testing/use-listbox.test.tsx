@@ -151,39 +151,6 @@ describe("useListbox", () => {
     await waitFor(() => expect(listbox).not.toHaveAttribute("aria-activedescendant"))
   })
 
-  it("keeps one fallback observer registration across highlight changes", async () => {
-    const observe = vi.fn()
-    const disconnect = vi.fn()
-    const OriginalMutationObserver = window.MutationObserver
-    class TrackingMutationObserver implements MutationObserver {
-      readonly takeRecords = vi.fn<MutationRecord[], []>(() => [])
-      readonly observe = observe
-      readonly disconnect = disconnect
-    }
-    window.MutationObserver = TrackingMutationObserver
-
-    try {
-      const user = userEvent.setup()
-      const { unmount } = render(<Listbox items={defaultItems} provideItemsMetadata={false} />)
-      const listbox = screen.getByRole("listbox")
-      await waitFor(() => expect(observe).toHaveBeenCalled())
-      const observeCount = observe.mock.calls.length
-      const disconnectCount = disconnect.mock.calls.length
-
-      listbox.focus()
-      await user.keyboard("{ArrowDown}{ArrowDown}")
-
-      expect(listbox).toHaveAttribute("aria-activedescendant", getEncodedListboxItemId("lb", "b"))
-      expect(observe).toHaveBeenCalledTimes(observeCount)
-      expect(disconnect).toHaveBeenCalledTimes(disconnectCount)
-
-      unmount()
-      expect(disconnect).toHaveBeenCalledTimes(disconnectCount + 1)
-    } finally {
-      window.MutationObserver = OriginalMutationObserver
-    }
-  })
-
   it("does not activate a removed highlighted item", async () => {
     const onSelect = vi.fn()
     const user = userEvent.setup()
@@ -250,6 +217,39 @@ describe("useListbox", () => {
 
     const lastCall = onHighlight.mock.calls[onHighlight.mock.calls.length - 1]
     expect(lastCall?.[0]).toBe("a")
+  })
+
+  it("keeps typeahead scoped away from nested listboxes", async () => {
+    const onHighlight = vi.fn()
+    const user = userEvent.setup()
+
+    function NestedListbox() {
+      const { getContainerProps } = useListbox({
+        idPrefix: "outer",
+        onHighlightChange: onHighlight,
+        typeahead: true,
+      })
+
+      return (
+        <div {...getContainerProps()} aria-label="Outer">
+          <div id="outer-alpha" role="option" data-value="alpha">Alpha</div>
+          <div role="listbox" aria-label="Nested">
+            <div id="outer-beta" role="option" data-value="beta">Beta</div>
+          </div>
+          <div id="outer-charlie" role="option" data-value="charlie">Charlie</div>
+        </div>
+      )
+    }
+
+    render(<NestedListbox />)
+    screen.getByRole("listbox", { name: "Outer" }).focus()
+    await user.keyboard("b")
+
+    expect(onHighlight).not.toHaveBeenCalled()
+
+    await new Promise((resolve) => setTimeout(resolve, 600))
+    await user.keyboard("c")
+    expect(onHighlight).toHaveBeenCalledWith("charlie")
   })
 
   it("treats empty string as a valid selected and highlighted item id", async () => {

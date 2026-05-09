@@ -4,13 +4,18 @@ import { axe } from "../../../testing/utils.js"
 import { describe, it, expect, vi } from "vitest"
 import { Checkbox } from "./index.js"
 
+function getForm(): HTMLFormElement {
+  const form = screen.getByTestId("form")
+  if (!(form instanceof HTMLFormElement)) throw new Error("Expected form test element")
+  return form
+}
+
 describe("Checkbox", () => {
   it("toggles on click and respects controlled value", async () => {
     const onChange = vi.fn()
     render(<Checkbox checked={false} onChange={onChange} label="Accept terms" />)
     await userEvent.click(screen.getByRole("checkbox"))
     expect(onChange).toHaveBeenCalledWith(true)
-    // Controlled: DOM stays false because prop didn't change
     expect(screen.getByRole("checkbox")).toHaveAttribute("aria-checked", "false")
   })
 
@@ -24,7 +29,8 @@ describe("Checkbox", () => {
 
   it("does not toggle when disabled via click or keyboard", async () => {
     const onChange = vi.fn()
-    render(<Checkbox disabled onChange={onChange} label="Accept terms" />)
+    const onClick = vi.fn()
+    render(<Checkbox disabled onChange={onChange} onClick={onClick} label="Accept terms" />)
     const checkbox = screen.getByRole("checkbox")
 
     await userEvent.click(checkbox)
@@ -32,6 +38,7 @@ describe("Checkbox", () => {
     await userEvent.keyboard(" ")
 
     expect(onChange).not.toHaveBeenCalled()
+    expect(onClick).not.toHaveBeenCalled()
   })
 
   it("renders indeterminate state as aria-checked mixed", () => {
@@ -69,7 +76,7 @@ describe("Checkbox", () => {
     )
 
     await userEvent.click(screen.getByRole("checkbox"))
-    const form = screen.getByTestId("form") as HTMLFormElement
+    const form = getForm()
     expect(new FormData(form).has("terms")).toBe(false)
 
     form.reset()
@@ -84,7 +91,7 @@ describe("Checkbox", () => {
       </form>
     )
 
-    const form = screen.getByTestId("form") as HTMLFormElement
+    const form = getForm()
     const checkbox = screen.getByRole("checkbox", { name: /accept terms/i })
 
     expect(form.reportValidity()).toBe(false)
@@ -99,7 +106,7 @@ describe("Checkbox", () => {
       </form>
     )
 
-    const form = screen.getByTestId("form") as HTMLFormElement
+    const form = getForm()
     const checkbox = screen.getByRole("checkbox", { name: /accept terms/i })
 
     expect(form.reportValidity()).toBe(false)
@@ -111,6 +118,86 @@ describe("Checkbox", () => {
     expect(form.checkValidity()).toBe(true)
     expect(checkbox).not.toHaveAttribute("aria-invalid")
     expect(new FormData(form).entries().next().done).toBe(true)
+  })
+
+  it("keeps data-value aligned with submitted value, including empty values", () => {
+    const { rerender } = render(
+      <form data-testid="form">
+        <Checkbox name="choice" value="custom" defaultChecked label="Custom choice" />
+      </form>,
+    )
+    const form = getForm()
+    const checkbox = screen.getByRole("checkbox", { name: /custom choice/i })
+
+    expect(checkbox).toHaveAttribute("data-value", "custom")
+    expect(new FormData(form).get("choice")).toBe("custom")
+
+    rerender(
+      <form data-testid="form">
+        <Checkbox name="choice" value="" defaultChecked label="Empty choice" />
+      </form>,
+    )
+
+    expect(screen.getByRole("checkbox", { name: /empty choice/i })).toHaveAttribute("data-value", "")
+    expect(new FormData(getForm()).get("choice")).toBe("")
+  })
+
+  it("passes native root props and composes root handlers", async () => {
+    const onClick = vi.fn()
+    const onKeyDown = vi.fn()
+    render(
+      <Checkbox
+        label="Accept terms"
+        data-testid="checkbox-root"
+        data-source="external"
+        style={{ maxWidth: "18px" }}
+        onClick={onClick}
+        onKeyDown={onKeyDown}
+      />,
+    )
+
+    const checkbox = screen.getByRole("checkbox", { name: /accept terms/i })
+    await userEvent.click(checkbox)
+    checkbox.focus()
+    await userEvent.keyboard(" ")
+
+    expect(onClick).toHaveBeenCalledOnce()
+    expect(onKeyDown).toHaveBeenCalled()
+    expect(screen.getByTestId("checkbox-root")).toHaveAttribute("data-source", "external")
+    expect(screen.getByTestId("checkbox-root")).toHaveStyle({ maxWidth: "18px" })
+  })
+
+  it("lets consumer click handlers prevent the built-in toggle", async () => {
+    const onChange = vi.fn()
+    render(
+      <Checkbox
+        label="Accept terms"
+        onChange={onChange}
+        onClick={(event) => event.preventDefault()}
+      />,
+    )
+
+    await userEvent.click(screen.getByRole("checkbox", { name: /accept terms/i }))
+
+    expect(onChange).not.toHaveBeenCalled()
+    expect(screen.getByRole("checkbox", { name: /accept terms/i })).toHaveAttribute("aria-checked", "false")
+  })
+
+  it("lets consumer keyboard handlers prevent the built-in Space toggle", async () => {
+    const onChange = vi.fn()
+    render(
+      <Checkbox
+        label="Accept terms"
+        onChange={onChange}
+        onKeyDown={(event) => event.preventDefault()}
+      />,
+    )
+
+    screen.getByRole("checkbox", { name: /accept terms/i }).focus()
+    await userEvent.keyboard(" ")
+
+    expect(onChange).not.toHaveBeenCalled()
+    expect(screen.getByRole("checkbox", { name: /accept terms/i })).toHaveAttribute("aria-checked", "false")
   })
 
   it("has no a11y violations across states", async () => {
@@ -139,19 +226,6 @@ describe("Checkbox.Group", () => {
     expect(onChange).toHaveBeenCalledWith(["apple", "banana"])
   })
 
-  it("calls onValueChange as the preferred group callback", async () => {
-    const onValueChange = vi.fn()
-    render(
-      <Checkbox.Group value={["apple"]} onValueChange={onValueChange} label="Fruits">
-        <Checkbox.Item value="apple" label="Apple" />
-        <Checkbox.Item value="banana" label="Banana" />
-      </Checkbox.Group>
-    )
-
-    await userEvent.click(screen.getByRole("checkbox", { name: /banana/i }))
-    expect(onValueChange).toHaveBeenCalledWith(["apple", "banana"])
-  })
-
   it("sets aria-disabled on group when disabled", () => {
     render(
       <Checkbox.Group label="Fruits" disabled>
@@ -170,9 +244,155 @@ describe("Checkbox.Group", () => {
         <Checkbox.Item value="cherry" label="Cherry" />
       </Checkbox.Group>
     )
-    screen.getAllByRole("checkbox")[0].focus()
+    const banana = screen.getByRole("checkbox", { name: /banana/i })
+    screen.getByRole("checkbox", { name: /apple/i }).focus()
     await userEvent.keyboard("{ArrowDown}")
-    expect(onHighlight).toHaveBeenCalled()
+
+    expect(onHighlight).toHaveBeenCalledWith("banana")
+    expect(banana).toHaveFocus()
+  })
+
+  it("autoFocus focuses the highlighted item when navigation is active", async () => {
+    const onHighlight = vi.fn()
+    render(
+      <Checkbox.Group
+        label="Fruits"
+        highlighted="banana"
+        onHighlightChange={onHighlight}
+        autoFocus
+      >
+        <Checkbox.Item value="apple" label="Apple" />
+        <Checkbox.Item value="banana" label="Banana" />
+      </Checkbox.Group>
+    )
+
+    await waitFor(() => expect(screen.getByRole("checkbox", { name: /banana/i })).toHaveFocus())
+    expect(onHighlight).not.toHaveBeenCalled()
+  })
+
+  it("autoFocus falls back to the first selected item", async () => {
+    const onHighlight = vi.fn()
+    render(
+      <Checkbox.Group
+        label="Fruits"
+        value={["banana"]}
+        onHighlightChange={onHighlight}
+        autoFocus
+      >
+        <Checkbox.Item value="apple" label="Apple" />
+        <Checkbox.Item value="banana" label="Banana" />
+      </Checkbox.Group>
+    )
+
+    await waitFor(() => expect(screen.getByRole("checkbox", { name: /banana/i })).toHaveFocus())
+    expect(onHighlight).toHaveBeenCalledWith("banana")
+  })
+
+  it("autoFocus supports empty string item values", async () => {
+    const onHighlight = vi.fn()
+    render(
+      <Checkbox.Group
+        label="Fruits"
+        value={[""]}
+        onHighlightChange={onHighlight}
+        autoFocus
+      >
+        <Checkbox.Item value="" label="None" />
+        <Checkbox.Item value="banana" label="Banana" />
+      </Checkbox.Group>
+    )
+
+    await waitFor(() => expect(screen.getByRole("checkbox", { name: /none/i })).toHaveFocus())
+    expect(onHighlight).toHaveBeenCalledWith("")
+  })
+
+  it("keeps explicit value undefined controlled instead of adopting internal selection", async () => {
+    const onChange = vi.fn()
+    render(
+      <Checkbox.Group value={undefined} onChange={onChange} label="Fruits">
+        <Checkbox.Item value="apple" label="Apple" />
+        <Checkbox.Item value="banana" label="Banana" />
+      </Checkbox.Group>
+    )
+
+    await userEvent.click(screen.getByRole("checkbox", { name: /banana/i }))
+
+    expect(onChange).toHaveBeenCalledWith(["banana"])
+    expect(screen.getByRole("checkbox", { name: /banana/i })).toHaveAttribute("aria-checked", "false")
+  })
+
+  it("can suspend keyboard navigation without disabling items", async () => {
+    const onChange = vi.fn()
+    const onHighlight = vi.fn()
+    render(
+      <Checkbox.Group
+        label="Fruits"
+        onChange={onChange}
+        onHighlightChange={onHighlight}
+        keyboardNavigation={false}
+      >
+        <Checkbox.Item value="apple" label="Apple" />
+        <Checkbox.Item value="banana" label="Banana" />
+      </Checkbox.Group>
+    )
+
+    screen.getByRole("checkbox", { name: /apple/i }).focus()
+    await userEvent.keyboard("{ArrowDown}")
+    expect(onHighlight).not.toHaveBeenCalled()
+
+    await userEvent.click(screen.getByRole("checkbox", { name: /banana/i }))
+    expect(onChange).toHaveBeenCalledWith(["banana"])
+    expect(screen.getByRole("group")).not.toHaveAttribute("aria-disabled")
+  })
+
+  it("reports keyboard boundary when wrapping is disabled", async () => {
+    const onNavigationBoundaryReached = vi.fn()
+    render(
+      <Checkbox.Group label="Fruits" highlighted="banana" wrap={false} onNavigationBoundaryReached={onNavigationBoundaryReached}>
+        <Checkbox.Item value="apple" label="Apple" />
+        <Checkbox.Item value="banana" label="Banana" />
+      </Checkbox.Group>
+    )
+
+    screen.getByRole("checkbox", { name: /banana/i }).focus()
+    await userEvent.keyboard("{ArrowDown}")
+
+    expect(onNavigationBoundaryReached).toHaveBeenCalledWith("next")
+  })
+
+  it("reports top keyboard boundary when wrapping is disabled", async () => {
+    const onNavigationBoundaryReached = vi.fn()
+    render(
+      <Checkbox.Group label="Fruits" highlighted="apple" wrap={false} onNavigationBoundaryReached={onNavigationBoundaryReached}>
+        <Checkbox.Item value="apple" label="Apple" />
+        <Checkbox.Item value="banana" label="Banana" />
+      </Checkbox.Group>
+    )
+
+    screen.getByRole("checkbox", { name: /apple/i }).focus()
+    await userEvent.keyboard("{ArrowUp}")
+
+    expect(onNavigationBoundaryReached).toHaveBeenCalledWith("previous")
+  })
+
+  it("jumps to first and last item with Home and End", async () => {
+    const onHighlight = vi.fn()
+    render(
+      <Checkbox.Group label="Fruits" onHighlightChange={onHighlight}>
+        <Checkbox.Item value="apple" label="Apple" />
+        <Checkbox.Item value="banana" label="Banana" />
+        <Checkbox.Item value="cherry" label="Cherry" />
+      </Checkbox.Group>
+    )
+
+    screen.getByRole("checkbox", { name: /apple/i }).focus()
+    await userEvent.keyboard("{End}")
+    expect(screen.getByRole("checkbox", { name: /cherry/i })).toHaveFocus()
+    expect(onHighlight).toHaveBeenLastCalledWith("cherry")
+
+    await userEvent.keyboard("{Home}")
+    expect(screen.getByRole("checkbox", { name: /apple/i })).toHaveFocus()
+    expect(onHighlight).toHaveBeenLastCalledWith("apple")
   })
 
   it("does not move keyboard highlight on mouse hover", async () => {
@@ -187,8 +407,113 @@ describe("Checkbox.Group", () => {
     await userEvent.hover(screen.getByRole("checkbox", { name: /banana/i }))
 
     expect(onHighlight).not.toHaveBeenCalled()
-    expect(screen.getByRole("checkbox", { name: /apple/i })).toHaveClass("bg-secondary")
-    expect(screen.getByRole("checkbox", { name: /banana/i })).not.toHaveClass("bg-secondary")
+    expect(screen.getByRole("checkbox", { name: /apple/i })).toHaveAttribute("data-highlighted", "true")
+    expect(screen.getByRole("checkbox", { name: /banana/i })).not.toHaveAttribute("data-highlighted")
+  })
+
+  it("does not satisfy required validation with stale controlled values", async () => {
+    render(
+      <form data-testid="form">
+        <Checkbox.Group label="Fruits" name="fruits" value={["missing"]} required>
+          <Checkbox.Item value="apple" label="Apple" />
+          <Checkbox.Item value="banana" label="Banana" />
+        </Checkbox.Group>
+      </form>
+    )
+
+    const form = getForm()
+    expect(form.checkValidity()).toBe(false)
+    expect(new FormData(form).getAll("fruits")).toEqual([])
+
+    expect(form.reportValidity()).toBe(false)
+    expect(screen.getByRole("checkbox", { name: /apple/i })).toHaveFocus()
+    await waitFor(() => expect(screen.getByRole("group")).toHaveAttribute("aria-invalid", "true"))
+  })
+
+  it("validates required groups with items rendered through wrapper components", () => {
+    function WrappedApple() {
+      return <Checkbox.Item value="apple" label="Apple" />
+    }
+
+    render(
+      <form data-testid="form">
+        <Checkbox.Group label="Fruits" name="fruits" value={["apple"]} required>
+          <WrappedApple />
+        </Checkbox.Group>
+      </form>
+    )
+
+    const form = getForm()
+    expect(form.checkValidity()).toBe(true)
+    expect(new FormData(form).getAll("fruits")).toEqual(["apple"])
+  })
+
+  it("does not satisfy required validation after a selected item is disabled or removed", async () => {
+    const renderForm = (state: "enabled" | "disabled" | "removed") => (
+      <form data-testid="form">
+        <Checkbox.Group label="Fruits" name="fruits" value={["apple"]} required>
+          {state !== "removed" && (
+            <Checkbox.Item value="apple" label="Apple" disabled={state === "disabled"} />
+          )}
+          <Checkbox.Item value="banana" label="Banana" />
+        </Checkbox.Group>
+      </form>
+    )
+    const { rerender } = render(renderForm("enabled"))
+
+    await waitFor(() => expect(screen.getByTestId("form")).toBeValid())
+
+    rerender(renderForm("disabled"))
+    await waitFor(() => expect(screen.getByTestId("form")).not.toBeValid())
+    expect(new FormData(getForm()).getAll("fruits")).toEqual([])
+
+    rerender(renderForm("removed"))
+    await waitFor(() => expect(screen.getByTestId("form")).not.toBeValid())
+    expect(new FormData(getForm()).getAll("fruits")).toEqual([])
+  })
+
+  it("keeps arrow navigation scoped away from nested checkbox groups", async () => {
+    const onOuterHighlight = vi.fn()
+    const onInnerHighlight = vi.fn()
+    render(
+      <Checkbox.Group label="Outer" onHighlightChange={onOuterHighlight}>
+        <Checkbox.Item value="outer-a" label="Outer A" />
+        <Checkbox.Group label="Inner" onHighlightChange={onInnerHighlight}>
+          <Checkbox.Item value="inner-a" label="Inner A" />
+          <Checkbox.Item value="inner-b" label="Inner B" />
+        </Checkbox.Group>
+        <Checkbox.Item value="outer-b" label="Outer B" />
+      </Checkbox.Group>
+    )
+
+    screen.getByRole("checkbox", { name: /inner a/i }).focus()
+    await userEvent.keyboard("{ArrowDown}")
+
+    expect(screen.getByRole("checkbox", { name: /inner b/i })).toHaveFocus()
+    expect(onInnerHighlight).toHaveBeenCalledWith("inner-b")
+    expect(onOuterHighlight).not.toHaveBeenCalled()
+  })
+
+  it("skips nested checkbox group items when navigating the outer group", async () => {
+    const onOuterHighlight = vi.fn()
+    const onInnerHighlight = vi.fn()
+    render(
+      <Checkbox.Group label="Outer" onHighlightChange={onOuterHighlight}>
+        <Checkbox.Item value="outer-a" label="Outer A" />
+        <Checkbox.Group label="Inner" onHighlightChange={onInnerHighlight}>
+          <Checkbox.Item value="inner-a" label="Inner A" />
+          <Checkbox.Item value="inner-b" label="Inner B" />
+        </Checkbox.Group>
+        <Checkbox.Item value="outer-b" label="Outer B" />
+      </Checkbox.Group>
+    )
+
+    screen.getByRole("checkbox", { name: /outer a/i }).focus()
+    await userEvent.keyboard("{ArrowDown}")
+
+    expect(screen.getByRole("checkbox", { name: /outer b/i })).toHaveFocus()
+    expect(onOuterHighlight).toHaveBeenCalledWith("outer-b")
+    expect(onInnerHighlight).not.toHaveBeenCalled()
   })
 
   it("requires at least one checked item without making every item required", async () => {
@@ -201,9 +526,8 @@ describe("Checkbox.Group", () => {
       </form>
     )
 
-    const form = screen.getByTestId("form") as HTMLFormElement
+    const form = getForm()
     expect(form.checkValidity()).toBe(false)
-    expect(form.querySelector("input[required]")).toHaveAttribute("aria-hidden", "true")
     expect(screen.getAllByRole("checkbox")).toHaveLength(2)
     expect(form.reportValidity()).toBe(false)
     expect(screen.getByRole("checkbox", { name: /apple/i })).toHaveFocus()
@@ -227,7 +551,7 @@ describe("Checkbox.Group", () => {
     )
 
     await userEvent.click(screen.getByRole("checkbox", { name: /banana/i }))
-    const form = screen.getByTestId("form") as HTMLFormElement
+    const form = getForm()
     expect(new FormData(form).getAll("fruits")).toEqual(["apple", "banana"])
 
     form.reset()

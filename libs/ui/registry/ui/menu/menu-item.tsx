@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode, Ref } from "react";
+import type { ComponentPropsWithRef, FocusEvent, MouseEvent, ReactNode, Ref } from "react";
 import { cva } from "class-variance-authority";
 import { getEncodedListboxItemId } from "@/hooks/use-listbox";
 import { cn } from "@/lib/utils";
@@ -144,7 +144,7 @@ const menuItemValue = cva("font-mono text-xs", {
       false: "",
     },
     active: {
-      true: "text-current",
+      true: "",
       false: "",
     },
   },
@@ -170,15 +170,34 @@ const menuItemValue = cva("font-mono text-xs", {
       class: "text-muted-foreground/60",
     },
     {
+      valueVariant: "default",
+      active: true,
+      class: "text-current",
+    },
+    {
+      valueVariant: "success",
+      active: true,
+      class: "text-current",
+    },
+    {
+      valueVariant: "muted",
+      active: true,
+      class: "text-current",
+    },
+    {
       valueVariant: "success-badge",
       active: true,
-      class: "border-current/30 bg-current/10",
+      class: "border-success bg-success text-success-foreground",
     },
   ],
   defaultVariants: { valueVariant: "default", focused: false, active: false },
 });
 
-export interface MenuItemProps {
+export interface MenuItemProps
+  extends Omit<
+    ComponentPropsWithRef<"div">,
+    "id" | "children" | "role" | "aria-checked" | "aria-disabled" | "data-value" | "ref"
+  > {
   id: string;
   disabled?: boolean;
   variant?: "default" | "danger";
@@ -186,7 +205,6 @@ export interface MenuItemProps {
   value?: ReactNode;
   valueVariant?: "default" | "success" | "success-badge" | "muted";
   children: ReactNode;
-  className?: string;
   ref?: Ref<HTMLDivElement>;
 }
 
@@ -200,6 +218,10 @@ export function MenuItem({
   children,
   className,
   ref,
+  onClick,
+  onFocus,
+  onMouseDown,
+  ...rootProps
 }: MenuItemProps) {
   const { selectedId, highlightedId, activate, highlight, variant: menuVariant, idPrefix, itemRole } =
     useMenuContext();
@@ -212,12 +234,27 @@ export function MenuItem({
   const state = getItemState(disabled, isFocused, isSelected);
   const itemId = getEncodedListboxItemId(idPrefix, id);
 
-  const handleClick = () => {
-    if (!disabled) activate(id);
+  const handleClick = (event: MouseEvent<HTMLDivElement>) => {
+    onClick?.(event);
+    if (event.defaultPrevented || disabled) return;
+    activate(id);
+  };
+
+  const handleFocus = (event: FocusEvent<HTMLDivElement>) => {
+    onFocus?.(event);
+    if (event.defaultPrevented || disabled) return;
+    highlight(id);
+  };
+
+  const handleMouseDown = (event: MouseEvent<HTMLDivElement>) => {
+    onMouseDown?.(event);
+    if (event.defaultPrevented) return;
+    if (disabled) event.preventDefault();
   };
 
   return (
     <div
+      {...rootProps}
       ref={ref}
       id={itemId}
       role={itemRole}
@@ -226,10 +263,9 @@ export function MenuItem({
       aria-checked={itemRole === "menuitemradio" ? isSelected : undefined}
       aria-disabled={disabled || undefined}
       data-state={isSelected ? "selected" : "unselected"}
+      onMouseDown={handleMouseDown}
       onClick={handleClick}
-      onFocus={() => {
-        if (!disabled) highlight(id);
-      }}
+      onFocus={handleFocus}
       className={cn(menuItemBase({ menuVariant, state, colorVariant: variant }), className)}
     >
       {isHub ? (

@@ -15,9 +15,9 @@ import { TabsContext } from "./tabs-context";
 import { TabsContent } from "./tabs-content";
 import { TabsTrigger } from "./tabs-trigger";
 
-export interface TabsProps extends HTMLAttributes<HTMLDivElement> {
+export interface TabsProps extends Omit<HTMLAttributes<HTMLDivElement>, "defaultValue" | "onChange"> {
   value?: string;
-  onValueChange?: (value: string) => void;
+  onChange?: (value: string) => void;
   defaultValue?: string;
   orientation?: "horizontal" | "vertical";
   variant?: "default" | "underline";
@@ -69,7 +69,7 @@ function collectTabMetadata(children: ReactNode): TabMetadata {
 
 function TabsRoot({
   value: controlledValue,
-  onValueChange,
+  onChange,
   defaultValue,
   orientation = "horizontal",
   variant = "default",
@@ -84,7 +84,7 @@ function TabsRoot({
   const [value, setValue] = useControllableState<string>({
     value: controlledValue,
     defaultValue: defaultValue ?? "",
-    onChange: onValueChange,
+    onChange,
   });
   const firstEnabledTab = enabledValues[0] ?? "";
   const resolvedValue = enabledValues.includes(value) ? value : firstEnabledTab;
@@ -93,7 +93,7 @@ function TabsRoot({
     () => ({
       tabsId,
       value: resolvedValue,
-      onValueChange: setValue,
+      onChange: setValue,
       panelValues,
       triggerValues,
       orientation,

@@ -1,6 +1,14 @@
 "use client";
 
-import { Children, isValidElement, type MouseEvent, type ReactNode, type Ref, useMemo } from "react";
+import {
+  Children,
+  isValidElement,
+  type ComponentPropsWithRef,
+  type FocusEvent,
+  type MouseEvent,
+  type ReactNode,
+  useMemo,
+} from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { getEncodedListboxItemId } from "@/hooks/use-listbox";
 import { cn } from "@/lib/utils";
@@ -48,13 +56,15 @@ function hasDescriptionChild(children: ReactNode, childType: typeof NavigationLi
   });
 }
 
-export interface NavigationListItemProps {
+export interface NavigationListItemProps
+  extends Omit<
+    ComponentPropsWithRef<"div">,
+    "id" | "children" | "role" | "aria-selected" | "aria-disabled" | "aria-labelledby" | "aria-describedby"
+  > {
   id: string;
   density?: Density;
   disabled?: boolean;
   children: ReactNode;
-  className?: string;
-  ref?: Ref<HTMLDivElement>;
 }
 
 export function NavigationListItem({
@@ -64,6 +74,10 @@ export function NavigationListItem({
   children,
   className,
   ref,
+  onClick,
+  onMouseDown,
+  onFocus,
+  ...rootProps
 }: NavigationListItemProps) {
   const { selectedId, highlightedId, activate, highlight, focusContainer, focused, idPrefix } =
     useNavigationListContext();
@@ -78,14 +92,22 @@ export function NavigationListItem({
     hasDescriptionChild(children, NavigationListSubtitle) ? `${descId}-sub` : null,
   ].filter(Boolean).join(" ") || undefined;
 
-  const handleClick = () => {
-    if (disabled) return;
+  const handleClick = (event: MouseEvent<HTMLDivElement>) => {
+    onClick?.(event);
+    if (event.defaultPrevented || disabled) return;
     activate(id);
     focusContainer();
   };
 
   const handleMouseDown = (event: MouseEvent<HTMLDivElement>) => {
+    onMouseDown?.(event);
+    if (event.defaultPrevented) return;
     if (disabled) event.preventDefault();
+  };
+
+  const handleFocus = (event: FocusEvent<HTMLDivElement>) => {
+    onFocus?.(event);
+    if (!event.defaultPrevented && !disabled) highlight(id);
   };
 
   const itemContextValue = useMemo(
@@ -96,6 +118,7 @@ export function NavigationListItem({
   return (
     <NavigationListItemContext value={itemContextValue}>
       <div
+        {...rootProps}
         ref={ref}
         id={itemId}
         role="option"
@@ -108,9 +131,7 @@ export function NavigationListItem({
         aria-disabled={disabled || undefined}
         onMouseDown={handleMouseDown}
         onClick={handleClick}
-        onFocus={() => {
-          if (!disabled) highlight(id);
-        }}
+        onFocus={handleFocus}
         className={cn(itemVariants({ active: isActive, disabled }), "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground", className)}
       >
         <div

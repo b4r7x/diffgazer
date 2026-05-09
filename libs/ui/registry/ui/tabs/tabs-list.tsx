@@ -12,7 +12,7 @@ export interface TabsListProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 export function TabsList({ children, className, loop = true, onKeyDown, ref, ...rest }: TabsListProps) {
-  const { orientation, variant, value, onValueChange, activationMode } = useTabsContext();
+  const { orientation, variant, value, onChange, activationMode } = useTabsContext();
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -22,9 +22,10 @@ export function TabsList({ children, className, loop = true, onKeyDown, ref, ...
     orientation,
     wrap: loop,
     moveFocus: true,
+    scopeToContainer: true,
     ...(activationMode === "automatic" && {
       value: value || undefined,
-      onValueChange,
+      onValueChange: onChange,
     }),
   });
 

@@ -254,9 +254,7 @@ describe("Dialog", () => {
     expect(screen.getByRole("dialog")).toHaveAttribute("aria-modal", "true")
   })
 
-  it("warns when content has no Dialog.Title or explicit aria name", () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
-
+  it("omits aria-labelledby when content has no Dialog.Title or explicit aria name", () => {
     render(
       <Dialog defaultOpen>
         <Dialog.Content>
@@ -265,7 +263,6 @@ describe("Dialog", () => {
       </Dialog>
     )
 
-    expect(warn).toHaveBeenCalledWith("Dialog.Content requires Dialog.Title, aria-label, or aria-labelledby.")
     expect(screen.getByRole("dialog")).not.toHaveAttribute("aria-labelledby")
   })
 

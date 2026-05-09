@@ -36,7 +36,7 @@ describe("Button", () => {
     expect(screen.getByRole("button")).toBeDisabled()
   })
 
-  it("preserves consumer clicks while preventing disabled anchor navigation", () => {
+  it("prevents disabled anchor navigation without firing consumer clicks", () => {
     const spy = vi.fn()
     render(<Button as="a" href="/test" disabled onClick={spy}>Link</Button>)
     const link = screen.getByRole("link")
@@ -44,7 +44,7 @@ describe("Button", () => {
 
     link.dispatchEvent(event)
 
-    expect(spy).toHaveBeenCalled()
+    expect(spy).not.toHaveBeenCalled()
     expect(event.defaultPrevented).toBe(true)
   })
 

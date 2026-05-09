@@ -1,4 +1,4 @@
-import { createRef } from "react"
+import { Fragment, createRef } from "react"
 import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { axe } from "../../../testing/utils.js"
@@ -84,9 +84,9 @@ function renderSelect({
 
 describe("Select", () => {
   it("supports direct namespaced parts with custom option UI inside Select.Item", async () => {
-    const onValueChange = vi.fn()
+    const onChange = vi.fn()
     render(
-      <Select variant="card" defaultOpen onValueChange={onValueChange}>
+      <Select variant="card" defaultOpen onChange={onChange}>
         <Select.Trigger>
           <Select.Value placeholder="Pick a fruit" />
         </Select.Trigger>
@@ -103,7 +103,7 @@ describe("Select", () => {
     await userEvent.type(screen.getByRole("searchbox", { name: /search options/i }), "ban")
     await userEvent.click(screen.getByRole("option", { name: /banana/i }))
 
-    expect(onValueChange).toHaveBeenCalledWith("banana")
+    expect(onChange).toHaveBeenCalledWith("banana")
   })
 
   it("toggles open/close on trigger click", async () => {
@@ -121,7 +121,7 @@ describe("Select", () => {
 
   it("selects a single value on click", async () => {
     const onChange = vi.fn()
-    renderSelect({ onChange })
+    renderSelect({ onChange: onChange })
     await userEvent.click(getSelectTrigger())
     await userEvent.click(screen.getByText("Banana"))
     expect(onChange).toHaveBeenCalledWith("banana")
@@ -129,7 +129,7 @@ describe("Select", () => {
 
   it("activates a default portalled option on mouse click before outside-click close", async () => {
     const onChange = vi.fn()
-    renderSelect({ variant: "default", onChange })
+    renderSelect({ variant: "default", onChange: onChange })
 
     await userEvent.click(getSelectTrigger())
     await userEvent.click(screen.getByRole("option", { name: /banana/i }))
@@ -138,10 +138,10 @@ describe("Select", () => {
     expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "false")
   })
 
-  it("calls onValueChange as the preferred single-value callback", async () => {
-    const onValueChange = vi.fn()
+  it("calls onChange as the preferred single-value callback", async () => {
+    const onChange = vi.fn()
     render(
-      <Select variant="card" onValueChange={onValueChange}>
+      <Select variant="card" onChange={onChange}>
         <Select.Trigger>
           <Select.Value placeholder="Pick a fruit" />
         </Select.Trigger>
@@ -153,12 +153,12 @@ describe("Select", () => {
 
     await userEvent.click(getSelectTrigger())
     await userEvent.click(screen.getByText("Banana"))
-    expect(onValueChange).toHaveBeenCalledWith("banana")
+    expect(onChange).toHaveBeenCalledWith("banana")
   })
 
   it("selects multiple values on click", async () => {
     const onChange = vi.fn()
-    renderSelect({ multiple: true, defaultValue: [], onChange })
+    renderSelect({ multiple: true, defaultValue: [], onChange: onChange })
     await userEvent.click(getSelectTrigger())
     await userEvent.click(screen.getByText("Apple"))
     expect(onChange).toHaveBeenCalledWith(["apple"])
@@ -168,7 +168,7 @@ describe("Select", () => {
 
   it("keeps a default portalled multi-select open while activating mouse options", async () => {
     const onChange = vi.fn()
-    renderSelect({ variant: "default", multiple: true, defaultValue: [], onChange })
+    renderSelect({ variant: "default", multiple: true, defaultValue: [], onChange: onChange })
 
     await userEvent.click(getSelectTrigger())
     await userEvent.click(screen.getByRole("option", { name: /apple/i }))
@@ -177,10 +177,10 @@ describe("Select", () => {
     expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "true")
   })
 
-  it("calls onValueChange as the preferred multiple-value callback", async () => {
-    const onValueChange = vi.fn()
+  it("calls onChange as the preferred multiple-value callback", async () => {
+    const onChange = vi.fn()
     render(
-      <Select variant="card" multiple defaultValue={[]} onValueChange={onValueChange}>
+      <Select variant="card" multiple defaultValue={[]} onChange={onChange}>
         <Select.Trigger>
           <Select.Tags placeholder="Pick fruits" />
         </Select.Trigger>
@@ -192,12 +192,12 @@ describe("Select", () => {
 
     await userEvent.click(getSelectTrigger())
     await userEvent.click(screen.getByText("Apple"))
-    expect(onValueChange).toHaveBeenCalledWith(["apple"])
+    expect(onChange).toHaveBeenCalledWith(["apple"])
   })
 
   it("deselects an already-selected value in multiple mode", async () => {
     const onChange = vi.fn()
-    renderSelect({ multiple: true, defaultValue: ["apple", "banana"], onChange })
+    renderSelect({ multiple: true, defaultValue: ["apple", "banana"], onChange: onChange })
     const trigger = getSelectTrigger()
     await userEvent.click(trigger)
     const appleOption = screen.getByRole("option", { name: /Apple/i })
@@ -225,7 +225,7 @@ describe("Select", () => {
 
   it("activates searchable default portalled options on mouse click", async () => {
     const onChange = vi.fn()
-    renderSelect({ variant: "default", withSearch: true, onChange })
+    renderSelect({ variant: "default", withSearch: true, onChange: onChange })
 
     await userEvent.click(getSelectTrigger())
     await userEvent.type(screen.getByRole("searchbox", { name: /search options/i }), "ban")
@@ -331,7 +331,7 @@ describe("Select", () => {
 
   it("respects controlled value prop", async () => {
     const onChange = vi.fn()
-    renderSelect({ value: "apple", onChange })
+    renderSelect({ value: "apple", onChange: onChange })
     await userEvent.click(getSelectTrigger())
     await userEvent.click(screen.getByText("Banana"))
     expect(onChange).toHaveBeenCalledWith("banana")
@@ -343,7 +343,7 @@ describe("Select", () => {
   it("treats explicit undefined value as a controlled empty value", async () => {
     const onChange = vi.fn()
     render(
-      <Select variant="card" value={undefined} onValueChange={onChange}>
+      <Select variant="card" value={undefined} onChange={onChange}>
         <Select.Trigger>
           <Select.Value placeholder="Pick a fruit" />
         </Select.Trigger>
@@ -453,7 +453,7 @@ describe("Select", () => {
 
   it("selects highlighted item with Enter key", async () => {
     const onChange = vi.fn()
-    renderSelect({ onChange, defaultOpen: true })
+    renderSelect({ onChange: onChange, defaultOpen: true })
     const listbox = screen.getByRole("listbox")
     listbox.focus()
     await userEvent.keyboard("{ArrowDown}")
@@ -571,6 +571,31 @@ describe("Select", () => {
     expect(listbox).not.toContainElement(searchInput)
   })
 
+  it("keeps wrapped searchable input outside listbox ownership", () => {
+    render(
+      <Select variant="card" defaultOpen>
+        <Select.Trigger>
+          <Select.Value placeholder="Pick a fruit" />
+        </Select.Trigger>
+        <Select.Content>
+          <Fragment>
+            <Select.Search />
+          </Fragment>
+          <div>
+            <Select.Search aria-label="Filter options" />
+          </div>
+          <Select.Item value="apple">Apple</Select.Item>
+        </Select.Content>
+      </Select>,
+    )
+    const searchInput = screen.getByRole("searchbox", { name: /search options/i })
+    const wrappedSearchInput = screen.getByRole("searchbox", { name: /filter options/i })
+    const listbox = screen.getByRole("listbox")
+
+    expect(listbox).not.toContainElement(searchInput)
+    expect(listbox).not.toContainElement(wrappedSearchInput)
+  })
+
   it("excludes decorative indicators from option names", () => {
     renderSelect({ defaultOpen: true, defaultValue: "banana" })
 
@@ -580,7 +605,7 @@ describe("Select", () => {
 
   it("does not activate a filtered-out highlighted option", async () => {
     const onChange = vi.fn()
-    renderSelect({ withSearch: true, defaultOpen: true, highlighted: "banana", onChange })
+    renderSelect({ withSearch: true, defaultOpen: true, highlighted: "banana", onChange: onChange })
 
     await userEvent.type(screen.getByRole("searchbox", { name: /search options/i }), "zzz")
     await userEvent.keyboard("{Enter}")
@@ -632,7 +657,7 @@ describe("Select", () => {
 
   it("removes a selected tag by selecting its option again", async () => {
     const onChange = vi.fn()
-    renderSelect({ multiple: true, defaultValue: ["apple", "banana"], onChange })
+    renderSelect({ multiple: true, defaultValue: ["apple", "banana"], onChange: onChange })
     await userEvent.click(getSelectTrigger())
     await userEvent.click(screen.getByRole("option", { name: /Apple/i }))
     expect(onChange).toHaveBeenCalledWith(["banana"])

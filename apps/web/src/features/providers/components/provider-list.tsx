@@ -1,6 +1,7 @@
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { NavigationList, NavigationListItem, NavigationListTitle, NavigationListBadge, NavigationListSubtitle, NavigationListStatus } from '@diffgazer/ui/components/navigation-list';
-import { Input } from '@diffgazer/ui/components/input';
+import { InputGroup } from '@diffgazer/ui/components/input';
+import { ToggleGroup, ToggleGroupItem } from "@diffgazer/ui/components/toggle-group";
 import { cn } from "@diffgazer/core/cn";
 import { getDisplayStatusBadge } from '@diffgazer/core/providers';
 import { PROVIDER_CAPABILITIES } from '@diffgazer/core/schemas/config';
@@ -18,10 +19,14 @@ interface ProviderListProps {
   onSearchChange: (query: string) => void;
   isFocused?: boolean;
   inputRef?: React.RefObject<HTMLInputElement | null>;
+  onSearchFocus?: () => void;
   focusedFilterIndex?: number;
+  onFilterHighlightChange?: (index: number) => void;
+  onFilterFocus?: (index: number) => void;
   highlightedId?: string | null;
   onHighlightChange?: (id: string) => void;
   onBoundaryReached?: (direction: "up" | "down") => void;
+  ref?: React.Ref<HTMLDivElement>;
 }
 
 export function ProviderList({
@@ -35,16 +40,21 @@ export function ProviderList({
   onSearchChange,
   isFocused = true,
   inputRef,
+  onSearchFocus,
   focusedFilterIndex,
+  onFilterHighlightChange,
+  onFilterFocus,
   highlightedId,
   onHighlightChange,
   onBoundaryReached,
+  ref,
 }: ProviderListProps) {
   const handleKeyDown = (e: ReactKeyboardEvent) => {
     if (!onBoundaryReached || (e.key !== "ArrowUp" && e.key !== "ArrowDown")) return;
     const providerIds = providers.map((p) => p.id);
-    const isAtStart = highlightedId === providerIds[0];
-    const isAtEnd = highlightedId === providerIds[providerIds.length - 1];
+    const activeId = highlightedId ?? selectedId;
+    const isAtStart = activeId === providerIds[0];
+    const isAtEnd = activeId === providerIds[providerIds.length - 1];
     if (e.key === "ArrowUp" && isAtStart) {
       e.preventDefault();
       onBoundaryReached("up");
@@ -63,42 +73,62 @@ export function ProviderList({
       </div>
 
       <div className="p-3 border-b border-tui-border">
-        <div className="relative">
-          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-tui-muted text-xs">
-            /
-          </span>
-          <Input
-            ref={inputRef}
-            size="sm"
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Search providers..."
-            className="pl-5"
-          />
-        </div>
+        <InputGroup
+          ref={inputRef}
+          size="sm"
+          value={searchQuery}
+          onChange={(e) => onSearchChange(e.target.value)}
+          onFocus={onSearchFocus}
+          aria-label="Search providers"
+          placeholder="Search providers..."
+          prefix={<span aria-hidden="true">/</span>}
+        />
       </div>
 
-      <div className="px-3 py-2 border-b border-tui-border flex gap-1.5 flex-wrap">
+      <ToggleGroup
+        value={filter}
+        onChange={(value) => {
+          const index = PROVIDER_FILTER_LABELS.findIndex((item) => item.value === value);
+          if (index === -1) return;
+          const nextFilter = PROVIDER_FILTER_LABELS[index]?.value;
+          if (!nextFilter) return;
+          onFilterFocus?.(index);
+          onFilterHighlightChange?.(index);
+          onFilterChange(nextFilter);
+        }}
+        onHighlightChange={(value) => {
+          const index = PROVIDER_FILTER_LABELS.findIndex((item) => item.value === value);
+          if (index >= 0) {
+            onFilterFocus?.(index);
+            onFilterHighlightChange?.(index);
+          }
+        }}
+        highlighted={
+          focusedFilterIndex === undefined
+            ? null
+            : (PROVIDER_FILTER_LABELS[focusedFilterIndex]?.value ?? null)
+        }
+        className="px-3 py-2 border-b border-tui-border"
+        label="Provider filter"
+      >
         {PROVIDER_FILTER_LABELS.map((f, index) => (
-          <button
+          <ToggleGroupItem
             key={f.value}
-            type="button"
-            onClick={() => onFilterChange(f.value)}
+            value={f.value}
+            onFocus={() => onFilterFocus?.(index)}
             className={cn(
-              'px-2 py-0.5 text-[10px] cursor-pointer transition-colors',
-              filter === f.value
-                ? 'bg-tui-blue text-black font-bold'
-                : 'border border-tui-border hover:border-tui-fg',
+              "min-h-0 min-w-0 px-2 py-0.5 text-[10px]",
               focusedFilterIndex === index && 'ring-2 ring-tui-blue ring-offset-1 ring-offset-tui-bg'
             )}
           >
             {f.label}
-          </button>
+          </ToggleGroupItem>
         ))}
-      </div>
+      </ToggleGroup>
 
       <div className="flex-1 overflow-y-auto scrollbar-hide">
         <NavigationList
+          ref={ref}
           selectedId={selectedId}
           highlightedId={highlightedId}
           onHighlightChange={onHighlightChange}

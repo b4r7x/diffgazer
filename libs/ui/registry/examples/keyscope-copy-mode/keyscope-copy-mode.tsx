@@ -52,7 +52,7 @@ export default function KeyscopeCopyMode() {
         </div>
         <div className="p-4 space-y-4">
           <div className="w-48">
-            <Select value={branch} onValueChange={setBranch}>
+            <Select value={branch} onChange={setBranch}>
               <SelectTrigger>
                 <SelectValue placeholder="Branch..." />
               </SelectTrigger>

@@ -3,11 +3,11 @@
   "name": "focus",
   "type": "registry:lib",
   "title": "Focus Utilities",
-  "description": "Shared focusable element CSS selector for focus management, auto-focus, and focus-trap logic.",
+  "description": "Shared focusable element selector and scoped selectable-item focus helpers for focus management, auto-focus, and keyboard handoff logic.",
   "files": [
     {
       "path": "registry/lib/focus.ts",
-      "content": "export const FOCUSABLE_SELECTOR =\n  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex=\"-1\"]):not([disabled])';\n",
+      "content": "export const FOCUSABLE_SELECTOR =\n  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex=\"-1\"]):not([disabled])';\n\nexport type SelectableItemRole = \"checkbox\" | \"radio\";\n\nexport interface FocusSelectableItemOptions {\n  role: SelectableItemRole;\n  value?: string | null;\n}\n\nconst EXPLICIT_SELECTABLE_OWNER_SELECTOR = \"[data-diffgazer-selectable-owner]\";\nconst ROLE_SELECTABLE_OWNER_SELECTOR = '[role=\"group\"],[role=\"radiogroup\"],[role=\"listbox\"],[role=\"menu\"],[role=\"tablist\"]';\n\nfunction isOwnedByContainer(item: HTMLElement, container: HTMLElement) {\n  const explicitOwner = item.closest(EXPLICIT_SELECTABLE_OWNER_SELECTOR);\n  if (explicitOwner) return explicitOwner === container;\n  return item.closest(ROLE_SELECTABLE_OWNER_SELECTOR) === container;\n}\n\nexport function getSelectableItemElements(\n  container: HTMLElement | null,\n  role: SelectableItemRole,\n) {\n  const items = Array.from(\n    container?.querySelectorAll<HTMLElement>(`[role=\"${role}\"][data-value]:not([aria-disabled=\"true\"])`) ?? [],\n  );\n\n  if (!container) return [];\n  return items.filter((item) => isOwnedByContainer(item, container));\n}\n\nexport function getSelectableItemByValue(\n  items: HTMLElement[],\n  value: string | null | undefined,\n) {\n  if (value == null) return null;\n  return items.find((item) => item.dataset.value === value) ?? null;\n}\n\nexport function focusSelectableItem(\n  container: HTMLElement | null,\n  options: FocusSelectableItemOptions,\n) {\n  const items = getSelectableItemElements(container, options.role);\n  const target = getSelectableItemByValue(items, options.value) ?? items[0] ?? null;\n  const targetValue = target?.dataset.value ?? null;\n  target?.focus();\n  return targetValue;\n}\n",
       "type": "registry:lib"
     }
   ],

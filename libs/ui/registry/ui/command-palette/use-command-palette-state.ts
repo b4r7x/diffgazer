@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useId, useMemo, useRef } from "react";
+import { useCallback, useId, useMemo, useRef, useState } from "react";
 import { useNavigation } from "@/hooks/use-navigation";
 import { useControllableState } from "@/hooks/use-controllable-state";
+import { sortSelectableCollectionItems } from "@/lib/selectable-collection";
 import { matchesSearch } from "@/lib/search";
 import type { CommandPaletteContextValue } from "./command-palette-context";
 
@@ -14,58 +15,51 @@ export function getCommandPaletteItemDomId(listId: string, id: string): string {
 }
 
 export interface UseCommandPaletteStateOptions {
-  items: readonly CommandPaletteItemMetadata[];
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   search?: string;
   onSearchChange?: (value: string) => void;
   highlightedId?: string | null;
   onHighlightChange?: (id: string | null) => void;
-  /** @deprecated Use `highlightedId` for controlled highlight state. */
-  selectedId?: string | null;
-  /** @deprecated Use `onHighlightChange` for controlled highlight updates. */
-  onSelectedIdChange?: (id: string | null) => void;
   onActivate?: (id: string) => void;
   shouldFilter?: boolean;
   filter?: (value: string, search: string) => boolean;
 }
 
 export function useCommandPaletteState({
-  items: allItems,
   open: controlledOpen,
   onOpenChange,
   search: controlledSearch,
   onSearchChange: controlledOnSearchChange,
   highlightedId: controlledHighlightedId,
   onHighlightChange,
-  selectedId: controlledSelectedId,
-  onSelectedIdChange,
   onActivate,
   shouldFilter = true,
   filter: filterProp,
 }: UseCommandPaletteStateOptions): CommandPaletteContextValue {
+  const [registeredItems, setRegisteredItems] = useState<CommandPaletteItemRegistration[]>([]);
   const filter = filterProp ?? defaultFilter;
   const [isOpen, setIsOpen] = useControllableState({ value: controlledOpen, defaultValue: false, onChange: onOpenChange });
   const [search, setSearch] = useControllableState({ value: controlledSearch, defaultValue: "", onChange: controlledOnSearchChange });
-  const [selectedId, setSelectedId, isSelectedControlled] = useControllableState<string | null>({
-    value: controlledHighlightedId !== undefined ? controlledHighlightedId : controlledSelectedId,
-    controlled: controlledHighlightedId !== undefined || controlledSelectedId !== undefined,
+  const [highlightedId, setHighlightedId, isHighlightedControlled] = useControllableState<string | null>({
+    value: controlledHighlightedId,
+    controlled: controlledHighlightedId !== undefined,
     defaultValue: null,
-    onChange: onHighlightChange ?? onSelectedIdChange,
+    onChange: onHighlightChange,
   });
   const listRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<Element | null>(null);
   const paletteId = useId();
-  const items = useMemo(
-    () => allItems
-      .filter((item) => !item.disabled && (!shouldFilter || !search || filter(item.value, search)))
-      .map((item) => item.id),
-    [allItems, filter, search, shouldFilter],
+  const activeItems = useMemo(
+    () => sortSelectableCollectionItems(registeredItems)
+      .filter((item) => !item.disabled && item.element !== null),
+    [registeredItems],
   );
   const itemCallbacks = useMemo(
-    () => new Map(allItems.map((item) => [item.id, item.onSelect])),
-    [allItems],
+    () => new Map(activeItems.map((item) => [item.id, item.onSelect])),
+    [activeItems],
   );
+  const itemIds = useMemo(() => activeItems.map((item) => item.id), [activeItems]);
 
   const handleOpenChange = useCallback((next: boolean) => {
     if (next && !previousFocusRef.current && typeof document !== "undefined") {
@@ -81,23 +75,37 @@ export function useCommandPaletteState({
     handleOpenChange(false);
   }, [handleOpenChange, itemCallbacks, onActivate]);
 
+  const registerItem = useCallback((item: CommandPaletteItemRegistration) => {
+    setRegisteredItems((current) => {
+      const existingIndex = current.findIndex((candidate) => candidate.registrationId === item.registrationId);
+      const next = existingIndex === -1 ? [...current, item] : [...current];
+      if (existingIndex !== -1) next[existingIndex] = item;
+      return next;
+    });
+  }, []);
+
+  const unregisterItem = useCallback((registrationId: string) => {
+    setRegisteredItems((current) => current.filter((item) => item.registrationId !== registrationId));
+  }, []);
+
   const { onKeyDown: rawNavKeyDown } = useNavigation({
     containerRef: listRef,
     role: "option",
     wrap: true,
-    value: getEffectiveSelectedId(selectedId, items, isSelectedControlled),
-    onValueChange: setSelectedId,
+    value: getEffectiveHighlightedId(highlightedId, itemIds, isHighlightedControlled),
+    onValueChange: setHighlightedId,
     onEnter: handleActivate,
     enabled: isOpen,
+    scopeToContainer: true,
   });
   const navKeyDown = rawNavKeyDown;
 
   return useMemo(() => ({
-    open: isOpen, onOpenChange: handleOpenChange, previousFocusRef, selectedId: getEffectiveSelectedId(selectedId, items, isSelectedControlled),
+    open: isOpen, onOpenChange: handleOpenChange, previousFocusRef, highlightedId: getEffectiveHighlightedId(highlightedId, itemIds, isHighlightedControlled),
     onActivate: handleActivate, search, onSearchChange: setSearch,
-    shouldFilter, filter, itemCount: items.length,
-    listId: `${paletteId}-list`, listRef, navKeyDown,
-  }), [isOpen, handleOpenChange, handleActivate, selectedId, items, isSelectedControlled, search, setSearch, shouldFilter, filter, paletteId, navKeyDown]);
+    shouldFilter, filter, itemCount: itemIds.length,
+    listId: `${paletteId}-list`, listRef, navKeyDown, registerItem, unregisterItem,
+  }), [isOpen, handleOpenChange, handleActivate, highlightedId, itemIds, isHighlightedControlled, search, setSearch, shouldFilter, filter, paletteId, navKeyDown, registerItem, unregisterItem]);
 }
 
 export interface CommandPaletteItemMetadata {
@@ -107,12 +115,17 @@ export interface CommandPaletteItemMetadata {
   onSelect?: () => void;
 }
 
-function getEffectiveSelectedId(
-  selectedId: string | null,
+export interface CommandPaletteItemRegistration extends CommandPaletteItemMetadata {
+  registrationId: string;
+  element: HTMLElement | null;
+}
+
+function getEffectiveHighlightedId(
+  highlightedId: string | null,
   items: readonly string[],
   isControlled: boolean,
 ): string | null {
-  if (selectedId !== null && items.includes(selectedId)) return selectedId;
+  if (highlightedId !== null && items.includes(highlightedId)) return highlightedId;
   if (isControlled) return null;
   return items[0] ?? null;
 }

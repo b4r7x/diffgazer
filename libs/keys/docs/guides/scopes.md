@@ -33,7 +33,7 @@ Scopes are for **layers of UI that should capture keyboard input exclusively**:
 - Confirmation overlays
 - Nested drawers or panels
 
-If you have a sidebar and a main content area that are both visible and both need keyboard shortcuts, you probably don't need scopes. Use `targetRef` and `requireFocusWithin` instead.
+If you have a sidebar and a main content area that are both visible and both need keyboard shortcuts, you probably don't need scopes. Use `containerRef` and `focusWithinOnly` instead.
 
 ## useScope
 

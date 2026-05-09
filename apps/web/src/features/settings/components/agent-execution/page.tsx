@@ -10,7 +10,16 @@ import { useKey, useScope } from "@diffgazer/keys";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useFooterNavigation } from "@/hooks/use-footer-navigation.js";
 import { useSettings, useSaveSettings, matchQueryState } from "@diffgazer/core/api/hooks";
-import { cn } from "@diffgazer/core/cn";
+
+const EXECUTION_MODES: AgentExecution[] = ["sequential", "parallel"];
+
+function isAgentExecution(value: string | null): value is AgentExecution {
+  return EXECUTION_MODES.some((mode) => mode === value);
+}
+
+function clearCurrentFocus() {
+  if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+}
 
 export function SettingsAgentExecutionPage() {
   const navigate = useNavigate();
@@ -72,29 +81,13 @@ export function SettingsAgentExecutionPage() {
     rightShortcuts: [{ key: "Esc", label: "Back" }],
   });
 
-  const navigationEnabled = !footer.inFooter && !isSaving;
+  const navigationEnabled = settings !== undefined && !footer.inFooter && !isSaving;
 
   const onExecutionChange = (value: string) => {
-    const mode = value as AgentExecution;
-    setFocusedMode(mode);
-    setModeChoice(mode);
+    if (!isAgentExecution(value)) return;
+    setFocusedMode(value);
+    setModeChoice(value);
   };
-
-  const executionOptions: AgentExecution[] = ["sequential", "parallel"];
-
-  const moveFocus = (direction: 1 | -1) => {
-    const idx = executionOptions.indexOf(effectiveFocusedMode);
-    const next = idx + direction;
-    if (next < 0) return;
-    if (next >= executionOptions.length) {
-      footer.enterFooter();
-      return;
-    }
-    setFocusedMode(executionOptions[next]!);
-  };
-
-  useKey("ArrowDown", () => moveFocus(1), { enabled: navigationEnabled });
-  useKey("ArrowUp", () => moveFocus(-1), { enabled: navigationEnabled });
 
   useKey(" ", () => onExecutionChange(effectiveFocusedMode), { enabled: navigationEnabled });
   useKey("Enter", () => onExecutionChange(effectiveFocusedMode), { enabled: navigationEnabled });
@@ -128,18 +121,20 @@ export function SettingsAgentExecutionPage() {
       footer={
         <>
           <Button
+            {...footer.getButtonProps(0)}
             variant="ghost"
             onClick={handleCancel}
             disabled={isSaving}
-            className={cn(footer.inFooter && footer.focusedIndex === 0 && "ring-2 ring-tui-blue")}
+            highlighted={footer.inFooter && footer.focusedIndex === 0}
           >
             Cancel
           </Button>
           <Button
+            {...footer.getButtonProps(1)}
             variant="success"
             onClick={handleSave}
             disabled={!canSave}
-            className={cn(footer.inFooter && footer.focusedIndex === 1 && "ring-2 ring-tui-blue")}
+            highlighted={footer.inFooter && footer.focusedIndex === 1}
           >
             {isSaving ? "Saving..." : "Save"}
           </Button>
@@ -151,7 +146,21 @@ export function SettingsAgentExecutionPage() {
           value={effectiveMode}
           onChange={onExecutionChange}
           highlighted={navigationEnabled ? effectiveFocusedMode : null}
-          onHighlightChange={(v) => setFocusedMode(v as AgentExecution)}
+          onHighlightChange={(value) => {
+            if (isAgentExecution(value)) setFocusedMode(value);
+          }}
+          onNavigate={(value) => {
+            if (isAgentExecution(value)) setFocusedMode(value);
+          }}
+          keyboardNavigation={navigationEnabled}
+          activationMode="manual"
+          autoFocus={navigationEnabled}
+          onNavigationBoundaryReached={(direction) => {
+            if (direction === "next") {
+              clearCurrentFocus();
+              footer.enterFooter();
+            }
+          }}
           className="space-y-1"
         >
           <RadioGroupItem

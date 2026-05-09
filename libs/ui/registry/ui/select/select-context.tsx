@@ -16,7 +16,7 @@ export interface SelectContextValue {
   searchQuery: string;
   onSearchChange: (query: string) => void;
   highlighted: string | null;
-  onHighlight: (value: string | null) => void;
+  setHighlighted: (value: string | null) => void;
   selectItem: (value: string) => void;
   options: ReadonlyMap<string, SelectOptionMetadata>;
   triggerRef: RefObject<HTMLButtonElement | null>;

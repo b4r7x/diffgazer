@@ -141,7 +141,11 @@ describe("Menu", () => {
     const providerItem = screen.getByText("Provider").closest("[role='menuitemradio']")!
     const providerValue = screen.getByText("ready")
     expect(providerItem).toHaveClass("bg-primary", "text-primary-foreground")
-    expect(providerValue).toHaveClass("text-current", "bg-current/10")
+    expect(providerValue).toHaveClass(
+      "bg-success",
+      "text-success-foreground",
+      "border-success",
+    )
 
     rerender(
       <Menu aria-label="Hub menu" variant="hub" highlightedId="delete">

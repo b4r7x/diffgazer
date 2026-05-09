@@ -47,7 +47,8 @@ export function matchesHotkey(event: KeyboardEvent, hotkey: string): boolean {
 }
 
 export function isInputElement(target: EventTarget | null): boolean {
-  if (!target || !(target instanceof HTMLElement)) return false;
+  const View = (target as { ownerDocument?: Document } | null)?.ownerDocument?.defaultView;
+  if (!View || !(target instanceof View.HTMLElement)) return false;
   const tag = target.tagName.toLowerCase();
   return (
     tag === "input" ||

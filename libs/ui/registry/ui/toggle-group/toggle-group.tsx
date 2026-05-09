@@ -1,18 +1,21 @@
 "use client";
 
-import { Children, isValidElement, useCallback, useMemo, useRef, type ReactNode, type Ref, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useCallback, useMemo, useRef, type ReactNode, type Ref, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useNavigation } from "@/hooks/use-navigation";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { useFormReset } from "@/hooks/use-form-reset";
 import { composeRefs } from "@/lib/compose-refs";
+import {
+  getEnabledSelectableCollectionItems,
+  getSelectableCollectionItemValue,
+  useSelectableCollection,
+} from "@/lib/selectable-collection";
 import { cn } from "@/lib/utils";
 import { ToggleGroupContext } from "./toggle-group-context";
 
 export interface ToggleGroupProps {
   value?: string | null;
   defaultValue?: string | null;
-  onValueChange?: (value: string | null) => void;
-  /** @deprecated Use `onValueChange` for controlled value updates. */
   onChange?: (value: string | null) => void;
   allowDeselect?: boolean;
   disabled?: boolean;
@@ -30,39 +33,9 @@ export interface ToggleGroupProps {
   ref?: Ref<HTMLDivElement>;
 }
 
-interface ToggleGroupItemElementProps {
-  value?: string;
-  disabled?: boolean;
-  children?: ReactNode;
-}
-
-function collectToggleItems(children: ReactNode): Array<{ value: string; disabled: boolean }> {
-  const items: Array<{ value: string; disabled: boolean }> = [];
-
-  Children.forEach(children, (child) => {
-    if (!isValidElement<ToggleGroupItemElementProps>(child)) return;
-    if (typeof child.props.value === "string") {
-      items.push({ value: child.props.value, disabled: !!child.props.disabled });
-      return;
-    }
-    items.push(...collectToggleItems(child.props.children));
-  });
-
-  return items;
-}
-
-function getEnabledItemValue(
-  items: Array<{ value: string; disabled: boolean }>,
-  value: string | null | undefined,
-): string | null {
-  if (value === null || value === undefined) return null;
-  return items.some((item) => item.value === value && !item.disabled) ? value : null;
-}
-
 export function ToggleGroup({
   value: controlledValue,
   defaultValue,
-  onValueChange,
   onChange,
   allowDeselect = false,
   disabled = false,
@@ -80,12 +53,12 @@ export function ToggleGroup({
   ref,
 }: ToggleGroupProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const items = useMemo(() => collectToggleItems(children), [children]);
+  const { items, registerItem, unregisterItem } = useSelectableCollection(containerRef);
 
   const [value, setValue, isControlled] = useControllableState<string | null>({
     value: controlledValue,
     defaultValue: defaultValue ?? null,
-    onChange: onValueChange ?? onChange,
+    onChange,
   });
   useFormReset(containerRef, defaultValue ?? null, setValue, !isControlled);
 
@@ -99,9 +72,9 @@ export function ToggleGroup({
     setValue((prev) => (prev === newValue && allowDeselect) ? null : newValue);
   }, [allowDeselect, setValue]);
 
-  const enabledItems = disabled ? [] : items;
-  const validHighlightedValue = getEnabledItemValue(enabledItems, highlightedValue);
-  const validSelectedValue = getEnabledItemValue(enabledItems, value);
+  const enabledItems = getEnabledSelectableCollectionItems(items, disabled);
+  const validHighlightedValue = getSelectableCollectionItemValue(enabledItems, highlightedValue);
+  const validSelectedValue = getSelectableCollectionItemValue(enabledItems, value);
   const tabTargetValue =
     validHighlightedValue ?? validSelectedValue ?? enabledItems.find((item) => !item.disabled)?.value ?? null;
 
@@ -116,6 +89,8 @@ export function ToggleGroup({
     value: tabTargetValue,
     enabled: !disabled,
     onValueChange: allowDeselect ? setHighlightedValue : handleValueChange,
+    scopeToContainer: true,
+    ownerSelector: allowDeselect ? '[data-diffgazer-selectable-owner="toggle"]' : undefined,
   });
 
   const handleKeyDown = (e: ReactKeyboardEvent) => {
@@ -126,7 +101,7 @@ export function ToggleGroup({
 
   const contextValue = useMemo(() => ({
     value,
-    onValueChange: handleValueChange,
+    onChange: handleValueChange,
     onHighlightChange: setHighlightedValue,
     disabled,
     size,
@@ -134,13 +109,16 @@ export function ToggleGroup({
     containerRef,
     allowDeselect,
     tabTargetValue,
-  }), [value, handleValueChange, setHighlightedValue, disabled, size, validHighlightedValue, allowDeselect, tabTargetValue]);
+    registerItem,
+    unregisterItem,
+  }), [value, handleValueChange, setHighlightedValue, disabled, size, validHighlightedValue, allowDeselect, tabTargetValue, registerItem, unregisterItem]);
 
   return (
     <ToggleGroupContext value={contextValue}>
       <div
         ref={composeRefs(containerRef, ref)}
         role={allowDeselect ? "group" : "radiogroup"}
+        data-diffgazer-selectable-owner={allowDeselect ? "toggle" : "radio"}
         aria-label={label}
         aria-labelledby={ariaLabelledBy}
         aria-orientation={allowDeselect ? undefined : orientation}

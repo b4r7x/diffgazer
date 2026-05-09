@@ -15,8 +15,6 @@ import { useAccordionState } from "./use-accordion-state";
 export interface AccordionSingleProps {
   type?: "single";
   value?: string;
-  onValueChange?: (value: string | undefined) => void;
-  /** @deprecated Use `onValueChange` for controlled value updates. */
   onChange?: (value: string | undefined) => void;
   defaultValue?: string;
   collapsible?: boolean;
@@ -29,8 +27,6 @@ export interface AccordionSingleProps {
 export interface AccordionMultipleProps {
   type: "multiple";
   value?: string[];
-  onValueChange?: (value: string[]) => void;
-  /** @deprecated Use `onValueChange` for controlled value updates. */
   onChange?: (value: string[]) => void;
   defaultValue?: string[];
   children: ReactNode;

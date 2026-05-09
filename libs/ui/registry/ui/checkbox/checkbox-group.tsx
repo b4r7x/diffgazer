@@ -1,26 +1,56 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type Ref } from "react";
+import {
+  type ComponentPropsWithRef,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
+  type Ref,
+} from "react";
 import { useNavigation } from "@/hooks/use-navigation";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { useFormReset } from "@/hooks/use-form-reset";
 import { composeRefs } from "@/lib/compose-refs";
+import {
+  getEnabledSelectableCollectionItems,
+  getSelectableCollectionItemByValue,
+  useSelectableCollection,
+} from "@/lib/selectable-collection";
 import { cn } from "@/lib/utils";
 import type { SelectableVariant } from "@/lib/selectable-variants";
 import type { CheckboxSize } from "./checkbox";
 import { CheckboxGroupContext } from "./checkbox-group-context";
 
-export type CheckboxGroupProps<T extends string = string> = {
+type CheckboxGroupRootProps = Omit<
+  ComponentPropsWithRef<"div">,
+  | "children"
+  | "role"
+  | "onChange"
+  | "onKeyDown"
+  | "className"
+  | "ref"
+  | "aria-label"
+  | "aria-labelledby"
+  | "aria-disabled"
+  | "aria-invalid"
+>;
+
+export type CheckboxGroupProps<T extends string = string> = CheckboxGroupRootProps & {
   value?: T[];
   defaultValue?: T[];
-  onValueChange?: (value: T[]) => void;
-  /** @deprecated Use `onValueChange` for controlled value updates. */
   onChange?: (value: T[]) => void;
   onHighlightChange?: (value: string) => void;
   onKeyDown?: (event: ReactKeyboardEvent) => void;
   highlighted?: string | null;
   wrap?: boolean;
+  keyboardNavigation?: boolean;
+  onNavigationBoundaryReached?: (direction: "previous" | "next") => void;
   disabled?: boolean;
+  autoFocus?: boolean;
   size?: CheckboxSize;
   variant?: SelectableVariant;
   strikethrough?: boolean;
@@ -35,77 +65,152 @@ export type CheckboxGroupProps<T extends string = string> = {
   ref?: Ref<HTMLDivElement>;
 };
 
-export function CheckboxGroup<T extends string = string>({
-  value: controlledValue,
-  defaultValue = [] as T[],
-  onValueChange,
-  onChange,
-  onHighlightChange,
-  onKeyDown,
-  highlighted: controlledHighlighted,
-  wrap = true,
-  disabled = false,
-  size = "md",
-  variant = "x",
-  strikethrough = false,
-  name,
-  required,
-  className,
-  label,
-  labelledBy,
-  "aria-label": ariaLabel,
-  "aria-labelledby": ariaLabelledBy,
-  children,
-  ref,
-}: CheckboxGroupProps<T>) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [value, setValue] = useControllableState<T[]>({
+function isHTMLElementForContainer(value: unknown, container: HTMLElement | null): value is HTMLElement {
+  const View = container?.ownerDocument.defaultView;
+  return Boolean(View && value instanceof View.HTMLElement);
+}
+
+export function CheckboxGroup<T extends string = string>(props: CheckboxGroupProps<T>) {
+  const {
     value: controlledValue,
+    defaultValue = [] as T[],
+    onChange,
+    onHighlightChange,
+    onKeyDown,
+    highlighted: controlledHighlighted,
+    wrap = true,
+    keyboardNavigation = true,
+    onNavigationBoundaryReached,
+    disabled = false,
+    autoFocus = false,
+    size = "md",
+    variant = "x",
+    strikethrough = false,
+    name,
+    required,
+    className,
+    label,
+    labelledBy,
+    "aria-label": ariaLabel,
+    "aria-labelledby": ariaLabelledBy,
+    children,
+    ref,
+    ...rootProps
+  } = props;
+  const containerRef = useRef<HTMLDivElement>(null);
+  const hasAutoFocusedRef = useRef(false);
+  const { items, registerItem, unregisterItem } = useSelectableCollection(containerRef);
+  const [value, setValue] = useControllableState<T[]>({
+    value: "value" in props ? controlledValue ?? [] : undefined,
+    controlled: "value" in props,
     defaultValue,
-    onChange: onValueChange ?? onChange,
+    onChange,
   });
   const [nativeInvalid, setNativeInvalid] = useState(false);
-  useFormReset(containerRef, defaultValue, setValue, controlledValue === undefined);
+  useFormReset(containerRef, defaultValue, setValue, !("value" in props));
+
+  const enabledItemValues = new Set(
+    getEnabledSelectableCollectionItems(items, disabled).map((item) => item.value),
+  );
+  const hasValidSelectedValue = value.some((itemValue) => enabledItemValues.has(itemValue));
 
   const [highlightedValue, setHighlightedValue] = useControllableState<string | null>({
     value: controlledHighlighted,
+    controlled: "highlighted" in props,
     defaultValue: null,
-    onChange: onHighlightChange as ((value: string | null) => void) | undefined,
+    onChange: (next) => {
+      if (next !== null) onHighlightChange?.(next);
+    },
   });
 
   const { onKeyDown: navKeyDown } = useNavigation({
     containerRef,
     role: "checkbox",
     wrap,
+    enabled: keyboardNavigation && !disabled,
+    onNavigationBoundaryReached,
     value: highlightedValue ?? undefined,
     onValueChange: setHighlightedValue,
+    moveFocus: true,
+    scopeToContainer: true,
+    ownerSelector: '[data-diffgazer-selectable-owner="checkbox"]',
   });
 
-  const handleHighlightChange = useCallback((value: string) => setHighlightedValue(value), [setHighlightedValue]);
+  useEffect(() => {
+    if (!autoFocus || !keyboardNavigation || disabled) {
+      hasAutoFocusedRef.current = false;
+      return;
+    }
+    if (hasAutoFocusedRef.current) return;
+
+    const activeItems = getEnabledSelectableCollectionItems(items, disabled);
+    const selectedItem = value.reduce<(typeof activeItems)[number] | null>(
+      (current, itemValue) => current ?? getSelectableCollectionItemByValue(activeItems, itemValue),
+      null,
+    );
+    const target =
+      getSelectableCollectionItemByValue(activeItems, highlightedValue)
+      ?? selectedItem
+      ?? activeItems[0]
+      ?? null;
+    if (!target?.element) return;
+
+    target.element.focus();
+    setHighlightedValue(target.value);
+    hasAutoFocusedRef.current = true;
+  }, [autoFocus, keyboardNavigation, disabled, items, highlightedValue, value, setHighlightedValue]);
 
   const toggle = useCallback((itemValue: string) => {
     if (disabled) return;
     setNativeInvalid(false);
-    const typed = itemValue as T;
-    setValue((cur) => (cur.includes(typed) ? cur.filter((v) => v !== typed) : [...cur, typed]));
+    setValue((cur) => {
+      const nextValue = itemValue as T;
+      const selected = cur.includes(nextValue);
+      return selected
+        ? cur.filter((v) => v !== itemValue)
+        : [...cur, nextValue];
+    });
   }, [disabled, setValue]);
 
-  const handleKeyDown = (e: ReactKeyboardEvent) => {
-    onKeyDown?.(e);
-    if (!e.defaultPrevented && e.key !== " ") navKeyDown(e);
+  const handleKeyDown = (event: ReactKeyboardEvent) => {
+    const eventTarget = isHTMLElementForContainer(event.target, containerRef.current)
+      ? event.target
+      : null;
+    if (
+      eventTarget
+      && eventTarget.closest('[role="group"]') !== containerRef.current
+    ) {
+      return;
+    }
+
+    onKeyDown?.(event);
+    if (!event.defaultPrevented && event.key !== " ") navKeyDown(event);
   };
 
-  const contextValue = useMemo(() => ({ value, toggle, disabled, size, variant, strikethrough, onHighlightChange: handleHighlightChange, highlightedValue: highlightedValue ?? null, name, required }), [value, toggle, disabled, size, variant, strikethrough, handleHighlightChange, highlightedValue, name, required]);
+  const contextValue = useMemo(() => ({
+    value,
+    toggle,
+    registerItem,
+    unregisterItem,
+    disabled,
+    size,
+    variant,
+    strikethrough,
+    highlightedValue: highlightedValue ?? null,
+    name,
+  }), [value, toggle, registerItem, unregisterItem, disabled, size, variant, strikethrough, highlightedValue, name]);
 
   return (
     <CheckboxGroupContext value={contextValue}>
       <div
+        {...rootProps}
         ref={composeRefs(containerRef, ref)}
         role="group"
+        data-diffgazer-selectable-owner="checkbox"
         aria-label={ariaLabel ?? label}
         aria-labelledby={ariaLabelledBy ?? labelledBy}
         aria-disabled={disabled || undefined}
-        aria-invalid={nativeInvalid && required && value.length === 0 ? true : undefined}
+        aria-invalid={nativeInvalid && required && !hasValidSelectedValue ? true : undefined}
         className={cn("flex flex-col gap-2", className)}
         onKeyDown={handleKeyDown}
       >
@@ -113,7 +218,7 @@ export function CheckboxGroup<T extends string = string>({
           <input
             type="checkbox"
             required
-            checked={value.length > 0}
+            checked={hasValidSelectedValue}
             disabled={disabled}
             tabIndex={-1}
             aria-hidden={true}
@@ -124,7 +229,7 @@ export function CheckboxGroup<T extends string = string>({
             onInvalid={(event) => {
               event.preventDefault();
               setNativeInvalid(true);
-              containerRef.current?.querySelector<HTMLElement>('[role="checkbox"]:not([aria-disabled="true"])')?.focus();
+              getEnabledSelectableCollectionItems(items, disabled)[0]?.element?.focus();
             }}
           />
         )}

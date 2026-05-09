@@ -15,7 +15,7 @@ export default function SelectSearchTop() {
   const [value, setValue] = useState<string>("")
 
   return (
-    <Select width="md" value={value} onValueChange={setValue}>
+    <Select width="md" value={value} onChange={setValue}>
       <SelectTrigger>
         <SelectValue placeholder="Select a command..." />
       </SelectTrigger>

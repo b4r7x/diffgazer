@@ -12,7 +12,7 @@ export type { UseNavigationOptions, UseNavigationReturn } from "./hooks/use-navi
 export { useScopedNavigation } from "./hooks/use-scoped-navigation.js";
 export type { UseScopedNavigationOptions, UseScopedNavigationReturn } from "./hooks/use-scoped-navigation.js";
 export { useFocusZone } from "./hooks/use-focus-zone.js";
-export type { ZoneProps } from "./hooks/use-focus-zone.js";
+export type { FocusZoneProps, UseFocusZoneOptions, UseFocusZoneReturn } from "./hooks/use-focus-zone.js";
 
 export { useFocusTrap } from "./hooks/use-focus-trap.js";
 export type { UseFocusTrapOptions } from "./hooks/use-focus-trap.js";

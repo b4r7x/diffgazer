@@ -31,7 +31,7 @@ function App() {
 - Maintains a scope stack — the **last pushed** scope is active. Only handlers in the active scope fire.
 - Skips events where `event.defaultPrevented` is already `true`.
 - Skips handlers for input elements (`input`, `textarea`, `select`, `contentEditable`) unless `allowInInput` is set.
-- When a handler specifies `targetRef` + `requireFocusWithin`, only fires if the event target is inside that element.
+- When a handler specifies `containerRef` + `focusWithinOnly`, only fires if the event target is inside that container.
 - Handler priority: iterates entries from **last-registered to first**. The first match wins — no subsequent handlers fire.
 - Errors in handlers are caught and logged: `[@diffgazer/keys] Handler error for "${hotkey}": ...`
 - When `preventDefault` is set on a handler's options, `event.preventDefault()` is called before the handler runs.

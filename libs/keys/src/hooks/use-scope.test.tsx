@@ -3,6 +3,7 @@ import { render, renderHook, cleanup, act } from "@testing-library/react";
 import { useEffect, type ReactNode } from "react";
 import { KeyboardProvider } from "../providers/keyboard-provider";
 import { useKeyboardContext } from "../context/keyboard-context";
+import { useKey } from "./use-key";
 import { useScope } from "./use-scope";
 import { fireKey as pressKey } from "../testing/test-utils";
 
@@ -81,6 +82,32 @@ describe("useScope", () => {
     // Scope was not pushed, so active scope is still "global"
     expect(globalHandler).toHaveBeenCalledOnce();
     expect(modalHandler).not.toHaveBeenCalled();
+  });
+
+  it("keeps the last sibling scope active when many scopes mount together", () => {
+    const handlers = Array.from({ length: 40 }, () => vi.fn());
+
+    function ScopedConsumer({ index }: { index: number }) {
+      const scope = `scope-${index}`;
+      useScope(scope);
+      useKey("Escape", handlers[index]!, { scope });
+      return null;
+    }
+
+    render(
+      <Wrapper>
+        {handlers.map((_, index) => (
+          <ScopedConsumer key={index} index={index} />
+        ))}
+      </Wrapper>,
+    );
+
+    act(() => pressKey("Escape"));
+
+    expect(handlers.at(-1)).toHaveBeenCalledOnce();
+    for (const handler of handlers.slice(0, -1)) {
+      expect(handler).not.toHaveBeenCalled();
+    }
   });
 
   it("throws when used outside KeyboardProvider", () => {

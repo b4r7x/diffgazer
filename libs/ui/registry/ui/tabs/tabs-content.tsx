@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, type HTMLAttributes, type Ref } from "react";
+import { type HTMLAttributes, type Ref } from "react";
 import { cn } from "@/lib/utils";
 import { getTabPanelId, getTabTriggerId, useTabsContext } from "./tabs-context";
 
@@ -13,12 +13,6 @@ export function TabsContent({ value, children, className, ref, ...rest }: TabsCo
   const { tabsId, value: selectedValue, orientation, triggerValues } = useTabsContext();
   const isActive = selectedValue === value;
   const triggerId = triggerValues.includes(value) ? getTabTriggerId(tabsId, value) : undefined;
-
-  useEffect(() => {
-    if (process.env.NODE_ENV !== "production" && !triggerId) {
-      console.warn(`Tabs.Content value "${value}" has no matching Tabs.Trigger.`);
-    }
-  }, [triggerId, value]);
 
   return (
     <div

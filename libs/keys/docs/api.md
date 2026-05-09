@@ -34,7 +34,7 @@ function App() {
 - Maintains a scope stack -- the **last pushed** scope is active. Only handlers in the active scope fire.
 - Skips events where `event.defaultPrevented` is already `true`.
 - Skips handlers for input elements (`input`, `textarea`, `select`, `contentEditable`) unless `allowInInput` is set.
-- When a handler specifies `targetRef` + `requireFocusWithin`, only fires if the event target is inside that element.
+- When a handler specifies `containerRef` + `focusWithinOnly`, only fires if the event target is inside that container.
 - Handler priority: iterates entries from **last-registered to first**. The first match wins -- no subsequent handlers fire.
 - Errors in handlers are caught and logged: `[@diffgazer/keys] Handler error for "${hotkey}": ...`
 - When `preventDefault` is set on a handler's options, `event.preventDefault()` is called before the handler runs.
@@ -71,9 +71,10 @@ type KeyHandler = (event: KeyboardEvent) => void;
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `enabled` | `boolean` | `true` | Toggle registration on/off. |
+| `scope` | `string` | active scope | Register in an explicit scope instead of the currently active scope. |
 | `allowInInput` | `boolean` | `false` | Fire even when focus is in an input, textarea, select, or contentEditable. |
-| `targetRef` | `RefObject<HTMLElement \| null>` | -- | Restrict handler to events within this element. Requires `requireFocusWithin`. |
-| `requireFocusWithin` | `boolean` | `false` | Only fire when the event target is inside `targetRef`. |
+| `containerRef` | `RefObject<HTMLElement \| null>` | -- | Restrict handler to events within this element. Requires `focusWithinOnly`. |
+| `focusWithinOnly` | `boolean` | `false` | Only fire when the event target is inside `containerRef`. |
 | `preventDefault` | `boolean` | `false` | Call `event.preventDefault()` before the handler runs. |
 
 ### Examples
@@ -94,8 +95,8 @@ useKey({
 // Scoped to a container
 const ref = useRef<HTMLDivElement>(null);
 useKey("Enter", handleSelect, {
-  targetRef: ref,
-  requireFocusWithin: true,
+  containerRef: ref,
+  focusWithinOnly: true,
 });
 ```
 
@@ -212,10 +213,13 @@ function useNavigation(options: UseNavigationOptions): UseNavigationReturn;
 | `wrap` | `boolean` | `true` | Wrap around at list boundaries. |
 | `enabled` | `boolean` | `true` | Toggle navigation on/off. |
 | `preventDefault` | `boolean` | `true` | Prevent default on handled keys. |
-| `onBoundaryReached` | `(direction: "up" \| "down") => void` | -- | Called when `wrap` is `false` and navigation hits an edge. |
+| `onNavigationBoundaryReached` | `(direction: "previous" \| "next") => void` | -- | Called when `wrap` is `false` and navigation hits an edge. |
 | `initialValue` | `string \| null` | `null` | Initial focused value (uncontrolled mode). |
 | `orientation` | `"vertical" \| "horizontal"` | `"vertical"` | Determines default up/down keys. |
 | `skipDisabled` | `boolean` | `true` | Skip items with `aria-disabled="true"`. |
+| `moveFocus` | `boolean` | `false` | Move DOM focus to the next item on navigation. |
+| `scopeToContainer` | `boolean` | `true` | Exclude items owned by nested collection containers. |
+| `ownerSelector` | `string \| null` | role-based | Advanced override for the owner selector used when scoping nested collections. |
 | `upKeys` | `string[]` | `["ArrowUp"]` / `["ArrowLeft"]` | Keys for previous item. Defaults depend on `orientation`. |
 | `downKeys` | `string[]` | `["ArrowDown"]` / `["ArrowRight"]` | Keys for next item. Defaults depend on `orientation`. |
 
@@ -231,7 +235,7 @@ function useNavigation(options: UseNavigationOptions): UseNavigationReturn;
 ### NavigationRole
 
 ```ts
-type NavigationRole = "radio" | "checkbox" | "option" | "menuitem" | "button" | "tab";
+type NavigationRole = "radio" | "checkbox" | "option" | "menuitem" | "menuitemradio" | "button" | "tab";
 ```
 
 ### Example
@@ -263,8 +267,9 @@ return (
 ### Behavior
 
 - Standalone — does not require `KeyboardProvider`. Attach the returned `onKeyDown` to your container.
-- Items are queried from the DOM using `[role="${role}"]` (with `:not([aria-disabled="true"])` when `skipDisabled` is true).
+- Items are queried from the DOM using the matching ARIA role or `data-diffgazer-navigation-item` data contract.
 - Items **must** have a `data-value` attribute.
+- Nested collection owners are scoped out by default. Pass `scopeToContainer={false}` only when parent navigation should intentionally include nested collections.
 - `scrollIntoView({ block: "nearest" })` is called on focus changes.
 - Key bindings: `upKeys`, `downKeys`, `Home`, `End`, `Enter` (calls `onEnter`), `Space` (calls `onSelect`).
 - Supports controlled mode via `value` + `onValueChange`.
@@ -292,7 +297,9 @@ Accepts all the same options as `useNavigation`, plus:
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `requireFocusWithin` | `boolean` | `false` | Only handle keys when focus is inside `containerRef`. |
+| `scope` | `string` | active scope | Register navigation keys in an explicit keyboard scope. |
+| `containerRef` | `RefObject<HTMLElement \| null>` | -- | Required DOM container used for navigation and focus checks. |
+| `focusWithinOnly` | `boolean` | `false` | Only handle keys when focus is inside `containerRef`. |
 
 ### Return
 
@@ -312,7 +319,7 @@ const { highlighted, isHighlighted } = useScopedNavigation({
   containerRef: ref,
   role: "option",
   onSelect: (value) => select(value),
-  requireFocusWithin: true,
+  focusWithinOnly: true,
 });
 ```
 
@@ -349,9 +356,13 @@ function useFocusZone<T extends string>(options: UseFocusZoneOptions<T>): UseFoc
 | `onZoneChange` | `(zone: T) => void` | -- | Called after a zone transition. |
 | `onLeaveZone` | `(zone: T) => void` | -- | Called with the **current** zone before leaving it. |
 | `onEnterZone` | `(zone: T) => void` | -- | Called with the **next** zone when entering it. |
-| `transitions` | `(params: { zone: T; key: ArrowKey \| "Tab" }) => T \| null` | -- | Maps arrow keys to zone transitions. Return `null` to ignore. |
+| `transitions` | `(params: { zone: T; key: ArrowKey }) => T \| null` | -- | Maps arrow keys to zone transitions. Return `null` to ignore. |
 | `tabCycle` | `readonly T[]` | -- | Zone order for Tab/Shift+Tab cycling. |
 | `scope` | `string` | -- | If provided, pushes this scope while the hook is active. |
+| `containerRef` | `RefObject<HTMLElement \| null>` | -- | Optional DOM subtree used to scope registered focus-zone keys. |
+| `focusWithinOnly` | `boolean` | `false` | Only run focus-zone keys when focus is inside `containerRef`. |
+| `allowInInput` | `boolean` | `false` | Allow focus-zone keys while an input-like element is focused. |
+| `preventDefault` | `boolean` | `false` | Inherited `preventDefault` behavior for transition keys and `getKeyOptions`. |
 | `enabled` | `boolean` | `true` | Toggle the entire hook on/off. |
 
 ### Return
@@ -360,15 +371,16 @@ function useFocusZone<T extends string>(options: UseFocusZoneOptions<T>): UseFoc
 |----------|------|-------------|
 | `zone` | `T` | Currently active zone. |
 | `setZone` | `(zone: T) => void` | Manually change the active zone. |
-| `inZone` | `(...zones: T[]) => boolean` | Check if active zone matches any of the given zones. |
-| `forZone` | `(target: T, extra?: UseKeyOptions) => UseKeyOptions` | Returns options that enable a key binding only when the specified zone is active. |
+| `isZone` | `(...zones: T[]) => boolean` | Check if active zone matches any of the given zones. |
+| `getKeyOptions` | `(zone: T, extra?: UseKeyOptions) => UseKeyOptions` | Returns options that enable a key binding only when the specified zone is active. |
+| `getZoneProps` | `(zone: T) => { "data-focused": true \| undefined }` | Returns DOM attributes for active-zone styling. |
 
 ### Example
 
 ```tsx
 type Zone = "sidebar" | "content" | "preview";
 
-const { zone, forZone, inZone } = useFocusZone<Zone>({
+const { zone, getKeyOptions, isZone } = useFocusZone<Zone>({
   initial: "sidebar",
   zones: ["sidebar", "content", "preview"],
   tabCycle: ["sidebar", "content", "preview"],
@@ -381,16 +393,16 @@ const { zone, forZone, inZone } = useFocusZone<Zone>({
 });
 
 // Scope bindings to a zone
-useKey("Enter", handleSelect, forZone("content"));
-useKey("Escape", closeSidebar, forZone("sidebar"));
+useKey("Enter", handleSelect, getKeyOptions("content"));
+useKey("Escape", closeSidebar, getKeyOptions("sidebar"));
 ```
 
 ### Behavior
 
-- `forZone("content", extra)` returns `{ ...extra, enabled: zone === "content" && (extra?.enabled ?? true) }`. This is the primary way to scope `useKey` calls to a zone.
+- `getKeyOptions("content", extra)` returns `{ ...extra, enabled: zone === "content" && (extra?.enabled ?? true) }`. This is the primary way to scope `useKey` calls to a zone.
 - Lifecycle callback order on zone change: `onLeaveZone(current)` -> `onEnterZone(next)` -> `onZoneChange(next)`.
 - Setting the same zone is a no-op -- no callbacks fire.
-- If `initial` is not in `zones`, logs `console.error` in development and falls back to `zones[0]`.
+- If `initial` is not in `zones`, falls back to `zones[0]`.
 - Supports controlled mode via the `zone` prop -- internal state is bypassed, but `onZoneChange` still fires.
 - Arrow keys are registered via `useKey` only when `transitions` is provided.
 - Tab/Shift+Tab are registered with `preventDefault: true` only when `tabCycle` is provided.
@@ -568,8 +580,8 @@ Passed to `register()` in the keyboard context. You won't use this directly -- i
 ```ts
 interface HandlerOptions {
   allowInInput?: boolean;
-  targetRef?: RefObject<HTMLElement | null>;
-  requireFocusWithin?: boolean;
+  containerRef?: RefObject<HTMLElement | null>;
+  focusWithinOnly?: boolean;
   preventDefault?: boolean;
 }
 ```

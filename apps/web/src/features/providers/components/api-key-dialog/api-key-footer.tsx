@@ -1,6 +1,7 @@
 import { DialogFooter } from "@diffgazer/ui/components/dialog";
 import { Button } from "@diffgazer/ui/components/button";
 import { cn } from "@diffgazer/core/cn";
+import { useEffect, useRef } from "react";
 import type { FocusElement } from "@/types/focus-element";
 
 interface ApiKeyFooterProps {
@@ -20,6 +21,14 @@ export function ApiKeyFooter({
   focused,
   onFocus,
 }: ApiKeyFooterProps) {
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const confirmRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (focused === "cancel") cancelRef.current?.focus();
+    else if (focused === "confirm") confirmRef.current?.focus();
+  }, [focused]);
+
   return (
     <DialogFooter className="justify-between">
       <div className="flex gap-3 text-[10px] text-tui-muted">
@@ -29,10 +38,11 @@ export function ApiKeyFooter({
       </div>
       <div className="flex gap-3 items-center">
         <Button
+          ref={cancelRef}
           variant="ghost"
           size="sm"
           onClick={onCancel}
-          onMouseDown={() => onFocus("cancel")}
+          onFocus={() => onFocus("cancel")}
           className={cn(
             "text-tui-muted hover:text-tui-fg h-auto px-2 py-1",
             focused === "cancel" && "ring-2 ring-tui-blue"
@@ -41,10 +51,11 @@ export function ApiKeyFooter({
           [Esc] Cancel
         </Button>
         <Button
+          ref={confirmRef}
           variant="primary"
           size="sm"
           onClick={onConfirm}
-          onMouseDown={() => onFocus("confirm")}
+          onFocus={() => onFocus("confirm")}
           disabled={!canSubmit || isSubmitting}
           className={cn(
             "h-auto px-4 py-1.5",

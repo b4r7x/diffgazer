@@ -15,4 +15,16 @@ describe("Panel", () => {
 
     expect(ref.current).toBe(screen.getByRole("region", { name: "Release" }));
   });
+
+  it("renders a floating legend as a composable panel part", () => {
+    render(
+      <Panel>
+        <Panel.Legend tone="success">Settings Hub</Panel.Legend>
+        <Panel.Content>Body</Panel.Content>
+      </Panel>,
+    );
+
+    expect(screen.getByText("Settings Hub")).toBeInTheDocument();
+    expect(screen.getByText("Body")).toBeInTheDocument();
+  });
 });

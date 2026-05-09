@@ -18,6 +18,7 @@ interface AnalysisSelectorContentProps {
   onChange: (value: LensId[]) => void;
   disabled?: boolean;
   enabled?: boolean;
+  autoFocusList?: boolean;
   onBoundaryReached?: (direction: "up" | "down") => void;
 }
 
@@ -37,6 +38,7 @@ export function AnalysisSelectorContent({
   onChange,
   disabled = false,
   enabled = true,
+  autoFocusList = false,
   onBoundaryReached,
 }: AnalysisSelectorContentProps) {
   const [focusedLens, setFocusedLens] = useState<LensId | null>(() =>
@@ -47,6 +49,11 @@ export function AnalysisSelectorContent({
   const effectiveFocusedLens = getAvailableFocusedLens(focusedLens, optionIds);
 
   const navigationEnabled = enabled && !disabled && options.length > 0;
+  const autoFocusReady = autoFocusList && navigationEnabled;
+
+  const handleChange = (nextValue: string[]) => {
+    onChange(nextValue.filter((id): id is LensId => optionIds.some((optionId) => optionId === id)));
+  };
 
   const handleKeyDown = (e: ReactKeyboardEvent) => {
     if (!navigationEnabled || !effectiveFocusedLens) return;
@@ -80,13 +87,17 @@ export function AnalysisSelectorContent({
       <ScrollArea className="max-h-90 pr-2">
         <CheckboxGroup
           value={value}
-          onChange={onChange}
+          onChange={handleChange}
           highlighted={navigationEnabled ? effectiveFocusedLens : null}
-          onHighlightChange={(v) => setFocusedLens(v as LensId)}
+          onHighlightChange={(value) => {
+            const nextLens = optionIds.find((id) => id === value);
+            if (nextLens) setFocusedLens(nextLens);
+          }}
           onKeyDown={handleKeyDown}
           wrap={false}
           variant="bullet"
           disabled={disabled || !enabled}
+          autoFocus={autoFocusReady}
         >
           {options.map((option) => (
             <CheckboxItem

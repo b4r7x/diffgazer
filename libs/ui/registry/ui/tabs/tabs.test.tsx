@@ -65,10 +65,10 @@ describe("Tabs", () => {
     expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("aria-selected", "false")
   })
 
-  it("respects controlled value and fires onValueChange", async () => {
-    const onValueChange = vi.fn()
+  it("respects controlled value and fires onChange", async () => {
+    const onChange = vi.fn()
     const { rerender } = render(
-      <Tabs value="one" onValueChange={onValueChange}>
+      <Tabs value="one" onChange={onChange}>
         <Tabs.List>
           <Tabs.Trigger value="one">One</Tabs.Trigger>
           <Tabs.Trigger value="two">Two</Tabs.Trigger>
@@ -78,11 +78,11 @@ describe("Tabs", () => {
       </Tabs>
     )
     await userEvent.click(screen.getByRole("tab", { name: "Two" }))
-    expect(onValueChange).toHaveBeenCalledWith("two")
+    expect(onChange).toHaveBeenCalledWith("two")
     expect(screen.getByRole("tab", { name: "One" })).toHaveAttribute("aria-selected", "true")
 
     rerender(
-      <Tabs value="two" onValueChange={onValueChange}>
+      <Tabs value="two" onChange={onChange}>
         <Tabs.List>
           <Tabs.Trigger value="one">One</Tabs.Trigger>
           <Tabs.Trigger value="two">Two</Tabs.Trigger>
@@ -182,10 +182,10 @@ describe("Tabs", () => {
   })
 
   it("keeps one enabled fallback tab selected and tabbable for invalid controlled values", () => {
-    const onValueChange = vi.fn()
+    const onChange = vi.fn()
 
     render(
-      <Tabs value="missing" onValueChange={onValueChange}>
+      <Tabs value="missing" onChange={onChange}>
         <Tabs.List>
           <Tabs.Trigger value="one">One</Tabs.Trigger>
           <Tabs.Trigger value="two">Two</Tabs.Trigger>
@@ -200,7 +200,7 @@ describe("Tabs", () => {
     expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("aria-selected", "false")
     expect(screen.getByText("Content one")).not.toHaveAttribute("hidden")
     expect(screen.getByText("Content two")).toHaveAttribute("hidden")
-    expect(onValueChange).not.toHaveBeenCalled()
+    expect(onChange).not.toHaveBeenCalled()
   })
 
   it("does not collect triggers from nested tabs when resolving parent fallback", () => {
@@ -296,11 +296,11 @@ describe("Tabs", () => {
     expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("tabindex", "0")
   })
 
-  it("uses the latest onValueChange callback after rerender", async () => {
+  it("uses the latest onChange callback after rerender", async () => {
     const firstCallback = vi.fn()
     const secondCallback = vi.fn()
     const { rerender } = render(
-      <Tabs defaultValue="one" onValueChange={firstCallback}>
+      <Tabs defaultValue="one" onChange={firstCallback}>
         <Tabs.List>
           <Tabs.Trigger value="one">One</Tabs.Trigger>
           <Tabs.Trigger value="two">Two</Tabs.Trigger>
@@ -311,7 +311,7 @@ describe("Tabs", () => {
     )
 
     rerender(
-      <Tabs defaultValue="one" onValueChange={secondCallback}>
+      <Tabs defaultValue="one" onChange={secondCallback}>
         <Tabs.List>
           <Tabs.Trigger value="one">One</Tabs.Trigger>
           <Tabs.Trigger value="two">Two</Tabs.Trigger>
@@ -389,9 +389,7 @@ describe("Tabs", () => {
     expect(missing).not.toHaveAttribute("aria-controls")
   })
 
-  it("omits aria-labelledby for content without a matching trigger and warns in development", () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
-
+  it("omits aria-labelledby for content without a matching trigger", () => {
     render(
       <Tabs defaultValue="one">
         <Tabs.List>
@@ -404,8 +402,5 @@ describe("Tabs", () => {
 
     const missingPanel = screen.getByText("Missing trigger content")
     expect(missingPanel).not.toHaveAttribute("aria-labelledby")
-    expect(warn).toHaveBeenCalledWith('Tabs.Content value "missing" has no matching Tabs.Trigger.')
-
-    warn.mockRestore()
   })
 })

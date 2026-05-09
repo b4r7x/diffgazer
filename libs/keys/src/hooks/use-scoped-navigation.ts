@@ -5,13 +5,17 @@ import {
   useNavigationCore,
   type UseNavigationOptions,
 } from "./use-navigation.js";
+import type { RefObject } from "react";
 import { useKey } from "./use-key.js";
 import { keys } from "../utils/keys.js";
 import { resolveDirectionKeys, dispatchNavigationKey } from "./internal/navigation-dispatch.js";
+import { useKeyboardRegistryContext } from "../context/keyboard-context.js";
 
-export interface UseScopedNavigationOptions extends UseNavigationOptions {
-  requireFocusWithin?: boolean;
-}
+export type UseScopedNavigationOptions = Omit<UseNavigationOptions, "containerRef"> & {
+  containerRef: RefObject<HTMLElement | null>;
+  focusWithinOnly?: boolean;
+  scope?: string;
+};
 
 export interface UseScopedNavigationReturn {
   highlighted: string | null;
@@ -20,21 +24,25 @@ export interface UseScopedNavigationReturn {
 }
 
 export function useScopedNavigation(options: UseScopedNavigationOptions): UseScopedNavigationReturn {
+  useKeyboardRegistryContext();
+
   const {
     enabled = true,
     preventDefault = true,
-    requireFocusWithin = false,
+    focusWithinOnly,
     orientation = "vertical",
     upKeys,
     downKeys,
     containerRef,
     moveFocus,
+    scope,
   } = options;
+  const resolvedFocusWithinOnly = focusWithinOnly ?? false;
 
   const { resolvedUpKeys, resolvedDownKeys } = resolveDirectionKeys(orientation, upKeys, downKeys);
 
   const { highlighted, isHighlighted, highlight, move, focusIndex, handleSelect, handleEnter, getElements } =
-    useNavigationCore(options);
+    useNavigationCore({ ...options, containerRef });
 
   const dispatch = useCallback((key: string, nativeEvent: globalThis.KeyboardEvent) => {
     dispatchNavigationKey(key, {
@@ -66,8 +74,9 @@ export function useScopedNavigation(options: UseScopedNavigationOptions): UseSco
     {
       enabled,
       preventDefault,
-      targetRef: containerRef,
-      requireFocusWithin,
+      containerRef,
+      focusWithinOnly: resolvedFocusWithinOnly,
+      scope,
     },
   );
 

@@ -24,7 +24,7 @@ function SelectWithDisplay({
   return (
     <div className="space-y-1.5">
       <span className="text-xs font-mono text-muted-foreground">{label}</span>
-      <Select multiple value={value} onValueChange={setValue}>
+      <Select multiple value={value} onChange={setValue}>
         <SelectTrigger>
           <SelectValue
             placeholder="Select..."

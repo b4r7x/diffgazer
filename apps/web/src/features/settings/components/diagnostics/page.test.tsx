@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
+import { act, render, renderHook, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { KeyboardProvider } from "@diffgazer/keys";
 import type { ReactNode } from "react";
 
@@ -68,26 +69,28 @@ describe("DiagnosticsPage keyboard footer navigation", () => {
     mockRefetchContext.mockResolvedValue(undefined);
   });
 
-  it("moves focus between diagnostics action buttons with left/right arrows", async () => {
+  it("activates diagnostics actions selected with left/right arrows", async () => {
     renderPage();
 
-    const refreshButton = screen.getByRole("button", { name: /refresh diagnostics/i });
-    const regenerateButton = screen.getByRole("button", { name: /regenerate context/i });
+    await userEvent.keyboard("{ArrowRight}{Enter}");
+    expect(mockHandleRefreshContext).toHaveBeenCalledOnce();
+
+    await userEvent.keyboard("{ArrowLeft}{Enter}");
 
     await waitFor(() => {
-      expect(refreshButton.className.includes("ring-tui-blue")).toBe(true);
+      expect(mockRetryServer).toHaveBeenCalledOnce();
+      expect(mockRefetchContext).toHaveBeenCalledOnce();
     });
+  });
 
-    fireEvent.keyDown(window, { key: "ArrowRight" });
+  it("keeps diagnostics actions active after ArrowUp because there is no content zone", async () => {
+    renderPage();
 
-    await waitFor(() => {
-      expect(regenerateButton.className.includes("ring-tui-green")).toBe(true);
-    });
-
-    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    await userEvent.keyboard("{ArrowUp}{Enter}");
 
     await waitFor(() => {
-      expect(refreshButton.className.includes("ring-tui-blue")).toBe(true);
+      expect(mockRetryServer).toHaveBeenCalledOnce();
+      expect(mockRefetchContext).toHaveBeenCalledOnce();
     });
   });
 

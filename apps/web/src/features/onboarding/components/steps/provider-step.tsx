@@ -66,8 +66,11 @@ export function ProviderStep({
         value={value ?? undefined}
         onChange={handleChange}
         highlighted={enabled ? effectiveHighlighted : null}
-        onHighlightChange={setHighlighted}
+        onNavigate={setHighlighted}
         onKeyDown={handleKeyDown}
+        keyboardNavigation={enabled}
+        autoFocus={enabled}
+        activationMode="manual"
         wrap={false}
         className="space-y-1 border border-tui-border p-1"
       >

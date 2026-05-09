@@ -6,7 +6,6 @@ import type { ReviewMetadata } from "@diffgazer/core/schemas/review";
 import { SEVERITY_ORDER } from "@diffgazer/core/schemas/ui";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { useReviews, useReview } from "@diffgazer/core/api/hooks";
-import { useHistoryKeyboard } from "@/features/history/hooks/use-history-keyboard";
 import { HISTORY_SECTION_ALL_ID } from "@/features/history/constants";
 import { getDateKey, getTimestamp, formatDuration } from "@diffgazer/core/format";
 import { getRunSummary, buildTimelineItems } from "@/features/history/utils";
@@ -130,13 +129,6 @@ export function useHistoryPage() {
   const selectedRunData = useSelectedRunData(data.reviews, selectedRunId);
 
   const [focusZone, setFocusZone] = useState<HistoryFocusZone>("runs");
-
-  useHistoryKeyboard({
-    focusZone,
-    setFocusZone,
-    selectedRunId,
-    searchInputRef: search.searchInputRef,
-  });
 
   const handleTimelineBoundary = (direction: "up" | "down") => {
     if (direction === "up") {

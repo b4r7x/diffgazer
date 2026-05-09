@@ -11,8 +11,8 @@ export interface UseKeyOptions {
   enabled?: boolean;
   scope?: string;
   allowInInput?: boolean;
-  targetRef?: RefObject<HTMLElement | null>;
-  requireFocusWithin?: boolean;
+  containerRef?: RefObject<HTMLElement | null>;
+  focusWithinOnly?: boolean;
   preventDefault?: boolean;
 }
 
@@ -47,8 +47,8 @@ export function useKey(
   const enabled = options?.enabled;
   const scope = options?.scope;
   const allowInInput = options?.allowInInput;
-  const targetRef = options?.targetRef;
-  const requireFocusWithin = options?.requireFocusWithin;
+  const containerRef = options?.containerRef;
+  const focusWithinOnly = options?.focusWithinOnly;
   const preventDefault = options?.preventDefault;
 
   const dispatch = useEffectEvent((key: string, event: KeyboardEvent) => {
@@ -61,8 +61,8 @@ export function useKey(
   const handlerOptions: HandlerOptions | undefined = options
     ? {
         allowInInput,
-        targetRef,
-        requireFocusWithin,
+        containerRef,
+        focusWithinOnly,
         preventDefault,
       }
     : undefined;
@@ -91,8 +91,8 @@ export function useKey(
     registrationVersion,
     enabled,
     allowInInput,
-    targetRef,
-    requireFocusWithin,
+    containerRef,
+    focusWithinOnly,
     preventDefault,
   ]);
 }

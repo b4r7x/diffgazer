@@ -33,7 +33,7 @@ export function ApiKeyDialog({
     onOpenChange,
   });
 
-  const { focused, setFocused } = useApiKeyDialogKeyboard({
+  const { focused, setFocused, getMethodOptionProps } = useApiKeyDialogKeyboard({
     open,
     method: form.method,
     setMethod: form.setMethod,
@@ -72,6 +72,7 @@ export function ApiKeyDialog({
             focused={focused}
             onFocus={setFocused}
             onKeySubmit={form.handleSubmit}
+            getMethodOptionProps={getMethodOptionProps}
           />
 
           <div className="text-[11px] text-muted-foreground border-t border-tui-border/40 pt-3 leading-relaxed">

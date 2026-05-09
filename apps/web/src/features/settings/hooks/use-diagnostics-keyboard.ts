@@ -15,6 +15,7 @@ interface UseDiagnosticsKeyboardOptions {
 
 interface UseDiagnosticsKeyboardResult {
   focusedIndex: number;
+  getButtonProps: ReturnType<typeof useFooterNavigation>["getButtonProps"];
   isRefreshingAll: boolean;
   refreshError: string | null;
   lastRefreshedAt: string | null;
@@ -82,11 +83,12 @@ export function useDiagnosticsKeyboard({
     }
   };
 
-  const { focusedIndex, inFooter } = useFooterNavigation({
+  const { focusedIndex, inFooter, getButtonProps } = useFooterNavigation({
     enabled: true,
     buttonCount: BUTTON_COUNT,
     onAction: handleButtonAction,
     defaultZone: "footer",
+    canExitFooter: false,
   });
 
   const footerShortcuts: Shortcut[] = inFooter
@@ -112,6 +114,7 @@ export function useDiagnosticsKeyboard({
 
   return {
     focusedIndex,
+    getButtonProps,
     isRefreshingAll,
     refreshError,
     lastRefreshedAt,

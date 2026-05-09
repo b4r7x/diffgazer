@@ -23,8 +23,8 @@ const THEME_OPTIONS: Array<{ value: Theme; label: string; description: string }>
   { value: 'terminal', label: 'Terminal Default', description: 'Use terminal default colors' },
 ];
 
-function isThemeOption(value: Theme | null, optionValues: Theme[]): value is Theme {
-  return optionValues.includes(value as Theme);
+function isThemeOption(value: string | null, optionValues: Theme[]): value is Theme {
+  return optionValues.some((optionValue) => optionValue === value);
 }
 
 export function ThemeSelectorContent({
@@ -51,33 +51,20 @@ export function ThemeSelectorContent({
     ? rawHighlighted
     : optionValues[0]!;
 
-  const handleHighlightChange = (nextValue: string | null) => {
-    if (!isThemeOption(nextValue as Theme | null, optionValues)) return;
+  const handleNavigate = (nextValue: string) => {
+    if (!isThemeOption(nextValue, optionValues)) return;
 
-    const theme = nextValue as Theme;
-    setInternalHighlight(theme);
-    onFocusedValueChange?.(theme);
-    onFocus?.(theme);
+    setInternalHighlight(nextValue);
+    onFocusedValueChange?.(nextValue);
+    onFocus?.(nextValue);
   };
 
-  const moveHighlight = (delta: -1 | 1) => {
-    const currentIndex = optionValues.indexOf(highlighted);
-    const nextIndex = currentIndex + delta;
-    if (nextIndex < 0) {
-      onBoundaryReached?.("up");
-      return;
-    }
-    if (nextIndex >= optionValues.length) {
-      onBoundaryReached?.("down");
-      return;
-    }
-    handleHighlightChange(optionValues[nextIndex]!);
+  const handleChange = (nextValue: string) => {
+    if (isThemeOption(nextValue, optionValues)) onChange(nextValue);
   };
 
   const handleKeyDown = (e: KeyboardEvent) => {
     if (!enabled) return;
-    const lastValue = options[options.length - 1]?.value;
-    const firstValue = options[0]?.value;
 
     if (e.key === " " && highlighted) {
       e.preventDefault();
@@ -90,24 +77,6 @@ export function ThemeSelectorContent({
       else onSelect?.(highlighted);
       return;
     }
-    if (e.key === "ArrowDown" || e.key === "ArrowRight") {
-      e.preventDefault();
-      if (highlighted === lastValue) {
-        onBoundaryReached?.("down");
-        return;
-      }
-      moveHighlight(1);
-      return;
-    }
-    if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
-      e.preventDefault();
-      if (highlighted === firstValue) {
-        onBoundaryReached?.("up");
-        return;
-      }
-      moveHighlight(-1);
-      return;
-    }
   };
 
   return (
@@ -115,10 +84,16 @@ export function ThemeSelectorContent({
       <div className="text-sm font-mono text-[--tui-fg]/60">Select Interface Theme:</div>
       <RadioGroup
         value={value}
-        onChange={onChange as (value: string) => void}
-        onHighlightChange={handleHighlightChange}
+        onChange={handleChange}
+        onNavigate={handleNavigate}
         onKeyDown={handleKeyDown}
         highlighted={enabled ? highlighted : null}
+        keyboardNavigation={enabled}
+        activationMode="manual"
+        onNavigationBoundaryReached={(direction) => {
+          onBoundaryReached?.(direction === "previous" ? "up" : "down");
+        }}
+        autoFocus={enabled}
         wrap={false}
       >
         {options.map((option) => (

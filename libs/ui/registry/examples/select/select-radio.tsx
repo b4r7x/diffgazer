@@ -13,7 +13,7 @@ export default function SelectRadio() {
   const [value, setValue] = useState<string>("")
   return (
     <div className="w-64">
-      <Select value={value} onValueChange={setValue}>
+      <Select value={value} onChange={setValue}>
         <SelectTrigger>
           <SelectValue placeholder="Select environment..." />
         </SelectTrigger>

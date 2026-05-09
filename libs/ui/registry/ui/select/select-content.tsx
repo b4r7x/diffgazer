@@ -1,6 +1,6 @@
 "use client";
 
-import { Children, isValidElement, useCallback, useEffect, useLayoutEffect, useRef, useState, type AriaAttributes, type ReactNode, type KeyboardEvent, type Ref } from "react";
+import { Children, Fragment, cloneElement, isValidElement, useCallback, useEffect, useLayoutEffect, useRef, useState, type AriaAttributes, type ReactNode, type KeyboardEvent, type Ref } from "react";
 import { useNavigation } from "@/hooks/use-navigation";
 import { usePresence } from "@/hooks/use-presence";
 import { useFloatingPosition, type FloatingSide, type FloatingAlign } from "@/hooks/use-floating-position";
@@ -56,7 +56,7 @@ export function SelectContent({
     variant,
     value,
     highlighted,
-    onHighlight,
+    setHighlighted,
     onOpenChange,
     selectItem,
     listboxId,
@@ -79,9 +79,10 @@ export function SelectContent({
     role: "option",
     wrap: true,
     value: highlighted,
-    onValueChange: onHighlight,
+    onValueChange: setHighlighted,
     onSelect: selectItem,
     enabled: open,
+    scopeToContainer: true,
   });
 
   const typeaheadBuffer = useRef("");
@@ -98,7 +99,7 @@ export function SelectContent({
     const query = typeaheadBuffer.current.toLowerCase();
     for (const [itemValue, option] of options) {
       if (!option.disabled && option.label.toLowerCase().startsWith(query)) {
-        onHighlight(itemValue);
+        setHighlighted(itemValue);
         break;
       }
     }
@@ -121,16 +122,16 @@ export function SelectContent({
     const selectedValues = Array.isArray(value) ? value : value === null ? [] : [value];
     const firstSelected = selectedValues[0];
     if (firstSelected !== undefined && !options.get(firstSelected)?.disabled) {
-      onHighlight(firstSelected);
+      setHighlighted(firstSelected);
       return;
     }
     for (const [itemValue, option] of options) {
       if (!option.disabled) {
-        onHighlight(itemValue);
+        setHighlighted(itemValue);
         return;
       }
     }
-  }, [highlighted, options, onHighlight, value]);
+  }, [highlighted, options, setHighlighted, value]);
 
   useLayoutEffect(() => {
     if (!open) return;
@@ -246,13 +247,7 @@ function SearchableContent({
   listboxProps: SearchableListboxProps;
   ref: Ref<HTMLDivElement>;
 }) {
-  const searchChildren: ReactNode[] = [];
-  const optionChildren: ReactNode[] = [];
-
-  Children.forEach(children, (child) => {
-    if (isSelectSearchElement(child)) searchChildren.push(child);
-    else optionChildren.push(child);
-  });
+  const { searchChildren, optionChildren } = partitionSelectSearchChildren(children);
 
   return (
     <>
@@ -266,6 +261,38 @@ function SearchableContent({
 
 function isSelectSearchElement(child: ReactNode): boolean {
   return isValidElement(child) && child.type === SelectSearch;
+}
+
+function partitionSelectSearchChildren(children: ReactNode): {
+  searchChildren: ReactNode[];
+  optionChildren: ReactNode[];
+} {
+  const searchChildren: ReactNode[] = [];
+  const optionChildren: ReactNode[] = [];
+
+  Children.forEach(children, (child) => {
+    if (isSelectSearchElement(child)) {
+      searchChildren.push(child);
+      return;
+    }
+
+    if (!isValidElement<{ children?: ReactNode }>(child) || !containsSelectSearchElement(child.props.children)) {
+      optionChildren.push(child);
+      return;
+    }
+
+    const nested = partitionSelectSearchChildren(child.props.children);
+    searchChildren.push(...nested.searchChildren);
+    if (nested.optionChildren.length === 0) return;
+
+    if (child.type === Fragment) {
+      optionChildren.push(...nested.optionChildren);
+    } else {
+      optionChildren.push(cloneElement(child, undefined, nested.optionChildren));
+    }
+  });
+
+  return { searchChildren, optionChildren };
 }
 
 function containsSelectSearchElement(children: ReactNode): boolean {

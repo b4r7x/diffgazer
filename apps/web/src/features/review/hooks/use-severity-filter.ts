@@ -33,6 +33,7 @@ export function useSeverityFilter({ issues }: UseSeverityFilterOptions) {
     setSeverityFilter,
     filteredIssues,
     focusedFilterIndex,
+    setFocusedFilterIndex,
     toggleSeverityFilter,
     moveFocusedFilter,
   };

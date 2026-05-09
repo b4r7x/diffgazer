@@ -17,7 +17,7 @@ export function getTabPanelId(tabsId: string, value: string): string {
 export interface TabsContextValue {
   tabsId: string;
   value: string;
-  onValueChange: (value: string) => void;
+  onChange: (value: string) => void;
   panelValues: string[];
   triggerValues: string[];
   orientation: "horizontal" | "vertical";

@@ -1,12 +1,13 @@
 "use client";
 
 import { createContext, useContext, type RefObject, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import type { CommandPaletteItemRegistration } from "./use-command-palette-state";
 
 export interface CommandPaletteContextValue {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   previousFocusRef: RefObject<Element | null>;
-  selectedId: string | null;
+  highlightedId: string | null;
   onActivate: (id: string) => void;
   search: string;
   onSearchChange: (value: string) => void;
@@ -16,6 +17,8 @@ export interface CommandPaletteContextValue {
   listId: string;
   listRef: RefObject<HTMLDivElement | null>;
   navKeyDown: (event: ReactKeyboardEvent) => void;
+  registerItem: (item: CommandPaletteItemRegistration) => void;
+  unregisterItem: (registrationId: string) => void;
 }
 
 export const CommandPaletteContext = createContext<CommandPaletteContextValue | undefined>(undefined);

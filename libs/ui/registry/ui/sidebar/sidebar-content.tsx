@@ -21,6 +21,7 @@ export function SidebarContent({ ref, children, className, onKeyDown, ...props }
     orientation: "vertical",
     wrap: true,
     moveFocus: true,
+    scopeToContainer: true,
   });
 
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {

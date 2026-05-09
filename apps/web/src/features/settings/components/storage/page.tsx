@@ -11,7 +11,10 @@ import { useSettings, useSaveSettings, matchQueryState } from "@diffgazer/core/a
 import { useKey, useScope } from "@diffgazer/keys";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useFooterNavigation } from "@/hooks/use-footer-navigation.js";
-import { cn } from "@diffgazer/core/cn";
+
+function clearCurrentFocus() {
+  if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+}
 
 export function SettingsStoragePage() {
   const navigate = useNavigate();
@@ -101,18 +104,20 @@ export function SettingsStoragePage() {
       footer={
         <>
           <Button
+            {...footer.getButtonProps(0)}
             variant="ghost"
             onClick={handleCancel}
             disabled={isSaving}
-            className={cn(footer.inFooter && footer.focusedIndex === 0 && "ring-2 ring-tui-blue")}
+            highlighted={footer.inFooter && footer.focusedIndex === 0}
           >
             Cancel
           </Button>
           <Button
+            {...footer.getButtonProps(1)}
             variant="success"
             onClick={handleSave}
             disabled={isSaving || !effectiveStorage || !isDirty}
-            className={cn(footer.inFooter && footer.focusedIndex === 1 && "ring-2 ring-tui-blue")}
+            highlighted={footer.inFooter && footer.focusedIndex === 1}
           >
             {isSaving ? "Saving..." : "Save"}
           </Button>
@@ -124,9 +129,11 @@ export function SettingsStoragePage() {
           value={effectiveStorage}
           onChange={setStorageChoice}
           disabled={isSaving}
-          enabled={!footer.inFooter}
+          keyboardNavigation={!footer.inFooter}
+          autoFocusList={!footer.inFooter}
           onBoundaryReached={(direction) => {
             if (direction === "down") {
+              clearCurrentFocus();
               footer.enterFooter();
             }
           }}

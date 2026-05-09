@@ -7,6 +7,7 @@ import { PROVIDER_CAPABILITIES } from "@diffgazer/core/schemas/config";
 
 export function useProvidersPageState() {
   const inputRef = useRef<HTMLInputElement>(null);
+  const listContainerRef = useRef<HTMLDivElement>(null);
 
   const [selectedId, setSelectedId] = useScopedRouteState<string | null>("providerId", null);
   const [filter, setFilter] = useState<ProviderFilter>("all");
@@ -51,8 +52,16 @@ export function useProvidersPageState() {
   const dialogOpen = apiKeyDialogOpen || modelDialogOpen;
   const needsModel = selectedProvider !== null && !selectedProvider.model;
 
-  const { focusZone, filterIndex, buttonIndex, handleListBoundary } = useProvidersKeyboard({
-    selectedId: effectiveSelectedId,
+  const {
+    focusZone,
+    filterIndex,
+    setFilterIndex,
+    buttonIndex,
+    getActionButtonProps,
+    handleSearchFocus,
+    handleFilterFocus,
+    handleListBoundary,
+  } = useProvidersKeyboard({
     selectedProvider,
     filteredProviders,
     filter,
@@ -60,6 +69,7 @@ export function useProvidersPageState() {
     setSelectedId,
     dialogOpen,
     inputRef,
+    listContainerRef,
     onSetApiKey: () => setApiKeyDialogOpen(true),
     onSelectModel: () => setModelDialogOpen(true),
     onRemoveKey: handleRemoveKey,
@@ -103,8 +113,13 @@ export function useProvidersPageState() {
     keyboard: {
       focusZone,
       filterIndex,
+      setFilterIndex,
       buttonIndex,
+      getActionButtonProps,
+      handleSearchFocus,
+      handleFilterFocus,
       handleListBoundary,
+      listContainerRef,
     },
   };
 }

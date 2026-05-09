@@ -7,7 +7,7 @@ import type {
   ReactNode,
   Ref,
 } from "react";
-import { cva } from "class-variance-authority";
+import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { Spinner } from "../spinner/spinner";
 
@@ -44,8 +44,9 @@ export const buttonVariants = cva(
   },
 );
 
-type ButtonVariant = "primary" | "secondary" | "destructive" | "success" | "ghost" | "outline" | "link" | "action";
-type ButtonSize = "sm" | "md" | "lg" | "icon";
+type ButtonVariantProps = VariantProps<typeof buttonVariants>;
+type ButtonVariant = ButtonVariantProps["variant"];
+type ButtonSize = ButtonVariantProps["size"];
 
 interface ButtonSharedProps {
   variant?: ButtonVariant;
@@ -53,6 +54,7 @@ interface ButtonSharedProps {
   bracket?: boolean;
   loading?: boolean;
   disabled?: boolean;
+  highlighted?: boolean;
 }
 
 export interface ButtonAsButtonProps
@@ -123,6 +125,7 @@ export function Button(props: ButtonProps): ReactNode {
     bracket,
     loading = false,
     disabled,
+    highlighted,
     children,
     as: elementType,
     ...rest
@@ -131,6 +134,7 @@ export function Button(props: ButtonProps): ReactNode {
   const isDisabled = disabled || loading;
   const resolvedClassName = cn(
     buttonVariants({ variant, size, className }),
+    highlighted && "ring-2 ring-primary ring-offset-2 ring-offset-background",
     isDisabled && "pointer-events-none opacity-50",
   );
 
@@ -170,8 +174,11 @@ export function Button(props: ButtonProps): ReactNode {
         {...ariaProps}
         {...anchorProps}
         onClick={(event: ReactMouseEvent<HTMLAnchorElement>) => {
+          if (isDisabled) {
+            event.preventDefault();
+            return;
+          }
           onClick?.(event);
-          if (isDisabled && !event.defaultPrevented) event.preventDefault();
         }}
       >
         <ButtonContent loading={loading} bracket={!!bracket} spinnerSize={spinnerSize}>

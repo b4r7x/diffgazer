@@ -1,10 +1,10 @@
-import { Button } from "@diffgazer/ui/components/button";
+import { ToggleGroup, ToggleGroupItem } from "@diffgazer/ui/components/toggle-group";
 import { cn } from "@diffgazer/core/cn";
 import { TIER_FILTERS, type TierFilter } from "@/features/providers/constants";
 
 interface ModelFilterTabsProps {
   value: TierFilter;
-  onValueChange: (value: TierFilter) => void;
+  onChange: (value: TierFilter) => void;
   focusedIndex: number;
   isFocused: boolean;
   onTabClick: (index: number) => void;
@@ -12,33 +12,51 @@ interface ModelFilterTabsProps {
 
 export function ModelFilterTabs({
   value,
-  onValueChange,
+  onChange,
   focusedIndex,
   isFocused,
   onTabClick,
 }: ModelFilterTabsProps) {
+  const handleFilterChange = (nextValue: string | null) => {
+    const index = TIER_FILTERS.findIndex((filter) => filter === nextValue);
+    if (index === -1) return;
+    const nextFilter = TIER_FILTERS[index];
+    if (!nextFilter) return;
+    onTabClick(index);
+    onChange(nextFilter);
+  };
+
+  const handleHighlightChange = (nextValue: string | null) => {
+    const index = TIER_FILTERS.findIndex((filter) => filter === nextValue);
+    if (index >= 0) onTabClick(index);
+  };
+
   return (
-    <div className="px-4 pb-2 flex gap-1.5">
+    <ToggleGroup
+      value={value}
+      onChange={handleFilterChange}
+      onHighlightChange={handleHighlightChange}
+      highlighted={isFocused ? TIER_FILTERS[focusedIndex] ?? null : null}
+      label="Model tier filter"
+      className="px-4 pb-2"
+    >
       {TIER_FILTERS.map((filter, idx) => (
-        <Button
+        <ToggleGroupItem
           key={filter}
-          variant="ghost"
-          size="sm"
-          data-active={value === filter}
+          value={filter}
           onClick={() => {
             onTabClick(idx);
-            onValueChange(filter);
           }}
           className={cn(
-            "uppercase text-[10px] h-auto px-2 py-0.5",
+            "uppercase text-[10px] min-h-0 min-w-0 h-auto px-2 py-0.5",
             isFocused &&
               focusedIndex === idx &&
               "ring-2 ring-tui-blue ring-offset-1 ring-offset-tui-bg"
           )}
         >
           {filter}
-        </Button>
+        </ToggleGroupItem>
       ))}
-    </div>
+    </ToggleGroup>
   );
 }

@@ -107,7 +107,7 @@ The scope stack ensures that while the palette is open, only palette-scoped hand
 import { useFocusZone, useKey } from "@diffgazer/keys"
 
 function TwoPaneLayout() {
-  const { zone, inZone, forZone } = useFocusZone({
+  const { zone, isZone, getKeyOptions } = useFocusZone({
     initial: "sidebar",
     zones: ["sidebar", "main"] as const,
     tabCycle: ["sidebar", "main"] as const,
@@ -118,15 +118,15 @@ function TwoPaneLayout() {
     },
   })
 
-  useKey("n", () => createNew(), forZone("sidebar"))
-  useKey("e", () => edit(), forZone("main"))
+  useKey("n", () => createNew(), getKeyOptions("sidebar"))
+  useKey("e", () => edit(), getKeyOptions("main"))
 
   return (
     <div className="flex">
-      <aside className={inZone("sidebar") ? "ring-1 ring-foreground" : ""}>
+      <aside className={isZone("sidebar") ? "ring-1 ring-foreground" : ""}>
         Sidebar
       </aside>
-      <main className={inZone("main") ? "ring-1 ring-foreground" : ""}>
+      <main className={isZone("main") ? "ring-1 ring-foreground" : ""}>
         Content
       </main>
     </div>

@@ -22,7 +22,7 @@ const ZONE_SHORTCUTS: Record<Zone, { keys: string; label: string }[]> = {
 export function FocusZonesDemo() {
   const [lastAction, setLastAction] = useState("No action yet");
 
-  const { zone, setZone, forZone } = useFocusZone<Zone>({
+  const { zone, setZone, getKeyOptions } = useFocusZone<Zone>({
     initial: "sidebar",
     zones: ["sidebar", "content", "preview"] as const,
     tabCycle: ["sidebar", "content", "preview"] as const,
@@ -35,14 +35,14 @@ export function FocusZonesDemo() {
     },
   });
 
-  useKey("Enter", () => setLastAction("Sidebar: opened item"), forZone("sidebar"));
-  useKey("Enter", () => setLastAction("Content: editing"), forZone("content"));
+  useKey("Enter", () => setLastAction("Sidebar: opened item"), getKeyOptions("sidebar"));
+  useKey("Enter", () => setLastAction("Content: editing"), getKeyOptions("content"));
   useKey("Escape", () => {
     setLastAction("Preview: back to content");
     setZone("content");
-  }, forZone("preview"));
-  useKey("d", () => setLastAction("Sidebar: deleted item"), forZone("sidebar"));
-  useKey("e", () => setLastAction("Content: toggled edit mode"), forZone("content"));
+  }, getKeyOptions("preview"));
+  useKey("d", () => setLastAction("Sidebar: deleted item"), getKeyOptions("sidebar"));
+  useKey("e", () => setLastAction("Content: toggled edit mode"), getKeyOptions("content"));
 
   return (
     <DemoWrapper

@@ -2,6 +2,12 @@ import { useState, type KeyboardEvent } from "react";
 import type { AgentExecution } from "@diffgazer/core/schemas/config";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
 
+const EXECUTION_MODES: AgentExecution[] = ["sequential", "parallel"];
+
+function isAgentExecution(value: string | null): value is AgentExecution {
+  return EXECUTION_MODES.some((mode) => mode === value);
+}
+
 interface ExecutionStepProps {
   value: AgentExecution;
   onChange: (value: AgentExecution) => void;
@@ -17,20 +23,27 @@ export function ExecutionStep({
   enabled = true,
   onBoundaryReached,
 }: ExecutionStepProps) {
-  const items: AgentExecution[] = ["sequential", "parallel"];
+  const items = EXECUTION_MODES;
   const [highlighted, setHighlighted] = useState<string | null>(value);
 
   const handleKeyDown = (e: KeyboardEvent) => {
-    if (e.key === "Enter" && highlighted) {
-      const nextMode = highlighted as AgentExecution;
-      onChange(nextMode);
-      onCommit?.(nextMode);
+    if (!enabled) return;
+    if (e.key === "Enter" && isAgentExecution(highlighted)) {
+      e.preventDefault();
+      onChange(highlighted);
+      onCommit?.(highlighted);
       return;
     }
     if (!onBoundaryReached) return;
-    const idx = items.indexOf(highlighted as AgentExecution);
-    if (e.key === "ArrowUp" && idx === 0) onBoundaryReached("up");
-    if (e.key === "ArrowDown" && idx === items.length - 1) onBoundaryReached("down");
+    const idx = isAgentExecution(highlighted) ? items.indexOf(highlighted) : -1;
+    if (e.key === "ArrowUp" && idx === 0) {
+      e.preventDefault();
+      onBoundaryReached("up");
+    }
+    if (e.key === "ArrowDown" && idx === items.length - 1) {
+      e.preventDefault();
+      onBoundaryReached("down");
+    }
   };
 
   return (
@@ -40,10 +53,17 @@ export function ExecutionStep({
       </div>
       <RadioGroup
         value={value}
-        onChange={onChange as (value: string) => void}
+        onChange={(nextValue) => {
+          if (isAgentExecution(nextValue)) onChange(nextValue);
+        }}
         highlighted={enabled ? highlighted : null}
-        onHighlightChange={setHighlighted}
+        onNavigate={(nextValue) => {
+          if (isAgentExecution(nextValue)) setHighlighted(nextValue);
+        }}
         onKeyDown={handleKeyDown}
+        keyboardNavigation={enabled}
+        autoFocus={enabled}
+        activationMode="manual"
         wrap={false}
         className="space-y-1"
       >

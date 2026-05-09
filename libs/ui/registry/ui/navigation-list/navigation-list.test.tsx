@@ -82,6 +82,78 @@ describe("NavigationList", () => {
     expect(onSelect).toHaveBeenCalledWith("one")
   })
 
+  it("passes item root props and composes item click handlers", async () => {
+    const onClick = vi.fn()
+    render(
+      <NavigationList aria-label="Test nav">
+        <NavigationList.Item
+          id="one"
+          data-testid="nav-item"
+          data-state="external"
+          style={{ maxWidth: "14px" }}
+          onClick={onClick}
+        >
+          <NavigationList.Title>One</NavigationList.Title>
+        </NavigationList.Item>
+      </NavigationList>,
+    )
+
+    await userEvent.click(screen.getByRole("option", { name: "One" }))
+
+    const item = screen.getByTestId("nav-item")
+    expect(onClick).toHaveBeenCalledOnce()
+    expect(item).toHaveAttribute("data-state", "selected")
+    expect(item).toHaveStyle({ maxWidth: "14px" })
+  })
+
+  it("lets item click handlers prevent selection", async () => {
+    const onSelect = vi.fn()
+    render(
+      <NavigationList aria-label="Test nav" onSelect={onSelect}>
+        <NavigationList.Item id="one" onClick={(event) => event.preventDefault()}>
+          <NavigationList.Title>One</NavigationList.Title>
+        </NavigationList.Item>
+      </NavigationList>,
+    )
+
+    await userEvent.click(screen.getByRole("option", { name: "One" }))
+
+    expect(onSelect).not.toHaveBeenCalled()
+    expect(screen.getByRole("option", { name: "One" })).toHaveAttribute("aria-selected", "false")
+  })
+
+  it("lets item focus handlers prevent highlight changes", async () => {
+    render(
+      <NavigationList aria-label="Test nav">
+        <NavigationList.Item id="one" onFocus={(event) => event.preventDefault()}>
+          <NavigationList.Title>One</NavigationList.Title>
+        </NavigationList.Item>
+      </NavigationList>,
+    )
+
+    screen.getByRole("option", { name: "One" }).focus()
+
+    expect(screen.getByRole("listbox")).not.toHaveAttribute(
+      "aria-activedescendant",
+      screen.getByRole("option", { name: "One" }).id,
+    )
+  })
+
+  it("composes item mouse down handlers", async () => {
+    const onMouseDown = vi.fn()
+    render(
+      <NavigationList aria-label="Test nav">
+        <NavigationList.Item id="one" onMouseDown={onMouseDown}>
+          <NavigationList.Title>One</NavigationList.Title>
+        </NavigationList.Item>
+      </NavigationList>,
+    )
+
+    await userEvent.pointer({ target: screen.getByRole("option", { name: "One" }), keys: "[MouseLeft]" })
+
+    expect(onMouseDown).toHaveBeenCalled()
+  })
+
   it("does not fire onSelect when a disabled item is clicked", async () => {
     const onSelect = vi.fn()
     renderList({ onSelect })

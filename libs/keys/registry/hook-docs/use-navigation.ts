@@ -37,7 +37,7 @@ export const useNavigationDoc: HookDoc = {
       name: "onValueChange",
       type: "(value: string) => void",
       required: false,
-      description: "Called when the selected value changes (radio/checkbox roles).",
+      description: "Called when the controlled highlight value should change.",
     },
     {
       name: "onSelect",
@@ -79,11 +79,11 @@ export const useNavigationDoc: HookDoc = {
       defaultValue: "true",
     },
     {
-      name: "onBoundaryReached",
-      type: '(direction: "up" | "down") => void',
+      name: "onNavigationBoundaryReached",
+      type: '(direction: "previous" | "next") => void',
       required: false,
       description:
-        "Called when the user tries to navigate past the first or last item (only when wrap is false).",
+        "Called when the user tries to navigate past the first or last item using orientation-neutral direction names.",
     },
     {
       name: "initialValue",
@@ -118,6 +118,28 @@ export const useNavigationDoc: HookDoc = {
       required: false,
       description: "Skip items with aria-disabled=\"true\" during navigation.",
       defaultValue: "true",
+    },
+    {
+      name: "moveFocus",
+      type: "boolean",
+      required: false,
+      description: "Move DOM focus to the next item instead of only updating highlight state.",
+      defaultValue: "false",
+    },
+    {
+      name: "scopeToContainer",
+      type: "boolean",
+      required: false,
+      description:
+        "Ignore items owned by nested collection containers such as nested radiogroups, listboxes, menus, or tablists.",
+      defaultValue: "true",
+    },
+    {
+      name: "ownerSelector",
+      type: "string | null",
+      required: false,
+      description:
+        "Advanced owner selector override for scoping roles that do not have a standard composite owner.",
     },
   ],
   returns: {
@@ -161,7 +183,12 @@ export const useNavigationDoc: HookDoc = {
     {
       title: "DOM-based item discovery",
       content:
-        "Navigable items are queried from the DOM using the specified role attribute. Items must have a data-value attribute.",
+        "Navigable items are queried from the DOM using the specified role or the data-diffgazer-navigation-item data contract. Items must have a data-value attribute.",
+    },
+    {
+      title: "Nested collections",
+      content:
+        "scopeToContainer is enabled by default so items inside a nested owner container are excluded from the parent navigation order.",
     },
     {
       title: "Controlled and uncontrolled",

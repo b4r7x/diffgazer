@@ -1,5 +1,6 @@
 import { Badge } from "@diffgazer/ui/components/badge";
 import { cn } from "@diffgazer/core/cn";
+import { Radio } from "@diffgazer/ui/components/radio";
 import type { ModelInfo } from "@diffgazer/core/schemas/config";
 
 interface ModelListItemProps {
@@ -20,30 +21,20 @@ export function ModelListItem({
   onDoubleClick,
 }: ModelListItemProps) {
   return (
-    <button
-      role="radio"
-      aria-checked={isChecked}
+    <Radio
       data-value={model.id}
-      type="button"
-      onClick={onClick}
+      checked={isChecked}
+      highlighted={isSelected && isFocused}
+      onChange={onClick}
       onDoubleClick={onDoubleClick}
+      size="sm"
+      variant="bullet"
       className={cn(
-        "flex items-start gap-3 w-full text-left px-3 py-2 rounded transition-colors",
-        isSelected && isFocused
-          ? "bg-tui-selection/60 text-tui-fg ring-2 ring-tui-blue ring-offset-1 ring-offset-tui-bg"
-          : "text-tui-muted hover:bg-tui-selection/30 hover:text-tui-fg"
+        "w-full rounded transition-colors",
+        isSelected && isFocused && "ring-2 ring-tui-blue ring-offset-1 ring-offset-tui-bg",
       )}
-    >
-      <span
-        className={cn(
-          "font-bold shrink-0 mt-0.5",
-          isChecked ? "text-tui-blue" : "text-muted-foreground"
-        )}
-      >
-        {isChecked ? "[ \u25cf ]" : "[   ]"}
-      </span>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
+      label={
+        <span className="flex items-center gap-2 min-w-0">
           <span className="font-bold">{model.name}</span>
           <Badge
             variant={model.tier === "free" ? "success" : "neutral"}
@@ -52,11 +43,9 @@ export function ModelListItem({
           >
             {model.tier}
           </Badge>
-        </div>
-        <div className="text-xs text-tui-muted mt-0.5 truncate">
-          {model.description}
-        </div>
-      </div>
-    </button>
+        </span>
+      }
+      description={model.description}
+    />
   );
 }

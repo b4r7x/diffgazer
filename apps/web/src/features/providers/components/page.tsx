@@ -95,6 +95,7 @@ export function ProvidersPage() {
     <div className="flex-1 flex overflow-hidden">
       <div className="w-2/5 flex flex-col border-r border-tui-border">
         <ProviderList
+          ref={keyboard.listContainerRef}
           providers={filteredProviders}
           selectedId={selection.effectiveSelectedId}
           onSelect={selection.setSelectedId}
@@ -104,7 +105,10 @@ export function ProvidersPage() {
           onSearchChange={search.setQuery}
           isFocused={keyboard.focusZone === "list"}
           inputRef={search.inputRef}
+          onSearchFocus={keyboard.handleSearchFocus}
           focusedFilterIndex={keyboard.focusZone === "filters" ? keyboard.filterIndex : undefined}
+          onFilterHighlightChange={keyboard.setFilterIndex}
+          onFilterFocus={keyboard.handleFilterFocus}
           highlightedId={listHighlighted}
           onHighlightChange={setListHighlighted}
           onBoundaryReached={keyboard.handleListBoundary}
@@ -117,6 +121,7 @@ export function ProvidersPage() {
           disableSelectProvider={needsModel}
           focusedButtonIndex={keyboard.focusZone === "buttons" && selectedProvider ? keyboard.buttonIndex : undefined}
           isFocused={keyboard.focusZone === "buttons" && !!selectedProvider}
+          getButtonProps={keyboard.getActionButtonProps}
         />
       </div>
 

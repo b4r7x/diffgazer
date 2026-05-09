@@ -8,12 +8,19 @@ import { useKey, useScope } from "@diffgazer/keys";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useFooterNavigation } from "@/hooks/use-footer-navigation.js";
 import { useSettings, useSaveSettings } from "@diffgazer/core/api/hooks";
-import { cn } from "@diffgazer/core/cn";
 import { buildLensOptions } from "@diffgazer/core/schemas/events";
 import type { LensId } from "@diffgazer/core/schemas/review";
 import { AnalysisSelectorContent } from "./analysis-selector-content";
 
 type ViewState = "loading" | "empty" | "error" | "success";
+
+function isLensId(value: string, lensOptions: Array<{ id: LensId }>): value is LensId {
+  return lensOptions.some((lens) => lens.id === value);
+}
+
+function clearCurrentFocus() {
+  if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+}
 
 export function SettingsAnalysisPage() {
   const navigate = useNavigate();
@@ -27,8 +34,7 @@ export function SettingsAnalysisPage() {
 
   const lensOptions = buildLensOptions();
   const defaultLenses = settings?.defaultLenses ?? [];
-  const availableLensIds = new Set(lensOptions.map((lens) => lens.id));
-  const persistedLenses = defaultLenses.filter((lens): lens is LensId => availableLensIds.has(lens as LensId));
+  const persistedLenses = defaultLenses.filter((lens): lens is LensId => isLensId(lens, lensOptions));
   const fallbackLenses = lensOptions.map((lens) => lens.id);
   const currentLenses = persistedLenses.length > 0 ? persistedLenses : fallbackLenses;
   const effectiveLenses = selectedLenses ?? currentLenses;
@@ -76,7 +82,6 @@ export function SettingsAnalysisPage() {
     },
   });
 
-  // When not in "success" view, buttons zone is always active (for the "Back" action)
   const isButtonsZone = viewState === "success" ? footer.inFooter : true;
 
   useEffect(() => {
@@ -106,7 +111,6 @@ export function SettingsAnalysisPage() {
     rightShortcuts: [{ key: "Esc", label: "Back" }],
   });
 
-  // Non-success views still need Enter/Space to go back
   useKey("Enter", handleCancel, { enabled: isButtonsZone && viewState !== "success" });
   useKey(" ", handleCancel, { enabled: isButtonsZone && viewState !== "success" });
 
@@ -117,18 +121,20 @@ export function SettingsAnalysisPage() {
       footer={
         <>
           <Button
+            {...footer.getButtonProps(0)}
             variant="ghost"
             onClick={handleCancel}
             disabled={isSaving}
-            className={cn(isButtonsZone && footer.focusedIndex === 0 && "ring-2 ring-tui-blue")}
+            highlighted={isButtonsZone && footer.focusedIndex === 0}
           >
             Cancel
           </Button>
           <Button
+            {...footer.getButtonProps(1)}
             variant="success"
             onClick={handleSave}
             disabled={!canSave}
-            className={cn(isButtonsZone && footer.focusedIndex === 1 && "ring-2 ring-tui-blue")}
+            highlighted={isButtonsZone && footer.focusedIndex === 1}
           >
             {isSaving ? "Saving..." : "Save"}
           </Button>
@@ -148,9 +154,11 @@ export function SettingsAnalysisPage() {
             value={effectiveLenses}
             onChange={setSelectedLenses}
             enabled={!isButtonsZone}
+            autoFocusList={!isButtonsZone}
             disabled={isSaving}
             onBoundaryReached={(direction) => {
               if (direction === "down") {
+                clearCurrentFocus();
                 footer.enterFooter();
               }
             }}

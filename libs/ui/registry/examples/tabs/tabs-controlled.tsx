@@ -10,7 +10,7 @@ export default function TabsControlled() {
       <div className="text-xs text-muted-foreground">
         Active tab: <span className="text-foreground font-bold">{tab}</span>
       </div>
-      <Tabs value={tab} onValueChange={setTab}>
+      <Tabs value={tab} onChange={setTab}>
         <TabsList>
           <TabsTrigger value="output">Output</TabsTrigger>
           <TabsTrigger value="errors">Errors</TabsTrigger>

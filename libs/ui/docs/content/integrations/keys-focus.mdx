@@ -17,7 +17,7 @@ import { useFocusZone, useKey } from "@diffgazer/keys"
 type Zone = "sidebar" | "content" | "preview"
 
 function Layout() {
-  const { zone, inZone, forZone, setZone } = useFocusZone({
+  const { zone, isZone, getKeyOptions, setZone } = useFocusZone({
     initial: "sidebar",
     zones: ["sidebar", "content", "preview"] as const,
     tabCycle: ["sidebar", "content", "preview"] as const,
@@ -30,15 +30,15 @@ function Layout() {
   })
 
   // Zone-specific bindings
-  useKey("Enter", () => openItem(), forZone("sidebar"))
-  useKey("Enter", () => editContent(), forZone("content"))
+  useKey("Enter", () => openItem(), getKeyOptions("sidebar"))
+  useKey("Enter", () => editContent(), getKeyOptions("content"))
 
   return (
     <div>
-      <aside className={inZone("sidebar") ? "ring-1 ring-white" : ""}>
+      <aside className={isZone("sidebar") ? "ring-1 ring-white" : ""}>
         Sidebar
       </aside>
-      <main className={inZone("content") ? "ring-1 ring-white" : ""}>
+      <main className={isZone("content") ? "ring-1 ring-white" : ""}>
         Content
       </main>
     </div>
@@ -52,8 +52,8 @@ function Layout() {
 |----------|------|-------------|
 | `zone` | `T` | Current active zone |
 | `setZone` | `(zone: T) => void` | Set zone programmatically |
-| `inZone` | `(...zones: T[]) => boolean` | Check if current zone matches |
-| `forZone` | `(target: T, extra?) => UseKeyOptions` | Create zone-scoped options for `useKey` |
+| `isZone` | `(...zones: T[]) => boolean` | Check if current zone matches |
+| `getKeyOptions` | `(zone: T, extra?) => UseKeyOptions` | Create zone-scoped options for `useKey` |
 
 ### With @diffgazer/ui components
 

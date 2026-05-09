@@ -4,7 +4,6 @@ import {
   Children,
   isValidElement,
   useCallback,
-  useEffect,
   useRef,
   useState,
   type HTMLAttributes,
@@ -35,10 +34,6 @@ const dialogContentVariants = cva(
   }
 );
 
-type RuntimeWithProcess = typeof globalThis & {
-  process?: { env?: { NODE_ENV?: string } };
-};
-
 export interface DialogContentProps
   extends VariantProps<typeof dialogContentVariants>,
     Omit<HTMLAttributes<HTMLDialogElement>, "children" | "className"> {
@@ -66,26 +61,19 @@ export function DialogContent({
   "aria-labelledby": ariaLabelledBy,
   ...rest
 }: DialogContentProps) {
-  const { open, onOpenChange, contentId, titleId, descriptionId, hasMountedTitleRef, hasTitle, hasDescription, triggerRef } = useDialogContext();
+  const { open, onOpenChange, contentId, titleId, descriptionId, hasTitle, hasDescription, triggerRef } = useDialogContext();
   const close = () => onOpenChange(false);
   const shellRef = useRef<HTMLDialogElement>(null);
   const [container, setContainer] = useState<Element | null>(null);
   const hasAriaLabel = hasNonEmptyText(ariaLabel);
   const hasAriaLabelledBy = hasNonEmptyText(ariaLabelledBy);
   const hasRenderableTitle = hasTitle || containsDialogTitleElement(children);
-  const runtime = globalThis as RuntimeWithProcess;
-  const shouldValidateTitle = runtime.process?.env?.NODE_ENV !== "production";
   const labelledBy = hasAriaLabelledBy ? ariaLabelledBy : hasAriaLabel || !hasRenderableTitle ? undefined : titleId;
 
   const setShellRef = useCallback((node: HTMLDialogElement | null) => {
     shellRef.current = node;
     setContainer(node);
   }, []);
-
-  useEffect(() => {
-    if (!shouldValidateTitle || !open || hasAriaLabel || hasAriaLabelledBy || hasTitle || hasMountedTitleRef.current || containsDialogTitleElement(children)) return;
-    console.warn("Dialog.Content requires Dialog.Title, aria-label, or aria-labelledby.");
-  }, [children, hasAriaLabel, hasAriaLabelledBy, hasMountedTitleRef, hasTitle, open, shouldValidateTitle]);
 
   return (
     <DialogShell

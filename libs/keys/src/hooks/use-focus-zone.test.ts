@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { renderHook, act, cleanup } from "@testing-library/react";
-import { createElement, type ReactNode } from "react";
+import { renderHook, render, screen, act, cleanup } from "@testing-library/react";
+import { createElement, useRef, type ReactNode } from "react";
 import { KeyboardProvider } from "../providers/keyboard-provider";
 import { useFocusZone } from "./use-focus-zone";
 import { useKey } from "./use-key";
@@ -8,6 +8,14 @@ import { fireKey } from "../testing/test-utils";
 
 function wrapper({ children }: { children: ReactNode }) {
   return createElement(KeyboardProvider, null, children);
+}
+
+function fireKeyOnElement(element: HTMLElement, key: string) {
+  element.dispatchEvent(new KeyboardEvent("keydown", {
+    key,
+    bubbles: true,
+    cancelable: true,
+  }));
 }
 
 describe("useFocusZone", () => {
@@ -36,7 +44,7 @@ describe("useFocusZone", () => {
     });
   });
 
-  describe("forZone helper", () => {
+  describe("getKeyOptions helper", () => {
     it("enables useKey only for the active zone and passes through extra options", () => {
       const handler = vi.fn();
       const { result } = renderHook(
@@ -45,7 +53,7 @@ describe("useFocusZone", () => {
             initial: "main",
             zones: ["main", "sidebar"],
           });
-          useKey("Enter", handler, fz.forZone("sidebar", { allowInInput: true }));
+          useKey("Enter", handler, fz.getKeyOptions("sidebar", { allowInInput: true }));
           return fz;
         },
         { wrapper },
@@ -59,6 +67,24 @@ describe("useFocusZone", () => {
       act(() => result.current.setZone("sidebar"));
       act(() => fireKey("Enter"));
       expect(handler).toHaveBeenCalledOnce();
+    });
+
+    it("respects the top-level enabled state", () => {
+      const handler = vi.fn();
+      renderHook(
+        () => {
+          const fz = useFocusZone({
+            initial: "sidebar",
+            zones: ["main", "sidebar"],
+            enabled: false,
+          });
+          useKey("Enter", handler, fz.getKeyOptions("sidebar"));
+        },
+        { wrapper },
+      );
+
+      act(() => fireKey("Enter"));
+      expect(handler).not.toHaveBeenCalled();
     });
   });
 
@@ -130,6 +156,45 @@ describe("useFocusZone", () => {
       expect(result.current.zone).toBe("main");
     });
 
+    it("can require transition keys to originate inside a container subtree", () => {
+      function Host() {
+        const containerRef = useRef<HTMLDivElement>(null);
+        const focusZone = useFocusZone({
+          initial: "main",
+          zones: ["main", "sidebar"],
+          containerRef,
+          focusWithinOnly: true,
+          transitions: ({ zone, key }) => {
+            if (zone === "main" && key === "ArrowRight") return "sidebar";
+            return null;
+          },
+        });
+
+        return createElement(
+          "div",
+          null,
+          createElement(
+            "div",
+            { ref: containerRef },
+            createElement("button", { type: "button" }, "Inside"),
+            createElement("output", { "data-testid": "zone" }, focusZone.zone),
+          ),
+          createElement("button", { type: "button" }, "Outside"),
+        );
+      }
+
+      render(createElement(Host), { wrapper });
+
+      const outsideButton = screen.getByRole("button", { name: "Outside" });
+      const insideButton = screen.getByRole("button", { name: "Inside" });
+
+      act(() => fireKeyOnElement(outsideButton, "ArrowRight"));
+      expect(screen.getByTestId("zone").textContent).toBe("main");
+
+      act(() => fireKeyOnElement(insideButton, "ArrowRight"));
+      expect(screen.getByTestId("zone").textContent).toBe("sidebar");
+    });
+
     it("does not change zone when transition returns zone not in zones array", () => {
       const { result } = renderHook(
         () =>
@@ -144,7 +209,6 @@ describe("useFocusZone", () => {
       act(() => fireKey("ArrowRight"));
       expect(result.current.zone).toBe("main");
     });
-
   });
 
   describe("tab cycling", () => {
@@ -208,29 +272,27 @@ describe("useFocusZone", () => {
   });
 
   describe("helpers", () => {
-    it("zoneProps, inZone, and forZone return correct values per zone", () => {
+    it("getZoneProps, isZone, and getKeyOptions return correct values per zone", () => {
       const { result } = renderHook(
         () => useFocusZone({ initial: "main", zones: ["main", "sidebar", "footer"] }),
         { wrapper },
       );
 
-      // zoneProps reflects active zone
-      expect(result.current.zoneProps("main")).toEqual({ "data-focused": true });
-      expect(result.current.zoneProps("sidebar")).toEqual({ "data-focused": undefined });
+      expect(result.current.getZoneProps("main")).toEqual({ "data-focused": true });
+      expect(result.current.getZoneProps("sidebar")).toEqual({ "data-focused": undefined });
 
-      // inZone checks single and multiple zones
-      expect(result.current.inZone("main")).toBe(true);
-      expect(result.current.inZone("sidebar")).toBe(false);
-      expect(result.current.inZone("main", "sidebar")).toBe(true);
-      expect(result.current.inZone("sidebar", "footer")).toBe(false);
+      expect(result.current.isZone("main")).toBe(true);
+      expect(result.current.isZone("sidebar")).toBe(false);
+      expect(result.current.isZone("main", "sidebar")).toBe(true);
+      expect(result.current.isZone("sidebar", "footer")).toBe(false);
 
-      // After zone change, all helpers update
       act(() => result.current.setZone("sidebar"));
 
-      expect(result.current.zoneProps("main")).toEqual({ "data-focused": undefined });
-      expect(result.current.zoneProps("sidebar")).toEqual({ "data-focused": true });
-      expect(result.current.inZone("main")).toBe(false);
-      expect(result.current.inZone("sidebar")).toBe(true);
+      expect(result.current.getZoneProps("main")).toEqual({ "data-focused": undefined });
+      expect(result.current.getZoneProps("sidebar")).toEqual({ "data-focused": true });
+      expect(result.current.isZone("main")).toBe(false);
+      expect(result.current.isZone("sidebar")).toBe(true);
+      expect(result.current.getKeyOptions("sidebar")).toMatchObject({ enabled: true });
     });
   });
 

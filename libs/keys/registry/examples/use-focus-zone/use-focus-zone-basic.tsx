@@ -9,7 +9,7 @@ import { Kbd } from "@/components/ui/kbd"
 type Zone = "sidebar" | "main"
 
 function Layout() {
-  const { zone, inZone } = useFocusZone<Zone>({
+  const { zone, isZone } = useFocusZone<Zone>({
     initial: "sidebar",
     zones: ["sidebar", "main"],
     transitions: ({ zone, key }) => {
@@ -39,13 +39,13 @@ function Layout() {
         <Pane
           title="Sidebar"
           items={sidebarItems}
-          active={inZone("sidebar")}
+          active={isZone("sidebar")}
           enabled={zone === "sidebar"}
         />
         <Pane
           title="Main"
           items={mainItems}
-          active={inZone("main")}
+          active={isZone("main")}
           enabled={zone === "main"}
         />
       </div>

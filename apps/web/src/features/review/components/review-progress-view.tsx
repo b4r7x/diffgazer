@@ -5,6 +5,7 @@ import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { Badge, type BadgeProps } from "@diffgazer/ui/components/badge";
 import { Button } from "@diffgazer/ui/components/button";
 import { Callout, CalloutTitle, CalloutContent } from "@diffgazer/ui/components/callout";
+import { ToggleGroup, ToggleGroupItem } from "@diffgazer/ui/components/toggle-group";
 import { ProgressList, type ProgressStepData } from "@/components/ui/progress";
 import { ActivityLog, type LogEntryData } from "./activity-log";
 import { AgentBoard } from "./agent-board";
@@ -49,30 +50,23 @@ function AgentFilterBar({
   onChange: (v: string | null) => void;
 }) {
   return (
-    <div className="flex items-center gap-2 pb-2">
-      <button
-        type="button"
-        onClick={() => onChange(null)}
-        className={cn(
-          "text-[10px] font-mono px-2 py-1 border",
-          active === null
-            ? "border-tui-blue text-tui-blue"
-            : "border-tui-border text-tui-muted",
-        )}
+    <ToggleGroup
+      value={active ?? "all"}
+      onChange={(value) => onChange(value === "all" ? null : value)}
+      label="Agent filter"
+      className="items-center pb-2"
+    >
+      <ToggleGroupItem
+        value="all"
+        className="min-h-0 min-w-0 px-2 py-1 text-[10px]"
       >
         All
-      </button>
+      </ToggleGroupItem>
       {agents.map((agent) => (
-        <button
+        <ToggleGroupItem
           key={agent.id}
-          type="button"
-          onClick={() => onChange(agent.name)}
-          className={cn(
-            "text-[10px] font-mono px-2 py-1 border",
-            active === agent.name
-              ? "border-tui-violet text-tui-violet"
-              : "border-tui-border text-tui-muted",
-          )}
+          value={agent.name}
+          className="min-h-0 min-w-0 px-2 py-1 text-[10px]"
         >
           <Badge
             variant={(agent.badgeVariant as BadgeProps["variant"]) ?? "info"}
@@ -82,9 +76,9 @@ function AgentFilterBar({
             {agent.badgeLabel}
           </Badge>
           <span>{agent.name}</span>
-        </button>
+        </ToggleGroupItem>
       ))}
-    </div>
+    </ToggleGroup>
   );
 }
 
@@ -147,7 +141,6 @@ export function ReviewProgressView({
 
   const { focusPane } = useReviewProgressKeyboard({ onViewResults, onCancel });
 
-  // Auto-expand review step once when it becomes active with substeps
   useEffect(() => {
     if (hasAutoExpandedReview.current) return;
     const reviewStep = steps.find((s) => s.id === "review");
@@ -163,10 +156,8 @@ export function ReviewProgressView({
 
   const isApiKeyError = error && /api.?key/i.test(error);
 
-  // Calculate expanded IDs array for ProgressList (single-expand behavior)
   const expandedIds = expandedStepId ? [expandedStepId] : [];
 
-  // Handle step toggle (single-expand: toggle off if same, otherwise switch)
   const handleStepToggle = (id: string) => {
     setExpandedStepId((prev) => (prev === id ? null : id));
   };
@@ -190,7 +181,6 @@ export function ReviewProgressView({
 
   return (
     <div className="flex flex-1 overflow-hidden px-4">
-      {/* Left Panel - Progress Overview */}
       <div
         className={cn(
           "w-1/3 flex flex-col border-r border-tui-border px-4 min-h-0 overflow-y-auto scrollbar-hide",
@@ -221,7 +211,6 @@ export function ReviewProgressView({
         />
       </div>
 
-      {/* Right Panel - Activity Log */}
       <div
         className={cn(
           "w-2/3 flex flex-col pl-6 overflow-hidden",

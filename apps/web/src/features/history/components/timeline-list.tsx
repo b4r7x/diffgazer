@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { cn } from "@diffgazer/core/cn";
 import { useNavigation } from "@diffgazer/keys";
 import type { TimelineItem } from "@diffgazer/core/schemas/ui";
@@ -22,20 +22,35 @@ export function TimelineList({
 }: TimelineListProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const { highlighted: focusedValue } = useNavigation({
+  const { highlighted: focusedValue, onKeyDown } = useNavigation({
     containerRef,
     role: "option",
     value: selectedId,
     onValueChange: onSelect,
+    onSelect,
     enabled: keyboardEnabled,
     wrap: false,
-    onBoundaryReached,
+    onNavigationBoundaryReached: (direction) => {
+      onBoundaryReached?.(direction === "previous" ? "up" : "down");
+    },
   });
 
   const activeId = keyboardEnabled ? (focusedValue ?? selectedId) : null;
 
+  useEffect(() => {
+    if (keyboardEnabled) containerRef.current?.focus();
+  }, [keyboardEnabled]);
+
   return (
-    <div ref={containerRef} role="listbox" className={cn("space-y-1", className)}>
+    <div
+      ref={containerRef}
+      role="listbox"
+      aria-label="Review sections"
+      tabIndex={keyboardEnabled ? 0 : -1}
+      aria-activedescendant={activeId ?? undefined}
+      onKeyDown={onKeyDown}
+      className={cn("space-y-1 outline-none", className)}
+    >
       {items.map((item) => {
         const isActive = item.id === activeId;
         const isSelected = item.id === selectedId;
@@ -47,7 +62,10 @@ export function TimelineList({
             role="option"
             data-value={item.id}
             aria-selected={isSelected}
-            onClick={() => onSelect(item.id)}
+            onClick={() => {
+              containerRef.current?.focus();
+              onSelect(item.id);
+            }}
             className={cn(
               "flex items-center justify-between text-sm px-2 py-1 rounded cursor-pointer border-l-2 border-l-transparent",
               isActive && "bg-tui-selection text-tui-blue font-bold",

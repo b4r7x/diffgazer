@@ -31,6 +31,7 @@ export function IssuePreviewItem({
         'flex items-center justify-between p-3 w-full text-left',
         'bg-tui-bg border-b border-tui-border last:border-b-0',
         'hover:bg-tui-selection group cursor-pointer transition-colors',
+        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tui-blue',
         className
       )}
     >

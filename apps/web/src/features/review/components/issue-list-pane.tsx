@@ -1,9 +1,11 @@
 import type { Ref } from "react";
 import { cn } from "@diffgazer/core/cn";
-import { IssueListItem } from "@/components/ui/issue";
 import { SeverityFilterGroup, type SeverityFilter } from "./severity-filter-group";
 import { calculateSeverityCounts } from "@diffgazer/core/schemas/ui";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
+import { NavigationList } from "@diffgazer/ui/components/navigation-list";
+import { EmptyState } from "@diffgazer/ui/components/empty-state";
+import { SEVERITY_CONFIG } from "@/components/ui/severity/constants";
 
 export interface IssueListPaneProps {
   issues: ReviewIssue[];
@@ -15,6 +17,7 @@ export interface IssueListPaneProps {
   isFocused: boolean;
   isFilterFocused?: boolean;
   focusedFilterIndex?: number;
+  onFocusedFilterIndexChange?: (index: number) => void;
   focusedValue?: string | null;
   listRef?: Ref<HTMLDivElement>;
   title?: string;
@@ -31,6 +34,7 @@ export function IssueListPane({
   isFocused,
   isFilterFocused,
   focusedFilterIndex,
+  onFocusedFilterIndexChange,
   focusedValue,
   listRef,
   title = "Analysis",
@@ -51,20 +55,47 @@ export function IssueListPane({
           onFilterChange={onSeverityFilterChange}
           isFocused={isFilterFocused}
           focusedIndex={focusedFilterIndex}
+          onFocusedIndexChange={onFocusedFilterIndexChange}
         />
       </div>
 
-      <div ref={listRef} className="flex-1 overflow-y-auto scrollbar-hide space-y-1">
-        {issues.map((issue) => (
-          <IssueListItem
-            key={issue.id}
-            issue={issue}
-            isSelected={issue.id === selectedIssueId || issue.id === focusedValue}
-            onClick={() => onSelectIssue(issue.id)}
-          />
-        ))}
+      <div className="flex-1 overflow-y-auto scrollbar-hide">
+        <NavigationList
+          ref={listRef}
+          aria-label={title}
+          selectedId={selectedIssueId}
+          highlightedId={focusedValue}
+          onSelect={onSelectIssue}
+          focused={isFocused}
+          wrap={false}
+          className="space-y-1"
+        >
+          {issues.map((issue) => {
+            const config = SEVERITY_CONFIG[issue.severity] ?? SEVERITY_CONFIG.medium;
+            return (
+              <NavigationList.Item
+                key={issue.id}
+                id={issue.id}
+                density="compact"
+                className={cn(!isFocused && selectedIssueId === issue.id && "border-l-2 border-l-tui-blue/60")}
+              >
+                <NavigationList.Title className="min-w-0">
+                  <span className={cn("mr-2", config.color)} aria-hidden="true">
+                    {config.icon}
+                  </span>
+                  <span className="min-w-0 truncate">{issue.title}</span>
+                </NavigationList.Title>
+                <NavigationList.Meta>
+                  <NavigationList.Subtitle>
+                    {issue.file}:{issue.line_start}
+                  </NavigationList.Subtitle>
+                </NavigationList.Meta>
+              </NavigationList.Item>
+            );
+          })}
+        </NavigationList>
         {issues.length === 0 && (
-          <div className="text-tui-muted text-sm p-2">No issues match filter</div>
+          <EmptyState variant="inline" size="sm">No issues match filter</EmptyState>
         )}
       </div>
     </div>

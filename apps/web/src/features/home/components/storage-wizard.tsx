@@ -43,6 +43,7 @@ export function StorageWizard({
           value={choice}
           onChange={setChoice}
           disabled={isLoading}
+          autoFocusList={!isLoading}
         />
 
         <Callout variant="info" layout="inline">

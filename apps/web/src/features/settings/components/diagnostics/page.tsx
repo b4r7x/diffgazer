@@ -1,20 +1,15 @@
 import { useConfigData } from "@/app/providers/config-provider";
-import { cn } from "@diffgazer/core/cn";
 import { useDiagnosticsData, type DiagnosticsData } from "@diffgazer/core/api/hooks";
 import { formatTimestampOrNA } from "@diffgazer/core/format";
 import type { SetupStatus } from "@diffgazer/core/schemas/config";
+import { Button } from "@diffgazer/ui/components/button";
+import { Callout } from "@diffgazer/ui/components/callout";
+import { Divider } from "@diffgazer/ui/components/divider";
+import { KeyValue } from "@diffgazer/ui/components/key-value";
+import { Panel, PanelContent, PanelHeader } from "@diffgazer/ui/components/panel";
 import { useDiagnosticsKeyboard } from "../../hooks/use-diagnostics-keyboard.js";
 
 type OverallState = "loading" | "error" | "empty" | "success";
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="grid grid-cols-[110px_1fr] gap-2 text-sm font-mono">
-      <span className="text-tui-muted text-right">{label}:</span>
-      <span className="text-tui-fg break-all">{value}</span>
-    </div>
-  );
-}
 
 function getServerValue(serverState: DiagnosticsData["serverState"]): string {
   if (serverState.status === "checking") return "Checking...";
@@ -75,6 +70,7 @@ export function DiagnosticsPage() {
 
   const {
     focusedIndex,
+    getButtonProps,
     isRefreshingAll,
     refreshError,
     lastRefreshedAt,
@@ -93,17 +89,18 @@ export function DiagnosticsPage() {
 
   return (
     <div className="flex flex-1 overflow-hidden px-4 justify-center items-center">
-      <section
+      <Panel
+        as="section"
         aria-label="system diagnostics"
         aria-busy={isRefreshingAll || isRefreshing}
-        className="w-full max-w-2xl flex flex-col border border-tui-border bg-[#161b22] shadow-lg"
+        className="w-full max-w-2xl flex flex-col border-tui-border bg-[#161b22] shadow-lg"
       >
-        <div className="bg-tui-selection border-b border-tui-border px-4 py-2 flex justify-between items-center">
+        <PanelHeader className="bg-tui-selection border-tui-border px-4 py-2">
           <span className="font-bold text-tui-fg">System Diagnostics</span>
           <span className="text-xs text-tui-muted">{overallState}</span>
-        </div>
+        </PanelHeader>
 
-        <div className="p-6 space-y-8">
+        <PanelContent className="p-6 space-y-8">
           <div className="grid grid-cols-2 gap-x-8 text-sm">
             <div className="flex flex-col">
               <span className="text-tui-muted text-xs uppercase tracking-wider mb-1">Version Info</span>
@@ -127,66 +124,68 @@ export function DiagnosticsPage() {
             </div>
           </div>
 
-          <div className="border-t border-tui-border border-dashed" />
+          <Divider className="border-dashed" />
 
           <div className="space-y-3">
             <h3 className="text-tui-violet font-bold text-xs uppercase tracking-wider">Diagnostic Snapshot</h3>
-            <div className="space-y-1">
-              <Row
+            <KeyValue className="font-mono">
+              <KeyValue.Item
                 label="Health"
-                value={serverValue}
+                value={<span className="break-all">{serverValue}</span>}
+                variant={serverState.status === "error" ? "error" : serverState.status === "connected" ? "success" : "info"}
               />
-              <Row
+              <KeyValue.Item
                 label="Setup"
-                value={setupValue}
+                value={<span className="break-all">{setupValue}</span>}
+                variant={setupStatus?.isReady ? "success" : "warning"}
               />
-              <Row
+              <KeyValue.Item
                 label="Provider"
-                value={providerValue}
+                value={<span className="break-all">{providerValue}</span>}
+                variant={provider ? "success" : "warning"}
               />
-              <Row
+              <KeyValue.Item
                 label="Refreshed"
-                value={formatTimestampOrNA(lastRefreshedAt, "Unavailable")}
+                value={<span className="break-all">{formatTimestampOrNA(lastRefreshedAt, "Unavailable")}</span>}
+                variant="info"
               />
-            </div>
+            </KeyValue>
           </div>
 
-          <div className="border-t border-tui-border border-dashed" />
+          <Divider className="border-dashed" />
 
           <div className="flex gap-4 pt-2">
-            <button
-              type="button"
+            <Button
+              {...getButtonProps(0)}
+              variant="secondary"
+              size="sm"
+              bracket
               disabled={isRefreshAllDisabled}
-              className={cn(
-                "bg-tui-bg border border-tui-border hover:bg-tui-selection hover:text-white hover:border-tui-blue text-tui-fg px-3 py-1.5 text-sm transition-colors focus:outline-none focus:ring-1 focus:ring-tui-blue",
-                focusedIndex === 0 && !isRefreshAllDisabled && "ring-2 ring-tui-blue border-tui-blue",
-                isRefreshAllDisabled && "opacity-50 cursor-not-allowed"
-              )}
+              highlighted={focusedIndex === 0 && !isRefreshAllDisabled}
               onClick={() => void handleRefreshAll()}
             >
-              [ {isRefreshingAll ? "Refreshing..." : "Refresh Diagnostics"} ]
-            </button>
-            <button
-              type="button"
+              {isRefreshingAll ? "Refreshing..." : "Refresh Diagnostics"}
+            </Button>
+            <Button
+              {...getButtonProps(1)}
+              variant="success"
+              size="sm"
+              bracket
               disabled={isContextActionDisabled}
-              className={cn(
-                "bg-tui-bg border border-tui-border hover:bg-tui-selection hover:text-white hover:border-tui-green text-tui-fg px-3 py-1.5 text-sm transition-colors focus:outline-none focus:ring-1 focus:ring-tui-green",
-                focusedIndex === 1 && !isContextActionDisabled && "ring-2 ring-tui-green border-tui-green",
-                isContextActionDisabled && "opacity-50 cursor-not-allowed"
-              )}
+              highlighted={focusedIndex === 1 && !isContextActionDisabled}
               onClick={() => void handleRefreshContext()}
             >
-              [ {contextActionLabel} ]
-            </button>
+              {contextActionLabel}
+            </Button>
           </div>
 
           {diagnosticsError && (
-            <p className="text-tui-red text-sm">
+            <Callout variant="error" layout="none" className="text-sm">
               {diagnosticsError}
-            </p>
+            </Callout>
           )}
-        </div>
-      </section>
+        </PanelContent>
+      </Panel>
     </div>
   );
 }

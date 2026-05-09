@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "@diffgazer/core/cn";
+import { Card } from "@diffgazer/ui/components/card";
 
 export interface CardLayoutProps {
   title?: string;
@@ -28,26 +29,26 @@ export function CardLayout({
 }: CardLayoutProps) {
   return (
     <div className={cn("flex-1 flex flex-col items-center justify-center px-4", className)}>
-      <div className={cn("w-full border border-tui-border bg-tui-bg shadow-2xl", sizeClasses[size])}>
+      <Card variant="panel" className={cn("border-tui-border bg-tui-bg", sizeClasses[size])}>
         {header ?? (title && (
-          <div className="border-b border-tui-border bg-tui-selection/30 px-6 py-4">
+          <Card.Header className="border-tui-border bg-tui-selection/30 px-6 py-4">
             <h1 className="text-xl font-bold text-tui-blue tracking-wide">
               {title}
             </h1>
             {subtitle && (
               <p className="text-sm text-tui-muted mt-1">{subtitle}</p>
             )}
-          </div>
+          </Card.Header>
         ))}
 
-        <div className="px-6 py-6 max-h-[60vh] overflow-y-auto scrollbar-thin">{children}</div>
+        <Card.Content className="px-6 py-6 max-h-[60vh] overflow-y-auto scrollbar-thin">{children}</Card.Content>
 
         {footer && (
-          <div className="border-t border-tui-border px-6 py-4 flex justify-end gap-3 bg-tui-bg/50">
+          <Card.Footer className="border-tui-border px-6 py-4 flex justify-end gap-3 bg-tui-bg/50">
             {footer}
-          </div>
+          </Card.Footer>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

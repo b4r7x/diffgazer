@@ -17,7 +17,7 @@ export const commandPaletteDoc: ComponentDoc = {
     },
     {
       title: "Built-in Keyboard Navigation",
-      content: "CommandPalette integrates @diffgazer/keys's useNavigation internally for arrow-key navigation, wrapping, and Enter activation. Highlight and search state can be controlled externally via highlightedId/onHighlightChange and search/onSearchChange. selectedId/onSelectedIdChange remain deprecated aliases for highlight state.",
+      content: "CommandPalette integrates @diffgazer/keys's useNavigation internally for arrow-key navigation, wrapping, and Enter activation. Highlight and search state can be controlled externally via highlightedId/onHighlightChange and search/onSearchChange.",
     },
   ],
   anatomy: [

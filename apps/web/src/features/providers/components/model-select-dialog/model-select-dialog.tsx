@@ -102,6 +102,7 @@ export function ModelSelectDialog({
     handleSearchArrowDown,
     handleListSelect,
     footerButtonIndex,
+    getFooterButtonProps,
   } = useModelDialogKeyboard({
     open,
     currentModel,
@@ -146,7 +147,7 @@ export function ModelSelectDialog({
 
           <ModelFilterTabs
             value={tierFilter}
-            onValueChange={setTierFilter}
+            onChange={setTierFilter}
             focusedIndex={filterIndex}
             isFocused={focusZone === "filters"}
             onTabClick={(idx) => {
@@ -182,6 +183,7 @@ export function ModelSelectDialog({
             canConfirm={filteredModels.length > 0}
             cancelFocused={focusZone === "footer" && footerButtonIndex === 0}
             confirmFocused={focusZone === "footer" && footerButtonIndex === 1}
+            getButtonProps={getFooterButtonProps}
             hints={FOOTER_HINTS}
           />
         </DialogFooter>

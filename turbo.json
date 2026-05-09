@@ -1,5 +1,6 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalPassThroughEnv": ["DIFFGAZER_SKIP_ARTIFACT_PREPARE"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

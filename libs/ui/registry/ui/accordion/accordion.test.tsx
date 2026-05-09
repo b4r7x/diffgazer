@@ -113,13 +113,6 @@ describe("Accordion", () => {
     expect(onChange).toHaveBeenCalledWith("two")
   })
 
-  it("controlled single mode calls onValueChange with new value", async () => {
-    const onValueChange = vi.fn()
-    renderAccordion({ value: "one", onValueChange })
-    await userEvent.click(screen.getByRole("button", { name: "Section Two" }))
-    expect(onValueChange).toHaveBeenCalledWith("two")
-  })
-
   it("controlled multiple mode calls onChange with updated array", async () => {
     const onChange = vi.fn()
     renderAccordion({ type: "multiple", value: ["one"], onChange })

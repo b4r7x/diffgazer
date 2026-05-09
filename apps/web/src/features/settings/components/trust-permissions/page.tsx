@@ -3,21 +3,19 @@ import { useNavigate } from "@tanstack/react-router";
 import type { TrustCapabilities, TrustConfig } from "@diffgazer/core/schemas/config";
 import type { Shortcut } from "@diffgazer/core/schemas/ui";
 import { getErrorMessage } from "@diffgazer/core/errors";
-import { useKey } from "@diffgazer/keys";
+import { useKey, useScope } from "@diffgazer/keys";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { Panel, PanelHeader, PanelContent } from "@diffgazer/ui/components/panel";
 import { toast } from "@diffgazer/ui/components/toast";
 import { TrustPermissionsContent } from "@/components/shared/trust-permissions-content";
+import { normalizeTrustCapabilities } from "@/components/shared/trust-permissions-model";
 import { useConfigData } from "@/app/providers/config-provider";
 import { useSaveTrust, useDeleteTrust } from "@diffgazer/core/api/hooks";
 
-const DEFAULT_CAPABILITIES: TrustCapabilities = {
-  readFiles: true,
-  runCommands: false,
-};
+const SETTINGS_TRUST_PERMISSIONS_SCOPE = "settings-trust-permissions";
 
 function getDraftCapabilities(trust: TrustConfig | null): TrustCapabilities {
-  return { ...(trust?.capabilities ?? DEFAULT_CAPABILITIES), runCommands: false };
+  return normalizeTrustCapabilities(trust?.capabilities);
 }
 
 function getTrustEditorKey(projectId: string | null, repoRoot: string | null, trust: TrustConfig | null): string {
@@ -31,7 +29,7 @@ export function TrustPermissionsPage() {
 
   return (
     <TrustPermissionsEditor
-      key={editorKey}
+      editorKey={editorKey}
       projectId={projectId}
       repoRoot={repoRoot}
       trust={trust}
@@ -41,6 +39,7 @@ export function TrustPermissionsPage() {
 }
 
 interface TrustPermissionsEditorProps {
+  editorKey: string;
   projectId: string | null;
   repoRoot: string | null;
   trust: TrustConfig | null;
@@ -48,6 +47,7 @@ interface TrustPermissionsEditorProps {
 }
 
 function TrustPermissionsEditor({
+  editorKey,
   projectId,
   repoRoot,
   trust,
@@ -58,9 +58,19 @@ function TrustPermissionsEditor({
   const deleteTrust = useDeleteTrust();
   const isLoading = saveTrust.isPending || deleteTrust.isPending;
 
-  const [capabilities, setCapabilities] = useState<TrustCapabilities>(
-    () => initialCapabilities,
-  );
+  const [draft, setDraft] = useState(() => ({
+    editorKey,
+    capabilities: initialCapabilities,
+  }));
+
+  if (draft.editorKey !== editorKey) {
+    setDraft({ editorKey, capabilities: initialCapabilities });
+  }
+
+  const capabilities = draft.editorKey === editorKey ? draft.capabilities : initialCapabilities;
+  const handleCapabilitiesChange = (nextCapabilities: TrustCapabilities) => {
+    setDraft({ editorKey, capabilities: nextCapabilities });
+  };
 
   const footerShortcuts: Shortcut[] = [
     { key: "↑/↓", label: "Navigate" },
@@ -71,7 +81,10 @@ function TrustPermissionsEditor({
     shortcuts: footerShortcuts,
     rightShortcuts: [{ key: "Esc", label: "Back" }],
   });
-  useKey("Escape", () => navigate({ to: "/settings" }));
+  useScope(SETTINGS_TRUST_PERMISSIONS_SCOPE);
+  useKey("Escape", () => navigate({ to: "/settings" }), {
+    scope: SETTINGS_TRUST_PERMISSIONS_SCOPE,
+  });
 
   async function handleSave(): Promise<void> {
     if (isLoading) return;
@@ -113,10 +126,12 @@ function TrustPermissionsEditor({
           <TrustPermissionsContent
             directory={repoRoot ?? "Loading..."}
             value={capabilities}
-            onChange={setCapabilities}
+            onChange={handleCapabilitiesChange}
             isTrusted={Boolean(trust?.capabilities.readFiles)}
             isLoading={isLoading}
+            autoFocusList
             showActions
+            keyboardScope={SETTINGS_TRUST_PERMISSIONS_SCOPE}
             onSave={handleSave}
             onRevoke={handleRevoke}
           />

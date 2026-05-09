@@ -11,7 +11,7 @@ type ZoneTransition<T extends string> = (params: {
   key: "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown";
 }) => T | null;
 
-interface UseFocusZoneOptions<T extends string> {
+export interface UseFocusZoneOptions<T extends string> {
   initial: T;
   zones: readonly [T, ...T[]];
   zone?: T;
@@ -21,19 +21,23 @@ interface UseFocusZoneOptions<T extends string> {
   transitions?: ZoneTransition<T>;
   tabCycle?: readonly T[];
   scope?: string;
+  containerRef?: UseKeyOptions["containerRef"];
+  focusWithinOnly?: boolean;
+  allowInInput?: boolean;
+  preventDefault?: boolean;
   enabled?: boolean;
 }
 
-export interface ZoneProps {
+export interface FocusZoneProps {
   "data-focused": true | undefined;
 }
 
-interface UseFocusZoneReturn<T extends string> {
+export interface UseFocusZoneReturn<T extends string> {
   zone: T;
   setZone: (zone: T) => void;
-  inZone: (...zones: T[]) => boolean;
-  forZone: (target: T, extra?: UseKeyOptions) => UseKeyOptions;
-  zoneProps: (target: T) => ZoneProps;
+  isZone: (...zones: T[]) => boolean;
+  getKeyOptions: (zone: T, extra?: UseKeyOptions) => UseKeyOptions;
+  getZoneProps: (zone: T) => FocusZoneProps;
 }
 
 const ARROW_KEYS = [
@@ -55,6 +59,10 @@ export function useFocusZone<T extends string>(
     transitions,
     tabCycle,
     scope,
+    containerRef,
+    focusWithinOnly,
+    allowInInput,
+    preventDefault,
   } = options;
 
   const [internalZone, setInternalZone] = useState<T>(initial);
@@ -90,36 +98,56 @@ export function useFocusZone<T extends string>(
 
   useKey(
     keys(ARROW_KEYS, (e) => stableTransitions(e.key as typeof ARROW_KEYS[number])),
-    { enabled: enabled && transitions != null, scope },
+    {
+      enabled: enabled && transitions != null,
+      scope,
+      containerRef,
+      focusWithinOnly,
+      allowInInput,
+      preventDefault,
+    },
   );
 
   useKey("Tab", () => cycleZone(1), {
     enabled: enabled && tabCycle != null,
     preventDefault: true,
     scope,
+    containerRef,
+    focusWithinOnly,
+    allowInInput,
   });
 
   useKey("shift+Tab", () => cycleZone(-1), {
     enabled: enabled && tabCycle != null,
     preventDefault: true,
     scope,
+    containerRef,
+    focusWithinOnly,
+    allowInInput,
   });
 
   useScope(scope ?? null, { enabled: enabled && !!scope });
 
   const safeZone = zones.includes(currentZone) ? currentZone : zones[0];
+  const isZone = (...zones: T[]) => zones.includes(safeZone);
+  const getKeyOptions = (zone: T, extra?: UseKeyOptions): UseKeyOptions => ({
+    containerRef,
+    focusWithinOnly,
+    allowInInput,
+    preventDefault,
+    ...extra,
+    scope: extra?.scope ?? scope,
+    enabled: enabled && safeZone === zone && (extra?.enabled ?? true),
+  });
+  const getZoneProps = (zone: T): FocusZoneProps => ({
+    "data-focused": safeZone === zone || undefined,
+  });
 
   return {
     zone: safeZone,
     setZone: setZoneValue,
-    inZone: (...zones: T[]) => zones.includes(safeZone),
-    forZone: (target: T, extra?: UseKeyOptions): UseKeyOptions => ({
-      ...extra,
-      scope: extra?.scope ?? scope,
-      enabled: safeZone === target && (extra?.enabled ?? true),
-    }),
-    zoneProps: (target: T): ZoneProps => ({
-      "data-focused": safeZone === target || undefined,
-    }),
+    isZone,
+    getKeyOptions,
+    getZoneProps,
   };
 }

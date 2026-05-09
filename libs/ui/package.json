@@ -37,6 +37,10 @@
       "types": "./dist/components/input.d.ts",
       "import": "./dist/components/input.js"
     },
+    "./components/field": {
+      "types": "./dist/components/field.d.ts",
+      "import": "./dist/components/field.js"
+    },
     "./components/textarea": {
       "types": "./dist/components/textarea.d.ts",
       "import": "./dist/components/textarea.js"
@@ -305,7 +309,7 @@
   "peerDependencies": {
     "react": ">=19.2.0",
     "react-dom": ">=19.2.0",
-    "@diffgazer/keys": ">=0.1.0"
+    "@diffgazer/keys": ">=0.1.1"
   },
   "devDependencies": {
     "@diffgazer/keys": "workspace:*",

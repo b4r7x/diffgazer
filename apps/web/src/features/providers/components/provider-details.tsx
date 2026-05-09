@@ -2,6 +2,7 @@ import { Badge } from '@diffgazer/ui/components/badge';
 import { Button } from '@diffgazer/ui/components/button';
 import { SectionHeader } from '@diffgazer/ui/components/section-header';
 import { KeyValue } from '@diffgazer/ui/components/key-value';
+import type { RefCallback } from "react";
 import { CapabilityCard } from './capability-card';
 import { PROVIDER_CAPABILITIES, OPENROUTER_PROVIDER_ID } from '@diffgazer/core/schemas/config';
 import type { ProviderWithStatus } from '@diffgazer/core/schemas/config';
@@ -19,6 +20,10 @@ export interface ProviderDetailsProps {
   disableSelectProvider?: boolean;
   focusedButtonIndex?: number;
   isFocused?: boolean;
+  getButtonProps?: (index: number) => {
+    ref: RefCallback<HTMLButtonElement>;
+    onFocus: () => void;
+  };
 }
 
 function getButtonConfig(actions: ProviderActions, provider: ProviderWithStatus, disableSelectProvider: boolean) {
@@ -36,6 +41,7 @@ export function ProviderDetails({
   disableSelectProvider = false,
   focusedButtonIndex,
   isFocused = false,
+  getButtonProps,
 }: ProviderDetailsProps) {
   if (!provider) {
     return (
@@ -140,6 +146,7 @@ export function ProviderDetails({
           {buttons.map((btn, index) => (
             <Button
               key={btn.label}
+              {...getButtonProps?.(index)}
               variant={btn.variant}
               bracket
               onClick={btn.action}

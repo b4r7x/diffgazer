@@ -7,6 +7,10 @@ import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 
 const LENS_OPTIONS = buildLensOptions();
 
+function isLensId(value: string | null): value is LensId {
+  return LENS_OPTIONS.some((option) => option.id === value);
+}
+
 interface AnalysisStepProps {
   lenses: LensId[];
   onLensesChange: (lenses: LensId[]) => void;
@@ -29,19 +33,16 @@ export function AnalysisStep({
   );
 
   const handleKeyDown = (e: KeyboardEvent) => {
-    if (e.key === "Enter" && highlighted) {
-      const lensId = highlighted as LensId;
-      const newLenses = lenses.includes(lensId)
-        ? lenses.filter((l) => l !== lensId)
-        : [...lenses, lensId];
+    if (!enabled) return;
+    if (e.key === "Enter" && isLensId(highlighted)) {
+      e.preventDefault();
+      const newLenses = lenses.includes(highlighted)
+        ? lenses.filter((lens) => lens !== highlighted)
+        : [...lenses, highlighted];
       onLensesChange(newLenses);
       onCommit?.({ defaultLenses: newLenses });
       return;
     }
-    if (!onBoundaryReached) return;
-    const idx = LENS_OPTIONS.findIndex((o) => o.id === highlighted);
-    if (e.key === "ArrowUp" && idx === 0) onBoundaryReached("up");
-    if (e.key === "ArrowDown" && idx === LENS_OPTIONS.length - 1) onBoundaryReached("down");
   };
 
   return (
@@ -51,10 +52,19 @@ export function AnalysisStep({
         <ScrollArea className="max-h-[35vh]">
           <CheckboxGroup
             value={lenses}
-            onChange={onLensesChange}
+            onChange={(nextValue) => {
+              onLensesChange(nextValue.filter(isLensId));
+            }}
             highlighted={enabled ? highlighted : null}
-            onHighlightChange={setHighlighted}
+            onHighlightChange={(nextValue) => {
+              if (isLensId(nextValue)) setHighlighted(nextValue);
+            }}
             onKeyDown={handleKeyDown}
+            keyboardNavigation={enabled}
+            autoFocus={enabled}
+            onNavigationBoundaryReached={(direction) => {
+              onBoundaryReached?.(direction === "previous" ? "up" : "down");
+            }}
             wrap={false}
             className="space-y-1"
           >

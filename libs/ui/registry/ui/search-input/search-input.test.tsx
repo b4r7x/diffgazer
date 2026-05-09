@@ -91,6 +91,11 @@ describe("SearchInput", () => {
     expect(screen.getByRole("searchbox")).toHaveAttribute("aria-invalid", "true")
   })
 
+  it("renders a custom prefix", () => {
+    renderSearchInput({ prefix: <span>find:</span> })
+    expect(screen.getByText("find:")).toBeInTheDocument()
+  })
+
   it("does not style aria-invalid false as invalid", () => {
     const { container } = renderSearchInput({ "aria-invalid": "false" })
 

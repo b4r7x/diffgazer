@@ -21,9 +21,9 @@ function getRadios() {
 
 describe("ToggleGroup", () => {
   it("supports direct namespaced items with custom item UI", async () => {
-    const onValueChange = vi.fn()
+    const onChange = vi.fn()
     render(
-      <ToggleGroup label="Options" onValueChange={onValueChange}>
+      <ToggleGroup label="Options" onChange={onChange}>
         <ToggleGroup.Item value="a"><span>Alpha</span></ToggleGroup.Item>
         <ToggleGroup.Item value="b"><span>Beta</span></ToggleGroup.Item>
       </ToggleGroup>,
@@ -31,7 +31,7 @@ describe("ToggleGroup", () => {
 
     await userEvent.click(screen.getByRole("radio", { name: /beta/i }))
 
-    expect(onValueChange).toHaveBeenCalledWith("b")
+    expect(onChange).toHaveBeenCalledWith("b")
   })
 
   it("selects an item on click", async () => {
@@ -48,15 +48,15 @@ describe("ToggleGroup", () => {
 
   it("deselects when clicking the same item with allowDeselect", async () => {
     const onChange = vi.fn()
-    renderGroup({ defaultValue: "a", allowDeselect: true, onChange })
+    renderGroup({ defaultValue: "a", allowDeselect: true, onChange: onChange })
     await userEvent.click(screen.getByText("Alpha"))
     expect(onChange).toHaveBeenCalledWith(null)
     expect(screen.getByRole("button", { name: /alpha/i })).toHaveAttribute("aria-pressed", "false")
   })
 
   it("moves focus without changing pressed state when allowDeselect is true", async () => {
-    const onValueChange = vi.fn()
-    renderGroup({ defaultValue: "a", allowDeselect: true, onValueChange })
+    const onChange = vi.fn()
+    renderGroup({ defaultValue: "a", allowDeselect: true, onChange })
     const alpha = screen.getByRole("button", { name: /alpha/i })
     const beta = screen.getByRole("button", { name: /beta/i })
 
@@ -66,22 +66,22 @@ describe("ToggleGroup", () => {
     expect(beta).toHaveFocus()
     expect(alpha).toHaveAttribute("aria-pressed", "true")
     expect(beta).toHaveAttribute("aria-pressed", "false")
-    expect(onValueChange).not.toHaveBeenCalled()
+    expect(onChange).not.toHaveBeenCalled()
   })
 
   it("activates the focused item with Space and Enter when allowDeselect is true", async () => {
-    const onValueChange = vi.fn()
-    renderGroup({ defaultValue: "a", allowDeselect: true, onValueChange })
+    const onChange = vi.fn()
+    renderGroup({ defaultValue: "a", allowDeselect: true, onChange })
     const alpha = screen.getByRole("button", { name: /alpha/i })
     const beta = screen.getByRole("button", { name: /beta/i })
 
     alpha.focus()
     await userEvent.keyboard("{ArrowRight}")
     await userEvent.keyboard(" ")
-    expect(onValueChange).toHaveBeenCalledWith("b")
+    expect(onChange).toHaveBeenCalledWith("b")
 
     await userEvent.keyboard("{Enter}")
-    expect(onValueChange).toHaveBeenCalledWith(null)
+    expect(onChange).toHaveBeenCalledWith(null)
     expect(beta).toHaveAttribute("aria-pressed", "false")
   })
 
@@ -153,27 +153,27 @@ describe("ToggleGroup", () => {
 
   it("respects controlled value", async () => {
     const onChange = vi.fn()
-    renderGroup({ value: "a", onChange })
+    renderGroup({ value: "a", onChange: onChange })
     await userEvent.click(screen.getByText("Beta"))
     expect(onChange).toHaveBeenCalledWith("b")
     expect(getRadios()[0]).toHaveAttribute("aria-checked", "true")
     expect(getRadios()[1]).toHaveAttribute("aria-checked", "false")
   })
 
-  it("calls onValueChange as the preferred controlled callback", async () => {
-    const onValueChange = vi.fn()
-    renderGroup({ value: "a", onValueChange })
+  it("calls onChange as the preferred controlled callback", async () => {
+    const onChange = vi.fn()
+    renderGroup({ value: "a", onChange })
     await userEvent.click(screen.getByText("Beta"))
-    expect(onValueChange).toHaveBeenCalledWith("b")
+    expect(onChange).toHaveBeenCalledWith("b")
   })
 
   it("forwards item props and refs while honoring preventDefault", async () => {
     const ref = createRef<HTMLButtonElement>()
-    const onValueChange = vi.fn()
+    const onChange = vi.fn()
     const onClick = vi.fn((event) => event.preventDefault())
 
     render(
-      <ToggleGroup label="Options" onValueChange={onValueChange}>
+      <ToggleGroup label="Options" onChange={onChange}>
         <ToggleGroup.Item ref={ref} value="a" data-testid="toggle-item" onClick={onClick}>
           Alpha
         </ToggleGroup.Item>
@@ -184,7 +184,7 @@ describe("ToggleGroup", () => {
     expect(ref.current).toBe(item)
     await userEvent.click(item)
     expect(onClick).toHaveBeenCalledOnce()
-    expect(onValueChange).not.toHaveBeenCalled()
+    expect(onChange).not.toHaveBeenCalled()
   })
 
   it("participates in form data by name and resets to defaultValue", async () => {
@@ -341,7 +341,7 @@ describe("ToggleGroup", () => {
 
   it("selects focused item with Enter", async () => {
     const onChange = vi.fn()
-    renderGroup({ defaultValue: "a", onChange })
+    renderGroup({ defaultValue: "a", onChange: onChange })
     const radios = getRadios()
     radios[0].focus()
     await userEvent.keyboard("{ArrowRight}")
@@ -377,6 +377,44 @@ describe("ToggleGroup", () => {
     expect(radios[1]).toHaveFocus()
   })
 
+  it("keeps arrow navigation scoped away from nested radio toggle groups", async () => {
+    const onOuterChange = vi.fn()
+    const onInnerChange = vi.fn()
+    render(
+      <ToggleGroup label="Outer" onChange={onOuterChange}>
+        <ToggleGroup.Item value="outer-a">Outer A</ToggleGroup.Item>
+        <ToggleGroup label="Inner" onChange={onInnerChange}>
+          <ToggleGroup.Item value="inner-a">Inner A</ToggleGroup.Item>
+        </ToggleGroup>
+        <ToggleGroup.Item value="outer-b">Outer B</ToggleGroup.Item>
+      </ToggleGroup>,
+    )
+
+    screen.getByRole("radio", { name: /outer a/i }).focus()
+    await userEvent.keyboard("{ArrowRight}")
+
+    expect(screen.getByRole("radio", { name: /outer b/i })).toHaveFocus()
+    expect(onOuterChange).toHaveBeenCalledWith("outer-b")
+    expect(onInnerChange).not.toHaveBeenCalled()
+  })
+
+  it("keeps arrow navigation scoped away from nested button toggle groups", async () => {
+    render(
+      <ToggleGroup label="Outer" allowDeselect>
+        <ToggleGroup.Item value="outer-a">Outer A</ToggleGroup.Item>
+        <ToggleGroup label="Inner" allowDeselect>
+          <ToggleGroup.Item value="inner-a">Inner A</ToggleGroup.Item>
+        </ToggleGroup>
+        <ToggleGroup.Item value="outer-b">Outer B</ToggleGroup.Item>
+      </ToggleGroup>,
+    )
+
+    screen.getByRole("button", { name: /outer a/i }).focus()
+    await userEvent.keyboard("{ArrowRight}")
+
+    expect(screen.getByRole("button", { name: /outer b/i })).toHaveFocus()
+  })
+
   it("disabled items do not activate on Enter key", async () => {
     const onChange = vi.fn()
     render(
@@ -394,7 +432,7 @@ describe("ToggleGroup", () => {
     const onChange = vi.fn()
     renderGroup({
       defaultValue: "a",
-      onChange,
+      onChange: onChange,
       onKeyDown: (event) => event.preventDefault(),
     })
 

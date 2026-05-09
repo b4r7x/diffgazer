@@ -11,7 +11,7 @@
   "files": [
     {
       "path": "registry/ui/panel/index.ts",
-      "content": "import { Panel as PanelRoot, type PanelProps, panelVariants } from \"./panel\";\nimport { PanelHeader, type PanelHeaderProps, panelHeaderVariants } from \"./panel-header\";\nimport { PanelContent, type PanelContentProps, panelContentVariants } from \"./panel-content\";\nimport { PanelFooter, type PanelFooterProps } from \"./panel-footer\";\n\nconst Panel = Object.assign(PanelRoot, {\n  Header: PanelHeader,\n  Content: PanelContent,\n  Footer: PanelFooter,\n});\n\nexport { Panel, type PanelProps, panelVariants };\nexport { PanelHeader, type PanelHeaderProps, panelHeaderVariants };\nexport { PanelContent, type PanelContentProps, panelContentVariants };\nexport { PanelFooter, type PanelFooterProps };\n",
+      "content": "import { Panel as PanelRoot, type PanelProps, panelVariants } from \"./panel\";\nimport { PanelHeader, type PanelHeaderProps, panelHeaderVariants } from \"./panel-header\";\nimport { PanelContent, type PanelContentProps, panelContentVariants } from \"./panel-content\";\nimport { PanelFooter, type PanelFooterProps } from \"./panel-footer\";\nimport { PanelLegend, type PanelLegendProps, panelLegendVariants } from \"./panel-legend\";\n\nconst Panel = Object.assign(PanelRoot, {\n  Legend: PanelLegend,\n  Header: PanelHeader,\n  Content: PanelContent,\n  Footer: PanelFooter,\n});\n\nexport { Panel, type PanelProps, panelVariants };\nexport { PanelLegend, type PanelLegendProps, panelLegendVariants };\nexport { PanelHeader, type PanelHeaderProps, panelHeaderVariants };\nexport { PanelContent, type PanelContentProps, panelContentVariants };\nexport { PanelFooter, type PanelFooterProps };\n",
       "type": "registry:ui"
     },
     {
@@ -32,6 +32,11 @@
     {
       "path": "registry/ui/panel/panel-footer.tsx",
       "content": "import type { ComponentPropsWithRef } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport type PanelFooterProps = ComponentPropsWithRef<\"div\">;\n\nexport function PanelFooter({ className, ...props }: PanelFooterProps) {\n  return <div data-slot=\"panel-footer\" className={cn(\"border-t border-border bg-secondary/30 px-4 py-3 text-sm\", className)} {...props} />;\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/panel/panel-legend.tsx",
+      "content": "import type { ComponentPropsWithRef } from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\n\nexport const panelLegendVariants = cva(\n  \"absolute -top-3 left-4 z-10 bg-background px-2 text-xs font-bold uppercase tracking-wider\",\n  {\n    variants: {\n      tone: {\n        default: \"text-foreground\",\n        muted: \"text-muted-foreground\",\n        info: \"text-info-fg\",\n        success: \"text-success\",\n        warning: \"text-warning-fg\",\n        error: \"text-error-fg\",\n        accent: \"text-action\",\n      },\n    },\n    defaultVariants: {\n      tone: \"muted\",\n    },\n  },\n);\n\nexport type PanelLegendProps = ComponentPropsWithRef<\"div\"> &\n  VariantProps<typeof panelLegendVariants>;\n\nexport function PanelLegend({ className, tone, ...props }: PanelLegendProps) {\n  return <div data-slot=\"panel-legend\" className={cn(panelLegendVariants({ tone }), className)} {...props} />;\n}\n",
       "type": "registry:ui"
     }
   ],

@@ -160,7 +160,9 @@
       "type": "registry:ui",
       "title": "Input",
       "description": "Terminal-styled text input",
-      "dependencies": [],
+      "dependencies": [
+        "class-variance-authority"
+      ],
       "registryDependencies": [
         "input-variants"
       ],
@@ -174,6 +176,37 @@
         },
         {
           "path": "registry/ui/input/input.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/input/input-group.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/input/input-state.ts",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "field",
+      "type": "registry:ui",
+      "title": "Field",
+      "description": "Form field primitives for labels, controls, descriptions, and validation messages",
+      "dependencies": [],
+      "registryDependencies": [
+        "compose-refs"
+      ],
+      "meta": {
+        "client": true
+      },
+      "files": [
+        {
+          "path": "registry/ui/field/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/field/field.tsx",
           "type": "registry:ui"
         }
       ]
@@ -278,6 +311,7 @@
         "form-reset",
         "@diffgazer-keys/navigation",
         "compose-refs",
+        "selectable-collection",
         "selectable-variants"
       ],
       "meta": {
@@ -340,16 +374,12 @@
       "registryDependencies": [
         "controllable-state",
         "form-reset",
-        "@diffgazer-keys/navigation",
         "compose-refs",
-        "selectable-variants",
-        "resolve-tab-target"
+        "selectable-collection",
+        "selectable-variants"
       ],
       "meta": {
-        "client": true,
-        "optionalIntegrations": [
-          "keyboard-navigation"
-        ]
+        "client": true
       },
       "files": [
         {
@@ -405,6 +435,10 @@
         },
         {
           "path": "registry/ui/panel/panel-footer.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/panel/panel-legend.tsx",
           "type": "registry:ui"
         }
       ]
@@ -1123,7 +1157,7 @@
         "controllable-state",
         "compose-refs",
         "form-reset",
-        "resolve-tab-target"
+        "selectable-collection"
       ],
       "meta": {
         "client": true,
@@ -1277,7 +1311,8 @@
       "compose-refs",
       "dialog-shell",
       "portal",
-      "search"
+      "search",
+      "selectable-collection"
     ],
       "meta": {
         "client": true,
@@ -1893,6 +1928,24 @@
       ]
     },
     {
+      "name": "selectable-collection",
+      "type": "registry:lib",
+      "title": "Selectable Collection",
+      "description": "Shared selectable item collection and DOM-order utilities for compound selection components.",
+      "dependencies": [],
+      "registryDependencies": [],
+      "meta": {
+        "client": true,
+        "hidden": true
+      },
+      "files": [
+        {
+          "path": "registry/lib/selectable-collection.ts",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
       "name": "input-variants",
       "type": "registry:lib",
       "title": "Input Variants",
@@ -1915,7 +1968,7 @@
       "name": "focus",
       "type": "registry:lib",
       "title": "Focus Utilities",
-      "description": "Shared focusable element CSS selector for focus management, auto-focus, and focus-trap logic.",
+      "description": "Shared focusable element selector and scoped selectable-item focus helpers for focus management, auto-focus, and keyboard handoff logic.",
       "meta": {
         "client": false
       },

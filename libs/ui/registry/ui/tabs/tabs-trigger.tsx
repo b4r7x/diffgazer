@@ -43,7 +43,7 @@ export interface TabsTriggerProps extends Omit<ButtonHTMLAttributes<HTMLButtonEl
 }
 
 export function TabsTrigger({ value, children, className, disabled, ref, onClick, ...rest }: TabsTriggerProps) {
-  const { tabsId, value: selectedValue, onValueChange, panelValues, variant, orientation } = useTabsContext();
+  const { tabsId, value: selectedValue, onChange, panelValues, variant, orientation } = useTabsContext();
   const isActive = selectedValue === value;
   const panelId = panelValues.includes(value) ? getTabPanelId(tabsId, value) : undefined;
 
@@ -54,7 +54,7 @@ export function TabsTrigger({ value, children, className, disabled, ref, onClick
     }
 
     onClick?.(event);
-    if (!event.defaultPrevented) onValueChange(value);
+    if (!event.defaultPrevented) onChange(value);
   };
 
   return (

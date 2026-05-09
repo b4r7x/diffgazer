@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { KeyboardProvider } from "@diffgazer/keys";
 import type { ResolvedTheme, WebTheme } from "@/types/theme";
 
@@ -24,24 +25,12 @@ vi.mock("@/hooks/use-theme", () => ({
 
 import { SettingsThemePage } from "./page";
 
-function hasClassToken(element: Element, token: string): boolean {
-  return element.className.split(/\s+/).includes(token);
-}
-
 function renderPage() {
   return render(
     <KeyboardProvider>
       <SettingsThemePage />
     </KeyboardProvider>
   );
-}
-
-function getRadio(value: "auto" | "dark" | "light") {
-  const radio = document.querySelector(`[role="radio"][data-value="${value}"]`);
-  if (!radio) {
-    throw new Error(`Missing radio with data-value="${value}"`);
-  }
-  return radio as HTMLElement;
 }
 
 describe("SettingsThemePage keyboard behavior", () => {
@@ -52,41 +41,35 @@ describe("SettingsThemePage keyboard behavior", () => {
     document.documentElement.setAttribute("data-theme", "dark");
   });
 
-  it("moves focus independently from selection and reaches button zone at list boundary", () => {
+  it("moves focus independently from selection and reaches button zone at list boundary", async () => {
     renderPage();
 
-    const autoRadio = getRadio("auto");
-    const darkRadio = getRadio("dark");
-    const lightRadio = getRadio("light");
-    const cancelButton = screen.getByRole("button", { name: /cancel/i });
+    const autoRadio = screen.getByRole("radio", { name: /auto/i });
+    const darkRadio = screen.getByRole("radio", { name: /dark/i });
+    const cancelButton = screen.getByRole("button", { name: /^cancel$/i });
 
-    expect(hasClassToken(autoRadio, "bg-secondary")).toBe(true);
+    await waitFor(() => expect(autoRadio).toHaveFocus());
     expect(autoRadio.getAttribute("aria-checked")).toBe("true");
 
-    fireEvent.keyDown(window, { key: "ArrowDown" });
-    expect(hasClassToken(darkRadio, "bg-secondary")).toBe(true);
+    await userEvent.keyboard("{ArrowDown}");
     expect(autoRadio.getAttribute("aria-checked")).toBe("true");
     expect(darkRadio.getAttribute("aria-checked")).toBe("false");
 
-    fireEvent.keyDown(window, { key: "ArrowDown" });
-    expect(hasClassToken(lightRadio, "bg-secondary")).toBe(true);
+    await userEvent.keyboard("{ArrowDown}{ArrowDown}");
+    expect(cancelButton).toHaveFocus();
 
-    fireEvent.keyDown(window, { key: "ArrowDown" });
-    expect(hasClassToken(cancelButton, "ring-tui-blue")).toBe(true);
-
-    fireEvent.keyDown(window, { key: "ArrowUp" });
-    expect(hasClassToken(lightRadio, "bg-secondary")).toBe(true);
+    await userEvent.keyboard("{Enter}");
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/settings" });
   });
 
   it("keeps focused radio arrow navigation separate from selection", () => {
     renderPage();
 
-    const autoRadio = getRadio("auto");
-    const darkRadio = getRadio("dark");
+    const autoRadio = screen.getByRole("radio", { name: /auto/i });
+    const darkRadio = screen.getByRole("radio", { name: /dark/i });
 
     fireEvent.keyDown(autoRadio, { key: "ArrowDown" });
 
-    expect(hasClassToken(darkRadio, "bg-secondary")).toBe(true);
     expect(autoRadio.getAttribute("aria-checked")).toBe("true");
     expect(darkRadio.getAttribute("aria-checked")).toBe("false");
 
@@ -98,8 +81,8 @@ describe("SettingsThemePage keyboard behavior", () => {
   it("selects focused theme on Space without saving or exiting", () => {
     renderPage();
 
-    const autoRadio = getRadio("auto");
-    const darkRadio = getRadio("dark");
+    const autoRadio = screen.getByRole("radio", { name: /auto/i });
+    const darkRadio = screen.getByRole("radio", { name: /dark/i });
     const saveButton = screen.getByRole("button", { name: /^save$/i });
 
     fireEvent.keyDown(window, { key: "ArrowDown" });
@@ -144,13 +127,11 @@ describe("SettingsThemePage keyboard behavior", () => {
     renderPage();
 
     const preview = screen.getByTestId("theme-preview-root");
-    const darkRadio = getRadio("dark");
-    const cancelButton = screen.getByRole("button", { name: /cancel/i });
+    const darkRadio = screen.getByRole("radio", { name: /dark/i });
 
     fireEvent.keyDown(window, { key: "ArrowDown" });
     fireEvent.keyDown(window, { key: "ArrowDown" });
     fireEvent.keyDown(window, { key: "ArrowDown" });
-    expect(hasClassToken(cancelButton, "ring-tui-blue")).toBe(true);
 
     fireEvent.mouseEnter(darkRadio);
     expect(preview.getAttribute("data-theme")).toBe("dark");
@@ -159,7 +140,7 @@ describe("SettingsThemePage keyboard behavior", () => {
   it("still selects theme by clicking list items", () => {
     renderPage();
 
-    const darkRadio = getRadio("dark");
+    const darkRadio = screen.getByRole("radio", { name: /dark/i });
     const saveButton = screen.getByRole("button", { name: /^save$/i });
 
     fireEvent.click(darkRadio);

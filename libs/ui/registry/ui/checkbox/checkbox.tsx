@@ -1,6 +1,17 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type AriaAttributes, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type Ref } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type AriaAttributes,
+  type ComponentPropsWithRef,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
+  type ReactNode,
+  type Ref,
+} from "react";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { useFormReset } from "@/hooks/use-form-reset";
 import { composeRefs } from "@/lib/compose-refs";
@@ -16,10 +27,12 @@ import {
 } from "@/lib/selectable-variants";
 import { cn } from "@/lib/utils";
 
-function resolveCheckboxState(indeterminate: boolean, checked: boolean) {
-  if (indeterminate) return "indeterminate" as const;
-  if (checked) return "checked" as const;
-  return "unchecked" as const;
+type CheckboxState = "indeterminate" | "checked" | "unchecked";
+
+function resolveCheckboxState(indeterminate: boolean, checked: boolean): CheckboxState {
+  if (indeterminate) return "indeterminate";
+  if (checked) return "checked";
+  return "unchecked";
 }
 
 function resolveAriaInvalid(
@@ -38,11 +51,28 @@ export type CheckboxSize = SelectableSize;
 
 export type CheckboxVariant = SelectableVariant;
 
-export type CheckboxProps = {
+type CheckboxRootProps = Omit<
+  ComponentPropsWithRef<"div">,
+  | "children"
+  | "role"
+  | "aria-checked"
+  | "aria-disabled"
+  | "aria-required"
+  | "aria-invalid"
+  | "aria-label"
+  | "aria-labelledby"
+  | "aria-describedby"
+  | "tabIndex"
+  | "onChange"
+  | "className"
+  | "ref"
+  | "data-value"
+>;
+
+export type CheckboxProps = CheckboxRootProps & {
   checked?: boolean | "indeterminate";
   defaultChecked?: boolean;
   onChange?: (checked: boolean) => void;
-  onMouseEnter?: () => void;
   label?: ReactNode;
   description?: ReactNode;
   disabled?: boolean;
@@ -65,6 +95,8 @@ export function Checkbox({
   checked: controlledChecked,
   defaultChecked = false,
   onChange,
+  onClick,
+  onKeyDown,
   onMouseEnter,
   label,
   description,
@@ -82,6 +114,7 @@ export function Checkbox({
   className,
   "data-value": dataValue,
   ref,
+  ...rootProps
 }: CheckboxProps) {
   const generatedId = useId();
   const labelId = `${generatedId}-label`;
@@ -113,7 +146,22 @@ export function Checkbox({
     setIsChecked(!isChecked);
   };
 
-  const handleKeyDown = (e: ReactKeyboardEvent) => {
+  const handleClick = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (disabled) {
+      event.preventDefault();
+      return;
+    }
+    onClick?.(event);
+    if (!event.defaultPrevented) toggle();
+  };
+
+  const handleKeyDown = (e: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (disabled) {
+      e.preventDefault();
+      return;
+    }
+    onKeyDown?.(e);
+    if (e.defaultPrevented) return;
     if (e.key === " ") {
       e.preventDefault();
       toggle();
@@ -145,9 +193,11 @@ export function Checkbox({
         />
       )}
       <div
+        {...rootProps}
         ref={composeRefs(rootRef, ref)}
         role="checkbox"
-        data-value={dataValue}
+        data-value={dataValue ?? value}
+        data-highlighted={highlighted ? "true" : undefined}
         aria-checked={isIndeterminate ? "mixed" : isChecked}
         aria-disabled={disabled || undefined}
         aria-required={required || undefined}
@@ -156,7 +206,7 @@ export function Checkbox({
         aria-labelledby={!ariaLabel && label ? labelId : undefined}
         aria-describedby={description ? descriptionId : undefined}
         tabIndex={disabled ? -1 : 0}
-        onClick={toggle}
+        onClick={handleClick}
         onKeyDown={handleKeyDown}
         onMouseEnter={onMouseEnter}
         className={cn(
