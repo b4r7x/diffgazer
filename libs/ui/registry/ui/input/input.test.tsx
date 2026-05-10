@@ -72,6 +72,17 @@ describe("Input", () => {
     expect(screen.getByRole("textbox", { name: "Path" })).toHaveValue("config")
   })
 
+  it("keeps interactive InputGroup suffix content accessible", () => {
+    render(
+      <InputGroup
+        aria-label="Path"
+        suffix={<button type="button">Browse</button>}
+      />,
+    )
+
+    expect(screen.getByRole("button", { name: "Browse" })).toBeInTheDocument()
+  })
+
   it("exposes InputGroup invalid state through the nested input", () => {
     render(<InputGroup aria-label="Path" invalid />)
 

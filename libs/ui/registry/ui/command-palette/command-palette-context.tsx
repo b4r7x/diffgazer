@@ -6,7 +6,6 @@ import type { CommandPaletteItemRegistration } from "./use-command-palette-state
 export interface CommandPaletteContextValue {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  previousFocusRef: RefObject<Element | null>;
   highlightedId: string | null;
   onActivate: (id: string) => void;
   search: string;

@@ -50,4 +50,26 @@ describe("KeyValue", () => {
 
     expect(children).toEqual(["Status", "Ready", "Owner", "Docs"])
   })
+
+  it("applies label and value class slots without changing description list semantics", () => {
+    render(
+      <KeyValue>
+        <KeyValue.Item
+          label="Status"
+          value="Ready"
+          labelClassName="custom-label"
+          valueClassName="custom-value"
+        />
+      </KeyValue>,
+    )
+
+    const label = screen.getByText("Status")
+    const value = screen.getByText("Ready")
+
+    expect(label.tagName).toBe("DT")
+    expect(value.tagName).toBe("DD")
+    expect(label).toHaveClass("custom-label")
+    expect(value).toHaveClass("custom-value")
+    expect(label.nextElementSibling).toBe(value)
+  })
 })

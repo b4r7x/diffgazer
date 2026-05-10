@@ -52,12 +52,17 @@ function FileList() {
 | `orientation` | `"vertical"` | `"vertical"` or `"horizontal"` (determines arrow key direction) |
 | `onSelect` | — | Space key callback |
 | `onEnter` | — | Enter key callback (falls back to `onSelect`) |
+| `onHighlightChange` | — | Called when keyboard navigation changes highlight |
+| `onNavigationBoundaryReached` | — | Called with `"previous"` or `"next"` when `wrap={false}` hits an edge |
+| `moveFocus` | `false` | Move DOM focus to the highlighted item instead of only updating highlight state |
+| `scopeToContainer` | `true` | Exclude nested composite widgets from the item query |
 
 ### DOM requirements
 
-- Items must have `[role="${role}"]` and `data-value` attributes
+- Items must have `[role="${role}"]` and `data-value` attributes, or the `data-diffgazer-navigation-item` contract from `getNavigationItemProps()`
 - Calls `scrollIntoView({ block: "nearest" })` on focus changes
 - Skips `[aria-disabled="true"]` elements by default
+- Typed `data-diffgazer-navigation-item` values keep mixed widgets separate, for example option navigation does not pick up radio items in the same subtree
 
 ### With @diffgazer/ui components
 

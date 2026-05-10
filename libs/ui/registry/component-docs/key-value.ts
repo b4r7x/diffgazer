@@ -29,6 +29,11 @@ export const keyValueDoc: ComponentDoc = {
       content:
         "Horizontal layout (default) places label and value side-by-side. Vertical layout stacks them with a small gap. Both label and value accept ReactNode.",
     },
+    {
+      title: "Class Slots",
+      content:
+        "Use labelClassName and valueClassName for app-specific label/value styling while preserving the <dl>/<dt>/<dd> structure.",
+    },
   ],
   usage: { example: "key-value-default" },
   examples: [

@@ -7,8 +7,14 @@ import {
   type KeyboardEvent,
 } from "react";
 import { resolveDirectionKeys, dispatchNavigationKey } from "./internal/navigation-dispatch.js";
+import {
+  containsActiveElement,
+  getFocusedNavigationValue,
+  getNavigationItems,
+  type NavigationItemType,
+} from "../utils/navigation-items.js";
 
-export type NavigationRole = "radio" | "checkbox" | "option" | "menuitem" | "menuitemradio" | "button" | "tab";
+export type NavigationRole = NavigationItemType;
 
 export interface UseNavigationOptions {
   containerRef: RefObject<HTMLElement | null>;
@@ -50,119 +56,25 @@ interface UseNavigationCoreReturn {
   getElements: () => HTMLElement[];
 }
 
-const navigationItemDataAttributes = [
-  "data-diffgazer-navigation-item",
-  "data-navigation-item",
-] as const;
-
-function disabledSelector(skipDisabled: boolean): string {
-  return skipDisabled
-    ? ':not([aria-disabled="true"]):not([data-disabled]):not(:disabled)'
-    : "";
-}
-
-function findElements(container: HTMLElement, selector: string): HTMLElement[] {
-  return Array.from(container.querySelectorAll<HTMLElement>(selector));
-}
-
-function queryFirstMatchingGroup(
-  container: HTMLElement,
-  selectors: string[],
-  filter?: (element: HTMLElement) => boolean,
-): HTMLElement[] {
-  for (const selector of selectors) {
-    const elements = filter
-      ? findElements(container, selector).filter(filter)
-      : findElements(container, selector);
-    if (elements.length > 0) return elements;
-  }
-  return [];
-}
-
-function buildNavigationSelectors(role: NavigationRole, skipDisabled: boolean): string[] {
-  const disabled = disabledSelector(skipDisabled);
-  const dataContractSelectors = navigationItemDataAttributes.flatMap((attribute) => [
-    `[${attribute}="${role}"][data-value]${disabled}`,
-    `[${attribute}="true"][data-value]${disabled}`,
-    `[${attribute}=""][data-value]${disabled}`,
-    `[${attribute}][data-value]${disabled}`,
-  ]);
-  const nativeRoleSelectors: Partial<Record<NavigationRole, string[]>> = {
-    button: [`button[data-value]${disabled}`],
-    checkbox: [`input[type="checkbox"][data-value]${disabled}`],
-    radio: [`input[type="radio"][data-value]${disabled}`],
-  };
-
-  return [
-    dataContractSelectors.join(","),
-    `[role="${role}"][data-value]${disabled}`,
-    ...(nativeRoleSelectors[role] ?? []),
-    `[role="${role}"]${disabled}`,
-  ];
-}
-
-function ownerSelectorForRole(role: NavigationRole): string | null {
-  switch (role) {
-    case "radio":
-      return '[role="radiogroup"]';
-    case "checkbox":
-      return '[role="group"]';
-    case "option":
-      return '[role="listbox"]';
-    case "menuitem":
-    case "menuitemradio":
-      return '[role="menu"]';
-    case "tab":
-      return '[role="tablist"]';
-    case "button":
-      return null;
-  }
-}
-
-function isOwnedByContainer(element: HTMLElement, container: HTMLElement, role: NavigationRole) {
-  const ownerSelector = ownerSelectorForRole(role);
-  if (!ownerSelector) return true;
-
-  const owner = element.closest(ownerSelector);
-  return owner === null || owner === container;
-}
-
-function queryElements(
+function queryNavigationElements(
   containerRef: RefObject<HTMLElement | null>,
   role: NavigationRole,
   skipDisabled: boolean,
   scopeToContainer: boolean,
   ownerSelector: string | null | undefined,
 ): HTMLElement[] {
-  if (!containerRef.current) return [];
-  const container = containerRef.current;
-  const ownerFilter = scopeToContainer
-    ? (element: HTMLElement) => {
-        if (ownerSelector !== undefined) {
-          const owner = ownerSelector === null ? null : element.closest(ownerSelector);
-          return owner === null || owner === container;
-        }
-        return isOwnedByContainer(element, container, role);
-      }
-    : undefined;
-
-  return queryFirstMatchingGroup(
-    container,
-    buildNavigationSelectors(role, skipDisabled),
-    ownerFilter,
-  );
+  return getNavigationItems(containerRef.current, {
+    type: role,
+    skipDisabled,
+    scopeToContainer,
+    ownerSelector,
+  });
 }
 
 function wrapIndex(index: number, length: number, wrap: boolean): number | null {
   if (index < 0) return wrap ? length - 1 : null;
   if (index >= length) return wrap ? 0 : null;
   return index;
-}
-
-function containsActiveElement(el: HTMLElement): boolean {
-  const activeElement = el.ownerDocument.activeElement;
-  const View = el.ownerDocument.defaultView;
-  return Boolean(View && activeElement instanceof View.HTMLElement && el.contains(activeElement));
 }
 
 export function useNavigationCore({
@@ -192,7 +104,7 @@ export function useNavigationCore({
   }, [isControlled, onValueChange, onHighlightChange]);
 
   const getElements = useCallback(
-    () => queryElements(containerRef, role, skipDisabled, scopeToContainer, ownerSelector),
+    () => queryNavigationElements(containerRef, role, skipDisabled, scopeToContainer, ownerSelector),
     [containerRef, role, skipDisabled, scopeToContainer, ownerSelector],
   );
 
@@ -212,16 +124,22 @@ export function useNavigationCore({
   }, [getElements, highlighted]);
 
   const getCurrentValue = useCallback((): string | null => {
+    const focusedValue = getFocusedNavigationValue(containerRef.current, {
+      type: role,
+      skipDisabled,
+      scopeToContainer,
+      ownerSelector,
+    });
+    if (focusedValue !== null) return focusedValue;
+
     const elements = getElements();
-    const focusedItem = elements.find(containsActiveElement);
-    if (focusedItem?.dataset.value !== undefined) return focusedItem.dataset.value;
 
     if (highlighted !== null) {
       return elements.some((el) => el.dataset.value === highlighted) ? highlighted : null;
     }
 
     return null;
-  }, [getElements, highlighted]);
+  }, [containerRef, getElements, highlighted, ownerSelector, role, scopeToContainer, skipDisabled]);
 
   const focusIndex = useCallback((index: number) => {
     const elements = getElements();
@@ -275,20 +193,28 @@ export function useNavigation(options: UseNavigationOptions): UseNavigationRetur
     orientation = "vertical",
     upKeys,
     downKeys,
-    moveFocus,
+    moveFocus = false,
+    onEnter,
+    onSelect,
   } = options;
 
   const { resolvedUpKeys, resolvedDownKeys } = resolveDirectionKeys(orientation, upKeys, downKeys);
 
   const { highlighted, isHighlighted, highlight, move, focusIndex, handleSelect, handleEnter, getElements } =
     useNavigationCore(options);
+  const handlesEnter = !moveFocus || Boolean(onEnter || onSelect);
+  const handlesSpace = !moveFocus || Boolean(onSelect);
 
   const onKeyDown = useCallback((event: KeyboardEvent) => {
     if (!enabled) return;
 
     const key = event.key;
     const isMoveKey = resolvedUpKeys.includes(key) || resolvedDownKeys.includes(key);
-    const isSpecialKey = key === "Home" || key === "End" || (!moveFocus && (key === "Enter" || key === " "));
+    const isSpecialKey =
+      key === "Home"
+      || key === "End"
+      || (key === "Enter" && handlesEnter)
+      || (key === " " && handlesSpace);
     if (!isMoveKey && !isSpecialKey) return;
 
     if (preventDefault) event.preventDefault();
@@ -298,8 +224,8 @@ export function useNavigation(options: UseNavigationOptions): UseNavigationRetur
       resolvedDownKeys,
       move,
       focusIndex,
-      handleSelect: moveFocus ? undefined : (e) => handleSelect(e),
-      handleEnter: moveFocus ? undefined : (e) => handleEnter(e),
+      handleSelect: handlesSpace ? (e) => handleSelect(e) : undefined,
+      handleEnter: handlesEnter ? (e) => handleEnter(e) : undefined,
       total: getElements().length,
       nativeEvent: event.nativeEvent,
     });
@@ -308,7 +234,8 @@ export function useNavigation(options: UseNavigationOptions): UseNavigationRetur
     resolvedUpKeys,
     resolvedDownKeys,
     preventDefault,
-    moveFocus,
+    handlesEnter,
+    handlesSpace,
     move,
     focusIndex,
     handleSelect,

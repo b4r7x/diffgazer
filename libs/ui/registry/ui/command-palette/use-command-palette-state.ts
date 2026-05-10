@@ -48,7 +48,6 @@ export function useCommandPaletteState({
     onChange: onHighlightChange,
   });
   const listRef = useRef<HTMLDivElement>(null);
-  const previousFocusRef = useRef<Element | null>(null);
   const paletteId = useId();
   const activeItems = useMemo(
     () => sortSelectableCollectionItems(registeredItems)
@@ -62,9 +61,6 @@ export function useCommandPaletteState({
   const itemIds = useMemo(() => activeItems.map((item) => item.id), [activeItems]);
 
   const handleOpenChange = useCallback((next: boolean) => {
-    if (next && !previousFocusRef.current && typeof document !== "undefined") {
-      previousFocusRef.current = document.activeElement;
-    }
     if (!next) setSearch("");
     setIsOpen(next);
   }, [setIsOpen, setSearch]);
@@ -101,7 +97,7 @@ export function useCommandPaletteState({
   const navKeyDown = rawNavKeyDown;
 
   return useMemo(() => ({
-    open: isOpen, onOpenChange: handleOpenChange, previousFocusRef, highlightedId: getEffectiveHighlightedId(highlightedId, itemIds, isHighlightedControlled),
+    open: isOpen, onOpenChange: handleOpenChange, highlightedId: getEffectiveHighlightedId(highlightedId, itemIds, isHighlightedControlled),
     onActivate: handleActivate, search, onSearchChange: setSearch,
     shouldFilter, filter, itemCount: itemIds.length,
     listId: `${paletteId}-list`, listRef, navKeyDown, registerItem, unregisterItem,

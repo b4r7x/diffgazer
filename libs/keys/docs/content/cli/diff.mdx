@@ -5,7 +5,7 @@ description: Compare installed @diffgazer/keys hook files with bundled versions.
 
 ```bash
 pnpm exec dgadd diff keys/navigation
-pnpm exec dgadd diff keys/focus-trap keys/scroll-lock
+pnpm exec dgadd diff keys/focus-trap keys/focus-restore keys/scroll-lock
 ```
 
 Before publication, install a locally packed `@diffgazer/add` tarball into the target app and run `pnpm exec dgadd`. Use `npx @diffgazer/add diff ...` only after `npm view @diffgazer/add version` succeeds.

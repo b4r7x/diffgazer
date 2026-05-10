@@ -17,6 +17,8 @@ import { composeRefs } from "@/lib/compose-refs";
 import {
   getEnabledSelectableCollectionItems,
   getSelectableCollectionItemValue,
+  resolveSelectableCollectionItem,
+  resolveSelectableCollectionItemValue,
   useSelectableCollection,
   type SelectableCollectionItem,
 } from "@/lib/selectable-collection";
@@ -54,7 +56,10 @@ export interface RadioGroupProps extends RadioGroupRootProps {
   wrap?: boolean;
   keyboardNavigation?: boolean;
   activationMode?: RadioGroupActivationMode;
-  onNavigationBoundaryReached?: (direction: RadioGroupBoundaryDirection) => void;
+  onNavigationBoundaryReached?: (
+    direction: RadioGroupBoundaryDirection,
+    event: ReactKeyboardEvent<HTMLDivElement>,
+  ) => void;
   disabled?: boolean;
   autoFocus?: boolean;
   size?: RadioSize;
@@ -62,7 +67,6 @@ export interface RadioGroupProps extends RadioGroupRootProps {
   name?: string;
   required?: boolean;
   label?: string;
-  labelledBy?: string;
   "aria-label"?: string;
   "aria-labelledby"?: string;
   className?: string;
@@ -101,7 +105,6 @@ export function RadioGroup(props: RadioGroupProps) {
     name,
     required,
     label,
-    labelledBy,
     "aria-label": ariaLabel,
     "aria-labelledby": ariaLabelledBy,
     className,
@@ -136,8 +139,9 @@ export function RadioGroup(props: RadioGroupProps) {
   const enabledItems = getEnabledSelectableCollectionItems(items, disabled);
   const validHighlightedValue = getSelectableCollectionItemValue(enabledItems, highlightedValue);
   const validSelectedValue = getSelectableCollectionItemValue(enabledItems, value);
-  const tabTargetValue =
-    validSelectedValue ?? validHighlightedValue ?? enabledItems[0]?.value ?? null;
+  const tabTargetValue = activationMode === "manual"
+    ? resolveSelectableCollectionItemValue(enabledItems, highlightedValue, value)
+    : resolveSelectableCollectionItemValue(enabledItems, value, highlightedValue);
 
   useEffect(() => {
     if (!autoFocus || !keyboardNavigation || disabled) {
@@ -147,12 +151,7 @@ export function RadioGroup(props: RadioGroupProps) {
     if (hasAutoFocusedRef.current) return;
 
     const activeItems = getEnabledSelectableCollectionItems(items, disabled);
-    const focusValue =
-      getSelectableCollectionItemValue(activeItems, highlightedValue)
-      ?? getSelectableCollectionItemValue(activeItems, value)
-      ?? activeItems[0]?.value
-      ?? null;
-    const target = activeItems.find((item) => item.value === focusValue) ?? activeItems[0];
+    const target = resolveSelectableCollectionItem(activeItems, highlightedValue, value);
     if (!target?.element) return;
 
     target.element.focus();
@@ -211,7 +210,7 @@ export function RadioGroup(props: RadioGroupProps) {
     if (item) moveToItem(item, direction);
   };
 
-  const moveItem = (delta: 1 | -1) => {
+  const moveItem = (delta: 1 | -1, event: ReactKeyboardEvent<HTMLDivElement>) => {
     const enabledItems = getEnabledSelectableCollectionItems(items, disabled);
     if (enabledItems.length === 0) return;
 
@@ -221,7 +220,7 @@ export function RadioGroup(props: RadioGroupProps) {
 
     if (nextIndex < 0 || nextIndex >= enabledItems.length) {
       if (!wrap) {
-        onNavigationBoundaryReached?.(delta < 0 ? "previous" : "next");
+        onNavigationBoundaryReached?.(delta < 0 ? "previous" : "next", event);
         return;
       }
       focusItemAtIndex(delta < 0 ? enabledItems.length - 1 : 0, direction);
@@ -249,12 +248,12 @@ export function RadioGroup(props: RadioGroupProps) {
       case "ArrowUp":
       case "ArrowLeft":
         event.preventDefault();
-        moveItem(-1);
+        moveItem(-1, event);
         return;
       case "ArrowDown":
       case "ArrowRight":
         event.preventDefault();
-        moveItem(1);
+        moveItem(1, event);
         return;
       case "Home":
         event.preventDefault();
@@ -265,13 +264,13 @@ export function RadioGroup(props: RadioGroupProps) {
         focusItemAtIndex(enabledItems.length - 1, "last");
         return;
       case "Enter": {
-        if (!onEnter) return;
         const item = getCurrentItem();
         if (!item) return;
         event.preventDefault();
         setHighlightedValue(item.value);
         setRequiredInvalid(false);
-        onEnter(item.value, event);
+        handleValueChange(item.value);
+        onEnter?.(item.value, event);
         return;
       }
     }
@@ -319,7 +318,7 @@ export function RadioGroup(props: RadioGroupProps) {
         role="radiogroup"
         data-diffgazer-selectable-owner="radio"
         aria-label={ariaLabel ?? label}
-        aria-labelledby={ariaLabelledBy ?? labelledBy}
+        aria-labelledby={ariaLabelledBy}
         aria-orientation={orientation}
         aria-required={required || undefined}
         aria-invalid={requiredInvalid && validSelectedValue === null ? true : undefined}

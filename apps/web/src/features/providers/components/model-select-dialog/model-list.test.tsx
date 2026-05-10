@@ -32,11 +32,86 @@ describe("ModelList", () => {
         isFocused
         onSelect={vi.fn()}
         onConfirm={onConfirm}
+        onHighlightChange={vi.fn()}
+        onBoundaryReached={vi.fn()}
       />,
     );
 
     await user.dblClick(screen.getByRole("radio", { name: /Model B/ }));
 
     expect(onConfirm).toHaveBeenCalledWith("model-b");
+  });
+
+  it("keeps one tabbable radio while list keyboard navigation is active", () => {
+    render(
+      <ModelList
+        models={MODELS}
+        focusedModelId="model-a"
+        currentModelId="model-a"
+        isFocused
+        onSelect={vi.fn()}
+        onConfirm={vi.fn()}
+        onHighlightChange={vi.fn()}
+        onBoundaryReached={vi.fn()}
+      />,
+    );
+
+    expect(screen.getAllByRole("radio").map((radio) => radio.getAttribute("tabindex")))
+      .toEqual(["0", "-1"]);
+  });
+
+  it("does not hand off focus on horizontal boundary keys", async () => {
+    const user = userEvent.setup();
+    const onBoundaryReached = vi.fn();
+
+    render(
+      <ModelList
+        models={MODELS}
+        focusedModelId="model-a"
+        currentModelId="model-a"
+        isFocused
+        onSelect={vi.fn()}
+        onConfirm={vi.fn()}
+        onHighlightChange={vi.fn()}
+        onBoundaryReached={onBoundaryReached}
+      />,
+    );
+
+    screen.getByRole("radio", { name: /Model A/ }).focus();
+    await user.keyboard("{ArrowLeft}");
+
+    expect(onBoundaryReached).not.toHaveBeenCalled();
+
+    screen.getByRole("radio", { name: /Model B/ }).focus();
+    await user.keyboard("{ArrowRight}");
+
+    expect(onBoundaryReached).not.toHaveBeenCalled();
+  });
+
+  it("hands off focus on vertical boundary keys", async () => {
+    const user = userEvent.setup();
+    const onBoundaryReached = vi.fn();
+
+    render(
+      <ModelList
+        models={MODELS}
+        focusedModelId="model-a"
+        currentModelId="model-a"
+        isFocused
+        onSelect={vi.fn()}
+        onConfirm={vi.fn()}
+        onHighlightChange={vi.fn()}
+        onBoundaryReached={onBoundaryReached}
+      />,
+    );
+
+    screen.getByRole("radio", { name: /Model A/ }).focus();
+    await user.keyboard("{ArrowUp}");
+    expect(onBoundaryReached).toHaveBeenCalledWith("previous");
+
+    onBoundaryReached.mockClear();
+    screen.getByRole("radio", { name: /Model B/ }).focus();
+    await user.keyboard("{ArrowDown}");
+    expect(onBoundaryReached).toHaveBeenCalledWith("next");
   });
 });

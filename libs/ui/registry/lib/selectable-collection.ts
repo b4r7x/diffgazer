@@ -50,7 +50,7 @@ export function getEnabledSelectableCollectionItems(
 export function getSelectableCollectionItemByValue(
   items: SelectableCollectionItem[],
   value: string | null | undefined,
-) {
+): SelectableCollectionItem | null {
   if (value == null) return null;
   return items.find((item) => item.value === value && !item.disabled) ?? null;
 }
@@ -58,8 +58,30 @@ export function getSelectableCollectionItemByValue(
 export function getSelectableCollectionItemValue(
   items: SelectableCollectionItem[],
   value: string | null | undefined,
-) {
+): string | null {
   return getSelectableCollectionItemByValue(items, value)?.value ?? null;
+}
+
+export function resolveSelectableCollectionItem(
+  items: SelectableCollectionItem[],
+  ...values: Array<string | null | undefined>
+): SelectableCollectionItem | null {
+  const enabledItems = sortSelectableCollectionItems(items)
+    .filter((item) => !item.disabled && item.element !== null);
+
+  for (const value of values) {
+    const item = getSelectableCollectionItemByValue(enabledItems, value);
+    if (item) return item;
+  }
+
+  return enabledItems[0] ?? null;
+}
+
+export function resolveSelectableCollectionItemValue(
+  items: SelectableCollectionItem[],
+  ...values: Array<string | null | undefined>
+): string | null {
+  return resolveSelectableCollectionItem(items, ...values)?.value ?? null;
 }
 
 export function useSelectableCollection(containerRef: RefObject<HTMLElement | null>) {

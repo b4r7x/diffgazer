@@ -26,7 +26,7 @@ Use `dgadd` when you want source-owned standalone hooks with no package runtime 
 ```bash
 pnpm exec dgadd init
 pnpm exec dgadd add keys/navigation
-pnpm exec dgadd add keys/focus-trap keys/scroll-lock
+pnpm exec dgadd add keys/focus-trap keys/focus-restore keys/scroll-lock
 ```
 
 `@diffgazer/add` is also publish-gated. Before publication, install a local `@diffgazer/add` tarball into a fixture app and run `pnpm exec dgadd`. Use `npx @diffgazer/add ...` only after `npm view @diffgazer/add version` succeeds.

@@ -142,6 +142,14 @@ function queryFirstMatchingGroup(
   return [];
 }
 
+function matchesNavigationDataContract(element: HTMLElement, role: NavigationRole): boolean {
+  const explicitRoles = navigationItemDataAttributes
+    .map((attribute) => element.getAttribute(attribute))
+    .filter((value): value is string => value !== null && value !== "" && value !== "true");
+
+  return explicitRoles.length === 0 || explicitRoles.includes(role);
+}
+
 function buildNavigationSelectors(role: NavigationRole, skipDisabled: boolean): string[] {
   const disabled = disabledSelector(skipDisabled);
   const dataContractSelectors = navigationItemDataAttributes.flatMap((attribute) => [
@@ -201,13 +209,14 @@ function queryElements(
   const container = containerRef.current;
   const ownerFilter = scopeToContainer
     ? (element: HTMLElement) => {
+        if (!matchesNavigationDataContract(element, role)) return false;
         if (ownerSelector !== undefined) {
           const owner = ownerSelector === null ? null : element.closest(ownerSelector);
           return owner === null || owner === container;
         }
         return isOwnedByContainer(element, container, role);
       }
-    : undefined;
+    : (element: HTMLElement) => matchesNavigationDataContract(element, role);
 
   return queryFirstMatchingGroup(
     container,
@@ -338,18 +347,26 @@ export function useNavigation(options: UseNavigationOptions): UseNavigationRetur
     upKeys,
     downKeys,
     moveFocus = false,
+    onEnter,
+    onSelect,
   } = options;
 
   const { resolvedUpKeys, resolvedDownKeys } = resolveDirectionKeys(orientation, upKeys, downKeys);
   const { highlighted, isHighlighted, highlight, move, focusIndex, handleSelect, handleEnter, getElements } =
     useNavigationCore(options);
+  const handlesEnter = !moveFocus || Boolean(onEnter || onSelect);
+  const handlesSpace = !moveFocus || Boolean(onSelect);
 
   const onKeyDown = useCallback((event: KeyboardEvent) => {
     if (!enabled) return;
 
     const key = event.key;
     const isMoveKey = resolvedUpKeys.includes(key) || resolvedDownKeys.includes(key);
-    const isSpecialKey = key === "Home" || key === "End" || (!moveFocus && (key === "Enter" || key === " "));
+    const isSpecialKey =
+      key === "Home"
+      || key === "End"
+      || (key === "Enter" && handlesEnter)
+      || (key === " " && handlesSpace);
     if (!isMoveKey && !isSpecialKey) return;
 
     if (preventDefault) event.preventDefault();
@@ -359,8 +376,8 @@ export function useNavigation(options: UseNavigationOptions): UseNavigationRetur
       resolvedDownKeys,
       move,
       focusIndex,
-      handleSelect: moveFocus ? undefined : (nativeEvent) => handleSelect(nativeEvent),
-      handleEnter: moveFocus ? undefined : (nativeEvent) => handleEnter(nativeEvent),
+      handleSelect: handlesSpace ? (nativeEvent) => handleSelect(nativeEvent) : undefined,
+      handleEnter: handlesEnter ? (nativeEvent) => handleEnter(nativeEvent) : undefined,
       total: getElements().length,
       nativeEvent: event.nativeEvent,
     });
@@ -369,7 +386,8 @@ export function useNavigation(options: UseNavigationOptions): UseNavigationRetur
     resolvedUpKeys,
     resolvedDownKeys,
     preventDefault,
-    moveFocus,
+    handlesEnter,
+    handlesSpace,
     move,
     focusIndex,
     handleSelect,

@@ -47,6 +47,28 @@ interface UseFocusTrapOptions {
 }
 ```
 
+## RestoreFocusOptions
+
+Options for `restoreFocus()` and [useFocusRestore](/keys/docs/hooks/use-focus-restore).
+
+```ts
+interface RestoreFocusOptions {
+  preventScroll?: boolean;
+}
+```
+
+## UseFocusRestoreOptions
+
+Options for [useFocusRestore](/keys/docs/hooks/use-focus-restore).
+
+```ts
+interface UseFocusRestoreOptions extends RestoreFocusOptions {
+  enabled?: boolean;
+  restoreOnUnmount?: boolean;
+  fallback?: HTMLElement | null;
+}
+```
+
 ## NavigationRole
 
 Used by [useNavigation](/keys/docs/hooks/use-navigation) and [useScopedNavigation](/keys/docs/hooks/use-scoped-navigation) to determine which DOM elements are navigable.

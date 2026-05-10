@@ -8,6 +8,7 @@ import { composeRefs } from "@/lib/compose-refs";
 import {
   getEnabledSelectableCollectionItems,
   getSelectableCollectionItemValue,
+  resolveSelectableCollectionItemValue,
   useSelectableCollection,
 } from "@/lib/selectable-collection";
 import { cn } from "@/lib/utils";
@@ -74,9 +75,7 @@ export function ToggleGroup({
 
   const enabledItems = getEnabledSelectableCollectionItems(items, disabled);
   const validHighlightedValue = getSelectableCollectionItemValue(enabledItems, highlightedValue);
-  const validSelectedValue = getSelectableCollectionItemValue(enabledItems, value);
-  const tabTargetValue =
-    validHighlightedValue ?? validSelectedValue ?? enabledItems.find((item) => !item.disabled)?.value ?? null;
+  const tabTargetValue = resolveSelectableCollectionItemValue(enabledItems, highlightedValue, value);
 
   const { onKeyDown: navKeyDown } = useNavigation({
     containerRef,

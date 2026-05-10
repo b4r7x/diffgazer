@@ -21,6 +21,10 @@ const inputGroupVariants = cva(
 
 type InputGroupVariantProps = VariantProps<typeof inputGroupVariants>;
 
+function isPlainDecorativeAffix(value: ReactNode) {
+  return typeof value === "string" || typeof value === "number";
+}
+
 export interface InputGroupProps
   extends Omit<InputHTMLAttributes<HTMLInputElement>, "size" | "prefix"> {
   ref?: Ref<HTMLInputElement>;
@@ -46,6 +50,8 @@ export function InputGroup({
   ...props
 }: InputGroupProps) {
   const invalidState = resolveInputInvalidState(invalid, error, ariaInvalid);
+  const hidePrefix = isPlainDecorativeAffix(prefix);
+  const hideSuffix = isPlainDecorativeAffix(suffix);
 
   return (
     <div
@@ -57,7 +63,11 @@ export function InputGroup({
       )}
     >
       {prefix !== undefined && prefix !== null && (
-        <span data-slot="input-group-prefix" className="shrink-0 text-muted-foreground">
+        <span
+          data-slot="input-group-prefix"
+          aria-hidden={hidePrefix ? "true" : undefined}
+          className="shrink-0 text-muted-foreground"
+        >
           {prefix}
         </span>
       )}
@@ -72,7 +82,11 @@ export function InputGroup({
         {...props}
       />
       {suffix !== undefined && suffix !== null && (
-        <span data-slot="input-group-suffix" className="shrink-0 text-muted-foreground">
+        <span
+          data-slot="input-group-suffix"
+          aria-hidden={hideSuffix ? "true" : undefined}
+          className="shrink-0 text-muted-foreground"
+        >
           {suffix}
         </span>
       )}

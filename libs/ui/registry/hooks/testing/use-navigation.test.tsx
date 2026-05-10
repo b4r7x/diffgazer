@@ -83,6 +83,32 @@ describe("useNavigation", () => {
     expect(screen.getByRole("button", { name: "B" })).toHaveFocus();
   });
 
+  it("ignores data-contract items typed for another role", async () => {
+    function MixedList() {
+      const ref = useRef<HTMLDivElement>(null);
+      const result = useNavigation({
+        containerRef: ref,
+        role: "button",
+        initialValue: "save",
+        moveFocus: true,
+      });
+
+      return (
+        <div ref={ref} role="group" aria-label="Actions" tabIndex={0} onKeyDown={result.onKeyDown}>
+          <div data-diffgazer-navigation-item="option" data-value="wrong">Wrong type</div>
+          <button data-value="save" type="button">Save</button>
+          <button data-value="cancel" type="button">Cancel</button>
+        </div>
+      );
+    }
+
+    render(<MixedList />);
+    screen.getByRole("button", { name: "Save" }).focus();
+    await userEvent.keyboard("{ArrowDown}");
+
+    expect(screen.getByRole("button", { name: "Cancel" })).toHaveFocus();
+  });
+
   it("starts forward navigation on the first enabled item when nothing is highlighted", async () => {
     function DataMarkedList() {
       const ref = useRef<HTMLDivElement>(null);

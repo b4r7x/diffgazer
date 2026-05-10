@@ -507,6 +507,191 @@ useScrollLock(panelRef, isOpen);
 
 ---
 
+## Navigation Item Utilities
+
+DOM helpers shared by `useNavigation` and composite widgets. Use these when building a keyboard-aware primitive that needs the same item discovery contract as `@diffgazer/keys`.
+
+```ts
+import {
+  NAVIGATION_ITEM_ATTRIBUTE,
+  getNavigationItemProps,
+  getNavigationItems,
+  containsActiveElement,
+  findNavigationItemByValue,
+  focusNavigationItem,
+  getFocusedNavigationValue,
+  getFocusableElements,
+} from "@diffgazer/keys";
+```
+
+### Signatures
+
+```ts
+const NAVIGATION_ITEM_ATTRIBUTE = "data-diffgazer-navigation-item";
+
+type NavigationItemType =
+  | "radio"
+  | "checkbox"
+  | "option"
+  | "menuitem"
+  | "menuitemradio"
+  | "button"
+  | "tab";
+
+interface NavigationItemQuery {
+  type: NavigationItemType;
+  skipDisabled?: boolean;
+  scopeToContainer?: boolean;
+  ownerSelector?: string | null;
+}
+
+function getNavigationItemProps(
+  type: NavigationItemType,
+  value: string,
+): {
+  "data-diffgazer-navigation-item": NavigationItemType;
+  "data-value": string;
+};
+
+function getNavigationItems(
+  container: HTMLElement | null,
+  query: NavigationItemQuery,
+): HTMLElement[];
+
+function containsActiveElement(element: HTMLElement): boolean;
+
+function findNavigationItemByValue(
+  container: HTMLElement | null,
+  query: NavigationItemQuery & { value: string },
+): HTMLElement | null;
+
+function focusNavigationItem(
+  container: HTMLElement | null,
+  query: NavigationItemQuery & {
+    value: string;
+    fallback?: "first" | "last" | "none";
+    preventScroll?: boolean;
+  },
+): string | null;
+
+function getFocusedNavigationValue(
+  container: HTMLElement | null,
+  query: NavigationItemQuery,
+): string | null;
+
+function getFocusableElements(container: HTMLElement | null): HTMLElement[];
+```
+
+### Example
+
+```tsx
+function PrimitiveOption({ value, children }: { value: string; children: ReactNode }) {
+  return (
+    <button type="button" {...getNavigationItemProps("option", value)}>
+      {children}
+    </button>
+  );
+}
+```
+
+### Behavior
+
+- The public data contract is `data-diffgazer-navigation-item` plus a stable `data-value`.
+- `getNavigationItems()` also supports the legacy `data-navigation-item`, matching ARIA roles, and native radio/checkbox/button controls.
+- `containsActiveElement()` is useful when a composite widget needs to know whether DOM focus is inside an item.
+- Typed data-contract markers only match their requested type, so an option query does not pick up radio items in the same subtree.
+- Disabled items are skipped by default when they use `aria-disabled="true"`, `data-disabled`, or native `disabled`.
+- Nested collection owners are scoped out by default. Pass `scopeToContainer: false` or an explicit `ownerSelector` only when parent navigation should intentionally include nested items.
+
+---
+
+## useFocusRestore
+
+React hook for capturing and restoring focus around overlays, panels, command palettes, and triggerless temporary UI.
+
+```ts
+import { useFocusRestore } from "@diffgazer/keys";
+```
+
+### Signatures
+
+```ts
+interface RestoreFocusOptions {
+  preventScroll?: boolean;
+}
+
+interface UseFocusRestoreOptions extends RestoreFocusOptions {
+  enabled?: boolean;
+  restoreOnUnmount?: boolean;
+  fallback?: HTMLElement | null;
+}
+
+interface UseFocusRestoreReturn {
+  capture: () => HTMLElement | null;
+  restore: () => boolean;
+  target: HTMLElement | null;
+}
+
+function useFocusRestore(options?: UseFocusRestoreOptions): UseFocusRestoreReturn;
+```
+
+### Example
+
+```tsx
+function Panel({ open, close }: { open: boolean; close: () => void }) {
+  const focusRestore = useFocusRestore();
+
+  function openPanel() {
+    focusRestore.capture();
+    // then move focus into the panel
+  }
+
+  function closePanel() {
+    close();
+    focusRestore.restore();
+  }
+
+  return open ? <button onClick={closePanel}>Close</button> : <button onClick={openPanel}>Open</button>;
+}
+```
+
+### Behavior
+
+- `useFocusRestore()` keeps a module-level stack so nested overlays restore focus in close order.
+- `capture()` should run before focus moves into temporary UI. `restore()` should run when that UI closes.
+- `restoreOnUnmount` defaults to `true`; set it to `false` when the owner handles restore explicitly.
+
+---
+
+## Focus Restore Utilities
+
+Plain DOM helpers used by `useFocusRestore`.
+
+```ts
+import {
+  getRestorableFocusTarget,
+  restoreFocus,
+} from "@diffgazer/keys";
+```
+
+### Signatures
+
+```ts
+function getRestorableFocusTarget(ownerDocument?: Document): HTMLElement | null;
+
+function restoreFocus(
+  target: HTMLElement | null,
+  options?: RestoreFocusOptions,
+): boolean;
+```
+
+### Behavior
+
+- `getRestorableFocusTarget()` returns the active HTMLElement unless focus is on `body`, `documentElement`, disconnected content, or no DOM is available.
+- `restoreFocus()` focuses a connected target and returns whether focus actually moved there.
+
+---
+
 ## keys
 
 Utility to create a `Record<string, KeyHandler>` from an array of hotkeys and a single handler. Useful with the key-map overload of `useKey`.
@@ -597,5 +782,5 @@ Options for `useFocusTrap`. See [useFocusTrap](#usefocustrap).
 ### NavigationRole
 
 ```ts
-type NavigationRole = "radio" | "checkbox" | "option" | "menuitem" | "button" | "tab";
+type NavigationRole = "radio" | "checkbox" | "option" | "menuitem" | "menuitemradio" | "button" | "tab";
 ```

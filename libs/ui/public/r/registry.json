@@ -731,6 +731,7 @@
       "title": "Dialog",
       "description": "Modal dialog with compound components",
       "dependencies": [
+        "@diffgazer/keys",
         "class-variance-authority"
       ],
       "registryDependencies": [
@@ -1302,6 +1303,7 @@
       "title": "Command Palette",
       "description": "Terminal-inspired command palette with search, keyboard navigation, and grouped items",
       "dependencies": [
+        "@diffgazer/keys",
         "class-variance-authority"
       ],
       "registryDependencies": [
@@ -1935,8 +1937,7 @@
       "dependencies": [],
       "registryDependencies": [],
       "meta": {
-        "client": true,
-        "hidden": true
+        "client": true
       },
       "files": [
         {

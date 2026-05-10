@@ -28,4 +28,18 @@ describe("TimelineList", () => {
 
     expect(onSelect).toHaveBeenCalledWith("today");
   });
+
+  it("exposes section counts as option descriptions", () => {
+    render(
+      <TimelineList
+        items={items}
+        selectedId="all"
+        onSelect={vi.fn()}
+        keyboardEnabled={false}
+      />,
+    );
+
+    expect(screen.getByRole("option", { name: "All" })).toHaveAccessibleDescription("3 reviews");
+    expect(screen.getByRole("option", { name: "Yesterday" })).toHaveAccessibleDescription("1 review");
+  });
 });

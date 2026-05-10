@@ -8,6 +8,7 @@ const clientOutputs = [
   "dist/providers/keyboard-provider.js",
   "dist/context/keyboard-context.js",
   "dist/hooks/use-focus-trap.js",
+  "dist/hooks/use-focus-restore.js",
   "dist/hooks/use-focus-zone.js",
   "dist/hooks/use-key.js",
   "dist/hooks/use-navigation.js",

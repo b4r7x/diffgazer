@@ -9,7 +9,7 @@ import { usePageFooter } from "@/hooks/use-page-footer";
 import { useFooterNavigation } from "@/hooks/use-footer-navigation.js";
 import { useScope } from "@diffgazer/keys";
 import { useOnboarding } from "../hooks/use-onboarding";
-import { WizardProgress } from "./wizard-progress";
+import { HorizontalStepper } from "@diffgazer/ui/components/horizontal-stepper";
 import { StorageStep } from "./steps/storage-step";
 import { ProviderStep } from "./steps/provider-step";
 import { ApiKeyStep } from "./steps/api-key-step";
@@ -18,7 +18,7 @@ import { AnalysisStep } from "./steps/analysis-step";
 import { ExecutionStep } from "./steps/execution-step";
 import type { AgentExecution } from "@diffgazer/core/schemas/config";
 import { canProceed as canProceedForStep } from "../types.js";
-import type { WizardData } from "../types";
+import type { OnboardingStep, WizardData } from "../types";
 
 const STEP_TITLES: Record<string, string> = {
   storage: "Secrets Storage",
@@ -27,6 +27,15 @@ const STEP_TITLES: Record<string, string> = {
   model: "Model Selection",
   analysis: "Analysis Configuration",
   execution: "Agent Execution",
+};
+
+const STEP_LABELS: Record<OnboardingStep, string> = {
+  storage: "Storage",
+  provider: "Provider",
+  "api-key": "API Key",
+  model: "Model",
+  analysis: "Analysis",
+  execution: "Execution",
 };
 
 function clearCurrentFocus() {
@@ -289,7 +298,13 @@ export function OnboardingWizard() {
       }
     >
       <div className="space-y-4">
-        <WizardProgress steps={steps} currentStep={currentStep} />
+        <HorizontalStepper steps={steps} value={currentStep} aria-label="Setup progress">
+          {steps.map((step) => (
+            <HorizontalStepper.Step key={step} value={step}>
+              {STEP_LABELS[step]}
+            </HorizontalStepper.Step>
+          ))}
+        </HorizontalStepper>
         {error && (
           <Callout variant="error">
             {error}

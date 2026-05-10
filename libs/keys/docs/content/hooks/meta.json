@@ -1,6 +1,7 @@
 {
   "title": "Hooks",
   "pages": [
+    "use-focus-restore",
     "use-focus-trap",
     "use-focus-zone",
     "use-key",

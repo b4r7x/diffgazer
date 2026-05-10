@@ -7,7 +7,7 @@ description: Focus And Scroll guide for @diffgazer/keys hooks and patterns.
 
 > Try the [Focus Trap demo](https://github.com/b4r7x/diffgazer/tree/main/libs/keys/examples/playground) to see focus trapping in action.
 
-Two utility hooks for managing focus traps and scroll locking. Both are independent of `KeyboardProvider` and work anywhere in your component tree.
+Three utility hooks for managing focus traps, focus restoration, and scroll locking. All are independent of `KeyboardProvider` and work anywhere in your component tree.
 
 ## useFocusTrap
 
@@ -159,6 +159,47 @@ function Modal({ open, onClose }: { open: boolean; onClose: () => void }) {
 - `useScrollLock` prevents the page from scrolling behind it
 
 All three clean up on unmount or when `open` becomes `false`.
+
+---
+
+## useFocusRestore
+
+Captures the currently focused element before temporary UI opens, then restores focus when it closes. Use it when a component owns its own open/close lifecycle and is not already using a primitive such as `Dialog` or `CommandPalette` that restores focus for you.
+
+```tsx
+import { useEffect, useRef, useState } from "react";
+import { useFocusRestore } from "@diffgazer/keys";
+
+function TemporaryPanel() {
+  const [open, setOpen] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const focusRestore = useFocusRestore();
+
+  useEffect(() => {
+    if (open) panelRef.current?.focus();
+  }, [open]);
+
+  function openPanel() {
+    focusRestore.capture();
+    setOpen(true);
+  }
+
+  function closePanel() {
+    setOpen(false);
+    focusRestore.restore();
+  }
+
+  return open ? (
+    <div ref={panelRef} role="dialog" tabIndex={-1}>
+      <button onClick={closePanel}>Close</button>
+    </div>
+  ) : (
+    <button onClick={openPanel}>Open panel</button>
+  );
+}
+```
+
+`useFocusRestore` is stack-aware. If a dialog opens another temporary surface, closing the nested surface restores focus inside the parent before the parent restores focus back to its trigger.
 
 ---
 

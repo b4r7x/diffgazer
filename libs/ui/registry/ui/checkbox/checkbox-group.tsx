@@ -17,7 +17,7 @@ import { useFormReset } from "@/hooks/use-form-reset";
 import { composeRefs } from "@/lib/compose-refs";
 import {
   getEnabledSelectableCollectionItems,
-  getSelectableCollectionItemByValue,
+  resolveSelectableCollectionItem,
   useSelectableCollection,
 } from "@/lib/selectable-collection";
 import { cn } from "@/lib/utils";
@@ -58,7 +58,6 @@ export type CheckboxGroupProps<T extends string = string> = CheckboxGroupRootPro
   required?: boolean;
   className?: string;
   label?: string;
-  labelledBy?: string;
   "aria-label"?: string;
   "aria-labelledby"?: string;
   children: ReactNode;
@@ -90,7 +89,6 @@ export function CheckboxGroup<T extends string = string>(props: CheckboxGroupPro
     required,
     className,
     label,
-    labelledBy,
     "aria-label": ariaLabel,
     "aria-labelledby": ariaLabelledBy,
     children,
@@ -144,15 +142,7 @@ export function CheckboxGroup<T extends string = string>(props: CheckboxGroupPro
     if (hasAutoFocusedRef.current) return;
 
     const activeItems = getEnabledSelectableCollectionItems(items, disabled);
-    const selectedItem = value.reduce<(typeof activeItems)[number] | null>(
-      (current, itemValue) => current ?? getSelectableCollectionItemByValue(activeItems, itemValue),
-      null,
-    );
-    const target =
-      getSelectableCollectionItemByValue(activeItems, highlightedValue)
-      ?? selectedItem
-      ?? activeItems[0]
-      ?? null;
+    const target = resolveSelectableCollectionItem(activeItems, highlightedValue, ...value);
     if (!target?.element) return;
 
     target.element.focus();
@@ -208,7 +198,7 @@ export function CheckboxGroup<T extends string = string>(props: CheckboxGroupPro
         role="group"
         data-diffgazer-selectable-owner="checkbox"
         aria-label={ariaLabel ?? label}
-        aria-labelledby={ariaLabelledBy ?? labelledBy}
+        aria-labelledby={ariaLabelledBy}
         aria-disabled={disabled || undefined}
         aria-invalid={nativeInvalid && required && !hasValidSelectedValue ? true : undefined}
         className={cn("flex flex-col gap-2", className)}
@@ -223,7 +213,7 @@ export function CheckboxGroup<T extends string = string>(props: CheckboxGroupPro
             tabIndex={-1}
             aria-hidden={true}
             aria-label={ariaLabel ?? (typeof label === "string" ? label : "Required checkbox group")}
-            aria-labelledby={ariaLabelledBy ?? labelledBy}
+            aria-labelledby={ariaLabelledBy}
             readOnly
             className="sr-only"
             onInvalid={(event) => {

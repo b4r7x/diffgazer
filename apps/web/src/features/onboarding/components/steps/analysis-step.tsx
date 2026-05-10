@@ -4,6 +4,7 @@ import type { LensId } from "@diffgazer/core/schemas/review";
 import { CheckboxGroup, CheckboxItem } from "@diffgazer/ui/components/checkbox";
 import { Badge } from "@diffgazer/ui/components/badge";
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
+import { toVerticalBoundaryDirection } from "@/lib/vertical-navigation";
 
 const LENS_OPTIONS = buildLensOptions();
 
@@ -63,7 +64,7 @@ export function AnalysisStep({
             keyboardNavigation={enabled}
             autoFocus={enabled}
             onNavigationBoundaryReached={(direction) => {
-              onBoundaryReached?.(direction === "previous" ? "up" : "down");
+              onBoundaryReached?.(toVerticalBoundaryDirection(direction));
             }}
             wrap={false}
             className="space-y-1"

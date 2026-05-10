@@ -1,0 +1,128 @@
+---
+title: Selectable Collection
+description: Shared collection and value resolution utilities for compound selection primitives.
+---
+
+`selectable-collection` is the shared item registry used by compound selection components such as `RadioGroup`, `CheckboxGroup`, `ToggleGroup`, and `CommandPalette`.
+
+Use it when building a custom compound primitive that needs DOM-order item registration, enabled-item filtering, or consistent fallback selection from `highlighted`, `selected`, and first enabled item.
+
+## Installation
+
+Install it with the Diffgazer CLI:
+
+```bash
+pnpm exec dgadd add ui/selectable-collection
+```
+
+Install it with the shadcn CLI:
+
+```bash
+npx shadcn@latest add "@ui/selectable-collection"
+```
+
+Or use it from npm:
+
+```tsx
+import {
+  resolveSelectableCollectionItemValue,
+  useSelectableCollection,
+} from "@diffgazer/ui/lib/selectable-collection"
+```
+
+In copy mode, the file lives at `lib/selectable-collection.ts`.
+
+---
+
+## API
+
+```ts
+interface SelectableCollectionItem {
+  id: string
+  value: string
+  disabled: boolean
+  element: HTMLElement | null
+}
+
+function useSelectableCollection(
+  containerRef: React.RefObject<HTMLElement | null>
+): {
+  items: SelectableCollectionItem[]
+  registerItem: (
+    itemId: string,
+    value: string,
+    disabled: boolean,
+    element: HTMLElement | null
+  ) => void
+  unregisterItem: (itemId: string) => void
+}
+
+function getEnabledSelectableCollectionItems(
+  items: SelectableCollectionItem[],
+  disabled: boolean
+): SelectableCollectionItem[]
+
+function getSelectableCollectionItemByValue(
+  items: SelectableCollectionItem[],
+  value: string | null | undefined
+): SelectableCollectionItem | null
+
+function getSelectableCollectionItemValue(
+  items: SelectableCollectionItem[],
+  value: string | null | undefined
+): string | null
+
+function resolveSelectableCollectionItem(
+  items: SelectableCollectionItem[],
+  ...values: Array<string | null | undefined>
+): SelectableCollectionItem | null
+
+function resolveSelectableCollectionItemValue(
+  items: SelectableCollectionItem[],
+  ...values: Array<string | null | undefined>
+): string | null
+```
+
+---
+
+## Usage
+
+```tsx
+import { useRef } from "react"
+import {
+  getEnabledSelectableCollectionItems,
+  resolveSelectableCollectionItemValue,
+  useSelectableCollection,
+} from "@/lib/selectable-collection"
+
+function CustomPicker({
+  value,
+  highlighted,
+  disabled = false,
+}: {
+  value: string | null
+  highlighted: string | null
+  disabled?: boolean
+}) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const { items, registerItem, unregisterItem } = useSelectableCollection(containerRef)
+  const enabledItems = getEnabledSelectableCollectionItems(items, disabled)
+  const tabTargetValue = resolveSelectableCollectionItemValue(
+    enabledItems,
+    highlighted,
+    value,
+  )
+
+  return (
+    <div ref={containerRef} data-tab-target={tabTargetValue ?? undefined}>
+      {/* Register child items with registerItem/unregisterItem. */}
+    </div>
+  )
+}
+```
+
+## Notes
+
+- The collection is sorted by DOM order, so keyboard traversal matches the rendered layout.
+- Disabled items and items without mounted elements are excluded by `getEnabledSelectableCollectionItems`.
+- `resolveSelectableCollectionItem` tries candidates in order and falls back to the first enabled item.

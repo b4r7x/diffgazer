@@ -78,9 +78,9 @@ The following components expose keyboard integration points:
 | Component | Props |
 |---|---|
 | `Menu` | `onKeyDown`, `highlightedId`, `onHighlightChange`, `selectedId`, `onSelect` |
-| `NavigationList` | `onKeyDown`, `highlightedId`, `onHighlightChange`, `focused`, `selectedId`, `onSelect` |
+| `NavigationList` | `onKeyDown`, `highlightedId`, `onHighlightChange`, `onEnter`, `onNavigationBoundaryReached`, `autoFocus`, `focused`, `selectedId`, `onSelect` |
 | `CheckboxGroup` | `onKeyDown`, `highlighted`, `onHighlightChange`, `onChange` |
-| `RadioGroup` | `onKeyDown`, `highlighted`, `onHighlightChange`, `onChange`, `orientation` |
+| `RadioGroup` | `onKeyDown`, `highlighted`, `onHighlightChange`, `onChange`, `onEnter`, `onNavigationBoundaryReached(direction, event)`, `orientation` |
 | `ToggleGroup` | `onKeyDown`, `highlighted`, `onHighlightChange`, `onChange` |
 | `TabsList` + `Tabs` | `onKeyDown` (TabsList) + controlled `value`/`onChange` (Tabs) |
 | `Select` + `SelectContent` | controlled `highlighted`/`onHighlightChange` + `onKeyDown` on content |
@@ -90,6 +90,9 @@ The following components expose keyboard integration points:
 - **`onKeyDown`** -- receives keyboard events for app-level handlers
 - **`selectedId`** -- the currently selected item; for `CommandPalette`, use `highlightedId` because command palettes track highlight rather than selection
 - **`onSelect`** -- called when an item is selected (via click or Enter/Space)
+- **`onEnter`** -- Diffgazer preview/commit extension that separates Enter activation from Space selection in components that support it
+- **`onNavigationBoundaryReached`** -- lets an app hand focus to an adjacent zone when non-wrapping navigation hits an edge. `RadioGroup` also passes the keyboard event so vertical app zones can ignore horizontal APG arrow keys.
+- **`autoFocus`** -- moves focus into a composite component when it becomes the active interaction target
 - **`focused`** (NavigationList only) -- whether item highlight visuals are shown while the list is active
 
 ## Accessibility

@@ -101,6 +101,8 @@ export function ModelSelectDialog({
     handleFilterKeyDown,
     handleSearchEscape,
     handleSearchArrowDown,
+    handleListHighlightChange,
+    handleListBoundaryReached,
     handleListSelect,
     footerButtonIndex,
     getFooterButtonProps,
@@ -175,6 +177,8 @@ export function ModelSelectDialog({
             isFocused={focusZone === "list"}
             onSelect={handleListSelect}
             onConfirm={handleConfirm}
+            onHighlightChange={handleListHighlightChange}
+            onBoundaryReached={handleListBoundaryReached}
             isLoading={provider === OPENROUTER_PROVIDER_ID && openRouter.loading}
             emptyLabel={emptyLabel}
           />

@@ -10,6 +10,7 @@ import { useKey, useScope } from "@diffgazer/keys";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useFooterNavigation } from "@/hooks/use-footer-navigation.js";
 import { useSettings, useSaveSettings, matchQueryState } from "@diffgazer/core/api/hooks";
+import { toVerticalBoundaryDirection } from "@/lib/vertical-navigation";
 
 const EXECUTION_MODES: AgentExecution[] = ["sequential", "parallel"];
 
@@ -149,14 +150,11 @@ export function SettingsAgentExecutionPage() {
           onHighlightChange={(value) => {
             if (isAgentExecution(value)) setFocusedMode(value);
           }}
-          onNavigate={(value) => {
-            if (isAgentExecution(value)) setFocusedMode(value);
-          }}
           keyboardNavigation={navigationEnabled}
           activationMode="manual"
           autoFocus={navigationEnabled}
-          onNavigationBoundaryReached={(direction) => {
-            if (direction === "next") {
+          onNavigationBoundaryReached={(direction, event) => {
+            if (direction === "next" && toVerticalBoundaryDirection(direction, event.key) === "down") {
               clearCurrentFocus();
               footer.enterFooter();
             }

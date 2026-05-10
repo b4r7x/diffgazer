@@ -5,6 +5,7 @@ import { composeRefs } from "@/lib/compose-refs";
 import { cn } from "@/lib/utils";
 import { SelectContext, type SelectOptionMetadata } from "./select-context";
 import { SelectItem, type SelectItemProps } from "./select-item";
+import { SelectSearch } from "./select-search";
 import { useSelectState } from "./use-select-state";
 
 interface SelectBaseProps extends Omit<ComponentPropsWithoutRef<"div">, "defaultValue" | "onChange"> {
@@ -74,6 +75,7 @@ export function Select(props: SelectProps) {
   const valueControlled = "value" in props;
   const highlightedControlled = "highlighted" in props;
   const options = useMemo(() => collectSelectOptions(children), [children]);
+  const searchable = useMemo(() => containsSelectSearchElement(children), [children]);
 
   const stateOptions = multiple
     ? {
@@ -90,6 +92,7 @@ export function Select(props: SelectProps) {
         onHighlightChange,
         multiple: true as const,
         disabled,
+        searchable,
         variant,
         ariaInvalid,
         required,
@@ -109,6 +112,7 @@ export function Select(props: SelectProps) {
         onHighlightChange,
         multiple: false as const,
         disabled,
+        searchable,
         variant,
         ariaInvalid,
         required,
@@ -229,4 +233,12 @@ function getNodeText(node: ReactNode): string | undefined {
   }
   if (isValidElement<{ children?: ReactNode }>(node)) return getNodeText(node.props.children);
   return undefined;
+}
+
+function containsSelectSearchElement(children: ReactNode): boolean {
+  return Children.toArray(children).some((child) => {
+    if (!isValidElement<{ children?: ReactNode }>(child)) return false;
+    if (child.type === SelectSearch) return true;
+    return containsSelectSearchElement(child.props.children);
+  });
 }

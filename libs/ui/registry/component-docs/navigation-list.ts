@@ -26,7 +26,7 @@ export const navigationListDoc: ComponentDoc = {
     },
     {
       title: "Built-in Keyboard API",
-      content: "NavigationList includes arrow-key navigation and exposes highlightedId, onHighlightChange, focused, and onKeyDown for controlled highlight state or extra app-level shortcuts.",
+      content: "NavigationList includes arrow-key navigation and exposes highlightedId, onHighlightChange, onEnter, onNavigationBoundaryReached, autoFocus, focused, and onKeyDown for controlled highlight state or extra app-level shortcuts.",
     },
   ],
   usage: { example: "navigation-list-default" },

@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event"
 import { axe } from "../../../testing/utils.js"
 import { afterEach, describe, it, expect, vi } from "vitest"
 import { CommandPalette } from "./index.js"
-import { StrictMode, createRef } from "react"
+import { StrictMode, createRef, useState } from "react"
 import { Popover } from "../popover/index.js"
 
 afterEach(() => {
@@ -502,6 +502,56 @@ describe("CommandPalette", () => {
     await waitFor(() => expect(events).toEqual(["close", "focus"]))
 
     document.body.removeChild(trigger)
+  })
+
+  it("restores focus in close order for nested triggerless palettes", async () => {
+    function NestedPalettes() {
+      const [outerOpen, setOuterOpen] = useState(false)
+      const [innerOpen, setInnerOpen] = useState(false)
+
+      return (
+        <>
+          <button type="button" onClick={() => setOuterOpen(true)}>Open outer</button>
+          <CommandPalette open={outerOpen} onOpenChange={setOuterOpen}>
+            <CommandPalette.Content label="Outer palette">
+              <button type="button" onClick={() => setInnerOpen(true)}>Open inner</button>
+              <CommandPalette.Input />
+              <CommandPalette.List>
+                <CommandPalette.Item id="outer">Outer action</CommandPalette.Item>
+              </CommandPalette.List>
+            </CommandPalette.Content>
+          </CommandPalette>
+          <CommandPalette open={innerOpen} onOpenChange={setInnerOpen}>
+            <CommandPalette.Content label="Inner palette">
+              <CommandPalette.Input />
+              <CommandPalette.List>
+                <CommandPalette.Item id="inner">Inner action</CommandPalette.Item>
+              </CommandPalette.List>
+            </CommandPalette.Content>
+          </CommandPalette>
+        </>
+      )
+    }
+
+    render(<NestedPalettes />)
+    const opener = screen.getByRole("button", { name: "Open outer" })
+
+    await userEvent.click(opener)
+    const innerOpener = screen.getByRole("button", { name: "Open inner" })
+    innerOpener.focus()
+    await userEvent.click(innerOpener)
+
+    const innerDialog = screen.getByRole("dialog", { name: "Inner palette" })
+    fireEvent(innerDialog, new Event("cancel", { bubbles: false }))
+    await waitFor(() => expect(innerDialog).toHaveAttribute("data-state", "closed"))
+    fireEvent.animationEnd(innerDialog)
+    await waitFor(() => expect(innerOpener).toHaveFocus())
+
+    const outerDialog = screen.getByRole("dialog", { name: "Outer palette" })
+    fireEvent(outerDialog, new Event("cancel", { bubbles: false }))
+    await waitFor(() => expect(outerDialog).toHaveAttribute("data-state", "closed"))
+    fireEvent.animationEnd(outerDialog)
+    await waitFor(() => expect(opener).toHaveFocus())
   })
 
   it("keeps nested portals inside the command palette dialog", async () => {

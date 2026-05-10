@@ -1,5 +1,6 @@
-import { useState, useEffect, useEffectEvent, useRef, type RefCallback, type RefObject } from "react";
+import { useState, useEffect, useEffectEvent, useRef, type KeyboardEvent as ReactKeyboardEvent, type RefCallback, type RefObject } from "react";
 import { useKey, useFocusZone, useScope } from "@diffgazer/keys";
+import { getVerticalArrowDirection } from "@/lib/vertical-navigation";
 import type { FocusElement } from "@/types/focus-element";
 import type { InputMethod } from "@/types/input-method";
 
@@ -21,6 +22,7 @@ interface ApiKeyDialogKeyboardReturn {
   getMethodOptionProps: (method: InputMethod) => {
     ref: RefCallback<HTMLDivElement>;
   };
+  handleMethodKeyDown: (event: ReactKeyboardEvent, method: InputMethod) => void;
 }
 
 function getFooterElements(): FocusElement[] {
@@ -80,6 +82,32 @@ export function useApiKeyDialogKeyboard({
       else methodOptionRefs.current.delete(nextMethod);
     },
   });
+
+  const handleMethodKeyDown = (
+    event: ReactKeyboardEvent,
+    focusedMethod: InputMethod,
+  ) => {
+    const direction = getVerticalArrowDirection(event.key);
+    if (direction === null) return;
+
+    if (direction === "down" && focusedMethod === "paste" && method === "paste") {
+      event.preventDefault();
+      setFocused("input");
+      inputRef.current?.focus();
+      return;
+    }
+
+    if (direction === "down" && focusedMethod === "env") {
+      event.preventDefault();
+      setFocused(footerElements[0]!);
+      return;
+    }
+
+    if (direction === "up" && focusedMethod === "env") {
+      event.preventDefault();
+      focusMethodOption("paste");
+    }
+  };
 
   const resetDialogFocus = useEffectEvent(() => {
     focusMethodOption("paste");
@@ -168,5 +196,5 @@ export function useApiKeyDialogKeyboard({
   // Escape closes from any zone
   useKey("Escape", onClose, { enabled: open && !isZone("input") });
 
-  return { focused, setFocused, getMethodOptionProps };
+  return { focused, setFocused, getMethodOptionProps, handleMethodKeyDown };
 }

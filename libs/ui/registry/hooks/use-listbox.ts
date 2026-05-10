@@ -11,9 +11,12 @@ export interface UseListboxOptions {
   highlightedId?: string | null;
   defaultHighlightedId?: string | null;
   onSelect?: (id: string) => void;
+  onEnter?: (id: string, event: globalThis.KeyboardEvent) => void;
   onHighlightChange?: (id: string) => void;
+  onNavigationBoundaryReached?: (direction: "previous" | "next") => void;
   wrap?: boolean;
   idPrefix: string;
+  autoFocus?: boolean;
   onKeyDown?: (event: KeyboardEvent) => void;
   role?: "listbox" | "menu";
   itemRole?: Extract<NavigationRole, "option" | "menuitem" | "menuitemradio">;
@@ -120,15 +123,30 @@ function getEnabledListboxItems(
   )).filter((item) => isOwnedListboxItem(item, container, containerRole));
 }
 
+function getFirstEnabledItemId(
+  container: HTMLElement | null,
+  itemRole: string,
+  containerRole: "listbox" | "menu",
+  items?: Array<{ id: string; disabled?: boolean }>,
+): string | null {
+  if (items) return items.find((item) => !item.disabled)?.id ?? null;
+
+  const firstEnabledItem = getEnabledListboxItems(container, itemRole, containerRole)[0];
+  return firstEnabledItem?.dataset.value !== undefined ? firstEnabledItem.dataset.value : null;
+}
+
 export function useListbox({
   selectedId: controlledSelectedId,
   defaultSelectedId = null,
   highlightedId: controlledHighlightedId,
   defaultHighlightedId = null,
   onSelect,
+  onEnter,
   onHighlightChange,
+  onNavigationBoundaryReached,
   wrap = true,
   idPrefix,
+  autoFocus = false,
   onKeyDown,
   role: containerRole = "listbox",
   itemRole = "option",
@@ -191,14 +209,47 @@ export function useListbox({
     return () => observer.disconnect();
   }, [containerRole, getItemId, idPrefix, itemRole, items]);
 
-  const handleItemActivate = (next: string) => {
-    const enabled = items
-      ? hasEnabledMetadataItem(items, next)
-      : hasEnabledItem(containerRef.current, itemRole, containerRole, idPrefix, next, getItemId);
-    if (!enabled) return;
+  const isItemEnabled = (id: string) => {
+    return items
+      ? hasEnabledMetadataItem(items, id)
+      : hasEnabledItem(containerRef.current, itemRole, containerRole, idPrefix, id, getItemId);
+  };
+
+  const activateItem = (next: string) => {
     setSelectedId(next);
     setHighlightedId(next);
   };
+
+  const handleItemActivate = (next: string) => {
+    if (!isItemEnabled(next)) return;
+    activateItem(next);
+  };
+
+  const handleItemEnter = (next: string, event: globalThis.KeyboardEvent) => {
+    if (!isItemEnabled(next)) return;
+    activateItem(next);
+    onEnter?.(next, event);
+  };
+
+  useEffect(() => {
+    if (!autoFocus) return;
+
+    const frame = requestAnimationFrame(() => {
+      const container = containerRef.current;
+      if (!container) return;
+
+      if (!container.contains(container.ownerDocument.activeElement)) {
+        container.focus({ preventScroll: true });
+      }
+
+      if (highlightedId === null && selectedId === null) {
+        const firstEnabledId = getFirstEnabledItemId(container, itemRole, containerRole, items);
+        if (firstEnabledId !== null) setHighlightedId(firstEnabledId);
+      }
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [autoFocus, containerRole, highlightedId, itemRole, items, selectedId, setHighlightedId]);
 
   const { onKeyDown: navKeyDown } = useNavigation({
     containerRef,
@@ -206,8 +257,9 @@ export function useListbox({
     wrap,
     value: highlightedId ?? selectedId ?? undefined,
     onValueChange: setHighlightedId,
-    onEnter: handleItemActivate,
+    onEnter: handleItemEnter,
     onSelect: handleItemActivate,
+    onNavigationBoundaryReached,
     scopeToContainer: true,
   });
 
@@ -220,8 +272,8 @@ export function useListbox({
     }, TYPEAHEAD_RESET_MS);
 
     const query = typeaheadBuffer.current.toLowerCase();
-    const items = getEnabledListboxItems(containerRef.current, itemRole, containerRole);
-    for (const item of items) {
+    const enabledItems = getEnabledListboxItems(containerRef.current, itemRole, containerRole);
+    for (const item of enabledItems) {
       const label = getAccessibleText(item).trim().toLowerCase();
       if (label.startsWith(query) && item.dataset.value !== undefined) {
         setHighlightedId(item.dataset.value);

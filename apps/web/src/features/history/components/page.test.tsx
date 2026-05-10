@@ -116,6 +116,22 @@ describe("HistoryPage keyboard navigation", () => {
     });
   });
 
+  it("switches timeline keyboard behavior when clicking the selected section from runs", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    const runsList = await screen.findByRole("listbox", { name: /review runs/i });
+    await waitFor(() => expect(runsList).toHaveFocus());
+
+    const sectionsList = screen.getByRole("listbox", { name: /review sections/i });
+    await user.click(screen.getByRole("option", { name: "All" }));
+    await waitFor(() => expect(sectionsList).toHaveFocus());
+
+    await user.keyboard("{ArrowDown}");
+
+    expect(screen.getByRole("option", { name: "Feb 9" })).toHaveAttribute("aria-selected", "true");
+  });
+
   it("opens the highlighted run with the open shortcut", async () => {
     const user = userEvent.setup();
     renderPage();

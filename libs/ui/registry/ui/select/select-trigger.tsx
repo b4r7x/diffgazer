@@ -40,9 +40,9 @@ export function SelectTrigger({
   onKeyDown,
   ...props
 }: SelectTriggerProps) {
-  const { open, disabled, onOpenChange, triggerRef, variant, triggerId, listboxId, ariaInvalid, required, options, highlighted, searchQuery } = useSelectContext("SelectTrigger");
+  const { open, disabled, searchable, onOpenChange, triggerRef, variant, triggerId, listboxId, ariaInvalid, required, options, highlighted, searchQuery } = useSelectContext("SelectTrigger");
   const resolvedAriaInvalid = resolveAriaInvalid(invalid, ariaInvalid);
-  const activeDescendant = open && isActiveOptionVisible(options, highlighted, searchQuery, matchesSearch)
+  const activeDescendant = open && !searchable && isActiveOptionVisible(options, highlighted, searchQuery, matchesSearch)
     ? toOptionId(listboxId, highlighted)
     : undefined;
 

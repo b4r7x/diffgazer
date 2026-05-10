@@ -12,7 +12,7 @@ export const fieldDoc: ComponentDoc = {
     {
       title: "InputGroup vs Field",
       content:
-        "InputGroup is only a decorated input shell for prefix and suffix content. Field is the form wrapper for label, helper text, and error wiring.",
+        "InputGroup is only a decorated input shell for prefix and suffix content. Plain text affixes are aria-hidden decoration; interactive affixes need explicit labels. Field is the form wrapper for label, helper text, and error wiring.",
     },
   ],
   usage: { example: "field-input" },

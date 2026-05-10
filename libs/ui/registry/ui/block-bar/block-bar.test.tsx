@@ -22,6 +22,22 @@ describe("BlockBar", () => {
     expect(meter).toHaveTextContent("10")
   })
 
+  it("uses app-owned value text for meter announcements", () => {
+    render(
+      <BlockBar
+        label="Critical issues"
+        max={10}
+        value={3}
+        valueText="3 critical issues"
+      />,
+    )
+
+    expect(screen.getByRole("meter", { name: "Critical issues" })).toHaveAttribute(
+      "aria-valuetext",
+      "3 critical issues",
+    )
+  })
+
   it("sanitizes segment values before drawing characters", () => {
     render(
       <BlockBar

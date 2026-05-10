@@ -1,5 +1,6 @@
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { Button } from "@diffgazer/ui/components/button";
+import { CodeBlock } from "@diffgazer/ui/components/code-block";
 import { downloadAsFile } from "@/utils/download";
 import type { ReviewContextResponse } from "@diffgazer/core/api/types";
 
@@ -20,10 +21,12 @@ export function ContextSnapshotPreview({ snapshot }: ContextSnapshotPreviewProps
       <div className="text-xs text-tui-muted">
         {snapshot.meta.charCount.toLocaleString()} chars
       </div>
-      <pre className="mt-3 max-h-28 overflow-auto border border-tui-border bg-tui-selection/10 p-2 text-[10px] text-tui-muted">
-        {contextPreview.preview}
-        {contextPreview.truncated ? "\n... (preview)" : ""}
-      </pre>
+      <CodeBlock label="Context snapshot preview" className="mt-3">
+        <CodeBlock.Content showLineNumbers={false} className="max-h-28 text-[10px] text-tui-muted">
+          {contextPreview.preview}
+          {contextPreview.truncated ? "\n... (preview)" : ""}
+        </CodeBlock.Content>
+      </CodeBlock>
       <div className="flex gap-2 mt-3">
         <Button
           variant="secondary"

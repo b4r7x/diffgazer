@@ -1,10 +1,11 @@
-import { type KeyboardEvent } from "react";
+import { useState, type ReactNode } from "react";
 import { AVAILABLE_PROVIDERS, GEMINI_MODEL_INFO, GLM_MODEL_INFO } from "@diffgazer/core/schemas/config";
 import type { AIProvider, ModelInfo } from "@diffgazer/core/schemas/config";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
 import { Badge } from "@diffgazer/ui/components/badge";
 import { useOpenRouterModels } from "@/hooks/use-openrouter-models";
-import { useOptionHighlight } from "./use-option-highlight";
+import { resolveAvailableValue } from "@/lib/selectable-values";
+import { toVerticalBoundaryDirection } from "@/lib/vertical-navigation";
 
 interface ModelStepProps {
   provider: AIProvider;
@@ -27,6 +28,57 @@ function getStaticModels(provider: AIProvider): ModelInfo[] {
   }
 }
 
+interface ModelRadioGroupProps extends Omit<ModelStepProps, "provider"> {
+  modelIds: string[];
+  children: ReactNode;
+  className?: string;
+}
+
+function ModelRadioGroup({
+  modelIds,
+  value,
+  onChange,
+  onCommit,
+  enabled = true,
+  onBoundaryReached,
+  children,
+  className,
+}: ModelRadioGroupProps) {
+  const [highlighted, setHighlighted] = useState<string | null>(null);
+  const effectiveHighlighted = resolveAvailableValue(modelIds, highlighted, value);
+
+  const handleChange = (nextValue: string) => {
+    setHighlighted(nextValue);
+    onChange(nextValue);
+  };
+
+  const handleEnter = (nextValue: string) => {
+    setHighlighted(nextValue);
+    onCommit?.(nextValue);
+  };
+
+  return (
+    <RadioGroup
+      value={value ?? undefined}
+      onChange={handleChange}
+      highlighted={enabled ? effectiveHighlighted : null}
+      onHighlightChange={setHighlighted}
+      onEnter={handleEnter}
+      onNavigationBoundaryReached={(direction, event) => {
+        const verticalDirection = toVerticalBoundaryDirection(direction, event.key);
+        if (verticalDirection !== null) onBoundaryReached?.(verticalDirection);
+      }}
+      keyboardNavigation={enabled}
+      autoFocus={enabled}
+      activationMode="manual"
+      wrap={false}
+      className={className}
+    >
+      {children}
+    </RadioGroup>
+  );
+}
+
 function StaticModelList({
   provider,
   value,
@@ -38,50 +90,19 @@ function StaticModelList({
   const models = getStaticModels(provider);
   const providerInfo = AVAILABLE_PROVIDERS.find((p) => p.id === provider);
   const modelIds = models.map((model) => model.id);
-  const { highlighted: effectiveHighlighted, setHighlighted } = useOptionHighlight(
-    value,
-    modelIds,
-  );
-  const handleChange = (nextValue: string) => {
-    setHighlighted(nextValue);
-    onChange(nextValue);
-  };
-
-  const handleKeyDown = (e: KeyboardEvent) => {
-    if (!enabled) return;
-    if (e.key === "Enter" && effectiveHighlighted) {
-      e.preventDefault();
-      onChange(effectiveHighlighted);
-      onCommit?.(effectiveHighlighted);
-      return;
-    }
-    if (!onBoundaryReached) return;
-    const idx = modelIds.indexOf(effectiveHighlighted ?? "");
-    if (e.key === "ArrowUp" && idx === 0) {
-      e.preventDefault();
-      onBoundaryReached("up");
-    }
-    if (e.key === "ArrowDown" && idx === modelIds.length - 1) {
-      e.preventDefault();
-      onBoundaryReached("down");
-    }
-  };
 
   return (
     <div className="space-y-4">
       <p className="text-sm text-tui-muted font-mono">
         Select a model for {providerInfo?.name ?? provider}.
       </p>
-      <RadioGroup
-        value={value ?? undefined}
-        onChange={handleChange}
-        highlighted={enabled ? effectiveHighlighted : null}
-        onNavigate={setHighlighted}
-        onKeyDown={handleKeyDown}
-        keyboardNavigation={enabled}
-        autoFocus={enabled}
-        activationMode="manual"
-        wrap={false}
+      <ModelRadioGroup
+        modelIds={modelIds}
+        value={value}
+        onChange={onChange}
+        onCommit={onCommit}
+        enabled={enabled}
+        onBoundaryReached={onBoundaryReached}
         className="space-y-1"
       >
         {models.map((model) => (
@@ -108,7 +129,7 @@ function StaticModelList({
             description={model.description}
           />
         ))}
-      </RadioGroup>
+      </ModelRadioGroup>
     </div>
   );
 }
@@ -122,34 +143,6 @@ function OpenRouterModelList({
 }: Omit<ModelStepProps, "provider">) {
   const { models, loading, error } = useOpenRouterModels(true, "openrouter");
   const modelIds = models.map((model) => model.id);
-  const { highlighted: effectiveHighlighted, setHighlighted } = useOptionHighlight(
-    value,
-    modelIds,
-  );
-  const handleChange = (nextValue: string) => {
-    setHighlighted(nextValue);
-    onChange(nextValue);
-  };
-
-  const handleKeyDown = (e: KeyboardEvent) => {
-    if (!enabled) return;
-    if (e.key === "Enter" && effectiveHighlighted) {
-      e.preventDefault();
-      onChange(effectiveHighlighted);
-      onCommit?.(effectiveHighlighted);
-      return;
-    }
-    if (!onBoundaryReached) return;
-    const idx = modelIds.indexOf(effectiveHighlighted ?? "");
-    if (e.key === "ArrowUp" && idx === 0) {
-      e.preventDefault();
-      onBoundaryReached("up");
-    }
-    if (e.key === "ArrowDown" && idx === modelIds.length - 1) {
-      e.preventDefault();
-      onBoundaryReached("down");
-    }
-  };
 
   if (loading) {
     return (
@@ -173,16 +166,13 @@ function OpenRouterModelList({
         Select a model from OpenRouter.
       </p>
       <div className="max-h-64 overflow-y-auto scrollbar-hide">
-        <RadioGroup
-          value={value ?? undefined}
-          onChange={handleChange}
-          highlighted={enabled ? effectiveHighlighted : null}
-          onNavigate={setHighlighted}
-          onKeyDown={handleKeyDown}
-          keyboardNavigation={enabled}
-          autoFocus={enabled}
-          activationMode="manual"
-          wrap={false}
+        <ModelRadioGroup
+          modelIds={modelIds}
+          value={value}
+          onChange={onChange}
+          onCommit={onCommit}
+          enabled={enabled}
+          onBoundaryReached={onBoundaryReached}
           className="space-y-1"
         >
           {models.map((model) => (
@@ -204,7 +194,7 @@ function OpenRouterModelList({
               description={model.description}
             />
           ))}
-        </RadioGroup>
+        </ModelRadioGroup>
       </div>
     </div>
   );

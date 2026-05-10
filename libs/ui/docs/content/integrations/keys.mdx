@@ -34,6 +34,7 @@ You can also install hooks standalone:
 ```bash
 pnpm exec dgadd add keys/navigation
 pnpm exec dgadd add keys/focus-trap
+pnpm exec dgadd add keys/focus-restore
 pnpm exec dgadd add keys/scroll-lock
 ```
 
@@ -56,15 +57,16 @@ Components import hooks directly from the @diffgazer/keys package. Gives you the
 ### Option 3: Copy standalone hooks
 
 ```bash
-pnpm exec dgadd add keys/navigation keys/focus-trap keys/scroll-lock
+pnpm exec dgadd add keys/navigation keys/focus-trap keys/focus-restore keys/scroll-lock
 pnpm exec dgadd add ui/menu --integration copy
 ```
 
-Copies three standalone hooks into your project at `@/hooks/`. No @diffgazer/keys dependency required. Components import from local paths:
+Copies standalone hooks into your project at `@/hooks/`. No @diffgazer/keys dependency required. Components import from local paths:
 
 ```tsx
 import { useNavigation } from "@/hooks/use-navigation"
 import { useFocusTrap } from "@/hooks/use-focus-trap"
+import { useFocusRestore } from "@/hooks/use-focus-restore"
 import { useScrollLock } from "@/hooks/use-scroll-lock"
 ```
 
@@ -111,6 +113,7 @@ function Editor() {
 |------|---------|:-:|------|
 | `useNavigation` | DOM-driven list/tab navigation (arrow keys, Home/End, Enter) | No | [Navigation](/ui/docs/integrations/keys-navigation) |
 | `useFocusTrap` | Trap Tab/Shift+Tab within a container | No | [Utilities](/ui/docs/integrations/keys-utilities) |
+| `useFocusRestore` | Capture and restore focus around temporary UI | No | [Utilities](/ui/docs/integrations/keys-utilities) |
 | `useScrollLock` | Prevent scrolling (ref-counted) | No | [Utilities](/ui/docs/integrations/keys-utilities) |
 | `useKey` | Bind keyboard shortcuts (single, array, or key map) | Yes* | [useKey](/ui/docs/integrations/keys-usekey) |
 | `useScope` | Push a named scope onto the stack | Yes | [useKey](/ui/docs/integrations/keys-usekey) |
@@ -119,7 +122,7 @@ function Editor() {
 
 \* `useKey` silently does nothing without a provider — safe to use in portable components.
 
-**Standalone hooks** (`useNavigation`, `useFocusTrap`, `useScrollLock`) work without `KeyboardProvider` and are available in copy mode. The rest require the full @diffgazer/keys package.
+**Standalone hooks** (`useNavigation`, `useFocusTrap`, `useFocusRestore`, `useScrollLock`) work without `KeyboardProvider` and are available in copy mode. The rest require the full @diffgazer/keys package.
 
 ---
 
@@ -135,6 +138,7 @@ function Editor() {
 |:-----------|:-:|:-:|:-:|:-:|
 | `useNavigation` | ✓ | ✓ | ✓ | ✓ |
 | `useFocusTrap` | ✓ | ✓ | ✓ | ✓ |
+| `useFocusRestore` | ✓ | ✓ | ✓ | ✓ |
 | `useScrollLock` | ✓ | ✓ | ✓ | ✓ |
 | Component install support | ✓ | — | ✓ | — |
 | `KeyboardProvider` | — | ✓ | — | — |

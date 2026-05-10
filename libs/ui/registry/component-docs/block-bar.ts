@@ -24,6 +24,11 @@ export const blockBarDoc: ComponentDoc = {
         "Pass BlockBar.Segment children for custom per-segment content (labels, event handlers, tooltips). Root renders the empty background automatically.",
     },
     {
+      title: "Value Text",
+      content:
+        "Set valueText to customize aria-valuetext for app-owned labels such as severity summaries. The visible value remains numeric.",
+    },
+    {
       title: "Color Variants",
       content:
         "The variant prop accepts: default, muted, error, warning, success, info.",

@@ -18,6 +18,7 @@ interface UseSelectStateBaseOptions {
   highlightedControlled?: boolean;
   onHighlightChange?: (value: string | null) => void;
   disabled?: boolean;
+  searchable?: boolean;
   variant?: "default" | "card";
   ariaInvalid?: AriaAttributes["aria-invalid"];
   required?: boolean;
@@ -67,6 +68,7 @@ export function useSelectState(options: UseSelectStateOptions): UseSelectStateRe
     onHighlightChange,
     multiple = false,
     disabled = false,
+    searchable = false,
     variant = "default",
     ariaInvalid,
     required,
@@ -130,12 +132,19 @@ export function useSelectState(options: UseSelectStateOptions): UseSelectStateRe
 
   const onSearchChange = useCallback((query: string) => {
     setSearchQuery(query);
-    if (highlighted !== null) {
-      const option = optionMetadata.get(highlighted);
-      if (option && (!matchesSearch(option.label, query) || option.disabled)) {
-        setHighlighted(null);
+    const highlightedOption = highlighted === null ? undefined : optionMetadata.get(highlighted);
+    if (highlightedOption && !highlightedOption.disabled && matchesSearch(highlightedOption.label, query)) {
+      return;
+    }
+
+    for (const [itemValue, option] of optionMetadata) {
+      if (!option.disabled && matchesSearch(option.label, query)) {
+        setHighlighted(itemValue);
+        return;
       }
     }
+
+    setHighlighted(null);
   }, [highlighted, optionMetadata, setHighlighted]);
 
   const selectItem = useCallback((itemValue: string) => {
@@ -169,6 +178,7 @@ export function useSelectState(options: UseSelectStateOptions): UseSelectStateRe
   const contextValue: SelectContextValue = useMemo(() => ({
     open: isOpen,
     disabled,
+    searchable,
     onOpenChange: handleOpenChange,
     value,
     multiple,
@@ -187,7 +197,7 @@ export function useSelectState(options: UseSelectStateOptions): UseSelectStateRe
     ariaInvalid: resolvedAriaInvalid,
     required: required || undefined,
     onNativeInvalid,
-  }), [isOpen, disabled, handleOpenChange, value, multiple, searchQuery, onSearchChange, highlighted, setHighlighted, selectItem, optionMetadata, variant, listboxId, resolvedAriaInvalid, required, onNativeInvalid]);
+  }), [isOpen, disabled, searchable, handleOpenChange, value, multiple, searchQuery, onSearchChange, highlighted, setHighlighted, selectItem, optionMetadata, variant, listboxId, resolvedAriaInvalid, required, onNativeInvalid]);
 
   return { contextValue, wrapperRef };
 }

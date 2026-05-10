@@ -21,13 +21,13 @@ function Subject({ onSubmit = vi.fn() }: { onSubmit?: (method?: InputMethod) => 
 
   return (
     <>
-      <button type="button" data-testid="paste" {...getMethodOptionProps("paste")}>
+      <div role="radio" aria-checked={method === "paste"} tabIndex={0} data-testid="paste" {...getMethodOptionProps("paste")}>
         Paste
-      </button>
+      </div>
       <input ref={inputRef} data-testid="input" />
-      <button type="button" data-testid="env" {...getMethodOptionProps("env")}>
+      <div role="radio" aria-checked={method === "env"} tabIndex={0} data-testid="env" {...getMethodOptionProps("env")}>
         Env
-      </button>
+      </div>
       <span data-testid="focused">{focused}</span>
       <span data-testid="method">{method}</span>
     </>

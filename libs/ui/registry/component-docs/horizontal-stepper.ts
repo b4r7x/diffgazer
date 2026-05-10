@@ -7,7 +7,7 @@ export const horizontalStepperDoc: ComponentDoc = {
     {
       title: "Compound Component",
       content:
-        "Use HorizontalStepper.Step (or named Step import) for each step. Each step receives its status (active/completed/pending) via context. Use useStepInfo() to build fully custom step components.",
+        "Set value to the current step id and use HorizontalStepper.Step (or named Step import) for each step. Each step receives its status (active/completed/pending) via context. Use useStepInfo() to build fully custom step components.",
     },
   ],
   usage: { example: "horizontal-stepper-default" },

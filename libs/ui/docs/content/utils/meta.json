@@ -2,6 +2,7 @@
   "title": "Utils",
   "pages": [
     "shadcn-namespace",
-    "compose-refs"
+    "compose-refs",
+    "selectable-collection"
   ]
 }

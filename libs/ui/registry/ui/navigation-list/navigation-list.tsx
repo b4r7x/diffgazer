@@ -14,9 +14,12 @@ export interface NavigationListProps
   highlightedId?: string | null;
   defaultHighlightedId?: string | null;
   onSelect?: (id: string) => void;
+  onEnter?: (id: string, event: globalThis.KeyboardEvent) => void;
   onHighlightChange?: (id: string) => void;
+  onNavigationBoundaryReached?: (direction: "previous" | "next") => void;
   focused?: boolean;
   wrap?: boolean;
+  autoFocus?: boolean;
   children: ReactNode;
   onKeyDown?: (event: KeyboardEvent) => void;
 }
@@ -48,9 +51,12 @@ export function NavigationList({
   highlightedId: controlledHighlightedId,
   defaultHighlightedId = null,
   onSelect,
+  onEnter,
   onHighlightChange,
+  onNavigationBoundaryReached,
   focused = true,
   wrap = true,
+  autoFocus = false,
   className,
   children,
   onKeyDown,
@@ -74,9 +80,12 @@ export function NavigationList({
     highlightedId: controlledHighlightedId,
     defaultHighlightedId,
     onSelect,
+    onEnter,
     onHighlightChange,
+    onNavigationBoundaryReached,
     wrap,
     idPrefix,
+    autoFocus,
     onKeyDown,
     typeahead: true,
     items,

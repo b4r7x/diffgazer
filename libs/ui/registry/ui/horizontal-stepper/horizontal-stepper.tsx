@@ -6,7 +6,7 @@ import { HorizontalStepperContext } from "./horizontal-stepper-context";
 
 export interface HorizontalStepperProps {
   steps: string[];
-  step: string;
+  value: string;
   children: ReactNode;
   className?: string;
   "aria-label"?: string;
@@ -14,12 +14,12 @@ export interface HorizontalStepperProps {
 
 export function HorizontalStepperRoot({
   steps,
-  step,
+  value,
   children,
   className,
   "aria-label": ariaLabel,
 }: HorizontalStepperProps) {
-  const contextValue = useMemo(() => ({ step, steps }), [step, steps]);
+  const contextValue = useMemo(() => ({ value, steps }), [value, steps]);
 
   return (
     <HorizontalStepperContext value={contextValue}>

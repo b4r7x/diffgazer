@@ -167,6 +167,80 @@ describe("Dialog", () => {
     expect(trigger).toHaveFocus()
   })
 
+  it("returns focus to the previously focused element without DialogTrigger", async () => {
+    function ControlledDialog() {
+      const [open, setOpen] = useState(false)
+
+      return (
+        <>
+          <button type="button" onClick={() => setOpen(true)}>Open controlled dialog</button>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <Dialog.Content>
+              <Dialog.Title>Controlled dialog</Dialog.Title>
+              <Dialog.Close />
+            </Dialog.Content>
+          </Dialog>
+        </>
+      )
+    }
+
+    render(<ControlledDialog />)
+    const opener = screen.getByRole("button", { name: "Open controlled dialog" })
+
+    await userEvent.click(opener)
+    const dialog = screen.getByRole("dialog", { name: "Controlled dialog" })
+    await userEvent.click(screen.getByRole("button", { name: "Close dialog" }))
+    await waitFor(() => expect(dialog).toHaveAttribute("data-state", "closed"))
+    fireEvent.animationEnd(dialog)
+
+    await waitFor(() => expect(opener).toHaveFocus())
+  })
+
+  it("restores focus in close order for nested triggerless dialogs", async () => {
+    function NestedDialogs() {
+      const [parentOpen, setParentOpen] = useState(false)
+      const [childOpen, setChildOpen] = useState(false)
+
+      return (
+        <>
+          <button type="button" onClick={() => setParentOpen(true)}>Open parent</button>
+          <Dialog open={parentOpen} onOpenChange={setParentOpen}>
+            <Dialog.Content>
+              <Dialog.Title>Parent dialog</Dialog.Title>
+              <button type="button" onClick={() => setChildOpen(true)}>Open child</button>
+              <Dialog.Close>Close parent</Dialog.Close>
+            </Dialog.Content>
+          </Dialog>
+          <Dialog open={childOpen} onOpenChange={setChildOpen}>
+            <Dialog.Content>
+              <Dialog.Title>Child dialog</Dialog.Title>
+              <Dialog.Close>Close child</Dialog.Close>
+            </Dialog.Content>
+          </Dialog>
+        </>
+      )
+    }
+
+    render(<NestedDialogs />)
+    const opener = screen.getByRole("button", { name: "Open parent" })
+
+    await userEvent.click(opener)
+    const childOpener = screen.getByRole("button", { name: "Open child" })
+    await userEvent.click(childOpener)
+
+    const childDialog = screen.getByRole("dialog", { name: "Child dialog" })
+    await userEvent.click(screen.getByRole("button", { name: "Close child" }))
+    await waitFor(() => expect(childDialog).toHaveAttribute("data-state", "closed"))
+    fireEvent.animationEnd(childDialog)
+    await waitFor(() => expect(childOpener).toHaveFocus())
+
+    const parentDialog = screen.getByRole("dialog", { name: "Parent dialog" })
+    await userEvent.click(screen.getByRole("button", { name: "Close parent" }))
+    await waitFor(() => expect(parentDialog).toHaveAttribute("data-state", "closed"))
+    fireEvent.animationEnd(parentDialog)
+    await waitFor(() => expect(opener).toHaveFocus())
+  })
+
   it("does not call showModal while a closing dialog is still present", () => {
     const showModal = vi.spyOn(HTMLDialogElement.prototype, "showModal")
     const { rerender } = renderDialog({ defaultOpen: true })

@@ -12,7 +12,7 @@ export const inputDoc: ComponentDoc = {
     {
       title: "InputGroup",
       content:
-        "Use InputGroup for prefix and suffix content around a text input. Use Field when you need label, description, and error wiring.",
+        "Use InputGroup for prefix and suffix content around a text input. Plain text affixes are treated as decorative. Interactive affixes must provide their own accessible labels. Use Field when you need label, description, and error wiring.",
     },
   ],
   usage: { example: "input-default" },

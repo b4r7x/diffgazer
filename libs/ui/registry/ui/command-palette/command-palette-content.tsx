@@ -1,6 +1,7 @@
 "use client";
 
 import { type ReactNode, useCallback, useRef, useState } from "react";
+import { useFocusRestore } from "@diffgazer/keys";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { useCommandPaletteContext } from "./command-palette-context";
@@ -30,40 +31,29 @@ export interface CommandPaletteContentProps extends VariantProps<typeof contentV
 }
 
 export function CommandPaletteContent({ children, className, size, label = "Command palette" }: CommandPaletteContentProps) {
-  const { open, onOpenChange, previousFocusRef, search, onSearchChange, itemCount } = useCommandPaletteContext();
+  const { open, onOpenChange, search, onSearchChange, itemCount } = useCommandPaletteContext();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [container, setContainer] = useState<Element | null>(null);
+  const focusRestore = useFocusRestore({ restoreOnUnmount: false });
 
   const setDialogRef = useCallback((node: HTMLDialogElement | null) => {
     dialogRef.current = node;
     setContainer(node);
   }, []);
 
-  const captureFocusBeforeOpen = useCallback(() => {
-    if (!previousFocusRef.current && typeof document !== "undefined") {
-      previousFocusRef.current = document.activeElement;
-    }
-  }, [previousFocusRef]);
-
   const focusSearchInput = useCallback(() => {
     dialogRef.current?.querySelector<HTMLElement>("[role='combobox']")?.focus();
   }, []);
-
-  const restoreFocus = useCallback(() => {
-    const el = previousFocusRef.current as HTMLElement | null;
-    previousFocusRef.current = null;
-    el?.focus?.();
-  }, [previousFocusRef]);
 
   return (
     <DialogShell
       open={open}
       dialogRef={setDialogRef}
-      onBeforeShowModal={captureFocusBeforeOpen}
+      onBeforeShowModal={focusRestore.capture}
       onAfterShowModal={focusSearchInput}
       onBackdropClick={() => onOpenChange(false)}
       onCancel={() => search ? onSearchChange("") : onOpenChange(false)}
-      onClose={restoreFocus}
+      onClose={focusRestore.restore}
       className={cn(contentVariants({ size }), className)}
       aria-modal="true"
       aria-label={label}

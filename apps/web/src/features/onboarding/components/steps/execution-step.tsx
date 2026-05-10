@@ -1,6 +1,7 @@
-import { useState, type KeyboardEvent } from "react";
+import { useState } from "react";
 import type { AgentExecution } from "@diffgazer/core/schemas/config";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
+import { toVerticalBoundaryDirection } from "@/lib/vertical-navigation";
 
 const EXECUTION_MODES: AgentExecution[] = ["sequential", "parallel"];
 
@@ -23,27 +24,11 @@ export function ExecutionStep({
   enabled = true,
   onBoundaryReached,
 }: ExecutionStepProps) {
-  const items = EXECUTION_MODES;
   const [highlighted, setHighlighted] = useState<string | null>(value);
 
-  const handleKeyDown = (e: KeyboardEvent) => {
-    if (!enabled) return;
-    if (e.key === "Enter" && isAgentExecution(highlighted)) {
-      e.preventDefault();
-      onChange(highlighted);
-      onCommit?.(highlighted);
-      return;
-    }
-    if (!onBoundaryReached) return;
-    const idx = isAgentExecution(highlighted) ? items.indexOf(highlighted) : -1;
-    if (e.key === "ArrowUp" && idx === 0) {
-      e.preventDefault();
-      onBoundaryReached("up");
-    }
-    if (e.key === "ArrowDown" && idx === items.length - 1) {
-      e.preventDefault();
-      onBoundaryReached("down");
-    }
+  const handleEnter = (nextValue: string) => {
+    if (!isAgentExecution(nextValue)) return;
+    onCommit?.(nextValue);
   };
 
   return (
@@ -57,10 +42,14 @@ export function ExecutionStep({
           if (isAgentExecution(nextValue)) onChange(nextValue);
         }}
         highlighted={enabled ? highlighted : null}
-        onNavigate={(nextValue) => {
+        onHighlightChange={(nextValue) => {
           if (isAgentExecution(nextValue)) setHighlighted(nextValue);
         }}
-        onKeyDown={handleKeyDown}
+        onEnter={handleEnter}
+        onNavigationBoundaryReached={(direction, event) => {
+          const verticalDirection = toVerticalBoundaryDirection(direction, event.key);
+          if (verticalDirection !== null) onBoundaryReached?.(verticalDirection);
+        }}
         keyboardNavigation={enabled}
         autoFocus={enabled}
         activationMode="manual"

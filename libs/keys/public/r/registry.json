@@ -21,6 +21,31 @@
         {
           "path": "src/hooks/internal/navigation-dispatch.ts",
           "type": "registry:hook"
+        },
+        {
+          "path": "src/utils/navigation-items.ts",
+          "type": "registry:hook"
+        }
+      ]
+    },
+    {
+      "name": "focus-restore",
+      "type": "registry:hook",
+      "title": "Focus Restore",
+      "description": "Capture and restore focus around overlays and temporary UI with nested stack safety",
+      "dependencies": [],
+      "registryDependencies": [],
+      "meta": {
+        "client": true
+      },
+      "files": [
+        {
+          "path": "src/hooks/use-focus-restore.ts",
+          "type": "registry:hook"
+        },
+        {
+          "path": "src/utils/focus-restore.ts",
+          "type": "registry:hook"
         }
       ]
     },

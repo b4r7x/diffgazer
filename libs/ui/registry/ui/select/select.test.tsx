@@ -525,6 +525,7 @@ describe("Select", () => {
     await userEvent.type(screen.getByRole("searchbox", { name: /search options/i }), "apple")
     expect(getSelectTrigger()).not.toHaveAttribute("aria-activedescendant")
     expect(screen.getByRole("searchbox", { name: /search options/i })).not.toHaveAttribute("aria-activedescendant")
+    expect(screen.getByRole("listbox")).not.toHaveAttribute("aria-activedescendant")
 
     rerender(
       <Select variant="card" defaultOpen highlighted="missing">
@@ -552,15 +553,28 @@ describe("Select", () => {
     const trigger = getSelectTrigger()
     const searchInput = screen.getByRole("searchbox", { name: /search options/i })
     const listbox = screen.getByRole("listbox")
+    const appleOption = screen.getByRole("option", { name: /apple/i })
     expect(screen.getAllByRole("combobox")).toEqual([trigger])
     expect(trigger).toHaveAttribute("aria-expanded", "true")
     expect(trigger).toHaveAttribute("aria-controls", listbox.id)
     await waitFor(() => {
-      expect(trigger).toHaveAttribute("aria-activedescendant")
+      expect(searchInput).toHaveAttribute("aria-activedescendant", appleOption.id)
       expect(listbox).not.toHaveAttribute("aria-activedescendant")
     })
-    expect(searchInput).not.toHaveAttribute("aria-controls")
-    expect(searchInput).not.toHaveAttribute("aria-activedescendant")
+    expect(trigger).not.toHaveAttribute("aria-activedescendant")
+    expect(searchInput).toHaveAttribute("aria-controls", listbox.id)
+  })
+
+  it("announces the first matching searchable option as the active descendant", async () => {
+    renderSelect({ withSearch: true, defaultOpen: true })
+    const searchInput = screen.getByRole("searchbox", { name: /search options/i })
+
+    await userEvent.type(searchInput, "ban")
+
+    const bananaOption = screen.getByRole("option", { name: /banana/i })
+    expect(searchInput).toHaveAttribute("aria-activedescendant", bananaOption.id)
+    expect(getSelectTrigger()).not.toHaveAttribute("aria-activedescendant")
+    expect(screen.getByRole("listbox")).not.toHaveAttribute("aria-activedescendant")
   })
 
   it("keeps searchable input outside listbox ownership", () => {

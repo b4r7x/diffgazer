@@ -1,6 +1,8 @@
 import type { ModelInfo } from "@diffgazer/core/schemas/config";
 import { EmptyState } from "@diffgazer/ui/components/empty-state";
+import { RadioGroup } from "@diffgazer/ui/components/radio";
 import { Spinner } from "@diffgazer/ui/components/spinner";
+import { getVerticalArrowDirection } from "@/lib/vertical-navigation";
 import { ModelListItem } from "./model-list-item";
 
 interface ModelListProps {
@@ -10,6 +12,8 @@ interface ModelListProps {
   isFocused: boolean;
   onSelect: (modelId: string) => void;
   onConfirm: (modelId?: string) => void;
+  onHighlightChange: (modelId: string) => void;
+  onBoundaryReached: (direction: "previous" | "next") => void;
   isLoading?: boolean;
   emptyLabel?: string;
   ref?: React.Ref<HTMLDivElement>;
@@ -22,6 +26,8 @@ export function ModelList({
   isFocused,
   onSelect,
   onConfirm,
+  onHighlightChange,
+  onBoundaryReached,
   isLoading,
   emptyLabel,
   ref,
@@ -49,10 +55,19 @@ export function ModelList({
   }
 
   return (
-    <div
+    <RadioGroup
       ref={ref}
-      role="radiogroup"
       aria-label="Available models"
+      value={currentModelId}
+      highlighted={isFocused ? focusedModelId : null}
+      onChange={onSelect}
+      onHighlightChange={onHighlightChange}
+      onEnter={onConfirm}
+      onNavigationBoundaryReached={(direction, event) => {
+        if (getVerticalArrowDirection(event.key) !== null) onBoundaryReached(direction);
+      }}
+      activationMode="manual"
+      wrap={false}
       className="px-4 py-3 space-y-1 max-h-60 overflow-y-auto scrollbar-thin"
     >
       {models.map((model) => (
@@ -60,12 +75,10 @@ export function ModelList({
           key={model.id}
           model={model}
           isSelected={model.id === focusedModelId}
-          isChecked={model.id === currentModelId}
           isFocused={isFocused}
-          onClick={() => onSelect(model.id)}
           onDoubleClick={() => onConfirm(model.id)}
         />
       ))}
-    </div>
+    </RadioGroup>
   );
 }

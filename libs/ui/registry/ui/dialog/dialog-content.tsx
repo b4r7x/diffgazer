@@ -10,6 +10,7 @@ import {
   type ReactNode,
   type SyntheticEvent,
 } from "react";
+import { useFocusRestore } from "@diffgazer/keys";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { useDialogContext } from "./dialog-context";
@@ -65,10 +66,14 @@ export function DialogContent({
   const close = () => onOpenChange(false);
   const shellRef = useRef<HTMLDialogElement>(null);
   const [container, setContainer] = useState<Element | null>(null);
+  const focusRestore = useFocusRestore({
+    fallback: triggerRef.current,
+    restoreOnUnmount: false,
+  });
   const hasAriaLabel = hasNonEmptyText(ariaLabel);
   const hasAriaLabelledBy = hasNonEmptyText(ariaLabelledBy);
   const hasRenderableTitle = hasTitle || containsDialogTitleElement(children);
-  const labelledBy = hasAriaLabelledBy ? ariaLabelledBy : hasAriaLabel || !hasRenderableTitle ? undefined : titleId;
+  const labelSourceId = hasAriaLabelledBy ? ariaLabelledBy : hasAriaLabel || !hasRenderableTitle ? undefined : titleId;
 
   const setShellRef = useCallback((node: HTMLDialogElement | null) => {
     shellRef.current = node;
@@ -88,12 +93,13 @@ export function DialogContent({
         onEscapeKeyDown?.(e);
         if (!e.defaultPrevented) close();
       }}
-      onClose={() => triggerRef.current?.focus()}
+      onBeforeShowModal={focusRestore.capture}
+      onClose={focusRestore.restore}
       onAnimationEnd={onAnimationEnd}
       className={cn(dialogContentVariants({ size }), className)}
       aria-modal="true"
       aria-label={hasAriaLabel ? ariaLabel : undefined}
-      aria-labelledby={labelledBy}
+      aria-labelledby={labelSourceId}
       aria-describedby={hasDescription ? descriptionId : undefined}
     >
       <PortalContainerProvider container={container}>

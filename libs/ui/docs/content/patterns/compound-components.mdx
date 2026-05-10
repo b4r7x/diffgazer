@@ -170,7 +170,7 @@ The same pattern applies across components:
 - **Dialog**: `open` / `onOpenChange`
 - **Tabs**: `value` / `onChange`
 - **Menu**: `selectedId` / `onSelect`
-- **NavigationList**: `selectedId` / `onSelect`
+- **NavigationList**: `selectedId` / `onSelect`, with optional `highlightedId` / `onHighlightChange` for controlled keyboard highlight
 
 ## Composition
 
@@ -254,7 +254,7 @@ Keep `StepperContent` directly inside `StepperStep` when the trigger should expo
 | Dialog | `Dialog` | `DialogTrigger`, `DialogContent`, `DialogHeader`, `DialogTitle`, `DialogDescription`, `DialogBody`, `DialogFooter`, `DialogClose` | `open`, `onOpenChange`, `titleId`, `descriptionId` |
 | Tabs | `Tabs` | `TabsList`, `TabsTrigger`, `TabsContent` | `value`, `onChange`, `orientation` |
 | Menu | `Menu` | `MenuItem`, `MenuDivider` | `selectedId`, `highlightedId`, `onHighlightChange`, `onSelect`, `variant` |
-| NavigationList | `NavigationList` | `NavigationListItem`, `NavigationListItemTitle`, `NavigationListItemStatus`, `NavigationListItemMeta`, `NavigationListBadge`, `NavigationListSubtitle` | `selectedId`, `highlightedId`, `onHighlightChange`, `onSelect`, `focused` |
+| NavigationList | `NavigationList` | `NavigationListItem`, `NavigationListItemTitle`, `NavigationListItemStatus`, `NavigationListItemMeta`, `NavigationListBadge`, `NavigationListSubtitle` | `selectedId`, `highlightedId`, `onHighlightChange`, `onSelect`, `onEnter`, `onNavigationBoundaryReached`, `autoFocus`, `focused` |
 | Toast | `Toaster` | none | Shared toast store through `toast()` helpers |
 | Stepper | `Stepper` | `StepperStep`, `StepperTrigger`, `StepperContent`, `StepperSubstep` | `expandedIds`, `onExpandedChange` |
 

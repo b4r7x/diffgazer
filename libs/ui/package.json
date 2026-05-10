@@ -249,6 +249,10 @@
       "types": "./dist/lib/selectable-variants.d.ts",
       "import": "./dist/lib/selectable-variants.js"
     },
+    "./lib/selectable-collection": {
+      "types": "./dist/lib/selectable-collection.d.ts",
+      "import": "./dist/lib/selectable-collection.js"
+    },
     "./lib/input-variants": {
       "types": "./dist/lib/input-variants.d.ts",
       "import": "./dist/lib/input-variants.js"

@@ -7,7 +7,7 @@ const steps = ["intro", "config", "review", "done"]
 
 function renderStepper(activeStep: string) {
   return render(
-    <HorizontalStepper steps={steps} step={activeStep} aria-label="Setup progress">
+    <HorizontalStepper steps={steps} value={activeStep} aria-label="Setup progress">
       <HorizontalStepper.Step value="intro">Intro</HorizontalStepper.Step>
       <HorizontalStepper.Step value="config">Config</HorizontalStepper.Step>
       <HorizontalStepper.Step value="review">Review</HorizontalStepper.Step>
@@ -35,6 +35,13 @@ describe("HorizontalStepper", () => {
     const list = screen.getByRole("list", { name: "Setup progress" })
     expect(list).toBeInTheDocument()
     expect(screen.getAllByRole("listitem")).toHaveLength(4)
+  })
+
+  it("uses the value prop as the current step contract", () => {
+    renderStepper("review")
+
+    expect(screen.getByText("Review").closest("li")).toHaveAttribute("aria-current", "step")
+    expect(screen.getByText("Config").closest("li")).not.toHaveAttribute("aria-current")
   })
 
   it("has no a11y violations", async () => {

@@ -1,5 +1,5 @@
 import { createRef } from "react"
-import { render, screen } from "@testing-library/react"
+import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { axe } from "../../../testing/utils.js"
 import { describe, it, expect, vi } from "vitest"
@@ -277,11 +277,76 @@ describe("NavigationList", () => {
 
   it("activates highlighted item with Enter", async () => {
     const onSelect = vi.fn()
-    renderList({ defaultHighlightedId: "one", onSelect })
+    const onEnter = vi.fn()
+    renderList({ defaultHighlightedId: "one", onSelect, onEnter })
     const listbox = screen.getByRole("listbox")
     listbox.focus()
     await userEvent.keyboard("{Enter}")
     expect(onSelect).toHaveBeenCalledWith("one")
+    expect(onEnter).toHaveBeenCalledWith("one", expect.any(KeyboardEvent))
+  })
+
+  it("skips disabled items and reports navigation boundaries when wrapping is disabled", async () => {
+    const onBoundary = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <NavigationList
+        aria-label="Test nav"
+        defaultHighlightedId="one"
+        wrap={false}
+        onNavigationBoundaryReached={onBoundary}
+      >
+        <NavigationList.Item id="one">
+          <NavigationList.Title>One</NavigationList.Title>
+        </NavigationList.Item>
+        <NavigationList.Item id="two" disabled>
+          <NavigationList.Title>Two</NavigationList.Title>
+        </NavigationList.Item>
+        <NavigationList.Item id="three">
+          <NavigationList.Title>Three</NavigationList.Title>
+        </NavigationList.Item>
+      </NavigationList>,
+    )
+
+    const listbox = screen.getByRole("listbox")
+    const oneOption = screen.getByRole("option", { name: "One" })
+    const threeOption = screen.getByRole("option", { name: "Three" })
+    listbox.focus()
+
+    await user.keyboard("{ArrowDown}")
+    expect(listbox).toHaveAttribute("aria-activedescendant", threeOption.id)
+
+    await user.keyboard("{ArrowDown}")
+    expect(onBoundary).toHaveBeenCalledWith("next")
+    expect(listbox).toHaveAttribute("aria-activedescendant", threeOption.id)
+
+    await user.keyboard("{ArrowUp}")
+    expect(listbox).toHaveAttribute("aria-activedescendant", oneOption.id)
+
+    await user.keyboard("{ArrowUp}")
+    expect(onBoundary).toHaveBeenCalledWith("previous")
+    expect(listbox).toHaveAttribute("aria-activedescendant", oneOption.id)
+  })
+
+  it("autoFocus focuses the listbox and initializes the first enabled item", async () => {
+    render(
+      <NavigationList aria-label="Test nav" autoFocus>
+        <NavigationList.Item id="one" disabled>
+          <NavigationList.Title>One</NavigationList.Title>
+        </NavigationList.Item>
+        <NavigationList.Item id="two">
+          <NavigationList.Title>Two</NavigationList.Title>
+        </NavigationList.Item>
+      </NavigationList>,
+    )
+
+    const listbox = screen.getByRole("listbox")
+    const twoOption = screen.getByRole("option", { name: "Two" })
+
+    await waitFor(() => {
+      expect(listbox).toHaveFocus()
+      expect(listbox).toHaveAttribute("aria-activedescendant", twoOption.id)
+    })
   })
 
   it("only references mounted description elements", () => {

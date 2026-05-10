@@ -81,14 +81,16 @@ describe("useListbox", () => {
 
   it("selects item on Enter key", async () => {
     const onSelect = vi.fn()
+    const onEnter = vi.fn()
     const user = userEvent.setup()
-    render(<Listbox items={defaultItems} onSelect={onSelect} />)
+    render(<Listbox items={defaultItems} onSelect={onSelect} onEnter={onEnter} />)
 
     const listbox = screen.getByRole("listbox")
     listbox.focus()
     await user.keyboard("{ArrowDown}{Enter}")
 
     expect(onSelect).toHaveBeenCalledWith("a")
+    expect(onEnter).toHaveBeenCalledWith("a", expect.any(KeyboardEvent))
   })
 
   it("selects item on Space key", async () => {
@@ -199,6 +201,47 @@ describe("useListbox", () => {
 
     const lastCall = onHighlight.mock.calls[onHighlight.mock.calls.length - 1]
     expect(lastCall?.[0]).toBe("a")
+  })
+
+  it("reports navigation boundaries when wrapping is disabled", async () => {
+    const onBoundary = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <Listbox
+        items={defaultItems}
+        defaultHighlightedId="a"
+        wrap={false}
+        onNavigationBoundaryReached={onBoundary}
+      />,
+    )
+
+    const listbox = screen.getByRole("listbox")
+    listbox.focus()
+
+    await user.keyboard("{ArrowUp}{End}{ArrowDown}")
+
+    expect(onBoundary).toHaveBeenCalledWith("previous")
+    expect(onBoundary).toHaveBeenCalledWith("next")
+  })
+
+  it("skips disabled items during keyboard navigation", async () => {
+    const user = userEvent.setup()
+    render(
+      <Listbox
+        items={[
+          { id: "a", label: "Alpha" },
+          { id: "b", label: "Beta", disabled: true },
+          { id: "c", label: "Charlie" },
+        ]}
+        defaultHighlightedId="a"
+      />,
+    )
+
+    const listbox = screen.getByRole("listbox")
+    listbox.focus()
+    await user.keyboard("{ArrowDown}")
+
+    expect(listbox).toHaveAttribute("aria-activedescendant", getEncodedListboxItemId("lb", "c"))
   })
 
   it("skips aria-disabled items in typeahead", async () => {

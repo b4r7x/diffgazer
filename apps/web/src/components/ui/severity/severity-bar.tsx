@@ -1,5 +1,6 @@
 import { cn } from '@diffgazer/core/cn';
 import type { ReviewSeverity } from '@diffgazer/core/schemas/review';
+import { BlockBar } from '@diffgazer/ui/components/block-bar';
 import { BAR_FILLED_CHAR, BAR_EMPTY_CHAR, DEFAULT_BAR_WIDTH, SEVERITY_CONFIG } from './constants';
 
 export interface SeverityBarProps {
@@ -12,16 +13,22 @@ export interface SeverityBarProps {
 
 export function SeverityBar({ label, count, max, severity, className }: SeverityBarProps) {
   const { color } = SEVERITY_CONFIG[severity];
-  const filled = max > 0 ? Math.round((count / max) * DEFAULT_BAR_WIDTH) : 0;
-  const empty = DEFAULT_BAR_WIDTH - filled;
 
   return (
-    <div className={cn('flex items-center font-mono text-sm', className)} aria-label={`${label}: ${count}`}>
+    <div className={cn('flex items-center font-mono text-sm', className)}>
       <span className="w-20 text-xs text-tui-muted">{label}</span>
-      <div className="flex-1 flex items-center tracking-widest">
-        <span className={color}>{BAR_FILLED_CHAR.repeat(filled)}</span>
-        <span className="text-tui-border">{BAR_EMPTY_CHAR.repeat(empty)}</span>
-      </div>
+      <BlockBar
+        label={label}
+        value={count}
+        max={max}
+        barWidth={DEFAULT_BAR_WIDTH}
+        filledChar={BAR_FILLED_CHAR}
+        emptyChar={BAR_EMPTY_CHAR}
+        valueText={`${label}: ${count}`}
+        className="flex-1"
+      >
+        <BlockBar.Segment value={count} className={color} />
+      </BlockBar>
       <span className={cn('w-6 text-right font-bold', color)}>{count}</span>
     </div>
   );

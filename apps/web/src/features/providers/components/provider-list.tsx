@@ -6,6 +6,7 @@ import { cn } from "@diffgazer/core/cn";
 import { getDisplayStatusBadge } from '@diffgazer/core/providers';
 import { PROVIDER_CAPABILITIES } from '@diffgazer/core/schemas/config';
 import { PROVIDER_FILTER_LABELS, type ProviderFilter } from '@/features/providers/constants';
+import { toVerticalBoundaryDirection } from '@/lib/vertical-navigation';
 import type { ProviderWithStatus } from '@diffgazer/core/schemas/config';
 
 interface ProviderListProps {
@@ -56,21 +57,6 @@ export function ProviderList({
   onBoundaryReached,
   ref,
 }: ProviderListProps) {
-  const handleKeyDown = (e: ReactKeyboardEvent) => {
-    if (!onBoundaryReached || (e.key !== "ArrowUp" && e.key !== "ArrowDown")) return;
-    const providerIds = providers.map((p) => p.id);
-    const activeId = highlightedId ?? selectedId;
-    const isAtStart = activeId === providerIds[0];
-    const isAtEnd = activeId === providerIds[providerIds.length - 1];
-    if (e.key === "ArrowUp" && isAtStart) {
-      e.preventDefault();
-      onBoundaryReached("up");
-    } else if (e.key === "ArrowDown" && isAtEnd) {
-      e.preventDefault();
-      onBoundaryReached("down");
-    }
-  };
-
   return (
     <div className="flex flex-col h-full">
       <div className="p-3 border-b border-tui-border bg-tui-selection/30">
@@ -145,6 +131,7 @@ export function ProviderList({
       <div className="flex-1 overflow-y-auto scrollbar-hide">
         <NavigationList
           ref={ref}
+          aria-label="Providers"
           selectedId={selectedId}
           highlightedId={highlightedId}
           onHighlightChange={onHighlightChange}
@@ -154,7 +141,9 @@ export function ProviderList({
           }}
           focused={isFocused}
           wrap={false}
-          onKeyDown={handleKeyDown}
+          onNavigationBoundaryReached={(direction) => {
+            onBoundaryReached?.(toVerticalBoundaryDirection(direction));
+          }}
         >
           {providers.map((provider) => {
             const capabilities = PROVIDER_CAPABILITIES[provider.id];

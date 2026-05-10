@@ -1,6 +1,7 @@
 import { useId } from "react";
 import type { SecretsStorage } from "@diffgazer/core/schemas/config";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
+import { toVerticalBoundaryDirection } from "@/lib/vertical-navigation";
 
 export interface StorageSelectorContentProps {
   value: SecretsStorage | null;
@@ -64,12 +65,13 @@ export function StorageSelectorContent({
         onEnter={handleEnter}
         keyboardNavigation={navigationEnabled}
         activationMode="manual"
-        onNavigationBoundaryReached={(direction) => {
-          onBoundaryReached?.(direction === "previous" ? "up" : "down");
+        onNavigationBoundaryReached={(direction, event) => {
+          const verticalDirection = toVerticalBoundaryDirection(direction, event.key);
+          if (verticalDirection !== null) onBoundaryReached?.(verticalDirection);
         }}
         wrap={false}
         autoFocus={autoFocusList && navigationEnabled}
-        labelledBy={labelId}
+        aria-labelledby={labelId}
         className="space-y-2"
         disabled={disabled}
       >

@@ -1,6 +1,11 @@
 import { useEffect, useEffectEvent, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type RefCallback, type RefObject } from "react";
 import type { ModelInfo } from "@diffgazer/core/schemas/config";
-import { useKey, useFocusZone, useScopedNavigation } from "@diffgazer/keys";
+import {
+  findNavigationItemByValue,
+  useKey,
+  useFocusZone,
+  useScopedNavigation,
+} from "@diffgazer/keys";
 import { TIER_FILTERS, type TierFilter } from "@/features/providers/constants";
 
 type FocusZone = "search" | "filters" | "list" | "footer";
@@ -45,6 +50,8 @@ interface ModelDialogKeyboardReturn {
   handleUseCustom: () => void;
   handleSearchEscape: () => void;
   handleSearchArrowDown: () => void;
+  handleListHighlightChange: (modelId: string) => void;
+  handleListBoundaryReached: (direction: "previous" | "next") => void;
   handleListSelect: (modelId: string) => void;
 }
 
@@ -117,40 +124,33 @@ export function useModelDialogKeyboard({
     },
   });
 
+  const handleListBoundaryReached = (direction: "previous" | "next") => {
+    if (direction === "previous") {
+      setFocusZone("filters");
+      setFilterIndex(0);
+      return;
+    }
+
+    setFocusZone("footer");
+    focusFooterButton(1);
+  };
+
   const { highlighted: focusedModelId, highlight: focusModel } = useScopedNavigation({
     containerRef: listContainerRef,
     role: "radio",
     enabled: open && isZone("list") && filteredModels.length > 0,
     wrap: false,
     moveFocus: true,
-    upKeys: ["ArrowUp", "k"],
-    downKeys: ["ArrowDown", "j"],
-    onNavigationBoundaryReached: (direction) => {
-      if (direction === "previous") {
-        setFocusZone("filters");
-        setFilterIndex(0);
-      } else if (direction === "next") {
-        setFocusZone("footer");
-        focusFooterButton(1);
-      }
-    },
+    upKeys: ["k"],
+    downKeys: ["j"],
+    onNavigationBoundaryReached: handleListBoundaryReached,
   });
 
   const getModelElement = (modelId: string) => {
-    return Array.from(listContainerRef.current?.querySelectorAll<HTMLElement>('[role="radio"][data-value]') ?? [])
-      .find((item) => item.dataset.value === modelId) ?? null;
-  };
-
-  const getFocusedModelId = () => {
-    const container = listContainerRef.current;
-    const activeElement = container?.ownerDocument.activeElement;
-    const View = container?.ownerDocument.defaultView;
-    if (!container || !View || !(activeElement instanceof View.HTMLElement) || !container.contains(activeElement)) {
-      return focusedModelId;
-    }
-
-    const modelId = activeElement.closest<HTMLElement>('[role="radio"][data-value]')?.dataset.value;
-    return modelId ?? focusedModelId;
+    return findNavigationItemByValue(listContainerRef.current, {
+      type: "radio",
+      value: modelId,
+    });
   };
 
   const focusModelElement = (modelId: string) => {
@@ -269,14 +269,6 @@ export function useModelDialogKeyboard({
   }, { enabled: open, preventDefault: true });
   useKey("f", cycleTierFilter, { enabled: open && !isZone("search") });
   useKey("Escape", handleCancel, { enabled: open && !isZone("search") });
-  useKey(" ", () => {
-    const modelId = getFocusedModelId();
-    if (modelId) setCheckedModelId(modelId);
-  }, { enabled: open && isZone("list") });
-  useKey("Enter", () => {
-    const modelId = getFocusedModelId();
-    if (modelId) handleConfirm(modelId);
-  }, { enabled: open && isZone("list") });
 
   const handleSearchEscape = () => {
     if (searchQuery) {
@@ -297,6 +289,11 @@ export function useModelDialogKeyboard({
     setFocusZone("list");
     focusModelElement(modelId);
     setCheckedModelId(modelId);
+  };
+
+  const handleListHighlightChange = (modelId: string) => {
+    setFocusZone("list");
+    focusModel(modelId);
   };
 
   const handleFilterKeyDown = (event: ReactKeyboardEvent) => {
@@ -332,6 +329,8 @@ export function useModelDialogKeyboard({
     handleUseCustom,
     handleSearchEscape,
     handleSearchArrowDown,
+    handleListHighlightChange,
+    handleListBoundaryReached,
     handleListSelect,
   };
 }

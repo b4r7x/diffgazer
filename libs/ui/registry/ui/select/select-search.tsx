@@ -2,7 +2,9 @@
 
 import { useLayoutEffect } from "react";
 import { cn } from "@/lib/utils";
+import { matchesSearch } from "@/lib/search";
 import { useSelectContext } from "./select-context";
+import { isActiveOptionVisible, toOptionId } from "./select-utils";
 
 export interface SelectSearchProps {
   placeholder?: string;
@@ -23,7 +25,21 @@ export function SelectSearch({
   className,
   "aria-label": ariaLabel,
 }: SelectSearchProps) {
-  const { open, searchQuery, onSearchChange, variant, searchInputRef, ariaInvalid, required } = useSelectContext("SelectSearch");
+  const {
+    open,
+    searchQuery,
+    onSearchChange,
+    variant,
+    searchInputRef,
+    ariaInvalid,
+    required,
+    options,
+    highlighted,
+    listboxId,
+  } = useSelectContext("SelectSearch");
+  const activeDescendant = isActiveOptionVisible(options, highlighted, searchQuery, matchesSearch)
+    ? toOptionId(listboxId, highlighted)
+    : undefined;
 
   useLayoutEffect(() => {
     if (open) searchInputRef.current?.focus();
@@ -40,6 +56,8 @@ export function SelectSearch({
         ref={searchInputRef}
         type="search"
         aria-label={ariaLabel ?? "Search options"}
+        aria-controls={listboxId}
+        aria-activedescendant={activeDescendant}
         aria-required={required}
         aria-invalid={ariaInvalid}
         value={searchQuery}

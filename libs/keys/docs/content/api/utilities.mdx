@@ -1,9 +1,115 @@
 ---
 title: Utilities
-description: Helper functions for working with @diffgazer/keys — keys utility and useOptionalKeyboardContext.
+description: Helper functions for working with @diffgazer/keys — keys, navigation item utilities, DOM focus restore utilities, and useOptionalKeyboardContext.
 ---
 
 # Utilities
+
+## navigation item utilities
+
+DOM helpers shared by `useNavigation` and composite widgets. These are package exports, not standalone shadcn registry items.
+
+```ts
+import {
+  NAVIGATION_ITEM_ATTRIBUTE,
+  getNavigationItemProps,
+  getNavigationItems,
+  containsActiveElement,
+  findNavigationItemByValue,
+  focusNavigationItem,
+  getFocusedNavigationValue,
+  getFocusableElements,
+} from "@diffgazer/keys";
+```
+
+Use `getNavigationItemProps(type, value)` to apply the public data contract:
+
+```tsx
+<button {...getNavigationItemProps("option", "activity")}>Activity</button>
+```
+
+### Signature
+
+```ts
+type NavigationItemType =
+  | "radio"
+  | "checkbox"
+  | "option"
+  | "menuitem"
+  | "menuitemradio"
+  | "button"
+  | "tab";
+
+interface NavigationItemQuery {
+  type: NavigationItemType;
+  skipDisabled?: boolean;
+  scopeToContainer?: boolean;
+  ownerSelector?: string | null;
+}
+
+function getNavigationItemProps(
+  type: NavigationItemType,
+  value: string,
+): {
+  "data-diffgazer-navigation-item": NavigationItemType;
+  "data-value": string;
+};
+
+function getNavigationItems(
+  container: HTMLElement | null,
+  query: NavigationItemQuery,
+): HTMLElement[];
+
+function containsActiveElement(element: HTMLElement): boolean;
+function findNavigationItemByValue(
+  container: HTMLElement | null,
+  query: NavigationItemQuery & { value: string },
+): HTMLElement | null;
+
+function focusNavigationItem(
+  container: HTMLElement | null,
+  query: NavigationItemQuery & {
+    value: string;
+    fallback?: "first" | "last" | "none";
+    preventScroll?: boolean;
+  },
+): string | null;
+
+function getFocusedNavigationValue(
+  container: HTMLElement | null,
+  query: NavigationItemQuery,
+): string | null;
+
+function getFocusableElements(container: HTMLElement | null): HTMLElement[];
+```
+
+The query helpers read `data-diffgazer-navigation-item`, the legacy `data-navigation-item`, role selectors, and native radio/checkbox/button controls. Navigation items should expose a stable `data-value`. Typed data-contract markers only match the requested item type, which keeps mixed widgets separated inside the same subtree.
+
+---
+
+## DOM focus restore utilities
+
+Plain DOM helpers used by [useFocusRestore](/keys/docs/hooks/use-focus-restore). Use these when you are writing non-hook code that still needs the same focus target contract.
+
+```ts
+import {
+  getRestorableFocusTarget,
+  restoreFocus,
+} from "@diffgazer/keys";
+```
+
+### Signature
+
+```ts
+function getRestorableFocusTarget(ownerDocument?: Document): HTMLElement | null;
+function restoreFocus(target: HTMLElement | null, options?: { preventScroll?: boolean }): boolean;
+```
+
+`getRestorableFocusTarget()` ignores `body`, `documentElement`, disconnected nodes, and missing DOM. `restoreFocus()` focuses a connected target and returns whether focus moved there.
+
+For React components, prefer [useFocusRestore](/keys/docs/hooks/use-focus-restore). The hook owns the nested overlay stack and the cleanup behavior.
+
+---
 
 ## keys
 

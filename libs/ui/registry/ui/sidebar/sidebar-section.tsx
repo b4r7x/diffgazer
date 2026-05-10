@@ -26,7 +26,7 @@ export function SidebarSection({
   ...rest
 }: SidebarSectionProps) {
   const titleId = useId();
-  const labelledBy = ariaLabelledBy ?? (containsSidebarSectionTitleElement(children) ? titleId : undefined);
+  const labelSourceId = ariaLabelledBy ?? (containsSidebarSectionTitleElement(children) ? titleId : undefined);
 
   const [isOpen, setIsOpen] = useControllableState<boolean>({
     value: controlledOpen,
@@ -50,7 +50,7 @@ export function SidebarSection({
         {...rest}
         ref={ref}
         role="group"
-        aria-labelledby={labelledBy}
+        aria-labelledby={labelSourceId}
         data-state={isOpen ? "open" : "closed"}
         className={cn("mb-4", className)}
       >

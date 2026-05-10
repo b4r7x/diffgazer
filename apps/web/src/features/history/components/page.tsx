@@ -6,6 +6,7 @@ import { TimelineList } from "@/features/history/components/timeline-list";
 import { HistoryInsightsPane } from "@/features/history/components/history-insights-pane";
 import { useHistoryKeyboard } from "@/features/history/hooks/use-history-keyboard";
 import { useHistoryPage } from "@/features/history/hooks/use-history-page";
+import { toVerticalBoundaryDirection } from "@/lib/vertical-navigation";
 
 export function HistoryPage() {
   const {
@@ -50,19 +51,9 @@ export function HistoryPage() {
   });
 
   const handleRunsKeyDown = (event: KeyboardEvent) => {
-    if ((event.key === "Enter" || event.key === " ") && activeRunId) {
+    if (event.key === " " && activeRunId) {
       event.preventDefault();
       handleRunActivate(activeRunId);
-      return;
-    }
-
-    if (
-      event.key === "ArrowUp" &&
-      mappedRuns.length > 0 &&
-      (activeRunId === mappedRuns[0]?.id || activeRunId === null)
-    ) {
-      event.preventDefault();
-      handleRunsBoundary("up");
     }
   };
 
@@ -138,6 +129,7 @@ export function HistoryPage() {
                 setFocusZone("timeline");
                 setSelectedDateId(id);
               }}
+              onFocus={() => setFocusZone("timeline")}
               keyboardEnabled={focusZone === "timeline"}
               onBoundaryReached={handleTimelineBoundary}
             />
@@ -160,7 +152,13 @@ export function HistoryPage() {
                 selectedId={selectedRunId}
                 highlightedId={focusZone === "runs" ? runsHighlightedId : null}
                 onSelect={setSelectedRunId}
+                onEnter={handleRunActivate}
                 onHighlightChange={setRunsFocusedValue}
+                onNavigationBoundaryReached={(direction) => {
+                  if (direction === "previous") {
+                    handleRunsBoundary(toVerticalBoundaryDirection(direction));
+                  }
+                }}
                 onKeyDown={handleRunsKeyDown}
                 wrap={false}
                 focused={focusZone === "runs"}

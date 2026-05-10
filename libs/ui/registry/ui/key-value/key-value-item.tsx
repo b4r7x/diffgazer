@@ -11,6 +11,8 @@ export interface KeyValueItemProps extends Omit<ComponentPropsWithRef<"dt">, "ch
   variant?: KeyValueVariant;
   layout?: KeyValueLayout;
   bordered?: boolean;
+  labelClassName?: string;
+  valueClassName?: string;
 }
 
 const labelVariants = cva("text-muted-foreground", {
@@ -53,6 +55,8 @@ export function KeyValueItem({
   value,
   variant = "default",
   className,
+  labelClassName,
+  valueClassName,
   ref,
   layout: layoutProp,
   bordered: borderedProp,
@@ -66,12 +70,12 @@ export function KeyValueItem({
     <>
       <dt
         ref={ref}
-        className={cn(labelVariants({ layout, bordered }), className)}
+        className={cn(labelVariants({ layout, bordered }), className, labelClassName)}
         {...rest}
       >
         {label}
       </dt>
-      <dd className={valueVariants({ variant, bordered, layout })}>{value}</dd>
+      <dd className={cn(valueVariants({ variant, bordered, layout }), valueClassName)}>{value}</dd>
     </>
   );
 }

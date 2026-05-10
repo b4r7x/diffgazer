@@ -1,10 +1,17 @@
-import { type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useState } from "react";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
 import { Badge } from "@diffgazer/ui/components/badge";
 import { AVAILABLE_PROVIDERS } from "@diffgazer/core/schemas/config";
 import type { AIProvider } from "@diffgazer/core/schemas/config";
 import { PROVIDER_CAPABILITIES } from "@diffgazer/core/schemas/config";
-import { useOptionHighlight } from "./use-option-highlight";
+import { resolveAvailableValue } from "@/lib/selectable-values";
+import { toVerticalBoundaryDirection } from "@/lib/vertical-navigation";
+
+const PROVIDER_IDS = AVAILABLE_PROVIDERS.map((provider) => provider.id);
+
+function isProviderId(value: string | null): value is AIProvider {
+  return PROVIDER_IDS.some((providerId) => providerId === value);
+}
 
 interface ProviderStepProps {
   value: AIProvider | null;
@@ -21,40 +28,17 @@ export function ProviderStep({
   enabled = true,
   onBoundaryReached,
 }: ProviderStepProps) {
-  const providerIds = AVAILABLE_PROVIDERS.map((provider) => provider.id as AIProvider);
-  const { highlighted: effectiveHighlighted, setHighlighted } = useOptionHighlight(
-    value,
-    providerIds,
-  );
+  const [highlighted, setHighlighted] = useState<string | null>(null);
+  const effectiveHighlighted = resolveAvailableValue(PROVIDER_IDS, highlighted, value);
   const handleChange = (provider: string) => {
+    if (!isProviderId(provider)) return;
     setHighlighted(provider);
-    onChange(provider as AIProvider);
+    onChange(provider);
   };
 
-  const handleKeyDown = (e: ReactKeyboardEvent) => {
-    if (!enabled) return;
-
-    if (e.key === "Enter" && effectiveHighlighted) {
-      e.preventDefault();
-      onChange(effectiveHighlighted as AIProvider);
-      onCommit?.(effectiveHighlighted as AIProvider);
-      return;
-    }
-
-    if (onBoundaryReached && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
-      const isAtStart = effectiveHighlighted === providerIds[0];
-      const isAtEnd = effectiveHighlighted === providerIds[providerIds.length - 1];
-      if (e.key === "ArrowUp" && isAtStart) {
-        e.preventDefault();
-        onBoundaryReached("up");
-        return;
-      }
-      if (e.key === "ArrowDown" && isAtEnd) {
-        e.preventDefault();
-        onBoundaryReached("down");
-        return;
-      }
-    }
+  const handleEnter = (provider: string) => {
+    if (!isProviderId(provider)) return;
+    onCommit?.(provider);
   };
 
   return (
@@ -66,8 +50,12 @@ export function ProviderStep({
         value={value ?? undefined}
         onChange={handleChange}
         highlighted={enabled ? effectiveHighlighted : null}
-        onNavigate={setHighlighted}
-        onKeyDown={handleKeyDown}
+        onHighlightChange={setHighlighted}
+        onEnter={handleEnter}
+        onNavigationBoundaryReached={(direction, event) => {
+          const verticalDirection = toVerticalBoundaryDirection(direction, event.key);
+          if (verticalDirection !== null) onBoundaryReached?.(verticalDirection);
+        }}
         keyboardNavigation={enabled}
         autoFocus={enabled}
         activationMode="manual"

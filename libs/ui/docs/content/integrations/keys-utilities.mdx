@@ -1,9 +1,9 @@
 ---
 title: Utilities
-description: Standalone hooks for focus trapping, scroll locking, and key mapping that work independently of KeyboardProvider.
+description: Standalone focus, navigation item, scroll locking, and key mapping utilities from @diffgazer/keys.
 ---
 
-Standalone hooks for focus trapping, scroll locking, and key mapping. These work independently of `KeyboardProvider` and are available in copy mode.
+Standalone focus, navigation item, scroll locking, and key mapping utilities. Most work independently of `KeyboardProvider`; package-only utilities should be imported from `@diffgazer/keys`.
 
 > For the complete API reference, see the [@diffgazer/keys documentation](/keys/docs/api).
 
@@ -42,6 +42,49 @@ Used internally by @diffgazer/ui's `DialogContent` and `CommandPaletteContent` c
 
 ---
 
+## useFocusRestore
+
+Captures the currently focused element before a temporary surface opens and restores it when that surface closes. This is used by @diffgazer/ui overlay primitives so nested dialogs and command palettes restore focus in close order.
+
+```tsx
+import { useEffect, useRef, useState } from "react"
+import { useFocusRestore } from "@diffgazer/keys"
+// or in copy mode:
+// import { useFocusRestore } from "@/hooks/use-focus-restore"
+
+function TemporaryPanel() {
+  const [open, setOpen] = useState(false)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const focusRestore = useFocusRestore({ restoreOnUnmount: true })
+
+  useEffect(() => {
+    if (open) panelRef.current?.focus()
+  }, [open])
+
+  function openPanel() {
+    focusRestore.capture()
+    setOpen(true)
+  }
+
+  function closePanel() {
+    setOpen(false)
+    focusRestore.restore()
+  }
+
+  return open ? (
+    <div ref={panelRef} role="dialog" tabIndex={-1}>
+      <button onClick={closePanel}>Close</button>
+    </div>
+  ) : (
+    <button onClick={openPanel}>Open</button>
+  )
+}
+```
+
+Use this for app-owned overlays or temporary focus zones. Prefer the built-in behavior on `Dialog` and `CommandPalette` when using those primitives directly.
+
+---
+
 ## useScrollLock
 
 Reference-counted scroll lock. Sets `overflow: hidden` on an element, restores the original value when all locks are released.
@@ -60,6 +103,30 @@ useScrollLock(panelRef, isOpen)
 ```
 
 Used internally by @diffgazer/ui's `DialogContent` component.
+
+---
+
+## navigation item utilities
+
+Package-mode helpers for component authors who need the same DOM item discovery contract used by `useNavigation`, `NavigationList`, `RadioGroup`, and related primitives.
+
+```tsx
+import {
+  getNavigationItemProps,
+  getNavigationItems,
+  focusNavigationItem,
+} from "@diffgazer/keys"
+
+function Option({ value, children }: { value: string; children: React.ReactNode }) {
+  return (
+    <button type="button" {...getNavigationItemProps("option", value)}>
+      {children}
+    </button>
+  )
+}
+```
+
+Use `getNavigationItemProps(type, value)` instead of inventing a local selector contract. It writes `data-diffgazer-navigation-item` and `data-value`, which keeps app-built primitives compatible with the same focus and navigation logic as the registry components.
 
 ---
 

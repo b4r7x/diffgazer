@@ -1,8 +1,9 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type KeyboardEvent } from "react";
 import { AVAILABLE_PROVIDERS, PROVIDER_ENV_VARS } from "@diffgazer/core/schemas/config";
 import { useKey } from "@diffgazer/keys";
 import type { AIProvider } from "@diffgazer/core/schemas/config";
 import { ApiKeyMethodSelector } from "@/components/shared/api-key-method-selector";
+import { getVerticalArrowDirection } from "@/lib/vertical-navigation";
 import type { FocusElement } from "@/types/focus-element";
 import type { InputMethod } from "@/types/input-method";
 
@@ -96,6 +97,31 @@ export function ApiKeyStep({
     }
   }, { enabled });
 
+  const handleMethodKeyDown = (
+    event: KeyboardEvent,
+    focusedMethod: InputMethod,
+  ) => {
+    const direction = getVerticalArrowDirection(event.key);
+    if (direction === null) return;
+
+    if (direction === "down" && focusedMethod === "paste" && method === "paste") {
+      event.preventDefault();
+      focusInput();
+      return;
+    }
+
+    if (direction === "down" && focusedMethod === "env") {
+      event.preventDefault();
+      onBoundaryReached?.("down");
+      return;
+    }
+
+    if (direction === "up" && focusedMethod === "env" && method === "paste") {
+      event.preventDefault();
+      focusInput();
+    }
+  };
+
   return (
     <div className="space-y-4">
       <p className="text-sm text-tui-muted font-mono">
@@ -112,6 +138,7 @@ export function ApiKeyStep({
         focused={effectiveFocused}
         onFocus={setFocused}
         onKeySubmit={() => onCommit?.({ inputMethod: method, apiKey: keyValue })}
+        onMethodKeyDown={handleMethodKeyDown}
       />
     </div>
   );

@@ -78,21 +78,27 @@ describe("Field", () => {
 
   it("composes form wiring with decorated inputs", () => {
     render(
-      <Field required>
+      <Field controlId="repository-path" invalid required disabled>
         <Field.Label>Repository path</Field.Label>
         <Field.Control>
           <InputGroup prefix="~/" suffix=".json" />
         </Field.Control>
         <Field.Description>Relative config path.</Field.Description>
+        <Field.Error>Repository path is required.</Field.Error>
       </Field>,
     )
 
     const input = screen.getByRole("textbox", { name: "Repository path" })
 
+    expect(input).toHaveAttribute("id", "repository-path")
     expect(input).toBeRequired()
-    expect(input).toHaveAccessibleDescription("Relative config path.")
+    expect(input).toBeDisabled()
+    expect(input).toHaveAttribute("aria-invalid", "true")
+    expect(input).toHaveAccessibleDescription("Relative config path. Repository path is required.")
     expect(screen.getByText("~/")).toBeInTheDocument()
     expect(screen.getByText(".json")).toBeInTheDocument()
+    expect(screen.getByText("~/")).toHaveAttribute("aria-hidden", "true")
+    expect(screen.getByText(".json")).toHaveAttribute("aria-hidden", "true")
   })
 
   it("composes form wiring with textareas", () => {

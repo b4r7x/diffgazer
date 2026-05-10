@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react"
+import { fireEvent, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { axe } from "../../../testing/utils.js"
 import { describe, it, expect, vi } from "vitest"
@@ -137,7 +137,7 @@ describe("Tabs", () => {
     screen.getByRole("tab", { name: "One" }).focus()
     await userEvent.keyboard("{ArrowRight}")
     expect(screen.getByRole("tab", { name: "Two" })).toHaveFocus()
-    await userEvent.keyboard("{Enter}")
+    fireEvent.keyDown(screen.getByRole("tab", { name: "Two" }), { key: "Enter" })
     expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("aria-selected", "true")
     expect(screen.getByText("Content two")).not.toHaveAttribute("hidden")
   })
@@ -160,7 +160,7 @@ describe("Tabs", () => {
     expect(screen.getByRole("tab", { name: "Two" })).toHaveFocus()
     expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("aria-selected", "false")
 
-    await userEvent.keyboard(" ")
+    fireEvent.keyDown(screen.getByRole("tab", { name: "Two" }), { key: " " })
     expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("aria-selected", "true")
     expect(screen.getByText("Content two")).not.toHaveAttribute("hidden")
   })

@@ -4,8 +4,9 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@diffgazer/ui/componen
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { EmptyState } from "@diffgazer/ui/components/empty-state";
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
-import { CodeSnippet, type CodeLine } from "./code-snippet";
-import { DiffView } from "./diff-view";
+import { CodeBlock, type CodeBlockLineType } from "@diffgazer/ui/components/code-block";
+import { DiffView } from "@diffgazer/ui/components/diff-view";
+import { parseDiff } from "@diffgazer/ui/lib/diff";
 import { FixPlanChecklist } from "./fix-plan-checklist";
 import { IssueHeader } from "./issue-header";
 
@@ -73,7 +74,7 @@ export function IssueDetailsPane({
 
                 {hasPatch && issue.suggested_patch && (
                   <TabsContent value="patch" className="mt-0">
-                    <DiffView patch={issue.suggested_patch} />
+                    <PatchTabContent patch={issue.suggested_patch} />
                   </TabsContent>
                 )}
               </>
@@ -87,6 +88,38 @@ export function IssueDetailsPane({
   );
 }
 
+function canRenderStructuredPatch(patch: string) {
+  const files = parseDiff(patch);
+  return files.length === 1 && files[0]?.hunks.length > 0;
+}
+
+function getPatchLineType(line: string): CodeBlockLineType | undefined {
+  if (line.startsWith("+") && !line.startsWith("+++")) return "added";
+  if (line.startsWith("-") && !line.startsWith("---")) return "removed";
+  return undefined;
+}
+
+function PatchTabContent({ patch }: { patch: string }) {
+  if (canRenderStructuredPatch(patch)) {
+    return <DiffView patch={patch} />;
+  }
+
+  return (
+    <CodeBlock label="Suggested patch">
+      <CodeBlock.Content>
+        {patch.split("\n").map((line, index) => (
+          <CodeBlock.Line
+            key={`${index}-${line}`}
+            number={index + 1}
+            content={line}
+            type={getPatchLineType(line)}
+          />
+        ))}
+      </CodeBlock.Content>
+    </CodeBlock>
+  );
+}
+
 function DetailsTabContent({
   issue,
   completedSteps,
@@ -96,12 +129,12 @@ function DetailsTabContent({
   completedSteps: Set<number>;
   onToggleStep: (step: number) => void;
 }) {
-  const evidenceLines: CodeLine[] = issue.evidence
+  const evidenceLines = issue.evidence
     .filter((e) => e.type === "code" && e.excerpt)
     .map((e, i) => ({
       number: e.range?.start ?? issue.line_start ?? i + 1,
       content: e.excerpt,
-      type: "highlight" as const,
+      type: "highlight" as CodeBlockLineType,
     }));
 
   return (
@@ -111,7 +144,18 @@ function DetailsTabContent({
         <p className="text-sm leading-relaxed text-tui-fg/80">{issue.symptom}</p>
         {evidenceLines.length > 0 && (
           <div className="mt-2">
-            <CodeSnippet lines={evidenceLines} />
+            <CodeBlock label="Evidence">
+              <CodeBlock.Content>
+                {evidenceLines.map((line) => (
+                  <CodeBlock.Line
+                    key={`${line.number}-${line.content}`}
+                    number={line.number}
+                    content={line.content}
+                    type={line.type}
+                  />
+                ))}
+              </CodeBlock.Content>
+            </CodeBlock>
           </div>
         )}
       </div>

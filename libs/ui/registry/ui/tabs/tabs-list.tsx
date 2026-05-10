@@ -23,10 +23,15 @@ export function TabsList({ children, className, loop = true, onKeyDown, ref, ...
     wrap: loop,
     moveFocus: true,
     scopeToContainer: true,
-    ...(activationMode === "automatic" && {
-      value: value || undefined,
-      onValueChange: onChange,
-    }),
+    ...(activationMode === "automatic"
+      ? {
+          value: value || undefined,
+          onValueChange: onChange,
+        }
+      : {
+          onEnter: onChange,
+          onSelect: onChange,
+        }),
   });
 
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {

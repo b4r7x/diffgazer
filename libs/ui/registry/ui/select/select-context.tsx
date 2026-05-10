@@ -10,6 +10,7 @@ export interface SelectOptionMetadata {
 export interface SelectContextValue {
   open: boolean;
   disabled: boolean;
+  searchable: boolean;
   onOpenChange: (open: boolean) => void;
   value: string | null | string[];
   multiple: boolean;

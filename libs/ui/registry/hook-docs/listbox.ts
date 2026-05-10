@@ -36,6 +36,14 @@ return (
         "Prefix for generating aria-activedescendant IDs. Each option should have id=\"{idPrefix}-{itemId}\".",
     },
     {
+      name: "autoFocus",
+      type: "boolean",
+      required: false,
+      defaultValue: "false",
+      description:
+        "Focus the container on mount and initialize highlight to the selected item or first enabled item.",
+    },
+    {
       name: "selectedId",
       type: "string | null",
       required: false,
@@ -70,10 +78,24 @@ return (
       description: "Called when the selected item changes.",
     },
     {
+      name: "onEnter",
+      type: "(id: string, event: KeyboardEvent) => void",
+      required: false,
+      description:
+        "Called when Enter activates the highlighted item. Selection is committed before this callback runs.",
+    },
+    {
       name: "onHighlightChange",
       type: "(id: string) => void",
       required: false,
       description: "Called when the highlighted item changes via keyboard navigation.",
+    },
+    {
+      name: "onNavigationBoundaryReached",
+      type: '(direction: "previous" | "next") => void',
+      required: false,
+      description:
+        "Called when wrap is false and keyboard navigation attempts to move before the first item or after the last item.",
     },
     {
       name: "wrap",

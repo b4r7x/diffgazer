@@ -378,10 +378,7 @@ describe("useNavigation", () => {
     expectActiveOptionText("B");
   });
 
-  it("moves DOM focus when moveFocus is enabled and does not activate items", async () => {
-    const onSelect = vi.fn();
-    const onEnter = vi.fn();
-
+  it("moves DOM focus when moveFocus is enabled without activating by default", async () => {
     function MoveFocusList() {
       const ref = useRef<HTMLDivElement>(null);
       const result = useNavigation({
@@ -389,8 +386,6 @@ describe("useNavigation", () => {
         role: "button",
         initialValue: "a",
         moveFocus: true,
-        onSelect,
-        onEnter,
       });
 
       return (
@@ -409,8 +404,39 @@ describe("useNavigation", () => {
     await userEvent.keyboard("{ArrowDown}{End}{Home} {Enter}");
 
     expect(document.activeElement).toBe(first);
-    expect(onSelect).not.toHaveBeenCalled();
-    expect(onEnter).not.toHaveBeenCalled();
+  });
+
+  it("activates the focused value when moveFocus has explicit activation handlers", async () => {
+    const onSelect = vi.fn();
+    const onEnter = vi.fn();
+
+    function MoveFocusActivationList() {
+      const ref = useRef<HTMLDivElement>(null);
+      const result = useNavigation({
+        containerRef: ref,
+        role: "button",
+        initialValue: "a",
+        moveFocus: true,
+        onSelect,
+        onEnter,
+      });
+
+      return (
+        <div ref={ref} role="group" aria-label="Actions" tabIndex={0} onKeyDown={result.onKeyDown}>
+          <button type="button" data-value="a">A</button>
+          <button type="button" data-value="b">B</button>
+        </div>
+      );
+    }
+
+    render(<MoveFocusActivationList />);
+    screen.getByRole("button", { name: "A" }).focus();
+
+    await userEvent.keyboard("{ArrowDown} {Enter}");
+
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "B" }));
+    expect(onEnter).toHaveBeenCalledWith("b", expect.any(KeyboardEvent));
+    expect(onSelect).toHaveBeenCalledWith("b", expect.any(KeyboardEvent));
   });
 
   it("exposes highlight and isHighlighted to consumers", async () => {

@@ -1,6 +1,7 @@
 import { useState, type KeyboardEvent } from "react";
 import type { Theme } from '@diffgazer/core/schemas/config';
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
+import { toVerticalBoundaryDirection } from "@/lib/vertical-navigation";
 
 export interface ThemeSelectorContentProps {
   value: Theme;
@@ -51,7 +52,7 @@ export function ThemeSelectorContent({
     ? rawHighlighted
     : optionValues[0]!;
 
-  const handleNavigate = (nextValue: string) => {
+  const handleHighlightChange = (nextValue: string) => {
     if (!isThemeOption(nextValue, optionValues)) return;
 
     setInternalHighlight(nextValue);
@@ -85,13 +86,14 @@ export function ThemeSelectorContent({
       <RadioGroup
         value={value}
         onChange={handleChange}
-        onNavigate={handleNavigate}
+        onHighlightChange={handleHighlightChange}
         onKeyDown={handleKeyDown}
         highlighted={enabled ? highlighted : null}
         keyboardNavigation={enabled}
         activationMode="manual"
-        onNavigationBoundaryReached={(direction) => {
-          onBoundaryReached?.(direction === "previous" ? "up" : "down");
+        onNavigationBoundaryReached={(direction, event) => {
+          const verticalDirection = toVerticalBoundaryDirection(direction, event.key);
+          if (verticalDirection !== null) onBoundaryReached?.(verticalDirection);
         }}
         autoFocus={enabled}
         wrap={false}

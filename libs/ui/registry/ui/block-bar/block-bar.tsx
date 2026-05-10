@@ -27,6 +27,7 @@ export interface BlockBarProps extends HTMLAttributes<HTMLDivElement> {
   filledChar?: string;
   emptyChar?: string;
   label?: string;
+  valueText?: string;
   variant?: SegmentVariant;
   segments?: BlockBarSegmentData[];
   children?: ReactNode;
@@ -62,6 +63,7 @@ function BlockBarRoot({
   filledChar = "\u2588",
   emptyChar = "\u2591",
   label,
+  valueText,
   variant,
   segments,
   className,
@@ -85,6 +87,7 @@ function BlockBarRoot({
   const displayValue = Number.isFinite(rawValue)
     ? Math.min(Math.max(0, rawValue), safeMax)
     : 0;
+  const resolvedValueText = valueText ?? `${displayValue} of ${safeMax}`;
   const resolvedSegments = segments
     ? segments.map((segment) => ({
         ...segment,
@@ -106,7 +109,7 @@ function BlockBarRoot({
         aria-valuemin={0}
         aria-valuemax={safeMax}
         aria-valuenow={displayValue}
-        aria-valuetext={`${displayValue} of ${safeMax}`}
+        aria-valuetext={resolvedValueText}
         aria-label={label}
         className={cn("flex items-center font-mono text-sm", className)}
         {...props}
