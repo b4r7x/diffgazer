@@ -1,4 +1,4 @@
-import type { Ref } from "react";
+import type { KeyboardEvent, Ref } from "react";
 import { cn } from "@diffgazer/core/cn";
 import { SeverityFilterGroup, type SeverityFilter } from "./severity-filter-group";
 import { calculateSeverityCounts } from "@diffgazer/core/schemas/ui";
@@ -18,7 +18,10 @@ export interface IssueListPaneProps {
   isFilterFocused?: boolean;
   focusedFilterIndex?: number;
   onFocusedFilterIndexChange?: (index: number) => void;
-  focusedValue?: string | null;
+  filterRef?: Ref<HTMLDivElement>;
+  onFilterKeyDown?: (event: KeyboardEvent) => void;
+  highlightedIssueId?: string | null;
+  onListFocus?: () => void;
   listRef?: Ref<HTMLDivElement>;
   title?: string;
   className?: string;
@@ -35,7 +38,10 @@ export function IssueListPane({
   isFilterFocused,
   focusedFilterIndex,
   onFocusedFilterIndexChange,
-  focusedValue,
+  filterRef,
+  onFilterKeyDown,
+  highlightedIssueId,
+  onListFocus,
   listRef,
   title = "Analysis",
   className,
@@ -56,6 +62,12 @@ export function IssueListPane({
           isFocused={isFilterFocused}
           focusedIndex={focusedFilterIndex}
           onFocusedIndexChange={onFocusedFilterIndexChange}
+          ref={filterRef}
+          onKeyDown={(event) => {
+            onFilterKeyDown?.(event);
+            if (event.defaultPrevented) return;
+            if (!isFilterFocused) event.preventDefault();
+          }}
         />
       </div>
 
@@ -64,7 +76,11 @@ export function IssueListPane({
           ref={listRef}
           aria-label={title}
           selectedId={selectedIssueId}
-          highlightedId={focusedValue}
+          highlightedId={highlightedIssueId}
+          onFocus={onListFocus}
+          onKeyDown={(event) => {
+            if (!isFocused) event.preventDefault();
+          }}
           onSelect={onSelectIssue}
           focused={isFocused}
           wrap={false}

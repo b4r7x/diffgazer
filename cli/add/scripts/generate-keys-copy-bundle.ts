@@ -8,7 +8,9 @@ const OUTPUT_PATH = resolve(PACKAGE_ROOT, "src/generated/keys-copy-bundle.json")
 
 function rewriteHookInternalImports(content: string, sourcePath: string): string {
   if (!sourcePath.startsWith("src/hooks/")) return content;
-  return content.replace(/(["'])\.\.\/internal\//g, "$1./internal/");
+  return content
+    .replace(/(["'])\.\.\/internal\//g, "$1./internal/")
+    .replace(/(["'])\.\.\/utils\//g, "$1./utils/");
 }
 
 function main(): void {

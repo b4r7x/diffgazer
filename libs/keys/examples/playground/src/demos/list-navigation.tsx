@@ -41,7 +41,7 @@ export function ListNavigationDemo() {
     onSelect: (value) => toggleSelection(value),
     onEnter: (value) => activateItem(value),
     wrap: true,
-    initialValue: "apple",
+    defaultHighlighted: "apple",
   });
 
   return (
@@ -57,8 +57,15 @@ export function ListNavigationDemo() {
         { keys: "End", label: "Jump to last" },
       ]}
     >
-      <div ref={containerRef} className="demo-card">
-        <div className="demo-list">
+      <div className="demo-card">
+        <div
+          ref={containerRef}
+          role="listbox"
+          aria-label="Fruits"
+          aria-multiselectable="true"
+          aria-activedescendant={highlighted ? `fruit-${highlighted}` : undefined}
+          className="demo-list"
+        >
           {fruits.map((fruit) => {
             const value = fruit.toLowerCase();
             const focused = isHighlighted(value);
@@ -66,8 +73,10 @@ export function ListNavigationDemo() {
             return (
               <div
                 key={value}
+                id={`fruit-${value}`}
                 role="option"
                 data-value={value}
+                aria-selected={selected}
                 className={[
                   "demo-list-item",
                   focused && "demo-list-item--focused",

@@ -1,7 +1,7 @@
 "use client";
 
-import { Children, isValidElement, type ComponentPropsWithRef, type ReactNode, type KeyboardEvent, useId, useMemo, useRef } from "react";
-import { getEncodedListboxItemId, useListbox } from "@/hooks/use-listbox";
+import { type ComponentPropsWithRef, type ReactNode, type KeyboardEvent, useId, useMemo, useRef } from "react";
+import { collectListboxItems, getEncodedListboxItemId, useListbox } from "@/hooks/use-listbox";
 import { composeRefs } from "@/lib/compose-refs";
 import { cn } from "@/lib/utils";
 import { NavigationListContext } from "./navigation-list-context";
@@ -22,27 +22,6 @@ export interface NavigationListProps
   autoFocus?: boolean;
   children: ReactNode;
   onKeyDown?: (event: KeyboardEvent) => void;
-}
-
-interface NavigationListItemElementProps {
-  id?: string;
-  disabled?: boolean;
-  children?: ReactNode;
-}
-
-function collectNavigationItems(children: ReactNode): Array<{ id: string; disabled?: boolean }> {
-  const items: Array<{ id: string; disabled?: boolean }> = [];
-
-  Children.forEach(children, (child) => {
-    if (!isValidElement<NavigationListItemElementProps>(child)) return;
-    if (child.type === NavigationListItem && typeof child.props.id === "string") {
-      items.push({ id: child.props.id, disabled: child.props.disabled });
-      return;
-    }
-    items.push(...collectNavigationItems(child.props.children));
-  });
-
-  return items;
 }
 
 export function NavigationList({
@@ -66,7 +45,7 @@ export function NavigationList({
 }: NavigationListProps) {
   const idPrefix = useId();
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const items = useMemo(() => collectNavigationItems(children), [children]);
+  const items = useMemo(() => collectListboxItems(children, NavigationListItem), [children]);
 
   const {
     selectedId,

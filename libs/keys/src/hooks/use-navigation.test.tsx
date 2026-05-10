@@ -68,7 +68,7 @@ describe("useNavigation", () => {
   });
 
   it("navigates options with arrow keys, wraps, and reports non-wrapping boundaries", async () => {
-    render(<TestList initialValue="a" />);
+    render(<TestList defaultHighlighted="a" />);
     let user = await focusListbox();
 
     await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}{ArrowUp}");
@@ -78,7 +78,7 @@ describe("useNavigation", () => {
     const onNavigationBoundaryReached = vi.fn();
     render(
       <TestList
-        initialValue="c"
+        defaultHighlighted="c"
         wrap={false}
         onNavigationBoundaryReached={onNavigationBoundaryReached}
       />,
@@ -114,7 +114,7 @@ describe("useNavigation", () => {
       const result = useNavigation({
         containerRef: ref,
         role: "option",
-        initialValue: "a",
+        defaultHighlighted: "a",
       });
 
       return (
@@ -153,7 +153,7 @@ describe("useNavigation", () => {
       const result = useNavigation({
         containerRef: ref,
         role: "button",
-        initialValue: "one",
+        defaultHighlighted: "one",
         moveFocus: true,
       });
 
@@ -182,7 +182,7 @@ describe("useNavigation", () => {
       const result = useNavigation({
         containerRef: ref,
         role: "radio",
-        initialValue: "outer-a",
+        defaultHighlighted: "outer-a",
         scopeToContainer,
       });
 
@@ -237,7 +237,7 @@ describe("useNavigation", () => {
       const result = useNavigation({
         containerRef: ref,
         role: "option",
-        initialValue: "copy",
+        defaultHighlighted: "copy",
         scopeToContainer: true,
       });
 
@@ -275,7 +275,7 @@ describe("useNavigation", () => {
   it("activates highlighted and focused items with Space and Enter", async () => {
     const onSelect = vi.fn();
     const onEnter = vi.fn();
-    render(<TestList initialValue="b" onSelect={onSelect} onEnter={onEnter} />);
+    render(<TestList defaultHighlighted="b" onSelect={onSelect} onEnter={onEnter} />);
     const user = await focusListbox();
 
     await user.keyboard(" {Enter}");
@@ -297,7 +297,7 @@ describe("useNavigation", () => {
 
   it("supports empty string item values", async () => {
     const onSelect = vi.fn();
-    render(<TestList items={["", "b"]} initialValue="" onSelect={onSelect} />);
+    render(<TestList items={["", "b"]} defaultHighlighted="" onSelect={onSelect} />);
     const user = await focusListbox();
 
     expect(screen.getByRole("option", { name: "Empty" }).getAttribute("aria-selected")).toBe("true");
@@ -310,8 +310,8 @@ describe("useNavigation", () => {
 
   it("honors disabled, controlled, and custom key options", async () => {
     const onSelect = vi.fn();
-    const onValueChange = vi.fn();
-    render(<TestList initialValue="a" enabled={false} onSelect={onSelect} />);
+    const onHighlightChange = vi.fn();
+    render(<TestList defaultHighlighted="a" enabled={false} onSelect={onSelect} />);
     let user = await focusListbox();
 
     await user.keyboard("{ArrowDown} ");
@@ -319,13 +319,13 @@ describe("useNavigation", () => {
     expect(onSelect).not.toHaveBeenCalled();
 
     cleanup();
-    render(<TestList value="b" onValueChange={onValueChange} />);
+    render(<TestList highlighted="b" onHighlightChange={onHighlightChange} />);
     user = await focusListbox();
     await user.keyboard("{ArrowDown}");
-    expect(onValueChange).toHaveBeenCalledWith("c");
+    expect(onHighlightChange).toHaveBeenCalledWith("c");
 
     cleanup();
-    render(<TestList initialValue="a" upKeys={["ArrowUp", "k"]} downKeys={["ArrowDown", "j"]} />);
+    render(<TestList defaultHighlighted="a" upKeys={["ArrowUp", "k"]} downKeys={["ArrowDown", "j"]} />);
     user = await focusListbox();
     await user.keyboard("j");
     expectActiveOptionText("b");
@@ -334,7 +334,7 @@ describe("useNavigation", () => {
   });
 
   it("supports horizontal navigation and skips disabled items by default", async () => {
-    render(<TestList initialValue="a" orientation="horizontal" />);
+    render(<TestList defaultHighlighted="a" orientation="horizontal" />);
     let user = await focusListbox();
 
     await user.keyboard("{ArrowRight}{ArrowLeft}{ArrowDown}");
@@ -346,7 +346,7 @@ describe("useNavigation", () => {
       const result = useNavigation({
         containerRef: ref,
         role: "option",
-        initialValue: "a",
+        defaultHighlighted: "a",
         skipDisabled,
       });
 
@@ -384,7 +384,7 @@ describe("useNavigation", () => {
       const result = useNavigation({
         containerRef: ref,
         role: "button",
-        initialValue: "a",
+        defaultHighlighted: "a",
         moveFocus: true,
       });
 
@@ -415,7 +415,7 @@ describe("useNavigation", () => {
       const result = useNavigation({
         containerRef: ref,
         role: "button",
-        initialValue: "a",
+        defaultHighlighted: "a",
         moveFocus: true,
         onSelect,
         onEnter,
@@ -440,7 +440,7 @@ describe("useNavigation", () => {
   });
 
   it("exposes highlight and isHighlighted to consumers", async () => {
-    render(<TestList initialValue="a" />);
+    render(<TestList defaultHighlighted="a" />);
 
     expect(screen.getByRole("option", { name: "a" }).getAttribute("aria-selected")).toBe("true");
     expect(screen.getByRole("option", { name: "b" }).getAttribute("aria-selected")).toBe("false");
@@ -457,7 +457,7 @@ function FocusedActionList({ onSelect }: { onSelect: (value: string, event: Keyb
   const result = useNavigation({
     containerRef: ref,
     role: "button",
-    initialValue: "a",
+    defaultHighlighted: "a",
     onSelect,
   });
 

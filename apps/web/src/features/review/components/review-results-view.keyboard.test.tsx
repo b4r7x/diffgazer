@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { KeyboardProvider } from "@diffgazer/keys";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
+import { SEVERITY_ORDER } from "@diffgazer/core/schemas/ui";
 
 vi.mock("@tanstack/react-router", () => ({
   useRouter: () => ({
@@ -99,8 +100,10 @@ describe("ReviewResultsView keyboard regression", () => {
     try {
       renderView();
 
+      screen.getByRole("listbox").focus();
       await user.keyboard("{ArrowRight}");
       expect(screen.getByRole("tab", { name: "Details" })).toHaveAttribute("aria-selected", "true");
+      await waitFor(() => expect(screen.getByRole("region", { name: "Issue details" })).toHaveFocus());
 
       await user.keyboard("{ArrowDown}");
       await user.keyboard("{ArrowUp}");
@@ -114,5 +117,34 @@ describe("ReviewResultsView keyboard regression", () => {
         delete HTMLElement.prototype.scrollBy;
       }
     }
+  });
+
+  it("moves from focused severity filters back to the issue list with ArrowDown", async () => {
+    const user = userEvent.setup();
+    renderView();
+
+    await user.keyboard("{ArrowUp}");
+    const filterGroup = screen.getByRole("group", { name: "Severity filter" });
+    await waitFor(() => expect(filterGroup).toContainElement(document.activeElement));
+
+    await user.keyboard("{ArrowDown}");
+
+    await waitFor(() => expect(screen.getByRole("listbox")).toHaveFocus());
+  });
+
+  it("moves from the last severity filter to issue details with ArrowRight", async () => {
+    const user = userEvent.setup();
+    renderView();
+
+    await user.keyboard("{ArrowUp}");
+    const filterGroup = screen.getByRole("group", { name: "Severity filter" });
+    await waitFor(() => expect(filterGroup).toContainElement(document.activeElement));
+
+    for (let index = 1; index < SEVERITY_ORDER.length; index += 1) {
+      await user.keyboard("{ArrowRight}");
+    }
+    await user.keyboard("{ArrowRight}");
+
+    await waitFor(() => expect(screen.getByRole("region", { name: "Issue details" })).toHaveFocus());
   });
 });

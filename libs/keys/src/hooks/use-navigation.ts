@@ -19,16 +19,15 @@ export type NavigationRole = NavigationItemType;
 export interface UseNavigationOptions {
   containerRef: RefObject<HTMLElement | null>;
   role: NavigationRole;
-  value?: string | null;
-  onValueChange?: (value: string) => void;
+  highlighted?: string | null;
+  defaultHighlighted?: string | null;
+  onHighlightChange?: (value: string) => void;
   onSelect?: (value: string, event: globalThis.KeyboardEvent) => void;
   onEnter?: (value: string, event: globalThis.KeyboardEvent) => void;
-  onHighlightChange?: (value: string) => void;
   wrap?: boolean;
   enabled?: boolean;
   preventDefault?: boolean;
   onNavigationBoundaryReached?: (direction: "previous" | "next") => void;
-  initialValue?: string | null;
   upKeys?: readonly string[];
   downKeys?: readonly string[];
   orientation?: "vertical" | "horizontal";
@@ -80,28 +79,26 @@ function wrapIndex(index: number, length: number, wrap: boolean): number | null 
 export function useNavigationCore({
   containerRef,
   role,
-  value,
-  onValueChange,
+  highlighted: controlledHighlighted,
+  defaultHighlighted = null,
   onSelect,
   onEnter,
   onHighlightChange,
   wrap = true,
   onNavigationBoundaryReached,
-  initialValue = null,
   skipDisabled = true,
   moveFocus = false,
   scopeToContainer = true,
   ownerSelector,
 }: UseNavigationOptions): UseNavigationCoreReturn {
-  const [internalValue, setInternalValue] = useState<string | null>(initialValue);
-  const isControlled = value !== undefined;
-  const highlighted = isControlled ? value ?? null : internalValue;
+  const [internalHighlighted, setInternalHighlighted] = useState<string | null>(defaultHighlighted);
+  const isControlled = controlledHighlighted !== undefined;
+  const highlighted = isControlled ? controlledHighlighted ?? null : internalHighlighted;
 
   const setFocusedValue = useCallback((nextValue: string) => {
-    if (!isControlled) setInternalValue(nextValue);
-    onValueChange?.(nextValue);
+    if (!isControlled) setInternalHighlighted(nextValue);
     onHighlightChange?.(nextValue);
-  }, [isControlled, onValueChange, onHighlightChange]);
+  }, [isControlled, onHighlightChange]);
 
   const getElements = useCallback(
     () => queryNavigationElements(containerRef, role, skipDisabled, scopeToContainer, ownerSelector),

@@ -1,6 +1,4 @@
-import { existsSync } from "node:fs";
 import { ctx, type RegistryItem, type ResolvedConfig } from "../context.js";
-import { resolveInstallPath } from "./paths.js";
 import {
   getKeysHookNames,
   resolveKeysCopyHookFiles,
@@ -132,6 +130,5 @@ export function isNamespacedInstalled(cwd: string, config: ResolvedConfig, name:
     return ctx.createChecker(cwd, config.componentsFsPath)(parsed.name);
   }
 
-  const { files } = resolveKeysCopyHookFiles([parsed.name]);
-  return files.some((file) => existsSync(resolveInstallPath(cwd, config.hooksFsPath, file.relativePath)));
+  return false;
 }

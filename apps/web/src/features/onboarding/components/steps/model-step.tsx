@@ -5,7 +5,7 @@ import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
 import { Badge } from "@diffgazer/ui/components/badge";
 import { useOpenRouterModels } from "@/hooks/use-openrouter-models";
 import { resolveAvailableValue } from "@/lib/selectable-values";
-import { toVerticalBoundaryDirection } from "@/lib/vertical-navigation";
+import { toVerticalBoundaryDirection } from "@diffgazer/keys";
 
 interface ModelStepProps {
   provider: AIProvider;

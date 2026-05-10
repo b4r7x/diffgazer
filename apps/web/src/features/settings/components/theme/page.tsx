@@ -153,8 +153,8 @@ function SettingsThemeEditor({
           <PanelContent className="flex-1 flex flex-col">
             <ThemeSelectorContent
               value={selectedTheme}
-              focusedValue={focusedTheme}
-              onFocusedValueChange={(value) => {
+              highlighted={focusedTheme}
+              onHighlightChange={(value) => {
                 if (isWebTheme(value)) setFocusedTheme(value);
               }}
               onPreviewValueChange={(value) => {

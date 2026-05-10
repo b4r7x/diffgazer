@@ -36,11 +36,11 @@ function App() {
 - Errors in handlers are caught and logged: `[@diffgazer/keys] Handler error for "${hotkey}": ...`
 - When `preventDefault` is set on a handler's options, `event.preventDefault()` is called before the handler runs.
 
-## Required By
+## Provider-Aware Hooks
 
-The following hooks require a `KeyboardProvider` ancestor:
+The following hooks participate in `KeyboardProvider` scope and dispatch:
 
-- [useKey](/keys/docs/hooks/use-key)
+- [useKey](/keys/docs/hooks/use-key) is a no-op without a provider.
 - [useScope](/keys/docs/hooks/use-scope)
 - [useScopedNavigation](/keys/docs/hooks/use-scoped-navigation)
 - [useFocusZone](/keys/docs/hooks/use-focus-zone)

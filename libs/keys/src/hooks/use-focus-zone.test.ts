@@ -313,5 +313,33 @@ describe("useFocusZone", () => {
       act(() => fireKey("Tab"));
       expect(result.current.zone).toBe("only");
     });
+
+    it("does not prevent native Tab when tabCycle cannot move zones", () => {
+      renderHook(
+        () =>
+          useFocusZone({
+            initial: "only",
+            zones: ["only"],
+            tabCycle: ["only"],
+          }),
+        { wrapper },
+      );
+
+      expect(fireKey("Tab").defaultPrevented).toBe(false);
+    });
+
+    it("does not prevent native Tab for an empty tabCycle", () => {
+      renderHook(
+        () =>
+          useFocusZone({
+            initial: "main",
+            zones: ["main", "sidebar"],
+            tabCycle: [],
+          }),
+        { wrapper },
+      );
+
+      expect(fireKey("Tab").defaultPrevented).toBe(false);
+    });
   });
 });

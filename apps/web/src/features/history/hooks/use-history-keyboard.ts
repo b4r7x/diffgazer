@@ -4,7 +4,7 @@ import { useFocusZone, useKey } from "@diffgazer/keys";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import type { HistoryFocusZone } from "@/features/history/types";
 
-const ZONES = ["timeline", "runs", "search"] as const;
+const ZONES = ["timeline", "runs", "insights", "search"] as const;
 type KeyboardHistoryFocusZone = (typeof ZONES)[number];
 
 interface UseHistoryKeyboardOptions {
@@ -34,6 +34,18 @@ export function getHistoryFooter(focusZone: HistoryFocusZone) {
     };
   }
 
+  if (focusZone === "insights") {
+    return {
+      shortcuts: [
+        { key: "Tab", label: "Switch Focus" },
+        { key: "Enter/Space", label: "Open Issue" },
+        { key: "←", label: "Review Runs" },
+        { key: "/", label: "Search" },
+      ],
+      rightShortcuts: [{ key: "Esc", label: "Back" }],
+    };
+  }
+
   return {
     shortcuts: [
       { key: "Tab", label: "Switch Focus" },
@@ -53,24 +65,24 @@ export function useHistoryKeyboard({
   searchInputRef,
 }: UseHistoryKeyboardOptions) {
   const navigate = useNavigate();
-  const effectiveZone: KeyboardHistoryFocusZone = focusZone === "insights" ? "runs" : focusZone;
-
   useFocusZone({
     initial: "runs",
     zones: ZONES,
-    zone: effectiveZone,
+    zone: focusZone,
     onZoneChange: (zone) => setFocusZone(zone),
     scope: "history",
-    tabCycle: ["search", "timeline", "runs"],
+    tabCycle: ["search", "timeline", "runs", "insights"],
     transitions: ({ zone, key }) => {
       const left: Record<KeyboardHistoryFocusZone, KeyboardHistoryFocusZone | null> = {
         timeline: null,
         runs: "timeline",
+        insights: "runs",
         search: "runs",
       };
       const right: Record<KeyboardHistoryFocusZone, KeyboardHistoryFocusZone | null> = {
         timeline: "runs",
-        runs: null,
+        runs: "insights",
+        insights: null,
         search: null,
       };
       if (key === "ArrowLeft") return left[zone] ?? null;

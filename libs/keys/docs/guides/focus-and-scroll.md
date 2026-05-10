@@ -2,7 +2,7 @@
 
 > Try the [Focus Trap demo](../../examples/playground/) to see focus trapping in action.
 
-Two utility hooks for managing focus traps and scroll locking. Both are independent of `KeyboardProvider` and work anywhere in your component tree.
+Three utility hooks for managing focus traps, focus restoration, and scroll locking. All are independent of `KeyboardProvider` and work anywhere in your component tree.
 
 ## useFocusTrap
 
@@ -77,18 +77,25 @@ return (
 
 ### What counts as focusable
 
-The exact selector:
+The trap uses the same focusable-element helper as the navigation utilities:
 
 ```
 a[href],
+area[href],
 button:not([disabled]),
-textarea:not([disabled]),
-input:not([disabled]),
 select:not([disabled]),
-[tabindex]:not([tabindex="-1"])
+textarea:not([disabled]),
+input:not([type="hidden"]):not([disabled]),
+iframe,
+object,
+embed,
+audio[controls],
+video[controls],
+[contenteditable]:not([contenteditable="false"]),
+[tabindex]:not([tabindex="-1"]):not([disabled])
 ```
 
-Elements with `tabindex="-1"` are excluded. Disabled inputs, buttons, textareas, and selects are excluded. Links without `href` are excluded.
+Elements with `tabindex="-1"` are excluded. Disabled controls are excluded. Links and areas without `href` are excluded.
 
 ### Tab cycling
 
@@ -135,7 +142,7 @@ function Modal({ open, onClose }: { open: boolean; onClose: () => void }) {
 
   useScope("modal", { enabled: open });
   useFocusTrap(ref, { enabled: open });
-  useScrollLock(undefined, open);
+  useScrollLock({ enabled: open });
 
   useKey("Escape", onClose);
 
@@ -157,6 +164,47 @@ All three clean up on unmount or when `open` becomes `false`.
 
 ---
 
+## useFocusRestore
+
+Captures the currently focused element before temporary UI opens, then restores focus when it closes. Use it when a component owns its own open/close lifecycle and is not already using a primitive such as `Dialog` or `CommandPalette` that restores focus for you.
+
+```tsx
+import { useEffect, useRef, useState } from "react";
+import { useFocusRestore } from "@diffgazer/keys";
+
+function TemporaryPanel() {
+  const [open, setOpen] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const focusRestore = useFocusRestore();
+
+  useEffect(() => {
+    if (open) panelRef.current?.focus();
+  }, [open]);
+
+  function openPanel() {
+    focusRestore.capture();
+    setOpen(true);
+  }
+
+  function closePanel() {
+    setOpen(false);
+    focusRestore.restore();
+  }
+
+  return open ? (
+    <div ref={panelRef} role="dialog" tabIndex={-1}>
+      <button onClick={closePanel}>Close</button>
+    </div>
+  ) : (
+    <button onClick={openPanel}>Open panel</button>
+  );
+}
+```
+
+`useFocusRestore` is stack-aware. If a dialog opens another temporary surface, closing the nested surface restores focus inside the parent before the parent restores focus back to its trigger.
+
+---
+
 ## useScrollLock
 
 Prevents scrolling on an element by setting `overflow: hidden`. Reference-counted so multiple locks on the same element don't conflict.
@@ -165,7 +213,7 @@ Prevents scrolling on an element by setting `overflow: hidden`. Reference-counte
 import { useScrollLock } from "@diffgazer/keys";
 
 function Modal({ open }: { open: boolean }) {
-  useScrollLock(undefined, open); // locks document.body
+  useScrollLock({ enabled: open }); // locks document.body
   return open ? <div>...</div> : null;
 }
 ```
@@ -174,8 +222,10 @@ function Modal({ open }: { open: boolean }) {
 
 ```ts
 function useScrollLock(
-  target?: RefObject<HTMLElement | null>,
-  enabled?: boolean,  // default: true
+  options?: {
+    target?: RefObject<HTMLElement | null>;
+    enabled?: boolean;  // default: true
+  },
 ): void;
 ```
 
@@ -186,11 +236,11 @@ If `target` is omitted or its `current` is `null`, the lock applies to `document
 ```tsx
 // These are equivalent:
 useScrollLock();
-useScrollLock(undefined, true);
+useScrollLock({ enabled: true });
 
 // Lock a specific scrollable container:
 const panelRef = useRef<HTMLDivElement>(null);
-useScrollLock(panelRef, showOverlay);
+useScrollLock({ target: panelRef, enabled: showOverlay });
 ```
 
 ### Reference counting
@@ -216,7 +266,7 @@ A common case: a modal and a nested confirmation dialog both lock scroll.
 
 ```tsx
 function Modal({ open }: { open: boolean }) {
-  useScrollLock(undefined, open);
+  useScrollLock({ enabled: open });
 
   return open ? (
     <div>

@@ -69,12 +69,39 @@ interface UseFocusRestoreOptions extends RestoreFocusOptions {
 }
 ```
 
+## UseScrollLockOptions
+
+Options for [useScrollLock](/keys/docs/hooks/use-scroll-lock).
+
+```ts
+interface UseScrollLockOptions {
+  target?: RefObject<HTMLElement | null>;
+  enabled?: boolean;
+}
+```
+
 ## NavigationRole
 
 Used by [useNavigation](/keys/docs/hooks/use-navigation) and [useScopedNavigation](/keys/docs/hooks/use-scoped-navigation) to determine which DOM elements are navigable.
 
 ```ts
 type NavigationRole = "radio" | "checkbox" | "option" | "menuitem" | "menuitemradio" | "button" | "tab";
+```
+
+## VerticalDirection
+
+Returned by `getVerticalArrowDirection()` and `toVerticalBoundaryDirection()`.
+
+```ts
+type VerticalDirection = "up" | "down";
+```
+
+## BoundaryDirection
+
+Accepted by `toVerticalBoundaryDirection()`.
+
+```ts
+type BoundaryDirection = "previous" | "next";
 ```
 
 ## KeyHandler

@@ -1,4 +1,5 @@
 import { cn } from "@diffgazer/core/cn";
+import type { KeyboardEvent, Ref } from "react";
 import type { ReviewSeverity } from "@diffgazer/core/schemas/review";
 import { type UISeverityFilter, SEVERITY_ORDER } from "@diffgazer/core/schemas/ui";
 import { ToggleGroup, ToggleGroupItem } from "@diffgazer/ui/components/toggle-group";
@@ -13,7 +14,9 @@ export interface SeverityFilterGroupProps {
   isFocused?: boolean;
   focusedIndex?: number;
   onFocusedIndexChange?: (index: number) => void;
+  onKeyDown?: (event: KeyboardEvent) => void;
   className?: string;
+  ref?: Ref<HTMLDivElement>;
 }
 
 export function SeverityFilterGroup({
@@ -23,7 +26,9 @@ export function SeverityFilterGroup({
   isFocused,
   focusedIndex,
   onFocusedIndexChange,
+  onKeyDown,
   className,
+  ref,
 }: SeverityFilterGroupProps) {
   const handleFilterChange = (value: string | null) => {
     if (value === null) {
@@ -38,6 +43,7 @@ export function SeverityFilterGroup({
 
   return (
     <ToggleGroup
+      ref={ref}
       value={activeFilter === "all" ? null : activeFilter}
       allowDeselect
       onChange={handleFilterChange}
@@ -46,6 +52,7 @@ export function SeverityFilterGroup({
         if (index >= 0) onFocusedIndexChange?.(index);
       }}
       highlighted={isFocused ? SEVERITY_ORDER[focusedIndex ?? 0] ?? null : null}
+      onKeyDown={onKeyDown}
       label="Severity filter"
       className={cn("text-xs", className)}
     >

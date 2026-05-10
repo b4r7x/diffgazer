@@ -40,6 +40,7 @@ interface ProvidersKeyboardReturn {
   handleFilterKeyDown: (event: ReactKeyboardEvent) => void;
   handleSearchFocus: () => void;
   handleFilterFocus: (index: number) => void;
+  handleListFocus: () => void;
   handleListBoundary: (direction: "up" | "down") => void;
 }
 
@@ -128,6 +129,10 @@ export function useProvidersKeyboard({
   const handleFilterFocus = (index: number) => {
     setZone("filters");
     setFilterIndex(index);
+  };
+
+  const handleListFocus = () => {
+    setZone("list");
   };
 
   const handleButtonAction = (index: number) => {
@@ -278,6 +283,7 @@ export function useProvidersKeyboard({
     handleFilterKeyDown,
     handleSearchFocus,
     handleFilterFocus,
+    handleListFocus,
     handleListBoundary,
   };
 }

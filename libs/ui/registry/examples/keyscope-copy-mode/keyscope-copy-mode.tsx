@@ -111,7 +111,7 @@ function FileMenu({
   const { onKeyDown: navKeyDown } = useNavigation({
     containerRef: listRef,
     role: "option",
-    value: selectedFile,
+    highlighted: selectedFile,
     onHighlightChange: onSelectFile,
     onEnter: onSelectFile,
     wrap: true,

@@ -4,15 +4,10 @@ import {
   type ReactNode,
   type KeyboardEvent,
   type ComponentPropsWithRef,
-  Children,
-  isValidElement,
   useId,
   useMemo,
-  useRef,
-  useEffect,
 } from "react";
-import { getEncodedListboxItemId, useListbox } from "@/hooks/use-listbox";
-import { composeRefs } from "@/lib/compose-refs";
+import { collectListboxItems, getEncodedListboxItemId, useListbox } from "@/hooks/use-listbox";
 import { cn } from "@/lib/utils";
 import { MenuContext, type MenuContextValue } from "./menu-context";
 import { MenuItem } from "./menu-item";
@@ -31,27 +26,6 @@ export interface MenuProps
   children: ReactNode;
   autoFocus?: boolean;
   onKeyDown?: (event: KeyboardEvent) => void;
-}
-
-interface MenuItemElementProps {
-  id?: string;
-  disabled?: boolean;
-  children?: ReactNode;
-}
-
-function collectMenuItems(children: ReactNode): Array<{ id: string; disabled?: boolean }> {
-  const items: Array<{ id: string; disabled?: boolean }> = [];
-
-  Children.forEach(children, (child) => {
-    if (!isValidElement<MenuItemElementProps>(child)) return;
-    if (child.type === MenuItem && typeof child.props.id === "string") {
-      items.push({ id: child.props.id, disabled: child.props.disabled });
-      return;
-    }
-    items.push(...collectMenuItems(child.props.children));
-  });
-
-  return items;
 }
 
 export function Menu({
@@ -73,10 +47,9 @@ export function Menu({
   ...rootProps
 }: MenuProps) {
   const idPrefix = useId();
-  const localRef = useRef<HTMLDivElement>(null);
   const selectionEnabled = controlledSelectedId !== undefined || defaultSelectedId !== null;
   const itemRole = selectionEnabled ? "menuitemradio" : "menuitem";
-  const items = useMemo(() => collectMenuItems(children), [children]);
+  const items = useMemo(() => collectListboxItems(children, MenuItem), [children]);
 
   const {
     selectedId,
@@ -101,24 +74,10 @@ export function Menu({
     role: "menu",
     itemRole,
     typeahead: true,
+    autoFocus,
     items,
     getItemId: getEncodedListboxItemId,
   });
-
-  useEffect(() => {
-    if (!autoFocus) return;
-    const frame = requestAnimationFrame(() => {
-      const el = localRef.current;
-      if (el && !el.contains(document.activeElement)) {
-        el.focus({ preventScroll: true });
-      }
-      if (highlightedId === null && selectedId === null) {
-        const firstEnabled = items.find((item) => !item.disabled);
-        if (firstEnabled) handleItemHighlight(firstEnabled.id);
-      }
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [autoFocus, handleItemHighlight, highlightedId, items, selectedId]);
 
   const contextValue: MenuContextValue = useMemo(
     () => ({
@@ -137,7 +96,7 @@ export function Menu({
     <MenuContext value={contextValue}>
       <div
         {...rootProps}
-        {...getContainerProps(composeRefs(localRef, ref))}
+        {...getContainerProps(ref)}
         aria-label={ariaLabel}
         className={cn("w-full relative outline-none", className)}
       >

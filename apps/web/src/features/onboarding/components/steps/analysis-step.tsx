@@ -4,7 +4,7 @@ import type { LensId } from "@diffgazer/core/schemas/review";
 import { CheckboxGroup, CheckboxItem } from "@diffgazer/ui/components/checkbox";
 import { Badge } from "@diffgazer/ui/components/badge";
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
-import { toVerticalBoundaryDirection } from "@/lib/vertical-navigation";
+import { toVerticalBoundaryDirection } from "@diffgazer/keys";
 
 const LENS_OPTIONS = buildLensOptions();
 

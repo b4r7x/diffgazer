@@ -3,13 +3,13 @@ import { Field } from "@diffgazer/ui/components/field";
 import { InputGroup } from "@diffgazer/ui/components/input";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
 import { cn } from "@diffgazer/core/cn";
-import { getVerticalArrowDirection } from "@/lib/vertical-navigation";
+import { getVerticalArrowDirection } from "@diffgazer/keys";
 import type { FocusElement } from "@/types/focus-element";
 import type { InputMethod } from "@/types/input-method";
 
 interface ApiKeyMethodSelectorProps {
-  method: InputMethod;
-  onMethodChange: (method: InputMethod) => void;
+  value: InputMethod;
+  onChange: (method: InputMethod) => void;
   keyValue: string;
   onKeyValueChange: (value: string) => void;
   envVarName: string;
@@ -18,7 +18,7 @@ interface ApiKeyMethodSelectorProps {
   focused: FocusElement;
   onFocus: (element: FocusElement) => void;
   onKeySubmit: () => void;
-  onMethodKeyDown?: (event: KeyboardEvent, method: InputMethod) => void;
+  onInputMethodKeyDown?: (event: KeyboardEvent, method: InputMethod) => void;
   getMethodOptionProps?: (method: InputMethod) => {
     ref: RefCallback<HTMLDivElement>;
   };
@@ -29,8 +29,8 @@ function isInputMethod(value: string): value is InputMethod {
 }
 
 export function ApiKeyMethodSelector({
-  method,
-  onMethodChange,
+  value: method,
+  onChange,
   keyValue,
   onKeyValueChange,
   envVarName,
@@ -39,7 +39,7 @@ export function ApiKeyMethodSelector({
   focused,
   onFocus,
   onKeySubmit,
-  onMethodKeyDown,
+  onInputMethodKeyDown,
   getMethodOptionProps,
 }: ApiKeyMethodSelectorProps) {
   const pasteOptionProps = getMethodOptionProps?.("paste");
@@ -47,7 +47,7 @@ export function ApiKeyMethodSelector({
   const highlightedMethod = focused === "paste" || focused === "env" ? focused : null;
   const handleMethodChange = (nextMethod: string) => {
     if (!isInputMethod(nextMethod)) return;
-    onMethodChange(nextMethod);
+    onChange(nextMethod);
     onFocus(nextMethod);
   };
 
@@ -65,7 +65,7 @@ export function ApiKeyMethodSelector({
       }}
       onKeyDown={(event) => {
         if (getVerticalArrowDirection(event.key) !== null && highlightedMethod) {
-          onMethodKeyDown?.(event, highlightedMethod);
+          onInputMethodKeyDown?.(event, highlightedMethod);
         }
       }}
       activationMode="manual"

@@ -1,5 +1,5 @@
 import { useCallback, useRef } from "react";
-import { useFocusZone, useKey, useScopedNavigation } from "@diffgazer/keys";
+import { getFocusedNavigationValue, useFocusZone, useKey, useScopedNavigation } from "@diffgazer/keys";
 
 export type TrustFormFocusZone = "list" | "buttons";
 export type TrustFormAction = "save" | "revoke";
@@ -24,11 +24,7 @@ function getActionButton(container: HTMLElement | null, action: TrustFormAction)
 }
 
 function getFocusedAction(container: HTMLElement | null): TrustFormAction | null {
-  if (!container) return null;
-  const activeElement = container.ownerDocument.activeElement;
-  if (!(activeElement instanceof HTMLElement) || !container.contains(activeElement)) return null;
-
-  const action = activeElement.closest<HTMLButtonElement>("button[data-value]")?.dataset.value;
+  const action = getFocusedNavigationValue(container, { type: "button", ownerSelector: null });
   return isTrustFormAction(action) ? action : null;
 }
 
@@ -53,7 +49,7 @@ export function useTrustFormKeyboard({
   const { highlighted, highlight } = useScopedNavigation({
     containerRef: actionRowRef,
     role: "button",
-    initialValue: "save",
+    defaultHighlighted: "save",
     orientation: "horizontal",
     moveFocus: true,
     wrap: false,

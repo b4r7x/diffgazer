@@ -9,7 +9,7 @@ import { Badge } from "@diffgazer/ui/components/badge";
 import { Callout, CalloutIcon, CalloutTitle, CalloutContent } from "@diffgazer/ui/components/callout";
 import { Button } from "@diffgazer/ui/components/button";
 import { CheckboxGroup, CheckboxItem } from "@diffgazer/ui/components/checkbox";
-import { focusSelectableItem } from "@diffgazer/ui/lib/focus";
+import { focusNavigationItem } from "@diffgazer/keys";
 import { useTrustFormKeyboard } from "@/hooks/use-trust-form-keyboard";
 import {
   TRUST_CAPABILITY_OPTIONS,
@@ -69,9 +69,12 @@ export function TrustPermissionsContent(props: TrustPermissionsContentProps) {
     : initialFocusedCapability;
 
   const focusListItem = () => {
-    return focusSelectableItem(listRef.current, {
-      role: "checkbox",
+    if (effectiveListFocused === null) return false;
+    return focusNavigationItem(listRef.current, {
+      type: "checkbox",
       value: effectiveListFocused,
+      fallback: "first",
+      preventScroll: true,
     }) !== null;
   };
 
@@ -114,11 +117,11 @@ export function TrustPermissionsContent(props: TrustPermissionsContentProps) {
     const checkbox = target.closest<HTMLElement>('[role="checkbox"][data-value]');
     if (!checkbox || !listRef.current?.contains(checkbox)) return;
 
-    const focusedValue = checkbox.dataset.value ?? null;
-    if (!isFocusableCapability(focusedValue)) return;
+    const nextFocusedValue = checkbox.dataset.value ?? null;
+    if (!isFocusableCapability(nextFocusedValue)) return;
 
     handlePermissionFocus();
-    setListFocused(focusedValue);
+    setListFocused(nextFocusedValue);
   };
 
   return (

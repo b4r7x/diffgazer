@@ -14,11 +14,12 @@ The @diffgazer/keys repo lives at `/Users/voitz/Projects/@diffgazer/keys/`. Read
 - `src/index.ts` — complete public API surface (all exports)
 - `src/providers/keyboard-provider.tsx` — the root provider (scope stack, handler registry)
 - `src/hooks/use-key.ts` — single hotkey handler
-- `src/hooks/use-keys.ts` — multiple keys, same handler
-- `src/hooks/use-zone-keys.ts` — zone-based handler maps with pipe syntax
 - `src/hooks/use-focus-zone.ts` — arrow/tab-based zone navigation
-- `src/hooks/use-navigation.ts` — DOM-based list navigation (scoped + local modes)
-- `src/hooks/use-tab-navigation.ts` — tab-list keyboard navigation
+- `src/hooks/use-navigation.ts` — standalone DOM-based list navigation
+- `src/hooks/use-scoped-navigation.ts` — provider-backed DOM navigation
+- `src/hooks/use-focus-trap.ts` — Tab focus containment
+- `src/hooks/use-focus-restore.ts` — nested focus restoration
+- `src/hooks/use-scroll-lock.ts` — body/element scroll locking
 - `src/hooks/use-scope.ts` — manual scope push/pop
 - `src/utils/keys.ts` — `keys()` helper for multi-key handler maps
 - `src/utils/keyboard-utils.ts` — `matchesHotkey()` with `mod` alias support
@@ -27,14 +28,13 @@ The @diffgazer/keys repo lives at `/Users/voitz/Projects/@diffgazer/keys/`. Read
 
 ### Key Facts
 - **React 19 only** — uses `useEffectEvent` (not available in React 18)
-- **7 hooks**: `useKey`, `useKeys`, `useZoneKeys`, `useFocusZone`, `useNavigation`, `useTabNavigation`, `useScope`
+- **8 hooks**: `useKey`, `useScope`, `useNavigation`, `useScopedNavigation`, `useFocusZone`, `useFocusTrap`, `useFocusRestore`, `useScrollLock`
 - **1 provider**: `KeyboardProvider` wraps the app, manages scope stack + handler registry
 - **Scope system**: Scopes stack. Only the topmost scope's handlers fire. `useScope` pushes on mount, pops on unmount.
-- **Zone system**: `useFocusZone` manages which "zone" (logical UI region) is active. `useZoneKeys` registers handlers that only fire in a specific zone.
-- **Navigation**: `useNavigation` queries DOM for `[role="X"]` elements and provides arrow key navigation. Two modes: scoped (integrates with provider) and local (standalone `onKeyDown`).
-- **Pipe syntax**: `useZoneKeys` supports `"Enter | Space"` to register one handler for multiple keys.
+- **Zone system**: `useFocusZone` manages which "zone" (logical UI region) is active. Use `getKeyOptions(zone)` with `useKey` to register handlers that only fire in a specific zone.
+- **Navigation**: `useNavigation` is standalone and returns `onKeyDown`. `useScopedNavigation` registers equivalent navigation through `KeyboardProvider` for scope-aware surfaces.
 - **`mod` alias**: `mod+k` resolves to `Cmd+K` on Mac, `Ctrl+K` on Windows/Linux.
-- **`keys()` helper**: `keys(["1", "2", "3"], handler)` returns `{ "1": handler, "2": handler, "3": handler }` for use with `useZoneKeys`.
+- **`keys()` helper**: `keys(["1", "2", "3"], handler)` returns `{ "1": handler, "2": handler, "3": handler }` for use with the key-map overload of `useKey`.
 - **No UI components included** — @diffgazer/keys is hooks-only. The playground must provide its own components.
 
 ### Hook Composition Patterns
@@ -55,7 +55,7 @@ useKey("Escape", close);  // only fires when modal scope is active
 
 **3. Zone navigation with zone-specific keys**
 ```tsx
-const { zone } = useFocusZone({
+const { zone, getKeyOptions } = useFocusZone({
   initial: "sidebar",
   zones: ["sidebar", "content", "preview"],
   transitions: ({ zone, key }) => {
@@ -67,9 +67,11 @@ const { zone } = useFocusZone({
   },
 });
 
-useZoneKeys(zone, "sidebar", { "Enter": openItem, "d": deleteItem });
-useZoneKeys(zone, "content", { "Enter | Space": toggleSection, "e": edit });
-useZoneKeys(zone, "preview", { "Escape": backToContent });
+useKey("Enter", openItem, getKeyOptions("sidebar"));
+useKey("d", deleteItem, getKeyOptions("sidebar"));
+useKey(["Enter", "Space"], toggleSection, getKeyOptions("content"));
+useKey("e", edit, getKeyOptions("content"));
+useKey("Escape", backToContent, getKeyOptions("preview"));
 ```
 
 **4. List/menu navigation**
@@ -84,8 +86,9 @@ const { highlighted } = useNavigation({
 
 **5. Tab navigation**
 ```tsx
-const { onKeyDown } = useTabNavigation({
+const { onKeyDown } = useNavigation({
   containerRef: tabsRef,
+  role: "tab",
   orientation: "horizontal",
 });
 ```
@@ -147,13 +150,13 @@ The playground needs to showcase every hook in a compelling, interactive way. Ea
 | **Global Shortcuts** | `useKey` | Press `mod+K` to toggle command palette, `Escape` to close, `/` to focus search. Shows basic key binding. |
 | **Scoped Dialog** | `useScope`, `useKey` | Open a modal → keyboard shortcuts change. Close → they revert. Shows scope stacking. |
 | **Nested Scopes** | `useScope`, `useKey` | Dialog inside dialog. Inner dialog's shortcuts shadow outer's. Show scope stack visually. |
-| **Three-Panel Layout** | `useFocusZone`, `useZoneKeys` | Sidebar / Content / Preview. Arrow keys move between zones. Each zone has its own shortcuts. Classic IDE layout. |
+| **Three-Panel Layout** | `useFocusZone`, `useKey` | Sidebar / Content / Preview. Arrow keys move between zones. Each zone has its own shortcuts via `getKeyOptions`. Classic IDE layout. |
 | **Tab Groups** | `useFocusZone` with `tabCycle` | Tab bar where Tab cycles between sections. Shows `tabCycle` option. |
-| **Command Palette** | `useKey`, `useScope`, `useNavigation` | `mod+K` opens palette, arrow keys navigate, Enter selects, Escape closes. Combines multiple hooks. |
-| **Selectable List** | `useNavigation` (scoped mode) | Arrow keys navigate items, Enter/Space selects. Shows `highlighted`, `onSelect`. |
-| **Standalone Combobox** | `useNavigation` (local mode) | Same as above but using local mode with `onKeyDown`. Shows the two modes side by side. |
-| **Tab Bar** | `useTabNavigation` | Horizontal tabs with Left/Right navigation. Shows `useTabNavigation`. |
-| **Multi-Key Handler** | `useZoneKeys` with pipe syntax | `"Enter | Space"` fires same action. `keys(["1","2","3"], handler)` for number shortcuts. Shows pipe syntax + `keys()` helper. |
+| **Command Palette** | `useKey`, `useScope`, `useScopedNavigation` | `mod+K` opens palette, arrow keys navigate, Enter selects, Escape closes. Combines multiple hooks. |
+| **Selectable List** | `useScopedNavigation` | Arrow keys navigate items through `KeyboardProvider`, Enter/Space selects. Shows `highlighted`, `onSelect`. |
+| **Standalone Combobox** | `useNavigation` | Standalone `onKeyDown` navigation that only responds when the combobox/list owns focus. |
+| **Tab Bar** | `useNavigation` with `role: "tab"` | Horizontal tabs with Left/Right navigation. Shows tab navigation via `useNavigation`. |
+| **Multi-Key Handler** | `useKey` with arrays/maps, `keys()` helper | `["Enter", "Space"]` fires same action. `keys(["1","2","3"], handler)` creates a handler map for number shortcuts. |
 | **Platform-Aware** | `useKey` with `mod` | `mod+S` shows as Cmd+S on Mac, Ctrl+S on Windows. Shows `mod` alias. |
 
 ### 4. State Visualization

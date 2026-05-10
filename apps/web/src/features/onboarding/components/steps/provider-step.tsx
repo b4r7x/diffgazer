@@ -5,7 +5,7 @@ import { AVAILABLE_PROVIDERS } from "@diffgazer/core/schemas/config";
 import type { AIProvider } from "@diffgazer/core/schemas/config";
 import { PROVIDER_CAPABILITIES } from "@diffgazer/core/schemas/config";
 import { resolveAvailableValue } from "@/lib/selectable-values";
-import { toVerticalBoundaryDirection } from "@/lib/vertical-navigation";
+import { toVerticalBoundaryDirection } from "@diffgazer/keys";
 
 const PROVIDER_IDS = AVAILABLE_PROVIDERS.map((provider) => provider.id);
 

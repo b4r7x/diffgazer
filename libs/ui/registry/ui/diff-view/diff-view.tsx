@@ -174,8 +174,8 @@ export function DiffView(props: DiffViewProps) {
   const { onKeyDown: navKeyDown } = useNavigation({
     containerRef,
     role: "button",
-    value: activeHunk,
-    onValueChange: (value) => setActiveHunkState({ parsedIdentity, value }),
+    highlighted: activeHunk,
+    onHighlightChange: (value) => setActiveHunkState({ parsedIdentity, value }),
     upKeys: ["k"],
     downKeys: ["j"],
     wrap: false,

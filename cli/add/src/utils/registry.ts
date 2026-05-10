@@ -1,6 +1,11 @@
 import { metaField } from "@diffgazer/registry/cli";
 import type { ResolvedConfig, RegistryFile, RegistryItem } from "../context.js";
-import { handleRscDirective, rewriteRelativeJsExtensionsForCopy, transformImports } from "./transform.js";
+import {
+  handleRscDirective,
+  rewriteLocalImportsForKeysPackage,
+  rewriteRelativeJsExtensionsForCopy,
+  transformImports,
+} from "./transform.js";
 
 const REGISTRY_UI_PREFIX = "registry/ui/";
 const REGISTRY_HOOKS_PREFIX = "registry/hooks/";
@@ -39,4 +44,16 @@ export function prepareFileContent(
   content = transformImports(content, config.aliases);
   content = handleRscDirective(content, metaField(item, "client", true), config.rsc);
   return content;
+}
+
+export function prepareFileContentForIntegration(
+  file: RegistryFile,
+  item: RegistryItem,
+  config: { aliases: ResolvedConfig["aliases"]; rsc: boolean },
+  integrationMode?: "none" | "copy" | "@diffgazer/keys",
+): string {
+  const content = integrationMode === "@diffgazer/keys"
+    ? rewriteLocalImportsForKeysPackage(file.content)
+    : file.content;
+  return prepareFileContent({ ...file, content }, item, config);
 }

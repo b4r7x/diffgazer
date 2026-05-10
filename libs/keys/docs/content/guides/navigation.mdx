@@ -21,7 +21,7 @@ Three things need to be true about your HTML:
 2. Child elements with a matching **`role`** attribute (`"option"`, `"menuitem"`, `"menuitemradio"`, `"radio"`, `"checkbox"`, `"button"`, or `"tab"`)
 3. Each child has a **`data-value`** attribute -- this is how the hook tracks which item is focused
 
-Disabled items use `aria-disabled="true"` (not the HTML `disabled` attribute). When `skipDisabled` is true (the default), the selector becomes `[role="option"]:not([aria-disabled="true"])`, so disabled items get skipped during navigation.
+Disabled items are skipped when they expose `aria-disabled="true"`, `data-disabled`, or native `disabled`. This is the default `skipDisabled` behavior.
 
 If a collection can contain another collection of the same family, keep `scopeToContainer: true` (the default). For example, an outer radiogroup ignores radios inside a nested radiogroup, while a listbox can still use `role="group"` sections for headings.
 
@@ -91,17 +91,17 @@ When to use which:
 
 ### Controlled vs uncontrolled
 
-**Uncontrolled** (default): pass `initialValue` and the hook manages highlight state internally. `highlighted` reflects the internal state.
+**Uncontrolled** (default): pass `defaultHighlighted` and the hook manages highlight state internally. `highlighted` reflects the internal state.
 
 ```tsx
 const { highlighted } = useNavigation({
   containerRef,
   role: "option",
-  initialValue: "first-item", // starts highlighted here (null if omitted)
+  defaultHighlighted: "first-item", // starts highlighted here (null if omitted)
 });
 ```
 
-**Controlled**: pass `value` and `onValueChange`. The hook calls `onValueChange` instead of updating internal state -- you own the highlighted value.
+**Controlled**: pass `highlighted` and `onHighlightChange`. The hook calls `onHighlightChange` instead of updating internal state -- you own the highlighted value.
 
 ```tsx
 const [focused, setFocused] = useState<string | null>("first-item");
@@ -109,12 +109,12 @@ const [focused, setFocused] = useState<string | null>("first-item");
 const { isHighlighted } = useNavigation({
   containerRef,
   role: "option",
-  value: focused,
-  onValueChange: setFocused,
+  highlighted: focused,
+  onHighlightChange: setFocused,
 });
 ```
 
-The distinction is the same as controlled/uncontrolled inputs in React. If `value` is passed (even as `null`), the hook is controlled.
+The distinction is the same as controlled/uncontrolled inputs in React. If `highlighted` is passed (even as `null`), the hook is controlled.
 
 ### Selection semantics
 
@@ -202,16 +202,15 @@ highlight("item-42");
 interface UseNavigationOptions {
   containerRef: RefObject<HTMLElement | null>;  // required
   role: NavigationRole;                         // required
-  value?: string | null;
-  onValueChange?: (value: string) => void;
+  highlighted?: string | null;
+  defaultHighlighted?: string | null;     // default: null
+  onHighlightChange?: (value: string) => void;
   onSelect?: (value: string, event: KeyboardEvent) => void;
   onEnter?: (value: string, event: KeyboardEvent) => void;
-  onHighlightChange?: (value: string) => void;
   wrap?: boolean;                   // default: true
   enabled?: boolean;                // default: true
   preventDefault?: boolean;         // default: true
   onNavigationBoundaryReached?: (direction: "previous" | "next") => void;
-  initialValue?: string | null;     // default: null
   orientation?: "vertical" | "horizontal";  // default: "vertical"
   skipDisabled?: boolean;           // default: true
   moveFocus?: boolean;              // default: false
@@ -231,7 +230,7 @@ interface UseScopedNavigationOptions extends UseNavigationOptions {
 
 ## Tab navigation
 
-The old `useTabNavigation` hook has been replaced by `useNavigation` with `role: "tab"`. This provides consistent behavior with other navigation roles.
+For tab navigation, use `useNavigation` with `role: "tab"`. This provides consistent behavior with other navigation roles.
 
 ### DOM setup
 
@@ -243,6 +242,7 @@ const { onKeyDown } = useNavigation({
   containerRef,
   role: "tab",
   orientation: "horizontal",
+  moveFocus: true,
 });
 
 return (
@@ -271,6 +271,7 @@ const { onKeyDown } = useNavigation({
   containerRef,
   role: "tab",
   orientation: "vertical",
+  moveFocus: true,
 });
 ```
 
@@ -284,7 +285,10 @@ function Tabs() {
     containerRef,
     role: "tab",
     orientation: "horizontal",
-    onSelect: (value) => setActive(value),
+    highlighted: active,
+    onHighlightChange: setActive,
+    onSelect: setActive,
+    moveFocus: true,
   });
 
   const tabs = [

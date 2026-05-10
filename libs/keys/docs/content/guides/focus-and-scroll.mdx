@@ -82,18 +82,25 @@ return (
 
 ### What counts as focusable
 
-The exact selector:
+The trap uses the same focusable-element helper as the navigation utilities:
 
 ```
 a[href],
+area[href],
 button:not([disabled]),
-textarea:not([disabled]),
-input:not([disabled]),
 select:not([disabled]),
-[tabindex]:not([tabindex="-1"])
+textarea:not([disabled]),
+input:not([type="hidden"]):not([disabled]),
+iframe,
+object,
+embed,
+audio[controls],
+video[controls],
+[contenteditable]:not([contenteditable="false"]),
+[tabindex]:not([tabindex="-1"]):not([disabled])
 ```
 
-Elements with `tabindex="-1"` are excluded. Disabled inputs, buttons, textareas, and selects are excluded. Links without `href` are excluded.
+Elements with `tabindex="-1"` are excluded. Disabled controls are excluded. Links and areas without `href` are excluded.
 
 ### Tab cycling
 
@@ -140,7 +147,7 @@ function Modal({ open, onClose }: { open: boolean; onClose: () => void }) {
 
   useScope("modal", { enabled: open });
   useFocusTrap(ref, { enabled: open });
-  useScrollLock(undefined, open);
+  useScrollLock({ enabled: open });
 
   useKey("Escape", onClose);
 
@@ -211,7 +218,7 @@ Prevents scrolling on an element by setting `overflow: hidden`. Reference-counte
 import { useScrollLock } from "@diffgazer/keys";
 
 function Modal({ open }: { open: boolean }) {
-  useScrollLock(undefined, open); // locks document.body
+  useScrollLock({ enabled: open }); // locks document.body
   return open ? <div>...</div> : null;
 }
 ```
@@ -219,10 +226,12 @@ function Modal({ open }: { open: boolean }) {
 ### API
 
 ```ts
-function useScrollLock(
-  target?: RefObject<HTMLElement | null>,
-  enabled?: boolean,  // default: true
-): void;
+interface UseScrollLockOptions {
+  target?: RefObject<HTMLElement | null>;
+  enabled?: boolean;  // default: true
+}
+
+function useScrollLock(options?: UseScrollLockOptions): void;
 ```
 
 ### Default target
@@ -232,11 +241,11 @@ If `target` is omitted or its `current` is `null`, the lock applies to `document
 ```tsx
 // These are equivalent:
 useScrollLock();
-useScrollLock(undefined, true);
+useScrollLock({ enabled: true });
 
 // Lock a specific scrollable container:
 const panelRef = useRef<HTMLDivElement>(null);
-useScrollLock(panelRef, showOverlay);
+useScrollLock({ target: panelRef, enabled: showOverlay });
 ```
 
 ### Reference counting
@@ -262,7 +271,7 @@ A common case: a modal and a nested confirmation dialog both lock scroll.
 
 ```tsx
 function Modal({ open }: { open: boolean }) {
-  useScrollLock(undefined, open);
+  useScrollLock({ enabled: open });
 
   return open ? (
     <div>

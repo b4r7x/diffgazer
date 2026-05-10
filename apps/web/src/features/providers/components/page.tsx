@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Shortcut } from "@diffgazer/core/schemas/ui";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { ProviderList } from "@/features/providers/components/provider-list";
@@ -76,6 +76,12 @@ export function ProvidersPage() {
 
   const [listHighlighted, setListHighlighted] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (listHighlighted === null) return;
+    if (filteredProviders.some((provider) => provider.id === listHighlighted)) return;
+    setListHighlighted(null);
+  }, [filteredProviders, listHighlighted]);
+
   const actions = {
     onSetApiKey: () => dialogs.setApiKeyOpen(true),
     onSelectModel: () => dialogs.setModelOpen(true),
@@ -98,7 +104,10 @@ export function ProvidersPage() {
           ref={keyboard.listContainerRef}
           providers={filteredProviders}
           selectedId={selection.effectiveSelectedId}
-          onSelect={selection.setSelectedId}
+          onSelect={(id) => {
+            keyboard.handleListFocus();
+            selection.setSelectedId(id);
+          }}
           filter={selection.filter}
           onFilterChange={selection.setFilter}
           searchQuery={search.query}
@@ -106,6 +115,7 @@ export function ProvidersPage() {
           isFocused={keyboard.focusZone === "list"}
           inputRef={search.inputRef}
           onSearchFocus={keyboard.handleSearchFocus}
+          onListFocus={keyboard.handleListFocus}
           focusedFilterIndex={keyboard.focusZone === "filters" ? keyboard.filterIndex : undefined}
           onFilterHighlightChange={keyboard.setFilterIndex}
           onFilterFocus={keyboard.handleFilterFocus}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   getRestorableFocusTarget,
   restoreFocus,
@@ -63,7 +63,9 @@ export function useFocusRestore(
   const entryRef = useRef<FocusRestoreEntry | null>(null);
   const [target, setTarget] = useState<HTMLElement | null>(null);
 
-  optionsRef.current = resolvedOptions;
+  useLayoutEffect(() => {
+    optionsRef.current = resolvedOptions;
+  });
 
   const capture = useCallback(() => {
     const resolvedOptions = optionsRef.current;

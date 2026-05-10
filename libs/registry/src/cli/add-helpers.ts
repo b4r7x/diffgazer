@@ -12,6 +12,7 @@ export interface FileOp {
   relativePath: string;
   installDir: string;
   sourceName?: string;
+  sourceNames?: string[];
 }
 
 function tryQuietly(fn: () => void, label: string): boolean {

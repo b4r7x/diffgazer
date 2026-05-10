@@ -1,6 +1,7 @@
 import { useEffect, useEffectEvent, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type RefCallback, type RefObject } from "react";
 import type { ModelInfo } from "@diffgazer/core/schemas/config";
 import {
+  containsActiveElement,
   findNavigationItemByValue,
   useKey,
   useFocusZone,
@@ -81,6 +82,7 @@ export function useModelDialogKeyboard({
     initial: "list" as FocusZone,
     zones: ["search", "filters", "list", "footer"] as const,
     enabled: open,
+    scope: "model-dialog",
   });
 
   const focusFooterButton = (index: number) => {
@@ -90,9 +92,7 @@ export function useModelDialogKeyboard({
 
   const isFooterButtonFocused = () => {
     const button = footerButtonRefs.current.get(footerButtonIndex);
-    const activeElement = button?.ownerDocument.activeElement;
-    const View = button?.ownerDocument.defaultView;
-    return Boolean(button && View && activeElement instanceof View.HTMLElement && button.contains(activeElement));
+    return button ? containsActiveElement(button) : false;
   };
 
   const getFooterButtonProps = (index: number) => ({
@@ -126,8 +126,7 @@ export function useModelDialogKeyboard({
 
   const handleListBoundaryReached = (direction: "previous" | "next") => {
     if (direction === "previous") {
-      setFocusZone("filters");
-      setFilterIndex(0);
+      focusFilterButton(0);
       return;
     }
 

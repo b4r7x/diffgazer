@@ -13,6 +13,7 @@ import {
 } from "react";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { useFormReset } from "@/hooks/use-form-reset";
+import { useNavigation } from "@/hooks/use-navigation";
 import { composeRefs } from "@/lib/compose-refs";
 import {
   getEnabledSelectableCollectionItems,
@@ -20,7 +21,6 @@ import {
   resolveSelectableCollectionItem,
   resolveSelectableCollectionItemValue,
   useSelectableCollection,
-  type SelectableCollectionItem,
 } from "@/lib/selectable-collection";
 import { cn } from "@/lib/utils";
 import type { RadioSize } from "./radio";
@@ -78,9 +78,20 @@ export type RadioGroupActivationMode = "automatic" | "manual";
 export type RadioGroupBoundaryDirection = "previous" | "next";
 export type RadioGroupNavigationDirection = "previous" | "next" | "first" | "last";
 
+const RADIO_PREVIOUS_KEYS = ["ArrowUp", "ArrowLeft"] as const;
+const RADIO_NEXT_KEYS = ["ArrowDown", "ArrowRight"] as const;
+
 function isHTMLElementForContainer(value: unknown, container: HTMLElement | null): value is HTMLElement {
   const View = container?.ownerDocument.defaultView;
   return Boolean(View && value instanceof View.HTMLElement);
+}
+
+function getRadioNavigationDirection(key: string): RadioGroupNavigationDirection | null {
+  if (key === "ArrowUp" || key === "ArrowLeft") return "previous";
+  if (key === "ArrowDown" || key === "ArrowRight") return "next";
+  if (key === "Home") return "first";
+  if (key === "End") return "last";
+  return null;
 }
 
 export function RadioGroup(props: RadioGroupProps) {
@@ -114,6 +125,7 @@ export function RadioGroup(props: RadioGroupProps) {
   } = props;
   const containerRef = useRef<HTMLDivElement>(null);
   const hasAutoFocusedRef = useRef(false);
+  const navigationEventRef = useRef<ReactKeyboardEvent<HTMLDivElement> | null>(null);
   const { items, registerItem, unregisterItem } = useSelectableCollection(containerRef);
   const [requiredInvalid, setRequiredInvalid] = useState(false);
 
@@ -168,67 +180,44 @@ export function RadioGroup(props: RadioGroupProps) {
     setRequiredInvalid(true);
   }, []);
 
-  const moveToItem = (
-    item: SelectableCollectionItem,
-    direction: RadioGroupNavigationDirection,
-  ) => {
-    if (!item.element) return;
-    item.element.scrollIntoView?.({ block: "nearest" });
-    item.element.focus();
-    setHighlightedValue(item.value);
+  const handleNavigatedItem = useCallback((next: string) => {
+    setHighlightedValue(next);
     setRequiredInvalid(false);
-    onNavigate?.(item.value, direction);
-    if (activationMode === "automatic") setValue(item.value);
-  };
 
-  const getCurrentItemIndex = () => {
-    const enabledItems = getEnabledSelectableCollectionItems(items, disabled);
-    const activeElement = containerRef.current?.ownerDocument.activeElement;
-    const focusedIndex = enabledItems.findIndex((item) => {
-      return item.element !== null
-        && isHTMLElementForContainer(activeElement, containerRef.current)
-        && item.element.contains(activeElement);
-    });
-    if (focusedIndex >= 0) return focusedIndex;
+    const direction = getRadioNavigationDirection(navigationEventRef.current?.key ?? "");
+    if (direction !== null) onNavigate?.(next, direction);
 
-    if (tabTargetValue === null) return -1;
-    return enabledItems.findIndex((item) => item.value === tabTargetValue);
-  };
+    if (activationMode === "automatic") setValue(next);
+  }, [activationMode, onNavigate, setHighlightedValue, setValue]);
 
-  const getCurrentItem = () => {
-    const currentIndex = getCurrentItemIndex();
-    const currentItems = getEnabledSelectableCollectionItems(items, disabled);
-    return currentIndex >= 0 ? currentItems[currentIndex] ?? null : null;
-  };
+  const handleNavigationEnter = useCallback((next: string) => {
+    const event = navigationEventRef.current;
+    if (!event) return;
 
-  const focusItemAtIndex = (
-    index: number,
-    direction: RadioGroupNavigationDirection,
-  ) => {
-    const enabledItems = getEnabledSelectableCollectionItems(items, disabled);
-    const item = enabledItems[index];
-    if (item) moveToItem(item, direction);
-  };
+    setHighlightedValue(next);
+    handleValueChange(next);
+    onEnter?.(next, event);
+  }, [handleValueChange, onEnter, setHighlightedValue]);
 
-  const moveItem = (delta: 1 | -1, event: ReactKeyboardEvent<HTMLDivElement>) => {
-    const enabledItems = getEnabledSelectableCollectionItems(items, disabled);
-    if (enabledItems.length === 0) return;
+  const handleNavigationBoundaryReached = useCallback((direction: RadioGroupBoundaryDirection) => {
+    const event = navigationEventRef.current;
+    if (event) onNavigationBoundaryReached?.(direction, event);
+  }, [onNavigationBoundaryReached]);
 
-    const currentIndex = getCurrentItemIndex();
-    const nextIndex = currentIndex + delta;
-    const direction: RadioGroupNavigationDirection = delta < 0 ? "previous" : "next";
-
-    if (nextIndex < 0 || nextIndex >= enabledItems.length) {
-      if (!wrap) {
-        onNavigationBoundaryReached?.(delta < 0 ? "previous" : "next", event);
-        return;
-      }
-      focusItemAtIndex(delta < 0 ? enabledItems.length - 1 : 0, direction);
-      return;
-    }
-
-    focusItemAtIndex(nextIndex, direction);
-  };
+  const { onKeyDown: navKeyDown } = useNavigation({
+    containerRef,
+    role: "radio",
+    highlighted: tabTargetValue,
+    onHighlightChange: handleNavigatedItem,
+    onEnter: handleNavigationEnter,
+    wrap,
+    enabled: keyboardNavigation && !disabled,
+    moveFocus: true,
+    scopeToContainer: true,
+    upKeys: RADIO_PREVIOUS_KEYS,
+    downKeys: RADIO_NEXT_KEYS,
+    onNavigationBoundaryReached: handleNavigationBoundaryReached,
+  });
 
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     const eventTarget = isHTMLElementForContainer(event.target, containerRef.current)
@@ -244,35 +233,11 @@ export function RadioGroup(props: RadioGroupProps) {
     onKeyDown?.(event);
     if (event.defaultPrevented || !keyboardNavigation || disabled) return;
 
-    switch (event.key) {
-      case "ArrowUp":
-      case "ArrowLeft":
-        event.preventDefault();
-        moveItem(-1, event);
-        return;
-      case "ArrowDown":
-      case "ArrowRight":
-        event.preventDefault();
-        moveItem(1, event);
-        return;
-      case "Home":
-        event.preventDefault();
-        focusItemAtIndex(0, "first");
-        return;
-      case "End":
-        event.preventDefault();
-        focusItemAtIndex(enabledItems.length - 1, "last");
-        return;
-      case "Enter": {
-        const item = getCurrentItem();
-        if (!item) return;
-        event.preventDefault();
-        setHighlightedValue(item.value);
-        setRequiredInvalid(false);
-        handleValueChange(item.value);
-        onEnter?.(item.value, event);
-        return;
-      }
+    navigationEventRef.current = event;
+    try {
+      navKeyDown(event);
+    } finally {
+      navigationEventRef.current = null;
     }
   };
 

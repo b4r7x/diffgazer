@@ -60,22 +60,17 @@ describe("navigation item utilities", () => {
     document.body.replaceChildren();
   });
 
-  it("queries current and legacy data-contract items before role fallbacks", () => {
+  it("queries data-contract items before role fallbacks", () => {
     const container = mountContainer("listbox");
     appendElement(container, {
-      value: "current",
+      value: "contract",
       attributes: { [NAVIGATION_ITEM_ATTRIBUTE]: "option" },
-    });
-    appendElement(container, {
-      value: "legacy",
-      attributes: { "data-navigation-item": "true" },
     });
     appendElement(container, { role: "option", value: "role" });
     appendElement(container, { attributes: { [NAVIGATION_ITEM_ATTRIBUTE]: "option" } });
 
     expect(values(getNavigationItems(container, { type: "option" }))).toEqual([
-      "current",
-      "legacy",
+      "contract",
     ]);
   });
 
@@ -110,16 +105,6 @@ describe("navigation item utilities", () => {
     appendElement(container, { tag: "button", value: "button", text: "Button" });
 
     expect(values(getNavigationItems(container, { type: "button" }))).toEqual(["button"]);
-  });
-
-  it("keeps untyped legacy data-contract markers as a fallback", () => {
-    const container = mountContainer("group");
-    appendElement(container, {
-      value: "legacy-action",
-      attributes: { "data-navigation-item": "true" },
-    });
-
-    expect(values(getNavigationItems(container, { type: "button" }))).toEqual(["legacy-action"]);
   });
 
   it("queries role items with data values", () => {

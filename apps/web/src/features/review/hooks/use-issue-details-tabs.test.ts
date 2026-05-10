@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
-import { useTabNavigation } from "./use-tab-navigation";
+import { useIssueDetailsTabs } from "./use-issue-details-tabs";
 
 function makeIssue(id: string, patch = true): ReviewIssue {
   const issue: ReviewIssue = {
@@ -24,12 +24,12 @@ function makeIssue(id: string, patch = true): ReviewIssue {
   return issue;
 }
 
-describe("useTabNavigation", () => {
+describe("useIssueDetailsTabs", () => {
   it("derives a valid tab when the selected issue has no patch", () => {
     const issueWithPatch = makeIssue("issue-with-patch");
     const issueWithoutPatch = makeIssue("issue-without-patch", false);
     const { result, rerender } = renderHook(
-      ({ selectedIssue }) => useTabNavigation({ selectedIssue }),
+      ({ selectedIssue }) => useIssueDetailsTabs({ selectedIssue }),
       { initialProps: { selectedIssue: issueWithPatch } },
     );
 
@@ -48,7 +48,7 @@ describe("useTabNavigation", () => {
     const issueA = makeIssue("issue-a");
     const issueB = makeIssue("issue-b");
     const { result, rerender } = renderHook(
-      ({ selectedIssue }) => useTabNavigation({ selectedIssue }),
+      ({ selectedIssue }) => useIssueDetailsTabs({ selectedIssue }),
       { initialProps: { selectedIssue: issueA } },
     );
 

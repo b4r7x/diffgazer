@@ -1,6 +1,6 @@
 ---
 title: Utilities
-description: Helper functions for working with @diffgazer/keys — keys, navigation item utilities, DOM focus restore utilities, and useOptionalKeyboardContext.
+description: Helper functions for working with @diffgazer/keys — keys, navigation item utilities, DOM focus restore utilities, and keyboard context hooks.
 ---
 
 # Utilities
@@ -83,7 +83,7 @@ function getFocusedNavigationValue(
 function getFocusableElements(container: HTMLElement | null): HTMLElement[];
 ```
 
-The query helpers read `data-diffgazer-navigation-item`, the legacy `data-navigation-item`, role selectors, and native radio/checkbox/button controls. Navigation items should expose a stable `data-value`. Typed data-contract markers only match the requested item type, which keeps mixed widgets separated inside the same subtree.
+The query helpers read `data-diffgazer-navigation-item`, role selectors, and native radio/checkbox/button controls. Navigation items should expose a stable `data-value`. Typed data-contract markers only match the requested item type, which keeps mixed widgets separated inside the same subtree.
 
 ---
 
@@ -144,17 +144,18 @@ useKey({
 
 ---
 
-## useOptionalKeyboardContext
+## useKeyboardContext and useOptionalKeyboardContext
 
-Low-level hook to access the `KeyboardProvider` context without throwing. Returns `null` when no provider is present.
+Low-level hooks to access the `KeyboardProvider` context. `useKeyboardContext` throws when no provider is present. `useOptionalKeyboardContext` returns `null`.
 
 ```ts
-import { useOptionalKeyboardContext } from "@diffgazer/keys";
+import { useKeyboardContext, useOptionalKeyboardContext } from "@diffgazer/keys";
 ```
 
 ### Signature
 
 ```ts
+function useKeyboardContext(): KeyboardContextValue;
 function useOptionalKeyboardContext(): KeyboardContextValue | null;
 ```
 
@@ -163,12 +164,14 @@ function useOptionalKeyboardContext(): KeyboardContextValue | null;
 ```ts
 interface KeyboardContextValue {
   activeScope: string | null;
-  pushScope: (scope: string) => () => void;
+  getActiveScope: () => string | null;
+  pushScope: (scope: string, order?: string) => () => void;
   register: (scope: string, hotkey: string, handler: Handler, options?: HandlerOptions) => () => void;
 }
 ```
 
 ### Behavior
 
-- Returns `useContext(KeyboardContext) ?? null`.
+- `useKeyboardContext` returns the active keyboard context and throws if `KeyboardProvider` is missing.
+- `useOptionalKeyboardContext` returns the active keyboard context or `null` if `KeyboardProvider` is missing.
 - This is what `useKey` uses internally. You probably don't need this directly unless you're building a custom hook on top of @diffgazer/keys.

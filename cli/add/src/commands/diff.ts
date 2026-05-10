@@ -1,8 +1,7 @@
 import { createDiffCommand } from "@diffgazer/registry/cli";
 import { ctx, type DiffgazerAddConfig } from "../context.js";
-import { rewriteLocalImportsForKeysPackage } from "../utils/transform.js";
 import {
-  prepareFileContent,
+  prepareFileContentForIntegration,
   getInstallBaseForFilePath,
   getInstallDirForBase,
 } from "../utils/registry.js";
@@ -45,15 +44,17 @@ export const diffCommand = createDiffCommand({
       const localPath = resolveInstallPath(cwd, installDir, relativePath);
       const itemName = `${parsed.namespace}/${parsed.name}`;
       const manifestPath = `${installDir}/${relativePath}`.replace(/\\/g, "/");
-      const rawContent = resolveIntegrationMode(cwd, itemName, manifestPath) === "@diffgazer/keys"
-        ? rewriteLocalImportsForKeysPackage(file.content)
-        : file.content;
 
       return {
         itemName,
         relativePath,
         localPath,
-        registryContent: prepareFileContent({ ...file, content: rawContent }, item, config),
+        registryContent: prepareFileContentForIntegration(
+          file,
+          item,
+          config,
+          resolveIntegrationMode(cwd, itemName, manifestPath),
+        ),
       };
     });
   },

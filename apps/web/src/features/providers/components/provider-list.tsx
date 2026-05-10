@@ -6,7 +6,7 @@ import { cn } from "@diffgazer/core/cn";
 import { getDisplayStatusBadge } from '@diffgazer/core/providers';
 import { PROVIDER_CAPABILITIES } from '@diffgazer/core/schemas/config';
 import { PROVIDER_FILTER_LABELS, type ProviderFilter } from '@/features/providers/constants';
-import { toVerticalBoundaryDirection } from '@/lib/vertical-navigation';
+import { toVerticalBoundaryDirection } from "@diffgazer/keys";
 import type { ProviderWithStatus } from '@diffgazer/core/schemas/config';
 
 interface ProviderListProps {
@@ -21,6 +21,7 @@ interface ProviderListProps {
   isFocused?: boolean;
   inputRef?: React.RefObject<HTMLInputElement | null>;
   onSearchFocus?: () => void;
+  onListFocus?: () => void;
   focusedFilterIndex?: number;
   onFilterHighlightChange?: (index: number) => void;
   onFilterFocus?: (index: number) => void;
@@ -47,6 +48,7 @@ export function ProviderList({
   isFocused = true,
   inputRef,
   onSearchFocus,
+  onListFocus,
   focusedFilterIndex,
   onFilterHighlightChange,
   onFilterFocus,
@@ -134,6 +136,7 @@ export function ProviderList({
           aria-label="Providers"
           selectedId={selectedId}
           highlightedId={highlightedId}
+          onFocus={onListFocus}
           onHighlightChange={onHighlightChange}
           onSelect={(id) => {
             onSelect(id);

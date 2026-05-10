@@ -211,6 +211,16 @@ describe("CommandPalette", () => {
     expect(onHighlightChange).toHaveBeenCalledWith("paste")
   })
 
+  it("keeps Home and End available for text editing in the search input", async () => {
+    const onHighlightChange = vi.fn()
+    renderPalette({ highlightedId: "delete", onHighlightChange })
+    const input = screen.getByRole("combobox")
+
+    await userEvent.type(input, "{Home}{End}")
+
+    expect(onHighlightChange).not.toHaveBeenCalled()
+  })
+
   it("keeps controlled null highlight unselected", () => {
     renderPalette({ highlightedId: null })
     expect(screen.getByRole("combobox")).not.toHaveAttribute("aria-activedescendant")

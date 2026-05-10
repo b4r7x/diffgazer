@@ -23,8 +23,8 @@ function CheckboxGroupWithKeyboard() {
   const { onKeyDown, highlighted } = useNavigation({
     containerRef,
     role: "checkbox",
-    value: focused,
-    onValueChange: setFocused,
+    highlighted: focused,
+    onHighlightChange: setFocused,
     onSelect: toggle,
     onEnter: toggle,
   });
@@ -52,8 +52,8 @@ function RadioGroupWithKeyboard() {
   const { onKeyDown, highlighted } = useNavigation({
     containerRef,
     role: "radio",
-    value,
-    onValueChange: setValue,
+    highlighted: value,
+    onHighlightChange: setValue,
     onSelect: setValue,
     onEnter: setValue,
   });

@@ -185,10 +185,45 @@ test("keys add records ownership and remove deletes matching owned files without
   assert.equal(updated.installedComponents?.["keys/navigation"], undefined);
 });
 
+test("keys remove deletes transitive copied hook files owned by the key item", () => {
+  runDgadd(["add", "keys/focus-trap", "--cwd", root, "--yes", "--skip-install"]);
+
+  assert.equal(existsSync(join(root, "src/hooks/use-focus-trap.ts")), true);
+  assert.equal(existsSync(join(root, "src/hooks/use-focus-restore.ts")), true);
+  assert.equal(existsSync(join(root, "src/hooks/utils/focus-restore.ts")), true);
+  assert.equal(existsSync(join(root, "src/hooks/utils/navigation-items.ts")), true);
+
+  runDgadd(["remove", "keys/focus-trap", "--cwd", root, "--yes"]);
+
+  assert.equal(existsSync(join(root, "src/hooks/use-focus-trap.ts")), false);
+  assert.equal(existsSync(join(root, "src/hooks/use-focus-restore.ts")), false);
+  assert.equal(existsSync(join(root, "src/hooks/utils/focus-restore.ts")), false);
+  assert.equal(existsSync(join(root, "src/hooks/utils/navigation-items.ts")), false);
+});
+
+test("keys add preserves explicit ownership for hooks that overlap transitive files", () => {
+  runDgadd(["add", "keys/focus-trap", "keys/focus-restore", "--cwd", root, "--yes", "--skip-install"]);
+
+  const config = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
+  assert.ok(config.installedComponents?.["keys/focus-trap"]);
+  assert.ok(config.installedComponents?.["keys/focus-restore"]);
+
+  runDgadd(["remove", "keys/focus-trap", "--cwd", root, "--yes"]);
+
+  const updated = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
+  assert.equal(updated.installedComponents?.["keys/focus-trap"], undefined);
+  assert.ok(updated.installedComponents?.["keys/focus-restore"]);
+  assert.equal(existsSync(join(root, "src/hooks/use-focus-trap.ts")), false);
+  assert.equal(existsSync(join(root, "src/hooks/use-focus-restore.ts")), true);
+  assert.equal(existsSync(join(root, "src/hooks/utils/focus-restore.ts")), true);
+  assert.equal(existsSync(join(root, "src/hooks/utils/navigation-items.ts")), false);
+});
+
 test("copy integration installs keys transitive files with bundler-safe relative imports", () => {
   runDgadd(["add", "ui/select", "--cwd", root, "--yes", "--skip-install"]);
 
   assert.equal(existsSync(join(root, "src/hooks/internal/navigation-dispatch.ts")), true);
+  assert.equal(existsSync(join(root, "src/hooks/utils/navigation-items.ts")), true);
   assert.doesNotMatch(
     readFileSync(join(root, "src/hooks/use-navigation.ts"), "utf-8"),
     /from "\.\/internal\/navigation-dispatch\.js"/,
@@ -197,6 +232,36 @@ test("copy integration installs keys transitive files with bundler-safe relative
     readFileSync(join(root, "src/hooks/use-navigation.ts"), "utf-8"),
     /from "\.\/internal\/navigation-dispatch"/,
   );
+  assert.match(
+    readFileSync(join(root, "src/hooks/use-navigation.ts"), "utf-8"),
+    /from "\.\/utils\/navigation-items"/,
+  );
+});
+
+test("copy integration installs focus restore for dialog-backed UI", () => {
+  runDgadd(["add", "ui/command-palette", "--integration", "copy", "--cwd", root, "--yes", "--skip-install"]);
+
+  assert.equal(existsSync(join(root, "src/hooks/use-focus-restore.ts")), true);
+  assert.equal(existsSync(join(root, "src/hooks/utils/focus-restore.ts")), true);
+
+  const content = readFileSync(
+    join(root, "src/components/ui/command-palette/command-palette-content.tsx"),
+    "utf-8",
+  );
+  assert.doesNotMatch(content, /@diffgazer\/keys/);
+  assert.match(content, /@\/hooks\/use-focus-restore/);
+});
+
+test("copy integration installs navigation for radio-backed UI", () => {
+  runDgadd(["add", "ui/radio", "--integration", "copy", "--cwd", root, "--yes", "--skip-install"]);
+
+  assert.equal(existsSync(join(root, "src/hooks/use-navigation.ts")), true);
+  assert.equal(existsSync(join(root, "src/hooks/internal/navigation-dispatch.ts")), true);
+  assert.equal(existsSync(join(root, "src/hooks/utils/navigation-items.ts")), true);
+
+  const content = readFileSync(join(root, "src/components/ui/radio/radio-group.tsx"), "utf-8");
+  assert.doesNotMatch(content, /@diffgazer\/keys/);
+  assert.match(content, /@\/hooks\/use-navigation/);
 });
 
 test("none integration is rejected when selected components require keys hooks", () => {

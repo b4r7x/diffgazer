@@ -26,18 +26,20 @@ export function TabBarDemo() {
     containerRef: hTabListRef,
     role: "tab",
     orientation: "horizontal",
-    value: activeHTab,
-    onValueChange: setActiveHTab,
+    highlighted: activeHTab,
+    onHighlightChange: setActiveHTab,
     onSelect: setActiveHTab,
+    moveFocus: true,
   });
 
   const { onKeyDown: vOnKeyDown } = useNavigation({
     containerRef: vTabListRef,
     role: "tab",
     orientation: "vertical",
-    value: activeVTab,
-    onValueChange: setActiveVTab,
+    highlighted: activeVTab,
+    onHighlightChange: setActiveVTab,
     onSelect: setActiveVTab,
+    moveFocus: true,
   });
 
   const activeHContent = horizontalTabs.find((t) => t.id === activeHTab)?.content;

@@ -36,6 +36,8 @@ export function useScopedNavigation(options: UseScopedNavigationOptions): UseSco
     containerRef,
     moveFocus,
     scope,
+    onEnter,
+    onSelect,
   } = options;
   const resolvedFocusWithinOnly = focusWithinOnly ?? false;
 
@@ -43,6 +45,8 @@ export function useScopedNavigation(options: UseScopedNavigationOptions): UseSco
 
   const { highlighted, isHighlighted, highlight, move, focusIndex, handleSelect, handleEnter, getElements } =
     useNavigationCore({ ...options, containerRef });
+  const handlesEnter = !moveFocus || Boolean(onEnter || onSelect);
+  const handlesSpace = !moveFocus || Boolean(onSelect);
 
   const dispatch = useCallback((key: string, nativeEvent: globalThis.KeyboardEvent) => {
     dispatchNavigationKey(key, {
@@ -50,12 +54,12 @@ export function useScopedNavigation(options: UseScopedNavigationOptions): UseSco
       resolvedDownKeys,
       move,
       focusIndex,
-      handleSelect: moveFocus ? undefined : (e) => handleSelect(e),
-      handleEnter: moveFocus ? undefined : (e) => handleEnter(e),
+      handleSelect: handlesSpace ? (e) => handleSelect(e) : undefined,
+      handleEnter: handlesEnter ? (e) => handleEnter(e) : undefined,
       total: getElements().length,
       nativeEvent,
     });
-  }, [focusIndex, getElements, handleEnter, handleSelect, move, moveFocus, resolvedDownKeys, resolvedUpKeys]);
+  }, [focusIndex, getElements, handleEnter, handleSelect, handlesEnter, handlesSpace, move, resolvedDownKeys, resolvedUpKeys]);
 
   const handlers: Record<string, (event: globalThis.KeyboardEvent) => void> = {
     ...keys(resolvedUpKeys, (e) => dispatch(e.key, e)),
@@ -64,8 +68,10 @@ export function useScopedNavigation(options: UseScopedNavigationOptions): UseSco
     End: (e) => dispatch("End", e),
   };
 
-  if (!moveFocus) {
+  if (handlesEnter) {
     handlers.Enter = (e) => dispatch("Enter", e);
+  }
+  if (handlesSpace) {
     handlers[" "] = (e) => dispatch(" ", e);
   }
 

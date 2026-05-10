@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type RefCallback, type RefObject } from "react";
-import { useFocusZone, useKey } from "@diffgazer/keys";
+import { containsActiveElement, useFocusZone, useKey } from "@diffgazer/keys";
 
 type FooterNavigationZone = "content" | "footer";
 const FOOTER_NAVIGATION_ZONES = ["content", "footer"] as const;
@@ -94,9 +94,7 @@ export function useFooterNavigation({
   const enterOptions = focusZone.getKeyOptions("content");
   const isRegisteredButtonFocused = () => {
     const button = buttonRefs.current.get(focusedIndex);
-    const activeElement = button?.ownerDocument.activeElement;
-    const View = button?.ownerDocument.defaultView;
-    return Boolean(button && View && activeElement instanceof View.HTMLElement && button.contains(activeElement));
+    return button ? containsActiveElement(button) : false;
   };
 
   const activateFocusedButton = () => {

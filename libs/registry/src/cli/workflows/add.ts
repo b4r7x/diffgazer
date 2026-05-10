@@ -16,6 +16,14 @@ function dedupeFileOpsStrict(fileOps: FileOp[]): FileOp[] {
         `Conflicting writes detected for "${op.targetPath}". Resolve overlapping integration sources before continuing.`,
       );
     }
+
+    const sourceNames = new Set([
+      existing.sourceName,
+      ...(existing.sourceNames ?? []),
+      op.sourceName,
+      ...(op.sourceNames ?? []),
+    ].filter((sourceName): sourceName is string => sourceName !== undefined));
+    existing.sourceNames = [...sourceNames];
   }
   return [...byTargetPath.values()];
 }

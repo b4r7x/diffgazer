@@ -19,8 +19,9 @@ export default function UseNavigationTabs() {
     role: "tab",
     orientation: "horizontal",
     wrap: true,
-    value: activeTab,
-    onValueChange: setActiveTab,
+    highlighted: activeTab,
+    onHighlightChange: setActiveTab,
+    moveFocus: true,
   })
 
   const activeContent = tabs.find((t) => t.id === activeTab)
@@ -32,15 +33,16 @@ export default function UseNavigationTabs() {
         role="tablist"
         aria-label="Settings"
         onKeyDown={onKeyDown}
-        tabIndex={0}
         className="flex border-b border-border focus:outline-none"
       >
         {tabs.map((tab) => (
-          <div
+          <button
             key={tab.id}
+            type="button"
             role="tab"
             data-value={tab.id}
             aria-selected={isHighlighted(tab.id)}
+            tabIndex={isHighlighted(tab.id) ? 0 : -1}
             className={`px-4 py-2 text-sm cursor-pointer ${
               isHighlighted(tab.id)
                 ? "border-b-2 border-foreground text-foreground font-bold"
@@ -49,7 +51,7 @@ export default function UseNavigationTabs() {
             onClick={() => setActiveTab(tab.id)}
           >
             {tab.label}
-          </div>
+          </button>
         ))}
       </div>
       <div role="tabpanel" className="p-4 text-sm text-muted-foreground">

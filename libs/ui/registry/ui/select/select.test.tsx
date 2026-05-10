@@ -577,6 +577,29 @@ describe("Select", () => {
     expect(screen.getByRole("listbox")).not.toHaveAttribute("aria-activedescendant")
   })
 
+  it("keeps Home and End available for text editing in searchable input", async () => {
+    const onHighlightChange = vi.fn()
+    render(
+      <Select variant="card" defaultOpen highlighted="banana" onHighlightChange={onHighlightChange}>
+        <Select.Trigger>
+          <Select.Value placeholder="Pick a fruit" />
+        </Select.Trigger>
+        <Select.Content>
+          <Select.Search />
+          <Select.Item value="apple">Apple</Select.Item>
+          <Select.Item value="banana">Banana</Select.Item>
+          <Select.Item value="cherry">Cherry</Select.Item>
+        </Select.Content>
+      </Select>,
+    )
+    const searchInput = screen.getByRole("searchbox", { name: /search options/i })
+
+    onHighlightChange.mockClear()
+    await userEvent.type(searchInput, "{Home}{End}")
+
+    expect(onHighlightChange).not.toHaveBeenCalled()
+  })
+
   it("keeps searchable input outside listbox ownership", () => {
     renderSelect({ withSearch: true, defaultOpen: true })
     const searchInput = screen.getByRole("searchbox", { name: /search options/i })

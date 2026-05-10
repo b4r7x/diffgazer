@@ -196,29 +196,29 @@ The sidebar lists all demos. Clicking one sets the active demo. The main content
 ### Section C: Zones & Navigation
 
 #### Demo 5: Three-Panel Layout (Hero Demo)
-- **Hooks**: `useFocusZone`, `useZoneKeys`
-- **What it shows**: IDE-style layout — Sidebar, Content, Preview. Arrow keys move between zones. Each zone has its own shortcuts that only fire when that zone is active.
+- **Hooks**: `useFocusZone`, `useKey`
+- **What it shows**: IDE-style layout — Sidebar, Content, Preview. Arrow keys move between zones. Each zone has its own shortcuts through `getKeyOptions(zone)`.
 - **Visual**: Three panels with colored borders indicating active zone. Zone-specific shortcut hints shown in each panel. Active zone highlighted with accent color.
 - **Zone shortcuts**:
   - Sidebar: `Enter` opens item, `d` deletes, `n` creates new
-  - Content: `Enter | Space` toggles section, `e` edits
+  - Content: `Enter` / `Space` toggles section, `e` edits
   - Preview: `Escape` returns to content, `p` prints
 - **What to try**: "Use `←` `→` arrows to switch zones. Each zone has different shortcuts — check the hints in each panel."
 
 #### Demo 6: Selectable List
-- **Hooks**: `useNavigation` (scoped mode)
-- **What it shows**: Arrow keys navigate a list. Enter/Space selects. Home/End jump to first/last. Shows `highlighted` tracking.
+- **Hooks**: `useScopedNavigation`
+- **What it shows**: Arrow keys navigate a provider-backed list. Enter/Space selects. Home/End jump to first/last. Shows `highlighted` tracking.
 - **Visual**: Vertical list of items. Focused item has a distinct background. Selected items have a checkmark. Focused value displayed below the list.
 - **What to try**: "Use `↑` `↓` to navigate. `Enter` to select. `Home`/`End` to jump."
 
 #### Demo 7: Standalone Combobox
-- **Hooks**: `useNavigation` (local mode)
-- **What it shows**: Same navigation but using local `onKeyDown` mode instead of scoped mode. Shows the two modes side by side.
-- **Visual**: Two identical lists — left uses scoped mode, right uses local mode. The local mode list only responds when focused. Label indicates mode.
+- **Hooks**: `useNavigation`
+- **What it shows**: Standalone `onKeyDown` navigation that only responds when the combobox/list owns focus.
+- **Visual**: A combobox/list pair using local keydown handling. The list only responds when focused. Label indicates standalone mode.
 - **What to try**: "Click inside the right list, then use arrow keys. Notice it only works when the list has focus. The left list works globally."
 
 #### Demo 8: Tab Bar
-- **Hooks**: `useTabNavigation`
+- **Hooks**: `useNavigation` with `role: "tab"`
 - **What it shows**: Horizontal tab bar with Left/Right arrow navigation. Home/End jump to first/last tab. Wrapping behavior.
 - **Visual**: Tab bar with 5 tabs. Active tab has underline. Content below changes with tab. Second tab bar is vertical (Up/Down).
 - **What to try**: "Focus a tab, then use `←` `→` to switch. Try `Home` and `End`. The vertical example uses `↑` `↓`."
@@ -226,14 +226,14 @@ The sidebar lists all demos. Clicking one sets the active demo. The main content
 ### Section D: Composition
 
 #### Demo 9: Command Palette
-- **Hooks**: `useKey`, `useScope`, `useNavigation`
+- **Hooks**: `useKey`, `useScope`, `useScopedNavigation`
 - **What it shows**: `mod+K` opens palette (pushes scope). Arrow keys navigate commands. Enter selects. Escape closes (pops scope). Combines three hooks into a real-world pattern.
 - **Visual**: Full command palette overlay with search input, filtered command list, and keyboard navigation. Shows which hooks are active.
 - **What to try**: "Press `⌘K` to open. Type to filter. `↑` `↓` to navigate. `Enter` to select. `Escape` to close."
 
 #### Demo 10: Multi-Key Handlers
-- **Hooks**: `useZoneKeys` with pipe syntax, `keys()` helper
-- **What it shows**: `"Enter | Space"` fires the same action. `keys(["1","2","3"], handler)` for number shortcuts. Shows advanced `useZoneKeys` features.
+- **Hooks**: `useKey` with array/map overloads, `keys()` helper
+- **What it shows**: `["Enter", "Space"]` fires the same action. `keys(["1","2","3"], handler)` creates a handler map for number shortcuts.
 - **Visual**: Card grid. Cards respond to both Enter and Space. Number keys 1-9 jump to corresponding card. Shows the handler map in a code block.
 - **What to try**: "Navigate to a card with arrows. Both `Enter` and `Space` select it. Press `1-9` to jump directly."
 
@@ -244,13 +244,12 @@ The sidebar lists all demos. Clicking one sets the active demo. The main content
 | `useKey` | 1, 2, 3, 4, 9 |
 | `useScope` | 3, 4, 9 |
 | `useFocusZone` | 5 |
-| `useZoneKeys` | 5, 10 |
-| `useNavigation` (scoped) | 6, 9 |
-| `useNavigation` (local) | 7 |
-| `useTabNavigation` | 8 |
+| `useScopedNavigation` | 6, 9 |
+| `useNavigation` | 7 |
+| `useNavigation` with `role: "tab"` | 8 |
 | `keys()` helper | 10 |
 | `mod` alias | 2, 9 |
-| Pipe syntax | 5, 10 |
+| `useKey` array/map overloads | 5, 10 |
 
 Every hook is showcased in at least one dedicated demo and appears in at least one composition demo.
 
@@ -346,7 +345,7 @@ A reusable component that renders keyboard shortcut badges:
 ```tsx
 <Kbd keys="mod+k" />       → ⌘K (Mac) or Ctrl+K (Win)
 <Kbd keys="ArrowUp" />     → ↑
-<Kbd keys="Enter | Space" /> → Enter / Space
+<Kbd keys={["Enter", "Space"]} /> → Enter / Space
 <Kbd keys="Escape" />      → Esc
 ```
 
@@ -381,7 +380,7 @@ const isMac = typeof navigator !== "undefined"
 - Rounded corners, subtle border, light gray background
 - `min-width` to prevent tiny badges for single characters
 - Each key segment (e.g., `⌘` and `K`) rendered as separate adjacent badges
-- Pipe syntax (`Enter | Space`) renders as two badges separated by `/`
+- Multi-key arrays render as badges separated by `/`
 
 ---
 

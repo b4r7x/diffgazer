@@ -306,6 +306,7 @@
       "type": "registry:ui",
       "title": "Checkbox",
       "description": "Terminal-styled checkbox with bracket notation",
+      "dependencies": [],
       "registryDependencies": [
         "controllable-state",
         "form-reset",
@@ -371,15 +372,20 @@
       "type": "registry:ui",
       "title": "Radio",
       "description": "Terminal-styled radio and radio group for single-selection with bracket notation",
+      "dependencies": [],
       "registryDependencies": [
         "controllable-state",
         "form-reset",
         "compose-refs",
+        "@diffgazer-keys/navigation",
         "selectable-collection",
         "selectable-variants"
       ],
       "meta": {
-        "client": true
+        "client": true,
+        "optionalIntegrations": [
+          "keyboard-navigation"
+        ]
       },
       "files": [
         {
@@ -731,18 +737,21 @@
       "title": "Dialog",
       "description": "Modal dialog with compound components",
       "dependencies": [
-        "@diffgazer/keys",
         "class-variance-authority"
       ],
       "registryDependencies": [
         "button",
         "controllable-state",
+        "@diffgazer-keys/focus-restore",
         "dialog-shell",
         "compose-refs",
         "portal"
       ],
       "meta": {
-        "client": true
+        "client": true,
+        "optionalIntegrations": [
+          "keyboard-navigation"
+        ]
       },
       "files": [
         {
@@ -1303,12 +1312,11 @@
       "title": "Command Palette",
       "description": "Terminal-inspired command palette with search, keyboard navigation, and grouped items",
       "dependencies": [
-        "@diffgazer/keys",
         "class-variance-authority"
       ],
       "registryDependencies": [
         "controllable-state",
-        "form-reset",
+        "@diffgazer-keys/focus-restore",
         "@diffgazer-keys/navigation",
         "compose-refs",
         "dialog-shell",
@@ -1387,7 +1395,8 @@
         "outside-click",
         "portal",
         "presence",
-        "search"
+        "search",
+        "typeahead-buffer"
       ],
       "meta": {
         "client": true,
@@ -2032,10 +2041,12 @@
       "type": "registry:hook",
       "title": "useListbox",
       "description": "Shared listbox state and keyboard navigation hook. Manages selection, highlight, and container ARIA props for listbox-pattern components.",
+      "dependencies": [],
       "registryDependencies": [
         "controllable-state",
         "@diffgazer-keys/navigation",
-        "compose-refs"
+        "compose-refs",
+        "typeahead-buffer"
       ],
       "meta": {
         "client": true,
@@ -2046,6 +2057,24 @@
       "files": [
         {
           "path": "registry/hooks/use-listbox.ts",
+          "type": "registry:hook"
+        }
+      ]
+    },
+    {
+      "name": "typeahead-buffer",
+      "type": "registry:hook",
+      "title": "useTypeaheadBuffer",
+      "description": "Small typeahead query buffer for composite widgets that reset typed search after a short idle window.",
+      "dependencies": [],
+      "registryDependencies": [],
+      "meta": {
+        "client": true,
+        "hidden": true
+      },
+      "files": [
+        {
+          "path": "registry/hooks/use-typeahead-buffer.ts",
           "type": "registry:hook"
         }
       ]

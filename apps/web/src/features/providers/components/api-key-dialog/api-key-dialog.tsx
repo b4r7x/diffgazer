@@ -62,8 +62,8 @@ export function ApiKeyDialog({
 
         <DialogBody className="p-6 space-y-6">
           <ApiKeyMethodSelector
-            method={form.method}
-            onMethodChange={form.setMethod}
+            value={form.method}
+            onChange={form.setMethod}
             keyValue={form.keyValue}
             onKeyValueChange={form.setKeyValue}
             envVarName={envVarName}
@@ -72,7 +72,7 @@ export function ApiKeyDialog({
             focused={focused}
             onFocus={setFocused}
             onKeySubmit={form.handleSubmit}
-            onMethodKeyDown={handleMethodKeyDown}
+            onInputMethodKeyDown={handleMethodKeyDown}
             getMethodOptionProps={getMethodOptionProps}
           />
 

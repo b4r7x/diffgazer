@@ -27,13 +27,13 @@ export const useScopedNavigationDoc: HookDoc = {
         "ARIA role used to query navigable children within the container.",
     },
     {
-      name: "value",
+      name: "highlighted",
       type: "string | null",
       required: false,
       description: "Controlled highlight value.",
     },
     {
-      name: "onValueChange",
+      name: "onHighlightChange",
       type: "(value: string) => void",
       required: false,
       description: "Called when the controlled highlight value should change.",
@@ -49,12 +49,6 @@ export const useScopedNavigationDoc: HookDoc = {
       type: "(value: string, event: KeyboardEvent) => void",
       required: false,
       description: "Called when Enter is pressed on the highlighted item.",
-    },
-    {
-      name: "onHighlightChange",
-      type: "(value: string) => void",
-      required: false,
-      description: "Called whenever the highlighted item changes.",
     },
     {
       name: "wrap",
@@ -85,7 +79,7 @@ export const useScopedNavigationDoc: HookDoc = {
         "Called when the user tries to navigate past the first or last item using orientation-neutral direction names.",
     },
     {
-      name: "initialValue",
+      name: "defaultHighlighted",
       type: "string | null",
       required: false,
       description: "Initial highlighted value in uncontrolled mode.",
@@ -114,7 +108,7 @@ export const useScopedNavigationDoc: HookDoc = {
       name: "skipDisabled",
       type: "boolean",
       required: false,
-      description: "Skip items with aria-disabled=\"true\" during navigation.",
+      description: "Skip items with aria-disabled=\"true\", data-disabled, or native disabled during navigation.",
       defaultValue: "true",
     },
     {

@@ -85,9 +85,9 @@ export function ToggleGroup({
     moveFocus: true,
     upKeys: ["ArrowUp", "ArrowLeft"],
     downKeys: ["ArrowDown", "ArrowRight"],
-    value: tabTargetValue,
+    highlighted: tabTargetValue,
     enabled: !disabled,
-    onValueChange: allowDeselect ? setHighlightedValue : handleValueChange,
+    onHighlightChange: allowDeselect ? setHighlightedValue : handleValueChange,
     scopeToContainer: true,
     ownerSelector: allowDeselect ? '[data-diffgazer-selectable-owner="toggle"]' : undefined,
   });

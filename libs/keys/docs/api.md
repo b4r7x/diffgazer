@@ -205,16 +205,15 @@ function useNavigation(options: UseNavigationOptions): UseNavigationReturn;
 |--------|------|---------|-------------|
 | `containerRef` | `RefObject<HTMLElement \| null>` | -- | **Required.** Container element to query items from. |
 | `role` | `NavigationRole` | -- | **Required.** ARIA role used to select items. |
-| `value` | `string \| null` | -- | Controlled focused value. |
-| `onValueChange` | `(value: string) => void` | -- | Called when controlled value should change. |
+| `highlighted` | `string \| null` | -- | Controlled highlighted value. |
+| `onHighlightChange` | `(value: string) => void` | -- | Called when highlighted value changes. |
 | `onSelect` | `(value: string, event: KeyboardEvent) => void` | -- | Called on `Space`. |
 | `onEnter` | `(value: string, event: KeyboardEvent) => void` | -- | Called on `Enter`. Falls back to `onSelect` if not provided. |
-| `onHighlightChange` | `(value: string) => void` | -- | Called when focused value changes. |
 | `wrap` | `boolean` | `true` | Wrap around at list boundaries. |
 | `enabled` | `boolean` | `true` | Toggle navigation on/off. |
 | `preventDefault` | `boolean` | `true` | Prevent default on handled keys. |
 | `onNavigationBoundaryReached` | `(direction: "previous" \| "next") => void` | -- | Called when `wrap` is `false` and navigation hits an edge. |
-| `initialValue` | `string \| null` | `null` | Initial focused value (uncontrolled mode). |
+| `defaultHighlighted` | `string \| null` | `null` | Initial focused value (uncontrolled mode). |
 | `orientation` | `"vertical" \| "horizontal"` | `"vertical"` | Determines default up/down keys. |
 | `skipDisabled` | `boolean` | `true` | Skip items with `aria-disabled="true"`. |
 | `moveFocus` | `boolean` | `false` | Move DOM focus to the next item on navigation. |
@@ -249,7 +248,7 @@ const { highlighted, isHighlighted, onKeyDown } = useNavigation({
 });
 return <div ref={ref} onKeyDown={onKeyDown}>...</div>;
 
-// Tab navigation (replaces the old useTabNavigation)
+// Tab navigation
 const tabRef = useRef<HTMLDivElement>(null);
 const { onKeyDown: tabKeyDown } = useNavigation({
   containerRef: tabRef,
@@ -272,7 +271,7 @@ return (
 - Nested collection owners are scoped out by default. Pass `scopeToContainer={false}` only when parent navigation should intentionally include nested collections.
 - `scrollIntoView({ block: "nearest" })` is called on focus changes.
 - Key bindings: `upKeys`, `downKeys`, `Home`, `End`, `Enter` (calls `onEnter`), `Space` (calls `onSelect`).
-- Supports controlled mode via `value` + `onValueChange`.
+- Supports controlled mode via `highlighted` + `onHighlightChange`.
 - For tab navigation, use `role: "tab"` with `orientation: "horizontal"`.
 
 ---
@@ -456,7 +455,7 @@ function Dialog() {
 ### Behavior
 
 - Initial focus priority: `initialFocus.current` -> first focusable element -> container itself.
-- Focusable elements: `a[href]`, `button:not([disabled])`, `textarea:not([disabled])`, `input:not([disabled])`, `select:not([disabled])`, `[tabindex]:not([tabindex="-1"])`.
+- Focusable elements use the shared navigation helper: links/areas with `href`, enabled form controls, media/embed elements, contenteditable elements, and `[tabindex]:not([tabindex="-1"]):not([disabled])`.
 - Only intercepts Tab at boundaries (first/last focusable element). Tabs between middle elements are browser-default.
 - Re-queries focusable elements on each Tab press, so dynamic content is supported.
 - Captures `document.activeElement` on mount and restores it on cleanup when `restoreFocus` is `true`.
@@ -475,15 +474,17 @@ import { useScrollLock } from "@diffgazer/keys";
 ### Signature
 
 ```ts
-function useScrollLock(
-  target?: RefObject<HTMLElement | null>,
-  enabled?: boolean,
-): void;
+interface UseScrollLockOptions {
+  target?: RefObject<HTMLElement | null>;
+  enabled?: boolean;
+}
+
+function useScrollLock(options?: UseScrollLockOptions): void;
 ```
 
-### Parameters
+### Options
 
-| Parameter | Type | Default | Description |
+| Option | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `target` | `RefObject<HTMLElement \| null>` | `document.body` | Element to lock. |
 | `enabled` | `boolean` | `true` | Toggle the lock on/off. |
@@ -496,7 +497,7 @@ useScrollLock();
 
 // Lock a specific element, conditionally
 const panelRef = useRef<HTMLDivElement>(null);
-useScrollLock(panelRef, isOpen);
+useScrollLock({ target: panelRef, enabled: isOpen });
 ```
 
 ### Behavior
@@ -521,6 +522,8 @@ import {
   focusNavigationItem,
   getFocusedNavigationValue,
   getFocusableElements,
+  getVerticalArrowDirection,
+  toVerticalBoundaryDirection,
 } from "@diffgazer/keys";
 ```
 
@@ -580,6 +583,14 @@ function getFocusedNavigationValue(
 ): string | null;
 
 function getFocusableElements(container: HTMLElement | null): HTMLElement[];
+
+type VerticalDirection = "up" | "down";
+type BoundaryDirection = "previous" | "next";
+
+function getVerticalArrowDirection(key: string): VerticalDirection | null;
+
+function toVerticalBoundaryDirection(direction: BoundaryDirection): VerticalDirection;
+function toVerticalBoundaryDirection(direction: BoundaryDirection, key: string): VerticalDirection | null;
 ```
 
 ### Example
@@ -597,11 +608,12 @@ function PrimitiveOption({ value, children }: { value: string; children: ReactNo
 ### Behavior
 
 - The public data contract is `data-diffgazer-navigation-item` plus a stable `data-value`.
-- `getNavigationItems()` also supports the legacy `data-navigation-item`, matching ARIA roles, and native radio/checkbox/button controls.
+- `getNavigationItems()` also supports matching ARIA roles and native radio/checkbox/button controls.
 - `containsActiveElement()` is useful when a composite widget needs to know whether DOM focus is inside an item.
 - Typed data-contract markers only match their requested type, so an option query does not pick up radio items in the same subtree.
 - Disabled items are skipped by default when they use `aria-disabled="true"`, `data-disabled`, or native `disabled`.
 - Nested collection owners are scoped out by default. Pass `scopeToContainer: false` or an explicit `ownerSelector` only when parent navigation should intentionally include nested items.
+- `getVerticalArrowDirection()` and `toVerticalBoundaryDirection()` bridge raw ArrowUp/ArrowDown events with orientation-neutral boundary callbacks.
 
 ---
 
@@ -725,17 +737,18 @@ useKey({
 
 ---
 
-## useOptionalKeyboardContext
+## useKeyboardContext and useOptionalKeyboardContext
 
-Low-level hook to access the `KeyboardProvider` context without throwing. Returns `null` when no provider is present.
+Low-level hooks to access the `KeyboardProvider` context. `useKeyboardContext` throws when no provider is present. `useOptionalKeyboardContext` returns `null`.
 
 ```ts
-import { useOptionalKeyboardContext } from "@diffgazer/keys";
+import { useKeyboardContext, useOptionalKeyboardContext } from "@diffgazer/keys";
 ```
 
 ### Signature
 
 ```ts
+function useKeyboardContext(): KeyboardContextValue;
 function useOptionalKeyboardContext(): KeyboardContextValue | null;
 ```
 
@@ -744,14 +757,16 @@ function useOptionalKeyboardContext(): KeyboardContextValue | null;
 ```ts
 interface KeyboardContextValue {
   activeScope: string | null;
-  pushScope: (scope: string) => () => void;
+  getActiveScope: () => string | null;
+  pushScope: (scope: string, order?: string) => () => void;
   register: (scope: string, hotkey: string, handler: Handler, options?: HandlerOptions) => () => void;
 }
 ```
 
 ### Behavior
 
-- Returns `useContext(KeyboardContext) ?? null`.
+- `useKeyboardContext` returns the active keyboard context and throws if `KeyboardProvider` is missing.
+- `useOptionalKeyboardContext` returns the active keyboard context or `null` if `KeyboardProvider` is missing.
 - This is what `useKey` uses internally. You probably don't need this directly unless you're building a custom hook on top of @diffgazer/keys.
 
 ---

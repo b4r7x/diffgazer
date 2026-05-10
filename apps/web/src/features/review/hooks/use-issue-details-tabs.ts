@@ -2,14 +2,14 @@ import { useRef, useState } from "react";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import type { IssueTab as TabId } from "@diffgazer/core/schemas/ui";
 
-interface UseTabNavigationOptions {
+interface UseIssueDetailsTabsOptions {
   selectedIssue: ReviewIssue | null;
 }
 
 const DEFAULT_COMPLETED_STEPS = new Set([1]);
 const EMPTY_COMPLETED_STEPS = new Set<number>();
 
-export function useTabNavigation({ selectedIssue }: UseTabNavigationOptions) {
+export function useIssueDetailsTabs({ selectedIssue }: UseIssueDetailsTabsOptions) {
   const [requestedTab, setRequestedTab] = useState<TabId>("details");
   const [completedStepsByIssue, setCompletedStepsByIssue] = useState<Record<string, Set<number>>>({});
   const detailsScrollRef = useRef<HTMLDivElement>(null);

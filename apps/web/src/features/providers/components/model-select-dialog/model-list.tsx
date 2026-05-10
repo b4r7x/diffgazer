@@ -2,7 +2,7 @@ import type { ModelInfo } from "@diffgazer/core/schemas/config";
 import { EmptyState } from "@diffgazer/ui/components/empty-state";
 import { RadioGroup } from "@diffgazer/ui/components/radio";
 import { Spinner } from "@diffgazer/ui/components/spinner";
-import { getVerticalArrowDirection } from "@/lib/vertical-navigation";
+import { getVerticalArrowDirection } from "@diffgazer/keys";
 import { ModelListItem } from "./model-list-item";
 
 interface ModelListProps {

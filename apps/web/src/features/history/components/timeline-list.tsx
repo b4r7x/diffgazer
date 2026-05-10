@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { NavigationList } from "@diffgazer/ui/components/navigation-list";
 import type { TimelineItem } from "@diffgazer/core/schemas/ui";
-import { toVerticalBoundaryDirection } from "@/lib/vertical-navigation";
+import { toVerticalBoundaryDirection } from "@diffgazer/keys";
 
 export interface TimelineListProps {
   items: TimelineItem[];

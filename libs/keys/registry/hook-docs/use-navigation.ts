@@ -27,14 +27,14 @@ export const useNavigationDoc: HookDoc = {
         "ARIA role used to query navigable children within the container.",
     },
     {
-      name: "value",
+      name: "highlighted",
       type: "string | null",
       required: false,
       description:
         "Controlled highlight value. When provided, the hook operates in controlled mode.",
     },
     {
-      name: "onValueChange",
+      name: "onHighlightChange",
       type: "(value: string) => void",
       required: false,
       description: "Called when the controlled highlight value should change.",
@@ -50,12 +50,6 @@ export const useNavigationDoc: HookDoc = {
       type: "(value: string, event: KeyboardEvent) => void",
       required: false,
       description: "Called when Enter is pressed on the highlighted item.",
-    },
-    {
-      name: "onHighlightChange",
-      type: "(value: string) => void",
-      required: false,
-      description: "Called whenever the highlighted item changes.",
     },
     {
       name: "wrap",
@@ -86,7 +80,7 @@ export const useNavigationDoc: HookDoc = {
         "Called when the user tries to navigate past the first or last item using orientation-neutral direction names.",
     },
     {
-      name: "initialValue",
+      name: "defaultHighlighted",
       type: "string | null",
       required: false,
       description: "Initial highlighted value in uncontrolled mode.",
@@ -116,7 +110,7 @@ export const useNavigationDoc: HookDoc = {
       name: "skipDisabled",
       type: "boolean",
       required: false,
-      description: "Skip items with aria-disabled=\"true\" during navigation.",
+      description: "Skip items with aria-disabled=\"true\", data-disabled, or native disabled during navigation.",
       defaultValue: "true",
     },
     {
@@ -193,7 +187,7 @@ export const useNavigationDoc: HookDoc = {
     {
       title: "Controlled and uncontrolled",
       content:
-        "Pass value + onHighlightChange for controlled mode, or use initialValue for uncontrolled mode.",
+        "Pass highlighted + onHighlightChange for controlled mode, or use defaultHighlighted for uncontrolled mode.",
     },
   ],
   examples: [

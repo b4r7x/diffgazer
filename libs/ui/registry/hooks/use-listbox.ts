@@ -1,9 +1,34 @@
 "use client";
 
-import { useEffect, useEffectEvent, useLayoutEffect, useRef, useState, type KeyboardEvent, type Ref } from "react";
+import {
+  Children,
+  isValidElement,
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ElementType,
+  type KeyboardEvent,
+  type ReactNode,
+  type Ref,
+} from "react";
 import { useNavigation, type NavigationRole } from "@/hooks/use-navigation";
+import { useTypeaheadBuffer } from "@/hooks/use-typeahead-buffer";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { composeRefs } from "@/lib/compose-refs";
+
+export interface ListboxMetadataItem {
+  id: string;
+  disabled?: boolean;
+}
+
+interface ListboxItemElementProps {
+  id?: string;
+  disabled?: boolean;
+  children?: ReactNode;
+}
 
 export interface UseListboxOptions {
   selectedId?: string | null;
@@ -21,7 +46,7 @@ export interface UseListboxOptions {
   role?: "listbox" | "menu";
   itemRole?: Extract<NavigationRole, "option" | "menuitem" | "menuitemradio">;
   typeahead?: boolean;
-  items?: Array<{ id: string; disabled?: boolean }>;
+  items?: ListboxMetadataItem[];
   getItemId?: (idPrefix: string, id: string) => string;
 }
 
@@ -39,10 +64,26 @@ export interface UseListboxReturn {
   };
 }
 
-const TYPEAHEAD_RESET_MS = 500;
-
 export function getEncodedListboxItemId(idPrefix: string, id: string): string {
   return `${idPrefix}-${encodeURIComponent(id)}`;
+}
+
+export function collectListboxItems(
+  children: ReactNode,
+  itemType: ElementType,
+): ListboxMetadataItem[] {
+  const items: ListboxMetadataItem[] = [];
+
+  Children.forEach(children, (child) => {
+    if (!isValidElement<ListboxItemElementProps>(child)) return;
+    if (child.type === itemType && typeof child.props.id === "string") {
+      items.push({ id: child.props.id, disabled: child.props.disabled });
+      return;
+    }
+    items.push(...collectListboxItems(child.props.children, itemType));
+  });
+
+  return items;
 }
 
 function hasEnabledItem(
@@ -67,14 +108,14 @@ function hasEnabledItem(
 }
 
 function hasEnabledMetadataItem(
-  items: Array<{ id: string; disabled?: boolean }>,
+  items: ListboxMetadataItem[],
   id: string | null,
 ): id is string {
   return id !== null && items.some((item) => item.id === id && !item.disabled);
 }
 
 function resolveActiveDescendant(
-  items: Array<{ id: string; disabled?: boolean }> | undefined,
+  items: ListboxMetadataItem[] | undefined,
   highlightedId: string | null,
   selectedId: string | null,
 ): string | null {
@@ -127,7 +168,7 @@ function getFirstEnabledItemId(
   container: HTMLElement | null,
   itemRole: string,
   containerRole: "listbox" | "menu",
-  items?: Array<{ id: string; disabled?: boolean }>,
+  items?: ListboxMetadataItem[],
 ): string | null {
   if (items) return items.find((item) => !item.disabled)?.id ?? null;
 
@@ -155,11 +196,8 @@ export function useListbox({
   getItemId = getEncodedListboxItemId,
 }: UseListboxOptions): UseListboxReturn {
   const containerRef = useRef<HTMLDivElement>(null);
-  const typeaheadBuffer = useRef("");
-  const typeaheadTimer = useRef<number>(0);
   const [domActiveDescendant, setDomActiveDescendant] = useState<string | null>(null);
-
-  useEffect(() => () => clearTimeout(typeaheadTimer.current), []);
+  const readTypeaheadQuery = useTypeaheadBuffer();
 
   const [selectedId, setSelectedId] = useControllableState<string | null>({
     value: controlledSelectedId,
@@ -231,6 +269,12 @@ export function useListbox({
     onEnter?.(next, event);
   };
 
+  const ensureActiveItem = useCallback(() => {
+    if (activeDescendant !== null) return;
+    const firstEnabledId = getFirstEnabledItemId(containerRef.current, itemRole, containerRole, items);
+    if (firstEnabledId !== null) setHighlightedId(firstEnabledId);
+  }, [activeDescendant, containerRole, itemRole, items, setHighlightedId]);
+
   useEffect(() => {
     if (!autoFocus) return;
 
@@ -242,21 +286,18 @@ export function useListbox({
         container.focus({ preventScroll: true });
       }
 
-      if (highlightedId === null && selectedId === null) {
-        const firstEnabledId = getFirstEnabledItemId(container, itemRole, containerRole, items);
-        if (firstEnabledId !== null) setHighlightedId(firstEnabledId);
-      }
+      ensureActiveItem();
     });
 
     return () => cancelAnimationFrame(frame);
-  }, [autoFocus, containerRole, highlightedId, itemRole, items, selectedId, setHighlightedId]);
+  }, [autoFocus, ensureActiveItem]);
 
   const { onKeyDown: navKeyDown } = useNavigation({
     containerRef,
     role: itemRole,
     wrap,
-    value: highlightedId ?? selectedId ?? undefined,
-    onValueChange: setHighlightedId,
+    highlighted: highlightedId ?? selectedId ?? undefined,
+    onHighlightChange: setHighlightedId,
     onEnter: handleItemEnter,
     onSelect: handleItemActivate,
     onNavigationBoundaryReached,
@@ -264,14 +305,11 @@ export function useListbox({
   });
 
   const handleTypeahead = (key: string): void => {
-    if (!typeahead || key.length !== 1 || key === " ") return;
-    clearTimeout(typeaheadTimer.current);
-    typeaheadBuffer.current += key;
-    typeaheadTimer.current = window.setTimeout(() => {
-      typeaheadBuffer.current = "";
-    }, TYPEAHEAD_RESET_MS);
+    if (!typeahead) return;
 
-    const query = typeaheadBuffer.current.toLowerCase();
+    const query = readTypeaheadQuery(key);
+    if (query === null) return;
+
     const enabledItems = getEnabledListboxItems(containerRef.current, itemRole, containerRole);
     for (const item of enabledItems) {
       const label = getAccessibleText(item).trim().toLowerCase();

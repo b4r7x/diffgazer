@@ -25,6 +25,10 @@
         {
           "path": "src/utils/navigation-items.ts",
           "type": "registry:hook"
+        },
+        {
+          "path": "src/utils/navigation-directions.ts",
+          "type": "registry:hook"
         }
       ]
     },
@@ -55,13 +59,27 @@
       "title": "Focus Trap",
       "description": "Trap Tab focus within a container element",
       "dependencies": [],
-      "registryDependencies": [],
+      "registryDependencies": [
+        "focus-restore"
+      ],
       "meta": {
         "client": true
       },
       "files": [
         {
           "path": "src/hooks/use-focus-trap.ts",
+          "type": "registry:hook"
+        },
+        {
+          "path": "src/hooks/use-focus-restore.ts",
+          "type": "registry:hook"
+        },
+        {
+          "path": "src/utils/focus-restore.ts",
+          "type": "registry:hook"
+        },
+        {
+          "path": "src/utils/navigation-items.ts",
           "type": "registry:hook"
         }
       ]

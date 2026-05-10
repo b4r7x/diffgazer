@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { createRemoveCommand, findOrphanedNpmDeps, info } from "@diffgazer/registry/cli";
 import { ctx, type DiffgazerAddConfig } from "../context.js";
-import { resolveKeysHooksFromRegistry } from "../utils/integration.js";
+import { getKeysHookNames, resolveKeysCopyHookFiles, resolveKeysHooksFromRegistry } from "../utils/integration.js";
 import { getInstallBaseForFilePath, getInstallDirForBase } from "../utils/registry.js";
 import {
   getNamespacedItem,
@@ -24,7 +24,10 @@ function ownedFileHash(cwd: string, itemName: string, absolutePath: string): str
   if (!config.ok) return null;
 
   const manifest = config.config.installedComponents ?? {};
-  const record = manifest[parsed.publicName] ?? (parsed.namespace === "ui" ? manifest[parsed.name] : undefined);
+  const record =
+    manifest[parsed.publicName] ??
+    (parsed.namespace === "ui" ? manifest[parsed.name] : undefined) ??
+    (getKeysHookNames().has(parsed.name) ? manifest[`keys/${parsed.name}`] : undefined);
   const files = record?.files ?? [];
   const filePath = normalizeManifestPath(cwd, absolutePath);
   return files.find((file) => file.path === filePath)?.hash ?? null;
@@ -90,12 +93,27 @@ export const removeCommand = createRemoveCommand({
   isInstalled: ({ cwd, config, item }) => {
     return isNamespacedInstalled(cwd, config, item.name);
   },
-  resolveFilesForItem: ({ cwd, config, item }) =>
-    item.files.map((file) => {
+  resolveFilesForItem: ({ cwd, config, item }) => {
+    const parsed = parseInstallName(item.name);
+    const keyName = parsed.namespace === "keys"
+      ? parsed.name
+      : getKeysHookNames().has(item.name) ? item.name : null;
+    if (keyName) {
+      const { files, missingHooks } = resolveKeysCopyHookFiles([keyName]);
+      if (missingHooks.length > 0) {
+        throw new Error(`Missing bundled keys hook(s): ${missingHooks.join(", ")}`);
+      }
+      return files.map((file) => ({
+        absolutePath: resolveInstallPath(cwd, config.hooksFsPath, file.relativePath),
+      }));
+    }
+
+    return item.files.map((file) => {
       const installBase = getInstallBaseForFilePath(file.path);
       const installDir = getInstallDirForBase(installBase, config);
       return { absolutePath: resolveInstallPath(cwd, installDir, ctx.registry.relativePath(file)) };
-    }),
+    });
+  },
   canRemoveFile: ({ cwd, item, file, force }) => {
     if (blocksRetainedCopyModeUi(cwd, item.name)) return false;
     if (force) return true;

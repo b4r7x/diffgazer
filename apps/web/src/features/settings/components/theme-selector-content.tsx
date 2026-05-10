@@ -1,13 +1,13 @@
 import { useState, type KeyboardEvent } from "react";
 import type { Theme } from '@diffgazer/core/schemas/config';
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
-import { toVerticalBoundaryDirection } from "@/lib/vertical-navigation";
+import { toVerticalBoundaryDirection } from "@diffgazer/keys";
 
 export interface ThemeSelectorContentProps {
   value: Theme;
   onChange: (value: Theme) => void;
-  focusedValue?: Theme | null;
-  onFocusedValueChange?: (value: Theme) => void;
+  highlighted?: Theme | null;
+  onHighlightChange?: (value: Theme) => void;
   onPreviewValueChange?: (value: Theme | null) => void;
   onSelect?: (value: Theme) => void;
   onEnter?: (value: Theme) => void;
@@ -31,8 +31,8 @@ function isThemeOption(value: string | null, optionValues: Theme[]): value is Th
 export function ThemeSelectorContent({
   value,
   onChange,
-  focusedValue,
-  onFocusedValueChange,
+  highlighted,
+  onHighlightChange,
   onPreviewValueChange,
   onSelect,
   onEnter,
@@ -46,9 +46,9 @@ export function ThemeSelectorContent({
     : THEME_OPTIONS.filter(opt => opt.value !== 'terminal');
   const optionValues = options.map((option) => option.value);
 
-  const [internalHighlight, setInternalHighlight] = useState<Theme>(focusedValue ?? value);
-  const rawHighlighted = focusedValue ?? internalHighlight;
-  const highlighted = isThemeOption(rawHighlighted, optionValues)
+  const [internalHighlight, setInternalHighlight] = useState<Theme>(highlighted ?? value);
+  const rawHighlighted = highlighted ?? internalHighlight;
+  const effectiveHighlighted = isThemeOption(rawHighlighted, optionValues)
     ? rawHighlighted
     : optionValues[0]!;
 
@@ -56,7 +56,7 @@ export function ThemeSelectorContent({
     if (!isThemeOption(nextValue, optionValues)) return;
 
     setInternalHighlight(nextValue);
-    onFocusedValueChange?.(nextValue);
+    onHighlightChange?.(nextValue);
     onFocus?.(nextValue);
   };
 
@@ -67,15 +67,15 @@ export function ThemeSelectorContent({
   const handleKeyDown = (e: KeyboardEvent) => {
     if (!enabled) return;
 
-    if (e.key === " " && highlighted) {
+    if (e.key === " " && effectiveHighlighted) {
       e.preventDefault();
-      onSelect?.(highlighted);
+      onSelect?.(effectiveHighlighted);
       return;
     }
-    if (e.key === "Enter" && highlighted) {
+    if (e.key === "Enter" && effectiveHighlighted) {
       e.preventDefault();
-      if (onEnter) onEnter(highlighted);
-      else onSelect?.(highlighted);
+      if (onEnter) onEnter(effectiveHighlighted);
+      else onSelect?.(effectiveHighlighted);
       return;
     }
   };
@@ -88,7 +88,7 @@ export function ThemeSelectorContent({
         onChange={handleChange}
         onHighlightChange={handleHighlightChange}
         onKeyDown={handleKeyDown}
-        highlighted={enabled ? highlighted : null}
+        highlighted={enabled ? effectiveHighlighted : null}
         keyboardNavigation={enabled}
         activationMode="manual"
         onNavigationBoundaryReached={(direction, event) => {

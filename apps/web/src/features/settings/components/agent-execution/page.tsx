@@ -6,11 +6,10 @@ import { getErrorMessage } from "@diffgazer/core/errors";
 import { Button } from "@diffgazer/ui/components/button";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
 import { CardLayout } from "@/components/ui/card-layout";
-import { useKey, useScope } from "@diffgazer/keys";
+import { toVerticalBoundaryDirection, useKey, useScope } from "@diffgazer/keys";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useFooterNavigation } from "@/hooks/use-footer-navigation.js";
 import { useSettings, useSaveSettings, matchQueryState } from "@diffgazer/core/api/hooks";
-import { toVerticalBoundaryDirection } from "@/lib/vertical-navigation";
 
 const EXECUTION_MODES: AgentExecution[] = ["sequential", "parallel"];
 

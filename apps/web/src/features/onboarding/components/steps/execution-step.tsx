@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { AgentExecution } from "@diffgazer/core/schemas/config";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
-import { toVerticalBoundaryDirection } from "@/lib/vertical-navigation";
+import { toVerticalBoundaryDirection } from "@diffgazer/keys";
 
 const EXECUTION_MODES: AgentExecution[] = ["sequential", "parallel"];
 

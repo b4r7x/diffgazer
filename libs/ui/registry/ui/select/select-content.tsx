@@ -1,8 +1,9 @@
 "use client";
 
-import { Children, Fragment, cloneElement, isValidElement, useCallback, useEffect, useLayoutEffect, useRef, useState, type AriaAttributes, type ReactNode, type KeyboardEvent, type Ref } from "react";
+import { Children, Fragment, cloneElement, isValidElement, useCallback, useLayoutEffect, useRef, useState, type AriaAttributes, type ReactNode, type KeyboardEvent, type Ref } from "react";
 import { useNavigation } from "@/hooks/use-navigation";
 import { usePresence } from "@/hooks/use-presence";
+import { useTypeaheadBuffer } from "@/hooks/use-typeahead-buffer";
 import { useFloatingPosition, type FloatingSide, type FloatingAlign } from "@/hooks/use-floating-position";
 import { composeRefs } from "@/lib/compose-refs";
 import { cn } from "@/lib/utils";
@@ -24,8 +25,7 @@ export interface SelectContentProps {
   ref?: Ref<HTMLDivElement>;
 }
 
-const NAV_KEYS = new Set(["ArrowUp", "ArrowDown", "Enter", "Home", "End"]);
-const TYPEAHEAD_RESET_MS = 500;
+const SEARCH_INPUT_NAV_KEYS = new Set(["ArrowUp", "ArrowDown", "Enter"]);
 type ListboxProps = {
   id: string;
   role: "listbox";
@@ -78,25 +78,19 @@ export function SelectContent({
     containerRef,
     role: "option",
     wrap: true,
-    value: highlighted,
-    onValueChange: setHighlighted,
+    highlighted,
+    onHighlightChange: setHighlighted,
     onSelect: selectItem,
     enabled: open,
     scopeToContainer: true,
   });
 
-  const typeaheadBuffer = useRef("");
-  const typeaheadTimer = useRef<number>(0);
+  const readTypeaheadQuery = useTypeaheadBuffer();
 
   function handleTypeahead(key: string): void {
-    if (key.length !== 1 || key === " ") return;
-    clearTimeout(typeaheadTimer.current);
-    typeaheadBuffer.current += key;
-    typeaheadTimer.current = window.setTimeout(() => {
-      typeaheadBuffer.current = "";
-    }, TYPEAHEAD_RESET_MS);
+    const query = readTypeaheadQuery(key);
+    if (query === null) return;
 
-    const query = typeaheadBuffer.current.toLowerCase();
     for (const [itemValue, option] of options) {
       if (!option.disabled && option.label.toLowerCase().startsWith(query)) {
         setHighlighted(itemValue);
@@ -144,10 +138,6 @@ export function SelectContent({
     initHighlight();
   }, [initHighlight, isDropdown, open, searchInputRef, triggerRef]);
 
-  useEffect(() => {
-    return () => clearTimeout(typeaheadTimer.current);
-  }, []);
-
   const handleKeyDown = (e: KeyboardEvent) => {
     onKeyDown?.(e);
     if (e.defaultPrevented) return;
@@ -167,7 +157,7 @@ export function SelectContent({
 
     const isTyping = e.target === searchInputRef.current;
     if (isTyping) {
-      if (NAV_KEYS.has(e.key)) navKeyDown(e);
+      if (SEARCH_INPUT_NAV_KEYS.has(e.key)) navKeyDown(e);
     } else {
       navKeyDown(e);
       if (!e.ctrlKey && !e.metaKey && !e.altKey) handleTypeahead(e.key);

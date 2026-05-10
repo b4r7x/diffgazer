@@ -13,8 +13,8 @@ function Subject() {
 
   return (
     <ApiKeyMethodSelector
-      method={method}
-      onMethodChange={setMethod}
+      value={method}
+      onChange={setMethod}
       keyValue=""
       onKeyValueChange={vi.fn()}
       envVarName="GEMINI_API_KEY"
@@ -23,7 +23,7 @@ function Subject() {
       focused={focused}
       onFocus={setFocused}
       onKeySubmit={vi.fn()}
-      onMethodKeyDown={(event, focusedMethod) => {
+      onInputMethodKeyDown={(event, focusedMethod) => {
         if (event.key === "ArrowDown" && focusedMethod === "paste" && method === "paste") {
           event.preventDefault();
           setFocused("input");

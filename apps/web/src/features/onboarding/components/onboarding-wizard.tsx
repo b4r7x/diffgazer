@@ -211,8 +211,8 @@ export function OnboardingWizard() {
         return wizardData.provider ? (
           <ApiKeyStep
             provider={wizardData.provider}
-            method={wizardData.inputMethod}
-            onMethodChange={(inputMethod) => updateData({ inputMethod })}
+            value={wizardData.inputMethod}
+            onChange={(inputMethod) => updateData({ inputMethod })}
             keyValue={wizardData.apiKey}
             onKeyValueChange={(apiKey) => updateData({ apiKey })}
             onCommit={(payload) => handleStepCommit(payload)}

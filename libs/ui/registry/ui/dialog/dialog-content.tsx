@@ -10,7 +10,7 @@ import {
   type ReactNode,
   type SyntheticEvent,
 } from "react";
-import { useFocusRestore } from "@diffgazer/keys";
+import { useFocusRestore } from "@/hooks/use-focus-restore";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { useDialogContext } from "./dialog-context";

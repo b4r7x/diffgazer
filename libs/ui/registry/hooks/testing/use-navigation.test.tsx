@@ -31,7 +31,7 @@ describe("useNavigation", () => {
       const result = useNavigation({
         containerRef: ref,
         role: "option",
-        initialValue: "a",
+        defaultHighlighted: "a",
       });
 
       return (
@@ -63,7 +63,7 @@ describe("useNavigation", () => {
       const result = useNavigation({
         containerRef: ref,
         role: "button",
-        initialValue: "a",
+        defaultHighlighted: "a",
         moveFocus: true,
       });
 
@@ -89,7 +89,7 @@ describe("useNavigation", () => {
       const result = useNavigation({
         containerRef: ref,
         role: "button",
-        initialValue: "save",
+        defaultHighlighted: "save",
         moveFocus: true,
       });
 
@@ -172,7 +172,7 @@ describe("useNavigation", () => {
       const result = useNavigation({
         containerRef: ref,
         role: "option",
-        initialValue: "",
+        defaultHighlighted: "",
         onSelect,
       });
 

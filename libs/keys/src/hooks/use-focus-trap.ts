@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, type RefObject } from "react";
-
-const FOCUSABLE_SELECTOR =
-  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+import { getFocusableElements } from "../utils/navigation-items.js";
+import { useFocusRestore } from "./use-focus-restore.js";
 
 export interface UseFocusTrapOptions {
   initialFocus?: RefObject<HTMLElement | null>;
@@ -16,18 +15,22 @@ export function useFocusTrap(
   options: UseFocusTrapOptions = {},
 ): void {
   const { initialFocus, restoreFocus = true, enabled = true } = options;
+  const { capture, restore } = useFocusRestore({
+    enabled: restoreFocus,
+    restoreOnUnmount: restoreFocus,
+  });
 
   useEffect(() => {
     if (!enabled) return;
 
-    const previousFocus = document.activeElement as HTMLElement | null;
     const container = containerRef.current;
     if (!container) return;
+    capture();
 
     if (initialFocus?.current) {
       initialFocus.current.focus();
     } else {
-      const focusables = container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
+      const focusables = getFocusableElements(container);
       if (focusables[0]) {
         focusables[0].focus();
       } else {
@@ -38,8 +41,12 @@ export function useFocusTrap(
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key !== "Tab") return;
 
-      const focusableEls = container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
-      if (focusableEls.length === 0) return;
+      const focusableEls = getFocusableElements(container);
+      if (focusableEls.length === 0) {
+        e.preventDefault();
+        container.focus();
+        return;
+      }
 
       const first = focusableEls[0];
       const last = focusableEls[focusableEls.length - 1];
@@ -60,9 +67,7 @@ export function useFocusTrap(
     container.addEventListener("keydown", handleKeyDown);
     return () => {
       container.removeEventListener("keydown", handleKeyDown);
-      if (restoreFocus) {
-        previousFocus?.focus();
-      }
+      if (restoreFocus) restore();
     };
-  }, [containerRef, enabled, initialFocus, restoreFocus]);
+  }, [capture, containerRef, enabled, initialFocus, restore, restoreFocus]);
 }

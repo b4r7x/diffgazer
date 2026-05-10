@@ -29,7 +29,7 @@ export function useIssueSelection({ filteredIssues }: UseIssueSelectionOptions) 
     selectedIssue,
     selectedIssueId: effectiveSelectedId,
     setSelectedIssueId,
-    focusedValue: effectiveSelectedId,
+    highlightedIssueId: effectiveSelectedId,
     listRef,
     moveIssue,
   };

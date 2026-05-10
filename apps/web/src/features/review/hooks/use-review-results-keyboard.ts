@@ -1,13 +1,13 @@
-import { useState } from "react";
+import { useCallback, useRef, useState, type KeyboardEvent } from "react";
 import { useRouter } from "@tanstack/react-router";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import type { Shortcut } from "@diffgazer/core/schemas/ui";
 import { SEVERITY_ORDER } from "@diffgazer/core/schemas/ui";
-import { useFocusZone, useKey } from "@diffgazer/keys";
+import { focusNavigationItem, useFocusZone, useKey } from "@diffgazer/keys";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useSeverityFilter } from "./use-severity-filter.js";
 import { useIssueSelection } from "./use-issue-selection.js";
-import { useTabNavigation } from "./use-tab-navigation.js";
+import { useIssueDetailsTabs } from "./use-issue-details-tabs.js";
 
 type FocusZone = "filters" | "list" | "details";
 
@@ -54,15 +54,42 @@ export function getReviewResultsFooter(
 export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOptions) {
   const router = useRouter();
   const [focusZone, setFocusZone] = useState<FocusZone>("list");
+  const filterRef = useRef<HTMLDivElement>(null);
 
   const { severityFilter, setSeverityFilter, filteredIssues, focusedFilterIndex, setFocusedFilterIndex, toggleSeverityFilter, moveFocusedFilter } =
     useSeverityFilter({ issues });
 
-  const { selectedIssue, selectedIssueId, setSelectedIssueId, focusedValue, listRef, moveIssue } =
+  const { selectedIssue, selectedIssueId, setSelectedIssueId, highlightedIssueId, listRef, moveIssue } =
     useIssueSelection({ filteredIssues });
 
   const { activeTab, setActiveTab, completedSteps, handleToggleStep, detailsScrollRef, moveTab, scrollDetails } =
-    useTabNavigation({ selectedIssue });
+    useIssueDetailsTabs({ selectedIssue });
+
+  const repairDomFocus = useCallback((zone: FocusZone) => {
+    requestAnimationFrame(() => {
+      if (zone === "list") {
+        listRef.current?.focus({ preventScroll: true });
+        return;
+      }
+
+      if (zone === "details") {
+        detailsScrollRef.current?.focus({ preventScroll: true });
+        return;
+      }
+
+      focusNavigationItem(filterRef.current, {
+        type: "button",
+        value: SEVERITY_ORDER[focusedFilterIndex] ?? SEVERITY_ORDER[0],
+        fallback: "first",
+        preventScroll: true,
+      });
+    });
+  }, [detailsScrollRef, focusedFilterIndex, listRef]);
+
+  const setReviewFocusZone = useCallback((zone: FocusZone) => {
+    setFocusZone(zone);
+    repairDomFocus(zone);
+  }, [repairDomFocus]);
 
   // Key bindings registered in the same order as the original monolithic hook.
   // Registration order matters in @diffgazer/keys; do not reorder.
@@ -71,12 +98,11 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
     initial: "list" as FocusZone,
     zones: ZONES,
     zone: focusZone,
-    onZoneChange: setFocusZone,
+    onZoneChange: setReviewFocusZone,
     scope: "review",
     tabCycle: ["filters", "list", "details"],
     transitions: ({ zone, key }) => {
       if (zone === "list" && key === "ArrowRight") return "details";
-      if (zone === "filters" && key === "ArrowRight" && focusedFilterIndex >= SEVERITY_ORDER.length - 1) return "details";
       if (zone === "filters" && key === "ArrowDown") return "list";
       return null;
     },
@@ -84,8 +110,35 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
 
   const handleMoveIssue = (delta: -1 | 1) => {
     const result = moveIssue(delta);
-    if (result === "boundary-top") setFocusZone("filters");
+    if (result === "boundary-top") setReviewFocusZone("filters");
   };
+
+  const selectIssue = (id: string) => {
+    setReviewFocusZone("list");
+    setSelectedIssueId(id);
+  };
+
+  const handleListFocus = () => {
+    setReviewFocusZone("list");
+  };
+
+  const handleFilterKeyDown = useCallback((event: KeyboardEvent) => {
+    if (focusZone !== "filters") {
+      event.preventDefault();
+      return;
+    }
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setReviewFocusZone("list");
+      return;
+    }
+
+    if (event.key === "ArrowRight" && focusedFilterIndex >= SEVERITY_ORDER.length - 1) {
+      event.preventDefault();
+      setReviewFocusZone("details");
+    }
+  }, [focusZone, focusedFilterIndex, setReviewFocusZone]);
 
   useKey("ArrowDown", () => handleMoveIssue(1), { enabled: focusZone === "list" });
   useKey("ArrowUp", () => handleMoveIssue(-1), { enabled: focusZone === "list" });
@@ -95,13 +148,19 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
   useKey("Escape", () => router.history.back());
 
   useKey("ArrowLeft", () => moveFocusedFilter(-1), { enabled: focusZone === "filters" });
-  useKey("ArrowRight", () => moveFocusedFilter(1), { enabled: focusZone === "filters" });
+  useKey("ArrowRight", () => {
+    if (focusedFilterIndex >= SEVERITY_ORDER.length - 1) {
+      setReviewFocusZone("details");
+      return;
+    }
+    moveFocusedFilter(1);
+  }, { enabled: focusZone === "filters" });
 
-  useKey("j", () => setFocusZone("list"), { enabled: focusZone === "filters" });
+  useKey("j", () => setReviewFocusZone("list"), { enabled: focusZone === "filters" });
 
   useKey("ArrowLeft", () => {
     const result = moveTab(-1);
-    if (result === "boundary-left") setFocusZone("list");
+    if (result === "boundary-left") setReviewFocusZone("list");
   }, { enabled: focusZone === "details" });
   useKey("ArrowRight", () => moveTab(1), { enabled: focusZone === "details" });
 
@@ -127,7 +186,7 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
     filteredIssues,
     selectedIssue,
     selectedIssueId,
-    setSelectedIssueId,
+    setSelectedIssueId: selectIssue,
     activeTab,
     setActiveTab,
     severityFilter,
@@ -135,7 +194,10 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
     focusZone,
     focusedFilterIndex,
     setFocusedFilterIndex,
-    focusedValue,
+    filterRef,
+    handleFilterKeyDown,
+    highlightedIssueId,
+    handleListFocus,
     listRef,
     detailsScrollRef,
     completedSteps,

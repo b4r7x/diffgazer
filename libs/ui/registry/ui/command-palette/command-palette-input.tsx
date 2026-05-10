@@ -6,6 +6,8 @@ import { composeRefs } from "@/lib/compose-refs";
 import { useCommandPaletteContext } from "./command-palette-context";
 import { getCommandPaletteItemDomId } from "./use-command-palette-state";
 
+const INPUT_NAVIGATION_KEYS = new Set(["ArrowUp", "ArrowDown", "Enter"]);
+
 export interface CommandPaletteInputProps {
   placeholder?: string;
   label?: string;
@@ -53,7 +55,7 @@ export function CommandPaletteInput({
             return;
           }
           if (e.key === " ") return;
-          navKeyDown(e);
+          if (INPUT_NAVIGATION_KEYS.has(e.key)) navKeyDown(e);
         }}
         placeholder={placeholder}
         className="w-full bg-transparent border-none p-0 text-foreground placeholder-muted-foreground/70 font-mono text-sm caret-foreground h-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"

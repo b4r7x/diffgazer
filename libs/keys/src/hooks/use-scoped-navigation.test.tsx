@@ -73,7 +73,7 @@ describe("useScopedNavigation", () => {
     const user = userEvent.setup();
     const onSelect = vi.fn();
     const onEnter = vi.fn();
-    render(<TestList initialValue="a" onSelect={onSelect} onEnter={onEnter} />, { wrapper });
+    render(<TestList defaultHighlighted="a" onSelect={onSelect} onEnter={onEnter} />, { wrapper });
 
     await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}{End}{Home} {Enter}");
 
@@ -90,7 +90,7 @@ describe("useScopedNavigation", () => {
     consoleError.mockRestore();
   });
 
-  it("moves DOM focus without registering Space or Enter activation when moveFocus is true", async () => {
+  it("moves DOM focus and honors explicit activation handlers when moveFocus is true", async () => {
     const onSelect = vi.fn();
     const onEnter = vi.fn();
 
@@ -99,7 +99,7 @@ describe("useScopedNavigation", () => {
       const result = useScopedNavigation({
         containerRef: ref,
         role: "button",
-        initialValue: "a",
+        defaultHighlighted: "a",
         moveFocus: true,
         onSelect,
         onEnter,
@@ -118,8 +118,8 @@ describe("useScopedNavigation", () => {
     await userEvent.keyboard("{ArrowDown} {Enter}");
 
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "B" }));
-    expect(onSelect).not.toHaveBeenCalled();
-    expect(onEnter).not.toHaveBeenCalled();
+    expect(onSelect).toHaveBeenCalledWith("b", expect.any(KeyboardEvent));
+    expect(onEnter).toHaveBeenCalledWith("b", expect.any(KeyboardEvent));
   });
 
   it("only handles keys when its explicit scope is active", async () => {
@@ -127,7 +127,7 @@ describe("useScopedNavigation", () => {
 
     function ScopedList({ active }: { active: boolean }) {
       useScope("scoped-list", { enabled: active });
-      return <TestList scope="scoped-list" initialValue="a" />;
+      return <TestList scope="scoped-list" defaultHighlighted="a" />;
     }
 
     const { rerender } = render(<ScopedList active={false} />, { wrapper });
@@ -148,7 +148,7 @@ describe("useScopedNavigation", () => {
       useScope("outer");
       return (
         <>
-          <TestList scope="outer" initialValue="a" items={["a", "b"]} label="Outer items" idPrefix="outer" />
+          <TestList scope="outer" defaultHighlighted="a" items={["a", "b"]} label="Outer items" idPrefix="outer" />
           {showInner && <InnerList />}
         </>
       );
@@ -156,7 +156,7 @@ describe("useScopedNavigation", () => {
 
     function InnerList() {
       useScope("inner");
-      return <TestList scope="inner" initialValue="x" items={["x", "y"]} label="Inner items" idPrefix="inner" />;
+      return <TestList scope="inner" defaultHighlighted="x" items={["x", "y"]} label="Inner items" idPrefix="inner" />;
     }
 
     const { rerender } = render(<ScopedHarness showInner />, { wrapper });

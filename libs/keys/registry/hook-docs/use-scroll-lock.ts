@@ -4,7 +4,7 @@ export const useScrollLockDoc: HookDoc = {
   description:
     "Prevent body or element scrolling with reference counting. Multiple locks on the same element stack safely.",
   usage: {
-    code: `useScrollLock()`,
+    code: `useScrollLock({ enabled: open })`,
     lang: "tsx",
   },
   parameters: [

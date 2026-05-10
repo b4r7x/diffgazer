@@ -68,6 +68,7 @@ export function useFocusZone<T extends string>(
   const [internalZone, setInternalZone] = useState<T>(initial);
 
   const currentZone: T = controlledZone ?? internalZone;
+  const canCycleTabs = enabled && tabCycle != null && tabCycle.length > 1;
 
   const setZoneValue = useCallback((next: T) => {
     if (next === currentZone) return;
@@ -109,7 +110,7 @@ export function useFocusZone<T extends string>(
   );
 
   useKey("Tab", () => cycleZone(1), {
-    enabled: enabled && tabCycle != null,
+    enabled: canCycleTabs,
     preventDefault: true,
     scope,
     containerRef,
@@ -118,7 +119,7 @@ export function useFocusZone<T extends string>(
   });
 
   useKey("shift+Tab", () => cycleZone(-1), {
-    enabled: enabled && tabCycle != null,
+    enabled: canCycleTabs,
     preventDefault: true,
     scope,
     containerRef,

@@ -2,11 +2,11 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { NavigationList } from "@diffgazer/ui/components/navigation-list";
 import { SearchInput } from "@diffgazer/ui/components/search-input";
 import { matchQueryState } from "@diffgazer/core/api/hooks";
+import { containsActiveElement, toVerticalBoundaryDirection } from "@diffgazer/keys";
 import { TimelineList } from "@/features/history/components/timeline-list";
 import { HistoryInsightsPane } from "@/features/history/components/history-insights-pane";
 import { useHistoryKeyboard } from "@/features/history/hooks/use-history-keyboard";
 import { useHistoryPage } from "@/features/history/hooks/use-history-page";
-import { toVerticalBoundaryDirection } from "@/lib/vertical-navigation";
 
 export function HistoryPage() {
   const {
@@ -38,6 +38,7 @@ export function HistoryPage() {
 
   const [runsFocusedValue, setRunsFocusedValue] = useState<string | null>(null);
   const runsListRef = useRef<HTMLDivElement>(null);
+  const insightsPaneRef = useRef<HTMLDivElement>(null);
   const runsHighlightedId = mappedRuns.some((run) => run.id === runsFocusedValue)
     ? runsFocusedValue
     : null;
@@ -79,12 +80,20 @@ export function HistoryPage() {
     const runsList = runsListRef.current;
     if (!runsList) return;
 
-    const activeElement = runsList.ownerDocument.activeElement;
-    const View = runsList.ownerDocument.defaultView;
-    if (View && activeElement instanceof View.HTMLElement && runsList.contains(activeElement)) return;
+    if (containsActiveElement(runsList)) return;
 
     runsList.focus();
   }, [focusZone, isReady, mappedRuns.length]);
+
+  useEffect(() => {
+    if (!isReady || focusZone !== "insights") return;
+
+    const insightsPane = insightsPaneRef.current;
+    if (!insightsPane || containsActiveElement(insightsPane)) return;
+
+    const firstButton = insightsPane.querySelector<HTMLButtonElement>("button:not([disabled])");
+    (firstButton ?? insightsPane).focus();
+  }, [focusZone, isReady, sortedIssues.length]);
 
   if (guard) return guard;
 
@@ -151,7 +160,11 @@ export function HistoryPage() {
                 aria-label="Review runs"
                 selectedId={selectedRunId}
                 highlightedId={focusZone === "runs" ? runsHighlightedId : null}
-                onSelect={setSelectedRunId}
+                onFocus={() => setFocusZone("runs")}
+                onSelect={(id) => {
+                  setFocusZone("runs");
+                  setSelectedRunId(id);
+                }}
                 onEnter={handleRunActivate}
                 onHighlightChange={setRunsFocusedValue}
                 onNavigationBoundaryReached={(direction) => {
@@ -195,6 +208,8 @@ export function HistoryPage() {
         </div>
 
         <div
+          ref={insightsPaneRef}
+          tabIndex={-1}
           data-focused={focusZone === "insights" || undefined}
           className="w-80 min-h-0 flex flex-col shrink-0 overflow-hidden"
         >

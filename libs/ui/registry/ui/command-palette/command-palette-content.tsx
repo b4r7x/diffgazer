@@ -1,7 +1,7 @@
 "use client";
 
 import { type ReactNode, useCallback, useRef, useState } from "react";
-import { useFocusRestore } from "@diffgazer/keys";
+import { useFocusRestore } from "@/hooks/use-focus-restore";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { useCommandPaletteContext } from "./command-palette-context";

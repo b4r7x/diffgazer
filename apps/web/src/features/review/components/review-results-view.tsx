@@ -21,7 +21,10 @@ export function ReviewResultsView({ issues, reviewId }: ReviewResultsViewProps) 
     focusZone,
     focusedFilterIndex,
     setFocusedFilterIndex,
-    focusedValue,
+    filterRef,
+    handleFilterKeyDown,
+    highlightedIssueId,
+    handleListFocus,
     listRef,
     detailsScrollRef,
     completedSteps,
@@ -47,7 +50,10 @@ export function ReviewResultsView({ issues, reviewId }: ReviewResultsViewProps) 
           isFilterFocused={focusZone === "filters"}
           focusedFilterIndex={focusedFilterIndex}
           onFocusedFilterIndexChange={setFocusedFilterIndex}
-          focusedValue={focusedValue}
+          filterRef={filterRef}
+          onFilterKeyDown={handleFilterKeyDown}
+          highlightedIssueId={highlightedIssueId}
+          onListFocus={handleListFocus}
           listRef={listRef}
         />
         <IssueDetailsPane

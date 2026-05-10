@@ -22,6 +22,7 @@ export { useScrollLock } from "./hooks/use-scroll-lock.js";
 export type { UseScrollLockOptions } from "./hooks/use-scroll-lock.js";
 
 export { keys } from "./utils/keys.js";
+export type { KeyHandler } from "./internal/normalize-key-input.js";
 export {
   NAVIGATION_ITEM_ATTRIBUTE,
   containsActiveElement,
@@ -40,6 +41,14 @@ export {
 export type {
   RestoreFocusOptions,
 } from "./utils/focus-restore.js";
+export {
+  getVerticalArrowDirection,
+  toVerticalBoundaryDirection,
+} from "./utils/navigation-directions.js";
+export type {
+  BoundaryDirection,
+  VerticalDirection,
+} from "./utils/navigation-directions.js";
 
 export { useKeyboardContext, useOptionalKeyboardContext } from "./context/keyboard-context.js";
 

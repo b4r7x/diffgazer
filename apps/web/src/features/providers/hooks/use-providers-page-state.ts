@@ -43,7 +43,9 @@ export function useProvidersPageState() {
     filteredProviders = filteredProviders.filter((p) => p.name.toLowerCase().includes(query) || p.id.toLowerCase().includes(query));
   }
 
-  const effectiveSelectedId = selectedId ?? filteredProviders[0]?.id ?? null;
+  const effectiveSelectedId = filteredProviders.some((provider) => provider.id === selectedId)
+    ? selectedId
+    : filteredProviders[0]?.id ?? null;
 
   const selectedProvider = effectiveSelectedId
     ? filteredProviders.find((p) => p.id === effectiveSelectedId) ?? null
@@ -62,6 +64,7 @@ export function useProvidersPageState() {
     handleFilterKeyDown,
     handleSearchFocus,
     handleFilterFocus,
+    handleListFocus,
     handleListBoundary,
   } = useProvidersKeyboard({
     selectedProvider,
@@ -123,6 +126,7 @@ export function useProvidersPageState() {
       handleFilterKeyDown,
       handleSearchFocus,
       handleFilterFocus,
+      handleListFocus,
       handleListBoundary,
       listContainerRef,
     },

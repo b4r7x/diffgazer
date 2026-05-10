@@ -25,8 +25,8 @@ export function TabsList({ children, className, loop = true, onKeyDown, ref, ...
     scopeToContainer: true,
     ...(activationMode === "automatic"
       ? {
-          value: value || undefined,
-          onValueChange: onChange,
+          highlighted: value || undefined,
+          onHighlightChange: onChange,
         }
       : {
           onEnter: onChange,

@@ -61,7 +61,8 @@ describe("useFocusTrap", () => {
       expect(document.activeElement).toBe(container);
 
       const event = fireTab();
-      expect(event.defaultPrevented).toBe(false);
+      expect(event.defaultPrevented).toBe(true);
+      expect(document.activeElement).toBe(container);
     });
 
     it("respects initialFocus ref", () => {
@@ -154,6 +155,29 @@ describe("useFocusTrap", () => {
 
       unmount();
       expect(document.activeElement).not.toBe(outsideButton);
+
+      outsideButton.remove();
+    });
+
+    it("restores focus when enabled changes from true to false", () => {
+      const outsideButton = document.createElement("button");
+      outsideButton.id = "outside";
+      document.body.appendChild(outsideButton);
+      outsideButton.focus();
+
+      container = createContainer('<button id="a">A</button>');
+      const { rerender } = renderHook(
+        ({ enabled }) => {
+          const ref = useRef<HTMLElement>(container);
+          useFocusTrap(ref, { enabled });
+        },
+        { initialProps: { enabled: true } },
+      );
+
+      expect(document.activeElement).toBe(container.querySelector("#a"));
+
+      rerender({ enabled: false });
+      expect(document.activeElement).toBe(outsideButton);
 
       outsideButton.remove();
     });

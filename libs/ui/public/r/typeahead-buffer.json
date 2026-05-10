@@ -1,0 +1,20 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "typeahead-buffer",
+  "type": "registry:hook",
+  "title": "useTypeaheadBuffer",
+  "description": "Small typeahead query buffer for composite widgets that reset typed search after a short idle window.",
+  "dependencies": [],
+  "registryDependencies": [],
+  "files": [
+    {
+      "path": "registry/hooks/use-typeahead-buffer.ts",
+      "content": "\"use client\";\n\nimport { useCallback, useEffect, useRef } from \"react\";\n\nconst DEFAULT_TYPEAHEAD_RESET_MS = 500;\n\nexport function useTypeaheadBuffer(resetMs = DEFAULT_TYPEAHEAD_RESET_MS) {\n  const bufferRef = useRef(\"\");\n  const timerRef = useRef<number | null>(null);\n\n  useEffect(() => {\n    return () => {\n      if (timerRef.current !== null) window.clearTimeout(timerRef.current);\n    };\n  }, []);\n\n  return useCallback((key: string): string | null => {\n    if (key.length !== 1 || key === \" \") return null;\n    if (timerRef.current !== null) window.clearTimeout(timerRef.current);\n\n    bufferRef.current += key;\n    timerRef.current = window.setTimeout(() => {\n      bufferRef.current = \"\";\n      timerRef.current = null;\n    }, resetMs);\n\n    return bufferRef.current.toLowerCase();\n  }, [resetMs]);\n}\n",
+      "type": "registry:hook"
+    }
+  ],
+  "meta": {
+    "client": true,
+    "hidden": true
+  }
+}

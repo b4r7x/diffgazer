@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { rewriteLocalImportsForKeysPackage, rewriteRelativeJsExtensionsForCopy } from "../utils/transform.js";
+import { rewriteRelativeJsExtensionsForCopy } from "../utils/transform.js";
 import {
   createAddCommand,
   getInstalledDeps, depName, normalizeVersionSpec,
@@ -8,7 +8,7 @@ import {
 } from "@diffgazer/registry/cli";
 import { ctx, getRegistry, VERSION, type ResolvedConfig, type ManifestInstallMetadata, type RegistryItem, type ManifestOwnedFile } from "../context.js";
 import {
-  prepareFileContent,
+  prepareFileContentForIntegration,
   getInstallBaseForFilePath,
   getInstallDirForBase,
 } from "../utils/registry.js";
@@ -29,6 +29,8 @@ import {
 } from "../utils/namespaces.js";
 import { resolveInstallPath, resolveProjectPath, toPosixPath } from "../utils/paths.js";
 
+type OwnedFileOp = FileOp & { sourceNames?: string[] };
+
 function buildFileOp(
   file: { path: string; content: string },
   item: RegistryItem,
@@ -37,10 +39,7 @@ function buildFileOp(
   integrationMode: ResolvedIntegrationSelection["mode"],
 ): FileOp {
   const relativePath = ctx.registry.relativePath(file);
-  const rawContent = integrationMode === "@diffgazer/keys"
-    ? rewriteLocalImportsForKeysPackage(file.content)
-    : file.content;
-  const content = prepareFileContent({ ...file, content: rawContent }, item, config);
+  const content = prepareFileContentForIntegration(file, item, config, integrationMode);
   const installBase = getInstallBaseForFilePath(file.path);
   const installDir = getInstallDirForBase(installBase, config);
   const targetPath = resolveInstallPath(cwd, installDir, relativePath);
@@ -71,7 +70,11 @@ function buildKeysFileOps(
   config: ResolvedConfig,
 ): FileOp[] {
   resolveProjectPath(cwd, config.hooksFsPath);
-  const { files, missingHooks } = resolveKeysCopyHookFiles(neededKeysHooks);
+  const resolvedHooks = neededKeysHooks.map((hook) => ({
+    hook,
+    resolved: resolveKeysCopyHookFiles([hook]),
+  }));
+  const missingHooks = resolvedHooks.flatMap(({ resolved }) => resolved.missingHooks);
 
   if (missingHooks.length > 0) {
     throw new Error(
@@ -80,13 +83,38 @@ function buildKeysFileOps(
     );
   }
 
-  return files.map((file) => ({
-    targetPath: resolveInstallPath(cwd, config.hooksFsPath, file.relativePath),
-    content: rewriteRelativeJsExtensionsForCopy(file.content),
-    relativePath: file.relativePath,
-    installDir: config.hooksFsPath,
-    sourceName: `keys/${file.hook}`,
-  }));
+  const byTargetPath = new Map<string, OwnedFileOp>();
+  for (const { resolved } of resolvedHooks) {
+    for (const file of resolved.files) {
+      const sourceName = `keys/${file.hook}`;
+      const targetPath = resolveInstallPath(cwd, config.hooksFsPath, file.relativePath);
+      const content = rewriteRelativeJsExtensionsForCopy(file.content);
+      const existing = byTargetPath.get(targetPath);
+
+      if (existing) {
+        if (existing.content !== content) {
+          throw new Error(`Conflicting bundled keys hook content for "${file.relativePath}".`);
+        }
+        existing.sourceNames = [
+          ...new Set([existing.sourceName, ...(existing.sourceNames ?? []), sourceName]
+            .filter((name): name is string => name !== undefined)),
+        ];
+        continue;
+      }
+
+      const op: OwnedFileOp = {
+        targetPath,
+        content,
+        relativePath: file.relativePath,
+        installDir: config.hooksFsPath,
+        sourceName,
+        sourceNames: [sourceName],
+      };
+      byTargetPath.set(targetPath, op);
+    }
+  }
+
+  return [...byTargetPath.values()];
 }
 
 function logIntegrationMode(mode: ResolvedIntegrationSelection["mode"]): void {
@@ -126,18 +154,54 @@ function buildOwnedFilesByItem(
 ): Map<string, ManifestOwnedFile[]> {
   const registryIntegrity = getRegistry().integrity;
   const byItem = new Map<string, ManifestOwnedFile[]>();
+  const writtenByTargetPath = new Map<string, ManifestOwnedFile>();
+
+  function getSourceNames(op: FileOp): string[] {
+    const ownedOp = op as OwnedFileOp;
+    return [...new Set([ownedOp.sourceName, ...(ownedOp.sourceNames ?? [])].filter((name): name is string => name !== undefined))];
+  }
+
+  function addOwnedFile(sourceName: string, op: FileOp): void {
+    const path = toPosixPath(`${op.installDir}/${op.relativePath}`);
+    const existingFiles = byItem.get(sourceName) ?? [];
+    if (existingFiles.some((file) => file.path === path)) return;
+
+    const ownedFile = {
+      path,
+      hash: sha256(op.content),
+      item: sourceName,
+      registryIntegrity,
+      cliVersion: VERSION,
+      integrationMode: mode,
+    };
+    existingFiles.push(ownedFile);
+    byItem.set(sourceName, existingFiles);
+  }
+
   for (const { op, result } of writeResult.results) {
-    if (result === "skipped" || !op.sourceName) continue;
-    const files = byItem.get(op.sourceName) ?? [];
-    files.push({
+    const sourceNames = getSourceNames(op);
+    if (result === "skipped" || sourceNames.length === 0) continue;
+    for (const sourceName of sourceNames) {
+      addOwnedFile(sourceName, op);
+    }
+    writtenByTargetPath.set(op.targetPath, {
       path: toPosixPath(`${op.installDir}/${op.relativePath}`),
       hash: sha256(op.content),
-      item: op.sourceName,
+      item: sourceNames[0]!,
       registryIntegrity,
       cliVersion: VERSION,
       integrationMode: mode,
     });
-    byItem.set(op.sourceName, files);
+  }
+
+  for (const { op, result } of writeResult.results) {
+    const sourceNames = getSourceNames(op);
+    if (result !== "skipped" || sourceNames.length === 0) continue;
+    const written = writtenByTargetPath.get(op.targetPath);
+    if (!written || written.hash !== sha256(op.content)) continue;
+    for (const sourceName of sourceNames) {
+      addOwnedFile(sourceName, op);
+    }
   }
   return byItem;
 }

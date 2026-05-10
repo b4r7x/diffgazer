@@ -1,6 +1,5 @@
 import { useState, useEffect, useEffectEvent, useRef, type KeyboardEvent as ReactKeyboardEvent, type RefCallback, type RefObject } from "react";
-import { useKey, useFocusZone, useScope } from "@diffgazer/keys";
-import { getVerticalArrowDirection } from "@/lib/vertical-navigation";
+import { getVerticalArrowDirection, useFocusZone, useKey, useScope } from "@diffgazer/keys";
 import type { FocusElement } from "@/types/focus-element";
 import type { InputMethod } from "@/types/input-method";
 

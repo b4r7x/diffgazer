@@ -1,12 +1,5 @@
 export const NAVIGATION_ITEM_ATTRIBUTE = "data-diffgazer-navigation-item";
 
-const LEGACY_NAVIGATION_ITEM_ATTRIBUTE = "data-navigation-item";
-
-const NAVIGATION_ITEM_ATTRIBUTES = [
-  NAVIGATION_ITEM_ATTRIBUTE,
-  LEGACY_NAVIGATION_ITEM_ATTRIBUTE,
-] as const;
-
 const FOCUSABLE_SELECTOR = [
   "a[href]",
   "area[href]",
@@ -64,11 +57,8 @@ function queryFirstMatchingGroup(
 }
 
 function matchesNavigationDataContract(element: HTMLElement, type: NavigationItemType): boolean {
-  const explicitTypes = NAVIGATION_ITEM_ATTRIBUTES
-    .map((attribute) => element.getAttribute(attribute))
-    .filter((value): value is string => value !== null && value !== "" && value !== "true");
-
-  return explicitTypes.length === 0 || explicitTypes.includes(type);
+  const explicitType = element.getAttribute(NAVIGATION_ITEM_ATTRIBUTE);
+  return explicitType === null || explicitType === "" || explicitType === "true" || explicitType === type;
 }
 
 function buildNavigationSelectors(
@@ -76,12 +66,12 @@ function buildNavigationSelectors(
   skipDisabled: boolean,
 ): string[] {
   const disabled = disabledSelector(skipDisabled);
-  const dataContractSelectors = NAVIGATION_ITEM_ATTRIBUTES.flatMap((attribute) => [
-    `[${attribute}="${type}"][data-value]${disabled}`,
-    `[${attribute}="true"][data-value]${disabled}`,
-    `[${attribute}=""][data-value]${disabled}`,
-    `[${attribute}][data-value]${disabled}`,
-  ]);
+  const dataContractSelectors = [
+    `[${NAVIGATION_ITEM_ATTRIBUTE}="${type}"][data-value]${disabled}`,
+    `[${NAVIGATION_ITEM_ATTRIBUTE}="true"][data-value]${disabled}`,
+    `[${NAVIGATION_ITEM_ATTRIBUTE}=""][data-value]${disabled}`,
+    `[${NAVIGATION_ITEM_ATTRIBUTE}][data-value]${disabled}`,
+  ];
   const nativeRoleSelectors: Partial<Record<NavigationItemType, string[]>> = {
     button: [`button[data-value]${disabled}`],
     checkbox: [`input[type="checkbox"][data-value]${disabled}`],

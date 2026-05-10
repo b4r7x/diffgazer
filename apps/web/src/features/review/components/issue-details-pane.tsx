@@ -47,7 +47,13 @@ export function IssueDetailsPane({
             {hasPatch && <TabsTrigger value="patch">Patch</TabsTrigger>}
           </TabsList>
 
-          <ScrollArea ref={scrollAreaRef} className="flex-1 min-h-0 pr-2">
+          <ScrollArea
+            ref={scrollAreaRef}
+            aria-label="Issue details"
+            keyboardScrollable={false}
+            tabIndex={-1}
+            className="flex-1 min-h-0 pr-2"
+          >
             {issue ? (
               <>
                 <IssueHeader
