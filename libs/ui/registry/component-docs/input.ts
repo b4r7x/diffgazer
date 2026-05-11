@@ -2,12 +2,12 @@ import type { ComponentDoc } from "./types"
 
 export const inputDoc: ComponentDoc = {
   description:
-    "Terminal-styled text input primitives with size variants, error state, and optional prefix/suffix grouping.",
+    "Terminal-styled text input primitives with size variants, invalid state, and optional prefix/suffix grouping.",
   notes: [
     {
-      title: "Error State",
+      title: "Invalid State",
       content:
-        "Setting error={true} applies a destructive border color and sets aria-invalid on the element for accessibility.",
+        "Set aria-invalid=true on Input or InputGroup to apply the destructive border treatment. Field.Control sets aria-invalid automatically when Field.invalid is true.",
     },
     {
       title: "InputGroup",
@@ -23,4 +23,46 @@ export const inputDoc: ComponentDoc = {
     { name: "input-form", title: "Form" },
   ],
   keyboard: null,
+  props: {
+    Input: {
+      size: {
+        type: '"sm" | "md" | "lg"',
+        required: false,
+        defaultValue: '"md"',
+        description: "Height/padding/font size token.",
+      },
+      "aria-invalid": {
+        type: "boolean | \"true\" | \"false\" | \"grammar\" | \"spelling\"",
+        required: false,
+        defaultValue: null,
+        description: "The native ARIA invalid state. The destructive border treatment applies to true/\"true\". Field.Control sets this automatically when Field.invalid is true.",
+      },
+    },
+    InputGroup: {
+      size: {
+        type: '"sm" | "md" | "lg"',
+        required: false,
+        defaultValue: '"md"',
+        description: "Height/padding/font size token applied to the wrapper and the inner input.",
+      },
+      prefix: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Decorative content rendered before the input. Plain text is aria-hidden; interactive affixes must provide their own accessible labels.",
+      },
+      suffix: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Decorative content rendered after the input. Plain text is aria-hidden; interactive affixes must provide their own accessible labels.",
+      },
+      inputClassName: {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description: "className applied to the inner input element. The outer className targets the wrapper.",
+      },
+    },
+  },
 }

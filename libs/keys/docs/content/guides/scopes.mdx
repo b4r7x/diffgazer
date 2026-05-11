@@ -17,7 +17,7 @@ KeyboardProvider maintains an internal stack. It starts with one entry:
 [ global ]
 ```
 
-The active scope is always the last item in the stack. When you push a new scope, it goes on top. When you pop it, the previous scope becomes active again.
+Declarative scopes pushed with `useScope` follow React tree order. In practice, a nested confirmation dialog can mount in the same commit as its parent modal and still become the active scope. Imperative `pushScope` calls sit above declarative scopes until popped.
 
 ```
 [ global ]                    -> "global" is active
@@ -28,6 +28,8 @@ The active scope is always the last item in the stack. When you push a new scope
 ```
 
 Handlers registered in `"global"` still exist while `"modal"` is active. They just don't fire. The moment `"modal"` is popped, `"global"` handlers resume as if nothing happened.
+
+For colocated handlers, prefer passing the scope returned by `useScope` into `useKey`. That keeps the handler tied to its own layer instead of whatever scope happens to be active when effects commit.
 
 ## When to use scopes
 
@@ -46,18 +48,26 @@ If you have a sidebar and a main content area that are both visible and both nee
 import { useScope, useKey } from "@diffgazer/keys";
 
 function ConfirmDialog({ open }: { open: boolean }) {
-  useScope("confirm", { enabled: open });
+  const scope = useScope("confirm", { enabled: open });
 
-  // These register in the "confirm" scope automatically
-  // because useScope made it the active scope
-  useKey("Escape", onClose);
-  useKey("Enter", onConfirm);
+  useKey("Escape", onClose, { scope });
+  useKey("Enter", onConfirm, { scope });
 
   return open ? <dialog>...</dialog> : null;
 }
 ```
 
-`useScope` pushes the named scope on mount (or when `enabled` becomes `true`) and pops it on unmount (or when `enabled` becomes `false`). It throws if there's no `KeyboardProvider` above it in the tree.
+`useScope` pushes the named scope on mount (or when `enabled` becomes `true`) and pops it on unmount (or when `enabled` becomes `false`). It returns the active scope name when pushed, otherwise `null`. It throws if there's no `KeyboardProvider` above it in the tree.
+
+You can also pass `null` instead of a name to skip pushing without removing the call -- useful when the same component conditionally introduces a scope:
+
+```tsx
+function Panel({ isolate }: { isolate: boolean }) {
+  // No scope until isolate flips to true
+  useScope(isolate ? "panel" : null);
+  return <div>...</div>;
+}
+```
 
 **Options:**
 
@@ -133,9 +143,7 @@ function PanelB() {
 }
 ```
 
-If both are mounted, the stack looks like `[ global, panel, panel ]`. Unmounting `PanelB` removes its entry but leaves `PanelA`'s. The scope name `"panel"` stays active.
-
-The handler map for a scope name is only deleted when **no entries** with that name remain in the stack.
+If both are mounted, the stack looks like `[ global, panel, panel ]`. Unmounting `PanelB` removes its entry but leaves `PanelA`'s. The scope name `"panel"` stays active. Handler registrations clean themselves up independently when their components unmount.
 
 ## useScope vs useFocusZone scope option
 
@@ -205,9 +213,17 @@ function Dialog({ open }: { open: boolean }) {
 }
 ```
 
-**Registering handlers before the scope is pushed:**
+**Relying on implicit scope for conditional layers:**
 
-`useKey` registers in whatever scope is active at the time its effect runs. Since `useScope` pushes the scope via a state update (triggering a re-render), `useKey` calls in the same component will register in the new scope after the re-render.
+For handlers colocated with `useScope`, pass the returned scope into `useKey`. When the scope is disabled, the return value is `null`, and `useKey` skips registration instead of falling back to a parent scope.
+
+```tsx
+function Modal({ open }: { open: boolean }) {
+  const scope = useScope("modal", { enabled: open });
+  useKey("Escape", handleModalEscape, { scope });
+  return open ? <dialog>...</dialog> : null;
+}
+```
 
 However, if a parent component registers handlers *before* a child pushes a scope, those handlers stay in the parent's scope:
 

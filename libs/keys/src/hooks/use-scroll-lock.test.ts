@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { renderHook, cleanup } from "@testing-library/react";
-import { useRef } from "react";
+import { render, renderHook, cleanup } from "@testing-library/react";
+import { createElement, useRef } from "react";
 import { useScrollLock } from "./use-scroll-lock";
 
 describe("useScrollLock", () => {
@@ -55,6 +55,23 @@ describe("useScrollLock", () => {
     container.remove();
   });
 
+  it("locks a DOM ref after React assigns it", () => {
+    function Host() {
+      const ref = useRef<HTMLDivElement>(null);
+      useScrollLock({ target: ref });
+      return createElement("div", { ref, "data-testid": "target", style: { overflow: "auto" } });
+    }
+
+    const { getByTestId, unmount } = render(createElement(Host));
+    const target = getByTestId("target");
+
+    expect(target.style.overflow).toBe("hidden");
+    expect(document.body.style.overflow).toBe("");
+
+    unmount();
+    expect(target.style.overflow).toBe("auto");
+  });
+
   it("concurrent locks stay hidden until all unmount", () => {
     document.body.style.overflow = "auto";
 
@@ -67,5 +84,4 @@ describe("useScrollLock", () => {
     unmountA();
     expect(document.body.style.overflow).toBe("auto");
   });
-
 });

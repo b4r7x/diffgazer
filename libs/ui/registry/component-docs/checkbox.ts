@@ -34,7 +34,7 @@ export const checkboxDoc: ComponentDoc = {
     {
       title: "Strikethrough (Checklist Mode)",
       content:
-        "Pass strikethrough to Checkbox or CheckboxGroup to apply line-through styling and muted color to checked item labels. This replaces the former Checklist component with full checkbox features (variants, sizes, keyboard nav, accessibility).",
+        "Pass strikethrough to Checkbox or CheckboxGroup to apply line-through styling and muted color to checked item labels.",
     },
   ],
   usage: { example: "checkbox-default" },
@@ -50,5 +50,181 @@ export const checkboxDoc: ComponentDoc = {
     examples: [
       { name: "checkbox-group", title: "Group with built-in keyboard navigation" },
     ],
+  },
+  props: {
+    Checkbox: {
+      checked: {
+        type: 'boolean | "indeterminate"',
+        required: false,
+        defaultValue: null,
+        description: "Controlled checked state. Use \"indeterminate\" for the mixed visual state.",
+      },
+      defaultChecked: {
+        type: "boolean",
+        required: false,
+        defaultValue: "false",
+        description: "Initial checked state for uncontrolled usage.",
+      },
+      onChange: {
+        type: "(checked: boolean) => void",
+        required: false,
+        defaultValue: null,
+        description: "Called when the boolean checked state changes.",
+      },
+      value: {
+        type: "string",
+        required: false,
+        defaultValue: '"on"',
+        description: "Hidden native input value used for form submission.",
+      },
+      name: {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description: "Hidden native input name used for form submission.",
+      },
+      required: {
+        type: "boolean",
+        required: false,
+        defaultValue: "false",
+        description: "Marks the hidden native checkbox as required.",
+      },
+      label: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Visible label associated with the custom checkbox.",
+      },
+      description: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Visible description wired with aria-describedby.",
+      },
+      disabled: {
+        type: "boolean",
+        required: false,
+        defaultValue: "false",
+        description: "Disables the custom control and hidden input.",
+      },
+      size: {
+        type: '"sm" | "md" | "lg"',
+        required: false,
+        defaultValue: '"md"',
+        description: "Selectable control size token.",
+      },
+      variant: {
+        type: '"x" | "bullet"',
+        required: false,
+        defaultValue: '"x"',
+        description: "Indicator style.",
+      },
+      strikethrough: {
+        type: "boolean",
+        required: false,
+        defaultValue: "false",
+        description: "Applies muted line-through styling to the label when checked.",
+      },
+    },
+    CheckboxGroup: {
+      value: {
+        type: "string[]",
+        required: false,
+        defaultValue: null,
+        description: "Controlled selected item values.",
+      },
+      defaultValue: {
+        type: "string[]",
+        required: false,
+        defaultValue: "[]",
+        description: "Initial selected values for uncontrolled usage.",
+      },
+      onChange: {
+        type: "(value: string[]) => void",
+        required: false,
+        defaultValue: null,
+        description: "Called when the selected values change.",
+      },
+      highlighted: {
+        type: "string | null",
+        required: false,
+        defaultValue: null,
+        description: "Controlled highlighted item value for keyboard navigation.",
+      },
+      onHighlightChange: {
+        type: "(value: string) => void",
+        required: false,
+        defaultValue: null,
+        description: "Called when keyboard navigation highlights a new item.",
+      },
+      wrap: {
+        type: "boolean",
+        required: false,
+        defaultValue: "true",
+        description: "Whether arrow-key navigation wraps at the first and last item.",
+      },
+      keyboardNavigation: {
+        type: "boolean",
+        required: false,
+        defaultValue: "true",
+        description: "Enable built-in arrow-key navigation.",
+      },
+      onNavigationBoundaryReached: {
+        type: '(direction: "previous" | "next", event: KeyboardEvent, key: string) => void',
+        required: false,
+        defaultValue: null,
+        description: "Called when non-wrapping navigation reaches the first or last item. Use event/key to decide whether to hand focus to adjacent controls.",
+      },
+      autoFocus: {
+        type: "boolean",
+        required: false,
+        defaultValue: "false",
+        description: "Focuses the highlighted, selected, or first enabled item when the group becomes active.",
+      },
+      disabled: {
+        type: "boolean",
+        required: false,
+        defaultValue: "false",
+        description: "Disables the group and all items.",
+      },
+      name: {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description: "Shared hidden native input name for grouped form submission.",
+      },
+      required: {
+        type: "boolean",
+        required: false,
+        defaultValue: "false",
+        description: "Requires at least one enabled item to be selected.",
+      },
+    },
+    CheckboxItem: {
+      value: {
+        type: "string",
+        required: true,
+        defaultValue: null,
+        description: "Item value. Must be unique within the group.",
+      },
+      label: {
+        type: "ReactNode",
+        required: true,
+        defaultValue: null,
+        description: "Visible item label.",
+      },
+      description: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Visible item description wired with aria-describedby.",
+      },
+      disabled: {
+        type: "boolean",
+        required: false,
+        defaultValue: "false",
+        description: "Disables the item.",
+      },
+    },
   },
 }

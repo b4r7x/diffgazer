@@ -31,10 +31,10 @@ export const useKeyDoc: HookDoc = {
     },
     {
       name: "options.scope",
-      type: "string",
+      type: "string | null",
       required: false,
       description:
-        "Explicit keyboard scope to register the binding under. Defaults to the active KeyboardProvider scope.",
+        "Explicit keyboard scope to register the binding under. Pass null to skip registration. Defaults to the nearest active KeyboardProvider scope for this hook's declaration order.",
     },
     {
       name: "options.allowInInput",

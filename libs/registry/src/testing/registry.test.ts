@@ -19,6 +19,12 @@ describe("@diffgazer/ui registry closure metadata", () => {
     expect(item("accordion").registryDependencies).toContain("compose-refs");
   });
 
+  it("uses the direct shadcn keys namespace for registry dependencies", () => {
+    const dependencies = registry.items.flatMap((entry) => entry.registryDependencies ?? []);
+    expect(dependencies.some((dep) => dep.startsWith("@diffgazer-keys/"))).toBe(true);
+    expect(dependencies.some((dep) => dep.startsWith("@diffgazer/keys/"))).toBe(false);
+  });
+
   it("keeps dialog and popover portal context imports reachable", () => {
     expect(item("portal").files.map((file) => file.path)).toContain("registry/ui/shared/portal-context.tsx");
     expect(item("dialog").registryDependencies).toContain("portal");

@@ -181,10 +181,6 @@
         {
           "path": "registry/ui/input/input-group.tsx",
           "type": "registry:ui"
-        },
-        {
-          "path": "registry/ui/input/input-state.ts",
-          "type": "registry:ui"
         }
       ]
     },
@@ -829,7 +825,8 @@
         },
         {
           "path": "registry/ui/shared/dialog.css",
-          "type": "registry:ui"
+          "type": "registry:style",
+          "target": "~/styles/dialog.css"
         }
       ]
     },
@@ -2092,10 +2089,13 @@
         "floating-position",
         "outside-click",
         "presence",
-        "focus"
+        "@diffgazer-keys/focusable"
       ],
       "meta": {
-        "client": true
+        "client": true,
+        "optionalIntegrations": [
+          "keyboard-navigation"
+        ]
       },
       "files": [
         {

@@ -2,6 +2,7 @@
 
 import {
   type ComponentPropsWithRef,
+  type AriaAttributes,
   useCallback,
   useEffect,
   useMemo,
@@ -48,7 +49,11 @@ export type CheckboxGroupProps<T extends string = string> = CheckboxGroupRootPro
   highlighted?: string | null;
   wrap?: boolean;
   keyboardNavigation?: boolean;
-  onNavigationBoundaryReached?: (direction: "previous" | "next") => void;
+  onNavigationBoundaryReached?: (
+    direction: "previous" | "next",
+    event: globalThis.KeyboardEvent,
+    key: string,
+  ) => void;
   disabled?: boolean;
   autoFocus?: boolean;
   size?: CheckboxSize;
@@ -60,6 +65,7 @@ export type CheckboxGroupProps<T extends string = string> = CheckboxGroupRootPro
   label?: string;
   "aria-label"?: string;
   "aria-labelledby"?: string;
+  "aria-invalid"?: AriaAttributes["aria-invalid"];
   children: ReactNode;
   ref?: Ref<HTMLDivElement>;
 };
@@ -67,6 +73,18 @@ export type CheckboxGroupProps<T extends string = string> = CheckboxGroupRootPro
 function isHTMLElementForContainer(value: unknown, container: HTMLElement | null): value is HTMLElement {
   const View = container?.ownerDocument.defaultView;
   return Boolean(View && value instanceof View.HTMLElement);
+}
+
+function resolveGroupAriaInvalid(
+  forceInvalid: boolean | undefined,
+  ariaInvalid: AriaAttributes["aria-invalid"],
+) {
+  if (forceInvalid) return true;
+  if (ariaInvalid === true || ariaInvalid === "true" || ariaInvalid === "grammar" || ariaInvalid === "spelling") {
+    return ariaInvalid;
+  }
+  if (ariaInvalid === false || ariaInvalid === "false") return ariaInvalid;
+  return undefined;
 }
 
 export function CheckboxGroup<T extends string = string>(props: CheckboxGroupProps<T>) {
@@ -91,6 +109,7 @@ export function CheckboxGroup<T extends string = string>(props: CheckboxGroupPro
     label,
     "aria-label": ariaLabel,
     "aria-labelledby": ariaLabelledBy,
+    "aria-invalid": ariaInvalid,
     children,
     ref,
     ...rootProps
@@ -200,7 +219,7 @@ export function CheckboxGroup<T extends string = string>(props: CheckboxGroupPro
         aria-label={ariaLabel ?? label}
         aria-labelledby={ariaLabelledBy}
         aria-disabled={disabled || undefined}
-        aria-invalid={nativeInvalid && required && !hasValidSelectedValue ? true : undefined}
+        aria-invalid={resolveGroupAriaInvalid(nativeInvalid && required && !hasValidSelectedValue, ariaInvalid)}
         className={cn("flex flex-col gap-2", className)}
         onKeyDown={handleKeyDown}
       >

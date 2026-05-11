@@ -2,6 +2,7 @@ import { metaField } from "@diffgazer/registry/cli";
 import type { ResolvedConfig, RegistryFile, RegistryItem } from "../context.js";
 import {
   handleRscDirective,
+  rewriteKeysPackageImportsForCopy,
   rewriteLocalImportsForKeysPackage,
   rewriteRelativeJsExtensionsForCopy,
   transformImports,
@@ -54,6 +55,8 @@ export function prepareFileContentForIntegration(
 ): string {
   const content = integrationMode === "@diffgazer/keys"
     ? rewriteLocalImportsForKeysPackage(file.content)
-    : file.content;
+    : integrationMode === "copy"
+      ? rewriteKeysPackageImportsForCopy(file.content)
+      : file.content;
   return prepareFileContent({ ...file, content }, item, config);
 }

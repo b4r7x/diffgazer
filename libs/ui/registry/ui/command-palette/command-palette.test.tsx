@@ -15,7 +15,7 @@ interface RenderOptions {
   onOpenChange?: (open: boolean) => void
   search?: string
   onSearchChange?: (value: string) => void
-  highlightedId?: string | null
+  highlighted?: string | null
   onHighlightChange?: (id: string | null) => void
   onActivate?: (id: string) => void
   shouldFilter?: boolean
@@ -203,9 +203,9 @@ describe("CommandPalette", () => {
     expect(input).toHaveValue("")
   })
 
-  it("controlled highlightedId calls onHighlightChange on navigation", async () => {
+  it("controlled highlighted calls onHighlightChange on navigation", async () => {
     const onHighlightChange = vi.fn()
-    renderPalette({ highlightedId: "copy", onHighlightChange })
+    renderPalette({ highlighted: "copy", onHighlightChange })
     const input = screen.getByRole("combobox")
     await userEvent.type(input, "{ArrowDown}")
     expect(onHighlightChange).toHaveBeenCalledWith("paste")
@@ -213,7 +213,7 @@ describe("CommandPalette", () => {
 
   it("keeps Home and End available for text editing in the search input", async () => {
     const onHighlightChange = vi.fn()
-    renderPalette({ highlightedId: "delete", onHighlightChange })
+    renderPalette({ highlighted: "delete", onHighlightChange })
     const input = screen.getByRole("combobox")
 
     await userEvent.type(input, "{Home}{End}")
@@ -222,14 +222,14 @@ describe("CommandPalette", () => {
   })
 
   it("keeps controlled null highlight unselected", () => {
-    renderPalette({ highlightedId: null })
+    renderPalette({ highlighted: null })
     expect(screen.getByRole("combobox")).not.toHaveAttribute("aria-activedescendant")
     expect(getOption("copy")).toHaveAttribute("aria-selected", "false")
   })
 
   it("keeps public item ids separate from DOM-safe active descendant ids", () => {
     render(
-      <CommandPalette open highlightedId="a b/slash">
+      <CommandPalette open highlighted="a b/slash">
         <CommandPalette.Content>
           <CommandPalette.Input />
           <CommandPalette.List>
@@ -255,7 +255,7 @@ describe("CommandPalette", () => {
 
   it("omits stale controlled active descendants for disabled, filtered, and missing items", () => {
     const { rerender } = render(
-      <CommandPalette open highlightedId="delete">
+      <CommandPalette open highlighted="delete">
         <CommandPalette.Content>
           <CommandPalette.Input />
           <CommandPalette.List>
@@ -269,7 +269,7 @@ describe("CommandPalette", () => {
     expect(screen.getByRole("combobox")).not.toHaveAttribute("aria-activedescendant")
 
     rerender(
-      <CommandPalette open highlightedId="delete" search="copy">
+      <CommandPalette open highlighted="delete" search="copy">
         <CommandPalette.Content>
           <CommandPalette.Input />
           <CommandPalette.List>
@@ -282,7 +282,7 @@ describe("CommandPalette", () => {
     expect(screen.getByRole("combobox")).not.toHaveAttribute("aria-activedescendant")
 
     rerender(
-      <CommandPalette open highlightedId="missing">
+      <CommandPalette open highlighted="missing">
         <CommandPalette.Content>
           <CommandPalette.Input />
           <CommandPalette.List>

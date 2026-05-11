@@ -1,26 +1,13 @@
-export const NAVIGATION_ITEM_ATTRIBUTE = "data-diffgazer-navigation-item";
+import { getFocusableElements as getFocusableElementsImpl } from "./focusable.js";
 
-const FOCUSABLE_SELECTOR = [
-  "a[href]",
-  "area[href]",
-  "button:not([disabled])",
-  'input:not([type="hidden"]):not([disabled])',
-  "select:not([disabled])",
-  "textarea:not([disabled])",
-  "iframe",
-  "object",
-  "embed",
-  "audio[controls]",
-  "video[controls]",
-  '[contenteditable]:not([contenteditable="false"])',
-  '[tabindex]:not([tabindex="-1"]):not([disabled])',
-].join(",");
+export const NAVIGATION_ITEM_ATTRIBUTE = "data-diffgazer-navigation-item";
 
 export type NavigationItemType =
   | "radio"
   | "checkbox"
   | "option"
   | "menuitem"
+  | "menuitemcheckbox"
   | "menuitemradio"
   | "button"
   | "tab";
@@ -82,7 +69,6 @@ function buildNavigationSelectors(
     dataContractSelectors.join(","),
     `[role="${type}"][data-value]${disabled}`,
     ...(nativeRoleSelectors[type] ?? []),
-    `[role="${type}"]${disabled}`,
   ];
 }
 
@@ -95,6 +81,7 @@ function ownerSelectorForType(type: NavigationItemType): string | null {
     case "option":
       return '[role="listbox"]';
     case "menuitem":
+    case "menuitemcheckbox":
     case "menuitemradio":
       return '[role="menu"]';
     case "tab":
@@ -193,7 +180,7 @@ export function focusNavigationItem(
   return target.dataset.value;
 }
 
-export function getFocusableElements(container: HTMLElement | null): HTMLElement[] {
-  if (!container) return [];
-  return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
-}
+/**
+ * Re-exported from `./focusable.js` for ergonomic discovery alongside navigation utilities.
+ */
+export const getFocusableElements = getFocusableElementsImpl;

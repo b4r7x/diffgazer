@@ -18,7 +18,7 @@ export const tooltipDoc: ComponentDoc = {
     },
     {
       title: "Portal Rendering",
-      content: "Content renders via Portal at document.body level, so tooltips are never clipped by overflow:hidden ancestors. Position is calculated from trigger's bounding rect.",
+      content: "Content renders through the shared Portal primitive. When a PortalContainerProvider is present, Tooltip.Content uses that scoped container; otherwise it falls back to document.body. This keeps nested overlay trees in the same portal scope while still escaping overflow:hidden ancestors by default.",
     },
     {
       title: "Conditional Display",

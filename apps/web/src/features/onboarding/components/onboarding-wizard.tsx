@@ -139,6 +139,8 @@ export function OnboardingWizard() {
     }
   };
 
+  useScope("onboarding");
+
   const footer = useFooterNavigation({
     enabled: true,
     buttonCount,
@@ -159,8 +161,6 @@ export function OnboardingWizard() {
   useEffect(() => {
     footer.reset();
   }, [currentStep]);
-
-  useScope("onboarding");
 
   usePageFooter({
     shortcuts: getStepShortcuts(currentStep, footer.inFooter),

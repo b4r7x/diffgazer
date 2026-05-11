@@ -13,6 +13,7 @@ import {
   getNavigationItems,
   type NavigationItemType,
 } from "../utils/navigation-items.js";
+import { isEditableElement } from "../utils/keyboard-utils.js";
 
 export type NavigationRole = NavigationItemType;
 
@@ -27,7 +28,15 @@ export interface UseNavigationOptions {
   wrap?: boolean;
   enabled?: boolean;
   preventDefault?: boolean;
-  onNavigationBoundaryReached?: (direction: "previous" | "next") => void;
+  /**
+   * Called when a non-wrapping boundary is reached. Receives the direction,
+   * the originating KeyboardEvent, and the key that triggered the boundary.
+   */
+  onNavigationBoundaryReached?: (
+    direction: "previous" | "next",
+    event: globalThis.KeyboardEvent,
+    key: string,
+  ) => void;
   upKeys?: readonly string[];
   downKeys?: readonly string[];
   orientation?: "vertical" | "horizontal";
@@ -48,7 +57,7 @@ interface UseNavigationCoreReturn {
   highlighted: string | null;
   isHighlighted: (value: string) => boolean;
   highlight: (value: string) => void;
-  move: (delta: 1 | -1) => void;
+  move: (delta: 1 | -1, event?: globalThis.KeyboardEvent, key?: string) => void;
   focusIndex: (index: number) => void;
   handleSelect: (event: globalThis.KeyboardEvent) => void;
   handleEnter: (event: globalThis.KeyboardEvent) => void;
@@ -150,7 +159,7 @@ export function useNavigationCore({
     setFocusedValue(nextValue);
   }, [getElements, moveFocus, setFocusedValue]);
 
-  const move = useCallback((delta: 1 | -1) => {
+  const move = useCallback((delta: 1 | -1, event?: globalThis.KeyboardEvent, key?: string) => {
     const elements = getElements();
     if (elements.length === 0) return;
 
@@ -158,7 +167,8 @@ export function useNavigationCore({
     const rawNext = current + delta;
     const next = wrapIndex(rawNext, elements.length, wrap);
     if (next === null) {
-      onNavigationBoundaryReached?.(delta < 0 ? "previous" : "next");
+      const direction = delta < 0 ? "previous" : "next";
+      if (event && key) onNavigationBoundaryReached?.(direction, event, key);
       return;
     }
 
@@ -190,7 +200,6 @@ export function useNavigation(options: UseNavigationOptions): UseNavigationRetur
     orientation = "vertical",
     upKeys,
     downKeys,
-    moveFocus = false,
     onEnter,
     onSelect,
   } = options;
@@ -199,8 +208,8 @@ export function useNavigation(options: UseNavigationOptions): UseNavigationRetur
 
   const { highlighted, isHighlighted, highlight, move, focusIndex, handleSelect, handleEnter, getElements } =
     useNavigationCore(options);
-  const handlesEnter = !moveFocus || Boolean(onEnter || onSelect);
-  const handlesSpace = !moveFocus || Boolean(onSelect);
+  const handlesEnter = Boolean(onEnter || onSelect);
+  const handlesSpace = Boolean(onSelect);
 
   const onKeyDown = useCallback((event: KeyboardEvent) => {
     if (!enabled) return;
@@ -214,12 +223,29 @@ export function useNavigation(options: UseNavigationOptions): UseNavigationRetur
       || (key === " " && handlesSpace);
     if (!isMoveKey && !isSpecialKey) return;
 
+    // Editable target guard: when an editable element bubbles a key into a wrapper
+    // that ALSO owns the navigation container, let the native control handle the key.
+    // We only skip when:
+    //   1) the event target is editable,
+    //   2) the target is NOT itself a navigation item,
+    //   3) currentTarget is an ancestor of the items (natural bubble case),
+    //      so the user did not explicitly forward the event from the editable.
+    if (isEditableElement(event.target)) {
+      const elements = getElements();
+      const target = event.target as HTMLElement;
+      const isOwnItem = elements.some((el) => el === target || el.contains(target));
+      const currentTarget = event.currentTarget;
+      const ownsItems =
+        currentTarget != null && elements.length > 0 && elements.every((el) => currentTarget.contains(el));
+      if (!isOwnItem && ownsItems) return;
+    }
+
     if (preventDefault) event.preventDefault();
 
     dispatchNavigationKey(key, {
       resolvedUpKeys,
       resolvedDownKeys,
-      move,
+      move: (delta) => move(delta, event.nativeEvent, key),
       focusIndex,
       handleSelect: handlesSpace ? (e) => handleSelect(e) : undefined,
       handleEnter: handlesEnter ? (e) => handleEnter(e) : undefined,

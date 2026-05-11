@@ -205,12 +205,9 @@ export function copyGeneratedDir(
 }
 
 export function getRelativePath(
-  file: { path: string; targetPath?: string },
+  file: { path: string },
   prefixes: string[],
 ): string {
-  if (file.targetPath) {
-    return file.targetPath;
-  }
   for (const prefix of prefixes) {
     if (file.path.startsWith(prefix)) {
       return file.path.slice(prefix.length);

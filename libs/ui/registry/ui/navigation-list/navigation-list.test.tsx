@@ -55,7 +55,7 @@ describe("NavigationList", () => {
       "data-state": "ready",
       "aria-describedby": "nav-help",
       style: { maxWidth: "12px" },
-      defaultHighlightedId: "one",
+      defaultHighlighted: "one",
       onClick,
       onKeyDown,
     })
@@ -192,7 +192,7 @@ describe("NavigationList", () => {
   })
 
   it("does not move keyboard highlight on mouse hover", async () => {
-    renderList({ defaultHighlightedId: "one" })
+    renderList({ defaultHighlighted: "one" })
     const listbox = screen.getByRole("listbox")
     const oneOption = screen.getByRole("option", { name: "One" })
     const twoOption = screen.getByRole("option", { name: "Two" })
@@ -203,7 +203,7 @@ describe("NavigationList", () => {
   })
 
   it("uses a single active visual when selected and highlighted items differ", () => {
-    renderList({ selectedId: "one", highlightedId: "two", focused: true })
+    renderList({ selectedId: "one", highlighted: "two", focused: true })
 
     const selectedOption = screen.getByRole("option", { name: "One" })
     const highlightedOption = screen.getByRole("option", { name: "Two" })
@@ -214,9 +214,28 @@ describe("NavigationList", () => {
   })
 
   it("uses selected item as active visual when no highlight is set", () => {
-    renderList({ selectedId: "one", highlightedId: null, focused: true })
+    renderList({ selectedId: "one", highlighted: null, focused: true })
 
     expect(screen.getByRole("option", { name: "One" })).toHaveAttribute("data-active", "true")
+  })
+
+  it("does not render disabled item as selected via controlled selectedId", () => {
+    renderList({ selectedId: "three", focused: true })
+
+    const disabledOption = screen.getByRole("option", { name: "Three" })
+    expect(disabledOption).toHaveAttribute("aria-disabled", "true")
+    expect(disabledOption).toHaveAttribute("aria-selected", "false")
+    expect(disabledOption).not.toHaveAttribute("data-active", "true")
+  })
+
+  it("does not announce disabled item as highlighted via controlled state", () => {
+    renderList({ highlighted: "three", focused: true })
+
+    const list = screen.getByRole("listbox")
+    const disabledOption = screen.getByRole("option", { name: "Three" })
+
+    expect(list.getAttribute("aria-activedescendant") ?? "").not.toBe(disabledOption.id)
+    expect(disabledOption).not.toHaveAttribute("data-active", "true")
   })
 
   it("fires onSelect in controlled mode without internal state change", async () => {
@@ -260,7 +279,7 @@ describe("NavigationList", () => {
   })
 
   it("moves highlight with ArrowDown and ArrowUp", async () => {
-    renderList({ defaultHighlightedId: "one" })
+    renderList({ defaultHighlighted: "one" })
     const listbox = screen.getByRole("listbox")
     listbox.focus()
     await userEvent.keyboard("{ArrowDown}")
@@ -278,7 +297,7 @@ describe("NavigationList", () => {
   it("activates highlighted item with Enter", async () => {
     const onSelect = vi.fn()
     const onEnter = vi.fn()
-    renderList({ defaultHighlightedId: "one", onSelect, onEnter })
+    renderList({ defaultHighlighted: "one", onSelect, onEnter })
     const listbox = screen.getByRole("listbox")
     listbox.focus()
     await userEvent.keyboard("{Enter}")
@@ -292,7 +311,7 @@ describe("NavigationList", () => {
     render(
       <NavigationList
         aria-label="Test nav"
-        defaultHighlightedId="one"
+        defaultHighlighted="one"
         wrap={false}
         onNavigationBoundaryReached={onBoundary}
       >
@@ -317,14 +336,14 @@ describe("NavigationList", () => {
     expect(listbox).toHaveAttribute("aria-activedescendant", threeOption.id)
 
     await user.keyboard("{ArrowDown}")
-    expect(onBoundary).toHaveBeenCalledWith("next")
+    expect(onBoundary).toHaveBeenCalledWith("next", expect.any(KeyboardEvent), "ArrowDown")
     expect(listbox).toHaveAttribute("aria-activedescendant", threeOption.id)
 
     await user.keyboard("{ArrowUp}")
     expect(listbox).toHaveAttribute("aria-activedescendant", oneOption.id)
 
     await user.keyboard("{ArrowUp}")
-    expect(onBoundary).toHaveBeenCalledWith("previous")
+    expect(onBoundary).toHaveBeenCalledWith("previous", expect.any(KeyboardEvent), "ArrowUp")
     expect(listbox).toHaveAttribute("aria-activedescendant", oneOption.id)
   })
 
@@ -375,7 +394,7 @@ describe("NavigationList", () => {
     const onSelect = vi.fn()
     const user = userEvent.setup()
     render(
-      <NavigationList aria-label="Test nav" defaultHighlightedId={id} onSelect={onSelect}>
+      <NavigationList aria-label="Test nav" defaultHighlighted={id} onSelect={onSelect}>
         <NavigationList.Item id={id}>
           <NavigationList.Title>Release</NavigationList.Title>
           <NavigationList.Subtitle>Draft</NavigationList.Subtitle>
@@ -404,7 +423,7 @@ describe("NavigationList", () => {
 
   it("treats an empty string item id as a valid active descendant value", () => {
     render(
-      <NavigationList aria-label="Test nav" defaultHighlightedId="">
+      <NavigationList aria-label="Test nav" defaultHighlighted="">
         <NavigationList.Item id="">
           <NavigationList.Title>Empty id</NavigationList.Title>
         </NavigationList.Item>

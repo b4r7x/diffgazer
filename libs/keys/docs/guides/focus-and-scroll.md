@@ -92,24 +92,25 @@ embed,
 audio[controls],
 video[controls],
 [contenteditable]:not([contenteditable="false"]),
-[tabindex]:not([tabindex="-1"]):not([disabled])
+details > summary:first-of-type,
+[tabindex]:not([disabled])
 ```
 
-Elements with `tabindex="-1"` are excluded. Disabled controls are excluded. Links and areas without `href` are excluded.
+Programmatic focus targets with negative `tabIndex` are focusable and can be used for `initialFocus`. Disabled controls are excluded. Links and areas without `href` are excluded.
 
 ### Tab cycling
 
 The trap only intercepts Tab at the **boundaries**. Regular Tab presses between focusable elements use browser-default behavior.
 
-- `Tab` on the **last** focusable element wraps to the first
-- `Shift+Tab` on the **first** focusable element wraps to the last
+- `Tab` on the **last** tabbable element wraps to the first
+- `Shift+Tab` on the **first** tabbable element wraps to the last
 - Everything in between is untouched
 
 This means you get native tab ordering for free. The trap only steps in to prevent focus from leaving the container.
 
 ### Dynamic content
 
-Focusable elements are re-queried on every Tab press. If you conditionally render a button or input inside the trap, it's picked up immediately -- no need to notify the trap or re-initialize anything.
+Tabbable elements are re-queried on every Tab press. If you conditionally render a button or input inside the trap, it's picked up immediately -- no need to notify the trap or re-initialize anything.
 
 ```tsx
 <div ref={containerRef}>

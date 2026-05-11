@@ -133,7 +133,6 @@ export function useHistoryPage() {
   const handleTimelineBoundary = (direction: "up" | "down") => {
     if (direction === "up") {
       setFocusZone("search");
-      search.searchInputRef.current?.focus();
       return;
     }
     setFocusZone("runs");
@@ -160,7 +159,6 @@ export function useHistoryPage() {
   const handleRunsBoundary = (direction: "up" | "down") => {
     if (direction === "up") {
       setFocusZone("search");
-      search.searchInputRef.current?.focus();
     }
   };
 

@@ -11,7 +11,7 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
-import { isInputElement, matchesHotkey } from "../utils/keyboard-utils.js";
+import { isEditableElement, matchesHotkey } from "../utils/keyboard-utils.js";
 
 type Handler = (event: KeyboardEvent) => void;
 
@@ -39,11 +39,11 @@ interface ScopeStackEntry {
 const IMPERATIVE_SCOPE_ORDER_PREFIX = "\uffff";
 const REACT_ID_RADIX = 32;
 
-function getScopeOrderSegments(order: string) {
+function getScopeOrderSegments(order: string): number[] {
   return (order.toLowerCase().match(/[0-9a-v]+/g) ?? []).map((segment) => parseInt(segment, REACT_ID_RADIX));
 }
 
-function compareScopeEntries(a: ScopeStackEntry, b: ScopeStackEntry) {
+function compareScopeEntries(a: ScopeStackEntry, b: ScopeStackEntry): number {
   const aImperative = a.order.startsWith(IMPERATIVE_SCOPE_ORDER_PREFIX);
   const bImperative = b.order.startsWith(IMPERATIVE_SCOPE_ORDER_PREFIX);
   if (aImperative !== bImperative) return aImperative ? 1 : -1;
@@ -63,12 +63,13 @@ function compareScopeEntries(a: ScopeStackEntry, b: ScopeStackEntry) {
 export interface KeyboardContextValue {
   activeScope: string | null;
   getActiveScope: () => string | null;
-  pushScope: (scope: string, order?: string) => () => void;
+  pushScope: (scope: string) => () => void;
   register: (scope: string, hotkey: string, handler: Handler, options?: HandlerOptions) => () => void;
 }
 
 export interface KeyboardRegistryContextValue {
   getActiveScope: () => string | null;
+  getScopeForOrder: (order: string) => string | null;
   pushScope: (scope: string, order?: string) => () => void;
   register: (scope: string, hotkey: string, handler: Handler, options?: HandlerOptions) => () => void;
 }
@@ -101,6 +102,20 @@ export function KeyboardProvider({ children }: { children: ReactNode }) {
 
   const getActiveScope = useCallback(() => scopeStackRef.current[scopeStackRef.current.length - 1]?.name ?? null, []);
 
+  const getScopeForOrder = useCallback((order: string) => {
+    const stack = scopeStackRef.current;
+    const activeEntry = stack[stack.length - 1];
+    if (activeEntry?.order.startsWith(IMPERATIVE_SCOPE_ORDER_PREFIX)) return activeEntry.name;
+
+    const handlerEntry: ScopeStackEntry = {
+      name: "",
+      id: Number.MAX_SAFE_INTEGER,
+      order,
+    };
+    const precedingScopes = stack.filter((entry) => compareScopeEntries(entry, handlerEntry) <= 0);
+    return precedingScopes[precedingScopes.length - 1]?.name ?? stack[0]?.name ?? null;
+  }, []);
+
   const pushScope = useCallback((scope: string, order?: string) => {
     const id = nextScopeId.current++;
     const scopeOrder = order ?? `${IMPERATIVE_SCOPE_ORDER_PREFIX}${String(id).padStart(8, "0")}`;
@@ -125,14 +140,14 @@ export function KeyboardProvider({ children }: { children: ReactNode }) {
     const scopeHandlers = handlers.current.get(activeRegistrationScope);
     if (!scopeHandlers) return;
 
-    const isInput = isInputElement(event.target);
+    const isEditable = isEditableElement(event.target);
 
     for (const [hotkey, entries] of scopeHandlers) {
       if (!matchesHotkey(event, hotkey)) continue;
 
       for (let idx = entries.length - 1; idx >= 0; idx -= 1) {
         const entry = entries[idx]!;
-        if (isInput && !entry.options?.allowInInput) continue;
+        if (isEditable && !entry.options?.allowInInput) continue;
         if (!isEventWithinContainer(event.target, entry.options)) continue;
 
         if (entry.options?.preventDefault) {
@@ -193,8 +208,8 @@ export function KeyboardProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const registryValue = useMemo<KeyboardRegistryContextValue>(
-    () => ({ getActiveScope, pushScope, register }),
-    [getActiveScope, pushScope, register],
+    () => ({ getActiveScope, getScopeForOrder, pushScope, register }),
+    [getActiveScope, getScopeForOrder, pushScope, register],
   );
 
   const scopeValue = useMemo<KeyboardScopeContextValue>(

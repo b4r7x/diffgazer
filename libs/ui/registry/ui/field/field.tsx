@@ -21,12 +21,15 @@ import { cn } from "@/lib/utils";
 
 interface FieldContextValue {
   controlId: string;
+  defaultLabelId: string;
+  labelId: string | undefined;
   defaultDescriptionId: string;
   defaultErrorId: string;
   describedBy: string | undefined;
   invalid: boolean;
   required: boolean | undefined;
   disabled: boolean | undefined;
+  setLabelId: (value: string | undefined) => void;
   setDescriptionId: (value: string | undefined) => void;
   setErrorId: (value: string | undefined) => void;
 }
@@ -64,8 +67,10 @@ function FieldRoot({
 }: FieldRootProps) {
   const generatedId = useId();
   const resolvedControlId = controlId ?? `${generatedId}-control`;
+  const defaultLabelId = `${resolvedControlId}-label`;
   const defaultDescriptionId = `${resolvedControlId}-description`;
   const defaultErrorId = `${resolvedControlId}-error`;
+  const [labelId, setLabelId] = useState<string | undefined>(undefined);
   const [descriptionId, setDescriptionId] = useState<string | undefined>(undefined);
   const [errorId, setErrorId] = useState<string | undefined>(undefined);
   const describedBy = mergeIds(
@@ -76,16 +81,19 @@ function FieldRoot({
   const contextValue = useMemo(
     () => ({
       controlId: resolvedControlId,
+      defaultLabelId,
+      labelId,
       defaultDescriptionId,
       defaultErrorId,
       describedBy,
       invalid,
       required,
       disabled,
+      setLabelId,
       setDescriptionId,
       setErrorId,
     }),
-    [resolvedControlId, defaultDescriptionId, defaultErrorId, describedBy, invalid, required, disabled],
+    [resolvedControlId, defaultLabelId, labelId, defaultDescriptionId, defaultErrorId, describedBy, invalid, required, disabled],
   );
 
   return (
@@ -108,13 +116,20 @@ export interface FieldLabelProps extends LabelHTMLAttributes<HTMLLabelElement> {
   ref?: Ref<HTMLLabelElement>;
 }
 
-function FieldLabel({ className, children, ref, ...props }: FieldLabelProps) {
-  const { controlId, required } = useFieldContext("Field.Label");
+function FieldLabel({ className, children, ref, id, ...props }: FieldLabelProps) {
+  const { controlId, required, defaultLabelId, setLabelId } = useFieldContext("Field.Label");
+  const resolvedId = id ?? defaultLabelId;
+
+  useEffect(() => {
+    setLabelId(resolvedId);
+    return () => setLabelId(undefined);
+  }, [resolvedId, setLabelId]);
 
   return (
     <label
       {...props}
       ref={ref}
+      id={resolvedId}
       data-slot="field-label"
       htmlFor={props.htmlFor ?? controlId}
       className={cn("text-xs uppercase font-bold text-muted-foreground select-none", className)}
@@ -131,6 +146,7 @@ interface FieldControlChildProps {
   required?: boolean;
   "aria-invalid"?: AriaAttributes["aria-invalid"];
   "aria-describedby"?: string;
+  "aria-labelledby"?: string;
   ref?: Ref<HTMLElement>;
 }
 
@@ -140,7 +156,7 @@ export interface FieldControlProps {
 }
 
 function FieldControl({ children, ref }: FieldControlProps) {
-  const { controlId, describedBy, invalid, required, disabled } = useFieldContext("Field.Control");
+  const { controlId, describedBy, labelId, invalid, required, disabled } = useFieldContext("Field.Control");
   const child = Children.only(children);
   if (!isValidElement<FieldControlChildProps>(child)) {
     throw new Error("Field.Control expects a single React element child");
@@ -152,6 +168,7 @@ function FieldControl({ children, ref }: FieldControlProps) {
     required: child.props.required ?? required,
     "aria-invalid": child.props["aria-invalid"] ?? (invalid ? true : undefined),
     "aria-describedby": mergeIds(child.props["aria-describedby"], describedBy),
+    "aria-labelledby": child.props["aria-labelledby"] ?? labelId,
     ref: composeRefs(child.props.ref, ref),
   });
 }

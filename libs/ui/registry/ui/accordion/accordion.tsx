@@ -7,10 +7,13 @@ import {
   useMemo,
   useRef,
 } from "react";
+import { getNavigationItems } from "@diffgazer/keys";
 import { composeRefs } from "@/lib/compose-refs";
 import { cn } from "@/lib/utils";
 import { AccordionContext } from "./accordion-context";
 import { useAccordionState } from "./use-accordion-state";
+
+const ACCORDION_ROOT_ATTRIBUTE = "data-diffgazer-accordion-root";
 
 export interface AccordionSingleProps {
   type?: "single";
@@ -38,20 +41,25 @@ export interface AccordionMultipleProps {
 export type AccordionProps = AccordionSingleProps | AccordionMultipleProps;
 
 function getNavigableTriggers(container: HTMLElement | null): HTMLElement[] {
-  if (!container) return [];
-
-  return Array.from(
-    container.querySelectorAll<HTMLElement>('[data-diffgazer-navigation-item="button"][data-value]'),
-  ).filter((trigger) => {
+  // Use skipDisabled: false because aria-disabled non-collapsible triggers
+  // remain in the roving tab order per APG. Filter explicit HTML/data-disabled
+  // ourselves.
+  return getNavigationItems(container, {
+    type: "button",
+    skipDisabled: false,
+    ownerSelector: `[${ACCORDION_ROOT_ATTRIBUTE}]`,
+  }).filter((trigger) => {
+    const View = trigger.ownerDocument.defaultView;
     if (trigger.dataset.disabled !== undefined) return false;
-    if (trigger instanceof HTMLButtonElement && trigger.disabled) return false;
+    if (View && trigger instanceof View.HTMLButtonElement && trigger.disabled) return false;
     return true;
   });
 }
 
 function containsActiveElement(el: HTMLElement): boolean {
   const activeElement = el.ownerDocument.activeElement;
-  return activeElement instanceof HTMLElement && el.contains(activeElement);
+  const View = el.ownerDocument.defaultView;
+  return Boolean(View && activeElement instanceof View.HTMLElement && el.contains(activeElement));
 }
 
 function AccordionRoot(props: AccordionProps) {
@@ -110,6 +118,7 @@ function AccordionRoot(props: AccordionProps) {
         role="group"
         className={cn("divide-y divide-border", props.className)}
         onKeyDown={handleKeyDown}
+        {...{ [ACCORDION_ROOT_ATTRIBUTE]: "" }}
       >
         {props.children}
       </div>

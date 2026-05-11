@@ -13,7 +13,7 @@ The main hook. Handles arrow key navigation, selection, and focus tracking for a
 Three things need to be true about your HTML:
 
 1. A **container element** with a ref
-2. Child elements with a matching **`role`** attribute (`"option"`, `"menuitem"`, `"menuitemradio"`, `"radio"`, `"checkbox"`, `"button"`, or `"tab"`)
+2. Child elements with a matching **`role`** attribute (`"option"`, `"menuitem"`, `"menuitemcheckbox"`, `"menuitemradio"`, `"radio"`, `"checkbox"`, `"button"`, or `"tab"`)
 3. Each child has a **`data-value`** attribute -- this is how the hook tracks which item is focused
 
 Disabled items are skipped when they expose `aria-disabled="true"`, `data-disabled`, or native `disabled`. This is the default `skipDisabled` behavior.
@@ -159,15 +159,15 @@ Home always jumps to the first item, End to the last. These aren't configurable.
 When the user presses down on the last item (or up on the first):
 
 - **`wrap: true`** (default): focus wraps to the other end of the list
-- **`wrap: false`**: nothing happens, but `onNavigationBoundaryReached` fires with `"previous"` or `"next"`
+- **`wrap: false`**: nothing happens, but `onNavigationBoundaryReached` fires with `"previous"` or `"next"`, the native keyboard event, and the key that hit the edge
 
 ```tsx
 useNavigation({
   containerRef,
   role: "option",
   wrap: false,
-  onNavigationBoundaryReached: (direction) => {
-    if (direction === "next") focusNextSection();
+  onNavigationBoundaryReached: (direction, event, key) => {
+    if (direction === "next" && key === "ArrowDown") focusNextSection();
   },
 });
 ```
@@ -205,7 +205,11 @@ interface UseNavigationOptions {
   wrap?: boolean;                   // default: true
   enabled?: boolean;                // default: true
   preventDefault?: boolean;         // default: true
-  onNavigationBoundaryReached?: (direction: "previous" | "next") => void;
+  onNavigationBoundaryReached?: (
+    direction: "previous" | "next",
+    event: KeyboardEvent,
+    key: string
+  ) => void;
   orientation?: "vertical" | "horizontal";  // default: "vertical"
   skipDisabled?: boolean;           // default: true
   moveFocus?: boolean;              // default: false
@@ -217,6 +221,7 @@ interface UseNavigationOptions {
 
 // useScopedNavigation extends the same options:
 interface UseScopedNavigationOptions extends UseNavigationOptions {
+  scope?: string | null;        // null skips registration for disabled conditional scopes
   focusWithinOnly?: boolean;     // default: false
 }
 ```

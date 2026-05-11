@@ -47,12 +47,10 @@ const PROVIDERS: ProviderWithStatus[] = [
 function Subject({
   filteredProviders = [{ id: "gemini" }, { id: "zai" }],
   onSelectedId = vi.fn(),
-  onFilter = vi.fn(),
   listReady = true,
 }: {
   filteredProviders?: Array<{ id: string }>;
   onSelectedId?: (id: string) => void;
-  onFilter?: (filter: ProviderFilter) => void;
   listReady?: boolean;
 }) {
   const [selectedId, setSelectedId] = useState(DEFAULT_PROVIDER.id);
@@ -65,7 +63,6 @@ function Subject({
     filteredProviders,
     listReady,
     filter: "all",
-    setFilter: onFilter,
     setSelectedId: (id) => {
       onSelectedId(id);
       setSelectedId(id as AIProvider);
@@ -83,7 +80,7 @@ function Subject({
     <>
       <input
         ref={inputRef}
-        data-testid="provider-search"
+        aria-label="Search providers"
         value={searchQuery}
         onChange={(event) => setSearchQuery(event.target.value)}
         onFocus={keyboard.handleSearchFocus}
@@ -92,23 +89,21 @@ function Subject({
         <button
           key={filter}
           type="button"
-          data-testid={`filter-${filter}`}
           onKeyDown={keyboard.handleFilterKeyDown}
           {...keyboard.getFilterButtonProps(index)}
         >
           {filter}
         </button>
       ))}
-      <div ref={listContainerRef} tabIndex={0} data-testid="provider-list">
+      <div ref={listContainerRef} tabIndex={0} role="listbox" aria-label="Providers">
         {selectedId}
       </div>
-      <button type="button" data-testid="connect" {...keyboard.getActionButtonProps(0)}>
+      <button type="button" {...keyboard.getActionButtonProps(0)}>
         Connect
       </button>
-      <button type="button" data-testid="api-key" {...keyboard.getActionButtonProps(1)}>
+      <button type="button" {...keyboard.getActionButtonProps(1)}>
         API Key
       </button>
-      <span data-testid="zone">{keyboard.focusZone}</span>
     </>
   );
 }
@@ -141,7 +136,6 @@ function ProviderListSubject({
     filteredProviders: PROVIDERS,
     listReady: true,
     filter,
-    setFilter: applyFilter,
     setSelectedId: (id) => setSelectedId(id as AIProvider),
     dialogOpen: false,
     inputRef,
@@ -157,7 +151,7 @@ function ProviderListSubject({
       ref={listContainerRef}
       providers={PROVIDERS}
       selectedId={selectedId}
-      highlightedId={selectedId}
+      highlighted={selectedId}
       onSelect={(id) => setSelectedId(id as AIProvider)}
       onHighlightChange={(id) => setSelectedId(id as AIProvider)}
       filter={filter}
@@ -167,6 +161,7 @@ function ProviderListSubject({
       isFocused={keyboard.focusZone === "list"}
       inputRef={inputRef}
       onSearchFocus={keyboard.handleSearchFocus}
+      onSearchEscape={keyboard.handleSearchEscape}
       focusedFilterIndex={keyboard.filterIndex}
       onFilterHighlightChange={keyboard.setFilterIndex}
       onFilterFocus={keyboard.handleFilterFocus}
@@ -211,7 +206,7 @@ describe("useProvidersKeyboard", () => {
   it("focuses the provider list after it becomes ready", async () => {
     const { rerender } = renderSubject({ listReady: false });
 
-    expect(screen.getByTestId("provider-list")).not.toHaveFocus();
+    expect(screen.getByRole("listbox", { name: "Providers" })).not.toHaveFocus();
 
     rerender(
       <KeyboardProvider>
@@ -219,7 +214,7 @@ describe("useProvidersKeyboard", () => {
       </KeyboardProvider>,
     );
 
-    await waitFor(() => expect(screen.getByTestId("provider-list")).toHaveFocus());
+    await waitFor(() => expect(screen.getByRole("listbox", { name: "Providers" })).toHaveFocus());
   });
 
   it("moves real focus from the provider list to action buttons and back", async () => {
@@ -227,15 +222,14 @@ describe("useProvidersKeyboard", () => {
 
     renderSubject();
 
-    await waitFor(() => expect(screen.getByTestId("provider-list")).toHaveFocus());
+    const providerList = screen.getByRole("listbox", { name: "Providers" });
+    await waitFor(() => expect(providerList).toHaveFocus());
 
     await user.keyboard("{ArrowRight}");
-    expect(screen.getByTestId("connect")).toHaveFocus();
-    expect(screen.getByTestId("zone")).toHaveTextContent("buttons");
+    expect(screen.getByRole("button", { name: "Connect" })).toHaveFocus();
 
     await user.keyboard("{ArrowLeft}");
-    expect(screen.getByTestId("provider-list")).toHaveFocus();
-    expect(screen.getByTestId("zone")).toHaveTextContent("list");
+    expect(providerList).toHaveFocus();
   });
 
   it("selects the first filtered provider when moving from filters down to the list", async () => {
@@ -248,16 +242,17 @@ describe("useProvidersKeyboard", () => {
     });
 
     await user.keyboard("/");
-    expect(screen.getByTestId("provider-search")).toHaveFocus();
-    expect(screen.getByTestId("provider-search")).toHaveValue("");
+    const search = screen.getByRole("textbox", { name: "Search providers" });
+    expect(search).toHaveFocus();
+    expect(search).toHaveValue("");
 
     await user.keyboard("{ArrowDown}");
-    expect(screen.getByTestId("zone")).toHaveTextContent("filters");
-    expect(screen.getByTestId("filter-all")).toHaveFocus();
+    expect(screen.getByRole("button", { name: "all" })).toHaveFocus();
 
     await user.keyboard("{ArrowDown}");
     expect(onSelectedId).toHaveBeenCalledWith("openrouter");
-    expect(screen.getByTestId("provider-list")).toHaveTextContent("openrouter");
+    expect(screen.getByRole("listbox", { name: "Providers" })).toHaveTextContent("openrouter");
+    expect(screen.getByRole("listbox", { name: "Providers" })).toHaveFocus();
   });
 
   it("keeps zone state in sync when search and filters receive real focus", async () => {
@@ -265,31 +260,14 @@ describe("useProvidersKeyboard", () => {
 
     renderSubject();
 
-    await user.click(screen.getByTestId("provider-search"));
-    expect(screen.getByTestId("zone")).toHaveTextContent("input");
+    await user.click(screen.getByRole("textbox", { name: "Search providers" }));
+    expect(screen.getByRole("textbox", { name: "Search providers" })).toHaveFocus();
 
     await user.keyboard("{ArrowDown}");
-    expect(screen.getByTestId("zone")).toHaveTextContent("filters");
+    expect(screen.getByRole("button", { name: "all" })).toHaveFocus();
 
-    await user.click(screen.getByTestId("filter-all"));
-    expect(screen.getByTestId("zone")).toHaveTextContent("filters");
-  });
-
-  it("changes filters from real keyboard focus", async () => {
-    const user = userEvent.setup();
-    const onFilter = vi.fn();
-
-    renderSubject({ onFilter });
-
-    await user.keyboard("/");
-    await user.keyboard("{ArrowDown}");
-
-    expect(screen.getByTestId("filter-all")).toHaveFocus();
-
-    await user.keyboard("{ArrowRight}{Enter}");
-
-    expect(screen.getByTestId("filter-configured")).toHaveFocus();
-    expect(onFilter).toHaveBeenCalledWith("configured");
+    await user.click(screen.getByRole("button", { name: "all" }));
+    expect(screen.getByRole("button", { name: "all" })).toHaveFocus();
   });
 
   it("changes provider filters through ProviderList roving filter controls", async () => {
@@ -301,7 +279,7 @@ describe("useProvidersKeyboard", () => {
     await waitFor(() => expect(screen.getByRole("listbox")).toHaveFocus());
 
     await user.keyboard("/");
-    expect(screen.getByRole("textbox", { name: /search providers/i })).toHaveFocus();
+    expect(screen.getByRole("searchbox", { name: /search providers/i })).toHaveFocus();
 
     await user.keyboard("{ArrowDown}");
     expect(screen.getByRole("radio", { name: "All" })).toHaveFocus();
@@ -312,5 +290,20 @@ describe("useProvidersKeyboard", () => {
     expect(configuredFilter).toHaveFocus();
     expect(configuredFilter).toHaveAttribute("aria-checked", "true");
     expect(onFilter).toHaveBeenCalledWith("configured");
+  });
+
+  it("moves from provider search to filters on Escape", async () => {
+    const user = userEvent.setup();
+
+    renderProviderListSubject();
+
+    await waitFor(() => expect(screen.getByRole("listbox")).toHaveFocus());
+    await user.keyboard("/");
+    const search = screen.getByRole("searchbox", { name: /search providers/i });
+    expect(search).toHaveFocus();
+
+    await user.keyboard("{Escape}");
+
+    expect(screen.getByRole("radio", { name: "All" })).toHaveFocus();
   });
 });

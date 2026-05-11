@@ -96,7 +96,12 @@ function readAndBundleFiles(
 
     const content = readFileSync(filePath, "utf-8");
     const bundlePath = transformPath ? transformPath(file.path) : file.path;
-    files.push({ path: bundlePath, content });
+    files.push({
+      path: bundlePath,
+      content,
+      type: file.type,
+      target: file.target,
+    });
     detectNpmImports(content, detectOpts).forEach((dep) => detectedDeps.add(dep));
   }
 

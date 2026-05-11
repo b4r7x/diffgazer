@@ -18,7 +18,7 @@ function Listbox(
     : undefined
   const {
     selectedId,
-    highlightedId,
+    highlighted,
     handleItemActivate,
     getContainerProps,
   } = useListbox({
@@ -156,9 +156,9 @@ describe("useListbox", () => {
   it("does not activate a removed highlighted item", async () => {
     const onSelect = vi.fn()
     const user = userEvent.setup()
-    const { rerender } = render(<Listbox items={defaultItems} highlightedId="b" onSelect={onSelect} />)
+    const { rerender } = render(<Listbox items={defaultItems} highlighted="b" onSelect={onSelect} />)
 
-    rerender(<Listbox items={defaultItems.filter((item) => item.id !== "b")} highlightedId="b" onSelect={onSelect} />)
+    rerender(<Listbox items={defaultItems.filter((item) => item.id !== "b")} highlighted="b" onSelect={onSelect} />)
     screen.getByRole("listbox").focus()
     await user.keyboard("{Enter}")
 
@@ -192,7 +192,7 @@ describe("useListbox", () => {
   it("wraps from last item to first with wrap=true (default)", async () => {
     const onHighlight = vi.fn()
     const user = userEvent.setup()
-    render(<Listbox items={defaultItems} defaultHighlightedId="c" onHighlightChange={onHighlight} />)
+    render(<Listbox items={defaultItems} defaultHighlighted="c" onHighlightChange={onHighlight} />)
 
     const listbox = screen.getByRole("listbox")
     listbox.focus()
@@ -209,7 +209,7 @@ describe("useListbox", () => {
     render(
       <Listbox
         items={defaultItems}
-        defaultHighlightedId="a"
+        defaultHighlighted="a"
         wrap={false}
         onNavigationBoundaryReached={onBoundary}
       />,
@@ -220,8 +220,8 @@ describe("useListbox", () => {
 
     await user.keyboard("{ArrowUp}{End}{ArrowDown}")
 
-    expect(onBoundary).toHaveBeenCalledWith("previous")
-    expect(onBoundary).toHaveBeenCalledWith("next")
+    expect(onBoundary).toHaveBeenCalledWith("previous", expect.any(KeyboardEvent), expect.any(String))
+    expect(onBoundary).toHaveBeenCalledWith("next", expect.any(KeyboardEvent), expect.any(String))
   })
 
   it("skips disabled items during keyboard navigation", async () => {
@@ -233,7 +233,7 @@ describe("useListbox", () => {
           { id: "b", label: "Beta", disabled: true },
           { id: "c", label: "Charlie" },
         ]}
-        defaultHighlightedId="a"
+        defaultHighlighted="a"
       />,
     )
 
@@ -260,6 +260,33 @@ describe("useListbox", () => {
 
     const lastCall = onHighlight.mock.calls[onHighlight.mock.calls.length - 1]
     expect(lastCall?.[0]).toBe("a")
+  })
+
+  it("includes disabled menu items in typeahead focus without activating them", async () => {
+    const onHighlight = vi.fn()
+    const onSelect = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <Listbox
+        role="menu"
+        itemRole="menuitem"
+        items={[
+          { id: "disabled-beta", label: "Beta", disabled: true },
+          { id: "bravo", label: "Bravo" },
+        ]}
+        typeahead
+        onHighlightChange={onHighlight}
+        onSelect={onSelect}
+      />,
+    )
+
+    const menu = screen.getByRole("menu")
+    menu.focus()
+    await user.keyboard("b{Enter}")
+
+    expect(onHighlight).toHaveBeenCalledWith("disabled-beta")
+    expect(menu).toHaveAttribute("aria-activedescendant", getEncodedListboxItemId("lb", "disabled-beta"))
+    expect(onSelect).not.toHaveBeenCalled()
   })
 
   it("keeps typeahead scoped away from nested listboxes", async () => {
@@ -295,6 +322,134 @@ describe("useListbox", () => {
     expect(onHighlight).toHaveBeenCalledWith("charlie")
   })
 
+  it("does not update outer typeahead when key bubbles from a focused inner composite", async () => {
+    const onHighlight = vi.fn()
+    const user = userEvent.setup()
+
+    function NestedFocusableListbox() {
+      const { getContainerProps } = useListbox({
+        idPrefix: "outer",
+        onHighlightChange: onHighlight,
+        typeahead: true,
+      })
+
+      return (
+        <div {...getContainerProps()} aria-label="Outer">
+          <div id="outer-alpha" role="option" data-value="alpha">Alpha</div>
+          <div role="listbox" aria-label="Nested" tabIndex={0}>
+            <div id="outer-beta" role="option" data-value="beta">Beta</div>
+          </div>
+          <div id="outer-charlie" role="option" data-value="charlie">Charlie</div>
+        </div>
+      )
+    }
+
+    render(<NestedFocusableListbox />)
+    screen.getByRole("listbox", { name: "Nested" }).focus()
+    await user.keyboard("c")
+
+    expect(onHighlight).not.toHaveBeenCalled()
+  })
+
+  it("starts typeahead search after the current highlighted item", async () => {
+    const items = [
+      { id: "a1", label: "Alpha" },
+      { id: "a2", label: "Apricot" },
+      { id: "a3", label: "Avocado" },
+    ]
+    const onHighlight = vi.fn()
+    const user = userEvent.setup()
+    render(<Listbox items={items} defaultHighlighted="a1" typeahead onHighlightChange={onHighlight} />)
+
+    const listbox = screen.getByRole("listbox")
+    listbox.focus()
+    await user.keyboard("a")
+
+    const lastCall = onHighlight.mock.calls[onHighlight.mock.calls.length - 1]
+    expect(lastCall?.[0]).toBe("a2")
+  })
+
+  it("cycles through items sharing a prefix on repeated character press", async () => {
+    const items = [
+      { id: "s1", label: "Strawberry" },
+      { id: "s2", label: "Sage" },
+      { id: "s3", label: "Salmon" },
+      { id: "o", label: "Orange" },
+    ]
+    const onHighlight = vi.fn()
+    const user = userEvent.setup()
+    render(<Listbox items={items} typeahead onHighlightChange={onHighlight} />)
+
+    const listbox = screen.getByRole("listbox")
+    listbox.focus()
+    await user.keyboard("s")
+    expect(onHighlight.mock.calls.at(-1)?.[0]).toBe("s1")
+
+    await user.keyboard("s")
+    expect(onHighlight.mock.calls.at(-1)?.[0]).toBe("s2")
+
+    await user.keyboard("s")
+    expect(onHighlight.mock.calls.at(-1)?.[0]).toBe("s3")
+
+    await user.keyboard("s")
+    expect(onHighlight.mock.calls.at(-1)?.[0]).toBe("s1")
+  })
+
+  it("uses aria-label text for typeahead matching", async () => {
+    const onHighlight = vi.fn()
+    const user = userEvent.setup()
+
+    function LabelledListbox() {
+      const { getContainerProps } = useListbox({
+        idPrefix: "lb",
+        typeahead: true,
+        onHighlightChange: onHighlight,
+      })
+
+      return (
+        <div {...getContainerProps()} aria-label="Test listbox">
+          <div id="lb-icon" role="option" data-value="icon" aria-label="Zebra">
+            Icon
+          </div>
+        </div>
+      )
+    }
+
+    render(<LabelledListbox />)
+    screen.getByRole("listbox").focus()
+    await user.keyboard("z")
+
+    expect(onHighlight).toHaveBeenCalledWith("icon")
+  })
+
+  it("uses aria-labelledby text for typeahead matching", async () => {
+    const onHighlight = vi.fn()
+    const user = userEvent.setup()
+
+    function LabelledByListbox() {
+      const { getContainerProps } = useListbox({
+        idPrefix: "lb",
+        typeahead: true,
+        onHighlightChange: onHighlight,
+      })
+
+      return (
+        <div {...getContainerProps()} aria-label="Test listbox">
+          <span id="omega-label">Omega</span>
+          <div id="lb-symbol" role="option" data-value="symbol" aria-labelledby="omega-label">
+            Symbol
+          </div>
+        </div>
+      )
+    }
+
+    render(<LabelledByListbox />)
+    screen.getByRole("listbox").focus()
+    await user.keyboard("o")
+
+    expect(onHighlight).toHaveBeenCalledWith("symbol")
+  })
+
   it("treats empty string as a valid selected and highlighted item id", async () => {
     const onSelect = vi.fn()
     const user = userEvent.setup()
@@ -304,7 +459,7 @@ describe("useListbox", () => {
           { id: "", label: "None" },
           { id: "a b/slash", label: "Special" },
         ]}
-        defaultHighlightedId=""
+        defaultHighlighted=""
         onSelect={onSelect}
       />,
     )

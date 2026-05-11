@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, relative, resolve } from "node:path";
 
 interface RegistryFile {
@@ -28,6 +28,20 @@ interface PackageJson {
   sideEffects?: boolean | string[];
   peerDependenciesMeta?: Record<string, { optional?: boolean }>;
 }
+
+/**
+ * Components that must publish a non-empty `props` table in generated docs data.
+ * Add a component here once its `component-docs/<name>.ts` authors a `props` field.
+ * The validator fails if the generated JSON is missing or empty for any listed item.
+ */
+const COMPONENTS_REQUIRING_PROPS = [
+  "button",
+  "command-palette",
+  "dialog",
+  "field",
+  "input",
+  "select",
+] as const;
 
 const ROOT = process.env.DIFFGAZER_UI_REGISTRY_ROOT
   ? resolve(process.env.DIFFGAZER_UI_REGISTRY_ROOT)
@@ -218,6 +232,83 @@ function resolveRegistryDependencyClosure(item: RegistryItem, itemsByName: Map<s
   return closure;
 }
 
+function validateExamplesAvoidHiddenPaths(items: RegistryItem[]): string[] {
+  const errors: string[] = [];
+  const hiddenFiles = new Set<string>();
+
+  for (const item of items) {
+    if (!item.meta?.hidden) continue;
+    for (const file of item.files ?? []) {
+      hiddenFiles.add(normalizeRegistryPath(file.path));
+    }
+  }
+
+  if (hiddenFiles.size === 0) return errors;
+
+  const examplesDir = resolve(ROOT, "registry/examples");
+  if (!existsSync(examplesDir)) return errors;
+
+  function walk(dir: string): string[] {
+    const entries: string[] = [];
+    for (const entry of readdirSync(dir)) {
+      const entryPath = resolve(dir, entry);
+      if (statSync(entryPath).isDirectory()) {
+        entries.push(...walk(entryPath));
+      } else if (entry.endsWith(".tsx") || entry.endsWith(".ts")) {
+        entries.push(entryPath);
+      }
+    }
+    return entries;
+  }
+
+  for (const exampleFile of walk(examplesDir)) {
+    const source = readFileSync(exampleFile, "utf-8");
+    const exampleRelPath = normalizeRegistryPath(relative(ROOT, exampleFile));
+
+    for (const specifier of extractLocalImports(source)) {
+      const importedPath = resolveImportToRegistryPath(exampleRelPath, specifier);
+      if (!importedPath) continue;
+
+      if (hiddenFiles.has(importedPath)) {
+        errors.push(`${exampleRelPath} imports hidden registry path "${specifier}" (resolves to ${importedPath})`);
+      }
+    }
+  }
+
+  return errors;
+}
+
+function validateDocumentedComponentProps(): string[] {
+  const errors: string[] = [];
+
+  for (const componentName of COMPONENTS_REQUIRING_PROPS) {
+    const dataPath = resolve(ROOT, "docs/generated/components", `${componentName}.json`);
+    if (!existsSync(dataPath)) {
+      // Generated artifact may not exist yet on first run; tolerate it.
+      continue;
+    }
+    let data: { props?: Record<string, Record<string, unknown>> };
+    try {
+      data = JSON.parse(readFileSync(dataPath, "utf-8")) as typeof data;
+    } catch (err) {
+      errors.push(`${componentName} generated docs JSON is not valid: ${(err as Error).message}`);
+      continue;
+    }
+
+    const propsTable = data.props ?? {};
+    const totalProps = Object.values(propsTable).reduce(
+      (sum, group) => sum + Object.keys(group).length,
+      0,
+    );
+
+    if (totalProps === 0) {
+      errors.push(`${componentName} is required to publish props but generated docs/generated/components/${componentName}.json has none. Add a "props" field to registry/component-docs/${componentName}.ts.`);
+    }
+  }
+
+  return errors;
+}
+
 function validateRegistryImportClosure(items: RegistryItem[]): string[] {
   const errors: string[] = [];
   const itemsByName = new Map(items.map((item) => [item.name, item]));
@@ -325,6 +416,8 @@ function validate(): string[] {
   }
 
   errors.push(...validateRegistryImportClosure(items));
+  errors.push(...validateExamplesAvoidHiddenPaths(items));
+  errors.push(...validateDocumentedComponentProps());
 
   if (!Object.hasOwn(exportsMap, "./lib/utils")) {
     errors.push("package.json is missing export ./lib/utils");

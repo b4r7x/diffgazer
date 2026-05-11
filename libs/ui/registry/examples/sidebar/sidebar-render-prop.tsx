@@ -9,6 +9,7 @@ import {
   SidebarItemBadge,
   SidebarFooter,
 } from "@/components/ui/sidebar"
+import type { Ref } from "react"
 
 export default function SidebarRenderProp() {
   return (
@@ -20,8 +21,8 @@ export default function SidebarRenderProp() {
         <SidebarSection>
           <SidebarSectionTitle>Pages</SidebarSectionTitle>
           <SidebarItem active>
-            {({ className, "aria-current": ariaCurrent }) => (
-              <a href="/dashboard" className={className} aria-current={ariaCurrent}>
+            {({ ref, ...itemProps }) => (
+              <a {...itemProps} ref={ref as Ref<HTMLAnchorElement>} href="/dashboard">
                 <SidebarItemLabel>Dashboard</SidebarItemLabel>
                 <SidebarItemBadge>
                   <span className="text-xs text-muted-foreground">3</span>
@@ -30,15 +31,15 @@ export default function SidebarRenderProp() {
             )}
           </SidebarItem>
           <SidebarItem>
-            {({ className }) => (
-              <a href="/settings" className={className}>
+            {({ ref, ...itemProps }) => (
+              <a {...itemProps} ref={ref as Ref<HTMLAnchorElement>} href="/settings">
                 <SidebarItemLabel>Settings</SidebarItemLabel>
               </a>
             )}
           </SidebarItem>
           <SidebarItem disabled>
-            {({ className, disabled }) => (
-              <a href="/admin" className={className} aria-disabled={disabled}>
+            {({ ref, disabled, ...itemProps }) => (
+              <a {...itemProps} ref={ref as Ref<HTMLAnchorElement>} aria-disabled={disabled}>
                 <SidebarItemLabel>Admin</SidebarItemLabel>
               </a>
             )}

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react"
+import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { axe } from "../../../testing/utils.js"
 import { describe, it, expect, vi } from "vitest"
@@ -130,6 +130,35 @@ describe("Tabs", () => {
     expect(screen.getByRole("tab", { name: "Two" })).toHaveFocus()
     expect(screen.getByRole("tab", { name: "One" })).toHaveAttribute("aria-selected", "true")
     expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("aria-selected", "false")
+    expect(screen.getByRole("tab", { name: "One" })).toHaveAttribute("tabindex", "-1")
+    expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("tabindex", "0")
+  })
+
+  it("in manual mode, restores the selected tab as tabbable when focus leaves the tablist", async () => {
+    render(
+      <>
+        <Tabs defaultValue="one" activationMode="manual">
+          <Tabs.List>
+            <Tabs.Trigger value="one">One</Tabs.Trigger>
+            <Tabs.Trigger value="two">Two</Tabs.Trigger>
+          </Tabs.List>
+          <Tabs.Content value="one">Content one</Tabs.Content>
+          <Tabs.Content value="two">Content two</Tabs.Content>
+        </Tabs>
+        <button type="button">After</button>
+      </>,
+    )
+
+    const one = screen.getByRole("tab", { name: "One" })
+    const two = screen.getByRole("tab", { name: "Two" })
+    one.focus()
+    await userEvent.keyboard("{ArrowRight}")
+    expect(two).toHaveAttribute("tabindex", "0")
+
+    await userEvent.tab()
+    expect(screen.getByRole("tabpanel", { name: "One" })).toHaveFocus()
+    expect(one).toHaveAttribute("tabindex", "0")
+    expect(two).toHaveAttribute("tabindex", "-1")
   })
 
   it("in manual mode, Enter activates the focused tab", async () => {
@@ -137,7 +166,7 @@ describe("Tabs", () => {
     screen.getByRole("tab", { name: "One" }).focus()
     await userEvent.keyboard("{ArrowRight}")
     expect(screen.getByRole("tab", { name: "Two" })).toHaveFocus()
-    fireEvent.keyDown(screen.getByRole("tab", { name: "Two" }), { key: "Enter" })
+    await userEvent.keyboard("{Enter}")
     expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("aria-selected", "true")
     expect(screen.getByText("Content two")).not.toHaveAttribute("hidden")
   })
@@ -160,7 +189,7 @@ describe("Tabs", () => {
     expect(screen.getByRole("tab", { name: "Two" })).toHaveFocus()
     expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("aria-selected", "false")
 
-    fireEvent.keyDown(screen.getByRole("tab", { name: "Two" }), { key: " " })
+    await userEvent.keyboard(" ")
     expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("aria-selected", "true")
     expect(screen.getByText("Content two")).not.toHaveAttribute("hidden")
   })

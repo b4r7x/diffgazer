@@ -12,6 +12,7 @@ import { useSelectContext } from "./select-context";
 import { matchesSearch } from "@/lib/search";
 import { isActiveOptionVisible, toOptionId } from "./select-utils";
 import { SelectSearch } from "./select-search";
+import { SelectEmpty } from "./select-empty";
 import type { SelectOptionMetadata } from "./select-context";
 
 export interface SelectContentProps {
@@ -91,12 +92,64 @@ export function SelectContent({
     const query = readTypeaheadQuery(key);
     if (query === null) return;
 
+    const visibleOptions = getVisibleEnabledOptionEntries();
+    if (visibleOptions.length === 0) return;
+
+    const currentIndex = highlighted === null
+      ? -1
+      : visibleOptions.findIndex(([itemValue]) => itemValue === highlighted);
+    const isCyclingChar = query.length > 1 && query.split("").every((char) => char === query[0]);
+    const search = isCyclingChar ? query[0]! : query;
+    const startIndex = isCyclingChar || query.length === 1 ? currentIndex + 1 : 0;
+
+    for (let offset = 0; offset < visibleOptions.length; offset++) {
+      const index = (startIndex + offset) % visibleOptions.length;
+      const [itemValue, option] = visibleOptions[index]!;
+      if (!option.label.toLowerCase().startsWith(search)) continue;
+      setHighlighted(itemValue);
+      break;
+    }
+  }
+
+  function getVisibleEnabledOptionEntries(): Array<[string, SelectOptionMetadata]> {
+    const entries: Array<[string, SelectOptionMetadata]> = [];
     for (const [itemValue, option] of options) {
-      if (!option.disabled && option.label.toLowerCase().startsWith(query)) {
-        setHighlighted(itemValue);
-        break;
+      if (!option.disabled && matchesSearch(option.label, searchQuery)) {
+        entries.push([itemValue, option]);
       }
     }
+    return entries;
+  }
+
+  function getVisibleEnabledOptions(): string[] {
+    return getVisibleEnabledOptionEntries().map(([itemValue]) => itemValue);
+  }
+
+  function moveSearchHighlight(direction: 1 | -1): void {
+    const visibleOptions = getVisibleEnabledOptions();
+    if (visibleOptions.length === 0) return;
+
+    const currentIndex = highlighted === null ? -1 : visibleOptions.indexOf(highlighted);
+    const nextIndex =
+      currentIndex < 0
+        ? direction > 0 ? 0 : visibleOptions.length - 1
+        : (currentIndex + direction + visibleOptions.length) % visibleOptions.length;
+    setHighlighted(visibleOptions[nextIndex]!);
+  }
+
+  function handleSearchInputNavigation(e: KeyboardEvent): void {
+    if (!SEARCH_INPUT_NAV_KEYS.has(e.key)) return;
+
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (isActiveOptionVisible(options, highlighted, searchQuery, matchesSearch)) {
+        selectItem(highlighted);
+      }
+      return;
+    }
+
+    e.preventDefault();
+    moveSearchHighlight(e.key === "ArrowDown" ? 1 : -1);
   }
 
   const { present, onAnimationEnd } = usePresence({ open: isDropdown && open, ref: containerRef });
@@ -157,7 +210,7 @@ export function SelectContent({
 
     const isTyping = e.target === searchInputRef.current;
     if (isTyping) {
-      if (SEARCH_INPUT_NAV_KEYS.has(e.key)) navKeyDown(e);
+      handleSearchInputNavigation(e);
     } else {
       navKeyDown(e);
       if (!e.ctrlKey && !e.metaKey && !e.altKey) handleTypeahead(e.key);
@@ -237,7 +290,7 @@ function SearchableContent({
   listboxProps: SearchableListboxProps;
   ref: Ref<HTMLDivElement>;
 }) {
-  const { searchChildren, optionChildren } = partitionSelectSearchChildren(children);
+  const { searchChildren, optionChildren, emptyChildren } = partitionSelectSearchChildren(children);
 
   return (
     <>
@@ -245,6 +298,7 @@ function SearchableContent({
       <div {...listboxProps} ref={ref} className="p-1 space-y-0.5 outline-none">
         {optionChildren}
       </div>
+      {emptyChildren}
     </>
   );
 }
@@ -253,12 +307,18 @@ function isSelectSearchElement(child: ReactNode): boolean {
   return isValidElement(child) && child.type === SelectSearch;
 }
 
+function isSelectEmptyElement(child: ReactNode): boolean {
+  return isValidElement(child) && child.type === SelectEmpty;
+}
+
 function partitionSelectSearchChildren(children: ReactNode): {
   searchChildren: ReactNode[];
   optionChildren: ReactNode[];
+  emptyChildren: ReactNode[];
 } {
   const searchChildren: ReactNode[] = [];
   const optionChildren: ReactNode[] = [];
+  const emptyChildren: ReactNode[] = [];
 
   Children.forEach(children, (child) => {
     if (isSelectSearchElement(child)) {
@@ -266,13 +326,19 @@ function partitionSelectSearchChildren(children: ReactNode): {
       return;
     }
 
-    if (!isValidElement<{ children?: ReactNode }>(child) || !containsSelectSearchElement(child.props.children)) {
+    if (isSelectEmptyElement(child)) {
+      emptyChildren.push(child);
+      return;
+    }
+
+    if (!isValidElement<{ children?: ReactNode }>(child) || !containsPartitionedSelectElement(child.props.children)) {
       optionChildren.push(child);
       return;
     }
 
     const nested = partitionSelectSearchChildren(child.props.children);
     searchChildren.push(...nested.searchChildren);
+    emptyChildren.push(...nested.emptyChildren);
     if (nested.optionChildren.length === 0) return;
 
     if (child.type === Fragment) {
@@ -282,7 +348,7 @@ function partitionSelectSearchChildren(children: ReactNode): {
     }
   });
 
-  return { searchChildren, optionChildren };
+  return { searchChildren, optionChildren, emptyChildren };
 }
 
 function containsSelectSearchElement(children: ReactNode): boolean {
@@ -290,6 +356,14 @@ function containsSelectSearchElement(children: ReactNode): boolean {
     if (isSelectSearchElement(child)) return true;
     if (!isValidElement<{ children?: ReactNode }>(child)) return false;
     return containsSelectSearchElement(child.props.children);
+  });
+}
+
+function containsPartitionedSelectElement(children: ReactNode): boolean {
+  return Children.toArray(children).some((child) => {
+    if (isSelectSearchElement(child) || isSelectEmptyElement(child)) return true;
+    if (!isValidElement<{ children?: ReactNode }>(child)) return false;
+    return containsPartitionedSelectElement(child.props.children);
   });
 }
 

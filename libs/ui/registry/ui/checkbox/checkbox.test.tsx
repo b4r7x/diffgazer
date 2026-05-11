@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event"
 import { axe } from "../../../testing/utils.js"
 import { describe, it, expect, vi } from "vitest"
 import { Checkbox } from "./index.js"
+import { Field } from "../field/index.js"
 
 function getForm(): HTMLFormElement {
   const form = screen.getByTestId("form")
@@ -61,8 +62,25 @@ describe("Checkbox", () => {
     expect(document.getElementById(descId)).toHaveTextContent("You must accept to proceed")
   })
 
+  it("composes Field label and description ids with local label and description", () => {
+    render(
+      <Field invalid>
+        <Field.Label>Accept policy</Field.Label>
+        <Field.Control>
+          <Checkbox label="Terms" description="Local help" />
+        </Field.Control>
+        <Field.Description>Field help</Field.Description>
+        <Field.Error>Field error</Field.Error>
+      </Field>,
+    )
+
+    const checkbox = screen.getByRole("checkbox", { name: /accept policy.*terms/i })
+    expect(checkbox).toHaveAccessibleDescription(/field help.*field error.*local help/i)
+    expect(checkbox).toHaveAttribute("aria-invalid", "true")
+  })
+
   it("renders aria-invalid and aria-required when set", () => {
-    render(<Checkbox invalid required label="Accept" />)
+    render(<Checkbox aria-invalid required label="Accept" />)
     const checkbox = screen.getByRole("checkbox")
     expect(checkbox).toHaveAttribute("aria-invalid", "true")
     expect(checkbox).toHaveAttribute("aria-required", "true")
@@ -235,6 +253,24 @@ describe("Checkbox.Group", () => {
     expect(screen.getByRole("group")).toHaveAttribute("aria-disabled", "true")
   })
 
+  it("preserves Field invalid and description wiring on the group", () => {
+    render(
+      <Field invalid>
+        <Field.Label>Fruits</Field.Label>
+        <Field.Control>
+          <Checkbox.Group>
+            <Checkbox.Item value="apple" label="Apple" />
+          </Checkbox.Group>
+        </Field.Control>
+        <Field.Error>Select at least one fruit.</Field.Error>
+      </Field>,
+    )
+
+    const group = screen.getByRole("group", { name: "Fruits" })
+    expect(group).toHaveAttribute("aria-invalid", "true")
+    expect(group).toHaveAccessibleDescription("Select at least one fruit.")
+  })
+
   it("navigates items with arrow keys", async () => {
     const onHighlight = vi.fn()
     render(
@@ -357,7 +393,7 @@ describe("Checkbox.Group", () => {
     screen.getByRole("checkbox", { name: /banana/i }).focus()
     await userEvent.keyboard("{ArrowDown}")
 
-    expect(onNavigationBoundaryReached).toHaveBeenCalledWith("next")
+    expect(onNavigationBoundaryReached).toHaveBeenCalledWith("next", expect.any(KeyboardEvent), "ArrowDown")
   })
 
   it("reports top keyboard boundary when wrapping is disabled", async () => {
@@ -372,7 +408,7 @@ describe("Checkbox.Group", () => {
     screen.getByRole("checkbox", { name: /apple/i }).focus()
     await userEvent.keyboard("{ArrowUp}")
 
-    expect(onNavigationBoundaryReached).toHaveBeenCalledWith("previous")
+    expect(onNavigationBoundaryReached).toHaveBeenCalledWith("previous", expect.any(KeyboardEvent), "ArrowUp")
   })
 
   it("jumps to first and last item with Home and End", async () => {

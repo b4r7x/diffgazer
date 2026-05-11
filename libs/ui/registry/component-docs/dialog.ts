@@ -66,4 +66,90 @@ export const dialogDoc: ComponentDoc = {
       { name: "dialog-keyboard", title: "Keyboard hints" },
     ],
   },
+  props: {
+    Dialog: {
+      open: {
+        type: "boolean",
+        required: false,
+        defaultValue: null,
+        description: "Controlled open state. Pair with onOpenChange.",
+      },
+      defaultOpen: {
+        type: "boolean",
+        required: false,
+        defaultValue: "false",
+        description: "Initial open state for uncontrolled usage.",
+      },
+      onOpenChange: {
+        type: "(open: boolean) => void",
+        required: false,
+        defaultValue: null,
+        description: "Called whenever open state changes (trigger click, Escape, backdrop click, programmatic close).",
+      },
+    },
+    DialogContent: {
+      size: {
+        type: '"sm" | "md" | "lg" | "full"',
+        required: false,
+        defaultValue: '"md"',
+        description: "Modal width preset.",
+      },
+      role: {
+        type: '"dialog" | "alertdialog"',
+        required: false,
+        defaultValue: '"dialog"',
+        description: "Set role=\"alertdialog\" for destructive confirmations. Per WAI-ARIA APG, alert dialogs should not close on outside interaction.",
+      },
+      closeOnBackdropClick: {
+        type: "boolean",
+        required: false,
+        defaultValue: "true",
+        description: "When false, clicking the backdrop does not close the dialog (recommended for alertdialog).",
+      },
+      onEscapeKeyDown: {
+        type: "(e: SyntheticEvent<HTMLDialogElement>) => void",
+        required: false,
+        defaultValue: null,
+        description: "Intercept Escape. Call e.preventDefault() to keep the dialog open during async operations.",
+      },
+      onCancel: {
+        type: "(e: SyntheticEvent<HTMLDialogElement>) => void",
+        required: false,
+        defaultValue: null,
+        description: "Native cancel handler. Defaults to closing the dialog.",
+      },
+    },
+    DialogTrigger: {
+      children: {
+        type: "ReactNode | (renderProps: DialogTriggerRenderProps) => ReactNode",
+        required: true,
+        defaultValue: null,
+        description: "Trigger button or render function. The render form receives ref, className, aria-haspopup/expanded/controls, and onClick.",
+      },
+    },
+    DialogAction: {
+      onClick: {
+        type: "(e: MouseEvent<HTMLButtonElement>) => void",
+        required: false,
+        defaultValue: null,
+        description: "Primary action handler. Call e.preventDefault() to keep the dialog open (e.g. failed form validation).",
+      },
+    },
+    DialogClose: {
+      onClick: {
+        type: "(e: MouseEvent<HTMLButtonElement>) => void",
+        required: false,
+        defaultValue: null,
+        description: "Close handler. Call e.preventDefault() to keep the dialog open.",
+      },
+    },
+    DialogKeyboardHints: {
+      hints: {
+        type: "KeyboardHint[]",
+        required: false,
+        defaultValue: null,
+        description: "Custom hints. Returns null when the array is empty.",
+      },
+    },
+  },
 }

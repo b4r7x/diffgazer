@@ -1,17 +1,13 @@
 import type { InputHTMLAttributes, ReactNode, Ref } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
-import { inputGroupErrorClass, inputSizeClasses } from "@/lib/input-variants";
+import { inputSizeClasses } from "@/lib/input-variants";
 import { cn } from "@/lib/utils";
-import { resolveInputInvalidState } from "./input-state";
 
 const inputGroupVariants = cva(
-  "flex w-full items-center gap-2 bg-background border border-border text-foreground font-mono placeholder:text-foreground/50 transition-colors focus-within:border-foreground focus-within:ring-1 focus-within:ring-foreground",
+  "flex w-full items-center gap-2 bg-background border border-border text-foreground font-mono placeholder:text-foreground/50 transition-colors focus-within:border-foreground focus-within:ring-1 focus-within:ring-foreground has-[input[aria-invalid=true]]:border-2 has-[input[aria-invalid=true]]:border-destructive has-[input[aria-invalid=true]]:focus-within:border-destructive has-[input[aria-invalid=true]]:focus-within:ring-destructive",
   {
     variants: {
       size: inputSizeClasses,
-      error: {
-        true: inputGroupErrorClass,
-      },
     },
     defaultVariants: {
       size: "md",
@@ -29,8 +25,6 @@ export interface InputGroupProps
   extends Omit<InputHTMLAttributes<HTMLInputElement>, "size" | "prefix"> {
   ref?: Ref<HTMLInputElement>;
   size?: InputGroupVariantProps["size"];
-  error?: boolean;
-  invalid?: boolean;
   prefix?: ReactNode;
   suffix?: ReactNode;
   inputClassName?: string;
@@ -40,16 +34,12 @@ export function InputGroup({
   className,
   inputClassName,
   size,
-  error,
-  invalid,
   prefix,
   suffix,
   disabled,
   ref,
-  "aria-invalid": ariaInvalid,
   ...props
 }: InputGroupProps) {
-  const invalidState = resolveInputInvalidState(invalid, error, ariaInvalid);
   const hidePrefix = isPlainDecorativeAffix(prefix);
   const hideSuffix = isPlainDecorativeAffix(suffix);
 
@@ -57,7 +47,7 @@ export function InputGroup({
     <div
       data-slot="input-group"
       className={cn(
-        inputGroupVariants({ size, error: invalidState.isInvalid }),
+        inputGroupVariants({ size }),
         disabled && "cursor-not-allowed opacity-50",
         className,
       )}
@@ -74,7 +64,6 @@ export function InputGroup({
       <input
         ref={ref}
         disabled={disabled}
-        aria-invalid={invalidState.ariaInvalid}
         className={cn(
           "min-w-0 flex-1 border-0 bg-transparent p-0 font-mono text-foreground placeholder:text-foreground/50 focus:outline-none disabled:cursor-not-allowed",
           inputClassName,

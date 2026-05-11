@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useRef, type KeyboardEvent } from "react";
 import { NavigationList } from "@diffgazer/ui/components/navigation-list";
+import { EmptyState } from "@diffgazer/ui/components/empty-state";
 import { SearchInput } from "@diffgazer/ui/components/search-input";
+import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { matchQueryState } from "@diffgazer/core/api/hooks";
-import { containsActiveElement, toVerticalBoundaryDirection } from "@diffgazer/keys";
+import { toVerticalBoundaryDirection } from "@diffgazer/keys";
 import { TimelineList } from "@/features/history/components/timeline-list";
 import { HistoryInsightsPane } from "@/features/history/components/history-insights-pane";
 import { useHistoryKeyboard } from "@/features/history/hooks/use-history-keyboard";
@@ -36,19 +38,17 @@ export function HistoryPage() {
     handleIssueClick,
   } = useHistoryPage();
 
-  const [runsFocusedValue, setRunsFocusedValue] = useState<string | null>(null);
   const runsListRef = useRef<HTMLDivElement>(null);
   const insightsPaneRef = useRef<HTMLDivElement>(null);
-  const runsHighlightedId = mappedRuns.some((run) => run.id === runsFocusedValue)
-    ? runsFocusedValue
-    : null;
-  const activeRunId = runsHighlightedId ?? selectedRunId;
+  const activeRunId = selectedRunId;
 
   useHistoryKeyboard({
     focusZone,
     setFocusZone,
     activeRunId,
     searchInputRef,
+    runsListRef,
+    insightsPaneRef,
   });
 
   const handleRunsKeyDown = (event: KeyboardEvent) => {
@@ -71,29 +71,6 @@ export function HistoryPage() {
     ),
     success: () => null,
   });
-
-  const isReady = guard === null;
-
-  useEffect(() => {
-    if (!isReady || focusZone !== "runs") return;
-
-    const runsList = runsListRef.current;
-    if (!runsList) return;
-
-    if (containsActiveElement(runsList)) return;
-
-    runsList.focus();
-  }, [focusZone, isReady, mappedRuns.length]);
-
-  useEffect(() => {
-    if (!isReady || focusZone !== "insights") return;
-
-    const insightsPane = insightsPaneRef.current;
-    if (!insightsPane || containsActiveElement(insightsPane)) return;
-
-    const firstButton = insightsPane.querySelector<HTMLButtonElement>("button:not([disabled])");
-    (firstButton ?? insightsPane).focus();
-  }, [focusZone, isReady, sortedIssues.length]);
 
   if (guard) return guard;
 
@@ -127,9 +104,9 @@ export function HistoryPage() {
           data-focused={focusZone === "timeline" || undefined}
           className="w-48 border-r border-tui-border flex flex-col shrink-0"
         >
-          <div className="p-3 text-xs text-tui-muted font-bold uppercase tracking-wider border-b border-tui-border">
+          <SectionHeader as="h2" variant="muted" bordered className="mb-0 p-3 border-tui-border">
             Sections
-          </div>
+          </SectionHeader>
           <div className="flex-1 overflow-y-auto p-2">
             <TimelineList
               items={timelineItems}
@@ -149,24 +126,24 @@ export function HistoryPage() {
           data-focused={focusZone === "runs" || undefined}
           className="flex-1 min-w-0 border-r border-tui-border flex flex-col overflow-hidden"
         >
-          <div className="p-3 text-xs text-tui-muted font-bold uppercase tracking-wider border-b border-tui-border flex justify-between overflow-hidden">
+          <SectionHeader as="h2" variant="muted" bordered className="mb-0 flex justify-between overflow-hidden p-3 border-tui-border">
             <span className="truncate">Reviews</span>
             <span className="shrink-0 ml-2">Sort: Recent</span>
-          </div>
+          </SectionHeader>
           <div className="flex-1 overflow-y-auto">
             {mappedRuns.length > 0 ? (
               <NavigationList
                 ref={runsListRef}
                 aria-label="Review runs"
                 selectedId={selectedRunId}
-                highlightedId={focusZone === "runs" ? runsHighlightedId : null}
+                highlighted={focusZone === "runs" ? selectedRunId : null}
                 onFocus={() => setFocusZone("runs")}
                 onSelect={(id) => {
                   setFocusZone("runs");
                   setSelectedRunId(id);
                 }}
                 onEnter={handleRunActivate}
-                onHighlightChange={setRunsFocusedValue}
+                onHighlightChange={setSelectedRunId}
                 onNavigationBoundaryReached={(direction) => {
                   if (direction === "previous") {
                     handleRunsBoundary(toVerticalBoundaryDirection(direction));
@@ -200,9 +177,9 @@ export function HistoryPage() {
                 ))}
               </NavigationList>
             ) : (
-              <div className="flex items-center justify-center h-full text-tui-muted">
+              <EmptyState variant="inline" size="sm" live className="h-full">
                 {emptyRunsMessage}
-              </div>
+              </EmptyState>
             )}
           </div>
         </div>

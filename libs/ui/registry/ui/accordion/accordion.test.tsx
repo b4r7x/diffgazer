@@ -149,6 +149,33 @@ describe("Accordion", () => {
     expect(await axe(container)).toHaveNoViolations()
   })
 
+  it("does not expose panel regions by default", () => {
+    renderAccordion({ defaultValue: "one" })
+    expect(screen.queryByRole("region")).not.toBeInTheDocument()
+  })
+
+  it("exposes an opt-in region only while the panel is expanded", () => {
+    render(
+      <Accordion defaultValue="one">
+        <Accordion.Item value="one">
+          <Accordion.Header>
+            <Accordion.Trigger>Section One</Accordion.Trigger>
+          </Accordion.Header>
+          <Accordion.Content region>Content One</Accordion.Content>
+        </Accordion.Item>
+        <Accordion.Item value="two">
+          <Accordion.Header>
+            <Accordion.Trigger>Section Two</Accordion.Trigger>
+          </Accordion.Header>
+          <Accordion.Content region>Content Two</Accordion.Content>
+        </Accordion.Item>
+      </Accordion>,
+    )
+
+    expect(screen.getByRole("region", { name: "Section One" })).toBeInTheDocument()
+    expect(screen.queryByRole("region", { name: "Section Two" })).not.toBeInTheDocument()
+  })
+
   it("uses native button semantics without a redundant role attribute", () => {
     renderAccordion()
     expect(screen.getByRole("button", { name: "Section One" })).not.toHaveAttribute("role")
@@ -205,6 +232,135 @@ describe("Accordion", () => {
     expect(triggerOne).toHaveFocus()
     await userEvent.keyboard("{ArrowUp}")
     expect(triggerThree).toHaveFocus()
+  })
+
+  it("does not navigate outer triggers when arrow is pressed inside a nested accordion", async () => {
+    render(
+      <Accordion defaultValue="one">
+        <Accordion.Item value="one">
+          <Accordion.Header>
+            <Accordion.Trigger>Outer One</Accordion.Trigger>
+          </Accordion.Header>
+          <Accordion.Content>
+            <Accordion>
+              <Accordion.Item value="inner-a">
+                <Accordion.Header>
+                  <Accordion.Trigger>Inner A</Accordion.Trigger>
+                </Accordion.Header>
+                <Accordion.Content>Inner A content</Accordion.Content>
+              </Accordion.Item>
+              <Accordion.Item value="inner-b">
+                <Accordion.Header>
+                  <Accordion.Trigger>Inner B</Accordion.Trigger>
+                </Accordion.Header>
+                <Accordion.Content>Inner B content</Accordion.Content>
+              </Accordion.Item>
+            </Accordion>
+          </Accordion.Content>
+        </Accordion.Item>
+        <Accordion.Item value="two">
+          <Accordion.Header>
+            <Accordion.Trigger>Outer Two</Accordion.Trigger>
+          </Accordion.Header>
+          <Accordion.Content>Outer Two content</Accordion.Content>
+        </Accordion.Item>
+      </Accordion>,
+    )
+
+    const innerA = screen.getByRole("button", { name: "Inner A" })
+    const innerB = screen.getByRole("button", { name: "Inner B" })
+    const outerTwo = screen.getByRole("button", { name: "Outer Two" })
+
+    innerA.focus()
+    await userEvent.keyboard("{ArrowDown}")
+    expect(innerB).toHaveFocus()
+    expect(outerTwo).not.toHaveFocus()
+  })
+
+  it("End on outer accordion focuses the outer last trigger, not a nested trigger", async () => {
+    render(
+      <Accordion defaultValue="one">
+        <Accordion.Item value="one">
+          <Accordion.Header>
+            <Accordion.Trigger>Outer One</Accordion.Trigger>
+          </Accordion.Header>
+          <Accordion.Content>
+            <Accordion>
+              <Accordion.Item value="inner-a">
+                <Accordion.Header>
+                  <Accordion.Trigger>Inner A</Accordion.Trigger>
+                </Accordion.Header>
+                <Accordion.Content>Inner A content</Accordion.Content>
+              </Accordion.Item>
+              <Accordion.Item value="inner-b">
+                <Accordion.Header>
+                  <Accordion.Trigger>Inner B</Accordion.Trigger>
+                </Accordion.Header>
+                <Accordion.Content>Inner B content</Accordion.Content>
+              </Accordion.Item>
+            </Accordion>
+          </Accordion.Content>
+        </Accordion.Item>
+        <Accordion.Item value="two">
+          <Accordion.Header>
+            <Accordion.Trigger>Outer Two</Accordion.Trigger>
+          </Accordion.Header>
+          <Accordion.Content>Outer Two content</Accordion.Content>
+        </Accordion.Item>
+      </Accordion>,
+    )
+
+    const outerOne = screen.getByRole("button", { name: "Outer One" })
+    const outerTwo = screen.getByRole("button", { name: "Outer Two" })
+    const innerB = screen.getByRole("button", { name: "Inner B" })
+
+    outerOne.focus()
+    await userEvent.keyboard("{End}")
+
+    expect(outerTwo).toHaveFocus()
+    expect(innerB).not.toHaveFocus()
+  })
+
+  it("ArrowDown on outer trigger skips nested triggers and goes to next outer trigger", async () => {
+    render(
+      <Accordion defaultValue="one">
+        <Accordion.Item value="one">
+          <Accordion.Header>
+            <Accordion.Trigger>Outer One</Accordion.Trigger>
+          </Accordion.Header>
+          <Accordion.Content>
+            <Accordion>
+              <Accordion.Item value="inner-a">
+                <Accordion.Header>
+                  <Accordion.Trigger>Inner A</Accordion.Trigger>
+                </Accordion.Header>
+                <Accordion.Content>Inner A content</Accordion.Content>
+              </Accordion.Item>
+              <Accordion.Item value="inner-b">
+                <Accordion.Header>
+                  <Accordion.Trigger>Inner B</Accordion.Trigger>
+                </Accordion.Header>
+                <Accordion.Content>Inner B content</Accordion.Content>
+              </Accordion.Item>
+            </Accordion>
+          </Accordion.Content>
+        </Accordion.Item>
+        <Accordion.Item value="two">
+          <Accordion.Header>
+            <Accordion.Trigger>Outer Two</Accordion.Trigger>
+          </Accordion.Header>
+          <Accordion.Content>Outer Two content</Accordion.Content>
+        </Accordion.Item>
+      </Accordion>,
+    )
+
+    const outerOne = screen.getByRole("button", { name: "Outer One" })
+    const outerTwo = screen.getByRole("button", { name: "Outer Two" })
+
+    outerOne.focus()
+    await userEvent.keyboard("{ArrowDown}")
+
+    expect(outerTwo).toHaveFocus()
   })
 
   it("keeps aria-disabled non-collapsible triggers in roving order and skips disabled items", async () => {
@@ -266,14 +422,12 @@ describe("Accordion inert on collapsed content", () => {
       </Accordion>
     )
 
-    const expandedRegion = screen.getByText("Button One").closest("[role='region']")
-    if (!expandedRegion?.parentElement) throw new Error("Expected expanded accordion region wrapper")
-    const expandedContent = expandedRegion.parentElement
+    const expandedContent = screen.getByText("Button One").parentElement?.parentElement
+    if (!expandedContent) throw new Error("Expected expanded accordion content wrapper")
     expect(expandedContent).not.toHaveAttribute("inert")
 
-    const collapsedRegion = screen.getByText("Button Two").closest("[role='region']")
-    if (!collapsedRegion?.parentElement) throw new Error("Expected collapsed accordion region wrapper")
-    const collapsedContent = collapsedRegion.parentElement
+    const collapsedContent = screen.getByText("Button Two").parentElement?.parentElement
+    if (!collapsedContent) throw new Error("Expected collapsed accordion content wrapper")
     expect(collapsedContent).toHaveAttribute("inert")
   })
 })

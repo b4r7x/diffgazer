@@ -62,11 +62,13 @@ function copyModeDependentsForKey(cwd: string, hookName: string): string[] {
 
 const warnedBlockedHookRemovals = new Set<string>();
 
-function blocksRetainedCopyModeUi(cwd: string, itemName: string): boolean {
+function blocksRetainedCopyModeUi(cwd: string, itemName: string, requestedNames: string[]): boolean {
   const parsed = parseInstallName(itemName);
   if (parsed.namespace !== "keys") return false;
 
-  const dependents = copyModeDependentsForKey(cwd, parsed.name);
+  const requestedPublicNames = new Set(requestedNames.map((name) => parseInstallName(name).publicName));
+  const dependents = copyModeDependentsForKey(cwd, parsed.name)
+    .filter((dependent) => !requestedPublicNames.has(dependent));
   if (dependents.length === 0) return false;
 
   const warningKey = `${cwd}:${parsed.publicName}`;
@@ -114,8 +116,8 @@ export const removeCommand = createRemoveCommand({
       return { absolutePath: resolveInstallPath(cwd, installDir, ctx.registry.relativePath(file)) };
     });
   },
-  canRemoveFile: ({ cwd, item, file, force }) => {
-    if (blocksRetainedCopyModeUi(cwd, item.name)) return false;
+  canRemoveFile: ({ cwd, item, file, force, requestedNames = [] }) => {
+    if (blocksRetainedCopyModeUi(cwd, item.name, requestedNames)) return false;
     if (force) return true;
     const expectedHash = ownedFileHash(cwd, item.name, file.absolutePath);
     if (!expectedHash) return false;

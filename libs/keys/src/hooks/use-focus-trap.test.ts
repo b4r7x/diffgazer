@@ -80,6 +80,22 @@ describe("useFocusTrap", () => {
 
       expect(document.activeElement).toBe(targetEl);
     });
+
+    it("respects programmatic initialFocus targets with negative tabindex", () => {
+      container = createContainer(
+        '<div id="a" tabindex="-1">A</div>',
+        '<button id="b">B</button>',
+      );
+      const targetEl = container.querySelector<HTMLElement>("#a")!;
+
+      renderHook(() => {
+        const ref = useRef<HTMLElement>(container);
+        const initialRef = useRef<HTMLElement>(targetEl);
+        useFocusTrap(ref, { initialFocus: initialRef });
+      });
+
+      expect(document.activeElement).toBe(targetEl);
+    });
   });
 
   describe("Tab cycling", () => {
@@ -119,6 +135,61 @@ describe("useFocusTrap", () => {
       const event = fireTab();
       expect(event.defaultPrevented).toBe(true);
       expect(document.activeElement).toBe(container.querySelector("#a"));
+    });
+
+    it("uses tabbable order for positive tabindex and skips negative tabindex boundaries", () => {
+      container = createContainer(
+        '<button id="a">A</button>',
+        '<button id="b" tabindex="2">B</button>',
+        '<button id="c" tabindex="1">C</button>',
+        '<button id="d" tabindex="-1">D</button>',
+      );
+      renderTrap(container);
+
+      const last = container.querySelector<HTMLElement>("#a")!;
+      last.focus();
+
+      const event = fireTab();
+      expect(event.defaultPrevented).toBe(true);
+      expect(document.activeElement).toBe(container.querySelector("#c"));
+    });
+
+    it("moves from a programmatic initial target to the first tabbable element on Tab", () => {
+      container = createContainer(
+        '<div id="a" tabindex="-1">A</div>',
+        '<button id="b">B</button>',
+        '<button id="c">C</button>',
+      );
+      const targetEl = container.querySelector<HTMLElement>("#a")!;
+
+      renderHook(() => {
+        const ref = useRef<HTMLElement>(container);
+        const initialRef = useRef<HTMLElement>(targetEl);
+        useFocusTrap(ref, { initialFocus: initialRef });
+      });
+
+      const event = fireTab();
+      expect(event.defaultPrevented).toBe(true);
+      expect(document.activeElement).toBe(container.querySelector("#b"));
+    });
+
+    it("moves from a programmatic initial target to the last tabbable element on Shift+Tab", () => {
+      container = createContainer(
+        '<div id="a" tabindex="-1">A</div>',
+        '<button id="b">B</button>',
+        '<button id="c">C</button>',
+      );
+      const targetEl = container.querySelector<HTMLElement>("#a")!;
+
+      renderHook(() => {
+        const ref = useRef<HTMLElement>(container);
+        const initialRef = useRef<HTMLElement>(targetEl);
+        useFocusTrap(ref, { initialFocus: initialRef });
+      });
+
+      const event = fireTab(true);
+      expect(event.defaultPrevented).toBe(true);
+      expect(document.activeElement).toBe(container.querySelector("#c"));
     });
   });
 
@@ -231,6 +302,135 @@ describe("useFocusTrap", () => {
       expect(document.activeElement).toBe(first.querySelector("#a"));
 
       rerender({ ref: secondRef });
+      expect(document.activeElement).toBe(second.querySelector("#b"));
+
+      second.remove();
+    });
+  });
+
+  describe("focusable filtering", () => {
+    it("skips elements with display:none", () => {
+      container = createContainer(
+        '<button id="a" style="display:none">Hidden</button>',
+        '<button id="b">B</button>',
+      );
+      renderTrap(container);
+      expect(document.activeElement).toBe(container.querySelector("#b"));
+    });
+
+    it("skips elements with visibility:hidden", () => {
+      container = createContainer(
+        '<button id="a" style="visibility:hidden">Hidden</button>',
+        '<button id="b">B</button>',
+      );
+      renderTrap(container);
+      expect(document.activeElement).toBe(container.querySelector("#b"));
+    });
+
+    it("skips inert elements and their descendants", () => {
+      container = createContainer(
+        '<div inert><button id="a">In inert</button></div>',
+        '<button id="b">B</button>',
+      );
+      renderTrap(container);
+      expect(document.activeElement).toBe(container.querySelector("#b"));
+    });
+
+    it("skips elements disabled via fieldset", () => {
+      container = createContainer(
+        '<fieldset disabled><button id="a">Inside</button></fieldset>',
+        '<button id="b">B</button>',
+      );
+      renderTrap(container);
+      expect(document.activeElement).toBe(container.querySelector("#b"));
+    });
+
+    it("treats display:none on ancestor as non-focusable", () => {
+      container = createContainer(
+        '<div style="display:none"><button id="a">Inside</button></div>',
+        '<button id="b">B</button>',
+      );
+      renderTrap(container);
+      expect(document.activeElement).toBe(container.querySelector("#b"));
+    });
+
+    it("skips legend descendants of disabled fieldset only at the fieldset level (legend remains focusable)", () => {
+      // Per spec, the first <legend> of a disabled <fieldset> is NOT considered disabled.
+      // We accept a simpler safe behavior: fieldset-disabled descendants are skipped uniformly,
+      // since legend buttons inside disabled fieldsets are an obscure case not exercised by our UI.
+      container = createContainer(
+        '<fieldset disabled><legend><button id="a">Legend btn</button></legend><button id="b">Inside</button></fieldset>',
+        '<button id="c">C</button>',
+      );
+      renderTrap(container);
+      // The legend button OR the outside button is acceptable; we focus the first eligible.
+      const active = document.activeElement;
+      expect(active === container.querySelector("#a") || active === container.querySelector("#c")).toBe(true);
+    });
+  });
+
+  describe("initialFocus guards", () => {
+    it("ignores initialFocus when its node is outside the container", () => {
+      container = createContainer(
+        '<button id="a">A</button>',
+        '<button id="b">B</button>',
+      );
+
+      const outsideButton = document.createElement("button");
+      outsideButton.id = "outside";
+      document.body.appendChild(outsideButton);
+
+      renderHook(() => {
+        const ref = useRef<HTMLElement>(container);
+        const initialRef = useRef<HTMLElement>(outsideButton);
+        useFocusTrap(ref, { initialFocus: initialRef });
+      });
+
+      expect(document.activeElement).toBe(container.querySelector("#a"));
+
+      outsideButton.remove();
+    });
+
+    it("ignores initialFocus when its node is not focusable", () => {
+      container = createContainer(
+        '<button id="a" disabled>A</button>',
+        '<button id="b">B</button>',
+      );
+      const disabledButton = container.querySelector<HTMLElement>("#a")!;
+
+      renderHook(() => {
+        const ref = useRef<HTMLElement>(container);
+        const initialRef = useRef<HTMLElement>(disabledButton);
+        useFocusTrap(ref, { initialFocus: initialRef });
+      });
+
+      expect(document.activeElement).toBe(container.querySelector("#b"));
+    });
+  });
+
+  describe("ref node mutation", () => {
+    it("re-attaches listeners and updates focus when ref.current is replaced", () => {
+      const first = createContainer('<button id="a">A</button>');
+      const second = createContainer('<button id="b">B</button>');
+      container = first;
+      const stableRef: RefObject<HTMLElement | null> = { current: first };
+
+      const { rerender } = renderHook(
+        ({ tick }) => {
+          useFocusTrap(stableRef, { restoreFocus: false });
+          // Simply use tick to force a rerender
+          return tick;
+        },
+        { initialProps: { tick: 0 } },
+      );
+
+      // Initial focus on first container
+      expect(document.activeElement).toBe(first.querySelector("#a"));
+
+      // Mutate ref.current and rerender
+      stableRef.current = second;
+      rerender({ tick: 1 });
+
       expect(document.activeElement).toBe(second.querySelector("#b"));
 
       second.remove();

@@ -21,6 +21,7 @@ function main(): void {
     itemType: "registry:hook",
     pathMapping: { from: "src/", to: "" },
     transformContent: rewriteHookInternalImports,
+    includeHidden: true,
   });
   console.log(`Wrote keys copy bundle: ${result.outputPath} (${result.itemCount} items)`);
 }

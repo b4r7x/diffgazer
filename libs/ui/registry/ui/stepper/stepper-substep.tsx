@@ -26,40 +26,47 @@ const substepVariants = cva("flex items-center gap-2 py-1 text-sm", {
   defaultVariants: { status: "pending" },
 });
 
+export const SUBSTEP_STATUS_BADGE_VARIANTS: Record<SubstepStatus, "success" | "info" | "error" | "neutral"> = {
+  pending: "neutral",
+  active: "info",
+  completed: "success",
+  error: "error",
+};
+
+const SUBSTEP_STATUS_LABEL_COLORS: Record<SubstepStatus, string | undefined> = {
+  pending: undefined,
+  active: "text-muted-foreground",
+  completed: "text-success",
+  error: "text-destructive",
+};
+
 export interface StepperSubstepProps
   extends Omit<ComponentProps<"div">, "children">,
-    Omit<SubstepData, "id"> {}
-
-const SUBSTEP_STATUS_CONFIG: Record<SubstepStatus, {
-  badgeVariant: "success" | "info" | "error" | "neutral";
-  defaultLabel?: string;
-  labelColor?: string;
-}> = {
-  pending:   { badgeVariant: "neutral" },
-  active:    { badgeVariant: "info",    defaultLabel: "analyzing...", labelColor: "text-muted-foreground" },
-  completed: { badgeVariant: "success", defaultLabel: "done",        labelColor: "text-success" },
-  error:     { badgeVariant: "error",   defaultLabel: "failed",      labelColor: "text-destructive" },
-};
+    Omit<SubstepData, "id"> {
+  /** Override per-status fallback text shown when `detail` is not provided. */
+  statusLabels?: Partial<Record<SubstepStatus, string>>;
+}
 
 export function StepperSubstep({
   tag,
   label,
   status,
   detail,
+  statusLabels,
   className,
   ...props
 }: StepperSubstepProps) {
-  const config = SUBSTEP_STATUS_CONFIG[status];
-  const statusText = detail ?? config.defaultLabel;
+  const statusText = detail ?? statusLabels?.[status];
+  const labelColor = SUBSTEP_STATUS_LABEL_COLORS[status];
 
   return (
     <div {...props} className={cn(substepVariants({ status }), className)}>
-      <Badge variant={config.badgeVariant} size="sm" className="min-w-[40px] justify-center">
+      <Badge variant={SUBSTEP_STATUS_BADGE_VARIANTS[status]} size="sm" className="min-w-[40px] justify-center">
         {tag}
       </Badge>
       <span>{label}</span>
       {statusText && (
-        <span className={cn("ml-auto text-xs", detail ? "text-muted-foreground" : config.labelColor)}>
+        <span className={cn("ml-auto text-xs", detail ? "text-muted-foreground" : labelColor)}>
           {statusText}
         </span>
       )}

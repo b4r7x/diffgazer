@@ -124,12 +124,44 @@ function validateUiPackSurface() {
     "dist/artifacts/",
     "dist/components/dialog-shell.",
     "dist/components/portal.",
+    "dist/_types/registry/ui/shared/",
   ];
   const leaked = files.filter((path) => forbidden.some((prefix) => path.startsWith(prefix)));
 
   return leaked.length
     ? [`@diffgazer/ui npm pack includes forbidden runtime package files: ${leaked.join(", ")}`]
     : [];
+}
+
+function listUiPackedFiles() {
+  const output = execFileSync("npm", ["pack", "--dry-run", "--json"], {
+    cwd: resolve(root, "libs/ui"),
+    env: { ...process.env, npm_config_cache: resolve(root, "node_modules/.cache/npm-pack") },
+    encoding: "utf-8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  const packInfo = JSON.parse(output)[0];
+  return (packInfo.files ?? []).map((file) => file.path.replace(/^package\//, ""));
+}
+
+function validateUiDeclarationsAvoidHiddenShared() {
+  const errors = [];
+  const packedFiles = listUiPackedFiles();
+  const packageRoot = resolve(root, "libs/ui");
+
+  for (const relativePath of packedFiles) {
+    if (!relativePath.endsWith(".d.ts")) continue;
+    const absolute = resolve(packageRoot, relativePath);
+    if (!existsSync(absolute)) continue;
+    const source = readFileSync(absolute, "utf-8");
+    if (/_types\/registry\/ui\/shared\//.test(source)) {
+      errors.push(
+        `@diffgazer/ui shipped declaration libs/ui/${relativePath} references hidden _types/registry/ui/shared path`,
+      );
+    }
+  }
+
+  return errors;
 }
 
 function packageFilesNeedTrackedPolicyCheck() {
@@ -215,6 +247,7 @@ const checks = [
   ...validatePackageExportTargets("libs/ui", "@diffgazer/ui"),
   ...validateUiPackageExports(),
   ...validateUiPackSurface(),
+  ...validateUiDeclarationsAvoidHiddenShared(),
   ...validatePackagePolicyFiles(),
 ];
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { cva } from "class-variance-authority";
+import { useId } from "react";
 import type {
   AnchorHTMLAttributes,
   ButtonHTMLAttributes,
@@ -37,6 +38,7 @@ export interface SidebarItemRenderProps {
   disabled?: boolean;
   onClick?: MouseEventHandler<HTMLElement>;
   "aria-current"?: "page";
+  "aria-disabled"?: boolean;
   "data-diffgazer-navigation-item"?: "button";
   "data-value"?: string;
   "data-disabled"?: "";
@@ -78,6 +80,8 @@ export function SidebarItem(props: SidebarItemProps): ReactNode {
     ...rest
   } = props;
 
+  const generatedId = useId();
+  const resolvedValue = value ?? generatedId;
   const sectionContext = useOptionalSidebarSectionContext();
 
   if (sectionContext && !sectionContext.open) return null;
@@ -98,7 +102,7 @@ export function SidebarItem(props: SidebarItemProps): ReactNode {
     "aria-current": active ? ("page" as const) : undefined,
     "aria-disabled": disabled || undefined,
     "data-diffgazer-navigation-item": "button" as const,
-    "data-value": value,
+    "data-value": resolvedValue,
     "data-disabled": disabled ? ("" as const) : undefined,
     tabIndex: disabled ? -1 : undefined,
   };

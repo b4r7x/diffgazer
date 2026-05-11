@@ -28,9 +28,9 @@ function App() {
 ## Behavior
 
 - Creates a `"global"` scope on mount. All handlers registered without a scope push land here.
-- Maintains a scope stack — the **last pushed** scope is active. Only handlers in the active scope fire.
+- Maintains a scope stack. Declarative scopes follow React tree order, imperative `pushScope` calls sit above declarative scopes, and only handlers in the active scope fire.
 - Skips events where `event.defaultPrevented` is already `true`.
-- Skips handlers for input elements (`input`, `textarea`, `select`, `contentEditable`) unless `allowInInput` is set.
+- Skips handlers for text-editable targets (text-like `input`, `textarea`, and editable content) unless `allowInInput` is set. Non-text controls such as `select`, checkbox, radio, range, and button inputs are allowed by default.
 - When a handler specifies `containerRef` + `focusWithinOnly`, only fires if the event target is inside that container.
 - Handler priority: iterates entries from **last-registered to first**. The first match wins — no subsequent handlers fire.
 - Errors in handlers are caught and logged: `[@diffgazer/keys] Handler error for "${hotkey}": ...`

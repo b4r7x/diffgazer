@@ -13,6 +13,7 @@ export interface FileOp {
   installDir: string;
   sourceName?: string;
   sourceNames?: string[];
+  overwrite?: boolean;
 }
 
 function tryQuietly(fn: () => void, label: string): boolean {
@@ -102,8 +103,9 @@ export function writeFilesWithRollback(
   try {
     for (const op of fileOps) {
       trackNewDir(dirname(op.targetPath), existingDirs, createdDirs, createdDirSet);
-      backupIfOverwriting(op.targetPath, overwrite, backups);
-      const result = writeFileSafe(op.targetPath, op.content, overwrite);
+      const canOverwrite = op.overwrite ?? overwrite;
+      backupIfOverwriting(op.targetPath, canOverwrite, backups);
+      const result = writeFileSafe(op.targetPath, op.content, canOverwrite);
       logWriteResult(result, op, newFiles);
       results.push(result);
     }
@@ -131,7 +133,7 @@ export function showDryRunPreview(fileOps: FileOp[], overwrite: boolean): void {
   heading("Files that would be written:");
   for (const op of fileOps) {
     const exists = existsSync(op.targetPath);
-    if (exists && !overwrite) {
+    if (exists && !(op.overwrite ?? overwrite)) {
       fileAction(pc.dim("skip"), `${op.installDir}/${op.relativePath}`);
     } else {
       fileAction(pc.green(exists ? "~" : "+"), `${op.installDir}/${op.relativePath}`);

@@ -3,6 +3,7 @@ import type { LensId } from "@diffgazer/core/schemas/review";
 import { Badge } from "@diffgazer/ui/components/badge";
 import { CheckboxGroup, CheckboxItem } from "@diffgazer/ui/components/checkbox";
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
+import { toggleListValue } from "@/lib/selectable-values";
 
 export interface AnalysisOption {
   id: LensId;
@@ -61,10 +62,7 @@ export function AnalysisSelectorContent({
     if (e.key === "Enter") {
       e.preventDefault();
       if (optionIds.includes(effectiveFocusedLens)) {
-        const nextValue = value.includes(effectiveFocusedLens)
-          ? value.filter((id) => id !== effectiveFocusedLens)
-          : [...value, effectiveFocusedLens];
-        onChange(nextValue);
+        onChange(toggleListValue(value, effectiveFocusedLens));
       }
       return;
     }

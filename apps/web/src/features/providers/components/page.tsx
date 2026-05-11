@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import type { Shortcut } from "@diffgazer/core/schemas/ui";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { ProviderList } from "@/features/providers/components/provider-list";
@@ -25,8 +24,7 @@ export function getProvidersFooter(
   if (focusZone === "filters") {
     return {
       shortcuts: [
-        { key: "←/→", label: "Move Filter" },
-        { key: "Enter/Space", label: "Apply Filter" },
+        { key: "←/→", label: "Change Filter" },
         { key: "↑/↓", label: "Switch Zone" },
         { key: "/", label: "Search" },
       ],
@@ -74,14 +72,6 @@ export function ProvidersPage() {
 
   usePageFooter({ shortcuts: footer.shortcuts, rightShortcuts: footer.rightShortcuts });
 
-  const [listHighlighted, setListHighlighted] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (listHighlighted === null) return;
-    if (filteredProviders.some((provider) => provider.id === listHighlighted)) return;
-    setListHighlighted(null);
-  }, [filteredProviders, listHighlighted]);
-
   const actions = {
     onSetApiKey: () => dialogs.setApiKeyOpen(true),
     onSelectModel: () => dialogs.setModelOpen(true),
@@ -115,14 +105,15 @@ export function ProvidersPage() {
           isFocused={keyboard.focusZone === "list"}
           inputRef={search.inputRef}
           onSearchFocus={keyboard.handleSearchFocus}
+          onSearchEscape={keyboard.handleSearchEscape}
           onListFocus={keyboard.handleListFocus}
           focusedFilterIndex={keyboard.focusZone === "filters" ? keyboard.filterIndex : undefined}
           onFilterHighlightChange={keyboard.setFilterIndex}
           onFilterFocus={keyboard.handleFilterFocus}
           onFilterKeyDown={keyboard.handleFilterKeyDown}
           getFilterButtonProps={keyboard.getFilterButtonProps}
-          highlightedId={listHighlighted}
-          onHighlightChange={setListHighlighted}
+          highlighted={selection.effectiveSelectedId}
+          onHighlightChange={(id) => selection.setSelectedId(id)}
           onBoundaryReached={keyboard.handleListBoundary}
         />
       </div>

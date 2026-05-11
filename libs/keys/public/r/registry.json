@@ -29,6 +29,14 @@
         {
           "path": "src/utils/navigation-directions.ts",
           "type": "registry:hook"
+        },
+        {
+          "path": "src/utils/keyboard-utils.ts",
+          "type": "registry:hook"
+        },
+        {
+          "path": "src/utils/focusable.ts",
+          "type": "registry:hook"
         }
       ]
     },
@@ -54,14 +62,30 @@
       ]
     },
     {
+      "name": "focusable",
+      "type": "registry:hook",
+      "title": "Focusable Utilities",
+      "description": "DOM helpers for discovering focusable and tabbable elements",
+      "dependencies": [],
+      "registryDependencies": [],
+      "meta": {
+        "client": true,
+        "hidden": true
+      },
+      "files": [
+        {
+          "path": "src/utils/focusable.ts",
+          "type": "registry:hook"
+        }
+      ]
+    },
+    {
       "name": "focus-trap",
       "type": "registry:hook",
       "title": "Focus Trap",
       "description": "Trap Tab focus within a container element",
       "dependencies": [],
-      "registryDependencies": [
-        "focus-restore"
-      ],
+      "registryDependencies": [],
       "meta": {
         "client": true
       },
@@ -79,7 +103,7 @@
           "type": "registry:hook"
         },
         {
-          "path": "src/utils/navigation-items.ts",
+          "path": "src/utils/focusable.ts",
           "type": "registry:hook"
         }
       ]

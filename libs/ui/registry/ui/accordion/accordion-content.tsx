@@ -7,10 +7,12 @@ import { useAccordionItemContext } from "./accordion-context";
 export interface AccordionContentProps {
   children: ReactNode;
   className?: string;
+  region?: boolean;
 }
 
-export function AccordionContent({ children, className }: AccordionContentProps) {
+export function AccordionContent({ children, className, region = false }: AccordionContentProps) {
   const { isOpen, triggerId, contentId } = useAccordionItemContext();
+  const exposesRegion = region && isOpen;
 
   return (
     <div
@@ -23,9 +25,9 @@ export function AccordionContent({ children, className }: AccordionContentProps)
     >
       <div
         className={cn("overflow-hidden min-h-0 pt-2", className)}
-        role="region"
+        role={exposesRegion ? "region" : undefined}
         id={contentId}
-        aria-labelledby={triggerId}
+        aria-labelledby={exposesRegion ? triggerId : undefined}
       >
         {children}
       </div>

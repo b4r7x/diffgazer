@@ -28,7 +28,7 @@ export const accordionDoc: ComponentDoc = {
   ],
   keyboard: {
     description:
-      "Built-in keyboard navigation via @diffgazer/keys useNavigation. Arrow Up/Down moves focus between accordion triggers, Home/End jumps to first/last, Enter/Space toggles the focused item.",
+      "Built-in keyboard navigation via @diffgazer/keys navigation helpers. Arrow Up/Down moves focus between accordion triggers, Home/End jumps to first/last, Enter/Space toggles the focused item.",
     examples: [{ name: "accordion-default", title: "Default (with keyboard support)" }],
   },
   usage: { example: "accordion-default" },

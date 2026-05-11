@@ -17,7 +17,7 @@ export interface DialogShellProps
   open: boolean;
   onBackdropClick?: (e: MouseEvent<HTMLDialogElement>) => void;
   onCancel?: (e: SyntheticEvent<HTMLDialogElement>) => void;
-  onBeforeShowModal?: () => void;
+  onBeforeShowModal?: (ownerDocument: Document) => void;
   onAfterShowModal?: () => void;
   onClose?: () => void;
   children: ReactNode;
@@ -61,7 +61,7 @@ export function DialogShell({
   useLayoutEffect(() => {
     const dialog = dialogRef.current;
     if (open && present && dialog && !dialog.open) {
-      onBeforeShowModal?.();
+      onBeforeShowModal?.(dialog.ownerDocument);
       dialog.showModal();
       onAfterShowModal?.();
     }

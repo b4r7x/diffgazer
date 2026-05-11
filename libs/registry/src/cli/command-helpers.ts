@@ -81,7 +81,7 @@ function fileExistsWithExtensions(base: string, exts: string[]): boolean {
 export function createInstallChecker(options: {
   getManifest: () => Record<string, unknown> | undefined;
   getItem: (name: string) => RegistryItem | undefined;
-  getRelativePath: (file: { path: string; targetPath?: string }) => string;
+  getRelativePath: (file: { path: string }) => string;
   installDir: string;
   extensions?: string[];
 }): (name: string) => boolean {

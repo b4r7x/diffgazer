@@ -204,7 +204,9 @@ function packWorkspacePackage(workspacePackage, packDir) {
 }
 
 function withTempProject(workspacePackage, smoke) {
-  const tempDir = mkdtempSync(`${tmpdir()}/dg-smoke-`);
+  const tempRoot = smoke.workspaceTemp === true ? resolve(root, "tmp") : tmpdir();
+  mkdirSync(tempRoot, { recursive: true });
+  const tempDir = mkdtempSync(resolve(tempRoot, "dg-smoke-"));
   const projectDir = resolve(tempDir);
   const packDir = resolve(tempDir, "packs");
   const tgzPaths = [];
@@ -521,7 +523,15 @@ function writeUiNextPackageSmoke(projectDir) {
       "",
     ].join("\n"),
   );
-  writeFileSync(resolve(projectDir, "next.config.mjs"), "export default {};\n");
+  writeFileSync(
+    resolve(projectDir, "next.config.mjs"),
+    [
+      "export default {",
+      `  turbopack: { root: ${JSON.stringify(root)} },`,
+      "};",
+      "",
+    ].join("\n"),
+  );
   writeFileSync(
     resolve(projectDir, "postcss.config.mjs"),
     "export default { plugins: { '@tailwindcss/postcss': {} } };\n",
@@ -602,13 +612,14 @@ const packages = [
   {
     name: "@diffgazer/keys",
     installDeps: ["react@^19.2.0"],
-    command: `node -e ${JSON.stringify("import('@diffgazer/keys').then(()=>console.log('OK: @diffgazer/keys import')).catch((e)=>{console.error(e); process.exit(1);});")}`,
+    command: `node -e ${JSON.stringify("import { createRequire } from 'node:module'; const require = createRequire(import.meta.url); require.resolve('@diffgazer/keys/package.json'); import('@diffgazer/keys').then(()=>console.log('OK: @diffgazer/keys import and package.json export')).catch((e)=>{console.error(e); process.exit(1);});")}`,
   },
   {
     name: "@diffgazer/ui",
     label: "@diffgazer/ui Next package-mode CSS",
     workspaceDeps: ["@diffgazer/keys"],
     optionalWhenDepsMissing: true,
+    workspaceTemp: true,
     dependencySourcePackages: ["@diffgazer/web"],
     installDeps: [
       "react@^19.2.0",

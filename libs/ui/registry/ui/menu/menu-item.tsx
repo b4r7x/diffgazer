@@ -93,9 +93,10 @@ function HubItemLayout({
   );
 }
 
-type ItemState = "normal" | "focused" | "selected" | "disabled";
+type ItemState = "normal" | "focused" | "selected" | "disabled" | "disabledFocused";
 
 function getItemState(disabled: boolean, isFocused: boolean, isSelected: boolean): ItemState {
+  if (disabled && isFocused) return "disabledFocused";
   if (disabled) return "disabled";
   if (isFocused) return "focused";
   if (isSelected) return "selected";
@@ -108,12 +109,13 @@ const menuItemBase = cva("cursor-pointer w-full transition-colors", {
       default: "px-4 py-3 flex items-center font-mono duration-75",
       hub: "px-4 py-4 flex justify-between items-center text-sm border-b border-border last:border-b-0",
     },
-    state: {
-      normal: "hover:bg-secondary group",
-      focused: "font-bold",
-      selected: "font-bold group",
-      disabled: "opacity-50 cursor-not-allowed",
-    },
+      state: {
+        normal: "hover:bg-secondary group",
+        focused: "font-bold",
+        selected: "font-bold group",
+        disabled: "opacity-50 cursor-not-allowed",
+        disabledFocused: "opacity-60 cursor-not-allowed bg-secondary text-foreground",
+      },
     colorVariant: {
       default: "",
       danger: "",
@@ -122,6 +124,7 @@ const menuItemBase = cva("cursor-pointer w-full transition-colors", {
   compoundVariants: [
     { state: "focused", menuVariant: "hub", class: "shadow-[inset_0_0_15px_rgba(0,0,0,0.1)]" },
     { state: "disabled", menuVariant: "default", class: "hover:bg-transparent" },
+    { state: "disabledFocused", menuVariant: "hub", class: "shadow-[inset_0_0_15px_rgba(0,0,0,0.1)]" },
     { colorVariant: "danger", state: "focused", class: "bg-destructive text-destructive-foreground" },
     { colorVariant: "default", state: "focused", class: "bg-primary text-primary-foreground" },
     { colorVariant: "danger", state: "selected", class: "bg-destructive text-destructive-foreground" },
@@ -223,12 +226,12 @@ export function MenuItem({
   onMouseDown,
   ...rootProps
 }: MenuItemProps) {
-  const { selectedId, highlightedId, activate, highlight, variant: menuVariant, idPrefix, itemRole } =
+  const { selectedId, highlighted, activate, highlight, variant: menuVariant, idPrefix, itemRole } =
     useMenuContext();
 
-  const isSelected = selectedId === id;
-  const isFocused = highlightedId === id;
-  const isActive = isFocused || isSelected;
+  const isSelected = !disabled && selectedId === id;
+  const isFocused = highlighted === id;
+  const isActive = !disabled && (isFocused || isSelected);
   const isDanger = variant === "danger";
   const isHub = menuVariant === "hub";
   const state = getItemState(disabled, isFocused, isSelected);
@@ -260,6 +263,7 @@ export function MenuItem({
       role={itemRole}
       data-value={id}
       data-active={isActive || undefined}
+      data-focus={isFocused || undefined}
       aria-checked={itemRole === "menuitemradio" ? isSelected : undefined}
       aria-disabled={disabled || undefined}
       data-state={isSelected ? "selected" : "unselected"}

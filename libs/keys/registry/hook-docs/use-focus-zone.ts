@@ -62,13 +62,13 @@ export const useFocusZoneDoc: HookDoc = {
       type: "readonly T[]",
       required: false,
       description:
-        "Zone order for Tab/Shift+Tab cycling. Defaults to the zones array order.",
+        "Zone order for Tab/Shift+Tab cycling. When omitted, Tab/Shift+Tab are not handled and follow native browser behavior.",
     },
     {
       name: "scope",
-      type: "string",
+      type: "string | null",
       required: false,
-      description: "Keyboard scope name to push while the focus zone is active.",
+      description: "Keyboard scope name to push while the focus zone is active. Null skips scope registration.",
     },
     {
       name: "containerRef",
@@ -103,6 +103,13 @@ export const useFocusZoneDoc: HookDoc = {
       required: false,
       description: "Whether the focus zone hook is active.",
       defaultValue: "true",
+    },
+    {
+      name: "focus",
+      type: "{ targets: Partial<Record<T, FocusZoneTarget>>; autoFocus?: boolean; preventScroll?: boolean }",
+      required: false,
+      description:
+        "Optional DOM focus targets for zone changes. A target may be a ref/function, or a { container, target } pair that skips focus repair while focus is already inside the container. Initial mount does not focus unless autoFocus is true.",
     },
   ],
   returns: {

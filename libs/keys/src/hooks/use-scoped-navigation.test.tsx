@@ -122,6 +122,72 @@ describe("useScopedNavigation", () => {
     expect(onEnter).toHaveBeenCalledWith("b", expect.any(KeyboardEvent));
   });
 
+  it("moves focus from native checkbox controls", async () => {
+    const onSelect = vi.fn();
+
+    function CheckboxList() {
+      const ref = useRef<HTMLDivElement>(null);
+      useScopedNavigation({
+        containerRef: ref,
+        role: "checkbox",
+        moveFocus: true,
+        onSelect,
+      });
+
+      return (
+        <div ref={ref} role="group" aria-label="Choices">
+          <label>
+            A
+            <input type="checkbox" data-value="a" />
+          </label>
+          <label>
+            B
+            <input type="checkbox" data-value="b" />
+          </label>
+        </div>
+      );
+    }
+
+    render(<CheckboxList />, { wrapper });
+
+    screen.getByRole("checkbox", { name: "A" }).focus();
+    await userEvent.keyboard("{ArrowDown} ");
+
+    expect(document.activeElement).toBe(screen.getByRole("checkbox", { name: "B" }));
+    expect(onSelect).toHaveBeenCalledWith("b", expect.any(KeyboardEvent));
+  });
+
+  it("moves focus from native radio controls", async () => {
+    function RadioList() {
+      const ref = useRef<HTMLDivElement>(null);
+      useScopedNavigation({
+        containerRef: ref,
+        role: "radio",
+        moveFocus: true,
+      });
+
+      return (
+        <div ref={ref} role="radiogroup" aria-label="Plans">
+          <label>
+            Basic
+            <input type="radio" name="plan" data-value="basic" />
+          </label>
+          <label>
+            Pro
+            <input type="radio" name="plan" data-value="pro" />
+          </label>
+        </div>
+      );
+    }
+
+    render(<RadioList />, { wrapper });
+
+    screen.getByRole("radio", { name: "Basic" }).focus();
+    await userEvent.keyboard("{ArrowDown}");
+
+    expect(document.activeElement).toBe(screen.getByRole("radio", { name: "Pro" }));
+  });
+
   it("only handles keys when its explicit scope is active", async () => {
     const user = userEvent.setup();
 
@@ -136,6 +202,30 @@ describe("useScopedNavigation", () => {
     expectActiveOptionText("a");
 
     rerender(<ScopedList active />);
+
+    await user.keyboard("{ArrowDown}");
+    expectActiveOptionText("b");
+  });
+
+  it("composes with a scope returned from useScope when the scope is disabled and re-enabled", async () => {
+    const user = userEvent.setup();
+
+    function ScopedList({ active }: { active: boolean }) {
+      const scope = useScope("scoped-list", { enabled: active });
+      return <TestList scope={scope} defaultHighlighted="a" />;
+    }
+
+    const { rerender } = render(<ScopedList active={false} />, { wrapper });
+
+    await user.keyboard("{ArrowDown}");
+    expectActiveOptionText("a");
+
+    rerender(<ScopedList active />);
+
+    await user.keyboard("{ArrowDown}");
+    expectActiveOptionText("b");
+
+    rerender(<ScopedList active={false} />);
 
     await user.keyboard("{ArrowDown}");
     expectActiveOptionText("b");

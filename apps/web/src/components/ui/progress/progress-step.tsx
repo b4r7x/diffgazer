@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Stepper, StepperSubstep } from "@diffgazer/ui/components/stepper";
+import { Stepper, StepperSubstep, type StepStatus, type SubstepStatus } from "@diffgazer/ui/components/stepper";
 import type { ProgressStatus, ProgressSubstepData } from '@diffgazer/core/schemas/ui';
 
 export type { ProgressStatus };
@@ -13,6 +13,20 @@ export interface ProgressStepProps {
   className?: string;
 }
 
+const STEP_STATUS_LABELS: Record<StepStatus, string> = {
+  completed: "DONE",
+  active: "RUN",
+  pending: "WAIT",
+  error: "FAIL",
+};
+
+const SUBSTEP_STATUS_LABELS: Record<SubstepStatus, string> = {
+  pending: "",
+  active: "analyzing...",
+  completed: "done",
+  error: "failed",
+};
+
 export function ProgressStep({
   label,
   status,
@@ -25,13 +39,15 @@ export function ProgressStep({
 
   return (
     <Stepper.Step stepId={stepId ?? label} status={status} className={className}>
-      <Stepper.Trigger disabled={!hasContent}>{label}</Stepper.Trigger>
+      <Stepper.Trigger disabled={!hasContent} statusLabels={STEP_STATUS_LABELS}>
+        {label}
+      </Stepper.Trigger>
       {hasContent && (
         <Stepper.Content>
           {substeps && substeps.length > 0 && (
             <div className="space-y-1 mb-2">
               {substeps.map(({ id, progress: _progress, ...substep }) => (
-                <StepperSubstep key={id} {...substep} />
+                <StepperSubstep key={id} statusLabels={SUBSTEP_STATUS_LABELS} {...substep} />
               ))}
             </div>
           )}

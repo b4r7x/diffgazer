@@ -1,6 +1,7 @@
 import { cn } from "@diffgazer/core/cn";
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
+import { EmptyState } from "@diffgazer/ui/components/empty-state";
 import { Button } from "@diffgazer/ui/components/button";
 import { SeverityBreakdown } from "@/components/ui/severity/severity-breakdown";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
@@ -27,22 +28,22 @@ export function HistoryInsightsPane({
 }: HistoryInsightsPaneProps) {
   if (!runId) {
     return (
-      <div className={cn("flex items-center justify-center text-tui-muted text-sm", className)}>
+      <EmptyState className={className}>
         Select a run to view insights
-      </div>
+      </EmptyState>
     );
   }
 
   return (
     <div className={cn("flex h-full min-h-0 flex-col overflow-hidden", className)}>
-      <div className="p-3 text-xs text-tui-muted font-bold border-b border-tui-border">
-        <span className="uppercase tracking-wider">Insights: Run</span> {runId}
-      </div>
+      <SectionHeader as="h2" variant="muted" bordered className="mb-0 p-3 border-tui-border">
+        Insights: Run {runId}
+      </SectionHeader>
 
       <ScrollArea className="flex-1 min-h-0 p-4 pr-2 space-y-6">
         {severityCounts && (
           <div>
-            <SectionHeader className="border-b border-tui-border pb-1">
+            <SectionHeader bordered className="border-tui-border">
               Severity Breakdown
             </SectionHeader>
             <div className="mt-3">
@@ -53,7 +54,7 @@ export function HistoryInsightsPane({
 
         {issues.length > 0 && (
           <div>
-            <SectionHeader className="border-b border-tui-border pb-1">
+            <SectionHeader bordered className="border-tui-border">
               {issues.length} Issues
             </SectionHeader>
             <div className="space-y-3 mt-3">

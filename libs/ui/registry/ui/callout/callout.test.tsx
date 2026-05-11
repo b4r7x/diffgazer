@@ -10,8 +10,8 @@ describe("Callout", () => {
     expect(screen.getByText("Info message")).toBeInTheDocument()
   })
 
-  it("is hidden when visible=false", () => {
-    render(<Callout visible={false}>Info message</Callout>)
+  it("is hidden when open=false", () => {
+    render(<Callout open={false}>Info message</Callout>)
     expect(screen.queryByText("Info message")).not.toBeInTheDocument()
   })
 

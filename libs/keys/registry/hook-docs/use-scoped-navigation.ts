@@ -21,7 +21,7 @@ export const useScopedNavigationDoc: HookDoc = {
     },
     {
       name: "role",
-      type: '"radio" | "checkbox" | "option" | "menuitem" | "menuitemradio" | "button" | "tab"',
+      type: '"radio" | "checkbox" | "option" | "menuitem" | "menuitemcheckbox" | "menuitemradio" | "button" | "tab"',
       required: true,
       description:
         "ARIA role used to query navigable children within the container.",
@@ -73,10 +73,10 @@ export const useScopedNavigationDoc: HookDoc = {
     },
     {
       name: "onNavigationBoundaryReached",
-      type: '(direction: "previous" | "next") => void',
+      type: '(direction: "previous" | "next", event: KeyboardEvent, key: string) => void',
       required: false,
       description:
-        "Called when the user tries to navigate past the first or last item using orientation-neutral direction names.",
+        "Called when the user tries to navigate past the first or last item. Receives the orientation-neutral direction, the originating keyboard event, and the key that hit the boundary.",
     },
     {
       name: "defaultHighlighted",
@@ -135,9 +135,10 @@ export const useScopedNavigationDoc: HookDoc = {
     },
     {
       name: "scope",
-      type: "string",
+      type: "string | null",
       required: false,
-      description: "Keyboard scope name to register navigation handlers under.",
+      description:
+        "Keyboard scope name to register navigation handlers under. Pass null to skip registration while a conditional scope is disabled.",
     },
     {
       name: "focusWithinOnly",

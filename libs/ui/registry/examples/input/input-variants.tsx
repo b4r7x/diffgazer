@@ -6,7 +6,7 @@ export default function InputVariants() {
       <Input size="sm" placeholder="Small input" />
       <Input size="md" placeholder="Medium input (default)" />
       <Input size="lg" placeholder="Large input" />
-      <Input error placeholder="Error state" />
+      <Input aria-invalid placeholder="Error state" />
       <Input disabled placeholder="Disabled input" />
     </div>
   )

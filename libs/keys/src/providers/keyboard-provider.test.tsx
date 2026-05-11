@@ -11,6 +11,12 @@ function Wrapper({ children }: { children: ReactNode }) {
   return <KeyboardProvider>{children}</KeyboardProvider>;
 }
 
+function fireKeyFrom(element: Element, key: string) {
+  act(() => {
+    element.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+  });
+}
+
 describe("KeyboardProvider", () => {
   afterEach(() => cleanup());
 
@@ -150,7 +156,7 @@ describe("KeyboardProvider", () => {
     expect(handler).toHaveBeenCalledOnce();
   });
 
-  it("should ignore keyboard events from input elements unless allowInInput is true", async () => {
+  it("should ignore keyboard events from text-editable elements unless allowInInput is true", async () => {
     const blocked = vi.fn();
     const allowed = vi.fn();
 
@@ -172,6 +178,62 @@ describe("KeyboardProvider", () => {
 
     await userEvent.keyboard("{Escape}");
     expect(allowed).toHaveBeenCalledOnce();
+  });
+
+  it("should not block handlers from non-text-editable native controls", async () => {
+    const onCheckbox = vi.fn();
+    const onRadio = vi.fn();
+    const onSelect = vi.fn();
+
+    function Consumer() {
+      const { register } = useKeyboardContext();
+      useEffect(() => {
+        const cleanupCheckbox = register("global", "ArrowDown", onCheckbox);
+        const cleanupRadio = register("global", "ArrowRight", onRadio);
+        const cleanupSelect = register("global", "Escape", onSelect);
+        return () => {
+          cleanupCheckbox();
+          cleanupRadio();
+          cleanupSelect();
+        };
+      }, [register]);
+
+      return (
+        <form>
+          <label>
+            Check
+            <input type="checkbox" />
+          </label>
+          <label>
+            Pick
+            <input type="radio" name="pick" />
+          </label>
+          <label>
+            Select
+            <select>
+              <option>A</option>
+            </select>
+          </label>
+        </form>
+      );
+    }
+
+    render(<Wrapper><Consumer /></Wrapper>);
+
+    const checkbox = screen.getByRole("checkbox", { name: "Check" });
+    checkbox.focus();
+    fireKeyFrom(checkbox, "ArrowDown");
+    expect(onCheckbox).toHaveBeenCalledOnce();
+
+    const radio = screen.getByRole("radio", { name: "Pick" });
+    radio.focus();
+    fireKeyFrom(radio, "ArrowRight");
+    expect(onRadio).toHaveBeenCalledOnce();
+
+    const select = screen.getByRole("combobox", { name: "Select" });
+    select.focus();
+    fireKeyFrom(select, "Escape");
+    expect(onSelect).toHaveBeenCalledOnce();
   });
 
   it("should prioritize latest handler and fall back after deregister", () => {

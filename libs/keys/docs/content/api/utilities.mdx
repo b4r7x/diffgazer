@@ -18,7 +18,10 @@ import {
   findNavigationItemByValue,
   focusNavigationItem,
   getFocusedNavigationValue,
+  getFirstFocusableElement,
   getFocusableElements,
+  getTabbableElements,
+  isFocusable,
 } from "@diffgazer/keys";
 ```
 
@@ -36,6 +39,7 @@ type NavigationItemType =
   | "checkbox"
   | "option"
   | "menuitem"
+  | "menuitemcheckbox"
   | "menuitemradio"
   | "button"
   | "tab";
@@ -81,9 +85,14 @@ function getFocusedNavigationValue(
 ): string | null;
 
 function getFocusableElements(container: HTMLElement | null): HTMLElement[];
+function getFirstFocusableElement(container: HTMLElement | null): HTMLElement | null;
+function getTabbableElements(container: HTMLElement | null): HTMLElement[];
+function isFocusable(element: HTMLElement | null): boolean;
 ```
 
 The query helpers read `data-diffgazer-navigation-item`, role selectors, and native radio/checkbox/button controls. Navigation items should expose a stable `data-value`. Typed data-contract markers only match the requested item type, which keeps mixed widgets separated inside the same subtree.
+
+Focusable helpers use the same DOM contract as focus traps and overlays. `getFocusableElements()` includes programmatic focus targets such as `tabIndex={-1}`; `getTabbableElements()` returns browser Tab order and collapses native radio groups to one Tab stop.
 
 ---
 
@@ -165,7 +174,7 @@ function useOptionalKeyboardContext(): KeyboardContextValue | null;
 interface KeyboardContextValue {
   activeScope: string | null;
   getActiveScope: () => string | null;
-  pushScope: (scope: string, order?: string) => () => void;
+  pushScope: (scope: string) => () => void;
   register: (scope: string, hotkey: string, handler: Handler, options?: HandlerOptions) => () => void;
 }
 ```

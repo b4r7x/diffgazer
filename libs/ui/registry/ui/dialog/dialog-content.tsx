@@ -4,6 +4,7 @@ import {
   Children,
   isValidElement,
   useCallback,
+  useEffect,
   useRef,
   useState,
   type HTMLAttributes,
@@ -35,6 +36,8 @@ const dialogContentVariants = cva(
   }
 );
 
+const FALLBACK_DIALOG_LABEL = "Dialog";
+
 export interface DialogContentProps
   extends VariantProps<typeof dialogContentVariants>,
     Omit<HTMLAttributes<HTMLDialogElement>, "children" | "className"> {
@@ -62,7 +65,7 @@ export function DialogContent({
   "aria-labelledby": ariaLabelledBy,
   ...rest
 }: DialogContentProps) {
-  const { open, onOpenChange, contentId, titleId, descriptionId, hasTitle, hasDescription, triggerRef } = useDialogContext();
+  const { open, onOpenChange, contentId, titleId, descriptionId, hasTitle, hasMountedTitleRef, hasDescription, triggerRef } = useDialogContext();
   const close = () => onOpenChange(false);
   const shellRef = useRef<HTMLDialogElement>(null);
   const [container, setContainer] = useState<Element | null>(null);
@@ -74,11 +77,22 @@ export function DialogContent({
   const hasAriaLabelledBy = hasNonEmptyText(ariaLabelledBy);
   const hasRenderableTitle = hasTitle || containsDialogTitleElement(children);
   const labelSourceId = hasAriaLabelledBy ? ariaLabelledBy : hasAriaLabel || !hasRenderableTitle ? undefined : titleId;
+  const resolvedAriaLabel = hasAriaLabel
+    ? ariaLabel
+    : labelSourceId === undefined ? FALLBACK_DIALOG_LABEL : undefined;
 
   const setShellRef = useCallback((node: HTMLDialogElement | null) => {
     shellRef.current = node;
     setContainer(node);
   }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    if (hasAriaLabel || hasAriaLabelledBy || hasRenderableTitle || hasMountedTitleRef.current) return;
+    console.warn(
+      "[Dialog] Modal dialog is missing an accessible name. Provide a Dialog.Title child, an aria-label prop, or an aria-labelledby prop. A fallback accessible name is applied at runtime.",
+    );
+  }, [open, hasAriaLabel, hasAriaLabelledBy, hasRenderableTitle, hasMountedTitleRef]);
 
   return (
     <DialogShell
@@ -98,7 +112,7 @@ export function DialogContent({
       onAnimationEnd={onAnimationEnd}
       className={cn(dialogContentVariants({ size }), className)}
       aria-modal="true"
-      aria-label={hasAriaLabel ? ariaLabel : undefined}
+      aria-label={resolvedAriaLabel}
       aria-labelledby={labelSourceId}
       aria-describedby={hasDescription ? descriptionId : undefined}
     >

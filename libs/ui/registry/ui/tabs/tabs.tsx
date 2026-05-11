@@ -8,6 +8,7 @@ import {
   type Ref,
   useId,
   useMemo,
+  useState,
 } from "react";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { cn } from "@/lib/utils";
@@ -86,21 +87,27 @@ function TabsRoot({
     defaultValue: defaultValue ?? "",
     onChange,
   });
+  const [focusedValue, setFocusedValue] = useState<string | null>(null);
   const firstEnabledTab = enabledValues[0] ?? "";
   const resolvedValue = enabledValues.includes(value) ? value : firstEnabledTab;
+  const resolvedFocusedValue = focusedValue !== null && enabledValues.includes(focusedValue)
+    ? focusedValue
+    : resolvedValue;
 
   const contextValue = useMemo(
     () => ({
       tabsId,
       value: resolvedValue,
+      tabbableValue: activationMode === "manual" ? resolvedFocusedValue : resolvedValue,
       onChange: setValue,
+      onFocusChange: setFocusedValue,
       panelValues,
       triggerValues,
       orientation,
       variant,
       activationMode,
     }),
-    [tabsId, resolvedValue, setValue, panelValues, triggerValues, orientation, variant, activationMode],
+    [tabsId, resolvedValue, resolvedFocusedValue, activationMode, setValue, panelValues, triggerValues, orientation, variant],
   );
 
   return (

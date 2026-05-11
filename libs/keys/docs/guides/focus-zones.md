@@ -144,6 +144,28 @@ In controlled mode, `setInternalZone` is never called. The hook fires `onZoneCha
 
 The `setZone` function from the return value also works in controlled mode -- it goes through the same lifecycle callbacks (leave/enter/change) before calling `onZoneChange`.
 
+## Focus targets
+
+Pass `focus.targets` when a zone change should also move DOM focus to that zone's root element or first interactive control.
+
+```tsx
+const listRef = useRef<HTMLDivElement>(null);
+const detailsRef = useRef<HTMLDivElement>(null);
+
+useFocusZone({
+  initial: "list",
+  zones: ["list", "details"],
+  focus: {
+    targets: {
+      list: listRef,
+      details: detailsRef,
+    },
+  },
+});
+```
+
+Focus targets run after the active zone changes. Initial mount does not focus anything unless you pass `autoFocus: true`, which keeps implicit focus movement opt-in.
+
 ## Lifecycle callbacks
 
 Three callbacks fire during zone transitions, in this order:

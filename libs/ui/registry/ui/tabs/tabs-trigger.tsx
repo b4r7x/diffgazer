@@ -1,6 +1,6 @@
 "use client";
 
-import { type ButtonHTMLAttributes, type MouseEvent, type Ref } from "react";
+import { type ButtonHTMLAttributes, type FocusEvent, type MouseEvent, type Ref } from "react";
 import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { getTabPanelId, getTabTriggerId, useTabsContext } from "./tabs-context";
@@ -42,9 +42,10 @@ export interface TabsTriggerProps extends Omit<ButtonHTMLAttributes<HTMLButtonEl
   ref?: Ref<HTMLButtonElement>;
 }
 
-export function TabsTrigger({ value, children, className, disabled, ref, onClick, ...rest }: TabsTriggerProps) {
-  const { tabsId, value: selectedValue, onChange, panelValues, variant, orientation } = useTabsContext();
+export function TabsTrigger({ value, children, className, disabled, ref, onClick, onFocus, ...rest }: TabsTriggerProps) {
+  const { tabsId, value: selectedValue, tabbableValue, onChange, onFocusChange, panelValues, variant, orientation } = useTabsContext();
   const isActive = selectedValue === value;
+  const isTabbable = tabbableValue === value;
   const panelId = panelValues.includes(value) ? getTabPanelId(tabsId, value) : undefined;
 
   const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
@@ -55,6 +56,11 @@ export function TabsTrigger({ value, children, className, disabled, ref, onClick
 
     onClick?.(event);
     if (!event.defaultPrevented) onChange(value);
+  };
+
+  const handleFocus = (event: FocusEvent<HTMLButtonElement>) => {
+    onFocus?.(event);
+    if (!event.defaultPrevented && !disabled) onFocusChange(value);
   };
 
   return (
@@ -68,12 +74,13 @@ export function TabsTrigger({ value, children, className, disabled, ref, onClick
       aria-controls={panelId}
       aria-disabled={disabled || undefined}
       disabled={disabled}
-      tabIndex={isActive && !disabled ? 0 : -1}
+      tabIndex={isTabbable && !disabled ? 0 : -1}
       data-diffgazer-navigation-item="tab"
       data-value={value}
       data-state={isActive ? "active" : "inactive"}
       data-orientation={orientation}
       onClick={handleClick}
+      onFocus={handleFocus}
       className={cn(
         tabsTriggerVariants({ variant, state: isActive ? "active" : "inactive", disabled: !!disabled }),
         className

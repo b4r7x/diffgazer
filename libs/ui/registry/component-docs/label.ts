@@ -2,17 +2,17 @@ import type { ComponentDoc } from "./types"
 
 export const labelDoc: ComponentDoc = {
   description:
-    "Styled label with optional form control wrapping. Standalone mode renders colored uppercase text. Wrapper mode (via text prop) renders label above or beside children content.",
+    "Styled label with optional form control wrapping. Standalone mode renders colored uppercase text. Wrapper mode (via label prop) renders the label above or beside children content.",
   notes: [
     {
       title: "Standalone vs Wrapper Mode",
       content:
-        "Without the text prop, Label renders as a simple styled <label> with colored uppercase text. With the text prop, it wraps children in a flex container — the text becomes a <span> above (or beside) the child content.",
+        "Without the label prop, Label renders as a simple styled <label> with colored uppercase text. With the label prop, it wraps children in a flex container — the label becomes a <span> above (or beside) the child content.",
     },
     {
       title: "Orientation",
       content:
-        "In wrapper mode, orientation controls layout direction. Vertical (default) stacks label text above children with a small gap. Horizontal places them side-by-side, useful for checkbox-style layouts.",
+        "In wrapper mode, orientation controls layout direction. Vertical (default) stacks the label above children with a small gap. Horizontal places them side-by-side, useful for checkbox-style layouts.",
     },
     {
       title: "Native Label Wrapping",

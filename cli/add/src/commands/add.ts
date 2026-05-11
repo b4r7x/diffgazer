@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, basename } from "node:path";
 import { rewriteRelativeJsExtensionsForCopy } from "../utils/transform.js";
 import {
   createAddCommand,
@@ -6,7 +8,7 @@ import {
   parseEnumOption, info,
   type FileOp,
 } from "@diffgazer/registry/cli";
-import { ctx, getRegistry, VERSION, type ResolvedConfig, type ManifestInstallMetadata, type RegistryItem, type ManifestOwnedFile } from "../context.js";
+import { ctx, getRegistry, VERSION, type DiffgazerAddConfig, type ResolvedConfig, type ManifestInstallMetadata, type RegistryItem, type ManifestOwnedFile } from "../context.js";
 import {
   prepareFileContentForIntegration,
   getInstallBaseForFilePath,
@@ -30,6 +32,59 @@ import {
 import { resolveInstallPath, resolveProjectPath, toPosixPath } from "../utils/paths.js";
 
 type OwnedFileOp = FileOp & { sourceNames?: string[] };
+
+function buildComponentCssFileOps(
+  resolved: string[],
+  cwd: string,
+  config: ResolvedConfig,
+): FileOp[] {
+  if (!config.tailwind?.css) return [];
+
+  const chunks = collectComponentCss(resolved);
+  if (chunks.length === 0) return [];
+
+  const cssPath = toPosixPath(config.tailwind.css);
+  const targetPath = resolveProjectPath(cwd, cssPath);
+  const existing = existsSync(targetPath) ? readFileSync(targetPath, "utf-8") : "";
+  const missing = chunks.filter((chunk) => !existing.includes(chunk));
+  if (missing.length === 0) return [];
+
+  return [{
+    targetPath,
+    content: appendCssChunks(existing, missing),
+    relativePath: basename(cssPath),
+    installDir: toPosixPath(dirname(cssPath)),
+    overwrite: true,
+  }];
+}
+
+function collectComponentCss(resolved: string[]): string[] {
+  const seen = new Set<string>();
+  const chunks: string[] = [];
+
+  for (const name of resolved) {
+    const item = ctx.items.getOrThrow(name);
+    for (const file of item.files) {
+      if (!file.path.endsWith(".css") || seen.has(file.path)) continue;
+      const content = file.content.trimEnd();
+      if (!content) continue;
+
+      seen.add(file.path);
+      chunks.push(content);
+    }
+  }
+
+  return chunks;
+}
+
+function appendCssChunks(existing: string, chunks: string[]): string {
+  const prefix = existing.length === 0
+    ? ""
+    : existing.endsWith("\n")
+      ? "\n"
+      : "\n\n";
+  return `${existing}${prefix}${chunks.join("\n\n")}\n`;
+}
 
 function buildFileOp(
   file: { path: string; content: string },
@@ -148,13 +203,34 @@ function sha256(content: string): string {
   return `sha256-${createHash("sha256").update(content).digest("hex")}`;
 }
 
+// Adoption policy: a skipped file is only adopted into a new item's ownership
+// when an existing manifest entry already owns the same path with the SAME
+// registryIntegrity. A version mismatch refuses adoption rather than silently
+// claiming files written by an older CLI/registry combination.
+function isManifestTrusted(
+  manifestPath: string,
+  manifest: NonNullable<DiffgazerAddConfig["installedComponents"]>,
+  registryIntegrity: string | undefined,
+): boolean {
+  if (!registryIntegrity) return false;
+  for (const record of Object.values(manifest)) {
+    for (const file of record.files ?? []) {
+      if (file.path !== manifestPath) continue;
+      if (file.registryIntegrity === registryIntegrity) return true;
+    }
+  }
+  return false;
+}
+
 function buildOwnedFilesByItem(
+  cwd: string,
   writeResult: { results: Array<{ op: FileOp; result: "written" | "skipped" | "overwritten" }> },
   mode: ResolvedIntegrationSelection["mode"],
 ): Map<string, ManifestOwnedFile[]> {
   const registryIntegrity = getRegistry().integrity;
   const byItem = new Map<string, ManifestOwnedFile[]>();
   const writtenByTargetPath = new Map<string, ManifestOwnedFile>();
+  const existingManifest = (ctx.config.getManifestItems(cwd) ?? {}) as NonNullable<DiffgazerAddConfig["installedComponents"]>;
 
   function getSourceNames(op: FileOp): string[] {
     const ownedOp = op as OwnedFileOp;
@@ -197,8 +273,23 @@ function buildOwnedFilesByItem(
   for (const { op, result } of writeResult.results) {
     const sourceNames = getSourceNames(op);
     if (result !== "skipped" || sourceNames.length === 0) continue;
+
+    const expectedHash = sha256(op.content);
     const written = writtenByTargetPath.get(op.targetPath);
-    if (!written || written.hash !== sha256(op.content)) continue;
+    if (written && written.hash === expectedHash) {
+      for (const sourceName of sourceNames) {
+        addOwnedFile(sourceName, op);
+      }
+      continue;
+    }
+
+    if (!existsSync(op.targetPath)) continue;
+    const onDiskHash = sha256(readFileSync(op.targetPath, "utf-8"));
+    if (onDiskHash !== expectedHash) continue;
+
+    const manifestPath = toPosixPath(`${op.installDir}/${op.relativePath}`);
+    if (!isManifestTrusted(manifestPath, existingManifest, registryIntegrity)) continue;
+
     for (const sourceName of sourceNames) {
       addOwnedFile(sourceName, op);
     }
@@ -211,7 +302,7 @@ function updateOwnedManifestEntries(
   writeResult: { results: Array<{ op: FileOp; result: "written" | "skipped" | "overwritten" }> },
   metadata: ManifestInstallMetadata,
 ): void {
-  const filesByItem = buildOwnedFilesByItem(writeResult, metadata.integrationMode ?? "none");
+  const filesByItem = buildOwnedFilesByItem(cwd, writeResult, metadata.integrationMode ?? "none");
   for (const name of filesByItem.keys()) {
     ctx.config.updateManifest(cwd, [name], undefined, { ...metadata, files: filesByItem.get(name) ?? [] });
   }
@@ -225,6 +316,7 @@ function collectFileOps(
   neededKeysHooks: string[],
 ): FileOp[] {
   const fileOps = buildComponentFileOps(resolved, cwd, config, selection.mode);
+  fileOps.push(...buildComponentCssFileOps(resolved, cwd, config));
   if (selection.hasKeyboardIntegration && selection.mode === "copy") {
     fileOps.push(...buildKeysFileOps(neededKeysHooks, cwd, config));
   }

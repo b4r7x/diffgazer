@@ -153,6 +153,70 @@ describe("Stepper", () => {
     expect(await axe(container)).toHaveNoViolations()
   })
 
+  it("renders neutral default badge labels when no statusLabels prop is provided", () => {
+    render(
+      <Stepper>
+        <Stepper.Step stepId="s1" status="completed">
+          <Stepper.Trigger>Step 1</Stepper.Trigger>
+        </Stepper.Step>
+        <Stepper.Step stepId="s2" status="active">
+          <Stepper.Trigger>Step 2</Stepper.Trigger>
+        </Stepper.Step>
+        <Stepper.Step stepId="s3" status="pending">
+          <Stepper.Trigger>Step 3</Stepper.Trigger>
+        </Stepper.Step>
+        <Stepper.Step stepId="s4" status="error">
+          <Stepper.Trigger>Step 4</Stepper.Trigger>
+        </Stepper.Step>
+      </Stepper>,
+    )
+    expect(screen.getByRole("button", { name: /Step 1/ })).toHaveTextContent("Completed")
+    expect(screen.getByRole("button", { name: /Step 2/ })).toHaveTextContent("Active")
+    expect(screen.getByRole("button", { name: /Step 3/ })).toHaveTextContent("Pending")
+    expect(screen.getByRole("button", { name: /Step 4/ })).toHaveTextContent("Error")
+  })
+
+  it("uses provided statusLabels for trigger badges", () => {
+    render(
+      <Stepper>
+        <Stepper.Step stepId="s1" status="completed">
+          <Stepper.Trigger statusLabels={{ completed: "DONE", active: "RUN" }}>
+            Step 1
+          </Stepper.Trigger>
+        </Stepper.Step>
+        <Stepper.Step stepId="s2" status="active">
+          <Stepper.Trigger statusLabels={{ completed: "DONE", active: "RUN" }}>
+            Step 2
+          </Stepper.Trigger>
+        </Stepper.Step>
+      </Stepper>,
+    )
+    expect(screen.getByRole("button", { name: /Step 1/ })).toHaveTextContent("DONE")
+    expect(screen.getByRole("button", { name: /Step 2/ })).toHaveTextContent("RUN")
+  })
+
+  it("uses provided statusLabels for substep fallback text", () => {
+    render(
+      <Stepper defaultExpandedIds={["s1"]}>
+        <Stepper.Step stepId="s1" status="active">
+          <Stepper.Trigger>Step 1</Stepper.Trigger>
+          <Stepper.Content>
+            <Stepper.Substep
+              tag="A"
+              label="Substep A"
+              status="active"
+              statusLabels={{ active: "analyzing..." }}
+            />
+            <Stepper.Substep tag="B" label="Substep B" status="completed" detail="custom detail" />
+          </Stepper.Content>
+        </Stepper.Step>
+      </Stepper>,
+    )
+    expect(screen.getByText("analyzing...")).toBeInTheDocument()
+    // detail wins over statusLabels fallback
+    expect(screen.getByText("custom detail")).toBeInTheDocument()
+  })
+
   it("does not tab into collapsed step content", async () => {
     const user = userEvent.setup()
     render(

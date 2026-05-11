@@ -57,3 +57,50 @@ export function isInputElement(target: EventTarget | null): boolean {
     target.isContentEditable
   );
 }
+
+const NON_EDITABLE_INPUT_TYPES = new Set([
+  "button",
+  "checkbox",
+  "color",
+  "file",
+  "hidden",
+  "image",
+  "radio",
+  "range",
+  "reset",
+  "submit",
+]);
+
+function hasContentEditableAttribute(element: HTMLElement): boolean {
+  if (element.isContentEditable) return true;
+  const value = element.getAttribute("contenteditable");
+  if (value === null) return false;
+  return value === "" || value === "true" || value === "plaintext-only";
+}
+
+/**
+ * Returns true when the target accepts text editing keys (Arrow/Home/End/Enter/Space).
+ *
+ * - text-like inputs (text, search, url, email, password, tel, number, date, ...)
+ * - textarea
+ * - contenteditable elements (true / "" / "plaintext-only")
+ *
+ * Returns false for select, checkboxes, radios, disabled/readonly inputs,
+ * and elements whose contenteditable is "false".
+ */
+export function isEditableElement(target: EventTarget | null): boolean {
+  const View = (target as { ownerDocument?: Document } | null)?.ownerDocument?.defaultView;
+  if (!View || !(target instanceof View.HTMLElement)) return false;
+
+  if (target instanceof View.HTMLTextAreaElement) {
+    return !target.disabled && !target.readOnly;
+  }
+
+  if (target instanceof View.HTMLInputElement) {
+    if (target.disabled || target.readOnly) return false;
+    const type = (target.type || "text").toLowerCase();
+    return !NON_EDITABLE_INPUT_TYPES.has(type);
+  }
+
+  return hasContentEditableAttribute(target);
+}

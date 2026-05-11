@@ -1,5 +1,5 @@
 import { Button } from "@diffgazer/ui/components/button";
-import { InputGroup } from "@diffgazer/ui/components/input";
+import { SearchInput } from "@diffgazer/ui/components/search-input";
 
 interface ModelSearchInputProps {
   value: string;
@@ -27,31 +27,33 @@ export function ModelSearchInput({
   return (
     <div className="px-4 pt-3 pb-2">
       <div className="flex gap-2 items-center">
-        <InputGroup
+        <SearchInput
           ref={ref}
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={onChange}
           onFocus={onFocus}
           onKeyDown={(e) => {
             if (e.key === "Escape") {
               onEscape();
+              // Stop the native <dialog> cancel event so the dialog stays open
+              // when the user just wants to clear/escape the search field.
               e.stopPropagation();
+              e.preventDefault();
             }
             if (e.key === "ArrowDown") {
               onArrowDown();
               e.preventDefault();
             }
-            if (e.key === "Enter" && showCustomAction && onUseCustom && canUseCustom) {
-              onUseCustom();
-              e.preventDefault();
-            }
           }}
+          onEnter={
+            showCustomAction && onUseCustom && canUseCustom
+              ? onUseCustom
+              : undefined
+          }
           aria-label="Search models"
           placeholder="Search models..."
-          prefix={<span aria-hidden="true">/</span>}
           size="sm"
-          className="flex-1 bg-tui-input-bg border-tui-border"
-          inputClassName="text-xs"
+          className="flex-1 bg-tui-input-bg border-tui-border text-xs"
         />
         {showCustomAction && (
           <Button

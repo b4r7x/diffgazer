@@ -12,12 +12,10 @@ export interface CardLayoutProps {
   className?: string;
 }
 
-const sizeClasses: Record<NonNullable<CardLayoutProps["size"]>, string> = {
-  sm: "max-w-sm",
-  md: "max-w-md",
-  lg: "max-w-lg",
-};
-
+/**
+ * App-specific shell that centers a `Card` and applies setup-page padding/scroll.
+ * Uses `Card.size` for width; adds the page-level layout this app needs around it.
+ */
 export function CardLayout({
   title,
   subtitle,
@@ -29,7 +27,7 @@ export function CardLayout({
 }: CardLayoutProps) {
   return (
     <div className={cn("flex-1 flex flex-col items-center justify-center px-4", className)}>
-      <Card variant="panel" className={cn("border-tui-border bg-tui-bg", sizeClasses[size])}>
+      <Card variant="panel" size={size} className="border-tui-border bg-tui-bg">
         {header ?? (title && (
           <Card.Header className="border-tui-border bg-tui-selection/30 px-6 py-4">
             <h1 className="text-xl font-bold text-tui-blue tracking-wide">

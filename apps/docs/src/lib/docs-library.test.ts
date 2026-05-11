@@ -96,6 +96,40 @@ function collectMdxExampleNames(): Set<string> {
   return names
 }
 
+function collectPublicDocsSources(): Array<{ path: string; source: string }> {
+  const files = [
+    ...listRepoFiles("libs/ui/registry/component-docs", ".ts"),
+    ...listRepoFiles("libs/ui/docs/content", ".mdx"),
+    ...listRepoFiles("libs/ui/docs/generated", ".json"),
+    ...listRepoFiles("libs/keys/registry/hook-docs", ".ts"),
+    ...listRepoFiles("libs/keys/docs/content", ".mdx"),
+    ...listRepoFiles("libs/keys/docs/guides", ".md"),
+    ...listRepoFiles("libs/keys/docs/generated", ".json"),
+    ...listRepoFiles("libs/keys/docs/generated", ".ts"),
+  ]
+
+  return files.map((file) => ({
+    path: file.slice(repoRoot.length + 1),
+    source: readAbsolute(file),
+  }))
+}
+
+function collectInputLikeDocsSources(): Array<{ path: string; source: string }> {
+  const paths = [
+    "libs/ui/registry/component-docs/input.ts",
+    "libs/ui/registry/component-docs/textarea.ts",
+    "libs/ui/registry/component-docs/search-input.ts",
+    "libs/ui/docs/content/components/input.mdx",
+    "libs/ui/docs/content/components/textarea.mdx",
+    "libs/ui/docs/content/components/search-input.mdx",
+    "libs/ui/docs/generated/components/input.json",
+    "libs/ui/docs/generated/components/textarea.json",
+    "libs/ui/docs/generated/components/search-input.json",
+  ]
+
+  return paths.map((path) => ({ path, source: readRepoFile(path) }))
+}
+
 function collectExampleFileNames(): Set<string> {
   return new Set(
     listRepoFiles("libs/ui/registry/examples", ".tsx").map((file) =>
@@ -213,6 +247,47 @@ describe("docs-library source path mapping", () => {
     expect(exampleSources).not.toMatch(/<Radio\b[^>]*\bonCheckedChange=/)
   })
 
+  it("keeps public docs off removed API aliases", () => {
+    const forbidden = [
+      /\bonValueChange\b/,
+      /\bonSelectedIdChange\b/,
+      /\bonCheckedChange\b/,
+      /\bhighlightedId\b/,
+    ]
+
+    for (const { path, source } of collectPublicDocsSources()) {
+      for (const pattern of forbidden) {
+        expect(source, path).not.toMatch(pattern)
+      }
+    }
+  })
+
+  it("documents input-like invalid state through aria-invalid", () => {
+    const forbidden = [
+      /\berror=\{?true\}?/,
+      /\berror prop\b/i,
+      /\bpass error\b/i,
+      /\bsetting error\b/i,
+    ]
+
+    const sources = collectInputLikeDocsSources()
+
+    for (const { path, source } of sources) {
+      for (const pattern of forbidden) {
+        expect(source, path).not.toMatch(pattern)
+      }
+    }
+    expect(sources.map(({ source }) => source).join("\n")).toContain("aria-invalid")
+  })
+
+  it("keeps generated keys demo imports pointed at synced docs examples", () => {
+    const demoIndex = readRepoFile("apps/docs/src/generated/keys/demo-index.ts")
+    const syncedDemo = readRepoFile("apps/docs/registry/examples/keys/use-navigation/use-navigation-basic.tsx")
+
+    expect(demoIndex).toContain("../../../registry/examples/keys/use-navigation/use-navigation-basic")
+    expect(syncedDemo).toContain("UseNavigationBasic")
+  })
+
   it("keeps public docs on current highlight and keyboard prop names", () => {
     const docs = [
       readRepoFile("libs/ui/registry/component-docs/menu.ts"),
@@ -225,13 +300,12 @@ describe("docs-library source path mapping", () => {
       readRepoFile("libs/ui/docs/content/components/select.mdx"),
     ].join("\n")
 
-    expect(docs).not.toMatch(/\bMenu\b[\s\S]{0,120}\bhighlighted,/)
-    expect(docs).not.toMatch(/\bNavigationList\b[\s\S]{0,160}\bhighlighted,/)
     expect(docs).not.toMatch(/\bNavigationList\b[\s\S]{0,160}\bisHighlighted\b/)
     expect(docs).not.toContain("isFocused")
     expect(docs).not.toContain("onHighlight props")
     expect(docs).not.toMatch(/headless (focus|keyboard)/)
-    expect(docs).toContain("highlightedId")
+    expect(docs).not.toContain("highlightedId")
+    expect(docs).toContain("highlighted")
     expect(docs).toContain("onHighlightChange")
     expect(docs).toContain("focused")
     expect(docs).toContain("built-in arrow navigation")

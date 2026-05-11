@@ -10,12 +10,12 @@ const RegistryFileSchema = z.object({
     { message: "Registry file path must not contain '..' segments" },
   ),
   content: z.string().optional(),
-  targetPath: z.string().optional(),
   type: z.string().optional(),
+  target: z.string().optional(),
 });
 
 // NOTE: A near-identical artifact schema exists in ../registry-types.ts.
-// This copy adds targetPath field and path traversal .refine().
+// This copy adds path traversal .refine().
 // Intentionally duplicated because artifact manifests and installer bundles have different validation needs.
 export const RegistryItemSchema = z.object({
   name: z.string(),
@@ -236,7 +236,7 @@ export interface RegistryAccessors {
   getPublicItems: () => RegistryContentItem[];
   getAllItems: () => RegistryContentItem[];
   resolveDeps: (names: string[]) => string[];
-  relativePath: (file: { path: string; targetPath?: string }) => string;
+  relativePath: (file: { path: string }) => string;
   npmDeps: (names: string[]) => string[];
 }
 

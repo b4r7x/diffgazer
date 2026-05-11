@@ -15,15 +15,15 @@ import { Menu, MenuItem } from "@/components/ui/menu"
 
 function ControlledMenu() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [highlightedId, setHighlightedId] = useState<string | null>(null)
+  const [highlighted, setHighlighted] = useState<string | null>(null)
 
   return (
     <Menu
       aria-label="File menu"
       selectedId={selectedId}
-      highlightedId={highlightedId}
+      highlighted={highlighted}
       onSelect={setSelectedId}
-      onHighlightChange={setHighlightedId}
+      onHighlightChange={setHighlighted}
     >
       <MenuItem id="new">New File</MenuItem>
       <MenuItem id="open">Open File</MenuItem>

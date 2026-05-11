@@ -90,6 +90,7 @@ export function PopoverContent({
   const contentRole = isHover ? "tooltip" : role;
   const hasAccessibleName = Boolean(ariaLabel || ariaLabelledBy);
   const isDialog = contentRole === "dialog";
+  const isMenu = contentRole === "menu";
   const triggerExcludeRefs = useMemo(() => [triggerRef], [triggerRef]);
   const escapeKeyOptions = useMemo(
     () => ({ ref: contentRef, excludeRefs: triggerExcludeRefs }),
@@ -117,7 +118,7 @@ export function PopoverContent({
     triggerRef.current?.focus();
   }, open, escapeKeyOptions);
 
-  useAutoFocus(contentRef, open && isDialog && autoFocus);
+  useAutoFocus(contentRef, open && (isDialog || isMenu) && autoFocus && position !== null, isDialog);
 
   const handleMouseEnter = (e: MouseEvent<HTMLDivElement>) => {
     onMouseEnter?.(e);

@@ -31,9 +31,9 @@ function App() {
 ### Behavior
 
 - Creates a `"global"` scope on mount. All handlers registered without a scope push land here.
-- Maintains a scope stack -- the **last pushed** scope is active. Only handlers in the active scope fire.
+- Maintains a scope stack. Declarative scopes follow React tree order, imperative `pushScope` calls sit above declarative scopes, and only handlers in the active scope fire.
 - Skips events where `event.defaultPrevented` is already `true`.
-- Skips handlers for input elements (`input`, `textarea`, `select`, `contentEditable`) unless `allowInInput` is set.
+- Skips handlers for text-editable targets (text-like `input`, `textarea`, and editable content) unless `allowInInput` is set. Non-text controls such as `select`, checkbox, radio, range, and button inputs are allowed by default.
 - When a handler specifies `containerRef` + `focusWithinOnly`, only fires if the event target is inside that container.
 - Handler priority: iterates entries from **last-registered to first**. The first match wins -- no subsequent handlers fire.
 - Errors in handlers are caught and logged: `[@diffgazer/keys] Handler error for "${hotkey}": ...`
@@ -71,8 +71,8 @@ type KeyHandler = (event: KeyboardEvent) => void;
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `enabled` | `boolean` | `true` | Toggle registration on/off. |
-| `scope` | `string` | active scope | Register in an explicit scope instead of the currently active scope. |
-| `allowInInput` | `boolean` | `false` | Fire even when focus is in an input, textarea, select, or contentEditable. |
+| `scope` | `string \| null` | inferred scope | Register in an explicit scope. Pass `null` to skip registration. |
+| `allowInInput` | `boolean` | `false` | Fire even when focus is in a text-editable input, textarea, or editable content. |
 | `containerRef` | `RefObject<HTMLElement \| null>` | -- | Restrict handler to events within this element. Requires `focusWithinOnly`. |
 | `focusWithinOnly` | `boolean` | `false` | Only fire when the event target is inside `containerRef`. |
 | `preventDefault` | `boolean` | `false` | Call `event.preventDefault()` before the handler runs. |
@@ -147,7 +147,7 @@ Joined with `+`. The **last** segment is the key, everything before it is a modi
 
 ## useScope
 
-Pushes a named scope onto the stack. While active, only handlers in that scope fire.
+Pushes a named scope onto the stack. While active, only handlers in that scope fire. Pass `null` to skip pushing without changing render order.
 
 ```ts
 import { useScope } from "@diffgazer/keys";
@@ -156,7 +156,7 @@ import { useScope } from "@diffgazer/keys";
 ### Signature
 
 ```ts
-function useScope(name: string, options?: { enabled?: boolean }): void;
+function useScope(name: string | null, options?: { enabled?: boolean }): string | null;
 ```
 
 ### Options
@@ -175,13 +175,20 @@ function Modal() {
 
   return <div>...</div>;
 }
+
+// Conditional scope without remounting the component
+function Panel({ isolate }: { isolate: boolean }) {
+  useScope(isolate ? "panel" : null);
+  return <div>...</div>;
+}
 ```
 
 ### Behavior
 
 - **Requires** `KeyboardProvider`. Throws `"useKeyboardContext must be used within KeyboardProvider"` if missing.
+- Passing `null` for `name` is equivalent to `enabled: false` -- no scope is pushed, but call ordering is preserved so the hook can still toggle on later renders without violating Hook rules.
 - Each call gets a unique ID -- multiple components can push the same scope name independently.
-- On unmount or `enabled: false`, the scope is popped. If no entries with that scope name remain on the stack, the handler map for that scope is deleted.
+- On unmount or `enabled: false` or `name === null`, the scope is popped. If no entries with that scope name remain on the stack, the handler map for that scope is deleted.
 
 ---
 
@@ -212,7 +219,7 @@ function useNavigation(options: UseNavigationOptions): UseNavigationReturn;
 | `wrap` | `boolean` | `true` | Wrap around at list boundaries. |
 | `enabled` | `boolean` | `true` | Toggle navigation on/off. |
 | `preventDefault` | `boolean` | `true` | Prevent default on handled keys. |
-| `onNavigationBoundaryReached` | `(direction: "previous" \| "next") => void` | -- | Called when `wrap` is `false` and navigation hits an edge. |
+| `onNavigationBoundaryReached` | `(direction: "previous" \| "next", event: KeyboardEvent, key: string) => void` | -- | Called when `wrap` is `false` and navigation hits an edge. |
 | `defaultHighlighted` | `string \| null` | `null` | Initial focused value (uncontrolled mode). |
 | `orientation` | `"vertical" \| "horizontal"` | `"vertical"` | Determines default up/down keys. |
 | `skipDisabled` | `boolean` | `true` | Skip items with `aria-disabled="true"`. |
@@ -234,7 +241,7 @@ function useNavigation(options: UseNavigationOptions): UseNavigationReturn;
 ### NavigationRole
 
 ```ts
-type NavigationRole = "radio" | "checkbox" | "option" | "menuitem" | "menuitemradio" | "button" | "tab";
+type NavigationRole = "radio" | "checkbox" | "option" | "menuitem" | "menuitemcheckbox" | "menuitemradio" | "button" | "tab";
 ```
 
 ### Example
@@ -296,7 +303,7 @@ Accepts all the same options as `useNavigation`, plus:
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `scope` | `string` | active scope | Register navigation keys in an explicit keyboard scope. |
+| `scope` | `string \| null` | active scope | Register navigation keys in an explicit keyboard scope. Pass `null` to skip registration for disabled conditional scopes. |
 | `containerRef` | `RefObject<HTMLElement \| null>` | -- | Required DOM container used for navigation and focus checks. |
 | `focusWithinOnly` | `boolean` | `false` | Only handle keys when focus is inside `containerRef`. |
 
@@ -357,12 +364,13 @@ function useFocusZone<T extends string>(options: UseFocusZoneOptions<T>): UseFoc
 | `onEnterZone` | `(zone: T) => void` | -- | Called with the **next** zone when entering it. |
 | `transitions` | `(params: { zone: T; key: ArrowKey }) => T \| null` | -- | Maps arrow keys to zone transitions. Return `null` to ignore. |
 | `tabCycle` | `readonly T[]` | -- | Zone order for Tab/Shift+Tab cycling. |
-| `scope` | `string` | -- | If provided, pushes this scope while the hook is active. |
+| `scope` | `string \| null` | -- | If provided, pushes this scope while the hook is active. Pass `null` to skip scope registration. |
 | `containerRef` | `RefObject<HTMLElement \| null>` | -- | Optional DOM subtree used to scope registered focus-zone keys. |
 | `focusWithinOnly` | `boolean` | `false` | Only run focus-zone keys when focus is inside `containerRef`. |
-| `allowInInput` | `boolean` | `false` | Allow focus-zone keys while an input-like element is focused. |
+| `allowInInput` | `boolean` | `false` | Allow focus-zone keys while a text-editable input, textarea, or editable content has focus. |
 | `preventDefault` | `boolean` | `false` | Inherited `preventDefault` behavior for transition keys and `getKeyOptions`. |
 | `enabled` | `boolean` | `true` | Toggle the entire hook on/off. |
+| `focus` | `{ targets: Partial<Record<T, FocusZoneTarget>>; autoFocus?: boolean; preventScroll?: boolean }` | -- | Optional DOM focus targets for zone changes. A target may be a ref/function, or a `{ container, target }` pair that skips focus repair while focus is already inside the container. Initial mount does not focus unless `autoFocus` is true. |
 
 ### Return
 
@@ -455,9 +463,9 @@ function Dialog() {
 ### Behavior
 
 - Initial focus priority: `initialFocus.current` -> first focusable element -> container itself.
-- Focusable elements use the shared navigation helper: links/areas with `href`, enabled form controls, media/embed elements, contenteditable elements, and `[tabindex]:not([tabindex="-1"]):not([disabled])`.
-- Only intercepts Tab at boundaries (first/last focusable element). Tabs between middle elements are browser-default.
-- Re-queries focusable elements on each Tab press, so dynamic content is supported.
+- Focusable elements use the shared navigation helper: links/areas with `href`, enabled form controls, media/embed elements, contenteditable elements, `details > summary:first-of-type`, and `[tabindex]:not([disabled])`. Negative `tabIndex` elements are focusable for programmatic focus but excluded from Tab order.
+- Only intercepts Tab at boundaries (first/last tabbable element). Tabs between middle elements are browser-default.
+- Re-queries tabbable elements on each Tab press, so dynamic content is supported.
 - Captures `document.activeElement` on mount and restores it on cleanup when `restoreFocus` is `true`.
 - Listener is on the **container element**, not `window`. Does not interact with `KeyboardProvider` at all.
 
@@ -521,8 +529,11 @@ import {
   findNavigationItemByValue,
   focusNavigationItem,
   getFocusedNavigationValue,
+  getFirstFocusableElement,
   getFocusableElements,
+  getTabbableElements,
   getVerticalArrowDirection,
+  isFocusable,
   toVerticalBoundaryDirection,
 } from "@diffgazer/keys";
 ```
@@ -537,6 +548,7 @@ type NavigationItemType =
   | "checkbox"
   | "option"
   | "menuitem"
+  | "menuitemcheckbox"
   | "menuitemradio"
   | "button"
   | "tab";
@@ -583,6 +595,9 @@ function getFocusedNavigationValue(
 ): string | null;
 
 function getFocusableElements(container: HTMLElement | null): HTMLElement[];
+function getFirstFocusableElement(container: HTMLElement | null): HTMLElement | null;
+function getTabbableElements(container: HTMLElement | null): HTMLElement[];
+function isFocusable(element: HTMLElement | null): boolean;
 
 type VerticalDirection = "up" | "down";
 type BoundaryDirection = "previous" | "next";
@@ -758,7 +773,7 @@ function useOptionalKeyboardContext(): KeyboardContextValue | null;
 interface KeyboardContextValue {
   activeScope: string | null;
   getActiveScope: () => string | null;
-  pushScope: (scope: string, order?: string) => () => void;
+  pushScope: (scope: string) => () => void;
   register: (scope: string, hotkey: string, handler: Handler, options?: HandlerOptions) => () => void;
 }
 ```
@@ -797,5 +812,5 @@ Options for `useFocusTrap`. See [useFocusTrap](#usefocustrap).
 ### NavigationRole
 
 ```ts
-type NavigationRole = "radio" | "checkbox" | "option" | "menuitem" | "menuitemradio" | "button" | "tab";
+type NavigationRole = "radio" | "checkbox" | "option" | "menuitem" | "menuitemcheckbox" | "menuitemradio" | "button" | "tab";
 ```

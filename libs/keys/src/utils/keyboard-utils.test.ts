@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { matchesHotkey, isInputElement } from "./keyboard-utils";
+import { matchesHotkey, isInputElement, isEditableElement } from "./keyboard-utils";
 
 function makeKeyEvent(
   key: string,
@@ -128,5 +128,71 @@ describe("isInputElement", () => {
 
   it("should return false for null target", () => {
     expect(isInputElement(null)).toBe(false);
+  });
+});
+
+describe("isEditableElement", () => {
+  it("returns true for input elements except non-text inputs", () => {
+    const text = document.createElement("input");
+    text.type = "text";
+    expect(isEditableElement(text)).toBe(true);
+
+    const search = document.createElement("input");
+    search.type = "search";
+    expect(isEditableElement(search)).toBe(true);
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    expect(isEditableElement(checkbox)).toBe(false);
+
+    const radio = document.createElement("input");
+    radio.type = "radio";
+    expect(isEditableElement(radio)).toBe(false);
+
+    const button = document.createElement("input");
+    button.type = "button";
+    expect(isEditableElement(button)).toBe(false);
+  });
+
+  it("returns true for textarea", () => {
+    expect(isEditableElement(document.createElement("textarea"))).toBe(true);
+  });
+
+  it("returns true for contenteditable elements", () => {
+    const div = document.createElement("div");
+    div.setAttribute("contenteditable", "true");
+    document.body.append(div);
+    try {
+      // jsdom does not implement isContentEditable; we use the attribute
+      expect(isEditableElement(div)).toBe(true);
+    } finally {
+      div.remove();
+    }
+  });
+
+  it("returns false for select (not text-editable)", () => {
+    expect(isEditableElement(document.createElement("select"))).toBe(false);
+  });
+
+  it("returns false for div without contenteditable", () => {
+    expect(isEditableElement(document.createElement("div"))).toBe(false);
+  });
+
+  it("returns false for null/undefined", () => {
+    expect(isEditableElement(null)).toBe(false);
+  });
+
+  it("returns false for readonly inputs", () => {
+    const input = document.createElement("input");
+    input.type = "text";
+    input.readOnly = true;
+    expect(isEditableElement(input)).toBe(false);
+  });
+
+  it("returns false for disabled inputs", () => {
+    const input = document.createElement("input");
+    input.type = "text";
+    input.disabled = true;
+    expect(isEditableElement(input)).toBe(false);
   });
 });

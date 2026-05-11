@@ -14,7 +14,7 @@ export const menuDoc: ComponentDoc = {
     },
     {
       title: "Built-in Keyboard Navigation",
-      content: "Menu includes keyboard navigation via useListbox (Arrow keys, Home/End, Enter/Space). For custom key bindings or cross-component navigation, use the highlightedId, onHighlightChange, and onKeyDown props to add external handlers alongside the built-in behavior.",
+      content: "Menu includes keyboard navigation via useListbox (Arrow keys, Home/End, Enter/Space). For custom key bindings or cross-component navigation, use the highlighted, onHighlightChange, and onKeyDown props to add external handlers alongside the built-in behavior.",
     },
   ],
   usage: { example: "menu-default" },

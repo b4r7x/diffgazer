@@ -25,9 +25,9 @@ export const searchInputDoc: ComponentDoc = {
         'Pass size="sm", size="md" (default), or size="lg" to control the input and wrapper sizing.',
     },
     {
-      title: "Error & Disabled",
+      title: "Invalid & Disabled",
       content:
-        "Pass error to show destructive border styling and aria-invalid. Pass disabled to prevent interaction.",
+        "Set aria-invalid to show destructive border styling. Pass disabled to prevent interaction.",
     },
   ],
   usage: { example: "search-input-default" },
@@ -43,5 +43,57 @@ export const searchInputDoc: ComponentDoc = {
       { name: "search-input-default", title: "Without keyboard (typing only)" },
       { name: "search-input-keyboard", title: "With keyboard navigation" },
     ],
+  },
+  props: {
+    SearchInput: {
+      value: {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description: "Controlled search value.",
+      },
+      defaultValue: {
+        type: "string",
+        required: false,
+        defaultValue: '""',
+        description: "Initial search value for uncontrolled usage.",
+      },
+      onChange: {
+        type: "(value: string) => void",
+        required: false,
+        defaultValue: null,
+        description: "Called with the next search value when the native input changes.",
+      },
+      onEscape: {
+        type: "() => void",
+        required: false,
+        defaultValue: null,
+        description: "Called when Escape is pressed and the event was not already handled.",
+      },
+      onEnter: {
+        type: "() => void",
+        required: false,
+        defaultValue: null,
+        description: "Called when Enter is pressed and the event was not already handled.",
+      },
+      prefix: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: '"/"',
+        description: "Prefix content before the input. Pass null to hide it.",
+      },
+      size: {
+        type: '"sm" | "md" | "lg"',
+        required: false,
+        defaultValue: '"md"',
+        description: "Padding/font size token for the search wrapper.",
+      },
+      "aria-invalid": {
+        type: 'boolean | "true" | "false" | "grammar" | "spelling"',
+        required: false,
+        defaultValue: null,
+        description: "Forwarded to the native search input and used by the wrapper for invalid styling.",
+      },
+    },
   },
 }

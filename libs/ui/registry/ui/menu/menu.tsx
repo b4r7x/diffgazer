@@ -16,8 +16,8 @@ export interface MenuProps
   extends Omit<ComponentPropsWithRef<"div">, "children" | "onKeyDown" | "onSelect"> {
   selectedId?: string | null;
   defaultSelectedId?: string | null;
-  highlightedId?: string | null;
-  defaultHighlightedId?: string | null;
+  highlighted?: string | null;
+  defaultHighlighted?: string | null;
   onSelect?: (id: string) => void;
   onHighlightChange?: (value: string) => void;
   onClose?: () => void;
@@ -31,8 +31,8 @@ export interface MenuProps
 export function Menu({
   selectedId: controlledSelectedId,
   defaultSelectedId = null,
-  highlightedId: controlledHighlightedId,
-  defaultHighlightedId = null,
+  highlighted: controlledHighlighted,
+  defaultHighlighted = null,
   onSelect,
   onHighlightChange,
   onClose,
@@ -53,15 +53,15 @@ export function Menu({
 
   const {
     selectedId,
-    highlightedId,
+    highlighted,
     handleItemActivate,
     handleItemHighlight,
     getContainerProps,
   } = useListbox({
     selectedId: selectionEnabled ? controlledSelectedId : null,
     defaultSelectedId: selectionEnabled ? defaultSelectedId : null,
-    highlightedId: controlledHighlightedId,
-    defaultHighlightedId,
+    highlighted: controlledHighlighted,
+    defaultHighlighted,
     onSelect,
     onHighlightChange,
     wrap,
@@ -82,14 +82,14 @@ export function Menu({
   const contextValue: MenuContextValue = useMemo(
     () => ({
       selectedId,
-      highlightedId,
+      highlighted,
       activate: handleItemActivate,
       highlight: handleItemHighlight,
       variant,
       idPrefix,
       itemRole,
     }),
-    [selectedId, highlightedId, handleItemActivate, handleItemHighlight, variant, idPrefix, itemRole],
+    [selectedId, highlighted, handleItemActivate, handleItemHighlight, variant, idPrefix, itemRole],
   );
 
   return (

@@ -483,6 +483,59 @@ describe("Popover non-modal focus", () => {
   })
 })
 
+describe("Popover menu focus", () => {
+  beforeEach(() => {
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb) => {
+      cb(0)
+      return 0
+    })
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it("moves focus to first focusable inside content when opened with role=menu", async () => {
+    render(
+      <Popover triggerMode="click">
+        <Popover.Trigger>Open</Popover.Trigger>
+        <Popover.Content role="menu" aria-label="Actions">
+          <button>First action</button>
+          <button>Second action</button>
+        </Popover.Content>
+      </Popover>,
+    )
+
+    const trigger = screen.getByRole("button", { name: "Open" })
+    expect(trigger).toHaveAttribute("aria-haspopup", "menu")
+
+    await userEvent.click(trigger)
+
+    const firstAction = screen.getByRole("button", { name: "First action" })
+    expect(firstAction).toHaveFocus()
+  })
+
+  it("does not move focus when autoFocus is false on a menu popover", async () => {
+    render(
+      <div>
+        <button>Outside</button>
+        <Popover triggerMode="click">
+          <Popover.Trigger>Open</Popover.Trigger>
+          <Popover.Content role="menu" aria-label="Actions" autoFocus={false}>
+            <button>First action</button>
+          </Popover.Content>
+        </Popover>
+      </div>,
+    )
+
+    const trigger = screen.getByRole("button", { name: "Open" })
+    await userEvent.click(trigger)
+
+    const firstAction = screen.getByRole("button", { name: "First action" })
+    expect(firstAction).not.toHaveFocus()
+  })
+})
+
 describe("Popover hover timer cleanup", () => {
   beforeEach(() => {
     vi.useFakeTimers()

@@ -51,7 +51,7 @@
     "prepublishOnly": "pnpm run build && test -f dist/generated/registry-bundle.json && test -f dist/generated/keys-copy-bundle.json",
     "dev": "tsc --watch",
     "type-check": "tsc --noEmit",
-    "test": "pnpm run generate:bundles && node --import tsx --test src/**/*.test.ts"
+    "test": "pnpm --filter @diffgazer/registry build && pnpm run generate:bundles && node --import tsx --test src/**/*.test.ts"
   },
   "dependencies": {
     "@clack/prompts": "^0.11.0",

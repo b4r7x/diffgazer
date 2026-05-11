@@ -108,7 +108,7 @@ async function processComponent(
     description: docs?.description ?? item.description ?? "",
     dependencies: item.dependencies,
     files: item.files.map((file) => file.path),
-    props: {},
+    props: docs?.props ?? {},
     source,
     mergedSource,
     mergedSourceHighlighted: highlightCode(highlighter, mergedSource, "tsx", DOCS_CODE_THEME_NAME),

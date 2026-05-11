@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, type RefObject } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 
 const lockCounts = new WeakMap<Element, number>();
 const savedOverflow = new WeakMap<Element, string>();
@@ -10,31 +10,52 @@ export interface UseScrollLockOptions {
   enabled?: boolean;
 }
 
+function lockElement(el: HTMLElement): () => void {
+  const count = lockCounts.get(el) ?? 0;
+
+  if (count === 0) {
+    savedOverflow.set(el, el.style.overflow);
+    el.style.overflow = "hidden";
+  }
+  lockCounts.set(el, count + 1);
+
+  return () => {
+    const current = lockCounts.get(el) ?? 1;
+    const next = current - 1;
+    if (next <= 0) {
+      lockCounts.delete(el);
+      el.style.overflow = savedOverflow.get(el) ?? "";
+      savedOverflow.delete(el);
+    } else {
+      lockCounts.set(el, next);
+    }
+  };
+}
+
 export function useScrollLock(options: UseScrollLockOptions = {}): void {
   const { target, enabled = true } = options;
+  const lockedElementRef = useRef<HTMLElement | null>(null);
+  const releaseRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    if (!enabled) return;
+    const nextElement = enabled ? target?.current ?? document.body : null;
+    if (lockedElementRef.current === nextElement) return;
 
-    const el = target?.current ?? document.body;
-    const count = lockCounts.get(el) ?? 0;
+    releaseRef.current?.();
+    releaseRef.current = null;
+    lockedElementRef.current = null;
 
-    if (count === 0) {
-      savedOverflow.set(el, el.style.overflow);
-      el.style.overflow = "hidden";
-    }
-    lockCounts.set(el, count + 1);
+    if (!nextElement) return;
 
+    releaseRef.current = lockElement(nextElement);
+    lockedElementRef.current = nextElement;
+  });
+
+  useEffect(() => {
     return () => {
-      const current = lockCounts.get(el) ?? 1;
-      const next = current - 1;
-      if (next <= 0) {
-        lockCounts.delete(el);
-        el.style.overflow = savedOverflow.get(el) ?? "";
-        savedOverflow.delete(el);
-      } else {
-        lockCounts.set(el, next);
-      }
+      releaseRef.current?.();
+      releaseRef.current = null;
+      lockedElementRef.current = null;
     };
-  }, [enabled, target]);
+  }, []);
 }

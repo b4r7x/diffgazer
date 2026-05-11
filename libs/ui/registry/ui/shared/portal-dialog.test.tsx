@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react"
 import { describe, it, expect } from "vitest"
 import { Dialog } from "../dialog/index.js"
 import { Popover } from "../popover/index.js"
+import { Select } from "../select/index.js"
 
 describe("Portal-in-Dialog focus containment", () => {
   it("popover inside dialog renders within the dialog DOM tree", async () => {
@@ -30,4 +31,35 @@ describe("Portal-in-Dialog focus containment", () => {
     expect(dialog.contains(popoverContent)).toBe(true)
   })
 
+  it("default-variant select inside dialog portals listbox into the dialog DOM tree", async () => {
+    render(
+      <Dialog defaultOpen>
+        <Dialog.Content>
+          <Dialog.Title>Test Dialog</Dialog.Title>
+          <Dialog.Body>
+            <Select variant="default" defaultOpen>
+              <Select.Trigger>
+                <Select.Value placeholder="Pick a fruit" />
+              </Select.Trigger>
+              <Select.Content>
+                <Select.Item value="apple">Apple</Select.Item>
+                <Select.Item value="banana">Banana</Select.Item>
+              </Select.Content>
+            </Select>
+          </Dialog.Body>
+        </Dialog.Content>
+      </Dialog>
+    )
+
+    const dialog = screen.getByRole("dialog", { name: "Test Dialog" })
+    const trigger = screen.getByRole("combobox")
+    const listboxId = trigger.getAttribute("aria-controls")
+    if (!listboxId) throw new Error("Expected combobox to control a listbox")
+
+    const listbox = document.getElementById(listboxId)
+    if (!listbox) throw new Error("Expected listbox to be mounted")
+
+    expect(dialog.contains(listbox)).toBe(true)
+    expect(listbox.parentElement).not.toBe(document.body)
+  })
 })

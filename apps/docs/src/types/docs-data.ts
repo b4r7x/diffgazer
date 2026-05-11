@@ -1,14 +1,7 @@
 import type { CodeBlockLineProps } from "@/components/ui/code-block"
-import type { ExampleRef, AnatomyNode, ComponentNote, KeyboardSection, ComponentDoc } from "@diffgazer/registry"
+import type { ExampleRef, AnatomyNode, ComponentNote, KeyboardSection, ComponentDoc, PropInfo, ComponentPropsTable } from "@diffgazer/registry"
 
-export type { ExampleRef, AnatomyNode, ComponentNote, KeyboardSection, ComponentDoc }
-
-export interface PropInfo {
-  type: string
-  required: boolean
-  defaultValue: string | null
-  description: string
-}
+export type { ExampleRef, AnatomyNode, ComponentNote, KeyboardSection, ComponentDoc, PropInfo, ComponentPropsTable }
 
 export interface SourceFile {
   raw: string

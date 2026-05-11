@@ -62,6 +62,7 @@ export interface RunRemoveWorkflowOptions<TItem, TConfig> {
     item: TItem;
     file: RemoveWorkflowFile;
     force: boolean;
+    requestedNames: string[];
   }) => boolean;
   resolveAllowedBaseDirs: (ctx: { cwd: string; config: TConfig }) => string[];
   updateManifest: (ctx: { cwd: string; removedNames: string[] }) => void;
@@ -96,6 +97,7 @@ function collectFilesToRemove<TItem, TConfig>(
     getItemOrThrow: (name: string) => TItem;
     canRemoveFile?: RunRemoveWorkflowOptions<TItem, TConfig>["canRemoveFile"];
     force: boolean;
+    requestedNames: string[];
   },
   names: string[],
   retainedFiles: Set<string>,
@@ -109,7 +111,7 @@ function collectFilesToRemove<TItem, TConfig>(
     let blocked = false;
     for (const file of ctx.resolveFilesForItem({ cwd: ctx.cwd, config: ctx.config, item })) {
       if (!existsSync(file.absolutePath) || retainedFiles.has(file.absolutePath)) continue;
-      if (ctx.canRemoveFile && !ctx.canRemoveFile({ cwd: ctx.cwd, config: ctx.config, item, file, force: ctx.force })) {
+      if (ctx.canRemoveFile && !ctx.canRemoveFile({ cwd: ctx.cwd, config: ctx.config, item, file, force: ctx.force, requestedNames: ctx.requestedNames })) {
         blocked = true;
         break;
       }
@@ -205,6 +207,7 @@ function collectRemovalTargets<TItem, TConfig>(
     getItemOrThrow: options.getItemOrThrow,
     canRemoveFile: options.canRemoveFile,
     force: options.force,
+    requestedNames: names,
   }, names, retainedFiles);
 }
 

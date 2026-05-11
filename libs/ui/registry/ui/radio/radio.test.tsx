@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event"
 import { axe } from "../../../testing/utils.js"
 import { describe, it, expect, vi } from "vitest"
 import { Radio, RadioGroup } from "./index.js"
+import { Field } from "../field/index.js"
 
 function getForm(): HTMLFormElement {
   const form = screen.getByTestId("form")
@@ -63,6 +64,23 @@ describe("Radio", () => {
   it("has no a11y violations (standalone)", async () => {
     const { container } = render(<Radio label="Option A" aria-label="Option A" />)
     expect(await axe(container)).toHaveNoViolations()
+  })
+
+  it("composes Field label and description ids with local label and description", () => {
+    render(
+      <Field invalid>
+        <Field.Label>Payment method</Field.Label>
+        <Field.Control>
+          <Radio label="Card" description="Local help" />
+        </Field.Control>
+        <Field.Description>Field help</Field.Description>
+        <Field.Error>Field error</Field.Error>
+      </Field>,
+    )
+
+    const radio = screen.getByRole("radio", { name: /payment method.*card/i })
+    expect(radio).toHaveAccessibleDescription(/field help.*field error.*local help/i)
+    expect(radio).toHaveAttribute("aria-invalid", "true")
   })
 
   it("submits a meaningful default value and resets uncontrolled state", async () => {
@@ -290,6 +308,24 @@ describe("RadioGroup", () => {
     )
     await userEvent.click(screen.getByText("Blue"))
     expect(onChange).toHaveBeenCalledWith("blue")
+  })
+
+  it("preserves Field invalid and description wiring on the group", () => {
+    render(
+      <Field invalid>
+        <Field.Label>Colors</Field.Label>
+        <Field.Control>
+          <RadioGroup>
+            <RadioGroup.Item value="red" label="Red" />
+          </RadioGroup>
+        </Field.Control>
+        <Field.Error>Select a color.</Field.Error>
+      </Field>,
+    )
+
+    const group = screen.getByRole("radiogroup", { name: "Colors" })
+    expect(group).toHaveAttribute("aria-invalid", "true")
+    expect(group).toHaveAccessibleDescription("Select a color.")
   })
 
   it("does not select disabled items", async () => {
@@ -601,9 +637,7 @@ describe("RadioGroup", () => {
     screen.getByRole("radio", { name: /blue/i }).focus()
     await userEvent.keyboard("{ArrowDown}")
 
-    expect(onNavigationBoundaryReached).toHaveBeenCalledWith("next", expect.objectContaining({
-      key: "ArrowDown",
-    }))
+    expect(onNavigationBoundaryReached).toHaveBeenCalledWith("next", expect.any(KeyboardEvent), "ArrowDown")
   })
 
   it("reports top keyboard boundary when wrapping is disabled", async () => {
@@ -623,9 +657,7 @@ describe("RadioGroup", () => {
     screen.getByRole("radio", { name: /red/i }).focus()
     await userEvent.keyboard("{ArrowUp}")
 
-    expect(onNavigationBoundaryReached).toHaveBeenCalledWith("previous", expect.objectContaining({
-      key: "ArrowUp",
-    }))
+    expect(onNavigationBoundaryReached).toHaveBeenCalledWith("previous", expect.any(KeyboardEvent), "ArrowUp")
   })
 
   it("reports horizontal boundary keys when wrapping is disabled", async () => {
@@ -645,17 +677,13 @@ describe("RadioGroup", () => {
     screen.getByRole("radio", { name: /blue/i }).focus()
     await userEvent.keyboard("{ArrowRight}")
 
-    expect(onNavigationBoundaryReached).toHaveBeenCalledWith("next", expect.objectContaining({
-      key: "ArrowRight",
-    }))
+    expect(onNavigationBoundaryReached).toHaveBeenCalledWith("next", expect.any(KeyboardEvent), "ArrowRight")
 
     onNavigationBoundaryReached.mockClear()
     screen.getByRole("radio", { name: /red/i }).focus()
     await userEvent.keyboard("{ArrowLeft}")
 
-    expect(onNavigationBoundaryReached).toHaveBeenCalledWith("previous", expect.objectContaining({
-      key: "ArrowLeft",
-    }))
+    expect(onNavigationBoundaryReached).toHaveBeenCalledWith("previous", expect.any(KeyboardEvent), "ArrowLeft")
   })
 
   it("jumps to first and last item with Home and End", async () => {

@@ -36,24 +36,31 @@ const labelVariants = cva("text-sm", {
   },
 });
 
-const STEP_STATUS_CONFIG: Record<StepStatus, {
-  badgeLabel: string;
-  badgeVariant: "success" | "info" | "neutral" | "error";
-}> = {
-  completed: { badgeLabel: "DONE", badgeVariant: "success" },
-  active:    { badgeLabel: "RUN",  badgeVariant: "info" },
-  pending:   { badgeLabel: "WAIT", badgeVariant: "neutral" },
-  error:     { badgeLabel: "FAIL", badgeVariant: "error" },
+export const STEP_STATUS_BADGE_VARIANTS: Record<StepStatus, "success" | "info" | "neutral" | "error"> = {
+  completed: "success",
+  active: "info",
+  pending: "neutral",
+  error: "error",
+};
+
+export const DEFAULT_STEP_STATUS_LABELS: Record<StepStatus, string> = {
+  completed: "Completed",
+  active: "Active",
+  pending: "Pending",
+  error: "Error",
 };
 
 export interface StepperTriggerProps
   extends Omit<ComponentProps<"button">, "children" | "type"> {
   children: ReactNode;
+  /** Override the per-status badge text. Falls back to `DEFAULT_STEP_STATUS_LABELS`. */
+  statusLabels?: Partial<Record<StepStatus, string>>;
 }
 
-export function StepperTrigger({ children, className, onClick, ...props }: StepperTriggerProps) {
+export function StepperTrigger({ children, className, onClick, statusLabels, ...props }: StepperTriggerProps) {
   const { onToggle } = useStepperContext();
   const { stepId, isExpanded, status, triggerId, contentId, hasContent } = useStepperStepContext();
+  const badgeLabel = statusLabels?.[status] ?? DEFAULT_STEP_STATUS_LABELS[status];
 
   return (
     <button
@@ -70,8 +77,8 @@ export function StepperTrigger({ children, className, onClick, ...props }: Stepp
       aria-current={status === "active" ? "step" : undefined}
     >
       <span className="shrink-0">
-        <Badge variant={STEP_STATUS_CONFIG[status].badgeVariant} size="sm" className="min-w-[48px] justify-center">
-          {STEP_STATUS_CONFIG[status].badgeLabel}
+        <Badge variant={STEP_STATUS_BADGE_VARIANTS[status]} size="sm" className="min-w-[48px] justify-center">
+          {badgeLabel}
         </Badge>
       </span>
       <span className={labelVariants({ status })}>{children}</span>

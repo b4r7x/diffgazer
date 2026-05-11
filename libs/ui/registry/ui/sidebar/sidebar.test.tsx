@@ -139,6 +139,29 @@ describe("Sidebar", () => {
     expect(first).toHaveFocus()
   })
 
+  it("navigates between sidebar items that omit an explicit value via derived value", async () => {
+    render(
+      <Sidebar.Provider>
+        <Sidebar>
+          <Sidebar.Content>
+            <Sidebar.Item>One</Sidebar.Item>
+            <Sidebar.Item>Two</Sidebar.Item>
+            <Sidebar.Item>Three</Sidebar.Item>
+          </Sidebar.Content>
+        </Sidebar>
+      </Sidebar.Provider>,
+    )
+    const first = screen.getByRole("button", { name: "One" })
+    const second = screen.getByRole("button", { name: "Two" })
+
+    expect(first).toHaveAttribute("data-value")
+    expect(first.getAttribute("data-value")).not.toBe("")
+
+    first.focus()
+    await userEvent.keyboard("{ArrowDown}")
+    expect(second).toHaveFocus()
+  })
+
   it("navigates sidebar items without selecting nested data-value descendants", async () => {
     render(
       <Sidebar.Provider>

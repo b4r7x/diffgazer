@@ -135,6 +135,12 @@ function installDeps(fixture, depSpecs) {
   run(`pnpm add ${pnpmAddFlags()} ${quoteArgs(deps)}`, fixture);
 }
 
+function createWorkspaceTempDir(prefix) {
+  const tempRoot = join(root, "tmp");
+  mkdirSync(tempRoot, { recursive: true });
+  return mkdtempSync(join(tempRoot, prefix));
+}
+
 function writeViteFixture(fixture) {
   mkdirSync(join(fixture, "src"), { recursive: true });
   writeFileSync(join(fixture, "package.json"), JSON.stringify({
@@ -208,7 +214,15 @@ function writeNextFixture(fixture) {
     include: ["next-env.d.ts", "app/**/*.ts", "app/**/*.tsx", "src/**/*.ts", "src/**/*.tsx"],
     exclude: ["node_modules"],
   }, null, 2));
-  writeFileSync(join(fixture, "next.config.mjs"), "export default {};\n");
+  writeFileSync(
+    join(fixture, "next.config.mjs"),
+    [
+      "export default {",
+      `  turbopack: { root: ${JSON.stringify(root)} },`,
+      "};",
+      "",
+    ].join("\n"),
+  );
   writeFileSync(join(fixture, "postcss.config.mjs"), "export default { plugins: { '@tailwindcss/postcss': {} } };\n");
   writeFileSync(
     join(fixture, "next-env.d.ts"),
@@ -373,7 +387,7 @@ function runOptionalNextCopyFirstSmoke(dgadd) {
     }
   }
 
-  const fixture = mkdtempSync(join(tmpdir(), "dgadd-next-smoke-"));
+  const fixture = createWorkspaceTempDir("dgadd-next-smoke-");
   try {
     writeNextFixture(fixture);
     installDeps(fixture, nextDeps);

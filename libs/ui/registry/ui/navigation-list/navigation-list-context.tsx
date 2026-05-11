@@ -4,7 +4,7 @@ import { createContext, useContext } from "react";
 
 export interface NavigationListContextValue {
   selectedId: string | null;
-  highlightedId: string | null;
+  highlighted: string | null;
   activate: (id: string) => void;
   highlight: (id: string) => void;
   focusContainer: () => void;

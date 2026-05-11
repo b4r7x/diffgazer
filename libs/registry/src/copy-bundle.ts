@@ -8,6 +8,7 @@ export const CopyBundleItemSchema = z.object({
   name: z.string(),
   title: z.string(),
   description: z.string(),
+  meta: z.record(z.string(), z.unknown()).optional(),
   files: z.array(
     z.object({
       path: z.string(),
@@ -32,6 +33,7 @@ export interface BuildCopyBundleOptions {
   itemType: string;
   pathMapping?: { from: string; to: string };
   transformContent?: (content: string, sourcePath: string) => string;
+  includeHidden?: boolean;
 }
 
 export interface BuildCopyBundleResult {
@@ -70,6 +72,7 @@ export function buildCopyBundle(
     itemType,
     pathMapping,
     transformContent,
+    includeHidden = false,
   } = options;
 
   const sourceRegistryPath = resolve(sourceRoot, registryPath);
@@ -81,11 +84,12 @@ export function buildCopyBundle(
   const registry = RegistrySchema.parse(rawRegistry);
 
   const items = registry.items
-    .filter((item) => item.type === itemType && item.meta?.hidden !== true)
+    .filter((item) => item.type === itemType && (includeHidden || item.meta?.hidden !== true))
     .map((item) => ({
       name: item.name,
       title: item.title ?? item.name,
       description: item.description ?? "",
+      meta: item.meta,
       files: item.files.map((file) => {
         const filePath = resolve(sourceRoot, file.path);
         if (!existsSync(filePath)) {

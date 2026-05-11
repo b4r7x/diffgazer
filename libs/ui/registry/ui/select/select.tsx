@@ -8,7 +8,7 @@ import { SelectItem, type SelectItemProps } from "./select-item";
 import { SelectSearch } from "./select-search";
 import { useSelectState } from "./use-select-state";
 
-interface SelectBaseProps extends Omit<ComponentPropsWithoutRef<"div">, "defaultValue" | "onChange"> {
+interface SelectBaseProps extends Omit<ComponentPropsWithoutRef<"div">, "defaultValue" | "onChange" | "id"> {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   defaultOpen?: boolean;
@@ -22,6 +22,12 @@ interface SelectBaseProps extends Omit<ComponentPropsWithoutRef<"div">, "default
   name?: string;
   required?: boolean;
   "aria-invalid"?: AriaAttributes["aria-invalid"];
+  /** Applied to the interactive combobox trigger so labels can target it. */
+  id?: string;
+  /** Applied to the trigger so description/error live on the combobox itself. */
+  "aria-describedby"?: string;
+  /** Applied to the trigger so a Field.Label can name the combobox. */
+  "aria-labelledby"?: string;
   children: ReactNode;
   ref?: Ref<HTMLDivElement>;
 }
@@ -66,6 +72,9 @@ export function Select(props: SelectProps) {
     name,
     required,
     "aria-invalid": ariaInvalid,
+    id: triggerIdProp,
+    "aria-describedby": ariaDescribedBy,
+    "aria-labelledby": ariaLabelledBy,
     children,
     className,
     ref,
@@ -95,6 +104,9 @@ export function Select(props: SelectProps) {
         searchable,
         variant,
         ariaInvalid,
+        ariaDescribedBy,
+        ariaLabelledBy,
+        triggerIdProp,
         required,
         options,
       }
@@ -115,6 +127,9 @@ export function Select(props: SelectProps) {
         searchable,
         variant,
         ariaInvalid,
+        ariaDescribedBy,
+        ariaLabelledBy,
+        triggerIdProp,
         required,
         options,
       };

@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { renderHook, render, screen, act, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { createElement, useRef, type ReactNode } from "react";
+import { createElement, useRef, useState, type ReactNode } from "react";
+import { renderToString } from "react-dom/server";
 import { KeyboardProvider } from "../providers/keyboard-provider";
 import { useFocusZone } from "./use-focus-zone";
 import { useKey } from "./use-key";
@@ -286,6 +287,175 @@ describe("useFocusZone", () => {
     });
   });
 
+  describe("focus targets", () => {
+    it("does not focus the initial zone target on mount", () => {
+      function Host() {
+        const mainRef = useRef<HTMLDivElement>(null);
+        useFocusZone({
+          initial: "main",
+          zones: ["main"],
+          focus: {
+            targets: {
+              main: mainRef,
+            },
+          },
+        });
+
+        return createElement("div", { ref: mainRef, tabIndex: -1 }, "Main");
+      }
+
+      render(createElement(Host), { wrapper });
+
+      expect(document.activeElement).toBe(document.body);
+    });
+
+    it("focuses the initial zone target when autoFocus is enabled", () => {
+      function Host() {
+        const mainRef = useRef<HTMLDivElement>(null);
+        useFocusZone({
+          initial: "main",
+          zones: ["main"],
+          focus: {
+            autoFocus: true,
+            targets: {
+              main: mainRef,
+            },
+          },
+        });
+
+        return createElement("div", { ref: mainRef, tabIndex: -1 }, "Main");
+      }
+
+      render(createElement(Host), { wrapper });
+
+      expect(document.activeElement).toBe(screen.getByText("Main"));
+    });
+
+    it("focuses after autoFocus becomes enabled", () => {
+      function Host() {
+        const [enabled, setEnabled] = useState(false);
+        const mainRef = useRef<HTMLDivElement>(null);
+        useFocusZone({
+          initial: "main",
+          zones: ["main"],
+          enabled,
+          focus: {
+            autoFocus: true,
+            targets: {
+              main: mainRef,
+            },
+          },
+        });
+
+        return createElement(
+          "div",
+          null,
+          createElement("button", { type: "button", onClick: () => setEnabled(true) }, "Enable"),
+          createElement("div", { ref: mainRef, tabIndex: -1 }, "Main"),
+        );
+      }
+
+      render(createElement(Host), { wrapper });
+
+      expect(document.activeElement).toBe(document.body);
+      act(() => screen.getByRole("button", { name: "Enable" }).click());
+      expect(document.activeElement).toBe(screen.getByText("Main"));
+    });
+
+    it("focuses the first focusable child when the zone target is a non-focusable container", () => {
+      function Host() {
+        const mainRef = useRef<HTMLDivElement>(null);
+        useFocusZone({
+          initial: "main",
+          zones: ["main"],
+          focus: {
+            autoFocus: true,
+            targets: {
+              main: mainRef,
+            },
+          },
+        });
+
+        return createElement(
+          "div",
+          { ref: mainRef },
+          createElement("button", { type: "button" }, "First"),
+        );
+      }
+
+      render(createElement(Host), { wrapper });
+
+      expect(document.activeElement).toBe(screen.getByRole("button", { name: "First" }));
+    });
+
+    it("focuses the active zone target when the zone changes", async () => {
+      function Host() {
+        const mainRef = useRef<HTMLDivElement>(null);
+        const sidebarRef = useRef<HTMLDivElement>(null);
+        const focusZone = useFocusZone({
+          initial: "main",
+          zones: ["main", "sidebar"],
+          focus: {
+            targets: {
+              main: mainRef,
+              sidebar: sidebarRef,
+            },
+          },
+        });
+
+        return createElement(
+          "div",
+          null,
+          createElement("div", { ref: mainRef, tabIndex: -1 }, "Main"),
+          createElement("div", { ref: sidebarRef, tabIndex: -1 }, "Sidebar"),
+          createElement("button", { type: "button", onClick: () => focusZone.setZone("sidebar") }, "Move"),
+        );
+      }
+
+      render(createElement(Host), { wrapper });
+
+      await userEvent.click(screen.getByRole("button", { name: "Move" }));
+
+      expect(document.activeElement).toBe(screen.getByText("Sidebar"));
+    });
+
+    it("skips focus repair when the active element is already inside the zone container", async () => {
+      function Host() {
+        const [tick, setTick] = useState(0);
+        const containerRef = useRef<HTMLDivElement>(null);
+        const targetRef = useRef<HTMLButtonElement>(null);
+
+        useFocusZone({
+          initial: "main",
+          zones: ["main"],
+          focus: {
+            targets: {
+              main: {
+                container: containerRef,
+                target: targetRef,
+              },
+            },
+          },
+        });
+
+        return createElement(
+          "div",
+          { ref: containerRef },
+          createElement("button", { type: "button", ref: targetRef }, "First"),
+          createElement("button", { type: "button", onClick: () => setTick((value) => value + 1) }, `Second ${tick}`),
+        );
+      }
+
+      render(createElement(Host), { wrapper });
+
+      const second = screen.getByRole("button", { name: /second/i });
+      second.focus();
+      await userEvent.click(second);
+
+      expect(document.activeElement).toBe(second);
+    });
+  });
+
   describe("edge cases", () => {
     it("falls back to first zone when initial is invalid", () => {
       const { result } = renderHook(
@@ -340,6 +510,127 @@ describe("useFocusZone", () => {
       );
 
       expect(fireKey("Tab").defaultPrevented).toBe(false);
+    });
+  });
+
+  describe("tabCycle validation", () => {
+    it("does not warn during render when tabCycle contains invalid entries", () => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      function Consumer() {
+        useFocusZone({
+          initial: "a",
+          zones: ["a", "b"],
+          tabCycle: ["a", "ghost" as "a", "b"],
+        });
+        return null;
+      }
+
+      renderToString(createElement(KeyboardProvider, null, createElement(Consumer)));
+
+      expect(warn).not.toHaveBeenCalled();
+      warn.mockRestore();
+    });
+
+    it("filters tabCycle entries that are not in zones and warns in dev", () => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const { result } = renderHook(
+        () =>
+          useFocusZone({
+            initial: "a",
+            zones: ["a", "b"],
+            tabCycle: ["a", "ghost" as "a", "b"],
+          }),
+        { wrapper },
+      );
+
+      // Tab should cycle only between valid zones in declared order: a -> b -> a
+      act(() => fireKey("Tab"));
+      expect(result.current.zone).toBe("b");
+      act(() => fireKey("Tab"));
+      expect(result.current.zone).toBe("a");
+
+      expect(warn).toHaveBeenCalled();
+      warn.mockRestore();
+    });
+
+    it("when current zone is not in tabCycle, Tab moves to first cycle entry and Shift+Tab to last", () => {
+      const { result } = renderHook(
+        () =>
+          useFocusZone({
+            initial: "a",
+            zones: ["a", "b", "c"],
+            tabCycle: ["b", "c"],
+          }),
+        { wrapper },
+      );
+
+      expect(result.current.zone).toBe("a");
+      act(() => fireKey("Tab"));
+      expect(result.current.zone).toBe("b");
+
+      cleanup();
+      const { result: r2 } = renderHook(
+        () =>
+          useFocusZone({
+            initial: "a",
+            zones: ["a", "b", "c"],
+            tabCycle: ["b", "c"],
+          }),
+        { wrapper },
+      );
+      act(() => fireKey("Tab", { shiftKey: true }));
+      expect(r2.current.zone).toBe("c");
+    });
+  });
+
+  describe("imperative setZone", () => {
+    it("does not fire lifecycle callbacks when called with a zone not in zones", () => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const onZoneChange = vi.fn();
+      const onLeaveZone = vi.fn();
+      const onEnterZone = vi.fn();
+      const { result } = renderHook(
+        () =>
+          useFocusZone({
+            initial: "main",
+            zones: ["main", "sidebar"],
+            onZoneChange,
+            onLeaveZone,
+            onEnterZone,
+          }),
+        { wrapper },
+      );
+
+      act(() => result.current.setZone("ghost" as "main"));
+
+      expect(onZoneChange).not.toHaveBeenCalled();
+      expect(onLeaveZone).not.toHaveBeenCalled();
+      expect(onEnterZone).not.toHaveBeenCalled();
+      expect(result.current.zone).toBe("main");
+      warn.mockRestore();
+    });
+
+    it("fires lifecycle callbacks for valid setZone", () => {
+      const onZoneChange = vi.fn();
+      const onLeaveZone = vi.fn();
+      const onEnterZone = vi.fn();
+      const { result } = renderHook(
+        () =>
+          useFocusZone({
+            initial: "main",
+            zones: ["main", "sidebar"],
+            onZoneChange,
+            onLeaveZone,
+            onEnterZone,
+          }),
+        { wrapper },
+      );
+
+      act(() => result.current.setZone("sidebar"));
+      expect(onLeaveZone).toHaveBeenCalledWith("main");
+      expect(onEnterZone).toHaveBeenCalledWith("sidebar");
+      expect(onZoneChange).toHaveBeenCalledWith("sidebar");
     });
   });
 });

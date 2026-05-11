@@ -11,12 +11,16 @@ export interface NavigationListProps
   extends Omit<ComponentPropsWithRef<"div">, "children" | "onKeyDown" | "onSelect"> {
   selectedId?: string | null;
   defaultSelectedId?: string | null;
-  highlightedId?: string | null;
-  defaultHighlightedId?: string | null;
+  highlighted?: string | null;
+  defaultHighlighted?: string | null;
   onSelect?: (id: string) => void;
   onEnter?: (id: string, event: globalThis.KeyboardEvent) => void;
   onHighlightChange?: (id: string) => void;
-  onNavigationBoundaryReached?: (direction: "previous" | "next") => void;
+  onNavigationBoundaryReached?: (
+    direction: "previous" | "next",
+    event: globalThis.KeyboardEvent,
+    key: string,
+  ) => void;
   focused?: boolean;
   wrap?: boolean;
   autoFocus?: boolean;
@@ -27,8 +31,8 @@ export interface NavigationListProps
 export function NavigationList({
   selectedId: controlledSelectedId,
   defaultSelectedId = null,
-  highlightedId: controlledHighlightedId,
-  defaultHighlightedId = null,
+  highlighted: controlledHighlighted,
+  defaultHighlighted = null,
   onSelect,
   onEnter,
   onHighlightChange,
@@ -49,15 +53,15 @@ export function NavigationList({
 
   const {
     selectedId,
-    highlightedId,
+    highlighted,
     handleItemActivate,
     handleItemHighlight,
     getContainerProps,
   } = useListbox({
     selectedId: controlledSelectedId,
     defaultSelectedId,
-    highlightedId: controlledHighlightedId,
-    defaultHighlightedId,
+    highlighted: controlledHighlighted,
+    defaultHighlighted,
     onSelect,
     onEnter,
     onHighlightChange,
@@ -74,14 +78,14 @@ export function NavigationList({
   const contextValue = useMemo(
     () => ({
       selectedId,
-      highlightedId,
+      highlighted,
       activate: handleItemActivate,
       highlight: handleItemHighlight,
       focusContainer: () => containerRef.current?.focus(),
       focused,
       idPrefix,
     }),
-    [selectedId, highlightedId, handleItemActivate, handleItemHighlight, focused, idPrefix],
+    [selectedId, highlighted, handleItemActivate, handleItemHighlight, focused, idPrefix],
   );
 
   return (

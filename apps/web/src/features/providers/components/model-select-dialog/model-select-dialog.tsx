@@ -114,7 +114,6 @@ export function ModelSelectDialog({
     filteredModels,
     searchQuery,
     setSearchQuery,
-    setTierFilter,
     cycleTierFilter,
     resetFilters,
     searchInputRef,

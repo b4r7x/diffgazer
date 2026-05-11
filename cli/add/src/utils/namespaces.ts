@@ -1,6 +1,7 @@
 import { ctx, type RegistryItem, type ResolvedConfig } from "../context.js";
 import {
   getKeysHookNames,
+  getPublicKeysHookNames,
   resolveKeysCopyHookFiles,
 } from "./integration.js";
 
@@ -27,18 +28,20 @@ export function parseInstallName(value: string): InstallName {
 
 export function publicInstallNames(): string[] {
   const uiItems = ctx.registry.getPublicItems().filter((item) => CLI_INSTALLABLE_TYPES.has(item.type));
+  const publicKeysHooks = [...getPublicKeysHookNames()];
   return [
     ...uiItems.map((item) => `ui/${item.name}`),
     ...uiItems.map((item) => item.name),
-    ...[...getKeysHookNames()].map((name) => `keys/${name}`),
+    ...publicKeysHooks.map((name) => `keys/${name}`),
   ];
 }
 
 export function publicListNames(): string[] {
   const uiItems = ctx.registry.getPublicItems().filter((item) => CLI_INSTALLABLE_TYPES.has(item.type));
+  const publicKeysHooks = [...getPublicKeysHookNames()];
   return [
     ...uiItems.map((item) => `ui/${item.name}`),
-    ...[...getKeysHookNames()].map((name) => `keys/${name}`),
+    ...publicKeysHooks.map((name) => `keys/${name}`),
   ];
 }
 
@@ -56,13 +59,13 @@ export function validateInstallNames(names: string[]): void {
       .filter((item) => CLI_INSTALLABLE_TYPES.has(item.type))
       .map((item) => item.name),
   );
-  const keyNames = getKeysHookNames();
+  const publicKeyNames = getPublicKeysHookNames();
 
   for (const raw of names) {
     const parsed = parseInstallName(raw);
     const valid = parsed.namespace === "ui"
       ? uiNames.has(parsed.name)
-      : keyNames.has(parsed.name);
+      : publicKeyNames.has(parsed.name);
     if (!valid) {
       throw new Error(`Item "${raw}" not found. Run \`dgadd list\` to see available ui/* and keys/* items.`);
     }

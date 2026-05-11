@@ -43,7 +43,7 @@ export function TimelineList({
       aria-label="Review sections"
       onFocus={onFocus}
       selectedId={selectedId}
-      highlightedId={keyboardEnabled ? selectedId : null}
+      highlighted={keyboardEnabled ? selectedId : null}
       onSelect={notifySelect}
       onHighlightChange={notifySelect}
       onNavigationBoundaryReached={(direction) => {

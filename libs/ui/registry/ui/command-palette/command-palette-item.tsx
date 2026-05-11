@@ -48,7 +48,7 @@ export function CommandPaletteItem({
   ...props
 }: CommandPaletteItemProps) {
   const {
-    highlightedId,
+    highlighted,
     onActivate,
     search,
     shouldFilter,
@@ -77,7 +77,7 @@ export function CommandPaletteItem({
 
   if (!isVisible) return null;
 
-  const isHighlighted = highlightedId === id;
+  const isHighlighted = highlighted === id;
   const handleClick = (event: MouseEvent<HTMLDivElement>) => {
     onClick?.(event);
     if (!event.defaultPrevented && !disabled) onActivate(id);

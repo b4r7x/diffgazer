@@ -7,7 +7,7 @@ import {
   useFocusZone,
   useScopedNavigation,
 } from "@diffgazer/keys";
-import { TIER_FILTERS, type TierFilter } from "@/features/providers/constants";
+import { TIER_FILTERS } from "@/features/providers/constants";
 
 type FocusZone = "search" | "filters" | "list" | "footer";
 
@@ -18,7 +18,6 @@ interface ModelDialogKeyboardOptions {
   filteredModels: ModelInfo[];
   searchQuery: string;
   setSearchQuery: (query: string) => void;
-  setTierFilter: (filter: TierFilter) => void;
   cycleTierFilter: () => void;
   resetFilters: () => void;
   searchInputRef: RefObject<HTMLInputElement | null>;
@@ -63,7 +62,6 @@ export function useModelDialogKeyboard({
   filteredModels,
   searchQuery,
   setSearchQuery,
-  setTierFilter,
   cycleTierFilter,
   resetFilters,
   searchInputRef,
@@ -76,8 +74,6 @@ export function useModelDialogKeyboard({
   const [footerButtonIndex, setFooterButtonIndex] = useState(1);
   const footerButtonRefs = useRef(new Map<number, HTMLButtonElement>());
   const filterButtonRefs = useRef(new Map<number, HTMLButtonElement>());
-  const lastTierFilterIndex = TIER_FILTERS.length - 1;
-
   const { zone: focusZone, setZone: setFocusZone, isZone } = useFocusZone({
     initial: "list" as FocusZone,
     zones: ["search", "filters", "list", "footer"] as const,
@@ -212,19 +208,6 @@ export function useModelDialogKeyboard({
     if (targetId) focusModelElement(targetId);
   };
 
-  const focusPreviousFilter = () => {
-    focusFilterButton(filterIndex > 0 ? filterIndex - 1 : lastTierFilterIndex);
-  };
-
-  const focusNextFilter = () => {
-    focusFilterButton(filterIndex < lastTierFilterIndex ? filterIndex + 1 : 0);
-  };
-
-  const applyFocusedFilter = () => {
-    const filter = TIER_FILTERS[filterIndex];
-    if (filter) setTierFilter(filter);
-  };
-
   useKey("ArrowDown", () => {
     focusFilterButton(filterIndex);
     searchInputRef.current?.blur();
@@ -240,10 +223,6 @@ export function useModelDialogKeyboard({
     setFocusZone("list");
     focusBoundaryModel("first");
   }, { enabled: open && isZone("filters"), preventDefault: true });
-  useKey("ArrowLeft", focusPreviousFilter, { enabled: open && isZone("filters") });
-  useKey("ArrowRight", focusNextFilter, { enabled: open && isZone("filters") });
-  useKey("Enter", applyFocusedFilter, { enabled: open && isZone("filters"), preventDefault: true });
-  useKey(" ", applyFocusedFilter, { enabled: open && isZone("filters"), preventDefault: true });
 
   useKey("ArrowLeft", () => focusFooterButton(0), { enabled: open && isZone("footer") });
   useKey("ArrowRight", () => focusFooterButton(1), { enabled: open && isZone("footer") });

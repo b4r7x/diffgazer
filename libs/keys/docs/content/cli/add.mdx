@@ -16,7 +16,7 @@ Standalone hooks are copied into your project as source files and have no runtim
 
 ## Use The Package
 
-Provider-based hooks such as `useKey`, `useScope`, and `useFocusZone` come from the package:
+Provider-backed hooks (`useKey`, `useScope`, `useScopedNavigation`, `useFocusZone`) are intentionally **package-only**. They depend on `KeyboardProvider` runtime context, so copying isolated source files would not give a working hook -- you would still have to bring `KeyboardProvider` along, which means depending on the package anyway. Install via npm:
 
 ```bash
 npm install @diffgazer/keys
@@ -25,10 +25,20 @@ npm install @diffgazer/keys
 This package install is publish-gated until `npm view @diffgazer/keys version` succeeds.
 
 ```tsx
-import { KeyboardProvider, useKey } from "@diffgazer/keys"
+import { KeyboardProvider, useKey, useScope, useScopedNavigation, useFocusZone } from "@diffgazer/keys"
 ```
 
-UI components can also be installed in package integration mode:
+The CLI's `keys/*` namespace only exposes hooks that work standalone without a provider:
+
+| `dgadd add keys/...` | Available |
+|----------------------|-----------|
+| `keys/navigation` | yes -- standalone |
+| `keys/focus-trap` | yes -- standalone |
+| `keys/focus-restore` | yes -- standalone |
+| `keys/scroll-lock` | yes -- standalone |
+| `keys/key`, `keys/scope`, `keys/scoped-navigation`, `keys/focus-zone` | no -- package-only |
+
+UI components that depend on provider hooks can be installed in package integration mode:
 
 ```bash
 pnpm exec dgadd add ui/menu --integration keys

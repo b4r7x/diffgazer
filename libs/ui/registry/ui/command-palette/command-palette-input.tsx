@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { useRef, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type Ref } from "react";
+import { type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type Ref } from "react";
 import { composeRefs } from "@/lib/compose-refs";
 import { useCommandPaletteContext } from "./command-palette-context";
 import { getCommandPaletteItemDomId } from "./use-command-palette-state";
@@ -27,8 +27,7 @@ export function CommandPaletteInput({
   className,
   ref,
 }: CommandPaletteInputProps) {
-  const { open, search, onSearchChange, navKeyDown, highlightedId, listId } = useCommandPaletteContext();
-  const inputRef = useRef<HTMLInputElement>(null);
+  const { open, search, onSearchChange, navKeyDown, highlighted, listId, inputRef } = useCommandPaletteContext();
 
   return (
     <div className={cn("flex items-center p-4 border-b border-border/60", className)}>
@@ -41,7 +40,7 @@ export function CommandPaletteInput({
         aria-expanded={open}
         aria-autocomplete="list"
         aria-controls={listId}
-        aria-activedescendant={highlightedId !== null ? getCommandPaletteItemDomId(listId, highlightedId) : undefined}
+        aria-activedescendant={highlighted !== null ? getCommandPaletteItemDomId(listId, highlighted) : undefined}
         value={search}
         onChange={(e) => onSearchChange(e.target.value)}
         onKeyDown={(e) => {

@@ -12,6 +12,8 @@ export interface EnsurePublicRegistryReadyOptions {
   registryPath?: string;
   outputDir?: string;
   label?: string;
+  afterBuild?: (ctx: { rootDir: string; outputDir: string }) => void;
+  transformSourceContent?: Parameters<typeof validatePublicRegistryFresh>[0]["transformSourceContent"];
 }
 
 export function ensurePublicRegistryReady(options: EnsurePublicRegistryReadyOptions): void {
@@ -23,6 +25,8 @@ export function ensurePublicRegistryReady(options: EnsurePublicRegistryReadyOpti
     registryPath = sourceRegistryPath,
     outputDir = publicRegistryDir,
     label = "public registry index",
+    afterBuild,
+    transformSourceContent,
   } = options;
 
   const publicRegistryIndex = resolve(rootDir, publicRegistryDir, "registry.json");
@@ -40,15 +44,17 @@ export function ensurePublicRegistryReady(options: EnsurePublicRegistryReadyOpti
     }
 
     runShadcnRegistryBuild({ rootDir, registryPath, outputDir });
+    afterBuild?.({ rootDir, outputDir: resolve(rootDir, outputDir) });
   }
 
   try {
-    validatePublicRegistryFresh({ rootDir, fixCommand, sourceRegistryPath, publicRegistryDir });
+    validatePublicRegistryFresh({ rootDir, fixCommand, sourceRegistryPath, publicRegistryDir, transformSourceContent });
   } catch (error) {
     if (!hasLocalShadcn) throw error;
 
     runShadcnRegistryBuild({ rootDir, registryPath, outputDir });
-    validatePublicRegistryFresh({ rootDir, fixCommand, sourceRegistryPath, publicRegistryDir });
+    afterBuild?.({ rootDir, outputDir: resolve(rootDir, outputDir) });
+    validatePublicRegistryFresh({ rootDir, fixCommand, sourceRegistryPath, publicRegistryDir, transformSourceContent });
   }
 }
 
@@ -60,6 +66,7 @@ export interface BuildShadcnRegistryWithOriginOptions {
   defaultOrigin: string;
   fromOrigin?: string;
   beforeBuild?: () => void;
+  afterBuild?: (ctx: { rootDir: string; outputDir: string }) => void;
 }
 
 export interface BuildShadcnRegistryWithOriginResult {
@@ -76,11 +83,13 @@ export function buildShadcnRegistryWithOrigin(options: BuildShadcnRegistryWithOr
     defaultOrigin,
     fromOrigin = defaultOrigin,
     beforeBuild,
+    afterBuild,
   } = options;
 
   beforeBuild?.();
 
   runShadcnRegistryBuild({ rootDir, registryPath, outputDir });
+  afterBuild?.({ rootDir, outputDir: resolve(rootDir, outputDir) });
 
   const { origin } = resolveAndRewriteOrigin({
     dir: resolve(rootDir, outputDir),

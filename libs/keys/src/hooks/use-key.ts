@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useEffectEvent } from "react";
+import { useEffectEvent, useId, useLayoutEffect } from "react";
 import type { RefObject } from "react";
 import type { HandlerOptions } from "../providers/keyboard-provider.js";
 import { useOptionalKeyboardRegistryContext } from "../context/keyboard-context.js";
@@ -9,7 +9,7 @@ import { normalizeKeyInput } from "../internal/normalize-key-input.js";
 
 export interface UseKeyOptions {
   enabled?: boolean;
-  scope?: string;
+  scope?: string | null;
   allowInInput?: boolean;
   containerRef?: RefObject<HTMLElement | null>;
   focusWithinOnly?: boolean;
@@ -42,7 +42,8 @@ export function useKey(
 
   const ctx = useOptionalKeyboardRegistryContext();
   const register = ctx?.register ?? null;
-  const getActiveScope = ctx?.getActiveScope ?? null;
+  const getScopeForOrder = ctx?.getScopeForOrder ?? null;
+  const order = useId();
 
   const enabled = options?.enabled;
   const scope = options?.scope;
@@ -67,11 +68,12 @@ export function useKey(
       }
     : undefined;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (enabled === false) return;
-    if (!register || !getActiveScope) return;
+    if (!register) return;
+    if (scope === null) return;
 
-    const registrationScope = scope ?? getActiveScope();
+    const registrationScope = scope ?? getScopeForOrder?.(order) ?? null;
     if (registrationScope === null) return;
 
     const cleanups = registrationKeys.map((key) =>
@@ -86,8 +88,9 @@ export function useKey(
     return () => cleanups.forEach((cleanup) => cleanup());
   }, [
     register,
-    getActiveScope,
+    getScopeForOrder,
     scope,
+    order,
     registrationVersion,
     enabled,
     allowInInput,

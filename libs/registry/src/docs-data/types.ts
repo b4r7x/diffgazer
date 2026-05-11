@@ -54,6 +54,15 @@ export interface KeyboardSection {
   examples: ExampleRef[]
 }
 
+export interface PropInfo {
+  type: string
+  required: boolean
+  defaultValue: string | null
+  description: string
+}
+
+export type ComponentPropsTable = Record<string, Record<string, PropInfo>>
+
 export interface ComponentDoc {
   description?: string
   usage?: UsageSection
@@ -62,6 +71,7 @@ export interface ComponentDoc {
   anatomy?: AnatomyNode[]
   keyboard?: KeyboardSection | null
   tags?: string[]
+  props?: ComponentPropsTable
 }
 
 /** @see libs/ui/registry/ui/code-block/code-block-line.tsx CodeBlockToken (extends with `className`) */

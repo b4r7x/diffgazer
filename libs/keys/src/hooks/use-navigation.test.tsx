@@ -67,7 +67,7 @@ describe("useNavigation", () => {
     cleanup();
   });
 
-  it("navigates options with arrow keys, wraps, and reports non-wrapping boundaries", async () => {
+  it("navigates options with arrow keys, wraps, and reports non-wrapping boundaries with event/key", async () => {
     render(<TestList defaultHighlighted="a" />);
     let user = await focusListbox();
 
@@ -86,11 +86,11 @@ describe("useNavigation", () => {
     user = await focusListbox();
 
     await user.keyboard("{ArrowDown}");
-    expect(onNavigationBoundaryReached).toHaveBeenCalledWith("next");
+    expect(onNavigationBoundaryReached).toHaveBeenCalledWith("next", expect.any(KeyboardEvent), "ArrowDown");
     expectActiveOptionText("c");
 
     await user.keyboard("{ArrowUp}{ArrowUp}{ArrowUp}");
-    expect(onNavigationBoundaryReached).toHaveBeenCalledWith("previous");
+    expect(onNavigationBoundaryReached).toHaveBeenCalledWith("previous", expect.any(KeyboardEvent), "ArrowUp");
     expectActiveOptionText("a");
   });
 
@@ -449,6 +449,308 @@ describe("useNavigation", () => {
 
     expect(screen.getByRole("option", { name: "a" }).getAttribute("aria-selected")).toBe("false");
     expect(screen.getByRole("option", { name: "b" }).getAttribute("aria-selected")).toBe("true");
+  });
+
+  describe("editable target guard", () => {
+    function ListWithSearch({ onSelect }: { onSelect?: (value: string) => void } = {}) {
+      const ref = useRef<HTMLDivElement>(null);
+      const result = useNavigation({
+        containerRef: ref,
+        role: "option",
+        defaultHighlighted: "a",
+        onSelect,
+      });
+
+      return (
+        <div onKeyDown={result.onKeyDown}>
+          <input type="text" aria-label="Search" defaultValue="hello" />
+          <textarea aria-label="Notes" defaultValue="line1" />
+          <div
+            ref={ref}
+            role="listbox"
+            aria-label="Items"
+            aria-activedescendant={result.highlighted === null ? undefined : itemId(result.highlighted)}
+            tabIndex={0}
+          >
+            <div id="item-a" role="option" data-value="a">A</div>
+            <div id="item-b" role="option" data-value="b">B</div>
+          </div>
+        </div>
+      );
+    }
+
+    it("does not consume Arrow/Home/End keys originating in an input above the listbox", async () => {
+      render(<ListWithSearch />);
+
+      const input = screen.getByRole("textbox", { name: "Search" }) as HTMLInputElement;
+      input.focus();
+      input.setSelectionRange(0, 0);
+
+      const user = userEvent.setup();
+      // Move caret to the right (end). If we swallow ArrowRight, caret would not move.
+      await user.keyboard("{ArrowRight}{End}");
+
+      expect(input.selectionStart).toBe(input.value.length);
+      // Listbox should not have advanced highlight
+      expect(screen.getByRole("listbox", { name: "Items" }).getAttribute("aria-activedescendant")).toBe("item-a");
+    });
+
+    it("does not consume Enter/Space keys originating in a textarea above the listbox", async () => {
+      const onSelect = vi.fn();
+      render(<ListWithSearch onSelect={onSelect} />);
+
+      const textarea = screen.getByRole("textbox", { name: "Notes" }) as HTMLTextAreaElement;
+      textarea.focus();
+
+      const user = userEvent.setup();
+      const before = textarea.value;
+      await user.keyboard(" {Enter}");
+
+      // Textarea should accept the keys (value changed)
+      expect(textarea.value).not.toBe(before);
+      expect(onSelect).not.toHaveBeenCalled();
+    });
+
+    it("does not consume keys originating in contenteditable above the listbox", async () => {
+      function ListWithCE() {
+        const ref = useRef<HTMLDivElement>(null);
+        const result = useNavigation({
+          containerRef: ref,
+          role: "option",
+          defaultHighlighted: "a",
+        });
+        return (
+          <div onKeyDown={result.onKeyDown}>
+            <div contentEditable role="textbox" aria-label="CE" suppressContentEditableWarning>
+              hello
+            </div>
+            <div
+              ref={ref}
+              role="listbox"
+              aria-label="Items"
+              aria-activedescendant={result.highlighted === null ? undefined : itemId(result.highlighted)}
+              tabIndex={0}
+            >
+              <div id="item-a" role="option" data-value="a">A</div>
+              <div id="item-b" role="option" data-value="b">B</div>
+            </div>
+          </div>
+        );
+      }
+      render(<ListWithCE />);
+
+      const ce = screen.getByRole("textbox", { name: "CE" });
+      ce.focus();
+
+      const user = userEvent.setup();
+      await user.keyboard("{ArrowDown}");
+
+      expect(screen.getByRole("listbox", { name: "Items" }).getAttribute("aria-activedescendant")).toBe("item-a");
+    });
+
+    it("still navigates when an editable element is itself a navigation item", async () => {
+      function CheckboxList() {
+        const ref = useRef<HTMLDivElement>(null);
+        const result = useNavigation({
+          containerRef: ref,
+          role: "checkbox",
+          defaultHighlighted: "a",
+          moveFocus: true,
+        });
+        return (
+          <div ref={ref} role="group" aria-label="Choices" onKeyDown={result.onKeyDown}>
+            <input type="checkbox" data-value="a" aria-label="A" />
+            <input type="checkbox" data-value="b" aria-label="B" />
+          </div>
+        );
+      }
+      render(<CheckboxList />);
+      const a = screen.getByRole("checkbox", { name: "A" });
+      a.focus();
+      const user = userEvent.setup();
+      await user.keyboard("{ArrowDown}");
+      expect(document.activeElement).toBe(screen.getByRole("checkbox", { name: "B" }));
+    });
+  });
+
+  describe("Enter/Space without consumer handlers", () => {
+    function ListNoHandlers() {
+      const ref = useRef<HTMLDivElement>(null);
+      const result = useNavigation({
+        containerRef: ref,
+        role: "option",
+        defaultHighlighted: "a",
+      });
+      return (
+        <div
+          ref={ref}
+          role="listbox"
+          aria-label="Items"
+          aria-activedescendant={result.highlighted === null ? undefined : itemId(result.highlighted)}
+          tabIndex={0}
+          onKeyDown={result.onKeyDown}
+        >
+          <div id="item-a" role="option" data-value="a">A</div>
+          <div id="item-b" role="option" data-value="b">B</div>
+        </div>
+      );
+    }
+
+    it("does not preventDefault on Enter when no onEnter/onSelect is provided", async () => {
+      render(<ListNoHandlers />);
+      const listbox = screen.getByRole("listbox", { name: "Items" });
+      listbox.focus();
+
+      const event = new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true });
+      listbox.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(false);
+    });
+
+    it("does not preventDefault on Space when no onSelect is provided", async () => {
+      render(<ListNoHandlers />);
+      const listbox = screen.getByRole("listbox", { name: "Items" });
+      listbox.focus();
+
+      const event = new KeyboardEvent("keydown", { key: " ", bubbles: true, cancelable: true });
+      listbox.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(false);
+    });
+
+    it("does preventDefault on Enter when onEnter is provided", async () => {
+      const onEnter = vi.fn();
+      function ListWithEnter() {
+        const ref = useRef<HTMLDivElement>(null);
+        const result = useNavigation({
+          containerRef: ref,
+          role: "option",
+          defaultHighlighted: "a",
+          onEnter,
+        });
+        return (
+          <div
+            ref={ref}
+            role="listbox"
+            aria-label="Items"
+            aria-activedescendant={result.highlighted === null ? undefined : itemId(result.highlighted)}
+            tabIndex={0}
+            onKeyDown={result.onKeyDown}
+          >
+            <div id="item-a" role="option" data-value="a">A</div>
+          </div>
+        );
+      }
+      render(<ListWithEnter />);
+      const listbox = screen.getByRole("listbox", { name: "Items" });
+      listbox.focus();
+
+      const event = new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true });
+      listbox.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(true);
+      expect(onEnter).toHaveBeenCalledWith("a", expect.any(KeyboardEvent));
+    });
+  });
+
+  describe("role-only items without data-value", () => {
+    it("ignores role-only items so they cannot trap navigation", async () => {
+      function RoleOnlyList() {
+        const ref = useRef<HTMLDivElement>(null);
+        const result = useNavigation({
+          containerRef: ref,
+          role: "option",
+          defaultHighlighted: null,
+        });
+        return (
+          <div
+            ref={ref}
+            role="listbox"
+            aria-label="Items"
+            aria-activedescendant={result.highlighted === null ? undefined : itemId(result.highlighted)}
+            tabIndex={0}
+            onKeyDown={result.onKeyDown}
+          >
+            <div role="option">A</div>
+            <div role="option">B</div>
+            <div role="option">C</div>
+          </div>
+        );
+      }
+      const onBoundary = vi.fn();
+      function HostList() {
+        const ref = useRef<HTMLDivElement>(null);
+        const result = useNavigation({
+          containerRef: ref,
+          role: "option",
+          defaultHighlighted: null,
+          wrap: false,
+          onNavigationBoundaryReached: onBoundary,
+        });
+        return (
+          <div
+            ref={ref}
+            role="listbox"
+            aria-label="Items"
+            aria-activedescendant={result.highlighted === null ? undefined : itemId(result.highlighted)}
+            tabIndex={0}
+            onKeyDown={result.onKeyDown}
+          >
+            <div role="option">A</div>
+            <div role="option">B</div>
+          </div>
+        );
+      }
+
+      render(<RoleOnlyList />);
+      const listbox = screen.getByRole("listbox", { name: "Items" });
+      listbox.focus();
+
+      const user = userEvent.setup();
+      await user.keyboard("{ArrowDown}{ArrowDown}");
+
+      // Highlight stays null because no role-only items have values
+      expect(listbox.getAttribute("aria-activedescendant")).toBeNull();
+
+      cleanup();
+      render(<HostList />);
+      const host = screen.getByRole("listbox", { name: "Items" });
+      host.focus();
+      await user.keyboard("{ArrowDown}");
+
+      // Should treat as empty list
+      expect(host.getAttribute("aria-activedescendant")).toBeNull();
+    });
+  });
+
+  describe("disabled by role", () => {
+    it("keeps disabled menuitems discoverable per APG", async () => {
+      function MenuList() {
+        const ref = useRef<HTMLDivElement>(null);
+        const result = useNavigation({
+          containerRef: ref,
+          role: "menuitem",
+          defaultHighlighted: "a",
+          moveFocus: true,
+          skipDisabled: false,
+        });
+        return (
+          <div ref={ref} role="menu" aria-label="Menu" onKeyDown={result.onKeyDown}>
+            <div id="item-a" role="menuitem" data-value="a" tabIndex={0}>A</div>
+            <div id="item-b" role="menuitem" data-value="b" aria-disabled="true" tabIndex={-1}>B</div>
+            <div id="item-c" role="menuitem" data-value="c" tabIndex={-1}>C</div>
+          </div>
+        );
+      }
+      render(<MenuList />);
+      const a = screen.getByRole("menuitem", { name: "A" });
+      a.focus();
+
+      const user = userEvent.setup();
+      await user.keyboard("{ArrowDown}");
+
+      expect(document.activeElement).toBe(screen.getByRole("menuitem", { name: "B" }));
+    });
   });
 });
 

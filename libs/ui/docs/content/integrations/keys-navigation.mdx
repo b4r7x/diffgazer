@@ -47,13 +47,13 @@ function FileList() {
 | Option | Default | Description |
 |--------|---------|-------------|
 | `containerRef` | — | Ref to the scrollable container |
-| `role` | — | `"radio"` \| `"checkbox"` \| `"option"` \| `"menuitem"` \| `"button"` \| `"tab"` |
+| `role` | — | `"radio"` \| `"checkbox"` \| `"option"` \| `"menuitem"` \| `"menuitemcheckbox"` \| `"menuitemradio"` \| `"button"` \| `"tab"` |
 | `wrap` | `true` | Wrap around at boundaries |
 | `orientation` | `"vertical"` | `"vertical"` or `"horizontal"` (determines arrow key direction) |
 | `onSelect` | — | Space key callback |
 | `onEnter` | — | Enter key callback (falls back to `onSelect`) |
 | `onHighlightChange` | — | Called when keyboard navigation changes highlight |
-| `onNavigationBoundaryReached` | — | Called with `"previous"` or `"next"` when `wrap={false}` hits an edge |
+| `onNavigationBoundaryReached` | — | Called with direction, native event, and key when `wrap={false}` hits an edge |
 | `moveFocus` | `false` | Move DOM focus to the highlighted item instead of only updating highlight state |
 | `scopeToContainer` | `true` | Exclude nested composite widgets from the item query |
 

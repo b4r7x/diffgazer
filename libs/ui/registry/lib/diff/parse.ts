@@ -7,7 +7,7 @@ export interface DiffChange {
   newLine: number | null;
 }
 
-/** UI-oriented hunk for single-file rendering. @see diffgazer/apps/server/src/shared/lib/diff/types.ts for the server-side multi-file variant. */
+/** Single-file hunk shape consumed by the diff renderer. */
 export interface DiffHunk {
   oldStart: number;
   oldCount: number;
@@ -17,7 +17,7 @@ export interface DiffHunk {
   changes: DiffChange[];
 }
 
-/** UI-oriented parsed diff (single-file). @see diffgazer/apps/server/src/shared/lib/diff/types.ts for the server-side multi-file variant. */
+/** Single-file parsed diff consumed by the diff renderer. */
 export interface ParsedDiff {
   oldPath: string | null;
   newPath: string | null;

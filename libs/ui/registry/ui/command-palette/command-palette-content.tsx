@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useCallback, useRef, useState } from "react";
+import { type ReactNode, useCallback, useState } from "react";
 import { useFocusRestore } from "@/hooks/use-focus-restore";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
@@ -31,19 +31,17 @@ export interface CommandPaletteContentProps extends VariantProps<typeof contentV
 }
 
 export function CommandPaletteContent({ children, className, size, label = "Command palette" }: CommandPaletteContentProps) {
-  const { open, onOpenChange, search, onSearchChange, itemCount } = useCommandPaletteContext();
-  const dialogRef = useRef<HTMLDialogElement>(null);
+  const { open, onOpenChange, search, onSearchChange, itemCount, inputRef } = useCommandPaletteContext();
   const [container, setContainer] = useState<Element | null>(null);
   const focusRestore = useFocusRestore({ restoreOnUnmount: false });
 
   const setDialogRef = useCallback((node: HTMLDialogElement | null) => {
-    dialogRef.current = node;
     setContainer(node);
   }, []);
 
   const focusSearchInput = useCallback(() => {
-    dialogRef.current?.querySelector<HTMLElement>("[role='combobox']")?.focus();
-  }, []);
+    inputRef.current?.focus();
+  }, [inputRef]);
 
   return (
     <DialogShell

@@ -6,18 +6,11 @@ export const inputSizeClasses = {
   lg: "h-11 px-4 py-2 text-base",
 } as const;
 
-export const inputErrorClass = "border-2 border-destructive focus:border-destructive focus:ring-destructive";
-
-export const inputGroupErrorClass = "border-2 border-destructive focus-within:border-destructive focus-within:ring-destructive";
-
 export const inputVariants = cva(
-  "flex w-full bg-background border border-border text-foreground font-mono placeholder:text-foreground/50 transition-colors focus:border-foreground focus:ring-1 focus:ring-foreground focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed",
+  "flex w-full bg-background border border-border text-foreground font-mono placeholder:text-foreground/50 transition-colors focus:border-foreground focus:ring-1 focus:ring-foreground focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed aria-invalid:border-2 aria-invalid:border-destructive aria-invalid:focus:border-destructive aria-invalid:focus:ring-destructive",
   {
     variants: {
       size: inputSizeClasses,
-      error: {
-        true: inputErrorClass,
-      },
     },
     defaultVariants: {
       size: "md",

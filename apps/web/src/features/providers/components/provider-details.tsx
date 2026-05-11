@@ -2,6 +2,7 @@ import { Badge } from '@diffgazer/ui/components/badge';
 import { Button } from '@diffgazer/ui/components/button';
 import { SectionHeader } from '@diffgazer/ui/components/section-header';
 import { KeyValue } from '@diffgazer/ui/components/key-value';
+import { EmptyState } from '@diffgazer/ui/components/empty-state';
 import type { RefCallback } from "react";
 import { CapabilityCard } from './capability-card';
 import { PROVIDER_CAPABILITIES, OPENROUTER_PROVIDER_ID } from '@diffgazer/core/schemas/config';
@@ -47,13 +48,13 @@ export function ProviderDetails({
     return (
       <div className="flex-1 flex flex-col overflow-y-auto">
         <div className="p-3 border-b border-tui-border bg-tui-selection/30 flex justify-between items-center">
-          <h2 className="text-sm font-bold text-tui-fg uppercase tracking-wide">
+          <SectionHeader as="h2" className="mb-0 text-tui-fg">
             Provider Details
-          </h2>
+          </SectionHeader>
         </div>
-        <div className="flex-1 flex items-center justify-center text-tui-muted text-sm">
+        <EmptyState className="flex-1">
           Select a provider to view details
-        </div>
+        </EmptyState>
       </div>
     );
   }
@@ -63,13 +64,13 @@ export function ProviderDetails({
     return (
       <div className="flex-1 flex flex-col overflow-y-auto">
         <div className="p-3 border-b border-tui-border bg-tui-selection/30 flex justify-between items-center">
-          <h2 className="text-sm font-bold text-tui-fg uppercase tracking-wide">
+          <SectionHeader as="h2" className="mb-0 text-tui-fg">
             Provider Details: {provider.name}
-          </h2>
+          </SectionHeader>
         </div>
-        <div className="flex-1 flex items-center justify-center text-tui-muted text-sm">
+        <EmptyState className="flex-1">
           Unknown provider: {provider.id}
-        </div>
+        </EmptyState>
       </div>
     );
   }
@@ -79,9 +80,9 @@ export function ProviderDetails({
   return (
     <div className="flex-1 flex flex-col overflow-y-auto">
       <div className="p-3 border-b border-tui-border bg-tui-selection/30 flex justify-between items-center">
-        <h2 className="text-sm font-bold text-tui-fg uppercase tracking-wide">
+        <SectionHeader as="h2" className="mb-0 text-tui-fg">
           Provider Details: {provider.name}
-        </h2>
+        </SectionHeader>
         {provider.displayStatus === 'active' && (
           <span className="text-[10px] text-tui-green font-mono flex items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full bg-tui-green"></span> Active
@@ -91,7 +92,7 @@ export function ProviderDetails({
 
       <div className="p-6">
       <section className="mb-6">
-        <SectionHeader className="text-tui-violet mb-4 tracking-widest flex items-center">Capabilities <span className="ml-2 flex-1 h-px bg-tui-border" /></SectionHeader>
+        <SectionHeader variant="muted" bordered className="mb-4 border-tui-border text-tui-violet">Capabilities</SectionHeader>
         <div className="grid grid-cols-2 gap-4">
           <CapabilityCard label="Tool Calling" value={capabilities.toolCalling} />
           <CapabilityCard label="JSON Mode" value={capabilities.jsonMode} />
@@ -101,7 +102,7 @@ export function ProviderDetails({
       </section>
 
       <section className="mb-6">
-        <SectionHeader className="text-tui-violet mb-4 tracking-widest flex items-center">Cost Tier <span className="ml-2 flex-1 h-px bg-tui-border" /></SectionHeader>
+        <SectionHeader variant="muted" bordered className="mb-4 border-tui-border text-tui-violet">Cost Tier</SectionHeader>
         <div className="border-l-2 border-tui-green pl-4">
           <p className="text-xs text-tui-muted leading-relaxed">
             {capabilities.costDescription}
@@ -110,7 +111,7 @@ export function ProviderDetails({
       </section>
 
       <section className="mb-6">
-        <SectionHeader className="text-tui-violet mb-4 tracking-widest flex items-center">Status <span className="ml-2 flex-1 h-px bg-tui-border" /></SectionHeader>
+        <SectionHeader variant="muted" bordered className="mb-4 border-tui-border text-tui-violet">Status</SectionHeader>
         <KeyValue>
           <KeyValue.Item
             label="API Key Status"

@@ -328,7 +328,9 @@ describe("Dialog", () => {
     expect(screen.getByRole("dialog")).toHaveAttribute("aria-modal", "true")
   })
 
-  it("omits aria-labelledby when content has no Dialog.Title or explicit aria name", () => {
+  it("warns and applies a fallback name when content has no Dialog.Title or explicit aria name", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+
     render(
       <Dialog defaultOpen>
         <Dialog.Content>
@@ -337,7 +339,43 @@ describe("Dialog", () => {
       </Dialog>
     )
 
-    expect(screen.getByRole("dialog")).not.toHaveAttribute("aria-labelledby")
+    const dialog = screen.getByRole("dialog", { name: "Dialog" })
+    expect(dialog).not.toHaveAttribute("aria-labelledby")
+    expect(dialog).toHaveAttribute("aria-label", "Dialog")
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("Modal dialog is missing an accessible name"))
+
+    warn.mockRestore()
+  })
+
+  it("does not warn when Dialog.Title is provided", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+    render(
+      <Dialog defaultOpen>
+        <Dialog.Content>
+          <Dialog.Title>Labeled dialog</Dialog.Title>
+          <Dialog.Body>Body content</Dialog.Body>
+        </Dialog.Content>
+      </Dialog>
+    )
+
+    expect(warn).not.toHaveBeenCalled()
+    warn.mockRestore()
+  })
+
+  it("does not warn when aria-label is provided without a title", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+    render(
+      <Dialog defaultOpen>
+        <Dialog.Content aria-label="Named dialog">
+          <Dialog.Body>Body content</Dialog.Body>
+        </Dialog.Content>
+      </Dialog>
+    )
+
+    expect(warn).not.toHaveBeenCalled()
+    warn.mockRestore()
   })
 
   it("accepts a Dialog.Title wrapped in another component", () => {

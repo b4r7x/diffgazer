@@ -43,6 +43,7 @@ function writeFixtureConfig(): void {
     componentsFsPath: "src/components/ui",
     libFsPath: "src/lib",
     hooksFsPath: "src/hooks",
+    tailwind: { css: "src/styles/styles.css" },
   }, null, 2));
 }
 
@@ -111,6 +112,7 @@ test("list json hides internal items and omits bare aliases by default", () => {
   assert.ok(!names.includes("theme"));
   assert.ok(!names.includes("ui/portal"));
   assert.ok(!names.includes("ui/dialog-shell"));
+  assert.ok(!names.includes("keys/focusable"));
   assert.equal(names.length, new Set(names).size);
 });
 
@@ -120,7 +122,15 @@ test("list json --all includes hidden internal items once", () => {
 
   assert.equal(names.filter((name) => name === "ui/portal").length, 1);
   assert.equal(names.filter((name) => name === "ui/dialog-shell").length, 1);
+  assert.equal(names.filter((name) => name === "keys/focusable").length, 1);
   assert.equal(names.length, new Set(names).size);
+});
+
+test("hidden keys utilities cannot be installed directly", () => {
+  assert.throws(
+    () => runDgadd(["add", "keys/focusable", "--cwd", root, "--yes", "--skip-install"]),
+    /not found/,
+  );
 });
 
 test("bare ui aliases still install", () => {
@@ -191,14 +201,14 @@ test("keys remove deletes transitive copied hook files owned by the key item", (
   assert.equal(existsSync(join(root, "src/hooks/use-focus-trap.ts")), true);
   assert.equal(existsSync(join(root, "src/hooks/use-focus-restore.ts")), true);
   assert.equal(existsSync(join(root, "src/hooks/utils/focus-restore.ts")), true);
-  assert.equal(existsSync(join(root, "src/hooks/utils/navigation-items.ts")), true);
+  assert.equal(existsSync(join(root, "src/hooks/utils/focusable.ts")), true);
 
   runDgadd(["remove", "keys/focus-trap", "--cwd", root, "--yes"]);
 
   assert.equal(existsSync(join(root, "src/hooks/use-focus-trap.ts")), false);
   assert.equal(existsSync(join(root, "src/hooks/use-focus-restore.ts")), false);
   assert.equal(existsSync(join(root, "src/hooks/utils/focus-restore.ts")), false);
-  assert.equal(existsSync(join(root, "src/hooks/utils/navigation-items.ts")), false);
+  assert.equal(existsSync(join(root, "src/hooks/utils/focusable.ts")), false);
 });
 
 test("keys add preserves explicit ownership for hooks that overlap transitive files", () => {
@@ -216,7 +226,53 @@ test("keys add preserves explicit ownership for hooks that overlap transitive fi
   assert.equal(existsSync(join(root, "src/hooks/use-focus-trap.ts")), false);
   assert.equal(existsSync(join(root, "src/hooks/use-focus-restore.ts")), true);
   assert.equal(existsSync(join(root, "src/hooks/utils/focus-restore.ts")), true);
-  assert.equal(existsSync(join(root, "src/hooks/utils/navigation-items.ts")), false);
+  assert.equal(existsSync(join(root, "src/hooks/utils/focusable.ts")), false);
+});
+
+test("sequential keys add adopts shared trusted files into the second item's manifest", () => {
+  runDgadd(["add", "keys/focus-trap", "--cwd", root, "--yes", "--skip-install"]);
+  runDgadd(["add", "keys/focus-restore", "--cwd", root, "--yes", "--skip-install"]);
+
+  const config = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
+  assert.ok(config.installedComponents?.["keys/focus-trap"]);
+  assert.ok(config.installedComponents?.["keys/focus-restore"]);
+
+  const restoreFiles: Array<{ path: string }> = config.installedComponents["keys/focus-restore"].files ?? [];
+  assert.ok(
+    restoreFiles.some((file) => file.path === "src/hooks/use-focus-restore.ts"),
+    "second add should adopt shared use-focus-restore.ts via manifest",
+  );
+  assert.ok(
+    restoreFiles.some((file) => file.path === "src/hooks/utils/focus-restore.ts"),
+    "second add should adopt shared utils/focus-restore.ts via manifest",
+  );
+
+  runDgadd(["remove", "keys/focus-trap", "--cwd", root, "--yes"]);
+
+  assert.equal(existsSync(join(root, "src/hooks/use-focus-trap.ts")), false);
+  assert.equal(existsSync(join(root, "src/hooks/use-focus-restore.ts")), true);
+  assert.equal(existsSync(join(root, "src/hooks/utils/focus-restore.ts")), true);
+
+  const finalConfig = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
+  assert.ok(finalConfig.installedComponents?.["keys/focus-restore"]);
+});
+
+test("keys add does not adopt arbitrary pre-existing files into the new item's manifest", () => {
+  const navigationHook = join(root, "src/hooks/use-navigation.ts");
+  mkdirSync(dirname(navigationHook), { recursive: true });
+  writeFileSync(navigationHook, "// user-authored impostor\n");
+
+  runDgadd(["add", "keys/navigation", "--cwd", root, "--yes", "--skip-install"]);
+
+  const config = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
+  const navigationRecord = config.installedComponents?.["keys/navigation"];
+  const navigationFiles: Array<{ path: string }> = navigationRecord?.files ?? [];
+  assert.ok(
+    !navigationFiles.some((file) => file.path === "src/hooks/use-navigation.ts"),
+    "pre-existing user file with mismatched content must not be adopted",
+  );
+
+  assert.equal(readFileSync(navigationHook, "utf-8"), "// user-authored impostor\n");
 });
 
 test("copy integration installs keys transitive files with bundler-safe relative imports", () => {
@@ -236,6 +292,45 @@ test("copy integration installs keys transitive files with bundler-safe relative
     readFileSync(join(root, "src/hooks/use-navigation.ts"), "utf-8"),
     /from "\.\/utils\/navigation-items"/,
   );
+});
+
+test("copy integration rewrites package-root keys imports to copied sources", () => {
+  runDgadd(["add", "ui/accordion", "--integration", "copy", "--cwd", root, "--yes", "--skip-install"]);
+
+  assert.equal(existsSync(join(root, "src/hooks/utils/navigation-items.ts")), true);
+  assert.equal(existsSync(join(root, "src/hooks/utils/focusable.ts")), true);
+
+  const content = readFileSync(join(root, "src/components/ui/accordion/accordion.tsx"), "utf-8");
+  assert.doesNotMatch(content, /@diffgazer\/keys/);
+  assert.match(content, /@\/hooks\/utils\/navigation-items/);
+});
+
+test("copy integration installs focusable utilities for popover-backed UI", () => {
+  runDgadd(["add", "ui/popover", "--integration", "copy", "--cwd", root, "--yes", "--skip-install"]);
+
+  assert.equal(existsSync(join(root, "src/hooks/utils/focusable.ts")), true);
+
+  const content = readFileSync(join(root, "src/components/ui/popover/use-auto-focus.ts"), "utf-8");
+  assert.doesNotMatch(content, /@diffgazer\/keys/);
+  assert.match(content, /@\/hooks\/utils\/focusable/);
+});
+
+test("add appends required component CSS to the configured Tailwind entry", () => {
+  mkdirSync(join(root, "src/styles"), { recursive: true });
+  writeFileSync(
+    join(root, "src/styles/styles.css"),
+    [
+      "/* Canonical style seed. Package builds and dgadd init append registry component CSS to this entry. */",
+      '@import "./theme.css";',
+      "",
+    ].join("\n"),
+  );
+
+  runDgadd(["add", "ui/dialog", "--cwd", root, "--yes", "--skip-install"]);
+
+  const styles = readFileSync(join(root, "src/styles/styles.css"), "utf-8");
+  assert.match(styles, /dialog::backdrop/);
+  assert.equal(existsSync(join(root, "src/components/ui/shared/dialog.css")), false);
 });
 
 test("copy integration installs focus restore for dialog-backed UI", () => {
@@ -294,6 +389,20 @@ test("remove blocks copied keys hooks still required by retained copy-mode UI", 
   const updated = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
   assert.ok(updated.installedComponents?.["ui/select"]);
   assert.ok(updated.installedComponents?.["keys/navigation"]);
+});
+
+test("mixed remove deletes copied keys hooks when their copy-mode UI dependent is removed too", () => {
+  runDgadd(["add", "ui/select", "--cwd", root, "--yes", "--skip-install"]);
+
+  runDgadd(["remove", "ui/select", "keys/navigation", "--cwd", root, "--yes"]);
+
+  assert.equal(existsSync(join(root, "src/components/ui/select/select.tsx")), false);
+  assert.equal(existsSync(join(root, "src/hooks/use-navigation.ts")), false);
+  assert.equal(existsSync(join(root, "src/hooks/internal/navigation-dispatch.ts")), false);
+
+  const updated = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
+  assert.equal(updated.installedComponents?.["ui/select"], undefined);
+  assert.equal(updated.installedComponents?.["keys/navigation"], undefined);
 });
 
 test("mixed remove updates manifest and output only for actually removed items", () => {

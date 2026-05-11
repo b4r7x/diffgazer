@@ -27,7 +27,7 @@ Options for [useKey](/keys/docs/hooks/use-key).
 ```ts
 interface UseKeyOptions {
   enabled?: boolean;
-  scope?: string;
+  scope?: string | null;
   allowInInput?: boolean;
   containerRef?: RefObject<HTMLElement | null>;
   focusWithinOnly?: boolean;
@@ -85,7 +85,7 @@ interface UseScrollLockOptions {
 Used by [useNavigation](/keys/docs/hooks/use-navigation) and [useScopedNavigation](/keys/docs/hooks/use-scoped-navigation) to determine which DOM elements are navigable.
 
 ```ts
-type NavigationRole = "radio" | "checkbox" | "option" | "menuitem" | "menuitemradio" | "button" | "tab";
+type NavigationRole = "radio" | "checkbox" | "option" | "menuitem" | "menuitemcheckbox" | "menuitemradio" | "button" | "tab";
 ```
 
 ## VerticalDirection

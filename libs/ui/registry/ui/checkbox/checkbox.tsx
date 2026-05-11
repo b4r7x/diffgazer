@@ -36,15 +36,20 @@ function resolveCheckboxState(indeterminate: boolean, checked: boolean): Checkbo
 }
 
 function resolveAriaInvalid(
-  invalid: boolean | undefined,
+  forceInvalid: boolean | undefined,
   ariaInvalid: AriaAttributes["aria-invalid"],
 ) {
-  if (invalid) return true;
+  if (forceInvalid) return true;
   if (ariaInvalid === true || ariaInvalid === "true" || ariaInvalid === "grammar" || ariaInvalid === "spelling") {
     return ariaInvalid;
   }
   if (ariaInvalid === false || ariaInvalid === "false") return ariaInvalid;
   return undefined;
+}
+
+function mergeIds(...values: Array<string | undefined>) {
+  const ids = values.flatMap((value) => value?.split(/\s+/).filter(Boolean) ?? []);
+  return ids.length > 0 ? ids.join(" ") : undefined;
 }
 
 export type CheckboxSize = SelectableSize;
@@ -83,8 +88,9 @@ export type CheckboxProps = CheckboxRootProps & {
   value?: string;
   name?: string;
   required?: boolean;
-  invalid?: boolean;
   "aria-label"?: string;
+  "aria-labelledby"?: string;
+  "aria-describedby"?: string;
   "aria-invalid"?: AriaAttributes["aria-invalid"];
   className?: string;
   "data-value"?: string;
@@ -108,8 +114,9 @@ export function Checkbox({
   value = "on",
   name,
   required,
-  invalid,
   "aria-label": ariaLabel,
+  "aria-labelledby": ariaLabelledBy,
+  "aria-describedby": ariaDescribedBy,
   "aria-invalid": ariaInvalid,
   className,
   "data-value": dataValue,
@@ -132,7 +139,14 @@ export function Checkbox({
   });
   const state = resolveCheckboxState(isIndeterminate, isChecked);
   const [nativeInvalid, setNativeInvalid] = useState(false);
-  const resolvedAriaInvalid = resolveAriaInvalid(invalid || (nativeInvalid && required && !isChecked), ariaInvalid);
+  const resolvedAriaInvalid = resolveAriaInvalid(nativeInvalid && required && !isChecked, ariaInvalid);
+  const resolvedAriaLabelledBy = ariaLabel
+    ? undefined
+    : mergeIds(ariaLabelledBy, label ? labelId : undefined);
+  const resolvedAriaDescribedBy = mergeIds(
+    ariaDescribedBy,
+    description ? descriptionId : undefined,
+  );
 
   useFormReset(rootRef, defaultChecked, setIsChecked, controlledBool === undefined);
 
@@ -203,8 +217,8 @@ export function Checkbox({
         aria-required={required || undefined}
         aria-invalid={resolvedAriaInvalid}
         aria-label={ariaLabel}
-        aria-labelledby={!ariaLabel && label ? labelId : undefined}
-        aria-describedby={description ? descriptionId : undefined}
+        aria-labelledby={resolvedAriaLabelledBy}
+        aria-describedby={resolvedAriaDescribedBy}
         tabIndex={disabled ? -1 : 0}
         onClick={handleClick}
         onKeyDown={handleKeyDown}

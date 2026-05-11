@@ -3,7 +3,7 @@ import { useRouter } from "@tanstack/react-router";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import type { Shortcut } from "@diffgazer/core/schemas/ui";
 import { SEVERITY_ORDER } from "@diffgazer/core/schemas/ui";
-import { focusNavigationItem, useFocusZone, useKey } from "@diffgazer/keys";
+import { findNavigationItemByValue, getNavigationItems, useFocusZone, useKey } from "@diffgazer/keys";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useSeverityFilter } from "./use-severity-filter.js";
 import { useIssueSelection } from "./use-issue-selection.js";
@@ -12,6 +12,7 @@ import { useIssueDetailsTabs } from "./use-issue-details-tabs.js";
 type FocusZone = "filters" | "list" | "details";
 
 const ZONES = ["filters", "list", "details"] as const;
+const REVIEW_SCOPE = "review";
 
 interface UseReviewResultsKeyboardOptions {
   issues: ReviewIssue[];
@@ -65,42 +66,35 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
   const { activeTab, setActiveTab, completedSteps, handleToggleStep, detailsScrollRef, moveTab, scrollDetails } =
     useIssueDetailsTabs({ selectedIssue });
 
-  const repairDomFocus = useCallback((zone: FocusZone) => {
-    requestAnimationFrame(() => {
-      if (zone === "list") {
-        listRef.current?.focus({ preventScroll: true });
-        return;
-      }
-
-      if (zone === "details") {
-        detailsScrollRef.current?.focus({ preventScroll: true });
-        return;
-      }
-
-      focusNavigationItem(filterRef.current, {
-        type: "button",
-        value: SEVERITY_ORDER[focusedFilterIndex] ?? SEVERITY_ORDER[0],
-        fallback: "first",
-        preventScroll: true,
-      });
-    });
-  }, [detailsScrollRef, focusedFilterIndex, listRef]);
-
   const setReviewFocusZone = useCallback((zone: FocusZone) => {
     setFocusZone(zone);
-    repairDomFocus(zone);
-  }, [repairDomFocus]);
-
-  // Key bindings registered in the same order as the original monolithic hook.
-  // Registration order matters in @diffgazer/keys; do not reorder.
+  }, []);
 
   useFocusZone({
     initial: "list" as FocusZone,
     zones: ZONES,
     zone: focusZone,
     onZoneChange: setReviewFocusZone,
-    scope: "review",
+    scope: REVIEW_SCOPE,
     tabCycle: ["filters", "list", "details"],
+    focus: {
+      targets: {
+        filters: {
+          container: filterRef,
+          target: () =>
+            findNavigationItemByValue(filterRef.current, {
+              type: "button",
+              value: SEVERITY_ORDER[focusedFilterIndex] ?? SEVERITY_ORDER[0],
+              ownerSelector: null,
+            }) ?? getNavigationItems(filterRef.current, {
+              type: "button",
+              ownerSelector: null,
+            })[0] ?? filterRef.current,
+        },
+        list: listRef,
+        details: detailsScrollRef,
+      },
+    },
     transitions: ({ zone, key }) => {
       if (zone === "list" && key === "ArrowRight") return "details";
       if (zone === "filters" && key === "ArrowDown") return "list";
@@ -140,40 +134,40 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
     }
   }, [focusZone, focusedFilterIndex, setReviewFocusZone]);
 
-  useKey("ArrowDown", () => handleMoveIssue(1), { enabled: focusZone === "list" });
-  useKey("ArrowUp", () => handleMoveIssue(-1), { enabled: focusZone === "list" });
-  useKey("j", () => handleMoveIssue(1), { enabled: focusZone === "list" });
-  useKey("k", () => handleMoveIssue(-1), { enabled: focusZone === "list" });
+  useKey("ArrowDown", () => handleMoveIssue(1), { scope: REVIEW_SCOPE, enabled: focusZone === "list" });
+  useKey("ArrowUp", () => handleMoveIssue(-1), { scope: REVIEW_SCOPE, enabled: focusZone === "list" });
+  useKey("j", () => handleMoveIssue(1), { scope: REVIEW_SCOPE, enabled: focusZone === "list" });
+  useKey("k", () => handleMoveIssue(-1), { scope: REVIEW_SCOPE, enabled: focusZone === "list" });
 
-  useKey("Escape", () => router.history.back());
+  useKey("Escape", () => router.history.back(), { scope: REVIEW_SCOPE });
 
-  useKey("ArrowLeft", () => moveFocusedFilter(-1), { enabled: focusZone === "filters" });
+  useKey("ArrowLeft", () => moveFocusedFilter(-1), { scope: REVIEW_SCOPE, enabled: focusZone === "filters" });
   useKey("ArrowRight", () => {
     if (focusedFilterIndex >= SEVERITY_ORDER.length - 1) {
       setReviewFocusZone("details");
       return;
     }
     moveFocusedFilter(1);
-  }, { enabled: focusZone === "filters" });
+  }, { scope: REVIEW_SCOPE, enabled: focusZone === "filters" });
 
-  useKey("j", () => setReviewFocusZone("list"), { enabled: focusZone === "filters" });
+  useKey("j", () => setReviewFocusZone("list"), { scope: REVIEW_SCOPE, enabled: focusZone === "filters" });
 
   useKey("ArrowLeft", () => {
     const result = moveTab(-1);
     if (result === "boundary-left") setReviewFocusZone("list");
-  }, { enabled: focusZone === "details" });
-  useKey("ArrowRight", () => moveTab(1), { enabled: focusZone === "details" });
+  }, { scope: REVIEW_SCOPE, enabled: focusZone === "details" });
+  useKey("ArrowRight", () => moveTab(1), { scope: REVIEW_SCOPE, enabled: focusZone === "details" });
 
-  useKey("ArrowUp", () => scrollDetails(-80), { enabled: focusZone === "details" });
-  useKey("ArrowDown", () => scrollDetails(80), { enabled: focusZone === "details" });
+  useKey("ArrowUp", () => scrollDetails(-80), { scope: REVIEW_SCOPE, enabled: focusZone === "details" });
+  useKey("ArrowDown", () => scrollDetails(80), { scope: REVIEW_SCOPE, enabled: focusZone === "details" });
 
-  useKey("Enter", toggleSeverityFilter, { enabled: focusZone === "filters" });
-  useKey(" ", toggleSeverityFilter, { enabled: focusZone === "filters" });
+  useKey("Enter", toggleSeverityFilter, { scope: REVIEW_SCOPE, enabled: focusZone === "filters" });
+  useKey(" ", toggleSeverityFilter, { scope: REVIEW_SCOPE, enabled: focusZone === "filters" });
 
-  useKey("1", () => setActiveTab("details"), { enabled: focusZone === "details" });
-  useKey("2", () => setActiveTab("explain"), { enabled: focusZone === "details" });
-  useKey("3", () => setActiveTab("trace"), { enabled: focusZone === "details" });
-  useKey("4", () => setActiveTab("patch"), { enabled: focusZone === "details" && !!selectedIssue?.suggested_patch });
+  useKey("1", () => setActiveTab("details"), { scope: REVIEW_SCOPE, enabled: focusZone === "details" });
+  useKey("2", () => setActiveTab("explain"), { scope: REVIEW_SCOPE, enabled: focusZone === "details" });
+  useKey("3", () => setActiveTab("trace"), { scope: REVIEW_SCOPE, enabled: focusZone === "details" });
+  useKey("4", () => setActiveTab("patch"), { scope: REVIEW_SCOPE, enabled: focusZone === "details" && !!selectedIssue?.suggested_patch });
 
   const footer = getReviewResultsFooter(
     focusZone,

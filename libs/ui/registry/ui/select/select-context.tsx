@@ -27,6 +27,8 @@ export interface SelectContextValue {
   listboxId: string;
   triggerId: string;
   ariaInvalid: AriaAttributes["aria-invalid"] | undefined;
+  ariaDescribedBy: string | undefined;
+  ariaLabelledBy: string | undefined;
   required: boolean | undefined;
   onNativeInvalid: () => void;
 }

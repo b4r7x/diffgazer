@@ -4,8 +4,8 @@ export const commandPaletteDoc: ComponentDoc = {
   description: "Terminal-styled command palette with built-in search filtering, grouped items, and keyboard navigation. Uses native dialog element with backdrop blur.",
   notes: [
     {
-      title: "Controlled & Uncontrolled",
-      content: "CommandPalette supports both controlled (open/onOpenChange) and uncontrolled usage. In uncontrolled mode it manages its own open state internally.",
+      title: "Controlled Open State",
+      content: "CommandPalette is opened from outside via open/onOpenChange. Wire a trigger button (or a global keyboard shortcut) to setOpen(true). Search and highlight state can also be controlled via search/onSearchChange and highlighted/onHighlightChange, or left uncontrolled.",
     },
     {
       title: "Built-in Filtering",
@@ -17,7 +17,7 @@ export const commandPaletteDoc: ComponentDoc = {
     },
     {
       title: "Built-in Keyboard Navigation",
-      content: "CommandPalette integrates @diffgazer/keys's useNavigation internally for arrow-key navigation, wrapping, and Enter activation. Highlight and search state can be controlled externally via highlightedId/onHighlightChange and search/onSearchChange.",
+      content: "CommandPalette integrates @diffgazer/keys's useNavigation internally for arrow-key navigation, wrapping, and Enter activation. Highlight and search state can be controlled externally via highlighted/onHighlightChange and search/onSearchChange.",
     },
   ],
   anatomy: [
@@ -39,5 +39,111 @@ export const commandPaletteDoc: ComponentDoc = {
     examples: [
       { name: "command-palette-demo", title: "Keyboard navigation" },
     ],
+  },
+  props: {
+    CommandPalette: {
+      open: {
+        type: "boolean",
+        required: false,
+        defaultValue: "false",
+        description: "Controlled open state. Required to actually show the palette — wire a trigger button or shortcut to setOpen(true).",
+      },
+      onOpenChange: {
+        type: "(open: boolean) => void",
+        required: false,
+        defaultValue: null,
+        description: "Called whenever open state changes.",
+      },
+      search: {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description: "Controlled search query.",
+      },
+      onSearchChange: {
+        type: "(value: string) => void",
+        required: false,
+        defaultValue: null,
+        description: "Called when the search query changes.",
+      },
+      highlighted: {
+        type: "string | null",
+        required: false,
+        defaultValue: null,
+        description: "Controlled highlighted item id.",
+      },
+      onHighlightChange: {
+        type: "(id: string | null) => void",
+        required: false,
+        defaultValue: null,
+        description: "Called when the highlighted item changes.",
+      },
+      onActivate: {
+        type: "(id: string) => void",
+        required: false,
+        defaultValue: null,
+        description: "Called when an item is activated (Enter or click). Fires after the item's own onSelect.",
+      },
+      shouldFilter: {
+        type: "boolean",
+        required: false,
+        defaultValue: "true",
+        description: "Auto-filter items by search. Pass false to handle filtering yourself (e.g. server-side).",
+      },
+      filter: {
+        type: "(value: string, search: string) => boolean",
+        required: false,
+        defaultValue: null,
+        description: "Custom filter function. Defaults to case-insensitive substring match on the item's value (or id).",
+      },
+    },
+    CommandPaletteItem: {
+      id: {
+        type: "string",
+        required: true,
+        defaultValue: null,
+        description: "Stable unique id used for highlight state and aria-activedescendant.",
+      },
+      value: {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description: "Searchable text. Defaults to id when omitted.",
+      },
+      shortcut: {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description: "Keyboard shortcut hint rendered next to the label.",
+      },
+      onSelect: {
+        type: "() => void",
+        required: false,
+        defaultValue: null,
+        description: "Called when the item is activated. Runs before CommandPalette.onActivate.",
+      },
+      disabled: {
+        type: "boolean",
+        required: false,
+        defaultValue: "false",
+        description: "Disable activation and skip in keyboard navigation.",
+      },
+    },
+    CommandPaletteGroup: {
+      heading: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Group heading rendered above the items.",
+      },
+    },
+    CommandPaletteInput: {
+      placeholder: {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description: "Search input placeholder.",
+      },
+    },
   },
 }

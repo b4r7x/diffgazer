@@ -12,11 +12,13 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, relative, resolve } from "node:path";
+import { extractDiffgazerKeysHookNames } from "../shared/registry-types.js";
 
 type RegistryItem = {
   name: string;
   type: "registry:ui" | "registry:hook" | "registry:lib" | "registry:theme";
   files: Array<{ path: string }>;
+  registryDependencies?: string[];
 };
 
 type Registry = {
@@ -30,6 +32,14 @@ const declarationRoot = resolve(distRoot, "_types");
 const registry = JSON.parse(
   readFileSync(resolve(registryRoot, "registry.json"), "utf-8"),
 ) as Registry;
+
+/**
+ * Mirror tsup's keys-hook detection so declaration imports of `@/hooks/use-<keys-hook>`
+ * resolve to the published `@diffgazer/keys` specifier instead of an internal relative path.
+ */
+const DIFFGAZER_KEYS_HOOK_FILES = new Set(
+  Array.from(extractDiffgazerKeysHookNames(registry.items)).map((name) => `use-${name}`),
+);
 
 function registryItemToDistKey(item: Pick<RegistryItem, "type" | "name">): string {
   if (item.type === "registry:hook") return `hooks/${item.name}`;
@@ -59,22 +69,29 @@ function toSpecifier(fromFile: string, toDeclarationFile: string): string {
   return specifier;
 }
 
-function resolveAlias(alias: string): string | null {
+type AliasTarget =
+  | { kind: "file"; path: string }
+  | { kind: "external"; specifier: string };
+
+function resolveAlias(alias: string): AliasTarget | null {
   if (alias.startsWith("@/lib/")) {
     const name = alias.slice("@/lib/".length);
     const file = resolve(declarationRoot, "registry/lib", `${name}.d.ts`);
-    if (existsSync(file)) return file;
-    return resolve(declarationRoot, "registry/lib", name, "index.d.ts");
+    if (existsSync(file)) return { kind: "file", path: file };
+    return { kind: "file", path: resolve(declarationRoot, "registry/lib", name, "index.d.ts") };
   }
 
   if (alias.startsWith("@/hooks/")) {
     const name = alias.slice("@/hooks/".length);
-    return resolve(declarationRoot, "registry/hooks", `${name}.d.ts`);
+    if (DIFFGAZER_KEYS_HOOK_FILES.has(name)) {
+      return { kind: "external", specifier: "@diffgazer/keys" };
+    }
+    return { kind: "file", path: resolve(declarationRoot, "registry/hooks", `${name}.d.ts`) };
   }
 
   if (alias.startsWith("@/components/ui/")) {
     const name = alias.slice("@/components/ui/".length);
-    return resolve(declarationRoot, "registry/ui", name, "index.d.ts");
+    return { kind: "file", path: resolve(declarationRoot, "registry/ui", name, "index.d.ts") };
   }
 
   return null;
@@ -91,7 +108,11 @@ function rewriteDeclarationImports(filePath: string): void {
     (match, prefix: string, specifier: string, suffix: string) => {
       const aliasTarget = resolveAlias(specifier);
       if (aliasTarget) {
-        return `${prefix}${toSpecifier(filePath, aliasTarget)}${suffix}`;
+        const rewrittenSpecifier =
+          aliasTarget.kind === "external"
+            ? aliasTarget.specifier
+            : toSpecifier(filePath, aliasTarget.path);
+        return `${prefix}${rewrittenSpecifier}${suffix}`;
       }
 
       if (specifier.startsWith(".") && !hasKnownExtension(specifier)) {

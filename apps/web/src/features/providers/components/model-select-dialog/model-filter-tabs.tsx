@@ -1,6 +1,5 @@
 import type { KeyboardEvent as ReactKeyboardEvent, RefCallback } from "react";
 import { ToggleGroup, ToggleGroupItem } from "@diffgazer/ui/components/toggle-group";
-import { cn } from "@diffgazer/core/cn";
 import { TIER_FILTERS, type TierFilter } from "@/features/providers/constants";
 
 interface ModelFilterTabsProps {
@@ -64,12 +63,7 @@ export function ModelFilterTabs({
             onClick={() => {
               onTabClick(idx);
             }}
-            className={cn(
-              "uppercase text-[10px] min-h-0 min-w-0 h-auto px-2 py-0.5",
-              isFocused &&
-                focusedIndex === idx &&
-                "ring-2 ring-tui-blue ring-offset-1 ring-offset-tui-bg"
-            )}
+            className="uppercase text-[10px] min-h-0 min-w-0 h-auto px-2 py-0.5"
           >
             {filter}
           </ToggleGroupItem>

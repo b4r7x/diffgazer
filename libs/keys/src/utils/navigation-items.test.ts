@@ -118,6 +118,17 @@ describe("navigation item utilities", () => {
     ]);
   });
 
+  it("queries menuitemcheckbox items with data values", () => {
+    const container = mountContainer("menu");
+    appendElement(container, { role: "menuitemcheckbox", value: "bold" });
+    appendElement(container, { role: "menuitemcheckbox", value: "italic" });
+
+    expect(values(getNavigationItems(container, { type: "menuitemcheckbox" }))).toEqual([
+      "bold",
+      "italic",
+    ]);
+  });
+
   it("excludes disabled items by aria, data, and native disabled states", () => {
     const options = mountContainer("listbox");
     appendElement(options, { role: "option", value: "a" });
@@ -160,6 +171,7 @@ describe("navigation item utilities", () => {
     }> = [
       { type: "option", ownerRole: "listbox", itemRole: "option" },
       { type: "menuitem", ownerRole: "menu", itemRole: "menuitem" },
+      { type: "menuitemcheckbox", ownerRole: "menu", itemRole: "menuitemcheckbox" },
       { type: "radio", ownerRole: "radiogroup", itemRole: "radio" },
       { type: "tab", ownerRole: "tablist", itemRole: "tab" },
     ];
@@ -240,7 +252,7 @@ describe("navigation item utilities", () => {
     expect(findNavigationItemByValue(container, { type: "option", value: unsafeValue })).toBe(unsafeItem);
   });
 
-  it("returns focusable descendants", () => {
+  it("returns focusable descendants including programmatic focus targets", () => {
     const container = mountContainer();
     appendElement(container, { tag: "button", text: "Button" });
     appendElement(container, { tag: "button", text: "Disabled", attributes: { disabled: "" } });
@@ -252,6 +264,7 @@ describe("navigation item utilities", () => {
       "Button",
       "Link",
       "Programmatic",
+      "Skipped",
     ]);
   });
 });

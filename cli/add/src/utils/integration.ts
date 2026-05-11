@@ -126,7 +126,7 @@ export function resolveKeysHooksFromRegistry(
   items: Array<{ registryDependencies?: string[] }>,
 ): string[] {
   const names = new Set<string>();
-  const publicHookNames = getKeysHookNames();
+  const hookNames = getKeysHookNames();
   const internalDependencyNames = getKeysInternalDependencyNames();
 
   for (const item of items) {
@@ -134,7 +134,7 @@ export function resolveKeysHooksFromRegistry(
       const name = parseKeysDependencyName(dep);
       if (!name) continue;
 
-      if (publicHookNames.has(name)) {
+      if (hookNames.has(name)) {
         names.add(name);
       } else if (!internalDependencyNames.has(name)) {
         names.add(name);
@@ -147,6 +147,15 @@ export function resolveKeysHooksFromRegistry(
 export function getKeysHookNames(): Set<string> {
   const bundle = loadCopyBundle();
   return new Set(bundle.items.map((h) => h.name));
+}
+
+export function getPublicKeysHookNames(): Set<string> {
+  const bundle = loadCopyBundle();
+  return new Set(
+    bundle.items
+      .filter((hook) => hook.meta?.hidden !== true)
+      .map((hook) => hook.name),
+  );
 }
 
 export function getKeysHookImportNames(): Set<string> {

@@ -204,6 +204,29 @@ describe("useKey", () => {
       expect(globalEscape).toHaveBeenCalledOnce();
     });
 
+    it("does not register a parent implicit handler into a child scope during the same commit", () => {
+      const parentHandler = vi.fn();
+      const childHandler = vi.fn();
+
+      function ChildScope() {
+        useScope("modal");
+        useKey("p", childHandler);
+        return null;
+      }
+
+      function ParentWithKey() {
+        useKey("p", parentHandler);
+        return <ChildScope />;
+      }
+
+      render(<ParentWithKey />, { wrapper });
+
+      act(() => fireKey("p"));
+
+      expect(childHandler).toHaveBeenCalledOnce();
+      expect(parentHandler).not.toHaveBeenCalled();
+    });
+
     it("keeps explicit scoped registrations across scope push and pop", () => {
       const modalEscape = vi.fn();
       let open = false;

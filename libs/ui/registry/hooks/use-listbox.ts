@@ -33,12 +33,16 @@ interface ListboxItemElementProps {
 export interface UseListboxOptions {
   selectedId?: string | null;
   defaultSelectedId?: string | null;
-  highlightedId?: string | null;
-  defaultHighlightedId?: string | null;
+  highlighted?: string | null;
+  defaultHighlighted?: string | null;
   onSelect?: (id: string) => void;
   onEnter?: (id: string, event: globalThis.KeyboardEvent) => void;
   onHighlightChange?: (id: string) => void;
-  onNavigationBoundaryReached?: (direction: "previous" | "next") => void;
+  onNavigationBoundaryReached?: (
+    direction: "previous" | "next",
+    event: globalThis.KeyboardEvent,
+    key: string,
+  ) => void;
   wrap?: boolean;
   idPrefix: string;
   autoFocus?: boolean;
@@ -52,7 +56,7 @@ export interface UseListboxOptions {
 
 export interface UseListboxReturn {
   selectedId: string | null;
-  highlightedId: string | null;
+  highlighted: string | null;
   handleItemHighlight: (id: string) => void;
   handleItemActivate: (id: string) => void;
   getContainerProps: (ref?: Ref<HTMLDivElement>) => {
@@ -86,24 +90,25 @@ export function collectListboxItems(
   return items;
 }
 
-function hasEnabledItem(
+function hasDomItem(
   container: HTMLElement | null,
   itemRole: string,
   containerRole: "listbox" | "menu",
   idPrefix: string,
   id: string | null,
   getItemId: (idPrefix: string, id: string) => string,
+  includeDisabled = false,
 ): id is string {
   if (!container || id === null) return false;
   const element = container.ownerDocument.getElementById(getItemId(idPrefix, id));
+  const disabled = element?.getAttribute("aria-disabled") === "true" || element?.hasAttribute("data-disabled");
   return Boolean(
     element &&
       container.contains(element) &&
       isOwnedListboxItem(element, container, containerRole) &&
       element.getAttribute("role") === itemRole &&
       element.dataset.value === id &&
-      element.getAttribute("aria-disabled") !== "true" &&
-      !element.hasAttribute("data-disabled"),
+      (includeDisabled || !disabled),
   );
 }
 
@@ -114,18 +119,48 @@ function hasEnabledMetadataItem(
   return id !== null && items.some((item) => item.id === id && !item.disabled);
 }
 
+function hasMetadataItem(items: ListboxMetadataItem[], id: string | null): id is string {
+  return id !== null && items.some((item) => item.id === id);
+}
+
 function resolveActiveDescendant(
   items: ListboxMetadataItem[] | undefined,
-  highlightedId: string | null,
+  highlighted: string | null,
   selectedId: string | null,
+  containerRole: "listbox" | "menu",
 ): string | null {
-  if (!items) return highlightedId ?? selectedId;
-  if (hasEnabledMetadataItem(items, highlightedId)) return highlightedId;
+  if (!items) return highlighted ?? selectedId;
+  // APG menus keep disabled items focusable, so they can be the active descendant.
+  // Listboxes never expose disabled options as selected.
+  if (containerRole === "menu") {
+    if (hasMetadataItem(items, highlighted)) return highlighted;
+    if (hasEnabledMetadataItem(items, selectedId)) return selectedId;
+    return null;
+  }
+  if (hasEnabledMetadataItem(items, highlighted)) return highlighted;
   if (hasEnabledMetadataItem(items, selectedId)) return selectedId;
   return null;
 }
 
-function getAccessibleText(el: HTMLElement): string {
+function getAccessibleText(el: HTMLElement, visited: Set<HTMLElement> = new Set()): string {
+  if (visited.has(el)) return "";
+  visited.add(el);
+
+  const ariaLabel = el.getAttribute("aria-label")?.trim();
+  if (ariaLabel) return ariaLabel;
+
+  const labelledBy = el.getAttribute("aria-labelledby");
+  if (labelledBy) {
+    const label = labelledBy
+      .split(/\s+/)
+      .map((id) => el.ownerDocument.getElementById(id))
+      .filter((node): node is HTMLElement => node !== null)
+      .map((node) => getAccessibleText(node, visited))
+      .join(" ")
+      .trim();
+    if (label) return label;
+  }
+
   let text = "";
   for (const node of el.childNodes) {
     if (node.nodeType === Node.TEXT_NODE) {
@@ -133,7 +168,7 @@ function getAccessibleText(el: HTMLElement): string {
     } else if (node.nodeType === Node.ELEMENT_NODE) {
       const child = node as HTMLElement;
       if (child.getAttribute("aria-hidden") !== "true") {
-        text += getAccessibleText(child);
+        text += getAccessibleText(child, visited);
       }
     }
   }
@@ -153,34 +188,41 @@ function isOwnedListboxItem(
   return owner === null || owner === container;
 }
 
-function getEnabledListboxItems(
+function getListboxItems(
   container: HTMLElement | null,
   itemRole: string,
   containerRole: "listbox" | "menu",
+  includeDisabled = false,
 ) {
   if (!container) return [];
+  const disabledFilter = includeDisabled ? "" : ':not([aria-disabled="true"]):not([data-disabled])';
   return Array.from(container.querySelectorAll<HTMLElement>(
-    `[role="${itemRole}"]:not([aria-disabled="true"]):not([data-disabled])`,
+    `[role="${itemRole}"]${disabledFilter}`,
   )).filter((item) => isOwnedListboxItem(item, container, containerRole));
 }
 
-function getFirstEnabledItemId(
+function getFirstNavigableItemId(
   container: HTMLElement | null,
   itemRole: string,
   containerRole: "listbox" | "menu",
   items?: ListboxMetadataItem[],
 ): string | null {
-  if (items) return items.find((item) => !item.disabled)?.id ?? null;
+  if (items) {
+    const item = containerRole === "menu"
+      ? items[0]
+      : items.find((candidate) => !candidate.disabled);
+    return item?.id ?? null;
+  }
 
-  const firstEnabledItem = getEnabledListboxItems(container, itemRole, containerRole)[0];
-  return firstEnabledItem?.dataset.value !== undefined ? firstEnabledItem.dataset.value : null;
+  const firstItem = getListboxItems(container, itemRole, containerRole, containerRole === "menu")[0];
+  return firstItem?.dataset.value !== undefined ? firstItem.dataset.value : null;
 }
 
 export function useListbox({
   selectedId: controlledSelectedId,
   defaultSelectedId = null,
-  highlightedId: controlledHighlightedId,
-  defaultHighlightedId = null,
+  highlighted: controlledHighlighted,
+  defaultHighlighted = null,
   onSelect,
   onEnter,
   onHighlightChange,
@@ -207,20 +249,28 @@ export function useListbox({
     },
   });
 
-  const [highlightedId, setHighlightedId] = useControllableState<string | null>({
-    value: controlledHighlightedId,
-    defaultValue: defaultHighlightedId,
+  const [highlighted, setHighlighted] = useControllableState<string | null>({
+    value: controlledHighlighted,
+    defaultValue: defaultHighlighted,
     onChange: (next) => {
       if (next !== null) onHighlightChange?.(next);
     },
   });
 
-  const activeDescendantCandidate = resolveActiveDescendant(items, highlightedId, selectedId);
+  const activeDescendantCandidate = resolveActiveDescendant(items, highlighted, selectedId, containerRole);
   const activeDescendant = items ? activeDescendantCandidate : domActiveDescendant;
 
   const syncDomActiveDescendant = useEffectEvent(() => {
     if (items) return;
-    const next = hasEnabledItem(containerRef.current, itemRole, containerRole, idPrefix, activeDescendantCandidate, getItemId)
+    const next = hasDomItem(
+      containerRef.current,
+      itemRole,
+      containerRole,
+      idPrefix,
+      activeDescendantCandidate,
+      getItemId,
+      containerRole === "menu",
+    )
       ? activeDescendantCandidate
       : null;
     setDomActiveDescendant((current) => (current === next ? current : next));
@@ -250,12 +300,12 @@ export function useListbox({
   const isItemEnabled = (id: string) => {
     return items
       ? hasEnabledMetadataItem(items, id)
-      : hasEnabledItem(containerRef.current, itemRole, containerRole, idPrefix, id, getItemId);
+      : hasDomItem(containerRef.current, itemRole, containerRole, idPrefix, id, getItemId);
   };
 
   const activateItem = (next: string) => {
     setSelectedId(next);
-    setHighlightedId(next);
+    setHighlighted(next);
   };
 
   const handleItemActivate = (next: string) => {
@@ -271,9 +321,9 @@ export function useListbox({
 
   const ensureActiveItem = useCallback(() => {
     if (activeDescendant !== null) return;
-    const firstEnabledId = getFirstEnabledItemId(containerRef.current, itemRole, containerRole, items);
-    if (firstEnabledId !== null) setHighlightedId(firstEnabledId);
-  }, [activeDescendant, containerRole, itemRole, items, setHighlightedId]);
+    const firstItemId = getFirstNavigableItemId(containerRef.current, itemRole, containerRole, items);
+    if (firstItemId !== null) setHighlighted(firstItemId);
+  }, [activeDescendant, containerRole, itemRole, items, setHighlighted]);
 
   useEffect(() => {
     if (!autoFocus) return;
@@ -296,27 +346,55 @@ export function useListbox({
     containerRef,
     role: itemRole,
     wrap,
-    highlighted: highlightedId ?? selectedId ?? undefined,
-    onHighlightChange: setHighlightedId,
+    highlighted: highlighted ?? selectedId ?? undefined,
+    onHighlightChange: setHighlighted,
     onEnter: handleItemEnter,
     onSelect: handleItemActivate,
     onNavigationBoundaryReached,
     scopeToContainer: true,
+    // APG: menu items remain focusable when disabled.
+    skipDisabled: containerRole !== "menu",
   });
 
-  const handleTypeahead = (key: string): void => {
+  const handleTypeahead = (event: KeyboardEvent<HTMLDivElement>): void => {
     if (!typeahead) return;
 
-    const query = readTypeaheadQuery(key);
+    const container = containerRef.current;
+    if (!container) return;
+
+    // Owner-scoping: when a key bubbles up from a nested composite (inner listbox/menu),
+    // do not let the outer composite's typeahead consume it.
+    const target = event.target as HTMLElement | null;
+    if (target && target !== container) {
+      const ownerSelector = getListboxOwnerSelector(containerRole);
+      const targetOwner = target.closest(ownerSelector);
+      if (targetOwner && targetOwner !== container) return;
+    }
+
+    const query = readTypeaheadQuery(event.key);
     if (query === null) return;
 
-    const enabledItems = getEnabledListboxItems(containerRef.current, itemRole, containerRole);
-    for (const item of enabledItems) {
+    const typeaheadItems = getListboxItems(container, itemRole, containerRole, containerRole === "menu");
+    if (typeaheadItems.length === 0) return;
+
+    const currentValue = highlighted ?? selectedId;
+    const currentIndex = currentValue === null
+      ? -1
+      : typeaheadItems.findIndex((item) => item.dataset.value === currentValue);
+
+    const isCyclingChar = query.length > 1 && query.split("").every((c) => c === query[0]);
+    const searchQuery = isCyclingChar ? query[0]! : query;
+    const startIndex = isCyclingChar || query.length === 1 ? currentIndex + 1 : 0;
+
+    const len = typeaheadItems.length;
+    for (let offset = 0; offset < len; offset++) {
+      const index = (startIndex + offset) % len;
+      const item = typeaheadItems[index]!;
       const label = getAccessibleText(item).trim().toLowerCase();
-      if (label.startsWith(query) && item.dataset.value !== undefined) {
-        setHighlightedId(item.dataset.value);
+      if (label.startsWith(searchQuery) && item.dataset.value !== undefined) {
+        setHighlighted(item.dataset.value);
         item.scrollIntoView?.({ block: "nearest" });
-        break;
+        return;
       }
     }
   };
@@ -325,7 +403,7 @@ export function useListbox({
     onKeyDown?.(e);
     if (!e.defaultPrevented) {
       navKeyDown(e);
-      if (!e.ctrlKey && !e.metaKey && !e.altKey) handleTypeahead(e.key);
+      if (!e.ctrlKey && !e.metaKey && !e.altKey) handleTypeahead(e);
     }
   };
 
@@ -341,8 +419,8 @@ export function useListbox({
 
   return {
     selectedId,
-    highlightedId,
-    handleItemHighlight: setHighlightedId,
+    highlighted,
+    handleItemHighlight: setHighlighted,
     handleItemActivate,
     getContainerProps,
   };

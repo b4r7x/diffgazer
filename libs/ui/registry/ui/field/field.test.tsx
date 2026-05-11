@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event"
 import { describe, expect, it } from "vitest"
 import { Input, InputGroup } from "../input/index.js"
 import { Textarea } from "../textarea/index.js"
+import { Select } from "../select/index.js"
 import { Field } from "./index.js"
 
 describe("Field", () => {
@@ -116,5 +117,56 @@ describe("Field", () => {
 
     expect(textarea).toHaveAttribute("aria-invalid", "true")
     expect(textarea).toHaveAccessibleDescription("Notes are required.")
+  })
+
+  it("composes form wiring with Select on the combobox trigger", () => {
+    render(
+      <Field invalid required disabled>
+        <Field.Label>Region</Field.Label>
+        <Field.Control>
+          <Select>
+            <Select.Trigger>
+              <Select.Value placeholder="Select a region" />
+            </Select.Trigger>
+            <Select.Content>
+              <Select.Item value="us">United States</Select.Item>
+              <Select.Item value="eu">Europe</Select.Item>
+            </Select.Content>
+          </Select>
+        </Field.Control>
+        <Field.Description>Choose where data is stored.</Field.Description>
+        <Field.Error>Region is required.</Field.Error>
+      </Field>,
+    )
+
+    const combobox = screen.getByRole("combobox", { name: "Region" })
+
+    expect(combobox).toHaveAttribute("aria-invalid", "true")
+    expect(combobox).toHaveAttribute("aria-required", "true")
+    expect(combobox).toBeDisabled()
+    expect(combobox).toHaveAccessibleDescription("Choose where data is stored. Region is required.")
+    expect(combobox).toHaveAttribute("aria-labelledby")
+    expect(combobox).not.toHaveAttribute("aria-label", "Select")
+  })
+
+  it("Field.Label uses the trigger id for htmlFor when composing with Select", () => {
+    render(
+      <Field controlId="region-select">
+        <Field.Label>Region</Field.Label>
+        <Field.Control>
+          <Select>
+            <Select.Trigger>
+              <Select.Value placeholder="Select a region" />
+            </Select.Trigger>
+            <Select.Content>
+              <Select.Item value="us">United States</Select.Item>
+            </Select.Content>
+          </Select>
+        </Field.Control>
+      </Field>,
+    )
+
+    const combobox = screen.getByRole("combobox", { name: "Region" })
+    expect(combobox).toHaveAttribute("id", "region-select")
   })
 })

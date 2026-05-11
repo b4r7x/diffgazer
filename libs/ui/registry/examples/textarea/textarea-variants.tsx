@@ -6,7 +6,7 @@ export default function TextareaVariants() {
       <Textarea size="sm" placeholder="Small textarea" />
       <Textarea size="md" placeholder="Medium textarea (default)" />
       <Textarea size="lg" placeholder="Large textarea" />
-      <Textarea error placeholder="Error state" />
+      <Textarea aria-invalid placeholder="Error state" />
       <Textarea disabled placeholder="Disabled textarea" />
     </div>
   )

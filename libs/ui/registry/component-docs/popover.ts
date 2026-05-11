@@ -26,7 +26,7 @@ export const popoverDoc: ComponentDoc = {
     },
     {
       title: "Portal Rendering",
-      content: "Content renders via Portal at document.body level, escaping overflow:hidden ancestors and stacking contexts.",
+      content: "Content renders through the shared Portal primitive. When a PortalContainerProvider is present, Popover.Content uses that scoped container; otherwise it falls back to document.body. This keeps nested overlay trees in the same portal scope while still escaping overflow:hidden ancestors by default.",
     },
   ],
   usage: { example: "popover-basic" },

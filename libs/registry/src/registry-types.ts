@@ -2,8 +2,9 @@ import { z } from "zod";
 
 export const RegistryFileSchema = z.object({
   path: z.string(),
-  type: z.string().optional(),
   content: z.string().optional(),
+  type: z.string().optional(),
+  target: z.string().optional(),
 });
 
 // NOTE: A near-identical installer schema exists in src/cli/registry.ts.

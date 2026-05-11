@@ -6,9 +6,9 @@ import { describe, it, expect, vi } from "vitest"
 import { Select, type SelectProps } from "./index.js"
 
 function getSelectTrigger() {
-  const trigger = screen.getAllByRole("combobox").find((element) => element.tagName === "BUTTON")
-  if (!trigger) throw new Error("Select trigger not found")
-  return trigger
+  const candidate = document.querySelector<HTMLButtonElement>("button[id$='-trigger']")
+  if (!candidate) throw new Error("Select trigger not found")
+  return candidate
 }
 
 function renderSelect({
@@ -100,7 +100,7 @@ describe("Select", () => {
       </Select>,
     )
 
-    await userEvent.type(screen.getByRole("searchbox", { name: /search options/i }), "ban")
+    await userEvent.type(screen.getByRole("combobox", { name: /search options/i }), "ban")
     await userEvent.click(screen.getByRole("option", { name: /banana/i }))
 
     expect(onChange).toHaveBeenCalledWith("banana")
@@ -216,7 +216,7 @@ describe("Select", () => {
   it("filters items based on search query", async () => {
     renderSelect({ withSearch: true })
     await userEvent.click(getSelectTrigger())
-    const searchInput = screen.getByRole("searchbox", { name: /search options/i })
+    const searchInput = screen.getByRole("combobox", { name: /search options/i })
     await userEvent.type(searchInput, "ban")
     expect(screen.getByText("Banana")).toBeInTheDocument()
     expect(screen.queryByText("Apple")).not.toBeInTheDocument()
@@ -228,7 +228,7 @@ describe("Select", () => {
     renderSelect({ variant: "default", withSearch: true, onChange: onChange })
 
     await userEvent.click(getSelectTrigger())
-    await userEvent.type(screen.getByRole("searchbox", { name: /search options/i }), "ban")
+    await userEvent.type(screen.getByRole("combobox", { name: /search options/i }), "ban")
     await userEvent.click(screen.getByRole("option", { name: /banana/i }))
 
     expect(onChange).toHaveBeenCalledWith("banana")
@@ -238,8 +238,17 @@ describe("Select", () => {
   it("shows empty state when search has no matches", async () => {
     renderSelect({ withSearch: true })
     await userEvent.click(getSelectTrigger())
-    await userEvent.type(screen.getByRole("searchbox", { name: /search options/i }), "zzz")
+    await userEvent.type(screen.getByRole("combobox", { name: /search options/i }), "zzz")
     expect(screen.getByText("> no results.")).toBeInTheDocument()
+  })
+
+  it("keeps Select.Empty outside the searchable listbox", async () => {
+    renderSelect({ withSearch: true, defaultOpen: true })
+    const listbox = screen.getByRole("listbox")
+
+    await userEvent.type(screen.getByRole("combobox", { name: /search options/i }), "zzz")
+
+    expect(listbox).not.toContainElement(screen.getByText("> no results."))
   })
 
   it("does not open when disabled", async () => {
@@ -443,6 +452,18 @@ describe("Select", () => {
     expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "true")
   })
 
+  it("transfers focus from trigger toggle to search combobox when opening searchable Select via keyboard", async () => {
+    renderSelect({ withSearch: true })
+    getSelectTrigger().focus()
+    await userEvent.keyboard("{ArrowDown}")
+
+    const searchInput = screen.getByRole("combobox", { name: /search options/i })
+    expect(searchInput).toHaveFocus()
+    expect(searchInput).toHaveAttribute("aria-expanded", "true")
+    const listbox = screen.getByRole("listbox")
+    expect(searchInput).toHaveAttribute("aria-controls", listbox.id)
+  })
+
   it("closes with Escape key", async () => {
     renderSelect({ defaultOpen: true })
     const listbox = screen.getByRole("listbox")
@@ -472,6 +493,25 @@ describe("Select", () => {
     expect(first).toBeTruthy()
     expect(second).toBeTruthy()
     expect(first).not.toBe(second)
+  })
+
+  it("starts typeahead after the highlighted option and cycles repeated characters", async () => {
+    renderSelect({
+      defaultOpen: true,
+      items: ["Strawberry", "Sage", "Salmon", "Orange"],
+    })
+
+    const listbox = screen.getByRole("listbox")
+    listbox.focus()
+
+    await userEvent.keyboard("s")
+    expect(listbox).toHaveAttribute("aria-activedescendant", screen.getByRole("option", { name: "Sage" }).id)
+
+    await userEvent.keyboard("s")
+    expect(listbox).toHaveAttribute("aria-activedescendant", screen.getByRole("option", { name: "Salmon" }).id)
+
+    await userEvent.keyboard("s")
+    expect(listbox).toHaveAttribute("aria-activedescendant", screen.getByRole("option", { name: "Strawberry" }).id)
   })
 
   it("generates unique option ids for values that differ by whitespace and punctuation", async () => {
@@ -522,9 +562,9 @@ describe("Select", () => {
       </Select>,
     )
 
-    await userEvent.type(screen.getByRole("searchbox", { name: /search options/i }), "apple")
+    await userEvent.type(screen.getByRole("combobox", { name: /search options/i }), "apple")
     expect(getSelectTrigger()).not.toHaveAttribute("aria-activedescendant")
-    expect(screen.getByRole("searchbox", { name: /search options/i })).not.toHaveAttribute("aria-activedescendant")
+    expect(screen.getByRole("combobox", { name: /search options/i })).not.toHaveAttribute("aria-activedescendant")
     expect(screen.getByRole("listbox")).not.toHaveAttribute("aria-activedescendant")
 
     rerender(
@@ -548,26 +588,34 @@ describe("Select", () => {
     expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "false")
   })
 
-  it("keeps the trigger as the only combobox when search is present", async () => {
+  it("makes the search input the editable combobox and reduces the trigger to a toggle when search is present", async () => {
     renderSelect({ withSearch: true, defaultOpen: true })
-    const trigger = getSelectTrigger()
-    const searchInput = screen.getByRole("searchbox", { name: /search options/i })
+    const triggerButton = screen.getByRole("button", { name: /select/i })
+    const searchInput = screen.getByRole("combobox", { name: /search options/i })
     const listbox = screen.getByRole("listbox")
     const appleOption = screen.getByRole("option", { name: /apple/i })
-    expect(screen.getAllByRole("combobox")).toEqual([trigger])
-    expect(trigger).toHaveAttribute("aria-expanded", "true")
-    expect(trigger).toHaveAttribute("aria-controls", listbox.id)
+
+    // Pattern 1: search input IS the combobox
+    expect(screen.getAllByRole("combobox")).toEqual([searchInput])
+    expect(searchInput).toHaveAttribute("aria-controls", listbox.id)
+    expect(searchInput).toHaveAttribute("aria-expanded", "true")
+    expect(searchInput).toHaveAttribute("aria-autocomplete", "list")
     await waitFor(() => {
       expect(searchInput).toHaveAttribute("aria-activedescendant", appleOption.id)
       expect(listbox).not.toHaveAttribute("aria-activedescendant")
     })
-    expect(trigger).not.toHaveAttribute("aria-activedescendant")
-    expect(searchInput).toHaveAttribute("aria-controls", listbox.id)
+
+    // Trigger button is just a toggle when searchable
+    expect(triggerButton).not.toHaveAttribute("role", "combobox")
+    expect(triggerButton).toHaveAttribute("aria-haspopup", "listbox")
+    expect(triggerButton).toHaveAttribute("aria-expanded", "true")
+    expect(triggerButton).not.toHaveAttribute("aria-controls")
+    expect(triggerButton).not.toHaveAttribute("aria-activedescendant")
   })
 
   it("announces the first matching searchable option as the active descendant", async () => {
     renderSelect({ withSearch: true, defaultOpen: true })
-    const searchInput = screen.getByRole("searchbox", { name: /search options/i })
+    const searchInput = screen.getByRole("combobox", { name: /search options/i })
 
     await userEvent.type(searchInput, "ban")
 
@@ -575,6 +623,20 @@ describe("Select", () => {
     expect(searchInput).toHaveAttribute("aria-activedescendant", bananaOption.id)
     expect(getSelectTrigger()).not.toHaveAttribute("aria-activedescendant")
     expect(screen.getByRole("listbox")).not.toHaveAttribute("aria-activedescendant")
+  })
+
+  it("moves and selects options from the searchable input with Arrow keys and Enter", async () => {
+    const onChange = vi.fn()
+    renderSelect({ withSearch: true, defaultOpen: true, onChange: onChange })
+
+    const searchInput = screen.getByRole("combobox", { name: /search options/i })
+    const bananaOption = screen.getByRole("option", { name: /banana/i })
+
+    await userEvent.type(searchInput, "{ArrowDown}")
+    expect(searchInput).toHaveAttribute("aria-activedescendant", bananaOption.id)
+
+    await userEvent.keyboard("{Enter}")
+    expect(onChange).toHaveBeenCalledWith("banana")
   })
 
   it("keeps Home and End available for text editing in searchable input", async () => {
@@ -592,7 +654,7 @@ describe("Select", () => {
         </Select.Content>
       </Select>,
     )
-    const searchInput = screen.getByRole("searchbox", { name: /search options/i })
+    const searchInput = screen.getByRole("combobox", { name: /search options/i })
 
     onHighlightChange.mockClear()
     await userEvent.type(searchInput, "{Home}{End}")
@@ -602,7 +664,7 @@ describe("Select", () => {
 
   it("keeps searchable input outside listbox ownership", () => {
     renderSelect({ withSearch: true, defaultOpen: true })
-    const searchInput = screen.getByRole("searchbox", { name: /search options/i })
+    const searchInput = screen.getByRole("combobox", { name: /search options/i })
     const listbox = screen.getByRole("listbox")
 
     expect(listbox).not.toContainElement(searchInput)
@@ -625,8 +687,8 @@ describe("Select", () => {
         </Select.Content>
       </Select>,
     )
-    const searchInput = screen.getByRole("searchbox", { name: /search options/i })
-    const wrappedSearchInput = screen.getByRole("searchbox", { name: /filter options/i })
+    const searchInput = screen.getByRole("combobox", { name: /search options/i })
+    const wrappedSearchInput = screen.getByRole("combobox", { name: /filter options/i })
     const listbox = screen.getByRole("listbox")
 
     expect(listbox).not.toContainElement(searchInput)
@@ -644,7 +706,7 @@ describe("Select", () => {
     const onChange = vi.fn()
     renderSelect({ withSearch: true, defaultOpen: true, highlighted: "banana", onChange: onChange })
 
-    await userEvent.type(screen.getByRole("searchbox", { name: /search options/i }), "zzz")
+    await userEvent.type(screen.getByRole("combobox", { name: /search options/i }), "zzz")
     await userEvent.keyboard("{Enter}")
 
     expect(onChange).not.toHaveBeenCalled()
@@ -856,8 +918,8 @@ describe("Select form submission", () => {
 
     expect(getSelectTrigger()).toHaveAttribute("aria-required", "true")
     expect(getSelectTrigger()).toHaveAttribute("aria-invalid", "true")
-    expect(screen.getByRole("searchbox", { name: /search options/i })).toHaveAttribute("aria-required", "true")
-    expect(screen.getByRole("searchbox", { name: /search options/i })).toHaveAttribute("aria-invalid", "true")
+    expect(screen.getByRole("combobox", { name: /search options/i })).toHaveAttribute("aria-required", "true")
+    expect(screen.getByRole("combobox", { name: /search options/i })).toHaveAttribute("aria-invalid", "true")
     expect(screen.getByTestId("form").querySelector("select[required]")).toHaveAttribute("aria-hidden", "true")
   })
 

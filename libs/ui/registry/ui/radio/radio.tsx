@@ -33,15 +33,20 @@ export type RadioSize = SelectableSize;
 const RADIO_CHECK_EVENT = "diffgazer:radio-check";
 
 function resolveAriaInvalid(
-  invalid: boolean | undefined,
+  forceInvalid: boolean | undefined,
   ariaInvalid: AriaAttributes["aria-invalid"],
 ) {
-  if (invalid) return true;
+  if (forceInvalid) return true;
   if (ariaInvalid === true || ariaInvalid === "true" || ariaInvalid === "grammar" || ariaInvalid === "spelling") {
     return ariaInvalid;
   }
   if (ariaInvalid === false || ariaInvalid === "false") return ariaInvalid;
   return undefined;
+}
+
+function mergeIds(...values: Array<string | undefined>) {
+  const ids = values.flatMap((value) => value?.split(/\s+/).filter(Boolean) ?? []);
+  return ids.length > 0 ? ids.join(" ") : undefined;
 }
 
 interface RadioCheckEventDetail {
@@ -90,9 +95,10 @@ export interface RadioProps extends RadioRootProps {
   name?: string;
   value?: string;
   required?: boolean;
-  invalid?: boolean;
   variant?: SelectableVariant;
   "aria-label"?: string;
+  "aria-labelledby"?: string;
+  "aria-describedby"?: string;
   "aria-invalid"?: AriaAttributes["aria-invalid"];
   onNativeInvalid?: () => void;
   className?: string;
@@ -117,8 +123,9 @@ export function Radio({
   name,
   value = "on",
   required,
-  invalid,
   "aria-label": ariaLabel,
+  "aria-labelledby": ariaLabelledBy,
+  "aria-describedby": ariaDescribedBy,
   "aria-invalid": ariaInvalid,
   onNativeInvalid,
   className,
@@ -137,7 +144,14 @@ export function Radio({
     onChange,
   });
   const [nativeInvalid, setNativeInvalid] = useState(false);
-  const resolvedAriaInvalid = resolveAriaInvalid(invalid || (nativeInvalid && required && !isChecked), ariaInvalid);
+  const resolvedAriaInvalid = resolveAriaInvalid(nativeInvalid && required && !isChecked, ariaInvalid);
+  const resolvedAriaLabelledBy = ariaLabel
+    ? undefined
+    : mergeIds(ariaLabelledBy, label ? labelId : undefined);
+  const resolvedAriaDescribedBy = mergeIds(
+    ariaDescribedBy,
+    description ? descriptionId : undefined,
+  );
 
   useFormReset(rootRef, defaultChecked, setIsChecked, checked === undefined);
 
@@ -237,8 +251,8 @@ export function Radio({
         aria-disabled={disabled || undefined}
         aria-invalid={resolvedAriaInvalid}
         aria-label={ariaLabel}
-        aria-labelledby={!ariaLabel && label ? labelId : undefined}
-        aria-describedby={description ? descriptionId : undefined}
+        aria-labelledby={resolvedAriaLabelledBy}
+        aria-describedby={resolvedAriaDescribedBy}
         tabIndex={!disabled && isTabTarget ? 0 : -1}
         onClick={handleClick}
         onKeyDown={handleKeyDown}

@@ -2,6 +2,7 @@
 
 import {
   type ComponentPropsWithRef,
+  type AriaAttributes,
   useCallback,
   useEffect,
   useMemo,
@@ -58,7 +59,8 @@ export interface RadioGroupProps extends RadioGroupRootProps {
   activationMode?: RadioGroupActivationMode;
   onNavigationBoundaryReached?: (
     direction: RadioGroupBoundaryDirection,
-    event: ReactKeyboardEvent<HTMLDivElement>,
+    event: globalThis.KeyboardEvent,
+    key: string,
   ) => void;
   disabled?: boolean;
   autoFocus?: boolean;
@@ -69,6 +71,7 @@ export interface RadioGroupProps extends RadioGroupRootProps {
   label?: string;
   "aria-label"?: string;
   "aria-labelledby"?: string;
+  "aria-invalid"?: AriaAttributes["aria-invalid"];
   className?: string;
   children: ReactNode;
   ref?: Ref<HTMLDivElement>;
@@ -92,6 +95,18 @@ function getRadioNavigationDirection(key: string): RadioGroupNavigationDirection
   if (key === "Home") return "first";
   if (key === "End") return "last";
   return null;
+}
+
+function resolveGroupAriaInvalid(
+  forceInvalid: boolean | undefined,
+  ariaInvalid: AriaAttributes["aria-invalid"],
+) {
+  if (forceInvalid) return true;
+  if (ariaInvalid === true || ariaInvalid === "true" || ariaInvalid === "grammar" || ariaInvalid === "spelling") {
+    return ariaInvalid;
+  }
+  if (ariaInvalid === false || ariaInvalid === "false") return ariaInvalid;
+  return undefined;
 }
 
 export function RadioGroup(props: RadioGroupProps) {
@@ -118,6 +133,7 @@ export function RadioGroup(props: RadioGroupProps) {
     label,
     "aria-label": ariaLabel,
     "aria-labelledby": ariaLabelledBy,
+    "aria-invalid": ariaInvalid,
     className,
     children,
     ref,
@@ -199,9 +215,12 @@ export function RadioGroup(props: RadioGroupProps) {
     onEnter?.(next, event);
   }, [handleValueChange, onEnter, setHighlightedValue]);
 
-  const handleNavigationBoundaryReached = useCallback((direction: RadioGroupBoundaryDirection) => {
-    const event = navigationEventRef.current;
-    if (event) onNavigationBoundaryReached?.(direction, event);
+  const handleNavigationBoundaryReached = useCallback((
+    direction: RadioGroupBoundaryDirection,
+    event: globalThis.KeyboardEvent,
+    key: string,
+  ) => {
+    onNavigationBoundaryReached?.(direction, event, key);
   }, [onNavigationBoundaryReached]);
 
   const { onKeyDown: navKeyDown } = useNavigation({
@@ -286,7 +305,7 @@ export function RadioGroup(props: RadioGroupProps) {
         aria-labelledby={ariaLabelledBy}
         aria-orientation={orientation}
         aria-required={required || undefined}
-        aria-invalid={requiredInvalid && validSelectedValue === null ? true : undefined}
+        aria-invalid={resolveGroupAriaInvalid(requiredInvalid && validSelectedValue === null, ariaInvalid)}
         aria-disabled={disabled || undefined}
         className={cn(
           "flex",

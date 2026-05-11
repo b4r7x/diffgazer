@@ -21,6 +21,9 @@ interface UseSelectStateBaseOptions {
   searchable?: boolean;
   variant?: "default" | "card";
   ariaInvalid?: AriaAttributes["aria-invalid"];
+  ariaDescribedBy?: string;
+  ariaLabelledBy?: string;
+  triggerIdProp?: string;
   required?: boolean;
   options: ReadonlyMap<string, SelectOptionMetadata>;
 }
@@ -71,6 +74,9 @@ export function useSelectState(options: UseSelectStateOptions): UseSelectStateRe
     searchable = false,
     variant = "default",
     ariaInvalid,
+    ariaDescribedBy,
+    ariaLabelledBy,
+    triggerIdProp,
     required,
     options: optionMetadata,
   } = options;
@@ -193,11 +199,13 @@ export function useSelectState(options: UseSelectStateOptions): UseSelectStateRe
     searchInputRef,
     variant,
     listboxId,
-    triggerId: `${listboxId}-trigger`,
+    triggerId: triggerIdProp ?? `${listboxId}-trigger`,
     ariaInvalid: resolvedAriaInvalid,
+    ariaDescribedBy,
+    ariaLabelledBy,
     required: required || undefined,
     onNativeInvalid,
-  }), [isOpen, disabled, searchable, handleOpenChange, value, multiple, searchQuery, onSearchChange, highlighted, setHighlighted, selectItem, optionMetadata, variant, listboxId, resolvedAriaInvalid, required, onNativeInvalid]);
+  }), [isOpen, disabled, searchable, handleOpenChange, value, multiple, searchQuery, onSearchChange, highlighted, setHighlighted, selectItem, optionMetadata, variant, listboxId, triggerIdProp, resolvedAriaInvalid, ariaDescribedBy, ariaLabelledBy, required, onNativeInvalid]);
 
   return { contextValue, wrapperRef };
 }

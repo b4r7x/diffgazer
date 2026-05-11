@@ -29,9 +29,9 @@ const layoutClasses = {
 export interface CalloutProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
   variant?: CalloutVariant;
-  visible?: boolean;
-  defaultVisible?: boolean;
-  onVisibleChange?: (visible: boolean) => void;
+  open?: boolean;
+  defaultOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
   layout?: CalloutLayout;
   /** Adds live-region semantics. Error callouts are alerts by default. */
   live?: boolean;
@@ -54,29 +54,29 @@ function getRole(variant: CalloutVariant, live: boolean): string | undefined {
 export function Callout({
   className,
   variant = "info",
-  visible: controlledVisible,
-  defaultVisible,
-  onVisibleChange,
+  open: controlledOpen,
+  defaultOpen,
+  onOpenChange,
   layout = "column",
   live = false,
   ref,
   children,
   ...props
 }: CalloutProps) {
-  const [visible, setVisible] = useControllableState({
-    value: controlledVisible,
-    defaultValue: defaultVisible ?? true,
-    onChange: onVisibleChange,
+  const [open, setOpen] = useControllableState({
+    value: controlledOpen,
+    defaultValue: defaultOpen ?? true,
+    onChange: onOpenChange,
   });
 
-  const onDismiss = useCallback(() => setVisible(false), [setVisible]);
+  const onDismiss = useCallback(() => setOpen(false), [setOpen]);
 
   const contextValue = useMemo(
     () => ({ variant, onDismiss }),
     [variant, onDismiss],
   );
 
-  if (!visible) return null;
+  if (!open) return null;
 
   const role = getRole(variant, live);
 

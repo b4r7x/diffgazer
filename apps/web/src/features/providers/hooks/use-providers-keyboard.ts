@@ -13,7 +13,6 @@ interface ProvidersKeyboardOptions {
   filteredProviders: Array<{ id: string }>;
   listReady: boolean;
   filter: ProviderFilter;
-  setFilter: (filter: ProviderFilter) => void;
   setSelectedId: (id: string) => void;
   dialogOpen: boolean;
   inputRef: RefObject<HTMLInputElement | null>;
@@ -41,6 +40,7 @@ interface ProvidersKeyboardReturn {
   handleSearchFocus: () => void;
   handleFilterFocus: (index: number) => void;
   handleListFocus: () => void;
+  handleSearchEscape: () => void;
   handleListBoundary: (direction: "up" | "down") => void;
 }
 
@@ -49,7 +49,6 @@ export function useProvidersKeyboard({
   filteredProviders,
   listReady,
   filter,
-  setFilter,
   setSelectedId,
   dialogOpen,
   inputRef,
@@ -109,19 +108,6 @@ export function useProvidersKeyboard({
     filterButtonRefs.current.get(nextIndex)?.focus();
   };
 
-  const focusPreviousFilter = () => {
-    focusFilterButton(Math.max(0, filterIndex - 1));
-  };
-
-  const focusNextFilter = () => {
-    focusFilterButton(Math.min(PROVIDER_FILTERS.length - 1, filterIndex + 1));
-  };
-
-  const applyFocusedFilter = () => {
-    const nextFilter = PROVIDER_FILTERS[filterIndex];
-    if (nextFilter) setFilter(nextFilter);
-  };
-
   const handleSearchFocus = () => {
     setZone("input");
   };
@@ -133,6 +119,11 @@ export function useProvidersKeyboard({
 
   const handleListFocus = () => {
     setZone("list");
+  };
+
+  const handleSearchEscape = () => {
+    focusFilterButton(PROVIDER_FILTERS.indexOf(filter));
+    inputRef.current?.blur();
   };
 
   const handleButtonAction = (index: number) => {
@@ -176,10 +167,7 @@ export function useProvidersKeyboard({
     focusFilterButton(PROVIDER_FILTERS.indexOf(filter));
     inputRef.current?.blur();
   }, { enabled: !dialogOpen && inInput, allowInInput: true, preventDefault: true });
-  useKey("Escape", () => {
-    setZone("filters");
-    inputRef.current?.blur();
-  }, { enabled: !dialogOpen && inInput, allowInInput: true });
+  useKey("Escape", handleSearchEscape, { enabled: !dialogOpen && inInput, allowInInput: true });
 
   useKey("ArrowUp", () => {
     setZone("input");
@@ -192,10 +180,6 @@ export function useProvidersKeyboard({
       focusProviderList();
     }
   }, { enabled: !dialogOpen && inFilters, preventDefault: true });
-  useKey("ArrowLeft", focusPreviousFilter, { enabled: !dialogOpen && inFilters });
-  useKey("ArrowRight", focusNextFilter, { enabled: !dialogOpen && inFilters });
-  useKey("Enter", applyFocusedFilter, { enabled: !dialogOpen && inFilters, preventDefault: true });
-  useKey(" ", applyFocusedFilter, { enabled: !dialogOpen && inFilters, preventDefault: true });
 
   useKey("ArrowRight", () => {
     setZone("buttons");
@@ -284,6 +268,7 @@ export function useProvidersKeyboard({
     handleSearchFocus,
     handleFilterFocus,
     handleListFocus,
+    handleSearchEscape,
     handleListBoundary,
   };
 }

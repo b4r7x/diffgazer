@@ -76,7 +76,7 @@ export function IssueListPane({
           ref={listRef}
           aria-label={title}
           selectedId={selectedIssueId}
-          highlightedId={highlightedIssueId}
+          highlighted={highlightedIssueId}
           onFocus={onListFocus}
           onKeyDown={(event) => {
             if (!isFocused) event.preventDefault();

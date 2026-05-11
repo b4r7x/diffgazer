@@ -11,7 +11,7 @@ Remove pre-release keyboard alias props from `@diffgazer/keys` and `@diffgazer/u
 `targetRef` -> `containerRef`, `requireFocusWithin` -> `focusWithinOnly`,
 `onBoundaryReached` -> `onNavigationBoundaryReached`, and the old focus-zone helpers
 `ZoneProps`/`inZone`/`forZone`/`zoneProps` -> the current `getZoneProps` API.
-Command palette highlight state now uses `highlightedId`/`onHighlightChange` only.
+Command palette highlight state now uses `highlighted`/`onHighlightChange` only.
 
 Raise `@diffgazer/ui`'s `@diffgazer/keys` peer floor to `>=0.1.1` so package consumers receive the navigation API used by the current UI primitives.
 

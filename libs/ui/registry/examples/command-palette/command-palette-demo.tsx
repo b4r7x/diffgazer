@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 
 export default function CommandPaletteDemo() {
   const [open, setOpen] = useState(false);
-  const [highlightedId, setHighlightedId] = useState<string | null>("history");
+  const [highlighted, setHighlighted] = useState<string | null>("history");
 
   return (
     <div>
@@ -14,9 +14,9 @@ export default function CommandPaletteDemo() {
       <CommandPalette
         open={open}
         onOpenChange={setOpen}
-        highlightedId={highlightedId}
-        onHighlightChange={setHighlightedId}
-        onActivate={(id) => setHighlightedId(id)}
+        highlighted={highlighted}
+        onHighlightChange={setHighlighted}
+        onActivate={(id) => setHighlighted(id)}
       >
         <CommandPalette.Content>
           <CommandPalette.Input placeholder="Type a command..." />

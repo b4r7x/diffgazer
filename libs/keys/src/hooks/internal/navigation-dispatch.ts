@@ -46,10 +46,12 @@ export function dispatchNavigationKey(
       return true;
     }
     case "Enter":
-      ctx.handleEnter?.(ctx.nativeEvent);
+      if (!ctx.handleEnter) return false;
+      ctx.handleEnter(ctx.nativeEvent);
       return true;
     case " ":
-      ctx.handleSelect?.(ctx.nativeEvent);
+      if (!ctx.handleSelect) return false;
+      ctx.handleSelect(ctx.nativeEvent);
       return true;
   }
 

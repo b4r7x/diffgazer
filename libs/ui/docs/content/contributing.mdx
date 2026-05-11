@@ -26,6 +26,10 @@ Generated artifacts are produced from the repo sources:
 - `docs/generated/*`
 - `docs/content/components/*`
 
+The committed handoff contract is `public/r/*`. It is the reviewable shadcn-style registry surface used by copy/CLI flows. Generated docs and CLI bundles are derived artifacts, not the source of truth, and deterministic generated data under `docs/generated/*` should not be committed.
+
+Run `pnpm run prepare:artifacts` before artifact validation, docs sync, root type-check, root tests, or release checks whenever generated files may be missing or stale.
+
 ## Building Docs Artifacts
 
 ```bash

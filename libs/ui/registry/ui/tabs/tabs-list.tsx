@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, type HTMLAttributes, type KeyboardEvent, type Ref } from "react";
+import { useRef, type FocusEvent, type HTMLAttributes, type KeyboardEvent, type Ref } from "react";
 import { composeRefs } from "@/lib/compose-refs";
 import { useNavigation } from "@/hooks/use-navigation";
 import { cn } from "@/lib/utils";
@@ -11,8 +11,8 @@ export interface TabsListProps extends HTMLAttributes<HTMLDivElement> {
   ref?: Ref<HTMLDivElement>;
 }
 
-export function TabsList({ children, className, loop = true, onKeyDown, ref, ...rest }: TabsListProps) {
-  const { orientation, variant, value, onChange, activationMode } = useTabsContext();
+export function TabsList({ children, className, loop = true, onBlur, onKeyDown, ref, ...rest }: TabsListProps) {
+  const { orientation, variant, value, tabbableValue, onChange, onFocusChange, activationMode } = useTabsContext();
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -29,6 +29,8 @@ export function TabsList({ children, className, loop = true, onKeyDown, ref, ...
           onHighlightChange: onChange,
         }
       : {
+          highlighted: tabbableValue || undefined,
+          onHighlightChange: onFocusChange,
           onEnter: onChange,
           onSelect: onChange,
         }),
@@ -37,6 +39,18 @@ export function TabsList({ children, className, loop = true, onKeyDown, ref, ...
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     onKeyDown?.(e);
     if (!e.defaultPrevented) navKeyDown(e);
+  };
+
+  const handleBlur = (event: FocusEvent<HTMLDivElement>) => {
+    onBlur?.(event);
+
+    const container = containerRef.current;
+    const nextTarget = event.relatedTarget;
+    const View = container?.ownerDocument.defaultView;
+    const focusRemainsInside =
+      Boolean(View && nextTarget instanceof View.Node && container?.contains(nextTarget));
+
+    if (!focusRemainsInside) onFocusChange(null);
   };
 
   return (
@@ -50,6 +64,7 @@ export function TabsList({ children, className, loop = true, onKeyDown, ref, ...
       )}
       role="tablist"
       aria-orientation={orientation}
+      onBlur={handleBlur}
       onKeyDown={handleKeyDown}
       {...rest}
     >

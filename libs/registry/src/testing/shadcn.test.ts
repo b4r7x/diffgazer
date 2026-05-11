@@ -89,17 +89,23 @@ describe("validatePublicRegistryFresh", () => {
     sourceItems: Array<{
       name: string;
       type?: string;
+      title?: string;
+      description?: string;
+      meta?: Record<string, unknown>;
       dependencies?: string[];
       registryDependencies?: string[];
-      files?: Array<{ path: string }>;
+      files?: Array<{ path: string; target?: string; type?: string }>;
     }>,
     publicItems?: Array<{
       name: string;
       type?: string;
+      title?: string;
+      description?: string;
+      meta?: Record<string, unknown>;
       dependencies?: string[];
       registryDependencies?: string[];
     }>,
-    publicItemFiles?: Record<string, Array<{ path: string; content: string }>>,
+    publicItemFiles?: Record<string, Array<{ path: string; content: string; target?: string; type?: string }>>,
   ): void {
     // Ensure all items have required fields for schema validation
     sourceItems = sourceItems.map((item) => ({ type: "registry:ui", files: [], ...item }));
@@ -139,11 +145,13 @@ describe("validatePublicRegistryFresh", () => {
           (f) => ({
             path: f.path,
             content: `// ${item.name} - ${f.path}\n`,
+            type: f.type,
+            target: f.target,
           }),
         );
       writeFileSync(
         join(publicDir, `${item.name}.json`),
-        JSON.stringify({ files }, null, 2),
+        JSON.stringify({ ...item, files }, null, 2),
       );
     }
   }
@@ -218,6 +226,35 @@ describe("validatePublicRegistryFresh", () => {
     ).toThrow("dependencies mismatch");
   });
 
+  it("throws when public registry metadata is stale", () => {
+    setupRegistry(
+      [
+        {
+          name: "button",
+          title: "Button",
+          description: "Current description",
+          meta: { category: "forms" },
+          files: [],
+        },
+      ],
+      [
+        {
+          name: "button",
+          title: "Old button",
+          description: "Old description",
+          meta: { category: "stale" },
+        },
+      ],
+    );
+
+    expect(() =>
+      validatePublicRegistryFresh({
+        rootDir: tempDir,
+        fixCommand: FIX_CMD,
+      }),
+    ).toThrow("title mismatch");
+  });
+
   it("throws when file content is stale", () => {
     setupRegistry(
       [
@@ -242,6 +279,31 @@ describe("validatePublicRegistryFresh", () => {
     ).toThrow("content is stale");
   });
 
+  it("validates file content through a configured source transform", () => {
+    setupRegistry(
+      [
+        {
+          name: "button",
+          files: [{ path: "registry/ui/button.tsx" }],
+        },
+      ],
+      undefined,
+      {
+        button: [
+          { path: "registry/ui/button.tsx", content: "transformed content\n" },
+        ],
+      },
+    );
+
+    expect(() =>
+      validatePublicRegistryFresh({
+        rootDir: tempDir,
+        fixCommand: FIX_CMD,
+        transformSourceContent: () => "transformed content\n",
+      }),
+    ).not.toThrow();
+  });
+
   it("throws when public item JSON file is missing a file entry", () => {
     setupRegistry(
       [
@@ -261,7 +323,159 @@ describe("validatePublicRegistryFresh", () => {
         rootDir: tempDir,
         fixCommand: FIX_CMD,
       }),
-    ).toThrow('missing for "button"');
+    ).toThrow("item JSON files mismatch");
+  });
+
+  it("throws when public file target metadata is stale", () => {
+    setupRegistry(
+      [
+        {
+          name: "dialog-shell",
+          files: [{ path: "registry/ui/shared/dialog.css", target: "~/styles/dialog.css" }],
+        },
+      ],
+      undefined,
+      {
+        "dialog-shell": [
+          {
+            path: "registry/ui/shared/dialog.css",
+            content: "// dialog-shell - registry/ui/shared/dialog.css\n",
+            target: "~/styles/stale-dialog.css",
+          },
+        ],
+      },
+    );
+
+    expect(() =>
+      validatePublicRegistryFresh({
+        rootDir: tempDir,
+        fixCommand: FIX_CMD,
+      }),
+    ).toThrow("target is stale");
+  });
+
+  it("throws when public file type metadata is stale", () => {
+    setupRegistry(
+      [
+        {
+          name: "dialog-shell",
+          files: [{ path: "registry/ui/shared/dialog.css", type: "registry:style" }],
+        },
+      ],
+      undefined,
+      {
+        "dialog-shell": [
+          {
+            path: "registry/ui/shared/dialog.css",
+            content: "// dialog-shell - registry/ui/shared/dialog.css\n",
+            type: "registry:ui",
+          },
+        ],
+      },
+    );
+
+    expect(() =>
+      validatePublicRegistryFresh({
+        rootDir: tempDir,
+        fixCommand: FIX_CMD,
+      }),
+    ).toThrow("type is stale");
+  });
+
+  it("throws when public item JSON dependencies are stale", () => {
+    setupRegistry([
+      {
+        name: "button",
+        dependencies: ["react"],
+        files: [{ path: "registry/ui/button.tsx" }],
+      },
+    ]);
+
+    writeFileSync(
+      join(tempDir, "public", "r", "button.json"),
+      JSON.stringify({
+        name: "button",
+        type: "registry:ui",
+        dependencies: [],
+        registryDependencies: [],
+        files: [
+          {
+            path: "registry/ui/button.tsx",
+            content: "// button - registry/ui/button.tsx\n",
+          },
+        ],
+      }, null, 2),
+    );
+
+    expect(() =>
+      validatePublicRegistryFresh({
+        rootDir: tempDir,
+        fixCommand: FIX_CMD,
+      }),
+    ).toThrow("item JSON dependencies mismatch");
+  });
+
+  it("throws when public item JSON metadata is stale", () => {
+    setupRegistry([
+      {
+        name: "button",
+        title: "Button",
+        description: "Current description",
+        meta: { category: "forms" },
+        files: [{ path: "registry/ui/button.tsx" }],
+      },
+    ]);
+
+    writeFileSync(
+      join(tempDir, "public", "r", "button.json"),
+      JSON.stringify({
+        name: "button",
+        type: "registry:ui",
+        title: "Button",
+        description: "Stale description",
+        dependencies: [],
+        registryDependencies: [],
+        meta: { category: "forms" },
+        files: [
+          {
+            path: "registry/ui/button.tsx",
+            content: "// button - registry/ui/button.tsx\n",
+          },
+        ],
+      }, null, 2),
+    );
+
+    expect(() =>
+      validatePublicRegistryFresh({
+        rootDir: tempDir,
+        fixCommand: FIX_CMD,
+      }),
+    ).toThrow("item JSON description mismatch");
+  });
+
+  it("throws when public item JSON contains an extra file entry", () => {
+    setupRegistry(
+      [
+        {
+          name: "button",
+          files: [{ path: "registry/ui/button.tsx" }],
+        },
+      ],
+      undefined,
+      {
+        button: [
+          { path: "registry/ui/button.tsx", content: "// button - registry/ui/button.tsx\n" },
+          { path: "registry/ui/extra.tsx", content: "// stale extra\n" },
+        ],
+      },
+    );
+
+    expect(() =>
+      validatePublicRegistryFresh({
+        rootDir: tempDir,
+        fixCommand: FIX_CMD,
+      }),
+    ).toThrow("item JSON files mismatch");
   });
 
   it("validates multiple items successfully", () => {

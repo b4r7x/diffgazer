@@ -16,7 +16,7 @@ export default function ListboxBasicExample() {
   )
   const {
     selectedId,
-    highlightedId,
+    highlighted: highlightedItemId,
     handleItemActivate,
     getContainerProps,
   } = useListbox({
@@ -33,7 +33,7 @@ export default function ListboxBasicExample() {
     >
       {options.map((option) => {
         const selected = selectedId === option.id
-        const highlighted = highlightedId === option.id
+        const highlighted = highlightedItemId === option.id
         return (
           <div
             key={option.id}

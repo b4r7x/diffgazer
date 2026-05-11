@@ -79,12 +79,12 @@ export function NavigationListItem({
   onFocus,
   ...rootProps
 }: NavigationListItemProps) {
-  const { selectedId, highlightedId, activate, highlight, focusContainer, focused, idPrefix } =
+  const { selectedId, highlighted, activate, highlight, focusContainer, focused, idPrefix } =
     useNavigationListContext();
-  const isSelected = selectedId === id;
-  const isHighlighted = highlightedId === id;
-  const hasHighlight = highlightedId !== null;
-  const isActive = focused && (hasHighlight ? isHighlighted : isSelected);
+  const isSelected = !disabled && selectedId === id;
+  const isHighlighted = !disabled && highlighted === id;
+  const hasHighlight = highlighted !== null;
+  const isActive = !disabled && focused && (hasHighlight ? isHighlighted : isSelected);
   const itemId = getEncodedListboxItemId(idPrefix, id);
   const labelId = `${itemId}-label`;
   const descId = `${itemId}-desc`;

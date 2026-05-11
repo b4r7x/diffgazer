@@ -14,7 +14,7 @@ export interface UseFocusRestoreOptions extends RestoreFocusOptions {
 }
 
 export interface UseFocusRestoreReturn {
-  capture: () => HTMLElement | null;
+  capture: (ownerDocument?: Document) => HTMLElement | null;
   restore: () => boolean;
   target: HTMLElement | null;
 }
@@ -67,7 +67,7 @@ export function useFocusRestore(
     optionsRef.current = resolvedOptions;
   });
 
-  const capture = useCallback(() => {
+  const capture = useCallback((ownerDocument?: Document) => {
     const resolvedOptions = optionsRef.current;
     if (!resolvedOptions.enabled) {
       const entry = entryRef.current;
@@ -79,7 +79,7 @@ export function useFocusRestore(
       return null;
     }
 
-    const nextTarget = getRestorableFocusTarget() ?? resolvedOptions.fallback;
+    const nextTarget = getRestorableFocusTarget(ownerDocument) ?? resolvedOptions.fallback;
     const entry = entryRef.current ?? { target: null };
 
     removeEntry(entry);

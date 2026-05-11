@@ -81,6 +81,8 @@ export type {
   ComponentNote,
   KeyboardSection,
   ComponentDoc,
+  PropInfo,
+  ComponentPropsTable,
 } from "./docs-data/index.js";
 
 export {

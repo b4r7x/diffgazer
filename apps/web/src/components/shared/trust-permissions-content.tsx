@@ -11,6 +11,7 @@ import { Button } from "@diffgazer/ui/components/button";
 import { CheckboxGroup, CheckboxItem } from "@diffgazer/ui/components/checkbox";
 import { focusNavigationItem } from "@diffgazer/keys";
 import { useTrustFormKeyboard } from "@/hooks/use-trust-form-keyboard";
+import { toggleListValue } from "@/lib/selectable-values";
 import {
   TRUST_CAPABILITY_OPTIONS,
   fromSelectedCapabilityIds,
@@ -102,11 +103,7 @@ export function TrustPermissionsContent(props: TrustPermissionsContentProps) {
   const handleListKeyDown = (e: ReactKeyboardEvent) => {
     if (e.key === "Enter" && effectiveListFocused) {
       e.preventDefault();
-      handleValueChange(
-        selectedCapabilities.includes(effectiveListFocused)
-          ? selectedCapabilities.filter((v) => v !== effectiveListFocused)
-          : [...selectedCapabilities, effectiveListFocused],
-      );
+      handleValueChange(toggleListValue(selectedCapabilities, effectiveListFocused));
     }
   };
 

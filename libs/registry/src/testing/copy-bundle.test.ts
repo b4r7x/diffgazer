@@ -104,6 +104,34 @@ describe("buildCopyBundle", () => {
     expect(output.items[0]?.files[0]?.content).toContain("useFocus");
   });
 
+  it("can include hidden items for installer-only bundles", () => {
+    const root = createTempRoot();
+    writeHookFile(root, "focusable.ts", "export const focusable = true\n");
+    writeRegistry(root, [
+      {
+        name: "focusable",
+        type: "registry:hook",
+        meta: { hidden: true },
+        files: [{ path: "src/hooks/focusable.ts" }],
+      },
+    ]);
+
+    const outputPath = join(root, "bundle.json");
+    const result = buildCopyBundle({
+      sourceRoot: root,
+      outputPath,
+      itemType: "registry:hook",
+      includeHidden: true,
+    });
+
+    const output = JSON.parse(readFileSync(outputPath, "utf-8")) as {
+      items: Array<{ name: string; meta?: Record<string, unknown> }>;
+    };
+    expect(result.itemCount).toBe(1);
+    expect(output.items[0]?.name).toBe("focusable");
+    expect(output.items[0]?.meta?.hidden).toBe(true);
+  });
+
   it("can transform file content before writing the bundle", () => {
     const root = createTempRoot();
     writeHookFile(root, "use-focus.ts", "import '../internal/shared.js'\n");

@@ -36,12 +36,8 @@ describe("Input", () => {
     expect(eventTarget).toBe(input)
   })
 
-  it("exposes invalid state through aria-invalid", () => {
-    const { rerender } = render(<Input aria-label="Email" invalid />)
-
-    expect(screen.getByRole("textbox", { name: "Email" })).toHaveAttribute("aria-invalid", "true")
-
-    rerender(<Input aria-label="Email" error />)
+  it("forwards aria-invalid to the native input", () => {
+    render(<Input aria-label="Email" aria-invalid />)
 
     expect(screen.getByRole("textbox", { name: "Email" })).toHaveAttribute("aria-invalid", "true")
   })
@@ -83,8 +79,8 @@ describe("Input", () => {
     expect(screen.getByRole("button", { name: "Browse" })).toBeInTheDocument()
   })
 
-  it("exposes InputGroup invalid state through the nested input", () => {
-    render(<InputGroup aria-label="Path" invalid />)
+  it("forwards aria-invalid through InputGroup to the nested input", () => {
+    render(<InputGroup aria-label="Path" aria-invalid />)
 
     expect(screen.getByRole("textbox", { name: "Path" })).toHaveAttribute("aria-invalid", "true")
   })

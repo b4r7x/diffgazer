@@ -55,9 +55,12 @@ export function SelectSearch({
       <input
         ref={searchInputRef}
         type="search"
+        role="combobox"
         aria-label={ariaLabel ?? "Search options"}
         aria-controls={listboxId}
+        aria-expanded={open}
         aria-activedescendant={activeDescendant}
+        aria-autocomplete="list"
         aria-required={required}
         aria-invalid={ariaInvalid}
         value={searchQuery}

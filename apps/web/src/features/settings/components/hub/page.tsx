@@ -21,7 +21,7 @@ const SETTINGS_ROUTES: Record<SettingsAction, string> = {
 
 const SETTINGS_MENU_ITEM_IDS = new Set<string>(SETTINGS_MENU_ITEMS.map((item) => item.id));
 
-function getSettingsMenuHighlightedId(value: string | null): string | null {
+function getSettingsMenuHighlighted(value: string | null): string | null {
   if (!value) return value;
   if (SETTINGS_MENU_ITEM_IDS.has(value)) return value;
   return SETTINGS_MENU_ITEMS[0]?.id ?? null;
@@ -31,11 +31,11 @@ export function SettingsHubPage() {
   const navigate = useNavigate();
   const { provider, isConfigured, trust } = useConfigData();
   const { theme } = useTheme();
-  const [highlightedId, setHighlightedId] = useScopedRouteState<string | null>(
-    "highlightedId",
+  const [highlighted, setHighlighted] = useScopedRouteState<string | null>(
+    "highlighted",
     SETTINGS_MENU_ITEMS[0]?.id ?? null
   );
-  const effectiveHighlightedId = getSettingsMenuHighlightedId(highlightedId);
+  const effectiveHighlighted = getSettingsMenuHighlighted(highlighted);
   const isTrusted = Boolean(trust?.capabilities.readFiles);
   const { data: settings, error: settingsQueryError } = useSettings();
   const settingsError = settingsQueryError?.message ?? null;
@@ -48,7 +48,7 @@ export function SettingsHubPage() {
   const handleActivate = (id: string) => {
     const route = SETTINGS_ROUTES[id as SettingsAction];
     if (route) {
-      clearScopedRouteState(route, "highlightedId");
+      clearScopedRouteState(route, "highlighted");
       navigate({ to: route });
     }
   };
@@ -101,8 +101,8 @@ export function SettingsHubPage() {
         <Panel className="bg-tui-bg shadow-2xl">
           <Panel.Legend>SETTINGS HUB</Panel.Legend>
           <Menu
-            highlightedId={effectiveHighlightedId}
-            onHighlightChange={setHighlightedId}
+            highlighted={effectiveHighlighted}
+            onHighlightChange={setHighlighted}
             onSelect={handleActivate}
             variant="hub"
             className="flex flex-col text-sm pt-2"

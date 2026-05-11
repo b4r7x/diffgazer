@@ -36,8 +36,8 @@ describe("Textarea", () => {
     expect(eventTarget).toBe(textarea)
   })
 
-  it("exposes invalid state through aria-invalid", () => {
-    render(<Textarea aria-label="Comment" invalid />)
+  it("forwards aria-invalid to the native textarea", () => {
+    render(<Textarea aria-label="Comment" aria-invalid />)
 
     expect(screen.getByRole("textbox", { name: "Comment" })).toHaveAttribute("aria-invalid", "true")
   })

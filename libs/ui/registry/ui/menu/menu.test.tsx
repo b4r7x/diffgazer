@@ -48,7 +48,7 @@ describe("Menu", () => {
       "data-state": "ready",
       "aria-describedby": "menu-help",
       style: { maxWidth: "12px" },
-      defaultHighlightedId: "one",
+      defaultHighlighted: "one",
       onClick,
       onKeyDown,
     })
@@ -85,7 +85,7 @@ describe("Menu", () => {
   })
 
   it("does not move keyboard highlight on mouse hover", async () => {
-    renderMenu({ defaultHighlightedId: "one" })
+    renderMenu({ defaultHighlighted: "one" })
     const menu = screen.getByRole("menu")
     const oneItem = screen.getByText("One").closest("[role='menuitem']")!
     const twoItem = screen.getByText("Two").closest("[role='menuitem']")!
@@ -106,7 +106,7 @@ describe("Menu", () => {
   })
 
   it("does not keep selected state for plain command menus", async () => {
-    renderMenu({ defaultHighlightedId: "one" })
+    renderMenu({ defaultHighlighted: "one" })
     const menu = screen.getByRole("menu")
     const oneItem = screen.getByText("One").closest("[role='menuitem']")!
     const twoItem = screen.getByText("Two").closest("[role='menuitem']")!
@@ -132,7 +132,7 @@ describe("Menu", () => {
     expect(screen.getByText("ready")).toBeInTheDocument()
 
     rerender(
-      <Menu aria-label="Hub menu" variant="hub" highlightedId="delete">
+      <Menu aria-label="Hub menu" variant="hub" highlighted="delete">
         <Menu.Item id="provider" value="ready" valueVariant="success-badge">Provider</Menu.Item>
         <Menu.Item id="delete" variant="danger" value="armed">Delete</Menu.Item>
       </Menu>
@@ -179,7 +179,7 @@ describe("Menu", () => {
   })
 
   it("moves highlight with ArrowDown and ArrowUp", async () => {
-    renderMenu({ defaultHighlightedId: "one" })
+    renderMenu({ defaultHighlighted: "one" })
     const menu = screen.getByRole("menu")
     menu.focus()
     await userEvent.keyboard("{ArrowDown}")
@@ -196,7 +196,7 @@ describe("Menu", () => {
 
   it("activates highlighted item with Enter", async () => {
     const onSelect = vi.fn()
-    renderMenu({ defaultHighlightedId: "one", onSelect })
+    renderMenu({ defaultHighlighted: "one", onSelect })
     const listbox = screen.getByRole("menu")
     listbox.focus()
     await userEvent.keyboard("{Enter}")
@@ -205,7 +205,7 @@ describe("Menu", () => {
 
   it("calls onClose when Escape is pressed", async () => {
     const onClose = vi.fn()
-    renderMenu({ onClose, defaultHighlightedId: "one" })
+    renderMenu({ onClose, defaultHighlighted: "one" })
     const menu = screen.getByRole("menu")
     menu.focus()
     await userEvent.keyboard("{Escape}")
@@ -215,7 +215,7 @@ describe("Menu", () => {
   it("calls onClose on Tab without preventing default", async () => {
     const onClose = vi.fn()
     const onKeyDown = vi.fn()
-    renderMenu({ onClose, onKeyDown, defaultHighlightedId: "one" })
+    renderMenu({ onClose, onKeyDown, defaultHighlighted: "one" })
     const menu = screen.getByRole("menu")
     menu.focus()
 
@@ -227,14 +227,14 @@ describe("Menu", () => {
   })
 
   it("focuses the container on mount when autoFocus is true", async () => {
-    renderMenu({ autoFocus: true, defaultHighlightedId: "one" })
+    renderMenu({ autoFocus: true, defaultHighlighted: "one" })
     const menu = screen.getByRole("menu")
     await waitFor(() => {
       expect(menu).toHaveFocus()
     })
   })
 
-  it("autoFocus initializes the first enabled item when no item is active", async () => {
+  it("autoFocus initializes the first menu item, including disabled items", async () => {
     render(
       <Menu aria-label="Test menu" autoFocus>
         <Menu.Item id="one" disabled>One</Menu.Item>
@@ -242,16 +242,16 @@ describe("Menu", () => {
       </Menu>
     )
     const menu = screen.getByRole("menu")
-    const twoItem = screen.getByText("Two").closest("[role='menuitem']")!
+    const oneItem = screen.getByText("One").closest("[role='menuitem']")!
 
     await waitFor(() => {
-      expect(menu).toHaveAttribute("aria-activedescendant", twoItem.id)
+      expect(menu).toHaveAttribute("aria-activedescendant", oneItem.id)
     })
   })
 
   it("autoFocus preserves an empty string highlighted id", async () => {
     render(
-      <Menu aria-label="Test menu" autoFocus defaultHighlightedId="">
+      <Menu aria-label="Test menu" autoFocus defaultHighlighted="">
         <Menu.Item id="one">One</Menu.Item>
         <Menu.Item id="">Empty id</Menu.Item>
       </Menu>,
@@ -269,7 +269,7 @@ describe("Menu", () => {
   it("uses encoded item ids for active descendant references", () => {
     const id = "release notes/v1.2?"
     render(
-      <Menu aria-label="Test menu" defaultHighlightedId={id}>
+      <Menu aria-label="Test menu" defaultHighlighted={id}>
         <Menu.Item id={id}>Release</Menu.Item>
         <Menu.Item id="other">Other</Menu.Item>
       </Menu>,
@@ -285,7 +285,7 @@ describe("Menu", () => {
 
   it("treats an empty string item id as a valid active descendant value", () => {
     render(
-      <Menu aria-label="Test menu" defaultHighlightedId="">
+      <Menu aria-label="Test menu" defaultHighlighted="">
         <Menu.Item id="">Empty id</Menu.Item>
         <Menu.Item id="other">Other</Menu.Item>
       </Menu>,
@@ -319,6 +319,64 @@ describe("Menu", () => {
       </Menu>
     )
     expect(screen.getByRole("separator")).toHaveAttribute("aria-orientation", "horizontal")
+  })
+
+  it("does not render disabled item as selected when supplied via controlled selectedId", () => {
+    render(
+      <Menu aria-label="Test menu" selectedId="two">
+        <Menu.Item id="one">One</Menu.Item>
+        <Menu.Item id="two" disabled>Two</Menu.Item>
+      </Menu>,
+    )
+    const disabledItem = screen.getByText("Two").closest("[role='menuitemradio']")!
+    expect(disabledItem).toHaveAttribute("aria-disabled", "true")
+    expect(disabledItem).not.toHaveAttribute("aria-checked", "true")
+    expect(disabledItem).not.toHaveAttribute("data-active", "true")
+  })
+
+  it("disabled highlighted menu item is the active descendant with focus indication but not selected", () => {
+    // APG menu pattern: disabled menu items remain focusable (active descendant)
+    // but should not appear visually active or be announced as selected.
+    render(
+      <Menu aria-label="Test menu" highlighted="two">
+        <Menu.Item id="one">One</Menu.Item>
+        <Menu.Item id="two" disabled>Two</Menu.Item>
+      </Menu>,
+    )
+    const menu = screen.getByRole("menu")
+    const disabledItem = screen.getByText("Two").closest("[role='menuitem']")!
+
+    expect(menu).toHaveAttribute("aria-activedescendant", disabledItem.id)
+    expect(disabledItem).not.toHaveAttribute("data-active", "true")
+    expect(disabledItem).toHaveAttribute("data-focus", "true")
+    expect(disabledItem).not.toHaveAttribute("aria-checked", "true")
+  })
+
+  it("APG: ArrowDown moves through disabled menu items but Enter does not activate them", async () => {
+    const onSelect = vi.fn()
+    render(
+      <Menu aria-label="Test menu" defaultHighlighted="one" onSelect={onSelect}>
+        <Menu.Item id="one">One</Menu.Item>
+        <Menu.Item id="two" disabled>Two</Menu.Item>
+        <Menu.Item id="three">Three</Menu.Item>
+      </Menu>,
+    )
+    const menu = screen.getByRole("menu")
+    const twoItem = screen.getByText("Two").closest("[role='menuitem']")!
+    const threeItem = screen.getByText("Three").closest("[role='menuitem']")!
+
+    menu.focus()
+    await userEvent.keyboard("{ArrowDown}")
+    expect(menu).toHaveAttribute("aria-activedescendant", twoItem.id)
+
+    await userEvent.keyboard("{Enter}")
+    expect(onSelect).not.toHaveBeenCalled()
+
+    await userEvent.keyboard("{ArrowDown}")
+    expect(menu).toHaveAttribute("aria-activedescendant", threeItem.id)
+
+    await userEvent.keyboard("{Enter}")
+    expect(onSelect).toHaveBeenCalledWith("three")
   })
 })
 

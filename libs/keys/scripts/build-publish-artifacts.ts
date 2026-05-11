@@ -6,6 +6,10 @@ import {
   createArtifactManifest,
   REGISTRY_ORIGIN,
 } from "@diffgazer/registry";
+import {
+  transformKeysPublicRegistryImportContent,
+  transformKeysPublicRegistryImports,
+} from "./transform-public-registry-imports.js";
 
 const ROOT = resolve(import.meta.dirname, "..");
 
@@ -67,6 +71,8 @@ function main(): void {
     ensurePublicRegistry: {
       fixCommand: "pnpm --dir libs/keys build:shadcn",
       label: "keys public registry index",
+      afterBuild: ({ outputDir }) => transformKeysPublicRegistryImports(outputDir),
+      transformSourceContent: ({ content }) => transformKeysPublicRegistryImportContent(content),
     },
     requiredPaths: [
       { path: "docs/content", label: "keys docs content" },

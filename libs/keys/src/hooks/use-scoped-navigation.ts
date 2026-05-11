@@ -14,7 +14,7 @@ import { useKeyboardRegistryContext } from "../context/keyboard-context.js";
 export type UseScopedNavigationOptions = Omit<UseNavigationOptions, "containerRef"> & {
   containerRef: RefObject<HTMLElement | null>;
   focusWithinOnly?: boolean;
-  scope?: string;
+  scope?: string | null;
 };
 
 export interface UseScopedNavigationReturn {
@@ -34,7 +34,6 @@ export function useScopedNavigation(options: UseScopedNavigationOptions): UseSco
     upKeys,
     downKeys,
     containerRef,
-    moveFocus,
     scope,
     onEnter,
     onSelect,
@@ -45,14 +44,15 @@ export function useScopedNavigation(options: UseScopedNavigationOptions): UseSco
 
   const { highlighted, isHighlighted, highlight, move, focusIndex, handleSelect, handleEnter, getElements } =
     useNavigationCore({ ...options, containerRef });
-  const handlesEnter = !moveFocus || Boolean(onEnter || onSelect);
-  const handlesSpace = !moveFocus || Boolean(onSelect);
+  const handlesEnter = Boolean(onEnter || onSelect);
+  const handlesSpace = Boolean(onSelect);
 
+  // Editable-target filtering is handled by the keyboard provider via `allowInInput`.
   const dispatch = useCallback((key: string, nativeEvent: globalThis.KeyboardEvent) => {
     dispatchNavigationKey(key, {
       resolvedUpKeys,
       resolvedDownKeys,
-      move,
+      move: (delta) => move(delta, nativeEvent, key),
       focusIndex,
       handleSelect: handlesSpace ? (e) => handleSelect(e) : undefined,
       handleEnter: handlesEnter ? (e) => handleEnter(e) : undefined,

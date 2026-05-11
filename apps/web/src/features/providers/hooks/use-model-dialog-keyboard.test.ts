@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, renderHook, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ModelInfo } from "@diffgazer/core/schemas/config";
 import { KeyboardProvider } from "@diffgazer/keys";
@@ -17,33 +17,46 @@ function makeModel(id: string): ModelInfo {
   };
 }
 
-function renderSubject(models: ModelInfo[], currentModel?: string) {
-  const listContainer = document.createElement("div");
-  const onSelect = vi.fn();
-  const onOpenChange = vi.fn();
-  const wrapper = ({ children }: { children: ReactNode }) =>
-    createElement(KeyboardProvider, null, children);
+function TestLazyLoadModelList({ models }: { models: ModelInfo[] }) {
+  const listContainerRef = useRef<HTMLDivElement>(null);
+  useModelDialogKeyboard({
+    open: true,
+    currentModel: undefined,
+    models,
+    filteredModels: models,
+    searchQuery: "",
+    setSearchQuery: vi.fn(),
+    cycleTierFilter: vi.fn(),
+    resetFilters: vi.fn(),
+    searchInputRef: { current: null },
+    listContainerRef,
+    onSelect: vi.fn(),
+    onOpenChange: vi.fn(),
+  });
 
-  const hook = renderHook(
-    ({ nextModels }: { nextModels: ModelInfo[] }) =>
-      useModelDialogKeyboard({
-        open: true,
-        currentModel,
-        models: nextModels,
-        filteredModels: nextModels,
-        searchQuery: "",
-        setSearchQuery: vi.fn(),
-        setTierFilter: vi.fn(),
-        cycleTierFilter: vi.fn(),
-        resetFilters: vi.fn(),
-        searchInputRef: { current: null },
-        listContainerRef: { current: listContainer },
-        onSelect,
-        onOpenChange,
-      }),
-    { initialProps: { nextModels: models }, wrapper },
+  return createElement(
+    "div",
+    { ref: listContainerRef, role: "radiogroup" },
+    ...models.map((model) =>
+      createElement(
+        "div",
+        {
+          key: model.id,
+          role: "radio",
+          "data-value": model.id,
+          tabIndex: 0,
+        },
+        model.name,
+      ),
+    ),
   );
-  return { ...hook, onSelect, onOpenChange };
+}
+
+function renderLazyLoadSubject(models: ModelInfo[]) {
+  function Wrapper({ children }: { children: ReactNode }) {
+    return createElement(KeyboardProvider, null, children);
+  }
+  return render(createElement(TestLazyLoadModelList, { models }), { wrapper: Wrapper });
 }
 
 function TestModelDialogKeyboard({
@@ -65,7 +78,6 @@ function TestModelDialogKeyboard({
     filteredModels: models,
     searchQuery: "",
     setSearchQuery: vi.fn(),
-    setTierFilter: vi.fn(),
     cycleTierFilter: vi.fn(),
     resetFilters: vi.fn(),
     searchInputRef: { current: null },
@@ -127,7 +139,6 @@ function TestInteractiveModelDialogKeyboard({
     filteredModels: models,
     searchQuery,
     setSearchQuery,
-    setTierFilter: applyTierFilter,
     cycleTierFilter: vi.fn(),
     resetFilters: vi.fn(),
     searchInputRef,
@@ -187,14 +198,22 @@ function renderInteractiveSubject(onTierFilter = vi.fn()) {
 
 describe("useModelDialogKeyboard", () => {
   it("focuses the first available model when models load after the dialog opens", async () => {
-    const { result, rerender } = renderSubject([]);
+    const { rerender } = renderLazyLoadSubject([]);
 
-    expect(result.current.focusedModelId).toBeNull();
+    expect(screen.queryByRole("radio")).not.toBeInTheDocument();
 
-    rerender({ nextModels: [makeModel("model-a"), makeModel("model-b")] });
+    rerender(
+      createElement(
+        KeyboardProvider,
+        null,
+        createElement(TestLazyLoadModelList, {
+          models: [makeModel("model-a"), makeModel("model-b")],
+        }),
+      ),
+    );
 
     await waitFor(() => {
-      expect(result.current.focusedModelId).toBe("model-a");
+      expect(screen.getByRole("radio", { name: "model-a" })).toHaveFocus();
     });
   });
 

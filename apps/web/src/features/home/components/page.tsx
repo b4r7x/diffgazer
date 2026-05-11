@@ -27,7 +27,7 @@ const MENU_ROUTES: Record<string, RouteConfig> = {
   help: { to: "/help" },
 };
 
-function getMainMenuHighlightedId(value: string | null): string | null {
+function getMainMenuHighlighted(value: string | null): string | null {
   if (!value) return value;
   if (MAIN_MENU_ITEM_IDS.has(value)) return value;
   return MAIN_MENU_ITEMS[0]?.id ?? null;
@@ -63,11 +63,11 @@ export function HomePage() {
     trustedDir: isTrusted ? trust?.repoRoot : undefined,
   };
 
-  const [highlightedId, setHighlightedId] = useScopedRouteState<string | null>(
-    "highlightedId",
+  const [highlighted, setHighlighted] = useScopedRouteState<string | null>(
+    "highlighted",
     MAIN_MENU_ITEMS[0]?.id ?? null
   );
-  const effectiveHighlightedId = getMainMenuHighlightedId(highlightedId);
+  const effectiveHighlighted = getMainMenuHighlighted(highlighted);
 
   const handleQuit = async () => {
     const result = await shutdown();
@@ -92,7 +92,7 @@ export function HomePage() {
 
     const route = MENU_ROUTES[id];
     if (route) {
-      clearScopedRouteState(route.to, "highlightedId");
+      clearScopedRouteState(route.to, "highlighted");
       navigate({ to: route.to, search: route.search });
     }
   };
@@ -131,8 +131,8 @@ export function HomePage() {
         projectPath={repoRoot ?? undefined}
       />
       <HomeMenu
-        highlightedId={effectiveHighlightedId}
-        onHighlightChange={setHighlightedId}
+        highlighted={effectiveHighlighted}
+        onHighlightChange={setHighlighted}
         onSelect={handleActivate}
         items={MAIN_MENU_ITEMS}
         isTrusted={isTrusted}

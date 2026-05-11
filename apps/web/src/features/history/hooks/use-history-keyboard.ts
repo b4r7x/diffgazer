@@ -1,10 +1,11 @@
 import { type RefObject } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { useFocusZone, useKey } from "@diffgazer/keys";
+import { getFirstFocusableElement, useFocusZone, useKey } from "@diffgazer/keys";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import type { HistoryFocusZone } from "@/features/history/types";
 
 const ZONES = ["timeline", "runs", "insights", "search"] as const;
+const HISTORY_SCOPE = "history";
 type KeyboardHistoryFocusZone = (typeof ZONES)[number];
 
 interface UseHistoryKeyboardOptions {
@@ -12,6 +13,8 @@ interface UseHistoryKeyboardOptions {
   setFocusZone: (zone: HistoryFocusZone) => void;
   activeRunId: string | null;
   searchInputRef: RefObject<HTMLInputElement | null>;
+  runsListRef: RefObject<HTMLDivElement | null>;
+  insightsPaneRef: RefObject<HTMLDivElement | null>;
 }
 
 export function getHistoryFooter(focusZone: HistoryFocusZone) {
@@ -63,6 +66,8 @@ export function useHistoryKeyboard({
   setFocusZone,
   activeRunId,
   searchInputRef,
+  runsListRef,
+  insightsPaneRef,
 }: UseHistoryKeyboardOptions) {
   const navigate = useNavigate();
   useFocusZone({
@@ -70,8 +75,19 @@ export function useHistoryKeyboard({
     zones: ZONES,
     zone: focusZone,
     onZoneChange: (zone) => setFocusZone(zone),
-    scope: "history",
+    scope: HISTORY_SCOPE,
     tabCycle: ["search", "timeline", "runs", "insights"],
+    focus: {
+      autoFocus: true,
+      targets: {
+        search: searchInputRef,
+        runs: runsListRef,
+        insights: {
+          container: insightsPaneRef,
+          target: () => getFirstFocusableElement(insightsPaneRef.current) ?? insightsPaneRef.current,
+        },
+      },
+    },
     transitions: ({ zone, key }) => {
       const left: Record<KeyboardHistoryFocusZone, KeyboardHistoryFocusZone | null> = {
         timeline: null,
@@ -93,8 +109,7 @@ export function useHistoryKeyboard({
 
   useKey("/", () => {
     setFocusZone("search");
-    searchInputRef.current?.focus();
-  }, { enabled: focusZone !== "search", preventDefault: true });
+  }, { scope: HISTORY_SCOPE, enabled: focusZone !== "search", preventDefault: true });
 
   const navigateToSelectedRun = () => {
     if (activeRunId) {
@@ -102,12 +117,12 @@ export function useHistoryKeyboard({
     }
   };
 
-  useKey("o", navigateToSelectedRun, { enabled: focusZone === "runs" });
-  useKey(" ", navigateToSelectedRun, { enabled: focusZone === "runs" });
+  useKey("o", navigateToSelectedRun, { scope: HISTORY_SCOPE, enabled: focusZone === "runs" });
+  useKey(" ", navigateToSelectedRun, { scope: HISTORY_SCOPE, enabled: focusZone === "runs" });
 
   useKey("Escape", () => {
     navigate({ to: "/" });
-  });
+  }, { scope: HISTORY_SCOPE });
 
   const { shortcuts, rightShortcuts } = getHistoryFooter(focusZone);
 

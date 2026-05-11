@@ -4,7 +4,7 @@ export const listboxDoc: HookDoc = {
   description:
     "Shared listbox state and keyboard navigation hook. Manages selection, highlight, and container ARIA props for listbox-pattern components like menu and navigation-list.",
   usage: {
-    code: `const { selectedId, highlightedId, handleItemActivate, getContainerProps } =
+    code: `const { selectedId, highlighted, handleItemActivate, getContainerProps } =
   useListbox({
     idPrefix: "my-list",
     onSelect: (id) => console.log("selected", id),
@@ -41,7 +41,7 @@ return (
       required: false,
       defaultValue: "false",
       description:
-        "Focus the container on mount and initialize highlight to the selected item or first enabled item.",
+        "Focus the container on mount and initialize highlight to the selected item or first navigable item for the active role.",
     },
     {
       name: "selectedId",
@@ -58,14 +58,14 @@ return (
       description: "Initial selected item ID for uncontrolled mode.",
     },
     {
-      name: "highlightedId",
+      name: "highlighted",
       type: "string | null",
       required: false,
       description:
         "Controlled highlighted item ID. When provided, the hook is in controlled mode for highlight.",
     },
     {
-      name: "defaultHighlightedId",
+      name: "defaultHighlighted",
       type: "string | null",
       required: false,
       defaultValue: "null",
@@ -92,10 +92,10 @@ return (
     },
     {
       name: "onNavigationBoundaryReached",
-      type: '(direction: "previous" | "next") => void',
+      type: '(direction: "previous" | "next", event: KeyboardEvent, key: string) => void',
       required: false,
       description:
-        "Called when wrap is false and keyboard navigation attempts to move before the first item or after the last item.",
+        "Called when wrap is false and keyboard navigation attempts to move before the first item or after the last item. Receives the direction, the originating keyboard event, and the key that hit the boundary.",
     },
     {
       name: "wrap",
@@ -134,6 +134,21 @@ return (
       description:
         "Enable type-ahead character search to jump to matching items.",
     },
+    {
+      name: "items",
+      type: "ListboxMetadataItem[]",
+      required: false,
+      description:
+        "Optional metadata array describing each item ({ id, disabled? }). It helps validate active descendants and initial highlight, while keyboard navigation and typeahead still inspect the mounted DOM items.",
+    },
+    {
+      name: "getItemId",
+      type: "(idPrefix: string, id: string) => string",
+      required: false,
+      defaultValue: "getEncodedListboxItemId",
+      description:
+        "Override how option DOM ids are derived from idPrefix and the item's logical id. Defaults to URL-encoding the id; supply a custom encoder if your option ids must follow a different scheme (e.g. when consuming externally indexed nodes).",
+    },
   ],
   returns: {
     type: "UseListboxReturn",
@@ -147,7 +162,7 @@ return (
         description: "Currently selected item ID.",
       },
       {
-        name: "highlightedId",
+        name: "highlighted",
         type: "string | null",
         required: true,
         description: "Currently highlighted (focused) item ID.",
@@ -182,7 +197,7 @@ return (
     {
       title: "Controlled & Uncontrolled",
       content:
-        "Both selection and highlight support controlled and uncontrolled modes via useControllableState. Pass selectedId/highlightedId for controlled, or use defaultSelectedId/defaultHighlightedId for uncontrolled.",
+        "Both selection and highlight support controlled and uncontrolled modes via useControllableState. Pass selectedId/highlighted for controlled, or use defaultSelectedId/defaultHighlighted for uncontrolled.",
     },
     {
       title: "Used By",

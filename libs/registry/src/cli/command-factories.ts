@@ -44,7 +44,7 @@ export interface ListCommandConfig<TItem extends RegistryLikeItem, TConfig> {
   getPublicItems: () => TItem[];
   requireConfig: (cwd: string) => TConfig;
   createInstallChecker: (cwd: string, config: TConfig) => (name: string) => boolean;
-  getRelativePath: (file: { path: string; targetPath?: string }) => string;
+  getRelativePath: (file: { path: string }) => string;
   toDisplayItem?: (item: TItem) => ListDisplayItem;
 }
 
@@ -147,6 +147,7 @@ export interface RemoveCommandConfig<TItem, TConfig> {
     item: TItem;
     file: RemoveWorkflowFile;
     force: boolean;
+    requestedNames: string[];
   }) => boolean;
   resolveAllowedBaseDirs: (ctx: { cwd: string; config: TConfig }) => string[];
   updateManifest: (ctx: { cwd: string; removedNames: string[] }) => void;

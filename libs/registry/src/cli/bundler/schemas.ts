@@ -4,6 +4,7 @@ import { RegistryItemSchema } from "../registry.js";
 export const RegistrySourceFileSchema = z.object({
   path: z.string(),
   type: z.string().optional(),
+  target: z.string().optional(),
 });
 
 export const RegistrySourceItemSchema = RegistryItemSchema.extend({

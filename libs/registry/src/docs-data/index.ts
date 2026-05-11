@@ -13,6 +13,8 @@ export type {
   ComponentNote,
   KeyboardSection,
   ComponentDoc,
+  PropInfo,
+  ComponentPropsTable,
 } from "./types.js"
 
 export {

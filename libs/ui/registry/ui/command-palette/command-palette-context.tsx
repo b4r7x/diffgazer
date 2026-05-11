@@ -6,7 +6,7 @@ import type { CommandPaletteItemRegistration } from "./use-command-palette-state
 export interface CommandPaletteContextValue {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  highlightedId: string | null;
+  highlighted: string | null;
   onActivate: (id: string) => void;
   search: string;
   onSearchChange: (value: string) => void;
@@ -15,6 +15,7 @@ export interface CommandPaletteContextValue {
   itemCount: number;
   listId: string;
   listRef: RefObject<HTMLDivElement | null>;
+  inputRef: RefObject<HTMLInputElement | null>;
   navKeyDown: (event: ReactKeyboardEvent) => void;
   registerItem: (item: CommandPaletteItemRegistration) => void;
   unregisterItem: (registrationId: string) => void;

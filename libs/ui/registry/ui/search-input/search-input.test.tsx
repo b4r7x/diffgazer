@@ -94,8 +94,8 @@ describe("SearchInput", () => {
     expect(await axe(container)).toHaveNoViolations()
   })
 
-  it("sets aria-invalid in error state", () => {
-    renderSearchInput({ error: true })
+  it("forwards aria-invalid through to the search input", () => {
+    renderSearchInput({ "aria-invalid": true })
     expect(screen.getByRole("searchbox")).toHaveAttribute("aria-invalid", "true")
   })
 
