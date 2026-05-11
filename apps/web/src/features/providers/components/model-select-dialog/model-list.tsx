@@ -38,7 +38,7 @@ export function ModelList({
         ref={ref}
         role="radiogroup"
         aria-label="Available models"
-        className="px-4 py-3 max-h-60 overflow-y-auto scrollbar-thin"
+        className="px-4 py-3 max-h-[50vh] overflow-y-auto scrollbar-thin"
       >
         <EmptyState size="sm" live>
           {isLoading ? (
@@ -67,15 +67,14 @@ export function ModelList({
         if (getVerticalArrowDirection(event.key) !== null) onBoundaryReached(direction);
       }}
       activationMode="manual"
+      autoFocus={isFocused}
       wrap={false}
-      className="px-4 py-3 space-y-1 max-h-60 overflow-y-auto scrollbar-thin"
+      className="min-h-0 px-4 py-3 space-y-1 max-h-[50vh] overflow-y-auto scrollbar-thin"
     >
       {models.map((model) => (
         <ModelListItem
           key={model.id}
           model={model}
-          isSelected={model.id === focusedModelId}
-          isFocused={isFocused}
           onDoubleClick={() => onConfirm(model.id)}
         />
       ))}

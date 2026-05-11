@@ -8,7 +8,7 @@ import { useFormReset } from "@/hooks/use-form-reset";
 import { composeRefs } from "@/lib/compose-refs";
 
 const searchInputVariants = cva(
-  "flex items-center gap-2 bg-background border-x border-b border-border font-mono shrink-0 transition-colors focus-within:border-foreground has-[input[aria-invalid=true]]:border-destructive",
+  "flex items-center gap-2 bg-background border border-border font-mono shrink-0 transition-colors focus-within:border-foreground has-[input[aria-invalid=true]]:border-destructive",
   {
     variants: {
       size: {

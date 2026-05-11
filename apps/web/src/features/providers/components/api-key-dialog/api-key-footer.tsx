@@ -30,13 +30,13 @@ export function ApiKeyFooter({
   }, [focused]);
 
   return (
-    <DialogFooter className="justify-between">
-      <div className="flex gap-3 text-[10px] text-tui-muted">
+    <DialogFooter className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4">
+      <div className="flex min-w-0 flex-wrap gap-x-3 gap-y-1 text-[10px] text-tui-muted">
         <span>↑↓ navigate</span>
         <span>Space select</span>
         <span>Enter confirm</span>
       </div>
-      <div className="flex gap-3 items-center">
+      <div className="flex shrink-0 items-center justify-end gap-3">
         <Button
           ref={cancelRef}
           variant="ghost"

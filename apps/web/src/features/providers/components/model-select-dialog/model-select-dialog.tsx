@@ -105,6 +105,7 @@ export function ModelSelectDialog({
     handleListBoundaryReached,
     handleListSelect,
     footerButtonIndex,
+    getCloseButtonProps,
     getFooterButtonProps,
     getFilterButtonProps,
   } = useModelDialogKeyboard({
@@ -130,13 +131,17 @@ export function ModelSelectDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg border border-tui-border shadow-2xl">
-        <DialogHeader className="bg-tui-selection/50">
-          <DialogTitle className="text-tui-blue tracking-wide">Select Model</DialogTitle>
-          <DialogClose className="text-tui-muted hover:text-tui-fg font-bold" />
+      <DialogContent className="max-w-2xl overflow-hidden border border-tui-border shadow-2xl">
+        <DialogHeader className="flex-row items-center justify-between gap-3 bg-tui-selection/50 px-4 py-3">
+          <DialogTitle className="min-w-0 flex-1 w-auto text-tui-blue tracking-wide">Select Model</DialogTitle>
+          <DialogClose
+            {...getCloseButtonProps()}
+            size="sm"
+            className="h-auto shrink-0 px-2 py-1 text-tui-muted hover:text-tui-fg font-bold"
+          />
         </DialogHeader>
 
-        <DialogBody className="p-0 flex flex-col">
+        <DialogBody className="min-h-0 p-0 flex flex-col overflow-hidden">
           <ModelSearchInput
             ref={searchInputRef}
             value={searchQuery}
@@ -183,7 +188,7 @@ export function ModelSelectDialog({
           />
         </DialogBody>
 
-        <DialogFooter className="justify-between">
+        <DialogFooter className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4">
           <DialogFooterActions
             onCancel={handleCancel}
             onConfirm={() => handleConfirm()}

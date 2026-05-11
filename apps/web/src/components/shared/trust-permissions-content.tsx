@@ -172,7 +172,7 @@ export function TrustPermissionsContent(props: TrustPermissionsContentProps) {
       </Callout>
 
       {showActions && (
-        <div ref={actionRowRef} className="flex gap-4 pt-2">
+        <div ref={actionRowRef} className="flex justify-end gap-4 pt-2">
           <Button
             data-value="save"
             variant="success"

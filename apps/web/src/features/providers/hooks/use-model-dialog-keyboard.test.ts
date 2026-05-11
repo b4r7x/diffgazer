@@ -3,7 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ModelInfo } from "@diffgazer/core/schemas/config";
 import { KeyboardProvider } from "@diffgazer/keys";
-import { createElement, useRef, useState, type ReactNode } from "react";
+import { createElement, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import type { TierFilter } from "@/features/providers/constants";
 import { ModelFilterTabs } from "@/features/providers/components/model-select-dialog/model-filter-tabs";
 import { useModelDialogKeyboard } from "./use-model-dialog-keyboard";
@@ -120,12 +120,17 @@ function renderDialogSubject(models: ModelInfo[], currentModel?: string) {
 
 function TestInteractiveModelDialogKeyboard({
   onTierFilter,
+  focusCloseDuringOpen = false,
+  currentModel,
 }: {
   onTierFilter: (filter: TierFilter) => void;
+  focusCloseDuringOpen?: boolean;
+  currentModel?: string;
 }) {
   const models = [makeModel("model-a"), makeModel("model-b")];
   const [searchQuery, setSearchQuery] = useState("");
   const [tierFilter, setTierFilter] = useState<TierFilter>("all");
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const listContainerRef = useRef<HTMLDivElement>(null);
   const applyTierFilter = (nextFilter: TierFilter) => {
@@ -134,7 +139,7 @@ function TestInteractiveModelDialogKeyboard({
   };
   const keyboard = useModelDialogKeyboard({
     open: true,
-    currentModel: undefined,
+    currentModel,
     models,
     filteredModels: models,
     searchQuery,
@@ -146,10 +151,23 @@ function TestInteractiveModelDialogKeyboard({
     onSelect: vi.fn(),
     onOpenChange: vi.fn(),
   });
+  const closeButtonProps = keyboard.getCloseButtonProps();
+
+  useLayoutEffect(() => {
+    if (focusCloseDuringOpen) closeButtonRef.current?.focus();
+  }, [focusCloseDuringOpen]);
 
   return createElement(
     "div",
     null,
+    createElement("button", {
+      type: "button",
+      ref: (node: HTMLButtonElement | null) => {
+        closeButtonRef.current = node;
+        closeButtonProps.ref(node);
+      },
+      onFocus: closeButtonProps.onFocus,
+    }, "Close"),
     createElement("input", {
       "aria-label": "Search models",
       ref: searchInputRef,
@@ -184,13 +202,16 @@ function TestInteractiveModelDialogKeyboard({
   );
 }
 
-function renderInteractiveSubject(onTierFilter = vi.fn()) {
+function renderInteractiveSubject(
+  onTierFilter = vi.fn(),
+  options: { focusCloseDuringOpen?: boolean; currentModel?: string } = {},
+) {
   const user = userEvent.setup();
 
   render(createElement(
     KeyboardProvider,
     null,
-    createElement(TestInteractiveModelDialogKeyboard, { onTierFilter }),
+    createElement(TestInteractiveModelDialogKeyboard, { onTierFilter, ...options }),
   ));
 
   return { user, onTierFilter };
@@ -243,6 +264,43 @@ describe("useModelDialogKeyboard", () => {
     const search = screen.getByRole("textbox", { name: /search models/i });
     expect(search).toHaveFocus();
     expect(search).toHaveValue("");
+  });
+
+  it("moves from model search to the close button with ArrowUp and back with ArrowDown", async () => {
+    const { user } = renderInteractiveSubject();
+
+    await user.keyboard("/");
+    await user.keyboard("{ArrowUp}");
+
+    const closeButton = screen.getByRole("button", { name: "Close" });
+    expect(closeButton).toHaveFocus();
+
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByRole("textbox", { name: /search models/i })).toHaveFocus();
+  });
+
+  it("moves from a directly focused close button back to model search with ArrowDown", async () => {
+    const { user } = renderInteractiveSubject();
+
+    const closeButton = screen.getByRole("button", { name: "Close" });
+    await user.click(closeButton);
+
+    expect(closeButton).toHaveFocus();
+
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByRole("textbox", { name: /search models/i })).toHaveFocus();
+  });
+
+  it("restores native close focus during open to the current model", async () => {
+    renderInteractiveSubject(vi.fn(), {
+      currentModel: "model-b",
+      focusCloseDuringOpen: true,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole("radio", { name: "model-b" })).toHaveFocus();
+    });
+    expect(screen.getByRole("button", { name: "Close" })).not.toHaveFocus();
   });
 
   it("changes tier filters through ModelFilterTabs roving controls", async () => {

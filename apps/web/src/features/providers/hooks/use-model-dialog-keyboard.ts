@@ -9,7 +9,7 @@ import {
 } from "@diffgazer/keys";
 import { TIER_FILTERS } from "@/features/providers/constants";
 
-type FocusZone = "search" | "filters" | "list" | "footer";
+type FocusZone = "close" | "search" | "filters" | "list" | "footer";
 
 interface ModelDialogKeyboardOptions {
   open: boolean;
@@ -43,6 +43,10 @@ interface ModelDialogKeyboardReturn {
     ref: RefCallback<HTMLButtonElement>;
     onFocus: () => void;
   };
+  getCloseButtonProps: () => {
+    ref: RefCallback<HTMLButtonElement>;
+    onFocus: () => void;
+  };
   setFocusZone: (zone: FocusZone) => void;
   handleFilterKeyDown: (event: ReactKeyboardEvent) => void;
   handleConfirm: (modelId?: string) => void;
@@ -53,6 +57,20 @@ interface ModelDialogKeyboardReturn {
   handleListHighlightChange: (modelId: string) => void;
   handleListBoundaryReached: (direction: "previous" | "next") => void;
   handleListSelect: (modelId: string) => void;
+}
+
+function getModelFocusTargetId({
+  filteredModels,
+  focusedModelId,
+  currentModel,
+}: {
+  filteredModels: ModelInfo[];
+  focusedModelId: string | null;
+  currentModel: string | undefined;
+}): string | undefined {
+  return [focusedModelId, currentModel, filteredModels[0]?.id].find(
+    (id): id is string => id != null && filteredModels.some((model) => model.id === id),
+  );
 }
 
 export function useModelDialogKeyboard({
@@ -72,13 +90,35 @@ export function useModelDialogKeyboard({
   const [checkedModelId, setCheckedModelId] = useState<string | undefined>(currentModel);
   const [filterIndex, setFilterIndex] = useState(0);
   const [footerButtonIndex, setFooterButtonIndex] = useState(1);
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const hasRestoredInitialListFocusRef = useRef(false);
   const footerButtonRefs = useRef(new Map<number, HTMLButtonElement>());
   const filterButtonRefs = useRef(new Map<number, HTMLButtonElement>());
   const { zone: focusZone, setZone: setFocusZone, isZone } = useFocusZone({
     initial: "list" as FocusZone,
-    zones: ["search", "filters", "list", "footer"] as const,
+    zones: ["close", "search", "filters", "list", "footer"] as const,
     enabled: open,
     scope: "model-dialog",
+  });
+
+  const focusSearchInput = () => {
+    setFocusZone("search");
+    searchInputRef.current?.focus();
+  };
+
+  const focusCloseButton = () => {
+    setFocusZone("close");
+    closeButtonRef.current?.focus();
+  };
+
+  const getCloseButtonProps = () => ({
+    ref: (node: HTMLButtonElement | null) => {
+      closeButtonRef.current = node;
+    },
+    onFocus: () => {
+      if (!hasRestoredInitialListFocusRef.current) return;
+      setFocusZone("close");
+    },
   });
 
   const focusFooterButton = (index: number) => {
@@ -150,30 +190,50 @@ export function useModelDialogKeyboard({
 
   const focusModelElement = (modelId: string) => {
     focusModel(modelId);
-    getModelElement(modelId)?.focus();
+    const modelElement = getModelElement(modelId);
+    if (!modelElement) return false;
+
+    modelElement.focus();
+    return containsActiveElement(modelElement);
   };
 
   const resetDialogState = useEffectEvent(() => {
+    hasRestoredInitialListFocusRef.current = false;
     resetFilters();
     setFocusZone("list");
     setFilterIndex(0);
     setFooterButtonIndex(1);
     setCheckedModelId(currentModel);
     const targetId = currentModel ?? models[0]?.id;
-    if (targetId) focusModelElement(targetId);
+    if (targetId && focusModelElement(targetId)) {
+      hasRestoredInitialListFocusRef.current = true;
+    }
   });
 
   const repairListFocus = useEffectEvent(() => {
-    const hasFocusedModel = filteredModels.some((model) => model.id === focusedModelId);
-    if (hasFocusedModel) return;
+    const targetId = getModelFocusTargetId({
+      filteredModels,
+      focusedModelId,
+      currentModel,
+    });
+    const listHasFocus = listContainerRef.current
+      ? containsActiveElement(listContainerRef.current)
+      : false;
+    if (targetId === focusedModelId && listHasFocus) {
+      hasRestoredInitialListFocusRef.current = true;
+      return;
+    }
 
-    const hasCurrentModel = filteredModels.some((model) => model.id === currentModel);
-    const targetId = hasCurrentModel ? currentModel : filteredModels[0]?.id;
-    if (targetId) focusModelElement(targetId);
+    if (targetId !== undefined && focusModelElement(targetId)) {
+      hasRestoredInitialListFocusRef.current = true;
+    }
   });
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      hasRestoredInitialListFocusRef.current = false;
+      return;
+    }
     resetDialogState();
   }, [open]);
 
@@ -213,10 +273,14 @@ export function useModelDialogKeyboard({
     searchInputRef.current?.blur();
   },
     { enabled: open && isZone("search"), allowInInput: true, preventDefault: true });
+  useKey("ArrowUp", focusCloseButton,
+    { enabled: open && isZone("search"), allowInInput: true, preventDefault: true });
+
+  useKey("ArrowDown", focusSearchInput,
+    { enabled: open && isZone("close"), preventDefault: true });
 
   useKey("ArrowUp", () => {
-    setFocusZone("search");
-    searchInputRef.current?.focus();
+    focusSearchInput();
   },
     { enabled: open && isZone("filters"), preventDefault: true });
   useKey("ArrowDown", () => {
@@ -241,8 +305,7 @@ export function useModelDialogKeyboard({
 
   useKey("/", () => {
     if (focusZone !== "search") {
-      setFocusZone("search");
-      searchInputRef.current?.focus();
+      focusSearchInput();
     }
   }, { enabled: open, preventDefault: true });
   useKey("f", cycleTierFilter, { enabled: open && !isZone("search") });
@@ -298,6 +361,7 @@ export function useModelDialogKeyboard({
     setFilterIndex,
     footerButtonIndex,
     setFooterButtonIndex,
+    getCloseButtonProps,
     getFooterButtonProps,
     getFilterButtonProps,
     setFocusZone,

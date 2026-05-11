@@ -108,9 +108,8 @@ export function ApiKeyMethodSelector({
                 className={cn(
                   "px-3 py-2",
                   method === "paste"
-                    ? "bg-tui-input-bg border-tui-blue"
+                    ? "bg-tui-input-bg border-tui-border"
                     : "bg-tui-bg border-tui-border opacity-40",
-                  focused === "input" && "ring-2 ring-tui-blue",
                 )}
                 inputClassName="text-tui-fg tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
               />

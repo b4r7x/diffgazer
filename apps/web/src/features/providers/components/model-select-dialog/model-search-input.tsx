@@ -53,7 +53,7 @@ export function ModelSearchInput({
           aria-label="Search models"
           placeholder="Search models..."
           size="sm"
-          className="flex-1 bg-tui-input-bg border-tui-border text-xs"
+          className="flex-1 bg-tui-input-bg text-xs"
         />
         {showCustomAction && (
           <Button

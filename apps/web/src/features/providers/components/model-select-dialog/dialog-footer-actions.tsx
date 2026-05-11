@@ -31,14 +31,14 @@ export function DialogFooterActions({
 }: DialogFooterActionsProps) {
   return (
     <>
-      <div className="flex gap-3 text-[10px] text-tui-muted">
+      <div className="flex min-w-0 flex-wrap gap-x-3 gap-y-1 text-[10px] text-tui-muted">
         {hints.map((hint) => (
           <span key={hint.key}>
             {hint.key} {hint.label}
           </span>
         ))}
       </div>
-      <div className="flex gap-3 items-center">
+      <div className="flex shrink-0 items-center justify-end gap-3">
         <Button
           {...getButtonProps(0)}
           variant="ghost"
