@@ -152,7 +152,7 @@ export function ProviderDetails({
               bracket
               onClick={btn.action}
               disabled={btn.disabled}
-              className={isFocused && focusedButtonIndex === index ? 'ring-2 ring-tui-blue ring-offset-1 ring-offset-tui-bg' : ''}
+              className={isFocused && focusedButtonIndex === index && !btn.disabled ? 'ring-2 ring-tui-blue ring-offset-1 ring-offset-tui-bg' : ''}
             >
               {btn.label}
             </Button>

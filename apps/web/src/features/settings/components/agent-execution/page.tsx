@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { AgentExecution } from "@diffgazer/core/schemas/config";
 import type { Shortcut } from "@diffgazer/core/schemas/ui";
@@ -17,12 +17,9 @@ function isAgentExecution(value: string | null): value is AgentExecution {
   return EXECUTION_MODES.some((mode) => mode === value);
 }
 
-function clearCurrentFocus() {
-  if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
-}
-
 export function SettingsAgentExecutionPage() {
   const navigate = useNavigate();
+  const focusFallbackRef = useRef<HTMLDivElement>(null);
   const settingsQuery = useSettings();
   const saveSettings = useSaveSettings();
   const [modeChoice, setModeChoice] = useState<AgentExecution | null>(null);
@@ -39,6 +36,7 @@ export function SettingsAgentExecutionPage() {
 
   const isDirty = settings ? settings.agentExecution !== effectiveMode : false;
   const canSave = !isSaving && isDirty;
+  const isSaveDisabled = !canSave;
 
   const handleCancel = () => navigate({ to: "/settings" });
 
@@ -56,6 +54,8 @@ export function SettingsAgentExecutionPage() {
   const footer = useFooterNavigation({
     enabled: true,
     buttonCount: 2,
+    disabledActions: [isSaving, isSaveDisabled],
+    disabledFocusFallbackRef: focusFallbackRef,
     onAction: (index) => {
       if (index === 0) handleCancel();
       else if (index === 1 && canSave) void handleSave();
@@ -68,7 +68,7 @@ export function SettingsAgentExecutionPage() {
         {
           key: "Enter/Space",
           label: footer.focusedIndex === 0 ? "Cancel" : "Save",
-          disabled: footer.focusedIndex === 1 && !canSave,
+          disabled: footer.isFocusedActionDisabled,
         },
       ]
     : [
@@ -126,7 +126,7 @@ export function SettingsAgentExecutionPage() {
             variant="ghost"
             onClick={handleCancel}
             disabled={isSaving}
-            highlighted={footer.inFooter && footer.focusedIndex === 0}
+            highlighted={footer.inFooter && footer.focusedIndex === 0 && !isSaving}
           >
             Cancel
           </Button>
@@ -135,14 +135,14 @@ export function SettingsAgentExecutionPage() {
             variant="success"
             onClick={handleSave}
             disabled={!canSave}
-            highlighted={footer.inFooter && footer.focusedIndex === 1}
+            highlighted={footer.inFooter && footer.focusedIndex === 1 && canSave}
           >
             {isSaving ? "Saving..." : "Save"}
           </Button>
         </>
       }
     >
-      <div className="space-y-6">
+      <div ref={focusFallbackRef} tabIndex={-1} className="space-y-6 focus:outline-none">
         <RadioGroup
           value={effectiveMode}
           onChange={onExecutionChange}
@@ -156,7 +156,6 @@ export function SettingsAgentExecutionPage() {
           wrap={false}
           onNavigationBoundaryReached={(direction, event) => {
             if (direction === "next" && toVerticalBoundaryDirection(direction, event.key) === "down") {
-              clearCurrentFocus();
               footer.enterFooter();
             }
           }}

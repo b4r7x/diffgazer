@@ -71,6 +71,7 @@ export function DiagnosticsPage() {
   const {
     focusedIndex,
     getButtonProps,
+    focusFallbackRef,
     isRefreshingAll,
     refreshError,
     lastRefreshedAt,
@@ -100,7 +101,7 @@ export function DiagnosticsPage() {
           <span className="text-xs text-tui-muted">{overallState}</span>
         </PanelHeader>
 
-        <PanelContent className="p-6 space-y-8">
+        <PanelContent ref={focusFallbackRef} tabIndex={-1} className="p-6 space-y-8 focus:outline-none">
           <div className="grid grid-cols-2 gap-x-8 text-sm">
             <div className="flex flex-col">
               <span className="text-tui-muted text-xs uppercase tracking-wider mb-1">Version Info</span>

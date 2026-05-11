@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useLayoutEffect, useRef } from "react";
 import { getFocusedNavigationValue, useFocusZone, useKey, useScopedNavigation } from "@diffgazer/keys";
 
 export type TrustFormFocusZone = "list" | "buttons";
@@ -9,6 +9,7 @@ const TRUST_FORM_ACTIONS = ["save", "revoke"] as const;
 
 interface UseTrustFormKeyboardOptions {
   enabled?: boolean;
+  actionsDisabled?: boolean;
   scope?: string;
   onListFocusRequest?: () => void;
   onSave?: () => void;
@@ -30,12 +31,14 @@ function getFocusedAction(container: HTMLElement | null): TrustFormAction | null
 
 export function useTrustFormKeyboard({
   enabled = true,
+  actionsDisabled = false,
   scope,
   onListFocusRequest,
   onSave,
   onRevoke,
 }: UseTrustFormKeyboardOptions) {
   const actionRowRef = useRef<HTMLDivElement>(null);
+  const keyboardEnabled = enabled && !actionsDisabled;
   const { zone, setZone, getKeyOptions } = useFocusZone<TrustFormFocusZone>({
     initial: "list",
     zones: TRUST_FORM_ZONES,
@@ -53,7 +56,7 @@ export function useTrustFormKeyboard({
     orientation: "horizontal",
     moveFocus: true,
     wrap: false,
-    enabled: enabled && zone === "buttons",
+    enabled: keyboardEnabled && zone === "buttons",
     scope,
     focusWithinOnly: true,
   });
@@ -71,24 +74,33 @@ export function useTrustFormKeyboard({
   }, [setZone]);
 
   const focusActionButton = useCallback((action: TrustFormAction = focusedAction) => {
+    if (actionsDisabled) return;
     setZone("buttons");
     highlight(action);
     getActionButton(actionRowRef.current, action)?.focus();
-  }, [focusedAction, highlight, setZone]);
+  }, [actionsDisabled, focusedAction, highlight, setZone]);
 
   const handleActionFocus = useCallback((action: TrustFormAction) => {
+    if (actionsDisabled) return;
     setZone("buttons");
     highlight(action);
-  }, [highlight, setZone]);
+  }, [actionsDisabled, highlight, setZone]);
 
   const activateCurrentAction = useCallback(() => {
+    if (actionsDisabled) return;
     const action = getFocusedAction(actionRowRef.current) ?? focusedAction;
     if (action === "save") onSave?.();
     else onRevoke?.();
-  }, [focusedAction, onSave, onRevoke]);
+  }, [actionsDisabled, focusedAction, onSave, onRevoke]);
 
-  useKey("ArrowUp", enterListZone, getKeyOptions("buttons"));
-  useKey(["Enter", " "], activateCurrentAction, getKeyOptions("buttons"));
+  useLayoutEffect(() => {
+    if (!enabled || !actionsDisabled || zone !== "buttons") return;
+    setZone("list");
+    onListFocusRequest?.();
+  }, [actionsDisabled, enabled, onListFocusRequest, setZone, zone]);
+
+  useKey("ArrowUp", enterListZone, getKeyOptions("buttons", { enabled: keyboardEnabled }));
+  useKey(["Enter", " "], activateCurrentAction, getKeyOptions("buttons", { enabled: keyboardEnabled }));
 
   return {
     actionRowRef,

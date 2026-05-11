@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { Shortcut } from "@diffgazer/core/schemas/ui";
 import { useKey, useScope } from "@diffgazer/keys";
@@ -16,6 +16,7 @@ interface UseDiagnosticsKeyboardOptions {
 interface UseDiagnosticsKeyboardResult {
   focusedIndex: number;
   getButtonProps: ReturnType<typeof useFooterNavigation>["getButtonProps"];
+  focusFallbackRef: RefObject<HTMLDivElement | null>;
   isRefreshingAll: boolean;
   refreshError: string | null;
   lastRefreshedAt: string | null;
@@ -40,6 +41,7 @@ export function useDiagnosticsKeyboard({
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<string | null>(null);
   const refreshAllInFlight = useRef(false);
+  const focusFallbackRef = useRef<HTMLDivElement>(null);
 
   useScope(SETTINGS_DIAGNOSTICS_SCOPE);
 
@@ -83,9 +85,13 @@ export function useDiagnosticsKeyboard({
     }
   };
 
+  const refreshAllDisabled = isRefreshingAll || isRefreshingContext;
+  const contextActionDisabled = !canRegenerate || isRefreshingContext || isRefreshingAll;
   const { focusedIndex, inFooter, getButtonProps } = useFooterNavigation({
     enabled: true,
     buttonCount: BUTTON_COUNT,
+    disabledActions: [refreshAllDisabled, contextActionDisabled],
+    disabledFocusFallbackRef: focusFallbackRef,
     onAction: handleButtonAction,
     defaultZone: "footer",
     canExitFooter: false,
@@ -93,13 +99,21 @@ export function useDiagnosticsKeyboard({
 
   const footerShortcuts: Shortcut[] = inFooter
     ? [
-        { key: "\u2190/\u2192", label: "Move Action" },
-        { key: "Enter/Space", label: "Activate" },
-        { key: "r/R", label: "Refresh All" },
+          {
+            key: "\u2190/\u2192",
+            label: "Move Action",
+            disabled: refreshAllDisabled && contextActionDisabled,
+          },
+          {
+            key: "Enter/Space",
+            label: "Activate",
+            disabled: focusedIndex === 0 ? refreshAllDisabled : contextActionDisabled,
+          },
+        { key: "r/R", label: "Refresh All", disabled: refreshAllDisabled },
       ]
     : [
         { key: "\u2193", label: "Focus Actions" },
-        { key: "r/R", label: "Refresh All" },
+        { key: "r/R", label: "Refresh All", disabled: refreshAllDisabled },
       ];
 
   usePageFooter({
@@ -107,14 +121,21 @@ export function useDiagnosticsKeyboard({
     rightShortcuts: [{ key: "Esc", label: "Back" }],
   });
 
-  useKey("r", () => { void handleRefreshAll(); }, { scope: SETTINGS_DIAGNOSTICS_SCOPE });
-  useKey("R", () => { void handleRefreshAll(); }, { scope: SETTINGS_DIAGNOSTICS_SCOPE });
+  useKey("r", () => { void handleRefreshAll(); }, {
+    scope: SETTINGS_DIAGNOSTICS_SCOPE,
+    enabled: !refreshAllDisabled,
+  });
+  useKey("R", () => { void handleRefreshAll(); }, {
+    scope: SETTINGS_DIAGNOSTICS_SCOPE,
+    enabled: !refreshAllDisabled,
+  });
 
   useKey("Escape", () => navigate({ to: "/settings" }), { scope: SETTINGS_DIAGNOSTICS_SCOPE });
 
   return {
     focusedIndex,
     getButtonProps,
+    focusFallbackRef,
     isRefreshingAll,
     refreshError,
     lastRefreshedAt,

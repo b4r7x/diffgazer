@@ -194,7 +194,7 @@ export function ModelSelectDialog({
             onConfirm={() => handleConfirm()}
             canConfirm={filteredModels.length > 0}
             cancelFocused={focusZone === "footer" && footerButtonIndex === 0}
-            confirmFocused={focusZone === "footer" && footerButtonIndex === 1}
+            confirmFocused={focusZone === "footer" && footerButtonIndex === 1 && filteredModels.length > 0}
             getButtonProps={getFooterButtonProps}
             hints={FOOTER_HINTS}
           />

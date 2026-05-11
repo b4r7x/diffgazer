@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type RefCallback, type RefObject } from "react";
+import { useCallback, useEffect, useEffectEvent, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type RefCallback, type RefObject } from "react";
 import type { ModelInfo } from "@diffgazer/core/schemas/config";
 import {
   containsActiveElement,
@@ -73,6 +73,11 @@ function getModelFocusTargetId({
   );
 }
 
+function getEnabledFooterButtonIndex(index: number, canConfirm: boolean) {
+  if (index === 1 && canConfirm) return 1;
+  return 0;
+}
+
 export function useModelDialogKeyboard({
   open,
   currentModel,
@@ -91,9 +96,10 @@ export function useModelDialogKeyboard({
   const [filterIndex, setFilterIndex] = useState(0);
   const [footerButtonIndex, setFooterButtonIndex] = useState(1);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
-  const hasRestoredInitialListFocusRef = useRef(false);
+  const hasHandledInitialFocusRef = useRef(false);
   const footerButtonRefs = useRef(new Map<number, HTMLButtonElement>());
   const filterButtonRefs = useRef(new Map<number, HTMLButtonElement>());
+  const canConfirm = filteredModels.length > 0;
   const { zone: focusZone, setZone: setFocusZone, isZone } = useFocusZone({
     initial: "list" as FocusZone,
     zones: ["close", "search", "filters", "list", "footer"] as const,
@@ -116,15 +122,16 @@ export function useModelDialogKeyboard({
       closeButtonRef.current = node;
     },
     onFocus: () => {
-      if (!hasRestoredInitialListFocusRef.current) return;
+      if (!hasHandledInitialFocusRef.current) return;
       setFocusZone("close");
     },
   });
 
-  const focusFooterButton = (index: number) => {
-    setFooterButtonIndex(index);
-    footerButtonRefs.current.get(index)?.focus();
-  };
+  const focusFooterButton = useCallback((index: number) => {
+    const targetIndex = getEnabledFooterButtonIndex(index, canConfirm);
+    setFooterButtonIndex(targetIndex);
+    footerButtonRefs.current.get(targetIndex)?.focus();
+  }, [canConfirm]);
 
   const isFooterButtonFocused = () => {
     const button = footerButtonRefs.current.get(footerButtonIndex);
@@ -138,7 +145,7 @@ export function useModelDialogKeyboard({
     },
     onFocus: () => {
       setFocusZone("footer");
-      setFooterButtonIndex(index);
+      setFooterButtonIndex(getEnabledFooterButtonIndex(index, canConfirm));
     },
   });
 
@@ -198,16 +205,18 @@ export function useModelDialogKeyboard({
   };
 
   const resetDialogState = useEffectEvent(() => {
-    hasRestoredInitialListFocusRef.current = false;
+    hasHandledInitialFocusRef.current = false;
     resetFilters();
     setFocusZone("list");
     setFilterIndex(0);
-    setFooterButtonIndex(1);
+    setFooterButtonIndex(canConfirm ? 1 : 0);
     setCheckedModelId(currentModel);
     const targetId = currentModel ?? models[0]?.id;
     if (targetId && focusModelElement(targetId)) {
-      hasRestoredInitialListFocusRef.current = true;
+      hasHandledInitialFocusRef.current = true;
+      return;
     }
+    hasHandledInitialFocusRef.current = true;
   });
 
   const repairListFocus = useEffectEvent(() => {
@@ -220,18 +229,18 @@ export function useModelDialogKeyboard({
       ? containsActiveElement(listContainerRef.current)
       : false;
     if (targetId === focusedModelId && listHasFocus) {
-      hasRestoredInitialListFocusRef.current = true;
+      hasHandledInitialFocusRef.current = true;
       return;
     }
 
     if (targetId !== undefined && focusModelElement(targetId)) {
-      hasRestoredInitialListFocusRef.current = true;
+      hasHandledInitialFocusRef.current = true;
     }
   });
 
   useEffect(() => {
     if (!open) {
-      hasRestoredInitialListFocusRef.current = false;
+      hasHandledInitialFocusRef.current = false;
       return;
     }
     resetDialogState();
@@ -241,6 +250,11 @@ export function useModelDialogKeyboard({
     if (!open || focusZone !== "list" || filteredModels.length === 0) return;
     repairListFocus();
   }, [open, focusZone, filteredModels, focusedModelId, currentModel]);
+
+  useEffect(() => {
+    if (!open || focusZone !== "footer" || canConfirm || footerButtonIndex !== 1) return;
+    focusFooterButton(0);
+  }, [canConfirm, focusFooterButton, footerButtonIndex, focusZone, open]);
 
   const handleConfirm = (explicitModelId?: string) => {
     const nextModelId = [explicitModelId, checkedModelId, focusedModelId]
@@ -284,6 +298,11 @@ export function useModelDialogKeyboard({
   },
     { enabled: open && isZone("filters"), preventDefault: true });
   useKey("ArrowDown", () => {
+    if (filteredModels.length === 0) {
+      setFocusZone("footer");
+      focusFooterButton(0);
+      return;
+    }
     setFocusZone("list");
     focusBoundaryModel("first");
   }, { enabled: open && isZone("filters"), preventDefault: true });
@@ -291,16 +310,22 @@ export function useModelDialogKeyboard({
   useKey("ArrowLeft", () => focusFooterButton(0), { enabled: open && isZone("footer") });
   useKey("ArrowRight", () => focusFooterButton(1), { enabled: open && isZone("footer") });
   useKey("ArrowUp", () => {
+    if (filteredModels.length === 0) {
+      focusFilterButton(filterIndex);
+      return;
+    }
     setFocusZone("list");
     focusBoundaryModel("last");
   }, { enabled: open && isZone("footer") });
   useKey("Enter", () => {
     if (isFooterButtonFocused()) return;
-    footerButtonIndex === 0 ? handleCancel() : handleConfirm();
+    if (footerButtonIndex === 0) handleCancel();
+    else if (canConfirm) handleConfirm();
   }, { enabled: open && isZone("footer") });
   useKey(" ", () => {
     if (isFooterButtonFocused()) return;
-    footerButtonIndex === 0 ? handleCancel() : handleConfirm();
+    if (footerButtonIndex === 0) handleCancel();
+    else if (canConfirm) handleConfirm();
   }, { enabled: open && isZone("footer") });
 
   useKey("/", () => {
@@ -347,6 +372,11 @@ export function useModelDialogKeyboard({
 
     if (event.key === "ArrowDown") {
       event.preventDefault();
+      if (filteredModels.length === 0) {
+        setFocusZone("footer");
+        focusFooterButton(0);
+        return;
+      }
       setFocusZone("list");
       focusBoundaryModel("first");
     }

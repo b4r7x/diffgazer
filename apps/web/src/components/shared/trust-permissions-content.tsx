@@ -87,7 +87,8 @@ export function TrustPermissionsContent(props: TrustPermissionsContentProps) {
     focusActionButton,
     handleActionFocus,
   } = useTrustFormKeyboard({
-    enabled: showActions && !isLoading,
+    enabled: showActions,
+    actionsDisabled: isLoading,
     scope: keyboardScope,
     onListFocusRequest: focusListItem,
     onSave,
@@ -179,7 +180,7 @@ export function TrustPermissionsContent(props: TrustPermissionsContentProps) {
             onClick={onSave}
             onFocus={() => handleActionFocus("save")}
             disabled={isLoading}
-            highlighted={focusZone === "buttons" && focusedAction === "save"}
+            highlighted={focusZone === "buttons" && focusedAction === "save" && !isLoading}
           >
             {isLoading ? "[ Saving... ]" : "[ Save Changes ]"}
           </Button>
@@ -189,7 +190,7 @@ export function TrustPermissionsContent(props: TrustPermissionsContentProps) {
             onClick={onRevoke}
             onFocus={() => handleActionFocus("revoke")}
             disabled={isLoading}
-            highlighted={focusZone === "buttons" && focusedAction === "revoke"}
+            highlighted={focusZone === "buttons" && focusedAction === "revoke" && !isLoading}
           >
             {isLoading ? "[ Revoking... ]" : "[ Revoke Trust ]"}
           </Button>

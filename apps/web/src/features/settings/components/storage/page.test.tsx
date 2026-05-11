@@ -10,9 +10,22 @@ type QueryStateHandlers = {
   success: () => unknown;
 };
 
-const { mockNavigate, mockSaveSettings } = vi.hoisted(() => ({
+const {
+  mockNavigate,
+  mockSaveSettings,
+  mockSettingsQuery,
+  mockIsSaving,
+} = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
   mockSaveSettings: vi.fn(),
+  mockSettingsQuery: {
+    current: {
+      data: { secretsStorage: "file" },
+      error: null,
+      isLoading: false,
+    },
+  },
+  mockIsSaving: { current: false },
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -20,13 +33,9 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 vi.mock("@diffgazer/core/api/hooks", () => ({
-  useSettings: () => ({
-    data: { agentExecution: "sequential" },
-    error: null,
-    isLoading: false,
-  }),
+  useSettings: () => mockSettingsQuery.current,
   useSaveSettings: () => ({
-    isPending: false,
+    isPending: mockIsSaving.current,
     mutateAsync: mockSaveSettings,
   }),
   matchQueryState: (
@@ -39,46 +48,38 @@ vi.mock("@diffgazer/core/api/hooks", () => ({
   },
 }));
 
-import { SettingsAgentExecutionPage } from "./page";
+import { SettingsStoragePage } from "./page";
 
 function renderPage() {
   return render(
     <FooterProvider>
       <KeyboardProvider>
-        <SettingsAgentExecutionPage />
+        <SettingsStoragePage />
       </KeyboardProvider>
     </FooterProvider>,
   );
 }
 
-describe("SettingsAgentExecutionPage", () => {
+describe("SettingsStoragePage keyboard behavior", () => {
   beforeEach(() => {
     mockNavigate.mockReset();
     mockSaveSettings.mockReset();
-  });
-
-  it("moves from execution mode choices to footer actions at the lower boundary", async () => {
-    const user = userEvent.setup();
-    renderPage();
-
-    const sequential = screen.getByRole("radio", { name: /sequential/i });
-    const parallel = screen.getByRole("radio", { name: /parallel/i });
-
-    await waitFor(() => expect(sequential).toHaveFocus());
-
-    await user.keyboard("{ArrowDown}");
-    expect(parallel).toHaveFocus();
-
-    await user.keyboard("{ArrowDown}");
-
-    expect(screen.getByRole("button", { name: "Cancel" })).toHaveFocus();
+    mockSaveSettings.mockResolvedValue(undefined);
+    mockSettingsQuery.current = {
+      data: { secretsStorage: "file" },
+      error: null,
+      isLoading: false,
+    };
+    mockIsSaving.current = false;
   });
 
   it("does not move footer focus onto a disabled save action", async () => {
     const user = userEvent.setup();
     renderPage();
 
-    await waitFor(() => expect(screen.getByRole("radio", { name: /sequential/i })).toHaveFocus());
+    await waitFor(() => {
+      expect(screen.getByRole("radio", { name: /file storage/i })).toHaveFocus();
+    });
 
     await user.keyboard("{ArrowDown}{ArrowDown}");
 
@@ -91,5 +92,19 @@ describe("SettingsAgentExecutionPage", () => {
 
     expect(cancel).toHaveFocus();
     expect(save).not.toHaveFocus();
+  });
+
+  it("focuses and activates save after the storage choice changes", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole("radio", { name: /file storage/i })).toHaveFocus();
+    });
+
+    await user.keyboard("{ArrowDown} {ArrowDown}{ArrowRight}{Enter}");
+
+    expect(screen.getByRole("button", { name: "Save" })).toHaveFocus();
+    expect(mockSaveSettings).toHaveBeenCalledWith({ secretsStorage: "keyring" });
   });
 });

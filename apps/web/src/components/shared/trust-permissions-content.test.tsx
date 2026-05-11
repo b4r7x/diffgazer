@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { KeyboardProvider, useKey, useScope } from "@diffgazer/keys";
 import type { TrustCapabilities } from "@diffgazer/core/schemas/config";
@@ -11,11 +11,13 @@ const TEST_SCOPE = "trust-permissions-test";
 interface TrustPermissionsTestHarnessProps {
   onSave?: () => void;
   onRevoke?: () => void;
+  isLoading?: boolean;
 }
 
 function TrustPermissionsTestHarness({
   onSave = () => {},
   onRevoke = () => {},
+  isLoading = false,
 }: TrustPermissionsTestHarnessProps) {
   const [value, setValue] = useState<TrustCapabilities>({
     readFiles: true,
@@ -33,6 +35,7 @@ function TrustPermissionsTestHarness({
       keyboardScope={TEST_SCOPE}
       onSave={onSave}
       onRevoke={onRevoke}
+      isLoading={isLoading}
     />
   );
 }
@@ -115,7 +118,7 @@ describe("TrustPermissionsContent", () => {
     await user.keyboard("{ArrowDown}");
     expect(screen.getByRole("button", { name: /save changes/i })).toHaveFocus();
 
-    screen.getByRole("button", { name: /outside action/i }).focus();
+    await user.click(screen.getByRole("button", { name: /outside action/i }));
     await user.keyboard("{Enter}");
 
     expect(onSave).not.toHaveBeenCalled();
@@ -146,7 +149,40 @@ describe("TrustPermissionsContent", () => {
     expect(readFilesOption).toHaveFocus();
   });
 
-  it("does not install a private shortcut scope when rendered without actions", async () => {
+  it("moves focus back to permissions when focused action buttons become disabled while loading", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn();
+    const onRevoke = vi.fn();
+
+    const { rerender } = render(
+      <KeyboardProvider>
+        <TrustPermissionsTestHarness onSave={onSave} onRevoke={onRevoke} />
+      </KeyboardProvider>,
+    );
+
+    const readFilesOption = screen.getByRole("checkbox", { name: /repository access/i });
+    await user.tab();
+    await user.keyboard("{ArrowDown}{ArrowRight}");
+    expect(screen.getByRole("button", { name: /revoke trust/i })).toHaveFocus();
+
+    rerender(
+      <KeyboardProvider>
+        <TrustPermissionsTestHarness onSave={onSave} onRevoke={onRevoke} isLoading />
+      </KeyboardProvider>,
+    );
+
+    await waitFor(() => expect(readFilesOption).toHaveFocus());
+
+    expect(screen.getByRole("button", { name: /saving/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /revoking/i })).toBeDisabled();
+
+    await user.keyboard("{Enter} ");
+
+    expect(onSave).not.toHaveBeenCalled();
+    expect(onRevoke).not.toHaveBeenCalled();
+  });
+
+  it("keeps surrounding shortcuts active when actions are hidden", async () => {
     const user = userEvent.setup();
     const onShortcut = vi.fn();
 

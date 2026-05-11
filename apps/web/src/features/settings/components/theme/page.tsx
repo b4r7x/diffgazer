@@ -20,12 +20,6 @@ function isWebTheme(value: string | null): value is WebTheme {
   return value === "auto" || value === "dark" || value === "light";
 }
 
-function clearCurrentFocus() {
-  const activeElement = document.activeElement;
-  const View = document.defaultView;
-  if (View && activeElement instanceof View.HTMLElement) activeElement.blur();
-}
-
 export function SettingsThemePage() {
   const { theme: savedTheme, resolved: systemResolved, setTheme } = useTheme();
 
@@ -60,6 +54,7 @@ function SettingsThemeEditor({
   useScope("settings-theme");
 
   const canSave = selectedTheme !== savedTheme;
+  const isSaveDisabled = !canSave;
 
   const handleCancel = () => navigate({ to: "/settings" });
 
@@ -72,6 +67,7 @@ function SettingsThemeEditor({
   const footer = useFooterNavigation({
     enabled: true,
     buttonCount: 2,
+    disabledActions: [false, isSaveDisabled],
     onAction: (index) => {
       if (index === 0) handleCancel();
       else if (index === 1 && canSave) handleSave();
@@ -81,11 +77,11 @@ function SettingsThemeEditor({
   const footerShortcuts: Shortcut[] = footer.inFooter
     ? [
         { key: "←/→", label: "Move Action" },
-        {
-          key: "Enter/Space",
-          label: footer.focusedIndex === 0 ? "Cancel" : "Save",
-          disabled: footer.focusedIndex === 1 && !canSave,
-        },
+          {
+            key: "Enter/Space",
+            label: footer.focusedIndex === 0 ? "Cancel" : "Save",
+            disabled: footer.isFocusedActionDisabled,
+          },
       ]
     : [
         { key: "↑/↓", label: "Navigate" },
@@ -166,7 +162,6 @@ function SettingsThemeEditor({
               enabled={!footer.inFooter}
               onBoundaryReached={(direction) => {
                 if (direction === "down") {
-                  clearCurrentFocus();
                   footer.enterFooter();
                 }
               }}
@@ -191,7 +186,7 @@ function SettingsThemeEditor({
                   variant="success"
                   onClick={handleSave}
                   disabled={!canSave}
-                  highlighted={footer.inFooter && footer.focusedIndex === 1}
+                  highlighted={footer.inFooter && footer.focusedIndex === 1 && canSave}
                 >
                   Save
                 </Button>

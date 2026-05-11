@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { KeyboardProvider } from "@diffgazer/keys";
+import { FooterProvider } from "@/components/layout";
 import type { DiagnosticsData } from "@diffgazer/core/api/hooks";
 
 const {
@@ -22,10 +23,6 @@ vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
 }));
 
-vi.mock("@/hooks/use-page-footer", () => ({
-  usePageFooter: () => {},
-}));
-
 vi.mock("@/app/providers/config-provider", () => ({
   useConfigData: () => ({
     provider: "openrouter",
@@ -42,9 +39,11 @@ import { DiagnosticsPage } from "./page";
 
 function renderPage() {
   return render(
-    <KeyboardProvider>
-      <DiagnosticsPage />
-    </KeyboardProvider>,
+    <FooterProvider>
+      <KeyboardProvider>
+        <DiagnosticsPage />
+      </KeyboardProvider>
+    </FooterProvider>,
   );
 }
 
@@ -136,8 +135,10 @@ describe("DiagnosticsPage keyboard footer navigation", () => {
       expect(diagnosticsPanel).toHaveAttribute("aria-busy", "true");
       expect(screen.getByRole("button", { name: "Refreshing..." })).toBeDisabled();
     });
+    expect(screen.getByRole("button", { name: "Refreshing..." })).not.toHaveFocus();
 
     await user.click(screen.getByRole("button", { name: "Refreshing..." }));
+    await user.keyboard("r");
 
     expect(mockRetryServer).toHaveBeenCalledTimes(1);
     expect(mockRefetchContext).toHaveBeenCalledTimes(1);

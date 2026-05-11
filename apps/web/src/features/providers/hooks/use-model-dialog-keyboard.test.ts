@@ -17,6 +17,8 @@ function makeModel(id: string): ModelInfo {
   };
 }
 
+const DEFAULT_INTERACTIVE_MODELS = [makeModel("model-a"), makeModel("model-b")];
+
 function TestLazyLoadModelList({ models }: { models: ModelInfo[] }) {
   const listContainerRef = useRef<HTMLDivElement>(null);
   useModelDialogKeyboard({
@@ -104,6 +106,68 @@ function TestModelDialogKeyboard({
   );
 }
 
+function TestModelFooterKeyboard({
+  models,
+  filteredModels = models,
+  onSelect,
+  onOpenChange,
+}: {
+  models: ModelInfo[];
+  filteredModels?: ModelInfo[];
+  onSelect: (modelId: string) => void;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const listContainerRef = useRef<HTMLDivElement>(null);
+  const keyboard = useModelDialogKeyboard({
+    open: true,
+    currentModel: undefined,
+    models,
+    filteredModels,
+    searchQuery: "",
+    setSearchQuery: vi.fn(),
+    cycleTierFilter: vi.fn(),
+    resetFilters: vi.fn(),
+    searchInputRef,
+    listContainerRef,
+    onSelect,
+    onOpenChange,
+  });
+  const cancelProps = keyboard.getFooterButtonProps(0);
+  const confirmProps = keyboard.getFooterButtonProps(1);
+
+  return createElement(
+    "div",
+    null,
+    createElement("input", { "aria-label": "Search models", ref: searchInputRef }),
+    createElement(
+      "div",
+      { ref: listContainerRef, role: "radiogroup" },
+      ...filteredModels.map((model) =>
+        createElement("div", {
+          key: model.id,
+          role: "radio",
+          "data-value": model.id,
+          tabIndex: 0,
+        }, model.name),
+      ),
+    ),
+    createElement("button", {
+      type: "button",
+      ref: cancelProps.ref,
+      onFocus: cancelProps.onFocus,
+      onClick: () => keyboard.handleCancel(),
+    }, "Cancel"),
+    createElement("button", {
+      type: "button",
+      ref: confirmProps.ref,
+      onFocus: confirmProps.onFocus,
+      onClick: () => keyboard.handleConfirm(),
+      disabled: filteredModels.length === 0,
+    }, "Confirm"),
+  );
+}
+
 function renderDialogSubject(models: ModelInfo[], currentModel?: string) {
   const user = userEvent.setup();
   const onSelect = vi.fn();
@@ -118,16 +182,44 @@ function renderDialogSubject(models: ModelInfo[], currentModel?: string) {
   return { user, onSelect, onOpenChange };
 }
 
+function renderFooterSubject(models: ModelInfo[], filteredModels = models) {
+  const user = userEvent.setup();
+  const onSelect = vi.fn();
+  const onOpenChange = vi.fn();
+
+  const view = render(createElement(
+    KeyboardProvider,
+    null,
+    createElement(TestModelFooterKeyboard, { models, filteredModels, onSelect, onOpenChange }),
+  ));
+
+  const rerenderFooterSubject = (nextFilteredModels: ModelInfo[]) => {
+    view.rerender(createElement(
+      KeyboardProvider,
+      null,
+      createElement(TestModelFooterKeyboard, {
+        models,
+        filteredModels: nextFilteredModels,
+        onSelect,
+        onOpenChange,
+      }),
+    ));
+  };
+
+  return { rerenderFooterSubject, user, onSelect, onOpenChange };
+}
+
 function TestInteractiveModelDialogKeyboard({
   onTierFilter,
   focusCloseDuringOpen = false,
   currentModel,
+  models = DEFAULT_INTERACTIVE_MODELS,
 }: {
   onTierFilter: (filter: TierFilter) => void;
   focusCloseDuringOpen?: boolean;
   currentModel?: string;
+  models?: ModelInfo[];
 }) {
-  const models = [makeModel("model-a"), makeModel("model-b")];
   const [searchQuery, setSearchQuery] = useState("");
   const [tierFilter, setTierFilter] = useState<TierFilter>("all");
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -152,6 +244,8 @@ function TestInteractiveModelDialogKeyboard({
     onOpenChange: vi.fn(),
   });
   const closeButtonProps = keyboard.getCloseButtonProps();
+  const cancelProps = keyboard.getFooterButtonProps(0);
+  const confirmProps = keyboard.getFooterButtonProps(1);
 
   useLayoutEffect(() => {
     if (focusCloseDuringOpen) closeButtonRef.current?.focus();
@@ -199,12 +293,23 @@ function TestInteractiveModelDialogKeyboard({
         }, model.name),
       ),
     ),
+    createElement("button", {
+      type: "button",
+      ref: cancelProps.ref,
+      onFocus: cancelProps.onFocus,
+    }, "Cancel"),
+    createElement("button", {
+      type: "button",
+      ref: confirmProps.ref,
+      onFocus: confirmProps.onFocus,
+      disabled: models.length === 0,
+    }, "Confirm"),
   );
 }
 
 function renderInteractiveSubject(
   onTierFilter = vi.fn(),
-  options: { focusCloseDuringOpen?: boolean; currentModel?: string } = {},
+  options: { focusCloseDuringOpen?: boolean; currentModel?: string; models?: ModelInfo[] } = {},
 ) {
   const user = userEvent.setup();
 
@@ -245,6 +350,51 @@ describe("useModelDialogKeyboard", () => {
 
     expect(onSelect).not.toHaveBeenCalled();
     expect(onOpenChange).not.toHaveBeenCalled();
+  });
+
+  it("keeps footer focus on cancel when confirm is disabled", async () => {
+    const { user, onSelect, onOpenChange } = renderFooterSubject([]);
+
+    const cancel = screen.getByRole("button", { name: "Cancel" });
+    const confirm = screen.getByRole("button", { name: "Confirm" });
+    await user.click(cancel);
+
+    expect(cancel).toHaveFocus();
+    expect(confirm).toBeDisabled();
+
+    await user.keyboard("{ArrowRight}");
+
+    expect(cancel).toHaveFocus();
+    expect(confirm).not.toHaveFocus();
+
+    await user.keyboard("{Enter}");
+
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("repairs footer focus when the filtered model list becomes empty", async () => {
+    const visibleModel = makeModel("visible-model");
+    const { rerenderFooterSubject, user, onSelect, onOpenChange } = renderFooterSubject([visibleModel]);
+
+    await waitFor(() => {
+      expect(screen.getByRole("radio", { name: "visible-model" })).toHaveFocus();
+    });
+
+    await user.keyboard("j");
+    expect(screen.getByRole("button", { name: "Confirm" })).toHaveFocus();
+
+    rerenderFooterSubject([]);
+
+    const cancel = screen.getByRole("button", { name: "Cancel" });
+    const confirm = screen.getByRole("button", { name: "Confirm" });
+    await waitFor(() => expect(cancel).toHaveFocus());
+    expect(confirm).toBeDisabled();
+
+    await user.keyboard("{Enter}");
+
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
   it("confirms the first filtered model when checked and focused models are stale", async () => {
@@ -289,6 +439,31 @@ describe("useModelDialogKeyboard", () => {
 
     await user.keyboard("{ArrowDown}");
     expect(screen.getByRole("textbox", { name: /search models/i })).toHaveFocus();
+  });
+
+  it("moves from a directly focused close button back to search when no models are focusable", async () => {
+    const { user } = renderInteractiveSubject(vi.fn(), { models: [] });
+
+    const closeButton = screen.getByRole("button", { name: "Close" });
+    await user.click(closeButton);
+
+    expect(closeButton).toHaveFocus();
+
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByRole("textbox", { name: /search models/i })).toHaveFocus();
+  });
+
+  it("moves from model filters to cancel when no models are focusable", async () => {
+    const { user } = renderInteractiveSubject(vi.fn(), { models: [] });
+
+    await user.keyboard("/");
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByRole("radio", { name: "all" })).toHaveFocus();
+
+    await user.keyboard("{ArrowDown}");
+
+    expect(screen.getByRole("button", { name: "Cancel" })).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Confirm" })).toBeDisabled();
   });
 
   it("restores native close focus during open to the current model", async () => {

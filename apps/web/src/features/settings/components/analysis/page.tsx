@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { Shortcut } from "@diffgazer/core/schemas/ui";
 import { getErrorMessage } from "@diffgazer/core/errors";
@@ -18,12 +18,9 @@ function isLensId(value: string, lensOptions: Array<{ id: LensId }>): value is L
   return lensOptions.some((lens) => lens.id === value);
 }
 
-function clearCurrentFocus() {
-  if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
-}
-
 export function SettingsAnalysisPage() {
   const navigate = useNavigate();
+  const focusFallbackRef = useRef<HTMLDivElement>(null);
   const settingsQuery = useSettings();
   const settings = settingsQuery.data;
   const settingsError = settingsQuery.error?.message ?? null;
@@ -59,6 +56,7 @@ export function SettingsAnalysisPage() {
   useKey("Escape", () => navigate({ to: "/settings" }));
 
   const canSave = viewState === "success" && !isSaving && isDirty && hasLensSelection;
+  const isSaveDisabled = !canSave;
 
   const handleCancel = () => navigate({ to: "/settings" });
 
@@ -76,6 +74,8 @@ export function SettingsAnalysisPage() {
   const footer = useFooterNavigation({
     enabled: viewState === "success",
     buttonCount: 2,
+    disabledActions: [isSaving, isSaveDisabled],
+    disabledFocusFallbackRef: focusFallbackRef,
     onAction: (index) => {
       if (index === 0) handleCancel();
       else if (index === 1 && canSave) void handleSave();
@@ -97,7 +97,7 @@ export function SettingsAnalysisPage() {
           {
             key: "Enter/Space",
             label: footer.focusedIndex === 0 ? "Cancel" : "Save",
-            disabled: footer.focusedIndex === 1 && !canSave,
+            disabled: footer.isFocusedActionDisabled,
           },
         ]
       : [{ key: "Enter/Space", label: "Back" }]
@@ -126,7 +126,7 @@ export function SettingsAnalysisPage() {
             variant="ghost"
             onClick={handleCancel}
             disabled={isSaving}
-            highlighted={isButtonsZone && footer.focusedIndex === 0}
+            highlighted={isButtonsZone && footer.focusedIndex === 0 && !isSaving}
           >
             Cancel
           </Button>
@@ -135,7 +135,7 @@ export function SettingsAnalysisPage() {
             variant="success"
             onClick={handleSave}
             disabled={!canSave}
-            highlighted={isButtonsZone && footer.focusedIndex === 1}
+            highlighted={isButtonsZone && footer.focusedIndex === 1 && canSave}
           >
             {isSaving ? "Saving..." : "Save"}
           </Button>
@@ -149,7 +149,7 @@ export function SettingsAnalysisPage() {
       ) : viewState === "empty" ? (
         <p className="text-tui-muted text-sm">No analysis agents are currently available.</p>
       ) : (
-        <div className="space-y-3">
+        <div ref={focusFallbackRef} tabIndex={-1} className="space-y-3 focus:outline-none">
           <AnalysisSelectorContent
             options={lensOptions}
             value={effectiveLenses}
@@ -159,7 +159,6 @@ export function SettingsAnalysisPage() {
             disabled={isSaving}
             onBoundaryReached={(direction) => {
               if (direction === "down") {
-                clearCurrentFocus();
                 footer.enterFooter();
               }
             }}

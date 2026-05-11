@@ -59,7 +59,7 @@ export function ApiKeyFooter({
           disabled={!canSubmit || isSubmitting}
           className={cn(
             "h-auto px-4 py-1.5",
-            focused === "confirm" &&
+            focused === "confirm" && canSubmit && !isSubmitting &&
               "ring-2 ring-tui-blue ring-offset-2 ring-offset-tui-bg"
           )}
         >

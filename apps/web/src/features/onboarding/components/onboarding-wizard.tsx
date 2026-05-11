@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { CardLayout } from "@/components/ui/card-layout";
 import { Button } from "@diffgazer/ui/components/button";
@@ -38,15 +38,15 @@ const STEP_LABELS: Record<OnboardingStep, string> = {
   execution: "Execution",
 };
 
-function clearCurrentFocus() {
-  if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
-}
-
-function getStepShortcuts(currentStep: string, isButtonsZone: boolean): Shortcut[] {
+function getStepShortcuts(
+  currentStep: string,
+  isButtonsZone: boolean,
+  actionDisabled = false,
+): Shortcut[] {
   if (isButtonsZone) {
     return [
       { key: "←/→", label: "Move Action" },
-      { key: "Enter/Space", label: "Activate Action" },
+      { key: "Enter/Space", label: "Activate Action", disabled: actionDisabled },
       { key: "↑", label: "Back to Options" },
     ];
   }
@@ -101,6 +101,7 @@ function getStepShortcuts(currentStep: string, isButtonsZone: boolean): Shortcut
 
 export function OnboardingWizard() {
   const navigate = useNavigate();
+  const focusFallbackRef = useRef<HTMLDivElement>(null);
   const {
     currentStep,
     wizardData,
@@ -120,6 +121,10 @@ export function OnboardingWizard() {
   const buttonCount = isFirstStep ? 1 : 2;
   const primaryButtonIndex = isFirstStep ? 0 : 1;
   const canActivatePrimary = isLastStep ? canProceed && !isSubmitting : canProceed;
+  const isPrimaryDisabled = isLastStep ? !canProceed || isSubmitting : !canProceed;
+  const disabledFooterActions = isFirstStep
+    ? [isPrimaryDisabled]
+    : [isSubmitting, isPrimaryDisabled];
 
   const handleComplete = async () => {
     try {
@@ -144,6 +149,8 @@ export function OnboardingWizard() {
   const footer = useFooterNavigation({
     enabled: true,
     buttonCount,
+    disabledActions: disabledFooterActions,
+    disabledFocusFallbackRef: focusFallbackRef,
     allowInInput: true,
     onAction: (index) => {
       if (isFirstStep) {
@@ -163,12 +170,15 @@ export function OnboardingWizard() {
   }, [currentStep]);
 
   usePageFooter({
-    shortcuts: getStepShortcuts(currentStep, footer.inFooter),
+    shortcuts: getStepShortcuts(
+      currentStep,
+      footer.inFooter,
+      footer.isFocusedActionDisabled,
+    ),
   });
 
   const handleStepBoundary = (direction: "up" | "down") => {
     if (direction !== "down") return;
-    clearCurrentFocus();
     footer.enterFooter();
   };
 
@@ -177,7 +187,6 @@ export function OnboardingWizard() {
     if (!canProceedForStep(currentStep, projectedData)) return;
 
     if (isLastStep) {
-      clearCurrentFocus();
       footer.enterFooter(primaryButtonIndex);
       return;
     }
@@ -267,7 +276,7 @@ export function OnboardingWizard() {
               size="sm"
               onClick={back}
               disabled={isSubmitting}
-              className={cn(footer.inFooter && footer.focusedIndex === 0 && "ring-2 ring-tui-blue")}
+              className={cn(footer.inFooter && footer.focusedIndex === 0 && !isSubmitting && "ring-2 ring-tui-blue")}
             >
               Back
             </Button>
@@ -278,8 +287,8 @@ export function OnboardingWizard() {
               variant="success"
               size="sm"
               onClick={handlePrimaryAction}
-              disabled={!canProceed || isSubmitting}
-              className={cn(footer.inFooter && footer.focusedIndex === primaryButtonIndex && "ring-2 ring-tui-blue")}
+              disabled={isPrimaryDisabled}
+              className={cn(footer.inFooter && footer.focusedIndex === primaryButtonIndex && !isPrimaryDisabled && "ring-2 ring-tui-blue")}
             >
               {isSubmitting ? "Saving..." : "Complete Setup"}
             </Button>
@@ -288,8 +297,8 @@ export function OnboardingWizard() {
               {...footer.getButtonProps(primaryButtonIndex)}
               size="sm"
               onClick={handlePrimaryAction}
-              disabled={!canProceed}
-              className={cn(footer.inFooter && footer.focusedIndex === primaryButtonIndex && "ring-2 ring-tui-blue")}
+              disabled={isPrimaryDisabled}
+              className={cn(footer.inFooter && footer.focusedIndex === primaryButtonIndex && !isPrimaryDisabled && "ring-2 ring-tui-blue")}
             >
               Next
             </Button>
@@ -297,7 +306,7 @@ export function OnboardingWizard() {
         </>
       }
     >
-      <div className="space-y-4">
+      <div ref={focusFallbackRef} tabIndex={-1} className="space-y-4 focus:outline-none">
         <HorizontalStepper steps={steps} value={currentStep} aria-label="Setup progress">
           {steps.map((step) => (
             <HorizontalStepper.Step key={step} value={step}>

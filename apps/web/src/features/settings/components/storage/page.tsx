@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { SecretsStorage } from "@diffgazer/core/schemas/config";
 import type { Shortcut } from "@diffgazer/core/schemas/ui";
@@ -12,12 +12,9 @@ import { useKey, useScope } from "@diffgazer/keys";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useFooterNavigation } from "@/hooks/use-footer-navigation.js";
 
-function clearCurrentFocus() {
-  if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
-}
-
 export function SettingsStoragePage() {
   const navigate = useNavigate();
+  const focusFallbackRef = useRef<HTMLDivElement>(null);
   const settingsQuery = useSettings();
   const { data: settings, error: settingsQueryError } = settingsQuery;
   const settingsError = settingsQueryError?.message ?? null;
@@ -33,6 +30,7 @@ export function SettingsStoragePage() {
 
   const isDirty = settings?.secretsStorage !== effectiveStorage;
   const canSave = !isSaving && !!effectiveStorage && isDirty;
+  const isSaveDisabled = !canSave;
 
   const handleCancel = () => navigate({ to: "/settings" });
 
@@ -50,6 +48,8 @@ export function SettingsStoragePage() {
   const footer = useFooterNavigation({
     enabled: true,
     buttonCount: 2,
+    disabledActions: [isSaving, isSaveDisabled],
+    disabledFocusFallbackRef: focusFallbackRef,
     onAction: (index) => {
       if (index === 0) handleCancel();
       else if (index === 1 && canSave) void handleSave();
@@ -62,7 +62,7 @@ export function SettingsStoragePage() {
         {
           key: "Enter/Space",
           label: footer.focusedIndex === 0 ? "Cancel" : "Save",
-          disabled: footer.focusedIndex === 1 && !canSave,
+          disabled: footer.isFocusedActionDisabled,
         },
       ]
     : [
@@ -109,7 +109,7 @@ export function SettingsStoragePage() {
             variant="ghost"
             onClick={handleCancel}
             disabled={isSaving}
-            highlighted={footer.inFooter && footer.focusedIndex === 0}
+            highlighted={footer.inFooter && footer.focusedIndex === 0 && !isSaving}
           >
             Cancel
           </Button>
@@ -118,14 +118,14 @@ export function SettingsStoragePage() {
             variant="success"
             onClick={handleSave}
             disabled={isSaving || !effectiveStorage || !isDirty}
-            highlighted={footer.inFooter && footer.focusedIndex === 1}
+            highlighted={footer.inFooter && footer.focusedIndex === 1 && canSave}
           >
             {isSaving ? "Saving..." : "Save"}
           </Button>
         </>
       }
     >
-      <div className="space-y-6">
+      <div ref={focusFallbackRef} tabIndex={-1} className="space-y-6 focus:outline-none">
         <StorageSelectorContent
           value={effectiveStorage}
           onChange={setStorageChoice}
@@ -134,7 +134,6 @@ export function SettingsStoragePage() {
           autoFocusList={!footer.inFooter}
           onBoundaryReached={(direction) => {
             if (direction === "down") {
-              clearCurrentFocus();
               footer.enterFooter();
             }
           }}
