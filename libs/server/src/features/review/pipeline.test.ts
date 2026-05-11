@@ -56,35 +56,24 @@ describe("filterDiffByFiles", () => {
     makeFile("README.md"),
   ]);
 
-  it("should return all files when filter list is empty", () => {
+  it("returns all files when no filter is provided", () => {
     const result = filterDiffByFiles(parsed, []);
     expect(result.files).toHaveLength(3);
   });
 
-  it("should include only matching files", () => {
-    const result = filterDiffByFiles(parsed, ["src/index.ts"]);
-    expect(result.files).toHaveLength(1);
-    expect(result.files[0]!.filePath).toBe("src/index.ts");
-  });
-
-  it("should exclude non-matching files", () => {
-    const result = filterDiffByFiles(parsed, ["src/index.ts", "src/utils.ts"]);
+  it("matches normalized paths and recalculates totals for included files", () => {
+    const result = filterDiffByFiles(parsed, ["./src/index.ts", "src/utils.ts"]);
     expect(result.files).toHaveLength(2);
-    expect(result.files.map((f) => f.filePath)).not.toContain("README.md");
+    expect(result.files.map((f) => f.filePath)).toEqual(["src/index.ts", "src/utils.ts"]);
+    expect(result.totalStats).toEqual({
+      filesChanged: 2,
+      additions: 2,
+      deletions: 0,
+      totalSizeBytes: 200,
+    });
   });
 
-  it("should normalize ./ prefix in filter paths", () => {
-    const result = filterDiffByFiles(parsed, ["./src/index.ts"]);
-    expect(result.files).toHaveLength(1);
-  });
-
-  it("should recalculate totalStats for filtered files", () => {
-    const result = filterDiffByFiles(parsed, ["src/index.ts"]);
-    expect(result.totalStats.filesChanged).toBe(1);
-    expect(result.totalStats.totalSizeBytes).toBe(100);
-  });
-
-  it("should return empty when no files match", () => {
+  it("returns empty totals when no files match", () => {
     const result = filterDiffByFiles(parsed, ["nonexistent.ts"]);
     expect(result.files).toHaveLength(0);
     expect(result.totalStats.filesChanged).toBe(0);
@@ -92,53 +81,31 @@ describe("filterDiffByFiles", () => {
 });
 
 describe("generateExecutiveSummary", () => {
-  it("should format summary with issue count and file count", () => {
-    const issues = [
-      makeIssue("1", "a.ts", "high"),
-      makeIssue("2", "b.ts", "low"),
-    ];
-    const summary = generateExecutiveSummary(issues, "");
-
-    expect(summary).toContain("Found 2 issues across 2 files.");
-  });
-
-  it("should use singular for 1 issue across 1 file", () => {
-    const issues = [makeIssue("1", "a.ts", "high")];
-    const summary = generateExecutiveSummary(issues, "");
-
-    expect(summary).toContain("Found 1 issue across 1 file.");
-  });
-
-  it("should include severity breakdown", () => {
+  it("formats issue counts, file counts, severity breakdown, and orchestration summary", () => {
     const issues = [
       makeIssue("1", "a.ts", "high"),
       makeIssue("2", "a.ts", "high"),
       makeIssue("3", "b.ts", "low"),
     ];
-    const summary = generateExecutiveSummary(issues, "");
-
-    expect(summary).toContain("- high: 2");
-    expect(summary).toContain("- low: 1");
-  });
-
-  it("should append orchestration summary when provided", () => {
-    const issues = [makeIssue("1", "a.ts", "high")];
     const summary = generateExecutiveSummary(issues, "All lenses passed.");
 
+    expect(summary).toContain("Found 3 issues across 2 files.");
+    expect(summary).toContain("- high: 2");
+    expect(summary).toContain("- low: 1");
     expect(summary).toContain("All lenses passed.");
   });
 
-  it("should not append orchestration summary when empty", () => {
+  it("uses singular wording without adding empty orchestration spacing", () => {
     const issues = [makeIssue("1", "a.ts", "high")];
     const summary = generateExecutiveSummary(issues, "");
 
-    // Should not have trailing blank lines for empty orchestration
+    expect(summary).toContain("Found 1 issue across 1 file.");
     expect(summary.endsWith("\n\n")).toBe(false);
   });
 });
 
 describe("generateReport", () => {
-  it("should return summary and issues", () => {
+  it("returns generated summary and original issues", () => {
     const issues = [makeIssue("1", "a.ts", "high")];
     const report = generateReport(issues, "summary text");
 
@@ -146,4 +113,3 @@ describe("generateReport", () => {
     expect(report.summary).toContain("Found 1 issue");
   });
 });
-

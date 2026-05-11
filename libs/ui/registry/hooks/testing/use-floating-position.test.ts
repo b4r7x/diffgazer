@@ -1,15 +1,15 @@
-import { createElement, useLayoutEffect, useRef } from "react"
-import { describe, it, expect, vi } from "vitest"
-import { render, renderHook, waitFor } from "@testing-library/react"
+import { createElement, useRef } from "react"
+import { afterEach, describe, expect, it, vi } from "vitest"
+import { act, render, screen, waitFor } from "@testing-library/react"
 import {
-  type FloatingPosition,
-  useFloatingPosition,
   computePosition,
-  wouldOverflow,
-  shift,
   resolveCollisionPosition,
+  shift,
+  useFloatingPosition,
+  wouldOverflow,
+  type FloatingAlign,
+  type FloatingSide,
 } from "../use-floating-position.js"
-import { createRef } from "react"
 
 function makeDOMRect(x: number, y: number, width: number, height: number): DOMRect {
   return {
@@ -25,180 +25,185 @@ function makeDOMRect(x: number, y: number, width: number, height: number): DOMRe
   }
 }
 
-const trigger = makeDOMRect(100, 100, 80, 40)
-const content = makeDOMRect(0, 0, 120, 50)
+const triggerRect = makeDOMRect(100, 100, 80, 40)
+const contentRect = makeDOMRect(0, 0, 120, 50)
+const viewport = { width: 800, height: 600 }
+const originalInnerWidth = Object.getOwnPropertyDescriptor(window, "innerWidth")
+const originalInnerHeight = Object.getOwnPropertyDescriptor(window, "innerHeight")
 
-describe("computePosition", () => {
-  it("positions below trigger for bottom-start", () => {
-    const pos = computePosition(trigger, content, "bottom", "start", 6, 0)
-    expect(pos.y).toBe(146) // trigger.bottom (140) + offset (6)
-    expect(pos.x).toBe(100) // trigger.left
+function restoreProperty<T extends object>(target: T, key: keyof T, descriptor: PropertyDescriptor | undefined) {
+  if (descriptor) {
+    Object.defineProperty(target, key, descriptor)
+    return
+  }
+  Reflect.deleteProperty(target, key)
+}
+
+function setViewport(width = viewport.width, height = viewport.height) {
+  Object.defineProperty(window, "innerWidth", { configurable: true, value: width })
+  Object.defineProperty(window, "innerHeight", { configurable: true, value: height })
+}
+
+function formatPosition(position: ReturnType<typeof useFloatingPosition>["position"]) {
+  return position ? `${position.side}:${position.x}:${position.y}` : "closed"
+}
+
+function FloatingHarness({
+  open,
+  side = "bottom",
+  align = "start",
+  avoidCollisions = false,
+  getTriggerRect = () => triggerRect,
+  getContentRect = () => contentRect,
+}: {
+  open: boolean
+  side?: FloatingSide
+  align?: FloatingAlign
+  avoidCollisions?: boolean
+  getTriggerRect?: () => DOMRect
+  getContentRect?: () => DOMRect
+}) {
+  const triggerRef = useRef<HTMLElement | null>(null)
+  const { position, contentRef } = useFloatingPosition({
+    triggerRef,
+    open,
+    side,
+    align,
+    avoidCollisions,
   })
 
-  it("positions above trigger for top-center", () => {
-    const pos = computePosition(trigger, content, "top", "center", 6, 0)
-    expect(pos.y).toBe(44) // trigger.top (100) - content.height (50) - offset (6)
-    expect(pos.x).toBe(80) // trigger.left (100) + trigger.width/2 (40) - content.width/2 (60) = 80
-  })
+  return createElement(
+    "div",
+    null,
+    createElement("button", {
+      ref: (node: HTMLButtonElement | null) => {
+        triggerRef.current = node
+        if (node) node.getBoundingClientRect = getTriggerRect
+      },
+    }),
+    createElement(
+      "div",
+      {
+        ref: (node: HTMLDivElement | null) => {
+          contentRef.current = node
+          if (node) node.getBoundingClientRect = getContentRect
+        },
+        "data-testid": "position",
+      },
+      formatPosition(position),
+    ),
+  )
+}
 
-  it("positions left of trigger for left-end", () => {
-    const pos = computePosition(trigger, content, "left", "end", 6, 0)
-    expect(pos.x).toBe(-26) // trigger.left (100) - content.width (120) - offset (6)
-    expect(pos.y).toBe(90) // trigger.bottom (140) - content.height (50)
-  })
-
-  it("positions right of trigger for right-start", () => {
-    const pos = computePosition(trigger, content, "right", "start", 6, 0)
-    expect(pos.x).toBe(186) // trigger.right (180) + offset (6)
-    expect(pos.y).toBe(100) // trigger.top
-  })
-
-  it("applies alignOffset", () => {
-    const pos = computePosition(trigger, content, "bottom", "start", 6, 10)
-    expect(pos.x).toBe(110) // trigger.left (100) + alignOffset (10)
-  })
+afterEach(() => {
+  restoreProperty(window, "innerWidth", originalInnerWidth)
+  restoreProperty(window, "innerHeight", originalInnerHeight)
 })
 
-describe("wouldOverflow", () => {
-  const vp = { width: 800, height: 600 }
+describe("floating position helpers", () => {
+  it("computes placement, overflow, shift, and collision fallback", () => {
+    expect(computePosition(triggerRect, contentRect, "bottom", "start", 6, 10)).toEqual({ x: 110, y: 146 })
+    expect(wouldOverflow(700, 100, contentRect, 8, viewport)).toBe(true)
+    expect(shift(750, 580, contentRect, 8, viewport)).toEqual({ x: 672, y: 542 })
 
-  it("returns false when content fits within viewport", () => {
-    expect(wouldOverflow(100, 100, content, 8, vp)).toBe(false)
-  })
-
-  it("returns true when content extends past right edge", () => {
-    expect(wouldOverflow(700, 100, content, 8, vp)).toBe(true)
-  })
-
-  it("returns true when content extends past bottom edge", () => {
-    expect(wouldOverflow(100, 560, content, 8, vp)).toBe(true)
-  })
-
-  it("returns true when x is less than padding", () => {
-    expect(wouldOverflow(2, 100, content, 8, vp)).toBe(true)
-  })
-
-  it("returns true when y is less than padding", () => {
-    expect(wouldOverflow(100, 2, content, 8, vp)).toBe(true)
-  })
-})
-
-describe("shift", () => {
-  const vp = { width: 800, height: 600 }
-
-  it("clamps to left/top padding", () => {
-    const pos = shift(-10, -20, content, 8, vp)
-    expect(pos.x).toBe(8)
-    expect(pos.y).toBe(8)
-  })
-
-  it("clamps to right/bottom edge", () => {
-    const pos = shift(750, 580, content, 8, vp)
-    expect(pos.x).toBe(672) // 800 - 120 - 8
-    expect(pos.y).toBe(542) // 600 - 50 - 8
-  })
-
-  it("returns unchanged values when within bounds", () => {
-    const pos = shift(200, 300, content, 8, vp)
-    expect(pos.x).toBe(200)
-    expect(pos.y).toBe(300)
-  })
-})
-
-describe("resolveCollisionPosition", () => {
-  const vp = { width: 800, height: 600 }
-
-  it("returns preferred side when it fits", () => {
-    const result = resolveCollisionPosition(trigger, content, "bottom", "center", 6, 0, 8, vp)
-    expect(result.side).toBe("bottom")
-  })
-
-  it("flips to opposite side when preferred overflows", () => {
     const nearBottom = makeDOMRect(100, 540, 80, 40)
-    const result = resolveCollisionPosition(nearBottom, content, "bottom", "center", 6, 0, 8, vp)
-    expect(result.side).toBe("top")
-  })
-
-  it("falls back to cross-axis side when both preferred and opposite overflow", () => {
-    const tall = makeDOMRect(0, 0, 120, 580)
-    const smallContent = makeDOMRect(0, 0, 50, 50)
-    const narrowVp = { width: 800, height: 600 }
-    const result = resolveCollisionPosition(tall, smallContent, "top", "center", 6, 0, 8, narrowVp)
-    // top overflows (y < padding), bottom overflows (tall.bottom + offset + content > viewport)
-    // Should try left or right
-    expect(["left", "right"]).toContain(result.side)
-  })
-
-  it("returns preferred side as last resort when all sides overflow", () => {
-    const huge = makeDOMRect(0, 0, 790, 590)
-    const result = resolveCollisionPosition(trigger, huge, "bottom", "center", 6, 0, 8, vp)
-    expect(result.side).toBe("bottom")
+    expect(resolveCollisionPosition(nearBottom, contentRect, "bottom", "center", 6, 0, 8, viewport)).toMatchObject({
+      side: "top",
+      x: 80,
+      y: 484,
+    })
   })
 })
 
 describe("useFloatingPosition", () => {
-  it("returns null position when not open", () => {
-    const triggerRef = createRef<HTMLElement>() as React.MutableRefObject<HTMLElement | null>
-    triggerRef.current = document.createElement("button")
+  it("updates position when open changes", async () => {
+    setViewport()
+    const { rerender } = render(createElement(FloatingHarness, { open: false }))
 
-    const { result } = renderHook(() =>
-      useFloatingPosition({ triggerRef, open: false }),
-    )
-    expect(result.current.position).toBeNull()
+    expect(screen.getByTestId("position")).toHaveTextContent("closed")
+
+    rerender(createElement(FloatingHarness, { open: true }))
+
+    await waitFor(() => {
+      expect(screen.getByTestId("position")).toHaveTextContent("bottom:100:146")
+    })
   })
 
-  it("positions initially without ResizeObserver support", async () => {
+  it("reports the collision-resolved side and shifted coordinates", async () => {
+    setViewport()
+    render(createElement(FloatingHarness, {
+      open: true,
+      side: "bottom",
+      align: "center",
+      avoidCollisions: true,
+      getTriggerRect: () => makeDOMRect(100, 540, 80, 40),
+    }))
+
+    await waitFor(() => {
+      expect(screen.getByTestId("position")).toHaveTextContent("top:80:484")
+    })
+  })
+
+  it("updates on window resize and scroll", async () => {
+    setViewport()
+    let x = 100
+    render(createElement(FloatingHarness, {
+      open: true,
+      getTriggerRect: () => makeDOMRect(x, 100, 80, 40),
+    }))
+
+    await waitFor(() => {
+      expect(screen.getByTestId("position")).toHaveTextContent("bottom:100:146")
+    })
+
+    x = 120
+    act(() => {
+      window.dispatchEvent(new Event("resize"))
+    })
+    await waitFor(() => {
+      expect(screen.getByTestId("position")).toHaveTextContent("bottom:120:146")
+    })
+
+    x = 140
+    act(() => {
+      window.dispatchEvent(new Event("scroll"))
+    })
+    await waitFor(() => {
+      expect(screen.getByTestId("position")).toHaveTextContent("bottom:140:146")
+    })
+  })
+
+  it("disconnects observers and removes window listeners on cleanup", async () => {
+    setViewport()
     const resizeObserverDescriptor = Object.getOwnPropertyDescriptor(globalThis, "ResizeObserver")
-    Reflect.deleteProperty(globalThis, "ResizeObserver")
-    const onPosition = vi.fn()
+    const disconnect = vi.fn()
+    const removeListener = vi.spyOn(window, "removeEventListener")
 
-    function FloatingHarness() {
-      const triggerRef = useRef<HTMLElement | null>(null)
-      const { position, contentRef } = useFloatingPosition({
-        triggerRef,
-        open: true,
-        side: "bottom",
-        align: "start",
-        avoidCollisions: false,
-      })
-
-      useLayoutEffect(() => {
-        onPosition(position)
-      }, [position])
-
-      return createElement(
-        "div",
-        null,
-        createElement("button", {
-          ref: (node: HTMLButtonElement | null) => {
-            triggerRef.current = node
-            if (node) node.getBoundingClientRect = () => makeDOMRect(100, 100, 80, 40)
-          },
-        }),
-        createElement("div", {
-          ref: (node: HTMLDivElement | null) => {
-            contentRef.current = node
-            if (node) node.getBoundingClientRect = () => makeDOMRect(0, 0, 120, 50)
-          },
-        }),
-      )
-    }
+    Object.defineProperty(globalThis, "ResizeObserver", {
+      configurable: true,
+      value: class {
+        observe() {}
+        disconnect() {
+          disconnect()
+        }
+      },
+    })
 
     try {
-      render(createElement(FloatingHarness))
+      const { unmount } = render(createElement(FloatingHarness, { open: true }))
 
       await waitFor(() => {
-        expect(onPosition).toHaveBeenCalledWith({
-          x: 100,
-          y: 146,
-          side: "bottom",
-          align: "start",
-        } satisfies FloatingPosition)
+        expect(screen.getByTestId("position")).toHaveTextContent("bottom:100:146")
       })
+
+      unmount()
+
+      expect(disconnect).toHaveBeenCalledTimes(1)
+      expect(removeListener).toHaveBeenCalledWith("scroll", expect.any(Function))
+      expect(removeListener).toHaveBeenCalledWith("resize", expect.any(Function))
     } finally {
-      if (resizeObserverDescriptor) {
-        Object.defineProperty(globalThis, "ResizeObserver", resizeObserverDescriptor)
-      }
+      removeListener.mockRestore()
+      restoreProperty(globalThis, "ResizeObserver", resizeObserverDescriptor)
     }
   })
 })

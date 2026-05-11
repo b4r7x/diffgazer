@@ -17,6 +17,18 @@ afterEach(() => {
 });
 
 describe("detectProject aliases", () => {
+  function writeViteConfig(lines: string[]): void {
+    writeFileSync(join(root, "vite.config.ts"), [...lines, ""].join("\n"));
+  }
+
+  function assertDetectedAlias(expected: { importAliasPrefix: string; sourceDir: string }): void {
+    const project = detectProject(root);
+
+    assert.equal(project.hasPathAlias, true);
+    assert.equal(project.importAliasPrefix, expected.importAliasPrefix);
+    assert.equal(project.sourceDir, expected.sourceDir);
+  }
+
   test("detects a custom TypeScript source alias", () => {
     writeFileSync(join(root, "tsconfig.json"), JSON.stringify({
       compilerOptions: {
@@ -32,54 +44,77 @@ describe("detectProject aliases", () => {
     assert.equal(project.sourceDir, "src");
   });
 
-  test("detects Vite object aliases when TypeScript paths are absent", () => {
-    writeFileSync(join(root, "vite.config.ts"), [
-      "import path from 'node:path';",
-      "export default {",
-      "  resolve: { alias: { '~': path.resolve(__dirname, './src') } },",
-      "};",
-      "",
-    ].join("\n"));
-
-    const project = detectProject(root);
-
-    assert.equal(project.hasPathAlias, true);
-    assert.equal(project.importAliasPrefix, "~");
-    assert.equal(project.sourceDir, "src");
-  });
-
-  test("detects Vite array aliases", () => {
-    writeFileSync(join(root, "vite.config.ts"), [
-      "export default {",
-      "  resolve: {",
-      "    alias: [{ find: '@app', replacement: './app' }],",
-      "  },",
-      "};",
-      "",
-    ].join("\n"));
-
-    const project = detectProject(root);
-
-    assert.equal(project.hasPathAlias, true);
-    assert.equal(project.importAliasPrefix, "@app");
-    assert.equal(project.sourceDir, "app");
-  });
-
-  test("detects Vite aliases with imported resolve", () => {
-    writeFileSync(join(root, "vite.config.ts"), [
-      "import { resolve } from 'node:path';",
-      "export default {",
-      "  resolve: { alias: { '@': resolve(__dirname, './src') } },",
-      "};",
-      "",
-    ].join("\n"));
-
-    const project = detectProject(root);
-
-    assert.equal(project.hasPathAlias, true);
-    assert.equal(project.importAliasPrefix, "@");
-    assert.equal(project.sourceDir, "src");
-  });
+  for (const fixture of [
+    {
+      name: "Vite object aliases",
+      config: [
+        "import path from 'node:path';",
+        "export default {",
+        "  resolve: { alias: { '~': path.resolve(__dirname, './src') } },",
+        "};",
+      ],
+      expected: { importAliasPrefix: "~", sourceDir: "src" },
+    },
+    {
+      name: "Vite array aliases",
+      config: [
+        "export default {",
+        "  resolve: {",
+        "    alias: [{ find: '@app', replacement: './app' }],",
+        "  },",
+        "};",
+      ],
+      expected: { importAliasPrefix: "@app", sourceDir: "app" },
+    },
+    {
+      name: "Vite aliases with imported resolve",
+      config: [
+        "import { resolve } from 'node:path';",
+        "export default {",
+        "  resolve: { alias: { '@': resolve(__dirname, './src') } },",
+        "};",
+      ],
+      expected: { importAliasPrefix: "@", sourceDir: "src" },
+    },
+    {
+      name: "Vite aliases with URL pathname",
+      config: [
+        "export default {",
+        "  resolve: {",
+        "    alias: [{ find: '@app', replacement: new URL('./app', import.meta.url).pathname }],",
+        "  },",
+        "};",
+      ],
+      expected: { importAliasPrefix: "@app", sourceDir: "app" },
+    },
+    {
+      name: "Vite object aliases with fileURLToPath URL targets",
+      config: [
+        "import { fileURLToPath } from 'node:url';",
+        "export default {",
+        "  resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },",
+        "};",
+      ],
+      expected: { importAliasPrefix: "@", sourceDir: "src" },
+    },
+    {
+      name: "Vite array aliases with fileURLToPath URL targets",
+      config: [
+        "import { fileURLToPath } from 'node:url';",
+        "export default {",
+        "  resolve: {",
+        "    alias: [{ find: '~', replacement: fileURLToPath(new URL('./app', import.meta.url)) }],",
+        "  },",
+        "};",
+      ],
+      expected: { importAliasPrefix: "~", sourceDir: "app" },
+    },
+  ]) {
+    test(`detects ${fixture.name} when TypeScript paths are absent`, () => {
+      writeViteConfig(fixture.config);
+      assertDetectedAlias(fixture.expected);
+    });
+  }
 
   test("ignores subpath-only TypeScript aliases", () => {
     writeFileSync(join(root, "tsconfig.json"), JSON.stringify({
@@ -131,54 +166,4 @@ describe("detectProject aliases", () => {
     assert.equal(project.sourceDir, "src");
   });
 
-  test("detects Vite aliases with URL pathname", () => {
-    writeFileSync(join(root, "vite.config.ts"), [
-      "export default {",
-      "  resolve: {",
-      "    alias: [{ find: '@app', replacement: new URL('./app', import.meta.url).pathname }],",
-      "  },",
-      "};",
-      "",
-    ].join("\n"));
-
-    const project = detectProject(root);
-
-    assert.equal(project.hasPathAlias, true);
-    assert.equal(project.importAliasPrefix, "@app");
-    assert.equal(project.sourceDir, "app");
-  });
-
-  test("detects Vite object aliases with fileURLToPath URL targets", () => {
-    writeFileSync(join(root, "vite.config.ts"), [
-      "import { fileURLToPath } from 'node:url';",
-      "export default {",
-      "  resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },",
-      "};",
-      "",
-    ].join("\n"));
-
-    const project = detectProject(root);
-
-    assert.equal(project.hasPathAlias, true);
-    assert.equal(project.importAliasPrefix, "@");
-    assert.equal(project.sourceDir, "src");
-  });
-
-  test("detects Vite array aliases with fileURLToPath URL targets", () => {
-    writeFileSync(join(root, "vite.config.ts"), [
-      "import { fileURLToPath } from 'node:url';",
-      "export default {",
-      "  resolve: {",
-      "    alias: [{ find: '~', replacement: fileURLToPath(new URL('./app', import.meta.url)) }],",
-      "  },",
-      "};",
-      "",
-    ].join("\n"));
-
-    const project = detectProject(root);
-
-    assert.equal(project.hasPathAlias, true);
-    assert.equal(project.importAliasPrefix, "~");
-    assert.equal(project.sourceDir, "app");
-  });
 });

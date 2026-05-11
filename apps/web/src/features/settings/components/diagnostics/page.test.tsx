@@ -1,14 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { act, render, renderHook, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { KeyboardProvider } from "@diffgazer/keys";
-import type { ReactNode } from "react";
+import type { DiagnosticsData } from "@diffgazer/core/api/hooks";
 
-const { mockNavigate, mockRetryServer, mockRefetchContext, mockHandleRefreshContext } = vi.hoisted(() => ({
+const {
+  mockNavigate,
+  mockRetryServer,
+  mockRefetchContext,
+  mockHandleRefreshContext,
+  mockDiagnosticsData,
+} = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
   mockRetryServer: vi.fn(),
   mockRefetchContext: vi.fn(),
   mockHandleRefreshContext: vi.fn(),
+  mockDiagnosticsData: { current: undefined as DiagnosticsData | undefined },
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -28,24 +35,10 @@ vi.mock("@/app/providers/config-provider", () => ({
 }));
 
 vi.mock("@diffgazer/core/api/hooks", () => ({
-  useDiagnosticsData: () => ({
-    serverState: { status: "connected" as const },
-    retryServer: mockRetryServer,
-    setupStatus: { isReady: true, missing: [] },
-    initLoading: false,
-    initError: null,
-    contextStatus: "ready" as const,
-    contextGeneratedAt: "2026-02-09T12:00:00.000Z",
-    contextError: null,
-    canRegenerate: true,
-    handleRefreshContext: mockHandleRefreshContext,
-    isRefreshingContext: false,
-    refetchContext: mockRefetchContext,
-  }),
+  useDiagnosticsData: () => mockDiagnosticsData.current,
 }));
 
 import { DiagnosticsPage } from "./page";
-import { useDiagnosticsKeyboard } from "../../hooks/use-diagnostics-keyboard";
 
 function renderPage() {
   return render(
@@ -55,8 +48,30 @@ function renderPage() {
   );
 }
 
-function KeyboardWrapper({ children }: { children: ReactNode }) {
-  return <KeyboardProvider>{children}</KeyboardProvider>;
+function makeDiagnostics(overrides: Partial<DiagnosticsData> = {}): DiagnosticsData {
+  return {
+    serverState: { status: "connected" },
+    retryServer: mockRetryServer,
+    setupStatus: {
+      hasSecretsStorage: true,
+      hasProvider: true,
+      hasModel: true,
+      hasTrust: true,
+      isConfigured: true,
+      isReady: true,
+      missing: [],
+    },
+    initLoading: false,
+    initError: null,
+    contextStatus: "ready",
+    contextGeneratedAt: "2026-02-09T12:00:00.000Z",
+    contextError: null,
+    canRegenerate: true,
+    handleRefreshContext: mockHandleRefreshContext,
+    isRefreshingContext: false,
+    refetchContext: mockRefetchContext,
+    ...overrides,
+  };
 }
 
 describe("DiagnosticsPage keyboard footer navigation", () => {
@@ -67,6 +82,7 @@ describe("DiagnosticsPage keyboard footer navigation", () => {
     mockHandleRefreshContext.mockClear();
     mockRetryServer.mockResolvedValue(undefined);
     mockRefetchContext.mockResolvedValue(undefined);
+    mockDiagnosticsData.current = makeDiagnostics();
   });
 
   it("activates diagnostics actions selected with left/right arrows", async () => {
@@ -96,7 +112,8 @@ describe("DiagnosticsPage keyboard footer navigation", () => {
     });
   });
 
-  it("ignores overlapping refresh-all calls while refresh is pending", async () => {
+  it("shows refresh progress and blocks overlapping refresh-all actions", async () => {
+    const user = userEvent.setup();
     let resolveRetry: (() => void) | null = null;
     let resolveContext: (() => void) | null = null;
     mockRetryServer.mockImplementation(
@@ -110,72 +127,40 @@ describe("DiagnosticsPage keyboard footer navigation", () => {
       }),
     );
 
-    const diagnostics = {
-      serverState: { status: "connected" as const },
-      retryServer: mockRetryServer,
-      setupStatus: { isReady: true, missing: [] },
-      initLoading: false,
-      initError: null,
-      contextStatus: "ready" as const,
-      contextGeneratedAt: "2026-02-09T12:00:00.000Z",
-      contextError: null,
-      canRegenerate: true,
-      handleRefreshContext: mockHandleRefreshContext,
-      isRefreshingContext: false,
-      refetchContext: mockRefetchContext,
-    };
-    const { result } = renderHook(
-      () => useDiagnosticsKeyboard({ diagnostics }),
-      { wrapper: KeyboardWrapper },
-    );
+    renderPage();
 
-    let refreshPromise: Promise<void> | null = null;
-    await act(async () => {
-      refreshPromise = result.current.handleRefreshAll();
-      void result.current.handleRefreshAll();
-      await Promise.resolve();
+    const diagnosticsPanel = screen.getByRole("region", { name: /system diagnostics/i });
+    await user.click(screen.getByRole("button", { name: "Refresh Diagnostics" }));
+
+    await waitFor(() => {
+      expect(diagnosticsPanel).toHaveAttribute("aria-busy", "true");
+      expect(screen.getByRole("button", { name: "Refreshing..." })).toBeDisabled();
     });
+
+    await user.click(screen.getByRole("button", { name: "Refreshing..." }));
 
     expect(mockRetryServer).toHaveBeenCalledTimes(1);
     expect(mockRefetchContext).toHaveBeenCalledTimes(1);
-    expect(result.current.isRefreshingAll).toBe(true);
 
-    await act(async () => {
-      resolveRetry?.();
-      resolveContext?.();
-      await refreshPromise;
+    resolveRetry?.();
+    resolveContext?.();
+
+    await waitFor(() => {
+      expect(diagnosticsPanel).toHaveAttribute("aria-busy", "false");
+      expect(screen.getByRole("button", { name: "Refresh Diagnostics" })).toBeEnabled();
     });
-
-    expect(result.current.isRefreshingAll).toBe(false);
   });
 
-  it("reports refresh-all failures", async () => {
+  it("shows refresh-all failures in the diagnostics page", async () => {
+    const user = userEvent.setup();
     mockRetryServer.mockRejectedValue(new Error("server down"));
     mockRefetchContext.mockResolvedValue(undefined);
 
-    const diagnostics = {
-      serverState: { status: "connected" as const },
-      retryServer: mockRetryServer,
-      setupStatus: { isReady: true, missing: [] },
-      initLoading: false,
-      initError: null,
-      contextStatus: "ready" as const,
-      contextGeneratedAt: "2026-02-09T12:00:00.000Z",
-      contextError: null,
-      canRegenerate: true,
-      handleRefreshContext: mockHandleRefreshContext,
-      isRefreshingContext: false,
-      refetchContext: mockRefetchContext,
-    };
-    const { result } = renderHook(
-      () => useDiagnosticsKeyboard({ diagnostics }),
-      { wrapper: KeyboardWrapper },
-    );
+    renderPage();
 
-    await act(async () => {
-      await result.current.handleRefreshAll();
-    });
+    await user.click(screen.getByRole("button", { name: "Refresh Diagnostics" }));
 
-    expect(result.current.refreshError).toBe("Refresh failed for some diagnostics sources.");
+    expect(await screen.findByText("Refresh failed for some diagnostics sources.")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Refresh Diagnostics" })).toBeEnabled();
   });
 });

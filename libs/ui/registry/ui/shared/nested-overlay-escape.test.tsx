@@ -89,33 +89,44 @@ describe("Nested overlay: Dialog inside Dialog", () => {
     await waitFor(() => expect(childDialog).toHaveAttribute("data-state", "closed"))
     fireEvent.animationEnd(childDialog)
 
-    // Parent dialog should still be open and focus should return to childOpener
     const parentDialog = screen.getByRole("dialog", { name: "Parent dialog" })
     expect(parentDialog).toHaveAttribute("data-state", "open")
     await waitFor(() => expect(childOpener).toHaveFocus())
   })
 
-  it("keeps both dialogs open when stacked, with the topmost remaining interactive", async () => {
+  it("keeps the topmost stacked dialog focused and interactive", async () => {
+    const firstAction = vi.fn()
+    const secondAction = vi.fn()
+
     render(
       <>
         <Dialog defaultOpen>
           <Dialog.Content>
             <Dialog.Title>Dialog 1</Dialog.Title>
             <Dialog.Body>First body</Dialog.Body>
+            <button type="button" onClick={firstAction}>First action</button>
           </Dialog.Content>
         </Dialog>
         <Dialog defaultOpen>
           <Dialog.Content>
             <Dialog.Title>Dialog 2</Dialog.Title>
             <Dialog.Body>Second body</Dialog.Body>
+            <button type="button" autoFocus onClick={secondAction}>Second action</button>
           </Dialog.Content>
         </Dialog>
       </>
     )
 
-    const dialogs = screen.getAllByRole("dialog")
-    expect(dialogs).toHaveLength(2)
-    expect(dialogs[0]).toHaveAttribute("data-state", "open")
-    expect(dialogs[1]).toHaveAttribute("data-state", "open")
+    const firstDialog = screen.getByRole("dialog", { name: "Dialog 1" })
+    const secondDialog = screen.getByRole("dialog", { name: "Dialog 2" })
+    const secondActionButton = screen.getByRole("button", { name: "Second action" })
+
+    await waitFor(() => expect(secondActionButton).toHaveFocus())
+    await userEvent.click(secondActionButton)
+
+    expect(secondAction).toHaveBeenCalledOnce()
+    expect(firstAction).not.toHaveBeenCalled()
+    expect(firstDialog).toHaveAttribute("data-state", "open")
+    expect(secondDialog).toHaveAttribute("data-state", "open")
   })
 })

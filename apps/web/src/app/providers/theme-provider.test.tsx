@@ -188,7 +188,7 @@ describe("ThemeProvider", () => {
   });
 
   it("should reflect system theme change", () => {
-    mockMatchMedia(false);
+    const mediaQuery = mockMatchMedia(false);
 
     render(
       <ThemeProvider>
@@ -198,14 +198,12 @@ describe("ThemeProvider", () => {
 
     expect(document.documentElement.getAttribute("data-theme")).toBe("light");
 
-    mockMatchMedia(true);
-
-    cleanup();
-    render(
-      <ThemeProvider>
-        <div />
-      </ThemeProvider>
-    );
+    act(() => {
+      mediaQuery.matches = true;
+      matchMediaListeners.forEach((listener) => {
+        listener({ matches: true, media: mediaQuery.media } as MediaQueryListEvent);
+      });
+    });
 
     expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
   });

@@ -19,25 +19,37 @@ const makeIssue = (severity: ReviewIssue["severity"], id: string): ReviewIssue =
   evidence: [],
 });
 
+const issueSummary = (items: ReviewIssue[]) =>
+  items.map(({ id, severity }) => ({ id, severity }));
+
 const issues: ReviewIssue[] = [
-  makeIssue("blocker", "1"),
-  makeIssue("high", "2"),
-  makeIssue("medium", "3"),
-  makeIssue("low", "4"),
-  makeIssue("nit", "5"),
+  makeIssue("blocker", "blocker-1"),
+  makeIssue("high", "high-1"),
+  makeIssue("medium", "medium-1"),
+  makeIssue("high", "high-2"),
+  makeIssue("low", "low-1"),
+  makeIssue("nit", "nit-1"),
 ];
 
 describe("filterIssuesBySeverity", () => {
   it("returns all issues when filter is 'all'", () => {
     const result = filterIssuesBySeverity(issues, "all");
 
-    expect(result).toHaveLength(5);
+    expect(issueSummary(result)).toEqual([
+      { id: "blocker-1", severity: "blocker" },
+      { id: "high-1", severity: "high" },
+      { id: "medium-1", severity: "medium" },
+      { id: "high-2", severity: "high" },
+      { id: "low-1", severity: "low" },
+      { id: "nit-1", severity: "nit" },
+    ]);
   });
 
   it("filters to only matching severity", () => {
-    expect(filterIssuesBySeverity(issues, "blocker")).toHaveLength(1);
-    expect(filterIssuesBySeverity(issues, "high")).toHaveLength(1);
-    expect(filterIssuesBySeverity(issues, "nit")).toHaveLength(1);
+    expect(issueSummary(filterIssuesBySeverity(issues, "high"))).toEqual([
+      { id: "high-1", severity: "high" },
+      { id: "high-2", severity: "high" },
+    ]);
   });
 
   it("returns empty array when no issues match", () => {

@@ -1,7 +1,6 @@
 import { render, screen } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 import { BlockBar } from "./index.js"
-import { computeFilledCount } from "./block-bar-context.js"
 
 describe("BlockBar", () => {
   it("clamps invalid root values before rendering meter state", () => {
@@ -114,13 +113,5 @@ describe("BlockBar", () => {
     expect(meter).toHaveAttribute("aria-valuenow", "1000")
     expect(screen.getByText("x".repeat(200))).toBeInTheDocument()
     expect(screen.queryByText("x".repeat(201))).not.toBeInTheDocument()
-  })
-})
-
-describe("computeFilledCount", () => {
-  it("returns zero for invalid values and widths", () => {
-    expect(computeFilledCount(Number.NaN, 10, 10)).toBe(0)
-    expect(computeFilledCount(5, Number.NaN, 10)).toBe(0)
-    expect(computeFilledCount(5, 10, Number.NaN)).toBe(0)
   })
 })

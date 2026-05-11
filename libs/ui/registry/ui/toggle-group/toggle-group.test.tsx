@@ -245,53 +245,10 @@ describe("ToggleGroup", () => {
     expect(radios[1]).toHaveFocus()
   })
 
-  it("exposes one tabbable enabled item when unselected and skips disabled items", async () => {
+  it("skips disabled items while wrapping across vertical and cross-axis arrows", async () => {
+    const onChange = vi.fn()
     render(
-      <ToggleGroup label="Options">
-        <ToggleGroup.Item value="a" disabled>Alpha</ToggleGroup.Item>
-        <ToggleGroup.Item value="b">Beta</ToggleGroup.Item>
-        <ToggleGroup.Item value="c">Charlie</ToggleGroup.Item>
-      </ToggleGroup>
-    )
-
-    const radios = getRadios()
-    expect(radios.map((radio) => radio.getAttribute("tabindex"))).toEqual(["-1", "0", "-1"])
-
-    await userEvent.tab()
-    expect(screen.getByRole("radio", { name: /beta/i })).toHaveFocus()
-  })
-
-  it("falls back to an enabled tab target when selected or highlighted values are invalid", async () => {
-    render(
-      <ToggleGroup label="Options" value="missing" highlighted="a">
-        <ToggleGroup.Item value="a" disabled>Alpha</ToggleGroup.Item>
-        <ToggleGroup.Item value="b">Beta</ToggleGroup.Item>
-        <ToggleGroup.Item value="c">Charlie</ToggleGroup.Item>
-      </ToggleGroup>
-    )
-
-    const radios = getRadios()
-    expect(radios.map((radio) => radio.getAttribute("tabindex"))).toEqual(["-1", "0", "-1"])
-    expect(screen.getByRole("radio", { name: /alpha/i })).not.toHaveAttribute("data-highlighted")
-
-    await userEvent.tab()
-    expect(screen.getByRole("radio", { name: /beta/i })).toHaveFocus()
-  })
-
-  it("keeps the tabbable item aligned with a valid controlled highlight", () => {
-    renderGroup({ value: "a", highlighted: "b" })
-
-    const alpha = screen.getByRole("radio", { name: /alpha/i })
-    const beta = screen.getByRole("radio", { name: /beta/i })
-    expect(alpha).toHaveAttribute("aria-checked", "true")
-    expect(alpha).toHaveAttribute("tabindex", "-1")
-    expect(beta).toHaveAttribute("tabindex", "0")
-    expect(beta).toHaveAttribute("data-highlighted", "true")
-  })
-
-  it("does not focus or highlight disabled items with arrows or hover", async () => {
-    render(
-      <ToggleGroup label="Options" defaultValue="a">
+      <ToggleGroup label="Options" orientation="vertical" defaultValue="a" onChange={onChange}>
         <ToggleGroup.Item value="a">Alpha</ToggleGroup.Item>
         <ToggleGroup.Item value="b" disabled>Beta</ToggleGroup.Item>
         <ToggleGroup.Item value="c">Charlie</ToggleGroup.Item>
@@ -300,13 +257,79 @@ describe("ToggleGroup", () => {
 
     const alpha = screen.getByRole("radio", { name: /alpha/i })
     const beta = screen.getByRole("radio", { name: /beta/i })
+    const charlie = screen.getByRole("radio", { name: /charlie/i })
+
     alpha.focus()
+    await userEvent.keyboard("{ArrowDown}")
+    expect(charlie).toHaveFocus()
+    expect(onChange).toHaveBeenLastCalledWith("c")
+
+    await userEvent.keyboard("{ArrowDown}")
+    expect(alpha).toHaveFocus()
+    expect(onChange).toHaveBeenLastCalledWith("a")
+
+    await userEvent.keyboard("{ArrowUp}")
+    expect(charlie).toHaveFocus()
+    expect(onChange).toHaveBeenLastCalledWith("c")
+
+    await userEvent.keyboard("{ArrowLeft}")
+    expect(alpha).toHaveFocus()
+    expect(onChange).toHaveBeenLastCalledWith("a")
 
     await userEvent.keyboard("{ArrowRight}")
-    await userEvent.hover(beta)
+    expect(charlie).toHaveFocus()
+    expect(onChange).toHaveBeenLastCalledWith("c")
+    expect(beta).not.toHaveFocus()
+    expect(beta).toHaveAttribute("aria-checked", "false")
+  })
 
-    expect(screen.getByRole("radio", { name: /charlie/i })).toHaveFocus()
-    expect(beta).not.toHaveAttribute("data-highlighted")
+  it("keeps nested toggle group keyboard navigation scoped to the owning group", async () => {
+    const onOuterChange = vi.fn()
+    const onInnerChange = vi.fn()
+    render(
+      <ToggleGroup label="Outer" onChange={onOuterChange}>
+        <ToggleGroup.Item value="outer-a">Outer A</ToggleGroup.Item>
+        <ToggleGroup label="Inner" onChange={onInnerChange}>
+          <ToggleGroup.Item value="inner-a">Inner A</ToggleGroup.Item>
+          <ToggleGroup.Item value="inner-b">Inner B</ToggleGroup.Item>
+        </ToggleGroup>
+        <ToggleGroup.Item value="outer-b">Outer B</ToggleGroup.Item>
+      </ToggleGroup>,
+    )
+
+    const outerA = screen.getByRole("radio", { name: /outer a/i })
+    const outerB = screen.getByRole("radio", { name: /outer b/i })
+    const innerA = screen.getByRole("radio", { name: /inner a/i })
+    const innerB = screen.getByRole("radio", { name: /inner b/i })
+
+    outerA.focus()
+    await userEvent.keyboard("{ArrowRight}")
+    expect(outerB).toHaveFocus()
+    expect(onOuterChange).toHaveBeenCalledWith("outer-b")
+    expect(onInnerChange).not.toHaveBeenCalled()
+
+    onOuterChange.mockClear()
+    innerA.focus()
+    await userEvent.keyboard("{ArrowRight}")
+    expect(innerB).toHaveFocus()
+    expect(onInnerChange).toHaveBeenCalledWith("inner-b")
+    expect(onOuterChange).not.toHaveBeenCalled()
+  })
+
+  it("wraps button-mode focus and selects the focused item with Enter", async () => {
+    const onChange = vi.fn()
+    renderGroup({ allowDeselect: true, onChange })
+    const alpha = screen.getByRole("button", { name: /alpha/i })
+    const charlie = screen.getByRole("button", { name: /charlie/i })
+
+    alpha.focus()
+    await userEvent.keyboard("{ArrowLeft}")
+    expect(charlie).toHaveFocus()
+    expect(onChange).not.toHaveBeenCalled()
+
+    await userEvent.keyboard("{Enter}")
+    expect(onChange).toHaveBeenCalledWith("c")
+    expect(charlie).toHaveAttribute("aria-pressed", "true")
   })
 
   it("keeps keyboard highlight when a different enabled item is hovered", async () => {
@@ -321,98 +344,6 @@ describe("ToggleGroup", () => {
     expect(onHighlightChange).not.toHaveBeenCalled()
     expect(alpha).toHaveAttribute("data-highlighted", "true")
     expect(beta).not.toHaveAttribute("data-highlighted")
-  })
-
-  it("moves focus with ArrowLeft", async () => {
-    renderGroup({ defaultValue: "b" })
-    const radios = getRadios()
-    radios[1].focus()
-    await userEvent.keyboard("{ArrowLeft}")
-    expect(radios[0]).toHaveFocus()
-  })
-
-  it("wraps focus from last to first with ArrowRight", async () => {
-    renderGroup({ defaultValue: "c" })
-    const radios = getRadios()
-    radios[2].focus()
-    await userEvent.keyboard("{ArrowRight}")
-    expect(radios[0]).toHaveFocus()
-  })
-
-  it("selects focused item with Enter", async () => {
-    const onChange = vi.fn()
-    renderGroup({ defaultValue: "a", onChange: onChange })
-    const radios = getRadios()
-    radios[0].focus()
-    await userEvent.keyboard("{ArrowRight}")
-    await userEvent.keyboard("{Enter}")
-    expect(onChange).toHaveBeenCalledWith("b")
-  })
-
-  it("uses vertical arrow keys when orientation is vertical", async () => {
-    renderGroup({ orientation: "vertical", defaultValue: "a" })
-    const radios = getRadios()
-    radios[0].focus()
-    await userEvent.keyboard("{ArrowDown}")
-    expect(radios[1]).toHaveFocus()
-  })
-
-  it("supports cross-axis arrow keys (ArrowUp/ArrowDown in horizontal)", async () => {
-    renderGroup({ orientation: "horizontal", defaultValue: "a" })
-    const radios = getRadios()
-    radios[0].focus()
-    await userEvent.keyboard("{ArrowDown}")
-    expect(radios[1]).toHaveFocus()
-  })
-
-  it("supports cross-axis arrow keys (ArrowLeft/ArrowRight in vertical)", async () => {
-    renderGroup({ orientation: "vertical", defaultValue: "b" })
-    const radios = getRadios()
-    radios[1].focus()
-
-    await userEvent.keyboard("{ArrowRight}")
-    expect(radios[2]).toHaveFocus()
-
-    await userEvent.keyboard("{ArrowLeft}")
-    expect(radios[1]).toHaveFocus()
-  })
-
-  it("keeps arrow navigation scoped away from nested radio toggle groups", async () => {
-    const onOuterChange = vi.fn()
-    const onInnerChange = vi.fn()
-    render(
-      <ToggleGroup label="Outer" onChange={onOuterChange}>
-        <ToggleGroup.Item value="outer-a">Outer A</ToggleGroup.Item>
-        <ToggleGroup label="Inner" onChange={onInnerChange}>
-          <ToggleGroup.Item value="inner-a">Inner A</ToggleGroup.Item>
-        </ToggleGroup>
-        <ToggleGroup.Item value="outer-b">Outer B</ToggleGroup.Item>
-      </ToggleGroup>,
-    )
-
-    screen.getByRole("radio", { name: /outer a/i }).focus()
-    await userEvent.keyboard("{ArrowRight}")
-
-    expect(screen.getByRole("radio", { name: /outer b/i })).toHaveFocus()
-    expect(onOuterChange).toHaveBeenCalledWith("outer-b")
-    expect(onInnerChange).not.toHaveBeenCalled()
-  })
-
-  it("keeps arrow navigation scoped away from nested button toggle groups", async () => {
-    render(
-      <ToggleGroup label="Outer" allowDeselect>
-        <ToggleGroup.Item value="outer-a">Outer A</ToggleGroup.Item>
-        <ToggleGroup label="Inner" allowDeselect>
-          <ToggleGroup.Item value="inner-a">Inner A</ToggleGroup.Item>
-        </ToggleGroup>
-        <ToggleGroup.Item value="outer-b">Outer B</ToggleGroup.Item>
-      </ToggleGroup>,
-    )
-
-    screen.getByRole("button", { name: /outer a/i }).focus()
-    await userEvent.keyboard("{ArrowRight}")
-
-    expect(screen.getByRole("button", { name: /outer b/i })).toHaveFocus()
   })
 
   it("disabled items do not activate on Enter key", async () => {

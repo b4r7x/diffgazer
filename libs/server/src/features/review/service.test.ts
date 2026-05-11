@@ -1,41 +1,49 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { SSEWriter } from "../../shared/lib/http/types.js";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import type { z } from "zod";
 import type { FullReviewStreamEvent } from "@diffgazer/core/schemas/events";
+import type { ReviewIssue, ReviewResult } from "@diffgazer/core/schemas/review";
 import { ReviewErrorCode } from "@diffgazer/core/schemas/review";
-import { ok } from "@diffgazer/core/result";
-
-vi.mock("./pipeline.js", () => ({
-  resolveGitDiff: vi.fn(),
-  resolveReviewConfig: vi.fn(),
-  executeReview: vi.fn(),
-  finalizeReview: vi.fn(),
-}));
+import { err, ok } from "@diffgazer/core/result";
+import type { SSEWriter } from "../../shared/lib/http/types.js";
+import type { AIClient } from "../../shared/lib/ai/types.js";
+import type { createGitService as createGitServiceType } from "../../shared/lib/git/service.js";
 
 vi.mock("../../shared/lib/git/service.js", () => ({
   createGitService: vi.fn(),
 }));
 
-import {
-  streamActiveSessionToSSE,
-  streamReviewToSSE,
-} from "./service.js";
-import {
-  addEvent,
-  createSession,
-  deleteSession,
-  getSession,
-  markComplete,
-  markReady,
-} from "./sessions.js";
-import {
-  executeReview,
-  finalizeReview,
-  resolveGitDiff,
-  resolveReviewConfig,
-} from "./pipeline.js";
-import { createGitService } from "../../shared/lib/git/service.js";
+type GitService = ReturnType<typeof createGitServiceType>;
+type ServiceModule = typeof import("./service.js");
+type SessionsModule = typeof import("./sessions.js");
+type GitModule = typeof import("../../shared/lib/git/service.js");
+type ReviewStorageModule = typeof import("../../shared/lib/storage/reviews.js");
 
-type GitService = ReturnType<typeof createGitService>;
+const REVIEW_DIFF = [
+  "diff --git a/src/app.ts b/src/app.ts",
+  "index 1111111..2222222 100644",
+  "--- a/src/app.ts",
+  "+++ b/src/app.ts",
+  "@@ -1,3 +1,4 @@",
+  " export function add(a: number, b: number) {",
+  "+  return a - b;",
+  " }",
+].join("\n");
+
+let streamActiveSessionToSSE: ServiceModule["streamActiveSessionToSSE"];
+let streamReviewToSSE: ServiceModule["streamReviewToSSE"];
+let addEvent: SessionsModule["addEvent"];
+let createSession: SessionsModule["createSession"];
+let deleteSession: SessionsModule["deleteSession"];
+let getSession: SessionsModule["getSession"];
+let markReady: SessionsModule["markReady"];
+let createGitService: GitModule["createGitService"];
+let getReview: ReviewStorageModule["getReview"];
+let originalDiffgazerHome: string | undefined;
+let tempHome: string;
+let projectRoot: string;
 
 const createdSessionIds = new Set<string>();
 
@@ -48,6 +56,15 @@ function cleanupTrackedSessions(): void {
     deleteSession(id);
   }
   createdSessionIds.clear();
+}
+
+function makeProjectRoot(): string {
+  const root = mkdtempSync(join(tmpdir(), "diffgazer-review-service-project-"));
+  mkdirSync(join(root, "src"), { recursive: true });
+  writeFileSync(join(root, "package.json"), JSON.stringify({ name: "fixture", version: "0.0.0" }));
+  writeFileSync(join(root, "README.md"), "# Fixture\n");
+  writeFileSync(join(root, "src/app.ts"), "export function add(a: number, b: number) {\n  return a + b;\n}\n");
+  return root;
 }
 
 function makeMockStream(): SSEWriter & { events: Array<{ event: string; data: string }> } {
@@ -68,7 +85,19 @@ function parsedEvents(stream: { events: Array<{ data: string }> }): FullReviewSt
   return stream.events.map((event) => JSON.parse(event.data) as FullReviewStreamEvent);
 }
 
-function makeGitService(): GitService {
+function makeGitService(options: {
+  diff?: string;
+  headCommit?: string;
+  headCommitError?: string;
+  statusHash?: string;
+} = {}): GitService {
+  const {
+    diff = REVIEW_DIFF,
+    headCommit = "abc123",
+    headCommitError,
+    statusHash = "hash123",
+  } = options;
+
   return {
     getStatus: async () => ({
       isGitRepo: true,
@@ -80,43 +109,124 @@ function makeGitService(): GitService {
       hasChanges: false,
       conflicted: [],
     }),
-    getDiff: async () => "",
+    getDiff: async () => diff,
     isGitInstalled: async () => true,
-    getBlame: async () => null,
-    getFileLines: async () => [],
-    getHeadCommit: async () => ok("abc123"),
-    getStatusHash: async () => "hash123",
+    getBlame: async () => ({
+      author: "Test Author",
+      authorEmail: "author@example.com",
+      commit: "abc123",
+      commitDate: "2026-05-11T00:00:00.000Z",
+      summary: "Fixture commit",
+    }),
+    getFileLines: async () => [
+      "export function add(a: number, b: number) {",
+      "  return a + b;",
+      "}",
+    ],
+    getHeadCommit: async () =>
+      headCommitError ? err({ message: headCommitError }) : ok(headCommit),
+    getStatusHash: async () => statusHash,
   };
 }
 
-function mockSuccessfulPipeline(): void {
-  const parsedDiff = {
-    files: [],
-    totalStats: { filesChanged: 0, additions: 0, deletions: 0, totalSizeBytes: 0 },
+function makeReviewIssue(overrides: Partial<ReviewIssue> = {}): ReviewIssue {
+  return {
+    id: "issue-1",
+    severity: "high",
+    category: "correctness",
+    title: "Subtraction used in addition helper",
+    file: "src/app.ts",
+    line_start: 2,
+    line_end: 2,
+    rationale: "The changed implementation subtracts instead of adding.",
+    recommendation: "Return a + b.",
+    suggested_patch: null,
+    confidence: 0.95,
+    symptom: "The add helper returns the wrong result.",
+    whyItMatters: "Callers receive incorrect arithmetic results.",
+    evidence: [],
+    ...overrides,
   };
-  vi.mocked(resolveGitDiff).mockResolvedValue(ok(parsedDiff));
-  vi.mocked(resolveReviewConfig).mockResolvedValue({
-    activeLenses: ["correctness"],
-    profile: undefined,
-    projectContext: "",
-  });
-  vi.mocked(executeReview).mockResolvedValue(ok({ issues: [], summary: "Clean" }));
-  vi.mocked(finalizeReview).mockResolvedValue(ok({ issues: [], summary: "Clean" }));
 }
+
+function makeAIClient(result: ReviewResult = {
+  summary: "Model found one correctness issue.",
+  issues: [makeReviewIssue()],
+}): AIClient {
+  const generate: AIClient["generate"] = async <T extends z.ZodType>(
+    _prompt: string,
+    schema: T,
+    _options?: { signal?: AbortSignal },
+  ) => ok(schema.parse(result));
+
+  return {
+    provider: "openrouter",
+    generate,
+    generateStream: async () => {},
+  };
+}
+
+function findCompleteEvent(events: FullReviewStreamEvent[]): Extract<FullReviewStreamEvent, { type: "complete" }> {
+  const completeEvent = events.find(
+    (event): event is Extract<FullReviewStreamEvent, { type: "complete" }> =>
+      event.type === "complete",
+  );
+  if (!completeEvent) {
+    throw new Error("Expected a complete review event");
+  }
+  return completeEvent;
+}
+
+beforeAll(async () => {
+  originalDiffgazerHome = process.env.DIFFGAZER_HOME;
+  tempHome = mkdtempSync(join(tmpdir(), "diffgazer-review-service-home-"));
+  process.env.DIFFGAZER_HOME = tempHome;
+  writeFileSync(
+    join(tempHome, "config.json"),
+    JSON.stringify({ settings: { defaultLenses: ["correctness"], agentExecution: "sequential" } }),
+  );
+
+  const service = await import("./service.js");
+  const sessions = await import("./sessions.js");
+  const git = await import("../../shared/lib/git/service.js");
+  const reviewStorage = await import("../../shared/lib/storage/reviews.js");
+
+  streamActiveSessionToSSE = service.streamActiveSessionToSSE;
+  streamReviewToSSE = service.streamReviewToSSE;
+  addEvent = sessions.addEvent;
+  createSession = sessions.createSession;
+  deleteSession = sessions.deleteSession;
+  getSession = sessions.getSession;
+  markReady = sessions.markReady;
+  createGitService = git.createGitService;
+  getReview = reviewStorage.getReview;
+});
+
+beforeEach(() => {
+  vi.resetAllMocks();
+  projectRoot = makeProjectRoot();
+  vi.mocked(createGitService).mockReturnValue(makeGitService());
+});
+
+afterEach(() => {
+  cleanupTrackedSessions();
+  rmSync(projectRoot, { recursive: true, force: true });
+  vi.useRealTimers();
+});
+
+afterAll(() => {
+  rmSync(tempHome, { recursive: true, force: true });
+  if (originalDiffgazerHome === undefined) {
+    delete process.env.DIFFGAZER_HOME;
+  } else {
+    process.env.DIFFGAZER_HOME = originalDiffgazerHome;
+  }
+});
 
 describe("streamActiveSessionToSSE", () => {
-  beforeEach(() => {
-    vi.resetAllMocks();
-  });
-
-  afterEach(() => {
-    cleanupTrackedSessions();
-    vi.useRealTimers();
-  });
-
   it("replays buffered events to the SSE stream", async () => {
     const stream = makeMockStream();
-    const session = createSession("replay-session", "/project", "abc123", "hash123", "unstaged");
+    const session = createSession("replay-session", projectRoot, "abc123", "hash123", "unstaged");
     trackSession(session.reviewId);
     const events: FullReviewStreamEvent[] = [
       { type: "step_start", step: "diff", timestamp: new Date().toISOString() },
@@ -132,7 +242,7 @@ describe("streamActiveSessionToSSE", () => {
 
   it("streams live events until a terminal event arrives", async () => {
     const stream = makeMockStream();
-    const session = createSession("live-session", "/project", "abc123", "hash123", "unstaged");
+    const session = createSession("live-session", projectRoot, "abc123", "hash123", "unstaged");
     trackSession(session.reviewId);
 
     const replay = streamActiveSessionToSSE(stream, session);
@@ -152,7 +262,7 @@ describe("streamActiveSessionToSSE", () => {
 
   it("writes a stale error when the session cannot be subscribed", async () => {
     const stream = makeMockStream();
-    const session = createSession("stale-session", "/project", "abc123", "hash123", "unstaged");
+    const session = createSession("stale-session", projectRoot, "abc123", "hash123", "unstaged");
     trackSession(session.reviewId);
     deleteSession(session.reviewId);
 
@@ -165,7 +275,7 @@ describe("streamActiveSessionToSSE", () => {
 
   it("stops without writing when the client aborts", async () => {
     const stream = makeMockStream();
-    const session = createSession("abort-session", "/project", "abc123", "hash123", "unstaged");
+    const session = createSession("abort-session", projectRoot, "abc123", "hash123", "unstaged");
     const controller = new AbortController();
     trackSession(session.reviewId);
 
@@ -180,7 +290,7 @@ describe("streamActiveSessionToSSE", () => {
   it("writes a terminal event discovered after subscription", async () => {
     vi.useFakeTimers();
     const stream = makeMockStream();
-    const session = createSession("poll-session", "/project", "abc123", "hash123", "unstaged");
+    const session = createSession("poll-session", projectRoot, "abc123", "hash123", "unstaged");
     trackSession(session.reviewId);
 
     const replay = streamActiveSessionToSSE(stream, session);
@@ -202,25 +312,9 @@ describe("streamActiveSessionToSSE", () => {
 });
 
 describe("streamReviewToSSE", () => {
-  const mockAIClient = {
-    provider: "openrouter" as const,
-    generate: vi.fn(),
-    generateStream: vi.fn(),
-  };
-
-  beforeEach(() => {
-    vi.resetAllMocks();
-    vi.mocked(createGitService).mockReturnValue(makeGitService());
-  });
-
-  afterEach(() => {
-    cleanupTrackedSessions();
-    vi.useRealTimers();
-  });
-
   it("replays a matching active session instead of starting a new review", async () => {
     const stream = makeMockStream();
-    const existing = createSession("existing-session", process.cwd(), "abc123", "hash123", "unstaged");
+    const existing = createSession("existing-session", projectRoot, "abc123", "hash123", "unstaged");
     trackSession(existing.reviewId);
     markReady(existing.reviewId);
     addEvent(existing.reviewId, {
@@ -230,7 +324,7 @@ describe("streamReviewToSSE", () => {
       durationMs: 100,
     });
 
-    await streamReviewToSSE(mockAIClient, { mode: "unstaged" }, stream);
+    await streamReviewToSSE(makeAIClient(), { mode: "unstaged", projectPath: projectRoot }, stream);
 
     expect(parsedEvents(stream)).toMatchObject([
       { type: "complete", reviewId: existing.reviewId },
@@ -238,30 +332,50 @@ describe("streamReviewToSSE", () => {
     expect(stream.events).toHaveLength(1);
   });
 
-  it("streams a complete event and leaves the created session complete", async () => {
+  it("streams review progress, issue events, completion, and persisted review data", async () => {
     const stream = makeMockStream();
-    mockSuccessfulPipeline();
 
-    await streamReviewToSSE(mockAIClient, { mode: "unstaged" }, stream);
+    await streamReviewToSSE(makeAIClient(), { mode: "unstaged", projectPath: projectRoot }, stream);
 
-    const completeEvent = parsedEvents(stream).find((event) => event.type === "complete");
-    expect(completeEvent).toMatchObject({
-      type: "complete",
-      result: { issues: [], summary: "Clean" },
+    const events = parsedEvents(stream);
+    expect(events.map((event) => event.type)).toEqual(expect.arrayContaining([
+      "step_start",
+      "review_started",
+      "orchestrator_start",
+      "issue_found",
+      "complete",
+    ]));
+
+    const issueEvent = events.find((event) => event.type === "issue_found");
+    expect(issueEvent).toMatchObject({
+      type: "issue_found",
+      issue: { title: "Subtraction used in addition helper", file: "src/app.ts" },
     });
-    if (completeEvent?.type === "complete") {
-      expect(getSession(completeEvent.reviewId)?.isComplete).toBe(true);
+
+    const completeEvent = findCompleteEvent(events);
+    expect(completeEvent.result.issues).toHaveLength(1);
+    expect(completeEvent.result.summary).toContain("Found 1 issue across 1 file.");
+    expect(getSession(completeEvent.reviewId)?.isComplete).toBe(true);
+
+    const savedReview = await getReview(completeEvent.reviewId);
+    expect(savedReview.ok).toBe(true);
+    if (savedReview.ok) {
+      expect(savedReview.value.metadata).toMatchObject({
+        id: completeEvent.reviewId,
+        projectPath: projectRoot,
+        mode: "unstaged",
+        issueCount: 1,
+      });
     }
   });
 
   it("cancels stale in-flight reviews for the same project and mode before streaming the new result", async () => {
     const stream = makeMockStream();
-    const stale = createSession("stale-review", process.cwd(), "old-head", "old-hash", "unstaged");
+    const stale = createSession("stale-review", projectRoot, "old-head", "old-hash", "unstaged");
     trackSession(stale.reviewId);
     markReady(stale.reviewId);
-    mockSuccessfulPipeline();
 
-    await streamReviewToSSE(mockAIClient, { mode: "unstaged" }, stream);
+    await streamReviewToSSE(makeAIClient(), { mode: "unstaged", projectPath: projectRoot }, stream);
 
     expect(stale.isComplete).toBe(true);
     expect(stale.controller.signal.aborted).toBe(true);
@@ -270,88 +384,55 @@ describe("streamReviewToSSE", () => {
     ]);
     expect(parsedEvents(stream).some((event) => event.type === "complete")).toBe(true);
   });
-});
 
-describe("review failure streaming", () => {
-  const mockAIClient = {
-    provider: "openrouter" as const,
-    generate: vi.fn(),
-    generateStream: vi.fn(),
-  };
-
-  beforeEach(() => {
-    vi.resetAllMocks();
-    vi.mocked(createGitService).mockReturnValue(makeGitService());
-  });
-
-  afterEach(() => {
-    cleanupTrackedSessions();
-    vi.useRealTimers();
-  });
-
-  it("completes silently for AbortError", async () => {
+  it("does not start a review when the client signal is already aborted", async () => {
     const stream = makeMockStream();
-    vi.mocked(resolveGitDiff).mockRejectedValue(
-      new DOMException("The operation was aborted", "AbortError"),
-    );
+    const controller = new AbortController();
+    controller.abort();
 
-    await streamReviewToSSE(mockAIClient, { mode: "unstaged" }, stream);
+    await streamReviewToSSE(makeAIClient(), { mode: "unstaged", projectPath: projectRoot }, stream, controller.signal);
 
     expect(stream.events).toEqual([]);
+    expect(createGitService).not.toHaveBeenCalled();
   });
 
-  it("streams step and terminal errors for review aborts", async () => {
+  it("streams step and terminal errors from the real diff pipeline", async () => {
     const stream = makeMockStream();
-    vi.mocked(resolveGitDiff).mockRejectedValue({
-      kind: "review_abort" as const,
-      message: "No changes found",
-      code: ReviewErrorCode.NO_DIFF,
-      step: "diff" as const,
-    });
+    vi.mocked(createGitService).mockReturnValue(makeGitService({ diff: "" }));
 
-    await streamReviewToSSE(mockAIClient, { mode: "unstaged" }, stream);
+    await streamReviewToSSE(makeAIClient(), { mode: "unstaged", projectPath: projectRoot }, stream);
 
     expect(parsedEvents(stream)).toMatchObject([
-      { type: "step_error", step: "diff", error: "No changes found" },
-      { type: "error", error: { code: ReviewErrorCode.NO_DIFF, message: "No changes found" } },
+      { type: "step_start", step: "diff" },
+      { type: "step_error", step: "diff", error: expect.stringContaining("No unstaged changes found") },
+      { type: "error", error: { code: ReviewErrorCode.NO_DIFF, message: expect.stringContaining("No unstaged changes found") } },
     ]);
   });
 
-  it("streams unexpected failures as generation errors", async () => {
+  it("streams repository inspection failures before creating a review session", async () => {
     const stream = makeMockStream();
-    vi.mocked(resolveGitDiff).mockRejectedValue(new Error("Unexpected boom"));
+    vi.mocked(createGitService).mockReturnValue(makeGitService({ headCommitError: "HEAD unavailable" }));
 
-    await streamReviewToSSE(mockAIClient, { mode: "unstaged" }, stream);
+    await streamReviewToSSE(makeAIClient(), { mode: "unstaged", projectPath: projectRoot }, stream);
 
     expect(parsedEvents(stream)).toMatchObject([
       {
         type: "error",
-        error: { code: ReviewErrorCode.GENERATION_FAILED, message: "Unexpected boom" },
+        error: {
+          code: ReviewErrorCode.GENERATION_FAILED,
+          message: "Failed to inspect repository state: HEAD unavailable",
+        },
       },
     ]);
   });
 
-  it("preserves known review error codes from thrown objects", async () => {
+  it("rejects when the SSE stream closes while an error event is being written", async () => {
     const stream = makeMockStream();
-    vi.mocked(resolveGitDiff).mockRejectedValue({
-      code: ReviewErrorCode.AI_ERROR,
-      message: "Upstream model failed",
-    });
-
-    await streamReviewToSSE(mockAIClient, { mode: "unstaged" }, stream);
-
-    expect(parsedEvents(stream)).toMatchObject([
-      { type: "error", error: { code: ReviewErrorCode.AI_ERROR, message: "Upstream model failed" } },
-    ]);
-  });
-
-  it("rejects when the SSE stream closes before the buffered terminal error can be written", async () => {
-    const stream = makeMockStream();
+    vi.mocked(createGitService).mockReturnValue(makeGitService({ headCommitError: "HEAD unavailable" }));
     stream.writeSSE = vi.fn().mockRejectedValue(new Error("stream closed"));
-    vi.mocked(resolveGitDiff).mockRejectedValue(new Error("Unexpected boom"));
 
-    await expect(streamReviewToSSE(mockAIClient, { mode: "unstaged" }, stream)).rejects.toThrow(
-      "stream closed",
-    );
+    await expect(
+      streamReviewToSSE(makeAIClient(), { mode: "unstaged", projectPath: projectRoot }, stream),
+    ).rejects.toThrow("stream closed");
   });
 });

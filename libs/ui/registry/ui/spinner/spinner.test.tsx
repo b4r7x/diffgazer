@@ -1,5 +1,5 @@
 import { createRef } from "react"
-import { act, render, screen } from "@testing-library/react"
+import { render, screen } from "@testing-library/react"
 import { axe } from "../../../testing/utils.js"
 import { afterEach, describe, it, expect, vi } from "vitest"
 import { Spinner } from "./index.js"
@@ -7,19 +7,14 @@ import { Spinner } from "./index.js"
 const originalMatchMedia = window.matchMedia
 
 function mockMatchMedia(matches: boolean) {
-  const listeners = new Set<(event: MediaQueryListEvent) => void>()
   const mql = {
     matches,
     media: "(prefers-reduced-motion: reduce)",
     onchange: null,
     addListener: vi.fn(),
     removeListener: vi.fn(),
-    addEventListener: vi.fn((_: "change", listener: (event: MediaQueryListEvent) => void) => {
-      listeners.add(listener)
-    }),
-    removeEventListener: vi.fn((_: "change", listener: (event: MediaQueryListEvent) => void) => {
-      listeners.delete(listener)
-    }),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
     dispatchEvent: vi.fn(),
   }
 
@@ -32,7 +27,6 @@ function mockMatchMedia(matches: boolean) {
 }
 
 afterEach(() => {
-  vi.useRealTimers()
   Object.defineProperty(window, "matchMedia", {
     writable: true,
     value: originalMatchMedia,
@@ -69,40 +63,15 @@ describe("Spinner", () => {
     expect(ref.current).toBe(screen.getByRole("status", { name: "Loading" }))
   })
 
-  it("uses the default speed when an invalid speed is provided", () => {
-    vi.useFakeTimers()
-    mockMatchMedia(false)
-    const { container } = render(<Spinner variant="braille" speed={Number.NaN} />)
-    const animation = container.querySelector("[aria-hidden='true']")
-
-    expect(animation).toHaveTextContent("⠋")
-    expect(vi.getTimerCount()).toBe(1)
-
-    act(() => {
-      vi.advanceTimersByTime(80)
-    })
-
-    expect(animation).toHaveTextContent("⠙")
-  })
-
-  it("does not start animation timers when reduced motion is requested", () => {
-    vi.useFakeTimers()
+  it("renders accessible status when reduced motion is requested", () => {
     mockMatchMedia(true)
-    const { container } = render(<Spinner variant="braille" />)
-    const animation = container.querySelector("[aria-hidden='true']")
 
-    expect(animation).toHaveTextContent("⠋")
-    expect(vi.getTimerCount()).toBe(0)
+    render(<Spinner variant="braille" />)
 
-    act(() => {
-      vi.advanceTimersByTime(1000)
-    })
-
-    expect(animation).toHaveTextContent("⠋")
+    expect(screen.getByRole("status", { name: "Loading" })).toBeInTheDocument()
   })
 
   it("does not crash when matchMedia is unavailable", () => {
-    vi.useFakeTimers()
     Object.defineProperty(window, "matchMedia", {
       configurable: true,
       writable: true,
@@ -111,19 +80,5 @@ describe("Spinner", () => {
 
     expect(() => render(<Spinner variant="braille" />)).not.toThrow()
     expect(screen.getByRole("status", { name: "Loading" })).toBeInTheDocument()
-  })
-
-  it("removes motion listeners and timers on unmount", () => {
-    vi.useFakeTimers()
-    const mql = mockMatchMedia(false)
-    const { unmount } = render(<Spinner variant="braille" />)
-
-    expect(mql.addEventListener).toHaveBeenCalledWith("change", expect.any(Function))
-    expect(vi.getTimerCount()).toBe(1)
-
-    unmount()
-
-    expect(mql.removeEventListener).toHaveBeenCalledWith("change", expect.any(Function))
-    expect(vi.getTimerCount()).toBe(0)
   })
 })

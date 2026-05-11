@@ -39,6 +39,15 @@ describe("config API functions", () => {
     expect(client.get).toHaveBeenCalledWith("/api/settings/trust", { projectId: "proj-1" });
   });
 
+  it("deleteTrust passes projectId as query param", async () => {
+    vi.mocked(client.delete).mockResolvedValue({ removed: true });
+
+    const result = await deleteTrust(client, "proj-1");
+
+    expect(client.delete).toHaveBeenCalledWith("/api/settings/trust", { projectId: "proj-1" });
+    expect(result).toEqual({ removed: true });
+  });
+
   it("activateProvider builds URL with provider ID", async () => {
     vi.mocked(client.post).mockResolvedValue({ provider: "gemini" });
 

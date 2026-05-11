@@ -33,6 +33,7 @@ interface ProviderListProps {
     ref: RefCallback<HTMLButtonElement>;
     onFocus: () => void;
   };
+  onListKeyDown?: (event: ReactKeyboardEvent) => void;
   highlighted?: string | null;
   onHighlightChange?: (id: string) => void;
   onBoundaryReached?: (direction: "up" | "down") => void;
@@ -58,6 +59,7 @@ export function ProviderList({
   onFilterFocus,
   onFilterKeyDown,
   getFilterButtonProps,
+  onListKeyDown,
   highlighted,
   onHighlightChange,
   onBoundaryReached,
@@ -144,10 +146,9 @@ export function ProviderList({
             highlighted={highlighted}
             onFocus={onListFocus}
             onHighlightChange={onHighlightChange}
-            onSelect={(id) => {
-              onSelect(id);
-              onActivate?.(id);
-            }}
+            onKeyDown={onListKeyDown}
+            onSelect={onSelect}
+            onEnter={(id) => onActivate?.(id)}
             focused={isFocused}
             wrap={false}
             onNavigationBoundaryReached={(direction) => {

@@ -49,11 +49,13 @@ describe("SearchInput", () => {
   it("forwards custom onKeyDown alongside built-in handler", async () => {
     const user = userEvent.setup()
     const onKeyDown = vi.fn()
-    renderSearchInput({ onKeyDown })
+    const onEnter = vi.fn()
+    renderSearchInput({ onEnter, onKeyDown })
     const input = screen.getByRole("searchbox")
     input.focus()
     await user.keyboard("{Enter}")
     expect(onKeyDown).toHaveBeenCalledOnce()
+    expect(onEnter).toHaveBeenCalledOnce()
   })
 
   it("honors preventDefault in custom key handlers", async () => {

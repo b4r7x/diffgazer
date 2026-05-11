@@ -10,8 +10,12 @@ describe("severityRank", () => {
     expect(severityRank("low")).toBeLessThan(severityRank("nit"));
   });
 
-  it("returns 0 for blocker", () => {
-    expect(severityRank("blocker")).toBe(0);
+  it("sorts severities from most to least severe", () => {
+    const severities: ReviewSeverity[] = ["nit", "medium", "blocker", "low", "high"];
+
+    const sorted = [...severities].sort((a, b) => severityRank(a) - severityRank(b));
+
+    expect(sorted).toEqual(["blocker", "high", "medium", "low", "nit"]);
   });
 });
 

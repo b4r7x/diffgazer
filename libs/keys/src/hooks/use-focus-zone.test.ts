@@ -39,7 +39,7 @@ describe("useFocusZone", () => {
   });
 
   describe("getKeyOptions helper", () => {
-    it("enables useKey only for the active zone and passes through extra options", () => {
+    it("enables useKey only for the active zone", () => {
       const handler = vi.fn();
       const { result } = renderHook(
         () => {
@@ -47,7 +47,7 @@ describe("useFocusZone", () => {
             initial: "main",
             zones: ["main", "sidebar"],
           });
-          useKey("Enter", handler, fz.getKeyOptions("sidebar", { allowInInput: true }));
+          useKey("Enter", handler, fz.getKeyOptions("sidebar"));
           return fz;
         },
         { wrapper },
@@ -58,6 +58,26 @@ describe("useFocusZone", () => {
 
       act(() => result.current.setZone("sidebar"));
       act(() => fireKey("Enter"));
+      expect(handler).toHaveBeenCalledOnce();
+    });
+
+    it("passes allowInInput through to useKey options", async () => {
+      const handler = vi.fn();
+
+      function Host() {
+        const focusZone = useFocusZone({
+          initial: "search",
+          zones: ["search"],
+        });
+        useKey("Enter", handler, focusZone.getKeyOptions("search", { allowInInput: true }));
+        return createElement("input", { "aria-label": "Search" });
+      }
+
+      render(createElement(Host), { wrapper });
+
+      screen.getByRole("textbox", { name: "Search" }).focus();
+      await userEvent.keyboard("{Enter}");
+
       expect(handler).toHaveBeenCalledOnce();
     });
 

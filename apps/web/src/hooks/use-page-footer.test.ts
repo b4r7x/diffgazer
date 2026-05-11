@@ -1,74 +1,71 @@
-import { renderHook } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
 import type { Shortcut } from "@diffgazer/core/schemas/ui";
-
-const mockSetShortcuts = vi.fn();
-const mockSetRightShortcuts = vi.fn();
-
-let currentShortcuts: Shortcut[] = [];
-let currentRightShortcuts: Shortcut[] = [];
-
-vi.mock("@/components/layout", () => ({
-  useFooterData: () => ({
-    shortcuts: currentShortcuts,
-    rightShortcuts: currentRightShortcuts,
-  }),
-  useFooterActions: () => ({
-    setShortcuts: mockSetShortcuts,
-    setRightShortcuts: mockSetRightShortcuts,
-  }),
-}));
-
+import { Footer, FooterProvider, useFooterData } from "@/components/layout";
+import { createElement } from "react";
 import { usePageFooter } from "./use-page-footer";
 
+interface PageFooterSubjectProps {
+  shortcuts: Shortcut[];
+  rightShortcuts?: Shortcut[];
+}
+
+function PageFooterSubject({ shortcuts, rightShortcuts }: PageFooterSubjectProps) {
+  usePageFooter({ shortcuts, rightShortcuts });
+  const footer = useFooterData();
+
+  return createElement(Footer, {
+    shortcuts: footer.shortcuts,
+    rightShortcuts: footer.rightShortcuts,
+  });
+}
+
+function renderPageFooter(props: PageFooterSubjectProps) {
+  return render(
+    createElement(
+      FooterProvider,
+      null,
+      createElement(PageFooterSubject, props),
+    ),
+  );
+}
+
+function renderPageFooterSubject(props: PageFooterSubjectProps) {
+  return createElement(
+    FooterProvider,
+    null,
+    createElement(PageFooterSubject, props),
+  );
+}
+
 describe("usePageFooter", () => {
-  beforeEach(() => {
-    mockSetShortcuts.mockReset();
-    mockSetRightShortcuts.mockReset();
-    currentShortcuts = [];
-    currentRightShortcuts = [];
-  });
-
-  it("sets footer shortcuts when content changed", () => {
-    const nextShortcuts: Shortcut[] = [{ key: "Enter", label: "Confirm" }];
-    const nextRight: Shortcut[] = [{ key: "Esc", label: "Back" }];
-
-    renderHook(() => usePageFooter({ shortcuts: nextShortcuts, rightShortcuts: nextRight }));
-
-    expect(mockSetShortcuts).toHaveBeenCalledWith(nextShortcuts);
-    expect(mockSetRightShortcuts).toHaveBeenCalledWith(nextRight);
-  });
-
-  it("does not set footer shortcuts when content is equal with new array references", () => {
-    currentShortcuts = [{ key: "Enter", label: "Confirm" }];
-    currentRightShortcuts = [{ key: "Esc", label: "Back" }];
-
-    const { rerender } = renderHook(
-      ({ shortcuts, rightShortcuts }) => usePageFooter({ shortcuts, rightShortcuts }),
-      {
-        initialProps: {
-          shortcuts: [{ key: "Enter", label: "Confirm" }] satisfies Shortcut[],
-          rightShortcuts: [{ key: "Esc", label: "Back" }] satisfies Shortcut[],
-        },
-      },
-    );
-
-    rerender({
+  it("renders page shortcuts through the footer provider", async () => {
+    renderPageFooter({
       shortcuts: [{ key: "Enter", label: "Confirm" }],
       rightShortcuts: [{ key: "Esc", label: "Back" }],
     });
 
-    expect(mockSetShortcuts).not.toHaveBeenCalled();
-    expect(mockSetRightShortcuts).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(screen.getByText("Confirm")).toBeInTheDocument();
+      expect(screen.getByText("Back")).toBeInTheDocument();
+    });
   });
 
-  it("treats disabled flag changes as a footer update", () => {
-    currentShortcuts = [{ key: "Enter", label: "Confirm", disabled: false }];
+  it("updates rendered footer content when disabled state changes", async () => {
+    const { rerender } = renderPageFooter({
+      shortcuts: [{ key: "Enter", label: "Confirm", disabled: false }],
+    });
 
-    const nextShortcuts: Shortcut[] = [{ key: "Enter", label: "Confirm", disabled: true }];
+    await screen.findByText("Confirm");
 
-    renderHook(() => usePageFooter({ shortcuts: nextShortcuts }));
+    rerender(
+      renderPageFooterSubject({
+        shortcuts: [{ key: "Enter", label: "Confirm", disabled: true }],
+      }),
+    );
 
-    expect(mockSetShortcuts).toHaveBeenCalledWith(nextShortcuts);
+    await waitFor(() => {
+      expect(screen.queryByText("Confirm")).not.toBeInTheDocument();
+    });
   });
 });

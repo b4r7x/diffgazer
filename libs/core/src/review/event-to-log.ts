@@ -60,7 +60,7 @@ function convertEventToLogEntry(
       timestamp,
       tag: "START",
       tagType: "system",
-      message: `Review started: ${event.filesTotal} file${event.filesTotal === 1 ? "" : "s"} to analyze`,
+      message: `Review started: ${pluralize(event.filesTotal, "file")} to analyze`,
     };
   }
 
@@ -81,7 +81,7 @@ function convertEventToLogEntry(
         timestamp,
         tag: "ORCH",
         tagType: "system",
-        message: `Orchestrator started (${event.agents.length} agents, concurrency ${event.concurrency})`,
+        message: `Orchestrator started (${pluralize(event.agents.length, "agent")}, concurrency ${event.concurrency})`,
       };
 
     case "agent_queued":

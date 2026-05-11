@@ -1,239 +1,240 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { AIProvider, TrustConfig } from "@diffgazer/core/schemas/config";
 
-vi.mock("../../shared/lib/config/store.js", () => ({
-  getProviders: vi.fn(),
-  getActiveProvider: vi.fn(),
-  getProviderApiKey: vi.fn(),
-  activateProvider: vi.fn(),
-  getSettings: vi.fn().mockReturnValue({
-    secretsStorage: "keyring",
-    defaultLenses: ["correctness"],
-    agentExecution: "parallel",
-  }),
-  getProjectInfo: vi.fn().mockReturnValue({
-    trust: { capabilities: { readFiles: true } },
-  }),
+const keyring = vi.hoisted(() => ({
+  deleteKeyringSecret: vi.fn(),
+  isKeyringAvailable: vi.fn(),
+  readKeyringSecret: vi.fn(),
+  writeKeyringSecret: vi.fn(),
 }));
 
-vi.mock("../../shared/lib/ai/openrouter-models.js", () => ({
+const openRouter = vi.hoisted(() => ({
   getOpenRouterModelsWithCache: vi.fn(),
 }));
 
-import {
-  getProvidersStatus,
-  checkConfig,
-  activateProvider,
-  getOpenRouterModels,
-  getSetupStatus,
-} from "./service.js";
-import {
-  getProviders,
-  getActiveProvider,
-  getProviderApiKey,
-  activateProvider as activateProviderInStore,
-} from "../../shared/lib/config/store.js";
-import { getOpenRouterModelsWithCache } from "../../shared/lib/ai/openrouter-models.js";
+vi.mock("../../shared/lib/config/keyring.js", () => keyring);
+vi.mock("../../shared/lib/ai/openrouter-models.js", () => openRouter);
 
-beforeEach(() => {
-  vi.clearAllMocks();
-});
+let diffgazerHome: string;
+let projectRoot: string;
 
-describe("getProvidersStatus", () => {
-  it("should return providers and active provider", () => {
-    vi.mocked(getProviders).mockReturnValue([
-      { provider: "gemini", model: "gemini-2.5-flash", isActive: true },
-      { provider: "openrouter", model: null, isActive: false },
-    ] as any);
+const configPath = (): string => join(diffgazerHome, "config.json");
 
-    const result = getProvidersStatus();
+function writeJson(filePath: string, value: unknown): void {
+  mkdirSync(dirname(filePath), { recursive: true });
+  writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`);
+}
 
-    expect(result.providers).toHaveLength(2);
-    expect(result.activeProvider).toBe("gemini");
+async function loadService() {
+  return import("./service.js");
+}
+
+async function loadStore() {
+  return import("../../shared/lib/config/store.js");
+}
+
+async function configureProvider(
+  provider: AIProvider,
+  options: { apiKey?: string; model?: string } = {},
+) {
+  const store = await loadStore();
+  store.updateSettings({ secretsStorage: "file" });
+  store.saveProviderCredentials({
+    provider,
+    apiKey: options.apiKey ?? "sk-test",
+    model: options.model,
+  });
+  return store;
+}
+
+function trustConfig(projectId: string, overrides: Partial<TrustConfig> = {}): TrustConfig {
+  return {
+    projectId,
+    repoRoot: projectRoot,
+    trustedAt: "2024-01-01T00:00:00.000Z",
+    capabilities: { readFiles: true, runCommands: false },
+    trustMode: "persistent",
+    ...overrides,
+  };
+}
+
+describe("config service", () => {
+  beforeEach(() => {
+    diffgazerHome = mkdtempSync(join(tmpdir(), "diffgazer-service-home-"));
+    projectRoot = mkdtempSync(join(tmpdir(), "diffgazer-service-project-"));
+    mkdirSync(join(projectRoot, ".git"));
+    process.env.DIFFGAZER_HOME = diffgazerHome;
+    vi.resetModules();
+    vi.clearAllMocks();
+    keyring.isKeyringAvailable.mockReturnValue(true);
+    keyring.readKeyringSecret.mockReturnValue({ ok: true, value: null });
+    keyring.writeKeyringSecret.mockReturnValue({ ok: true, value: undefined });
+    keyring.deleteKeyringSecret.mockReturnValue({ ok: true, value: false });
   });
 
-  it("should return undefined activeProvider when none active", () => {
-    vi.mocked(getProviders).mockReturnValue([
-      { provider: "gemini", model: "m1", isActive: false },
-    ] as any);
-
-    expect(getProvidersStatus().activeProvider).toBeUndefined();
+  afterEach(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    delete process.env.DIFFGAZER_HOME;
+    rmSync(diffgazerHome, { recursive: true, force: true });
+    rmSync(projectRoot, { recursive: true, force: true });
   });
-});
 
-describe("checkConfig", () => {
-  it("should return configured: true when config exists", () => {
-    vi.mocked(getActiveProvider).mockReturnValue({
-      provider: "gemini",
+  it("reports providers and the active provider from the real store", async () => {
+    await configureProvider("gemini", { model: "gemini-2.5-flash" });
+    const { getProvidersStatus } = await loadService();
+
+    const status = getProvidersStatus();
+
+    expect(status.activeProvider).toBe("gemini");
+    expect(status.providers.find((provider) => provider.provider === "gemini")).toMatchObject({
+      hasApiKey: true,
+      isActive: true,
       model: "gemini-2.5-flash",
-    } as any);
-    vi.mocked(getProviderApiKey).mockReturnValue({
+    });
+  });
+
+  it("reports configured only when an active provider has a stored API key", async () => {
+    const { checkConfig } = await loadService();
+
+    expect(checkConfig()).toMatchObject({ ok: true, value: { configured: false } });
+
+    const store = await configureProvider("gemini", { model: "gemini-2.5-flash" });
+    expect(checkConfig()).toMatchObject({
       ok: true,
-      value: "sk-123",
+      value: {
+        configured: true,
+        config: { provider: "gemini", model: "gemini-2.5-flash" },
+      },
     });
 
-    const result = checkConfig();
-
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.value.configured).toBe(true);
-    }
+    store.deleteProviderCredentials("gemini");
+    expect(checkConfig()).toMatchObject({ ok: true, value: { configured: false } });
   });
 
-  it("should return configured: false when no active provider", () => {
-    vi.mocked(getActiveProvider).mockReturnValue(null);
-
-    const result = checkConfig();
-
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.value.configured).toBe(false);
-    }
-  });
-
-  it("should return configured: false when no API key", () => {
-    vi.mocked(getActiveProvider).mockReturnValue({
-      provider: "gemini",
-      model: "gemini-2.5-flash",
-    } as any);
-    vi.mocked(getProviderApiKey).mockReturnValue({
-      ok: true,
-      value: null,
+  it("propagates secret storage errors from the store", async () => {
+    writeJson(configPath(), {
+      settings: { secretsStorage: "keyring" },
+      providers: [
+        { provider: "gemini", hasApiKey: true, isActive: true, model: "gemini-2.5-flash" },
+      ],
     });
-
-    const result = checkConfig();
-
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.value.configured).toBe(false);
-    }
-  });
-
-  it("should propagate error from getProviderApiKey", () => {
-    vi.mocked(getActiveProvider).mockReturnValue({
-      provider: "gemini",
-      model: "m1",
-    } as any);
-    vi.mocked(getProviderApiKey).mockReturnValue({
+    keyring.readKeyringSecret.mockReturnValue({
       ok: false,
       error: { code: "KEYRING_READ_FAILED", message: "fail" },
     });
+    const { checkConfig } = await loadService();
 
-    const result = checkConfig();
-
-    expect(result.ok).toBe(false);
+    expect(checkConfig()).toMatchObject({
+      ok: false,
+      error: { code: "KEYRING_READ_FAILED" },
+    });
   });
-});
 
-describe("activateProvider", () => {
-  it("should activate provider with model", () => {
-    vi.mocked(activateProviderInStore).mockReturnValue({
-      provider: "gemini",
-      model: "gemini-2.5-flash",
-    } as any);
+  it("activates providers using the store's model requirements", async () => {
+    const { activateProvider } = await loadService();
 
-    const result = activateProvider({
-      provider: "gemini" as any,
-      model: "gemini-2.5-flash",
+    expect(activateProvider({ provider: "gemini" })).toMatchObject({
+      ok: false,
+      error: { code: "INVALID_BODY" },
     });
 
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.value.provider).toBe("gemini");
-    }
+    await configureProvider("gemini", { model: "gemini-2.5-flash" });
+    expect(activateProvider({ provider: "gemini", model: "gemini-2.5-pro" }))
+      .toMatchObject({
+        ok: true,
+        value: { provider: "gemini", model: "gemini-2.5-pro" },
+      });
+
+    expect(activateProvider({ provider: "unknown" as AIProvider, model: "m1" }))
+      .toMatchObject({
+        ok: false,
+        error: { code: "PROVIDER_NOT_FOUND" },
+      });
   });
 
-  it("should require model when provider has no existing model", () => {
-    vi.mocked(getProviders).mockReturnValue([
-      { provider: "gemini", model: null, isActive: false },
-    ] as any);
-
-    const result = activateProvider({ provider: "gemini" as any });
-
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error.code).toBe("INVALID_BODY");
-    }
-  });
-
-  it("should return error when provider not found", () => {
-    vi.mocked(activateProviderInStore).mockReturnValue(null);
-
-    const result = activateProvider({
-      provider: "gemini" as any,
-      model: "m1",
-    });
-
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error.code).toBe("PROVIDER_NOT_FOUND");
-    }
-  });
-});
-
-describe("getOpenRouterModels", () => {
-  it("should return models when API key exists", async () => {
-    vi.mocked(getProviderApiKey).mockReturnValue({
-      ok: true,
-      value: "sk-123",
-    });
-    vi.mocked(getOpenRouterModelsWithCache).mockResolvedValue({
+  it("fetches OpenRouter models with the stored OpenRouter API key", async () => {
+    await configureProvider("openrouter", { apiKey: "sk-openrouter" });
+    openRouter.getOpenRouterModelsWithCache.mockResolvedValue({
       ok: true,
       value: {
-        models: [{ id: "model-1", name: "M1" }] as any,
+        models: [{ id: "model-1", name: "M1" }],
         fetchedAt: "2024-01-01",
         cached: false,
       },
     });
+    const { getOpenRouterModels } = await loadService();
 
     const result = await getOpenRouterModels();
 
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.value.models).toHaveLength(1);
-    }
+    expect(openRouter.getOpenRouterModelsWithCache).toHaveBeenCalledWith("sk-openrouter");
+    expect(result).toMatchObject({
+      ok: true,
+      value: { models: [{ id: "model-1", name: "M1" }] },
+    });
   });
 
-  it("should return error when no API key", async () => {
-    vi.mocked(getProviderApiKey).mockReturnValue({
-      ok: true,
-      value: null,
+  it("returns OpenRouter errors when the key is missing or the model request fails", async () => {
+    const { getOpenRouterModels } = await loadService();
+
+    expect(await getOpenRouterModels()).toMatchObject({
+      ok: false,
+      error: { code: "API_KEY_MISSING" },
     });
 
-    const result = await getOpenRouterModels();
-
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error.code).toBe("API_KEY_MISSING");
-    }
-  });
-
-  it("should handle fetch errors", async () => {
-    vi.mocked(getProviderApiKey).mockReturnValue({
-      ok: true,
-      value: "sk-123",
-    });
-    vi.mocked(getOpenRouterModelsWithCache).mockResolvedValue({
+    await configureProvider("openrouter", { apiKey: "sk-openrouter" });
+    openRouter.getOpenRouterModelsWithCache.mockResolvedValue({
       ok: false,
       error: { message: "network error" },
     });
 
-    const result = await getOpenRouterModels();
+    expect(await getOpenRouterModels()).toMatchObject({
+      ok: false,
+      error: { code: "INTERNAL_ERROR", message: "network error" },
+    });
+  });
 
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error.code).toBe("INTERNAL_ERROR");
-    }
+  it("derives setup readiness from settings, provider config, and project trust", async () => {
+    const { getSetupStatus } = await loadService();
+
+    const initial = getSetupStatus(projectRoot);
+    expect(initial).toMatchObject({
+      hasSecretsStorage: false,
+      hasProvider: false,
+      hasModel: false,
+      hasTrust: false,
+      isReady: false,
+    });
+    expect(initial.missing).toEqual(["secretsStorage", "provider", "model", "trust"]);
+
+    const store = await configureProvider("gemini", { model: "gemini-2.5-flash" });
+    const project = store.getProjectInfo(projectRoot);
+    store.saveTrust(trustConfig(project.projectId));
+
+    expect(getSetupStatus(projectRoot)).toMatchObject({
+      hasSecretsStorage: true,
+      hasProvider: true,
+      hasModel: true,
+      hasTrust: true,
+      isConfigured: true,
+      isReady: true,
+      missing: [],
+    });
+  });
+
+  it("persists config service writes through the real store", async () => {
+    const { saveConfig } = await loadService();
+
+    const result = saveConfig({
+      provider: "gemini",
+      apiKey: "sk-123",
+      model: "gemini-2.5-flash",
+    });
+
+    expect(result).toMatchObject({ ok: true, value: { provider: "gemini" } });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(readFileSync(configPath(), "utf-8")).toContain("gemini-2.5-flash");
   });
 });
-
-describe("getSetupStatus", () => {
-  it("should report missing fields", () => {
-    vi.mocked(getProviders).mockReturnValue([]);
-
-    const status = getSetupStatus("/project");
-
-    expect(status.hasProvider).toBe(false);
-    expect(status.missing).toContain("provider");
-  });
-});
-

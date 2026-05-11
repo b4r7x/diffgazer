@@ -61,4 +61,28 @@ describe("StorageSelectorContent", () => {
     expect(onEnter).toHaveBeenCalledWith("keyring");
     expect(onChange).toHaveBeenCalledWith("keyring");
   });
+
+  it("clears the highlighted storage when keyboard navigation is inactive", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    const { rerender } = render(
+      <StorageSelectorContent value="file" onChange={onChange} autoFocusList />,
+    );
+
+    await waitFor(() => expect(screen.getByRole("radio", { name: /file storage/i })).toHaveFocus());
+    await user.keyboard("{ArrowDown}");
+
+    const keyringRadio = screen.getByRole("radio", { name: /system keyring/i });
+    expect(keyringRadio).toHaveAttribute("data-highlighted", "true");
+
+    rerender(
+      <StorageSelectorContent
+        value="file"
+        onChange={onChange}
+        keyboardNavigation={false}
+      />,
+    );
+
+    expect(keyringRadio).not.toHaveAttribute("data-highlighted");
+  });
 });

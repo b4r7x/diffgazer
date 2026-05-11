@@ -74,6 +74,35 @@ test("add records only files it wrote and remove keeps modified owned files", ()
   assert.equal(existsSync(buttonSource), true);
 });
 
+test("remove --force deletes modified owned files and clears ownership", () => {
+  runDgadd(["add", "ui/button", "--cwd", root, "--yes", "--skip-install"]);
+  const buttonIndex = join(root, "src/components/ui/button/index.ts");
+  writeFileSync(buttonIndex, "// user edits\n");
+
+  const output = runDgaddVisible(["remove", "ui/button", "--cwd", root, "--yes", "--force"]);
+
+  assert.match(output, /Removed \d+ file\(s\) \(ui\/button\)/);
+  assert.equal(existsSync(buttonIndex), false);
+  const config = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
+  assert.equal(config.installedComponents?.["ui/button"], undefined);
+});
+
+test("remove --dry-run previews owned files without changing files or manifest", () => {
+  runDgadd(["add", "ui/button", "--cwd", root, "--yes", "--skip-install"]);
+  const buttonIndex = join(root, "src/components/ui/button/index.ts");
+  const before = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
+
+  const output = runDgaddVisible(["remove", "ui/button", "--cwd", root, "--dry-run", "--yes"]);
+
+  assert.match(output, /Files to remove:/);
+  assert.match(output, /src\/components\/ui\/button\/index\.ts/);
+  assert.match(output, /\(dry run - no changes made\)/);
+  assert.equal(existsSync(buttonIndex), true);
+
+  const after = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
+  assert.deepEqual(after.installedComponents, before.installedComponents);
+});
+
 test("init uses a Vite-only custom alias when TypeScript paths are absent", () => {
   rmSync(join(root, "diffgazer.json"), { force: true });
   rmSync(join(root, "tsconfig.json"), { force: true });

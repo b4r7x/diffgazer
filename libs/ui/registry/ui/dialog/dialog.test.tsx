@@ -241,13 +241,11 @@ describe("Dialog", () => {
     await waitFor(() => expect(opener).toHaveFocus())
   })
 
-  it("does not call showModal while a closing dialog is still present", () => {
-    const showModal = vi.spyOn(HTMLDialogElement.prototype, "showModal")
+  it("keeps a closing dialog closed while it remains present for exit animation", () => {
     const { rerender } = renderDialog({ defaultOpen: true })
     const dialog = screen.getByRole("dialog")
 
     dialog.close()
-    showModal.mockClear()
 
     rerender(
       <Dialog open={false}>
@@ -258,7 +256,8 @@ describe("Dialog", () => {
       </Dialog>
     )
 
-    expect(showModal).not.toHaveBeenCalled()
+    expect(dialog).toHaveAttribute("data-state", "closed")
+    expect(dialog).not.toHaveAttribute("open")
   })
 
   it("keeps nested portals inside a dialog opened after an initial closed render", async () => {
@@ -502,9 +501,8 @@ describe("Dialog", () => {
       </>
     )
     const dialogs = screen.getAllByRole("dialog")
-    // Both dialogs should be present in DOM
     expect(dialogs).toHaveLength(2)
-    // The last opened dialog should be focused/visible
+    expect(screen.getByRole("dialog", { name: "Dialog 1" })).toHaveAttribute("data-state", "open")
     expect(dialogs[1]).toHaveAttribute("data-state", "open")
   })
 
@@ -529,10 +527,21 @@ describe("Dialog", () => {
         </Dialog>
       </>
     )
-    // Close the top dialog
+    const firstDialog = screen.getByRole("dialog", { name: "Dialog 1" })
+    const secondDialog = screen.getByRole("dialog", { name: "Dialog 2" })
     const closeButtons = screen.getAllByRole("button", { name: "Close dialog" })
     await userEvent.click(closeButtons[closeButtons.length - 1])
+
     expect(onOpenChange2).toHaveBeenCalledWith(false)
+    expect(onOpenChange1).not.toHaveBeenCalled()
+    await waitFor(() => expect(secondDialog).toHaveAttribute("data-state", "closed"))
+    expect(firstDialog).toHaveAttribute("data-state", "open")
+    expect(document.body).toContainElement(secondDialog)
+
+    fireEvent.animationEnd(secondDialog)
+
+    await waitFor(() => expect(document.body).not.toContainElement(secondDialog))
+    expect(document.body).toContainElement(firstDialog)
   })
 
   it("composes consumer dialog events without replacing backdrop or presence behavior", () => {

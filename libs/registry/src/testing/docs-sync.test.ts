@@ -1,4 +1,5 @@
 import {
+  cpSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -131,6 +132,21 @@ function createLibraryFixture(
   };
 }
 
+function installFixturePackage(docsRoot: string, fixture: TestLibraryFixture): void {
+  const packageRoot = join(docsRoot, "node_modules", "@test", fixture.config.id);
+  mkdirSync(packageRoot, { recursive: true });
+  writeJson(join(packageRoot, "package.json"), {
+    name: fixture.config.packageName,
+    version: fixture.manifest.version,
+    type: "module",
+  });
+  cpSync(
+    join(fixture.libraryRoot, fixture.manifest.artifactRoot),
+    join(packageRoot, fixture.manifest.artifactRoot),
+    { recursive: true },
+  );
+}
+
 describe("syncDocsFromArtifacts", () => {
   let tempRoot: string;
   let docsRoot: string;
@@ -148,7 +164,7 @@ describe("syncDocsFromArtifacts", () => {
     rmSync(tempRoot, { recursive: true, force: true });
   });
 
-  function runSync(config: SyncLibraryConfig) {
+  function runSync(config: SyncLibraryConfig, mode: "workspace" | "package" = "workspace") {
     return syncDocsFromArtifacts({
       docsRoot,
       workspaceRoot,
@@ -156,7 +172,7 @@ describe("syncDocsFromArtifacts", () => {
       primaryLibraryId: config.id,
       origin: TEST_ORIGIN,
       sourceOrigin: TEST_ORIGIN,
-      mode: "workspace",
+      mode,
     });
   }
 
@@ -229,5 +245,24 @@ describe("syncDocsFromArtifacts", () => {
     const third = runSync(fixture.config);
     expect(third.synced).toBe(true);
     expect(existsSync(missingOutput)).toBe(true);
+  });
+
+  it("syncs package-mode artifacts from an installed node_modules package", () => {
+    writeJson(join(docsRoot, "package.json"), { type: "module" });
+    const fixture = createLibraryFixture({ workspaceRoot });
+    installFixturePackage(docsRoot, fixture);
+    rmSync(fixture.libraryRoot, { recursive: true, force: true });
+
+    const result = runSync(fixture.config, "package");
+
+    expect(result.synced).toBe(true);
+    expect(result.artifacts[0]?.manifestPath).toContain(
+      join("node_modules", "@test", "demo", "dist", "artifacts", "artifact-manifest.json"),
+    );
+    expect(existsSync(join(docsRoot, "content/docs/demo/meta.json"))).toBe(true);
+    expect(existsSync(join(docsRoot, "public/r/demo/registry.json"))).toBe(true);
+    expect(
+      readFileSync(join(docsRoot, "src/generated/demo/actual-generated.json"), "utf-8"),
+    ).toContain("generated/nested/actual-generated.json");
   });
 });

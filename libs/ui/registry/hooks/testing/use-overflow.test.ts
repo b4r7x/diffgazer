@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { render, act, renderHook } from "@testing-library/react"
 import React from "react"
 import { useOverflow, type OverflowDirection } from "../use-overflow.js"
@@ -46,6 +46,10 @@ beforeEach(() => {
     return animationCallbacks.length
   })
   vi.stubGlobal("cancelAnimationFrame", vi.fn())
+})
+
+afterEach(() => {
+  vi.unstubAllGlobals()
 })
 
 function TestComponent({ direction, onResult }: { direction?: OverflowDirection; onResult: (v: boolean) => void }) {

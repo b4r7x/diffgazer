@@ -37,6 +37,7 @@ interface ProvidersKeyboardReturn {
     onFocus: () => void;
   };
   handleFilterKeyDown: (event: ReactKeyboardEvent) => void;
+  handleListKeyDown: (event: ReactKeyboardEvent) => void;
   handleSearchFocus: () => void;
   handleFilterFocus: (index: number) => void;
   handleListFocus: () => void;
@@ -99,6 +100,12 @@ export function useProvidersKeyboard({
   const focusActionButton = (index: number) => {
     setButtonIndex(index);
     buttonRefs.current.get(index)?.focus();
+  };
+
+  const focusFirstActionButton = () => {
+    if (!selectedProvider) return;
+    setZone("buttons");
+    focusActionButton(getNextButtonIndex(-1, 1));
   };
 
   const focusFilterButton = (index: number) => {
@@ -182,8 +189,7 @@ export function useProvidersKeyboard({
   }, { enabled: !dialogOpen && inFilters, preventDefault: true });
 
   useKey("ArrowRight", () => {
-    setZone("buttons");
-    focusActionButton(getNextButtonIndex(-1, 1));
+    focusFirstActionButton();
   }, { enabled: !dialogOpen && isZone("list") && !!selectedProvider });
 
   useKey("ArrowLeft", () => {
@@ -235,6 +241,12 @@ export function useProvidersKeyboard({
     }
   };
 
+  const handleListKeyDown = (event: ReactKeyboardEvent) => {
+    if (event.key !== " ") return;
+    event.preventDefault();
+    focusFirstActionButton();
+  };
+
   const getActionButtonProps = (index: number) => ({
     ref: (node: HTMLButtonElement | null) => {
       if (node) buttonRefs.current.set(index, node);
@@ -265,6 +277,7 @@ export function useProvidersKeyboard({
     getActionButtonProps,
     getFilterButtonProps,
     handleFilterKeyDown,
+    handleListKeyDown,
     handleSearchFocus,
     handleFilterFocus,
     handleListFocus,

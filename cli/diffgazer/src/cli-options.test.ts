@@ -5,7 +5,6 @@ import { dirname, resolve } from "node:path";
 import test, { describe } from "node:test";
 import { setImmediate as waitImmediate } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
-import { getDiffgazerBanner } from "./banner.js";
 import { resolveCliAction } from "./cli-options.js";
 import { parsePortEnv, openBrowserAddress } from "./lib/servers/server-factories.js";
 import { startWeb } from "./web-launcher.js";
@@ -74,15 +73,6 @@ describe("diffgazer CLI options", () => {
 
     assert.equal(result.status, 1);
     assert.match(result.stderr, /--theme requires --tui\./);
-  });
-});
-
-describe("getDiffgazerBanner", () => {
-  test("returns printable ASCII banner text", () => {
-    const banner = getDiffgazerBanner();
-
-    assert.ok(banner.trim().length >= "DIFFGAZER".length);
-    assert.ok(banner.includes("\n") || banner === "DIFFGAZER");
   });
 });
 

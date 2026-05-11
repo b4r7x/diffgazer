@@ -48,159 +48,56 @@ function makeFileDiff(overrides: Partial<FileDiff> = {}): FileDiff {
   };
 }
 
-// ---------------------------------------------------------------------------
-// deduplicateIssues
-// ---------------------------------------------------------------------------
-
 describe("deduplicateIssues", () => {
-  it("should return empty array for empty input", () => {
-    expect(deduplicateIssues([])).toEqual([]);
-  });
-
-  it("should keep unique issues unchanged", () => {
+  it("deduplicates by file, line, and case-insensitive title while keeping the highest severity", () => {
     const issues = [
-      makeIssue({ id: "1", file: "a.ts", line_start: 1, title: "Issue A" }),
-      makeIssue({ id: "2", file: "b.ts", line_start: 1, title: "Issue B" }),
+      makeIssue({ id: "duplicate-low", file: "a.ts", line_start: 10, title: "NULL REFERENCE", severity: "low" }),
+      makeIssue({ id: "duplicate-high", file: "a.ts", line_start: 10, title: "null reference", severity: "high" }),
+      makeIssue({ id: "different-file", file: "b.ts", line_start: 10, title: "null reference" }),
+      makeIssue({ id: "different-line", file: "a.ts", line_start: 20, title: "null reference" }),
+      makeIssue({ id: "null-line-one", file: "c.ts", line_start: null, title: "Same null line", severity: "medium" }),
+      makeIssue({ id: "null-line-two", file: "c.ts", line_start: null, title: "Same null line", severity: "nit" }),
     ];
     const result = deduplicateIssues(issues);
+    const duplicate = result.find((issue) => issue.file === "a.ts" && issue.line_start === 10);
 
-    expect(result).toHaveLength(2);
-  });
-
-  it("should deduplicate by composite key (file + line + title prefix)", () => {
-    const issues = [
-      makeIssue({ id: "1", file: "a.ts", line_start: 10, title: "Null reference error", severity: "medium" }),
-      makeIssue({ id: "2", file: "a.ts", line_start: 10, title: "Null reference error", severity: "low" }),
-    ];
-    const result = deduplicateIssues(issues);
-
-    expect(result).toHaveLength(1);
-  });
-
-  it("should keep the higher severity issue when deduplicating", () => {
-    const issues = [
-      makeIssue({ id: "1", file: "a.ts", line_start: 10, title: "Null ref", severity: "low" }),
-      makeIssue({ id: "2", file: "a.ts", line_start: 10, title: "Null ref", severity: "high" }),
-    ];
-    const result = deduplicateIssues(issues);
-
-    expect(result).toHaveLength(1);
-    expect(result[0]!.severity).toBe("high");
-  });
-
-  it("should treat different files as different issues", () => {
-    const issues = [
-      makeIssue({ id: "1", file: "a.ts", line_start: 10, title: "Same title" }),
-      makeIssue({ id: "2", file: "b.ts", line_start: 10, title: "Same title" }),
-    ];
-    const result = deduplicateIssues(issues);
-
-    expect(result).toHaveLength(2);
-  });
-
-  it("should treat different lines as different issues", () => {
-    const issues = [
-      makeIssue({ id: "1", file: "a.ts", line_start: 10, title: "Same title" }),
-      makeIssue({ id: "2", file: "a.ts", line_start: 20, title: "Same title" }),
-    ];
-    const result = deduplicateIssues(issues);
-
-    expect(result).toHaveLength(2);
-  });
-
-  it("should use 0 as default when line_start is null", () => {
-    const issues = [
-      makeIssue({ id: "1", file: "a.ts", line_start: null, title: "Same title" }),
-      makeIssue({ id: "2", file: "a.ts", line_start: null, title: "Same title" }),
-    ];
-    const result = deduplicateIssues(issues);
-
-    expect(result).toHaveLength(1);
-  });
-
-  it("should compare title case-insensitively", () => {
-    const issues = [
-      makeIssue({ id: "1", file: "a.ts", line_start: 10, title: "NULL REFERENCE" }),
-      makeIssue({ id: "2", file: "a.ts", line_start: 10, title: "null reference" }),
-    ];
-    const result = deduplicateIssues(issues);
-
-    expect(result).toHaveLength(1);
+    expect(result).toHaveLength(4);
+    expect(duplicate?.id).toBe("duplicate-high");
+    expect(result.map((issue) => issue.id)).toEqual(expect.arrayContaining([
+      "duplicate-high",
+      "different-file",
+      "different-line",
+      "null-line-one",
+    ]));
   });
 });
-
-// ---------------------------------------------------------------------------
-// sortIssuesBySeverity
-// ---------------------------------------------------------------------------
 
 describe("sortIssuesBySeverity", () => {
-  it("should sort by severity (blocker first, nit last)", () => {
+  it("sorts by severity, confidence, and file without mutating the input", () => {
     const issues = [
-      makeIssue({ severity: "nit" }),
-      makeIssue({ severity: "blocker" }),
-      makeIssue({ severity: "medium" }),
-      makeIssue({ severity: "high" }),
-      makeIssue({ severity: "low" }),
+      makeIssue({ id: "low", severity: "low", file: "b.ts" }),
+      makeIssue({ id: "high-z", severity: "high", confidence: 0.8, file: "z.ts" }),
+      makeIssue({ id: "blocker", severity: "blocker", file: "c.ts" }),
+      makeIssue({ id: "high-a", severity: "high", confidence: 0.8, file: "a.ts" }),
+      makeIssue({ id: "high-confidence", severity: "high", confidence: 0.95, file: "m.ts" }),
     ];
+    const originalOrder = issues.map((issue) => issue.id);
+
     const result = sortIssuesBySeverity(issues);
 
-    expect(result.map((i) => i.severity)).toEqual(["blocker", "high", "medium", "low", "nit"]);
-  });
-
-  it("should sort by confidence when severity is equal", () => {
-    const issues = [
-      makeIssue({ severity: "high", confidence: 0.5, file: "z.ts" }),
-      makeIssue({ severity: "high", confidence: 0.9, file: "a.ts" }),
-    ];
-    const result = sortIssuesBySeverity(issues);
-
-    expect(result[0]!.confidence).toBe(0.9);
-    expect(result[1]!.confidence).toBe(0.5);
-  });
-
-  it("should sort by file name when severity and confidence are equal", () => {
-    const issues = [
-      makeIssue({ severity: "high", confidence: 0.8, file: "z.ts" }),
-      makeIssue({ severity: "high", confidence: 0.8, file: "a.ts" }),
-    ];
-    const result = sortIssuesBySeverity(issues);
-
-    expect(result[0]!.file).toBe("a.ts");
-    expect(result[1]!.file).toBe("z.ts");
-  });
-
-  it("should not mutate the original array", () => {
-    const issues = [
-      makeIssue({ severity: "low" }),
-      makeIssue({ severity: "high" }),
-    ];
-    const original = [...issues];
-    sortIssuesBySeverity(issues);
-
-    expect(issues[0]!.severity).toBe(original[0]!.severity);
-  });
-
-  it("should return empty array for empty input", () => {
-    expect(sortIssuesBySeverity([])).toEqual([]);
+    expect(result.map((issue) => issue.id)).toEqual([
+      "blocker",
+      "high-confidence",
+      "high-a",
+      "high-z",
+      "low",
+    ]);
+    expect(issues.map((issue) => issue.id)).toEqual(originalOrder);
   });
 });
 
-// ---------------------------------------------------------------------------
-// filterIssuesByMinSeverity
-// ---------------------------------------------------------------------------
-
 describe("filterIssuesByMinSeverity", () => {
-  it("should return all issues when no filter is provided", () => {
-    const issues = [
-      makeIssue({ severity: "nit" }),
-      makeIssue({ severity: "blocker" }),
-    ];
-    const result = filterIssuesByMinSeverity(issues);
-
-    expect(result).toHaveLength(2);
-  });
-
-  it("should filter issues below minimum severity", () => {
+  it("returns all issues without a filter and removes issues below the minimum severity", () => {
     const issues = [
       makeIssue({ severity: "blocker" }),
       makeIssue({ severity: "high" }),
@@ -208,40 +105,23 @@ describe("filterIssuesByMinSeverity", () => {
       makeIssue({ severity: "low" }),
       makeIssue({ severity: "nit" }),
     ];
+
     const result = filterIssuesByMinSeverity(issues, { minSeverity: "medium" });
 
+    expect(filterIssuesByMinSeverity(issues).map((i) => i.severity)).toEqual([
+      "blocker",
+      "high",
+      "medium",
+      "low",
+      "nit",
+    ]);
     expect(result).toHaveLength(3);
     expect(result.map((i) => i.severity)).toEqual(["blocker", "high", "medium"]);
   });
-
-  it("should include only blockers when minSeverity is blocker", () => {
-    const issues = [
-      makeIssue({ severity: "blocker" }),
-      makeIssue({ severity: "high" }),
-    ];
-    const result = filterIssuesByMinSeverity(issues, { minSeverity: "blocker" });
-
-    expect(result).toHaveLength(1);
-    expect(result[0]!.severity).toBe("blocker");
-  });
-
-  it("should include all issues when minSeverity is nit", () => {
-    const issues = [
-      makeIssue({ severity: "blocker" }),
-      makeIssue({ severity: "nit" }),
-    ];
-    const result = filterIssuesByMinSeverity(issues, { minSeverity: "nit" });
-
-    expect(result).toHaveLength(2);
-  });
 });
 
-// ---------------------------------------------------------------------------
-// ensureIssueEvidence
-// ---------------------------------------------------------------------------
-
 describe("ensureIssueEvidence", () => {
-  it("should return issue unchanged if it already has evidence", () => {
+  it("returns issue unchanged when evidence already exists", () => {
     const issue = makeIssue({
       evidence: [{ type: "code", title: "existing", sourceId: "s1", file: "test.ts", excerpt: "code" }],
     });
@@ -252,19 +132,23 @@ describe("ensureIssueEvidence", () => {
     expect(result).toBe(issue);
   });
 
-  it("should create fallback evidence when file not found in diff", () => {
+  it("creates fallback evidence when the diff cannot provide a matching hunk", () => {
     const issue = makeIssue({ file: "missing.ts", evidence: [] });
-    const diff = makeDiff([]);
+    const nullLineIssue = makeIssue({ id: "null-line", file: "test.ts", line_start: null, evidence: [] });
+    const diff = makeDiff([makeFileDiff({ filePath: "test.ts" })]);
 
     const result = ensureIssueEvidence(issue, diff);
+    const nullLineResult = ensureIssueEvidence(nullLineIssue, diff);
 
     expect(result.evidence).toHaveLength(1);
     expect(result.evidence![0]!.type).toBe("code");
     expect(result.evidence![0]!.title).toContain("missing.ts");
     expect(result.evidence![0]!.excerpt).toBe(issue.rationale);
+    expect(nullLineResult.evidence).toHaveLength(1);
+    expect(nullLineResult.evidence![0]!.excerpt).toBe(nullLineIssue.rationale);
   });
 
-  it("should extract evidence from matching hunk", () => {
+  it("extracts evidence from a matching diff hunk", () => {
     const hunk: DiffHunk = {
       oldStart: 1,
       oldCount: 5,
@@ -282,27 +166,10 @@ describe("ensureIssueEvidence", () => {
     expect(result.evidence![0]!.type).toBe("code");
     expect(result.evidence![0]!.range).toEqual({ start: 3, end: 4 });
   });
-
-  it("should use rationale as fallback when line_start is null", () => {
-    const file = makeFileDiff({ filePath: "test.ts" });
-    const issue = makeIssue({ file: "test.ts", line_start: null, evidence: [] });
-    const diff = makeDiff([file]);
-
-    const result = ensureIssueEvidence(issue, diff);
-
-    // No hunk match since line_start is null → returns empty from extractEvidenceFromDiff
-    // Falls back to rationale-based evidence
-    expect(result.evidence).toHaveLength(1);
-    expect(result.evidence![0]!.excerpt).toBe(issue.rationale);
-  });
 });
 
-// ---------------------------------------------------------------------------
-// validateIssueCompleteness
-// ---------------------------------------------------------------------------
-
 describe("validateIssueCompleteness", () => {
-  it("should return true for a complete issue", () => {
+  it("returns true for a complete issue", () => {
     const issue = makeIssue({
       evidence: [{ type: "code", title: "t", sourceId: "s", file: "f", excerpt: "e" }],
     });
@@ -310,28 +177,21 @@ describe("validateIssueCompleteness", () => {
     expect(validateIssueCompleteness(issue)).toBe(true);
   });
 
-  it("should return false when id is empty", () => {
-    const issue = makeIssue({ id: "" });
-    expect(validateIssueCompleteness(issue)).toBe(false);
-  });
+  it("returns false when required issue fields or evidence are missing", () => {
+    const incompleteIssues = [
+      makeIssue({ id: "" }),
+      makeIssue({ title: "" }),
+      makeIssue({ symptom: "" }),
+      makeIssue({ whyItMatters: "" }),
+      makeIssue({ evidence: [] }),
+    ];
 
-  it("should return false when evidence is empty array", () => {
-    const issue = makeIssue({ evidence: [] });
-    expect(validateIssueCompleteness(issue)).toBe(false);
-  });
-
-  it("should return false when required fields are missing", () => {
-    const issue = makeIssue({ title: "" });
-    expect(validateIssueCompleteness(issue)).toBe(false);
-  });
-
-  it("should return false when symptom is empty", () => {
-    const issue = makeIssue({ symptom: "" });
-    expect(validateIssueCompleteness(issue)).toBe(false);
-  });
-
-  it("should return false when whyItMatters is empty", () => {
-    const issue = makeIssue({ whyItMatters: "" });
-    expect(validateIssueCompleteness(issue)).toBe(false);
+    expect(incompleteIssues.map(validateIssueCompleteness)).toEqual([
+      false,
+      false,
+      false,
+      false,
+      false,
+    ]);
   });
 });

@@ -1,18 +1,29 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import {
   mkdtempSync,
   mkdirSync,
   readFileSync,
   writeFileSync,
   existsSync,
+  rmSync,
 } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { buildRegistryArtifacts } from "../artifacts.js";
 
+const tempRoots: string[] = [];
+
 function createTempRoot(): string {
-  return mkdtempSync(join(tmpdir(), "rk-artifacts-"));
+  const root = mkdtempSync(join(tmpdir(), "rk-artifacts-"));
+  tempRoots.push(root);
+  return root;
 }
+
+afterEach(() => {
+  for (const root of tempRoots.splice(0)) {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
 
 function createMinimalManifest() {
   return {
@@ -109,38 +120,26 @@ describe("buildRegistryArtifacts", () => {
     expect(result.fingerprint).toBe(content.trim());
   });
 
-  it("calls beforeBuild callback before processing", () => {
+  it("runs build hooks as part of produced artifact output", () => {
     const root = createTempRoot();
-    let called = false;
 
     buildRegistryArtifacts({
       rootDir: root,
       manifest: createMinimalManifest(),
       defaultOrigin: "https://example.com",
       inputs: [],
-      beforeBuild: () => { called = true; },
-    });
-
-    expect(called).toBe(true);
-  });
-
-  it("calls afterCopy callback after copying", () => {
-    const root = createTempRoot();
-    let capturedContext: { rootDir: string; artifactRoot: string; origin: string } | null = null;
-
-    buildRegistryArtifacts({
-      rootDir: root,
-      manifest: createMinimalManifest(),
-      defaultOrigin: "https://example.com",
-      inputs: [],
-      afterCopy: (ctx) => {
-        capturedContext = ctx;
+      copyDirs: [{ from: "source-dir", to: "copied" }],
+      beforeBuild: () => {
+        mkdirSync(join(root, "source-dir"), { recursive: true });
+        writeFileSync(join(root, "source-dir", "file.txt"), "created before build");
+      },
+      afterCopy: ({ artifactRoot, origin }) => {
+        writeFileSync(join(artifactRoot, "copied", "origin.txt"), origin);
       },
     });
 
-    expect(capturedContext).not.toBeNull();
-    expect(capturedContext!.rootDir).toBe(root);
-    expect(capturedContext!.origin).toBe("https://example.com");
+    expect(readFileSync(join(root, "dist/artifacts/copied/file.txt"), "utf-8")).toBe("created before build");
+    expect(readFileSync(join(root, "dist/artifacts/copied/origin.txt"), "utf-8")).toBe("https://example.com");
   });
 
   it("throws if required paths are missing", () => {

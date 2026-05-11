@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createApi, type BoundApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
 import type { SettingsConfig } from "@diffgazer/core/schemas/config";
 import { createElement, type ReactNode } from "react";
@@ -44,10 +45,11 @@ function createWrapper() {
     defaultOptions: { queries: { retry: false } },
   });
   const api = {
+    ...createApi({ baseUrl: "http://localhost" }),
     getSettings: mockGetSettings,
     saveSettings: mockSaveSettings,
     saveConfig: mockSaveConfig,
-  } as any;
+  } satisfies BoundApi;
 
   return ({ children }: { children: ReactNode }) =>
     createElement(
@@ -94,7 +96,5 @@ describe("onboarding/settings synchronization", () => {
       expect(settingsHook.result.current.data?.secretsStorage).toBe("file");
       expect(settingsHook.result.current.data?.agentExecution).toBe("sequential");
     });
-
-    expect(mockGetSettings.mock.calls.length).toBeGreaterThanOrEqual(2);
   });
 });

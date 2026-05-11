@@ -1,92 +1,75 @@
-import { describe, it, expect } from "vitest";
+import { act, renderHook } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
 import type { ModelInfo } from "@diffgazer/core/schemas/config";
-
-// We can't import filterModels directly since it's not exported,
-// but we can test it through the hook. Instead, let's replicate the
-// pure function logic for direct testing.
-// The actual filterModels is module-private, so we test via the hook.
-import { renderHook, act } from "@testing-library/react";
 import { useModelFilter } from "./use-model-filter";
 
-function makeModel(name: string, tier: "free" | "paid", description = ""): ModelInfo {
-  return { name, tier, description } as ModelInfo;
+function makeModel(
+  id: string,
+  name: string,
+  tier: "free" | "paid",
+  description = "",
+): ModelInfo {
+  return { id, name, tier, description };
 }
 
 const MODELS: ModelInfo[] = [
-  makeModel("GPT-4", "paid", "Most capable model"),
-  makeModel("GPT-3.5", "free", "Fast and cheap"),
-  makeModel("Claude", "paid", "Anthropic model"),
-  makeModel("Gemini", "free", "Google model"),
+  makeModel("gpt-4", "GPT-4", "paid", "Most capable model"),
+  makeModel("gpt-35", "GPT-3.5", "free", "Fast and cheap"),
+  makeModel("claude", "Claude", "paid", "Anthropic model"),
+  makeModel("gemini", "Gemini", "free", "Google model"),
 ];
 
+function modelIds(models: ModelInfo[]) {
+  return models.map((model) => model.id);
+}
+
+function modelNames(models: ModelInfo[]) {
+  return models.map((model) => model.name);
+}
+
 describe("useModelFilter", () => {
-  it("should return all models with default filters", () => {
+  it("returns ordered models matching search text and tier filters", () => {
     const { result } = renderHook(() => useModelFilter(MODELS));
-    expect(result.current.filteredModels).toHaveLength(4);
-  });
 
-  it("should filter by search text matching name", () => {
-    const { result } = renderHook(() => useModelFilter(MODELS));
+    expect(modelIds(result.current.filteredModels)).toEqual(["gpt-4", "gpt-35", "claude", "gemini"]);
+
     act(() => result.current.setSearchQuery("gpt"));
-    expect(result.current.filteredModels).toHaveLength(2);
-  });
+    expect(modelNames(result.current.filteredModels)).toEqual(["GPT-4", "GPT-3.5"]);
 
-  it("should filter by search text matching description", () => {
-    const { result } = renderHook(() => useModelFilter(MODELS));
     act(() => result.current.setSearchQuery("anthropic"));
-    expect(result.current.filteredModels).toHaveLength(1);
-    expect(result.current.filteredModels[0]?.name).toBe("Claude");
-  });
+    expect(modelIds(result.current.filteredModels)).toEqual(["claude"]);
 
-  it("should filter by free tier", () => {
-    const { result } = renderHook(() => useModelFilter(MODELS));
-    act(() => result.current.setTierFilter("free"));
-    expect(result.current.filteredModels).toHaveLength(2);
-    expect(result.current.filteredModels.every((m) => m.tier === "free")).toBe(true);
-  });
-
-  it("should filter by paid tier", () => {
-    const { result } = renderHook(() => useModelFilter(MODELS));
-    act(() => result.current.setTierFilter("paid"));
-    expect(result.current.filteredModels).toHaveLength(2);
-    expect(result.current.filteredModels.every((m) => m.tier === "paid")).toBe(true);
-  });
-
-  it("should combine search and tier filters", () => {
-    const { result } = renderHook(() => useModelFilter(MODELS));
     act(() => {
       result.current.setSearchQuery("g");
       result.current.setTierFilter("free");
     });
-    // "GPT-3.5" (free, has g) and "Gemini" (free, has g)
-    expect(result.current.filteredModels).toHaveLength(2);
+    expect(modelIds(result.current.filteredModels)).toEqual(["gpt-35", "gemini"]);
   });
 
-  it("should cycle tier filter through all -> free -> paid -> all", () => {
+  it("cycles tier filters and resets to all models", () => {
     const { result } = renderHook(() => useModelFilter(MODELS));
-    expect(result.current.tierFilter).toBe("all");
+
     act(() => result.current.cycleTierFilter());
     expect(result.current.tierFilter).toBe("free");
+    expect(modelIds(result.current.filteredModels)).toEqual(["gpt-35", "gemini"]);
+
     act(() => result.current.cycleTierFilter());
     expect(result.current.tierFilter).toBe("paid");
-    act(() => result.current.cycleTierFilter());
-    expect(result.current.tierFilter).toBe("all");
-  });
+    expect(modelIds(result.current.filteredModels)).toEqual(["gpt-4", "claude"]);
 
-  it("should reset filters", () => {
-    const { result } = renderHook(() => useModelFilter(MODELS));
     act(() => {
-      result.current.setSearchQuery("test");
-      result.current.setTierFilter("free");
+      result.current.setSearchQuery("gemini");
+      result.current.resetFilters();
     });
-    act(() => result.current.resetFilters());
+
     expect(result.current.searchQuery).toBe("");
     expect(result.current.tierFilter).toBe("all");
-    expect(result.current.filteredModels).toHaveLength(4);
+    expect(modelIds(result.current.filteredModels)).toEqual(["gpt-4", "gpt-35", "claude", "gemini"]);
   });
 
-  it("should handle empty model list", () => {
+  it("returns no models for an empty list", () => {
     const { result } = renderHook(() => useModelFilter([]));
-    expect(result.current.filteredModels).toHaveLength(0);
+
+    expect(result.current.filteredModels).toEqual([]);
   });
 });

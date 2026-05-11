@@ -118,6 +118,7 @@ export function SettingsAgentExecutionPage() {
     <CardLayout
       title="Agent Execution Mode"
       subtitle="Choose whether analysis agents run in sequence or in parallel."
+      contentInactive={footer.inFooter}
       footer={
         <>
           <Button
@@ -152,6 +153,7 @@ export function SettingsAgentExecutionPage() {
           keyboardNavigation={navigationEnabled}
           activationMode="manual"
           autoFocus={navigationEnabled}
+          wrap={false}
           onNavigationBoundaryReached={(direction, event) => {
             if (direction === "next" && toVerticalBoundaryDirection(direction, event.key) === "down") {
               clearCurrentFocus();

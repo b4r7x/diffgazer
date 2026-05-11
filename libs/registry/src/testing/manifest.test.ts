@@ -1,8 +1,9 @@
-import { mkdirSync, writeFileSync, rmSync } from "node:fs";
-import { resolve } from "node:path";
+import { mkdirSync, mkdtempSync, writeFileSync, rmSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { validateManifest, ArtifactManifestSchema, createArtifactManifest } from "../manifest.js";
+import { buildRegistryArtifacts } from "../artifacts.js";
+import { validateManifest, ArtifactManifestSchema, createArtifactManifest, loadValidatedManifest } from "../manifest.js";
 import type { ArtifactManifest } from "../manifest.js";
 
 const validManifest: ArtifactManifest = {
@@ -84,9 +85,10 @@ describe("ArtifactManifestSchema", () => {
 });
 
 describe("createArtifactManifest", () => {
-  const testDir = resolve(tmpdir(), "manifest-factory-test");
+  let testDir: string;
 
   beforeEach(() => {
+    testDir = mkdtempSync(join(tmpdir(), "manifest-factory-"));
     mkdirSync(testDir, { recursive: true });
   });
 
@@ -102,12 +104,21 @@ describe("createArtifactManifest", () => {
     registry: { namespace: "@testlib", basePath: "/r/test-lib", publicDir: "registry", index: "registry/registry.json" } as const,
   };
 
-  it("should fill in fixed fields", () => {
+  it("should produce a manifest that artifact consumers can load", () => {
     writeFileSync(resolve(testDir, "package.json"), JSON.stringify({ name: "test-lib", version: "1.0.0" }));
     const manifest = createArtifactManifest({ ...baseOptions, rootDir: testDir });
-    expect(manifest.schemaVersion).toBe(1);
-    expect(manifest.artifactRoot).toBe("dist/artifacts");
-    expect(manifest.integrity).toEqual({ algorithm: "sha256", fingerprintFile: "fingerprint.sha256" });
+    const result = buildRegistryArtifacts({
+      rootDir: testDir,
+      manifest,
+      defaultOrigin: "https://example.com",
+      inputs: [],
+    });
+
+    expect(loadValidatedManifest(result.manifestPath, "test-lib")).toMatchObject({
+      schemaVersion: 1,
+      artifactRoot: "dist/artifacts",
+      integrity: { algorithm: "sha256", fingerprintFile: "fingerprint.sha256" },
+    });
   });
 
   it("should read version from package.json", () => {

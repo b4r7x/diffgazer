@@ -1,5 +1,9 @@
+// @vitest-environment jsdom
 import { readdirSync, readFileSync } from "node:fs"
 import { join, resolve } from "node:path"
+import { createElement, Suspense } from "react"
+import { render, screen } from "@testing-library/react"
+import { demoLoaders } from "@/generated/demo-loaders"
 import { describe, expect, it } from "vitest"
 import {
   getInstallCommand,
@@ -280,12 +284,19 @@ describe("docs-library source path mapping", () => {
     expect(sources.map(({ source }) => source).join("\n")).toContain("aria-invalid")
   })
 
-  it("keeps generated keys demo imports pointed at synced docs examples", () => {
-    const demoIndex = readRepoFile("apps/docs/src/generated/keys/demo-index.ts")
-    const syncedDemo = readRepoFile("apps/docs/registry/examples/keys/use-navigation/use-navigation-basic.tsx")
+  it("loads synced keys demos through the generated demo loader", async () => {
+    const keysLoader = demoLoaders.keys
+    expect(keysLoader).toBeTypeOf("function")
 
-    expect(demoIndex).toContain("../../../registry/examples/keys/use-navigation/use-navigation-basic")
-    expect(syncedDemo).toContain("UseNavigationBasic")
+    const { demos } = await keysLoader()
+    const Demo = demos["use-navigation-basic"]
+    expect(Demo).toBeDefined()
+    if (!Demo) throw new Error("Missing keys demo: use-navigation-basic")
+
+    render(createElement(Suspense, { fallback: "loading" }, createElement(Demo)))
+
+    expect(await screen.findByRole("listbox", { name: "Fruits" })).toBeTruthy()
+    expect(screen.getByRole("option", { name: "Apple" })).toBeTruthy()
   })
 
   it("keeps public docs on current highlight and keyboard prop names", () => {

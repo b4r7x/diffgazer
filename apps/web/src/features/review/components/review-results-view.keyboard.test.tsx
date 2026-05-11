@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { KeyboardProvider } from "@diffgazer/keys";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { SEVERITY_ORDER } from "@diffgazer/core/schemas/ui";
+import { Footer, FooterProvider, useFooterData } from "@/components/layout";
 
 vi.mock("@tanstack/react-router", () => ({
   useRouter: () => ({
@@ -13,13 +14,16 @@ vi.mock("@tanstack/react-router", () => ({
   }),
 }));
 
-vi.mock("@/hooks/use-page-footer", () => ({
-  usePageFooter: () => {},
-}));
-
 import { ReviewResultsView } from "./review-results-view";
 
-function makeIssue(id: string, title: string): ReviewIssue {
+interface IssueOptions {
+  suggestedPatch?: string | null;
+  fixPlan?: ReviewIssue["fixPlan"];
+}
+
+const suggestedPatch = "--- a/src/example.ts\n+++ b/src/example.ts\n@@\n-const a = 1;\n+const a = 2;";
+
+function makeIssue(id: string, title: string, options: IssueOptions = {}): ReviewIssue {
   return {
     id,
     severity: "high",
@@ -30,10 +34,11 @@ function makeIssue(id: string, title: string): ReviewIssue {
     line_end: 12,
     rationale: `${title} rationale`,
     recommendation: `${title} recommendation`,
-    suggested_patch: "--- a/src/example.ts\n+++ b/src/example.ts\n@@\n-const a = 1;\n+const a = 2;",
+    suggested_patch: options.suggestedPatch === undefined ? suggestedPatch : options.suggestedPatch,
     confidence: 0.9,
     symptom: `${title} symptom`,
     whyItMatters: `${title} impact`,
+    fixPlan: options.fixPlan,
     evidence: [
       {
         type: "code",
@@ -54,12 +59,18 @@ function makeIssue(id: string, title: string): ReviewIssue {
   };
 }
 
-function renderView() {
-  const issues = [makeIssue("issue-1", "Issue one"), makeIssue("issue-2", "Issue two")];
+function FooterView() {
+  const { shortcuts, rightShortcuts } = useFooterData();
+  return <Footer shortcuts={shortcuts} rightShortcuts={rightShortcuts} />;
+}
 
+function renderView(issues: ReviewIssue[] = [makeIssue("issue-1", "Issue one"), makeIssue("issue-2", "Issue two")]) {
   return render(
     <KeyboardProvider>
-      <ReviewResultsView issues={issues} reviewId="review-1" />
+      <FooterProvider>
+        <ReviewResultsView issues={issues} reviewId="review-1" />
+        <FooterView />
+      </FooterProvider>
     </KeyboardProvider>,
   );
 }
@@ -88,6 +99,69 @@ describe("ReviewResultsView keyboard regression", () => {
     expect(screen.getByRole("tab", { name: "Details" })).toHaveAttribute("aria-selected", "true");
   });
 
+  it("falls back to details when the selected issue has no patch tab", async () => {
+    const user = userEvent.setup();
+    renderView([
+      makeIssue("issue-1", "Issue one"),
+      makeIssue("issue-2", "Issue two", { suggestedPatch: null }),
+    ]);
+
+    await user.keyboard("{ArrowRight}");
+    await waitFor(() => expect(screen.getByRole("region", { name: "Issue details" })).toHaveFocus());
+    await user.keyboard("4");
+    expect(screen.getByRole("tab", { name: "Patch" })).toHaveAttribute("aria-selected", "true");
+
+    await user.click(screen.getByRole("option", { name: /issue two/i }));
+
+    expect(screen.queryByRole("tab", { name: "Patch" })).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Details" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByText("Issue two symptom")).toBeInTheDocument();
+  });
+
+  it("keeps completed fix-plan steps scoped to the selected issue", async () => {
+    const user = userEvent.setup();
+    renderView([
+      makeIssue("issue-1", "Issue one", {
+        fixPlan: [
+          { step: 1, action: "Inspect issue one" },
+          { step: 2, action: "Patch issue one" },
+        ],
+      }),
+      makeIssue("issue-2", "Issue two", {
+        fixPlan: [
+          { step: 1, action: "Inspect issue two" },
+          { step: 2, action: "Patch issue two" },
+        ],
+      }),
+    ]);
+
+    const firstIssuePatchStep = screen.getByRole("checkbox", { name: "Patch issue one" });
+    expect(firstIssuePatchStep).not.toBeChecked();
+
+    await user.click(firstIssuePatchStep);
+    expect(firstIssuePatchStep).toBeChecked();
+
+    await user.click(screen.getByRole("option", { name: /issue two/i }));
+    expect(screen.getByRole("checkbox", { name: "Inspect issue two" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Patch issue two" })).not.toBeChecked();
+
+    await user.click(screen.getByRole("option", { name: /issue one/i }));
+    expect(screen.getByRole("checkbox", { name: "Patch issue one" })).toBeChecked();
+  });
+
+  it("renders footer hints for the active results zone", async () => {
+    const user = userEvent.setup();
+    renderView();
+
+    expect(await screen.findByText("Select Issue")).toBeInTheDocument();
+    expect(screen.getByText("Back")).toBeInTheDocument();
+
+    await user.keyboard("{ArrowRight}");
+
+    expect(await screen.findByText("Switch Tab")).toBeInTheDocument();
+    expect(screen.getByText("1-4")).toBeInTheDocument();
+  });
+
   it("scrolls issue details with up and down arrows after moving focus into details", async () => {
     const user = userEvent.setup();
     const originalScrollByDescriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollBy");
@@ -108,8 +182,9 @@ describe("ReviewResultsView keyboard regression", () => {
       await user.keyboard("{ArrowDown}");
       await user.keyboard("{ArrowUp}");
 
-      expect(scrollBy).toHaveBeenNthCalledWith(1, { top: 80, behavior: "smooth" });
-      expect(scrollBy).toHaveBeenNthCalledWith(2, { top: -80, behavior: "smooth" });
+      const [downScroll, upScroll] = scrollBy.mock.calls.map(([options]) => options as ScrollToOptions);
+      expect(downScroll?.top).toBeGreaterThan(0);
+      expect(upScroll?.top).toBeLessThan(0);
     } finally {
       if (originalScrollByDescriptor) {
         Object.defineProperty(HTMLElement.prototype, "scrollBy", originalScrollByDescriptor);

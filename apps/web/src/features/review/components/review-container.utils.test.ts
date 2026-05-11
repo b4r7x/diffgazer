@@ -22,65 +22,48 @@ function makeAgent(overrides: Partial<AgentState> = {}): AgentState {
 }
 
 describe("mapStepsToProgressData", () => {
-  it("maps steps to progress data", () => {
-    const steps = [makeStep("parse", "Parsing", "completed"), makeStep("review", "Reviewing", "active")];
-    const result = mapStepsToProgressData(steps, []);
-    expect(result).toHaveLength(2);
-    expect(result[0]).toEqual({ id: "parse", label: "Parsing", status: "completed", substeps: undefined });
-    expect(result[1]).toEqual({ id: "review", label: "Reviewing", status: "active", substeps: undefined });
-  });
+  it("maps workflow steps and review agents into progress rows", () => {
+    const steps = [
+      makeStep("diff", "Collect diff", "completed"),
+      makeStep("review", "Review issues", "active"),
+    ];
+    const agents: AgentState[] = [
+      makeAgent({ id: "queued-agent", status: "queued" }),
+      makeAgent({ id: "running-agent", status: "running", progress: 75, currentAction: "Reading file" }),
+      makeAgent({ id: "complete-agent", status: "complete", issueCount: 1 }),
+      makeAgent({ id: "error-agent", status: "error" }),
+    ];
 
-  it("handles empty steps array", () => {
-    expect(mapStepsToProgressData([], [])).toEqual([]);
-  });
-
-  it("maps step error status to pending", () => {
-    const steps = [makeStep("parse", "Parsing", "error")];
-    const result = mapStepsToProgressData(steps, []);
-    expect(result[0]?.status).toBe("pending");
-  });
-
-  it("should derive substeps from agents for review step", () => {
-    const steps = [makeStep("review", "Reviewing", "active")];
-    const agents = [makeAgent({ id: "a1", status: "running", progress: 50, currentAction: "Analyzing" })];
     const result = mapStepsToProgressData(steps, agents);
-    expect(result[0]?.substeps).toHaveLength(1);
-    expect(result[0]?.substeps?.[0]?.status).toBe("active");
+
+    expect(result[0]).toEqual({
+      id: "diff",
+      label: "Collect diff",
+      status: "completed",
+      substeps: undefined,
+    });
+    expect(result[1]?.substeps?.map((substep) => substep.status)).toEqual([
+      "pending",
+      "active",
+      "completed",
+      "error",
+    ]);
+    expect(result[1]?.substeps?.[1]?.detail).toContain("75%");
+    expect(result[1]?.substeps?.[1]?.detail).toContain("Reading file");
+    expect(result[1]?.substeps?.[2]?.detail).toBe("1 issue");
   });
 
-  it("does not add substeps for non-review steps", () => {
-    const steps = [makeStep("parse", "Parsing", "active")];
-    const agents = [makeAgent()];
-    const result = mapStepsToProgressData(steps, agents);
-    expect(result[0]?.substeps).toBeUndefined();
-  });
+  it("keeps non-review steps free of agent substeps and hides top-level errors from the progress UI", () => {
+    const steps = [
+      makeStep("context", "Project context", "error"),
+      makeStep("enrich", "Enrich context", "active"),
+    ];
 
-  it.each([
-    ["queued", "pending"],
-    ["running", "active"],
-    ["complete", "completed"],
-    ["error", "error"],
-  ] as const)("maps %s agents to %s substeps", (agentStatus, substepStatus) => {
-    const steps = [makeStep("review", "Reviewing", "active")];
-    const result = mapStepsToProgressData(steps, [makeAgent({ status: agentStatus })]);
-    expect(result[0]?.substeps?.[0]?.status).toBe(substepStatus);
-  });
+    const result = mapStepsToProgressData(steps, [makeAgent()]);
 
-  it.each([
-    [5, "5 issues"],
-    [1, "1 issue"],
-  ])("shows completed agent issue count %i as %s", (issueCount, detail) => {
-    const steps = [makeStep("review", "Reviewing", "active")];
-    const agents = [makeAgent({ status: "complete", issueCount })];
-    const result = mapStepsToProgressData(steps, agents);
-    expect(result[0]?.substeps?.[0]?.detail).toBe(detail);
-  });
-
-  it("includes progress and current action for running agents", () => {
-    const steps = [makeStep("review", "Reviewing", "active")];
-    const agents = [makeAgent({ status: "running", progress: 75, currentAction: "Reading file" })];
-    const result = mapStepsToProgressData(steps, agents);
-    expect(result[0]?.substeps?.[0]?.detail).toContain("75%");
-    expect(result[0]?.substeps?.[0]?.detail).toContain("Reading file");
+    expect(result).toEqual([
+      { id: "context", label: "Project context", status: "pending", substeps: undefined },
+      { id: "enrich", label: "Enrich context", status: "active", substeps: undefined },
+    ]);
   });
 });

@@ -15,6 +15,14 @@ function renderMenu(props: Record<string, unknown> = {}) {
   )
 }
 
+function getMenuItem(name: string | RegExp) {
+  return screen.getByRole("menuitem", { name })
+}
+
+function getMenuItemRadio(name: string | RegExp) {
+  return screen.getByRole("menuitemradio", { name })
+}
+
 describe("Menu", () => {
   it("supports direct namespaced items with custom item UI", async () => {
     const onSelect = vi.fn()
@@ -30,7 +38,7 @@ describe("Menu", () => {
       </Menu>,
     )
 
-    await userEvent.click(screen.getByText("Two"))
+    await userEvent.click(getMenuItem("Two"))
 
     expect(onSelect).toHaveBeenCalledWith("two")
     expect(screen.getByRole("separator")).toBeInTheDocument()
@@ -44,7 +52,6 @@ describe("Menu", () => {
     renderMenu({
       ref,
       id: "menu-root",
-      "data-testid": "menu-root",
       "data-state": "ready",
       "aria-describedby": "menu-help",
       style: { maxWidth: "12px" },
@@ -71,24 +78,24 @@ describe("Menu", () => {
   it("fires onSelect when an item is clicked", async () => {
     const onSelect = vi.fn()
     renderMenu({ onSelect })
-    await userEvent.click(screen.getByText("One"))
+    await userEvent.click(getMenuItem("One"))
     expect(onSelect).toHaveBeenCalledWith("one")
   })
 
   it("does not fire onSelect for disabled items and marks them aria-disabled", async () => {
     const onSelect = vi.fn()
     renderMenu({ onSelect })
-    const disabledItem = screen.getByText("Three").closest("[role='menuitem']")!
+    const disabledItem = getMenuItem("Three")
     expect(disabledItem).toHaveAttribute("aria-disabled", "true")
-    await userEvent.click(screen.getByText("Three"))
+    await userEvent.click(disabledItem)
     expect(onSelect).not.toHaveBeenCalled()
   })
 
   it("does not move keyboard highlight on mouse hover", async () => {
     renderMenu({ defaultHighlighted: "one" })
     const menu = screen.getByRole("menu")
-    const oneItem = screen.getByText("One").closest("[role='menuitem']")!
-    const twoItem = screen.getByText("Two").closest("[role='menuitem']")!
+    const oneItem = getMenuItem("One")
+    const twoItem = getMenuItem("Two")
 
     expect(menu).toHaveAttribute("aria-activedescendant", oneItem.id)
     await userEvent.hover(twoItem)
@@ -97,8 +104,8 @@ describe("Menu", () => {
 
   it("marks highlighted and selected items active with data-active", () => {
     renderMenu({ defaultSelectedId: "two" })
-    const oneItem = screen.getByText("One").closest("[role='menuitemradio']")!
-    const twoItem = screen.getByText("Two").closest("[role='menuitemradio']")!
+    const oneItem = getMenuItemRadio("One")
+    const twoItem = getMenuItemRadio("Two")
 
     expect(twoItem).toHaveAttribute("data-active", "true")
     expect(twoItem).toHaveAttribute("aria-checked", "true")
@@ -108,8 +115,8 @@ describe("Menu", () => {
   it("does not keep selected state for plain command menus", async () => {
     renderMenu({ defaultHighlighted: "one" })
     const menu = screen.getByRole("menu")
-    const oneItem = screen.getByText("One").closest("[role='menuitem']")!
-    const twoItem = screen.getByText("Two").closest("[role='menuitem']")!
+    const oneItem = getMenuItem("One")
+    const twoItem = getMenuItem("Two")
 
     menu.focus()
     await userEvent.keyboard("{Enter}{ArrowDown}")
@@ -127,7 +134,7 @@ describe("Menu", () => {
       </Menu>
     )
 
-    const providerItem = screen.getByText("Provider").closest("[role='menuitemradio']")!
+    const providerItem = getMenuItemRadio(/provider/i)
     expect(providerItem).toHaveAttribute("aria-checked", "true")
     expect(screen.getByText("ready")).toBeInTheDocument()
 
@@ -142,7 +149,7 @@ describe("Menu", () => {
 
   it("selects defaultSelectedId initially", () => {
     renderMenu({ defaultSelectedId: "two" })
-    const item = screen.getByText("Two").closest("[role='menuitemradio']")!
+    const item = getMenuItemRadio("Two")
     expect(item).toHaveAttribute("aria-checked", "true")
   })
 
@@ -154,9 +161,9 @@ describe("Menu", () => {
         <Menu.Item id="two">Two</Menu.Item>
       </Menu>
     )
-    await userEvent.click(screen.getByText("Two"))
+    await userEvent.click(getMenuItemRadio("Two"))
     expect(onSelect).toHaveBeenCalledWith("two")
-    expect(screen.getByText("One").closest("[role='menuitemradio']")).toHaveAttribute(
+    expect(getMenuItemRadio("One")).toHaveAttribute(
       "aria-checked",
       "true",
     )
@@ -167,7 +174,7 @@ describe("Menu", () => {
         <Menu.Item id="two">Two</Menu.Item>
       </Menu>
     )
-    expect(screen.getByText("Two").closest("[role='menuitemradio']")).toHaveAttribute(
+    expect(getMenuItemRadio("Two")).toHaveAttribute(
       "aria-checked",
       "true",
     )
@@ -242,7 +249,7 @@ describe("Menu", () => {
       </Menu>
     )
     const menu = screen.getByRole("menu")
-    const oneItem = screen.getByText("One").closest("[role='menuitem']")!
+    const oneItem = getMenuItem("One")
 
     await waitFor(() => {
       expect(menu).toHaveAttribute("aria-activedescendant", oneItem.id)
@@ -258,7 +265,7 @@ describe("Menu", () => {
     )
 
     const menu = screen.getByRole("menu")
-    const emptyItem = screen.getByText("Empty id").closest("[role='menuitem']")!
+    const emptyItem = getMenuItem("Empty id")
 
     await waitFor(() => {
       expect(menu).toHaveFocus()
@@ -276,7 +283,7 @@ describe("Menu", () => {
     )
 
     const menu = screen.getByRole("menu")
-    const item = screen.getByText("Release").closest("[role='menuitem']")!
+    const item = getMenuItem("Release")
 
     expect(item.id).toContain(encodeURIComponent(id))
     expect(menu).toHaveAttribute("aria-activedescendant", item.id)
@@ -292,7 +299,7 @@ describe("Menu", () => {
     )
 
     const menu = screen.getByRole("menu")
-    const item = screen.getByText("Empty id").closest("[role='menuitem']")!
+    const item = getMenuItem("Empty id")
 
     expect(menu).toHaveAttribute("aria-activedescendant", item.id)
     expect(document.getElementById(item.id)).toBe(item)
@@ -307,7 +314,7 @@ describe("Menu", () => {
     )
 
     expect(screen.getByText("0")).toBeInTheDocument()
-    expect(screen.getByText("Empty").closest("[role='menuitem']")).toHaveTextContent("Empty")
+    expect(getMenuItem("Empty")).toHaveTextContent("Empty")
   })
 
   it("renders a divider as a separator", () => {
@@ -328,7 +335,7 @@ describe("Menu", () => {
         <Menu.Item id="two" disabled>Two</Menu.Item>
       </Menu>,
     )
-    const disabledItem = screen.getByText("Two").closest("[role='menuitemradio']")!
+    const disabledItem = getMenuItemRadio("Two")
     expect(disabledItem).toHaveAttribute("aria-disabled", "true")
     expect(disabledItem).not.toHaveAttribute("aria-checked", "true")
     expect(disabledItem).not.toHaveAttribute("data-active", "true")
@@ -344,7 +351,7 @@ describe("Menu", () => {
       </Menu>,
     )
     const menu = screen.getByRole("menu")
-    const disabledItem = screen.getByText("Two").closest("[role='menuitem']")!
+    const disabledItem = getMenuItem("Two")
 
     expect(menu).toHaveAttribute("aria-activedescendant", disabledItem.id)
     expect(disabledItem).not.toHaveAttribute("data-active", "true")
@@ -362,8 +369,8 @@ describe("Menu", () => {
       </Menu>,
     )
     const menu = screen.getByRole("menu")
-    const twoItem = screen.getByText("Two").closest("[role='menuitem']")!
-    const threeItem = screen.getByText("Three").closest("[role='menuitem']")!
+    const twoItem = getMenuItem("Two")
+    const threeItem = getMenuItem("Three")
 
     menu.focus()
     await userEvent.keyboard("{ArrowDown}")
@@ -398,7 +405,7 @@ describe("Menu typeahead", () => {
     const menu = screen.getByRole("menu")
     await user.click(menu)
     await user.keyboard("b")
-    const betaItem = screen.getByText("Beta").closest("[role='menuitem']")!
+    const betaItem = getMenuItem("Beta")
     expect(menu).toHaveAttribute("aria-activedescendant", betaItem.id)
   })
 
@@ -408,7 +415,7 @@ describe("Menu typeahead", () => {
     const menu = screen.getByRole("menu")
     await user.click(menu)
     await user.keyboard("ch")
-    const charlieItem = screen.getByText("Charlie").closest("[role='menuitem']")!
+    const charlieItem = getMenuItem("Charlie")
     expect(menu).toHaveAttribute("aria-activedescendant", charlieItem.id)
   })
 
@@ -418,7 +425,7 @@ describe("Menu typeahead", () => {
     const menu = screen.getByRole("menu")
     await user.click(menu)
     await user.keyboard("che")
-    const cherryItem = screen.getByText("Cherry").closest("[role='menuitem']")!
+    const cherryItem = getMenuItem("Cherry")
     expect(menu).toHaveAttribute("aria-activedescendant", cherryItem.id)
   })
 })

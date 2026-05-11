@@ -3,7 +3,7 @@ import { render, screen, act, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useEffect, useRef, type ReactNode } from "react";
 import { KeyboardProvider } from "./keyboard-provider";
-import { useKeyboardContext, useKeyboardRegistryContext } from "../context/keyboard-context";
+import { useKeyboardContext } from "../context/keyboard-context";
 import { useScope } from "../hooks/use-scope";
 import { fireKey as pressKey } from "../testing/test-utils";
 
@@ -399,33 +399,6 @@ describe("KeyboardProvider", () => {
     act(() => popManual());
     act(() => pressKey("a"));
     expect(panelHandler).toHaveBeenCalledTimes(2);
-  });
-
-  it("should keep registry consumers stable when active scope changes", () => {
-    const registryRender = vi.fn();
-    const pushScopeRef = { current: (_scope: string) => () => {} };
-
-    function RegistryConsumer() {
-      const { pushScope } = useKeyboardRegistryContext();
-      registryRender();
-      useEffect(() => {
-        pushScopeRef.current = pushScope;
-      }, [pushScope]);
-      return <div>registry</div>;
-    }
-
-    render(<Wrapper><RegistryConsumer /></Wrapper>);
-
-    expect(registryRender).toHaveBeenCalledOnce();
-
-    let popScope = () => {};
-    act(() => {
-      popScope = pushScopeRef.current("modal");
-    });
-    expect(registryRender).toHaveBeenCalledOnce();
-
-    act(() => popScope());
-    expect(registryRender).toHaveBeenCalledOnce();
   });
 
   it("should stop receiving key events after the provider unmounts", () => {

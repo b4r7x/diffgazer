@@ -193,7 +193,7 @@ describe("Toast", () => {
   })
 
   it("does not steal focus when a toast appears", () => {
-    const { container } = render(
+    render(
       <div>
         <input aria-label="Focused input" />
         <Toaster />

@@ -44,7 +44,7 @@ function isCliCommandPath(path: string): boolean {
   return /^\/[^/]+\/docs\/cli\/.+/.test(path) && getSlug(path) !== "cli";
 }
 
-export function isIndentedItem(path: string): boolean {
+function isIndentedItem(path: string): boolean {
   const slug = getSlug(path);
   if (DOCS_LIBRARY_IDS.some((id) => slug.startsWith(`${id}-`) && slug !== id)) return true;
   return isCliCommandPath(path);

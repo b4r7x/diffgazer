@@ -10,6 +10,7 @@ export interface CardLayoutProps {
   footer?: ReactNode;
   size?: "sm" | "md" | "lg";
   className?: string;
+  contentInactive?: boolean;
 }
 
 /**
@@ -24,6 +25,7 @@ export function CardLayout({
   footer,
   size = "lg",
   className,
+  contentInactive = false,
 }: CardLayoutProps) {
   return (
     <div className={cn("flex-1 flex flex-col items-center justify-center px-4", className)}>
@@ -39,7 +41,14 @@ export function CardLayout({
           </Card.Header>
         ))}
 
-        <Card.Content className="px-6 py-6 max-h-[60vh] overflow-y-auto scrollbar-thin">{children}</Card.Content>
+        <Card.Content
+          className={cn(
+            "px-6 py-6 max-h-[60vh] overflow-y-auto scrollbar-thin transition-opacity",
+            contentInactive && "opacity-60",
+          )}
+        >
+          {children}
+        </Card.Content>
 
         {footer && (
           <Card.Footer className="border-tui-border px-6 py-4 flex justify-end gap-3 bg-tui-bg/50">

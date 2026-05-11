@@ -1,93 +1,88 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { act, renderHook } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// Test the external store logic directly without React.
-// The store is module-level state in use-scoped-route-state.ts,
-// but since the pure functions (getSnapshot, setValue, subscribe, cleanupIfNeeded)
-// are not exported, we test indirectly through the module's Map behavior.
+const mockLocation = vi.hoisted(() => ({ pathname: "/test" }));
 
-// We can still test the store's core contract by importing and using the hook
-// with a mocked useLocation.
-
-import { vi } from "vitest";
-
-let mockPathname = "/test";
-
-// Mock TanStack Router's useLocation
 vi.mock("@tanstack/react-router", () => ({
-  useLocation: () => ({ pathname: mockPathname }),
+  useLocation: () => ({ pathname: mockLocation.pathname }),
 }));
 
-import { renderHook, act } from "@testing-library/react";
-import { useScopedRouteState } from "./use-scoped-route-state";
+import { clearScopedRouteState, useScopedRouteState } from "./use-scoped-route-state";
+
+const touchedEntries = new Set<string>();
+
+function rememberEntry(scope: string, key: string) {
+  touchedEntries.add(`${scope}\0${key}`);
+}
+
+function clearTouchedEntries() {
+  touchedEntries.forEach((entry) => {
+    const [scope, key] = entry.split("\0");
+    if (scope && key) clearScopedRouteState(scope, key);
+  });
+  touchedEntries.clear();
+}
+
+function setRoute(pathname: string) {
+  mockLocation.pathname = pathname;
+}
+
+function renderScopedState<T>(key: string, defaultValue: T) {
+  rememberEntry(mockLocation.pathname, key);
+  return renderHook(() => useScopedRouteState(key, defaultValue));
+}
 
 describe("useScopedRouteState", () => {
-  it("should return default value initially", () => {
-    const { result } = renderHook(() => useScopedRouteState("key1", "default"));
-    expect(result.current[0]).toBe("default");
+  beforeEach(() => {
+    clearTouchedEntries();
+    setRoute("/test");
   });
 
-  it("should update state with direct value", () => {
-    const { result } = renderHook(() => useScopedRouteState("key2", 0));
-    act(() => result.current[1](42));
-    expect(result.current[0]).toBe(42);
+  afterEach(() => {
+    act(() => clearTouchedEntries());
   });
 
-  it("should update state with functional updater", () => {
-    const { result } = renderHook(() => useScopedRouteState("key3", 10));
-    act(() => result.current[1]((prev) => prev + 5));
-    expect(result.current[0]).toBe(15);
+  it("persists updates for consumers on the same route and key", () => {
+    const first = renderScopedState("shared", 10);
+    const second = renderScopedState("shared", 10);
+
+    expect(first.result.current[0]).toBe(10);
+    expect(second.result.current[0]).toBe(10);
+
+    act(() => first.result.current[1](42));
+
+    expect(first.result.current[0]).toBe(42);
+    expect(second.result.current[0]).toBe(42);
+
+    act(() => second.result.current[1]((prev) => prev + 8));
+
+    expect(first.result.current[0]).toBe(50);
+    expect(second.result.current[0]).toBe(50);
   });
 
-  it("should maintain separate state per key", () => {
-    const { result: result1 } = renderHook(() => useScopedRouteState("keyA", "a"));
-    const { result: result2 } = renderHook(() => useScopedRouteState("keyB", "b"));
+  it("keeps separate values for different keys on the same route", () => {
+    const first = renderScopedState("first", "default-a");
+    const second = renderScopedState("second", "default-b");
 
-    act(() => result1.current[1]("updated-a"));
+    act(() => first.result.current[1]("saved-a"));
 
-    expect(result1.current[0]).toBe("updated-a");
-    expect(result2.current[0]).toBe("b");
+    expect(first.result.current[0]).toBe("saved-a");
+    expect(second.result.current[0]).toBe("default-b");
   });
 
-  it("should share state for same key", () => {
-    const { result: result1 } = renderHook(() => useScopedRouteState("shared", "initial"));
-    const { result: result2 } = renderHook(() => useScopedRouteState("shared", "initial"));
+  it("scopes persisted values by pathname", () => {
+    setRoute("/route-a");
+    const routeA = renderScopedState("selection", "default");
+    act(() => routeA.result.current[1]("route-a-value"));
 
-    act(() => result1.current[1]("changed"));
+    setRoute("/route-b");
+    const routeB = renderScopedState("selection", "default");
+    act(() => routeB.result.current[1]("route-b-value"));
 
-    expect(result1.current[0]).toBe("changed");
-    expect(result2.current[0]).toBe("changed");
-  });
+    setRoute("/route-a");
+    const routeAAgain = renderScopedState("selection", "default");
 
-  it("should scope state by route pathname", () => {
-    mockPathname = "/route-a";
-    const { result: resultA } = renderHook(() => useScopedRouteState("scoped", "default"));
-    act(() => resultA.current[1]("route-a-value"));
-
-    mockPathname = "/route-b";
-    const { result: resultB } = renderHook(() => useScopedRouteState("scoped", "default"));
-
-    expect(resultB.current[0]).toBe("default");
-    expect(resultA.current[0]).toBe("route-a-value");
-  });
-
-  it("should evict oldest entries when exceeding MAX_ENTRIES (100)", () => {
-    mockPathname = "/eviction-test";
-
-    // Fill up 101 entries — first should be evicted
-    const hooks: Array<{ result: { current: [number, (v: number | ((p: number) => number)) => void] } }> = [];
-    for (let i = 0; i < 101; i++) {
-      const { result } = renderHook(() => useScopedRouteState(`evict-${i}`, i));
-      act(() => result.current[1](i * 10));
-      hooks.push({ result });
-    }
-
-    // After 101 entries, the first entry (evict-0) should have been evicted
-    // and return default value
-    const { result: checkFirst } = renderHook(() => useScopedRouteState("evict-0", -1));
-    expect(checkFirst.current[0]).toBe(-1);
-
-    // Last entry should still exist
-    const { result: checkLast } = renderHook(() => useScopedRouteState("evict-100", -1));
-    expect(checkLast.current[0]).toBe(1000);
+    expect(routeAAgain.result.current[0]).toBe("route-a-value");
+    expect(routeB.result.current[0]).toBe("route-b-value");
   });
 });

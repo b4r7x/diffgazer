@@ -1,15 +1,29 @@
-import { describe, expect, it } from "vitest";
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { afterEach, describe, expect, it } from "vitest";
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { buildCopyBundle } from "../copy-bundle.js";
 
+const tempRoots: string[] = [];
+
+function createBareTempRoot(prefix: string): string {
+  const root = mkdtempSync(join(tmpdir(), prefix));
+  tempRoots.push(root);
+  return root;
+}
+
 function createTempRoot(): string {
-  const root = mkdtempSync(join(tmpdir(), "rk-copy-bundle-generic-"));
+  const root = createBareTempRoot("rk-copy-bundle-generic-");
   mkdirSync(join(root, "registry"), { recursive: true });
   mkdirSync(join(root, "src/hooks"), { recursive: true });
   return root;
 }
+
+afterEach(() => {
+  for (const root of tempRoots.splice(0)) {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
 
 function writeRegistry(root: string, items: unknown[]): void {
   writeFileSync(
@@ -54,7 +68,6 @@ describe("buildCopyBundle", () => {
       pathMapping: { from: "src/hooks/", to: "hooks/" },
     });
 
-    // Filters by type and excludes hidden
     expect(result.itemCount).toBe(1);
     const output = JSON.parse(readFileSync(outputPath, "utf-8")) as {
       items: Array<{ name: string; files: Array<{ path: string }> }>;
@@ -62,10 +75,8 @@ describe("buildCopyBundle", () => {
     expect(output.items).toHaveLength(1);
     expect(output.items[0]?.name).toBe("alpha");
 
-    // Path mapping applied
     expect(output.items[0]?.files[0]?.path).toBe("hooks/use-alpha.ts");
 
-    // SHA-256 integrity hash
     expect(result.integrity).toMatch(/^sha256-[a-f0-9]{64}$/);
   });
 
@@ -158,7 +169,7 @@ describe("buildCopyBundle", () => {
   });
 
   it("throws if registry file not found", () => {
-    const root = mkdtempSync(join(tmpdir(), "rk-no-registry-"));
+    const root = createBareTempRoot("rk-no-registry-");
     const outputPath = join(root, "bundle.json");
 
     expect(() =>

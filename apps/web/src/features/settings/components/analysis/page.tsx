@@ -118,6 +118,7 @@ export function SettingsAnalysisPage() {
     <CardLayout
       title="Analysis Settings"
       subtitle="Choose which agents run during reviews."
+      contentInactive={isButtonsZone && viewState === "success"}
       footer={
         <>
           <Button

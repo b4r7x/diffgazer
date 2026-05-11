@@ -3,16 +3,22 @@ import { axe } from "../../../testing/utils.js"
 import { describe, it, expect, vi } from "vitest"
 import { Avatar } from "./index.js"
 
+function getAvatarImage(container: HTMLElement): HTMLImageElement {
+  const image = container.querySelector("img")
+  if (!(image instanceof HTMLImageElement)) throw new Error("Expected avatar image")
+  return image
+}
+
 describe("Avatar", () => {
   it("shows fallback until image loads, hides it on success, shows it on error", () => {
-    const { unmount } = render(<Avatar src="https://example.com/avatar.jpg" fallback="AB" />)
+    const { container, unmount } = render(<Avatar src="https://example.com/avatar.jpg" fallback="AB" />)
     expect(screen.getByText("AB")).toBeInTheDocument()
-    fireEvent.load(document.querySelector("img")!)
+    fireEvent.load(getAvatarImage(container))
     expect(screen.queryByText("AB")).not.toBeInTheDocument()
     unmount()
 
-    render(<Avatar src="https://example.com/bad.jpg" fallback="AB" />)
-    fireEvent.error(document.querySelector("img")!)
+    const badAvatar = render(<Avatar src="https://example.com/bad.jpg" fallback="AB" />)
+    fireEvent.error(getAvatarImage(badAvatar.container))
     expect(screen.getByText("AB")).toBeInTheDocument()
   })
 
@@ -25,31 +31,31 @@ describe("Avatar", () => {
 
   it("calls onStatusChange through loading, loaded, and error lifecycle", () => {
     const onStatusChange = vi.fn()
-    const { unmount } = render(
+    const { container, unmount } = render(
       <Avatar src="https://example.com/avatar.jpg" alt="User" fallback="AB" onStatusChange={onStatusChange} />,
     )
     expect(onStatusChange).toHaveBeenCalledWith("loading")
-    fireEvent.load(document.querySelector("img")!)
+    fireEvent.load(getAvatarImage(container))
     expect(onStatusChange).toHaveBeenCalledWith("loaded")
     unmount()
 
     const onStatusChange2 = vi.fn()
-    render(
+    const badAvatar = render(
       <Avatar src="https://example.com/bad.jpg" alt="User" fallback="AB" onStatusChange={onStatusChange2} />,
     )
-    fireEvent.error(document.querySelector("img")!)
+    fireEvent.error(getAvatarImage(badAvatar.container))
     expect(onStatusChange2).toHaveBeenCalledWith("error")
   })
 
   it("does not re-emit the current status when onStatusChange identity changes", () => {
     const firstOnStatusChange = vi.fn()
     const secondOnStatusChange = vi.fn()
-    const { rerender } = render(
+    const { container, rerender } = render(
       <Avatar src="https://example.com/avatar.jpg" alt="User" fallback="AB" onStatusChange={firstOnStatusChange} />,
     )
 
     expect(firstOnStatusChange).toHaveBeenCalledWith("loading")
-    fireEvent.load(document.querySelector("img")!)
+    fireEvent.load(getAvatarImage(container))
     expect(firstOnStatusChange).toHaveBeenCalledWith("loaded")
 
     rerender(
@@ -61,11 +67,11 @@ describe("Avatar", () => {
 
   it("resets image status after src changes without render-time state updates", async () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined)
-    const { rerender } = render(
+    const { container, rerender } = render(
       <Avatar src="https://example.com/avatar.jpg" alt="User" fallback="AB" />,
     )
 
-    fireEvent.load(document.querySelector("img")!)
+    fireEvent.load(getAvatarImage(container))
     expect(screen.queryByText("AB")).not.toBeInTheDocument()
 
     rerender(<Avatar src="https://example.com/next.jpg" alt="User" fallback="AB" />)
@@ -81,13 +87,13 @@ describe("Avatar", () => {
   })
 
   it("falls back to text when the fallback image fails", () => {
-    render(
+    const { container } = render(
       <Avatar src="https://example.com/bad.jpg" fallback="AB">
         <Avatar.Fallback src="https://example.com/fallback.jpg">AB</Avatar.Fallback>
       </Avatar>,
     )
 
-    fireEvent.error(document.querySelector("img")!)
+    fireEvent.error(getAvatarImage(container))
     expect(screen.getByText("AB")).toBeInTheDocument()
   })
 
@@ -137,7 +143,7 @@ describe("Avatar", () => {
     )
     expect(screen.getByText("JD")).toBeInTheDocument()
 
-    fireEvent.load(document.querySelector("img")!)
+    fireEvent.load(getAvatarImage(container))
     const fallback = screen.queryByText("JD")
     if (fallback) {
       expect(fallback).toHaveAttribute("aria-hidden", "true")

@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useId, useState } from "react";
 import type { SecretsStorage } from "@diffgazer/core/schemas/config";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
 import { toVerticalBoundaryDirection } from "@diffgazer/keys";
@@ -42,8 +42,10 @@ export function StorageSelectorContent({
   onBoundaryReached,
 }: StorageSelectorContentProps) {
   const labelId = useId();
+  const [focusedStorage, setFocusedStorage] = useState<SecretsStorage | null>(null);
 
   const navigationEnabled = !disabled && keyboardNavigation;
+  const highlightedStorage = focusedStorage ?? value ?? STORAGE_OPTIONS[0]?.value ?? null;
 
   const handleChange = (nextValue: string) => {
     if (!isStorageValue(nextValue)) return;
@@ -63,6 +65,10 @@ export function StorageSelectorContent({
         value={value ?? undefined}
         onChange={handleChange}
         onEnter={handleEnter}
+        highlighted={navigationEnabled ? highlightedStorage : null}
+        onHighlightChange={(nextValue) => {
+          if (isStorageValue(nextValue)) setFocusedStorage(nextValue);
+        }}
         keyboardNavigation={navigationEnabled}
         activationMode="manual"
         onNavigationBoundaryReached={(direction, event) => {

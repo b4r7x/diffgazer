@@ -128,7 +128,7 @@ describe("Accordion", () => {
       <Accordion>
         <Accordion.Item value="one">
           <Accordion.Header>
-            <Accordion.Trigger ref={ref} data-testid="trigger" onClick={onClick}>
+            <Accordion.Trigger ref={ref} onClick={onClick}>
               Section One
             </Accordion.Trigger>
           </Accordion.Header>
@@ -137,7 +137,7 @@ describe("Accordion", () => {
       </Accordion>,
     )
 
-    const trigger = screen.getByTestId("trigger")
+    const trigger = screen.getByRole("button", { name: "Section One" })
     expect(ref.current).toBe(trigger)
     await userEvent.click(trigger)
     expect(onClick).toHaveBeenCalledOnce()

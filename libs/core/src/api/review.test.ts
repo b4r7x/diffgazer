@@ -38,19 +38,6 @@ const reviewResult = {
   issues: [],
 };
 
-const agentStarted = {
-  type: "agent_start",
-  agent: {
-    id: "detective",
-    name: "Detective",
-    lens: "correctness",
-    badgeLabel: "DET",
-    badgeVariant: "info",
-    description: "Finds bugs",
-  },
-  timestamp: "2025-01-01T00:00:00Z",
-};
-
 describe("resumeReviewStream", () => {
   it.each([
     [404, "SESSION_NOT_FOUND"],
@@ -96,23 +83,22 @@ describe("resumeReviewStream", () => {
     }
   });
 
-  it("streams resume events through the real review parser", async () => {
+  it("resumes from the review stream endpoint", async () => {
     const client = createClient();
-    const agentEvents: unknown[] = [];
+    const signal = new AbortController().signal;
     vi.mocked(client.stream).mockResolvedValue(
       streamResponse([
-        agentStarted,
         { type: "complete", reviewId: "r1", result: reviewResult },
       ]),
     );
 
     const result = await resumeReviewStream(client, {
       reviewId: "r1",
-      onAgentEvent: (event) => agentEvents.push(event),
+      signal,
     });
 
     expect(result.ok).toBe(true);
-    expect(agentEvents).toEqual([expect.objectContaining({ type: "agent_start" })]);
+    expect(client.stream).toHaveBeenCalledWith("/api/review/reviews/r1/stream", { signal });
   });
 });
 
@@ -158,44 +144,38 @@ describe("streamReviewWithEvents", () => {
     }
   });
 
-  it("returns parsed review results and forwards parsed events", async () => {
+  it("streams with review query params and returns the parsed result", async () => {
     const client = createClient();
-    const agentEvents: unknown[] = [];
-    const stepEvents: unknown[] = [];
-    const enrichEvents: unknown[] = [];
     vi.mocked(client.stream).mockResolvedValue(
       streamResponse([
-        { type: "review_started", reviewId: "r2", filesTotal: 2, timestamp: "2025-01-01T00:00:00Z" },
-        agentStarted,
-        {
-          type: "enrich_progress",
-          issueId: "i1",
-          enrichmentType: "blame",
-          status: "complete",
-          timestamp: "2025-01-01T00:00:01Z",
-        },
         { type: "complete", reviewId: "r2", result: reviewResult },
       ]),
     );
 
     const result = await streamReviewWithEvents(client, {
       mode: "staged",
-      onAgentEvent: (event) => agentEvents.push(event),
-      onStepEvent: (event) => stepEvents.push(event),
-      onEnrichEvent: (event) => enrichEvents.push(event),
+      files: ["a.ts", "b.ts"],
+      lenses: ["security"],
+      profile: "quick",
     });
 
+    expect(client.stream).toHaveBeenCalledWith("/api/review/stream", {
+      params: {
+        mode: "staged",
+        files: "a.ts,b.ts",
+        lenses: "security",
+        profile: "quick",
+      },
+      signal: undefined,
+    });
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.value).toEqual({
         reviewId: "r2",
         result: reviewResult,
-        agentEvents: [expect.objectContaining({ type: "agent_start" })],
+        agentEvents: [],
       });
     }
-    expect(stepEvents).toEqual([expect.objectContaining({ type: "review_started", reviewId: "r2" })]);
-    expect(agentEvents).toEqual([expect.objectContaining({ type: "agent_start" })]);
-    expect(enrichEvents).toEqual([expect.objectContaining({ type: "enrich_progress", issueId: "i1" })]);
   });
 });
 

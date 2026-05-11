@@ -654,7 +654,7 @@ describe("useNavigation", () => {
   });
 
   describe("role-only items without data-value", () => {
-    it("ignores role-only items so they cannot trap navigation", async () => {
+    it("ignores role-only items without reporting an empty-list boundary", async () => {
       function RoleOnlyList() {
         const ref = useRef<HTMLDivElement>(null);
         const result = useNavigation({
@@ -709,7 +709,6 @@ describe("useNavigation", () => {
       const user = userEvent.setup();
       await user.keyboard("{ArrowDown}{ArrowDown}");
 
-      // Highlight stays null because no role-only items have values
       expect(listbox.getAttribute("aria-activedescendant")).toBeNull();
 
       cleanup();
@@ -718,8 +717,8 @@ describe("useNavigation", () => {
       host.focus();
       await user.keyboard("{ArrowDown}");
 
-      // Should treat as empty list
       expect(host.getAttribute("aria-activedescendant")).toBeNull();
+      expect(onBoundary).not.toHaveBeenCalled();
     });
   });
 

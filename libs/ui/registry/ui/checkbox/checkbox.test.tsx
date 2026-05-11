@@ -5,8 +5,8 @@ import { describe, it, expect, vi } from "vitest"
 import { Checkbox } from "./index.js"
 import { Field } from "../field/index.js"
 
-function getForm(): HTMLFormElement {
-  const form = screen.getByTestId("form")
+function getForm(name = "Test form"): HTMLFormElement {
+  const form = screen.getByRole("form", { name })
   if (!(form instanceof HTMLFormElement)) throw new Error("Expected form test element")
   return form
 }
@@ -88,7 +88,7 @@ describe("Checkbox", () => {
 
   it("resets uncontrolled checked state with native form reset", async () => {
     render(
-      <form data-testid="form">
+      <form aria-label="Test form">
         <Checkbox name="terms" defaultChecked label="Accept terms" />
       </form>
     )
@@ -104,7 +104,7 @@ describe("Checkbox", () => {
 
   it("focuses the visible checkbox when native required validation fails", async () => {
     render(
-      <form data-testid="form">
+      <form aria-label="Test form">
         <Checkbox name="terms" required label="Accept terms" />
       </form>
     )
@@ -119,7 +119,7 @@ describe("Checkbox", () => {
 
   it("validates required unnamed checkboxes without contributing FormData", async () => {
     render(
-      <form data-testid="form">
+      <form aria-label="Test form">
         <Checkbox required label="Accept terms" />
       </form>
     )
@@ -140,7 +140,7 @@ describe("Checkbox", () => {
 
   it("keeps data-value aligned with submitted value, including empty values", () => {
     const { rerender } = render(
-      <form data-testid="form">
+      <form aria-label="Test form">
         <Checkbox name="choice" value="custom" defaultChecked label="Custom choice" />
       </form>,
     )
@@ -151,7 +151,7 @@ describe("Checkbox", () => {
     expect(new FormData(form).get("choice")).toBe("custom")
 
     rerender(
-      <form data-testid="form">
+      <form aria-label="Test form">
         <Checkbox name="choice" value="" defaultChecked label="Empty choice" />
       </form>,
     )
@@ -166,7 +166,6 @@ describe("Checkbox", () => {
     render(
       <Checkbox
         label="Accept terms"
-        data-testid="checkbox-root"
         data-source="external"
         style={{ maxWidth: "18px" }}
         onClick={onClick}
@@ -181,8 +180,8 @@ describe("Checkbox", () => {
 
     expect(onClick).toHaveBeenCalledOnce()
     expect(onKeyDown).toHaveBeenCalled()
-    expect(screen.getByTestId("checkbox-root")).toHaveAttribute("data-source", "external")
-    expect(screen.getByTestId("checkbox-root")).toHaveStyle({ maxWidth: "18px" })
+    expect(checkbox).toHaveAttribute("data-source", "external")
+    expect(checkbox).toHaveStyle({ maxWidth: "18px" })
   })
 
   it("lets consumer click handlers prevent the built-in toggle", async () => {
@@ -449,7 +448,7 @@ describe("Checkbox.Group", () => {
 
   it("does not satisfy required validation with stale controlled values", async () => {
     render(
-      <form data-testid="form">
+      <form aria-label="Test form">
         <Checkbox.Group label="Fruits" name="fruits" value={["missing"]} required>
           <Checkbox.Item value="apple" label="Apple" />
           <Checkbox.Item value="banana" label="Banana" />
@@ -472,7 +471,7 @@ describe("Checkbox.Group", () => {
     }
 
     render(
-      <form data-testid="form">
+      <form aria-label="Test form">
         <Checkbox.Group label="Fruits" name="fruits" value={["apple"]} required>
           <WrappedApple />
         </Checkbox.Group>
@@ -486,7 +485,7 @@ describe("Checkbox.Group", () => {
 
   it("does not satisfy required validation after a selected item is disabled or removed", async () => {
     const renderForm = (state: "enabled" | "disabled" | "removed") => (
-      <form data-testid="form">
+      <form aria-label="Test form">
         <Checkbox.Group label="Fruits" name="fruits" value={["apple"]} required>
           {state !== "removed" && (
             <Checkbox.Item value="apple" label="Apple" disabled={state === "disabled"} />
@@ -497,14 +496,14 @@ describe("Checkbox.Group", () => {
     )
     const { rerender } = render(renderForm("enabled"))
 
-    await waitFor(() => expect(screen.getByTestId("form")).toBeValid())
+    await waitFor(() => expect(screen.getByRole("form", { name: "Test form" })).toBeValid())
 
     rerender(renderForm("disabled"))
-    await waitFor(() => expect(screen.getByTestId("form")).not.toBeValid())
+    await waitFor(() => expect(screen.getByRole("form", { name: "Test form" })).not.toBeValid())
     expect(new FormData(getForm()).getAll("fruits")).toEqual([])
 
     rerender(renderForm("removed"))
-    await waitFor(() => expect(screen.getByTestId("form")).not.toBeValid())
+    await waitFor(() => expect(screen.getByRole("form", { name: "Test form" })).not.toBeValid())
     expect(new FormData(getForm()).getAll("fruits")).toEqual([])
   })
 
@@ -554,7 +553,7 @@ describe("Checkbox.Group", () => {
 
   it("requires at least one checked item without making every item required", async () => {
     render(
-      <form data-testid="form">
+      <form aria-label="Test form">
         <Checkbox.Group label="Fruits" name="fruits" required>
           <Checkbox.Item value="apple" label="Apple" />
           <Checkbox.Item value="banana" label="Banana" />
@@ -578,7 +577,7 @@ describe("Checkbox.Group", () => {
 
   it("resets uncontrolled grouped checkbox values with native form reset", async () => {
     render(
-      <form data-testid="form">
+      <form aria-label="Test form">
         <Checkbox.Group label="Fruits" name="fruits" defaultValue={["apple"]}>
           <Checkbox.Item value="apple" label="Apple" />
           <Checkbox.Item value="banana" label="Banana" />

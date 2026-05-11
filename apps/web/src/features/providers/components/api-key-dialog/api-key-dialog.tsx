@@ -1,6 +1,5 @@
 import { useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody } from "@diffgazer/ui/components/dialog";
-import { Badge } from "@diffgazer/ui/components/badge";
 import { useApiKeyForm } from "../../hooks/use-api-key-form";
 import { useApiKeyDialogKeyboard } from "../../hooks/use-api-key-dialog-keyboard";
 import { ApiKeyMethodSelector } from "@/components/shared/api-key-method-selector";
@@ -46,18 +45,10 @@ export function ApiKeyDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent key={String(open)} className="max-w-xl overflow-hidden border border-tui-border shadow-2xl">
-        <DialogHeader className="flex-row items-center justify-between gap-3 bg-tui-selection/50 px-4 py-3">
+        <DialogHeader className="bg-tui-selection/50 px-4 py-3">
           <DialogTitle className="min-w-0 flex-1 w-auto text-tui-blue tracking-wide">
             {providerName} API Key
           </DialogTitle>
-          <Badge
-            variant="success"
-            size="sm"
-            className="shrink-0 uppercase tracking-wider border border-tui-green/30 px-1.5 py-0.5"
-            aria-label="Keys are stored securely"
-          >
-            Secure
-          </Badge>
         </DialogHeader>
 
         <DialogBody className="p-6 space-y-6">

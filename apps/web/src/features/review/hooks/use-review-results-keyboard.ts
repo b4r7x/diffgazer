@@ -18,7 +18,7 @@ interface UseReviewResultsKeyboardOptions {
   issues: ReviewIssue[];
 }
 
-export function getReviewResultsFooter(
+function getReviewResultsFooter(
   focusZone: FocusZone,
   canUsePatchTab: boolean,
 ): { shortcuts: Shortcut[]; rightShortcuts: Shortcut[] } {

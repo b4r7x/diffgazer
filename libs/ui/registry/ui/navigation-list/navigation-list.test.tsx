@@ -278,42 +278,57 @@ describe("NavigationList", () => {
     expect(await axe(container)).toHaveNoViolations()
   })
 
-  it("moves highlight with ArrowDown and ArrowUp", async () => {
-    renderList({ defaultHighlighted: "one" })
-    const listbox = screen.getByRole("listbox")
-    listbox.focus()
-    await userEvent.keyboard("{ArrowDown}")
-    expect(listbox).toHaveAttribute(
-      "aria-activedescendant",
-      expect.stringContaining("-two"),
-    )
-    await userEvent.keyboard("{ArrowUp}")
-    expect(listbox).toHaveAttribute(
-      "aria-activedescendant",
-      expect.stringContaining("-one"),
-    )
-  })
-
-  it("activates highlighted item with Enter", async () => {
+  it("moves highlight and activates the highlighted option from the listbox", async () => {
     const onSelect = vi.fn()
     const onEnter = vi.fn()
     renderList({ defaultHighlighted: "one", onSelect, onEnter })
     const listbox = screen.getByRole("listbox")
     listbox.focus()
+
+    await userEvent.keyboard("{ArrowDown}")
+    expect(listbox).toHaveAttribute(
+      "aria-activedescendant",
+      expect.stringContaining("-two"),
+    )
     await userEvent.keyboard("{Enter}")
-    expect(onSelect).toHaveBeenCalledWith("one")
-    expect(onEnter).toHaveBeenCalledWith("one", expect.any(KeyboardEvent))
+
+    expect(onSelect).toHaveBeenCalledWith("two")
+    expect(onEnter).toHaveBeenCalledWith("two", expect.any(KeyboardEvent))
   })
 
-  it("skips disabled items and reports navigation boundaries when wrapping is disabled", async () => {
-    const onBoundary = vi.fn()
-    const user = userEvent.setup()
+  it("highlights a matching option with typeahead", async () => {
+    const onHighlightChange = vi.fn()
+    render(
+      <NavigationList aria-label="Test nav" onHighlightChange={onHighlightChange}>
+        <NavigationList.Item id="alpha">
+          <NavigationList.Title>Alpha</NavigationList.Title>
+        </NavigationList.Item>
+        <NavigationList.Item id="beta">
+          <NavigationList.Title>Beta</NavigationList.Title>
+        </NavigationList.Item>
+        <NavigationList.Item id="charlie">
+          <NavigationList.Title>Charlie</NavigationList.Title>
+        </NavigationList.Item>
+      </NavigationList>,
+    )
+
+    const listbox = screen.getByRole("listbox")
+    listbox.focus()
+    await userEvent.keyboard("ch")
+
+    const charlieOption = screen.getByRole("option", { name: "Charlie" })
+    expect(listbox).toHaveAttribute("aria-activedescendant", charlieOption.id)
+    expect(onHighlightChange).toHaveBeenCalledWith("charlie")
+  })
+
+  it("skips disabled options and reports non-wrapping boundaries", async () => {
+    const onNavigationBoundaryReached = vi.fn()
     render(
       <NavigationList
         aria-label="Test nav"
         defaultHighlighted="one"
         wrap={false}
-        onNavigationBoundaryReached={onBoundary}
+        onNavigationBoundaryReached={onNavigationBoundaryReached}
       >
         <NavigationList.Item id="one">
           <NavigationList.Title>One</NavigationList.Title>
@@ -329,21 +344,23 @@ describe("NavigationList", () => {
 
     const listbox = screen.getByRole("listbox")
     const oneOption = screen.getByRole("option", { name: "One" })
+    const twoOption = screen.getByRole("option", { name: "Two" })
     const threeOption = screen.getByRole("option", { name: "Three" })
+
     listbox.focus()
+    await userEvent.keyboard("{ArrowDown}")
+    expect(listbox).toHaveAttribute("aria-activedescendant", threeOption.id)
+    expect(listbox).not.toHaveAttribute("aria-activedescendant", twoOption.id)
 
-    await user.keyboard("{ArrowDown}")
+    await userEvent.keyboard("{ArrowDown}")
+    expect(onNavigationBoundaryReached).toHaveBeenLastCalledWith("next", expect.any(KeyboardEvent), "ArrowDown")
     expect(listbox).toHaveAttribute("aria-activedescendant", threeOption.id)
 
-    await user.keyboard("{ArrowDown}")
-    expect(onBoundary).toHaveBeenCalledWith("next", expect.any(KeyboardEvent), "ArrowDown")
-    expect(listbox).toHaveAttribute("aria-activedescendant", threeOption.id)
-
-    await user.keyboard("{ArrowUp}")
+    await userEvent.keyboard("{ArrowUp}")
     expect(listbox).toHaveAttribute("aria-activedescendant", oneOption.id)
 
-    await user.keyboard("{ArrowUp}")
-    expect(onBoundary).toHaveBeenCalledWith("previous", expect.any(KeyboardEvent), "ArrowUp")
+    await userEvent.keyboard("{ArrowUp}")
+    expect(onNavigationBoundaryReached).toHaveBeenLastCalledWith("previous", expect.any(KeyboardEvent), "ArrowUp")
     expect(listbox).toHaveAttribute("aria-activedescendant", oneOption.id)
   })
 
@@ -440,42 +457,4 @@ describe("NavigationList", () => {
     expect(document.getElementById(option.id)).toBe(option)
   })
 
-})
-
-describe("NavigationList typeahead", () => {
-  function renderTypeaheadList() {
-    return render(
-      <NavigationList aria-label="Test list">
-        <NavigationList.Item id="alpha">
-          <NavigationList.Title>Alpha</NavigationList.Title>
-        </NavigationList.Item>
-        <NavigationList.Item id="beta">
-          <NavigationList.Title>Beta</NavigationList.Title>
-        </NavigationList.Item>
-        <NavigationList.Item id="charlie">
-          <NavigationList.Title>Charlie</NavigationList.Title>
-        </NavigationList.Item>
-      </NavigationList>
-    )
-  }
-
-  it("highlights item matching typed character", async () => {
-    const user = userEvent.setup()
-    renderTypeaheadList()
-    const list = screen.getByRole("listbox")
-    await user.click(list)
-    await user.keyboard("b")
-    const betaOption = screen.getByRole("option", { name: "Beta" })
-    expect(list).toHaveAttribute("aria-activedescendant", betaOption.id)
-  })
-
-  it("accumulates characters for multi-char typeahead", async () => {
-    const user = userEvent.setup()
-    renderTypeaheadList()
-    const list = screen.getByRole("listbox")
-    await user.click(list)
-    await user.keyboard("ch")
-    const charlieOption = screen.getByRole("option", { name: "Charlie" })
-    expect(list).toHaveAttribute("aria-activedescendant", charlieOption.id)
-  })
 })

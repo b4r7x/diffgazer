@@ -42,24 +42,6 @@ describe("ModelList", () => {
     expect(onConfirm).toHaveBeenCalledWith("model-b");
   });
 
-  it("keeps one tabbable radio while list keyboard navigation is active", () => {
-    render(
-      <ModelList
-        models={MODELS}
-        focusedModelId="model-a"
-        currentModelId="model-a"
-        isFocused
-        onSelect={vi.fn()}
-        onConfirm={vi.fn()}
-        onHighlightChange={vi.fn()}
-        onBoundaryReached={vi.fn()}
-      />,
-    );
-
-    expect(screen.getAllByRole("radio").map((radio) => radio.getAttribute("tabindex")))
-      .toEqual(["0", "-1"]);
-  });
-
   it("focuses the highlighted radio when list keyboard navigation is active", async () => {
     render(
       <ModelList

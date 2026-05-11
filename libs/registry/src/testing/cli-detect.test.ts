@@ -38,45 +38,46 @@ describe("detectPackageManager", () => {
 });
 
 describe("detectSourceDir", () => {
-  it("detects root-source aliases", () => {
-    const root = mkdtempSync(join(tmpdir(), "registry-source-"));
-    try {
-      writeFileSync(join(root, "tsconfig.json"), JSON.stringify({
-        compilerOptions: { paths: { "@/*": ["./*"] } },
-      }));
+  let root: string;
 
-      expect(detectSourceDir(root)).toBe(".");
-    } finally {
-      rmSync(root, { recursive: true, force: true });
-    }
+  beforeEach(() => {
+    root = mkdtempSync(join(tmpdir(), "registry-source-"));
   });
 
-  it("detects aliases from Vite tsconfig.app.json", () => {
-    const root = mkdtempSync(join(tmpdir(), "registry-source-"));
-    try {
-      writeFileSync(join(root, "tsconfig.app.json"), JSON.stringify({
-        compilerOptions: { paths: { "@/*": ["./src/*"] } },
-      }));
-
-      expect(detectSourceDir(root)).toBe("src");
-    } finally {
-      rmSync(root, { recursive: true, force: true });
-    }
+  afterEach(() => {
+    rmSync(root, { recursive: true, force: true });
   });
 
-  it("detects aliases through local extends", () => {
-    const root = mkdtempSync(join(tmpdir(), "registry-source-"));
-    try {
-      writeFileSync(join(root, "tsconfig.base.json"), JSON.stringify({
-        compilerOptions: { paths: { "@/*": ["./app/*"] } },
-      }));
-      writeFileSync(join(root, "tsconfig.json"), JSON.stringify({
-        extends: "./tsconfig.base.json",
-      }));
+  for (const fixture of [
+    {
+      name: "root-source aliases",
+      files: {
+        "tsconfig.json": { compilerOptions: { paths: { "@/*": ["./*"] } } },
+      },
+      expected: ".",
+    },
+    {
+      name: "aliases from Vite tsconfig.app.json",
+      files: {
+        "tsconfig.app.json": { compilerOptions: { paths: { "@/*": ["./src/*"] } } },
+      },
+      expected: "src",
+    },
+    {
+      name: "aliases through local extends",
+      files: {
+        "tsconfig.base.json": { compilerOptions: { paths: { "@/*": ["./app/*"] } } },
+        "tsconfig.json": { extends: "./tsconfig.base.json" },
+      },
+      expected: "app",
+    },
+  ]) {
+    it(`detects ${fixture.name}`, () => {
+      for (const [fileName, content] of Object.entries(fixture.files)) {
+        writeFileSync(join(root, fileName), JSON.stringify(content));
+      }
 
-      expect(detectSourceDir(root)).toBe("app");
-    } finally {
-      rmSync(root, { recursive: true, force: true });
-    }
-  });
+      expect(detectSourceDir(root)).toBe(fixture.expected);
+    });
+  }
 });

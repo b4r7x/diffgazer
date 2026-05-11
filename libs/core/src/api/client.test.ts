@@ -10,6 +10,11 @@ function lastCall() {
   return call as [string, RequestInit];
 }
 
+function lastHeaders() {
+  const [, options] = lastCall();
+  return new Headers(options.headers);
+}
+
 function jsonResponse(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -82,8 +87,7 @@ describe("createApiClient", () => {
 
       await client.get("/api/test");
 
-      const [, options] = lastCall();
-      expect((options.headers as Record<string, string>).Accept).toBe("application/json");
+      expect(lastHeaders().get("Accept")).toBe("application/json");
     });
 
     it("sets Content-Type on POST requests with body", async () => {
@@ -91,8 +95,7 @@ describe("createApiClient", () => {
 
       await client.post("/api/test", { data: 1 });
 
-      const [, options] = lastCall();
-      expect((options.headers as Record<string, string>)["Content-Type"]).toBe("application/json");
+      expect(lastHeaders().get("Content-Type")).toBe("application/json");
     });
 
     it("does not set Content-Type on GET requests", async () => {
@@ -100,8 +103,7 @@ describe("createApiClient", () => {
 
       await client.get("/api/test");
 
-      const [, options] = lastCall();
-      expect((options.headers as Record<string, string>)["Content-Type"]).toBeUndefined();
+      expect(lastHeaders().get("Content-Type")).toBeNull();
     });
 
     it("includes projectRoot header when configured", async () => {
@@ -113,8 +115,7 @@ describe("createApiClient", () => {
 
       await projectClient.get("/api/test");
 
-      const [, options] = lastCall();
-      expect((options.headers as Record<string, string>)["x-diffgazer-project-root"]).toBe("/home/user/project");
+      expect(lastHeaders().get("x-diffgazer-project-root")).toBe("/home/user/project");
     });
 
     it("includes custom base headers", async () => {
@@ -126,8 +127,7 @@ describe("createApiClient", () => {
 
       await customClient.get("/api/test");
 
-      const [, options] = lastCall();
-      expect((options.headers as Record<string, string>)["X-Custom"]).toBe("value");
+      expect(lastHeaders().get("X-Custom")).toBe("value");
     });
   });
 

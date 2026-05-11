@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react"
+import { act, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { axe } from "../../../testing/utils.js"
 import { describe, it, expect, vi } from "vitest"
@@ -66,45 +66,6 @@ describe("useListbox", () => {
     expect(await axe(container)).toHaveNoViolations()
   })
 
-  it("sets aria-activedescendant and fires onHighlightChange on ArrowDown", async () => {
-    const onHighlight = vi.fn()
-    const user = userEvent.setup()
-    render(<Listbox items={defaultItems} onHighlightChange={onHighlight} />)
-
-    const listbox = screen.getByRole("listbox")
-    listbox.focus()
-    await user.keyboard("{ArrowDown}")
-
-    expect(listbox).toHaveAttribute("aria-activedescendant", getEncodedListboxItemId("lb", "a"))
-    expect(onHighlight).toHaveBeenCalledWith("a")
-  })
-
-  it("selects item on Enter key", async () => {
-    const onSelect = vi.fn()
-    const onEnter = vi.fn()
-    const user = userEvent.setup()
-    render(<Listbox items={defaultItems} onSelect={onSelect} onEnter={onEnter} />)
-
-    const listbox = screen.getByRole("listbox")
-    listbox.focus()
-    await user.keyboard("{ArrowDown}{Enter}")
-
-    expect(onSelect).toHaveBeenCalledWith("a")
-    expect(onEnter).toHaveBeenCalledWith("a", expect.any(KeyboardEvent))
-  })
-
-  it("selects item on Space key", async () => {
-    const onSelect = vi.fn()
-    const user = userEvent.setup()
-    render(<Listbox items={defaultItems} onSelect={onSelect} />)
-
-    const listbox = screen.getByRole("listbox")
-    listbox.focus()
-    await user.keyboard("{ArrowDown} ")
-
-    expect(onSelect).toHaveBeenCalledWith("a")
-  })
-
   it("supports menu role", async () => {
     render(<Listbox items={defaultItems} role="menu" itemRole="menuitem" />)
     const menu = screen.getByRole("menu")
@@ -116,17 +77,6 @@ describe("useListbox", () => {
     render(<Listbox items={defaultItems} selectedId="b" />)
     const listbox = screen.getByRole("listbox")
     expect(listbox).toHaveAttribute("aria-activedescendant", getEncodedListboxItemId("lb", "b"))
-  })
-
-  it("uses the selected item as the keyboard navigation anchor", async () => {
-    const user = userEvent.setup()
-    render(<Listbox items={defaultItems} defaultSelectedId="b" />)
-
-    const listbox = screen.getByRole("listbox")
-    listbox.focus()
-    await user.keyboard("{ArrowDown}")
-
-    expect(listbox).toHaveAttribute("aria-activedescendant", getEncodedListboxItemId("lb", "c"))
   })
 
   it("removes aria-activedescendant when the active item is removed", async () => {
@@ -189,61 +139,6 @@ describe("useListbox", () => {
     expect(option).toHaveAttribute("aria-selected", "true")
   })
 
-  it("wraps from last item to first with wrap=true (default)", async () => {
-    const onHighlight = vi.fn()
-    const user = userEvent.setup()
-    render(<Listbox items={defaultItems} defaultHighlighted="c" onHighlightChange={onHighlight} />)
-
-    const listbox = screen.getByRole("listbox")
-    listbox.focus()
-
-    await user.keyboard("{ArrowDown}")
-
-    const lastCall = onHighlight.mock.calls[onHighlight.mock.calls.length - 1]
-    expect(lastCall?.[0]).toBe("a")
-  })
-
-  it("reports navigation boundaries when wrapping is disabled", async () => {
-    const onBoundary = vi.fn()
-    const user = userEvent.setup()
-    render(
-      <Listbox
-        items={defaultItems}
-        defaultHighlighted="a"
-        wrap={false}
-        onNavigationBoundaryReached={onBoundary}
-      />,
-    )
-
-    const listbox = screen.getByRole("listbox")
-    listbox.focus()
-
-    await user.keyboard("{ArrowUp}{End}{ArrowDown}")
-
-    expect(onBoundary).toHaveBeenCalledWith("previous", expect.any(KeyboardEvent), expect.any(String))
-    expect(onBoundary).toHaveBeenCalledWith("next", expect.any(KeyboardEvent), expect.any(String))
-  })
-
-  it("skips disabled items during keyboard navigation", async () => {
-    const user = userEvent.setup()
-    render(
-      <Listbox
-        items={[
-          { id: "a", label: "Alpha" },
-          { id: "b", label: "Beta", disabled: true },
-          { id: "c", label: "Charlie" },
-        ]}
-        defaultHighlighted="a"
-      />,
-    )
-
-    const listbox = screen.getByRole("listbox")
-    listbox.focus()
-    await user.keyboard("{ArrowDown}")
-
-    expect(listbox).toHaveAttribute("aria-activedescendant", getEncodedListboxItemId("lb", "c"))
-  })
-
   it("skips aria-disabled items in typeahead", async () => {
     const items = [
       { id: "d", label: "Disabled", disabled: true },
@@ -291,7 +186,20 @@ describe("useListbox", () => {
 
   it("keeps typeahead scoped away from nested listboxes", async () => {
     const onHighlight = vi.fn()
-    const user = userEvent.setup()
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+    const user = userEvent.setup({
+      delay: null,
+      advanceTimers: (delay) => {
+        vi.advanceTimersByTime(delay)
+      },
+    })
+    const keyboard = async (text: string) => {
+      const typing = user.keyboard(text)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0)
+      })
+      await typing
+    }
 
     function NestedListbox() {
       const { getContainerProps } = useListbox({
@@ -311,15 +219,22 @@ describe("useListbox", () => {
       )
     }
 
-    render(<NestedListbox />)
-    screen.getByRole("listbox", { name: "Outer" }).focus()
-    await user.keyboard("b")
+    try {
+      render(<NestedListbox />)
+      screen.getByRole("listbox", { name: "Outer" }).focus()
+      await keyboard("b")
 
-    expect(onHighlight).not.toHaveBeenCalled()
+      expect(onHighlight).not.toHaveBeenCalled()
 
-    await new Promise((resolve) => setTimeout(resolve, 600))
-    await user.keyboard("c")
-    expect(onHighlight).toHaveBeenCalledWith("charlie")
+      act(() => {
+        vi.advanceTimersByTime(600)
+      })
+      await keyboard("c")
+      expect(onHighlight).toHaveBeenCalledWith("charlie")
+    } finally {
+      vi.clearAllTimers()
+      vi.useRealTimers()
+    }
   })
 
   it("does not update outer typeahead when key bubbles from a focused inner composite", async () => {

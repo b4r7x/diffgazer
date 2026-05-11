@@ -1,66 +1,85 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Hono } from "hono";
+import { PROJECT_ROOT_HEADER } from "../lib/paths.js";
 
-const mockGetProjectRoot = vi.fn().mockReturnValue("/test/project");
-const mockGetSetupStatus = vi.fn();
+let diffgazerHome: string;
+let projectRoot: string;
 
-vi.mock("../lib/http/request.js", () => ({
-  getProjectRoot: mockGetProjectRoot,
-}));
+async function createApp(): Promise<Hono> {
+  const { requireSetup } = await import("./setup-guard.js");
+  const app = new Hono();
+  app.use("/*", requireSetup);
+  app.get("/test", (ctx) => ctx.json({ ok: true }));
+  return app;
+}
 
-vi.mock("../../features/config/service.js", () => ({
-  getSetupStatus: mockGetSetupStatus,
-}));
+async function configureReadySetup(): Promise<void> {
+  const store = await import("../lib/config/store.js");
+  store.updateSettings({ secretsStorage: "file" });
+  store.saveProviderCredentials({
+    provider: "gemini",
+    apiKey: "sk-test",
+    model: "gemini-2.5-flash",
+  });
+  const project = store.getProjectInfo(projectRoot);
+  store.saveTrust({
+    projectId: project.projectId,
+    repoRoot: projectRoot,
+    trustedAt: "2024-01-01T00:00:00.000Z",
+    capabilities: { readFiles: true, runCommands: false },
+    trustMode: "persistent",
+  });
+}
 
-const { requireSetup } = await import("./setup-guard.js");
+async function request(app: Hono): Promise<Response> {
+  return app.request("/test", {
+    headers: { [PROJECT_ROOT_HEADER]: projectRoot },
+  });
+}
 
 describe("requireSetup", () => {
-  let app: Hono;
-
   beforeEach(() => {
-    vi.clearAllMocks();
-    app = new Hono();
-    app.use("/*", requireSetup);
-    app.get("/test", (c) => c.json({ ok: true }));
+    diffgazerHome = mkdtempSync(join(tmpdir(), "diffgazer-setup-home-"));
+    projectRoot = mkdtempSync(join(tmpdir(), "diffgazer-setup-project-"));
+    mkdirSync(join(projectRoot, ".git"));
+    process.env.DIFFGAZER_HOME = diffgazerHome;
+    vi.resetModules();
   });
 
-  it("should block when setup is not ready", async () => {
-    mockGetSetupStatus.mockReturnValue({
-      isReady: false,
-      missing: ["provider"],
-    });
+  afterEach(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    delete process.env.DIFFGAZER_HOME;
+    rmSync(diffgazerHome, { recursive: true, force: true });
+    rmSync(projectRoot, { recursive: true, force: true });
+  });
 
-    const res = await app.request("/test");
+  it("blocks requests until setup has storage, provider, model, and trust", async () => {
+    const app = await createApp();
 
-    expect(res.status).toBe(503);
-    const body = await res.json() as any;
+    const response = await request(app);
+    const body = await response.json() as {
+      error: { code: string; message: string };
+    };
+
+    expect(response.status).toBe(503);
     expect(body.error.code).toBe("SETUP_REQUIRED");
-  });
-
-  it("should include missing items in error message", async () => {
-    mockGetSetupStatus.mockReturnValue({
-      isReady: false,
-      missing: ["provider", "model", "trust"],
-    });
-
-    const res = await app.request("/test");
-
-    const body = await res.json() as any;
+    expect(body.error.message).toContain("secretsStorage");
     expect(body.error.message).toContain("provider");
     expect(body.error.message).toContain("model");
     expect(body.error.message).toContain("trust");
   });
 
-  it("should pass when setup is ready", async () => {
-    mockGetSetupStatus.mockReturnValue({
-      isReady: true,
-      missing: [],
-    });
+  it("passes requests once setup is ready", async () => {
+    await configureReadySetup();
+    const app = await createApp();
 
-    const res = await app.request("/test");
+    const response = await request(app);
+    const body = await response.json() as { ok: boolean };
 
-    expect(res.status).toBe(200);
-    const body = await res.json() as any;
-    expect(body.ok).toBe(true);
+    expect(response.status).toBe(200);
+    expect(body).toEqual({ ok: true });
   });
 });

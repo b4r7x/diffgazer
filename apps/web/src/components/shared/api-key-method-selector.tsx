@@ -133,11 +133,18 @@ export function ApiKeyMethodSelector({
         />
         <div className="pl-9">
           <div
-            className="flex items-center bg-tui-bg border border-tui-border px-3 py-2 w-full text-tui-muted"
+            className="w-full cursor-pointer"
             onClick={() => onFocus("env")}
           >
-            <span className="mr-2 select-none text-muted-foreground">$</span>
-            <span>{envVarName}</span>
+            <InputGroup
+              value={envVarName}
+              readOnly
+              tabIndex={-1}
+              prefix="$"
+              aria-label={`${envVarName} environment variable`}
+              className="bg-tui-bg border-tui-border px-3 py-2 text-tui-muted"
+              inputClassName="text-tui-muted"
+            />
           </div>
         </div>
       </div>

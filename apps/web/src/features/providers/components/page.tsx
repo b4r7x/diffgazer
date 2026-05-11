@@ -46,7 +46,12 @@ export function getProvidersFooter(
   return {
     shortcuts: [
       { key: "↑/↓", label: "Navigate Providers" },
-      ...(hasSelectedProvider ? [{ key: "→", label: "Actions" }] : []),
+      ...(hasSelectedProvider
+        ? [
+            { key: "Enter", label: "Select Provider" },
+            { key: "Space/→", label: "Actions" },
+          ]
+        : []),
       { key: "/", label: "Search" },
     ],
     rightShortcuts: [{ key: "Esc", label: "Back" }],
@@ -77,6 +82,12 @@ export function ProvidersPage() {
     onSelectModel: () => dialogs.setModelOpen(true),
     onRemoveKey: () => { if (selectedProvider) void handlers.removeKey(selectedProvider.id); },
     onSelectProvider: () => { if (selectedProvider) void handlers.selectProvider(selectedProvider.id, selectedProvider.name, selectedProvider.model); },
+  };
+
+  const handleProviderActivate = (id: string) => {
+    const provider = filteredProviders.find((candidate) => candidate.id === id);
+    if (!provider) return;
+    void handlers.selectProvider(provider.id, provider.name, provider.model);
   };
 
   if (isLoading) {
@@ -112,8 +123,10 @@ export function ProvidersPage() {
           onFilterFocus={keyboard.handleFilterFocus}
           onFilterKeyDown={keyboard.handleFilterKeyDown}
           getFilterButtonProps={keyboard.getFilterButtonProps}
+          onListKeyDown={keyboard.handleListKeyDown}
           highlighted={selection.effectiveSelectedId}
           onHighlightChange={(id) => selection.setSelectedId(id)}
+          onActivate={handleProviderActivate}
           onBoundaryReached={keyboard.handleListBoundary}
         />
       </div>

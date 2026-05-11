@@ -35,19 +35,28 @@ function Subject() {
 }
 
 describe("ApiKeyMethodSelector", () => {
-  it("keeps one tabbable method radio and preserves input handoff", async () => {
+  it("preserves input handoff from the paste method", async () => {
     const user = userEvent.setup();
 
     render(<Subject />);
 
     const paste = screen.getByRole("radio", { name: "Paste Key Now" });
-    const env = screen.getByRole("radio", { name: "Import from Env" });
-
-    expect([paste, env].map((radio) => radio.getAttribute("tabindex"))).toEqual(["0", "-1"]);
 
     paste.focus();
     await user.keyboard("{ArrowDown}");
 
     expect(screen.getByLabelText("Gemini API Key")).toHaveFocus();
+  });
+
+  it("renders the environment variable with the shared input shell", () => {
+    render(<Subject />);
+
+    const envInput = screen.getByRole("textbox", {
+      name: "GEMINI_API_KEY environment variable",
+    });
+
+    expect(envInput).toHaveValue("GEMINI_API_KEY");
+    expect(envInput).toHaveAttribute("readonly");
+    expect(envInput).toHaveAttribute("tabindex", "-1");
   });
 });

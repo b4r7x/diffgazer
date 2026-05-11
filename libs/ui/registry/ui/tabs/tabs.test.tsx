@@ -292,10 +292,16 @@ describe("Tabs", () => {
       </Tabs>,
     )
 
-    expect(markup).toContain('aria-selected="true"')
-    expect(markup).toContain('tabindex="0"')
-    expect(markup.match(/role="tab"/g)).toHaveLength(3)
-    expect(markup.match(/role="tab"[^>]*tabindex="0"/g)).toHaveLength(1)
+    const container = document.createElement("div")
+    container.innerHTML = markup
+    const tabs = Array.from(container.querySelectorAll<HTMLElement>('[role="tab"]'))
+    const selectedTabs = tabs.filter((tab) => tab.getAttribute("aria-selected") === "true")
+    const tabbableTabs = tabs.filter((tab) => tab.getAttribute("tabindex") === "0")
+
+    expect(tabs).toHaveLength(3)
+    expect(selectedTabs).toHaveLength(1)
+    expect(selectedTabs[0]).toHaveTextContent("Two")
+    expect(tabbableTabs).toEqual(selectedTabs)
   })
 
   it("moves selection when the active uncontrolled tab is removed", async () => {

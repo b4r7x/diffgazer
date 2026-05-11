@@ -22,13 +22,6 @@ interface RenderOptions {
   filter?: (value: string, search: string) => boolean
 }
 
-function getOption(id: string) {
-  const option = Array.from(document.querySelectorAll<HTMLElement>('[role="option"]'))
-    .find((element) => element.dataset.value === id)
-  if (!option) throw new Error(`Option not found: ${id}`)
-  return option
-}
-
 function renderPalette(props: RenderOptions = {}) {
   const { open = true, ...rest } = props
   return render(
@@ -112,7 +105,7 @@ describe("CommandPalette", () => {
     renderPalette()
     const input = screen.getByRole("combobox")
     await userEvent.type(input, "cop")
-    expect(getOption("copy")).toBeInTheDocument()
+    expect(screen.getByRole("option", { name: /copy/i })).toBeInTheDocument()
     expect(screen.queryByRole("option", { name: "Paste" })).not.toBeInTheDocument()
     expect(screen.queryByRole("option", { name: "Delete" })).not.toBeInTheDocument()
 
@@ -126,17 +119,17 @@ describe("CommandPalette", () => {
     renderPalette({ filter: customFilter })
     const input = screen.getByRole("combobox")
     await userEvent.type(input, "magic")
-    expect(getOption("copy")).toBeInTheDocument()
-    expect(getOption("paste")).toBeInTheDocument()
+    expect(screen.getByRole("option", { name: /copy/i })).toBeInTheDocument()
+    expect(screen.getByRole("option", { name: /paste/i })).toBeInTheDocument()
   })
 
   it("skips filtering when shouldFilter is false", async () => {
     renderPalette({ shouldFilter: false })
     const input = screen.getByRole("combobox")
     await userEvent.type(input, "zzzzz")
-    expect(getOption("copy")).toBeInTheDocument()
-    expect(getOption("paste")).toBeInTheDocument()
-    expect(getOption("delete")).toBeInTheDocument()
+    expect(screen.getByRole("option", { name: /copy/i })).toBeInTheDocument()
+    expect(screen.getByRole("option", { name: /paste/i })).toBeInTheDocument()
+    expect(screen.getByRole("option", { name: /delete/i })).toBeInTheDocument()
   })
 
   it("activates item on click, calls onSelect, closes palette, and skips disabled items", async () => {
@@ -155,10 +148,10 @@ describe("CommandPalette", () => {
       </CommandPalette>
     )
 
-    await userEvent.click(getOption("nope"))
+    await userEvent.click(screen.getByRole("option", { name: /nope/i }))
     expect(onActivate).not.toHaveBeenCalled()
 
-    await userEvent.click(getOption("paste"))
+    await userEvent.click(screen.getByRole("option", { name: /paste/i }))
     expect(onActivate).toHaveBeenCalledWith("paste")
     expect(onSelect).toHaveBeenCalledOnce()
     expect(onOpenChange).toHaveBeenCalledWith(false)
@@ -167,11 +160,11 @@ describe("CommandPalette", () => {
   it("auto-selects the first item and updates after filtering", async () => {
     renderPalette()
     expect(screen.getByRole("listbox", { name: "Command results" })).toBeInTheDocument()
-    expect(getOption("copy")).toHaveAttribute("aria-selected", "true")
+    expect(screen.getByRole("option", { name: /copy/i })).toHaveAttribute("aria-selected", "true")
 
     const input = screen.getByRole("combobox")
     await userEvent.type(input, "del")
-    expect(getOption("delete")).toHaveAttribute("aria-selected", "true")
+    expect(screen.getByRole("option", { name: /delete/i })).toHaveAttribute("aria-selected", "true")
   })
 
   it("keeps item registration current under StrictMode filtering", async () => {
@@ -224,7 +217,7 @@ describe("CommandPalette", () => {
   it("keeps controlled null highlight unselected", () => {
     renderPalette({ highlighted: null })
     expect(screen.getByRole("combobox")).not.toHaveAttribute("aria-activedescendant")
-    expect(getOption("copy")).toHaveAttribute("aria-selected", "false")
+    expect(screen.getByRole("option", { name: /copy/i })).toHaveAttribute("aria-selected", "false")
   })
 
   it("keeps public item ids separate from DOM-safe active descendant ids", () => {
@@ -241,8 +234,8 @@ describe("CommandPalette", () => {
     )
 
     const input = screen.getByRole("combobox")
-    const special = getOption("a b/slash")
-    const empty = getOption("")
+    const special = screen.getByRole("option", { name: /special/i })
+    const empty = screen.getByRole("option", { name: "Empty" })
 
     expect(special.id).toBeTruthy()
     expect(empty.id).toBeTruthy()
@@ -339,20 +332,20 @@ describe("CommandPalette", () => {
   it("navigates items with ArrowDown/ArrowUp and wraps around", async () => {
     renderPalette()
     const input = screen.getByRole("combobox")
-    expect(getOption("copy")).toHaveAttribute("aria-selected", "true")
+    expect(screen.getByRole("option", { name: /copy/i })).toHaveAttribute("aria-selected", "true")
 
     await userEvent.type(input, "{ArrowDown}")
-    expect(getOption("paste")).toHaveAttribute("aria-selected", "true")
-    expect(getOption("copy")).toHaveAttribute("aria-selected", "false")
+    expect(screen.getByRole("option", { name: /paste/i })).toHaveAttribute("aria-selected", "true")
+    expect(screen.getByRole("option", { name: /copy/i })).toHaveAttribute("aria-selected", "false")
 
     await userEvent.type(input, "{ArrowDown}")
-    expect(getOption("delete")).toHaveAttribute("aria-selected", "true")
+    expect(screen.getByRole("option", { name: /delete/i })).toHaveAttribute("aria-selected", "true")
 
     await userEvent.type(input, "{ArrowUp}")
-    expect(getOption("paste")).toHaveAttribute("aria-selected", "true")
+    expect(screen.getByRole("option", { name: /paste/i })).toHaveAttribute("aria-selected", "true")
 
     await userEvent.type(input, "{ArrowDown}{ArrowDown}")
-    expect(getOption("copy")).toHaveAttribute("aria-selected", "true")
+    expect(screen.getByRole("option", { name: /copy/i })).toHaveAttribute("aria-selected", "true")
   })
 
   it("lets input key handlers prevent Arrow and Enter navigation", async () => {
@@ -372,8 +365,8 @@ describe("CommandPalette", () => {
 
     await userEvent.type(input, "{ArrowDown}{Enter}")
 
-    expect(getOption("copy")).toHaveAttribute("aria-selected", "true")
-    expect(getOption("paste")).toHaveAttribute("aria-selected", "false")
+    expect(screen.getByRole("option", { name: /copy/i })).toHaveAttribute("aria-selected", "true")
+    expect(screen.getByRole("option", { name: /paste/i })).toHaveAttribute("aria-selected", "false")
     expect(onActivate).not.toHaveBeenCalled()
   })
 

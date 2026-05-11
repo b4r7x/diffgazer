@@ -101,6 +101,7 @@ export function SettingsStoragePage() {
     <CardLayout
       title="Configure Secrets Storage"
       subtitle="Choose where API keys and sensitive data should be stored."
+      contentInactive={footer.inFooter}
       footer={
         <>
           <Button

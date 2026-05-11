@@ -1,325 +1,211 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { ReviewErrorCode } from "@diffgazer/core/schemas/review";
+import type { FullReviewStreamEvent, StepId } from "@diffgazer/core/schemas/events";
 import {
-  createSession,
-  getSession,
-  deleteSession,
-  markReady,
-  markComplete,
   addEvent,
-  subscribe,
   cancelSession,
   cancelStaleSessionsForProjectMode,
+  createSession,
+  deleteSession,
   getActiveSessionForProject,
+  getSession,
+  markComplete,
+  markReady,
+  subscribe,
 } from "./sessions.js";
-import type { FullReviewStreamEvent } from "@diffgazer/core/schemas/events";
+
+const createdSessionIds = new Set<string>();
+
+function createTrackedSession(
+  reviewId: string,
+  options: {
+    projectPath?: string;
+    headCommit?: string;
+    statusHash?: string;
+    mode?: "staged" | "unstaged";
+  } = {},
+) {
+  createdSessionIds.add(reviewId);
+  return createSession(
+    reviewId,
+    options.projectPath ?? "/project",
+    options.headCommit ?? "abc",
+    options.statusHash ?? "hash",
+    options.mode ?? "staged",
+  );
+}
+
+function stepEvent(step: StepId = "diff"): FullReviewStreamEvent {
+  return {
+    type: "step_start",
+    step,
+    timestamp: "2024-01-01T00:00:00Z",
+  };
+}
+
+function receivedEvents(reviewId: string): FullReviewStreamEvent[] {
+  return getSession(reviewId)?.events ?? [];
+}
 
 beforeEach(() => {
   vi.useFakeTimers();
 });
 
 afterEach(() => {
-  // Clean up any sessions created during tests
-  const ids = ["test-1", "test-2", "test-3", "test-sub", "test-cancel", "test-active", "test-complete-cleanup"];
-  for (const id of ids) {
+  for (const id of createdSessionIds) {
     deleteSession(id);
   }
+  createdSessionIds.clear();
   vi.useRealTimers();
 });
 
-describe("createSession", () => {
-  it("should create a session with correct properties", () => {
-    const session = createSession("test-1", "/project", "abc123", "hash1", "staged");
+describe("review session lifecycle", () => {
+  it("records events, notifies subscribers, becomes active when ready, and expires after completion", () => {
+    const received: FullReviewStreamEvent[] = [];
+    const session = createTrackedSession("lifecycle");
 
-    expect(session.reviewId).toBe("test-1");
-    expect(session.projectPath).toBe("/project");
-    expect(session.headCommit).toBe("abc123");
-    expect(session.statusHash).toBe("hash1");
-    expect(session.mode).toBe("staged");
-    expect(session.events).toEqual([]);
-    expect(session.isComplete).toBe(false);
-    expect(session.isReady).toBe(false);
-    expect(session.subscribers.size).toBe(0);
-    expect(session.controller).toBeInstanceOf(AbortController);
-  });
-
-  it("should be retrievable via getSession", () => {
-    createSession("test-1", "/project", "abc123", "hash1", "staged");
-    expect(getSession("test-1")).toBeDefined();
-  });
-});
-
-describe("getSession", () => {
-  it("should return undefined for unknown id", () => {
-    expect(getSession("nonexistent")).toBeUndefined();
-  });
-});
-
-describe("markReady", () => {
-  it("should set isReady to true", () => {
-    createSession("test-1", "/project", "abc", "h", "staged");
-    markReady("test-1");
-    expect(getSession("test-1")!.isReady).toBe(true);
-  });
-
-  it("should be a no-op for unknown session", () => {
-    expect(() => markReady("nonexistent")).not.toThrow();
-  });
-});
-
-describe("addEvent", () => {
-  it("should add event to session", () => {
-    createSession("test-1", "/project", "abc", "h", "staged");
-    const event: FullReviewStreamEvent = {
-      type: "step_start",
-      step: "diff",
-      timestamp: "2024-01-01T00:00:00Z",
-    };
-    addEvent("test-1", event);
-    expect(getSession("test-1")!.events).toHaveLength(1);
-    expect(getSession("test-1")!.events[0]).toBe(event);
-  });
-
-  it("should not add events to completed session", () => {
-    createSession("test-1", "/project", "abc", "h", "staged");
-    markComplete("test-1");
-    addEvent("test-1", {
-      type: "step_start",
-      step: "diff",
-      timestamp: "2024-01-01T00:00:00Z",
+    expect(getSession(session.reviewId)).toMatchObject({
+      reviewId: "lifecycle",
+      projectPath: "/project",
+      headCommit: "abc",
+      statusHash: "hash",
+      mode: "staged",
+      isReady: false,
+      isComplete: false,
     });
-    expect(getSession("test-1")!.events).toHaveLength(0);
-  });
+    expect(getActiveSessionForProject("/project", "abc", "hash", "staged")).toBeUndefined();
 
-  it("should notify subscribers", () => {
-    createSession("test-sub", "/project", "abc", "h", "staged");
-    const callback = vi.fn();
-    subscribe("test-sub", callback);
+    expect(subscribe(session.reviewId, (event) => received.push(event))).toBeTypeOf("function");
+    markReady(session.reviewId);
+    expect(getActiveSessionForProject("/project", "abc", "hash", "staged")?.reviewId).toBe(
+      session.reviewId,
+    );
 
-    const event: FullReviewStreamEvent = {
-      type: "step_start",
-      step: "diff",
-      timestamp: "2024-01-01T00:00:00Z",
-    };
-    addEvent("test-sub", event);
+    const event = stepEvent();
+    addEvent(session.reviewId, event);
 
-    expect(callback).toHaveBeenCalledWith(event);
-  });
-});
+    expect(received).toEqual([event]);
+    expect(receivedEvents(session.reviewId)).toEqual([event]);
 
-describe("markComplete", () => {
-  it("should set isComplete and clear subscribers", () => {
-    createSession("test-1", "/project", "abc", "h", "staged");
-    const callback = vi.fn();
-    subscribe("test-1", callback);
+    markComplete(session.reviewId);
+    addEvent(session.reviewId, stepEvent("review"));
 
-    markComplete("test-1");
+    expect(received).toEqual([event]);
+    expect(getActiveSessionForProject("/project", "abc", "hash", "staged")).toBeUndefined();
 
-    const session = getSession("test-1")!;
-    expect(session.isComplete).toBe(true);
-    expect(session.subscribers.size).toBe(0);
-  });
-
-  it("should schedule cleanup after 5 minutes", () => {
-    createSession("test-complete-cleanup", "/project", "abc", "h", "staged");
-    markComplete("test-complete-cleanup");
-
-    expect(getSession("test-complete-cleanup")).toBeDefined();
     vi.advanceTimersByTime(5 * 60 * 1000 + 1);
-    expect(getSession("test-complete-cleanup")).toBeUndefined();
+    expect(getSession(session.reviewId)).toBeUndefined();
+  });
+
+  it("allows subscribers to unsubscribe before later events", () => {
+    const received: FullReviewStreamEvent[] = [];
+    const session = createTrackedSession("unsubscribe");
+    const unsubscribe = subscribe(session.reviewId, (event) => received.push(event));
+
+    unsubscribe?.();
+    addEvent(session.reviewId, stepEvent());
+
+    expect(received).toEqual([]);
+    expect(receivedEvents(session.reviewId)).toEqual([stepEvent()]);
+  });
+
+  it("ignores unknown sessions without throwing", () => {
+    expect(getSession("missing")).toBeUndefined();
+    expect(subscribe("missing", () => {})).toBeNull();
+    expect(() => markReady("missing")).not.toThrow();
+    expect(() => addEvent("missing", stepEvent())).not.toThrow();
+    expect(() => markComplete("missing")).not.toThrow();
+    expect(() => cancelSession("missing")).not.toThrow();
   });
 });
 
-describe("subscribe", () => {
-  it("should return unsubscribe function", () => {
-    createSession("test-1", "/project", "abc", "h", "staged");
-    const callback = vi.fn();
-    const unsub = subscribe("test-1", callback);
+describe("session cancellation", () => {
+  it("emits one stale-session error and removes the session from active lookups", () => {
+    const received: FullReviewStreamEvent[] = [];
+    const session = createTrackedSession("cancelled", { mode: "unstaged" });
+    markReady(session.reviewId);
+    subscribe(session.reviewId, (event) => received.push(event));
 
-    expect(unsub).toBeTypeOf("function");
-    unsub!();
+    cancelSession(session.reviewId);
+    cancelSession(session.reviewId);
+    addEvent(session.reviewId, stepEvent());
 
-    addEvent("test-1", {
-      type: "step_start",
-      step: "diff",
-      timestamp: "2024-01-01T00:00:00Z",
+    expect(received).toMatchObject([
+      { type: "error", error: { code: ReviewErrorCode.SESSION_STALE } },
+    ]);
+    expect(receivedEvents(session.reviewId).filter((event) => event.type === "error")).toHaveLength(1);
+    expect(getActiveSessionForProject("/project", "abc", "hash", "unstaged")).toBeUndefined();
+  });
+
+  it("cancels only ready sessions for the same project and mode when git state changes", () => {
+    const staleEvents: FullReviewStreamEvent[] = [];
+    const keptByState = createTrackedSession("same-state", { mode: "unstaged" });
+    const keptByMode = createTrackedSession("other-mode", { mode: "staged" });
+    const stale = createTrackedSession("stale-state", {
+      headCommit: "old-head",
+      statusHash: "old-hash",
+      mode: "unstaged",
     });
-    expect(callback).not.toHaveBeenCalled();
-  });
+    [keptByState, keptByMode, stale].forEach((session) => markReady(session.reviewId));
+    subscribe(stale.reviewId, (event) => staleEvents.push(event));
 
-  it("should return null for unknown session", () => {
-    expect(subscribe("nonexistent", vi.fn())).toBeNull();
-  });
-});
+    cancelStaleSessionsForProjectMode("/project", "unstaged", "abc", "hash");
 
-describe("cancelSession", () => {
-  it("should abort controller and mark complete", () => {
-    createSession("test-cancel", "/project", "abc", "h", "staged");
-    cancelSession("test-cancel");
-
-    const session = getSession("test-cancel")!;
-    expect(session.isComplete).toBe(true);
-    expect(session.controller.signal.aborted).toBe(true);
-  });
-
-  it("should notify subscribers with error event", () => {
-    createSession("test-cancel", "/project", "abc", "h", "staged");
-    const callback = vi.fn();
-    subscribe("test-cancel", callback);
-
-    cancelSession("test-cancel");
-
-    expect(callback).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: "error",
-        error: expect.objectContaining({
-          code: "SESSION_STALE",
-        }),
-      }),
+    expect(staleEvents).toMatchObject([
+      { type: "error", error: { code: ReviewErrorCode.SESSION_STALE } },
+    ]);
+    expect(getActiveSessionForProject("/project", "old-head", "old-hash", "unstaged")).toBeUndefined();
+    expect(getActiveSessionForProject("/project", "abc", "hash", "unstaged")?.reviewId).toBe(
+      keptByState.reviewId,
+    );
+    expect(getActiveSessionForProject("/project", "abc", "hash", "staged")?.reviewId).toBe(
+      keptByMode.reviewId,
     );
   });
 
-  it("should not emit duplicate cancellation events", () => {
-    createSession("test-cancel", "/project", "abc", "h", "staged");
-    const callback = vi.fn();
-    subscribe("test-cancel", callback);
+  it("keeps active sessions when the current git identity is unavailable", () => {
+    const session = createTrackedSession("unknown-git-state", { mode: "unstaged" });
+    markReady(session.reviewId);
 
-    cancelSession("test-cancel");
-    cancelSession("test-cancel");
+    cancelStaleSessionsForProjectMode("/project", "unstaged", "", "");
 
-    const session = getSession("test-cancel");
-    const errorEvents = session?.events.filter((event) => event.type === "error");
-    expect(errorEvents).toHaveLength(1);
-    expect(callback).toHaveBeenCalledTimes(1);
-  });
-
-  it("should be a no-op for unknown session", () => {
-    expect(() => cancelSession("nonexistent")).not.toThrow();
+    expect(getActiveSessionForProject("/project", "abc", "hash", "unstaged")?.reviewId).toBe(
+      session.reviewId,
+    );
   });
 });
 
-describe("session limits", () => {
-  afterEach(() => {
-    // Clean up bulk sessions
-    for (let i = 0; i < 55; i++) {
-      deleteSession(`bulk-${i}`);
-    }
-  });
-
-  it("should evict oldest session when MAX_SESSIONS reached", () => {
-    // Create 50 sessions (the max)
-    for (let i = 0; i < 50; i++) {
-      vi.advanceTimersByTime(1); // ensure different startedAt
-      createSession(`bulk-${i}`, "/project", "abc", "h", "staged");
+describe("session bounds and subscriber failures", () => {
+  it("evicts the oldest session when the session limit is reached", () => {
+    for (let i = 0; i < 50; i += 1) {
+      vi.advanceTimersByTime(1);
+      createTrackedSession(`bulk-${i}`);
     }
 
-    // The 51st session should trigger eviction of the oldest
-    createSession("bulk-50", "/project", "abc", "h", "staged");
+    createTrackedSession("bulk-50");
 
-    // Oldest session (bulk-0) should have been evicted
     expect(getSession("bulk-0")).toBeUndefined();
-    // Newest should exist
     expect(getSession("bulk-50")).toBeDefined();
   });
-});
 
-describe("async subscriber error handling", () => {
-  it("should catch rejected promises from async subscribers", async () => {
-    createSession("test-sub", "/project", "abc", "h", "staged");
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
-    const asyncCallback = vi.fn().mockRejectedValue(new Error("async fail"));
-    subscribe("test-sub", asyncCallback);
-
-    addEvent("test-sub", {
-      type: "step_start",
-      step: "diff",
-      timestamp: "2024-01-01T00:00:00Z",
+  it("continues dispatching when an async subscriber rejects", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const received: FullReviewStreamEvent[] = [];
+    const session = createTrackedSession("subscriber-rejects");
+    subscribe(session.reviewId, async () => {
+      throw new Error("async fail");
     });
+    subscribe(session.reviewId, (event) => received.push(event));
 
-    expect(asyncCallback).toHaveBeenCalled();
+    const event = stepEvent();
+    addEvent(session.reviewId, event);
 
-    // Allow microtask queue to flush Promise rejection handler
     await Promise.resolve();
-    expect(errorSpy).toHaveBeenCalled();
-    const errorArg = errorSpy.mock.calls[0]?.[1];
-    expect(errorArg).toBeInstanceOf(Error);
-    errorSpy.mockRestore();
-  });
-});
 
-describe("getActiveSessionForProject", () => {
-  it("should find matching active session", () => {
-    createSession("test-active", "/project", "abc", "hash1", "staged");
-    markReady("test-active");
-
-    const found = getActiveSessionForProject("/project", "abc", "hash1", "staged");
-    expect(found?.reviewId).toBe("test-active");
-  });
-
-  it("should not find completed session", () => {
-    createSession("test-active", "/project", "abc", "hash1", "staged");
-    markReady("test-active");
-    markComplete("test-active");
-
-    expect(
-      getActiveSessionForProject("/project", "abc", "hash1", "staged"),
-    ).toBeUndefined();
-  });
-
-  it("should not find session that is not ready", () => {
-    createSession("test-active", "/project", "abc", "hash1", "staged");
-
-    expect(
-      getActiveSessionForProject("/project", "abc", "hash1", "staged"),
-    ).toBeUndefined();
-  });
-
-  it("should not match different mode", () => {
-    createSession("test-active", "/project", "abc", "hash1", "staged");
-    markReady("test-active");
-
-    expect(
-      getActiveSessionForProject("/project", "abc", "hash1", "unstaged"),
-    ).toBeUndefined();
-  });
-});
-
-describe("cancelStaleSessionsForProjectMode", () => {
-  it("should cancel active sessions for same project and mode with mismatched git state", () => {
-    createSession("test-active", "/project", "abc", "hash1", "staged");
-    markReady("test-active");
-
-    cancelStaleSessionsForProjectMode("/project", "staged", "abc", "hash2");
-
-    expect(getSession("test-active")?.isComplete).toBe(true);
-    expect(getSession("test-active")?.controller.signal.aborted).toBe(true);
-  });
-
-  it("should keep matching session state untouched", () => {
-    createSession("test-active", "/project", "abc", "hash1", "staged");
-    markReady("test-active");
-
-    cancelStaleSessionsForProjectMode("/project", "staged", "abc", "hash1");
-
-    expect(getSession("test-active")?.isComplete).toBe(false);
-  });
-
-  it("should not cancel sessions from a different mode", () => {
-    createSession("test-active", "/project", "abc", "hash1", "unstaged");
-    markReady("test-active");
-
-    cancelStaleSessionsForProjectMode("/project", "staged", "abc", "hash2");
-
-    expect(getSession("test-active")?.isComplete).toBe(false);
-  });
-
-  it("should skip cancellation when git identity is unavailable", () => {
-    createSession("test-active", "/project", "abc", "hash1", "staged");
-    markReady("test-active");
-
-    cancelStaleSessionsForProjectMode("/project", "staged", "", "");
-
-    expect(getSession("test-active")?.isComplete).toBe(false);
-    expect(getSession("test-active")?.controller.signal.aborted).toBe(false);
+    expect(received).toEqual([event]);
+    expect(consoleError).toHaveBeenCalledWith(
+      "Subscriber callback error:",
+      expect.any(Error),
+    );
   });
 });

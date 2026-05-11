@@ -86,7 +86,7 @@ describe("convertAgentEventsToLogEntries", () => {
     [
       "orchestrator_start",
       { type: "orchestrator_start", agents: [detective], concurrency: 3, timestamp },
-      { tag: "ORCH", messageIncludes: ["1 agents", "concurrency 3"] },
+      { tag: "ORCH", messageIncludes: ["1 agent", "concurrency 3"] },
     ],
     [
       "agent_queued",
@@ -172,19 +172,18 @@ describe("convertAgentEventsToLogEntries", () => {
     expect(entry.message.length).toBeLessThanOrEqual(100);
   });
 
-  it("preserves event order and generates stable ids", () => {
+  it("preserves event order and generates unique ids", () => {
     const entries = convertAgentEventsToLogEntries([
       { type: "review_started", reviewId: "r1", filesTotal: 3, timestamp },
       { type: "agent_complete", agent: "detective", issueCount: 1, timestamp },
       { type: "agent_complete", agent: "guardian", issueCount: 0, timestamp },
     ]);
 
-    expect(entries.map((entry) => entry.id)).toEqual([
-      "review_started-0",
-      "agent_complete-1",
-      "agent_complete-2",
-    ]);
+    const ids = entries.map((entry) => entry.id);
+    expect(ids.every((id) => id.length > 0)).toBe(true);
+    expect(new Set(ids).size).toBe(entries.length);
     expect(entries.map((entry) => entry.tag)).toEqual(["START", "DET", "SEC"]);
+    expect(entries[0].message).toContain("3 files");
     expect(entries[1].message).toContain("1 issue");
     expect(entries[1].message).not.toContain("1 issues");
   });

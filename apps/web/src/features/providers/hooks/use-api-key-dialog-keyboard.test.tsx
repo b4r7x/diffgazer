@@ -9,7 +9,7 @@ import { useApiKeyDialogKeyboard } from "./use-api-key-dialog-keyboard";
 function Subject({ onSubmit = vi.fn() }: { onSubmit?: (method?: InputMethod) => void }) {
   const [method, setMethod] = useState<InputMethod>("paste");
   const inputRef = useRef<HTMLInputElement>(null);
-  const { focused, getMethodOptionProps } = useApiKeyDialogKeyboard({
+  const { getMethodOptionProps } = useApiKeyDialogKeyboard({
     open: true,
     method,
     setMethod,
@@ -21,15 +21,13 @@ function Subject({ onSubmit = vi.fn() }: { onSubmit?: (method?: InputMethod) => 
 
   return (
     <>
-      <div role="radio" aria-checked={method === "paste"} tabIndex={0} data-testid="paste" {...getMethodOptionProps("paste")}>
+      <div role="radio" aria-checked={method === "paste"} tabIndex={0} {...getMethodOptionProps("paste")}>
         Paste
       </div>
-      <input ref={inputRef} data-testid="input" />
-      <div role="radio" aria-checked={method === "env"} tabIndex={0} data-testid="env" {...getMethodOptionProps("env")}>
+      <input ref={inputRef} aria-label="API key" />
+      <div role="radio" aria-checked={method === "env"} tabIndex={0} {...getMethodOptionProps("env")}>
         Env
       </div>
-      <span data-testid="focused">{focused}</span>
-      <span data-testid="method">{method}</span>
     </>
   );
 }
@@ -45,18 +43,20 @@ describe("useApiKeyDialogKeyboard", () => {
       </KeyboardProvider>,
     );
 
-    await waitFor(() => expect(screen.getByTestId("paste")).toHaveFocus());
+    const paste = screen.getByRole("radio", { name: "Paste" });
+    const input = screen.getByRole("textbox", { name: "API key" });
+    const env = screen.getByRole("radio", { name: "Env" });
+
+    await waitFor(() => expect(paste).toHaveFocus());
 
     await user.keyboard("{ArrowDown}");
-    expect(screen.getByTestId("input")).toHaveFocus();
-    expect(screen.getByTestId("focused")).toHaveTextContent("input");
+    expect(input).toHaveFocus();
 
     await user.keyboard("{ArrowDown}");
-    expect(screen.getByTestId("env")).toHaveFocus();
-    expect(screen.getByTestId("focused")).toHaveTextContent("env");
+    expect(env).toHaveFocus();
 
     await user.keyboard("{Enter}");
-    expect(screen.getByTestId("method")).toHaveTextContent("env");
+    expect(env).toHaveAttribute("aria-checked", "true");
     expect(onSubmit).toHaveBeenCalledWith("env");
   });
 });

@@ -233,7 +233,7 @@ describe("Popover", () => {
     )
 
     const trigger = screen.getByRole("button", { name: "Open child" })
-    expect(container.querySelector("button button")).toBeNull()
+    expect(screen.getAllByRole("button", { name: "Open child" })).toHaveLength(1)
     expect(await axe(container)).toHaveNoViolations()
 
     await userEvent.click(trigger)

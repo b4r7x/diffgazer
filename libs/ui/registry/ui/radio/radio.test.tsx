@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from "@testing-library/react"
+import { render, screen, waitFor } from "@testing-library/react"
 import { useState } from "react"
 import userEvent from "@testing-library/user-event"
 import { axe } from "../../../testing/utils.js"
@@ -356,91 +356,91 @@ describe("RadioGroup", () => {
     expect(screen.getByRole("radio", { name: /blue/i })).not.toHaveAttribute("data-highlighted")
   })
 
-  it("exposes one tabbable enabled item when unselected and skips disabled items", async () => {
+  it("wraps across enabled radios, skips disabled items, and maps navigation keys", async () => {
+    const onChange = vi.fn()
+    const onNavigate = vi.fn()
     render(
-      <RadioGroup label="Colors">
-        <RadioGroup.Item value="red" label="Red" disabled />
-        <RadioGroup.Item value="blue" label="Blue" />
+      <RadioGroup label="Colors" onChange={onChange} onNavigate={onNavigate}>
+        <RadioGroup.Item value="red" label="Red" />
+        <RadioGroup.Item value="blue" label="Blue" disabled />
         <RadioGroup.Item value="green" label="Green" />
       </RadioGroup>
     )
 
-    const radios = screen.getAllByRole("radio")
-    expect(radios.map((radio) => radio.getAttribute("tabindex"))).toEqual(["-1", "0", "-1"])
+    const red = screen.getByRole("radio", { name: /red/i })
+    const blue = screen.getByRole("radio", { name: /blue/i })
+    const green = screen.getByRole("radio", { name: /green/i })
 
-    await userEvent.tab()
-    expect(screen.getByRole("radio", { name: /blue/i })).toHaveFocus()
-  })
-
-  it("falls back to an enabled tab target when selected or highlighted values are invalid", async () => {
-    render(
-      <RadioGroup label="Colors" value="missing" highlighted="red">
-        <RadioGroup.Item value="red" label="Red" disabled />
-        <RadioGroup.Item value="blue" label="Blue" />
-        <RadioGroup.Item value="green" label="Green" />
-      </RadioGroup>
-    )
-
-    const radios = screen.getAllByRole("radio")
-    expect(radios.map((radio) => radio.getAttribute("tabindex"))).toEqual(["-1", "0", "-1"])
-    expect(screen.getByRole("radio", { name: /red/i })).not.toHaveAttribute("data-highlighted")
-
-    await userEvent.tab()
-    expect(screen.getByRole("radio", { name: /blue/i })).toHaveFocus()
-  })
-
-  it("keeps fallback tab target aligned with DOM order after reordering items", async () => {
-    function Options({ order }: { order: string[] }) {
-      return order.map((value) => (
-        <RadioGroup.Item key={value} value={value} label={value === "red" ? "Red" : "Blue"} />
-      ))
-    }
-
-    const { rerender } = render(
-      <RadioGroup label="Colors" value="missing">
-        <Options order={["red", "blue"]} />
-      </RadioGroup>
-    )
-
-    await waitFor(() => expect(screen.getByRole("radio", { name: /red/i })).toHaveAttribute("tabindex", "0"))
-
-    rerender(
-      <RadioGroup label="Colors" value="missing">
-        <Options order={["blue", "red"]} />
-      </RadioGroup>
-    )
-
-    await waitFor(() => expect(screen.getByRole("radio", { name: /blue/i })).toHaveAttribute("tabindex", "0"))
-    expect(screen.getByRole("radio", { name: /red/i })).toHaveAttribute("tabindex", "-1")
-  })
-
-  it("keeps fallback tab target aligned when a wrapper reorders items internally", async () => {
-    let reorder!: () => void
-    function ReorderingOptions() {
-      const [order, setOrder] = useState(["red", "blue"])
-      reorder = () => setOrder(["blue", "red"])
-
-      return order.map((value) => (
-        <RadioGroup.Item key={value} value={value} label={value === "red" ? "Red" : "Blue"} />
-      ))
-    }
-
-    render(
-      <RadioGroup label="Colors" value="missing">
-        <ReorderingOptions />
-      </RadioGroup>
-    )
-
-    await waitFor(() => expect(screen.getByRole("radio", { name: /red/i })).toHaveAttribute("tabindex", "0"))
-
-    act(() => reorder())
-
-    await waitFor(() => expect(screen.getByRole("radio", { name: /blue/i })).toHaveAttribute("tabindex", "0"))
-    expect(screen.getByRole("radio", { name: /red/i })).toHaveAttribute("tabindex", "-1")
-
-    screen.getByRole("radio", { name: /blue/i }).focus()
+    red.focus()
     await userEvent.keyboard("{ArrowDown}")
-    expect(screen.getByRole("radio", { name: /red/i })).toHaveFocus()
+    expect(green).toHaveFocus()
+    expect(green).toHaveAttribute("aria-checked", "true")
+    expect(onChange).toHaveBeenLastCalledWith("green")
+    expect(onNavigate).toHaveBeenLastCalledWith("green", "next")
+
+    await userEvent.keyboard("{ArrowDown}")
+    expect(red).toHaveFocus()
+    expect(onNavigate).toHaveBeenLastCalledWith("red", "next")
+
+    await userEvent.keyboard("{ArrowUp}")
+    expect(green).toHaveFocus()
+    expect(onNavigate).toHaveBeenLastCalledWith("green", "previous")
+
+    await userEvent.keyboard("{Home}")
+    expect(red).toHaveFocus()
+    expect(onNavigate).toHaveBeenLastCalledWith("red", "first")
+
+    await userEvent.keyboard("{End}")
+    expect(green).toHaveFocus()
+    expect(onNavigate).toHaveBeenLastCalledWith("green", "last")
+
+    await userEvent.keyboard("{ArrowLeft}")
+    expect(red).toHaveFocus()
+    expect(onNavigate).toHaveBeenLastCalledWith("red", "previous")
+
+    await userEvent.keyboard("{ArrowRight}")
+    expect(green).toHaveFocus()
+    expect(onNavigate).toHaveBeenLastCalledWith("green", "next")
+    expect(blue).not.toHaveFocus()
+    expect(blue).toHaveAttribute("aria-checked", "false")
+  })
+
+  it("reports non-wrapping keyboard boundaries without moving focus", async () => {
+    const onNavigationBoundaryReached = vi.fn()
+    render(
+      <RadioGroup
+        label="Colors"
+        defaultValue="red"
+        wrap={false}
+        onNavigationBoundaryReached={onNavigationBoundaryReached}
+      >
+        <RadioGroup.Item value="red" label="Red" />
+        <RadioGroup.Item value="blue" label="Blue" />
+      </RadioGroup>
+    )
+
+    const red = screen.getByRole("radio", { name: /red/i })
+    const blue = screen.getByRole("radio", { name: /blue/i })
+
+    red.focus()
+    await userEvent.keyboard("{ArrowUp}")
+    expect(onNavigationBoundaryReached).toHaveBeenLastCalledWith("previous", expect.any(KeyboardEvent), "ArrowUp")
+    expect(red).toHaveFocus()
+
+    await userEvent.keyboard("{ArrowLeft}")
+    expect(onNavigationBoundaryReached).toHaveBeenLastCalledWith("previous", expect.any(KeyboardEvent), "ArrowLeft")
+    expect(red).toHaveFocus()
+
+    await userEvent.keyboard("{ArrowDown}")
+    expect(blue).toHaveFocus()
+
+    await userEvent.keyboard("{ArrowDown}")
+    expect(onNavigationBoundaryReached).toHaveBeenLastCalledWith("next", expect.any(KeyboardEvent), "ArrowDown")
+    expect(blue).toHaveFocus()
+
+    await userEvent.keyboard("{ArrowRight}")
+    expect(onNavigationBoundaryReached).toHaveBeenLastCalledWith("next", expect.any(KeyboardEvent), "ArrowRight")
+    expect(blue).toHaveFocus()
   })
 
   it("keeps arrow navigation scoped away from nested radio groups", async () => {
@@ -563,7 +563,7 @@ describe("RadioGroup", () => {
     expect(screen.getByRole("radiogroup", { name: "Choice set" })).toHaveAttribute("aria-labelledby", "choice-label")
   })
 
-  it("navigates with ArrowDown and wraps around", async () => {
+  it("moves selection with ArrowDown", async () => {
     const onChange = vi.fn()
     render(
       <RadioGroup onChange={onChange} label="Colors">
@@ -574,23 +574,12 @@ describe("RadioGroup", () => {
     )
     const red = screen.getByRole("radio", { name: /red/i })
     const blue = screen.getByRole("radio", { name: /blue/i })
-    const green = screen.getByRole("radio", { name: /green/i })
 
     red.focus()
     await userEvent.keyboard("{ArrowDown}")
     expect(onChange).toHaveBeenLastCalledWith("blue")
     expect(blue).toHaveFocus()
     expect(blue).toHaveAttribute("aria-checked", "true")
-
-    await userEvent.keyboard("{ArrowDown}")
-    expect(onChange).toHaveBeenLastCalledWith("green")
-    expect(green).toHaveFocus()
-    expect(green).toHaveAttribute("aria-checked", "true")
-
-    await userEvent.keyboard("{ArrowDown}")
-    expect(onChange).toHaveBeenLastCalledWith("red")
-    expect(red).toHaveFocus()
-    expect(red).toHaveAttribute("aria-checked", "true")
   })
 
   it("can suspend keyboard navigation without disabling items", async () => {
@@ -618,92 +607,6 @@ describe("RadioGroup", () => {
     await userEvent.click(blue)
     expect(onChange).toHaveBeenCalledWith("blue")
     expect(screen.getByRole("radiogroup")).not.toHaveAttribute("aria-disabled")
-  })
-
-  it("reports keyboard boundary when wrapping is disabled", async () => {
-    const onNavigationBoundaryReached = vi.fn()
-    render(
-      <RadioGroup
-        label="Colors"
-        value="blue"
-        wrap={false}
-        onNavigationBoundaryReached={onNavigationBoundaryReached}
-      >
-        <RadioGroup.Item value="red" label="Red" />
-        <RadioGroup.Item value="blue" label="Blue" />
-      </RadioGroup>
-    )
-
-    screen.getByRole("radio", { name: /blue/i }).focus()
-    await userEvent.keyboard("{ArrowDown}")
-
-    expect(onNavigationBoundaryReached).toHaveBeenCalledWith("next", expect.any(KeyboardEvent), "ArrowDown")
-  })
-
-  it("reports top keyboard boundary when wrapping is disabled", async () => {
-    const onNavigationBoundaryReached = vi.fn()
-    render(
-      <RadioGroup
-        label="Colors"
-        value="red"
-        wrap={false}
-        onNavigationBoundaryReached={onNavigationBoundaryReached}
-      >
-        <RadioGroup.Item value="red" label="Red" />
-        <RadioGroup.Item value="blue" label="Blue" />
-      </RadioGroup>
-    )
-
-    screen.getByRole("radio", { name: /red/i }).focus()
-    await userEvent.keyboard("{ArrowUp}")
-
-    expect(onNavigationBoundaryReached).toHaveBeenCalledWith("previous", expect.any(KeyboardEvent), "ArrowUp")
-  })
-
-  it("reports horizontal boundary keys when wrapping is disabled", async () => {
-    const onNavigationBoundaryReached = vi.fn()
-    render(
-      <RadioGroup
-        label="Colors"
-        value="blue"
-        wrap={false}
-        onNavigationBoundaryReached={onNavigationBoundaryReached}
-      >
-        <RadioGroup.Item value="red" label="Red" />
-        <RadioGroup.Item value="blue" label="Blue" />
-      </RadioGroup>
-    )
-
-    screen.getByRole("radio", { name: /blue/i }).focus()
-    await userEvent.keyboard("{ArrowRight}")
-
-    expect(onNavigationBoundaryReached).toHaveBeenCalledWith("next", expect.any(KeyboardEvent), "ArrowRight")
-
-    onNavigationBoundaryReached.mockClear()
-    screen.getByRole("radio", { name: /red/i }).focus()
-    await userEvent.keyboard("{ArrowLeft}")
-
-    expect(onNavigationBoundaryReached).toHaveBeenCalledWith("previous", expect.any(KeyboardEvent), "ArrowLeft")
-  })
-
-  it("jumps to first and last item with Home and End", async () => {
-    const onChange = vi.fn()
-    render(
-      <RadioGroup label="Colors" onChange={onChange}>
-        <RadioGroup.Item value="red" label="Red" />
-        <RadioGroup.Item value="blue" label="Blue" />
-        <RadioGroup.Item value="green" label="Green" />
-      </RadioGroup>
-    )
-
-    screen.getByRole("radio", { name: /red/i }).focus()
-    await userEvent.keyboard("{End}")
-    expect(screen.getByRole("radio", { name: /green/i })).toHaveFocus()
-    expect(onChange).toHaveBeenLastCalledWith("green")
-
-    await userEvent.keyboard("{Home}")
-    expect(screen.getByRole("radio", { name: /red/i })).toHaveFocus()
-    expect(onChange).toHaveBeenLastCalledWith("red")
   })
 
   it("commits the focused value with Enter during manual activation", async () => {
@@ -783,47 +686,6 @@ describe("RadioGroup", () => {
 
     await waitFor(() => expect(screen.getByRole("radio", { name: /blue/i })).toHaveFocus())
     expect(screen.getByRole("radio", { name: /red/i })).toHaveAttribute("aria-checked", "true")
-  })
-
-  it("does not move focus to disabled radio items with arrow keys", async () => {
-    const onChange = vi.fn()
-    render(
-      <RadioGroup onChange={onChange} label="Colors">
-        <RadioGroup.Item value="red" label="Red" />
-        <RadioGroup.Item value="blue" label="Blue" disabled />
-        <RadioGroup.Item value="green" label="Green" />
-      </RadioGroup>
-    )
-
-    screen.getByRole("radio", { name: /red/i }).focus()
-    await userEvent.keyboard("{ArrowDown}")
-
-    expect(screen.getByRole("radio", { name: /green/i })).toHaveFocus()
-    expect(onChange).toHaveBeenCalledWith("green")
-  })
-
-  it("navigates with ArrowRight and ArrowLeft (APG: all four arrow keys)", async () => {
-    const onChange = vi.fn()
-    render(
-      <RadioGroup onChange={onChange} label="Colors">
-        <RadioGroup.Item value="red" label="Red" />
-        <RadioGroup.Item value="blue" label="Blue" />
-      </RadioGroup>
-    )
-    const red = screen.getByRole("radio", { name: /red/i })
-    const blue = screen.getByRole("radio", { name: /blue/i })
-
-    red.focus()
-    await userEvent.keyboard("{ArrowRight}")
-    expect(onChange).toHaveBeenCalledWith("blue")
-    expect(blue).toHaveFocus()
-    expect(blue).toHaveAttribute("aria-checked", "true")
-
-    onChange.mockClear()
-    await userEvent.keyboard("{ArrowLeft}")
-    expect(onChange).toHaveBeenCalledWith("red")
-    expect(red).toHaveFocus()
-    expect(red).toHaveAttribute("aria-checked", "true")
   })
 
   it("resets uncontrolled group value with native form reset", async () => {

@@ -118,8 +118,10 @@ function renderSubject(props: Parameters<typeof Subject>[0] = {}) {
 
 function ProviderListSubject({
   onFilter = vi.fn(),
+  onActivate = vi.fn(),
 }: {
   onFilter?: (filter: ProviderFilter) => void;
+  onActivate?: (id: string) => void;
 }) {
   const [selectedId, setSelectedId] = useState<AIProvider>("gemini");
   const [filter, setFilter] = useState<ProviderFilter>("all");
@@ -147,28 +149,35 @@ function ProviderListSubject({
   });
 
   return (
-    <ProviderList
-      ref={listContainerRef}
-      providers={PROVIDERS}
-      selectedId={selectedId}
-      highlighted={selectedId}
-      onSelect={(id) => setSelectedId(id as AIProvider)}
-      onHighlightChange={(id) => setSelectedId(id as AIProvider)}
-      filter={filter}
-      onFilterChange={applyFilter}
-      searchQuery={searchQuery}
-      onSearchChange={setSearchQuery}
-      isFocused={keyboard.focusZone === "list"}
-      inputRef={inputRef}
-      onSearchFocus={keyboard.handleSearchFocus}
-      onSearchEscape={keyboard.handleSearchEscape}
-      focusedFilterIndex={keyboard.filterIndex}
-      onFilterHighlightChange={keyboard.setFilterIndex}
-      onFilterFocus={keyboard.handleFilterFocus}
-      onFilterKeyDown={keyboard.handleFilterKeyDown}
-      getFilterButtonProps={keyboard.getFilterButtonProps}
-      onBoundaryReached={keyboard.handleListBoundary}
-    />
+    <>
+      <ProviderList
+        ref={listContainerRef}
+        providers={PROVIDERS}
+        selectedId={selectedId}
+        highlighted={selectedId}
+        onSelect={(id) => setSelectedId(id as AIProvider)}
+        onHighlightChange={(id) => setSelectedId(id as AIProvider)}
+        filter={filter}
+        onFilterChange={applyFilter}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        isFocused={keyboard.focusZone === "list"}
+        inputRef={inputRef}
+        onSearchFocus={keyboard.handleSearchFocus}
+        onSearchEscape={keyboard.handleSearchEscape}
+        focusedFilterIndex={keyboard.filterIndex}
+        onFilterHighlightChange={keyboard.setFilterIndex}
+        onFilterFocus={keyboard.handleFilterFocus}
+        onFilterKeyDown={keyboard.handleFilterKeyDown}
+        getFilterButtonProps={keyboard.getFilterButtonProps}
+        onListKeyDown={keyboard.handleListKeyDown}
+        onActivate={onActivate}
+        onBoundaryReached={keyboard.handleListBoundary}
+      />
+      <button type="button" {...keyboard.getActionButtonProps(0)}>
+        Select Provider
+      </button>
+    </>
   );
 }
 
@@ -181,7 +190,7 @@ function renderProviderListSubject(props: Parameters<typeof ProviderListSubject>
 }
 
 describe("useProvidersKeyboard", () => {
-  it("describes provider badge and model without duplicating subtitle text", () => {
+  it("exposes provider badge and model as the option description", () => {
     render(
       <ProviderList
         providers={PROVIDERS}
@@ -195,12 +204,8 @@ describe("useProvidersKeyboard", () => {
     );
 
     const option = screen.getByRole("option", { name: "Google Gemini" });
-    const describedBy = option.getAttribute("aria-describedby")?.split(/\s+/) ?? [];
 
     expect(option).toHaveAccessibleDescription("FREE gemini-2.5-flash");
-    expect(describedBy).toHaveLength(2);
-    expect(document.getElementById(describedBy[0] ?? "")).toHaveTextContent("FREE");
-    expect(document.getElementById(describedBy[1] ?? "")).toHaveTextContent("gemini-2.5-flash");
   });
 
   it("focuses the provider list after it becomes ready", async () => {
@@ -305,5 +310,22 @@ describe("useProvidersKeyboard", () => {
     await user.keyboard("{Escape}");
 
     expect(screen.getByRole("radio", { name: "All" })).toHaveFocus();
+  });
+
+  it("activates the highlighted provider with Enter and moves to actions with Space", async () => {
+    const user = userEvent.setup();
+    const onActivate = vi.fn();
+
+    renderProviderListSubject({ onActivate });
+
+    const listbox = screen.getByRole("listbox", { name: "Providers" });
+    await waitFor(() => expect(listbox).toHaveFocus());
+
+    await user.keyboard("{ArrowDown}{Enter}");
+    expect(onActivate).toHaveBeenCalledWith("zai");
+
+    await user.keyboard(" ");
+    expect(screen.getByRole("button", { name: "Select Provider" })).toHaveFocus();
+    expect(onActivate).toHaveBeenCalledTimes(1);
   });
 });

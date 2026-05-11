@@ -4,7 +4,6 @@ import {
   containsActiveElement,
   findNavigationItemByValue,
   focusNavigationItem,
-  getFocusableElements,
   getFocusedNavigationValue,
   getNavigationItemProps,
   getNavigationItems,
@@ -252,19 +251,4 @@ describe("navigation item utilities", () => {
     expect(findNavigationItemByValue(container, { type: "option", value: unsafeValue })).toBe(unsafeItem);
   });
 
-  it("returns focusable descendants including programmatic focus targets", () => {
-    const container = mountContainer();
-    appendElement(container, { tag: "button", text: "Button" });
-    appendElement(container, { tag: "button", text: "Disabled", attributes: { disabled: "" } });
-    appendElement(container, { tag: "a", text: "Link", attributes: { href: "#" } });
-    appendElement(container, { text: "Programmatic", tabIndex: 0 });
-    appendElement(container, { text: "Skipped", tabIndex: -1 });
-
-    expect(getFocusableElements(container).map((element) => element.textContent)).toEqual([
-      "Button",
-      "Link",
-      "Programmatic",
-      "Skipped",
-    ]);
-  });
 });
