@@ -151,14 +151,13 @@ describe("Avatar", () => {
   })
 
   it("group with aria-label is accessible", () => {
-    const { container } = render(
+    render(
       <Avatar.Group size="md" max={2} aria-label="Team members">
         <Avatar fallback="A" alt="Alice" />
         <Avatar fallback="B" alt="Bob" />
         <Avatar fallback="C" alt="Charlie" />
       </Avatar.Group>
     )
-    const group = container.querySelector("[aria-label='Team members']")
-    expect(group).toBeInTheDocument()
+    expect(screen.getByLabelText("Team members")).toBeInTheDocument()
   })
 })

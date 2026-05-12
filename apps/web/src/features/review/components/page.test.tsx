@@ -5,7 +5,7 @@ import { FooterProvider } from "@/components/layout";
 import { ConfigProvider } from "@/app/providers/config-provider";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
-import type { ReviewIssue, ReviewMode } from "@diffgazer/core/schemas/review";
+import type { ReviewMode } from "@diffgazer/core/schemas/review";
 
 type ReviewQueryState = {
   data?: unknown;
@@ -78,33 +78,8 @@ vi.mock("@diffgazer/core/api/hooks", () => ({
   useSaveConfig: () => ({ isPending: false, error: null, mutateAsync: vi.fn() }),
 }));
 
+import { makeIssue } from "@/testing";
 import { ReviewPage } from "./page";
-
-function makeIssue(id: string, title: string): ReviewIssue {
-  return {
-    id,
-    severity: "high",
-    category: "correctness",
-    title,
-    file: "src/example.ts",
-    line_start: 10,
-    line_end: 12,
-    rationale: `${title} rationale`,
-    recommendation: `${title} recommendation`,
-    suggested_patch: null,
-    confidence: 0.9,
-    symptom: `${title} symptom`,
-    whyItMatters: `${title} impact`,
-    evidence: [
-      {
-        type: "code",
-        title: `${title} evidence`,
-        sourceId: `${id}-source`,
-        excerpt: "const value = 1;",
-      },
-    ],
-  };
-}
 
 function reviewQuery(state: Partial<ReviewQueryState>): ReviewQueryState {
   return {
@@ -187,7 +162,7 @@ describe("ReviewPage saved review loading", () => {
   });
 
   it("renders saved review results with fetched issues and review id", async () => {
-    const issue = makeIssue("issue-1", "Saved result issue");
+    const issue = makeIssue({ id: "issue-1", title: "Saved result issue", symptom: "Saved result issue symptom" });
     routeState.params = { reviewId: "review-saved" };
     routeState.search = { mode: "staged" };
     mockUseReview.mockReturnValue(

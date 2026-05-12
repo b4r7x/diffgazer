@@ -14,6 +14,9 @@ const {
   mockSetConfiguredGuardCache: vi.fn(),
 }));
 
+// Kept: useConfigActions requires ConfigProvider which needs the full
+// QueryClientProvider + ApiProvider + ConfigProvider chain with useInit,
+// useProviderStatus, etc. Disproportionate for a wizard state-management test.
 vi.mock("@/app/providers/config-provider", () => ({
   useConfigActions: () => ({
     refresh: mockRefresh,
@@ -31,6 +34,7 @@ vi.mock("@diffgazer/core/api/hooks", () => ({
   }),
 }));
 
+// Kept: module-level mutable state — mock avoids cross-test side effects.
 vi.mock("@/lib/config-guards/config-guard-cache", () => ({
   setConfiguredGuardCache: mockSetConfiguredGuardCache,
 }));
@@ -62,8 +66,12 @@ describe("useOnboarding initial state", () => {
     const { result } = renderHook(() => useOnboarding());
     await result.current.complete();
 
-    expect(mockSaveSettingsMutateAsync).toHaveBeenCalledTimes(1);
-    expect(mockSaveConfigMutateAsync).toHaveBeenCalledTimes(1);
+    expect(mockSaveSettingsMutateAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ secretsStorage: "file" }),
+    );
+    expect(mockSaveConfigMutateAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ provider: "gemini" }),
+    );
     expect(mockRefresh).toHaveBeenCalledWith(true);
     expect(mockSetConfiguredGuardCache).toHaveBeenCalledWith(true);
   });

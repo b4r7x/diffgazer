@@ -189,7 +189,7 @@ function renderProviderListSubject(props: Parameters<typeof ProviderListSubject>
   );
 }
 
-describe("useProvidersKeyboard", () => {
+describe("ProviderList", () => {
   it("exposes provider badge and model as the option description", () => {
     render(
       <ProviderList
@@ -207,7 +207,9 @@ describe("useProvidersKeyboard", () => {
 
     expect(option).toHaveAccessibleDescription("FREE gemini-2.5-flash");
   });
+});
 
+describe("useProvidersKeyboard", () => {
   it("focuses the provider list after it becomes ready", async () => {
     const { rerender } = renderSubject({ listReady: false });
 

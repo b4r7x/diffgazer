@@ -189,14 +189,14 @@ describe("ToggleGroup", () => {
 
   it("participates in form data by name and resets to defaultValue", async () => {
     render(
-      <form data-testid="form">
+      <form aria-label="Test form">
         <ToggleGroup label="Options" name="option" defaultValue="a">
           <ToggleGroup.Item value="a">Alpha</ToggleGroup.Item>
           <ToggleGroup.Item value="b">Beta</ToggleGroup.Item>
         </ToggleGroup>
       </form>,
     )
-    const form = screen.getByTestId("form") as HTMLFormElement
+    const form = screen.getByRole("form", { name: "Test form" }) as HTMLFormElement
 
     expect(new FormData(form).get("option")).toBe("a")
     await userEvent.click(screen.getByRole("radio", { name: /beta/i }))
@@ -208,23 +208,23 @@ describe("ToggleGroup", () => {
 
   it("omits form data when disabled or deselected", async () => {
     const { rerender } = render(
-      <form data-testid="form">
+      <form aria-label="Test form">
         <ToggleGroup label="Options" name="option" defaultValue="a" disabled>
           <ToggleGroup.Item value="a">Alpha</ToggleGroup.Item>
         </ToggleGroup>
       </form>,
     )
-    expect(new FormData(screen.getByTestId("form") as HTMLFormElement).has("option")).toBe(false)
+    expect(new FormData(screen.getByRole("form", { name: "Test form" }) as HTMLFormElement).has("option")).toBe(false)
 
     rerender(
-      <form data-testid="form">
+      <form aria-label="Test form">
         <ToggleGroup label="Options" name="option" defaultValue="a" allowDeselect>
           <ToggleGroup.Item value="a">Alpha</ToggleGroup.Item>
         </ToggleGroup>
       </form>,
     )
     await userEvent.click(screen.getByRole("button", { name: /alpha/i }))
-    expect(new FormData(screen.getByTestId("form") as HTMLFormElement).has("option")).toBe(false)
+    expect(new FormData(screen.getByRole("form", { name: "Test form" }) as HTMLFormElement).has("option")).toBe(false)
   })
 
   it("has no a11y violations", async () => {

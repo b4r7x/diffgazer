@@ -53,7 +53,6 @@ describe("composeRefs", () => {
     const cleanupFn = composed(el)
     expect(cleanup).not.toHaveBeenCalled()
 
-    // Call the cleanup function
     cleanupFn?.()
     expect(cleanup).toHaveBeenCalled()
   })

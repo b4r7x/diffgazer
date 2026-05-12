@@ -55,10 +55,10 @@ describe("TrustPermissionsContent", () => {
 
     await user.tab();
     expect(readFilesOption).toHaveFocus();
-    expect(readFilesOption.getAttribute("aria-checked")).toBe("true");
+    expect(readFilesOption).toHaveAttribute("aria-checked", "true");
 
     await user.keyboard(" ");
-    expect(readFilesOption.getAttribute("aria-checked")).toBe("false");
+    expect(readFilesOption).toHaveAttribute("aria-checked", "false");
 
     await user.keyboard("{ArrowDown}");
     expect(saveButton).toHaveFocus();

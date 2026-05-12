@@ -4,9 +4,10 @@ import { Divider } from "./index.js"
 
 describe("Divider", () => {
   it("hides decorative spaced text from the accessibility tree", () => {
-    render(<Divider variant="spaced">Section</Divider>)
+    const { container } = render(<Divider variant="spaced">Section</Divider>)
 
-    expect(screen.getByText("Section").closest("div")).toHaveAttribute("aria-hidden", "true")
+    expect(screen.queryByRole("separator")).not.toBeInTheDocument()
+    expect(container.firstElementChild).toHaveAttribute("aria-hidden", "true")
   })
 
   it("exposes meaningful separators when decorative is false", () => {

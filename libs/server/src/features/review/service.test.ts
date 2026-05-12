@@ -4,12 +4,13 @@ import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { z } from "zod";
 import type { FullReviewStreamEvent } from "@diffgazer/core/schemas/events";
-import type { ReviewIssue, ReviewResult } from "@diffgazer/core/schemas/review";
+import type { ReviewResult } from "@diffgazer/core/schemas/review";
 import { ReviewErrorCode } from "@diffgazer/core/schemas/review";
 import { err, ok } from "@diffgazer/core/result";
 import type { SSEWriter } from "../../shared/lib/http/types.js";
 import type { AIClient } from "../../shared/lib/ai/types.js";
 import type { createGitService as createGitServiceType } from "../../shared/lib/git/service.js";
+import { makeIssue } from "../../shared/lib/testing/factories.js";
 
 vi.mock("../../shared/lib/git/service.js", () => ({
   createGitService: vi.fn(),
@@ -129,29 +130,9 @@ function makeGitService(options: {
   };
 }
 
-function makeReviewIssue(overrides: Partial<ReviewIssue> = {}): ReviewIssue {
-  return {
-    id: "issue-1",
-    severity: "high",
-    category: "correctness",
-    title: "Subtraction used in addition helper",
-    file: "src/app.ts",
-    line_start: 2,
-    line_end: 2,
-    rationale: "The changed implementation subtracts instead of adding.",
-    recommendation: "Return a + b.",
-    suggested_patch: null,
-    confidence: 0.95,
-    symptom: "The add helper returns the wrong result.",
-    whyItMatters: "Callers receive incorrect arithmetic results.",
-    evidence: [],
-    ...overrides,
-  };
-}
-
 function makeAIClient(result: ReviewResult = {
   summary: "Model found one correctness issue.",
-  issues: [makeReviewIssue()],
+  issues: [makeIssue({ title: "Subtraction used in addition helper", file: "src/app.ts" })],
 }): AIClient {
   const generate: AIClient["generate"] = async <T extends z.ZodType>(
     _prompt: string,

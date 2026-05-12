@@ -1,23 +1,10 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, renderHook, screen, cleanup, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { StrictMode, useState, type ReactNode } from "react";
-import { KeyboardProvider } from "../providers/keyboard-provider";
+import { useState } from "react";
 import { useKey } from "./use-key";
 import { useScope } from "./use-scope";
-import { fireKey } from "../testing/test-utils";
-
-function wrapper({ children }: { children: ReactNode }) {
-  return <KeyboardProvider>{children}</KeyboardProvider>;
-}
-
-function strictWrapper({ children }: { children: ReactNode }) {
-  return (
-    <StrictMode>
-      <KeyboardProvider>{children}</KeyboardProvider>
-    </StrictMode>
-  );
-}
+import { fireKey, KeyboardWrapper, StrictKeyboardWrapper } from "../testing/test-utils";
 
 describe("useKey", () => {
   afterEach(() => {
@@ -29,7 +16,7 @@ describe("useKey", () => {
     let enabled = false;
     const { rerender, unmount } = renderHook(
       () => useKey("Escape", handler, { enabled }),
-      { wrapper },
+      { wrapper: KeyboardWrapper },
     );
 
     fireKey("Escape");
@@ -52,7 +39,7 @@ describe("useKey", () => {
   describe("overload 2: array of keys + handler", () => {
     it("registers multiple keys with same handler", () => {
       const handler = vi.fn();
-      renderHook(() => useKey(["Enter", " "], handler), { wrapper });
+      renderHook(() => useKey(["Enter", " "], handler), { wrapper: KeyboardWrapper });
 
       fireKey("Enter");
       expect(handler).toHaveBeenCalled();
@@ -64,13 +51,14 @@ describe("useKey", () => {
 
     it("preserves punctuation keys when tracking registrations", () => {
       const handler = vi.fn();
-      renderHook(() => useKey([",", "Enter"], handler), { wrapper });
+      renderHook(() => useKey([",", "Enter"], handler), { wrapper: KeyboardWrapper });
 
       fireKey(",");
-      expect(handler).toHaveBeenCalledTimes(1);
+      expect(handler).toHaveBeenCalledOnce();
 
+      handler.mockClear();
       fireKey("Enter");
-      expect(handler).toHaveBeenCalledTimes(2);
+      expect(handler).toHaveBeenCalledOnce();
     });
   });
 
@@ -84,7 +72,7 @@ describe("useKey", () => {
             ArrowUp: moveUp,
             ArrowDown: moveDown,
           }),
-        { wrapper },
+        { wrapper: KeyboardWrapper },
       );
 
       fireKey("ArrowUp");
@@ -104,7 +92,7 @@ describe("useKey", () => {
             { ArrowDown: handler },
             { enabled: zone === "list" },
           ),
-        { wrapper },
+        { wrapper: KeyboardWrapper },
       );
 
       fireKey("ArrowDown");
@@ -122,7 +110,7 @@ describe("useKey", () => {
       let key = "ArrowUp";
       const { rerender } = renderHook(
         () => useKey({ [key]: handler }),
-        { wrapper },
+        { wrapper: KeyboardWrapper },
       );
 
       fireKey("ArrowUp");
@@ -147,7 +135,7 @@ describe("useKey", () => {
       let handler = firstHandler;
       const { rerender } = renderHook(
         () => useKey("Escape", handler),
-        { wrapper },
+        { wrapper: KeyboardWrapper },
       );
 
       fireKey("Escape");
@@ -187,7 +175,7 @@ describe("useKey", () => {
         );
       }
 
-      render(<Consumer />, { wrapper });
+      render(<Consumer />, { wrapper: KeyboardWrapper });
 
       act(() => fireKey("a"));
       expect(screen.getByLabelText("Handled by").textContent).toBe("fallback");
@@ -223,7 +211,7 @@ describe("useKey", () => {
         return open ? <Modal onClose={() => setOpen(false)} /> : null;
       }
 
-      render(<TestApp />, { wrapper });
+      render(<TestApp />, { wrapper: KeyboardWrapper });
 
       act(() => fireKey("o"));
       expect(openShortcut).toHaveBeenCalledOnce();
@@ -254,7 +242,7 @@ describe("useKey", () => {
         return <ChildScope />;
       }
 
-      render(<ParentWithKey />, { wrapper });
+      render(<ParentWithKey />, { wrapper: KeyboardWrapper });
 
       act(() => fireKey("p"));
 
@@ -272,7 +260,7 @@ describe("useKey", () => {
         return null;
       }
 
-      const { rerender } = render(<TestApp />, { wrapper });
+      const { rerender } = render(<TestApp />, { wrapper: KeyboardWrapper });
 
       act(() => fireKey("Escape"));
       expect(modalEscape).not.toHaveBeenCalled();
@@ -309,7 +297,7 @@ describe("useKey", () => {
       const handler = vi.fn();
       const { rerender, unmount } = renderHook(
         () => useKey("Escape", handler),
-        { wrapper: strictWrapper },
+        { wrapper: StrictKeyboardWrapper },
       );
 
       fireKey("Escape");
@@ -330,7 +318,7 @@ describe("useKey", () => {
       const handler = vi.fn();
       const { unmount } = renderHook(
         () => useKey("Escape", handler),
-        { wrapper },
+        { wrapper: KeyboardWrapper },
       );
 
       const defaultEvent = fireKey("Escape");
@@ -339,7 +327,7 @@ describe("useKey", () => {
 
       renderHook(
         () => useKey("Escape", handler, { preventDefault: true }),
-        { wrapper },
+        { wrapper: KeyboardWrapper },
       );
 
       const preventedEvent = fireKey("Escape");

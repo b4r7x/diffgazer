@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SavedReview, DrilldownResult } from "@diffgazer/core/schemas/review";
+import { makeIssue } from "../testing/factories.js";
 
 const REVIEW_ID = "550e8400-e29b-41d4-a716-446655440000";
 const REVIEW_ID_2 = "660e8400-e29b-41d4-a716-446655440001";
@@ -52,24 +53,6 @@ async function waitForSavedReview(id: string, predicate: (review: SavedReview) =
 
   throw new Error(`Timed out waiting for saved review ${id}: ${JSON.stringify(lastReview)}`);
 }
-
-const makeIssue = (overrides: Record<string, unknown> = {}) => ({
-  id: "i1",
-  title: "Bug",
-  severity: "high" as const,
-  category: "correctness" as const,
-  file: "a.ts",
-  line_start: 1,
-  line_end: 2,
-  rationale: "test rationale",
-  recommendation: "fix it",
-  suggested_patch: null,
-  confidence: 0.9,
-  symptom: "broken",
-  whyItMatters: "matters",
-  evidence: [],
-  ...overrides,
-});
 
 const makeSaveOptions = (overrides: Record<string, unknown> = {}) => ({
   projectPath: "/projects/test",

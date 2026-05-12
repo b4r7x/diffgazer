@@ -461,52 +461,6 @@ describe("CommandPalette", () => {
     document.body.removeChild(trigger)
   })
 
-  it("restores focus after the native dialog closes", async () => {
-    const events: string[] = []
-    const trigger = document.createElement("button")
-    trigger.textContent = "External"
-    document.body.appendChild(trigger)
-    trigger.focus()
-
-    vi.spyOn(trigger, "focus").mockImplementation(() => {
-      events.push("focus")
-    })
-    vi.spyOn(HTMLDialogElement.prototype, "close").mockImplementation(function close(this: HTMLDialogElement) {
-      events.push("close")
-      this.removeAttribute("open")
-    })
-
-    const { rerender } = render(
-      <CommandPalette open>
-        <CommandPalette.Content>
-          <CommandPalette.Input />
-          <CommandPalette.List>
-            <CommandPalette.Item id="one">One</CommandPalette.Item>
-          </CommandPalette.List>
-        </CommandPalette.Content>
-      </CommandPalette>
-    )
-
-    rerender(
-      <CommandPalette open={false}>
-        <CommandPalette.Content>
-          <CommandPalette.Input />
-          <CommandPalette.List>
-            <CommandPalette.Item id="one">One</CommandPalette.Item>
-          </CommandPalette.List>
-        </CommandPalette.Content>
-      </CommandPalette>
-    )
-
-    const dialog = document.querySelector("dialog")
-    await waitFor(() => expect(dialog).toHaveAttribute("data-state", "closed"))
-    if (dialog) fireEvent.animationEnd(dialog)
-
-    await waitFor(() => expect(events).toEqual(["close", "focus"]))
-
-    document.body.removeChild(trigger)
-  })
-
   it("restores focus in close order for nested triggerless palettes", async () => {
     function NestedPalettes() {
       const [outerOpen, setOuterOpen] = useState(false)

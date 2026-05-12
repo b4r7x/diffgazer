@@ -7,7 +7,7 @@ import { Radio, RadioGroup } from "./index.js"
 import { Field } from "../field/index.js"
 
 function getForm(): HTMLFormElement {
-  const form = screen.getByTestId("form")
+  const form = screen.getByRole("form", { name: "Test form" })
   if (!(form instanceof HTMLFormElement)) throw new Error("Expected form test element")
   return form
 }
@@ -85,7 +85,7 @@ describe("Radio", () => {
 
   it("submits a meaningful default value and resets uncontrolled state", async () => {
     render(
-      <form data-testid="form">
+      <form aria-label="Test form">
         <Radio name="choice" defaultChecked={false} label="Option A" />
       </form>
     )
@@ -101,7 +101,7 @@ describe("Radio", () => {
 
   it("keeps custom and empty submitted values aligned with data-value", async () => {
     render(
-      <form data-testid="form">
+      <form aria-label="Test form">
         <Radio name="choice" value="custom" label="Custom" />
         <Radio name="choice" value="" label="Empty" />
       </form>
@@ -122,7 +122,7 @@ describe("Radio", () => {
 
   it("focuses the visible radio when native required validation fails", async () => {
     render(
-      <form data-testid="form">
+      <form aria-label="Test form">
         <Radio name="choice" required label="Option A" />
       </form>
     )
@@ -137,7 +137,7 @@ describe("Radio", () => {
 
   it("validates required unnamed radios without contributing FormData", async () => {
     render(
-      <form data-testid="form">
+      <form aria-label="Test form">
         <Radio required label="Option A" />
       </form>
     )
@@ -157,7 +157,7 @@ describe("Radio", () => {
 
   it("keeps standalone radios with the same name mutually exclusive", async () => {
     render(
-      <form data-testid="form">
+      <form aria-label="Test form">
         <Radio name="size" value="small" label="Small" />
         <Radio name="size" value="large" label="Large" />
       </form>
@@ -179,7 +179,7 @@ describe("Radio", () => {
 
   it("normalizes same-name default selections to one checked standalone radio", async () => {
     render(
-      <form data-testid="form">
+      <form aria-label="Test form">
         <Radio name="size" value="small" defaultChecked label="Small" />
         <Radio name="size" value="large" defaultChecked label="Large" />
       </form>
@@ -197,7 +197,7 @@ describe("Radio", () => {
       const [smallChecked, setSmallChecked] = useState(false)
 
       return (
-        <form data-testid="form">
+        <form aria-label="Test form">
           <Radio
             name="size"
             value="small"
@@ -690,7 +690,7 @@ describe("RadioGroup", () => {
 
   it("resets uncontrolled group value with native form reset", async () => {
     render(
-      <form data-testid="form">
+      <form aria-label="Test form">
         <RadioGroup name="color" defaultValue="red" label="Colors">
           <RadioGroup.Item value="red" label="Red" />
           <RadioGroup.Item value="blue" label="Blue" />
@@ -708,7 +708,7 @@ describe("RadioGroup", () => {
 
   it("marks required groups and routes native validation to a visible radio", async () => {
     render(
-      <form data-testid="form">
+      <form aria-label="Test form">
         <RadioGroup name="color" required label="Colors">
           <RadioGroup.Item value="red" label="Red" />
           <RadioGroup.Item value="blue" label="Blue" />
@@ -738,7 +738,7 @@ describe("RadioGroup", () => {
 
   it("does not satisfy required validation with a stale controlled value", async () => {
     render(
-      <form data-testid="form">
+      <form aria-label="Test form">
         <RadioGroup name="color" required label="Colors" value="missing">
           <RadioGroup.Item value="red" label="Red" />
           <RadioGroup.Item value="blue" label="Blue" />
@@ -761,7 +761,7 @@ describe("RadioGroup", () => {
     }
 
     render(
-      <form data-testid="form">
+      <form aria-label="Test form">
         <RadioGroup name="color" required label="Colors" value="blue">
           <WrappedBlue />
         </RadioGroup>
@@ -775,7 +775,7 @@ describe("RadioGroup", () => {
 
   it("validates required unnamed groups without contributing FormData", async () => {
     render(
-      <form data-testid="form">
+      <form aria-label="Test form">
         <RadioGroup required label="Colors">
           <RadioGroup.Item value="red" label="Red" />
           <RadioGroup.Item value="blue" label="Blue" />
@@ -801,7 +801,7 @@ describe("RadioGroup", () => {
   it("does not call the public value callback with undefined on native reset", async () => {
     const onChange = vi.fn()
     render(
-      <form data-testid="form">
+      <form aria-label="Test form">
         <RadioGroup name="color" onChange={onChange} label="Colors">
           <RadioGroup.Item value="red" label="Red" />
           <RadioGroup.Item value="blue" label="Blue" />

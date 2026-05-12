@@ -395,7 +395,6 @@ describe("docs-library source path mapping", () => {
     for (const file of [...componentPages, ...hookPages]) {
       const source = readAbsolute(file)
       const relPath = file.slice(repoRoot.length + 1)
-      // Pages that use ConsumptionBlock or InstallCommand have consumption metadata
       expect(
         source.includes("<ConsumptionBlock") || source.includes("<InstallCommand"),
         `${relPath} must include consumption metadata (ConsumptionBlock or InstallCommand)`,
@@ -436,10 +435,7 @@ describe("docs-library source path mapping", () => {
       const source = readAbsolute(file)
       const relPath = file.slice(repoRoot.length + 1)
 
-      // If a page has an API Reference heading, it must not have a standalone ## API Reference + <PropsTable />
-      // Instead it should use <APIReference /> which self-hides when no data exists
       if (source.includes("## API Reference")) {
-        // A page with ## API Reference heading followed by <PropsTable /> risks empty rendering
         expect(source, `${relPath} has standalone ## API Reference heading -- use <APIReference /> instead`).not.toMatch(/## API Reference\s*\n\s*\n\s*<PropsTable/)
       }
     }
@@ -469,26 +465,21 @@ describe("docs-library source path mapping", () => {
     const keysReadme = readRepoFile("libs/keys/README.md")
     const cliReadme = readRepoFile("cli/add/README.md")
 
-    // Root README must mention all three paths
     expect(rootReadme).toContain("Manual copy")
     expect(rootReadme).toContain("dgadd")
     expect(rootReadme).toContain("npm package")
 
-    // UI README must mention all three paths
     expect(uiReadme).toContain("Manual copy")
     expect(uiReadme).toContain("dgadd")
     expect(uiReadme).toContain("npm package")
 
-    // Keys README must mention all three paths
     expect(keysReadme).toContain("Manual copy")
     expect(keysReadme).toContain("dgadd")
     expect(keysReadme).toContain("npm package")
 
-    // CLI README must reference both libraries
     expect(cliReadme).toContain("@diffgazer/ui")
     expect(cliReadme).toContain("@diffgazer/keys")
 
-    // All must mention publish-gated status
     for (const readme of [rootReadme, uiReadme, keysReadme, cliReadme]) {
       expect(readme).toMatch(/publish-gated/)
     }

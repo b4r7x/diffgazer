@@ -1,6 +1,6 @@
-import axeCore from "axe-core";
+import axeCore, { type RunOptions } from "axe-core";
 
-export function axe(container, options) {
+export function axe(container: Element, options?: RunOptions) {
   return axeCore.run(container, {
     ...options,
     rules: {

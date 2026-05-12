@@ -1,16 +1,14 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { renderHook, render, screen, act, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { createElement, useEffect, useRef, useState, type ReactNode } from "react";
+import { createElement, useEffect, useRef, useState } from "react";
 import { renderToString } from "react-dom/server";
 import { KeyboardProvider } from "../providers/keyboard-provider";
 import { useFocusZone } from "./use-focus-zone";
 import { useKey } from "./use-key";
-import { fireKey } from "../testing/test-utils";
+import { fireKey, KeyboardWrapper } from "../testing/test-utils";
 
-function wrapper({ children }: { children: ReactNode }) {
-  return createElement(KeyboardProvider, null, children);
-}
+const wrapper = KeyboardWrapper;
 
 describe("useFocusZone", () => {
   afterEach(() => {

@@ -1,30 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import type { SeverityCounts } from "@diffgazer/core/schemas/ui";
+import { makeIssue } from "@/testing";
 import { HistoryInsightsPane } from "./history-insights-pane";
-
-function makeIssue(overrides: Partial<ReviewIssue> = {}): ReviewIssue {
-  return {
-    id: "issue-1",
-    severity: "high",
-    category: "correctness",
-    title: "Wrong value",
-    file: "src/example.ts",
-    line_start: 12,
-    line_end: 12,
-    rationale: "",
-    recommendation: "",
-    suggested_patch: null,
-    confidence: 0.9,
-    symptom: "",
-    whyItMatters: "",
-    evidence: [],
-    trace: [],
-    ...overrides,
-  };
-}
 
 describe("HistoryInsightsPane", () => {
   it("shows an empty placeholder when no run is selected", () => {

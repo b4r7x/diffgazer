@@ -21,8 +21,8 @@ describe("StorageSelectorContent", () => {
 
     await waitFor(() => expect(fileRadio).toHaveFocus());
     await user.keyboard("{ArrowDown}");
-    expect(fileRadio.getAttribute("aria-checked")).toBe("true");
-    expect(keyringRadio.getAttribute("aria-checked")).toBe("false");
+    expect(fileRadio).toHaveAttribute("aria-checked", "true");
+    expect(keyringRadio).toHaveAttribute("aria-checked", "false");
 
     await user.keyboard(" ");
 

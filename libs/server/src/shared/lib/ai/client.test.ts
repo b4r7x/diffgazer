@@ -1,4 +1,18 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import { writeFileSync } from "node:fs";
+import { afterEach, describe, it, expect, vi, beforeEach } from "vitest";
+import { AI_PROVIDERS } from "@diffgazer/core/schemas/config";
+
+const keyring = vi.hoisted(() => ({
+  deleteKeyringSecret: vi.fn(),
+  isKeyringAvailable: vi.fn(),
+  readKeyringSecret: vi.fn(),
+  writeKeyringSecret: vi.fn(),
+}));
+
+vi.mock("../config/keyring.js", () => keyring);
 
 vi.mock("ai", () => ({
   generateObject: vi.fn(),
@@ -22,23 +36,42 @@ vi.mock("@openrouter/ai-sdk-provider", () => ({
   })),
 }));
 
-vi.mock("../config/store.js", () => ({
-  getActiveProvider: vi.fn(),
-  getProviderApiKey: vi.fn(),
-}));
+let diffgazerHome: string;
 
-import { createAIClient, initializeAIClient } from "./client.js";
-import { getActiveProvider, getProviderApiKey } from "../config/store.js";
+function writeJson(filePath: string, value: unknown): void {
+  mkdirSync(dirname(filePath), { recursive: true });
+  writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`);
+}
 
-const mockGetActiveProvider = vi.mocked(getActiveProvider);
-const mockGetProviderApiKey = vi.mocked(getProviderApiKey);
+async function loadClient() {
+  return import("./client.js");
+}
+
+function setupTempHome() {
+  diffgazerHome = mkdtempSync(join(tmpdir(), "diffgazer-ai-client-"));
+  process.env.DIFFGAZER_HOME = diffgazerHome;
+  vi.resetModules();
+  vi.clearAllMocks();
+  keyring.isKeyringAvailable.mockReturnValue(true);
+  keyring.readKeyringSecret.mockReturnValue({ ok: true, value: null });
+}
+
+function teardownTempHome() {
+  delete process.env.DIFFGAZER_HOME;
+  rmSync(diffgazerHome, { recursive: true, force: true });
+}
 
 describe("createAIClient", () => {
   beforeEach(() => {
-    vi.resetAllMocks();
+    setupTempHome();
+    keyring.writeKeyringSecret.mockReturnValue({ ok: true, value: undefined });
+    keyring.deleteKeyringSecret.mockReturnValue({ ok: true, value: false });
   });
 
-  it("should return error when API key is missing", () => {
+  afterEach(teardownTempHome);
+
+  it("should return error when API key is missing", async () => {
+    const { createAIClient } = await loadClient();
     const result = createAIClient({
       apiKey: "",
       provider: "gemini",
@@ -50,10 +83,11 @@ describe("createAIClient", () => {
     }
   });
 
-  it("should return error when provider is empty", () => {
+  it("should return error when provider is empty", async () => {
+    const { createAIClient } = await loadClient();
     const result = createAIClient({
       apiKey: "test-key",
-      provider: "" as any,
+      provider: "" as never,
     });
 
     expect(result.ok).toBe(false);
@@ -62,63 +96,29 @@ describe("createAIClient", () => {
     }
   });
 
-  it("should create client for gemini provider", () => {
-    const result = createAIClient({
-      apiKey: "test-key",
-      provider: "gemini",
-    });
-
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.value.provider).toBe("gemini");
-    }
-  });
-
-  it("should create client for zai provider", () => {
-    const result = createAIClient({
-      apiKey: "test-key",
-      provider: "zai",
-    });
-
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.value.provider).toBe("zai");
-    }
-  });
-
-  it("should create client for zai-coding provider", () => {
-    const result = createAIClient({
-      apiKey: "test-key",
-      provider: "zai-coding",
-    });
-
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.value.provider).toBe("zai-coding");
-    }
-  });
-
-  it("should create client for openrouter provider", () => {
-    const result = createAIClient({
-      apiKey: "test-key",
-      provider: "openrouter",
-    });
-
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.value.provider).toBe("openrouter");
-    }
-  });
+  it.each([...AI_PROVIDERS])(
+    "should create client for %s provider",
+    async (provider) => {
+      const { createAIClient } = await loadClient();
+      const result = createAIClient({ apiKey: "test-key", provider });
+      expect(result.ok).toBe(true);
+      if (result.ok) expect(result.value.provider).toBe(provider);
+    },
+  );
 });
 
 describe("initializeAIClient", () => {
   beforeEach(() => {
-    vi.resetAllMocks();
+    setupTempHome();
+    keyring.writeKeyringSecret.mockReturnValue({ ok: true, value: undefined });
+    keyring.deleteKeyringSecret.mockReturnValue({ ok: true, value: false });
   });
 
-  it("should return error when no active provider is configured", () => {
-    mockGetActiveProvider.mockReturnValue(null);
+  afterEach(teardownTempHome);
 
+  it("should return error when no active provider is configured", async () => {
+    // No config file written — store has no active provider
+    const { initializeAIClient } = await loadClient();
     const result = initializeAIClient();
 
     expect(result.ok).toBe(false);
@@ -127,13 +127,15 @@ describe("initializeAIClient", () => {
     }
   });
 
-  it("should return error when active provider has no model", () => {
-    mockGetActiveProvider.mockReturnValue({
-      provider: "gemini",
-      hasApiKey: true,
-      isActive: true,
+  it("should return error when active provider has no model", async () => {
+    // Provider is active but has no model set
+    writeJson(join(diffgazerHome, "config.json"), {
+      settings: { secretsStorage: "file" },
+      providers: [{ provider: "gemini", hasApiKey: true, isActive: true }],
     });
+    writeJson(join(diffgazerHome, "secrets.json"), { providers: { gemini: "test-key" } });
 
+    const { initializeAIClient } = await loadClient();
     const result = initializeAIClient();
 
     expect(result.ok).toBe(false);
@@ -142,18 +144,18 @@ describe("initializeAIClient", () => {
     }
   });
 
-  it("should return error when API key retrieval fails", () => {
-    mockGetActiveProvider.mockReturnValue({
-      provider: "gemini",
-      hasApiKey: true,
-      isActive: true,
-      model: "gemini-2.5-flash",
+  it("should return error when API key retrieval fails", async () => {
+    // Provider has model but keyring read fails
+    writeJson(join(diffgazerHome, "config.json"), {
+      settings: { secretsStorage: "keyring" },
+      providers: [{ provider: "gemini", hasApiKey: true, isActive: true, model: "gemini-2.5-flash" }],
     });
-    mockGetProviderApiKey.mockReturnValue({
+    keyring.readKeyringSecret.mockReturnValue({
       ok: false,
-      error: { code: "KEYRING_READ_FAILED" as any, message: "keyring error" },
+      error: { code: "KEYRING_READ_FAILED", message: "keyring error" },
     });
 
+    const { initializeAIClient } = await loadClient();
     const result = initializeAIClient();
 
     expect(result.ok).toBe(false);
@@ -162,15 +164,15 @@ describe("initializeAIClient", () => {
     }
   });
 
-  it("should return error when API key is null", () => {
-    mockGetActiveProvider.mockReturnValue({
-      provider: "gemini",
-      hasApiKey: true,
-      isActive: true,
-      model: "gemini-2.5-flash",
+  it("should return error when API key is null", async () => {
+    // Provider is configured with model, but no secret stored (no secrets.json, no keyring value)
+    writeJson(join(diffgazerHome, "config.json"), {
+      settings: { secretsStorage: "file" },
+      providers: [{ provider: "gemini", hasApiKey: true, isActive: true, model: "gemini-2.5-flash" }],
     });
-    mockGetProviderApiKey.mockReturnValue({ ok: true, value: null });
+    // No secrets.json → getProviderApiKey returns null
 
+    const { initializeAIClient } = await loadClient();
     const result = initializeAIClient();
 
     expect(result.ok).toBe(false);
@@ -179,15 +181,14 @@ describe("initializeAIClient", () => {
     }
   });
 
-  it("should return a client when provider and API key are valid", () => {
-    mockGetActiveProvider.mockReturnValue({
-      provider: "gemini",
-      hasApiKey: true,
-      isActive: true,
-      model: "gemini-2.5-flash",
+  it("should return a client when provider and API key are valid", async () => {
+    writeJson(join(diffgazerHome, "config.json"), {
+      settings: { secretsStorage: "file" },
+      providers: [{ provider: "gemini", hasApiKey: true, isActive: true, model: "gemini-2.5-flash" }],
     });
-    mockGetProviderApiKey.mockReturnValue({ ok: true, value: "test-api-key" });
+    writeJson(join(diffgazerHome, "secrets.json"), { providers: { gemini: "test-api-key" } });
 
+    const { initializeAIClient } = await loadClient();
     const result = initializeAIClient();
 
     expect(result.ok).toBe(true);
@@ -198,14 +199,14 @@ describe("initializeAIClient", () => {
 });
 
 describe("classifyError (via generate)", () => {
-  beforeEach(() => {
-    vi.resetAllMocks();
-  });
+  beforeEach(setupTempHome);
+  afterEach(teardownTempHome);
 
   it("should classify quota errors as RATE_LIMITED", async () => {
     const { generateObject } = await import("ai");
     vi.mocked(generateObject).mockRejectedValue(new Error("exceeded your current quota"));
 
+    const { createAIClient } = await loadClient();
     const clientResult = createAIClient({ apiKey: "key", provider: "gemini" });
     expect(clientResult.ok).toBe(true);
     if (!clientResult.ok) return;
@@ -223,6 +224,7 @@ describe("classifyError (via generate)", () => {
     const { generateObject } = await import("ai");
     vi.mocked(generateObject).mockRejectedValue(new Error("401 Unauthorized: invalid_api_key"));
 
+    const { createAIClient } = await loadClient();
     const clientResult = createAIClient({ apiKey: "key", provider: "gemini" });
     if (!clientResult.ok) return;
 
@@ -239,6 +241,7 @@ describe("classifyError (via generate)", () => {
     const { generateObject } = await import("ai");
     vi.mocked(generateObject).mockRejectedValue(new Error("429 too many requests"));
 
+    const { createAIClient } = await loadClient();
     const clientResult = createAIClient({ apiKey: "key", provider: "gemini" });
     if (!clientResult.ok) return;
 
@@ -255,6 +258,7 @@ describe("classifyError (via generate)", () => {
     const { generateObject } = await import("ai");
     vi.mocked(generateObject).mockRejectedValue(new Error("fetch failed: ECONNREFUSED"));
 
+    const { createAIClient } = await loadClient();
     const clientResult = createAIClient({ apiKey: "key", provider: "gemini" });
     if (!clientResult.ok) return;
 
@@ -271,6 +275,7 @@ describe("classifyError (via generate)", () => {
     const { generateObject } = await import("ai");
     vi.mocked(generateObject).mockRejectedValue(new Error("something unexpected happened"));
 
+    const { createAIClient } = await loadClient();
     const clientResult = createAIClient({ apiKey: "key", provider: "gemini" });
     if (!clientResult.ok) return;
 
@@ -285,9 +290,8 @@ describe("classifyError (via generate)", () => {
 });
 
 describe("generateStream", () => {
-  beforeEach(() => {
-    vi.resetAllMocks();
-  });
+  beforeEach(setupTempHome);
+  afterEach(teardownTempHome);
 
   it("should stream chunks and call onComplete with accumulated text", async () => {
     const { streamText } = await import("ai");
@@ -297,8 +301,9 @@ describe("generateStream", () => {
         for (const chunk of chunks) yield chunk;
       })(),
       finishReason: Promise.resolve("stop"),
-    } as any);
+    } as unknown as ReturnType<typeof streamText>);
 
+    const { createAIClient } = await loadClient();
     const clientResult = createAIClient({ apiKey: "key", provider: "gemini" });
     expect(clientResult.ok).toBe(true);
     if (!clientResult.ok) return;
@@ -327,8 +332,9 @@ describe("generateStream", () => {
         throw new Error("stream broke");
       })(),
       finishReason: Promise.resolve("error"),
-    } as any);
+    } as unknown as ReturnType<typeof streamText>);
 
+    const { createAIClient } = await loadClient();
     const clientResult = createAIClient({ apiKey: "key", provider: "gemini" });
     if (!clientResult.ok) return;
 
@@ -351,8 +357,9 @@ describe("generateStream", () => {
         yield "truncated content";
       })(),
       finishReason: Promise.resolve("length"),
-    } as any);
+    } as unknown as ReturnType<typeof streamText>);
 
+    const { createAIClient } = await loadClient();
     const clientResult = createAIClient({ apiKey: "key", provider: "gemini" });
     if (!clientResult.ok) return;
 
@@ -377,8 +384,9 @@ describe("generateStream", () => {
         yield "world";
       })(),
       finishReason: Promise.resolve("stop"),
-    } as any);
+    } as unknown as ReturnType<typeof streamText>);
 
+    const { createAIClient } = await loadClient();
     const clientResult = createAIClient({ apiKey: "key", provider: "gemini" });
     if (!clientResult.ok) return;
 

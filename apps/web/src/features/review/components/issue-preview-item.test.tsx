@@ -17,11 +17,11 @@ describe("IssuePreviewItem", () => {
     expect(screen.getByRole("button")).toBeInTheDocument();
   });
 
-  it("renders a non-focusable div when no onClick is provided", () => {
+  it("does not render as interactive when onClick is omitted", () => {
     render(<IssuePreviewItem {...BASE_PROPS} />);
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
-    const container = screen.getByText("SQL Injection Risk").closest("div");
-    expect(container?.tabIndex).not.toBe(0);
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    expect(screen.getByText("SQL Injection Risk")).toBeInTheDocument();
   });
 
   it("calls onClick when the button is clicked", async () => {

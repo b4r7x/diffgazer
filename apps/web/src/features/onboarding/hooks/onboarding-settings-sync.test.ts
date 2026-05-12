@@ -18,12 +18,15 @@ const {
   mockGetSettings: vi.fn(),
 }));
 
+// Kept: ConfigProvider requires QueryClientProvider + ApiProvider + loadInit chain;
+// this test already provides its own QueryClient/ApiProvider for the settings query.
 vi.mock("@/app/providers/config-provider", () => ({
   useConfigActions: () => ({
     refresh: mockRefresh,
   }),
 }));
 
+// Kept: module-level mutable state that leaks between tests if not mocked.
 vi.mock("@/lib/config-guards/config-guard-cache", () => ({
   setConfiguredGuardCache: vi.fn(),
 }));

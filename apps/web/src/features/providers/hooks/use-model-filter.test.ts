@@ -23,10 +23,6 @@ function modelIds(models: ModelInfo[]) {
   return models.map((model) => model.id);
 }
 
-function modelNames(models: ModelInfo[]) {
-  return models.map((model) => model.name);
-}
-
 describe("useModelFilter", () => {
   it("returns ordered models matching search text and tier filters", () => {
     const { result } = renderHook(() => useModelFilter(MODELS));
@@ -34,7 +30,7 @@ describe("useModelFilter", () => {
     expect(modelIds(result.current.filteredModels)).toEqual(["gpt-4", "gpt-35", "claude", "gemini"]);
 
     act(() => result.current.setSearchQuery("gpt"));
-    expect(modelNames(result.current.filteredModels)).toEqual(["GPT-4", "GPT-3.5"]);
+    expect(result.current.filteredModels.map((m) => m.name)).toEqual(["GPT-4", "GPT-3.5"]);
 
     act(() => result.current.setSearchQuery("anthropic"));
     expect(modelIds(result.current.filteredModels)).toEqual(["claude"]);

@@ -1,15 +1,10 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, renderHook, cleanup, act } from "@testing-library/react";
-import { StrictMode, useEffect, useState, type ReactNode } from "react";
-import { KeyboardProvider } from "../providers/keyboard-provider";
+import { useEffect, useState } from "react";
 import { useKeyboardContext } from "../context/keyboard-context";
 import { useKey } from "./use-key";
 import { useScope } from "./use-scope";
-import { fireKey as pressKey } from "../testing/test-utils";
-
-function Wrapper({ children }: { children: ReactNode }) {
-  return <KeyboardProvider>{children}</KeyboardProvider>;
-}
+import { fireKey as pressKey, KeyboardWrapper, StrictKeyboardWrapper } from "../testing/test-utils";
 
 describe("useScope", () => {
   afterEach(() => {
@@ -34,10 +29,10 @@ describe("useScope", () => {
     }
 
     const { rerender } = render(
-      <Wrapper>
+      <KeyboardWrapper>
         <GlobalConsumer />
         <ModalConsumer />
-      </Wrapper>,
+      </KeyboardWrapper>,
     );
 
     // While modal scope is active, only modal handlers fire
@@ -47,9 +42,9 @@ describe("useScope", () => {
 
     // Unmount the modal consumer — useScope cleanup pops "modal"
     rerender(
-      <Wrapper>
+      <KeyboardWrapper>
         <GlobalConsumer />
-      </Wrapper>,
+      </KeyboardWrapper>,
     );
 
     // After pop, global scope is active again
@@ -73,9 +68,9 @@ describe("useScope", () => {
     }
 
     render(
-      <Wrapper>
+      <KeyboardWrapper>
         <Consumer />
-      </Wrapper>,
+      </KeyboardWrapper>,
     );
 
     act(() => pressKey("Escape"));
@@ -95,11 +90,11 @@ describe("useScope", () => {
     }
 
     render(
-      <Wrapper>
+      <KeyboardWrapper>
         {handlers.map((_, index) => (
           <ScopedConsumer key={index} index={index} />
         ))}
-      </Wrapper>,
+      </KeyboardWrapper>,
     );
 
     act(() => pressKey("Escape"));
@@ -127,9 +122,9 @@ describe("useScope", () => {
     }
 
     render(
-      <Wrapper>
+      <KeyboardWrapper>
         <ParentScope />
-      </Wrapper>,
+      </KeyboardWrapper>,
     );
 
     act(() => pressKey("Escape"));
@@ -154,16 +149,16 @@ describe("useScope", () => {
     }
 
     const { rerender } = render(
-      <Wrapper>
+      <KeyboardWrapper>
         <Consumer enabled={false} />
-      </Wrapper>,
+      </KeyboardWrapper>,
     );
     expect(seen[seen.length - 1]).toBeNull();
 
     rerender(
-      <Wrapper>
+      <KeyboardWrapper>
         <Consumer enabled={true} />
-      </Wrapper>,
+      </KeyboardWrapper>,
     );
     expect(seen[seen.length - 1]).toBe("modal");
   });
@@ -178,18 +173,18 @@ describe("useScope", () => {
     }
 
     const { rerender } = render(
-      <Wrapper>
+      <KeyboardWrapper>
         <Modal enabled={false} />
-      </Wrapper>,
+      </KeyboardWrapper>,
     );
 
     act(() => pressKey("Escape"));
     expect(handler).not.toHaveBeenCalled();
 
     rerender(
-      <Wrapper>
+      <KeyboardWrapper>
         <Modal enabled={true} />
-      </Wrapper>,
+      </KeyboardWrapper>,
     );
 
     act(() => pressKey("Escape"));
@@ -206,18 +201,18 @@ describe("useScope", () => {
     }
 
     const { rerender } = render(
-      <Wrapper>
+      <KeyboardWrapper>
         <Modal enabled={true} />
-      </Wrapper>,
+      </KeyboardWrapper>,
     );
 
     act(() => pressKey("Escape"));
     expect(handler).toHaveBeenCalledTimes(1);
 
     rerender(
-      <Wrapper>
+      <KeyboardWrapper>
         <Modal enabled={false} />
-      </Wrapper>,
+      </KeyboardWrapper>,
     );
 
     act(() => pressKey("Escape"));
@@ -249,9 +244,9 @@ describe("useScope", () => {
     }
 
     render(
-      <Wrapper>
+      <KeyboardWrapper>
         <App />
-      </Wrapper>,
+      </KeyboardWrapper>,
     );
 
     act(() => pressKey("o"));
@@ -277,9 +272,9 @@ describe("useScope", () => {
     }
 
     render(
-      <Wrapper>
+      <KeyboardWrapper>
         <ParentWithKey />
-      </Wrapper>,
+      </KeyboardWrapper>,
     );
 
     act(() => pressKey("o"));
@@ -314,18 +309,18 @@ describe("useScope", () => {
     }
 
     const { rerender } = render(
-      <Wrapper>
+      <KeyboardWrapper>
         <App open={false} />
-      </Wrapper>,
+      </KeyboardWrapper>,
     );
 
     act(() => pressKey("o"));
     expect(parentHandler).toHaveBeenCalledOnce();
 
     rerender(
-      <Wrapper>
+      <KeyboardWrapper>
         <App open={true} />
-      </Wrapper>,
+      </KeyboardWrapper>,
     );
 
     act(() => pressKey("o"));
@@ -335,9 +330,9 @@ describe("useScope", () => {
     expect(childHandler).toHaveBeenCalledOnce();
 
     rerender(
-      <Wrapper>
+      <KeyboardWrapper>
         <App open={false} />
-      </Wrapper>,
+      </KeyboardWrapper>,
     );
 
     act(() => pressKey("o"));
@@ -353,18 +348,10 @@ describe("useScope", () => {
       return null;
     }
 
-    function StrictWrapper({ children }: { children: ReactNode }) {
-      return (
-        <StrictMode>
-          <KeyboardProvider>{children}</KeyboardProvider>
-        </StrictMode>
-      );
-    }
-
     const { unmount } = render(
-      <StrictWrapper>
+      <StrictKeyboardWrapper>
         <Consumer />
-      </StrictWrapper>,
+      </StrictKeyboardWrapper>,
     );
 
     act(() => pressKey("Escape"));
@@ -385,36 +372,28 @@ describe("useScope", () => {
       return null;
     }
 
-    function StrictWrapper({ children }: { children: ReactNode }) {
-      return (
-        <StrictMode>
-          <KeyboardProvider>{children}</KeyboardProvider>
-        </StrictMode>
-      );
-    }
-
     const { rerender } = render(
-      <StrictWrapper>
+      <StrictKeyboardWrapper>
         <Consumer enabled={true} />
-      </StrictWrapper>,
+      </StrictKeyboardWrapper>,
     );
 
     act(() => pressKey("Escape"));
     expect(handler).toHaveBeenCalledTimes(1);
 
     rerender(
-      <StrictWrapper>
+      <StrictKeyboardWrapper>
         <Consumer enabled={false} />
-      </StrictWrapper>,
+      </StrictKeyboardWrapper>,
     );
 
     act(() => pressKey("Escape"));
     expect(handler).toHaveBeenCalledTimes(1);
 
     rerender(
-      <StrictWrapper>
+      <StrictKeyboardWrapper>
         <Consumer enabled={true} />
-      </StrictWrapper>,
+      </StrictKeyboardWrapper>,
     );
 
     act(() => pressKey("Escape"));

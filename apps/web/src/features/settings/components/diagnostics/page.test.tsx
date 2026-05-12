@@ -1,8 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { KeyboardProvider } from "@diffgazer/keys";
-import { FooterProvider } from "@/components/layout";
+import { renderWithProviders } from "@/testing";
 import type { DiagnosticsData } from "@diffgazer/core/api/hooks";
 
 const {
@@ -23,6 +22,10 @@ vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
 }));
 
+// ConfigProvider requires QueryClientProvider + multiple API hooks (useInit,
+// useProviderStatus, etc.) whose setup would obscure the actual test intent
+// (diagnostics keyboard/refresh behavior). Mocking at this context boundary
+// provides the static config slice the page reads without that infrastructure.
 vi.mock("@/app/providers/config-provider", () => ({
   useConfigData: () => ({
     provider: "openrouter",
@@ -38,13 +41,7 @@ vi.mock("@diffgazer/core/api/hooks", () => ({
 import { DiagnosticsPage } from "./page";
 
 function renderPage() {
-  return render(
-    <FooterProvider>
-      <KeyboardProvider>
-        <DiagnosticsPage />
-      </KeyboardProvider>
-    </FooterProvider>,
-  );
+  return renderWithProviders(<DiagnosticsPage />);
 }
 
 function makeDiagnostics(overrides: Partial<DiagnosticsData> = {}): DiagnosticsData {

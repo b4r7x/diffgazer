@@ -8,6 +8,7 @@ import type { AIClient } from "../../shared/lib/ai/types.js";
 import type { AIError } from "../../shared/lib/ai/types.js";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import type { ParsedDiff } from "../../shared/lib/diff/types.js";
+import { makeIssue } from "../../shared/lib/testing/factories.js";
 import { parseDiff } from "../../shared/lib/diff/parser.js";
 import type { DrilldownAIResponse } from "./schemas.js";
 import type { z } from "zod";
@@ -85,26 +86,6 @@ async function loadReviewStorage() {
   return import("../../shared/lib/storage/reviews.js");
 }
 
-function makeIssue(overrides: Partial<ReviewIssue> = {}): ReviewIssue {
-  return {
-    id: "issue-1",
-    severity: "high",
-    category: "correctness",
-    title: "Test issue",
-    file: "src/app.ts",
-    line_start: 1,
-    line_end: 2,
-    rationale: "rationale",
-    recommendation: "fix it",
-    suggested_patch: null,
-    confidence: 0.9,
-    symptom: "symptom",
-    whyItMatters: "matters",
-    evidence: [],
-    ...overrides,
-  };
-}
-
 function makeMockClient(generateResult: Result<DrilldownAIResponse, AIError> = ok({
   detailedAnalysis: "analysis",
   rootCause: "cause",
@@ -145,7 +126,7 @@ async function saveReviewWithIssues(issues: ReviewIssue[]): Promise<void> {
 describe("drilldownIssue", () => {
   it("uses the parsed diff context and returns the AI analysis with trace events", async () => {
     const { drilldownIssue } = await loadDrilldown();
-    const issue = makeIssue();
+    const issue = makeIssue({ file: "src/app.ts", line_start: 1, line_end: 2 });
     const diff = parseDiff(DIFF);
     const client = makeMockClient();
     const events: unknown[] = [];

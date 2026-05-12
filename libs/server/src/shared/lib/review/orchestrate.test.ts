@@ -5,33 +5,8 @@ import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import type { ParsedDiff } from "../diff/types.js";
 import type { AIClient, AIError } from "../ai/types.js";
 import { orchestrateReview } from "./orchestrate.js";
+import { makeIssue } from "../testing/factories.js";
 import type { z } from "zod";
-
-const makeIssue = (id: string, file: string, overrides: Partial<ReviewIssue> = {}): ReviewIssue => ({
-  id,
-  severity: "high",
-  category: "correctness",
-  title: `Issue ${id}`,
-  file,
-  line_start: 1,
-  line_end: 1,
-  rationale: "Test rationale",
-  recommendation: "Test recommendation",
-  suggested_patch: null,
-  confidence: 0.9,
-  symptom: "Test symptom",
-  whyItMatters: "Test impact",
-  evidence: [
-    {
-      type: "code",
-      title: "Test evidence",
-      sourceId: "test-evidence",
-      file,
-      excerpt: "const value = 1;",
-    },
-  ],
-  ...overrides,
-});
 
 const makeDiff = (files: string[]): ParsedDiff => ({
   files: files.map((filePath) => ({
@@ -97,8 +72,8 @@ describe("orchestrateReview", () => {
 
   it("returns sorted, deduplicated issues and complete orchestration metadata", async () => {
     const events: Array<Record<string, unknown>> = [];
-    const sharedIssue = makeIssue("dup-1", "src/a.ts");
-    const lowIssue = makeIssue("low-1", "src/b.ts", { severity: "low" });
+    const sharedIssue = makeIssue({ id: "dup-1", file: "src/a.ts" });
+    const lowIssue = makeIssue({ id: "low-1", file: "src/b.ts", severity: "low" });
     const client = makeClient([
       ok({ summary: "Correctness summary", issues: [sharedIssue] }),
       ok({ summary: "Security summary", issues: [{ ...sharedIssue, id: "dup-2" }, lowIssue] }),
@@ -135,7 +110,7 @@ describe("orchestrateReview", () => {
 
   it("keeps successful lens output and reports failed lenses", async () => {
     const client = makeClient([
-      ok({ summary: "Found correctness issues", issues: [makeIssue("issue-1", "src/a.ts")] }),
+      ok({ summary: "Found correctness issues", issues: [makeIssue({ id: "issue-1", file: "src/a.ts" })] }),
       err({ code: "MODEL_ERROR", message: "Second lens failed" }),
     ]);
 
@@ -197,8 +172,8 @@ describe("orchestrateReview", () => {
       ok({
         summary: "Mixed severities",
         issues: [
-          makeIssue("high-1", "src/a.ts", { severity: "high" }),
-          makeIssue("low-1", "src/a.ts", { severity: "low" }),
+          makeIssue({ id: "high-1", file: "src/a.ts", severity: "high" }),
+          makeIssue({ id: "low-1", file: "src/a.ts", severity: "low" }),
         ],
       }),
     ]);

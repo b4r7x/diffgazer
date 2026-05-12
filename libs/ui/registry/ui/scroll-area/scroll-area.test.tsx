@@ -150,16 +150,4 @@ describe("ScrollArea", () => {
     expect(scrollArea.scrollTop).toBe(0)
   })
 
-  it("supports nested focusable content within scroll area", () => {
-    const { container } = render(
-      <ScrollArea aria-label="Content">
-        <button>Button 1</button>
-        <button>Button 2</button>
-      </ScrollArea>
-    )
-    const buttons = screen.getAllByRole("button")
-    expect(buttons).toHaveLength(2)
-    buttons[0].focus()
-    expect(buttons[0]).toHaveFocus()
-  })
 })

@@ -2,27 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import type { IssueTab } from "@diffgazer/core/schemas/ui";
+import { makeIssue } from "@/testing";
 import { IssueDetailsPane } from "./issue-details-pane";
-
-function makeIssue(suggestedPatch: string | null): ReviewIssue {
-  return {
-    id: "issue-1",
-    severity: "high",
-    category: "correctness",
-    title: "Incorrect value",
-    file: "src/example.ts",
-    line_start: 1,
-    line_end: 1,
-    rationale: "The value is stale.",
-    recommendation: "Update the value.",
-    suggested_patch: suggestedPatch,
-    confidence: 0.9,
-    symptom: "Wrong value",
-    whyItMatters: "Users see the wrong value.",
-    evidence: [],
-    trace: [],
-  };
-}
 
 function renderPane(issue: ReviewIssue | null, activeTab: IssueTab = "details") {
   return render(
@@ -47,7 +28,7 @@ describe("IssueDetailsPane", () => {
   });
 
   it("keeps multi-file suggested patches visible instead of dropping later files", () => {
-    renderPane(makeIssue([
+    renderPane(makeIssue({ suggested_patch: [
       "diff --git a/src/a.ts b/src/a.ts",
       "--- a/src/a.ts",
       "+++ b/src/a.ts",
@@ -60,20 +41,20 @@ describe("IssueDetailsPane", () => {
       "@@ -1 +1 @@",
       "-oldB",
       "+newB",
-    ].join("\n")), "patch");
+    ].join("\n") }), "patch");
 
     expect(screen.queryByText("No changes")).not.toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Suggested patch" })).toHaveTextContent("newB");
   });
 
   it("keeps loose hunk snippets visible when they are not parseable unified diffs", () => {
-    renderPane(makeIssue([
+    renderPane(makeIssue({ suggested_patch: [
       "--- a/src/example.ts",
       "+++ b/src/example.ts",
       "@@",
       "-const value = 1;",
       "+const value = 2;",
-    ].join("\n")), "patch");
+    ].join("\n") }), "patch");
 
     expect(screen.queryByText("No changes")).not.toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Suggested patch" })).toHaveTextContent("const value = 2");

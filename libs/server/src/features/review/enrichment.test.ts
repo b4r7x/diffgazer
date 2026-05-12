@@ -1,21 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { enrichIssues, type EnrichGitService } from "./enrichment.js";
-import type { ReviewIssue } from "@diffgazer/core/schemas/review";
-
-const makeIssue = (overrides: Partial<ReviewIssue> = {}): ReviewIssue =>
-  ({
-    id: "issue-1",
-    file: "src/index.ts",
-    severity: "high",
-    title: "Test issue",
-    description: "desc",
-    lens: "correctness",
-    line_start: 10,
-    line_end: 15,
-    suggestion: null,
-    enrichment: null,
-    ...overrides,
-  }) as ReviewIssue;
+import { makeIssue } from "../../shared/lib/testing/factories.js";
 
 const makeMockGitService = (): EnrichGitService => ({
   getBlame: vi.fn().mockResolvedValue({
@@ -69,12 +54,12 @@ describe("enrichIssues", () => {
     const blameEvents = onEvent.mock.calls.filter(
       ([e]) => e.enrichmentType === "blame",
     );
-    expect(blameEvents).toHaveLength(2); // started + complete
+    expect(blameEvents.map(([e]) => e.status)).toEqual(["started", "complete"]);
 
     const contextEvents = onEvent.mock.calls.filter(
       ([e]) => e.enrichmentType === "context",
     );
-    expect(contextEvents).toHaveLength(2); // started + complete
+    expect(contextEvents.map(([e]) => e.status)).toEqual(["started", "complete"]);
   });
 
   it("should skip blame/context for issues without line_start", async () => {

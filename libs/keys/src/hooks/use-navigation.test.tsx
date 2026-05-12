@@ -70,14 +70,15 @@ describe("useNavigation", () => {
     cleanup();
   });
 
-  it("navigates options with arrow keys, wraps, and reports non-wrapping boundaries with event/key", async () => {
+  it("wraps navigation when reaching list boundaries", async () => {
     render(<TestList defaultHighlighted="a" />);
-    let user = await focusListbox();
+    const user = await focusListbox();
 
     await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}{ArrowUp}");
     expectActiveOptionText("c");
+  });
 
-    cleanup();
+  it("reports non-wrapping boundary callbacks with event and key arguments", async () => {
     const onNavigationBoundaryReached = vi.fn();
     render(
       <TestList
@@ -86,7 +87,7 @@ describe("useNavigation", () => {
         onNavigationBoundaryReached={onNavigationBoundaryReached}
       />,
     );
-    user = await focusListbox();
+    const user = await focusListbox();
 
     await user.keyboard("{ArrowDown}");
     expect(onNavigationBoundaryReached).toHaveBeenCalledWith("next", expect.any(KeyboardEvent), "ArrowDown");
@@ -179,54 +180,55 @@ describe("useNavigation", () => {
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "Two" }));
   });
 
-  it("scopes navigation to the owning container by default", async () => {
-    function NativeRadioGroups({ scopeToContainer }: { scopeToContainer?: boolean }) {
-      const ref = useRef<HTMLDivElement>(null);
-      const result = useNavigation({
-        containerRef: ref,
-        role: "radio",
-        defaultHighlighted: "outer-a",
-        scopeToContainer,
-      });
+  function NativeRadioGroups({ scopeToContainer }: { scopeToContainer?: boolean }) {
+    const ref = useRef<HTMLDivElement>(null);
+    const result = useNavigation({
+      containerRef: ref,
+      role: "radio",
+      defaultHighlighted: "outer-a",
+      scopeToContainer,
+    });
 
-      return (
-        <div
-          ref={ref}
-          role="radiogroup"
-          aria-label="Outer choices"
-          aria-activedescendant={result.highlighted === null ? undefined : itemId(result.highlighted)}
-          tabIndex={0}
-          onKeyDown={result.onKeyDown}
-        >
+    return (
+      <div
+        ref={ref}
+        role="radiogroup"
+        aria-label="Outer choices"
+        aria-activedescendant={result.highlighted === null ? undefined : itemId(result.highlighted)}
+        tabIndex={0}
+        onKeyDown={result.onKeyDown}
+      >
+        <label>
+          <input id="item-outer-a" type="radio" data-value="outer-a" />
+          Outer A
+        </label>
+        <div role="radiogroup" aria-label="Nested choices">
           <label>
-            <input id="item-outer-a" type="radio" data-value="outer-a" />
-            Outer A
-          </label>
-          <div role="radiogroup" aria-label="Nested choices">
-            <label>
-              <input id="item-inner-a" type="radio" data-value="inner-a" />
-              Inner A
-            </label>
-          </div>
-          <label>
-            <input id="item-outer-b" type="radio" data-value="outer-b" />
-            Outer B
+            <input id="item-inner-a" type="radio" data-value="inner-a" />
+            Inner A
           </label>
         </div>
-      );
-    }
+        <label>
+          <input id="item-outer-b" type="radio" data-value="outer-b" />
+          Outer B
+        </label>
+      </div>
+    );
+  }
 
+  it("scopes navigation to the owning container by default", async () => {
     render(<NativeRadioGroups />);
-    let user = userEvent.setup();
+    const user = userEvent.setup();
     await user.click(screen.getByRole("radiogroup", { name: "Outer choices" }));
     await user.keyboard("{ArrowDown}");
     expect(screen.getByRole("radiogroup", { name: "Outer choices" }).getAttribute("aria-activedescendant")).toBe(
       "item-outer-b",
     );
+  });
 
-    cleanup();
+  it("navigates into nested containers when scopeToContainer is false", async () => {
     render(<NativeRadioGroups scopeToContainer={false} />);
-    user = userEvent.setup();
+    const user = userEvent.setup();
     await user.click(screen.getByRole("radiogroup", { name: "Outer choices" }));
     await user.keyboard("{ArrowDown}");
     expect(screen.getByRole("radiogroup", { name: "Outer choices" }).getAttribute("aria-activedescendant")).toBe(
@@ -275,7 +277,7 @@ describe("useNavigation", () => {
     );
   });
 
-  it("activates highlighted and focused items with Space and Enter", async () => {
+  it("activates virtual highlighted item with Space and Enter on listbox", async () => {
     const onSelect = vi.fn();
     const onEnter = vi.fn();
     render(<TestList defaultHighlighted="b" onSelect={onSelect} onEnter={onEnter} />);
@@ -285,8 +287,9 @@ describe("useNavigation", () => {
 
     expect(onSelect).toHaveBeenCalledWith("b", expect.any(KeyboardEvent));
     expect(onEnter).toHaveBeenCalledWith("b", expect.any(KeyboardEvent));
+  });
 
-    cleanup();
+  it("activates focused item with Space in a real DOM focus action list", async () => {
     const onFocusedSelect = vi.fn();
     render(
       <div>
@@ -311,39 +314,42 @@ describe("useNavigation", () => {
     expect(screen.getByRole("option", { name: "Empty" }).getAttribute("aria-selected")).toBe("true");
   });
 
-  it("honors disabled, controlled, and custom key options", async () => {
+  it("ignores navigation and activation when enabled is false", async () => {
     const onSelect = vi.fn();
-    const onHighlightChange = vi.fn();
     render(<TestList defaultHighlighted="a" enabled={false} onSelect={onSelect} />);
-    let user = await focusListbox();
+    const user = await focusListbox();
 
     await user.keyboard("{ArrowDown} ");
     expectActiveOptionText("a");
     expect(onSelect).not.toHaveBeenCalled();
+  });
 
-    cleanup();
+  it("delegates highlight changes to onHighlightChange in controlled mode", async () => {
+    const onHighlightChange = vi.fn();
     render(<TestList highlighted="b" onHighlightChange={onHighlightChange} />);
-    user = await focusListbox();
+    const user = await focusListbox();
     await user.keyboard("{ArrowDown}");
     expect(onHighlightChange).toHaveBeenCalledWith("c");
+  });
 
-    cleanup();
+  it("navigates with custom upKeys and downKeys", async () => {
     render(<TestList defaultHighlighted="a" upKeys={["ArrowUp", "k"]} downKeys={["ArrowDown", "j"]} />);
-    user = await focusListbox();
+    const user = await focusListbox();
     await user.keyboard("j");
     expectActiveOptionText("b");
     await user.keyboard("k");
     expectActiveOptionText("a");
   });
 
-  it("supports horizontal navigation and skips disabled items by default", async () => {
+  it("navigates with ArrowRight and ArrowLeft in horizontal orientation", async () => {
     render(<TestList defaultHighlighted="a" orientation="horizontal" />);
-    let user = await focusListbox();
+    const user = await focusListbox();
 
     await user.keyboard("{ArrowRight}{ArrowLeft}{ArrowDown}");
     expectActiveOptionText("a");
+  });
 
-    cleanup();
+  it("skips disabled items by default", async () => {
     function DisabledItemList({ skipDisabled }: { skipDisabled?: boolean }) {
       const ref = useRef<HTMLDivElement>(null);
       const result = useNavigation({
@@ -370,13 +376,39 @@ describe("useNavigation", () => {
     }
 
     render(<DisabledItemList />);
-    user = await focusListbox();
+    const user = await focusListbox();
     await user.keyboard("{ArrowDown}");
     expectActiveOptionText("C");
+  });
 
-    cleanup();
+  it("navigates to disabled items when skipDisabled is false", async () => {
+    function DisabledItemList({ skipDisabled }: { skipDisabled?: boolean }) {
+      const ref = useRef<HTMLDivElement>(null);
+      const result = useNavigation({
+        containerRef: ref,
+        role: "option",
+        defaultHighlighted: "a",
+        skipDisabled,
+      });
+
+      return (
+        <div
+          ref={ref}
+          role="listbox"
+          aria-label="Items"
+          aria-activedescendant={result.highlighted === null ? undefined : itemId(result.highlighted)}
+          tabIndex={0}
+          onKeyDown={result.onKeyDown}
+        >
+          <div id="item-a" role="option" data-value="a">A</div>
+          <div id="item-b" role="option" data-value="b" aria-disabled="true">B</div>
+          <div id="item-c" role="option" data-value="c">C</div>
+        </div>
+      );
+    }
+
     render(<DisabledItemList skipDisabled={false} />);
-    user = await focusListbox();
+    const user = await focusListbox();
     await user.keyboard("{ArrowDown}");
     expectActiveOptionText("B");
   });
@@ -692,7 +724,7 @@ describe("useNavigation", () => {
   });
 
   describe("role-only items without data-value", () => {
-    it("ignores role-only items without reporting an empty-list boundary", async () => {
+    it("ignores role-only items without data-value during navigation", async () => {
       function RoleOnlyList() {
         const ref = useRef<HTMLDivElement>(null);
         const result = useNavigation({
@@ -715,6 +747,18 @@ describe("useNavigation", () => {
           </div>
         );
       }
+
+      render(<RoleOnlyList />);
+      const listbox = screen.getByRole("listbox", { name: "Items" });
+      listbox.focus();
+
+      const user = userEvent.setup();
+      await user.keyboard("{ArrowDown}{ArrowDown}");
+
+      expect(listbox.getAttribute("aria-activedescendant")).toBeNull();
+    });
+
+    it("does not fire boundary callback for empty navigable lists", async () => {
       const onBoundary = vi.fn();
       function HostList() {
         const ref = useRef<HTMLDivElement>(null);
@@ -740,19 +784,10 @@ describe("useNavigation", () => {
         );
       }
 
-      render(<RoleOnlyList />);
-      const listbox = screen.getByRole("listbox", { name: "Items" });
-      listbox.focus();
-
-      const user = userEvent.setup();
-      await user.keyboard("{ArrowDown}{ArrowDown}");
-
-      expect(listbox.getAttribute("aria-activedescendant")).toBeNull();
-
-      cleanup();
       render(<HostList />);
       const host = screen.getByRole("listbox", { name: "Items" });
       host.focus();
+      const user = userEvent.setup();
       await user.keyboard("{ArrowDown}");
 
       expect(host.getAttribute("aria-activedescendant")).toBeNull();

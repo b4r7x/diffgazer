@@ -57,26 +57,16 @@ describe("copyArtifactsToPackage", () => {
     const sourceRoot = createTempDir();
     const packageRoot = createTempDir();
 
-    expect(() =>
-      copyArtifactsToPackage({
-        sourceRoot,
-        packageRoot,
-        label: "test-lib",
-        rebuildHint: "pnpm --filter test-lib build:artifacts",
-      }),
-    ).toThrow("test-lib artifacts not found");
-
-    // rebuildHint is included in the error message
-    try {
+    const call = () =>
       copyArtifactsToPackage({
         sourceRoot,
         packageRoot,
         label: "test-lib",
         rebuildHint: "pnpm --filter test-lib build:artifacts",
       });
-    } catch (e) {
-      expect((e as Error).message).toContain("pnpm --filter test-lib build:artifacts");
-    }
+
+    expect(call).toThrow("test-lib artifacts not found");
+    expect(call).toThrow("pnpm --filter test-lib build:artifacts");
   });
 
   it("throws when artifact-manifest.json is missing and validateManifest is true", () => {

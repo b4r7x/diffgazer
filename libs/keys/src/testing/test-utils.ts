@@ -8,3 +8,5 @@ export function fireKey(key: string, options?: Partial<KeyboardEventInit>): Keyb
   window.dispatchEvent(event);
   return event;
 }
+
+export { KeyboardWrapper, StrictKeyboardWrapper } from "./wrappers.js";

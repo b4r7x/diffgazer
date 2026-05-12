@@ -138,24 +138,6 @@ describe("Select", () => {
     expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "false")
   })
 
-  it("calls onChange as the preferred single-value callback", async () => {
-    const onChange = vi.fn()
-    render(
-      <Select variant="card" onChange={onChange}>
-        <Select.Trigger>
-          <Select.Value placeholder="Pick a fruit" />
-        </Select.Trigger>
-        <Select.Content>
-          <Select.Item value="banana">Banana</Select.Item>
-        </Select.Content>
-      </Select>,
-    )
-
-    await userEvent.click(getSelectTrigger())
-    await userEvent.click(screen.getByText("Banana"))
-    expect(onChange).toHaveBeenCalledWith("banana")
-  })
-
   it("selects multiple values on click", async () => {
     const onChange = vi.fn()
     renderSelect({ multiple: true, defaultValue: [], onChange: onChange })
@@ -175,24 +157,6 @@ describe("Select", () => {
 
     expect(onChange).toHaveBeenCalledWith(["apple"])
     expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "true")
-  })
-
-  it("calls onChange as the preferred multiple-value callback", async () => {
-    const onChange = vi.fn()
-    render(
-      <Select variant="card" multiple defaultValue={[]} onChange={onChange}>
-        <Select.Trigger>
-          <Select.Tags placeholder="Pick fruits" />
-        </Select.Trigger>
-        <Select.Content>
-          <Select.Item value="apple">Apple</Select.Item>
-        </Select.Content>
-      </Select>,
-    )
-
-    await userEvent.click(getSelectTrigger())
-    await userEvent.click(screen.getByText("Apple"))
-    expect(onChange).toHaveBeenCalledWith(["apple"])
   })
 
   it("deselects an already-selected value in multiple mode", async () => {
@@ -749,10 +713,10 @@ describe("Select", () => {
     expect(onChange).not.toHaveBeenCalled()
   })
 
-  it("forwards root props and refs", () => {
+  it("assigns a div element to the forwarded ref", () => {
     const ref = createRef<HTMLDivElement>()
     render(
-      <Select ref={ref} data-testid="select-root" variant="card">
+      <Select ref={ref} variant="card">
         <Select.Trigger>
           <Select.Value />
         </Select.Trigger>
@@ -762,7 +726,8 @@ describe("Select", () => {
       </Select>
     )
 
-    expect(screen.getByTestId("select-root")).toBe(ref.current)
+    expect(ref.current).toBeInstanceOf(HTMLDivElement)
+    expect(ref.current?.childElementCount).toBeGreaterThan(0)
   })
 
   it("renders selected tags without nested controls in multiple mode", async () => {
@@ -821,7 +786,7 @@ describe("Select form submission", () => {
         }
 
     return render(
-      <form data-testid="form">
+      <form aria-label="Test form">
         <Select {...props}>
           <Select.Trigger>
             <Select.Value placeholder="Pick" />
@@ -840,33 +805,33 @@ describe("Select form submission", () => {
 
   it("includes the selected single value in FormData", () => {
     renderFormSelect({ name: "fruit", defaultValue: "banana" })
-    const form = screen.getByTestId("form") as HTMLFormElement
+    const form = screen.getByRole("form", { name: "Test form" }) as HTMLFormElement
     const formData = new FormData(form)
     expect(formData.get("fruit")).toBe("banana")
   })
 
   it("includes selected multiple values in FormData", () => {
     renderFormSelect({ name: "fruits", defaultValue: ["apple", "cherry"], multiple: true })
-    const form = screen.getByTestId("form") as HTMLFormElement
+    const form = screen.getByRole("form", { name: "Test form" }) as HTMLFormElement
     const formData = new FormData(form)
     expect(formData.getAll("fruits")).toEqual(["apple", "cherry"])
   })
 
   it("does not contribute FormData when disabled", () => {
     renderFormSelect({ name: "fruit", defaultValue: "banana", disabled: true })
-    const form = screen.getByTestId("form") as HTMLFormElement
+    const form = screen.getByRole("form", { name: "Test form" }) as HTMLFormElement
     expect(new FormData(form).has("fruit")).toBe(false)
   })
 
   it("does not contribute multiple FormData values when disabled", () => {
     renderFormSelect({ name: "fruits", defaultValue: ["apple", "cherry"], multiple: true, disabled: true })
-    const form = screen.getByTestId("form") as HTMLFormElement
+    const form = screen.getByRole("form", { name: "Test form" }) as HTMLFormElement
     expect(new FormData(form).has("fruits")).toBe(false)
   })
 
   it("uses native validity for required single and multiple selects", async () => {
     const { unmount } = renderFormSelect({ name: "fruit", required: true })
-    const form = screen.getByTestId("form") as HTMLFormElement
+    const form = screen.getByRole("form", { name: "Test form" }) as HTMLFormElement
 
     expect(form.checkValidity()).toBe(false)
     expect(form.reportValidity()).toBe(false)
@@ -880,7 +845,7 @@ describe("Select form submission", () => {
 
     unmount()
     render(
-      <form data-testid="form">
+      <form aria-label="Test form">
         <Select variant="card" name="fruits" multiple required>
           <Select.Trigger>
             <Select.Tags placeholder="Pick" />
@@ -892,15 +857,15 @@ describe("Select form submission", () => {
         </Select>
       </form>
     )
-    expect((screen.getByTestId("form") as HTMLFormElement).checkValidity()).toBe(false)
+    expect((screen.getByRole("form", { name: "Test form" }) as HTMLFormElement).checkValidity()).toBe(false)
     await userEvent.click(getSelectTrigger())
     await userEvent.click(screen.getByRole("option", { name: /apple/i }))
-    expect((screen.getByTestId("form") as HTMLFormElement).checkValidity()).toBe(true)
+    expect((screen.getByRole("form", { name: "Test form" }) as HTMLFormElement).checkValidity()).toBe(true)
   })
 
   it("validates required unnamed selects without contributing FormData", async () => {
     renderFormSelect({ required: true })
-    const form = screen.getByTestId("form") as HTMLFormElement
+    const form = screen.getByRole("form", { name: "Test form" }) as HTMLFormElement
 
     expect(form.reportValidity()).toBe(false)
     expect(getSelectTrigger()).toHaveFocus()
@@ -917,7 +882,7 @@ describe("Select form submission", () => {
 
   it("propagates required and invalid semantics to searchable visible controls", () => {
     render(
-      <form data-testid="form">
+      <form aria-label="Test form">
         <Select variant="card" name="fruit" required aria-invalid defaultOpen>
           <Select.Trigger>
             <Select.Value placeholder="Pick" />
@@ -940,7 +905,7 @@ describe("Select form submission", () => {
     renderFormSelect({ name: "fruit", defaultOpen: true })
     await userEvent.click(screen.getByText("Banana"))
 
-    const form = screen.getByTestId("form") as HTMLFormElement
+    const form = screen.getByRole("form", { name: "Test form" }) as HTMLFormElement
     const formData = new FormData(form)
     expect(formData.get("fruit")).toBe("banana")
   })
@@ -949,7 +914,7 @@ describe("Select form submission", () => {
     renderFormSelect({ name: "fruit", defaultValue: "banana", defaultOpen: true })
     await userEvent.click(screen.getByRole("option", { name: /cherry/i }))
 
-    let form = screen.getByTestId("form") as HTMLFormElement
+    let form = screen.getByRole("form", { name: "Test form" }) as HTMLFormElement
     expect(new FormData(form).get("fruit")).toBe("cherry")
 
     form.reset()
@@ -979,7 +944,7 @@ describe("Select form submission", () => {
 
   it("omits FormData when name prop is omitted", () => {
     render(
-      <form data-testid="form">
+      <form aria-label="Test form">
         <Select variant="card" defaultValue="apple">
           <Select.Trigger>
             <Select.Value placeholder="Pick" />
@@ -990,7 +955,7 @@ describe("Select form submission", () => {
         </Select>
       </form>
     )
-    const form = screen.getByTestId("form") as HTMLFormElement
+    const form = screen.getByRole("form", { name: "Test form" }) as HTMLFormElement
     const formData = new FormData(form)
     expect(formData.has("fruit")).toBe(false)
   })

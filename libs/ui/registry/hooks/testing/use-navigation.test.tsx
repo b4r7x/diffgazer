@@ -1,9 +1,7 @@
+import { useNavigation } from "@/hooks/use-navigation";
 import { useNavigation as keysUseNavigation } from "@diffgazer/keys";
-import { describe, expect, it } from "vitest";
-import { useNavigation } from "../use-navigation";
+import { expect, it } from "vitest";
 
-describe("useNavigation registry export", () => {
-  it("re-exports the keys navigation hook", () => {
-    expect(useNavigation).toBe(keysUseNavigation);
-  });
+it("re-exports the keys useNavigation without wrapping", () => {
+  expect(useNavigation).toBe(keysUseNavigation);
 });

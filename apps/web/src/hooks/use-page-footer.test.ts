@@ -30,7 +30,7 @@ function renderPageFooter(props: PageFooterSubjectProps) {
   );
 }
 
-function renderPageFooterSubject(props: PageFooterSubjectProps) {
+function createPageFooterElement(props: PageFooterSubjectProps) {
   return createElement(
     FooterProvider,
     null,
@@ -59,7 +59,7 @@ describe("usePageFooter", () => {
     await screen.findByText("Confirm");
 
     rerender(
-      renderPageFooterSubject({
+      createPageFooterElement({
         shortcuts: [{ key: "Enter", label: "Confirm", disabled: true }],
       }),
     );

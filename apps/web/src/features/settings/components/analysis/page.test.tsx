@@ -1,8 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { KeyboardProvider } from "@diffgazer/keys";
-import { FooterProvider } from "@/components/layout";
+import { renderWithProviders } from "@/testing";
 
 const {
   allLenses,
@@ -42,13 +41,7 @@ vi.mock("@diffgazer/core/api/hooks", () => ({
 import { SettingsAnalysisPage } from "./page";
 
 function renderPage() {
-  return render(
-    <FooterProvider>
-      <KeyboardProvider>
-        <SettingsAnalysisPage />
-      </KeyboardProvider>
-    </FooterProvider>,
-  );
+  return renderWithProviders(<SettingsAnalysisPage />);
 }
 
 async function moveFromSelectedLensToFooter(user: ReturnType<typeof userEvent.setup>) {

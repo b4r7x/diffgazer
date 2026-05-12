@@ -400,4 +400,17 @@ describe("target-path install closure validation", () => {
 
     expect(brokenImportFound).toBe(true);
   });
+
+  it("declares react as a peer dependency and exports the main entry point", () => {
+    const pkgPath = resolve(KEYS_ROOT, "package.json");
+    const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
+
+    expect(pkg.peerDependencies).toBeDefined();
+    expect(pkg.peerDependencies.react).toBeDefined();
+
+    expect(pkg.exports).toBeDefined();
+    expect(pkg.exports["."]).toBeDefined();
+    expect(pkg.exports["."].types).toBeDefined();
+    expect(pkg.exports["."].import).toBeDefined();
+  });
 });

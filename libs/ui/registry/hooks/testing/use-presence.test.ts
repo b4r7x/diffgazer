@@ -36,10 +36,8 @@ describe("usePresence", () => {
     )
 
     rerender({ open: false })
-    // Should be in "closing" phase — still present
     expect(result.current.present).toBe(true)
 
-    // Fire animation end
     act(() => {
       result.current.onAnimationEnd({ target: null } as unknown as AnimationEvent)
     })
@@ -58,7 +56,6 @@ describe("usePresence", () => {
     rerender({ open: false })
     expect(result.current.present).toBe(true)
 
-    // Fire from wrong target
     act(() => {
       result.current.onAnimationEnd({
         target: document.createElement("span"),
@@ -66,7 +63,6 @@ describe("usePresence", () => {
     })
     expect(result.current.present).toBe(true)
 
-    // Fire from correct target
     act(() => {
       result.current.onAnimationEnd({
         target: ref.current,
@@ -100,11 +96,9 @@ describe("usePresence", () => {
       { initialProps: { open: true } },
     )
 
-    // Enter closing phase
     rerender({ open: false })
     expect(result.current.exiting).toBe(true)
 
-    // Re-open before animation ends
     rerender({ open: true })
     expect(result.current.present).toBe(true)
     expect(result.current.exiting).toBe(false)

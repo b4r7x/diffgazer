@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import type { Lens, ReviewIssue } from "@diffgazer/core/schemas/review";
+import type { Lens } from "@diffgazer/core/schemas/review";
 import type { ParsedDiff, FileDiff } from "../diff/types.js";
 import {
   buildDrilldownPrompt,
@@ -8,6 +8,7 @@ import {
   DEFAULT_RUBRIC,
   SECURITY_HARDENING_PROMPT,
 } from "./prompts.js";
+import { makeIssue } from "../testing/factories.js";
 
 function makeDiff(overrides: Partial<FileDiff> = {}): ParsedDiff {
   const file: FileDiff = {
@@ -33,26 +34,6 @@ function makeLens(overrides: Partial<Lens> = {}): Lens {
     severityRubric: DEFAULT_RUBRIC,
     ...overrides,
   } as Lens;
-}
-
-function makeIssue(overrides: Partial<ReviewIssue> = {}): ReviewIssue {
-  return {
-    id: "correctness_null_1",
-    severity: "high",
-    category: "correctness",
-    title: "Null reference",
-    file: "test.ts",
-    line_start: 5,
-    line_end: 10,
-    rationale: "Variable may be null",
-    recommendation: "Add null check",
-    suggested_patch: null,
-    confidence: 0.9,
-    symptom: "Crash on null access",
-    whyItMatters: "Runtime crash",
-    evidence: [],
-    ...overrides,
-  };
 }
 
 describe("buildReviewPrompt", () => {
@@ -191,7 +172,7 @@ describe("buildDrilldownPrompt", () => {
   });
 
   it("includes the required drilldown prompt sections", () => {
-    const prompt = buildDrilldownPrompt(makeIssue(), makeDiff(), [makeIssue()]);
+    const prompt = buildDrilldownPrompt(makeIssue({ file: "test.ts" }), makeDiff(), [makeIssue({ file: "test.ts" })]);
 
     for (const section of [
       SECURITY_HARDENING_PROMPT,

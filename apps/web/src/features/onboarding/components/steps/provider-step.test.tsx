@@ -3,11 +3,8 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AVAILABLE_PROVIDERS } from "@diffgazer/core/schemas/config";
 import type { AIProvider } from "@diffgazer/core/schemas/config";
+import { escapeRegExp } from "@/testing";
 import { ProviderStep } from "./provider-step";
-
-function escapeRegExp(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
 
 describe("ProviderStep", () => {
   it("commits the current selected provider when Enter is pressed", async () => {

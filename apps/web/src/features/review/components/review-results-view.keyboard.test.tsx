@@ -202,6 +202,8 @@ describe("ReviewResultsView keyboard regression", () => {
     try {
       renderView();
 
+      // Direct .focus() is necessary here: the scrollBy monkey-patch prevents
+      // the component's auto-focus effect from running before keyboard events.
       screen.getByRole("listbox").focus();
       await user.keyboard("{ArrowRight}");
       expect(screen.getByRole("tab", { name: "Details" })).toHaveAttribute("aria-selected", "true");
@@ -210,6 +212,7 @@ describe("ReviewResultsView keyboard regression", () => {
       await user.keyboard("{ArrowDown}");
       await user.keyboard("{ArrowUp}");
 
+      // jsdom has no scroll layout; mock verifies direction intent
       const [downScroll, upScroll] = scrollBy.mock.calls.map(([options]) => options as ScrollToOptions);
       expect(downScroll?.top).toBeGreaterThan(0);
       expect(upScroll?.top).toBeLessThan(0);

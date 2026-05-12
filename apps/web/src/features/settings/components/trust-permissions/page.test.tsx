@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { KeyboardProvider } from "@diffgazer/keys";
+import { renderWithProviders } from "@/testing";
 import type { TrustConfig } from "@diffgazer/core/schemas/config";
 
 const { mockNavigate, mockSaveTrust, mockDeleteTrust, mockConfigData } = vi.hoisted(() => ({
@@ -19,10 +19,11 @@ vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
 }));
 
-vi.mock("@/hooks/use-page-footer", () => ({
-  usePageFooter: () => {},
-}));
-
+// ConfigProvider requires QueryClientProvider + multiple API hooks (useInit,
+// useProviderStatus, etc.) and the test mutates mockConfigData between rerenders
+// to simulate async trust arrival — a pattern that's impractical to reproduce
+// through the real provider's query lifecycle. Mocking at this context boundary
+// keeps the async-data-arrival tests readable.
 vi.mock("@/app/providers/config-provider", () => ({
   useConfigData: () => mockConfigData,
 }));
@@ -41,11 +42,7 @@ vi.mock("@diffgazer/core/api/hooks", () => ({
 import { TrustPermissionsPage } from "./page";
 
 function renderPage() {
-  return render(
-    <KeyboardProvider>
-      <TrustPermissionsPage />
-    </KeyboardProvider>,
-  );
+  return renderWithProviders(<TrustPermissionsPage />);
 }
 
 describe("TrustPermissionsPage", () => {
@@ -73,11 +70,7 @@ describe("TrustPermissionsPage", () => {
       capabilities: { readFiles: true, runCommands: false },
     };
 
-    rerender(
-      <KeyboardProvider>
-        <TrustPermissionsPage />
-      </KeyboardProvider>,
-    );
+    rerender(<TrustPermissionsPage />);
 
     expect(screen.getByRole("checkbox", { name: /repository access/i })).toHaveAttribute("aria-checked", "true");
   });
@@ -99,11 +92,7 @@ describe("TrustPermissionsPage", () => {
       capabilities: { readFiles: false, runCommands: false },
     };
 
-    rerender(
-      <KeyboardProvider>
-        <TrustPermissionsPage />
-      </KeyboardProvider>,
-    );
+    rerender(<TrustPermissionsPage />);
 
     expect(screen.getByRole("checkbox", { name: /repository access/i })).toHaveAttribute("aria-checked", "false");
     expect(saveButton).toHaveFocus();

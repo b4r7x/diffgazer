@@ -1,15 +1,10 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, act, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useEffect, useRef, type ReactNode } from "react";
-import { KeyboardProvider } from "./keyboard-provider";
+import { useEffect, useRef } from "react";
 import { useKeyboardContext } from "../context/keyboard-context";
 import { useScope } from "../hooks/use-scope";
-import { fireKey as pressKey } from "../testing/test-utils";
-
-function Wrapper({ children }: { children: ReactNode }) {
-  return <KeyboardProvider>{children}</KeyboardProvider>;
-}
+import { fireKey as pressKey, KeyboardWrapper } from "../testing/test-utils";
 
 function fireKeyFrom(element: Element, key: string) {
   act(() => {
@@ -29,7 +24,7 @@ describe("KeyboardProvider", () => {
       return <div>consumer</div>;
     }
 
-    render(<Wrapper><Consumer /></Wrapper>);
+    render(<KeyboardWrapper><Consumer /></KeyboardWrapper>);
 
     await userEvent.keyboard("b");
     expect(handler).not.toHaveBeenCalled();
@@ -51,17 +46,15 @@ describe("KeyboardProvider", () => {
       return <div>consumer</div>;
     }
 
-    render(<Wrapper><Consumer /></Wrapper>);
+    render(<KeyboardWrapper><Consumer /></KeyboardWrapper>);
 
     const eventA = new KeyboardEvent("keydown", { key: "a", bubbles: true, cancelable: true });
-    const preventSpyA = vi.spyOn(eventA, "preventDefault");
     act(() => window.dispatchEvent(eventA));
-    expect(preventSpyA).not.toHaveBeenCalled();
+    expect(eventA.defaultPrevented).toBe(false);
 
     const eventB = new KeyboardEvent("keydown", { key: "b", bubbles: true, cancelable: true });
-    const preventSpyB = vi.spyOn(eventB, "preventDefault");
     act(() => window.dispatchEvent(eventB));
-    expect(preventSpyB).toHaveBeenCalledOnce();
+    expect(eventB.defaultPrevented).toBe(true);
   });
 
   it("should ignore events already handled by local keydown listeners", async () => {
@@ -81,7 +74,7 @@ describe("KeyboardProvider", () => {
       );
     }
 
-    render(<Wrapper><Consumer /></Wrapper>);
+    render(<KeyboardWrapper><Consumer /></KeyboardWrapper>);
 
     const button = screen.getByRole("button", { name: "local" });
     button.focus();
@@ -104,7 +97,7 @@ describe("KeyboardProvider", () => {
       return <div>consumer</div>;
     }
 
-    render(<Wrapper><Consumer /></Wrapper>);
+    render(<KeyboardWrapper><Consumer /></KeyboardWrapper>);
 
     await userEvent.keyboard("a");
     expect(modalHandler).toHaveBeenCalledOnce();
@@ -126,7 +119,7 @@ describe("KeyboardProvider", () => {
       return <div>consumer</div>;
     }
 
-    render(<Wrapper><Consumer /></Wrapper>);
+    render(<KeyboardWrapper><Consumer /></KeyboardWrapper>);
 
     act(() => popRef.current());
     act(() => pressKey("a"));
@@ -146,7 +139,7 @@ describe("KeyboardProvider", () => {
       return <div>consumer</div>;
     }
 
-    render(<Wrapper><Consumer /></Wrapper>);
+    render(<KeyboardWrapper><Consumer /></KeyboardWrapper>);
 
     act(() => pressKey("a"));
     expect(handler).toHaveBeenCalledOnce();
@@ -169,7 +162,7 @@ describe("KeyboardProvider", () => {
       return <input aria-label="Search" />;
     }
 
-    render(<Wrapper><Consumer /></Wrapper>);
+    render(<KeyboardWrapper><Consumer /></KeyboardWrapper>);
 
     const input = screen.getByRole("textbox", { name: "Search" });
     input.focus();
@@ -218,7 +211,7 @@ describe("KeyboardProvider", () => {
       );
     }
 
-    render(<Wrapper><Consumer /></Wrapper>);
+    render(<KeyboardWrapper><Consumer /></KeyboardWrapper>);
 
     const checkbox = screen.getByRole("checkbox", { name: "Check" });
     checkbox.focus();
@@ -250,7 +243,7 @@ describe("KeyboardProvider", () => {
       return <div>consumer</div>;
     }
 
-    render(<Wrapper><Consumer /></Wrapper>);
+    render(<KeyboardWrapper><Consumer /></KeyboardWrapper>);
 
     act(() => pressKey("a"));
     expect(second).toHaveBeenCalledOnce();
@@ -271,7 +264,7 @@ describe("KeyboardProvider", () => {
       return <div>consumer</div>;
     }
 
-    render(<Wrapper><Consumer /></Wrapper>);
+    render(<KeyboardWrapper><Consumer /></KeyboardWrapper>);
 
     act(() => pressKey("a"));
     expect(errorHandler).toHaveBeenCalledOnce();
@@ -305,7 +298,7 @@ describe("KeyboardProvider", () => {
       return <div>B</div>;
     }
 
-    render(<Wrapper><ConsumerA /><ConsumerB /></Wrapper>);
+    render(<KeyboardWrapper><ConsumerA /><ConsumerB /></KeyboardWrapper>);
 
     act(() => pressKey("a"));
     expect(handlerA).toHaveBeenCalledOnce();
@@ -350,7 +343,7 @@ describe("KeyboardProvider", () => {
       return <div>B</div>;
     }
 
-    render(<Wrapper><ConsumerA /><ConsumerB /></Wrapper>);
+    render(<KeyboardWrapper><ConsumerA /><ConsumerB /></KeyboardWrapper>);
 
     act(() => pressKey("Escape"));
     expect(second).toHaveBeenCalledOnce();
@@ -383,7 +376,7 @@ describe("KeyboardProvider", () => {
       return <div>consumer</div>;
     }
 
-    render(<Wrapper><Consumer /></Wrapper>);
+    render(<KeyboardWrapper><Consumer /></KeyboardWrapper>);
 
     act(() => pressKey("a"));
     expect(panelHandler).toHaveBeenCalledOnce();
@@ -410,7 +403,7 @@ describe("KeyboardProvider", () => {
       return <div>consumer</div>;
     }
 
-    const { unmount } = render(<Wrapper><Consumer /></Wrapper>);
+    const { unmount } = render(<KeyboardWrapper><Consumer /></KeyboardWrapper>);
 
     act(() => pressKey("a"));
     expect(handler).toHaveBeenCalledOnce();
@@ -445,7 +438,7 @@ describe("KeyboardProvider", () => {
       );
     }
 
-    render(<Wrapper><Consumer /></Wrapper>);
+    render(<KeyboardWrapper><Consumer /></KeyboardWrapper>);
 
     const outside = screen.getByRole("button", { name: "Outside" });
     const insideButton = screen.getByRole("button", { name: "Inside" });

@@ -6,28 +6,8 @@ import {
   ensureIssueEvidence,
   validateIssueCompleteness,
 } from "./issues.js";
-import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import type { ParsedDiff, FileDiff, DiffHunk } from "../diff/types.js";
-
-function makeIssue(overrides: Partial<ReviewIssue> = {}): ReviewIssue {
-  return {
-    id: "test_1",
-    severity: "medium",
-    category: "correctness",
-    title: "Test Issue",
-    file: "test.ts",
-    line_start: 10,
-    line_end: 15,
-    rationale: "Something is wrong",
-    recommendation: "Fix it",
-    suggested_patch: null,
-    confidence: 0.8,
-    symptom: "Observable problem",
-    whyItMatters: "It matters",
-    evidence: [],
-    ...overrides,
-  };
-}
+import { makeIssue } from "../testing/factories.js";
 
 function makeDiff(files: FileDiff[] = []): ParsedDiff {
   return {

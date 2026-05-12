@@ -1,14 +1,10 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useRef, type ReactNode } from "react";
+import { useRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { KeyboardProvider } from "../providers/keyboard-provider";
+import { KeyboardWrapper } from "../testing/test-utils";
 import { useScopedNavigation, type UseScopedNavigationOptions } from "./use-scoped-navigation";
 import { useScope } from "./use-scope";
-
-function wrapper({ children }: { children: ReactNode }) {
-  return <KeyboardProvider>{children}</KeyboardProvider>;
-}
 
 function itemId(value: string, prefix = "item") {
   return `${prefix}-${value}`;
@@ -73,7 +69,7 @@ describe("useScopedNavigation", () => {
     const user = userEvent.setup();
     const onSelect = vi.fn();
     const onEnter = vi.fn();
-    render(<TestList defaultHighlighted="a" onSelect={onSelect} onEnter={onEnter} />, { wrapper });
+    render(<TestList defaultHighlighted="a" onSelect={onSelect} onEnter={onEnter} />, { wrapper: KeyboardWrapper });
 
     await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}{End}{Home} {Enter}");
 
@@ -113,7 +109,7 @@ describe("useScopedNavigation", () => {
       );
     }
 
-    render(<MoveFocusList />, { wrapper });
+    render(<MoveFocusList />, { wrapper: KeyboardWrapper });
 
     await userEvent.keyboard("{ArrowDown} {Enter}");
 
@@ -148,7 +144,7 @@ describe("useScopedNavigation", () => {
       );
     }
 
-    render(<CheckboxList />, { wrapper });
+    render(<CheckboxList />, { wrapper: KeyboardWrapper });
 
     screen.getByRole("checkbox", { name: "A" }).focus();
     await userEvent.keyboard("{ArrowDown} ");
@@ -180,7 +176,7 @@ describe("useScopedNavigation", () => {
       );
     }
 
-    render(<RadioList />, { wrapper });
+    render(<RadioList />, { wrapper: KeyboardWrapper });
 
     screen.getByRole("radio", { name: "Basic" }).focus();
     await userEvent.keyboard("{ArrowDown}");
@@ -196,7 +192,7 @@ describe("useScopedNavigation", () => {
       return <TestList scope="scoped-list" defaultHighlighted="a" />;
     }
 
-    const { rerender } = render(<ScopedList active={false} />, { wrapper });
+    const { rerender } = render(<ScopedList active={false} />, { wrapper: KeyboardWrapper });
 
     await user.keyboard("{ArrowDown}");
     expectActiveOptionText("a");
@@ -215,7 +211,7 @@ describe("useScopedNavigation", () => {
       return <TestList scope={scope} defaultHighlighted="a" />;
     }
 
-    const { rerender } = render(<ScopedList active={false} />, { wrapper });
+    const { rerender } = render(<ScopedList active={false} />, { wrapper: KeyboardWrapper });
 
     await user.keyboard("{ArrowDown}");
     expectActiveOptionText("a");
@@ -249,7 +245,7 @@ describe("useScopedNavigation", () => {
       return <TestList scope="inner" defaultHighlighted="x" items={["x", "y"]} label="Inner items" idPrefix="inner" />;
     }
 
-    const { rerender } = render(<ScopedHarness showInner />, { wrapper });
+    const { rerender } = render(<ScopedHarness showInner />, { wrapper: KeyboardWrapper });
 
     await user.keyboard("{ArrowDown}");
     expectActiveOptionText("a", "Outer items");

@@ -2,7 +2,7 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { KeyboardProvider } from "../providers/keyboard-provider";
+import { KeyboardWrapper } from "../testing/test-utils";
 import {
   useActionRowNavigation,
   type UseActionRowNavigationOptions,
@@ -51,7 +51,7 @@ function renderActionRow(overrides: Partial<UseActionRowNavigationOptions> = {})
   const user = userEvent.setup();
 
   const view = render(
-    <KeyboardProvider>
+    <KeyboardWrapper>
       <TestActionRow
         options={{
           enabled: true,
@@ -63,12 +63,12 @@ function renderActionRow(overrides: Partial<UseActionRowNavigationOptions> = {})
           ...overrides,
         }}
       />
-    </KeyboardProvider>,
+    </KeyboardWrapper>,
   );
 
   const rerenderActionRow = (nextOverrides: Partial<UseActionRowNavigationOptions>) => {
     view.rerender(
-      <KeyboardProvider>
+      <KeyboardWrapper>
         <TestActionRow
           options={{
             enabled: true,
@@ -81,7 +81,7 @@ function renderActionRow(overrides: Partial<UseActionRowNavigationOptions> = {})
             ...nextOverrides,
           }}
         />
-      </KeyboardProvider>,
+      </KeyboardWrapper>,
     );
   };
 

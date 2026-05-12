@@ -20,11 +20,12 @@ function setupKeyringAvailable() {
   mockSetPassword.mockImplementation((value: string) => { lastSetPassword = value; });
   mockDeletePassword.mockReturnValue(undefined);
 
-  const MockEntry = function (this: any, _service: string, _account: string) {
-    this.getPassword = mockGetPassword;
-    this.setPassword = mockSetPassword;
-    this.deletePassword = mockDeletePassword;
-  } as any;
+  class MockEntry {
+    getPassword = mockGetPassword;
+    setPassword = mockSetPassword;
+    deletePassword = mockDeletePassword;
+    constructor(_service: string, _account: string) {}
+  }
 
   mockRequireModule.mockReturnValue({ Entry: MockEntry });
 }

@@ -30,7 +30,6 @@ describe("useControllableState", () => {
       result.current[1]("ignored")
     })
 
-    // internal state should not change since it's controlled
     expect(result.current[0]).toBe("controlled")
 
     rerender({ value: "updated" })
@@ -124,9 +123,8 @@ describe("useControllableState", () => {
       { initialProps: { value: undefined } },
     )
 
-    // undefined value should fall back to internal state
     expect(result.current[0]).toBe("default")
-    expect(result.current[2]).toBe(false) // not controlled when value is undefined
+    expect(result.current[2]).toBe(false)
 
     rerender({ value: "controlled" })
     expect(result.current[0]).toBe("controlled")
