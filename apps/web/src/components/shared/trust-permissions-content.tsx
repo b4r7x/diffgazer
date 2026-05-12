@@ -10,7 +10,7 @@ import { Callout, CalloutIcon, CalloutTitle, CalloutContent } from "@diffgazer/u
 import { Button } from "@diffgazer/ui/components/button";
 import { CheckboxGroup, CheckboxItem } from "@diffgazer/ui/components/checkbox";
 import { focusNavigationItem } from "@diffgazer/keys";
-import { useTrustFormKeyboard } from "@/hooks/use-trust-form-keyboard";
+import { useTrustFormKeyboard } from "./use-trust-form-keyboard";
 import { toggleListValue } from "@/lib/selectable-values";
 import {
   TRUST_CAPABILITY_OPTIONS,

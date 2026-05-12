@@ -1,11 +1,12 @@
 import { Box, Text } from "ink";
+import type { ReviewSeverity } from "@diffgazer/core/schemas/review";
 import { useTheme } from "../../../theme/theme-context.js";
 import { Badge } from "../../../components/ui/badge.js";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions.js";
-import { severityVariant } from "../utils/severity-variant.js";
+import { severityVariant } from "../../../theme/severity-variant.js";
 
 export interface IssuePreviewItemProps {
-  severity: string;
+  severity: ReviewSeverity;
   filePath: string;
   title: string;
   isHighlighted?: boolean;

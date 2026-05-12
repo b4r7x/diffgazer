@@ -4,7 +4,6 @@ import { LogEntry } from './log-entry';
 import { ScrollArea } from '@diffgazer/ui/components/scroll-area';
 import type { LogEntryData as BaseLogEntryData } from '@diffgazer/core/schemas/ui';
 
-// Extend with React.ReactNode for message field
 export interface LogEntryData extends Omit<BaseLogEntryData, 'message'> {
   message: React.ReactNode;
 }

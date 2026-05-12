@@ -71,6 +71,10 @@
       "types": "./dist/schemas/errors.d.ts",
       "import": "./dist/schemas/errors.js"
     },
+    "./schemas/shared/fields": {
+      "types": "./dist/schemas/shared/fields.d.ts",
+      "import": "./dist/schemas/shared/fields.js"
+    },
     "./schemas/review": {
       "types": "./dist/schemas/review/index.d.ts",
       "import": "./dist/schemas/review/index.js"

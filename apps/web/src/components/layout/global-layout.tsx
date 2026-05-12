@@ -2,21 +2,17 @@ import { type ReactNode } from "react";
 import { useCanGoBack, useLocation, useRouter } from "@tanstack/react-router";
 import { Header } from "./header";
 import { Footer, useFooterData } from "./footer";
-import {
-  useConfigData,
-  useConfigActions,
-} from "@/app/providers/config-provider";
+import { useConfigData } from "@/app/providers/config-provider";
 import { resolveBackAction } from "@/lib/back-navigation/back-navigation";
-import { getProviderStatus, getProviderDisplay } from "@diffgazer/core/providers";
+import { getProviderDisplayStatus, getProviderDisplay } from "@diffgazer/core/providers";
 
 function ConnectedHeader() {
   const router = useRouter();
   const canGoBack = useCanGoBack();
   const { pathname } = useLocation();
-  const { provider, model, isConfigured } = useConfigData();
-  const { isLoading } = useConfigActions();
+  const { provider, model, isConfigured, isLoading } = useConfigData();
 
-  const providerStatus = getProviderStatus(isLoading, isConfigured);
+  const providerStatus = getProviderDisplayStatus(isLoading, isConfigured);
   const providerName = getProviderDisplay(provider, model);
   const backAction = resolveBackAction(pathname, canGoBack);
 

@@ -3,7 +3,7 @@ import type { ZodType } from "zod";
 import { type Result, ok, err } from "@diffgazer/core/result";
 import { createError, getErrorMessage } from "@diffgazer/core/errors";
 import { safeParseJson } from "@diffgazer/core/json";
-import { UuidSchema } from "@diffgazer/core/schemas/errors";
+import { UuidSchema } from "@diffgazer/core/schemas/shared/fields";
 import { atomicWriteFile as atomicWrite, isNodeError } from "../fs.js";
 import type { StoreErrorCode, StoreError, CollectionConfig, Collection } from "./types.js";
 

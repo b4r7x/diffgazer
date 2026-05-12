@@ -1,4 +1,4 @@
-import { getFocusableElements as getFocusableElementsImpl } from "./focusable.js";
+import { containsActiveElement, getFocusableElements as getFocusableElementsImpl } from "./focusable.js";
 
 export const NAVIGATION_ITEM_ATTRIBUTE = "data-diffgazer-navigation-item";
 
@@ -95,7 +95,7 @@ function isOwnedByContainer(
   element: HTMLElement,
   container: HTMLElement,
   query: NavigationItemQuery,
-) {
+): boolean {
   if (query.scopeToContainer === false) return true;
 
   if (query.ownerSelector !== undefined) {
@@ -143,12 +143,6 @@ export function getNavigationItemProps(
     [NAVIGATION_ITEM_ATTRIBUTE]: type,
     "data-value": value,
   };
-}
-
-export function containsActiveElement(element: HTMLElement): boolean {
-  const activeElement = element.ownerDocument.activeElement;
-  const View = element.ownerDocument.defaultView;
-  return Boolean(View && activeElement instanceof View.HTMLElement && element.contains(activeElement));
 }
 
 export function getFocusedNavigationValue(

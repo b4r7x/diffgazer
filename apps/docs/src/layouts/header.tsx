@@ -15,7 +15,6 @@ import { useSearchOpen } from "@/features/search/search-context"
 import { cn } from "@diffgazer/core/cn"
 import {
   DOCS_LIBRARY_IDS,
-  docsPath,
   getDocsLibraryConfig,
   getRouteSlugsFromPathname,
   isDocsLibraryId,
@@ -33,15 +32,12 @@ const resolveLibrarySwitchPath = createServerFn({ method: "GET" })
     const targetPage = source.getPage(sourceSlugs)
 
     if (!targetPage) {
-      return docsPath(data.targetLibrary)
+      return { library: data.targetLibrary, slugs: [] as string[] }
     }
 
     const targetSlugs = routeSlugsFromSourcePath(data.targetLibrary, targetPage.path)
-    if (!targetSlugs) {
-      return docsPath(data.targetLibrary)
-    }
 
-    return docsPath(data.targetLibrary, targetSlugs)
+    return { library: data.targetLibrary, slugs: targetSlugs ?? [] }
   })
 
 interface HeaderProps {
@@ -71,17 +67,12 @@ export function Header({ library }: HeaderProps) {
     setSwitching(true)
     try {
       const currentSlugs = getRouteSlugsFromPathname(pathname, library)
-      const targetPath = await resolveLibrarySwitchPath({
+      const { library: targetLib, slugs } = await resolveLibrarySwitchPath({
         data: {
           targetLibrary: nextValue,
           currentSlugs,
         },
       })
-
-      // Parse targetPath to extract library and slugs
-      const pathSegments = targetPath.split("/").filter(Boolean)
-      const targetLib = pathSegments[0]
-      const slugs = pathSegments.slice(2) // Skip lib and "docs"
 
       await navigate({
         to: "/$lib/docs/$",

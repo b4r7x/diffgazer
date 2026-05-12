@@ -9,7 +9,7 @@ import { Badge } from "../../../components/ui/badge.js";
 import { CodeSnippet } from "./code-snippet.js";
 import { DiffView } from "./diff-view.js";
 import { FixPlanChecklist } from "./fix-plan-checklist.js";
-import { severityVariant } from "../utils/severity-variant.js";
+import { severityVariant } from "../../../theme/severity-variant.js";
 
 export interface IssueDetailsPaneProps {
   issue?: ReviewIssue;

@@ -2,6 +2,8 @@ import type { ReactElement } from "react";
 import { Box, Text } from "ink";
 import { Badge } from "../../../components/ui/badge.js";
 import { useTheme } from "../../../theme/theme-context.js";
+import { severityVariant } from "../../../theme/severity-variant.js";
+import type { ReviewSeverity } from "@diffgazer/core/schemas/review";
 
 export interface RunItemProps {
   displayId: string;
@@ -9,16 +11,9 @@ export interface RunItemProps {
   timestamp: string;
   summary: string;
   issueCount: number;
-  severities: Array<{ severity: string; count: number }>;
+  severities: Array<{ severity: ReviewSeverity; count: number }>;
   isHighlighted?: boolean;
 }
-
-const severityVariant: Record<string, "error" | "warning" | "info" | "neutral"> = {
-  critical: "error",
-  high: "error",
-  medium: "warning",
-  low: "info",
-};
 
 export function RunItem({
   displayId,
@@ -51,7 +46,7 @@ export function RunItem({
       {visible.length > 0 && (
         <Box flexDirection="row" gap={1}>
           {visible.map((s) => (
-            <Badge key={s.severity} variant={severityVariant[s.severity] ?? "neutral"}>
+            <Badge key={s.severity} variant={severityVariant(s.severity)}>
               {`${s.count} ${s.severity}`}
             </Badge>
           ))}

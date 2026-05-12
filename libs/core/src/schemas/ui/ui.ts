@@ -12,10 +12,6 @@ import { LIFECYCLE_STATUSES } from "../shared/statuses.js";
  */
 export { REVIEW_SEVERITY as SEVERITY_ORDER };
 
-/**
- * Severity levels to display in histograms (excludes 'nit').
- */
-export const HISTOGRAM_SEVERITIES = ["blocker", "high", "medium", "low"] as const;
 
 /**
  * Get numeric rank of a severity level (lower = more severe).
@@ -34,27 +30,6 @@ export const SEVERITY_LABELS: Record<ReviewSeverity, string> = {
   nit: "NIT",
 };
 
-/**
- * Icons for severity levels.
- */
-export const SEVERITY_ICONS: Record<ReviewSeverity, string> = {
-  blocker: "X",
-  high: "!",
-  medium: "-",
-  low: ".",
-  nit: "~",
-};
-
-/**
- * Terminal colors for severity levels (for CLI/Ink).
- */
-export const SEVERITY_COLORS: Record<ReviewSeverity, string> = {
-  blocker: "red",
-  high: "magenta",
-  medium: "yellow",
-  low: "blue",
-  nit: "gray",
-};
 
 // ============================================================================
 // Severity Filter (UI-specific, distinct from review SeverityFilter)
@@ -127,7 +102,7 @@ export type LogEntryData = z.infer<typeof LogEntryDataSchema>;
 
 /** Canonical badge variant values. @see libs/ui/registry/ui/badge/badge.tsx for the component-library copy. */
 const BADGE_VARIANTS = ["success", "warning", "error", "info", "neutral"] as const;
-export const BadgeVariantSchema = z.enum(BADGE_VARIANTS);
+const BadgeVariantSchema = z.enum(BADGE_VARIANTS);
 export type BadgeVariant = z.infer<typeof BadgeVariantSchema>;
 
 export const TAG_BADGE_VARIANTS: Record<string, BadgeVariant> = {
@@ -243,13 +218,13 @@ const ToastItemSchema = z.object({
   variant: ToastVariantSchema.optional(),
   duration: z.number().optional(),
 });
-export type ToastItem = z.infer<typeof ToastItemSchema>;
+type ToastItem = z.infer<typeof ToastItemSchema>;
 
 // ============================================================================
 // Issue Tab Types
 // ============================================================================
 
-export const ISSUE_TABS = ["details", "explain", "trace", "patch"] as const;
+const ISSUE_TABS = ["details", "explain", "trace", "patch"] as const;
 const IssueTabSchema = z.enum(ISSUE_TABS);
 export type IssueTab = z.infer<typeof IssueTabSchema>;
 
@@ -271,12 +246,12 @@ export type TimelineItem = z.infer<typeof TimelineItemSchema>;
 const CODE_LINE_TYPES = ["normal", "added", "removed", "highlight"] as const;
 const CodeLineTypeSchema = z.enum(CODE_LINE_TYPES);
 
-export const CodeLineSchema = z.object({
+const CodeLineSchema = z.object({
   number: z.number(),
   content: z.string(),
   type: CodeLineTypeSchema.optional(),
 });
-export type CodeLine = z.infer<typeof CodeLineSchema>;
+type CodeLine = z.infer<typeof CodeLineSchema>;
 
 // ============================================================================
 // Navigation Types & Constants (shared between CLI and Web)

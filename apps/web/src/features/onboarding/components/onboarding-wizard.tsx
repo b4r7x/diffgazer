@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { CardLayout } from "@/components/ui/card-layout";
 import { Button } from "@diffgazer/ui/components/button";
@@ -20,7 +20,7 @@ import type { AgentExecution } from "@diffgazer/core/schemas/config";
 import { canProceed as canProceedForStep } from "../types.js";
 import type { OnboardingStep, WizardData } from "../types";
 
-const STEP_TITLES: Record<string, string> = {
+const STEP_TITLES: Record<OnboardingStep, string> = {
   storage: "Secrets Storage",
   provider: "AI Provider",
   "api-key": "API Key",
@@ -39,7 +39,7 @@ const STEP_LABELS: Record<OnboardingStep, string> = {
 };
 
 function getStepShortcuts(
-  currentStep: string,
+  currentStep: OnboardingStep,
   isButtonsZone: boolean,
   actionDisabled = false,
 ): Shortcut[] {
@@ -121,28 +121,9 @@ export function OnboardingWizard() {
   const buttonCount = isFirstStep ? 1 : 2;
   const primaryButtonIndex = isFirstStep ? 0 : 1;
   const canActivatePrimary = isLastStep ? canProceed && !isSubmitting : canProceed;
-  const isPrimaryDisabled = isLastStep ? !canProceed || isSubmitting : !canProceed;
   const disabledFooterActions = isFirstStep
-    ? [isPrimaryDisabled]
-    : [isSubmitting, isPrimaryDisabled];
-
-  const handleComplete = async () => {
-    try {
-      await complete();
-      navigate({ to: "/" });
-    } catch {
-      // Hook sets error state for display; navigation skipped on failure
-    }
-  };
-
-  const handlePrimaryAction = () => {
-    if (!canActivatePrimary) return;
-    if (isLastStep) {
-      void handleComplete();
-    } else {
-      next();
-    }
-  };
+    ? [!canActivatePrimary]
+    : [isSubmitting, !canActivatePrimary];
 
   useScope("onboarding");
 
@@ -158,16 +139,39 @@ export function OnboardingWizard() {
         return;
       }
       if (index === 0) {
-        back();
+        handleBack();
         return;
       }
       handlePrimaryAction();
     },
   });
 
-  useEffect(() => {
+  const handleNext = () => {
+    next();
     footer.reset();
-  }, [currentStep]);
+  };
+
+  const handleBack = () => {
+    back();
+    footer.reset();
+  };
+
+  const handleComplete = async () => {
+    try {
+      await complete();
+      navigate({ to: "/" });
+    } catch {
+    }
+  };
+
+  const handlePrimaryAction = () => {
+    if (!canActivatePrimary) return;
+    if (isLastStep) {
+      void handleComplete();
+    } else {
+      handleNext();
+    }
+  };
 
   usePageFooter({
     shortcuts: getStepShortcuts(
@@ -191,7 +195,7 @@ export function OnboardingWizard() {
       return;
     }
 
-    next();
+    handleNext();
   };
 
   const renderStep = () => {
@@ -265,7 +269,7 @@ export function OnboardingWizard() {
 
   return (
     <CardLayout
-      title={STEP_TITLES[currentStep] ?? "Setup"}
+      title={STEP_TITLES[currentStep]}
       subtitle="Diffgazer Setup Wizard"
       footer={
         <>
@@ -274,7 +278,7 @@ export function OnboardingWizard() {
               {...footer.getActionProps(0)}
               variant="secondary"
               size="sm"
-              onClick={back}
+              onClick={handleBack}
               disabled={isSubmitting}
               className={cn(footer.inActions && footer.focusedIndex === 0 && !isSubmitting && "ring-2 ring-tui-blue")}
             >
@@ -287,8 +291,8 @@ export function OnboardingWizard() {
               variant="success"
               size="sm"
               onClick={handlePrimaryAction}
-              disabled={isPrimaryDisabled}
-              className={cn(footer.inActions && footer.focusedIndex === primaryButtonIndex && !isPrimaryDisabled && "ring-2 ring-tui-blue")}
+              disabled={!canActivatePrimary}
+              className={cn(footer.inActions && footer.focusedIndex === primaryButtonIndex && canActivatePrimary && "ring-2 ring-tui-blue")}
             >
               {isSubmitting ? "Saving..." : "Complete Setup"}
             </Button>
@@ -297,8 +301,8 @@ export function OnboardingWizard() {
               {...footer.getActionProps(primaryButtonIndex)}
               size="sm"
               onClick={handlePrimaryAction}
-              disabled={isPrimaryDisabled}
-              className={cn(footer.inActions && footer.focusedIndex === primaryButtonIndex && !isPrimaryDisabled && "ring-2 ring-tui-blue")}
+              disabled={!canActivatePrimary}
+              className={cn(footer.inActions && footer.focusedIndex === primaryButtonIndex && canActivatePrimary && "ring-2 ring-tui-blue")}
             >
               Next
             </Button>

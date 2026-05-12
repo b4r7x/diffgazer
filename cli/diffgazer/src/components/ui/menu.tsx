@@ -8,7 +8,6 @@ import { clampIndex, collectChildItems } from "../../lib/list-navigation.js";
 // --- Types ---
 
 export interface MenuProps {
-  selectedId?: string | null;
   highlightedId?: string | null;
   onSelect?: (id: string) => void;
   onHighlightChange?: (id: string) => void;
@@ -28,13 +27,10 @@ export interface MenuItemProps {
   children: string;
 }
 
-export interface MenuDividerProps {}
-
 // --- Context ---
 
 interface MenuContextValue {
   highlightedId: string;
-  selectedId: string | null;
   menuVariant: "default" | "hub";
   tokens: CliColorTokens;
 }
@@ -75,7 +71,6 @@ function MenuItem({
 }: MenuItemProps) {
   const ctx = useMenuContext();
   const isHighlighted = ctx.highlightedId === id;
-  const isSelected = ctx.selectedId === id;
 
   if (disabled) {
     return (
@@ -106,7 +101,6 @@ function MenuItem({
     );
   }
 
-  // Default variant
   const prefix = isHighlighted ? "> " : "  ";
 
   return (
@@ -124,7 +118,7 @@ function MenuItem({
   );
 }
 
-function MenuDivider(_props: MenuDividerProps) {
+function MenuDivider() {
   const ctx = useMenuContext();
   return (
     <Box>
@@ -135,7 +129,6 @@ function MenuDivider(_props: MenuDividerProps) {
 }
 
 function MenuRoot({
-  selectedId = null,
   highlightedId: controlledHighlightedId = null,
   onSelect,
   onHighlightChange,
@@ -151,7 +144,6 @@ function MenuRoot({
 
   const [internalIndex, setInternalIndex] = useState(0);
 
-  // Resolve highlighted id: controlled takes priority
   const currentHighlightedId =
     controlledHighlightedId ??
     selectableItems[internalIndex]?.id ??
@@ -197,7 +189,6 @@ function MenuRoot({
         return;
       }
 
-      // Hotkey matching
       if (input.length === 1) {
         for (const item of selectableItems) {
           if (item.hotkey != null && String(item.hotkey) === input) {
@@ -214,7 +205,6 @@ function MenuRoot({
     <MenuContext
       value={{
         highlightedId: currentHighlightedId,
-        selectedId: selectedId,
         menuVariant: variant,
         tokens,
       }}

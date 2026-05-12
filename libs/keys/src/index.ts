@@ -38,7 +38,6 @@ export { keys } from "./utils/keys.js";
 export type { KeyHandler } from "./internal/normalize-key-input.js";
 export {
   NAVIGATION_ITEM_ATTRIBUTE,
-  containsActiveElement,
   findNavigationItemByValue,
   focusNavigationItem,
   getFocusedNavigationValue,
@@ -47,6 +46,7 @@ export {
 } from "./utils/navigation-items.js";
 export type { NavigationItemQuery, NavigationItemType } from "./utils/navigation-items.js";
 export {
+  containsActiveElement,
   getFocusableElements,
   getFirstFocusableElement,
   getTabbableElements,

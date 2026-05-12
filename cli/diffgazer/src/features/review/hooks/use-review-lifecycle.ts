@@ -13,7 +13,6 @@ export type ReviewPhase =
 export interface ReviewLifecycleState {
   phase: ReviewPhase | "loading";
   reviewId: string | null;
-  durationMs: number | undefined;
   startedAt: Date | null;
   issues: ReviewIssue[];
   steps: StepState[];
@@ -38,33 +37,33 @@ export function useReviewLifecycle(): {
 } {
   const { data: initData, isLoading: configLoading } = useInit();
   const [mode, setMode] = useState<ReviewMode>("staged");
-  const [startToken, setStartToken] = useState(0);
+  const [startCounter, setStartCounter] = useState(0);
   const [phase, setPhase] = useState<"streaming" | "summary" | "results">("streaming");
 
   const isConfigured = initData?.configured ?? false;
   const provider = initData?.config?.provider ?? null;
   const model = initData?.config?.model ?? null;
 
-  const base = useReviewLifecycleBase({
+  const lifecycle = useReviewLifecycleBase({
     mode,
     configLoading,
     settingsLoading: false,
     isConfigured,
-    startToken,
+    startToken: startCounter,
     onComplete: () => setPhase("summary"),
   });
 
   const displayPhase: ReviewLifecycleState["phase"] =
-    !base.hasStarted ? "loading" : base.isCompleting ? "completing" : phase;
+    !lifecycle.hasStarted ? "loading" : lifecycle.isCompleting ? "completing" : phase;
 
-  function start(mode: ReviewMode) {
-    setMode(mode);
-    base.setHasStarted(false);
-    setStartToken((t) => t + 1);
+  function start(selectedMode: ReviewMode) {
+    setMode(selectedMode);
+    lifecycle.setHasStarted(false);
+    setStartCounter((t) => t + 1);
   }
 
   function goToSummary() {
-    base.skipDelay();
+    lifecycle.skipDelay();
   }
 
   function goToResults() {
@@ -72,35 +71,29 @@ export function useReviewLifecycle(): {
   }
 
   function reset() {
-    base.resetCompletion();
-    base.setHasStarted(false);
-    base.setHasStreamed(false);
+    lifecycle.resetCompletion();
+    lifecycle.setHasStarted(false);
+    lifecycle.setHasStreamed(false);
     setPhase("streaming");
-    base.stream.abort();
+    lifecycle.stream.abort();
   }
-
-  const durationMs =
-    base.streamState.startedAt
-      ? Date.now() - base.streamState.startedAt.getTime()
-      : undefined;
 
   const state: ReviewLifecycleState = {
     phase: displayPhase,
-    reviewId: base.streamState.reviewId ?? null,
-    durationMs,
-    startedAt: base.streamState.startedAt,
-    issues: base.streamState.issues,
-    steps: base.streamState.steps,
-    agents: base.streamState.agents,
-    events: base.streamState.events,
-    fileProgress: base.streamState.fileProgress,
-    error: base.streamState.error,
+    reviewId: lifecycle.streamState.reviewId ?? null,
+    startedAt: lifecycle.streamState.startedAt,
+    issues: lifecycle.streamState.issues,
+    steps: lifecycle.streamState.steps,
+    agents: lifecycle.streamState.agents,
+    events: lifecycle.streamState.events,
+    fileProgress: lifecycle.streamState.fileProgress,
+    error: lifecycle.streamState.error,
     isConfigured,
     provider,
     model,
-    isNoDiffError: base.isNoDiffError,
-    isCheckingForChanges: base.isCheckingForChanges,
-    loadingMessage: base.loadingMessage,
+    isNoDiffError: lifecycle.isNoDiffError,
+    isCheckingForChanges: lifecycle.isCheckingForChanges,
+    loadingMessage: lifecycle.loadingMessage,
   };
 
   return { state, start, goToSummary, goToResults, reset };

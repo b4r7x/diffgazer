@@ -5,37 +5,19 @@ import { ensureExists } from "../utils/fs.js";
 import { readJson } from "../utils/json.js";
 import { RegistrySchema } from "../registry-types.js";
 
-interface EnsureSameStringArrayParams {
-  label: string;
-  a: string[] | undefined;
-  b: string[] | undefined;
-  itemName: string;
-  fixCommand: string;
-}
-
 interface EnsureSameValueParams {
   label: string;
   a: unknown;
   b: unknown;
+  defaultValue?: unknown;
   itemName: string;
   fixCommand: string;
 }
 
-function ensureSameValue({ label, a, b, itemName, fixCommand }: EnsureSameValueParams): void {
-  if (JSON.stringify(a) !== JSON.stringify(b)) {
-    throw new Error(
-      [
-        `Public registry is stale for "${itemName}" (${label} mismatch).`,
-        `Run: ${fixCommand}`,
-      ].join("\n"),
-    );
-  }
-}
-
-function ensureSameStringArray({ label, a, b, itemName, fixCommand }: EnsureSameStringArrayParams): void {
-  const left = JSON.stringify(a ?? []);
-  const right = JSON.stringify(b ?? []);
-  if (left !== right) {
+function ensureSameValue({ label, a, b, defaultValue, itemName, fixCommand }: EnsureSameValueParams): void {
+  const left = defaultValue !== undefined ? (a ?? defaultValue) : a;
+  const right = defaultValue !== undefined ? (b ?? defaultValue) : b;
+  if (JSON.stringify(left) !== JSON.stringify(right)) {
     throw new Error(
       [
         `Public registry is stale for "${itemName}" (${label} mismatch).`,
@@ -56,6 +38,25 @@ export interface ValidatePublicRegistryFreshOptions {
     content: string;
   }) => string;
 }
+
+const PublicItemSchema = z.object({
+  name: z.string().optional(),
+  type: z.string().optional(),
+  title: z.string().optional(),
+  description: z.string().optional(),
+  dependencies: z.array(z.string()).optional(),
+  registryDependencies: z.array(z.string()).optional(),
+  meta: z.record(z.string(), z.unknown()).optional(),
+  files: z.array(z.object({
+    path: z.string(),
+    content: z.string().optional(),
+    target: z.string().optional(),
+    type: z.string().optional(),
+  })).optional(),
+}).passthrough();
+
+const valueFields = ["title", "description", "meta"] as const;
+const arrayFields = ["dependencies", "registryDependencies"] as const;
 
 export function validatePublicRegistryFresh(options: ValidatePublicRegistryFreshOptions): void {
   const {
@@ -81,22 +82,6 @@ export function validatePublicRegistryFresh(options: ValidatePublicRegistryFresh
     );
   }
 
-  const PublicItemSchema = z.object({
-    name: z.string().optional(),
-    type: z.string().optional(),
-    title: z.string().optional(),
-    description: z.string().optional(),
-    dependencies: z.array(z.string()).optional(),
-    registryDependencies: z.array(z.string()).optional(),
-    meta: z.record(z.string(), z.unknown()).optional(),
-    files: z.array(z.object({
-      path: z.string(),
-      content: z.string().optional(),
-      target: z.string().optional(),
-      type: z.string().optional(),
-    })).optional(),
-  }).passthrough();
-
   for (const sourceItem of sourceItems) {
     const publicItem = publicByName.get(sourceItem.name);
     if (!publicItem) {
@@ -108,96 +93,28 @@ export function validatePublicRegistryFresh(options: ValidatePublicRegistryFresh
       );
     }
 
-    ensureSameStringArray({
-      label: "dependencies",
-      a: sourceItem.dependencies,
-      b: publicItem.dependencies,
-      itemName: sourceItem.name,
-      fixCommand,
-    });
-    ensureSameValue({
-      label: "title",
-      a: sourceItem.title,
-      b: publicItem.title,
-      itemName: sourceItem.name,
-      fixCommand,
-    });
-    ensureSameValue({
-      label: "description",
-      a: sourceItem.description,
-      b: publicItem.description,
-      itemName: sourceItem.name,
-      fixCommand,
-    });
-    ensureSameValue({
-      label: "meta",
-      a: sourceItem.meta,
-      b: publicItem.meta,
-      itemName: sourceItem.name,
-      fixCommand,
-    });
-    ensureSameStringArray({
-      label: "registryDependencies",
-      a: sourceItem.registryDependencies,
-      b: publicItem.registryDependencies,
-      itemName: sourceItem.name,
-      fixCommand,
-    });
+    for (const field of valueFields) {
+      ensureSameValue({ label: field, a: sourceItem[field], b: publicItem[field], itemName: sourceItem.name, fixCommand });
+    }
+    for (const field of arrayFields) {
+      ensureSameValue({ label: field, a: sourceItem[field], b: publicItem[field], defaultValue: [], itemName: sourceItem.name, fixCommand });
+    }
 
     const publicItemPath = resolve(rootDir, publicRegistryDir, `${sourceItem.name}.json`);
     ensureExists(publicItemPath, `public registry item JSON (${sourceItem.name})`);
 
     const publicItemJson = readJson(publicItemPath, PublicItemSchema);
     const publicFilesByPath = new Map((publicItemJson.files ?? []).map((file) => [file.path, file]));
-    ensureSameValue({
-      label: "item name",
-      a: sourceItem.name,
-      b: publicItemJson.name,
-      itemName: sourceItem.name,
-      fixCommand,
-    });
-    ensureSameValue({
-      label: "item type",
-      a: sourceItem.type,
-      b: publicItemJson.type,
-      itemName: sourceItem.name,
-      fixCommand,
-    });
-    ensureSameValue({
-      label: "item JSON title",
-      a: sourceItem.title,
-      b: publicItemJson.title,
-      itemName: sourceItem.name,
-      fixCommand,
-    });
-    ensureSameValue({
-      label: "item JSON description",
-      a: sourceItem.description,
-      b: publicItemJson.description,
-      itemName: sourceItem.name,
-      fixCommand,
-    });
-    ensureSameValue({
-      label: "item JSON meta",
-      a: sourceItem.meta,
-      b: publicItemJson.meta,
-      itemName: sourceItem.name,
-      fixCommand,
-    });
-    ensureSameStringArray({
-      label: "item JSON dependencies",
-      a: sourceItem.dependencies,
-      b: publicItemJson.dependencies,
-      itemName: sourceItem.name,
-      fixCommand,
-    });
-    ensureSameStringArray({
-      label: "item JSON registryDependencies",
-      a: sourceItem.registryDependencies,
-      b: publicItemJson.registryDependencies,
-      itemName: sourceItem.name,
-      fixCommand,
-    });
+
+    for (const field of ["name", "type"] as const) {
+      ensureSameValue({ label: `item ${field}`, a: sourceItem[field], b: publicItemJson[field], itemName: sourceItem.name, fixCommand });
+    }
+    for (const field of valueFields) {
+      ensureSameValue({ label: `item JSON ${field}`, a: sourceItem[field], b: publicItemJson[field], itemName: sourceItem.name, fixCommand });
+    }
+    for (const field of arrayFields) {
+      ensureSameValue({ label: `item JSON ${field}`, a: sourceItem[field], b: publicItemJson[field], defaultValue: [], itemName: sourceItem.name, fixCommand });
+    }
 
     const sourceFilePaths = (sourceItem.files ?? []).map((file) => file.path);
     const publicFilePaths = (publicItemJson.files ?? []).map((file) => file.path);
@@ -213,11 +130,12 @@ export function validatePublicRegistryFresh(options: ValidatePublicRegistryFresh
       const sourcePath = resolve(rootDir, sourceFile.path);
       ensureExists(sourcePath, `source registry file (${sourceItem.name})`);
 
+      const rawContent = readFileSync(sourcePath, "utf-8");
       const sourceContent = transformSourceContent?.({
         itemName: sourceItem.name,
         filePath: sourceFile.path,
-        content: readFileSync(sourcePath, "utf-8"),
-      }) ?? readFileSync(sourcePath, "utf-8");
+        content: rawContent,
+      }) ?? rawContent;
       const publicFile = publicFilesByPath.get(sourceFile.path);
 
       if (!publicFile || typeof publicFile.content !== "string") {

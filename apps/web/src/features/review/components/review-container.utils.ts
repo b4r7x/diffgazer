@@ -1,11 +1,19 @@
 import type { ProgressStepData, ProgressStatus } from '@/components/ui/progress';
 import type { StepState, AgentState, AgentStatus } from '@diffgazer/core/schemas/events';
 import type { ProgressSubstepData } from '@diffgazer/core/schemas/ui';
-import { getAgentDetail } from '@diffgazer/core/review';
+import { getAgentDetail, mapStepStatus as mapStepStatusCore } from '@diffgazer/core/review';
 import { truncate } from '@diffgazer/core/strings';
 
+const STATUS_TO_PROGRESS: Record<string, ProgressStatus> = {
+  pending: 'pending',
+  running: 'active',
+  complete: 'completed',
+  error: 'pending',
+};
+
 function mapStepStatus(status: StepState['status']): ProgressStatus {
-  return status === 'error' ? 'pending' : status;
+  const coreStatus = mapStepStatusCore(status);
+  return STATUS_TO_PROGRESS[coreStatus] ?? 'pending';
 }
 
 function mapAgentToSubstepStatus(agentStatus: AgentStatus): ProgressSubstepData['status'] {

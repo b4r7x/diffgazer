@@ -153,15 +153,6 @@ describe("createApiClient", () => {
       expect(options.body).toBe(JSON.stringify({ name: "test" }));
     });
 
-    it("PUT sends JSON body", async () => {
-      mockFetch.mockResolvedValue(jsonResponse({ updated: true }));
-
-      await client.put("/api/update", { name: "new" });
-
-      const [, options] = lastCall();
-      expect(options.method).toBe("PUT");
-    });
-
     it("DELETE sends no body", async () => {
       mockFetch.mockResolvedValue(jsonResponse({ deleted: true }));
 

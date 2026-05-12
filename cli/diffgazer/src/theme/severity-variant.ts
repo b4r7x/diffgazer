@@ -1,5 +1,7 @@
+import type { ReviewSeverity } from "@diffgazer/core/schemas/review";
+
 export function severityVariant(
-  severity: string,
+  severity: ReviewSeverity,
 ): "error" | "warning" | "info" | "neutral" {
   switch (severity) {
     case "blocker":
@@ -9,7 +11,7 @@ export function severityVariant(
       return "warning";
     case "low":
       return "info";
-    default:
+    case "nit":
       return "neutral";
   }
 }

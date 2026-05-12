@@ -1,9 +1,9 @@
-import type { ReviewMetadata } from "@diffgazer/core/schemas/review";
+import type { ReviewMetadata, ReviewSeverity } from "@diffgazer/core/schemas/review";
 import { getDateKey, getDateLabel, getTimestamp } from "@diffgazer/core/format";
 import type { ReviewItem, DateGroup } from "./types.js";
 
-export function formatDurationSeconds(durationMs: number | undefined): number {
-  if (!durationMs) return 0;
+export function durationMsToSeconds(durationMs: number | undefined): number {
+  if (durationMs == null) return 0;
   return Math.round(durationMs / 1000);
 }
 
@@ -14,12 +14,13 @@ export function getRunSummary(r: ReviewMetadata): string {
   if (r.highCount > 0) parts.push(`${r.highCount} high`);
   if (r.mediumCount > 0) parts.push(`${r.mediumCount} medium`);
   if (r.lowCount > 0) parts.push(`${r.lowCount} low`);
+  if (r.nitCount > 0) parts.push(`${r.nitCount} nit`);
   if (parts.length === 0) return `Found ${r.issueCount} issue${r.issueCount === 1 ? "" : "s"}.`;
   return parts.join(", ");
 }
 
-export function metadataToSeverities(r: ReviewMetadata): Array<{ severity: string; count: number }> {
-  const severities: Array<{ severity: string; count: number }> = [];
+export function metadataToSeverities(r: ReviewMetadata): Array<{ severity: ReviewSeverity; count: number }> {
+  const severities: Array<{ severity: ReviewSeverity; count: number }> = [];
   if (r.blockerCount > 0) severities.push({ severity: "blocker", count: r.blockerCount });
   if (r.highCount > 0) severities.push({ severity: "high", count: r.highCount });
   if (r.mediumCount > 0) severities.push({ severity: "medium", count: r.mediumCount });
@@ -38,7 +39,7 @@ export function toReviewItem(r: ReviewMetadata): ReviewItem {
     date: r.createdAt,
     issueCount: r.issueCount,
     severities: metadataToSeverities(r),
-    duration: formatDurationSeconds(r.durationMs),
+    duration: durationMsToSeconds(r.durationMs),
     mode: r.mode ?? "unstaged",
   };
 }

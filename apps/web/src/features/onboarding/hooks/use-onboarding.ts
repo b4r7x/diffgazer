@@ -47,12 +47,12 @@ export function useOnboarding() {
 
   const next = () => {
     if (!canProceedNow || isLastStep) return;
-    setStepIndex(stepIndex + 1);
+    setStepIndex((prev) => prev + 1);
   };
 
   const back = () => {
     if (isFirstStep) return;
-    setStepIndex(stepIndex - 1);
+    setStepIndex((prev) => prev - 1);
   };
 
   const updateData = (partial: Partial<WizardData>) => {
@@ -99,7 +99,6 @@ export function useOnboarding() {
     currentStep,
     wizardData,
     steps: STEPS,
-    stepIndex,
     isFirstStep,
     isLastStep,
     canProceed: canProceedNow,

@@ -9,6 +9,7 @@ import { useTerminalDimensions } from "../../hooks/use-terminal-dimensions.js";
 
 export interface InputProps {
   value?: string;
+  defaultValue?: string;
   onChange?: (value: string) => void;
   placeholder?: string;
   size?: "sm" | "md" | "lg";
@@ -43,6 +44,7 @@ function useInputMode(isActive: boolean): void {
 
 export function Input({
   value,
+  defaultValue,
   onChange,
   placeholder,
   size = "md",
@@ -52,7 +54,7 @@ export function Input({
   isActive = false,
 }: InputProps) {
   const { tokens } = useTheme();
-  const [internalValue, setInternalValue] = useState(value ?? "");
+  const [internalValue, setInternalValue] = useState(defaultValue ?? "");
   const { columns } = useTerminalDimensions();
 
   useInputMode(isActive);
@@ -74,7 +76,9 @@ export function Input({
   }
 
   function handleChange(next: string) {
-    setInternalValue(next);
+    if (value === undefined) {
+      setInternalValue(next);
+    }
     onChange?.(next);
   }
 
@@ -91,11 +95,24 @@ export function Input({
     );
   }
 
+  if (value !== undefined) {
+    return (
+      <ControlledTextInput
+        value={currentValue}
+        onChange={handleChange}
+        placeholder={placeholder}
+        width={width}
+        borderColor={borderColor}
+        isActive={isActive}
+      />
+    );
+  }
+
   return (
     <Box width={width} borderStyle="single" borderColor={borderColor}>
       <TextInput
         placeholder={placeholder}
-        defaultValue={value}
+        defaultValue={defaultValue}
         onChange={handleChange}
         isDisabled={!isActive}
       />
@@ -103,7 +120,51 @@ export function Input({
   );
 }
 
-// --- Password sub-component using raw useInput ---
+function ControlledTextInput({
+  value,
+  onChange,
+  placeholder,
+  width,
+  borderColor,
+  isActive,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  width: number;
+  borderColor: string;
+  isActive: boolean;
+}) {
+  const { tokens } = useTheme();
+
+  useInput(
+    (input, key) => {
+      if (key.backspace || key.delete) {
+        onChange(value.slice(0, -1));
+        return;
+      }
+      if (key.return || key.escape || key.upArrow || key.downArrow || key.tab) {
+        return;
+      }
+      if (input.length === 1 && !key.ctrl && !key.meta) {
+        onChange(value + input);
+      }
+    },
+    { isActive },
+  );
+
+  const showPlaceholder = value.length === 0 && placeholder != null;
+
+  return (
+    <Box width={width} borderStyle="single" borderColor={borderColor}>
+      {showPlaceholder ? (
+        <Text color={tokens.muted}>{placeholder}</Text>
+      ) : (
+        <Text>{value}</Text>
+      )}
+    </Box>
+  );
+}
 
 function PasswordInput({
   value,

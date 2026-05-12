@@ -45,10 +45,8 @@ function validateImportClosure(registry: Registry, registryRoot: string) {
   for (const item of registry.items) {
     if (item.type !== "registry:hook") continue;
 
-    // Collect all files in this item
     const includedFiles = new Set(item.files.map((f) => f.path));
 
-    // For each source file, check its imports
     for (const file of item.files) {
       const filePath = resolve(registryRoot, file.path);
       if (!existsSync(filePath)) {
@@ -61,17 +59,14 @@ function validateImportClosure(registry: Registry, registryRoot: string) {
       for (const importPathRaw of extractRelativeImports(content)) {
         let importPath = importPathRaw;
 
-        // If import ends with .js, remove it for resolution (source files are .ts)
         const hasJsExtension = importPath.endsWith(".js");
         if (hasJsExtension) {
           importPath = importPath.slice(0, -3);
         }
 
-        // Resolve relative path
         const baseDir = resolve(registryRoot, file.path, "..");
         const resolvedPath = resolve(baseDir, importPath);
 
-        // Try different extensions
         const tryPaths = [
           resolvedPath,
           `${resolvedPath}.ts`,
@@ -86,11 +81,9 @@ function validateImportClosure(registry: Registry, registryRoot: string) {
         for (const tryPath of tryPaths) {
           if (existsSync(tryPath)) {
             found = true;
-            // Convert back to registry path (relative to registryRoot)
             foundRelativePath = resolve(tryPath).slice(
               resolve(registryRoot).length + 1
             );
-            // Normalize to use forward slashes
             foundRelativePath = foundRelativePath.replace(/\\/g, "/");
             break;
           }
@@ -105,7 +98,6 @@ function validateImportClosure(registry: Registry, registryRoot: string) {
           continue;
         }
 
-        // Check if this import is included in the files array
         if (!includedFiles.has(foundRelativePath)) {
           addError(
             "REGISTRY_IMPORT_CLOSURE",
@@ -155,7 +147,6 @@ function validateRegistryStructure(registry: Registry) {
       continue;
     }
 
-    // Hooks should have at least one .ts file
     const hasSourceFile = item.files.some(
       (f) => f.path.endsWith(".ts") || f.path.endsWith(".tsx")
     );
@@ -212,7 +203,6 @@ function validatePublicTargetClosure(publicDir: string) {
 
     if (item.type !== "registry:hook") continue;
 
-    // Build set of installed target paths (without extension for matching)
     const targetPaths = new Set<string>();
     const targetPathsWithExt = new Set<string>();
     for (const file of item.files) {
@@ -221,7 +211,6 @@ function validatePublicTargetClosure(publicDir: string) {
       targetPaths.add(target.replace(/\.(ts|tsx)$/, ""));
     }
 
-    // For each file with content, check its relative imports resolve to another target
     for (const file of item.files) {
       if (typeof file.content !== "string") continue;
 
@@ -298,7 +287,6 @@ export function validateRegistryClosure(registryPath: string): boolean {
   validateRegistryStructure(registry);
   validateImportClosure(registry, registryRoot);
 
-  // Validate public registry target closure
   const publicDir = resolve(registryRoot, "public", "r");
   if (existsSync(publicDir)) {
     validatePublicTargetClosure(publicDir);
@@ -330,7 +318,6 @@ export function validateRegistryClosure(registryPath: string): boolean {
   return false;
 }
 
-// Exported for tests
 export { validatePublicTargetClosure, validateNoJsImportsInPublicContent, extractRelativeImports };
 export type { PublicRegistryItem, PublicRegistryFile };
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import { NavigationList } from "@diffgazer/ui/components/navigation-list";
 import type { TimelineItem } from "@diffgazer/core/schemas/ui";
 import { isListNavigationKey, toVerticalBoundaryDirection } from "@diffgazer/keys";
@@ -23,10 +23,7 @@ export function TimelineList({
   className,
 }: TimelineListProps) {
   const lastNotifiedId = useRef<string | null>(selectedId);
-
-  useEffect(() => {
-    lastNotifiedId.current = selectedId;
-  }, [selectedId]);
+  lastNotifiedId.current = selectedId;
 
   const notifySelect = (id: string | null) => {
     if (id === null) return;

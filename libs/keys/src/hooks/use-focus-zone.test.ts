@@ -674,7 +674,7 @@ describe("useFocusZone", () => {
   });
 
   describe("tabCycle validation", () => {
-    it("does not warn during render when tabCycle contains invalid entries", () => {
+    it("warns during render when tabCycle contains invalid entries", () => {
       const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 
       function Consumer() {
@@ -688,7 +688,7 @@ describe("useFocusZone", () => {
 
       renderToString(createElement(KeyboardProvider, null, createElement(Consumer)));
 
-      expect(warn).not.toHaveBeenCalled();
+      expect(warn).toHaveBeenCalledOnce();
       warn.mockRestore();
     });
 

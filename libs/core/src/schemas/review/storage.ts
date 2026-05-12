@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { UuidSchema, createdAtField } from "../errors.js";
+import { UuidSchema, createdAtField } from "../shared/fields.js";
 import { ReviewResultSchema } from "./issues.js";
 import { LensIdSchema, ProfileIdSchema, DrilldownResultSchema } from "./lens.js";
 

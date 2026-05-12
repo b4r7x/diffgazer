@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { cn } from "@diffgazer/core/cn";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
-import { Badge, type BadgeProps } from "@diffgazer/ui/components/badge";
+import { Badge } from "@diffgazer/ui/components/badge";
 import { Button } from "@diffgazer/ui/components/button";
 import { Callout, CalloutTitle, CalloutContent } from "@diffgazer/ui/components/callout";
 import { ToggleGroup, ToggleGroupItem } from "@diffgazer/ui/components/toggle-group";
@@ -14,7 +14,7 @@ import { ReviewMetricsFooter } from "./review-metrics-footer";
 import { useReviewProgressKeyboard } from "../hooks/use-review-progress-keyboard";
 import type { AgentState } from "@diffgazer/core/schemas/events";
 import type { ReviewContextResponse } from "@diffgazer/core/api/types";
-import type { ReviewProgressMetrics } from "@diffgazer/core/schemas/ui";
+import type { BadgeVariant, ReviewProgressMetrics } from "@diffgazer/core/schemas/ui";
 
 export interface ReviewProgressData {
   steps: ProgressStepData[];
@@ -37,7 +37,7 @@ interface AgentOption {
   id: string;
   name: string;
   badgeLabel?: string;
-  badgeVariant?: string;
+  badgeVariant?: BadgeVariant;
 }
 
 function AgentFilterBar({
@@ -69,7 +69,7 @@ function AgentFilterBar({
           className="min-h-0 min-w-0 px-2 py-1 text-[10px]"
         >
           <Badge
-            variant={(agent.badgeVariant as BadgeProps["variant"]) ?? "info"}
+            variant={agent.badgeVariant ?? "info"}
             size="sm"
             className="mr-1"
           >

@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 
-import { execSync } from "node:child_process";
 import {
   existsSync,
   mkdirSync,
@@ -12,32 +11,15 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
+import {
+  quoteArgs,
+  packageNameFromSpec,
+  networkAllowed,
+  pnpmAddFlags,
+  run,
+} from "./smoke-shared.mjs";
 
 const root = process.cwd();
-
-function run(cmd, options = {}) {
-  return execSync(cmd, {
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-    cwd: options.cwd ?? root,
-    env: { ...process.env, ...options.env },
-    shell: true,
-  });
-}
-
-function quoteArgs(args) {
-  return args.map((arg) => JSON.stringify(arg)).join(" ");
-}
-
-function pnpmAddFlags() {
-  return process.env.DIFFGAZER_SMOKE_ALLOW_NETWORK === "1"
-    ? "--fetch-retries=0"
-    : "--offline --fetch-retries=0";
-}
-
-function networkAllowed() {
-  return process.env.DIFFGAZER_SMOKE_ALLOW_NETWORK === "1";
-}
 
 const packageDirs = {
   "@diffgazer/ui": "libs/ui",
@@ -46,16 +28,6 @@ const packageDirs = {
   "@diffgazer/web": "apps/web",
   diffgazer: "cli/diffgazer",
 };
-
-function packageNameFromSpec(spec) {
-  if (spec.startsWith("/") || spec.startsWith(".")) return null;
-  if (spec.startsWith("@")) {
-    const [scope, rest = ""] = spec.split("/");
-    const name = rest.split("@")[0];
-    return name ? `${scope}/${name}` : null;
-  }
-  return spec.split("@")[0] || null;
-}
 
 function readPackageJson(workspacePackage) {
   const packageDir = packageDirs[workspacePackage];
@@ -224,7 +196,7 @@ function withTempProject(workspacePackage, smoke) {
     const installDeps = networkAllowed()
       ? (smoke.installDeps ?? [])
       : [...writeOfflineOverrides(projectDir, workspacePackage, smoke).values()];
-    run(`pnpm add ${pnpmAddFlags()} ${quoteArgs([...tgzPaths, ...installDeps])}`, { cwd: projectDir });
+    run(`pnpm add ${pnpmAddFlags().join(" ")} ${quoteArgs([...tgzPaths, ...installDeps])}`, { cwd: projectDir });
     smoke.prepare?.(projectDir);
     const result = run(smoke.command, { cwd: projectDir });
     return result.toString().trim();

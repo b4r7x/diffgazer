@@ -1,7 +1,7 @@
+import type { RefObject } from "react";
 import { DialogFooter } from "@diffgazer/ui/components/dialog";
 import { Button } from "@diffgazer/ui/components/button";
 import { cn } from "@diffgazer/core/cn";
-import { useEffect, useRef } from "react";
 import type { FocusElement } from "@/types/focus-element";
 
 interface ApiKeyFooterProps {
@@ -11,6 +11,8 @@ interface ApiKeyFooterProps {
   isSubmitting: boolean;
   focused: FocusElement;
   onFocus: (element: FocusElement) => void;
+  cancelRef: RefObject<HTMLButtonElement | null>;
+  confirmRef: RefObject<HTMLButtonElement | null>;
 }
 
 export function ApiKeyFooter({
@@ -20,14 +22,9 @@ export function ApiKeyFooter({
   isSubmitting,
   focused,
   onFocus,
+  cancelRef,
+  confirmRef,
 }: ApiKeyFooterProps) {
-  const cancelRef = useRef<HTMLButtonElement>(null);
-  const confirmRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    if (focused === "cancel") cancelRef.current?.focus();
-    else if (focused === "confirm") confirmRef.current?.focus();
-  }, [focused]);
 
   return (
     <DialogFooter className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4">

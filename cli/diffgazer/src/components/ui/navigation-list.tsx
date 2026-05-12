@@ -27,19 +27,6 @@ export interface NavigationListTitleProps {
   children: string;
 }
 
-export interface NavigationListBadgeProps {
-  variant?: string;
-  children: string;
-}
-
-export interface NavigationListStatusProps {
-  children: string;
-}
-
-export interface NavigationListSubtitleProps {
-  children: string;
-}
-
 // --- Context ---
 
 interface NavigationListContextValue {
@@ -80,31 +67,6 @@ function NavigationListTitle({ children }: NavigationListTitleProps) {
       {children}
     </Text>
   );
-}
-
-function NavigationListBadge({ variant, children }: NavigationListBadgeProps) {
-  const ctx = useNavigationListContext();
-
-  const colorMap: Record<string, string> = {
-    success: ctx.tokens.success,
-    warning: ctx.tokens.warning,
-    error: ctx.tokens.error,
-    info: ctx.tokens.info,
-  };
-
-  const color = (variant && colorMap[variant]) ?? ctx.tokens.muted;
-
-  return <Text color={color}>[{children}]</Text>;
-}
-
-function NavigationListStatus({ children }: NavigationListStatusProps) {
-  const ctx = useNavigationListContext();
-  return <Text color={ctx.tokens.muted}>{children}</Text>;
-}
-
-function NavigationListSubtitle({ children }: NavigationListSubtitleProps) {
-  const ctx = useNavigationListContext();
-  return <Text color={ctx.tokens.muted}>{children}</Text>;
 }
 
 // --- Item ---
@@ -221,7 +183,4 @@ function NavigationListRoot({
 export const NavigationList = Object.assign(NavigationListRoot, {
   Item: NavigationListItem,
   Title: NavigationListTitle,
-  Badge: NavigationListBadge,
-  Status: NavigationListStatus,
-  Subtitle: NavigationListSubtitle,
 });

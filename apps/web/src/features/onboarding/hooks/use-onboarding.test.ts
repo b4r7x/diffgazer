@@ -41,7 +41,7 @@ vi.mock("@/lib/config-guards/config-guard-cache", () => ({
 
 import { useOnboarding } from "./use-onboarding";
 
-describe("useOnboarding initial state", () => {
+describe("useOnboarding", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -59,6 +59,11 @@ describe("useOnboarding initial state", () => {
   });
 
   it("marks app as configured after successful completion", async () => {
+    const firstProvider = AVAILABLE_PROVIDERS[0];
+    if (!firstProvider) {
+      throw new Error("Provider list must not be empty");
+    }
+
     mockSaveSettingsMutateAsync.mockResolvedValue(undefined);
     mockSaveConfigMutateAsync.mockResolvedValue(undefined);
     mockRefresh.mockResolvedValue(undefined);
@@ -70,7 +75,7 @@ describe("useOnboarding initial state", () => {
       expect.objectContaining({ secretsStorage: "file" }),
     );
     expect(mockSaveConfigMutateAsync).toHaveBeenCalledWith(
-      expect.objectContaining({ provider: "gemini" }),
+      expect.objectContaining({ provider: firstProvider.id }),
     );
     expect(mockRefresh).toHaveBeenCalledWith(true);
     expect(mockSetConfiguredGuardCache).toHaveBeenCalledWith(true);

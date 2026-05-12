@@ -7,7 +7,7 @@ import { IssuePreviewItem } from './issue-preview-item';
 import { LensStatsTable, type LensStats } from './lens-stats-table';
 import type { AnalysisStats, SeverityCounts, IssuePreview } from '@diffgazer/core/schemas/ui';
 
-export type { AnalysisStats, SeverityCounts, IssuePreview };
+export type { IssuePreview };
 
 export interface AnalysisSummaryProps {
   stats: AnalysisStats;

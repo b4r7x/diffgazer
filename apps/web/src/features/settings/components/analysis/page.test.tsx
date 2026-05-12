@@ -30,12 +30,26 @@ vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
 }));
 
+type QueryStateHandlers = {
+  loading: () => unknown;
+  error: (error: Error) => unknown;
+  success: () => unknown;
+};
+
 vi.mock("@diffgazer/core/api/hooks", () => ({
   useSettings: () => mockSettingsQuery.current,
   useSaveSettings: () => ({
     isPending: mockIsSaving.current,
     mutateAsync: mockSaveSettings,
   }),
+  matchQueryState: (
+    query: { isLoading?: boolean; error?: Error | null },
+    handlers: QueryStateHandlers,
+  ) => {
+    if (query.isLoading) return handlers.loading();
+    if (query.error) return handlers.error(query.error);
+    return handlers.success();
+  },
 }));
 
 import { SettingsAnalysisPage } from "./page";

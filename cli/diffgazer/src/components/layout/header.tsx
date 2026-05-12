@@ -13,7 +13,7 @@ export interface HeaderProps {
 export function Header({ providerName, providerStatus, onBack }: HeaderProps) {
   const { tokens } = useTheme();
 
-  const statusColor = providerStatus === "active" ? tokens.green : tokens.muted;
+  const statusColor = providerStatus === "active" ? tokens.success : tokens.muted;
   const statusLabel = providerStatus === "active" ? "active" : "idle";
 
   return (

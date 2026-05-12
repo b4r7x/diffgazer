@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { GIT_FILE_STATUS_CODES, type GitStatus, type GitStatusFiles, type GitFileEntry, type GitFileStatusCode } from "@diffgazer/core/schemas/git";
@@ -113,7 +114,7 @@ function isInternalDiffgazerPath(pathPart: string): boolean {
   return normalized === INTERNAL_DIFFGAZER_DIR || normalized.startsWith(`${INTERNAL_DIFFGAZER_DIR}/`);
 }
 
-function shouldIncludeStatusLineForHash(line: string): boolean {
+function isExternalStatusLine(line: string): boolean {
   if (line.length < 3) return false;
   const pathPart = line.slice(3).trim();
   if (!pathPart) return false;
@@ -210,12 +211,11 @@ export function createGitService(options: { cwd?: string; timeout?: number } = {
       const { stdout } = await execFileAsync("git", ["status", "--porcelain"], { cwd, timeout });
       const lines = stdout
         .split("\n")
-        .filter((line) => line.length > 0 && shouldIncludeStatusLineForHash(line))
+        .filter((line) => line.length > 0 && isExternalStatusLine(line))
         .sort();
       if (lines.length === 0) {
         return "";
       }
-      const { createHash } = await import("node:crypto");
       return createHash("sha256").update(lines.join("\n")).digest("hex").slice(0, 16);
     } catch (error) {
       console.warn("[git] failed to get status hash:", getErrorMessage(error));

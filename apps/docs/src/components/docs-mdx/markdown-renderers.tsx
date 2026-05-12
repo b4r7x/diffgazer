@@ -40,6 +40,16 @@ function getLanguageLabel(children: ReactNode): string | undefined {
   return match?.[1]
 }
 
+function CodeRenderer({ children, className }: { children: ReactNode; className?: string }) {
+  const isInsidePre = useContext(PreCodeContext)
+  if (isInsidePre || className) return <code className={className}>{children}</code>
+  return (
+    <code className="bg-secondary text-foreground px-1.5 py-0.5 text-xs font-mono rounded-sm">
+      {children}
+    </code>
+  )
+}
+
 export const markdownMdxComponents: MDXComponents = {
   h1: () => null,
   h2: ({ children, className, id, ...props }) => (
@@ -74,16 +84,7 @@ export const markdownMdxComponents: MDXComponents = {
       </Callout>
     )
   },
-  code: ({ children, className }) => {
-    const isInsidePre = useContext(PreCodeContext)
-    if (isInsidePre) return <code className={className}>{children}</code>
-    if (className) return <code className={className}>{children}</code>
-    return (
-      <code className="bg-secondary text-foreground px-1.5 py-0.5 text-xs font-mono rounded-sm">
-        {children}
-      </code>
-    )
-  },
+  code: CodeRenderer,
   pre: ({ children }) => (
     <CodeBlock className="mb-4">
       {getLanguageLabel(children) && (
@@ -92,14 +93,14 @@ export const markdownMdxComponents: MDXComponents = {
         </CodeBlockHeader>
       )}
       <CodeBlockContent>
-        <PreCodeContext.Provider value>
+        <PreCodeContext.Provider value={true}>
           {children}
         </PreCodeContext.Provider>
       </CodeBlockContent>
     </CodeBlock>
   ),
   table: ({ children }) => (
-    <div className="overflow-x-auto mb-4 overflow-hidden rounded-sm">
+    <div className="overflow-x-auto overflow-y-hidden mb-4 rounded-sm">
       <table className="w-full text-sm border-collapse border border-border">
         {children}
       </table>
@@ -119,12 +120,11 @@ export const markdownMdxComponents: MDXComponents = {
     </td>
   ),
   a: ({ children, href }) => {
-    const resolvedHref = href
-    const isExternal = resolvedHref?.startsWith("http")
+    const isExternal = href?.startsWith("http")
 
     return (
       <a
-        href={resolvedHref}
+        href={href}
         className="text-foreground hover:underline"
         {...(isExternal
           ? { target: "_blank", rel: "noopener noreferrer" }

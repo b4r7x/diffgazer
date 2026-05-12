@@ -1,3 +1,5 @@
+import { isHTMLElement } from "./dom.js";
+
 const FOCUSABLE_SELECTOR = [
   "a[href]",
   "area[href]",
@@ -14,12 +16,6 @@ const FOCUSABLE_SELECTOR = [
   "details > summary:first-of-type",
   "[tabindex]:not([disabled])",
 ].join(",");
-
-function isHTMLElement(value: unknown): value is HTMLElement {
-  const element = value as { ownerDocument?: Document } | null;
-  const View = element?.ownerDocument?.defaultView;
-  return Boolean(View && value instanceof View.HTMLElement);
-}
 
 function isHidden(element: HTMLElement): boolean {
   let current: HTMLElement | null = element;
@@ -66,13 +62,19 @@ export function isFocusable(element: HTMLElement | null): boolean {
   return true;
 }
 
+// jsdom returns compound-selector matches out of tree order; normalize.
+function documentOrder(a: HTMLElement, b: HTMLElement): number {
+  const pos = a.compareDocumentPosition(b);
+  if (pos & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
+  if (pos & Node.DOCUMENT_POSITION_PRECEDING) return 1;
+  return 0;
+}
+
 export function getFocusableElements(container: HTMLElement | null): HTMLElement[] {
   if (!container) return [];
-  const candidates = Array.from(container.querySelectorAll<HTMLElement>("*"))
-    .filter((element) => element.matches(FOCUSABLE_SELECTOR));
-  return candidates.filter((element) => {
-    return isFocusable(element);
-  });
+  return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR))
+    .sort(documentOrder)
+    .filter((element) => isFocusable(element));
 }
 
 function isRadioInput(element: HTMLElement): element is HTMLInputElement {
@@ -120,4 +122,10 @@ export function getTabbableElements(container: HTMLElement | null): HTMLElement[
 
 export function getFirstFocusableElement(container: HTMLElement | null): HTMLElement | null {
   return getFocusableElements(container)[0] ?? null;
+}
+
+export function containsActiveElement(element: HTMLElement): boolean {
+  const activeElement = element.ownerDocument.activeElement;
+  const View = element.ownerDocument.defaultView;
+  return Boolean(View && activeElement instanceof View.HTMLElement && element.contains(activeElement));
 }

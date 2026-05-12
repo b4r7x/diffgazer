@@ -77,7 +77,6 @@ export function validateInstallNames(names: string[]): void {
 export function splitInstallNames(names: string[]): {
   ui: string[];
   keys: string[];
-  publicNames: string[];
 } {
   const ui = new Set<string>();
   const keys = new Set<string>();
@@ -88,14 +87,7 @@ export function splitInstallNames(names: string[]): {
     else keys.add(parsed.name);
   }
 
-  return {
-    ui: [...ui],
-    keys: [...keys],
-    publicNames: [
-      ...[...ui].map((name) => `ui/${name}`),
-      ...[...keys].map((name) => `keys/${name}`),
-    ],
-  };
+  return { ui: [...ui], keys: [...keys] };
 }
 
 export function getNamespacedItem(name: string): RegistryItem {

@@ -7,8 +7,8 @@ import {
   type KeyboardEvent,
 } from "react";
 import { resolveDirectionKeys, dispatchNavigationKey } from "./internal/navigation-dispatch.js";
+import { containsActiveElement } from "../utils/focusable.js";
 import {
-  containsActiveElement,
   getFocusedNavigationValue,
   getNavigationItems,
   type NavigationItemType,

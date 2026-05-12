@@ -20,7 +20,7 @@ export const ErrorCode = {
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
 
-export const ErrorCodeSchema = z.enum(
+const ErrorCodeSchema = z.enum(
   Object.values(ErrorCode) as [ErrorCode, ...ErrorCode[]]
 );
 
@@ -32,18 +32,7 @@ export const SHARED_ERROR_CODES = [
 
 export type SharedErrorCode = (typeof SHARED_ERROR_CODES)[number];
 
-export const UuidSchema = z.string().uuid();
-
-export const timestampFields = {
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
-} as const;
-
-export const createdAtField = {
-  createdAt: z.string().datetime(),
-} as const;
-
-export function createDomainErrorCodes<const T extends readonly string[]>(
+function createDomainErrorCodes<const T extends readonly string[]>(
   specificCodes: T
 ): [string, ...string[]] {
   return [...SHARED_ERROR_CODES, ...specificCodes] as [string, ...string[]];

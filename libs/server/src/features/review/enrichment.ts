@@ -1,5 +1,6 @@
 import type { ReviewIssue, EnrichmentData } from "@diffgazer/core/schemas/review";
 import type { EnrichProgressEvent } from "@diffgazer/core/schemas/events";
+import { getErrorMessage } from "@diffgazer/core/errors";
 
 const CONTEXT_LINES = 5;
 
@@ -32,7 +33,7 @@ async function enrichIssue(
     enrichedAt: new Date().toISOString(),
   };
 
-  if (issue.line_start !== null && issue.line_start !== undefined) {
+  if (issue.line_start !== null) {
     onEvent({
       type: "enrich_progress",
       issueId: issue.id,
@@ -53,7 +54,7 @@ async function enrichIssue(
     });
   }
 
-  if (issue.line_start !== null && issue.line_start !== undefined) {
+  if (issue.line_start !== null) {
     onEvent({
       type: "enrich_progress",
       issueId: issue.id,
@@ -101,7 +102,8 @@ export async function enrichIssues(
     }
     try {
       results.push(await enrichIssue(issue, gitService, onEvent));
-    } catch {
+    } catch (error) {
+      console.warn(`[enrich] failed for issue ${issue.id}:`, getErrorMessage(error));
       results.push(issue);
     }
   }

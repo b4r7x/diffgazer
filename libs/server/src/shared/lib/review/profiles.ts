@@ -11,7 +11,7 @@ const PROFILES: Record<ProfileId, ReviewProfile> = {
   strict: {
     id: "strict",
     name: "Strict Review",
-    description: "Comprehensive review covering correctness, security, and tests",
+    description: "Full review covering correctness, security, and tests",
     lenses: ["correctness", "security", "tests"],
   },
   perf: {

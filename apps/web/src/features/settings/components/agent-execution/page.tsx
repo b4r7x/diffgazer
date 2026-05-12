@@ -36,7 +36,6 @@ export function SettingsAgentExecutionPage() {
 
   const isDirty = settings ? settings.agentExecution !== effectiveMode : false;
   const canSave = !isSaving && isDirty;
-  const isSaveDisabled = !canSave;
 
   const handleCancel = () => navigate({ to: "/settings" });
 
@@ -54,7 +53,7 @@ export function SettingsAgentExecutionPage() {
   const footer = useActionRowNavigation({
     enabled: true,
     actionCount: 2,
-    disabledActions: [isSaving, isSaveDisabled],
+    disabledActions: [isSaving, !canSave],
     disabledFocusFallbackRef: focusFallbackRef,
     onAction: (index) => {
       if (index === 0) handleCancel();
@@ -92,7 +91,7 @@ export function SettingsAgentExecutionPage() {
   useKey(" ", () => onExecutionChange(effectiveFocusedMode), { enabled: navigationEnabled });
   useKey("Enter", () => onExecutionChange(effectiveFocusedMode), { enabled: navigationEnabled });
 
-  const guard = matchQueryState(settingsQuery, {
+  const pendingUI = matchQueryState(settingsQuery, {
     loading: () => (
       <CardLayout
         title="Agent Execution Mode"
@@ -112,7 +111,7 @@ export function SettingsAgentExecutionPage() {
     success: () => null,
   });
 
-  if (guard) return guard;
+  if (pendingUI) return pendingUI;
 
   return (
     <CardLayout

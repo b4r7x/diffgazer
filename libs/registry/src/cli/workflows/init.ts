@@ -66,15 +66,6 @@ function logFileResults(results: Array<{ action: "created" | "skipped"; path: st
   }
 }
 
-function snapshotExistingFiles(cwd: string, paths: string[]): Map<string, string | null> {
-  const snapshots = new Map<string, string | null>();
-  for (const path of paths) {
-    const absolutePath = resolve(cwd, path);
-    snapshots.set(absolutePath, existsSync(absolutePath) ? readFileSync(absolutePath, "utf-8") : null);
-  }
-  return snapshots;
-}
-
 function snapshotProjectFiles(cwd: string): Map<string, Buffer> {
   const snapshots = new Map<string, Buffer>();
 
@@ -110,13 +101,6 @@ function snapshotProjectDirs(cwd: string): Set<string> {
 
   visit(cwd);
   return dirs;
-}
-
-function restoreSnapshots(snapshots: Map<string, string | null>): void {
-  for (const [path, content] of snapshots) {
-    if (content === null) rmSync(path, { force: true });
-    else writeFileSync(path, content);
-  }
 }
 
 function restoreExistingFiles(snapshots: Map<string, Buffer>): void {
@@ -184,9 +168,9 @@ export async function runInitWorkflow<TConfig>(options: InitWorkflowOptions<TCon
     return;
   }
 
-  const snapshots = snapshotExistingFiles(cwd, [configFileName]);
   const existingFiles = snapshotProjectFiles(cwd);
   const existingDirs = snapshotProjectDirs(cwd);
+  const configExisted = existingFiles.has(resolve(cwd, configFileName));
   let fileResults: Array<{ action: "created" | "skipped"; path: string }> = [];
   try {
     fileResults = createFiles(cwd);
@@ -198,7 +182,7 @@ export async function runInitWorkflow<TConfig>(options: InitWorkflowOptions<TCon
   } catch (error) {
     removeCreatedResults(cwd, fileResults, existingDirs);
     restoreExistingFiles(existingFiles);
-    restoreSnapshots(snapshots);
+    if (!configExisted) rmSync(resolve(cwd, configFileName), { force: true });
     throw error;
   }
 

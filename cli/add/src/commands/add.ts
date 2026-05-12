@@ -33,6 +33,10 @@ import { resolveInstallPath, resolveProjectPath, toPosixPath } from "../utils/pa
 
 type OwnedFileOp = FileOp & { sourceNames?: string[] };
 
+function isOwnedFileOp(op: FileOp): op is OwnedFileOp {
+  return "sourceNames" in op;
+}
+
 function buildComponentCssFileOps(
   resolved: string[],
   cwd: string,
@@ -211,6 +215,10 @@ function isManifestTrusted(
   return false;
 }
 
+function toManifestPath(op: FileOp): string {
+  return toPosixPath(`${op.installDir}/${op.relativePath}`);
+}
+
 function buildOwnedFilesByItem(
   cwd: string,
   writeResult: { results: Array<{ op: FileOp; result: "written" | "skipped" | "overwritten" }> },
@@ -222,12 +230,12 @@ function buildOwnedFilesByItem(
   const existingManifest = (ctx.config.getManifestItems(cwd) ?? {}) as NonNullable<DiffgazerAddConfig["installedComponents"]>;
 
   function getSourceNames(op: FileOp): string[] {
-    const ownedOp = op as OwnedFileOp;
-    return [...new Set([ownedOp.sourceName, ...(ownedOp.sourceNames ?? [])].filter((name): name is string => name !== undefined))];
+    const sourceNames = isOwnedFileOp(op) ? op.sourceNames ?? [] : [];
+    return [...new Set([op.sourceName, ...sourceNames].filter((name): name is string => name !== undefined))];
   }
 
   function addOwnedFile(sourceName: string, op: FileOp): void {
-    const path = toPosixPath(`${op.installDir}/${op.relativePath}`);
+    const path = toManifestPath(op);
     const existingFiles = byItem.get(sourceName) ?? [];
     if (existingFiles.some((file) => file.path === path)) return;
 
@@ -250,7 +258,7 @@ function buildOwnedFilesByItem(
       addOwnedFile(sourceName, op);
     }
     writtenByTargetPath.set(op.targetPath, {
-      path: toPosixPath(`${op.installDir}/${op.relativePath}`),
+      path: toManifestPath(op),
       hash: sha256(op.content),
       item: sourceNames[0]!,
       registryIntegrity,
@@ -276,8 +284,7 @@ function buildOwnedFilesByItem(
     const onDiskHash = sha256(readFileSync(op.targetPath, "utf-8"));
     if (onDiskHash !== expectedHash) continue;
 
-    const manifestPath = toPosixPath(`${op.installDir}/${op.relativePath}`);
-    if (!isManifestTrusted(manifestPath, existingManifest, registryIntegrity)) continue;
+    if (!isManifestTrusted(toManifestPath(op), existingManifest, registryIntegrity)) continue;
 
     for (const sourceName of sourceNames) {
       addOwnedFile(sourceName, op);
@@ -337,7 +344,7 @@ const addBaseCommand = createAddCommand<ResolvedConfig>({
     { flags: "--keys-version <version>", description: "Version/range of @diffgazer/keys used for package mode", default: DEFAULT_KEYS_VERSION_SPEC },
   ],
   buildPlan: async ({ cwd, config, names, opts }) => {
-    const split = splitInstallNames(names);
+    const namesByNamespace = splitInstallNames(names);
     const keysVersionSpec = normalizeVersionSpec(opts.keysVersion, "@diffgazer/keys");
     const integrationMode = parseEnumOption(
       String(opts.integration ?? "ask").toLowerCase(),
@@ -345,7 +352,7 @@ const addBaseCommand = createAddCommand<ResolvedConfig>({
       "--integration",
     );
     const normalizedIntegrationMode = integrationMode === "keys" ? "@diffgazer/keys" : integrationMode;
-    const resolved = ctx.registry.resolveDeps(split.ui);
+    const resolved = ctx.registry.resolveDeps(namesByNamespace.ui);
     const selection = await resolveIntegrations(resolved, normalizedIntegrationMode, Boolean(opts.yes));
     logIntegrationMode(selection.mode);
 
@@ -356,14 +363,14 @@ const addBaseCommand = createAddCommand<ResolvedConfig>({
     return {
       resolvedNames: [
         ...resolved.map((name) => `ui/${name}`),
-        ...split.keys.map((name) => `keys/${name}`),
+        ...namesByNamespace.keys.map((name) => `keys/${name}`),
       ],
       fileOps: [
         ...collectFileOps(resolved, cwd, config, selection, neededKeysHooks),
-        ...buildKeysFileOps(split.keys, cwd, config),
+        ...buildKeysFileOps(namesByNamespace.keys, cwd, config),
       ],
       missingDeps: computeMissingDeps(resolved, selection, keysVersionSpec, cwd),
-      extraDependencies: resolved.filter((r) => !split.ui.includes(r)).map((name) => `ui/${name}`),
+      extraDependencies: resolved.filter((r) => !namesByNamespace.ui.includes(r)).map((name) => `ui/${name}`),
       headingMessage: "Adding Diffgazer items...",
       onDryRun: () => {
         if (selection.hasKeyboardIntegration && selection.mode === "copy") {

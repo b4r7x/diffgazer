@@ -1,9 +1,10 @@
 import { Box, Text } from "ink";
+import type { ReviewSeverity } from "@diffgazer/core/schemas/review";
 import { useTheme } from "../../../theme/theme-context.js";
 import { severityColor } from "../../../theme/severity.js";
 
 export interface SeverityBarProps {
-  severity: string;
+  severity: ReviewSeverity;
   count: number;
   total: number;
 }

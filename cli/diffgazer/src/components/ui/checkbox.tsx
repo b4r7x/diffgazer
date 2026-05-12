@@ -129,16 +129,19 @@ function CheckboxGroupRoot<T extends string = string>({
   const selectableItems = items.filter((item) => !item.disabled && !disabled);
 
   const [internalValue, setInternalValue] = useState<string[]>(defaultValue ?? []);
-  const [highlightIndex, setHighlightIndex] = useState(0);
+  const [internalIndex, setInternalIndex] = useState(0);
 
   const checkedValues = value ?? internalValue;
-  const highlightedValue = selectableItems[highlightIndex]?.value ?? "";
+  const highlightedValue = selectableItems[internalIndex]?.value ?? "";
 
   function moveHighlight(direction: 1 | -1) {
     if (selectableItems.length === 0) return;
 
-    const nextIdx = clampIndex(highlightIndex, direction, selectableItems.length, wrap);
-    setHighlightIndex(nextIdx);
+    const currentIdx = selectableItems.findIndex(
+      (item) => item.value === highlightedValue,
+    );
+    const nextIdx = clampIndex(currentIdx, direction, selectableItems.length, wrap);
+    setInternalIndex(nextIdx);
     const nextItem = selectableItems[nextIdx];
     if (nextItem) {
       onHighlightChange?.(nextItem.value);
@@ -146,7 +149,7 @@ function CheckboxGroupRoot<T extends string = string>({
   }
 
   function toggleCurrent() {
-    const item = selectableItems[highlightIndex];
+    const item = selectableItems.find((i) => i.value === highlightedValue);
     if (!item) return;
 
     const nextValues = checkedValues.includes(item.value)

@@ -12,9 +12,9 @@ import type { BundleFile, BundleItem, BundlerConfig, BundleResult } from "./type
 interface BundleContext {
   rootDir: string;
   itemLabel: string;
-  detectOpts: DetectNpmImportsOptions;
+  detectImportOptions: DetectNpmImportsOptions;
   transformPath: BundlerConfig["transformPath"];
-  coreDeps: Set<string> | undefined;
+  excludedDeps: Set<string> | undefined;
   clientDefault: boolean;
 }
 
@@ -35,7 +35,7 @@ function readRegistryJson(registryPath: string): unknown {
   try {
     return JSON.parse(readFileSync(registryPath, "utf-8"));
   } catch (e) {
-    throw new Error(`Failed to parse registry.json: ${toErrorMessage(e)}`);
+    throw new Error(`Failed to parse registry.json: ${toErrorMessage(e)}`, { cause: e });
   }
 }
 
@@ -84,7 +84,7 @@ function readAndBundleFiles(
   sourceItem: RegistrySourceItem,
   ctx: BundleContext,
 ): { files: BundleFile[]; detectedDeps: Set<string> } {
-  const { rootDir, itemLabel, detectOpts, transformPath } = ctx;
+  const { rootDir, itemLabel, detectImportOptions, transformPath } = ctx;
   const files: BundleFile[] = [];
   const detectedDeps = new Set<string>(sourceItem.dependencies);
 
@@ -102,7 +102,7 @@ function readAndBundleFiles(
       type: file.type,
       target: file.target,
     });
-    detectNpmImports(content, detectOpts).forEach((dep) => detectedDeps.add(dep));
+    detectNpmImports(content, detectImportOptions).forEach((dep) => detectedDeps.add(dep));
   }
 
   return { files, detectedDeps };
@@ -114,8 +114,8 @@ function bundleItem(
 ): BundleItem {
   const { files, detectedDeps } = readAndBundleFiles(sourceItem, ctx);
 
-  if (ctx.coreDeps) {
-    for (const d of ctx.coreDeps) detectedDeps.delete(d);
+  if (ctx.excludedDeps) {
+    for (const d of ctx.excludedDeps) detectedDeps.delete(d);
   }
 
   return {
@@ -165,9 +165,9 @@ export function createBundler(config: BundlerConfig): () => BundleResult {
     const ctx: BundleContext = {
       rootDir,
       itemLabel,
-      detectOpts: { peerDeps: config.peerDeps, aliasPrefixes: config.aliasPrefixes },
+      detectImportOptions: { peerDeps: config.peerDeps, aliasPrefixes: config.aliasPrefixes },
       transformPath: config.transformPath,
-      coreDeps: config.coreDeps,
+      excludedDeps: config.excludedDeps,
       clientDefault,
     };
     const items = sourceItems.map((item) => bundleItem(item, ctx));

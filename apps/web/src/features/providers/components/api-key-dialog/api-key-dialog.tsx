@@ -25,6 +25,8 @@ export function ApiKeyDialog({
   onSubmit,
 }: ApiKeyDialogProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const confirmRef = useRef<HTMLButtonElement>(null);
 
   const form = useApiKeyForm({
     envVarName,
@@ -39,6 +41,8 @@ export function ApiKeyDialog({
     canSubmit: form.canSubmit && !form.isSubmitting,
     isSubmitting: form.isSubmitting,
     inputRef,
+    cancelRef,
+    confirmRef,
     onSubmit: form.handleSubmit,
     onClose: () => onOpenChange(false),
   });
@@ -83,6 +87,8 @@ export function ApiKeyDialog({
           isSubmitting={form.isSubmitting}
           focused={focused}
           onFocus={setFocused}
+          cancelRef={cancelRef}
+          confirmRef={confirmRef}
         />
       </DialogContent>
     </Dialog>

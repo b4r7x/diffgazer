@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect, useEffectEvent, useRef, type KeyboardEvent as ReactKeyboardEvent, type RefCallback, type RefObject } from "react";
+import { useState, useEffect, useEffectEvent, useRef, type KeyboardEvent as ReactKeyboardEvent, type RefCallback, type RefObject } from "react";
 import { getVerticalArrowDirection, useFocusZone, useKey, useScope } from "@diffgazer/keys";
 import type { FocusElement } from "@/types/focus-element";
 import type { InputMethod } from "@/types/input-method";
@@ -12,6 +12,8 @@ interface ApiKeyDialogKeyboardOptions {
   canSubmit: boolean;
   isSubmitting?: boolean;
   inputRef: RefObject<HTMLInputElement | null>;
+  cancelRef: RefObject<HTMLButtonElement | null>;
+  confirmRef: RefObject<HTMLButtonElement | null>;
   onSubmit: (method?: InputMethod) => void;
   onClose: () => void;
 }
@@ -40,10 +42,10 @@ function useFocusedElement(
 ) {
   const [focused, setFocusedInternal] = useState<FocusElement>("paste");
 
-  const setFocused = useCallback((element: FocusElement) => {
+  const setFocused = (element: FocusElement) => {
     setFocusedInternal(element);
     setZone(getZoneForElement(element));
-  }, [setZone]);
+  };
 
   return { focused, setFocused };
 }
@@ -55,6 +57,8 @@ export function useApiKeyDialogKeyboard({
   canSubmit,
   isSubmitting = false,
   inputRef,
+  cancelRef,
+  confirmRef,
   onSubmit,
   onClose,
 }: ApiKeyDialogKeyboardOptions): ApiKeyDialogKeyboardReturn {
@@ -72,6 +76,12 @@ export function useApiKeyDialogKeyboard({
 
   const { focused, setFocused } = useFocusedElement(setZone);
   const effectiveFocused = !canSubmit && focused === "confirm" ? "cancel" : focused;
+
+  const focusFooterElement = (element: FocusElement) => {
+    setFocused(element);
+    if (element === "cancel") cancelRef.current?.focus();
+    else if (element === "confirm") confirmRef.current?.focus();
+  };
 
   const focusMethodOption = (nextMethod: InputMethod) => {
     setFocused(nextMethod);
@@ -101,7 +111,7 @@ export function useApiKeyDialogKeyboard({
 
     if (direction === "down" && focusedMethod === "env") {
       event.preventDefault();
-      setFocused(footerElements[0]!);
+      focusFooterElement(footerElements[0]!);
       return;
     }
 
@@ -135,7 +145,7 @@ export function useApiKeyDialogKeyboard({
     } else if (effectiveFocused === "paste") {
       focusMethodOption("env");
     } else {
-      setFocused(footerElements[0]!);
+      focusFooterElement(footerElements[0]!);
     }
   }, { enabled: open && isZone("radios") });
 
@@ -176,12 +186,12 @@ export function useApiKeyDialogKeyboard({
   // --- Footer zone ---
   useKey("ArrowLeft", () => {
     const idx = footerElements.indexOf(effectiveFocused);
-    if (idx > 0) setFocused(footerElements[idx - 1]!);
+    if (idx > 0) focusFooterElement(footerElements[idx - 1]!);
   }, { enabled: open && isZone("footer") });
 
   useKey("ArrowRight", () => {
     const idx = footerElements.indexOf(effectiveFocused);
-    if (idx < footerElements.length - 1) setFocused(footerElements[idx + 1]!);
+    if (idx < footerElements.length - 1) focusFooterElement(footerElements[idx + 1]!);
   }, { enabled: open && isZone("footer") });
 
   useKey("ArrowUp", () => {

@@ -1,26 +1,21 @@
 import figlet from "figlet";
 
 import bigFont from "figlet/importable-fonts/Big.js";
-import smallFont from "figlet/importable-fonts/Small.js";
 
-/** Supported figlet font names. @see libs/ui/registry/ui/logo/get-figlet-text.ts for the intentionally duplicated copy. */
-export type FigletFont = "Big" | "Small";
+/** @see libs/ui/registry/ui/logo/get-figlet-text.ts for the intentionally duplicated copy. */
 
-const loadedFonts = new Set<FigletFont>();
+let fontLoaded = false;
 
-function ensureFont(font: FigletFont): void {
-  if (loadedFonts.has(font)) return;
-  figlet.parseFont(font, font === "Big" ? bigFont : smallFont);
-  loadedFonts.add(font);
+function ensureFont(): void {
+  if (fontLoaded) return;
+  figlet.parseFont("Big", bigFont);
+  fontLoaded = true;
 }
 
-export function getFigletText(
-  inputText: string,
-  font: FigletFont = "Big",
-): string | null {
+export function getFigletText(inputText: string): string | null {
   try {
-    ensureFont(font);
-    return figlet.textSync(inputText.toUpperCase(), { font });
+    ensureFont();
+    return figlet.textSync(inputText.toUpperCase(), { font: "Big" });
   } catch {
     return null;
   }

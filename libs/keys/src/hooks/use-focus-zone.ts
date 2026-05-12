@@ -1,11 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { useKey } from "./use-key.js";
 import type { UseKeyOptions } from "./use-key.js";
 import { useScope } from "./use-scope.js";
-import { getFirstFocusableElement, isFocusable } from "../utils/focusable.js";
-import { containsActiveElement } from "../utils/navigation-items.js";
+import { containsActiveElement, getFirstFocusableElement, isFocusable } from "../utils/focusable.js";
 
 type ZoneTransition<T extends string> = (params: {
   zone: T;
@@ -116,23 +115,15 @@ export function useFocusZone<T extends string>(
   const currentZone: T = controlledZone ?? internalZone;
   const lastFocusedZoneRef = useRef<T | null>(null);
 
-  const invalidTabCycle = useMemo(
-    () => tabCycle?.filter((entry) => !zones.includes(entry)) ?? [],
-    [tabCycle, zones],
-  );
-
-  useEffect(() => {
-    if (invalidTabCycle.length > 0 && typeof console !== "undefined" && typeof console.warn === "function") {
+  const validatedTabCycle = tabCycle?.filter((entry) => {
+    const valid = zones.includes(entry);
+    if (!valid && process.env.NODE_ENV !== "production") {
       console.warn(
-        `[@diffgazer/keys] useFocusZone: tabCycle contains zones not present in 'zones': ${JSON.stringify(invalidTabCycle)}`,
+        `[@diffgazer/keys] useFocusZone: tabCycle entry "${String(entry)}" is not in zones`,
       );
     }
-  }, [invalidTabCycle]);
-
-  const validatedTabCycle = useMemo<readonly T[] | undefined>(() => {
-    if (!tabCycle) return undefined;
-    return tabCycle.filter((entry) => zones.includes(entry));
-  }, [tabCycle, zones]);
+    return valid;
+  });
 
   const canCycleTabs = enabled && validatedTabCycle != null && validatedTabCycle.length > 1;
 

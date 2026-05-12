@@ -1,14 +1,16 @@
+import rawConfig from "../../config/docs-libraries.json";
 import {
   docsLibrariesConfig,
   type ArtifactSourceConfig,
   type DocsLibraryConfigData,
 } from "./docs-libraries-config";
 
-const KNOWN_LIBRARY_IDS = ["ui", "keys", "diffgazer"] as const;
-export type DocsLibraryId = (typeof KNOWN_LIBRARY_IDS)[number];
+type RawLibraryId = (typeof rawConfig.libraries)[number]["id"];
+export type DocsLibraryId = RawLibraryId;
 export type ArtifactSource = ArtifactSourceConfig;
 export type DocsLibraryConfig = DocsLibraryConfigData;
 
+const KNOWN_LIBRARY_IDS = docsLibrariesConfig.libraries.map((l) => l.id) as readonly DocsLibraryId[];
 export const DOCS_LIBRARY_IDS: readonly DocsLibraryId[] = KNOWN_LIBRARY_IDS;
 export const PRIMARY_DOCS_LIBRARY_ID = docsLibrariesConfig.primaryLibraryId as DocsLibraryId;
 export const LOCAL_DGADD_PREREQUISITE =

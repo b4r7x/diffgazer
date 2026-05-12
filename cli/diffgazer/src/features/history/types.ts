@@ -1,3 +1,5 @@
+import type { ReviewSeverity } from "@diffgazer/core/schemas/review";
+
 export interface ReviewItem {
   id: string;
   displayId: string;
@@ -6,7 +8,7 @@ export interface ReviewItem {
   summary: string;
   date: string;
   issueCount: number;
-  severities: Array<{ severity: string; count: number }>;
+  severities: Array<{ severity: ReviewSeverity; count: number }>;
   duration: number;
   mode: string;
 }

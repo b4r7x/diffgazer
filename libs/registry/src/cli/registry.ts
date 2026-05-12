@@ -1,39 +1,19 @@
 import { existsSync, readFileSync } from "node:fs";
 import { z } from "zod";
+import { RegistryFileSchema as BaseRegistryFileSchema, RegistryItemSchema as BaseRegistryItemSchema } from "../registry-types.js";
 import { toErrorMessage } from "./logger.js";
 import { getRelativePath } from "./fs.js";
 import { computeIntegrity } from "./integrity.js";
 
-const RegistryFileSchema = z.object({
+const RegistryFileSchema = BaseRegistryFileSchema.extend({
   path: z.string().refine(
     (p) => !p.split("/").includes("..") && !p.split("\\").includes(".."),
     { message: "Registry file path must not contain '..' segments" },
   ),
-  content: z.string().optional(),
-  type: z.string().optional(),
-  target: z.string().optional(),
 });
 
-// NOTE: A near-identical artifact schema exists in ../registry-types.ts.
-// This copy adds path traversal .refine().
-// Intentionally duplicated because artifact manifests and installer bundles have different validation needs.
-export const RegistryItemSchema = z.object({
-  name: z.string(),
-  type: z.string(),
-  title: z.string().optional(),
-  description: z.string().optional(),
-  dependencies: z.array(z.string()).default([]),
-  registryDependencies: z.array(z.string()).default([]),
+export const RegistryItemSchema = BaseRegistryItemSchema.extend({
   files: z.array(RegistryFileSchema),
-  meta: z.record(z.string(), z.unknown()).optional(),
-  // shadcn-compatible fields: preserved for public registry round-trip compatibility.
-  devDependencies: z.array(z.string()).optional(),
-  cssVars: z.record(z.string(), z.unknown()).optional(),
-  css: z.string().optional(),
-  envVars: z.array(z.string()).optional(),
-  docs: z.string().optional(),
-  categories: z.array(z.string()).optional(),
-  author: z.string().optional(),
 });
 
 export type RegistryItem = z.infer<typeof RegistryItemSchema>;
@@ -182,7 +162,7 @@ function readBundleJson(bundlePath: string): unknown {
   try {
     return JSON.parse(readFileSync(bundlePath, "utf-8"));
   } catch (e) {
-    throw new Error(`Failed to parse registry bundle at ${bundlePath}. (${toErrorMessage(e)})`);
+    throw new Error(`Failed to parse registry bundle at ${bundlePath}. (${toErrorMessage(e)})`, { cause: e });
   }
 }
 

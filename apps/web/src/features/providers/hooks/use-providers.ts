@@ -3,8 +3,8 @@ import { AVAILABLE_PROVIDERS } from '@diffgazer/core/schemas/config';
 import type { ProviderWithStatus } from '@diffgazer/core/schemas/config';
 
 export function useProviders() {
-    const { providerStatus } = useConfigData();
-    const { isLoading, saveCredentials, deleteProviderCredentials, activateProvider } = useConfigActions();
+    const { isLoading, providerStatus } = useConfigData();
+    const { saveCredentials, deleteProviderCredentials, activateProvider } = useConfigActions();
 
     const providers: ProviderWithStatus[] = AVAILABLE_PROVIDERS.map((provider) => {
         const status = providerStatus.find((s) => s.provider === provider.id);

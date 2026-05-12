@@ -23,7 +23,7 @@ export function ReviewResultsView({ issues, reviewId }: ReviewResultsViewProps) 
     selectedIssue,
     selectedIssueId,
     setSelectedIssueId,
-    highlightIssue,
+    selectIssue,
     handleListBoundary,
     activeTab,
     setActiveTab,
@@ -56,7 +56,7 @@ export function ReviewResultsView({ issues, reviewId }: ReviewResultsViewProps) 
           allIssues={issues}
           selectedIssueId={selectedIssueId}
           onSelectIssue={setSelectedIssueId}
-          onHighlightIssue={highlightIssue}
+          onHighlightIssue={selectIssue}
           onListBoundaryReached={handleListBoundary}
           severityFilter={severityFilter}
           onSeverityFilterChange={setSeverityFilter}

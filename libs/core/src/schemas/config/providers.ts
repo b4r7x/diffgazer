@@ -1,14 +1,14 @@
 import { z } from "zod";
 import {
   timestampFields,
-} from "../errors.js";
+} from "../shared/fields.js";
 import { SettingsConfigSchema, TrustConfigSchema } from "./settings.js";
 
 export const AI_PROVIDERS = ["gemini", "zai", "zai-coding", "openrouter"] as const;
 export const AIProviderSchema = z.enum(AI_PROVIDERS);
 export type AIProvider = z.infer<typeof AIProviderSchema>;
 
-export const GEMINI_MODELS = [
+const GEMINI_MODELS = [
   "gemini-3-flash-preview",
   "gemini-3-pro-preview",
   "gemini-2.5-flash",
@@ -16,8 +16,8 @@ export const GEMINI_MODELS = [
   "gemini-2.5-pro",
 ] as const;
 
-export const GeminiModelSchema = z.enum(GEMINI_MODELS);
-export type GeminiModel = z.infer<typeof GeminiModelSchema>;
+const GeminiModelSchema = z.enum(GEMINI_MODELS);
+type GeminiModel = z.infer<typeof GeminiModelSchema>;
 
 const ModelInfoSchema = z.object({
   id: z.string(),
@@ -62,7 +62,7 @@ export const GEMINI_MODEL_INFO: Record<GeminiModel, ModelInfo> = {
   },
 };
 
-export const GLM_MODELS = ["glm-4.7", "glm-4.7-flashx", "glm-4.7-flash"] as const;
+const GLM_MODELS = ["glm-4.7", "glm-4.7-flashx", "glm-4.7-flash"] as const;
 const GLMModelSchema = z.enum(GLM_MODELS);
 type GLMModel = z.infer<typeof GLMModelSchema>;
 
@@ -127,7 +127,7 @@ export const ProviderInfoSchema = z.object({
 export type ProviderInfo = z.infer<typeof ProviderInfoSchema>;
 
 const DISPLAY_STATUSES = ["active", "configured", "needs-key"] as const;
-export const DisplayStatusSchema = z.enum(DISPLAY_STATUSES);
+const DisplayStatusSchema = z.enum(DISPLAY_STATUSES);
 export type DisplayStatus = z.infer<typeof DisplayStatusSchema>;
 
 export const ProviderWithStatusSchema = ProviderInfoSchema.extend({
@@ -317,8 +317,8 @@ export const PROVIDER_ENV_VARS: Record<AIProvider, string> = {
   openrouter: 'OPENROUTER_API_KEY',
 };
 
-export const SETUP_FIELDS = ["secretsStorage", "provider", "model", "trust"] as const;
-export const SetupFieldSchema = z.enum(SETUP_FIELDS);
+const SETUP_FIELDS = ["secretsStorage", "provider", "model", "trust"] as const;
+const SetupFieldSchema = z.enum(SETUP_FIELDS);
 export type SetupField = z.infer<typeof SetupFieldSchema>;
 
 export const SetupStatusSchema = z.object({

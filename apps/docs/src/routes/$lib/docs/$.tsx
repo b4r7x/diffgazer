@@ -40,8 +40,10 @@ export const Route = createFileRoute("/$lib/docs/$")({
     const data = await serverLoader({ data: { library, routeSlugs } })
     if (!data) return null
 
-    const componentData = await loadDocData<ComponentData>(library, "components", data.component)
-    const hookData = await loadDocData<HookData>(library, "hooks", data.hook, { optional: true })
+    const [componentData, hookData] = await Promise.all([
+      loadDocData<ComponentData>(library, "components", data.component),
+      loadDocData<HookData>(library, "hooks", data.hook),
+    ])
 
     if (typeof window !== "undefined") {
       await clientLoader.preload(data.path)

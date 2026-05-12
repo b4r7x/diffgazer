@@ -2,8 +2,7 @@ import { useState } from "react";
 import { getErrorMessage } from "@diffgazer/core/errors";
 import type { LensId } from "@diffgazer/core/schemas/review";
 import type { AIProvider, SecretsStorage, AgentExecution } from "@diffgazer/core/schemas/config";
-import { AI_PROVIDERS } from "@diffgazer/core/schemas/config";
-import { SECRETS_STORAGE, AGENT_EXECUTION_MODES } from "@diffgazer/core/schemas/config";
+import { AI_PROVIDERS, SECRETS_STORAGE, AGENT_EXECUTION_MODES } from "@diffgazer/core/schemas/config";
 import { useNavigation } from "../../../app/navigation-context.js";
 import { useSaveSettings, useSaveConfig } from "@diffgazer/core/api/hooks";
 

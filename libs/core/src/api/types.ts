@@ -14,14 +14,7 @@ export interface ApiError extends Error {
 }
 
 export function isApiError(error: unknown): error is ApiError {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "status" in error &&
-    typeof (error as Record<string, unknown>).status === "number" &&
-    "message" in error &&
-    typeof (error as Record<string, unknown>).message === "string"
-  );
+  return error instanceof Error && typeof (error as ApiError).status === "number";
 }
 
 export interface StreamOptions {
@@ -39,7 +32,6 @@ export interface ApiClientConfig {
 export interface ApiClient {
   get: <T>(path: string, params?: Record<string, string>) => Promise<T>;
   post: <T>(path: string, body?: unknown) => Promise<T>;
-  put: <T>(path: string, body?: unknown) => Promise<T>;
   delete: <T>(path: string, params?: Record<string, string>) => Promise<T>;
   stream: (path: string, options?: StreamOptions) => Promise<Response>;
   request: (

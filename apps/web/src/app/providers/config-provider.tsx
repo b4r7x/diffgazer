@@ -16,6 +16,7 @@ import {
 
 // Stable data context — changes only when config data itself changes
 interface ConfigDataContextValue {
+  isLoading: boolean;
   provider?: AIProvider;
   model?: string;
   isConfigured: boolean;
@@ -28,7 +29,6 @@ interface ConfigDataContextValue {
 
 // Volatile actions context — changes with loading/saving state
 interface ConfigActionsContextValue {
-  isLoading: boolean;
   isSaving: boolean;
   error: string | null;
   refresh: (invalidate?: boolean) => Promise<void>;
@@ -112,6 +112,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   };
 
   const dataValue: ConfigDataContextValue = {
+    isLoading,
     provider,
     model,
     isConfigured,
@@ -123,7 +124,6 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   };
 
   const actionsValue: ConfigActionsContextValue = {
-    isLoading,
     isSaving,
     error,
     refresh,

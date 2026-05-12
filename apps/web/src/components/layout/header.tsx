@@ -7,14 +7,14 @@ import { Button } from "@diffgazer/ui/components/button";
 type ProviderDisplayStatus = "active" | "idle";
 
 interface HeaderProps {
-  providerName?: string;
-  providerStatus?: ProviderDisplayStatus;
+  providerName: string;
+  providerStatus: ProviderDisplayStatus;
   onBack?: () => void;
 }
 
 export function Header({
-  providerName = "Not configured",
-  providerStatus = "idle",
+  providerName,
+  providerStatus,
   onBack,
 }: HeaderProps) {
   return (
@@ -41,16 +41,17 @@ export function Header({
   );
 }
 
+const WORDMARK_TEXT = "diffgazer";
+const WORDMARK_ASCII = getFigletText(WORDMARK_TEXT);
+
 function DiffgazerWordmark() {
-  const text = "diffgazer";
-  const asciiText = getFigletText(text);
   return (
     <Logo
-      text={text.toUpperCase()}
-      asciiText={asciiText ?? undefined}
+      text={WORDMARK_TEXT.toUpperCase()}
+      asciiText={WORDMARK_ASCII ?? undefined}
       className={cn(
         "text-tui-blue font-bold",
-        asciiText ? undefined : "opacity-50",
+        WORDMARK_ASCII ? undefined : "opacity-50",
         "text-[8px] md:text-[10px] lg:text-xs",
         "[zoom:0.8] md:[zoom:1] lg:[zoom:1.2]",
       )}

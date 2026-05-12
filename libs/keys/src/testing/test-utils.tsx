@@ -1,5 +1,16 @@
 import { StrictMode, type ReactNode } from "react";
-import { KeyboardProvider } from "../providers/keyboard-provider";
+import { KeyboardProvider } from "../providers/keyboard-provider.js";
+
+export function fireKey(key: string, options?: Partial<KeyboardEventInit>): KeyboardEvent {
+  const event = new KeyboardEvent("keydown", {
+    key,
+    bubbles: true,
+    cancelable: true,
+    ...options,
+  });
+  window.dispatchEvent(event);
+  return event;
+}
 
 export function KeyboardWrapper({ children }: { children: ReactNode }) {
   return <KeyboardProvider>{children}</KeyboardProvider>;

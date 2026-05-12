@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type KeyboardEvent } from "react";
+import { useRef, useState, type KeyboardEvent } from "react";
 import { useRouter } from "@tanstack/react-router";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import type { Shortcut } from "@diffgazer/core/schemas/ui";
@@ -74,15 +74,11 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
   const { activeTab, setActiveTab, completedSteps, handleToggleStep, detailsScrollRef, moveTab, scrollDetails } =
     useIssueDetailsTabs({ selectedIssue });
 
-  const setReviewFocusZone = useCallback((zone: FocusZone) => {
-    setFocusZone(zone);
-  }, []);
-
   useFocusZone({
     initial: "list" as FocusZone,
     zones: ZONES,
     zone: focusZone,
-    onZoneChange: setReviewFocusZone,
+    onZoneChange: setFocusZone,
     scope: REVIEW_SCOPE,
     tabCycle: ["filters", "list", "details"],
     focus: {
@@ -110,25 +106,25 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
     },
   });
 
-  const selectIssue = (id: string) => {
-    setReviewFocusZone("list");
+  const focusAndSelectIssue = (id: string) => {
+    setFocusZone("list");
     setSelectedIssueId(id);
   };
 
-  const highlightIssue = (id: string | null) => {
+  const selectIssue = (id: string | null) => {
     if (id === null) return;
     setSelectedIssueId(id);
   };
 
   const handleListBoundary = (direction: "previous" | "next") => {
-    if (direction === "previous") setReviewFocusZone("filters");
+    if (direction === "previous") setFocusZone("filters");
   };
 
   useScopedNavigation({
     containerRef: listRef,
     role: "option",
     highlighted: highlightedIssueId,
-    onHighlightChange: highlightIssue,
+    onHighlightChange: selectIssue,
     onNavigationBoundaryReached: handleListBoundary,
     wrap: false,
     scope: REVIEW_SCOPE,
@@ -138,10 +134,10 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
   });
 
   const handleListFocus = () => {
-    setReviewFocusZone("list");
+    setFocusZone("list");
   };
 
-  const handleFilterKeyDown = useCallback((event: KeyboardEvent) => {
+  const handleFilterKeyDown = (event: KeyboardEvent) => {
     if (focusZone !== "filters") {
       event.preventDefault();
       return;
@@ -149,12 +145,10 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
 
     if (event.key === "ArrowDown") {
       event.preventDefault();
-      setReviewFocusZone("list");
+      setFocusZone("list");
       return;
     }
 
-    // ArrowUp in filters is a no-op: the badge row is the top of this pane,
-    // so there is nothing to navigate up to.
     if (event.key === "ArrowUp") {
       event.preventDefault();
       return;
@@ -162,11 +156,11 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
 
     if (event.key === "ArrowRight" && focusedFilterIndex >= SEVERITY_ORDER.length - 1) {
       event.preventDefault();
-      setReviewFocusZone("details");
+      setFocusZone("details");
     }
-  }, [focusZone, focusedFilterIndex, setReviewFocusZone]);
+  };
 
-  useKey(["ArrowUp", "k"], () => setReviewFocusZone("filters"), {
+  useKey(["ArrowUp", "k"], () => setFocusZone("filters"), {
     scope: REVIEW_SCOPE,
     enabled: focusZone === "list" && filteredIssues.length === 0,
   });
@@ -176,22 +170,22 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
   useKey("ArrowLeft", () => moveFocusedFilter(-1), { scope: REVIEW_SCOPE, enabled: focusZone === "filters" });
   useKey("ArrowRight", () => {
     if (focusedFilterIndex >= SEVERITY_ORDER.length - 1) {
-      setReviewFocusZone("details");
+      setFocusZone("details");
       return;
     }
     moveFocusedFilter(1);
   }, { scope: REVIEW_SCOPE, enabled: focusZone === "filters" });
 
-  useKey("j", () => setReviewFocusZone("list"), { scope: REVIEW_SCOPE, enabled: focusZone === "filters" });
+  useKey("j", () => setFocusZone("list"), { scope: REVIEW_SCOPE, enabled: focusZone === "filters" });
 
   useKey("ArrowLeft", () => {
     if (!selectedIssue) {
-      setReviewFocusZone("list");
+      setFocusZone("list");
       return;
     }
 
     const result = moveTab(-1);
-    if (result === "boundary-left") setReviewFocusZone("list");
+    if (result === "boundary-left") setFocusZone("list");
   }, { scope: REVIEW_SCOPE, enabled: focusZone === "details" });
   useKey("ArrowRight", () => moveTab(1), { scope: REVIEW_SCOPE, enabled: focusZone === "details" && !!selectedIssue });
 
@@ -218,8 +212,8 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
     filteredIssues,
     selectedIssue,
     selectedIssueId,
-    setSelectedIssueId: selectIssue,
-    highlightIssue,
+    setSelectedIssueId: focusAndSelectIssue,
+    selectIssue,
     handleListBoundary,
     activeTab,
     setActiveTab,

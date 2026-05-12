@@ -35,6 +35,7 @@ import {
   type ReviewOutcome,
 } from "./types.js";
 import { type Result, ok, err } from "@diffgazer/core/result";
+import { getErrorMessage } from "@diffgazer/core/errors";
 
 export const MAX_DIFF_SIZE_BYTES = 524288; // 512KB
 
@@ -195,7 +196,8 @@ export async function resolveReviewConfig(params: {
   try {
     const contextSnapshot = await buildProjectContextSnapshot(projectPath);
     projectContext = contextSnapshot.markdown;
-  } catch {
+  } catch (error) {
+    console.warn("[review] project context snapshot failed:", getErrorMessage(error));
     projectContext = "";
   }
   await emit(stepComplete("context"));
@@ -203,6 +205,10 @@ export async function resolveReviewConfig(params: {
   const validatedLenses = activeLenses.filter(
     (id): id is LensId => LensIdSchema.safeParse(id).success
   );
+  const droppedIds = activeLenses.filter((id) => !LensIdSchema.safeParse(id).success);
+  if (droppedIds.length > 0) {
+    console.warn(`[review] dropped invalid lens ids: ${droppedIds.join(", ")}`);
+  }
   return { activeLenses: validatedLenses, profile, projectContext };
 }
 

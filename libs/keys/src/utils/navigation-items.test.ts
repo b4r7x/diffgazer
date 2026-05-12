@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { containsActiveElement } from "./focusable";
 import {
   NAVIGATION_ITEM_ATTRIBUTE,
-  containsActiveElement,
   findNavigationItemByValue,
   focusNavigationItem,
   getFocusedNavigationValue,

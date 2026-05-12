@@ -6,7 +6,7 @@ import { useTerminalDimensions } from "../../hooks/use-terminal-dimensions.js";
 import { useNavigation } from "../../app/navigation-context.js";
 import { useFooterContext } from "../../app/providers/footer-provider.js";
 import { useInit } from "@diffgazer/core/api/hooks";
-import { getProviderStatus, getProviderDisplay } from "@diffgazer/core/providers";
+import { getProviderDisplayStatus, getProviderDisplay } from "@diffgazer/core/providers";
 
 const MIN_COLUMNS = 40;
 
@@ -28,7 +28,7 @@ export function GlobalLayout({ children }: GlobalLayoutProps) {
     );
   }
 
-  const providerStatus = getProviderStatus(isLoading, data?.configured ?? false);
+  const providerStatus = getProviderDisplayStatus(isLoading, data?.configured ?? false);
   const providerName = getProviderDisplay(
     data?.config?.provider,
     data?.config?.model,

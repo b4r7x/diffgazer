@@ -128,7 +128,7 @@ export function ReviewContainer({
         <ReviewSummaryView
           issues={state.issues}
           reviewId={state.reviewId ?? undefined}
-          durationMs={state.durationMs}
+          durationMs={state.startedAt ? Date.now() - state.startedAt.getTime() : undefined}
           onContinue={goToResults}
           onBack={reset}
         />

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate, useParams } from '@tanstack/react-router';
 import { useReviewLifecycleBase } from '@diffgazer/core/api/hooks';
-import { useConfigData, useConfigActions } from '@/app/providers/config-provider';
+import { useConfigData } from '@/app/providers/config-provider';
 import type { ReviewIssue } from '@diffgazer/core/schemas/review';
 import type { ReviewMode } from '@diffgazer/core/schemas/review';
 import type { ReviewStreamState } from '@diffgazer/core/api/hooks';
@@ -19,8 +19,7 @@ interface UseReviewLifecycleOptions {
 export function useReviewLifecycle({ mode, onComplete }: UseReviewLifecycleOptions) {
   const navigate = useNavigate();
   const params = useParams({ strict: false });
-  const { isConfigured, provider, model } = useConfigData();
-  const { isLoading: configLoading } = useConfigActions();
+  const { isConfigured, provider, model, isLoading: configLoading } = useConfigData();
 
   // Ref-based stable callback pattern — avoids stale closures for onComplete
   const onCompleteRef = useRef(onComplete);
@@ -45,10 +44,8 @@ export function useReviewLifecycle({ mode, onComplete }: UseReviewLifecycleOptio
     },
   });
 
-  // Keep ref in sync for the onComplete callback
   streamStateRef.current = base.streamState;
 
-  // Sync review ID to URL
   useEffect(() => {
     if (!base.streamState.reviewId) return;
     if (params.reviewId === base.streamState.reviewId) return;

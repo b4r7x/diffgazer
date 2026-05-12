@@ -32,7 +32,7 @@ function ownedFileHash(cwd: string, itemName: string, absolutePath: string): str
   return files.find((file) => file.path === filePath)?.hash ?? null;
 }
 
-function isCopyModeInstall(record: NonNullable<DiffgazerAddConfig["installedComponents"]>[string]): boolean {
+function hasCopyModeFiles(record: NonNullable<DiffgazerAddConfig["installedComponents"]>[string]): boolean {
   return record.integrationMode === "copy"
     || (record.files ?? []).some((file) => file.integrationMode === "copy");
 }
@@ -46,7 +46,7 @@ function copyModeDependentsForKey(cwd: string, hookName: string): string[] {
 
   for (const [installedName, record] of Object.entries(manifest)) {
     const parsed = parseInstallName(installedName);
-    if (parsed.namespace !== "ui" || !isCopyModeInstall(record)) continue;
+    if (parsed.namespace !== "ui" || !hasCopyModeFiles(record)) continue;
 
     const registryItem = ctx.registry.getItem(parsed.name);
     if (!registryItem) continue;
@@ -59,9 +59,12 @@ function copyModeDependentsForKey(cwd: string, hookName: string): string[] {
   return dependents;
 }
 
-const warnedBlockedHookRemovals = new Set<string>();
-
-function blocksRetainedCopyModeUi(cwd: string, itemName: string, requestedNames: string[]): boolean {
+function blocksRetainedCopyModeUi(
+  cwd: string,
+  itemName: string,
+  requestedNames: string[],
+  warnedRemovals: Set<string>,
+): boolean {
   const parsed = parseInstallName(itemName);
   if (parsed.namespace !== "keys") return false;
 
@@ -71,8 +74,8 @@ function blocksRetainedCopyModeUi(cwd: string, itemName: string, requestedNames:
   if (dependents.length === 0) return false;
 
   const warningKey = `${cwd}:${parsed.publicName}`;
-  if (!warnedBlockedHookRemovals.has(warningKey)) {
-    warnedBlockedHookRemovals.add(warningKey);
+  if (!warnedRemovals.has(warningKey)) {
+    warnedRemovals.add(warningKey);
     info(
       `Keeping ${parsed.publicName}; copied hook files are still required by installed copy-mode UI: `
       + dependents.join(", "),
@@ -81,6 +84,8 @@ function blocksRetainedCopyModeUi(cwd: string, itemName: string, requestedNames:
 
   return true;
 }
+
+const warnedBlockedHookRemovals = new Set<string>();
 
 export const removeCommand = createRemoveCommand({
   itemPlural: "items",
@@ -116,7 +121,7 @@ export const removeCommand = createRemoveCommand({
     });
   },
   canRemoveFile: ({ cwd, item, file, force, requestedNames = [] }) => {
-    if (blocksRetainedCopyModeUi(cwd, item.name, requestedNames)) return false;
+    if (blocksRetainedCopyModeUi(cwd, item.name, requestedNames, warnedBlockedHookRemovals)) return false;
     if (force) return true;
     const expectedHash = ownedFileHash(cwd, item.name, file.absolutePath);
     if (!expectedHash) return false;

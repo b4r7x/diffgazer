@@ -1,11 +1,9 @@
 #!/usr/bin/env node
 
-import { createRequire } from "node:module";
+import { execSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 
 const output = [];
-const childProcess = createRequire(import.meta.url)("node:child_process");
-const { execSync } = childProcess;
 
 function addResult(name, ok, details = "") {
   const check = `${name}: ${ok ? "PASS" : "FAIL"}${details ? ` (${details})` : ""}`;
@@ -15,7 +13,6 @@ function addResult(name, ok, details = "") {
 
 function fail(msg) {
   console.error(msg);
-  process.exitCode = 1;
   throw new Error(msg);
 }
 
@@ -23,7 +20,7 @@ function readJSON(path) {
   return JSON.parse(readFileSync(path, "utf8"));
 }
 
-function ensureContainsFiles(fileList, required, label) {
+function ensureContainsFiles(fileList, required) {
   const normalized = Array.isArray(fileList) ? fileList : [];
   const missing = required.filter((name) => !normalized.includes(name));
   return { ok: missing.length === 0, missing };
@@ -31,6 +28,19 @@ function ensureContainsFiles(fileList, required, label) {
 
 function valuesEqual(actual, expected) {
   return JSON.stringify(actual) === JSON.stringify(expected);
+}
+
+function checkPolicyFiles(pkgJsonPath, missing) {
+  const readmePath = pkgJsonPath.replace(/package\.json$/, "README.md");
+  if (!existsSync(readmePath)) {
+    missing.push(`README missing: ${readmePath}`);
+  }
+  for (const policyFile of ["SECURITY.md", "SUPPORT.md"]) {
+    const policyPath = pkgJsonPath.replace(/package\.json$/, policyFile);
+    if (!existsSync(policyPath)) {
+      missing.push(`${policyFile} missing: ${policyPath}`);
+    }
+  }
 }
 
 function hasExport(exportsKeys, expectedExport) {
@@ -60,7 +70,7 @@ function assertPackageMetadata(path, expectedName, expectedHomePageSuffix, expec
     missing.push(`sideEffects: ${JSON.stringify(pkg.sideEffects)}`);
   }
 
-  const fileCheck = ensureContainsFiles(pkg.files, expectedFiles, "files");
+  const fileCheck = ensureContainsFiles(pkg.files, expectedFiles);
   if (!fileCheck.ok) {
     missing.push(`files missing: ${fileCheck.missing.join(", ")}`);
   }
@@ -76,17 +86,7 @@ function assertPackageMetadata(path, expectedName, expectedHomePageSuffix, expec
     missing.push(`exports missing: ${missingExports.join(", ")}`);
   }
 
-  const readmePath = path.replace("package.json", "README.md");
-  if (!existsSync(readmePath)) {
-    missing.push(`README missing: ${readmePath}`);
-  }
-
-  for (const policyFile of ["SECURITY.md", "SUPPORT.md"]) {
-    const policyPath = path.replace("package.json", policyFile);
-    if (!existsSync(policyPath)) {
-      missing.push(`${policyFile} missing: ${policyPath}`);
-    }
-  }
+  checkPolicyFiles(path, missing);
 
   addResult(
     `${path}: package metadata`,
@@ -119,22 +119,12 @@ function assertCliPackageMetadata(path, expectedName, expectedBinName, expectedR
     missing.push(`homepage: ${pkg.homepage}`);
   }
 
-  const fileCheck = ensureContainsFiles(pkg.files, expectedFiles, "files");
+  const fileCheck = ensureContainsFiles(pkg.files, expectedFiles);
   if (!fileCheck.ok) {
     missing.push(`files missing: ${fileCheck.missing.join(", ")}`);
   }
 
-  const readmePath = path.replace("package.json", "README.md");
-  if (!existsSync(readmePath)) {
-    missing.push(`README missing: ${readmePath}`);
-  }
-
-  for (const policyFile of ["SECURITY.md", "SUPPORT.md"]) {
-    const policyPath = path.replace("package.json", policyFile);
-    if (!existsSync(policyPath)) {
-      missing.push(`${policyFile} missing: ${policyPath}`);
-    }
-  }
+  checkPolicyFiles(path, missing);
 
   addResult(
     `${path}: CLI package metadata`,
@@ -200,6 +190,7 @@ addResult("no gitlink entries", gitLinks.length === 0, gitLinks.slice(0, 10).joi
 
 let nestedRepoConfig = "";
 try {
+  // Split to avoid grep self-match
   nestedRepoConfig = execSync(`git config --get-regexp '^${"sub"}${"module"}\\.'`, { encoding: "utf8" }).trim();
 } catch {
   nestedRepoConfig = "";
@@ -237,9 +228,11 @@ const packageFiles = listPackageJsonFiles();
 const badLinkFile = [];
 const workspaceNames = new Set();
 const badInternalProtocol = [];
+const parsedPackages = new Map();
 
 for (const file of packageFiles) {
   const parsed = readJSON(file);
+  parsedPackages.set(file, parsed);
   if (parsed.name && !parsed.private) {
     workspaceNames.add(parsed.name);
   }
@@ -258,8 +251,7 @@ for (const file of packageFiles) {
   }
 }
 
-for (const file of packageFiles) {
-  const parsed = readJSON(file);
+for (const [file, parsed] of parsedPackages) {
   const localDeps = {
     ...(parsed.dependencies || {}),
     ...(parsed.devDependencies || {}),

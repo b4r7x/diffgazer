@@ -27,12 +27,6 @@ export function ReviewLoadingMessage({ message }: { message: string }) {
   );
 }
 
-/**
- * Container that manages the review flow:
- * 1. Shows ApiKeyMissingView if not configured
- * 2. Shows ReviewProgressView during review
- * 3. Calls onComplete when done (parent can switch to results view)
- */
 export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
   const {
     state,
@@ -52,23 +46,21 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
   const { data: contextData } = useReviewContext({ enabled: contextReady });
   const contextSnapshot = contextReady ? contextData ?? null : null;
 
-  const progressData = (() => {
-    const steps = mapStepsToProgressData(state.steps, state.agents);
-    const entries = convertAgentEventsToLogEntries(state.events);
-    const metrics = {
-      filesProcessed: state.fileProgress.completed.length,
-      filesTotal: state.fileProgress.total || state.fileProgress.completed.length,
-      issuesFound: state.issues.length,
-    };
-    return {
-      steps,
-      entries,
-      agents: state.agents,
-      metrics,
-      startTime: state.startedAt ?? undefined,
-      contextSnapshot,
-    };
-  })();
+  const steps = mapStepsToProgressData(state.steps, state.agents);
+  const entries = convertAgentEventsToLogEntries(state.events);
+  const metrics = {
+    filesProcessed: state.fileProgress.completed.length,
+    filesTotal: state.fileProgress.total || state.fileProgress.completed.length,
+    issuesFound: state.issues.length,
+  };
+  const progressData = {
+    steps,
+    entries,
+    agents: state.agents,
+    metrics,
+    startTime: state.startedAt ?? undefined,
+    contextSnapshot,
+  };
 
   if (loadingMessage) {
     return <ReviewLoadingMessage message={loadingMessage} />;

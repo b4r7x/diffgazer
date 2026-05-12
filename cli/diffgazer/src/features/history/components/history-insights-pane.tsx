@@ -1,9 +1,9 @@
 import type { ReactElement } from "react";
 import { Box, Text, useInput } from "ink";
-import type { ReviewMetadata, ReviewIssue } from "@diffgazer/core/schemas/review";
+import type { ReviewMetadata, ReviewIssue, ReviewSeverity } from "@diffgazer/core/schemas/review";
 import { SEVERITY_ORDER } from "@diffgazer/core/schemas/ui";
 import { capitalize } from "@diffgazer/core/strings";
-import { formatDuration } from "@diffgazer/core/format";
+import { formatDuration, getDateLabel } from "@diffgazer/core/format";
 import { ScrollArea } from "../../../components/ui/scroll-area.js";
 import { SeverityBreakdown } from "../../review/components/severity-breakdown.js";
 import { KeyValue } from "../../../components/ui/key-value.js";
@@ -20,17 +20,8 @@ export interface HistoryInsightsPaneProps {
   scrollHeight?: number;
 }
 
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
-
-function buildSeverities(review: ReviewMetadata): Array<{ severity: string; count: number }> {
-  const countMap: Record<string, number> = {
+function buildSeverities(review: ReviewMetadata): Array<{ severity: ReviewSeverity; count: number }> {
+  const countMap: Record<ReviewSeverity, number> = {
     blocker: review.blockerCount,
     high: review.highCount,
     medium: review.mediumCount,
@@ -38,7 +29,7 @@ function buildSeverities(review: ReviewMetadata): Array<{ severity: string; coun
     nit: review.nitCount,
   };
   return SEVERITY_ORDER
-    .map((severity) => ({ severity, count: countMap[severity] ?? 0 }))
+    .map((severity) => ({ severity, count: countMap[severity] }))
     .filter((entry) => entry.count > 0);
 }
 
@@ -75,7 +66,7 @@ export function HistoryInsightsPane({ review, issues = [], isActive = false, scr
       <ScrollArea height={scrollHeight} isActive={isActive}>
         <SectionHeader>Review Details</SectionHeader>
         <Box marginTop={1} flexDirection="column">
-          <KeyValue label="Date" value={formatDate(review.createdAt)} labelWidth={10} />
+          <KeyValue label="Date" value={getDateLabel(review.createdAt, { showYear: true })} labelWidth={10} />
           <KeyValue label="Issues" value={String(review.issueCount)} labelWidth={10} />
           <KeyValue label="Duration" value={formatDuration(review.durationMs)} labelWidth={10} />
           <KeyValue label="Mode" value={review.mode} labelWidth={10} />

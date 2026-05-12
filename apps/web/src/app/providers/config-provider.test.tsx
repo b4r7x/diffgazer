@@ -61,7 +61,7 @@ function ConfigConsumer() {
       <p>Provider: {data.provider ?? "none"}</p>
       <p>Model: {data.model ?? "none"}</p>
       <p>Configured: {String(data.isConfigured)}</p>
-      <p>Loading: {String(actions.isLoading)}</p>
+      <p>Loading: {String(data.isLoading)}</p>
       <p>Saving: {String(actions.isSaving)}</p>
       <p>Error: {actions.error ?? "none"}</p>
       <p>Project: {data.projectId ?? "none"}</p>

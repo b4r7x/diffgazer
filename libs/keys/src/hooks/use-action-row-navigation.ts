@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type RefCallback, type RefObject } from "react";
-import { containsActiveElement } from "../utils/navigation-items.js";
+import { containsActiveElement } from "../utils/focusable.js";
 import { useFocusZone } from "./use-focus-zone.js";
 import { useKey } from "./use-key.js";
 

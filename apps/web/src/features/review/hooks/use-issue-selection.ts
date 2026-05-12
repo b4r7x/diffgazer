@@ -19,7 +19,6 @@ export function useIssueSelection({ filteredIssues, sourceKey }: UseIssueSelecti
     setSelectedIssueId(null);
   }
 
-  // Ensure selectedIssueId is valid for current filtered list
   const effectiveSelectedId = filteredIssues.some(i => i.id === selectedIssueId)
     ? selectedIssueId
     : filteredIssues[0]?.id ?? null;

@@ -7,7 +7,7 @@ const UI_ROOT = resolve(import.meta.dirname, "../../../libs/ui");
 const bundle = createBundler({
   rootDir: UI_ROOT,
   outputPath: resolve(import.meta.dirname, "../src/generated/registry-bundle.json"),
-  coreDeps: new Set(["class-variance-authority", "clsx", "tailwind-merge"]),
+  excludedDeps: new Set(["class-variance-authority", "clsx", "tailwind-merge"]),
   clientDefault: true,
   itemLabel: "component",
   peerDeps: new Set(["react", "react-dom"]),

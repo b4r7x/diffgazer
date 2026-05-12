@@ -93,7 +93,9 @@ function strictSkipsEnabled() {
 }
 
 function pnpmAddFlags() {
-  return networkAllowed() ? "--fetch-retries=0" : "--offline --fetch-retries=0";
+  return networkAllowed()
+    ? ["--fetch-retries=0"]
+    : ["--offline", "--fetch-retries=0"];
 }
 
 function missingLocalDeps(deps) {
@@ -132,7 +134,7 @@ function installDeps(fixture, depSpecs) {
   const deps = networkAllowed()
     ? depSpecs
     : depSpecs.map((dep) => resolveLocalDependency(packageNameFromSpec(dep) ?? dep));
-  run(`pnpm add ${pnpmAddFlags()} ${quoteArgs(deps)}`, fixture);
+  run(`pnpm add ${pnpmAddFlags().join(" ")} ${quoteArgs(deps)}`, fixture);
 }
 
 function createWorkspaceTempDir(prefix) {

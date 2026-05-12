@@ -3,8 +3,6 @@ import { cn } from '@diffgazer/core/cn';
 import type { LogTagType } from '@diffgazer/core/schemas/ui';
 import { Badge } from '@diffgazer/ui/components/badge';
 
-export type { LogTagType };
-
 const TAG_VARIANTS: Record<LogTagType, { variant: "success" | "warning" | "error" | "info" | "neutral"; className?: string }> = {
   system: { variant: "neutral" },
   tool: { variant: "info" },

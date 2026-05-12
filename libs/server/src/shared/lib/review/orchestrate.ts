@@ -149,9 +149,10 @@ export async function orchestrateReview(
     if (!lens) return;
 
     if (settled.status === "rejected") {
-      lastError = { code: "NETWORK_ERROR", message: String(settled.reason) };
-      lensStats.push({ lensId: lens.id, issueCount: 0, status: "failed", errorCode: "NETWORK_ERROR", errorMessage: String(settled.reason) });
-      failedLenses.push({ lensId: lens.id, errorCode: "NETWORK_ERROR", errorMessage: String(settled.reason) });
+      const errorMsg = getErrorMessage(settled.reason);
+      lastError = { code: "NETWORK_ERROR", message: errorMsg };
+      lensStats.push({ lensId: lens.id, issueCount: 0, status: "failed", errorCode: "NETWORK_ERROR", errorMessage: errorMsg });
+      failedLenses.push({ lensId: lens.id, errorCode: "NETWORK_ERROR", errorMessage: errorMsg });
       return;
     }
 
