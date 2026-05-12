@@ -7,7 +7,7 @@ import {
   REGISTRY_ORIGIN,
 } from "@diffgazer/registry";
 import {
-  transformKeysPublicRegistryImportContent,
+  createKeysSourceContentTransform,
   transformKeysPublicRegistryImports,
 } from "./transform-public-registry-imports.js";
 
@@ -72,7 +72,7 @@ function main(): void {
       fixCommand: "pnpm --dir libs/keys build:shadcn",
       label: "keys public registry index",
       afterBuild: ({ outputDir }) => transformKeysPublicRegistryImports(outputDir),
-      transformSourceContent: ({ content }) => transformKeysPublicRegistryImportContent(content),
+      transformSourceContent: createKeysSourceContentTransform(ROOT),
     },
     requiredPaths: [
       { path: "docs/content", label: "keys docs content" },

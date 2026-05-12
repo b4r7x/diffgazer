@@ -16,6 +16,12 @@ export function TabsList({ children, className, loop = true, onBlur, onKeyDown, 
 
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const handleHighlightChange = (next: string | null) => {
+    if (next === null) return;
+    if (activationMode === "automatic") onChange(next);
+    else onFocusChange(next);
+  };
+
   const { onKeyDown: navKeyDown } = useNavigation({
     containerRef,
     role: "tab",
@@ -23,17 +29,12 @@ export function TabsList({ children, className, loop = true, onBlur, onKeyDown, 
     wrap: loop,
     moveFocus: true,
     scopeToContainer: true,
-    ...(activationMode === "automatic"
-      ? {
-          highlighted: value || undefined,
-          onHighlightChange: onChange,
-        }
-      : {
-          highlighted: tabbableValue || undefined,
-          onHighlightChange: onFocusChange,
-          onEnter: onChange,
-          onSelect: onChange,
-        }),
+    highlighted: (activationMode === "automatic" ? value : tabbableValue) || undefined,
+    onHighlightChange: handleHighlightChange,
+    ...(activationMode !== "automatic" && {
+      onEnter: onChange,
+      onSelect: onChange,
+    }),
   });
 
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {

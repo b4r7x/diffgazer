@@ -9,7 +9,7 @@ export interface SidebarTriggerProps extends ButtonHTMLAttributes<HTMLButtonElem
 }
 
 export function SidebarTrigger({ ref, className, onClick, children, "aria-label": ariaLabel, ...props }: SidebarTriggerProps) {
-  const { collapsed, contentId, toggleSidebar } = useSidebar();
+  const { open, contentId, toggleSidebar } = useSidebar();
 
   return (
     <button
@@ -17,8 +17,8 @@ export function SidebarTrigger({ ref, className, onClick, children, "aria-label"
       ref={ref}
       type="button"
       aria-controls={props["aria-controls"] ?? contentId}
-      aria-expanded={!collapsed}
-      aria-label={ariaLabel ?? (collapsed ? "Expand sidebar" : "Collapse sidebar")}
+      aria-expanded={open}
+      aria-label={ariaLabel ?? (open ? "Collapse sidebar" : "Expand sidebar")}
       className={cn("inline-flex items-center justify-center", className)}
       onClick={(e) => {
         onClick?.(e);

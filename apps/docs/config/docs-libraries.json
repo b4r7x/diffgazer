@@ -30,7 +30,7 @@
       "displayName": "Diffgazer",
       "logoText": "diffgazer",
       "githubUrl": "https://github.com/b4r7x/diffgazer",
-      "enabled": true,
+      "enabled": false,
       "defaultRouteSlugs": ["getting-started"]
     }
   ]

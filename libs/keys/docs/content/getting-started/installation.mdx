@@ -33,6 +33,27 @@ pnpm exec dgadd add keys/focus-trap keys/focus-restore keys/scroll-lock
 
 The copied hooks are installed into your configured hooks directory, usually `src/hooks`.
 
+## Direct shadcn / Manual Copy
+
+Public keys registry items can be installed directly with shadcn:
+
+```bash
+npx shadcn add https://diffgazer.com/r/keys/navigation.json
+npx shadcn add https://diffgazer.com/r/keys/focus-trap.json
+```
+
+Files install to `@hooks/use-navigation.ts`, `@hooks/utils/navigation-items.ts`, etc.
+
+## API Availability by Path
+
+Standalone hooks available through all three paths (package, dgadd, direct copy):
+
+- `useNavigation`, `useFocusRestore`, `useFocusTrap`, `useScrollLock`
+
+Package-only APIs (require `KeyboardProvider`, not available through copy paths):
+
+- `KeyboardProvider`, `useKey`, `useScope`, `useScopedNavigation`, `useFocusZone`, `keys`, `useKeyboardContext`, `useOptionalKeyboardContext`
+
 ## With @diffgazer/ui
 
 Keyboard-enabled UI components can install required hooks automatically:

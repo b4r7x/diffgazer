@@ -175,7 +175,7 @@ export function DiffView(props: DiffViewProps) {
     containerRef,
     role: "button",
     highlighted: activeHunk,
-    onHighlightChange: (value) => setActiveHunkState({ parsedIdentity, value }),
+    onHighlightChange: (value) => { if (value !== null) setActiveHunkState({ parsedIdentity, value }); },
     upKeys: ["k"],
     downKeys: ["j"],
     wrap: false,

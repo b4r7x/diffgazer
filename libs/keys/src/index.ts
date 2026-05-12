@@ -8,6 +8,11 @@ export type { UseKeyOptions } from "./hooks/use-key.js";
 export { useScope } from "./hooks/use-scope.js";
 export type { UseScopeOptions } from "./hooks/use-scope.js";
 
+export { useActionRowNavigation } from "./hooks/use-action-row-navigation.js";
+export type {
+  UseActionRowNavigationOptions,
+  UseActionRowNavigationReturn,
+} from "./hooks/use-action-row-navigation.js";
 export { useNavigation } from "./hooks/use-navigation.js";
 export type { UseNavigationOptions, UseNavigationReturn } from "./hooks/use-navigation.js";
 export { useScopedNavigation } from "./hooks/use-scoped-navigation.js";
@@ -57,6 +62,7 @@ export type {
 } from "./utils/focus-restore.js";
 export {
   getVerticalArrowDirection,
+  isListNavigationKey,
   toVerticalBoundaryDirection,
 } from "./utils/navigation-directions.js";
 export type {

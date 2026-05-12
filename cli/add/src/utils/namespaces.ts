@@ -23,7 +23,10 @@ export function parseInstallName(value: string): InstallName {
     const name = value.slice("keys/".length);
     return { namespace: "keys", name, publicName: `keys/${name}` };
   }
-  return { namespace: "ui", name: value, publicName: `ui/${value}` };
+  throw new Error(
+    `Invalid item name "${value}". Use a namespaced name: ui/${value} or keys/${value}. `
+    + "Run `dgadd list` to see available items.",
+  );
 }
 
 export function publicInstallNames(): string[] {
@@ -31,7 +34,6 @@ export function publicInstallNames(): string[] {
   const publicKeysHooks = [...getPublicKeysHookNames()];
   return [
     ...uiItems.map((item) => `ui/${item.name}`),
-    ...uiItems.map((item) => item.name),
     ...publicKeysHooks.map((name) => `keys/${name}`),
   ];
 }
@@ -127,7 +129,6 @@ export function isNamespacedInstalled(cwd: string, config: ResolvedConfig, name:
   const parsed = parseInstallName(name);
   const manifest = ctx.config.getManifestItems(cwd);
   if (manifest?.[parsed.publicName]) return true;
-  if (parsed.namespace === "ui" && manifest?.[parsed.name]) return true;
 
   if (parsed.namespace === "ui") {
     return ctx.createChecker(cwd, config.componentsFsPath)(parsed.name);

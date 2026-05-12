@@ -42,6 +42,9 @@ function TestList({
       <button type="button" onClick={() => result.highlight("b")}>
         Highlight B
       </button>
+      <button type="button" onClick={() => result.highlight(null)}>
+        Clear Highlight
+      </button>
     </div>
   );
 }
@@ -437,6 +440,41 @@ describe("useNavigation", () => {
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "B" }));
     expect(onEnter).toHaveBeenCalledWith("b", expect.any(KeyboardEvent));
     expect(onSelect).toHaveBeenCalledWith("b", expect.any(KeyboardEvent));
+  });
+
+  it("clears highlight when highlight(null) is called and notifies onHighlightChange with null", async () => {
+    const onHighlightChange = vi.fn();
+    render(<TestList defaultHighlighted="b" onHighlightChange={onHighlightChange} />);
+
+    expect(screen.getByRole("option", { name: "b" }).getAttribute("aria-selected")).toBe("true");
+
+    await userEvent.click(screen.getByRole("button", { name: "Clear Highlight" }));
+
+    expect(screen.getByRole("option", { name: "b" }).getAttribute("aria-selected")).toBe("false");
+    expect(onHighlightChange).toHaveBeenCalledWith(null);
+  });
+
+  it("supports controlled highlighted={null}", async () => {
+    const onHighlightChange = vi.fn();
+    render(<TestList highlighted={null} onHighlightChange={onHighlightChange} />);
+
+    const listbox = screen.getByRole("listbox", { name: "Items" });
+    expect(listbox.getAttribute("aria-activedescendant")).toBeNull();
+
+    const user = await focusListbox();
+    await user.keyboard("{ArrowDown}");
+
+    expect(onHighlightChange).toHaveBeenCalledWith("a");
+  });
+
+  it("clears aria-activedescendant when controlled highlighted changes from a value to null", () => {
+    const { rerender } = render(<TestList highlighted="b" />);
+
+    const listbox = screen.getByRole("listbox", { name: "Items" });
+    expect(listbox.getAttribute("aria-activedescendant")).toBe("item-b");
+
+    rerender(<TestList highlighted={null} />);
+    expect(listbox.getAttribute("aria-activedescendant")).toBeNull();
   });
 
   it("exposes highlight and isHighlighted to consumers", async () => {

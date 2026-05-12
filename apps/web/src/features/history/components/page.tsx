@@ -5,8 +5,7 @@ import { Panel } from "@diffgazer/ui/components/panel";
 import { SearchInput } from "@diffgazer/ui/components/search-input";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { matchQueryState } from "@diffgazer/core/api/hooks";
-import { toVerticalBoundaryDirection } from "@diffgazer/keys";
-import { isVerticalListKey } from "@/utils/vertical-list-key";
+import { isListNavigationKey, toVerticalBoundaryDirection } from "@diffgazer/keys";
 import { TimelineList } from "@/features/history/components/timeline-list";
 import { HistoryInsightsPane } from "@/features/history/components/history-insights-pane";
 import { useHistoryKeyboard } from "@/features/history/hooks/use-history-keyboard";
@@ -55,7 +54,7 @@ export function HistoryPage() {
 
   const handleRunsKeyDown = (event: KeyboardEvent) => {
     if (focusZone !== "runs") {
-      if (isVerticalListKey(event.key)) event.preventDefault();
+      if (isListNavigationKey(event.key)) event.preventDefault();
       return;
     }
 

@@ -12,7 +12,8 @@ export interface SidebarContentProps extends HTMLAttributes<HTMLDivElement> {
 
 export function SidebarContent({ ref, children, className, onKeyDown, ...props }: SidebarContentProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const { collapsed, contentId } = useSidebar();
+  const { open, contentId } = useSidebar();
+  const collapsed = !open;
   const ariaHidden = collapsed ? true : props["aria-hidden"];
 
   const { onKeyDown: navKeyDown } = useNavigation({

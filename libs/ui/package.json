@@ -233,41 +233,13 @@
       "types": "./dist/hooks/listbox.d.ts",
       "import": "./dist/hooks/listbox.js"
     },
-    "./lib/diff": {
-      "types": "./dist/lib/diff.d.ts",
-      "import": "./dist/lib/diff.js"
-    },
     "./lib/compose-refs": {
       "types": "./dist/lib/compose-refs.d.ts",
       "import": "./dist/lib/compose-refs.js"
     },
-    "./lib/resolve-tab-target": {
-      "types": "./dist/lib/resolve-tab-target.d.ts",
-      "import": "./dist/lib/resolve-tab-target.js"
-    },
-    "./lib/selectable-variants": {
-      "types": "./dist/lib/selectable-variants.d.ts",
-      "import": "./dist/lib/selectable-variants.js"
-    },
     "./lib/selectable-collection": {
       "types": "./dist/lib/selectable-collection.d.ts",
       "import": "./dist/lib/selectable-collection.js"
-    },
-    "./lib/input-variants": {
-      "types": "./dist/lib/input-variants.d.ts",
-      "import": "./dist/lib/input-variants.js"
-    },
-    "./lib/focus": {
-      "types": "./dist/lib/focus.d.ts",
-      "import": "./dist/lib/focus.js"
-    },
-    "./lib/step-status": {
-      "types": "./dist/lib/step-status.d.ts",
-      "import": "./dist/lib/step-status.js"
-    },
-    "./lib/search": {
-      "types": "./dist/lib/search.d.ts",
-      "import": "./dist/lib/search.js"
     },
     "./lib/utils": {
       "types": "./dist/lib/utils.d.ts",

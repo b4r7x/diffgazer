@@ -1,6 +1,29 @@
-import { readFileSync, existsSync } from "node:fs";
-import { resolve } from "node:path";
-import type { Registry, RegistryItem } from "../src/index.js";
+import { readFileSync, readdirSync, existsSync } from "node:fs";
+import { dirname, join, resolve, posix } from "node:path";
+
+const RELATIVE_JS_IMPORT =
+  /((?:\bfrom\s+|\bimport\s*\(\s*|\brequire\s*\(\s*|\bimport\s+)(["']))(\.{1,2}\/[^"']+)\.js\2/g;
+
+interface RegistryFile {
+  path: string;
+  type: string;
+  target?: string;
+}
+
+interface RegistryItem {
+  name: string;
+  type: string;
+  files: RegistryFile[];
+  registryDependencies?: string[];
+  meta?: {
+    client?: boolean;
+    hidden?: boolean;
+  };
+}
+
+interface Registry {
+  items: RegistryItem[];
+}
 
 interface ValidationError {
   code: string;
@@ -152,6 +175,114 @@ function validateRegistryStructure(registry: Registry) {
   }
 }
 
+interface PublicRegistryFile {
+  path: string;
+  target?: string;
+  content?: string;
+  type?: string;
+}
+
+interface PublicRegistryItem {
+  name: string;
+  type: string;
+  files: PublicRegistryFile[];
+  meta?: {
+    client?: boolean;
+    hidden?: boolean;
+  };
+}
+
+/**
+ * Validate that public registry items have correct target-path import closure.
+ * Simulates the installed file layout and checks that all relative imports
+ * between installed files resolve to other files in the same item.
+ */
+function validatePublicTargetClosure(publicDir: string) {
+  for (const entry of readdirSync(publicDir)) {
+    if (!entry.endsWith(".json") || entry === "registry.json") continue;
+
+    const itemPath = join(publicDir, entry);
+    let item: PublicRegistryItem;
+    try {
+      item = JSON.parse(readFileSync(itemPath, "utf-8"));
+    } catch {
+      addError("PUBLIC_TARGET_CLOSURE", entry, `Failed to parse ${entry}`);
+      continue;
+    }
+
+    if (item.type !== "registry:hook") continue;
+
+    // Build set of installed target paths (without extension for matching)
+    const targetPaths = new Set<string>();
+    const targetPathsWithExt = new Set<string>();
+    for (const file of item.files) {
+      const target = file.target ?? file.path;
+      targetPathsWithExt.add(target);
+      targetPaths.add(target.replace(/\.(ts|tsx)$/, ""));
+    }
+
+    // For each file with content, check its relative imports resolve to another target
+    for (const file of item.files) {
+      if (typeof file.content !== "string") continue;
+
+      const target = file.target ?? file.path;
+      const targetDir = dirname(target);
+      const imports = extractRelativeImports(file.content);
+
+      for (const importPath of imports) {
+        const resolved = posix.normalize(posix.join(targetDir, importPath));
+        const resolvedWithoutExt = resolved.replace(/\.(ts|tsx)$/, "");
+
+        const found =
+          targetPaths.has(resolvedWithoutExt) ||
+          targetPaths.has(resolved) ||
+          targetPathsWithExt.has(resolved) ||
+          targetPathsWithExt.has(`${resolved}.ts`) ||
+          targetPathsWithExt.has(`${resolved}.tsx`);
+
+        if (!found) {
+          addError(
+            "PUBLIC_TARGET_CLOSURE",
+            item.name,
+            `Target import "${importPath}" from ${target} does not resolve to any installed file`,
+          );
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Validate that public registry content contains no relative .js import specifiers.
+ */
+function validateNoJsImportsInPublicContent(publicDir: string) {
+  for (const entry of readdirSync(publicDir)) {
+    if (!entry.endsWith(".json") || entry === "registry.json") continue;
+
+    const itemPath = join(publicDir, entry);
+    let item: PublicRegistryItem;
+    try {
+      item = JSON.parse(readFileSync(itemPath, "utf-8"));
+    } catch {
+      continue;
+    }
+
+    for (const file of item.files) {
+      if (typeof file.content !== "string") continue;
+
+      RELATIVE_JS_IMPORT.lastIndex = 0;
+      const match = RELATIVE_JS_IMPORT.exec(file.content);
+      if (match) {
+        addError(
+          "PUBLIC_JS_IMPORT",
+          item.name,
+          `File ${file.target ?? file.path} has relative .js import: "${match[3]}.js"`,
+        );
+      }
+    }
+  }
+}
+
 export function validateRegistryClosure(registryPath: string): boolean {
   errors.length = 0;
   const registryRoot = resolve(registryPath, "..", "..");
@@ -167,11 +298,18 @@ export function validateRegistryClosure(registryPath: string): boolean {
   validateRegistryStructure(registry);
   validateImportClosure(registry, registryRoot);
 
+  // Validate public registry target closure
+  const publicDir = resolve(registryRoot, "public", "r");
+  if (existsSync(publicDir)) {
+    validatePublicTargetClosure(publicDir);
+    validateNoJsImportsInPublicContent(publicDir);
+  }
+
   if (errors.length === 0) {
     return true;
   }
 
-  console.error("\n❌ Registry closure validation failed with errors:\n");
+  console.error("\n Registry closure validation failed with errors:\n");
   const groupedErrors = new Map<string, ValidationError[]>();
 
   for (const error of errors) {
@@ -191,6 +329,10 @@ export function validateRegistryClosure(registryPath: string): boolean {
 
   return false;
 }
+
+// Exported for tests
+export { validatePublicTargetClosure, validateNoJsImportsInPublicContent, extractRelativeImports };
+export type { PublicRegistryItem, PublicRegistryFile };
 
 // Run validation if invoked directly
 if (import.meta.url === `file://${process.argv[1]}`) {

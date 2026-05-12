@@ -26,7 +26,6 @@ function ownedFileHash(cwd: string, itemName: string, absolutePath: string): str
   const manifest = config.config.installedComponents ?? {};
   const record =
     manifest[parsed.publicName] ??
-    (parsed.namespace === "ui" ? manifest[parsed.name] : undefined) ??
     (getKeysHookNames().has(parsed.name) ? manifest[`keys/${parsed.name}`] : undefined);
   const files = record?.files ?? [];
   const filePath = normalizeManifestPath(cwd, absolutePath);
@@ -130,11 +129,7 @@ export const removeCommand = createRemoveCommand({
   ],
   updateManifest: ({ cwd, removedNames }) => {
     const names = removedNames.map((name) => parseInstallName(name).publicName);
-    const legacyUiNames = removedNames
-      .map(parseInstallName)
-      .filter((name) => name.namespace === "ui")
-      .map((name) => name.name);
-    ctx.config.updateManifest(cwd, undefined, [...names, ...legacyUiNames]);
+    ctx.config.updateManifest(cwd, undefined, names);
   },
   findOrphanedDeps: ({ removedNames, cwd, config }) => {
     const checker = ctx.createChecker(cwd, config.componentsFsPath);

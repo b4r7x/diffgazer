@@ -593,6 +593,53 @@ describe("Checkbox.Group", () => {
     await waitFor(() => expect(new FormData(form).getAll("fruits")).toEqual(["apple"]))
   })
 
+  it("toggles the focused item on Enter key", async () => {
+    const onChange = vi.fn()
+    render(
+      <Checkbox.Group label="Fruits" onChange={onChange}>
+        <Checkbox.Item value="apple" label="Apple" />
+        <Checkbox.Item value="banana" label="Banana" />
+      </Checkbox.Group>,
+    )
+
+    screen.getByRole("checkbox", { name: "Apple" }).focus()
+    await userEvent.keyboard("{Enter}")
+
+    expect(onChange).toHaveBeenCalledWith(["apple"])
+  })
+
+  it("does not toggle a disabled item on Enter key", async () => {
+    const onChange = vi.fn()
+    render(
+      <Checkbox.Group label="Fruits" onChange={onChange}>
+        <Checkbox.Item value="apple" label="Apple" disabled />
+      </Checkbox.Group>,
+    )
+
+    screen.getByRole("checkbox", { name: "Apple" }).focus()
+    await userEvent.keyboard("{Enter}")
+
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it("respects consumer onKeyDown preventDefault for Enter", async () => {
+    const onChange = vi.fn()
+    render(
+      <Checkbox.Group
+        label="Fruits"
+        onChange={onChange}
+        onKeyDown={(e) => e.preventDefault()}
+      >
+        <Checkbox.Item value="apple" label="Apple" />
+      </Checkbox.Group>,
+    )
+
+    screen.getByRole("checkbox", { name: "Apple" }).focus()
+    await userEvent.keyboard("{Enter}")
+
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
   it("has no a11y violations", async () => {
     const { container } = render(
       <Checkbox.Group label="Fruits">

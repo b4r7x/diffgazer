@@ -6,7 +6,7 @@ import { Button } from "@diffgazer/ui/components/button";
 import { CardLayout } from "@/components/ui/card-layout";
 import { useKey, useScope } from "@diffgazer/keys";
 import { usePageFooter } from "@/hooks/use-page-footer";
-import { useFooterNavigation } from "@/hooks/use-footer-navigation.js";
+import { useActionRowNavigation } from "@diffgazer/keys";
 import { useSettings, useSaveSettings } from "@diffgazer/core/api/hooks";
 import { buildLensOptions } from "@diffgazer/core/schemas/events";
 import type { LensId } from "@diffgazer/core/schemas/review";
@@ -71,9 +71,9 @@ export function SettingsAnalysisPage() {
     }
   };
 
-  const footer = useFooterNavigation({
+  const footer = useActionRowNavigation({
     enabled: viewState === "success",
-    buttonCount: 2,
+    actionCount: 2,
     disabledActions: [isSaving, isSaveDisabled],
     disabledFocusFallbackRef: focusFallbackRef,
     onAction: (index) => {
@@ -82,7 +82,7 @@ export function SettingsAnalysisPage() {
     },
   });
 
-  const isButtonsZone = viewState === "success" ? footer.inFooter : true;
+  const isButtonsZone = viewState === "success" ? footer.inActions : true;
 
   useEffect(() => {
     if (viewState === "success") {
@@ -122,7 +122,7 @@ export function SettingsAnalysisPage() {
       footer={
         <>
           <Button
-            {...footer.getButtonProps(0)}
+            {...footer.getActionProps(0)}
             variant="ghost"
             onClick={handleCancel}
             disabled={isSaving}
@@ -131,7 +131,7 @@ export function SettingsAnalysisPage() {
             Cancel
           </Button>
           <Button
-            {...footer.getButtonProps(1)}
+            {...footer.getActionProps(1)}
             variant="success"
             onClick={handleSave}
             disabled={!canSave}
@@ -159,7 +159,7 @@ export function SettingsAnalysisPage() {
             disabled={isSaving}
             onBoundaryReached={(direction) => {
               if (direction === "down") {
-                footer.enterFooter();
+                footer.enterActions();
               }
             }}
           />

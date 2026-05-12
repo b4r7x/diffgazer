@@ -8,7 +8,7 @@ import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
 import { CardLayout } from "@/components/ui/card-layout";
 import { toVerticalBoundaryDirection, useKey, useScope } from "@diffgazer/keys";
 import { usePageFooter } from "@/hooks/use-page-footer";
-import { useFooterNavigation } from "@/hooks/use-footer-navigation.js";
+import { useActionRowNavigation } from "@diffgazer/keys";
 import { useSettings, useSaveSettings, matchQueryState } from "@diffgazer/core/api/hooks";
 
 const EXECUTION_MODES: AgentExecution[] = ["sequential", "parallel"];
@@ -51,9 +51,9 @@ export function SettingsAgentExecutionPage() {
     }
   };
 
-  const footer = useFooterNavigation({
+  const footer = useActionRowNavigation({
     enabled: true,
-    buttonCount: 2,
+    actionCount: 2,
     disabledActions: [isSaving, isSaveDisabled],
     disabledFocusFallbackRef: focusFallbackRef,
     onAction: (index) => {
@@ -62,7 +62,7 @@ export function SettingsAgentExecutionPage() {
     },
   });
 
-  const footerShortcuts: Shortcut[] = footer.inFooter
+  const footerShortcuts: Shortcut[] = footer.inActions
     ? [
         { key: "←/→", label: "Move Action" },
         {
@@ -81,7 +81,7 @@ export function SettingsAgentExecutionPage() {
     rightShortcuts: [{ key: "Esc", label: "Back" }],
   });
 
-  const navigationEnabled = settings !== undefined && !footer.inFooter && !isSaving;
+  const navigationEnabled = settings !== undefined && !footer.inActions && !isSaving;
 
   const onExecutionChange = (value: string) => {
     if (!isAgentExecution(value)) return;
@@ -118,24 +118,24 @@ export function SettingsAgentExecutionPage() {
     <CardLayout
       title="Agent Execution Mode"
       subtitle="Choose whether analysis agents run in sequence or in parallel."
-      contentInactive={footer.inFooter}
+      contentInactive={footer.inActions}
       footer={
         <>
           <Button
-            {...footer.getButtonProps(0)}
+            {...footer.getActionProps(0)}
             variant="ghost"
             onClick={handleCancel}
             disabled={isSaving}
-            highlighted={footer.inFooter && footer.focusedIndex === 0 && !isSaving}
+            highlighted={footer.inActions && footer.focusedIndex === 0 && !isSaving}
           >
             Cancel
           </Button>
           <Button
-            {...footer.getButtonProps(1)}
+            {...footer.getActionProps(1)}
             variant="success"
             onClick={handleSave}
             disabled={!canSave}
-            highlighted={footer.inFooter && footer.focusedIndex === 1 && canSave}
+            highlighted={footer.inActions && footer.focusedIndex === 1 && canSave}
           >
             {isSaving ? "Saving..." : "Save"}
           </Button>
@@ -156,7 +156,7 @@ export function SettingsAgentExecutionPage() {
           wrap={false}
           onNavigationBoundaryReached={(direction, event) => {
             if (direction === "next" && toVerticalBoundaryDirection(direction, event.key) === "down") {
-              footer.enterFooter();
+              footer.enterActions();
             }
           }}
           className="space-y-1"

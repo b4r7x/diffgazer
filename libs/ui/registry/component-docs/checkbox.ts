@@ -29,7 +29,7 @@ export const checkboxDoc: ComponentDoc = {
     {
       title: "Built-in Navigation",
       content:
-        "CheckboxGroup handles arrow-key navigation with real focus movement through useNavigation. Use autoFocus to focus the highlighted, selected, or first enabled item when the group becomes active. Use highlighted, onHighlightChange, keyboardNavigation, and onNavigationBoundaryReached when coordinating highlight state across adjacent UI. Every item value must be unique within a group. Space toggling is handled by each CheckboxItem.",
+        "CheckboxGroup handles arrow-key navigation with real focus movement through useNavigation. Enter toggles the focused/highlighted enabled item; Space continues to work through native/item semantics. Use autoFocus to focus the highlighted, selected, or first enabled item when the group becomes active. Use highlighted, onHighlightChange, keyboardNavigation, and onNavigationBoundaryReached when coordinating highlight state across adjacent UI. Every item value must be unique within a group.",
     },
     {
       title: "Strikethrough (Checklist Mode)",
@@ -152,10 +152,10 @@ export const checkboxDoc: ComponentDoc = {
         description: "Controlled highlighted item value for keyboard navigation.",
       },
       onHighlightChange: {
-        type: "(value: string) => void",
+        type: "(value: string | null) => void",
         required: false,
         defaultValue: null,
-        description: "Called when keyboard navigation highlights a new item.",
+        description: "Called when keyboard navigation highlights a new item or clears highlight.",
       },
       wrap: {
         type: "boolean",

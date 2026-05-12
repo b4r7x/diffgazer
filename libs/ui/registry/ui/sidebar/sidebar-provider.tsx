@@ -5,33 +5,33 @@ import { useControllableState } from "@/hooks/use-controllable-state";
 import { SidebarContext } from "./sidebar-context";
 
 export interface SidebarProviderProps {
-  collapsed?: boolean;
-  onCollapsedChange?: (collapsed: boolean) => void;
-  defaultCollapsed?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  defaultOpen?: boolean;
   children: ReactNode;
 }
 
 export function SidebarProvider({
-  collapsed: controlledCollapsed,
-  onCollapsedChange,
-  defaultCollapsed = false,
+  open: controlledOpen,
+  onOpenChange,
+  defaultOpen = true,
   children,
 }: SidebarProviderProps) {
   const sidebarId = useId();
-  const [isCollapsed, setIsCollapsed] = useControllableState({
-    value: controlledCollapsed,
-    defaultValue: defaultCollapsed,
-    onChange: onCollapsedChange,
+  const [isOpen, setIsOpen] = useControllableState({
+    value: controlledOpen,
+    defaultValue: defaultOpen,
+    onChange: onOpenChange,
   });
 
   const contextValue = useMemo(
     () => ({
-      collapsed: isCollapsed,
+      open: isOpen,
       contentId: `${sidebarId}-content`,
-      onCollapsedChange: setIsCollapsed,
-      toggleSidebar: () => setIsCollapsed(prev => !prev),
+      onOpenChange: setIsOpen,
+      toggleSidebar: () => setIsOpen(prev => !prev),
     }),
-    [isCollapsed, setIsCollapsed, sidebarId],
+    [isOpen, setIsOpen, sidebarId],
   );
 
   return (

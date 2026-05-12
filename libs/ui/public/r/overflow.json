@@ -4,9 +4,7 @@
   "type": "registry:ui",
   "title": "Overflow",
   "description": "Container-aware overflow handling for items (dynamic fitting with indicator) and text (line clamping with tooltip).",
-  "dependencies": [
-    "class-variance-authority"
-  ],
+  "dependencies": [],
   "registryDependencies": [
     "tooltip",
     "overflow-detection",

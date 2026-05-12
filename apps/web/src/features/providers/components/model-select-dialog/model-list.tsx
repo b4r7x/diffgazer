@@ -12,7 +12,7 @@ interface ModelListProps {
   isFocused: boolean;
   onSelect: (modelId: string) => void;
   onConfirm: (modelId?: string) => void;
-  onHighlightChange: (modelId: string) => void;
+  onHighlightChange: (modelId: string | null) => void;
   onBoundaryReached: (direction: "previous" | "next") => void;
   isLoading?: boolean;
   emptyLabel?: string;

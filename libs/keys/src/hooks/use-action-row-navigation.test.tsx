@@ -1,0 +1,247 @@
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { useRef } from "react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { KeyboardProvider } from "../providers/keyboard-provider";
+import {
+  useActionRowNavigation,
+  type UseActionRowNavigationOptions,
+} from "./use-action-row-navigation";
+
+function TestActionRow({ options }: { options: UseActionRowNavigationOptions }) {
+  const fallbackRef = useRef<HTMLDivElement>(null);
+  const row = useActionRowNavigation({
+    disabledFocusFallbackRef: fallbackRef,
+    ...options,
+  });
+  const disabledActions = options.disabledActions ?? [];
+  const handleClick = (index: number) => {
+    if (!disabledActions[index]) options.onAction(index);
+  };
+
+  return (
+    <div>
+      <div ref={fallbackRef} tabIndex={-1} aria-label="Content fallback">
+        Content
+      </div>
+      <button
+        type="button"
+        disabled={disabledActions[0]}
+        {...row.getActionProps(0)}
+        onClick={() => handleClick(0)}
+      >
+        Cancel
+      </button>
+      <button
+        type="button"
+        disabled={disabledActions[1]}
+        {...row.getActionProps(1)}
+        onClick={() => handleClick(1)}
+      >
+        Save
+      </button>
+    </div>
+  );
+}
+
+function renderActionRow(overrides: Partial<UseActionRowNavigationOptions> = {}) {
+  const onAction = vi.fn();
+  const onNavigate = vi.fn();
+  const onBoundary = vi.fn();
+  const user = userEvent.setup();
+
+  const view = render(
+    <KeyboardProvider>
+      <TestActionRow
+        options={{
+          enabled: true,
+          actionCount: 2,
+          defaultZone: "actions",
+          onAction,
+          onNavigate,
+          onNavigationBoundaryReached: onBoundary,
+          ...overrides,
+        }}
+      />
+    </KeyboardProvider>,
+  );
+
+  const rerenderActionRow = (nextOverrides: Partial<UseActionRowNavigationOptions>) => {
+    view.rerender(
+      <KeyboardProvider>
+        <TestActionRow
+          options={{
+            enabled: true,
+            actionCount: 2,
+            defaultZone: "actions",
+            onAction,
+            onNavigate,
+            onNavigationBoundaryReached: onBoundary,
+            ...overrides,
+            ...nextOverrides,
+          }}
+        />
+      </KeyboardProvider>,
+    );
+  };
+
+  return { onAction, onNavigate, onBoundary, rerenderActionRow, user };
+}
+
+function getButton(name: string) {
+  return screen.getByRole("button", { name });
+}
+
+function expectFocused(el: HTMLElement) {
+  expect(document.activeElement).toBe(el);
+}
+
+afterEach(cleanup);
+
+describe("useActionRowNavigation", () => {
+  it("focuses the default action when actions is the initial zone", async () => {
+    renderActionRow();
+
+    await waitFor(() => {
+      expectFocused(getButton("Cancel"));
+    });
+  });
+
+  it("moves between actions and activates the focused action", async () => {
+    const { onAction, user } = renderActionRow();
+
+    await waitFor(() => expectFocused(getButton("Cancel")));
+
+    await user.keyboard("{ArrowRight}{Enter}");
+    expectFocused(getButton("Save"));
+    expect(onAction).toHaveBeenLastCalledWith(1);
+
+    await user.keyboard("{ArrowLeft}{Enter}");
+    expectFocused(getButton("Cancel"));
+    expect(onAction).toHaveBeenLastCalledWith(0);
+  });
+
+  it("enters actions from content and focuses the first action", async () => {
+    const { onAction, user } = renderActionRow({ defaultZone: "content" });
+
+    await user.keyboard("{ArrowDown}");
+    expectFocused(getButton("Cancel"));
+
+    await user.keyboard("{Enter}");
+    expect(onAction).toHaveBeenCalledWith(0);
+  });
+
+  it("clamps at boundaries unless wrapping is enabled", async () => {
+    const { user } = renderActionRow();
+
+    await waitFor(() => expectFocused(getButton("Cancel")));
+
+    await user.keyboard("{ArrowLeft}");
+    expectFocused(getButton("Cancel"));
+
+    await user.keyboard("{ArrowRight}{ArrowRight}");
+    expectFocused(getButton("Save"));
+  });
+
+  it("wraps navigation when requested", async () => {
+    const { user } = renderActionRow({ wrap: true });
+
+    await waitFor(() => expectFocused(getButton("Cancel")));
+
+    await user.keyboard("{ArrowLeft}");
+    expectFocused(getButton("Save"));
+
+    await user.keyboard("{ArrowRight}");
+    expectFocused(getButton("Cancel"));
+  });
+
+  it("skips disabled actions during navigation", async () => {
+    const { onAction, user } = renderActionRow({ disabledActions: [false, true] });
+
+    await waitFor(() => expectFocused(getButton("Cancel")));
+
+    await user.keyboard("{ArrowRight}");
+    expectFocused(getButton("Cancel"));
+
+    await user.keyboard("{Enter}");
+    expect(onAction).toHaveBeenCalledWith(0);
+    expect(onAction).not.toHaveBeenCalledWith(1);
+  });
+
+  it("enters on the first enabled action when the first is disabled", async () => {
+    const { user } = renderActionRow({
+      defaultZone: "content",
+      disabledActions: [true, false],
+    });
+
+    await user.keyboard("{ArrowDown}");
+    expectFocused(getButton("Save"));
+  });
+
+  it("does not enter actions when every action is disabled", async () => {
+    const { user } = renderActionRow({
+      defaultZone: "content",
+      disabledActions: [true, true],
+    });
+    const fallback = screen.getByLabelText("Content fallback");
+    fallback.focus();
+
+    await user.keyboard("{ArrowDown}");
+
+    expectFocused(fallback);
+  });
+
+  it("moves to the next enabled action when a focused action becomes disabled", async () => {
+    const { onAction, rerenderActionRow, user } = renderActionRow({ defaultIndex: 1 });
+
+    await waitFor(() => expectFocused(getButton("Save")));
+
+    rerenderActionRow({ defaultIndex: 1, disabledActions: [false, true] });
+
+    await waitFor(() => expectFocused(getButton("Cancel")));
+
+    await user.keyboard("{Enter}");
+    expect(onAction).toHaveBeenCalledWith(0);
+    expect(onAction).not.toHaveBeenCalledWith(1);
+  });
+
+  it("calls onNavigate when navigating between actions", async () => {
+    const { onNavigate, user } = renderActionRow();
+
+    await waitFor(() => expectFocused(getButton("Cancel")));
+
+    await user.keyboard("{ArrowRight}");
+    expect(onNavigate).toHaveBeenCalledWith(1);
+  });
+
+  it("calls onNavigationBoundaryReached at boundaries without wrap", async () => {
+    const { onBoundary, user } = renderActionRow();
+
+    await waitFor(() => expectFocused(getButton("Cancel")));
+
+    await user.keyboard("{ArrowLeft}");
+    expect(onBoundary).toHaveBeenCalledWith("previous");
+
+    await user.keyboard("{ArrowRight}{ArrowRight}");
+    expect(onBoundary).toHaveBeenCalledWith("next");
+  });
+
+  it("calls onNavigationBoundaryReached when exiting via ArrowUp", async () => {
+    const { onBoundary, user } = renderActionRow();
+
+    await waitFor(() => expectFocused(getButton("Cancel")));
+
+    await user.keyboard("{ArrowUp}");
+    expect(onBoundary).toHaveBeenCalledWith("previous");
+  });
+
+  it("activates focused action with Space", async () => {
+    const { onAction, user } = renderActionRow();
+
+    await waitFor(() => expectFocused(getButton("Cancel")));
+
+    await user.keyboard("{ArrowRight}");
+    await user.keyboard(" ");
+    expect(onAction).toHaveBeenCalledWith(1);
+  });
+});

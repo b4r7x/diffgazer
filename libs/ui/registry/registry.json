@@ -669,9 +669,7 @@
       "type": "registry:ui",
       "title": "Overflow",
       "description": "Container-aware overflow handling for items (dynamic fitting with indicator) and text (line clamping with tooltip).",
-      "dependencies": [
-        "class-variance-authority"
-      ],
+      "dependencies": [],
       "registryDependencies": [
         "tooltip",
         "overflow-detection",
@@ -1849,7 +1847,8 @@
       "title": "Diff Utilities",
       "description": "Pure functions for parsing unified diffs, computing diffs from text, and word-level diff highlighting. No React dependency.",
       "meta": {
-        "client": false
+        "client": false,
+        "hidden": true
       },
       "files": [
         {
@@ -1907,7 +1906,8 @@
       "title": "resolveTabTarget",
       "description": "Roving tabindex utility — determines which item in a group should be the tab target based on selection state and disabled status.",
       "meta": {
-        "client": false
+        "client": false,
+        "hidden": true
       },
       "files": [
         {
@@ -1926,7 +1926,8 @@
       ],
       "registryDependencies": [],
       "meta": {
-        "client": false
+        "client": false,
+        "hidden": true
       },
       "files": [
         {
@@ -1962,7 +1963,8 @@
       ],
       "registryDependencies": [],
       "meta": {
-        "client": false
+        "client": false,
+        "hidden": true
       },
       "files": [
         {
@@ -1977,7 +1979,8 @@
       "title": "Focus Utilities",
       "description": "Shared focusable element selector and scoped selectable-item focus helpers for focus management, auto-focus, and keyboard handoff logic.",
       "meta": {
-        "client": false
+        "client": false,
+        "hidden": true
       },
       "files": [
         {
@@ -1992,7 +1995,8 @@
       "title": "Step Status",
       "description": "Shared StepStatus type for stepper components (completed, active, pending, error).",
       "meta": {
-        "client": false
+        "client": false,
+        "hidden": true
       },
       "files": [
         {
@@ -2007,7 +2011,8 @@
       "title": "Search Utilities",
       "description": "Case-insensitive search matching utility for filtering items by text query.",
       "meta": {
-        "client": false
+        "client": false,
+        "hidden": true
       },
       "files": [
         {

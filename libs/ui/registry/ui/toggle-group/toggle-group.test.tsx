@@ -359,6 +359,31 @@ describe("ToggleGroup", () => {
     expect(onChange).not.toHaveBeenCalled()
   })
 
+  it("calls onNavigationBoundaryReached when wrap is false and boundary is hit", async () => {
+    const onNavigationBoundaryReached = vi.fn()
+    render(
+      <ToggleGroup label="Options" defaultValue="c" wrap={false} onNavigationBoundaryReached={onNavigationBoundaryReached}>
+        <ToggleGroup.Item value="a">Alpha</ToggleGroup.Item>
+        <ToggleGroup.Item value="b">Beta</ToggleGroup.Item>
+        <ToggleGroup.Item value="c">Charlie</ToggleGroup.Item>
+      </ToggleGroup>,
+    )
+
+    const charlie = screen.getByRole("radio", { name: /charlie/i })
+    charlie.focus()
+    await userEvent.keyboard("{ArrowRight}")
+
+    expect(onNavigationBoundaryReached).toHaveBeenCalledWith("next", expect.any(KeyboardEvent), "ArrowRight")
+    expect(charlie).toHaveFocus()
+
+    const alpha = screen.getByRole("radio", { name: /alpha/i })
+    alpha.focus()
+    await userEvent.keyboard("{ArrowLeft}")
+
+    expect(onNavigationBoundaryReached).toHaveBeenCalledWith("previous", expect.any(KeyboardEvent), "ArrowLeft")
+    expect(alpha).toHaveFocus()
+  })
+
   it("honors preventDefault in custom key handlers", async () => {
     const onChange = vi.fn()
     renderGroup({

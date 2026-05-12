@@ -20,7 +20,7 @@ export type UseScopedNavigationOptions = Omit<UseNavigationOptions, "containerRe
 export interface UseScopedNavigationReturn {
   highlighted: string | null;
   isHighlighted: (value: string) => boolean;
-  highlight: (value: string) => void;
+  highlight: (value: string | null) => void;
 }
 
 export function useScopedNavigation(options: UseScopedNavigationOptions): UseScopedNavigationReturn {

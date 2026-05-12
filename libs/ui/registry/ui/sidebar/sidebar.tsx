@@ -7,9 +7,9 @@ import { SidebarProvider } from "./sidebar-provider";
 
 export interface SidebarProps extends HTMLAttributes<HTMLElement> {
   ref?: Ref<HTMLElement>;
-  collapsed?: boolean;
-  onCollapsedChange?: (collapsed: boolean) => void;
-  defaultCollapsed?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  defaultOpen?: boolean;
   children: ReactNode;
 }
 
@@ -21,9 +21,9 @@ function SidebarNav({ ref, className, ...rest }: HTMLAttributes<HTMLElement> & {
 
 export function Sidebar({
   ref,
-  collapsed,
-  onCollapsedChange,
-  defaultCollapsed = false,
+  open,
+  onOpenChange,
+  defaultOpen = true,
   children,
   className,
   ...rest
@@ -36,9 +36,9 @@ export function Sidebar({
 
   return (
     <SidebarProvider
-      collapsed={collapsed}
-      onCollapsedChange={onCollapsedChange}
-      defaultCollapsed={defaultCollapsed}
+      open={open}
+      onOpenChange={onOpenChange}
+      defaultOpen={defaultOpen}
     >
       <SidebarNav ref={ref} className={className} {...rest}>{children}</SidebarNav>
     </SidebarProvider>

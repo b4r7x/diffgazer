@@ -50,7 +50,7 @@ export interface RadioGroupProps extends RadioGroupRootProps {
   onChange?: (value: string) => void;
   onNavigate?: (value: string, direction: RadioGroupNavigationDirection) => void;
   onEnter?: (value: string, event: ReactKeyboardEvent<HTMLDivElement>) => void;
-  onHighlightChange?: (value: string) => void;
+  onHighlightChange?: (value: string | null) => void;
   onKeyDown?: (event: ReactKeyboardEvent) => void;
   highlighted?: string | null;
   orientation?: "vertical" | "horizontal";
@@ -159,9 +159,7 @@ export function RadioGroup(props: RadioGroupProps) {
     value: controlledHighlighted,
     controlled: "highlighted" in props,
     defaultValue: null,
-    onChange: (next) => {
-      if (next !== null) onHighlightChange?.(next);
-    },
+    onChange: onHighlightChange,
   });
 
   const enabledItems = getEnabledSelectableCollectionItems(items, disabled);
@@ -196,7 +194,8 @@ export function RadioGroup(props: RadioGroupProps) {
     setRequiredInvalid(true);
   }, []);
 
-  const handleNavigatedItem = useCallback((next: string) => {
+  const handleNavigatedItem = useCallback((next: string | null) => {
+    if (next === null) return;
     setHighlightedValue(next);
     setRequiredInvalid(false);
 

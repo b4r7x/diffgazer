@@ -15,7 +15,7 @@ export interface NavigationListProps
   defaultHighlighted?: string | null;
   onSelect?: (id: string) => void;
   onEnter?: (id: string, event: globalThis.KeyboardEvent) => void;
-  onHighlightChange?: (id: string) => void;
+  onHighlightChange?: (id: string | null) => void;
   onNavigationBoundaryReached?: (
     direction: "previous" | "next",
     event: globalThis.KeyboardEvent,

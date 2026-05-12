@@ -70,7 +70,7 @@ export function DiagnosticsPage() {
 
   const {
     focusedIndex,
-    getButtonProps,
+    getActionProps,
     focusFallbackRef,
     isRefreshingAll,
     refreshError,
@@ -157,7 +157,7 @@ export function DiagnosticsPage() {
 
           <div className="flex gap-4 pt-2">
             <Button
-              {...getButtonProps(0)}
+              {...getActionProps(0)}
               variant="secondary"
               size="sm"
               bracket
@@ -168,7 +168,7 @@ export function DiagnosticsPage() {
               {isRefreshingAll ? "Refreshing..." : "Refresh Diagnostics"}
             </Button>
             <Button
-              {...getButtonProps(1)}
+              {...getActionProps(1)}
               variant="success"
               size="sm"
               bracket

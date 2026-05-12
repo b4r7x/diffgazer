@@ -22,7 +22,7 @@ export interface UseNavigationOptions {
   role: NavigationRole;
   highlighted?: string | null;
   defaultHighlighted?: string | null;
-  onHighlightChange?: (value: string) => void;
+  onHighlightChange?: (value: string | null) => void;
   onSelect?: (value: string, event: globalThis.KeyboardEvent) => void;
   onEnter?: (value: string, event: globalThis.KeyboardEvent) => void;
   wrap?: boolean;
@@ -49,14 +49,14 @@ export interface UseNavigationOptions {
 export interface UseNavigationReturn {
   highlighted: string | null;
   isHighlighted: (value: string) => boolean;
-  highlight: (value: string) => void;
+  highlight: (value: string | null) => void;
   onKeyDown: (event: KeyboardEvent) => void;
 }
 
 interface UseNavigationCoreReturn {
   highlighted: string | null;
   isHighlighted: (value: string) => boolean;
-  highlight: (value: string) => void;
+  highlight: (value: string | null) => void;
   move: (delta: 1 | -1, event?: globalThis.KeyboardEvent, key?: string) => void;
   focusIndex: (index: number) => void;
   handleSelect: (event: globalThis.KeyboardEvent) => void;
@@ -104,7 +104,7 @@ export function useNavigationCore({
   const isControlled = controlledHighlighted !== undefined;
   const highlighted = isControlled ? controlledHighlighted ?? null : internalHighlighted;
 
-  const setFocusedValue = useCallback((nextValue: string) => {
+  const setFocusedValue = useCallback((nextValue: string | null) => {
     if (!isControlled) setInternalHighlighted(nextValue);
     onHighlightChange?.(nextValue);
   }, [isControlled, onHighlightChange]);
@@ -188,7 +188,7 @@ export function useNavigationCore({
   }, [getCurrentValue, onEnter, onSelect]);
 
   const isHighlighted = useCallback((v: string) => highlighted === v, [highlighted]);
-  const highlight = useCallback((v: string) => setFocusedValue(v), [setFocusedValue]);
+  const highlight = useCallback((v: string | null) => setFocusedValue(v), [setFocusedValue]);
 
   return { highlighted, isHighlighted, highlight, move, focusIndex, handleSelect, handleEnter, getElements };
 }

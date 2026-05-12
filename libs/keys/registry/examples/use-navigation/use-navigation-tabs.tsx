@@ -20,7 +20,7 @@ export default function UseNavigationTabs() {
     orientation: "horizontal",
     wrap: true,
     highlighted: activeTab,
-    onHighlightChange: setActiveTab,
+    onHighlightChange: (value) => { if (value !== null) setActiveTab(value) },
     moveFocus: true,
   })
 

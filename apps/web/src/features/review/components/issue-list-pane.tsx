@@ -7,14 +7,14 @@ import { NavigationList } from "@diffgazer/ui/components/navigation-list";
 import { EmptyState } from "@diffgazer/ui/components/empty-state";
 import { Panel } from "@diffgazer/ui/components/panel";
 import { SEVERITY_CONFIG } from "@/components/ui/severity/constants";
-import { isVerticalListKey } from "@/utils/vertical-list-key";
+import { isListNavigationKey } from "@diffgazer/keys";
 
 export interface IssueListPaneProps {
   issues: ReviewIssue[];
   allIssues: ReviewIssue[];
   selectedIssueId: string | null;
   onSelectIssue: (id: string) => void;
-  onHighlightIssue?: (id: string) => void;
+  onHighlightIssue?: (id: string | null) => void;
   onListBoundaryReached?: (direction: "previous" | "next") => void;
   severityFilter: SeverityFilter;
   onSeverityFilterChange: (filter: SeverityFilter) => void;
@@ -96,7 +96,7 @@ export function IssueListPane({
           highlighted={highlightedIssueId}
           onFocus={onListFocus}
           onKeyDown={(event) => {
-            if (!isFocused && isVerticalListKey(event.key)) {
+            if (!isFocused && isListNavigationKey(event.key)) {
               event.preventDefault();
             }
           }}

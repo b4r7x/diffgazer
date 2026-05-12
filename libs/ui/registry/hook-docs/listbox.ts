@@ -86,9 +86,9 @@ return (
     },
     {
       name: "onHighlightChange",
-      type: "(id: string) => void",
+      type: "(id: string | null) => void",
       required: false,
-      description: "Called when the highlighted item changes via keyboard navigation.",
+      description: "Called when the highlighted item changes via keyboard navigation or is cleared.",
     },
     {
       name: "onNavigationBoundaryReached",

@@ -16,6 +16,8 @@ import {
   KeyboardNav,
   AccessibilityNotes,
   Notes,
+  ConsumptionBlock,
+  APIReference,
 } from "./blocks"
 
 export const featureMdxComponents: MDXComponents = {
@@ -39,4 +41,6 @@ export const featureMdxComponents: MDXComponents = {
   KeyboardNav,
   AccessibilityNotes,
   Notes,
+  ConsumptionBlock,
+  APIReference,
 }

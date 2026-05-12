@@ -3,7 +3,14 @@ title: Tailwind Setup
 description: Configure Tailwind CSS 4 with the @diffgazer/ui theme variables.
 ---
 
-@diffgazer/ui requires Tailwind CSS 4 with the @diffgazer/ui theme variables.
+@diffgazer/ui requires Tailwind CSS 4 with the @diffgazer/ui theme variables. CSS setup depends on the consumption path:
+
+| Path | CSS entrypoint |
+|------|---------------|
+| Manual copy / `dgadd` | `@import "./styles/styles.css"` (copied by `dgadd init`) |
+| npm package | `@import "@diffgazer/ui/sources.css"` + `@import "@diffgazer/ui/styles.css"` |
+
+`@diffgazer/keys` requires no CSS or Tailwind setup.
 
 ## 1. Install Tailwind 4
 
@@ -47,6 +54,36 @@ Use `theme.css` only when you intentionally want token variables without compone
 `dgadd init` copies `src/styles/theme.css` and `src/styles/styles.css`, but it does not add either import to your app CSS entrypoint.
 
 In Next App Router, import your app CSS entrypoint once from `app/layout.tsx`. Keep the Tailwind import, Diffgazer style imports, and any app-local `@source` directives in that CSS file.
+
+## Next.js / PostCSS Setup
+
+For Next.js projects that use PostCSS instead of Vite, install the PostCSS plugin:
+
+```bash
+pnpm add -D tailwindcss @tailwindcss/postcss
+```
+
+Create or update `postcss.config.mjs`:
+
+```js
+export default {
+  plugins: {
+    "@tailwindcss/postcss": {},
+  },
+}
+```
+
+Import your app CSS entrypoint once from `app/layout.tsx`:
+
+```tsx
+import "./globals.css"
+```
+
+In `globals.css`, use the same Tailwind and Diffgazer imports as the Vite setup.
+
+## @diffgazer/keys CSS
+
+`@diffgazer/keys` requires no CSS or Tailwind setup. Keyboard hooks are pure React logic with no style dependencies.
 
 ## Package Mode Source Scanning
 

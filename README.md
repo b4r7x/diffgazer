@@ -33,32 +33,39 @@ pnpm run verify
 
 This repository is one workspace with a single root install and lockfile.
 
-## UI Consumption Contract
+## Consumption Paths
 
-The package names `@diffgazer/add`, `@diffgazer/ui`, and `@diffgazer/keys` are package targets, but they are external publish-gated as of May 6, 2026. Public handoff must not use npm install commands until `npm view` returns versions for all three packages.
+`@diffgazer/ui` and `@diffgazer/keys` support three consumption paths. All npm package names are publish-gated as of May 2026 -- public npm commands are valid only after `npm view` returns versions. Local tarballs are the package-mode validation path before publication.
 
-The canonical path for application-owned UI is copy-first registry install through the `dgadd` binary. From this workspace, validate it with local package smoke tests:
+| Path | @diffgazer/ui | @diffgazer/keys |
+|------|---------------|-----------------|
+| Manual copy / shadcn | All components, hooks, libs | Standalone hooks only |
+| `dgadd` CLI | All components, hooks, libs | Standalone hooks only |
+| npm package | All exports | All exports (including provider-backed APIs) |
+
+### Copy-first mode (`dgadd`)
 
 ```bash
-pnpm run smoke:packages
+pnpm exec dgadd init
+pnpm exec dgadd add ui/button keys/navigation
 ```
 
-After `@diffgazer/add` is published, the public command style is:
+Copy mode installs source files the consuming app owns. UI components require Tailwind CSS v4 and the copied `src/styles/styles.css`. Keys standalone hooks require no CSS setup. After `@diffgazer/add` is published, use `npx @diffgazer/add` instead of `pnpm exec dgadd`.
 
-```bash
-npx @diffgazer/add init
-npx @diffgazer/add add ui/button
-```
-
-`dgadd` copies component source and shared utilities into the consuming app. `dgadd init` writes `diffgazer.json`, copies theme/style files, creates install directories, and installs shared dependencies. The consuming app must configure TypeScript/bundler aliases before `init` and must import the copied CSS entrypoint itself.
-
-`@diffgazer/ui` is also intended to support runtime package imports after publication:
+### Runtime package mode
 
 ```bash
 npm install @diffgazer/ui @diffgazer/keys
 ```
 
-Runtime package consumers must import Tailwind CSS v4, `@diffgazer/ui/sources.css`, and `@diffgazer/ui/styles.css`. `@diffgazer/keys` is a required peer of `@diffgazer/ui` in package mode. Icon primitives ship from `@diffgazer/ui`; there is no `lucide-react` peer or runtime dependency.
+Package consumers import Tailwind CSS v4, `@diffgazer/ui/sources.css`, and `@diffgazer/ui/styles.css`. `@diffgazer/keys` is a required peer of `@diffgazer/ui` in package mode. Keys provider-backed APIs (`KeyboardProvider`, `useKey`, `useScope`, `useFocusZone`, `useScopedNavigation`) are package-only.
+
+### Direct shadcn / manual copy
+
+```bash
+npx shadcn add https://diffgazer.com/r/ui/button.json
+npx shadcn add https://diffgazer.com/r/keys/navigation.json
+```
 
 Versioning, release gates, migration expectations, and artifact ownership are documented in [PACKAGE_GOVERNANCE.md](./PACKAGE_GOVERNANCE.md).
 

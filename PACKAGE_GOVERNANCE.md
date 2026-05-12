@@ -39,12 +39,18 @@ Root scripts used for readiness and release:
 pnpm run build
 pnpm run verify
 pnpm run smoke:packages
+pnpm run test-ci
+pnpm run release-check
 pnpm run changeset
 pnpm run version-packages
 pnpm run release
 ```
 
 `pnpm run verify` runs monorepo invariants, type checks, tests, and smoke checks. `pnpm run smoke:packages` packs local workspace packages into temporary projects and verifies public imports/bins; it does not install from the public npm registry.
+
+`pnpm run test-ci` runs artifact preparation, validation, type-check, tests, strict smoke, and monorepo verification. It is the CI-safe gate that `$sota-verify` invokes.
+
+`pnpm run release-check` runs the full no-publish release readiness sequence: artifact prep, artifact validation, type-check, tests, strict smoke, package smoke, pack dry-runs for all public packages, monorepo verification, and `git diff --check`. It does not run `changeset publish`.
 
 `smoke:packages` currently covers local tarball installs, all exported `@diffgazer/ui` subpaths, CSS export resolution, React SSR rendering, strict NodeNext type checking, and the shared React `>=19.2.0` floor. Public handoff also requires clean consumer checks in Vite and Next apps with npm, pnpm, yarn, and bun after the packages are actually published.
 
@@ -118,9 +124,9 @@ The current `smoke:packages` script validates packed local packages, not freshly
 Package lifecycle guards currently in the repo:
 
 - `diffgazer`: `prepack` runs the package build; `build` first runs the required workspace dependency builds for `@diffgazer/core`, `@diffgazer/server`, `@diffgazer/keys`, `@diffgazer/ui`, and `@diffgazer/web`.
-- `@diffgazer/add`: `prepublishOnly` builds and checks generated registry/key bundles.
-- `@diffgazer/ui`: `prepublishOnly` builds and checks `dist`.
-- `@diffgazer/keys`: `prepublishOnly` builds and checks `dist/artifacts/artifact-manifest.json`.
+- `@diffgazer/add`: `prepublishOnly` runs build, type-check, test, and root artifact validation.
+- `@diffgazer/ui`: `prepublishOnly` runs build, type-check, test, and root artifact validation.
+- `@diffgazer/keys`: `prepublishOnly` runs build, type-check, test, and root artifact validation.
 
 The release-readiness workflow must also run pack dry-runs for all public packages: `diffgazer`, `@diffgazer/add`, `@diffgazer/ui`, and `@diffgazer/keys`.
 

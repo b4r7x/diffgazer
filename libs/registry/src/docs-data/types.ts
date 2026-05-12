@@ -96,6 +96,32 @@ export interface HookSourceData {
   }
 }
 
+export type ConsumptionLibrary = "ui" | "keys"
+
+export type ConsumptionItemKind = "component" | "hook" | "lib"
+
+export interface ConsumptionPathOption {
+  available: boolean
+  command?: string
+  note?: string
+}
+
+export interface ConsumptionMetadata {
+  library: ConsumptionLibrary
+  itemId: string
+  itemKind: ConsumptionItemKind
+  packageImport?: string
+  copyPath?: string
+  dgaddName: string
+  publishGated: boolean
+  paths: {
+    copy: ConsumptionPathOption
+    dgadd: ConsumptionPathOption
+    package: ConsumptionPathOption
+  }
+  cssNote?: string
+}
+
 export interface EnrichedHookData extends HookSourceData {
   docs: HookDoc | null
   usageSnippet?: string

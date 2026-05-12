@@ -177,17 +177,6 @@ function logIntegrationMode(mode: ResolvedIntegrationSelection["mode"]): void {
   if (mode === "@diffgazer/keys") info("Including integration: keyboard-navigation + @diffgazer/keys package");
 }
 
-function buildIntegrationWarnings(
-  selection: ResolvedIntegrationSelection,
-  neededHooks: string[],
-): string[] {
-  if (!selection.hasKeyboardIntegration || selection.mode !== "none") return [];
-  return [
-    "Components reference keyboard hooks from @/hooks/. "
-    + `Install them via 'dgadd ${neededHooks.map((hook) => `keys/${hook}`).join(" ")}' or re-run with --integration=copy.`,
-  ];
-}
-
 function buildManifestMetadata(
   mode: ResolvedIntegrationSelection["mode"],
   keysVersionSpec: string,
@@ -376,7 +365,6 @@ const addBaseCommand = createAddCommand<ResolvedConfig>({
       missingDeps: computeMissingDeps(resolved, selection, keysVersionSpec, cwd),
       extraDependencies: resolved.filter((r) => !split.ui.includes(r)).map((name) => `ui/${name}`),
       headingMessage: "Adding Diffgazer items...",
-      warnBeforeApply: buildIntegrationWarnings(selection, neededKeysHooks),
       onDryRun: () => {
         if (selection.hasKeyboardIntegration && selection.mode === "copy") {
           info("Keys hooks would be installed from bundled offline sources.");

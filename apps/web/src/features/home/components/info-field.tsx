@@ -1,4 +1,4 @@
-import type { KeyboardEvent, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { cn } from "@diffgazer/core/cn";
 
 export type InfoFieldColor = "blue" | "violet" | "green" | "yellow" | "red" | "muted";
@@ -29,24 +29,29 @@ export function InfoField({
   onClick,
   ariaLabel,
 }: InfoFieldProps) {
-  const handleKeyDown = (event: KeyboardEvent) => {
-    if (onClick && (event.key === "Enter" || event.key === " ")) {
-      event.preventDefault();
-      onClick();
-    }
-  };
-
-  return (
-    <div
-      className={cn(className, onClick && "cursor-pointer hover:opacity-80 transition-opacity")}
-      onClick={onClick}
-      role={onClick ? "button" : undefined}
-      tabIndex={onClick ? 0 : undefined}
-      aria-label={onClick ? (ariaLabel ?? `${label} settings`) : undefined}
-      onKeyDown={onClick ? handleKeyDown : undefined}
-    >
+  const content = (
+    <>
       <div className={cn("text-xs uppercase mb-1 font-bold", labelColors[color])}>{label}</div>
       <div className="text-tui-fg opacity-90">{children}</div>
+    </>
+  );
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        className={cn("w-full text-left cursor-pointer hover:opacity-80 transition-opacity", className)}
+        onClick={onClick}
+        aria-label={ariaLabel ?? `${label} settings`}
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <div className={className}>
+      {content}
     </div>
   );
 }

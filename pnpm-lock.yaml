@@ -561,6 +561,159 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
+  tmp/dg-smoke-3GZSeD:
+    dependencies:
+      '@diffgazer/keys':
+        specifier: file:/Users/voitz/Projects/diffgazer-workspace/tmp/dg-smoke-3GZSeD/packs/diffgazer-keys-0.1.1.tgz
+        version: file:tmp/dg-smoke-3GZSeD/packs/diffgazer-keys-0.1.1.tgz(react@node_modules+.pnpm+react@19.2.4+node_modules+react)
+      '@diffgazer/ui':
+        specifier: file:/Users/voitz/Projects/diffgazer-workspace/tmp/dg-smoke-3GZSeD/packs/diffgazer-ui-0.1.0.tgz
+        version: file:tmp/dg-smoke-3GZSeD/packs/diffgazer-ui-0.1.0.tgz(@diffgazer/keys@file:tmp/dg-smoke-3GZSeD/packs/diffgazer-keys-0.1.1.tgz(react@node_modules+.pnpm+react@19.2.4+node_modules+react))(react-dom@node_modules+.pnpm+react-dom@19.2.4_react@19.2.4+node_modules+react-dom)(react@node_modules+.pnpm+react@19.2.4+node_modules+react)
+      '@tailwindcss/postcss':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@tailwindcss+postcss@4.3.0/node_modules/@tailwindcss/postcss
+        version: link:../../node_modules/.pnpm/@tailwindcss+postcss@4.3.0/node_modules/@tailwindcss/postcss
+      '@types/node':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+node@25.2.3/node_modules/@types/node
+        version: link:../../node_modules/.pnpm/@types+node@25.2.3/node_modules/@types/node
+      '@types/react':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react
+        version: link:../../node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react
+      '@types/react-dom':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom
+        version: link:../../node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom
+      class-variance-authority:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+        version: link:../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+      clsx:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
+        version: link:../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
+      figlet:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/figlet@1.10.0/node_modules/figlet
+        version: link:../../node_modules/.pnpm/figlet@1.10.0/node_modules/figlet
+      next:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/next@16.2.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next
+        version: link:../../node_modules/.pnpm/next@16.2.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next
+      postcss:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/postcss@8.5.14/node_modules/postcss
+        version: link:../../node_modules/.pnpm/postcss@8.5.14/node_modules/postcss
+      react:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/react@19.2.4/node_modules/react
+        version: link:../../node_modules/.pnpm/react@19.2.4/node_modules/react
+      react-dom:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom
+        version: link:../../node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom
+      tailwind-merge:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/tailwind-merge@3.4.1/node_modules/tailwind-merge
+        version: link:../../node_modules/.pnpm/tailwind-merge@3.4.1/node_modules/tailwind-merge
+      tailwindcss:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/tailwindcss@4.2.2/node_modules/tailwindcss
+        version: link:../../node_modules/.pnpm/tailwindcss@4.2.2/node_modules/tailwindcss
+      typescript:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
+        version: link:../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
+
+  tmp/dg-smoke-6rJlHA:
+    dependencies:
+      '@diffgazer/keys':
+        specifier: file:/Users/voitz/Projects/diffgazer-workspace/tmp/dg-smoke-6rJlHA/packs/diffgazer-keys-0.1.1.tgz
+        version: file:tmp/dg-smoke-6rJlHA/packs/diffgazer-keys-0.1.1.tgz(react@node_modules+.pnpm+react@19.2.4+node_modules+react)
+      '@diffgazer/ui':
+        specifier: file:/Users/voitz/Projects/diffgazer-workspace/tmp/dg-smoke-6rJlHA/packs/diffgazer-ui-0.1.0.tgz
+        version: file:tmp/dg-smoke-6rJlHA/packs/diffgazer-ui-0.1.0.tgz(@diffgazer/keys@file:tmp/dg-smoke-6rJlHA/packs/diffgazer-keys-0.1.1.tgz(react@node_modules+.pnpm+react@19.2.4+node_modules+react))(react-dom@node_modules+.pnpm+react-dom@19.2.4_react@19.2.4+node_modules+react-dom)(react@node_modules+.pnpm+react@19.2.4+node_modules+react)
+      '@tailwindcss/postcss':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@tailwindcss+postcss@4.3.0/node_modules/@tailwindcss/postcss
+        version: link:../../node_modules/.pnpm/@tailwindcss+postcss@4.3.0/node_modules/@tailwindcss/postcss
+      '@types/node':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+node@25.2.3/node_modules/@types/node
+        version: link:../../node_modules/.pnpm/@types+node@25.2.3/node_modules/@types/node
+      '@types/react':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react
+        version: link:../../node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react
+      '@types/react-dom':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom
+        version: link:../../node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom
+      class-variance-authority:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+        version: link:../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+      clsx:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
+        version: link:../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
+      figlet:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/figlet@1.10.0/node_modules/figlet
+        version: link:../../node_modules/.pnpm/figlet@1.10.0/node_modules/figlet
+      next:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/next@16.2.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next
+        version: link:../../node_modules/.pnpm/next@16.2.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next
+      postcss:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/postcss@8.5.14/node_modules/postcss
+        version: link:../../node_modules/.pnpm/postcss@8.5.14/node_modules/postcss
+      react:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/react@19.2.4/node_modules/react
+        version: link:../../node_modules/.pnpm/react@19.2.4/node_modules/react
+      react-dom:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom
+        version: link:../../node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom
+      tailwind-merge:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/tailwind-merge@3.4.1/node_modules/tailwind-merge
+        version: link:../../node_modules/.pnpm/tailwind-merge@3.4.1/node_modules/tailwind-merge
+      tailwindcss:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/tailwindcss@4.2.2/node_modules/tailwindcss
+        version: link:../../node_modules/.pnpm/tailwindcss@4.2.2/node_modules/tailwindcss
+      typescript:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
+        version: link:../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
+
+  tmp/dg-smoke-8qZ0OY:
+    dependencies:
+      '@diffgazer/keys':
+        specifier: file:/Users/voitz/Projects/diffgazer-workspace/tmp/dg-smoke-8qZ0OY/packs/diffgazer-keys-0.1.1.tgz
+        version: file:tmp/dg-smoke-8qZ0OY/packs/diffgazer-keys-0.1.1.tgz(react@node_modules+.pnpm+react@19.2.4+node_modules+react)
+      '@diffgazer/ui':
+        specifier: file:/Users/voitz/Projects/diffgazer-workspace/tmp/dg-smoke-8qZ0OY/packs/diffgazer-ui-0.1.0.tgz
+        version: file:tmp/dg-smoke-8qZ0OY/packs/diffgazer-ui-0.1.0.tgz(@diffgazer/keys@file:tmp/dg-smoke-8qZ0OY/packs/diffgazer-keys-0.1.1.tgz(react@node_modules+.pnpm+react@19.2.4+node_modules+react))(react-dom@node_modules+.pnpm+react-dom@19.2.4_react@19.2.4+node_modules+react-dom)(react@node_modules+.pnpm+react@19.2.4+node_modules+react)
+      '@tailwindcss/postcss':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@tailwindcss+postcss@4.3.0/node_modules/@tailwindcss/postcss
+        version: link:../../node_modules/.pnpm/@tailwindcss+postcss@4.3.0/node_modules/@tailwindcss/postcss
+      '@types/node':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+node@25.2.3/node_modules/@types/node
+        version: link:../../node_modules/.pnpm/@types+node@25.2.3/node_modules/@types/node
+      '@types/react':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react
+        version: link:../../node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react
+      '@types/react-dom':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom
+        version: link:../../node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom
+      class-variance-authority:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+        version: link:../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+      clsx:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
+        version: link:../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
+      figlet:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/figlet@1.10.0/node_modules/figlet
+        version: link:../../node_modules/.pnpm/figlet@1.10.0/node_modules/figlet
+      next:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/next@16.2.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next
+        version: link:../../node_modules/.pnpm/next@16.2.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next
+      postcss:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/postcss@8.5.14/node_modules/postcss
+        version: link:../../node_modules/.pnpm/postcss@8.5.14/node_modules/postcss
+      react:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/react@19.2.4/node_modules/react
+        version: link:../../node_modules/.pnpm/react@19.2.4/node_modules/react
+      react-dom:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom
+        version: link:../../node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom
+      tailwind-merge:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/tailwind-merge@3.4.1/node_modules/tailwind-merge
+        version: link:../../node_modules/.pnpm/tailwind-merge@3.4.1/node_modules/tailwind-merge
+      tailwindcss:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/tailwindcss@4.2.2/node_modules/tailwindcss
+        version: link:../../node_modules/.pnpm/tailwindcss@4.2.2/node_modules/tailwindcss
+      typescript:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
+        version: link:../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
+
   tmp/dg-smoke-L4kAWq:
     dependencies:
       '@diffgazer/keys':
@@ -569,6 +722,210 @@ importers:
       '@diffgazer/ui':
         specifier: file:/Users/voitz/Projects/diffgazer-workspace/tmp/dg-smoke-L4kAWq/packs/diffgazer-ui-0.1.0.tgz
         version: file:tmp/dg-smoke-L4kAWq/packs/diffgazer-ui-0.1.0.tgz(@diffgazer/keys@file:tmp/dg-smoke-L4kAWq/packs/diffgazer-keys-0.1.1.tgz(react@node_modules+.pnpm+react@19.2.4+node_modules+react))(react-dom@node_modules+.pnpm+react-dom@19.2.4_react@19.2.4+node_modules+react-dom)(react@node_modules+.pnpm+react@19.2.4+node_modules+react)
+      '@tailwindcss/postcss':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@tailwindcss+postcss@4.3.0/node_modules/@tailwindcss/postcss
+        version: link:../../node_modules/.pnpm/@tailwindcss+postcss@4.3.0/node_modules/@tailwindcss/postcss
+      '@types/node':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+node@25.2.3/node_modules/@types/node
+        version: link:../../node_modules/.pnpm/@types+node@25.2.3/node_modules/@types/node
+      '@types/react':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react
+        version: link:../../node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react
+      '@types/react-dom':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom
+        version: link:../../node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom
+      class-variance-authority:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+        version: link:../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+      clsx:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
+        version: link:../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
+      figlet:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/figlet@1.10.0/node_modules/figlet
+        version: link:../../node_modules/.pnpm/figlet@1.10.0/node_modules/figlet
+      next:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/next@16.2.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next
+        version: link:../../node_modules/.pnpm/next@16.2.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next
+      postcss:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/postcss@8.5.14/node_modules/postcss
+        version: link:../../node_modules/.pnpm/postcss@8.5.14/node_modules/postcss
+      react:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/react@19.2.4/node_modules/react
+        version: link:../../node_modules/.pnpm/react@19.2.4/node_modules/react
+      react-dom:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom
+        version: link:../../node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom
+      tailwind-merge:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/tailwind-merge@3.4.1/node_modules/tailwind-merge
+        version: link:../../node_modules/.pnpm/tailwind-merge@3.4.1/node_modules/tailwind-merge
+      tailwindcss:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/tailwindcss@4.2.2/node_modules/tailwindcss
+        version: link:../../node_modules/.pnpm/tailwindcss@4.2.2/node_modules/tailwindcss
+      typescript:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
+        version: link:../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
+
+  tmp/dg-smoke-XvgltZ:
+    dependencies:
+      '@diffgazer/keys':
+        specifier: file:/Users/voitz/Projects/diffgazer-workspace/tmp/dg-smoke-XvgltZ/packs/diffgazer-keys-0.1.1.tgz
+        version: file:tmp/dg-smoke-XvgltZ/packs/diffgazer-keys-0.1.1.tgz(react@node_modules+.pnpm+react@19.2.4+node_modules+react)
+      '@diffgazer/ui':
+        specifier: file:/Users/voitz/Projects/diffgazer-workspace/tmp/dg-smoke-XvgltZ/packs/diffgazer-ui-0.1.0.tgz
+        version: file:tmp/dg-smoke-XvgltZ/packs/diffgazer-ui-0.1.0.tgz(@diffgazer/keys@file:tmp/dg-smoke-XvgltZ/packs/diffgazer-keys-0.1.1.tgz(react@node_modules+.pnpm+react@19.2.4+node_modules+react))(react-dom@node_modules+.pnpm+react-dom@19.2.4_react@19.2.4+node_modules+react-dom)(react@node_modules+.pnpm+react@19.2.4+node_modules+react)
+      '@tailwindcss/postcss':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@tailwindcss+postcss@4.3.0/node_modules/@tailwindcss/postcss
+        version: link:../../node_modules/.pnpm/@tailwindcss+postcss@4.3.0/node_modules/@tailwindcss/postcss
+      '@types/node':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+node@25.2.3/node_modules/@types/node
+        version: link:../../node_modules/.pnpm/@types+node@25.2.3/node_modules/@types/node
+      '@types/react':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react
+        version: link:../../node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react
+      '@types/react-dom':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom
+        version: link:../../node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom
+      class-variance-authority:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+        version: link:../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+      clsx:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
+        version: link:../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
+      figlet:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/figlet@1.10.0/node_modules/figlet
+        version: link:../../node_modules/.pnpm/figlet@1.10.0/node_modules/figlet
+      next:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/next@16.2.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next
+        version: link:../../node_modules/.pnpm/next@16.2.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next
+      postcss:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/postcss@8.5.14/node_modules/postcss
+        version: link:../../node_modules/.pnpm/postcss@8.5.14/node_modules/postcss
+      react:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/react@19.2.4/node_modules/react
+        version: link:../../node_modules/.pnpm/react@19.2.4/node_modules/react
+      react-dom:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom
+        version: link:../../node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom
+      tailwind-merge:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/tailwind-merge@3.4.1/node_modules/tailwind-merge
+        version: link:../../node_modules/.pnpm/tailwind-merge@3.4.1/node_modules/tailwind-merge
+      tailwindcss:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/tailwindcss@4.2.2/node_modules/tailwindcss
+        version: link:../../node_modules/.pnpm/tailwindcss@4.2.2/node_modules/tailwindcss
+      typescript:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
+        version: link:../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
+
+  tmp/dg-smoke-YY30wP:
+    dependencies:
+      '@diffgazer/keys':
+        specifier: file:/Users/voitz/Projects/diffgazer-workspace/tmp/dg-smoke-YY30wP/packs/diffgazer-keys-0.1.1.tgz
+        version: file:tmp/dg-smoke-YY30wP/packs/diffgazer-keys-0.1.1.tgz(react@node_modules+.pnpm+react@19.2.4+node_modules+react)
+      '@diffgazer/ui':
+        specifier: file:/Users/voitz/Projects/diffgazer-workspace/tmp/dg-smoke-YY30wP/packs/diffgazer-ui-0.1.0.tgz
+        version: file:tmp/dg-smoke-YY30wP/packs/diffgazer-ui-0.1.0.tgz(@diffgazer/keys@file:tmp/dg-smoke-YY30wP/packs/diffgazer-keys-0.1.1.tgz(react@node_modules+.pnpm+react@19.2.4+node_modules+react))(react-dom@node_modules+.pnpm+react-dom@19.2.4_react@19.2.4+node_modules+react-dom)(react@node_modules+.pnpm+react@19.2.4+node_modules+react)
+      '@tailwindcss/postcss':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@tailwindcss+postcss@4.3.0/node_modules/@tailwindcss/postcss
+        version: link:../../node_modules/.pnpm/@tailwindcss+postcss@4.3.0/node_modules/@tailwindcss/postcss
+      '@types/node':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+node@25.2.3/node_modules/@types/node
+        version: link:../../node_modules/.pnpm/@types+node@25.2.3/node_modules/@types/node
+      '@types/react':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react
+        version: link:../../node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react
+      '@types/react-dom':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom
+        version: link:../../node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom
+      class-variance-authority:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+        version: link:../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+      clsx:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
+        version: link:../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
+      figlet:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/figlet@1.10.0/node_modules/figlet
+        version: link:../../node_modules/.pnpm/figlet@1.10.0/node_modules/figlet
+      next:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/next@16.2.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next
+        version: link:../../node_modules/.pnpm/next@16.2.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next
+      postcss:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/postcss@8.5.14/node_modules/postcss
+        version: link:../../node_modules/.pnpm/postcss@8.5.14/node_modules/postcss
+      react:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/react@19.2.4/node_modules/react
+        version: link:../../node_modules/.pnpm/react@19.2.4/node_modules/react
+      react-dom:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom
+        version: link:../../node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom
+      tailwind-merge:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/tailwind-merge@3.4.1/node_modules/tailwind-merge
+        version: link:../../node_modules/.pnpm/tailwind-merge@3.4.1/node_modules/tailwind-merge
+      tailwindcss:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/tailwindcss@4.2.2/node_modules/tailwindcss
+        version: link:../../node_modules/.pnpm/tailwindcss@4.2.2/node_modules/tailwindcss
+      typescript:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
+        version: link:../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
+
+  tmp/dg-smoke-YluHRi:
+    dependencies:
+      '@diffgazer/keys':
+        specifier: file:/Users/voitz/Projects/diffgazer-workspace/tmp/dg-smoke-YluHRi/packs/diffgazer-keys-0.1.1.tgz
+        version: file:tmp/dg-smoke-YluHRi/packs/diffgazer-keys-0.1.1.tgz(react@node_modules+.pnpm+react@19.2.4+node_modules+react)
+      '@diffgazer/ui':
+        specifier: file:/Users/voitz/Projects/diffgazer-workspace/tmp/dg-smoke-YluHRi/packs/diffgazer-ui-0.1.0.tgz
+        version: file:tmp/dg-smoke-YluHRi/packs/diffgazer-ui-0.1.0.tgz(@diffgazer/keys@file:tmp/dg-smoke-YluHRi/packs/diffgazer-keys-0.1.1.tgz(react@node_modules+.pnpm+react@19.2.4+node_modules+react))(react-dom@node_modules+.pnpm+react-dom@19.2.4_react@19.2.4+node_modules+react-dom)(react@node_modules+.pnpm+react@19.2.4+node_modules+react)
+      '@tailwindcss/postcss':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@tailwindcss+postcss@4.3.0/node_modules/@tailwindcss/postcss
+        version: link:../../node_modules/.pnpm/@tailwindcss+postcss@4.3.0/node_modules/@tailwindcss/postcss
+      '@types/node':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+node@25.2.3/node_modules/@types/node
+        version: link:../../node_modules/.pnpm/@types+node@25.2.3/node_modules/@types/node
+      '@types/react':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react
+        version: link:../../node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react
+      '@types/react-dom':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom
+        version: link:../../node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom
+      class-variance-authority:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+        version: link:../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+      clsx:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
+        version: link:../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
+      figlet:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/figlet@1.10.0/node_modules/figlet
+        version: link:../../node_modules/.pnpm/figlet@1.10.0/node_modules/figlet
+      next:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/next@16.2.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next
+        version: link:../../node_modules/.pnpm/next@16.2.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next
+      postcss:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/postcss@8.5.14/node_modules/postcss
+        version: link:../../node_modules/.pnpm/postcss@8.5.14/node_modules/postcss
+      react:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/react@19.2.4/node_modules/react
+        version: link:../../node_modules/.pnpm/react@19.2.4/node_modules/react
+      react-dom:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom
+        version: link:../../node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom
+      tailwind-merge:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/tailwind-merge@3.4.1/node_modules/tailwind-merge
+        version: link:../../node_modules/.pnpm/tailwind-merge@3.4.1/node_modules/tailwind-merge
+      tailwindcss:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/tailwindcss@4.2.2/node_modules/tailwindcss
+        version: link:../../node_modules/.pnpm/tailwindcss@4.2.2/node_modules/tailwindcss
+      typescript:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
+        version: link:../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
+
+  tmp/dg-smoke-dwM0Mk:
+    dependencies:
+      '@diffgazer/keys':
+        specifier: file:/Users/voitz/Projects/diffgazer-workspace/tmp/dg-smoke-dwM0Mk/packs/diffgazer-keys-0.1.1.tgz
+        version: file:tmp/dg-smoke-dwM0Mk/packs/diffgazer-keys-0.1.1.tgz(react@node_modules+.pnpm+react@19.2.4+node_modules+react)
+      '@diffgazer/ui':
+        specifier: file:/Users/voitz/Projects/diffgazer-workspace/tmp/dg-smoke-dwM0Mk/packs/diffgazer-ui-0.1.0.tgz
+        version: file:tmp/dg-smoke-dwM0Mk/packs/diffgazer-ui-0.1.0.tgz(@diffgazer/keys@file:tmp/dg-smoke-dwM0Mk/packs/diffgazer-keys-0.1.1.tgz(react@node_modules+.pnpm+react@19.2.4+node_modules+react))(react-dom@node_modules+.pnpm+react-dom@19.2.4_react@19.2.4+node_modules+react-dom)(react@node_modules+.pnpm+react@19.2.4+node_modules+react)
       '@tailwindcss/postcss':
         specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@tailwindcss+postcss@4.3.0/node_modules/@tailwindcss/postcss
         version: link:../../node_modules/.pnpm/@tailwindcss+postcss@4.3.0/node_modules/@tailwindcss/postcss
@@ -653,6 +1010,606 @@ importers:
       typescript:
         specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
         version: link:../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
+
+  tmp/dgadd-next-smoke-8pZ2wQ:
+    dependencies:
+      '@tailwindcss/postcss':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@tailwindcss+postcss@4.3.0/node_modules/@tailwindcss/postcss
+        version: link:../../node_modules/.pnpm/@tailwindcss+postcss@4.3.0/node_modules/@tailwindcss/postcss
+      '@types/node':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+node@25.2.3/node_modules/@types/node
+        version: link:../../node_modules/.pnpm/@types+node@25.2.3/node_modules/@types/node
+      '@types/react':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react
+        version: link:../../node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react
+      '@types/react-dom':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom
+        version: link:../../node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom
+      class-variance-authority:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+        version: link:../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+      clsx:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
+        version: link:../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
+      next:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/next@16.2.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next
+        version: link:../../node_modules/.pnpm/next@16.2.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next
+      postcss:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/postcss@8.5.14/node_modules/postcss
+        version: link:../../node_modules/.pnpm/postcss@8.5.14/node_modules/postcss
+      react:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/react@19.2.4/node_modules/react
+        version: link:../../node_modules/.pnpm/react@19.2.4/node_modules/react
+      react-dom:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom
+        version: link:../../node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom
+      tailwind-merge:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/tailwind-merge@3.4.1/node_modules/tailwind-merge
+        version: link:../../node_modules/.pnpm/tailwind-merge@3.4.1/node_modules/tailwind-merge
+      tailwindcss:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/tailwindcss@4.2.2/node_modules/tailwindcss
+        version: link:../../node_modules/.pnpm/tailwindcss@4.2.2/node_modules/tailwindcss
+      typescript:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
+        version: link:../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
+
+  tmp/dgadd-next-smoke-JW03Lp:
+    dependencies:
+      '@tailwindcss/postcss':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@tailwindcss+postcss@4.3.0/node_modules/@tailwindcss/postcss
+        version: link:../../node_modules/.pnpm/@tailwindcss+postcss@4.3.0/node_modules/@tailwindcss/postcss
+      '@types/node':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+node@25.2.3/node_modules/@types/node
+        version: link:../../node_modules/.pnpm/@types+node@25.2.3/node_modules/@types/node
+      '@types/react':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react
+        version: link:../../node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react
+      '@types/react-dom':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom
+        version: link:../../node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom
+      class-variance-authority:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+        version: link:../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+      clsx:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
+        version: link:../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
+      next:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/next@16.2.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next
+        version: link:../../node_modules/.pnpm/next@16.2.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next
+      postcss:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/postcss@8.5.14/node_modules/postcss
+        version: link:../../node_modules/.pnpm/postcss@8.5.14/node_modules/postcss
+      react:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/react@19.2.4/node_modules/react
+        version: link:../../node_modules/.pnpm/react@19.2.4/node_modules/react
+      react-dom:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom
+        version: link:../../node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom
+      tailwind-merge:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/tailwind-merge@3.4.1/node_modules/tailwind-merge
+        version: link:../../node_modules/.pnpm/tailwind-merge@3.4.1/node_modules/tailwind-merge
+      tailwindcss:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/tailwindcss@4.2.2/node_modules/tailwindcss
+        version: link:../../node_modules/.pnpm/tailwindcss@4.2.2/node_modules/tailwindcss
+      typescript:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
+        version: link:../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
+
+  tmp/dgadd-next-smoke-TyrgSj:
+    dependencies:
+      '@tailwindcss/postcss':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@tailwindcss+postcss@4.3.0/node_modules/@tailwindcss/postcss
+        version: link:../../node_modules/.pnpm/@tailwindcss+postcss@4.3.0/node_modules/@tailwindcss/postcss
+      '@types/node':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+node@25.2.3/node_modules/@types/node
+        version: link:../../node_modules/.pnpm/@types+node@25.2.3/node_modules/@types/node
+      '@types/react':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react
+        version: link:../../node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react
+      '@types/react-dom':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom
+        version: link:../../node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom
+      class-variance-authority:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+        version: link:../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+      clsx:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
+        version: link:../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
+      next:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/next@16.2.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next
+        version: link:../../node_modules/.pnpm/next@16.2.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next
+      postcss:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/postcss@8.5.14/node_modules/postcss
+        version: link:../../node_modules/.pnpm/postcss@8.5.14/node_modules/postcss
+      react:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/react@19.2.4/node_modules/react
+        version: link:../../node_modules/.pnpm/react@19.2.4/node_modules/react
+      react-dom:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom
+        version: link:../../node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom
+      tailwind-merge:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/tailwind-merge@3.4.1/node_modules/tailwind-merge
+        version: link:../../node_modules/.pnpm/tailwind-merge@3.4.1/node_modules/tailwind-merge
+      tailwindcss:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/tailwindcss@4.2.2/node_modules/tailwindcss
+        version: link:../../node_modules/.pnpm/tailwindcss@4.2.2/node_modules/tailwindcss
+      typescript:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
+        version: link:../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
+
+  tmp/dgadd-next-smoke-YGsR2y:
+    dependencies:
+      '@tailwindcss/postcss':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@tailwindcss+postcss@4.3.0/node_modules/@tailwindcss/postcss
+        version: link:../../node_modules/.pnpm/@tailwindcss+postcss@4.3.0/node_modules/@tailwindcss/postcss
+      '@types/node':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+node@25.2.3/node_modules/@types/node
+        version: link:../../node_modules/.pnpm/@types+node@25.2.3/node_modules/@types/node
+      '@types/react':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react
+        version: link:../../node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react
+      '@types/react-dom':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom
+        version: link:../../node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom
+      class-variance-authority:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+        version: link:../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+      clsx:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
+        version: link:../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
+      next:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/next@16.2.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next
+        version: link:../../node_modules/.pnpm/next@16.2.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next
+      postcss:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/postcss@8.5.14/node_modules/postcss
+        version: link:../../node_modules/.pnpm/postcss@8.5.14/node_modules/postcss
+      react:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/react@19.2.4/node_modules/react
+        version: link:../../node_modules/.pnpm/react@19.2.4/node_modules/react
+      react-dom:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom
+        version: link:../../node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom
+      tailwind-merge:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/tailwind-merge@3.4.1/node_modules/tailwind-merge
+        version: link:../../node_modules/.pnpm/tailwind-merge@3.4.1/node_modules/tailwind-merge
+      tailwindcss:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/tailwindcss@4.2.2/node_modules/tailwindcss
+        version: link:../../node_modules/.pnpm/tailwindcss@4.2.2/node_modules/tailwindcss
+      typescript:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
+        version: link:../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
+
+  tmp/dgadd-next-smoke-iPzqFM:
+    dependencies:
+      '@tailwindcss/postcss':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@tailwindcss+postcss@4.3.0/node_modules/@tailwindcss/postcss
+        version: link:../../node_modules/.pnpm/@tailwindcss+postcss@4.3.0/node_modules/@tailwindcss/postcss
+      '@types/node':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+node@25.2.3/node_modules/@types/node
+        version: link:../../node_modules/.pnpm/@types+node@25.2.3/node_modules/@types/node
+      '@types/react':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react
+        version: link:../../node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react
+      '@types/react-dom':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom
+        version: link:../../node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom
+      class-variance-authority:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+        version: link:../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+      clsx:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
+        version: link:../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
+      next:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/next@16.2.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next
+        version: link:../../node_modules/.pnpm/next@16.2.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next
+      postcss:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/postcss@8.5.14/node_modules/postcss
+        version: link:../../node_modules/.pnpm/postcss@8.5.14/node_modules/postcss
+      react:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/react@19.2.4/node_modules/react
+        version: link:../../node_modules/.pnpm/react@19.2.4/node_modules/react
+      react-dom:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom
+        version: link:../../node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom
+      tailwind-merge:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/tailwind-merge@3.4.1/node_modules/tailwind-merge
+        version: link:../../node_modules/.pnpm/tailwind-merge@3.4.1/node_modules/tailwind-merge
+      tailwindcss:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/tailwindcss@4.2.2/node_modules/tailwindcss
+        version: link:../../node_modules/.pnpm/tailwindcss@4.2.2/node_modules/tailwindcss
+      typescript:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
+        version: link:../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
+
+  tmp/dgadd-next-smoke-m57U8o:
+    dependencies:
+      '@tailwindcss/postcss':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@tailwindcss+postcss@4.3.0/node_modules/@tailwindcss/postcss
+        version: link:../../node_modules/.pnpm/@tailwindcss+postcss@4.3.0/node_modules/@tailwindcss/postcss
+      '@types/node':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+node@25.2.3/node_modules/@types/node
+        version: link:../../node_modules/.pnpm/@types+node@25.2.3/node_modules/@types/node
+      '@types/react':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react
+        version: link:../../node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react
+      '@types/react-dom':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom
+        version: link:../../node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom
+      class-variance-authority:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+        version: link:../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+      clsx:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
+        version: link:../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
+      next:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/next@16.2.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next
+        version: link:../../node_modules/.pnpm/next@16.2.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next
+      postcss:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/postcss@8.5.14/node_modules/postcss
+        version: link:../../node_modules/.pnpm/postcss@8.5.14/node_modules/postcss
+      react:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/react@19.2.4/node_modules/react
+        version: link:../../node_modules/.pnpm/react@19.2.4/node_modules/react
+      react-dom:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom
+        version: link:../../node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom
+      tailwind-merge:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/tailwind-merge@3.4.1/node_modules/tailwind-merge
+        version: link:../../node_modules/.pnpm/tailwind-merge@3.4.1/node_modules/tailwind-merge
+      tailwindcss:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/tailwindcss@4.2.2/node_modules/tailwindcss
+        version: link:../../node_modules/.pnpm/tailwindcss@4.2.2/node_modules/tailwindcss
+      typescript:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
+        version: link:../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
+
+  tmp/dgadd-next-smoke-nBpwPW:
+    dependencies:
+      '@tailwindcss/postcss':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@tailwindcss+postcss@4.3.0/node_modules/@tailwindcss/postcss
+        version: link:../../node_modules/.pnpm/@tailwindcss+postcss@4.3.0/node_modules/@tailwindcss/postcss
+      '@types/node':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+node@25.2.3/node_modules/@types/node
+        version: link:../../node_modules/.pnpm/@types+node@25.2.3/node_modules/@types/node
+      '@types/react':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react
+        version: link:../../node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react
+      '@types/react-dom':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom
+        version: link:../../node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom
+      class-variance-authority:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+        version: link:../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+      clsx:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
+        version: link:../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
+      next:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/next@16.2.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next
+        version: link:../../node_modules/.pnpm/next@16.2.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next
+      postcss:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/postcss@8.5.14/node_modules/postcss
+        version: link:../../node_modules/.pnpm/postcss@8.5.14/node_modules/postcss
+      react:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/react@19.2.4/node_modules/react
+        version: link:../../node_modules/.pnpm/react@19.2.4/node_modules/react
+      react-dom:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom
+        version: link:../../node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom
+      tailwind-merge:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/tailwind-merge@3.4.1/node_modules/tailwind-merge
+        version: link:../../node_modules/.pnpm/tailwind-merge@3.4.1/node_modules/tailwind-merge
+      tailwindcss:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/tailwindcss@4.2.2/node_modules/tailwindcss
+        version: link:../../node_modules/.pnpm/tailwindcss@4.2.2/node_modules/tailwindcss
+      typescript:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
+        version: link:../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
+
+  tmp/dgadd-next-smoke-p8N0Cc:
+    dependencies:
+      '@tailwindcss/postcss':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@tailwindcss+postcss@4.3.0/node_modules/@tailwindcss/postcss
+        version: link:../../node_modules/.pnpm/@tailwindcss+postcss@4.3.0/node_modules/@tailwindcss/postcss
+      '@types/node':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+node@25.2.3/node_modules/@types/node
+        version: link:../../node_modules/.pnpm/@types+node@25.2.3/node_modules/@types/node
+      '@types/react':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react
+        version: link:../../node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react
+      '@types/react-dom':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom
+        version: link:../../node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom
+      class-variance-authority:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+        version: link:../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+      clsx:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
+        version: link:../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
+      next:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/next@16.2.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next
+        version: link:../../node_modules/.pnpm/next@16.2.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next
+      postcss:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/postcss@8.5.14/node_modules/postcss
+        version: link:../../node_modules/.pnpm/postcss@8.5.14/node_modules/postcss
+      react:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/react@19.2.4/node_modules/react
+        version: link:../../node_modules/.pnpm/react@19.2.4/node_modules/react
+      react-dom:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom
+        version: link:../../node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom
+      tailwind-merge:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/tailwind-merge@3.4.1/node_modules/tailwind-merge
+        version: link:../../node_modules/.pnpm/tailwind-merge@3.4.1/node_modules/tailwind-merge
+      tailwindcss:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/tailwindcss@4.2.2/node_modules/tailwindcss
+        version: link:../../node_modules/.pnpm/tailwindcss@4.2.2/node_modules/tailwindcss
+      typescript:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
+        version: link:../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
+
+  tmp/dgadd-next-smoke-qn37lK:
+    dependencies:
+      '@tailwindcss/postcss':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@tailwindcss+postcss@4.3.0/node_modules/@tailwindcss/postcss
+        version: link:../../node_modules/.pnpm/@tailwindcss+postcss@4.3.0/node_modules/@tailwindcss/postcss
+      '@types/node':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+node@25.2.3/node_modules/@types/node
+        version: link:../../node_modules/.pnpm/@types+node@25.2.3/node_modules/@types/node
+      '@types/react':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react
+        version: link:../../node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react
+      '@types/react-dom':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom
+        version: link:../../node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom
+      class-variance-authority:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+        version: link:../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+      clsx:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
+        version: link:../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
+      next:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/next@16.2.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next
+        version: link:../../node_modules/.pnpm/next@16.2.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next
+      postcss:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/postcss@8.5.14/node_modules/postcss
+        version: link:../../node_modules/.pnpm/postcss@8.5.14/node_modules/postcss
+      react:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/react@19.2.4/node_modules/react
+        version: link:../../node_modules/.pnpm/react@19.2.4/node_modules/react
+      react-dom:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom
+        version: link:../../node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom
+      tailwind-merge:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/tailwind-merge@3.4.1/node_modules/tailwind-merge
+        version: link:../../node_modules/.pnpm/tailwind-merge@3.4.1/node_modules/tailwind-merge
+      tailwindcss:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/tailwindcss@4.2.2/node_modules/tailwindcss
+        version: link:../../node_modules/.pnpm/tailwindcss@4.2.2/node_modules/tailwindcss
+      typescript:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
+        version: link:../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
+
+  tmp/dgadd-next-smoke-tDRdzx:
+    dependencies:
+      '@tailwindcss/postcss':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@tailwindcss+postcss@4.3.0/node_modules/@tailwindcss/postcss
+        version: link:../../node_modules/.pnpm/@tailwindcss+postcss@4.3.0/node_modules/@tailwindcss/postcss
+      '@types/node':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+node@25.2.3/node_modules/@types/node
+        version: link:../../node_modules/.pnpm/@types+node@25.2.3/node_modules/@types/node
+      '@types/react':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react
+        version: link:../../node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react
+      '@types/react-dom':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom
+        version: link:../../node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom
+      class-variance-authority:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+        version: link:../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+      clsx:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
+        version: link:../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
+      next:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/next@16.2.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next
+        version: link:../../node_modules/.pnpm/next@16.2.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next
+      postcss:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/postcss@8.5.14/node_modules/postcss
+        version: link:../../node_modules/.pnpm/postcss@8.5.14/node_modules/postcss
+      react:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/react@19.2.4/node_modules/react
+        version: link:../../node_modules/.pnpm/react@19.2.4/node_modules/react
+      react-dom:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom
+        version: link:../../node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom
+      tailwind-merge:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/tailwind-merge@3.4.1/node_modules/tailwind-merge
+        version: link:../../node_modules/.pnpm/tailwind-merge@3.4.1/node_modules/tailwind-merge
+      tailwindcss:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/tailwindcss@4.2.2/node_modules/tailwindcss
+        version: link:../../node_modules/.pnpm/tailwindcss@4.2.2/node_modules/tailwindcss
+      typescript:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
+        version: link:../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
+
+  tmp/dgadd-next-smoke-uSZHxk:
+    dependencies:
+      '@tailwindcss/postcss':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@tailwindcss+postcss@4.3.0/node_modules/@tailwindcss/postcss
+        version: link:../../node_modules/.pnpm/@tailwindcss+postcss@4.3.0/node_modules/@tailwindcss/postcss
+      '@types/node':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+node@25.2.3/node_modules/@types/node
+        version: link:../../node_modules/.pnpm/@types+node@25.2.3/node_modules/@types/node
+      '@types/react':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react
+        version: link:../../node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react
+      '@types/react-dom':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom
+        version: link:../../node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom
+      class-variance-authority:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+        version: link:../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+      clsx:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
+        version: link:../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
+      next:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/next@16.2.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next
+        version: link:../../node_modules/.pnpm/next@16.2.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next
+      postcss:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/postcss@8.5.14/node_modules/postcss
+        version: link:../../node_modules/.pnpm/postcss@8.5.14/node_modules/postcss
+      react:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/react@19.2.4/node_modules/react
+        version: link:../../node_modules/.pnpm/react@19.2.4/node_modules/react
+      react-dom:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom
+        version: link:../../node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom
+      tailwind-merge:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/tailwind-merge@3.4.1/node_modules/tailwind-merge
+        version: link:../../node_modules/.pnpm/tailwind-merge@3.4.1/node_modules/tailwind-merge
+      tailwindcss:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/tailwindcss@4.2.2/node_modules/tailwindcss
+        version: link:../../node_modules/.pnpm/tailwindcss@4.2.2/node_modules/tailwindcss
+      typescript:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
+        version: link:../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
+
+  tmp/dgadd-next-smoke-uSsb8V:
+    dependencies:
+      '@tailwindcss/postcss':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@tailwindcss+postcss@4.3.0/node_modules/@tailwindcss/postcss
+        version: link:../../node_modules/.pnpm/@tailwindcss+postcss@4.3.0/node_modules/@tailwindcss/postcss
+      '@types/node':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+node@25.2.3/node_modules/@types/node
+        version: link:../../node_modules/.pnpm/@types+node@25.2.3/node_modules/@types/node
+      '@types/react':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react
+        version: link:../../node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react
+      '@types/react-dom':
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom
+        version: link:../../node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom
+      class-variance-authority:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+        version: link:../../node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+      clsx:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
+        version: link:../../node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
+      next:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/next@16.2.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next
+        version: link:../../node_modules/.pnpm/next@16.2.6_@babel+core@7.29.0_@opentelemetry+api@1.9.0_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/next
+      postcss:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/postcss@8.5.14/node_modules/postcss
+        version: link:../../node_modules/.pnpm/postcss@8.5.14/node_modules/postcss
+      react:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/react@19.2.4/node_modules/react
+        version: link:../../node_modules/.pnpm/react@19.2.4/node_modules/react
+      react-dom:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom
+        version: link:../../node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom
+      tailwind-merge:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/tailwind-merge@3.4.1/node_modules/tailwind-merge
+        version: link:../../node_modules/.pnpm/tailwind-merge@3.4.1/node_modules/tailwind-merge
+      tailwindcss:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/tailwindcss@4.2.2/node_modules/tailwindcss
+        version: link:../../node_modules/.pnpm/tailwindcss@4.2.2/node_modules/tailwindcss
+      typescript:
+        specifier: link:/Users/voitz/Projects/diffgazer-workspace/node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
+        version: link:../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript
+
+  tmp/smoke-bare-7ca3f1:
+    dependencies:
+      class-variance-authority:
+        specifier: ^0.7.1
+        version: 0.7.1
+      clsx:
+        specifier: ^2.1.1
+        version: 2.1.1
+      tailwind-merge:
+        specifier: ^3.4.1
+        version: 3.4.1
+
+  tmp/smoke-bare-7fKLI6:
+    dependencies:
+      class-variance-authority:
+        specifier: ^0.7.1
+        version: 0.7.1
+      clsx:
+        specifier: ^2.1.1
+        version: 2.1.1
+      tailwind-merge:
+        specifier: ^3.4.1
+        version: 3.4.1
+
+  tmp/smoke-bare-7v4BCA:
+    dependencies:
+      class-variance-authority:
+        specifier: ^0.7.1
+        version: 0.7.1
+      clsx:
+        specifier: ^2.1.1
+        version: 2.1.1
+      tailwind-merge:
+        specifier: ^3.4.1
+        version: 3.4.1
+
+  tmp/smoke-bare-Hx7Zb9:
+    dependencies:
+      class-variance-authority:
+        specifier: ^0.7.1
+        version: 0.7.1
+      clsx:
+        specifier: ^2.1.1
+        version: 2.1.1
+      tailwind-merge:
+        specifier: ^3.4.1
+        version: 3.4.1
+
+  tmp/smoke-bare-LPQ0YV:
+    dependencies:
+      class-variance-authority:
+        specifier: ^0.7.1
+        version: 0.7.1
+      clsx:
+        specifier: ^2.1.1
+        version: 2.1.1
+      tailwind-merge:
+        specifier: ^3.4.1
+        version: 3.4.1
+
+  tmp/smoke-bare-bHQbzY:
+    dependencies:
+      class-variance-authority:
+        specifier: ^0.7.1
+        version: 0.7.1
+      clsx:
+        specifier: ^2.1.1
+        version: 2.1.1
+      tailwind-merge:
+        specifier: ^3.4.1
+        version: 3.4.1
+
+  tmp/smoke-bare-g4Hsar:
+    dependencies:
+      class-variance-authority:
+        specifier: ^0.7.1
+        version: 0.7.1
+      clsx:
+        specifier: ^2.1.1
+        version: 2.1.1
+      tailwind-merge:
+        specifier: ^3.4.1
+        version: 3.4.1
+
+  tmp/smoke-bare-js9Fm3:
+    dependencies:
+      class-variance-authority:
+        specifier: ^0.7.1
+        version: 0.7.1
+      clsx:
+        specifier: ^2.1.1
+        version: 2.1.1
+      tailwind-merge:
+        specifier: ^3.4.1
+        version: 3.4.1
 
 packages:
 
@@ -1022,14 +1979,112 @@ packages:
     resolution: {integrity: sha512-QxULHAm7cNu72w97JUNCBFODFaXpbDg+dP8b/oWFAZ2MTRppA3U00Y2L1HqaS4J6yBqxwa/Y3nMBaxVKbB/NsA==}
     engines: {node: '>=20.19.0'}
 
+  '@diffgazer/keys@file:tmp/dg-smoke-3GZSeD/packs/diffgazer-keys-0.1.1.tgz':
+    resolution: {integrity: sha512-rGNXK64flvChqPmjUumq0IC7K724IXd/Eoo3hhnKbK1QcHaRBuuyDgqD0dLkkG1fi4EpEEXYW1ITaNglzajlVQ==, tarball: file:tmp/dg-smoke-3GZSeD/packs/diffgazer-keys-0.1.1.tgz}
+    version: 0.1.1
+    peerDependencies:
+      react: '>=19.2.0'
+
+  '@diffgazer/keys@file:tmp/dg-smoke-6rJlHA/packs/diffgazer-keys-0.1.1.tgz':
+    resolution: {integrity: sha512-k0WdYPWnymGnfaI35WyTEAPT3JR70UXGfFtqOlseKWgD96a8YoWDBSDpxXHdQYPGcVklqRd1u78jbS5Qysk4wg==, tarball: file:tmp/dg-smoke-6rJlHA/packs/diffgazer-keys-0.1.1.tgz}
+    version: 0.1.1
+    peerDependencies:
+      react: '>=19.2.0'
+
+  '@diffgazer/keys@file:tmp/dg-smoke-8qZ0OY/packs/diffgazer-keys-0.1.1.tgz':
+    resolution: {integrity: sha512-rGNXK64flvChqPmjUumq0IC7K724IXd/Eoo3hhnKbK1QcHaRBuuyDgqD0dLkkG1fi4EpEEXYW1ITaNglzajlVQ==, tarball: file:tmp/dg-smoke-8qZ0OY/packs/diffgazer-keys-0.1.1.tgz}
+    version: 0.1.1
+    peerDependencies:
+      react: '>=19.2.0'
+
   '@diffgazer/keys@file:tmp/dg-smoke-L4kAWq/packs/diffgazer-keys-0.1.1.tgz':
     resolution: {integrity: sha512-bfyAd1SyYSnvrP6ed916Z2jdeiknv80KAY18wxzwV4xZOpoNDYzerzWYcz7mzsUrzTFojE72xLWfso6qbMIfqA==, tarball: file:tmp/dg-smoke-L4kAWq/packs/diffgazer-keys-0.1.1.tgz}
     version: 0.1.1
     peerDependencies:
       react: '>=19.2.0'
 
+  '@diffgazer/keys@file:tmp/dg-smoke-XvgltZ/packs/diffgazer-keys-0.1.1.tgz':
+    resolution: {integrity: sha512-k0WdYPWnymGnfaI35WyTEAPT3JR70UXGfFtqOlseKWgD96a8YoWDBSDpxXHdQYPGcVklqRd1u78jbS5Qysk4wg==, tarball: file:tmp/dg-smoke-XvgltZ/packs/diffgazer-keys-0.1.1.tgz}
+    version: 0.1.1
+    peerDependencies:
+      react: '>=19.2.0'
+
+  '@diffgazer/keys@file:tmp/dg-smoke-YY30wP/packs/diffgazer-keys-0.1.1.tgz':
+    resolution: {integrity: sha512-k0WdYPWnymGnfaI35WyTEAPT3JR70UXGfFtqOlseKWgD96a8YoWDBSDpxXHdQYPGcVklqRd1u78jbS5Qysk4wg==, tarball: file:tmp/dg-smoke-YY30wP/packs/diffgazer-keys-0.1.1.tgz}
+    version: 0.1.1
+    peerDependencies:
+      react: '>=19.2.0'
+
+  '@diffgazer/keys@file:tmp/dg-smoke-YluHRi/packs/diffgazer-keys-0.1.1.tgz':
+    resolution: {integrity: sha512-k0WdYPWnymGnfaI35WyTEAPT3JR70UXGfFtqOlseKWgD96a8YoWDBSDpxXHdQYPGcVklqRd1u78jbS5Qysk4wg==, tarball: file:tmp/dg-smoke-YluHRi/packs/diffgazer-keys-0.1.1.tgz}
+    version: 0.1.1
+    peerDependencies:
+      react: '>=19.2.0'
+
+  '@diffgazer/keys@file:tmp/dg-smoke-dwM0Mk/packs/diffgazer-keys-0.1.1.tgz':
+    resolution: {integrity: sha512-rGNXK64flvChqPmjUumq0IC7K724IXd/Eoo3hhnKbK1QcHaRBuuyDgqD0dLkkG1fi4EpEEXYW1ITaNglzajlVQ==, tarball: file:tmp/dg-smoke-dwM0Mk/packs/diffgazer-keys-0.1.1.tgz}
+    version: 0.1.1
+    peerDependencies:
+      react: '>=19.2.0'
+
+  '@diffgazer/ui@file:tmp/dg-smoke-3GZSeD/packs/diffgazer-ui-0.1.0.tgz':
+    resolution: {integrity: sha512-cCx2hGSR+h7RzFsL9m2ArVQshl56rX/ILrOBrd2nSUsAwvI9jluLBom/pN0i3hFa+4M+nuAW7uZLsUBNUuxD2w==, tarball: file:tmp/dg-smoke-3GZSeD/packs/diffgazer-ui-0.1.0.tgz}
+    version: 0.1.0
+    peerDependencies:
+      '@diffgazer/keys': '>=0.1.1'
+      react: '>=19.2.0'
+      react-dom: '>=19.2.0'
+
+  '@diffgazer/ui@file:tmp/dg-smoke-6rJlHA/packs/diffgazer-ui-0.1.0.tgz':
+    resolution: {integrity: sha512-anJ9cbxANz1YMB6riQj/lh9rtrHjitRiO3WMveNnyOhD0X+2PuuT4DRYkpwLVjUfNYdVmwDmqd8i/wQ0TDCykQ==, tarball: file:tmp/dg-smoke-6rJlHA/packs/diffgazer-ui-0.1.0.tgz}
+    version: 0.1.0
+    peerDependencies:
+      '@diffgazer/keys': '>=0.1.1'
+      react: '>=19.2.0'
+      react-dom: '>=19.2.0'
+
+  '@diffgazer/ui@file:tmp/dg-smoke-8qZ0OY/packs/diffgazer-ui-0.1.0.tgz':
+    resolution: {integrity: sha512-TlIEH/ECskHbuF8SpXi1jowYDML+NRcFJbrCF9/HRsv2/tIx/8JZ+QWlmbtV9qpJTrPqCzW5uwsGWzefeg9/Sg==, tarball: file:tmp/dg-smoke-8qZ0OY/packs/diffgazer-ui-0.1.0.tgz}
+    version: 0.1.0
+    peerDependencies:
+      '@diffgazer/keys': '>=0.1.1'
+      react: '>=19.2.0'
+      react-dom: '>=19.2.0'
+
   '@diffgazer/ui@file:tmp/dg-smoke-L4kAWq/packs/diffgazer-ui-0.1.0.tgz':
     resolution: {integrity: sha512-NOi5OBbAZw4qfg2r09DsmQPdmffESKf9h/Akr6Tg/0Ys/weO5NmhLiVkH5QuIW2qrVQbm9E3hvld7xQchCS+3g==, tarball: file:tmp/dg-smoke-L4kAWq/packs/diffgazer-ui-0.1.0.tgz}
+    version: 0.1.0
+    peerDependencies:
+      '@diffgazer/keys': '>=0.1.1'
+      react: '>=19.2.0'
+      react-dom: '>=19.2.0'
+
+  '@diffgazer/ui@file:tmp/dg-smoke-XvgltZ/packs/diffgazer-ui-0.1.0.tgz':
+    resolution: {integrity: sha512-QmvLJcWtgnb8+u5bb+BsflDswOIYb2QXEYJPE8/tV1BES//0PWc651PduvYa/No0UATjTtZTtCDQ9mgMK9ZEeA==, tarball: file:tmp/dg-smoke-XvgltZ/packs/diffgazer-ui-0.1.0.tgz}
+    version: 0.1.0
+    peerDependencies:
+      '@diffgazer/keys': '>=0.1.1'
+      react: '>=19.2.0'
+      react-dom: '>=19.2.0'
+
+  '@diffgazer/ui@file:tmp/dg-smoke-YY30wP/packs/diffgazer-ui-0.1.0.tgz':
+    resolution: {integrity: sha512-QmvLJcWtgnb8+u5bb+BsflDswOIYb2QXEYJPE8/tV1BES//0PWc651PduvYa/No0UATjTtZTtCDQ9mgMK9ZEeA==, tarball: file:tmp/dg-smoke-YY30wP/packs/diffgazer-ui-0.1.0.tgz}
+    version: 0.1.0
+    peerDependencies:
+      '@diffgazer/keys': '>=0.1.1'
+      react: '>=19.2.0'
+      react-dom: '>=19.2.0'
+
+  '@diffgazer/ui@file:tmp/dg-smoke-YluHRi/packs/diffgazer-ui-0.1.0.tgz':
+    resolution: {integrity: sha512-QmvLJcWtgnb8+u5bb+BsflDswOIYb2QXEYJPE8/tV1BES//0PWc651PduvYa/No0UATjTtZTtCDQ9mgMK9ZEeA==, tarball: file:tmp/dg-smoke-YluHRi/packs/diffgazer-ui-0.1.0.tgz}
+    version: 0.1.0
+    peerDependencies:
+      '@diffgazer/keys': '>=0.1.1'
+      react: '>=19.2.0'
+      react-dom: '>=19.2.0'
+
+  '@diffgazer/ui@file:tmp/dg-smoke-dwM0Mk/packs/diffgazer-ui-0.1.0.tgz':
+    resolution: {integrity: sha512-TlIEH/ECskHbuF8SpXi1jowYDML+NRcFJbrCF9/HRsv2/tIx/8JZ+QWlmbtV9qpJTrPqCzW5uwsGWzefeg9/Sg==, tarball: file:tmp/dg-smoke-dwM0Mk/packs/diffgazer-ui-0.1.0.tgz}
     version: 0.1.0
     peerDependencies:
       '@diffgazer/keys': '>=0.1.1'
@@ -6054,13 +7109,111 @@ snapshots:
 
   '@csstools/css-tokenizer@4.0.0': {}
 
+  '@diffgazer/keys@file:tmp/dg-smoke-3GZSeD/packs/diffgazer-keys-0.1.1.tgz(react@node_modules+.pnpm+react@19.2.4+node_modules+react)':
+    dependencies:
+      react: link:node_modules/.pnpm/react@19.2.4/node_modules/react
+
+  '@diffgazer/keys@file:tmp/dg-smoke-6rJlHA/packs/diffgazer-keys-0.1.1.tgz(react@node_modules+.pnpm+react@19.2.4+node_modules+react)':
+    dependencies:
+      react: link:node_modules/.pnpm/react@19.2.4/node_modules/react
+
+  '@diffgazer/keys@file:tmp/dg-smoke-8qZ0OY/packs/diffgazer-keys-0.1.1.tgz(react@node_modules+.pnpm+react@19.2.4+node_modules+react)':
+    dependencies:
+      react: link:node_modules/.pnpm/react@19.2.4/node_modules/react
+
   '@diffgazer/keys@file:tmp/dg-smoke-L4kAWq/packs/diffgazer-keys-0.1.1.tgz(react@node_modules+.pnpm+react@19.2.4+node_modules+react)':
     dependencies:
       react: link:node_modules/.pnpm/react@19.2.4/node_modules/react
 
+  '@diffgazer/keys@file:tmp/dg-smoke-XvgltZ/packs/diffgazer-keys-0.1.1.tgz(react@node_modules+.pnpm+react@19.2.4+node_modules+react)':
+    dependencies:
+      react: link:node_modules/.pnpm/react@19.2.4/node_modules/react
+
+  '@diffgazer/keys@file:tmp/dg-smoke-YY30wP/packs/diffgazer-keys-0.1.1.tgz(react@node_modules+.pnpm+react@19.2.4+node_modules+react)':
+    dependencies:
+      react: link:node_modules/.pnpm/react@19.2.4/node_modules/react
+
+  '@diffgazer/keys@file:tmp/dg-smoke-YluHRi/packs/diffgazer-keys-0.1.1.tgz(react@node_modules+.pnpm+react@19.2.4+node_modules+react)':
+    dependencies:
+      react: link:node_modules/.pnpm/react@19.2.4/node_modules/react
+
+  '@diffgazer/keys@file:tmp/dg-smoke-dwM0Mk/packs/diffgazer-keys-0.1.1.tgz(react@node_modules+.pnpm+react@19.2.4+node_modules+react)':
+    dependencies:
+      react: link:node_modules/.pnpm/react@19.2.4/node_modules/react
+
+  '@diffgazer/ui@file:tmp/dg-smoke-3GZSeD/packs/diffgazer-ui-0.1.0.tgz(@diffgazer/keys@file:tmp/dg-smoke-3GZSeD/packs/diffgazer-keys-0.1.1.tgz(react@node_modules+.pnpm+react@19.2.4+node_modules+react))(react-dom@node_modules+.pnpm+react-dom@19.2.4_react@19.2.4+node_modules+react-dom)(react@node_modules+.pnpm+react@19.2.4+node_modules+react)':
+    dependencies:
+      '@diffgazer/keys': file:tmp/dg-smoke-3GZSeD/packs/diffgazer-keys-0.1.1.tgz(react@node_modules+.pnpm+react@19.2.4+node_modules+react)
+      class-variance-authority: link:node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+      clsx: link:node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
+      figlet: link:node_modules/.pnpm/figlet@1.10.0/node_modules/figlet
+      react: link:node_modules/.pnpm/react@19.2.4/node_modules/react
+      react-dom: link:node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom
+      tailwind-merge: link:node_modules/.pnpm/tailwind-merge@3.4.1/node_modules/tailwind-merge
+
+  '@diffgazer/ui@file:tmp/dg-smoke-6rJlHA/packs/diffgazer-ui-0.1.0.tgz(@diffgazer/keys@file:tmp/dg-smoke-6rJlHA/packs/diffgazer-keys-0.1.1.tgz(react@node_modules+.pnpm+react@19.2.4+node_modules+react))(react-dom@node_modules+.pnpm+react-dom@19.2.4_react@19.2.4+node_modules+react-dom)(react@node_modules+.pnpm+react@19.2.4+node_modules+react)':
+    dependencies:
+      '@diffgazer/keys': file:tmp/dg-smoke-6rJlHA/packs/diffgazer-keys-0.1.1.tgz(react@node_modules+.pnpm+react@19.2.4+node_modules+react)
+      class-variance-authority: link:node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+      clsx: link:node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
+      figlet: link:node_modules/.pnpm/figlet@1.10.0/node_modules/figlet
+      react: link:node_modules/.pnpm/react@19.2.4/node_modules/react
+      react-dom: link:node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom
+      tailwind-merge: link:node_modules/.pnpm/tailwind-merge@3.4.1/node_modules/tailwind-merge
+
+  '@diffgazer/ui@file:tmp/dg-smoke-8qZ0OY/packs/diffgazer-ui-0.1.0.tgz(@diffgazer/keys@file:tmp/dg-smoke-8qZ0OY/packs/diffgazer-keys-0.1.1.tgz(react@node_modules+.pnpm+react@19.2.4+node_modules+react))(react-dom@node_modules+.pnpm+react-dom@19.2.4_react@19.2.4+node_modules+react-dom)(react@node_modules+.pnpm+react@19.2.4+node_modules+react)':
+    dependencies:
+      '@diffgazer/keys': file:tmp/dg-smoke-8qZ0OY/packs/diffgazer-keys-0.1.1.tgz(react@node_modules+.pnpm+react@19.2.4+node_modules+react)
+      class-variance-authority: link:node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+      clsx: link:node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
+      figlet: link:node_modules/.pnpm/figlet@1.10.0/node_modules/figlet
+      react: link:node_modules/.pnpm/react@19.2.4/node_modules/react
+      react-dom: link:node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom
+      tailwind-merge: link:node_modules/.pnpm/tailwind-merge@3.4.1/node_modules/tailwind-merge
+
   '@diffgazer/ui@file:tmp/dg-smoke-L4kAWq/packs/diffgazer-ui-0.1.0.tgz(@diffgazer/keys@file:tmp/dg-smoke-L4kAWq/packs/diffgazer-keys-0.1.1.tgz(react@node_modules+.pnpm+react@19.2.4+node_modules+react))(react-dom@node_modules+.pnpm+react-dom@19.2.4_react@19.2.4+node_modules+react-dom)(react@node_modules+.pnpm+react@19.2.4+node_modules+react)':
     dependencies:
       '@diffgazer/keys': file:tmp/dg-smoke-L4kAWq/packs/diffgazer-keys-0.1.1.tgz(react@node_modules+.pnpm+react@19.2.4+node_modules+react)
+      class-variance-authority: link:node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+      clsx: link:node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
+      figlet: link:node_modules/.pnpm/figlet@1.10.0/node_modules/figlet
+      react: link:node_modules/.pnpm/react@19.2.4/node_modules/react
+      react-dom: link:node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom
+      tailwind-merge: link:node_modules/.pnpm/tailwind-merge@3.4.1/node_modules/tailwind-merge
+
+  '@diffgazer/ui@file:tmp/dg-smoke-XvgltZ/packs/diffgazer-ui-0.1.0.tgz(@diffgazer/keys@file:tmp/dg-smoke-XvgltZ/packs/diffgazer-keys-0.1.1.tgz(react@node_modules+.pnpm+react@19.2.4+node_modules+react))(react-dom@node_modules+.pnpm+react-dom@19.2.4_react@19.2.4+node_modules+react-dom)(react@node_modules+.pnpm+react@19.2.4+node_modules+react)':
+    dependencies:
+      '@diffgazer/keys': file:tmp/dg-smoke-XvgltZ/packs/diffgazer-keys-0.1.1.tgz(react@node_modules+.pnpm+react@19.2.4+node_modules+react)
+      class-variance-authority: link:node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+      clsx: link:node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
+      figlet: link:node_modules/.pnpm/figlet@1.10.0/node_modules/figlet
+      react: link:node_modules/.pnpm/react@19.2.4/node_modules/react
+      react-dom: link:node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom
+      tailwind-merge: link:node_modules/.pnpm/tailwind-merge@3.4.1/node_modules/tailwind-merge
+
+  '@diffgazer/ui@file:tmp/dg-smoke-YY30wP/packs/diffgazer-ui-0.1.0.tgz(@diffgazer/keys@file:tmp/dg-smoke-YY30wP/packs/diffgazer-keys-0.1.1.tgz(react@node_modules+.pnpm+react@19.2.4+node_modules+react))(react-dom@node_modules+.pnpm+react-dom@19.2.4_react@19.2.4+node_modules+react-dom)(react@node_modules+.pnpm+react@19.2.4+node_modules+react)':
+    dependencies:
+      '@diffgazer/keys': file:tmp/dg-smoke-YY30wP/packs/diffgazer-keys-0.1.1.tgz(react@node_modules+.pnpm+react@19.2.4+node_modules+react)
+      class-variance-authority: link:node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+      clsx: link:node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
+      figlet: link:node_modules/.pnpm/figlet@1.10.0/node_modules/figlet
+      react: link:node_modules/.pnpm/react@19.2.4/node_modules/react
+      react-dom: link:node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom
+      tailwind-merge: link:node_modules/.pnpm/tailwind-merge@3.4.1/node_modules/tailwind-merge
+
+  '@diffgazer/ui@file:tmp/dg-smoke-YluHRi/packs/diffgazer-ui-0.1.0.tgz(@diffgazer/keys@file:tmp/dg-smoke-YluHRi/packs/diffgazer-keys-0.1.1.tgz(react@node_modules+.pnpm+react@19.2.4+node_modules+react))(react-dom@node_modules+.pnpm+react-dom@19.2.4_react@19.2.4+node_modules+react-dom)(react@node_modules+.pnpm+react@19.2.4+node_modules+react)':
+    dependencies:
+      '@diffgazer/keys': file:tmp/dg-smoke-YluHRi/packs/diffgazer-keys-0.1.1.tgz(react@node_modules+.pnpm+react@19.2.4+node_modules+react)
+      class-variance-authority: link:node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
+      clsx: link:node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
+      figlet: link:node_modules/.pnpm/figlet@1.10.0/node_modules/figlet
+      react: link:node_modules/.pnpm/react@19.2.4/node_modules/react
+      react-dom: link:node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom
+      tailwind-merge: link:node_modules/.pnpm/tailwind-merge@3.4.1/node_modules/tailwind-merge
+
+  '@diffgazer/ui@file:tmp/dg-smoke-dwM0Mk/packs/diffgazer-ui-0.1.0.tgz(@diffgazer/keys@file:tmp/dg-smoke-dwM0Mk/packs/diffgazer-keys-0.1.1.tgz(react@node_modules+.pnpm+react@19.2.4+node_modules+react))(react-dom@node_modules+.pnpm+react-dom@19.2.4_react@19.2.4+node_modules+react-dom)(react@node_modules+.pnpm+react@19.2.4+node_modules+react)':
+    dependencies:
+      '@diffgazer/keys': file:tmp/dg-smoke-dwM0Mk/packs/diffgazer-keys-0.1.1.tgz(react@node_modules+.pnpm+react@19.2.4+node_modules+react)
       class-variance-authority: link:node_modules/.pnpm/class-variance-authority@0.7.1/node_modules/class-variance-authority
       clsx: link:node_modules/.pnpm/clsx@2.1.1/node_modules/clsx
       figlet: link:node_modules/.pnpm/figlet@1.10.0/node_modules/figlet

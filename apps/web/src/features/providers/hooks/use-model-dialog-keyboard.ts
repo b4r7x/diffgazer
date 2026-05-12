@@ -54,7 +54,7 @@ interface ModelDialogKeyboardReturn {
   handleUseCustom: () => void;
   handleSearchEscape: () => void;
   handleSearchArrowDown: () => void;
-  handleListHighlightChange: (modelId: string) => void;
+  handleListHighlightChange: (modelId: string | null) => void;
   handleListBoundaryReached: (direction: "previous" | "next") => void;
   handleListSelect: (modelId: string) => void;
 }
@@ -357,7 +357,8 @@ export function useModelDialogKeyboard({
     setCheckedModelId(modelId);
   };
 
-  const handleListHighlightChange = (modelId: string) => {
+  const handleListHighlightChange = (modelId: string | null) => {
+    if (modelId === null) return;
     setFocusZone("list");
     focusModel(modelId);
   };

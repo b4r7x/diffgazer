@@ -3,13 +3,13 @@ import userEvent from "@testing-library/user-event";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { describe, expect, it, vi } from "vitest";
 import { useRef } from "react";
-import { useFooterNavigation } from "./use-footer-navigation";
+import { useActionRowNavigation, type UseActionRowNavigationOptions } from "@diffgazer/keys";
 
-type FooterNavigationOptions = Parameters<typeof useFooterNavigation>[0];
+type ActionRowOptions = UseActionRowNavigationOptions;
 
-function TestFooterNavigation({ options }: { options: FooterNavigationOptions }) {
+function TestFooterNavigation({ options }: { options: ActionRowOptions }) {
   const fallbackRef = useRef<HTMLDivElement>(null);
-  const footer = useFooterNavigation({
+  const footer = useActionRowNavigation({
     disabledFocusFallbackRef: fallbackRef,
     ...options,
   });
@@ -26,7 +26,7 @@ function TestFooterNavigation({ options }: { options: FooterNavigationOptions })
       <button
         type="button"
         disabled={disabledActions[0]}
-        {...footer.getButtonProps(0)}
+        {...footer.getActionProps(0)}
         onClick={() => handleClick(0)}
       >
         Cancel
@@ -34,7 +34,7 @@ function TestFooterNavigation({ options }: { options: FooterNavigationOptions })
       <button
         type="button"
         disabled={disabledActions[1]}
-        {...footer.getButtonProps(1)}
+        {...footer.getActionProps(1)}
         onClick={() => handleClick(1)}
       >
         Save
@@ -43,7 +43,7 @@ function TestFooterNavigation({ options }: { options: FooterNavigationOptions })
   );
 }
 
-function renderFooterNavigation(overrides: Partial<FooterNavigationOptions> = {}) {
+function renderFooterNavigation(overrides: Partial<ActionRowOptions> = {}) {
   const onAction = vi.fn();
   const user = userEvent.setup();
 
@@ -52,8 +52,8 @@ function renderFooterNavigation(overrides: Partial<FooterNavigationOptions> = {}
       <TestFooterNavigation
         options={{
           enabled: true,
-          buttonCount: 2,
-          defaultZone: "footer",
+          actionCount: 2,
+          defaultZone: "actions",
           onAction,
           ...overrides,
         }}
@@ -61,14 +61,14 @@ function renderFooterNavigation(overrides: Partial<FooterNavigationOptions> = {}
     </KeyboardProvider>,
   );
 
-  const rerenderFooterNavigation = (nextOverrides: Partial<FooterNavigationOptions>) => {
+  const rerenderFooterNavigation = (nextOverrides: Partial<ActionRowOptions>) => {
     view.rerender(
       <KeyboardProvider>
         <TestFooterNavigation
           options={{
             enabled: true,
-            buttonCount: 2,
-            defaultZone: "footer",
+            actionCount: 2,
+            defaultZone: "actions",
             onAction,
             ...overrides,
             ...nextOverrides,
@@ -81,7 +81,7 @@ function renderFooterNavigation(overrides: Partial<FooterNavigationOptions> = {}
   return { onAction, rerenderFooterNavigation, user };
 }
 
-describe("useFooterNavigation", () => {
+describe("useActionRowNavigation (web adoption)", () => {
   it("focuses the default footer action when the footer is the initial zone", async () => {
     renderFooterNavigation();
 

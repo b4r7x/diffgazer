@@ -6,7 +6,7 @@ import { Callout } from "@diffgazer/ui/components/callout";
 import { cn } from "@diffgazer/core/cn";
 import type { Shortcut } from "@diffgazer/core/schemas/ui";
 import { usePageFooter } from "@/hooks/use-page-footer";
-import { useFooterNavigation } from "@/hooks/use-footer-navigation.js";
+import { useActionRowNavigation } from "@diffgazer/keys";
 import { useScope } from "@diffgazer/keys";
 import { useOnboarding } from "../hooks/use-onboarding";
 import { HorizontalStepper } from "@diffgazer/ui/components/horizontal-stepper";
@@ -146,9 +146,9 @@ export function OnboardingWizard() {
 
   useScope("onboarding");
 
-  const footer = useFooterNavigation({
+  const footer = useActionRowNavigation({
     enabled: true,
-    buttonCount,
+    actionCount: buttonCount,
     disabledActions: disabledFooterActions,
     disabledFocusFallbackRef: focusFallbackRef,
     allowInInput: true,
@@ -172,14 +172,14 @@ export function OnboardingWizard() {
   usePageFooter({
     shortcuts: getStepShortcuts(
       currentStep,
-      footer.inFooter,
+      footer.inActions,
       footer.isFocusedActionDisabled,
     ),
   });
 
   const handleStepBoundary = (direction: "up" | "down") => {
     if (direction !== "down") return;
-    footer.enterFooter();
+    footer.enterActions();
   };
 
   const handleStepCommit = (partial: Partial<WizardData> = {}) => {
@@ -187,7 +187,7 @@ export function OnboardingWizard() {
     if (!canProceedForStep(currentStep, projectedData)) return;
 
     if (isLastStep) {
-      footer.enterFooter(primaryButtonIndex);
+      footer.enterActions(primaryButtonIndex);
       return;
     }
 
@@ -202,7 +202,7 @@ export function OnboardingWizard() {
             value={wizardData.secretsStorage}
             onChange={(secretsStorage) => updateData({ secretsStorage })}
             onCommit={(secretsStorage) => handleStepCommit({ secretsStorage })}
-            keyboardNavigation={!footer.inFooter}
+            keyboardNavigation={!footer.inActions}
             onBoundaryReached={handleStepBoundary}
           />
         );
@@ -212,7 +212,7 @@ export function OnboardingWizard() {
             value={wizardData.provider}
             onChange={setProvider}
             onCommit={(provider) => handleStepCommit({ provider })}
-            enabled={!footer.inFooter}
+            enabled={!footer.inActions}
             onBoundaryReached={handleStepBoundary}
           />
         );
@@ -225,7 +225,7 @@ export function OnboardingWizard() {
             keyValue={wizardData.apiKey}
             onKeyValueChange={(apiKey) => updateData({ apiKey })}
             onCommit={(payload) => handleStepCommit(payload)}
-            enabled={!footer.inFooter}
+            enabled={!footer.inActions}
             onBoundaryReached={handleStepBoundary}
           />
         ) : null;
@@ -236,7 +236,7 @@ export function OnboardingWizard() {
             value={wizardData.model}
             onChange={(model) => updateData({ model })}
             onCommit={(model) => handleStepCommit({ model })}
-            enabled={!footer.inFooter}
+            enabled={!footer.inActions}
             onBoundaryReached={handleStepBoundary}
           />
         ) : null;
@@ -246,7 +246,7 @@ export function OnboardingWizard() {
             lenses={wizardData.defaultLenses}
             onLensesChange={(defaultLenses) => updateData({ defaultLenses })}
             onCommit={(payload) => handleStepCommit(payload)}
-            enabled={!footer.inFooter}
+            enabled={!footer.inActions}
             onBoundaryReached={handleStepBoundary}
           />
         );
@@ -256,7 +256,7 @@ export function OnboardingWizard() {
             value={wizardData.agentExecution}
             onChange={(agentExecution: AgentExecution) => updateData({ agentExecution })}
             onCommit={(agentExecution) => handleStepCommit({ agentExecution })}
-            enabled={!footer.inFooter}
+            enabled={!footer.inActions}
             onBoundaryReached={handleStepBoundary}
           />
         );
@@ -271,34 +271,34 @@ export function OnboardingWizard() {
         <>
           {!isFirstStep && (
             <Button
-              {...footer.getButtonProps(0)}
+              {...footer.getActionProps(0)}
               variant="secondary"
               size="sm"
               onClick={back}
               disabled={isSubmitting}
-              className={cn(footer.inFooter && footer.focusedIndex === 0 && !isSubmitting && "ring-2 ring-tui-blue")}
+              className={cn(footer.inActions && footer.focusedIndex === 0 && !isSubmitting && "ring-2 ring-tui-blue")}
             >
               Back
             </Button>
           )}
           {isLastStep ? (
             <Button
-              {...footer.getButtonProps(primaryButtonIndex)}
+              {...footer.getActionProps(primaryButtonIndex)}
               variant="success"
               size="sm"
               onClick={handlePrimaryAction}
               disabled={isPrimaryDisabled}
-              className={cn(footer.inFooter && footer.focusedIndex === primaryButtonIndex && !isPrimaryDisabled && "ring-2 ring-tui-blue")}
+              className={cn(footer.inActions && footer.focusedIndex === primaryButtonIndex && !isPrimaryDisabled && "ring-2 ring-tui-blue")}
             >
               {isSubmitting ? "Saving..." : "Complete Setup"}
             </Button>
           ) : (
             <Button
-              {...footer.getButtonProps(primaryButtonIndex)}
+              {...footer.getActionProps(primaryButtonIndex)}
               size="sm"
               onClick={handlePrimaryAction}
               disabled={isPrimaryDisabled}
-              className={cn(footer.inFooter && footer.focusedIndex === primaryButtonIndex && !isPrimaryDisabled && "ring-2 ring-tui-blue")}
+              className={cn(footer.inActions && footer.focusedIndex === primaryButtonIndex && !isPrimaryDisabled && "ring-2 ring-tui-blue")}
             >
               Next
             </Button>

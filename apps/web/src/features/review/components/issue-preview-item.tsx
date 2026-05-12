@@ -1,5 +1,6 @@
 import { cn } from "@diffgazer/core/cn";
 import type { ReviewSeverity } from '@diffgazer/core/schemas/review';
+import { Badge } from '@diffgazer/ui/components/badge';
 import { SEVERITY_CONFIG } from '@/components/ui/severity/constants';
 
 export interface IssuePreviewItemProps {
@@ -22,16 +23,18 @@ export function IssuePreviewItem({
   className,
 }: IssuePreviewItemProps) {
   const { icon, color, label, borderColor } = SEVERITY_CONFIG[severity];
+  const isClickable = Boolean(onClick);
+  const Tag = isClickable ? "button" : "div";
 
   return (
-    <button
-      type="button"
+    <Tag
+      type={isClickable ? "button" : undefined}
       onClick={onClick}
       className={cn(
         'flex items-center justify-between p-3 w-full text-left',
         'bg-tui-bg border-b border-tui-border last:border-b-0',
-        'hover:bg-tui-selection group cursor-pointer transition-colors',
-        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tui-blue',
+        isClickable && 'hover:bg-tui-selection cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tui-blue',
+        'group transition-colors',
         className
       )}
     >
@@ -40,7 +43,7 @@ export function IssuePreviewItem({
           {icon}
         </span>
         <div>
-          <div className="text-sm font-bold group-hover:text-tui-blue transition-colors">
+          <div className={cn("text-sm font-bold transition-colors", isClickable && "group-hover:text-tui-blue")}>
             {title}
           </div>
           <div className="text-xs text-tui-muted font-mono">
@@ -50,16 +53,18 @@ export function IssuePreviewItem({
       </div>
       <div className="flex items-center gap-4">
         <span className="hidden sm:inline text-xs text-tui-muted">{category}</span>
-        <span
+        <Badge
+          size="sm"
           className={cn(
-            'text-[10px] border px-1.5 py-0.5 uppercase tracking-wide',
+            'text-[10px] uppercase',
             borderColor,
-            color
+            color,
+            'bg-transparent',
           )}
         >
           {label}
-        </span>
+        </Badge>
       </div>
-    </button>
+    </Tag>
   );
 }

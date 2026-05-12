@@ -23,6 +23,7 @@ const PROVIDER_HOOKS: HookRegistryItem[] = [
   { name: "use-scope", title: "useScope", description: "Push a named scope onto the keyboard scope stack", files: [{ path: "src/hooks/use-scope.ts" }] },
   { name: "use-scoped-navigation", title: "useScopedNavigation", description: "Scope-aware keyboard navigation registered via KeyboardProvider", files: [{ path: "src/hooks/use-scoped-navigation.ts" }] },
   { name: "use-focus-zone", title: "useFocusZone", description: "Manage focus across multiple zones with arrow key and Tab transitions", files: [{ path: "src/hooks/use-focus-zone.ts" }] },
+  { name: "use-action-row-navigation", title: "useActionRowNavigation", description: "Provider-backed two-zone keyboard navigation for rows with inline actions", files: [{ path: "src/hooks/use-action-row-navigation.ts" }] },
 ]
 
 buildDocsData({

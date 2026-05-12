@@ -24,7 +24,7 @@ interface ApiKeyMethodSelectorProps {
   };
 }
 
-function isInputMethod(value: string): value is InputMethod {
+function isInputMethod(value: string | null): value is InputMethod {
   return value === "paste" || value === "env";
 }
 

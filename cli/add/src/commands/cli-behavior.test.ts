@@ -162,9 +162,20 @@ test("hidden keys utilities cannot be installed directly", () => {
   );
 });
 
-test("bare ui aliases still install", () => {
-  runDgadd(["add", "button", "--cwd", root, "--yes", "--skip-install"]);
+test("bare names without namespace prefix are rejected", () => {
+  assert.throws(
+    () => runDgadd(["add", "button", "--cwd", root, "--yes", "--skip-install"]),
+    /not found|Invalid item name|Use a namespaced name/,
+  );
+  assert.equal(existsSync(join(root, "src/components/ui/button/button.tsx")), false);
+});
 
+test("bare names are rejected for remove command too", () => {
+  runDgadd(["add", "ui/button", "--cwd", root, "--yes", "--skip-install"]);
+  assert.throws(
+    () => runDgadd(["remove", "button", "--cwd", root, "--yes"]),
+    /not found|Invalid item name|Use a namespaced name/,
+  );
   assert.equal(existsSync(join(root, "src/components/ui/button/button.tsx")), true);
 });
 

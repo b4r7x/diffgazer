@@ -335,6 +335,32 @@ function writeCopyFirstApp(fixture) {
   );
 }
 
+function writeKeysPackageSelectApp(fixture) {
+  writeFileSync(
+    join(fixture, "src/main.tsx"),
+    [
+      "import React from 'react';",
+      "import { createRoot } from 'react-dom/client';",
+      "import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';",
+      "",
+      "function App() {",
+      "  return (",
+      "    <Select defaultOpen defaultValue=\"main\" width=\"md\">",
+      "      <SelectTrigger><SelectValue placeholder=\"Branch\" /></SelectTrigger>",
+      "      <SelectContent>",
+      "        <SelectItem value=\"main\">main</SelectItem>",
+      "        <SelectItem value=\"develop\">develop</SelectItem>",
+      "      </SelectContent>",
+      "    </Select>",
+      "  );",
+      "}",
+      "",
+      "createRoot(document.getElementById('root')!).render(<App />);",
+      "",
+    ].join("\n"),
+  );
+}
+
 function assertCopyFirstCssInstall(fixture) {
   const dialogShellPath = join(fixture, "src/components/ui/shared/dialog-shell.tsx");
   const dialogShell = readFileSync(dialogShellPath, "utf-8");
@@ -500,6 +526,80 @@ try {
   runOptionalNextCopyFirstSmoke(dgadd);
 } finally {
   rmSync(fixture, { recursive: true, force: true });
+}
+
+// --- Keys package integration dependency metadata smoke ---
+const keysDepFixture = mkdtempSync(join(tmpdir(), "dgadd-keys-dep-"));
+try {
+  writeViteFixture(keysDepFixture);
+  installFixtureDeps(keysDepFixture);
+
+  const dgaddKeys = `node ${JSON.stringify(resolve(root, "cli/add/dist/index.js"))}`;
+  run(`${dgaddKeys} init --cwd ${JSON.stringify(keysDepFixture)} --yes --skip-install`);
+  run(`${dgaddKeys} add ui/button --integration keys --cwd ${JSON.stringify(keysDepFixture)} --yes --skip-install`);
+
+  // For components without keyboard integration, --integration keys should not add @diffgazer/keys
+  const keysDepConfig = JSON.parse(readFileSync(join(keysDepFixture, "diffgazer.json"), "utf-8"));
+  if (keysDepConfig.installedComponents?.["ui/button"]?.integrationMode === "@diffgazer/keys") {
+    throw new Error("button has no keyboard integration but was installed with @diffgazer/keys mode");
+  }
+
+  // Test add without --skip-install (deps already present from installFixtureDeps)
+  run(`${dgaddKeys} add ui/badge --cwd ${JSON.stringify(keysDepFixture)} --yes`);
+  if (!existsSync(join(keysDepFixture, "src/components/ui/badge/badge.tsx"))) {
+    throw new Error("ui/badge was not installed without --skip-install");
+  }
+  console.log("OK: dgadd add without --skip-install");
+
+  // Now install a keyboard-integrated component with keys package mode, including dependency install.
+  const localKeysVersion = `link:${realpathSync(resolve(root, "libs/keys"))}`;
+  run(`${dgaddKeys} add ui/select --integration keys --keys-version ${JSON.stringify(localKeysVersion)} --cwd ${JSON.stringify(keysDepFixture)} --yes`);
+  const keysSelectConfig = JSON.parse(readFileSync(join(keysDepFixture, "diffgazer.json"), "utf-8"));
+  const selectRecord = keysSelectConfig.installedComponents?.["ui/select"];
+  if (selectRecord?.integrationMode !== "@diffgazer/keys") {
+    throw new Error(`Expected select integrationMode to be "@diffgazer/keys", got "${selectRecord?.integrationMode}"`);
+  }
+
+  // Verify the select component imports @diffgazer/keys, not local hooks
+  const selectContentPath = join(keysDepFixture, "src/components/ui/select/select-content.tsx");
+  const selectContent = readFileSync(selectContentPath, "utf-8");
+  if (!selectContent.includes("@diffgazer/keys")) {
+    throw new Error("select-content.tsx does not contain @diffgazer/keys import in keys mode");
+  }
+  if (selectContent.includes("@/hooks/use-navigation")) {
+    throw new Error("select-content.tsx still references @/hooks/use-navigation in keys mode");
+  }
+  const keysDepPackage = JSON.parse(readFileSync(join(keysDepFixture, "package.json"), "utf-8"));
+  if (keysDepPackage.dependencies?.["@diffgazer/keys"] !== localKeysVersion) {
+    throw new Error("ui/select --integration keys did not install the local @diffgazer/keys dependency");
+  }
+  if (existsSync(join(keysDepFixture, "src/hooks/use-navigation.ts"))) {
+    throw new Error("keys package mode should not copy local use-navigation.ts");
+  }
+  writeKeysPackageSelectApp(keysDepFixture);
+  run("pnpm run typecheck", keysDepFixture);
+  run("pnpm run build", keysDepFixture);
+
+  console.log("OK: keys package integration dependency install/build flow");
+} finally {
+  rmSync(keysDepFixture, { recursive: true, force: true });
+}
+
+// --- Bare name rejection smoke ---
+{
+  const bareFixture = createWorkspaceTempDir("smoke-bare-");
+  try {
+    writeViteFixture(bareFixture);
+    run(`node ${JSON.stringify(resolve(root, "cli/add/dist/index.js"))} init --cwd ${JSON.stringify(bareFixture)} --yes`);
+    const dgaddBare = `node ${JSON.stringify(resolve(root, "cli/add/dist/index.js"))}`;
+    const bareOutput = runFailure(`${dgaddBare} add button --cwd ${JSON.stringify(bareFixture)} --yes --skip-install`);
+    if (!/not found|Invalid item name|Use a namespaced name/.test(bareOutput)) {
+      throw new Error(`Expected bare name rejection, got: ${bareOutput.slice(0, 250)}`);
+    }
+    console.log("OK: bare name rejection");
+  } finally {
+    rmSync(bareFixture, { recursive: true, force: true });
+  }
 }
 
 console.log("OK: CLI smoke checks passed");

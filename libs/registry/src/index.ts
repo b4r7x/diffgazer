@@ -83,6 +83,10 @@ export type {
   ComponentDoc,
   PropInfo,
   ComponentPropsTable,
+  ConsumptionLibrary,
+  ConsumptionItemKind,
+  ConsumptionPathOption,
+  ConsumptionMetadata,
 } from "./docs-data/index.js";
 
 export {

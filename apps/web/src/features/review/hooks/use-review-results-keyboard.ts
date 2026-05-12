@@ -3,7 +3,7 @@ import { useRouter } from "@tanstack/react-router";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import type { Shortcut } from "@diffgazer/core/schemas/ui";
 import { SEVERITY_ORDER } from "@diffgazer/core/schemas/ui";
-import { findNavigationItemByValue, getNavigationItems, useFocusZone, useKey } from "@diffgazer/keys";
+import { findNavigationItemByValue, getNavigationItems, useFocusZone, useKey, useScopedNavigation } from "@diffgazer/keys";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useSeverityFilter } from "./use-severity-filter.js";
 import { useIssueSelection } from "./use-issue-selection.js";
@@ -68,7 +68,7 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
   const { severityFilter, setSeverityFilter, filteredIssues, focusedFilterIndex, setFocusedFilterIndex, toggleSeverityFilter, moveFocusedFilter } =
     useSeverityFilter({ issues });
 
-  const { selectedIssue, selectedIssueId, setSelectedIssueId, highlightedIssueId, listRef, moveIssue } =
+  const { selectedIssue, selectedIssueId, setSelectedIssueId, highlightedIssueId, listRef } =
     useIssueSelection({ filteredIssues, sourceKey: severityFilter ?? "all" });
 
   const { activeTab, setActiveTab, completedSteps, handleToggleStep, detailsScrollRef, moveTab, scrollDetails } =
@@ -110,23 +110,32 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
     },
   });
 
-  const handleMoveIssue = (delta: -1 | 1) => {
-    const result = moveIssue(delta);
-    if (result === "boundary-top") setReviewFocusZone("filters");
-  };
-
   const selectIssue = (id: string) => {
     setReviewFocusZone("list");
     setSelectedIssueId(id);
   };
 
-  const highlightIssue = (id: string) => {
+  const highlightIssue = (id: string | null) => {
+    if (id === null) return;
     setSelectedIssueId(id);
   };
 
   const handleListBoundary = (direction: "previous" | "next") => {
     if (direction === "previous") setReviewFocusZone("filters");
   };
+
+  useScopedNavigation({
+    containerRef: listRef,
+    role: "option",
+    highlighted: highlightedIssueId,
+    onHighlightChange: highlightIssue,
+    onNavigationBoundaryReached: handleListBoundary,
+    wrap: false,
+    scope: REVIEW_SCOPE,
+    enabled: focusZone === "list" && filteredIssues.length > 0,
+    upKeys: ["ArrowUp", "k"],
+    downKeys: ["ArrowDown", "j"],
+  });
 
   const handleListFocus = () => {
     setReviewFocusZone("list");
@@ -157,10 +166,10 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
     }
   }, [focusZone, focusedFilterIndex, setReviewFocusZone]);
 
-  useKey("ArrowDown", () => handleMoveIssue(1), { scope: REVIEW_SCOPE, enabled: focusZone === "list" });
-  useKey("ArrowUp", () => handleMoveIssue(-1), { scope: REVIEW_SCOPE, enabled: focusZone === "list" });
-  useKey("j", () => handleMoveIssue(1), { scope: REVIEW_SCOPE, enabled: focusZone === "list" });
-  useKey("k", () => handleMoveIssue(-1), { scope: REVIEW_SCOPE, enabled: focusZone === "list" });
+  useKey(["ArrowUp", "k"], () => setReviewFocusZone("filters"), {
+    scope: REVIEW_SCOPE,
+    enabled: focusZone === "list" && filteredIssues.length === 0,
+  });
 
   useKey("Escape", () => router.history.back(), { scope: REVIEW_SCOPE });
 

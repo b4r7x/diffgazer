@@ -347,6 +347,23 @@ assertCliPackageMetadata(
   ["dist", "README.md", "LICENSE", "SECURITY.md", "SUPPORT.md"],
 );
 
+// Build configuration assertions
+const turboConfig = readJSON("turbo.json");
+const docsOutputs = turboConfig.tasks?.["@diffgazer/docs#build"]?.outputs ?? [];
+addResult(
+  "turbo docs build includes .output",
+  docsOutputs.some((o) => o.includes(".output")),
+  `outputs: ${JSON.stringify(docsOutputs)}`,
+);
+
+const rootPkg = readJSON("package.json");
+const webBuildScript = rootPkg.scripts?.["web:build"] ?? "";
+addResult(
+  "web:build uses turbo for dependency chain",
+  webBuildScript.includes("turbo"),
+  webBuildScript,
+);
+
 if (jsonOut) {
   writeFileSync(
     "docs/migration/014-monorepo-restructure/invariant-check-results.json",

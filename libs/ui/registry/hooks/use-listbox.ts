@@ -37,7 +37,7 @@ export interface UseListboxOptions {
   defaultHighlighted?: string | null;
   onSelect?: (id: string) => void;
   onEnter?: (id: string, event: globalThis.KeyboardEvent) => void;
-  onHighlightChange?: (id: string) => void;
+  onHighlightChange?: (id: string | null) => void;
   onNavigationBoundaryReached?: (
     direction: "previous" | "next",
     event: globalThis.KeyboardEvent,
@@ -57,7 +57,7 @@ export interface UseListboxOptions {
 export interface UseListboxReturn {
   selectedId: string | null;
   highlighted: string | null;
-  handleItemHighlight: (id: string) => void;
+  handleItemHighlight: (id: string | null) => void;
   handleItemActivate: (id: string) => void;
   getContainerProps: (ref?: Ref<HTMLDivElement>) => {
     ref: ReturnType<typeof composeRefs<HTMLDivElement>>;
@@ -252,9 +252,7 @@ export function useListbox({
   const [highlighted, setHighlighted] = useControllableState<string | null>({
     value: controlledHighlighted,
     defaultValue: defaultHighlighted,
-    onChange: (next) => {
-      if (next !== null) onHighlightChange?.(next);
-    },
+    onChange: onHighlightChange,
   });
 
   const activeDescendantCandidate = resolveActiveDescendant(items, highlighted, selectedId, containerRole);

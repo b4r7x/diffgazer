@@ -11,7 +11,7 @@ export interface MenuItemDefinition {
 
 interface HomeMenuProps {
   highlighted: string | null;
-  onHighlightChange: (id: string) => void;
+  onHighlightChange: (id: string | null) => void;
   onSelect: (id: string) => void;
   items: MenuItemDefinition[];
   isTrusted?: boolean;

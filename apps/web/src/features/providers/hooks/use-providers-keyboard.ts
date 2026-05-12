@@ -13,7 +13,7 @@ interface ProvidersKeyboardOptions {
   filteredProviders: Array<{ id: string }>;
   listReady: boolean;
   filter: ProviderFilter;
-  setSelectedId: (id: string) => void;
+  setSelectedId: (id: string | null) => void;
   dialogOpen: boolean;
   inputRef: RefObject<HTMLInputElement | null>;
   listContainerRef: RefObject<HTMLDivElement | null>;

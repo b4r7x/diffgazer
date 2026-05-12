@@ -10,7 +10,7 @@ import { StorageSelectorContent } from "@/components/shared/storage-selector-con
 import { useSettings, useSaveSettings, matchQueryState } from "@diffgazer/core/api/hooks";
 import { useKey, useScope } from "@diffgazer/keys";
 import { usePageFooter } from "@/hooks/use-page-footer";
-import { useFooterNavigation } from "@/hooks/use-footer-navigation.js";
+import { useActionRowNavigation } from "@diffgazer/keys";
 
 export function SettingsStoragePage() {
   const navigate = useNavigate();
@@ -45,9 +45,9 @@ export function SettingsStoragePage() {
     }
   };
 
-  const footer = useFooterNavigation({
+  const footer = useActionRowNavigation({
     enabled: true,
-    buttonCount: 2,
+    actionCount: 2,
     disabledActions: [isSaving, isSaveDisabled],
     disabledFocusFallbackRef: focusFallbackRef,
     onAction: (index) => {
@@ -56,7 +56,7 @@ export function SettingsStoragePage() {
     },
   });
 
-  const footerShortcuts: Shortcut[] = footer.inFooter
+  const footerShortcuts: Shortcut[] = footer.inActions
     ? [
         { key: "←/→", label: "Move Action" },
         {
@@ -101,24 +101,24 @@ export function SettingsStoragePage() {
     <CardLayout
       title="Configure Secrets Storage"
       subtitle="Choose where API keys and sensitive data should be stored."
-      contentInactive={footer.inFooter}
+      contentInactive={footer.inActions}
       footer={
         <>
           <Button
-            {...footer.getButtonProps(0)}
+            {...footer.getActionProps(0)}
             variant="ghost"
             onClick={handleCancel}
             disabled={isSaving}
-            highlighted={footer.inFooter && footer.focusedIndex === 0 && !isSaving}
+            highlighted={footer.inActions && footer.focusedIndex === 0 && !isSaving}
           >
             Cancel
           </Button>
           <Button
-            {...footer.getButtonProps(1)}
+            {...footer.getActionProps(1)}
             variant="success"
             onClick={handleSave}
             disabled={isSaving || !effectiveStorage || !isDirty}
-            highlighted={footer.inFooter && footer.focusedIndex === 1 && canSave}
+            highlighted={footer.inActions && footer.focusedIndex === 1 && canSave}
           >
             {isSaving ? "Saving..." : "Save"}
           </Button>
@@ -130,11 +130,11 @@ export function SettingsStoragePage() {
           value={effectiveStorage}
           onChange={setStorageChoice}
           disabled={isSaving}
-          keyboardNavigation={!footer.inFooter}
-          autoFocusList={!footer.inFooter}
+          keyboardNavigation={!footer.inActions}
+          autoFocusList={!footer.inActions}
           onBoundaryReached={(direction) => {
             if (direction === "down") {
-              footer.enterFooter();
+              footer.enterActions();
             }
           }}
         />

@@ -10,7 +10,7 @@ import { ThemePreviewCard } from "../theme-preview-card";
 import { useTheme } from "@/hooks/use-theme";
 import { useKey, useScope } from "@diffgazer/keys";
 import { usePageFooter } from "@/hooks/use-page-footer";
-import { useFooterNavigation } from "@/hooks/use-footer-navigation.js";
+import { useActionRowNavigation } from "@diffgazer/keys";
 
 function resolveTheme(theme: WebTheme, systemResolved?: ResolvedTheme | null): ResolvedTheme {
   return theme === "auto" ? (systemResolved ?? "dark") : theme;
@@ -64,9 +64,9 @@ function SettingsThemeEditor({
     navigate({ to: "/settings" });
   };
 
-  const footer = useFooterNavigation({
+  const footer = useActionRowNavigation({
     enabled: true,
-    buttonCount: 2,
+    actionCount: 2,
     disabledActions: [false, isSaveDisabled],
     onAction: (index) => {
       if (index === 0) handleCancel();
@@ -74,7 +74,7 @@ function SettingsThemeEditor({
     },
   });
 
-  const footerShortcuts: Shortcut[] = footer.inFooter
+  const footerShortcuts: Shortcut[] = footer.inActions
     ? [
         { key: "←/→", label: "Move Action" },
           {
@@ -118,7 +118,7 @@ function SettingsThemeEditor({
     const next = idx + direction;
     if (next < 0) return;
     if (next >= themeOptions.length) {
-      footer.enterFooter();
+      footer.enterActions();
       return;
     }
     const nextTheme = themeOptions[next];
@@ -128,18 +128,18 @@ function SettingsThemeEditor({
 
   useKey("Escape", handleCancel);
 
-  useKey("ArrowDown", () => moveFocus(1), { enabled: !footer.inFooter });
-  useKey("ArrowUp", () => moveFocus(-1), { enabled: !footer.inFooter });
+  useKey("ArrowDown", () => moveFocus(1), { enabled: !footer.inActions });
+  useKey("ArrowUp", () => moveFocus(-1), { enabled: !footer.inActions });
 
   useKey(" ", () => {
     const theme = focusedTheme ?? selectedTheme;
     selectTheme(theme);
-  }, { enabled: !footer.inFooter });
+  }, { enabled: !footer.inActions });
 
   useKey("Enter", () => {
     const theme = focusedTheme ?? selectedTheme;
     handleEnterOnList(theme);
-  }, { enabled: !footer.inFooter });
+  }, { enabled: !footer.inActions });
 
   return (
     <div className="flex-1 flex flex-col p-6 min-h-0">
@@ -159,10 +159,10 @@ function SettingsThemeEditor({
               onChange={handleChange}
               onEnter={handleEnterOnList}
               onSelect={handleChange}
-              enabled={!footer.inFooter}
+              enabled={!footer.inActions}
               onBoundaryReached={(direction) => {
                 if (direction === "down") {
-                  footer.enterFooter();
+                  footer.enterActions();
                 }
               }}
             />
@@ -174,19 +174,19 @@ function SettingsThemeEditor({
 
               <div className="flex justify-end gap-3">
                 <Button
-                  {...footer.getButtonProps(0)}
+                  {...footer.getActionProps(0)}
                   variant="ghost"
                   onClick={handleCancel}
-                  highlighted={footer.inFooter && footer.focusedIndex === 0}
+                  highlighted={footer.inActions && footer.focusedIndex === 0}
                 >
                   Cancel
                 </Button>
                 <Button
-                  {...footer.getButtonProps(1)}
+                  {...footer.getActionProps(1)}
                   variant="success"
                   onClick={handleSave}
                   disabled={!canSave}
-                  highlighted={footer.inFooter && footer.focusedIndex === 1 && canSave}
+                  highlighted={footer.inActions && footer.focusedIndex === 1 && canSave}
                 >
                   Save
                 </Button>

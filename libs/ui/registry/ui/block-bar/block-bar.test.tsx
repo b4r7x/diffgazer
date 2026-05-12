@@ -105,6 +105,27 @@ describe("BlockBar", () => {
     expect(screen.queryByText("z")).not.toBeInTheDocument()
   })
 
+  it("accepts aria-label for the meter accessible name", () => {
+    render(<BlockBar aria-label="Upload progress" max={10} value={5} />)
+    expect(screen.getByRole("meter", { name: "Upload progress" })).toBeInTheDocument()
+  })
+
+  it("accepts aria-labelledby for the meter accessible name", () => {
+    render(
+      <>
+        <span id="bar-label">Download speed</span>
+        <BlockBar aria-labelledby="bar-label" max={100} value={42} />
+      </>,
+    )
+    expect(screen.getByRole("meter", { name: "Download speed" })).toBeInTheDocument()
+  })
+
+  it("does not render an unnamed meter", () => {
+    render(<BlockBar max={10} value={5} />)
+    expect(screen.queryByRole("meter")).not.toBeInTheDocument()
+    expect(screen.getByText("5")).toBeInTheDocument()
+  })
+
   it("clamps excessive bar widths before drawing", () => {
     render(<BlockBar label="Wide" max={1000} value={1000} barWidth={10000} filledChar="x" emptyChar="_" />)
 

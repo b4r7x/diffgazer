@@ -1,8 +1,7 @@
 import { useEffect, useRef } from "react";
 import { NavigationList } from "@diffgazer/ui/components/navigation-list";
 import type { TimelineItem } from "@diffgazer/core/schemas/ui";
-import { toVerticalBoundaryDirection } from "@diffgazer/keys";
-import { isVerticalListKey } from "@/utils/vertical-list-key";
+import { isListNavigationKey, toVerticalBoundaryDirection } from "@diffgazer/keys";
 
 export interface TimelineListProps {
   items: TimelineItem[];
@@ -29,7 +28,8 @@ export function TimelineList({
     lastNotifiedId.current = selectedId;
   }, [selectedId]);
 
-  const notifySelect = (id: string) => {
+  const notifySelect = (id: string | null) => {
+    if (id === null) return;
     if (lastNotifiedId.current === id) return;
     lastNotifiedId.current = id;
     onSelect(id);
@@ -44,7 +44,7 @@ export function TimelineList({
       aria-label="Review sections"
       onFocus={onFocus}
       onKeyDown={(event) => {
-        if (!keyboardEnabled && isVerticalListKey(event.key)) {
+        if (!keyboardEnabled && isListNavigationKey(event.key)) {
           event.preventDefault();
         }
       }}

@@ -18,6 +18,14 @@ export const RegistryItemSchema = z.object({
   dependencies: z.array(z.string()).default([]),
   registryDependencies: z.array(z.string()).default([]),
   meta: z.record(z.string(), z.unknown()).optional(),
+  // shadcn-compatible fields: preserved for public registry round-trip compatibility.
+  devDependencies: z.array(z.string()).optional(),
+  cssVars: z.record(z.string(), z.unknown()).optional(),
+  css: z.string().optional(),
+  envVars: z.array(z.string()).optional(),
+  docs: z.string().optional(),
+  categories: z.array(z.string()).optional(),
+  author: z.string().optional(),
 });
 
 export const RegistrySchema = z.object({

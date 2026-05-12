@@ -15,6 +15,10 @@ export type {
   ComponentDoc,
   PropInfo,
   ComponentPropsTable,
+  ConsumptionLibrary,
+  ConsumptionItemKind,
+  ConsumptionPathOption,
+  ConsumptionMetadata,
 } from "./types.js"
 
 export {

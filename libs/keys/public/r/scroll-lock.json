@@ -10,7 +10,8 @@
     {
       "path": "src/hooks/use-scroll-lock.ts",
       "content": "\"use client\";\n\nimport { useEffect, useRef, type RefObject } from \"react\";\n\nconst lockCounts = new WeakMap<Element, number>();\nconst savedOverflow = new WeakMap<Element, string>();\n\nexport interface UseScrollLockOptions {\n  target?: RefObject<HTMLElement | null>;\n  enabled?: boolean;\n}\n\nfunction lockElement(el: HTMLElement): () => void {\n  const count = lockCounts.get(el) ?? 0;\n\n  if (count === 0) {\n    savedOverflow.set(el, el.style.overflow);\n    el.style.overflow = \"hidden\";\n  }\n  lockCounts.set(el, count + 1);\n\n  return () => {\n    const current = lockCounts.get(el) ?? 1;\n    const next = current - 1;\n    if (next <= 0) {\n      lockCounts.delete(el);\n      el.style.overflow = savedOverflow.get(el) ?? \"\";\n      savedOverflow.delete(el);\n    } else {\n      lockCounts.set(el, next);\n    }\n  };\n}\n\nexport function useScrollLock(options: UseScrollLockOptions = {}): void {\n  const { target, enabled = true } = options;\n  const lockedElementRef = useRef<HTMLElement | null>(null);\n  const releaseRef = useRef<(() => void) | null>(null);\n\n  useEffect(() => {\n    const nextElement = enabled ? target?.current ?? document.body : null;\n    if (lockedElementRef.current === nextElement) return;\n\n    releaseRef.current?.();\n    releaseRef.current = null;\n    lockedElementRef.current = null;\n\n    if (!nextElement) return;\n\n    releaseRef.current = lockElement(nextElement);\n    lockedElementRef.current = nextElement;\n  });\n\n  useEffect(() => {\n    return () => {\n      releaseRef.current?.();\n      releaseRef.current = null;\n      lockedElementRef.current = null;\n    };\n  }, []);\n}\n",
-      "type": "registry:hook"
+      "type": "registry:hook",
+      "target": "@hooks/use-scroll-lock.ts"
     }
   ],
   "meta": {

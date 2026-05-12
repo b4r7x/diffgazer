@@ -6,6 +6,10 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**"]
     },
+    "@diffgazer/docs#build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", ".output/**"]
+    },
     "diffgazer#build": {
       "dependsOn": ["^build", "@diffgazer/web#build"],
       "outputs": ["dist/**"]

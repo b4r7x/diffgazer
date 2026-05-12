@@ -140,10 +140,10 @@ export const radioDoc: ComponentDoc = {
         description: "Controlled highlighted item value for keyboard navigation.",
       },
       onHighlightChange: {
-        type: "(value: string) => void",
+        type: "(value: string | null) => void",
         required: false,
         defaultValue: null,
-        description: "Called when keyboard navigation highlights a new item.",
+        description: "Called when keyboard navigation highlights a new item or clears highlight.",
       },
       onNavigate: {
         type: '(value: string, direction: "previous" | "next" | "first" | "last") => void',

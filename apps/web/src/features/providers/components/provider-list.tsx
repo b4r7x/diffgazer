@@ -35,7 +35,7 @@ interface ProviderListProps {
   };
   onListKeyDown?: (event: ReactKeyboardEvent) => void;
   highlighted?: string | null;
-  onHighlightChange?: (id: string) => void;
+  onHighlightChange?: (id: string | null) => void;
   onBoundaryReached?: (direction: "up" | "down") => void;
   ref?: React.Ref<HTMLDivElement>;
 }
@@ -98,6 +98,7 @@ export function ProviderList({
           onFilterChange(nextFilter);
         }}
         onHighlightChange={(value) => {
+          if (value === null) return;
           const index = PROVIDER_FILTER_LABELS.findIndex((item) => item.value === value);
           if (index >= 0) {
             onFilterFocus?.(index);

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   getVerticalArrowDirection,
+  isListNavigationKey,
   toVerticalBoundaryDirection,
 } from "./navigation-directions";
 
@@ -20,5 +21,18 @@ describe("navigation direction helpers", () => {
     expect(toVerticalBoundaryDirection("previous", "ArrowLeft")).toBeNull();
     expect(toVerticalBoundaryDirection("next", "ArrowRight")).toBeNull();
     expect(toVerticalBoundaryDirection("next", "ArrowDown")).toBe("down");
+  });
+
+  it("identifies list navigation keys", () => {
+    expect(isListNavigationKey("ArrowUp")).toBe(true);
+    expect(isListNavigationKey("ArrowDown")).toBe(true);
+    expect(isListNavigationKey("Home")).toBe(true);
+    expect(isListNavigationKey("End")).toBe(true);
+    expect(isListNavigationKey("Enter")).toBe(true);
+    expect(isListNavigationKey(" ")).toBe(true);
+    expect(isListNavigationKey("ArrowLeft")).toBe(false);
+    expect(isListNavigationKey("ArrowRight")).toBe(false);
+    expect(isListNavigationKey("a")).toBe(false);
+    expect(isListNavigationKey("Tab")).toBe(false);
   });
 });

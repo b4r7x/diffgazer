@@ -16,6 +16,7 @@ import { validatePublicRegistryFresh } from "../shadcn/validate.js";
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../../..");
 
 type RegistryContentTransform = (content: string) => string;
+type RegistrySourceContentTransform = (ctx: { itemName: string; filePath: string; content: string }) => string;
 
 async function loadRegistryContentTransform(modulePath: string, exportName: string): Promise<RegistryContentTransform> {
   const loaded = await import(pathToFileURL(modulePath).href) as Record<string, unknown>;
@@ -24,6 +25,19 @@ async function loadRegistryContentTransform(modulePath: string, exportName: stri
     throw new Error(`Missing registry transform export: ${exportName}`);
   }
   return transform as RegistryContentTransform;
+}
+
+async function loadRegistrySourceContentTransformFactory(
+  modulePath: string,
+  factoryExport: string,
+  rootDir: string,
+): Promise<RegistrySourceContentTransform> {
+  const loaded = await import(pathToFileURL(modulePath).href) as Record<string, unknown>;
+  const factory = loaded[factoryExport];
+  if (typeof factory !== "function") {
+    throw new Error(`Missing registry transform factory export: ${factoryExport}`);
+  }
+  return factory(rootDir) as RegistrySourceContentTransform;
 }
 
 describe("resolveLocalShadcnBin", () => {
@@ -110,21 +124,33 @@ describe("committed public registries", () => {
       rootDir: resolve(repoRoot, "libs/keys"),
       fixCommand: "pnpm --dir libs/keys build:shadcn",
       transformModule: resolve(repoRoot, "libs/keys/scripts/transform-public-registry-imports.ts"),
-      transformExport: "transformKeysPublicRegistryImportContent",
+      transformExport: "createKeysSourceContentTransform",
+      useFactory: true,
     },
   ] as const;
 
   it.each(registries)("keeps $name public/r fresh against the source registry", async (registry) => {
-    const transformContent = await loadRegistryContentTransform(
-      registry.transformModule,
-      registry.transformExport,
-    );
+    let transformSourceContent: RegistrySourceContentTransform;
+
+    if ("useFactory" in registry && registry.useFactory) {
+      transformSourceContent = await loadRegistrySourceContentTransformFactory(
+        registry.transformModule,
+        registry.transformExport,
+        registry.rootDir,
+      );
+    } else {
+      const transformContent = await loadRegistryContentTransform(
+        registry.transformModule,
+        registry.transformExport,
+      );
+      transformSourceContent = ({ content }) => transformContent(content);
+    }
 
     expect(() =>
       validatePublicRegistryFresh({
         rootDir: registry.rootDir,
         fixCommand: registry.fixCommand,
-        transformSourceContent: ({ content }) => transformContent(content),
+        transformSourceContent,
       }),
     ).not.toThrow();
   });

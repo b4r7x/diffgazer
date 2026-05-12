@@ -5,9 +5,8 @@ import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { EmptyState } from "@diffgazer/ui/components/empty-state";
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { CodeBlock, type CodeBlockLineType } from "@diffgazer/ui/components/code-block";
-import { DiffView } from "@diffgazer/ui/components/diff-view";
+import { DiffView, parseDiff } from "@diffgazer/ui/components/diff-view";
 import { Panel } from "@diffgazer/ui/components/panel";
-import { parseDiff } from "@diffgazer/ui/lib/diff";
 import { FixPlanChecklist } from "./fix-plan-checklist";
 import { IssueHeader } from "./issue-header";
 

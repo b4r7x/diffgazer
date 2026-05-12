@@ -19,7 +19,7 @@ export interface MenuProps
   highlighted?: string | null;
   defaultHighlighted?: string | null;
   onSelect?: (id: string) => void;
-  onHighlightChange?: (value: string) => void;
+  onHighlightChange?: (value: string | null) => void;
   onClose?: () => void;
   variant?: "default" | "hub";
   wrap?: boolean;

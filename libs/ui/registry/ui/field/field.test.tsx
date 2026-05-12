@@ -119,6 +119,24 @@ describe("Field", () => {
     expect(textarea).toHaveAccessibleDescription("Notes are required.")
   })
 
+  it("merges external aria-labelledby with the field label id", () => {
+    render(
+      <Field>
+        <Field.Label>Username</Field.Label>
+        <Field.Control>
+          <Input aria-labelledby="external-label" />
+        </Field.Control>
+      </Field>,
+    )
+
+    const input = screen.getByRole("textbox")
+    const labelledBy = input.getAttribute("aria-labelledby")!
+    expect(labelledBy).toContain("external-label")
+
+    const fieldLabel = screen.getByText("Username")
+    expect(labelledBy).toContain(fieldLabel.id)
+  })
+
   it("composes form wiring with Select on the combobox trigger", () => {
     render(
       <Field invalid required disabled>

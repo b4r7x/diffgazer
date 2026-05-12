@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type RefObject } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { Shortcut } from "@diffgazer/core/schemas/ui";
 import { useKey, useScope } from "@diffgazer/keys";
-import { useFooterNavigation } from "@/hooks/use-footer-navigation";
+import { useActionRowNavigation } from "@diffgazer/keys";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import type { DiagnosticsData } from "@diffgazer/core/api/hooks";
 
@@ -15,7 +15,7 @@ interface UseDiagnosticsKeyboardOptions {
 
 interface UseDiagnosticsKeyboardResult {
   focusedIndex: number;
-  getButtonProps: ReturnType<typeof useFooterNavigation>["getButtonProps"];
+  getActionProps: ReturnType<typeof useActionRowNavigation>["getActionProps"];
   focusFallbackRef: RefObject<HTMLDivElement | null>;
   isRefreshingAll: boolean;
   refreshError: string | null;
@@ -87,17 +87,17 @@ export function useDiagnosticsKeyboard({
 
   const refreshAllDisabled = isRefreshingAll || isRefreshingContext;
   const contextActionDisabled = !canRegenerate || isRefreshingContext || isRefreshingAll;
-  const { focusedIndex, inFooter, getButtonProps } = useFooterNavigation({
+  const { focusedIndex, inActions, getActionProps } = useActionRowNavigation({
     enabled: true,
-    buttonCount: BUTTON_COUNT,
+    actionCount: BUTTON_COUNT,
     disabledActions: [refreshAllDisabled, contextActionDisabled],
     disabledFocusFallbackRef: focusFallbackRef,
     onAction: handleButtonAction,
-    defaultZone: "footer",
-    canExitFooter: false,
+    defaultZone: "actions",
+    canExitActions: false,
   });
 
-  const footerShortcuts: Shortcut[] = inFooter
+  const footerShortcuts: Shortcut[] = inActions
     ? [
           {
             key: "\u2190/\u2192",
@@ -134,7 +134,7 @@ export function useDiagnosticsKeyboard({
 
   return {
     focusedIndex,
-    getButtonProps,
+    getActionProps,
     focusFallbackRef,
     isRefreshingAll,
     refreshError,

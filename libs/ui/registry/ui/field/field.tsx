@@ -168,7 +168,7 @@ function FieldControl({ children, ref }: FieldControlProps) {
     required: child.props.required ?? required,
     "aria-invalid": child.props["aria-invalid"] ?? (invalid ? true : undefined),
     "aria-describedby": mergeIds(child.props["aria-describedby"], describedBy),
-    "aria-labelledby": child.props["aria-labelledby"] ?? labelId,
+    "aria-labelledby": mergeIds(child.props["aria-labelledby"], labelId),
     ref: composeRefs(child.props.ref, ref),
   });
 }

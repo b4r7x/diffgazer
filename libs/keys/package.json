@@ -47,7 +47,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "verify:registry-cleanup": "node ../../apps/docs/scripts/verify-registry-cleanup.mjs --scope @diffgazer/keys",
-    "prepublishOnly": "pnpm run build && test -f dist/artifacts/artifact-manifest.json",
+    "prepublishOnly": "pnpm run build && pnpm run type-check && pnpm run test && pnpm run validate:artifacts",
     "playground": "pnpm --filter playground dev"
   },
   "peerDependencies": {

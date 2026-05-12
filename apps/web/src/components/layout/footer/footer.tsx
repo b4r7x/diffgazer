@@ -1,4 +1,5 @@
 import { cn } from "@diffgazer/core/cn";
+import { Kbd } from "@diffgazer/ui/components/kbd";
 import type { Shortcut } from "./footer-context";
 
 interface FooterProps {
@@ -12,7 +13,7 @@ function renderShortcuts(items: Shortcut[]) {
 
   return activeItems.map((shortcut, index) => (
     <span key={`${shortcut.key}-${shortcut.label}`}>
-      <kbd>{shortcut.key}</kbd> <span>{shortcut.label}</span>
+      <Kbd>{shortcut.key}</Kbd> <span>{shortcut.label}</span>
       {index < activeItems.length - 1 && <span className="text-tui-muted">•</span>}
     </span>
   ));

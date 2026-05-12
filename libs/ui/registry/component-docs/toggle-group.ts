@@ -17,7 +17,7 @@ export const toggleGroupDoc: ComponentDoc = {
     {
       title: "Keyboard Navigation",
       content:
-        "Arrow keys navigate between items with wrapping. Enter/Space activation uses native button semantics. Highlight state can be controlled externally via highlighted and onHighlightChange props.",
+        "Arrow keys navigate between items with wrapping. Enter/Space activation uses native button semantics. Highlight state can be controlled externally via highlighted and onHighlightChange props. Use onNavigationBoundaryReached for composite focus handoff when wrap is false.",
     },
   ],
   usage: { example: "toggle-group-default" },

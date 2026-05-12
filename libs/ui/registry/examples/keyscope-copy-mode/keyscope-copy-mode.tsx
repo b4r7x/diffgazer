@@ -112,7 +112,7 @@ function FileMenu({
     containerRef: listRef,
     role: "option",
     highlighted: selectedFile,
-    onHighlightChange: onSelectFile,
+    onHighlightChange: (value) => { if (value !== null) onSelectFile(value) },
     onEnter: onSelectFile,
     wrap: true,
   })

@@ -50,7 +50,7 @@ describe("requireSetup", () => {
   });
 
   afterEach(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 50));
     delete process.env.DIFFGAZER_HOME;
     rmSync(diffgazerHome, { recursive: true, force: true });
     rmSync(projectRoot, { recursive: true, force: true });

@@ -25,6 +25,11 @@ export interface ToggleGroupProps {
   wrap?: boolean;
   highlighted?: string | null;
   onHighlightChange?: (value: string | null) => void;
+  onNavigationBoundaryReached?: (
+    direction: "previous" | "next",
+    event: globalThis.KeyboardEvent,
+    key: string,
+  ) => void;
   onKeyDown?: (event: ReactKeyboardEvent) => void;
   label?: string;
   "aria-labelledby"?: string;
@@ -45,6 +50,7 @@ export function ToggleGroup({
   wrap = true,
   highlighted: controlledHighlighted,
   onHighlightChange,
+  onNavigationBoundaryReached,
   onKeyDown,
   label,
   "aria-labelledby": ariaLabelledBy,
@@ -69,7 +75,8 @@ export function ToggleGroup({
     onChange: onHighlightChange,
   });
 
-  const handleValueChange = useCallback((newValue: string) => {
+  const handleValueChange = useCallback((newValue: string | null) => {
+    if (newValue === null) return;
     setValue((prev) => (prev === newValue && allowDeselect) ? null : newValue);
   }, [allowDeselect, setValue]);
 
@@ -88,6 +95,7 @@ export function ToggleGroup({
     highlighted: tabTargetValue,
     enabled: !disabled,
     onHighlightChange: allowDeselect ? setHighlightedValue : handleValueChange,
+    onNavigationBoundaryReached,
     scopeToContainer: true,
     ownerSelector: allowDeselect ? '[data-diffgazer-selectable-owner="toggle"]' : undefined,
   });

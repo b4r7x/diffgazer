@@ -26,21 +26,11 @@ export function useIssueSelection({ filteredIssues, sourceKey }: UseIssueSelecti
 
   const selectedIssue = filteredIssues.find(i => i.id === effectiveSelectedId) ?? null;
 
-  const moveIssue = (delta: -1 | 1) => {
-    const idx = filteredIssues.findIndex(i => i.id === effectiveSelectedId);
-    const nextIdx = idx + delta;
-    if (nextIdx < 0) return "boundary-top" as const;
-    if (nextIdx >= filteredIssues.length) return "boundary-bottom" as const;
-    setSelectedIssueId(filteredIssues[nextIdx]!.id);
-    return "moved" as const;
-  };
-
   return {
     selectedIssue,
     selectedIssueId: effectiveSelectedId,
     setSelectedIssueId,
     highlightedIssueId: effectiveSelectedId,
     listRef,
-    moveIssue,
   };
 }

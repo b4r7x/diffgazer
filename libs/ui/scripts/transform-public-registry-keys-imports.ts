@@ -61,18 +61,30 @@ function rewriteKeysPackageImportLine(line: string): string {
     grouped.set(target, specifiers);
   }
 
+  if (unknown.length > 0) {
+    throw new Error(
+      `Unknown @diffgazer/keys import specifiers in public registry copy content: ${unknown.join(", ")}. ` +
+      `Add them to KEYS_PACKAGE_IMPORT_TARGETS in transform-public-registry-keys-imports.ts.`,
+    );
+  }
+
   const rewritten = [...grouped.entries()].map(([target, specifiers]) =>
     indent + renderImport(specifiers, target, quote),
   );
-  if (unknown.length > 0) {
-    rewritten.push(`${indent}import { ${unknown.join(", ")} } from ${quote}@diffgazer/keys${quote};`);
-  }
 
   return rewritten.length > 0 ? rewritten.join("\n") : line;
 }
 
+function stripRelativeJsExtensions(content: string): string {
+  return content.replace(
+    /(\bfrom\s+|\bimport\s+|\bimport\(\s*|\brequire\(\s*)(["'])(\.{1,2}\/[^"']+)\.js\2/g,
+    (_: string, prefix: string, quote: string, specifier: string) => `${prefix}${quote}${specifier}${quote}`,
+  );
+}
+
 export function transformUiPublicRegistryKeysImportContent(content: string): string {
-  return content.split("\n").map(rewriteKeysPackageImportLine).join("\n");
+  const keysRewritten = content.split("\n").map(rewriteKeysPackageImportLine).join("\n");
+  return stripRelativeJsExtensions(keysRewritten);
 }
 
 interface RegistryFileWithContent {

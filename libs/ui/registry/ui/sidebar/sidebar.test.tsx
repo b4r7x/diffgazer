@@ -5,9 +5,9 @@ import { describe, it, expect, vi } from "vitest"
 import { Sidebar } from "./index.js"
 
 function renderSidebar(props: {
-  collapsed?: boolean
-  defaultCollapsed?: boolean
-  onCollapsedChange?: (collapsed: boolean) => void
+  open?: boolean
+  defaultOpen?: boolean
+  onOpenChange?: (open: boolean) => void
 } = {}) {
   return render(
     <Sidebar.Provider {...props}>
@@ -27,7 +27,7 @@ function renderSidebar(props: {
 }
 
 describe("Sidebar", () => {
-  it("toggles collapsed state via SidebarTrigger", async () => {
+  it("toggles open state via SidebarTrigger", async () => {
     renderSidebar()
     const trigger = screen.getByRole("button", { name: "Collapse sidebar" })
     const content = screen.getByText("Item 1").closest("[id]") as HTMLElement
@@ -42,12 +42,12 @@ describe("Sidebar", () => {
     expect(content).toHaveAttribute("inert")
   })
 
-  it("skips collapsed sidebar content in tab order", async () => {
+  it("skips closed sidebar content in tab order", async () => {
     const user = userEvent.setup()
     render(
       <>
         <button type="button">Before</button>
-        <Sidebar.Provider defaultCollapsed>
+        <Sidebar.Provider defaultOpen={false}>
           <Sidebar>
             <Sidebar.Content>
               <Sidebar.Item>Hidden item</Sidebar.Item>
@@ -93,13 +93,13 @@ describe("Sidebar", () => {
     expect(trigger).toHaveAttribute("aria-expanded", "true")
   })
 
-  it("respects controlled collapsed prop", async () => {
-    const onCollapsedChange = vi.fn()
-    renderSidebar({ collapsed: false, onCollapsedChange })
+  it("respects controlled open prop", async () => {
+    const onOpenChange = vi.fn()
+    renderSidebar({ open: true, onOpenChange })
     const trigger = screen.getByRole("button", { name: "Collapse sidebar" })
 
     await userEvent.click(trigger)
-    expect(onCollapsedChange).toHaveBeenCalledWith(true)
+    expect(onOpenChange).toHaveBeenCalledWith(false)
     expect(trigger).toHaveAttribute("aria-expanded", "true")
   })
 
@@ -108,7 +108,7 @@ describe("Sidebar", () => {
     expect(await axe(container)).toHaveNoViolations()
   })
 
-  it("toggles collapsed state when used without explicit SidebarProvider", async () => {
+  it("toggles open state when used without explicit SidebarProvider", async () => {
     render(
       <Sidebar>
         <Sidebar.Trigger>Toggle</Sidebar.Trigger>

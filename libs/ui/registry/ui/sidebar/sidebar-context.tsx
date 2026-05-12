@@ -3,9 +3,9 @@
 import { createContext, useContext } from "react";
 
 export interface SidebarContextValue {
-  collapsed: boolean;
+  open: boolean;
   contentId: string;
-  onCollapsedChange: (collapsed: boolean) => void;
+  onOpenChange: (open: boolean) => void;
   toggleSidebar: () => void;
 }
 

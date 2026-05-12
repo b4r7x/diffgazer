@@ -89,6 +89,33 @@ describe("ReviewResultsView keyboard regression", () => {
     expect(options[1]).toHaveAttribute("aria-selected", "true");
   });
 
+  it("navigates issue list with j and k in visible order", async () => {
+    const user = userEvent.setup();
+    renderView([
+      makeIssue("issue-1", "Issue one"),
+      makeIssue("issue-2", "Issue two"),
+      makeIssue("issue-3", "Issue three"),
+    ]);
+
+    const options = screen.getAllByRole("option");
+
+    await user.keyboard("jj");
+    expect(options[2]).toHaveAttribute("aria-selected", "true");
+
+    await user.keyboard("k");
+    expect(options[1]).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("moves from an empty issue list boundary back to severity filters", async () => {
+    const user = userEvent.setup();
+    renderView([]);
+
+    await user.keyboard("{ArrowUp}");
+
+    const filterGroup = screen.getByRole("group", { name: "Severity filter" });
+    await waitFor(() => expect(filterGroup).toContainElement(document.activeElement));
+  });
+
   it("switches right-panel tabs with left and right arrows", async () => {
     const user = userEvent.setup();
     renderView();

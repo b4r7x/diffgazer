@@ -16,6 +16,7 @@
     }
   ],
   "meta": {
-    "client": false
+    "client": false,
+    "hidden": true
   }
 }

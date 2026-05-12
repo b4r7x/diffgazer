@@ -52,7 +52,8 @@ export function ThemeSelectorContent({
     ? rawHighlighted
     : optionValues[0]!;
 
-  const handleHighlightChange = (nextValue: string) => {
+  const handleHighlightChange = (nextValue: string | null) => {
+    if (nextValue === null) return;
     if (!isThemeOption(nextValue, optionValues)) return;
 
     setInternalHighlight(nextValue);

@@ -76,7 +76,7 @@ describe("config service", () => {
   });
 
   afterEach(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 50));
     delete process.env.DIFFGAZER_HOME;
     rmSync(diffgazerHome, { recursive: true, force: true });
     rmSync(projectRoot, { recursive: true, force: true });
@@ -234,7 +234,7 @@ describe("config service", () => {
     });
 
     expect(result).toMatchObject({ ok: true, value: { provider: "gemini" } });
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await new Promise((resolve) => setTimeout(resolve, 200));
     expect(readFileSync(configPath(), "utf-8")).toContain("gemini-2.5-flash");
   });
 });

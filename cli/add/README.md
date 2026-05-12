@@ -2,6 +2,15 @@
 
 Installer CLI for adding Diffgazer UI components and keys hooks to your React project. Files are copied into your codebase so you own the implementation.
 
+## Supported Libraries
+
+| Library | Namespace | What `dgadd` installs |
+|---------|-----------|----------------------|
+| `@diffgazer/ui` | `ui/*` | Components, hooks, libs, theme CSS |
+| `@diffgazer/keys` | `keys/*` | Standalone keyboard hooks (no CSS needed) |
+
+`dgadd` is one of three consumption paths. The other two are direct shadcn/manual copy from the public registry, and npm package install. All npm package names (`@diffgazer/add`, `@diffgazer/ui`, `@diffgazer/keys`) are publish-gated until `npm view` returns versions. Local tarballs are the validation path before publication.
+
 ## Before Publication
 
 `@diffgazer/add` is external publish-gated as of May 6, 2026. Public `npx`/global install commands are valid only after `npm view @diffgazer/add version` succeeds.
@@ -51,7 +60,7 @@ npx @diffgazer/add list
 
 - `ui/*` installs components from `@diffgazer/ui`.
 - `keys/*` installs standalone hooks from `@diffgazer/keys`.
-- Bare item names are treated as `ui/*` for compatibility.
+- All install names must use a namespace prefix. Bare names like `button` are rejected; use `ui/button` instead.
 
 ## Commands
 

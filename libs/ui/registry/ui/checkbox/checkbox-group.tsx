@@ -44,7 +44,7 @@ export type CheckboxGroupProps<T extends string = string> = CheckboxGroupRootPro
   value?: T[];
   defaultValue?: T[];
   onChange?: (value: T[]) => void;
-  onHighlightChange?: (value: string) => void;
+  onHighlightChange?: (value: string | null) => void;
   onKeyDown?: (event: ReactKeyboardEvent) => void;
   highlighted?: string | null;
   wrap?: boolean;
@@ -135,9 +135,7 @@ export function CheckboxGroup<T extends string = string>(props: CheckboxGroupPro
     value: controlledHighlighted,
     controlled: "highlighted" in props,
     defaultValue: null,
-    onChange: (next) => {
-      if (next !== null) onHighlightChange?.(next);
-    },
+    onChange: onHighlightChange,
   });
 
   const { onKeyDown: navKeyDown } = useNavigation({
@@ -148,6 +146,7 @@ export function CheckboxGroup<T extends string = string>(props: CheckboxGroupPro
     onNavigationBoundaryReached,
     highlighted: highlightedValue ?? undefined,
     onHighlightChange: setHighlightedValue,
+    onEnter: (itemValue) => toggle(itemValue),
     moveFocus: true,
     scopeToContainer: true,
     ownerSelector: '[data-diffgazer-selectable-owner="checkbox"]',

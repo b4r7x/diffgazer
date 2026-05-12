@@ -20,13 +20,18 @@ export interface BlockBarSegmentData {
   char?: string;
 }
 
-export interface BlockBarProps extends HTMLAttributes<HTMLDivElement> {
+export interface BlockBarProps extends Omit<
+  HTMLAttributes<HTMLDivElement>,
+  "aria-label" | "aria-labelledby" | "aria-valuemax" | "aria-valuemin" | "aria-valuenow" | "aria-valuetext" | "role"
+> {
   value?: number;
   max: number;
   barWidth?: number;
   filledChar?: string;
   emptyChar?: string;
   label?: string;
+  "aria-label"?: string;
+  "aria-labelledby"?: string;
   valueText?: string;
   variant?: SegmentVariant;
   segments?: BlockBarSegmentData[];
@@ -63,6 +68,8 @@ function BlockBarRoot({
   filledChar = "\u2588",
   emptyChar = "\u2591",
   label,
+  "aria-label": ariaLabel,
+  "aria-labelledby": ariaLabelledBy,
   valueText,
   variant,
   segments,
@@ -70,6 +77,8 @@ function BlockBarRoot({
   children,
   ...props
 }: BlockBarProps) {
+  const resolvedAriaLabel = ariaLabel ?? label;
+  const hasAccessibleName = Boolean(resolvedAriaLabel || ariaLabelledBy);
   const safeMax = Number.isFinite(max) ? Math.max(0, max) : 0;
   const safeBarWidth = Number.isFinite(barWidth)
     ? Math.min(MAX_BAR_WIDTH, Math.max(0, Math.floor(barWidth)))
@@ -105,14 +114,15 @@ function BlockBarRoot({
   return (
     <BlockBarContext value={contextValue}>
       <div
-        role="meter"
-        aria-valuemin={0}
-        aria-valuemax={safeMax}
-        aria-valuenow={displayValue}
-        aria-valuetext={resolvedValueText}
-        aria-label={label}
-        className={cn("flex items-center font-mono text-sm", className)}
         {...props}
+        role={hasAccessibleName ? "meter" : undefined}
+        aria-valuemin={hasAccessibleName ? 0 : undefined}
+        aria-valuemax={hasAccessibleName ? safeMax : undefined}
+        aria-valuenow={hasAccessibleName ? displayValue : undefined}
+        aria-valuetext={hasAccessibleName ? resolvedValueText : undefined}
+        aria-label={hasAccessibleName ? resolvedAriaLabel : undefined}
+        aria-labelledby={hasAccessibleName ? ariaLabelledBy : undefined}
+        className={cn("flex items-center font-mono text-sm", className)}
       >
         {(!hasChildren || segments) && label && (
           <span className="w-20 truncate text-xs text-muted-foreground">

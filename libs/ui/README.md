@@ -2,9 +2,15 @@
 
 Reusable React UI components for Diffgazer and compatible product surfaces.
 
-## Consumption Contract
+## Consumption Paths
 
-There are two intended ways to consume the UI library. The npm package names are external publish-gated as of May 6, 2026; public npm commands below are valid only after `npm view @diffgazer/add`, `npm view @diffgazer/ui`, and `npm view @diffgazer/keys` return versions.
+All npm package names are external publish-gated as of May 2026. Public npm commands are valid only after `npm view @diffgazer/add`, `npm view @diffgazer/ui`, and `npm view @diffgazer/keys` return versions. Local tarballs are the package-mode validation path before publication.
+
+| Path | What it does | CSS setup |
+|------|-------------|-----------|
+| Manual copy / shadcn | `npx shadcn add https://diffgazer.com/r/ui/button.json` | Import copied `src/styles/styles.css` |
+| `dgadd` CLI | `pnpm exec dgadd add ui/button` | Import copied `src/styles/styles.css` |
+| npm package | `npm install @diffgazer/ui @diffgazer/keys` | Import `@diffgazer/ui/sources.css` and `@diffgazer/ui/styles.css` |
 
 ### Copy-first registry mode
 
@@ -54,6 +60,14 @@ import { Button } from "@diffgazer/ui/components/button";
 Runtime package mode exports compiled components, hooks, utilities, and CSS. It is not the customization path.
 
 `@diffgazer/ui/styles.css` imports the package theme and component CSS only. It intentionally does not import Tailwind, so every app has exactly one Tailwind import in its own global CSS entrypoint.
+
+### Direct shadcn / manual copy
+
+```bash
+npx shadcn add https://diffgazer.com/r/ui/button.json
+```
+
+Files install into your configured `components/ui` directory. Configure the `@ui` registry namespace in `components.json`; see docs for setup.
 
 ## Keyboard Dependencies
 

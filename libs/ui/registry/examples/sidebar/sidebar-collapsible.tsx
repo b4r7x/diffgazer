@@ -12,7 +12,7 @@ import {
 
 export default function SidebarCollapsible() {
   return (
-    <Sidebar defaultCollapsed={false} className="w-64 border border-border rounded bg-background">
+    <Sidebar defaultOpen className="w-64 border border-border rounded bg-background">
       <SidebarHeader>
         <span className="text-sm font-mono font-bold">File Browser</span>
       </SidebarHeader>

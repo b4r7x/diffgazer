@@ -11,6 +11,7 @@ import {
   routeSlugsFromSourcePath,
   sourceSlugsForLibrary,
 } from "@/lib/docs-library"
+import { getConsumptionMetadata } from "@/lib/consumption-metadata"
 
 const repoRoot = resolve(import.meta.dirname, "../../../..")
 
@@ -142,6 +143,10 @@ function collectExampleFileNames(): Set<string> {
   )
 }
 
+function camelToKebab(value: string): string {
+  return value.replace(/[A-Z]/g, (match, index) => `${index === 0 ? "" : "-"}${match.toLowerCase()}`)
+}
+
 describe("docs-library source path mapping", () => {
   it("prefixes source slugs by library id", () => {
     expect(sourceSlugsForLibrary("ui", ["components", "button"])).toEqual([
@@ -193,6 +198,35 @@ describe("docs-library source path mapping", () => {
     expect(LOCAL_DGADD_PREREQUISITE).toContain("locally packed @diffgazer/add tarball")
     expect(LOCAL_DGADD_PREREQUISITE).toContain("pnpm exec dgadd")
     expect(LOCAL_DGADD_PREREQUISITE).not.toContain("npx @diffgazer/add")
+  })
+
+  it("maps UI utility consumption metadata to lib paths", () => {
+    const meta = getConsumptionMetadata("ui", "compose-refs", "lib")
+
+    expect(meta.packageImport).toBe("@diffgazer/ui/lib/compose-refs")
+    expect(meta.copyPath).toBe("lib/compose-refs.ts")
+    expect(meta.dgaddName).toBe("ui/compose-refs")
+    expect(meta.paths.copy.command).toBe("npx shadcn add https://diffgazer.com/r/ui/compose-refs.json")
+    expect(meta.paths.dgadd.command).toBe("pnpm exec dgadd add ui/compose-refs")
+  })
+
+  it("maps prefixed keys hook docs to registry ids without double use prefixes", () => {
+    const meta = getConsumptionMetadata("keys", "use-navigation", "hook")
+
+    expect(meta.copyPath).toBe("src/hooks/use-navigation.ts")
+    expect(meta.dgaddName).toBe("keys/navigation")
+    expect(meta.paths.copy.command).toBe("npx shadcn add https://diffgazer.com/r/keys/navigation.json")
+    expect(meta.paths.dgadd.command).toBe("pnpm exec dgadd add keys/navigation")
+  })
+
+  it("marks provider-backed keys hooks as package-only while keeping package import metadata", () => {
+    const meta = getConsumptionMetadata("keys", "use-action-row-navigation", "hook")
+
+    expect(meta.copyPath).toBe("src/hooks/use-action-row-navigation.ts")
+    expect(meta.packageImport).toBe("@diffgazer/keys")
+    expect(meta.paths.copy.available).toBe(false)
+    expect(meta.paths.dgadd.available).toBe(false)
+    expect(meta.paths.package.available).toBe(true)
   })
 
   it("uses deterministic docs preview without npx network dependency", () => {
@@ -351,6 +385,112 @@ describe("docs-library source path mapping", () => {
       }
 
       expect(source, path).toMatch(/npm view|publish-gated|After Publication|after publication|after `@diffgazer\/add` is published|after its npm package is published/)
+    }
+  })
+
+  it("every public UI component/hook page has consumption metadata block", () => {
+    const componentPages = listRepoFiles("libs/ui/docs/content/components", ".mdx")
+    const hookPages = listRepoFiles("libs/ui/docs/content/hooks", ".mdx")
+
+    for (const file of [...componentPages, ...hookPages]) {
+      const source = readAbsolute(file)
+      const relPath = file.slice(repoRoot.length + 1)
+      // Pages that use ConsumptionBlock or InstallCommand have consumption metadata
+      expect(
+        source.includes("<ConsumptionBlock") || source.includes("<InstallCommand"),
+        `${relPath} must include consumption metadata (ConsumptionBlock or InstallCommand)`,
+      ).toBe(true)
+    }
+  })
+
+  it("every public keys hook page has consumption metadata block", () => {
+    const hookPages = listRepoFiles("libs/keys/docs/content/hooks", ".mdx")
+
+    for (const file of hookPages) {
+      const source = readAbsolute(file)
+      const relPath = file.slice(repoRoot.length + 1)
+      expect(
+        source.includes("<ConsumptionBlock") || source.includes("<InstallCommand"),
+        `${relPath} must include consumption metadata (ConsumptionBlock or InstallCommand)`,
+      ).toBe(true)
+    }
+  })
+
+  it("documents every exported keys hook under hook handoff pages", () => {
+    const indexSource = readRepoFile("libs/keys/src/index.ts")
+    const exportedHookSlugs = [...indexSource.matchAll(/export \{ (use[A-Z]\w+) \} from "\.\/hooks\//g)]
+      .map((match) => camelToKebab(match[1]))
+      .sort()
+    const documentedHookSlugs = listRepoFiles("libs/keys/docs/content/hooks", ".mdx")
+      .map((file) => file.replace(/\.mdx$/, "").split("/").at(-1))
+      .filter((slug): slug is string => typeof slug === "string")
+      .sort()
+
+    expect(documentedHookSlugs).toEqual(exportedHookSlugs)
+  })
+
+  it("does not render empty API Reference headings in component pages", () => {
+    const componentPages = listRepoFiles("libs/ui/docs/content/components", ".mdx")
+
+    for (const file of componentPages) {
+      const source = readAbsolute(file)
+      const relPath = file.slice(repoRoot.length + 1)
+
+      // If a page has an API Reference heading, it must not have a standalone ## API Reference + <PropsTable />
+      // Instead it should use <APIReference /> which self-hides when no data exists
+      if (source.includes("## API Reference")) {
+        // A page with ## API Reference heading followed by <PropsTable /> risks empty rendering
+        expect(source, `${relPath} has standalone ## API Reference heading -- use <APIReference /> instead`).not.toMatch(/## API Reference\s*\n\s*\n\s*<PropsTable/)
+      }
+    }
+  })
+
+  it("docs-libraries.json does not point enabled libraries to missing content", () => {
+    const config = JSON.parse(readRepoFile("apps/docs/config/docs-libraries.json"))
+    const enabledLibraries = config.libraries.filter((lib: { enabled: boolean }) => lib.enabled)
+
+    for (const lib of enabledLibraries) {
+      const contentDir = `apps/docs/content/docs/${lib.id}`
+      const contentDirFull = resolve(repoRoot, contentDir)
+      let hasContent = false
+      try {
+        const entries = readdirSync(contentDirFull)
+        hasContent = entries.length > 0
+      } catch {
+        hasContent = false
+      }
+      expect(hasContent, `enabled library "${lib.id}" has no content in ${contentDir}`).toBe(true)
+    }
+  })
+
+  it("READMEs show consumption path matrix for both libraries", () => {
+    const rootReadme = readRepoFile("README.md")
+    const uiReadme = readRepoFile("libs/ui/README.md")
+    const keysReadme = readRepoFile("libs/keys/README.md")
+    const cliReadme = readRepoFile("cli/add/README.md")
+
+    // Root README must mention all three paths
+    expect(rootReadme).toContain("Manual copy")
+    expect(rootReadme).toContain("dgadd")
+    expect(rootReadme).toContain("npm package")
+
+    // UI README must mention all three paths
+    expect(uiReadme).toContain("Manual copy")
+    expect(uiReadme).toContain("dgadd")
+    expect(uiReadme).toContain("npm package")
+
+    // Keys README must mention all three paths
+    expect(keysReadme).toContain("Manual copy")
+    expect(keysReadme).toContain("dgadd")
+    expect(keysReadme).toContain("npm package")
+
+    // CLI README must reference both libraries
+    expect(cliReadme).toContain("@diffgazer/ui")
+    expect(cliReadme).toContain("@diffgazer/keys")
+
+    // All must mention publish-gated status
+    for (const readme of [rootReadme, uiReadme, keysReadme, cliReadme]) {
+      expect(readme).toMatch(/publish-gated/)
     }
   })
 
