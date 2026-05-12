@@ -13,7 +13,7 @@ import {
 } from "react";
 import { isEditableElement, matchesHotkey } from "../utils/keyboard-utils.js";
 
-type Handler = (event: KeyboardEvent) => void;
+type Handler = (event: KeyboardEvent) => unknown;
 
 export interface HandlerOptions {
   allowInInput?: boolean;
@@ -155,7 +155,8 @@ export function KeyboardProvider({ children }: { children: ReactNode }) {
         }
 
         try {
-          entry.handler(event);
+          const result = entry.handler(event);
+          if (result === false) continue;
         } catch (error) {
           console.error(`[@diffgazer/keys] Handler error for "${hotkey}":`, error);
         }

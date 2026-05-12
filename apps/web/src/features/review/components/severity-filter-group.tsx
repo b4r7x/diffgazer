@@ -54,22 +54,26 @@ export function SeverityFilterGroup({
       highlighted={isFocused ? SEVERITY_ORDER[focusedIndex ?? 0] ?? null : null}
       onKeyDown={onKeyDown}
       label="Severity filter"
-      className={cn("text-xs", className)}
+      className={cn("gap-2 text-xs", className)}
     >
-      {SEVERITY_ORDER.map((sev, index) => (
-        <ToggleGroupItem
-          key={sev}
-          value={sev}
-          count={counts[sev]}
-          className={cn(
-            "min-h-0 min-w-0 px-1.5 py-0 text-xs",
-            activeFilter === sev && SEVERITY_CONFIG[sev].color,
-            isFocused && focusedIndex === index && "ring-1 ring-tui-blue",
-          )}
-        >
-          {SEVERITY_CONFIG[sev].label}
-        </ToggleGroupItem>
-      ))}
+      {SEVERITY_ORDER.map((sev, index) => {
+        const count = counts[sev];
+        const label = SEVERITY_CONFIG[sev].label;
+        return (
+          <ToggleGroupItem
+            key={sev}
+            value={sev}
+            aria-label={`${label} severity, ${count} ${count === 1 ? "issue" : "issues"}`}
+            className={cn(
+              "h-5 min-h-0 min-w-fit px-1.5 text-[11px] inline-flex items-center whitespace-nowrap tabular-nums focus-visible:ring-0 focus-visible:outline-none",
+              activeFilter === sev && SEVERITY_CONFIG[sev].color,
+              isFocused && focusedIndex === index && "border-tui-blue bg-tui-selection",
+            )}
+          >
+            <span aria-hidden="true">[{label} {count}]</span>
+          </ToggleGroupItem>
+        );
+      })}
     </ToggleGroup>
   );
 }

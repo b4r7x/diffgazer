@@ -87,6 +87,11 @@ export const useKeyDoc: HookDoc = {
       content:
         "Handlers respect the scope stack managed by useScope. Deeper scopes take priority over shallower ones.",
     },
+    {
+      title: "Declining a match",
+      content:
+        "Return exactly false from a handler to let the next lower-priority matching handler in the active scope run. Other return values are ignored. If preventDefault is enabled for that handler, the event is still prevented before the handler returns.",
+    },
   ],
   examples: [
     { name: "use-key-basic", title: "Basic hotkey binding" },

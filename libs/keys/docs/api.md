@@ -35,7 +35,7 @@ function App() {
 - Skips events where `event.defaultPrevented` is already `true`.
 - Skips handlers for text-editable targets (text-like `input`, `textarea`, and editable content) unless `allowInInput` is set. Non-text controls such as `select`, checkbox, radio, range, and button inputs are allowed by default.
 - When a handler specifies `containerRef` + `focusWithinOnly`, only fires if the event target is inside that container.
-- Handler priority: iterates entries from **last-registered to first**. The first match wins -- no subsequent handlers fire.
+- Handler priority: iterates entries from **last-registered to first**. The first handled match wins; a handler can return `false` to decline the match and continue to the next lower-priority handler.
 - Errors in handlers are caught and logged: `[@diffgazer/keys] Handler error for "${hotkey}": ...`
 - When `preventDefault` is set on a handler's options, `event.preventDefault()` is called before the handler runs.
 
@@ -63,8 +63,10 @@ function useKey(handlers: Record<string, KeyHandler>, options?: UseKeyOptions): 
 ```
 
 ```ts
-type KeyHandler = (event: KeyboardEvent) => void;
+type KeyHandler = (event: KeyboardEvent) => unknown;
 ```
+
+Only the exact return value `false` has special meaning: it declines the matched key and lets the next lower-priority matching handler in the active scope run. Other return values are ignored. If `preventDefault` is enabled for that handler, the event is still prevented before the handler returns.
 
 ### UseKeyOptions
 
@@ -105,6 +107,7 @@ useKey("Enter", handleSelect, {
 - Uses `useOptionalKeyboardContext()` internally -- if no `KeyboardProvider` is present, the hook is a **silent no-op** (no error thrown).
 - Handlers use stable callback/ref patterns to avoid stale closures.
 - Registers in whatever scope is active at the time of mount/re-enable.
+- Returning `false` from a handler declines the match and lets the next lower-priority matching handler in the active scope run. If `preventDefault` is enabled for that handler, the event is still prevented before the handler returns.
 - Cleanup on unmount deregisters all keys.
 
 ---

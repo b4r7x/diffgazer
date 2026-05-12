@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { renderHook, render, screen, act, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { createElement, useRef, useState, type ReactNode } from "react";
+import { createElement, useEffect, useRef, useState, type ReactNode } from "react";
 import { renderToString } from "react-dom/server";
 import { KeyboardProvider } from "../providers/keyboard-provider";
 import { useFocusZone } from "./use-focus-zone";
@@ -223,6 +223,52 @@ describe("useFocusZone", () => {
       act(() => fireKey("ArrowRight"));
       expect(result.current.zone).toBe("main");
     });
+
+    it("falls through to lower-priority listeners for arrow keys the zone does not route", () => {
+      const lowerPriorityArrowDown = vi.fn();
+      const transitions = vi.fn(({ zone, key }) => {
+        if (zone === "filters" && key === "ArrowDown") return "list";
+        if (zone === "list" && key === "ArrowRight") return "details";
+        return null;
+      });
+      const { result } = renderHook(
+        () => {
+          useKey("ArrowDown", lowerPriorityArrowDown);
+          const fz = useFocusZone({
+            initial: "list",
+            zones: ["filters", "list", "details"],
+            transitions,
+          });
+          return fz;
+        },
+        { wrapper },
+      );
+
+      expect(transitions).not.toHaveBeenCalled();
+
+      act(() => fireKey("ArrowDown"));
+      expect(result.current.zone).toBe("list");
+      expect(transitions).toHaveBeenCalledWith({ zone: "list", key: "ArrowDown" });
+      expect(lowerPriorityArrowDown).toHaveBeenCalledOnce();
+    });
+
+    it("keeps transition preventDefault opt-in", () => {
+      renderHook(
+        () =>
+          useFocusZone({
+            initial: "list",
+            zones: ["list", "details"],
+            transitions: ({ zone, key }) => {
+              if (zone === "list" && key === "ArrowRight") return "details";
+              return null;
+            },
+          }),
+        { wrapper },
+      );
+
+      expect(fireKey("ArrowRight").defaultPrevented).toBe(false);
+    });
+
   });
 
   describe("tab cycling", () => {
@@ -437,6 +483,102 @@ describe("useFocusZone", () => {
       await userEvent.click(screen.getByRole("button", { name: "Move" }));
 
       expect(document.activeElement).toBe(screen.getByText("Sidebar"));
+    });
+
+    it("repairs focus when returning to a targeted zone from a targetless zone", async () => {
+      const user = userEvent.setup();
+
+      function Host() {
+        const [zone, setZone] = useState<"main" | "timeline">("main");
+        const mainRef = useRef<HTMLDivElement>(null);
+
+        useFocusZone({
+          initial: "main",
+          zones: ["main", "timeline"],
+          zone,
+          onZoneChange: setZone,
+          focus: {
+            autoFocus: true,
+            targets: {
+              main: mainRef,
+            },
+          },
+        });
+
+        return createElement(
+          "div",
+          null,
+          createElement("div", { ref: mainRef, tabIndex: -1 }, "Main"),
+          createElement("button", { type: "button", onClick: () => setZone("timeline") }, "Timeline"),
+          createElement("button", { type: "button", onClick: () => setZone("main") }, "Main zone"),
+        );
+      }
+
+      render(createElement(Host), { wrapper });
+
+      expect(document.activeElement).toBe(screen.getByText("Main"));
+
+      await user.click(screen.getByRole("button", { name: "Timeline" }));
+      expect(document.activeElement).toBe(screen.getByRole("button", { name: "Timeline" }));
+
+      await user.click(screen.getByRole("button", { name: "Main zone" }));
+      expect(document.activeElement).toBe(screen.getByText("Main"));
+    });
+
+    it("syncs zone state from focus targets in another ownerDocument", async () => {
+      function Host() {
+        const mainRef = useRef<HTMLDivElement>(null);
+        const iframeRef = useRef<HTMLIFrameElement>(null);
+        const frameButtonRef = useRef<HTMLButtonElement | null>(null);
+        const [ready, setReady] = useState(false);
+        const focusZone = useFocusZone({
+          initial: "main",
+          zones: ["main", "frame"],
+          focus: {
+            targets: {
+              main: mainRef,
+              frame: () => frameButtonRef.current,
+            },
+          },
+        });
+
+        useEffect(() => {
+          const doc = iframeRef.current?.contentDocument;
+          if (!doc || frameButtonRef.current) return;
+
+          const button = doc.createElement("button");
+          button.type = "button";
+          button.textContent = "Frame item";
+          doc.body.append(button);
+          frameButtonRef.current = button;
+          setReady(true);
+
+          return () => {
+            button.remove();
+            frameButtonRef.current = null;
+          };
+        }, []);
+
+        return createElement(
+          "div",
+          null,
+          createElement("div", { ref: mainRef }, createElement("button", { type: "button" }, "Main")),
+          createElement("iframe", { ref: iframeRef, title: "Frame" }),
+          createElement("output", { "aria-label": "Frame ready" }, ready ? "ready" : "pending"),
+          createElement("output", { "aria-label": "Current zone" }, focusZone.zone),
+        );
+      }
+
+      render(createElement(Host), { wrapper });
+
+      await screen.findByText("ready");
+      const iframe = screen.getByTitle("Frame") as HTMLIFrameElement;
+      const frameButton = iframe.contentDocument?.body.querySelector<HTMLButtonElement>("button");
+      expect(frameButton).not.toBeNull();
+
+      act(() => frameButton?.focus());
+
+      expect(screen.getByLabelText("Current zone").textContent).toBe("frame");
     });
 
     it("skips focus repair when the active element is already inside the zone container", async () => {

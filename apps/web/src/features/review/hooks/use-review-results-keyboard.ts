@@ -20,6 +20,7 @@ interface UseReviewResultsKeyboardOptions {
 
 function getReviewResultsFooter(
   focusZone: FocusZone,
+  hasSelectedIssue: boolean,
   canUsePatchTab: boolean,
 ): { shortcuts: Shortcut[]; rightShortcuts: Shortcut[] } {
   if (focusZone === "filters") {
@@ -34,6 +35,13 @@ function getReviewResultsFooter(
   }
 
   if (focusZone === "details") {
+    if (!hasSelectedIssue) {
+      return {
+        shortcuts: [{ key: "←", label: "Issue List" }],
+        rightShortcuts: [{ key: "Esc", label: "Back" }],
+      };
+    }
+
     return {
       shortcuts: [
         { key: canUsePatchTab ? "1-4" : "1-3", label: "Switch Tab" },
@@ -61,7 +69,7 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
     useSeverityFilter({ issues });
 
   const { selectedIssue, selectedIssueId, setSelectedIssueId, highlightedIssueId, listRef, moveIssue } =
-    useIssueSelection({ filteredIssues });
+    useIssueSelection({ filteredIssues, sourceKey: severityFilter ?? "all" });
 
   const { activeTab, setActiveTab, completedSteps, handleToggleStep, detailsScrollRef, moveTab, scrollDetails } =
     useIssueDetailsTabs({ selectedIssue });
@@ -112,6 +120,14 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
     setSelectedIssueId(id);
   };
 
+  const highlightIssue = (id: string) => {
+    setSelectedIssueId(id);
+  };
+
+  const handleListBoundary = (direction: "previous" | "next") => {
+    if (direction === "previous") setReviewFocusZone("filters");
+  };
+
   const handleListFocus = () => {
     setReviewFocusZone("list");
   };
@@ -125,6 +141,13 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
     if (event.key === "ArrowDown") {
       event.preventDefault();
       setReviewFocusZone("list");
+      return;
+    }
+
+    // ArrowUp in filters is a no-op: the badge row is the top of this pane,
+    // so there is nothing to navigate up to.
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
       return;
     }
 
@@ -153,10 +176,15 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
   useKey("j", () => setReviewFocusZone("list"), { scope: REVIEW_SCOPE, enabled: focusZone === "filters" });
 
   useKey("ArrowLeft", () => {
+    if (!selectedIssue) {
+      setReviewFocusZone("list");
+      return;
+    }
+
     const result = moveTab(-1);
     if (result === "boundary-left") setReviewFocusZone("list");
   }, { scope: REVIEW_SCOPE, enabled: focusZone === "details" });
-  useKey("ArrowRight", () => moveTab(1), { scope: REVIEW_SCOPE, enabled: focusZone === "details" });
+  useKey("ArrowRight", () => moveTab(1), { scope: REVIEW_SCOPE, enabled: focusZone === "details" && !!selectedIssue });
 
   useKey("ArrowUp", () => scrollDetails(-80), { scope: REVIEW_SCOPE, enabled: focusZone === "details" });
   useKey("ArrowDown", () => scrollDetails(80), { scope: REVIEW_SCOPE, enabled: focusZone === "details" });
@@ -164,13 +192,14 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
   useKey("Enter", toggleSeverityFilter, { scope: REVIEW_SCOPE, enabled: focusZone === "filters" });
   useKey(" ", toggleSeverityFilter, { scope: REVIEW_SCOPE, enabled: focusZone === "filters" });
 
-  useKey("1", () => setActiveTab("details"), { scope: REVIEW_SCOPE, enabled: focusZone === "details" });
-  useKey("2", () => setActiveTab("explain"), { scope: REVIEW_SCOPE, enabled: focusZone === "details" });
-  useKey("3", () => setActiveTab("trace"), { scope: REVIEW_SCOPE, enabled: focusZone === "details" });
+  useKey("1", () => setActiveTab("details"), { scope: REVIEW_SCOPE, enabled: focusZone === "details" && !!selectedIssue });
+  useKey("2", () => setActiveTab("explain"), { scope: REVIEW_SCOPE, enabled: focusZone === "details" && !!selectedIssue });
+  useKey("3", () => setActiveTab("trace"), { scope: REVIEW_SCOPE, enabled: focusZone === "details" && !!selectedIssue });
   useKey("4", () => setActiveTab("patch"), { scope: REVIEW_SCOPE, enabled: focusZone === "details" && !!selectedIssue?.suggested_patch });
 
   const footer = getReviewResultsFooter(
     focusZone,
+    selectedIssue !== null,
     Boolean(selectedIssue?.suggested_patch),
   );
 
@@ -181,6 +210,8 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
     selectedIssue,
     selectedIssueId,
     setSelectedIssueId: selectIssue,
+    highlightIssue,
+    handleListBoundary,
     activeTab,
     setActiveTab,
     severityFilter,

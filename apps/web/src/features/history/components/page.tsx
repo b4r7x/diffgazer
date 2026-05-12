@@ -1,10 +1,12 @@
 import { useRef, type KeyboardEvent } from "react";
 import { NavigationList } from "@diffgazer/ui/components/navigation-list";
 import { EmptyState } from "@diffgazer/ui/components/empty-state";
+import { Panel } from "@diffgazer/ui/components/panel";
 import { SearchInput } from "@diffgazer/ui/components/search-input";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { matchQueryState } from "@diffgazer/core/api/hooks";
 import { toVerticalBoundaryDirection } from "@diffgazer/keys";
+import { isVerticalListKey } from "@/utils/vertical-list-key";
 import { TimelineList } from "@/features/history/components/timeline-list";
 import { HistoryInsightsPane } from "@/features/history/components/history-insights-pane";
 import { useHistoryKeyboard } from "@/features/history/hooks/use-history-keyboard";
@@ -52,6 +54,11 @@ export function HistoryPage() {
   });
 
   const handleRunsKeyDown = (event: KeyboardEvent) => {
+    if (focusZone !== "runs") {
+      if (isVerticalListKey(event.key)) event.preventDefault();
+      return;
+    }
+
     if (event.key === " " && activeRunId) {
       event.preventDefault();
       handleRunActivate(activeRunId);
@@ -75,8 +82,8 @@ export function HistoryPage() {
   if (guard) return guard;
 
   return (
-    <div className="flex flex-col flex-1 overflow-hidden px-4 pb-0">
-      <div className="flex items-center gap-6 border-b border-tui-border mb-0 text-sm select-none shrink-0">
+    <div className="flex flex-col flex-1 overflow-hidden px-4 pb-2">
+      <div className="flex items-center gap-6 mb-0 text-sm select-none shrink-0">
         <span className="py-2 text-sm font-medium">Reviews</span>
       </div>
 
@@ -99,10 +106,14 @@ export function HistoryPage() {
         className="border-tui-border bg-tui-bg text-sm"
       />
 
-      <div className="flex flex-1 overflow-hidden border-x border-b border-tui-border">
-        <div
+      <div data-row="history" className="flex flex-1 overflow-hidden gap-px">
+        <Panel
+          as="aside"
+          aria-label="Review sections"
+          variant="borderless"
+          data-pane="timeline"
           data-focused={focusZone === "timeline" || undefined}
-          className="w-48 border-r border-tui-border flex flex-col shrink-0"
+          className="w-48 flex flex-col shrink-0 overflow-hidden border border-tui-border data-[focused]:border-tui-blue"
         >
           <SectionHeader as="h2" variant="muted" bordered className="mb-0 p-3 border-tui-border">
             Sections
@@ -120,17 +131,20 @@ export function HistoryPage() {
               onBoundaryReached={handleTimelineBoundary}
             />
           </div>
-        </div>
+        </Panel>
 
-        <div
+        <Panel
+          as="section"
+          variant="borderless"
+          data-pane="runs"
           data-focused={focusZone === "runs" || undefined}
-          className="flex-1 min-w-0 border-r border-tui-border flex flex-col overflow-hidden"
+          className="flex-1 min-w-0 flex flex-col overflow-hidden border border-tui-border data-[focused]:border-tui-blue"
         >
           <SectionHeader as="h2" variant="muted" bordered className="mb-0 flex justify-between overflow-hidden p-3 border-tui-border">
             <span className="truncate">Reviews</span>
             <span className="shrink-0 ml-2">Sort: Recent</span>
           </SectionHeader>
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto p-2">
             {mappedRuns.length > 0 ? (
               <NavigationList
                 ref={runsListRef}
@@ -158,7 +172,7 @@ export function HistoryPage() {
                     key={run.id}
                     id={run.id}
                     onDoubleClick={() => handleRunActivate(run.id)}
-                    className="border-b border-tui-border"
+                    className="border-b border-tui-border last:border-b-0"
                   >
                     <NavigationList.Title>{run.displayId}</NavigationList.Title>
                     <NavigationList.Status className="text-tui-muted group-data-[active]:text-primary-foreground/70">
@@ -182,13 +196,17 @@ export function HistoryPage() {
               </EmptyState>
             )}
           </div>
-        </div>
+        </Panel>
 
-        <div
+        <Panel
+          as="aside"
+          aria-label="Review insights"
+          variant="borderless"
           ref={insightsPaneRef}
           tabIndex={-1}
+          data-pane="insights"
           data-focused={focusZone === "insights" || undefined}
-          className="w-80 min-h-0 flex flex-col shrink-0 overflow-hidden"
+          className="w-80 min-h-0 flex flex-col shrink-0 overflow-hidden border border-tui-border data-[focused]:border-tui-blue"
         >
           <HistoryInsightsPane
             runId={selectedRun ? `#${selectedRun.id.slice(0, 4)}` : null}
@@ -197,7 +215,7 @@ export function HistoryPage() {
             duration={duration}
             onIssueClick={handleIssueClick}
           />
-        </div>
+        </Panel>
       </div>
     </div>
   );

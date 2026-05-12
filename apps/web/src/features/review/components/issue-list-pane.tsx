@@ -5,13 +5,17 @@ import { calculateSeverityCounts } from "@diffgazer/core/schemas/ui";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { NavigationList } from "@diffgazer/ui/components/navigation-list";
 import { EmptyState } from "@diffgazer/ui/components/empty-state";
+import { Panel } from "@diffgazer/ui/components/panel";
 import { SEVERITY_CONFIG } from "@/components/ui/severity/constants";
+import { isVerticalListKey } from "@/utils/vertical-list-key";
 
 export interface IssueListPaneProps {
   issues: ReviewIssue[];
   allIssues: ReviewIssue[];
   selectedIssueId: string | null;
   onSelectIssue: (id: string) => void;
+  onHighlightIssue?: (id: string) => void;
+  onListBoundaryReached?: (direction: "previous" | "next") => void;
   severityFilter: SeverityFilter;
   onSeverityFilterChange: (filter: SeverityFilter) => void;
   isFocused: boolean;
@@ -32,6 +36,8 @@ export function IssueListPane({
   allIssues,
   selectedIssueId,
   onSelectIssue,
+  onHighlightIssue,
+  onListBoundaryReached,
   severityFilter,
   onSeverityFilterChange,
   isFocused,
@@ -47,13 +53,24 @@ export function IssueListPane({
   className,
 }: IssueListPaneProps) {
   const counts = calculateSeverityCounts(allIssues);
+  const emptyMessage = allIssues.length === 0 ? "No issues found" : "No issues match filter";
+  // The severity filter visually lives inside this pane, so the pane
+  // keeps its focus outline while either zone is active.
+  const isPaneFocused = isFocused || !!isFilterFocused;
 
   return (
-    <div
-      data-focused={isFocused || undefined}
-      className={cn("w-2/5 flex flex-col border-r border-tui-border pr-4 min-h-0", className)}
+    <Panel
+      as="aside"
+      aria-label="Issue list"
+      variant="borderless"
+      data-pane="list"
+      data-focused={isPaneFocused || undefined}
+      className={cn(
+        "w-2/5 flex flex-col min-h-0 overflow-hidden border border-tui-border data-[focused]:border-tui-blue",
+        className,
+      )}
     >
-      <div className="pb-4 pt-2">
+      <div className="px-3 pb-4 pt-2">
         <div className="text-tui-violet font-bold mb-2">{title}</div>
         <SeverityFilterGroup
           counts={counts}
@@ -79,9 +96,13 @@ export function IssueListPane({
           highlighted={highlightedIssueId}
           onFocus={onListFocus}
           onKeyDown={(event) => {
-            if (!isFocused) event.preventDefault();
+            if (!isFocused && isVerticalListKey(event.key)) {
+              event.preventDefault();
+            }
           }}
           onSelect={onSelectIssue}
+          onHighlightChange={onHighlightIssue}
+          onNavigationBoundaryReached={(direction) => onListBoundaryReached?.(direction)}
           focused={isFocused}
           wrap={false}
           className="space-y-1"
@@ -93,7 +114,10 @@ export function IssueListPane({
                 key={issue.id}
                 id={issue.id}
                 density="compact"
-                className={cn(!isFocused && selectedIssueId === issue.id && "border-l-2 border-l-tui-blue/60")}
+                className={cn(
+                  "border-b border-tui-border last:border-b-0",
+                  !isFocused && selectedIssueId === issue.id && "border-l-2 border-l-tui-blue/60",
+                )}
               >
                 <NavigationList.Title className="min-w-0">
                   <span className={cn("mr-2", config.color)} aria-hidden="true">
@@ -111,9 +135,9 @@ export function IssueListPane({
           })}
         </NavigationList>
         {issues.length === 0 && (
-          <EmptyState variant="inline" size="sm">No issues match filter</EmptyState>
+          <EmptyState variant="inline" size="sm">{emptyMessage}</EmptyState>
         )}
       </div>
-    </div>
+    </Panel>
   );
 }

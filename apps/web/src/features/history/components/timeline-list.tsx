@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { NavigationList } from "@diffgazer/ui/components/navigation-list";
 import type { TimelineItem } from "@diffgazer/core/schemas/ui";
 import { toVerticalBoundaryDirection } from "@diffgazer/keys";
+import { isVerticalListKey } from "@/utils/vertical-list-key";
 
 export interface TimelineListProps {
   items: TimelineItem[];
@@ -42,6 +43,11 @@ export function TimelineList({
     <NavigationList
       aria-label="Review sections"
       onFocus={onFocus}
+      onKeyDown={(event) => {
+        if (!keyboardEnabled && isVerticalListKey(event.key)) {
+          event.preventDefault();
+        }
+      }}
       selectedId={selectedId}
       highlighted={keyboardEnabled ? selectedId : null}
       onSelect={notifySelect}
@@ -55,7 +61,12 @@ export function TimelineList({
       className={className}
     >
       {items.map((item) => (
-        <NavigationList.Item key={item.id} id={item.id} density="compact">
+        <NavigationList.Item
+          key={item.id}
+          id={item.id}
+          density="compact"
+          className="border-b border-tui-border last:border-b-0"
+        >
           <NavigationList.Title>{item.label}</NavigationList.Title>
           <NavigationList.Status>{item.count}</NavigationList.Status>
           <NavigationList.Meta className="sr-only">

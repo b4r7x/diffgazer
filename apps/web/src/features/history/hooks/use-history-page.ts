@@ -15,7 +15,7 @@ function useHistoryData() {
   const reviews = reviewsQuery.data?.reviews ?? [];
   const isLoading = reviewsQuery.isLoading;
   const error = reviewsQuery.error?.message ?? null;
-  const [selectedRunId, setSelectedRunId] = useScopedRouteState("run", reviews[0]?.id ?? null);
+  const [selectedRunId, setSelectedRunId] = useScopedRouteState<string | null>("run", reviews[0]?.id ?? null);
 
   return {
     reviewsQuery,
@@ -130,6 +130,20 @@ export function useHistoryPage() {
 
   const [focusZone, setFocusZone] = useState<HistoryFocusZone>("runs");
 
+  const resetSelectedRun = () => {
+    if (data.selectedRunId !== null) data.setSelectedRunId(null);
+  };
+
+  const setSearchQuery = (query: string) => {
+    search.setSearchQuery(query);
+    resetSelectedRun();
+  };
+
+  const setSelectedDateId = (id: string) => {
+    selection.setSelectedDateId(id);
+    resetSelectedRun();
+  };
+
   const handleTimelineBoundary = (direction: "up" | "down") => {
     if (direction === "up") {
       setFocusZone("search");
@@ -140,7 +154,7 @@ export function useHistoryPage() {
 
   const handleSearchEscape = () => {
     if (search.searchQuery) {
-      search.setSearchQuery("");
+      setSearchQuery("");
     } else {
       search.searchInputRef.current?.blur();
       setFocusZone("runs");
@@ -179,11 +193,11 @@ export function useHistoryPage() {
     focusZone,
     searchQuery: search.searchQuery,
     searchInputRef: search.searchInputRef,
-    setSearchQuery: search.setSearchQuery,
+    setSearchQuery,
     setFocusZone,
     timelineItems: selection.timelineItems,
     selectedDateId,
-    setSelectedDateId: selection.setSelectedDateId,
+    setSelectedDateId,
     selectedRunId,
     setSelectedRunId: data.setSelectedRunId,
     mappedRuns,

@@ -1,4 +1,4 @@
-export type KeyHandler = (event: KeyboardEvent) => void;
+export type KeyHandler = (event: KeyboardEvent) => unknown;
 
 interface NormalizedKeyInput<O> {
   handlerMap: Record<string, KeyHandler>;

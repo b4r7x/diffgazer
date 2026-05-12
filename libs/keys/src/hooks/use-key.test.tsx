@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, renderHook, cleanup, act } from "@testing-library/react";
+import { render, renderHook, screen, cleanup, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { StrictMode, useState, type ReactNode } from "react";
 import { KeyboardProvider } from "../providers/keyboard-provider";
@@ -160,6 +160,41 @@ describe("useKey", () => {
       fireKey("Escape");
       expect(secondHandler).toHaveBeenCalled();
       expect(callCount).toBe(2);
+    });
+  });
+
+  describe("handler return values", () => {
+    it("lets a higher-priority handler decline a matched key", async () => {
+      const user = userEvent.setup();
+
+      function Consumer() {
+        const [decline, setDecline] = useState(true);
+        const [handledBy, setHandledBy] = useState("idle");
+
+        useKey("a", () => setHandledBy("fallback"));
+        useKey("a", () => {
+          if (decline) return false;
+          setHandledBy("primary");
+        });
+
+        return (
+          <>
+            <button type="button" onClick={() => setDecline(false)}>
+              Handle primary
+            </button>
+            <output aria-label="Handled by">{handledBy}</output>
+          </>
+        );
+      }
+
+      render(<Consumer />, { wrapper });
+
+      act(() => fireKey("a"));
+      expect(screen.getByLabelText("Handled by").textContent).toBe("fallback");
+
+      await user.click(screen.getByRole("button", { name: "Handle primary" }));
+      act(() => fireKey("a"));
+      expect(screen.getByLabelText("Handled by").textContent).toBe("primary");
     });
   });
 

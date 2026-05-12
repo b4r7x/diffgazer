@@ -6,12 +6,15 @@ import { EmptyState } from "@diffgazer/ui/components/empty-state";
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { CodeBlock, type CodeBlockLineType } from "@diffgazer/ui/components/code-block";
 import { DiffView } from "@diffgazer/ui/components/diff-view";
+import { Panel } from "@diffgazer/ui/components/panel";
 import { parseDiff } from "@diffgazer/ui/lib/diff";
 import { FixPlanChecklist } from "./fix-plan-checklist";
 import { IssueHeader } from "./issue-header";
 
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import type { IssueTab as TabId } from "@diffgazer/core/schemas/ui";
+
+export type DetailsEmptyKind = "no-issues" | "filter-empty" | "no-selection";
 
 export interface IssueDetailsPaneProps {
   issue: ReviewIssue | null;
@@ -21,7 +24,26 @@ export interface IssueDetailsPaneProps {
   onToggleStep: (step: number) => void;
   scrollAreaRef?: Ref<HTMLDivElement>;
   isFocused: boolean;
+  emptyKind?: DetailsEmptyKind;
   className?: string;
+}
+
+const EMPTY_COPY: Record<DetailsEmptyKind, { title: string; description?: string }> = {
+  "no-issues": {
+    title: "No issues in this review",
+    description: "This analysis passed without findings.",
+  },
+  "filter-empty": {
+    title: "No issues match this filter",
+    description: "Choose another severity to continue.",
+  },
+  "no-selection": { title: "Select an issue to view details" },
+};
+
+const ISSUE_TABS = ["details", "explain", "trace", "patch"] as const;
+
+function isIssueTab(value: string): value is TabId {
+  return ISSUE_TABS.includes(value as TabId);
 }
 
 export function IssueDetailsPane({
@@ -32,14 +54,64 @@ export function IssueDetailsPane({
   onToggleStep,
   scrollAreaRef,
   isFocused,
+  emptyKind,
   className,
 }: IssueDetailsPaneProps) {
   const hasPatch = !!issue?.suggested_patch;
+  const empty = EMPTY_COPY[emptyKind ?? "no-selection"];
+  const handleTabChange = (value: string) => {
+    if (isIssueTab(value)) onTabChange(value);
+  };
+
+  if (!issue) {
+    return (
+      <Panel
+        as="aside"
+        aria-label="Issue details"
+        variant="borderless"
+        data-pane="details"
+        data-focused={isFocused || undefined}
+        className={cn(
+          "w-3/5 flex flex-col min-h-0 overflow-hidden border border-tui-border data-[focused]:border-tui-blue",
+          className,
+        )}
+      >
+        <div className="flex flex-1 min-h-0 flex-col px-3 py-2">
+          <ScrollArea
+            ref={scrollAreaRef}
+            aria-label="Issue details"
+            keyboardScrollable={false}
+            tabIndex={-1}
+            className="flex-1 min-h-0 focus:outline-none"
+          >
+            <EmptyState className="h-full min-h-[20rem]">
+              <div className="space-y-2">
+                <div>{empty.title}</div>
+                {empty.description && (
+                  <div className="text-xs text-tui-muted">{empty.description}</div>
+                )}
+              </div>
+            </EmptyState>
+          </ScrollArea>
+        </div>
+      </Panel>
+    );
+  }
 
   return (
-    <div data-focused={isFocused || undefined} className={cn("w-3/5 flex flex-col pl-4 min-h-0", className)}>
-      <div className="flex flex-1 min-h-0 flex-col">
-        <Tabs value={activeTab} onChange={onTabChange as (value: string) => void} className="flex flex-1 min-h-0 flex-col">
+    <Panel
+      as="aside"
+      aria-label="Issue details"
+      variant="borderless"
+      data-pane="details"
+      data-focused={isFocused || undefined}
+      className={cn(
+        "w-3/5 flex flex-col min-h-0 overflow-hidden border border-tui-border data-[focused]:border-tui-blue",
+        className,
+      )}
+    >
+      <div className="flex flex-1 min-h-0 flex-col px-3">
+        <Tabs value={activeTab} onChange={handleTabChange} className="flex flex-1 min-h-0 flex-col">
           <TabsList className="border-b border-tui-border pb-2 pt-2 mb-4">
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="explain">Explain</TabsTrigger>
@@ -52,45 +124,39 @@ export function IssueDetailsPane({
             aria-label="Issue details"
             keyboardScrollable={false}
             tabIndex={-1}
-            className="flex-1 min-h-0 pr-2"
+            className="flex-1 min-h-0 pr-2 focus:outline-none"
           >
-            {issue ? (
-              <>
-                <IssueHeader
-                  title={issue.title}
-                  severity={issue.severity}
-                  file={issue.file}
-                  line={issue.line_start ?? 0}
-                />
+            <IssueHeader
+              title={issue.title}
+              severity={issue.severity}
+              file={issue.file}
+              line={issue.line_start ?? 0}
+            />
 
-                <TabsContent value="details" className="mt-0">
-                  <DetailsTabContent issue={issue} completedSteps={completedSteps} onToggleStep={onToggleStep} />
-                </TabsContent>
+            <TabsContent value="details" className="mt-0">
+              <DetailsTabContent issue={issue} completedSteps={completedSteps} onToggleStep={onToggleStep} />
+            </TabsContent>
 
-                <TabsContent value="explain" className="mt-0">
-                  <div className="text-sm text-tui-fg/80">
-                    <p className="mb-4">{issue.rationale}</p>
-                    <p>{issue.recommendation}</p>
-                  </div>
-                </TabsContent>
+            <TabsContent value="explain" className="mt-0">
+              <div className="text-sm text-tui-fg/80">
+                <p className="mb-4">{issue.rationale}</p>
+                <p>{issue.recommendation}</p>
+              </div>
+            </TabsContent>
 
-                <TabsContent value="trace" className="mt-0">
-                  <TraceTabContent issue={issue} />
-                </TabsContent>
+            <TabsContent value="trace" className="mt-0">
+              <TraceTabContent issue={issue} />
+            </TabsContent>
 
-                {hasPatch && issue.suggested_patch && (
-                  <TabsContent value="patch" className="mt-0">
-                    <PatchTabContent patch={issue.suggested_patch} />
-                  </TabsContent>
-                )}
-              </>
-            ) : (
-              <EmptyState>Select an issue to view details</EmptyState>
+            {hasPatch && issue.suggested_patch && (
+              <TabsContent value="patch" className="mt-0">
+                <PatchTabContent patch={issue.suggested_patch} />
+              </TabsContent>
             )}
           </ScrollArea>
         </Tabs>
       </div>
-    </div>
+    </Panel>
   );
 }
 

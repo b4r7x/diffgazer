@@ -52,9 +52,9 @@ export function useKey(
   const focusWithinOnly = options?.focusWithinOnly;
   const preventDefault = options?.preventDefault;
 
-  const dispatch = useEffectEvent((key: string, event: KeyboardEvent) => {
-    handlerMap[key]?.(event);
-  });
+  const dispatch = useEffectEvent((key: string, event: KeyboardEvent) => (
+    handlerMap[key]?.(event)
+  ));
 
   const registrationKeys = Object.keys(handlerMap).sort();
   const registrationVersion = registrationKeys.map((key) => `${key.length}:${key}`).join("|");

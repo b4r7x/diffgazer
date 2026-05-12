@@ -19,6 +19,7 @@ import { ReviewResultsView } from "./review-results-view";
 interface IssueOptions {
   suggestedPatch?: string | null;
   fixPlan?: ReviewIssue["fixPlan"];
+  severity?: ReviewIssue["severity"];
 }
 
 const suggestedPatch = "--- a/src/example.ts\n+++ b/src/example.ts\n@@\n-const a = 1;\n+const a = 2;";
@@ -26,7 +27,7 @@ const suggestedPatch = "--- a/src/example.ts\n+++ b/src/example.ts\n@@\n-const a
 function makeIssue(id: string, title: string, options: IssueOptions = {}): ReviewIssue {
   return {
     id,
-    severity: "high",
+    severity: options.severity ?? "high",
     category: "correctness",
     title,
     file: "src/example.ts",
@@ -221,5 +222,28 @@ describe("ReviewResultsView keyboard regression", () => {
     await user.keyboard("{ArrowRight}");
 
     await waitFor(() => expect(screen.getByRole("region", { name: "Issue details" })).toHaveFocus());
+  });
+
+  it("renders a passed-review empty state when there are no issues", () => {
+    renderView([]);
+
+    expect(screen.getByText("No issues found")).toBeInTheDocument();
+    expect(screen.getByText("No issues in this review")).toBeInTheDocument();
+    expect(screen.getByText("This analysis passed without findings.")).toBeInTheDocument();
+    expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+  });
+
+  it("distinguishes filtered-out issues from passed reviews", async () => {
+    const user = userEvent.setup();
+    renderView([
+      makeIssue("issue-1", "High issue", { severity: "high" }),
+    ]);
+
+    await user.click(screen.getByRole("button", { name: /low severity/i }));
+
+    expect(screen.getByText("No issues match filter")).toBeInTheDocument();
+    expect(screen.getByText("No issues match this filter")).toBeInTheDocument();
+    expect(screen.getByText("Choose another severity to continue.")).toBeInTheDocument();
+    expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
   });
 });

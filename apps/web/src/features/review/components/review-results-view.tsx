@@ -1,5 +1,5 @@
 import { IssueListPane } from "@/features/review/components/issue-list-pane";
-import { IssueDetailsPane } from "@/features/review/components/issue-details-pane";
+import { IssueDetailsPane, type DetailsEmptyKind } from "@/features/review/components/issue-details-pane";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { useReviewResultsKeyboard } from "../hooks/use-review-results-keyboard";
 
@@ -8,12 +8,23 @@ interface ReviewResultsViewProps {
   reviewId: string | null;
 }
 
+function selectDetailsEmptyKind(
+  issues: ReviewIssue[],
+  filteredIssues: ReviewIssue[],
+): DetailsEmptyKind {
+  if (issues.length === 0) return "no-issues";
+  if (filteredIssues.length === 0) return "filter-empty";
+  return "no-selection";
+}
+
 export function ReviewResultsView({ issues, reviewId }: ReviewResultsViewProps) {
   const {
     filteredIssues,
     selectedIssue,
     selectedIssueId,
     setSelectedIssueId,
+    highlightIssue,
+    handleListBoundary,
     activeTab,
     setActiveTab,
     severityFilter,
@@ -30,20 +41,23 @@ export function ReviewResultsView({ issues, reviewId }: ReviewResultsViewProps) 
     completedSteps,
     handleToggleStep,
   } = useReviewResultsKeyboard({ issues });
+  const detailsEmptyKind = selectDetailsEmptyKind(issues, filteredIssues);
 
   return (
-    <div className="flex flex-col flex-1 overflow-hidden px-4 font-mono">
-      <div className="flex items-center gap-4 py-2 border-b border-tui-border mb-2 shrink-0">
+    <div className="flex flex-col flex-1 overflow-hidden px-4 pb-2 font-mono">
+      <div className="flex items-center gap-4 py-2 mb-2 shrink-0">
         <span className="text-sm font-medium text-tui-violet">
           Analysis #{reviewId ?? "unknown"}
         </span>
       </div>
-      <div className="flex flex-1 overflow-hidden">
+      <div data-row="review" className="flex flex-1 overflow-hidden">
         <IssueListPane
           issues={filteredIssues}
           allIssues={issues}
           selectedIssueId={selectedIssueId}
           onSelectIssue={setSelectedIssueId}
+          onHighlightIssue={highlightIssue}
+          onListBoundaryReached={handleListBoundary}
           severityFilter={severityFilter}
           onSeverityFilterChange={setSeverityFilter}
           isFocused={focusZone === "list"}
@@ -64,6 +78,7 @@ export function ReviewResultsView({ issues, reviewId }: ReviewResultsViewProps) 
           onToggleStep={handleToggleStep}
           scrollAreaRef={detailsScrollRef}
           isFocused={focusZone === "details"}
+          emptyKind={detailsEmptyKind}
         />
       </div>
     </div>

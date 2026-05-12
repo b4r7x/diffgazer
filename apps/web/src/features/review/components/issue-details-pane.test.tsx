@@ -42,7 +42,7 @@ describe("IssueDetailsPane", () => {
     renderPane(null);
 
     expect(screen.getByText("Select an issue to view details")).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Details" })).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Details" })).not.toBeInTheDocument();
     expect(screen.queryByRole("tab", { name: "Patch" })).not.toBeInTheDocument();
   });
 

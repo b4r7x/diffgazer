@@ -5,7 +5,6 @@ import { useKey } from "./use-key.js";
 import type { UseKeyOptions } from "./use-key.js";
 import { useScope } from "./use-scope.js";
 import { getFirstFocusableElement, isFocusable } from "../utils/focusable.js";
-import { keys } from "../utils/keys.js";
 import { containsActiveElement } from "../utils/navigation-items.js";
 
 type ZoneTransition<T extends string> = (params: {
@@ -158,7 +157,9 @@ export function useFocusZone<T extends string>(
       const next = transitions?.({ zone: currentZone, key });
       if (next != null && zones.includes(next)) {
         setZoneValue(next);
+        return;
       }
+      return false;
     },
     [currentZone, setZoneValue, transitions, zones],
   );
@@ -179,7 +180,8 @@ export function useFocusZone<T extends string>(
   }, [currentZone, setZoneValue, validatedTabCycle]);
 
   useKey(
-    keys(ARROW_KEYS, (e) => stableTransitions(e.key as typeof ARROW_KEYS[number])),
+    ARROW_KEYS,
+    (e) => stableTransitions(e.key as typeof ARROW_KEYS[number]),
     {
       enabled: enabled && transitions != null,
       scope,
@@ -210,6 +212,40 @@ export function useFocusZone<T extends string>(
 
   useScope(scope ?? null, { enabled: enabled && !!scope });
 
+  useEffect(() => {
+    if (!enabled || !focus) return;
+    const targets = focus.targets;
+    const docs = new Set<Document>();
+
+    for (const zone of zones as readonly T[]) {
+      const { container } = resolveFocusTarget(targets[zone]);
+      if (container) docs.add(container.ownerDocument);
+    }
+
+    if (docs.size === 0 && typeof document !== "undefined") {
+      docs.add(document);
+    }
+
+    function handleFocusIn(event: FocusEvent) {
+      const target = event.target;
+      const targetDocument = target && typeof target === "object" && "ownerDocument" in target
+        ? (target as { ownerDocument?: Document }).ownerDocument ?? null
+        : null;
+      const View = targetDocument?.defaultView;
+      if (!View || !(target instanceof View.HTMLElement)) return;
+      for (const zone of zones as readonly T[]) {
+        const { container } = resolveFocusTarget(targets[zone]);
+        if (container && container.contains(target)) {
+          setZoneValue(zone);
+          return;
+        }
+      }
+    }
+
+    docs.forEach((doc) => doc.addEventListener("focusin", handleFocusIn));
+    return () => docs.forEach((doc) => doc.removeEventListener("focusin", handleFocusIn));
+  }, [enabled, focus, zones, setZoneValue]);
+
   const safeZone = zones.includes(currentZone) ? currentZone : zones[0];
 
   useEffect(() => {
@@ -222,14 +258,20 @@ export function useFocusZone<T extends string>(
     }
 
     const { container, target } = resolveFocusTarget(focus.targets[safeZone]);
-    if (!target) return;
+    if (!target) {
+      lastFocusedZoneRef.current = safeZone;
+      return;
+    }
     if (container && containsActiveElement(container)) {
       lastFocusedZoneRef.current = safeZone;
       return;
     }
 
     const focusTarget = resolveFocusableTarget(target);
-    if (!focusTarget) return;
+    if (!focusTarget) {
+      lastFocusedZoneRef.current = safeZone;
+      return;
+    }
 
     focusTarget.focus({ preventScroll: focus.preventScroll ?? true });
     lastFocusedZoneRef.current = safeZone;
