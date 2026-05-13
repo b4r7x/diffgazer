@@ -1,7 +1,9 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import type { ContextInfo } from "@diffgazer/core/schemas/ui";
 import type { Shortcut } from "@diffgazer/core/schemas/ui";
+import type { ReviewMode } from "@diffgazer/core/schemas/review";
+import { useApi, useCreateReview } from "@diffgazer/core/api/hooks";
 import { MAIN_MENU_SHORTCUTS, MENU_ITEMS } from "@/config/navigation";
 import { useKey, useScope } from "@diffgazer/keys";
 import { useScopedRouteState, clearScopedRouteState } from "@/hooks/use-scoped-route-state";
@@ -18,10 +20,12 @@ type RouteConfig = { to: string; search?: Record<string, string> };
 const MAIN_MENU_ITEMS = MENU_ITEMS.filter((item) => item.id !== "help");
 const MAIN_MENU_ITEM_IDS = new Set<string>(MAIN_MENU_ITEMS.map((item) => item.id));
 
+const REVIEW_MODES: Record<string, ReviewMode> = {
+  "review-unstaged": "unstaged",
+  "review-staged": "staged",
+};
+
 const MENU_ROUTES: Record<string, RouteConfig> = {
-  "review-unstaged": { to: "/review" },
-  "review-staged": { to: "/review", search: { mode: "staged" } },
-  "resume-review": { to: "/review" },
   history: { to: "/history" },
   settings: { to: "/settings" },
   help: { to: "/help" },
@@ -38,6 +42,9 @@ export function HomePage() {
   const { reviews } = useReviewHistory();
   const navigate = useNavigate();
   const search = useSearch({ strict: false });
+  const api = useApi();
+  const createReview = useCreateReview();
+  const [isStartingReview, setIsStartingReview] = useState(false);
 
   const isTrusted = Boolean(trust?.capabilities.readFiles);
   const hasLastReview = reviews.length > 0;
@@ -78,6 +85,50 @@ export function HomePage() {
     toast[variant](title, { message: result.message });
   };
 
+  const navigateToReview = (reviewId: string, mode: ReviewMode) => {
+    clearScopedRouteState("/review", "highlighted");
+    navigate({
+      to: "/review/{-$reviewId}",
+      params: { reviewId },
+      search: { mode, live: true },
+    });
+  };
+
+  const startReview = async (mode: ReviewMode) => {
+    if (isStartingReview) return;
+    setIsStartingReview(true);
+    try {
+      const { reviewId } = await createReview.mutateAsync({ mode });
+      navigateToReview(reviewId, mode);
+    } catch {
+      toast.error("Failed to Start Review", { message: "Could not create a review session." });
+    } finally {
+      setIsStartingReview(false);
+    }
+  };
+
+  const resumeReview = async () => {
+    if (isStartingReview) return;
+    setIsStartingReview(true);
+    try {
+      const active = await api.getActiveReviewSession("unstaged");
+      if (active.session) {
+        navigateToReview(active.session.reviewId, active.session.mode);
+        return;
+      }
+      const stagedActive = await api.getActiveReviewSession("staged");
+      if (stagedActive.session) {
+        navigateToReview(stagedActive.session.reviewId, stagedActive.session.mode);
+        return;
+      }
+      await startReview("unstaged");
+    } catch {
+      toast.error("Failed to Resume Review", { message: "Could not find an active session." });
+    } finally {
+      setIsStartingReview(false);
+    }
+  };
+
   const handleActivate = (id: string) => {
     if (id === "quit") {
       void handleQuit();
@@ -87,6 +138,17 @@ export function HomePage() {
     const reviewActions = ["review-unstaged", "review-staged", "review-files"];
     if (reviewActions.includes(id) && !isTrusted) {
       toast.error("Directory Not Trusted", { message: "Grant permissions in Settings → Trust & Permissions first." });
+      return;
+    }
+
+    const reviewMode = REVIEW_MODES[id];
+    if (reviewMode) {
+      void startReview(reviewMode);
+      return;
+    }
+
+    if (id === "resume-review") {
+      void resumeReview();
       return;
     }
 

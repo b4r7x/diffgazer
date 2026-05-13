@@ -7,6 +7,8 @@ import {
   type ReviewErrorCode as ReviewErrorCodeType,
   type ReviewMode,
 } from "@diffgazer/core/schemas/review";
+import type { Result } from "@diffgazer/core/result";
+import { ok, err } from "@diffgazer/core/result";
 import type { SSEWriter } from "../../shared/lib/http/sse.js";
 import type { StepId, FullReviewStreamEvent } from "@diffgazer/core/schemas/events";
 import {
@@ -245,21 +247,66 @@ export async function streamActiveSessionToSSE(
   });
 }
 
-async function tryReplayExistingSession(
-  stream: SSEWriter,
-  projectPath: string,
-  headCommit: string,
-  statusHash: string,
-  mode: ReviewMode,
-  clientSignal?: AbortSignal
-): Promise<boolean> {
-  if (!headCommit) return false;
+export interface CreateReviewSessionResult {
+  reviewId: string;
+  session: ActiveSession;
+}
 
-  const existingSession = getActiveSessionForProject(projectPath, headCommit, statusHash, mode);
-  if (!existingSession) return false;
+export async function createReviewSession(
+  aiClient: AIClient,
+  options: StreamReviewParams,
+): Promise<Result<CreateReviewSessionResult, { code: string; message: string }>> {
+  const { mode = "unstaged", files, lenses: lensIds, profile: profileId, projectPath: projectPathOption } = options;
+  const projectPath = projectPathOption ?? process.cwd();
+  const gitService = createGitService({ cwd: projectPath });
 
-  await streamActiveSessionToSSE(stream, existingSession, clientSignal);
-  return true;
+  let headCommit: string;
+  let statusHash: string;
+  try {
+    const [headCommitResult, currentStatusHash] = await Promise.all([
+      gitService.getHeadCommit(),
+      gitService.getStatusHash(),
+    ]);
+
+    if (!headCommitResult.ok) {
+      return err({
+        code: ReviewErrorCode.GENERATION_FAILED,
+        message: `Failed to inspect repository state: ${headCommitResult.error.message}`,
+      });
+    }
+
+    headCommit = headCommitResult.value;
+    statusHash = currentStatusHash;
+  } catch (error) {
+    return err({
+      code: ReviewErrorCode.GENERATION_FAILED,
+      message: `Failed to inspect repository state: ${getErrorMessage(error)}`,
+    });
+  }
+
+  if (headCommit) {
+    const existingSession = getActiveSessionForProject(projectPath, headCommit, statusHash, mode);
+    if (existingSession) {
+      return ok({ reviewId: existingSession.reviewId, session: existingSession });
+    }
+  }
+
+  cancelStaleSessionsForProjectMode(projectPath, mode, headCommit, statusHash);
+
+  const reviewId = randomUUID();
+  const session = createSession(reviewId, projectPath, headCommit, statusHash, mode);
+  markReady(reviewId);
+
+  void runReviewSession(
+    aiClient,
+    { mode, files, lenses: lensIds, profile: profileId, projectPath },
+    reviewId,
+    session.controller.signal,
+  ).catch((error) => {
+    handleDetachedReviewSessionError(reviewId, error);
+  });
+
+  return ok({ reviewId, session });
 }
 
 async function runReviewSession(
@@ -321,66 +368,4 @@ async function runReviewSession(
   } catch (error) {
     await handleReviewFailure(error, emit, reviewId);
   }
-}
-
-export async function streamReviewToSSE(
-  aiClient: AIClient,
-  options: StreamReviewParams,
-  stream: SSEWriter,
-  clientSignal?: AbortSignal
-): Promise<void> {
-  if (clientSignal?.aborted) {
-    return;
-  }
-
-  const { mode = "unstaged", files, lenses: lensIds, profile: profileId, projectPath: projectPathOption } = options;
-  const projectPath = projectPathOption ?? process.cwd();
-  const gitService = createGitService({ cwd: projectPath });
-
-  let headCommit: string;
-  let statusHash: string;
-  try {
-    const [headCommitResult, currentStatusHash] = await Promise.all([
-      gitService.getHeadCommit(),
-      gitService.getStatusHash(),
-    ]);
-
-    if (!headCommitResult.ok) {
-      await writeStreamEvent(stream, reviewStreamError(`Failed to inspect repository state: ${headCommitResult.error.message}`));
-      return;
-    }
-
-    headCommit = headCommitResult.value;
-    statusHash = currentStatusHash;
-  } catch (error) {
-    await writeStreamEvent(stream, reviewStreamError(`Failed to inspect repository state: ${getErrorMessage(error)}`));
-    return;
-  }
-
-  const replayed = await tryReplayExistingSession(
-    stream,
-    projectPath,
-    headCommit,
-    statusHash,
-    mode,
-    clientSignal,
-  );
-  if (replayed) return;
-
-  cancelStaleSessionsForProjectMode(projectPath, mode, headCommit, statusHash);
-
-  const reviewId = randomUUID();
-  const session = createSession(reviewId, projectPath, headCommit, statusHash, mode);
-  markReady(reviewId);
-
-  void runReviewSession(
-    aiClient,
-    { mode, files, lenses: lensIds, profile: profileId, projectPath },
-    reviewId,
-    session.controller.signal,
-  ).catch((error) => {
-    handleDetachedReviewSessionError(reviewId, error);
-  });
-
-  await streamActiveSessionToSSE(stream, session, clientSignal);
 }

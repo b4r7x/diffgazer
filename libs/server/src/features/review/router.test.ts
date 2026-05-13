@@ -139,3 +139,146 @@ describe("review router project boundaries", () => {
     await expect(response.json()).resolves.toEqual({ existed: false });
   });
 });
+
+describe("POST /api/review/reviews", () => {
+  it("requires setup before accepting requests", async () => {
+    await trustProject(projectA);
+    const app = await createReviewApp();
+
+    const response = await app.request(
+      "/api/review/reviews",
+      {
+        ...requestOptions(projectA),
+        method: "POST",
+        headers: {
+          [PROJECT_ROOT_HEADER]: projectA,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ mode: "unstaged" }),
+      },
+    );
+
+    expect(response.status).toBe(503);
+    const body = await response.json() as { error: { code: string } };
+    expect(body.error.code).toBe("SETUP_REQUIRED");
+  });
+
+  // This test verifies the 503 error response format (JSON, not SSE) because
+  // setup is not configured. It does not reach the actual POST handler logic.
+  it("does not return SSE content type", async () => {
+    await trustProject(projectA);
+    const app = await createReviewApp();
+
+    const response = await app.request(
+      "/api/review/reviews",
+      {
+        ...requestOptions(projectA),
+        method: "POST",
+        headers: {
+          [PROJECT_ROOT_HEADER]: projectA,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ mode: "unstaged" }),
+      },
+    );
+
+    expect(response.headers.get("content-type")).not.toContain("text/event-stream");
+  });
+});
+
+async function configureSetup(projectRoot: string): Promise<void> {
+  const { updateSettings, saveProviderCredentials } = await import(
+    "../../shared/lib/config/store.js"
+  );
+  updateSettings({ secretsStorage: "file" });
+  saveProviderCredentials({
+    provider: "gemini",
+    apiKey: "test-key-not-real",
+    model: "gemini-2.0-flash",
+  });
+  await trustProject(projectRoot);
+}
+
+describe("POST /api/review/reviews validation", () => {
+  it("rejects an invalid mode value", async () => {
+    await configureSetup(projectA);
+    const app = await createReviewApp();
+
+    const response = await app.request("/api/review/reviews", {
+      method: "POST",
+      headers: {
+        [PROJECT_ROOT_HEADER]: projectA,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ mode: "garbage" }),
+    });
+
+    expect(response.status).toBe(400);
+    const body = (await response.json()) as { error: { code: string } };
+    expect(body.error.code).toBe("VALIDATION_ERROR");
+  });
+
+  it("rejects a non-array files field", async () => {
+    await configureSetup(projectA);
+    const app = await createReviewApp();
+
+    const response = await app.request("/api/review/reviews", {
+      method: "POST",
+      headers: {
+        [PROJECT_ROOT_HEADER]: projectA,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ files: "not-an-array" }),
+    });
+
+    expect(response.status).toBe(400);
+    const body = (await response.json()) as { error: { code: string } };
+    expect(body.error.code).toBe("VALIDATION_ERROR");
+  });
+
+  it("rejects a non-JSON content type", async () => {
+    await configureSetup(projectA);
+    const app = await createReviewApp();
+
+    const response = await app.request("/api/review/reviews", {
+      method: "POST",
+      headers: {
+        [PROJECT_ROOT_HEADER]: projectA,
+        "Content-Type": "text/plain",
+      },
+      body: "not json",
+    });
+
+    expect(response.status).toBeGreaterThanOrEqual(400);
+  });
+});
+
+describe("review router param validation", () => {
+  it("rejects a non-UUID review id on GET", async () => {
+    await trustProject(projectA);
+    const app = await createReviewApp();
+
+    const response = await app.request(
+      "/api/review/reviews/not-a-uuid",
+      requestOptions(projectA),
+    );
+
+    expect(response.status).toBe(400);
+    const body = (await response.json()) as { error: { code: string } };
+    expect(body.error.code).toBe("VALIDATION_ERROR");
+  });
+
+  it("rejects a non-UUID review id on DELETE", async () => {
+    await trustProject(projectA);
+    const app = await createReviewApp();
+
+    const response = await app.request("/api/review/reviews/not-a-uuid", {
+      ...requestOptions(projectA),
+      method: "DELETE",
+    });
+
+    expect(response.status).toBe(400);
+    const body = (await response.json()) as { error: { code: string } };
+    expect(body.error.code).toBe("VALIDATION_ERROR");
+  });
+});

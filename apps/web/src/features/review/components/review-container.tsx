@@ -13,7 +13,6 @@ export type { ReviewCompleteData };
 export interface ReviewContainerProps {
   mode: ReviewMode;
   onComplete?: (data: ReviewCompleteData) => void;
-  onReviewIdChange?: (reviewId: string) => void;
 }
 
 export function ReviewLoadingMessage({ message }: { message: string }) {
@@ -28,7 +27,7 @@ export function ReviewLoadingMessage({ message }: { message: string }) {
   );
 }
 
-export function ReviewContainer({ mode, onComplete, onReviewIdChange }: ReviewContainerProps) {
+export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
   const {
     state,
     isConfigured,
@@ -40,7 +39,7 @@ export function ReviewContainer({ mode, onComplete, onReviewIdChange }: ReviewCo
     handleViewResults,
     handleSetupProvider,
     handleSwitchMode,
-  } = useReviewLifecycle({ mode, onComplete, onReviewIdChange });
+  } = useReviewLifecycle({ mode, onComplete });
 
   const contextStep = state.steps.find(s => s.id === 'context');
   const contextReady = contextStep?.status === 'completed' && !!state.reviewId;

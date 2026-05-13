@@ -27,13 +27,12 @@ import {
 import {
   ActiveSessionQuerySchema,
   ContextRefreshSchema,
+  CreateReviewBodySchema,
   DrilldownRequestSchema,
   ReviewIdParamSchema,
-  ReviewStreamQuerySchema,
-  parseCsvParam,
 } from "./schemas.js";
 import { initializeAIClient } from "../../shared/lib/ai/client.js";
-import { streamActiveSessionToSSE, streamReviewToSSE } from "./service.js";
+import { createReviewSession, streamActiveSessionToSSE } from "./service.js";
 import { buildProjectContextSnapshot, loadContextSnapshot } from "./context.js";
 import { handleDrilldownRequest } from "./drilldown.js";
 import { ReviewErrorCode } from "@diffgazer/core/schemas/review";
@@ -126,11 +125,12 @@ const resumeStreamById = async (c: Context): Promise<Response> => {
   });
 };
 
-reviewRouter.get(
-  "/stream",
+reviewRouter.post(
+  "/reviews",
+  bodyLimitMiddleware,
   requireSetup,
   requireRepoAccess,
-  zValidator("query", ReviewStreamQuerySchema, zodErrorHandler),
+  zValidator("json", CreateReviewBodySchema, zodErrorHandler),
   async (c): Promise<Response> => {
     const clientResult = initializeAIClient();
     if (!clientResult.ok) {
@@ -142,37 +142,22 @@ reviewRouter.get(
       );
     }
 
-    const {
-      mode: modeParam,
-      profile,
-      lenses,
-      files: filesParam,
-    } = c.req.valid("query");
-    const mode = modeParam ?? "unstaged";
-
-    const files = parseCsvParam(filesParam);
+    const { mode, profile, lenses, files } = c.req.valid("json");
     const projectPath = getProjectRoot(c);
 
-    return streamSSE(c, async (stream) => {
-      try {
-        await streamReviewToSSE(
-          clientResult.value,
-          { mode, files, lenses, profile, projectPath },
-          stream,
-          c.req.raw.signal,
-        );
-      } catch (error) {
-        try {
-          await writeSSEError(
-            stream,
-            getErrorMessage(error),
-            ErrorCode.INTERNAL_ERROR,
-          );
-        } catch (e) {
-          console.warn("SSE error write failed:", e);
-        }
-      }
+    const result = await createReviewSession(clientResult.value, {
+      mode: mode ?? "unstaged",
+      files,
+      lenses,
+      profile,
+      projectPath,
     });
+
+    if (!result.ok) {
+      return errorResponse(c, result.error.message, result.error.code, 500);
+    }
+
+    return c.json({ reviewId: result.value.reviewId });
   },
 );
 

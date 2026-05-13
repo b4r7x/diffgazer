@@ -17,49 +17,37 @@ interface ReviewData {
 }
 
 type LiveReviewState =
-  | { phase: "streaming"; reviewId: string | null }
+  | { phase: "streaming"; reviewId: string }
   | { phase: "summary"; reviewData: ReviewData }
   | { phase: "results"; reviewData: ReviewData };
 
 const REVIEW_ROUTE = "/review/{-$reviewId}" as const;
 
-function logReviewPage(event: string, data: Record<string, unknown> = {}) {
-  console.log(`[diffgazer:review-page] ${event}`, {
-    at: new Date().toISOString(),
-    path: window.location.pathname,
-    ...data,
-  });
-}
-
-function getLiveReviewId(liveState: LiveReviewState | null) {
-  switch (liveState?.phase) {
-    case "streaming":
-      return liveState.reviewId;
-    case "summary":
-    case "results":
-      return liveState.reviewData.reviewId;
-    default:
-      return null;
-  }
+function getLiveReviewId(state: LiveReviewState | null): string | null {
+  if (!state) return null;
+  if (state.phase === "streaming") return state.reviewId;
+  return state.reviewData.reviewId;
 }
 
 export function ReviewPage() {
   const params = useParams({ from: REVIEW_ROUTE });
   const search = useSearch({ from: REVIEW_ROUTE });
   const reviewMode = search.mode;
+  const isLiveNavigation = search.live === true;
   const reviewId = params.reviewId ?? null;
-  const [liveState, setLiveState] = useState<LiveReviewState | null>(null);
+  const [liveState, setLiveState] = useState<LiveReviewState | null>(
+    reviewId && isLiveNavigation ? { phase: "streaming", reviewId } : null,
+  );
 
   const router = useRouter();
   const { handleApiError } = useReviewErrorHandler();
 
   const liveReviewId = getLiveReviewId(liveState);
   const isLiveReviewRoute = Boolean(reviewId && liveReviewId === reviewId);
-  const isLiveReviewStreaming = liveState?.phase === "streaming";
   const shouldLoadSavedReview = Boolean(
     reviewId &&
     !isLiveReviewRoute &&
-    !isLiveReviewStreaming,
+    !liveState,
   );
   const savedReviewQuery = useReview(shouldLoadSavedReview ? (reviewId ?? "") : "");
   const savedReview = savedReviewQuery.data?.review;
@@ -68,43 +56,14 @@ export function ReviewPage() {
     : null;
 
   const handleComplete = (data: ReviewCompleteData) => {
-    logReviewPage("handleComplete", {
-      reviewId: data.reviewId,
-      issues: data.issues.length,
-    });
     setLiveState({ phase: "summary", reviewData: data });
   };
 
   useEffect(() => {
-    logReviewPage("route decision", {
-      routeReviewId: reviewId,
-      liveReviewId,
-      livePhase: liveState?.phase,
-      isLiveReviewRoute,
-      isLiveReviewStreaming,
-      shouldLoadSavedReview,
-      savedReviewIsSuccess: savedReviewQuery.isSuccess,
-      savedReviewIsError: savedReviewQuery.isError,
-      savedReviewError: savedReviewQuery.error instanceof Error ? savedReviewQuery.error.message : savedReviewQuery.error,
-    });
-
     if (!shouldLoadSavedReview || !reviewId) return;
 
     const startFreshReview = () => {
-      logReviewPage("startFreshReview fallback", {
-        routeReviewId: reviewId,
-        mode: reviewMode,
-        savedReviewIsSuccess: savedReviewQuery.isSuccess,
-        savedReviewIsError: savedReviewQuery.isError,
-        savedReviewError: savedReviewQuery.error instanceof Error ? savedReviewQuery.error.message : savedReviewQuery.error,
-      });
-      setLiveState({ phase: "streaming", reviewId: null });
-      void router.navigate({
-        to: "/review/{-$reviewId}",
-        params: {},
-        search: { mode: reviewMode },
-        replace: true,
-      });
+      setLiveState({ phase: "streaming", reviewId });
     };
 
     if (savedReviewQuery.isSuccess && !savedReviewQuery.data.review?.result) {
@@ -128,8 +87,6 @@ export function ReviewPage() {
     savedReviewQuery.isError,
     savedReviewQuery.isSuccess,
     shouldLoadSavedReview,
-    reviewMode,
-    router,
   ]);
 
   if (shouldLoadSavedReview) {
@@ -145,24 +102,11 @@ export function ReviewPage() {
     return <ReviewLoadingMessage message="Loading review..." />;
   }
 
-  const currentLiveState = liveState ?? { phase: "streaming" as const, reviewId: null };
-  const handleReviewIdChange = (nextReviewId: string) => {
-    logReviewPage("handleReviewIdChange", {
-      nextReviewId,
-      currentPhase: liveState?.phase,
-      currentLiveReviewId: liveReviewId,
-      routeReviewId: reviewId,
-    });
-    setLiveState((current) => {
-      if (current?.phase === "streaming" && current.reviewId === nextReviewId) {
-        return current;
-      }
-      if (current && current.phase !== "streaming") {
-        return current;
-      }
-      return { phase: "streaming", reviewId: nextReviewId };
-    });
-  };
+  if (!reviewId) {
+    return <ReviewLoadingMessage message="Redirecting..." />;
+  }
+
+  const currentLiveState = liveState ?? { phase: "streaming" as const, reviewId };
 
   switch (currentLiveState.phase) {
     case "streaming":
@@ -170,7 +114,6 @@ export function ReviewPage() {
         <ReviewContainer
           mode={reviewMode}
           onComplete={handleComplete}
-          onReviewIdChange={handleReviewIdChange}
         />
       );
 

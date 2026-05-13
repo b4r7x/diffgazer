@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildReviewQueryParams, processReviewStream } from "./stream-review.js";
+import { processReviewStream } from "./stream-review.js";
 
 function createSSEReader(events: unknown[]): ReadableStreamDefaultReader<Uint8Array> {
   const encoder = new TextEncoder();
@@ -31,24 +31,6 @@ const agentStarted = {
   },
   timestamp: "2025-01-01T00:00:00Z",
 };
-
-describe("buildReviewQueryParams", () => {
-  it.each([
-    [{}, { mode: "unstaged" }],
-    [{ mode: "staged" as const }, { mode: "staged" }],
-    [{ files: ["a.ts", "b.ts"] }, { mode: "unstaged", files: "a.ts,b.ts" }],
-    [{ files: [] }, { mode: "unstaged" }],
-    [{ lenses: ["correctness", "security"] }, { mode: "unstaged", lenses: "correctness,security" }],
-    [{ lenses: [] }, { mode: "unstaged" }],
-    [{ profile: "strict" as const }, { mode: "unstaged", profile: "strict" }],
-    [
-      { mode: "files" as const, files: ["x.ts"], lenses: ["security"], profile: "quick" as const },
-      { mode: "files", files: "x.ts", lenses: "security", profile: "quick" },
-    ],
-  ])("builds %j as %j", (options, expected) => {
-    expect(buildReviewQueryParams(options)).toEqual(expected);
-  });
-});
 
 describe("processReviewStream", () => {
   it("returns the complete review result and collected agent events", async () => {

@@ -1,16 +1,14 @@
 import { useReviewStream } from "./use-review-stream.js";
 import { useSettings } from "./config.js";
-import { useApi } from "./context.js";
 import { useReviewStart } from "./use-review-start.js";
 import { useReviewCompletion } from "./use-review-completion.js";
 import {
-  resolveDefaultLenses,
   isNoDiffError as checkNoDiffError,
   isCheckingForChanges as checkForChanges,
   getLoadingMessage,
 } from "@diffgazer/core/review";
 import type { ReviewStreamState } from "./use-review-stream.js";
-import type { ReviewMode, LensId } from "@diffgazer/core/schemas/review";
+import type { ReviewMode } from "@diffgazer/core/schemas/review";
 
 export interface UseReviewLifecycleBaseOptions {
   mode: ReviewMode;
@@ -18,33 +16,27 @@ export interface UseReviewLifecycleBaseOptions {
   settingsLoading: boolean;
   isConfigured: boolean;
   reviewId?: string;
-  startToken?: number;
   onComplete: () => void;
   onNotFoundInSession?: (reviewId: string) => void;
+  onStaleSession?: () => void;
 }
 
 export interface UseReviewLifecycleBaseResult {
-  // Stream controls
   stream: {
-    start: (mode: ReviewMode, lenses?: LensId[]) => Promise<void>;
     stop: () => void;
     abort: () => void;
   };
 
-  // Stream state
   streamState: ReviewStreamState;
 
-  // Derived display state
   isNoDiffError: boolean;
   isCheckingForChanges: boolean;
   loadingMessage: string | null;
 
-  // Completion
   isCompleting: boolean;
   skipDelay: () => void;
   resetCompletion: () => void;
 
-  // Start state
   hasStarted: boolean;
   hasStreamed: boolean;
   setHasStarted: (value: boolean) => void;
@@ -54,24 +46,20 @@ export interface UseReviewLifecycleBaseResult {
 export function useReviewLifecycleBase(
   options: UseReviewLifecycleBaseOptions,
 ): UseReviewLifecycleBaseResult {
-  const api = useApi();
   const stream = useReviewStream();
-  const { data: settings, isLoading: settingsLoading } = useSettings();
-  const defaultLenses = resolveDefaultLenses(settings?.defaultLenses);
+  const { isLoading: settingsLoading } = useSettings();
+  const isSettingsLoading = settingsLoading || options.settingsLoading;
 
   const { hasStarted, hasStreamed, setHasStarted, setHasStreamed } = useReviewStart({
     mode: options.mode,
     configLoading: options.configLoading,
-    settingsLoading: settingsLoading || options.settingsLoading,
+    settingsLoading: isSettingsLoading,
     isConfigured: options.isConfigured,
-    defaultLenses,
     reviewId: options.reviewId,
     currentReviewId: stream.state.reviewId,
-    startToken: options.startToken,
-    start: (opts) => stream.start(opts.mode!, opts.lenses),
     resume: stream.resume,
-    getActiveSession: api.getActiveReviewSession,
     onNotFoundInSession: options.onNotFoundInSession,
+    onStaleSession: options.onStaleSession,
   });
 
   const { isCompleting, skipDelay, reset: resetCompletion } = useReviewCompletion({
@@ -88,14 +76,13 @@ export function useReviewLifecycleBase(
 
   const loadingMessage = getLoadingMessage({
     configLoading: options.configLoading,
-    settingsLoading: settingsLoading || options.settingsLoading,
+    settingsLoading: isSettingsLoading,
     isCheckingForChanges,
     isInitializing,
   });
 
   return {
     stream: {
-      start: stream.start,
       stop: stream.stop,
       abort: stream.abort,
     },

@@ -1,4 +1,5 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { FooterProvider } from "@/components/layout";
@@ -29,7 +30,7 @@ const {
   mockUseReviewLifecycleBase: vi.fn(),
   routeState: {
     params: {} as { reviewId?: string },
-    search: {} as { mode?: ReviewMode },
+    search: {} as { mode?: ReviewMode; live?: boolean },
   },
 }));
 
@@ -191,9 +192,10 @@ describe("ReviewPage saved review loading", () => {
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
-  it("keeps a routed live review streaming instead of loading it from history", async () => {
+  it("keeps a routed live review streaming instead of loading it from history", () => {
     const reviewId = "11111111-1111-4111-8111-111111111111";
-    routeState.search = { mode: "unstaged" };
+    routeState.params = { reviewId };
+    routeState.search = { mode: "unstaged", live: true };
     mockUseReviewLifecycleBase.mockReturnValue({
       streamState: {
         ...makeStreamState(),
@@ -206,27 +208,14 @@ describe("ReviewPage saved review loading", () => {
       setHasStarted: vi.fn(),
     });
 
-    const { rerender } = renderPage();
-
-    await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith({
-        to: "/review/{-$reviewId}",
-        params: { reviewId },
-        search: expect.any(Function),
-        replace: true,
-      });
-    });
-
-    routeState.params = { reviewId };
-    mockUseReview.mockClear();
-    rerender(<ReviewPage />);
+    renderPage();
 
     expect(screen.getByText("Progress Overview")).toBeInTheDocument();
     expect(mockUseReview).toHaveBeenCalledWith("");
     expect(mockUseReview).not.toHaveBeenCalledWith(reviewId);
   });
 
-  it("starts a fresh streaming review when the saved review is not found", async () => {
+  it("streams when the saved review returns 404", async () => {
     routeState.params = { reviewId: "missing-review" };
     routeState.search = { mode: "staged" };
     mockUseReview.mockReturnValue(
@@ -239,18 +228,12 @@ describe("ReviewPage saved review loading", () => {
     renderPage();
 
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith({
-        to: "/review/{-$reviewId}",
-        params: {},
-        search: { mode: "staged" },
-        replace: true,
-      });
+      expect(screen.getByText("Progress Overview")).toBeInTheDocument();
     });
-    expect(screen.getByText("Progress Overview")).toBeInTheDocument();
     expect(mockToastError).not.toHaveBeenCalled();
   });
 
-  it("starts a fresh streaming review when the saved review has no result", async () => {
+  it("streams when the saved review has no result", async () => {
     routeState.params = { reviewId: "unfinished-review" };
     routeState.search = { mode: "unstaged" };
     mockUseReview.mockReturnValue(
@@ -268,14 +251,8 @@ describe("ReviewPage saved review loading", () => {
     renderPage();
 
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith({
-        to: "/review/{-$reviewId}",
-        params: {},
-        search: { mode: "unstaged" },
-        replace: true,
-      });
+      expect(screen.getByText("Progress Overview")).toBeInTheDocument();
     });
-    expect(screen.getByText("Progress Overview")).toBeInTheDocument();
     expect(mockToastError).not.toHaveBeenCalled();
   });
 
@@ -300,5 +277,101 @@ describe("ReviewPage saved review loading", () => {
     expect(mockNavigate).not.toHaveBeenCalledWith(
       expect.objectContaining({ to: "/review/{-$reviewId}" }),
     );
+  });
+});
+
+describe("ReviewPage no-reviewId redirect", () => {
+  beforeEach(() => {
+    routeState.params = {};
+    routeState.search = {};
+    mockBack.mockReset();
+    mockNavigate.mockReset();
+    mockNavigate.mockResolvedValue(undefined);
+    mockToastError.mockReset();
+    mockUseReview.mockReset();
+    mockUseReview.mockReturnValue(reviewQuery({}));
+    mockUseReviewLifecycleBase.mockReset();
+    mockUseReviewLifecycleBase.mockReturnValue({
+      streamState: makeStreamState(),
+      loadingMessage: null,
+      isNoDiffError: false,
+      stream: { stop: vi.fn() },
+      skipDelay: vi.fn(),
+      setHasStarted: vi.fn(),
+    });
+  });
+
+  it("renders the redirect fallback when reviewId is missing", () => {
+    renderPage();
+
+    expect(screen.getByRole("status")).toHaveTextContent("Redirecting...");
+  });
+});
+
+describe("ReviewPage live review phase transitions", () => {
+  const LIVE_REVIEW_ID = "22222222-2222-4222-8222-222222222222";
+  const completedIssues = [
+    makeIssue({ id: "live-issue-1", title: "Live issue one", file: "src/a.ts", category: "correctness" }),
+    makeIssue({ id: "live-issue-2", title: "Live issue two", file: "src/b.ts", category: "security" }),
+  ];
+
+  let capturedOnComplete: (() => void) | null;
+
+  beforeEach(() => {
+    capturedOnComplete = null;
+    routeState.params = { reviewId: LIVE_REVIEW_ID };
+    routeState.search = { mode: "unstaged", live: true };
+    mockBack.mockReset();
+    mockNavigate.mockReset();
+    mockNavigate.mockResolvedValue(undefined);
+    mockToastError.mockReset();
+    mockUseReview.mockReset();
+    mockUseReview.mockReturnValue(reviewQuery({}));
+    mockUseReviewLifecycleBase.mockReset();
+    mockUseReviewLifecycleBase.mockImplementation((opts: { onComplete?: () => void }) => {
+      capturedOnComplete = opts.onComplete ?? null;
+      return {
+        streamState: {
+          ...makeStreamState(),
+          reviewId: LIVE_REVIEW_ID,
+          issues: completedIssues,
+        },
+        loadingMessage: null,
+        isNoDiffError: false,
+        stream: { stop: vi.fn() },
+        skipDelay: vi.fn(),
+        setHasStarted: vi.fn(),
+      };
+    });
+  });
+
+  it("transitions from streaming to summary when onComplete fires", async () => {
+    renderPage();
+
+    expect(screen.getByText("Progress Overview")).toBeInTheDocument();
+
+    await act(() => {
+      capturedOnComplete?.();
+    });
+
+    expect(await screen.findByText(`Analysis Complete #${LIVE_REVIEW_ID}`)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /enter review/i })).toBeInTheDocument();
+  });
+
+  it("transitions from summary to results when Enter Review is clicked", async () => {
+    const user = userEvent.setup();
+
+    renderPage();
+
+    await act(() => {
+      capturedOnComplete?.();
+    });
+
+    expect(await screen.findByText(`Analysis Complete #${LIVE_REVIEW_ID}`)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /enter review/i }));
+
+    expect(await screen.findByText(`Analysis #${LIVE_REVIEW_ID}`)).toBeInTheDocument();
+    expect(screen.queryByText(`Analysis Complete #${LIVE_REVIEW_ID}`)).not.toBeInTheDocument();
   });
 });

@@ -18,35 +18,15 @@ export const ContextRefreshSchema = z.object({
   force: z.boolean().optional(),
 });
 
-const MAX_CSV_ITEMS = 1000;
-
-export const parseCsvParam = (
-  value: string | undefined | null,
-): string[] | undefined => {
-  if (!value) return undefined;
-  const items = value
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean)
-    .slice(0, MAX_CSV_ITEMS);
-  return items.length > 0 ? items : undefined;
-};
-
-export const CsvLensIdsSchema = z
-  .string()
-  .transform((val) => parseCsvParam(val))
-  .pipe(z.array(LensIdSchema).optional())
-  .optional();
-
-export const ReviewStreamQuerySchema = z.object({
-  mode: ReviewModeSchema.optional(),
-  profile: ProfileIdSchema.optional(),
-  lenses: CsvLensIdsSchema,
-  files: z.string().optional(),
-});
-
 export const ActiveSessionQuerySchema = z.object({
   mode: ReviewModeSchema.optional(),
+});
+
+export const CreateReviewBodySchema = z.object({
+  mode: ReviewModeSchema.optional(),
+  profile: ProfileIdSchema.optional(),
+  lenses: z.array(LensIdSchema).optional(),
+  files: z.array(z.string()).optional(),
 });
 
 /**

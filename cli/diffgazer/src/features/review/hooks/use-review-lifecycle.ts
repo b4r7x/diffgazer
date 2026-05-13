@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useReviewLifecycleBase, useInit } from "@diffgazer/core/api/hooks";
+import { useReviewLifecycleBase, useInit, useCreateReview } from "@diffgazer/core/api/hooks";
 import type { ReviewIssue, ReviewMode } from "@diffgazer/core/schemas/review";
 import type { StepState, AgentState } from "@diffgazer/core/schemas/events";
 import type { ReviewEvent, FileProgress } from "@diffgazer/core/review";
@@ -36,8 +36,9 @@ export function useReviewLifecycle(): {
   reset: () => void;
 } {
   const { data: initData, isLoading: configLoading } = useInit();
+  const createReview = useCreateReview();
   const [mode, setMode] = useState<ReviewMode>("staged");
-  const [startCounter, setStartCounter] = useState(0);
+  const [reviewId, setReviewId] = useState<string | undefined>();
   const [phase, setPhase] = useState<"streaming" | "summary" | "results">("streaming");
 
   const isConfigured = initData?.configured ?? false;
@@ -49,17 +50,26 @@ export function useReviewLifecycle(): {
     configLoading,
     settingsLoading: false,
     isConfigured,
-    startToken: startCounter,
+    reviewId,
     onComplete: () => setPhase("summary"),
   });
 
   const displayPhase: ReviewLifecycleState["phase"] =
     !lifecycle.hasStarted ? "loading" : lifecycle.isCompleting ? "completing" : phase;
 
-  function start(selectedMode: ReviewMode) {
+  async function start(selectedMode: ReviewMode) {
     setMode(selectedMode);
+    lifecycle.stream.abort();
+    lifecycle.resetCompletion();
     lifecycle.setHasStarted(false);
-    setStartCounter((t) => t + 1);
+    lifecycle.setHasStreamed(false);
+    setPhase("streaming");
+    try {
+      const result = await createReview.mutateAsync({ mode: selectedMode });
+      setReviewId(result.reviewId);
+    } catch {
+      lifecycle.setHasStarted(true);
+    }
   }
 
   function goToSummary() {
@@ -75,6 +85,7 @@ export function useReviewLifecycle(): {
     lifecycle.setHasStarted(false);
     lifecycle.setHasStreamed(false);
     setPhase("streaming");
+    setReviewId(undefined);
     lifecycle.stream.abort();
   }
 

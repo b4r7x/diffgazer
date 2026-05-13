@@ -47,3 +47,11 @@ export function useRefreshReviewContext() {
       }),
   });
 }
+
+export function useCreateReview() {
+  const api = useApi();
+  return useMutation({
+    mutationFn: (options: Parameters<typeof api.createReview>[0]) =>
+      api.createReview(options),
+  });
+}

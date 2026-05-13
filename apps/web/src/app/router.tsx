@@ -73,6 +73,7 @@ export type HomeSearch = z.infer<typeof HomeSearchSchema>;
 
 const ReviewSearchSchema = z.object({
   mode: ReviewModeSchema.optional().default("unstaged"),
+  live: z.boolean().optional(),
 });
 
 export type ReviewSearch = z.infer<typeof ReviewSearchSchema>;
@@ -103,7 +104,10 @@ const reviewRoute = createRoute({
   validateSearch: ReviewSearchSchema,
   beforeLoad: async ({ params }) => {
     await requireConfigured();
-    if (params.reviewId && !UUID_REGEX.test(params.reviewId)) {
+    if (!params.reviewId) {
+      throw redirect({ to: "/" });
+    }
+    if (!UUID_REGEX.test(params.reviewId)) {
       throw redirect({ to: "/", search: { error: "invalid-review-id" } });
     }
   },

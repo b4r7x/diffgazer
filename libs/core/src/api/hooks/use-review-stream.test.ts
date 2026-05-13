@@ -8,13 +8,14 @@ import type { BoundApi } from "../bound.js";
 import { ApiProvider } from "./context.js";
 import { useReviewStream } from "./use-review-stream.js";
 import type { Result } from "@diffgazer/core/result";
-import { ok } from "@diffgazer/core/result";
+import { ok, err } from "@diffgazer/core/result";
 import type { StreamReviewError } from "@diffgazer/core/review";
+import { ReviewErrorCode } from "@diffgazer/core/schemas/review";
 
 function createApi(overrides: Partial<BoundApi> = {}): BoundApi {
   return {
     resumeReviewStream: vi.fn(),
-    streamReviewWithEvents: vi.fn(),
+    createReview: vi.fn(),
     ...overrides,
   } as unknown as BoundApi;
 }
@@ -55,5 +56,115 @@ describe("useReviewStream", () => {
     expect(resumeReviewStream).toHaveBeenCalledWith(
       expect.objectContaining({ reviewId: "active-review" }),
     );
+  });
+
+  it("stop() dispatches COMPLETE — isStreaming becomes false", async () => {
+    let resolveResume: (result: Result<void, StreamReviewError>) => void = () => {};
+    const resumeReviewStream = vi.fn<BoundApi["resumeReviewStream"]>().mockReturnValue(
+      new Promise((resolve) => {
+        resolveResume = resolve;
+      }),
+    );
+    const api = createApi({ resumeReviewStream });
+
+    const { result } = renderHook(() => useReviewStream(), {
+      wrapper: createWrapper(api),
+    });
+
+    let resumePromise: Promise<Result<void, StreamReviewError>>;
+    act(() => {
+      resumePromise = result.current.resume("stop-review");
+    });
+
+    await waitFor(() => expect(result.current.state.isStreaming).toBe(true));
+
+    act(() => {
+      result.current.stop();
+    });
+
+    expect(result.current.state.isStreaming).toBe(false);
+    expect(result.current.state.reviewId).toBe("stop-review");
+
+    await act(async () => {
+      resolveResume(ok(undefined));
+      await resumePromise!;
+    });
+  });
+
+  it("abort() dispatches RESET — reviewId and isStreaming reset", async () => {
+    let resolveResume: (result: Result<void, StreamReviewError>) => void = () => {};
+    const resumeReviewStream = vi.fn<BoundApi["resumeReviewStream"]>().mockReturnValue(
+      new Promise((resolve) => {
+        resolveResume = resolve;
+      }),
+    );
+    const api = createApi({ resumeReviewStream });
+
+    const { result } = renderHook(() => useReviewStream(), {
+      wrapper: createWrapper(api),
+    });
+
+    let resumePromise: Promise<Result<void, StreamReviewError>>;
+    act(() => {
+      resumePromise = result.current.resume("abort-review");
+    });
+
+    await waitFor(() => expect(result.current.state.isStreaming).toBe(true));
+
+    act(() => {
+      result.current.abort();
+    });
+
+    expect(result.current.state.isStreaming).toBe(false);
+    expect(result.current.state.reviewId).toBeNull();
+
+    await act(async () => {
+      resolveResume(ok(undefined));
+      await resumePromise!;
+    });
+  });
+
+  it("sets state.error when resumeReviewStream rejects with a non-abort error", async () => {
+    const resumeReviewStream = vi.fn<BoundApi["resumeReviewStream"]>().mockRejectedValue(
+      new Error("network failure"),
+    );
+    const api = createApi({ resumeReviewStream });
+
+    const { result } = renderHook(() => useReviewStream(), {
+      wrapper: createWrapper(api),
+    });
+
+    await act(async () => {
+      await result.current.resume("error-review");
+    });
+
+    expect(result.current.state.error).toBe("network failure");
+    expect(result.current.state.isStreaming).toBe(false);
+  });
+
+  it("SESSION_STALE is returned to caller without setting state.error", async () => {
+    const staleError: StreamReviewError = {
+      code: ReviewErrorCode.SESSION_STALE,
+      message: "stale",
+    };
+    const resumeReviewStream = vi.fn<BoundApi["resumeReviewStream"]>().mockResolvedValue(
+      err(staleError),
+    );
+    const api = createApi({ resumeReviewStream });
+
+    const { result } = renderHook(() => useReviewStream(), {
+      wrapper: createWrapper(api),
+    });
+
+    let returnedResult: Result<void, StreamReviewError>;
+    await act(async () => {
+      returnedResult = await result.current.resume("stale-review");
+    });
+
+    expect(result.current.state.error).toBeNull();
+    expect(returnedResult!.ok).toBe(false);
+    if (!returnedResult!.ok) {
+      expect(returnedResult!.error.code).toBe(ReviewErrorCode.SESSION_STALE);
+    }
   });
 });

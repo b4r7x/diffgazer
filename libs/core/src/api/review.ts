@@ -1,11 +1,8 @@
 import type { Result } from "@diffgazer/core/result";
 import { ok, err } from "@diffgazer/core/result";
 import {
-  buildReviewQueryParams,
   processReviewStream,
-  type StreamReviewRequest,
   type StreamReviewOptions as CoreStreamReviewOptions,
-  type StreamReviewResult,
   type StreamReviewError,
 } from "@diffgazer/core/review";
 import { ReviewErrorCode, type ReviewMode } from "@diffgazer/core/schemas/review";
@@ -18,46 +15,24 @@ import type {
   DrilldownResponse,
 } from "./types.js";
 
-export interface StreamReviewApiOptions {
+export type { StreamReviewError };
+
+export interface CreateReviewOptions {
   mode?: ReviewMode;
-  files?: string[];
   lenses?: string[];
   profile?: string;
-  signal?: AbortSignal;
+  files?: string[];
 }
 
-export type { StreamReviewRequest, StreamReviewResult, StreamReviewError };
-export type { CoreStreamReviewOptions as FullStreamReviewOptions };
-
-export async function streamReview(
-  client: ApiClient,
-  options: StreamReviewApiOptions = {}
-): Promise<Response> {
-  const params: Record<string, string> = {};
-  if (options.mode) params.mode = options.mode;
-  if (options.files?.length) params.files = options.files.join(",");
-  if (options.lenses?.length) params.lenses = options.lenses.join(",");
-  if (options.profile) params.profile = options.profile;
-
-  return client.stream("/api/review/stream", { params, signal: options.signal });
+export interface CreateReviewResponse {
+  reviewId: string;
 }
 
-export async function streamReviewWithEvents(
+export async function createReview(
   client: ApiClient,
-  options: CoreStreamReviewOptions
-): Promise<Result<StreamReviewResult, StreamReviewError>> {
-  const { mode, files, lenses, profile, signal, ...handlers } = options;
-
-  const params = buildReviewQueryParams({ mode, files, lenses, profile });
-  const response = await client.stream("/api/review/stream", { params, signal });
-
-  const reader = response.body?.getReader();
-
-  if (!reader) {
-    return err({ code: "STREAM_ERROR", message: "No response body" });
-  }
-
-  return processReviewStream(reader, handlers);
+  options: CreateReviewOptions = {},
+): Promise<CreateReviewResponse> {
+  return client.post<CreateReviewResponse>("/api/review/reviews", options);
 }
 
 export interface ResumeReviewOptions {
@@ -161,8 +136,7 @@ export async function runReviewDrilldown(
 }
 
 export const bindReview = (client: ApiClient) => ({
-  streamReview: (options?: StreamReviewApiOptions) => streamReview(client, options),
-  streamReviewWithEvents: (options: CoreStreamReviewOptions) => streamReviewWithEvents(client, options),
+  createReview: (options?: CreateReviewOptions) => createReview(client, options),
   resumeReviewStream: (options: ResumeReviewOptions) => resumeReviewStream(client, options),
   getReviews: (projectPath?: string) => getReviews(client, projectPath),
   getReview: (id: string) => getReview(client, id),

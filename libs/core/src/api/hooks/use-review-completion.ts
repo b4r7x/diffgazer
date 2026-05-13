@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import type { StepState } from "@diffgazer/core/schemas/events";
 
 const REPORT_COMPLETE_DELAY_MS = 2300;
-const DEFAULT_COMPLETE_DELAY_MS = 400;
+const DEFAULT_COMPLETE_DELAY_MS = 2000;
 
 export interface UseReviewCompletionOptions {
   isStreaming: boolean;
@@ -33,6 +33,13 @@ export function useReviewCompletion({
   stepsRef.current = steps;
   onCompleteRef.current = onComplete;
 
+  function clearTimer() {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  }
+
   useEffect(() => {
     const wasStreaming = prevIsStreamingRef.current;
     prevIsStreamingRef.current = isStreaming;
@@ -54,27 +61,18 @@ export function useReviewCompletion({
     }
 
     return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
-      }
+      clearTimer();
     };
   }, [isStreaming, error, hasStreamed]);
 
   function skipDelay() {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
+    clearTimer();
     setIsCompleting(false);
     onCompleteRef.current();
   }
 
   function reset() {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
+    clearTimer();
     prevIsStreamingRef.current = false;
     setIsCompleting(false);
   }

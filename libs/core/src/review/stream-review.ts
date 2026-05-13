@@ -5,7 +5,7 @@ import { FullReviewStreamEventSchema } from "@diffgazer/core/schemas/events";
 import { parseSSEStream } from "../streaming/sse-parser.js";
 import { ok, err, type Result } from "../result.js";
 
-export interface StreamReviewRequest {
+interface StreamReviewRequest {
   mode?: ReviewMode;
   files?: string[];
   lenses?: LensId[];
@@ -22,30 +22,13 @@ export interface StreamReviewOptions extends StreamReviewRequest {
   onLensComplete?: (lens: string) => void;
 }
 
-export interface StreamReviewResult {
+interface StreamReviewResult {
   result: ReviewResult;
   reviewId: string;
   agentEvents: AgentStreamEvent[];
 }
 
 export type StreamReviewError = ReviewError | { code: "STREAM_ERROR"; message: string };
-
-export function buildReviewQueryParams(options: StreamReviewRequest): Record<string, string> {
-  const { mode = "unstaged", files, lenses, profile } = options;
-  const params: Record<string, string> = {
-    mode,
-  };
-  if (files && files.length > 0) {
-    params.files = files.join(",");
-  }
-  if (lenses && lenses.length > 0) {
-    params.lenses = lenses.join(",");
-  }
-  if (profile) {
-    params.profile = profile;
-  }
-  return params;
-}
 
 export async function processReviewStream(
   reader: ReadableStreamDefaultReader<Uint8Array>,

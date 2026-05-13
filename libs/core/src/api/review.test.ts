@@ -1,9 +1,8 @@
 import { describe, it, expect, vi } from "vitest";
 import {
+  createReview,
   getActiveReviewSession,
   resumeReviewStream,
-  streamReview,
-  streamReviewWithEvents,
 } from "./review.js";
 import type { ApiClient } from "./types.js";
 
@@ -102,80 +101,25 @@ describe("resumeReviewStream", () => {
   });
 });
 
-describe("streamReview", () => {
-  it("requests the review stream with query params", async () => {
+describe("createReview", () => {
+  it("posts to /api/review/reviews with the expected body", async () => {
     const client = createClient();
-    const response = new Response(new ReadableStream(), { status: 200 });
-    vi.mocked(client.stream).mockResolvedValue(response);
+    vi.mocked(client.post).mockResolvedValue({ reviewId: "new-review-id" });
 
-    const result = await streamReview(client, {
+    const result = await createReview(client, {
       mode: "staged",
-      files: ["a.ts", "b.ts"],
       lenses: ["security"],
       profile: "quick",
+      files: ["a.ts"],
     });
 
-    expect(result).toBe(response);
-    expect(client.stream).toHaveBeenCalledWith("/api/review/stream", {
-      params: {
-        mode: "staged",
-        files: "a.ts,b.ts",
-        lenses: "security",
-        profile: "quick",
-      },
-      signal: undefined,
-    });
-  });
-});
-
-describe("streamReviewWithEvents", () => {
-  it("returns a stream error when the response has no body", async () => {
-    const client = createClient();
-    vi.mocked(client.stream).mockResolvedValue(new Response(null, { status: 200 }));
-
-    const result = await streamReviewWithEvents(client, { mode: "unstaged" });
-
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error).toEqual({
-        code: "STREAM_ERROR",
-        message: "No response body",
-      });
-    }
-  });
-
-  it("streams with review query params and returns the parsed result", async () => {
-    const client = createClient();
-    vi.mocked(client.stream).mockResolvedValue(
-      streamResponse([
-        { type: "complete", reviewId: "r2", result: reviewResult },
-      ]),
-    );
-
-    const result = await streamReviewWithEvents(client, {
+    expect(result).toEqual({ reviewId: "new-review-id" });
+    expect(client.post).toHaveBeenCalledWith("/api/review/reviews", {
       mode: "staged",
-      files: ["a.ts", "b.ts"],
       lenses: ["security"],
       profile: "quick",
+      files: ["a.ts"],
     });
-
-    expect(client.stream).toHaveBeenCalledWith("/api/review/stream", {
-      params: {
-        mode: "staged",
-        files: "a.ts,b.ts",
-        lenses: "security",
-        profile: "quick",
-      },
-      signal: undefined,
-    });
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.value).toEqual({
-        reviewId: "r2",
-        result: reviewResult,
-        agentEvents: [],
-      });
-    }
   });
 });
 

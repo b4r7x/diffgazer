@@ -20,54 +20,24 @@ function createOptions(
     configLoading: false,
     settingsLoading: false,
     isConfigured: true,
-    defaultLenses: ["correctness"],
-    start: vi.fn<UseReviewStartOptions["start"]>().mockResolvedValue(undefined),
     resume: vi.fn<UseReviewStartOptions["resume"]>().mockResolvedValue(ok(undefined)),
-    getActiveSession: vi
-      .fn<UseReviewStartOptions["getActiveSession"]>()
-      .mockResolvedValue({ session: null }),
     ...overrides,
   };
 }
 
 describe("useReviewStart", () => {
-  it("starts a fresh review after the StrictMode effect probe", async () => {
-    const options = createOptions();
-
-    const { result } = renderHook(() => useReviewStart(options), {
-      wrapper: StrictModeWrapper,
-    });
-
-    expect(result.current.hasStarted).toBe(false);
-
-    await waitFor(() => expect(options.start).toHaveBeenCalledTimes(1));
-
-    expect(options.start).toHaveBeenCalledWith({
-      mode: "unstaged",
-      lenses: ["correctness"],
-    });
-    expect(result.current.hasStarted).toBe(true);
-    expect(result.current.hasStreamed).toBe(true);
-  });
-
-  it("resumes an active review session instead of starting a new review", async () => {
-    const options = createOptions({
-      getActiveSession: vi
-        .fn<UseReviewStartOptions["getActiveSession"]>()
-        .mockResolvedValue({ session: { reviewId: "active-review" } }),
-    });
+  it("resumes a review when reviewId is provided", async () => {
+    const options = createOptions({ reviewId: "review-123" });
 
     renderHook(() => useReviewStart(options), {
       wrapper: StrictModeWrapper,
     });
 
     await waitFor(() => expect(options.resume).toHaveBeenCalledTimes(1));
-
-    expect(options.resume).toHaveBeenCalledWith("active-review");
-    expect(options.start).not.toHaveBeenCalled();
+    expect(options.resume).toHaveBeenCalledWith("review-123");
   });
 
-  it("does not resume the route review when it is already the live stream", async () => {
+  it("does not resume when reviewId matches the current live stream", async () => {
     const options = createOptions({
       reviewId: "live-review",
       currentReviewId: "live-review",
@@ -80,33 +50,94 @@ describe("useReviewStart", () => {
     await waitFor(() => expect(result.current.hasStarted).toBe(false));
 
     expect(options.resume).not.toHaveBeenCalled();
-    expect(options.start).not.toHaveBeenCalled();
-    expect(options.getActiveSession).not.toHaveBeenCalled();
   });
 
-  it.each([
-    ReviewErrorCode.SESSION_STALE,
-    ReviewErrorCode.SESSION_NOT_FOUND,
-  ])("starts fresh when an active session resume returns %s", async (code) => {
+  it("does nothing when no reviewId is provided", async () => {
+    const options = createOptions();
+
+    const { result } = renderHook(() => useReviewStart(options), {
+      wrapper: StrictModeWrapper,
+    });
+
+    await waitFor(() => expect(result.current.hasStarted).toBe(false));
+
+    expect(options.resume).not.toHaveBeenCalled();
+  });
+
+  it("does nothing while config is loading", async () => {
     const options = createOptions({
+      reviewId: "review-123",
+      configLoading: true,
+    });
+
+    const { result } = renderHook(() => useReviewStart(options), {
+      wrapper: StrictModeWrapper,
+    });
+
+    await waitFor(() => expect(result.current.hasStarted).toBe(false));
+    expect(options.resume).not.toHaveBeenCalled();
+  });
+
+  it("calls onStaleSession when resume returns SESSION_STALE", async () => {
+    const onStale = vi.fn();
+    const options = createOptions({
+      reviewId: "stale-review",
       resume: vi
         .fn<UseReviewStartOptions["resume"]>()
-        .mockResolvedValue(err({ code, message: "Cannot resume active session" })),
-      getActiveSession: vi
-        .fn<UseReviewStartOptions["getActiveSession"]>()
-        .mockResolvedValue({ session: { reviewId: "active-review" } }),
+        .mockResolvedValue(err({ code: ReviewErrorCode.SESSION_STALE, message: "stale" })),
+      onStaleSession: onStale,
     });
 
     renderHook(() => useReviewStart(options), {
       wrapper: StrictModeWrapper,
     });
 
-    await waitFor(() => expect(options.start).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(onStale).toHaveBeenCalledTimes(1));
+  });
 
-    expect(options.resume).toHaveBeenCalledWith("active-review");
-    expect(options.start).toHaveBeenCalledWith({
-      mode: "unstaged",
-      lenses: ["correctness"],
+  it("does nothing while settings are loading", async () => {
+    const options = createOptions({
+      reviewId: "review-123",
+      settingsLoading: true,
     });
+
+    const { result } = renderHook(() => useReviewStart(options), {
+      wrapper: StrictModeWrapper,
+    });
+
+    await waitFor(() => expect(result.current.hasStarted).toBe(false));
+    expect(options.resume).not.toHaveBeenCalled();
+  });
+
+  it("does nothing when isConfigured is false", async () => {
+    const options = createOptions({
+      reviewId: "review-123",
+      isConfigured: false,
+    });
+
+    const { result } = renderHook(() => useReviewStart(options), {
+      wrapper: StrictModeWrapper,
+    });
+
+    await waitFor(() => expect(result.current.hasStarted).toBe(false));
+    expect(options.resume).not.toHaveBeenCalled();
+  });
+
+  it("calls onNotFoundInSession when resume returns SESSION_NOT_FOUND", async () => {
+    const onNotFound = vi.fn();
+    const options = createOptions({
+      reviewId: "missing-review",
+      resume: vi
+        .fn<UseReviewStartOptions["resume"]>()
+        .mockResolvedValue(err({ code: ReviewErrorCode.SESSION_NOT_FOUND, message: "not found" })),
+      onNotFoundInSession: onNotFound,
+    });
+
+    renderHook(() => useReviewStart(options), {
+      wrapper: StrictModeWrapper,
+    });
+
+    await waitFor(() => expect(onNotFound).toHaveBeenCalledTimes(1));
+    expect(onNotFound).toHaveBeenCalledWith("missing-review");
   });
 });

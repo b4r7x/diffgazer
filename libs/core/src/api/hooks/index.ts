@@ -17,6 +17,7 @@ export {
   useReview,
   useActiveReviewSession,
   useReviewContext,
+  useCreateReview,
   useDeleteReview,
   useRefreshReviewContext,
 } from "./review.js";

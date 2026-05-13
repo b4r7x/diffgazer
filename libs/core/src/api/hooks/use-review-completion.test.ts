@@ -1,0 +1,142 @@
+/**
+ * @vitest-environment jsdom
+ */
+import { renderHook, act } from "@testing-library/react";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import {
+  useReviewCompletion,
+  type UseReviewCompletionOptions,
+} from "./use-review-completion.js";
+
+function createOptions(
+  overrides: Partial<UseReviewCompletionOptions> = {},
+): UseReviewCompletionOptions {
+  return {
+    isStreaming: false,
+    error: null,
+    hasStreamed: false,
+    steps: [],
+    onComplete: vi.fn(),
+    ...overrides,
+  };
+}
+
+describe("useReviewCompletion", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("fires onComplete after delay when streaming stops", () => {
+    const onComplete = vi.fn();
+    const initialProps = createOptions({
+      isStreaming: true,
+      hasStreamed: true,
+      onComplete,
+    });
+
+    const { result, rerender } = renderHook(
+      (props: UseReviewCompletionOptions) => useReviewCompletion(props),
+      { initialProps },
+    );
+
+    expect(result.current.isCompleting).toBe(false);
+
+    rerender({ ...initialProps, isStreaming: false });
+
+    expect(result.current.isCompleting).toBe(true);
+    expect(onComplete).not.toHaveBeenCalled();
+
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+
+    expect(result.current.isCompleting).toBe(false);
+    expect(onComplete).toHaveBeenCalledTimes(1);
+  });
+
+  it("does NOT fire onComplete when error is present", () => {
+    const onComplete = vi.fn();
+    const initialProps = createOptions({
+      isStreaming: true,
+      hasStreamed: true,
+      error: null,
+      onComplete,
+    });
+
+    const { rerender } = renderHook(
+      (props: UseReviewCompletionOptions) => useReviewCompletion(props),
+      { initialProps },
+    );
+
+    rerender({ ...initialProps, isStreaming: false, error: "something broke" });
+
+    act(() => {
+      vi.advanceTimersByTime(3000);
+    });
+
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+
+  it("skipDelay fires onComplete immediately", () => {
+    const onComplete = vi.fn();
+    const initialProps = createOptions({
+      isStreaming: true,
+      hasStreamed: true,
+      onComplete,
+    });
+
+    const { result, rerender } = renderHook(
+      (props: UseReviewCompletionOptions) => useReviewCompletion(props),
+      { initialProps },
+    );
+
+    rerender({ ...initialProps, isStreaming: false });
+    expect(result.current.isCompleting).toBe(true);
+
+    act(() => {
+      result.current.skipDelay();
+    });
+
+    expect(onComplete).toHaveBeenCalledTimes(1);
+    expect(result.current.isCompleting).toBe(false);
+
+    act(() => {
+      vi.advanceTimersByTime(3000);
+    });
+
+    expect(onComplete).toHaveBeenCalledTimes(1);
+  });
+
+  it("reset clears completing state and cancels timer", () => {
+    const onComplete = vi.fn();
+    const initialProps = createOptions({
+      isStreaming: true,
+      hasStreamed: true,
+      onComplete,
+    });
+
+    const { result, rerender } = renderHook(
+      (props: UseReviewCompletionOptions) => useReviewCompletion(props),
+      { initialProps },
+    );
+
+    rerender({ ...initialProps, isStreaming: false });
+    expect(result.current.isCompleting).toBe(true);
+
+    act(() => {
+      result.current.reset();
+    });
+
+    expect(result.current.isCompleting).toBe(false);
+
+    act(() => {
+      vi.advanceTimersByTime(3000);
+    });
+
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+});
