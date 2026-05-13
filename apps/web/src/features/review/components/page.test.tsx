@@ -191,6 +191,41 @@ describe("ReviewPage saved review loading", () => {
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
+  it("keeps a routed live review streaming instead of loading it from history", async () => {
+    const reviewId = "11111111-1111-4111-8111-111111111111";
+    routeState.search = { mode: "unstaged" };
+    mockUseReviewLifecycleBase.mockReturnValue({
+      streamState: {
+        ...makeStreamState(),
+        reviewId,
+      },
+      loadingMessage: null,
+      isNoDiffError: false,
+      stream: { stop: vi.fn() },
+      skipDelay: vi.fn(),
+      setHasStarted: vi.fn(),
+    });
+
+    const { rerender } = renderPage();
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith({
+        to: "/review/{-$reviewId}",
+        params: { reviewId },
+        search: expect.any(Function),
+        replace: true,
+      });
+    });
+
+    routeState.params = { reviewId };
+    mockUseReview.mockClear();
+    rerender(<ReviewPage />);
+
+    expect(screen.getByText("Progress Overview")).toBeInTheDocument();
+    expect(mockUseReview).toHaveBeenCalledWith("");
+    expect(mockUseReview).not.toHaveBeenCalledWith(reviewId);
+  });
+
   it("starts a fresh streaming review when the saved review is not found", async () => {
     routeState.params = { reviewId: "missing-review" };
     routeState.search = { mode: "staged" };

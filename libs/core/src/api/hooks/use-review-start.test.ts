@@ -67,6 +67,23 @@ describe("useReviewStart", () => {
     expect(options.start).not.toHaveBeenCalled();
   });
 
+  it("does not resume the route review when it is already the live stream", async () => {
+    const options = createOptions({
+      reviewId: "live-review",
+      currentReviewId: "live-review",
+    });
+
+    const { result } = renderHook(() => useReviewStart(options), {
+      wrapper: StrictModeWrapper,
+    });
+
+    await waitFor(() => expect(result.current.hasStarted).toBe(false));
+
+    expect(options.resume).not.toHaveBeenCalled();
+    expect(options.start).not.toHaveBeenCalled();
+    expect(options.getActiveSession).not.toHaveBeenCalled();
+  });
+
   it.each([
     ReviewErrorCode.SESSION_STALE,
     ReviewErrorCode.SESSION_NOT_FOUND,

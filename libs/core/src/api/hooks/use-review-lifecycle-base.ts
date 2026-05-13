@@ -66,6 +66,7 @@ export function useReviewLifecycleBase(
     isConfigured: options.isConfigured,
     defaultLenses,
     reviewId: options.reviewId,
+    currentReviewId: stream.state.reviewId,
     startToken: options.startToken,
     start: (opts) => stream.start(opts.mode!, opts.lenses),
     resume: stream.resume,

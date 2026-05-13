@@ -15,6 +15,7 @@ export interface UseReviewStartOptions {
   isConfigured: boolean;
   defaultLenses: LensId[];
   reviewId?: string;
+  currentReviewId?: string | null;
   startToken?: number;
   start: (options: { mode?: ReviewMode; lenses?: LensId[] }) => Promise<void>;
   resume: (id: string) => Promise<Result<void, StreamReviewError>>;
@@ -38,11 +39,13 @@ export function useReviewStart(options: UseReviewStartOptions): UseReviewStartRe
   const getActiveSessionRef = useRef(options.getActiveSession);
   const defaultLensesRef = useRef(options.defaultLenses);
   const onNotFoundRef = useRef(options.onNotFoundInSession);
+  const currentReviewIdRef = useRef(options.currentReviewId);
   startRef.current = options.start;
   resumeRef.current = options.resume;
   getActiveSessionRef.current = options.getActiveSession;
   defaultLensesRef.current = options.defaultLenses;
   onNotFoundRef.current = options.onNotFoundInSession;
+  currentReviewIdRef.current = options.currentReviewId;
 
   useEffect(() => {
     if (options.configLoading || options.settingsLoading || !options.isConfigured) return;
@@ -88,6 +91,7 @@ export function useReviewStart(options: UseReviewStartOptions): UseReviewStartRe
     };
 
     if (options.reviewId) {
+      if (currentReviewIdRef.current === options.reviewId) return;
       resumeReview(options.reviewId, false);
     } else {
       void getActiveSessionRef.current(options.mode)
