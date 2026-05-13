@@ -1,17 +1,16 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "sidebar",
-  "type": "registry:ui",
   "title": "Sidebar",
   "description": "Compound sidebar navigation component",
   "dependencies": [
     "class-variance-authority"
   ],
   "registryDependencies": [
-    "icons",
-    "controllable-state",
-    "@diffgazer-keys/navigation",
-    "compose-refs"
+    "https://diffgazer.com/r/ui/icons.json",
+    "https://diffgazer.com/r/ui/controllable-state.json",
+    "https://diffgazer.com/r/keys/navigation.json",
+    "https://diffgazer.com/r/ui/compose-refs.json"
   ],
   "files": [
     {
@@ -90,5 +89,6 @@
     "optionalIntegrations": [
       "keyboard-navigation"
     ]
-  }
+  },
+  "type": "registry:ui"
 }

@@ -1,9 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { SHUTDOWN_TOKEN_HEADER } from "@diffgazer/core/api";
 import { createApp } from "./app.js";
 import { resetShutdownStateForTests } from "./features/shutdown/service.js";
-
-// getHostname is not exported, so we test host validation behavior
-// through the createApp middleware via Hono's test client approach.
 
 describe("host validation middleware", () => {
   it.each(["localhost:3000", "127.0.0.1:3000", "[::1]:3000", "localhost"])(
@@ -145,9 +143,16 @@ describe("error handling", () => {
 
 describe("shutdown route", () => {
   let originalCliPid: string | undefined;
+  let originalShutdownToken: string | undefined;
+  const shutdownHeaders = {
+    Host: "localhost:3000",
+    [SHUTDOWN_TOKEN_HEADER]: "test-shutdown-token",
+  };
 
   beforeEach(() => {
     originalCliPid = process.env.DIFFGAZER_CLI_PID;
+    originalShutdownToken = process.env.DIFFGAZER_SHUTDOWN_TOKEN;
+    process.env.DIFFGAZER_SHUTDOWN_TOKEN = "test-shutdown-token";
   });
 
   afterEach(() => {
@@ -156,9 +161,49 @@ describe("shutdown route", () => {
     } else {
       process.env.DIFFGAZER_CLI_PID = originalCliPid;
     }
+    if (originalShutdownToken === undefined) {
+      delete process.env.DIFFGAZER_SHUTDOWN_TOKEN;
+    } else {
+      process.env.DIFFGAZER_SHUTDOWN_TOKEN = originalShutdownToken;
+    }
     resetShutdownStateForTests();
     vi.useRealTimers();
     vi.restoreAllMocks();
+  });
+
+  it("rejects requests without the per-run shutdown token", async () => {
+    process.env.DIFFGAZER_CLI_PID = "4321";
+    const app = createApp();
+    const killSpy = vi.spyOn(process, "kill");
+
+    const res = await app.request("/api/shutdown", {
+      method: "POST",
+      headers: { Host: "localhost:3000" },
+    });
+
+    expect(res.status).toBe(403);
+    const body = (await res.json()) as { ok: boolean; message?: string };
+    expect(body).toEqual({ ok: false, message: "Shutdown is not authorized." });
+    expect(killSpy).not.toHaveBeenCalled();
+  });
+
+  it("rejects requests with the wrong per-run shutdown token", async () => {
+    process.env.DIFFGAZER_CLI_PID = "4321";
+    const app = createApp();
+    const killSpy = vi.spyOn(process, "kill");
+
+    const res = await app.request("/api/shutdown", {
+      method: "POST",
+      headers: {
+        Host: "localhost:3000",
+        [SHUTDOWN_TOKEN_HEADER]: "wrong-token",
+      },
+    });
+
+    expect(res.status).toBe(403);
+    const body = (await res.json()) as { ok: boolean; message?: string };
+    expect(body).toEqual({ ok: false, message: "Shutdown is not authorized." });
+    expect(killSpy).not.toHaveBeenCalled();
   });
 
   it("returns 503 when CLI pid is unavailable", async () => {
@@ -168,7 +213,7 @@ describe("shutdown route", () => {
 
     const res = await app.request("/api/shutdown", {
       method: "POST",
-      headers: { Host: "localhost:3000" },
+      headers: shutdownHeaders,
     });
 
     expect(res.status).toBe(503);
@@ -185,7 +230,7 @@ describe("shutdown route", () => {
 
     const res = await app.request("/api/shutdown", {
       method: "POST",
-      headers: { Host: "localhost:3000" },
+      headers: shutdownHeaders,
     });
 
     expect(res.status).toBe(503);
@@ -203,7 +248,7 @@ describe("shutdown route", () => {
 
     const res = await app.request("/api/shutdown", {
       method: "POST",
-      headers: { Host: "localhost:3000" },
+      headers: shutdownHeaders,
     });
 
     expect(res.status).toBe(200);
@@ -227,7 +272,7 @@ describe("shutdown route", () => {
 
     const res = await app.request("/api/shutdown", {
       method: "POST",
-      headers: { Host: "localhost:3000" },
+      headers: shutdownHeaders,
     });
 
     expect(res.status).toBe(200);
@@ -250,11 +295,11 @@ describe("shutdown route", () => {
 
     const first = await app.request("/api/shutdown", {
       method: "POST",
-      headers: { Host: "localhost:3000" },
+      headers: shutdownHeaders,
     });
     const second = await app.request("/api/shutdown", {
       method: "POST",
-      headers: { Host: "localhost:3000" },
+      headers: shutdownHeaders,
     });
 
     expect(first.status).toBe(200);

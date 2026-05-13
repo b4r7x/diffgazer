@@ -1,15 +1,14 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "toast",
-  "type": "registry:ui",
   "title": "Toast",
   "description": "Terminal-styled toast notification system",
   "dependencies": [
     "class-variance-authority"
   ],
   "registryDependencies": [
-    "outside-click",
-    "spinner"
+    "https://diffgazer.com/r/ui/outside-click.json",
+    "https://diffgazer.com/r/ui/spinner.json"
   ],
   "files": [
     {
@@ -50,5 +49,6 @@
   ],
   "meta": {
     "client": true
-  }
+  },
+  "type": "registry:ui"
 }

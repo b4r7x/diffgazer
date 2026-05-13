@@ -122,8 +122,6 @@ const CONTEXT_EXCLUDE_DIRS = new Set([
   ".turbo",
 ]);
 
-export type { ProjectContextSnapshot };
-
 async function buildFileTree(
   root: string,
   depth: number,

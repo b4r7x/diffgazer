@@ -1,7 +1,6 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "focus",
-  "type": "registry:lib",
   "title": "Focus Utilities",
   "description": "Shared focusable element selector and scoped selectable-item focus helpers for focus management, auto-focus, and keyboard handoff logic.",
   "files": [
@@ -14,5 +13,6 @@
   "meta": {
     "client": false,
     "hidden": true
-  }
+  },
+  "type": "registry:lib"
 }

@@ -1,14 +1,13 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "button",
-  "type": "registry:ui",
   "title": "Button",
   "description": "Terminal-inspired button with variants",
   "dependencies": [
     "class-variance-authority"
   ],
   "registryDependencies": [
-    "spinner"
+    "https://diffgazer.com/r/ui/spinner.json"
   ],
   "files": [
     {
@@ -24,5 +23,6 @@
   ],
   "meta": {
     "client": true
-  }
+  },
+  "type": "registry:ui"
 }

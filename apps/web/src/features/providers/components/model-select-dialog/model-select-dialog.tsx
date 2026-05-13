@@ -20,7 +20,7 @@ import { useModelDialogKeyboard } from "../../hooks/use-model-dialog-keyboard";
 import { ModelSearchInput } from "./model-search-input";
 import { ModelFilterTabs } from "./model-filter-tabs";
 import { ModelList } from "./model-list";
-import { DialogFooterActions } from "./dialog-footer-actions";
+import { DialogFooterActions } from "../footer-actions";
 
 interface ModelSelectDialogProps {
   open: boolean;

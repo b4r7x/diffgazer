@@ -5,6 +5,7 @@ import type {
   TraceRef,
   ReviewIssue,
   ReviewResult,
+  SavedReview,
 } from "@diffgazer/core/schemas/review";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import type { AgentStreamEvent } from "@diffgazer/core/schemas/events";
@@ -20,11 +21,15 @@ import { buildDrilldownPrompt } from "../../shared/lib/review/prompts.js";
 import { DrilldownResponseSchema } from "./schemas.js";
 import type { DrilldownAIResponse } from "./schemas.js";
 import type { DrilldownError, HandleDrilldownError } from "./types.js";
-import { recordTrace } from "./utils.js";
+import { recordTrace } from "./trace.js";
 
 interface DrilldownOptions {
   traceSteps?: TraceRef[];
   onEvent?: (event: AgentStreamEvent) => void;
+}
+
+interface HandleDrilldownOptions {
+  review?: SavedReview;
 }
 
 export async function drilldownIssue(
@@ -109,28 +114,32 @@ export async function handleDrilldownRequest(
   reviewId: string,
   issueId: string,
   projectPath: string,
+  options: HandleDrilldownOptions = {},
 ): Promise<Result<DrilldownResult, HandleDrilldownError>> {
-  const reviewResult = await getStoredReview(reviewId);
+  const review = options.review;
+  const reviewResult = review ? ok(review) : await getStoredReview(reviewId);
   if (!reviewResult.ok) return reviewResult;
-
-  const gitService = createGitService({ cwd: projectPath });
-
-  let diff: string;
-  try {
-    diff = await gitService.getDiff(
-      reviewResult.value.metadata.mode ?? "unstaged",
-    );
-  } catch {
-    return err(
-      createError(ErrorCode.COMMAND_FAILED, "Failed to retrieve git diff"),
-    );
+  const savedReview = reviewResult.value;
+  if (savedReview.metadata.projectPath !== projectPath) {
+    return err(createError(ErrorCode.NOT_FOUND, "Review not found"));
   }
 
-  const parsed = parseDiff(diff);
+  let parsed = savedReview.diff;
+  if (!parsed) {
+    const gitService = createGitService({ cwd: projectPath });
+    try {
+      parsed = parseDiff(await gitService.getDiff(savedReview.metadata.mode ?? "unstaged"));
+    } catch {
+      return err(
+        createError(ErrorCode.COMMAND_FAILED, "Failed to retrieve git diff"),
+      );
+    }
+  }
+
   const drilldownResult = await drilldownIssueById(
     client,
     issueId,
-    reviewResult.value.result,
+    savedReview.result,
     parsed,
   );
 

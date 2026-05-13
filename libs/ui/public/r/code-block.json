@@ -1,12 +1,11 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "code-block",
-  "type": "registry:ui",
   "title": "Code Block",
   "description": "Code display with line numbers and scroll area",
   "dependencies": [],
   "registryDependencies": [
-    "scroll-area"
+    "https://diffgazer.com/r/ui/scroll-area.json"
   ],
   "files": [
     {
@@ -42,5 +41,6 @@
   ],
   "meta": {
     "client": true
-  }
+  },
+  "type": "registry:ui"
 }

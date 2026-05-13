@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from "vitest";
 import { kebabToCamelCase, toDocExportName, toYamlString } from "../docs-data/utils.js";
 import {
   mkdtempSync,
@@ -18,7 +18,7 @@ import {
   generateEnrichedHookData,
   type HookRegistryItem,
 } from "../docs-data/hooks-source.js";
-import type { HookDoc, CodeBlockLine } from "../docs-data/types.js";
+import type { HookDoc } from "../docs-data/types.js";
 
 const TEST_THEME_NAME = "test-theme";
 const TEST_THEME = {
@@ -151,7 +151,7 @@ describe("generateHooksSource", () => {
 describe("generateEnrichedHookData", () => {
   let tempDir: string;
 
-  beforeAll(() => {
+  beforeEach(() => {
     tempDir = mkdtempSync(join(tmpdir(), "rk-enriched-"));
     mkdirSync(join(tempDir, "src/hooks"), { recursive: true });
     writeFileSync(
@@ -159,7 +159,6 @@ describe("generateEnrichedHookData", () => {
       'export function useBeta() { return "beta"; }\n',
     );
 
-    // Example files
     mkdirSync(join(tempDir, "examples/use-beta"), { recursive: true });
     writeFileSync(
       join(tempDir, "examples/use-beta/basic.tsx"),
@@ -167,7 +166,7 @@ describe("generateEnrichedHookData", () => {
     );
   });
 
-  afterAll(() => {
+  afterEach(() => {
     rmSync(tempDir, { recursive: true, force: true });
   });
 
@@ -201,26 +200,23 @@ describe("generateEnrichedHookData", () => {
     expect(result).toHaveProperty("use-beta");
     const entry = result["use-beta"]!;
 
-    // Basic source data
     expect(entry.name).toBe("use-beta");
     expect(entry.title).toBe("Beta Hook");
     expect(entry.source.raw).toContain("useBeta");
     expect(entry.source.highlighted.length).toBeGreaterThan(0);
 
-    // Docs
     expect(entry.docs).toEqual(hookDoc);
     expect(entry.description).toBe("Rich beta description");
     expect(entry.parameters).toEqual(hookDoc.parameters);
     expect(entry.returns).toEqual(hookDoc.returns);
 
-    // Examples
     expect(entry.examples).toContain("basic");
     expect(entry.exampleSource).toHaveProperty("basic");
     expect(entry.exampleSource["basic"]!.raw).toContain("useBeta");
     expect(entry.exampleSource["basic"]!.highlighted.length).toBeGreaterThan(0);
   });
 
-  it("handles null HookDoc gracefully", async () => {
+  it("falls back when HookDoc is null", async () => {
     const result = await generateEnrichedHookData({
       items: baseItems,
       rootDir: tempDir,
@@ -259,7 +255,6 @@ describe("generateEnrichedHookData", () => {
   });
 
   it("collects and highlights example files from examplesDir", async () => {
-    // Add a second example file
     writeFileSync(
       join(tempDir, "examples/use-beta/advanced.tsx"),
       'export default function Advanced() { return <div>advanced</div>; }\n',
@@ -277,7 +272,7 @@ describe("generateEnrichedHookData", () => {
     const entry = result["use-beta"]!;
     expect(entry.examples).toContain("basic");
     expect(entry.examples).toContain("advanced");
-    expect(entry.examples).toEqual(["advanced", "basic"]); // sorted
+    expect(entry.examples).toEqual(["advanced", "basic"]);
     expect(entry.exampleSource["advanced"]!.raw).toContain("Advanced");
     expect(entry.exampleSource["advanced"]!.highlighted.length).toBeGreaterThan(0);
   });

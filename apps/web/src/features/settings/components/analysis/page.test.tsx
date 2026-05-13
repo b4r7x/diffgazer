@@ -104,7 +104,7 @@ describe("SettingsAnalysisPage keyboard behavior", () => {
       expect(screen.getByRole("checkbox", { name: /detective/i })).toHaveFocus();
     });
 
-    await user.keyboard(" ");
+    await user.keyboard("{Enter}");
     await moveFromSelectedLensToFooter(user);
     await user.keyboard("{ArrowRight}{Enter}");
 

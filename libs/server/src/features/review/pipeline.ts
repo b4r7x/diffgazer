@@ -5,7 +5,6 @@ import type { ParsedDiff } from "../../shared/lib/diff/types.js";
 import { saveReview } from "../../shared/lib/storage/reviews.js";
 import {
   type LensId,
-  LensIdSchema,
   type ProfileId,
   type ReviewMode,
 } from "@diffgazer/core/schemas/review";
@@ -27,7 +26,7 @@ import { orchestrateReview } from "../../shared/lib/review/orchestrate.js";
 import { buildProjectContextSnapshot } from "./context.js";
 import { enrichIssues } from "./enrichment.js";
 import type { createGitService } from "../../shared/lib/git/service.js";
-import { reviewAbort } from "./utils.js";
+import { reviewAbort } from "./abort.js";
 import {
   type EmitFn,
   type ResolvedConfig,
@@ -37,7 +36,7 @@ import {
 import { type Result, ok, err } from "@diffgazer/core/result";
 import { getErrorMessage } from "@diffgazer/core/errors";
 
-export const MAX_DIFF_SIZE_BYTES = 524288; // 512KB
+const MAX_DIFF_SIZE_BYTES = 524288; // 512KB
 
 export function generateExecutiveSummary(
   issues: ReviewIssue[],
@@ -146,21 +145,13 @@ export async function resolveGitDiff(params: {
 
   let parsed = parseDiff(diff);
 
-  await emit(stepComplete("diff"));
-
-  await emit({
-    type: "review_started",
-    reviewId,
-    filesTotal: parsed.files.length,
-    timestamp: new Date().toISOString(),
-  } satisfies ReviewStartedEvent);
-
   if (files && files.length > 0) {
     parsed = filterDiffByFiles(parsed, files);
     if (parsed.files.length === 0) {
       return err(reviewAbort(
         `None of the specified files have ${mode} changes`,
         "NO_DIFF",
+        "diff",
       ));
     }
   }
@@ -171,8 +162,18 @@ export async function resolveGitDiff(params: {
     return err(reviewAbort(
       `Diff too large (${sizeMB}MB exceeds ${maxMB}MB limit). Try reviewing fewer files or use file filtering.`,
       ErrorCode.VALIDATION_ERROR,
+      "diff",
     ));
   }
+
+  await emit(stepComplete("diff"));
+
+  await emit({
+    type: "review_started",
+    reviewId,
+    filesTotal: parsed.files.length,
+    timestamp: new Date().toISOString(),
+  } satisfies ReviewStartedEvent);
 
   return ok(parsed);
 }
@@ -202,14 +203,7 @@ export async function resolveReviewConfig(params: {
   }
   await emit(stepComplete("context"));
 
-  const validatedLenses = activeLenses.filter(
-    (id): id is LensId => LensIdSchema.safeParse(id).success
-  );
-  const droppedIds = activeLenses.filter((id) => !LensIdSchema.safeParse(id).success);
-  if (droppedIds.length > 0) {
-    console.warn(`[review] dropped invalid lens ids: ${droppedIds.join(", ")}`);
-  }
-  return { activeLenses: validatedLenses, profile, projectContext };
+  return { activeLenses, profile, projectContext };
 }
 
 export async function executeReview(params: {

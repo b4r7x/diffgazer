@@ -1,7 +1,6 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "form-reset",
-  "type": "registry:hook",
   "title": "Form Reset",
   "description": "Resets uncontrolled custom control state when a parent native form is reset.",
   "dependencies": [],
@@ -15,5 +14,6 @@
   ],
   "meta": {
     "client": true
-  }
+  },
+  "type": "registry:hook"
 }

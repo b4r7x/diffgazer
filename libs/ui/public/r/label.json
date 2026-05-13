@@ -1,7 +1,6 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "label",
-  "type": "registry:ui",
   "title": "Label",
   "description": "Styled label with optional form control wrapping and orientation support.",
   "dependencies": [
@@ -22,5 +21,6 @@
   ],
   "meta": {
     "client": true
-  }
+  },
+  "type": "registry:ui"
 }

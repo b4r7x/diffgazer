@@ -1,7 +1,6 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "outside-click",
-  "type": "registry:hook",
   "title": "Outside Click",
   "description": "Detect clicks outside a referenced element",
   "dependencies": [],
@@ -15,5 +14,6 @@
   ],
   "meta": {
     "client": true
-  }
+  },
+  "type": "registry:hook"
 }

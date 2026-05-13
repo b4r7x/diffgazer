@@ -8,7 +8,7 @@ Your deliverable is a concrete implementation plan, NOT code.
 
 ## What You Have
 
-The @diffgazer/keys repo lives at `/Users/voitz/Projects/@diffgazer/keys/`. Read these files to understand the full API:
+The @diffgazer/keys package lives in `libs/keys/` within the Diffgazer workspace. Read these files to understand the full API:
 
 ### Must-Read Files
 - `src/index.ts` — complete public API surface (all exports)
@@ -207,21 +207,20 @@ A design spec with:
 6. **Keyboard hint system** — how shortcut badges work
 7. **How the playground imports @diffgazer/keys** — workspace link, relative path, or other
 
-### File 2: `docs/design/playground-implementation-prompt.md`
+### File 2: `docs/design/playground-implementation-plan.md`
 
-A ready-to-paste implementation prompt for a Claude Code agent that will build the playground using a **team of parallel teammates**. The prompt should:
+An implementation plan for building the playground. The plan should:
 
 - Reference the spec (`docs/design/playground-spec.md`) as the source of truth
-- Define **teammate roles** (e.g., "scaffolder" for project setup, "demo-builder-1" for simple demos, "demo-builder-2" for complex demos, "visualizer" for state visualization components)
-- Specify which teammates can run **in parallel** and which are **blocked by** others
-- For each teammate, describe:
+- Define workstreams (e.g., "scaffolding" for project setup, "basic demos" for simple demos, "advanced demos" for complex demos, "visualization" for state visualization components)
+- Specify which workstreams can proceed independently and which depend on others
+- For each workstream, describe:
   - Exact files to create
   - Which demos to implement
   - What "done" looks like (builds, demos work, keyboard interactions are correct)
-- Include a **verification step** as the final teammate (build, type-check, manual test checklist)
-- The prompt should be self-contained — paste into Claude Code and it works
+- Include a verification step (build, type-check, manual test checklist)
 
-Follow the same orchestration pattern as the @diffgazer/keys extraction prompt (`/Users/voitz/Projects/diffgazer/docs/design/keyboard/extract-@diffgazer/keys-prompt.md` + `@diffgazer/keys-extraction-plan.md`).
+Use `docs/design/playground-spec.md` as the only required planning input.
 
 ---
 
@@ -230,9 +229,9 @@ Follow the same orchestration pattern as the @diffgazer/keys extraction prompt (
 1. **Research** — read the @diffgazer/keys source, analyze OSS examples, evaluate options
 2. **Write the spec** — `docs/design/playground-spec.md`
 3. **Present the spec to the user** — wait for approval/feedback
-4. **After approval, write the implementation prompt** — `docs/design/playground-implementation-prompt.md`
+4. **After approval, write the implementation plan** — `docs/design/playground-implementation-plan.md`
 
-Do NOT write the implementation prompt before the spec is approved. The spec drives the prompt.
+Do NOT write the implementation plan before the spec is approved. The spec drives the plan.
 
 ---
 
@@ -243,5 +242,5 @@ Do NOT write the implementation prompt before the spec is approved. The spec dri
 - Do NOT modify any existing files in the repo
 - Do NOT make vague recommendations — be specific and justify every choice
 - Do NOT default to "it depends" — pick a direction and explain trade-offs
-- Do NOT write the implementation prompt before the spec is reviewed
-- Do NOT include @diffgazer/ui components yet — the playground uses simple, purpose-built components for now (@diffgazer/ui integration is a future step)
+- Do NOT write the implementation plan before the spec is reviewed
+- Do NOT include @diffgazer/ui components yet — the playground uses simple, purpose-built components. @diffgazer/ui integration is a future step.

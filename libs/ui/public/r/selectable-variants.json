@@ -1,7 +1,6 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "selectable-variants",
-  "type": "registry:lib",
   "title": "Selectable Variants",
   "description": "Shared CVA variant definitions for selectable items (checkbox, radio, etc.)",
   "dependencies": [
@@ -18,5 +17,6 @@
   "meta": {
     "client": false,
     "hidden": true
-  }
+  },
+  "type": "registry:lib"
 }

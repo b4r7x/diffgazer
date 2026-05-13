@@ -1,9 +1,8 @@
-import { useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useState } from "react";
 import type { LensId } from "@diffgazer/core/schemas/review";
 import { Badge } from "@diffgazer/ui/components/badge";
 import { CheckboxGroup, CheckboxItem } from "@diffgazer/ui/components/checkbox";
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
-import { toggleListValue } from "@/lib/selectable-values";
 
 export interface AnalysisOption {
   id: LensId;
@@ -23,16 +22,6 @@ interface AnalysisSelectorContentProps {
   onBoundaryReached?: (direction: "up" | "down") => void;
 }
 
-function getInitialFocusedLens(options: AnalysisOption[]): LensId | null {
-  if (options.length === 0) return null;
-  return options[0].id;
-}
-
-function getAvailableFocusedLens(value: LensId | null, optionIds: readonly LensId[]): LensId | null {
-  if (value && optionIds.includes(value)) return value;
-  return optionIds[0] ?? null;
-}
-
 export function AnalysisSelectorContent({
   options,
   value,
@@ -43,38 +32,19 @@ export function AnalysisSelectorContent({
   onBoundaryReached,
 }: AnalysisSelectorContentProps) {
   const [focusedLens, setFocusedLens] = useState<LensId | null>(() =>
-    getInitialFocusedLens(options),
+    options[0]?.id ?? null,
   );
 
   const optionIds = options.map((option) => option.id);
-  const effectiveFocusedLens = getAvailableFocusedLens(focusedLens, optionIds);
+  const effectiveFocusedLens = focusedLens && optionIds.includes(focusedLens)
+    ? focusedLens
+    : optionIds[0] ?? null;
 
   const navigationEnabled = enabled && !disabled && options.length > 0;
   const autoFocusReady = autoFocusList && navigationEnabled;
 
   const handleChange = (nextValue: string[]) => {
     onChange(nextValue.filter((id): id is LensId => optionIds.some((optionId) => optionId === id)));
-  };
-
-  const handleKeyDown = (e: ReactKeyboardEvent) => {
-    if (!navigationEnabled || !effectiveFocusedLens) return;
-
-    if (e.key === "Enter") {
-      e.preventDefault();
-      if (optionIds.includes(effectiveFocusedLens)) {
-        onChange(toggleListValue(value, effectiveFocusedLens));
-      }
-      return;
-    }
-
-    if (onBoundaryReached && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
-      const idx = optionIds.indexOf(effectiveFocusedLens);
-      if (e.key === "ArrowUp" && idx === 0) {
-        onBoundaryReached("up");
-      } else if (e.key === "ArrowDown" && idx === optionIds.length - 1) {
-        onBoundaryReached("down");
-      }
-    }
   };
 
   return (
@@ -91,7 +61,9 @@ export function AnalysisSelectorContent({
             const nextLens = optionIds.find((id) => id === value);
             if (nextLens) setFocusedLens(nextLens);
           }}
-          onKeyDown={handleKeyDown}
+          onNavigationBoundaryReached={(direction) => {
+            onBoundaryReached?.(direction === "previous" ? "up" : "down");
+          }}
           wrap={false}
           variant="bullet"
           disabled={disabled || !enabled}

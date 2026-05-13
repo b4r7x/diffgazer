@@ -1,4 +1,5 @@
 import { printDiffgazerBanner } from "./banner.js";
+import { ensureShutdownToken } from "./lib/shutdown-token.js";
 import type { ServerController } from "./lib/servers/create-process-server.js";
 import { createServerFactories as createModeServerFactories } from "./lib/servers/server-factories.js";
 import type { CliMode } from "./types/cli.js";
@@ -13,16 +14,11 @@ interface WebLauncherDependencies {
   printBanner?: () => void;
 }
 
-function stopServers(servers: ServerController[]): void {
-  for (const server of servers) {
-    server.stop();
-  }
-}
-
 export function startWeb(
   options: WebLauncherOptions,
   dependencies: WebLauncherDependencies = {},
 ): () => void {
+  ensureShutdownToken();
   const resolveServerFactories = dependencies.createServerFactories ?? createModeServerFactories;
   const servers = resolveServerFactories(options).map((create) => create());
   let stopped = false;
@@ -33,7 +29,9 @@ export function startWeb(
     }
 
     stopped = true;
-    stopServers(servers);
+    for (const server of servers) {
+      server.stop();
+    }
   };
 
   const stopAndExit = (): void => {

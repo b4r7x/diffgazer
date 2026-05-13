@@ -6,6 +6,7 @@ import {
 } from "@diffgazer/registry";
 import {
   transformUiPublicRegistryKeysImportContent,
+  transformUiPublicRegistryItem,
   transformUiPublicRegistryKeysImports,
 } from "./transform-public-registry-keys-imports.js";
 
@@ -58,6 +59,7 @@ function main(): void {
       fixCommand: "pnpm --filter @diffgazer/ui build:shadcn",
       label: "ui public registry index",
       afterBuild: ({ outputDir }) => transformUiPublicRegistryKeysImports(outputDir),
+      transformSourceItem: ({ item }) => transformUiPublicRegistryItem(item),
       transformSourceContent: ({ content }) => transformUiPublicRegistryKeysImportContent(content),
     },
     requiredPaths: [

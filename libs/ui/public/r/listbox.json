@@ -1,15 +1,14 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "listbox",
-  "type": "registry:hook",
   "title": "useListbox",
   "description": "Shared listbox state and keyboard navigation hook. Manages selection, highlight, and container ARIA props for listbox-pattern components.",
   "dependencies": [],
   "registryDependencies": [
-    "controllable-state",
-    "@diffgazer-keys/navigation",
-    "compose-refs",
-    "typeahead-buffer"
+    "https://diffgazer.com/r/ui/controllable-state.json",
+    "https://diffgazer.com/r/keys/navigation.json",
+    "https://diffgazer.com/r/ui/compose-refs.json",
+    "https://diffgazer.com/r/ui/typeahead-buffer.json"
   ],
   "files": [
     {
@@ -23,5 +22,6 @@
     "optionalIntegrations": [
       "keyboard-navigation"
     ]
-  }
+  },
+  "type": "registry:hook"
 }

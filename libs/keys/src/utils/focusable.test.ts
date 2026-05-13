@@ -8,6 +8,24 @@ function mount(html: string): HTMLDivElement {
   return container;
 }
 
+function withGlobalNodeUnavailable(run: () => void): void {
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, "Node");
+  Object.defineProperty(globalThis, "Node", {
+    configurable: true,
+    value: undefined,
+  });
+
+  try {
+    run();
+  } finally {
+    if (descriptor) {
+      Object.defineProperty(globalThis, "Node", descriptor);
+    } else {
+      delete (globalThis as { Node?: typeof Node }).Node;
+    }
+  }
+}
+
 describe("focusable utilities", () => {
   afterEach(() => {
     document.body.replaceChildren();
@@ -32,6 +50,17 @@ describe("focusable utilities", () => {
       `);
       const ids = getFocusableElements(c).map((el) => el.id);
       expect(ids).toEqual(["a", "b", "c", "d", "e", "f", "g", "s"]);
+    });
+
+    it("sorts in document order without relying on the global Node constructor", () => {
+      const c = mount(`
+        <button id="a">A</button>
+        <button id="b">B</button>
+      `);
+
+      withGlobalNodeUnavailable(() => {
+        expect(getFocusableElements(c).map((el) => el.id)).toEqual(["a", "b"]);
+      });
     });
 
     it("skips disabled native elements", () => {

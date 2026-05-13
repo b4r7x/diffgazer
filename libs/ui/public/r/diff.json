@@ -1,7 +1,6 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "diff",
-  "type": "registry:lib",
   "title": "Diff Utilities",
   "description": "Pure functions for parsing unified diffs, computing diffs from text, and word-level diff highlighting. No React dependency.",
   "files": [
@@ -49,5 +48,6 @@
   "meta": {
     "client": false,
     "hidden": true
-  }
+  },
+  "type": "registry:lib"
 }

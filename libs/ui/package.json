@@ -252,8 +252,6 @@
   },
   "files": [
     "dist",
-    "!dist/artifacts",
-    "!dist/artifacts/**",
     "!dist/components/dialog-shell.js",
     "!dist/components/dialog-shell.d.ts",
     "!dist/components/portal.js",
@@ -287,9 +285,9 @@
     "tailwind-merge": "^3.4.0"
   },
   "peerDependencies": {
+    "@diffgazer/keys": ">=0.1.1",
     "react": ">=19.2.0",
-    "react-dom": ">=19.2.0",
-    "@diffgazer/keys": ">=0.1.1"
+    "react-dom": ">=19.2.0"
   },
   "devDependencies": {
     "@diffgazer/keys": "workspace:*",
@@ -299,7 +297,7 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "esbuild": "^0.27.0",
-    "shadcn": "^2.10.0",
+    "shadcn": "^4.7.0",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3"
   },

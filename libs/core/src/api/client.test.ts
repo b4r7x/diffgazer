@@ -129,6 +129,18 @@ describe("createApiClient", () => {
 
       expect(lastHeaders().get("X-Custom")).toBe("value");
     });
+
+    it("includes request headers only on that request", async () => {
+      mockFetch.mockResolvedValueOnce(jsonResponse({}));
+
+      await client.post("/api/shutdown", {}, { headers: { "X-Request": "value" } });
+      expect(lastHeaders().get("X-Request")).toBe("value");
+
+      mockFetch.mockClear();
+      mockFetch.mockResolvedValueOnce(jsonResponse({}));
+      await client.get("/api/test");
+      expect(lastHeaders().get("X-Request")).toBeNull();
+    });
   });
 
   describe("HTTP methods", () => {
@@ -151,6 +163,16 @@ describe("createApiClient", () => {
       const [, options] = lastCall();
       expect(options.method).toBe("POST");
       expect(options.body).toBe(JSON.stringify({ name: "test" }));
+    });
+
+    it("PUT sends JSON body", async () => {
+      mockFetch.mockResolvedValue(jsonResponse({ ok: true }));
+
+      await client.put("/api/update", { name: "updated" });
+
+      const [, options] = lastCall();
+      expect(options.method).toBe("PUT");
+      expect(options.body).toBe(JSON.stringify({ name: "updated" }));
     });
 
     it("DELETE sends no body", async () => {

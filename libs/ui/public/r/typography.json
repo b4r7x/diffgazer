@@ -1,7 +1,6 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "typography",
-  "type": "registry:ui",
   "title": "Typography",
   "description": "Terminal-styled typography wrapper for consistent text styling",
   "dependencies": [
@@ -22,5 +21,6 @@
   ],
   "meta": {
     "client": false
-  }
+  },
+  "type": "registry:ui"
 }

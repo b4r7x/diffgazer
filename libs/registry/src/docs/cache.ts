@@ -5,8 +5,9 @@ import {
   readFileSync,
   writeFileSync,
 } from "node:fs";
-import { basename, dirname, resolve } from "node:path";
+import { basename, dirname, relative, resolve } from "node:path";
 import { defaultLogger, type Logger } from "../logger.js";
+import { collectAllFiles, resolveInside } from "../utils/fs.js";
 import type { LoadedLibraryArtifacts, SyncOutputPaths, SyncState } from "./types.js";
 
 export function computeSyncFingerprint(
@@ -56,6 +57,7 @@ export function writeSyncState(stateFilePath: string, state: SyncState): void {
 function docsOutputsExist(
   artifacts: LoadedLibraryArtifacts[],
   paths: SyncOutputPaths,
+  primaryLibraryId: string,
 ): boolean {
   const required = [
     resolve(paths.contentDir, "meta.json"),
@@ -75,11 +77,32 @@ function docsOutputsExist(
     }
 
     const sourceAssetsDirRel = artifact.manifest.docs.assetsDir;
-    if (!sourceAssetsDirRel) continue;
+    if (sourceAssetsDirRel) {
+      const sourceAssetsDir = resolveInside(
+        artifact.artifactRoot,
+        sourceAssetsDirRel,
+        `${artifact.id} artifact assets path`,
+      );
+      if (existsSync(sourceAssetsDir)) {
+        required.push(resolve(paths.libraryAssetsDir, artifact.id));
+      }
+    }
 
-    const sourceAssetsDir = resolve(artifact.artifactRoot, sourceAssetsDirRel);
-    if (existsSync(sourceAssetsDir)) {
-      required.push(resolve(paths.libraryAssetsDir, artifact.id));
+    if (artifact.id === primaryLibraryId) continue;
+
+    const sourceRegistryDirRel = artifact.manifest.source?.registryDir;
+    if (!sourceRegistryDirRel) continue;
+    const sourceExamplesDir = resolveInside(
+      artifact.artifactRoot,
+      `${sourceRegistryDirRel}/examples`,
+      `${artifact.id} artifact examples path`,
+    );
+    if (existsSync(sourceExamplesDir)) {
+      const targetExamplesDir = resolve(paths.registryDir, "examples", artifact.id);
+      required.push(targetExamplesDir);
+      for (const sourceFile of collectAllFiles(sourceExamplesDir)) {
+        required.push(resolve(targetExamplesDir, relative(sourceExamplesDir, sourceFile)));
+      }
     }
   }
 
@@ -91,9 +114,10 @@ export function shouldSkipSync(params: {
   syncFingerprint: string;
   artifacts: LoadedLibraryArtifacts[];
   paths: SyncOutputPaths;
+  primaryLibraryId: string;
 }): boolean {
-  const { syncState, syncFingerprint, artifacts, paths } = params;
+  const { syncState, syncFingerprint, artifacts, paths, primaryLibraryId } = params;
   if (syncState?.fingerprint !== syncFingerprint) return false;
 
-  return docsOutputsExist(artifacts, paths);
+  return docsOutputsExist(artifacts, paths, primaryLibraryId);
 }

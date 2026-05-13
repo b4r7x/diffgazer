@@ -1,18 +1,17 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "toggle-group",
-  "type": "registry:ui",
   "title": "Toggle Group",
   "description": "Compound toggle button group for single selection with keyboard navigation",
   "dependencies": [
     "class-variance-authority"
   ],
   "registryDependencies": [
-    "@diffgazer-keys/navigation",
-    "controllable-state",
-    "compose-refs",
-    "form-reset",
-    "selectable-collection"
+    "https://diffgazer.com/r/keys/navigation.json",
+    "https://diffgazer.com/r/ui/controllable-state.json",
+    "https://diffgazer.com/r/ui/compose-refs.json",
+    "https://diffgazer.com/r/ui/form-reset.json",
+    "https://diffgazer.com/r/ui/selectable-collection.json"
   ],
   "files": [
     {
@@ -41,5 +40,6 @@
     "optionalIntegrations": [
       "keyboard-navigation"
     ]
-  }
+  },
+  "type": "registry:ui"
 }

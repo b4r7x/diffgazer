@@ -47,7 +47,7 @@ buildDocsData({
     backwardCompatFile: "keys-hooks.json",
   },
   demoIndex: {
-    importPathPrefix: "../../../registry/examples/keys",
+    importPathPrefix: "../../registry/examples",
   },
 }).catch((err) => {
   console.error(err instanceof Error ? err.message : err)

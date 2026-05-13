@@ -3,29 +3,35 @@ import { resolve } from "node:path";
 import { z } from "zod";
 import { DEFAULT_ARTIFACT_ROOT, ARTIFACT_FINGERPRINT_FILENAME } from "./constants.js";
 import { readJson } from "./utils/json.js";
+import { isRelativeSubpath } from "./utils/fs.js";
+
+const RelativeArtifactPathSchema = z.string().min(1).refine(
+  isRelativeSubpath,
+  { message: "Path must be relative and must not contain '..' segments" },
+);
 
 export const ArtifactManifestDocsSchema = z.object({
-  contentDir: z.string().min(1),
-  metaFile: z.string().min(1),
-  generatedDir: z.string().min(1).optional(),
-  assetsDir: z.string().min(1).optional(),
+  contentDir: RelativeArtifactPathSchema,
+  metaFile: RelativeArtifactPathSchema,
+  generatedDir: RelativeArtifactPathSchema.optional(),
+  assetsDir: RelativeArtifactPathSchema.optional(),
 });
 
 export const ArtifactManifestRegistrySchema = z.object({
   namespace: z.string().regex(/^@[a-z0-9][\w-]*(?:\/[a-z0-9][\w-]*)?$/i),
   basePath: z.string().min(1),
-  publicDir: z.string().min(1),
-  index: z.string().min(1),
+  publicDir: RelativeArtifactPathSchema,
+  index: RelativeArtifactPathSchema,
 });
 
 const ArtifactManifestSourceSchema = z.object({
-  registryDir: z.string().min(1).optional(),
-  stylesDir: z.string().min(1).optional(),
+  registryDir: RelativeArtifactPathSchema.optional(),
+  stylesDir: RelativeArtifactPathSchema.optional(),
 });
 
 export const ArtifactManifestIntegritySchema = z.object({
   algorithm: z.literal("sha256"),
-  fingerprintFile: z.string().min(1),
+  fingerprintFile: RelativeArtifactPathSchema,
 });
 
 export const ArtifactManifestSchema = z.object({
@@ -33,12 +39,12 @@ export const ArtifactManifestSchema = z.object({
   library: z.string().min(1),
   package: z.string().min(1),
   version: z.string().min(1),
-  artifactRoot: z.string().min(1),
-  inputs: z.array(z.string().min(1)).min(1),
+  artifactRoot: RelativeArtifactPathSchema,
+  inputs: z.array(RelativeArtifactPathSchema).min(1),
   docs: ArtifactManifestDocsSchema,
   registry: ArtifactManifestRegistrySchema,
   source: ArtifactManifestSourceSchema.optional(),
-  generated: z.record(z.string(), z.string()).optional(),
+  generated: z.record(z.string(), RelativeArtifactPathSchema).optional(),
   integrity: ArtifactManifestIntegritySchema,
 });
 

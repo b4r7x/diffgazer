@@ -1,7 +1,6 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "active-heading",
-  "type": "registry:hook",
   "title": "Active Heading",
   "description": "Configurable active heading detection for table of contents with top-line or viewport-center activation, optional bottom lock, and precise scrollTo offsets.",
   "dependencies": [],
@@ -15,5 +14,6 @@
   ],
   "meta": {
     "client": true
-  }
+  },
+  "type": "registry:hook"
 }

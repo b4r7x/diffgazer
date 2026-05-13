@@ -1,10 +1,10 @@
 import { z } from "zod";
-import { RegistryItemSchema } from "../registry.js";
+import { RegistryFileSchema, RegistryItemSchema } from "../registry.js";
 
-export const RegistrySourceFileSchema = z.object({
-  path: z.string(),
-  type: z.string().optional(),
-  target: z.string().optional(),
+export const RegistrySourceFileSchema = RegistryFileSchema.pick({
+  path: true,
+  type: true,
+  target: true,
 });
 
 export const RegistrySourceItemSchema = RegistryItemSchema.extend({

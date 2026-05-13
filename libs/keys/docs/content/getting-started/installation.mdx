@@ -7,7 +7,7 @@ description: Install @diffgazer/keys as a package or copy standalone hooks with 
 
 ## Package Install
 
-Use the package when you need provider-backed hooks such as `KeyboardProvider`, `useKey`, `useScope`, or `useFocusZone`.
+Use the package when you need provider-backed hooks such as `KeyboardProvider`, `useKey`, `useScope`, `useScopedNavigation`, `useActionRowNavigation`, or `useFocusZone`.
 
 `@diffgazer/keys` is external publish-gated as of May 6, 2026. Use the npm command only after `npm view @diffgazer/keys version` succeeds, or validate with a locally packed workspace tarball.
 
@@ -42,7 +42,7 @@ npx shadcn add https://diffgazer.com/r/keys/navigation.json
 npx shadcn add https://diffgazer.com/r/keys/focus-trap.json
 ```
 
-Files install to `@hooks/use-navigation.ts`, `@hooks/utils/navigation-items.ts`, etc.
+Files install to `src/hooks/use-navigation.ts`, `src/hooks/utils/navigation-items.ts`, etc.
 
 ## API Availability by Path
 
@@ -52,7 +52,7 @@ Standalone hooks available through all three paths (package, dgadd, direct copy)
 
 Package-only APIs (require `KeyboardProvider`, not available through copy paths):
 
-- `KeyboardProvider`, `useKey`, `useScope`, `useScopedNavigation`, `useFocusZone`, `keys`, `useKeyboardContext`, `useOptionalKeyboardContext`
+- `KeyboardProvider`, `useKey`, `useScope`, `useScopedNavigation`, `useActionRowNavigation`, `useFocusZone`, `keys`, `useKeyboardContext`, `useOptionalKeyboardContext`
 
 ## With @diffgazer/ui
 

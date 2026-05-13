@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { metaField, parseRegistryDependencyRef } from "../registry.js";
+import { metaField, parseRegistryDependencyRef, RegistryContentItemSchema } from "../registry.js";
 import { info, heading, toErrorMessage } from "../logger.js";
 import { atomicWriteFile } from "../fs.js";
 import { computeIntegrity } from "../integrity.js";
@@ -113,20 +113,21 @@ function bundleItem(
   ctx: BundleContext,
 ): BundleItem {
   const { files, detectedDeps } = readAndBundleFiles(sourceItem, ctx);
+  const { files: _sourceFiles, dependencies: _sourceDependencies, meta: sourceMeta, ...itemFields } = sourceItem;
 
   if (ctx.excludedDeps) {
     for (const d of ctx.excludedDeps) detectedDeps.delete(d);
   }
 
   return {
-    name: sourceItem.name,
-    type: sourceItem.type,
+    ...itemFields,
     title: sourceItem.title ?? sourceItem.name,
     description: sourceItem.description ?? "",
     dependencies: [...detectedDeps],
     registryDependencies: sourceItem.registryDependencies,
     files,
     meta: {
+      ...sourceMeta,
       client: metaField(sourceItem, "client", ctx.clientDefault),
       hidden: metaField(sourceItem, "hidden", false),
       optionalIntegrations: metaField<string[]>(sourceItem, "optionalIntegrations", []),
@@ -171,10 +172,11 @@ export function createBundler(config: BundlerConfig): () => BundleResult {
       clientDefault,
     };
     const items = sourceItems.map((item) => bundleItem(item, ctx));
+    const normalizedItems = items.map((item) => RegistryContentItemSchema.parse(item));
 
     const extra = extraContent ? extraContent(rootDir) : {};
-    const integrity = computeIntegrity(JSON.stringify({ items, ...extra }));
-    const bundleJson = JSON.stringify({ schemaVersion: 1, items, ...extra, integrity });
+    const integrity = computeIntegrity(JSON.stringify({ items: normalizedItems, ...extra }));
+    const bundleJson = JSON.stringify({ schemaVersion: 1, items: normalizedItems, ...extra, integrity });
 
     atomicWriteFile(outputPath, bundleJson);
     const totalFiles = items.reduce((acc, i) => acc + i.files.length, 0);

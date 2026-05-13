@@ -41,10 +41,6 @@ const reviewStore = createCollection<SavedReview, ReviewMetadata>({
   getId: (review) => review.metadata.id,
 });
 
-/**
- * Migrates a review by recalculating severity counts from issues.
- * Returns true if migration was applied.
- */
 function migrateReview(review: SavedReview): SavedReview | null {
   const { metadata } = review;
   const { issues } = review.result;
@@ -106,6 +102,7 @@ export async function saveReview(
   const savedReview: SavedReview = {
     metadata,
     result: options.result,
+    diff: options.diff,
     gitContext,
     drilldowns: options.drilldowns ?? [],
   };

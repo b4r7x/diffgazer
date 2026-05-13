@@ -56,7 +56,7 @@ function HookSourceAll({ data, sectionTitle, hint }: HookSourceAllProps) {
 
 function HookSourceBlock({ hook }: { hook: HookData }) {
   const [expanded, setExpanded] = useState(false)
-  const fileName = `use-${hook.name}.ts`
+  const fileName = hook.name.startsWith("use-") ? `${hook.name}.ts` : `use-${hook.name}.ts`
 
   return (
     <div className="border border-border rounded-sm overflow-hidden">
@@ -66,8 +66,11 @@ function HookSourceBlock({ hook }: { hook: HookData }) {
             onClick={() => setExpanded(!expanded)}
             aria-expanded={expanded}
             className="flex items-center gap-2 text-sm font-mono text-foreground hover:text-primary transition-colors cursor-pointer"
+            type="button"
           >
-            <span className="text-muted-foreground">{expanded ? "v" : ">"}</span>
+            <span aria-hidden="true" className="text-muted-foreground">
+              {expanded ? "v" : ">"}
+            </span>
             <span className="font-bold">{fileName}</span>
           </button>
           <p className="text-xs text-muted-foreground mt-0.5 ml-5">
@@ -79,7 +82,7 @@ function HookSourceBlock({ hook }: { hook: HookData }) {
       {expanded && (
         <CodeBlock>
           <CodeBlockContent>
-            {hook.source.highlighted.map(line => (
+            {hook.source.highlighted.map((line) => (
               <CodeBlockLine key={line.number} {...line} />
             ))}
           </CodeBlockContent>

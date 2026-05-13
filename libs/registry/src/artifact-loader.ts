@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { ARTIFACT_MANIFEST_REL_PATH } from "./constants.js";
 import { loadValidatedManifest } from "./manifest.js";
 import type { ArtifactManifest } from "./manifest.js";
-import { ensureExists } from "./utils/fs.js";
+import { ensureExists, resolveInside } from "./utils/fs.js";
 
 export interface LoadedArtifacts {
   manifest: ArtifactManifest;
@@ -20,6 +20,13 @@ export interface LoadFromPackageOptions {
   from?: string;
 }
 
+const PACKAGE_NAME_RE = /^(?:@[a-z0-9][a-z0-9._~-]*\/)?[a-z0-9][a-z0-9._~-]*$/i;
+
+function assertPackageName(name: string): void {
+  if (PACKAGE_NAME_RE.test(name)) return;
+  throw new Error(`Artifact package name must be an npm package name: ${name}`);
+}
+
 export function loadArtifactsFromPackage(
   options: LoadFromPackageOptions,
 ): LoadedArtifacts {
@@ -28,6 +35,8 @@ export function loadArtifactsFromPackage(
     manifestRelPath = ARTIFACT_MANIFEST_REL_PATH,
     from = process.cwd(),
   } = options;
+
+  assertPackageName(packageName);
 
   const require = createRequire(resolve(from, "package.json"));
   let packageDir: string;
@@ -40,14 +49,23 @@ export function loadArtifactsFromPackage(
     );
   }
 
-  const manifestPath = resolve(packageDir, manifestRelPath);
+  const manifestPath = resolveInside(
+    packageDir,
+    manifestRelPath,
+    `${packageName} artifact manifest path`,
+  );
   ensureExists(manifestPath, `${packageName} artifact manifest`);
 
   const manifest = loadValidatedManifest(manifestPath, packageName);
-  const artifactRoot = resolve(packageDir, manifest.artifactRoot);
-  const fingerprintPath = resolve(
+  const artifactRoot = resolveInside(
+    packageDir,
+    manifest.artifactRoot,
+    `${packageName} artifact root`,
+  );
+  const fingerprintPath = resolveInside(
     artifactRoot,
     manifest.integrity.fingerprintFile,
+    `${packageName} artifact fingerprint path`,
   );
   ensureExists(fingerprintPath, `${packageName} artifact fingerprint`);
 

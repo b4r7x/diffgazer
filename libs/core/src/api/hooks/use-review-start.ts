@@ -30,16 +30,9 @@ export interface UseReviewStartResult {
 }
 
 export function useReviewStart(options: UseReviewStartOptions): UseReviewStartResult {
-  // State for external consumers (reactive, triggers re-renders)
   const [hasStarted, setHasStarted] = useState(false);
   const [hasStreamed, setHasStreamed] = useState(false);
 
-  // Ref for the effect guard — prevents the effect from self-cancelling
-  // when setHasStarted(true) triggers a re-render.
-  // The state value is for consumers; the ref is for the effect's own guard.
-  const hasStartedGuard = useRef(false);
-
-  // Stable refs for callbacks and arrays
   const startRef = useRef(options.start);
   const resumeRef = useRef(options.resume);
   const getActiveSessionRef = useRef(options.getActiveSession);
@@ -51,26 +44,19 @@ export function useReviewStart(options: UseReviewStartOptions): UseReviewStartRe
   defaultLensesRef.current = options.defaultLenses;
   onNotFoundRef.current = options.onNotFoundInSession;
 
-  // Sync external setHasStarted(false) back to the guard ref
-  // so that startToken re-triggers work
-  if (!hasStarted) {
-    hasStartedGuard.current = false;
-  }
-
   useEffect(() => {
-    if (hasStartedGuard.current) return;
     if (options.configLoading || options.settingsLoading || !options.isConfigured) return;
-
-    // Mark started synchronously via ref (no re-render, no cleanup race)
-    hasStartedGuard.current = true;
-    setHasStarted(true);
-    setHasStreamed(true);
 
     let ignore = false;
 
     const startOptions = { mode: options.mode, lenses: defaultLensesRef.current };
+    const markStarted = () => {
+      setHasStarted(true);
+      setHasStreamed(true);
+    };
     const startFresh = () => {
       if (ignore) return;
+      markStarted();
       void startRef.current(startOptions);
     };
 
@@ -93,10 +79,16 @@ export function useReviewStart(options: UseReviewStartOptions): UseReviewStartRe
       }
     };
 
-    if (options.reviewId) {
-      void resumeRef.current(options.reviewId).then((result) => {
-        handleResumeResult(result, options.reviewId!, false);
+    const resumeReview = (reviewId: string, fromActiveSession: boolean) => {
+      if (ignore) return;
+      markStarted();
+      void resumeRef.current(reviewId).then((result) => {
+        handleResumeResult(result, reviewId, fromActiveSession);
       });
+    };
+
+    if (options.reviewId) {
+      resumeReview(options.reviewId, false);
     } else {
       void getActiveSessionRef.current(options.mode)
         .then((active) => {
@@ -106,9 +98,7 @@ export function useReviewStart(options: UseReviewStartOptions): UseReviewStartRe
             startFresh();
             return;
           }
-          void resumeRef.current(activeReviewId).then((result) => {
-            handleResumeResult(result, activeReviewId, true);
-          });
+          resumeReview(activeReviewId, true);
         })
         .catch(() => {
           startFresh();

@@ -1,16 +1,15 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "tabs",
-  "type": "registry:ui",
   "title": "Tabs",
   "description": "Terminal-styled tabbed interface",
   "dependencies": [
     "class-variance-authority"
   ],
   "registryDependencies": [
-    "controllable-state",
-    "@diffgazer-keys/navigation",
-    "compose-refs"
+    "https://diffgazer.com/r/ui/controllable-state.json",
+    "https://diffgazer.com/r/keys/navigation.json",
+    "https://diffgazer.com/r/ui/compose-refs.json"
   ],
   "files": [
     {
@@ -49,5 +48,6 @@
     "optionalIntegrations": [
       "keyboard-navigation"
     ]
-  }
+  },
+  "type": "registry:ui"
 }

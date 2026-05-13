@@ -7,6 +7,8 @@ import { setImmediate as waitImmediate } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { resolveCliAction } from "./cli-options.js";
 import { parsePortEnv, openBrowserAddress } from "./lib/servers/server-factories.js";
+import { isSpaNavigationRequest } from "./lib/servers/embedded-server.js";
+import { ensureShutdownToken } from "./lib/shutdown-token.js";
 import { startWeb } from "./web-launcher.js";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
@@ -18,6 +20,17 @@ function runDiffgazer(args: string[]): string {
     cwd: repoRoot,
     encoding: "utf-8",
   });
+}
+
+function requestContext(pathname: string, options: { method?: string; accept?: string } = {}) {
+  return {
+    req: {
+      method: options.method ?? "GET",
+      url: `http://localhost:3000${pathname}`,
+      header: (name: string) =>
+        name.toLowerCase() === "accept" ? options.accept ?? "text/html" : undefined,
+    },
+  } as Parameters<typeof isSpaNavigationRequest>[0];
 }
 
 describe("resolveCliAction", () => {
@@ -111,6 +124,34 @@ describe("server launcher options", () => {
     ]);
   });
 
+  test("creates a per-process shutdown token and exposes it to web runtime env", () => {
+    const originalShutdownToken = process.env.DIFFGAZER_SHUTDOWN_TOKEN;
+    const originalViteToken = process.env.VITE_DIFFGAZER_SHUTDOWN_TOKEN;
+    process.env.DIFFGAZER_SHUTDOWN_TOKEN = "shell-token";
+    delete process.env.VITE_DIFFGAZER_SHUTDOWN_TOKEN;
+
+    try {
+      const token = ensureShutdownToken();
+
+      assert.match(token, /^[a-f0-9]{64}$/);
+      assert.notEqual(token, "shell-token");
+      assert.equal(process.env.DIFFGAZER_SHUTDOWN_TOKEN, token);
+      assert.equal(process.env.VITE_DIFFGAZER_SHUTDOWN_TOKEN, token);
+      assert.equal(ensureShutdownToken(), token);
+    } finally {
+      if (originalShutdownToken === undefined) {
+        delete process.env.DIFFGAZER_SHUTDOWN_TOKEN;
+      } else {
+        process.env.DIFFGAZER_SHUTDOWN_TOKEN = originalShutdownToken;
+      }
+      if (originalViteToken === undefined) {
+        delete process.env.VITE_DIFFGAZER_SHUTDOWN_TOKEN;
+      } else {
+        process.env.VITE_DIFFGAZER_SHUTDOWN_TOKEN = originalViteToken;
+      }
+    }
+  });
+
   test("prints the banner before starting web servers and stops them on cleanup", () => {
     const events: string[] = [];
 
@@ -132,5 +173,17 @@ describe("server launcher options", () => {
     stop();
 
     assert.deepEqual(events, ["banner", "start", "stop"]);
+  });
+
+  test("treats index.html as an injected SPA shell request", () => {
+    assert.equal(isSpaNavigationRequest(requestContext("/"), "/"), true);
+    assert.equal(isSpaNavigationRequest(requestContext("/settings"), "/settings"), true);
+    assert.equal(isSpaNavigationRequest(requestContext("/index.html"), "/index.html"), true);
+    assert.equal(isSpaNavigationRequest(requestContext("/assets/app.js"), "/assets/app.js"), false);
+    assert.equal(isSpaNavigationRequest(requestContext("/api/shutdown"), "/api/shutdown"), false);
+    assert.equal(
+      isSpaNavigationRequest(requestContext("/index.html", { accept: "application/json" }), "/index.html"),
+      false,
+    );
   });
 });

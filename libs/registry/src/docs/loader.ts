@@ -1,11 +1,11 @@
 import { readFileSync } from "node:fs";
-import { basename, resolve } from "node:path";
+import { basename } from "node:path";
 import { ARTIFACT_MANIFEST_REL_PATH } from "../constants.js";
 import { loadArtifactsFromPackage } from "../artifact-loader.js";
 import { computeInputsFingerprint } from "../fingerprint.js";
 import { loadValidatedManifest } from "../manifest.js";
 import type { ArtifactManifest } from "../manifest.js";
-import { ensureExists } from "../utils/fs.js";
+import { ensureExists, resolveInside } from "../utils/fs.js";
 import type { LoadedLibraryArtifacts, SyncLibraryConfig } from "./types.js";
 
 function getManifestGeneratedFiles(manifest: ArtifactManifest): string[] {
@@ -80,9 +80,10 @@ function loadFromPackage(
     manifest: loaded.manifest,
     manifestPath: loaded.manifestPath,
     artifactRoot: loaded.artifactRoot,
-    fingerprintPath: resolve(
+    fingerprintPath: resolveInside(
       loaded.artifactRoot,
       loaded.manifest.integrity.fingerprintFile,
+      `${config.id} artifact fingerprint path`,
     ),
     fingerprint: loaded.fingerprint,
   });
@@ -92,18 +93,28 @@ function loadFromWorkspace(
   config: SyncLibraryConfig,
   workspaceRoot: string,
 ): LoadedLibraryArtifacts {
-  const libraryRoot = resolve(workspaceRoot, config.workspaceDir);
-  const manifestPath = resolve(
+  const libraryRoot = resolveInside(
+    workspaceRoot,
+    config.workspaceDir,
+    `${config.id} workspace directory`,
+  );
+  const manifestPath = resolveInside(
     libraryRoot,
     ARTIFACT_MANIFEST_REL_PATH,
+    `${config.id} artifact manifest path`,
   );
   ensureExists(manifestPath, `${config.id} artifact manifest`);
 
   const manifest = loadValidatedManifest(manifestPath, config.id);
-  const artifactRoot = resolve(libraryRoot, manifest.artifactRoot);
-  const fingerprintPath = resolve(
+  const artifactRoot = resolveInside(
+    libraryRoot,
+    manifest.artifactRoot,
+    `${config.id} artifact root`,
+  );
+  const fingerprintPath = resolveInside(
     artifactRoot,
     manifest.integrity.fingerprintFile,
+    `${config.id} artifact fingerprint path`,
   );
   ensureExists(fingerprintPath, `${config.id} artifact fingerprint`);
 

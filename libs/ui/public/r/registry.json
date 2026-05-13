@@ -12,10 +12,10 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
-        "controllable-state",
-        "compose-refs",
-        "icons",
-        "@diffgazer-keys/navigation"
+        "https://diffgazer.com/r/ui/controllable-state.json",
+        "https://diffgazer.com/r/ui/compose-refs.json",
+        "https://diffgazer.com/r/ui/icons.json",
+        "https://diffgazer.com/r/keys/navigation.json"
       ],
       "meta": {
         "client": true,
@@ -67,7 +67,7 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
-        "spinner"
+        "https://diffgazer.com/r/ui/spinner.json"
       ],
       "meta": {
         "client": true
@@ -92,7 +92,7 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
-        "overflow"
+        "https://diffgazer.com/r/ui/overflow.json"
       ],
       "meta": {
         "client": true
@@ -164,7 +164,7 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
-        "input-variants"
+        "https://diffgazer.com/r/ui/input-variants.json"
       ],
       "meta": {
         "client": true
@@ -191,7 +191,7 @@
       "description": "Form field primitives for labels, controls, descriptions, and validation messages",
       "dependencies": [],
       "registryDependencies": [
-        "compose-refs"
+        "https://diffgazer.com/r/ui/compose-refs.json"
       ],
       "meta": {
         "client": true
@@ -214,7 +214,7 @@
       "description": "Terminal-styled multi-line text area",
       "dependencies": [],
       "registryDependencies": [
-        "input-variants"
+        "https://diffgazer.com/r/ui/input-variants.json"
       ],
       "meta": {
         "client": true
@@ -239,7 +239,7 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
-        "controllable-state"
+        "https://diffgazer.com/r/ui/controllable-state.json"
       ],
       "meta": {
         "client": true
@@ -304,12 +304,12 @@
       "description": "Terminal-styled checkbox with bracket notation",
       "dependencies": [],
       "registryDependencies": [
-        "controllable-state",
-        "form-reset",
-        "@diffgazer-keys/navigation",
-        "compose-refs",
-        "selectable-collection",
-        "selectable-variants"
+        "https://diffgazer.com/r/ui/controllable-state.json",
+        "https://diffgazer.com/r/ui/form-reset.json",
+        "https://diffgazer.com/r/keys/navigation.json",
+        "https://diffgazer.com/r/ui/compose-refs.json",
+        "https://diffgazer.com/r/ui/selectable-collection.json",
+        "https://diffgazer.com/r/ui/selectable-variants.json"
       ],
       "meta": {
         "client": true,
@@ -370,12 +370,12 @@
       "description": "Terminal-styled radio and radio group for single-selection with bracket notation",
       "dependencies": [],
       "registryDependencies": [
-        "controllable-state",
-        "form-reset",
-        "compose-refs",
-        "@diffgazer-keys/navigation",
-        "selectable-collection",
-        "selectable-variants"
+        "https://diffgazer.com/r/ui/controllable-state.json",
+        "https://diffgazer.com/r/ui/form-reset.json",
+        "https://diffgazer.com/r/ui/compose-refs.json",
+        "https://diffgazer.com/r/keys/navigation.json",
+        "https://diffgazer.com/r/ui/selectable-collection.json",
+        "https://diffgazer.com/r/ui/selectable-variants.json"
       ],
       "meta": {
         "client": true,
@@ -671,10 +671,10 @@
       "description": "Container-aware overflow handling for items (dynamic fitting with indicator) and text (line clamping with tooltip).",
       "dependencies": [],
       "registryDependencies": [
-        "tooltip",
-        "overflow-detection",
-        "overflow-items",
-        "compose-refs"
+        "https://diffgazer.com/r/ui/tooltip.json",
+        "https://diffgazer.com/r/ui/overflow-detection.json",
+        "https://diffgazer.com/r/ui/overflow-items.json",
+        "https://diffgazer.com/r/ui/compose-refs.json"
       ],
       "meta": {
         "client": true
@@ -705,7 +705,7 @@
       "description": "Minimal tooltip with hover delay and terminal styling. Built on Popover primitive with all 4-side positioning. Compound API (Trigger + Content) or shorthand content prop.",
       "dependencies": [],
       "registryDependencies": [
-        "popover"
+        "https://diffgazer.com/r/ui/popover.json"
       ],
       "meta": {
         "client": true
@@ -734,12 +734,12 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
-        "button",
-        "controllable-state",
-        "@diffgazer-keys/focus-restore",
-        "dialog-shell",
-        "compose-refs",
-        "portal"
+        "https://diffgazer.com/r/ui/button.json",
+        "https://diffgazer.com/r/ui/controllable-state.json",
+        "https://diffgazer.com/r/keys/focus-restore.json",
+        "https://diffgazer.com/r/ui/dialog-shell.json",
+        "https://diffgazer.com/r/ui/compose-refs.json",
+        "https://diffgazer.com/r/ui/portal.json"
       ],
       "meta": {
         "client": true,
@@ -809,8 +809,8 @@
       "description": "Native dialog element wrapper with presence animations and backdrop handling",
       "dependencies": [],
       "registryDependencies": [
-        "compose-refs",
-        "presence"
+        "https://diffgazer.com/r/ui/compose-refs.json",
+        "https://diffgazer.com/r/ui/presence.json"
       ],
       "meta": {
         "client": true,
@@ -887,9 +887,9 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
-        "controllable-state",
-        "@diffgazer-keys/navigation",
-        "compose-refs"
+        "https://diffgazer.com/r/ui/controllable-state.json",
+        "https://diffgazer.com/r/keys/navigation.json",
+        "https://diffgazer.com/r/ui/compose-refs.json"
       ],
       "meta": {
         "client": true,
@@ -933,7 +933,7 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
-        "listbox"
+        "https://diffgazer.com/r/ui/listbox.json"
       ],
       "meta": {
         "client": true,
@@ -973,8 +973,8 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
-        "listbox",
-        "badge"
+        "https://diffgazer.com/r/ui/listbox.json",
+        "https://diffgazer.com/r/ui/badge.json"
       ],
       "meta": {
         "client": true,
@@ -1034,8 +1034,8 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
-        "outside-click",
-        "spinner"
+        "https://diffgazer.com/r/ui/outside-click.json",
+        "https://diffgazer.com/r/ui/spinner.json"
       ],
       "meta": {
         "client": true
@@ -1083,9 +1083,9 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
-        "badge",
-        "controllable-state",
-        "step-status"
+        "https://diffgazer.com/r/ui/badge.json",
+        "https://diffgazer.com/r/ui/controllable-state.json",
+        "https://diffgazer.com/r/ui/step-status.json"
       ],
       "files": [
         {
@@ -1131,9 +1131,9 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
-        "controllable-state",
-        "form-reset",
-        "compose-refs"
+        "https://diffgazer.com/r/ui/controllable-state.json",
+        "https://diffgazer.com/r/ui/form-reset.json",
+        "https://diffgazer.com/r/ui/compose-refs.json"
       ],
       "meta": {
         "client": true
@@ -1158,11 +1158,11 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
-        "@diffgazer-keys/navigation",
-        "controllable-state",
-        "compose-refs",
-        "form-reset",
-        "selectable-collection"
+        "https://diffgazer.com/r/keys/navigation.json",
+        "https://diffgazer.com/r/ui/controllable-state.json",
+        "https://diffgazer.com/r/ui/compose-refs.json",
+        "https://diffgazer.com/r/ui/form-reset.json",
+        "https://diffgazer.com/r/ui/selectable-collection.json"
       ],
       "meta": {
         "client": true,
@@ -1196,7 +1196,7 @@
       "description": "Code display with line numbers and scroll area",
       "dependencies": [],
       "registryDependencies": [
-        "scroll-area"
+        "https://diffgazer.com/r/ui/scroll-area.json"
       ],
       "meta": {
         "client": true
@@ -1235,9 +1235,9 @@
       "description": "Diff viewer with unified and side-by-side modes. Accepts unified diff strings or before/after text. Keyboard navigation between hunks with j/k.",
       "dependencies": [],
       "registryDependencies": [
-        "diff",
-        "@diffgazer-keys/navigation",
-        "kbd"
+        "https://diffgazer.com/r/ui/diff.json",
+        "https://diffgazer.com/r/keys/navigation.json",
+        "https://diffgazer.com/r/ui/kbd.json"
       ],
       "meta": {
         "client": true,
@@ -1280,7 +1280,7 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
-        "step-status"
+        "https://diffgazer.com/r/ui/step-status.json"
       ],
       "files": [
         {
@@ -1310,14 +1310,14 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
-        "controllable-state",
-        "@diffgazer-keys/focus-restore",
-        "@diffgazer-keys/navigation",
-        "compose-refs",
-        "dialog-shell",
-        "portal",
-        "search",
-        "selectable-collection"
+        "https://diffgazer.com/r/ui/controllable-state.json",
+        "https://diffgazer.com/r/keys/focus-restore.json",
+        "https://diffgazer.com/r/keys/navigation.json",
+        "https://diffgazer.com/r/ui/compose-refs.json",
+        "https://diffgazer.com/r/ui/dialog-shell.json",
+        "https://diffgazer.com/r/ui/portal.json",
+        "https://diffgazer.com/r/ui/search.json",
+        "https://diffgazer.com/r/ui/selectable-collection.json"
       ],
       "meta": {
         "client": true,
@@ -1381,17 +1381,17 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
-        "controllable-state",
-        "@diffgazer-keys/navigation",
-        "compose-refs",
-        "floating-position",
-        "form-reset",
-        "icons",
-        "outside-click",
-        "portal",
-        "presence",
-        "search",
-        "typeahead-buffer"
+        "https://diffgazer.com/r/ui/controllable-state.json",
+        "https://diffgazer.com/r/keys/navigation.json",
+        "https://diffgazer.com/r/ui/compose-refs.json",
+        "https://diffgazer.com/r/ui/floating-position.json",
+        "https://diffgazer.com/r/ui/form-reset.json",
+        "https://diffgazer.com/r/ui/icons.json",
+        "https://diffgazer.com/r/ui/outside-click.json",
+        "https://diffgazer.com/r/ui/portal.json",
+        "https://diffgazer.com/r/ui/presence.json",
+        "https://diffgazer.com/r/ui/search.json",
+        "https://diffgazer.com/r/ui/typeahead-buffer.json"
       ],
       "meta": {
         "client": true,
@@ -1490,10 +1490,10 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
-        "icons",
-        "controllable-state",
-        "@diffgazer-keys/navigation",
-        "compose-refs"
+        "https://diffgazer.com/r/ui/icons.json",
+        "https://diffgazer.com/r/ui/controllable-state.json",
+        "https://diffgazer.com/r/keys/navigation.json",
+        "https://diffgazer.com/r/ui/compose-refs.json"
       ],
       "meta": {
         "client": true,
@@ -2045,10 +2045,10 @@
       "description": "Shared listbox state and keyboard navigation hook. Manages selection, highlight, and container ARIA props for listbox-pattern components.",
       "dependencies": [],
       "registryDependencies": [
-        "controllable-state",
-        "@diffgazer-keys/navigation",
-        "compose-refs",
-        "typeahead-buffer"
+        "https://diffgazer.com/r/ui/controllable-state.json",
+        "https://diffgazer.com/r/keys/navigation.json",
+        "https://diffgazer.com/r/ui/compose-refs.json",
+        "https://diffgazer.com/r/ui/typeahead-buffer.json"
       ],
       "meta": {
         "client": true,
@@ -2088,13 +2088,13 @@
       "description": "Floating content anchored to a trigger element. Supports click-to-open (popover) and hover (tooltip) modes with full 4-side positioning, flip, shift, and collision detection.",
       "dependencies": [],
       "registryDependencies": [
-        "portal",
-        "compose-refs",
-        "controllable-state",
-        "floating-position",
-        "outside-click",
-        "presence",
-        "@diffgazer-keys/focusable"
+        "https://diffgazer.com/r/ui/portal.json",
+        "https://diffgazer.com/r/ui/compose-refs.json",
+        "https://diffgazer.com/r/ui/controllable-state.json",
+        "https://diffgazer.com/r/ui/floating-position.json",
+        "https://diffgazer.com/r/ui/outside-click.json",
+        "https://diffgazer.com/r/ui/presence.json",
+        "https://diffgazer.com/r/keys/focusable.json"
       ],
       "meta": {
         "client": true,

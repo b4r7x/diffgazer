@@ -144,7 +144,7 @@ export function CheckboxGroup<T extends string = string>(props: CheckboxGroupPro
     wrap,
     enabled: keyboardNavigation && !disabled,
     onNavigationBoundaryReached,
-    highlighted: highlightedValue ?? undefined,
+    highlighted: highlightedValue,
     onHighlightChange: setHighlightedValue,
     onEnter: (itemValue) => toggle(itemValue),
     moveFocus: true,

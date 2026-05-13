@@ -27,7 +27,7 @@ import {
   executeReview,
   finalizeReview,
 } from "./pipeline.js";
-import { isReviewAbort } from "./utils.js";
+import { isReviewAbort } from "./abort.js";
 
 const REVIEW_STREAM_ERROR_CODES = new Set(Object.values(ReviewErrorCode));
 

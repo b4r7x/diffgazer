@@ -18,10 +18,10 @@ pnpm exec dgadd add ui/button
 pnpm exec dgadd add ui/dialog ui/tabs keys/navigation
 ```
 
-Bare names are treated as `ui/*` for compatibility:
+Use namespaced item names. Bare names are rejected so install paths stay explicit:
 
 ```bash
-pnpm exec dgadd add button
+pnpm exec dgadd add ui/button
 ```
 
 ## Options

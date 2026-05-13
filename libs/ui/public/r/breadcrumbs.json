@@ -1,7 +1,6 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "breadcrumbs",
-  "type": "registry:ui",
   "title": "Breadcrumbs",
   "description": "Compound breadcrumb navigation with auto-separator and composable parts",
   "dependencies": [],
@@ -40,5 +39,6 @@
   ],
   "meta": {
     "client": true
-  }
+  },
+  "type": "registry:ui"
 }

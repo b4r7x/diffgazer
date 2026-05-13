@@ -1,7 +1,6 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "pager",
-  "type": "registry:ui",
   "title": "Pager",
   "description": "Previous/next page navigation for sequential content",
   "dependencies": [],
@@ -25,5 +24,6 @@
   ],
   "meta": {
     "client": true
-  }
+  },
+  "type": "registry:ui"
 }

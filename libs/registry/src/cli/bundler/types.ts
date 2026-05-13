@@ -14,6 +14,13 @@ export interface BundleItem {
   registryDependencies: string[];
   files: BundleFile[];
   meta?: Record<string, unknown>;
+  devDependencies?: string[];
+  cssVars?: Record<string, unknown>;
+  css?: string;
+  envVars?: string[];
+  docs?: string;
+  categories?: string[];
+  author?: string;
 }
 
 export interface BundlerConfig {

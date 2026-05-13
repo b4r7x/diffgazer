@@ -224,6 +224,29 @@ describe("useProvidersKeyboard", () => {
     await waitFor(() => expect(screen.getByRole("listbox", { name: "Providers" })).toHaveFocus());
   });
 
+  it("does not steal focus from another focused control when the list becomes ready", async () => {
+    const { rerender } = render(
+      <KeyboardProvider>
+        <button type="button">Outside action</button>
+        <Subject listReady={false} />
+      </KeyboardProvider>,
+    );
+
+    const outsideAction = screen.getByRole("button", { name: "Outside action" });
+    outsideAction.focus();
+    expect(outsideAction).toHaveFocus();
+
+    rerender(
+      <KeyboardProvider>
+        <button type="button">Outside action</button>
+        <Subject listReady />
+      </KeyboardProvider>,
+    );
+
+    await waitFor(() => expect(outsideAction).toHaveFocus());
+    expect(screen.getByRole("listbox", { name: "Providers" })).not.toHaveFocus();
+  });
+
   it("moves real focus from the provider list to action buttons and back", async () => {
     const user = userEvent.setup();
 

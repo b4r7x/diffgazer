@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -70,6 +70,7 @@ beforeEach(async () => {
   process.env.DIFFGAZER_HOME = tempHome;
   failNextDiff = false;
   vi.resetModules();
+  vi.clearAllMocks();
   vi.mocked(createGitService).mockReturnValue(makeGitService());
 });
 
@@ -108,11 +109,11 @@ function makeMockClient(generateResult: Result<DrilldownAIResponse, AIError> = o
   };
 }
 
-async function saveReviewWithIssues(issues: ReviewIssue[]): Promise<void> {
+async function saveReviewWithIssues(issues: ReviewIssue[], projectPath = "/project"): Promise<void> {
   const { saveReview } = await loadReviewStorage();
   const result = await saveReview({
     reviewId: REVIEW_ID,
-    projectPath: "/project",
+    projectPath,
     mode: "unstaged",
     branch: "main",
     commit: "abc123",
@@ -121,6 +122,13 @@ async function saveReviewWithIssues(issues: ReviewIssue[]): Promise<void> {
     result: { summary: "summary", issues },
   });
   expect(result.ok).toBe(true);
+}
+
+async function removeStoredDiff(): Promise<void> {
+  const reviewPath = join(tempHome, "triage-reviews", `${REVIEW_ID}.json`);
+  const review = JSON.parse(await readFile(reviewPath, "utf-8"));
+  delete review.diff;
+  await writeFile(reviewPath, `${JSON.stringify(review, null, 2)}\n`, "utf-8");
 }
 
 describe("drilldownIssue", () => {
@@ -225,9 +233,10 @@ describe("drilldownIssueById", () => {
 });
 
 describe("handleDrilldownRequest", () => {
-  it("loads a persisted review, parses the current git diff, and stores the drilldown", async () => {
+  it("loads a persisted review, uses its stored diff, and stores the drilldown", async () => {
     const issue = makeIssue({ id: "issue-1" });
     await saveReviewWithIssues([issue]);
+    vi.mocked(createGitService).mockClear();
     const { handleDrilldownRequest } = await loadDrilldown();
     const { getReview } = await loadReviewStorage();
 
@@ -239,6 +248,7 @@ describe("handleDrilldownRequest", () => {
     );
 
     expect(result.ok).toBe(true);
+    expect(createGitService).not.toHaveBeenCalled();
     if (result.ok) {
       expect(result.value).toMatchObject({
         issueId: "issue-1",
@@ -263,6 +273,7 @@ describe("handleDrilldownRequest", () => {
     if (!missingReview.ok) expect(missingReview.error.code).toBe("NOT_FOUND");
 
     await saveReviewWithIssues([makeIssue()]);
+    await removeStoredDiff();
     failNextDiff = true;
     const gitFailure = await handleDrilldownRequest(makeMockClient(), REVIEW_ID, "issue-1", "/project");
     expect(gitFailure.ok).toBe(false);
@@ -271,5 +282,27 @@ describe("handleDrilldownRequest", () => {
     const missingIssue = await handleDrilldownRequest(makeMockClient(), REVIEW_ID, "missing", "/project");
     expect(missingIssue.ok).toBe(false);
     if (!missingIssue.ok) expect(missingIssue.error.code).toBe("ISSUE_NOT_FOUND");
+  });
+
+  it("does not run drilldown against a review from another project", async () => {
+    await saveReviewWithIssues([makeIssue({ id: "issue-1" })], "/other-project");
+    const { handleDrilldownRequest } = await loadDrilldown();
+    const { getReview } = await loadReviewStorage();
+
+    const result = await handleDrilldownRequest(
+      makeMockClient(),
+      REVIEW_ID,
+      "issue-1",
+      "/project",
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.code).toBe("NOT_FOUND");
+
+    const stored = await getReview(REVIEW_ID);
+    expect(stored.ok).toBe(true);
+    if (stored.ok) {
+      expect(stored.value.drilldowns ?? []).toEqual([]);
+    }
   });
 });

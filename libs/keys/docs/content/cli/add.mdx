@@ -16,7 +16,7 @@ Standalone hooks are copied into your project as source files and have no runtim
 
 ## Use The Package
 
-Provider-backed hooks (`useKey`, `useScope`, `useScopedNavigation`, `useFocusZone`) are intentionally **package-only**. They depend on `KeyboardProvider` runtime context, so copying isolated source files would not give a working hook -- you would still have to bring `KeyboardProvider` along, which means depending on the package anyway. Install via npm:
+Provider-backed hooks (`useKey`, `useScope`, `useScopedNavigation`, `useActionRowNavigation`, `useFocusZone`) are intentionally **package-only**. They depend on `KeyboardProvider` runtime context, so copying isolated source files would not give a working hook -- you would still have to bring `KeyboardProvider` along, which means depending on the package anyway. Install via npm:
 
 ```bash
 npm install @diffgazer/keys
@@ -25,7 +25,7 @@ npm install @diffgazer/keys
 This package install is publish-gated until `npm view @diffgazer/keys version` succeeds.
 
 ```tsx
-import { KeyboardProvider, useKey, useScope, useScopedNavigation, useFocusZone } from "@diffgazer/keys"
+import { KeyboardProvider, useKey, useScope, useScopedNavigation, useActionRowNavigation, useFocusZone } from "@diffgazer/keys"
 ```
 
 The CLI's `keys/*` namespace only exposes hooks that work standalone without a provider:
@@ -36,7 +36,7 @@ The CLI's `keys/*` namespace only exposes hooks that work standalone without a p
 | `keys/focus-trap` | yes -- standalone |
 | `keys/focus-restore` | yes -- standalone |
 | `keys/scroll-lock` | yes -- standalone |
-| `keys/key`, `keys/scope`, `keys/scoped-navigation`, `keys/focus-zone` | no -- package-only |
+| `keys/key`, `keys/scope`, `keys/scoped-navigation`, `keys/action-row-navigation`, `keys/focus-zone` | no -- package-only |
 
 UI components that depend on provider hooks can be installed in package integration mode:
 

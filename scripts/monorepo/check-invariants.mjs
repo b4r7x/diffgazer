@@ -2,6 +2,7 @@
 
 import { execSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { readJson } from "./artifacts/json.mjs";
 
 const output = [];
 
@@ -11,23 +12,10 @@ function addResult(name, ok, details = "") {
   console.log(check);
 }
 
-function fail(msg) {
-  console.error(msg);
-  throw new Error(msg);
-}
-
-function readJSON(path) {
-  return JSON.parse(readFileSync(path, "utf8"));
-}
-
 function ensureContainsFiles(fileList, required) {
   const normalized = Array.isArray(fileList) ? fileList : [];
   const missing = required.filter((name) => !normalized.includes(name));
   return { ok: missing.length === 0, missing };
-}
-
-function valuesEqual(actual, expected) {
-  return JSON.stringify(actual) === JSON.stringify(expected);
 }
 
 function checkPolicyFiles(pkgJsonPath, missing) {
@@ -53,7 +41,7 @@ function hasExport(exportsKeys, expectedExport) {
 }
 
 function assertPackageMetadata(path, expectedName, expectedHomePageSuffix, expectedRepoDir, expectedExports, expectedFiles, expectedSideEffects) {
-  const pkg = readJSON(path);
+  const pkg = readJson(path);
   const missing = [];
 
   if (pkg.name !== expectedName) {
@@ -66,7 +54,7 @@ function assertPackageMetadata(path, expectedName, expectedHomePageSuffix, expec
   if (repoDir !== expectedRepoDir) {
     missing.push(`repository.directory: ${repoDir}`);
   }
-  if (!valuesEqual(pkg.sideEffects, expectedSideEffects)) {
+  if (JSON.stringify(pkg.sideEffects) !== JSON.stringify(expectedSideEffects)) {
     missing.push(`sideEffects: ${JSON.stringify(pkg.sideEffects)}`);
   }
 
@@ -96,7 +84,7 @@ function assertPackageMetadata(path, expectedName, expectedHomePageSuffix, expec
 }
 
 function assertCliPackageMetadata(path, expectedName, expectedBinName, expectedRepoDir, expectedFiles) {
-  const pkg = readJSON(path);
+  const pkg = readJson(path);
   const missing = [];
 
   if (pkg.name !== expectedName) {
@@ -134,7 +122,7 @@ function assertCliPackageMetadata(path, expectedName, expectedBinName, expectedR
 }
 
 function assertRootMetadata() {
-  const pkg = readJSON("package.json");
+  const pkg = readJson("package.json");
   const missing = [];
 
   if (pkg.repository?.url !== "git+https://github.com/b4r7x/diffgazer.git") {
@@ -231,7 +219,7 @@ const badInternalProtocol = [];
 const parsedPackages = new Map();
 
 for (const file of packageFiles) {
-  const parsed = readJSON(file);
+  const parsed = readJson(file);
   parsedPackages.set(file, parsed);
   if (parsed.name && !parsed.private) {
     workspaceNames.add(parsed.name);
@@ -339,8 +327,7 @@ assertCliPackageMetadata(
   ["dist", "README.md", "LICENSE", "SECURITY.md", "SUPPORT.md"],
 );
 
-// Build configuration assertions
-const turboConfig = readJSON("turbo.json");
+const turboConfig = readJson("turbo.json");
 const docsOutputs = turboConfig.tasks?.["@diffgazer/docs#build"]?.outputs ?? [];
 addResult(
   "turbo docs build includes .output",
@@ -348,7 +335,7 @@ addResult(
   `outputs: ${JSON.stringify(docsOutputs)}`,
 );
 
-const rootPkg = readJSON("package.json");
+const rootPkg = readJson("package.json");
 const webBuildScript = rootPkg.scripts?.["web:build"] ?? "";
 addResult(
   "web:build uses turbo for dependency chain",
@@ -364,5 +351,6 @@ if (jsonOut) {
 }
 
 if (output.some((x) => !x.ok)) {
-  fail("Invariant checks failed");
+  console.error("Invariant checks failed");
+  throw new Error("Invariant checks failed");
 }

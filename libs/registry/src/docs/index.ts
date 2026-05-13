@@ -10,6 +10,13 @@ import { resolveSyncOutputPaths } from "./paths.js";
 import { defaultLogger } from "../logger.js";
 import type { SyncDocsOptions, SyncDocsResult } from "./types.js";
 
+const SAFE_LIBRARY_ID_RE = /^[a-z0-9][a-z0-9-]*$/i;
+
+function assertSafeLibraryId(id: string, label: string): void {
+  if (SAFE_LIBRARY_ID_RE.test(id)) return;
+  throw new Error(`${label} must be a safe library id`);
+}
+
 export function syncDocsFromArtifacts(options: SyncDocsOptions): SyncDocsResult {
   const {
     docsRoot,
@@ -19,7 +26,7 @@ export function syncDocsFromArtifacts(options: SyncDocsOptions): SyncDocsResult 
     origin,
     sourceOrigin,
     mode,
-    syncSchemaVersion = 2,
+    syncSchemaVersion = 3,
     afterSync,
     outputPaths: outputPathOverrides,
     rootTitle,
@@ -27,6 +34,11 @@ export function syncDocsFromArtifacts(options: SyncDocsOptions): SyncDocsResult 
   } = options;
 
   const paths = resolveSyncOutputPaths(docsRoot, outputPathOverrides);
+
+  assertSafeLibraryId(primaryLibraryId, "Primary library id");
+  for (const library of libraries) {
+    assertSafeLibraryId(library.id, `Library id "${library.id}"`);
+  }
 
   logger.info(`[docs-sync] Mode: ${mode}`);
 
@@ -48,7 +60,13 @@ export function syncDocsFromArtifacts(options: SyncDocsOptions): SyncDocsResult 
   );
   const syncState = readSyncState(paths.stateFilePath, logger);
 
-  if (shouldSkipSync({ syncState, syncFingerprint, artifacts, paths })) {
+  if (shouldSkipSync({
+    syncState,
+    syncFingerprint,
+    artifacts,
+    paths,
+    primaryLibraryId,
+  })) {
     logger.info("[docs-sync] Artifacts unchanged; skipping sync.");
     return { synced: false, fingerprint: syncFingerprint, artifacts };
   }
@@ -65,4 +83,3 @@ export function syncDocsFromArtifacts(options: SyncDocsOptions): SyncDocsResult 
   logger.info("[docs-sync] Done.");
   return { synced: true, fingerprint: syncFingerprint, artifacts };
 }
-

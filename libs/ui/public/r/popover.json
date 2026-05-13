@@ -1,18 +1,17 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "popover",
-  "type": "registry:ui",
   "title": "Popover",
   "description": "Floating content anchored to a trigger element. Supports click-to-open (popover) and hover (tooltip) modes with full 4-side positioning, flip, shift, and collision detection.",
   "dependencies": [],
   "registryDependencies": [
-    "portal",
-    "compose-refs",
-    "controllable-state",
-    "floating-position",
-    "outside-click",
-    "presence",
-    "@diffgazer-keys/focusable"
+    "https://diffgazer.com/r/ui/portal.json",
+    "https://diffgazer.com/r/ui/compose-refs.json",
+    "https://diffgazer.com/r/ui/controllable-state.json",
+    "https://diffgazer.com/r/ui/floating-position.json",
+    "https://diffgazer.com/r/ui/outside-click.json",
+    "https://diffgazer.com/r/ui/presence.json",
+    "https://diffgazer.com/r/keys/focusable.json"
   ],
   "files": [
     {
@@ -56,5 +55,6 @@
     "optionalIntegrations": [
       "keyboard-navigation"
     ]
-  }
+  },
+  "type": "registry:ui"
 }

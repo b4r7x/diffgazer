@@ -3,7 +3,9 @@ import { resolve } from "node:path";
 import { z } from "zod";
 import { ensureExists } from "../utils/fs.js";
 import { readJson } from "../utils/json.js";
-import { RegistrySchema } from "../registry-types.js";
+import { RegistryFileSchema, RegistryItemSchema, RegistrySchema } from "../registry-types.js";
+
+type RegistryItem = z.infer<typeof RegistrySchema>["items"][number];
 
 interface EnsureSameValueParams {
   label: string;
@@ -32,6 +34,10 @@ export interface ValidatePublicRegistryFreshOptions {
   fixCommand: string;
   sourceRegistryPath?: string;
   publicRegistryDir?: string;
+  transformSourceItem?: (ctx: {
+    itemName: string;
+    item: RegistryItem;
+  }) => RegistryItem;
   transformSourceContent?: (ctx: {
     itemName: string;
     filePath: string;
@@ -39,24 +45,32 @@ export interface ValidatePublicRegistryFreshOptions {
   }) => string;
 }
 
-const PublicItemSchema = z.object({
-  name: z.string().optional(),
-  type: z.string().optional(),
-  title: z.string().optional(),
-  description: z.string().optional(),
-  dependencies: z.array(z.string()).optional(),
-  registryDependencies: z.array(z.string()).optional(),
-  meta: z.record(z.string(), z.unknown()).optional(),
-  files: z.array(z.object({
-    path: z.string(),
-    content: z.string().optional(),
-    target: z.string().optional(),
-    type: z.string().optional(),
-  })).optional(),
+const PublicItemSchema = RegistryItemSchema.extend({
+  files: z.array(RegistryFileSchema).optional(),
 }).passthrough();
 
-const valueFields = ["title", "description", "meta"] as const;
-const arrayFields = ["dependencies", "registryDependencies"] as const;
+const itemFields = Object.keys(RegistryItemSchema.shape).filter((field) => field !== "files");
+const fileMetadataFields = Object.keys(RegistryFileSchema.shape).filter((field) => field !== "content");
+const arrayDefaultFields = new Set(["dependencies", "registryDependencies", "devDependencies", "envVars", "categories"]);
+
+function compareItemFields(
+  prefix: string,
+  expectedItem: RegistryItem,
+  actualItem: Partial<Record<keyof RegistryItem, unknown>>,
+  itemName: string,
+  fixCommand: string,
+): void {
+  for (const field of itemFields) {
+    ensureSameValue({
+      label: `${prefix}${field}`,
+      a: expectedItem[field as keyof RegistryItem],
+      b: actualItem[field as keyof RegistryItem],
+      defaultValue: arrayDefaultFields.has(field) ? [] : undefined,
+      itemName,
+      fixCommand,
+    });
+  }
+}
 
 export function validatePublicRegistryFresh(options: ValidatePublicRegistryFreshOptions): void {
   const {
@@ -64,13 +78,14 @@ export function validatePublicRegistryFresh(options: ValidatePublicRegistryFresh
     fixCommand,
     sourceRegistryPath = "registry/registry.json",
     publicRegistryDir = "public/r",
+    transformSourceItem,
     transformSourceContent,
   } = options;
 
   const sourceRegistry = readJson(resolve(rootDir, sourceRegistryPath), RegistrySchema);
   const publicRegistry = readJson(resolve(rootDir, publicRegistryDir, "registry.json"), RegistrySchema);
-  const sourceItems = sourceRegistry.items ?? [];
-  const publicItems = publicRegistry.items ?? [];
+  const sourceItems = sourceRegistry.items;
+  const publicItems = publicRegistry.items;
   const publicByName = new Map(publicItems.map((item) => [item.name, item]));
 
   if (sourceItems.length !== publicItems.length) {
@@ -83,6 +98,10 @@ export function validatePublicRegistryFresh(options: ValidatePublicRegistryFresh
   }
 
   for (const sourceItem of sourceItems) {
+    const expectedItem = transformSourceItem?.({
+      itemName: sourceItem.name,
+      item: sourceItem,
+    }) ?? sourceItem;
     const publicItem = publicByName.get(sourceItem.name);
     if (!publicItem) {
       throw new Error(
@@ -93,12 +112,7 @@ export function validatePublicRegistryFresh(options: ValidatePublicRegistryFresh
       );
     }
 
-    for (const field of valueFields) {
-      ensureSameValue({ label: field, a: sourceItem[field], b: publicItem[field], itemName: sourceItem.name, fixCommand });
-    }
-    for (const field of arrayFields) {
-      ensureSameValue({ label: field, a: sourceItem[field], b: publicItem[field], defaultValue: [], itemName: sourceItem.name, fixCommand });
-    }
+    compareItemFields("", expectedItem, publicItem, sourceItem.name, fixCommand);
 
     const publicItemPath = resolve(rootDir, publicRegistryDir, `${sourceItem.name}.json`);
     ensureExists(publicItemPath, `public registry item JSON (${sourceItem.name})`);
@@ -106,17 +120,9 @@ export function validatePublicRegistryFresh(options: ValidatePublicRegistryFresh
     const publicItemJson = readJson(publicItemPath, PublicItemSchema);
     const publicFilesByPath = new Map((publicItemJson.files ?? []).map((file) => [file.path, file]));
 
-    for (const field of ["name", "type"] as const) {
-      ensureSameValue({ label: `item ${field}`, a: sourceItem[field], b: publicItemJson[field], itemName: sourceItem.name, fixCommand });
-    }
-    for (const field of valueFields) {
-      ensureSameValue({ label: `item JSON ${field}`, a: sourceItem[field], b: publicItemJson[field], itemName: sourceItem.name, fixCommand });
-    }
-    for (const field of arrayFields) {
-      ensureSameValue({ label: `item JSON ${field}`, a: sourceItem[field], b: publicItemJson[field], defaultValue: [], itemName: sourceItem.name, fixCommand });
-    }
+    compareItemFields("item JSON ", expectedItem, publicItemJson, sourceItem.name, fixCommand);
 
-    const sourceFilePaths = (sourceItem.files ?? []).map((file) => file.path);
+    const sourceFilePaths = expectedItem.files.map((file) => file.path);
     const publicFilePaths = (publicItemJson.files ?? []).map((file) => file.path);
     ensureSameValue({
       label: "item JSON files",
@@ -126,22 +132,22 @@ export function validatePublicRegistryFresh(options: ValidatePublicRegistryFresh
       fixCommand,
     });
 
-    for (const sourceFile of sourceItem.files ?? []) {
-      const sourcePath = resolve(rootDir, sourceFile.path);
+    for (const expectedFile of expectedItem.files) {
+      const sourcePath = resolve(rootDir, expectedFile.path);
       ensureExists(sourcePath, `source registry file (${sourceItem.name})`);
 
       const rawContent = readFileSync(sourcePath, "utf-8");
       const sourceContent = transformSourceContent?.({
         itemName: sourceItem.name,
-        filePath: sourceFile.path,
+        filePath: expectedFile.path,
         content: rawContent,
       }) ?? rawContent;
-      const publicFile = publicFilesByPath.get(sourceFile.path);
+      const publicFile = publicFilesByPath.get(expectedFile.path);
 
       if (!publicFile || typeof publicFile.content !== "string") {
         throw new Error(
           [
-            `Public registry file "${sourceFile.path}" missing for "${sourceItem.name}".`,
+            `Public registry file "${expectedFile.path}" missing for "${sourceItem.name}".`,
             `Run: ${fixCommand}`,
           ].join("\n"),
         );
@@ -150,28 +156,20 @@ export function validatePublicRegistryFresh(options: ValidatePublicRegistryFresh
       if (publicFile.content !== sourceContent) {
         throw new Error(
           [
-            `Public registry file content is stale for "${sourceFile.path}" (${sourceItem.name}).`,
+            `Public registry file content is stale for "${expectedFile.path}" (${sourceItem.name}).`,
             `Run: ${fixCommand}`,
           ].join("\n"),
         );
       }
 
-      if (publicFile.target !== sourceFile.target) {
-        throw new Error(
-          [
-            `Public registry file target is stale for "${sourceFile.path}" (${sourceItem.name}).`,
-            `Run: ${fixCommand}`,
-          ].join("\n"),
-        );
-      }
-
-      if (publicFile.type !== sourceFile.type) {
-        throw new Error(
-          [
-            `Public registry file type is stale for "${sourceFile.path}" (${sourceItem.name}).`,
-            `Run: ${fixCommand}`,
-          ].join("\n"),
-        );
+      for (const field of fileMetadataFields) {
+        ensureSameValue({
+          label: `file ${field} is stale`,
+          a: expectedFile[field as keyof typeof expectedFile],
+          b: publicFile[field as keyof typeof publicFile],
+          itemName: sourceItem.name,
+          fixCommand,
+        });
       }
     }
   }

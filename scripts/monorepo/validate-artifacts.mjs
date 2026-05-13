@@ -5,15 +5,17 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
   assertNoDuplicateDemoKeys,
-  validateArtifactMirror,
+  collectTreeParityErrors,
   validateIntegrityBundle,
   validateLibraryArtifacts,
-} from "../../apps/docs/scripts/artifact-validation-lib.mjs";
+} from "./artifacts/validation.mjs";
 import {
   collectArtifactSyncValidationErrors,
   getArtifactLibraries,
   readDocsLibrariesConfig,
-} from "../../apps/docs/scripts/sync-artifacts-lib.mjs";
+} from "./artifacts/sync.mjs";
+import { readJson } from "./artifacts/json.mjs";
+import { validateArtifactPackSurface } from "./artifacts/pack-surface.mjs";
 
 const root = process.cwd();
 const docsRoot = resolve(root, "apps/docs");
@@ -22,17 +24,13 @@ function loadWorkspaceArtifact(library) {
   const artifactRoot = resolve(root, library.workspaceDir, "dist/artifacts");
   const manifestPath = resolve(artifactRoot, "artifact-manifest.json");
   if (!existsSync(manifestPath)) return null;
-  const manifest = JSON.parse(readFileSync(manifestPath, "utf-8"));
+  const manifest = readJson(manifestPath);
   return {
     id: library.id,
     artifactRoot,
     manifest,
     generatedFiles: Object.values(manifest.generated ?? {}),
   };
-}
-
-function readJson(path) {
-  return JSON.parse(readFileSync(path, "utf-8"));
 }
 
 function registryItemToExportPath(item) {
@@ -111,17 +109,19 @@ function validateUiPackageExports() {
   return errors;
 }
 
-function validateUiPackSurface() {
+function listPackedFiles(packageDir) {
   const output = execFileSync("npm", ["pack", "--dry-run", "--json"], {
-    cwd: resolve(root, "libs/ui"),
+    cwd: resolve(root, packageDir),
     env: { ...process.env, npm_config_cache: resolve(root, "node_modules/.cache/npm-pack") },
     encoding: "utf-8",
     stdio: ["ignore", "pipe", "pipe"],
   });
   const packInfo = JSON.parse(output)[0];
-  const files = (packInfo.files ?? []).map((file) => file.path.replace(/^package\//, ""));
+  return (packInfo.files ?? []).map((file) => file.path.replace(/^package\//, ""));
+}
+
+function validateUiPackSurface(files) {
   const forbidden = [
-    "dist/artifacts/",
     "dist/components/dialog-shell.",
     "dist/components/portal.",
     "dist/_types/registry/ui/shared/",
@@ -133,20 +133,8 @@ function validateUiPackSurface() {
     : [];
 }
 
-function listUiPackedFiles() {
-  const output = execFileSync("npm", ["pack", "--dry-run", "--json"], {
-    cwd: resolve(root, "libs/ui"),
-    env: { ...process.env, npm_config_cache: resolve(root, "node_modules/.cache/npm-pack") },
-    encoding: "utf-8",
-    stdio: ["ignore", "pipe", "pipe"],
-  });
-  const packInfo = JSON.parse(output)[0];
-  return (packInfo.files ?? []).map((file) => file.path.replace(/^package\//, ""));
-}
-
-function validateUiDeclarationsAvoidHiddenShared() {
+function validateUiDeclarationsAvoidHiddenShared(packedFiles) {
   const errors = [];
-  const packedFiles = listUiPackedFiles();
   const packageRoot = resolve(root, "libs/ui");
 
   for (const relativePath of packedFiles) {
@@ -215,6 +203,13 @@ function validatePackagePolicyFiles() {
   return errors;
 }
 
+const docsLibraries = readDocsLibrariesConfig(resolve(docsRoot, "config/docs-libraries.json"));
+const artifactLibraries = getArtifactLibraries(docsLibraries);
+const packedFilesByPackage = new Map(
+  artifactLibraries.map((library) => [library.packageName, listPackedFiles(library.workspaceDir)]),
+);
+const uiPackedFiles = packedFilesByPackage.get("@diffgazer/ui") ?? [];
+
 const checks = [
   ...validateLibraryArtifacts({
     rootDir: resolve(root, "libs/ui"),
@@ -224,7 +219,7 @@ const checks = [
     rootDir: resolve(root, "libs/keys"),
     label: "@diffgazer/keys",
   }),
-  ...validateArtifactMirror(
+  ...collectTreeParityErrors(
     resolve(root, "libs/keys/dist/artifacts"),
     resolve(root, "libs/keys/artifacts/dist/artifacts"),
     "@diffgazer/keys-artifacts mirror",
@@ -239,20 +234,21 @@ const checks = [
     ["items", "theme", "styles"],
     "@diffgazer/add registry bundle",
   ),
-  ...validateArtifactMirror(
+  ...collectTreeParityErrors(
     resolve(root, "cli/add/src/generated"),
     resolve(root, "cli/add/dist/generated"),
     "@diffgazer/add dist generated",
   ),
   ...validatePackageExportTargets("libs/ui", "@diffgazer/ui"),
   ...validateUiPackageExports(),
-  ...validateUiPackSurface(),
-  ...validateUiDeclarationsAvoidHiddenShared(),
+  ...artifactLibraries.flatMap((library) =>
+    validateArtifactPackSurface(root, library, packedFilesByPackage.get(library.packageName) ?? []),
+  ),
+  ...validateUiPackSurface(uiPackedFiles),
+  ...validateUiDeclarationsAvoidHiddenShared(uiPackedFiles),
   ...validatePackagePolicyFiles(),
 ];
 
-const docsLibraries = readDocsLibrariesConfig(resolve(docsRoot, "config/docs-libraries.json"));
-const artifactLibraries = getArtifactLibraries(docsLibraries);
 checks.push(...collectArtifactSyncValidationErrors({
   docsRoot,
   primaryLibraryId: docsLibraries.primaryLibraryId,
@@ -260,9 +256,7 @@ checks.push(...collectArtifactSyncValidationErrors({
   artifacts: artifactLibraries.map(loadWorkspaceArtifact).filter(Boolean),
 }));
 
-const registryBundle = JSON.parse(
-  readFileSync(resolve(root, "cli/add/src/generated/registry-bundle.json"), "utf-8"),
-);
+const registryBundle = readJson(resolve(root, "cli/add/src/generated/registry-bundle.json"));
 checks.push(...assertNoDuplicateDemoKeys(registryBundle.items ?? [], "@diffgazer/add registry bundle"));
 
 if (checks.length > 0) {

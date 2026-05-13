@@ -1,7 +1,6 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "spinner",
-  "type": "registry:ui",
   "title": "Spinner",
   "description": "Terminal-inspired TUI spinner with four animation styles including a pixel snake, braille, dots, and pulse",
   "dependencies": [
@@ -32,5 +31,6 @@
   ],
   "meta": {
     "client": true
-  }
+  },
+  "type": "registry:ui"
 }

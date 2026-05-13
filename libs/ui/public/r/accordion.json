@@ -1,17 +1,16 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "accordion",
-  "type": "registry:ui",
   "title": "Accordion",
   "description": "Collapsible content sections with single or multiple open items",
   "dependencies": [
     "class-variance-authority"
   ],
   "registryDependencies": [
-    "controllable-state",
-    "compose-refs",
-    "icons",
-    "@diffgazer-keys/navigation"
+    "https://diffgazer.com/r/ui/controllable-state.json",
+    "https://diffgazer.com/r/ui/compose-refs.json",
+    "https://diffgazer.com/r/ui/icons.json",
+    "https://diffgazer.com/r/keys/navigation.json"
   ],
   "files": [
     {
@@ -60,5 +59,6 @@
     "optionalIntegrations": [
       "keyboard-navigation"
     ]
-  }
+  },
+  "type": "registry:ui"
 }

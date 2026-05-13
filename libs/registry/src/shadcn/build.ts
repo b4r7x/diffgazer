@@ -13,6 +13,7 @@ export interface EnsurePublicRegistryReadyOptions {
   outputDir?: string;
   label?: string;
   afterBuild?: (ctx: { rootDir: string; outputDir: string }) => void;
+  transformSourceItem?: Parameters<typeof validatePublicRegistryFresh>[0]["transformSourceItem"];
   transformSourceContent?: Parameters<typeof validatePublicRegistryFresh>[0]["transformSourceContent"];
 }
 
@@ -26,6 +27,7 @@ export function ensurePublicRegistryReady(options: EnsurePublicRegistryReadyOpti
     outputDir = publicRegistryDir,
     label = "public registry index",
     afterBuild,
+    transformSourceItem,
     transformSourceContent,
   } = options;
 
@@ -48,13 +50,13 @@ export function ensurePublicRegistryReady(options: EnsurePublicRegistryReadyOpti
   }
 
   try {
-    validatePublicRegistryFresh({ rootDir, fixCommand, sourceRegistryPath, publicRegistryDir, transformSourceContent });
+    validatePublicRegistryFresh({ rootDir, fixCommand, sourceRegistryPath, publicRegistryDir, transformSourceItem, transformSourceContent });
   } catch (error) {
     if (!hasLocalShadcn) throw error;
 
     runShadcnRegistryBuild({ rootDir, registryPath, outputDir });
     afterBuild?.({ rootDir, outputDir: resolve(rootDir, outputDir) });
-    validatePublicRegistryFresh({ rootDir, fixCommand, sourceRegistryPath, publicRegistryDir, transformSourceContent });
+    validatePublicRegistryFresh({ rootDir, fixCommand, sourceRegistryPath, publicRegistryDir, transformSourceItem, transformSourceContent });
   }
 }
 

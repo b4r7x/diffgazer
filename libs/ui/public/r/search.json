@@ -1,7 +1,6 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "search",
-  "type": "registry:lib",
   "title": "Search Utilities",
   "description": "Case-insensitive search matching utility for filtering items by text query.",
   "files": [
@@ -14,5 +13,6 @@
   "meta": {
     "client": false,
     "hidden": true
-  }
+  },
+  "type": "registry:lib"
 }

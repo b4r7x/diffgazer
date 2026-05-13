@@ -8,18 +8,15 @@ Effort: L
 
 ## Problem
 
-Generated artifacts are validated for presence more than behavioral parity. CLI dist generated files, docs artifacts, keys copy bundles, and clean-tree state need stronger validation before release.
+Generated artifacts need validation that checks content parity, package surface, and clean consumer behavior. CLI dist generated files, docs artifacts, keys copy bundles, and clean-tree state must stay covered before release.
 
 ## Evidence
 
-- `apps/docs/scripts/artifact-validation-lib.mjs:128-142` validates generated artifact presence.
-- `apps/docs/scripts/artifact-validation-lib.mjs:177-182` compares only public registry JSON, not all docs/generated outputs.
-- `scripts/monorepo/validate-artifacts.mjs:28` validates `src/generated` but not necessarily copied `dist/generated`.
-- `cli/add/scripts/copy-generated.ts:5` copies generated files into dist.
-- Package smoke in `apps/docs/scripts/smoke-package-install.mjs:281-283` only checks `dgadd help`, not real add/init flows.
-- `cli/add/src/utils/integration.ts:39` and `libs/registry/src/copy-bundle.ts:21` make integrity optional or not consistently enforced.
-- `.github/workflows/release-readiness.yml:37` runs validation but does not enforce clean-tree after generation.
-- `libs/keys/scripts/validate-registry-closure.ts:38-40` uses a narrow regex for import closure.
+- `scripts/monorepo/artifacts/validation.mjs` compares copied artifact trees, generated outputs, registry bundles, fingerprints, and manifests.
+- `scripts/monorepo/validate-artifacts.mjs` checks workspace artifacts, mirrored artifacts, `cli/add/dist/generated`, package exports, and packed artifact surfaces.
+- `scripts/monorepo/smoke-package-install.mjs` runs clean consumer package installs through real `dgadd` flows.
+- `libs/keys/scripts/validate-registry-closure.ts` validates static, side-effect, dynamic, and require-style relative imports.
+- Release validation still needs CI to fail if generators leave uncommitted changes.
 
 ## User Impact
 
@@ -50,4 +47,3 @@ Concrete fix:
 - Run package build, artifact validation, and `git diff --exit-code`.
 - Pack `@diffgazer/add`, install it into a clean fixture, and run real `dgadd` flows.
 - Tamper with generated registry output and confirm CI fails.
-

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 
 interface UseIssueSelectionOptions {
@@ -7,17 +7,23 @@ interface UseIssueSelectionOptions {
 }
 
 export function useIssueSelection({ filteredIssues, sourceKey }: UseIssueSelectionOptions) {
-  const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
-  const [trackedSourceKey, setTrackedSourceKey] = useState(sourceKey);
+  const [selection, setSelection] = useState<{ sourceKey: string | undefined; issueId: string | null }>({
+    sourceKey,
+    issueId: null,
+  });
   const listRef = useRef<HTMLDivElement>(null);
 
-  // Reset selection when the source list context changes (e.g. severity
-  // filter switches): the previously selected issue may still exist in the
-  // new list, but the user just changed scope so we anchor on the first item.
-  if (sourceKey !== trackedSourceKey) {
-    setTrackedSourceKey(sourceKey);
-    setSelectedIssueId(null);
-  }
+  useEffect(() => {
+    setSelection((current) =>
+      current.sourceKey === sourceKey ? current : { sourceKey, issueId: null },
+    );
+  }, [sourceKey]);
+
+  const selectedIssueId = selection.sourceKey === sourceKey ? selection.issueId : null;
+
+  const setSelectedIssueId = (issueId: string | null) => {
+    setSelection({ sourceKey, issueId });
+  };
 
   const effectiveSelectedId = filteredIssues.some(i => i.id === selectedIssueId)
     ? selectedIssueId

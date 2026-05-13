@@ -1,7 +1,6 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "resolve-tab-target",
-  "type": "registry:lib",
   "title": "resolveTabTarget",
   "description": "Roving tabindex utility — determines which item in a group should be the tab target based on selection state and disabled status.",
   "files": [
@@ -14,5 +13,6 @@
   "meta": {
     "client": false,
     "hidden": true
-  }
+  },
+  "type": "registry:lib"
 }

@@ -90,10 +90,10 @@ This creates `diffgazer.json`, records the aliases used by `dgadd`, creates inst
 pnpm exec dgadd add ui/dialog ui/tabs ui/menu
 ```
 
-Bare names are treated as UI components:
+Bare names are rejected. Use the namespaced item name:
 
 ```bash
-pnpm exec dgadd add button
+pnpm exec dgadd add ui/button
 ```
 
 ## Add Keyboard Hooks

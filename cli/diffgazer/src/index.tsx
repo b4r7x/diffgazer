@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { HELP_TEXT, resolveCliAction } from "./cli-options.js";
+import { ensureShutdownToken } from "./lib/shutdown-token.js";
 import { startWeb } from "./web-launcher.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -49,6 +50,7 @@ async function main(): Promise<void> {
   }
 
   process.env.DIFFGAZER_CLI_PID ??= String(process.pid);
+  ensureShutdownToken();
 
   if (action.type === "web") {
     startWeb({ mode: action.mode, openBrowser: action.openBrowser });
@@ -56,7 +58,7 @@ async function main(): Promise<void> {
   }
 
   const { startTui } = await import("./tui-entry.js");
-  startTui({ mode: action.mode, theme: action.theme });
+  await startTui({ mode: action.mode, theme: action.theme });
 }
 
 void main().catch((err: unknown) => {

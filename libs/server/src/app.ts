@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { SHUTDOWN_TOKEN_HEADER } from "@diffgazer/core/api";
 import { healthRouter } from "./features/health/router.js";
 import { configRouter } from "./features/config/router.js";
 import { settingsRouter } from "./features/settings/router.js";
@@ -53,7 +54,7 @@ export const createApp = (): Hono => {
         return isLocalhostOrigin(origin) ? origin : "";
       },
       allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-      allowHeaders: ["Content-Type", "Authorization", "x-diffgazer-project-root"],
+      allowHeaders: ["Content-Type", "Authorization", "x-diffgazer-project-root", SHUTDOWN_TOKEN_HEADER],
     })
   );
 

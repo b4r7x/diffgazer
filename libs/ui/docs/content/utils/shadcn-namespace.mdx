@@ -3,11 +3,11 @@ title: shadcn Namespace
 description: Configure shadcn registry aliases for @diffgazer/ui and @diffgazer/keys.
 ---
 
-The shadcn CLI can install registry items by namespace after `components.json` maps each namespace to a registry URL.
+The shadcn CLI can install registry items by direct URL or by namespace after `components.json` maps each namespace to a registry URL.
 
 Public Diffgazer registry hosts are future, non-blocking release work until deployment and endpoint smoke tests verify them. Until those hosts are live, use a local preview server or an environment-specific URL that serves the generated `public/r/{name}.json` files.
 
-Configure both namespaces because some `@diffgazer/ui` items depend on `@diffgazer/keys` hooks:
+Public direct-URL item JSON carries absolute URLs for transitive Diffgazer registry dependencies. Configure both namespaces when you want shorthand for top-level UI and keys installs:
 
 ```json
 {
@@ -18,7 +18,7 @@ Configure both namespaces because some `@diffgazer/ui` items depend on `@diffgaz
 }
 ```
 
-For local validation, serve `libs/ui/public/r` and `libs/keys/public/r` from stable localhost ports and use those URLs in the namespace mapping. Do not publish concrete production hosts until deployment and endpoint smoke tests are complete.
+For local validation, either rebuild artifacts with `REGISTRY_ORIGIN` set to the localhost registry host or use a local server that rewrites `/r/ui/*` and `/r/keys/*` dependency URLs to localhost. Do not publish concrete production hosts until deployment and endpoint smoke tests are complete.
 
 Then install namespaced items:
 
@@ -28,7 +28,7 @@ npx shadcn@latest add "@ui/dialog" "@ui/popover"
 npx shadcn@latest add "@ui/compose-refs"
 ```
 
-When an item references `@diffgazer-keys/navigation`, shadcn resolves it through the second namespace mapping.
+When a UI source item depends on keys behavior, the published public JSON resolves that dependency through the corresponding keys registry URL.
 
 ## CSS Wiring
 

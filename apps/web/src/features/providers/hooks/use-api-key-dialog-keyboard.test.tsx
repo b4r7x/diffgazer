@@ -28,6 +28,8 @@ function Subject({
     canSubmit,
     isSubmitting,
     inputRef,
+    cancelRef,
+    confirmRef,
     onSubmit,
     onClose,
   });

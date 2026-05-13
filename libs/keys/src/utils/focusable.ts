@@ -63,10 +63,13 @@ export function isFocusable(element: HTMLElement | null): boolean {
 }
 
 // jsdom returns compound-selector matches out of tree order; normalize.
+const DOCUMENT_POSITION_PRECEDING = 0x02;
+const DOCUMENT_POSITION_FOLLOWING = 0x04;
+
 function documentOrder(a: HTMLElement, b: HTMLElement): number {
   const pos = a.compareDocumentPosition(b);
-  if (pos & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
-  if (pos & Node.DOCUMENT_POSITION_PRECEDING) return 1;
+  if (pos & DOCUMENT_POSITION_FOLLOWING) return -1;
+  if (pos & DOCUMENT_POSITION_PRECEDING) return 1;
   return 0;
 }
 

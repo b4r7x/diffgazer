@@ -1,7 +1,6 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "selectable-collection",
-  "type": "registry:lib",
   "title": "Selectable Collection",
   "description": "Shared selectable item collection and DOM-order utilities for compound selection components.",
   "dependencies": [],
@@ -15,5 +14,6 @@
   ],
   "meta": {
     "client": true
-  }
+  },
+  "type": "registry:lib"
 }

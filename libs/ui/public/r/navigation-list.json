@@ -1,15 +1,14 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "navigation-list",
-  "type": "registry:ui",
   "title": "Navigation List",
   "description": "Terminal-styled navigation sidebar list",
   "dependencies": [
     "class-variance-authority"
   ],
   "registryDependencies": [
-    "listbox",
-    "badge"
+    "https://diffgazer.com/r/ui/listbox.json",
+    "https://diffgazer.com/r/ui/badge.json"
   ],
   "files": [
     {
@@ -68,5 +67,6 @@
     "optionalIntegrations": [
       "keyboard-navigation"
     ]
-  }
+  },
+  "type": "registry:ui"
 }

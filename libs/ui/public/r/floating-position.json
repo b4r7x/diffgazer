@@ -1,7 +1,6 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "floating-position",
-  "type": "registry:hook",
   "title": "Floating Position",
   "description": "Positioning engine for floating elements with 4-side placement, flip, shift, and collision detection. Zero dependencies.",
   "dependencies": [],
@@ -15,5 +14,6 @@
   ],
   "meta": {
     "client": true
-  }
+  },
+  "type": "registry:hook"
 }

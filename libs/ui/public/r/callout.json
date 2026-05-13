@@ -1,14 +1,13 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "callout",
-  "type": "registry:ui",
   "title": "Callout",
   "description": "Highlighted message block for tips, warnings, and errors",
   "dependencies": [
     "class-variance-authority"
   ],
   "registryDependencies": [
-    "controllable-state"
+    "https://diffgazer.com/r/ui/controllable-state.json"
   ],
   "files": [
     {
@@ -49,5 +48,6 @@
   ],
   "meta": {
     "client": true
-  }
+  },
+  "type": "registry:ui"
 }

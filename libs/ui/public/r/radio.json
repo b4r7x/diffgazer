@@ -1,17 +1,16 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "radio",
-  "type": "registry:ui",
   "title": "Radio",
   "description": "Terminal-styled radio and radio group for single-selection with bracket notation",
   "dependencies": [],
   "registryDependencies": [
-    "controllable-state",
-    "form-reset",
-    "compose-refs",
-    "@diffgazer-keys/navigation",
-    "selectable-collection",
-    "selectable-variants"
+    "https://diffgazer.com/r/ui/controllable-state.json",
+    "https://diffgazer.com/r/ui/form-reset.json",
+    "https://diffgazer.com/r/ui/compose-refs.json",
+    "https://diffgazer.com/r/keys/navigation.json",
+    "https://diffgazer.com/r/ui/selectable-collection.json",
+    "https://diffgazer.com/r/ui/selectable-variants.json"
   ],
   "files": [
     {
@@ -45,5 +44,6 @@
     "optionalIntegrations": [
       "keyboard-navigation"
     ]
-  }
+  },
+  "type": "registry:ui"
 }

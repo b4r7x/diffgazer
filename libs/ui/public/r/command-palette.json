@@ -1,21 +1,20 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "command-palette",
-  "type": "registry:ui",
   "title": "Command Palette",
   "description": "Terminal-inspired command palette with search, keyboard navigation, and grouped items",
   "dependencies": [
     "class-variance-authority"
   ],
   "registryDependencies": [
-    "controllable-state",
-    "@diffgazer-keys/focus-restore",
-    "@diffgazer-keys/navigation",
-    "compose-refs",
-    "dialog-shell",
-    "portal",
-    "search",
-    "selectable-collection"
+    "https://diffgazer.com/r/ui/controllable-state.json",
+    "https://diffgazer.com/r/keys/focus-restore.json",
+    "https://diffgazer.com/r/keys/navigation.json",
+    "https://diffgazer.com/r/ui/compose-refs.json",
+    "https://diffgazer.com/r/ui/dialog-shell.json",
+    "https://diffgazer.com/r/ui/portal.json",
+    "https://diffgazer.com/r/ui/search.json",
+    "https://diffgazer.com/r/ui/selectable-collection.json"
   ],
   "files": [
     {
@@ -79,5 +78,6 @@
     "optionalIntegrations": [
       "keyboard-navigation"
     ]
-  }
+  },
+  "type": "registry:ui"
 }

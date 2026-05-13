@@ -1,6 +1,6 @@
-import { resolve } from "node:path";
 import type { SyncOutputPaths, SyncOutputPathsConfig } from "./types.js";
 import { DEFAULT_OUTPUT_PATHS } from "./types.js";
+import { resolveInside } from "../utils/fs.js";
 
 export function resolveSyncOutputPaths(
   docsRoot: string,
@@ -8,12 +8,12 @@ export function resolveSyncOutputPaths(
 ): SyncOutputPaths {
   const paths = { ...DEFAULT_OUTPUT_PATHS, ...overrides };
   return {
-    contentDir: resolve(docsRoot, paths.contentDir),
-    generatedDir: resolve(docsRoot, paths.generatedDir),
-    registryDir: resolve(docsRoot, paths.registryDir),
-    stylesDir: resolve(docsRoot, paths.stylesDir),
-    publicRegistryDir: resolve(docsRoot, paths.publicRegistryDir),
-    libraryAssetsDir: resolve(docsRoot, paths.libraryAssetsDir),
-    stateFilePath: resolve(docsRoot, paths.stateFile),
+    contentDir: resolveInside(docsRoot, paths.contentDir, "docs content output path"),
+    generatedDir: resolveInside(docsRoot, paths.generatedDir, "docs generated output path"),
+    registryDir: resolveInside(docsRoot, paths.registryDir, "docs registry output path"),
+    stylesDir: resolveInside(docsRoot, paths.stylesDir, "docs styles output path"),
+    publicRegistryDir: resolveInside(docsRoot, paths.publicRegistryDir, "docs public registry output path"),
+    libraryAssetsDir: resolveInside(docsRoot, paths.libraryAssetsDir, "docs library assets output path"),
+    stateFilePath: resolveInside(docsRoot, paths.stateFile, "docs sync state output path"),
   };
 }

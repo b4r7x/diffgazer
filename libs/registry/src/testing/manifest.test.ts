@@ -82,6 +82,31 @@ describe("ArtifactManifestSchema", () => {
     const result = ArtifactManifestSchema.safeParse({ ...validManifest, inputs: [] });
     expect(result.success).toBe(false);
   });
+
+  it("should reject manifest paths outside the artifact contract", () => {
+    const invalidManifests: ArtifactManifest[] = [
+      { ...validManifest, artifactRoot: "../artifacts" },
+      { ...validManifest, artifactRoot: "/tmp/artifacts" },
+      { ...validManifest, inputs: ["../package.json"] },
+      { ...validManifest, docs: { ...validManifest.docs, contentDir: "../docs" } },
+      { ...validManifest, docs: { ...validManifest.docs, generatedDir: "/tmp/generated" } },
+      { ...validManifest, registry: { ...validManifest.registry, publicDir: "../registry" } },
+      { ...validManifest, source: { registryDir: "../source" } },
+      { ...validManifest, generated: { demoIndex: "../demo-index.ts" } },
+      {
+        ...validManifest,
+        integrity: {
+          ...validManifest.integrity,
+          fingerprintFile: "../fingerprint.sha256",
+        },
+      },
+    ];
+
+    for (const manifest of invalidManifests) {
+      const result = ArtifactManifestSchema.safeParse(manifest);
+      expect(result.success).toBe(false);
+    }
+  });
 });
 
 describe("createArtifactManifest", () => {

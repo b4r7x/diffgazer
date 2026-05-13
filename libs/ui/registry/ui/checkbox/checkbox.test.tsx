@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { axe } from "../../../testing/utils.js"
 import { describe, it, expect, vi } from "vitest"
@@ -444,6 +444,28 @@ describe("Checkbox.Group", () => {
     expect(onHighlight).not.toHaveBeenCalled()
     expect(screen.getByRole("checkbox", { name: /apple/i })).toHaveAttribute("data-highlighted", "true")
     expect(screen.getByRole("checkbox", { name: /banana/i })).not.toHaveAttribute("data-highlighted")
+  })
+
+  it("starts keyboard navigation from the first item when controlled highlight is cleared", () => {
+    const onHighlight = vi.fn()
+    const { rerender } = render(
+      <Checkbox.Group label="Fruits" highlighted="apple" onHighlightChange={onHighlight}>
+        <Checkbox.Item value="apple" label="Apple" />
+        <Checkbox.Item value="banana" label="Banana" />
+      </Checkbox.Group>
+    )
+
+    rerender(
+      <Checkbox.Group label="Fruits" highlighted={null} onHighlightChange={onHighlight}>
+        <Checkbox.Item value="apple" label="Apple" />
+        <Checkbox.Item value="banana" label="Banana" />
+      </Checkbox.Group>
+    )
+
+    fireEvent.keyDown(screen.getByRole("group"), { key: "ArrowDown" })
+
+    expect(screen.getByRole("checkbox", { name: /apple/i })).toHaveFocus()
+    expect(onHighlight).toHaveBeenLastCalledWith("apple")
   })
 
   it("does not satisfy required validation with stale controlled values", async () => {

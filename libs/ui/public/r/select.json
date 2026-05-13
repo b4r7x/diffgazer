@@ -1,24 +1,23 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "select",
-  "type": "registry:ui",
   "title": "Select",
   "description": "Searchable dropdown for single or multiple selection",
   "dependencies": [
     "class-variance-authority"
   ],
   "registryDependencies": [
-    "controllable-state",
-    "@diffgazer-keys/navigation",
-    "compose-refs",
-    "floating-position",
-    "form-reset",
-    "icons",
-    "outside-click",
-    "portal",
-    "presence",
-    "search",
-    "typeahead-buffer"
+    "https://diffgazer.com/r/ui/controllable-state.json",
+    "https://diffgazer.com/r/keys/navigation.json",
+    "https://diffgazer.com/r/ui/compose-refs.json",
+    "https://diffgazer.com/r/ui/floating-position.json",
+    "https://diffgazer.com/r/ui/form-reset.json",
+    "https://diffgazer.com/r/ui/icons.json",
+    "https://diffgazer.com/r/ui/outside-click.json",
+    "https://diffgazer.com/r/ui/portal.json",
+    "https://diffgazer.com/r/ui/presence.json",
+    "https://diffgazer.com/r/ui/search.json",
+    "https://diffgazer.com/r/ui/typeahead-buffer.json"
   ],
   "files": [
     {
@@ -87,5 +86,6 @@
     "optionalIntegrations": [
       "keyboard-navigation"
     ]
-  }
+  },
+  "type": "registry:ui"
 }

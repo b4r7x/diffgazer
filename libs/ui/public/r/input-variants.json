@@ -1,7 +1,6 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "input-variants",
-  "type": "registry:lib",
   "title": "Input Variants",
   "description": "Shared CVA variant definitions for input-family components (input, textarea)",
   "dependencies": [
@@ -18,5 +17,6 @@
   "meta": {
     "client": false,
     "hidden": true
-  }
+  },
+  "type": "registry:lib"
 }

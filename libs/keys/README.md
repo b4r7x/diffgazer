@@ -12,7 +12,7 @@ All npm package names are external publish-gated as of May 2026. Public npm comm
 | `dgadd` CLI | `pnpm exec dgadd add keys/navigation` | Not available |
 | npm package | `npm install @diffgazer/keys` | `npm install @diffgazer/keys` |
 
-Provider-backed APIs (`KeyboardProvider`, `useKey`, `useScope`, `useFocusZone`, `useScopedNavigation`) require `KeyboardProvider` and are only available through the npm package.
+Provider-backed APIs (`KeyboardProvider`, `useKey`, `useScope`, `useScopedNavigation`, `useActionRowNavigation`, `useFocusZone`) require `KeyboardProvider` and are only available through the npm package.
 
 ## Install
 
@@ -71,6 +71,7 @@ export function App() {
 | `useKey` | Register a keyboard shortcut within the active scope |
 | `useScope` | Activate a keyboard scope |
 | `useScopedNavigation` | Navigation scoped to the keyboard provider |
+| `useActionRowNavigation` | Roving row navigation for action toolbars within the keyboard provider |
 | `useFocusZone` | Multi-zone focus management |
 | `keys` | Key constant utilities |
 | `useKeyboardContext` | Access the keyboard context |

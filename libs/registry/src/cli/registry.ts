@@ -1,15 +1,22 @@
 import { existsSync, readFileSync } from "node:fs";
+import { isAbsolute, win32 } from "node:path";
 import { z } from "zod";
 import { RegistryFileSchema as BaseRegistryFileSchema, RegistryItemSchema as BaseRegistryItemSchema } from "../registry-types.js";
 import { toErrorMessage } from "./logger.js";
 import { getRelativePath } from "./fs.js";
 import { computeIntegrity } from "./integrity.js";
+import { REGISTRY_ORIGIN } from "../constants.js";
 
-const RegistryFileSchema = BaseRegistryFileSchema.extend({
-  path: z.string().refine(
-    (p) => !p.split("/").includes("..") && !p.split("\\").includes(".."),
-    { message: "Registry file path must not contain '..' segments" },
-  ),
+export const RegistryFileSchema = BaseRegistryFileSchema.extend({
+  path: z.string()
+    .refine(
+      (p) => !isAbsolute(p) && !win32.isAbsolute(p),
+      { message: "Registry file path must be relative" },
+    )
+    .refine(
+      (p) => !p.split("/").includes("..") && !p.split("\\").includes(".."),
+      { message: "Registry file path must not contain '..' segments" },
+    ),
 });
 
 export const RegistryItemSchema = BaseRegistryItemSchema.extend({
@@ -34,13 +41,11 @@ export const BaseRegistryBundleSchema = z.object({
   integrity: z.string().optional(),
 });
 
-type BaseRegistryBundle = z.infer<typeof BaseRegistryBundleSchema>;
-
 type ParsedRegistryDependencyRef =
   | { kind: "local"; raw: string; name: string }
   | { kind: "namespace"; raw: string; namespace: string; name: string };
 
-export const REGISTRY_ORIGIN = "https://diffgazer.com";
+export { REGISTRY_ORIGIN };
 
 const SIMPLE_NAMESPACE_REF_RE = /^(@[a-z0-9][\w-]*)\/([a-z0-9][\w-]*)$/i;
 const SCOPED_NAMESPACE_REF_RE = /^(@[a-z0-9][\w-]*\/[a-z0-9][\w-]*)\/([a-z0-9][\w-]*)$/i;

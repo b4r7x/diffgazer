@@ -21,6 +21,35 @@ const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
 const activeSessions = new Map<string, ActiveSession>();
 
+function isTerminalEvent(event: FullReviewStreamEvent): boolean {
+  return event.type === "complete" || event.type === "error";
+}
+
+function storeSessionEvent(session: ActiveSession, event: FullReviewStreamEvent): boolean {
+  if (session.events.length < MAX_EVENTS_PER_SESSION) {
+    session.events.push(event);
+    return true;
+  }
+  if (!isTerminalEvent(event)) {
+    return false;
+  }
+
+  session.events[session.events.length - 1] = event;
+  return true;
+}
+
+function notifySubscribers(session: ActiveSession, event: FullReviewStreamEvent): void {
+  session.subscribers.forEach(cb => {
+    try {
+      Promise.resolve(cb(event)).catch(e => {
+        console.error('Subscriber callback error:', e);
+      });
+    } catch (e) {
+      console.error('Subscriber callback error:', e);
+    }
+  });
+}
+
 function evictOldestSession(): void {
   let oldest: { id: string; startedAt: Date } | null = null;
   for (const [id, session] of activeSessions) {
@@ -92,19 +121,8 @@ export function markReady(reviewId: string): void {
 export function addEvent(reviewId: string, event: FullReviewStreamEvent): void {
   const session = activeSessions.get(reviewId);
   if (session && !session.isComplete) {
-    if (session.events.length >= MAX_EVENTS_PER_SESSION) {
-      return;
-    }
-    session.events.push(event);
-    session.subscribers.forEach(cb => {
-      try {
-        Promise.resolve(cb(event)).catch(e => {
-          console.error('Subscriber callback error:', e);
-        });
-      } catch (e) {
-        console.error('Subscriber callback error:', e);
-      }
-    });
+    if (!storeSessionEvent(session, event)) return;
+    notifySubscribers(session, event);
   }
 }
 
@@ -129,18 +147,10 @@ export function cancelSession(reviewId: string): void {
       message: "Review session cancelled because repository state changed.",
     },
   };
-  session.events.push(cancelEvent);
+  storeSessionEvent(session, cancelEvent);
   session.isComplete = true;
 
-  session.subscribers.forEach((cb) => {
-    try {
-      Promise.resolve(cb(cancelEvent)).catch(e => {
-        console.error("Subscriber callback error:", e);
-      });
-    } catch (e) {
-      console.error("Subscriber callback error:", e);
-    }
-  });
+  notifySubscribers(session, cancelEvent);
   session.subscribers.clear();
   setTimeout(() => activeSessions.delete(reviewId), 2 * 60 * 1000);
 }

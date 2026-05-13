@@ -1,16 +1,15 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "search-input",
-  "type": "registry:ui",
   "title": "Search Input",
   "description": "Terminal-styled search input with / prefix and keyboard callbacks.",
   "dependencies": [
     "class-variance-authority"
   ],
   "registryDependencies": [
-    "controllable-state",
-    "form-reset",
-    "compose-refs"
+    "https://diffgazer.com/r/ui/controllable-state.json",
+    "https://diffgazer.com/r/ui/form-reset.json",
+    "https://diffgazer.com/r/ui/compose-refs.json"
   ],
   "files": [
     {
@@ -26,5 +25,6 @@
   ],
   "meta": {
     "client": true
-  }
+  },
+  "type": "registry:ui"
 }

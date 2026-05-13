@@ -1,14 +1,13 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "menu",
-  "type": "registry:ui",
   "title": "Menu",
   "description": "Terminal-styled selection list with keyboard navigation",
   "dependencies": [
     "class-variance-authority"
   ],
   "registryDependencies": [
-    "listbox"
+    "https://diffgazer.com/r/ui/listbox.json"
   ],
   "files": [
     {
@@ -42,5 +41,6 @@
     "optionalIntegrations": [
       "keyboard-navigation"
     ]
-  }
+  },
+  "type": "registry:ui"
 }

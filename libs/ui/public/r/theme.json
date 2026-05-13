@@ -1,7 +1,6 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "theme",
-  "type": "registry:theme",
   "title": "@diffgazer/ui Theme",
   "description": "Terminal-inspired theme variables and base styles",
   "dependencies": [],
@@ -25,5 +24,6 @@
       "type": "registry:style",
       "target": "~/styles/styles.css"
     }
-  ]
+  ],
+  "type": "registry:theme"
 }

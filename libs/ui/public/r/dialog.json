@@ -1,19 +1,18 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "dialog",
-  "type": "registry:ui",
   "title": "Dialog",
   "description": "Modal dialog with compound components",
   "dependencies": [
     "class-variance-authority"
   ],
   "registryDependencies": [
-    "button",
-    "controllable-state",
-    "@diffgazer-keys/focus-restore",
-    "dialog-shell",
-    "compose-refs",
-    "portal"
+    "https://diffgazer.com/r/ui/button.json",
+    "https://diffgazer.com/r/ui/controllable-state.json",
+    "https://diffgazer.com/r/keys/focus-restore.json",
+    "https://diffgazer.com/r/ui/dialog-shell.json",
+    "https://diffgazer.com/r/ui/compose-refs.json",
+    "https://diffgazer.com/r/ui/portal.json"
   ],
   "files": [
     {
@@ -87,5 +86,6 @@
     "optionalIntegrations": [
       "keyboard-navigation"
     ]
-  }
+  },
+  "type": "registry:ui"
 }

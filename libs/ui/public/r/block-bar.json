@@ -1,7 +1,6 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "block-bar",
-  "type": "registry:ui",
   "title": "Block Bar",
   "description": "Segmented block-character bar for data visualization with multi-segment support",
   "dependencies": [
@@ -32,5 +31,6 @@
   ],
   "meta": {
     "client": true
-  }
+  },
+  "type": "registry:ui"
 }

@@ -17,32 +17,37 @@
         {
           "path": "src/hooks/use-navigation.ts",
           "type": "registry:hook",
-          "target": "@hooks/use-navigation.ts"
+          "target": "src/hooks/use-navigation.ts"
         },
         {
           "path": "src/hooks/internal/navigation-dispatch.ts",
           "type": "registry:hook",
-          "target": "@hooks/utils/navigation-dispatch.ts"
+          "target": "src/hooks/utils/navigation-dispatch.ts"
         },
         {
           "path": "src/utils/navigation-items.ts",
           "type": "registry:hook",
-          "target": "@hooks/utils/navigation-items.ts"
+          "target": "src/hooks/utils/navigation-items.ts"
         },
         {
           "path": "src/utils/navigation-directions.ts",
           "type": "registry:hook",
-          "target": "@hooks/utils/navigation-directions.ts"
+          "target": "src/hooks/utils/navigation-directions.ts"
         },
         {
           "path": "src/utils/keyboard-utils.ts",
           "type": "registry:hook",
-          "target": "@hooks/utils/keyboard-utils.ts"
+          "target": "src/hooks/utils/keyboard-utils.ts"
         },
         {
           "path": "src/utils/focusable.ts",
           "type": "registry:hook",
-          "target": "@hooks/utils/focusable.ts"
+          "target": "src/hooks/utils/focusable.ts"
+        },
+        {
+          "path": "src/utils/dom.ts",
+          "type": "registry:hook",
+          "target": "src/hooks/utils/dom.ts"
         }
       ]
     },
@@ -60,12 +65,12 @@
         {
           "path": "src/hooks/use-focus-restore.ts",
           "type": "registry:hook",
-          "target": "@hooks/use-focus-restore.ts"
+          "target": "src/hooks/use-focus-restore.ts"
         },
         {
           "path": "src/utils/focus-restore.ts",
           "type": "registry:hook",
-          "target": "@hooks/utils/focus-restore.ts"
+          "target": "src/hooks/utils/focus-restore.ts"
         }
       ]
     },
@@ -84,7 +89,12 @@
         {
           "path": "src/utils/focusable.ts",
           "type": "registry:hook",
-          "target": "@hooks/utils/focusable.ts"
+          "target": "src/hooks/utils/focusable.ts"
+        },
+        {
+          "path": "src/utils/dom.ts",
+          "type": "registry:hook",
+          "target": "src/hooks/utils/dom.ts"
         }
       ]
     },
@@ -102,22 +112,27 @@
         {
           "path": "src/hooks/use-focus-trap.ts",
           "type": "registry:hook",
-          "target": "@hooks/use-focus-trap.ts"
+          "target": "src/hooks/use-focus-trap.ts"
         },
         {
           "path": "src/hooks/use-focus-restore.ts",
           "type": "registry:hook",
-          "target": "@hooks/use-focus-restore.ts"
+          "target": "src/hooks/use-focus-restore.ts"
         },
         {
           "path": "src/utils/focus-restore.ts",
           "type": "registry:hook",
-          "target": "@hooks/utils/focus-restore.ts"
+          "target": "src/hooks/utils/focus-restore.ts"
         },
         {
           "path": "src/utils/focusable.ts",
           "type": "registry:hook",
-          "target": "@hooks/utils/focusable.ts"
+          "target": "src/hooks/utils/focusable.ts"
+        },
+        {
+          "path": "src/utils/dom.ts",
+          "type": "registry:hook",
+          "target": "src/hooks/utils/dom.ts"
         }
       ]
     },
@@ -135,7 +150,7 @@
         {
           "path": "src/hooks/use-scroll-lock.ts",
           "type": "registry:hook",
-          "target": "@hooks/use-scroll-lock.ts"
+          "target": "src/hooks/use-scroll-lock.ts"
         }
       ]
     }

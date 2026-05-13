@@ -5,8 +5,6 @@ import type { AIError } from "../../shared/lib/ai/types.js";
 import type { StoreError } from "../../shared/lib/storage/types.js";
 import type { getProfile } from "../../shared/lib/review/profiles.js";
 
-export type { ActiveSession } from "./sessions.js";
-
 export type EmitFn = (event: FullReviewStreamEvent) => Promise<void>;
 
 export interface StreamReviewParams {

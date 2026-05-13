@@ -1,16 +1,15 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "stepper",
-  "type": "registry:ui",
   "title": "Stepper",
   "description": "Step-by-step progress indicator",
   "dependencies": [
     "class-variance-authority"
   ],
   "registryDependencies": [
-    "badge",
-    "controllable-state",
-    "step-status"
+    "https://diffgazer.com/r/ui/badge.json",
+    "https://diffgazer.com/r/ui/controllable-state.json",
+    "https://diffgazer.com/r/ui/step-status.json"
   ],
   "files": [
     {
@@ -56,5 +55,6 @@
   ],
   "meta": {
     "client": true
-  }
+  },
+  "type": "registry:ui"
 }

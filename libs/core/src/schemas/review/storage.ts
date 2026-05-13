@@ -8,6 +8,39 @@ export type ReviewMode = z.infer<typeof ReviewModeSchema>;
 
 const CountFieldSchema = z.number().int().nonnegative();
 
+const DiffStatsSchema = z.object({
+  additions: CountFieldSchema,
+  deletions: CountFieldSchema,
+  sizeBytes: CountFieldSchema,
+});
+
+const DiffHunkSchema = z.object({
+  oldStart: CountFieldSchema,
+  oldCount: CountFieldSchema,
+  newStart: CountFieldSchema,
+  newCount: CountFieldSchema,
+  content: z.string(),
+});
+
+const FileDiffSchema = z.object({
+  filePath: z.string(),
+  previousPath: z.string().nullable(),
+  operation: z.enum(["add", "modify", "delete", "rename"]),
+  hunks: z.array(DiffHunkSchema),
+  rawDiff: z.string(),
+  stats: DiffStatsSchema,
+});
+
+const ParsedDiffSchema = z.object({
+  files: z.array(FileDiffSchema),
+  totalStats: z.object({
+    filesChanged: CountFieldSchema,
+    additions: CountFieldSchema,
+    deletions: CountFieldSchema,
+    totalSizeBytes: CountFieldSchema,
+  }),
+});
+
 export const ReviewMetadataSchema = z
   .object({
     id: UuidSchema,
@@ -29,7 +62,7 @@ export const ReviewMetadataSchema = z
   })
   .transform((data) => ({
     ...data,
-    mode: data.mode ?? (data.staged ? "staged" : "unstaged") as ReviewMode,
+    mode: data.mode ?? (data.staged ? "staged" : "unstaged"),
   }));
 export type ReviewMetadata = z.infer<typeof ReviewMetadataSchema>;
 
@@ -45,6 +78,7 @@ export type ReviewGitContext = z.infer<typeof ReviewGitContextSchema>;
 export const SavedReviewSchema = z.object({
   metadata: ReviewMetadataSchema,
   result: ReviewResultSchema,
+  diff: ParsedDiffSchema.optional(),
   gitContext: ReviewGitContextSchema,
   drilldowns: z.array(DrilldownResultSchema),
 });

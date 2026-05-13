@@ -32,7 +32,7 @@ interface PackageJson {
 /**
  * Components that must publish a non-empty `props` table in generated docs data.
  * Add a component here once its `component-docs/<name>.ts` authors a `props` field.
- * The validator fails if the generated JSON is missing or empty for any listed item.
+ * Missing generated JSON is tolerated on clean checkouts; present files must be non-empty.
  */
 const COMPONENTS_REQUIRING_PROPS = [
   "button",
@@ -280,11 +280,22 @@ function validateExamplesAvoidHiddenPaths(items: RegistryItem[]): string[] {
 
 function validateDocumentedComponentProps(): string[] {
   const errors: string[] = [];
+  const componentsUsingApiReference = new Set<string>();
+  const componentDocsDir = resolve(ROOT, "docs/content/components");
 
-  for (const componentName of COMPONENTS_REQUIRING_PROPS) {
+  if (existsSync(componentDocsDir)) {
+    for (const entry of readdirSync(componentDocsDir)) {
+      if (!entry.endsWith(".mdx")) continue;
+      const source = readFileSync(resolve(componentDocsDir, entry), "utf-8");
+      if (source.includes("<APIReference />")) {
+        componentsUsingApiReference.add(entry.replace(/\.mdx$/, ""));
+      }
+    }
+  }
+
+  for (const componentName of new Set([...COMPONENTS_REQUIRING_PROPS, ...componentsUsingApiReference])) {
     const dataPath = resolve(ROOT, "docs/generated/components", `${componentName}.json`);
     if (!existsSync(dataPath)) {
-      // Generated artifact may not exist yet on first run; tolerate it.
       continue;
     }
     let data: { props?: Record<string, Record<string, unknown>> };
@@ -302,7 +313,11 @@ function validateDocumentedComponentProps(): string[] {
     );
 
     if (totalProps === 0) {
-      errors.push(`${componentName} is required to publish props but generated docs/generated/components/${componentName}.json has none. Add a "props" field to registry/component-docs/${componentName}.ts.`);
+      if (componentsUsingApiReference.has(componentName)) {
+        errors.push(`${componentName} renders <APIReference /> but generated docs/generated/components/${componentName}.json has no props. Add a "props" field to registry/component-docs/${componentName}.ts or remove <APIReference /> from docs/content/components/${componentName}.mdx.`);
+      } else {
+        errors.push(`${componentName} is required to publish props but generated docs/generated/components/${componentName}.json has none. Add a "props" field to registry/component-docs/${componentName}.ts.`);
+      }
     }
   }
 

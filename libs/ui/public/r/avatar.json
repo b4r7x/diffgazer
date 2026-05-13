@@ -1,14 +1,13 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "avatar",
-  "type": "registry:ui",
   "title": "Avatar",
   "description": "Terminal-inspired avatar with image support, monospace initials fallback, and group stacking with overflow.",
   "dependencies": [
     "class-variance-authority"
   ],
   "registryDependencies": [
-    "overflow"
+    "https://diffgazer.com/r/ui/overflow.json"
   ],
   "files": [
     {
@@ -54,5 +53,6 @@
   ],
   "meta": {
     "client": true
-  }
+  },
+  "type": "registry:ui"
 }

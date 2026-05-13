@@ -1,7 +1,6 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "overflow-detection",
-  "type": "registry:hook",
   "title": "Overflow Detection",
   "description": "Detects whether an element's content overflows its container using ResizeObserver. Supports horizontal, vertical, and both directions.",
   "dependencies": [],
@@ -15,5 +14,6 @@
   ],
   "meta": {
     "client": true
-  }
+  },
+  "type": "registry:hook"
 }

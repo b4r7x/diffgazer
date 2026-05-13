@@ -1,12 +1,11 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "field",
-  "type": "registry:ui",
   "title": "Field",
   "description": "Form field primitives for labels, controls, descriptions, and validation messages",
   "dependencies": [],
   "registryDependencies": [
-    "compose-refs"
+    "https://diffgazer.com/r/ui/compose-refs.json"
   ],
   "files": [
     {
@@ -22,5 +21,6 @@
   ],
   "meta": {
     "client": true
-  }
+  },
+  "type": "registry:ui"
 }

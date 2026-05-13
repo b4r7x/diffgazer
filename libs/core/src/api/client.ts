@@ -1,4 +1,4 @@
-import type { ApiClient, ApiClientConfig, ApiError, StreamOptions } from "./types.js";
+import type { ApiClient, ApiClientConfig, ApiError, RequestOptions, StreamOptions } from "./types.js";
 
 function createApiError(message: string, status: number, code?: string): ApiError {
   const error = new Error(message) as ApiError;
@@ -31,7 +31,7 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
   async function send(
     method: string,
     path: string,
-    options?: { body?: unknown; params?: Record<string, string>; signal?: AbortSignal }
+    options?: RequestOptions,
   ): Promise<Response> {
     const normalizedPath = path.startsWith("/") ? path : `/${path}`;
     let url = `${normalizedBaseUrl}${normalizedPath}`;
@@ -43,6 +43,7 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
     const headers: Record<string, string> = {
       Accept: "application/json",
       ...projectHeaders,
+      ...options?.headers,
     };
     if (options?.body !== undefined) {
       headers["Content-Type"] = "application/json";
@@ -74,8 +75,12 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
       const response = await send("GET", path, { params });
       return parse<T>(response);
     },
-    post: async <T>(path: string, body?: unknown): Promise<T> => {
-      const response = await send("POST", path, { body });
+    post: async <T>(path: string, body?: unknown, options?: Omit<RequestOptions, "body" | "params">): Promise<T> => {
+      const response = await send("POST", path, { body, ...options });
+      return parse<T>(response);
+    },
+    put: async <T>(path: string, body?: unknown, options?: Omit<RequestOptions, "body" | "params">): Promise<T> => {
+      const response = await send("PUT", path, { body, ...options });
       return parse<T>(response);
     },
     delete: async <T>(path: string, params?: Record<string, string>): Promise<T> => {

@@ -147,6 +147,21 @@ function installFixturePackage(docsRoot: string, fixture: TestLibraryFixture): v
   );
 }
 
+function installManifestOnlyPackage(
+  docsRoot: string,
+  config: SyncLibraryConfig,
+  manifest: ArtifactManifest,
+): void {
+  const packageRoot = join(docsRoot, "node_modules", "@test", config.id);
+  mkdirSync(join(packageRoot, "dist/artifacts"), { recursive: true });
+  writeJson(join(packageRoot, "package.json"), {
+    name: config.packageName,
+    version: manifest.version,
+    type: "module",
+  });
+  writeJson(join(packageRoot, "dist/artifacts/artifact-manifest.json"), manifest);
+}
+
 describe("syncDocsFromArtifacts", () => {
   let tempRoot: string;
   let docsRoot: string;
@@ -197,6 +212,68 @@ describe("syncDocsFromArtifacts", () => {
     expect(() => runSync(fixture.config)).toThrowError(/artifacts are stale/i);
   });
 
+  it("rejects unsafe library ids before writing namespace outputs", () => {
+    const fixture = createLibraryFixture({ workspaceRoot });
+
+    expect(() =>
+      syncDocsFromArtifacts({
+        docsRoot,
+        workspaceRoot,
+        libraries: [{ ...fixture.config, id: "../demo" }],
+        primaryLibraryId: "../demo",
+        origin: TEST_ORIGIN,
+        sourceOrigin: TEST_ORIGIN,
+        mode: "workspace",
+      }),
+    ).toThrow(/safe library id/);
+  });
+
+  it("rejects output path overrides outside the docs root", () => {
+    const fixture = createLibraryFixture({ workspaceRoot });
+
+    expect(() =>
+      syncDocsFromArtifacts({
+        docsRoot,
+        workspaceRoot,
+        libraries: [fixture.config],
+        primaryLibraryId: fixture.config.id,
+        origin: TEST_ORIGIN,
+        sourceOrigin: TEST_ORIGIN,
+        mode: "workspace",
+        outputPaths: { contentDir: "../outside" },
+      }),
+    ).toThrow(/docs content output path must be a relative path/);
+
+    expect(() =>
+      syncDocsFromArtifacts({
+        docsRoot,
+        workspaceRoot,
+        libraries: [fixture.config],
+        primaryLibraryId: fixture.config.id,
+        origin: TEST_ORIGIN,
+        sourceOrigin: TEST_ORIGIN,
+        mode: "workspace",
+        outputPaths: { generatedDir: "/tmp/outside" },
+      }),
+    ).toThrow(/docs generated output path must be a relative path/);
+  });
+
+  it("rejects workspace directories outside the workspace root", () => {
+    const fixture = createLibraryFixture({ workspaceRoot });
+
+    expect(() =>
+      syncDocsFromArtifacts({
+        docsRoot,
+        workspaceRoot,
+        libraries: [{ ...fixture.config, workspaceDir: "../outside" }],
+        primaryLibraryId: fixture.config.id,
+        origin: TEST_ORIGIN,
+        sourceOrigin: TEST_ORIGIN,
+        mode: "workspace",
+      }),
+    ).toThrow(/workspace directory must be a relative path/);
+  });
+
   it("copies generated files using manifest values and basename extraction", () => {
     const fixture = createLibraryFixture({
       workspaceRoot,
@@ -223,6 +300,122 @@ describe("syncDocsFromArtifacts", () => {
     expect(
       existsSync(join(docsRoot, "src/generated", fixture.config.id, "logical-name")),
     ).toBe(false);
+  });
+
+  it("rewrites secondary demo indexes to the copied example namespace", () => {
+    const primary = createLibraryFixture({
+      workspaceRoot,
+      id: "ui",
+      workspaceDir: "ui-lib",
+    });
+    const secondary = createLibraryFixture({
+      workspaceRoot,
+      id: "keys",
+      workspaceDir: "keys-lib",
+      generated: {
+        demoIndex: "generated/demo-index.ts",
+      },
+    });
+
+    writeText(
+      join(
+        secondary.libraryRoot,
+        secondary.manifest.artifactRoot,
+        "generated/demo-index.ts",
+      ),
+      [
+        `import { lazy } from "react"`,
+        `export const demos = {`,
+        `  "use-key-basic": lazy(() => import("../../registry/examples/use-key/use-key-basic")),`,
+        `}`,
+        "",
+      ].join("\n"),
+    );
+    writeText(
+      join(
+        secondary.libraryRoot,
+        secondary.manifest.artifactRoot,
+        "source/registry/examples/use-key/use-key-basic.tsx",
+      ),
+      "export default function Demo() { return null }\n",
+    );
+
+    const result = syncDocsFromArtifacts({
+      docsRoot,
+      workspaceRoot,
+      libraries: [primary.config, secondary.config],
+      primaryLibraryId: primary.config.id,
+      origin: TEST_ORIGIN,
+      sourceOrigin: TEST_ORIGIN,
+      mode: "workspace",
+    });
+
+    expect(result.synced).toBe(true);
+    expect(
+      existsSync(join(docsRoot, "registry/examples/keys/use-key/use-key-basic.tsx")),
+    ).toBe(true);
+    expect(
+      readFileSync(join(docsRoot, "src/generated/keys/demo-index.ts"), "utf-8"),
+    ).toContain('import("../../../registry/examples/keys/use-key/use-key-basic")');
+  });
+
+  it("resyncs when secondary copied examples are missing", () => {
+    const primary = createLibraryFixture({
+      workspaceRoot,
+      id: "ui",
+      workspaceDir: "ui-lib",
+    });
+    const secondary = createLibraryFixture({
+      workspaceRoot,
+      id: "keys",
+      workspaceDir: "keys-lib",
+      generated: {
+        demoIndex: "generated/demo-index.ts",
+      },
+    });
+    const examplePath = join(
+      secondary.libraryRoot,
+      secondary.manifest.artifactRoot,
+      "source/registry/examples/use-key/use-key-basic.tsx",
+    );
+    writeText(examplePath, "export default function Demo() { return null }\n");
+
+    const first = syncDocsFromArtifacts({
+      docsRoot,
+      workspaceRoot,
+      libraries: [primary.config, secondary.config],
+      primaryLibraryId: primary.config.id,
+      origin: TEST_ORIGIN,
+      sourceOrigin: TEST_ORIGIN,
+      mode: "workspace",
+    });
+    expect(first.synced).toBe(true);
+
+    const second = syncDocsFromArtifacts({
+      docsRoot,
+      workspaceRoot,
+      libraries: [primary.config, secondary.config],
+      primaryLibraryId: primary.config.id,
+      origin: TEST_ORIGIN,
+      sourceOrigin: TEST_ORIGIN,
+      mode: "workspace",
+    });
+    expect(second.synced).toBe(false);
+
+    const copiedExample = join(docsRoot, "registry/examples/keys/use-key/use-key-basic.tsx");
+    unlinkSync(copiedExample);
+
+    const third = syncDocsFromArtifacts({
+      docsRoot,
+      workspaceRoot,
+      libraries: [primary.config, secondary.config],
+      primaryLibraryId: primary.config.id,
+      origin: TEST_ORIGIN,
+      sourceOrigin: TEST_ORIGIN,
+      mode: "workspace",
+    });
+    expect(third.synced).toBe(true);
+    expect(existsSync(copiedExample)).toBe(true);
   });
 
   it("skips sync when fingerprint and outputs are unchanged, then resyncs if outputs are missing", () => {
@@ -264,5 +457,93 @@ describe("syncDocsFromArtifacts", () => {
     expect(
       readFileSync(join(docsRoot, "src/generated/demo/actual-generated.json"), "utf-8"),
     ).toContain("generated/nested/actual-generated.json");
+  });
+
+  it("rejects unsafe package names in package mode", () => {
+    const fixture = createLibraryFixture({ workspaceRoot });
+
+    expect(() =>
+      syncDocsFromArtifacts({
+        docsRoot,
+        workspaceRoot,
+        libraries: [{ ...fixture.config, packageName: "../outside" }],
+        primaryLibraryId: fixture.config.id,
+        origin: TEST_ORIGIN,
+        sourceOrigin: TEST_ORIGIN,
+        mode: "package",
+      }),
+    ).toThrow(/Artifact package name must be an npm package name/);
+  });
+
+  it("rejects package-mode manifests with escaped artifact paths", () => {
+    const config = {
+      id: "demo",
+      packageName: "@test/demo",
+      workspaceDir: "demo-lib",
+    };
+    const baseManifest: ArtifactManifest = {
+      schemaVersion: 1,
+      library: "demo",
+      package: "@test/demo",
+      version: "1.0.0",
+      artifactRoot: "dist/artifacts",
+      inputs: ["src/input.txt"],
+      docs: {
+        contentDir: "docs/content",
+        metaFile: "docs/content/meta.json",
+        generatedDir: "docs/generated",
+      },
+      registry: {
+        namespace: "@demo",
+        basePath: "/r/demo",
+        publicDir: "public/r",
+        index: "public/r/registry.json",
+      },
+      source: {
+        registryDir: "source/registry",
+        stylesDir: "source/styles",
+      },
+      generated: {
+        demoIndex: "generated/demo-index.ts",
+      },
+      integrity: {
+        algorithm: "sha256",
+        fingerprintFile: "fingerprint.sha256",
+      },
+    };
+    const invalidManifests: ArtifactManifest[] = [
+      { ...baseManifest, artifactRoot: "../outside" },
+      {
+        ...baseManifest,
+        integrity: { ...baseManifest.integrity, fingerprintFile: "../fingerprint.sha256" },
+      },
+      {
+        ...baseManifest,
+        docs: { ...baseManifest.docs, contentDir: "../docs" },
+      },
+      {
+        ...baseManifest,
+        docs: { ...baseManifest.docs, generatedDir: "../generated" },
+      },
+      {
+        ...baseManifest,
+        registry: { ...baseManifest.registry, publicDir: "../registry" },
+      },
+      {
+        ...baseManifest,
+        source: { ...baseManifest.source, registryDir: "../source" },
+      },
+      {
+        ...baseManifest,
+        generated: { demoIndex: "../demo-index.ts" },
+      },
+    ];
+
+    for (const manifest of invalidManifests) {
+      rmSync(join(docsRoot, "node_modules"), { recursive: true, force: true });
+      installManifestOnlyPackage(docsRoot, config, manifest);
+
+      expect(() => runSync(config, "package")).toThrow(/manifest validation failed/);
+    }
   });
 });

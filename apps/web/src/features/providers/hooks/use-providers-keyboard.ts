@@ -88,9 +88,9 @@ export function useProvidersKeyboard({
     return current;
   };
 
-  const focusBoundaryProvider = (target: "first") => {
-    const targetId = target === "first" ? filteredProviders[0]?.id : undefined;
-    if (targetId) setSelectedId(targetId);
+  const focusFirstProvider = () => {
+    const firstProviderId = filteredProviders[0]?.id;
+    if (firstProviderId) setSelectedId(firstProviderId);
   };
 
   const focusProviderList = () => {
@@ -151,17 +151,12 @@ export function useProvidersKeyboard({
     if (dialogOpen || !listReady || hasFocusedInitialProviderListRef.current) return;
     const listContainer = listContainerRef.current;
     if (!listContainer) return;
-    const activeElement = listContainer.ownerDocument.activeElement;
-    const View = listContainer.ownerDocument.defaultView;
-    if (
-      View &&
-      activeElement instanceof View.HTMLElement &&
-      activeElement !== listContainer.ownerDocument.body &&
-      (
-        activeElement.matches("input, textarea, select") ||
-        activeElement.isContentEditable
-      )
-    ) {
+    const ownerDocument = listContainer.ownerDocument;
+    const activeElement = ownerDocument.activeElement;
+    const View = ownerDocument.defaultView;
+    const focusIsUnclaimed = activeElement === ownerDocument.body || activeElement === ownerDocument.documentElement;
+    const focusIsWithinList = Boolean(View && activeElement instanceof View.Node && listContainer.contains(activeElement));
+    if (!focusIsUnclaimed && !focusIsWithinList) {
       return;
     }
 
@@ -183,14 +178,14 @@ export function useProvidersKeyboard({
   useKey("ArrowDown", () => {
     if (filteredProviders.length > 0) {
       setZone("list");
-      focusBoundaryProvider("first");
+      focusFirstProvider();
       focusProviderList();
     }
   }, { enabled: !dialogOpen && inFilters, preventDefault: true });
 
   useKey("ArrowRight", () => {
     focusFirstActionButton();
-  }, { enabled: !dialogOpen && isZone("list") && !!selectedProvider });
+  }, { enabled: !dialogOpen && isZone("list") && selectedProvider !== null });
 
   useKey("ArrowLeft", () => {
     const next = getNextButtonIndex(buttonIndex, -1);
@@ -236,7 +231,7 @@ export function useProvidersKeyboard({
       event.preventDefault();
       if (filteredProviders.length === 0) return;
       setZone("list");
-      focusBoundaryProvider("first");
+      focusFirstProvider();
       focusProviderList();
     }
   };

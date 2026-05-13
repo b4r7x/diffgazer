@@ -14,30 +14,42 @@ export interface ApiError extends Error {
 }
 
 export function isApiError(error: unknown): error is ApiError {
-  return error instanceof Error && typeof (error as ApiError).status === "number";
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "status" in error &&
+    typeof (error as Record<string, unknown>).status === "number" &&
+    "message" in error &&
+    typeof (error as Record<string, unknown>).message === "string"
+  );
 }
 
 export interface StreamOptions {
   body?: unknown;
   params?: Record<string, string>;
   signal?: AbortSignal;
+  headers?: Record<string, string>;
 }
 
 export interface ApiClientConfig {
   baseUrl: string;
   projectRoot?: string;
   headers?: Record<string, string>;
+  shutdownToken?: string | (() => string | undefined);
 }
+
+export type RequestOptions = StreamOptions;
 
 export interface ApiClient {
   get: <T>(path: string, params?: Record<string, string>) => Promise<T>;
-  post: <T>(path: string, body?: unknown) => Promise<T>;
+  post: <T>(path: string, body?: unknown, options?: Omit<RequestOptions, "body" | "params">) => Promise<T>;
+  put: <T>(path: string, body?: unknown, options?: Omit<RequestOptions, "body" | "params">) => Promise<T>;
   delete: <T>(path: string, params?: Record<string, string>) => Promise<T>;
   stream: (path: string, options?: StreamOptions) => Promise<Response>;
   request: (
     method: string,
     path: string,
-    options?: { body?: unknown; params?: Record<string, string>; signal?: AbortSignal }
+    options?: RequestOptions
   ) => Promise<Response>;
 }
 

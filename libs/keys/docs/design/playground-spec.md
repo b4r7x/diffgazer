@@ -2,7 +2,7 @@
 
 ## 1. Location in Repo
 
-**Decision: `examples/playground/` in the @diffgazer/keys repo, with pnpm workspaces.**
+**Decision: `libs/keys/examples/playground/` in the Diffgazer workspace.**
 
 ### Rationale
 
@@ -16,19 +16,18 @@ Research of 10 popular React hook/interaction libraries shows two dominant patte
 
 **TanStack Table and zustand** are the closest analogues — small React hook libraries with interactive demos. Both use `examples/` in the same repo with Vite.
 
-@diffgazer/keys is a single package (not a multi-package monorepo). Adding `pnpm-workspace.yaml` at the root keeps it lightweight:
+@diffgazer/keys is one package inside the Diffgazer workspace. The playground lives under the package so it can import source code during local development:
 
 ```
-@diffgazer/keys/
-├── pnpm-workspace.yaml      ← NEW (just lists examples/*)
-├── package.json              ← existing library
-├── src/                      ← existing library source
-├── examples/
-│   └── playground/           ← NEW Vite app
-│       ├── package.json
-│       ├── vite.config.ts
-│       └── src/
-└── ...
+libs/keys/
+├── package.json
+├── src/
+├── registry/
+└── examples/
+    └── playground/
+        ├── package.json
+        ├── vite.config.ts
+        └── src/
 ```
 
 The playground imports @diffgazer/keys via `"@diffgazer/keys": "workspace:*"` in its `package.json`. A Vite alias resolves it to source TypeScript for instant HMR during development.
@@ -41,7 +40,7 @@ The playground imports @diffgazer/keys via `"@diffgazer/keys": "workspace:*"` in
 |-------|--------|---------|-----|
 | **Build** | Vite | ^6 | Fastest DX. Used by TanStack Table, zustand. No SSR overhead. |
 | **Framework** | React | ^19 | Required for `useEffectEvent`. |
-| **Styling** | Tailwind CSS | v4 | CSS-first config. Fast iteration. Utility classes perfect for visual state indicators. |
+| **Styling** | Tailwind CSS | v4 | CSS-first config. Fast iteration. State styles stay close to the demo markup. |
 | **Language** | TypeScript | ^5.9 | Matches @diffgazer/keys's strict config. |
 | **Routing** | None | — | Single-page app with client-side demo switching. No router needed. |
 
@@ -77,7 +76,7 @@ The playground imports @diffgazer/keys via `"@diffgazer/keys": "workspace:*"` in
 ## 3. App Structure
 
 ```
-examples/playground/
+libs/keys/examples/playground/
 ├── package.json
 ├── tsconfig.json
 ├── vite.config.ts
@@ -115,11 +114,7 @@ examples/playground/
 
 ### How the playground imports @diffgazer/keys
 
-1. **`pnpm-workspace.yaml`** at repo root:
-   ```yaml
-   packages:
-     - "examples/*"
-   ```
+1. **Root workspace membership** already includes `libs/*`, so the package-local playground stays under `libs/keys/examples/playground`.
 
 2. **Playground `package.json`** depends on:
    ```json
@@ -271,17 +266,7 @@ Scope: global › modal › confirm
 - The active (topmost) scope is highlighted with accent color
 - Animates on push/pop (slide in/out)
 
-**Implementation**: Reads from `KeyboardContext` — the provider exposes `activeScope`. For the full stack visualization, the playground wraps `KeyboardProvider` with a thin observer that tracks all `pushScope`/`popScope` calls. The simplest approach: a custom `PlaygroundProvider` that wraps `KeyboardProvider` and maintains a `scopeHistory` state that mirrors the internal stack.
-
-Actually, since `KeyboardProvider` doesn't expose the full stack (only `activeScope`), the playground will use a custom hook that intercepts scope changes. The approach:
-
-1. The playground's `main.tsx` wraps the app in `<KeyboardProvider>`
-2. A `<ScopeObserver>` component sits inside the provider and listens to `activeScope` changes, building a visible stack
-3. Since scopes are deterministic (push on mount, pop on unmount), the observer can track the full stack by observing `activeScope` transitions
-
-Alternatively, the simpler approach: each demo knows its own scope structure and renders the stack statically based on its state (e.g., `isModalOpen` → show `global > modal`). This is more reliable and avoids reverse-engineering the provider's internal stack.
-
-**Decision: Per-demo static scope display.** Each demo component passes its known scope stack to `<ScopeStack>` based on its own state. This is simpler, more reliable, and sufficient for the playground.
+**Implementation**: Each demo component passes its known scope stack to `<ScopeStack>` based on its own state. `KeyboardProvider` exposes only `activeScope`, so the playground does not infer the full stack from provider internals.
 
 ### 5b. Key Event Log (`<KeyLog>`)
 
@@ -417,7 +402,7 @@ Not a priority. The playground is designed for desktop keyboard interaction. Mob
 ```bash
 # From repo root
 pnpm install                    # Installs both @diffgazer/keys and playground deps
-cd examples/playground
+cd libs/keys/examples/playground
 pnpm dev                        # Starts Vite dev server
 
 # Or from repo root:
@@ -430,11 +415,10 @@ Changes to `@diffgazer/keys/src/**` trigger HMR in the playground (via Vite alia
 
 ## 9. Files Modified in @diffgazer/keys Repo
 
-The playground adds these files/changes to the existing @diffgazer/keys repo:
+The playground adds these files/changes under `libs/keys`:
 
 ### New files
-- `pnpm-workspace.yaml`
-- `examples/playground/` (entire directory)
+- `libs/keys/examples/playground/` (entire directory)
 
 ### Modified files
 - `package.json` — add `"playground"` script: `"pnpm --filter playground dev"`

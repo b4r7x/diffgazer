@@ -1,7 +1,6 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "portal",
-  "type": "registry:ui",
   "title": "Portal",
   "description": "Renders children into a DOM node outside the parent hierarchy",
   "dependencies": [],
@@ -21,5 +20,6 @@
   "meta": {
     "client": true,
     "hidden": true
-  }
+  },
+  "type": "registry:ui"
 }

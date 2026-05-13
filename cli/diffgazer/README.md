@@ -9,7 +9,7 @@ Requires Node.js >= 20.
 ## What it does
 
 - Dev: shows the Diffgazer ASCII banner, spawns API server and web frontend (HMR), and opens the browser
-- Prod package: shows the Diffgazer ASCII banner, runs the embedded server, serves static files, and opens the browser after the npm package is published
+- Prod package: shows the Diffgazer ASCII banner, runs the embedded server, serves static files, and opens the browser
 - TUI beta: available with `--tui`; incomplete and not recommended for normal use
 
 ## Development
@@ -33,7 +33,7 @@ pnpm --filter diffgazer start
 
 ## Global Install (npm)
 
-The public `diffgazer` npm package is external publish-gated as of May 6, 2026. Use this global install command only after `npm view diffgazer version` succeeds. Before publication, use the workspace development and production commands above.
+The public `diffgazer` npm package is published. Run `npm view diffgazer version` to verify the current published version. For local development, use the workspace development and production commands above.
 
 ```bash
 npm install -g diffgazer

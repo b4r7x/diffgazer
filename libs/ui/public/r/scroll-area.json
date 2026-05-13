@@ -1,7 +1,6 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "scroll-area",
-  "type": "registry:ui",
   "title": "Scroll Area",
   "description": "Custom scrollable area with styled scrollbars",
   "dependencies": [],
@@ -20,5 +19,6 @@
   ],
   "meta": {
     "client": true
-  }
+  },
+  "type": "registry:ui"
 }

@@ -2,7 +2,6 @@ import {
   useRef,
   useState,
   type FocusEvent as ReactFocusEvent,
-  type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import type { TrustCapabilities } from "@diffgazer/core/schemas/config";
 import { Badge } from "@diffgazer/ui/components/badge";
@@ -11,7 +10,6 @@ import { Button } from "@diffgazer/ui/components/button";
 import { CheckboxGroup, CheckboxItem } from "@diffgazer/ui/components/checkbox";
 import { focusNavigationItem } from "@diffgazer/keys";
 import { useTrustFormKeyboard } from "./use-trust-form-keyboard";
-import { toggleListValue } from "@/lib/selectable-values";
 import {
   TRUST_CAPABILITY_OPTIONS,
   fromSelectedCapabilityIds,
@@ -101,13 +99,6 @@ export function TrustPermissionsContent(props: TrustPermissionsContentProps) {
 
   const isListZone = focusZone === "list";
 
-  const handleListKeyDown = (e: ReactKeyboardEvent) => {
-    if (e.key === "Enter" && effectiveListFocused) {
-      e.preventDefault();
-      handleValueChange(toggleListValue(selectedCapabilities, effectiveListFocused));
-    }
-  };
-
   const handleContentFocus = (e: ReactFocusEvent<HTMLDivElement>) => {
     const target = e.target;
     if (!(target instanceof HTMLElement)) return;
@@ -144,7 +135,6 @@ export function TrustPermissionsContent(props: TrustPermissionsContentProps) {
         onChange={handleValueChange}
         highlighted={isListZone ? effectiveListFocused : null}
         onHighlightChange={setListFocused}
-        onKeyDown={handleListKeyDown}
         onNavigationBoundaryReached={(direction) => {
           if (direction === "next" && showActions && !isLoading) focusActionButton("save");
         }}

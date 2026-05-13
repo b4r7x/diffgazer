@@ -1,10 +1,9 @@
 #!/usr/bin/env node
 
-import { execFileSync, execSync, spawn } from "node:child_process";
+import { spawn } from "node:child_process";
 import { createServer } from "node:http";
 import {
   existsSync,
-  mkdirSync,
   mkdtempSync,
   readFileSync,
   realpathSync,
@@ -13,13 +12,22 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import {
+  quoteArgs,
+  assertBuiltCss,
+  installViteFixtureDeps,
+  run,
+  writeViteFixture,
+} from "./smoke-shared.mjs";
 
 const root = process.cwd();
+const uiPackageJsonPath = resolve(root, "libs/ui/package.json");
 
 const keysItems = ["navigation", "focus-restore", "focus-trap", "focusable"];
 const keysInstallItems = ["navigation", "focus-trap"];
 const uiItems = [
   "theme",
+  "checkbox",
   "dialog",
   "select",
   "popover",
@@ -29,21 +37,23 @@ const uiItems = [
   "diff-view",
 ];
 
-function run(cmd, cwd = root) {
-  return execSync(cmd, {
-    encoding: "utf8",
-    cwd,
-    stdio: ["ignore", "pipe", "pipe"],
-    shell: true,
-  }).toString();
-}
+function registryRouteFromUrl(value) {
+  let url;
+  try {
+    url = new URL(value);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") return null;
 
-function runFile(command, args, cwd = root) {
-  return execFileSync(command, args, {
-    encoding: "utf8",
-    cwd,
-    stdio: ["ignore", "pipe", "pipe"],
-  }).toString();
+  const parts = url.pathname.split("/").filter(Boolean);
+  const offset = parts[0] === "r" ? 1 : 0;
+  const namespace = parts[offset];
+  const fileName = parts[offset + 1];
+  if (parts.length !== offset + 2) return null;
+  if (namespace !== "ui" && namespace !== "keys") return null;
+  if (!fileName || !/^(registry|[a-z0-9-]+)\.json$/.test(fileName)) return null;
+  return `/${namespace}/${fileName}`;
 }
 
 function runFileAsync(command, args, cwd = root, options = {}) {
@@ -86,24 +96,6 @@ function runFileAsync(command, args, cwd = root, options = {}) {
   });
 }
 
-function quoteArgs(args) {
-  return args.map((arg) => JSON.stringify(arg)).join(" ");
-}
-
-function resolveLocalDependency(packageName) {
-  for (const dir of ["apps/web", "libs/ui", "libs/keys", "."]) {
-    const depPath = resolve(root, dir, "node_modules", ...packageName.split("/"));
-    if (existsSync(depPath)) return `link:${realpathSync(depPath)}`;
-  }
-  throw new Error(`Cannot resolve local dependency for shadcn smoke: ${packageName}`);
-}
-
-function pnpmAddFlags() {
-  return process.env.DIFFGAZER_SMOKE_ALLOW_NETWORK === "1"
-    ? ["--fetch-retries=0"]
-    : ["--offline", "--fetch-retries=0"];
-}
-
 function loadRegistryItem(registryDir, name) {
   const path = join(registryDir, `${name}.json`);
   if (!existsSync(path)) return null;
@@ -143,114 +135,22 @@ function assertNoJsImportSpecifiers(registryDir, names) {
   }
 }
 
-function writeFixtureBase(fixture, registryBaseUrl) {
-  mkdirSync(join(fixture, "src/lib"), { recursive: true });
-
-  writeFileSync(join(fixture, "package.json"), JSON.stringify({
-    name: "shadcn-smoke",
-    private: true,
-    type: "module",
-    packageManager: "pnpm@10.28.2",
-    scripts: {
-      typecheck: "tsc -p tsconfig.json",
-      build: "vite build",
-    },
-  }, null, 2));
-
-  writeFileSync(join(fixture, "tsconfig.json"), JSON.stringify({
-    compilerOptions: {
-      target: "ES2022",
-      lib: ["DOM", "DOM.Iterable", "ES2022"],
-      module: "ESNext",
-      moduleResolution: "Bundler",
-      jsx: "react-jsx",
-      strict: true,
-      noEmit: true,
-      skipLibCheck: false,
-      baseUrl: ".",
-      paths: {
-        "@/*": ["./src/*"],
-      },
-    },
-    include: ["src"],
-  }, null, 2));
-
-  writeFileSync(
-    join(fixture, "vite.config.mjs"),
-    [
-      "import { defineConfig } from 'vite';",
-      "import react from '@vitejs/plugin-react';",
-      "import tailwindcss from '@tailwindcss/vite';",
-      "",
-      "export default defineConfig({",
-      "  plugins: [react(), tailwindcss()],",
-      "  resolve: { alias: { '@': new URL('./src', import.meta.url).pathname } },",
-      "});",
-      "",
-    ].join("\n"),
-  );
-
-  writeFileSync(join(fixture, "index.html"), `<div id="root"></div><script type="module" src="/src/main.tsx"></script>\n`);
-
-  writeFileSync(join(fixture, "src/lib/utils.ts"), [
-    'import { type ClassValue, clsx } from "clsx";',
-    'import { twMerge } from "tailwind-merge";',
-    "",
-    "export function cn(...inputs: ClassValue[]) {",
-    "  return twMerge(clsx(inputs));",
-    "}",
-    "",
-  ].join("\n"));
-
-  writeFileSync(join(fixture, "src/index.css"), [
-    '@import "tailwindcss";',
-    '@import "../styles/styles.css";',
-    '@source ".";',
-    "",
-  ].join("\n"));
-
-  writeFileSync(join(fixture, "components.json"), JSON.stringify({
-    $schema: "https://ui.shadcn.com/schema.json",
-    style: "index",
-    rsc: false,
-    tsx: true,
-    tailwind: {
-      config: "",
-      css: "src/index.css",
-      baseColor: "neutral",
-      cssVariables: true,
-    },
-    aliases: {
-      components: "@/components",
-      utils: "@/lib/utils",
-      ui: "@/components/ui",
-      lib: "@/lib",
-      hooks: "@/hooks",
-    },
-    registries: {
-      "@diffgazer-ui": `${registryBaseUrl}/ui/{name}.json`,
-      "@diffgazer-keys": `${registryBaseUrl}/keys/{name}.json`,
-    },
-  }, null, 2));
-}
-
-function installFixtureDeps(fixture) {
-  const deps = [
-    "react",
-    "react-dom",
-    "@types/react",
-    "@types/react-dom",
-    "typescript",
-    "vite",
-    "@vitejs/plugin-react",
-    "tailwindcss",
-    "@tailwindcss/vite",
-    "class-variance-authority",
-    "clsx",
-    "tailwind-merge",
-  ].map(resolveLocalDependency);
-
-  runFile("pnpm", ["add", ...pnpmAddFlags(), ...deps], fixture);
+function assertDirectRegistryDependencies(registryDir, names, label) {
+  for (const name of names) {
+    const item = loadRegistryItem(registryDir, name);
+    for (const dep of item.registryDependencies ?? []) {
+      if (dep.startsWith("http://") || dep.startsWith("https://")) {
+        if (!registryRouteFromUrl(dep)) {
+          throw new Error(`${label} item "${name}" registry dependency "${dep}" is not a localizable registry URL`);
+        }
+        continue;
+      }
+      if (dep.startsWith("@")) {
+        throw new Error(`${label} item "${name}" registry dependency "${dep}" is namespaced, not direct URL ready`);
+      }
+      throw new Error(`${label} item "${name}" registry dependency "${dep}" is bare, not direct URL ready`);
+    }
+  }
 }
 
 async function runShadcnAdd(fixture, items) {
@@ -262,7 +162,30 @@ async function runShadcnAdd(fixture, items) {
     return;
   }
 
-  await runFileAsync("pnpm", ["dlx", "shadcn@latest", ...addArgs], root);
+  const localBin = resolveLocalShadcnBin();
+  if (localBin) {
+    await runFileAsync(localBin, addArgs, root);
+    return;
+  }
+
+  await runFileAsync("pnpm", ["dlx", getWorkspaceShadcnSpec(), ...addArgs], root);
+}
+
+function resolveLocalShadcnBin() {
+  for (const dir of [root, resolve(root, "libs/ui"), resolve(root, "libs/keys")]) {
+    const bin = resolve(dir, "node_modules/.bin/shadcn");
+    if (existsSync(bin)) return realpathSync(bin);
+  }
+  return null;
+}
+
+function getWorkspaceShadcnSpec() {
+  const metadata = JSON.parse(readFileSync(uiPackageJsonPath, "utf-8"));
+  const version = metadata.devDependencies?.shadcn;
+  if (typeof version !== "string" || version.trim() === "") {
+    throw new Error("libs/ui/package.json must declare a shadcn devDependency for smoke:shadcn");
+  }
+  return `shadcn@${version}`;
 }
 
 function writeSmokeApp(fixture) {
@@ -273,6 +196,7 @@ function writeSmokeApp(fixture) {
       "import { createRoot } from 'react-dom/client';",
       "import { Button } from '@/components/ui/button';",
       "import { BlockBar } from '@/components/ui/block-bar';",
+      "import { Checkbox } from '@/components/ui/checkbox';",
       "import { CommandPalette, CommandPaletteInput, CommandPaletteList, CommandPaletteItem } from '@/components/ui/command-palette';",
       "import { DiffView } from '@/components/ui/diff-view';",
       "import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter, DialogClose } from '@/components/ui/dialog';",
@@ -285,6 +209,7 @@ function writeSmokeApp(fixture) {
       "  return (",
       "    <main className=\"min-h-screen bg-background text-foreground p-6\">",
       "      <Button variant=\"primary\">Direct Button</Button>",
+      "      <Checkbox defaultChecked label=\"Direct Checkbox\" />",
       "      <BlockBar label=\"Progress\" value={8} max={10} />",
       "      <DiffView before=\"const value = 1;\" after=\"const value = 2;\" />",
       "      <Dialog defaultOpen>",
@@ -337,6 +262,20 @@ function assertFileContains(fixture, relativePath, patterns) {
   }
 }
 
+function importInstalledStyle(fixture, relativePath) {
+  const cssPath = join(fixture, "src/index.css");
+  const css = readFileSync(cssPath, "utf-8");
+  const importLine = `@import "../${relativePath}";`;
+  if (css.includes(importLine)) return;
+
+  const baseImport = '@import "../styles/styles.css";';
+  if (!css.includes(baseImport)) {
+    throw new Error("Could not find base styles import in shadcn smoke fixture");
+  }
+
+  writeFileSync(cssPath, css.replace(baseImport, `${baseImport}\n${importLine}`));
+}
+
 function startRegistryServer(uiRegistryDir, keysRegistryDir) {
   const registryDirs = new Map([
     ["ui", uiRegistryDir],
@@ -344,29 +283,28 @@ function startRegistryServer(uiRegistryDir, keysRegistryDir) {
   ]);
   let baseUrl = "";
 
-  function normalizeRegistryDependencies(namespace, item) {
-    if (!Array.isArray(item.registryDependencies)) return item;
-
-    // shadcn resolves bare deps from namespaced items against its built-in registry.
-    // Serve local URL deps so the smoke can execute the real CLI against this repo.
-    return {
-      ...item,
-      registryDependencies: item.registryDependencies.map((dep) => {
-        if (dep.startsWith("http://") || dep.startsWith("https://")) return dep;
-        if (dep.startsWith("@diffgazer-keys/") || dep.startsWith("@diffgazer/keys/")) {
-          const name = dep.replace(/^@diffgazer-keys\/|^@diffgazer\/keys\//, "");
-          return `${baseUrl}/keys/${name}.json`;
-        }
-        if (dep.startsWith("@")) return dep;
-        return `${baseUrl}/${namespace}/${dep}.json`;
-      }),
-    };
+  function rewriteRegistryUrls(value) {
+    if (typeof value === "string") {
+      const route = registryRouteFromUrl(value);
+      return route ? `${baseUrl}${route}` : value;
+    }
+    if (Array.isArray(value)) {
+      return value.map(rewriteRegistryUrls);
+    }
+    if (value && typeof value === "object") {
+      return Object.fromEntries(
+        Object.entries(value).map(([key, item]) => [key, rewriteRegistryUrls(item)]),
+      );
+    }
+    return value;
   }
 
   const server = createServer((request, response) => {
     try {
       const url = new URL(request.url ?? "/", "http://127.0.0.1");
-      const [, namespace, fileName] = url.pathname.split("/");
+      const pathParts = url.pathname.split("/").filter(Boolean);
+      const namespace = pathParts[0] === "r" ? pathParts[1] : pathParts[0];
+      const fileName = pathParts[0] === "r" ? pathParts[2] : pathParts[1];
       const registryDir = registryDirs.get(namespace);
 
       if (!registryDir || !fileName || !/^(registry|[a-z0-9-]+)\.json$/.test(fileName)) {
@@ -382,10 +320,7 @@ function startRegistryServer(uiRegistryDir, keysRegistryDir) {
 
       response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
       const json = JSON.parse(readFileSync(filePath, "utf-8"));
-      const payload = fileName === "registry.json"
-        ? json
-        : normalizeRegistryDependencies(namespace, json);
-      response.end(JSON.stringify(payload, null, 2));
+      response.end(JSON.stringify(rewriteRegistryUrls(json), null, 2));
     } catch (error) {
       response.writeHead(500).end(error instanceof Error ? error.message : String(error));
     }
@@ -411,39 +346,29 @@ function startRegistryServer(uiRegistryDir, keysRegistryDir) {
   });
 }
 
-const uiRegistryDir = resolve(root, "libs/ui/public/r");
-const keysRegistryDir = resolve(root, "libs/keys/public/r");
-
-if (!existsSync(join(uiRegistryDir, "registry.json"))) {
-  throw new Error("UI public registry not found. Run build:shadcn first.");
+function writeShadcnFixture(fixture, baseUrl) {
+  writeViteFixture(fixture, {
+    name: "shadcn-smoke",
+    packageManager: "pnpm@10.28.2",
+    withLibUtils: true,
+    indexCss: [
+      '@import "tailwindcss";',
+      '@import "../styles/styles.css";',
+      '@source ".";',
+      "",
+    ],
+    componentsJson: true,
+    componentRegistries: {
+      "@ui": `${baseUrl}/ui/{name}.json`,
+      "@diffgazer-keys": `${baseUrl}/keys/{name}.json`,
+    },
+  });
+  installViteFixtureDeps(root, fixture);
 }
-if (!existsSync(join(keysRegistryDir, "registry.json"))) {
-  throw new Error("Keys public registry not found. Run build:shadcn first.");
-}
 
-assertRegistryItemsExist(keysRegistryDir, keysItems, "Keys");
-assertRegistryItemsExist(uiRegistryDir, uiItems, "UI");
-console.log("OK: all representative registry items exist");
-
-assertKeysTargets(keysRegistryDir, keysItems);
-console.log("OK: keys items have target fields on all files");
-
-assertNoJsImportSpecifiers(keysRegistryDir, keysItems);
-console.log("OK: keys public registry has no .js import specifiers");
-
-const registryServer = await startRegistryServer(uiRegistryDir, keysRegistryDir);
-const fixture = mkdtempSync(join(tmpdir(), "shadcn-smoke-"));
-
-try {
-  writeFixtureBase(fixture, registryServer.baseUrl);
-  installFixtureDeps(fixture);
-  await runShadcnAdd(fixture, keysInstallItems.map((name) => `@diffgazer-keys/${name}`));
-  console.log("OK: shadcn CLI installed keys items through local namespace registries");
-
-  await runShadcnAdd(fixture, uiItems.map((name) => `@diffgazer-ui/${name}`));
-  console.log("OK: shadcn CLI installed UI items through local namespace registries");
-
+function assertInstalledRegistryTree(fixture) {
   assertFileContains(fixture, "src/hooks/use-navigation.ts", ["useNavigation"]);
+  assertFileContains(fixture, "src/components/ui/checkbox/checkbox-group.tsx", ["@/hooks/use-navigation"]);
   assertFileContains(fixture, "src/hooks/use-focus-trap.ts", ["useFocusTrap"]);
   assertFileContains(fixture, "src/components/ui/select/select-content.tsx", [
     "@/hooks/use-navigation",
@@ -467,15 +392,72 @@ try {
   ]);
   assertFileContains(fixture, "src/hooks/use-focus-restore.ts", ["useFocusRestore"]);
   assertFileContains(fixture, "src/hooks/utils/focusable.ts", ["isFocusable"]);
-  console.log("OK: shadcn CLI resolved UI and keys registry dependency trees");
+  assertFileContains(fixture, "styles/dialog.css", ["dialog::backdrop"]);
+}
 
+function assertFixtureBuilds(fixture, label) {
+  importInstalledStyle(fixture, "styles/dialog.css");
   writeSmokeApp(fixture);
   run("pnpm run typecheck", fixture);
   run("pnpm run build", fixture);
+  assertBuiltCss(fixture, { label });
+}
+
+const uiRegistryDir = resolve(root, "libs/ui/public/r");
+const keysRegistryDir = resolve(root, "libs/keys/public/r");
+
+if (!existsSync(join(uiRegistryDir, "registry.json"))) {
+  throw new Error("UI public registry not found. Run build:shadcn first.");
+}
+if (!existsSync(join(keysRegistryDir, "registry.json"))) {
+  throw new Error("Keys public registry not found. Run build:shadcn first.");
+}
+
+assertRegistryItemsExist(keysRegistryDir, keysItems, "Keys");
+assertRegistryItemsExist(uiRegistryDir, uiItems, "UI");
+console.log("OK: all representative registry items exist");
+
+assertKeysTargets(keysRegistryDir, keysItems);
+console.log("OK: keys items have target fields on all files");
+
+assertNoJsImportSpecifiers(keysRegistryDir, keysItems);
+console.log("OK: keys public registry has no .js import specifiers");
+
+assertDirectRegistryDependencies(uiRegistryDir, uiItems, "UI");
+console.log("OK: UI public registry dependencies are direct URL ready");
+
+const registryServer = await startRegistryServer(uiRegistryDir, keysRegistryDir);
+const directFixture = mkdtempSync(join(tmpdir(), "shadcn-smoke-direct-"));
+const namespaceFixture = mkdtempSync(join(tmpdir(), "shadcn-smoke-namespace-"));
+
+try {
+  writeShadcnFixture(directFixture, registryServer.baseUrl);
+  await runShadcnAdd(directFixture, uiItems.map((name) => `${registryServer.baseUrl}/ui/${name}.json`));
+  console.log("OK: shadcn CLI installed UI items and transitive keys through direct local registry URLs");
+
+  await runShadcnAdd(directFixture, keysInstallItems.map((name) => `${registryServer.baseUrl}/keys/${name}.json`));
+  console.log("OK: shadcn CLI installed standalone keys items through direct local registry URLs");
+  assertInstalledRegistryTree(directFixture);
+
+  writeShadcnFixture(namespaceFixture, registryServer.baseUrl);
+  await runShadcnAdd(namespaceFixture, uiItems.map((name) => `@ui/${name}`));
+  console.log("OK: shadcn CLI installed UI items through local namespace registries");
+
+  await runShadcnAdd(namespaceFixture, keysInstallItems.map((name) => `@diffgazer-keys/${name}`));
+  console.log("OK: shadcn CLI installed keys items through local namespace registries");
+  assertInstalledRegistryTree(namespaceFixture);
+
+  console.log("OK: shadcn CLI resolved UI and keys registry dependency trees");
+
+  assertFixtureBuilds(directFixture, "Built direct shadcn");
+  console.log("OK: shadcn direct URL install type-checks and builds");
+
+  assertFixtureBuilds(namespaceFixture, "Built namespace shadcn");
   console.log("OK: shadcn direct namespace install type-checks and builds");
 } finally {
   await registryServer.close();
-  rmSync(fixture, { recursive: true, force: true });
+  rmSync(directFixture, { recursive: true, force: true });
+  rmSync(namespaceFixture, { recursive: true, force: true });
 }
 
 console.log("OK: shadcn direct-install smoke passed");

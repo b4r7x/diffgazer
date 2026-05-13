@@ -1,7 +1,10 @@
+import { resolve } from "node:path";
 import type { Context } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
+import { err } from "@diffgazer/core/result";
+import { createError } from "@diffgazer/core/errors";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import {
   errorResponse,
@@ -35,11 +38,36 @@ import { buildProjectContextSnapshot, loadContextSnapshot } from "./context.js";
 import { handleDrilldownRequest } from "./drilldown.js";
 import { ReviewErrorCode } from "@diffgazer/core/schemas/review";
 import { cancelSession, getActiveSessionForProject, getSession } from "./sessions.js";
-import { parseProjectPath, handleStoreError } from "./utils.js";
+import { handleStoreError } from "./errors.js";
 
 const reviewRouter = new Hono();
 
 const bodyLimitMiddleware = createBodyLimitMiddleware(50);
+
+async function getReviewForProject(id: string, projectPath: string) {
+  const result = await getStoredReview(id);
+  if (!result.ok) return result;
+  if (result.value.metadata.projectPath !== projectPath) {
+    return err(createError("NOT_FOUND", "Review not found"));
+  }
+  return result;
+}
+
+function getRequestedProjectPath(c: Context): string | Response {
+  const projectPath = getProjectRoot(c);
+  const queryProjectPath = c.req.query("projectPath");
+  if (!queryProjectPath) return projectPath;
+
+  if (!isValidProjectPath(queryProjectPath)) {
+    return errorResponse(c, "Invalid project path", ErrorCode.INVALID_PATH, 400);
+  }
+
+  if (resolve(queryProjectPath) !== projectPath) {
+    return errorResponse(c, "projectPath does not match request project", ErrorCode.VALIDATION_ERROR, 400);
+  }
+
+  return projectPath;
+}
 
 const resumeStreamById = async (c: Context): Promise<Response> => {
   const id = c.req.param("id");
@@ -292,10 +320,10 @@ reviewRouter.post(
 );
 
 reviewRouter.get("/reviews", requireRepoAccess, async (c): Promise<Response> => {
-  const projectPathResult = parseProjectPath(c);
-  if (!projectPathResult.ok) return projectPathResult.response;
+  const projectPath = getRequestedProjectPath(c);
+  if (projectPath instanceof Response) return projectPath;
 
-  const result = await listStoredReviews(projectPathResult.value);
+  const result = await listStoredReviews(projectPath);
   if (!result.ok) return handleStoreError(c, result.error);
 
   return c.json({
@@ -312,7 +340,7 @@ reviewRouter.get(
   zValidator("param", ReviewIdParamSchema, zodErrorHandler),
   async (c): Promise<Response> => {
     const { id } = c.req.valid("param");
-    const result = await getStoredReview(id);
+    const result = await getReviewForProject(id, getProjectRoot(c));
     if (!result.ok) return handleStoreError(c, result.error);
 
     return c.json({ review: result.value });
@@ -325,9 +353,19 @@ reviewRouter.delete(
   zValidator("param", ReviewIdParamSchema, zodErrorHandler),
   async (c): Promise<Response> => {
     const { id } = c.req.valid("param");
+    const existing = await getStoredReview(id);
+    if (!existing.ok) {
+      if (existing.error.code === "NOT_FOUND") {
+        return c.json({ existed: false });
+      }
+      return handleStoreError(c, existing.error);
+    }
+    if (existing.value.metadata.projectPath !== getProjectRoot(c)) {
+      return c.json({ existed: false });
+    }
+
     const result = await deleteStoredReview(id);
     if (!result.ok) return handleStoreError(c, result.error);
-
     return c.json({ existed: result.value.existed });
   },
 );
@@ -336,11 +374,15 @@ reviewRouter.post(
   "/reviews/:id/drilldown",
   bodyLimitMiddleware,
   requireSetup,
+  requireRepoAccess,
   zValidator("param", ReviewIdParamSchema, zodErrorHandler),
   zValidator("json", DrilldownRequestSchema, zodErrorHandler),
   async (c): Promise<Response> => {
     const { id } = c.req.valid("param");
     const { issueId } = c.req.valid("json");
+    const projectPath = getProjectRoot(c);
+    const reviewResult = await getReviewForProject(id, projectPath);
+    if (!reviewResult.ok) return handleStoreError(c, reviewResult.error);
 
     const clientResult = initializeAIClient();
     if (!clientResult.ok) {
@@ -352,12 +394,12 @@ reviewRouter.post(
       );
     }
 
-    const projectPath = getProjectRoot(c);
     const result = await handleDrilldownRequest(
       clientResult.value,
       id,
       issueId,
       projectPath,
+      { review: reviewResult.value },
     );
 
     if (!result.ok) {

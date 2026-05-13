@@ -1,14 +1,13 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "horizontal-stepper",
-  "type": "registry:ui",
   "title": "Horizontal Stepper",
   "description": "Horizontal step-by-step progress indicator",
   "dependencies": [
     "class-variance-authority"
   ],
   "registryDependencies": [
-    "step-status"
+    "https://diffgazer.com/r/ui/step-status.json"
   ],
   "files": [
     {
@@ -34,5 +33,6 @@
   ],
   "meta": {
     "client": true
-  }
+  },
+  "type": "registry:ui"
 }

@@ -12,11 +12,15 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { resolveLocalShadcnBin, runShadcnRegistryBuild } from "../shadcn/runner.js";
 import { validatePublicRegistryFresh } from "../shadcn/validate.js";
+import type { RegistryFile, RegistryItem } from "../registry-types.js";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../../..");
 
 type RegistryContentTransform = (content: string) => string;
 type RegistrySourceContentTransform = (ctx: { itemName: string; filePath: string; content: string }) => string;
+type RegistrySourceItemTransform = NonNullable<Parameters<typeof validatePublicRegistryFresh>[0]["transformSourceItem"]>;
+type RegistryItemFixture = { name: string } & Partial<Omit<RegistryItem, "name">>;
+type PublicRegistryFileFixture = RegistryFile & { content: string };
 
 async function loadRegistryContentTransform(modulePath: string, exportName: string): Promise<RegistryContentTransform> {
   const loaded = await import(pathToFileURL(modulePath).href) as Record<string, unknown>;
@@ -38,6 +42,15 @@ async function loadRegistrySourceContentTransformFactory(
     throw new Error(`Missing registry transform factory export: ${factoryExport}`);
   }
   return factory(rootDir) as RegistrySourceContentTransform;
+}
+
+async function loadRegistrySourceItemTransform(modulePath: string, exportName: string): Promise<RegistrySourceItemTransform> {
+  const loaded = await import(pathToFileURL(modulePath).href) as Record<string, unknown>;
+  const transform = loaded[exportName];
+  if (typeof transform !== "function") {
+    throw new Error(`Missing registry item transform export: ${exportName}`);
+  }
+  return ({ item }) => transform(item);
 }
 
 describe("resolveLocalShadcnBin", () => {
@@ -118,6 +131,7 @@ describe("committed public registries", () => {
       fixCommand: "pnpm --filter @diffgazer/ui build:shadcn",
       transformModule: resolve(repoRoot, "libs/ui/scripts/transform-public-registry-keys-imports.ts"),
       transformExport: "transformUiPublicRegistryKeysImportContent",
+      transformItemExport: "transformUiPublicRegistryItem",
     },
     {
       name: "keys",
@@ -131,6 +145,9 @@ describe("committed public registries", () => {
 
   it.each(registries)("keeps $name public/r fresh against the source registry", async (registry) => {
     let transformSourceContent: RegistrySourceContentTransform;
+    const transformSourceItem = "transformItemExport" in registry
+      ? await loadRegistrySourceItemTransform(registry.transformModule, registry.transformItemExport)
+      : undefined;
 
     if ("useFactory" in registry && registry.useFactory) {
       transformSourceContent = await loadRegistrySourceContentTransformFactory(
@@ -150,6 +167,7 @@ describe("committed public registries", () => {
       validatePublicRegistryFresh({
         rootDir: registry.rootDir,
         fixCommand: registry.fixCommand,
+        transformSourceItem,
         transformSourceContent,
       }),
     ).not.toThrow();
@@ -161,26 +179,9 @@ describe("validatePublicRegistryFresh", () => {
   const FIX_CMD = "pnpm build:registry";
 
   function setupRegistry(
-    sourceItems: Array<{
-      name: string;
-      type?: string;
-      title?: string;
-      description?: string;
-      meta?: Record<string, unknown>;
-      dependencies?: string[];
-      registryDependencies?: string[];
-      files?: Array<{ path: string; target?: string; type?: string }>;
-    }>,
-    publicItems?: Array<{
-      name: string;
-      type?: string;
-      title?: string;
-      description?: string;
-      meta?: Record<string, unknown>;
-      dependencies?: string[];
-      registryDependencies?: string[];
-    }>,
-    publicItemFiles?: Record<string, Array<{ path: string; content: string; target?: string; type?: string }>>,
+    sourceItems: RegistryItemFixture[],
+    publicItems?: RegistryItemFixture[],
+    publicItemFiles?: Record<string, PublicRegistryFileFixture[]>,
   ): void {
     sourceItems = sourceItems.map((item) => ({ type: "registry:ui", files: [], ...item }));
     if (publicItems) {
@@ -311,6 +312,48 @@ describe("validatePublicRegistryFresh", () => {
       publicItem: { registryDependencies: [] },
       expected: "registryDependencies mismatch",
     },
+    {
+      label: "devDependencies",
+      source: { devDependencies: ["vitest"] },
+      publicItem: { devDependencies: [] },
+      expected: "devDependencies mismatch",
+    },
+    {
+      label: "cssVars",
+      source: { cssVars: { light: { primary: "oklch(0.4 0.1 120)" } } },
+      publicItem: { cssVars: { light: { primary: "stale" } } },
+      expected: "cssVars mismatch",
+    },
+    {
+      label: "css",
+      source: { css: ".button { color: red; }" },
+      publicItem: { css: ".button { color: blue; }" },
+      expected: "css mismatch",
+    },
+    {
+      label: "envVars",
+      source: { envVars: ["DIFFGAZER_TOKEN"] },
+      publicItem: { envVars: [] },
+      expected: "envVars mismatch",
+    },
+    {
+      label: "docs",
+      source: { docs: "Use the current docs." },
+      publicItem: { docs: "Stale docs." },
+      expected: "docs mismatch",
+    },
+    {
+      label: "categories",
+      source: { categories: ["forms"] },
+      publicItem: { categories: [] },
+      expected: "categories mismatch",
+    },
+    {
+      label: "author",
+      source: { author: "Diffgazer" },
+      publicItem: { author: "Someone else" },
+      expected: "author mismatch",
+    },
   ])("throws when public registry $label is stale", ({ source, publicItem, expected }) => {
     setupRegistry([{ name: "button", files: [], ...source }], [{ name: "button", ...publicItem }]);
 
@@ -434,6 +477,49 @@ describe("validatePublicRegistryFresh", () => {
     ).toThrow(expected);
   });
 
+  it("validates file metadata after transforming the source item", () => {
+    setupRegistry(
+      [
+        {
+          name: "button",
+          files: [
+            {
+              path: "registry/ui/button.tsx",
+              target: "~/components/source-button.tsx",
+              type: "registry:ui",
+            },
+          ],
+        },
+      ],
+      undefined,
+      {
+        button: [
+          {
+            path: "registry/ui/button.tsx",
+            content: "// button - registry/ui/button.tsx\n",
+            target: "~/components/button.tsx",
+            type: "registry:file",
+          },
+        ],
+      },
+    );
+
+    expect(() =>
+      validatePublicRegistryFresh({
+        rootDir: tempDir,
+        fixCommand: FIX_CMD,
+        transformSourceItem: ({ item }) => ({
+          ...item,
+          files: item.files.map((file) => ({
+            ...file,
+            target: "~/components/button.tsx",
+            type: "registry:file",
+          })),
+        }),
+      }),
+    ).not.toThrow();
+  });
+
   it.each([
     {
       label: "dependencies",
@@ -455,6 +541,41 @@ describe("validatePublicRegistryFresh", () => {
       overrides: { meta: { category: "stale" } },
       expected: "item JSON meta mismatch",
     },
+    {
+      label: "devDependencies",
+      overrides: { devDependencies: [] },
+      expected: "item JSON devDependencies mismatch",
+    },
+    {
+      label: "cssVars",
+      overrides: { cssVars: { light: { primary: "stale" } } },
+      expected: "item JSON cssVars mismatch",
+    },
+    {
+      label: "css",
+      overrides: { css: ".button { color: blue; }" },
+      expected: "item JSON css mismatch",
+    },
+    {
+      label: "envVars",
+      overrides: { envVars: [] },
+      expected: "item JSON envVars mismatch",
+    },
+    {
+      label: "docs",
+      overrides: { docs: "Stale docs." },
+      expected: "item JSON docs mismatch",
+    },
+    {
+      label: "categories",
+      overrides: { categories: [] },
+      expected: "item JSON categories mismatch",
+    },
+    {
+      label: "author",
+      overrides: { author: "Someone else" },
+      expected: "item JSON author mismatch",
+    },
   ])("throws when public item JSON $label is stale", ({ overrides, expected }) => {
     setupRegistry([
       {
@@ -463,6 +584,13 @@ describe("validatePublicRegistryFresh", () => {
         description: "Current description",
         dependencies: ["react"],
         registryDependencies: ["card"],
+        devDependencies: ["vitest"],
+        cssVars: { light: { primary: "oklch(0.4 0.1 120)" } },
+        css: ".button { color: red; }",
+        envVars: ["DIFFGAZER_TOKEN"],
+        docs: "Use the current docs.",
+        categories: ["forms"],
+        author: "Diffgazer",
         meta: { category: "forms" },
         files: [{ path: "registry/ui/button.tsx" }],
       },

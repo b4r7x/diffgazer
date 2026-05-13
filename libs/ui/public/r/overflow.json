@@ -1,15 +1,14 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "overflow",
-  "type": "registry:ui",
   "title": "Overflow",
   "description": "Container-aware overflow handling for items (dynamic fitting with indicator) and text (line clamping with tooltip).",
   "dependencies": [],
   "registryDependencies": [
-    "tooltip",
-    "overflow-detection",
-    "overflow-items",
-    "compose-refs"
+    "https://diffgazer.com/r/ui/tooltip.json",
+    "https://diffgazer.com/r/ui/overflow-detection.json",
+    "https://diffgazer.com/r/ui/overflow-items.json",
+    "https://diffgazer.com/r/ui/compose-refs.json"
   ],
   "files": [
     {
@@ -35,5 +34,6 @@
   ],
   "meta": {
     "client": true
-  }
+  },
+  "type": "registry:ui"
 }

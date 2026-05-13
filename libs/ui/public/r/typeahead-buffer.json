@@ -1,7 +1,6 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "typeahead-buffer",
-  "type": "registry:hook",
   "title": "useTypeaheadBuffer",
   "description": "Small typeahead query buffer for composite widgets that reset typed search after a short idle window.",
   "dependencies": [],
@@ -16,5 +15,6 @@
   "meta": {
     "client": true,
     "hidden": true
-  }
+  },
+  "type": "registry:hook"
 }

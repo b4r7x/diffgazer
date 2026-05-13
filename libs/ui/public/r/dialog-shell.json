@@ -1,13 +1,12 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "dialog-shell",
-  "type": "registry:ui",
   "title": "Dialog Shell",
   "description": "Native dialog element wrapper with presence animations and backdrop handling",
   "dependencies": [],
   "registryDependencies": [
-    "compose-refs",
-    "presence"
+    "https://diffgazer.com/r/ui/compose-refs.json",
+    "https://diffgazer.com/r/ui/presence.json"
   ],
   "files": [
     {
@@ -25,5 +24,6 @@
   "meta": {
     "client": true,
     "hidden": true
-  }
+  },
+  "type": "registry:ui"
 }

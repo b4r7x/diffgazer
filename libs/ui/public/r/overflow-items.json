@@ -1,7 +1,6 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "overflow-items",
-  "type": "registry:hook",
   "title": "Overflow Items",
   "description": "Measures how many items fit in a container and tracks the overflow count. Uses ResizeObserver for automatic recalculation.",
   "dependencies": [],
@@ -15,5 +14,6 @@
   ],
   "meta": {
     "client": true
-  }
+  },
+  "type": "registry:hook"
 }

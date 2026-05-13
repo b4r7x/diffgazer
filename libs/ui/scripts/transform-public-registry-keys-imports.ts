@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { REGISTRY_ORIGIN } from "@diffgazer/registry";
 
 const KEYS_PACKAGE_IMPORT_TARGETS = new Map<string, string>([
   ["useNavigation", "use-navigation"],
@@ -92,16 +93,60 @@ interface RegistryFileWithContent {
 }
 
 interface PublicRegistryItemJson {
+  registryDependencies?: string[];
   files?: RegistryFileWithContent[];
 }
 
+interface PublicRegistryIndexJson {
+  items?: PublicRegistryItemJson[];
+}
+
+function toDirectRegistryDependency(dep: string): string {
+  if (dep.startsWith("http://") || dep.startsWith("https://")) return dep;
+  if (dep.startsWith("@diffgazer-keys/") || dep.startsWith("@diffgazer/keys/")) {
+    const name = dep.replace(/^@diffgazer-keys\/|^@diffgazer\/keys\//, "");
+    return `${REGISTRY_ORIGIN}/r/keys/${name}.json`;
+  }
+  if (dep.startsWith("@")) return dep;
+  return `${REGISTRY_ORIGIN}/r/ui/${dep}.json`;
+}
+
+export function transformUiPublicRegistryItem<T extends { registryDependencies?: string[] }>(item: T): T {
+  if (!Array.isArray(item.registryDependencies)) return item;
+
+  return {
+    ...item,
+    registryDependencies: item.registryDependencies.map(toDirectRegistryDependency),
+  };
+}
+
+function transformRegistryDependencies(item: PublicRegistryItemJson): boolean {
+  const next = transformUiPublicRegistryItem(item);
+  if (next.registryDependencies === item.registryDependencies) return false;
+
+  item.registryDependencies = next.registryDependencies;
+  return true;
+}
+
 export function transformUiPublicRegistryKeysImports(outputDir: string): void {
+  const indexPath = join(outputDir, "registry.json");
+  const index = JSON.parse(readFileSync(indexPath, "utf-8")) as PublicRegistryIndexJson;
+  let indexChanged = false;
+
+  for (const item of index.items ?? []) {
+    indexChanged = transformRegistryDependencies(item) || indexChanged;
+  }
+
+  if (indexChanged) {
+    writeFileSync(indexPath, `${JSON.stringify(index, null, 2)}\n`);
+  }
+
   for (const entry of readdirSync(outputDir)) {
     if (!entry.endsWith(".json") || entry === "registry.json") continue;
 
     const itemPath = join(outputDir, entry);
     const item = JSON.parse(readFileSync(itemPath, "utf-8")) as PublicRegistryItemJson;
-    let changed = false;
+    let changed = transformRegistryDependencies(item);
 
     for (const file of item.files ?? []) {
       if (typeof file.content !== "string") continue;

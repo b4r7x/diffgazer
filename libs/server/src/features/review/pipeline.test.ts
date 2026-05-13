@@ -3,7 +3,9 @@ import {
   filterDiffByFiles,
   generateExecutiveSummary,
   generateReport,
+  resolveGitDiff,
 } from "./pipeline.js";
+import type { createGitService } from "../../shared/lib/git/service.js";
 import type { ParsedDiff } from "../../shared/lib/diff/types.js";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 
@@ -26,6 +28,30 @@ const makeParsedDiff = (files: ReturnType<typeof makeFile>[]): ParsedDiff => ({
     totalSizeBytes: files.reduce((s, f) => s + f.stats.sizeBytes, 0),
   },
 });
+
+const TWO_FILE_DIFF = [
+  "diff --git a/src/index.ts b/src/index.ts",
+  "index 1111111..2222222 100644",
+  "--- a/src/index.ts",
+  "+++ b/src/index.ts",
+  "@@ -1 +1 @@",
+  "-old",
+  "+new",
+  "diff --git a/README.md b/README.md",
+  "index 3333333..4444444 100644",
+  "--- a/README.md",
+  "+++ b/README.md",
+  "@@ -1 +1 @@",
+  "-old",
+  "+new",
+  "",
+].join("\n");
+
+function makeGitService(diff: string): ReturnType<typeof createGitService> {
+  return {
+    getDiff: async () => diff,
+  } as ReturnType<typeof createGitService>;
+}
 
 const makeIssue = (
   id: string,
@@ -77,6 +103,42 @@ describe("filterDiffByFiles", () => {
     const result = filterDiffByFiles(parsed, ["nonexistent.ts"]);
     expect(result.files).toHaveLength(0);
     expect(result.totalStats.filesChanged).toBe(0);
+  });
+});
+
+describe("resolveGitDiff", () => {
+  it("emits review_started after file filtering", async () => {
+    const events: unknown[] = [];
+
+    const result = await resolveGitDiff({
+      gitService: makeGitService(TWO_FILE_DIFF),
+      mode: "unstaged",
+      files: ["src/index.ts"],
+      emit: async (event) => { events.push(event); },
+      reviewId: "review-1",
+    });
+
+    expect(result.ok).toBe(true);
+    expect(events).toMatchObject([
+      { type: "step_start", step: "diff" },
+      { type: "step_complete", step: "diff" },
+      { type: "review_started", filesTotal: 1 },
+    ]);
+  });
+
+  it("does not emit review_started when file filtering removes every diff file", async () => {
+    const events: unknown[] = [];
+
+    const result = await resolveGitDiff({
+      gitService: makeGitService(TWO_FILE_DIFF),
+      mode: "unstaged",
+      files: ["missing.ts"],
+      emit: async (event) => { events.push(event); },
+      reviewId: "review-1",
+    });
+
+    expect(result.ok).toBe(false);
+    expect(events).toMatchObject([{ type: "step_start", step: "diff" }]);
   });
 });
 

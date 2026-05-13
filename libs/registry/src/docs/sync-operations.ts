@@ -3,12 +3,25 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  writeFileSync,
 } from "node:fs";
 import { basename, resolve } from "node:path";
-import { ensureExists, resetDir, collectJsonFiles } from "../utils/fs.js";
+import { ensureExists, resetDir, collectJsonFiles, resolveInside } from "../utils/fs.js";
 import { writeJson } from "../utils/json.js";
 import { defaultLogger, type Logger } from "../logger.js";
 import type { LoadedLibraryArtifacts, AfterSyncContext, SyncOutputPaths } from "./types.js";
+
+const SAFE_LIBRARY_ID_RE = /^[a-z0-9][a-z0-9-]*$/i;
+
+function assertSafeLibraryId(id: string, label: string): void {
+  if (SAFE_LIBRARY_ID_RE.test(id)) return;
+  throw new Error(`${label} must be a safe library id`);
+}
+
+function resolveNamespaceDir(baseDir: string, id: string, label: string): string {
+  assertSafeLibraryId(id, label);
+  return resolveInside(baseDir, id, label);
+}
 
 function assertNoUnrewrittenOrigin(dir: string, targetOrigin: string, sourceOrigin: string): void {
   if (targetOrigin === sourceOrigin) return;
@@ -53,17 +66,20 @@ function syncPrimaryArtifacts(
     );
   }
 
-  const artGeneratedDir = resolve(
+  const artGeneratedDir = resolveInside(
     primaryArtifact.artifactRoot,
     generatedSourceDirRel,
+    `${primaryArtifact.id} artifact generated data path`,
   );
-  const artRegistryDir = resolve(
+  const artRegistryDir = resolveInside(
     primaryArtifact.artifactRoot,
     registrySourceDirRel,
+    `${primaryArtifact.id} artifact source registry path`,
   );
-  const artStylesDir = resolve(
+  const artStylesDir = resolveInside(
     primaryArtifact.artifactRoot,
     stylesSourceDirRel,
+    `${primaryArtifact.id} artifact source styles path`,
   );
 
   ensureExists(artGeneratedDir, `${primaryArtifact.id} artifact generated data`);
@@ -74,7 +90,11 @@ function syncPrimaryArtifacts(
   resetDir(registryDir);
   resetDir(stylesDir);
 
-  const namespacedGenDir = resolve(generatedDir, primaryArtifact.id);
+  const namespacedGenDir = resolveNamespaceDir(
+    generatedDir,
+    primaryArtifact.id,
+    `${primaryArtifact.id} generated namespace output`,
+  );
   mkdirSync(namespacedGenDir, { recursive: true });
   cpSync(artGeneratedDir, namespacedGenDir, { recursive: true });
   cpSync(artRegistryDir, registryDir, { recursive: true });
@@ -86,41 +106,85 @@ function syncLibraryDocs(
   contentDir: string,
   generatedDir: string,
   libraryAssetsDir: string,
+  options: { secondaryExampleNamespace?: string } = {},
 ): void {
-  const docsDir = resolve(
+  const docsDir = resolveInside(
     artifact.artifactRoot,
     artifact.manifest.docs.contentDir,
+    `${artifact.id} artifact docs path`,
   );
   ensureExists(docsDir, `${artifact.id} artifact docs`);
   ensureExists(resolve(docsDir, "meta.json"), `${artifact.id} docs meta`);
 
-  const outputDir = resolve(contentDir, artifact.id);
+  const outputDir = resolveNamespaceDir(
+    contentDir,
+    artifact.id,
+    `${artifact.id} docs namespace output`,
+  );
   resetDir(outputDir);
   cpSync(docsDir, outputDir, { recursive: true, force: true });
 
   for (const generatedFile of artifact.generatedFiles) {
-    const sourcePath = resolve(artifact.artifactRoot, generatedFile);
+    const sourcePath = resolveInside(
+      artifact.artifactRoot,
+      generatedFile,
+      `${artifact.id} generated artifact path ${generatedFile}`,
+    );
     ensureExists(
       sourcePath,
       `${artifact.id} generated artifact ${generatedFile}`,
     );
-    const targetDir = resolve(generatedDir, artifact.id);
+    const targetDir = resolveNamespaceDir(
+      generatedDir,
+      artifact.id,
+      `${artifact.id} generated namespace output`,
+    );
+    const targetPath = resolve(targetDir, basename(generatedFile));
     mkdirSync(targetDir, { recursive: true });
-    cpSync(sourcePath, resolve(targetDir, basename(generatedFile)), {
+
+    if (basename(generatedFile) === "demo-index.ts" && options.secondaryExampleNamespace) {
+      writeFileSync(
+        targetPath,
+        rewriteSecondaryDemoIndexImports(
+          readFileSync(sourcePath, "utf-8"),
+          options.secondaryExampleNamespace,
+        ),
+      );
+      continue;
+    }
+
+    cpSync(sourcePath, targetPath, {
       recursive: true,
       force: true,
     });
   }
 
   if (!artifact.manifest.docs.assetsDir) return;
-  const assetsDir = resolve(
+  const assetsDir = resolveInside(
     artifact.artifactRoot,
     artifact.manifest.docs.assetsDir,
+    `${artifact.id} artifact assets path`,
   );
   if (!existsSync(assetsDir)) return;
-  const targetAssetsDir = resolve(libraryAssetsDir, artifact.id);
+  const targetAssetsDir = resolveNamespaceDir(
+    libraryAssetsDir,
+    artifact.id,
+    `${artifact.id} assets namespace output`,
+  );
   resetDir(targetAssetsDir);
   cpSync(assetsDir, targetAssetsDir, { recursive: true, force: true });
+}
+
+function rewriteSecondaryDemoIndexImports(content: string, libraryId: string): string {
+  return content.replace(
+    /import\("([^"]*?registry\/examples\/)([^"]+)"\)/g,
+    (_match, _prefix, examplePath: string) => {
+      const namespacedExamplePath = examplePath.startsWith(`${libraryId}/`)
+        ? examplePath
+        : `${libraryId}/${examplePath}`;
+      return `import("../../../registry/examples/${namespacedExamplePath}")`;
+    },
+  );
 }
 
 function writeRootMeta(
@@ -145,13 +209,18 @@ function syncRegistries(
   resetDir(publicRegistryDir);
 
   for (const artifact of artifacts) {
-    const sourceDir = resolve(
+    const sourceDir = resolveInside(
       artifact.artifactRoot,
       artifact.manifest.registry.publicDir,
+      `${artifact.id} artifact public registry path`,
     );
     ensureExists(sourceDir, `${artifact.id} artifact public registry`);
 
-    const outputDir = resolve(publicRegistryDir, artifact.id);
+    const outputDir = resolveNamespaceDir(
+      publicRegistryDir,
+      artifact.id,
+      `${artifact.id} public registry namespace output`,
+    );
     resetDir(outputDir);
     cpSync(sourceDir, outputDir, { recursive: true, force: true });
   }
@@ -169,13 +238,21 @@ function copyExamplesForLibrary(
   if (!artifact.manifest.source?.registryDir) return;
 
   const artExamplesDir = resolve(
-    artifact.artifactRoot,
-    artifact.manifest.source.registryDir,
+    resolveInside(
+      artifact.artifactRoot,
+      artifact.manifest.source.registryDir,
+      `${artifact.id} artifact source registry path`,
+    ),
     "examples",
   );
   if (!existsSync(artExamplesDir)) return;
 
-  const targetExamplesDir = resolve(registryDir, "examples", artifact.id);
+  const examplesDir = resolveInside(registryDir, "examples", "registry examples output");
+  const targetExamplesDir = resolveNamespaceDir(
+    examplesDir,
+    artifact.id,
+    `${artifact.id} registry examples namespace output`,
+  );
   mkdirSync(targetExamplesDir, { recursive: true });
   cpSync(artExamplesDir, targetExamplesDir, { recursive: true });
   logger.info(
@@ -204,6 +281,11 @@ export function runDocsSyncPass(params: {
     logger = defaultLogger,
   } = params;
 
+  assertSafeLibraryId(primaryArtifact.id, "Primary library id");
+  for (const artifact of artifacts) {
+    assertSafeLibraryId(artifact.id, `Library id "${artifact.id}"`);
+  }
+
   resetDir(paths.contentDir);
   resetDir(paths.libraryAssetsDir);
   syncPrimaryArtifacts(
@@ -219,13 +301,22 @@ export function runDocsSyncPass(params: {
       paths.contentDir,
       paths.generatedDir,
       paths.libraryAssetsDir,
+      {
+        secondaryExampleNamespace: artifact.id === primaryArtifact.id
+          ? undefined
+          : artifact.id,
+      },
     );
 
     copyExamplesForLibrary(artifact, primaryArtifact.id, paths.registryDir, logger);
 
     afterSync?.({
       libraryId: artifact.id,
-      generatedDir: resolve(paths.generatedDir, artifact.id),
+      generatedDir: resolveNamespaceDir(
+        paths.generatedDir,
+        artifact.id,
+        `${artifact.id} generated namespace output`,
+      ),
     });
   }
 

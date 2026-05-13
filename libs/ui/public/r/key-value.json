@@ -1,7 +1,6 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "key-value",
-  "type": "registry:ui",
   "title": "Key Value",
   "description": "Compound component for labeled data display. KeyValue wraps KeyValue.Item rows in a semantic description list.",
   "dependencies": [
@@ -32,5 +31,6 @@
   ],
   "meta": {
     "client": true
-  }
+  },
+  "type": "registry:ui"
 }

@@ -43,6 +43,15 @@ function stepEvent(step: StepId = "diff"): FullReviewStreamEvent {
   };
 }
 
+function completeEvent(reviewId: string): FullReviewStreamEvent {
+  return {
+    type: "complete",
+    result: { issues: [], summary: "Clean" },
+    reviewId,
+    durationMs: 100,
+  };
+}
+
 function receivedEvents(reviewId: string): FullReviewStreamEvent[] {
   return getSession(reviewId)?.events ?? [];
 }
@@ -207,5 +216,23 @@ describe("session bounds and subscriber failures", () => {
       "Subscriber callback error:",
       expect.any(Error),
     );
+  });
+
+  it("keeps terminal events observable when the event buffer is full", () => {
+    const received: FullReviewStreamEvent[] = [];
+    const session = createTrackedSession("event-cap");
+    subscribe(session.reviewId, (event) => received.push(event));
+
+    for (let index = 0; index < 10_000; index += 1) {
+      addEvent(session.reviewId, stepEvent("review"));
+    }
+    addEvent(session.reviewId, completeEvent(session.reviewId));
+
+    expect(received.at(-1)).toMatchObject({ type: "complete", reviewId: session.reviewId });
+    expect(receivedEvents(session.reviewId)).toHaveLength(10_000);
+    expect(receivedEvents(session.reviewId).at(-1)).toMatchObject({
+      type: "complete",
+      reviewId: session.reviewId,
+    });
   });
 });
