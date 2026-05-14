@@ -4,8 +4,8 @@ import type { AIProvider } from "@diffgazer/core/schemas/config";
 import { getStaticModelsForProvider } from "@diffgazer/core/providers";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
 import { Badge } from "@diffgazer/ui/components/badge";
-import { useOpenRouterModels } from "@/hooks/use-openrouter-models";
-import { resolveAvailableValue } from "@/lib/selectable-values";
+import { useOpenRouterModelsMapped } from "@diffgazer/core/providers";
+import { resolveAvailableValue } from "@diffgazer/core/select";
 import { toVerticalBoundaryDirection } from "@diffgazer/keys";
 
 interface ModelStepProps {
@@ -130,7 +130,7 @@ function OpenRouterModelList({
   enabled = true,
   onBoundaryReached,
 }: Omit<ModelStepProps, "provider">) {
-  const { models, loading, error } = useOpenRouterModels(true, "openrouter");
+  const { models, loading, error } = useOpenRouterModelsMapped(true, "openrouter");
   const modelIds = models.map((model) => model.id);
 
   if (loading) {

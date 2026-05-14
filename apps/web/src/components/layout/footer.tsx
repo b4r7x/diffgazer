@@ -1,6 +1,6 @@
 import { cn } from "@diffgazer/ui/lib/utils";
 import { Kbd } from "@diffgazer/ui/components/kbd";
-import type { Shortcut } from "./footer-context";
+import type { Shortcut } from "@diffgazer/core/schemas/ui";
 
 interface FooterProps {
   shortcuts: Shortcut[];

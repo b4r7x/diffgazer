@@ -6,22 +6,18 @@ import { useReviewContext, useRefreshReviewContext } from "./review.js";
 export type ContextStatus = "loading" | "ready" | "missing" | "error";
 
 export interface DiagnosticsData {
-  // Server
   serverState: ServerState;
   retryServer: () => Promise<unknown>;
 
-  // Setup (from useInit)
   setupStatus: SetupStatus | null;
   initLoading: boolean;
   initError: string | null;
 
-  // Context
   contextStatus: ContextStatus;
   contextGeneratedAt: string | null;
   contextError: string | null;
   canRegenerate: boolean;
 
-  // Context refresh
   handleRefreshContext: () => void;
   isRefreshingContext: boolean;
 

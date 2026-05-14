@@ -10,6 +10,20 @@ export type ReviewPhase =
   | "summary"
   | "results";
 
+type LifecyclePhase = ReviewPhase | "loading";
+
+export function getDisplayPhase(input: {
+  hasStartFailed: boolean;
+  hasStarted: boolean;
+  isCompleting: boolean;
+  phase: "streaming" | "summary" | "results";
+}): LifecyclePhase {
+  if (input.hasStartFailed) return "summary";
+  if (!input.hasStarted) return "loading";
+  if (input.isCompleting) return "completing";
+  return input.phase;
+}
+
 export interface ReviewLifecycleState {
   phase: ReviewPhase | "loading";
   reviewId: string | null;
@@ -57,14 +71,12 @@ export function useReviewLifecycle(): {
   const hasStartFailed = startError !== null;
   // When start fails we drop the "loading" / "completing" guards so the
   // container's `state.error && phase !== streaming/completing` Callout fires.
-  const displayPhase: ReviewLifecycleState["phase"] =
-    hasStartFailed
-      ? "summary"
-      : !lifecycle.hasStarted
-        ? "loading"
-        : lifecycle.isCompleting
-          ? "completing"
-          : phase;
+  const displayPhase = getDisplayPhase({
+    hasStartFailed,
+    hasStarted: lifecycle.hasStarted,
+    isCompleting: lifecycle.isCompleting,
+    phase,
+  });
 
   async function start(selectedMode: ReviewMode) {
     setMode(selectedMode);

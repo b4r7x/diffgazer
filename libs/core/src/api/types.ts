@@ -7,7 +7,6 @@ import type {
 } from "@diffgazer/core/schemas/review";
 import type { ProjectContextGraph, ProjectContextMeta } from "@diffgazer/core/schemas/context";
 
-// API client types (unique to this package)
 export interface ApiError extends Error {
   status: number;
   code?: string;
@@ -55,7 +54,6 @@ export interface ApiClient {
   ) => Promise<Response>;
 }
 
-// API response types (unique to this package - server response shapes)
 export interface TrustResponse {
   trust: TrustConfig;
 }

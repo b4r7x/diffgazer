@@ -7,18 +7,21 @@ export type ServerState =
   | { status: "connected" }
   | { status: "error"; message: string };
 
+function deriveServerState(
+  isLoading: boolean,
+  error: Error | null,
+): ServerState {
+  if (isLoading) return { status: "checking" };
+  if (error) return { status: "error", message: error.message };
+  return { status: "connected" };
+}
+
 export function useServerStatus(): { state: ServerState; retry: () => Promise<unknown> } {
   const api = useApi();
   const query = useQuery(serverQueries.health(api));
 
-  const state: ServerState = query.isLoading
-    ? { status: "checking" }
-    : query.error
-      ? { status: "error", message: query.error.message }
-      : { status: "connected" };
-
   return {
-    state,
+    state: deriveServerState(query.isLoading, query.error),
     retry: () => query.refetch({ throwOnError: true }),
   };
 }

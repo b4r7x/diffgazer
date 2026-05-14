@@ -11,18 +11,22 @@ export interface DiagnosticsActionState {
   contextActionDisabled: boolean;
 }
 
+function getContextActionLabel(
+  isRefreshing: boolean,
+  contextStatus: ContextStatus,
+): string {
+  if (isRefreshing) return "Regenerating...";
+  if (contextStatus === "ready") return "Regenerate Context";
+  return "Generate Context";
+}
+
 export function deriveDiagnosticsActions({
   canRegenerate,
   isRefreshing,
   contextStatus,
 }: DiagnosticsActionInput): DiagnosticsActionState {
-  const label = isRefreshing
-    ? "Regenerating..."
-    : contextStatus === "ready"
-      ? "Regenerate Context"
-      : "Generate Context";
   return {
-    contextActionLabel: label,
+    contextActionLabel: getContextActionLabel(isRefreshing, contextStatus),
     contextActionDisabled: !canRegenerate || isRefreshing,
   };
 }

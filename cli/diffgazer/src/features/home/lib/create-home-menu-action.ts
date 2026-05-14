@@ -3,7 +3,7 @@ import type { MenuAction } from "@diffgazer/core/schemas/ui";
 import { isReviewStartAction } from "@diffgazer/core/navigation";
 import type { Route } from "../../../app/routes.js";
 
-export interface HomeMenuActionsOptions {
+export interface HomeMenuActionOptions {
   navigate: (route: Route) => void;
   hasActiveSession: boolean;
   isTrusted?: boolean;
@@ -11,13 +11,13 @@ export interface HomeMenuActionsOptions {
   onExit: () => void;
 }
 
-export function useHomeMenuActions({
+export function createHomeMenuAction({
   navigate,
   hasActiveSession,
   isTrusted = false,
   shutdown,
   onExit,
-}: HomeMenuActionsOptions): (action: string) => void {
+}: HomeMenuActionOptions): (action: string) => void {
   return (action: string) => {
     const menuAction = action as MenuAction;
 

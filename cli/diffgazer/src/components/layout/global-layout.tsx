@@ -4,7 +4,7 @@ import { Header } from "./header.js";
 import { Footer } from "./footer.js";
 import { useTerminalDimensions } from "../../hooks/use-terminal-dimensions.js";
 import { useNavigation } from "../../app/navigation-context.js";
-import { useFooterData } from "../../app/providers/footer-provider.js";
+import { useFooterData } from "@diffgazer/core/footer";
 import { useInit } from "@diffgazer/core/api/hooks";
 import { getProviderDisplayStatus, getProviderDisplay } from "@diffgazer/core/providers";
 

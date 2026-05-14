@@ -7,7 +7,7 @@ import {
   useFocusZone,
   useScopedNavigation,
 } from "@diffgazer/keys";
-import { TIER_FILTERS } from "@/features/providers/constants";
+import { TIER_FILTERS } from "@diffgazer/core/providers";
 
 type FocusZone = "close" | "search" | "filters" | "list" | "footer";
 

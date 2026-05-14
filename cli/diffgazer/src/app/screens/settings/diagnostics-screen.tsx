@@ -2,7 +2,7 @@ import type { ReactElement } from "react";
 import { Box, Text } from "ink";
 import { Spinner } from "../../../components/ui/spinner.js";
 import { useScope } from "../../../hooks/use-scope.js";
-import { usePageFooter } from "../../../hooks/use-page-footer.js";
+import { usePageFooter } from "@diffgazer/core/footer";
 import { useBackHandler } from "../../../hooks/use-back-handler.js";
 import { useSettingsZone } from "../../../hooks/use-settings-zone.js";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions.js";
@@ -17,6 +17,14 @@ import {
   deriveDiagnosticsActions,
   triggerDiagnosticsRefreshAll,
 } from "../../../features/settings/diagnostics/derive-actions.js";
+import {
+  getContextLabel,
+  getContextVariant,
+  getServerBadgeVariant,
+  getServerLabel,
+  getSetupLabel,
+  getSetupVariant,
+} from "../../../features/settings/diagnostics/derive-display.js";
 
 export function DiagnosticsScreen(): ReactElement {
   const { columns } = useTerminalDimensions();
@@ -65,33 +73,13 @@ export function DiagnosticsScreen(): ReactElement {
   const serverError = serverState.status === "error" ? serverState.message : null;
   const nodeVersion = process.version;
 
-  const serverBadgeVariant = serverStatus === "connected" ? "success"
-    : serverStatus === "checking" ? "info"
-    : "error";
-
-  const serverLabel = serverStatus === "checking" ? "checking..."
-    : serverStatus === "connected" ? "connected"
-    : `error: ${serverError ?? "unknown"}`;
-
-  const setupLabel = initLoading ? "loading..."
-    : initError ? `error: ${initError}`
-    : setupStatus?.isReady ? "ready"
-    : `incomplete (${setupStatus?.missing.join(", ") ?? "unknown"})`;
-
-  const setupVariant = initLoading ? "info"
-    : initError ? "error"
-    : setupStatus?.isReady ? "success"
-    : "warning";
-
-  const contextLabel = contextStatus === "loading" ? "loading..."
-    : contextStatus === "ready" ? "ready"
-    : contextStatus === "missing" ? "missing"
-    : `error: ${contextError ?? "unknown"}`;
-
-  const contextVariant = contextStatus === "ready" ? "success"
-    : contextStatus === "missing" ? "warning"
-    : contextStatus === "loading" ? "info"
-    : "error";
+  const setupInput = { isLoading: initLoading, error: initError, setupStatus };
+  const serverBadgeVariant = getServerBadgeVariant(serverStatus);
+  const serverLabel = getServerLabel(serverStatus, serverError);
+  const setupLabel = getSetupLabel(setupInput);
+  const setupVariant = getSetupVariant(setupInput);
+  const contextLabel = getContextLabel(contextStatus, contextError);
+  const contextVariant = getContextVariant(contextStatus);
 
   return (
     <Box justifyContent="center" flexGrow={1}>

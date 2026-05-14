@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Run } from "@/features/history/types";
-import { HISTORY_SECTION_ALL_ID } from "@/features/history/constants";
-import { resolveSelectedDateId, resolveSelectedRunId } from "./use-history-page";
+import { HISTORY_SECTION_ALL_ID, resolveSelectedDateId, resolveSelectedRunId } from "@diffgazer/core/review";
 
 function makeRun(id: string): Run {
   return {

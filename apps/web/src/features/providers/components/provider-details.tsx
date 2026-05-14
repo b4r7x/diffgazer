@@ -36,6 +36,11 @@ function getButtonConfig(actions: ProviderActions, provider: ProviderWithStatus,
   ];
 }
 
+function getEmptyModelPlaceholder(provider: ProviderWithStatus): string {
+  if (provider.id === OPENROUTER_PROVIDER_ID) return "Model required";
+  return `${provider.defaultModel} (default)`;
+}
+
 export function ProviderDetails({
   provider,
   actions,
@@ -130,11 +135,7 @@ export function ProviderDetails({
               provider.model ? (
                 <span className="text-tui-fg">{provider.model}</span>
               ) : (
-                <span className="text-tui-muted">
-                  {provider.id === OPENROUTER_PROVIDER_ID
-                    ? "Model required"
-                    : `${provider.defaultModel} (default)`}
-                </span>
+                <span className="text-tui-muted">{getEmptyModelPlaceholder(provider)}</span>
               )
             }
             bordered

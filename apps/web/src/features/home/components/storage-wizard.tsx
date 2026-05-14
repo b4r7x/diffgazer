@@ -20,10 +20,6 @@ export function StorageWizard({
 }: StorageWizardProps) {
   const [choice, setChoice] = useState<SecretsStorage>(initialValue);
 
-  const handleSubmit = () => {
-    onComplete(choice);
-  };
-
   return (
     <CardLayout
       title="Configure Secrets Storage"
@@ -31,7 +27,7 @@ export function StorageWizard({
       footer={
         <Button
           variant="success"
-          onClick={handleSubmit}
+          onClick={() => onComplete(choice)}
           disabled={isLoading}
         >
           {isLoading ? "Saving..." : "Continue"}

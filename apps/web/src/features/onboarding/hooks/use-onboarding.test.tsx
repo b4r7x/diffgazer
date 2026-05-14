@@ -6,7 +6,7 @@ import { ApiProvider } from "@diffgazer/core/api/hooks";
 import { createApi, type BoundApi } from "@diffgazer/core/api";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { AVAILABLE_PROVIDERS, GEMINI_MODEL_INFO } from "@diffgazer/core/schemas/config";
-import { FooterProvider } from "@/components/layout";
+import { FooterProvider } from "@diffgazer/core/footer";
 import { ConfigProvider } from "@/app/providers/config-provider";
 import {
   getConfiguredGuardCache,
@@ -103,29 +103,24 @@ async function clickNext(user: ReturnType<typeof userEvent.setup>) {
 }
 
 async function walkToFinalStepWithDefaults(user: ReturnType<typeof userEvent.setup>) {
-  // storage step — default file storage already selected.
   await expectStep(/secrets storage/i);
   await clickNext(user);
 
-  // provider step — Gemini is preselected.
   await expectStep(/ai provider/i);
   await clickNext(user);
 
-  // api-key step — switch to env method so canProceed is true.
+  // Switch to env method so canProceed is true without entering a real key.
   await expectStep(/api key/i);
   await user.click(getRadio(/import from env/i));
   await waitFor(() => expect(getRadio(/import from env/i)).toHaveAttribute("aria-checked", "true"));
   await clickNext(user);
 
-  // model step — default model is gemini-2.5-flash.
   await expectStep(/model selection/i);
   await clickNext(user);
 
-  // analysis step — defaults select all lenses, just continue.
   await expectStep(/analysis configuration/i);
   await clickNext(user);
 
-  // execution step — defaults to sequential.
   await expectStep(/agent execution/i);
 }
 
@@ -165,23 +160,19 @@ describe("OnboardingWizard", () => {
     const user = userEvent.setup();
     renderWizard();
 
-    // Storage step — first option is "File Storage", auto-selected.
     await expectStep(/secrets storage/i);
     expect(getRadio(/file storage/i)).toHaveAttribute("aria-checked", "true");
     await clickNext(user);
 
-    // Provider step — first provider is checked (defaults from AVAILABLE_PROVIDERS[0] = gemini).
     const firstProvider = AVAILABLE_PROVIDERS[0]!;
     await expectStep(/ai provider/i);
     expect(getRadio(new RegExp(firstProvider.name, "i"))).toHaveAttribute("aria-checked", "true");
     await clickNext(user);
 
-    // api-key step — switch to env to unblock and advance.
     await expectStep(/api key/i);
     await user.click(getRadio(/import from env/i));
     await clickNext(user);
 
-    // Model step — default model is gemini-2.5-flash for the first provider.
     await expectStep(/model selection/i);
     const defaultModelName = GEMINI_MODEL_INFO[firstProvider.defaultModel as keyof typeof GEMINI_MODEL_INFO]?.name;
     expect(defaultModelName).toBeTruthy();
@@ -211,31 +202,26 @@ describe("OnboardingWizard", () => {
     const user = userEvent.setup();
     renderWizard();
 
-    // Storage: switch to keyring.
     await expectStep(/secrets storage/i);
     await user.click(getRadio(/system keyring/i));
     await clickNext(user);
 
-    // Provider: keep gemini (default).
     await expectStep(/ai provider/i);
     await clickNext(user);
 
-    // api-key step: switch to env so payload uses "env" sentinel.
+    // Switch to env so the saved payload uses the "env" sentinel.
     await expectStep(/api key/i);
     await user.click(getRadio(/import from env/i));
     await clickNext(user);
 
-    // Model: select gemini-2.5-pro instead of default.
     await expectStep(/model selection/i);
     const proModelName = GEMINI_MODEL_INFO["gemini-2.5-pro"].name;
     await user.click(getRadio(new RegExp(escapeRegExp(proModelName), "i")));
     await clickNext(user);
 
-    // Analysis: keep all lenses.
     await expectStep(/analysis configuration/i);
     await clickNext(user);
 
-    // Execution: select parallel.
     await expectStep(/agent execution/i);
     await user.click(getRadio(/parallel/i));
 

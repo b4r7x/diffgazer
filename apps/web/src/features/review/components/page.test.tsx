@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { Toaster } from "@diffgazer/ui/components/toast";
-import { FooterProvider } from "@/components/layout";
+import { FooterProvider } from "@diffgazer/core/footer";
 import { ConfigProvider } from "@/app/providers/config-provider";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";

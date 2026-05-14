@@ -116,34 +116,14 @@ export function useFocusZone<T extends string>(
 
   const currentZone: T = controlledZone ?? internalZone;
   const lastFocusedZoneRef = useRef<T | null>(null);
-  const warnedTabCycleEntriesRef = useRef<Set<string>>(new Set());
 
-  const validatedTabCycle = tabCycle?.filter((entry) => {
-    const valid = zones.includes(entry);
-    if (!valid && process.env.NODE_ENV !== "production") {
-      const key = String(entry);
-      if (!warnedTabCycleEntriesRef.current.has(key)) {
-        warnedTabCycleEntriesRef.current.add(key);
-        console.warn(
-          `[@diffgazer/keys] useFocusZone: tabCycle entry "${key}" is not in zones`,
-        );
-      }
-    }
-    return valid;
-  });
+  const validatedTabCycle = tabCycle?.filter((entry) => zones.includes(entry));
 
   const canCycleTabs = enabled && validatedTabCycle != null && validatedTabCycle.length > 1;
 
   const setZoneValue = useCallback((next: T) => {
     if (next === currentZone) return;
-    if (!zones.includes(next)) {
-      if (process.env.NODE_ENV !== "production") {
-        console.warn(
-          `[@diffgazer/keys] useFocusZone: setZone called with unknown zone "${String(next)}"`,
-        );
-      }
-      return;
-    }
+    if (!zones.includes(next)) return;
     onLeaveZone?.(currentZone);
     onEnterZone?.(next);
     if (controlledZone === undefined) setInternalZone(next);

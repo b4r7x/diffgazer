@@ -8,7 +8,7 @@ import { ReviewContainer } from "../../features/review/components/review-contain
 import { ReviewResultsView } from "../../features/review/components/review-results-view.js";
 import { ReviewSummaryView } from "../../features/review/components/review-summary-view.js";
 import { Spinner } from "../../components/ui/spinner.js";
-import { usePageFooter } from "../../hooks/use-page-footer.js";
+import { usePageFooter } from "@diffgazer/core/footer";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
 import {
   selectReviewScreenPhase,

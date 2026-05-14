@@ -7,7 +7,9 @@ import { usePageFooter } from "@diffgazer/core/footer";
 import { useScopedRouteState, clearScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { useTheme } from "@/hooks/use-theme";
 import { useSettings } from "@diffgazer/core/api/hooks";
-import { SETTINGS_MENU_ITEMS, SETTINGS_SHORTCUTS, type SettingsAction } from "@/config/navigation";
+import type { AgentExecution } from "@diffgazer/core/schemas/config";
+import { SETTINGS_MENU_ITEMS, type SettingsAction } from "@diffgazer/core/schemas/ui";
+import { SETTINGS_SHORTCUTS } from "@/config/navigation";
 
 const SETTINGS_ROUTES: Record<SettingsAction, string> = {
   trust: "/settings/trust-permissions",
@@ -25,6 +27,12 @@ function getSettingsMenuHighlighted(value: string | null): string | null {
   if (!value) return value;
   if (SETTINGS_MENU_ITEM_IDS.has(value)) return value;
   return SETTINGS_MENU_ITEMS[0]?.id ?? null;
+}
+
+function getAgentExecutionLabel(mode: AgentExecution | undefined): string {
+  if (!mode) return "Sequential";
+  if (mode === "parallel") return "Parallel";
+  return "Sequential";
 }
 
 export function SettingsHubPage() {
@@ -76,11 +84,7 @@ export function SettingsHubPage() {
       valueVariant: settings?.secretsStorage ? "default" : "muted",
     },
     "agent-execution": {
-      value: settings?.agentExecution
-        ? settings.agentExecution === "parallel"
-          ? "Parallel"
-          : "Sequential"
-        : "Sequential",
+      value: getAgentExecutionLabel(settings?.agentExecution),
       valueVariant: "default",
     },
     analysis: {

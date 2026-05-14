@@ -53,6 +53,12 @@ function extractNavigationListItem(element: ReactElement): CollectedItem | null 
   return { id: props.id, disabled: props.disabled ?? false };
 }
 
+function getItemPrefix(isSelected: boolean, isHighlighted: boolean): string {
+  if (isSelected) return "| ";
+  if (isHighlighted) return "> ";
+  return "  ";
+}
+
 function NavigationListTitle({ children }: NavigationListTitleProps) {
   const ctx = useNavigationListContext();
   return (
@@ -80,7 +86,7 @@ function NavigationListItem({
     );
   }
 
-  const prefix = isSelected ? "| " : isHighlighted ? "> " : "  ";
+  const prefix = getItemPrefix(isSelected, isHighlighted);
 
   return (
     <Box>

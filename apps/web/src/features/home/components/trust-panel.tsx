@@ -17,6 +17,12 @@ const DEFAULT_CAPABILITIES: TrustCapabilities = {
   runCommands: false,
 };
 
+function getActionLabel(isLoading: boolean, hasRepoAccess: boolean): string {
+  if (isLoading) return "Saving...";
+  if (hasRepoAccess) return "Trust & Continue";
+  return "Continue Without Trust";
+}
+
 export function TrustPanel({
   directory,
   projectId,
@@ -41,11 +47,7 @@ export function TrustPanel({
     }
   }
 
-  const actionLabel = isLoading
-    ? "Saving..."
-    : hasRepoAccess
-      ? "Trust & Continue"
-      : "Continue Without Trust";
+  const actionLabel = getActionLabel(isLoading, hasRepoAccess);
 
   return (
     <CardLayout

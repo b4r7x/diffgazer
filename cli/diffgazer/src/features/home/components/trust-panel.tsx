@@ -13,6 +13,12 @@ interface TrustPanelProps {
   onAccept: () => void;
 }
 
+function getActionLabel(isSaving: boolean, hasRepoAccess: boolean): string {
+  if (isSaving) return "Saving...";
+  if (hasRepoAccess) return "Trust & Continue";
+  return "Continue Without Trust";
+}
+
 export function TrustPanel({ onAccept }: TrustPanelProps): ReactElement {
   const initQuery = useInit();
   const saveTrust = useSaveTrust();
@@ -22,11 +28,7 @@ export function TrustPanel({ onAccept }: TrustPanelProps): ReactElement {
   const error = saveTrust.error?.message ?? null;
   const hasRepoAccess = checked.includes("readFiles");
 
-  const actionLabel = saving
-    ? "Saving..."
-    : hasRepoAccess
-      ? "Trust & Continue"
-      : "Continue Without Trust";
+  const actionLabel = getActionLabel(saving, hasRepoAccess);
 
   function handleAccept() {
     if (!initQuery.data) return;

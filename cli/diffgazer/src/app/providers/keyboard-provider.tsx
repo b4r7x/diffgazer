@@ -1,4 +1,4 @@
-import { createContext, useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useInput } from "ink";
 import { inkKeyToHotkey, isLetterKey } from "../../lib/ink-key.js";
@@ -42,9 +42,10 @@ export function TerminalKeyboardProvider({
   const inputActiveRef = useRef(false);
   const [inputActive, setInputActiveState] = useState(false);
 
-  useLayoutEffect(() => {
-    scopeStackRef.current = scopeStack;
-  }, [scopeStack]);
+  // Stable-ref escape hatch: scopeStackRef is read ONLY inside the useInput
+  // stdin-event callback (never during render), so mid-render writes are safe
+  // under concurrent rendering. See AGENTS.md react-useref rules.
+  scopeStackRef.current = scopeStack;
 
   const activeScope = scopeStack.length > 0
     ? scopeStack[scopeStack.length - 1] ?? null

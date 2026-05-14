@@ -33,19 +33,16 @@ describe("classifyError", () => {
   });
 
   it("should handle non-Error thrown values", () => {
-    // string
     expect(classifyError("timeout occurred", rules, fallback)).toEqual({
       code: "NETWORK",
       message: "Network error",
     });
 
-    // object
     expect(classifyError({ error: true }, rules, fallback)).toEqual({
       code: "UNKNOWN",
       message: "Unexpected: [object Object]",
     });
 
-    // undefined
     expect(classifyError(undefined, rules, fallback)).toEqual({
       code: "UNKNOWN",
       message: "Unexpected: undefined",

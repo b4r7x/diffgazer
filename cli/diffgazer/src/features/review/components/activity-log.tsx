@@ -1,5 +1,6 @@
 import { Box, Text } from "ink";
 import { useTheme } from "../../../theme/theme-context.js";
+import type { CliColorTokens } from "../../../theme/palettes.js";
 import { ScrollArea } from "../../../components/ui/scroll-area.js";
 import { Badge } from "../../../components/ui/badge.js";
 import { type LogEntryData, TAG_BADGE_VARIANTS } from "@diffgazer/core/schemas/ui";
@@ -9,6 +10,15 @@ export interface ActivityLogProps {
   entries: LogEntryData[];
   height?: number;
   isActive?: boolean;
+}
+
+function getLogEntryColor(
+  entry: Pick<LogEntryData, "isError" | "isWarning">,
+  tokens: CliColorTokens,
+): string | undefined {
+  if (entry.isError) return tokens.error;
+  if (entry.isWarning) return tokens.warning;
+  return undefined;
 }
 
 export function ActivityLog({ entries, height = 10, isActive = false }: ActivityLogProps) {
@@ -23,7 +33,7 @@ export function ActivityLog({ entries, height = 10, isActive = false }: Activity
           {entry.source ? (
             <Text color={tokens.muted}>[{entry.source}]</Text>
           ) : null}
-          <Text color={entry.isError ? tokens.error : entry.isWarning ? tokens.warning : undefined}>
+          <Text color={getLogEntryColor(entry, tokens)}>
             {entry.message}
           </Text>
         </Box>

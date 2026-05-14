@@ -1,10 +1,3 @@
-export {
-  TIER_FILTERS,
-  type TierFilter,
-  buildModels,
-  filterModels,
-} from "@diffgazer/core/providers";
-
 export function getCompatibilityLabel({
   total,
   compatible,

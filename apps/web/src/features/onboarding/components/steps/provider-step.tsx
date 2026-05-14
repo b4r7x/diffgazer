@@ -4,7 +4,7 @@ import { Badge } from "@diffgazer/ui/components/badge";
 import { AVAILABLE_PROVIDERS } from "@diffgazer/core/schemas/config";
 import type { AIProvider } from "@diffgazer/core/schemas/config";
 import { PROVIDER_CAPABILITIES } from "@diffgazer/core/schemas/config";
-import { resolveAvailableValue } from "@/lib/selectable-values";
+import { resolveAvailableValue } from "@diffgazer/core/select";
 import { toVerticalBoundaryDirection } from "@diffgazer/keys";
 
 const PROVIDER_IDS = AVAILABLE_PROVIDERS.map((provider) => provider.id);

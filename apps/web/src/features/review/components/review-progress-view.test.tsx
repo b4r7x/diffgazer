@@ -2,7 +2,8 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { describe, expect, it, vi } from "vitest";
-import { Footer, FooterProvider, useFooterData } from "@/components/layout";
+import { Footer } from "@/components/layout";
+import { FooterProvider, useFooterData } from "@diffgazer/core/footer";
 import { ReviewProgressView, type ReviewProgressData, type ReviewProgressViewProps } from "./review-progress-view";
 
 function FooterView() {

@@ -6,7 +6,7 @@ import { useRef, useState } from "react";
 import type { AIProvider, ProviderWithStatus } from "@diffgazer/core/schemas/config";
 import { ProviderList } from "@/features/providers/components/provider-list";
 import { useProvidersKeyboard } from "./use-providers-keyboard";
-import { PROVIDER_FILTERS, type ProviderFilter } from "@/features/providers/constants";
+import { PROVIDER_FILTERS, type ProviderFilter } from "@diffgazer/core/providers";
 
 const mockNavigate = vi.fn();
 

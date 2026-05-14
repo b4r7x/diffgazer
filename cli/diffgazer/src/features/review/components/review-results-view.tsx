@@ -8,7 +8,7 @@ import {
 } from "@diffgazer/core/review";
 import { useTheme } from "../../../theme/theme-context.js";
 import { useResponsive } from "../../../hooks/use-terminal-dimensions.js";
-import { usePageFooter } from "../../../hooks/use-page-footer.js";
+import { usePageFooter } from "@diffgazer/core/footer";
 import { useReviewKeyboard } from "../hooks/use-review-keyboard.js";
 import { IssueListPane } from "./issue-list-pane.js";
 import { IssueDetailsPane } from "./issue-details-pane.js";

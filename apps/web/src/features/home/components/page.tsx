@@ -5,7 +5,7 @@ import type { Shortcut } from "@diffgazer/core/schemas/ui";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
 import { useApi, useCreateReview } from "@diffgazer/core/api/hooks";
 import { deriveTrustStatus, isReviewStartAction } from "@diffgazer/core/navigation";
-import { MAIN_MENU_SHORTCUTS, MENU_ITEMS } from "@/config/navigation";
+import { MAIN_MENU_SHORTCUTS, MENU_ITEMS } from "@diffgazer/core/schemas/ui";
 import { useKey, useScope } from "@diffgazer/keys";
 import { useScopedRouteState, clearScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { usePageFooter } from "@diffgazer/core/footer";

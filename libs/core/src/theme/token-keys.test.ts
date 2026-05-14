@@ -23,7 +23,6 @@ describe("THEME_TOKEN_KEYS", () => {
 
   it("exposes the agreed cross-app token vocabulary", () => {
     expect([...THEME_TOKEN_KEYS]).toEqual([
-      // primitive
       "bg",
       "fg",
       "blue",
@@ -33,19 +32,16 @@ describe("THEME_TOKEN_KEYS", () => {
       "yellow",
       "border",
       "muted",
-      // semantic
       "success",
       "warning",
       "error",
       "info",
       "accent",
-      // severity
       "severityBlocker",
       "severityHigh",
       "severityMedium",
       "severityLow",
       "severityNit",
-      // status
       "statusRunning",
       "statusComplete",
       "statusPending",

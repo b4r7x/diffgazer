@@ -1,8 +1,6 @@
 import { Children, Fragment, isValidElement } from "react";
 import type { ReactElement, ReactNode } from "react";
 
-export { clampIndex } from "@diffgazer/keys";
-
 export function collectChildItems<T>(
   children: ReactNode,
   extract: (element: ReactElement) => T | null,

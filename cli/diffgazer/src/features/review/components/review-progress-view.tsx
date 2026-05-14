@@ -5,7 +5,7 @@ import { useResponsive } from "../../../hooks/use-terminal-dimensions.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
 import { Button } from "../../../components/ui/button.js";
 import { Callout } from "../../../components/ui/callout.js";
-import { usePageFooter } from "../../../hooks/use-page-footer.js";
+import { usePageFooter } from "@diffgazer/core/footer";
 import { ProgressList } from "./progress-list.js";
 import { ActivityLog } from "./activity-log.js";
 import { AgentBoard } from "./agent-board.js";
@@ -40,6 +40,16 @@ const COMPLETING_SHORTCUTS: Shortcut[] = [
   { key: "Enter", label: "View Results" },
 ];
 
+function getResponsiveWidth(
+  isWide: boolean,
+  isMedium: boolean,
+  widths: { wide: string; medium: string; narrow: string },
+): string {
+  if (isWide) return widths.wide;
+  if (isMedium) return widths.medium;
+  return widths.narrow;
+}
+
 export function ReviewProgressView({
   progressSteps,
   agents,
@@ -64,8 +74,16 @@ export function ReviewProgressView({
   const elapsed = startedAt ? Date.now() - startedAt.getTime() : 0;
 
   const sideBySide = isWide || isMedium;
-  const progressWidth = isWide ? "33%" : isMedium ? "40%" : "100%";
-  const logWidth = isWide ? "67%" : isMedium ? "60%" : "100%";
+  const progressWidth = getResponsiveWidth(isWide, isMedium, {
+    wide: "33%",
+    medium: "40%",
+    narrow: "100%",
+  });
+  const logWidth = getResponsiveWidth(isWide, isMedium, {
+    wide: "67%",
+    medium: "60%",
+    narrow: "100%",
+  });
 
   const agentOptions = agents.map((agent) => ({
     id: agent.id,

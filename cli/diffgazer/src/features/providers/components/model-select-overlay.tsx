@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import type { ReactElement } from "react";
 import { Box, Text, useInput } from "ink";
-import type { AIProvider } from "@diffgazer/core/schemas/config";
+import type { AIProvider, ModelInfo } from "@diffgazer/core/schemas/config";
 import { OPENROUTER_PROVIDER_ID } from "@diffgazer/core/schemas/config";
 import { useTheme } from "../../../theme/theme-context.js";
+import type { CliColorTokens } from "../../../theme/palettes.js";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions.js";
 import { Dialog } from "../../../components/ui/dialog.js";
 import { Button } from "../../../components/ui/button.js";
@@ -22,6 +23,55 @@ import { ModelListItem } from "./model-list-item.js";
 import { getCompatibilityLabel } from "./model-select-helpers.js";
 
 type FocusZone = "search" | "filters" | "list";
+
+function renderModelListBody({
+  loading,
+  error,
+  models,
+  filteredModels,
+  focusZone,
+  safeHighlightIndex,
+  selectedId,
+  contentWidth,
+  tokens,
+}: {
+  loading: boolean;
+  error: string | undefined;
+  models: ModelInfo[];
+  filteredModels: ModelInfo[];
+  focusZone: FocusZone;
+  safeHighlightIndex: number;
+  selectedId: string | undefined;
+  contentWidth: number;
+  tokens: CliColorTokens;
+}): ReactElement {
+  if (loading) {
+    return <Spinner label="Loading models…" />;
+  }
+  if (error) {
+    return <Text color={tokens.error}>{error}</Text>;
+  }
+  if (filteredModels.length === 0) {
+    return (
+      <Text dimColor>
+        {models.length === 0 ? "No models available" : "No models match your search"}
+      </Text>
+    );
+  }
+  return (
+    <Box flexDirection="column">
+      {filteredModels.map((model, idx) => (
+        <ModelListItem
+          key={model.id}
+          model={model}
+          isHighlighted={focusZone === "list" && idx === safeHighlightIndex}
+          isSelected={model.id === selectedId}
+          maxWidth={contentWidth}
+        />
+      ))}
+    </Box>
+  );
+}
 
 interface ModelSelectOverlayProps {
   open: boolean;
@@ -59,18 +109,13 @@ export function ModelSelectOverlay({
 
   const filteredModels = filterModels(models, tierFilter, searchQuery);
 
-  // Clamp the stored index when the filtered list shrinks; the effect commits
-  // it back on the next render so we avoid setState during render.
+  // Derive the clamped index during render. Arrow handlers wrap with modulo
+  // against the current filteredModels.length, so the stored highlightIndex
+  // can never persist out of range across user actions.
   const safeHighlightIndex =
     filteredModels.length === 0
       ? 0
       : Math.min(highlightIndex, filteredModels.length - 1);
-
-  useEffect(() => {
-    if (highlightIndex !== safeHighlightIndex) {
-      setHighlightIndex(safeHighlightIndex);
-    }
-  }, [highlightIndex, safeHighlightIndex]);
 
   useEffect(() => {
     if (open) {
@@ -132,14 +177,14 @@ export function ModelSelectOverlay({
       if (filteredModels.length === 0) return;
 
       if (key.upArrow) {
-        setHighlightIndex((prev) =>
-          (prev - 1 + filteredModels.length) % filteredModels.length,
+        setHighlightIndex(
+          (safeHighlightIndex - 1 + filteredModels.length) % filteredModels.length,
         );
         return;
       }
       if (key.downArrow) {
-        setHighlightIndex((prev) =>
-          (prev + 1) % filteredModels.length,
+        setHighlightIndex(
+          (safeHighlightIndex + 1) % filteredModels.length,
         );
         return;
       }
@@ -182,27 +227,17 @@ export function ModelSelectOverlay({
               <Text color={tokens.muted}>{compatibilityLabel}</Text>
             )}
 
-            {loading ? (
-              <Spinner label="Loading models\u2026" />
-            ) : error ? (
-              <Text color={tokens.error}>{error}</Text>
-            ) : filteredModels.length === 0 ? (
-              <Text dimColor>
-                {models.length === 0 ? "No models available" : "No models match your search"}
-              </Text>
-            ) : (
-              <Box flexDirection="column">
-                {filteredModels.map((model, idx) => (
-                  <ModelListItem
-                    key={model.id}
-                    model={model}
-                    isHighlighted={focusZone === "list" && idx === safeHighlightIndex}
-                    isSelected={model.id === selectedId}
-                    maxWidth={contentWidth}
-                  />
-                ))}
-              </Box>
-            )}
+            {renderModelListBody({
+              loading,
+              error,
+              models,
+              filteredModels,
+              focusZone,
+              safeHighlightIndex,
+              selectedId,
+              contentWidth,
+              tokens,
+            })}
             {saving && <Spinner label="Saving\u2026" />}
           </Box>
         </Dialog.Body>

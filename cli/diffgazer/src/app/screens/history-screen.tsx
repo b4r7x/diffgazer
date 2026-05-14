@@ -2,7 +2,7 @@ import type { ReactElement } from "react";
 import { Box, Text, useInput } from "ink";
 import { guardQueryState } from "@diffgazer/core/api/hooks";
 import { useScope } from "../../hooks/use-scope.js";
-import { usePageFooter } from "../../hooks/use-page-footer.js";
+import { usePageFooter } from "@diffgazer/core/footer";
 import { useBackHandler } from "../../hooks/use-back-handler.js";
 import { useResponsive } from "../../hooks/use-terminal-dimensions.js";
 import { useTheme } from "../../theme/theme-context.js";
@@ -17,6 +17,20 @@ import { RunsList } from "../../features/history/components/runs-list.js";
 import { HistoryInsightsPane } from "../../features/history/components/history-insights-pane.js";
 import { useHistoryScreen } from "../../features/history/hooks/use-history-screen.js";
 import { getHistoryFooter } from "../../features/history/hooks/get-history-footer.js";
+
+function getInsightScrollHeight({
+  isNarrow,
+  isMedium,
+  paneHeight,
+}: {
+  isNarrow: boolean;
+  isMedium: boolean;
+  paneHeight: number;
+}): number {
+  if (isNarrow) return Math.max(Math.floor(paneHeight / 2), 6);
+  if (isMedium) return Math.max(paneHeight - 4, 6);
+  return paneHeight;
+}
 
 export function HistoryScreen(): ReactElement {
   useScope("history");
@@ -58,11 +72,7 @@ export function HistoryScreen(): ReactElement {
     ? Math.max(Math.floor(columns * 0.32), 26)
     : Math.max(Math.floor(columns * 0.34), 30);
   const paneHeight = Math.max(rows - 8, 8);
-  const insightScrollHeight = isNarrow
-    ? Math.max(Math.floor(paneHeight / 2), 6)
-    : isMedium
-      ? Math.max(paneHeight - 4, 6)
-      : paneHeight;
+  const insightScrollHeight = getInsightScrollHeight({ isNarrow, isMedium, paneHeight });
 
   const guard = guardQueryState(screen.reviewsQuery, {
     loading: () => (

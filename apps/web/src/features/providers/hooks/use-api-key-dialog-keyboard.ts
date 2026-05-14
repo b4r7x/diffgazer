@@ -130,7 +130,6 @@ export function useApiKeyDialogKeyboard({
     resetDialogFocus();
   }, [open]);
 
-  // --- Radios zone ---
   useKey("ArrowUp", () => {
     if (effectiveFocused === "env") {
       focusMethodOption("paste");
@@ -149,13 +148,11 @@ export function useApiKeyDialogKeyboard({
     }
   }, { enabled: open && isZone("radios") });
 
-  // Space on radios: select the radio option
   useKey(" ", () => {
     if (effectiveFocused === "paste") setMethod("paste");
     else if (effectiveFocused === "env") setMethod("env");
   }, { enabled: open && isZone("radios") });
 
-  // Enter on radios: select and confirm
   useKey("Enter", () => {
     if (effectiveFocused === "paste") {
       setMethod("paste");
@@ -166,7 +163,6 @@ export function useApiKeyDialogKeyboard({
     }
   }, { enabled: open && isZone("radios") });
 
-  // --- Input zone ---
   useEffect(() => {
     if (open && zone === "input") {
       inputRef.current?.focus();
@@ -183,7 +179,6 @@ export function useApiKeyDialogKeyboard({
     focusMethodOption("env");
   }, { enabled: open && isZone("input"), allowInInput: true });
 
-  // --- Footer zone ---
   useKey("ArrowLeft", () => {
     const idx = footerElements.indexOf(effectiveFocused);
     if (idx > 0) focusFooterElement(footerElements[idx - 1]!);
@@ -205,7 +200,6 @@ export function useApiKeyDialogKeyboard({
   useKey("Enter", handleFooterAction, { enabled: open && isZone("footer"), preventDefault: true });
   useKey(" ", handleFooterAction, { enabled: open && isZone("footer"), preventDefault: true });
 
-  // Escape closes from any zone
   useKey("Escape", onClose, { enabled: open && !isZone("input") });
 
   return { focused: effectiveFocused, setFocused, getMethodOptionProps, handleMethodKeyDown };

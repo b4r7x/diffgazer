@@ -2,7 +2,7 @@ import { type ReactNode } from "react";
 import { useCanGoBack, useLocation, useRouter } from "@tanstack/react-router";
 import { Header } from "./header";
 import { Footer } from "./footer";
-import { useFooterData } from "./footer-context";
+import { useFooterData } from "@diffgazer/core/footer";
 import { useConfigData } from "@/app/providers/config-provider";
 import { resolveBackAction } from "@/lib/back-navigation";
 import { getProviderDisplayStatus, getProviderDisplay } from "@diffgazer/core/providers";

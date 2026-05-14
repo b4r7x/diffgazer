@@ -7,7 +7,7 @@ import type { CliMode } from "../types/cli.js";
 import { CliThemeProvider } from "../theme/theme-context.js";
 import { TerminalKeyboardProvider, KeyboardContext } from "./providers/keyboard-provider.js";
 import { NavigationProvider, useNavigation } from "./navigation-context.js";
-import { FooterProvider } from "./providers/footer-provider.js";
+import { FooterProvider } from "@diffgazer/core/footer";
 import { ServerProvider } from "./providers/server-provider.js";
 import { GlobalLayout } from "../components/layout/global-layout.js";
 import { ScreenRouter } from "./router.js";

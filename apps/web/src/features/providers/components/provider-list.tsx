@@ -7,7 +7,7 @@ import { ToggleGroup, ToggleGroupItem } from "@diffgazer/ui/components/toggle-gr
 import { cn } from "@diffgazer/ui/lib/utils";
 import { getDisplayStatusBadge } from '@diffgazer/core/providers';
 import { PROVIDER_CAPABILITIES } from '@diffgazer/core/schemas/config';
-import { PROVIDER_FILTER_LABELS, type ProviderFilter } from '@/features/providers/constants';
+import { PROVIDER_FILTER_LABELS, type ProviderFilter } from '@diffgazer/core/providers';
 import { toVerticalBoundaryDirection } from "@diffgazer/keys";
 import type { ProviderWithStatus } from '@diffgazer/core/schemas/config';
 

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test, { describe } from "node:test";
-import { useHomeMenuActions, type HomeMenuActionsOptions } from "./use-home-menu-actions.js";
+import { createHomeMenuAction, type HomeMenuActionOptions } from "./create-home-menu-action.js";
 import type { Route } from "../../../app/routes.js";
 
 interface Harness {
@@ -11,13 +11,13 @@ interface Harness {
   resolveShutdown: () => void;
 }
 
-function buildHarness(overrides: Partial<HomeMenuActionsOptions> = {}): Harness {
+function buildHarness(overrides: Partial<HomeMenuActionOptions> = {}): Harness {
   const routes: Route[] = [];
   let shutdownCalls = 0;
   let exits = 0;
   let pendingSettled: (() => void) | null = null;
 
-  const dispatch = useHomeMenuActions({
+  const dispatch = createHomeMenuAction({
     navigate: (r) => routes.push(r),
     hasActiveSession: false,
     isTrusted: true,
@@ -28,7 +28,7 @@ function buildHarness(overrides: Partial<HomeMenuActionsOptions> = {}): Harness 
         if (typeof settled === "function") {
           pendingSettled = () => settled();
         }
-      }) as HomeMenuActionsOptions["shutdown"]["mutate"],
+      }) as HomeMenuActionOptions["shutdown"]["mutate"],
     },
     onExit: () => {
       exits += 1;
@@ -53,7 +53,7 @@ function buildHarness(overrides: Partial<HomeMenuActionsOptions> = {}): Harness 
   } as Harness;
 }
 
-describe("useHomeMenuActions", () => {
+describe("createHomeMenuAction", () => {
   test("review-unstaged navigates to review screen with unstaged mode", () => {
     const h = buildHarness();
     h.dispatch("review-unstaged");

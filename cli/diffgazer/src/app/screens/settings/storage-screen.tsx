@@ -3,7 +3,7 @@ import type { ReactElement } from "react";
 import { Box, Text } from "ink";
 import type { SecretsStorage } from "@diffgazer/core/schemas/config";
 import { useScope } from "../../../hooks/use-scope.js";
-import { usePageFooter } from "../../../hooks/use-page-footer.js";
+import { usePageFooter } from "@diffgazer/core/footer";
 import { useBackHandler } from "../../../hooks/use-back-handler.js";
 import { useSettingsZone } from "../../../hooks/use-settings-zone.js";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions.js";
@@ -63,10 +63,6 @@ export function StorageScreen(): ReactElement {
     });
   }
 
-  function handleCancel() {
-    goBack();
-  }
-
   const guard = guardQueryState(settingsQuery, {
     loading: () => (
       <Panel>
@@ -105,7 +101,7 @@ export function StorageScreen(): ReactElement {
                 <Text>Changes will take effect immediately after saving.</Text>
               </Callout>
               <Box gap={1}>
-                <Button variant="secondary" onPress={handleCancel} disabled={saving} isActive={isButtonActive(0)}>
+                <Button variant="secondary" onPress={goBack} disabled={saving} isActive={isButtonActive(0)}>
                   Cancel
                 </Button>
                 <Button variant="primary" onPress={handleSave} disabled={!canSave} isActive={isButtonActive(1)}>

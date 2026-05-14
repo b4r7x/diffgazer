@@ -15,7 +15,8 @@ import { errorResponse, zodErrorHandler } from "../../shared/lib/http/response.j
 import { getProjectRoot } from "../../shared/lib/http/request.js";
 import { createBodyLimitMiddleware } from "../../shared/middlewares/body-limit.js";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
-import { SaveConfigSchema, ProviderParamSchema, ActivateProviderBodySchema } from "./schemas.js";
+import { SaveConfigRequestSchema } from "@diffgazer/core/schemas/config";
+import { ProviderParamSchema, ActivateProviderBodySchema } from "./schemas.js";
 
 const configRouter = new Hono();
 
@@ -68,7 +69,7 @@ configRouter.get("/provider/openrouter/models", async (c): Promise<Response> => 
 configRouter.post(
   "/",
   bodyLimitMiddleware,
-  zValidator("json", SaveConfigSchema, zodErrorHandler),
+  zValidator("json", SaveConfigRequestSchema, zodErrorHandler),
   (c): Response => {
     const body = c.req.valid("json");
     const result = saveConfig(body);

@@ -17,6 +17,18 @@ function getServerValue(serverState: DiagnosticsData["serverState"]): string {
   return `Error: ${serverState.message}`;
 }
 
+const HEALTH_VARIANT_BY_STATUS = {
+  error: "error",
+  connected: "success",
+  checking: "info",
+} as const satisfies Record<DiagnosticsData["serverState"]["status"], "error" | "success" | "info">;
+
+function getHealthVariant(
+  status: DiagnosticsData["serverState"]["status"],
+): "error" | "success" | "info" {
+  return HEALTH_VARIANT_BY_STATUS[status];
+}
+
 function getSetupValue(setupStatus: SetupStatus | null): string {
   if (!setupStatus) return "Unavailable";
   if (setupStatus.isReady) return "Ready";
@@ -133,7 +145,7 @@ export function DiagnosticsPage() {
               <KeyValue.Item
                 label="Health"
                 value={<span className="break-all">{serverValue}</span>}
-                variant={serverState.status === "error" ? "error" : serverState.status === "connected" ? "success" : "info"}
+                variant={getHealthVariant(serverState.status)}
               />
               <KeyValue.Item
                 label="Setup"

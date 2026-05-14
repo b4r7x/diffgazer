@@ -10,16 +10,19 @@ export interface ContextSidebarProps {
   projectPath?: string;
 }
 
+function formatProviderValue(
+  name: string | undefined,
+  mode: string | undefined,
+): string {
+  if (name == null) return "Not configured";
+  if (mode == null) return name;
+  return `${name} (${mode})`;
+}
+
 export function ContextSidebar({ context, isTrusted, projectPath }: ContextSidebarProps) {
   const { tokens } = useTheme();
 
-  const providerValue =
-    context.providerName != null
-      ? context.providerMode != null
-        ? `${context.providerName} (${context.providerMode})`
-        : context.providerName
-      : "Not configured";
-
+  const providerValue = formatProviderValue(context.providerName, context.providerMode);
   const lastRunValue = renderLastRun(context.lastRunId, context.lastRunIssueCount, tokens.warning);
 
   return (

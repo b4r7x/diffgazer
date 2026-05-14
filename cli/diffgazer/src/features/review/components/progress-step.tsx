@@ -6,6 +6,7 @@ import type {
 import { Spinner } from "../../../components/ui/spinner.js";
 import { Badge } from "../../../components/ui/badge.js";
 import { useTheme } from "../../../theme/theme-context.js";
+import type { CliColorTokens } from "../../../theme/palettes.js";
 
 export interface ProgressStepProps {
   name: string;
@@ -27,6 +28,26 @@ const SUBSTEP_BADGE_VARIANT = {
   error: "error",
 } as const;
 
+function getStepColor(status: ProgressStatus, tokens: CliColorTokens): string {
+  if (status === "active") return tokens.statusRunning;
+  if (status === "completed") return tokens.statusComplete;
+  return tokens.fg;
+}
+
+function getStepIconColor(status: ProgressStatus, tokens: CliColorTokens): string {
+  if (status === "completed") return tokens.statusComplete;
+  return tokens.statusPending;
+}
+
+type SubstepStatus = ProgressSubstepData["status"];
+
+function getSubstepColor(status: SubstepStatus, tokens: CliColorTokens): string {
+  if (status === "active") return tokens.statusRunning;
+  if (status === "completed") return tokens.statusComplete;
+  if (status === "error") return tokens.error;
+  return tokens.fg;
+}
+
 export function ProgressStep({
   name,
   status,
@@ -35,24 +56,13 @@ export function ProgressStep({
 }: ProgressStepProps) {
   const { tokens } = useTheme();
 
-  const stepColor =
-    status === "active"
-      ? tokens.statusRunning
-      : status === "completed"
-        ? tokens.statusComplete
-        : tokens.fg;
+  const stepColor = getStepColor(status, tokens);
 
   const icon =
     status === "active" ? (
       <Spinner variant="dots" size="sm" />
     ) : (
-      <Text
-        color={
-          status === "completed" ? tokens.statusComplete : tokens.statusPending
-        }
-      >
-        {STEP_ICON[status]}
-      </Text>
+      <Text color={getStepIconColor(status, tokens)}>{STEP_ICON[status]}</Text>
     );
 
   return (
@@ -71,17 +81,7 @@ export function ProgressStep({
               <Badge variant={SUBSTEP_BADGE_VARIANT[sub.status]} size="sm">
                 {sub.tag}
               </Badge>
-              <Text
-                color={
-                  sub.status === "active"
-                    ? tokens.statusRunning
-                    : sub.status === "completed"
-                      ? tokens.statusComplete
-                      : sub.status === "error"
-                        ? tokens.error
-                        : tokens.fg
-                }
-              >
+              <Text color={getSubstepColor(sub.status, tokens)}>
                 {sub.label}
               </Text>
               {sub.detail ? (

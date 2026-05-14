@@ -10,19 +10,27 @@ interface ModelListItemProps {
   maxWidth: number;
 }
 
+function getPrefix(isSelected: boolean, isHighlighted: boolean): string {
+  if (isSelected) return "| ";
+  if (isHighlighted) return "> ";
+  return "  ";
+}
+
+function truncateDescription(description: string | undefined, maxLen: number): string | undefined {
+  if (!description) return undefined;
+  if (description.length <= maxLen) return description;
+  return description.slice(0, Math.max(0, maxLen - 1)) + "\u2026";
+}
+
 export function ModelListItem({ model, isHighlighted, isSelected, maxWidth }: ModelListItemProps) {
   const { tokens } = useTheme();
 
-  const prefix = isSelected ? "| " : isHighlighted ? "> " : "  ";
+  const prefix = getPrefix(isSelected, isHighlighted);
   const check = isSelected ? "[*]" : "[ ]";
 
   // Reserve space for prefix(2) + check(3) + gaps(3) + badge(~6) = ~14 chars
   const descMaxLen = Math.max(0, maxWidth - model.name.length - 18);
-  const desc = model.description
-    ? model.description.length > descMaxLen
-      ? model.description.slice(0, Math.max(0, descMaxLen - 1)) + "\u2026"
-      : model.description
-    : undefined;
+  const desc = truncateDescription(model.description, descMaxLen);
 
   return (
     <Box>

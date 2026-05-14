@@ -21,7 +21,7 @@ import {
   canProceed as canProceedForStep,
   type OnboardingStep,
   type WizardData,
-} from "../types";
+} from "@diffgazer/core/onboarding";
 
 const STEP_TITLES: Record<OnboardingStep, string> = {
   storage: "Secrets Storage",

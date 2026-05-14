@@ -13,13 +13,10 @@ import {
   getRunDisplayId,
   HISTORY_SECTION_ALL_ID,
   matchesHistoryQuery,
-  resolveSelectedDateId as coreResolveSelectedDateId,
-  resolveSelectedRunId as coreResolveSelectedRunId,
+  resolveSelectedDateId,
+  resolveSelectedRunId,
 } from "@diffgazer/core/review";
 import { getRunSummary } from "@/features/history/utils";
-
-export const resolveSelectedDateId = coreResolveSelectedDateId;
-export const resolveSelectedRunId = coreResolveSelectedRunId;
 
 function useHistoryData() {
   const reviewsQuery = useReviews();

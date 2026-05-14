@@ -48,7 +48,6 @@ export async function processReviewStream(
     },
     onEvent(event: FullReviewStreamEvent) {
       switch (event.type) {
-        // Step events
         case "review_started":
           reviewId = event.reviewId;
           onStepEvent?.(event);
@@ -59,7 +58,6 @@ export async function processReviewStream(
           onStepEvent?.(event);
           break;
 
-        // Agent events - collect and forward
         case "agent_start":
         case "agent_queued":
         case "agent_thinking":
@@ -83,7 +81,6 @@ export async function processReviewStream(
           onEnrichEvent?.(event);
           break;
 
-        // Review stream events
         case "chunk":
           onChunk?.(event.content);
           break;

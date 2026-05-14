@@ -46,16 +46,15 @@ function PanelRoot({ variant = "default", children }: PanelProps) {
 function PanelHeader({ variant = "default", children }: PanelHeaderProps) {
   const { tokens } = useTheme();
 
-  const color =
-    variant === "terminal"
-      ? tokens.accent
-      : variant === "subtle"
-        ? tokens.muted
-        : undefined;
+  const colorByVariant: Record<NonNullable<PanelHeaderProps["variant"]>, string | undefined> = {
+    terminal: tokens.accent,
+    subtle: tokens.muted,
+    default: undefined,
+  };
 
   return (
     <Box>
-      <Text bold color={color}>
+      <Text bold color={colorByVariant[variant]}>
         {children}
       </Text>
     </Box>

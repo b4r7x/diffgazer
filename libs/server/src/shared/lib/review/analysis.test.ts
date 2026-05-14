@@ -111,7 +111,6 @@ describe("runLensAnalysis", () => {
       makeContext(),
     );
 
-    // Advance past all timers to let the progress timer fire
     await vi.advanceTimersByTimeAsync(100);
     const result = await promise;
 
@@ -119,24 +118,19 @@ describe("runLensAnalysis", () => {
 
     const eventTypes = events.map((e) => e.type);
 
-    // Should contain the initial lifecycle events
     expect(eventTypes).toContain("agent_start");
     expect(eventTypes).toContain("agent_thinking");
     expect(eventTypes).toContain("agent_progress");
 
-    // Should have file_start/file_complete for each file
     expect(eventTypes.filter((t) => t === "file_start")).toHaveLength(2);
     expect(eventTypes.filter((t) => t === "file_complete")).toHaveLength(2);
 
-    // Should have tool_start/tool_end for each file
     expect(eventTypes.filter((t) => t === "tool_start")).toHaveLength(2);
     expect(eventTypes.filter((t) => t === "tool_end")).toHaveLength(2);
 
-    // Should contain issue_found and end with agent_complete
     expect(eventTypes.filter((t) => t === "issue_found")).toHaveLength(1);
     expect(eventTypes).toContain("agent_complete");
 
-    // Result should contain lens info
     if (result.ok) {
       expect(result.value.lensId).toBe("correctness");
       expect(result.value.lensName).toBe("Correctness");
@@ -167,7 +161,6 @@ describe("runLensAnalysis", () => {
       expect(result.error.code).toBe("MODEL_ERROR");
     }
 
-    // Should have emitted agent_error event
     const errorEvents = events.filter((e) => e.type === "agent_error");
     expect(errorEvents).toHaveLength(1);
     const errorEvent = errorEvents[0] as Extract<AgentStreamEvent, { type: "agent_error" }>;
@@ -181,7 +174,6 @@ describe("runLensAnalysis", () => {
     const onEvent = (e: AgentStreamEvent | StepEvent) => events.push(e);
     const controller = new AbortController();
 
-    // Abort after a tick
     setTimeout(() => controller.abort(), 0);
 
     const promise = runLensAnalysis(
@@ -194,21 +186,17 @@ describe("runLensAnalysis", () => {
       controller.signal,
     );
 
-    // Advance to trigger abort
     await vi.advanceTimersByTimeAsync(10);
     const result = await promise;
 
-    // The file scan loop should have broken early
     const fileStartEvents = events.filter((e) => e.type === "file_start");
     expect(fileStartEvents.length).toBeLessThanOrEqual(5);
 
-    // Still returns a result (AI client was still called)
     expect(result.ok).toBe(true);
   });
 
   it("should ensure issue evidence from diff", async () => {
     const diff = makeDiff(1);
-    // Issue with empty evidence - should get evidence added from diff
     const issue = makeIssue("1", "src/file-0.ts");
     issue.evidence = [];
 

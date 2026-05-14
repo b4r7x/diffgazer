@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import type { ModelInfo } from "@diffgazer/core/schemas/config";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { createElement, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import type { TierFilter } from "@/features/providers/constants";
+import type { TierFilter } from "@diffgazer/core/providers";
 import { ModelFilterTabs } from "@/features/providers/components/model-select-dialog/model-filter-tabs";
 import { useModelDialogKeyboard } from "./use-model-dialog-keyboard";
 

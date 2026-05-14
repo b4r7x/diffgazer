@@ -1,6 +1,6 @@
 import type { KeyboardEvent as ReactKeyboardEvent, RefCallback } from "react";
 import { ToggleGroup, ToggleGroupItem } from "@diffgazer/ui/components/toggle-group";
-import { TIER_FILTERS, type TierFilter } from "@/features/providers/constants";
+import { TIER_FILTERS, type TierFilter } from "@diffgazer/core/providers";
 
 interface ModelFilterTabsProps {
   value: TierFilter;

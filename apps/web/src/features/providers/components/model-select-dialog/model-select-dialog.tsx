@@ -12,7 +12,7 @@ import { type AIProvider } from "@diffgazer/core/schemas/config";
 import { OPENROUTER_PROVIDER_ID } from "@diffgazer/core/schemas/config";
 import { getStaticModelsForProvider } from "@diffgazer/core/providers";
 import { useModelFilter } from "../../hooks/use-model-filter";
-import { useOpenRouterModels } from "@/hooks/use-openrouter-models";
+import { useOpenRouterModelsMapped } from "@diffgazer/core/providers";
 import { useModelDialogKeyboard } from "../../hooks/use-model-dialog-keyboard";
 import { ModelSearchInput } from "./model-search-input";
 import { ModelFilterTabs } from "./model-filter-tabs";
@@ -57,7 +57,7 @@ export function ModelSelectDialog({
   currentModel,
   onSelect,
 }: ModelSelectDialogProps) {
-  const openRouter = useOpenRouterModels(open, provider);
+  const openRouter = useOpenRouterModelsMapped(open, provider);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const listContainerRef = useRef<HTMLDivElement>(null);
 

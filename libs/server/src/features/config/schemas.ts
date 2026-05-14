@@ -1,7 +1,5 @@
 import { z } from "zod";
-import { AIProviderSchema, SaveConfigRequestSchema } from "@diffgazer/core/schemas/config";
-
-export const SaveConfigSchema = SaveConfigRequestSchema;
+import { AIProviderSchema } from "@diffgazer/core/schemas/config";
 
 export const ProviderParamSchema = z.object({
   providerId: AIProviderSchema,

@@ -39,7 +39,7 @@
     "prepack": "pnpm run build",
     "dev": "tsx --tsconfig tsconfig.json src/index.tsx --dev",
     "type-check": "tsc --noEmit",
-    "test": "node --import tsx --test 'src/**/*.test.ts'",
+    "test": "node --import tsx --test 'src/**/*.test.ts' 'src/**/*.test.tsx'",
     "start": "node bin/diffgazer.js"
   },
   "dependencies": {
@@ -62,6 +62,7 @@
     "@diffgazer/server": "workspace:*",
     "@types/node": "^25.2.0",
     "@types/react": "^19.2.13",
+    "ink-testing-library": "^4.0.0",
     "tsup": "^8.5.1",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"

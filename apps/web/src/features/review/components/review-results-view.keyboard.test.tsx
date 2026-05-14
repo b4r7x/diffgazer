@@ -4,7 +4,8 @@ import userEvent from "@testing-library/user-event";
 import { KeyboardProvider } from "@diffgazer/keys";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { SEVERITY_ORDER } from "@diffgazer/core/schemas/ui";
-import { Footer, FooterProvider, useFooterData } from "@/components/layout";
+import { Footer } from "@/components/layout";
+import { FooterProvider, useFooterData } from "@diffgazer/core/footer";
 
 vi.mock("@tanstack/react-router", () => ({
   useRouter: () => ({

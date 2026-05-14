@@ -2,7 +2,8 @@ import React, { Suspense } from "react";
 import { Outlet } from "@tanstack/react-router";
 import { Button } from "@diffgazer/ui/components/button";
 import { Toaster } from "@diffgazer/ui/components/toast";
-import { GlobalLayout, FooterProvider } from "@/components/layout";
+import { GlobalLayout } from "@/components/layout";
+import { FooterProvider } from "@diffgazer/core/footer";
 import { useServerStatus } from "@diffgazer/core/api/hooks";
 
 class RouteErrorBoundary extends React.Component<

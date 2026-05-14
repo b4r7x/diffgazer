@@ -1,11 +1,6 @@
 import type { ReactNode } from "react";
 import type { ReviewMetadata } from "@diffgazer/core/schemas/review";
-import type { TimelineItem } from "@diffgazer/core/schemas/ui";
-import {
-  buildTimelineItems as coreBuildTimelineItems,
-  getRunSummaryParts,
-  type SeverityPart,
-} from "@diffgazer/core/review";
+import { getRunSummaryParts, type SeverityPart } from "@diffgazer/core/review";
 
 const SEVERITY_CLASS: Record<SeverityPart["severity"], string> = {
   blocker: "text-tui-red",
@@ -35,8 +30,4 @@ export function getRunSummary(metadata: ReviewMetadata): ReactNode {
   });
 
   return <>{rendered}</>;
-}
-
-export function buildTimelineItems(reviews: ReviewMetadata[]): TimelineItem[] {
-  return coreBuildTimelineItems(reviews);
 }

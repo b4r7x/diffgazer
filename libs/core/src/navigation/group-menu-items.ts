@@ -36,12 +36,6 @@ export interface MenuItemWithDivider {
  *
  * This guarantees the pre-extraction `home-menu.tsx` rendering contract:
  * callers do not need to keep their menu definitions group-sorted.
- *
- * Note: `variant` is part of the public `NavItem` shape and is honored on every
- * group. Previously the inline renderer only applied `variant` to system items;
- * with the extracted helper any item may opt into a non-default variant. No
- * current `MENU_ITEMS` entry exploits this outside `system`, so observable
- * behavior is unchanged.
  */
 export function withGroupDividers(items: readonly NavItem[]): MenuItemWithDivider[] {
   const groupRank = new Map<MenuGroup, number>(MENU_GROUP_ORDER.map((group, index) => [group, index]));

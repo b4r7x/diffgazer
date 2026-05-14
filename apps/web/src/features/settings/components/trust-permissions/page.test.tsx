@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ApiProvider, configQueries } from "@diffgazer/core/api/hooks";
 import { createApi, type BoundApi } from "@diffgazer/core/api";
 import { KeyboardProvider } from "@diffgazer/keys";
-import { FooterProvider } from "@/components/layout";
+import { FooterProvider } from "@diffgazer/core/footer";
 import { ConfigProvider } from "@/app/providers/config-provider";
 import { Toaster } from "@diffgazer/ui/components/toast";
 import type { TrustConfig } from "@diffgazer/core/schemas/config";

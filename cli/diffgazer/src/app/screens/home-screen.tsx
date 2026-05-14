@@ -2,18 +2,18 @@ import type { ReactElement } from "react";
 import { Box } from "ink";
 import { useNavigation } from "../navigation-context.js";
 import { useScope } from "../../hooks/use-scope.js";
-import { usePageFooter } from "../../hooks/use-page-footer.js";
+import { usePageFooter } from "@diffgazer/core/footer";
 import { useBackHandler } from "../../hooks/use-back-handler.js";
 import { useResponsive } from "../../hooks/use-terminal-dimensions.js";
 import { useInit, useReviews, useActiveReviewSession, useShutdown } from "@diffgazer/core/api/hooks";
 import { deriveTrustStatus } from "@diffgazer/core/navigation";
 import type { ContextInfo, Shortcut } from "@diffgazer/core/schemas/ui";
 import { useExit } from "../../hooks/use-exit.js";
-import { useHomeMenuActions } from "../../features/home/hooks/use-home-menu-actions.js";
+import { createHomeMenuAction } from "../../features/home/lib/create-home-menu-action.js";
 import { ContextSidebar } from "../../features/home/components/context-sidebar.js";
 import { HomeMenu } from "../../features/home/components/home-menu.js";
 import { TrustPanel } from "../../features/home/components/trust-panel.js";
-import { MAIN_MENU_SHORTCUTS } from "../../config/navigation.js";
+import { MAIN_MENU_SHORTCUTS } from "@diffgazer/core/schemas/ui";
 
 const TRUST_FOOTER_SHORTCUTS: Shortcut[] = [
   { key: "↑/↓", label: "Navigate Permissions" },
@@ -71,7 +71,7 @@ export function HomeScreen(): ReactElement {
     refreshInit();
   }
 
-  const onAction = useHomeMenuActions({
+  const onAction = createHomeMenuAction({
     navigate,
     hasActiveSession,
     isTrusted,

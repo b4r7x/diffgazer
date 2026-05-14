@@ -22,6 +22,15 @@ interface ProviderDetailsProps {
   onRemove?: () => void;
 }
 
+function formatProviderModel(
+  model: string | undefined,
+  defaultModel: string | undefined,
+): string {
+  if (model) return model;
+  if (defaultModel) return `${defaultModel} (default)`;
+  return "none";
+}
+
 export function ProviderDetails({
   provider,
   onConfigureKey,
@@ -55,13 +64,7 @@ export function ProviderDetails({
       />
       <KeyValue
         label="Model"
-        value={
-          provider.model
-            ? provider.model
-            : provider.defaultModel
-              ? `${provider.defaultModel} (default)`
-              : "none"
-        }
+        value={formatProviderModel(provider.model, provider.defaultModel)}
         labelWidth={14}
       />
 

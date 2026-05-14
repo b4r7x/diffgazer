@@ -5,7 +5,7 @@ import { AVAILABLE_PROVIDERS, OPENROUTER_PROVIDER_ID } from "@diffgazer/core/sch
 import { mapProvidersWithStatus } from "@diffgazer/core/providers";
 import { useProviderStatus, useDeleteProviderCredentials, guardQueryState } from "@diffgazer/core/api/hooks";
 import { useScope } from "../../../hooks/use-scope.js";
-import { usePageFooter } from "../../../hooks/use-page-footer.js";
+import { usePageFooter } from "@diffgazer/core/footer";
 import { useBackHandler } from "../../../hooks/use-back-handler.js";
 import { useResponsive } from "../../../hooks/use-terminal-dimensions.js";
 import { useTheme } from "../../../theme/theme-context.js";
@@ -39,16 +39,26 @@ function toDetailData(provider: ProviderListItem): ProviderDetailData {
   };
 }
 
+function getListWidth({
+  isNarrow,
+  isMedium,
+  columns,
+}: {
+  isNarrow: boolean;
+  isMedium: boolean;
+  columns: number;
+}): number | undefined {
+  if (isNarrow) return undefined;
+  if (isMedium) return Math.max(Math.floor(columns * 0.25), 24);
+  return Math.max(Math.floor(columns * 0.3), 30);
+}
+
 export function ProvidersScreen(): ReactElement {
   useScope("providers");
   usePageFooter({ shortcuts: [{ key: "Esc", label: "Back" }, { key: "Enter", label: "Select" }] });
   const { columns, isNarrow, isMedium } = useResponsive();
   const { tokens } = useTheme();
-  const listWidth = isNarrow
-    ? undefined
-    : isMedium
-      ? Math.max(Math.floor(columns * 0.25), 24)
-      : Math.max(Math.floor(columns * 0.3), 30);
+  const listWidth = getListWidth({ isNarrow, isMedium, columns });
 
   const providerQuery = useProviderStatus();
   const deleteCredentials = useDeleteProviderCredentials();

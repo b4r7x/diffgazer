@@ -1,5 +1,5 @@
 import type { InitResponse, SettingsConfig } from "@diffgazer/core/schemas/config";
-import type { SettingsAction } from "../../../config/navigation.js";
+import type { SettingsAction } from "@diffgazer/core/schemas/ui";
 
 export function buildHubValues(
   init: InitResponse | undefined,

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, 
 
 import { useNavigate } from "@tanstack/react-router";
 import { useKey, useFocusZone } from "@diffgazer/keys";
-import { PROVIDER_FILTERS, type ProviderFilter } from "@/features/providers/constants";
+import { PROVIDER_FILTERS, type ProviderFilter } from "@diffgazer/core/providers";
 import type { AIProvider } from "@diffgazer/core/schemas/config";
 
 const PROVIDER_ZONES = ["input", "filters", "list", "buttons"] as const;

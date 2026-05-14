@@ -7,7 +7,7 @@ import type { InputMethod } from "@/types/input-method";
 import { useConfigActions } from "@/app/providers/config-provider";
 import { setConfiguredGuardCache } from "@/lib/config-guard-cache";
 import { useSaveSettings, useSaveConfig } from "@diffgazer/core/api/hooks";
-import { canProceed, type OnboardingStep, type WizardData } from "../types";
+import { canProceed, type OnboardingStep, type WizardData } from "@diffgazer/core/onboarding";
 
 const STEPS: OnboardingStep[] = [
   "storage",

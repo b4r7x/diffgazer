@@ -114,10 +114,6 @@ export function useHistoryScreen({ onOpenReview }: UseHistoryScreenOptions): Use
     setFocusZoneState((z) => nextHistoryZone(z));
   };
 
-  const handleRunActivate = (runId: string) => {
-    onOpenReview(runId);
-  };
-
   const handleIssueClick = () => {
     if (selectedRunId) onOpenReview(selectedRunId);
   };
@@ -142,7 +138,7 @@ export function useHistoryScreen({ onOpenReview }: UseHistoryScreenOptions): Use
     duration,
     hasReviews,
     emptyRunsMessage,
-    handleRunActivate,
+    handleRunActivate: onOpenReview,
     handleIssueClick,
   };
 }

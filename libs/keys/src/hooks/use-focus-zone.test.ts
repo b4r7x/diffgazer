@@ -2,8 +2,6 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { renderHook, render, screen, act, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createElement, useEffect, useRef, useState } from "react";
-import { renderToString } from "react-dom/server";
-import { KeyboardProvider } from "../providers/keyboard-provider";
 import { useFocusZone } from "./use-focus-zone";
 import { useKey } from "./use-key";
 import { fireKey, KeyboardWrapper } from "../testing/test-utils";
@@ -725,26 +723,7 @@ describe("useFocusZone", () => {
   });
 
   describe("tabCycle validation", () => {
-    it("warns during render when tabCycle contains invalid entries", () => {
-      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-
-      function Consumer() {
-        useFocusZone({
-          initial: "a",
-          zones: ["a", "b"],
-          tabCycle: ["a", "ghost" as "a", "b"],
-        });
-        return null;
-      }
-
-      renderToString(createElement(KeyboardProvider, null, createElement(Consumer)));
-
-      expect(warn).toHaveBeenCalledOnce();
-      warn.mockRestore();
-    });
-
-    it("filters tabCycle entries that are not in zones and warns in dev", () => {
-      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    it("filters tabCycle entries that are not in zones", () => {
       const { result } = renderHook(
         () =>
           useFocusZone({
@@ -760,9 +739,6 @@ describe("useFocusZone", () => {
       expect(result.current.zone).toBe("b");
       act(() => fireKey("Tab"));
       expect(result.current.zone).toBe("a");
-
-      expect(warn).toHaveBeenCalled();
-      warn.mockRestore();
     });
 
     it("when current zone is not in tabCycle, Tab moves to first cycle entry and Shift+Tab to last", () => {
@@ -797,7 +773,6 @@ describe("useFocusZone", () => {
 
   describe("imperative setZone", () => {
     it("does not fire lifecycle callbacks when called with a zone not in zones", () => {
-      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
       const onZoneChange = vi.fn();
       const onLeaveZone = vi.fn();
       const onEnterZone = vi.fn();
@@ -819,7 +794,6 @@ describe("useFocusZone", () => {
       expect(onLeaveZone).not.toHaveBeenCalled();
       expect(onEnterZone).not.toHaveBeenCalled();
       expect(result.current.zone).toBe("main");
-      warn.mockRestore();
     });
 
     it("fires lifecycle callbacks for valid setZone", () => {

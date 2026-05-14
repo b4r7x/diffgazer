@@ -11,6 +11,7 @@ import { CodeSnippet } from "./code-snippet.js";
 import { DiffView } from "./diff-view.js";
 import { FixPlanChecklist } from "./fix-plan-checklist.js";
 import { severityVariant } from "../../../theme/severity-variant.js";
+import { formatIssueLineRange } from "./issue-details-helpers.js";
 
 const EMPTY_COPY: Record<
   DetailsEmptyKind,
@@ -38,12 +39,7 @@ export interface IssueDetailsPaneProps {
 
 function IssueHeader({ issue }: { issue: ReviewIssue }) {
   const { tokens } = useTheme();
-  const lineText =
-    issue.line_end != null && issue.line_start != null
-      ? `${issue.line_start}-${issue.line_end}`
-      : issue.line_start != null
-        ? String(issue.line_start)
-        : "?";
+  const lineText = formatIssueLineRange(issue.line_start, issue.line_end);
 
   return (
     <Box flexDirection="column">

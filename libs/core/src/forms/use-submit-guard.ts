@@ -9,14 +9,18 @@ export function useSubmitGuard(): UseSubmitGuardResult {
   const isSubmittingRef = useRef(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const withGuard = <T,>(fn: () => Promise<T>): Promise<T | undefined> => {
-    if (isSubmittingRef.current) return Promise.resolve(undefined);
+  const withGuard = async <T,>(
+    fn: () => Promise<T>,
+  ): Promise<T | undefined> => {
+    if (isSubmittingRef.current) return undefined;
     isSubmittingRef.current = true;
     setIsSubmitting(true);
-    return fn().finally(() => {
+    try {
+      return await fn();
+    } finally {
       isSubmittingRef.current = false;
       setIsSubmitting(false);
-    });
+    }
   };
 
   return { isSubmitting, withGuard };

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Box, Text, useInput } from "ink";
 import type { FixPlanStep } from "@diffgazer/core/schemas/review";
 import { useTheme } from "../../../theme/theme-context.js";
+import type { CliColorTokens } from "../../../theme/palettes.js";
 import { Badge } from "../../../components/ui/badge.js";
 
 export interface FixPlanChecklistProps {
@@ -20,6 +21,26 @@ function riskVariant(risk: string | undefined): "error" | "warning" | "info" {
     default:
       return "info";
   }
+}
+
+function getIndicatorColor(
+  isHighlighted: boolean,
+  isComplete: boolean,
+  tokens: CliColorTokens,
+): string | undefined {
+  if (isHighlighted) return tokens.accent;
+  if (isComplete) return tokens.success;
+  return undefined;
+}
+
+function getActionColor(
+  isHighlighted: boolean,
+  isComplete: boolean,
+  tokens: CliColorTokens,
+): string {
+  if (isHighlighted) return tokens.accent;
+  if (isComplete) return tokens.muted;
+  return tokens.fg;
 }
 
 export function FixPlanChecklist({
@@ -61,27 +82,12 @@ export function FixPlanChecklist({
 
         return (
           <Box key={step.step} gap={1}>
-            <Text
-              color={
-                isHighlighted
-                  ? tokens.accent
-                  : isComplete
-                    ? tokens.success
-                    : undefined
-              }
-              bold={isHighlighted}
-            >
+            <Text color={getIndicatorColor(isHighlighted, isComplete, tokens)} bold={isHighlighted}>
               {indicator}
             </Text>
             <Text color={tokens.muted}>{`${String(step.step)}.`}</Text>
             <Text
-              color={
-                isHighlighted
-                  ? tokens.accent
-                  : isComplete
-                    ? tokens.muted
-                    : tokens.fg
-              }
+              color={getActionColor(isHighlighted, isComplete, tokens)}
               bold={isHighlighted}
               strikethrough={isComplete}
             >

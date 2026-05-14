@@ -3,7 +3,7 @@ import type { ReactElement } from "react";
 import { Box, Text } from "ink";
 import type { AgentExecution } from "@diffgazer/core/schemas/config";
 import { useScope } from "../../../hooks/use-scope.js";
-import { usePageFooter } from "../../../hooks/use-page-footer.js";
+import { usePageFooter } from "@diffgazer/core/footer";
 import { useBackHandler } from "../../../hooks/use-back-handler.js";
 import { useNavigation } from "../../navigation-context.js";
 import { useSettingsZone } from "../../../hooks/use-settings-zone.js";
@@ -65,10 +65,6 @@ export function AgentExecutionScreen(): ReactElement {
     if (!isAgentExecution(value)) return;
     setModeChoice(value);
     setError(null);
-  }
-
-  function handleCancel() {
-    goBack();
   }
 
   function handleSave() {
@@ -137,7 +133,7 @@ export function AgentExecutionScreen(): ReactElement {
               <Box gap={1}>
                 <Button
                   variant="ghost"
-                  onPress={handleCancel}
+                  onPress={goBack}
                   disabled={isSaving}
                   isActive={isButtonActive(0)}
                 >

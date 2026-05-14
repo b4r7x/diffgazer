@@ -3,7 +3,7 @@ import type { ReactElement } from "react";
 import { Box, Text, useInput } from "ink";
 import type { Theme } from "@diffgazer/core/schemas/config";
 import { useScope } from "../../../hooks/use-scope.js";
-import { usePageFooter } from "../../../hooks/use-page-footer.js";
+import { usePageFooter } from "@diffgazer/core/footer";
 import { useBackHandler } from "../../../hooks/use-back-handler.js";
 import { useSettingsZone } from "../../../hooks/use-settings-zone.js";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions.js";

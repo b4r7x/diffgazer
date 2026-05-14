@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 import { Box, Text } from "ink";
 import { useScope } from "../../../hooks/use-scope.js";
-import { usePageFooter } from "../../../hooks/use-page-footer.js";
+import { usePageFooter } from "@diffgazer/core/footer";
 import { useBackHandler } from "../../../hooks/use-back-handler.js";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions.js";
 import { useInit, useSettings, guardQueryState } from "@diffgazer/core/api/hooks";
@@ -9,10 +9,10 @@ import { Panel } from "../../../components/ui/panel.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
 import { Spinner } from "../../../components/ui/spinner.js";
 import { Menu } from "../../../components/ui/menu.js";
-import { SETTINGS_MENU_ITEMS, SETTINGS_SHORTCUTS } from "../../../config/navigation.js";
+import { SETTINGS_MENU_ITEMS, type SettingsAction } from "@diffgazer/core/schemas/ui";
+import { SETTINGS_SHORTCUTS } from "../../../config/navigation.js";
 import { useNavigation } from "../../navigation-context.js";
 import type { Route } from "../../routes.js";
-import type { SettingsAction } from "../../../config/navigation.js";
 import { buildHubValues } from "./hub-screen-values.js";
 
 const SETTINGS_ROUTE_MAP: Record<SettingsAction, Route["screen"]> = {

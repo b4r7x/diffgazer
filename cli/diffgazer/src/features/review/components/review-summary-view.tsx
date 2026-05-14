@@ -2,7 +2,7 @@ import { useState, type ReactElement } from "react";
 import { Box, Text, useInput } from "ink";
 import { useTheme } from "../../../theme/theme-context.js";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions.js";
-import { usePageFooter } from "../../../hooks/use-page-footer.js";
+import { usePageFooter } from "@diffgazer/core/footer";
 import { SectionHeader } from "../../../components/ui/section-header.js";
 import { Button } from "../../../components/ui/button.js";
 import { Callout } from "../../../components/ui/callout.js";

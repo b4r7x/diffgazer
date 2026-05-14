@@ -1,6 +1,6 @@
 import { render, type RenderOptions } from "@testing-library/react";
 import { KeyboardProvider } from "@diffgazer/keys";
-import { FooterProvider } from "@/components/layout";
+import { FooterProvider } from "@diffgazer/core/footer";
 import type { ReactElement } from "react";
 
 export function renderWithProviders(

@@ -7,7 +7,7 @@ import {
   type OnboardingStep,
 } from "@diffgazer/core/onboarding";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions.js";
-import { usePageFooter } from "../../../hooks/use-page-footer.js";
+import { usePageFooter } from "@diffgazer/core/footer";
 import { Button } from "../../../components/ui/button.js";
 import { Spinner } from "../../../components/ui/spinner.js";
 import { Callout } from "../../../components/ui/callout.js";
