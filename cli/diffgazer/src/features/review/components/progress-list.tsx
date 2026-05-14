@@ -1,16 +1,9 @@
 import { Box } from "ink";
+import type { ProgressStepData } from "@diffgazer/core/schemas/ui";
 import { ProgressStep } from "./progress-step.js";
-import type { ProgressStepProps } from "./progress-step.js";
-
-export interface ProgressStepItem {
-  id: string;
-  label: string;
-  status: ProgressStepProps["status"];
-  substeps?: Array<{ label: string; detail?: string }>;
-}
 
 export interface ProgressListProps {
-  steps: ProgressStepItem[];
+  steps: ProgressStepData[];
 }
 
 export function ProgressList({ steps }: ProgressListProps) {
@@ -21,7 +14,7 @@ export function ProgressList({ steps }: ProgressListProps) {
           key={step.id}
           name={step.label}
           status={step.status}
-          substeps={step.substeps?.map((s) => s.detail ? `${s.label}: ${s.detail}` : s.label)}
+          substeps={step.substeps}
         />
       ))}
     </Box>

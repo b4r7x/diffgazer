@@ -2,8 +2,10 @@ import { execa, type ResultPromise } from "execa";
 
 export interface ServerController {
   start: () => void;
-  stop: () => void;
+  stop: () => Promise<void>;
 }
+
+const FORCE_KILL_DELAY_MS = 2000;
 
 export interface ProcessServerConfig {
   command: string;
@@ -92,14 +94,26 @@ export function createProcessServer(
 
   return {
     start,
-    stop: () => {
+    stop: async () => {
       if (!serverProcess) {
         return;
       }
 
-      const process = serverProcess;
+      const child = serverProcess;
       serverProcess = null;
-      process.kill("SIGTERM");
+      child.kill("SIGTERM");
+
+      const forceKillTimer = setTimeout(() => {
+        child.kill("SIGKILL");
+      }, FORCE_KILL_DELAY_MS);
+
+      try {
+        await child;
+      } catch {
+        // Process exits with signal codes throw here; ignore expected shutdown errors.
+      } finally {
+        clearTimeout(forceKillTimer);
+      }
     },
   };
 }

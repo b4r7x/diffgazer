@@ -1,11 +1,20 @@
 import { resolveProjectRoot } from "../paths.js";
 import { type Result, ok, err } from "@diffgazer/core/result";
-import { createError, getErrorMessage } from "@diffgazer/core/errors";
-import type { AIProvider, ProjectInfo, ProviderStatus, SecretsStorage, SettingsConfig, TrustConfig } from "@diffgazer/core/schemas/config";
-import type { SecretsStorageError, SecretsStorageErrorCode, ConfigState, SecretsState, TrustState } from "./types.js";
+import type {
+  AIProvider,
+  ProjectInfo,
+  ProviderStatus,
+  SettingsConfig,
+  TrustConfig,
+} from "@diffgazer/core/schemas/config";
+import type {
+  ConfigState,
+  SecretsState,
+  SecretsStorageError,
+  TrustState,
+} from "./types.js";
 import {
   deleteKeyringSecret,
-  isKeyringAvailable,
   readKeyringSecret,
   writeKeyringSecret,
 } from "./keyring.js";
@@ -14,14 +23,28 @@ import {
   loadSecrets,
   loadTrust,
   persistConfigAsync,
+  persistSecrets,
   persistSecretsAsync,
   persistTrustAsync,
   readOrCreateProjectFile,
   removeSecretsFile,
   syncProvidersWithSecrets,
 } from "./state.js";
-
-const getApiKeyName = (provider: string): string => `api_key_${provider}`;
+import {
+  activeProvider,
+  applyActiveProvider,
+  applyCredentialsWithoutModel,
+  clearProviderCredentials,
+  effectiveStorage,
+  ensureProviderEntry,
+  fileHasSecret,
+  isFileStorage,
+} from "./providers-state.js";
+import {
+  finalizeKeyringDeletions,
+  getApiKeyName,
+  migrateSecretsStorage,
+} from "./secrets-migration.js";
 
 export interface ConfigStore {
   getSettings(): SettingsConfig;
@@ -47,8 +70,20 @@ export function createConfigStore(): ConfigStore {
   configState.providers = syncProvidersWithSecrets(
     configState.providers,
     secretsState,
-    configState.settings.secretsStorage ?? "file",
+    effectiveStorage(configState),
   );
+
+  const persistConfig = (): void => {
+    persistConfigAsync(configState).catch((e) =>
+      console.warn("[config] Failed to persist config:", e),
+    );
+  };
+
+  const persistTrust = (): void => {
+    persistTrustAsync(trustState).catch((e) =>
+      console.warn("[config] Failed to persist trust:", e),
+    );
+  };
 
   const persistFileSecrets = (): void => {
     if (Object.keys(secretsState.providers).length === 0) {
@@ -61,109 +96,12 @@ export function createConfigStore(): ConfigStore {
     );
   };
 
-  const setActiveProvider = (
-    providerId: string,
-    options: {
-      model?: string;
-      hasApiKey?: boolean;
-      preserveModel?: boolean;
-    } = {},
-  ): void => {
-    const { model, hasApiKey, preserveModel = false } = options;
-    configState.providers = configState.providers.map((item) => {
-      if (item.provider !== providerId) {
-        return { ...item, isActive: false };
-      }
-
-      const nextModel = preserveModel && model === undefined ? item.model : model;
-      return {
-        ...item,
-        hasApiKey: hasApiKey ?? item.hasApiKey,
-        isActive: true,
-        model: nextModel,
-      };
-    });
-  };
-
-  const ensureProvider = (providerId: AIProvider): ProviderStatus => {
-    const existing = configState.providers.find(
-      (provider) => provider.provider === providerId,
-    );
-    if (existing) return existing;
-
-    const created: ProviderStatus = {
-      provider: providerId,
-      hasApiKey:
-        (configState.settings.secretsStorage ?? "file") === "file"
-          ? secretsState.providers[providerId] !== undefined
-          : false,
-      isActive: false,
-    };
-
-    configState.providers = [...configState.providers, created];
-    return created;
-  };
-
-  const migrateSecretsStorage = (
-    fromStorage: SecretsStorage,
-    toStorage: SecretsStorage,
-  ): Result<void, SecretsStorageError> => {
-    if (fromStorage === toStorage) return ok(undefined);
-
-    if (fromStorage === "file" && toStorage === "keyring") {
-      if (!isKeyringAvailable()) {
-        return err(
-          createError<SecretsStorageErrorCode>("KEYRING_UNAVAILABLE", "System keyring is not available")
-        );
-      }
-
-      for (const [providerId, apiKey] of Object.entries(secretsState.providers)) {
-        const writeResult = writeKeyringSecret(getApiKeyName(providerId), apiKey);
-        if (!writeResult.ok) return writeResult;
-      }
-
-      secretsState = { providers: {} };
-      try {
-        removeSecretsFile();
-      } catch (error) {
-        console.warn(
-          `[diffgazer] Failed to remove secrets file after migration: ${getErrorMessage(error)}`,
-        );
-      }
-      return ok(undefined);
+  const persistFileSecretsSync = (): void => {
+    if (Object.keys(secretsState.providers).length === 0) {
+      removeSecretsFile();
+      return;
     }
-
-    if (fromStorage === "keyring" && toStorage === "file") {
-      const nextSecrets: Record<string, string> = {};
-      for (const provider of configState.providers) {
-        if (!provider.hasApiKey) continue;
-        const secretResult = readKeyringSecret(getApiKeyName(provider.provider));
-        if (!secretResult.ok) return secretResult;
-        if (secretResult.value === null) {
-          return err(
-            createError<SecretsStorageErrorCode>(
-              "SECRET_NOT_FOUND",
-              `Secret for provider '${provider.provider}' not found in keyring`
-            )
-          );
-        }
-        nextSecrets[provider.provider] = secretResult.value;
-      }
-
-      secretsState = { providers: nextSecrets };
-      persistFileSecrets();
-
-      for (const providerId of Object.keys(nextSecrets)) {
-        const deleteResult = deleteKeyringSecret(getApiKeyName(providerId));
-        if (!deleteResult.ok) {
-          console.warn(
-            `[diffgazer] Failed to delete keyring secret for '${providerId}': ${deleteResult.error.message}`,
-          );
-        }
-      }
-    }
-
-    return ok(undefined);
+    persistSecrets(secretsState);
   };
 
   const getSettings = (): SettingsConfig => ({ ...configState.settings });
@@ -176,44 +114,49 @@ export function createConfigStore(): ConfigStore {
       ...patch,
     };
 
-    const currentStorage = (configState.settings.secretsStorage ?? "file");
+    const currentStorage = effectiveStorage(configState);
     const nextStorage = nextSettings.secretsStorage ?? "file";
 
     if (currentStorage !== nextStorage) {
-      const migrateResult = migrateSecretsStorage(currentStorage, nextStorage);
+      const migrateResult = migrateSecretsStorage(
+        configState,
+        secretsState,
+        currentStorage,
+        nextStorage,
+      );
       if (!migrateResult.ok) return migrateResult;
+      secretsState = migrateResult.value.nextSecrets;
       if (nextStorage === "file") {
+        // Persist the file copy synchronously BEFORE deleting keyring entries.
+        // If we deleted keyring first, a crash before the file write would lose
+        // the secret in both stores. With this order a crash leaves a (stale)
+        // keyring copy that the migration can safely re-read on the next run.
+        persistFileSecretsSync();
         configState.providers = syncProvidersWithSecrets(
           configState.providers,
           secretsState,
           nextStorage,
         );
+        finalizeKeyringDeletions(migrateResult.value.keyringDeletions);
       }
     }
 
     configState.settings = nextSettings;
-
-    persistConfigAsync(configState).catch((e) =>
-      console.warn("[config] Failed to persist config:", e),
-    );
+    persistConfig();
     return ok(getSettings());
   };
 
   const getProviders = (): ProviderStatus[] =>
     configState.providers.map((provider) => ({ ...provider }));
 
-  const getActiveProvider = (): ProviderStatus | null => {
-    const active = configState.providers.find((provider) => provider.isActive);
-    return active ? { ...active } : null;
-  };
+  const getActiveProvider = (): ProviderStatus | null => activeProvider(configState);
 
   const getProviderApiKey = (
-    providerId: string
+    providerId: string,
   ): Result<string | null, SecretsStorageError> => {
-    if ((configState.settings.secretsStorage ?? "file") === "file") {
+    if (isFileStorage(configState)) {
       return ok(secretsState.providers[providerId] ?? null);
     }
-
     return readKeyringSecret(getApiKeyName(providerId));
   };
 
@@ -241,20 +184,14 @@ export function createConfigStore(): ConfigStore {
 
   const saveTrust = (config: TrustConfig): TrustConfig => {
     trustState.projects[config.projectId] = config;
-    persistTrustAsync(trustState).catch((e) =>
-      console.warn("[config] Failed to persist trust:", e),
-    );
+    persistTrust();
     return config;
   };
 
   const removeTrust = (projectId: string): boolean => {
-    const existed = projectId in trustState.projects;
-    if (!existed) return false;
-
+    if (!(projectId in trustState.projects)) return false;
     delete trustState.projects[projectId];
-    persistTrustAsync(trustState).catch((e) =>
-      console.warn("[config] Failed to persist trust:", e),
-    );
+    persistTrust();
     return true;
   };
 
@@ -264,42 +201,34 @@ export function createConfigStore(): ConfigStore {
     model?: string;
   }): Result<ProviderStatus, SecretsStorageError> => {
     const { provider, apiKey, model } = input;
-    const storage = (configState.settings.secretsStorage ?? "file");
 
-    if (storage === "file") {
+    if (isFileStorage(configState)) {
       secretsState.providers[provider] = apiKey;
-      persistSecretsAsync(secretsState).catch((e) =>
-        console.warn("[config] Failed to persist secrets:", e),
-      );
+      persistFileSecrets();
     } else {
       const writeResult = writeKeyringSecret(getApiKeyName(provider), apiKey);
       if (!writeResult.ok) return writeResult;
-      if (provider in secretsState.providers) {
+      if (fileHasSecret(secretsState, provider)) {
         delete secretsState.providers[provider];
         persistFileSecrets();
       }
     }
 
-    ensureProvider(provider);
+    const ensured = ensureProviderEntry(configState.providers, provider, true);
+    configState.providers = ensured.providers;
 
     if (!model) {
-      configState.providers = configState.providers.map((item) => {
-        if (item.provider !== provider) return item;
-        const hasModel = Boolean(item.model);
-        return {
-          ...item,
-          hasApiKey: true,
-          isActive: hasModel ? item.isActive : false,
-        };
-      });
+      configState.providers = applyCredentialsWithoutModel(configState.providers, provider);
     } else {
-      setActiveProvider(provider, { model, hasApiKey: true });
+      configState.providers = applyActiveProvider(configState.providers, {
+        providerId: provider,
+        model,
+        hasApiKey: true,
+      });
     }
 
-    persistConfigAsync(configState).catch((e) =>
-      console.warn("[config] Failed to persist config:", e),
-    );
-    return ok(getActiveProvider() ?? { ...ensureProvider(provider) });
+    persistConfig();
+    return ok(getActiveProvider() ?? { ...ensured.entry });
   };
 
   const activateProvider = (input: {
@@ -313,55 +242,42 @@ export function createConfigStore(): ConfigStore {
     if (!existing) return null;
     if (!model && !existing.model) return null;
 
-    setActiveProvider(provider, { model, preserveModel: true });
+    configState.providers = applyActiveProvider(configState.providers, {
+      providerId: provider,
+      model,
+      preserveModel: true,
+    });
 
-    persistConfigAsync(configState).catch((e) =>
-      console.warn("[config] Failed to persist config:", e),
-    );
+    persistConfig();
     return getActiveProvider();
   };
 
   const deleteProviderCredentials = (
-    providerId: AIProvider
+    providerId: AIProvider,
   ): Result<boolean, SecretsStorageError> => {
     const providerExists = configState.providers.some(
       (item) => item.provider === providerId,
     );
     let hadSecret = false;
 
-    if ((configState.settings.secretsStorage ?? "file") === "file") {
-      hadSecret = providerId in secretsState.providers;
+    if (isFileStorage(configState)) {
+      hadSecret = fileHasSecret(secretsState, providerId);
       if (hadSecret) {
         delete secretsState.providers[providerId];
       }
-
       persistFileSecrets();
     } else {
       const deleteResult = deleteKeyringSecret(getApiKeyName(providerId));
       if (!deleteResult.ok) return deleteResult;
       hadSecret = deleteResult.value;
-      if (providerId in secretsState.providers) {
+      if (fileHasSecret(secretsState, providerId)) {
         delete secretsState.providers[providerId];
         persistFileSecrets();
       }
     }
 
-    configState.providers = configState.providers.map((item) => {
-      if (item.provider !== providerId) {
-        return item;
-      }
-
-      return {
-        ...item,
-        hasApiKey: false,
-        isActive: false,
-        model: undefined,
-      };
-    });
-
-    persistConfigAsync(configState).catch((e) =>
-      console.warn("[config] Failed to persist config:", e),
-    );
+    configState.providers = clearProviderCredentials(configState.providers, providerId);
+    persistConfig();
     return ok(providerExists || hadSecret);
   };
 

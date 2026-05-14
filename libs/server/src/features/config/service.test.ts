@@ -15,7 +15,9 @@ const openRouter = vi.hoisted(() => ({
   getOpenRouterModelsWithCache: vi.fn(),
 }));
 
+// Boundary mock: keyring wraps the OS keychain via @napi-rs/keyring; tests provide canned secret read/write results.
 vi.mock("../../shared/lib/config/keyring.js", () => keyring);
+// Boundary mock: openrouter-models wraps the OpenRouter HTTP API (network boundary); tests provide canned model list responses so service behavior can be exercised offline.
 vi.mock("../../shared/lib/ai/openrouter-models.js", () => openRouter);
 
 let diffgazerHome: string;

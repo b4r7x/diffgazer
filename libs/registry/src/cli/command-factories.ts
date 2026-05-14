@@ -199,6 +199,19 @@ export interface InitCommandConfig<TConfig> {
   configFileName: string;
   loadConfig: (cwd: string) => import("./config.js").ConfigLoadResult<TConfig>;
   detectProject: (cwd: string, opts: SharedCommandOptions) => { display: Array<[label: string, value: string]> };
+  /**
+   * Required preflight: declare every path that `createFiles`, `afterFiles`, and
+   * `writeConfig` may create, write, or touch (directories end with `/`). The
+   * workflow snapshots only those paths to support rollback without scanning
+   * the project tree. The config file path is snapshotted automatically.
+   *
+   * Must include any file mutated as a side effect of the install step (e.g.
+   * `package.json` and the active lockfile) so a `writeConfig` failure after
+   * `afterFiles` does not silently leak package manager mutations to disk.
+   * Making this required (no fallback) is intentional: a forgotten callsite
+   * must be a compile error, not a silent rollback hole.
+   */
+  plannedPaths: (cwd: string, opts: SharedCommandOptions) => string[];
   createFiles: (cwd: string, opts: SharedCommandOptions) => Array<{ action: "created" | "skipped"; path: string }>;
   afterFiles?: (cwd: string) => Promise<void>;
   writeConfig: (cwd: string, opts: SharedCommandOptions) => void | Promise<void>;
@@ -218,6 +231,7 @@ function buildInitAction<TConfig>(config: InitCommandConfig<TConfig>) {
       configFileName: config.configFileName,
       loadConfig: config.loadConfig,
       detectProject: (cwd) => config.detectProject(cwd, opts),
+      plannedPaths: (cwd) => config.plannedPaths(cwd, opts),
       createFiles: (cwd) => config.createFiles(cwd, opts),
       afterFiles: config.afterFiles,
       writeConfig: (cwd) => config.writeConfig(cwd, opts),

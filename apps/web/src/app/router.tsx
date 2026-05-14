@@ -14,9 +14,8 @@ import { ReviewPage } from "./routes/review";
 import {
   requireConfigured,
   requireNotConfigured,
-} from "../lib/config-guards/config-guards";
+} from "../lib/config-guards";
 
-// Lazy-loaded routes (not on critical path)
 const SettingsHubPage = lazy(() =>
   import("./routes/settings").then((m) => ({ default: m.SettingsHubPage })),
 );

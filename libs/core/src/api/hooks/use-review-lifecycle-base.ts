@@ -13,7 +13,6 @@ import type { ReviewMode } from "@diffgazer/core/schemas/review";
 export interface UseReviewLifecycleBaseOptions {
   mode: ReviewMode;
   configLoading: boolean;
-  settingsLoading: boolean;
   isConfigured: boolean;
   reviewId?: string;
   onComplete: () => void;
@@ -48,12 +47,11 @@ export function useReviewLifecycleBase(
 ): UseReviewLifecycleBaseResult {
   const stream = useReviewStream();
   const { isLoading: settingsLoading } = useSettings();
-  const isSettingsLoading = settingsLoading || options.settingsLoading;
 
   const { hasStarted, hasStreamed, setHasStarted, setHasStreamed } = useReviewStart({
     mode: options.mode,
     configLoading: options.configLoading,
-    settingsLoading: isSettingsLoading,
+    settingsLoading,
     isConfigured: options.isConfigured,
     reviewId: options.reviewId,
     currentReviewId: stream.state.reviewId,
@@ -76,7 +74,7 @@ export function useReviewLifecycleBase(
 
   const loadingMessage = getLoadingMessage({
     configLoading: options.configLoading,
-    settingsLoading: isSettingsLoading,
+    settingsLoading,
     isCheckingForChanges,
     isInitializing,
   });

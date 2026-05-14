@@ -1,20 +1,12 @@
 import { IssueListPane } from "@/features/review/components/issue-list-pane";
-import { IssueDetailsPane, type DetailsEmptyKind } from "@/features/review/components/issue-details-pane";
+import { IssueDetailsPane } from "@/features/review/components/issue-details-pane";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
+import { selectDetailsEmptyKind } from "@diffgazer/core/review";
 import { useReviewResultsKeyboard } from "../hooks/use-review-results-keyboard";
 
 interface ReviewResultsViewProps {
   issues: ReviewIssue[];
   reviewId: string | null;
-}
-
-function selectDetailsEmptyKind(
-  issues: ReviewIssue[],
-  filteredIssues: ReviewIssue[],
-): DetailsEmptyKind {
-  if (issues.length === 0) return "no-issues";
-  if (filteredIssues.length === 0) return "filter-empty";
-  return "no-selection";
 }
 
 export function ReviewResultsView({ issues, reviewId }: ReviewResultsViewProps) {
@@ -41,7 +33,7 @@ export function ReviewResultsView({ issues, reviewId }: ReviewResultsViewProps) 
     completedSteps,
     handleToggleStep,
   } = useReviewResultsKeyboard({ issues });
-  const detailsEmptyKind = selectDetailsEmptyKind(issues, filteredIssues);
+  const detailsEmptyKind = selectDetailsEmptyKind(issues.length, filteredIssues.length);
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden px-4 pb-2 font-mono">

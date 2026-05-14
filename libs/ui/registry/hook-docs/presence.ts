@@ -64,7 +64,7 @@ return present ? (
     {
       title: "State machine",
       content:
-        "Uses a three-phase state machine (hidden → open → closing → hidden). Phase transitions happen synchronously during render to ensure the element is in the DOM before any useLayoutEffect runs in child components.",
+        "Uses a three-phase state machine (hidden → open → closing → hidden). Phase transitions happen synchronously during render so the element is in the DOM before any useLayoutEffect runs in child components.",
     },
     {
       title: "CSS animation pattern",

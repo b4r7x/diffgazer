@@ -3,7 +3,7 @@ import { Menu, MenuItem } from "@diffgazer/ui/components/menu";
 import { Panel } from "@diffgazer/ui/components/panel";
 import { useConfigData } from "@/app/providers/config-provider";
 import { useScope, useKey } from "@diffgazer/keys";
-import { usePageFooter } from "@/hooks/use-page-footer";
+import { usePageFooter } from "@diffgazer/core/footer";
 import { useScopedRouteState, clearScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { useTheme } from "@/hooks/use-theme";
 import { useSettings } from "@diffgazer/core/api/hooks";

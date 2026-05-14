@@ -6,6 +6,7 @@ import { usePresence } from "@/hooks/use-presence";
 import { useTypeaheadBuffer } from "@/hooks/use-typeahead-buffer";
 import { useFloatingPosition, type FloatingSide, type FloatingAlign } from "@/hooks/use-floating-position";
 import { composeRefs } from "@/lib/compose-refs";
+import { typeaheadSearch } from "@/lib/typeahead";
 import { cn } from "@/lib/utils";
 import { Portal } from "../shared/portal";
 import { useSelectContext } from "./select-context";
@@ -98,17 +99,15 @@ export function SelectContent({
     const currentIndex = highlighted === null
       ? -1
       : visibleOptions.findIndex(([itemValue]) => itemValue === highlighted);
-    const isCyclingChar = query.length > 1 && query.split("").every((char) => char === query[0]);
-    const search = isCyclingChar ? query[0]! : query;
-    const startIndex = isCyclingChar || query.length === 1 ? currentIndex + 1 : 0;
 
-    for (let offset = 0; offset < visibleOptions.length; offset++) {
-      const index = (startIndex + offset) % visibleOptions.length;
-      const [itemValue, option] = visibleOptions[index]!;
-      if (!option.label.toLowerCase().startsWith(search)) continue;
-      setHighlighted(itemValue);
-      break;
-    }
+    const match = typeaheadSearch({
+      items: visibleOptions,
+      query,
+      currentIndex,
+      getLabel: ([, option]) => option.label,
+    });
+
+    if (match) setHighlighted(match[0]);
   }
 
   function getVisibleEnabledOptionEntries(): Array<[string, SelectOptionMetadata]> {

@@ -462,6 +462,9 @@ describe("Checkbox.Group", () => {
       </Checkbox.Group>
     )
 
+    // Low-level dispatch on purpose: this exercises the "no focused item + highlighted=null" fallback
+    // in useNavigation.getFocusedIndex (third branch returning -1). userEvent.tab() would focus the
+    // first checkbox first, making getFocusedIndex return 0 and ArrowDown advance to banana.
     fireEvent.keyDown(screen.getByRole("group"), { key: "ArrowDown" })
 
     expect(screen.getByRole("checkbox", { name: /apple/i })).toHaveFocus()

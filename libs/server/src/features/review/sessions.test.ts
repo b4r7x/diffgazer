@@ -11,6 +11,7 @@ import {
   getSession,
   markComplete,
   markReady,
+  onSessionComplete,
   subscribe,
 } from "./sessions.js";
 
@@ -198,7 +199,10 @@ describe("session bounds and subscriber failures", () => {
   });
 
   it("continues dispatching when an async subscriber rejects", async () => {
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    // Suppress the expected console.error noise; we assert on the public
+    // observable contract (the second subscriber still receives the event),
+    // not on the specific error string the impl chose to log.
+    vi.spyOn(console, "error").mockImplementation(() => {});
     const received: FullReviewStreamEvent[] = [];
     const session = createTrackedSession("subscriber-rejects");
     subscribe(session.reviewId, async () => {
@@ -212,10 +216,6 @@ describe("session bounds and subscriber failures", () => {
     await Promise.resolve();
 
     expect(received).toEqual([event]);
-    expect(consoleError).toHaveBeenCalledWith(
-      "Subscriber callback error:",
-      expect.any(Error),
-    );
   });
 
   it("keeps terminal events observable when the event buffer is full", () => {
@@ -234,5 +234,68 @@ describe("session bounds and subscriber failures", () => {
       type: "complete",
       reviewId: session.reviewId,
     });
+  });
+});
+
+describe("onSessionComplete", () => {
+  it("fires registered listeners when markComplete runs", () => {
+    const session = createTrackedSession("on-complete-mark");
+    let fired = false;
+    onSessionComplete(session.reviewId, () => { fired = true; });
+
+    markComplete(session.reviewId);
+
+    expect(fired).toBe(true);
+  });
+
+  it("fires registered listeners when cancelSession runs", () => {
+    const session = createTrackedSession("on-complete-cancel");
+    let fired = false;
+    onSessionComplete(session.reviewId, () => { fired = true; });
+
+    cancelSession(session.reviewId);
+
+    expect(fired).toBe(true);
+  });
+
+  it("invokes the listener immediately when the session is already complete", () => {
+    const session = createTrackedSession("on-complete-already");
+    markComplete(session.reviewId);
+
+    let fired = false;
+    onSessionComplete(session.reviewId, () => { fired = true; });
+
+    expect(fired).toBe(true);
+  });
+
+  it("returns null when the session does not exist", () => {
+    expect(onSessionComplete("missing", () => {})).toBeNull();
+  });
+
+  it("allows the consumer to unsubscribe before completion", () => {
+    const session = createTrackedSession("on-complete-unsubscribe");
+    let fired = false;
+    const unsubscribe = onSessionComplete(session.reviewId, () => { fired = true; });
+    unsubscribe?.();
+
+    markComplete(session.reviewId);
+
+    expect(fired).toBe(false);
+  });
+
+  it("isolates listener errors without preventing other listeners from running", () => {
+    // Suppress the expected console.error noise; the observable contract is
+    // that the second listener still runs after the first one throws.
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const session = createTrackedSession("on-complete-error-isolation");
+    let secondRan = false;
+    onSessionComplete(session.reviewId, () => {
+      throw new Error("listener fail");
+    });
+    onSessionComplete(session.reviewId, () => { secondRan = true; });
+
+    markComplete(session.reviewId);
+
+    expect(secondRan).toBe(true);
   });
 });

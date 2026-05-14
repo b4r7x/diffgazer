@@ -12,21 +12,26 @@ const keyring = vi.hoisted(() => ({
   writeKeyringSecret: vi.fn(),
 }));
 
+// Boundary mock: keyring wraps the OS keychain via @napi-rs/keyring; tests provide canned secret read/write results.
 vi.mock("../config/keyring.js", () => keyring);
 
+// Boundary mock: `ai` is the Vercel AI SDK external HTTP client; tests provide canned generateObject/streamText responses.
 vi.mock("ai", () => ({
   generateObject: vi.fn(),
   streamText: vi.fn(),
 }));
 
+// Boundary mock: @ai-sdk/google is the Google Generative AI external HTTP client; tests provide a no-op model factory.
 vi.mock("@ai-sdk/google", () => ({
   createGoogleGenerativeAI: vi.fn(() => vi.fn(() => ({}))),
 }));
 
+// Boundary mock: zhipu-ai-provider is the Zhipu external HTTP client; tests provide a no-op model factory.
 vi.mock("zhipu-ai-provider", () => ({
   createZhipu: vi.fn(() => vi.fn(() => ({}))),
 }));
 
+// Boundary mock: @openrouter/ai-sdk-provider is the OpenRouter external HTTP client; tests provide a no-op chat factory.
 vi.mock("@openrouter/ai-sdk-provider", () => ({
   createOpenRouter: vi.fn(() => ({
     chat: vi.fn(() => ({

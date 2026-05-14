@@ -1,13 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import type { ContextInfo } from "@diffgazer/core/schemas/ui";
+import type { ContextInfo, MenuAction } from "@diffgazer/core/schemas/ui";
 import type { Shortcut } from "@diffgazer/core/schemas/ui";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
 import { useApi, useCreateReview } from "@diffgazer/core/api/hooks";
+import { deriveTrustStatus, isReviewStartAction } from "@diffgazer/core/navigation";
 import { MAIN_MENU_SHORTCUTS, MENU_ITEMS } from "@/config/navigation";
 import { useKey, useScope } from "@diffgazer/keys";
 import { useScopedRouteState, clearScopedRouteState } from "@/hooks/use-scoped-route-state";
-import { usePageFooter } from "@/hooks/use-page-footer";
+import { usePageFooter } from "@diffgazer/core/footer";
 import { ContextSidebar } from "@/features/home/components/context-sidebar";
 import { HomeMenu } from "@/features/home/components/home-menu";
 import { useConfigData } from "@/app/providers/config-provider";
@@ -20,12 +21,12 @@ type RouteConfig = { to: string; search?: Record<string, string> };
 const MAIN_MENU_ITEMS = MENU_ITEMS.filter((item) => item.id !== "help");
 const MAIN_MENU_ITEM_IDS = new Set<string>(MAIN_MENU_ITEMS.map((item) => item.id));
 
-const REVIEW_MODES: Record<string, ReviewMode> = {
+const REVIEW_MODES: Partial<Record<MenuAction, ReviewMode>> = {
   "review-unstaged": "unstaged",
   "review-staged": "staged",
 };
 
-const MENU_ROUTES: Record<string, RouteConfig> = {
+const MENU_ROUTES: Partial<Record<MenuAction, RouteConfig>> = {
   history: { to: "/history" },
   settings: { to: "/settings" },
   help: { to: "/help" },
@@ -46,20 +47,14 @@ export function HomePage() {
   const createReview = useCreateReview();
   const [isStartingReview, setIsStartingReview] = useState(false);
 
-  const isTrusted = Boolean(trust?.capabilities.readFiles);
+  const { isTrusted, needsTrust } = deriveTrustStatus({ trust, projectId, repoRoot });
   const hasLastReview = reviews.length > 0;
 
-  // Show error toast for invalid review ID in search params (once only)
-  const errorShownRef = useRef(false);
   useEffect(() => {
     if (search.error !== "invalid-review-id") return;
-    if (errorShownRef.current) return;
-    errorShownRef.current = true;
     toast.error("Invalid Review ID", { message: "The review ID format is invalid." });
     navigate({ to: "/", replace: true });
   }, [search.error, navigate]);
-
-  const needsTrust = Boolean(projectId && repoRoot && trust === null);
 
   const mostRecentReview = reviews[0];
   const context: ContextInfo = {
@@ -130,29 +125,31 @@ export function HomePage() {
   };
 
   const handleActivate = (id: string) => {
-    if (id === "quit") {
+    if (!MAIN_MENU_ITEM_IDS.has(id) && id !== "help") return;
+    const action = id as MenuAction;
+
+    if (action === "quit") {
       void handleQuit();
       return;
     }
 
-    const reviewActions = ["review-unstaged", "review-staged", "review-files"];
-    if (reviewActions.includes(id) && !isTrusted) {
+    if (isReviewStartAction(action) && !isTrusted) {
       toast.error("Directory Not Trusted", { message: "Grant permissions in Settings → Trust & Permissions first." });
       return;
     }
 
-    const reviewMode = REVIEW_MODES[id];
+    const reviewMode = REVIEW_MODES[action];
     if (reviewMode) {
       void startReview(reviewMode);
       return;
     }
 
-    if (id === "resume-review") {
+    if (action === "resume-review") {
       void resumeReview();
       return;
     }
 
-    const route = MENU_ROUTES[id];
+    const route = MENU_ROUTES[action];
     if (route) {
       clearScopedRouteState(route.to, "highlighted");
       navigate({ to: route.to, search: route.search });

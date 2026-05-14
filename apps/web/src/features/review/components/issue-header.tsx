@@ -1,4 +1,4 @@
-import { cn } from "@diffgazer/core/cn";
+import { cn } from "@diffgazer/ui/lib/utils";
 import type { ReviewSeverity } from "@diffgazer/core/schemas/review";
 import { SEVERITY_CONFIG } from "@/components/ui/severity/constants";
 
@@ -11,7 +11,7 @@ export interface IssueHeaderProps {
 }
 
 export function IssueHeader({ title, severity, file, line, className }: IssueHeaderProps) {
-  const severityColor = SEVERITY_CONFIG[severity]?.color ?? "text-tui-muted";
+  const { color: severityColor } = SEVERITY_CONFIG[severity];
 
   return (
     <div className={cn("mb-6", className)}>

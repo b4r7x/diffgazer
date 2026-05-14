@@ -2,7 +2,47 @@ import { existsSync, mkdirSync } from "node:fs";
 import { detectProject } from "../utils/detect.js";
 import { createInitCommand, writeFileSafe, installDepsWithSpinner, heading, warn, REGISTRY_ORIGIN } from "@diffgazer/registry/cli";
 import { ctx, getRegistry, VERSION } from "../context.js";
-import { resolveInstallPath, resolveProjectPath } from "../utils/paths.js";
+import { assertInsideProject, resolveInstallPath, resolveProjectPath } from "../utils/paths.js";
+
+/**
+ * Lockfile names tracked across the package managers dgadd supports. Every name
+ * here is declared as a planned path so that if a `pnpm/yarn/npm/bun install`
+ * during init creates or mutates one, a later `writeConfig` failure rolls it
+ * back to its pre-init state (either restored content or removed if freshly
+ * created). Keep in sync with the lockfile table in
+ * `@diffgazer/registry/cli` `detect.ts`.
+ */
+export const KNOWN_LOCKFILES = [
+  "pnpm-lock.yaml",
+  "yarn.lock",
+  "bun.lockb",
+  "bun.lock",
+  "package-lock.json",
+] as const;
+
+/**
+ * Compute every path that init may create, write, or touch — including the
+ * package manager mutation surfaces (`package.json` + the configured lockfile)
+ * so a `writeConfig` failure after `afterFiles` rolls them back.
+ *
+ * Exported so a behavior test can lock in the install-side-effect rollback
+ * contract end-to-end alongside the workflow.
+ */
+export function buildInitPlannedPaths(
+  cwd: string,
+  opts: { componentsDir?: unknown; [key: string]: unknown },
+): string[] {
+  const { componentsDir, libDir, stylesDir, hooksDir } = derivePaths(cwd, String(opts.componentsDir));
+  return [
+    `${componentsDir}/`,
+    `${hooksDir}/`,
+    `${libDir}/utils.ts`,
+    `${stylesDir}/theme.css`,
+    `${stylesDir}/styles.css`,
+    "package.json",
+    ...KNOWN_LOCKFILES,
+  ];
+}
 
 type FileResult = { action: "created" | "skipped"; path: string };
 
@@ -82,10 +122,10 @@ export const initCommand = createInitCommand({
   detectProject: (cwd, opts) => {
     const { project, componentsDir, libDir, stylesDir, hooksDir } = derivePaths(cwd, String(opts.componentsDir));
 
-    resolveProjectPath(cwd, componentsDir);
-    resolveProjectPath(cwd, libDir);
-    resolveProjectPath(cwd, stylesDir);
-    resolveProjectPath(cwd, hooksDir);
+    assertInsideProject(cwd, componentsDir);
+    assertInsideProject(cwd, libDir);
+    assertInsideProject(cwd, stylesDir);
+    assertInsideProject(cwd, hooksDir);
 
     if (!project.hasPathAlias && !opts.allowMissingAlias) {
       throw new Error(
@@ -105,6 +145,7 @@ export const initCommand = createInitCommand({
       ],
     };
   },
+  plannedPaths: (cwd, opts) => buildInitPlannedPaths(cwd, opts),
   createFiles: (cwd, opts) => {
     const { componentsDir, libDir, stylesDir, hooksDir } = derivePaths(cwd, String(opts.componentsDir));
     const registry = getRegistry();

@@ -1,4 +1,4 @@
-import { cn } from "@diffgazer/core/cn";
+import { cn } from "@diffgazer/ui/lib/utils";
 import type { KeyboardEvent, Ref } from "react";
 import type { ReviewSeverity } from "@diffgazer/core/schemas/review";
 import { type UISeverityFilter, SEVERITY_ORDER } from "@diffgazer/core/schemas/ui";

@@ -14,7 +14,7 @@ function toHookDirName(name: string): string {
 }
 
 const loadHookDoc = createHookDocLoader(
-  resolve(ROOT, "registry/hook-docs"),
+  resolve(ROOT, "docs/hook-docs"),
   toHookDirName,
 )
 

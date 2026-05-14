@@ -6,7 +6,7 @@ import {
   EmptyStateMessage,
 } from "@/components/ui/empty-state";
 import { SectionHeader } from "@/components/ui/section-header/section-header";
-import { cn } from "@diffgazer/core/cn";
+import { cn } from "@diffgazer/ui/lib/utils";
 
 type NotFoundVariant = "docs" | "global";
 

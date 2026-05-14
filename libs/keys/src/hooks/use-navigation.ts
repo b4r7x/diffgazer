@@ -6,14 +6,14 @@ import {
   type RefObject,
   type KeyboardEvent,
 } from "react";
-import { resolveDirectionKeys, dispatchNavigationKey } from "./internal/navigation-dispatch.js";
-import { containsActiveElement } from "../utils/focusable.js";
+import { resolveDirectionKeys, dispatchNavigationKey } from "../core/navigation-dispatch.js";
+import { containsActiveElement } from "../dom/focusable.js";
 import {
   getFocusedNavigationValue,
   getNavigationItems,
   type NavigationItemType,
-} from "../utils/navigation-items.js";
-import { isEditableElement } from "../utils/keyboard-utils.js";
+} from "../dom/navigation-items.js";
+import { isEditableElement } from "../dom/keyboard-utils.js";
 
 export type NavigationRole = NavigationItemType;
 
@@ -223,6 +223,8 @@ export function useNavigation(options: UseNavigationOptions): UseNavigationRetur
       || (key === " " && handlesSpace);
     if (!isMoveKey && !isSpecialKey) return;
 
+    const elements = getElements();
+
     // Editable target guard: when an editable element bubbles a key into a wrapper
     // that ALSO owns the navigation container, let the native control handle the key.
     // We only skip when:
@@ -231,7 +233,6 @@ export function useNavigation(options: UseNavigationOptions): UseNavigationRetur
     //   3) currentTarget is an ancestor of the items (natural bubble case),
     //      so the user did not explicitly forward the event from the editable.
     if (isEditableElement(event.target)) {
-      const elements = getElements();
       const target = event.target as HTMLElement;
       const isOwnItem = elements.some((el) => el === target || el.contains(target));
       const currentTarget = event.currentTarget;
@@ -249,7 +250,7 @@ export function useNavigation(options: UseNavigationOptions): UseNavigationRetur
       focusIndex,
       handleSelect: handlesSpace ? (e) => handleSelect(e) : undefined,
       handleEnter: handlesEnter ? (e) => handleEnter(e) : undefined,
-      total: getElements().length,
+      total: elements.length,
       nativeEvent: event.nativeEvent,
     });
   }, [

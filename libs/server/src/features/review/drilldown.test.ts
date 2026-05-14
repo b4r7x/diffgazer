@@ -13,6 +13,7 @@ import { parseDiff } from "../../shared/lib/diff/parser.js";
 import type { DrilldownAIResponse } from "./schemas.js";
 import type { z } from "zod";
 
+// Boundary mock: git/service wraps the `git` CLI subprocess (external-process boundary); tests provide canned diff/blame/file-lines responses so drilldown behavior can be exercised without a real repository.
 vi.mock("../../shared/lib/git/service.js", () => ({
   createGitService: vi.fn(),
 }));

@@ -1,6 +1,4 @@
-import { createGitDiffError } from "../../shared/lib/git/errors.js";
 import type { AIClient } from "../../shared/lib/ai/types.js";
-import { parseDiff } from "../../shared/lib/diff/parser.js";
 import type { ParsedDiff } from "../../shared/lib/diff/types.js";
 import { saveReview } from "../../shared/lib/storage/reviews.js";
 import {
@@ -10,18 +8,13 @@ import {
 } from "@diffgazer/core/schemas/review";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import type {
-  ReviewIssue,
   ReviewResult,
-  ReviewSeverity,
 } from "@diffgazer/core/schemas/review";
 import type {
-  StepId,
-  ReviewStartedEvent,
   EnrichProgressEvent,
 } from "@diffgazer/core/schemas/events";
 import { getSettings } from "../../shared/lib/config/store.js";
 import { getProfile } from "../../shared/lib/review/profiles.js";
-import { severityRank } from "@diffgazer/core/schemas/ui";
 import { orchestrateReview } from "../../shared/lib/review/orchestrate.js";
 import { buildProjectContextSnapshot } from "./context.js";
 import { enrichIssues } from "./enrichment.js";
@@ -35,148 +28,8 @@ import {
 } from "./types.js";
 import { type Result, ok, err } from "@diffgazer/core/result";
 import { getErrorMessage } from "@diffgazer/core/errors";
-
-const MAX_DIFF_SIZE_BYTES = 524288; // 512KB
-
-export function generateExecutiveSummary(
-  issues: ReviewIssue[],
-  orchestrationSummary: string,
-): string {
-  const severityCounts: Record<ReviewSeverity, number> = {
-    blocker: 0,
-    high: 0,
-    medium: 0,
-    low: 0,
-    nit: 0,
-  };
-  for (const issue of issues) {
-    severityCounts[issue.severity]++;
-  }
-
-  const uniqueFiles = new Set(issues.map((i) => i.file)).size;
-
-  const severityLines = Object.entries(severityCounts)
-    .sort(
-      ([a], [b]) =>
-        severityRank(a as ReviewSeverity) - severityRank(b as ReviewSeverity),
-    )
-    .map(([severity, count]) => `- ${severity}: ${count}`)
-    .join("\n");
-
-  const summaryParts = [
-    `Found ${issues.length} issue${issues.length !== 1 ? "s" : ""} across ${uniqueFiles} file${uniqueFiles !== 1 ? "s" : ""}.`,
-    "",
-    "Severity breakdown:",
-    severityLines,
-  ];
-
-  if (orchestrationSummary) {
-    summaryParts.push("", orchestrationSummary);
-  }
-
-  return summaryParts.join("\n");
-}
-
-export function generateReport(
-  issues: ReviewIssue[],
-  orchestrationSummary: string,
-): ReviewResult {
-  const summary = generateExecutiveSummary(issues, orchestrationSummary);
-  return { summary, issues };
-}
-
-export function filterDiffByFiles(
-  parsed: ParsedDiff,
-  files: string[],
-): ParsedDiff {
-  if (files.length === 0) {
-    return parsed;
-  }
-
-  const normalizedFiles = new Set(files.map((f) => f.replace(/^\.\//, "")));
-
-  const filteredFiles = parsed.files.filter((file) => {
-    const normalizedPath = file.filePath.replace(/^\.\//, "");
-    return normalizedFiles.has(normalizedPath);
-  });
-
-  const totalStats = filteredFiles.reduce(
-    (acc, file) => ({
-      filesChanged: acc.filesChanged + 1,
-      additions: acc.additions + file.stats.additions,
-      deletions: acc.deletions + file.stats.deletions,
-      totalSizeBytes: acc.totalSizeBytes + file.stats.sizeBytes,
-    }),
-    { filesChanged: 0, additions: 0, deletions: 0, totalSizeBytes: 0 },
-  );
-
-  return { files: filteredFiles, totalStats };
-}
-
-export async function resolveGitDiff(params: {
-  gitService: ReturnType<typeof createGitService>;
-  mode: ReviewMode;
-  files?: string[];
-  emit: EmitFn;
-  reviewId: string;
-}): Promise<Result<ParsedDiff, ReviewAbort>> {
-  const { gitService, mode, files, emit, reviewId } = params;
-
-  await emit(stepStart("diff"));
-
-  let diff: string;
-  try {
-    diff = await gitService.getDiff(mode);
-  } catch (error: unknown) {
-    return err(reviewAbort(
-      createGitDiffError(error).message,
-      ErrorCode.GIT_NOT_FOUND,
-      "diff",
-    ));
-  }
-
-  if (!diff.trim()) {
-    const errorMessage =
-      mode === "staged"
-        ? "No staged changes found. Use 'git add' to stage files, or review unstaged changes instead."
-        : "No unstaged changes found. Make some edits first, or review staged changes instead.";
-    return err(reviewAbort(errorMessage, "NO_DIFF", "diff"));
-  }
-
-  let parsed = parseDiff(diff);
-
-  if (files && files.length > 0) {
-    parsed = filterDiffByFiles(parsed, files);
-    if (parsed.files.length === 0) {
-      return err(reviewAbort(
-        `None of the specified files have ${mode} changes`,
-        "NO_DIFF",
-        "diff",
-      ));
-    }
-  }
-
-  if (parsed.totalStats.totalSizeBytes > MAX_DIFF_SIZE_BYTES) {
-    const sizeMB = (parsed.totalStats.totalSizeBytes / 1024 / 1024).toFixed(2);
-    const maxMB = (MAX_DIFF_SIZE_BYTES / 1024 / 1024).toFixed(2);
-    return err(reviewAbort(
-      `Diff too large (${sizeMB}MB exceeds ${maxMB}MB limit). Try reviewing fewer files or use file filtering.`,
-      ErrorCode.VALIDATION_ERROR,
-      "diff",
-    ));
-  }
-
-  await emit(stepComplete("diff"));
-
-  await emit({
-    type: "review_started",
-    reviewId,
-    filesTotal: parsed.files.length,
-    timestamp: new Date().toISOString(),
-  } satisfies ReviewStartedEvent);
-
-  return ok(parsed);
-}
+import { stepStart, stepComplete } from "./step-events.js";
+import { generateReport } from "./summary.js";
 
 export async function resolveReviewConfig(params: {
   lensIds?: LensId[];
@@ -311,20 +164,4 @@ export async function finalizeReview(params: {
   }
 
   return ok(finalResult);
-}
-
-function stepStart(step: StepId) {
-  return {
-    type: "step_start" as const,
-    step,
-    timestamp: new Date().toISOString(),
-  };
-}
-
-function stepComplete(step: StepId) {
-  return {
-    type: "step_complete" as const,
-    step,
-    timestamp: new Date().toISOString(),
-  };
 }

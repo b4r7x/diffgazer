@@ -8,12 +8,9 @@ import {
   DialogFooter,
   DialogClose,
 } from "@diffgazer/ui/components/dialog";
-import {
-  GEMINI_MODEL_INFO,
-  GLM_MODEL_INFO,
-  type AIProvider,
-} from "@diffgazer/core/schemas/config";
+import { type AIProvider } from "@diffgazer/core/schemas/config";
 import { OPENROUTER_PROVIDER_ID } from "@diffgazer/core/schemas/config";
+import { getStaticModelsForProvider } from "@diffgazer/core/providers";
 import { useModelFilter } from "../../hooks/use-model-filter";
 import { useOpenRouterModels } from "@/hooks/use-openrouter-models";
 import { useModelDialogKeyboard } from "../../hooks/use-model-dialog-keyboard";
@@ -64,19 +61,10 @@ export function ModelSelectDialog({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const listContainerRef = useRef<HTMLDivElement>(null);
 
-  const models = (() => {
-    switch (provider) {
-      case "gemini":
-        return Object.values(GEMINI_MODEL_INFO);
-      case "zai":
-      case "zai-coding":
-        return Object.values(GLM_MODEL_INFO);
-      case OPENROUTER_PROVIDER_ID:
-        return openRouter.models;
-      default:
-        return [];
-    }
-  })();
+  const models =
+    provider === OPENROUTER_PROVIDER_ID
+      ? openRouter.models
+      : getStaticModelsForProvider(provider);
 
   const {
     searchQuery,

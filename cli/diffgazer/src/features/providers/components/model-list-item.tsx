@@ -1,10 +1,10 @@
 import { Box, Text } from "ink";
+import type { ModelInfo } from "@diffgazer/core/schemas/config";
 import { useTheme } from "../../../theme/theme-context.js";
 import { Badge } from "../../../components/ui/badge.js";
-import type { DisplayModel } from "./model-select-helpers.js";
 
 interface ModelListItemProps {
-  model: DisplayModel;
+  model: ModelInfo;
   isHighlighted: boolean;
   isSelected: boolean;
   maxWidth: number;

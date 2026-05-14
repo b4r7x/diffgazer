@@ -16,13 +16,13 @@ export function StorageSelector({
     <RadioGroup value={value} onChange={onChange} isActive={isActive}>
       <RadioGroup.Item
         value="file"
-        label="File"
-        description="Store secrets in ~/.diffgazer/config.json"
+        label="File Storage (Local)"
+        description="Store secrets in an encrypted file on your filesystem. Simple and portable."
       />
       <RadioGroup.Item
         value="keyring"
-        label="Keyring"
-        description="Store secrets in OS keyring (macOS Keychain, etc.)"
+        label="System Keyring"
+        description="Use your operating system's secure keychain. Better security, system-integrated."
       />
     </RadioGroup>
   );

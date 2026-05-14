@@ -31,6 +31,9 @@ export function useReviewStart(options: UseReviewStartOptions): UseReviewStartRe
   const onNotFoundRef = useRef(options.onNotFoundInSession);
   const onStaleRef = useRef(options.onStaleSession);
   const currentReviewIdRef = useRef(options.currentReviewId);
+  // Stable-ref escape hatch: refs are read ONLY inside the effect and async
+  // continuation — never during render — so mid-render writes are safe under
+  // concurrent rendering. See AGENTS.md react-useref rules.
   resumeRef.current = options.resume;
   onNotFoundRef.current = options.onNotFoundInSession;
   onStaleRef.current = options.onStaleSession;

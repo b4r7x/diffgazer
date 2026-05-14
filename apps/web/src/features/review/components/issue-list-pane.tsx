@@ -1,5 +1,5 @@
 import type { KeyboardEvent, Ref } from "react";
-import { cn } from "@diffgazer/core/cn";
+import { cn } from "@diffgazer/ui/lib/utils";
 import { SeverityFilterGroup, type SeverityFilter } from "./severity-filter-group";
 import { calculateSeverityCounts } from "@diffgazer/core/schemas/ui";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
@@ -108,7 +108,7 @@ export function IssueListPane({
           className="space-y-1"
         >
           {issues.map((issue) => {
-            const config = SEVERITY_CONFIG[issue.severity] ?? SEVERITY_CONFIG.medium;
+            const config = SEVERITY_CONFIG[issue.severity];
             return (
               <NavigationList.Item
                 key={issue.id}

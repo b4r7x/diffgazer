@@ -4,10 +4,10 @@ import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import type { Shortcut } from "@diffgazer/core/schemas/ui";
 import { SEVERITY_ORDER } from "@diffgazer/core/schemas/ui";
 import { findNavigationItemByValue, getNavigationItems, useFocusZone, useKey, useScopedNavigation } from "@diffgazer/keys";
-import { usePageFooter } from "@/hooks/use-page-footer";
-import { useSeverityFilter } from "./use-severity-filter.js";
-import { useIssueSelection } from "./use-issue-selection.js";
-import { useIssueDetailsTabs } from "./use-issue-details-tabs.js";
+import { usePageFooter } from "@diffgazer/core/footer";
+import { useSeverityFilter } from "./use-severity-filter";
+import { useIssueSelection } from "./use-issue-selection";
+import { useIssueDetailsTabs } from "./use-issue-details-tabs";
 
 type FocusZone = "filters" | "list" | "details";
 

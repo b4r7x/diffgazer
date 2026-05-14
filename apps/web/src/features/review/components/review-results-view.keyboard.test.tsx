@@ -193,7 +193,14 @@ describe("ReviewResultsView keyboard regression", () => {
   it("scrolls issue details with up and down arrows after moving focus into details", async () => {
     const user = userEvent.setup();
     const originalScrollByDescriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollBy");
-    const scrollBy = vi.fn();
+    const scrollOptions: ScrollToOptions[] = [];
+    // Patch `scrollBy` (not `scrollIntoView`): the public keyboard contract is
+    // "advance one viewport per ArrowDown / ArrowUp", which the component
+    // implements via scrollBy. Coupling the test to scrollBy locks in that
+    // contract and would catch a regression to per-element scrollIntoView.
+    const scrollBy = vi.fn((options: ScrollToOptions) => {
+      scrollOptions.push(options);
+    });
     Object.defineProperty(HTMLElement.prototype, "scrollBy", {
       configurable: true,
       value: scrollBy,
@@ -212,10 +219,10 @@ describe("ReviewResultsView keyboard regression", () => {
       await user.keyboard("{ArrowDown}");
       await user.keyboard("{ArrowUp}");
 
-      // jsdom has no scroll layout; mock verifies direction intent
-      const [downScroll, upScroll] = scrollBy.mock.calls.map(([options]) => options as ScrollToOptions);
-      expect(downScroll?.top).toBeGreaterThan(0);
-      expect(upScroll?.top).toBeLessThan(0);
+      // jsdom has no scroll layout; capture scroll intent via mockImplementation
+      expect(scrollOptions).toHaveLength(2);
+      expect(scrollOptions[0]?.top).toBeGreaterThan(0);
+      expect(scrollOptions[1]?.top).toBeLessThan(0);
     } finally {
       if (originalScrollByDescriptor) {
         Object.defineProperty(HTMLElement.prototype, "scrollBy", originalScrollByDescriptor);

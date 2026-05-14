@@ -1,7 +1,7 @@
 import type { SeverityCounts } from '@diffgazer/core/schemas/ui';
 import { SEVERITY_ORDER, SEVERITY_LABELS } from '@diffgazer/core/schemas/ui';
 import { SeverityBar } from './severity-bar';
-import { cn } from '@diffgazer/core/cn';
+import { cn } from '@diffgazer/ui/lib/utils';
 
 export interface SeverityBreakdownProps {
   counts: SeverityCounts;

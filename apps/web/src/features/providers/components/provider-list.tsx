@@ -4,7 +4,7 @@ import { EmptyState } from '@diffgazer/ui/components/empty-state';
 import { SearchInput } from '@diffgazer/ui/components/search-input';
 import { SectionHeader } from '@diffgazer/ui/components/section-header';
 import { ToggleGroup, ToggleGroupItem } from "@diffgazer/ui/components/toggle-group";
-import { cn } from "@diffgazer/core/cn";
+import { cn } from "@diffgazer/ui/lib/utils";
 import { getDisplayStatusBadge } from '@diffgazer/core/providers';
 import { PROVIDER_CAPABILITIES } from '@diffgazer/core/schemas/config';
 import { PROVIDER_FILTER_LABELS, type ProviderFilter } from '@/features/providers/constants';

@@ -6,8 +6,8 @@ import {
   calculateSeverityCounts,
 } from "@diffgazer/core/schemas/ui";
 import { useTheme } from "../../../theme/theme-context.js";
-import { ScrollArea } from "../../../components/ui/scroll-area.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
+import { getVisibleSliceOffset } from "../../../lib/visible-slice-offset.js";
 import { IssuePreviewItem } from "./issue-preview-item.js";
 import { SeverityFilterGroup } from "./severity-filter-group.js";
 
@@ -50,17 +50,14 @@ export function IssueListPane({
   useInput(
     (input, key) => {
       if (subZone === "filter") {
-        // Down arrow or j moves focus from filter to issue list
         if (key.downArrow || input === "j") {
           setSubZone("issues");
         }
-        // Left/right/enter/space handled by SeverityFilterGroup
+        // Left/right/enter/space handled by SeverityFilterGroup.
         return;
       }
 
-      // subZone === "issues"
       if (issues.length === 0) {
-        // Allow navigating up to filter even with no issues
         if (key.upArrow || input === "k") {
           setSubZone("filter");
         }
@@ -119,6 +116,11 @@ export function IssueListPane({
     );
   }
 
+  const sliceOffset = getVisibleSliceOffset(highlightedIndex, issues.length, height);
+  const visibleIssues = issues.slice(sliceOffset, sliceOffset + height);
+  const canScrollUp = sliceOffset > 0;
+  const canScrollDown = sliceOffset + height < issues.length;
+
   return (
     <Box flexDirection="column">
       <SectionHeader bordered>
@@ -132,21 +134,30 @@ export function IssueListPane({
           isActive={isActive && subZone === "filter"}
         />
       </Box>
-      <ScrollArea height={height} isActive={false}>
-        {issues.map((issue, index) => (
-          <Box key={issue.id}>
-            <Text color={selectedId === issue.id ? tokens.accent : tokens.muted}>
-              {selectedId === issue.id ? "\u2502 " : "  "}
-            </Text>
-            <IssuePreviewItem
-              severity={issue.severity}
-              filePath={issue.file}
-              title={issue.title}
-              isHighlighted={isActive && subZone === "issues" && index === highlightedIndex}
-            />
-          </Box>
-        ))}
-      </ScrollArea>
+      <Box flexDirection="column">
+        {canScrollUp ? <Text color={tokens.muted}>{"\u25b2"}</Text> : null}
+        <Box flexDirection="column" height={height} overflow="hidden">
+          {visibleIssues.map((issue, idx) => {
+            const absoluteIndex = sliceOffset + idx;
+            return (
+              <Box key={issue.id}>
+                <Text color={selectedId === issue.id ? tokens.accent : tokens.muted}>
+                  {selectedId === issue.id ? "\u2502 " : "  "}
+                </Text>
+                <IssuePreviewItem
+                  severity={issue.severity}
+                  filePath={issue.file}
+                  title={issue.title}
+                  isHighlighted={
+                    isActive && subZone === "issues" && absoluteIndex === highlightedIndex
+                  }
+                />
+              </Box>
+            );
+          })}
+        </Box>
+        {canScrollDown ? <Text color={tokens.muted}>{"\u25bc"}</Text> : null}
+      </Box>
     </Box>
   );
 }

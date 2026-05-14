@@ -9,7 +9,7 @@ import { CardLayout } from "@/components/ui/card-layout";
 import { StorageSelectorContent } from "@/components/shared/storage-selector-content";
 import { useSettings, useSaveSettings, matchQueryState } from "@diffgazer/core/api/hooks";
 import { useKey, useScope } from "@diffgazer/keys";
-import { usePageFooter } from "@/hooks/use-page-footer";
+import { usePageFooter } from "@diffgazer/core/footer";
 import { useActionRowNavigation } from "@diffgazer/keys";
 
 export function SettingsStoragePage() {

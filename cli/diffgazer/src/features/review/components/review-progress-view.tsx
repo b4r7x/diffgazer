@@ -1,103 +1,99 @@
+import { useState, type ReactElement } from "react";
 import { Box, Text } from "ink";
 import { useTheme } from "../../../theme/theme-context.js";
 import { useResponsive } from "../../../hooks/use-terminal-dimensions.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
 import { Button } from "../../../components/ui/button.js";
+import { Callout } from "../../../components/ui/callout.js";
+import { usePageFooter } from "../../../hooks/use-page-footer.js";
 import { ProgressList } from "./progress-list.js";
-import type { ProgressStepItem } from "./progress-list.js";
 import { ActivityLog } from "./activity-log.js";
 import { AgentBoard } from "./agent-board.js";
+import { AgentFilterBar } from "./agent-filter-bar.js";
 import { ContextSnapshotPreview } from "./context-snapshot-preview.js";
 import { ReviewMetricsFooter } from "./review-metrics-footer.js";
-import type { StepState, AgentState } from "@diffgazer/core/schemas/events";
-import type { LogEntryData } from "@diffgazer/core/schemas/ui";
+import type { AgentState } from "@diffgazer/core/schemas/events";
+import type {
+  LogEntryData,
+  ProgressStepData,
+  Shortcut,
+} from "@diffgazer/core/schemas/ui";
 import type { ReviewContextResponse } from "@diffgazer/core/api/types";
-import { type FileProgress, mapStepStatus, getAgentDetail } from "@diffgazer/core/review";
+import type { FileProgress } from "@diffgazer/core/review";
 
 export interface ReviewProgressViewProps {
-  steps: StepState[];
+  progressSteps: ProgressStepData[];
   agents: AgentState[];
   logEntries: LogEntryData[];
   fileProgress: FileProgress;
   isStreaming: boolean;
   error: string | null;
   onCancel?: () => void;
-  /** Number of issues found so far during the review. */
+  onViewResults?: () => void;
   issuesFound: number;
-  /** Timestamp when the review stream started (used for elapsed time). */
   startedAt: Date | null;
-  /** Context snapshot data, available once the context step completes. */
   contextSnapshot?: ReviewContextResponse | null;
 }
 
-function mapStepsToProgressItems(steps: StepState[], agents: AgentState[]): ProgressStepItem[] {
-  return steps.map((step) => {
-    const substeps = step.id === "review" && agents.length > 0
-      ? agents.map((agent) => ({
-          label: agent.meta.name,
-          detail: getAgentDetail(agent),
-        }))
-      : undefined;
-
-    return {
-      id: step.id,
-      label: step.label,
-      status: mapStepStatus(step.status),
-      substeps,
-    };
-  });
-}
+const STREAMING_SHORTCUTS: Shortcut[] = [];
+const COMPLETING_SHORTCUTS: Shortcut[] = [
+  { key: "Enter", label: "View Results" },
+];
 
 export function ReviewProgressView({
-  steps,
+  progressSteps,
   agents,
   logEntries,
   fileProgress,
   isStreaming,
   error,
   onCancel,
+  onViewResults,
   issuesFound,
   startedAt,
   contextSnapshot,
-}: ReviewProgressViewProps) {
+}: ReviewProgressViewProps): ReactElement {
   const { tokens } = useTheme();
   const { isMedium, isWide } = useResponsive();
+  const [agentFilter, setAgentFilter] = useState<string | null>(null);
 
-  const progressItems = mapStepsToProgressItems(steps, agents);
-
-  const filesLabel = fileProgress.total > 0
-    ? `${fileProgress.completed.length}/${fileProgress.total} files`
-    : fileProgress.completed.length > 0
-      ? `${fileProgress.completed.length} files`
-      : null;
+  usePageFooter({
+    shortcuts: isStreaming ? STREAMING_SHORTCUTS : COMPLETING_SHORTCUTS,
+  });
 
   const elapsed = startedAt ? Date.now() - startedAt.getTime() : 0;
 
   const sideBySide = isWide || isMedium;
-  const progressWidth = isWide ? "50%" : isMedium ? "40%" : "100%";
-  const logWidth = isWide ? "50%" : isMedium ? "60%" : "100%";
+  const progressWidth = isWide ? "33%" : isMedium ? "40%" : "100%";
+  const logWidth = isWide ? "67%" : isMedium ? "60%" : "100%";
+
+  const agentOptions = agents.map((agent) => ({
+    id: agent.id,
+    name: agent.meta.name,
+    badgeLabel: agent.meta.badgeLabel,
+    badgeVariant: agent.meta.badgeVariant,
+  }));
+
+  const failedAgents = agents.filter((agent) => agent.status === "error");
+  const failedAgentNames = failedAgents.map((a) => a.meta.name).join(", ");
+  const hasPartialFailure = failedAgents.length > 0 && !error;
+
+  const filteredEntries = agentFilter
+    ? logEntries.filter((entry) => entry.source === agentFilter)
+    : logEntries;
 
   const progressPane = (
-    <Box flexDirection="column" flexGrow={1} width={progressWidth}>
-      <SectionHeader bordered>Progress</SectionHeader>
+    <Box flexDirection="column" width={progressWidth}>
+      <SectionHeader variant="muted" bordered>
+        Progress Overview
+      </SectionHeader>
       <Box flexDirection="column" paddingTop={1}>
-        <ProgressList steps={progressItems} />
-        {filesLabel ? (
-          <Box marginTop={1} marginLeft={2}>
-            <Text color={tokens.muted}>{filesLabel} processed</Text>
-            {fileProgress.currentFile ? (
-              <Text color={tokens.muted}> — {fileProgress.currentFile}</Text>
-            ) : null}
-          </Box>
-        ) : null}
+        <ProgressList steps={progressSteps} />
       </Box>
 
       {agents.length > 0 ? (
         <Box flexDirection="column" marginTop={1}>
-          <SectionHeader variant="muted" bordered>Agents</SectionHeader>
-          <Box paddingTop={1}>
-            <AgentBoard agents={agents} />
-          </Box>
+          <AgentBoard agents={agents} />
         </Box>
       ) : null}
 
@@ -106,20 +102,57 @@ export function ReviewProgressView({
           <ContextSnapshotPreview snapshot={contextSnapshot} />
         </Box>
       ) : null}
+
+      <Box marginTop={1}>
+        <ReviewMetricsFooter
+          filesProcessed={fileProgress.completed.length}
+          issuesFound={issuesFound}
+          elapsed={elapsed}
+          isStreaming={isStreaming}
+        />
+      </Box>
     </Box>
   );
 
   const logPane = (
-    <Box flexDirection="column" flexGrow={1} width={logWidth}>
-      <SectionHeader bordered>Activity Log</SectionHeader>
+    <Box flexDirection="column" width={logWidth}>
+      <Box justifyContent="space-between">
+        <SectionHeader variant="muted">Live Activity Log</SectionHeader>
+        <Text color={tokens.muted}>tail -f agent.log</Text>
+      </Box>
+
+      {agents.length > 0 ? (
+        <Box paddingTop={1}>
+          <AgentFilterBar
+            agents={agentOptions}
+            active={agentFilter}
+            onChange={setAgentFilter}
+          />
+        </Box>
+      ) : null}
+
+      {hasPartialFailure ? (
+        <Box paddingTop={1}>
+          <Callout variant="warning">
+            <Callout.Title>Partial Analysis</Callout.Title>
+            <Callout.Content>
+              {`${failedAgents.length} agent${failedAgents.length === 1 ? "" : "s"} failed (likely rate limited): ${failedAgentNames}. Results may be incomplete.`}
+            </Callout.Content>
+          </Callout>
+        </Box>
+      ) : null}
+
       <Box paddingTop={1}>
-        <ActivityLog entries={logEntries} height={progressItems.length + 8} />
+        <ActivityLog
+          entries={filteredEntries}
+          height={progressSteps.length + 8}
+        />
       </Box>
     </Box>
   );
 
   return (
-    <Box flexDirection="column" borderColor={tokens.border}>
+    <Box flexDirection="column">
       <Box
         flexDirection={sideBySide ? "row" : "column"}
         gap={sideBySide ? 2 : 1}
@@ -132,25 +165,20 @@ export function ReviewProgressView({
           <Text color={tokens.error}>{error}</Text>
         </Box>
       ) : null}
-      {onCancel && isStreaming ? (
+      {isStreaming && onCancel ? (
         <Box marginTop={1}>
-          <Button
-            variant="destructive"
-            isActive
-            onPress={onCancel}
-          >
+          <Button variant="destructive" isActive onPress={onCancel}>
             Cancel
           </Button>
         </Box>
       ) : null}
-      <Box marginTop={1}>
-        <ReviewMetricsFooter
-          filesProcessed={fileProgress.completed.length}
-          issuesFound={issuesFound}
-          elapsed={elapsed}
-          isStreaming={isStreaming}
-        />
-      </Box>
+      {!isStreaming && onViewResults ? (
+        <Box marginTop={1}>
+          <Button variant="primary" isActive onPress={onViewResults}>
+            View Results
+          </Button>
+        </Box>
+      ) : null}
     </Box>
   );
 }

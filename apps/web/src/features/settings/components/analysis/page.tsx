@@ -5,7 +5,7 @@ import { getErrorMessage } from "@diffgazer/core/errors";
 import { Button } from "@diffgazer/ui/components/button";
 import { CardLayout } from "@/components/ui/card-layout";
 import { useKey, useScope } from "@diffgazer/keys";
-import { usePageFooter } from "@/hooks/use-page-footer";
+import { usePageFooter } from "@diffgazer/core/footer";
 import { useActionRowNavigation } from "@diffgazer/keys";
 import { useSettings, useSaveSettings, matchQueryState } from "@diffgazer/core/api/hooks";
 import { buildLensOptions } from "@diffgazer/core/schemas/events";

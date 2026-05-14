@@ -372,7 +372,8 @@ describe("Popover", () => {
     const content = screen.getByRole("dialog", { name: "Actions" })
     await userEvent.hover(content)
     await userEvent.unhover(content)
-    fireEvent.keyDown(content, { key: "Escape" })
+    content.focus()
+    await userEvent.keyboard("{Escape}")
 
     expect(onMouseEnter).toHaveBeenCalledOnce()
     expect(onMouseLeave).toHaveBeenCalledOnce()

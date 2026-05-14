@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useEffectEvent } from "react"
-import { cn } from "@diffgazer/core/cn"
+import { cn } from "@diffgazer/ui/lib/utils"
 
 interface VariableMapping {
   primitive: { name: string; darkValue: string; lightValue: string }

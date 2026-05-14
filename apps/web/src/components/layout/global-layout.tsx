@@ -1,9 +1,10 @@
 import { type ReactNode } from "react";
 import { useCanGoBack, useLocation, useRouter } from "@tanstack/react-router";
 import { Header } from "./header";
-import { Footer, useFooterData } from "./footer";
+import { Footer } from "./footer";
+import { useFooterData } from "./footer-context";
 import { useConfigData } from "@/app/providers/config-provider";
-import { resolveBackAction } from "@/lib/back-navigation/back-navigation";
+import { resolveBackAction } from "@/lib/back-navigation";
 import { getProviderDisplayStatus, getProviderDisplay } from "@diffgazer/core/providers";
 
 function ConnectedHeader() {

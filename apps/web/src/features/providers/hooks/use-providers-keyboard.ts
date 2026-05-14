@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type RefCallback, type RefObject } from "react";
+
 import { useNavigate } from "@tanstack/react-router";
 import { useKey, useFocusZone } from "@diffgazer/keys";
 import { PROVIDER_FILTERS, type ProviderFilter } from "@/features/providers/constants";
@@ -64,7 +65,6 @@ export function useProvidersKeyboard({
   const [buttonIndex, setButtonIndex] = useState(0);
   const buttonRefs = useRef(new Map<number, HTMLButtonElement>());
   const filterButtonRefs = useRef(new Map<number, HTMLButtonElement>());
-  const hasFocusedInitialProviderListRef = useRef(false);
 
   const { zone: internalZone, setZone, isZone } = useFocusZone({
     initial: "list",
@@ -148,7 +148,7 @@ export function useProvidersKeyboard({
   const inButtons = effectiveFocusZone === "buttons";
 
   useEffect(() => {
-    if (dialogOpen || !listReady || hasFocusedInitialProviderListRef.current) return;
+    if (dialogOpen || !listReady) return;
     const listContainer = listContainerRef.current;
     if (!listContainer) return;
     const ownerDocument = listContainer.ownerDocument;
@@ -156,13 +156,10 @@ export function useProvidersKeyboard({
     const View = ownerDocument.defaultView;
     const focusIsUnclaimed = activeElement === ownerDocument.body || activeElement === ownerDocument.documentElement;
     const focusIsWithinList = Boolean(View && activeElement instanceof View.Node && listContainer.contains(activeElement));
-    if (!focusIsUnclaimed && !focusIsWithinList) {
-      return;
-    }
+    if (!focusIsUnclaimed && !focusIsWithinList) return;
 
     setZone("list");
     listContainer.focus();
-    hasFocusedInitialProviderListRef.current = true;
   }, [dialogOpen, listReady, listContainerRef, setZone]);
 
   useKey("ArrowDown", () => {

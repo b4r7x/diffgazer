@@ -1,4 +1,4 @@
-import { cn } from "@diffgazer/core/cn";
+import { cn } from "@diffgazer/ui/lib/utils";
 import { getFigletText } from "@diffgazer/core/get-figlet";
 import { Logo } from "@diffgazer/ui/components/logo";
 import { Button } from "@diffgazer/ui/components/button";

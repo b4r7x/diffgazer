@@ -62,11 +62,7 @@ function toFileStem(path: string): string {
 }
 
 function isHookFilePath(path: string): boolean {
-  const relativePath = toHookRelativePath(path);
-  return (
-    !relativePath.startsWith("internal/") &&
-    (path.startsWith("hooks/") || path.startsWith("src/hooks/"))
-  );
+  return path.startsWith("hooks/") || path.startsWith("src/hooks/");
 }
 
 function validateAndCollectFiles(
@@ -126,19 +122,10 @@ export function resolveKeysHooksFromRegistry(
   items: Array<{ registryDependencies?: string[] }>,
 ): string[] {
   const names = new Set<string>();
-  const hookNames = getKeysHookNames();
-  const internalDependencyNames = getKeysInternalDependencyNames();
-
   for (const item of items) {
     for (const dep of item.registryDependencies ?? []) {
       const name = parseKeysDependencyName(dep);
-      if (!name) continue;
-
-      if (hookNames.has(name)) {
-        names.add(name);
-      } else if (!internalDependencyNames.has(name)) {
-        names.add(name);
-      }
+      if (name) names.add(name);
     }
   }
   return [...names];
@@ -166,22 +153,6 @@ export function getKeysHookImportNames(): Set<string> {
     names.add(hook.name);
     for (const file of hook.files) {
       if (isHookFilePath(file.path)) {
-        names.add(toFileStem(file.path));
-      }
-    }
-  }
-
-  return names;
-}
-
-function getKeysInternalDependencyNames(): Set<string> {
-  const bundle = loadCopyBundle();
-  const names = new Set<string>();
-
-  for (const hook of bundle.items) {
-    for (const file of hook.files) {
-      const relativePath = toHookRelativePath(file.path);
-      if (relativePath.startsWith("internal/")) {
         names.add(toFileStem(file.path));
       }
     }

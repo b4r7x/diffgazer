@@ -20,32 +20,32 @@
           "target": "src/hooks/use-navigation.ts"
         },
         {
-          "path": "src/hooks/internal/navigation-dispatch.ts",
+          "path": "src/core/navigation-dispatch.ts",
           "type": "registry:hook",
           "target": "src/hooks/utils/navigation-dispatch.ts"
         },
         {
-          "path": "src/utils/navigation-items.ts",
+          "path": "src/dom/navigation-items.ts",
           "type": "registry:hook",
           "target": "src/hooks/utils/navigation-items.ts"
         },
         {
-          "path": "src/utils/navigation-directions.ts",
+          "path": "src/core/navigation-directions.ts",
           "type": "registry:hook",
           "target": "src/hooks/utils/navigation-directions.ts"
         },
         {
-          "path": "src/utils/keyboard-utils.ts",
+          "path": "src/dom/keyboard-utils.ts",
           "type": "registry:hook",
           "target": "src/hooks/utils/keyboard-utils.ts"
         },
         {
-          "path": "src/utils/focusable.ts",
+          "path": "src/dom/focusable.ts",
           "type": "registry:hook",
           "target": "src/hooks/utils/focusable.ts"
         },
         {
-          "path": "src/utils/dom.ts",
+          "path": "src/dom/dom.ts",
           "type": "registry:hook",
           "target": "src/hooks/utils/dom.ts"
         }
@@ -68,9 +68,14 @@
           "target": "src/hooks/use-focus-restore.ts"
         },
         {
-          "path": "src/utils/focus-restore.ts",
+          "path": "src/dom/focus-restore.ts",
           "type": "registry:hook",
           "target": "src/hooks/utils/focus-restore.ts"
+        },
+        {
+          "path": "src/dom/dom.ts",
+          "type": "registry:hook",
+          "target": "src/hooks/utils/dom.ts"
         }
       ]
     },
@@ -87,12 +92,12 @@
       },
       "files": [
         {
-          "path": "src/utils/focusable.ts",
+          "path": "src/dom/focusable.ts",
           "type": "registry:hook",
           "target": "src/hooks/utils/focusable.ts"
         },
         {
-          "path": "src/utils/dom.ts",
+          "path": "src/dom/dom.ts",
           "type": "registry:hook",
           "target": "src/hooks/utils/dom.ts"
         }
@@ -120,17 +125,17 @@
           "target": "src/hooks/use-focus-restore.ts"
         },
         {
-          "path": "src/utils/focus-restore.ts",
+          "path": "src/dom/focus-restore.ts",
           "type": "registry:hook",
           "target": "src/hooks/utils/focus-restore.ts"
         },
         {
-          "path": "src/utils/focusable.ts",
+          "path": "src/dom/focusable.ts",
           "type": "registry:hook",
           "target": "src/hooks/utils/focusable.ts"
         },
         {
-          "path": "src/utils/dom.ts",
+          "path": "src/dom/dom.ts",
           "type": "registry:hook",
           "target": "src/hooks/utils/dom.ts"
         }

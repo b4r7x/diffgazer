@@ -13,10 +13,15 @@ import {
 
 const ROOT = resolve(import.meta.dirname, "..");
 
+// docs/hook-docs/* is a build-time input (read by build-docs-data.ts) and
+// MUST stay out of copyDirs so it never ships in the public tarball. It
+// imports @diffgazer/registry as a dev-only type and is fingerprinted here
+// only so changes invalidate the artifact cache.
 const INPUTS = [
   "docs/content",
   "docs/assets",
   "docs/generated",
+  "docs/hook-docs",
   "registry",
   "public/r",
   "internal-docs-manifest.json",

@@ -244,6 +244,7 @@ describe("Radio", () => {
 
     expect(onClick).toHaveBeenCalledOnce()
     expect(onKeyDown).toHaveBeenCalled()
+    // Verifies consumer-passed data-testid + native attribute/style forwarding contract.
     expect(screen.getByTestId("radio-root")).toHaveAttribute("data-source", "external")
     expect(screen.getByTestId("radio-root")).toHaveStyle({ maxWidth: "16px" })
   })

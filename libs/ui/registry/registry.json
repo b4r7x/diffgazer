@@ -191,6 +191,7 @@
       "description": "Form field primitives for labels, controls, descriptions, and validation messages",
       "dependencies": [],
       "registryDependencies": [
+        "aria-utils",
         "compose-refs"
       ],
       "meta": {
@@ -304,6 +305,7 @@
       "description": "Terminal-styled checkbox with bracket notation",
       "dependencies": [],
       "registryDependencies": [
+        "aria-utils",
         "controllable-state",
         "form-reset",
         "@diffgazer-keys/navigation",
@@ -370,6 +372,7 @@
       "description": "Terminal-styled radio and radio group for single-selection with bracket notation",
       "dependencies": [],
       "registryDependencies": [
+        "aria-utils",
         "controllable-state",
         "form-reset",
         "compose-refs",
@@ -1381,6 +1384,7 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
+        "aria-utils",
         "controllable-state",
         "@diffgazer-keys/navigation",
         "compose-refs",
@@ -1391,6 +1395,7 @@
         "portal",
         "presence",
         "search",
+        "typeahead",
         "typeahead-buffer"
       ],
       "meta": {
@@ -1901,6 +1906,38 @@
       ]
     },
     {
+      "name": "aria-utils",
+      "type": "registry:lib",
+      "title": "ARIA Utilities",
+      "description": "Shared ARIA helpers for form controls: resolveAriaInvalid, mergeIds, isHTMLElementForContainer.",
+      "meta": {
+        "client": false,
+        "hidden": true
+      },
+      "files": [
+        {
+          "path": "registry/lib/aria-utils.ts",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
+      "name": "typeahead",
+      "type": "registry:lib",
+      "title": "Typeahead",
+      "description": "Cycling-prefix typeahead search shared by listbox/menu/select composites.",
+      "meta": {
+        "client": false,
+        "hidden": true
+      },
+      "files": [
+        {
+          "path": "registry/lib/typeahead.ts",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
       "name": "resolve-tab-target",
       "type": "registry:lib",
       "title": "resolveTabTarget",
@@ -2048,6 +2085,7 @@
         "controllable-state",
         "@diffgazer-keys/navigation",
         "compose-refs",
+        "typeahead",
         "typeahead-buffer"
       ],
       "meta": {

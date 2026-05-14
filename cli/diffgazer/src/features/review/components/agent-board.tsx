@@ -1,5 +1,6 @@
 import { Box, Text } from "ink";
 import { Badge, type BadgeProps } from "../../../components/ui/badge.js";
+import { SectionHeader } from "../../../components/ui/section-header.js";
 import { Spinner } from "../../../components/ui/spinner.js";
 import { useTheme } from "../../../theme/theme-context.js";
 import { getAgentDetail } from "@diffgazer/core/review";
@@ -25,26 +26,34 @@ export function AgentBoard({ agents }: AgentBoardProps) {
 
   return (
     <Box flexDirection="column">
-      {agents.map((agent) => {
-        const status = STATUS_META[agent.status];
-        const detail = getAgentDetail(agent);
+      <SectionHeader variant="muted" bordered>
+        Agent Board
+      </SectionHeader>
+      <Box flexDirection="column" paddingTop={1}>
+        {agents.map((agent) => {
+          const status = STATUS_META[agent.status];
+          const detail = getAgentDetail(agent);
 
-        return (
-          <Box key={agent.id} gap={1}>
-            <Badge variant={(agent.meta.badgeVariant ?? "info") as BadgeVariant} size="sm">
-              {agent.meta.badgeLabel}
-            </Badge>
-            <Text bold>{agent.meta.name}</Text>
-            {agent.status === "running" ? (
-              <Spinner variant="dots" size="sm" />
-            ) : null}
-            <Badge variant={status.variant} size="sm">
-              {status.label}
-            </Badge>
-            <Text color={tokens.muted}>{detail}</Text>
-          </Box>
-        );
-      })}
+          return (
+            <Box key={agent.id} gap={1}>
+              <Badge
+                variant={(agent.meta.badgeVariant ?? "info") as BadgeVariant}
+                size="sm"
+              >
+                {agent.meta.badgeLabel}
+              </Badge>
+              <Text bold>{agent.meta.name}</Text>
+              {agent.status === "running" ? (
+                <Spinner variant="dots" size="sm" />
+              ) : null}
+              <Badge variant={status.variant} size="sm">
+                {status.label}
+              </Badge>
+              <Text color={tokens.muted}>{detail}</Text>
+            </Box>
+          );
+        })}
+      </Box>
     </Box>
   );
 }

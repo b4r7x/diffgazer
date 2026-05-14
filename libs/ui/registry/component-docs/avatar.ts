@@ -24,7 +24,7 @@ export const avatarDoc: ComponentDoc = {
     {
       title: "Image Fallback",
       content:
-        "When src fails to load, Avatar gracefully falls back to the fallback initials. If no fallback is provided, '?' is shown.",
+        "When src fails to load, Avatar falls back to the fallback initials. If no fallback is provided, '?' is shown.",
     },
     {
       title: "Terminal Style",

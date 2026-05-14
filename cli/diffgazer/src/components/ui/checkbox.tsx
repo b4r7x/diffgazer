@@ -3,9 +3,8 @@ import type { ReactElement, ReactNode } from "react";
 import { Box, Text, useInput } from "ink";
 import { useTheme } from "../../theme/theme-context.js";
 import type { CliColorTokens } from "../../theme/palettes.js";
-import { clampIndex, collectChildItems } from "../../lib/list-navigation.js";
-
-// --- Types ---
+import { collectChildItems } from "../../lib/list-navigation.js";
+import { moveHighlight } from "../../lib/highlight-navigation.js";
 
 export interface CheckboxGroupProps<T extends string = string> {
   value?: T[];
@@ -25,8 +24,6 @@ export interface CheckboxItemProps {
   disabled?: boolean;
 }
 
-// --- Context ---
-
 interface CheckboxGroupContextValue {
   checkedValues: string[];
   highlightedValue: string;
@@ -44,8 +41,6 @@ function useCheckboxGroupContext(): CheckboxGroupContextValue {
   return value;
 }
 
-// --- Item collection ---
-
 interface CollectedItem {
   value: string;
   disabled: boolean;
@@ -56,8 +51,6 @@ function extractCheckboxItem(element: ReactElement): CollectedItem | null {
   const props = element.props as CheckboxItemProps;
   return { value: props.value, disabled: props.disabled ?? false };
 }
-
-// --- Components ---
 
 function CheckboxItem({
   value,
@@ -134,18 +127,12 @@ function CheckboxGroupRoot<T extends string = string>({
   const checkedValues = value ?? internalValue;
   const highlightedValue = selectableItems[internalIndex]?.value ?? "";
 
-  function moveHighlight(direction: 1 | -1) {
-    if (selectableItems.length === 0) return;
-
-    const currentIdx = selectableItems.findIndex(
-      (item) => item.value === highlightedValue,
-    );
-    const nextIdx = clampIndex(currentIdx, direction, selectableItems.length, wrap);
-    setInternalIndex(nextIdx);
-    const nextItem = selectableItems[nextIdx];
-    if (nextItem) {
-      onHighlightChange?.(nextItem.value);
-    }
+  function moveBy(direction: 1 | -1) {
+    const navigable = selectableItems.map((item) => ({ id: item.value, disabled: false }));
+    const result = moveHighlight(navigable, highlightedValue, direction, wrap);
+    if (!result) return;
+    setInternalIndex(result.index);
+    onHighlightChange?.(result.id);
   }
 
   function toggleCurrent() {
@@ -165,11 +152,11 @@ function CheckboxGroupRoot<T extends string = string>({
   useInput(
     (_input, key) => {
       if (key.upArrow) {
-        moveHighlight(-1);
+        moveBy(-1);
         return;
       }
       if (key.downArrow) {
-        moveHighlight(1);
+        moveBy(1);
         return;
       }
       if (_input === " ") {
@@ -193,8 +180,6 @@ function CheckboxGroupRoot<T extends string = string>({
     </CheckboxGroupContext>
   );
 }
-
-// --- Compound export ---
 
 export const CheckboxGroup = Object.assign(CheckboxGroupRoot, {
   Item: CheckboxItem,

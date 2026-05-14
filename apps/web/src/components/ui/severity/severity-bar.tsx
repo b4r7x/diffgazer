@@ -1,4 +1,4 @@
-import { cn } from '@diffgazer/core/cn';
+import { cn } from '@diffgazer/ui/lib/utils';
 import type { ReviewSeverity } from '@diffgazer/core/schemas/review';
 import { BlockBar } from '@diffgazer/ui/components/block-bar';
 import { BAR_FILLED_CHAR, BAR_EMPTY_CHAR, DEFAULT_BAR_WIDTH, SEVERITY_CONFIG } from './constants';

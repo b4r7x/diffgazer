@@ -6,6 +6,8 @@ import { Badge } from "../../../components/ui/badge.js";
 
 export interface FixPlanChecklistProps {
   steps: FixPlanStep[];
+  completedSteps: Set<number>;
+  onToggle: (step: number) => void;
   isActive?: boolean;
 }
 
@@ -22,17 +24,19 @@ function riskVariant(risk: string | undefined): "error" | "warning" | "info" {
 
 export function FixPlanChecklist({
   steps,
+  completedSteps,
+  onToggle,
   isActive = false,
 }: FixPlanChecklistProps) {
   const { tokens } = useTheme();
   const [highlightIndex, setHighlightIndex] = useState(0);
-  const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
 
   useInput(
-    (_input, key) => {
+    (input, key) => {
+      if (steps.length === 0) return;
       if (key.upArrow) {
-        setHighlightIndex((i) =>
-          (i - 1 + steps.length) % steps.length,
+        setHighlightIndex(
+          (i) => (i - 1 + steps.length) % steps.length,
         );
         return;
       }
@@ -40,18 +44,9 @@ export function FixPlanChecklist({
         setHighlightIndex((i) => (i + 1) % steps.length);
         return;
       }
-      if (_input === " " || key.return) {
+      if (input === " " || key.return) {
         const step = steps[highlightIndex];
-        if (!step) return;
-        setCompletedSteps((prev) => {
-          const next = new Set(prev);
-          if (next.has(step.step)) {
-            next.delete(step.step);
-          } else {
-            next.add(step.step);
-          }
-          return next;
-        });
+        if (step) onToggle(step.step);
       }
     },
     { isActive },
@@ -67,14 +62,26 @@ export function FixPlanChecklist({
         return (
           <Box key={step.step} gap={1}>
             <Text
-              color={isHighlighted ? tokens.accent : isComplete ? tokens.success : undefined}
+              color={
+                isHighlighted
+                  ? tokens.accent
+                  : isComplete
+                    ? tokens.success
+                    : undefined
+              }
               bold={isHighlighted}
             >
               {indicator}
             </Text>
             <Text color={tokens.muted}>{`${String(step.step)}.`}</Text>
             <Text
-              color={isHighlighted ? tokens.accent : isComplete ? tokens.muted : tokens.fg}
+              color={
+                isHighlighted
+                  ? tokens.accent
+                  : isComplete
+                    ? tokens.muted
+                    : tokens.fg
+              }
               bold={isHighlighted}
               strikethrough={isComplete}
             >

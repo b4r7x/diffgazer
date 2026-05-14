@@ -89,7 +89,11 @@ function nearestExistingRealpath(path: string): string | null {
     if (parent === current) return null;
     current = parent;
   }
-  return realpathSync.native(current);
+  try {
+    return realpathSync.native(current);
+  } catch {
+    return null;
+  }
 }
 
 function isPathWithinBase(targetPath: string, baseDir: string): boolean {

@@ -5,8 +5,6 @@ import { useTheme } from "../../theme/theme-context.js";
 import { KeyboardContext } from "../../app/providers/keyboard-provider.js";
 import { useTerminalDimensions } from "../../hooks/use-terminal-dimensions.js";
 
-// --- Types ---
-
 export interface InputProps {
   value?: string;
   defaultValue?: string;
@@ -19,28 +17,22 @@ export interface InputProps {
   isActive?: boolean;
 }
 
-// --- Helpers ---
-
 const widthBySize = {
   sm: 20,
   md: 40,
   lg: 60,
 } as const;
 
-// --- Input mode hook ---
-
 function useInputMode(isActive: boolean): void {
   const ctx = useContext(KeyboardContext);
+  const setInputActive = ctx?.setInputActive;
 
   useEffect(() => {
-    if (!ctx || !isActive) return;
-    ctx.setInputActive(true);
-    return () => ctx.setInputActive(false);
-  // ctx.setInputActive is a stable ref (useCallback with [])
-  }, [isActive]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!setInputActive || !isActive) return;
+    setInputActive(true);
+    return () => setInputActive(false);
+  }, [isActive, setInputActive]);
 }
-
-// --- Component ---
 
 export function Input({
   value,
@@ -62,9 +54,10 @@ export function Input({
   const width = Math.min(widthBySize[size], columns - 4);
   const borderColor = error ? tokens.error : tokens.border;
   const currentValue = value ?? internalValue;
+  const isMasked = type === "password";
 
   if (disabled) {
-    const display = type === "password" && currentValue
+    const display = isMasked && currentValue
       ? "*".repeat(currentValue.length)
       : (currentValue || placeholder || "");
 
@@ -82,28 +75,16 @@ export function Input({
     onChange?.(next);
   }
 
-  if (type === "password") {
+  if (isMasked || value !== undefined) {
     return (
-      <PasswordInput
+      <ManualTextEdit
         value={currentValue}
         onChange={handleChange}
         placeholder={placeholder}
         width={width}
         borderColor={borderColor}
         isActive={isActive}
-      />
-    );
-  }
-
-  if (value !== undefined) {
-    return (
-      <ControlledTextInput
-        value={currentValue}
-        onChange={handleChange}
-        placeholder={placeholder}
-        width={width}
-        borderColor={borderColor}
-        isActive={isActive}
+        mask={isMasked}
       />
     );
   }
@@ -120,67 +101,25 @@ export function Input({
   );
 }
 
-function ControlledTextInput({
-  value,
-  onChange,
-  placeholder,
-  width,
-  borderColor,
-  isActive,
-}: {
+interface ManualTextEditProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
   width: number;
   borderColor: string;
   isActive: boolean;
-}) {
-  const { tokens } = useTheme();
-
-  useInput(
-    (input, key) => {
-      if (key.backspace || key.delete) {
-        onChange(value.slice(0, -1));
-        return;
-      }
-      if (key.return || key.escape || key.upArrow || key.downArrow || key.tab) {
-        return;
-      }
-      if (input.length === 1 && !key.ctrl && !key.meta) {
-        onChange(value + input);
-      }
-    },
-    { isActive },
-  );
-
-  const showPlaceholder = value.length === 0 && placeholder != null;
-
-  return (
-    <Box width={width} borderStyle="single" borderColor={borderColor}>
-      {showPlaceholder ? (
-        <Text color={tokens.muted}>{placeholder}</Text>
-      ) : (
-        <Text>{value}</Text>
-      )}
-    </Box>
-  );
+  mask: boolean;
 }
 
-function PasswordInput({
+function ManualTextEdit({
   value,
   onChange,
   placeholder,
   width,
   borderColor,
   isActive,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  width: number;
-  borderColor: string;
-  isActive: boolean;
-}) {
+  mask,
+}: ManualTextEditProps) {
   const { tokens } = useTheme();
 
   useInput(
@@ -199,7 +138,7 @@ function PasswordInput({
     { isActive },
   );
 
-  const masked = "*".repeat(value.length);
+  const display = mask ? "*".repeat(value.length) : value;
   const showPlaceholder = value.length === 0 && placeholder != null;
 
   return (
@@ -207,7 +146,7 @@ function PasswordInput({
       {showPlaceholder ? (
         <Text color={tokens.muted}>{placeholder}</Text>
       ) : (
-        <Text>{masked}</Text>
+        <Text>{display}</Text>
       )}
     </Box>
   );

@@ -240,12 +240,12 @@ describe("createApiClient", () => {
     });
   });
 
-  describe("stream", () => {
-    it("should return raw Response without parsing JSON", async () => {
+  describe("request", () => {
+    it("returns raw Response without parsing JSON for streaming endpoints", async () => {
       const body = new ReadableStream();
       mockFetch.mockResolvedValue(new Response(body, { status: 200 }));
 
-      const response = await client.stream("/api/review/stream", { params: { mode: "staged" } });
+      const response = await client.request("GET", "/api/review/stream", { params: { mode: "staged" } });
 
       expect(response).toBeInstanceOf(Response);
       expect(response.body).toBe(body);

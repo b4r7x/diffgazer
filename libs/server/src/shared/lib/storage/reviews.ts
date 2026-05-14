@@ -139,7 +139,6 @@ export async function listReviews(
 
   const items = filterByProjectAndSort(result.value.items, projectPath, "createdAt");
 
-  // Migrate old reviews that have missing severity counts
   const migratedItems = await Promise.all(
     items.map(async (metadata) => {
       const totalCounted =

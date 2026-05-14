@@ -31,25 +31,45 @@
       "types": "./dist/json.d.ts",
       "import": "./dist/json.js"
     },
+    "./onboarding": {
+      "types": "./dist/onboarding/index.d.ts",
+      "import": "./dist/onboarding/index.js"
+    },
     "./providers": {
-      "types": "./dist/providers/display-status.d.ts",
-      "import": "./dist/providers/display-status.js"
+      "types": "./dist/providers/index.d.ts",
+      "import": "./dist/providers/index.js"
     },
     "./review": {
       "types": "./dist/review/index.d.ts",
       "import": "./dist/review/index.js"
     },
+    "./footer": {
+      "types": "./dist/footer/index.d.ts",
+      "import": "./dist/footer/index.js"
+    },
+    "./theme": {
+      "types": "./dist/theme/index.d.ts",
+      "import": "./dist/theme/index.js"
+    },
     "./navigation": {
       "types": "./dist/navigation/index.d.ts",
       "import": "./dist/navigation/index.js"
     },
+    "./hooks": {
+      "types": "./dist/hooks/index.d.ts",
+      "import": "./dist/hooks/index.js"
+    },
+    "./select": {
+      "types": "./dist/select/index.d.ts",
+      "import": "./dist/select/index.js"
+    },
+    "./forms": {
+      "types": "./dist/forms/index.d.ts",
+      "import": "./dist/forms/index.js"
+    },
     "./get-figlet": {
       "types": "./dist/get-figlet.d.ts",
       "import": "./dist/get-figlet.js"
-    },
-    "./cn": {
-      "types": "./dist/cn.d.ts",
-      "import": "./dist/cn.js"
     },
     "./api": {
       "types": "./dist/api/index.d.ts",

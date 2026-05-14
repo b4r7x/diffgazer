@@ -1,30 +1,8 @@
 import { Children, Fragment, isValidElement } from "react";
 import type { ReactElement, ReactNode } from "react";
 
-/**
- * Compute next index with wrap or clamp behavior.
- */
-export function clampIndex(
-  currentIdx: number,
-  direction: 1 | -1,
-  length: number,
-  wrap: boolean,
-): number {
-  let nextIdx = currentIdx + direction;
+export { clampIndex } from "@diffgazer/keys";
 
-  if (wrap) {
-    nextIdx = (nextIdx + length) % length;
-  } else {
-    nextIdx = Math.max(0, Math.min(nextIdx, length - 1));
-  }
-
-  return nextIdx;
-}
-
-/**
- * Generic child collection utility that traverses React children,
- * handles Fragments recursively, and extracts data from matching elements.
- */
 export function collectChildItems<T>(
   children: ReactNode,
   extract: (element: ReactElement) => T | null,

@@ -10,6 +10,7 @@ const { mockRequireModule } = vi.hoisted(() => ({
   mockRequireModule: vi.fn(),
 }));
 
+// Boundary mock: node:module.createRequire is used to dynamically load the @napi-rs/keyring native addon (the OS keychain boundary); tests inject a fake Entry to simulate available/unavailable native module.
 vi.mock("node:module", () => ({
   createRequire: vi.fn(() => mockRequireModule),
 }));

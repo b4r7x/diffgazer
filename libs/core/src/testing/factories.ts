@@ -7,7 +7,6 @@ export function createMockClient(): ApiClient {
     post: vi.fn(),
     put: vi.fn(),
     delete: vi.fn(),
-    stream: vi.fn(),
     request: vi.fn(),
   };
 }

@@ -3,9 +3,9 @@ import { useNavigate } from "@tanstack/react-router";
 import { CardLayout } from "@/components/ui/card-layout";
 import { Button } from "@diffgazer/ui/components/button";
 import { Callout } from "@diffgazer/ui/components/callout";
-import { cn } from "@diffgazer/core/cn";
+import { cn } from "@diffgazer/ui/lib/utils";
 import type { Shortcut } from "@diffgazer/core/schemas/ui";
-import { usePageFooter } from "@/hooks/use-page-footer";
+import { usePageFooter } from "@diffgazer/core/footer";
 import { useActionRowNavigation } from "@diffgazer/keys";
 import { useScope } from "@diffgazer/keys";
 import { useOnboarding } from "../hooks/use-onboarding";
@@ -17,8 +17,11 @@ import { ModelStep } from "./steps/model-step";
 import { AnalysisStep } from "./steps/analysis-step";
 import { ExecutionStep } from "./steps/execution-step";
 import type { AgentExecution } from "@diffgazer/core/schemas/config";
-import { canProceed as canProceedForStep } from "../types.js";
-import type { OnboardingStep, WizardData } from "../types";
+import {
+  canProceed as canProceedForStep,
+  type OnboardingStep,
+  type WizardData,
+} from "../types";
 
 const STEP_TITLES: Record<OnboardingStep, string> = {
   storage: "Secrets Storage",

@@ -15,6 +15,7 @@ import {
 import { useNavigation } from "@/hooks/use-navigation";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { useFormReset } from "@/hooks/use-form-reset";
+import { isHTMLElementForContainer, resolveAriaInvalid } from "@/lib/aria-utils";
 import { composeRefs } from "@/lib/compose-refs";
 import {
   getEnabledSelectableCollectionItems,
@@ -69,23 +70,6 @@ export type CheckboxGroupProps<T extends string = string> = CheckboxGroupRootPro
   children: ReactNode;
   ref?: Ref<HTMLDivElement>;
 };
-
-function isHTMLElementForContainer(value: unknown, container: HTMLElement | null): value is HTMLElement {
-  const View = container?.ownerDocument.defaultView;
-  return Boolean(View && value instanceof View.HTMLElement);
-}
-
-function resolveGroupAriaInvalid(
-  forceInvalid: boolean | undefined,
-  ariaInvalid: AriaAttributes["aria-invalid"],
-) {
-  if (forceInvalid) return true;
-  if (ariaInvalid === true || ariaInvalid === "true" || ariaInvalid === "grammar" || ariaInvalid === "spelling") {
-    return ariaInvalid;
-  }
-  if (ariaInvalid === false || ariaInvalid === "false") return ariaInvalid;
-  return undefined;
-}
 
 export function CheckboxGroup<T extends string = string>(props: CheckboxGroupProps<T>) {
   const {
@@ -218,7 +202,7 @@ export function CheckboxGroup<T extends string = string>(props: CheckboxGroupPro
         aria-label={ariaLabel ?? label}
         aria-labelledby={ariaLabelledBy}
         aria-disabled={disabled || undefined}
-        aria-invalid={resolveGroupAriaInvalid(nativeInvalid && required && !hasValidSelectedValue, ariaInvalid)}
+        aria-invalid={resolveAriaInvalid(ariaInvalid, nativeInvalid && required && !hasValidSelectedValue)}
         className={cn("flex flex-col gap-2", className)}
         onKeyDown={handleKeyDown}
       >

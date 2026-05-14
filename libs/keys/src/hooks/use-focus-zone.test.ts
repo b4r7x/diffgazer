@@ -614,6 +614,57 @@ describe("useFocusZone", () => {
 
       expect(document.activeElement).toBe(second);
     });
+
+    it("moves DOM focus across zones when Tab cycles between zone targets", async () => {
+      function Host() {
+        const mainRef = useRef<HTMLDivElement>(null);
+        const sidebarRef = useRef<HTMLDivElement>(null);
+
+        useFocusZone({
+          initial: "main",
+          zones: ["main", "sidebar"],
+          tabCycle: ["main", "sidebar"],
+          focus: {
+            autoFocus: true,
+            targets: {
+              main: mainRef,
+              sidebar: sidebarRef,
+            },
+          },
+        });
+
+        return createElement(
+          "div",
+          null,
+          createElement(
+            "div",
+            { ref: mainRef },
+            createElement("button", { type: "button" }, "Main action"),
+          ),
+          createElement(
+            "div",
+            { ref: sidebarRef },
+            createElement("button", { type: "button" }, "Sidebar action"),
+          ),
+        );
+      }
+
+      render(createElement(Host), { wrapper });
+
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: "Main action" }),
+      );
+
+      act(() => fireKey("Tab"));
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: "Sidebar action" }),
+      );
+
+      act(() => fireKey("Tab", { shiftKey: true }));
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: "Main action" }),
+      );
+    });
   });
 
   describe("edge cases", () => {

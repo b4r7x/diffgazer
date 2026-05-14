@@ -1,5 +1,5 @@
 import { useScope, useKey } from '@diffgazer/keys';
-import { usePageFooter } from '@/hooks/use-page-footer';
+import { usePageFooter } from "@diffgazer/core/footer";
 import { Button } from '@diffgazer/ui/components/button';
 import type { ReviewMode } from '@diffgazer/core/schemas/review';
 

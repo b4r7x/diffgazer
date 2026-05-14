@@ -186,7 +186,7 @@ export function writeUiVitePackageSmoke(projectDir) {
 }
 
 export function writeUiNextPackageSmoke(root, projectDir) {
-  writeNextFixture(projectDir, { root, name: "diffgazer-ui-next-smoke" });
+  writeNextFixture(projectDir, { name: "diffgazer-ui-next-smoke" });
   writeFileSync(
     resolve(projectDir, "app/globals.css"),
     [

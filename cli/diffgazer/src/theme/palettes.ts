@@ -1,31 +1,11 @@
-export interface CliColorTokens {
-  // Primitive
-  bg: string;
-  fg: string;
-  blue: string;
-  violet: string;
-  green: string;
-  red: string;
-  yellow: string;
-  border: string;
-  muted: string;
-  // Semantic
-  success: string;
-  warning: string;
-  error: string;
-  info: string;
-  accent: string;
-  // Domain (severity)
-  severityBlocker: string;
-  severityHigh: string;
-  severityMedium: string;
-  severityLow: string;
-  severityNit: string;
-  // Domain (status)
-  statusRunning: string;
-  statusComplete: string;
-  statusPending: string;
-}
+import type { ThemeTokenKey } from "@diffgazer/core/theme";
+
+/**
+ * CLI palettes implement the cross-app theme token contract from
+ * `@diffgazer/core/theme`. Adding or removing a key here without updating
+ * `THEME_TOKEN_KEYS` (or vice versa) is a compile error.
+ */
+export type CliColorTokens = Record<ThemeTokenKey, string>;
 
 type Palette = CliColorTokens;
 

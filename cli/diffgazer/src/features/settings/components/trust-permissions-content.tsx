@@ -1,50 +1,68 @@
 import type { ReactElement } from "react";
-import { Box } from "ink";
+import { Box, Text } from "ink";
+import type { TrustCapabilities } from "@diffgazer/core/schemas/config";
+import {
+  TRUST_CAPABILITY_OPTIONS,
+  fromSelectedCapabilityIds,
+  toSelectedCapabilityIds,
+} from "@diffgazer/core/schemas/config";
 import { CheckboxGroup } from "../../../components/ui/checkbox.js";
 import { Callout } from "../../../components/ui/callout.js";
-
-interface Capabilities {
-  readFiles: boolean;
-  runCommands: boolean;
-}
+import { Badge } from "../../../components/ui/badge.js";
+import { useTheme } from "../../../theme/theme-context.js";
 
 interface TrustPermissionsContentProps {
-  capabilities: Capabilities;
-  onChange: (caps: Capabilities) => void;
+  directory: string;
+  value: TrustCapabilities;
+  onChange: (value: TrustCapabilities) => void;
+  isTrusted?: boolean;
   isActive?: boolean;
 }
 
 export function TrustPermissionsContent({
-  capabilities,
+  directory,
+  value,
   onChange,
+  isTrusted = false,
   isActive = true,
 }: TrustPermissionsContentProps): ReactElement {
-  const checked: string[] = [];
-  if (capabilities.readFiles) checked.push("readFiles");
+  const { tokens } = useTheme();
+  const selected = toSelectedCapabilityIds(value);
 
-  function handleChange(values: string[]) {
-    onChange({
-      readFiles: values.includes("readFiles"),
-      runCommands: false,
-    });
+  function handleChange(next: string[]) {
+    onChange(fromSelectedCapabilityIds(next));
   }
 
   return (
     <Box flexDirection="column" gap={1}>
+      <Box flexDirection="column">
+        <Text color={tokens.muted}>TARGET DIRECTORY</Text>
+        <Box justifyContent="space-between" gap={1}>
+          <Text color={tokens.info} bold>
+            {directory}
+          </Text>
+          {isTrusted && <Badge variant="success">TRUSTED</Badge>}
+        </Box>
+      </Box>
+
+      <CheckboxGroup value={selected} onChange={handleChange} isActive={isActive}>
+        {TRUST_CAPABILITY_OPTIONS.map(({ id, label, description, disabled }) => (
+          <CheckboxGroup.Item
+            key={id}
+            value={id}
+            label={label}
+            description={description}
+            disabled={disabled}
+          />
+        ))}
+      </CheckboxGroup>
+
       <Callout variant="warning">
-        <Callout.Title>Security Warning</Callout.Title>
+        <Callout.Title>SECURITY WARNING</Callout.Title>
         <Callout.Content>
-          These permissions allow the AI to access your local files during review.
+          Run commands is currently unavailable. When enabled, it allows the AI to execute shell scripts. This grants significant access to your system.
         </Callout.Content>
       </Callout>
-
-      <CheckboxGroup value={checked} onChange={handleChange} isActive={isActive}>
-        <CheckboxGroup.Item
-          value="readFiles"
-          label="Read files"
-          description="Allow reading project files for context"
-        />
-      </CheckboxGroup>
     </Box>
   );
 }

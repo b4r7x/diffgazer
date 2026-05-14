@@ -1,7 +1,7 @@
 import { useRouter, useRouterState } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Spinner } from "@/components/ui/spinner/spinner";
-import { cn } from "@diffgazer/core/cn";
+import { cn } from "@diffgazer/ui/lib/utils";
 import { isDocsPath, type DocsLibraryId } from "@/lib/docs-library";
 import type { PageTree } from "@/lib/docs-tree";
 import { DocsSidebar } from "./sidebar";

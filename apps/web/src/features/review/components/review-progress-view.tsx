@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { cn } from "@diffgazer/core/cn";
+import { cn } from "@diffgazer/ui/lib/utils";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { Badge } from "@diffgazer/ui/components/badge";
 import { Button } from "@diffgazer/ui/components/button";
@@ -127,6 +127,17 @@ function ErrorDisplay({
   );
 }
 
+const API_KEY_ERROR_PATTERN = /api.?key/i;
+
+function isReviewStepReadyToExpand(steps: ProgressStepData[]): boolean {
+  const reviewStep = steps.find((s) => s.id === "review");
+  return (
+    reviewStep?.status === "active"
+    && !!reviewStep.substeps
+    && reviewStep.substeps.length > 0
+  );
+}
+
 export function ReviewProgressView({
   data,
   isRunning,
@@ -136,25 +147,17 @@ export function ReviewProgressView({
 }: ReviewProgressViewProps) {
   const { steps, entries, agents, metrics, startTime, contextSnapshot } = data;
   const [expandedStepId, setExpandedStepId] = useState<string | null>(null);
+  const [hasAutoExpanded, setHasAutoExpanded] = useState(false);
   const [agentFilter, setAgentFilter] = useState<string | null>(null);
-  const hasAutoExpandedReview = useRef(false);
 
   const { focusPane } = useReviewProgressKeyboard({ onViewResults, onCancel });
 
-  useEffect(() => {
-    if (hasAutoExpandedReview.current) return;
-    const reviewStep = steps.find((s) => s.id === "review");
-    if (
-      reviewStep?.status === "active" &&
-      reviewStep.substeps &&
-      reviewStep.substeps.length > 0
-    ) {
-      setExpandedStepId("review");
-      hasAutoExpandedReview.current = true;
-    }
-  }, [steps]);
+  if (!hasAutoExpanded && isReviewStepReadyToExpand(steps)) {
+    setHasAutoExpanded(true);
+    setExpandedStepId("review");
+  }
 
-  const isApiKeyError = error && /api.?key/i.test(error);
+  const isApiKeyError = error ? API_KEY_ERROR_PATTERN.test(error) : false;
 
   const expandedIds = expandedStepId ? [expandedStepId] : [];
 
@@ -248,7 +251,7 @@ export function ReviewProgressView({
         {error ? (
           <ErrorDisplay
             error={error}
-            isApiKeyError={!!isApiKeyError}
+            isApiKeyError={isApiKeyError}
             onCancel={onCancel}
           />
         ) : (

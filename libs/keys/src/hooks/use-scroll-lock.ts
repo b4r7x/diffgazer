@@ -32,11 +32,22 @@ function lockElement(el: HTMLElement): () => void {
   };
 }
 
+/**
+ * Lock scrolling on `target.current` (or `document.body`) while `enabled`.
+ *
+ * Effect-on-every-render is intentional. React does not re-fire effects when
+ * `target.current` mutates while the ref object stays stable, so the effect
+ * compares the current locked element to the next one on every render and
+ * short-circuits when nothing changed. Reference counting in `lockElement`
+ * keeps concurrent locks safe.
+ */
 export function useScrollLock(options: UseScrollLockOptions = {}): void {
   const { target, enabled = true } = options;
   const lockedElementRef = useRef<HTMLElement | null>(null);
   const releaseRef = useRef<(() => void) | null>(null);
 
+  // No dependency array on purpose; see hook-level comment above.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const nextElement = enabled ? target?.current ?? document.body : null;
     if (lockedElementRef.current === nextElement) return;

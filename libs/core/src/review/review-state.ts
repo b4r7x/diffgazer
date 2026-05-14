@@ -30,6 +30,21 @@ export type ReviewAction =
   | { type: "ERROR"; error: string }
   | { type: "RESET" };
 
+// Cap on retained streaming events. A long review can emit thousands of agent
+// events; without a cap, `[...state.events, event]` becomes O(n) per dispatch
+// and the array dominates memory. Once the cap is reached, the oldest events
+// are dropped from the head. UI consumers (`convertAgentEventsToLogEntries`,
+// log rendering) operate on a windowed view, so dropping ancient events is
+// safe for the live log.
+const MAX_EVENTS = 5000;
+
+function appendEvent(events: ReviewEvent[], event: ReviewEvent): ReviewEvent[] {
+  if (events.length < MAX_EVENTS) {
+    return [...events, event];
+  }
+  return [...events.slice(events.length - MAX_EVENTS + 1), event];
+}
+
 export function createInitialReviewState(): ReviewState {
   return {
     steps: createInitialSteps(),
@@ -142,28 +157,28 @@ function handleStepEvent(state: ReviewState, event: StepEvent): ReviewState {
         ...state,
         fileProgress: { ...state.fileProgress, total: event.filesTotal },
         startedAt: new Date(event.timestamp),
-        events: [...state.events, event],
+        events: appendEvent(state.events, event),
       };
 
     case "step_start":
       return {
         ...state,
         steps: updateStepStatus(state.steps, event.step, "active"),
-        events: [...state.events, event],
+        events: appendEvent(state.events, event),
       };
 
     case "step_complete":
       return {
         ...state,
         steps: updateStepStatus(state.steps, event.step, "completed"),
-        events: [...state.events, event],
+        events: appendEvent(state.events, event),
       };
 
     case "step_error":
       return {
         ...state,
         steps: updateStepStatus(state.steps, event.step, "error"),
-        events: [...state.events, event],
+        events: appendEvent(state.events, event),
         error: event.error,
         isStreaming: false,
       };
@@ -179,7 +194,7 @@ function handleFileEvent(
       ...state,
       agents: updateAgents(state.agents, event),
       issues: updateIssues(state.issues, event),
-      events: [...state.events, event],
+      events: appendEvent(state.events, event),
     };
   }
 
@@ -191,7 +206,7 @@ function handleFileEvent(
         current: event.index,
         currentFile: event.file,
       },
-      events: [...state.events, event],
+      events: appendEvent(state.events, event),
     };
   }
 
@@ -205,14 +220,14 @@ function handleFileEvent(
       completed: newCompleted,
       currentFile: null,
     },
-    events: [...state.events, event],
+    events: appendEvent(state.events, event),
   };
 }
 
 function handleEnrichEvent(state: ReviewState, event: EnrichEvent): ReviewState {
   return {
     ...state,
-    events: [...state.events, event],
+    events: appendEvent(state.events, event),
   };
 }
 
@@ -235,7 +250,7 @@ function handleToolEvent(
         current: newCompleted.length,
         currentFile: filePath,
       },
-      events: [...state.events, event],
+      events: appendEvent(state.events, event),
     };
   }
 
@@ -243,7 +258,7 @@ function handleToolEvent(
     ...state,
     agents: updateAgents(state.agents, event),
     issues: updateIssues(state.issues, event),
-    events: [...state.events, event],
+    events: appendEvent(state.events, event),
   };
 }
 
@@ -275,7 +290,7 @@ export function reviewReducer(state: ReviewState, action: ReviewAction): ReviewS
         return {
           ...state,
           fileProgress: { ...state.fileProgress, total: event.filesAnalyzed },
-          events: [...state.events, event],
+          events: appendEvent(state.events, event),
         };
       }
 
@@ -283,7 +298,7 @@ export function reviewReducer(state: ReviewState, action: ReviewAction): ReviewS
         ...state,
         agents: updateAgents(state.agents, event),
         issues: updateIssues(state.issues, event),
-        events: [...state.events, event],
+        events: appendEvent(state.events, event),
       };
     }
 

@@ -61,6 +61,23 @@ describe("resolveCliAction", () => {
     });
   });
 
+  test("returns help action when --help is passed", () => {
+    assert.deepEqual(resolveCliAction(["--help"]), { type: "help" });
+    assert.deepEqual(resolveCliAction(["-h"]), { type: "help" });
+  });
+
+  test("returns version action when --version is passed", () => {
+    assert.deepEqual(resolveCliAction(["--version"]), { type: "version" });
+    assert.deepEqual(resolveCliAction(["-V"]), { type: "version" });
+  });
+
+  test("rejects --theme without --tui", () => {
+    assert.throws(
+      () => resolveCliAction(["--theme", "classic"]),
+      /--theme requires --tui\./,
+    );
+  });
+
 });
 
 describe("diffgazer CLI options", () => {
@@ -152,7 +169,7 @@ describe("server launcher options", () => {
     }
   });
 
-  test("prints the banner before starting web servers and stops them on cleanup", () => {
+  test("prints the banner before starting web servers and stops them on cleanup", async () => {
     const events: string[] = [];
 
     const stop = startWeb(
@@ -162,15 +179,18 @@ describe("server launcher options", () => {
         createServerFactories: () => [
           () => ({
             start: () => events.push("start"),
-            stop: () => events.push("stop"),
+            stop: () => {
+              events.push("stop");
+              return Promise.resolve();
+            },
           }),
         ],
       },
     );
 
     assert.deepEqual(events, ["banner", "start"]);
-    stop();
-    stop();
+    await stop();
+    await stop();
 
     assert.deepEqual(events, ["banner", "start", "stop"]);
   });

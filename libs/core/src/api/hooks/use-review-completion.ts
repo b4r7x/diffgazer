@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import type { StepState } from "@diffgazer/core/schemas/events";
 
+// Hold the "completing" UI for ~2s so the user perceives the transition rather
+// than a flash. The extra 300ms when the report step has already completed
+// lets its final tick render before the view swaps.
 const REPORT_COMPLETE_DELAY_MS = 2300;
 const DEFAULT_COMPLETE_DELAY_MS = 2000;
 
@@ -30,6 +33,9 @@ export function useReviewCompletion({
   const prevIsStreamingRef = useRef(false);
   const stepsRef = useRef(steps);
   const onCompleteRef = useRef(onComplete);
+  // Stable-ref escape hatch: refs are read ONLY inside the effect, the timer
+  // callback, and event handlers — never during render — so mid-render writes
+  // are safe under concurrent rendering. See AGENTS.md react-useref rules.
   stepsRef.current = steps;
   onCompleteRef.current = onComplete;
 

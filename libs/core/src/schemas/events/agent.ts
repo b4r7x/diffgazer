@@ -286,7 +286,7 @@ export const OrchestratorCompleteEventSchema = z
   })
 ;
 
-const AgentStreamEventSchema = z.discriminatedUnion("type", [
+export const AgentStreamEventSchema = z.discriminatedUnion("type", [
   OrchestratorStartEventSchema,
   AgentQueuedEventSchema,
   FileStartEventSchema,

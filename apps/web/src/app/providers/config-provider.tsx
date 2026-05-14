@@ -1,6 +1,8 @@
 import {
   createContext,
+  useCallback,
   useContext,
+  useMemo,
   type ReactNode,
 } from "react";
 import type { AIProvider, ProviderStatus, TrustConfig, SetupStatus } from "@diffgazer/core/schemas/config";
@@ -75,62 +77,73 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   const trust = initData?.project?.trust ?? null;
   const setupStatus = initData?.setup ?? null;
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: configQueries.all() });
-  };
+  }, [queryClient]);
 
-  const activateProvider = async (providerId: string, selectedModel?: string) => {
-    try {
-      await activateMutation.mutateAsync({ providerId, model: selectedModel });
-    } catch {
-      // Error captured in activateMutation.error
-    }
-  };
+  const activateProvider = useCallback(
+    async (providerId: string, selectedModel?: string) => {
+      try {
+        await activateMutation.mutateAsync({ providerId, model: selectedModel });
+      } catch {
+        // Error captured in activateMutation.error
+      }
+    },
+    [activateMutation],
+  );
 
-  const saveCredentials = async (
-    providerName: AIProvider,
-    apiKey: string,
-    selectedModel?: string,
-  ) => {
-    try {
-      await saveConfigMutation.mutateAsync({
-        provider: providerName,
-        apiKey,
-        model: selectedModel,
-      });
-    } catch {
-      // Error captured in saveConfigMutation.error
-    }
-  };
+  const saveCredentials = useCallback(
+    async (providerName: AIProvider, apiKey: string, selectedModel?: string) => {
+      try {
+        await saveConfigMutation.mutateAsync({
+          provider: providerName,
+          apiKey,
+          model: selectedModel,
+        });
+      } catch {
+        // Error captured in saveConfigMutation.error
+      }
+    },
+    [saveConfigMutation],
+  );
 
-  const deleteProviderCredentials = async (providerName: AIProvider) => {
-    try {
-      await deleteCredentialsMutation.mutateAsync(providerName);
-    } catch {
-      // Error captured in deleteCredentialsMutation.error
-    }
-  };
+  const deleteProviderCredentials = useCallback(
+    async (providerName: AIProvider) => {
+      try {
+        await deleteCredentialsMutation.mutateAsync(providerName);
+      } catch {
+        // Error captured in deleteCredentialsMutation.error
+      }
+    },
+    [deleteCredentialsMutation],
+  );
 
-  const dataValue: ConfigDataContextValue = {
-    isLoading,
-    provider,
-    model,
-    isConfigured,
-    providerStatus,
-    projectId,
-    repoRoot,
-    trust,
-    setupStatus,
-  };
+  const dataValue = useMemo<ConfigDataContextValue>(
+    () => ({
+      isLoading,
+      provider,
+      model,
+      isConfigured,
+      providerStatus,
+      projectId,
+      repoRoot,
+      trust,
+      setupStatus,
+    }),
+    [isLoading, provider, model, isConfigured, providerStatus, projectId, repoRoot, trust, setupStatus],
+  );
 
-  const actionsValue: ConfigActionsContextValue = {
-    isSaving,
-    error,
-    refresh,
-    activateProvider,
-    saveCredentials,
-    deleteProviderCredentials,
-  };
+  const actionsValue = useMemo<ConfigActionsContextValue>(
+    () => ({
+      isSaving,
+      error,
+      refresh,
+      activateProvider,
+      saveCredentials,
+      deleteProviderCredentials,
+    }),
+    [isSaving, error, refresh, activateProvider, saveCredentials, deleteProviderCredentials],
+  );
 
   return (
     <ConfigDataContext.Provider value={dataValue}>

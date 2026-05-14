@@ -219,10 +219,19 @@ describe("Menu", () => {
     expect(onClose).toHaveBeenCalled()
   })
 
-  it("calls onClose on Tab without preventing default", async () => {
+  it("calls onClose on Tab and lets focus leave the menu", async () => {
     const onClose = vi.fn()
     const onKeyDown = vi.fn()
-    renderMenu({ onClose, onKeyDown, defaultHighlighted: "one" })
+    render(
+      <>
+        <Menu aria-label="Test menu" onClose={onClose} onKeyDown={onKeyDown} defaultHighlighted="one">
+          <Menu.Item id="one">One</Menu.Item>
+          <Menu.Item id="two">Two</Menu.Item>
+          <Menu.Item id="three" disabled>Three</Menu.Item>
+        </Menu>
+        <button type="button">After</button>
+      </>
+    )
     const menu = screen.getByRole("menu")
     menu.focus()
 
@@ -230,7 +239,8 @@ describe("Menu", () => {
 
     expect(onClose).toHaveBeenCalled()
     expect(onKeyDown).toHaveBeenCalled()
-    expect(onKeyDown.mock.calls[0][0].defaultPrevented).toBe(false)
+    expect(menu).not.toHaveFocus()
+    expect(screen.getByRole("button", { name: "After" })).toHaveFocus()
   })
 
   it("focuses the container on mount when autoFocus is true", async () => {

@@ -14,3 +14,23 @@ export type Route =
   | { screen: "settings/trust-permissions" };
 
 export type ScreenName = Route["screen"];
+
+export const SCREEN_NAMES: readonly ScreenName[] = [
+  "home",
+  "onboarding",
+  "review",
+  "history",
+  "help",
+  "settings",
+  "settings/theme",
+  "settings/providers",
+  "settings/storage",
+  "settings/analysis",
+  "settings/agent-execution",
+  "settings/diagnostics",
+  "settings/trust-permissions",
+];
+
+export function isScreenName(value: string): value is ScreenName {
+  return (SCREEN_NAMES as readonly string[]).includes(value);
+}

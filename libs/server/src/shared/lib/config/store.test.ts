@@ -11,6 +11,7 @@ const keyring = vi.hoisted(() => ({
   writeKeyringSecret: vi.fn(),
 }));
 
+// Boundary mock: keyring wraps the OS keychain via @napi-rs/keyring; tests provide canned secret read/write results so store behavior can be exercised without a real keychain.
 vi.mock("./keyring.js", () => keyring);
 
 let diffgazerHome: string;
@@ -92,7 +93,7 @@ describe("config store", () => {
       secretsStorage: null,
     });
     expect(store.getProviders().length).toBeGreaterThanOrEqual(4);
-    expect(store.getProviders().every((provider) => provider.hasApiKey === false)).toBe(true);
+    expect(store.getProviders().every((provider) => !provider.hasApiKey)).toBe(true);
     expect(store.getActiveProvider()).toBeNull();
   });
 
@@ -239,6 +240,76 @@ describe("config store", () => {
     expect(result).toMatchObject({ ok: true });
     expect(keyring.writeKeyringSecret).toHaveBeenCalledWith("api_key_gemini", "file-key");
     await expectFileMissingEventually(secretsPath());
+  });
+
+  it("persists the file copy BEFORE deleting keyring entries when migrating keyring→file (crash-safety)", async () => {
+    writeJson(configPath(), {
+      settings: { secretsStorage: "keyring" },
+      providers: [
+        { provider: "gemini", hasApiKey: true, isActive: true, model: "gemini-2.5-flash" },
+      ],
+    });
+    keyring.readKeyringSecret.mockReturnValue({ ok: true, value: "keyring-key" });
+
+    // Record the order in which the file write and keyring delete happen.
+    const events: string[] = [];
+    keyring.deleteKeyringSecret.mockImplementation(() => {
+      events.push(`delete:${existsSync(secretsPath()) ? "file-exists" : "file-missing"}`);
+      return { ok: true, value: true };
+    });
+
+    const store = await loadStore();
+    const result = store.updateSettings({ secretsStorage: "file" });
+
+    expect(result).toMatchObject({ ok: true });
+    // When deleteKeyringSecret was invoked, the file already existed.
+    expect(events).toEqual(["delete:file-exists"]);
+    // And the file holds the migrated secret — a crash anywhere AFTER persist
+    // and BEFORE finalizeKeyringDeletions leaves the secret safely on disk.
+    expect(readJson<{ providers: Record<string, string> }>(secretsPath())).toEqual({
+      providers: { gemini: "keyring-key" },
+    });
+    expect(keyring.deleteKeyringSecret).toHaveBeenCalledWith("api_key_gemini");
+  });
+
+  it("preserves the keyring entry if the file persist throws (re-runnable migration)", async () => {
+    writeJson(configPath(), {
+      settings: { secretsStorage: "keyring" },
+      providers: [
+        { provider: "gemini", hasApiKey: true, isActive: true, model: "gemini-2.5-flash" },
+      ],
+    });
+    keyring.readKeyringSecret.mockReturnValue({ ok: true, value: "keyring-key" });
+
+    // Simulate an unwritable secrets file by making the directory read-only.
+    // The sync write will throw; the catch must NOT reach deleteKeyringSecret.
+    const home = diffgazerHome;
+    mkdirSync(home, { recursive: true });
+    // Write a sentinel that we will overwrite normally, then chmod the dir.
+    // On systems where chmod is unreliable, swap to a different strategy.
+    try {
+      // Make the home directory read-only so writeFileSync inside persistSecrets fails.
+      // Use a file-not-directory path to force EISDIR/ENOENT.
+      writeFileSync(secretsPath(), ""); // create
+      // Replace the path with a directory to force write failure on the file.
+      rmSync(secretsPath());
+      mkdirSync(secretsPath());
+
+      const store = await loadStore();
+      let threw = false;
+      try {
+        store.updateSettings({ secretsStorage: "file" });
+      } catch {
+        threw = true;
+      }
+      // The sync write should throw; the deletion must NOT have run.
+      expect(threw).toBe(true);
+      expect(keyring.deleteKeyringSecret).not.toHaveBeenCalled();
+    } finally {
+      try {
+        rmSync(secretsPath(), { recursive: true, force: true });
+      } catch {}
+    }
   });
 
   it("returns an error when keyring migration is requested but unavailable", async () => {

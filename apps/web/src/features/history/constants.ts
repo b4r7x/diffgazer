@@ -1,2 +1,1 @@
-export const HISTORY_SECTION_ALL_ID = "all";
-export const HISTORY_SECTION_ALL_LABEL = "All";
+export { HISTORY_SECTION_ALL_ID, HISTORY_SECTION_ALL_LABEL } from "@diffgazer/core/review";

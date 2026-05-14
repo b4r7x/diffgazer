@@ -297,8 +297,6 @@ describe("Dialog", () => {
     })
   })
 
-  // --- ARIA ---
-
   it("trigger has aria-expanded reflecting open state", async () => {
     renderDialog()
     const trigger = screen.getByRole("button", { name: "Open" })
@@ -446,8 +444,6 @@ describe("Dialog", () => {
     const dialog = screen.getByRole("dialog")
     expect(dialog).not.toHaveAttribute("aria-describedby")
   })
-
-  // --- Accessibility ---
 
   it("has no a11y violations when open", async () => {
     const { container } = renderDialog({ defaultOpen: true })

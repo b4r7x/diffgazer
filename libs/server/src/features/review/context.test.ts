@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ok } from "@diffgazer/core/result";
 
+// Boundary mock: git/service wraps the `git` CLI subprocess (external-process boundary); tests provide canned status/diff/blame responses so context snapshot behavior can be exercised without a real repository.
 vi.mock("../../shared/lib/git/service.js", () => ({
   createGitService: vi.fn(),
 }));

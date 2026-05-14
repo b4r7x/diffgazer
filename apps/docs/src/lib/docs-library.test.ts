@@ -106,7 +106,7 @@ function collectPublicDocsSources(): Array<{ path: string; source: string }> {
     ...listRepoFiles("libs/ui/registry/component-docs", ".ts"),
     ...listRepoFiles("libs/ui/docs/content", ".mdx"),
     ...listRepoFiles("libs/ui/docs/generated", ".json"),
-    ...listRepoFiles("libs/keys/registry/hook-docs", ".ts"),
+    ...listRepoFiles("libs/keys/docs/hook-docs", ".ts"),
     ...listRepoFiles("libs/keys/docs/content", ".mdx"),
     ...listRepoFiles("libs/keys/docs/guides", ".md"),
     ...listRepoFiles("libs/keys/docs/generated", ".json"),

@@ -1,7 +1,24 @@
 import { existsSync, readdirSync, rmSync } from "node:fs"
-import { resolve } from "node:path"
+import { isAbsolute, relative, resolve } from "node:path"
 import { defaultLogger, type Logger } from "../logger.js"
 import type { HookDoc } from "./types.js"
+
+const HOOK_DOC_NAME = /^[a-z0-9][a-z0-9-]*$/
+
+function assertSafeRelativeFileName(fileName: string): void {
+  if (!HOOK_DOC_NAME.test(fileName)) {
+    throw new Error(`Invalid hook doc file name: "${fileName}"`)
+  }
+}
+
+function assertPathInsideRoot(targetPath: string, root: string): void {
+  const resolvedRoot = resolve(root)
+  const resolvedTarget = resolve(targetPath)
+  const rel = relative(resolvedRoot, resolvedTarget)
+  if (rel.startsWith("..") || isAbsolute(rel)) {
+    throw new Error(`Hook doc path "${targetPath}" escapes docs root "${root}"`)
+  }
+}
 
 export function kebabToCamelCase(str: string): string {
   return str
@@ -51,9 +68,17 @@ export function createHookDocLoader(
   fileNameTransform?: (hookName: string) => string,
   logger: Logger = defaultLogger,
 ): (hookName: string) => Promise<HookDoc | null> {
+  const resolvedDocsDir = resolve(docsDir)
   return async (hookName: string): Promise<HookDoc | null> => {
     const fileName = fileNameTransform ? fileNameTransform(hookName) : hookName
-    const docPath = resolve(docsDir, `${fileName}.ts`)
+    try {
+      assertSafeRelativeFileName(fileName)
+    } catch (err) {
+      logger.warn?.(`Rejected hook doc name: ${err}`)
+      return null
+    }
+    const docPath = resolve(resolvedDocsDir, `${fileName}.ts`)
+    assertPathInsideRoot(docPath, resolvedDocsDir)
     if (!existsSync(docPath)) return null
     try {
       const mod: unknown = await import(docPath)

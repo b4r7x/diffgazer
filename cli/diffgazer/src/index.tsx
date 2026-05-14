@@ -3,15 +3,12 @@
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { getErrorMessage } from "@diffgazer/core/errors";
 import { HELP_TEXT, resolveCliAction } from "./cli-options.js";
 import { ensureShutdownToken } from "./lib/shutdown-token.js";
 import { startWeb } from "./web-launcher.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-
-function formatErrorMessage(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
-}
 
 function readVersion(): string {
   const packagePath = resolve(__dirname, "../package.json");
@@ -20,7 +17,7 @@ function readVersion(): string {
   try {
     metadata = JSON.parse(readFileSync(packagePath, "utf-8")) as unknown;
   } catch (err: unknown) {
-    throw new Error(`Unable to read diffgazer package metadata: ${formatErrorMessage(err)}`);
+    throw new Error(`Unable to read diffgazer package metadata: ${getErrorMessage(err)}`);
   }
 
   if (
@@ -62,6 +59,6 @@ async function main(): Promise<void> {
 }
 
 void main().catch((err: unknown) => {
-  console.error(formatErrorMessage(err));
+  console.error(getErrorMessage(err));
   process.exit(1);
 });

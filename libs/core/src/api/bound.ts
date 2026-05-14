@@ -11,7 +11,6 @@ export function createApi(config: ApiClientConfig) {
   return {
     client,
     request: client.request,
-    stream: client.stream,
     ...bindConfig(client),
     ...bindGit(client),
     ...bindReview(client),

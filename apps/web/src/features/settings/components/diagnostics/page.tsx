@@ -7,7 +7,7 @@ import { Callout } from "@diffgazer/ui/components/callout";
 import { Divider } from "@diffgazer/ui/components/divider";
 import { KeyValue } from "@diffgazer/ui/components/key-value";
 import { Panel, PanelContent, PanelHeader } from "@diffgazer/ui/components/panel";
-import { useDiagnosticsKeyboard } from "../../hooks/use-diagnostics-keyboard.js";
+import { useDiagnosticsKeyboard } from "../../hooks/use-diagnostics-keyboard";
 
 type OverallState = "loading" | "error" | "empty" | "success";
 

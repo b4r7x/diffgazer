@@ -1,25 +1,9 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { toast } from "@diffgazer/ui/components/toast";
 import type { AIProvider } from "@diffgazer/core/schemas/config";
 import { getErrorMessage } from "@diffgazer/core/errors";
+import { useSubmitGuard } from "@diffgazer/core/forms";
 import { useProviders } from "./use-providers";
-
-function useSubmitGuard() {
-  const isSubmittingRef = useRef(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const withGuard = <T,>(fn: () => Promise<T>): Promise<T | undefined> => {
-    if (isSubmittingRef.current) return Promise.resolve(undefined);
-    isSubmittingRef.current = true;
-    setIsSubmitting(true);
-    return fn().finally(() => {
-      isSubmittingRef.current = false;
-      setIsSubmitting(false);
-    });
-  };
-
-  return { isSubmitting, withGuard };
-}
 
 export function useProviderManagement() {
   const {

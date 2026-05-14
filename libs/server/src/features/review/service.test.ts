@@ -12,12 +12,14 @@ import type { AIClient } from "../../shared/lib/ai/types.js";
 import type { createGitService as createGitServiceType } from "../../shared/lib/git/service.js";
 import { makeIssue } from "../../shared/lib/testing/factories.js";
 
+// Boundary mock: git/service wraps the `git` CLI subprocess (external-process boundary); tests provide canned status/diff responses so review session lifecycle can be exercised without a real repository.
 vi.mock("../../shared/lib/git/service.js", () => ({
   createGitService: vi.fn(),
 }));
 
 type GitService = ReturnType<typeof createGitServiceType>;
 type ServiceModule = typeof import("./service.js");
+type SseReplayModule = typeof import("./sse-replay.js");
 type SessionsModule = typeof import("./sessions.js");
 type GitModule = typeof import("../../shared/lib/git/service.js");
 const REVIEW_DIFF = [
@@ -32,11 +34,13 @@ const REVIEW_DIFF = [
 ].join("\n");
 
 let createReviewSession: ServiceModule["createReviewSession"];
-let streamActiveSessionToSSE: ServiceModule["streamActiveSessionToSSE"];
+let streamActiveSessionToSSE: SseReplayModule["streamActiveSessionToSSE"];
 let addEvent: SessionsModule["addEvent"];
+let cancelSession: SessionsModule["cancelSession"];
 let createSession: SessionsModule["createSession"];
 let deleteSession: SessionsModule["deleteSession"];
 let getSession: SessionsModule["getSession"];
+let markComplete: SessionsModule["markComplete"];
 let markReady: SessionsModule["markReady"];
 let createGitService: GitModule["createGitService"];
 let originalDiffgazerHome: string | undefined;
@@ -44,16 +48,38 @@ let tempHome: string;
 let projectRoot: string;
 
 const createdSessionIds = new Set<string>();
+const sessionsWithRunners = new Set<string>();
 
 function trackSession(reviewId: string): void {
   createdSessionIds.add(reviewId);
 }
 
-function cleanupTrackedSessions(): void {
+function trackSessionWithRunner(reviewId: string): void {
+  createdSessionIds.add(reviewId);
+  sessionsWithRunners.add(reviewId);
+}
+
+async function cleanupTrackedSessions(): Promise<void> {
+  for (const id of createdSessionIds) {
+    getSession(id)?.controller.abort("test_cleanup");
+  }
+  // Wait until every session with a detached runReviewSession has observed
+  // the abort and called markComplete. Polls observable state instead of a
+  // fixed setImmediate count coupled to the impl's microtask layout. Sessions
+  // created via createSession directly (no runner) need no wait.
+  await vi.waitFor(() => {
+    for (const id of sessionsWithRunners) {
+      const session = getSession(id);
+      if (session && !session.isComplete) {
+        throw new Error(`runner for ${id} not yet complete`);
+      }
+    }
+  });
   for (const id of createdSessionIds) {
     deleteSession(id);
   }
   createdSessionIds.clear();
+  sessionsWithRunners.clear();
 }
 
 function makeProjectRoot(): string {
@@ -154,14 +180,17 @@ beforeAll(async () => {
   );
 
   const service = await import("./service.js");
+  const sseReplay = await import("./sse-replay.js");
   const sessions = await import("./sessions.js");
   const git = await import("../../shared/lib/git/service.js");
   createReviewSession = service.createReviewSession;
-  streamActiveSessionToSSE = service.streamActiveSessionToSSE;
+  streamActiveSessionToSSE = sseReplay.streamActiveSessionToSSE;
   addEvent = sessions.addEvent;
+  cancelSession = sessions.cancelSession;
   createSession = sessions.createSession;
   deleteSession = sessions.deleteSession;
   getSession = sessions.getSession;
+  markComplete = sessions.markComplete;
   markReady = sessions.markReady;
   createGitService = git.createGitService;
 });
@@ -172,8 +201,8 @@ beforeEach(() => {
   vi.mocked(createGitService).mockReturnValue(makeGitService());
 });
 
-afterEach(() => {
-  cleanupTrackedSessions();
+afterEach(async () => {
+  await cleanupTrackedSessions();
   rmSync(projectRoot, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   vi.useRealTimers();
 });
@@ -199,7 +228,7 @@ describe("createReviewSession", () => {
     expect(result.value.reviewId).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
     );
-    trackSession(result.value.reviewId);
+    trackSessionWithRunner(result.value.reviewId);
     const session = getSession(result.value.reviewId);
     expect(session).toBeDefined();
     expect(session!.isReady).toBe(true);
@@ -249,7 +278,7 @@ describe("createReviewSession", () => {
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    trackSession(result.value.reviewId);
+    trackSessionWithRunner(result.value.reviewId);
     expect(stale.isComplete).toBe(true);
     expect(stale.controller.signal.aborted).toBe(true);
   });
@@ -319,26 +348,56 @@ describe("streamActiveSessionToSSE", () => {
     expect(stream.events).toEqual([]);
   });
 
-  it("writes a terminal event discovered after subscription", async () => {
-    vi.useFakeTimers();
+  it("writes a terminal event delivered via addEvent without depending on a timer", async () => {
     const stream = makeMockStream();
-    const session = createSession("poll-session", projectRoot, "abc123", "hash123", "unstaged");
+    const session = createSession("real-flow", projectRoot, "abc123", "hash123", "unstaged");
     trackSession(session.reviewId);
 
     const replay = streamActiveSessionToSSE(stream, session);
-    session.events.push({
+    // Let the function reach its subscribe/onComplete registration.
+    await Promise.resolve();
+    addEvent(session.reviewId, {
       type: "complete",
       result: { issues: [], summary: "Clean" },
       reviewId: session.reviewId,
       durationMs: 200,
     });
-    session.isComplete = true;
+    markComplete(session.reviewId);
 
-    await vi.advanceTimersByTimeAsync(250);
     await replay;
 
     expect(parsedEvents(stream)).toMatchObject([
       { type: "complete", reviewId: session.reviewId },
+    ]);
+  });
+
+  it("resolves promptly when the session completes without emitting a terminal event", async () => {
+    const stream = makeMockStream();
+    const session = createSession("silent-complete", projectRoot, "abc123", "hash123", "unstaged");
+    trackSession(session.reviewId);
+
+    const replay = streamActiveSessionToSSE(stream, session);
+    await Promise.resolve();
+    markComplete(session.reviewId);
+
+    await replay;
+    // No terminal event in events[]; consumer-visible behavior is silent close.
+    expect(stream.events).toEqual([]);
+  });
+
+  it("emits the stale error from cancelSession via the subscriber path", async () => {
+    const stream = makeMockStream();
+    const session = createSession("cancel-stream", projectRoot, "abc123", "hash123", "unstaged");
+    trackSession(session.reviewId);
+
+    const replay = streamActiveSessionToSSE(stream, session);
+    await Promise.resolve();
+    cancelSession(session.reviewId);
+
+    await replay;
+
+    expect(parsedEvents(stream)).toMatchObject([
+      { type: "error", error: { code: ReviewErrorCode.SESSION_STALE } },
     ]);
   });
 });

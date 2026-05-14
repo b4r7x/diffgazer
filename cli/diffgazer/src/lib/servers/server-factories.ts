@@ -1,4 +1,5 @@
 import open from "open";
+import { getErrorMessage } from "@diffgazer/core/errors";
 import { config } from "../../config.js";
 import type { CliMode } from "../../types/cli.js";
 import { createApiServer } from "./api-server.js";
@@ -16,10 +17,6 @@ interface ModeServerFactoryOptions extends ServerFactoryOptions {
   mode: CliMode;
 }
 
-function formatErrorMessage(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
-}
-
 export function openBrowserAddress(
   address: string,
   opener: BrowserOpener = open,
@@ -27,7 +24,7 @@ export function openBrowserAddress(
   void Promise.resolve()
     .then(() => opener(address))
     .catch((err: unknown) => {
-      console.warn(`Could not open browser at ${address}: ${formatErrorMessage(err)}`);
+      console.warn(`Could not open browser at ${address}: ${getErrorMessage(err)}`);
     });
 }
 

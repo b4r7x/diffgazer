@@ -4,11 +4,11 @@ import type { TrustCapabilities, TrustConfig } from "@diffgazer/core/schemas/con
 import type { Shortcut } from "@diffgazer/core/schemas/ui";
 import { getErrorMessage } from "@diffgazer/core/errors";
 import { useKey, useScope } from "@diffgazer/keys";
-import { usePageFooter } from "@/hooks/use-page-footer";
+import { usePageFooter } from "@diffgazer/core/footer";
 import { Panel, PanelHeader, PanelContent } from "@diffgazer/ui/components/panel";
 import { toast } from "@diffgazer/ui/components/toast";
 import { TrustPermissionsContent } from "@/components/shared/trust-permissions-content";
-import { NO_TRUST_CAPABILITIES, normalizeTrustCapabilities } from "@/components/shared/trust-permissions-model";
+import { NO_TRUST_CAPABILITIES, normalizeTrustCapabilities } from "@diffgazer/core/schemas/config";
 import { useConfigData } from "@/app/providers/config-provider";
 import { useSaveTrust, useDeleteTrust } from "@diffgazer/core/api/hooks";
 

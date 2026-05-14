@@ -217,7 +217,7 @@ If `scope` is omitted, no scope is pushed.
 
 **Single zone**: Works fine. Transitions and tab cycling become no-ops since there's nowhere to go.
 
-**Dynamic zones array**: The hook checks `zones.includes(currentZone)` on every render. If the current zone is removed from the array, it falls back to `zones[0]`. This means you can safely add/remove zones without crashing, but the user might get unexpectedly moved.
+**Dynamic zones array**: The hook checks `zones.includes(currentZone)` on every render. If the current zone is removed from the array, it falls back to `zones[0]`. This means you can add/remove zones without crashing, but the user might get unexpectedly moved.
 
 **Empty tabCycle**: Tab/Shift+Tab handlers are only registered when `tabCycle` is provided and non-empty.
 

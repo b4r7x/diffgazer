@@ -5,6 +5,7 @@ import type { LensId } from "@diffgazer/core/schemas/review";
 import { useScope } from "../../../hooks/use-scope.js";
 import { usePageFooter } from "../../../hooks/use-page-footer.js";
 import { useBackHandler } from "../../../hooks/use-back-handler.js";
+import { useNavigation } from "../../navigation-context.js";
 import { useSettingsZone } from "../../../hooks/use-settings-zone.js";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions.js";
 import { useSettings, useSaveSettings, guardQueryState } from "@diffgazer/core/api/hooks";
@@ -13,24 +14,75 @@ import { SectionHeader } from "../../../components/ui/section-header.js";
 import { Button } from "../../../components/ui/button.js";
 import { Spinner } from "../../../components/ui/spinner.js";
 import { AnalysisSelector, lensOptions } from "../../../features/settings/components/analysis-selector.js";
+import { isLensSelectionDirty, resolveEffectiveLenses } from "../../../features/settings/lens-selection.js";
+
+const LIST_SHORTCUTS = [
+  { key: "Esc", label: "Back" },
+  { key: "Tab", label: "Switch zone" },
+  { key: "↑↓", label: "Navigate" },
+  { key: "Space", label: "Toggle Lens" },
+] as const;
+
+const BUTTON_SHORTCUTS = [
+  { key: "Esc", label: "Back" },
+  { key: "Tab", label: "Switch zone" },
+  { key: "←→", label: "Move Action" },
+  { key: "Enter", label: "Activate" },
+] as const;
+
+function isLensId(value: string): value is LensId {
+  return lensOptions.some((lens) => lens.id === value);
+}
 
 export function AnalysisScreen(): ReactElement {
   const { columns } = useTerminalDimensions();
   useScope("settings-analysis");
-  usePageFooter({
-    shortcuts: [
-      { key: "Esc", label: "Back" },
-      { key: "Tab", label: "Switch zone" },
-      { key: "↑↓", label: "Navigate" },
-      { key: "Space", label: "Toggle" },
-    ],
-  });
   useBackHandler();
 
+  const { goBack } = useNavigation();
   const settingsQuery = useSettings();
   const saveSettings = useSaveSettings();
   const [selectedLenses, setSelectedLenses] = useState<LensId[] | null>(null);
-  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const isSaving = saveSettings.isPending;
+  const persistedLenses = (settingsQuery.data?.defaultLenses ?? []).filter(isLensId);
+  const fallbackLenses = lensOptions.map((lens) => lens.id);
+  const currentLenses = persistedLenses.length > 0 ? persistedLenses : fallbackLenses;
+  const effectiveLenses = resolveEffectiveLenses(persistedLenses, selectedLenses, fallbackLenses);
+  const hasLensSelection = effectiveLenses.length > 0;
+  const isDirty = isLensSelectionDirty(currentLenses, selectedLenses);
+  const canSave = !isSaving && isDirty && hasLensSelection;
+
+  const { isListActive, isButtonActive, zone } = useSettingsZone({
+    buttonCount: 2,
+    disabled: isSaving,
+  });
+
+  usePageFooter({
+    shortcuts: zone === "buttons" ? [...BUTTON_SHORTCUTS] : [...LIST_SHORTCUTS],
+  });
+
+  function handleCancel() {
+    goBack();
+  }
+
+  function handleSave() {
+    if (!canSave) return;
+    setError(null);
+    saveSettings.mutate(
+      { defaultLenses: effectiveLenses },
+      {
+        onSuccess: () => {
+          setSelectedLenses(null);
+          goBack();
+        },
+        onError: (err) => {
+          setError(err.message);
+        },
+      },
+    );
+  }
 
   const guard = guardQueryState(settingsQuery, {
     loading: () => (
@@ -51,55 +103,42 @@ export function AnalysisScreen(): ReactElement {
 
   if (guard) return guard;
 
-  const isSaving = saveSettings.isPending;
-  const saveError = saveSettings.error?.message ?? null;
-  const defaultLenses = settingsQuery.data?.defaultLenses ?? [];
-  const fallbackLenses = lensOptions.map((l) => l.id);
-  const currentLenses = defaultLenses.length > 0 ? defaultLenses : fallbackLenses;
-  const effectiveLenses = selectedLenses ?? currentLenses;
-
-  const { isListActive, isButtonActive } = useSettingsZone({
-    buttonCount: 1,
-    disabled: isSaving,
-  });
-
-  function handleSave() {
-    if (effectiveLenses.length === 0) return;
-    setSaved(false);
-    saveSettings.mutate({ defaultLenses: effectiveLenses }, {
-      onSuccess: () => setSaved(true),
-    });
-  }
-
   return (
     <Box justifyContent="center" flexGrow={1}>
       <Box width={Math.min(columns, 60)} flexDirection="column">
         <Panel>
           <Panel.Content>
             <Box flexDirection="column" gap={1}>
-              <SectionHeader>Analysis Agents</SectionHeader>
-              <Text dimColor>Select which agents run during review:</Text>
+              <SectionHeader>Analysis Settings</SectionHeader>
+              <Text dimColor>Choose which agents run during reviews.</Text>
               <AnalysisSelector
                 selectedLenses={effectiveLenses}
                 onChange={setSelectedLenses}
                 isActive={isListActive}
                 disabled={isSaving}
               />
-              {effectiveLenses.length === 0 && (
-                <Text color="yellow">Select at least one agent.</Text>
+              {!hasLensSelection && (
+                <Text color="red">Select at least one agent.</Text>
               )}
               <Box gap={1}>
                 <Button
-                  variant="primary"
-                  onPress={handleSave}
-                  disabled={isSaving || effectiveLenses.length === 0}
+                  variant="ghost"
+                  onPress={handleCancel}
+                  disabled={isSaving}
                   isActive={isButtonActive(0)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="success"
+                  onPress={handleSave}
+                  disabled={!canSave}
+                  isActive={isButtonActive(1)}
                 >
                   {isSaving ? "Saving..." : "Save"}
                 </Button>
               </Box>
-              {saved && <Text color="green">Analysis settings saved.</Text>}
-              {saveError && <Text color="red">{saveError}</Text>}
+              {error && <Text color="red">{error}</Text>}
             </Box>
           </Panel.Content>
         </Panel>

@@ -1,5 +1,6 @@
 import type { ReactElement } from "react";
 import { Box, Text } from "ink";
+import { useTheme } from "../../../../theme/theme-context.js";
 import { RadioGroup } from "../../../../components/ui/radio.js";
 import { Spinner } from "../../../../components/ui/spinner.js";
 import { useProviderStatus, guardQueryState } from "@diffgazer/core/api/hooks";
@@ -32,28 +33,32 @@ export function ProviderStep({
   onChange,
   isActive = true,
 }: ProviderStepProps): ReactElement {
+  const { tokens } = useTheme();
   const query = useProviderStatus();
 
   const guard = guardQueryState(query, {
     loading: () => <Spinner label="Loading providers..." />,
     error: (err) => (
       <Box>
-        <Text color="red">Error: {err.message}</Text>
+        <Text color={tokens.error}>Error: {err.message}</Text>
       </Box>
     ),
   });
   if (guard) return guard;
 
   return (
-    <RadioGroup value={value} onChange={onChange} isActive={isActive}>
-      {(query.data ?? []).map((status) => (
-        <RadioGroup.Item
-          key={status.provider}
-          value={status.provider}
-          label={getProviderLabel(status)}
-          description={getProviderDescription(status)}
-        />
-      ))}
-    </RadioGroup>
+    <Box flexDirection="column" gap={1}>
+      <Text color={tokens.muted}>Select an AI provider for code reviews.</Text>
+      <RadioGroup value={value} onChange={onChange} isActive={isActive}>
+        {(query.data ?? []).map((status) => (
+          <RadioGroup.Item
+            key={status.provider}
+            value={status.provider}
+            label={getProviderLabel(status)}
+            description={getProviderDescription(status)}
+          />
+        ))}
+      </RadioGroup>
+    </Box>
   );
 }

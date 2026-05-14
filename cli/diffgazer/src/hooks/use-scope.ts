@@ -7,11 +7,12 @@ export function useScope(name: string): void {
     throw new Error("useScope must be used within a TerminalKeyboardProvider");
   }
 
+  const { pushScope, popScope } = ctx;
+
   useEffect(() => {
-    ctx.pushScope(name);
+    pushScope(name);
     return () => {
-      ctx.popScope();
+      popScope();
     };
-  // ctx.pushScope/popScope are stable refs (useCallback with [])
-  }, [name]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [name, pushScope, popScope]);
 }

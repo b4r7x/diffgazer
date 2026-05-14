@@ -24,7 +24,7 @@ export function isApiError(error: unknown): error is ApiError {
   );
 }
 
-export interface StreamOptions {
+export interface RequestOptions {
   body?: unknown;
   params?: Record<string, string>;
   signal?: AbortSignal;
@@ -38,14 +38,16 @@ export interface ApiClientConfig {
   shutdownToken?: string | (() => string | undefined);
 }
 
-export type RequestOptions = StreamOptions;
-
 export interface ApiClient {
   get: <T>(path: string, params?: Record<string, string>) => Promise<T>;
   post: <T>(path: string, body?: unknown, options?: Omit<RequestOptions, "body" | "params">) => Promise<T>;
   put: <T>(path: string, body?: unknown, options?: Omit<RequestOptions, "body" | "params">) => Promise<T>;
   delete: <T>(path: string, params?: Record<string, string>) => Promise<T>;
-  stream: (path: string, options?: StreamOptions) => Promise<Response>;
+  /**
+   * Issue a raw HTTP request and return the unparsed `Response`. Used for
+   * streaming bodies (SSE) and any endpoint where the caller does not want
+   * the client to consume the body as JSON.
+   */
   request: (
     method: string,
     path: string,

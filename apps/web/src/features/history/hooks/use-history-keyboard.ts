@@ -1,7 +1,7 @@
 import { type RefObject } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { getFirstFocusableElement, useFocusZone, useKey } from "@diffgazer/keys";
-import { usePageFooter } from "@/hooks/use-page-footer";
+import { usePageFooter } from "@diffgazer/core/footer";
 import type { HistoryFocusZone } from "@/features/history/types";
 
 const ZONES = ["timeline", "runs", "insights", "search"] as const;

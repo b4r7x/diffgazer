@@ -4,11 +4,32 @@ import { Header } from "./header.js";
 import { Footer } from "./footer.js";
 import { useTerminalDimensions } from "../../hooks/use-terminal-dimensions.js";
 import { useNavigation } from "../../app/navigation-context.js";
-import { useFooterContext } from "../../app/providers/footer-provider.js";
+import { useFooterData } from "../../app/providers/footer-provider.js";
 import { useInit } from "@diffgazer/core/api/hooks";
 import { getProviderDisplayStatus, getProviderDisplay } from "@diffgazer/core/providers";
 
 const MIN_COLUMNS = 40;
+
+function ConnectedHeader() {
+  const { goBack, canGoBack } = useNavigation();
+  const { data, isLoading } = useInit();
+
+  const providerStatus = getProviderDisplayStatus(isLoading, data?.configured ?? false);
+  const providerName = getProviderDisplay(data?.config?.provider, data?.config?.model);
+
+  return (
+    <Header
+      providerName={providerName}
+      providerStatus={providerStatus}
+      onBack={canGoBack ? goBack : undefined}
+    />
+  );
+}
+
+function ConnectedFooter() {
+  const { shortcuts, rightShortcuts } = useFooterData();
+  return <Footer shortcuts={shortcuts} rightShortcuts={rightShortcuts} />;
+}
 
 export interface GlobalLayoutProps {
   children: ReactNode;
@@ -16,9 +37,6 @@ export interface GlobalLayoutProps {
 
 export function GlobalLayout({ children }: GlobalLayoutProps) {
   const { columns, rows } = useTerminalDimensions();
-  const { goBack, canGoBack } = useNavigation();
-  const { shortcuts, rightShortcuts } = useFooterContext();
-  const { data, isLoading } = useInit();
 
   if (columns < MIN_COLUMNS) {
     return (
@@ -28,27 +46,13 @@ export function GlobalLayout({ children }: GlobalLayoutProps) {
     );
   }
 
-  const providerStatus = getProviderDisplayStatus(isLoading, data?.configured ?? false);
-  const providerName = getProviderDisplay(
-    data?.config?.provider,
-    data?.config?.model,
-  );
-
   return (
-    <Box
-      flexDirection="column"
-      width={columns}
-      height={rows}
-    >
-      <Header
-        providerName={providerName}
-        providerStatus={providerStatus}
-        onBack={canGoBack ? goBack : undefined}
-      />
+    <Box flexDirection="column" width={columns} height={rows}>
+      <ConnectedHeader />
       <Box flexGrow={1} flexDirection="column">
         {children}
       </Box>
-      <Footer shortcuts={shortcuts} rightShortcuts={rightShortcuts} />
+      <ConnectedFooter />
     </Box>
   );
 }

@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import type { ServerController } from "../lib/servers/create-process-server.js";
 
-// Module-level reference so the exit handler can stop servers synchronously
-let activeServers: ServerController[] = [];
+const activeServerSets = new Set<readonly ServerController[]>();
 
-export function stopAllServers(): void {
-  activeServers.forEach((server) => server.stop());
-  activeServers = [];
+export async function stopAllServers(): Promise<void> {
+  const snapshots = [...activeServerSets];
+  activeServerSets.clear();
+  await Promise.allSettled(
+    snapshots.flatMap((servers) => servers.map((server) => server.stop())),
+  );
 }
 
 export function useServers(
@@ -16,10 +18,12 @@ export function useServers(
 
   useEffect(() => {
     servers.forEach((server) => server.start());
-    activeServers = servers;
+    activeServerSets.add(servers);
     return () => {
-      servers.forEach((server) => server.stop());
-      activeServers = [];
+      servers.forEach((server) => {
+        void server.stop();
+      });
+      activeServerSets.delete(servers);
     };
   }, [servers]);
 }

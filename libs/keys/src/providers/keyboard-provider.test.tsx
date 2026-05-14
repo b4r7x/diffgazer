@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { useEffect, useRef } from "react";
 import { useKeyboardContext } from "../context/keyboard-context";
 import { useScope } from "../hooks/use-scope";
+import { DECLINE } from "../core/normalize-key-input";
 import { fireKey as pressKey, KeyboardWrapper } from "../testing/test-utils";
 
 function fireKeyFrom(element: Element, key: string) {
@@ -227,6 +228,46 @@ describe("KeyboardProvider", () => {
     select.focus();
     fireKeyFrom(select, "Escape");
     expect(onSelect).toHaveBeenCalledOnce();
+  });
+
+  it("falls through to earlier handler when latest returns DECLINE", () => {
+    const earlier = vi.fn();
+    const latest = vi.fn(() => DECLINE);
+
+    function Consumer() {
+      const { register } = useKeyboardContext();
+      useEffect(() => {
+        register("global", "a", earlier);
+        register("global", "a", latest);
+      }, []);
+      return <div>consumer</div>;
+    }
+
+    render(<KeyboardWrapper><Consumer /></KeyboardWrapper>);
+
+    act(() => pressKey("a"));
+    expect(latest).toHaveBeenCalledOnce();
+    expect(earlier).toHaveBeenCalledOnce();
+  });
+
+  it("does not fall through when latest handler returns a non-DECLINE value", () => {
+    const earlier = vi.fn();
+    const latest = vi.fn(() => undefined);
+
+    function Consumer() {
+      const { register } = useKeyboardContext();
+      useEffect(() => {
+        register("global", "a", earlier);
+        register("global", "a", latest);
+      }, []);
+      return <div>consumer</div>;
+    }
+
+    render(<KeyboardWrapper><Consumer /></KeyboardWrapper>);
+
+    act(() => pressKey("a"));
+    expect(latest).toHaveBeenCalledOnce();
+    expect(earlier).not.toHaveBeenCalled();
   });
 
   it("should prioritize latest handler and fall back after deregister", () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useEffect } from "react";
+import { useRef, useEffect } from "react";
 
 // Fallback timeout for reduced-motion: onAnimationEnd won't fire when
 // motion-safe:animate-* classes are suppressed by prefers-reduced-motion.
@@ -12,7 +12,6 @@ export function useToastDismiss(
   onRemove: (id: string) => void,
 ) {
   const removedRef = useRef(false);
-  const remove = useCallback((removeId: string) => onRemove(removeId), [onRemove]);
 
   useEffect(() => {
     if (!dismissing) {
@@ -22,17 +21,17 @@ export function useToastDismiss(
     const timer = setTimeout(() => {
       if (!removedRef.current) {
         removedRef.current = true;
-        remove(id);
+        onRemove(id);
       }
     }, DISMISS_FALLBACK_MS);
     return () => clearTimeout(timer);
-  }, [dismissing, id, remove]);
+  }, [dismissing, id, onRemove]);
 
   return {
     onAnimationEnd: () => {
       if (dismissing && !removedRef.current) {
         removedRef.current = true;
-        remove(id);
+        onRemove(id);
       }
     },
   };

@@ -2,8 +2,8 @@ import { AnalysisSummary, type IssuePreview } from "@/features/review/components
 import type { LensStats } from "@/features/review/components/lens-stats-table";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { useScope, useKey } from "@diffgazer/keys";
-import { usePageFooter } from "@/hooks/use-page-footer";
-import { calculateSeverityCounts } from "@diffgazer/core/schemas/ui";
+import { usePageFooter } from "@diffgazer/core/footer";
+import { buildReviewSummary } from "@diffgazer/core/review";
 
 const CATEGORY_META: Record<string, { icon: string; iconColor: string }> = {
   security: { icon: "shield", iconColor: "text-tui-red" },
@@ -24,7 +24,7 @@ export function ReviewSummaryView({
   onEnterReview,
   onBack,
 }: ReviewSummaryViewProps) {
-  const severityCounts = calculateSeverityCounts(issues);
+  const summary = buildReviewSummary(issues);
 
   const categoryCountMap = issues.reduce<Record<string, number>>(
     (acc, issue) => {
@@ -57,13 +57,11 @@ export function ReviewSummaryView({
     severity: issue.severity,
   }));
 
-  const filesAnalyzed = new Set(issues.map((i) => i.file)).size;
-
   const stats = {
     runId: reviewId ?? "unknown",
-    totalIssues: issues.length,
-    filesAnalyzed,
-    criticalCount: severityCounts.blocker,
+    totalIssues: summary.total,
+    filesAnalyzed: summary.filesAnalyzed,
+    criticalCount: summary.criticalCount,
   };
 
   useScope("review-summary");
@@ -80,7 +78,7 @@ export function ReviewSummaryView({
       <div className="w-full max-w-4xl mx-auto">
         <AnalysisSummary
           stats={stats}
-          severityCounts={severityCounts}
+          severityCounts={summary.severityCounts}
           lensStats={lensStats}
           topIssues={topIssues}
           onEnterReview={onEnterReview}

@@ -15,4 +15,14 @@ describe("EmptyState", () => {
 
     expect(screen.getByRole("status")).toHaveTextContent("No results");
   });
+
+  it("releases the live region when live toggles back off", () => {
+    const { rerender } = render(<EmptyState live>No results</EmptyState>);
+    expect(screen.getByRole("status")).toBeInTheDocument();
+
+    rerender(<EmptyState>No results</EmptyState>);
+
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(screen.getByText("No results")).toBeInTheDocument();
+  });
 });

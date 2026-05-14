@@ -1,4 +1,6 @@
 import type { ReactElement } from "react";
+import { Box, Text } from "ink";
+import { useTheme } from "../../../../theme/theme-context.js";
 import { RadioGroup } from "../../../../components/ui/radio.js";
 
 interface ExecutionStepProps {
@@ -12,18 +14,22 @@ export function ExecutionStep({
   onChange,
   isActive = true,
 }: ExecutionStepProps): ReactElement {
+  const { tokens } = useTheme();
   return (
-    <RadioGroup value={value} onChange={onChange} isActive={isActive}>
-      <RadioGroup.Item
-        value="parallel"
-        label="Parallel"
-        description="Run agents concurrently (faster, uses more resources)"
-      />
-      <RadioGroup.Item
-        value="sequential"
-        label="Sequential"
-        description="Run agents one at a time (slower, predictable output)"
-      />
-    </RadioGroup>
+    <Box flexDirection="column" gap={1}>
+      <Text color={tokens.muted}>Agent Execution Mode:</Text>
+      <RadioGroup value={value} onChange={onChange} isActive={isActive}>
+        <RadioGroup.Item
+          value="sequential"
+          label="Sequential"
+          description="Agents run one after another. Works with all providers and tiers."
+        />
+        <RadioGroup.Item
+          value="parallel"
+          label="Parallel"
+          description="All agents run at once. Faster, but may hit rate limits on free tiers."
+        />
+      </RadioGroup>
+    </Box>
   );
 }

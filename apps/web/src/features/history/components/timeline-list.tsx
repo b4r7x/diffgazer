@@ -1,4 +1,3 @@
-import { useRef } from "react";
 import { NavigationList } from "@diffgazer/ui/components/navigation-list";
 import type { TimelineItem } from "@diffgazer/core/schemas/ui";
 import { isListNavigationKey, toVerticalBoundaryDirection } from "@diffgazer/keys";
@@ -22,13 +21,8 @@ export function TimelineList({
   onBoundaryReached,
   className,
 }: TimelineListProps) {
-  const lastNotifiedId = useRef<string | null>(selectedId);
-  lastNotifiedId.current = selectedId;
-
-  const notifySelect = (id: string | null) => {
+  const handleSelect = (id: string | null) => {
     if (id === null) return;
-    if (lastNotifiedId.current === id) return;
-    lastNotifiedId.current = id;
     onSelect(id);
   };
 
@@ -47,8 +41,8 @@ export function TimelineList({
       }}
       selectedId={selectedId}
       highlighted={keyboardEnabled ? selectedId : null}
-      onSelect={notifySelect}
-      onHighlightChange={notifySelect}
+      onSelect={handleSelect}
+      onHighlightChange={handleSelect}
       onNavigationBoundaryReached={(direction) => {
         onBoundaryReached?.(toVerticalBoundaryDirection(direction));
       }}

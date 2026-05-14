@@ -47,19 +47,18 @@ describe("enrichIssues", () => {
   it("should emit progress events for blame and context", async () => {
     const gitService = makeMockGitService();
     const issues = [makeIssue()];
-    const onEvent = vi.fn();
+    const sequence: Array<{ enrichmentType: string; status: string }> = [];
 
-    await enrichIssues(issues, gitService, onEvent);
+    await enrichIssues(issues, gitService, (event) => {
+      sequence.push({ enrichmentType: event.enrichmentType, status: event.status });
+    });
 
-    const blameEvents = onEvent.mock.calls.filter(
-      ([e]) => e.enrichmentType === "blame",
-    );
-    expect(blameEvents.map(([e]) => e.status)).toEqual(["started", "complete"]);
-
-    const contextEvents = onEvent.mock.calls.filter(
-      ([e]) => e.enrichmentType === "context",
-    );
-    expect(contextEvents.map(([e]) => e.status)).toEqual(["started", "complete"]);
+    expect(sequence).toEqual([
+      { enrichmentType: "blame", status: "started" },
+      { enrichmentType: "blame", status: "complete" },
+      { enrichmentType: "context", status: "started" },
+      { enrichmentType: "context", status: "complete" },
+    ]);
   });
 
   it("should skip blame/context for issues without line_start", async () => {
@@ -74,7 +73,7 @@ describe("enrichIssues", () => {
     expect(gitService.getBlame).not.toHaveBeenCalled();
   });
 
-  it("should handle partial failures gracefully", async () => {
+  it("should handle partial failures without throwing", async () => {
     const gitService = makeMockGitService();
     vi.mocked(gitService.getBlame)
       .mockResolvedValueOnce(null)

@@ -1,57 +1,23 @@
 import { z } from "zod";
 import {
-  OrchestratorStartEventSchema,
-  AgentQueuedEventSchema,
-  AgentStartEventSchema,
-  AgentThinkingEventSchema,
-  AgentProgressEventSchema,
-  AgentErrorEventSchema,
-  ToolCallEventSchema,
-  ToolResultEventSchema,
-  ToolStartEventSchema,
-  ToolEndEventSchema,
-  IssueFoundEventSchema,
-  AgentCompleteEventSchema,
-  OrchestratorCompleteEventSchema,
-  FileStartEventSchema,
-  FileCompleteEventSchema,
+  AgentStreamEventSchema,
   type AgentStreamEvent,
 } from "./agent.js";
-import { EnrichProgressEventSchema, type EnrichEvent } from "./enrich.js";
+import { EnrichEventSchema, type EnrichEvent } from "./enrich.js";
 import {
   ReviewStreamEventSchema,
   type ReviewStreamEvent as BaseReviewStreamEvent,
 } from "../review/issues.js";
-import {
-  StepStartEventSchema,
-  StepCompleteEventSchema,
-  StepErrorEventSchema,
-  ReviewStartedEventSchema,
-  type StepEvent,
-} from "./step.js";
+import { StepEventSchema, type StepEvent } from "./step.js";
 
+// Compose the full event union from the four already-named sub-unions. Adding
+// a new event type means extending its owning sub-union; this file does not
+// need to change.
 export const FullReviewStreamEventSchema = z.discriminatedUnion("type", [
   ...ReviewStreamEventSchema.options,
-  OrchestratorStartEventSchema,
-  AgentQueuedEventSchema,
-  AgentStartEventSchema,
-  AgentThinkingEventSchema,
-  AgentProgressEventSchema,
-  AgentErrorEventSchema,
-  ToolCallEventSchema,
-  ToolResultEventSchema,
-  ToolStartEventSchema,
-  ToolEndEventSchema,
-  IssueFoundEventSchema,
-  AgentCompleteEventSchema,
-  OrchestratorCompleteEventSchema,
-  FileStartEventSchema,
-  FileCompleteEventSchema,
-  ReviewStartedEventSchema,
-  StepStartEventSchema,
-  StepCompleteEventSchema,
-  StepErrorEventSchema,
-  EnrichProgressEventSchema,
+  ...AgentStreamEventSchema.options,
+  ...StepEventSchema.options,
+  ...EnrichEventSchema.options,
 ]);
 
 export type FullReviewStreamEvent = BaseReviewStreamEvent | AgentStreamEvent | StepEvent | EnrichEvent;

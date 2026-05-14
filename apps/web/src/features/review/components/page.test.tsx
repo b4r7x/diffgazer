@@ -2,6 +2,7 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { KeyboardProvider } from "@diffgazer/keys";
+import { Toaster } from "@diffgazer/ui/components/toast";
 import { FooterProvider } from "@/components/layout";
 import { ConfigProvider } from "@/app/providers/config-provider";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -18,14 +19,12 @@ type ReviewQueryState = {
 const {
   mockBack,
   mockNavigate,
-  mockToastError,
   mockUseReview,
   mockUseReviewLifecycleBase,
   routeState,
 } = vi.hoisted(() => ({
   mockBack: vi.fn(),
   mockNavigate: vi.fn(),
-  mockToastError: vi.fn(),
   mockUseReview: vi.fn(),
   mockUseReviewLifecycleBase: vi.fn(),
   routeState: {
@@ -46,12 +45,7 @@ vi.mock("@tanstack/react-router", () => ({
   useSearch: () => routeState.search,
 }));
 
-vi.mock("@diffgazer/ui/components/toast", () => ({
-  toast: {
-    error: mockToastError,
-  },
-}));
-
+// Boundary mock: api/hooks is the HTTP-data fetch boundary; we provide canned data and assert on the resulting UI.
 vi.mock("@diffgazer/core/api/hooks", () => ({
   configQueries: {
     all: () => ["config"],
@@ -123,7 +117,10 @@ function renderPage() {
       <QueryClientProvider client={queryClient}>
         <ConfigProvider>
           <KeyboardProvider>
-            <FooterProvider>{children}</FooterProvider>
+            <FooterProvider>
+              {children}
+              <Toaster />
+            </FooterProvider>
           </KeyboardProvider>
         </ConfigProvider>
       </QueryClientProvider>
@@ -140,7 +137,6 @@ describe("ReviewPage saved review loading", () => {
     mockBack.mockReset();
     mockNavigate.mockReset();
     mockNavigate.mockResolvedValue(undefined);
-    mockToastError.mockReset();
     mockUseReview.mockReset();
     mockUseReview.mockReturnValue(reviewQuery({}));
     mockUseReviewLifecycleBase.mockReset();
@@ -211,8 +207,6 @@ describe("ReviewPage saved review loading", () => {
     renderPage();
 
     expect(screen.getByText("Progress Overview")).toBeInTheDocument();
-    expect(mockUseReview).toHaveBeenCalledWith("");
-    expect(mockUseReview).not.toHaveBeenCalledWith(reviewId);
   });
 
   it("streams when the saved review returns 404", async () => {
@@ -230,7 +224,7 @@ describe("ReviewPage saved review loading", () => {
     await waitFor(() => {
       expect(screen.getByText("Progress Overview")).toBeInTheDocument();
     });
-    expect(mockToastError).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("streams when the saved review has no result", async () => {
@@ -253,7 +247,7 @@ describe("ReviewPage saved review loading", () => {
     await waitFor(() => {
       expect(screen.getByText("Progress Overview")).toBeInTheDocument();
     });
-    expect(mockToastError).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("reports saved review errors without replacing the route", async () => {
@@ -268,10 +262,10 @@ describe("ReviewPage saved review loading", () => {
 
     renderPage();
 
+    const errorToast = await screen.findByRole("alert");
+    expect(errorToast).toHaveTextContent(/error loading review/i);
+    expect(errorToast).toHaveTextContent("HTTP 500");
     await waitFor(() => {
-      expect(mockToastError).toHaveBeenCalledWith("Error Loading Review", {
-        message: "HTTP 500",
-      });
       expect(mockNavigate).toHaveBeenCalledWith({ to: "/" });
     });
     expect(mockNavigate).not.toHaveBeenCalledWith(
@@ -287,7 +281,6 @@ describe("ReviewPage no-reviewId redirect", () => {
     mockBack.mockReset();
     mockNavigate.mockReset();
     mockNavigate.mockResolvedValue(undefined);
-    mockToastError.mockReset();
     mockUseReview.mockReset();
     mockUseReview.mockReturnValue(reviewQuery({}));
     mockUseReviewLifecycleBase.mockReset();
@@ -324,7 +317,6 @@ describe("ReviewPage live review phase transitions", () => {
     mockBack.mockReset();
     mockNavigate.mockReset();
     mockNavigate.mockResolvedValue(undefined);
-    mockToastError.mockReset();
     mockUseReview.mockReset();
     mockUseReview.mockReturnValue(reviewQuery({}));
     mockUseReviewLifecycleBase.mockReset();

@@ -1,6 +1,6 @@
 import { formatTime } from '@diffgazer/core/format';
 import { useTimer } from '@/hooks/use-timer';
-import { cn } from '@diffgazer/core/cn';
+import { cn } from '@diffgazer/ui/lib/utils';
 
 export interface TimerProps {
   startTime?: Date;

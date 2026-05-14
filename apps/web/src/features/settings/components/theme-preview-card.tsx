@@ -11,7 +11,8 @@ interface ThemePreviewCardProps {
 export function ThemePreviewCard({ previewTheme }: ThemePreviewCardProps) {
   return (
     <div
-      data-testid="theme-preview-root"
+      role="region"
+      aria-label="Theme preview"
       data-theme={previewTheme}
       className="theme-preview-scope w-full h-full flex items-center justify-center bg-tui-bg p-6"
       style={{ colorScheme: previewTheme }}

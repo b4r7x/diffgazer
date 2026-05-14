@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useEffectEvent } from "react";
 import { useConfigCheck } from "@diffgazer/core/api/hooks";
 import { useNavigation } from "../app/navigation-context.js";
 
@@ -8,12 +8,15 @@ export function useConfigGuard(): ConfigGuardState {
   const { data, isLoading, error } = useConfigCheck();
   const { navigate } = useNavigation();
 
-  useEffect(() => {
-    if (isLoading) return;
+  const redirectIfMissing = useEffectEvent(() => {
     if (!data?.configured || error) {
       navigate({ screen: "onboarding" });
     }
-  // navigate excluded from deps: fire-and-forget redirect, not reactive
+  });
+
+  useEffect(() => {
+    if (isLoading) return;
+    redirectIfMissing();
   }, [isLoading, data, error]);
 
   if (isLoading) return "checking";

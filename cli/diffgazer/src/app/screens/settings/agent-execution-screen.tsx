@@ -5,6 +5,7 @@ import type { AgentExecution } from "@diffgazer/core/schemas/config";
 import { useScope } from "../../../hooks/use-scope.js";
 import { usePageFooter } from "../../../hooks/use-page-footer.js";
 import { useBackHandler } from "../../../hooks/use-back-handler.js";
+import { useNavigation } from "../../navigation-context.js";
 import { useSettingsZone } from "../../../hooks/use-settings-zone.js";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions.js";
 import { useSettings, useSaveSettings, guardQueryState } from "@diffgazer/core/api/hooks";
@@ -14,38 +15,77 @@ import { Spinner } from "../../../components/ui/spinner.js";
 import { Button } from "../../../components/ui/button.js";
 import { RadioGroup } from "../../../components/ui/radio.js";
 
+const EXECUTION_MODES: AgentExecution[] = ["sequential", "parallel"];
+
+const LIST_SHORTCUTS = [
+  { key: "Esc", label: "Back" },
+  { key: "Tab", label: "Switch zone" },
+  { key: "↑↓", label: "Navigate" },
+  { key: "Enter", label: "Select Mode" },
+] as const;
+
+const BUTTON_SHORTCUTS = [
+  { key: "Esc", label: "Back" },
+  { key: "Tab", label: "Switch zone" },
+  { key: "←→", label: "Move Action" },
+  { key: "Enter", label: "Activate" },
+] as const;
+
+function isAgentExecution(value: string): value is AgentExecution {
+  return EXECUTION_MODES.some((mode) => mode === value);
+}
+
 export function AgentExecutionScreen(): ReactElement {
   const { columns } = useTerminalDimensions();
   useScope("settings-agent-execution");
-  usePageFooter({
-    shortcuts: [
-      { key: "Esc", label: "Back" },
-      { key: "Tab", label: "Switch zone" },
-      { key: "↑↓", label: "Navigate" },
-      { key: "Enter", label: "Select" },
-    ],
-  });
   useBackHandler();
 
+  const { goBack } = useNavigation();
   const settingsQuery = useSettings();
   const saveSettings = useSaveSettings();
-  const [mode, setMode] = useState<AgentExecution | null>(null);
-  const [saved, setSaved] = useState(false);
+  const [modeChoice, setModeChoice] = useState<AgentExecution | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const isSaving = saveSettings.isPending;
-  const saveError = saveSettings.error?.message ?? null;
-  const current = mode ?? settingsQuery.data?.agentExecution ?? "sequential";
+  const persistedMode = settingsQuery.data?.agentExecution ?? "sequential";
+  const effectiveMode = modeChoice ?? persistedMode;
+  const isDirty = modeChoice !== null && modeChoice !== persistedMode;
+  const canSave = !isSaving && isDirty;
 
-  const { isListActive, isButtonActive } = useSettingsZone({
-    buttonCount: 1,
+  const { isListActive, isButtonActive, zone } = useSettingsZone({
+    buttonCount: 2,
     disabled: isSaving,
   });
 
+  usePageFooter({
+    shortcuts: zone === "buttons" ? [...BUTTON_SHORTCUTS] : [...LIST_SHORTCUTS],
+  });
+
+  function handleModeChange(value: string) {
+    if (!isAgentExecution(value)) return;
+    setModeChoice(value);
+    setError(null);
+  }
+
+  function handleCancel() {
+    goBack();
+  }
+
   function handleSave() {
-    setSaved(false);
-    saveSettings.mutate({ agentExecution: current }, {
-      onSuccess: () => setSaved(true),
-    });
+    if (!canSave) return;
+    setError(null);
+    saveSettings.mutate(
+      { agentExecution: effectiveMode },
+      {
+        onSuccess: () => {
+          setModeChoice(null);
+          goBack();
+        },
+        onError: (err) => {
+          setError(err.message);
+        },
+      },
+    );
   }
 
   const guard = guardQueryState(settingsQuery, {
@@ -73,37 +113,46 @@ export function AgentExecutionScreen(): ReactElement {
         <Panel>
           <Panel.Content>
             <Box flexDirection="column" gap={1}>
-              <SectionHeader>Agent Execution</SectionHeader>
-              <Text dimColor>Current: {current}</Text>
+              <SectionHeader>Agent Execution Mode</SectionHeader>
+              <Text dimColor>
+                Choose whether analysis agents run in sequence or in parallel.
+              </Text>
               <RadioGroup
-                value={current}
-                onChange={(v) => { setMode(v as AgentExecution); setSaved(false); }}
+                value={effectiveMode}
+                onChange={handleModeChange}
                 isActive={isListActive}
+                disabled={isSaving}
               >
-                <RadioGroup.Item
-                  value="parallel"
-                  label="Parallel"
-                  description="Run all agents concurrently (faster)"
-                />
                 <RadioGroup.Item
                   value="sequential"
                   label="Sequential"
-                  description="Run agents one at a time (lower resource usage)"
+                  description="Agents run one after another. Works with all providers and tiers."
+                />
+                <RadioGroup.Item
+                  value="parallel"
+                  label="Parallel"
+                  description="All agents run at once. Faster, but may hit rate limits on free tiers."
                 />
               </RadioGroup>
               <Box gap={1}>
                 <Button
-                  variant="primary"
-                  onPress={handleSave}
-                  loading={isSaving}
+                  variant="ghost"
+                  onPress={handleCancel}
                   disabled={isSaving}
                   isActive={isButtonActive(0)}
                 >
-                  Save
+                  Cancel
+                </Button>
+                <Button
+                  variant="success"
+                  onPress={handleSave}
+                  disabled={!canSave}
+                  isActive={isButtonActive(1)}
+                >
+                  {isSaving ? "Saving..." : "Save"}
                 </Button>
               </Box>
-              {saved && <Text color="green">Execution mode saved.</Text>}
-              {saveError && <Text color="red">{saveError}</Text>}
+              {error && <Text color="red">{error}</Text>}
             </Box>
           </Panel.Content>
         </Panel>

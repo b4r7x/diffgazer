@@ -1,84 +1,72 @@
 import type { ReactElement } from "react";
 import { Box, Text, useInput } from "ink";
-import type { ReviewMetadata, ReviewIssue, ReviewSeverity } from "@diffgazer/core/schemas/review";
-import { SEVERITY_ORDER } from "@diffgazer/core/schemas/ui";
+import type { ReviewIssue } from "@diffgazer/core/schemas/review";
+import { SEVERITY_ORDER, type SeverityCounts } from "@diffgazer/core/schemas/ui";
 import { capitalize } from "@diffgazer/core/strings";
-import { formatDuration, getDateLabel } from "@diffgazer/core/format";
 import { ScrollArea } from "../../../components/ui/scroll-area.js";
 import { SeverityBreakdown } from "../../review/components/severity-breakdown.js";
-import { KeyValue } from "../../../components/ui/key-value.js";
 import { EmptyState } from "../../../components/ui/empty-state.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
-import { useNavigation } from "../../../app/navigation-context.js";
 import { useTheme } from "../../../theme/theme-context.js";
 import { severityColor } from "../../../theme/severity.js";
 
 export interface HistoryInsightsPaneProps {
-  review?: ReviewMetadata;
-  issues?: ReviewIssue[];
+  runId: string | null;
+  severityCounts: SeverityCounts | null;
+  issues: ReviewIssue[];
+  duration?: string;
   isActive?: boolean;
   scrollHeight?: number;
+  onIssueClick?: (issueId: string) => void;
 }
 
-function buildSeverities(review: ReviewMetadata): Array<{ severity: ReviewSeverity; count: number }> {
-  const countMap: Record<ReviewSeverity, number> = {
-    blocker: review.blockerCount,
-    high: review.highCount,
-    medium: review.mediumCount,
-    low: review.lowCount,
-    nit: review.nitCount,
-  };
+function toSeverityList(counts: SeverityCounts) {
   return SEVERITY_ORDER
-    .map((severity) => ({ severity, count: countMap[severity] }))
+    .map((severity) => ({ severity, count: counts[severity] }))
     .filter((entry) => entry.count > 0);
 }
 
-export function HistoryInsightsPane({ review, issues = [], isActive = false, scrollHeight = 12 }: HistoryInsightsPaneProps): ReactElement {
-  const { navigate } = useNavigation();
+export function HistoryInsightsPane({
+  runId,
+  severityCounts,
+  issues,
+  duration,
+  isActive = false,
+  scrollHeight = 12,
+  onIssueClick,
+}: HistoryInsightsPaneProps): ReactElement {
   const { tokens } = useTheme();
 
   useInput(
     (_input, key) => {
-      if (key.return && review) {
-        navigate({ screen: "review", reviewId: review.id });
+      if (key.return && runId && onIssueClick) {
+        const first = issues[0];
+        if (first) onIssueClick(first.id);
       }
     },
     { isActive },
   );
 
-  if (!review) {
+  if (!runId) {
     return (
       <Box flexDirection="column" padding={1}>
         <EmptyState>
-          <EmptyState.Message>Select a review</EmptyState.Message>
-          <EmptyState.Description>
-            Use arrow keys to highlight a review, then press Enter
-          </EmptyState.Description>
+          <EmptyState.Message>Select a run to view insights</EmptyState.Message>
         </EmptyState>
       </Box>
     );
   }
 
-  const severities = buildSeverities(review);
+  const severityList = severityCounts ? toSeverityList(severityCounts) : [];
 
   return (
     <Box flexDirection="column" padding={1}>
+      <SectionHeader variant="muted">{`Insights: Run ${runId}`}</SectionHeader>
       <ScrollArea height={scrollHeight} isActive={isActive}>
-        <SectionHeader>Review Details</SectionHeader>
-        <Box marginTop={1} flexDirection="column">
-          <KeyValue label="Date" value={getDateLabel(review.createdAt, { showYear: true })} labelWidth={10} />
-          <KeyValue label="Issues" value={String(review.issueCount)} labelWidth={10} />
-          <KeyValue label="Duration" value={formatDuration(review.durationMs)} labelWidth={10} />
-          <KeyValue label="Mode" value={review.mode} labelWidth={10} />
-          <KeyValue label="Files" value={String(review.fileCount)} labelWidth={10} />
-          {review.branch ? (
-            <KeyValue label="Branch" value={review.branch} labelWidth={10} />
-          ) : null}
-        </Box>
-        {severities.length > 0 ? (
+        {severityList.length > 0 ? (
           <Box marginTop={1} flexDirection="column">
             <SectionHeader variant="muted">Severity Breakdown</SectionHeader>
-            <SeverityBreakdown issues={severities} />
+            <SeverityBreakdown issues={severityList} />
           </Box>
         ) : null}
         {issues.length > 0 ? (
@@ -100,6 +88,12 @@ export function HistoryInsightsPane({ review, issues = [], isActive = false, scr
           </Box>
         ) : null}
       </ScrollArea>
+      {duration ? (
+        <Box marginTop={1} flexDirection="column">
+          <Text color={tokens.muted} dimColor>DURATION</Text>
+          <Text color={tokens.fg}>{duration}</Text>
+        </Box>
+      ) : null}
     </Box>
   );
 }

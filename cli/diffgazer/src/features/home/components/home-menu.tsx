@@ -1,50 +1,47 @@
 import { Fragment } from "react";
-import { useTheme } from "../../../theme/theme-context.js";
 import { Menu } from "../../../components/ui/menu.js";
+import { Panel } from "../../../components/ui/panel.js";
 import { MENU_ITEMS } from "../../../config/navigation.js";
+import { isMenuActionDisabled, withGroupDividers } from "@diffgazer/core/navigation";
 
 interface HomeMenuProps {
   isActive?: boolean;
   onAction: (action: string) => void;
-  disableReview?: boolean;
+  isTrusted?: boolean;
+  hasLastReview?: boolean;
 }
 
 export function HomeMenu({
   isActive = true,
   onAction,
-  disableReview = false,
+  isTrusted = false,
+  hasLastReview = false,
 }: HomeMenuProps) {
-  const { tokens } = useTheme();
-
-  let lastGroup: string | undefined;
+  const annotated = withGroupDividers(MENU_ITEMS);
 
   return (
-    <Menu isActive={isActive} onSelect={onAction}>
-      {MENU_ITEMS.map((item) => {
-        const showDivider = lastGroup !== undefined && lastGroup !== item.group;
-        lastGroup = item.group;
-
-        const isReviewAction =
-          item.id === "review-unstaged" ||
-          item.id === "review-staged" ||
-          item.id === "resume-review";
-
-        const disabled = disableReview && isReviewAction;
-
-        return (
-          <Fragment key={item.id}>
-            {showDivider && <Menu.Divider />}
-            <Menu.Item
-              id={item.id}
-              hotkey={item.shortcut}
-              variant={item.variant}
-              disabled={disabled}
-            >
-              {item.label}
-            </Menu.Item>
-          </Fragment>
-        );
-      })}
-    </Menu>
+    <Panel>
+      <Panel.Header variant="subtle">Main Menu</Panel.Header>
+      <Panel.Content>
+        <Menu isActive={isActive} onSelect={onAction}>
+          {annotated.map(({ item, showDividerBefore }) => {
+            const disabled = isMenuActionDisabled(item.id, { isTrusted, hasLastReview });
+            return (
+              <Fragment key={item.id}>
+                {showDividerBefore && <Menu.Divider />}
+                <Menu.Item
+                  id={item.id}
+                  hotkey={item.shortcut}
+                  variant={item.variant}
+                  disabled={disabled}
+                >
+                  {item.label}
+                </Menu.Item>
+              </Fragment>
+            );
+          })}
+        </Menu>
+      </Panel.Content>
+    </Panel>
   );
 }

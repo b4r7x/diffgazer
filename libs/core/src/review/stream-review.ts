@@ -79,7 +79,6 @@ export async function processReviewStream(
           onAgentEvent?.(event);
           break;
 
-        // Enrich events
         case "enrich_progress":
           onEnrichEvent?.(event);
           break;

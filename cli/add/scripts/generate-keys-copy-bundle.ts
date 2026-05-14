@@ -8,7 +8,12 @@ const OUTPUT_PATH = resolve(PACKAGE_ROOT, "src/generated/keys-copy-bundle.json")
 
 function rewriteHookInternalImports(content: string, sourcePath: string): string {
   if (!sourcePath.startsWith("src/hooks/")) return content;
+  // Hook sources live in src/hooks/ but their siblings (core/, dom/, internal/, utils/)
+  // land under src/hooks/utils/* on install. Rewrite "../<dir>/" to "./utils/" (or
+  // "./internal/") so copied hooks resolve their helpers from the installed layout.
   return content
+    .replace(/(["'])\.\.\/core\//g, "$1./utils/")
+    .replace(/(["'])\.\.\/dom\//g, "$1./utils/")
     .replace(/(["'])\.\.\/internal\//g, "$1./internal/")
     .replace(/(["'])\.\.\/utils\//g, "$1./utils/");
 }

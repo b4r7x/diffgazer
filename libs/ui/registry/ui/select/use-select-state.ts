@@ -86,6 +86,8 @@ export function useSelectState(options: UseSelectStateOptions): UseSelectStateRe
   );
   const onSingleChange = options.multiple ? undefined : options.onChange;
   const onMultipleChange = options.multiple ? options.onChange : undefined;
+  // Stable ref required: feeds useControllableState({ onChange }), whose returned
+  // setValue then flows into useFormReset and the contextValue memo below.
   const valueChangeHandler = useCallback((nextValue: SelectValue) => {
     if (multiple) {
       if (Array.isArray(nextValue)) onMultipleChange?.(nextValue);
@@ -124,6 +126,7 @@ export function useSelectState(options: UseSelectStateOptions): UseSelectStateRe
   const wrapperRef = useRef<HTMLDivElement>(null);
   const listboxId = useId();
 
+  // Stable ref required: dep of the contextValue memo and of selectItem below.
   const handleOpenChange = useCallback((open: boolean) => {
     if (disabled) return;
     setIsOpen(open);
@@ -133,9 +136,12 @@ export function useSelectState(options: UseSelectStateOptions): UseSelectStateRe
     }
   }, [disabled, setIsOpen, setHighlighted]);
 
+  // useOutsideClick depends on excludeRefs array identity; keep stable to avoid
+  // re-subscribing the document-level listener on every render.
   const outsideClickExcludeRefs = useMemo(() => [contentRef], [contentRef]);
   useOutsideClick(wrapperRef, () => handleOpenChange(false), isOpen, outsideClickExcludeRefs);
 
+  // Stable ref required: dep of the contextValue memo below.
   const onSearchChange = useCallback((query: string) => {
     setSearchQuery(query);
     const highlightedOption = highlighted === null ? undefined : optionMetadata.get(highlighted);
@@ -153,6 +159,7 @@ export function useSelectState(options: UseSelectStateOptions): UseSelectStateRe
     setHighlighted(null);
   }, [highlighted, optionMetadata, setHighlighted]);
 
+  // Stable ref required: dep of the contextValue memo below.
   const selectItem = useCallback((itemValue: string) => {
     const option = optionMetadata.get(itemValue);
     if (disabled || !option || option.disabled || !matchesSearch(option.label, searchQuery)) return;
@@ -176,6 +183,7 @@ export function useSelectState(options: UseSelectStateOptions): UseSelectStateRe
   const hasRequiredValue = Array.isArray(value) ? value.length > 0 : value !== null && value !== "";
   const resolvedAriaInvalid = nativeInvalid && required && !hasRequiredValue ? true : ariaInvalid;
 
+  // Stable ref required: dep of the contextValue memo below.
   const onNativeInvalid = useCallback(() => {
     setNativeInvalid(true);
     (searchInputRef.current ?? triggerRef.current)?.focus();

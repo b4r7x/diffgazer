@@ -153,8 +153,7 @@ describe("useListbox", () => {
     listbox.focus()
     await user.keyboard("a")
 
-    const lastCall = onHighlight.mock.calls[onHighlight.mock.calls.length - 1]
-    expect(lastCall?.[0]).toBe("a")
+    expect(onHighlight).toHaveBeenLastCalledWith("a")
   })
 
   it("includes disabled menu items in typeahead focus without activating them", async () => {
@@ -280,8 +279,7 @@ describe("useListbox", () => {
     listbox.focus()
     await user.keyboard("a")
 
-    const lastCall = onHighlight.mock.calls[onHighlight.mock.calls.length - 1]
-    expect(lastCall?.[0]).toBe("a2")
+    expect(onHighlight).toHaveBeenLastCalledWith("a2")
   })
 
   it("cycles through items sharing a prefix on repeated character press", async () => {
@@ -298,16 +296,16 @@ describe("useListbox", () => {
     const listbox = screen.getByRole("listbox")
     listbox.focus()
     await user.keyboard("s")
-    expect(onHighlight.mock.calls.at(-1)?.[0]).toBe("s1")
+    expect(onHighlight).toHaveBeenLastCalledWith("s1")
 
     await user.keyboard("s")
-    expect(onHighlight.mock.calls.at(-1)?.[0]).toBe("s2")
+    expect(onHighlight).toHaveBeenLastCalledWith("s2")
 
     await user.keyboard("s")
-    expect(onHighlight.mock.calls.at(-1)?.[0]).toBe("s3")
+    expect(onHighlight).toHaveBeenLastCalledWith("s3")
 
     await user.keyboard("s")
-    expect(onHighlight.mock.calls.at(-1)?.[0]).toBe("s1")
+    expect(onHighlight).toHaveBeenLastCalledWith("s1")
   })
 
   it("uses aria-label text for typeahead matching", async () => {

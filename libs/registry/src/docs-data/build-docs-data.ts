@@ -3,7 +3,7 @@ import {
   readFileSync,
   writeFileSync,
 } from "node:fs"
-import { resolve } from "node:path"
+import { isAbsolute, relative, resolve } from "node:path"
 import {
   createDocsHighlighter,
 } from "./highlight.js"
@@ -51,11 +51,17 @@ export interface BuildDocsDataResult {
   libsCount: number
 }
 
-async function loadRegistry(registryPath: string): Promise<Registry> {
-  if (registryPath.endsWith(".json")) {
-    return RegistrySchema.parse(JSON.parse(readFileSync(registryPath, "utf-8")))
+async function loadRegistry(registryPath: string, rootDir: string): Promise<Registry> {
+  const resolvedRoot = resolve(rootDir)
+  const resolvedRegistry = resolve(registryPath)
+  const rel = relative(resolvedRoot, resolvedRegistry)
+  if (rel.startsWith("..") || isAbsolute(rel)) {
+    throw new Error(`Registry path "${registryPath}" escapes rootDir "${rootDir}"`)
   }
-  return RegistrySchema.parse((await import(registryPath)).default)
+  if (resolvedRegistry.endsWith(".json")) {
+    return RegistrySchema.parse(JSON.parse(readFileSync(resolvedRegistry, "utf-8")))
+  }
+  return RegistrySchema.parse((await import(resolvedRegistry)).default)
 }
 
 function buildLibsData(params: {
@@ -134,7 +140,7 @@ export async function buildDocsData(config: BuildDocsDataConfig): Promise<BuildD
   let componentsCount = 0
   let libsCount = 0
 
-  const registry = await loadRegistry(registryPath)
+  const registry = await loadRegistry(registryPath, rootDir)
   const highlighter = await createDocsHighlighter({
     theme: docsCodeTheme,
     themeName: DOCS_CODE_THEME_NAME,

@@ -7,8 +7,8 @@ import {
 } from "./use-navigation.js";
 import type { RefObject } from "react";
 import { useKey } from "./use-key.js";
-import { keys } from "../utils/keys.js";
-import { resolveDirectionKeys, dispatchNavigationKey } from "./internal/navigation-dispatch.js";
+import { keys } from "../core/keys.js";
+import { resolveDirectionKeys, dispatchNavigationKey } from "../core/navigation-dispatch.js";
 import { useKeyboardRegistryContext } from "../context/keyboard-context.js";
 
 export type UseScopedNavigationOptions = Omit<UseNavigationOptions, "containerRef"> & {
@@ -24,6 +24,9 @@ export interface UseScopedNavigationReturn {
 }
 
 export function useScopedNavigation(options: UseScopedNavigationOptions): UseScopedNavigationReturn {
+  // Provider-presence assertion. The dispatch path below relies on `useKey`,
+  // which would silently no-op without a provider; calling the registry
+  // context here throws early with a clear message instead.
   useKeyboardRegistryContext();
 
   const {

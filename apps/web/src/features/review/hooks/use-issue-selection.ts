@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 
 interface UseIssueSelectionOptions {
@@ -7,29 +7,20 @@ interface UseIssueSelectionOptions {
 }
 
 export function useIssueSelection({ filteredIssues, sourceKey }: UseIssueSelectionOptions) {
-  const [selection, setSelection] = useState<{ sourceKey: string | undefined; issueId: string | null }>({
-    sourceKey,
-    issueId: null,
-  });
+  const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
+  const [prevSourceKey, setPrevSourceKey] = useState(sourceKey);
   const listRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    setSelection((current) =>
-      current.sourceKey === sourceKey ? current : { sourceKey, issueId: null },
-    );
-  }, [sourceKey]);
+  if (prevSourceKey !== sourceKey) {
+    setPrevSourceKey(sourceKey);
+    setSelectedIssueId(null);
+  }
 
-  const selectedIssueId = selection.sourceKey === sourceKey ? selection.issueId : null;
-
-  const setSelectedIssueId = (issueId: string | null) => {
-    setSelection({ sourceKey, issueId });
-  };
-
-  const effectiveSelectedId = filteredIssues.some(i => i.id === selectedIssueId)
+  const effectiveSelectedId = filteredIssues.some((i) => i.id === selectedIssueId)
     ? selectedIssueId
     : filteredIssues[0]?.id ?? null;
 
-  const selectedIssue = filteredIssues.find(i => i.id === effectiveSelectedId) ?? null;
+  const selectedIssue = filteredIssues.find((i) => i.id === effectiveSelectedId) ?? null;
 
   return {
     selectedIssue,

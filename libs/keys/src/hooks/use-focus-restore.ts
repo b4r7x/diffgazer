@@ -5,7 +5,7 @@ import {
   getRestorableFocusTarget,
   restoreFocus,
   type RestoreFocusOptions,
-} from "../utils/focus-restore.js";
+} from "../dom/focus-restore.js";
 
 export interface UseFocusRestoreOptions extends RestoreFocusOptions {
   enabled?: boolean;

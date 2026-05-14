@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useEffect } from "react";
+import { useRef, useEffect } from "react";
 import type { PopoverTriggerMode } from "./popover-context";
 
 export interface UsePopoverBehaviorOptions {
@@ -31,7 +31,7 @@ export function usePopoverBehavior({
   const openTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const clearTimers = useCallback(() => {
+  const clearTimers = () => {
     if (openTimerRef.current) {
       clearTimeout(openTimerRef.current);
       openTimerRef.current = null;
@@ -40,14 +40,9 @@ export function usePopoverBehavior({
       clearTimeout(closeTimerRef.current);
       closeTimerRef.current = null;
     }
-  }, []);
+  };
 
-  const closePopover = useCallback(() => {
-    clearTimers();
-    onOpenChange(false);
-  }, [clearTimers, onOpenChange]);
-
-  const onTriggerEnter = useCallback(() => {
+  const onTriggerEnter = () => {
     if (!enabled || triggerMode !== "hover") return;
     clearTimers();
     if (delayMs <= 0) {
@@ -55,9 +50,9 @@ export function usePopoverBehavior({
       return;
     }
     openTimerRef.current = setTimeout(() => onOpenChange(true), delayMs);
-  }, [clearTimers, delayMs, enabled, onOpenChange, triggerMode]);
+  };
 
-  const scheduleClose = useCallback(() => {
+  const scheduleClose = () => {
     if (!enabled || triggerMode !== "hover") return;
     clearTimers();
     if (closeDelayMs > 0) {
@@ -65,36 +60,50 @@ export function usePopoverBehavior({
     } else {
       onOpenChange(false);
     }
-  }, [clearTimers, closeDelayMs, enabled, onOpenChange, triggerMode]);
+  };
 
-  const onTriggerClick = useCallback(() => {
+  const onTriggerClick = () => {
     if (!enabled || triggerMode !== "click") return;
     onOpenChange(prev => !prev);
-  }, [enabled, onOpenChange, triggerMode]);
+  };
 
-  const onContentEnter = useCallback(() => {
+  const onContentEnter = () => {
     if (!enabled || triggerMode !== "hover") return;
     clearTimers();
-  }, [clearTimers, enabled, triggerMode]);
+  };
 
+  // Unmount-only cleanup. Inline timer-clear avoids depending on a function identity.
   useEffect(() => {
-    return () => clearTimers();
-  }, [clearTimers]);
+    return () => {
+      if (openTimerRef.current) clearTimeout(openTimerRef.current);
+      if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    };
+  }, []);
 
+  // DOM listener attach/detach: keep deps minimal so listeners only re-attach on real
+  // state changes, not on every render.
   useEffect(() => {
     if (!open || triggerMode !== "hover") return;
-    const scrollOpts = { capture: true, passive: true } as const;
-    window.addEventListener("scroll", closePopover, scrollOpts);
-    window.addEventListener("resize", closePopover);
-    return () => {
-      window.removeEventListener("scroll", closePopover, scrollOpts);
-      window.removeEventListener("resize", closePopover);
+    const close = () => {
+      if (openTimerRef.current) clearTimeout(openTimerRef.current);
+      if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+      onOpenChange(false);
     };
-  }, [closePopover, open, triggerMode]);
+    const scrollOpts = { capture: true, passive: true } as const;
+    window.addEventListener("scroll", close, scrollOpts);
+    window.addEventListener("resize", close);
+    return () => {
+      window.removeEventListener("scroll", close, scrollOpts);
+      window.removeEventListener("resize", close);
+    };
+  }, [onOpenChange, open, triggerMode]);
 
   useEffect(() => {
-    if (!enabled) closePopover();
-  }, [closePopover, enabled]);
+    if (enabled) return;
+    if (openTimerRef.current) clearTimeout(openTimerRef.current);
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    onOpenChange(false);
+  }, [enabled, onOpenChange]);
 
   return {
     onTriggerEnter,

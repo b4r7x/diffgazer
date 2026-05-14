@@ -1,22 +1,16 @@
 import { randomUUID } from "node:crypto";
 import { createGitService } from "../../shared/lib/git/service.js";
 import type { AIClient } from "../../shared/lib/ai/types.js";
-import { getErrorMessage } from "@diffgazer/core/errors";
 import {
   ReviewErrorCode,
-  type ReviewErrorCode as ReviewErrorCodeType,
-  type ReviewMode,
 } from "@diffgazer/core/schemas/review";
 import type { Result } from "@diffgazer/core/result";
 import { ok, err } from "@diffgazer/core/result";
-import type { SSEWriter } from "../../shared/lib/http/sse.js";
-import type { StepId, FullReviewStreamEvent } from "@diffgazer/core/schemas/events";
 import {
   createSession,
   markReady,
   addEvent,
   markComplete,
-  subscribe,
   getActiveSessionForProject,
   getSession,
   cancelStaleSessionsForProjectMode,
@@ -24,85 +18,23 @@ import {
 } from "./sessions.js";
 import type { EmitFn, StreamReviewParams } from "./types.js";
 import {
-  resolveGitDiff,
   resolveReviewConfig,
   executeReview,
   finalizeReview,
 } from "./pipeline.js";
+import { resolveGitDiff } from "./diff.js";
 import { isReviewAbort } from "./abort.js";
-
-const REVIEW_STREAM_ERROR_CODES = new Set(Object.values(ReviewErrorCode));
-
-function isReviewStreamErrorCode(
-  code: string
-): code is (typeof ReviewErrorCode)[keyof typeof ReviewErrorCode] {
-  return REVIEW_STREAM_ERROR_CODES.has(
-    code as (typeof ReviewErrorCode)[keyof typeof ReviewErrorCode]
-  );
-}
-
-function stepError(step: StepId, error: string): { type: "step_error"; step: StepId; error: string; timestamp: string } {
-  return { type: "step_error", step, error, timestamp: new Date().toISOString() };
-}
-
-async function writeStreamEvent(stream: SSEWriter, event: FullReviewStreamEvent): Promise<void> {
-  await stream.writeSSE({
-    event: event.type,
-    data: JSON.stringify(event),
-  });
-}
-
-function normalizeReviewStreamError(
-  error: unknown,
-  fallbackCode: ReviewErrorCodeType = ReviewErrorCode.GENERATION_FAILED,
-): { code: ReviewErrorCodeType; message: string } {
-  const resolveCode = (code: unknown): ReviewErrorCodeType =>
-    typeof code === "string" && isReviewStreamErrorCode(code) ? code : fallbackCode;
-
-  if (isReviewAbort(error)) {
-    return { code: resolveCode(error.code), message: error.message };
-  }
-
-  if (error && typeof error === "object") {
-    const candidate = error as { code?: unknown; message?: unknown };
-    return {
-      code: resolveCode(candidate.code),
-      message: typeof candidate.message === "string" && candidate.message.length > 0
-        ? candidate.message
-        : getErrorMessage(error),
-    };
-  }
-
-  return { code: fallbackCode, message: getErrorMessage(error) };
-}
-
-function reviewStreamError(
-  message: string,
-  code: unknown = ReviewErrorCode.GENERATION_FAILED,
-): FullReviewStreamEvent {
-  return {
-    type: "error",
-    error: {
-      code: typeof code === "string" && isReviewStreamErrorCode(code)
-        ? code
-        : ReviewErrorCode.GENERATION_FAILED,
-      message,
-    },
-  };
-}
-
-function isTerminalEvent(event: FullReviewStreamEvent): boolean {
-  return event.type === "complete" || event.type === "error";
-}
-
-function isAbortError(error: unknown): boolean {
-  return error instanceof DOMException && error.name === "AbortError";
-}
+import { stepError } from "./step-events.js";
+import {
+  isAbortError,
+  normalizeReviewStreamError,
+  reviewStreamError,
+} from "./stream-events.js";
 
 async function handleReviewFailure(
   error: unknown,
   emit: EmitFn,
-  reviewId: string
+  reviewId: string,
 ): Promise<void> {
   if (isAbortError(error)) {
     markComplete(reviewId);
@@ -134,119 +66,6 @@ function handleDetachedReviewSessionError(reviewId: string, error: unknown): voi
   markComplete(reviewId);
 }
 
-export async function streamActiveSessionToSSE(
-  stream: SSEWriter,
-  session: ActiveSession,
-  clientSignal?: AbortSignal
-): Promise<void> {
-  if (clientSignal?.aborted) {
-    return;
-  }
-
-  let replayedTerminalEvent = false;
-  for (const event of session.events) {
-    try {
-      await writeStreamEvent(stream, event);
-    } catch (error) {
-      if (clientSignal?.aborted || isAbortError(error)) {
-        return;
-      }
-      throw error;
-    }
-    if (isTerminalEvent(event)) {
-      replayedTerminalEvent = true;
-    }
-  }
-  if (replayedTerminalEvent || session.isComplete) {
-    return;
-  }
-
-  const staleError: FullReviewStreamEvent = {
-    type: "error",
-    error: { code: ReviewErrorCode.SESSION_STALE, message: "Session was cancelled during replay" },
-  };
-
-  await new Promise<void>((resolve, reject) => {
-    let done = false;
-    let wroteTerminalEvent = false;
-    let unsubscribe: (() => void) | null = null;
-    let pollTimer: ReturnType<typeof setInterval> | null = null;
-
-    const finish = (action: () => void): void => {
-      if (done) return;
-      done = true;
-      unsubscribe?.();
-      unsubscribe = null;
-      if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
-      clientSignal?.removeEventListener("abort", onClientAbort);
-      action();
-    };
-
-    const onClientAbort = (): void => finish(resolve);
-
-    const writeAndFinish = (event: FullReviewStreamEvent): void => {
-      writeStreamEvent(stream, event).then(
-        () => finish(resolve),
-        () => finish(resolve),
-      );
-    };
-
-    if (clientSignal?.aborted) {
-      finish(resolve);
-      return;
-    }
-    clientSignal?.addEventListener("abort", onClientAbort, { once: true });
-
-    unsubscribe = subscribe(session.reviewId, async (event) => {
-      try {
-        await writeStreamEvent(stream, event);
-        if (isTerminalEvent(event)) {
-          wroteTerminalEvent = true;
-          finish(resolve);
-        }
-      } catch (e) {
-        if (clientSignal?.aborted || isAbortError(e)) {
-          finish(resolve);
-          return;
-        }
-        finish(() => reject(e));
-      }
-    });
-
-    if (!unsubscribe) {
-      writeAndFinish(staleError);
-      return;
-    }
-
-    const checkSessionState = (): boolean => {
-      const latest = getSession(session.reviewId);
-      if (!latest) {
-        writeAndFinish(staleError);
-        return true;
-      }
-      if (!latest.isComplete) {
-        return false;
-      }
-      if (!wroteTerminalEvent) {
-        const terminalEvent = [...latest.events].reverse().find(isTerminalEvent);
-        if (terminalEvent) {
-          writeAndFinish(terminalEvent);
-          return true;
-        }
-      }
-      finish(resolve);
-      return true;
-    };
-
-    if (checkSessionState()) return;
-
-    pollTimer = setInterval(checkSessionState, 250);
-    if ("unref" in pollTimer && typeof pollTimer.unref === "function") {
-      pollTimer.unref();
-    }
-  });
-}
-
 export interface CreateReviewSessionResult {
   reviewId: string;
   session: ActiveSession;
@@ -260,29 +79,19 @@ export async function createReviewSession(
   const projectPath = projectPathOption ?? process.cwd();
   const gitService = createGitService({ cwd: projectPath });
 
-  let headCommit: string;
-  let statusHash: string;
-  try {
-    const [headCommitResult, currentStatusHash] = await Promise.all([
-      gitService.getHeadCommit(),
-      gitService.getStatusHash(),
-    ]);
+  const [headCommitResult, statusHash] = await Promise.all([
+    gitService.getHeadCommit(),
+    gitService.getStatusHash(),
+  ]);
 
-    if (!headCommitResult.ok) {
-      return err({
-        code: ReviewErrorCode.GENERATION_FAILED,
-        message: `Failed to inspect repository state: ${headCommitResult.error.message}`,
-      });
-    }
-
-    headCommit = headCommitResult.value;
-    statusHash = currentStatusHash;
-  } catch (error) {
+  if (!headCommitResult.ok) {
     return err({
       code: ReviewErrorCode.GENERATION_FAILED,
-      message: `Failed to inspect repository state: ${getErrorMessage(error)}`,
+      message: `Failed to inspect repository state: ${headCommitResult.error.message}`,
     });
   }
+
+  const headCommit = headCommitResult.value;
 
   if (headCommit) {
     const existingSession = getActiveSessionForProject(projectPath, headCommit, statusHash, mode);
@@ -313,7 +122,7 @@ async function runReviewSession(
   aiClient: AIClient,
   options: StreamReviewParams,
   reviewId: string,
-  signal: AbortSignal
+  signal: AbortSignal,
 ): Promise<void> {
   const {
     mode = "unstaged",

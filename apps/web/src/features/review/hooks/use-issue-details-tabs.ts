@@ -6,8 +6,8 @@ interface UseIssueDetailsTabsOptions {
   selectedIssue: ReviewIssue | null;
 }
 
-const DEFAULT_COMPLETED_STEPS = new Set([1]);
-const EMPTY_COMPLETED_STEPS = new Set<number>();
+const DEFAULT_COMPLETED_STEPS: Set<number> = Object.freeze(new Set([1])) as Set<number>;
+const EMPTY_COMPLETED_STEPS: Set<number> = Object.freeze(new Set<number>()) as Set<number>;
 
 export function useIssueDetailsTabs({ selectedIssue }: UseIssueDetailsTabsOptions) {
   const [requestedTab, setRequestedTab] = useState<TabId>("details");

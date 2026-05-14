@@ -1,8 +1,8 @@
 import { useState } from "react";
 import type { ReactElement } from "react";
 import { Box, Text } from "ink";
-import type { ProviderStatus } from "@diffgazer/core/schemas/config";
-import { AVAILABLE_PROVIDERS } from "@diffgazer/core/schemas/config";
+import { AVAILABLE_PROVIDERS, OPENROUTER_PROVIDER_ID } from "@diffgazer/core/schemas/config";
+import { mapProvidersWithStatus } from "@diffgazer/core/providers";
 import { useProviderStatus, useDeleteProviderCredentials, guardQueryState } from "@diffgazer/core/api/hooks";
 import { useScope } from "../../../hooks/use-scope.js";
 import { usePageFooter } from "../../../hooks/use-page-footer.js";
@@ -19,23 +19,13 @@ import type { ProviderDetailData } from "../../../features/providers/components/
 import { ApiKeyOverlay } from "../../../features/providers/components/api-key-overlay.js";
 import { ModelSelectOverlay } from "../../../features/providers/components/model-select-overlay.js";
 
-function buildProviderList(statuses: ProviderStatus[]): ProviderListItem[] {
-  return AVAILABLE_PROVIDERS.map((info) => {
-    const status = statuses.find((s) => s.provider === info.id);
-    const hasApiKey = status?.hasApiKey ?? false;
-    const isActive = status?.isActive ?? false;
-    const displayStatus: ProviderListItem["displayStatus"] = isActive
-      ? "active"
-      : hasApiKey
-        ? "configured"
-        : "needs-key";
-    return {
-      id: info.id,
-      name: info.name,
-      displayStatus,
-      model: status?.model,
-    };
-  });
+function toListItem(provider: ProviderListItem): ProviderListItem {
+  return {
+    id: provider.id,
+    name: provider.name,
+    displayStatus: provider.displayStatus,
+    model: provider.model,
+  };
 }
 
 function toDetailData(provider: ProviderListItem): ProviderDetailData {
@@ -67,7 +57,9 @@ export function ProvidersScreen(): ReactElement {
   const [apiKeyOpen, setApiKeyOpen] = useState(false);
   const [modelSelectOpen, setModelSelectOpen] = useState(false);
 
-  const providers = providerQuery.data ? buildProviderList(providerQuery.data) : [];
+  const providers = providerQuery.data
+    ? mapProvidersWithStatus(providerQuery.data).map(toListItem)
+    : [];
   const error = deleteCredentials.error?.message ?? providerQuery.error?.message ?? null;
 
   const selectedProvider = providers.find((p) => p.id === selectedId);
@@ -83,6 +75,9 @@ export function ProvidersScreen(): ReactElement {
 
   function handleSaveKey(_key: string, _method: string) {
     void providerQuery.refetch();
+    if (selectedProvider?.id === OPENROUTER_PROVIDER_ID && !selectedProvider.model) {
+      setModelSelectOpen(true);
+    }
   }
 
   function handleModelSelect(_modelId: string) {

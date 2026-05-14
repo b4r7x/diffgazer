@@ -1,4 +1,4 @@
-import { cn } from "@diffgazer/core/cn";
+import { cn } from "@diffgazer/ui/lib/utils";
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { EmptyState } from "@diffgazer/ui/components/empty-state";

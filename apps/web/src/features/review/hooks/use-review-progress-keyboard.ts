@@ -1,5 +1,5 @@
 import { useFocusZone, useKey } from "@diffgazer/keys";
-import { usePageFooter } from "@/hooks/use-page-footer";
+import { usePageFooter } from "@diffgazer/core/footer";
 
 interface UseReviewProgressKeyboardOptions {
   onViewResults?: () => void;

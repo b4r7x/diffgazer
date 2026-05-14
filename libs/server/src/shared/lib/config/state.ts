@@ -142,7 +142,6 @@ export const syncProvidersWithSecrets = (
   }));
 
   for (const providerId of Object.keys(secrets.providers)) {
-    // Type guard: only add if it's a valid AIProvider
     if (!isValidAIProvider(providerId)) continue;
     if (providerIds.has(providerId)) continue;
 

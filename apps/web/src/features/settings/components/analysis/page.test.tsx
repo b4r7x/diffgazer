@@ -36,6 +36,7 @@ type QueryStateHandlers = {
   success: () => unknown;
 };
 
+// Boundary mock: api/hooks is the HTTP-data fetch boundary; we provide canned data and assert on the resulting UI.
 vi.mock("@diffgazer/core/api/hooks", () => ({
   useSettings: () => mockSettingsQuery.current,
   useSaveSettings: () => ({

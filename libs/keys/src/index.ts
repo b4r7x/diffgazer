@@ -34,8 +34,9 @@ export type { UseFocusRestoreOptions, UseFocusRestoreReturn } from "./hooks/use-
 export { useScrollLock } from "./hooks/use-scroll-lock.js";
 export type { UseScrollLockOptions } from "./hooks/use-scroll-lock.js";
 
-export { keys } from "./utils/keys.js";
-export type { KeyHandler } from "./internal/normalize-key-input.js";
+export { keys } from "./core/keys.js";
+export { DECLINE } from "./core/normalize-key-input.js";
+export type { Decline, KeyHandler } from "./core/normalize-key-input.js";
 export {
   NAVIGATION_ITEM_ATTRIBUTE,
   findNavigationItemByValue,
@@ -43,32 +44,33 @@ export {
   getFocusedNavigationValue,
   getNavigationItemProps,
   getNavigationItems,
-} from "./utils/navigation-items.js";
-export type { NavigationItemQuery, NavigationItemType } from "./utils/navigation-items.js";
+} from "./dom/navigation-items.js";
+export type { NavigationItemQuery, NavigationItemType } from "./dom/navigation-items.js";
 export {
   containsActiveElement,
   getFocusableElements,
   getFirstFocusableElement,
   getTabbableElements,
   isFocusable,
-} from "./utils/focusable.js";
-export { isEditableElement, isInputElement } from "./utils/keyboard-utils.js";
+} from "./dom/focusable.js";
+export { isEditableElement, isInputElement } from "./dom/keyboard-utils.js";
 export {
   getRestorableFocusTarget,
   restoreFocus,
-} from "./utils/focus-restore.js";
+} from "./dom/focus-restore.js";
 export type {
   RestoreFocusOptions,
-} from "./utils/focus-restore.js";
+} from "./dom/focus-restore.js";
 export {
   getVerticalArrowDirection,
   isListNavigationKey,
   toVerticalBoundaryDirection,
-} from "./utils/navigation-directions.js";
+} from "./core/navigation-directions.js";
 export type {
   BoundaryDirection,
   VerticalDirection,
-} from "./utils/navigation-directions.js";
+} from "./core/navigation-directions.js";
+export { clampIndex } from "./core/list-navigation.js";
 
 export { useKeyboardContext, useOptionalKeyboardContext } from "./context/keyboard-context.js";
 

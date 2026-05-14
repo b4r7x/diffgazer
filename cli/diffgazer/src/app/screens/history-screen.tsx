@@ -1,8 +1,6 @@
-import { useState } from "react";
 import type { ReactElement } from "react";
 import { Box, Text, useInput } from "ink";
-import { useReviews, useReview, guardQueryState } from "@diffgazer/core/api/hooks";
-import { SEVERITY_ORDER } from "@diffgazer/core/schemas/ui";
+import { guardQueryState } from "@diffgazer/core/api/hooks";
 import { useScope } from "../../hooks/use-scope.js";
 import { usePageFooter } from "../../hooks/use-page-footer.js";
 import { useBackHandler } from "../../hooks/use-back-handler.js";
@@ -14,82 +12,51 @@ import { SectionHeader } from "../../components/ui/section-header.js";
 import { Spinner } from "../../components/ui/spinner.js";
 import { EmptyState } from "../../components/ui/empty-state.js";
 import { Input } from "../../components/ui/input.js";
-import { TimelineList } from "../../features/history/components/timeline-list.js";
+import { SectionsList } from "../../features/history/components/sections-list.js";
+import { RunsList } from "../../features/history/components/runs-list.js";
 import { HistoryInsightsPane } from "../../features/history/components/history-insights-pane.js";
-import { matchesSearch, groupByDate } from "../../features/history/utils.js";
-
-type Zone = "search" | "timeline" | "insights";
+import { useHistoryScreen } from "../../features/history/hooks/use-history-screen.js";
+import { getHistoryFooter } from "../../features/history/hooks/get-history-footer.js";
 
 export function HistoryScreen(): ReactElement {
   useScope("history");
-  usePageFooter({
-    shortcuts: [
-      { key: "Esc", label: "Back" },
-      { key: "Tab", label: "Switch pane" },
-      { key: "/", label: "Search" },
-      { key: "Enter", label: "Open review" },
-    ],
-  });
   useBackHandler();
 
   const { tokens } = useTheme();
   const { columns, rows, isNarrow, isMedium } = useResponsive();
   const { navigate } = useNavigation();
 
-  const reviewsQuery = useReviews();
-  const reviews = reviewsQuery.data?.reviews ?? [];
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedReviewId, setSelectedReviewId] = useState<string | undefined>(undefined);
+  const screen = useHistoryScreen({
+    onOpenReview: (reviewId) => navigate({ screen: "review", reviewId }),
+  });
 
-  const reviewDetailQuery = useReview(selectedReviewId ?? "");
-  const reviewDetail = reviewDetailQuery.data?.review ?? null;
-  const sortedIssues = reviewDetail?.result?.issues
-    ? [...reviewDetail.result.issues].sort(
-        (a, b) => SEVERITY_ORDER.indexOf(a.severity) - SEVERITY_ORDER.indexOf(b.severity),
-      )
-    : [];
-  const [activeZone, setActiveZone] = useState<Zone>("timeline");
+  const { shortcuts, rightShortcuts } = getHistoryFooter(screen.focusZone);
+  usePageFooter({ shortcuts, rightShortcuts });
 
   useInput((_input, key) => {
     if (key.tab) {
-      setActiveZone((z) => {
-        if (z === "search") return "timeline";
-        if (z === "timeline") return "insights";
-        return "search";
-      });
+      screen.cycleFocusZone();
     }
   });
 
   useInput(
     (input) => {
       if (input === "/") {
-        setActiveZone("search");
+        screen.setFocusZone("search");
+      }
+      if (input === "o" && screen.selectedRunId) {
+        screen.handleRunActivate(screen.selectedRunId);
       }
     },
-    { isActive: activeZone !== "search" },
+    { isActive: screen.focusZone !== "search" },
   );
 
-  const query = searchQuery.trim().toLowerCase();
-  const filtered = query
-    ? reviews.filter((r) => matchesSearch(r, query))
-    : reviews;
-
-  const dateGroups = groupByDate(filtered);
-  const allReviewItems = dateGroups.flatMap((g) => g.reviews);
-
-  function handleSelect(id: string) {
-    setSelectedReviewId(id);
-    navigate({ screen: "review", reviewId: id });
-  }
-
-  function handleHighlightChange(id: string) {
-    setSelectedReviewId(id);
-  }
-
-  const selectedReviewMetadata = filtered.find((r) => r.id === selectedReviewId);
-  const listWidth = isMedium
-    ? Math.max(Math.floor(columns * 0.35), 26)
-    : Math.max(Math.floor(columns * 0.4), 30);
+  const sectionsWidth = isMedium
+    ? Math.max(Math.floor(columns * 0.18), 16)
+    : Math.max(Math.floor(columns * 0.2), 18);
+  const insightsWidth = isMedium
+    ? Math.max(Math.floor(columns * 0.32), 26)
+    : Math.max(Math.floor(columns * 0.34), 30);
   const paneHeight = Math.max(rows - 8, 8);
   const insightScrollHeight = isNarrow
     ? Math.max(Math.floor(paneHeight / 2), 6)
@@ -97,12 +64,12 @@ export function HistoryScreen(): ReactElement {
       ? Math.max(paneHeight - 4, 6)
       : paneHeight;
 
-  const guard = guardQueryState(reviewsQuery, {
+  const guard = guardQueryState(screen.reviewsQuery, {
     loading: () => (
       <Panel>
         <Panel.Content>
           <Box flexDirection="column" gap={1}>
-            <SectionHeader>Review History</SectionHeader>
+            <SectionHeader>Reviews</SectionHeader>
             <Box justifyContent="center" paddingY={2}>
               <Spinner label="Loading reviews..." />
             </Box>
@@ -114,7 +81,7 @@ export function HistoryScreen(): ReactElement {
       <Panel>
         <Panel.Content>
           <Box flexDirection="column" gap={1}>
-            <SectionHeader>Review History</SectionHeader>
+            <SectionHeader>Reviews</SectionHeader>
             <Box justifyContent="center" paddingY={2}>
               <Text color={tokens.error}>Error: {err.message}</Text>
             </Box>
@@ -126,18 +93,16 @@ export function HistoryScreen(): ReactElement {
 
   if (guard) return guard;
 
-  if ((reviewsQuery.data?.reviews ?? []).length === 0) {
+  if (!screen.hasReviews) {
     return (
       <Panel>
         <Panel.Content>
           <Box flexDirection="column" gap={1}>
-            <SectionHeader>Review History</SectionHeader>
+            <SectionHeader>Reviews</SectionHeader>
             <Box justifyContent="center" paddingY={2}>
               <EmptyState>
-                <EmptyState.Message>No reviews yet</EmptyState.Message>
-                <EmptyState.Description>
-                  Run a review to see it here
-                </EmptyState.Description>
+                <EmptyState.Message>{screen.emptyRunsMessage}</EmptyState.Message>
+                <EmptyState.Description>Run a review to see it here</EmptyState.Description>
               </EmptyState>
             </Box>
           </Box>
@@ -150,41 +115,68 @@ export function HistoryScreen(): ReactElement {
     <Panel>
       <Panel.Content>
         <Box flexDirection="column" gap={1}>
-          <SectionHeader>Review History</SectionHeader>
+          <SectionHeader>Reviews</SectionHeader>
           <Box>
             <Input
-              value={searchQuery}
-              onChange={setSearchQuery}
-              placeholder="Search by ID, branch, or project path..."
+              value={screen.searchQuery}
+              onChange={screen.setSearchQuery}
+              placeholder="Search runs by ID..."
               size="lg"
-              isActive={activeZone === "search"}
+              isActive={screen.focusZone === "search"}
             />
           </Box>
           <Box flexDirection={isNarrow ? "column" : "row"}>
             <Box
-              width={isNarrow ? undefined : listWidth}
+              width={isNarrow ? undefined : sectionsWidth}
               borderStyle="single"
-              borderColor={activeZone === "timeline" ? tokens.accent : tokens.border}
+              borderColor={screen.focusZone === "timeline" ? tokens.accent : tokens.border}
+              flexDirection="column"
             >
-              <TimelineList
-                dateGroups={dateGroups}
-                selectedId={selectedReviewId}
-                onSelect={handleSelect}
-                onHighlightChange={handleHighlightChange}
-                isActive={activeZone === "timeline"}
-                emptyMessage={query ? "No reviews match this search" : "No reviews available"}
+              <Box paddingX={1} paddingTop={1}>
+                <SectionHeader variant="muted">Sections</SectionHeader>
+              </Box>
+              <SectionsList
+                items={screen.timelineItems}
+                selectedId={screen.selectedDateId}
+                onSelect={(id) => {
+                  screen.setFocusZone("timeline");
+                  screen.setSelectedDateId(id);
+                }}
+                onHighlightChange={screen.setSelectedDateId}
+                isActive={screen.focusZone === "timeline"}
               />
             </Box>
             <Box
               flexGrow={1}
               borderStyle="single"
-              borderColor={activeZone === "insights" ? tokens.accent : tokens.border}
+              borderColor={screen.focusZone === "runs" ? tokens.accent : tokens.border}
+              flexDirection="column"
+            >
+              <Box paddingX={1} paddingTop={1}>
+                <SectionHeader variant="muted">Reviews</SectionHeader>
+              </Box>
+              <RunsList
+                runs={screen.mappedRuns}
+                selectedId={screen.selectedRunId}
+                onSelect={screen.handleRunActivate}
+                onHighlightChange={screen.setSelectedRunId}
+                isActive={screen.focusZone === "runs"}
+                emptyMessage={screen.emptyRunsMessage}
+              />
+            </Box>
+            <Box
+              width={isNarrow ? undefined : insightsWidth}
+              borderStyle="single"
+              borderColor={screen.focusZone === "insights" ? tokens.accent : tokens.border}
             >
               <HistoryInsightsPane
-                review={selectedReviewMetadata}
-                issues={sortedIssues}
-                isActive={activeZone === "insights"}
+                runId={screen.selectedRun ? `#${screen.selectedRun.id.slice(0, 4)}` : null}
+                severityCounts={screen.hasReviews ? screen.severityCounts : null}
+                issues={screen.hasReviews ? screen.sortedIssues : []}
+                duration={screen.duration}
+                isActive={screen.focusZone === "insights"}
                 scrollHeight={insightScrollHeight}
+                onIssueClick={screen.handleIssueClick}
               />
             </Box>
           </Box>

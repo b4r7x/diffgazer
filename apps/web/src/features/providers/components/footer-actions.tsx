@@ -1,6 +1,6 @@
 import { Button } from "@diffgazer/ui/components/button";
 import { Kbd } from "@diffgazer/ui/components/kbd";
-import { cn } from "@diffgazer/core/cn";
+import { cn } from "@diffgazer/ui/lib/utils";
 import type { Ref } from "react";
 
 interface Hint {

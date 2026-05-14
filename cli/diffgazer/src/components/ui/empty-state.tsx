@@ -2,8 +2,6 @@ import type { ReactNode } from "react";
 import { Box, Text } from "ink";
 import { useTheme } from "../../theme/theme-context.js";
 
-// --- Types ---
-
 interface EmptyStateProps {
   children: ReactNode;
 }
@@ -15,8 +13,6 @@ interface EmptyStateMessageProps {
 interface EmptyStateDescriptionProps {
   children: string;
 }
-
-// --- Components ---
 
 function EmptyStateRoot({ children }: EmptyStateProps) {
   return (
@@ -34,8 +30,6 @@ function EmptyStateDescription({ children }: EmptyStateDescriptionProps) {
   const { tokens } = useTheme();
   return <Text color={tokens.muted}>{children}</Text>;
 }
-
-// --- Compound export ---
 
 export const EmptyState = Object.assign(EmptyStateRoot, {
   Message: EmptyStateMessage,

@@ -2,7 +2,7 @@ import type { KeyboardEvent, RefCallback, RefObject } from "react";
 import { Field } from "@diffgazer/ui/components/field";
 import { InputGroup } from "@diffgazer/ui/components/input";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
-import { cn } from "@diffgazer/core/cn";
+import { cn } from "@diffgazer/ui/lib/utils";
 import { getVerticalArrowDirection } from "@diffgazer/keys";
 import type { FocusElement } from "@/types/focus-element";
 import type { InputMethod } from "@/types/input-method";

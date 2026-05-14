@@ -1,4 +1,4 @@
-import type { ApiClient, ApiClientConfig, ApiError, RequestOptions, StreamOptions } from "./types.js";
+import type { ApiClient, ApiClientConfig, ApiError, RequestOptions } from "./types.js";
 
 function createApiError(message: string, status: number, code?: string): ApiError {
   const error = new Error(message) as ApiError;
@@ -9,7 +9,7 @@ function createApiError(message: string, status: number, code?: string): ApiErro
 
 export function createApiClient(config: ApiClientConfig): ApiClient {
   const { baseUrl, projectRoot, headers: baseHeaders } = config;
-  const normalizedBaseUrl = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
+  const normalizedBaseUrl = baseUrl.replace(/\/+$/, "");
 
   const projectHeaders: Record<string, string> = { ...baseHeaders };
   if (projectRoot) {
@@ -87,7 +87,6 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
       const response = await send("DELETE", path, { params });
       return parse<T>(response);
     },
-    stream: (path: string, options?: StreamOptions) => send("GET", path, options),
     request: send,
   };
 }

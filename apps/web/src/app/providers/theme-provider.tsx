@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
+import { createContext, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import type { ResolvedTheme, ThemeContextValue, WebTheme } from "@/types/theme";
 import { useSettings, useSaveSettings } from "@diffgazer/core/api/hooks";
 
@@ -27,23 +27,19 @@ function mapSettingsTheme(theme: string): WebTheme {
   return resolveWebTheme(theme);
 }
 
-function ThemeStyleApplicator() {
-  const context = useContext(ThemeContext);
-  const resolved = context?.resolved ?? "dark";
+function resolveTheme(theme: WebTheme, systemTheme: ResolvedTheme): ResolvedTheme {
+  if (theme === "auto") return systemTheme;
+  return theme;
+}
 
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", resolved);
-  }, [resolved]);
-
-  return null;
+function getInitialFallbackTheme(): WebTheme {
+  if (typeof window === "undefined") return "auto";
+  return resolveWebTheme(localStorage.getItem(STORAGE_KEY));
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<WebTheme>(() => {
-    if (typeof window === "undefined") return "auto";
-    return resolveWebTheme(localStorage.getItem(STORAGE_KEY));
-  });
   const [localOverride, setLocalOverride] = useState<WebTheme | null>(null);
+  const [fallbackTheme] = useState<WebTheme>(getInitialFallbackTheme);
 
   const { data: settings } = useSettings();
   const saveSettings = useSaveSettings();
@@ -51,35 +47,18 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const systemTheme: ResolvedTheme = useSyncExternalStore(
     subscribeToSystemTheme,
     getSystemTheme,
-    () => "dark"
+    () => "dark" as const,
   );
 
   const settingsTheme = settings?.theme ? mapSettingsTheme(settings.theme) : null;
+  const effectiveTheme: WebTheme = localOverride ?? settingsTheme ?? fallbackTheme;
+  const resolved = resolveTheme(effectiveTheme, systemTheme);
 
   useEffect(() => {
-    if (!settingsTheme) return;
-
-    if (localOverride) {
-      if (settingsTheme === localOverride) {
-        setLocalOverride(null);
-      }
-      return;
-    }
-
-    setThemeState(settingsTheme);
-    localStorage.setItem(STORAGE_KEY, settingsTheme);
-  }, [settingsTheme, localOverride]);
-
-  const effectiveTheme = localOverride ?? theme;
-  const resolved: ResolvedTheme =
-    effectiveTheme === "auto"
-      ? systemTheme
-      : effectiveTheme === "dark"
-        ? "dark"
-        : "light";
+    document.documentElement.setAttribute("data-theme", resolved);
+  }, [resolved]);
 
   const setTheme = (newTheme: WebTheme) => {
-    setThemeState(newTheme);
     setLocalOverride(newTheme);
     localStorage.setItem(STORAGE_KEY, newTheme);
     saveSettings.mutate({ theme: newTheme });
@@ -91,10 +70,5 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     setTheme,
   };
 
-  return (
-    <ThemeContext.Provider value={value}>
-      <ThemeStyleApplicator />
-      {children}
-    </ThemeContext.Provider>
-  );
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

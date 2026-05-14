@@ -3,7 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import type { Shortcut } from "@diffgazer/core/schemas/ui";
 import { useKey, useScope } from "@diffgazer/keys";
 import { useActionRowNavigation } from "@diffgazer/keys";
-import { usePageFooter } from "@/hooks/use-page-footer";
+import { usePageFooter } from "@diffgazer/core/footer";
 import type { DiagnosticsData } from "@diffgazer/core/api/hooks";
 
 const BUTTON_COUNT = 2;

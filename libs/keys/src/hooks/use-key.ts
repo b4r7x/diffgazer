@@ -4,8 +4,8 @@ import { useEffectEvent, useId, useLayoutEffect } from "react";
 import type { RefObject } from "react";
 import type { HandlerOptions } from "../providers/keyboard-provider.js";
 import { useOptionalKeyboardRegistryContext } from "../context/keyboard-context.js";
-import type { KeyHandler } from "../internal/normalize-key-input.js";
-import { normalizeKeyInput } from "../internal/normalize-key-input.js";
+import type { KeyHandler } from "../core/normalize-key-input.js";
+import { normalizeKeyInput } from "../core/normalize-key-input.js";
 
 export interface UseKeyOptions {
   enabled?: boolean;

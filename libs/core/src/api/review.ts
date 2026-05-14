@@ -51,7 +51,7 @@ export async function resumeReviewStream(
 
   let response: Response;
   try {
-    response = await client.stream(`/api/review/reviews/${reviewId}/stream`, { signal });
+    response = await client.request("GET", `/api/review/reviews/${reviewId}/stream`, { signal });
   } catch (error) {
     const status = error instanceof Error && "status" in error ? (error as { status: number }).status : undefined;
     const message = error instanceof Error ? error.message : String(error);

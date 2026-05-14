@@ -29,7 +29,7 @@ function composeRefs<T>(
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `...refs` | `Array<Ref<T> \| null \| undefined>` | Any number of refs to compose. Each can be a callback ref, a ref object (`useRef`), `null`, or `undefined`. All are handled safely. |
+| `...refs` | `Array<Ref<T> \| null \| undefined>` | Any number of refs to compose. Each can be a callback ref, a ref object (`useRef`), `null`, or `undefined`. |
 
 ### Returns
 
@@ -85,6 +85,6 @@ function PaletteList({ ref }: { ref?: React.Ref<HTMLDivElement> }) {
 ## Notes
 
 - **No `forwardRef` needed** — `composeRefs` is designed for the React 19 `ref`-as-prop pattern. Pass `ref` as a regular prop and compose it directly.
-- **Null-safe** — `null` and `undefined` refs are silently skipped. You can safely pass an optional consumer ref without guarding.
+- **Null-safe** — `null` and `undefined` refs are silently skipped. You can pass an optional consumer ref without guarding.
 - **Order-independent** — refs are called left-to-right, but all receive the same element value, so order only matters if you have side effects in a callback ref.
 - **No runtime dependencies** — pure TypeScript, no React peer API beyond the `Ref` types.

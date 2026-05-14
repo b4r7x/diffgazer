@@ -3,7 +3,10 @@ import { Box } from "ink";
 import { useNavigation } from "../../../app/navigation-context.js";
 import { useReviewLifecycle } from "../hooks/use-review-lifecycle.js";
 import { useReviewContext } from "@diffgazer/core/api/hooks";
-import { convertAgentEventsToLogEntries } from "@diffgazer/core/review";
+import {
+  convertAgentEventsToLogEntries,
+  mapStepsToProgressData,
+} from "@diffgazer/core/review";
 import { Spinner } from "../../../components/ui/spinner.js";
 import { Callout } from "../../../components/ui/callout.js";
 import { Button } from "../../../components/ui/button.js";
@@ -110,7 +113,7 @@ export function ReviewContainer({
     case "completing":
       return (
         <ReviewProgressView
-          steps={state.steps}
+          progressSteps={mapStepsToProgressData(state.steps, state.agents)}
           agents={state.agents}
           logEntries={convertAgentEventsToLogEntries(state.events)}
           fileProgress={state.fileProgress}
@@ -120,6 +123,7 @@ export function ReviewContainer({
           issuesFound={state.issues.length}
           startedAt={state.startedAt}
           contextSnapshot={contextSnapshot}
+          onViewResults={goToSummary}
         />
       );
 
@@ -128,7 +132,11 @@ export function ReviewContainer({
         <ReviewSummaryView
           issues={state.issues}
           reviewId={state.reviewId ?? undefined}
-          durationMs={state.startedAt ? Date.now() - state.startedAt.getTime() : undefined}
+          durationMs={
+            state.startedAt
+              ? Date.now() - state.startedAt.getTime()
+              : undefined
+          }
           onContinue={goToResults}
           onBack={reset}
         />
@@ -136,7 +144,11 @@ export function ReviewContainer({
 
     case "results":
       return (
-        <ReviewResultsView issues={state.issues} onBack={goToSummary} />
+        <ReviewResultsView
+          issues={state.issues}
+          reviewId={state.reviewId ?? undefined}
+          onBack={goToSummary}
+        />
       );
   }
 }

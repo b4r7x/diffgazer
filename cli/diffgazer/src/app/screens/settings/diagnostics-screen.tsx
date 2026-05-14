@@ -1,10 +1,10 @@
-import { useState } from "react";
 import type { ReactElement } from "react";
-import { Box, Text, useInput } from "ink";
+import { Box, Text } from "ink";
 import { Spinner } from "../../../components/ui/spinner.js";
 import { useScope } from "../../../hooks/use-scope.js";
 import { usePageFooter } from "../../../hooks/use-page-footer.js";
 import { useBackHandler } from "../../../hooks/use-back-handler.js";
+import { useSettingsZone } from "../../../hooks/use-settings-zone.js";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions.js";
 import { useDiagnosticsData } from "@diffgazer/core/api/hooks";
 import { formatTimestampOrNA } from "@diffgazer/core/format";
@@ -13,20 +13,15 @@ import { SectionHeader } from "../../../components/ui/section-header.js";
 import { Button } from "../../../components/ui/button.js";
 import { Badge } from "../../../components/ui/badge.js";
 import { KeyValue } from "../../../components/ui/key-value.js";
+import {
+  deriveDiagnosticsActions,
+  triggerDiagnosticsRefreshAll,
+} from "../../../features/settings/diagnostics/derive-actions.js";
 
 export function DiagnosticsScreen(): ReactElement {
   const { columns } = useTerminalDimensions();
   useScope("settings-diagnostics");
-  usePageFooter({
-    shortcuts: [
-      { key: "Esc", label: "Back" },
-      { key: "←→", label: "Switch button" },
-      { key: "Enter", label: "Action" },
-    ],
-  });
   useBackHandler();
-
-  const [buttonIndex, setButtonIndex] = useState(0);
 
   const {
     serverState,
@@ -43,18 +38,28 @@ export function DiagnosticsScreen(): ReactElement {
     refetchContext,
   } = useDiagnosticsData();
 
-  useInput((_input, key) => {
-    if (key.leftArrow) {
-      setButtonIndex((i) => Math.max(0, i - 1));
-    }
-    if (key.rightArrow) {
-      setButtonIndex((i) => Math.min(1, i + 1));
-    }
+  const { isButtonActive } = useSettingsZone({
+    buttonCount: 2,
+    disabled: isRefreshing,
+  });
+
+  usePageFooter({
+    shortcuts: [
+      { key: "←→", label: "Move action" },
+      { key: "Enter", label: "Activate" },
+    ],
+    rightShortcuts: [{ key: "Esc", label: "Back" }],
   });
 
   const handleRefreshAll = () => {
-    void Promise.allSettled([retryServer(), refetchContext()]);
+    void triggerDiagnosticsRefreshAll({ retryServer, refetchContext });
   };
+
+  const { contextActionLabel, contextActionDisabled } = deriveDiagnosticsActions({
+    canRegenerate,
+    isRefreshing,
+    contextStatus,
+  });
 
   const serverStatus = serverState.status;
   const serverError = serverState.status === "error" ? serverState.message : null;
@@ -127,16 +132,16 @@ export function DiagnosticsScreen(): ReactElement {
               )}
               <KeyValue label="Node version" value={nodeVersion} labelWidth={14} />
               <Box gap={1} marginTop={1}>
-                <Button variant="secondary" onPress={handleRefreshAll} isActive={buttonIndex === 0}>
-                  Refresh All
+                <Button variant="secondary" onPress={handleRefreshAll} isActive={isButtonActive(0)}>
+                  Refresh Diagnostics
                 </Button>
                 <Button
                   variant="primary"
                   onPress={handleRegenerateContext}
-                  disabled={!canRegenerate || isRefreshing}
-                  isActive={buttonIndex === 1}
+                  disabled={contextActionDisabled}
+                  isActive={isButtonActive(1)}
                 >
-                  {isRefreshing ? "Regenerating..." : contextStatus === "ready" ? "Regenerate Context" : "Generate Context"}
+                  {contextActionLabel}
                 </Button>
               </Box>
               {isRefreshing && (

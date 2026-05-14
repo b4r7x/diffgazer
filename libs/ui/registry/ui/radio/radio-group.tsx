@@ -15,6 +15,7 @@ import {
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { useFormReset } from "@/hooks/use-form-reset";
 import { useNavigation } from "@/hooks/use-navigation";
+import { isHTMLElementForContainer, resolveAriaInvalid } from "@/lib/aria-utils";
 import { composeRefs } from "@/lib/compose-refs";
 import {
   getEnabledSelectableCollectionItems,
@@ -84,29 +85,12 @@ export type RadioGroupNavigationDirection = "previous" | "next" | "first" | "las
 const RADIO_PREVIOUS_KEYS = ["ArrowUp", "ArrowLeft"] as const;
 const RADIO_NEXT_KEYS = ["ArrowDown", "ArrowRight"] as const;
 
-function isHTMLElementForContainer(value: unknown, container: HTMLElement | null): value is HTMLElement {
-  const View = container?.ownerDocument.defaultView;
-  return Boolean(View && value instanceof View.HTMLElement);
-}
-
 function getRadioNavigationDirection(key: string): RadioGroupNavigationDirection | null {
   if (key === "ArrowUp" || key === "ArrowLeft") return "previous";
   if (key === "ArrowDown" || key === "ArrowRight") return "next";
   if (key === "Home") return "first";
   if (key === "End") return "last";
   return null;
-}
-
-function resolveGroupAriaInvalid(
-  forceInvalid: boolean | undefined,
-  ariaInvalid: AriaAttributes["aria-invalid"],
-) {
-  if (forceInvalid) return true;
-  if (ariaInvalid === true || ariaInvalid === "true" || ariaInvalid === "grammar" || ariaInvalid === "spelling") {
-    return ariaInvalid;
-  }
-  if (ariaInvalid === false || ariaInvalid === "false") return ariaInvalid;
-  return undefined;
 }
 
 export function RadioGroup(props: RadioGroupProps) {
@@ -185,16 +169,18 @@ export function RadioGroup(props: RadioGroupProps) {
     hasAutoFocusedRef.current = true;
   }, [autoFocus, keyboardNavigation, disabled, items, highlightedValue, value, setHighlightedValue]);
 
+  // Stable ref required: dep of the contextValue memo below.
   const handleValueChange = useCallback((next: string) => {
     setRequiredInvalid(false);
     setValue(next);
   }, [setValue]);
 
+  // Stable ref required: dep of the contextValue memo below.
   const handleRequiredInvalid = useCallback(() => {
     setRequiredInvalid(true);
   }, []);
 
-  const handleNavigatedItem = useCallback((next: string | null) => {
+  const handleNavigatedItem = (next: string | null) => {
     if (next === null) return;
     setHighlightedValue(next);
     setRequiredInvalid(false);
@@ -203,24 +189,16 @@ export function RadioGroup(props: RadioGroupProps) {
     if (direction !== null) onNavigate?.(next, direction);
 
     if (activationMode === "automatic") setValue(next);
-  }, [activationMode, onNavigate, setHighlightedValue, setValue]);
+  };
 
-  const handleNavigationEnter = useCallback((next: string) => {
+  const handleNavigationEnter = (next: string) => {
     const event = navigationEventRef.current;
     if (!event) return;
 
     setHighlightedValue(next);
     handleValueChange(next);
     onEnter?.(next, event);
-  }, [handleValueChange, onEnter, setHighlightedValue]);
-
-  const handleNavigationBoundaryReached = useCallback((
-    direction: RadioGroupBoundaryDirection,
-    event: globalThis.KeyboardEvent,
-    key: string,
-  ) => {
-    onNavigationBoundaryReached?.(direction, event, key);
-  }, [onNavigationBoundaryReached]);
+  };
 
   const { onKeyDown: navKeyDown } = useNavigation({
     containerRef,
@@ -234,7 +212,7 @@ export function RadioGroup(props: RadioGroupProps) {
     scopeToContainer: true,
     upKeys: RADIO_PREVIOUS_KEYS,
     downKeys: RADIO_NEXT_KEYS,
-    onNavigationBoundaryReached: handleNavigationBoundaryReached,
+    onNavigationBoundaryReached,
   });
 
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
@@ -304,7 +282,7 @@ export function RadioGroup(props: RadioGroupProps) {
         aria-labelledby={ariaLabelledBy}
         aria-orientation={orientation}
         aria-required={required || undefined}
-        aria-invalid={resolveGroupAriaInvalid(requiredInvalid && validSelectedValue === null, ariaInvalid)}
+        aria-invalid={resolveAriaInvalid(ariaInvalid, requiredInvalid && validSelectedValue === null)}
         aria-disabled={disabled || undefined}
         className={cn(
           "flex",

@@ -1,4 +1,4 @@
-import { cn } from "@diffgazer/core/cn";
+import { cn } from "@diffgazer/ui/lib/utils";
 import { Checkbox } from "@diffgazer/ui/components/checkbox";
 import type { FixPlanStep } from "@diffgazer/core/schemas/review";
 

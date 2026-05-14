@@ -12,6 +12,7 @@ export interface ActiveSession {
   isComplete: boolean;
   isReady: boolean;
   subscribers: Set<(event: FullReviewStreamEvent) => void>;
+  completionListeners: Set<() => void>;
   controller: AbortController;
 }
 
@@ -39,15 +40,25 @@ function storeSessionEvent(session: ActiveSession, event: FullReviewStreamEvent)
 }
 
 function notifySubscribers(session: ActiveSession, event: FullReviewStreamEvent): void {
+  const handleError = (e: unknown) => console.error('Subscriber callback error:', e);
   session.subscribers.forEach(cb => {
     try {
-      Promise.resolve(cb(event)).catch(e => {
-        console.error('Subscriber callback error:', e);
-      });
+      Promise.resolve(cb(event)).catch(handleError);
     } catch (e) {
-      console.error('Subscriber callback error:', e);
+      handleError(e);
     }
   });
+}
+
+function notifyCompletion(session: ActiveSession): void {
+  session.completionListeners.forEach(cb => {
+    try {
+      cb();
+    } catch (e) {
+      console.error('Completion listener error:', e);
+    }
+  });
+  session.completionListeners.clear();
 }
 
 function evictOldestSession(): void {
@@ -63,6 +74,7 @@ function evictOldestSession(): void {
       session.controller.abort("evicted");
       session.isComplete = true;
       session.subscribers.clear();
+      notifyCompletion(session);
     }
     activeSessions.delete(oldest.id);
   }
@@ -75,6 +87,7 @@ function cleanupStaleSessions(): void {
       session.controller.abort("timeout");
       session.isComplete = true;
       session.subscribers.clear();
+      notifyCompletion(session);
       activeSessions.delete(id);
     }
   }
@@ -105,6 +118,7 @@ export function createSession(
     isComplete: false,
     isReady: false,
     subscribers: new Set(),
+    completionListeners: new Set(),
     controller: new AbortController(),
   };
   activeSessions.set(reviewId, session);
@@ -131,6 +145,7 @@ export function markComplete(reviewId: string): void {
   if (session && !session.isComplete) {
     session.isComplete = true;
     session.subscribers.clear();
+    notifyCompletion(session);
     setTimeout(() => activeSessions.delete(reviewId), 5 * 60 * 1000);
   }
 }
@@ -152,6 +167,7 @@ export function cancelSession(reviewId: string): void {
 
   notifySubscribers(session, cancelEvent);
   session.subscribers.clear();
+  notifyCompletion(session);
   setTimeout(() => activeSessions.delete(reviewId), 2 * 60 * 1000);
 }
 
@@ -186,6 +202,20 @@ export function subscribe(
     return () => session.subscribers.delete(callback);
   }
   return null;
+}
+
+export function onSessionComplete(
+  reviewId: string,
+  callback: () => void
+): (() => void) | null {
+  const session = activeSessions.get(reviewId);
+  if (!session) return null;
+  if (session.isComplete) {
+    callback();
+    return () => {};
+  }
+  session.completionListeners.add(callback);
+  return () => session.completionListeners.delete(callback);
 }
 
 export function getActiveSessionForProject(

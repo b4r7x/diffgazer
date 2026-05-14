@@ -1,10 +1,12 @@
 import { useState } from "react";
 import type { ModelInfo } from "@diffgazer/core/schemas/config";
-import { TIER_FILTERS, type TierFilter } from "@/features/providers/constants";
+import {
+  cycleTierFilter as cycleTierFilterCore,
+  filterModels,
+  type TierFilter,
+} from "@diffgazer/core/providers";
 
 export type { TierFilter };
-
-const TIER_CYCLE: TierFilter[] = [...TIER_FILTERS];
 
 export function useModelFilter(models: ModelInfo[]) {
   const [searchQuery, setSearchQuery] = useState("");
@@ -13,10 +15,7 @@ export function useModelFilter(models: ModelInfo[]) {
   const filteredModels = filterModels(models, tierFilter, searchQuery);
 
   const cycleTierFilter = () => {
-    setTierFilter((prev) => {
-      const currentIndex = TIER_CYCLE.indexOf(prev);
-      return TIER_CYCLE[(currentIndex + 1) % TIER_CYCLE.length];
-    });
+    setTierFilter(cycleTierFilterCore);
   };
 
   const resetFilters = () => {
@@ -33,29 +32,4 @@ export function useModelFilter(models: ModelInfo[]) {
     cycleTierFilter,
     resetFilters,
   };
-}
-
-function filterModels(
-  models: ModelInfo[],
-  tierFilter: TierFilter,
-  searchQuery: string
-): ModelInfo[] {
-  let filtered = models;
-
-  if (tierFilter === "free") {
-    filtered = filtered.filter((m) => m.tier === "free");
-  } else if (tierFilter === "paid") {
-    filtered = filtered.filter((m) => m.tier === "paid");
-  }
-
-  if (searchQuery.trim()) {
-    const query = searchQuery.toLowerCase();
-    filtered = filtered.filter(
-      (m) =>
-        m.name.toLowerCase().includes(query) ||
-        m.description.toLowerCase().includes(query)
-    );
-  }
-
-  return filtered;
 }

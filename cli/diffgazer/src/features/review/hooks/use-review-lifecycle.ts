@@ -40,6 +40,7 @@ export function useReviewLifecycle(): {
   const [mode, setMode] = useState<ReviewMode>("staged");
   const [reviewId, setReviewId] = useState<string | undefined>();
   const [phase, setPhase] = useState<"streaming" | "summary" | "results">("streaming");
+  const [startError, setStartError] = useState<string | null>(null);
 
   const isConfigured = initData?.configured ?? false;
   const provider = initData?.config?.provider ?? null;
@@ -48,17 +49,26 @@ export function useReviewLifecycle(): {
   const lifecycle = useReviewLifecycleBase({
     mode,
     configLoading,
-    settingsLoading: false,
     isConfigured,
     reviewId,
     onComplete: () => setPhase("summary"),
   });
 
+  const hasStartFailed = startError !== null;
+  // When start fails we drop the "loading" / "completing" guards so the
+  // container's `state.error && phase !== streaming/completing` Callout fires.
   const displayPhase: ReviewLifecycleState["phase"] =
-    !lifecycle.hasStarted ? "loading" : lifecycle.isCompleting ? "completing" : phase;
+    hasStartFailed
+      ? "summary"
+      : !lifecycle.hasStarted
+        ? "loading"
+        : lifecycle.isCompleting
+          ? "completing"
+          : phase;
 
   async function start(selectedMode: ReviewMode) {
     setMode(selectedMode);
+    setStartError(null);
     lifecycle.stream.abort();
     lifecycle.resetCompletion();
     lifecycle.setHasStarted(false);
@@ -67,8 +77,8 @@ export function useReviewLifecycle(): {
     try {
       const result = await createReview.mutateAsync({ mode: selectedMode });
       setReviewId(result.reviewId);
-    } catch {
-      lifecycle.setHasStarted(true);
+    } catch (err) {
+      setStartError(err instanceof Error ? err.message : String(err));
     }
   }
 
@@ -81,6 +91,7 @@ export function useReviewLifecycle(): {
   }
 
   function reset() {
+    setStartError(null);
     lifecycle.resetCompletion();
     lifecycle.setHasStarted(false);
     lifecycle.setHasStreamed(false);
@@ -98,7 +109,7 @@ export function useReviewLifecycle(): {
     agents: lifecycle.streamState.agents,
     events: lifecycle.streamState.events,
     fileProgress: lifecycle.streamState.fileProgress,
-    error: lifecycle.streamState.error,
+    error: startError ?? lifecycle.streamState.error,
     isConfigured,
     provider,
     model,

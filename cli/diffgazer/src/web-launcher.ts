@@ -14,29 +14,28 @@ interface WebLauncherDependencies {
   printBanner?: () => void;
 }
 
+const SHUTDOWN_TIMEOUT_MS = 3000;
+
 export function startWeb(
   options: WebLauncherOptions,
   dependencies: WebLauncherDependencies = {},
-): () => void {
+): () => Promise<void> {
   ensureShutdownToken();
   const resolveServerFactories = dependencies.createServerFactories ?? createModeServerFactories;
   const servers = resolveServerFactories(options).map((create) => create());
-  let stopped = false;
+  let stopPromise: Promise<void> | null = null;
 
-  const stop = (): void => {
-    if (stopped) {
-      return;
+  const stop = (): Promise<void> => {
+    if (!stopPromise) {
+      stopPromise = stopServers(servers);
     }
-
-    stopped = true;
-    for (const server of servers) {
-      server.stop();
-    }
+    return stopPromise;
   };
 
   const stopAndExit = (): void => {
-    stop();
-    setTimeout(() => process.exit(0), 100);
+    void stopWithTimeout(stop, SHUTDOWN_TIMEOUT_MS).finally(() => {
+      process.exit(0);
+    });
   };
 
   process.once("SIGINT", stopAndExit);
@@ -51,6 +50,20 @@ export function startWeb(
   return () => {
     process.off("SIGINT", stopAndExit);
     process.off("SIGTERM", stopAndExit);
-    stop();
+    return stop();
   };
+}
+
+async function stopServers(servers: ServerController[]): Promise<void> {
+  await Promise.allSettled(servers.map((server) => server.stop()));
+}
+
+async function stopWithTimeout(
+  stop: () => Promise<void>,
+  timeoutMs: number,
+): Promise<void> {
+  const timeout = new Promise<"timeout">((resolve) => {
+    setTimeout(() => resolve("timeout"), timeoutMs);
+  });
+  await Promise.race([stop(), timeout]);
 }

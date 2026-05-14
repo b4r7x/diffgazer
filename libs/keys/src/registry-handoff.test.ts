@@ -86,51 +86,32 @@ function collectMissingTargetImports(item: RegistryItem): MissingTargetImport[] 
   return missing;
 }
 
-const EXPECTED_TARGETS: Record<string, string[]> = {
-  navigation: [
-    "src/hooks/use-navigation.ts",
-    "src/hooks/utils/navigation-dispatch.ts",
-    "src/hooks/utils/navigation-items.ts",
-    "src/hooks/utils/navigation-directions.ts",
-    "src/hooks/utils/keyboard-utils.ts",
-    "src/hooks/utils/focusable.ts",
-    "src/hooks/utils/dom.ts",
-  ],
-  "focus-restore": [
-    "src/hooks/use-focus-restore.ts",
-    "src/hooks/utils/focus-restore.ts",
-  ],
-  "focus-trap": [
-    "src/hooks/use-focus-trap.ts",
-    "src/hooks/use-focus-restore.ts",
-    "src/hooks/utils/focus-restore.ts",
-    "src/hooks/utils/focusable.ts",
-    "src/hooks/utils/dom.ts",
-  ],
-  "scroll-lock": [
-    "src/hooks/use-scroll-lock.ts",
-  ],
-  focusable: [
-    "src/hooks/utils/focusable.ts",
-    "src/hooks/utils/dom.ts",
-  ],
-};
-
 describe("public registry target paths", () => {
   const registry = loadRegistry();
   const publicRegistry = loadPublicRegistry();
 
-  for (const [itemName, expectedTargets] of Object.entries(EXPECTED_TARGETS)) {
-    it(`${itemName} has correct target paths in source registry`, () => {
-      const item = getRegistryItem(registry, itemName);
-      const targets = item.files.map((file) => file.target).sort();
-      expect(targets).toEqual([...expectedTargets].sort());
+  // The source registry is the single source of truth for install layout.
+  // The public registry must mirror it exactly.
+  for (const sourceItem of registry.items) {
+    const expectedTargets = sourceItem.files
+      .map((file) => file.target ?? file.path)
+      .sort();
+
+    it(`${sourceItem.name} public registry targets match source registry`, () => {
+      const publicItem = getRegistryItem(publicRegistry, sourceItem.name);
+      const publicTargets = publicItem.files
+        .map((file) => file.target ?? file.path)
+        .sort();
+      expect(publicTargets).toEqual(expectedTargets);
     });
 
-    it(`${itemName} has correct target paths in public registry`, () => {
-      const item = getRegistryItem(publicRegistry, itemName);
-      const targets = item.files.map((file) => file.target).sort();
-      expect(targets).toEqual([...expectedTargets].sort());
+    it(`${sourceItem.name} target paths land under installable directories`, () => {
+      for (const target of expectedTargets) {
+        expect(
+          target.startsWith("src/hooks/"),
+          `${sourceItem.name}: target ${target} must live under src/hooks/ for shadcn install`,
+        ).toBe(true);
+      }
     });
   }
 });

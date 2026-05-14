@@ -1,13 +1,26 @@
 import { useState } from "react";
 import { getErrorMessage } from "@diffgazer/core/errors";
 import type { LensId } from "@diffgazer/core/schemas/review";
-import type { AIProvider, SecretsStorage, AgentExecution } from "@diffgazer/core/schemas/config";
-import { AI_PROVIDERS, SECRETS_STORAGE, AGENT_EXECUTION_MODES } from "@diffgazer/core/schemas/config";
-import { useNavigation } from "../../../app/navigation-context.js";
+import type {
+  AIProvider,
+  SecretsStorage,
+  AgentExecution,
+} from "@diffgazer/core/schemas/config";
+import {
+  AI_PROVIDERS,
+  SECRETS_STORAGE,
+  AGENT_EXECUTION_MODES,
+} from "@diffgazer/core/schemas/config";
+import {
+  INPUT_METHODS,
+  saveWizard,
+  useWizardState,
+  type InputMethod,
+} from "@diffgazer/core/onboarding";
 import { useSaveSettings, useSaveConfig } from "@diffgazer/core/api/hooks";
+import { useNavigation } from "../../../app/navigation-context.js";
 
-const API_KEY_METHODS = ["paste", "env"] as const;
-type ApiKeyMethod = (typeof API_KEY_METHODS)[number];
+type FocusArea = "step" | "nav";
 
 function isSecretsStorage(v: string): v is SecretsStorage {
   return (SECRETS_STORAGE as readonly string[]).includes(v);
@@ -21,82 +34,54 @@ function isAgentExecution(v: string): v is AgentExecution {
   return (AGENT_EXECUTION_MODES as readonly string[]).includes(v);
 }
 
-function isApiKeyMethod(v: string): v is ApiKeyMethod {
-  return (API_KEY_METHODS as readonly string[]).includes(v);
+function isInputMethod(v: string): v is InputMethod {
+  return (INPUT_METHODS as readonly string[]).includes(v);
 }
-
-export const STEP_LABELS = [
-  "Storage",
-  "Provider",
-  "API Key",
-  "Model",
-  "Analysis",
-  "Execution",
-] as const;
-
-export const STEP_TITLES: Record<number, string> = {
-  0: "Secret storage method",
-  1: "Choose your AI provider",
-  2: "Configure API key",
-  3: "Select a model",
-  4: "Choose analysis agents",
-  5: "Agent execution mode",
-};
 
 export function useOnboardingWizard() {
   const { navigate } = useNavigation();
-
-  const [currentStep, setCurrentStep] = useState(0);
-  const [provider, setProvider] = useState<AIProvider>("gemini");
-  const [apiKeyMethod, setApiKeyMethod] = useState<ApiKeyMethod>("paste");
-  const [apiKey, setApiKey] = useState("");
-  const [envVar, setEnvVar] = useState("");
-  const [model, setModel] = useState("");
-  const [selectedLenses, setSelectedLenses] = useState<LensId[]>([
-    "security",
-    "correctness",
-    "performance",
-  ]);
-  const [secretsStorage, setSecretsStorage] = useState<SecretsStorage>("file");
-  const [agentExecution, setAgentExecution] = useState<AgentExecution>("parallel");
+  const wizard = useWizardState();
+  const [focusArea, setFocusArea] = useState<FocusArea>("step");
   const [error, setError] = useState<string | null>(null);
-  const [focusArea, setFocusArea] = useState<"step" | "nav">("step");
 
   const saveSettings = useSaveSettings();
   const saveConfig = useSaveConfig();
-
   const isSaving = saveSettings.isPending || saveConfig.isPending;
-  const isLastStep = currentStep === STEP_LABELS.length - 1;
-  const isFirstStep = currentStep === 0;
 
   function handleProviderChange(v: string) {
-    if (isAIProvider(v)) setProvider(v);
+    if (isAIProvider(v)) wizard.setProvider(v);
   }
 
   function handleSecretsStorageChange(v: string) {
-    if (isSecretsStorage(v)) setSecretsStorage(v);
+    if (isSecretsStorage(v)) wizard.updateData({ secretsStorage: v });
   }
 
   function handleAgentExecutionChange(v: string) {
-    if (isAgentExecution(v)) setAgentExecution(v);
+    if (isAgentExecution(v)) wizard.updateData({ agentExecution: v });
   }
 
-  function handleApiKeyMethodChange(v: string) {
-    if (isApiKeyMethod(v)) setApiKeyMethod(v);
+  function handleInputMethodChange(v: string) {
+    if (isInputMethod(v)) wizard.updateData({ inputMethod: v });
+  }
+
+  function handleApiKeyChange(v: string) {
+    wizard.updateData({ apiKey: v });
+  }
+
+  function handleModelChange(v: string) {
+    wizard.updateData({ model: v });
+  }
+
+  function handleLensesChange(v: LensId[]) {
+    wizard.updateData({ defaultLenses: v });
   }
 
   async function handleComplete() {
     setError(null);
     try {
-      await saveSettings.mutateAsync({
-        secretsStorage,
-        defaultLenses: selectedLenses,
-        agentExecution,
-      });
-      await saveConfig.mutateAsync({
-        provider,
-        apiKey: apiKeyMethod === "env" ? "env" : apiKey,
-        model: model || undefined,
+      await saveWizard(wizard.wizardData, {
+        saveSettings: (payload) => saveSettings.mutateAsync(payload),
+        saveConfig: (payload) => saveConfig.mutateAsync(payload),
       });
       navigate({ screen: "home" });
     } catch (e) {
@@ -105,49 +90,44 @@ export function useOnboardingWizard() {
   }
 
   function handleNext() {
-    if (isLastStep) {
+    if (!wizard.canProceed) return;
+    if (wizard.isLastStep) {
       void handleComplete();
-    } else {
-      setCurrentStep(currentStep + 1);
-      setFocusArea("step");
+      return;
     }
+    wizard.next();
+    setFocusArea("step");
   }
 
   function handleBack() {
-    if (!isFirstStep) {
-      setCurrentStep(currentStep - 1);
-      setFocusArea("step");
-    }
+    if (wizard.isFirstStep) return;
+    wizard.back();
+    setFocusArea("step");
   }
 
   function toggleFocusArea() {
-    setFocusArea(focusArea === "step" ? "nav" : "step");
+    setFocusArea((prev) => (prev === "step" ? "nav" : "step"));
   }
 
   return {
-    currentStep,
-    provider,
-    apiKeyMethod,
-    apiKey,
-    envVar,
-    model,
-    selectedLenses,
-    secretsStorage,
-    agentExecution,
-    error,
+    wizardData: wizard.wizardData,
+    currentStep: wizard.currentStep,
+    stepIndex: wizard.stepIndex,
+    steps: wizard.steps,
+    isFirstStep: wizard.isFirstStep,
+    isLastStep: wizard.isLastStep,
+    canProceed: wizard.canProceed,
     focusArea,
     isSaving,
-    isLastStep,
-    isFirstStep,
+    error,
 
-    setApiKey,
-    setEnvVar,
-    setModel,
-    setSelectedLenses,
     handleProviderChange,
     handleSecretsStorageChange,
     handleAgentExecutionChange,
-    handleApiKeyMethodChange,
+    handleInputMethodChange,
+    handleApiKeyChange,
+    handleModelChange,
+    handleLensesChange,
     handleNext,
     handleBack,
     toggleFocusArea,

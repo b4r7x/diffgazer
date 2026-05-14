@@ -1,6 +1,7 @@
 "use client";
 
-import type { AriaAttributes, ComponentPropsWithRef, KeyboardEvent, ReactNode } from "react";
+import type { ComponentPropsWithRef, KeyboardEvent, ReactNode } from "react";
+import { resolveAriaInvalid } from "@/lib/aria-utils";
 import { composeRefs } from "@/lib/compose-refs";
 import { cn } from "@/lib/utils";
 import { Chevron } from "../icons/chevron";
@@ -12,16 +13,6 @@ export interface SelectTriggerProps extends Omit<ComponentPropsWithRef<"button">
   children: ReactNode;
   /** Custom handle element. Defaults to an animated Chevron. Pass `null` to hide. */
   handle?: ReactNode | null;
-}
-
-function resolveAriaInvalid(
-  ariaInvalid: AriaAttributes["aria-invalid"] | undefined,
-) {
-  if (ariaInvalid === true || ariaInvalid === "true" || ariaInvalid === "grammar" || ariaInvalid === "spelling") {
-    return ariaInvalid;
-  }
-  if (ariaInvalid === false || ariaInvalid === "false") return ariaInvalid;
-  return undefined;
 }
 
 export function SelectTrigger({

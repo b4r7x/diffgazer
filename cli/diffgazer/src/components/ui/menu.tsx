@@ -3,9 +3,8 @@ import type { ReactElement, ReactNode } from "react";
 import { Box, Text, useInput } from "ink";
 import { useTheme } from "../../theme/theme-context.js";
 import type { CliColorTokens } from "../../theme/palettes.js";
-import { clampIndex, collectChildItems } from "../../lib/list-navigation.js";
-
-// --- Types ---
+import { collectChildItems } from "../../lib/list-navigation.js";
+import { moveHighlight } from "../../lib/highlight-navigation.js";
 
 export interface MenuProps {
   highlightedId?: string | null;
@@ -27,8 +26,6 @@ export interface MenuItemProps {
   children: string;
 }
 
-// --- Context ---
-
 interface MenuContextValue {
   highlightedId: string;
   menuVariant: "default" | "hub";
@@ -45,8 +42,6 @@ function useMenuContext(): MenuContextValue {
   return value;
 }
 
-// --- Item collection ---
-
 interface CollectedItem {
   id: string;
   disabled: boolean;
@@ -58,8 +53,6 @@ function extractMenuItem(element: ReactElement): CollectedItem | null {
   const props = element.props as MenuItemProps;
   return { id: props.id, disabled: props.disabled ?? false, hotkey: props.hotkey };
 }
-
-// --- Components ---
 
 function MenuItem({
   id,
@@ -149,19 +142,11 @@ function MenuRoot({
     selectableItems[internalIndex]?.id ??
     "";
 
-  function moveHighlight(direction: 1 | -1) {
-    if (selectableItems.length === 0) return;
-
-    const currentIdx = selectableItems.findIndex(
-      (item) => item.id === currentHighlightedId,
-    );
-    const nextIdx = clampIndex(currentIdx, direction, selectableItems.length, wrap);
-
-    const nextItem = selectableItems[nextIdx];
-    if (!nextItem) return;
-
-    setInternalIndex(nextIdx);
-    onHighlightChange?.(nextItem.id);
+  function moveBy(direction: 1 | -1) {
+    const result = moveHighlight(selectableItems, currentHighlightedId, direction, wrap);
+    if (!result) return;
+    setInternalIndex(result.index);
+    onHighlightChange?.(result.id);
   }
 
   function selectItem(id: string) {
@@ -173,11 +158,11 @@ function MenuRoot({
   useInput(
     (input, key) => {
       if (key.upArrow) {
-        moveHighlight(-1);
+        moveBy(-1);
         return;
       }
       if (key.downArrow) {
-        moveHighlight(1);
+        moveBy(1);
         return;
       }
       if (key.return) {
@@ -188,7 +173,6 @@ function MenuRoot({
         onClose?.();
         return;
       }
-
       if (input.length === 1) {
         for (const item of selectableItems) {
           if (item.hotkey != null && String(item.hotkey) === input) {
@@ -213,8 +197,6 @@ function MenuRoot({
     </MenuContext>
   );
 }
-
-// --- Compound export ---
 
 export const Menu = Object.assign(MenuRoot, {
   Item: MenuItem,

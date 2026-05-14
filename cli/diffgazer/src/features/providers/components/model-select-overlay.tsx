@@ -1,16 +1,25 @@
-import { useState, useRef, useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { ReactElement } from "react";
 import { Box, Text, useInput } from "ink";
+import type { AIProvider } from "@diffgazer/core/schemas/config";
+import { OPENROUTER_PROVIDER_ID } from "@diffgazer/core/schemas/config";
 import { useTheme } from "../../../theme/theme-context.js";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions.js";
 import { Dialog } from "../../../components/ui/dialog.js";
 import { Button } from "../../../components/ui/button.js";
 import { Spinner } from "../../../components/ui/spinner.js";
-import { useOpenRouterModels, useActivateProvider } from "@diffgazer/core/api/hooks";
-import { buildModels, filterModels, TIER_FILTERS, type TierFilter } from "./model-select-helpers.js";
+import { useActivateProvider } from "@diffgazer/core/api/hooks";
+import {
+  cycleTierFilter,
+  filterModels,
+  getStaticModelsForProvider,
+  useOpenRouterModelsMapped,
+  type TierFilter,
+} from "@diffgazer/core/providers";
 import { SearchInput } from "./model-search-input.js";
 import { TierFilterTabs } from "./tier-filter-tabs.js";
 import { ModelListItem } from "./model-list-item.js";
+import { getCompatibilityLabel } from "./model-select-helpers.js";
 
 type FocusZone = "search" | "filters" | "list";
 
@@ -31,18 +40,17 @@ export function ModelSelectOverlay({
 }: ModelSelectOverlayProps): ReactElement | null {
   const { tokens } = useTheme();
   const { columns } = useTerminalDimensions();
-  const isOpenRouter = providerId === "openrouter";
-  const openRouterQuery = useOpenRouterModels({ enabled: open && isOpenRouter });
+  const isOpenRouter = providerId === OPENROUTER_PROVIDER_ID;
+  const openRouter = useOpenRouterModelsMapped(open, providerId as AIProvider);
   const activateProvider = useActivateProvider();
 
-  const loading = isOpenRouter && openRouterQuery.isLoading;
+  const loading = openRouter.loading;
   const saving = activateProvider.isPending;
-  const error = activateProvider.error?.message ?? openRouterQuery.error?.message ?? undefined;
+  const error = activateProvider.error?.message ?? openRouter.error ?? undefined;
 
-  const models = buildModels(
-    providerId,
-    isOpenRouter ? (openRouterQuery.data?.models ?? []) : [],
-  );
+  const models = isOpenRouter
+    ? openRouter.models
+    : getStaticModelsForProvider(providerId as AIProvider);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [tierFilter, setTierFilter] = useState<TierFilter>("all");
@@ -51,16 +59,19 @@ export function ModelSelectOverlay({
 
   const filteredModels = filterModels(models, tierFilter, searchQuery);
 
-  // Reset highlight when filter results change
-  const prevCountRef = useRef(filteredModels.length);
-  if (prevCountRef.current !== filteredModels.length) {
-    prevCountRef.current = filteredModels.length;
-    if (highlightIndex >= filteredModels.length) {
-      setHighlightIndex(0);
-    }
-  }
+  // Clamp the stored index when the filtered list shrinks; the effect commits
+  // it back on the next render so we avoid setState during render.
+  const safeHighlightIndex =
+    filteredModels.length === 0
+      ? 0
+      : Math.min(highlightIndex, filteredModels.length - 1);
 
-  // Reset state when overlay opens
+  useEffect(() => {
+    if (highlightIndex !== safeHighlightIndex) {
+      setHighlightIndex(safeHighlightIndex);
+    }
+  }, [highlightIndex, safeHighlightIndex]);
+
   useEffect(() => {
     if (open) {
       setSearchQuery("");
@@ -82,19 +93,16 @@ export function ModelSelectOverlay({
     );
   }
 
-  // Intercept Dialog's escape: return to list first, close on second press
-  const focusZoneRef = useRef(focusZone);
-  focusZoneRef.current = focusZone;
-
+  // Dialog escape returns to the list first, then closes. Called from an event
+  // handler, so `focusZone` from closure is the latest committed value.
   function handleOpenChange(nextOpen: boolean) {
-    if (!nextOpen && focusZoneRef.current !== "list") {
+    if (!nextOpen && focusZone !== "list") {
       setFocusZone("list");
       return;
     }
     onOpenChange(nextOpen);
   }
 
-  // Tab cycles focus zones, shortcuts for search/filter
   useInput(
     (input, key) => {
       if (key.tab) {
@@ -106,25 +114,19 @@ export function ModelSelectOverlay({
         return;
       }
 
-      // "/" focuses search from any zone
       if (input === "/" && focusZone !== "search") {
         setFocusZone("search");
         return;
       }
 
-      // "f" cycles tier filter when not in search
       if (input === "f" && focusZone !== "search") {
-        setTierFilter((prev) => {
-          const idx = TIER_FILTERS.indexOf(prev);
-          return TIER_FILTERS[(idx + 1) % TIER_FILTERS.length] ?? "all";
-        });
+        setTierFilter(cycleTierFilter);
         return;
       }
     },
     { isActive: open && !saving },
   );
 
-  // List navigation (only when list is focused)
   useInput(
     (_input, key) => {
       if (filteredModels.length === 0) return;
@@ -142,7 +144,7 @@ export function ModelSelectOverlay({
         return;
       }
       if (key.return) {
-        const model = filteredModels[highlightIndex];
+        const model = filteredModels[safeHighlightIndex];
         if (model) handleSelect(model.id);
         return;
       }
@@ -150,8 +152,11 @@ export function ModelSelectOverlay({
     { isActive: open && focusZone === "list" && !saving },
   );
 
-  // Max width for description truncation
   const contentWidth = Math.min(columns - 8, 70);
+
+  const compatibilityLabel = isOpenRouter
+    ? getCompatibilityLabel(openRouter)
+    : null;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -173,6 +178,10 @@ export function ModelSelectOverlay({
               isActive={focusZone === "filters" && !saving}
             />
 
+            {compatibilityLabel && !loading && !error && (
+              <Text color={tokens.muted}>{compatibilityLabel}</Text>
+            )}
+
             {loading ? (
               <Spinner label="Loading models\u2026" />
             ) : error ? (
@@ -187,7 +196,7 @@ export function ModelSelectOverlay({
                   <ModelListItem
                     key={model.id}
                     model={model}
-                    isHighlighted={focusZone === "list" && idx === highlightIndex}
+                    isHighlighted={focusZone === "list" && idx === safeHighlightIndex}
                     isSelected={model.id === selectedId}
                     maxWidth={contentWidth}
                   />

@@ -1,7 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { Panel, PanelContent } from "@diffgazer/ui/components/panel";
 import { useScope, useKey } from "@diffgazer/keys";
-import { usePageFooter } from "@/hooks/use-page-footer";
+import { usePageFooter } from "@diffgazer/core/footer";
 
 const SHORTCUTS = [
   { key: "↑ / ↓", label: "Navigate menus and lists" },

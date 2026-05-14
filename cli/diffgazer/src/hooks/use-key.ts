@@ -9,9 +9,10 @@ export function useKey(hotkey: string, handler: () => void, scope?: string): voi
 
   const resolvedScope = scope ?? ctx.activeScope;
   const stableHandler = useEffectEvent(handler);
+  const { registerHandler } = ctx;
 
   useEffect(() => {
     if (!resolvedScope) return;
-    return ctx.registerHandler(resolvedScope, hotkey, stableHandler);
-  }, [resolvedScope, hotkey]);
+    return registerHandler(resolvedScope, hotkey, stableHandler);
+  }, [resolvedScope, hotkey, registerHandler]);
 }

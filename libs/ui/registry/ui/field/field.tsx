@@ -16,6 +16,7 @@ import {
   type ReactElement,
   type Ref,
 } from "react";
+import { mergeIds } from "@/lib/aria-utils";
 import { composeRefs } from "@/lib/compose-refs";
 import { cn } from "@/lib/utils";
 
@@ -40,11 +41,6 @@ function useFieldContext(source: string) {
   const context = useContext(FieldContext);
   if (!context) throw new Error(`${source} must be used within Field`);
   return context;
-}
-
-function mergeIds(...values: Array<string | undefined>) {
-  const ids = values.flatMap((value) => value?.split(/\s+/).filter(Boolean) ?? []);
-  return ids.length > 0 ? ids.join(" ") : undefined;
 }
 
 export interface FieldRootProps extends HTMLAttributes<HTMLDivElement> {

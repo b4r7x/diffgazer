@@ -9,7 +9,7 @@ import { ThemeSelectorContent } from "../theme-selector-content";
 import { ThemePreviewCard } from "../theme-preview-card";
 import { useTheme } from "@/hooks/use-theme";
 import { useKey, useScope } from "@diffgazer/keys";
-import { usePageFooter } from "@/hooks/use-page-footer";
+import { usePageFooter } from "@diffgazer/core/footer";
 import { useActionRowNavigation } from "@diffgazer/keys";
 
 function resolveTheme(theme: WebTheme, systemResolved?: ResolvedTheme | null): ResolvedTheme {

@@ -1,45 +1,102 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { renderWithProviders } from "@/testing";
-import type { ResolvedTheme, WebTheme } from "@/types/theme";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createApi, type BoundApi } from "@diffgazer/core/api";
+import { ApiProvider } from "@diffgazer/core/api/hooks";
+import { KeyboardProvider } from "@diffgazer/keys";
+import { FooterProvider } from "@/components/layout";
+import { ThemeProvider } from "@/app/providers/theme-provider";
+import type { SettingsConfig } from "@diffgazer/core/schemas/config";
+import type { ReactNode } from "react";
 
 const mockNavigate = vi.fn();
-const mockSetTheme = vi.fn();
-let mockTheme: { theme: WebTheme; resolved: ResolvedTheme };
 
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
 }));
 
-// useTheme wraps ThemeProvider which depends on useSettings/useSaveSettings
-// (API boundary), localStorage, window.matchMedia, and applies data-theme to
-// document.documentElement — none of which work reliably in jsdom. Mocking at
-// the hook boundary lets us control theme state without that infrastructure.
-vi.mock("@/hooks/use-theme", () => ({
-  useTheme: () => ({
-    ...mockTheme,
-    setTheme: mockSetTheme,
-  }),
-}));
-
 import { SettingsThemePage } from "./page";
 
+const SETTINGS_FIXTURE: SettingsConfig = {
+  theme: "auto",
+  defaultLenses: [],
+  defaultProfile: null,
+  severityThreshold: "low",
+  secretsStorage: null,
+  agentExecution: "parallel",
+};
+
+let mockGetSettings: ReturnType<typeof vi.fn>;
+let mockSaveSettings: ReturnType<typeof vi.fn>;
+
+function createTestApi(): BoundApi {
+  return {
+    ...createApi({ baseUrl: "http://localhost" }),
+    getSettings: mockGetSettings,
+    saveSettings: mockSaveSettings,
+  } satisfies BoundApi;
+}
+
 function renderPage() {
-  return renderWithProviders(<SettingsThemePage />);
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  });
+  const api = createTestApi();
+
+  function Wrapper({ children }: { children: ReactNode }) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <ApiProvider value={api}>
+          <ThemeProvider>
+            <FooterProvider>
+              <KeyboardProvider>{children}</KeyboardProvider>
+            </FooterProvider>
+          </ThemeProvider>
+        </ApiProvider>
+      </QueryClientProvider>
+    );
+  }
+
+  return render(<SettingsThemePage />, { wrapper: Wrapper });
+}
+
+async function waitForThemeReady() {
+  await waitFor(() => {
+    expect(screen.getByRole("radio", { name: /auto/i })).toHaveAttribute("aria-checked", "true");
+  });
 }
 
 describe("SettingsThemePage keyboard behavior", () => {
   beforeEach(() => {
-    mockTheme = { theme: "auto", resolved: "light" };
     mockNavigate.mockReset();
-    mockSetTheme.mockReset();
-    document.documentElement.setAttribute("data-theme", "dark");
+    mockGetSettings = vi.fn().mockResolvedValue(SETTINGS_FIXTURE);
+    mockSaveSettings = vi.fn().mockResolvedValue(undefined);
+    localStorage.clear();
+    // Force light resolved theme via matchMedia stub for auto setting.
+    Object.defineProperty(window, "matchMedia", {
+      writable: true,
+      configurable: true,
+      value: (query: string) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }),
+    });
   });
 
   it("moves focus independently from selection and reaches button zone at list boundary", async () => {
     const user = userEvent.setup();
     renderPage();
+    await waitForThemeReady();
 
     const autoRadio = screen.getByRole("radio", { name: /auto/i });
     const darkRadio = screen.getByRole("radio", { name: /dark/i });
@@ -62,6 +119,7 @@ describe("SettingsThemePage keyboard behavior", () => {
   it("keeps focused radio arrow navigation separate from selection", async () => {
     const user = userEvent.setup();
     renderPage();
+    await waitForThemeReady();
 
     const autoRadio = screen.getByRole("radio", { name: /auto/i });
     const darkRadio = screen.getByRole("radio", { name: /dark/i });
@@ -81,6 +139,7 @@ describe("SettingsThemePage keyboard behavior", () => {
   it("selects focused theme on Space without saving or exiting", async () => {
     const user = userEvent.setup();
     renderPage();
+    await waitForThemeReady();
 
     const autoRadio = screen.getByRole("radio", { name: /auto/i });
     const darkRadio = screen.getByRole("radio", { name: /dark/i });
@@ -91,25 +150,33 @@ describe("SettingsThemePage keyboard behavior", () => {
     expect(darkRadio).toHaveAttribute("aria-checked", "true");
     expect(autoRadio).toHaveAttribute("aria-checked", "false");
     expect(saveButton).toBeEnabled();
-    expect(mockSetTheme).not.toHaveBeenCalled();
+    expect(mockSaveSettings).not.toHaveBeenCalled();
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
   it("selects focused theme on Enter and saves + exits", async () => {
     const user = userEvent.setup();
     renderPage();
+    await waitForThemeReady();
 
     await user.keyboard("{ArrowDown}{ArrowDown}{Enter}");
 
-    expect(mockSetTheme).toHaveBeenCalledWith("light");
+    await waitFor(() => {
+      expect(mockSaveSettings).toHaveBeenCalledWith({ theme: "light" });
+    });
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/settings" });
   });
 
   it("keeps preview scoped to the preview panel while focus changes", async () => {
     const user = userEvent.setup();
     renderPage();
+    await waitForThemeReady();
 
-    const preview = screen.getByTestId("theme-preview-root");
+    // Real ThemeProvider syncs documentElement to the resolved theme; pin it
+    // here so we can prove the preview wrapper changes independently.
+    document.documentElement.setAttribute("data-theme", "dark");
+
+    const preview = screen.getByRole("region", { name: /theme preview/i });
 
     expect(preview.getAttribute("data-theme")).toBe("light");
     expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
@@ -126,8 +193,9 @@ describe("SettingsThemePage keyboard behavior", () => {
   it("updates preview on hover from focused list item even after entering button zone", async () => {
     const user = userEvent.setup();
     renderPage();
+    await waitForThemeReady();
 
-    const preview = screen.getByTestId("theme-preview-root");
+    const preview = screen.getByRole("region", { name: /theme preview/i });
     const darkRadio = screen.getByRole("radio", { name: /dark/i });
 
     await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}");
@@ -139,6 +207,7 @@ describe("SettingsThemePage keyboard behavior", () => {
   it("still selects theme by clicking list items", async () => {
     const user = userEvent.setup();
     renderPage();
+    await waitForThemeReady();
 
     const darkRadio = screen.getByRole("radio", { name: /dark/i });
     const saveButton = screen.getByRole("button", { name: /^save$/i });

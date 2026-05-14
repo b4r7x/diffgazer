@@ -12,8 +12,11 @@ export function matchQueryState<T>(
   handlers: QueryStateHandlers<T>,
 ): ReactNode {
   if (query.isLoading) return handlers.loading();
-  if (query.data !== undefined) return handlers.success(query.data);
+  // Error takes precedence over stale data: a refetch failure leaves both
+  // `data` (previous success) and `error` populated, and the UI should
+  // surface the error rather than silently render outdated content.
   if (query.error) return handlers.error(query.error);
+  if (query.data !== undefined) return handlers.success(query.data);
   return handlers.loading();
 }
 
@@ -29,7 +32,7 @@ export function guardQueryState<T>(
   },
 ): ReactElement | null {
   if (query.isLoading) return callbacks.loading();
-  if (query.data !== undefined) return null;
   if (query.error) return callbacks.error(query.error);
+  if (query.data !== undefined) return null;
   return callbacks.loading();
 }

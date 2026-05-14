@@ -16,7 +16,7 @@ import {
   getInitialFocusedCapability,
   isFocusableCapability,
   toSelectedCapabilityIds,
-} from "./trust-permissions-model";
+} from "@diffgazer/core/schemas/config";
 
 interface TrustPermissionsContentBaseProps {
   directory: string;

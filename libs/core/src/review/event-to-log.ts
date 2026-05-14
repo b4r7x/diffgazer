@@ -19,7 +19,6 @@ function convertEventToLogEntry(
   const id = `${event.type}-${index}`;
   const { timestamp } = event;
 
-  // Handle StepEvents
   if (event.type === "step_start") {
     const meta = STEP_METADATA[event.step];
     return {

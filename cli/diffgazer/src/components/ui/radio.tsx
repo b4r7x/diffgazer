@@ -3,9 +3,8 @@ import type { ReactElement, ReactNode } from "react";
 import { Box, Text, useInput } from "ink";
 import { useTheme } from "../../theme/theme-context.js";
 import type { CliColorTokens } from "../../theme/palettes.js";
-import { clampIndex, collectChildItems } from "../../lib/list-navigation.js";
-
-// --- Types ---
+import { collectChildItems } from "../../lib/list-navigation.js";
+import { stepIndex } from "../../lib/highlight-navigation.js";
 
 export interface RadioGroupProps {
   value?: string;
@@ -26,8 +25,6 @@ export interface RadioGroupItemProps {
   disabled?: boolean;
 }
 
-// --- Context ---
-
 interface RadioGroupContextValue {
   selectedValue: string;
   highlightedValue: string;
@@ -45,8 +42,6 @@ function useRadioGroupContext(): RadioGroupContextValue {
   return value;
 }
 
-// --- Item collection ---
-
 interface CollectedItem {
   value: string;
   disabled: boolean;
@@ -57,8 +52,6 @@ function extractRadioItem(element: ReactElement): CollectedItem | null {
   const props = element.props as RadioGroupItemProps;
   return { value: props.value, disabled: props.disabled ?? false };
 }
-
-// --- Components ---
 
 function RadioGroupItem({
   value,
@@ -136,10 +129,9 @@ function RadioGroupRoot({
   const selectedValue = value ?? internalValue;
   const highlightedValue = selectableItems[highlightIndex]?.value ?? "";
 
-  function moveHighlight(direction: 1 | -1) {
+  function moveBy(direction: 1 | -1) {
     if (selectableItems.length === 0) return;
-
-    const nextIdx = clampIndex(highlightIndex, direction, selectableItems.length, wrap);
+    const nextIdx = stepIndex(highlightIndex, direction, selectableItems.length, wrap);
     setHighlightIndex(nextIdx);
     const nextItem = selectableItems[nextIdx];
     if (nextItem) {
@@ -165,11 +157,11 @@ function RadioGroupRoot({
       const nextKey = isVertical ? key.downArrow : key.rightArrow;
 
       if (prevKey) {
-        moveHighlight(-1);
+        moveBy(-1);
         return;
       }
       if (nextKey) {
-        moveHighlight(1);
+        moveBy(1);
         return;
       }
       if (key.return || _input === " ") {
@@ -195,8 +187,6 @@ function RadioGroupRoot({
     </RadioGroupContext>
   );
 }
-
-// --- Compound export ---
 
 export const RadioGroup = Object.assign(RadioGroupRoot, {
   Item: RadioGroupItem,

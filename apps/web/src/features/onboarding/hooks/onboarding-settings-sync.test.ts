@@ -6,31 +6,8 @@ import { ApiProvider } from "@diffgazer/core/api/hooks";
 import type { SettingsConfig } from "@diffgazer/core/schemas/config";
 import { createElement, type ReactNode } from "react";
 
-const {
-  mockRefresh,
-  mockSaveSettings,
-  mockSaveConfig,
-  mockGetSettings,
-} = vi.hoisted(() => ({
-  mockRefresh: vi.fn(),
-  mockSaveSettings: vi.fn(),
-  mockSaveConfig: vi.fn(),
-  mockGetSettings: vi.fn(),
-}));
-
-// Kept: ConfigProvider requires QueryClientProvider + ApiProvider + loadInit chain;
-// this test already provides its own QueryClient/ApiProvider for the settings query.
-vi.mock("@/app/providers/config-provider", () => ({
-  useConfigActions: () => ({
-    refresh: mockRefresh,
-  }),
-}));
-
-// Kept: module-level mutable state that leaks between tests if not mocked.
-vi.mock("@/lib/config-guards/config-guard-cache", () => ({
-  setConfiguredGuardCache: vi.fn(),
-}));
-
+import { ConfigProvider } from "@/app/providers/config-provider";
+import { invalidateConfigGuardCache } from "@/lib/config-guard-cache";
 import { useOnboarding } from "./use-onboarding";
 import { useSettings } from "@diffgazer/core/api/hooks";
 
@@ -43,32 +20,68 @@ const SETTINGS_FIXTURE: SettingsConfig = {
   agentExecution: "parallel",
 };
 
+function makeInitResponse(overrides: Record<string, unknown> = {}) {
+  return {
+    config: { provider: "gemini", model: "gemini-2.5-flash" },
+    providers: [{ provider: "gemini", hasApiKey: true, isActive: true }],
+    settings: SETTINGS_FIXTURE,
+    configured: true,
+    project: { projectId: "proj-1", path: "/tmp/repo", trust: null },
+    setup: {
+      hasSecretsStorage: true,
+      hasProvider: true,
+      hasModel: true,
+      hasTrust: false,
+      isConfigured: true,
+      isReady: true,
+      missing: [] as string[],
+    },
+    ...overrides,
+  };
+}
+
+let mockGetSettings: ReturnType<typeof vi.fn>;
+let mockSaveSettings: ReturnType<typeof vi.fn>;
+let mockSaveConfig: ReturnType<typeof vi.fn>;
+let mockLoadInit: ReturnType<typeof vi.fn>;
+let mockGetProviderStatus: ReturnType<typeof vi.fn>;
+let queryClient: QueryClient;
+
 function createWrapper() {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
+  queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   const api = {
     ...createApi({ baseUrl: "http://localhost" }),
     getSettings: mockGetSettings,
     saveSettings: mockSaveSettings,
     saveConfig: mockSaveConfig,
+    loadInit: mockLoadInit,
+    getProviderStatus: mockGetProviderStatus,
   } satisfies BoundApi;
 
   return ({ children }: { children: ReactNode }) =>
     createElement(
       QueryClientProvider,
       { client: queryClient },
-      createElement(ApiProvider, { value: api }, children),
+      createElement(
+        ApiProvider,
+        { value: api },
+        createElement(ConfigProvider, null, children),
+      ),
     );
 }
 
 describe("onboarding/settings synchronization", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-    mockGetSettings.mockResolvedValue(SETTINGS_FIXTURE);
-    mockRefresh.mockResolvedValue(undefined);
-    mockSaveSettings.mockResolvedValue(undefined);
-    mockSaveConfig.mockResolvedValue(undefined);
+    invalidateConfigGuardCache();
+    mockGetSettings = vi.fn().mockResolvedValue(SETTINGS_FIXTURE);
+    mockSaveSettings = vi.fn().mockResolvedValue(undefined);
+    mockSaveConfig = vi.fn().mockResolvedValue(undefined);
+    mockLoadInit = vi.fn().mockResolvedValue(makeInitResponse());
+    mockGetProviderStatus = vi
+      .fn()
+      .mockResolvedValue([{ provider: "gemini", hasApiKey: true, isActive: true }]);
   });
 
   it("should invalidate settings query after onboarding completion", async () => {

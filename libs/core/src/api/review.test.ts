@@ -5,17 +5,7 @@ import {
   resumeReviewStream,
 } from "./review.js";
 import type { ApiClient } from "./types.js";
-
-function createClient(): ApiClient {
-  return {
-    get: vi.fn(),
-    post: vi.fn(),
-    put: vi.fn(),
-    delete: vi.fn(),
-    stream: vi.fn(),
-    request: vi.fn(),
-  };
-}
+import { createMockClient as createClient } from "../testing/factories.js";
 
 function streamResponse(events: unknown[]): Response {
   const encoder = new TextEncoder();
@@ -46,7 +36,7 @@ describe("resumeReviewStream", () => {
     const client = createClient();
     const error = new Error("Request failed") as Error & { status: number };
     error.status = status;
-    vi.mocked(client.stream).mockRejectedValue(error);
+    vi.mocked(client.request).mockRejectedValue(error);
 
     const result = await resumeReviewStream(client, { reviewId: "r1" });
 
@@ -56,7 +46,7 @@ describe("resumeReviewStream", () => {
 
   it("returns a stream error when the response has no body or the thrown value is not an Error", async () => {
     const bodylessClient = createClient();
-    vi.mocked(bodylessClient.stream).mockResolvedValue(new Response(null, { status: 200 }));
+    vi.mocked(bodylessClient.request).mockResolvedValue(new Response(null, { status: 200 }));
 
     const bodylessResult = await resumeReviewStream(bodylessClient, { reviewId: "r1" });
 
@@ -69,7 +59,7 @@ describe("resumeReviewStream", () => {
     }
 
     const rejectedClient = createClient();
-    vi.mocked(rejectedClient.stream).mockRejectedValue("string error");
+    vi.mocked(rejectedClient.request).mockRejectedValue("string error");
 
     const rejectedResult = await resumeReviewStream(rejectedClient, { reviewId: "r1" });
 
@@ -85,7 +75,7 @@ describe("resumeReviewStream", () => {
   it("resumes from the review stream endpoint", async () => {
     const client = createClient();
     const signal = new AbortController().signal;
-    vi.mocked(client.stream).mockResolvedValue(
+    vi.mocked(client.request).mockResolvedValue(
       streamResponse([
         { type: "complete", reviewId: "r1", result: reviewResult },
       ]),
@@ -97,7 +87,7 @@ describe("resumeReviewStream", () => {
     });
 
     expect(result.ok).toBe(true);
-    expect(client.stream).toHaveBeenCalledWith("/api/review/reviews/r1/stream", { signal });
+    expect(client.request).toHaveBeenCalledWith("GET", "/api/review/reviews/r1/stream", { signal });
   });
 });
 

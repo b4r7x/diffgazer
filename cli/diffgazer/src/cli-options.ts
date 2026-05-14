@@ -34,21 +34,21 @@ export function resolveCliAction(args: string[]): CliAction {
     allowPositionals: false,
   });
 
-  if (values.help === true) {
+  if (values.help) {
     return { type: "help" };
   }
 
-  if (values.version === true) {
+  if (values.version) {
     return { type: "version" };
   }
 
-  const mode: CliMode = values.dev === true ? "dev" : "prod";
+  const mode: CliMode = values.dev ? "dev" : "prod";
 
-  if (typeof values.theme === "string" && values.tui !== true) {
+  if (typeof values.theme === "string" && !values.tui) {
     throw new Error("--theme requires --tui.");
   }
 
-  if (values.tui === true) {
+  if (values.tui) {
     const theme = typeof values.theme === "string" ? values.theme : undefined;
     return { type: "tui", mode, theme, openBrowser: false };
   }

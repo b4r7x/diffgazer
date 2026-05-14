@@ -15,6 +15,7 @@ vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
 }));
 
+// Boundary mock: api/hooks is the HTTP-data fetch boundary; we provide canned data and assert on the resulting UI.
 vi.mock("@diffgazer/core/api/hooks", async () => {
   const actual = await vi.importActual<typeof import("@diffgazer/core/api/hooks")>(
     "@diffgazer/core/api/hooks",

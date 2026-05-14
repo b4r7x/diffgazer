@@ -105,7 +105,7 @@ const packages = [
       "postcss@^8.5.0",
     ],
     prepare: (projectDir) => writeUiNextPackageSmoke(root, projectDir),
-    steps: [step("pnpm", "exec", "next", "build")],
+    steps: [step("pnpm", "exec", "next", "build", "--webpack")],
     verify: verifyUiNextPackageSmoke,
     expect: /OK: Next package-mode Tailwind CSS output/,
   },

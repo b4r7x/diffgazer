@@ -2,9 +2,8 @@ import { createContext, useState, useContext } from "react";
 import type { ReactElement, ReactNode } from "react";
 import { Box, Text, useInput } from "ink";
 import { useTheme } from "../../theme/theme-context.js";
-import { clampIndex, collectChildItems } from "../../lib/list-navigation.js";
-
-// --- Types ---
+import { collectChildItems } from "../../lib/list-navigation.js";
+import { moveHighlight } from "../../lib/highlight-navigation.js";
 
 interface TabsProps {
   value?: string;
@@ -30,8 +29,6 @@ interface TabsContentProps {
   children: ReactNode;
 }
 
-// --- Context ---
-
 interface TabsContextValue {
   activeValue: string;
   setActiveValue: (value: string) => void;
@@ -48,8 +45,6 @@ function useTabsContext(): TabsContextValue {
   return value;
 }
 
-// --- Trigger collection ---
-
 interface CollectedTrigger {
   value: string;
   disabled: boolean;
@@ -60,8 +55,6 @@ function extractTabsTrigger(element: ReactElement): CollectedTrigger | null {
   const props = element.props as TabsTriggerProps;
   return { value: props.value, disabled: props.disabled ?? false };
 }
-
-// --- Components ---
 
 function TabsRoot({ value, defaultValue, onValueChange, children }: TabsProps) {
   const [internalValue, setInternalValue] = useState(defaultValue ?? "");
@@ -91,17 +84,10 @@ function TabsList({ loop = true, isActive = true, children }: TabsListProps) {
   useInput(
     (_input, key) => {
       if (!key.leftArrow && !key.rightArrow) return;
-      if (selectableTriggers.length === 0) return;
-
-      const currentIdx = selectableTriggers.findIndex(
-        (t) => t.value === ctx.activeValue,
-      );
-      const direction = key.rightArrow ? 1 : -1;
-      const nextIdx = clampIndex(currentIdx, direction, selectableTriggers.length, loop);
-
-      const nextTrigger = selectableTriggers[nextIdx];
-      if (nextTrigger) {
-        ctx.setActiveValue(nextTrigger.value);
+      const navigable = selectableTriggers.map((t) => ({ id: t.value, disabled: false }));
+      const result = moveHighlight(navigable, ctx.activeValue, key.rightArrow ? 1 : -1, loop);
+      if (result) {
+        ctx.setActiveValue(result.id);
       }
     },
     { isActive },
@@ -139,8 +125,6 @@ function TabsContent({ value, children }: TabsContentProps) {
   if (ctx.activeValue !== value) return null;
   return <Box>{children}</Box>;
 }
-
-// --- Compound export ---
 
 export const Tabs = Object.assign(TabsRoot, {
   List: TabsList,

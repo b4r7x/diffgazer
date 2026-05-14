@@ -1,1 +1,1 @@
-export { cn } from "@diffgazer/core/cn";
+export { cn } from "@diffgazer/ui/lib/utils";

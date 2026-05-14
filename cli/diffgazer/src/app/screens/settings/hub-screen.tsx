@@ -13,9 +13,9 @@ import { SETTINGS_MENU_ITEMS, SETTINGS_SHORTCUTS } from "../../../config/navigat
 import { useNavigation } from "../../navigation-context.js";
 import type { Route } from "../../routes.js";
 import type { SettingsAction } from "../../../config/navigation.js";
-import { AVAILABLE_PROVIDERS } from "@diffgazer/core/schemas/config";
+import { buildHubValues } from "./hub-screen-values.js";
 
-const SETTINGS_ROUTE_MAP: Record<string, Route["screen"]> = {
+const SETTINGS_ROUTE_MAP: Record<SettingsAction, Route["screen"]> = {
   "trust": "settings/trust-permissions",
   "theme": "settings/theme",
   "provider": "settings/providers",
@@ -24,38 +24,6 @@ const SETTINGS_ROUTE_MAP: Record<string, Route["screen"]> = {
   "analysis": "settings/analysis",
   "diagnostics": "settings/diagnostics",
 };
-
-function getProviderDisplayName(providerId: string): string {
-  const provider = AVAILABLE_PROVIDERS.find((p) => p.id === providerId);
-  return provider?.name ?? providerId;
-}
-
-function buildDescriptions(
-  init: ReturnType<typeof useInit>["data"],
-  settings: ReturnType<typeof useSettings>["data"],
-): Record<SettingsAction, string> {
-  const trust = init?.project.trust;
-  const trustStatus = trust ? `Trusted (${trust.trustMode})` : "Not trusted";
-
-  const activeProvider = init?.config
-    ? getProviderDisplayName(init.config.provider)
-    : "Not configured";
-
-  const theme = settings?.theme ?? "auto";
-  const storage = settings?.secretsStorage ?? "not set";
-  const execution = settings?.agentExecution ?? "parallel";
-  const lensCount = settings?.defaultLenses.length ?? 0;
-
-  return {
-    trust: trustStatus,
-    theme: `Current: ${theme}`,
-    provider: activeProvider,
-    storage: `Current: ${storage}`,
-    "agent-execution": `Mode: ${execution}`,
-    analysis: `${lensCount} lens${lensCount === 1 ? "" : "es"} active`,
-    diagnostics: "Run system health checks",
-  };
-}
 
 export function SettingsHubScreen(): ReactElement {
   useScope("settings-hub");
@@ -68,7 +36,7 @@ export function SettingsHubScreen(): ReactElement {
   const settingsQuery = useSettings();
 
   const onSelect = (id: string) => {
-    const screen = SETTINGS_ROUTE_MAP[id];
+    const screen = SETTINGS_ROUTE_MAP[id as SettingsAction];
     if (screen) {
       navigate({ screen } as Route);
     }
@@ -81,7 +49,7 @@ export function SettingsHubScreen(): ReactElement {
           <Panel>
             <Panel.Content>
               <Box flexDirection="column" gap={1}>
-                <SectionHeader>Settings</SectionHeader>
+                <SectionHeader>Settings Hub</SectionHeader>
                 <Spinner label="Loading settings..." />
               </Box>
             </Panel.Content>
@@ -95,7 +63,7 @@ export function SettingsHubScreen(): ReactElement {
           <Panel>
             <Panel.Content>
               <Box flexDirection="column" gap={1}>
-                <SectionHeader>Settings</SectionHeader>
+                <SectionHeader>Settings Hub</SectionHeader>
                 <Text color="red">Error: {err.message}</Text>
               </Box>
             </Panel.Content>
@@ -113,7 +81,7 @@ export function SettingsHubScreen(): ReactElement {
           <Panel>
             <Panel.Content>
               <Box flexDirection="column" gap={1}>
-                <SectionHeader>Settings</SectionHeader>
+                <SectionHeader>Settings Hub</SectionHeader>
                 <Spinner label="Loading settings..." />
               </Box>
             </Panel.Content>
@@ -123,23 +91,22 @@ export function SettingsHubScreen(): ReactElement {
     );
   }
 
-  const descriptions = buildDescriptions(initQuery.data, settingsQuery.data);
+  const values = buildHubValues(initQuery.data, settingsQuery.data);
+  const settingsError = settingsQuery.error?.message ?? null;
 
   return (
     <Box justifyContent="center" alignItems="center" flexGrow={1}>
-      <Box width={Math.min(columns, 70)}>
+      <Box width={Math.min(columns, 70)} flexDirection="column">
         <Panel>
           <Panel.Content>
             <Box flexDirection="column" gap={1}>
-              <SectionHeader>Settings</SectionHeader>
-              {settingsQuery.error && <Text color="red">{settingsQuery.error.message}</Text>}
+              <SectionHeader>Settings Hub</SectionHeader>
               <Menu variant="hub" onSelect={onSelect}>
-                {SETTINGS_MENU_ITEMS.map((item, index) => (
+                {SETTINGS_MENU_ITEMS.map((item) => (
                   <Menu.Item
                     key={item.id}
                     id={item.id}
-                    hotkey={index + 1}
-                    value={descriptions[item.id] ?? item.description}
+                    value={values[item.id]}
                   >
                     {item.label}
                   </Menu.Item>
@@ -148,6 +115,13 @@ export function SettingsHubScreen(): ReactElement {
             </Box>
           </Panel.Content>
         </Panel>
+        <Box marginTop={1} gap={2}>
+          <Text dimColor>config path: ~/.diffgazer/config.json</Text>
+          <Text dimColor>|</Text>
+          <Text color={settingsError ? "red" : undefined} dimColor={!settingsError}>
+            {settingsError ?? "local settings"}
+          </Text>
+        </Box>
       </Box>
     </Box>
   );

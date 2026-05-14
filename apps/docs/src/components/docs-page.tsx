@@ -2,7 +2,7 @@ import type { ReactNode } from "react"
 import type { TableOfContents } from "fumadocs-core/toc"
 import { TableOfContentsPanel } from "./toc"
 import { Typography } from "@/components/ui/typography/typography"
-import { cn } from "@diffgazer/core/cn"
+import { cn } from "@diffgazer/ui/lib/utils"
 
 export function DocsPageLayout({
   toc,

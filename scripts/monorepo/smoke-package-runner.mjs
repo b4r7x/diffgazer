@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import {
   networkAllowed,
@@ -191,14 +192,12 @@ function runSmokeSteps(smoke, projectDir) {
     .join("\n");
 }
 
-function makeTempPackageProject(root) {
-  const cacheDir = resolve(root, ".cache");
-  mkdirSync(cacheDir, { recursive: true });
-  return mkdtempSync(resolve(cacheDir, "dg-smoke-"));
+function makeTempPackageProject() {
+  return realpathSync(mkdtempSync(resolve(tmpdir(), "dg-smoke-")));
 }
 
 export function withTempPackageProject(root, workspacePackage, smoke) {
-  const projectDir = makeTempPackageProject(root);
+  const projectDir = makeTempPackageProject();
   const packDir = resolve(projectDir, "packs");
   const tgzPaths = [];
   execFile("npm", ["-v"], { cwd: root });

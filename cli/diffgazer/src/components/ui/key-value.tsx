@@ -2,15 +2,11 @@ import type { ReactNode } from "react";
 import { Box, Text } from "ink";
 import { useTheme } from "../../theme/theme-context.js";
 
-// --- Types ---
-
 export interface KeyValueProps {
   label: string;
   value: ReactNode;
   labelWidth?: number;
 }
-
-// --- Component ---
 
 export function KeyValue({ label, value, labelWidth }: KeyValueProps) {
   const { tokens } = useTheme();

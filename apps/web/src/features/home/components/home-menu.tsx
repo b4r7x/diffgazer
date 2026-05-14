@@ -1,35 +1,16 @@
+import { Fragment } from "react";
 import { Menu, MenuDivider, MenuItem } from "@diffgazer/ui/components/menu";
 import { Panel, PanelHeader } from "@diffgazer/ui/components/panel";
-
-export interface MenuItemDefinition {
-  id: string;
-  label: string;
-  shortcut?: string;
-  variant?: "default" | "danger";
-  group: "review" | "navigation" | "system";
-}
+import type { NavItem } from "@diffgazer/core/schemas/ui";
+import { isMenuActionDisabled, withGroupDividers } from "@diffgazer/core/navigation";
 
 interface HomeMenuProps {
   highlighted: string | null;
   onHighlightChange: (id: string | null) => void;
   onSelect: (id: string) => void;
-  items: MenuItemDefinition[];
+  items: NavItem[];
   isTrusted?: boolean;
   hasLastReview?: boolean;
-}
-
-function groupItems(items: MenuItemDefinition[]) {
-  return items.reduce(
-    (groups, item) => {
-      if (item.group) groups[item.group].push(item);
-      return groups;
-    },
-    {
-      review: [] as MenuItemDefinition[],
-      navigation: [] as MenuItemDefinition[],
-      system: [] as MenuItemDefinition[],
-    }
-  );
 }
 
 export function HomeMenu({
@@ -40,9 +21,7 @@ export function HomeMenu({
   isTrusted = false,
   hasLastReview = false,
 }: HomeMenuProps) {
-  const { review, navigation, system } = groupItems(items);
-  const reviewDisabled = !isTrusted;
-  const resumeDisabled = reviewDisabled || !hasLastReview;
+  const annotated = withGroupDividers(items);
 
   return (
     <Panel className="w-full max-w-md lg:w-1/2 lg:max-w-lg h-fit flex flex-col">
@@ -54,26 +33,17 @@ export function HomeMenu({
           onSelect={onSelect}
           autoFocus
         >
-          {review.map((item) => {
-            const disabled = item.id === "resume-review" ? resumeDisabled : reviewDisabled;
+          {annotated.map(({ item, showDividerBefore }) => {
+            const disabled = isMenuActionDisabled(item.id, { isTrusted, hasLastReview });
             return (
-              <MenuItem key={item.id} id={item.id} disabled={disabled}>
-                {item.label}
-              </MenuItem>
+              <Fragment key={item.id}>
+                {showDividerBefore && <MenuDivider />}
+                <MenuItem id={item.id} disabled={disabled} variant={item.variant}>
+                  {item.label}
+                </MenuItem>
+              </Fragment>
             );
           })}
-          <MenuDivider />
-          {navigation.map((item) => (
-            <MenuItem key={item.id} id={item.id}>
-              {item.label}
-            </MenuItem>
-          ))}
-          <MenuDivider />
-          {system.map((item) => (
-            <MenuItem key={item.id} id={item.id} variant={item.variant}>
-              {item.label}
-            </MenuItem>
-          ))}
         </Menu>
       </div>
     </Panel>

@@ -15,10 +15,9 @@ export const docs = defineDocs({
 export default defineConfig({
   mdxOptions: {
     rehypeCodeOptions: {
-      // rehype-code theme type is not compatible with fumadocs mdx config type
       themes: {
-        light: docsCodeTheme as any,
-        dark: docsCodeTheme as any,
+        light: docsCodeTheme,
+        dark: docsCodeTheme,
       },
       defaultColor: false,
     },

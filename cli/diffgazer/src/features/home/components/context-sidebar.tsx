@@ -1,56 +1,67 @@
-import { Box } from "ink";
+import { Box, Text } from "ink";
+import type { ContextInfo } from "@diffgazer/core/schemas/ui";
 import { Panel } from "../../../components/ui/panel.js";
-import { Badge } from "../../../components/ui/badge.js";
 import { KeyValue } from "../../../components/ui/key-value.js";
+import { useTheme } from "../../../theme/theme-context.js";
 
-interface ContextSidebarProps {
-  providerName?: string;
-  modelName?: string;
-  lastReviewDate?: string;
-  lastReviewIssues?: number;
-  trustStatus?: "trusted" | "untrusted" | "unknown";
+export interface ContextSidebarProps {
+  context: ContextInfo;
+  isTrusted: boolean;
+  projectPath?: string;
 }
 
-const trustVariant = {
-  trusted: "success",
-  unknown: "warning",
-  untrusted: "error",
-} as const;
+export function ContextSidebar({ context, isTrusted, projectPath }: ContextSidebarProps) {
+  const { tokens } = useTheme();
 
-export function ContextSidebar({
-  providerName,
-  modelName,
-  lastReviewDate,
-  lastReviewIssues,
-  trustStatus = "unknown",
-}: ContextSidebarProps) {
+  const providerValue =
+    context.providerName != null
+      ? context.providerMode != null
+        ? `${context.providerName} (${context.providerMode})`
+        : context.providerName
+      : "Not configured";
+
+  const lastRunValue = renderLastRun(context.lastRunId, context.lastRunIssueCount, tokens.warning);
+
   return (
     <Panel>
-      <Panel.Header variant="subtle">Context</Panel.Header>
+      <Panel.Header>Context</Panel.Header>
       <Panel.Content>
         <Box flexDirection="column" gap={1}>
-          <KeyValue label="Provider" value={providerName ?? "Not configured"} />
-          <KeyValue label="Model" value={modelName ?? "Not selected"} />
-          <KeyValue
-            label="Last Review"
-            value={
-              lastReviewDate
-                ? lastReviewIssues !== undefined
-                  ? `${lastReviewDate} (${lastReviewIssues} issues)`
-                  : lastReviewDate
-                : "None"
-            }
-          />
-          <KeyValue
-            label="Trust"
-            value={
-              <Badge variant={trustVariant[trustStatus]} dot>
-                {trustStatus}
-              </Badge>
-            }
-          />
+          {isTrusted ? (
+            <KeyValue
+              label="Trusted"
+              value={<Text color={tokens.info}>{context.trustedDir ?? projectPath ?? "—"}</Text>}
+            />
+          ) : (
+            <KeyValue
+              label="Not Trusted"
+              value={
+                <Box flexDirection="column">
+                  <Text color={tokens.warning}>{projectPath ?? "—"}</Text>
+                  <Text dimColor>Open Settings → Trust & Permissions to grant</Text>
+                </Box>
+              }
+            />
+          )}
+          <KeyValue label="Provider" value={providerValue} />
+          <KeyValue label="Last Run" value={lastRunValue} />
         </Box>
       </Panel.Content>
     </Panel>
+  );
+}
+
+function renderLastRun(
+  lastRunId: string | undefined,
+  lastRunIssueCount: number | undefined,
+  issuesColor: string,
+) {
+  if (lastRunId == null) return "None";
+  if (lastRunIssueCount == null) return `#${lastRunId}`;
+  return (
+    <Box>
+      <Text>#{lastRunId}</Text>
+      <Text color={issuesColor}> ({lastRunIssueCount} issues)</Text>
+    </Box>
   );
 }

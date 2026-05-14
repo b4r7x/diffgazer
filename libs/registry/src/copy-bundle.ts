@@ -96,8 +96,13 @@ export function buildCopyBundle(
           throw new Error(`Source file not found: ${filePath}`);
         }
         const content = readFileSync(filePath, "utf-8");
+        // The bundle's `path` is the installer-facing path: where the file lands on
+        // disk after `dgadd`. Registry `target` is the canonical install location;
+        // when present, prefer it. Otherwise the source `path` IS the install path
+        // (the legacy case where source layout matches target layout).
+        const installPath = file.target ?? file.path;
         return {
-          path: normalizeFilePath(file.path, pathMapping),
+          path: normalizeFilePath(installPath, pathMapping),
           content: transformContent ? transformContent(content, file.path) : content,
         };
       }),

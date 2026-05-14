@@ -7,48 +7,64 @@ import { usePageFooter } from "../../../hooks/use-page-footer.js";
 import { useBackHandler } from "../../../hooks/use-back-handler.js";
 import { useSettingsZone } from "../../../hooks/use-settings-zone.js";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions.js";
+import { useNavigation } from "../../navigation-context.js";
 import { useSettings, useSaveSettings, guardQueryState } from "@diffgazer/core/api/hooks";
 import { Panel } from "../../../components/ui/panel.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
 import { Spinner } from "../../../components/ui/spinner.js";
 import { Button } from "../../../components/ui/button.js";
+import { Callout } from "../../../components/ui/callout.js";
 import { StorageSelector } from "../../../features/settings/components/storage-selector.js";
+import { deriveStorageSaveState } from "../../../features/settings/storage/derive-save-state.js";
 
 export function StorageScreen(): ReactElement {
   const { columns } = useTerminalDimensions();
+  const { goBack } = useNavigation();
   useScope("settings-storage");
-  usePageFooter({
-    shortcuts: [
-      { key: "Esc", label: "Back" },
-      { key: "Tab", label: "Switch zone" },
-      { key: "↑↓", label: "Navigate" },
-      { key: "Enter", label: "Select" },
-    ],
-  });
   useBackHandler();
 
   const settingsQuery = useSettings();
   const saveSettings = useSaveSettings();
   const [storage, setStorage] = useState<SecretsStorage | null>(null);
-  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const saving = saveSettings.isPending;
-  const saveError = saveSettings.error?.message ?? null;
-  const effectiveStorage = storage ?? settingsQuery.data?.secretsStorage ?? "file";
+  const persistedStorage = settingsQuery.data?.secretsStorage ?? null;
+  const { effective: effectiveStorage, canSave } = deriveStorageSaveState({
+    persisted: persistedStorage,
+    choice: storage,
+    saving,
+  });
 
   const { isListActive, isButtonActive } = useSettingsZone({
-    buttonCount: 1,
+    buttonCount: 2,
     disabled: saving,
   });
 
+  usePageFooter({
+    shortcuts: [
+      { key: "Tab", label: "Switch zone" },
+      { key: "↑↓", label: "Navigate" },
+      { key: "Enter", label: "Select" },
+    ],
+    rightShortcuts: [{ key: "Esc", label: "Back" }],
+  });
+
   function handleSave() {
-    setSaveMessage(null);
+    if (!canSave) return;
+    setSaveError(null);
     saveSettings.mutate({ secretsStorage: effectiveStorage }, {
       onSuccess: () => {
-        setSaveMessage("Storage setting saved.");
-        setStorage(null);
+        goBack();
+      },
+      onError: (err) => {
+        setSaveError(err instanceof Error ? err.message : "Failed to save settings");
       },
     });
+  }
+
+  function handleCancel() {
+    goBack();
   }
 
   const guard = guardQueryState(settingsQuery, {
@@ -76,19 +92,26 @@ export function StorageScreen(): ReactElement {
         <Panel>
           <Panel.Content>
             <Box flexDirection="column" gap={1}>
-              <SectionHeader>Secrets Storage</SectionHeader>
-              <Text dimColor>Current: {effectiveStorage}</Text>
+              <SectionHeader>Configure Secrets Storage</SectionHeader>
+              <Text dimColor>
+                Choose where API keys and sensitive data should be stored.
+              </Text>
               <StorageSelector
                 value={effectiveStorage}
                 onChange={(v) => setStorage(v as SecretsStorage)}
                 isActive={isListActive}
               />
+              <Callout variant="info">
+                <Text>Changes will take effect immediately after saving.</Text>
+              </Callout>
               <Box gap={1}>
-                <Button variant="primary" onPress={handleSave} disabled={saving} isActive={isButtonActive(0)}>
+                <Button variant="secondary" onPress={handleCancel} disabled={saving} isActive={isButtonActive(0)}>
+                  Cancel
+                </Button>
+                <Button variant="primary" onPress={handleSave} disabled={!canSave} isActive={isButtonActive(1)}>
                   {saving ? "Saving..." : "Save"}
                 </Button>
               </Box>
-              {saveMessage && <Text color="green">{saveMessage}</Text>}
               {saveError && <Text color="red">{saveError}</Text>}
             </Box>
           </Panel.Content>

@@ -1,10 +1,12 @@
-export { createCli, runCli, type CliOptions } from "./cli.js";
+export { createCli, runCli, type CliOptions } from "./program.js";
 
 export {
   createInitCommand, createAddCommand, createListCommand,
   createDiffCommand, createRemoveCommand,
   type ExtraOption,
 } from "./command-factories.js";
+
+export { runInitWorkflow, type InitWorkflowOptions } from "./workflows/init.js";
 
 export { createItemAccessors, createInstallChecker, parseEnumOption } from "./command-helpers.js";
 

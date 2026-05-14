@@ -11,7 +11,9 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
-import { isEditableElement, matchesHotkey } from "../utils/keyboard-utils.js";
+import { DECLINE } from "../core/normalize-key-input.js";
+import { getOwnerView } from "../dom/dom.js";
+import { isEditableElement, matchesHotkey } from "../dom/keyboard-utils.js";
 
 type Handler = (event: KeyboardEvent) => unknown;
 
@@ -86,7 +88,8 @@ function isEventWithinContainer(eventTarget: EventTarget | null, options?: Handl
   const focusWithinOnly = options?.focusWithinOnly;
   if (!containerRef || !focusWithinOnly) return true;
   const container = containerRef.current;
-  const View = container?.ownerDocument.defaultView;
+  if (!container) return false;
+  const View = getOwnerView(container);
   if (!View || !(eventTarget instanceof View.Node)) return false;
   return container.contains(eventTarget);
 }
@@ -156,7 +159,7 @@ export function KeyboardProvider({ children }: { children: ReactNode }) {
 
         try {
           const result = entry.handler(event);
-          if (result === false) continue;
+          if (result === DECLINE) continue;
         } catch (error) {
           console.error(`[@diffgazer/keys] Handler error for "${hotkey}":`, error);
         }

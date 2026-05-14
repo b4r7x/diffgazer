@@ -155,11 +155,12 @@ function validateRegistryStructure(registry: Registry) {
     }
 
     for (const file of item.files) {
-      if (!file.path.startsWith("src/hooks/") && !file.path.startsWith("src/utils/")) {
+      const allowedPrefixes = ["src/hooks/", "src/core/", "src/dom/"];
+      if (!allowedPrefixes.some((prefix) => file.path.startsWith(prefix))) {
         addError(
           "REGISTRY_HOOK_PATH",
           item.name,
-          `Hook registry file must live under src/hooks/ or src/utils/ for shadcn install paths: ${file.path}`,
+          `Hook registry file must live under src/hooks/, src/core/, or src/dom/ for shadcn install paths: ${file.path}`,
         );
       }
     }

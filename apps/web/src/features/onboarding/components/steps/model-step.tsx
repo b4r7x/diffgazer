@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
-import { AVAILABLE_PROVIDERS, GEMINI_MODEL_INFO, GLM_MODEL_INFO } from "@diffgazer/core/schemas/config";
-import type { AIProvider, ModelInfo } from "@diffgazer/core/schemas/config";
+import { AVAILABLE_PROVIDERS } from "@diffgazer/core/schemas/config";
+import type { AIProvider } from "@diffgazer/core/schemas/config";
+import { getStaticModelsForProvider } from "@diffgazer/core/providers";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
 import { Badge } from "@diffgazer/ui/components/badge";
 import { useOpenRouterModels } from "@/hooks/use-openrouter-models";
@@ -14,18 +15,6 @@ interface ModelStepProps {
   onCommit?: (model: string) => void;
   enabled?: boolean;
   onBoundaryReached?: (direction: "up" | "down") => void;
-}
-
-function getStaticModels(provider: AIProvider): ModelInfo[] {
-  switch (provider) {
-    case "gemini":
-      return Object.values(GEMINI_MODEL_INFO);
-    case "zai":
-    case "zai-coding":
-      return Object.values(GLM_MODEL_INFO);
-    default:
-      return [];
-  }
 }
 
 interface ModelRadioGroupProps extends Omit<ModelStepProps, "provider"> {
@@ -87,7 +76,7 @@ function StaticModelList({
   enabled = true,
   onBoundaryReached,
 }: ModelStepProps) {
-  const models = getStaticModels(provider);
+  const models = getStaticModelsForProvider(provider);
   const providerInfo = AVAILABLE_PROVIDERS.find((p) => p.id === provider);
   const modelIds = models.map((model) => model.id);
 

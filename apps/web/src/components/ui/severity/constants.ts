@@ -15,11 +15,8 @@ export const SEVERITY_CONFIG: Record<ReviewSeverity, SeverityConfig> = {
   nit: { icon: "\u00B7", color: "text-muted-foreground", label: "NIT", borderColor: "border-muted-foreground" },
 };
 
-/** Unicode filled block for bar charts */
 export const BAR_FILLED_CHAR = "\u2588";
 
-/** Unicode empty block for bar charts */
 export const BAR_EMPTY_CHAR = "\u2591";
 
-/** Default width for bar charts */
 export const DEFAULT_BAR_WIDTH = 20;

@@ -1,9 +1,8 @@
 import { useState, useRef } from "react";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
-import type { ProviderFilter } from "@/features/providers/constants";
 import { useProviderManagement } from "@/features/providers/hooks/use-provider-management";
 import { useProvidersKeyboard } from "@/features/providers/hooks/use-providers-keyboard";
-import { PROVIDER_CAPABILITIES } from "@diffgazer/core/schemas/config";
+import { filterProviders, type ProviderFilter } from "@diffgazer/core/providers";
 
 export function useProvidersPageState() {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -26,22 +25,7 @@ export function useProvidersPageState() {
     handleSelectModel,
   } = useProviderManagement();
 
-  let filteredProviders = providers;
-
-  if (filter === "configured") {
-    filteredProviders = filteredProviders.filter((p) => p.hasApiKey);
-  } else if (filter === "needs-key") {
-    filteredProviders = filteredProviders.filter((p) => !p.hasApiKey);
-  } else if (filter === "free") {
-    filteredProviders = filteredProviders.filter((p) => PROVIDER_CAPABILITIES[p.id]?.tier === "free" || PROVIDER_CAPABILITIES[p.id]?.tier === "mixed");
-  } else if (filter === "paid") {
-    filteredProviders = filteredProviders.filter((p) => PROVIDER_CAPABILITIES[p.id]?.tier === "paid");
-  }
-
-  if (searchQuery) {
-    const query = searchQuery.toLowerCase();
-    filteredProviders = filteredProviders.filter((p) => p.name.toLowerCase().includes(query) || p.id.toLowerCase().includes(query));
-  }
+  const filteredProviders = filterProviders(providers, filter, searchQuery);
 
   const effectiveSelectedId = filteredProviders.some((provider) => provider.id === selectedId)
     ? selectedId

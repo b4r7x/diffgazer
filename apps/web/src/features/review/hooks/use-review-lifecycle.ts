@@ -29,7 +29,6 @@ export function useReviewLifecycle({ mode, onComplete }: UseReviewLifecycleOptio
   const base = useReviewLifecycleBase({
     mode,
     configLoading,
-    settingsLoading: false,
     isConfigured,
     reviewId: params.reviewId,
     onComplete: () => {

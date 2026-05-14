@@ -10,32 +10,38 @@ import { CheckboxGroup } from "../../../components/ui/checkbox.js";
 import { Callout } from "../../../components/ui/callout.js";
 
 interface TrustPanelProps {
-  onAccept: (caps: { readFiles: boolean; runCommands: boolean }) => void;
+  onAccept: () => void;
 }
 
 export function TrustPanel({ onAccept }: TrustPanelProps): ReactElement {
   const initQuery = useInit();
   const saveTrust = useSaveTrust();
-  const [checked, setChecked] = useState<string[]>([]);
+  const [checked, setChecked] = useState<string[]>(["readFiles"]);
 
   const saving = saveTrust.isPending;
   const error = saveTrust.error?.message ?? null;
+  const hasRepoAccess = checked.includes("readFiles");
+
+  const actionLabel = saving
+    ? "Saving..."
+    : hasRepoAccess
+      ? "Trust & Continue"
+      : "Continue Without Trust";
 
   function handleAccept() {
     if (!initQuery.data) return;
-    const capabilities = {
-      readFiles: checked.includes("readFiles"),
-      runCommands: checked.includes("runCommands"),
-    };
     saveTrust.mutate(
       {
         projectId: initQuery.data.project.projectId,
         repoRoot: initQuery.data.project.path,
-        capabilities,
+        capabilities: {
+          readFiles: checked.includes("readFiles"),
+          runCommands: checked.includes("runCommands"),
+        },
         trustMode: "persistent",
         trustedAt: new Date().toISOString(),
       },
-      { onSuccess: () => onAccept(capabilities) },
+      { onSuccess: () => onAccept() },
     );
   }
 
@@ -61,7 +67,8 @@ export function TrustPanel({ onAccept }: TrustPanelProps): ReactElement {
     <Panel>
       <Panel.Content>
         <Box flexDirection="column" gap={1}>
-          <SectionHeader>Trust This Project</SectionHeader>
+          <SectionHeader>Trust This Repository?</SectionHeader>
+          <Text dimColor>Diffgazer needs permissions to review your code</Text>
 
           <Callout variant="warning">
             <Callout.Title>First-Time Setup</Callout.Title>
@@ -87,7 +94,7 @@ export function TrustPanel({ onAccept }: TrustPanelProps): ReactElement {
 
           <Box gap={1}>
             <Button variant="success" onPress={handleAccept} disabled={saving || !initQuery.data}>
-              {saving ? "Saving..." : "Accept & Continue"}
+              {actionLabel}
             </Button>
           </Box>
           {error && <Text color="red">{error}</Text>}

@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select"
 import { Breadcrumbs } from "@/components/breadcrumbs"
 import { useSearchOpen } from "@/features/search/search-context"
-import { cn } from "@diffgazer/core/cn"
+import { cn } from "@diffgazer/ui/lib/utils"
 import {
   DOCS_LIBRARY_IDS,
   getDocsLibraryConfig,

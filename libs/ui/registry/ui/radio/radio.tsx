@@ -15,6 +15,7 @@ import {
 } from "react";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { useFormReset } from "@/hooks/use-form-reset";
+import { mergeIds, resolveAriaInvalid } from "@/lib/aria-utils";
 import { composeRefs } from "@/lib/compose-refs";
 import {
   selectableVariants,
@@ -31,23 +32,6 @@ import { cn } from "@/lib/utils";
 export type RadioSize = SelectableSize;
 
 const RADIO_CHECK_EVENT = "diffgazer:radio-check";
-
-function resolveAriaInvalid(
-  forceInvalid: boolean | undefined,
-  ariaInvalid: AriaAttributes["aria-invalid"],
-) {
-  if (forceInvalid) return true;
-  if (ariaInvalid === true || ariaInvalid === "true" || ariaInvalid === "grammar" || ariaInvalid === "spelling") {
-    return ariaInvalid;
-  }
-  if (ariaInvalid === false || ariaInvalid === "false") return ariaInvalid;
-  return undefined;
-}
-
-function mergeIds(...values: Array<string | undefined>) {
-  const ids = values.flatMap((value) => value?.split(/\s+/).filter(Boolean) ?? []);
-  return ids.length > 0 ? ids.join(" ") : undefined;
-}
 
 interface RadioCheckEventDetail {
   name: string;
@@ -144,7 +128,7 @@ export function Radio({
     onChange,
   });
   const [nativeInvalid, setNativeInvalid] = useState(false);
-  const resolvedAriaInvalid = resolveAriaInvalid(nativeInvalid && required && !isChecked, ariaInvalid);
+  const resolvedAriaInvalid = resolveAriaInvalid(ariaInvalid, nativeInvalid && required && !isChecked);
   const resolvedAriaLabelledBy = ariaLabel
     ? undefined
     : mergeIds(ariaLabelledBy, label ? labelId : undefined);

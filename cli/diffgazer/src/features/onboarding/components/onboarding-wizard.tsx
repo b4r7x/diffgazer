@@ -1,24 +1,101 @@
 import type { ReactElement } from "react";
-import { Box, Text, useInput } from "ink";
-import { useTheme } from "../../../theme/theme-context.js";
+import { Box, useInput } from "ink";
+import {
+  STEP_LABELS,
+  STEP_TITLES,
+  WIZARD_STEPS,
+  type OnboardingStep,
+} from "@diffgazer/core/onboarding";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions.js";
+import { usePageFooter } from "../../../hooks/use-page-footer.js";
 import { Button } from "../../../components/ui/button.js";
 import { Spinner } from "../../../components/ui/spinner.js";
 import { Callout } from "../../../components/ui/callout.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
 import { WizardProgress } from "./wizard-progress.js";
+import { StorageStep } from "./steps/storage-step.js";
 import { ProviderStep } from "./steps/provider-step.js";
-import { ApiKeyMethodSelector } from "../../providers/components/api-key-method-selector.js";
+import { ApiKeyStep } from "./steps/api-key-step.js";
 import { ModelStep } from "./steps/model-step.js";
-import { AnalysisSelector } from "../../settings/components/analysis-selector.js";
-import { StorageSelector } from "../../settings/components/storage-selector.js";
+import { AnalysisStep } from "./steps/analysis-step.js";
 import { ExecutionStep } from "./steps/execution-step.js";
-import { useOnboardingWizard, STEP_LABELS, STEP_TITLES } from "../hooks/use-onboarding-wizard.js";
+import { useOnboardingWizard } from "../hooks/use-onboarding-wizard.js";
+import { getStepShortcuts } from "./step-shortcuts.js";
+
+const STEP_LABEL_LIST = WIZARD_STEPS.map((step) => STEP_LABELS[step]);
+
+interface WizardStepBodyProps {
+  step: OnboardingStep;
+  wizard: ReturnType<typeof useOnboardingWizard>;
+}
+
+function WizardStepBody({ step, wizard }: WizardStepBodyProps): ReactElement | null {
+  const isStepFocused = wizard.focusArea === "step";
+  switch (step) {
+    case "storage":
+      return (
+        <StorageStep
+          value={wizard.wizardData.secretsStorage}
+          onChange={wizard.handleSecretsStorageChange}
+          isActive={isStepFocused}
+        />
+      );
+    case "provider":
+      return (
+        <ProviderStep
+          value={wizard.wizardData.provider ?? undefined}
+          onChange={wizard.handleProviderChange}
+          isActive={isStepFocused}
+        />
+      );
+    case "api-key":
+      if (!wizard.wizardData.provider) return null;
+      return (
+        <ApiKeyStep
+          provider={wizard.wizardData.provider}
+          method={wizard.wizardData.inputMethod}
+          onMethodChange={wizard.handleInputMethodChange}
+          apiKey={wizard.wizardData.apiKey}
+          onApiKeyChange={wizard.handleApiKeyChange}
+          isActive={isStepFocused}
+        />
+      );
+    case "model":
+      if (!wizard.wizardData.provider) return null;
+      return (
+        <ModelStep
+          provider={wizard.wizardData.provider}
+          value={wizard.wizardData.model ?? undefined}
+          onChange={wizard.handleModelChange}
+          isActive={isStepFocused}
+        />
+      );
+    case "analysis":
+      return (
+        <AnalysisStep
+          selectedLenses={wizard.wizardData.defaultLenses}
+          onChange={wizard.handleLensesChange}
+          isActive={isStepFocused}
+        />
+      );
+    case "execution":
+      return (
+        <ExecutionStep
+          value={wizard.wizardData.agentExecution}
+          onChange={wizard.handleAgentExecutionChange}
+          isActive={isStepFocused}
+        />
+      );
+  }
+}
 
 export function OnboardingWizard(): ReactElement {
-  const { tokens } = useTheme();
   const { columns } = useTerminalDimensions();
   const wizard = useOnboardingWizard();
+
+  usePageFooter({
+    shortcuts: getStepShortcuts(wizard.currentStep, wizard.focusArea, !wizard.canProceed),
+  });
 
   useInput((_input, key) => {
     if (wizard.isSaving) return;
@@ -32,7 +109,7 @@ export function OnboardingWizard(): ReactElement {
       <Box justifyContent="center" flexGrow={1}>
         <Box width={Math.min(columns, 70)} flexDirection="column">
           <Box flexDirection="column" gap={1}>
-            <WizardProgress steps={[...STEP_LABELS]} currentStep={wizard.currentStep} />
+            <WizardProgress steps={STEP_LABEL_LIST} currentStep={wizard.stepIndex} />
             <Spinner label="Saving configuration..." />
           </Box>
         </Box>
@@ -44,9 +121,9 @@ export function OnboardingWizard(): ReactElement {
     <Box justifyContent="center" flexGrow={1}>
       <Box width={Math.min(columns, 70)} flexDirection="column">
         <Box flexDirection="column" gap={1}>
-          <WizardProgress steps={[...STEP_LABELS]} currentStep={wizard.currentStep} />
+          <WizardProgress steps={STEP_LABEL_LIST} currentStep={wizard.stepIndex} />
 
-          <SectionHeader>{STEP_TITLES[wizard.currentStep] ?? ""}</SectionHeader>
+          <SectionHeader>{STEP_TITLES[wizard.currentStep]}</SectionHeader>
 
           {wizard.error !== null && (
             <Callout variant="error">
@@ -55,53 +132,7 @@ export function OnboardingWizard(): ReactElement {
           )}
 
           <Box flexDirection="column" paddingLeft={1}>
-            {wizard.currentStep === 0 && (
-              <StorageSelector
-                value={wizard.secretsStorage}
-                onChange={wizard.handleSecretsStorageChange}
-                isActive={wizard.focusArea === "step"}
-              />
-            )}
-            {wizard.currentStep === 1 && (
-              <ProviderStep
-                value={wizard.provider}
-                onChange={wizard.handleProviderChange}
-                isActive={wizard.focusArea === "step"}
-              />
-            )}
-            {wizard.currentStep === 2 && (
-              <ApiKeyMethodSelector
-                method={wizard.apiKeyMethod}
-                onMethodChange={wizard.handleApiKeyMethodChange}
-                apiKey={wizard.apiKey}
-                onApiKeyChange={wizard.setApiKey}
-                envVar={wizard.envVar}
-                onEnvVarChange={wizard.setEnvVar}
-                isActive={wizard.focusArea === "step"}
-              />
-            )}
-            {wizard.currentStep === 3 && (
-              <ModelStep
-                value={wizard.model}
-                onChange={wizard.setModel}
-                provider={wizard.provider}
-                isActive={wizard.focusArea === "step"}
-              />
-            )}
-            {wizard.currentStep === 4 && (
-              <AnalysisSelector
-                selectedLenses={wizard.selectedLenses}
-                onChange={wizard.setSelectedLenses}
-                isActive={wizard.focusArea === "step"}
-              />
-            )}
-            {wizard.currentStep === 5 && (
-              <ExecutionStep
-                value={wizard.agentExecution}
-                onChange={wizard.handleAgentExecutionChange}
-                isActive={wizard.focusArea === "step"}
-              />
-            )}
+            <WizardStepBody step={wizard.currentStep} wizard={wizard} />
           </Box>
 
           <Box gap={2}>
@@ -118,14 +149,11 @@ export function OnboardingWizard(): ReactElement {
               variant="primary"
               onPress={wizard.handleNext}
               isActive={wizard.focusArea === "nav"}
+              disabled={!wizard.canProceed}
             >
-              {wizard.isLastStep ? "Complete" : "Next"}
+              {wizard.isLastStep ? "Complete Setup" : "Next"}
             </Button>
           </Box>
-
-          <Text color={tokens.muted} dimColor>
-            Tab to switch focus  |  Arrow keys to navigate  |  Enter to select
-          </Text>
         </Box>
       </Box>
     </Box>

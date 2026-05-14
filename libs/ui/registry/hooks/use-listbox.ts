@@ -18,6 +18,7 @@ import { useNavigation, type NavigationRole } from "@/hooks/use-navigation";
 import { useTypeaheadBuffer } from "@/hooks/use-typeahead-buffer";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { composeRefs } from "@/lib/compose-refs";
+import { typeaheadSearch } from "@/lib/typeahead";
 
 export interface ListboxMetadataItem {
   id: string;
@@ -372,7 +373,8 @@ export function useListbox({
     const query = readTypeaheadQuery(event.key);
     if (query === null) return;
 
-    const typeaheadItems = getListboxItems(container, itemRole, containerRole, containerRole === "menu");
+    const typeaheadItems = getListboxItems(container, itemRole, containerRole, containerRole === "menu")
+      .filter((item) => item.dataset.value !== undefined);
     if (typeaheadItems.length === 0) return;
 
     const currentValue = highlighted ?? selectedId;
@@ -380,20 +382,16 @@ export function useListbox({
       ? -1
       : typeaheadItems.findIndex((item) => item.dataset.value === currentValue);
 
-    const isCyclingChar = query.length > 1 && query.split("").every((c) => c === query[0]);
-    const searchQuery = isCyclingChar ? query[0]! : query;
-    const startIndex = isCyclingChar || query.length === 1 ? currentIndex + 1 : 0;
+    const match = typeaheadSearch({
+      items: typeaheadItems,
+      query,
+      currentIndex,
+      getLabel: (item) => getAccessibleText(item).trim(),
+    });
 
-    const len = typeaheadItems.length;
-    for (let offset = 0; offset < len; offset++) {
-      const index = (startIndex + offset) % len;
-      const item = typeaheadItems[index]!;
-      const label = getAccessibleText(item).trim().toLowerCase();
-      if (label.startsWith(searchQuery) && item.dataset.value !== undefined) {
-        setHighlighted(item.dataset.value);
-        item.scrollIntoView?.({ block: "nearest" });
-        return;
-      }
+    if (match) {
+      setHighlighted(match.dataset.value!);
+      match.scrollIntoView?.({ block: "nearest" });
     }
   };
 

@@ -33,10 +33,11 @@ export function AnalysisSelector({
           value={lens.id}
           label={
             <Box gap={1}>
-              <Text>{lens.label}</Text>
               <Badge variant={lens.badgeVariant}>{lens.badgeLabel}</Badge>
+              <Text>{lens.label}</Text>
             </Box>
           }
+          description={lens.description}
         />
       ))}
     </CheckboxGroup>

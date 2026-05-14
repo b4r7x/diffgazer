@@ -12,7 +12,7 @@ export const composeRefsDoc: ComponentDoc = {
     {
       title: "Ref Types",
       content:
-        "Handles RefCallback, RefObject (MutableRefObject), null, and undefined refs safely. Each ref in the array is called or assigned when the element mounts/unmounts.",
+        "Handles RefCallback, RefObject (MutableRefObject), null, and undefined refs. Each ref in the array is called or assigned when the element mounts/unmounts.",
     },
     {
       title: "Used By",

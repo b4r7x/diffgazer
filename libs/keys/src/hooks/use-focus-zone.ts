@@ -4,7 +4,9 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from "react"
 import { useKey } from "./use-key.js";
 import type { UseKeyOptions } from "./use-key.js";
 import { useScope } from "./use-scope.js";
-import { containsActiveElement, getFirstFocusableElement, isFocusable } from "../utils/focusable.js";
+import { DECLINE } from "../core/normalize-key-input.js";
+import { isHTMLElement } from "../dom/dom.js";
+import { containsActiveElement, getFirstFocusableElement, isFocusable } from "../dom/focusable.js";
 
 type ZoneTransition<T extends string> = (params: {
   zone: T;
@@ -114,13 +116,18 @@ export function useFocusZone<T extends string>(
 
   const currentZone: T = controlledZone ?? internalZone;
   const lastFocusedZoneRef = useRef<T | null>(null);
+  const warnedTabCycleEntriesRef = useRef<Set<string>>(new Set());
 
   const validatedTabCycle = tabCycle?.filter((entry) => {
     const valid = zones.includes(entry);
     if (!valid && process.env.NODE_ENV !== "production") {
-      console.warn(
-        `[@diffgazer/keys] useFocusZone: tabCycle entry "${String(entry)}" is not in zones`,
-      );
+      const key = String(entry);
+      if (!warnedTabCycleEntriesRef.current.has(key)) {
+        warnedTabCycleEntriesRef.current.add(key);
+        console.warn(
+          `[@diffgazer/keys] useFocusZone: tabCycle entry "${key}" is not in zones`,
+        );
+      }
     }
     return valid;
   });
@@ -130,7 +137,7 @@ export function useFocusZone<T extends string>(
   const setZoneValue = useCallback((next: T) => {
     if (next === currentZone) return;
     if (!zones.includes(next)) {
-      if (typeof console !== "undefined" && typeof console.warn === "function") {
+      if (process.env.NODE_ENV !== "production") {
         console.warn(
           `[@diffgazer/keys] useFocusZone: setZone called with unknown zone "${String(next)}"`,
         );
@@ -150,7 +157,7 @@ export function useFocusZone<T extends string>(
         setZoneValue(next);
         return;
       }
-      return false;
+      return DECLINE;
     },
     [currentZone, setZoneValue, transitions, zones],
   );
@@ -219,11 +226,7 @@ export function useFocusZone<T extends string>(
 
     function handleFocusIn(event: FocusEvent) {
       const target = event.target;
-      const targetDocument = target && typeof target === "object" && "ownerDocument" in target
-        ? (target as { ownerDocument?: Document }).ownerDocument ?? null
-        : null;
-      const View = targetDocument?.defaultView;
-      if (!View || !(target instanceof View.HTMLElement)) return;
+      if (!isHTMLElement(target)) return;
       for (const zone of zones as readonly T[]) {
         const { container } = resolveFocusTarget(targets[zone]);
         if (container && container.contains(target)) {

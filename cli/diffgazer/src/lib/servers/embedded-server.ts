@@ -86,8 +86,13 @@ export function createEmbeddedServer(
         return;
       }
 
+      const token = process.env.DIFFGAZER_SHUTDOWN_TOKEN;
+      if (!token) {
+        throw new Error(
+          "DIFFGAZER_SHUTDOWN_TOKEN is required to serve the embedded SPA. Call ensureShutdownToken() before starting the server.",
+        );
+      }
       const html = readFileSync(indexHtmlPath, "utf-8");
-      const token = process.env.DIFFGAZER_SHUTDOWN_TOKEN ?? "";
       const script = `<script>window.__DIFFGAZER_SHUTDOWN_TOKEN__=${JSON.stringify(token)};</script>`;
       return c.html(html.replace("</head>", `${script}</head>`));
     });
@@ -121,11 +126,14 @@ export function createEmbeddedServer(
     stop: () => {
       state = "stopped";
       if (!server) {
-        return;
+        return Promise.resolve();
       }
 
-      server.close();
+      const closing = server;
       server = null;
+      return new Promise<void>((resolve) => {
+        closing.close(() => resolve());
+      });
     },
   };
 }

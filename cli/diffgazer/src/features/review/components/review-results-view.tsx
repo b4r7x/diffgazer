@@ -1,23 +1,38 @@
-import { useState } from "react";
-import { Box } from "ink";
+import { useState, type ReactElement } from "react";
+import { Box, Text } from "ink";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
-import type { UISeverityFilter } from "@diffgazer/core/schemas/ui";
-import { filterIssuesBySeverity } from "@diffgazer/core/review";
+import type { UISeverityFilter, Shortcut } from "@diffgazer/core/schemas/ui";
+import {
+  filterIssuesBySeverity,
+  selectDetailsEmptyKind,
+} from "@diffgazer/core/review";
 import { useTheme } from "../../../theme/theme-context.js";
 import { useResponsive } from "../../../hooks/use-terminal-dimensions.js";
+import { usePageFooter } from "../../../hooks/use-page-footer.js";
 import { useReviewKeyboard } from "../hooks/use-review-keyboard.js";
-import { SectionHeader } from "../../../components/ui/section-header.js";
 import { IssueListPane } from "./issue-list-pane.js";
 import { IssueDetailsPane } from "./issue-details-pane.js";
 
 export interface ReviewResultsViewProps {
   issues: ReviewIssue[];
+  reviewId?: string | null;
   onBack?: () => void;
 }
 
 type Zone = "list" | "details";
 
-export function ReviewResultsView({ issues, onBack }: ReviewResultsViewProps) {
+const RESULTS_SHORTCUTS_LEFT: Shortcut[] = [
+  { key: "j/k", label: "Navigate" },
+  { key: "Tab", label: "Switch Pane" },
+  { key: "1-4", label: "Tabs" },
+];
+const RESULTS_SHORTCUTS_RIGHT: Shortcut[] = [{ key: "Esc", label: "Back" }];
+
+export function ReviewResultsView({
+  issues,
+  reviewId,
+  onBack,
+}: ReviewResultsViewProps): ReactElement {
   const { tokens } = useTheme();
   const { columns, rows, isNarrow, isMedium } = useResponsive();
   const [severityFilter, setSeverityFilter] =
@@ -26,8 +41,24 @@ export function ReviewResultsView({ issues, onBack }: ReviewResultsViewProps) {
     issues[0]?.id,
   );
   const [activeZone, setActiveZone] = useState<Zone>("list");
+  const [completedSteps, setCompletedSteps] = useState<Set<number>>(
+    () => new Set(),
+  );
+  const [lastIssueId, setLastIssueId] = useState<string | undefined>(
+    issues[0]?.id,
+  );
+
+  usePageFooter({
+    shortcuts: RESULTS_SHORTCUTS_LEFT,
+    rightShortcuts: onBack ? RESULTS_SHORTCUTS_RIGHT : [],
+  });
 
   const filteredIssues = filterIssuesBySeverity(issues, severityFilter);
+
+  if (selectedIssueId !== lastIssueId) {
+    setLastIssueId(selectedIssueId);
+    setCompletedSteps(new Set());
+  }
 
   useReviewKeyboard({
     onIssueNav(direction) {
@@ -52,24 +83,48 @@ export function ReviewResultsView({ issues, onBack }: ReviewResultsViewProps) {
     },
   });
 
+  const handleToggleStep = (step: number) => {
+    setCompletedSteps((prev) => {
+      const next = new Set(prev);
+      if (next.has(step)) next.delete(step);
+      else next.add(step);
+      return next;
+    });
+  };
+
   const selectedIssue = filteredIssues.find((i) => i.id === selectedIssueId);
+  const detailsEmptyKind = selectDetailsEmptyKind(
+    issues.length,
+    filteredIssues.length,
+  );
   const listWidth = isMedium
     ? Math.max(Math.floor(columns * 0.35), 26)
     : Math.max(Math.floor(columns * 0.4), 30);
-  const paneHeight = Math.max(rows - 6, 8);
-  const listScrollHeight = isNarrow ? Math.max(Math.floor(paneHeight / 2), 6) : paneHeight;
-  const detailScrollHeight = isNarrow ? Math.max(Math.floor(paneHeight / 2), 6) : paneHeight;
+  const paneHeight = Math.max(rows - 8, 8);
+  const listScrollHeight = isNarrow
+    ? Math.max(Math.floor(paneHeight / 2), 6)
+    : paneHeight;
+  const detailScrollHeight = isNarrow
+    ? Math.max(Math.floor(paneHeight / 2), 6)
+    : paneHeight;
 
   return (
     <Box flexDirection="column">
-      <SectionHeader bordered>
-        {`Review Results (${issues.length} issues)`}
-      </SectionHeader>
-      <Box flexDirection={isNarrow ? "column" : "row"} marginTop={1}>
+      <Box paddingX={1}>
+        <Text color={tokens.accent} bold>
+          {`Analysis #${reviewId ?? "unknown"}`}
+        </Text>
+      </Box>
+      <Box
+        flexDirection={isNarrow ? "column" : "row"}
+        marginTop={1}
+      >
         <Box
           width={isNarrow ? undefined : listWidth}
           borderStyle="single"
-          borderColor={activeZone === "list" ? tokens.accent : tokens.border}
+          borderColor={
+            activeZone === "list" ? tokens.accent : tokens.border
+          }
         >
           <IssueListPane
             issues={filteredIssues}
@@ -86,12 +141,17 @@ export function ReviewResultsView({ issues, onBack }: ReviewResultsViewProps) {
         <Box
           flexGrow={1}
           borderStyle="single"
-          borderColor={activeZone === "details" ? tokens.accent : tokens.border}
+          borderColor={
+            activeZone === "details" ? tokens.accent : tokens.border
+          }
         >
           <IssueDetailsPane
             issue={selectedIssue}
             isActive={activeZone === "details"}
             scrollHeight={detailScrollHeight}
+            emptyKind={detailsEmptyKind}
+            completedSteps={completedSteps}
+            onToggleStep={handleToggleStep}
           />
         </Box>
       </Box>

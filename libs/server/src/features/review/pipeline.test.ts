@@ -1,10 +1,6 @@
 import { describe, it, expect } from "vitest";
-import {
-  filterDiffByFiles,
-  generateExecutiveSummary,
-  generateReport,
-  resolveGitDiff,
-} from "./pipeline.js";
+import { filterDiffByFiles, resolveGitDiff } from "./diff.js";
+import { generateExecutiveSummary, generateReport } from "./summary.js";
 import type { createGitService } from "../../shared/lib/git/service.js";
 import type { ParsedDiff } from "../../shared/lib/diff/types.js";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";

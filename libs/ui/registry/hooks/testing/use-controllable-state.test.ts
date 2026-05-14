@@ -115,7 +115,7 @@ describe("useControllableState", () => {
     expect(result.current[0]).toBe("controlled")
   })
 
-  it("handles controlled undefined value properly", () => {
+  it("handles controlled undefined value", () => {
     const onChange = vi.fn()
     const { result, rerender } = renderHook(
       ({ value }: { value: string | undefined }) =>

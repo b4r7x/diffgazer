@@ -1,4 +1,4 @@
-import { cn } from '@diffgazer/core/cn';
+import { cn } from '@diffgazer/ui/lib/utils';
 
 export interface CapabilityCardProps {
   label: string;

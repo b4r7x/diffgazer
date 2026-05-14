@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, type RefObject } from "react";
-import { getFocusableElements, getTabbableElements, isFocusable } from "../utils/focusable.js";
+import { getOwnerView } from "../dom/dom.js";
+import { getFocusableElements, getTabbableElements, isFocusable } from "../dom/focusable.js";
 import { useFocusRestore } from "./use-focus-restore.js";
 
 export interface UseFocusTrapOptions {
@@ -19,6 +20,17 @@ function pickInitialTarget(
   return getFocusableElements(container)[0] ?? container;
 }
 
+/**
+ * Trap Tab focus inside `containerRef`.
+ *
+ * Effect-on-every-render is intentional. React does not re-fire effects when
+ * `containerRef.current` mutates while the ref object stays stable. Consumers
+ * pass a stable RefObject that React assigns the latest DOM node to, and the
+ * trap must detach from the previous node and attach to the new one as soon
+ * as that happens. The early-return below compares `activeTrapRef.current`
+ * against the live `containerRef.current` and short-circuits when nothing
+ * changed, so the per-render cost is one ref read plus two equality checks.
+ */
 export function useFocusTrap(
   containerRef: RefObject<HTMLElement | null>,
   options: UseFocusTrapOptions = {},
@@ -30,6 +42,8 @@ export function useFocusTrap(
     restoreOnUnmount: restoreFocus,
   });
 
+  // No dependency array on purpose; see hook-level comment above.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const nextContainer = enabled ? containerRef.current : null;
     if (
@@ -61,7 +75,7 @@ export function useFocusTrap(
       const first = focusableEls[0];
       const last = focusableEls[focusableEls.length - 1];
       const activeElement = container.ownerDocument.activeElement;
-      const View = container.ownerDocument.defaultView;
+      const View = getOwnerView(container);
       const activeIsInside =
         View !== null &&
         activeElement instanceof View.Node &&

@@ -71,7 +71,7 @@ describe("parseDiff", () => {
     expect(parseDiff("")).toEqual([]);
   });
 
-  it("handles malformed input gracefully", () => {
+  it("returns empty array for malformed input", () => {
     const result = parseDiff("not a diff\nrandom text\n@@ bad @@");
     expect(result).toEqual([]);
   });

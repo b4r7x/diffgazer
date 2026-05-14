@@ -3,7 +3,7 @@ import { createContext, isValidElement, useContext, type ReactElement, type Reac
 import { Callout } from "@/components/ui/callout"
 import { CodeBlock, CodeBlockContent, CodeBlockHeader, CodeBlockLabel } from "@/components/ui/code-block"
 import { SectionHeader } from "@/components/ui/section-header/section-header"
-import { cn } from "@diffgazer/core/cn"
+import { cn } from "@diffgazer/ui/lib/utils"
 
 type CalloutVariant = "warning" | "error" | "success" | "info"
 const PreCodeContext = createContext(false)

@@ -1,106 +1,168 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { renderWithProviders } from "@/testing";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ApiProvider, configQueries } from "@diffgazer/core/api/hooks";
+import { createApi, type BoundApi } from "@diffgazer/core/api";
+import { KeyboardProvider } from "@diffgazer/keys";
+import { FooterProvider } from "@/components/layout";
+import { ConfigProvider } from "@/app/providers/config-provider";
+import { Toaster } from "@diffgazer/ui/components/toast";
 import type { TrustConfig } from "@diffgazer/core/schemas/config";
+import type { ReactNode } from "react";
 
-const { mockNavigate, mockSaveTrust, mockDeleteTrust, mockConfigData } = vi.hoisted(() => ({
-  mockNavigate: vi.fn(),
-  mockSaveTrust: vi.fn(),
-  mockDeleteTrust: vi.fn(),
-  mockConfigData: {
-    projectId: "project-1",
-    repoRoot: "/repo",
-    trust: null as TrustConfig | null,
-  },
-}));
+const mockNavigate = vi.fn();
 
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
 }));
 
-// ConfigProvider requires QueryClientProvider + multiple API hooks (useInit,
-// useProviderStatus, etc.) and the test mutates mockConfigData between rerenders
-// to simulate async trust arrival — a pattern that's impractical to reproduce
-// through the real provider's query lifecycle. Mocking at this context boundary
-// keeps the async-data-arrival tests readable.
-vi.mock("@/app/providers/config-provider", () => ({
-  useConfigData: () => mockConfigData,
-}));
-
-vi.mock("@diffgazer/core/api/hooks", () => ({
-  useSaveTrust: () => ({
-    isPending: false,
-    mutateAsync: mockSaveTrust,
-  }),
-  useDeleteTrust: () => ({
-    isPending: false,
-    mutateAsync: mockDeleteTrust,
-  }),
-}));
-
 import { TrustPermissionsPage } from "./page";
 
+const TRUSTED_FIXTURE: TrustConfig = {
+  projectId: "project-1",
+  repoRoot: "/repo",
+  trustedAt: "2026-02-09T12:00:00.000Z",
+  trustMode: "persistent",
+  capabilities: { readFiles: true, runCommands: false },
+};
+
+function makeInitResponse(trust: TrustConfig | null = null) {
+  return {
+    config: { provider: "gemini", model: "gemini-2.5-flash" },
+    providers: [{ provider: "gemini", hasApiKey: true, isActive: true }],
+    settings: {
+      theme: "terminal",
+      defaultLenses: [],
+      defaultProfile: null,
+      severityThreshold: "low",
+      secretsStorage: null,
+      agentExecution: "parallel",
+    },
+    configured: true,
+    project: { projectId: "project-1", path: "/repo", trust },
+    setup: {
+      hasSecretsStorage: true,
+      hasProvider: true,
+      hasModel: true,
+      hasTrust: trust !== null,
+      isConfigured: true,
+      isReady: true,
+      missing: [] as string[],
+    },
+  };
+}
+
+let mockLoadInit: ReturnType<typeof vi.fn>;
+let mockGetProviderStatus: ReturnType<typeof vi.fn>;
+let mockSaveTrust: ReturnType<typeof vi.fn>;
+let mockDeleteTrust: ReturnType<typeof vi.fn>;
+let queryClient: QueryClient;
+let testApi: BoundApi;
+
+function createTestApi(): BoundApi {
+  return {
+    ...createApi({ baseUrl: "http://localhost" }),
+    loadInit: mockLoadInit,
+    getProviderStatus: mockGetProviderStatus,
+    saveTrust: mockSaveTrust,
+    deleteTrust: mockDeleteTrust,
+  } satisfies BoundApi;
+}
+
 function renderPage() {
-  return renderWithProviders(<TrustPermissionsPage />);
+  queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  testApi = createTestApi();
+
+  function Wrapper({ children }: { children: ReactNode }) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <ApiProvider value={testApi}>
+          <ConfigProvider>
+            <FooterProvider>
+              <KeyboardProvider>{children}</KeyboardProvider>
+            </FooterProvider>
+          </ConfigProvider>
+        </ApiProvider>
+      </QueryClientProvider>
+    );
+  }
+
+  return render(
+    <>
+      <TrustPermissionsPage />
+      <Toaster />
+    </>,
+    { wrapper: Wrapper },
+  );
+}
+
+async function refetchInit() {
+  await act(async () => {
+    await queryClient.invalidateQueries({ queryKey: configQueries.all() });
+  });
+}
+
+async function waitForConfigReady() {
+  await waitFor(() => {
+    expect(screen.getByText("/repo")).toBeInTheDocument();
+  });
 }
 
 describe("TrustPermissionsPage", () => {
   beforeEach(() => {
     mockNavigate.mockReset();
-    mockSaveTrust.mockReset();
-    mockDeleteTrust.mockReset();
-    mockSaveTrust.mockResolvedValue(undefined);
-    mockDeleteTrust.mockResolvedValue(undefined);
-    mockConfigData.projectId = "project-1";
-    mockConfigData.repoRoot = "/repo";
-    mockConfigData.trust = null;
+    mockLoadInit = vi.fn().mockResolvedValue(makeInitResponse(null));
+    mockGetProviderStatus = vi
+      .fn()
+      .mockResolvedValue([{ provider: "gemini", hasApiKey: true, isActive: true }]);
+    mockSaveTrust = vi.fn().mockResolvedValue(undefined);
+    mockDeleteTrust = vi.fn().mockResolvedValue(undefined);
   });
 
   it("resets the draft when async trust data arrives", async () => {
-    const { rerender } = renderPage();
+    renderPage();
+    await waitForConfigReady();
 
     expect(screen.getByRole("checkbox", { name: /repository access/i })).toHaveAttribute("aria-checked", "false");
 
-    mockConfigData.trust = {
-      projectId: "project-1",
-      repoRoot: "/repo",
-      trustedAt: "2026-02-09T12:00:00.000Z",
-      trustMode: "persistent",
-      capabilities: { readFiles: true, runCommands: false },
-    };
+    mockLoadInit.mockResolvedValue(makeInitResponse(TRUSTED_FIXTURE));
+    await refetchInit();
 
-    rerender(<TrustPermissionsPage />);
-
-    expect(screen.getByRole("checkbox", { name: /repository access/i })).toHaveAttribute("aria-checked", "true");
+    await waitFor(() => {
+      expect(screen.getByRole("checkbox", { name: /repository access/i })).toHaveAttribute("aria-checked", "true");
+    });
   });
 
   it("does not steal focus from the action row when async trust data arrives", async () => {
     const user = userEvent.setup();
-    const { rerender } = renderPage();
+    renderPage();
+    await waitForConfigReady();
 
     await waitFor(() => expect(screen.getByRole("checkbox", { name: /repository access/i })).toHaveFocus());
     await user.keyboard("{ArrowDown}");
     const saveButton = screen.getByRole("button", { name: /save changes/i });
     expect(saveButton).toHaveFocus();
 
-    mockConfigData.trust = {
-      projectId: "project-1",
-      repoRoot: "/repo",
-      trustedAt: "2026-02-09T12:00:00.000Z",
-      trustMode: "persistent",
+    const updatedFixture: TrustConfig = {
+      ...TRUSTED_FIXTURE,
       capabilities: { readFiles: false, runCommands: false },
     };
+    mockLoadInit.mockResolvedValue(makeInitResponse(updatedFixture));
+    await refetchInit();
 
-    rerender(<TrustPermissionsPage />);
-
-    expect(screen.getByRole("checkbox", { name: /repository access/i })).toHaveAttribute("aria-checked", "false");
+    await waitFor(() => {
+      expect(screen.getByRole("checkbox", { name: /repository access/i })).toHaveAttribute("aria-checked", "false");
+    });
     expect(saveButton).toHaveFocus();
   });
 
   it("focuses the permissions list on entry so arrows work before mouse interaction", async () => {
     const user = userEvent.setup();
     renderPage();
+    await waitForConfigReady();
 
     const readFilesOption = screen.getByRole("checkbox", { name: /repository access/i });
     await waitFor(() => expect(readFilesOption).toHaveFocus());
@@ -113,6 +175,7 @@ describe("TrustPermissionsPage", () => {
   it("navigates back on Escape", async () => {
     const user = userEvent.setup();
     renderPage();
+    await waitForConfigReady();
 
     await waitFor(() => expect(screen.getByRole("checkbox", { name: /repository access/i })).toHaveFocus());
     await user.keyboard("{Escape}");
@@ -122,18 +185,13 @@ describe("TrustPermissionsPage", () => {
 
   it("saves edited trust permissions and returns to settings", async () => {
     const user = userEvent.setup();
-    mockConfigData.trust = {
-      projectId: "project-1",
-      repoRoot: "/repo",
-      trustedAt: "2026-02-09T12:00:00.000Z",
-      trustMode: "persistent",
-      capabilities: { readFiles: true, runCommands: false },
-    };
-
+    mockLoadInit.mockResolvedValue(makeInitResponse(TRUSTED_FIXTURE));
     renderPage();
+    await waitForConfigReady();
 
     const readFilesOption = screen.getByRole("checkbox", { name: /repository access/i });
     await waitFor(() => expect(readFilesOption).toHaveFocus());
+    await waitFor(() => expect(readFilesOption).toHaveAttribute("aria-checked", "true"));
 
     await user.keyboard(" ");
     expect(readFilesOption).toHaveAttribute("aria-checked", "false");
@@ -146,32 +204,63 @@ describe("TrustPermissionsPage", () => {
         repoRoot: "/repo",
         capabilities: { readFiles: false, runCommands: false },
         trustMode: "persistent",
-        trustedAt: expect.any(String),
+        trustedAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/),
       });
     });
-    expect(new Date(mockSaveTrust.mock.calls[0][0].trustedAt).toISOString()).toBe(
-      mockSaveTrust.mock.calls[0][0].trustedAt,
-    );
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/settings" });
   });
 
   it("revokes trust for the current project from the action row", async () => {
     const user = userEvent.setup();
-    mockConfigData.trust = {
-      projectId: "project-1",
-      repoRoot: "/repo",
-      trustedAt: "2026-02-09T12:00:00.000Z",
-      trustMode: "persistent",
-      capabilities: { readFiles: true, runCommands: false },
-    };
-
+    mockLoadInit.mockResolvedValue(makeInitResponse(TRUSTED_FIXTURE));
     renderPage();
+    await waitForConfigReady();
 
     await waitFor(() => expect(screen.getByRole("checkbox", { name: /repository access/i })).toHaveFocus());
+    await waitFor(() =>
+      expect(screen.getByRole("checkbox", { name: /repository access/i })).toHaveAttribute("aria-checked", "true"),
+    );
     await user.keyboard("{ArrowDown}{ArrowRight}{Enter}");
 
     await waitFor(() => expect(mockDeleteTrust).toHaveBeenCalledWith("project-1"));
     expect(screen.getByRole("checkbox", { name: /repository access/i })).toHaveAttribute("aria-checked", "false");
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it("surfaces a save failure as an error toast and keeps the user on the page", async () => {
+    const user = userEvent.setup();
+    mockLoadInit.mockResolvedValue(makeInitResponse(TRUSTED_FIXTURE));
+    mockSaveTrust.mockRejectedValue(new Error("Disk full"));
+
+    renderPage();
+    await waitForConfigReady();
+
+    const readFilesOption = screen.getByRole("checkbox", { name: /repository access/i });
+    await waitFor(() => expect(readFilesOption).toHaveFocus());
+    await waitFor(() => expect(readFilesOption).toHaveAttribute("aria-checked", "true"));
+
+    await user.keyboard(" {ArrowDown}{Enter}");
+
+    expect(await screen.findByText("Disk full")).toBeVisible();
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it("surfaces a revoke failure as an error toast and keeps trust state intact", async () => {
+    const user = userEvent.setup();
+    mockLoadInit.mockResolvedValue(makeInitResponse(TRUSTED_FIXTURE));
+    mockDeleteTrust.mockRejectedValue(new Error("Network down"));
+
+    renderPage();
+    await waitForConfigReady();
+
+    await waitFor(() => expect(screen.getByRole("checkbox", { name: /repository access/i })).toHaveFocus());
+    await waitFor(() =>
+      expect(screen.getByRole("checkbox", { name: /repository access/i })).toHaveAttribute("aria-checked", "true"),
+    );
+    await user.keyboard("{ArrowDown}{ArrowRight}{Enter}");
+
+    expect(await screen.findByText("Network down")).toBeVisible();
+    expect(screen.getByRole("checkbox", { name: /repository access/i })).toHaveAttribute("aria-checked", "true");
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 });

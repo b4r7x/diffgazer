@@ -1,9 +1,11 @@
 import type { ReactElement } from "react";
 import { Box, Text } from "ink";
+import { useTheme } from "../../../../theme/theme-context.js";
 import { RadioGroup } from "../../../../components/ui/radio.js";
 import { Badge } from "../../../../components/ui/badge.js";
 import { Spinner } from "../../../../components/ui/spinner.js";
 import { useOpenRouterModels, guardQueryState } from "@diffgazer/core/api/hooks";
+import { AVAILABLE_PROVIDERS } from "@diffgazer/core/schemas/config";
 import type { ModelInfo, OpenRouterModel } from "@diffgazer/core/schemas/config";
 import { GEMINI_MODEL_INFO, GLM_MODEL_INFO } from "@diffgazer/core/schemas/config";
 
@@ -51,21 +53,37 @@ function getStaticModels(provider: string): ModelOption[] {
   }
 }
 
+function getSubtitle(provider: string): string {
+  if (provider === "openrouter") {
+    return "Select a model from OpenRouter.";
+  }
+  const info = AVAILABLE_PROVIDERS.find((p) => p.id === provider);
+  return `Select a model for ${info?.name ?? provider}.`;
+}
+
 export function ModelStep({
   value,
   onChange,
   provider,
   isActive = true,
 }: ModelStepProps): ReactElement {
+  const { tokens } = useTheme();
   const isOpenRouter = provider === "openrouter";
   const openRouterQuery = useOpenRouterModels({ enabled: isOpenRouter });
+  const subtitle = getSubtitle(provider);
 
   if (isOpenRouter) {
     const guard = guardQueryState(openRouterQuery, {
-      loading: () => <Spinner label="Loading models..." />,
+      loading: () => (
+        <Box flexDirection="column" gap={1}>
+          <Text color={tokens.muted}>{subtitle}</Text>
+          <Spinner label="Loading OpenRouter models..." />
+        </Box>
+      ),
       error: (err) => (
         <Box flexDirection="column" gap={1}>
-          <Text color="red">Failed to load models: {err.message}</Text>
+          <Text color={tokens.muted}>{subtitle}</Text>
+          <Text color={tokens.error}>Failed to load models: {err.message}</Text>
         </Box>
       ),
     });
@@ -77,25 +95,33 @@ export function ModelStep({
     : getStaticModels(provider);
 
   if (models.length === 0) {
-    return <Text dimColor>No models available for this provider.</Text>;
+    return (
+      <Box flexDirection="column" gap={1}>
+        <Text color={tokens.muted}>{subtitle}</Text>
+        <Text dimColor>No models available for this provider.</Text>
+      </Box>
+    );
   }
 
   return (
-    <RadioGroup value={value} onChange={onChange} isActive={isActive}>
-      {models.map((model) => (
-        <RadioGroup.Item
-          key={model.id}
-          value={model.id}
-          label={
-            <Box gap={1}>
-              <Text>{model.name}</Text>
-              {model.badges.map((badge) => (
-                <Badge key={badge.label} variant={badge.variant}>{badge.label}</Badge>
-              ))}
-            </Box>
-          }
-        />
-      ))}
-    </RadioGroup>
+    <Box flexDirection="column" gap={1}>
+      <Text color={tokens.muted}>{subtitle}</Text>
+      <RadioGroup value={value} onChange={onChange} isActive={isActive}>
+        {models.map((model) => (
+          <RadioGroup.Item
+            key={model.id}
+            value={model.id}
+            label={
+              <Box gap={1}>
+                <Text>{model.name}</Text>
+                {model.badges.map((badge) => (
+                  <Badge key={badge.label} variant={badge.variant}>{badge.label}</Badge>
+                ))}
+              </Box>
+            }
+          />
+        ))}
+      </RadioGroup>
+    </Box>
   );
 }

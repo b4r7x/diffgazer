@@ -921,7 +921,7 @@ describe("Select form submission", () => {
     await waitFor(() => expect(new FormData(form).get("fruit")).toBe("banana"))
 
     render(
-      <form data-testid="multi-form">
+      <form aria-label="Multi fruit form">
         <Select variant="card" name="fruits" multiple defaultValue={["apple"]} defaultOpen>
           <Select.Trigger>
             <Select.Tags placeholder="Pick" />
@@ -935,7 +935,7 @@ describe("Select form submission", () => {
     )
 
     await userEvent.click(screen.getByRole("option", { name: /banana/i }))
-    form = screen.getByTestId("multi-form") as HTMLFormElement
+    form = screen.getByRole("form", { name: /multi fruit form/i }) as HTMLFormElement
     expect(new FormData(form).getAll("fruits")).toEqual(["apple", "banana"])
 
     form.reset()

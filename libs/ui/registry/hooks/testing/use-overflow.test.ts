@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { render, act, renderHook } from "@testing-library/react"
+import { render, act } from "@testing-library/react"
 import React from "react"
 import { useOverflow, type OverflowDirection } from "../use-overflow.js"
 
@@ -72,9 +72,16 @@ function flushScheduledChecks() {
 }
 
 describe("useOverflow", () => {
-  it("returns isOverflowing=false initially", () => {
-    const { result } = renderHook(() => useOverflow())
-    expect(result.current.isOverflowing).toBe(false)
+  it("reports no overflow before observers fire", () => {
+    let lastResult = true
+    render(
+      React.createElement(TestComponent, {
+        direction: "horizontal",
+        onResult: (v: boolean) => { lastResult = v },
+      }),
+    )
+
+    expect(lastResult).toBe(false)
   })
 
   it("detects horizontal overflow", () => {

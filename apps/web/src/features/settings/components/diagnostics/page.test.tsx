@@ -1,129 +1,176 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { renderWithProviders } from "@/testing";
-import type { DiagnosticsData } from "@diffgazer/core/api/hooks";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ApiProvider } from "@diffgazer/core/api/hooks";
+import { createApi, type BoundApi } from "@diffgazer/core/api";
+import { KeyboardProvider } from "@diffgazer/keys";
+import { FooterProvider } from "@/components/layout";
+import { ConfigProvider } from "@/app/providers/config-provider";
+import type { ReactNode } from "react";
 
-const {
-  mockNavigate,
-  mockRetryServer,
-  mockRefetchContext,
-  mockHandleRefreshContext,
-  mockDiagnosticsData,
-} = vi.hoisted(() => ({
-  mockNavigate: vi.fn(),
-  mockRetryServer: vi.fn(),
-  mockRefetchContext: vi.fn(),
-  mockHandleRefreshContext: vi.fn(),
-  mockDiagnosticsData: { current: undefined as DiagnosticsData | undefined },
-}));
+const mockNavigate = vi.fn();
 
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
 }));
 
-// ConfigProvider requires QueryClientProvider + multiple API hooks (useInit,
-// useProviderStatus, etc.) whose setup would obscure the actual test intent
-// (diagnostics keyboard/refresh behavior). Mocking at this context boundary
-// provides the static config slice the page reads without that infrastructure.
-vi.mock("@/app/providers/config-provider", () => ({
-  useConfigData: () => ({
-    provider: "openrouter",
-    model: "openrouter/test-model",
-    setupStatus: { isReady: true, missing: [] },
-  }),
-}));
-
-vi.mock("@diffgazer/core/api/hooks", () => ({
-  useDiagnosticsData: () => mockDiagnosticsData.current,
-}));
-
 import { DiagnosticsPage } from "./page";
 
-function renderPage() {
-  return renderWithProviders(<DiagnosticsPage />);
-}
-
-function makeDiagnostics(overrides: Partial<DiagnosticsData> = {}): DiagnosticsData {
+function makeInitResponse() {
   return {
-    serverState: { status: "connected" },
-    retryServer: mockRetryServer,
-    setupStatus: {
+    config: { provider: "openrouter", model: "openrouter/test-model" },
+    providers: [{ provider: "openrouter", hasApiKey: true, isActive: true }],
+    settings: {
+      theme: "terminal",
+      defaultLenses: [],
+      defaultProfile: null,
+      severityThreshold: "low",
+      secretsStorage: null,
+      agentExecution: "parallel",
+    },
+    configured: true,
+    project: { projectId: "proj-1", path: "/tmp/repo", trust: null },
+    setup: {
       hasSecretsStorage: true,
       hasProvider: true,
       hasModel: true,
       hasTrust: true,
       isConfigured: true,
       isReady: true,
-      missing: [],
+      missing: [] as string[],
     },
-    initLoading: false,
-    initError: null,
-    contextStatus: "ready",
-    contextGeneratedAt: "2026-02-09T12:00:00.000Z",
-    contextError: null,
-    canRegenerate: true,
-    handleRefreshContext: mockHandleRefreshContext,
-    isRefreshingContext: false,
-    refetchContext: mockRefetchContext,
-    ...overrides,
   };
+}
+
+function makeContextResponse() {
+  return {
+    meta: { generatedAt: "2026-02-09T12:00:00.000Z" },
+    context: "stub-context",
+  };
+}
+
+let mockRequest: ReturnType<typeof vi.fn>;
+let mockLoadInit: ReturnType<typeof vi.fn>;
+let mockGetProviderStatus: ReturnType<typeof vi.fn>;
+let mockGetReviewContext: ReturnType<typeof vi.fn>;
+let mockRefreshReviewContext: ReturnType<typeof vi.fn>;
+
+function createTestApi(): BoundApi {
+  const baseApi = createApi({ baseUrl: "http://localhost" });
+  return {
+    ...baseApi,
+    request: mockRequest,
+    loadInit: mockLoadInit,
+    getProviderStatus: mockGetProviderStatus,
+    getReviewContext: mockGetReviewContext,
+    refreshReviewContext: mockRefreshReviewContext,
+  } satisfies BoundApi;
+}
+
+function renderPage() {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  const api = createTestApi();
+
+  function Wrapper({ children }: { children: ReactNode }) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <ApiProvider value={api}>
+          <ConfigProvider>
+            <FooterProvider>
+              <KeyboardProvider>{children}</KeyboardProvider>
+            </FooterProvider>
+          </ConfigProvider>
+        </ApiProvider>
+      </QueryClientProvider>
+    );
+  }
+
+  return render(<DiagnosticsPage />, { wrapper: Wrapper });
+}
+
+async function waitForReady() {
+  await waitFor(() => {
+    expect(
+      screen.getByRole("button", { name: "Refresh Diagnostics" }),
+    ).toBeEnabled();
+  });
 }
 
 describe("DiagnosticsPage keyboard footer navigation", () => {
   beforeEach(() => {
     mockNavigate.mockReset();
-    mockRetryServer.mockReset();
-    mockRefetchContext.mockReset();
-    mockHandleRefreshContext.mockClear();
-    mockRetryServer.mockResolvedValue(undefined);
-    mockRefetchContext.mockResolvedValue(undefined);
-    mockDiagnosticsData.current = makeDiagnostics();
+    mockRequest = vi.fn().mockResolvedValue({ ok: true });
+    mockLoadInit = vi.fn().mockResolvedValue(makeInitResponse());
+    mockGetProviderStatus = vi
+      .fn()
+      .mockResolvedValue([{ provider: "openrouter", hasApiKey: true, isActive: true }]);
+    mockGetReviewContext = vi.fn().mockResolvedValue(makeContextResponse());
+    mockRefreshReviewContext = vi.fn().mockResolvedValue(makeContextResponse());
   });
 
   it("activates diagnostics actions selected with left/right arrows", async () => {
     const user = userEvent.setup();
     renderPage();
+    await waitForReady();
+
+    const initialHealthCalls = mockRequest.mock.calls.length;
+    const initialContextCalls = mockGetReviewContext.mock.calls.length;
 
     await user.keyboard("{ArrowRight}{Enter}");
-    expect(mockHandleRefreshContext).toHaveBeenCalledOnce();
+    await waitFor(() => {
+      expect(mockRefreshReviewContext).toHaveBeenCalledWith({ force: true });
+    });
 
     await user.keyboard("{ArrowLeft}{Enter}");
 
     await waitFor(() => {
-      expect(mockRetryServer).toHaveBeenCalledOnce();
-      expect(mockRefetchContext).toHaveBeenCalledOnce();
+      expect(mockRequest.mock.calls.length).toBeGreaterThan(initialHealthCalls);
+      expect(mockGetReviewContext.mock.calls.length).toBeGreaterThan(initialContextCalls);
     });
   });
 
   it("keeps diagnostics actions active after ArrowUp because there is no content zone", async () => {
     const user = userEvent.setup();
     renderPage();
+    await waitForReady();
+
+    const initialHealthCalls = mockRequest.mock.calls.length;
+    const initialContextCalls = mockGetReviewContext.mock.calls.length;
 
     await user.keyboard("{ArrowUp}{Enter}");
 
     await waitFor(() => {
-      expect(mockRetryServer).toHaveBeenCalledOnce();
-      expect(mockRefetchContext).toHaveBeenCalledOnce();
+      expect(mockRequest.mock.calls.length).toBeGreaterThan(initialHealthCalls);
+      expect(mockGetReviewContext.mock.calls.length).toBeGreaterThan(initialContextCalls);
     });
   });
 
   it("shows refresh progress and blocks overlapping refresh-all actions", async () => {
     const user = userEvent.setup();
-    let resolveRetry: (() => void) | null = null;
-    let resolveContext: (() => void) | null = null;
-    mockRetryServer.mockImplementation(
-      () => new Promise<void>((resolve) => {
-        resolveRetry = resolve;
+    let resolveHealth: ((value: unknown) => void) | null = null;
+    let resolveContext: ((value: unknown) => void) | null = null;
+
+    renderPage();
+    await waitForReady();
+
+    // Capture initial call counts; the next refetches are the ones the test holds.
+    const initialHealthCalls = mockRequest.mock.calls.length;
+    const initialContextCalls = mockGetReviewContext.mock.calls.length;
+
+    // Stub the next refetches to block until we resolve.
+    mockRequest.mockImplementationOnce(
+      () => new Promise((resolve) => {
+        resolveHealth = resolve;
       }),
     );
-    mockRefetchContext.mockImplementation(
-      () => new Promise<void>((resolve) => {
+    mockGetReviewContext.mockImplementationOnce(
+      () => new Promise((resolve) => {
         resolveContext = resolve;
       }),
     );
-
-    renderPage();
 
     const diagnosticsPanel = screen.getByRole("region", { name: /system diagnostics/i });
     await user.click(screen.getByRole("button", { name: "Refresh Diagnostics" }));
@@ -137,11 +184,12 @@ describe("DiagnosticsPage keyboard footer navigation", () => {
     await user.click(screen.getByRole("button", { name: "Refreshing..." }));
     await user.keyboard("r");
 
-    expect(mockRetryServer).toHaveBeenCalledTimes(1);
-    expect(mockRefetchContext).toHaveBeenCalledTimes(1);
+    // No additional refetches issued while refresh-all is in-flight.
+    expect(mockRequest.mock.calls.length).toBe(initialHealthCalls + 1);
+    expect(mockGetReviewContext.mock.calls.length).toBe(initialContextCalls + 1);
 
-    resolveRetry?.();
-    resolveContext?.();
+    resolveHealth?.({ ok: true });
+    resolveContext?.(makeContextResponse());
 
     await waitFor(() => {
       expect(diagnosticsPanel).toHaveAttribute("aria-busy", "false");
@@ -151,10 +199,11 @@ describe("DiagnosticsPage keyboard footer navigation", () => {
 
   it("shows refresh-all failures in the diagnostics page", async () => {
     const user = userEvent.setup();
-    mockRetryServer.mockRejectedValue(new Error("server down"));
-    mockRefetchContext.mockResolvedValue(undefined);
-
     renderPage();
+    await waitForReady();
+
+    // Next health refetch fails.
+    mockRequest.mockRejectedValueOnce(new Error("server down"));
 
     await user.click(screen.getByRole("button", { name: "Refresh Diagnostics" }));
 

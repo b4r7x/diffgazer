@@ -1,5 +1,5 @@
 import { type Ref } from "react";
-import { cn } from "@diffgazer/core/cn";
+import { cn } from "@diffgazer/ui/lib/utils";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@diffgazer/ui/components/tabs";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { EmptyState } from "@diffgazer/ui/components/empty-state";
@@ -11,9 +11,10 @@ import { FixPlanChecklist } from "./fix-plan-checklist";
 import { IssueHeader } from "./issue-header";
 
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
-import type { IssueTab as TabId } from "@diffgazer/core/schemas/ui";
+import { isIssueTab, type IssueTab as TabId } from "@diffgazer/core/schemas/ui";
+import type { DetailsEmptyKind } from "@diffgazer/core/review";
 
-export type DetailsEmptyKind = "no-issues" | "filter-empty" | "no-selection";
+export type { DetailsEmptyKind };
 
 export interface IssueDetailsPaneProps {
   issue: ReviewIssue | null;
@@ -38,12 +39,6 @@ const EMPTY_COPY: Record<DetailsEmptyKind, { title: string; description?: string
   },
   "no-selection": { title: "Select an issue to view details" },
 };
-
-const ISSUE_TABS = ["details", "explain", "trace", "patch"] as const;
-
-function isIssueTab(value: string): value is TabId {
-  return ISSUE_TABS.includes(value as TabId);
-}
 
 export function IssueDetailsPane({
   issue,
@@ -251,8 +246,8 @@ function DetailsTabContent({
         <div className="mb-6">
           <SectionHeader>BETTER OPTIONS</SectionHeader>
           <ul className="list-disc pl-4 space-y-1">
-            {issue.betterOptions.map((opt, i) => (
-              <li key={i} className="text-sm leading-relaxed text-tui-fg/80">{opt}</li>
+            {issue.betterOptions.map((opt) => (
+              <li key={opt} className="text-sm leading-relaxed text-tui-fg/80">{opt}</li>
             ))}
           </ul>
         </div>
@@ -262,8 +257,8 @@ function DetailsTabContent({
         <div className="mb-6">
           <SectionHeader>TESTS TO ADD</SectionHeader>
           <ul className="list-disc pl-4 space-y-1">
-            {issue.testsToAdd.map((test, i) => (
-              <li key={i} className="text-sm leading-relaxed text-tui-fg/80">{test}</li>
+            {issue.testsToAdd.map((test) => (
+              <li key={test} className="text-sm leading-relaxed text-tui-fg/80">{test}</li>
             ))}
           </ul>
         </div>

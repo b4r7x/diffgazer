@@ -11,6 +11,7 @@ export class CancelError extends Error {
 }
 
 let isSilent = false;
+let bigFontLoaded = false;
 
 export function setSilent(value: boolean): void {
   isSilent = value;
@@ -18,7 +19,10 @@ export function setSilent(value: boolean): void {
 
 export function showBanner(name: string): void {
   if (isSilent) return;
-  figlet.parseFont("Big", bigFont);
+  if (!bigFontLoaded) {
+    figlet.parseFont("Big", bigFont);
+    bigFontLoaded = true;
+  }
   const banner = figlet.textSync(name, { font: "Big" });
   console.log(pc.dim(banner));
   console.log();

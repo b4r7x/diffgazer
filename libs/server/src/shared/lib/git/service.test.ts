@@ -4,6 +4,7 @@ const { mockExecFileAsync } = vi.hoisted(() => ({
   mockExecFileAsync: vi.fn(),
 }));
 
+// Boundary mock: node:child_process is the Node.js external-process boundary; createGitService spawns the `git` CLI, so tests stub execFile to provide canned stdout/stderr.
 vi.mock("node:child_process", () => {
   const execFileFn = Object.assign(
     (...args: unknown[]) => {
@@ -314,7 +315,7 @@ describe("createGitService", () => {
       expect(lines).toEqual(["line2", "line3", "line4"]);
     });
 
-    it("should handle out-of-range lines gracefully", async () => {
+    it("returns empty array when lines are out of range", async () => {
       const fileContent = "line1\nline2";
       setupExecResult(fileContent);
       const git = createGitService({ cwd: "/test" });

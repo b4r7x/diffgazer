@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react"
+import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { axe } from "../../../testing/utils.js"
 import { describe, it, expect, vi } from "vitest"
@@ -202,14 +202,14 @@ describe("Sidebar", () => {
     )
     const item = screen.getByRole("link", { name: "Settings" })
 
-    expect(fireEvent.click(item)).toBe(false)
+    await userEvent.click(item)
 
     expect(onClick).not.toHaveBeenCalled()
     expect(item).toHaveAttribute("aria-disabled", "true")
     expect(item).toHaveAttribute("tabindex", "-1")
   })
 
-  it("keeps disabled anchor items inert and out of tab order", () => {
+  it("keeps disabled anchor items inert and out of tab order", async () => {
     const onClick = vi.fn()
     render(
       <Sidebar.Provider>
@@ -224,10 +224,37 @@ describe("Sidebar", () => {
     )
     const item = screen.getByRole("link", { name: "Settings" })
 
-    expect(fireEvent.click(item)).toBe(false)
+    await userEvent.click(item)
     expect(onClick).not.toHaveBeenCalled()
     expect(item).toHaveAttribute("aria-disabled", "true")
     expect(item).toHaveAttribute("tabindex", "-1")
+  })
+
+  it("skips disabled items in keyboard tab order", async () => {
+    const user = userEvent.setup()
+    render(
+      <>
+        <button type="button">Before</button>
+        <Sidebar.Provider>
+          <Sidebar>
+            <Sidebar.Content>
+              <Sidebar.Item as="a" href="/one">One</Sidebar.Item>
+              <Sidebar.Item as="a" href="/two" disabled>Two</Sidebar.Item>
+              <Sidebar.Item as="a" href="/three">Three</Sidebar.Item>
+            </Sidebar.Content>
+          </Sidebar>
+        </Sidebar.Provider>
+        <button type="button">After</button>
+      </>,
+    )
+
+    await user.tab()
+    expect(screen.getByRole("button", { name: "Before" })).toHaveFocus()
+    await user.tab()
+    expect(screen.getByRole("link", { name: "One" })).toHaveFocus()
+    await user.tab()
+    expect(screen.getByRole("link", { name: "Three" })).toHaveFocus()
+    expect(screen.getByRole("link", { name: "Two" })).not.toHaveFocus()
   })
 })
 

@@ -5,10 +5,9 @@ import type { AIProvider } from "@diffgazer/core/schemas/config";
 import { LENS_IDS } from "@diffgazer/core/schemas/review";
 import type { InputMethod } from "@/types/input-method";
 import { useConfigActions } from "@/app/providers/config-provider";
-import { setConfiguredGuardCache } from "@/lib/config-guards/config-guard-cache";
+import { setConfiguredGuardCache } from "@/lib/config-guard-cache";
 import { useSaveSettings, useSaveConfig } from "@diffgazer/core/api/hooks";
-import { canProceed } from "../types.js";
-import type { OnboardingStep, WizardData } from "../types";
+import { canProceed, type OnboardingStep, type WizardData } from "../types";
 
 const STEPS: OnboardingStep[] = [
   "storage",

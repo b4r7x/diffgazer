@@ -1,5 +1,5 @@
 import type { Shortcut } from "@diffgazer/core/schemas/ui";
-import { usePageFooter } from "@/hooks/use-page-footer";
+import { usePageFooter } from "@diffgazer/core/footer";
 import { ProviderList } from "@/features/providers/components/provider-list";
 import { ProviderDetails } from "@/features/providers/components/provider-details";
 import { ApiKeyDialog } from "@/features/providers/components/api-key-dialog/api-key-dialog";

@@ -1,14 +1,25 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import type { HistoryFocusZone } from "@/features/history/types";
-import type { Run } from "@/features/history/types";
+import type { HistoryFocusZone, Run } from "@/features/history/types";
 import type { ReviewMetadata } from "@diffgazer/core/schemas/review";
 import { SEVERITY_ORDER } from "@diffgazer/core/schemas/ui";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { useReviews, useReview } from "@diffgazer/core/api/hooks";
-import { HISTORY_SECTION_ALL_ID } from "@/features/history/constants";
-import { getDateKey, getTimestamp, formatDuration } from "@diffgazer/core/format";
-import { getRunSummary, buildTimelineItems } from "@/features/history/utils";
+import { formatDuration, getDateKey, getTimestamp } from "@diffgazer/core/format";
+import {
+  buildTimelineItems,
+  getEmptyRunsMessage,
+  getRunBranchLabel,
+  getRunDisplayId,
+  HISTORY_SECTION_ALL_ID,
+  matchesHistoryQuery,
+  resolveSelectedDateId as coreResolveSelectedDateId,
+  resolveSelectedRunId as coreResolveSelectedRunId,
+} from "@diffgazer/core/review";
+import { getRunSummary } from "@/features/history/utils";
+
+export const resolveSelectedDateId = coreResolveSelectedDateId;
+export const resolveSelectedRunId = coreResolveSelectedRunId;
 
 function useHistoryData() {
   const reviewsQuery = useReviews();
@@ -60,22 +71,14 @@ function useSelectedRunData(reviews: ReviewMetadata[], selectedRunId: string | n
 
 function useHistorySelection(reviews: ReviewMetadata[]) {
   const timelineItems = buildTimelineItems(reviews);
-
   const defaultDateId = timelineItems[0]?.id ?? HISTORY_SECTION_ALL_ID;
   const [selectedDateId, setSelectedDateId] = useScopedRouteState("date", defaultDateId);
-
   return { selectedDateId, setSelectedDateId, timelineItems };
-}
-
-export function resolveSelectedDateId(selectedDateId: string, timelineItems: Array<{ id: string }>): string {
-  if (timelineItems.some((item) => item.id === selectedDateId)) return selectedDateId;
-  return timelineItems[0]?.id ?? HISTORY_SECTION_ALL_ID;
 }
 
 function useHistorySearch() {
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
-
   return { searchQuery, setSearchQuery, searchInputRef };
 }
 
@@ -84,19 +87,12 @@ function useFilteredRuns(reviews: ReviewMetadata[], selectedDateId: string, sear
     ? reviews
     : reviews.filter((r) => getDateKey(r.createdAt) === selectedDateId);
   const query = searchQuery.trim().toLowerCase();
-  const filteredRuns = !query ? bySection : bySection.filter((r) => {
-    if (r.id.toLowerCase().includes(query)) return true;
-    if (`#${r.id.slice(0, 4)}`.toLowerCase().includes(query)) return true;
-    const branchText = r.mode === "staged" ? "staged" : (r.branch?.toLowerCase() ?? "main");
-    if (branchText.includes(query)) return true;
-    if (r.projectPath.toLowerCase().includes(query)) return true;
-    return false;
-  });
+  const filteredRuns = !query ? bySection : bySection.filter((r) => matchesHistoryQuery(r, query));
 
   const mappedRuns: Run[] = filteredRuns.map((run) => ({
     id: run.id,
-    displayId: `#${run.id.slice(0, 4)}`,
-    branch: run.mode === "staged" ? "Staged" : run.branch ?? "Main",
+    displayId: getRunDisplayId(run),
+    branch: getRunBranchLabel(run),
     provider: "AI",
     timestamp: getTimestamp(run.createdAt),
     summary: getRunSummary(run),
@@ -104,18 +100,6 @@ function useFilteredRuns(reviews: ReviewMetadata[], selectedDateId: string, sear
   }));
 
   return { mappedRuns };
-}
-
-export function resolveSelectedRunId(selectedRunId: string | null, mappedRuns: Run[]): string | null {
-  if (mappedRuns.some((run) => run.id === selectedRunId)) return selectedRunId;
-  return mappedRuns[0]?.id ?? null;
-}
-
-function getEmptyRunsMessage(hasReviews: boolean, hasSearchQuery: boolean, selectedDateId: string): string {
-  if (!hasReviews) return "No reviews yet";
-  if (hasSearchQuery) return "No runs match this search";
-  if (selectedDateId === HISTORY_SECTION_ALL_ID) return "No runs available";
-  return "No runs for this date";
 }
 
 export function useHistoryPage() {

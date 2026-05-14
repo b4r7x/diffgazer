@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { info, success, warn, heading, fileAction, newline, promptConfirm } from "../logger.js";
 import type { ConfigLoadResult } from "../config.js";
@@ -13,6 +13,16 @@ export interface InitWorkflowOptions<TConfig> {
   skipInstall?: boolean;
   loadConfig: (cwd: string) => ConfigLoadResult<TConfig>;
   detectProject: (cwd: string) => { display: Array<[label: string, value: string]> };
+  /**
+   * Declare every path that `createFiles`, `afterFiles`, or `writeConfig` may
+   * create, write, or touch. Paths may be absolute or relative to cwd; directory
+   * paths end with `/`. The workflow snapshots only these paths to support
+   * rollback without scanning the whole project tree, and on rollback removes
+   * any declared planned-path file that did not exist before init ran (so that
+   * package manager side effects such as a freshly-created lockfile are also
+   * undone, not only restored).
+   */
+  plannedPaths: (cwd: string) => string[];
   createFiles: (cwd: string) => Array<{ action: "created" | "skipped"; path: string }>;
   afterFiles?: (cwd: string) => Promise<void>;
   writeConfig: (cwd: string) => void | Promise<void>;
@@ -66,48 +76,98 @@ function logFileResults(results: Array<{ action: "created" | "skipped"; path: st
   }
 }
 
-function snapshotProjectFiles(cwd: string): Map<string, Buffer> {
-  const snapshots = new Map<string, Buffer>();
+interface PlannedTarget {
+  absolutePath: string;
+  isDirectory: boolean;
+}
 
-  function visit(dir: string): void {
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      if (entry.name === ".git" || entry.name === "node_modules") continue;
-      const path = resolve(dir, entry.name);
-      if (entry.isDirectory()) {
-        visit(path);
-      } else if (entry.isFile()) {
-        snapshots.set(path, readFileSync(path));
-      }
+function normalizePlannedPaths(cwd: string, paths: string[]): PlannedTarget[] {
+  const seen = new Set<string>();
+  const targets: PlannedTarget[] = [];
+  const cwdResolved = resolve(cwd);
+  for (const raw of paths) {
+    const isDirectory = raw.endsWith("/") || raw.endsWith("\\");
+    const stripped = isDirectory ? raw.replace(/[/\\]+$/, "") : raw;
+    const absolutePath = resolve(cwdResolved, stripped);
+    if (seen.has(absolutePath)) continue;
+    seen.add(absolutePath);
+    targets.push({ absolutePath, isDirectory });
+  }
+  return targets;
+}
+
+interface PreExistingState {
+  files: Map<string, Buffer>;
+  dirs: Set<string>;
+  /**
+   * Absolute paths of planned-path FILE targets (not directories, not the
+   * config file). Used on rollback to remove any planned-path file that exists
+   * post-error but had no pre-init snapshot — covers package manager side
+   * effects like a freshly-created lockfile.
+   */
+  plannedFilePaths: Set<string>;
+}
+
+function snapshotPlannedTargets(
+  cwd: string,
+  configFileName: string,
+  targets: PlannedTarget[],
+): PreExistingState {
+  const files = new Map<string, Buffer>();
+  const dirs = new Set<string>();
+  const plannedFilePaths = new Set<string>();
+  const cwdResolved = resolve(cwd);
+  const configPath = resolve(cwdResolved, configFileName);
+
+  const candidatePaths = new Set<string>();
+  for (const target of targets) {
+    candidatePaths.add(target.absolutePath);
+    collectAncestorDirs(target.absolutePath, cwdResolved, candidatePaths);
+    if (!target.isDirectory && target.absolutePath !== configPath) {
+      plannedFilePaths.add(target.absolutePath);
+    }
+  }
+  candidatePaths.add(configPath);
+  collectAncestorDirs(configPath, cwdResolved, candidatePaths);
+
+  for (const path of candidatePaths) {
+    if (!existsSync(path)) continue;
+    const stats = statSync(path);
+    if (stats.isDirectory()) {
+      dirs.add(path);
+    } else if (stats.isFile()) {
+      files.set(path, readFileSync(path));
     }
   }
 
-  visit(cwd);
-  return snapshots;
+  return { files, dirs, plannedFilePaths };
 }
 
-function snapshotProjectDirs(cwd: string): Set<string> {
-  const dirs = new Set<string>([resolve(cwd)]);
-
-  function visit(dir: string): void {
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      if (entry.name === ".git" || entry.name === "node_modules") continue;
-      const path = resolve(dir, entry.name);
-      if (entry.isDirectory()) {
-        dirs.add(path);
-        visit(path);
-      }
-    }
+function collectAncestorDirs(path: string, cwd: string, sink: Set<string>): void {
+  let current = dirname(path);
+  while (current !== cwd && current !== dirname(current)) {
+    sink.add(current);
+    current = dirname(current);
   }
-
-  visit(cwd);
-  return dirs;
+  sink.add(cwd);
 }
 
-function restoreExistingFiles(snapshots: Map<string, Buffer>): void {
-  for (const [path, content] of snapshots) {
+function restoreSnapshottedFiles(snapshot: Map<string, Buffer>): void {
+  for (const [path, content] of snapshot) {
     if (!existsSync(path) || !readFileSync(path).equals(content)) {
       writeFileSync(path, content);
     }
+  }
+}
+
+function removeUnplannedlyCreatedFiles(
+  plannedFilePaths: Set<string>,
+  preExistingFiles: Map<string, Buffer>,
+): void {
+  for (const path of plannedFilePaths) {
+    if (preExistingFiles.has(path)) continue;
+    if (!existsSync(path)) continue;
+    rmSync(path, { force: true });
   }
 }
 
@@ -149,7 +209,16 @@ function showNextSteps(steps: string[]): void {
 }
 
 export async function runInitWorkflow<TConfig>(options: InitWorkflowOptions<TConfig>): Promise<void> {
-  const { cwd, configFileName, yes, force, dryRun, skipInstall, loadConfig, detectProject, createFiles, afterFiles, writeConfig, nextSteps } = options;
+  const { cwd, configFileName, yes, force, dryRun, skipInstall, loadConfig, detectProject, plannedPaths, createFiles, afterFiles, writeConfig, nextSteps } = options;
+
+  if (typeof plannedPaths !== "function") {
+    throw new TypeError(
+      "runInitWorkflow requires a `plannedPaths` callback that lists every file or "
+      + "directory the init may create, write, or touch (config file is included "
+      + "automatically). This is mandatory so rollback can restore package.json, "
+      + "lockfiles, and freshly-created files when writeConfig fails after install.",
+    );
+  }
 
   ensurePackageJson(cwd);
 
@@ -168,9 +237,9 @@ export async function runInitWorkflow<TConfig>(options: InitWorkflowOptions<TCon
     return;
   }
 
-  const existingFiles = snapshotProjectFiles(cwd);
-  const existingDirs = snapshotProjectDirs(cwd);
-  const configExisted = existingFiles.has(resolve(cwd, configFileName));
+  const targets = normalizePlannedPaths(cwd, plannedPaths(cwd));
+  const snapshot = snapshotPlannedTargets(cwd, configFileName, targets);
+  const configExisted = snapshot.files.has(resolve(cwd, configFileName));
   let fileResults: Array<{ action: "created" | "skipped"; path: string }> = [];
   try {
     fileResults = createFiles(cwd);
@@ -180,8 +249,9 @@ export async function runInitWorkflow<TConfig>(options: InitWorkflowOptions<TCon
     await writeConfig(cwd);
     fileAction(pc.green("+"), configFileName);
   } catch (error) {
-    removeCreatedResults(cwd, fileResults, existingDirs);
-    restoreExistingFiles(existingFiles);
+    removeCreatedResults(cwd, fileResults, snapshot.dirs);
+    removeUnplannedlyCreatedFiles(snapshot.plannedFilePaths, snapshot.files);
+    restoreSnapshottedFiles(snapshot.files);
     if (!configExisted) rmSync(resolve(cwd, configFileName), { force: true });
     throw error;
   }

@@ -14,6 +14,7 @@ import {
 } from "react";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { useFormReset } from "@/hooks/use-form-reset";
+import { mergeIds, resolveAriaInvalid } from "@/lib/aria-utils";
 import { composeRefs } from "@/lib/compose-refs";
 import {
   selectableVariants,
@@ -33,23 +34,6 @@ function resolveCheckboxState(indeterminate: boolean, checked: boolean): Checkbo
   if (indeterminate) return "indeterminate";
   if (checked) return "checked";
   return "unchecked";
-}
-
-function resolveAriaInvalid(
-  forceInvalid: boolean | undefined,
-  ariaInvalid: AriaAttributes["aria-invalid"],
-) {
-  if (forceInvalid) return true;
-  if (ariaInvalid === true || ariaInvalid === "true" || ariaInvalid === "grammar" || ariaInvalid === "spelling") {
-    return ariaInvalid;
-  }
-  if (ariaInvalid === false || ariaInvalid === "false") return ariaInvalid;
-  return undefined;
-}
-
-function mergeIds(...values: Array<string | undefined>) {
-  const ids = values.flatMap((value) => value?.split(/\s+/).filter(Boolean) ?? []);
-  return ids.length > 0 ? ids.join(" ") : undefined;
 }
 
 export type CheckboxSize = SelectableSize;
@@ -139,7 +123,7 @@ export function Checkbox({
   });
   const state = resolveCheckboxState(isIndeterminate, isChecked);
   const [nativeInvalid, setNativeInvalid] = useState(false);
-  const resolvedAriaInvalid = resolveAriaInvalid(nativeInvalid && required && !isChecked, ariaInvalid);
+  const resolvedAriaInvalid = resolveAriaInvalid(ariaInvalid, nativeInvalid && required && !isChecked);
   const resolvedAriaLabelledBy = ariaLabel
     ? undefined
     : mergeIds(ariaLabelledBy, label ? labelId : undefined);

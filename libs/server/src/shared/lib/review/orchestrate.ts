@@ -190,7 +190,6 @@ export async function orchestrateReview(
     spanId: orchestratorSpanId,
   });
 
-  // When no issues found and all lenses failed
   if (sorted.length === 0 && lastError !== null) {
     if (orchestrationOptions.partialOnAllFailed) {
       return ok({

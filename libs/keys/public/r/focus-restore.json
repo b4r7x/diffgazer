@@ -13,10 +13,16 @@
       "target": "src/hooks/use-focus-restore.ts"
     },
     {
-      "path": "src/utils/focus-restore.ts",
-      "content": "export interface RestoreFocusOptions {\n  preventScroll?: boolean;\n}\n\nfunction getDocument(): Document | null {\n  return typeof document === \"undefined\" ? null : document;\n}\n\nfunction isHTMLElement(element: Element | null): element is HTMLElement {\n  const View = element?.ownerDocument.defaultView;\n  return Boolean(View && element instanceof View.HTMLElement);\n}\n\nexport function getRestorableFocusTarget(ownerDocument?: Document): HTMLElement | null {\n  const doc = ownerDocument ?? getDocument();\n  if (!doc) return null;\n\n  const activeElement = doc.activeElement;\n  if (!isHTMLElement(activeElement)) return null;\n  if (activeElement === doc.body || activeElement === doc.documentElement) return null;\n  if (!activeElement.isConnected) return null;\n\n  return activeElement;\n}\n\nexport function restoreFocus(\n  target: HTMLElement | null,\n  options: RestoreFocusOptions = {},\n): boolean {\n  if (!target?.isConnected) return false;\n\n  try {\n    target.focus({ preventScroll: options.preventScroll });\n  } catch {\n    target.focus();\n  }\n\n  return target.ownerDocument.activeElement === target;\n}\n",
+      "path": "src/dom/focus-restore.ts",
+      "content": "import { isHTMLElement } from \"./dom\";\n\nexport interface RestoreFocusOptions {\n  preventScroll?: boolean;\n}\n\nfunction getDocument(): Document | null {\n  return typeof document === \"undefined\" ? null : document;\n}\n\nexport function getRestorableFocusTarget(ownerDocument?: Document): HTMLElement | null {\n  const doc = ownerDocument ?? getDocument();\n  if (!doc) return null;\n\n  const activeElement = doc.activeElement;\n  if (!isHTMLElement(activeElement)) return null;\n  if (activeElement === doc.body || activeElement === doc.documentElement) return null;\n  if (!activeElement.isConnected) return null;\n\n  return activeElement;\n}\n\nexport function restoreFocus(\n  target: HTMLElement | null,\n  options: RestoreFocusOptions = {},\n): boolean {\n  if (!target?.isConnected) return false;\n\n  try {\n    target.focus({ preventScroll: options.preventScroll });\n  } catch {\n    target.focus();\n  }\n\n  return target.ownerDocument.activeElement === target;\n}\n",
       "type": "registry:hook",
       "target": "src/hooks/utils/focus-restore.ts"
+    },
+    {
+      "path": "src/dom/dom.ts",
+      "content": "export function getOwnerView(value: unknown): (Window & typeof globalThis) | null {\n  const element = value as { ownerDocument?: Document } | null;\n  return element?.ownerDocument?.defaultView ?? null;\n}\n\nexport function isHTMLElement(value: unknown): value is HTMLElement {\n  const View = getOwnerView(value);\n  return Boolean(View && value instanceof View.HTMLElement);\n}\n\nexport function isHTMLInputElement(value: unknown): value is HTMLInputElement {\n  const View = getOwnerView(value);\n  return Boolean(View && value instanceof View.HTMLInputElement);\n}\n\nexport function isHTMLTextAreaElement(value: unknown): value is HTMLTextAreaElement {\n  const View = getOwnerView(value);\n  return Boolean(View && value instanceof View.HTMLTextAreaElement);\n}\n\nexport function isNode(value: unknown, ownerView: (Window & typeof globalThis) | null): value is Node {\n  return Boolean(ownerView && value instanceof ownerView.Node);\n}\n",
+      "type": "registry:hook",
+      "target": "src/hooks/utils/dom.ts"
     }
   ],
   "meta": {

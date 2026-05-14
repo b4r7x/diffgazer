@@ -1,6 +1,6 @@
 import type { AIProvider } from '@diffgazer/core/schemas/config';
 import { useScope, useKey } from '@diffgazer/keys';
-import { usePageFooter } from '@/hooks/use-page-footer';
+import { usePageFooter } from "@diffgazer/core/footer";
 import { Button } from '@diffgazer/ui/components/button';
 
 const FOOTER_SHORTCUTS = [{ key: 'Enter', label: 'Setup Provider' }];

@@ -1,4 +1,4 @@
-import { cn } from '@diffgazer/core/cn';
+import { cn } from '@diffgazer/ui/lib/utils';
 import { Panel, PanelContent } from '@diffgazer/ui/components/panel';
 import { SectionHeader } from '@diffgazer/ui/components/section-header';
 import { Button } from '@diffgazer/ui/components/button';

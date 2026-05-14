@@ -39,7 +39,7 @@
     "prepack": "pnpm run build",
     "dev": "tsx --tsconfig tsconfig.json src/index.tsx --dev",
     "type-check": "tsc --noEmit",
-    "test": "node --import tsx --test src/**/*.test.ts",
+    "test": "node --import tsx --test 'src/**/*.test.ts'",
     "start": "node bin/diffgazer.js"
   },
   "dependencies": {
@@ -58,6 +58,7 @@
   },
   "devDependencies": {
     "@diffgazer/core": "workspace:*",
+    "@diffgazer/keys": "workspace:*",
     "@diffgazer/server": "workspace:*",
     "@types/node": "^25.2.0",
     "@types/react": "^19.2.13",

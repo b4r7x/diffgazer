@@ -17,18 +17,24 @@ export function Header({ providerName, providerStatus, onBack }: HeaderProps) {
   const statusLabel = providerStatus === "active" ? "active" : "idle";
 
   return (
-    <Box flexDirection="row" justifyContent="space-between" width="100%">
-      <Box>
-        {onBack ? (
-          <Text color={tokens.muted}>[{"<"}] </Text>
-        ) : null}
-        <Text color={statusColor}>●</Text>
-        <Text color={tokens.fg}> {providerName}</Text>
-        <Text color={tokens.muted}> · {statusLabel}</Text>
+    <Box flexDirection="column" paddingX={1} paddingTop={1} paddingBottom={0}>
+      <Box flexDirection="row" justifyContent="space-between" width="100%">
+        <Box minWidth={10}>
+          {onBack ? (
+            <Text color={tokens.muted}>{"← Back"}</Text>
+          ) : null}
+        </Box>
+        <Box>
+          <Text color={tokens.accent} bold>diffgazer</Text>
+        </Box>
+        <Box minWidth={10} justifyContent="flex-end">
+          <Text color={statusColor}>●</Text>
+          <Text color={tokens.fg}> {providerName} </Text>
+          <Text color={tokens.muted}>· {statusLabel}</Text>
+        </Box>
       </Box>
-      <Box>
-        <Text color={tokens.border}>┃ </Text>
-        <Text color={tokens.accent} bold>diffgazer</Text>
+      <Box justifyContent="center">
+        <Text color={tokens.muted}>─ ✦ ─ ✧ ─</Text>
       </Box>
     </Box>
   );

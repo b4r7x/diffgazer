@@ -5,10 +5,12 @@ const { mockRealpath, mockExecFileAsync } = vi.hoisted(() => ({
   mockExecFileAsync: vi.fn(),
 }));
 
+// Boundary mock: node:fs/promises is the Node.js filesystem boundary; tests stub realpath to simulate symlink resolution outcomes deterministically.
 vi.mock("node:fs/promises", () => ({
   realpath: mockRealpath,
 }));
 
+// Boundary mock: node:child_process is the Node.js external-process boundary; resolveGitService probes for the `git` binary, so tests stub execFile to control the probe result.
 vi.mock("node:child_process", () => {
   const execFileFn = Object.assign(
     (..._args: unknown[]) => ({}),

@@ -21,12 +21,40 @@ type LiveReviewState =
   | { phase: "summary"; reviewData: ReviewData }
   | { phase: "results"; reviewData: ReviewData };
 
+type SavedReviewOutcome =
+  | { kind: "results"; data: ReviewData }
+  | { kind: "fallback-to-stream" }
+  | { kind: "report-error"; error: unknown }
+  | { kind: "loading" };
+
 const REVIEW_ROUTE = "/review/{-$reviewId}" as const;
 
 function getLiveReviewId(state: LiveReviewState | null): string | null {
   if (!state) return null;
   if (state.phase === "streaming") return state.reviewId;
   return state.reviewData.reviewId;
+}
+
+function getSavedReviewOutcome(savedReviewQuery: ReturnType<typeof useReview>): SavedReviewOutcome {
+  if (savedReviewQuery.isSuccess) {
+    const savedReview = savedReviewQuery.data?.review;
+    if (savedReview?.result) {
+      return {
+        kind: "results",
+        data: { issues: savedReview.result.issues, reviewId: savedReview.metadata.id },
+      };
+    }
+    return { kind: "fallback-to-stream" };
+  }
+
+  if (savedReviewQuery.isError) {
+    if (isApiError(savedReviewQuery.error) && savedReviewQuery.error.status === 404) {
+      return { kind: "fallback-to-stream" };
+    }
+    return { kind: "report-error", error: savedReviewQuery.error };
+  }
+
+  return { kind: "loading" };
 }
 
 export function ReviewPage() {
@@ -44,61 +72,37 @@ export function ReviewPage() {
 
   const liveReviewId = getLiveReviewId(liveState);
   const isLiveReviewRoute = Boolean(reviewId && liveReviewId === reviewId);
-  const shouldLoadSavedReview = Boolean(
-    reviewId &&
-    !isLiveReviewRoute &&
-    !liveState,
-  );
+  const shouldLoadSavedReview = Boolean(reviewId && !isLiveReviewRoute && !liveState);
   const savedReviewQuery = useReview(shouldLoadSavedReview ? (reviewId ?? "") : "");
-  const savedReview = savedReviewQuery.data?.review;
-  const savedReviewData: ReviewData | null = savedReview?.result
-    ? { issues: savedReview.result.issues, reviewId: savedReview.metadata.id }
-    : null;
+  const savedOutcome = shouldLoadSavedReview ? getSavedReviewOutcome(savedReviewQuery) : null;
+  const savedOutcomeKind = savedOutcome?.kind ?? null;
+  const savedErrorForReport = savedOutcome?.kind === "report-error" ? savedOutcome.error : null;
 
   const handleComplete = (data: ReviewCompleteData) => {
     setLiveState({ phase: "summary", reviewData: data });
   };
 
   useEffect(() => {
-    if (!shouldLoadSavedReview || !reviewId) return;
-
-    const startFreshReview = () => {
+    if (savedOutcomeKind === "fallback-to-stream" && reviewId) {
       setLiveState({ phase: "streaming", reviewId });
-    };
-
-    if (savedReviewQuery.isSuccess && !savedReviewQuery.data.review?.result) {
-      startFreshReview();
-      return;
     }
+  }, [savedOutcomeKind, reviewId]);
 
-    if (!savedReviewQuery.isError) return;
-
-    if (isApiError(savedReviewQuery.error) && savedReviewQuery.error.status === 404) {
-      startFreshReview();
-      return;
+  useEffect(() => {
+    if (savedOutcomeKind === "report-error") {
+      handleApiError(savedErrorForReport);
     }
+  }, [savedOutcomeKind, savedErrorForReport, handleApiError]);
 
-    handleApiError(savedReviewQuery.error);
-  }, [
-    handleApiError,
-    reviewId,
-    savedReviewQuery.data,
-    savedReviewQuery.error,
-    savedReviewQuery.isError,
-    savedReviewQuery.isSuccess,
-    shouldLoadSavedReview,
-  ]);
-
-  if (shouldLoadSavedReview) {
-    if (savedReviewData) {
+  if (savedOutcome) {
+    if (savedOutcome.kind === "results") {
       return (
         <ReviewResultsView
-          issues={savedReviewData.issues}
-          reviewId={savedReviewData.reviewId}
+          issues={savedOutcome.data.issues}
+          reviewId={savedOutcome.data.reviewId}
         />
       );
     }
-
     return <ReviewLoadingMessage message="Loading review..." />;
   }
 

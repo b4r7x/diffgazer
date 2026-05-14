@@ -25,6 +25,14 @@ export function resolveProjectPath(cwd: string, relativePath: string): string {
   return target;
 }
 
+/**
+ * Fail-fast assertion that a configured relative path resolves inside the project.
+ * Use at command entry points so traversal/abs-path config errors throw before any IO.
+ */
+export function assertInsideProject(cwd: string, relativePath: string): void {
+  resolveProjectPath(cwd, relativePath);
+}
+
 export function resolveInstallPath(cwd: string, installDir: string, relativePath: string): string {
   const targetRoot = resolveProjectPath(cwd, installDir);
   const targetPath = resolve(targetRoot, relativePath);

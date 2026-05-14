@@ -286,7 +286,7 @@ export const PROVIDER_CAPABILITIES: Record<AIProvider, {
     tier: 'mixed',
     tierBadge: 'FREE',
     capabilities: ['FAST', 'TOOLS'],
-    costDescription: 'Model-based pricing. Official notices list GLM-4.7-Flash free through 2026-03-31 and GLM-4.7-FlashX free period ended on 2026-01-30.',
+    costDescription: 'Model-based pricing. Free and paid tiers vary by model and current Z.AI plan terms.',
   },
   "zai-coding": {
     toolCalling: 'Supported (Chat Completions tools)',
