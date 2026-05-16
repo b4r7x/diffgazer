@@ -11,6 +11,9 @@ describe("detectPackageManager", () => {
   beforeEach(() => {
     root = mkdtempSync(join(tmpdir(), "registry-detect-"));
     originalUserAgent = process.env.npm_config_user_agent;
+    // Boundary mock: console.warn — detectPackageManager emits expected ambiguity
+    // warnings via cli/logger.warn (which writes to console.warn). Silence them
+    // so the test runner output stays focused on real failures.
     vi.spyOn(console, "warn").mockImplementation(() => undefined);
   });
 
@@ -48,36 +51,34 @@ describe("detectSourceDir", () => {
     rmSync(root, { recursive: true, force: true });
   });
 
-  for (const fixture of [
+  it.each([
     {
-      name: "root-source aliases",
+      label: "root-source aliases",
       files: {
         "tsconfig.json": { compilerOptions: { paths: { "@/*": ["./*"] } } },
       },
       expected: ".",
     },
     {
-      name: "aliases from Vite tsconfig.app.json",
+      label: "aliases from Vite tsconfig.app.json",
       files: {
         "tsconfig.app.json": { compilerOptions: { paths: { "@/*": ["./src/*"] } } },
       },
       expected: "src",
     },
     {
-      name: "aliases through local extends",
+      label: "aliases through local extends",
       files: {
         "tsconfig.base.json": { compilerOptions: { paths: { "@/*": ["./app/*"] } } },
         "tsconfig.json": { extends: "./tsconfig.base.json" },
       },
       expected: "app",
     },
-  ]) {
-    it(`detects ${fixture.name}`, () => {
-      for (const [fileName, content] of Object.entries(fixture.files)) {
-        writeFileSync(join(root, fileName), JSON.stringify(content));
-      }
+  ])("detects $label", ({ files, expected }) => {
+    for (const [fileName, content] of Object.entries(files)) {
+      writeFileSync(join(root, fileName), JSON.stringify(content));
+    }
 
-      expect(detectSourceDir(root)).toBe(fixture.expected);
-    });
-  }
+    expect(detectSourceDir(root)).toBe(expected);
+  });
 });

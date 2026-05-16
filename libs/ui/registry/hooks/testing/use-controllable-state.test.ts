@@ -3,7 +3,7 @@ import { renderHook, act } from "@testing-library/react"
 import { useControllableState } from "../use-controllable-state.js"
 
 describe("useControllableState", () => {
-  it("uncontrolled mode returns defaultValue and updates on setState", () => {
+  it("without value prop, exposes defaultValue and updates via setState", () => {
     const { result } = renderHook(() =>
       useControllableState({ defaultValue: "a" }),
     )
@@ -17,7 +17,7 @@ describe("useControllableState", () => {
     expect(result.current[0]).toBe("b")
   })
 
-  it("controlled mode returns value prop and ignores internal state", () => {
+  it("with value prop, mirrors the prop and rejects setState writes", () => {
     const { result, rerender } = renderHook(
       ({ value }: { value: string }) =>
         useControllableState({ value, defaultValue: "default" }),
@@ -36,7 +36,7 @@ describe("useControllableState", () => {
     expect(result.current[0]).toBe("updated")
   })
 
-  it("onChange callback fires with resolved value", () => {
+  it("calls onChange with the resolved value when state updates", () => {
     const onChange = vi.fn()
     const { result } = renderHook(() =>
       useControllableState({ defaultValue: 0, onChange }),
@@ -75,7 +75,7 @@ describe("useControllableState", () => {
     expect(result.current[0]).toBe(15)
   })
 
-  it("returns controlled flag as third element", () => {
+  it("reports controlled status based on whether a value prop is supplied", () => {
     const { result: uncontrolled } = renderHook(() =>
       useControllableState({ defaultValue: "x" }),
     )
@@ -87,7 +87,7 @@ describe("useControllableState", () => {
     expect(controlled.current[2]).toBe(true)
   })
 
-  it("calls onChange without changing internal state in controlled mode", () => {
+  it("in controlled mode, fires onChange but preserves the controlled value", () => {
     const onChange = vi.fn()
     const { result } = renderHook(() =>
       useControllableState({ value: "controlled", defaultValue: "default", onChange }),
@@ -120,7 +120,7 @@ describe("useControllableState", () => {
     const { result, rerender } = renderHook(
       ({ value }: { value: string | undefined }) =>
         useControllableState({ value, defaultValue: "default", onChange }),
-      { initialProps: { value: undefined } },
+      { initialProps: { value: undefined as string | undefined } },
     )
 
     expect(result.current[0]).toBe("default")

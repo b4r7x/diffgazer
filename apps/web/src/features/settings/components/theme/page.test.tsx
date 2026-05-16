@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -12,6 +12,7 @@ import type { ReactNode } from "react";
 
 const mockNavigate = vi.fn();
 
+// Boundary mock: Router is the routing library; tests provide a stub Router context so navigation assertions can be made without a real route tree.
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
 }));
@@ -27,8 +28,8 @@ const SETTINGS_FIXTURE: SettingsConfig = {
   agentExecution: "parallel",
 };
 
-let mockGetSettings: ReturnType<typeof vi.fn>;
-let mockSaveSettings: ReturnType<typeof vi.fn>;
+let mockGetSettings: Mock<BoundApi["getSettings"]>;
+let mockSaveSettings: Mock<BoundApi["saveSettings"]>;
 
 function createTestApi(): BoundApi {
   return {
@@ -73,8 +74,8 @@ async function waitForThemeReady() {
 describe("SettingsThemePage keyboard behavior", () => {
   beforeEach(() => {
     mockNavigate.mockReset();
-    mockGetSettings = vi.fn().mockResolvedValue(SETTINGS_FIXTURE);
-    mockSaveSettings = vi.fn().mockResolvedValue(undefined);
+    mockGetSettings = vi.fn<BoundApi["getSettings"]>().mockResolvedValue(SETTINGS_FIXTURE);
+    mockSaveSettings = vi.fn<BoundApi["saveSettings"]>().mockResolvedValue(undefined);
     localStorage.clear();
     // Force light resolved theme via matchMedia stub for auto setting.
     Object.defineProperty(window, "matchMedia", {

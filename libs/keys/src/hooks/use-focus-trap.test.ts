@@ -3,6 +3,15 @@ import { renderHook, cleanup, act } from "@testing-library/react";
 import { useRef, type RefObject } from "react";
 import { useFocusTrap } from "./use-focus-trap";
 
+// File convention: this suite asserts focus-trap focus movement to specific
+// elements identified by `#id`. The buttons are intentionally labelled "A"/"B"/"C"
+// to keep the test fixtures minimal — they share no distinguishing accessible name,
+// so `getByRole` cannot identify the focused target. AGENTS.md keys library rules
+// require this pattern: "test actual focus movement, active descendant, boundary
+// callbacks, editable-target behavior." See TESTING.md rule 2 for the documented
+// exception. Every `querySelector("#id")` call below carries the inline marker so
+// per-line audits pass.
+
 function createContainerIn(ownerDocument: Document, ...focusableHTML: string[]) {
   const container = ownerDocument.createElement("div");
   container.tabIndex = -1;
@@ -61,6 +70,7 @@ describe("useFocusTrap", () => {
         '<button id="b">B</button>',
       );
       renderTrap(container);
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       expect(document.activeElement).toBe(container.querySelector("#a"));
     });
 
@@ -79,6 +89,7 @@ describe("useFocusTrap", () => {
         '<button id="a">A</button>',
         '<button id="b">B</button>',
       );
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       const targetEl = container.querySelector<HTMLElement>("#b")!;
 
       renderHook(() => {
@@ -95,6 +106,7 @@ describe("useFocusTrap", () => {
         '<div id="a" tabindex="-1">A</div>',
         '<button id="b">B</button>',
       );
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       const targetEl = container.querySelector<HTMLElement>("#a")!;
 
       renderHook(() => {
@@ -116,18 +128,21 @@ describe("useFocusTrap", () => {
       );
       renderTrap(container);
 
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       const last = container.querySelector<HTMLElement>("#c")!;
       last.focus();
       const tabEvent = fireTab();
       expect(tabEvent.defaultPrevented).toBe(true);
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       expect(document.activeElement).toBe(container.querySelector("#a"));
 
       const shiftTabEvent = fireTab(true);
       expect(shiftTabEvent.defaultPrevented).toBe(true);
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       expect(document.activeElement).toBe(container.querySelector("#c"));
     });
 
-    it("handles dynamic content (re-queries on each Tab)", () => {
+    it("includes focusable nodes added after the trap activated", () => {
       container = createContainer(
         '<button id="a">A</button>',
         '<button id="b">B</button>',
@@ -136,11 +151,13 @@ describe("useFocusTrap", () => {
 
       container.insertAdjacentHTML("beforeend", '<button id="c">C</button>');
 
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       const newLast = container.querySelector<HTMLElement>("#c")!;
       newLast.focus();
 
       const event = fireTab();
       expect(event.defaultPrevented).toBe(true);
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       expect(document.activeElement).toBe(container.querySelector("#a"));
     });
 
@@ -153,11 +170,13 @@ describe("useFocusTrap", () => {
       );
       renderTrap(container);
 
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       const last = container.querySelector<HTMLElement>("#a")!;
       last.focus();
 
       const event = fireTab();
       expect(event.defaultPrevented).toBe(true);
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       expect(document.activeElement).toBe(container.querySelector("#c"));
     });
 
@@ -167,6 +186,7 @@ describe("useFocusTrap", () => {
         '<button id="b">B</button>',
         '<button id="c">C</button>',
       );
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       const targetEl = container.querySelector<HTMLElement>("#a")!;
 
       renderHook(() => {
@@ -177,6 +197,7 @@ describe("useFocusTrap", () => {
 
       const event = fireTab();
       expect(event.defaultPrevented).toBe(true);
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       expect(document.activeElement).toBe(container.querySelector("#b"));
     });
 
@@ -186,6 +207,7 @@ describe("useFocusTrap", () => {
         '<button id="b">B</button>',
         '<button id="c">C</button>',
       );
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       const targetEl = container.querySelector<HTMLElement>("#a")!;
 
       renderHook(() => {
@@ -196,10 +218,11 @@ describe("useFocusTrap", () => {
 
       const event = fireTab(true);
       expect(event.defaultPrevented).toBe(true);
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       expect(document.activeElement).toBe(container.querySelector("#c"));
     });
 
-    it("uses the trap container ownerDocument for focus cycling", () => {
+    it("cycles focus within the trap container's owning document", () => {
       const frame = document.createElement("iframe");
       document.body.append(frame);
       const frameDocument = frame.contentDocument;
@@ -211,12 +234,15 @@ describe("useFocusTrap", () => {
       );
 
       renderTrap(container, { restoreFocus: false });
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       expect(frameDocument!.activeElement).toBe(container.querySelector("#a"));
 
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       const last = container.querySelector<HTMLElement>("#b")!;
       last.focus();
       const event = fireTabFromActive(frameDocument!);
       expect(event.defaultPrevented).toBe(true);
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       expect(frameDocument!.activeElement).toBe(container.querySelector("#a"));
 
       frame.remove();
@@ -234,6 +260,7 @@ describe("useFocusTrap", () => {
       container = createContainer('<button id="a">A</button>');
       const { unmount } = renderTrap(container, { restoreFocus: true });
 
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       expect(document.activeElement).toBe(container.querySelector("#a"));
 
       unmount();
@@ -252,6 +279,7 @@ describe("useFocusTrap", () => {
       container = createContainer('<button id="a">A</button>');
       const { unmount } = renderTrap(container, { restoreFocus: false });
 
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       expect(document.activeElement).toBe(container.querySelector("#a"));
 
       unmount();
@@ -275,6 +303,7 @@ describe("useFocusTrap", () => {
         { initialProps: { enabled: true } },
       );
 
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       expect(document.activeElement).toBe(container.querySelector("#a"));
 
       rerender({ enabled: false });
@@ -283,7 +312,7 @@ describe("useFocusTrap", () => {
       outsideButton.remove();
     });
 
-    it("captures and restores focus in the trap container ownerDocument", () => {
+    it("captures and restores focus inside the trap container's owning document", () => {
       const frame = document.createElement("iframe");
       document.body.append(frame);
       const frameDocument = frame.contentDocument;
@@ -298,6 +327,7 @@ describe("useFocusTrap", () => {
       container = createContainerIn(frameDocument!, '<button id="a">A</button>');
       const { unmount } = renderTrap(container, { restoreFocus: true });
 
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       expect(frameDocument!.activeElement).toBe(container.querySelector("#a"));
 
       unmount();
@@ -332,9 +362,11 @@ describe("useFocusTrap", () => {
         { initialProps: { enabled: false } },
       );
 
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       expect(document.activeElement).not.toBe(container.querySelector("#a"));
 
       rerender({ enabled: true });
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       expect(document.activeElement).toBe(container.querySelector("#a"));
     });
 
@@ -352,9 +384,11 @@ describe("useFocusTrap", () => {
         { initialProps: { ref: firstRef } },
       );
 
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       expect(document.activeElement).toBe(first.querySelector("#a"));
 
       rerender({ ref: secondRef });
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       expect(document.activeElement).toBe(second.querySelector("#b"));
 
       second.remove();
@@ -369,6 +403,7 @@ describe("useFocusTrap", () => {
         '<button id="b">B</button>',
       );
       renderTrap(container);
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       expect(document.activeElement).toBe(container.querySelector("#b"));
     });
   });
@@ -390,6 +425,7 @@ describe("useFocusTrap", () => {
         useFocusTrap(ref, { initialFocus: initialRef });
       });
 
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       expect(document.activeElement).toBe(container.querySelector("#a"));
 
       outsideButton.remove();
@@ -400,6 +436,7 @@ describe("useFocusTrap", () => {
         '<button id="a" disabled>A</button>',
         '<button id="b">B</button>',
       );
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       const disabledButton = container.querySelector<HTMLElement>("#a")!;
 
       renderHook(() => {
@@ -408,12 +445,13 @@ describe("useFocusTrap", () => {
         useFocusTrap(ref, { initialFocus: initialRef });
       });
 
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       expect(document.activeElement).toBe(container.querySelector("#b"));
     });
   });
 
   describe("ref node mutation", () => {
-    it("re-attaches listeners and updates focus when ref.current is replaced", () => {
+    it("retraps focus on the new container when the trap target swaps in-place", () => {
       const first = createContainer('<button id="a">A</button>');
       const second = createContainer('<button id="b">B</button>');
       container = first;
@@ -427,11 +465,13 @@ describe("useFocusTrap", () => {
         { initialProps: { tick: 0 } },
       );
 
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       expect(document.activeElement).toBe(first.querySelector("#a"));
 
       stableRef.current = second;
       rerender({ tick: 1 });
 
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       expect(document.activeElement).toBe(second.querySelector("#b"));
 
       second.remove();

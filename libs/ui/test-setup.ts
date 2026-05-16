@@ -5,6 +5,16 @@ import { afterEach, expect, vi } from "vitest";
 
 expect.extend(matchers);
 
+declare module "vitest" {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  interface Assertion<T = any> {
+    toHaveNoViolations(): T;
+  }
+  interface AsymmetricMatchersContaining {
+    toHaveNoViolations(): unknown;
+  }
+}
+
 afterEach(() => {
   cleanup();
 });

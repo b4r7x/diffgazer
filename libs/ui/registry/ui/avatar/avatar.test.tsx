@@ -4,6 +4,7 @@ import { describe, it, expect, vi } from "vitest"
 import { Avatar } from "./index.js"
 
 function getAvatarImage(container: HTMLElement): HTMLImageElement {
+  // querySelector retained: <img> has no accessible role until it loads (jsdom never paints it); structural assertion is the contract — the test needs the element to fire load/error against
   const image = container.querySelector("img")
   if (!(image instanceof HTMLImageElement)) throw new Error("Expected avatar image")
   return image
@@ -13,11 +14,13 @@ describe("Avatar", () => {
   it("shows fallback until image loads, hides it on success, shows it on error", () => {
     const { container, unmount } = render(<Avatar src="https://example.com/avatar.jpg" fallback="AB" />)
     expect(screen.getByText("AB")).toBeInTheDocument()
+    // fireEvent retained: native <img> load event has no user-event equivalent
     fireEvent.load(getAvatarImage(container))
     expect(screen.queryByText("AB")).not.toBeInTheDocument()
     unmount()
 
     const badAvatar = render(<Avatar src="https://example.com/bad.jpg" fallback="AB" />)
+    // fireEvent retained: native <img> error event has no user-event equivalent
     fireEvent.error(getAvatarImage(badAvatar.container))
     expect(screen.getByText("AB")).toBeInTheDocument()
   })
@@ -35,6 +38,7 @@ describe("Avatar", () => {
       <Avatar src="https://example.com/avatar.jpg" alt="User" fallback="AB" onStatusChange={onStatusChange} />,
     )
     expect(onStatusChange).toHaveBeenCalledWith("loading")
+    // fireEvent retained: native <img> load event has no user-event equivalent
     fireEvent.load(getAvatarImage(container))
     expect(onStatusChange).toHaveBeenCalledWith("loaded")
     unmount()
@@ -43,6 +47,7 @@ describe("Avatar", () => {
     const badAvatar = render(
       <Avatar src="https://example.com/bad.jpg" alt="User" fallback="AB" onStatusChange={onStatusChange2} />,
     )
+    // fireEvent retained: native <img> error event has no user-event equivalent
     fireEvent.error(getAvatarImage(badAvatar.container))
     expect(onStatusChange2).toHaveBeenCalledWith("error")
   })
@@ -55,6 +60,7 @@ describe("Avatar", () => {
     )
 
     expect(firstOnStatusChange).toHaveBeenCalledWith("loading")
+    // fireEvent retained: native <img> load event has no user-event equivalent
     fireEvent.load(getAvatarImage(container))
     expect(firstOnStatusChange).toHaveBeenCalledWith("loaded")
 
@@ -71,6 +77,7 @@ describe("Avatar", () => {
       <Avatar src="https://example.com/avatar.jpg" alt="User" fallback="AB" />,
     )
 
+    // fireEvent retained: native <img> load event has no user-event equivalent
     fireEvent.load(getAvatarImage(container))
     expect(screen.queryByText("AB")).not.toBeInTheDocument()
 
@@ -93,6 +100,7 @@ describe("Avatar", () => {
       </Avatar>,
     )
 
+    // fireEvent retained: native <img> error event has no user-event equivalent
     fireEvent.error(getAvatarImage(container))
     expect(screen.getByText("AB")).toBeInTheDocument()
   })
@@ -143,6 +151,7 @@ describe("Avatar", () => {
     )
     expect(screen.getByText("JD")).toBeInTheDocument()
 
+    // fireEvent retained: native <img> load event has no user-event equivalent
     fireEvent.load(getAvatarImage(container))
     const fallback = screen.queryByText("JD")
     if (fallback) {

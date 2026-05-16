@@ -84,104 +84,61 @@ describe("useOverflow", () => {
     expect(lastResult).toBe(false)
   })
 
-  it("detects horizontal overflow", () => {
-    let lastResult = false
+  it.each<{
+    scenario: string
+    direction: OverflowDirection
+    dims: { scrollWidth: number; clientWidth: number; scrollHeight: number; clientHeight: number }
+    expected: boolean
+  }>([
+    {
+      scenario: "detects horizontal overflow when direction='horizontal'",
+      direction: "horizontal",
+      dims: { scrollWidth: 500, clientWidth: 300, scrollHeight: 100, clientHeight: 100 },
+      expected: true,
+    },
+    {
+      scenario: "detects vertical overflow when direction='vertical'",
+      direction: "vertical",
+      dims: { scrollWidth: 100, clientWidth: 100, scrollHeight: 500, clientHeight: 300 },
+      expected: true,
+    },
+    {
+      scenario: "ignores horizontal overflow when direction='vertical'",
+      direction: "vertical",
+      dims: { scrollWidth: 500, clientWidth: 300, scrollHeight: 100, clientHeight: 100 },
+      expected: false,
+    },
+    {
+      scenario: "detects horizontal overflow when direction='both'",
+      direction: "both",
+      dims: { scrollWidth: 500, clientWidth: 300, scrollHeight: 100, clientHeight: 100 },
+      expected: true,
+    },
+    {
+      scenario: "detects vertical overflow when direction='both'",
+      direction: "both",
+      dims: { scrollWidth: 100, clientWidth: 100, scrollHeight: 500, clientHeight: 300 },
+      expected: true,
+    },
+  ])("$scenario", ({ direction, dims, expected }) => {
+    let lastResult = !expected
     const { getByTestId } = render(
       React.createElement(TestComponent, {
-        direction: "horizontal",
+        direction,
         onResult: (v: boolean) => { lastResult = v },
       }),
     )
 
+    // getByTestId: hook output has no native role; harness pattern renders return values to data-testid for read-back
     const el = getByTestId("target")
-    mockDimensions(el, { scrollWidth: 500, clientWidth: 300, scrollHeight: 100, clientHeight: 100 })
+    mockDimensions(el, dims)
 
     act(() => {
       for (const cb of resizeCallbacks) cb()
       flushScheduledChecks()
     })
 
-    expect(lastResult).toBe(true)
-  })
-
-  it("detects vertical overflow", () => {
-    let lastResult = false
-    const { getByTestId } = render(
-      React.createElement(TestComponent, {
-        direction: "vertical",
-        onResult: (v: boolean) => { lastResult = v },
-      }),
-    )
-
-    const el = getByTestId("target")
-    mockDimensions(el, { scrollWidth: 100, clientWidth: 100, scrollHeight: 500, clientHeight: 300 })
-
-    act(() => {
-      for (const cb of resizeCallbacks) cb()
-      flushScheduledChecks()
-    })
-
-    expect(lastResult).toBe(true)
-  })
-
-  it("returns false when no overflow in queried direction", () => {
-    let lastResult = true
-    const { getByTestId } = render(
-      React.createElement(TestComponent, {
-        direction: "vertical",
-        onResult: (v: boolean) => { lastResult = v },
-      }),
-    )
-
-    const el = getByTestId("target")
-    mockDimensions(el, { scrollWidth: 500, clientWidth: 300, scrollHeight: 100, clientHeight: 100 })
-
-    act(() => {
-      for (const cb of resizeCallbacks) cb()
-      flushScheduledChecks()
-    })
-
-    expect(lastResult).toBe(false)
-  })
-
-  it("detects both direction overflow from horizontal", () => {
-    let lastResult = false
-    const { getByTestId } = render(
-      React.createElement(TestComponent, {
-        direction: "both",
-        onResult: (v: boolean) => { lastResult = v },
-      }),
-    )
-
-    const el = getByTestId("target")
-    mockDimensions(el, { scrollWidth: 500, clientWidth: 300, scrollHeight: 100, clientHeight: 100 })
-
-    act(() => {
-      for (const cb of resizeCallbacks) cb()
-      flushScheduledChecks()
-    })
-
-    expect(lastResult).toBe(true)
-  })
-
-  it("detects both direction overflow from vertical only", () => {
-    let lastResult = false
-    const { getByTestId } = render(
-      React.createElement(TestComponent, {
-        direction: "both",
-        onResult: (v: boolean) => { lastResult = v },
-      }),
-    )
-
-    const el = getByTestId("target")
-    mockDimensions(el, { scrollWidth: 100, clientWidth: 100, scrollHeight: 500, clientHeight: 300 })
-
-    act(() => {
-      for (const cb of resizeCallbacks) cb()
-      flushScheduledChecks()
-    })
-
-    expect(lastResult).toBe(true)
+    expect(lastResult).toBe(expected)
   })
 
   it("updates when text content changes", () => {
@@ -193,6 +150,7 @@ describe("useOverflow", () => {
       }),
     )
 
+    // getByTestId: hook output has no native role; harness pattern renders return values to data-testid for read-back
     const el = getByTestId("target")
     mockDimensions(el, { scrollWidth: 100, clientWidth: 100, scrollHeight: 100, clientHeight: 100 })
 

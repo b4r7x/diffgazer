@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "type-check": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:types": "vitest --typecheck --typecheck.only --run"
   },
   "dependencies": {
     "@diffgazer/core": "workspace:*",

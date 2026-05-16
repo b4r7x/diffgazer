@@ -1,6 +1,7 @@
 import { createRef } from "react";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import { axe } from "../../../testing/utils.js";
 import { Card } from "./index.js";
 
 describe("Card", () => {
@@ -30,5 +31,15 @@ describe("Card", () => {
     );
 
     expect(ref.current).toBe(screen.getByRole("article", { name: "Release" }));
+  });
+
+  it("has no a11y violations", async () => {
+    const { container } = render(
+      <Card as="section" aria-label="Details">
+        Section content
+      </Card>,
+    );
+
+    expect(await axe(container)).toHaveNoViolations();
   });
 });

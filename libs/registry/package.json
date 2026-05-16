@@ -30,7 +30,8 @@
     "build": "tsc",
     "type-check": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:types": "vitest --typecheck --typecheck.only --run"
   },
   "repository": {
     "type": "git",
@@ -59,7 +60,7 @@
     "@types/figlet": "^1.7.0",
     "@types/node": "^22.0.0",
     "typescript": "^5.9.0",
-    "vitest": "^3.2.1"
+    "vitest": "^4.1.0"
   },
   "license": "MIT"
 }

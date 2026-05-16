@@ -66,7 +66,7 @@ describe("buildConfigPayload", () => {
 });
 
 describe("saveWizard", () => {
-  it("calls saveSettings before saveConfig with derived payloads", async () => {
+  it("persists settings before config and forwards the derived payloads", async () => {
     const callOrder: string[] = [];
     const saveSettings = vi.fn(async () => {
       callOrder.push("settings");

@@ -229,7 +229,6 @@ describe("Radio", () => {
     render(
       <Radio
         label="Option A"
-        data-testid="radio-root"
         data-source="external"
         style={{ maxWidth: "16px" }}
         onClick={onClick}
@@ -244,9 +243,8 @@ describe("Radio", () => {
 
     expect(onClick).toHaveBeenCalledOnce()
     expect(onKeyDown).toHaveBeenCalled()
-    // Verifies consumer-passed data-testid + native attribute/style forwarding contract.
-    expect(screen.getByTestId("radio-root")).toHaveAttribute("data-source", "external")
-    expect(screen.getByTestId("radio-root")).toHaveStyle({ maxWidth: "16px" })
+    expect(radio).toHaveAttribute("data-source", "external")
+    expect(radio).toHaveStyle({ maxWidth: "16px" })
   })
 
   it("lets consumer click handlers prevent the built-in selection", async () => {
@@ -817,6 +815,7 @@ describe("RadioGroup", () => {
     form.reset()
 
     await waitFor(() => expect(screen.getByRole("radio", { name: /blue/i })).toHaveAttribute("aria-checked", "false"))
+    // call-count IS the contract: native form reset must NOT fire onChange (count stays at 1 from the explicit click; a reset-triggered onChange with undefined would be a regression)
     expect(onChange).toHaveBeenCalledTimes(1)
   })
 

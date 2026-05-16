@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it } from "vitest"
+import { axe } from "../../../testing/utils.js"
 import { Input, InputGroup } from "../input/index.js"
 import { Textarea } from "../textarea/index.js"
 import { Select } from "../select/index.js"
@@ -186,5 +187,41 @@ describe("Field", () => {
 
     const combobox = screen.getByRole("combobox", { name: "Region" })
     expect(combobox).toHaveAttribute("id", "region-select")
+  })
+
+  it("has no a11y violations across Field configurations", async () => {
+    const { container, rerender } = render(
+      <Field>
+        <Field.Label>Project name</Field.Label>
+        <Field.Control>
+          <Input />
+        </Field.Control>
+        <Field.Description>Use a short, memorable name.</Field.Description>
+      </Field>,
+    )
+    expect(await axe(container)).toHaveNoViolations()
+
+    rerender(
+      <Field invalid required>
+        <Field.Label>Email</Field.Label>
+        <Field.Control>
+          <Input />
+        </Field.Control>
+        <Field.Description>Use your work email.</Field.Description>
+        <Field.Error>Email is required.</Field.Error>
+      </Field>,
+    )
+    expect(await axe(container)).toHaveNoViolations()
+
+    rerender(
+      <Field invalid>
+        <Field.Label>Notes</Field.Label>
+        <Field.Control>
+          <Textarea />
+        </Field.Control>
+        <Field.Error>Notes are required.</Field.Error>
+      </Field>,
+    )
+    expect(await axe(container)).toHaveNoViolations()
   })
 })

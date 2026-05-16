@@ -46,6 +46,7 @@
     "type-check": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:types": "vitest --typecheck --typecheck.only --run",
     "verify:registry-cleanup": "node ../../apps/docs/scripts/verify-registry-cleanup.mjs --scope @diffgazer/keys",
     "prepublishOnly": "pnpm run build && pnpm run type-check && pnpm run test && pnpm run validate:artifacts",
     "playground": "pnpm --filter playground dev"
@@ -64,7 +65,7 @@
     "shadcn": "^4.7.0",
     "tsx": "^4.0.0",
     "typescript": "^5.9.3",
-    "vitest": "^3.0.0"
+    "vitest": "^4.1.0"
   },
   "keywords": [
     "react",

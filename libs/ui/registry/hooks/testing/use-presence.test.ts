@@ -3,6 +3,12 @@ import { renderHook, act } from "@testing-library/react"
 import { usePresence } from "../use-presence.js"
 import { createRef, type AnimationEvent } from "react"
 
+// usePresence callbacks read .target from React's animation event; a minimal stub
+// is sufficient here, since the rest of the synthetic event shape is unused.
+function animationEvent(target: EventTarget | null): AnimationEvent {
+  return { target } as Pick<AnimationEvent, "target"> as AnimationEvent
+}
+
 describe("usePresence", () => {
   afterEach(() => {
     vi.useRealTimers()
@@ -39,7 +45,7 @@ describe("usePresence", () => {
     expect(result.current.present).toBe(true)
 
     act(() => {
-      result.current.onAnimationEnd({ target: null } as unknown as AnimationEvent)
+      result.current.onAnimationEnd(animationEvent(null))
     })
     expect(result.current.present).toBe(false)
   })
@@ -57,16 +63,12 @@ describe("usePresence", () => {
     expect(result.current.present).toBe(true)
 
     act(() => {
-      result.current.onAnimationEnd({
-        target: document.createElement("span"),
-      } as unknown as AnimationEvent)
+      result.current.onAnimationEnd(animationEvent(document.createElement("span")))
     })
     expect(result.current.present).toBe(true)
 
     act(() => {
-      result.current.onAnimationEnd({
-        target: ref.current,
-      } as unknown as AnimationEvent)
+      result.current.onAnimationEnd(animationEvent(ref.current))
     })
     expect(result.current.present).toBe(false)
   })
@@ -84,7 +86,7 @@ describe("usePresence", () => {
     expect(result.current.present).toBe(true)
 
     act(() => {
-      result.current.onAnimationEnd({ target: null } as unknown as AnimationEvent)
+      result.current.onAnimationEnd(animationEvent(null))
     })
     expect(result.current.exiting).toBe(false)
     expect(result.current.present).toBe(false)
@@ -160,7 +162,7 @@ describe("usePresence", () => {
 
     rerender({ open: false })
     act(() => {
-      result.current.onAnimationCancel({ target: ref.current } as unknown as AnimationEvent)
+      result.current.onAnimationCancel(animationEvent(ref.current))
     })
 
     expect(result.current.present).toBe(false)

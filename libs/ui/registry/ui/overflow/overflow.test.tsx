@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { Overflow } from "./index.js"
 import { OverflowText } from "./overflow-text.js"
 
+// axe skipped: behavior depends on mocked layout dimensions, so axe cannot evaluate real overflow truncation/tooltip semantics here.
+
 let resizeCallbacks: Array<() => void> = []
 let animationCallbacks: FrameRequestCallback[] = []
 

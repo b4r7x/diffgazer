@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import { axe } from "../../../testing/utils.js";
 import { EmptyState } from "./index.js";
 
 describe("EmptyState", () => {
@@ -24,5 +25,11 @@ describe("EmptyState", () => {
 
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
     expect(screen.getByText("No results")).toBeInTheDocument();
+  });
+
+  it("has no a11y violations", async () => {
+    const { container } = render(<EmptyState live>No results</EmptyState>);
+
+    expect(await axe(container)).toHaveNoViolations();
   });
 });

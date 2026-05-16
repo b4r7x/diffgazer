@@ -30,31 +30,12 @@ const validManifest: ArtifactManifest = {
 };
 
 describe("ArtifactManifestSchema", () => {
-  it("should validate a valid manifest", () => {
+  it("accepts a complete valid manifest", () => {
     const result = ArtifactManifestSchema.safeParse(validManifest);
     expect(result.success).toBe(true);
   });
 
-  it("should reject missing required fields", () => {
-    const { library, ...noLibrary } = validManifest;
-    const result = ArtifactManifestSchema.safeParse(noLibrary);
-    expect(result.success).toBe(false);
-  });
-
-  it("should reject invalid schemaVersion", () => {
-    const result = ArtifactManifestSchema.safeParse({ ...validManifest, schemaVersion: 2 });
-    expect(result.success).toBe(false);
-  });
-
-  it("should reject invalid namespace format", () => {
-    const result = ArtifactManifestSchema.safeParse({
-      ...validManifest,
-      registry: { ...validManifest.registry, namespace: "no-at-sign" },
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("should accept scoped package namespace format", () => {
+  it("accepts scoped package namespace format", () => {
     const result = ArtifactManifestSchema.safeParse({
       ...validManifest,
       registry: { ...validManifest.registry, namespace: "@diffgazer/keys" },
@@ -62,50 +43,61 @@ describe("ArtifactManifestSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("should accept optional source field", () => {
-    const result = ArtifactManifestSchema.safeParse({
-      ...validManifest,
-      source: { registryDir: "registry", stylesDir: "styles" },
-    });
-    expect(result.success).toBe(true);
+  it.each([
+    {
+      label: "optional source field",
+      manifest: { ...validManifest, source: { registryDir: "registry", stylesDir: "styles" } } as ArtifactManifest,
+    },
+    {
+      label: "optional generated field",
+      manifest: { ...validManifest, generated: { "components.json": "dist/artifacts/generated/components.json" } } as ArtifactManifest,
+    },
+  ])("accepts manifest with $label", ({ manifest }) => {
+    expect(ArtifactManifestSchema.safeParse(manifest).success).toBe(true);
   });
 
-  it("should accept optional generated field", () => {
-    const result = ArtifactManifestSchema.safeParse({
-      ...validManifest,
-      generated: { "components.json": "dist/artifacts/generated/components.json" },
-    });
-    expect(result.success).toBe(true);
+  it.each([
+    {
+      label: "missing required library field",
+      manifest: (() => {
+        const { library: _omit, ...rest } = validManifest;
+        return rest;
+      })(),
+    },
+    {
+      label: "invalid schemaVersion 2",
+      manifest: { ...validManifest, schemaVersion: 2 },
+    },
+    {
+      label: "namespace without @ prefix",
+      manifest: { ...validManifest, registry: { ...validManifest.registry, namespace: "no-at-sign" } },
+    },
+    {
+      label: "empty inputs array",
+      manifest: { ...validManifest, inputs: [] },
+    },
+  ])("rejects manifest with $label", ({ manifest }) => {
+    expect(ArtifactManifestSchema.safeParse(manifest).success).toBe(false);
   });
 
-  it("should reject empty inputs array", () => {
-    const result = ArtifactManifestSchema.safeParse({ ...validManifest, inputs: [] });
-    expect(result.success).toBe(false);
-  });
-
-  it("should reject manifest paths outside the artifact contract", () => {
-    const invalidManifests: ArtifactManifest[] = [
-      { ...validManifest, artifactRoot: "../artifacts" },
-      { ...validManifest, artifactRoot: "/tmp/artifacts" },
-      { ...validManifest, inputs: ["../package.json"] },
-      { ...validManifest, docs: { ...validManifest.docs, contentDir: "../docs" } },
-      { ...validManifest, docs: { ...validManifest.docs, generatedDir: "/tmp/generated" } },
-      { ...validManifest, registry: { ...validManifest.registry, publicDir: "../registry" } },
-      { ...validManifest, source: { registryDir: "../source" } },
-      { ...validManifest, generated: { demoIndex: "../demo-index.ts" } },
-      {
+  it.each([
+    { label: "artifactRoot escaping with ..", manifest: { ...validManifest, artifactRoot: "../artifacts" } },
+    { label: "absolute artifactRoot", manifest: { ...validManifest, artifactRoot: "/tmp/artifacts" } },
+    { label: "input escaping with ..", manifest: { ...validManifest, inputs: ["../package.json"] } },
+    { label: "docs.contentDir escaping with ..", manifest: { ...validManifest, docs: { ...validManifest.docs, contentDir: "../docs" } } },
+    { label: "absolute docs.generatedDir", manifest: { ...validManifest, docs: { ...validManifest.docs, generatedDir: "/tmp/generated" } } },
+    { label: "registry.publicDir escaping with ..", manifest: { ...validManifest, registry: { ...validManifest.registry, publicDir: "../registry" } } },
+    { label: "source.registryDir escaping with ..", manifest: { ...validManifest, source: { registryDir: "../source" } } },
+    { label: "generated path escaping with ..", manifest: { ...validManifest, generated: { demoIndex: "../demo-index.ts" } } },
+    {
+      label: "fingerprintFile escaping with ..",
+      manifest: {
         ...validManifest,
-        integrity: {
-          ...validManifest.integrity,
-          fingerprintFile: "../fingerprint.sha256",
-        },
+        integrity: { ...validManifest.integrity, fingerprintFile: "../fingerprint.sha256" },
       },
-    ];
-
-    for (const manifest of invalidManifests) {
-      const result = ArtifactManifestSchema.safeParse(manifest);
-      expect(result.success).toBe(false);
-    }
+    },
+  ])("rejects manifest path escape via $label", ({ manifest }) => {
+    expect(ArtifactManifestSchema.safeParse(manifest as ArtifactManifest).success).toBe(false);
   });
 });
 
@@ -129,7 +121,7 @@ describe("createArtifactManifest", () => {
     registry: { namespace: "@testlib", basePath: "/r/test-lib", publicDir: "registry", index: "registry/registry.json" } as const,
   };
 
-  it("should produce a manifest that artifact consumers can load", () => {
+  it("produces a manifest that artifact consumers can load", () => {
     writeFileSync(resolve(testDir, "package.json"), JSON.stringify({ name: "test-lib", version: "1.0.0" }));
     const manifest = createArtifactManifest({ ...baseOptions, rootDir: testDir });
     const result = buildRegistryArtifacts({
@@ -146,38 +138,38 @@ describe("createArtifactManifest", () => {
     });
   });
 
-  it("should read version from package.json", () => {
+  it("reads version from package.json", () => {
     writeFileSync(resolve(testDir, "package.json"), JSON.stringify({ name: "test-lib", version: "2.3.4" }));
     const manifest = createArtifactManifest({ ...baseOptions, rootDir: testDir });
     expect(manifest.version).toBe("2.3.4");
   });
 
-  it("should fall back to 0.0.0 when version is missing", () => {
+  it("falls back to 0.0.0 when package.json version is missing", () => {
     writeFileSync(resolve(testDir, "package.json"), JSON.stringify({ name: "test-lib" }));
     const manifest = createArtifactManifest({ ...baseOptions, rootDir: testDir });
     expect(manifest.version).toBe("0.0.0");
   });
 
-  it("should use packageName when provided", () => {
+  it("uses the explicit packageName option over package.json name", () => {
     writeFileSync(resolve(testDir, "package.json"), JSON.stringify({ name: "pkg-from-json", version: "1.0.0" }));
     const manifest = createArtifactManifest({ ...baseOptions, rootDir: testDir, packageName: "custom-pkg" });
     expect(manifest.package).toBe("custom-pkg");
   });
 
-  it("should fall back to pkg.name when packageName is not provided", () => {
+  it("falls back to package.json name when packageName option is omitted", () => {
     writeFileSync(resolve(testDir, "package.json"), JSON.stringify({ name: "pkg-from-json", version: "1.0.0" }));
     const manifest = createArtifactManifest({ ...baseOptions, rootDir: testDir });
     expect(manifest.package).toBe("pkg-from-json");
   });
 
-  it("should omit source and generated when not provided", () => {
+  it("omits source and generated when caller does not supply them", () => {
     writeFileSync(resolve(testDir, "package.json"), JSON.stringify({ name: "test-lib", version: "1.0.0" }));
     const manifest = createArtifactManifest({ ...baseOptions, rootDir: testDir });
     expect(manifest).not.toHaveProperty("source");
     expect(manifest).not.toHaveProperty("generated");
   });
 
-  it("should include source and generated when provided", () => {
+  it("includes source and generated when caller supplies them", () => {
     writeFileSync(resolve(testDir, "package.json"), JSON.stringify({ name: "test-lib", version: "1.0.0" }));
     const manifest = createArtifactManifest({
       ...baseOptions,
@@ -189,7 +181,7 @@ describe("createArtifactManifest", () => {
     expect(manifest.generated).toEqual({ hooksFile: "generated/hooks.json" });
   });
 
-  it("should produce a valid manifest according to schema", () => {
+  it("produces a manifest that passes schema validation", () => {
     writeFileSync(resolve(testDir, "package.json"), JSON.stringify({ name: "test-lib", version: "1.0.0" }));
     const manifest = createArtifactManifest({ ...baseOptions, rootDir: testDir });
     const result = ArtifactManifestSchema.safeParse(manifest);
@@ -198,7 +190,7 @@ describe("createArtifactManifest", () => {
 });
 
 describe("validateManifest", () => {
-  it("should return errors array for invalid input", () => {
+  it("returns a non-empty errors array for invalid input", () => {
     const result = validateManifest({});
     expect(result.success).toBe(false);
     if (!result.success) {

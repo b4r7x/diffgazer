@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { KeyboardProvider, useNavigation } from "@diffgazer/keys";
+import { axe } from "../../testing/utils.js";
 import { CheckboxGroup, CheckboxItem } from "./checkbox";
 
 function CheckboxGroupWithKeyboard() {
@@ -57,5 +58,12 @@ describe("UI keyboard navigation integration", () => {
     await user.keyboard("{ArrowDown} ");
 
     expect(alpha).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("has no a11y violations", async () => {
+    const { container } = render(
+      <KeyboardProvider><CheckboxGroupWithKeyboard /></KeyboardProvider>
+    );
+    expect(await axe(container)).toHaveNoViolations();
   });
 });

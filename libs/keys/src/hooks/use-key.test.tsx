@@ -114,14 +114,17 @@ describe("useKey", () => {
       );
 
       fireKey("ArrowUp");
+      // call-count IS the contract: handler fires once for old key before rebind
       expect(handler).toHaveBeenCalledTimes(1);
 
       key = "ArrowDown";
       rerender();
       fireKey("ArrowUp");
+      // call-count IS the contract: handler must NOT fire for the old key after rebind (count stays at 1)
       expect(handler).toHaveBeenCalledTimes(1);
 
       fireKey("ArrowDown");
+      // call-count IS the contract: handler fires for the new key after rebind (count increments to 2)
       expect(handler).toHaveBeenCalledTimes(2);
     });
   });
@@ -163,6 +166,7 @@ describe("useKey", () => {
         useKey("a", () => {
           if (decline) return false;
           setHandledBy("primary");
+          return;
         });
 
         return (
@@ -278,6 +282,7 @@ describe("useKey", () => {
       open = true;
       rerender(<TestApp />);
       act(() => fireKey("Escape"));
+      // call-count IS the contract: re-opening the scope must re-fire the handler (count increments to 2, proving registration survives the push/pop/push cycle)
       expect(modalEscape).toHaveBeenCalledTimes(2);
     });
   });
@@ -301,14 +306,17 @@ describe("useKey", () => {
       );
 
       fireKey("Escape");
+      // call-count IS the contract: StrictMode must NOT cause duplicate registrations (count is 1, not 2)
       expect(handler).toHaveBeenCalledTimes(1);
 
       rerender();
       fireKey("Escape");
+      // call-count IS the contract: rerender must NOT cause duplicate registrations (count is 2, not 3 or 4)
       expect(handler).toHaveBeenCalledTimes(2);
 
       unmount();
       fireKey("Escape");
+      // call-count IS the contract: unmount cleanup must remove the registration (count stays at 2, no new call)
       expect(handler).toHaveBeenCalledTimes(2);
     });
   });

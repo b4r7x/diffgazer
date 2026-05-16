@@ -1,23 +1,22 @@
-import assert from "node:assert/strict";
-import test, { describe } from "node:test";
+import { test, describe, expect } from "vitest";
 import { formatIssueLineRange } from "./issue-details-helpers.js";
 
 describe("formatIssueLineRange", () => {
   test("renders '?' when start is missing", () => {
-    assert.equal(formatIssueLineRange(undefined, undefined), "?");
-    assert.equal(formatIssueLineRange(null, 10), "?");
+    expect(formatIssueLineRange(undefined, undefined)).toBe("?");
+    expect(formatIssueLineRange(null, 10)).toBe("?");
   });
 
   test("renders single line when only start is present", () => {
-    assert.equal(formatIssueLineRange(7, undefined), "7");
-    assert.equal(formatIssueLineRange(7, null), "7");
+    expect(formatIssueLineRange(7, undefined)).toBe("7");
+    expect(formatIssueLineRange(7, null)).toBe("7");
   });
 
   test("renders range when both endpoints are present", () => {
-    assert.equal(formatIssueLineRange(7, 12), "7-12");
+    expect(formatIssueLineRange(7, 12)).toBe("7-12");
   });
 
   test("renders same line as start-end when they're equal", () => {
-    assert.equal(formatIssueLineRange(7, 7), "7-7");
+    expect(formatIssueLineRange(7, 7)).toBe("7-7");
   });
 });

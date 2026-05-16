@@ -10,6 +10,7 @@ const { mockNavigate, mockUseReview, mockUseReviews } = vi.hoisted(() => ({
   mockUseReviews: vi.fn(),
 }));
 
+// Boundary mock: Router is the routing library; tests provide a stub Router context so navigation assertions can be made without a real route tree.
 vi.mock("@tanstack/react-router", () => ({
   useLocation: () => ({ pathname: "/history-page-test" }),
   useNavigate: () => mockNavigate,
@@ -165,6 +166,7 @@ describe("HistoryPage keyboard navigation", () => {
     const runsList = await screen.findByRole("listbox", { name: /review runs/i });
     await waitFor(() => expect(runsList).toHaveFocus());
 
+    // querySelector retained: pane has no accessible role; structural assertion is the contract (counting how many [data-pane] elements carry the focused state)
     const focusedPanels = () => document.querySelectorAll('[data-pane][data-focused="true"]');
 
     await waitFor(() => expect(focusedPanels().length).toBe(1));
@@ -256,6 +258,7 @@ describe("HistoryPage keyboard navigation", () => {
 
     await screen.findByPlaceholderText(/search runs by id/i);
 
+    // querySelector retained: pane has no accessible role; structural assertion is the contract (verifying the insights pane element exists and is NOT focused)
     const insightsPane = document.querySelector('[data-pane="insights"]');
     expect(insightsPane).not.toBeNull();
     expect(document.activeElement).not.toBe(insightsPane);

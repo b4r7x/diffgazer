@@ -3,10 +3,19 @@ import userEvent from "@testing-library/user-event";
 import { useRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { KeyboardWrapper } from "../testing/test-utils";
+import { testNavigationBehavior } from "../testing/navigation-behavior";
 import {
   useActionRowNavigation,
   type UseActionRowNavigationOptions,
 } from "./use-action-row-navigation";
+
+function getActionRowActiveIndex(): number {
+  const active = document.activeElement;
+  if (!(active instanceof HTMLElement)) return -1;
+  if (active.textContent?.trim() === "Cancel") return 0;
+  if (active.textContent?.trim() === "Save") return 1;
+  return -1;
+}
 
 function TestActionRow({ options }: { options: UseActionRowNavigationOptions }) {
   const fallbackRef = useRef<HTMLDivElement>(null);
@@ -99,6 +108,39 @@ function expectFocused(el: HTMLElement) {
 afterEach(cleanup);
 
 describe("useActionRowNavigation", () => {
+  describe("arrow navigation within the actions zone", () => {
+    testNavigationBehavior({
+      setup: () => {
+        const onAction = vi.fn();
+        const onNavigate = vi.fn();
+        const onBoundary = vi.fn();
+        return render(
+          <KeyboardWrapper>
+            <TestActionRow
+              options={{
+                enabled: true,
+                actionCount: 2,
+                defaultZone: "actions",
+                wrap: true,
+                onAction,
+                onNavigate,
+                onNavigationBoundaryReached: onBoundary,
+              }}
+            />
+          </KeyboardWrapper>,
+        );
+      },
+      items: ["Cancel", "Save"],
+      initialActive: 0,
+      cases: [
+        { key: "{ArrowRight}", expectedActiveIndex: 1, label: "ArrowRight" },
+        { key: "{ArrowRight}{ArrowRight}", expectedActiveIndex: 0, label: "ArrowRight ArrowRight (wraps)" },
+        { key: "{ArrowLeft}", expectedActiveIndex: 1, label: "ArrowLeft (wraps from start)" },
+      ],
+      getActiveIndex: getActionRowActiveIndex,
+    });
+  });
+
   it("focuses the default action when actions is the initial zone", async () => {
     renderActionRow();
 

@@ -45,13 +45,13 @@ describe("keyring (available)", () => {
     setupKeyringAvailable();
   });
 
-  it("should return true from isKeyringAvailable when keyring works", async () => {
+  it("reports availability when the native module loads and a roundtrip succeeds", async () => {
     const { isKeyringAvailable } = await import("./keyring.js");
 
     expect(isKeyringAvailable()).toBe(true);
   });
 
-  it("should return ok with password value from readKeyringSecret", async () => {
+  it("returns the stored password from readKeyringSecret", async () => {
     const { isKeyringAvailable, readKeyringSecret } = await import("./keyring.js");
     isKeyringAvailable(); // prime availability cache
     mockGetPassword.mockReturnValue("my-secret");
@@ -64,22 +64,7 @@ describe("keyring (available)", () => {
     }
   });
 
-  it("should return KEYRING_READ_FAILED when getPassword throws", async () => {
-    const { isKeyringAvailable, readKeyringSecret } = await import("./keyring.js");
-    isKeyringAvailable(); // prime availability cache
-    mockGetPassword.mockImplementation(() => {
-      throw new Error("access denied");
-    });
-
-    const result = readKeyringSecret("api-key");
-
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error.code).toBe("KEYRING_READ_FAILED");
-    }
-  });
-
-  it("should return ok from writeKeyringSecret on success", async () => {
+  it("persists a value through writeKeyringSecret", async () => {
     const { isKeyringAvailable, writeKeyringSecret } = await import("./keyring.js");
     isKeyringAvailable();
     mockSetPassword.mockReturnValue(undefined);
@@ -89,22 +74,7 @@ describe("keyring (available)", () => {
     expect(result.ok).toBe(true);
   });
 
-  it("should return KEYRING_WRITE_FAILED when setPassword throws", async () => {
-    const { isKeyringAvailable, writeKeyringSecret } = await import("./keyring.js");
-    isKeyringAvailable();
-    mockSetPassword.mockImplementation(() => {
-      throw new Error("permission denied");
-    });
-
-    const result = writeKeyringSecret("api-key", "value");
-
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error.code).toBe("KEYRING_WRITE_FAILED");
-    }
-  });
-
-  it("should return ok(true) from deleteKeyringSecret when key exists", async () => {
+  it("reports that a deletion happened when the key previously existed", async () => {
     const { isKeyringAvailable, deleteKeyringSecret } = await import("./keyring.js");
     isKeyringAvailable();
     mockGetPassword.mockReturnValue("existing-value");
@@ -118,7 +88,7 @@ describe("keyring (available)", () => {
     }
   });
 
-  it("should return ok(false) from deleteKeyringSecret when key does not exist", async () => {
+  it("reports that no deletion happened when the key was already absent", async () => {
     const { isKeyringAvailable, deleteKeyringSecret } = await import("./keyring.js");
     isKeyringAvailable();
     mockGetPassword.mockReturnValue(null);
@@ -130,6 +100,49 @@ describe("keyring (available)", () => {
       expect(result.value).toBe(false);
     }
   });
+
+  it.each([
+    {
+      operation: "read",
+      throwingMock: () => {
+        mockGetPassword.mockImplementation(() => {
+          throw new Error("access denied");
+        });
+      },
+      run: async () => {
+        const { readKeyringSecret } = await import("./keyring.js");
+        return readKeyringSecret("api-key");
+      },
+      expectedCode: "KEYRING_READ_FAILED" as const,
+    },
+    {
+      operation: "write",
+      throwingMock: () => {
+        mockSetPassword.mockImplementation(() => {
+          throw new Error("permission denied");
+        });
+      },
+      run: async () => {
+        const { writeKeyringSecret } = await import("./keyring.js");
+        return writeKeyringSecret("api-key", "value");
+      },
+      expectedCode: "KEYRING_WRITE_FAILED" as const,
+    },
+  ])(
+    "surfaces $expectedCode when the underlying $operation throws",
+    async ({ throwingMock, run, expectedCode }) => {
+      const { isKeyringAvailable } = await import("./keyring.js");
+      isKeyringAvailable(); // prime availability cache
+      throwingMock();
+
+      const result = await run();
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe(expectedCode);
+      }
+    },
+  );
 });
 
 describe("keyring (unavailable)", () => {
@@ -139,38 +152,36 @@ describe("keyring (unavailable)", () => {
     setupKeyringUnavailable();
   });
 
-  it("should return false from isKeyringAvailable when module is missing", async () => {
+  it("reports unavailable when the native module fails to load", async () => {
     const { isKeyringAvailable } = await import("./keyring.js");
 
     expect(isKeyringAvailable()).toBe(false);
   });
 
-  it("should return KEYRING_UNAVAILABLE from readKeyringSecret", async () => {
-    const { readKeyringSecret } = await import("./keyring.js");
-
-    const result = readKeyringSecret("test-key");
-
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error.code).toBe("KEYRING_UNAVAILABLE");
-    }
-  });
-
-  it("should return KEYRING_UNAVAILABLE from writeKeyringSecret", async () => {
-    const { writeKeyringSecret } = await import("./keyring.js");
-
-    const result = writeKeyringSecret("test-key", "value");
-
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error.code).toBe("KEYRING_UNAVAILABLE");
-    }
-  });
-
-  it("should return KEYRING_UNAVAILABLE from deleteKeyringSecret", async () => {
-    const { deleteKeyringSecret } = await import("./keyring.js");
-
-    const result = deleteKeyringSecret("test-key");
+  it.each([
+    {
+      operation: "read",
+      run: async () => {
+        const { readKeyringSecret } = await import("./keyring.js");
+        return readKeyringSecret("test-key");
+      },
+    },
+    {
+      operation: "write",
+      run: async () => {
+        const { writeKeyringSecret } = await import("./keyring.js");
+        return writeKeyringSecret("test-key", "value");
+      },
+    },
+    {
+      operation: "delete",
+      run: async () => {
+        const { deleteKeyringSecret } = await import("./keyring.js");
+        return deleteKeyringSecret("test-key");
+      },
+    },
+  ])("returns KEYRING_UNAVAILABLE from $operation", async ({ run }) => {
+    const result = await run();
 
     expect(result.ok).toBe(false);
     if (!result.ok) {

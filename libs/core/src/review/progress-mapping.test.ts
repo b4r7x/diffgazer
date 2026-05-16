@@ -27,10 +27,10 @@ describe("mapStepsToProgressData", () => {
       makeStep("review", "Review issues", "active"),
     ];
     const agents: AgentState[] = [
-      makeAgent({ id: "queued-agent", status: "queued" }),
-      makeAgent({ id: "running-agent", status: "running", progress: 75, currentAction: "Reading file" }),
-      makeAgent({ id: "complete-agent", status: "complete", issueCount: 1 }),
-      makeAgent({ id: "error-agent", status: "error" }),
+      makeAgent({ id: "detective", status: "queued" }),
+      makeAgent({ id: "guardian", status: "running", progress: 75, currentAction: "Reading file" }),
+      makeAgent({ id: "optimizer", status: "complete", issueCount: 1 }),
+      makeAgent({ id: "simplifier", status: "error" }),
     ];
 
     const result = mapStepsToProgressData(steps, agents);

@@ -33,7 +33,7 @@ describe("createGitService", () => {
   });
 
   describe("getStatus", () => {
-    it("should parse a clean repo with branch and remote", async () => {
+    it("reports a clean repo with branch and remote tracking", async () => {
       setupExecResult("## main...origin/main\n");
       const git = createGitService({ cwd: "/test" });
 
@@ -50,51 +50,60 @@ describe("createGitService", () => {
       expect(status.files.untracked).toEqual([]);
     });
 
-    it("should parse branch with ahead/behind counts", async () => {
-      setupExecResult("## feature...origin/feature [ahead 3, behind 2]\n");
+    it.each([
+      {
+        scenario: "ahead and behind counts",
+        output: "## feature...origin/feature [ahead 3, behind 2]\n",
+        branch: "feature",
+        remoteBranch: "origin/feature",
+        ahead: 3,
+        behind: 2,
+      },
+      {
+        scenario: "only ahead count",
+        output: "## main...origin/main [ahead 5]\n",
+        branch: "main",
+        remoteBranch: "origin/main",
+        ahead: 5,
+        behind: 0,
+      },
+      {
+        scenario: "no remote tracking",
+        output: "## feature-branch\n",
+        branch: "feature-branch",
+        remoteBranch: null,
+        ahead: 0,
+        behind: 0,
+      },
+    ])("parses branch header with $scenario", async ({ output, branch, remoteBranch, ahead, behind }) => {
+      setupExecResult(output);
       const git = createGitService({ cwd: "/test" });
 
       const status = await git.getStatus();
 
-      expect(status.branch).toBe("feature");
-      expect(status.remoteBranch).toBe("origin/feature");
-      expect(status.ahead).toBe(3);
-      expect(status.behind).toBe(2);
+      expect(status.branch).toBe(branch);
+      expect(status.remoteBranch).toBe(remoteBranch);
+      expect(status.ahead).toBe(ahead);
+      expect(status.behind).toBe(behind);
     });
 
-    it("should parse branch with only ahead count", async () => {
-      setupExecResult("## main...origin/main [ahead 5]\n");
-      const git = createGitService({ cwd: "/test" });
-
-      const status = await git.getStatus();
-
-      expect(status.ahead).toBe(5);
-      expect(status.behind).toBe(0);
-    });
-
-    it("should parse branch without remote tracking", async () => {
-      setupExecResult("## feature-branch\n");
-      const git = createGitService({ cwd: "/test" });
-
-      const status = await git.getStatus();
-
-      expect(status.branch).toBe("feature-branch");
-      expect(status.remoteBranch).toBeNull();
-    });
-
-    it("should parse staged modified files", async () => {
-      setupExecResult("## main\nM  src/file.ts\n");
+    it.each([
+      { kind: "staged modified", output: "## main\nM  src/file.ts\n", path: "src/file.ts", indexStatus: "M", group: "staged" as const },
+      { kind: "staged added", output: "## main\nA  new-file.ts\n", path: "new-file.ts", indexStatus: "A", group: "staged" as const },
+      { kind: "staged deleted", output: "## main\nD  old-file.ts\n", path: "old-file.ts", indexStatus: "D", group: "staged" as const },
+    ])("places $kind file in the staged bucket", async ({ output, path, indexStatus }) => {
+      setupExecResult(output);
       const git = createGitService({ cwd: "/test" });
 
       const status = await git.getStatus();
 
       expect(status.hasChanges).toBe(true);
       expect(status.files.staged).toHaveLength(1);
-      expect(status.files.staged[0]?.path).toBe("src/file.ts");
-      expect(status.files.staged[0]?.indexStatus).toBe("M");
+      expect(status.files.staged[0]?.path).toBe(path);
+      expect(status.files.staged[0]?.indexStatus).toBe(indexStatus);
     });
 
-    it("should parse unstaged modified files", async () => {
+    it("places worktree-only changes in the unstaged bucket", async () => {
       setupExecResult("## main\n M src/file.ts\n");
       const git = createGitService({ cwd: "/test" });
 
@@ -106,7 +115,7 @@ describe("createGitService", () => {
       expect(status.files.unstaged[0]?.workTreeStatus).toBe("M");
     });
 
-    it("should parse untracked files", async () => {
+    it("places ?? files in the untracked bucket", async () => {
       setupExecResult("## main\n?? new-file.ts\n");
       const git = createGitService({ cwd: "/test" });
 
@@ -117,27 +126,7 @@ describe("createGitService", () => {
       expect(status.files.untracked[0]?.path).toBe("new-file.ts");
     });
 
-    it("should parse added files", async () => {
-      setupExecResult("## main\nA  new-file.ts\n");
-      const git = createGitService({ cwd: "/test" });
-
-      const status = await git.getStatus();
-
-      expect(status.files.staged).toHaveLength(1);
-      expect(status.files.staged[0]?.indexStatus).toBe("A");
-    });
-
-    it("should parse deleted files", async () => {
-      setupExecResult("## main\nD  old-file.ts\n");
-      const git = createGitService({ cwd: "/test" });
-
-      const status = await git.getStatus();
-
-      expect(status.files.staged).toHaveLength(1);
-      expect(status.files.staged[0]?.indexStatus).toBe("D");
-    });
-
-    it("should detect conflicted files", async () => {
+    it("reports UU entries as conflicted files", async () => {
       setupExecResult("## main\nUU conflicted.ts\n");
       const git = createGitService({ cwd: "/test" });
 
@@ -146,7 +135,7 @@ describe("createGitService", () => {
       expect(status.conflicted).toContain("conflicted.ts");
     });
 
-    it("should handle multiple files with mixed statuses", async () => {
+    it("splits mixed-status entries into the correct buckets", async () => {
       const output = [
         "## main...origin/main",
         "M  staged.ts",
@@ -160,13 +149,13 @@ describe("createGitService", () => {
 
       const status = await git.getStatus();
 
-      expect(status.files.staged).toHaveLength(2); // M and A
+      expect(status.files.staged).toHaveLength(2);
       expect(status.files.unstaged).toHaveLength(1);
       expect(status.files.untracked).toHaveLength(1);
       expect(status.hasChanges).toBe(true);
     });
 
-    it("should handle empty output (clean repo)", async () => {
+    it("reports no changes for an empty porcelain output", async () => {
       setupExecResult("");
       const git = createGitService({ cwd: "/test" });
 
@@ -177,7 +166,7 @@ describe("createGitService", () => {
       expect(status.branch).toBeNull();
     });
 
-    it("should return empty status when git command fails", async () => {
+    it("reports isGitRepo=false when the git command fails", async () => {
       setupExecError(new Error("fatal: not a git repository"));
       const git = createGitService({ cwd: "/test" });
 
@@ -188,7 +177,7 @@ describe("createGitService", () => {
       expect(status.hasChanges).toBe(false);
     });
 
-    it("should skip lines shorter than 3 characters", async () => {
+    it("ignores porcelain lines shorter than the status prefix", async () => {
       setupExecResult("## main\nXY\n");
       const git = createGitService({ cwd: "/test" });
 
@@ -200,14 +189,14 @@ describe("createGitService", () => {
   });
 
   describe("isGitInstalled", () => {
-    it("should return true when git is available", async () => {
+    it("returns true when the git binary responds", async () => {
       setupExecResult("git version 2.40.0");
       const git = createGitService();
 
       expect(await git.isGitInstalled()).toBe(true);
     });
 
-    it("should return false when git is not found", async () => {
+    it("returns false when the git binary is missing", async () => {
       setupExecError(new Error("ENOENT"));
       const git = createGitService();
 
@@ -216,46 +205,26 @@ describe("createGitService", () => {
   });
 
   describe("getDiff", () => {
-    it("should call git diff --cached for staged mode", async () => {
-      setupExecResult("diff --git a/file.ts b/file.ts\n");
+    it.each([
+      { mode: "staged" as const, expectedArgs: ["diff", "--cached"] },
+      { mode: "unstaged" as const, expectedArgs: ["diff"] },
+      { mode: "files" as const, expectedArgs: ["diff"] },
+    ])("returns diff output for mode=$mode and invokes git with $expectedArgs", async ({ mode, expectedArgs }) => {
+      const diffOutput = "diff --git a/file.ts b/file.ts\n";
+      setupExecResult(diffOutput);
       const git = createGitService({ cwd: "/test" });
 
-      await git.getDiff("staged");
+      const result = await git.getDiff(mode);
 
+      expect(result).toBe(diffOutput);
       expect(mockExecFileAsync).toHaveBeenCalledWith(
         "git",
-        ["diff", "--cached"],
+        expectedArgs,
         expect.objectContaining({ cwd: "/test" }),
       );
     });
 
-    it("should call git diff for unstaged mode", async () => {
-      setupExecResult("diff --git a/file.ts b/file.ts\n");
-      const git = createGitService({ cwd: "/test" });
-
-      await git.getDiff("unstaged");
-
-      expect(mockExecFileAsync).toHaveBeenCalledWith(
-        "git",
-        ["diff"],
-        expect.objectContaining({ cwd: "/test" }),
-      );
-    });
-
-    it("should call git diff for files mode (falls through to unstaged)", async () => {
-      setupExecResult("");
-      const git = createGitService({ cwd: "/test" });
-
-      await git.getDiff("files");
-
-      expect(mockExecFileAsync).toHaveBeenCalledWith(
-        "git",
-        ["diff"],
-        expect.objectContaining({ cwd: "/test" }),
-      );
-    });
-
-    it("should return empty string when no diff", async () => {
+    it("returns an empty string when git produces no diff output", async () => {
       setupExecResult("");
       const git = createGitService({ cwd: "/test" });
 
@@ -266,7 +235,7 @@ describe("createGitService", () => {
   });
 
   describe("getBlame", () => {
-    it("should parse porcelain blame output", async () => {
+    it("returns author, commit, and summary from porcelain blame output", async () => {
       const porcelainOutput = [
         "abc1234 1 1 1",
         "author John Doe",
@@ -294,7 +263,7 @@ describe("createGitService", () => {
       expect(blame!.commitDate).toBe(new Date(1700000000 * 1000).toISOString());
     });
 
-    it("should return null when blame command fails", async () => {
+    it("returns null when the blame command fails", async () => {
       setupExecError(new Error("fatal: no such path"));
       const git = createGitService({ cwd: "/test" });
 
@@ -305,7 +274,7 @@ describe("createGitService", () => {
   });
 
   describe("getFileLines", () => {
-    it("should return correct line slice for startLine/endLine", async () => {
+    it("returns the requested 1-based inclusive line slice", async () => {
       const fileContent = "line1\nline2\nline3\nline4\nline5";
       setupExecResult(fileContent);
       const git = createGitService({ cwd: "/test" });
@@ -315,7 +284,7 @@ describe("createGitService", () => {
       expect(lines).toEqual(["line2", "line3", "line4"]);
     });
 
-    it("returns empty array when lines are out of range", async () => {
+    it("returns an empty array when the requested range falls past the file end", async () => {
       const fileContent = "line1\nline2";
       setupExecResult(fileContent);
       const git = createGitService({ cwd: "/test" });
@@ -325,7 +294,7 @@ describe("createGitService", () => {
       expect(lines).toEqual([]);
     });
 
-    it("should return empty array when command fails", async () => {
+    it("returns an empty array when the underlying command fails", async () => {
       setupExecError(new Error("fatal: path not found"));
       const git = createGitService({ cwd: "/test" });
 
@@ -336,7 +305,7 @@ describe("createGitService", () => {
   });
 
   describe("getHeadCommit", () => {
-    it("should return ok with commit hash on success", async () => {
+    it("returns the trimmed commit hash on success", async () => {
       setupExecResult("abc123def456\n");
       const git = createGitService({ cwd: "/test" });
 
@@ -348,7 +317,7 @@ describe("createGitService", () => {
       }
     });
 
-    it("should return err when stdout is empty", async () => {
+    it("returns an error result when stdout is blank", async () => {
       setupExecResult("  \n");
       const git = createGitService({ cwd: "/test" });
 
@@ -360,7 +329,7 @@ describe("createGitService", () => {
       }
     });
 
-    it("should return err when command fails", async () => {
+    it("returns an error result when the rev-parse command fails", async () => {
       setupExecError(new Error("fatal: not a git repo"));
       const git = createGitService({ cwd: "/test" });
 
@@ -371,7 +340,7 @@ describe("createGitService", () => {
   });
 
   describe("getStatusHash", () => {
-    it("should return a hex hash when there are changes", async () => {
+    it("returns a 16-char hex hash when the working tree has changes", async () => {
       setupExecResult(" M file1.ts\n M file2.ts\n");
       const git = createGitService({ cwd: "/test" });
 
@@ -380,7 +349,7 @@ describe("createGitService", () => {
       expect(hash).toMatch(/^[0-9a-f]{16}$/);
     });
 
-    it("should return empty string when no changes", async () => {
+    it("returns an empty string when there are no changes", async () => {
       setupExecResult("");
       const git = createGitService({ cwd: "/test" });
 
@@ -389,7 +358,7 @@ describe("createGitService", () => {
       expect(hash).toBe("");
     });
 
-    it("should ignore .diffgazer workspace files when hashing", async () => {
+    it("treats workspace-only .diffgazer changes as no changes", async () => {
       setupExecResult("?? .diffgazer/context.md\n?? .diffgazer/context.json\n");
       const git = createGitService({ cwd: "/test" });
 
@@ -398,7 +367,7 @@ describe("createGitService", () => {
       expect(hash).toBe("");
     });
 
-    it("should hash user changes even when .diffgazer files are present", async () => {
+    it("hashes user changes even when .diffgazer files are also present", async () => {
       setupExecResult(" M src/app.ts\n?? .diffgazer/context.md\n");
       const git = createGitService({ cwd: "/test" });
 
@@ -407,8 +376,11 @@ describe("createGitService", () => {
       expect(hash).toMatch(/^[0-9a-f]{16}$/);
     });
 
-    it("should include similarly named top-level directories in hash", async () => {
-      setupExecResult(" M .diffgazer-backup/config.json\n");
+    it.each([
+      { description: "similarly named top-level directories", output: " M .diffgazer-backup/config.json\n" },
+      { description: "nested .diffgazer directories", output: " M src/.diffgazer/config.json\n" },
+    ])("includes $description in the hash", async ({ output }) => {
+      setupExecResult(output);
       const git = createGitService({ cwd: "/test" });
 
       const hash = await git.getStatusHash();
@@ -416,16 +388,7 @@ describe("createGitService", () => {
       expect(hash).toMatch(/^[0-9a-f]{16}$/);
     });
 
-    it("should include nested .diffgazer directories in hash", async () => {
-      setupExecResult(" M src/.diffgazer/config.json\n");
-      const git = createGitService({ cwd: "/test" });
-
-      const hash = await git.getStatusHash();
-
-      expect(hash).toMatch(/^[0-9a-f]{16}$/);
-    });
-
-    it("should return empty string when command fails", async () => {
+    it("returns an empty string when the underlying command fails", async () => {
       setupExecError(new Error("git error"));
       const git = createGitService({ cwd: "/test" });
 

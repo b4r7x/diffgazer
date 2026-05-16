@@ -1,5 +1,4 @@
-import assert from "node:assert/strict";
-import test, { describe } from "node:test";
+import { test, describe, expect } from "vitest";
 import {
   deriveDiagnosticsActions,
   triggerDiagnosticsRefreshAll,
@@ -12,8 +11,8 @@ describe("deriveDiagnosticsActions", () => {
       isRefreshing: false,
       contextStatus: "missing",
     });
-    assert.equal(result.contextActionLabel, "Generate Context");
-    assert.equal(result.contextActionDisabled, false);
+    expect(result.contextActionLabel).toBe("Generate Context");
+    expect(result.contextActionDisabled).toBe(false);
   });
 
   test("shows 'Regenerate Context' when a snapshot is ready", () => {
@@ -22,8 +21,8 @@ describe("deriveDiagnosticsActions", () => {
       isRefreshing: false,
       contextStatus: "ready",
     });
-    assert.equal(result.contextActionLabel, "Regenerate Context");
-    assert.equal(result.contextActionDisabled, false);
+    expect(result.contextActionLabel).toBe("Regenerate Context");
+    expect(result.contextActionDisabled).toBe(false);
   });
 
   test("disables and shows 'Regenerating...' while refreshing", () => {
@@ -32,8 +31,8 @@ describe("deriveDiagnosticsActions", () => {
       isRefreshing: true,
       contextStatus: "ready",
     });
-    assert.equal(result.contextActionLabel, "Regenerating...");
-    assert.equal(result.contextActionDisabled, true);
+    expect(result.contextActionLabel).toBe("Regenerating...");
+    expect(result.contextActionDisabled).toBe(true);
   });
 
   test("disables action when canRegenerate is false", () => {
@@ -42,7 +41,7 @@ describe("deriveDiagnosticsActions", () => {
       isRefreshing: false,
       contextStatus: "missing",
     });
-    assert.equal(result.contextActionDisabled, true);
+    expect(result.contextActionDisabled).toBe(true);
   });
 
   test("treats loading and error context status as 'no snapshot yet' (Generate)", () => {
@@ -52,7 +51,7 @@ describe("deriveDiagnosticsActions", () => {
         isRefreshing: false,
         contextStatus,
       });
-      assert.equal(result.contextActionLabel, "Generate Context");
+      expect(result.contextActionLabel).toBe("Generate Context");
     }
   });
 
@@ -67,8 +66,8 @@ describe("deriveDiagnosticsActions", () => {
       isRefreshing: true,
       contextStatus: "missing",
     });
-    assert.equal(ready.contextActionLabel, "Regenerating...");
-    assert.equal(missing.contextActionLabel, "Regenerating...");
+    expect(ready.contextActionLabel).toBe("Regenerating...");
+    expect(missing.contextActionLabel).toBe("Regenerating...");
   });
 });
 
@@ -84,8 +83,8 @@ describe("triggerDiagnosticsRefreshAll", () => {
         refetched = true;
       },
     });
-    assert.equal(retried, true);
-    assert.equal(refetched, true);
+    expect(retried).toBe(true);
+    expect(refetched).toBe(true);
   });
 
   test("settles even when one of the calls rejects", async () => {
@@ -95,8 +94,8 @@ describe("triggerDiagnosticsRefreshAll", () => {
       },
       refetchContext: async () => "ok",
     });
-    assert.equal(results.length, 2);
-    assert.equal(results[0]?.status, "rejected");
-    assert.equal(results[1]?.status, "fulfilled");
+    expect(results.length).toBe(2);
+    expect(results[0]?.status).toBe("rejected");
+    expect(results[1]?.status).toBe("fulfilled");
   });
 });

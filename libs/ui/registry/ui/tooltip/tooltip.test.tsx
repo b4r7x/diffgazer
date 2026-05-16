@@ -1,16 +1,8 @@
-import { render, screen, act, fireEvent } from "@testing-library/react"
+import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { axe } from "../../../testing/utils.js"
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
+import { describe, it, expect } from "vitest"
 import { Tooltip } from "./index.js"
-
-beforeEach(() => {
-  vi.useFakeTimers()
-})
-
-afterEach(() => {
-  vi.useRealTimers()
-})
 
 describe("Tooltip", () => {
   it("renders content when defaultOpen is true", () => {
@@ -23,23 +15,18 @@ describe("Tooltip", () => {
     expect(screen.getByText("Tip text")).toBeInTheDocument()
   })
 
-  it("does not open when enabled is false", () => {
+  it("does not open when enabled is false", async () => {
+    const user = userEvent.setup()
     render(
       <Tooltip content="Tip text" enabled={false} delayMs={0}>
         <button>Hover me</button>
       </Tooltip>
     )
-    const trigger = screen.getByText("Hover me")
-    fireEvent.pointerEnter(trigger)
-    fireEvent.mouseEnter(trigger)
-    act(() => {
-      vi.advanceTimersByTime(500)
-    })
+    await user.hover(screen.getByText("Hover me"))
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument()
   })
 
   it("has no a11y violations when open", async () => {
-    vi.useRealTimers()
     const { container } = render(
       <div>
         <Tooltip content="Tip text" defaultOpen>
@@ -51,7 +38,6 @@ describe("Tooltip", () => {
   })
 
   it("has no a11y violations when closed", async () => {
-    vi.useRealTimers()
     const { container } = render(
       <div>
         <Tooltip content="Tip text">
@@ -65,7 +51,6 @@ describe("Tooltip", () => {
 
 describe("Tooltip keyboard", () => {
   it("shows on focus via tab", async () => {
-    vi.useRealTimers()
     render(
       <Tooltip content="Tip text" delayMs={0}>
         <button>Focus me</button>
@@ -77,7 +62,6 @@ describe("Tooltip keyboard", () => {
   })
 
   it("dismisses on Escape", async () => {
-    vi.useRealTimers()
     render(
       <Tooltip content="Tip text" defaultOpen>
         <button>Hover me</button>
@@ -92,8 +76,7 @@ describe("Tooltip keyboard", () => {
 })
 
 describe("Tooltip trigger semantics", () => {
-  it("enhances an interactive child without nesting controls", async () => {
-    vi.useRealTimers()
+  it("enhances an interactive child without nesting controls", () => {
     render(
       <Tooltip content="Tip text">
         <button>Hover me</button>
@@ -104,21 +87,22 @@ describe("Tooltip trigger semantics", () => {
     expect(screen.getAllByRole("button")).toHaveLength(1)
   })
 
-  it("does not expose passive text as a button", () => {
+  it("does not expose passive text as a button", async () => {
+    const user = userEvent.setup()
     render(
       <Tooltip content="Text tip" delayMs={0}>
         Passive text
       </Tooltip>
     )
 
-    const trigger = screen.getByText("Passive text")
     expect(screen.queryByRole("button", { name: "Passive text" })).not.toBeInTheDocument()
 
-    fireEvent.mouseEnter(trigger)
+    await user.hover(screen.getByText("Passive text"))
     expect(screen.getByRole("tooltip")).toBeInTheDocument()
   })
 
-  it("wraps a disabled native trigger without replacing its semantics", () => {
+  it("wraps a disabled native trigger without replacing its semantics", async () => {
+    const user = userEvent.setup()
     render(
       <Tooltip content="Disabled tip" delayMs={0}>
         <button disabled>Unavailable</button>
@@ -132,7 +116,7 @@ describe("Tooltip trigger semantics", () => {
     expect(wrapper).not.toHaveAttribute("role")
     expect(wrapper).not.toHaveAttribute("tabindex")
 
-    fireEvent.mouseEnter(wrapper)
+    await user.hover(wrapper)
     expect(screen.getByRole("tooltip")).toBeInTheDocument()
   })
 })

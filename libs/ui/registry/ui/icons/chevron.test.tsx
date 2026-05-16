@@ -3,6 +3,8 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { Chevron } from "./index.js";
 
+// axe skipped: decorative SVG icon with no semantic role under test.
+
 describe("Chevron", () => {
   it("forwards svg props and refs", () => {
     const ref = createRef<SVGSVGElement>();

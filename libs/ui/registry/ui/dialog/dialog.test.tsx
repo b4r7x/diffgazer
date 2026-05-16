@@ -29,6 +29,22 @@ function renderDialog(props: { open?: boolean; defaultOpen?: boolean; onOpenChan
   )
 }
 
+// Backdrop click logic compares the click coordinate to the dialog's bounding rect.
+// jsdom layout is 0x0, so mock the rect so a click at (80,120) is "outside" and (200,200) is "inside".
+function mockDialogBounds(dialog: HTMLElement) {
+  vi.spyOn(dialog, "getBoundingClientRect").mockReturnValue({
+    x: 100,
+    y: 100,
+    width: 320,
+    height: 240,
+    top: 100,
+    right: 420,
+    bottom: 340,
+    left: 100,
+    toJSON() {},
+  })
+}
+
 describe("Dialog", () => {
   it("opens when trigger is clicked and calls onOpenChange in controlled mode", async () => {
     const onOpenChange = vi.fn()
@@ -49,6 +65,7 @@ describe("Dialog", () => {
     renderDialog({ defaultOpen: true })
     const dialog = screen.getByRole("dialog")
     expect(dialog).toHaveAttribute("data-state", "open")
+    // fireEvent retained: native <dialog> cancel event has no user-event equivalent
     fireEvent(dialog, new Event("cancel", { bubbles: false }))
     expect(dialog).toHaveAttribute("data-state", "closed")
   })
@@ -68,18 +85,9 @@ describe("Dialog", () => {
       </Dialog>
     )
     const dialog = screen.getByRole("dialog")
-    vi.spyOn(dialog, "getBoundingClientRect").mockReturnValue({
-      x: 100,
-      y: 100,
-      width: 320,
-      height: 240,
-      top: 100,
-      right: 420,
-      bottom: 340,
-      left: 100,
-      toJSON() {},
-    })
+    mockDialogBounds(dialog)
 
+    // fireEvent retained: backdrop close requires explicit clientX/clientY to land outside dialog bounds
     fireEvent.click(dialog, { clientX: 80, clientY: 120 })
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })
@@ -96,18 +104,9 @@ describe("Dialog", () => {
     )
 
     const dialog = screen.getByRole("dialog", { name: "Bounded dialog" })
-    vi.spyOn(dialog, "getBoundingClientRect").mockReturnValue({
-      x: 100,
-      y: 100,
-      width: 320,
-      height: 240,
-      top: 100,
-      right: 420,
-      bottom: 340,
-      left: 100,
-      toJSON() {},
-    })
+    mockDialogBounds(dialog)
 
+    // fireEvent retained: backdrop logic needs clientX/clientY to evaluate inside-vs-outside
     fireEvent.click(dialog, { clientX: 200, clientY: 200 })
 
     expect(onOpenChange).not.toHaveBeenCalled()
@@ -126,18 +125,9 @@ describe("Dialog", () => {
     )
 
     const dialog = screen.getByRole("dialog", { name: "Static dialog" })
-    vi.spyOn(dialog, "getBoundingClientRect").mockReturnValue({
-      x: 100,
-      y: 100,
-      width: 320,
-      height: 240,
-      top: 100,
-      right: 420,
-      bottom: 340,
-      left: 100,
-      toJSON() {},
-    })
+    mockDialogBounds(dialog)
 
+    // fireEvent retained: backdrop click needs explicit coordinates outside dialog bounds
     fireEvent.click(dialog, { clientX: 80, clientY: 120 })
 
     expect(onOpenChange).not.toHaveBeenCalled()
@@ -161,7 +151,9 @@ describe("Dialog", () => {
       </Dialog>
     )
 
+    // querySelector retained: the native <dialog> element drives the close-transition; the test needs the raw element to fire animationEnd against (the dialog role disappears once it begins closing)
     const dialog = document.querySelector("dialog")
+    // fireEvent retained: animationend has no user-event equivalent; presence transitions complete on this event
     if (dialog) fireEvent.animationEnd(dialog)
 
     expect(trigger).toHaveFocus()
@@ -191,6 +183,7 @@ describe("Dialog", () => {
     const dialog = screen.getByRole("dialog", { name: "Controlled dialog" })
     await userEvent.click(screen.getByRole("button", { name: "Close dialog" }))
     await waitFor(() => expect(dialog).toHaveAttribute("data-state", "closed"))
+    // fireEvent retained: animationend has no user-event equivalent
     fireEvent.animationEnd(dialog)
 
     await waitFor(() => expect(opener).toHaveFocus())
@@ -231,19 +224,21 @@ describe("Dialog", () => {
     const childDialog = screen.getByRole("dialog", { name: "Child dialog" })
     await userEvent.click(screen.getByRole("button", { name: "Close child" }))
     await waitFor(() => expect(childDialog).toHaveAttribute("data-state", "closed"))
+    // fireEvent retained: animationend has no user-event equivalent
     fireEvent.animationEnd(childDialog)
     await waitFor(() => expect(childOpener).toHaveFocus())
 
     const parentDialog = screen.getByRole("dialog", { name: "Parent dialog" })
     await userEvent.click(screen.getByRole("button", { name: "Close parent" }))
     await waitFor(() => expect(parentDialog).toHaveAttribute("data-state", "closed"))
+    // fireEvent retained: animationend has no user-event equivalent
     fireEvent.animationEnd(parentDialog)
     await waitFor(() => expect(opener).toHaveFocus())
   })
 
   it("keeps a closing dialog closed while it remains present for exit animation", () => {
     const { rerender } = renderDialog({ defaultOpen: true })
-    const dialog = screen.getByRole("dialog")
+    const dialog = screen.getByRole("dialog") as HTMLDialogElement
 
     dialog.close()
 
@@ -469,6 +464,7 @@ describe("Dialog", () => {
     )
 
     const trigger = screen.getByRole("button", { name: "Open child" })
+    // querySelector retained: asserting the ABSENCE of a nested-button structure is the contract (HTML nesting rule); negative role queries cannot prove a structural rule violation does not exist
     expect(container.querySelector("button button")).toBeNull()
     expect(await axe(container)).toHaveNoViolations()
 
@@ -534,6 +530,7 @@ describe("Dialog", () => {
     expect(firstDialog).toHaveAttribute("data-state", "open")
     expect(document.body).toContainElement(secondDialog)
 
+    // fireEvent retained: animationend has no user-event equivalent
     fireEvent.animationEnd(secondDialog)
 
     await waitFor(() => expect(document.body).not.toContainElement(secondDialog))
@@ -647,19 +644,11 @@ describe("Dialog", () => {
     )
 
     const dialog = screen.getByRole("dialog", { name: "Composed dialog" })
-    vi.spyOn(dialog, "getBoundingClientRect").mockReturnValue({
-      x: 100,
-      y: 100,
-      width: 320,
-      height: 240,
-      top: 100,
-      right: 420,
-      bottom: 340,
-      left: 100,
-      toJSON() {},
-    })
+    mockDialogBounds(dialog)
 
+    // fireEvent retained: backdrop click needs explicit coordinates outside dialog bounds
     fireEvent.click(dialog, { clientX: 80, clientY: 120 })
+    // fireEvent retained: native <dialog> cancel event has no user-event equivalent
     fireEvent(dialog, new Event("cancel", { bubbles: false }))
 
     expect(onClick).toHaveBeenCalled()

@@ -1,8 +1,7 @@
-import assert from "node:assert/strict";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import test, { afterEach, beforeEach, describe } from "node:test";
+import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { runInitWorkflow } from "@diffgazer/registry/cli";
 import { buildInitPlannedPaths, KNOWN_LOCKFILES } from "./init.js";
 
@@ -24,23 +23,23 @@ describe("dgadd init plannedPaths", () => {
   test("includes package.json and every known lockfile so installer side effects can be rolled back", () => {
     const paths = buildInitPlannedPaths(root, { componentsDir: "src/components/ui" });
 
-    assert.ok(paths.includes("package.json"), "package.json must be planned for install-step rollback");
+    expect(paths, "package.json must be planned for install-step rollback").toContain("package.json");
     for (const lockfile of KNOWN_LOCKFILES) {
-      assert.ok(
-        paths.includes(lockfile),
+      expect(
+        paths,
         `lockfile ${lockfile} must be planned so a fresh-create on install is undone on rollback`,
-      );
+      ).toContain(lockfile);
     }
   });
 
   test("includes the resolved source-tree directories and seed files", () => {
     const paths = buildInitPlannedPaths(root, { componentsDir: "src/components/ui" });
 
-    assert.ok(paths.includes("src/components/ui/"));
-    assert.ok(paths.includes("src/hooks/"));
-    assert.ok(paths.includes("src/lib/utils.ts"));
-    assert.ok(paths.includes("src/styles/theme.css"));
-    assert.ok(paths.includes("src/styles/styles.css"));
+    expect(paths).toContain("src/components/ui/");
+    expect(paths).toContain("src/hooks/");
+    expect(paths).toContain("src/lib/utils.ts");
+    expect(paths).toContain("src/styles/theme.css");
+    expect(paths).toContain("src/styles/styles.css");
   });
 });
 
@@ -49,7 +48,7 @@ describe("dgadd init rollback after install side effects", () => {
     const originalPackageJson = `${JSON.stringify({ name: "fixture", type: "module" }, null, 2)}\n`;
     writeFileSync(join(root, "package.json"), originalPackageJson);
 
-    await assert.rejects(
+    await expect(
       runInitWorkflow({
         cwd: root,
         configFileName: "diffgazer.json",
@@ -75,24 +74,20 @@ describe("dgadd init rollback after install side effects", () => {
         writeConfig: () => { throw new Error("simulated writeConfig failure"); },
         nextSteps: [],
       }),
-      /simulated writeConfig failure/,
-    );
+    ).rejects.toThrow(/simulated writeConfig failure/);
 
-    assert.equal(
+    expect(
       readFileSync(join(root, "package.json"), "utf-8"),
-      originalPackageJson,
       "package.json must be restored to its pre-init bytes",
-    );
-    assert.equal(
+    ).toBe(originalPackageJson);
+    expect(
       existsSync(join(root, "pnpm-lock.yaml")),
-      false,
       "freshly-created lockfile must be removed on rollback",
-    );
-    assert.equal(
+    ).toBe(false);
+    expect(
       existsSync(join(root, "diffgazer.json")),
-      false,
       "config file must not be left behind when writeConfig throws before completion",
-    );
+    ).toBe(false);
   });
 
   test("restores a pre-existing lockfile content when writeConfig fails after install", async () => {
@@ -101,7 +96,7 @@ describe("dgadd init rollback after install side effects", () => {
     writeFileSync(join(root, "package.json"), originalPackageJson);
     writeFileSync(join(root, "pnpm-lock.yaml"), originalLockfile);
 
-    await assert.rejects(
+    await expect(
       runInitWorkflow({
         cwd: root,
         configFileName: "diffgazer.json",
@@ -118,10 +113,9 @@ describe("dgadd init rollback after install side effects", () => {
         writeConfig: () => { throw new Error("boom"); },
         nextSteps: [],
       }),
-      /boom/,
-    );
+    ).rejects.toThrow(/boom/);
 
-    assert.equal(readFileSync(join(root, "package.json"), "utf-8"), originalPackageJson);
-    assert.equal(readFileSync(join(root, "pnpm-lock.yaml"), "utf-8"), originalLockfile);
+    expect(readFileSync(join(root, "package.json"), "utf-8")).toBe(originalPackageJson);
+    expect(readFileSync(join(root, "pnpm-lock.yaml"), "utf-8")).toBe(originalLockfile);
   });
 });

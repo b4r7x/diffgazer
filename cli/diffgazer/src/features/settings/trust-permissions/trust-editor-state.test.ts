@@ -1,5 +1,4 @@
-import assert from "node:assert/strict";
-import test, { describe } from "node:test";
+import { test, describe, expect } from "vitest";
 import type { TrustConfig } from "@diffgazer/core/schemas/config";
 import {
   buildSavePayload,
@@ -23,24 +22,21 @@ function makeTrust(overrides: Partial<TrustConfig> = {}): TrustConfig {
 
 describe("getTrustEditorKey", () => {
   test("uses trust.projectId and trustedAt when trust is present", () => {
-    assert.equal(
+    expect(
       getTrustEditorKey({ projectId: "proj-1", repoRoot: "/work/proj", trust: makeTrust() }),
-      `proj-1:${TRUSTED_AT}`,
-    );
+    ).toBe(`proj-1:${TRUSTED_AT}`);
   });
 
   test("falls back to projectId/repoRoot composite when untrusted", () => {
-    assert.equal(
+    expect(
       getTrustEditorKey({ projectId: "proj-1", repoRoot: "/work/proj", trust: null }),
-      "proj-1:/work/proj:untrusted",
-    );
+    ).toBe("proj-1:/work/proj:untrusted");
   });
 
   test("uses loading sentinel when project info is missing", () => {
-    assert.equal(
+    expect(
       getTrustEditorKey({ projectId: null, repoRoot: null, trust: null }),
-      "loading:loading:untrusted",
-    );
+    ).toBe("loading:loading:untrusted");
   });
 });
 
@@ -53,9 +49,9 @@ describe("getInitialDraft", () => {
         capabilities: { readFiles: true, runCommands: true },
       }),
     });
-    assert.equal(draft.capabilities.readFiles, true);
-    assert.equal(draft.capabilities.runCommands, false);
-    assert.equal(draft.editorKey, `proj-1:${TRUSTED_AT}`);
+    expect(draft.capabilities.readFiles).toBe(true);
+    expect(draft.capabilities.runCommands).toBe(false);
+    expect(draft.editorKey).toBe(`proj-1:${TRUSTED_AT}`);
   });
 
   test("defaults to no capabilities when project is untrusted", () => {
@@ -64,7 +60,7 @@ describe("getInitialDraft", () => {
       repoRoot: "/work/proj",
       trust: null,
     });
-    assert.deepEqual(draft.capabilities, { readFiles: false, runCommands: false });
+    expect(draft.capabilities).toEqual({ readFiles: false, runCommands: false });
   });
 });
 
@@ -80,8 +76,8 @@ describe("resolveEditorView", () => {
       capabilities: { readFiles: false, runCommands: false },
     };
     const view = resolveEditorView(draft, input);
-    assert.deepEqual(view.capabilities, { readFiles: false, runCommands: false });
-    assert.equal(view.isTrusted, true);
+    expect(view.capabilities).toEqual({ readFiles: false, runCommands: false });
+    expect(view.isTrusted).toBe(true);
   });
 
   test("resets to persisted capabilities when trust audit timestamp changes", () => {
@@ -101,8 +97,8 @@ describe("resolveEditorView", () => {
       trust: refreshedTrust,
     };
     const view = resolveEditorView(draft, refreshedInput);
-    assert.equal(view.editorKey, `proj-1:${refreshedTrust.trustedAt}`);
-    assert.deepEqual(view.capabilities, { readFiles: true, runCommands: false });
+    expect(view.editorKey).toBe(`proj-1:${refreshedTrust.trustedAt}`);
+    expect(view.capabilities).toEqual({ readFiles: true, runCommands: false });
   });
 
   test("isTrusted reflects current trust.capabilities.readFiles only", () => {
@@ -114,7 +110,7 @@ describe("resolveEditorView", () => {
         trust: makeTrust({ capabilities: { readFiles: false, runCommands: false } }),
       },
     );
-    assert.equal(view.isTrusted, false);
+    expect(view.isTrusted).toBe(false);
   });
 });
 
@@ -128,13 +124,13 @@ describe("buildSavePayload", () => {
       capabilities: { readFiles: true, runCommands: false },
       now: () => now,
     });
-    assert.equal(result.kind, "ready");
+    expect(result.kind).toBe("ready");
     if (result.kind !== "ready") return;
-    assert.equal(result.payload.projectId, "proj-1");
-    assert.equal(result.payload.repoRoot, "/work/proj");
-    assert.equal(result.payload.trustMode, "session");
-    assert.equal(result.payload.trustedAt, now.toISOString());
-    assert.deepEqual(result.payload.capabilities, { readFiles: true, runCommands: false });
+    expect(result.payload.projectId).toBe("proj-1");
+    expect(result.payload.repoRoot).toBe("/work/proj");
+    expect(result.payload.trustMode).toBe("session");
+    expect(result.payload.trustedAt).toBe(now.toISOString());
+    expect(result.payload.capabilities).toEqual({ readFiles: true, runCommands: false });
   });
 
   test("defaults trustMode to persistent when no existing trust", () => {
@@ -145,9 +141,9 @@ describe("buildSavePayload", () => {
       capabilities: { readFiles: true, runCommands: false },
       now: () => new Date("2026-05-14T10:00:00.000Z"),
     });
-    assert.equal(result.kind, "ready");
+    expect(result.kind).toBe("ready");
     if (result.kind !== "ready") return;
-    assert.equal(result.payload.trustMode, "persistent");
+    expect(result.payload.trustMode).toBe("persistent");
   });
 
   test("blocks save when projectId is missing", () => {
@@ -158,9 +154,9 @@ describe("buildSavePayload", () => {
       capabilities: { readFiles: true, runCommands: false },
       now: () => new Date(),
     });
-    assert.equal(result.kind, "blocked");
+    expect(result.kind).toBe("blocked");
     if (result.kind !== "blocked") return;
-    assert.equal(result.reason, "project-missing");
+    expect(result.reason).toBe("project-missing");
   });
 
   test("blocks save when repoRoot is missing", () => {
@@ -171,7 +167,7 @@ describe("buildSavePayload", () => {
       capabilities: { readFiles: true, runCommands: false },
       now: () => new Date(),
     });
-    assert.equal(result.kind, "blocked");
+    expect(result.kind).toBe("blocked");
   });
 
   test("each `now()` invocation produces a fresh trustedAt timestamp", () => {
@@ -193,8 +189,8 @@ describe("buildSavePayload", () => {
       now: next,
     });
     if (first.kind !== "ready" || second.kind !== "ready") {
-      assert.fail("expected both saves to be ready");
+      expect.fail("expected both saves to be ready");
     }
-    assert.notEqual(first.payload.trustedAt, second.payload.trustedAt);
+    expect(first.payload.trustedAt).not.toBe(second.payload.trustedAt);
   });
 });

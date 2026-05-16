@@ -1,5 +1,4 @@
-import assert from "node:assert/strict";
-import test, { describe, afterEach } from "node:test";
+import { test, describe, afterEach, expect } from "vitest";
 import type { ReactNode } from "react";
 import { render, cleanup } from "ink-testing-library";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
@@ -73,10 +72,10 @@ describe("ModelSelectOverlay ArrowUp after list shrinks (W9.5 bug fix)", () => {
     await flush();
 
     const initialFrame = lastFrame();
-    assert.ok(
+    expect(
       initialFrame?.includes(GEMINI_MODEL_INFO["gemini-3-flash-preview"].name),
       "initial frame should list gemini models",
-    );
+    ).toBeTruthy();
 
     // Move highlight to the LAST item in the full (5-item) list.
     for (let i = 0; i < 4; i += 1) {
@@ -86,11 +85,10 @@ describe("ModelSelectOverlay ArrowUp after list shrinks (W9.5 bug fix)", () => {
 
     const lastModelName = GEMINI_MODEL_INFO["gemini-2.5-pro"].name;
     const afterDown = countPrefixes(lastFrame(), lastModelName);
-    assert.equal(
+    expect(
       afterDown.highlighted,
-      1,
       `after 4 ArrowDown presses, the last gemini model should be highlighted. Frame: ${lastFrame()}`,
-    );
+    ).toBe(1);
 
     // Shrink the filter to "paid" — 2 models out of 5. With Gemini static data:
     //   free: 2.5-flash, 2.5-flash-lite, 2.5-pro
@@ -106,24 +104,23 @@ describe("ModelSelectOverlay ArrowUp after list shrinks (W9.5 bug fix)", () => {
     const paidSecond = GEMINI_MODEL_INFO["gemini-3-pro-preview"].name;
     const freeAny = GEMINI_MODEL_INFO["gemini-2.5-flash"].name;
     const shrunkenFrame = lastFrame();
-    assert.ok(
+    expect(
       shrunkenFrame?.includes(paidFirst) && shrunkenFrame?.includes(paidSecond),
       "after switching tier filter to 'paid', both paid models should be visible",
-    );
-    assert.ok(
+    ).toBeTruthy();
+    expect(
       !shrunkenFrame?.includes(freeAny),
       "after switching tier filter to 'paid', free models should not be visible",
-    );
+    ).toBeTruthy();
 
     // Before pressing ArrowUp: highlightIndex is still 4 (stale), but
     // safeHighlightIndex clamps to min(4, 1) = 1, so the second paid model
     // is highlighted.
     const beforeArrowUp = countPrefixes(lastFrame(), paidSecond);
-    assert.equal(
+    expect(
       beforeArrowUp.highlighted,
-      1,
       "before ArrowUp, the clamped (safeHighlightIndex=1) item should be highlighted",
-    );
+    ).toBe(1);
 
     // The bug being fixed by Wave 9 slot 05:
     //   Pre-fix:  setHighlightIndex((prev - 1 + len) % len) with stale prev=4
@@ -137,15 +134,13 @@ describe("ModelSelectOverlay ArrowUp after list shrinks (W9.5 bug fix)", () => {
     const afterArrowUpFirst = countPrefixes(lastFrame(), paidFirst);
     const afterArrowUpSecond = countPrefixes(lastFrame(), paidSecond);
 
-    assert.equal(
+    expect(
       afterArrowUpFirst.highlighted,
-      1,
       `after ArrowUp from clamped index 1, the FIRST paid model should be highlighted. Frame: ${lastFrame()}`,
-    );
-    assert.equal(
+    ).toBe(1);
+    expect(
       afterArrowUpSecond.highlighted,
-      0,
       "after ArrowUp from clamped index 1, the second paid model should no longer be highlighted",
-    );
+    ).toBe(0);
   });
 });

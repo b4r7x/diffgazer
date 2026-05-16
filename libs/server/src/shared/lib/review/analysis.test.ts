@@ -94,7 +94,7 @@ describe("runLensAnalysis", () => {
     vi.useRealTimers();
   });
 
-  it("should emit correct event sequence for successful analysis", async () => {
+  it("emits the agent, file, tool, and issue events in order on success", async () => {
     const diff = makeDiff(2);
     const issues = [makeIssue("1", "src/file-0.ts")];
     const client = makeMockAIClient(
@@ -138,7 +138,7 @@ describe("runLensAnalysis", () => {
     }
   });
 
-  it("should handle AI client error result", async () => {
+  it("propagates the AI client error and emits an agent_error event", async () => {
     const diff = makeDiff(1);
     const client = makeMockAIClient(
       err({ code: "MODEL_ERROR" as const, message: "Model failed" }),
@@ -167,7 +167,7 @@ describe("runLensAnalysis", () => {
     expect(errorEvent.error).toContain("MODEL_ERROR");
   });
 
-  it("should respect abort signal during file scanning", async () => {
+  it("stops scanning additional files once the abort signal fires", async () => {
     const diff = makeDiff(5);
     const client = makeMockAIClient(ok({ summary: "Clean", issues: [] }));
     const events: Array<AgentStreamEvent | StepEvent> = [];
@@ -195,7 +195,7 @@ describe("runLensAnalysis", () => {
     expect(result.ok).toBe(true);
   });
 
-  it("should ensure issue evidence from diff", async () => {
+  it("backfills empty issue evidence from the diff", async () => {
     const diff = makeDiff(1);
     const issue = makeIssue("1", "src/file-0.ts");
     issue.evidence = [];
@@ -224,7 +224,7 @@ describe("runLensAnalysis", () => {
     }
   });
 
-  it("should clean up progress timer on error", async () => {
+  it("stops emitting progress events after the generate call rejects", async () => {
     const diff = makeDiff(1);
     const rejectError = new Error("Network failure");
     const client: AIClient = {

@@ -1,6 +1,7 @@
 import { createRef } from "react"
 import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+import { testNavigationBehavior } from "../../../../keys/src/testing/navigation-behavior.js"
 import { axe } from "../../../testing/utils.js"
 import { describe, it, expect, vi } from "vitest"
 import { NavigationList } from "./index.js"
@@ -282,6 +283,7 @@ describe("NavigationList", () => {
     renderList({ defaultHighlighted: "two", focused: true })
 
     const oneOption = screen.getByRole("option", { name: "One" })
+    // querySelector retained: aria-hidden span has no accessible role; structural assertion is the contract (verifying the visual indicator element exists and has the expected opacity classes)
     const indicator = oneOption.querySelector("span[aria-hidden='true']") as HTMLElement
 
     expect(indicator).toBeTruthy()
@@ -469,4 +471,49 @@ describe("NavigationList", () => {
     expect(document.getElementById(option.id)).toBe(option)
   })
 
+})
+
+describe("NavigationList keyboard navigation", () => {
+  const ITEM_IDS = ["one", "two", "three"] as const
+
+  testNavigationBehavior({
+    setup: () => {
+      const rendered = render(
+        <NavigationList aria-label="Test nav" defaultHighlighted="one">
+          <NavigationList.Item id="one">
+            <NavigationList.Title>One</NavigationList.Title>
+          </NavigationList.Item>
+          <NavigationList.Item id="two">
+            <NavigationList.Title>Two</NavigationList.Title>
+          </NavigationList.Item>
+          <NavigationList.Item id="three">
+            <NavigationList.Title>Three</NavigationList.Title>
+          </NavigationList.Item>
+        </NavigationList>,
+      )
+      screen.getByRole("listbox").focus()
+      return rendered
+    },
+    items: ["one", "two", "three"],
+    initialActive: 0,
+    cases: [
+      { key: "{ArrowDown}", expectedActiveIndex: 1, label: "ArrowDown" },
+      { key: "{ArrowDown}{ArrowDown}", expectedActiveIndex: 2, label: "ArrowDown ArrowDown" },
+      { key: "{ArrowDown}{ArrowDown}{ArrowDown}", expectedActiveIndex: 0, label: "ArrowDown wraps to start" },
+      { key: "{ArrowUp}", expectedActiveIndex: 2, label: "ArrowUp wraps to end" },
+      { key: "{End}", expectedActiveIndex: 2, label: "End jumps to last" },
+      { key: "{Home}", expectedActiveIndex: 0, label: "Home stays at first" },
+    ],
+    // Use data-value (the stable item id) as the lookup key — the title prepends a decorative
+    // indicator glyph that the default accessibleName resolver would concatenate with the label.
+    getActiveIndex: (rendered) => {
+      // querySelector retained: the lookup key IS the aria-activedescendant attribute presence (the test verifies ARIA wiring directly, not any listbox role match)
+      const listbox = rendered.container.querySelector("[aria-activedescendant]")
+      const activeId = listbox?.getAttribute("aria-activedescendant")
+      if (!activeId) return -1
+      const target = (listbox?.ownerDocument ?? document).getElementById(activeId)
+      const value = target?.getAttribute("data-value") ?? ""
+      return ITEM_IDS.findIndex((id) => id === value)
+    },
+  })
 })

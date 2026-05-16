@@ -12,6 +12,7 @@
     "preview": "vite preview --outDir .output/public",
     "pretest": "pnpm prepare:generated",
     "test": "vitest run",
+    "test:types": "vitest --typecheck --typecheck.only --run",
     "format": "biome format",
     "lint": "biome lint",
     "check": "biome check",

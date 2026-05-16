@@ -308,6 +308,7 @@ describe("provider-backed hooks are package-only", () => {
     expect(imports.length).toBeGreaterThan(0);
 
     for (const specifier of imports) {
+      if (!specifier) continue;
       const resolved = resolve(dirname(DEMO_INDEX_PATH), specifier);
       expect(
         existsSync(`${resolved}.tsx`) || existsSync(`${resolved}.ts`),

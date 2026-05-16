@@ -42,16 +42,14 @@ async function readSavedReview(id: string): Promise<SavedReview> {
 }
 
 async function waitForSavedReview(id: string, predicate: (review: SavedReview) => boolean): Promise<SavedReview> {
-  const deadline = Date.now() + 1_000;
-  let lastReview: SavedReview | null = null;
-
-  while (Date.now() < deadline) {
-    lastReview = await readSavedReview(id);
-    if (predicate(lastReview)) return lastReview;
-    await new Promise((resolve) => setTimeout(resolve, 10));
-  }
-
-  throw new Error(`Timed out waiting for saved review ${id}: ${JSON.stringify(lastReview)}`);
+  return vi.waitFor(
+    async () => {
+      const review = await readSavedReview(id);
+      if (!predicate(review)) throw new Error(`Predicate not yet satisfied for saved review ${id}`);
+      return review;
+    },
+    { timeout: 1000, interval: 10 },
+  );
 }
 
 const makeSaveOptions = (overrides: Record<string, unknown> = {}) => ({

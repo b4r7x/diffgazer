@@ -7,6 +7,7 @@ import { SEVERITY_ORDER } from "@diffgazer/core/schemas/ui";
 import { Footer } from "@/components/layout";
 import { FooterProvider, useFooterData } from "@diffgazer/core/footer";
 
+// Boundary mock: Router is the routing library; tests provide a stub Router context so navigation assertions can be made without a real route tree.
 vi.mock("@tanstack/react-router", () => ({
   useRouter: () => ({
     history: {
@@ -114,7 +115,9 @@ describe("ReviewResultsView keyboard regression", () => {
     await user.keyboard("{ArrowUp}");
 
     const filterGroup = screen.getByRole("group", { name: "Severity filter" });
-    await waitFor(() => expect(filterGroup).toContainElement(document.activeElement));
+    await waitFor(() =>
+      expect(filterGroup).toContainElement(document.activeElement as HTMLElement | null),
+    );
   });
 
   it("switches right-panel tabs with left and right arrows", async () => {
@@ -228,7 +231,7 @@ describe("ReviewResultsView keyboard regression", () => {
       if (originalScrollByDescriptor) {
         Object.defineProperty(HTMLElement.prototype, "scrollBy", originalScrollByDescriptor);
       } else {
-        delete HTMLElement.prototype.scrollBy;
+        Reflect.deleteProperty(HTMLElement.prototype, "scrollBy");
       }
     }
   });
@@ -239,7 +242,9 @@ describe("ReviewResultsView keyboard regression", () => {
 
     await user.keyboard("{ArrowUp}");
     const filterGroup = screen.getByRole("group", { name: "Severity filter" });
-    await waitFor(() => expect(filterGroup).toContainElement(document.activeElement));
+    await waitFor(() =>
+      expect(filterGroup).toContainElement(document.activeElement as HTMLElement | null),
+    );
 
     await user.keyboard("{ArrowDown}");
 
@@ -252,7 +257,9 @@ describe("ReviewResultsView keyboard regression", () => {
 
     await user.keyboard("{ArrowUp}");
     const filterGroup = screen.getByRole("group", { name: "Severity filter" });
-    await waitFor(() => expect(filterGroup).toContainElement(document.activeElement));
+    await waitFor(() =>
+      expect(filterGroup).toContainElement(document.activeElement as HTMLElement | null),
+    );
 
     for (let index = 1; index < SEVERITY_ORDER.length; index += 1) {
       await user.keyboard("{ArrowRight}");
@@ -320,7 +327,9 @@ describe("ReviewResultsView keyboard regression", () => {
 
     await user.keyboard("{ArrowUp}");
     const filterGroup = screen.getByRole("group", { name: "Severity filter" });
-    await waitFor(() => expect(filterGroup).toContainElement(document.activeElement));
+    await waitFor(() =>
+      expect(filterGroup).toContainElement(document.activeElement as HTMLElement | null),
+    );
 
     await user.keyboard("{ArrowRight}");
     await user.keyboard("{Enter}");

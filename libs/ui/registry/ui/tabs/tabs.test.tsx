@@ -1,5 +1,6 @@
-import { render, screen } from "@testing-library/react"
+import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+import { testNavigationBehavior } from "../../../../keys/src/testing/navigation-behavior.js"
 import { axe } from "../../../testing/utils.js"
 import { describe, it, expect, vi } from "vitest"
 import { Tabs } from "./index.js"
@@ -294,7 +295,7 @@ describe("Tabs", () => {
 
     const container = document.createElement("div")
     container.innerHTML = markup
-    const tabs = Array.from(container.querySelectorAll<HTMLElement>('[role="tab"]'))
+    const tabs = within(container).getAllByRole("tab")
     const selectedTabs = tabs.filter((tab) => tab.getAttribute("aria-selected") === "true")
     const tabbableTabs = tabs.filter((tab) => tab.getAttribute("tabindex") === "0")
 
@@ -437,5 +438,25 @@ describe("Tabs", () => {
 
     const missingPanel = screen.getByText("Missing trigger content")
     expect(missingPanel).not.toHaveAttribute("aria-labelledby")
+  })
+})
+
+describe("Tabs keyboard navigation", () => {
+  testNavigationBehavior({
+    setup: () => {
+      const rendered = renderTabs({ activationMode: "manual" })
+      screen.getByRole("tab", { name: "One" }).focus()
+      return rendered
+    },
+    items: ["One", "Two", "Three"],
+    initialActive: 0,
+    cases: [
+      { key: "{ArrowRight}", expectedActiveIndex: 1, label: "ArrowRight" },
+      { key: "{ArrowRight}{ArrowRight}", expectedActiveIndex: 2, label: "ArrowRight twice" },
+      { key: "{ArrowRight}{ArrowRight}{ArrowRight}", expectedActiveIndex: 0, label: "ArrowRight wraps" },
+      { key: "{ArrowLeft}", expectedActiveIndex: 2, label: "ArrowLeft wraps to end" },
+      { key: "{End}", expectedActiveIndex: 2, label: "End jumps to last" },
+      { key: "{Home}", expectedActiveIndex: 0, label: "Home stays at first" },
+    ],
   })
 })

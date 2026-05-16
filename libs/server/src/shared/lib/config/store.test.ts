@@ -30,26 +30,22 @@ function readJson<T>(filePath: string): T {
 }
 
 async function readJsonEventually<T>(filePath: string): Promise<T> {
-  const deadline = Date.now() + 1000;
-  while (Date.now() < deadline) {
-    if (existsSync(filePath)) {
+  return vi.waitFor(
+    () => {
+      if (!existsSync(filePath)) throw new Error(`Expected ${filePath} to exist`);
       return readJson<T>(filePath);
-    }
-    await new Promise((resolve) => setTimeout(resolve, 10));
-  }
-  throw new Error(`Expected ${filePath} to exist`);
+    },
+    { timeout: 1000, interval: 10 },
+  );
 }
 
 async function expectFileMissingEventually(filePath: string): Promise<void> {
-  const deadline = Date.now() + 1000;
-  while (Date.now() < deadline) {
-    if (!existsSync(filePath)) {
-      expect(existsSync(filePath)).toBe(false);
-      return;
-    }
-    await new Promise((resolve) => setTimeout(resolve, 10));
-  }
-  expect(existsSync(filePath)).toBe(false);
+  await vi.waitFor(
+    () => {
+      if (existsSync(filePath)) throw new Error(`Expected ${filePath} to be absent`);
+    },
+    { timeout: 1000, interval: 10 },
+  );
 }
 
 async function loadStore() {
@@ -68,9 +64,15 @@ function trustConfig(overrides: Partial<TrustConfig> = {}): TrustConfig {
 }
 
 describe("config store", () => {
+  let warnSpy: ReturnType<typeof vi.spyOn>;
+
   beforeEach(() => {
     diffgazerHome = mkdtempSync(join(tmpdir(), "diffgazer-store-"));
     process.env.DIFFGAZER_HOME = diffgazerHome;
+    // Suppress fire-and-forget persistence warnings emitted after teardown removes the temp dir.
+    // The store dispatches persistConfigAsync/persistSecretsAsync/persistTrustAsync without awaiting,
+    // so a pending write can land after rmSync; production keeps this UX-friendly fire-and-forget pattern.
+    warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     vi.resetModules();
     vi.clearAllMocks();
     keyring.isKeyringAvailable.mockReturnValue(true);
@@ -79,10 +81,10 @@ describe("config store", () => {
     keyring.deleteKeyringSecret.mockReturnValue({ ok: true, value: false });
   });
 
-  afterEach(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 50));
+  afterEach(() => {
     delete process.env.DIFFGAZER_HOME;
     rmSync(diffgazerHome, { recursive: true, force: true });
+    warnSpy.mockRestore();
   });
 
   it("loads default providers and settings when no files exist", async () => {
@@ -117,7 +119,7 @@ describe("config store", () => {
     expect(store.getActiveProvider()?.provider).toBe("gemini");
   });
 
-  it("updates settings and persists them to the temp config file", async () => {
+  it("persists updated settings to the config file", async () => {
     const store = await loadStore();
 
     const result = store.updateSettings({ theme: "dark" });
@@ -281,17 +283,10 @@ describe("config store", () => {
     });
     keyring.readKeyringSecret.mockReturnValue({ ok: true, value: "keyring-key" });
 
-    // Simulate an unwritable secrets file by making the directory read-only.
+    // Simulate an unwritable secrets file by replacing the file path with a directory.
     // The sync write will throw; the catch must NOT reach deleteKeyringSecret.
-    const home = diffgazerHome;
-    mkdirSync(home, { recursive: true });
-    // Write a sentinel that we will overwrite normally, then chmod the dir.
-    // On systems where chmod is unreliable, swap to a different strategy.
     try {
-      // Make the home directory read-only so writeFileSync inside persistSecrets fails.
-      // Use a file-not-directory path to force EISDIR/ENOENT.
       writeFileSync(secretsPath(), ""); // create
-      // Replace the path with a directory to force write failure on the file.
       rmSync(secretsPath());
       mkdirSync(secretsPath());
 

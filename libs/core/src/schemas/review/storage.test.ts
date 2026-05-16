@@ -13,39 +13,35 @@ describe("ReviewMetadataSchema transform — mode backwards compat", () => {
     fileCount: 3,
   };
 
-  it("uses mode field when provided", () => {
-    const result = ReviewMetadataSchema.parse({
-      ...baseMetadata,
-      mode: "staged",
-    });
+  it.each<{
+    name: string;
+    overrides: Record<string, unknown>;
+    expectedMode: "staged" | "unstaged";
+  }>([
+    {
+      name: "explicit mode wins",
+      overrides: { mode: "staged" },
+      expectedMode: "staged",
+    },
+    {
+      name: "legacy staged=true derives mode",
+      overrides: { staged: true },
+      expectedMode: "staged",
+    },
+    {
+      name: "legacy staged=false derives mode",
+      overrides: { staged: false },
+      expectedMode: "unstaged",
+    },
+    {
+      name: "missing both fields defaults to unstaged",
+      overrides: {},
+      expectedMode: "unstaged",
+    },
+  ])("derives mode: $name → $expectedMode", ({ overrides, expectedMode }) => {
+    const result = ReviewMetadataSchema.parse({ ...baseMetadata, ...overrides });
 
-    expect(result.mode).toBe("staged");
-  });
-
-  it("derives mode from staged=true when mode is missing", () => {
-    const result = ReviewMetadataSchema.parse({
-      ...baseMetadata,
-      staged: true,
-    });
-
-    expect(result.mode).toBe("staged");
-  });
-
-  it("derives mode from staged=false when mode is missing", () => {
-    const result = ReviewMetadataSchema.parse({
-      ...baseMetadata,
-      staged: false,
-    });
-
-    expect(result.mode).toBe("unstaged");
-  });
-
-  it("defaults to unstaged when both mode and staged are missing", () => {
-    const result = ReviewMetadataSchema.parse({
-      ...baseMetadata,
-    });
-
-    expect(result.mode).toBe("unstaged");
+    expect(result.mode).toBe(expectedMode);
   });
 
   it("applies default counts for missing severity fields", () => {

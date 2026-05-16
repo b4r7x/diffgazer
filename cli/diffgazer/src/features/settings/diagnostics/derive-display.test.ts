@@ -1,5 +1,4 @@
-import assert from "node:assert/strict";
-import test, { describe } from "node:test";
+import { test, describe, expect } from "vitest";
 import type { SetupStatus } from "@diffgazer/core/schemas/config";
 import {
   getServerBadgeVariant,
@@ -31,107 +30,102 @@ const SETUP_STATUS_MISSING_PROVIDER: SetupStatus = {
 };
 
 describe("getServerBadgeVariant", () => {
-  test("maps each server status to its badge variant", () => {
-    assert.equal(getServerBadgeVariant("connected"), "success");
-    assert.equal(getServerBadgeVariant("checking"), "info");
-    assert.equal(getServerBadgeVariant("error"), "error");
+  test.each([
+    { status: "connected" as const, variant: "success" },
+    { status: "checking" as const, variant: "info" },
+    { status: "error" as const, variant: "error" },
+  ])("maps server status '$status' to badge variant '$variant'", ({ status, variant }) => {
+    expect(getServerBadgeVariant(status)).toBe(variant);
   });
 });
 
 describe("getServerLabel", () => {
   test("returns checking label while checking", () => {
-    assert.equal(getServerLabel("checking", null), "checking...");
+    expect(getServerLabel("checking", null)).toBe("checking...");
   });
   test("returns connected label when connected", () => {
-    assert.equal(getServerLabel("connected", null), "connected");
+    expect(getServerLabel("connected", null)).toBe("connected");
   });
   test("includes error message when in error state", () => {
-    assert.equal(getServerLabel("error", "boom"), "error: boom");
+    expect(getServerLabel("error", "boom")).toBe("error: boom");
   });
   test("falls back to unknown when error message is missing", () => {
-    assert.equal(getServerLabel("error", null), "error: unknown");
+    expect(getServerLabel("error", null)).toBe("error: unknown");
   });
 });
 
 describe("getSetupLabel", () => {
   test("returns loading label while loading", () => {
-    assert.equal(
+    expect(
       getSetupLabel({ isLoading: true, error: null, setupStatus: null }),
-      "loading...",
-    );
+    ).toBe("loading...");
   });
   test("returns error label when initError is set", () => {
-    assert.equal(
+    expect(
       getSetupLabel({ isLoading: false, error: "fail", setupStatus: null }),
-      "error: fail",
-    );
+    ).toBe("error: fail");
   });
   test("returns ready when setupStatus is ready", () => {
-    assert.equal(
+    expect(
       getSetupLabel({ isLoading: false, error: null, setupStatus: SETUP_STATUS_READY }),
-      "ready",
-    );
+    ).toBe("ready");
   });
   test("lists missing fields when not ready", () => {
-    assert.equal(
+    expect(
       getSetupLabel({ isLoading: false, error: null, setupStatus: SETUP_STATUS_MISSING_PROVIDER }),
-      "incomplete (provider, model)",
-    );
+    ).toBe("incomplete (provider, model)");
   });
   test("falls back to unknown when setupStatus is null and not loading/error", () => {
-    assert.equal(
+    expect(
       getSetupLabel({ isLoading: false, error: null, setupStatus: null }),
-      "incomplete (unknown)",
-    );
+    ).toBe("incomplete (unknown)");
   });
 });
 
 describe("getSetupVariant", () => {
   test("loading -> info", () => {
-    assert.equal(
+    expect(
       getSetupVariant({ isLoading: true, error: null, setupStatus: null }),
-      "info",
-    );
+    ).toBe("info");
   });
   test("error -> error", () => {
-    assert.equal(
+    expect(
       getSetupVariant({ isLoading: false, error: "x", setupStatus: null }),
-      "error",
-    );
+    ).toBe("error");
   });
   test("ready -> success", () => {
-    assert.equal(
+    expect(
       getSetupVariant({ isLoading: false, error: null, setupStatus: SETUP_STATUS_READY }),
-      "success",
-    );
+    ).toBe("success");
   });
   test("incomplete -> warning", () => {
-    assert.equal(
+    expect(
       getSetupVariant({
         isLoading: false,
         error: null,
         setupStatus: SETUP_STATUS_MISSING_PROVIDER,
       }),
-      "warning",
-    );
+    ).toBe("warning");
   });
 });
 
 describe("getContextLabel", () => {
-  test("loading", () => assert.equal(getContextLabel("loading", null), "loading..."));
-  test("ready", () => assert.equal(getContextLabel("ready", null), "ready"));
-  test("missing", () => assert.equal(getContextLabel("missing", null), "missing"));
+  test("loading", () => expect(getContextLabel("loading", null)).toBe("loading..."));
+  test("ready", () => expect(getContextLabel("ready", null)).toBe("ready"));
+  test("missing", () => expect(getContextLabel("missing", null)).toBe("missing"));
   test("error with message", () =>
-    assert.equal(getContextLabel("error", "boom"), "error: boom"));
+    expect(getContextLabel("error", "boom")).toBe("error: boom"));
   test("error without message", () =>
-    assert.equal(getContextLabel("error", null), "error: unknown"));
+    expect(getContextLabel("error", null)).toBe("error: unknown"));
 });
 
 describe("getContextVariant", () => {
-  test("maps each context status to its variant", () => {
-    assert.equal(getContextVariant("ready"), "success");
-    assert.equal(getContextVariant("missing"), "warning");
-    assert.equal(getContextVariant("loading"), "info");
-    assert.equal(getContextVariant("error"), "error");
+  test.each([
+    { status: "ready" as const, variant: "success" },
+    { status: "missing" as const, variant: "warning" },
+    { status: "loading" as const, variant: "info" },
+    { status: "error" as const, variant: "error" },
+  ])("maps context status '$status' to variant '$variant'", ({ status, variant }) => {
+    expect(getContextVariant(status)).toBe(variant);
   });
 });

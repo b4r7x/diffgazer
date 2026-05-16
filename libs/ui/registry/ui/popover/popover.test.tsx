@@ -129,6 +129,7 @@ describe("Popover", () => {
       )
       const trigger = screen.getByText("Hover me")
 
+      // fireEvent retained: fake timers in use — user-event hover requires real timers
       fireEvent.mouseEnter(trigger)
 
       expect(screen.queryByRole("tooltip")).not.toBeInTheDocument()
@@ -152,12 +153,14 @@ describe("Popover", () => {
       )
       const trigger = screen.getByText("Hover me")
 
+      // fireEvent retained: fake timers in use — user-event hover requires real timers
       fireEvent.mouseEnter(trigger)
       act(() => {
         vi.advanceTimersByTime(200)
       })
       expect(screen.getByRole("tooltip")).toBeInTheDocument()
 
+      // fireEvent retained: fake timers in use — user-event unhover requires real timers
       fireEvent.mouseLeave(trigger)
       act(() => {
         vi.advanceTimersByTime(100)
@@ -175,10 +178,12 @@ describe("Popover", () => {
       )
       const trigger = screen.getByText("Hover me")
 
+      // fireEvent retained: fake timers in use — user-event hover requires real timers
       fireEvent.mouseEnter(trigger)
       act(() => {
         vi.advanceTimersByTime(100)
       })
+      // fireEvent retained: fake timers in use — user-event unhover requires real timers
       fireEvent.mouseLeave(trigger)
       act(() => {
         vi.advanceTimersByTime(200)
@@ -299,6 +304,7 @@ describe("Popover", () => {
     expect(screen.getByRole("dialog", { name: "Inner popover" })).toHaveAttribute("data-state", "closed")
     expect(screen.getByRole("dialog", { name: "Outer popover" })).toHaveAttribute("data-state", "open")
 
+    // fireEvent retained: animationend has no user-event equivalent; presence transitions complete on this event
     fireEvent.animationEnd(screen.getByRole("dialog", { name: "Inner popover" }))
     await userEvent.keyboard("{Escape}")
     expect(screen.getByRole("dialog", { name: "Outer popover" })).toHaveAttribute("data-state", "closed")
@@ -318,6 +324,9 @@ describe("Popover", () => {
     )
     const outside = screen.getByRole("button", { name: "Outside" })
 
+    // fireEvent retained: this test asserts the production code's pointerdown/touchstart
+    // outside-click listeners; user.click would synthesize the full pointer+click sequence and
+    // mask which specific event-type listener fires.
     fireEvent.pointerDown(outside)
     expect(screen.getByText("Popover body")).toHaveAttribute("data-state", "closed")
 
@@ -334,6 +343,7 @@ describe("Popover", () => {
       </div>,
     )
 
+    // fireEvent retained: see pointerDown rationale above — touchstart is the same event-type contract test for non-pointer environments.
     fireEvent.touchStart(screen.getByRole("button", { name: "Outside" }))
     expect(screen.getByText("Popover body")).toHaveAttribute("data-state", "closed")
   })
@@ -555,6 +565,7 @@ describe("Popover hover timer cleanup", () => {
       </Popover>,
     )
 
+    // fireEvent retained: fake timers in use — user-event hover requires real timers
     fireEvent.mouseEnter(screen.getByText("Hover me"))
     unmount()
     act(() => {

@@ -15,42 +15,27 @@ function makeKeyEvent(
 }
 
 describe("matchesHotkey", () => {
-  it("should match a simple key", () => {
-    expect(matchesHotkey(makeKeyEvent("Enter"), "Enter")).toBe(true);
+  it.each([
+    { description: "matches a bare key by name", event: makeKeyEvent("Enter"), hotkey: "Enter", expected: true },
+    { description: "matches a key with the Ctrl modifier", event: makeKeyEvent("s", { ctrl: true }), hotkey: "Ctrl+s", expected: true },
+    { description: "is case insensitive for multi-char keys", event: makeKeyEvent("Enter"), hotkey: "enter", expected: true },
+    { description: "matches when multiple modifiers are held", event: makeKeyEvent("z", { ctrl: true, shift: true }), hotkey: "Ctrl+Shift+Z", expected: true },
+    { description: "does not match when the key differs", event: makeKeyEvent("a"), hotkey: "b", expected: false },
+    { description: "does not match when the required modifier is missing", event: makeKeyEvent("s"), hotkey: "Ctrl+S", expected: false },
+    { description: "does not match when an extra modifier is held", event: makeKeyEvent("s", { ctrl: true }), hotkey: "s", expected: false },
+  ])("$description (event vs hotkey '$hotkey') -> $expected", ({ event, hotkey, expected }) => {
+    expect(matchesHotkey(event, hotkey)).toBe(expected);
   });
 
-  it("should match key with Ctrl modifier", () => {
-    expect(matchesHotkey(makeKeyEvent("s", { ctrl: true }), "Ctrl+s")).toBe(true);
+  it.each([
+    { event: makeKeyEvent("Escape"), hotkey: "esc" },
+    { event: makeKeyEvent("ArrowUp"), hotkey: "up" },
+    { event: makeKeyEvent(" "), hotkey: "space" },
+  ])("resolves alias '$hotkey' to its canonical key", ({ event, hotkey }) => {
+    expect(matchesHotkey(event, hotkey)).toBe(true);
   });
 
-  it("should be case insensitive for multi-char keys", () => {
-    expect(matchesHotkey(makeKeyEvent("Enter"), "enter")).toBe(true);
-  });
-
-  it("should match multiple modifiers", () => {
-    const event = makeKeyEvent("z", { ctrl: true, shift: true });
-    expect(matchesHotkey(event, "Ctrl+Shift+Z")).toBe(true);
-  });
-
-  it("should not match when key differs", () => {
-    expect(matchesHotkey(makeKeyEvent("a"), "b")).toBe(false);
-  });
-
-  it("should not match when modifier is missing", () => {
-    expect(matchesHotkey(makeKeyEvent("s"), "Ctrl+S")).toBe(false);
-  });
-
-  it("should not match when extra modifier is present", () => {
-    expect(matchesHotkey(makeKeyEvent("s", { ctrl: true }), "s")).toBe(false);
-  });
-
-  it("should resolve key aliases", () => {
-    expect(matchesHotkey(makeKeyEvent("Escape"), "esc")).toBe(true);
-    expect(matchesHotkey(makeKeyEvent("ArrowUp"), "up")).toBe(true);
-    expect(matchesHotkey(makeKeyEvent(" "), "space")).toBe(true);
-  });
-
-  it("should resolve mod to meta on Mac (lazy isMac)", async () => {
+  it("resolves 'mod' to meta on Mac (lazy isMac)", async () => {
     // isMac is now lazy — reset module to test Mac detection
     const originalNavigator = globalThis.navigator;
     Object.defineProperty(globalThis, "navigator", {
@@ -73,14 +58,14 @@ describe("matchesHotkey", () => {
     });
   });
 
-  it("should match mod+key as ctrl+key on non-Mac", () => {
+  it("resolves 'mod' to ctrl on non-Mac and ignores meta", () => {
     // In jsdom, navigator.userAgent does not contain "Mac"
     // so mod should resolve to ctrl
     expect(matchesHotkey(makeKeyEvent("k", { ctrl: true }), "mod+k")).toBe(true);
     expect(matchesHotkey(makeKeyEvent("k", { meta: true }), "mod+k")).toBe(false);
   });
 
-  it("should not match mod+key without any modifier", () => {
+  it("does not match a 'mod' hotkey when no modifier is held", () => {
     expect(matchesHotkey(makeKeyEvent("k"), "mod+k")).toBe(false);
   });
 
@@ -104,29 +89,21 @@ describe("matchesHotkey", () => {
 });
 
 describe("isInputElement", () => {
-  it("should return true for input element", () => {
-    const input = document.createElement("input");
-    expect(isInputElement(input)).toBe(true);
+  it.each([
+    { tag: "input", expected: true },
+    { tag: "textarea", expected: true },
+    { tag: "select", expected: true },
+  ])("classifies native <$tag> as an input element ($expected)", ({ tag, expected }) => {
+    expect(isInputElement(document.createElement(tag))).toBe(expected);
   });
 
-  it("should return true for textarea element", () => {
-    const textarea = document.createElement("textarea");
-    expect(isInputElement(textarea)).toBe(true);
-  });
-
-  it("should return true for select element", () => {
-    const select = document.createElement("select");
-    expect(isInputElement(select)).toBe(true);
-  });
-
-  it("should return false for div element", () => {
-    const div = document.createElement("div");
+  it("does not classify a plain <div> as an input element", () => {
     // jsdom's isContentEditable is undefined, so the return is not strictly false.
     // In real browsers this returns false.
-    expect(isInputElement(div)).toBeFalsy();
+    expect(isInputElement(document.createElement("div"))).toBeFalsy();
   });
 
-  it("should return false for null target", () => {
+  it("returns false for a null target", () => {
     expect(isInputElement(null)).toBe(false);
   });
 });

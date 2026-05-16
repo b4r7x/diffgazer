@@ -1,6 +1,7 @@
 import { createRef } from "react"
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+import { testNavigationBehavior } from "../../../../keys/src/testing/navigation-behavior.js"
 import { axe } from "../../../testing/utils.js"
 import { describe, it, expect, vi } from "vitest"
 import { Accordion } from "./index.js"
@@ -429,5 +430,25 @@ describe("Accordion inert on collapsed content", () => {
     const collapsedContent = screen.getByText("Button Two").parentElement?.parentElement
     if (!collapsedContent) throw new Error("Expected collapsed accordion content wrapper")
     expect(collapsedContent).toHaveAttribute("inert")
+  })
+})
+
+describe("Accordion keyboard navigation", () => {
+  testNavigationBehavior({
+    setup: () => {
+      const rendered = renderAccordion()
+      screen.getByRole("button", { name: "Section One" }).focus()
+      return rendered
+    },
+    items: ["Section One", "Section Two", "Section Three"],
+    initialActive: 0,
+    cases: [
+      { key: "{ArrowDown}", expectedActiveIndex: 1, label: "ArrowDown" },
+      { key: "{ArrowDown}{ArrowDown}", expectedActiveIndex: 2, label: "ArrowDown twice" },
+      { key: "{ArrowDown}{ArrowDown}{ArrowDown}", expectedActiveIndex: 0, label: "ArrowDown wraps" },
+      { key: "{ArrowUp}", expectedActiveIndex: 2, label: "ArrowUp wraps to end" },
+      { key: "{End}", expectedActiveIndex: 2, label: "End jumps to last" },
+      { key: "{Home}", expectedActiveIndex: 0, label: "Home stays at first" },
+    ],
   })
 })

@@ -69,12 +69,23 @@ describe("copyArtifactsToPackage", () => {
     expect(call).toThrow("pnpm --filter test-lib build:artifacts");
   });
 
-  it("throws when artifact-manifest.json is missing and validateManifest is true", () => {
+  it.each([
+    {
+      label: "manifest",
+      existingFile: { name: "fingerprint.sha256", body: "abc123\n" },
+      expectedMessage: "artifact manifest",
+    },
+    {
+      label: "fingerprint",
+      existingFile: { name: "artifact-manifest.json", body: "{}" },
+      expectedMessage: "artifact fingerprint",
+    },
+  ])("throws when artifact $label file is missing during manifest validation", ({ existingFile, expectedMessage }) => {
     const sourceRoot = createTempDir();
     const packageRoot = createTempDir();
     const artifactsDir = join(sourceRoot, "dist/artifacts");
     mkdirSync(artifactsDir, { recursive: true });
-    writeFileSync(join(artifactsDir, "fingerprint.sha256"), "abc123\n");
+    writeFileSync(join(artifactsDir, existingFile.name), existingFile.body);
 
     expect(() =>
       copyArtifactsToPackage({
@@ -82,23 +93,7 @@ describe("copyArtifactsToPackage", () => {
         packageRoot,
         label: "test-lib",
       }),
-    ).toThrow("artifact manifest");
-  });
-
-  it("throws when fingerprint.sha256 is missing and validateManifest is true", () => {
-    const sourceRoot = createTempDir();
-    const packageRoot = createTempDir();
-    const artifactsDir = join(sourceRoot, "dist/artifacts");
-    mkdirSync(artifactsDir, { recursive: true });
-    writeFileSync(join(artifactsDir, "artifact-manifest.json"), "{}");
-
-    expect(() =>
-      copyArtifactsToPackage({
-        sourceRoot,
-        packageRoot,
-        label: "test-lib",
-      }),
-    ).toThrow("artifact fingerprint");
+    ).toThrow(expectedMessage);
   });
 
   it("skips manifest validation when validateManifest is false", () => {

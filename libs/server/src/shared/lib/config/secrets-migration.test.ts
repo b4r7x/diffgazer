@@ -148,6 +148,7 @@ describe("migrateSecretsStorage", () => {
     finalizeKeyringDeletions(["gemini", "zai"]);
     expect(keyring.deleteKeyringSecret).toHaveBeenCalledWith("api_key_gemini");
     expect(keyring.deleteKeyringSecret).toHaveBeenCalledWith("api_key_zai");
+    // call-count IS the contract: keyring deletion must run exactly once per queued provider (no skipped providers, no spurious extra deletes)
     expect(keyring.deleteKeyringSecret).toHaveBeenCalledTimes(2);
   });
 

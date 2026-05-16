@@ -91,6 +91,15 @@ const config = defineConfig(() => {
   ]
 
   return {
+    test: isVitest
+      ? {
+          typecheck: {
+            enabled: false,
+            tsconfig: "./tsconfig.test.json",
+            include: ["src/**/*.test.ts", "src/**/*.test.tsx", "scripts/**/*.test.ts"],
+          },
+        }
+      : undefined,
     server: {
       port: 3000,
     },

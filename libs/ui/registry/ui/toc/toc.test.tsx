@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
+import { axe } from "../../../testing/utils.js"
 import { Toc } from "./index.js"
 
 describe("Toc", () => {
@@ -30,5 +31,18 @@ describe("Toc", () => {
     )
 
     expect(screen.getByRole("listitem")).toContainElement(screen.getByRole("link", { name: "API" }))
+  })
+
+  it("has no a11y violations", async () => {
+    const { container } = render(
+      <Toc title="Contents">
+        <Toc.List>
+          <Toc.Item href="#intro" active>Intro</Toc.Item>
+          <Toc.Item href="#usage">Usage</Toc.Item>
+        </Toc.List>
+      </Toc>,
+    )
+
+    expect(await axe(container)).toHaveNoViolations()
   })
 })

@@ -1,5 +1,4 @@
-import assert from "node:assert/strict";
-import test, { describe } from "node:test";
+import { test, describe, expect } from "vitest";
 import { deriveStorageSaveState } from "./derive-save-state.js";
 
 describe("deriveStorageSaveState", () => {
@@ -9,9 +8,9 @@ describe("deriveStorageSaveState", () => {
       choice: null,
       saving: false,
     });
-    assert.equal(result.effective, "file");
-    assert.equal(result.isDirty, true);
-    assert.equal(result.canSave, true);
+    expect(result.effective).toBe("file");
+    expect(result.isDirty).toBe(true);
+    expect(result.canSave).toBe(true);
   });
 
   test("uses persisted value when no choice yet, and is not dirty", () => {
@@ -20,9 +19,9 @@ describe("deriveStorageSaveState", () => {
       choice: null,
       saving: false,
     });
-    assert.equal(result.effective, "keyring");
-    assert.equal(result.isDirty, false);
-    assert.equal(result.canSave, false);
+    expect(result.effective).toBe("keyring");
+    expect(result.isDirty).toBe(false);
+    expect(result.canSave).toBe(false);
   });
 
   test("becomes dirty after switching backend", () => {
@@ -31,9 +30,9 @@ describe("deriveStorageSaveState", () => {
       choice: "keyring",
       saving: false,
     });
-    assert.equal(result.effective, "keyring");
-    assert.equal(result.isDirty, true);
-    assert.equal(result.canSave, true);
+    expect(result.effective).toBe("keyring");
+    expect(result.isDirty).toBe(true);
+    expect(result.canSave).toBe(true);
   });
 
   test("blocks save while saving even when dirty", () => {
@@ -42,8 +41,8 @@ describe("deriveStorageSaveState", () => {
       choice: "keyring",
       saving: true,
     });
-    assert.equal(result.isDirty, true);
-    assert.equal(result.canSave, false);
+    expect(result.isDirty).toBe(true);
+    expect(result.canSave).toBe(false);
   });
 
   test("blocks save when choice equals persisted", () => {
@@ -52,8 +51,8 @@ describe("deriveStorageSaveState", () => {
       choice: "file",
       saving: false,
     });
-    assert.equal(result.isDirty, false);
-    assert.equal(result.canSave, false);
+    expect(result.isDirty).toBe(false);
+    expect(result.canSave).toBe(false);
   });
 
   test("blocks save while saving even when nothing is dirty", () => {
@@ -62,7 +61,7 @@ describe("deriveStorageSaveState", () => {
       choice: null,
       saving: true,
     });
-    assert.equal(result.isDirty, false);
-    assert.equal(result.canSave, false);
+    expect(result.isDirty).toBe(false);
+    expect(result.canSave).toBe(false);
   });
 });

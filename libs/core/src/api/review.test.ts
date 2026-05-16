@@ -92,7 +92,7 @@ describe("resumeReviewStream", () => {
 });
 
 describe("createReview", () => {
-  it("posts to /api/review/reviews with the expected body", async () => {
+  it("creates a review with the supplied mode, lenses, profile, and files and returns the new id", async () => {
     const client = createClient();
     vi.mocked(client.post).mockResolvedValue({ reviewId: "new-review-id" });
 

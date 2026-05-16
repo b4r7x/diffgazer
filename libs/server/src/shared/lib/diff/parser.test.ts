@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { parseDiff } from "./parser.js";
 
 describe("parseDiff", () => {
-  it("should parse a simple single-file diff with additions", () => {
+  it("counts additions for a single-file diff that only adds lines", () => {
     const diff = `diff --git a/file.ts b/file.ts
 --- a/file.ts
 +++ b/file.ts
@@ -21,7 +21,7 @@ describe("parseDiff", () => {
     expect(result.files[0]!.stats.deletions).toBe(0);
   });
 
-  it("should parse a diff with both additions and deletions", () => {
+  it("counts both additions and deletions for a modified hunk", () => {
     const diff = `diff --git a/file.ts b/file.ts
 --- a/file.ts
 +++ b/file.ts
@@ -37,7 +37,7 @@ describe("parseDiff", () => {
     expect(result.files[0]!.stats.deletions).toBe(1);
   });
 
-  it("should parse multiple files in a single diff", () => {
+  it("splits a multi-file diff into one entry per file", () => {
     const diff = `diff --git a/a.ts b/a.ts
 --- a/a.ts
 +++ b/a.ts
@@ -60,40 +60,43 @@ diff --git a/b.ts b/b.ts
     expect(result.files[1]!.filePath).toBe("b.ts");
   });
 
-  it("should detect new file (add operation)", () => {
-    const diff = `diff --git a/new.ts b/new.ts
+  it.each([
+    {
+      operation: "add" as const,
+      diff: `diff --git a/new.ts b/new.ts
 --- /dev/null
 +++ b/new.ts
 @@ -0,0 +1,3 @@
 +line1
 +line2
-+line3`;
-
-    const result = parseDiff(diff);
-
-    expect(result.files[0]!.operation).toBe("add");
-    expect(result.files[0]!.filePath).toBe("new.ts");
-    expect(result.files[0]!.stats.additions).toBe(3);
-    expect(result.files[0]!.stats.deletions).toBe(0);
-  });
-
-  it("should detect deleted file (delete operation)", () => {
-    const diff = `diff --git a/old.ts b/old.ts
++line3`,
+      filePath: "new.ts",
+      additions: 3,
+      deletions: 0,
+    },
+    {
+      operation: "delete" as const,
+      diff: `diff --git a/old.ts b/old.ts
 --- a/old.ts
 +++ /dev/null
 @@ -1,3 +0,0 @@
 -line1
 -line2
--line3`;
-
+-line3`,
+      filePath: "old.ts",
+      additions: 0,
+      deletions: 3,
+    },
+  ])("classifies the file as $operation when one side is /dev/null", ({ diff, operation, filePath, additions, deletions }) => {
     const result = parseDiff(diff);
 
-    expect(result.files[0]!.operation).toBe("delete");
-    expect(result.files[0]!.stats.additions).toBe(0);
-    expect(result.files[0]!.stats.deletions).toBe(3);
+    expect(result.files[0]!.operation).toBe(operation);
+    expect(result.files[0]!.filePath).toBe(filePath);
+    expect(result.files[0]!.stats.additions).toBe(additions);
+    expect(result.files[0]!.stats.deletions).toBe(deletions);
   });
 
-  it("should detect rename operation", () => {
+  it("classifies a renamed file and records the previous path", () => {
     const diff = `diff --git a/old-name.ts b/new-name.ts
 rename from old-name.ts
 rename to new-name.ts
@@ -111,7 +114,7 @@ rename to new-name.ts
     expect(result.files[0]!.previousPath).toBe("old-name.ts");
   });
 
-  it("should parse hunk headers correctly", () => {
+  it("parses hunk headers with explicit start and count", () => {
     const diff = `diff --git a/file.ts b/file.ts
 --- a/file.ts
 +++ b/file.ts
@@ -132,7 +135,7 @@ rename to new-name.ts
     expect(hunk.newCount).toBe(7);
   });
 
-  it("should parse hunk header with single-line count (no comma)", () => {
+  it("treats a missing comma in the hunk header as a single-line range", () => {
     const diff = `diff --git a/file.ts b/file.ts
 --- a/file.ts
 +++ b/file.ts
@@ -149,7 +152,7 @@ rename to new-name.ts
     expect(hunk.newCount).toBe(2);
   });
 
-  it("should handle multiple hunks in a single file", () => {
+  it("splits multiple hunks within a single file", () => {
     const diff = `diff --git a/file.ts b/file.ts
 --- a/file.ts
 +++ b/file.ts
@@ -172,22 +175,21 @@ rename to new-name.ts
     expect(result.files[0]!.stats.additions).toBe(2);
   });
 
-  it("should return empty files array for empty input", () => {
-    const result = parseDiff("");
+  it.each([
+    { description: "empty input", input: "" },
+    { description: "text that is not in diff format", input: "some random text\nwithout diff format" },
+  ])("returns no files for $description", ({ input }) => {
+    const result = parseDiff(input);
 
     expect(result.files).toHaveLength(0);
-    expect(result.totalStats.filesChanged).toBe(0);
-    expect(result.totalStats.additions).toBe(0);
-    expect(result.totalStats.deletions).toBe(0);
+    if (input === "") {
+      expect(result.totalStats.filesChanged).toBe(0);
+      expect(result.totalStats.additions).toBe(0);
+      expect(result.totalStats.deletions).toBe(0);
+    }
   });
 
-  it("should return empty files array for non-diff text", () => {
-    const result = parseDiff("some random text\nwithout diff format");
-
-    expect(result.files).toHaveLength(0);
-  });
-
-  it("should calculate total stats across all files", () => {
+  it("aggregates totalStats across every file in the diff", () => {
     const diff = `diff --git a/a.ts b/a.ts
 --- a/a.ts
 +++ b/a.ts
@@ -210,7 +212,7 @@ diff --git a/b.ts b/b.ts
     expect(result.totalStats.deletions).toBe(1);
   });
 
-  it("should preserve raw diff per file", () => {
+  it("retains the raw diff text for each file", () => {
     const diff = `diff --git a/file.ts b/file.ts
 --- a/file.ts
 +++ b/file.ts
@@ -225,7 +227,7 @@ diff --git a/b.ts b/b.ts
     expect(result.files[0]!.rawDiff).toContain("+added");
   });
 
-  it("should calculate sizeBytes for each file", () => {
+  it("records a non-zero sizeBytes for each file and rolls it into totalStats", () => {
     const diff = `diff --git a/file.ts b/file.ts
 --- a/file.ts
 +++ b/file.ts
@@ -240,7 +242,7 @@ diff --git a/b.ts b/b.ts
     expect(result.totalStats.totalSizeBytes).toBeGreaterThan(0);
   });
 
-  it("should handle context lines without marking as additions/deletions", () => {
+  it("does not count context lines as additions or deletions", () => {
     const diff = `diff --git a/file.ts b/file.ts
 --- a/file.ts
 +++ b/file.ts
@@ -258,7 +260,7 @@ diff --git a/b.ts b/b.ts
     expect(result.files[0]!.stats.deletions).toBe(0);
   });
 
-  it("should handle no newline at end of file marker", () => {
+  it("ignores the no-newline marker while still counting the surrounding lines", () => {
     const diff = `diff --git a/file.ts b/file.ts
 --- a/file.ts
 +++ b/file.ts
@@ -276,21 +278,19 @@ diff --git a/b.ts b/b.ts
     expect(result.files[0]!.stats.deletions).toBe(1);
   });
 
-  it("should handle binary file metadata without hunks", () => {
+  it("records a binary-file entry without any hunks", () => {
     const diff = `diff --git a/image.png b/image.png
 index abc123..def456 100644
 Binary files a/image.png and b/image.png differ`;
 
     const result = parseDiff(diff);
 
-    // Binary files may not have standard --- / +++ headers
-    // The parser should still create an entry for the file
     expect(result.files).toHaveLength(1);
     expect(result.files[0]!.filePath).toBe("image.png");
     expect(result.files[0]!.hunks).toHaveLength(0);
   });
 
-  it("should set previousPath to null for modify operation", () => {
+  it("leaves previousPath null for a plain modify operation", () => {
     const diff = `diff --git a/file.ts b/file.ts
 --- a/file.ts
 +++ b/file.ts
@@ -305,10 +305,13 @@ Binary files a/image.png and b/image.png differ`;
     expect(result.files[0]!.previousPath).toBeNull();
   });
 
-  it("should handle file paths with spaces", () => {
-    const diff = `diff --git a/path with spaces/file.ts b/path with spaces/file.ts
---- a/path with spaces/file.ts
-+++ b/path with spaces/file.ts
+  it.each([
+    { description: "spaces", path: "path with spaces/file.ts" },
+    { description: "deep nesting", path: "src/features/review/components/detail.tsx" },
+  ])("preserves $description in the file path", ({ path }) => {
+    const diff = `diff --git a/${path} b/${path}
+--- a/${path}
++++ b/${path}
 @@ -1,2 +1,3 @@
  line1
 +added
@@ -316,24 +319,10 @@ Binary files a/image.png and b/image.png differ`;
 
     const result = parseDiff(diff);
 
-    expect(result.files[0]!.filePath).toBe("path with spaces/file.ts");
+    expect(result.files[0]!.filePath).toBe(path);
   });
 
-  it("should handle deeply nested file paths", () => {
-    const diff = `diff --git a/src/features/review/components/detail.tsx b/src/features/review/components/detail.tsx
---- a/src/features/review/components/detail.tsx
-+++ b/src/features/review/components/detail.tsx
-@@ -1,2 +1,3 @@
- line1
-+added
- line2`;
-
-    const result = parseDiff(diff);
-
-    expect(result.files[0]!.filePath).toBe("src/features/review/components/detail.tsx");
-  });
-
-  it("should handle diff with index line between header and file markers", () => {
+  it("parses correctly when an index line sits between the diff header and the file markers", () => {
     const diff = `diff --git a/file.ts b/file.ts
 index abc1234..def5678 100644
 --- a/file.ts
@@ -350,7 +339,7 @@ index abc1234..def5678 100644
     expect(result.files[0]!.stats.additions).toBe(1);
   });
 
-  it("should store hunk content including the header line", () => {
+  it("includes the hunk header inside the captured hunk content", () => {
     const diff = `diff --git a/file.ts b/file.ts
 --- a/file.ts
 +++ b/file.ts

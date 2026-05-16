@@ -74,6 +74,7 @@ const NO_CHANGES: ParsedDiff = {
 }
 
 function getLiveRegion() {
+  // querySelector retained: an aria-live="polite" container has no implicit ARIA role (the attribute itself is the targeting key); structural assertion is the contract
   return document.querySelector("[aria-live='polite']")!
 }
 
@@ -190,12 +191,14 @@ describe("DiffView", () => {
   it("does not render div descendants under pre code in unified mode", () => {
     const { container } = render(<DiffView diff={ONE_HUNK} />)
 
+    // querySelector retained: HTML rule says <code> must not contain block-level <div> descendants; asserting the ABSENCE of a structural rule violation has no role-based equivalent
     expect(container.querySelector("pre code div")).toBeNull()
   })
 
   it("does not render div descendants under pre code in split mode", () => {
     const { container } = render(<DiffView diff={ONE_HUNK} mode="split" />)
 
+    // querySelector retained: HTML rule says <code> must not contain block-level <div> descendants; asserting the ABSENCE of a structural rule violation has no role-based equivalent
     expect(container.querySelector("pre code div")).toBeNull()
   })
 

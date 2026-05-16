@@ -1,5 +1,4 @@
-import assert from "node:assert/strict";
-import test, { describe } from "node:test";
+import { test, describe, expect } from "vitest";
 import type { Key } from "ink";
 import { inkKeyToHotkey, isLetterKey } from "./ink-key.js";
 
@@ -28,48 +27,55 @@ const emptyKey: Key = {
 
 describe("inkKeyToHotkey", () => {
   test("maps escape", () => {
-    assert.equal(inkKeyToHotkey("", { ...emptyKey, escape: true }), "escape");
+    expect(inkKeyToHotkey("", { ...emptyKey, escape: true })).toBe("escape");
   });
 
-  test("maps arrows", () => {
-    assert.equal(inkKeyToHotkey("", { ...emptyKey, upArrow: true }), "up");
-    assert.equal(inkKeyToHotkey("", { ...emptyKey, downArrow: true }), "down");
-    assert.equal(inkKeyToHotkey("", { ...emptyKey, leftArrow: true }), "left");
-    assert.equal(inkKeyToHotkey("", { ...emptyKey, rightArrow: true }), "right");
+  test.each([
+    { flag: "upArrow" as const, hotkey: "up" },
+    { flag: "downArrow" as const, hotkey: "down" },
+    { flag: "leftArrow" as const, hotkey: "left" },
+    { flag: "rightArrow" as const, hotkey: "right" },
+  ])("maps $flag flag to '$hotkey' hotkey", ({ flag, hotkey }) => {
+    expect(inkKeyToHotkey("", { ...emptyKey, [flag]: true })).toBe(hotkey);
   });
 
-  test("maps return and tab", () => {
-    assert.equal(inkKeyToHotkey("", { ...emptyKey, return: true }), "return");
-    assert.equal(inkKeyToHotkey("", { ...emptyKey, tab: true }), "tab");
+  test.each([
+    { flag: "return" as const, hotkey: "return" },
+    { flag: "tab" as const, hotkey: "tab" },
+    { flag: "pageUp" as const, hotkey: "pageup" },
+    { flag: "pageDown" as const, hotkey: "pagedown" },
+  ])("maps $flag flag to '$hotkey' hotkey", ({ flag, hotkey }) => {
+    expect(inkKeyToHotkey("", { ...emptyKey, [flag]: true })).toBe(hotkey);
   });
 
-  test("maps page up/down", () => {
-    assert.equal(inkKeyToHotkey("", { ...emptyKey, pageUp: true }), "pageup");
-    assert.equal(inkKeyToHotkey("", { ...emptyKey, pageDown: true }), "pagedown");
-  });
-
-  test("falls back to input for printable keys", () => {
-    assert.equal(inkKeyToHotkey("a", emptyKey), "a");
-    assert.equal(inkKeyToHotkey("1", emptyKey), "1");
+  test.each([
+    { input: "a" },
+    { input: "1" },
+  ])("falls back to printable input '$input'", ({ input }) => {
+    expect(inkKeyToHotkey(input, emptyKey)).toBe(input);
   });
 
   test("returns null when nothing matches", () => {
-    assert.equal(inkKeyToHotkey("", emptyKey), null);
+    expect(inkKeyToHotkey("", emptyKey)).toBe(null);
   });
 });
 
 describe("isLetterKey", () => {
-  test("accepts single letters/digits/special chars", () => {
-    assert.equal(isLetterKey("a"), true);
-    assert.equal(isLetterKey("Z"), true);
-    assert.equal(isLetterKey("4"), true);
-    assert.equal(isLetterKey("?"), true);
-    assert.equal(isLetterKey("/"), true);
+  test.each([
+    { input: "a" },
+    { input: "Z" },
+    { input: "4" },
+    { input: "?" },
+    { input: "/" },
+  ])("accepts single character '$input'", ({ input }) => {
+    expect(isLetterKey(input)).toBe(true);
   });
 
-  test("rejects multi-character or non-letter keys", () => {
-    assert.equal(isLetterKey("up"), false);
-    assert.equal(isLetterKey(""), false);
-    assert.equal(isLetterKey("@"), false);
+  test.each([
+    { input: "up", reason: "multi-character" },
+    { input: "", reason: "empty string" },
+    { input: "@", reason: "non-letter symbol outside the printable letter set" },
+  ])("rejects $reason ('$input')", ({ input }) => {
+    expect(isLetterKey(input)).toBe(false);
   });
 });

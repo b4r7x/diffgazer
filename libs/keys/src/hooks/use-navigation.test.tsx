@@ -2,6 +2,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { testNavigationBehavior } from "../testing/navigation-behavior";
 import { useNavigation, type UseNavigationOptions } from "./use-navigation";
 
 function itemId(value: string) {
@@ -68,6 +69,24 @@ async function focusListbox() {
 describe("useNavigation", () => {
   afterEach(() => {
     cleanup();
+  });
+
+  describe("vertical arrow / Home / End navigation matrix", () => {
+    testNavigationBehavior({
+      setup: () => {
+        const result = render(<TestList defaultHighlighted="b" />);
+        screen.getByRole("listbox", { name: "Items" }).focus();
+        return result;
+      },
+      items: ["a", "b", "c"],
+      initialActive: 1,
+      cases: [
+        { key: "{ArrowDown}", expectedActiveIndex: 2, label: "ArrowDown" },
+        { key: "{ArrowUp}", expectedActiveIndex: 0, label: "ArrowUp" },
+        { key: "{Home}", expectedActiveIndex: 0, label: "Home" },
+        { key: "{End}", expectedActiveIndex: 2, label: "End" },
+      ],
+    });
   });
 
   it("wraps navigation when reaching list boundaries", async () => {

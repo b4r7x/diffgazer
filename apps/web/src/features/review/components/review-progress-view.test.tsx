@@ -64,7 +64,9 @@ describe("ReviewProgressView", () => {
     await user.keyboard("{Enter}");
     await user.keyboard("{Escape}");
 
+    // call-count IS the contract: each shortcut keypress must fire its handler exactly once (no double-fire across the Enter+Escape sequence)
     expect(onViewResults).toHaveBeenCalledTimes(1);
+    // call-count IS the contract: each shortcut keypress must fire its handler exactly once
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
 });

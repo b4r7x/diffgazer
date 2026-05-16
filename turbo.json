@@ -21,6 +21,10 @@
       "dependsOn": ["^test"],
       "outputs": ["coverage/**"]
     },
+    "test:types": {
+      "dependsOn": ["^build", "^test:types"],
+      "outputs": []
+    },
     "test:watch": {
       "cache": false,
       "persistent": true

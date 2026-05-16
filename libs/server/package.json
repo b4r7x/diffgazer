@@ -15,7 +15,8 @@
     "start": "node dist/dev.js",
     "type-check": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:types": "vitest --typecheck --typecheck.only --run"
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.21",

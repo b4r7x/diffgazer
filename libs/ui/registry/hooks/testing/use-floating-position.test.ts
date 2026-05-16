@@ -120,11 +120,13 @@ describe("useFloatingPosition", () => {
     setViewport()
     const { rerender } = render(createElement(FloatingHarness, { open: false }))
 
+    // getByTestId: hook output has no native role; harness pattern renders return values to data-testid for read-back
     expect(screen.getByTestId("position")).toHaveTextContent("closed")
 
     rerender(createElement(FloatingHarness, { open: true }))
 
     await waitFor(() => {
+      // getByTestId: hook output has no native role; harness pattern renders return values to data-testid for read-back
       expect(screen.getByTestId("position")).toHaveTextContent("bottom:100:146")
     })
   })
@@ -140,6 +142,7 @@ describe("useFloatingPosition", () => {
     }))
 
     await waitFor(() => {
+      // getByTestId: hook output has no native role; harness pattern renders return values to data-testid for read-back
       expect(screen.getByTestId("position")).toHaveTextContent("top:80:484")
     })
   })
@@ -153,6 +156,7 @@ describe("useFloatingPosition", () => {
     }))
 
     await waitFor(() => {
+      // getByTestId: hook output has no native role; harness pattern renders return values to data-testid for read-back
       expect(screen.getByTestId("position")).toHaveTextContent("bottom:100:146")
     })
 
@@ -161,6 +165,7 @@ describe("useFloatingPosition", () => {
       window.dispatchEvent(new Event("resize"))
     })
     await waitFor(() => {
+      // getByTestId: hook output has no native role; harness pattern renders return values to data-testid for read-back
       expect(screen.getByTestId("position")).toHaveTextContent("bottom:120:146")
     })
 
@@ -169,6 +174,7 @@ describe("useFloatingPosition", () => {
       window.dispatchEvent(new Event("scroll"))
     })
     await waitFor(() => {
+      // getByTestId: hook output has no native role; harness pattern renders return values to data-testid for read-back
       expect(screen.getByTestId("position")).toHaveTextContent("bottom:140:146")
     })
   })
@@ -193,11 +199,13 @@ describe("useFloatingPosition", () => {
       const { unmount } = render(createElement(FloatingHarness, { open: true }))
 
       await waitFor(() => {
+        // getByTestId: hook output has no native role; harness pattern renders return values to data-testid for read-back
         expect(screen.getByTestId("position")).toHaveTextContent("bottom:100:146")
       })
 
       unmount()
 
+      // call-count IS the contract: ResizeObserver must be disconnected exactly once on cleanup (double-disconnect leaks observers)
       expect(disconnect).toHaveBeenCalledTimes(1)
       expect(removeListener).toHaveBeenCalledWith("scroll", expect.any(Function))
       expect(removeListener).toHaveBeenCalledWith("resize", expect.any(Function))

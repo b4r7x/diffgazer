@@ -12,8 +12,8 @@ const originalScrollTo = Object.getOwnPropertyDescriptor(window, "scrollTo")
 let frameCallbacks = new Map<number, FrameRequestCallback>()
 let nextFrameId = 1
 let mutationCallbacks: MutationCallback[] = []
-let mutationDisconnect: ReturnType<typeof vi.fn>
-let cancelAnimationFrameMock: ReturnType<typeof vi.fn>
+let mutationDisconnect: ReturnType<typeof vi.fn<() => void>>
+let cancelAnimationFrameMock: ReturnType<typeof vi.fn<(id: number) => void>>
 
 function restoreProperty<T extends object>(target: T, key: keyof T, descriptor: PropertyDescriptor | undefined) {
   if (descriptor) {
@@ -196,6 +196,7 @@ describe("useActiveHeading", () => {
 
       unmount()
 
+      // call-count IS the contract: MutationObserver must be disconnected exactly once on cleanup (double-disconnect leaks observers)
       expect(mutationDisconnect).toHaveBeenCalledTimes(1)
       expect(cancelAnimationFrameMock).toHaveBeenCalled()
       expect(removeListener).toHaveBeenCalledWith("scroll", expect.any(Function))

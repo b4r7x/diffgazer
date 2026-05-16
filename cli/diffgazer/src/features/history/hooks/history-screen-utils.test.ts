@@ -1,5 +1,4 @@
-import assert from "node:assert/strict";
-import test, { describe } from "node:test";
+import { test, describe, expect } from "vitest";
 import type { ReviewMetadata, ReviewIssue } from "@diffgazer/core/schemas/review";
 import {
   buildHistorySeverityCounts,
@@ -52,14 +51,14 @@ function makeIssue(severity: ReviewIssue["severity"], overrides: Partial<ReviewI
 
 describe("nextHistoryZone", () => {
   test("cycles search -> timeline -> runs -> insights -> search", () => {
-    assert.equal(nextHistoryZone("search"), "timeline");
-    assert.equal(nextHistoryZone("timeline"), "runs");
-    assert.equal(nextHistoryZone("runs"), "insights");
-    assert.equal(nextHistoryZone("insights"), "search");
+    expect(nextHistoryZone("search")).toBe("timeline");
+    expect(nextHistoryZone("timeline")).toBe("runs");
+    expect(nextHistoryZone("runs")).toBe("insights");
+    expect(nextHistoryZone("insights")).toBe("search");
   });
 
   test("zone order list contains all four zones", () => {
-    assert.deepEqual(HISTORY_ZONE_ORDER, ["search", "timeline", "runs", "insights"]);
+    expect(HISTORY_ZONE_ORDER).toEqual(["search", "timeline", "runs", "insights"]);
   });
 
   test("applying nextHistoryZone four times returns to the start", () => {
@@ -67,7 +66,7 @@ describe("nextHistoryZone", () => {
     for (let i = 0; i < HISTORY_ZONE_ORDER.length; i++) {
       zone = nextHistoryZone(zone);
     }
-    assert.equal(zone, HISTORY_ZONE_ORDER[0]);
+    expect(zone).toBe(HISTORY_ZONE_ORDER[0]);
   });
 });
 
@@ -80,16 +79,16 @@ describe("mapHistoryRun", () => {
         mode: "unstaged",
       }),
     );
-    assert.equal(run.id, "11112222-3333-4444-5555-666677778888");
-    assert.equal(run.displayId, "#1111");
-    assert.equal(run.branch, "feature/x");
-    assert.ok(typeof run.summary === "string" && run.summary.length > 0);
-    assert.ok(typeof run.timestamp === "string");
+    expect(run.id).toBe("11112222-3333-4444-5555-666677778888");
+    expect(run.displayId).toBe("#1111");
+    expect(run.branch).toBe("feature/x");
+    expect(typeof run.summary === "string" && run.summary.length > 0).toBeTruthy();
+    expect(typeof run.timestamp === "string").toBeTruthy();
   });
 
   test("staged review surfaces the 'Staged' branch label", () => {
     const run = mapHistoryRun(makeReview({ mode: "staged", branch: "main" }));
-    assert.equal(run.branch, "Staged");
+    expect(run.branch).toBe("Staged");
   });
 
   test("passed run shows the 'Passed' summary text", () => {
@@ -103,13 +102,13 @@ describe("mapHistoryRun", () => {
         nitCount: 0,
       }),
     );
-    assert.match(run.summary, /Passed/i);
+    expect(run.summary).toMatch(/Passed/i);
   });
 });
 
 describe("buildHistorySeverityCounts", () => {
   test("returns null when there is no selected run", () => {
-    assert.equal(buildHistorySeverityCounts(null), null);
+    expect(buildHistorySeverityCounts(null)).toBe(null);
   });
 
   test("forwards the five severity counts straight through", () => {
@@ -122,14 +121,14 @@ describe("buildHistorySeverityCounts", () => {
         nitCount: 5,
       }),
     );
-    assert.deepEqual(counts, { blocker: 1, high: 2, medium: 3, low: 4, nit: 5 });
+    expect(counts).toEqual({ blocker: 1, high: 2, medium: 3, low: 4, nit: 5 });
   });
 });
 
 describe("sortIssuesBySeverity", () => {
   test("returns empty array when no issues", () => {
-    assert.deepEqual(sortIssuesBySeverity(undefined), []);
-    assert.deepEqual(sortIssuesBySeverity([]), []);
+    expect(sortIssuesBySeverity(undefined)).toEqual([]);
+    expect(sortIssuesBySeverity([])).toEqual([]);
   });
 
   test("orders blocker > high > medium > low > nit", () => {
@@ -141,17 +140,14 @@ describe("sortIssuesBySeverity", () => {
       makeIssue("high"),
     ];
     const sorted = sortIssuesBySeverity(issues).map((i) => i.severity);
-    assert.deepEqual(sorted, ["blocker", "high", "medium", "low", "nit"]);
+    expect(sorted).toEqual(["blocker", "high", "medium", "low", "nit"]);
   });
 
   test("does not mutate the input array", () => {
     const issues = [makeIssue("low"), makeIssue("blocker")];
     const before = issues.map((i) => i.severity);
     sortIssuesBySeverity(issues);
-    assert.deepEqual(
-      issues.map((i) => i.severity),
-      before,
-    );
+    expect(issues.map((i) => i.severity)).toEqual(before);
   });
 
   test("preserves relative order within a single severity (stable-style ordering)", () => {
@@ -162,6 +158,6 @@ describe("sortIssuesBySeverity", () => {
       makeIssue("high", { id: "h3" }),
     ];
     const sortedIds = sortIssuesBySeverity(issues).map((i) => i.id);
-    assert.deepEqual(sortedIds, ["b1", "h1", "h2", "h3"]);
+    expect(sortedIds).toEqual(["b1", "h1", "h2", "h3"]);
   });
 });

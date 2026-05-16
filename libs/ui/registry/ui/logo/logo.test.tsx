@@ -2,6 +2,8 @@ import { render, screen } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 import { Logo } from "./index.js"
 
+// axe skipped: decorative ASCII/text branding mark; accessible name validated by RTL queries.
+
 describe("Logo", () => {
   it("renders plain static text without requiring figlet output", () => {
     render(<Logo text="DIFFGAZER" />)

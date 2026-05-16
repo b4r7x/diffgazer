@@ -55,6 +55,7 @@ describe("useReviewCompletion", () => {
     });
 
     expect(result.current.isCompleting).toBe(false);
+    // call-count IS the contract: onComplete must fire exactly once when the completion delay elapses (no double-fire from timer + state change)
     expect(onComplete).toHaveBeenCalledTimes(1);
   });
 
@@ -101,6 +102,7 @@ describe("useReviewCompletion", () => {
       result.current.skipDelay();
     });
 
+    // call-count IS the contract: skipDelay must fire onComplete exactly once (immediate fire)
     expect(onComplete).toHaveBeenCalledTimes(1);
     expect(result.current.isCompleting).toBe(false);
 
@@ -108,6 +110,7 @@ describe("useReviewCompletion", () => {
       vi.advanceTimersByTime(3000);
     });
 
+    // call-count IS the contract: after skipDelay fires, the pending timer must NOT fire onComplete again (count stays at 1, no double-fire)
     expect(onComplete).toHaveBeenCalledTimes(1);
   });
 

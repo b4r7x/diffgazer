@@ -1,5 +1,4 @@
-import assert from "node:assert/strict";
-import test, { describe } from "node:test";
+import { test, describe, expect } from "vitest";
 import type { InitResponse, SettingsConfig } from "@diffgazer/core/schemas/config";
 import { buildHubValues } from "./hub-screen-values.js";
 
@@ -61,44 +60,39 @@ describe("buildHubValues — settings hub parity with web", () => {
       },
     });
     const values = buildHubValues(init, makeSettings());
-    assert.equal(values.provider, "Not configured");
+    expect(values.provider).toBe("Not configured");
   });
 
   test("uppercases provider id when configured (matches web 'GEMINI')", () => {
     const values = buildHubValues(makeInit(), makeSettings());
-    assert.equal(values.provider, "GEMINI");
+    expect(values.provider).toBe("GEMINI");
   });
 
-  test("uppercases theme value (matches web 'AUTO' / 'DARK')", () => {
-    assert.equal(buildHubValues(makeInit(), makeSettings({ theme: "auto" })).theme, "AUTO");
-    assert.equal(buildHubValues(makeInit(), makeSettings({ theme: "dark" })).theme, "DARK");
-    assert.equal(buildHubValues(makeInit(), makeSettings({ theme: "light" })).theme, "LIGHT");
+  test.each([
+    { theme: "auto" as const, rendered: "AUTO" },
+    { theme: "dark" as const, rendered: "DARK" },
+    { theme: "light" as const, rendered: "LIGHT" },
+  ])("uppercases theme '$theme' to '$rendered' (matches web casing)", ({ theme, rendered }) => {
+    expect(buildHubValues(makeInit(), makeSettings({ theme })).theme).toBe(rendered);
   });
 
-  test("uppercases secrets storage; falls back to 'Not set'", () => {
-    assert.equal(
-      buildHubValues(makeInit(), makeSettings({ secretsStorage: "file" })).storage,
-      "FILE",
-    );
-    assert.equal(
-      buildHubValues(makeInit(), makeSettings({ secretsStorage: "keyring" })).storage,
-      "KEYRING",
-    );
-    assert.equal(
-      buildHubValues(makeInit(), makeSettings({ secretsStorage: null })).storage,
-      "Not set",
-    );
+  test.each([
+    { secretsStorage: "file" as const, rendered: "FILE" },
+    { secretsStorage: "keyring" as const, rendered: "KEYRING" },
+    { secretsStorage: null, rendered: "Not set" },
+  ])("renders secrets storage '$secretsStorage' as '$rendered'", ({ secretsStorage, rendered }) => {
+    expect(
+      buildHubValues(makeInit(), makeSettings({ secretsStorage })).storage,
+    ).toBe(rendered);
   });
 
-  test("agent execution renders 'Parallel' or 'Sequential' (matches web casing)", () => {
-    assert.equal(
-      buildHubValues(makeInit(), makeSettings({ agentExecution: "parallel" }))["agent-execution"],
-      "Parallel",
-    );
-    assert.equal(
-      buildHubValues(makeInit(), makeSettings({ agentExecution: "sequential" }))["agent-execution"],
-      "Sequential",
-    );
+  test.each([
+    { agentExecution: "parallel" as const, rendered: "Parallel" },
+    { agentExecution: "sequential" as const, rendered: "Sequential" },
+  ])("renders agent execution '$agentExecution' as '$rendered' (matches web casing)", ({ agentExecution, rendered }) => {
+    expect(
+      buildHubValues(makeInit(), makeSettings({ agentExecution }))["agent-execution"],
+    ).toBe(rendered);
   });
 
   test("trust value reflects readFiles capability (Trusted / Not trusted)", () => {
@@ -115,36 +109,34 @@ describe("buildHubValues — settings hub parity with web", () => {
         },
       },
     });
-    assert.equal(buildHubValues(trustedInit, makeSettings()).trust, "Trusted");
-    assert.equal(buildHubValues(makeInit(), makeSettings()).trust, "Not trusted");
+    expect(buildHubValues(trustedInit, makeSettings()).trust).toBe("Trusted");
+    expect(buildHubValues(makeInit(), makeSettings()).trust).toBe("Not trusted");
   });
 
   test("analysis shows agent count or 'Default'", () => {
-    assert.equal(
+    expect(
       buildHubValues(makeInit(), makeSettings({ defaultLenses: [] })).analysis,
-      "Default",
-    );
-    assert.equal(
+    ).toBe("Default");
+    expect(
       buildHubValues(
         makeInit(),
         makeSettings({ defaultLenses: ["correctness", "security"] }),
       ).analysis,
-      "2 agents",
-    );
+    ).toBe("2 agents");
   });
 
   test("diagnostics is the constant 'Local'", () => {
-    assert.equal(buildHubValues(makeInit(), makeSettings()).diagnostics, "Local");
+    expect(buildHubValues(makeInit(), makeSettings()).diagnostics).toBe("Local");
   });
 
   test("returns sane defaults when both inputs are undefined", () => {
     const values = buildHubValues(undefined, undefined);
-    assert.equal(values.provider, "Not configured");
-    assert.equal(values.theme, "AUTO");
-    assert.equal(values.storage, "Not set");
-    assert.equal(values["agent-execution"], "Sequential");
-    assert.equal(values.analysis, "Default");
-    assert.equal(values.trust, "Not trusted");
-    assert.equal(values.diagnostics, "Local");
+    expect(values.provider).toBe("Not configured");
+    expect(values.theme).toBe("AUTO");
+    expect(values.storage).toBe("Not set");
+    expect(values["agent-execution"]).toBe("Sequential");
+    expect(values.analysis).toBe("Default");
+    expect(values.trust).toBe("Not trusted");
+    expect(values.diagnostics).toBe("Local");
   });
 });

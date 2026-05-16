@@ -386,9 +386,11 @@ describe("CommandPalette", () => {
 
     await userEvent.type(input, "cop")
     expect(input).toHaveValue("cop")
+    // fireEvent retained: native <dialog> cancel event has no user-event equivalent
     fireEvent(screen.getByRole("dialog"), new Event("cancel", { bubbles: false }))
     expect(input).toHaveValue("")
 
+    // fireEvent retained: native <dialog> cancel event has no user-event equivalent
     fireEvent(screen.getByRole("dialog"), new Event("cancel", { bubbles: false }))
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })
@@ -452,8 +454,10 @@ describe("CommandPalette", () => {
       </CommandPalette>
     )
 
+    // querySelector retained: the native <dialog> element drives the close-transition; the test needs the raw element to fire animationEnd against (a closed dialog loses its accessible role)
     const dialog = document.querySelector("dialog")
     await waitFor(() => expect(dialog).toHaveAttribute("data-state", "closed"))
+    // fireEvent retained: animationend has no user-event equivalent; presence transitions complete on this event
     if (dialog) fireEvent.animationEnd(dialog)
 
     await waitFor(() => expect(trigger).toHaveFocus())
@@ -499,14 +503,18 @@ describe("CommandPalette", () => {
     await userEvent.click(innerOpener)
 
     const innerDialog = screen.getByRole("dialog", { name: "Inner palette" })
+    // fireEvent retained: native <dialog> cancel event has no user-event equivalent
     fireEvent(innerDialog, new Event("cancel", { bubbles: false }))
     await waitFor(() => expect(innerDialog).toHaveAttribute("data-state", "closed"))
+    // fireEvent retained: animationend has no user-event equivalent; presence transitions complete on this event
     fireEvent.animationEnd(innerDialog)
     await waitFor(() => expect(innerOpener).toHaveFocus())
 
     const outerDialog = screen.getByRole("dialog", { name: "Outer palette" })
+    // fireEvent retained: native <dialog> cancel event has no user-event equivalent
     fireEvent(outerDialog, new Event("cancel", { bubbles: false }))
     await waitFor(() => expect(outerDialog).toHaveAttribute("data-state", "closed"))
+    // fireEvent retained: animationend has no user-event equivalent; presence transitions complete on this event
     fireEvent.animationEnd(outerDialog)
     await waitFor(() => expect(opener).toHaveFocus())
   })

@@ -207,6 +207,7 @@ describe("useScope", () => {
     );
 
     act(() => pressKey("Escape"));
+    // call-count IS the contract: handler fires once while scope is enabled
     expect(handler).toHaveBeenCalledTimes(1);
 
     rerender(
@@ -216,6 +217,7 @@ describe("useScope", () => {
     );
 
     act(() => pressKey("Escape"));
+    // call-count IS the contract: handler must NOT fire after scope becomes disabled (count stays at 1, no stale registration)
     expect(handler).toHaveBeenCalledTimes(1);
   });
 
@@ -336,6 +338,7 @@ describe("useScope", () => {
     );
 
     act(() => pressKey("o"));
+    // call-count IS the contract: parent handler must resume firing after the child scope unmounts (count increments to 2, proving scope pop restored the registration)
     expect(parentHandler).toHaveBeenCalledTimes(2);
   });
 
@@ -355,11 +358,13 @@ describe("useScope", () => {
     );
 
     act(() => pressKey("Escape"));
+    // call-count IS the contract: StrictMode mount/unmount/mount must NOT cause duplicate registrations (count is 1, not 2)
     expect(handler).toHaveBeenCalledTimes(1);
 
     unmount();
 
     act(() => pressKey("Escape"));
+    // call-count IS the contract: unmount cleanup must remove the registration (count stays at 1, no leaked handler)
     expect(handler).toHaveBeenCalledTimes(1);
   });
 
@@ -379,6 +384,7 @@ describe("useScope", () => {
     );
 
     act(() => pressKey("Escape"));
+    // call-count IS the contract: enabled scope fires handler once (no StrictMode-induced duplicate)
     expect(handler).toHaveBeenCalledTimes(1);
 
     rerender(
@@ -388,6 +394,7 @@ describe("useScope", () => {
     );
 
     act(() => pressKey("Escape"));
+    // call-count IS the contract: disabled scope must NOT fire handler (count stays at 1)
     expect(handler).toHaveBeenCalledTimes(1);
 
     rerender(
@@ -397,6 +404,7 @@ describe("useScope", () => {
     );
 
     act(() => pressKey("Escape"));
+    // call-count IS the contract: re-enabling registers exactly one handler (count is 2, not 3 or more — no StrictMode duplicates after disable/enable cycle)
     expect(handler).toHaveBeenCalledTimes(2);
   });
 });

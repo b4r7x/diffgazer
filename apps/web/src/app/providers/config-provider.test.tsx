@@ -121,7 +121,7 @@ describe("ConfigProvider", () => {
     expect(screen.getByText("Project: proj-1")).toBeInTheDocument();
   });
 
-  it("should set isConfigured=true when setup status says configured", async () => {
+  it("provides isConfigured=true when init reports configured", async () => {
     renderWithProvider();
 
     await waitFor(() => {
@@ -131,7 +131,7 @@ describe("ConfigProvider", () => {
     expect(screen.getByText("Configured: true")).toBeInTheDocument();
   });
 
-  it("should set isConfigured=false when no provider configured", async () => {
+  it("provides isConfigured=false when no provider is configured", async () => {
     mockApi.loadInit.mockResolvedValue(
       makeInitResponse({
         config: null,
@@ -149,7 +149,7 @@ describe("ConfigProvider", () => {
     expect(screen.getByText("Provider: none")).toBeInTheDocument();
   });
 
-  it("should set error when loadInit fails", async () => {
+  it("surfaces an error message when the init request fails", async () => {
     mockApi.loadInit.mockRejectedValue(new Error("Server down"));
 
     renderWithProvider();
@@ -161,7 +161,7 @@ describe("ConfigProvider", () => {
     expect(screen.getByText("Error: Server down")).toBeInTheDocument();
   });
 
-  it("should show loading state initially", async () => {
+  it("reports loading=true while init requests are still pending", async () => {
     mockApi.loadInit.mockReturnValue(new Promise(() => {}));
     mockApi.getProviderStatus.mockReturnValue(new Promise(() => {}));
 
@@ -255,7 +255,7 @@ describe("ConfigProvider", () => {
     expect(screen.getByText("Configured: false")).toBeInTheDocument();
   });
 
-  it("should set error when activateProvider fails", async () => {
+  it("surfaces an error message when activating a provider fails", async () => {
     const user = userEvent.setup();
     mockApi.activateProvider.mockRejectedValue(new Error("Activation failed"));
 
@@ -272,7 +272,7 @@ describe("ConfigProvider", () => {
     });
   });
 
-  it("should throw when useConfigData is used outside provider", () => {
+  it("throws when useConfigData is called outside the provider", () => {
     function Orphan() {
       useConfigData();
       return null;
@@ -283,7 +283,7 @@ describe("ConfigProvider", () => {
     );
   });
 
-  it("should throw when useConfigActions is used outside provider", () => {
+  it("throws when useConfigActions is called outside the provider", () => {
     function Orphan() {
       useConfigActions();
       return null;

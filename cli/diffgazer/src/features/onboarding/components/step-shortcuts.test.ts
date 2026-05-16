@@ -1,5 +1,4 @@
-import assert from "node:assert/strict";
-import test, { describe } from "node:test";
+import { test, describe, expect } from "vitest";
 import { WIZARD_STEPS, type OnboardingStep } from "@diffgazer/core/onboarding";
 import { getStepShortcuts } from "./step-shortcuts.js";
 
@@ -7,19 +6,19 @@ describe("getStepShortcuts", () => {
   test("returns step-area shortcuts for every wizard step when focus is 'step'", () => {
     for (const step of WIZARD_STEPS) {
       const shortcuts = getStepShortcuts(step, "step", false);
-      assert.ok(
+      expect(
         shortcuts.length > 0,
         `expected step '${step}' to expose shortcuts in step focus`,
-      );
+      ).toBeTruthy();
       const keys = shortcuts.map((shortcut) => shortcut.key);
-      assert.ok(
+      expect(
         keys.some((key) => key.includes("↑/↓")),
         `expected step '${step}' to expose navigation hint`,
-      );
-      assert.ok(
+      ).toBeTruthy();
+      expect(
         keys.includes("Tab"),
         `expected step '${step}' to expose Tab focus hint`,
-      );
+      ).toBeTruthy();
     }
   });
 
@@ -27,8 +26,8 @@ describe("getStepShortcuts", () => {
     const step: OnboardingStep = "storage";
     const shortcuts = getStepShortcuts(step, "nav", false);
     const keys = shortcuts.map((shortcut) => shortcut.key);
-    assert.ok(keys.includes("Enter"));
-    assert.ok(keys.includes("Tab"));
+    expect(keys.includes("Enter")).toBeTruthy();
+    expect(keys.includes("Tab")).toBeTruthy();
   });
 
   test("marks the action shortcut disabled when the step gate is blocked", () => {
@@ -36,22 +35,22 @@ describe("getStepShortcuts", () => {
     const enabled = getStepShortcuts("provider", "nav", false);
     const disabledEntry = disabled.find((s) => s.key === "Enter");
     const enabledEntry = enabled.find((s) => s.key === "Enter");
-    assert.equal(disabledEntry?.disabled, true);
-    assert.equal(enabledEntry?.disabled, false);
+    expect(disabledEntry?.disabled).toBe(true);
+    expect(enabledEntry?.disabled).toBe(false);
   });
 
   test("analysis step exposes a Space toggle hint distinct from radio steps", () => {
     const analysisKeys = getStepShortcuts("analysis", "step", false).map(
       (shortcut) => shortcut.key,
     );
-    assert.ok(analysisKeys.includes("Space"));
+    expect(analysisKeys.includes("Space")).toBeTruthy();
   });
 
   test("every step in step-focus exposes a non-disabled Tab shortcut (focus is always available)", () => {
     for (const step of WIZARD_STEPS) {
       const tab = getStepShortcuts(step, "step", false).find((s) => s.key === "Tab");
-      assert.ok(tab, `expected step '${step}' to include Tab shortcut`);
-      assert.notEqual(tab.disabled, true);
+      expect(tab, `expected step '${step}' to include Tab shortcut`).toBeTruthy();
+      expect(tab!.disabled).not.toBe(true);
     }
   });
 
@@ -62,7 +61,7 @@ describe("getStepShortcuts", () => {
     const enabledTab = getStepShortcuts("provider", "nav", false).find(
       (s) => s.key === "Tab",
     );
-    assert.notEqual(disabledTab?.disabled, true);
-    assert.notEqual(enabledTab?.disabled, true);
+    expect(disabledTab?.disabled).not.toBe(true);
+    expect(enabledTab?.disabled).not.toBe(true);
   });
 });

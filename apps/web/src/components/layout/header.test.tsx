@@ -5,7 +5,7 @@ import { Header } from "./header";
 
 describe("Header", () => {
   it("renders the diffgazer wordmark with an accessible label", () => {
-    render(<Header />);
+    render(<Header providerName="OpenAI" providerStatus="idle" />);
     expect(screen.getByRole("img", { name: "DIFFGAZER" })).toBeInTheDocument();
   });
 
@@ -20,13 +20,13 @@ describe("Header", () => {
   it("calls onBack when the back button is clicked", async () => {
     const user = userEvent.setup();
     const onBack = vi.fn();
-    render(<Header onBack={onBack} />);
+    render(<Header providerName="OpenAI" providerStatus="idle" onBack={onBack} />);
     await user.click(screen.getByRole("button", { name: /back/i }));
     expect(onBack).toHaveBeenCalledOnce();
   });
 
   it("omits the back button when onBack is not provided", () => {
-    render(<Header />);
+    render(<Header providerName="OpenAI" providerStatus="idle" />);
     expect(screen.queryByRole("button", { name: /back/i })).not.toBeInTheDocument();
   });
 });

@@ -23,7 +23,7 @@ function wrapperWithInitial({
   initialShortcuts: Shortcut[];
 }) {
   return ({ children }: { children: ReactNode }) =>
-    createElement(FooterProvider, { initialShortcuts }, children);
+    createElement(FooterProvider, { initialShortcuts, children });
 }
 
 describe("FooterProvider", () => {

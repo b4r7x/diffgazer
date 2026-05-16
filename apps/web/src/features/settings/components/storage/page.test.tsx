@@ -27,6 +27,7 @@ const {
   mockIsSaving: { current: false },
 }));
 
+// Boundary mock: Router is the routing library; tests provide a stub Router context so navigation assertions can be made without a real route tree.
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
 }));

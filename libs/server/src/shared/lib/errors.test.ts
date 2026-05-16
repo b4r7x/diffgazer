@@ -14,42 +14,45 @@ const fallback = {
 };
 
 describe("classifyError", () => {
-  it("should match the first matching rule pattern", () => {
+  it("returns the first matching rule for an Error containing a known pattern", () => {
     const result = classifyError(new Error("Connection ECONNREFUSED"), rules, fallback);
 
     expect(result).toEqual({ code: "NETWORK", message: "Network error" });
   });
 
-  it("should return fallback when no patterns match", () => {
+  it("falls back to the fallback rule when no pattern matches", () => {
     const result = classifyError(new Error("Something weird"), rules, fallback);
 
     expect(result).toEqual({ code: "UNKNOWN", message: "Unexpected: Something weird" });
   });
 
-  it("should be case-insensitive pattern matching", () => {
+  it("matches patterns case-insensitively against the error text", () => {
     const result = classifyError(new Error("UNAUTHORIZED access"), rules, fallback);
 
     expect(result).toEqual({ code: "AUTH", message: "Auth error" });
   });
 
-  it("should handle non-Error thrown values", () => {
-    expect(classifyError("timeout occurred", rules, fallback)).toEqual({
-      code: "NETWORK",
-      message: "Network error",
-    });
-
-    expect(classifyError({ error: true }, rules, fallback)).toEqual({
-      code: "UNKNOWN",
-      message: "Unexpected: [object Object]",
-    });
-
-    expect(classifyError(undefined, rules, fallback)).toEqual({
-      code: "UNKNOWN",
-      message: "Unexpected: undefined",
-    });
+  it.each([
+    {
+      description: "raw string input",
+      input: "timeout occurred",
+      expected: { code: "NETWORK" as const, message: "Network error" },
+    },
+    {
+      description: "non-Error object input",
+      input: { error: true },
+      expected: { code: "UNKNOWN" as const, message: "Unexpected: [object Object]" },
+    },
+    {
+      description: "undefined input",
+      input: undefined,
+      expected: { code: "UNKNOWN" as const, message: "Unexpected: undefined" },
+    },
+  ])("handles $description by stringifying and matching", ({ input, expected }) => {
+    expect(classifyError(input, rules, fallback)).toEqual(expected);
   });
 
-  it("should use original error message (not lowercased) in fallback", () => {
+  it("preserves the original casing of the error message in the fallback output", () => {
     const result = classifyError(new Error("CamelCase Error"), rules, fallback);
 
     expect(result.message).toBe("Unexpected: CamelCase Error");

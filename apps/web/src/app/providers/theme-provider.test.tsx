@@ -92,7 +92,7 @@ describe("ThemeProvider", () => {
     cleanup();
   });
 
-  it("should apply light theme when user setting is light", () => {
+  it("applies the light theme when the user setting is light", () => {
     mockUseSettings.mockReturnValue({
       data: { theme: "light" },
       isLoading: false,
@@ -109,7 +109,7 @@ describe("ThemeProvider", () => {
     expect(document.documentElement.getAttribute("data-theme")).toBe("light");
   });
 
-  it("should fall back to system preference when no user setting", () => {
+  it("falls back to the system preference when no user setting is present", () => {
     render(
       <ThemeProvider>
         <div />
@@ -119,7 +119,7 @@ describe("ThemeProvider", () => {
     expect(document.documentElement.getAttribute("data-theme")).toBe("light");
   });
 
-  it("should apply dark theme when system prefers dark", () => {
+  it("applies the dark theme when the system prefers dark", () => {
     mockMatchMedia(true); // system = dark
     render(
       <ThemeProvider>
@@ -130,7 +130,7 @@ describe("ThemeProvider", () => {
     expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
   });
 
-  it("should persist theme to localStorage and call API on setTheme", () => {
+  it("persists the chosen theme to localStorage and saves it through the API", () => {
     let capturedSetTheme: ThemeContextValue["setTheme"] | undefined;
 
     render(
@@ -146,7 +146,7 @@ describe("ThemeProvider", () => {
     expect(mockMutate).toHaveBeenCalledWith({ theme: "dark" });
   });
 
-  it("should apply setTheme immediately even when settings cache is stale", () => {
+  it("applies the chosen theme immediately even when the settings cache is stale", () => {
     let capturedSetTheme: ThemeContextValue["setTheme"] | undefined;
 
     mockUseSettings.mockReturnValue({
@@ -171,7 +171,7 @@ describe("ThemeProvider", () => {
     expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
   });
 
-  it("should map 'terminal' settings theme to dark", () => {
+  it("renders the 'terminal' settings theme as dark", () => {
     mockUseSettings.mockReturnValue({
       data: { theme: "terminal" },
       isLoading: false,
@@ -188,7 +188,7 @@ describe("ThemeProvider", () => {
     expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
   });
 
-  it("should reflect system theme change", () => {
+  it("reflects a system theme change while mounted", () => {
     const mediaQuery = mockMatchMedia(false);
 
     render(

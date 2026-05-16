@@ -1,10 +1,9 @@
-import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import test, { afterEach, beforeEach, describe } from "node:test";
+import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
 let root: string;
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../../..");
@@ -55,8 +54,8 @@ describe("add command", () => {
 
     const config = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
     const ownedFiles = config.installedComponents["ui/button"].files;
-    assert.ok(ownedFiles.length > 0);
-    assert.ok(ownedFiles.every((file: { hash?: string }) => file.hash?.startsWith("sha256-")));
+    expect(ownedFiles.length).toBeGreaterThan(0);
+    expect(ownedFiles.every((file: { hash?: string }) => file.hash?.startsWith("sha256-"))).toBe(true);
 
     const buttonIndex = join(root, "src/components/ui/button/index.ts");
     const buttonSource = join(root, "src/components/ui/button/button.tsx");
@@ -64,8 +63,8 @@ describe("add command", () => {
 
     runDgadd(["remove", "ui/button", "--cwd", root, "--yes"]);
 
-    assert.equal(readFileSync(buttonIndex, "utf-8"), "// user edits\n");
-    assert.equal(existsSync(buttonSource), true);
+    expect(readFileSync(buttonIndex, "utf-8")).toBe("// user edits\n");
+    expect(existsSync(buttonSource)).toBe(true);
   });
 
   test("init uses a Vite-only custom alias when TypeScript paths are absent", () => {
@@ -82,33 +81,31 @@ describe("add command", () => {
     runDgadd(["init", "--cwd", root, "--yes", "--skip-install"]);
 
     const config = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
-    assert.equal(config.aliases.components, "~/components/ui");
-    assert.equal(config.aliases.utils, "~/lib/utils");
-    assert.equal(config.aliases.lib, "~/lib");
-    assert.equal(config.aliases.hooks, "~/hooks");
-    assert.equal(config.componentsFsPath, "src/components/ui");
-    assert.equal(config.libFsPath, "src/lib");
-    assert.equal(config.hooksFsPath, "src/hooks");
+    expect(config.aliases.components).toBe("~/components/ui");
+    expect(config.aliases.utils).toBe("~/lib/utils");
+    expect(config.aliases.lib).toBe("~/lib");
+    expect(config.aliases.hooks).toBe("~/hooks");
+    expect(config.componentsFsPath).toBe("src/components/ui");
+    expect(config.libFsPath).toBe("src/lib");
+    expect(config.hooksFsPath).toBe("src/hooks");
 
     runDgadd(["add", "ui/button", "--cwd", root, "--yes", "--skip-install"]);
     const buttonSource = join(root, "src/components/ui/button/button.tsx");
-    assert.equal(existsSync(buttonSource), true);
-    assert.match(readFileSync(buttonSource, "utf-8"), /from "~\/lib\/utils"/);
+    expect(existsSync(buttonSource)).toBe(true);
+    expect(readFileSync(buttonSource, "utf-8")).toMatch(/from "~\/lib\/utils"/);
   });
 
   test("hidden keys utilities cannot be installed directly", () => {
-    assert.throws(
+    expect(
       () => runDgadd(["add", "keys/focusable", "--cwd", root, "--yes", "--skip-install"]),
-      /not found/,
-    );
+    ).toThrow(/not found/);
   });
 
   test("bare names without namespace prefix are rejected", () => {
-    assert.throws(
+    expect(
       () => runDgadd(["add", "button", "--cwd", root, "--yes", "--skip-install"]),
-      /not found|Invalid item name|Use a namespaced name/,
-    );
-    assert.equal(existsSync(join(root, "src/components/ui/button/button.tsx")), false);
+    ).toThrow(/not found|Invalid item name|Use a namespaced name/);
+    expect(existsSync(join(root, "src/components/ui/button/button.tsx"))).toBe(false);
   });
 
   test("add does not adopt skipped pre-existing files into the ownership manifest", () => {
@@ -129,7 +126,7 @@ describe("add command", () => {
     runDgadd(["add", "ui/button", "--cwd", root, "--yes", "--skip-install"]);
 
     const config = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
-    assert.equal(config.installedComponents, undefined);
+    expect(config.installedComponents).toBeUndefined();
   });
 
   test("keys add records ownership and remove deletes matching owned files without force", () => {
@@ -137,39 +134,38 @@ describe("add command", () => {
 
     const config = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
     const ownedFiles = config.installedComponents["keys/navigation"].files;
-    assert.ok(ownedFiles.some((file: { path: string }) => file.path === "src/hooks/use-navigation.ts"));
-    assert.ok(ownedFiles.some((file: { path: string }) => file.path === "src/hooks/utils/navigation-dispatch.ts"));
-    assert.ok(ownedFiles.every((file: { path: string }) => !file.path.includes("\\")));
-    assert.doesNotMatch(
-      readFileSync(join(root, "src/hooks/use-navigation.ts"), "utf-8"),
+    expect(ownedFiles.some((file: { path: string }) => file.path === "src/hooks/use-navigation.ts")).toBe(true);
+    expect(ownedFiles.some((file: { path: string }) => file.path === "src/hooks/utils/navigation-dispatch.ts")).toBe(true);
+    expect(ownedFiles.every((file: { path: string }) => !file.path.includes("\\"))).toBe(true);
+    expect(readFileSync(join(root, "src/hooks/use-navigation.ts"), "utf-8")).not.toMatch(
       /from "\.\.\/core\/navigation-dispatch\.js"/,
     );
 
     runDgadd(["remove", "keys/navigation", "--cwd", root, "--yes"]);
 
-    assert.equal(existsSync(join(root, "src/hooks/use-navigation.ts")), false);
-    assert.equal(existsSync(join(root, "src/hooks/utils/navigation-dispatch.ts")), false);
+    expect(existsSync(join(root, "src/hooks/use-navigation.ts"))).toBe(false);
+    expect(existsSync(join(root, "src/hooks/utils/navigation-dispatch.ts"))).toBe(false);
 
     const updated = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
-    assert.equal(updated.installedComponents?.["keys/navigation"], undefined);
+    expect(updated.installedComponents?.["keys/navigation"]).toBeUndefined();
   });
 
   test("keys add preserves explicit ownership for hooks that overlap transitive files", () => {
     runDgadd(["add", "keys/focus-trap", "keys/focus-restore", "--cwd", root, "--yes", "--skip-install"]);
 
     const config = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
-    assert.ok(config.installedComponents?.["keys/focus-trap"]);
-    assert.ok(config.installedComponents?.["keys/focus-restore"]);
+    expect(config.installedComponents?.["keys/focus-trap"]).toBeTruthy();
+    expect(config.installedComponents?.["keys/focus-restore"]).toBeTruthy();
 
     runDgadd(["remove", "keys/focus-trap", "--cwd", root, "--yes"]);
 
     const updated = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
-    assert.equal(updated.installedComponents?.["keys/focus-trap"], undefined);
-    assert.ok(updated.installedComponents?.["keys/focus-restore"]);
-    assert.equal(existsSync(join(root, "src/hooks/use-focus-trap.ts")), false);
-    assert.equal(existsSync(join(root, "src/hooks/use-focus-restore.ts")), true);
-    assert.equal(existsSync(join(root, "src/hooks/utils/focus-restore.ts")), true);
-    assert.equal(existsSync(join(root, "src/hooks/utils/focusable.ts")), false);
+    expect(updated.installedComponents?.["keys/focus-trap"]).toBeUndefined();
+    expect(updated.installedComponents?.["keys/focus-restore"]).toBeTruthy();
+    expect(existsSync(join(root, "src/hooks/use-focus-trap.ts"))).toBe(false);
+    expect(existsSync(join(root, "src/hooks/use-focus-restore.ts"))).toBe(true);
+    expect(existsSync(join(root, "src/hooks/utils/focus-restore.ts"))).toBe(true);
+    expect(existsSync(join(root, "src/hooks/utils/focusable.ts"))).toBe(false);
   });
 
   test("sequential keys add adopts shared trusted files into the second item's manifest", () => {
@@ -177,27 +173,27 @@ describe("add command", () => {
     runDgadd(["add", "keys/focus-restore", "--cwd", root, "--yes", "--skip-install"]);
 
     const config = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
-    assert.ok(config.installedComponents?.["keys/focus-trap"]);
-    assert.ok(config.installedComponents?.["keys/focus-restore"]);
+    expect(config.installedComponents?.["keys/focus-trap"]).toBeTruthy();
+    expect(config.installedComponents?.["keys/focus-restore"]).toBeTruthy();
 
     const restoreFiles: Array<{ path: string }> = config.installedComponents["keys/focus-restore"].files ?? [];
-    assert.ok(
+    expect(
       restoreFiles.some((file) => file.path === "src/hooks/use-focus-restore.ts"),
       "second add should adopt shared use-focus-restore.ts via manifest",
-    );
-    assert.ok(
+    ).toBe(true);
+    expect(
       restoreFiles.some((file) => file.path === "src/hooks/utils/focus-restore.ts"),
       "second add should adopt shared utils/focus-restore.ts via manifest",
-    );
+    ).toBe(true);
 
     runDgadd(["remove", "keys/focus-trap", "--cwd", root, "--yes"]);
 
-    assert.equal(existsSync(join(root, "src/hooks/use-focus-trap.ts")), false);
-    assert.equal(existsSync(join(root, "src/hooks/use-focus-restore.ts")), true);
-    assert.equal(existsSync(join(root, "src/hooks/utils/focus-restore.ts")), true);
+    expect(existsSync(join(root, "src/hooks/use-focus-trap.ts"))).toBe(false);
+    expect(existsSync(join(root, "src/hooks/use-focus-restore.ts"))).toBe(true);
+    expect(existsSync(join(root, "src/hooks/utils/focus-restore.ts"))).toBe(true);
 
     const finalConfig = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
-    assert.ok(finalConfig.installedComponents?.["keys/focus-restore"]);
+    expect(finalConfig.installedComponents?.["keys/focus-restore"]).toBeTruthy();
   });
 
   test("keys add does not adopt arbitrary pre-existing files into the new item's manifest", () => {
@@ -210,12 +206,12 @@ describe("add command", () => {
     const config = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
     const navigationRecord = config.installedComponents?.["keys/navigation"];
     const navigationFiles: Array<{ path: string }> = navigationRecord?.files ?? [];
-    assert.ok(
-      !navigationFiles.some((file) => file.path === "src/hooks/use-navigation.ts"),
+    expect(
+      navigationFiles.some((file) => file.path === "src/hooks/use-navigation.ts"),
       "pre-existing user file with mismatched content must not be adopted",
-    );
+    ).toBe(false);
 
-    assert.equal(readFileSync(navigationHook, "utf-8"), "// user-authored impostor\n");
+    expect(readFileSync(navigationHook, "utf-8")).toBe("// user-authored impostor\n");
   });
 
   test("add appends required component CSS to the configured Tailwind entry", () => {
@@ -232,8 +228,8 @@ describe("add command", () => {
     runDgadd(["add", "ui/dialog", "--cwd", root, "--yes", "--skip-install"]);
 
     const styles = readFileSync(join(root, "src/styles/styles.css"), "utf-8");
-    assert.match(styles, /dialog::backdrop/);
-    assert.equal(existsSync(join(root, "src/components/ui/shared/dialog.css")), false);
+    expect(styles).toMatch(/dialog::backdrop/);
+    expect(existsSync(join(root, "src/components/ui/shared/dialog.css"))).toBe(false);
   });
 
   test("repeated add does not duplicate component CSS chunks even after whitespace edits", () => {
@@ -248,7 +244,7 @@ describe("add command", () => {
 
     const markerPattern = /\/\* dgadd:css [a-f0-9]{16} \*\//g;
     const startCountFirst = (afterFirst.match(markerPattern) ?? []).length;
-    assert.ok(startCountFirst > 0, "expected sentinel markers after first add");
+    expect(startCountFirst, "expected sentinel markers after first add").toBeGreaterThan(0);
 
     const perturbed = afterFirst
       .replace(/\n\n/g, "\n\n\n")
@@ -259,13 +255,12 @@ describe("add command", () => {
     const afterSecond = readFileSync(join(root, "src/styles/styles.css"), "utf-8");
     const startCountSecond = (afterSecond.match(markerPattern) ?? []).length;
 
-    assert.equal(
+    expect(
       startCountSecond,
-      startCountFirst,
       "re-running add must not append duplicate chunks under whitespace/comment edits",
-    );
+    ).toBe(startCountFirst);
     const sentinelEnds = (afterSecond.match(/\/\* dgadd:css-end [a-f0-9]{16} \*\//g) ?? []).length;
-    assert.equal(sentinelEnds, startCountSecond, "every chunk is bounded by matching markers");
+    expect(sentinelEnds, "every chunk is bounded by matching markers").toBe(startCountSecond);
   });
 
   test("invalid fs path config fails before writing outside the project", () => {
@@ -273,11 +268,10 @@ describe("add command", () => {
     config.hooksFsPath = "../outside";
     writeFileSync(join(root, "diffgazer.json"), JSON.stringify(config, null, 2));
 
-    assert.throws(
+    expect(
       () => runDgadd(["add", "keys/navigation", "--cwd", root, "--yes", "--skip-install"]),
-      /escapes|Project paths/,
-    );
-    assert.equal(existsSync(resolve(root, "..", "outside", "use-navigation.ts")), false);
+    ).toThrow(/escapes|Project paths/);
+    expect(existsSync(resolve(root, "..", "outside", "use-navigation.ts"))).toBe(false);
   });
 
   test("windows-style config paths are normalized in ownership records", () => {
@@ -289,8 +283,8 @@ describe("add command", () => {
 
     const updated = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
     const ownedFiles = updated.installedComponents["keys/navigation"].files;
-    assert.ok(ownedFiles.some((file: { path: string }) => file.path === "src/hooks/use-navigation.ts"));
-    assert.ok(ownedFiles.every((file: { path: string }) => !file.path.includes("\\")));
+    expect(ownedFiles.some((file: { path: string }) => file.path === "src/hooks/use-navigation.ts")).toBe(true);
+    expect(ownedFiles.every((file: { path: string }) => !file.path.includes("\\"))).toBe(true);
   });
 });
 
@@ -302,10 +296,10 @@ describe("remove command", () => {
 
     const output = runDgadd(["remove", "ui/button", "--cwd", root, "--yes", "--force"], { silent: false });
 
-    assert.match(output, /Removed \d+ file\(s\) \(ui\/button\)/);
-    assert.equal(existsSync(buttonIndex), false);
+    expect(output).toMatch(/Removed \d+ file\(s\) \(ui\/button\)/);
+    expect(existsSync(buttonIndex)).toBe(false);
     const config = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
-    assert.equal(config.installedComponents?.["ui/button"], undefined);
+    expect(config.installedComponents?.["ui/button"]).toBeUndefined();
   });
 
   test("remove --dry-run previews owned files without changing files or manifest", () => {
@@ -315,22 +309,21 @@ describe("remove command", () => {
 
     const output = runDgadd(["remove", "ui/button", "--cwd", root, "--dry-run", "--yes"], { silent: false });
 
-    assert.match(output, /Files to remove:/);
-    assert.match(output, /src\/components\/ui\/button\/index\.ts/);
-    assert.match(output, /\(dry run - no changes made\)/);
-    assert.equal(existsSync(buttonIndex), true);
+    expect(output).toMatch(/Files to remove:/);
+    expect(output).toMatch(/src\/components\/ui\/button\/index\.ts/);
+    expect(output).toMatch(/\(dry run - no changes made\)/);
+    expect(existsSync(buttonIndex)).toBe(true);
 
     const after = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
-    assert.deepEqual(after.installedComponents, before.installedComponents);
+    expect(after.installedComponents).toEqual(before.installedComponents);
   });
 
   test("bare names are rejected for remove command too", () => {
     runDgadd(["add", "ui/button", "--cwd", root, "--yes", "--skip-install"]);
-    assert.throws(
+    expect(
       () => runDgadd(["remove", "button", "--cwd", root, "--yes"]),
-      /not found|Invalid item name|Use a namespaced name/,
-    );
-    assert.equal(existsSync(join(root, "src/components/ui/button/button.tsx")), true);
+    ).toThrow(/not found|Invalid item name|Use a namespaced name/);
+    expect(existsSync(join(root, "src/components/ui/button/button.tsx"))).toBe(true);
   });
 
   test("remove does not delete matching files without ownership metadata", () => {
@@ -343,23 +336,23 @@ describe("remove command", () => {
 
     runDgadd(["remove", "ui/button", "--cwd", root, "--yes"]);
 
-    assert.equal(existsSync(buttonIndex), true);
+    expect(existsSync(buttonIndex)).toBe(true);
   });
 
   test("keys remove deletes transitive copied hook files owned by the key item", () => {
     runDgadd(["add", "keys/focus-trap", "--cwd", root, "--yes", "--skip-install"]);
 
-    assert.equal(existsSync(join(root, "src/hooks/use-focus-trap.ts")), true);
-    assert.equal(existsSync(join(root, "src/hooks/use-focus-restore.ts")), true);
-    assert.equal(existsSync(join(root, "src/hooks/utils/focus-restore.ts")), true);
-    assert.equal(existsSync(join(root, "src/hooks/utils/focusable.ts")), true);
+    expect(existsSync(join(root, "src/hooks/use-focus-trap.ts"))).toBe(true);
+    expect(existsSync(join(root, "src/hooks/use-focus-restore.ts"))).toBe(true);
+    expect(existsSync(join(root, "src/hooks/utils/focus-restore.ts"))).toBe(true);
+    expect(existsSync(join(root, "src/hooks/utils/focusable.ts"))).toBe(true);
 
     runDgadd(["remove", "keys/focus-trap", "--cwd", root, "--yes"]);
 
-    assert.equal(existsSync(join(root, "src/hooks/use-focus-trap.ts")), false);
-    assert.equal(existsSync(join(root, "src/hooks/use-focus-restore.ts")), false);
-    assert.equal(existsSync(join(root, "src/hooks/utils/focus-restore.ts")), false);
-    assert.equal(existsSync(join(root, "src/hooks/utils/focusable.ts")), false);
+    expect(existsSync(join(root, "src/hooks/use-focus-trap.ts"))).toBe(false);
+    expect(existsSync(join(root, "src/hooks/use-focus-restore.ts"))).toBe(false);
+    expect(existsSync(join(root, "src/hooks/utils/focus-restore.ts"))).toBe(false);
+    expect(existsSync(join(root, "src/hooks/utils/focusable.ts"))).toBe(false);
   });
 
   test("remove blocks copied keys hooks still required by retained copy-mode UI", () => {
@@ -367,14 +360,14 @@ describe("remove command", () => {
 
     const output = runDgadd(["remove", "keys/navigation", "--cwd", root, "--yes"], { silent: false });
 
-    assert.match(output, /Keeping keys\/navigation/);
-    assert.match(output, /ui\/select/);
-    assert.equal(existsSync(join(root, "src/hooks/use-navigation.ts")), true);
-    assert.equal(existsSync(join(root, "src/hooks/utils/navigation-dispatch.ts")), true);
+    expect(output).toMatch(/Keeping keys\/navigation/);
+    expect(output).toMatch(/ui\/select/);
+    expect(existsSync(join(root, "src/hooks/use-navigation.ts"))).toBe(true);
+    expect(existsSync(join(root, "src/hooks/utils/navigation-dispatch.ts"))).toBe(true);
 
     const updated = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
-    assert.ok(updated.installedComponents?.["ui/select"]);
-    assert.ok(updated.installedComponents?.["keys/navigation"]);
+    expect(updated.installedComponents?.["ui/select"]).toBeTruthy();
+    expect(updated.installedComponents?.["keys/navigation"]).toBeTruthy();
   });
 
   test("mixed remove deletes copied keys hooks when their copy-mode UI dependent is removed too", () => {
@@ -382,13 +375,13 @@ describe("remove command", () => {
 
     runDgadd(["remove", "ui/select", "keys/navigation", "--cwd", root, "--yes"]);
 
-    assert.equal(existsSync(join(root, "src/components/ui/select/select.tsx")), false);
-    assert.equal(existsSync(join(root, "src/hooks/use-navigation.ts")), false);
-    assert.equal(existsSync(join(root, "src/hooks/utils/navigation-dispatch.ts")), false);
+    expect(existsSync(join(root, "src/components/ui/select/select.tsx"))).toBe(false);
+    expect(existsSync(join(root, "src/hooks/use-navigation.ts"))).toBe(false);
+    expect(existsSync(join(root, "src/hooks/utils/navigation-dispatch.ts"))).toBe(false);
 
     const updated = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
-    assert.equal(updated.installedComponents?.["ui/select"], undefined);
-    assert.equal(updated.installedComponents?.["keys/navigation"], undefined);
+    expect(updated.installedComponents?.["ui/select"]).toBeUndefined();
+    expect(updated.installedComponents?.["keys/navigation"]).toBeUndefined();
   });
 
   test("mixed remove updates manifest and output only for actually removed items", () => {
@@ -399,14 +392,14 @@ describe("remove command", () => {
 
     const output = runDgadd(["remove", "ui/select", "keys/navigation", "--cwd", root, "--yes"], { silent: false });
 
-    assert.match(output, /Removed \d+ file\(s\) \(ui\/select\)/);
-    assert.doesNotMatch(output, /Removed \d+ file\(s\) \(ui\/select, keys\/navigation\)/);
-    assert.equal(existsSync(join(root, "src/components/ui/select/select.tsx")), false);
-    assert.equal(existsSync(navigationHook), true);
+    expect(output).toMatch(/Removed \d+ file\(s\) \(ui\/select\)/);
+    expect(output).not.toMatch(/Removed \d+ file\(s\) \(ui\/select, keys\/navigation\)/);
+    expect(existsSync(join(root, "src/components/ui/select/select.tsx"))).toBe(false);
+    expect(existsSync(navigationHook)).toBe(true);
 
     const updated = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
-    assert.equal(updated.installedComponents?.["ui/select"], undefined);
-    assert.ok(updated.installedComponents?.["keys/navigation"]);
+    expect(updated.installedComponents?.["ui/select"]).toBeUndefined();
+    expect(updated.installedComponents?.["keys/navigation"]).toBeTruthy();
   });
 });
 
@@ -415,24 +408,24 @@ describe("list command", () => {
     const items = JSON.parse(runDgadd(["list", "--cwd", root, "--json"])) as Array<{ name: string }>;
     const names = items.map((item) => item.name);
 
-    assert.ok(names.includes("ui/button"));
-    assert.ok(!names.includes("button"));
-    assert.ok(!names.includes("ui/theme"));
-    assert.ok(!names.includes("theme"));
-    assert.ok(!names.includes("ui/portal"));
-    assert.ok(!names.includes("ui/dialog-shell"));
-    assert.ok(!names.includes("keys/focusable"));
-    assert.equal(names.length, new Set(names).size);
+    expect(names).toContain("ui/button");
+    expect(names).not.toContain("button");
+    expect(names).not.toContain("ui/theme");
+    expect(names).not.toContain("theme");
+    expect(names).not.toContain("ui/portal");
+    expect(names).not.toContain("ui/dialog-shell");
+    expect(names).not.toContain("keys/focusable");
+    expect(names.length).toBe(new Set(names).size);
   });
 
   test("list json --all includes hidden internal items once", () => {
     const items = JSON.parse(runDgadd(["list", "--cwd", root, "--json", "--all"])) as Array<{ name: string }>;
     const names = items.map((item) => item.name);
 
-    assert.equal(names.filter((name) => name === "ui/portal").length, 1);
-    assert.equal(names.filter((name) => name === "ui/dialog-shell").length, 1);
-    assert.equal(names.filter((name) => name === "keys/focusable").length, 1);
-    assert.equal(names.length, new Set(names).size);
+    expect(names.filter((name) => name === "ui/portal").length).toBe(1);
+    expect(names.filter((name) => name === "ui/dialog-shell").length).toBe(1);
+    expect(names.filter((name) => name === "keys/focusable").length).toBe(1);
+    expect(names.length).toBe(new Set(names).size);
   });
 });
 
@@ -440,18 +433,15 @@ describe("integration modes", () => {
   test("copy integration installs keys transitive files with bundler-safe relative imports", () => {
     runDgadd(["add", "ui/select", "--cwd", root, "--yes", "--skip-install"]);
 
-    assert.equal(existsSync(join(root, "src/hooks/utils/navigation-dispatch.ts")), true);
-    assert.equal(existsSync(join(root, "src/hooks/utils/navigation-items.ts")), true);
-    assert.doesNotMatch(
-      readFileSync(join(root, "src/hooks/use-navigation.ts"), "utf-8"),
+    expect(existsSync(join(root, "src/hooks/utils/navigation-dispatch.ts"))).toBe(true);
+    expect(existsSync(join(root, "src/hooks/utils/navigation-items.ts"))).toBe(true);
+    expect(readFileSync(join(root, "src/hooks/use-navigation.ts"), "utf-8")).not.toMatch(
       /from "\.\/utils\/navigation-dispatch\.js"/,
     );
-    assert.match(
-      readFileSync(join(root, "src/hooks/use-navigation.ts"), "utf-8"),
+    expect(readFileSync(join(root, "src/hooks/use-navigation.ts"), "utf-8")).toMatch(
       /from "\.\/utils\/navigation-dispatch"/,
     );
-    assert.match(
-      readFileSync(join(root, "src/hooks/use-navigation.ts"), "utf-8"),
+    expect(readFileSync(join(root, "src/hooks/use-navigation.ts"), "utf-8")).toMatch(
       /from "\.\/utils\/navigation-items"/,
     );
   });
@@ -459,75 +449,74 @@ describe("integration modes", () => {
   test("copy integration rewrites package-root keys imports to copied sources", () => {
     runDgadd(["add", "ui/accordion", "--integration", "copy", "--cwd", root, "--yes", "--skip-install"]);
 
-    assert.equal(existsSync(join(root, "src/hooks/utils/navigation-items.ts")), true);
-    assert.equal(existsSync(join(root, "src/hooks/utils/focusable.ts")), true);
+    expect(existsSync(join(root, "src/hooks/utils/navigation-items.ts"))).toBe(true);
+    expect(existsSync(join(root, "src/hooks/utils/focusable.ts"))).toBe(true);
 
     const content = readFileSync(join(root, "src/components/ui/accordion/accordion.tsx"), "utf-8");
-    assert.doesNotMatch(content, /@diffgazer\/keys/);
-    assert.match(content, /@\/hooks\/utils\/navigation-items/);
+    expect(content).not.toMatch(/@diffgazer\/keys/);
+    expect(content).toMatch(/@\/hooks\/utils\/navigation-items/);
   });
 
   test("copy integration installs focusable utilities for popover-backed UI", () => {
     runDgadd(["add", "ui/popover", "--integration", "copy", "--cwd", root, "--yes", "--skip-install"]);
 
-    assert.equal(existsSync(join(root, "src/hooks/utils/focusable.ts")), true);
+    expect(existsSync(join(root, "src/hooks/utils/focusable.ts"))).toBe(true);
 
     const content = readFileSync(join(root, "src/components/ui/popover/use-auto-focus.ts"), "utf-8");
-    assert.doesNotMatch(content, /@diffgazer\/keys/);
-    assert.match(content, /@\/hooks\/utils\/focusable/);
+    expect(content).not.toMatch(/@diffgazer\/keys/);
+    expect(content).toMatch(/@\/hooks\/utils\/focusable/);
   });
 
   test("copy integration installs focus restore for dialog-backed UI", () => {
     runDgadd(["add", "ui/command-palette", "--integration", "copy", "--cwd", root, "--yes", "--skip-install"]);
 
-    assert.equal(existsSync(join(root, "src/hooks/use-focus-restore.ts")), true);
-    assert.equal(existsSync(join(root, "src/hooks/utils/focus-restore.ts")), true);
+    expect(existsSync(join(root, "src/hooks/use-focus-restore.ts"))).toBe(true);
+    expect(existsSync(join(root, "src/hooks/utils/focus-restore.ts"))).toBe(true);
 
     const content = readFileSync(
       join(root, "src/components/ui/command-palette/command-palette-content.tsx"),
       "utf-8",
     );
-    assert.doesNotMatch(content, /@diffgazer\/keys/);
-    assert.match(content, /@\/hooks\/use-focus-restore/);
+    expect(content).not.toMatch(/@diffgazer\/keys/);
+    expect(content).toMatch(/@\/hooks\/use-focus-restore/);
   });
 
   test("copy integration installs navigation for radio-backed UI", () => {
     runDgadd(["add", "ui/radio", "--integration", "copy", "--cwd", root, "--yes", "--skip-install"]);
 
-    assert.equal(existsSync(join(root, "src/hooks/use-navigation.ts")), true);
-    assert.equal(existsSync(join(root, "src/hooks/utils/navigation-dispatch.ts")), true);
-    assert.equal(existsSync(join(root, "src/hooks/utils/navigation-items.ts")), true);
+    expect(existsSync(join(root, "src/hooks/use-navigation.ts"))).toBe(true);
+    expect(existsSync(join(root, "src/hooks/utils/navigation-dispatch.ts"))).toBe(true);
+    expect(existsSync(join(root, "src/hooks/utils/navigation-items.ts"))).toBe(true);
 
     const content = readFileSync(join(root, "src/components/ui/radio/radio-group.tsx"), "utf-8");
-    assert.doesNotMatch(content, /@diffgazer\/keys/);
-    assert.match(content, /@\/hooks\/use-navigation/);
+    expect(content).not.toMatch(/@diffgazer\/keys/);
+    expect(content).toMatch(/@\/hooks\/use-navigation/);
   });
 
   test("none integration is rejected when selected components require keys hooks", () => {
-    assert.throws(
+    expect(
       () => runDgadd(["add", "ui/select", "--integration", "none", "--cwd", root, "--yes", "--skip-install"]),
-      /require keyboard hooks|Components reference keyboard hooks/,
-    );
-    assert.equal(existsSync(join(root, "src/components/ui/select/select.tsx")), false);
-    assert.equal(existsSync(join(root, "src/hooks/use-navigation.ts")), false);
+    ).toThrow(/require keyboard hooks|Components reference keyboard hooks/);
+    expect(existsSync(join(root, "src/components/ui/select/select.tsx"))).toBe(false);
+    expect(existsSync(join(root, "src/hooks/use-navigation.ts"))).toBe(false);
   });
 
   test("none integration installs components that do not require keys hooks", () => {
     runDgadd(["add", "ui/button", "--integration", "none", "--cwd", root, "--yes", "--skip-install"]);
 
     const config = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
-    assert.equal(existsSync(join(root, "src/components/ui/button/button.tsx")), true);
-    assert.equal(config.installedComponents["ui/button"].integrationMode, "none");
+    expect(existsSync(join(root, "src/components/ui/button/button.tsx"))).toBe(true);
+    expect(config.installedComponents["ui/button"].integrationMode).toBe("none");
   });
 
   test("keys package integration diff is up to date immediately after add", () => {
     runDgadd(["add", "ui/select", "--integration", "keys", "--cwd", root, "--yes", "--skip-install"]);
 
     const selectContentSource = join(root, "src/components/ui/select/select-content.tsx");
-    assert.match(readFileSync(selectContentSource, "utf-8"), /from "@diffgazer\/keys"/);
+    expect(readFileSync(selectContentSource, "utf-8")).toMatch(/from "@diffgazer\/keys"/);
 
     const output = runDgadd(["diff", "ui/select", "--cwd", root], { silent: false });
-    assert.match(output, /All Diffgazer items are up to date with registry\./);
+    expect(output).toMatch(/All Diffgazer items are up to date with registry\./);
   });
 
   test("keys package integration diff reports modified installed files", () => {
@@ -537,8 +526,8 @@ describe("integration modes", () => {
     writeFileSync(selectContentSource, `${readFileSync(selectContentSource, "utf-8")}\n// user edit\n`);
 
     const output = runDgadd(["diff", "ui/select", "--cwd", root], { silent: false });
-    assert.match(output, /Summary: \d+ changed/);
-    assert.match(output, /user edit/);
+    expect(output).toMatch(/Summary: \d+ changed/);
+    expect(output).toMatch(/user edit/);
   });
 });
 
@@ -547,22 +536,22 @@ describe("ownership boundaries", () => {
     runDgadd(["add", "keys/focus-trap", "keys/focus-restore", "--cwd", root, "--yes", "--skip-install"]);
 
     const before = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
-    assert.ok(before.installedComponents?.["keys/focus-trap"]);
-    assert.ok(before.installedComponents?.["keys/focus-restore"]);
+    expect(before.installedComponents?.["keys/focus-trap"]).toBeTruthy();
+    expect(before.installedComponents?.["keys/focus-restore"]).toBeTruthy();
 
     delete before.installedComponents["keys/focus-restore"];
     writeFileSync(join(root, "diffgazer.json"), JSON.stringify(before, null, 2));
 
     runDgadd(["remove", "keys/focus-trap", "--cwd", root, "--yes"]);
 
-    assert.equal(existsSync(join(root, "src/hooks/use-focus-trap.ts")), false);
-    assert.equal(existsSync(join(root, "src/hooks/use-focus-restore.ts")), false);
-    assert.equal(existsSync(join(root, "src/hooks/utils/focus-restore.ts")), false);
-    assert.equal(existsSync(join(root, "src/hooks/utils/focusable.ts")), false);
+    expect(existsSync(join(root, "src/hooks/use-focus-trap.ts"))).toBe(false);
+    expect(existsSync(join(root, "src/hooks/use-focus-restore.ts"))).toBe(false);
+    expect(existsSync(join(root, "src/hooks/utils/focus-restore.ts"))).toBe(false);
+    expect(existsSync(join(root, "src/hooks/utils/focusable.ts"))).toBe(false);
 
     const updated = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
-    assert.equal(updated.installedComponents?.["keys/focus-trap"], undefined);
-    assert.equal(updated.installedComponents?.["keys/focus-restore"], undefined);
+    expect(updated.installedComponents?.["keys/focus-trap"]).toBeUndefined();
+    expect(updated.installedComponents?.["keys/focus-restore"]).toBeUndefined();
   });
 
   test("add --overwrite replaces a locally-modified owned file and updates the ownership hash", () => {
@@ -572,19 +561,19 @@ describe("ownership boundaries", () => {
     const initialConfig = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
     const initialHash = initialConfig.installedComponents["ui/button"].files
       .find((file: { path: string }) => file.path === "src/components/ui/button/index.ts")?.hash;
-    assert.ok(initialHash, "initial install should hash the index file");
+    expect(initialHash, "initial install should hash the index file").toBeTruthy();
 
     writeFileSync(buttonIndex, "// user edits\n");
 
     runDgadd(["add", "ui/button", "--cwd", root, "--yes", "--skip-install", "--overwrite"]);
 
     const reinstalledContent = readFileSync(buttonIndex, "utf-8");
-    assert.notEqual(reinstalledContent, "// user edits\n");
+    expect(reinstalledContent).not.toBe("// user edits\n");
 
     const updatedConfig = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
     const updatedHash = updatedConfig.installedComponents["ui/button"].files
       .find((file: { path: string }) => file.path === "src/components/ui/button/index.ts")?.hash;
-    assert.equal(updatedHash, initialHash, "reinstalled content matches registry, so the recorded hash is unchanged");
+    expect(updatedHash, "reinstalled content matches registry, so the recorded hash is unchanged").toBe(initialHash);
   });
 
   test("add without --overwrite keeps locally-modified content and does not corrupt the existing ownership entry", () => {
@@ -595,9 +584,9 @@ describe("ownership boundaries", () => {
 
     runDgadd(["add", "ui/button", "--cwd", root, "--yes", "--skip-install"]);
 
-    assert.equal(readFileSync(buttonIndex, "utf-8"), "// user edits\n");
+    expect(readFileSync(buttonIndex, "utf-8")).toBe("// user edits\n");
 
     const updatedConfig = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
-    assert.ok(updatedConfig.installedComponents?.["ui/button"]);
+    expect(updatedConfig.installedComponents?.["ui/button"]).toBeTruthy();
   });
 });

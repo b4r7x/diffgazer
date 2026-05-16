@@ -26,22 +26,41 @@ function createOptions(
 }
 
 describe("useReviewStart", () => {
-  it("resumes a review when reviewId is provided", async () => {
+  it("resumes the supplied review id when configured and not loading", async () => {
     const options = createOptions({ reviewId: "review-123" });
 
     renderHook(() => useReviewStart(options), {
       wrapper: StrictModeWrapper,
     });
 
+    // call-count IS the contract: resume must fire exactly once under StrictMode (effect dedups; double-fire would re-resume the same session and break the once-per-mount guarantee)
     await waitFor(() => expect(options.resume).toHaveBeenCalledTimes(1));
     expect(options.resume).toHaveBeenCalledWith("review-123");
   });
 
-  it("does not resume when reviewId matches the current live stream", async () => {
-    const options = createOptions({
-      reviewId: "live-review",
-      currentReviewId: "live-review",
-    });
+  it.each([
+    {
+      label: "reviewId=undefined",
+      overrides: {} as Partial<UseReviewStartOptions>,
+    },
+    {
+      label: "reviewId='live-review' matches currentReviewId='live-review'",
+      overrides: { reviewId: "live-review", currentReviewId: "live-review" } as Partial<UseReviewStartOptions>,
+    },
+    {
+      label: "configLoading=true",
+      overrides: { reviewId: "review-123", configLoading: true } as Partial<UseReviewStartOptions>,
+    },
+    {
+      label: "settingsLoading=true",
+      overrides: { reviewId: "review-123", settingsLoading: true } as Partial<UseReviewStartOptions>,
+    },
+    {
+      label: "isConfigured=false",
+      overrides: { reviewId: "review-123", isConfigured: false } as Partial<UseReviewStartOptions>,
+    },
+  ])("does not resume and stays not-started when $label", async ({ overrides }) => {
+    const options = createOptions(overrides);
 
     const { result } = renderHook(() => useReviewStart(options), {
       wrapper: StrictModeWrapper,
@@ -52,33 +71,7 @@ describe("useReviewStart", () => {
     expect(options.resume).not.toHaveBeenCalled();
   });
 
-  it("does nothing when no reviewId is provided", async () => {
-    const options = createOptions();
-
-    const { result } = renderHook(() => useReviewStart(options), {
-      wrapper: StrictModeWrapper,
-    });
-
-    await waitFor(() => expect(result.current.hasStarted).toBe(false));
-
-    expect(options.resume).not.toHaveBeenCalled();
-  });
-
-  it("does nothing while config is loading", async () => {
-    const options = createOptions({
-      reviewId: "review-123",
-      configLoading: true,
-    });
-
-    const { result } = renderHook(() => useReviewStart(options), {
-      wrapper: StrictModeWrapper,
-    });
-
-    await waitFor(() => expect(result.current.hasStarted).toBe(false));
-    expect(options.resume).not.toHaveBeenCalled();
-  });
-
-  it("calls onStaleSession when resume returns SESSION_STALE", async () => {
+  it("invokes onStaleSession when the resumed session is stale (SESSION_STALE)", async () => {
     const onStale = vi.fn();
     const options = createOptions({
       reviewId: "stale-review",
@@ -92,38 +85,11 @@ describe("useReviewStart", () => {
       wrapper: StrictModeWrapper,
     });
 
+    // call-count IS the contract: stale-session callback must fire exactly once under StrictMode (no double-notification on the consumer)
     await waitFor(() => expect(onStale).toHaveBeenCalledTimes(1));
   });
 
-  it("does nothing while settings are loading", async () => {
-    const options = createOptions({
-      reviewId: "review-123",
-      settingsLoading: true,
-    });
-
-    const { result } = renderHook(() => useReviewStart(options), {
-      wrapper: StrictModeWrapper,
-    });
-
-    await waitFor(() => expect(result.current.hasStarted).toBe(false));
-    expect(options.resume).not.toHaveBeenCalled();
-  });
-
-  it("does nothing when isConfigured is false", async () => {
-    const options = createOptions({
-      reviewId: "review-123",
-      isConfigured: false,
-    });
-
-    const { result } = renderHook(() => useReviewStart(options), {
-      wrapper: StrictModeWrapper,
-    });
-
-    await waitFor(() => expect(result.current.hasStarted).toBe(false));
-    expect(options.resume).not.toHaveBeenCalled();
-  });
-
-  it("calls onNotFoundInSession when resume returns SESSION_NOT_FOUND", async () => {
+  it("invokes onNotFoundInSession with the missing review id (SESSION_NOT_FOUND)", async () => {
     const onNotFound = vi.fn();
     const options = createOptions({
       reviewId: "missing-review",
@@ -137,6 +103,7 @@ describe("useReviewStart", () => {
       wrapper: StrictModeWrapper,
     });
 
+    // call-count IS the contract: not-found callback must fire exactly once under StrictMode (no double-notification on the consumer)
     await waitFor(() => expect(onNotFound).toHaveBeenCalledTimes(1));
     expect(onNotFound).toHaveBeenCalledWith("missing-review");
   });

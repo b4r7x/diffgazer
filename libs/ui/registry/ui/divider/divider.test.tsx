@@ -2,6 +2,8 @@ import { render, screen } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 import { Divider } from "./index.js"
 
+// axe skipped: aria-hidden vs role=separator semantics are asserted directly in tests below.
+
 describe("Divider", () => {
   it("hides decorative spaced text from the accessibility tree", () => {
     const { container } = render(<Divider variant="spaced">Section</Divider>)

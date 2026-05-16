@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -8,11 +8,12 @@ import { KeyboardProvider } from "@diffgazer/keys";
 import { FooterProvider } from "@diffgazer/core/footer";
 import { ConfigProvider } from "@/app/providers/config-provider";
 import { Toaster } from "@diffgazer/ui/components/toast";
-import type { TrustConfig } from "@diffgazer/core/schemas/config";
+import type { InitResponse, TrustConfig } from "@diffgazer/core/schemas/config";
 import type { ReactNode } from "react";
 
 const mockNavigate = vi.fn();
 
+// Boundary mock: Router is the routing library; tests provide a stub Router context so navigation assertions can be made without a real route tree.
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
 }));
@@ -27,7 +28,7 @@ const TRUSTED_FIXTURE: TrustConfig = {
   capabilities: { readFiles: true, runCommands: false },
 };
 
-function makeInitResponse(trust: TrustConfig | null = null) {
+function makeInitResponse(trust: TrustConfig | null = null): InitResponse {
   return {
     config: { provider: "gemini", model: "gemini-2.5-flash" },
     providers: [{ provider: "gemini", hasApiKey: true, isActive: true }],
@@ -48,15 +49,15 @@ function makeInitResponse(trust: TrustConfig | null = null) {
       hasTrust: trust !== null,
       isConfigured: true,
       isReady: true,
-      missing: [] as string[],
+      missing: [],
     },
   };
 }
 
-let mockLoadInit: ReturnType<typeof vi.fn>;
-let mockGetProviderStatus: ReturnType<typeof vi.fn>;
-let mockSaveTrust: ReturnType<typeof vi.fn>;
-let mockDeleteTrust: ReturnType<typeof vi.fn>;
+let mockLoadInit: Mock<BoundApi["loadInit"]>;
+let mockGetProviderStatus: Mock<BoundApi["getProviderStatus"]>;
+let mockSaveTrust: Mock<BoundApi["saveTrust"]>;
+let mockDeleteTrust: Mock<BoundApi["deleteTrust"]>;
 let queryClient: QueryClient;
 let testApi: BoundApi;
 
@@ -114,12 +115,16 @@ async function waitForConfigReady() {
 describe("TrustPermissionsPage", () => {
   beforeEach(() => {
     mockNavigate.mockReset();
-    mockLoadInit = vi.fn().mockResolvedValue(makeInitResponse(null));
+    mockLoadInit = vi.fn<BoundApi["loadInit"]>().mockResolvedValue(makeInitResponse(null));
     mockGetProviderStatus = vi
-      .fn()
+      .fn<BoundApi["getProviderStatus"]>()
       .mockResolvedValue([{ provider: "gemini", hasApiKey: true, isActive: true }]);
-    mockSaveTrust = vi.fn().mockResolvedValue(undefined);
-    mockDeleteTrust = vi.fn().mockResolvedValue(undefined);
+    mockSaveTrust = vi
+      .fn<BoundApi["saveTrust"]>()
+      .mockResolvedValue({ trust: TRUSTED_FIXTURE });
+    mockDeleteTrust = vi
+      .fn<BoundApi["deleteTrust"]>()
+      .mockResolvedValue({ removed: true });
   });
 
   it("resets the draft when async trust data arrives", async () => {

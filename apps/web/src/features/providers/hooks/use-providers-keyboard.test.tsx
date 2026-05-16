@@ -10,6 +10,7 @@ import { PROVIDER_FILTERS, type ProviderFilter } from "@diffgazer/core/providers
 
 const mockNavigate = vi.fn();
 
+// Boundary mock: Router is the routing library; tests provide a stub Router context so navigation assertions can be made without a real route tree.
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
 }));
@@ -50,7 +51,7 @@ function Subject({
   listReady = true,
 }: {
   filteredProviders?: Array<{ id: string }>;
-  onSelectedId?: (id: string) => void;
+  onSelectedId?: (id: string | null) => void;
   listReady?: boolean;
 }) {
   const [selectedId, setSelectedId] = useState(DEFAULT_PROVIDER.id);
@@ -351,6 +352,7 @@ describe("useProvidersKeyboard", () => {
 
     await user.keyboard(" ");
     expect(screen.getByRole("button", { name: "Select Provider" })).toHaveFocus();
+    // call-count IS the contract: Space moves focus to the action row, it must NOT also activate the provider (count stays at 1 from the prior Enter)
     expect(onActivate).toHaveBeenCalledTimes(1);
   });
 });

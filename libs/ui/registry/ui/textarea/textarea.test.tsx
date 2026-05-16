@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it } from "vitest"
+import { axe } from "../../../testing/utils.js"
 import { Textarea } from "./index.js"
 
 describe("Textarea", () => {
@@ -54,5 +55,13 @@ describe("Textarea", () => {
 
     const textarea = screen.getByRole("textbox", { name: "Comment" })
     expect(textarea).toHaveAttribute("aria-invalid", "grammar")
+  })
+
+  it("has no a11y violations across Textarea states", async () => {
+    const { container, rerender } = render(<Textarea aria-label="Comment" />)
+    expect(await axe(container)).toHaveNoViolations()
+
+    rerender(<Textarea aria-label="Comment" aria-invalid />)
+    expect(await axe(container)).toHaveNoViolations()
   })
 })

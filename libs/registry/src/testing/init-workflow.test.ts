@@ -12,6 +12,9 @@ const fsObserver = vi.hoisted(() => ({
   recording: false,
 }));
 
+// Boundary mock: node:fs — wraps actual fs to record readFileSync paths so the
+// "only snapshots declared plannedPaths" test can assert the observed read scope.
+// Delegates every call to the real implementation; nothing is stubbed out.
 vi.mock("node:fs", async (importOriginal) => {
   const actual = await importOriginal<typeof import("node:fs")>();
   const observedReadFileSync = ((...args: Parameters<typeof actual.readFileSync>) => {
@@ -187,8 +190,8 @@ describe("runInitWorkflow rollback", () => {
       force: false,
       loadConfig: () => ({ ok: false, error: "not_found" }),
       detectProject: () => ({ display: [] }),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      plannedPaths: undefined as any,
+      // as any: negative-input test — verifies behavior with deliberately-malformed input
+      plannedPaths: undefined as unknown as (cwd: string) => string[],
       createFiles: () => [],
       writeConfig: () => {},
       nextSteps: [],

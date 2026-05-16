@@ -4,6 +4,8 @@ import { Dialog } from "../dialog/index.js"
 import { Popover } from "../popover/index.js"
 import { Select } from "../select/index.js"
 
+// axe skipped: portal-tree integration test; dialog/popover/select primitive tests own a11y assertions.
+
 describe("Portal-in-Dialog focus containment", () => {
   it("popover inside dialog renders within the dialog DOM tree", async () => {
     render(

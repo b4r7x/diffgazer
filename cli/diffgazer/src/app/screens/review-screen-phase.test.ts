@@ -1,5 +1,4 @@
-import assert from "node:assert/strict";
-import test, { describe } from "node:test";
+import { test, describe, expect } from "vitest";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { selectReviewScreenPhase } from "./review-screen-phase.js";
 
@@ -23,7 +22,7 @@ describe("selectReviewScreenPhase", () => {
       savedIsLoading: false,
       savedData: undefined,
     });
-    assert.equal(phase.kind, "streaming");
+    expect(phase.kind).toBe("streaming");
   });
 
   test("reviewId + loading → loading-saved", () => {
@@ -32,7 +31,7 @@ describe("selectReviewScreenPhase", () => {
       savedIsLoading: true,
       savedData: undefined,
     });
-    assert.equal(phase.kind, "loading-saved");
+    expect(phase.kind).toBe("loading-saved");
   });
 
   test("reviewId + loaded data → saved with mapped fields", () => {
@@ -41,10 +40,10 @@ describe("selectReviewScreenPhase", () => {
       savedIsLoading: false,
       savedData: makeSavedData({ id: "abc", durationMs: 2300 }),
     });
-    assert.equal(phase.kind, "saved");
+    expect(phase.kind).toBe("saved");
     if (phase.kind === "saved") {
-      assert.equal(phase.saved.reviewId, "abc");
-      assert.equal(phase.saved.durationMs, 2300);
+      expect(phase.saved.reviewId).toBe("abc");
+      expect(phase.saved.durationMs).toBe(2300);
     }
   });
 
@@ -55,9 +54,9 @@ describe("selectReviewScreenPhase", () => {
       savedData: makeSavedData({ id: "abc", durationMs: null }),
     });
     if (phase.kind === "saved") {
-      assert.equal(phase.saved.durationMs, undefined);
+      expect(phase.saved.durationMs).toBe(undefined);
     } else {
-      assert.fail("expected saved phase");
+      expect.fail("expected saved phase");
     }
   });
 
@@ -67,7 +66,7 @@ describe("selectReviewScreenPhase", () => {
       savedIsLoading: false,
       savedData: undefined,
     });
-    assert.equal(phase.kind, "streaming");
+    expect(phase.kind).toBe("streaming");
   });
 
   test("loading-saved takes precedence over a stale savedData payload", () => {
@@ -76,7 +75,7 @@ describe("selectReviewScreenPhase", () => {
       savedIsLoading: true,
       savedData: makeSavedData({ id: "abc", durationMs: 1000 }),
     });
-    assert.equal(phase.kind, "loading-saved");
+    expect(phase.kind).toBe("loading-saved");
   });
 
   test("saved phase passes issues array through unchanged", () => {
@@ -104,9 +103,9 @@ describe("selectReviewScreenPhase", () => {
       savedData: makeSavedData({ id: "abc", durationMs: 1000, issues }),
     });
     if (phase.kind !== "saved") {
-      assert.fail("expected saved phase");
+      expect.fail("expected saved phase");
     }
-    assert.equal(phase.saved.issues.length, 1);
-    assert.equal(phase.saved.issues[0]?.id, "i-1");
+    expect(phase.saved.issues.length).toBe(1);
+    expect(phase.saved.issues[0]?.id).toBe("i-1");
   });
 });

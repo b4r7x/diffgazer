@@ -20,6 +20,12 @@ export default defineConfig({
           include: ["registry/**/*.test.ts", "registry/**/*.test.tsx"],
           exclude: ["registry/**/*.ssr.test.tsx"],
           setupFiles: ["./test-setup.ts"],
+          typecheck: {
+            enabled: true,
+            tsconfig: "./tsconfig.test.json",
+            include: ["registry/**/*.test.ts", "registry/**/*.test.tsx"],
+            exclude: ["registry/**/*.ssr.test.tsx"],
+          },
         },
       },
       {
@@ -28,6 +34,11 @@ export default defineConfig({
           name: "ssr",
           environment: "node",
           include: ["registry/**/*.ssr.test.tsx"],
+          typecheck: {
+            enabled: true,
+            tsconfig: "./tsconfig.test.json",
+            include: ["registry/**/*.ssr.test.tsx"],
+          },
         },
       },
     ],

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createApiClient } from "./client.js";
 
 const mockFetch = vi.fn();
+// Boundary mock: replaces the global fetch network boundary so tests can stub HTTP responses without hitting a real server.
 vi.stubGlobal("fetch", mockFetch);
 
 function lastCall() {
@@ -144,46 +145,53 @@ describe("createApiClient", () => {
   });
 
   describe("HTTP methods", () => {
-    it("GET sends no body", async () => {
-      mockFetch.mockResolvedValue(jsonResponse({ items: [] }));
+    type MethodCase = {
+      method: "GET" | "POST" | "PUT" | "DELETE";
+      expectedBody: string | undefined;
+      response: unknown;
+      invoke: () => Promise<unknown>;
+    };
 
-      const result = await client.get<{ items: string[] }>("/api/list");
+    const cases: MethodCase[] = [
+      {
+        method: "GET",
+        expectedBody: undefined,
+        response: { items: [] },
+        invoke: () => client.get<{ items: string[] }>("/api/list"),
+      },
+      {
+        method: "POST",
+        expectedBody: JSON.stringify({ name: "test" }),
+        response: { id: "1" },
+        invoke: () => client.post("/api/create", { name: "test" }),
+      },
+      {
+        method: "PUT",
+        expectedBody: JSON.stringify({ name: "updated" }),
+        response: { ok: true },
+        invoke: () => client.put("/api/update", { name: "updated" }),
+      },
+      {
+        method: "DELETE",
+        expectedBody: undefined,
+        response: { deleted: true },
+        invoke: () => client.delete<{ deleted: boolean }>("/api/item/1"),
+      },
+    ];
 
-      expect(result).toEqual({ items: [] });
-      const [, options] = lastCall();
-      expect(options.method).toBe("GET");
-      expect(options.body).toBeUndefined();
-    });
+    it.each(cases)(
+      "$method request sets method=$method, body=$expectedBody and returns the parsed response",
+      async ({ method, expectedBody, response, invoke }) => {
+        mockFetch.mockResolvedValue(jsonResponse(response));
 
-    it("POST sends JSON body", async () => {
-      mockFetch.mockResolvedValue(jsonResponse({ id: "1" }));
+        const result = await invoke();
 
-      await client.post("/api/create", { name: "test" });
-
-      const [, options] = lastCall();
-      expect(options.method).toBe("POST");
-      expect(options.body).toBe(JSON.stringify({ name: "test" }));
-    });
-
-    it("PUT sends JSON body", async () => {
-      mockFetch.mockResolvedValue(jsonResponse({ ok: true }));
-
-      await client.put("/api/update", { name: "updated" });
-
-      const [, options] = lastCall();
-      expect(options.method).toBe("PUT");
-      expect(options.body).toBe(JSON.stringify({ name: "updated" }));
-    });
-
-    it("DELETE sends no body", async () => {
-      mockFetch.mockResolvedValue(jsonResponse({ deleted: true }));
-
-      const result = await client.delete<{ deleted: boolean }>("/api/item/1");
-
-      expect(result).toEqual({ deleted: true });
-      const [, options] = lastCall();
-      expect(options.method).toBe("DELETE");
-    });
+        expect(result).toEqual(response);
+        const [, options] = lastCall();
+        expect(options.method).toBe(method);
+        expect(options.body).toBe(expectedBody);
+      },
+    );
   });
 
   describe("error handling", () => {

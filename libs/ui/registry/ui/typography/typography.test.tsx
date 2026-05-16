@@ -3,6 +3,8 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { Typography } from "./index.js";
 
+// axe skipped: presentational text wrapper; semantics depend on the `as` element chosen by the consumer.
+
 describe("Typography", () => {
   it("renders children with the specified element", () => {
     render(<Typography as="p">Body copy</Typography>);

@@ -58,7 +58,7 @@ describe("useReviewStream", () => {
     );
   });
 
-  it("stop() dispatches COMPLETE — isStreaming becomes false", async () => {
+  it("stop() halts streaming while preserving the active review id", async () => {
     let resolveResume: (result: Result<void, StreamReviewError>) => void = () => {};
     const resumeReviewStream = vi.fn<BoundApi["resumeReviewStream"]>().mockReturnValue(
       new Promise((resolve) => {
@@ -91,7 +91,7 @@ describe("useReviewStream", () => {
     });
   });
 
-  it("abort() dispatches RESET — reviewId and isStreaming reset", async () => {
+  it("abort() clears the review id and halts streaming", async () => {
     let resolveResume: (result: Result<void, StreamReviewError>) => void = () => {};
     const resumeReviewStream = vi.fn<BoundApi["resumeReviewStream"]>().mockReturnValue(
       new Promise((resolve) => {
@@ -124,7 +124,7 @@ describe("useReviewStream", () => {
     });
   });
 
-  it("sets state.error when resumeReviewStream rejects with a non-abort error", async () => {
+  it("surfaces a non-abort stream rejection as state.error and halts streaming", async () => {
     const resumeReviewStream = vi.fn<BoundApi["resumeReviewStream"]>().mockRejectedValue(
       new Error("network failure"),
     );
@@ -142,7 +142,7 @@ describe("useReviewStream", () => {
     expect(result.current.state.isStreaming).toBe(false);
   });
 
-  it("SESSION_STALE is returned to caller without setting state.error", async () => {
+  it("returns SESSION_STALE to the caller without surfacing it as a stream error", async () => {
     const staleError: StreamReviewError = {
       code: ReviewErrorCode.SESSION_STALE,
       message: "stale",

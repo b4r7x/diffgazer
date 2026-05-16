@@ -11,30 +11,30 @@ function defaultProps(overrides: Partial<Parameters<typeof useApiKeyForm>[0]> = 
   };
 }
 
+type CanSubmitCase = {
+  method: "env" | "paste";
+  keyValue: string;
+  canSubmit: boolean;
+};
+
 describe("useApiKeyForm", () => {
-  it("should have canSubmit true when method is env", () => {
-    const { result } = renderHook(() => useApiKeyForm(defaultProps()));
+  it.each<CanSubmitCase>([
+    { method: "env", keyValue: "", canSubmit: true },
+    { method: "paste", keyValue: "sk-abc123", canSubmit: true },
+    { method: "paste", keyValue: "", canSubmit: false },
+  ])(
+    "reports canSubmit=$canSubmit when method=$method and keyValue=$keyValue",
+    ({ method, keyValue, canSubmit }) => {
+      const { result } = renderHook(() => useApiKeyForm(defaultProps()));
 
-    expect(result.current.canSubmit).toBe(false);
+      act(() => {
+        result.current.setMethod(method);
+        result.current.setKeyValue(keyValue);
+      });
 
-    act(() => result.current.setMethod("env"));
-    expect(result.current.canSubmit).toBe(true);
-  });
-
-  it("should have canSubmit true when method is paste and value non-empty", () => {
-    const { result } = renderHook(() => useApiKeyForm(defaultProps()));
-
-    act(() => result.current.setKeyValue("sk-abc123"));
-    expect(result.current.canSubmit).toBe(true);
-  });
-
-  it("should have canSubmit false when method is paste and value empty", () => {
-    const { result } = renderHook(() => useApiKeyForm(defaultProps()));
-
-    expect(result.current.method).toBe("paste");
-    expect(result.current.keyValue).toBe("");
-    expect(result.current.canSubmit).toBe(false);
-  });
+      expect(result.current.canSubmit).toBe(canSubmit);
+    },
+  );
 
   it("uses an explicit submit method instead of the current render snapshot", async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
@@ -49,7 +49,7 @@ describe("useApiKeyForm", () => {
     expect(onSubmit).toHaveBeenCalledWith("env", "OPENAI_API_KEY");
   });
 
-  it("should prevent double submission", async () => {
+  it("ignores a second submit while the first is still in flight", async () => {
     let resolveSubmit!: () => void;
     const onSubmit = vi.fn().mockImplementation(
       () => new Promise<void>((resolve) => { resolveSubmit = resolve; })
@@ -81,7 +81,7 @@ describe("useApiKeyForm", () => {
     expect(result.current.isSubmitting).toBe(false);
   });
 
-  it("should call onRemoveKey and close dialog on handleRemove", async () => {
+  it("removes the API key and closes the dialog on handleRemove", async () => {
     const onRemoveKey = vi.fn().mockResolvedValue(undefined);
     const onOpenChange = vi.fn();
     const { result } = renderHook(() =>
@@ -96,7 +96,7 @@ describe("useApiKeyForm", () => {
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
-  it("should set error state when handleSubmit fails", async () => {
+  it("exposes the failure message when handleSubmit rejects", async () => {
     const onSubmit = vi.fn().mockRejectedValue(new Error("Network error"));
     const { result } = renderHook(() =>
       useApiKeyForm(defaultProps({ onSubmit }))
@@ -112,7 +112,7 @@ describe("useApiKeyForm", () => {
     expect(result.current.isSubmitting).toBe(false);
   });
 
-  it("should clear keyValue on successful submit", async () => {
+  it("clears the keyValue after a successful submit", async () => {
     const { result } = renderHook(() => useApiKeyForm(defaultProps()));
 
     act(() => result.current.setKeyValue("sk-test-key"));

@@ -3,23 +3,14 @@ import type { OpenRouterModel } from "@diffgazer/core/schemas/config";
 import { isOpenRouterCompatible, mapOpenRouterModels } from "./openrouter-utils.js";
 
 describe("isOpenRouterCompatible", () => {
-  it("accepts a model that supports response_format", () => {
-    expect(isOpenRouterCompatible({ supportedParameters: ["response_format"] })).toBe(true);
-  });
-
-  it("accepts a model that supports structured_outputs", () => {
-    expect(isOpenRouterCompatible({ supportedParameters: ["structured_outputs"] })).toBe(true);
-  });
-
-  it("rejects a model that lists neither structured parameter", () => {
-    expect(
-      isOpenRouterCompatible({ supportedParameters: ["temperature", "top_p"] }),
-    ).toBe(false);
-  });
-
-  it("treats missing supportedParameters as incompatible", () => {
-    expect(isOpenRouterCompatible({ supportedParameters: undefined })).toBe(false);
-    expect(isOpenRouterCompatible({})).toBe(false);
+  it.each([
+    { label: "supportedParameters=['response_format']", input: { supportedParameters: ["response_format"] }, expected: true },
+    { label: "supportedParameters=['structured_outputs']", input: { supportedParameters: ["structured_outputs"] }, expected: true },
+    { label: "supportedParameters=['temperature','top_p']", input: { supportedParameters: ["temperature", "top_p"] }, expected: false },
+    { label: "supportedParameters=undefined", input: { supportedParameters: undefined }, expected: false },
+    { label: "supportedParameters omitted", input: {}, expected: false },
+  ])("returns $expected for $label", ({ input, expected }) => {
+    expect(isOpenRouterCompatible(input)).toBe(expected);
   });
 });
 

@@ -1,3 +1,4 @@
+import type { Ref } from "react"
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { axe } from "../../../testing/utils.js"
@@ -190,8 +191,12 @@ describe("Sidebar", () => {
         <Sidebar>
           <Sidebar.Content>
             <Sidebar.Item disabled onClick={onClick}>
-              {(itemProps) => (
-                <a href="/settings" {...itemProps}>
+              {({ ref, ...itemProps }) => (
+                <a
+                  href="/settings"
+                  ref={ref as Ref<HTMLAnchorElement> | undefined}
+                  {...itemProps}
+                >
                   Settings
                 </a>
               )}

@@ -5,7 +5,7 @@ import { resetShutdownStateForTests } from "./features/shutdown/service.js";
 
 describe("host validation middleware", () => {
   it.each(["localhost:3000", "127.0.0.1:3000", "[::1]:3000", "localhost"])(
-    "should return health for allowed host header: %s",
+    "serves health for trusted host header %s",
     async (hostHeader) => {
       const app = createApp();
       const res = await app.request("/api/health", {
@@ -18,10 +18,13 @@ describe("host validation middleware", () => {
     }
   );
 
-  it("should reject requests with external hostname", async () => {
+  it.each([
+    { label: "external hostname", host: "evil.com" },
+    { label: "external hostname with port", host: "evil.com:3000" },
+  ])("forbids requests from $label", async ({ host }) => {
     const app = createApp();
     const res = await app.request("/api/health", {
-      headers: { Host: "evil.com" },
+      headers: { Host: host },
     });
 
     expect(res.status).toBe(403);
@@ -29,18 +32,7 @@ describe("host validation middleware", () => {
     expect(body.error.message).toBe("Forbidden");
   });
 
-  it("should reject requests with external hostname and port", async () => {
-    const app = createApp();
-    const res = await app.request("/api/health", {
-      headers: { Host: "evil.com:3000" },
-    });
-
-    expect(res.status).toBe(403);
-    const body = (await res.json()) as { error: { message: string } };
-    expect(body.error.message).toBe("Forbidden");
-  });
-
-  it("should reject requests when host header is missing", async () => {
+  it("forbids requests with no host header", async () => {
     const app = createApp();
     const res = await app.request("/api/health");
 
@@ -51,49 +43,25 @@ describe("host validation middleware", () => {
 });
 
 describe("CORS configuration", () => {
-  it("should include CORS headers for allowed origin", async () => {
+  it.each([
+    { label: "trusted origin", origin: "http://localhost:3001" },
+    { label: "localhost on any port", origin: "http://localhost:9999" },
+    { label: "127.0.0.1 on any port", origin: "http://127.0.0.1:4200" },
+  ])("echoes the request origin for $label", async ({ origin }) => {
     const app = createApp();
     const res = await app.request("/api/health", {
       method: "OPTIONS",
       headers: {
         Host: "localhost:3000",
-        Origin: "http://localhost:3001",
+        Origin: origin,
         "Access-Control-Request-Method": "GET",
       },
     });
 
-    expect(res.headers.get("Access-Control-Allow-Origin")).toBe("http://localhost:3001");
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBe(origin);
   });
 
-  it("should allow localhost on any port", async () => {
-    const app = createApp();
-    const res = await app.request("/api/health", {
-      method: "OPTIONS",
-      headers: {
-        Host: "localhost:3000",
-        Origin: "http://localhost:9999",
-        "Access-Control-Request-Method": "GET",
-      },
-    });
-
-    expect(res.headers.get("Access-Control-Allow-Origin")).toBe("http://localhost:9999");
-  });
-
-  it("should allow 127.0.0.1 on any port", async () => {
-    const app = createApp();
-    const res = await app.request("/api/health", {
-      method: "OPTIONS",
-      headers: {
-        Host: "localhost:3000",
-        Origin: "http://127.0.0.1:4200",
-        "Access-Control-Request-Method": "GET",
-      },
-    });
-
-    expect(res.headers.get("Access-Control-Allow-Origin")).toBe("http://127.0.0.1:4200");
-  });
-
-  it("should not include CORS allow-origin for disallowed origin", async () => {
+  it("omits Access-Control-Allow-Origin for disallowed origins", async () => {
     const app = createApp();
     const res = await app.request("/api/health", {
       method: "OPTIONS",
@@ -109,27 +77,21 @@ describe("CORS configuration", () => {
 });
 
 describe("security headers", () => {
-  it("should set X-Frame-Options to DENY", async () => {
+  it.each([
+    { header: "X-Frame-Options", expected: "DENY" },
+    { header: "X-Content-Type-Options", expected: "nosniff" },
+  ])("sets $header to $expected on every response", async ({ header, expected }) => {
     const app = createApp();
     const res = await app.request("/api/health", {
       headers: { Host: "localhost:3000" },
     });
 
-    expect(res.headers.get("X-Frame-Options")).toBe("DENY");
-  });
-
-  it("should set X-Content-Type-Options to nosniff", async () => {
-    const app = createApp();
-    const res = await app.request("/api/health", {
-      headers: { Host: "localhost:3000" },
-    });
-
-    expect(res.headers.get("X-Content-Type-Options")).toBe("nosniff");
+    expect(res.headers.get(header)).toBe(expected);
   });
 });
 
 describe("error handling", () => {
-  it("should return 404 for unknown routes", async () => {
+  it("returns a JSON 404 body for unknown routes", async () => {
     const app = createApp();
     const res = await app.request("/api/nonexistent", {
       headers: { Host: "localhost:3000" },
@@ -308,6 +270,7 @@ describe("shutdown route", () => {
     expect((await second.json()) as { ok: boolean }).toEqual({ ok: true });
 
     vi.runOnlyPendingTimers();
+    // call-count IS the contract: shutdown is idempotent — two POSTs must result in exactly one SIGTERM (not zero, not two)
     expect(killSpy).toHaveBeenCalledTimes(1);
   });
 });

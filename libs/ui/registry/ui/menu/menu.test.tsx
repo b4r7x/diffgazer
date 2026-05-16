@@ -1,6 +1,7 @@
 import { createRef } from "react"
 import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+import { testNavigationBehavior } from "../../../../keys/src/testing/navigation-behavior.js"
 import { axe } from "../../../testing/utils.js"
 import { describe, it, expect, vi } from "vitest"
 import { Menu } from "./index.js"
@@ -437,5 +438,43 @@ describe("Menu typeahead", () => {
     await user.keyboard("che")
     const cherryItem = getMenuItem("Cherry")
     expect(menu).toHaveAttribute("aria-activedescendant", cherryItem.id)
+  })
+})
+
+describe("Menu keyboard navigation", () => {
+  const ITEM_IDS = ["one", "two", "three"] as const
+
+  testNavigationBehavior({
+    setup: () => {
+      const rendered = render(
+        <Menu aria-label="Test menu" defaultHighlighted="one">
+          <Menu.Item id="one">One</Menu.Item>
+          <Menu.Item id="two">Two</Menu.Item>
+          <Menu.Item id="three">Three</Menu.Item>
+        </Menu>,
+      )
+      screen.getByRole("menu").focus()
+      return rendered
+    },
+    items: ["one", "two", "three"],
+    initialActive: 0,
+    cases: [
+      { key: "{ArrowDown}", expectedActiveIndex: 1, label: "ArrowDown" },
+      { key: "{ArrowDown}{ArrowDown}", expectedActiveIndex: 2, label: "ArrowDown twice" },
+      { key: "{ArrowDown}{ArrowDown}{ArrowDown}", expectedActiveIndex: 0, label: "ArrowDown wraps" },
+      { key: "{ArrowUp}", expectedActiveIndex: 2, label: "ArrowUp wraps to end" },
+      { key: "{End}", expectedActiveIndex: 2, label: "End jumps to last" },
+      { key: "{Home}", expectedActiveIndex: 0, label: "Home stays at first" },
+    ],
+    // Menu items render a decorative MenuItemIndicator span; resolve by data-value instead.
+    getActiveIndex: (rendered) => {
+      // querySelector retained: the lookup key IS the aria-activedescendant attribute presence (the test verifies ARIA wiring directly, not any menu role match)
+      const host = rendered.container.querySelector("[aria-activedescendant]")
+      const activeId = host?.getAttribute("aria-activedescendant")
+      if (!activeId) return -1
+      const target = (host?.ownerDocument ?? document).getElementById(activeId)
+      const value = target?.getAttribute("data-value") ?? ""
+      return ITEM_IDS.findIndex((id) => id === value)
+    },
   })
 })

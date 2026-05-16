@@ -11,7 +11,7 @@ describe("shutdown API", () => {
     client = createMockClient();
   });
 
-  it("posts to /api/shutdown with empty body", async () => {
+  it("requests shutdown at the shutdown endpoint and returns the server response", async () => {
     vi.mocked(client.post).mockResolvedValue({ ok: true });
 
     const result = await shutdown(client);
@@ -20,7 +20,7 @@ describe("shutdown API", () => {
     expect(client.post).toHaveBeenCalledWith("/api/shutdown", {});
   });
 
-  it("sends the shutdown token only on the shutdown request", async () => {
+  it("attaches the trimmed shutdown token as a request-scoped header", async () => {
     vi.mocked(client.post).mockResolvedValue({ ok: true });
 
     await shutdown(client, " token ");

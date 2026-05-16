@@ -64,11 +64,17 @@ function trustConfig(projectId: string, overrides: Partial<TrustConfig> = {}): T
 }
 
 describe("config service", () => {
+  let warnSpy: ReturnType<typeof vi.spyOn>;
+
   beforeEach(() => {
     diffgazerHome = mkdtempSync(join(tmpdir(), "diffgazer-service-home-"));
     projectRoot = mkdtempSync(join(tmpdir(), "diffgazer-service-project-"));
     mkdirSync(join(projectRoot, ".git"));
     process.env.DIFFGAZER_HOME = diffgazerHome;
+    // Suppress fire-and-forget persistence warnings emitted after teardown removes the temp dir.
+    // The store dispatches persistConfigAsync/persistSecretsAsync/persistTrustAsync without awaiting,
+    // so a pending write can land after rmSync; production keeps this UX-friendly fire-and-forget pattern.
+    warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     vi.resetModules();
     vi.clearAllMocks();
     keyring.isKeyringAvailable.mockReturnValue(true);
@@ -77,11 +83,11 @@ describe("config service", () => {
     keyring.deleteKeyringSecret.mockReturnValue({ ok: true, value: false });
   });
 
-  afterEach(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 50));
+  afterEach(() => {
     delete process.env.DIFFGAZER_HOME;
     rmSync(diffgazerHome, { recursive: true, force: true });
     rmSync(projectRoot, { recursive: true, force: true });
+    warnSpy.mockRestore();
   });
 
   it("reports providers and the active provider from the real store", async () => {
@@ -236,7 +242,11 @@ describe("config service", () => {
     });
 
     expect(result).toMatchObject({ ok: true, value: { provider: "gemini" } });
-    await new Promise((resolve) => setTimeout(resolve, 200));
-    expect(readFileSync(configPath(), "utf-8")).toContain("gemini-2.5-flash");
+    await vi.waitFor(
+      () => {
+        expect(readFileSync(configPath(), "utf-8")).toContain("gemini-2.5-flash");
+      },
+      { timeout: 1000, interval: 10 },
+    );
   });
 });

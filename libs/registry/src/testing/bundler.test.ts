@@ -57,11 +57,27 @@ describe("createBundler", () => {
     }
   });
 
-  it("rejects source file paths outside the registry root", () => {
+  it.each([
+    {
+      label: "parent-escape relative path",
+      buildPath: () => "../outside.ts",
+      expectedMessage: "Registry file path must not contain '..' segments",
+    },
+    {
+      label: "absolute path outside registry root",
+      buildPath: (rootDir: string) => {
+        const outsidePath = join(tmpdir(), "outside-registry-source.ts");
+        writeFileSync(outsidePath, "export const outside = true;\n");
+        return outsidePath;
+      },
+      expectedMessage: "Registry file path must be relative",
+    },
+  ])("rejects source file with $label", ({ buildPath, expectedMessage }) => {
     const rootDir = mkdtempSync(join(tmpdir(), "dg-registry-bundler-"));
     try {
       const registryDir = join(rootDir, "registry");
       mkdirSync(registryDir, { recursive: true });
+      const path = buildPath(rootDir);
       writeFileSync(
         join(registryDir, "registry.json"),
         JSON.stringify({
@@ -69,7 +85,7 @@ describe("createBundler", () => {
             {
               name: "escape",
               type: "registry:ui",
-              files: [{ path: "../outside.ts", type: "registry:ui" }],
+              files: [{ path, type: "registry:ui" }],
             },
           ],
         }),
@@ -80,39 +96,9 @@ describe("createBundler", () => {
           rootDir,
           outputPath: join(rootDir, "bundle.json"),
         })(),
-      ).toThrow("Registry file path must not contain '..' segments");
+      ).toThrow(expectedMessage);
     } finally {
-      rmSync(rootDir, { recursive: true, force: true });
-    }
-  });
-
-  it("rejects absolute source file paths", () => {
-    const rootDir = mkdtempSync(join(tmpdir(), "dg-registry-bundler-"));
-    try {
-      const registryDir = join(rootDir, "registry");
-      const outsidePath = join(tmpdir(), "outside-registry-source.ts");
-      mkdirSync(registryDir, { recursive: true });
-      writeFileSync(outsidePath, "export const outside = true;\n");
-      writeFileSync(
-        join(registryDir, "registry.json"),
-        JSON.stringify({
-          items: [
-            {
-              name: "escape",
-              type: "registry:ui",
-              files: [{ path: outsidePath, type: "registry:ui" }],
-            },
-          ],
-        }),
-      );
-
-      expect(() =>
-        createBundler({
-          rootDir,
-          outputPath: join(rootDir, "bundle.json"),
-        })(),
-      ).toThrow("Registry file path must be relative");
-    } finally {
+      rmSync(join(tmpdir(), "outside-registry-source.ts"), { force: true });
       rmSync(rootDir, { recursive: true, force: true });
     }
   });

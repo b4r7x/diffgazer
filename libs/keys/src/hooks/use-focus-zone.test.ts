@@ -14,7 +14,7 @@ describe("useFocusZone", () => {
   });
 
   describe("uncontrolled mode", () => {
-    it("manages zone state", () => {
+    it("tracks the active zone and notifies the listener on change", () => {
       const onZoneChange = vi.fn();
       const { result } = renderHook(
         () =>
@@ -57,7 +57,7 @@ describe("useFocusZone", () => {
       expect(handler).toHaveBeenCalledOnce();
     });
 
-    it("passes allowInInput through to useKey options", async () => {
+    it("honors allowInInput so keys fire even when an input is focused", async () => {
       const handler = vi.fn();
 
       function Host() {
@@ -119,7 +119,7 @@ describe("useFocusZone", () => {
   });
 
   describe("transitions", () => {
-    it("registers scoped transition keys in the declared focus-zone scope", () => {
+    it("routes transition keys only inside the focus-zone's declared scope", () => {
       const globalHandler = vi.fn();
       const { result } = renderHook(
         () => {
@@ -569,6 +569,7 @@ describe("useFocusZone", () => {
 
       await screen.findByText("ready");
       const iframe = screen.getByTitle("Frame") as HTMLIFrameElement;
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md) — cross-realm iframe content is outside RTL screen scope
       const frameButton = iframe.contentDocument?.body.querySelector<HTMLButtonElement>("button");
       expect(frameButton).not.toBeNull();
 

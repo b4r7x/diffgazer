@@ -1,5 +1,4 @@
-import assert from "node:assert/strict";
-import test, { describe, afterEach } from "node:test";
+import { test, describe, afterEach, expect } from "vitest";
 import { useState } from "react";
 import { render, cleanup } from "ink-testing-library";
 import { SEVERITY_ORDER, type UISeverityFilter } from "@diffgazer/core/schemas/ui";
@@ -55,8 +54,8 @@ describe("CLI SeverityFilterGroup keyboard model", () => {
     stdin.write("\r");
     await flush();
 
-    assert.equal(latest.size, 1);
-    assert.ok(latest.has(SEVERITY_ORDER[0]));
+    expect(latest.size).toBe(1);
+    expect(latest.has(SEVERITY_ORDER[0])).toBeTruthy();
   });
 
   test("ArrowRight moves the highlight to the next severity, and Space toggles it", async () => {
@@ -69,8 +68,8 @@ describe("CLI SeverityFilterGroup keyboard model", () => {
     stdin.write(" ");
     await flush();
 
-    assert.equal(latest.size, 1);
-    assert.ok(latest.has(SEVERITY_ORDER[1]));
+    expect(latest.size).toBe(1);
+    expect(latest.has(SEVERITY_ORDER[1])).toBeTruthy();
   });
 
   test("Enter on the Reset chip clears all selected severities", async () => {
@@ -88,7 +87,7 @@ describe("CLI SeverityFilterGroup keyboard model", () => {
     stdin.write("\r");
     await flush();
 
-    assert.equal(latest.size, 0);
+    expect(latest.size).toBe(0);
   });
 
   test("r shortcut clears all selected severities", async () => {
@@ -101,6 +100,6 @@ describe("CLI SeverityFilterGroup keyboard model", () => {
     stdin.write("r");
     await flush();
 
-    assert.equal(latest.size, 0);
+    expect(latest.size).toBe(0);
   });
 });

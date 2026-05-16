@@ -75,6 +75,7 @@ describe("NoChangesView", () => {
     expect(screen.getByRole("button", { name: "Back to Home" })).toHaveFocus();
 
     await user.keyboard("{Enter}");
+    // call-count IS the contract: this test guards a regression where Enter double-fires (count must be exactly 1, not 2)
     expect(onBack).toHaveBeenCalledTimes(1);
     expect(onSwitchMode).not.toHaveBeenCalled();
   });
@@ -90,6 +91,7 @@ describe("NoChangesView", () => {
     });
 
     await user.keyboard("{Escape}");
+    // call-count IS the contract: Escape must fire onBack exactly once (no double-fire regardless of focused action)
     expect(onBack).toHaveBeenCalledTimes(1);
     expect(onSwitchMode).not.toHaveBeenCalled();
   });
@@ -106,6 +108,7 @@ describe("NoChangesView", () => {
     });
 
     await user.keyboard("{Enter}");
+    // call-count IS the contract: Enter must fire onBack exactly once (no double-fire regression)
     expect(onBack).toHaveBeenCalledTimes(1);
   });
 

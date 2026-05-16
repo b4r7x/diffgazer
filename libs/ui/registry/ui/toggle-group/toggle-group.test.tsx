@@ -5,7 +5,12 @@ import { axe } from "../../../testing/utils.js"
 import { describe, it, expect, vi } from "vitest"
 import { ToggleGroup } from "./index.js"
 
-function renderGroup(props: Partial<React.ComponentProps<typeof ToggleGroup>> = {}) {
+type ToggleGroupSingleComponentProps = Extract<
+  React.ComponentProps<typeof ToggleGroup>,
+  { selectionMode?: "single" | undefined }
+>
+
+function renderGroup(props: Partial<ToggleGroupSingleComponentProps> = {}) {
   return render(
     <ToggleGroup label="Options" {...props}>
       <ToggleGroup.Item value="a">Alpha</ToggleGroup.Item>
@@ -513,6 +518,7 @@ describe("ToggleGroup multiple mode", () => {
       </ToggleGroup>,
     )
 
+    // querySelector retained: hidden input has no accessible role; structural assertion is the contract (asserting absence by negative role query is impossible)
     expect(container.querySelector('input[type="hidden"]')).toBeNull()
   })
 

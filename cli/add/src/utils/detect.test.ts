@@ -1,8 +1,7 @@
-import assert from "node:assert/strict";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import test, { afterEach, beforeEach, describe } from "node:test";
+import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { detectProject } from "./detect.js";
 
 let root: string;
@@ -24,9 +23,9 @@ describe("detectProject aliases", () => {
   function assertDetectedAlias(expected: { importAliasPrefix: string; sourceDir: string }): void {
     const project = detectProject(root);
 
-    assert.equal(project.hasPathAlias, true);
-    assert.equal(project.importAliasPrefix, expected.importAliasPrefix);
-    assert.equal(project.sourceDir, expected.sourceDir);
+    expect(project.hasPathAlias).toBe(true);
+    expect(project.importAliasPrefix).toBe(expected.importAliasPrefix);
+    expect(project.sourceDir).toBe(expected.sourceDir);
   }
 
   test("detects a custom TypeScript source alias", () => {
@@ -39,9 +38,9 @@ describe("detectProject aliases", () => {
 
     const project = detectProject(root);
 
-    assert.equal(project.hasPathAlias, true);
-    assert.equal(project.importAliasPrefix, "~");
-    assert.equal(project.sourceDir, "src");
+    expect(project.hasPathAlias).toBe(true);
+    expect(project.importAliasPrefix).toBe("~");
+    expect(project.sourceDir).toBe("src");
   });
 
   for (const fixture of [
@@ -126,8 +125,8 @@ describe("detectProject aliases", () => {
 
     const project = detectProject(root);
 
-    assert.equal(project.hasPathAlias, false);
-    assert.equal(project.importAliasPrefix, "@");
+    expect(project.hasPathAlias).toBe(false);
+    expect(project.importAliasPrefix).toBe("@");
   });
 
   test("prefers root TypeScript aliases over subpath aliases", () => {
@@ -143,9 +142,9 @@ describe("detectProject aliases", () => {
 
     const project = detectProject(root);
 
-    assert.equal(project.hasPathAlias, true);
-    assert.equal(project.importAliasPrefix, "~");
-    assert.equal(project.sourceDir, "src");
+    expect(project.hasPathAlias).toBe(true);
+    expect(project.importAliasPrefix).toBe("~");
+    expect(project.sourceDir).toBe("src");
   });
 
   test("prefers @ root aliases over subpath aliases", () => {
@@ -161,9 +160,9 @@ describe("detectProject aliases", () => {
 
     const project = detectProject(root);
 
-    assert.equal(project.hasPathAlias, true);
-    assert.equal(project.importAliasPrefix, "@");
-    assert.equal(project.sourceDir, "src");
+    expect(project.hasPathAlias).toBe(true);
+    expect(project.importAliasPrefix).toBe("@");
+    expect(project.sourceDir).toBe("src");
   });
 
 });

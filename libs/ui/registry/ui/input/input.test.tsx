@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it } from "vitest"
+import { axe } from "../../../testing/utils.js"
 import { Input, InputGroup } from "./index.js"
 
 describe("Input", () => {
@@ -83,5 +84,16 @@ describe("Input", () => {
     render(<InputGroup aria-label="Path" aria-invalid />)
 
     expect(screen.getByRole("textbox", { name: "Path" })).toHaveAttribute("aria-invalid", "true")
+  })
+
+  it("has no a11y violations across Input and InputGroup states", async () => {
+    const { container, rerender } = render(<Input aria-label="Email" />)
+    expect(await axe(container)).toHaveNoViolations()
+
+    rerender(<Input aria-label="Email" aria-invalid />)
+    expect(await axe(container)).toHaveNoViolations()
+
+    rerender(<InputGroup aria-label="Path" prefix="~/" suffix=".json" />)
+    expect(await axe(container)).toHaveNoViolations()
   })
 })

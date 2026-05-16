@@ -10,7 +10,7 @@ describe("config API functions", () => {
     client = createMockClient();
   });
 
-  it("getProviderStatus calls correct path and unwraps providers", async () => {
+  it("getProviderStatus returns the unwrapped providers list from the config endpoint", async () => {
     const providers = [{ provider: "gemini", hasApiKey: true, isActive: true }];
     vi.mocked(client.get).mockResolvedValue({ providers });
 
@@ -20,7 +20,7 @@ describe("config API functions", () => {
     expect(result).toEqual(providers);
   });
 
-  it("getTrust passes projectId as query param", async () => {
+  it("getTrust queries the trust endpoint scoped to the given project", async () => {
     const trust = { projectId: "proj-1", trusted: true };
     vi.mocked(client.get).mockResolvedValue({ trust });
 
@@ -29,7 +29,7 @@ describe("config API functions", () => {
     expect(client.get).toHaveBeenCalledWith("/api/settings/trust", { projectId: "proj-1" });
   });
 
-  it("deleteTrust passes projectId as query param", async () => {
+  it("deleteTrust removes the trust entry for the given project and forwards the response", async () => {
     vi.mocked(client.delete).mockResolvedValue({ removed: true });
 
     const result = await deleteTrust(client, "proj-1");
@@ -38,25 +38,25 @@ describe("config API functions", () => {
     expect(result).toEqual({ removed: true });
   });
 
-  it("activateProvider builds URL with provider ID", async () => {
+  it.each([
+    {
+      label: "with model='gemini-2.5-flash'",
+      model: "gemini-2.5-flash" as string | undefined,
+      expectedBody: { model: "gemini-2.5-flash" },
+    },
+    {
+      label: "with model=undefined",
+      model: undefined as string | undefined,
+      expectedBody: {},
+    },
+  ])("activateProvider activates the chosen provider $label", async ({ model, expectedBody }) => {
     vi.mocked(client.post).mockResolvedValue({ provider: "gemini" });
 
-    await activateProvider(client, "gemini", "gemini-2.5-flash");
+    await activateProvider(client, "gemini", model);
 
     expect(client.post).toHaveBeenCalledWith(
       "/api/config/provider/gemini/activate",
-      { model: "gemini-2.5-flash" }
-    );
-  });
-
-  it("activateProvider sends empty body without model", async () => {
-    vi.mocked(client.post).mockResolvedValue({ provider: "gemini" });
-
-    await activateProvider(client, "gemini");
-
-    expect(client.post).toHaveBeenCalledWith(
-      "/api/config/provider/gemini/activate",
-      {}
+      expectedBody,
     );
   });
 });

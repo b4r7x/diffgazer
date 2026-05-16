@@ -33,6 +33,7 @@ const {
   },
 }));
 
+// Boundary mock: Router is the routing library; tests provide a stub Router context so navigation assertions can be made without a real route tree.
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
   useParams: () => routeState.params,
@@ -130,25 +131,27 @@ function renderPage() {
   return render(<ReviewPage />, { wrapper: Wrapper });
 }
 
-describe("ReviewPage saved review loading", () => {
-  beforeEach(() => {
-    routeState.params = {};
-    routeState.search = {};
-    mockBack.mockReset();
-    mockNavigate.mockReset();
-    mockNavigate.mockResolvedValue(undefined);
-    mockUseReview.mockReset();
-    mockUseReview.mockReturnValue(reviewQuery({}));
-    mockUseReviewLifecycleBase.mockReset();
-    mockUseReviewLifecycleBase.mockReturnValue({
-      streamState: makeStreamState(),
-      loadingMessage: null,
-      isNoDiffError: false,
-      stream: { stop: vi.fn() },
-      skipDelay: vi.fn(),
-      setHasStarted: vi.fn(),
-    });
+function resetReviewMocks() {
+  routeState.params = {};
+  routeState.search = {};
+  mockBack.mockReset();
+  mockNavigate.mockReset();
+  mockNavigate.mockResolvedValue(undefined);
+  mockUseReview.mockReset();
+  mockUseReview.mockReturnValue(reviewQuery({}));
+  mockUseReviewLifecycleBase.mockReset();
+  mockUseReviewLifecycleBase.mockReturnValue({
+    streamState: makeStreamState(),
+    loadingMessage: null,
+    isNoDiffError: false,
+    stream: { stop: vi.fn() },
+    skipDelay: vi.fn(),
+    setHasStarted: vi.fn(),
   });
+}
+
+describe("ReviewPage saved review loading", () => {
+  beforeEach(resetReviewMocks);
 
   it("shows a saved review loading message while the saved review is loading", () => {
     routeState.params = { reviewId: "review-loading" };
@@ -275,24 +278,7 @@ describe("ReviewPage saved review loading", () => {
 });
 
 describe("ReviewPage no-reviewId redirect", () => {
-  beforeEach(() => {
-    routeState.params = {};
-    routeState.search = {};
-    mockBack.mockReset();
-    mockNavigate.mockReset();
-    mockNavigate.mockResolvedValue(undefined);
-    mockUseReview.mockReset();
-    mockUseReview.mockReturnValue(reviewQuery({}));
-    mockUseReviewLifecycleBase.mockReset();
-    mockUseReviewLifecycleBase.mockReturnValue({
-      streamState: makeStreamState(),
-      loadingMessage: null,
-      isNoDiffError: false,
-      stream: { stop: vi.fn() },
-      skipDelay: vi.fn(),
-      setHasStarted: vi.fn(),
-    });
-  });
+  beforeEach(resetReviewMocks);
 
   it("renders the redirect fallback when reviewId is missing", () => {
     renderPage();
@@ -311,15 +297,10 @@ describe("ReviewPage live review phase transitions", () => {
   let capturedOnComplete: (() => void) | null;
 
   beforeEach(() => {
+    resetReviewMocks();
     capturedOnComplete = null;
     routeState.params = { reviewId: LIVE_REVIEW_ID };
     routeState.search = { mode: "unstaged", live: true };
-    mockBack.mockReset();
-    mockNavigate.mockReset();
-    mockNavigate.mockResolvedValue(undefined);
-    mockUseReview.mockReset();
-    mockUseReview.mockReturnValue(reviewQuery({}));
-    mockUseReviewLifecycleBase.mockReset();
     mockUseReviewLifecycleBase.mockImplementation((opts: { onComplete?: () => void }) => {
       capturedOnComplete = opts.onComplete ?? null;
       return {

@@ -1,6 +1,6 @@
 {
   "include": ["**/*.ts", "**/*.tsx", "src/generated/**/*.json"],
-  "exclude": ["**/*.test.ts", "**/*.test.tsx", "registry/hooks/testing/**"],
+  "exclude": ["**/*.test.ts", "**/*.test.tsx", "registry/hooks/testing/**", "registry/testing/**", "registry/lib/testing/**"],
   "compilerOptions": {
     "target": "ES2022",
     "jsx": "react-jsx",

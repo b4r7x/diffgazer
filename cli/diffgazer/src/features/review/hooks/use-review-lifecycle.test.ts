@@ -1,5 +1,4 @@
-import assert from "node:assert/strict";
-import test, { describe } from "node:test";
+import { test, describe, expect } from "vitest";
 import { getDisplayPhase } from "./use-review-lifecycle.js";
 
 describe("getDisplayPhase", () => {
@@ -10,7 +9,7 @@ describe("getDisplayPhase", () => {
       isCompleting: false,
       phase: "streaming",
     });
-    assert.equal(result, "summary");
+    expect(result).toBe("summary");
   });
 
   test("returns 'loading' before the lifecycle has started", () => {
@@ -20,7 +19,7 @@ describe("getDisplayPhase", () => {
       isCompleting: false,
       phase: "streaming",
     });
-    assert.equal(result, "loading");
+    expect(result).toBe("loading");
   });
 
   test("returns 'completing' while the lifecycle is completing", () => {
@@ -30,28 +29,26 @@ describe("getDisplayPhase", () => {
       isCompleting: true,
       phase: "streaming",
     });
-    assert.equal(result, "completing");
+    expect(result).toBe("completing");
   });
 
   test("falls through to the explicit phase when nothing else matches", () => {
-    assert.equal(
+    expect(
       getDisplayPhase({
         hasStartFailed: false,
         hasStarted: true,
         isCompleting: false,
         phase: "streaming",
       }),
-      "streaming",
-    );
-    assert.equal(
+    ).toBe("streaming");
+    expect(
       getDisplayPhase({
         hasStartFailed: false,
         hasStarted: true,
         isCompleting: false,
         phase: "results",
       }),
-      "results",
-    );
+    ).toBe("results");
   });
 
   test("start failure takes precedence over an unstarted lifecycle", () => {
@@ -61,6 +58,6 @@ describe("getDisplayPhase", () => {
       isCompleting: true,
       phase: "streaming",
     });
-    assert.equal(result, "summary");
+    expect(result).toBe("summary");
   });
 });

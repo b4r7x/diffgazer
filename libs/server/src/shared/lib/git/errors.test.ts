@@ -2,72 +2,70 @@ import { describe, it, expect } from "vitest";
 import { createGitDiffError } from "./errors.js";
 
 describe("createGitDiffError", () => {
-  it("should classify 'not a git repository' as NOT_A_REPOSITORY", () => {
-    const error = new Error("fatal: not a git repository");
-    const result = createGitDiffError(error);
+  it.each([
+    {
+      kind: "missing repository",
+      input: new Error("fatal: not a git repository"),
+      expectedFragment: "Not a git repository",
+      includesOriginal: true,
+    },
+    {
+      kind: "spawn ENOENT",
+      input: new Error("spawn git ENOENT"),
+      expectedFragment: "Git is not installed",
+      includesOriginal: true,
+    },
+    {
+      kind: "command not found",
+      input: new Error("git command not found"),
+      expectedFragment: "Git is not installed",
+      includesOriginal: true,
+    },
+    {
+      kind: "permission denied",
+      input: new Error("EACCES permission denied"),
+      expectedFragment: "Permission denied",
+      includesOriginal: true,
+    },
+    {
+      kind: "operation timeout",
+      input: new Error("operation timed out"),
+      expectedFragment: "timed out",
+      includesOriginal: true,
+    },
+    {
+      kind: "buffer exceeded",
+      input: new Error("stdout maxBuffer length exceeded"),
+      expectedFragment: "buffer limit",
+      includesOriginal: true,
+    },
+  ])(
+    "produces a $kind message that wraps the original error",
+    ({ input, expectedFragment, includesOriginal }) => {
+      const result = createGitDiffError(input);
 
-    expect(result.message).toContain("Not a git repository");
-    expect(result.message).toContain("Original:");
-  });
+      expect(result.message).toContain(expectedFragment);
+      if (includesOriginal) expect(result.message).toContain("Original:");
+    },
+  );
 
-  it("should classify enoent/spawn git as GIT_NOT_FOUND", () => {
-    const error = new Error("spawn git ENOENT");
-    const result = createGitDiffError(error);
-
-    expect(result.message).toContain("Git is not installed");
-    expect(result.message).toContain("Original:");
-  });
-
-  it("should classify 'not found' as GIT_NOT_FOUND", () => {
-    const error = new Error("git command not found");
-    const result = createGitDiffError(error);
-
-    expect(result.message).toContain("Git is not installed");
-  });
-
-  it("should classify permission errors as PERMISSION_DENIED", () => {
-    const error = new Error("EACCES permission denied");
-    const result = createGitDiffError(error);
-
-    expect(result.message).toContain("Permission denied");
-    expect(result.message).toContain("Original:");
-  });
-
-  it("should classify timeout errors as TIMEOUT", () => {
-    const error = new Error("operation timed out");
-    const result = createGitDiffError(error);
-
-    expect(result.message).toContain("timed out");
-    expect(result.message).toContain("Original:");
-  });
-
-  it("should classify maxBuffer errors as BUFFER_EXCEEDED", () => {
-    const error = new Error("stdout maxBuffer length exceeded");
-    const result = createGitDiffError(error);
-
-    expect(result.message).toContain("buffer limit");
-    expect(result.message).toContain("Original:");
-  });
-
-  it("should return UNKNOWN for unrecognized errors", () => {
-    const error = new Error("something completely unexpected");
-    const result = createGitDiffError(error);
+  it("returns a generic 'Failed to get git diff' message for unrecognized errors", () => {
+    const result = createGitDiffError(new Error("something completely unexpected"));
 
     expect(result.message).toContain("Failed to get git diff");
     expect(result.message).toContain("something completely unexpected");
     expect(result.message).not.toContain("Original:");
   });
 
-  it("should handle non-Error values", () => {
+  it("formats non-Error values into the generic fallback message", () => {
     const result = createGitDiffError("raw string error");
 
     expect(result.message).toContain("Failed to get git diff");
     expect(result.message).toContain("raw string error");
   });
 
-  it("should handle empty error message", () => {
-    const error = new Error("");
-    const result = createGitDiffError(error);
+  it("returns a generic message when the underlying error has no text", () => {
+    const result = createGitDiffError(new Error(""));
 
     expect(result.message).toContain("Failed to get git diff");
   });

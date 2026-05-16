@@ -168,38 +168,36 @@ describe("buildCopyBundle", () => {
     expect(output.items[0]?.files[0]?.content).toBe("import './internal/shared.js'\n");
   });
 
-  it("throws if registry file not found", () => {
-    const root = createBareTempRoot("rk-no-registry-");
-    const outputPath = join(root, "bundle.json");
-
-    expect(() =>
-      buildCopyBundle({
-        sourceRoot: root,
-        outputPath,
-        itemType: "registry:hook",
-      }),
-    ).toThrow("Registry file not found");
-  });
-
-  it("throws if source file not found", () => {
-    const root = createTempRoot();
-    writeRegistry(root, [
-      {
-        name: "missing",
-        type: "registry:hook",
-        files: [{ path: "src/hooks/use-missing.ts" }],
+  it.each([
+    {
+      label: "registry manifest",
+      setup: () => createBareTempRoot("rk-no-registry-"),
+      expectedMessage: "Registry file not found",
+    },
+    {
+      label: "referenced source file",
+      setup: () => {
+        const root = createTempRoot();
+        writeRegistry(root, [
+          {
+            name: "missing",
+            type: "registry:hook",
+            files: [{ path: "src/hooks/use-missing.ts" }],
+          },
+        ]);
+        return root;
       },
-    ]);
-
-    const outputPath = join(root, "bundle.json");
-
+      expectedMessage: "Source file not found",
+    },
+  ])("throws when $label is missing", ({ setup, expectedMessage }) => {
+    const root = setup();
     expect(() =>
       buildCopyBundle({
         sourceRoot: root,
-        outputPath,
+        outputPath: join(root, "bundle.json"),
         itemType: "registry:hook",
       }),
-    ).toThrow("Source file not found");
+    ).toThrow(expectedMessage);
   });
 
   it("items are sorted by name", () => {

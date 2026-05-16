@@ -1,5 +1,4 @@
-import assert from "node:assert/strict";
-import test, { describe } from "node:test";
+import { test, describe, expect } from "vitest";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { buildLensStats } from "./summary-view-helpers.js";
 
@@ -24,7 +23,7 @@ function makeIssue(overrides: Partial<ReviewIssue> = {}): ReviewIssue {
 
 describe("buildLensStats", () => {
   test("returns empty list for empty issues", () => {
-    assert.deepEqual(buildLensStats([]), []);
+    expect(buildLensStats([])).toEqual([]);
   });
 
   test("aggregates one row per category with counts", () => {
@@ -36,15 +35,15 @@ describe("buildLensStats", () => {
     const stats = buildLensStats(issues);
     const byId = new Map(stats.map((s) => [s.id, s]));
 
-    assert.equal(stats.length, 2);
-    assert.equal(byId.get("security")?.count, 2);
-    assert.equal(byId.get("security")?.name, "Security");
-    assert.equal(byId.get("performance")?.count, 1);
-    assert.equal(byId.get("performance")?.name, "Performance");
+    expect(stats.length).toBe(2);
+    expect(byId.get("security")?.count).toBe(2);
+    expect(byId.get("security")?.name).toBe("Security");
+    expect(byId.get("performance")?.count).toBe(1);
+    expect(byId.get("performance")?.name).toBe("Performance");
   });
 
   test("change is zero (no historical comparison in CLI)", () => {
     const issues = [makeIssue({ id: "a", category: "security" })];
-    assert.equal(buildLensStats(issues)[0]?.change, 0);
+    expect(buildLensStats(issues)[0]?.change).toBe(0);
   });
 });

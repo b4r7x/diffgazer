@@ -149,17 +149,20 @@ describe("streamActiveSessionToSSE — terminal write failures", () => {
     deleteSession(session.reviewId);
     const { stream, failure } = failingTerminalWriter(["error"]);
 
-    // A bug would be that the promise never settles. We bound the wait with a
-    // short timeout race; a stuck replay would lose to the timeout.
-    const timeout = new Promise<"timeout">((resolveTimeout) => {
-      setTimeout(() => resolveTimeout("timeout"), 200);
-    });
-    const replay = streamActiveSessionToSSE(stream, session).then(
-      () => "resolved" as const,
-      (e) => (e === failure ? ("rejected" as const) : ("other" as const)),
+    // A bug would be that the promise never settles. `vi.waitFor` polls a
+    // bounded predicate (with its own internal timeout) instead of racing a
+    // fixed `setTimeout`, so the assertion still fails for a stuck replay
+    // without depending on real wall-clock timing.
+    let outcome: "pending" | "resolved" | "rejected" | "other" = "pending";
+    streamActiveSessionToSSE(stream, session).then(
+      () => { outcome = "resolved"; },
+      (e) => { outcome = e === failure ? "rejected" : "other"; },
     );
 
-    const outcome = await Promise.race([replay, timeout]);
+    await vi.waitFor(() => {
+      if (outcome === "pending") throw new Error("replay still pending");
+    });
+
     expect(outcome).toBe("rejected");
   });
 

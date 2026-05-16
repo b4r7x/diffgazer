@@ -212,26 +212,31 @@ describe("focusable utilities", () => {
   describe("isFocusable", () => {
     it("returns true for visible buttons", () => {
       const c = mount('<button id="a">A</button>');
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       expect(isFocusable(c.querySelector<HTMLElement>("#a")!)).toBe(true);
     });
 
     it("returns true for negative-tabindex programmatic focus targets", () => {
       const c = mount('<div id="a" tabindex="-1">A</div>');
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       expect(isFocusable(c.querySelector<HTMLElement>("#a")!)).toBe(true);
     });
 
     it("returns true for summary elements", () => {
       const c = mount('<details><summary id="a">Details</summary></details>');
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       expect(isFocusable(c.querySelector<HTMLElement>("#a")!)).toBe(true);
     });
 
     it("returns false for disabled buttons", () => {
       const c = mount('<button id="a" disabled>A</button>');
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       expect(isFocusable(c.querySelector<HTMLElement>("#a")!)).toBe(false);
     });
 
     it("returns false for elements inside an inert ancestor", () => {
       const c = mount('<div inert><button id="a">A</button></div>');
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       expect(isFocusable(c.querySelector<HTMLElement>("#a")!)).toBe(false);
     });
 

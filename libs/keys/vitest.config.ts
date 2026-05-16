@@ -5,5 +5,10 @@ export default defineConfig({
     include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
     environment: "jsdom",
     mockReset: true,
+    typecheck: {
+      enabled: false,
+      tsconfig: "./tsconfig.test.json",
+      include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+    },
   },
 });

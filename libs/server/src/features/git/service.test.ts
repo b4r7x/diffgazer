@@ -28,10 +28,16 @@ describe("resolveGitService (path traversal prevention)", () => {
     mockExecFileAsync.mockResolvedValue({ stdout: "git version 2.40.0", stderr: "" });
   });
 
-  it("should reject paths with .. traversal", async () => {
+  it.each([
+    { label: ".. traversal", relativePath: "../etc/passwd" },
+    { label: "POSIX absolute path", relativePath: "/etc/passwd" },
+    { label: "Windows absolute path", relativePath: "C:\\Windows\\System32" },
+    { label: "null-byte injection", relativePath: "file\0.txt" },
+    { label: "backslash separators", relativePath: "\\etc\\passwd" },
+  ])("rejects $label with INVALID_PATH", async ({ relativePath }) => {
     const result = await resolveGitService({
       basePath: "/projects/myapp",
-      relativePath: "../etc/passwd",
+      relativePath,
     });
 
     expect(result.ok).toBe(false);
@@ -40,55 +46,7 @@ describe("resolveGitService (path traversal prevention)", () => {
     }
   });
 
-  it("should reject absolute paths", async () => {
-    const result = await resolveGitService({
-      basePath: "/projects/myapp",
-      relativePath: "/etc/passwd",
-    });
-
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error.code).toBe("INVALID_PATH");
-    }
-  });
-
-  it("should reject Windows-style absolute paths", async () => {
-    const result = await resolveGitService({
-      basePath: "/projects/myapp",
-      relativePath: "C:\\Windows\\System32",
-    });
-
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error.code).toBe("INVALID_PATH");
-    }
-  });
-
-  it("should reject paths with null bytes", async () => {
-    const result = await resolveGitService({
-      basePath: "/projects/myapp",
-      relativePath: "file\0.txt",
-    });
-
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error.code).toBe("INVALID_PATH");
-    }
-  });
-
-  it("should reject backslash paths", async () => {
-    const result = await resolveGitService({
-      basePath: "/projects/myapp",
-      relativePath: "\\etc\\passwd",
-    });
-
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error.code).toBe("INVALID_PATH");
-    }
-  });
-
-  it("should reject symlink escape (realpath resolves outside base)", async () => {
+  it("rejects symlinks that escape the base via realpath", async () => {
     mockRealpath
       .mockResolvedValueOnce("/projects/myapp") // basePath realpath
       .mockResolvedValueOnce("/etc/secrets"); // targetPath realpath (symlink escape)
@@ -104,7 +62,7 @@ describe("resolveGitService (path traversal prevention)", () => {
     }
   });
 
-  it("should reject when basePath realpath fails", async () => {
+  it("rejects unreachable basePath as INVALID_PATH", async () => {
     mockRealpath.mockRejectedValue(new Error("ENOENT"));
 
     const result = await resolveGitService({
@@ -118,7 +76,7 @@ describe("resolveGitService (path traversal prevention)", () => {
     }
   });
 
-  it("should accept valid relative paths within project", async () => {
+  it("accepts a relative path that resolves inside the project", async () => {
     mockRealpath
       .mockResolvedValueOnce("/projects/myapp")
       .mockResolvedValueOnce("/projects/myapp/src/lib");
@@ -131,7 +89,7 @@ describe("resolveGitService (path traversal prevention)", () => {
     expect(result.ok).toBe(true);
   });
 
-  it("should accept basePath without relativePath", async () => {
+  it("accepts a basePath alone with no relativePath", async () => {
     mockRealpath.mockResolvedValue("/projects/myapp");
 
     const result = await resolveGitService({
@@ -141,7 +99,7 @@ describe("resolveGitService (path traversal prevention)", () => {
     expect(result.ok).toBe(true);
   });
 
-  it("should return GIT_NOT_FOUND when git is not installed", async () => {
+  it("returns GIT_NOT_FOUND when the git binary is unavailable", async () => {
     mockRealpath.mockResolvedValue("/projects/myapp");
     mockExecFileAsync.mockRejectedValue(new Error("ENOENT"));
 

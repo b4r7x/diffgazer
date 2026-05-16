@@ -75,7 +75,7 @@ describe("createAIClient", () => {
 
   afterEach(teardownTempHome);
 
-  it("should return error when API key is missing", async () => {
+  it("rejects an empty API key as API_KEY_INVALID", async () => {
     const { createAIClient } = await loadClient();
     const result = createAIClient({
       apiKey: "",
@@ -88,7 +88,7 @@ describe("createAIClient", () => {
     }
   });
 
-  it("should return error when provider is empty", async () => {
+  it("rejects an empty provider as UNSUPPORTED_PROVIDER", async () => {
     const { createAIClient } = await loadClient();
     const result = createAIClient({
       apiKey: "test-key",
@@ -102,7 +102,7 @@ describe("createAIClient", () => {
   });
 
   it.each([...AI_PROVIDERS])(
-    "should create client for %s provider",
+    "creates a client bound to the %s provider",
     async (provider) => {
       const { createAIClient } = await loadClient();
       const result = createAIClient({ apiKey: "test-key", provider });
@@ -121,7 +121,7 @@ describe("initializeAIClient", () => {
 
   afterEach(teardownTempHome);
 
-  it("should return error when no active provider is configured", async () => {
+  it("reports UNSUPPORTED_PROVIDER when no provider is active", async () => {
     // No config file written — store has no active provider
     const { initializeAIClient } = await loadClient();
     const result = initializeAIClient();
@@ -132,8 +132,7 @@ describe("initializeAIClient", () => {
     }
   });
 
-  it("should return error when active provider has no model", async () => {
-    // Provider is active but has no model set
+  it("reports MODEL_ERROR when the active provider has no model", async () => {
     writeJson(join(diffgazerHome, "config.json"), {
       settings: { secretsStorage: "file" },
       providers: [{ provider: "gemini", hasApiKey: true, isActive: true }],
@@ -149,8 +148,7 @@ describe("initializeAIClient", () => {
     }
   });
 
-  it("should return error when API key retrieval fails", async () => {
-    // Provider has model but keyring read fails
+  it("reports MODEL_ERROR when the keyring read fails", async () => {
     writeJson(join(diffgazerHome, "config.json"), {
       settings: { secretsStorage: "keyring" },
       providers: [{ provider: "gemini", hasApiKey: true, isActive: true, model: "gemini-2.5-flash" }],
@@ -169,8 +167,7 @@ describe("initializeAIClient", () => {
     }
   });
 
-  it("should return error when API key is null", async () => {
-    // Provider is configured with model, but no secret stored (no secrets.json, no keyring value)
+  it("reports API_KEY_MISSING when no secret has been stored", async () => {
     writeJson(join(diffgazerHome, "config.json"), {
       settings: { secretsStorage: "file" },
       providers: [{ provider: "gemini", hasApiKey: true, isActive: true, model: "gemini-2.5-flash" }],
@@ -186,7 +183,7 @@ describe("initializeAIClient", () => {
     }
   });
 
-  it("should return a client when provider and API key are valid", async () => {
+  it("returns a usable client when the active provider has a stored key", async () => {
     writeJson(join(diffgazerHome, "config.json"), {
       settings: { secretsStorage: "file" },
       providers: [{ provider: "gemini", hasApiKey: true, isActive: true, model: "gemini-2.5-flash" }],
@@ -207,76 +204,33 @@ describe("classifyError (via generate)", () => {
   beforeEach(setupTempHome);
   afterEach(teardownTempHome);
 
-  it("should classify quota errors as RATE_LIMITED", async () => {
-    const { generateObject } = await import("ai");
-    vi.mocked(generateObject).mockRejectedValue(new Error("exceeded your current quota"));
+  it.each([
+    { providerMessage: "exceeded your current quota", expectedCode: "RATE_LIMITED" },
+    { providerMessage: "401 Unauthorized: invalid_api_key", expectedCode: "API_KEY_INVALID" },
+    { providerMessage: "429 too many requests", expectedCode: "RATE_LIMITED" },
+    { providerMessage: "fetch failed: ECONNREFUSED", expectedCode: "NETWORK_ERROR" },
+  ])(
+    "maps provider error \"$providerMessage\" to $expectedCode",
+    async ({ providerMessage, expectedCode }) => {
+      const { generateObject } = await import("ai");
+      vi.mocked(generateObject).mockRejectedValue(new Error(providerMessage));
 
-    const { createAIClient } = await loadClient();
-    const clientResult = createAIClient({ apiKey: "key", provider: "gemini" });
-    expect(clientResult.ok).toBe(true);
-    if (!clientResult.ok) return;
+      const { createAIClient } = await loadClient();
+      const clientResult = createAIClient({ apiKey: "key", provider: "gemini" });
+      expect(clientResult.ok).toBe(true);
+      if (!clientResult.ok) return;
 
-    const { z } = await import("zod");
-    const result = await clientResult.value.generate("test", z.object({ x: z.string() }));
+      const { z } = await import("zod");
+      const result = await clientResult.value.generate("test", z.object({ x: z.string() }));
 
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error.code).toBe("RATE_LIMITED");
-    }
-  });
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe(expectedCode);
+      }
+    },
+  );
 
-  it("should classify 401 errors as API_KEY_INVALID", async () => {
-    const { generateObject } = await import("ai");
-    vi.mocked(generateObject).mockRejectedValue(new Error("401 Unauthorized: invalid_api_key"));
-
-    const { createAIClient } = await loadClient();
-    const clientResult = createAIClient({ apiKey: "key", provider: "gemini" });
-    if (!clientResult.ok) return;
-
-    const { z } = await import("zod");
-    const result = await clientResult.value.generate("test", z.object({ x: z.string() }));
-
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error.code).toBe("API_KEY_INVALID");
-    }
-  });
-
-  it("should classify rate limit (429) errors as RATE_LIMITED", async () => {
-    const { generateObject } = await import("ai");
-    vi.mocked(generateObject).mockRejectedValue(new Error("429 too many requests"));
-
-    const { createAIClient } = await loadClient();
-    const clientResult = createAIClient({ apiKey: "key", provider: "gemini" });
-    if (!clientResult.ok) return;
-
-    const { z } = await import("zod");
-    const result = await clientResult.value.generate("test", z.object({ x: z.string() }));
-
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error.code).toBe("RATE_LIMITED");
-    }
-  });
-
-  it("should classify network errors as NETWORK_ERROR", async () => {
-    const { generateObject } = await import("ai");
-    vi.mocked(generateObject).mockRejectedValue(new Error("fetch failed: ECONNREFUSED"));
-
-    const { createAIClient } = await loadClient();
-    const clientResult = createAIClient({ apiKey: "key", provider: "gemini" });
-    if (!clientResult.ok) return;
-
-    const { z } = await import("zod");
-    const result = await clientResult.value.generate("test", z.object({ x: z.string() }));
-
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error.code).toBe("NETWORK_ERROR");
-    }
-  });
-
-  it("should classify unknown errors as MODEL_ERROR", async () => {
+  it("surfaces model errors to caller for unclassified provider errors", async () => {
     const { generateObject } = await import("ai");
     vi.mocked(generateObject).mockRejectedValue(new Error("something unexpected happened"));
 
@@ -298,7 +252,7 @@ describe("generateStream", () => {
   beforeEach(setupTempHome);
   afterEach(teardownTempHome);
 
-  it("should stream chunks and call onComplete with accumulated text", async () => {
+  it("emits each chunk and reports accumulated text on completion", async () => {
     const { streamText } = await import("ai");
     const chunks = ["Hello", " ", "world"];
     vi.mocked(streamText).mockReturnValue({
@@ -329,7 +283,7 @@ describe("generateStream", () => {
     expect(completedMeta.finishReason).toBe("stop");
   });
 
-  it("should call onError when streaming throws", async () => {
+  it("reports the thrown error via onError when the stream fails mid-flight", async () => {
     const { streamText } = await import("ai");
     vi.mocked(streamText).mockReturnValue({
       textStream: (async function* () {
@@ -355,7 +309,7 @@ describe("generateStream", () => {
     expect(capturedError!.message).toBe("stream broke");
   });
 
-  it("should detect truncation when finishReason is length", async () => {
+  it("flags truncation in completion metadata when finishReason is length", async () => {
     const { streamText } = await import("ai");
     vi.mocked(streamText).mockReturnValue({
       textStream: (async function* () {
@@ -380,7 +334,7 @@ describe("generateStream", () => {
     expect(completedMeta.finishReason).toBe("length");
   });
 
-  it("should skip empty chunks", async () => {
+  it("drops empty chunks from the consumer stream", async () => {
     const { streamText } = await import("ai");
     vi.mocked(streamText).mockReturnValue({
       textStream: (async function* () {

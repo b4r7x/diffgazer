@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -6,6 +6,7 @@ import { ApiProvider } from "@diffgazer/core/api/hooks";
 import { createApi, type BoundApi } from "@diffgazer/core/api";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { AVAILABLE_PROVIDERS, GEMINI_MODEL_INFO } from "@diffgazer/core/schemas/config";
+import type { InitResponse } from "@diffgazer/core/schemas/config";
 import { FooterProvider } from "@diffgazer/core/footer";
 import { ConfigProvider } from "@/app/providers/config-provider";
 import {
@@ -17,13 +18,14 @@ import type { ReactNode } from "react";
 
 const mockNavigate = vi.fn();
 
+// Boundary mock: Router is the routing library; tests provide a stub Router context so navigation assertions can be made without a real route tree.
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
 }));
 
 import { OnboardingWizard } from "../components/onboarding-wizard";
 
-function makeInitResponse(overrides: Record<string, unknown> = {}) {
+function makeInitResponse(overrides: Partial<InitResponse> = {}): InitResponse {
   return {
     config: { provider: "gemini", model: "gemini-2.5-flash" },
     providers: [{ provider: "gemini", hasApiKey: true, isActive: true }],
@@ -44,16 +46,16 @@ function makeInitResponse(overrides: Record<string, unknown> = {}) {
       hasTrust: false,
       isConfigured: false,
       isReady: false,
-      missing: [] as string[],
+      missing: [],
     },
     ...overrides,
   };
 }
 
-let mockLoadInit: ReturnType<typeof vi.fn>;
-let mockGetProviderStatus: ReturnType<typeof vi.fn>;
-let mockSaveSettings: ReturnType<typeof vi.fn>;
-let mockSaveConfig: ReturnType<typeof vi.fn>;
+let mockLoadInit: Mock<BoundApi["loadInit"]>;
+let mockGetProviderStatus: Mock<BoundApi["getProviderStatus"]>;
+let mockSaveSettings: Mock<BoundApi["saveSettings"]>;
+let mockSaveConfig: Mock<BoundApi["saveConfig"]>;
 
 function createTestApi(): BoundApi {
   return {
@@ -128,12 +130,12 @@ describe("OnboardingWizard", () => {
   beforeEach(() => {
     invalidateConfigGuardCache();
     mockNavigate.mockReset();
-    mockLoadInit = vi.fn().mockResolvedValue(makeInitResponse());
+    mockLoadInit = vi.fn<BoundApi["loadInit"]>().mockResolvedValue(makeInitResponse());
     mockGetProviderStatus = vi
-      .fn()
+      .fn<BoundApi["getProviderStatus"]>()
       .mockResolvedValue([{ provider: "gemini", hasApiKey: false, isActive: false }]);
-    mockSaveSettings = vi.fn().mockResolvedValue(undefined);
-    mockSaveConfig = vi.fn().mockResolvedValue(undefined);
+    mockSaveSettings = vi.fn<BoundApi["saveSettings"]>().mockResolvedValue(undefined);
+    mockSaveConfig = vi.fn<BoundApi["saveConfig"]>().mockResolvedValue(undefined);
   });
 
   it("disables the Next action on the api-key step until canProceed is satisfied", async () => {

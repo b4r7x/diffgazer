@@ -26,7 +26,7 @@ const makeMockGitService = (): EnrichGitService => ({
 });
 
 describe("enrichIssues", () => {
-  it("should enrich issues with blame and context", async () => {
+  it("attaches git blame and surrounding context to each issue", async () => {
     const gitService = makeMockGitService();
     const issues = [makeIssue()];
     const onEvent = vi.fn();
@@ -44,7 +44,7 @@ describe("enrichIssues", () => {
     });
   });
 
-  it("should emit progress events for blame and context", async () => {
+  it("emits blame and context progress events in order", async () => {
     const gitService = makeMockGitService();
     const issues = [makeIssue()];
     const sequence: Array<{ enrichmentType: string; status: string }> = [];
@@ -61,7 +61,7 @@ describe("enrichIssues", () => {
     ]);
   });
 
-  it("should skip blame/context for issues without line_start", async () => {
+  it("leaves blame and context null when the issue has no starting line", async () => {
     const gitService = makeMockGitService();
     const issues = [makeIssue({ line_start: null, line_end: null })];
     const onEvent = vi.fn();
@@ -73,7 +73,7 @@ describe("enrichIssues", () => {
     expect(gitService.getBlame).not.toHaveBeenCalled();
   });
 
-  it("should handle partial failures without throwing", async () => {
+  it("falls back to the original issue when blame retrieval throws", async () => {
     const gitService = makeMockGitService();
     vi.mocked(gitService.getBlame)
       .mockResolvedValueOnce(null)
@@ -91,7 +91,7 @@ describe("enrichIssues", () => {
     expect(result[1]!.id).toBe("i2");
   });
 
-  it("should return original issues when signal is already aborted", async () => {
+  it("returns the original issues unchanged when the signal is already aborted", async () => {
     const gitService = makeMockGitService();
     const issues = [makeIssue()];
     const onEvent = vi.fn();
@@ -109,7 +109,7 @@ describe("enrichIssues", () => {
     expect(gitService.getBlame).not.toHaveBeenCalled();
   });
 
-  it("should handle empty issues array", async () => {
+  it("returns an empty result for an empty issues list", async () => {
     const gitService = makeMockGitService();
     const onEvent = vi.fn();
 

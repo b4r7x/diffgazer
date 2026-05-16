@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it } from "vitest"
+import { axe } from "../../../testing/utils.js"
 import { Input } from "../input/index.js"
 import { Label } from "./index.js"
 
@@ -26,5 +27,15 @@ describe("Label", () => {
     )
 
     expect(screen.getByRole("textbox", { name: "Name" })).toBeInTheDocument()
+  })
+
+  it("has no a11y violations", async () => {
+    const { container } = render(
+      <Label label="Name" required>
+        <Input />
+      </Label>,
+    )
+
+    expect(await axe(container)).toHaveNoViolations()
   })
 })

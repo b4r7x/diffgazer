@@ -5,6 +5,8 @@ import { describe, it, expect, vi } from "vitest"
 import { Dialog } from "../dialog/index.js"
 import { Popover } from "../popover/index.js"
 
+// axe skipped: nested-overlay escape behavior test; dialog/popover primitive tests own a11y assertions.
+
 describe("Nested overlay: Popover inside Dialog", () => {
   it("Escape on open popover closes only the popover, not the dialog", async () => {
     const onDialogChange = vi.fn()
@@ -87,6 +89,7 @@ describe("Nested overlay: Dialog inside Dialog", () => {
     const childDialog = screen.getByRole("dialog", { name: "Child dialog" })
     await userEvent.click(screen.getByRole("button", { name: "Close child" }))
     await waitFor(() => expect(childDialog).toHaveAttribute("data-state", "closed"))
+    // fireEvent retained: animationend has no user-event equivalent; presence transitions complete on this event
     fireEvent.animationEnd(childDialog)
 
     const parentDialog = screen.getByRole("dialog", { name: "Parent dialog" })

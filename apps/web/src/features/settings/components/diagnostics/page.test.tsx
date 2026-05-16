@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -11,13 +11,14 @@ import type { ReactNode } from "react";
 
 const mockNavigate = vi.fn();
 
+// Boundary mock: Router is the routing library; tests provide a stub Router context so navigation assertions can be made without a real route tree.
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
 }));
 
 import { DiagnosticsPage } from "./page";
 
-function makeInitResponse() {
+function makeInitResponse(): Awaited<ReturnType<BoundApi["loadInit"]>> {
   return {
     config: { provider: "openrouter", model: "openrouter/test-model" },
     providers: [{ provider: "openrouter", hasApiKey: true, isActive: true }],
@@ -38,23 +39,23 @@ function makeInitResponse() {
       hasTrust: true,
       isConfigured: true,
       isReady: true,
-      missing: [] as string[],
+      missing: [],
     },
   };
 }
 
-function makeContextResponse() {
+function makeContextResponse(): Awaited<ReturnType<BoundApi["getReviewContext"]>> {
   return {
     meta: { generatedAt: "2026-02-09T12:00:00.000Z" },
     context: "stub-context",
-  };
+  } as unknown as Awaited<ReturnType<BoundApi["getReviewContext"]>>;
 }
 
-let mockRequest: ReturnType<typeof vi.fn>;
-let mockLoadInit: ReturnType<typeof vi.fn>;
-let mockGetProviderStatus: ReturnType<typeof vi.fn>;
-let mockGetReviewContext: ReturnType<typeof vi.fn>;
-let mockRefreshReviewContext: ReturnType<typeof vi.fn>;
+let mockRequest: Mock<BoundApi["request"]>;
+let mockLoadInit: Mock<BoundApi["loadInit"]>;
+let mockGetProviderStatus: Mock<BoundApi["getProviderStatus"]>;
+let mockGetReviewContext: Mock<BoundApi["getReviewContext"]>;
+let mockRefreshReviewContext: Mock<BoundApi["refreshReviewContext"]>;
 
 function createTestApi(): BoundApi {
   const baseApi = createApi({ baseUrl: "http://localhost" });
@@ -102,13 +103,13 @@ async function waitForReady() {
 describe("DiagnosticsPage keyboard footer navigation", () => {
   beforeEach(() => {
     mockNavigate.mockReset();
-    mockRequest = vi.fn().mockResolvedValue({ ok: true });
-    mockLoadInit = vi.fn().mockResolvedValue(makeInitResponse());
+    mockRequest = vi.fn<BoundApi["request"]>().mockResolvedValue({ ok: true } as unknown as Response);
+    mockLoadInit = vi.fn<BoundApi["loadInit"]>().mockResolvedValue(makeInitResponse());
     mockGetProviderStatus = vi
-      .fn()
+      .fn<BoundApi["getProviderStatus"]>()
       .mockResolvedValue([{ provider: "openrouter", hasApiKey: true, isActive: true }]);
-    mockGetReviewContext = vi.fn().mockResolvedValue(makeContextResponse());
-    mockRefreshReviewContext = vi.fn().mockResolvedValue(makeContextResponse());
+    mockGetReviewContext = vi.fn<BoundApi["getReviewContext"]>().mockResolvedValue(makeContextResponse());
+    mockRefreshReviewContext = vi.fn<BoundApi["refreshReviewContext"]>().mockResolvedValue(makeContextResponse());
   });
 
   it("activates diagnostics actions selected with left/right arrows", async () => {
@@ -150,8 +151,10 @@ describe("DiagnosticsPage keyboard footer navigation", () => {
 
   it("shows refresh progress and blocks overlapping refresh-all actions", async () => {
     const user = userEvent.setup();
-    let resolveHealth: ((value: unknown) => void) | null = null;
-    let resolveContext: ((value: unknown) => void) | null = null;
+    let resolveHealth: ((value: Awaited<ReturnType<BoundApi["request"]>>) => void) | undefined;
+    let resolveContext:
+      | ((value: Awaited<ReturnType<BoundApi["getReviewContext"]>>) => void)
+      | undefined;
 
     renderPage();
     await waitForReady();
@@ -188,7 +191,7 @@ describe("DiagnosticsPage keyboard footer navigation", () => {
     expect(mockRequest.mock.calls.length).toBe(initialHealthCalls + 1);
     expect(mockGetReviewContext.mock.calls.length).toBe(initialContextCalls + 1);
 
-    resolveHealth?.({ ok: true });
+    resolveHealth?.({ ok: true } as unknown as Response);
     resolveContext?.(makeContextResponse());
 
     await waitFor(() => {

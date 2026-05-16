@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, act, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { useKeyboardContext } from "../context/keyboard-context";
 import { useScope } from "../hooks/use-scope";
 import { DECLINE } from "../core/normalize-key-input";
@@ -13,10 +13,14 @@ function fireKeyFrom(element: Element, key: string) {
   });
 }
 
+function renderInProvider(children: ReactNode) {
+  return render(<KeyboardWrapper>{children}</KeyboardWrapper>);
+}
+
 describe("KeyboardProvider", () => {
   afterEach(() => cleanup());
 
-  it("should fire handler only for matching key in active scope", async () => {
+  it("fires handler only for matching key in the active scope", async () => {
     const handler = vi.fn();
 
     function Consumer() {
@@ -34,7 +38,7 @@ describe("KeyboardProvider", () => {
     expect(handler).toHaveBeenCalledOnce();
   });
 
-  it("should call preventDefault only when option is explicitly true", () => {
+  it("prevents the default action only when the consumer opts in", () => {
     const defaultHandler = vi.fn();
     const preventHandler = vi.fn();
 
@@ -58,7 +62,7 @@ describe("KeyboardProvider", () => {
     expect(eventB.defaultPrevented).toBe(true);
   });
 
-  it("should ignore events already handled by local keydown listeners", async () => {
+  it("does not fire when a local keydown listener has already handled the event", async () => {
     const handler = vi.fn();
 
     function Consumer() {
@@ -84,7 +88,7 @@ describe("KeyboardProvider", () => {
     expect(handler).not.toHaveBeenCalled();
   });
 
-  it("should only fire handlers in the active scope", async () => {
+  it("fires only handlers registered in the active scope", async () => {
     const globalHandler = vi.fn();
     const modalHandler = vi.fn();
 
@@ -105,7 +109,7 @@ describe("KeyboardProvider", () => {
     expect(globalHandler).not.toHaveBeenCalled();
   });
 
-  it("should restore previous scope when popScope is called", () => {
+  it("resumes routing events to the previous scope after the active scope closes", () => {
     const globalHandler = vi.fn();
     const modalHandler = vi.fn();
     const popRef = { current: () => {} };
@@ -128,7 +132,7 @@ describe("KeyboardProvider", () => {
     expect(modalHandler).not.toHaveBeenCalled();
   });
 
-  it("should stop firing after handler is deregistered", () => {
+  it("stops firing the handler once the consumer unregisters it", () => {
     const handler = vi.fn();
     const unregisterRef = { current: () => {} };
 
@@ -150,7 +154,7 @@ describe("KeyboardProvider", () => {
     expect(handler).toHaveBeenCalledOnce();
   });
 
-  it("should ignore keyboard events from text-editable elements unless allowInInput is true", async () => {
+  it("does not fire from text-editable elements unless allowInInput is set", async () => {
     const blocked = vi.fn();
     const allowed = vi.fn();
 
@@ -174,103 +178,79 @@ describe("KeyboardProvider", () => {
     expect(allowed).toHaveBeenCalledOnce();
   });
 
-  it("should not block handlers from non-text-editable native controls", async () => {
-    const onCheckbox = vi.fn();
-    const onRadio = vi.fn();
-    const onSelect = vi.fn();
+  it.each([
+    { controlRole: "checkbox", controlName: "Check", key: "ArrowDown" },
+    { controlRole: "radio", controlName: "Pick", key: "ArrowRight" },
+    { controlRole: "combobox", controlName: "Select", key: "Escape" },
+  ])(
+    "fires handler when $key originates from non-text-editable $controlRole control",
+    async ({ controlRole, controlName, key }) => {
+      const handler = vi.fn();
 
-    function Consumer() {
-      const { register } = useKeyboardContext();
-      useEffect(() => {
-        const cleanupCheckbox = register("global", "ArrowDown", onCheckbox);
-        const cleanupRadio = register("global", "ArrowRight", onRadio);
-        const cleanupSelect = register("global", "Escape", onSelect);
-        return () => {
-          cleanupCheckbox();
-          cleanupRadio();
-          cleanupSelect();
-        };
-      }, [register]);
+      function Consumer() {
+        const { register } = useKeyboardContext();
+        useEffect(() => register("global", key, handler), [register]);
 
-      return (
-        <form>
-          <label>
-            Check
-            <input type="checkbox" />
-          </label>
-          <label>
-            Pick
-            <input type="radio" name="pick" />
-          </label>
-          <label>
-            Select
-            <select>
-              <option>A</option>
-            </select>
-          </label>
-        </form>
-      );
-    }
+        return (
+          <form>
+            <label>
+              Check
+              <input type="checkbox" />
+            </label>
+            <label>
+              Pick
+              <input type="radio" name="pick" />
+            </label>
+            <label>
+              Select
+              <select>
+                <option>A</option>
+              </select>
+            </label>
+          </form>
+        );
+      }
 
-    render(<KeyboardWrapper><Consumer /></KeyboardWrapper>);
+      renderInProvider(<Consumer />);
 
-    const checkbox = screen.getByRole("checkbox", { name: "Check" });
-    checkbox.focus();
-    fireKeyFrom(checkbox, "ArrowDown");
-    expect(onCheckbox).toHaveBeenCalledOnce();
+      const control = screen.getByRole(controlRole as Parameters<typeof screen.getByRole>[0], { name: controlName });
+      control.focus();
+      fireKeyFrom(control, key);
+      expect(handler).toHaveBeenCalledOnce();
+    },
+  );
 
-    const radio = screen.getByRole("radio", { name: "Pick" });
-    radio.focus();
-    fireKeyFrom(radio, "ArrowRight");
-    expect(onRadio).toHaveBeenCalledOnce();
+  it.each([
+    { description: "DECLINE", latestReturn: DECLINE, earlierCalled: true },
+    { description: "undefined", latestReturn: undefined, earlierCalled: false },
+  ])(
+    "earlier handler $description: latest returns $description, earlier runs=$earlierCalled",
+    ({ latestReturn, earlierCalled }) => {
+      const earlier = vi.fn();
+      const latest = vi.fn(() => latestReturn);
 
-    const select = screen.getByRole("combobox", { name: "Select" });
-    select.focus();
-    fireKeyFrom(select, "Escape");
-    expect(onSelect).toHaveBeenCalledOnce();
-  });
+      function Consumer() {
+        const { register } = useKeyboardContext();
+        useEffect(() => {
+          register("global", "a", earlier);
+          register("global", "a", latest);
+        }, []);
+        return <div>consumer</div>;
+      }
 
-  it("falls through to earlier handler when latest returns DECLINE", () => {
-    const earlier = vi.fn();
-    const latest = vi.fn(() => DECLINE);
+      renderInProvider(<Consumer />);
 
-    function Consumer() {
-      const { register } = useKeyboardContext();
-      useEffect(() => {
-        register("global", "a", earlier);
-        register("global", "a", latest);
-      }, []);
-      return <div>consumer</div>;
-    }
+      act(() => pressKey("a"));
+      expect(latest).toHaveBeenCalledOnce();
+      if (earlierCalled) {
+        expect(earlier).toHaveBeenCalledOnce();
+      } else {
+        expect(earlier).not.toHaveBeenCalled();
+      }
+    },
+  );
 
-    render(<KeyboardWrapper><Consumer /></KeyboardWrapper>);
-
-    act(() => pressKey("a"));
-    expect(latest).toHaveBeenCalledOnce();
-    expect(earlier).toHaveBeenCalledOnce();
-  });
-
-  it("does not fall through when latest handler returns a non-DECLINE value", () => {
-    const earlier = vi.fn();
-    const latest = vi.fn(() => undefined);
-
-    function Consumer() {
-      const { register } = useKeyboardContext();
-      useEffect(() => {
-        register("global", "a", earlier);
-        register("global", "a", latest);
-      }, []);
-      return <div>consumer</div>;
-    }
-
-    render(<KeyboardWrapper><Consumer /></KeyboardWrapper>);
-
-    act(() => pressKey("a"));
-    expect(latest).toHaveBeenCalledOnce();
-    expect(earlier).not.toHaveBeenCalled();
-  });
-
-  it("should prioritize latest handler and fall back after deregister", () => {
+  it("prefers the latest handler and falls back to the earlier one once it is removed", () => {
     const first = vi.fn();
     const second = vi.fn();
     const unregisterRef = { current: () => {} };
@@ -295,7 +275,7 @@ describe("KeyboardProvider", () => {
     expect(first).toHaveBeenCalledOnce();
   });
 
-  it("should not crash when a handler throws and should continue processing subsequent events", () => {
+  it("keeps processing subsequent events when a handler throws", () => {
     const errorHandler = vi.fn(() => { throw new Error("handler exploded"); });
     vi.spyOn(console, "error").mockImplementation(() => {});
 
@@ -311,12 +291,13 @@ describe("KeyboardProvider", () => {
     expect(errorHandler).toHaveBeenCalledOnce();
 
     act(() => pressKey("a"));
+    // call-count IS the contract: a thrown handler must not leave the dispatcher stuck — the next event still reaches the same handler (count increments to 2)
     expect(errorHandler).toHaveBeenCalledTimes(2);
 
     vi.restoreAllMocks();
   });
 
-  it("should handle duplicate scope names from separate components independently", () => {
+  it("treats identically-named scopes from separate components as independent", () => {
     const handlerA = vi.fn();
     const handlerB = vi.fn();
     const popRefA = { current: () => {} };
@@ -349,10 +330,11 @@ describe("KeyboardProvider", () => {
 
     act(() => popRefA.current());
     act(() => pressKey("b"));
+    // call-count IS the contract: popping ConsumerA's same-named scope must NOT affect ConsumerB's independent scope (handlerB still fires, count is 2)
     expect(handlerB).toHaveBeenCalledTimes(2);
   });
 
-  it("should prioritize the latest handler when duplicate scope names share a hotkey", () => {
+  it("prefers the latest handler when identically-named scopes share a hotkey", () => {
     const first = vi.fn();
     const second = vi.fn();
     const popSecondRef = { current: () => {} };
@@ -395,7 +377,7 @@ describe("KeyboardProvider", () => {
     expect(first).toHaveBeenCalledOnce();
   });
 
-  it("should keep imperative pushScope on top of hook scopes until popped", () => {
+  it("routes events to the most-recently-activated scope until it pops back", () => {
     const panelHandler = vi.fn();
     const manualHandler = vi.fn();
     const pushManualRef = { current: () => () => {} };
@@ -432,10 +414,11 @@ describe("KeyboardProvider", () => {
 
     act(() => popManual());
     act(() => pressKey("a"));
+    // call-count IS the contract: popping the manual scope must restore routing to the panel scope (panelHandler fires again, count is 2)
     expect(panelHandler).toHaveBeenCalledTimes(2);
   });
 
-  it("should stop receiving key events after the provider unmounts", () => {
+  it("stops receiving key events after the provider unmounts", () => {
     const handler = vi.fn();
 
     function Consumer() {
@@ -455,7 +438,7 @@ describe("KeyboardProvider", () => {
     expect(handler).toHaveBeenCalledOnce();
   });
 
-  it("should only trigger focus-scoped handlers when event target is inside containerRef", async () => {
+  it("fires focus-scoped handlers only when the event target is inside the focus container", async () => {
     const handler = vi.fn();
 
     function Consumer() {

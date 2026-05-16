@@ -35,19 +35,25 @@ async function request(app: Hono): Promise<Response> {
 }
 
 describe("requireRepoAccess", () => {
+  let warnSpy: ReturnType<typeof vi.spyOn>;
+
   beforeEach(() => {
     diffgazerHome = mkdtempSync(join(tmpdir(), "diffgazer-trust-home-"));
     projectRoot = mkdtempSync(join(tmpdir(), "diffgazer-trust-project-"));
     mkdirSync(join(projectRoot, ".git"));
     process.env.DIFFGAZER_HOME = diffgazerHome;
+    // Suppress fire-and-forget persistence warnings emitted after teardown removes the temp dir.
+    // The config store dispatches persist*Async without awaiting, so a pending write can land
+    // after rmSync; production keeps this UX-friendly fire-and-forget pattern unchanged.
+    warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     vi.resetModules();
   });
 
-  afterEach(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 50));
+  afterEach(() => {
     delete process.env.DIFFGAZER_HOME;
     rmSync(diffgazerHome, { recursive: true, force: true });
     rmSync(projectRoot, { recursive: true, force: true });
+    warnSpy.mockRestore();
   });
 
   it("blocks requests when trust is missing", async () => {

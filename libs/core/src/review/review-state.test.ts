@@ -60,10 +60,15 @@ function issueFound(id: string, title: string, agent: "detective" | "guardian"):
       severity: "high",
       category: agent === "guardian" ? "security" : "correctness",
       file: `${id}.ts`,
-      line: 1,
-      description: "desc",
-      codeSnippet: "code",
-      suggestion: "fix",
+      line_start: 1,
+      line_end: 1,
+      rationale: "desc",
+      recommendation: "fix",
+      suggested_patch: null,
+      confidence: 0.9,
+      symptom: "symptom",
+      whyItMatters: "matters",
+      evidence: [],
     },
     timestamp: ts,
   };
@@ -196,7 +201,7 @@ describe("review-state", () => {
     );
 
     expect(state.agents[0]).toMatchObject({ progress: 50 });
-    expect(state.agents[0].currentAction).toBeUndefined();
+    expect(state.agents[0]!.currentAction).toBeUndefined();
   });
 
   it("tracks file progress, readFileContext paths, deduplication, and issues", () => {

@@ -1,5 +1,5 @@
 import React from "react"
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { act, render, renderHook, screen } from "@testing-library/react"
 import { useOverflowItems, computeVisibleCount } from "../use-overflow-items.js"
 
@@ -43,6 +43,10 @@ beforeEach(() => {
   vi.stubGlobal("cancelAnimationFrame", vi.fn())
 })
 
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
+
 function mockOffsetWidth(el: HTMLElement, width: number) {
   Object.defineProperty(el, "offsetWidth", { value: width, configurable: true })
 }
@@ -67,12 +71,12 @@ function TestOverflowItems({
   return (
     React.createElement(React.Fragment, null,
       React.createElement(
-        "div",
-        { ref, "data-testid": "container", style: { gap: "10px" } },
+        "ul",
+        { ref, "aria-label": "items", style: { gap: "10px" } },
         widths.map((width, index) => (
-          React.createElement("span", { key: index, "data-testid": `item-${index}`, "data-width": width }, `Item ${index}`)
+          React.createElement("li", { key: index, "data-width": width }, `Item ${index}`)
         )),
-        React.createElement("span", { "data-testid": "indicator", "data-width": indicatorWidth }, "More"),
+        React.createElement("span", { "aria-label": "overflow indicator", "data-width": indicatorWidth }, "More"),
       ),
       React.createElement("output", { "aria-label": "counts" }, `${visibleCount}/${overflowCount}/${containerWidth}`),
     )
@@ -92,12 +96,12 @@ function TestOverflowItemsWithListener({
   return (
     React.createElement(React.Fragment, null,
       React.createElement(
-        "div",
-        { ref, "data-testid": "container", style: { gap: "10px" } },
-        React.createElement("span", { "data-testid": "item-0", "data-width": 50 }, "Item 0"),
-        React.createElement("span", { "data-testid": "item-1", "data-width": 50 }, "Item 1"),
-        React.createElement("span", { "data-testid": "item-2", "data-width": 50 }, "Item 2"),
-        React.createElement("span", { "data-testid": "indicator", "data-width": 30 }, "More"),
+        "ul",
+        { ref, "aria-label": "items", style: { gap: "10px" } },
+        React.createElement("li", { "data-width": 50 }, "Item 0"),
+        React.createElement("li", { "data-width": 50 }, "Item 1"),
+        React.createElement("li", { "data-width": 50 }, "Item 2"),
+        React.createElement("span", { "aria-label": "overflow indicator", "data-width": 30 }, "More"),
       ),
       React.createElement("output", { "aria-label": "visible count" }, visibleCount),
     )
@@ -105,42 +109,71 @@ function TestOverflowItemsWithListener({
 }
 
 function setRenderedWidths(containerWidth: number) {
-  mockOffsetWidth(screen.getByTestId("container"), containerWidth)
-  for (const el of screen.getAllByTestId(/^item-/)) {
+  mockOffsetWidth(screen.getByRole("list", { name: "items" }), containerWidth)
+  for (const el of screen.getAllByRole("listitem")) {
     mockOffsetWidth(el, Number(el.getAttribute("data-width")))
   }
-  mockOffsetWidth(screen.getByTestId("indicator"), Number(screen.getByTestId("indicator").getAttribute("data-width")))
+  const indicator = screen.getByLabelText("overflow indicator")
+  mockOffsetWidth(indicator, Number(indicator.getAttribute("data-width")))
 }
 
 describe("computeVisibleCount", () => {
-  it("returns all items when they fit", () => {
-    const widths = [50, 50, 50]
-    expect(computeVisibleCount(widths, 200, 10, 30)).toBe(3)
-  })
-
-  it("returns partial count with indicator reservation", () => {
-    expect(computeVisibleCount([50, 50, 50], 150, 10, 30)).toBe(2)
-  })
-
-  it("always shows at least one item even if it overflows", () => {
-    expect(computeVisibleCount([200], 100, 0, 30)).toBe(1)
-  })
-
-  it("returns 0 for zero items", () => {
-    expect(computeVisibleCount([], 500, 10, 30)).toBe(0)
-  })
-
-  it("accounts for gap between items", () => {
-    expect(computeVisibleCount([40, 40, 40], 130, 10, 20)).toBe(2)
-  })
-
-  it("sanitizes invalid dimensions", () => {
-    expect(computeVisibleCount([50, Number.NaN], Number.NaN, -10, Number.POSITIVE_INFINITY)).toBe(1)
+  it.each([
+    {
+      scenario: "all items fit",
+      widths: [50, 50, 50],
+      containerWidth: 200,
+      gap: 10,
+      indicatorWidth: 30,
+      expected: 3,
+    },
+    {
+      scenario: "partial fit reserves space for indicator",
+      widths: [50, 50, 50],
+      containerWidth: 150,
+      gap: 10,
+      indicatorWidth: 30,
+      expected: 2,
+    },
+    {
+      scenario: "always shows at least one item even if it overflows",
+      widths: [200],
+      containerWidth: 100,
+      gap: 0,
+      indicatorWidth: 30,
+      expected: 1,
+    },
+    {
+      scenario: "returns 0 for zero items",
+      widths: [],
+      containerWidth: 500,
+      gap: 10,
+      indicatorWidth: 30,
+      expected: 0,
+    },
+    {
+      scenario: "accounts for gap between items",
+      widths: [40, 40, 40],
+      containerWidth: 130,
+      gap: 10,
+      indicatorWidth: 20,
+      expected: 2,
+    },
+    {
+      scenario: "sanitizes invalid dimensions",
+      widths: [50, Number.NaN],
+      containerWidth: Number.NaN,
+      gap: -10,
+      indicatorWidth: Number.POSITIVE_INFINITY,
+      expected: 1,
+    },
+  ])("$scenario", ({ widths, containerWidth, gap, indicatorWidth, expected }) => {
+    expect(computeVisibleCount(widths, containerWidth, gap, indicatorWidth)).toBe(expected)
   })
 })
 
 describe("useOverflowItems", () => {
-  it("returns itemCount as initial visibleCount with zero overflow", () => {
+  it("initially reports all items visible with no overflow", () => {
     const { result } = renderHook(() => useOverflowItems({ itemCount: 5 }))
     expect(result.current.visibleCount).toBe(5)
     expect(result.current.overflowCount).toBe(0)
@@ -191,7 +224,7 @@ describe("useOverflowItems", () => {
     expect(screen.getByLabelText("counts")).toHaveTextContent("1/2/150")
   })
 
-  it("updates after child removal", () => {
+  it("recomputes visible count when items are removed from the DOM", () => {
     const { rerender } = render(
       React.createElement(TestOverflowItems, {
         widths: [40, 40, 40],

@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
+import { axe } from "../../../testing/utils.js"
 import { KeyValue } from "./index.js"
 
 describe("KeyValue", () => {
@@ -17,6 +18,7 @@ describe("KeyValue", () => {
     const children = Array.from(list.children).map((child) => child.tagName.toLowerCase())
 
     expect(children).toEqual(["dt", "dd", "dt", "dd"])
+    // querySelector retained: HTML rule says <dl> direct children must be <dt>/<dd>; asserting the ABSENCE of any <div> child is the structural contract (no role corresponds to "no div")
     expect(list.querySelector(":scope > div")).toBeNull()
   })
 
@@ -72,5 +74,16 @@ describe("KeyValue", () => {
     expect(label).toHaveClass("custom-label")
     expect(value).toHaveClass("custom-value")
     expect(label.nextElementSibling).toBe(value)
+  })
+
+  it("has no a11y violations", async () => {
+    const { container } = render(
+      <KeyValue layout="horizontal">
+        <KeyValue.Item label="Status" value="Ready" />
+        <KeyValue.Item label="Owner" value="Docs" />
+      </KeyValue>,
+    )
+
+    expect(await axe(container)).toHaveNoViolations()
   })
 })

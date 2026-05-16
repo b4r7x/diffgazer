@@ -1,5 +1,4 @@
-import assert from "node:assert/strict";
-import test, { describe } from "node:test";
+import { test, describe, expect } from "vitest";
 import { createHomeMenuAction, type HomeMenuActionOptions } from "./create-home-menu-action.js";
 import type { Route } from "../../../app/routes.js";
 
@@ -57,19 +56,19 @@ describe("createHomeMenuAction", () => {
   test("review-unstaged navigates to review screen with unstaged mode", () => {
     const h = buildHarness();
     h.dispatch("review-unstaged");
-    assert.deepEqual(h.routes, [{ screen: "review", mode: "unstaged" }]);
+    expect(h.routes).toEqual([{ screen: "review", mode: "unstaged" }]);
   });
 
   test("review-staged navigates to review screen with staged mode", () => {
     const h = buildHarness();
     h.dispatch("review-staged");
-    assert.deepEqual(h.routes, [{ screen: "review", mode: "staged" }]);
+    expect(h.routes).toEqual([{ screen: "review", mode: "staged" }]);
   });
 
   test("review-files is a no-op (placeholder until feature lands)", () => {
     const h = buildHarness();
     h.dispatch("review-files");
-    assert.deepEqual(h.routes, []);
+    expect(h.routes).toEqual([]);
   });
 
   test("review-start actions are gated when not trusted", () => {
@@ -77,17 +76,17 @@ describe("createHomeMenuAction", () => {
     h.dispatch("review-unstaged");
     h.dispatch("review-staged");
     h.dispatch("review-files");
-    assert.deepEqual(h.routes, []);
+    expect(h.routes).toEqual([]);
   });
 
   test("resume-review navigates only when an active session exists", () => {
     const noSession = buildHarness({ hasActiveSession: false });
     noSession.dispatch("resume-review");
-    assert.deepEqual(noSession.routes, []);
+    expect(noSession.routes).toEqual([]);
 
     const withSession = buildHarness({ hasActiveSession: true });
     withSession.dispatch("resume-review");
-    assert.deepEqual(withSession.routes, [{ screen: "review" }]);
+    expect(withSession.routes).toEqual([{ screen: "review" }]);
   });
 
   test("history/settings/help navigate to their screens", () => {
@@ -95,7 +94,7 @@ describe("createHomeMenuAction", () => {
     h.dispatch("history");
     h.dispatch("settings");
     h.dispatch("help");
-    assert.deepEqual(h.routes, [
+    expect(h.routes).toEqual([
       { screen: "history" },
       { screen: "settings" },
       { screen: "help" },
@@ -105,10 +104,10 @@ describe("createHomeMenuAction", () => {
   test("quit calls shutdown.mutate and exits on settled", () => {
     const h = buildHarness();
     h.dispatch("quit");
-    assert.equal(h.shutdownCalls, 1);
-    assert.equal(h.exits, 0);
+    expect(h.shutdownCalls).toBe(1);
+    expect(h.exits).toBe(0);
     h.resolveShutdown();
-    assert.equal(h.exits, 1);
+    expect(h.exits).toBe(1);
   });
 
   test("non-review actions are not gated by trust", () => {
@@ -117,7 +116,7 @@ describe("createHomeMenuAction", () => {
     h.dispatch("settings");
     h.dispatch("help");
     h.dispatch("resume-review");
-    assert.deepEqual(h.routes, [
+    expect(h.routes).toEqual([
       { screen: "history" },
       { screen: "settings" },
       { screen: "help" },
@@ -128,8 +127,8 @@ describe("createHomeMenuAction", () => {
   test("unknown menu actions are no-ops (do not navigate or shutdown)", () => {
     const h = buildHarness();
     h.dispatch("does-not-exist");
-    assert.deepEqual(h.routes, []);
-    assert.equal(h.shutdownCalls, 0);
-    assert.equal(h.exits, 0);
+    expect(h.routes).toEqual([]);
+    expect(h.shutdownCalls).toBe(0);
+    expect(h.exits).toBe(0);
   });
 });
