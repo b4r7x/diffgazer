@@ -15,7 +15,7 @@ export const SEVERITY_LABELS: Record<ReviewSeverity, string> = {
   nit: "NIT",
 };
 
-export type UISeverityFilter = ReviewSeverity | "all";
+export type UISeverityFilter = ReadonlySet<ReviewSeverity>;
 
 const SeverityCountsSchema = z.object({
   blocker: z.number(),

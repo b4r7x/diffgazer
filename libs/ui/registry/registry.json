@@ -742,7 +742,8 @@
         "@diffgazer-keys/focus-restore",
         "dialog-shell",
         "compose-refs",
-        "portal"
+        "portal",
+        "kbd"
       ],
       "meta": {
         "client": true,

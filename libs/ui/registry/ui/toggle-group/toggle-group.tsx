@@ -12,12 +12,23 @@ import {
   useSelectableCollection,
 } from "@/lib/selectable-collection";
 import { cn } from "@/lib/utils";
-import { ToggleGroupContext } from "./toggle-group-context";
+import { ToggleGroupContext, type ToggleGroupSelectionMode } from "./toggle-group-context";
 
-export interface ToggleGroupProps {
+interface ToggleGroupSingleProps {
+  selectionMode?: "single" | undefined;
   value?: string | null;
   defaultValue?: string | null;
   onChange?: (value: string | null) => void;
+}
+
+interface ToggleGroupMultipleProps {
+  selectionMode: "multiple";
+  value?: readonly string[];
+  defaultValue?: readonly string[];
+  onChange?: (value: readonly string[]) => void;
+}
+
+interface ToggleGroupBaseProps {
   allowDeselect?: boolean;
   disabled?: boolean;
   size?: "sm" | "md";
@@ -39,35 +50,60 @@ export interface ToggleGroupProps {
   ref?: Ref<HTMLDivElement>;
 }
 
-export function ToggleGroup({
-  value: controlledValue,
-  defaultValue,
-  onChange,
-  allowDeselect = false,
-  disabled = false,
-  size = "sm",
-  orientation = "horizontal",
-  wrap = true,
-  highlighted: controlledHighlighted,
-  onHighlightChange,
-  onNavigationBoundaryReached,
-  onKeyDown,
-  label,
-  "aria-labelledby": ariaLabelledBy,
-  name,
-  className,
-  children,
-  ref,
-}: ToggleGroupProps) {
+export type ToggleGroupProps = ToggleGroupBaseProps & (ToggleGroupSingleProps | ToggleGroupMultipleProps);
+
+function arraysEqual(a: readonly string[], b: readonly string[]): boolean {
+  if (a === b) return true;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+}
+
+export function ToggleGroup(props: ToggleGroupProps) {
+  const {
+    allowDeselect = false,
+    disabled = false,
+    size = "sm",
+    orientation = "horizontal",
+    wrap = true,
+    highlighted: controlledHighlighted,
+    onHighlightChange,
+    onNavigationBoundaryReached,
+    onKeyDown,
+    label,
+    "aria-labelledby": ariaLabelledBy,
+    name,
+    className,
+    children,
+    ref,
+  } = props;
+  const selectionMode: ToggleGroupSelectionMode = props.selectionMode ?? "single";
+
   const containerRef = useRef<HTMLDivElement>(null);
   const { items, registerItem, unregisterItem } = useSelectableCollection(containerRef);
 
-  const [value, setValue, isControlled] = useControllableState<string | null>({
-    value: controlledValue,
-    defaultValue: defaultValue ?? null,
-    onChange,
+  const singleProps = selectionMode === "single" ? (props as ToggleGroupSingleProps) : null;
+  const multipleProps = selectionMode === "multiple" ? (props as ToggleGroupMultipleProps) : null;
+
+  const [singleValue, setSingleValue, isSingleControlled] = useControllableState<string | null>({
+    value: singleProps?.value,
+    defaultValue: singleProps?.defaultValue ?? null,
+    onChange: singleProps?.onChange,
   });
-  useFormReset(containerRef, defaultValue ?? null, setValue, !isControlled);
+  useFormReset(
+    containerRef,
+    singleProps?.defaultValue ?? null,
+    setSingleValue,
+    !isSingleControlled && selectionMode === "single",
+  );
+
+  const [multipleValue, setMultipleValue] = useControllableState<readonly string[]>({
+    value: multipleProps?.value,
+    defaultValue: multipleProps?.defaultValue ?? [],
+    onChange: multipleProps?.onChange,
+  });
 
   const [highlightedValue, setHighlightedValue] = useControllableState<string | null>({
     value: controlledHighlighted,
@@ -75,18 +111,43 @@ export function ToggleGroup({
     onChange: onHighlightChange,
   });
 
-  const handleValueChange = useCallback((newValue: string | null) => {
-    if (newValue === null) return;
-    setValue((prev) => (prev === newValue && allowDeselect) ? null : newValue);
-  }, [allowDeselect, setValue]);
+  const usesButtonSemantics = selectionMode === "multiple" || allowDeselect;
+
+  const isItemSelected = useCallback(
+    (value: string): boolean => {
+      if (selectionMode === "multiple") {
+        return multipleValue.includes(value);
+      }
+      return singleValue === value;
+    },
+    [selectionMode, multipleValue, singleValue],
+  );
+
+  const handleValueChange = useCallback(
+    (newValue: string | null) => {
+      if (newValue === null) return;
+      if (selectionMode === "multiple") {
+        setMultipleValue((prev) => {
+          const next = prev.includes(newValue)
+            ? prev.filter((v) => v !== newValue)
+            : [...prev, newValue];
+          return arraysEqual(prev, next) ? prev : next;
+        });
+        return;
+      }
+      setSingleValue((prev) => (prev === newValue && allowDeselect) ? null : newValue);
+    },
+    [allowDeselect, selectionMode, setMultipleValue, setSingleValue],
+  );
 
   const enabledItems = getEnabledSelectableCollectionItems(items, disabled);
-  const validHighlightedValue = getSelectableCollectionItemValue(enabledItems, highlightedValue);
-  const tabTargetValue = resolveSelectableCollectionItemValue(enabledItems, highlightedValue, value);
+  const activeHighlightedValue = getSelectableCollectionItemValue(enabledItems, highlightedValue);
+  const selectedAnchor = selectionMode === "single" ? singleValue : null;
+  const tabTargetValue = resolveSelectableCollectionItemValue(enabledItems, highlightedValue, selectedAnchor);
 
   const { onKeyDown: navKeyDown } = useNavigation({
     containerRef,
-    role: allowDeselect ? "button" : "radio",
+    role: usesButtonSemantics ? "button" : "radio",
     orientation,
     wrap,
     moveFocus: true,
@@ -94,10 +155,10 @@ export function ToggleGroup({
     downKeys: ["ArrowDown", "ArrowRight"],
     highlighted: tabTargetValue,
     enabled: !disabled,
-    onHighlightChange: allowDeselect ? setHighlightedValue : handleValueChange,
+    onHighlightChange: usesButtonSemantics ? setHighlightedValue : handleValueChange,
     onNavigationBoundaryReached,
     scopeToContainer: true,
-    ownerSelector: allowDeselect ? '[data-diffgazer-selectable-owner="toggle"]' : undefined,
+    ownerSelector: usesButtonSemantics ? '[data-diffgazer-selectable-owner="toggle"]' : undefined,
   });
 
   const handleKeyDown = (e: ReactKeyboardEvent) => {
@@ -107,28 +168,31 @@ export function ToggleGroup({
   };
 
   const contextValue = useMemo(() => ({
-    value,
+    selectionMode,
+    isItemSelected,
     onChange: handleValueChange,
     onHighlightChange: setHighlightedValue,
     disabled,
     size,
-    highlightedValue: validHighlightedValue,
+    highlightedValue: activeHighlightedValue,
     containerRef,
-    allowDeselect,
+    usesButtonSemantics,
     tabTargetValue,
     registerItem,
     unregisterItem,
-  }), [value, handleValueChange, setHighlightedValue, disabled, size, validHighlightedValue, allowDeselect, tabTargetValue, registerItem, unregisterItem]);
+  }), [selectionMode, isItemSelected, handleValueChange, setHighlightedValue, disabled, size, activeHighlightedValue, usesButtonSemantics, tabTargetValue, registerItem, unregisterItem]);
+
+  const renderHiddenInput = selectionMode === "single" && name && singleValue != null;
 
   return (
     <ToggleGroupContext value={contextValue}>
       <div
         ref={composeRefs(containerRef, ref)}
-        role={allowDeselect ? "group" : "radiogroup"}
-        data-diffgazer-selectable-owner={allowDeselect ? "toggle" : "radio"}
+        role={usesButtonSemantics ? "group" : "radiogroup"}
+        data-diffgazer-selectable-owner={usesButtonSemantics ? "toggle" : "radio"}
         aria-label={label}
         aria-labelledby={ariaLabelledBy}
-        aria-orientation={allowDeselect ? undefined : orientation}
+        aria-orientation={usesButtonSemantics ? undefined : orientation}
         aria-disabled={disabled || undefined}
         onKeyDown={handleKeyDown}
         className={cn(
@@ -138,8 +202,8 @@ export function ToggleGroup({
           className,
         )}
       >
-        {name && value != null && (
-          <input type="hidden" name={name} value={value} disabled={disabled} />
+        {renderHiddenInput && (
+          <input type="hidden" name={name} value={singleValue ?? ""} disabled={disabled} />
         )}
         {children}
       </div>

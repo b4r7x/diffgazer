@@ -2,7 +2,7 @@ import type { MenuAction } from "../schemas/ui/navigation.js";
 
 export interface MenuDisablingContext {
   isTrusted: boolean;
-  hasLastReview: boolean;
+  hasResumableSession: boolean;
 }
 
 const REVIEW_START_ACTIONS = new Set<MenuAction>([
@@ -27,7 +27,7 @@ export function isMenuActionDisabled(
     return !context.isTrusted;
   }
   if (id === "resume-review") {
-    return !context.isTrusted || !context.hasLastReview;
+    return !context.isTrusted || !context.hasResumableSession;
   }
   return false;
 }

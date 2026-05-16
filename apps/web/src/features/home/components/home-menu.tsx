@@ -10,7 +10,7 @@ interface HomeMenuProps {
   onSelect: (id: string) => void;
   items: NavItem[];
   isTrusted?: boolean;
-  hasLastReview?: boolean;
+  hasResumableSession?: boolean;
 }
 
 export function HomeMenu({
@@ -19,7 +19,7 @@ export function HomeMenu({
   onSelect,
   items,
   isTrusted = false,
-  hasLastReview = false,
+  hasResumableSession = false,
 }: HomeMenuProps) {
   const annotated = withGroupDividers(items);
 
@@ -34,7 +34,7 @@ export function HomeMenu({
           autoFocus
         >
           {annotated.map(({ item, showDividerBefore }) => {
-            const disabled = isMenuActionDisabled(item.id, { isTrusted, hasLastReview });
+            const disabled = isMenuActionDisabled(item.id, { isTrusted, hasResumableSession });
             return (
               <Fragment key={item.id}>
                 {showDividerBefore && <MenuDivider />}

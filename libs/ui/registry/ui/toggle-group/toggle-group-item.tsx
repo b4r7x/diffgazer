@@ -52,7 +52,7 @@ export function ToggleGroupItem({
   const context = useToggleGroupContext();
   const itemId = useId();
   const rootRef = useRef<HTMLButtonElement>(null);
-  const isActive = context.value === value;
+  const isActive = context.isItemSelected(value);
   const isHighlighted = context.highlightedValue === value;
   const isDisabled = context.disabled || !!disabled;
   const isTabTarget = !isDisabled && context.tabTargetValue === value;
@@ -67,7 +67,7 @@ export function ToggleGroupItem({
     onKeyDown?.(event);
     if (
       !event.defaultPrevented &&
-      context.allowDeselect &&
+      context.usesButtonSemantics &&
       !isDisabled &&
       (event.key === "Enter" || event.key === " ")
     ) {
@@ -91,13 +91,13 @@ export function ToggleGroupItem({
       {...props}
       ref={composeRefs(rootRef, ref)}
       type="button"
-      role={context.allowDeselect ? undefined : "radio"}
+      role={context.usesButtonSemantics ? undefined : "radio"}
       data-value={value}
-      data-diffgazer-navigation-item={context.allowDeselect ? "button" : "radio"}
+      data-diffgazer-navigation-item={context.usesButtonSemantics ? "button" : "radio"}
       data-active={isActive || undefined}
       data-highlighted={isHighlighted || undefined}
-      aria-checked={context.allowDeselect ? undefined : isActive}
-      aria-pressed={context.allowDeselect ? isActive : undefined}
+      aria-checked={context.usesButtonSemantics ? undefined : isActive}
+      aria-pressed={context.usesButtonSemantics ? isActive : undefined}
       aria-disabled={isDisabled || undefined}
       disabled={isDisabled}
       tabIndex={isTabTarget ? 0 : -1}

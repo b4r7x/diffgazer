@@ -8,7 +8,6 @@ import {
   DialogFooter,
   DialogClose,
   DialogAction,
-  DialogKeyboardHints,
 } from "@/components/ui/dialog"
 
 export default function DialogUpload() {
@@ -34,11 +33,10 @@ export default function DialogUpload() {
             </div>
           </div>
         </DialogBody>
-        <DialogFooter>
+        <DialogFooter hints={[{ key: "Esc", label: "Close" }, { key: "Enter", label: "Confirm" }]}>
           <DialogClose bracket variant="ghost">Cancel</DialogClose>
           <DialogAction>Background</DialogAction>
         </DialogFooter>
-        <DialogKeyboardHints hints={[{ key: "Esc", label: "Close" }, { key: "Enter", label: "Confirm" }]} />
       </DialogContent>
     </Dialog>
   )

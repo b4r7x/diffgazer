@@ -7,6 +7,8 @@ import {
   DialogBody,
   DialogFooter,
   DialogClose,
+  DialogAction,
+  type KeyboardHint,
 } from "@diffgazer/ui/components/dialog";
 import { type AIProvider } from "@diffgazer/core/schemas/config";
 import { OPENROUTER_PROVIDER_ID } from "@diffgazer/core/schemas/config";
@@ -17,7 +19,6 @@ import { useModelDialogKeyboard } from "../../hooks/use-model-dialog-keyboard";
 import { ModelSearchInput } from "./model-search-input";
 import { ModelFilterTabs } from "./model-filter-tabs";
 import { ModelList } from "./model-list";
-import { DialogFooterActions } from "../footer-actions";
 
 interface ModelSelectDialogProps {
   open: boolean;
@@ -27,10 +28,11 @@ interface ModelSelectDialogProps {
   onSelect: (modelId: string) => void;
 }
 
-const FOOTER_HINTS = [
-  { key: "↑↓/jk", label: "navigate" },
-  { key: "/", label: "search" },
-  { key: "f", label: "filter" },
+const FOOTER_HINTS: KeyboardHint[] = [
+  { key: "↑/↓", label: "Navigate" },
+  { key: "j/k", label: "Navigate" },
+  { key: "/", label: "Search" },
+  { key: "f", label: "Filter" },
 ];
 
 function getCompatibilityLabel({
@@ -176,16 +178,31 @@ export function ModelSelectDialog({
           />
         </DialogBody>
 
-        <DialogFooter className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4">
-          <DialogFooterActions
-            onCancel={handleCancel}
-            onConfirm={() => handleConfirm()}
-            canConfirm={filteredModels.length > 0}
-            cancelFocused={focusZone === "footer" && footerButtonIndex === 0}
-            confirmFocused={focusZone === "footer" && footerButtonIndex === 1 && filteredModels.length > 0}
-            getButtonProps={getFooterButtonProps}
-            hints={FOOTER_HINTS}
-          />
+        <DialogFooter hints={FOOTER_HINTS}>
+          <DialogClose
+            {...getFooterButtonProps(0)}
+            variant="ghost"
+            size="sm"
+            bracket
+            highlighted={focusZone === "footer" && footerButtonIndex === 0}
+            onClick={handleCancel}
+          >
+            Cancel
+          </DialogClose>
+          <DialogAction
+            {...getFooterButtonProps(1)}
+            variant="primary"
+            size="sm"
+            bracket
+            disabled={filteredModels.length === 0}
+            highlighted={focusZone === "footer" && footerButtonIndex === 1 && filteredModels.length > 0}
+            onClick={(event) => {
+              event.preventDefault();
+              handleConfirm();
+            }}
+          >
+            Confirm
+          </DialogAction>
         </DialogFooter>
       </DialogContent>
     </Dialog>

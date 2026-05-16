@@ -2,15 +2,18 @@
 
 import { createContext, useContext, type RefObject } from "react";
 
+export type ToggleGroupSelectionMode = "single" | "multiple";
+
 export interface ToggleGroupContextValue {
-  value: string | null;
+  selectionMode: ToggleGroupSelectionMode;
+  isItemSelected: (value: string) => boolean;
   onChange: (value: string) => void;
   onHighlightChange: (value: string | null) => void;
   disabled: boolean;
   size: "sm" | "md";
   highlightedValue: string | null;
   containerRef: RefObject<HTMLDivElement | null>;
-  allowDeselect: boolean;
+  usesButtonSemantics: boolean;
   tabTargetValue: string | null;
   registerItem: (itemId: string, value: string, disabled: boolean, element: HTMLElement | null) => void;
   unregisterItem: (itemId: string) => void;

@@ -10,16 +10,17 @@ export const dialogDoc: ComponentDoc = {
     { name: "DialogTitle", indent: 3, note: "Accessible title" },
     { name: "DialogDescription", indent: 3, note: "Accessible description" },
     { name: "DialogBody", indent: 2, note: "Scrollable content" },
-    { name: "DialogFooter", indent: 2, note: "Action buttons" },
+    { name: "DialogFooter", indent: 2, note: "Action buttons and optional keyboard hints" },
+    { name: "DialogFooter.Hints", indent: 3, note: "Inline keyboard shortcut hints" },
+    { name: "DialogFooter.Actions", indent: 3, note: "Action button row" },
     { name: "DialogClose", indent: 3, note: "Close button" },
     { name: "DialogAction", indent: 3, note: "Primary action button (closes unless prevented)" },
-    { name: "DialogKeyboardHints", indent: 2, note: "Keyboard shortcut hints" },
   ],
   notes: [
     {
       title: "Compound Architecture",
       content:
-        "Dialog is composed of 11 parts: Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogFooter, DialogClose, DialogAction, and DialogKeyboardHints.",
+        "Dialog is composed of 10 parts: Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogFooter (with DialogFooter.Hints and DialogFooter.Actions sub-components), DialogClose, and DialogAction.",
     },
     {
       title: "Native Dialog",
@@ -42,9 +43,9 @@ export const dialogDoc: ComponentDoc = {
         "DialogAction and DialogClose check e.defaultPrevented. Call e.preventDefault() in your onClick handler to keep the dialog open — useful for async validation where you want to close only on success.",
     },
     {
-      title: "DialogKeyboardHints",
+      title: "Keyboard hints",
       content:
-        "A sub-component that renders keyboard shortcut hints below the dialog. Accepts custom hints via the hints prop. Returns null for an empty hints array.",
+        "Pass a hints array to DialogFooter (or compose DialogFooter.Hints) to render inline keyboard shortcut hints alongside the action buttons. Hints render inside the footer, matching the global footer's Kbd primitive and typography.",
     },
   ],
   usage: { example: "dialog-default" },
@@ -143,12 +144,12 @@ export const dialogDoc: ComponentDoc = {
         description: "Close handler. Call e.preventDefault() to keep the dialog open.",
       },
     },
-    DialogKeyboardHints: {
+    DialogFooter: {
       hints: {
         type: "KeyboardHint[]",
         required: false,
         defaultValue: null,
-        description: "Custom hints. Returns null when the array is empty.",
+        description: "Inline keyboard shortcut hints rendered alongside the action buttons. Use the shorthand instead of composing DialogFooter.Hints when the hints belong with the footer actions.",
       },
     },
   },

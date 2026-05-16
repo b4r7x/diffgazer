@@ -399,3 +399,131 @@ describe("ToggleGroup", () => {
     expect(onChange).not.toHaveBeenCalled()
   })
 })
+
+describe("ToggleGroup multiple mode", () => {
+  function renderMultiple(
+    onChange: (value: readonly string[]) => void = vi.fn(),
+    initial: readonly string[] = [],
+  ) {
+    return render(
+      <ToggleGroup label="Options" selectionMode="multiple" defaultValue={initial} onChange={onChange}>
+        <ToggleGroup.Item value="a">Alpha</ToggleGroup.Item>
+        <ToggleGroup.Item value="b">Beta</ToggleGroup.Item>
+        <ToggleGroup.Item value="c">Charlie</ToggleGroup.Item>
+      </ToggleGroup>,
+    )
+  }
+
+  it("uses button semantics with aria-pressed per item", () => {
+    renderMultiple(vi.fn(), ["a"])
+
+    expect(screen.queryByRole("radiogroup")).not.toBeInTheDocument()
+    expect(screen.getByRole("group", { name: /options/i })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /alpha/i })).toHaveAttribute("aria-pressed", "true")
+    expect(screen.getByRole("button", { name: /beta/i })).toHaveAttribute("aria-pressed", "false")
+    expect(screen.getByRole("button", { name: /charlie/i })).toHaveAttribute("aria-pressed", "false")
+  })
+
+  it("toggles multiple items independently on click", async () => {
+    const onChange = vi.fn()
+    renderMultiple(onChange)
+
+    await userEvent.click(screen.getByRole("button", { name: /alpha/i }))
+    expect(onChange).toHaveBeenLastCalledWith(["a"])
+
+    await userEvent.click(screen.getByRole("button", { name: /charlie/i }))
+    expect(onChange).toHaveBeenLastCalledWith(["a", "c"])
+
+    expect(screen.getByRole("button", { name: /alpha/i })).toHaveAttribute("aria-pressed", "true")
+    expect(screen.getByRole("button", { name: /beta/i })).toHaveAttribute("aria-pressed", "false")
+    expect(screen.getByRole("button", { name: /charlie/i })).toHaveAttribute("aria-pressed", "true")
+  })
+
+  it("deselects an active item on second activation", async () => {
+    const onChange = vi.fn()
+    renderMultiple(onChange, ["a", "b"])
+
+    await userEvent.click(screen.getByRole("button", { name: /alpha/i }))
+
+    expect(onChange).toHaveBeenLastCalledWith(["b"])
+    expect(screen.getByRole("button", { name: /alpha/i })).toHaveAttribute("aria-pressed", "false")
+    expect(screen.getByRole("button", { name: /beta/i })).toHaveAttribute("aria-pressed", "true")
+  })
+
+  it("moves keyboard highlight without changing pressed state", async () => {
+    const onChange = vi.fn()
+    renderMultiple(onChange, ["a"])
+
+    const alpha = screen.getByRole("button", { name: /alpha/i })
+    const beta = screen.getByRole("button", { name: /beta/i })
+
+    alpha.focus()
+    await userEvent.keyboard("{ArrowRight}")
+
+    expect(beta).toHaveFocus()
+    expect(alpha).toHaveAttribute("aria-pressed", "true")
+    expect(beta).toHaveAttribute("aria-pressed", "false")
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it("toggles the focused item with Enter and Space", async () => {
+    const onChange = vi.fn()
+    renderMultiple(onChange)
+
+    const alpha = screen.getByRole("button", { name: /alpha/i })
+    const beta = screen.getByRole("button", { name: /beta/i })
+
+    alpha.focus()
+    await userEvent.keyboard(" ")
+    expect(onChange).toHaveBeenLastCalledWith(["a"])
+    expect(alpha).toHaveAttribute("aria-pressed", "true")
+
+    await userEvent.keyboard("{ArrowRight}")
+    expect(beta).toHaveFocus()
+
+    await userEvent.keyboard("{Enter}")
+    expect(onChange).toHaveBeenLastCalledWith(["a", "b"])
+    expect(beta).toHaveAttribute("aria-pressed", "true")
+
+    await userEvent.keyboard("{Enter}")
+    expect(onChange).toHaveBeenLastCalledWith(["a"])
+    expect(beta).toHaveAttribute("aria-pressed", "false")
+  })
+
+  it("respects controlled multiple value", async () => {
+    const onChange = vi.fn()
+    render(
+      <ToggleGroup label="Options" selectionMode="multiple" value={["a"]} onChange={onChange}>
+        <ToggleGroup.Item value="a">Alpha</ToggleGroup.Item>
+        <ToggleGroup.Item value="b">Beta</ToggleGroup.Item>
+      </ToggleGroup>,
+    )
+
+    await userEvent.click(screen.getByRole("button", { name: /beta/i }))
+
+    expect(onChange).toHaveBeenCalledWith(["a", "b"])
+    expect(screen.getByRole("button", { name: /alpha/i })).toHaveAttribute("aria-pressed", "true")
+    expect(screen.getByRole("button", { name: /beta/i })).toHaveAttribute("aria-pressed", "false")
+  })
+
+  it("does not render a hidden input in multiple mode", () => {
+    const { container } = render(
+      <ToggleGroup label="Options" selectionMode="multiple" name="severities" defaultValue={["a"]}>
+        <ToggleGroup.Item value="a">Alpha</ToggleGroup.Item>
+      </ToggleGroup>,
+    )
+
+    expect(container.querySelector('input[type="hidden"]')).toBeNull()
+  })
+
+  it("has no a11y violations with multiple selected", async () => {
+    const { container } = render(
+      <ToggleGroup label="Options" selectionMode="multiple" defaultValue={["a", "b"]}>
+        <ToggleGroup.Item value="a">Alpha</ToggleGroup.Item>
+        <ToggleGroup.Item value="b">Beta</ToggleGroup.Item>
+        <ToggleGroup.Item value="c">Charlie</ToggleGroup.Item>
+      </ToggleGroup>,
+    )
+    expect(await axe(container)).toHaveNoViolations()
+  })
+})

@@ -8,7 +8,6 @@ import {
   DialogFooter,
   DialogClose,
   DialogAction,
-  DialogKeyboardHints,
 } from "@/components/ui/dialog"
 
 export default function DialogDefault() {
@@ -26,11 +25,10 @@ export default function DialogDefault() {
             Continue?
           </p>
         </DialogBody>
-        <DialogFooter>
+        <DialogFooter hints={[{ key: "Esc", label: "Close" }, { key: "Enter", label: "Confirm" }]}>
           <DialogClose bracket variant="ghost">Cancel</DialogClose>
           <DialogAction>Apply</DialogAction>
         </DialogFooter>
-        <DialogKeyboardHints hints={[{ key: "Esc", label: "Close" }, { key: "Enter", label: "Confirm" }]} />
       </DialogContent>
     </Dialog>
   )

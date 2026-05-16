@@ -8,14 +8,14 @@ interface HomeMenuProps {
   isActive?: boolean;
   onAction: (action: string) => void;
   isTrusted?: boolean;
-  hasLastReview?: boolean;
+  hasResumableSession?: boolean;
 }
 
 export function HomeMenu({
   isActive = true,
   onAction,
   isTrusted = false,
-  hasLastReview = false,
+  hasResumableSession = false,
 }: HomeMenuProps) {
   const annotated = withGroupDividers(MENU_ITEMS);
 
@@ -25,7 +25,7 @@ export function HomeMenu({
       <Panel.Content>
         <Menu isActive={isActive} onSelect={onAction}>
           {annotated.map(({ item, showDividerBefore }) => {
-            const disabled = isMenuActionDisabled(item.id, { isTrusted, hasLastReview });
+            const disabled = isMenuActionDisabled(item.id, { isTrusted, hasResumableSession });
             return (
               <Fragment key={item.id}>
                 {showDividerBefore && <Menu.Divider />}

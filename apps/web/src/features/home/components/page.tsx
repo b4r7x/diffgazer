@@ -3,7 +3,8 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import type { ContextInfo, MenuAction } from "@diffgazer/core/schemas/ui";
 import type { Shortcut } from "@diffgazer/core/schemas/ui";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
-import { useApi, useCreateReview } from "@diffgazer/core/api/hooks";
+import { useActiveReviewSession, useApi, useCreateReview } from "@diffgazer/core/api/hooks";
+import { isApiError } from "@diffgazer/core/api";
 import { deriveTrustStatus, isReviewStartAction } from "@diffgazer/core/navigation";
 import { MAIN_MENU_SHORTCUTS, MENU_ITEMS } from "@diffgazer/core/schemas/ui";
 import { useKey, useScope } from "@diffgazer/keys";
@@ -20,6 +21,33 @@ import { TrustPanel } from "./trust-panel";
 type RouteConfig = { to: string; search?: Record<string, string> };
 const MAIN_MENU_ITEMS = MENU_ITEMS.filter((item) => item.id !== "help");
 const MAIN_MENU_ITEM_IDS = new Set<string>(MAIN_MENU_ITEMS.map((item) => item.id));
+
+function describeReviewStartError(error: unknown): { title: string; message: string } {
+  if (isApiError(error)) {
+    switch (error.code) {
+      case "API_KEY_MISSING":
+        return {
+          title: "API Key Missing",
+          message: `${error.message}. Add one in Settings → Providers.`,
+        };
+      case "UNSUPPORTED_PROVIDER":
+        return {
+          title: "Provider Not Configured",
+          message: "Pick an AI provider in Settings → Providers.",
+        };
+      case "MODEL_ERROR":
+        return {
+          title: "Model Not Selected",
+          message: error.message,
+        };
+    }
+    return { title: "Failed to Start Review", message: error.message };
+  }
+  return {
+    title: "Failed to Start Review",
+    message: "Could not create a review session.",
+  };
+}
 
 const REVIEW_MODES: Partial<Record<MenuAction, ReviewMode>> = {
   "review-unstaged": "unstaged",
@@ -48,7 +76,10 @@ export function HomePage() {
   const [isStartingReview, setIsStartingReview] = useState(false);
 
   const { isTrusted, needsTrust } = deriveTrustStatus({ trust, projectId, repoRoot });
-  const hasLastReview = reviews.length > 0;
+  const unstagedActive = useActiveReviewSession("unstaged");
+  const stagedActive = useActiveReviewSession("staged");
+  const hasResumableSession =
+    unstagedActive.data?.session != null || stagedActive.data?.session != null;
 
   useEffect(() => {
     if (search.error !== "invalid-review-id") return;
@@ -95,8 +126,9 @@ export function HomePage() {
     try {
       const { reviewId } = await createReview.mutateAsync({ mode });
       navigateToReview(reviewId, mode);
-    } catch {
-      toast.error("Failed to Start Review", { message: "Could not create a review session." });
+    } catch (error) {
+      const { title, message } = describeReviewStartError(error);
+      toast.error(title, { message });
     } finally {
       setIsStartingReview(false);
     }
@@ -116,7 +148,7 @@ export function HomePage() {
         navigateToReview(stagedActive.session.reviewId, stagedActive.session.mode);
         return;
       }
-      await startReview("unstaged");
+      toast.warning("No Active Review", { message: "Start a new review from the menu." });
     } catch {
       toast.error("Failed to Resume Review", { message: "Could not find an active session." });
     } finally {
@@ -145,6 +177,7 @@ export function HomePage() {
     }
 
     if (action === "resume-review") {
+      if (!hasResumableSession) return;
       void resumeReview();
       return;
     }
@@ -195,7 +228,7 @@ export function HomePage() {
         onSelect={handleActivate}
         items={MAIN_MENU_ITEMS}
         isTrusted={isTrusted}
-        hasLastReview={hasLastReview}
+        hasResumableSession={hasResumableSession}
       />
     </div>
   );

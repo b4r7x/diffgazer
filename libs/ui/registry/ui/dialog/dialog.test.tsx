@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react"
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { axe } from "../../../testing/utils.js"
 import { afterEach, describe, it, expect, vi } from "vitest"
@@ -538,6 +538,98 @@ describe("Dialog", () => {
 
     await waitFor(() => expect(document.body).not.toContainElement(secondDialog))
     expect(document.body).toContainElement(firstDialog)
+  })
+
+  describe("DialogFooter with keyboard hints", () => {
+    const hints = [
+      { key: "Esc", label: "Cancel" },
+      { key: "↑/↓", label: "Navigate" },
+      { key: "Enter", label: "Confirm" },
+    ]
+
+    function renderWithHints() {
+      return render(
+        <Dialog defaultOpen>
+          <Dialog.Content>
+            <Dialog.Title>Footer with hints</Dialog.Title>
+            <Dialog.Footer hints={hints}>
+              <Dialog.Close>Cancel</Dialog.Close>
+              <Dialog.Action>Confirm</Dialog.Action>
+            </Dialog.Footer>
+          </Dialog.Content>
+        </Dialog>
+      )
+    }
+
+    it("renders hints inside the footer subtree (not absolutely positioned)", () => {
+      renderWithHints()
+      const dialog = screen.getByRole("dialog", { name: "Footer with hints" })
+      const navigateHint = within(dialog).getByText("Navigate")
+      const footer = navigateHint.closest('[class*="border-x"]')
+      expect(footer).not.toBeNull()
+      expect(footer).toContainElement(navigateHint)
+      expect(footer?.className).not.toContain("absolute")
+    })
+
+    it("renders all hint glyphs as Kbd elements at the default size", () => {
+      renderWithHints()
+      const dialog = screen.getByRole("dialog", { name: "Footer with hints" })
+      for (const hint of hints) {
+        const kbd = within(dialog).getByText(hint.key)
+        expect(kbd.tagName).toBe("KBD")
+        expect(kbd.className).toContain("text-xs")
+      }
+    })
+
+    it("places hints and actions in a single flex row with items-center", () => {
+      renderWithHints()
+      const dialog = screen.getByRole("dialog", { name: "Footer with hints" })
+      const navigateHint = within(dialog).getByText("Navigate")
+      const footer = navigateHint.closest('[class*="border-x"]')
+      expect(footer?.className).toContain("items-center")
+      expect(footer?.className).not.toContain("items-end")
+      expect(footer?.className).toContain("justify-between")
+    })
+
+    it("keeps Tab order across action buttons; hint glyphs are not focusable", async () => {
+      renderWithHints()
+      const cancel = screen.getByRole("button", { name: "Cancel" })
+      const confirm = screen.getByRole("button", { name: "Confirm" })
+
+      cancel.focus()
+      expect(cancel).toHaveFocus()
+      await userEvent.tab()
+      expect(confirm).toHaveFocus()
+
+      for (const hint of hints) {
+        const kbd = screen.getByText(hint.key)
+        expect(kbd.tabIndex).toBe(-1)
+        expect(kbd.getAttribute("aria-hidden")).toBe("true")
+      }
+    })
+
+    it("uses justify-end when no hints are provided", () => {
+      render(
+        <Dialog defaultOpen>
+          <Dialog.Content>
+            <Dialog.Title>No hints</Dialog.Title>
+            <Dialog.Footer>
+              <Dialog.Action>OK</Dialog.Action>
+            </Dialog.Footer>
+          </Dialog.Content>
+        </Dialog>
+      )
+      const dialog = screen.getByRole("dialog", { name: "No hints" })
+      const action = within(dialog).getByRole("button", { name: "OK" })
+      const footer = action.closest('[class*="border-x"]')
+      expect(footer?.className).toContain("justify-end")
+      expect(footer?.className).not.toContain("justify-between")
+    })
+
+    it("has no a11y violations when rendering hints", async () => {
+      const { container } = renderWithHints()
+      expect(await axe(container)).toHaveNoViolations()
+    })
   })
 
   it("composes consumer dialog events without replacing backdrop or presence behavior", () => {

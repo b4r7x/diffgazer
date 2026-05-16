@@ -19,15 +19,15 @@ const EXECUTION_MODES: AgentExecution[] = ["sequential", "parallel"];
 
 const LIST_SHORTCUTS = [
   { key: "Esc", label: "Back" },
-  { key: "Tab", label: "Switch zone" },
-  { key: "↑↓", label: "Navigate" },
+  { key: "Tab", label: "Switch Zone" },
+  { key: "↑/↓", label: "Navigate" },
   { key: "Enter", label: "Select Mode" },
 ] as const;
 
 const BUTTON_SHORTCUTS = [
   { key: "Esc", label: "Back" },
-  { key: "Tab", label: "Switch zone" },
-  { key: "←→", label: "Move Action" },
+  { key: "Tab", label: "Switch Zone" },
+  { key: "←/→", label: "Move Action" },
   { key: "Enter", label: "Activate" },
 ] as const;
 

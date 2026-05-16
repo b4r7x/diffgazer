@@ -107,14 +107,14 @@ function SettingsThemeEditor({ savedTheme }: SettingsThemeEditorProps): ReactEle
       ? [
           { key: "←/→", label: "Move Action" },
           { key: "Enter", label: isButtonActive(0) ? "Cancel" : "Save", disabled: isButtonActive(1) && !canSave },
-          { key: "Tab", label: "Switch zone" },
+          { key: "Tab", label: "Switch Zone" },
           { key: "Esc", label: "Back" },
         ]
       : [
           { key: "↑/↓", label: "Navigate" },
           { key: "Space", label: "Select Theme" },
           { key: "Enter", label: "Save & Exit" },
-          { key: "Tab", label: "Switch zone" },
+          { key: "Tab", label: "Switch Zone" },
           { key: "Esc", label: "Back" },
         ],
   });

@@ -103,24 +103,38 @@ function hasKnownExtension(specifier: string): boolean {
 
 function rewriteDeclarationImports(filePath: string): void {
   const content = readFileSync(filePath, "utf-8");
-  const rewritten = content.replace(
+  const rewriteSpecifier = (
+    prefix: string,
+    specifier: string,
+    suffix: string,
+    match: string,
+  ): string => {
+    const aliasTarget = resolveAlias(specifier);
+    if (aliasTarget) {
+      const rewrittenSpecifier =
+        aliasTarget.kind === "external"
+          ? aliasTarget.specifier
+          : toSpecifier(filePath, aliasTarget.path);
+      return `${prefix}${rewrittenSpecifier}${suffix}`;
+    }
+
+    if (specifier.startsWith(".") && !hasKnownExtension(specifier)) {
+      return `${prefix}${specifier}.js${suffix}`;
+    }
+
+    return match;
+  };
+
+  let rewritten = content.replace(
     /(\b(?:from|import)\s+["'])([^"']+)(["'])/g,
-    (match, prefix: string, specifier: string, suffix: string) => {
-      const aliasTarget = resolveAlias(specifier);
-      if (aliasTarget) {
-        const rewrittenSpecifier =
-          aliasTarget.kind === "external"
-            ? aliasTarget.specifier
-            : toSpecifier(filePath, aliasTarget.path);
-        return `${prefix}${rewrittenSpecifier}${suffix}`;
-      }
+    (match, prefix: string, specifier: string, suffix: string) =>
+      rewriteSpecifier(prefix, specifier, suffix, match),
+  );
 
-      if (specifier.startsWith(".") && !hasKnownExtension(specifier)) {
-        return `${prefix}${specifier}.js${suffix}`;
-      }
-
-      return match;
-    },
+  rewritten = rewritten.replace(
+    /(\bimport\(\s*["'])([^"']+)(["']\s*\))/g,
+    (match, prefix: string, specifier: string, suffix: string) =>
+      rewriteSpecifier(prefix, specifier, suffix, match),
   );
 
   if (rewritten !== content) {

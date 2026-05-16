@@ -1,6 +1,7 @@
 "use client";
 
 import type { HTMLAttributes } from "react";
+import { Kbd } from "../kbd/kbd";
 import { cn } from "@/lib/utils";
 
 export interface KeyboardHint {
@@ -10,19 +11,21 @@ export interface KeyboardHint {
 
 export interface DialogKeyboardHintsProps extends HTMLAttributes<HTMLDivElement> {
   hints: KeyboardHint[];
+  size?: "sm" | "md";
 }
 
-export function DialogKeyboardHints({ hints, className, ...props }: DialogKeyboardHintsProps) {
+export function DialogKeyboardHints({ hints, size = "md", className, ...props }: DialogKeyboardHintsProps) {
   if (!hints.length) return null;
 
   return (
     <div
-      className={cn("absolute -bottom-8 left-0 w-full flex justify-center gap-4 text-[10px] text-foreground/60", className)}
+      className={cn("flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs", className)}
       {...props}
     >
       {hints.map((hint) => (
-        <span key={hint.key}>
-          <span className="text-foreground/50 font-bold">{hint.key}</span> {hint.label}
+        <span key={`${hint.key}-${hint.label}`} className="inline-flex items-center gap-1">
+          <Kbd size={size} aria-hidden="true">{hint.key}</Kbd>
+          <span>{hint.label}</span>
         </span>
       ))}
     </div>

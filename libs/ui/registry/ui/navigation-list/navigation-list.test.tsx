@@ -278,6 +278,18 @@ describe("NavigationList", () => {
     expect(await axe(container)).toHaveNoViolations()
   })
 
+  it("renders the selection indicator with a non-zero base opacity so inactive rows keep a visible anchor", () => {
+    renderList({ defaultHighlighted: "two", focused: true })
+
+    const oneOption = screen.getByRole("option", { name: "One" })
+    const indicator = oneOption.querySelector("span[aria-hidden='true']") as HTMLElement
+
+    expect(indicator).toBeTruthy()
+    expect(indicator.className).not.toMatch(/(^|\s)opacity-0(\s|$)/)
+    expect(indicator.className).toMatch(/opacity-/)
+    expect(indicator.className).toMatch(/group-data-\[active\]:opacity-100/)
+  })
+
   it("moves highlight and activates the highlighted option from the listbox", async () => {
     const onSelect = vi.fn()
     const onEnter = vi.fn()

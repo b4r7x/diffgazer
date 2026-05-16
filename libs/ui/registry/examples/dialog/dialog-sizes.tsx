@@ -7,7 +7,6 @@ import {
   DialogBody,
   DialogFooter,
   DialogClose,
-  DialogKeyboardHints,
 } from "@/components/ui/dialog"
 
 export default function DialogSizes() {
@@ -25,10 +24,9 @@ export default function DialogSizes() {
                 This dialog uses the <code className="text-muted-foreground font-mono">{size}</code> size variant.
               </p>
             </DialogBody>
-            <DialogFooter>
+            <DialogFooter hints={[{ key: "Esc", label: "Close" }]}>
               <DialogClose bracket variant="ghost">Close</DialogClose>
             </DialogFooter>
-            <DialogKeyboardHints hints={[{ key: "Esc", label: "Close" }]} />
           </DialogContent>
         </Dialog>
       ))}

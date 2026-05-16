@@ -9,7 +9,6 @@ import {
   DialogFooter,
   DialogClose,
   DialogAction,
-  DialogKeyboardHints,
 } from "@/components/ui/dialog"
 
 export default function DialogAlertExample() {
@@ -30,11 +29,10 @@ export default function DialogAlertExample() {
             will be permanently deleted. This includes all issues, pull requests, and CI/CD pipelines.
           </p>
         </DialogBody>
-        <DialogFooter>
+        <DialogFooter hints={[{ key: "Esc", label: "Close" }]}>
           <DialogClose bracket variant="ghost" autoFocus>Cancel</DialogClose>
           <DialogAction variant="destructive" bracket>Delete</DialogAction>
         </DialogFooter>
-        <DialogKeyboardHints hints={[{ key: "Esc", label: "Close" }]} />
       </DialogContent>
     </Dialog>
   )

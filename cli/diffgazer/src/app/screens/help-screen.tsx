@@ -8,15 +8,15 @@ import { Panel } from "../../components/ui/panel.js";
 import { SectionHeader } from "../../components/ui/section-header.js";
 
 const SHORTCUTS = [
-  { key: "↑/↓", label: "Navigate menus and lists" },
-  { key: "Enter", label: "Select / confirm" },
-  { key: "Esc", label: "Go back" },
-  { key: "Tab", label: "Switch pane" },
-  { key: "1-4", label: "Switch tab (in review)" },
-  { key: "j/k", label: "Scroll content" },
-  { key: "r", label: "Review unstaged changes" },
-  { key: "R", label: "Review staged changes" },
-  { key: "s", label: "Open settings" },
+  { key: "↑/↓", label: "Navigate Menus and Lists" },
+  { key: "Enter", label: "Select / Confirm" },
+  { key: "Esc", label: "Go Back" },
+  { key: "Tab", label: "Switch Pane" },
+  { key: "1-4", label: "Switch Tab (in Review)" },
+  { key: "j/k", label: "Scroll Content" },
+  { key: "r", label: "Review Unstaged Changes" },
+  { key: "R", label: "Review Staged Changes" },
+  { key: "s", label: "Open Settings" },
   { key: "q", label: "Quit" },
 ];
 

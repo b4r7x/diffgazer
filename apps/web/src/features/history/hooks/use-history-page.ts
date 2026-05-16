@@ -111,6 +111,17 @@ export function useHistoryPage() {
 
   const [focusZone, setFocusZone] = useState<HistoryFocusZone>("runs");
 
+  const [highlightedIssueId, setHighlightedIssueId] = useState<string | null>(null);
+  const [prevIssueRunId, setPrevIssueRunId] = useState<string | null>(selectedRunId);
+  if (prevIssueRunId !== selectedRunId) {
+    setPrevIssueRunId(selectedRunId);
+    setHighlightedIssueId(null);
+  }
+  const firstIssueId = selectedRunData.sortedIssues[0]?.id ?? null;
+  const effectiveHighlightedIssueId = selectedRunData.sortedIssues.some((i) => i.id === highlightedIssueId)
+    ? highlightedIssueId
+    : firstIssueId;
+
   const resetSelectedRun = () => {
     if (data.selectedRunId !== null) data.setSelectedRunId(null);
   };
@@ -157,7 +168,8 @@ export function useHistoryPage() {
     }
   };
 
-  const handleIssueClick = () => {
+  const handleIssueClick = (issueId: string) => {
+    setHighlightedIssueId(issueId);
     if (selectedRunId) {
       navigate({ to: "/review/{-$reviewId}", params: { reviewId: selectedRunId } });
     }
@@ -194,5 +206,7 @@ export function useHistoryPage() {
     handleRunActivate,
     handleRunsBoundary,
     handleIssueClick,
+    highlightedIssueId: effectiveHighlightedIssueId,
+    setHighlightedIssueId,
   };
 }

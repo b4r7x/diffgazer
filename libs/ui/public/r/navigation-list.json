@@ -28,7 +28,7 @@
     },
     {
       "path": "registry/ui/navigation-list/navigation-list-title.tsx",
-      "content": "\"use client\";\n\nimport type { ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { useNavigationListItemContext } from \"./navigation-list-item-context\";\n\nconst SELECTION_INDICATOR = \"\\u258C\";\n\nexport interface NavigationListTitleProps {\n  children: ReactNode;\n  className?: string;\n}\n\nexport function NavigationListTitle({ children, className }: NavigationListTitleProps) {\n  const { labelId } = useNavigationListItemContext();\n\n  return (\n    <span id={labelId} className={cn(\"col-start-1 row-start-1 font-bold flex items-center group-data-[active]:text-primary-foreground\", className)}>\n      <span aria-hidden=\"true\" className=\"mr-2 opacity-0 group-data-[active]:opacity-100\">{SELECTION_INDICATOR}</span>\n      {children}\n    </span>\n  );\n}\n",
+      "content": "\"use client\";\n\nimport type { ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { useNavigationListItemContext } from \"./navigation-list-item-context\";\n\nconst SELECTION_INDICATOR = \"\\u258C\";\n\nexport interface NavigationListTitleProps {\n  children: ReactNode;\n  className?: string;\n}\n\nexport function NavigationListTitle({ children, className }: NavigationListTitleProps) {\n  const { labelId } = useNavigationListItemContext();\n\n  return (\n    <span id={labelId} className={cn(\"col-start-1 row-start-1 font-bold flex items-center group-data-[active]:text-primary-foreground\", className)}>\n      <span aria-hidden=\"true\" className=\"mr-2 opacity-30 group-data-[active]:opacity-100\">{SELECTION_INDICATOR}</span>\n      {children}\n    </span>\n  );\n}\n",
       "type": "registry:ui"
     },
     {

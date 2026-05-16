@@ -42,7 +42,6 @@ export function HomeScreen(): ReactElement {
 
   const mostRecent = reviewsData?.reviews[0];
   const hasActiveSession = sessionData?.session != null;
-  const hasLastReview = (reviewsData?.reviews.length ?? 0) > 0;
 
   const trustConfig = initData?.project.trust ?? null;
   const projectId = initData?.project.projectId;
@@ -100,7 +99,7 @@ export function HomeScreen(): ReactElement {
               isActive
               onAction={onAction}
               isTrusted={isTrusted}
-              hasLastReview={hasLastReview}
+              hasResumableSession={hasActiveSession}
             />
           )}
         </Box>

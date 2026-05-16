@@ -8,7 +8,7 @@ import { DialogTitle, type DialogTitleProps } from "./dialog-title";
 import { DialogDescription, type DialogDescriptionProps } from "./dialog-description";
 import { DialogBody, type DialogBodyProps } from "./dialog-body";
 import { DialogFooter, type DialogFooterProps } from "./dialog-footer";
-import { DialogKeyboardHints, type DialogKeyboardHintsProps, type KeyboardHint } from "./dialog-keyboard-hints";
+import { type DialogKeyboardHintsProps, type KeyboardHint } from "./dialog-keyboard-hints";
 import { DialogClose, type DialogCloseProps } from "./dialog-close";
 import { DialogAction, type DialogActionProps } from "./dialog-action";
 
@@ -22,7 +22,6 @@ const Dialog = Object.assign(DialogRoot, {
   Footer: DialogFooter,
   Close: DialogClose,
   Action: DialogAction,
-  KeyboardHints: DialogKeyboardHints,
 });
 
 export { Dialog, type DialogProps };
@@ -35,4 +34,4 @@ export { DialogBody, type DialogBodyProps };
 export { DialogFooter, type DialogFooterProps };
 export { DialogClose, type DialogCloseProps };
 export { DialogAction, type DialogActionProps };
-export { DialogKeyboardHints, type DialogKeyboardHintsProps, type KeyboardHint };
+export { type DialogKeyboardHintsProps, type KeyboardHint };

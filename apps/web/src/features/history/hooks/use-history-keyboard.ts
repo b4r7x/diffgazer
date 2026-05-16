@@ -1,6 +1,6 @@
-import { type RefObject } from "react";
+import type { RefObject } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { getFirstFocusableElement, useFocusZone, useKey } from "@diffgazer/keys";
+import { useFocusZone, useKey, useScopedNavigation } from "@diffgazer/keys";
 import { usePageFooter } from "@diffgazer/core/footer";
 import type { HistoryFocusZone } from "@/features/history/types";
 
@@ -12,9 +12,19 @@ interface UseHistoryKeyboardOptions {
   focusZone: HistoryFocusZone;
   setFocusZone: (zone: HistoryFocusZone) => void;
   activeRunId: string | null;
+  hasRuns: boolean;
   searchInputRef: RefObject<HTMLInputElement | null>;
   runsListRef: RefObject<HTMLDivElement | null>;
-  insightsPaneRef: RefObject<HTMLDivElement | null>;
+  insightsListRef: RefObject<HTMLDivElement | null>;
+  highlightedIssueId: string | null;
+  onHighlightIssue: (id: string | null) => void;
+}
+
+function buildTabCycle(hasRuns: boolean, hasActiveRun: boolean): KeyboardHistoryFocusZone[] {
+  const cycle: KeyboardHistoryFocusZone[] = ["search", "timeline"];
+  if (hasRuns) cycle.push("runs");
+  if (hasActiveRun) cycle.push("insights");
+  return cycle;
 }
 
 export function getHistoryFooter(focusZone: HistoryFocusZone) {
@@ -41,6 +51,7 @@ export function getHistoryFooter(focusZone: HistoryFocusZone) {
     return {
       shortcuts: [
         { key: "Tab", label: "Switch Focus" },
+        { key: "↑/↓", label: "Navigate" },
         { key: "Enter/Space", label: "Open Issue" },
         { key: "←", label: "Review Runs" },
         { key: "/", label: "Search" },
@@ -54,7 +65,6 @@ export function getHistoryFooter(focusZone: HistoryFocusZone) {
       { key: "Tab", label: "Switch Focus" },
       { key: "↑/↓", label: "Navigate" },
       { key: "Enter/Space", label: "Open Review" },
-      { key: "o", label: "Open Review" },
       { key: "/", label: "Search" },
     ],
     rightShortcuts: [{ key: "Esc", label: "Back" }],
@@ -65,27 +75,30 @@ export function useHistoryKeyboard({
   focusZone,
   setFocusZone,
   activeRunId,
+  hasRuns,
   searchInputRef,
   runsListRef,
-  insightsPaneRef,
+  insightsListRef,
+  highlightedIssueId,
+  onHighlightIssue,
 }: UseHistoryKeyboardOptions) {
   const navigate = useNavigate();
+
+  const tabCycle = buildTabCycle(hasRuns, activeRunId !== null);
+
   useFocusZone({
     initial: "runs",
     zones: ZONES,
     zone: focusZone,
     onZoneChange: (zone) => setFocusZone(zone),
     scope: HISTORY_SCOPE,
-    tabCycle: ["search", "timeline", "runs", "insights"],
+    tabCycle,
     focus: {
       autoFocus: true,
       targets: {
         search: searchInputRef,
         runs: runsListRef,
-        insights: {
-          container: insightsPaneRef,
-          target: () => getFirstFocusableElement(insightsPaneRef.current) ?? insightsPaneRef.current,
-        },
+        insights: insightsListRef,
       },
     },
     transitions: ({ zone, key }) => {
@@ -105,6 +118,18 @@ export function useHistoryKeyboard({
       if (key === "ArrowRight") return right[zone] ?? null;
       return null;
     },
+  });
+
+  useScopedNavigation({
+    containerRef: insightsListRef,
+    role: "option",
+    highlighted: highlightedIssueId,
+    onHighlightChange: onHighlightIssue,
+    wrap: false,
+    scope: HISTORY_SCOPE,
+    enabled: focusZone === "insights",
+    upKeys: ["ArrowUp", "k"],
+    downKeys: ["ArrowDown", "j"],
   });
 
   useKey("/", () => {

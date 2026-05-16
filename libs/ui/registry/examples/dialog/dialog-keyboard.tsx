@@ -12,7 +12,6 @@ import {
   DialogFooter,
   DialogClose,
   DialogAction,
-  DialogKeyboardHints,
 } from "@/components/ui/dialog"
 import { useRef } from "react"
 
@@ -43,16 +42,17 @@ export default function DialogKeyboard() {
           </p>
         </DialogBody>
         <div ref={containerRef} onKeyDown={onKeyDown}>
-          <DialogFooter>
+          <DialogFooter
+            hints={[
+              { key: "Esc", label: "Close" },
+              { key: "←/→", label: "Navigate" },
+              { key: "Enter", label: "Confirm" },
+            ]}
+          >
             <DialogClose data-value="cancel" bracket variant="ghost">Cancel</DialogClose>
             <DialogAction data-value="delete" variant="destructive" bracket>Delete</DialogAction>
           </DialogFooter>
         </div>
-        <DialogKeyboardHints hints={[
-          { key: "Esc", label: "Close" },
-          { key: "←→", label: "Navigate" },
-          { key: "Enter", label: "Confirm" },
-        ]} />
       </DialogContent>
     </Dialog>
   )

@@ -1,6 +1,5 @@
 import { useState } from "react";
-import type { SeverityFilter } from "@/features/review/components/severity-filter-group";
-import type { ReviewIssue } from "@diffgazer/core/schemas/review";
+import type { ReviewIssue, ReviewSeverity } from "@diffgazer/core/schemas/review";
 import { SEVERITY_ORDER } from "@diffgazer/core/schemas/ui";
 import { filterIssuesBySeverity } from "@diffgazer/core/review";
 
@@ -8,24 +7,29 @@ interface UseSeverityFilterOptions {
   issues: ReviewIssue[];
 }
 
+const EMPTY_FILTER: ReadonlySet<ReviewSeverity> = new Set();
+
 export function useSeverityFilter({ issues }: UseSeverityFilterOptions) {
-  const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
+  const [severityFilter, setSeverityFilter] = useState<ReadonlySet<ReviewSeverity>>(EMPTY_FILTER);
   const [focusedFilterIndex, setFocusedFilterIndex] = useState(0);
 
   const filteredIssues = filterIssuesBySeverity(issues, severityFilter);
+  const selectedCount = severityFilter.size;
+  const isFilterActive = selectedCount > 0;
 
   const toggleSeverityFilter = () => {
     const sev = SEVERITY_ORDER[focusedFilterIndex];
-    setSeverityFilter((f) => (f === sev ? "all" : sev));
+    if (!sev) return;
+    setSeverityFilter((prev) => {
+      const next = new Set(prev);
+      if (next.has(sev)) next.delete(sev);
+      else next.add(sev);
+      return next;
+    });
   };
 
-  const moveFocusedFilter = (delta: -1 | 1) => {
-    if (delta === -1 && focusedFilterIndex > 0) {
-      setFocusedFilterIndex((i) => i - 1);
-    }
-    if (delta === 1 && focusedFilterIndex < SEVERITY_ORDER.length - 1) {
-      setFocusedFilterIndex((i) => i + 1);
-    }
+  const resetSeverityFilter = () => {
+    setSeverityFilter(EMPTY_FILTER);
   };
 
   return {
@@ -35,6 +39,8 @@ export function useSeverityFilter({ issues }: UseSeverityFilterOptions) {
     focusedFilterIndex,
     setFocusedFilterIndex,
     toggleSeverityFilter,
-    moveFocusedFilter,
+    resetSeverityFilter,
+    selectedCount,
+    isFilterActive,
   };
 }

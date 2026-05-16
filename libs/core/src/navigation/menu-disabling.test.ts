@@ -28,39 +28,39 @@ describe("isReviewAction", () => {
 
 describe("isMenuActionDisabled", () => {
   it("disables review-start actions when directory is untrusted", () => {
-    const ctx = { isTrusted: false, hasLastReview: true };
+    const ctx = { isTrusted: false, hasResumableSession: true };
     expect(isMenuActionDisabled("review-unstaged", ctx)).toBe(true);
     expect(isMenuActionDisabled("review-staged", ctx)).toBe(true);
     expect(isMenuActionDisabled("review-files", ctx)).toBe(true);
   });
 
   it("enables review-start actions when trusted", () => {
-    const ctx = { isTrusted: true, hasLastReview: false };
+    const ctx = { isTrusted: true, hasResumableSession: false };
     expect(isMenuActionDisabled("review-unstaged", ctx)).toBe(false);
     expect(isMenuActionDisabled("review-staged", ctx)).toBe(false);
     expect(isMenuActionDisabled("review-files", ctx)).toBe(false);
   });
 
-  it("disables resume-review when there is no last review even if trusted", () => {
+  it("disables resume-review when there is no resumable session even if trusted", () => {
     expect(
-      isMenuActionDisabled("resume-review", { isTrusted: true, hasLastReview: false })
+      isMenuActionDisabled("resume-review", { isTrusted: true, hasResumableSession: false })
     ).toBe(true);
   });
 
-  it("enables resume-review when trusted and there is a last review", () => {
+  it("enables resume-review when trusted and a resumable session exists", () => {
     expect(
-      isMenuActionDisabled("resume-review", { isTrusted: true, hasLastReview: true })
+      isMenuActionDisabled("resume-review", { isTrusted: true, hasResumableSession: true })
     ).toBe(false);
   });
 
-  it("disables resume-review when untrusted regardless of history", () => {
+  it("disables resume-review when untrusted regardless of resumable session", () => {
     expect(
-      isMenuActionDisabled("resume-review", { isTrusted: false, hasLastReview: true })
+      isMenuActionDisabled("resume-review", { isTrusted: false, hasResumableSession: true })
     ).toBe(true);
   });
 
   it("never disables non-review menu actions", () => {
-    const ctx = { isTrusted: false, hasLastReview: false };
+    const ctx = { isTrusted: false, hasResumableSession: false };
     expect(isMenuActionDisabled("history", ctx)).toBe(false);
     expect(isMenuActionDisabled("settings", ctx)).toBe(false);
     expect(isMenuActionDisabled("help", ctx)).toBe(false);

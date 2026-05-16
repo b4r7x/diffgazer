@@ -1,14 +1,11 @@
 import type { ReviewIssue, ReviewSeverity } from "@diffgazer/core/schemas/review";
 
-/**
- * Filter issues by severity level
- */
 export function filterIssuesBySeverity(
   issues: ReviewIssue[],
-  severityFilter: ReviewSeverity | "all"
+  severityFilter: ReadonlySet<ReviewSeverity>
 ): ReviewIssue[] {
-  if (severityFilter === "all") {
+  if (severityFilter.size === 0) {
     return issues;
   }
-  return issues.filter((issue) => issue.severity === severityFilter);
+  return issues.filter((issue) => severityFilter.has(issue.severity));
 }

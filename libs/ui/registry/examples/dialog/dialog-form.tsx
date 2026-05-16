@@ -11,7 +11,6 @@ import {
   DialogFooter,
   DialogClose,
   DialogAction,
-  DialogKeyboardHints,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -73,7 +72,7 @@ export default function DialogForm() {
             </Label>
           </div>
         </DialogBody>
-        <DialogFooter>
+        <DialogFooter hints={[{ key: "Esc", label: "Close" }, { key: "Enter", label: "Submit" }]}>
           <DialogClose bracket variant="ghost" disabled={submitting}>Cancel</DialogClose>
           <DialogAction
             disabled={!name.trim() || submitting}
@@ -83,7 +82,6 @@ export default function DialogForm() {
             {submitting ? "Creating..." : "Create"}
           </DialogAction>
         </DialogFooter>
-        <DialogKeyboardHints hints={[{ key: "Esc", label: "Close" }, { key: "Enter", label: "Submit" }]} />
       </DialogContent>
     </Dialog>
   )

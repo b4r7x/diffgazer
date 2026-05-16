@@ -18,15 +18,15 @@ import { isLensSelectionDirty, resolveEffectiveLenses } from "../../../features/
 
 const LIST_SHORTCUTS = [
   { key: "Esc", label: "Back" },
-  { key: "Tab", label: "Switch zone" },
-  { key: "↑↓", label: "Navigate" },
+  { key: "Tab", label: "Switch Zone" },
+  { key: "↑/↓", label: "Navigate" },
   { key: "Space", label: "Toggle Lens" },
 ] as const;
 
 const BUTTON_SHORTCUTS = [
   { key: "Esc", label: "Back" },
-  { key: "Tab", label: "Switch zone" },
-  { key: "←→", label: "Move Action" },
+  { key: "Tab", label: "Switch Zone" },
+  { key: "←/→", label: "Move Action" },
   { key: "Enter", label: "Activate" },
 ] as const;
 

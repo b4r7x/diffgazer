@@ -279,9 +279,77 @@ describe("ReviewResultsView keyboard regression", () => {
 
     await user.click(screen.getByRole("button", { name: /low severity/i }));
 
-    expect(screen.getByText("No issues match filter")).toBeInTheDocument();
+    expect(screen.getByText(/No issues match the current filters/i)).toBeInTheDocument();
     expect(screen.getByText("No issues match this filter")).toBeInTheDocument();
     expect(screen.getByText("Choose another severity to continue.")).toBeInTheDocument();
     expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+  });
+
+  it("toggles multiple severity filters and clears them via [Reset]", async () => {
+    const user = userEvent.setup();
+    renderView([
+      makeIssue("issue-1", "High issue", { severity: "high" }),
+      makeIssue("issue-2", "Medium issue", { severity: "medium" }),
+      makeIssue("issue-3", "Low issue", { severity: "low" }),
+    ]);
+
+    const high = screen.getByRole("button", { name: /high severity/i });
+    const medium = screen.getByRole("button", { name: /med severity/i });
+
+    await user.click(high);
+    expect(high).toHaveAttribute("aria-pressed", "true");
+    await user.click(medium);
+    expect(medium).toHaveAttribute("aria-pressed", "true");
+    expect(high).toHaveAttribute("aria-pressed", "true");
+
+    expect(screen.getAllByRole("option")).toHaveLength(2);
+
+    const resetButton = screen.getByRole("button", { name: /reset severity filter/i });
+    await user.click(resetButton);
+
+    expect(high).toHaveAttribute("aria-pressed", "false");
+    expect(medium).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getAllByRole("option")).toHaveLength(3);
+  });
+
+  it("reaches Reset via ArrowRight from the last severity when filter is active", async () => {
+    const user = userEvent.setup();
+    renderView([
+      makeIssue("issue-1", "High issue", { severity: "high" }),
+    ]);
+
+    await user.keyboard("{ArrowUp}");
+    const filterGroup = screen.getByRole("group", { name: "Severity filter" });
+    await waitFor(() => expect(filterGroup).toContainElement(document.activeElement));
+
+    await user.keyboard("{ArrowRight}");
+    await user.keyboard("{Enter}");
+    expect(screen.getByRole("button", { name: /high severity/i })).toHaveAttribute("aria-pressed", "true");
+    const reset = await screen.findByRole("button", { name: /reset severity filter/i });
+    expect(reset).toBeInTheDocument();
+
+    for (let i = 0; i < SEVERITY_ORDER.length - 1; i += 1) {
+      await user.keyboard("{ArrowRight}");
+    }
+
+    await waitFor(() => expect(reset).toHaveFocus());
+  });
+
+  it("activates reset via 'r' shortcut when a severity filter is active", async () => {
+    const user = userEvent.setup();
+    renderView([
+      makeIssue("issue-1", "High issue", { severity: "high" }),
+      makeIssue("issue-2", "Low issue", { severity: "low" }),
+    ]);
+
+    await user.click(screen.getByRole("button", { name: /high severity/i }));
+
+    expect(screen.getAllByRole("option")).toHaveLength(1);
+    expect(screen.getByRole("button", { name: /reset severity filter/i })).toBeInTheDocument();
+
+    await user.keyboard("r");
+
+    await waitFor(() => expect(screen.getAllByRole("option")).toHaveLength(2));
+    expect(screen.queryByRole("button", { name: /reset severity filter/i })).not.toBeInTheDocument();
   });
 });

@@ -53,7 +53,7 @@ export function DiagnosticsScreen(): ReactElement {
 
   usePageFooter({
     shortcuts: [
-      { key: "←→", label: "Move action" },
+      { key: "←/→", label: "Move Action" },
       { key: "Enter", label: "Activate" },
     ],
     rightShortcuts: [{ key: "Esc", label: "Back" }],

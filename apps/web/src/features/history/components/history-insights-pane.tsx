@@ -1,9 +1,11 @@
+import type { KeyboardEvent, Ref } from "react";
 import { cn } from "@diffgazer/ui/lib/utils";
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { EmptyState } from "@diffgazer/ui/components/empty-state";
-import { Button } from "@diffgazer/ui/components/button";
+import { NavigationList } from "@diffgazer/ui/components/navigation-list";
 import { SeverityBreakdown } from "@/components/ui/severity/severity-breakdown";
+import { isListNavigationKey } from "@diffgazer/keys";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { SEVERITY_CONFIG } from "@/components/ui/severity/constants";
 import type { SeverityCounts } from "@diffgazer/core/schemas/ui";
@@ -14,7 +16,13 @@ export interface HistoryInsightsPaneProps {
   severityCounts: SeverityCounts | null;
   issues: ReviewIssue[];
   duration?: string;
-  onIssueClick?: (issueId: string) => void;
+  highlightedIssueId?: string | null;
+  isFocused?: boolean;
+  listRef?: Ref<HTMLDivElement>;
+  onSelectIssue?: (id: string) => void;
+  onHighlightIssue?: (id: string | null) => void;
+  onListBoundaryReached?: (direction: "previous" | "next") => void;
+  onListFocus?: () => void;
   className?: string;
 }
 
@@ -23,7 +31,13 @@ export function HistoryInsightsPane({
   severityCounts,
   issues,
   duration,
-  onIssueClick,
+  highlightedIssueId = null,
+  isFocused = false,
+  listRef,
+  onSelectIssue,
+  onHighlightIssue,
+  onListBoundaryReached,
+  onListFocus,
   className,
 }: HistoryInsightsPaneProps) {
   if (!runId) {
@@ -57,26 +71,49 @@ export function HistoryInsightsPane({
             <SectionHeader bordered className="border-tui-border">
               {issues.length} Issues
             </SectionHeader>
-            <div className="space-y-3 mt-3">
+            <NavigationList
+              ref={listRef}
+              aria-label="Run issues"
+              highlighted={highlightedIssueId}
+              onFocus={onListFocus}
+              onEnter={(id) => onSelectIssue?.(id)}
+              onSelect={(id) => onSelectIssue?.(id)}
+              onHighlightChange={onHighlightIssue}
+              onNavigationBoundaryReached={(direction) => onListBoundaryReached?.(direction)}
+              onKeyDown={(event: KeyboardEvent) => {
+                if (!isFocused && isListNavigationKey(event.key)) {
+                  event.preventDefault();
+                }
+              }}
+              focused={isFocused}
+              wrap={false}
+              className="mt-3"
+            >
               {issues.map((issue) => (
-                <div key={issue.id} className="text-xs">
-                  <div className="flex justify-between mb-1">
-                    <span className={cn("font-bold", SEVERITY_CONFIG[issue.severity].color)}>
+                <NavigationList.Item
+                  key={issue.id}
+                  id={issue.id}
+                  density="compact"
+                  className="border-b border-tui-border last:border-b-0"
+                >
+                  <NavigationList.Title className="min-w-0">
+                    <span
+                      className={cn(
+                        "mr-2 font-bold",
+                        SEVERITY_CONFIG[issue.severity].color,
+                        "group-data-[active]:text-primary-foreground",
+                      )}
+                    >
                       [{capitalize(issue.severity)}]
                     </span>
-                    <span className="text-tui-muted font-mono">L:{issue.line_start}</span>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-auto justify-start px-0 py-0 text-tui-muted truncate hover:text-tui-fg text-left w-full"
-                    onClick={() => onIssueClick?.(issue.id)}
-                  >
-                    {issue.title}
-                  </Button>
-                </div>
+                    <span className="min-w-0 truncate">{issue.title}</span>
+                  </NavigationList.Title>
+                  <NavigationList.Meta>
+                    <NavigationList.Subtitle>L:{issue.line_start}</NavigationList.Subtitle>
+                  </NavigationList.Meta>
+                </NavigationList.Item>
               ))}
-            </div>
+            </NavigationList>
           </div>
         )}
       </ScrollArea>

@@ -18,6 +18,8 @@ export interface IssueListPaneProps {
   onListBoundaryReached?: (direction: "previous" | "next") => void;
   severityFilter: SeverityFilter;
   onSeverityFilterChange: (filter: SeverityFilter) => void;
+  onSeverityFilterReset?: () => void;
+  onSeverityFilterBoundary?: (direction: "previous" | "next") => void;
   isFocused: boolean;
   isFilterFocused?: boolean;
   focusedFilterIndex?: number;
@@ -40,6 +42,8 @@ export function IssueListPane({
   onListBoundaryReached,
   severityFilter,
   onSeverityFilterChange,
+  onSeverityFilterReset,
+  onSeverityFilterBoundary,
   isFocused,
   isFilterFocused,
   focusedFilterIndex,
@@ -53,7 +57,13 @@ export function IssueListPane({
   className,
 }: IssueListPaneProps) {
   const counts = calculateSeverityCounts(allIssues);
-  const emptyMessage = allIssues.length === 0 ? "No issues found" : "No issues match filter";
+  const isFilterActive = severityFilter.size > 0;
+  const emptyMessage =
+    allIssues.length === 0
+      ? "No issues found"
+      : isFilterActive
+        ? "No issues match the current filters — press [Reset] to clear"
+        : "No issues match filter";
   // The severity filter visually lives inside this pane, so the pane
   // keeps its focus outline while either zone is active.
   const isPaneFocused = isFocused || !!isFilterFocused;
@@ -76,6 +86,8 @@ export function IssueListPane({
           counts={counts}
           activeFilter={severityFilter}
           onFilterChange={onSeverityFilterChange}
+          onReset={onSeverityFilterReset}
+          onNavigationBoundaryReached={onSeverityFilterBoundary}
           isFocused={isFilterFocused}
           focusedIndex={focusedFilterIndex}
           onFocusedIndexChange={onFocusedFilterIndexChange}
@@ -120,7 +132,10 @@ export function IssueListPane({
                 )}
               >
                 <NavigationList.Title className="min-w-0">
-                  <span className={cn("mr-2", config.color)} aria-hidden="true">
+                  <span
+                    className={cn("mr-2", config.color, "group-data-[active]:text-primary-foreground")}
+                    aria-hidden="true"
+                  >
                     {config.icon}
                   </span>
                   <span className="min-w-0 truncate">{issue.title}</span>

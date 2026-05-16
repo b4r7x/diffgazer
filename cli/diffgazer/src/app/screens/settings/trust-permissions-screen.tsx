@@ -29,7 +29,7 @@ import {
 
 const TRUST_FORM_SHORTCUTS = [
   { key: "↑/↓", label: "Navigate" },
-  { key: "Tab", label: "Switch zone" },
+  { key: "Tab", label: "Switch Zone" },
   { key: "Space", label: "Toggle" },
   { key: "Enter", label: "Activate" },
 ];

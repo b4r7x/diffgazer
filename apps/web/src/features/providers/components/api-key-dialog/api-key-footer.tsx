@@ -1,7 +1,11 @@
 import type { RefObject } from "react";
-import { DialogFooter } from "@diffgazer/ui/components/dialog";
+import {
+  DialogAction,
+  DialogClose,
+  DialogFooter,
+  type KeyboardHint,
+} from "@diffgazer/ui/components/dialog";
 import type { FocusElement } from "@/types/focus-element";
-import { DialogFooterActions } from "../footer-actions";
 
 interface ApiKeyFooterProps {
   onCancel: () => void;
@@ -14,6 +18,13 @@ interface ApiKeyFooterProps {
   confirmRef: RefObject<HTMLButtonElement | null>;
 }
 
+const HINTS: KeyboardHint[] = [
+  { key: "↑/↓", label: "Navigate" },
+  { key: "Enter/Space", label: "Select" },
+  { key: "Esc", label: "Cancel" },
+  { key: "Enter", label: "Confirm" },
+];
+
 export function ApiKeyFooter({
   onCancel,
   onConfirm,
@@ -24,24 +35,36 @@ export function ApiKeyFooter({
   cancelRef,
   confirmRef,
 }: ApiKeyFooterProps) {
+  const canConfirm = canSubmit && !isSubmitting;
+
   return (
-    <DialogFooter className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4">
-      <DialogFooterActions
-        onCancel={onCancel}
-        onConfirm={onConfirm}
-        canConfirm={canSubmit && !isSubmitting}
-        cancelFocused={focused === "cancel"}
-        confirmFocused={focused === "confirm" && canSubmit && !isSubmitting}
-        getButtonProps={(index) => ({
-          ref: index === 0 ? cancelRef : confirmRef,
-          onFocus: () => onFocus(index === 0 ? "cancel" : "confirm"),
-        })}
-        hints={[
-          { key: "Up/Down", label: "navigate" },
-          { key: "Space", label: "select" },
-          { key: "Enter", label: "confirm" },
-        ]}
-      />
+    <DialogFooter hints={HINTS}>
+      <DialogClose
+        ref={cancelRef}
+        variant="ghost"
+        size="sm"
+        bracket
+        highlighted={focused === "cancel"}
+        onClick={onCancel}
+        onFocus={() => onFocus("cancel")}
+      >
+        Cancel
+      </DialogClose>
+      <DialogAction
+        ref={confirmRef}
+        variant="primary"
+        size="sm"
+        bracket
+        disabled={!canConfirm}
+        highlighted={focused === "confirm" && canConfirm}
+        onClick={(event) => {
+          event.preventDefault();
+          onConfirm();
+        }}
+        onFocus={() => onFocus("confirm")}
+      >
+        Confirm
+      </DialogAction>
     </DialogFooter>
   );
 }

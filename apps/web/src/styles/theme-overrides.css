@@ -66,6 +66,8 @@
   --status-complete: var(--tui-green);
   --status-pending: var(--tui-muted);
 
+  --row-active-fg: var(--primary-foreground);
+
   --trans-fast: 0.15s ease;
   --radius: 0.25rem;
 }
@@ -157,6 +159,8 @@
   --status-running: var(--tui-blue);
   --status-complete: var(--tui-green);
   --status-pending: var(--tui-muted);
+
+  --row-active-fg: var(--primary-foreground);
 }
 
 @font-face {
@@ -297,6 +301,8 @@
   --color-status-running: var(--status-running);
   --color-status-complete: var(--status-complete);
   --color-status-pending: var(--status-pending);
+
+  --color-row-active-fg: var(--row-active-fg);
 
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);

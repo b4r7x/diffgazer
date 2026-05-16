@@ -8,6 +8,7 @@ import { usePageFooter } from "@diffgazer/core/footer";
 import { useSeverityFilter } from "./use-severity-filter";
 import { useIssueSelection } from "./use-issue-selection";
 import { useIssueDetailsTabs } from "./use-issue-details-tabs";
+import { RESET_FILTER_VALUE } from "@/features/review/components/severity-filter-group";
 
 type FocusZone = "filters" | "list" | "details";
 
@@ -22,14 +23,17 @@ function getReviewResultsFooter(
   focusZone: FocusZone,
   hasSelectedIssue: boolean,
   canUsePatchTab: boolean,
+  isFilterActive: boolean,
 ): { shortcuts: Shortcut[]; rightShortcuts: Shortcut[] } {
   if (focusZone === "filters") {
+    const shortcuts: Shortcut[] = [
+      { key: "←/→", label: "Move Filter" },
+      { key: "Enter/Space", label: "Toggle Filter" },
+    ];
+    if (isFilterActive) shortcuts.push({ key: "r", label: "Reset" });
+    shortcuts.push({ key: "j", label: "Issue List" });
     return {
-      shortcuts: [
-        { key: "←/→", label: "Move Filter" },
-        { key: "Enter/Space", label: "Toggle Filter" },
-        { key: "j", label: "Issue List" },
-      ],
+      shortcuts,
       rightShortcuts: [{ key: "Esc", label: "Back" }],
     };
   }
@@ -60,19 +64,38 @@ function getReviewResultsFooter(
   };
 }
 
+function severityFilterToKey(filter: ReadonlySet<ReviewIssue["severity"]>): string {
+  if (filter.size === 0) return "all";
+  return Array.from(filter).sort().join(",");
+}
+
 export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOptions) {
   const router = useRouter();
   const [focusZone, setFocusZone] = useState<FocusZone>("list");
   const filterRef = useRef<HTMLDivElement>(null);
 
-  const { severityFilter, setSeverityFilter, filteredIssues, focusedFilterIndex, setFocusedFilterIndex, toggleSeverityFilter, moveFocusedFilter } =
-    useSeverityFilter({ issues });
+  const {
+    severityFilter,
+    setSeverityFilter,
+    filteredIssues,
+    focusedFilterIndex,
+    setFocusedFilterIndex,
+    toggleSeverityFilter,
+    resetSeverityFilter,
+    isFilterActive,
+  } = useSeverityFilter({ issues });
 
   const { selectedIssue, selectedIssueId, setSelectedIssueId, highlightedIssueId, listRef } =
-    useIssueSelection({ filteredIssues, sourceKey: severityFilter ?? "all" });
+    useIssueSelection({ filteredIssues, sourceKey: severityFilterToKey(severityFilter) });
 
   const { activeTab, setActiveTab, completedSteps, handleToggleStep, detailsScrollRef, moveTab, scrollDetails } =
     useIssueDetailsTabs({ selectedIssue });
+
+  const lastFilterIndex = SEVERITY_ORDER.length - 1;
+  const resetIndex = SEVERITY_ORDER.length;
+
+  const focusTargetValueForIndex = (index: number): string =>
+    index === resetIndex ? RESET_FILTER_VALUE : SEVERITY_ORDER[index] ?? SEVERITY_ORDER[0];
 
   useFocusZone({
     initial: "list" as FocusZone,
@@ -88,7 +111,7 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
           target: () =>
             findNavigationItemByValue(filterRef.current, {
               type: "button",
-              value: SEVERITY_ORDER[focusedFilterIndex] ?? SEVERITY_ORDER[0],
+              value: focusTargetValueForIndex(focusedFilterIndex),
               ownerSelector: null,
             }) ?? getNavigationItems(filterRef.current, {
               type: "button",
@@ -151,12 +174,6 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
 
     if (event.key === "ArrowUp") {
       event.preventDefault();
-      return;
-    }
-
-    if (event.key === "ArrowRight" && focusedFilterIndex >= SEVERITY_ORDER.length - 1) {
-      event.preventDefault();
-      setFocusZone("details");
     }
   };
 
@@ -167,14 +184,24 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
 
   useKey("Escape", () => router.history.back(), { scope: REVIEW_SCOPE });
 
-  useKey("ArrowLeft", () => moveFocusedFilter(-1), { scope: REVIEW_SCOPE, enabled: focusZone === "filters" });
+  useKey("ArrowLeft", () => setFocusedFilterIndex(lastFilterIndex), {
+    scope: REVIEW_SCOPE,
+    enabled: focusZone === "filters" && focusedFilterIndex === resetIndex,
+  });
   useKey("ArrowRight", () => {
-    if (focusedFilterIndex >= SEVERITY_ORDER.length - 1) {
+    if (focusedFilterIndex === resetIndex) {
       setFocusZone("details");
+    }
+  }, { scope: REVIEW_SCOPE, enabled: focusZone === "filters" && focusedFilterIndex === resetIndex });
+
+  const handleSeverityFilterBoundary = (direction: "previous" | "next") => {
+    if (direction !== "next") return;
+    if (isFilterActive) {
+      setFocusedFilterIndex(resetIndex);
       return;
     }
-    moveFocusedFilter(1);
-  }, { scope: REVIEW_SCOPE, enabled: focusZone === "filters" });
+    setFocusZone("details");
+  };
 
   useKey("j", () => setFocusZone("list"), { scope: REVIEW_SCOPE, enabled: focusZone === "filters" });
 
@@ -192,8 +219,22 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
   useKey("ArrowUp", () => scrollDetails(-80), { scope: REVIEW_SCOPE, enabled: focusZone === "details" });
   useKey("ArrowDown", () => scrollDetails(80), { scope: REVIEW_SCOPE, enabled: focusZone === "details" });
 
-  useKey("Enter", toggleSeverityFilter, { scope: REVIEW_SCOPE, enabled: focusZone === "filters" });
-  useKey(" ", toggleSeverityFilter, { scope: REVIEW_SCOPE, enabled: focusZone === "filters" });
+  const handleEnterOrSpace = () => {
+    if (focusedFilterIndex === resetIndex) {
+      resetSeverityFilter();
+      setFocusedFilterIndex(lastFilterIndex);
+      return;
+    }
+    toggleSeverityFilter();
+  };
+
+  useKey("Enter", handleEnterOrSpace, { scope: REVIEW_SCOPE, enabled: focusZone === "filters" });
+  useKey(" ", handleEnterOrSpace, { scope: REVIEW_SCOPE, enabled: focusZone === "filters" });
+
+  useKey("r", () => {
+    resetSeverityFilter();
+    setFocusedFilterIndex(lastFilterIndex);
+  }, { scope: REVIEW_SCOPE, enabled: focusZone === "filters" && isFilterActive });
 
   useKey("1", () => setActiveTab("details"), { scope: REVIEW_SCOPE, enabled: focusZone === "details" && !!selectedIssue });
   useKey("2", () => setActiveTab("explain"), { scope: REVIEW_SCOPE, enabled: focusZone === "details" && !!selectedIssue });
@@ -204,6 +245,7 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
     focusZone,
     selectedIssue !== null,
     Boolean(selectedIssue?.suggested_patch),
+    isFilterActive,
   );
 
   usePageFooter({ shortcuts: footer.shortcuts, rightShortcuts: footer.rightShortcuts });
@@ -219,11 +261,13 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
     setActiveTab,
     severityFilter,
     setSeverityFilter,
+    resetSeverityFilter,
     focusZone,
     focusedFilterIndex,
     setFocusedFilterIndex,
     filterRef,
     handleFilterKeyDown,
+    handleSeverityFilterBoundary,
     highlightedIssueId,
     handleListFocus,
     listRef,

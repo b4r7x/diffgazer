@@ -1,5 +1,7 @@
-import { useScope, useKey } from '@diffgazer/keys';
+import { useRef } from 'react';
+import { useScope, useKey, useActionRowNavigation } from '@diffgazer/keys';
 import { usePageFooter } from "@diffgazer/core/footer";
+import type { Shortcut } from "@diffgazer/core/schemas/ui";
 import { Button } from '@diffgazer/ui/components/button';
 import type { ReviewMode } from '@diffgazer/core/schemas/review';
 
@@ -30,37 +32,64 @@ const MESSAGES: Record<ReviewMode, { title: string; message: string; switchLabel
 export function NoChangesView({ mode, onBack, onSwitchMode }: NoChangesViewProps) {
   useScope('no-changes');
 
+  const focusFallbackRef = useRef<HTMLDivElement>(null);
+  const { title, message, switchLabel } = MESSAGES[mode];
+
+  const actions = onSwitchMode ? [onSwitchMode, onBack] : [onBack];
+  const actionCount = actions.length;
+
+  const footer = useActionRowNavigation({
+    enabled: true,
+    actionCount,
+    defaultZone: "actions",
+    disabledFocusFallbackRef: focusFallbackRef,
+    onAction: (index) => actions[index]?.(),
+  });
+
   useKey('Escape', onBack);
-  useKey('Enter', () => onSwitchMode?.(), { enabled: !!onSwitchMode });
 
-  const footerShortcuts = onSwitchMode
-    ? [{ key: 'Enter', label: MESSAGES[mode].switchLabel }]
-    : [];
-  const footerRightShortcuts = [{ key: 'Esc', label: 'Back' }];
+  const focusedLabel = onSwitchMode
+    ? (footer.focusedIndex === 0 ? switchLabel : 'Back to Home')
+    : 'Back to Home';
 
-  usePageFooter({ shortcuts: footerShortcuts, rightShortcuts: footerRightShortcuts });
+  const footerShortcuts: Shortcut[] = actionCount > 1
+    ? [
+        { key: '←/→', label: 'Move Action' },
+        { key: 'Enter/Space', label: focusedLabel },
+      ]
+    : [{ key: 'Enter/Space', label: focusedLabel }];
 
-  const { title, message } = MESSAGES[mode];
+  usePageFooter({
+    shortcuts: footerShortcuts,
+    rightShortcuts: [{ key: 'Esc', label: 'Back' }],
+  });
 
   return (
     <div className="flex flex-1 items-center justify-center">
-      <div className="text-center max-w-md p-6">
+      <div
+        ref={focusFallbackRef}
+        tabIndex={-1}
+        className="text-center max-w-md p-6 focus:outline-none"
+      >
         <div className="text-tui-yellow text-lg font-bold mb-4">{title}</div>
         <p className="text-tui-muted font-mono text-sm mb-6">{message}</p>
         <div className="flex gap-4 justify-center">
           {onSwitchMode && (
             <Button
+              {...footer.getActionProps(0)}
               variant="outline"
               bracket
-              className="border-tui-blue hover:bg-tui-blue/20"
+              highlighted={footer.inActions && footer.focusedIndex === 0}
               onClick={onSwitchMode}
             >
-              {MESSAGES[mode].switchLabel}
+              {switchLabel}
             </Button>
           )}
           <Button
+            {...footer.getActionProps(onSwitchMode ? 1 : 0)}
             variant="secondary"
             bracket
+            highlighted={footer.inActions && footer.focusedIndex === (onSwitchMode ? 1 : 0)}
             onClick={onBack}
           >
             Back to Home

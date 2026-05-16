@@ -9,7 +9,6 @@ import {
   DialogFooter,
   DialogClose,
   DialogAction,
-  DialogKeyboardHints,
 } from "@/components/ui/dialog"
 
 export default function DialogDescriptionExample() {
@@ -29,11 +28,10 @@ export default function DialogDescriptionExample() {
             A backup will be saved as <span className="text-foreground font-mono">config.json.bak</span>.
           </p>
         </DialogBody>
-        <DialogFooter>
+        <DialogFooter hints={[{ key: "Esc", label: "Close" }, { key: "Enter", label: "Confirm" }]}>
           <DialogClose bracket variant="ghost">Cancel</DialogClose>
           <DialogAction>Reset</DialogAction>
         </DialogFooter>
-        <DialogKeyboardHints hints={[{ key: "Esc", label: "Close" }, { key: "Enter", label: "Confirm" }]} />
       </DialogContent>
     </Dialog>
   )

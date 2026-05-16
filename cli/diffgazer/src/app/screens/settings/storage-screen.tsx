@@ -43,8 +43,8 @@ export function StorageScreen(): ReactElement {
 
   usePageFooter({
     shortcuts: [
-      { key: "Tab", label: "Switch zone" },
-      { key: "↑↓", label: "Navigate" },
+      { key: "Tab", label: "Switch Zone" },
+      { key: "↑/↓", label: "Navigate" },
       { key: "Enter", label: "Select" },
     ],
     rightShortcuts: [{ key: "Esc", label: "Back" }],

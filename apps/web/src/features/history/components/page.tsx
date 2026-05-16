@@ -37,19 +37,24 @@ export function HistoryPage() {
     handleSearchArrowDown,
     handleRunActivate,
     handleIssueClick,
+    highlightedIssueId,
+    setHighlightedIssueId,
   } = useHistoryPage();
 
   const runsListRef = useRef<HTMLDivElement>(null);
-  const insightsPaneRef = useRef<HTMLDivElement>(null);
+  const insightsListRef = useRef<HTMLDivElement>(null);
   const activeRunId = selectedRunId;
 
   useHistoryKeyboard({
     focusZone,
     setFocusZone,
     activeRunId,
+    hasRuns: mappedRuns.length > 0,
     searchInputRef,
     runsListRef,
-    insightsPaneRef,
+    insightsListRef,
+    highlightedIssueId,
+    onHighlightIssue: setHighlightedIssueId,
   });
 
   const handleRunsKeyDown = (event: KeyboardEvent) => {
@@ -112,7 +117,7 @@ export function HistoryPage() {
           variant="borderless"
           data-pane="timeline"
           data-focused={focusZone === "timeline" || undefined}
-          className="w-48 flex flex-col shrink-0 overflow-hidden border border-tui-border data-[focused]:border-tui-blue"
+          className="w-48 flex flex-col shrink-0 overflow-hidden border border-tui-border data-[focused]:border-tui-blue focus:outline-none"
         >
           <SectionHeader as="h2" variant="muted" bordered className="mb-0 p-3 border-tui-border">
             Sections
@@ -137,7 +142,7 @@ export function HistoryPage() {
           variant="borderless"
           data-pane="runs"
           data-focused={focusZone === "runs" || undefined}
-          className="flex-1 min-w-0 flex flex-col overflow-hidden border border-tui-border data-[focused]:border-tui-blue"
+          className="flex-1 min-w-0 flex flex-col overflow-hidden border border-tui-border data-[focused]:border-tui-blue focus:outline-none"
         >
           <SectionHeader as="h2" variant="muted" bordered className="mb-0 flex justify-between overflow-hidden p-3 border-tui-border">
             <span className="truncate">Reviews</span>
@@ -201,18 +206,24 @@ export function HistoryPage() {
           as="aside"
           aria-label="Review insights"
           variant="borderless"
-          ref={insightsPaneRef}
-          tabIndex={-1}
           data-pane="insights"
           data-focused={focusZone === "insights" || undefined}
-          className="w-80 min-h-0 flex flex-col shrink-0 overflow-hidden border border-tui-border data-[focused]:border-tui-blue"
+          className="w-80 min-h-0 flex flex-col shrink-0 overflow-hidden border border-tui-border data-[focused]:border-tui-blue focus:outline-none"
         >
           <HistoryInsightsPane
             runId={selectedRun ? `#${selectedRun.id.slice(0, 4)}` : null}
             severityCounts={hasReviews ? severityCounts : null}
             issues={hasReviews ? sortedIssues : []}
             duration={duration}
-            onIssueClick={handleIssueClick}
+            highlightedIssueId={highlightedIssueId}
+            isFocused={focusZone === "insights"}
+            listRef={insightsListRef}
+            onSelectIssue={handleIssueClick}
+            onHighlightIssue={setHighlightedIssueId}
+            onListFocus={() => setFocusZone("insights")}
+            onListBoundaryReached={(direction) => {
+              if (direction === "previous") setFocusZone("runs");
+            }}
           />
         </Panel>
       </div>

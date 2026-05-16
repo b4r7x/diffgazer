@@ -17,24 +17,6 @@ export interface SeverityFilterGroupProps {
   isActive: boolean;
 }
 
-type FilterOption = UISeverityFilter;
-
-const FILTER_OPTIONS: FilterOption[] = ["all", ...SEVERITY_ORDER];
-
-function filterLabel(option: FilterOption): string {
-  return option === "all" ? "All" : SEVERITY_LABELS[option];
-}
-
-function filterCount(
-  option: FilterOption,
-  counts: SeverityCounts,
-): number {
-  if (option === "all") {
-    return counts.blocker + counts.high + counts.medium + counts.low + counts.nit;
-  }
-  return counts[option];
-}
-
 export function SeverityFilterGroup({
   currentFilter,
   onFilterChange,
@@ -42,27 +24,45 @@ export function SeverityFilterGroup({
   isActive,
 }: SeverityFilterGroupProps) {
   const { tokens } = useTheme();
-  const [focusedIndex, setFocusedIndex] = useState(() =>
-    Math.max(0, FILTER_OPTIONS.indexOf(currentFilter)),
-  );
+  const isFilterActive = currentFilter.size > 0;
+  const resetIndex = SEVERITY_ORDER.length;
+  const maxIndex = isFilterActive ? resetIndex : SEVERITY_ORDER.length - 1;
+  const [focusedIndex, setFocusedIndex] = useState(0);
+
+  if (focusedIndex > maxIndex) {
+    setFocusedIndex(maxIndex);
+  }
+
+  const toggleSeverity = (severity: ReviewSeverity) => {
+    const next = new Set(currentFilter);
+    if (next.has(severity)) next.delete(severity);
+    else next.add(severity);
+    onFilterChange(next);
+  };
 
   useInput(
-    (_input, key) => {
+    (input, key) => {
       if (key.leftArrow) {
         setFocusedIndex((prev) => Math.max(0, prev - 1));
         return;
       }
       if (key.rightArrow) {
-        setFocusedIndex((prev) =>
-          Math.min(FILTER_OPTIONS.length - 1, prev + 1),
-        );
+        setFocusedIndex((prev) => Math.min(maxIndex, prev + 1));
         return;
       }
-      if (key.return || _input === " ") {
-        const option = FILTER_OPTIONS[focusedIndex];
-        if (option !== undefined) {
-          onFilterChange(option === currentFilter ? "all" : option);
+      if (key.return || input === " ") {
+        if (focusedIndex === resetIndex) {
+          onFilterChange(new Set());
+          setFocusedIndex(SEVERITY_ORDER.length - 1);
+          return;
         }
+        const severity = SEVERITY_ORDER[focusedIndex];
+        if (severity) toggleSeverity(severity);
+        return;
+      }
+      if (input === "r" && isFilterActive) {
+        onFilterChange(new Set());
+        setFocusedIndex(SEVERITY_ORDER.length - 1);
       }
     },
     { isActive },
@@ -70,29 +70,16 @@ export function SeverityFilterGroup({
 
   return (
     <Box gap={1}>
-      {FILTER_OPTIONS.map((option, index) => {
-        const isSelected = option === currentFilter;
+      {SEVERITY_ORDER.map((severity, index) => {
+        const isSelected = currentFilter.has(severity);
         const isFocused = isActive && index === focusedIndex;
-        const count = filterCount(option, issueCounts);
-        const label = `${filterLabel(option)} (${count})`;
+        const count = issueCounts[severity];
+        const label = `${SEVERITY_LABELS[severity]} (${count})`;
+        const color = severityColor(severity, tokens);
 
-        if (option === "all") {
-          return (
-            <Text
-              key={option}
-              color={isSelected ? tokens.accent : tokens.muted}
-              bold={isSelected}
-              inverse={isFocused}
-            >
-              [{label}]
-            </Text>
-          );
-        }
-
-        const color = severityColor(option, tokens);
         return (
           <Text
-            key={option}
+            key={severity}
             color={isSelected ? color : tokens.muted}
             bold={isSelected}
             inverse={isFocused}
@@ -101,6 +88,15 @@ export function SeverityFilterGroup({
           </Text>
         );
       })}
+      {isFilterActive && (
+        <Text
+          color={tokens.accent}
+          bold
+          inverse={isActive && focusedIndex === resetIndex}
+        >
+          [Reset]
+        </Text>
+      )}
     </Box>
   );
 }

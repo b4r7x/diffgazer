@@ -36,7 +36,7 @@ export function ReviewResultsView({
   const { tokens } = useTheme();
   const { columns, rows, isNarrow, isMedium } = useResponsive();
   const [severityFilter, setSeverityFilter] =
-    useState<UISeverityFilter>("all");
+    useState<UISeverityFilter>(() => new Set());
   const [selectedIssueId, setSelectedIssueId] = useState<string | undefined>(
     issues[0]?.id,
   );

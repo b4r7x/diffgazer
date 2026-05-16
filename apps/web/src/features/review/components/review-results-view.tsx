@@ -21,11 +21,13 @@ export function ReviewResultsView({ issues, reviewId }: ReviewResultsViewProps) 
     setActiveTab,
     severityFilter,
     setSeverityFilter,
+    resetSeverityFilter,
     focusZone,
     focusedFilterIndex,
     setFocusedFilterIndex,
     filterRef,
     handleFilterKeyDown,
+    handleSeverityFilterBoundary,
     highlightedIssueId,
     handleListFocus,
     listRef,
@@ -52,6 +54,8 @@ export function ReviewResultsView({ issues, reviewId }: ReviewResultsViewProps) 
           onListBoundaryReached={handleListBoundary}
           severityFilter={severityFilter}
           onSeverityFilterChange={setSeverityFilter}
+          onSeverityFilterReset={resetSeverityFilter}
+          onSeverityFilterBoundary={handleSeverityFilterBoundary}
           isFocused={focusZone === "list"}
           isFilterFocused={focusZone === "filters"}
           focusedFilterIndex={focusedFilterIndex}
