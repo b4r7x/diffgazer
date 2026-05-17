@@ -92,7 +92,7 @@ export const markdownMdxComponents: MDXComponents = {
           <CodeBlockLabel>{getLanguageLabel(children)}</CodeBlockLabel>
         </CodeBlockHeader>
       )}
-      <CodeBlockContent>
+      <CodeBlockContent className="shiki">
         <PreCodeContext.Provider value={true}>
           {children}
         </PreCodeContext.Provider>

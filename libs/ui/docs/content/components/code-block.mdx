@@ -22,6 +22,64 @@ component: "code-block"
 
 <APIReference />
 
+## Syntax Highlighting
+
+`CodeBlock` is highlighter-agnostic. It renders structure — header, scrollable area, line numbers, copy button — but does not tokenize code. Pick one of two patterns to color output.
+
+### Pre-tokenized lines
+
+Tokenize at build time and pass `CodeBlockToken[]` to each `CodeBlockLine`. Every span gets an inline `color`, so it renders without extra CSS:
+
+```tsx
+import { CodeBlock, CodeBlockContent, CodeBlockLine } from "@/components/ui/code-block"
+
+const lines = [
+  [
+    { content: "const", color: "var(--code-keyword)" },
+    { content: " greeting", color: "var(--code-variable)" },
+    { content: " = ", color: "var(--code-operator)" },
+    { content: '"hello"', color: "var(--code-string)" },
+  ],
+]
+
+<CodeBlock>
+  <CodeBlockContent>
+    {lines.map((tokens, i) => (
+      <CodeBlockLine key={i} number={i + 1} content={tokens} />
+    ))}
+  </CodeBlockContent>
+</CodeBlock>
+```
+
+This is the pattern used by `<UsageSnippet />` above — tokens are generated at build time via Shiki, with colors mapped to CSS variables.
+
+### Shiki HTML with CSS variables
+
+If a highlighter emits its own HTML — for example `fumadocs-mdx` or `rehype-pretty-code` with `defaultColor: false` — tokens arrive as spans that reference custom properties:
+
+```html
+<span style="--shiki-light: var(--code-keyword)">const</span>
+```
+
+Add one CSS rule that resolves those properties to a real `color`, then apply the matching class to any ancestor inside `CodeBlock`:
+
+```css
+.shiki span {
+  color: var(--shiki-light);
+  background-color: var(--shiki-light-bg);
+}
+```
+
+```tsx
+pre: ({ children }) => (
+  <CodeBlock>
+    <CodeBlockContent className="shiki">{children}</CodeBlockContent>
+  </CodeBlock>
+)
+```
+
+`.shiki` is a descendant selector, so the class can sit on `CodeBlockContent` and apply to every token span the highlighter emits inside it. Define `--code-keyword`, `--code-string`, `--code-comment`, etc. in your theme to match your palette.
+
 ## Accessibility
 
 <KeyboardNav />
