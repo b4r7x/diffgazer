@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useLayoutEffect, useRef, type ComponentPropsWithRef, type MouseEvent, type ReactNode } from "react";
+import { useDeferredValue, useId, useLayoutEffect, useRef, type ComponentPropsWithRef, type MouseEvent, type ReactNode } from "react";
 import { cva } from "class-variance-authority";
 import { composeRefs } from "@/lib/compose-refs";
 import { cn } from "@/lib/utils";
@@ -61,7 +61,9 @@ export function CommandPaletteItem({
   const rootRef = useRef<HTMLDivElement>(null);
 
   const searchValue = value ?? id;
-  const isVisible = !shouldFilter || !search || filter(searchValue, search);
+  // Defer at the consumer so the input's synchronous value drives typing while filtering can lag a frame.
+  const deferredSearch = useDeferredValue(search);
+  const isVisible = !shouldFilter || !deferredSearch || filter(searchValue, deferredSearch);
 
   useLayoutEffect(() => {
     registerItem({

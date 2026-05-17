@@ -59,15 +59,23 @@ export function computeWordSegments(
   let j = n;
 
   while (i > 0 || j > 0) {
+    const oldWord = oldWords[i - 1] ?? "";
+    const newWord = newWords[j - 1] ?? "";
     if (i > 0 && j > 0 && oldWords[i - 1] === newWords[j - 1]) {
-      oldSegs.push({ text: oldWords[i - 1], changed: false });
-      newSegs.push({ text: newWords[j - 1], changed: false });
+      oldSegs.push({ text: oldWord, changed: false });
+      newSegs.push({ text: newWord, changed: false });
       i--; j--;
-    } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
-      newSegs.push({ text: newWords[j - 1], changed: true });
+      continue;
+    }
+    const upRow = dp[i - 1] ?? [];
+    const curRow = dp[i] ?? [];
+    const left = curRow[j - 1] ?? 0;
+    const up = upRow[j] ?? 0;
+    if (j > 0 && (i === 0 || left >= up)) {
+      newSegs.push({ text: newWord, changed: true });
       j--;
     } else {
-      oldSegs.push({ text: oldWords[i - 1], changed: true });
+      oldSegs.push({ text: oldWord, changed: true });
       i--;
     }
   }
@@ -106,20 +114,35 @@ export function annotateWordDiff(
     const { removes, adds } = item;
     const pairs = Math.min(removes.length, adds.length);
 
-    const segmentPairs = [];
+    const segmentPairs: { old: WordSegment[]; new: WordSegment[] }[] = [];
     for (let j = 0; j < pairs; j++) {
-      segmentPairs.push(computeWordSegments(removes[j].content, adds[j].content, budget));
+      const remove = removes[j];
+      const add = adds[j];
+      if (!remove || !add) continue;
+      segmentPairs.push(computeWordSegments(remove.content, add.content, budget));
     }
 
     for (let j = 0; j < pairs; j++) {
-      result.push({ ...removes[j], wordSegments: segmentPairs[j].old });
+      const remove = removes[j];
+      const seg = segmentPairs[j];
+      if (!remove || !seg) continue;
+      result.push({ ...remove, wordSegments: seg.old });
     }
-    for (let j = pairs; j < removes.length; j++) result.push(removes[j]);
+    for (let j = pairs; j < removes.length; j++) {
+      const remove = removes[j];
+      if (remove) result.push(remove);
+    }
 
     for (let j = 0; j < pairs; j++) {
-      result.push({ ...adds[j], wordSegments: segmentPairs[j].new });
+      const add = adds[j];
+      const seg = segmentPairs[j];
+      if (!add || !seg) continue;
+      result.push({ ...add, wordSegments: seg.new });
     }
-    for (let j = pairs; j < adds.length; j++) result.push(adds[j]);
+    for (let j = pairs; j < adds.length; j++) {
+      const add = adds[j];
+      if (add) result.push(add);
+    }
   }
 
   return result;

@@ -28,15 +28,15 @@ const toggleItemVariants = cva(
   },
 );
 
-export interface ToggleGroupItemProps
+export interface ToggleGroupItemProps<TValue extends string = string>
   extends Omit<ComponentPropsWithRef<"button">, "children" | "disabled" | "value"> {
-  value: string;
+  value: TValue;
   count?: number;
   disabled?: boolean;
   children: ReactNode;
 }
 
-export function ToggleGroupItem({
+export function ToggleGroupItem<TValue extends string = string>({
   value,
   count,
   disabled,
@@ -48,7 +48,7 @@ export function ToggleGroupItem({
   onMouseEnter,
   onFocus,
   ...props
-}: ToggleGroupItemProps) {
+}: ToggleGroupItemProps<TValue>) {
   const context = useToggleGroupContext();
   const itemId = useId();
   const rootRef = useRef<HTMLButtonElement>(null);

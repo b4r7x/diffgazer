@@ -2,8 +2,10 @@ import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { testNavigationBehavior } from "../../../../keys/src/testing/navigation-behavior.js"
 import { axe } from "../../../testing/utils.js"
-import { describe, it, expect, vi } from "vitest"
+import { describe, it, expect, expectTypeOf, vi } from "vitest"
 import { Tabs } from "./index.js"
+import { TabsTrigger, type TabsTriggerProps } from "./tabs-trigger.js"
+import { type TabsProps } from "./tabs.js"
 import { useState } from "react"
 import { renderToString } from "react-dom/server"
 
@@ -439,6 +441,70 @@ describe("Tabs", () => {
     const missingPanel = screen.getByText("Missing trigger content")
     expect(missingPanel).not.toHaveAttribute("aria-labelledby")
   })
+
+  it("warns once and does not crash when rendered without triggers or defaultValue", () => {
+    // Boundary mock: capture dev console warning emitted by Tabs when triggers are missing.
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+    const { rerender } = render(
+      <Tabs>
+        <Tabs.List />
+      </Tabs>,
+    )
+
+    expect(screen.queryByRole("tab")).toBeNull()
+    expect(warnSpy).toHaveBeenCalledTimes(1)
+    expect(warnSpy.mock.calls[0]?.[0]).toMatch(/\[Tabs\].*Tabs\.Trigger/)
+
+    rerender(
+      <Tabs>
+        <Tabs.List />
+      </Tabs>,
+    )
+    expect(warnSpy).toHaveBeenCalledTimes(1)
+
+    warnSpy.mockRestore()
+  })
+
+  it("does not warn when triggers are absent but defaultValue is set (lazy-loaded triggers)", () => {
+    // Boundary mock: verify Tabs stays silent when consumer has declared intent via defaultValue.
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+    render(
+      <Tabs defaultValue="async-one">
+        <Tabs.List />
+      </Tabs>,
+    )
+
+    expect(warnSpy).not.toHaveBeenCalled()
+    warnSpy.mockRestore()
+  })
+
+  it("respects defaultValue once lazy-loaded triggers mount", async () => {
+    function LazyTabs() {
+      const [showTriggers, setShowTriggers] = useState(false)
+      return (
+        <>
+          <button type="button" onClick={() => setShowTriggers(true)}>Load triggers</button>
+          <Tabs defaultValue="two">
+            <Tabs.List>
+              {showTriggers && <Tabs.Trigger value="one">One</Tabs.Trigger>}
+              {showTriggers && <Tabs.Trigger value="two">Two</Tabs.Trigger>}
+            </Tabs.List>
+            {showTriggers && <Tabs.Content value="one">Content one</Tabs.Content>}
+            {showTriggers && <Tabs.Content value="two">Content two</Tabs.Content>}
+          </Tabs>
+        </>
+      )
+    }
+
+    render(<LazyTabs />)
+    expect(screen.queryByRole("tab")).toBeNull()
+
+    await userEvent.click(screen.getByRole("button", { name: "Load triggers" }))
+    expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("aria-selected", "true")
+    expect(screen.getByText("Content two")).not.toHaveAttribute("hidden")
+  })
 })
 
 describe("Tabs keyboard navigation", () => {
@@ -460,3 +526,30 @@ describe("Tabs keyboard navigation", () => {
     ],
   })
 })
+
+describe("Tabs types", () => {
+  it("narrows value to the supplied literal union", () => {
+    type Narrow = TabsProps<"preview" | "code">
+
+    expectTypeOf<Narrow["value"]>().toEqualTypeOf<"preview" | "code" | undefined>()
+    expectTypeOf<Narrow["defaultValue"]>().toEqualTypeOf<"preview" | "code" | undefined>()
+    expectTypeOf<NonNullable<Narrow["onChange"]>>().parameter(0).toEqualTypeOf<"preview" | "code">()
+  })
+
+  it("rejects TabsTrigger values outside the literal union", () => {
+    type Trigger = TabsTriggerProps<"preview" | "code">
+
+    expectTypeOf<Trigger["value"]>().toEqualTypeOf<"preview" | "code">()
+    // "tests" is not part of the union; the prop type must reject it.
+    expectTypeOf<"tests">().not.toMatchTypeOf<Trigger["value"]>()
+    expectTypeOf<"preview">().toMatchTypeOf<Trigger["value"]>()
+  })
+
+  it("keeps the loose default contract when no generic is supplied", () => {
+    expectTypeOf<TabsProps["value"]>().toEqualTypeOf<string | undefined>()
+    expectTypeOf<TabsTriggerProps["value"]>().toEqualTypeOf<string>()
+  })
+})
+
+// Reference to keep the import lint clean when only used in types above.
+void TabsTrigger

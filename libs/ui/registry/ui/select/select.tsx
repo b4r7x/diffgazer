@@ -8,12 +8,13 @@ import { SelectItem, type SelectItemProps } from "./select-item";
 import { SelectSearch } from "./select-search";
 import { useSelectState } from "./use-select-state";
 
-interface SelectBaseProps extends Omit<ComponentPropsWithoutRef<"div">, "defaultValue" | "onChange" | "id"> {
+interface SelectBaseProps<TValue extends string = string>
+  extends Omit<ComponentPropsWithoutRef<"div">, "defaultValue" | "onChange" | "id"> {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   defaultOpen?: boolean;
-  highlighted?: string | null;
-  onHighlightChange?: (value: string | null) => void;
+  highlighted?: TValue | null;
+  onHighlightChange?: (value: TValue | null) => void;
   disabled?: boolean;
   variant?: "default" | "card";
   /** Sets the width of the Select container. "full" fills the parent. */
@@ -32,21 +33,23 @@ interface SelectBaseProps extends Omit<ComponentPropsWithoutRef<"div">, "default
   ref?: Ref<HTMLDivElement>;
 }
 
-interface SelectSingleProps extends SelectBaseProps {
+interface SelectSingleProps<TValue extends string = string> extends SelectBaseProps<TValue> {
   multiple?: false;
-  value?: string;
-  onChange?: (value: string) => void;
-  defaultValue?: string;
+  value?: TValue;
+  onChange?: (value: TValue) => void;
+  defaultValue?: TValue;
 }
 
-interface SelectMultipleProps extends SelectBaseProps {
+interface SelectMultipleProps<TValue extends string = string> extends SelectBaseProps<TValue> {
   multiple: true;
-  value?: string[];
-  onChange?: (value: string[]) => void;
-  defaultValue?: string[];
+  value?: TValue[];
+  onChange?: (value: TValue[]) => void;
+  defaultValue?: TValue[];
 }
 
-export type SelectProps = SelectSingleProps | SelectMultipleProps;
+export type SelectProps<TValue extends string = string> =
+  | SelectSingleProps<TValue>
+  | SelectMultipleProps<TValue>;
 
 const widthClasses = {
   sm: "w-48",
@@ -55,7 +58,41 @@ const widthClasses = {
   full: "w-full",
 } satisfies Record<NonNullable<SelectBaseProps["width"]>, string>;
 
-export function Select(props: SelectProps) {
+/**
+ * Combobox-style select root. Supports single and multiple selection, an
+ * optional search input, and form integration via `name` / `required`
+ * (a hidden native `<select>` is rendered for form submission).
+ *
+ * Pass `multiple` to opt into multi-select; the `value` / `defaultValue` /
+ * `onChange` types switch from `string` to `string[]` accordingly.
+ *
+ * @example
+ * ```tsx
+ * <Select defaultValue="main" name="branch">
+ *   <SelectTrigger>
+ *     <SelectValue placeholder="Branch..." />
+ *   </SelectTrigger>
+ *   <SelectContent>
+ *     <SelectItem value="main">main</SelectItem>
+ *     <SelectItem value="develop">develop</SelectItem>
+ *     <SelectItem value="feature/auth">feature/auth</SelectItem>
+ *   </SelectContent>
+ * </Select>
+ * ```
+ *
+ * @example
+ * ```tsx
+ * const [tags, setTags] = useState<string[]>([]);
+ * <Select multiple value={tags} onChange={setTags}>
+ *   <SelectTrigger><SelectValue placeholder="Tags..." /></SelectTrigger>
+ *   <SelectContent>
+ *     <SelectItem value="bug">bug</SelectItem>
+ *     <SelectItem value="feature">feature</SelectItem>
+ *   </SelectContent>
+ * </Select>
+ * ```
+ */
+export function Select<TValue extends string = string>(props: SelectProps<TValue>) {
   const {
     open,
     onOpenChange,
@@ -86,19 +123,21 @@ export function Select(props: SelectProps) {
   const options = useMemo(() => collectSelectOptions(children), [children]);
   const searchable = useMemo(() => containsSelectSearchElement(children), [children]);
 
+  // Public props narrow on TValue; internal state machine works with `string`/`string[]`
+  // and DOM-derived data attributes. The relevant runtime values flow through unchanged.
   const stateOptions = multiple
     ? {
         open,
         openControlled,
         onOpenChange,
         defaultOpen,
-        value: value as string[] | undefined,
+        value: value as readonly string[] | undefined as string[] | undefined,
         valueControlled,
         onChange: onChange as ((value: string[]) => void) | undefined,
-        defaultValue: defaultValue as string[] | undefined,
-        highlighted,
+        defaultValue: defaultValue as readonly string[] | undefined as string[] | undefined,
+        highlighted: highlighted as string | null | undefined,
         highlightedControlled,
-        onHighlightChange,
+        onHighlightChange: onHighlightChange as ((value: string | null) => void) | undefined,
         multiple: true as const,
         disabled,
         searchable,
@@ -119,9 +158,9 @@ export function Select(props: SelectProps) {
         valueControlled,
         onChange: onChange as ((value: string) => void) | undefined,
         defaultValue: defaultValue as string | undefined,
-        highlighted,
+        highlighted: highlighted as string | null | undefined,
         highlightedControlled,
-        onHighlightChange,
+        onHighlightChange: onHighlightChange as ((value: string | null) => void) | undefined,
         multiple: false as const,
         disabled,
         searchable,

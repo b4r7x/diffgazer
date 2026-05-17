@@ -41,22 +41,24 @@ export function toSplitRows(hunks: DiffHunk[], wordDiff: boolean): SplitRow[] {
       const pairs = Math.max(removes.length, adds.length);
 
       for (let j = 0; j < pairs; j++) {
+        const remove = removes[j];
+        const add = adds[j];
         let leftSegs: WordSegment[] | undefined;
         let rightSegs: WordSegment[] | undefined;
 
-        if (wordDiff && j < removes.length && j < adds.length) {
-          const { old: oSegs, new: nSegs } = computeWordSegments(removes[j].content, adds[j].content, wordDiffBudget);
+        if (wordDiff && remove && add) {
+          const { old: oSegs, new: nSegs } = computeWordSegments(remove.content, add.content, wordDiffBudget);
           leftSegs = oSegs;
           rightSegs = nSegs;
         }
 
         rows.push({
           kind: "change",
-          left: j < removes.length
-            ? { type: "remove", content: removes[j].content, lineNumber: removes[j].oldLine, wordSegments: leftSegs }
+          left: remove
+            ? { type: "remove", content: remove.content, lineNumber: remove.oldLine, wordSegments: leftSegs }
             : { type: "empty", content: "", lineNumber: null },
-          right: j < adds.length
-            ? { type: "add", content: adds[j].content, lineNumber: adds[j].newLine, wordSegments: rightSegs }
+          right: add
+            ? { type: "add", content: add.content, lineNumber: add.newLine, wordSegments: rightSegs }
             : { type: "empty", content: "", lineNumber: null },
         });
       }

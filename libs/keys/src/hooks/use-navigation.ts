@@ -17,14 +17,14 @@ import { isEditableElement } from "../dom/keyboard-utils.js";
 
 export type NavigationRole = NavigationItemType;
 
-export interface UseNavigationOptions {
+export interface UseNavigationOptions<TValue extends string = string> {
   containerRef: RefObject<HTMLElement | null>;
   role: NavigationRole;
-  highlighted?: string | null;
-  defaultHighlighted?: string | null;
-  onHighlightChange?: (value: string | null) => void;
-  onSelect?: (value: string, event: globalThis.KeyboardEvent) => void;
-  onEnter?: (value: string, event: globalThis.KeyboardEvent) => void;
+  highlighted?: TValue | null;
+  defaultHighlighted?: TValue | null;
+  onHighlightChange?: (value: TValue | null) => void;
+  onSelect?: (value: TValue, event: globalThis.KeyboardEvent) => void;
+  onEnter?: (value: TValue, event: globalThis.KeyboardEvent) => void;
   wrap?: boolean;
   enabled?: boolean;
   preventDefault?: boolean;
@@ -46,17 +46,17 @@ export interface UseNavigationOptions {
   ownerSelector?: string | null;
 }
 
-export interface UseNavigationReturn {
-  highlighted: string | null;
-  isHighlighted: (value: string) => boolean;
-  highlight: (value: string | null) => void;
+export interface UseNavigationReturn<TValue extends string = string> {
+  highlighted: TValue | null;
+  isHighlighted: (value: TValue) => boolean;
+  highlight: (value: TValue | null) => void;
   onKeyDown: (event: KeyboardEvent) => void;
 }
 
-interface UseNavigationCoreReturn {
-  highlighted: string | null;
-  isHighlighted: (value: string) => boolean;
-  highlight: (value: string | null) => void;
+interface UseNavigationCoreReturn<TValue extends string = string> {
+  highlighted: TValue | null;
+  isHighlighted: (value: TValue) => boolean;
+  highlight: (value: TValue | null) => void;
   move: (delta: 1 | -1, event?: globalThis.KeyboardEvent, key?: string) => void;
   focusIndex: (index: number) => void;
   handleSelect: (event: globalThis.KeyboardEvent) => void;
@@ -85,7 +85,7 @@ function wrapIndex(index: number, length: number, wrap: boolean): number | null 
   return index;
 }
 
-export function useNavigationCore({
+export function useNavigationCore<TValue extends string = string>({
   containerRef,
   role,
   highlighted: controlledHighlighted,
@@ -99,12 +99,12 @@ export function useNavigationCore({
   moveFocus = false,
   scopeToContainer = true,
   ownerSelector,
-}: UseNavigationOptions): UseNavigationCoreReturn {
-  const [internalHighlighted, setInternalHighlighted] = useState<string | null>(defaultHighlighted);
+}: UseNavigationOptions<TValue>): UseNavigationCoreReturn<TValue> {
+  const [internalHighlighted, setInternalHighlighted] = useState<TValue | null>(defaultHighlighted);
   const isControlled = controlledHighlighted !== undefined;
   const highlighted = isControlled ? controlledHighlighted ?? null : internalHighlighted;
 
-  const setFocusedValue = useCallback((nextValue: string | null) => {
+  const setFocusedValue = useCallback((nextValue: TValue | null) => {
     if (!isControlled) setInternalHighlighted(nextValue);
     onHighlightChange?.(nextValue);
   }, [isControlled, onHighlightChange]);
@@ -129,14 +129,15 @@ export function useNavigationCore({
     return -1;
   }, [getElements, highlighted]);
 
-  const getCurrentValue = useCallback((): string | null => {
+  const getCurrentValue = useCallback((): TValue | null => {
     const focusedValue = getFocusedNavigationValue(containerRef.current, {
       type: role,
       skipDisabled,
       scopeToContainer,
       ownerSelector,
     });
-    if (focusedValue !== null) return focusedValue;
+    // DOM boundary: data-value is opaque to TS; consumers parameterize TValue.
+    if (focusedValue !== null) return focusedValue as TValue;
 
     const elements = getElements();
 
@@ -156,7 +157,8 @@ export function useNavigationCore({
 
     el.scrollIntoView?.({ block: "nearest" });
     if (moveFocus) el.focus();
-    setFocusedValue(nextValue);
+    // DOM boundary: data-value is opaque to TS; consumers parameterize TValue.
+    setFocusedValue(nextValue as TValue);
   }, [getElements, moveFocus, setFocusedValue]);
 
   const move = useCallback((delta: 1 | -1, event?: globalThis.KeyboardEvent, key?: string) => {
@@ -187,13 +189,53 @@ export function useNavigationCore({
     else onSelect?.(currentValue, event);
   }, [getCurrentValue, onEnter, onSelect]);
 
-  const isHighlighted = useCallback((v: string) => highlighted === v, [highlighted]);
-  const highlight = useCallback((v: string | null) => setFocusedValue(v), [setFocusedValue]);
+  const isHighlighted = useCallback((v: TValue) => highlighted === v, [highlighted]);
+  const highlight = useCallback((v: TValue | null) => setFocusedValue(v), [setFocusedValue]);
 
   return { highlighted, isHighlighted, highlight, move, focusIndex, handleSelect, handleEnter, getElements };
 }
 
-export function useNavigation(options: UseNavigationOptions): UseNavigationReturn {
+/**
+ * Roving keyboard navigation for a list of items inside `containerRef`.
+ *
+ * Returns an `onKeyDown` handler that moves the highlighted/focused item
+ * with arrow, Home, and End keys, plus `highlight` / `isHighlighted` helpers
+ * for visual state. Pair `role` with the matching `data-nav-item` value on
+ * each child (or use `getNavigationItemProps`).
+ *
+ * @example
+ * ```tsx
+ * function FileList({ files }: { files: { id: string; name: string }[] }) {
+ *   const containerRef = useRef<HTMLUListElement>(null);
+ *   const { highlighted, onKeyDown } = useNavigation({
+ *     containerRef,
+ *     role: "option",
+ *     orientation: "vertical",
+ *     moveFocus: true,
+ *     onSelect: (id) => openFile(id),
+ *   });
+ *   return (
+ *     <ul ref={containerRef} onKeyDown={onKeyDown} role="listbox">
+ *       {files.map((file) => (
+ *         <li
+ *           key={file.id}
+ *           role="option"
+ *           data-nav-item="option"
+ *           data-value={file.id}
+ *           aria-selected={highlighted === file.id}
+ *           tabIndex={-1}
+ *         >
+ *           {file.name}
+ *         </li>
+ *       ))}
+ *     </ul>
+ *   );
+ * }
+ * ```
+ */
+export function useNavigation<TValue extends string = string>(
+  options: UseNavigationOptions<TValue>,
+): UseNavigationReturn<TValue> {
   const {
     enabled = true,
     preventDefault = true,

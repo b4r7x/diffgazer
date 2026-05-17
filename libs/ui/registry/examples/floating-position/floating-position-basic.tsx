@@ -31,7 +31,7 @@ export default function FloatingPositionBasicExample() {
               ? { position: "fixed", left: position.x, top: position.y }
               : { position: "fixed", opacity: 0 }
           }
-          className="z-50 w-48 border border-border bg-background p-3 font-mono text-sm shadow-md"
+          className="z-[var(--z-popover)] w-48 border border-border bg-background p-3 font-mono text-sm shadow-md"
         >
           <p className="text-foreground">Floating content</p>
           <p className="text-muted-foreground text-xs mt-1">

@@ -19,7 +19,7 @@ export default function AccordionDefault() {
         </AccordionHeader>
         <AccordionContent>
           <p className="text-sm text-muted-foreground">
-            Run <code className="text-xs bg-border px-1 rounded">dgadd add button</code> to add a component to your project.
+            Run <code className="text-xs bg-secondary text-foreground px-1 rounded">dgadd add button</code> to add a component to your project.
           </p>
         </AccordionContent>
       </AccordionItem>

@@ -28,4 +28,132 @@ export const menuDoc: ComponentDoc = {
       { name: "menu-keyboard", title: "Controlled keyboard navigation" },
     ],
   },
+  props: {
+    Menu: {
+      selectedId: {
+        type: "string | null",
+        required: false,
+        defaultValue: null,
+        description: 'Controlled selected item id. Pair with onSelect. Switches item role to "menuitemradio" with aria-checked.',
+      },
+      defaultSelectedId: {
+        type: "string | null",
+        required: false,
+        defaultValue: "null",
+        description: "Initial selected id for uncontrolled mode. Setting this to a non-null value enables selection semantics.",
+      },
+      highlighted: {
+        type: "string | null",
+        required: false,
+        defaultValue: null,
+        description: "Controlled highlighted (focused) item id. Pair with onHighlightChange.",
+      },
+      defaultHighlighted: {
+        type: "string | null",
+        required: false,
+        defaultValue: "null",
+        description: "Initial highlighted id for uncontrolled mode.",
+      },
+      onSelect: {
+        type: "(id: string) => void",
+        required: false,
+        defaultValue: null,
+        description: "Fired when an item is activated by click, Enter, or Space.",
+      },
+      onHighlightChange: {
+        type: "(value: string | null) => void",
+        required: false,
+        defaultValue: null,
+        description: "Fired when the highlighted item changes via arrow keys, typeahead, or mouse.",
+      },
+      onClose: {
+        type: "() => void",
+        required: false,
+        defaultValue: null,
+        description: "Fired when Escape or Tab is pressed.",
+      },
+      variant: {
+        type: '"default" | "hub"',
+        required: false,
+        defaultValue: '"default"',
+        description: "Visual layout. Hub uses larger rows with right-aligned values for hub-style menus.",
+      },
+      wrap: {
+        type: "boolean",
+        required: false,
+        defaultValue: "true",
+        description: "When true, arrow navigation wraps from last item to first and vice versa.",
+      },
+      autoFocus: {
+        type: "boolean",
+        required: false,
+        defaultValue: null,
+        description: "Auto-focus the menu container on mount so arrow keys work without an explicit click.",
+      },
+      "aria-label": {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description: 'Accessible name for the menu container (role="menu").',
+      },
+      children: {
+        type: "ReactNode",
+        required: true,
+        defaultValue: null,
+        description: "MenuItem and MenuDivider children.",
+      },
+    },
+    MenuItem: {
+      id: {
+        type: "string",
+        required: true,
+        defaultValue: null,
+        description: "Stable identifier matched against selectedId/highlighted and passed to onSelect.",
+      },
+      disabled: {
+        type: "boolean",
+        required: false,
+        defaultValue: "false",
+        description: "Disables activation while keeping the item in the navigation order with aria-disabled.",
+      },
+      variant: {
+        type: '"default" | "danger"',
+        required: false,
+        defaultValue: '"default"',
+        description: "Danger applies destructive coloring for destructive actions.",
+      },
+      hotkey: {
+        type: "number | string",
+        required: false,
+        defaultValue: null,
+        description: "Decorative hotkey label rendered as [n]. Does not bind a key listener.",
+      },
+      value: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Hub variant only. Right-aligned value (badge, count, or status text).",
+      },
+      valueVariant: {
+        type: '"default" | "success" | "success-badge" | "muted"',
+        required: false,
+        defaultValue: '"default"',
+        description: "Color treatment for the hub value.",
+      },
+      children: {
+        type: "ReactNode",
+        required: true,
+        defaultValue: null,
+        description: "Item label.",
+      },
+    },
+    MenuDivider: {
+      className: {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description: "Class applied to the separator. Renders role=\"separator\" with horizontal orientation.",
+      },
+    },
+  },
 }

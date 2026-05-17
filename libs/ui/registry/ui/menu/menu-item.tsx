@@ -196,12 +196,12 @@ const menuItemValue = cva("font-mono text-xs", {
   defaultVariants: { valueVariant: "default", focused: false, active: false },
 });
 
-export interface MenuItemProps
+export interface MenuItemProps<TId extends string = string>
   extends Omit<
     ComponentPropsWithRef<"div">,
     "id" | "children" | "role" | "aria-checked" | "aria-disabled" | "data-value" | "ref"
   > {
-  id: string;
+  id: TId;
   disabled?: boolean;
   variant?: "default" | "danger";
   hotkey?: number | string;
@@ -211,7 +211,7 @@ export interface MenuItemProps
   ref?: Ref<HTMLDivElement>;
 }
 
-export function MenuItem({
+export function MenuItem<TId extends string = string>({
   id,
   disabled = false,
   variant = "default",
@@ -225,7 +225,7 @@ export function MenuItem({
   onFocus,
   onMouseDown,
   ...rootProps
-}: MenuItemProps) {
+}: MenuItemProps<TId>) {
   const { selectedId, highlighted, activate, highlight, variant: menuVariant, idPrefix, itemRole } =
     useMenuContext();
 

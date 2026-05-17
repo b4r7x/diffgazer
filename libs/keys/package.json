@@ -23,6 +23,8 @@
   },
   "files": [
     "dist",
+    "!dist/artifacts",
+    "!dist/artifacts/**",
     "registry",
     "public/r",
     "internal-docs-manifest.json",
@@ -31,6 +33,9 @@
     "SECURITY.md",
     "SUPPORT.md"
   ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "bugs": {
     "url": "https://github.com/b4r7x/diffgazer/issues"
   },

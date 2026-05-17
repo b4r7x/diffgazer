@@ -34,4 +34,38 @@ export const labelDoc: ComponentDoc = {
     { name: "label-disabled", title: "Disabled" },
   ],
   keyboard: null,
+  props: {
+    Label: {
+      color: {
+        type: '"default" | "primary" | "success" | "warning" | "error"',
+        required: false,
+        defaultValue: '"default"',
+        description: "Color token applied to the label text.",
+      },
+      label: {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description: "When set, switches to wrapper mode: renders the label text alongside children inside a single native <label>.",
+      },
+      orientation: {
+        type: '"vertical" | "horizontal"',
+        required: false,
+        defaultValue: '"vertical"',
+        description: "Wrapper-mode layout direction. Vertical stacks the label above; horizontal places it inline.",
+      },
+      required: {
+        type: "boolean",
+        required: false,
+        defaultValue: "false",
+        description: "Appends a destructive-colored required indicator after the label text.",
+      },
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Text content (standalone mode) or the wrapped form control (wrapper mode).",
+      },
+    },
+  },
 }

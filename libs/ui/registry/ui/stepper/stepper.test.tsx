@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { axe } from "../../../testing/utils.js"
-import { describe, it, expect, vi } from "vitest"
+import { afterAll, beforeAll, describe, it, expect, vi } from "vitest"
 import { Stepper } from "./index.js"
 
 function renderStepper(props: Record<string, unknown> = {}) {
@@ -241,5 +241,56 @@ describe("Stepper", () => {
     expect(firstTrigger).toHaveFocus()
     await user.tab()
     expect(screen.getByRole("button", { name: /Step 2/ })).toHaveFocus()
+  })
+})
+
+describe("Stepper prefers-reduced-motion", () => {
+  // The grid-template-rows transition that animates expand/collapse must be
+  // suppressed under prefers-reduced-motion. The active-substep pulse is
+  // gated by Tailwind's motion-safe variant. jsdom does not evaluate @media
+  // in stylesheets, so Tailwind's compiled declarations are injected
+  // unconditionally to simulate matchMedia returning true; getComputedStyle
+  // then reports the suppressed transition and absent animation.
+  let styleElement: HTMLStyleElement | null = null
+
+  beforeAll(() => {
+    styleElement = document.createElement("style")
+    styleElement.dataset.testSource = "tailwind#motion-reduce+motion-safe"
+    styleElement.textContent = `
+      .motion-reduce\\:transition-none { transition-property: none; }
+      .motion-safe\\:animate-pulse { animation: none; }
+    `
+    document.head.appendChild(styleElement)
+  })
+
+  afterAll(() => {
+    styleElement?.remove()
+    styleElement = null
+  })
+
+  it("suppresses the grid-row transition on the animated wrapper", () => {
+    renderStepper({ defaultExpandedIds: ["s1"] })
+    const region = screen.getByRole("region", { name: /Step 1/ })
+    expect(region.className).toMatch(/motion-reduce:transition-none/)
+    expect(getComputedStyle(region).transitionProperty).toBe("none")
+  })
+
+  it("applies the active substep pulse only via motion-safe variant", () => {
+    render(
+      <Stepper>
+        <Stepper.Step stepId="s1" status="active">
+          <Stepper.Trigger>Step 1</Stepper.Trigger>
+          <Stepper.Content>
+            <Stepper.Substep tag="A" label="Working" status="active" />
+          </Stepper.Content>
+        </Stepper.Step>
+      </Stepper>,
+    )
+
+    const substep = screen.getByText("Working").parentElement
+    if (!substep) throw new Error("Expected substep label to have a parent element")
+    expect(substep.className).toMatch(/motion-safe:animate-pulse/)
+    expect(substep.className).not.toMatch(/(?:^|\s)animate-pulse(?:\s|$)/)
+    expect(getComputedStyle(substep).animation).toBe("none")
   })
 })

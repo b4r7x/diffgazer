@@ -1,0 +1,27 @@
+name: Bug report
+description: Report unexpected behavior in a Diffgazer package.
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: current
+    attributes:
+      label: Current behavior
+      description: What happens today, including affected package and version.
+      placeholder: "e.g. @diffgazer/ui 0.x — Dialog does not restore focus to the trigger on close."
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What you expected to happen instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Minimal steps, code snippet, or link to a runnable reproduction.
+    validations:
+      required: true

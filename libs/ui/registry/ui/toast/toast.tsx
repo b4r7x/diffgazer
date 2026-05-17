@@ -1,10 +1,14 @@
 "use client";
 
+import { lazy, Suspense } from "react";
 import { cn } from "@/lib/utils";
-import { Spinner } from "../spinner/spinner";
 import type { Toast as ToastType, ToastPosition } from "./toast-store";
 import { toastVariants, iconColors, icons, slideAnimations, positionToSide } from "./toast-variants";
 import { useToastDismiss } from "./use-toast-dismiss";
+
+const LazySpinner = lazy(() =>
+  import("../spinner/spinner").then((m) => ({ default: m.Spinner })),
+);
 
 interface ToastProps extends ToastType {
   position: ToastPosition;
@@ -39,7 +43,13 @@ export function Toast({
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-border bg-secondary/40">
         <div className="flex items-center gap-2">
           <span className={cn("font-bold", iconColors[variant])} aria-hidden="true">
-            {variant === "loading" ? <Spinner variant="braille" size="sm" gap="none" aria-hidden="true" /> : icons[variant]}
+            {variant === "loading" ? (
+              <Suspense fallback={null}>
+                <LazySpinner variant="braille" size="sm" gap="none" aria-hidden="true" />
+              </Suspense>
+            ) : (
+              icons[variant]
+            )}
           </span>
           <span className="sr-only">{variant}:</span>
           <span className="text-xs font-bold uppercase tracking-tight text-foreground">

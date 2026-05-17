@@ -6,7 +6,11 @@ import { runInitWorkflow } from "./workflows/init.js";
 import { runAddWorkflow } from "./workflows/add.js";
 import { runListWorkflow, type ListDisplayItem } from "./workflows/list.js";
 import { runDiffWorkflow, renderDiffPatch, type DiffWorkflowFile } from "./workflows/diff.js";
-import { runRemoveWorkflow, type RemoveWorkflowFile } from "./workflows/remove.js";
+import {
+  runRemoveWorkflow,
+  type RemoveWorkflowFile,
+  type ExpandRequestedNamesResult,
+} from "./workflows/remove.js";
 
 export interface ExtraOption {
   flags: string;
@@ -152,6 +156,8 @@ export interface RemoveCommandConfig<TItem, TConfig> {
   resolveAllowedBaseDirs: (ctx: { cwd: string; config: TConfig }) => string[];
   updateManifest: (ctx: { cwd: string; removedNames: string[] }) => void;
   findOrphanedDeps?: (ctx: { removedNames: string[]; cwd: string; config: TConfig }) => string[];
+  expandRequestedNames?: (ctx: { cwd: string; config: TConfig; names: string[] }) => ExpandRequestedNamesResult;
+  onAfterRemove?: (ctx: { cwd: string; config: TConfig; removedNames: string[] }) => void;
 }
 
 function buildRemoveAction<TItem, TConfig>(
@@ -178,6 +184,8 @@ function buildRemoveAction<TItem, TConfig>(
       resolveAllowedBaseDirs: config.resolveAllowedBaseDirs,
       updateManifest: config.updateManifest,
       findOrphanedDeps: config.findOrphanedDeps,
+      expandRequestedNames: config.expandRequestedNames,
+      onAfterRemove: config.onAfterRemove,
     });
   });
 }

@@ -6,7 +6,9 @@
   "dependencies": [
     "class-variance-authority"
   ],
-  "registryDependencies": [],
+  "registryDependencies": [
+    "https://diffgazer.com/r/ui/theme.json"
+  ],
   "files": [
     {
       "path": "registry/ui/panel/index.ts",
@@ -35,7 +37,7 @@
     },
     {
       "path": "registry/ui/panel/panel-legend.tsx",
-      "content": "import type { ComponentPropsWithRef } from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\n\nexport const panelLegendVariants = cva(\n  \"absolute -top-3 left-4 z-10 bg-background px-2 text-xs font-bold uppercase tracking-wider\",\n  {\n    variants: {\n      tone: {\n        default: \"text-foreground\",\n        muted: \"text-muted-foreground\",\n        info: \"text-info-fg\",\n        success: \"text-success\",\n        warning: \"text-warning-fg\",\n        error: \"text-error-fg\",\n        accent: \"text-action\",\n      },\n    },\n    defaultVariants: {\n      tone: \"muted\",\n    },\n  },\n);\n\nexport type PanelLegendProps = ComponentPropsWithRef<\"div\"> &\n  VariantProps<typeof panelLegendVariants>;\n\nexport function PanelLegend({ className, tone, ...props }: PanelLegendProps) {\n  return <div data-slot=\"panel-legend\" className={cn(panelLegendVariants({ tone }), className)} {...props} />;\n}\n",
+      "content": "import type { ComponentPropsWithRef } from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\n\nexport const panelLegendVariants = cva(\n  \"absolute -top-3 left-4 z-[var(--z-base)] bg-background px-2 text-xs font-bold uppercase tracking-wider\",\n  {\n    variants: {\n      tone: {\n        default: \"text-foreground\",\n        muted: \"text-muted-foreground\",\n        info: \"text-info-fg\",\n        success: \"text-success\",\n        warning: \"text-warning-fg\",\n        error: \"text-error-fg\",\n        accent: \"text-action\",\n      },\n    },\n    defaultVariants: {\n      tone: \"muted\",\n    },\n  },\n);\n\nexport type PanelLegendProps = ComponentPropsWithRef<\"div\"> &\n  VariantProps<typeof panelLegendVariants>;\n\nexport function PanelLegend({ className, tone, ...props }: PanelLegendProps) {\n  return <div data-slot=\"panel-legend\" className={cn(panelLegendVariants({ tone }), className)} {...props} />;\n}\n",
       "type": "registry:ui"
     }
   ],

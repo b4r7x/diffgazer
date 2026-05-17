@@ -58,4 +58,100 @@ export const cardDoc: ComponentDoc = {
     { name: "card-article", title: "Article (accessible)" },
   ],
   keyboard: null,
+  props: {
+    Card: {
+      as: {
+        type: '"div" | "article" | "section" | "aside"',
+        required: false,
+        defaultValue: '"div"',
+        description: "Rendered HTML element. Use article/section/aside when the card is a self-contained content region.",
+      },
+      variant: {
+        type: '"default" | "panel"',
+        required: false,
+        defaultValue: '"default"',
+        description: "Visual treatment. Panel adds an elevated shadow.",
+      },
+      size: {
+        type: '"default" | "sm" | "md" | "lg"',
+        required: false,
+        defaultValue: '"default"',
+        description: "Max-width constraint. Default is full width.",
+      },
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Card subparts (Header, Label, Content, Footer, etc.).",
+      },
+    },
+    "Card.Label": {
+      variant: {
+        type: '"border" | "gap"',
+        required: false,
+        defaultValue: '"border"',
+        description: "Visual treatment of the floating label. Border boxes the label; gap omits the box.",
+      },
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Label content.",
+      },
+    },
+    "Card.Title": {
+      as: {
+        type: '"h2" | "h3" | "h4" | "h5"',
+        required: false,
+        defaultValue: '"h3"',
+        description: "Heading level. Match your document outline.",
+      },
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Title text.",
+      },
+    },
+    "Card.Description": {
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Supporting description text.",
+      },
+    },
+    "Card.Header": {
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Header content. When a Card.Action child is present, the header switches to a two-column grid.",
+      },
+    },
+    "Card.Action": {
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Action element (button or badge) anchored to the top-right of Card.Header.",
+      },
+    },
+    "Card.Content": {
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Body content.",
+      },
+    },
+    "Card.Footer": {
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Footer actions or meta, right-aligned by default.",
+      },
+    },
+  },
 }

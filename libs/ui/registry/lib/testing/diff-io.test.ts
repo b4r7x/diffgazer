@@ -17,17 +17,23 @@ describe("parseDiff", () => {
 
   it("parses a standard unified diff with hunk header", () => {
     const [file] = parseDiff(basicPatch);
+    if (!file) throw new Error("expected file");
     expect(file.oldPath).toBe("file.ts");
     expect(file.newPath).toBe("file.ts");
     expect(file.hunks).toHaveLength(1);
-    expect(file.hunks[0].oldStart).toBe(1);
-    expect(file.hunks[0].newStart).toBe(1);
-    expect(file.hunks[0].heading).toBe("function foo");
+    const [hunk] = file.hunks;
+    if (!hunk) throw new Error("expected hunk");
+    expect(hunk.oldStart).toBe(1);
+    expect(hunk.newStart).toBe(1);
+    expect(hunk.heading).toBe("function foo");
   });
 
   it("parses added, removed, and context lines", () => {
     const [file] = parseDiff(basicPatch);
-    const changes = file.hunks[0].changes;
+    if (!file) throw new Error("expected file");
+    const [hunk] = file.hunks;
+    if (!hunk) throw new Error("expected hunk");
+    const changes = hunk.changes;
     expect(changes[0]).toMatchObject({ type: "context", content: "line1" });
     expect(changes[1]).toMatchObject({ type: "remove", content: "old", oldLine: 2 });
     expect(changes[2]).toMatchObject({ type: "add", content: "new", newLine: 2 });
@@ -47,9 +53,10 @@ describe("parseDiff", () => {
       "+new",
     ].join("\n");
     const [file] = parseDiff(renamePatch);
+    if (!file) throw new Error("expected file");
     expect(file.oldPath).toBe("old.ts");
     expect(file.newPath).toBe("new.ts");
-    expect(file.hunks[0].changes).toHaveLength(2);
+    expect(file.hunks[0]?.changes).toHaveLength(2);
   });
 
   it("handles mode change metadata", () => {
@@ -64,6 +71,7 @@ describe("parseDiff", () => {
       "+b",
     ].join("\n");
     const [file] = parseDiff(modePatch);
+    if (!file) throw new Error("expected file");
     expect(file.hunks).toHaveLength(1);
   });
 

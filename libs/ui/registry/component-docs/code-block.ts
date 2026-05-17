@@ -48,4 +48,76 @@ export const codeBlockDoc: ComponentDoc = {
     { name: "code-block-highlights", title: "Highlights" },
   ],
   keyboard: null,
+  props: {
+    CodeBlock: {
+      language: {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description: 'Language identifier exposed as data-language and used in the default aria-label ("{language} code").',
+      },
+      label: {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description: 'Custom aria-label. Overrides the language-derived label. Defaults to "Code block" when both are omitted.',
+      },
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Header and Content subparts.",
+      },
+    },
+    CodeBlockHeader: {
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Typically a CodeBlockLabel and optional action buttons.",
+      },
+    },
+    CodeBlockLabel: {
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Label text.",
+      },
+    },
+    CodeBlockContent: {
+      showLineNumbers: {
+        type: "boolean",
+        required: false,
+        defaultValue: "true",
+        description: "Auto-split mode only. Renders a line-number gutter for string children.",
+      },
+      children: {
+        type: "string | ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Code source: a string is auto-split into numbered CodeBlockLine children; composed CodeBlockLine children render as-is.",
+      },
+    },
+    CodeBlockLine: {
+      number: {
+        type: "number",
+        required: false,
+        defaultValue: null,
+        description: "Line number rendered in the gutter. Omit to hide the gutter for this line.",
+      },
+      content: {
+        type: "string | { text: string; color?: string; className?: string }[]",
+        required: true,
+        defaultValue: null,
+        description: "Line content. Either a plain string or an array of tokens for syntax coloring.",
+      },
+      type: {
+        type: '"highlight" | "added" | "removed"',
+        required: false,
+        defaultValue: null,
+        description: 'Visual line type. Highlight applies a background; added uses success color; removed uses destructive color (with an sr-only "Added/Removed" prefix).',
+      },
+    },
+  },
 }

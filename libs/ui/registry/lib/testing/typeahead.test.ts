@@ -80,4 +80,43 @@ describe("typeaheadSearch", () => {
     });
     expect(match?.[0]).toBe("b");
   });
+
+  describe("locale-aware lowercasing", () => {
+    it("matches Turkish dotted I via default-locale round-trip", () => {
+      // "İ".toLocaleLowerCase() === "i̇" — the same string the buffer
+      // would emit if the user typed "İ". Both sides must use the locale-aware
+      // lowercase for the prefix match to succeed.
+      const items = [{ id: "istanbul", label: "İstanbul" }];
+      const query = "İ".toLocaleLowerCase();
+      const match = typeaheadSearch({
+        items,
+        query,
+        currentIndex: -1,
+        getLabel: (item) => item.label,
+      });
+      expect(match?.id).toBe("istanbul");
+    });
+
+    it("matches German ß labels case-insensitively", () => {
+      const items = [{ id: "strasse", label: "STRASSE" }];
+      const match = typeaheadSearch({
+        items,
+        query: "strasse",
+        currentIndex: -1,
+        getLabel: (item) => item.label,
+      });
+      expect(match?.id).toBe("strasse");
+    });
+
+    it("matches composed Unicode (NFC) labels", () => {
+      const items = [{ id: "cafe", label: "Café" }];
+      const match = typeaheadSearch({
+        items,
+        query: "café".toLocaleLowerCase(),
+        currentIndex: -1,
+        getLabel: (item) => item.label,
+      });
+      expect(match?.id).toBe("cafe");
+    });
+  });
 });

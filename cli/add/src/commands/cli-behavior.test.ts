@@ -296,7 +296,7 @@ describe("remove command", () => {
 
     const output = runDgadd(["remove", "ui/button", "--cwd", root, "--yes", "--force"], { silent: false });
 
-    expect(output).toMatch(/Removed \d+ file\(s\) \(ui\/button\)/);
+    expect(output).toMatch(/Removed \d+ file\(s\) \([^)]*ui\/button[^)]*\)/);
     expect(existsSync(buttonIndex)).toBe(false);
     const config = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
     expect(config.installedComponents?.["ui/button"]).toBeUndefined();
@@ -392,14 +392,67 @@ describe("remove command", () => {
 
     const output = runDgadd(["remove", "ui/select", "keys/navigation", "--cwd", root, "--yes"], { silent: false });
 
-    expect(output).toMatch(/Removed \d+ file\(s\) \(ui\/select\)/);
-    expect(output).not.toMatch(/Removed \d+ file\(s\) \(ui\/select, keys\/navigation\)/);
+    expect(output).toMatch(/Removed \d+ file\(s\) \([^)]*ui\/select[^)]*\)/);
+    expect(output).not.toMatch(/Removed \d+ file\(s\) \([^)]*keys\/navigation[^)]*\)/);
     expect(existsSync(join(root, "src/components/ui/select/select.tsx"))).toBe(false);
     expect(existsSync(navigationHook)).toBe(true);
 
     const updated = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
     expect(updated.installedComponents?.["ui/select"]).toBeUndefined();
     expect(updated.installedComponents?.["keys/navigation"]).toBeTruthy();
+  });
+
+  test("remove of a transitive blocks when a retained item still depends on it", () => {
+    runDgadd(["add", "ui/dialog", "--cwd", root, "--yes", "--skip-install"]);
+
+    const buttonSource = join(root, "src/components/ui/button/button.tsx");
+    expect(existsSync(buttonSource)).toBe(true);
+
+    const output = runDgadd(["remove", "ui/button", "--cwd", root, "--yes"], { silent: false });
+
+    expect(output).toMatch(/Keeping ui\/button; still required by: ui\/dialog/);
+    expect(existsSync(buttonSource)).toBe(true);
+
+    const manifest = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
+    expect(manifest.installedComponents?.["ui/button"]).toBeTruthy();
+    expect(manifest.installedComponents?.["ui/dialog"]).toBeTruthy();
+  });
+
+  test("remove of the explicit item cascades orphan transitives", () => {
+    runDgadd(["add", "ui/dialog", "--cwd", root, "--yes", "--skip-install"]);
+
+    const beforeManifest = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
+    expect(beforeManifest.installedComponents?.["ui/portal"]).toBeTruthy();
+    expect(beforeManifest.installedComponents?.["ui/button"]).toBeTruthy();
+    expect(beforeManifest.installedComponents?.["ui/button"]?.installedAs).toBe("transitive");
+    expect(beforeManifest.installedComponents?.["ui/dialog"]?.installedAs).toBe("explicit");
+
+    runDgadd(["remove", "ui/dialog", "--cwd", root, "--yes"]);
+
+    expect(existsSync(join(root, "src/components/ui/dialog/dialog.tsx"))).toBe(false);
+    expect(existsSync(join(root, "src/components/ui/button/button.tsx"))).toBe(false);
+    expect(existsSync(join(root, "src/components/ui/shared/portal.tsx"))).toBe(false);
+    expect(existsSync(join(root, "src/hooks/use-focus-restore.ts"))).toBe(false);
+
+    const manifest = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
+    expect(manifest.installedComponents ?? {}).toEqual({});
+  });
+
+  test("explicit installs are preserved as orphans when their dependent is removed", () => {
+    runDgadd(["add", "ui/button", "--cwd", root, "--yes", "--skip-install"]);
+    runDgadd(["add", "ui/dialog", "--cwd", root, "--yes", "--skip-install"]);
+
+    const manifestBeforeRemove = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
+    expect(manifestBeforeRemove.installedComponents?.["ui/button"]?.installedAs).toBe("explicit");
+
+    runDgadd(["remove", "ui/dialog", "--cwd", root, "--yes"]);
+
+    expect(existsSync(join(root, "src/components/ui/dialog/dialog.tsx"))).toBe(false);
+    expect(existsSync(join(root, "src/components/ui/button/button.tsx"))).toBe(true);
+
+    const manifest = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
+    expect(manifest.installedComponents?.["ui/button"]).toBeTruthy();
+    expect(manifest.installedComponents?.["ui/dialog"]).toBeUndefined();
   });
 });
 
@@ -426,6 +479,163 @@ describe("list command", () => {
     expect(names.filter((name) => name === "ui/dialog-shell").length).toBe(1);
     expect(names.filter((name) => name === "keys/focusable").length).toBe(1);
     expect(names.length).toBe(new Set(names).size);
+  });
+});
+
+describe("diff command", () => {
+  test("default scope detects drift in hidden transitives", () => {
+    runDgadd(["add", "ui/dialog", "--cwd", root, "--yes", "--skip-install"]);
+
+    const portalSource = join(root, "src/components/ui/shared/portal.tsx");
+    writeFileSync(portalSource, `${readFileSync(portalSource, "utf-8")}\n// user drift\n`);
+
+    const output = runDgadd(["diff", "--cwd", root], { silent: false });
+    expect(output).toMatch(/ui\/portal/);
+    expect(output).toMatch(/user drift/);
+    expect(output).toMatch(/Summary:.*changed/);
+  });
+
+  test("accepts hidden transitive names as explicit arguments", () => {
+    runDgadd(["add", "ui/dialog", "--cwd", root, "--yes", "--skip-install"]);
+
+    const portalSource = join(root, "src/components/ui/shared/portal.tsx");
+    writeFileSync(portalSource, `${readFileSync(portalSource, "utf-8")}\n// user drift\n`);
+
+    const output = runDgadd(["diff", "ui/portal", "--cwd", root], { silent: false });
+    expect(output).toMatch(/user drift/);
+  });
+});
+
+describe("css ownership", () => {
+  beforeEach(() => {
+    mkdirSync(join(root, "src/styles"), { recursive: true });
+    writeFileSync(join(root, "src/styles/styles.css"), '@import "./theme.css";\n');
+  });
+
+  test("add records css chunk ownership in the manifest", () => {
+    runDgadd(["add", "ui/dialog", "--cwd", root, "--yes", "--skip-install"]);
+
+    const manifest = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
+    const chunkOwner = Object.values(manifest.installedComponents as Record<string, { cssChunks?: string[] }>)
+      .find((entry) => (entry.cssChunks ?? []).length > 0);
+    expect(chunkOwner, "at least one item records cssChunks").toBeTruthy();
+  });
+
+  test("remove cleans CSS chunks it owns when no retained item owns them", () => {
+    runDgadd(["add", "ui/dialog", "--cwd", root, "--yes", "--skip-install"]);
+
+    const cssBefore = readFileSync(join(root, "src/styles/styles.css"), "utf-8");
+    expect(cssBefore).toMatch(/dialog::backdrop/);
+    const markerPattern = /\/\* dgadd:css [a-f0-9]{16} \*\//g;
+    expect((cssBefore.match(markerPattern) ?? []).length).toBeGreaterThan(0);
+
+    runDgadd(["remove", "ui/dialog", "--cwd", root, "--yes"]);
+
+    const cssAfter = readFileSync(join(root, "src/styles/styles.css"), "utf-8");
+    expect(cssAfter).not.toMatch(/dialog::backdrop/);
+    expect((cssAfter.match(markerPattern) ?? []).length).toBe(0);
+  });
+});
+
+describe("css chunk drift detection", () => {
+  beforeEach(() => {
+    mkdirSync(join(root, "src/styles"), { recursive: true });
+    writeFileSync(join(root, "src/styles/styles.css"), '@import "./theme.css";\n');
+  });
+
+  test("clean install reports zero CSS chunk drift entries", () => {
+    runDgadd(["add", "ui/dialog", "--cwd", root, "--yes", "--skip-install"]);
+
+    const output = runDgadd(["diff", "--cwd", root], { silent: false });
+    expect(output).not.toMatch(/styles\.css~chunk-/);
+  });
+
+  test("user edit inside a CSS chunk surfaces as drift", () => {
+    runDgadd(["add", "ui/dialog", "--cwd", root, "--yes", "--skip-install"]);
+
+    const stylesPath = join(root, "src/styles/styles.css");
+    const stylesContent = readFileSync(stylesPath, "utf-8");
+    const perturbed = stylesContent.replace(
+      /(dialog::backdrop)/,
+      "/* user added comment */\n$1",
+    );
+    expect(perturbed).not.toBe(stylesContent);
+    writeFileSync(stylesPath, perturbed);
+
+    const output = runDgadd(["diff", "--cwd", root], { silent: false });
+    expect(output).toMatch(/styles\.css~chunk-[a-f0-9]{16}/);
+    expect(output).toMatch(/user added comment/);
+    expect(output).toMatch(/Summary:.*changed/);
+  });
+
+  test("missing chunk in styles.css surfaces as drift", () => {
+    runDgadd(["add", "ui/dialog", "--cwd", root, "--yes", "--skip-install"]);
+
+    const stylesPath = join(root, "src/styles/styles.css");
+    const stylesContent = readFileSync(stylesPath, "utf-8");
+    const chunkStripped = stylesContent.replace(
+      /\/\* dgadd:css [a-f0-9]{16} \*\/[\s\S]*?\/\* dgadd:css-end [a-f0-9]{16} \*\/\n*/g,
+      "",
+    );
+    expect(chunkStripped).not.toMatch(/dialog::backdrop/);
+    writeFileSync(stylesPath, chunkStripped);
+
+    const output = runDgadd(["diff", "--cwd", root], { silent: false });
+    expect(output).toMatch(/styles\.css~chunk-[a-f0-9]{16}/);
+    expect(output).toMatch(/dialog::backdrop/);
+    expect(output).toMatch(/Summary:.*changed/);
+  });
+});
+
+describe("css chunk ownership on remove", () => {
+  beforeEach(() => {
+    mkdirSync(join(root, "src/styles"), { recursive: true });
+    writeFileSync(join(root, "src/styles/styles.css"), '@import "./theme.css";\n');
+  });
+
+  test("shared chunk is preserved when one of two co-owners is removed", () => {
+    runDgadd(["add", "ui/button", "--cwd", root, "--yes", "--skip-install"]);
+    runDgadd(["add", "ui/dialog", "--cwd", root, "--yes", "--skip-install"]);
+
+    const manifest = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
+    // dialog.css is keyed under its owning registry item (a transitive); pull
+    // whichever manifest entry recorded chunks so the assertion does not bind
+    // to which item happens to own the shared CSS today.
+    const chunkOwnerEntry = Object.entries(manifest.installedComponents as Record<string, { cssChunks?: string[] }>)
+      .find(([, record]) => (record.cssChunks ?? []).length > 0);
+    expect(chunkOwnerEntry, "expected at least one item to record cssChunks").toBeTruthy();
+    const ownerHashes = chunkOwnerEntry![1].cssChunks!;
+
+    // Grant the same chunk hashes to ui/button (explicit, so it is preserved
+    // when ui/dialog is removed). Models two registry items emitting identical
+    // CSS — the chunk must survive removal of the first co-owner.
+    manifest.installedComponents["ui/button"].cssChunks = [...ownerHashes];
+    writeFileSync(join(root, "diffgazer.json"), JSON.stringify(manifest, null, 2));
+
+    runDgadd(["remove", "ui/dialog", "--cwd", root, "--yes"]);
+
+    const cssAfter = readFileSync(join(root, "src/styles/styles.css"), "utf-8");
+    expect(cssAfter).toMatch(/dialog::backdrop/);
+    const markerPattern = /\/\* dgadd:css [a-f0-9]{16} \*\//g;
+    expect((cssAfter.match(markerPattern) ?? []).length).toBe(ownerHashes.length);
+
+    const finalManifest = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
+    expect(finalManifest.installedComponents?.["ui/button"]).toBeTruthy();
+  });
+
+  test("unique chunks of a removed item are deleted from styles.css", () => {
+    runDgadd(["add", "ui/dialog", "--cwd", root, "--yes", "--skip-install"]);
+
+    const cssBefore = readFileSync(join(root, "src/styles/styles.css"), "utf-8");
+    const markerPattern = /\/\* dgadd:css [a-f0-9]{16} \*\//g;
+    expect((cssBefore.match(markerPattern) ?? []).length).toBeGreaterThan(0);
+    expect(cssBefore).toMatch(/dialog::backdrop/);
+
+    runDgadd(["remove", "ui/dialog", "--cwd", root, "--yes"]);
+
+    const cssAfter = readFileSync(join(root, "src/styles/styles.css"), "utf-8");
+    expect(cssAfter).not.toMatch(/dialog::backdrop/);
+    expect((cssAfter.match(markerPattern) ?? []).length).toBe(0);
   });
 });
 

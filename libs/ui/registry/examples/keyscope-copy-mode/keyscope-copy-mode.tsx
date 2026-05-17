@@ -71,7 +71,7 @@ export default function KeyscopeCopyMode() {
         </div>
       </div>
 
-      {/* Confirm dialog (uses useFocusTrap + useScrollLock internally) */}
+      {/* Confirm dialog (native <dialog>.showModal(); falls back to useFocusTrap + useScrollLock on iOS Safari < 15.4) */}
       <Dialog>
         <DialogTrigger className="fixed bottom-4 right-4 text-xs text-muted-foreground font-mono border border-border px-2 py-1 hover:bg-muted">
           Save (Ctrl+S)

@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { testNavigationBehavior } from "../../../../keys/src/testing/navigation-behavior.js"
 import { axe } from "../../../testing/utils.js"
-import { describe, it, expect, vi } from "vitest"
+import { afterAll, beforeAll, describe, it, expect, vi } from "vitest"
 import { Accordion } from "./index.js"
 
 function renderAccordion(props: Record<string, unknown> = {}) {
@@ -450,5 +450,40 @@ describe("Accordion keyboard navigation", () => {
       { key: "{End}", expectedActiveIndex: 2, label: "End jumps to last" },
       { key: "{Home}", expectedActiveIndex: 0, label: "Home stays at first" },
     ],
+  })
+})
+
+describe("Accordion prefers-reduced-motion", () => {
+  // The grid-template-rows transition that animates expand/collapse must be
+  // suppressed under prefers-reduced-motion. Tailwind v4 compiles
+  // `motion-reduce:transition-none` to a @media (prefers-reduced-motion: reduce)
+  // rule that sets transition-property: none. jsdom does not evaluate @media
+  // in stylesheets, so the underlying declaration is injected unconditionally
+  // at the top level to simulate matchMedia returning true; getComputedStyle
+  // then reports the suppressed transition.
+  let styleElement: HTMLStyleElement | null = null
+
+  beforeAll(() => {
+    styleElement = document.createElement("style")
+    styleElement.dataset.testSource = "tailwind#motion-reduce:transition-none"
+    styleElement.textContent = `.motion-reduce\\:transition-none { transition-property: none; }`
+    document.head.appendChild(styleElement)
+  })
+
+  afterAll(() => {
+    styleElement?.remove()
+    styleElement = null
+  })
+
+  it("suppresses the grid-row transition on the animated wrapper", () => {
+    renderAccordion()
+    const trigger = screen.getByRole("button", { name: "Section One" })
+    const contentId = trigger.getAttribute("aria-controls")
+    if (!contentId) throw new Error("Accordion trigger must reference a content id via aria-controls")
+    const innerContent = document.getElementById(contentId)
+    const transitionWrapper = innerContent?.parentElement
+    if (!transitionWrapper) throw new Error("Expected accordion content to have a transition wrapper parent")
+    expect(transitionWrapper.className).toMatch(/motion-reduce:transition-none/)
+    expect(getComputedStyle(transitionWrapper).transitionProperty).toBe("none")
   })
 })

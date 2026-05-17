@@ -46,4 +46,106 @@ export const blockBarDoc: ComponentDoc = {
     { name: "block-bar-multi-segment", title: "Multi-Segment" },
   ],
   keyboard: null,
+  props: {
+    BlockBar: {
+      value: {
+        type: "number",
+        required: false,
+        defaultValue: null,
+        description: "Current value. Required unless segments are provided or BlockBar.Segment children are passed (in which case the value is derived from their sum).",
+      },
+      max: {
+        type: "number",
+        required: true,
+        defaultValue: null,
+        description: "Maximum value the bar represents. Used for aria-valuemax and fill ratio.",
+      },
+      barWidth: {
+        type: "number",
+        required: false,
+        defaultValue: "20",
+        description: "Width of the bar in character cells. Clamped to 0-200.",
+      },
+      filledChar: {
+        type: "string",
+        required: false,
+        defaultValue: '"█"',
+        description: "Character used for the filled portion of the bar.",
+      },
+      emptyChar: {
+        type: "string",
+        required: false,
+        defaultValue: '"░"',
+        description: "Character used for the empty portion of the bar.",
+      },
+      label: {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description: 'Visible label rendered to the left of the bar in simple mode. Also used as accessible name when aria-label is omitted.',
+      },
+      "aria-label": {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description: 'Accessible name. When set (or label is set), the bar exposes role="meter" with aria-valuemin/max/now/text.',
+      },
+      "aria-labelledby": {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description: "ID of an element labelling the bar. Alternative to aria-label.",
+      },
+      valueText: {
+        type: "string",
+        required: false,
+        defaultValue: '"{value} of {max}"',
+        description: "Override for aria-valuetext.",
+      },
+      variant: {
+        type: '"default" | "muted" | "error" | "warning" | "success" | "info"',
+        required: false,
+        defaultValue: '"default"',
+        description: "Color token applied to the implicit single segment when no segments or children are provided.",
+      },
+      segments: {
+        type: "{ value: number; variant?: SegmentVariant; char?: string }[]",
+        required: false,
+        defaultValue: null,
+        description: "Multi-segment stack. When provided, takes precedence over children and derives value from the sum.",
+      },
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "BlockBar.Segment children for fully custom rendering. Throws when neither value nor segments are provided and children are not BlockBar.Segment elements.",
+      },
+    },
+    "BlockBar.Segment": {
+      value: {
+        type: "number",
+        required: true,
+        defaultValue: null,
+        description: "Segment value in the same units as BlockBar max.",
+      },
+      variant: {
+        type: '"default" | "muted" | "error" | "warning" | "success" | "info"',
+        required: false,
+        defaultValue: '"default"',
+        description: "Segment color token.",
+      },
+      char: {
+        type: "string",
+        required: false,
+        defaultValue: "BlockBar filledChar",
+        description: "Override the filled character for this segment only.",
+      },
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Optional content rendered after the segment glyphs (e.g. a label or icon).",
+      },
+    },
+  },
 }

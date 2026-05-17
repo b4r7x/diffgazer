@@ -26,6 +26,22 @@ export function buildManifestMetadata(
   return metadata;
 }
 
+function preservedInstallAs(
+  existing: NonNullable<DiffgazerAddConfig["installedComponents"]>[string] | undefined,
+  isExplicit: boolean,
+): "explicit" | "transitive" {
+  if (isExplicit) return "explicit";
+  return existing?.installedAs === "explicit" ? "explicit" : "transitive";
+}
+
+function preservedCssChunks(
+  existing: NonNullable<DiffgazerAddConfig["installedComponents"]>[string] | undefined,
+  newChunks: string[] | undefined,
+): string[] | undefined {
+  const merged = new Set<string>([...(existing?.cssChunks ?? []), ...(newChunks ?? [])]);
+  return merged.size > 0 ? [...merged] : undefined;
+}
+
 // Adoption policy: a skipped file is only adopted into a new item's ownership
 // when an existing manifest entry already owns the same path with the SAME
 // registryIntegrity. A version mismatch refuses adoption rather than silently
@@ -123,13 +139,28 @@ function buildOwnedFilesByItem(
   return byItem;
 }
 
-export function updateOwnedManifestEntries(
-  cwd: string,
-  writeResult: { results: Array<{ op: FileOp; result: "written" | "skipped" | "overwritten" }> },
-  metadata: ManifestInstallMetadata,
-): void {
+export interface OwnedManifestUpdate {
+  writeResult: { results: Array<{ op: FileOp; result: "written" | "skipped" | "overwritten" }> };
+  metadata: ManifestInstallMetadata;
+  explicitNames: Set<string>;
+  cssChunksByItem: Map<string, string[]>;
+}
+
+export function updateOwnedManifestEntries(cwd: string, update: OwnedManifestUpdate): void {
+  const { writeResult, metadata, explicitNames, cssChunksByItem } = update;
   const filesByItem = buildOwnedFilesByItem(cwd, writeResult, metadata.integrationMode ?? "none");
-  for (const name of filesByItem.keys()) {
-    ctx.config.updateManifest(cwd, [name], undefined, { ...metadata, files: filesByItem.get(name) ?? [] });
+  const existingManifest = (ctx.config.getManifestItems(cwd) ?? {}) as NonNullable<DiffgazerAddConfig["installedComponents"]>;
+  const allItemNames = new Set<string>([...filesByItem.keys(), ...cssChunksByItem.keys()]);
+
+  for (const name of allItemNames) {
+    const installedAs = preservedInstallAs(existingManifest[name], explicitNames.has(name));
+    const cssChunks = preservedCssChunks(existingManifest[name], cssChunksByItem.get(name));
+    const itemMetadata: ManifestInstallMetadata = {
+      ...metadata,
+      installedAs,
+      files: filesByItem.get(name) ?? existingManifest[name]?.files ?? [],
+    };
+    if (cssChunks) itemMetadata.cssChunks = cssChunks;
+    ctx.config.updateManifest(cwd, [name], undefined, itemMetadata);
   }
 }

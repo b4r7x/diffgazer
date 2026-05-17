@@ -25,8 +25,6 @@ export function ApiKeyDialog({
   onSubmit,
 }: ApiKeyDialogProps) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const cancelRef = useRef<HTMLButtonElement>(null);
-  const confirmRef = useRef<HTMLButtonElement>(null);
 
   const form = useApiKeyForm({
     envVarName,
@@ -34,22 +32,29 @@ export function ApiKeyDialog({
     onOpenChange,
   });
 
-  const { focused, setFocused, getMethodOptionProps, handleMethodKeyDown } = useApiKeyDialogKeyboard({
+  const {
+    focused,
+    setFocused,
+    getMethodOptionProps,
+    handleMethodKeyDown,
+    getCancelProps,
+    getConfirmProps,
+    cancelHighlighted,
+    confirmHighlighted,
+  } = useApiKeyDialogKeyboard({
     open,
     method: form.method,
     setMethod: form.setMethod,
     canSubmit: form.canSubmit && !form.isSubmitting,
     isSubmitting: form.isSubmitting,
     inputRef,
-    cancelRef,
-    confirmRef,
     onSubmit: form.handleSubmit,
     onClose: () => onOpenChange(false),
   });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent key={String(open)} className="max-w-xl overflow-hidden border border-tui-border shadow-2xl">
+      <DialogContent className="max-w-xl overflow-hidden border border-tui-border shadow-2xl">
         <DialogHeader className="bg-tui-selection/50 px-4 py-3">
           <DialogTitle className="min-w-0 flex-1 w-auto text-tui-blue tracking-wide">
             {providerName} API Key
@@ -85,10 +90,10 @@ export function ApiKeyDialog({
           }}
           canSubmit={form.canSubmit}
           isSubmitting={form.isSubmitting}
-          focused={focused}
-          onFocus={setFocused}
-          cancelRef={cancelRef}
-          confirmRef={confirmRef}
+          getCancelProps={getCancelProps}
+          getConfirmProps={getConfirmProps}
+          cancelHighlighted={cancelHighlighted}
+          confirmHighlighted={confirmHighlighted}
         />
       </DialogContent>
     </Dialog>

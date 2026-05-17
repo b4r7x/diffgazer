@@ -11,28 +11,32 @@ import {
 const REGISTRY_UI_PREFIX = "registry/ui/";
 const REGISTRY_HOOKS_PREFIX = "registry/hooks/";
 const REGISTRY_LIB_PREFIX = "registry/lib/";
+const REGISTRY_STYLES_PREFIX = "styles/";
 const CSS_SIDE_EFFECT_IMPORT_RE = /^\s*import\s+["'][^"']+\.css["'];?\s*$/gm;
 
-export type RegistryInstallBase = "components" | "hooks" | "lib";
+export type RegistryInstallBase = "components" | "hooks" | "lib" | "styles";
 
 export function getInstallBaseForFilePath(filePath: string): RegistryInstallBase {
   if (filePath.startsWith(REGISTRY_UI_PREFIX)) return "components";
   if (filePath.startsWith(REGISTRY_HOOKS_PREFIX)) return "hooks";
   if (filePath.startsWith(REGISTRY_LIB_PREFIX)) return "lib";
+  if (filePath.startsWith(REGISTRY_STYLES_PREFIX)) return "styles";
 
   throw new Error(
     `Unsupported registry file path "${filePath}". Expected path to start with ` +
-    `"${REGISTRY_UI_PREFIX}", "${REGISTRY_HOOKS_PREFIX}", or "${REGISTRY_LIB_PREFIX}".`
+    `"${REGISTRY_UI_PREFIX}", "${REGISTRY_HOOKS_PREFIX}", "${REGISTRY_LIB_PREFIX}", ` +
+    `or "${REGISTRY_STYLES_PREFIX}".`
   );
 }
 
 export function getInstallDirForBase(
   base: RegistryInstallBase,
-  config: { componentsFsPath: string; hooksFsPath: string; libFsPath: string },
+  config: { componentsFsPath: string; hooksFsPath: string; libFsPath: string; stylesFsPath: string },
 ): string {
   if (base === "components") return config.componentsFsPath;
   if (base === "hooks") return config.hooksFsPath;
-  return config.libFsPath;
+  if (base === "lib") return config.libFsPath;
+  return config.stylesFsPath;
 }
 
 export function prepareFileContent(

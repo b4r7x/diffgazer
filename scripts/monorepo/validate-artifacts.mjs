@@ -89,6 +89,7 @@ function validateUiPackageExports() {
   registryExports.add("./theme.css");
   registryExports.add("./sources.css");
   registryExports.add("./styles.css");
+  registryExports.add("./package.json");
 
   const expectedExports = [...registryExports].sort();
   const errors = [];

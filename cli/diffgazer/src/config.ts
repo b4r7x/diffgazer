@@ -7,7 +7,7 @@ const repoRoot = resolve(__dirname, "../../..");
 export const config = {
   paths: {
     web: resolve(repoRoot, "apps/web"),
-    server: resolve(repoRoot, "libs/server"),
+    server: resolve(repoRoot, "cli/server"),
   },
   ports: {
     api: 3000,

@@ -14,28 +14,28 @@ import {
 import { cn } from "@/lib/utils";
 import { ToggleGroupContext, type ToggleGroupSelectionMode } from "./toggle-group-context";
 
-interface ToggleGroupSingleProps {
+interface ToggleGroupSingleProps<TValue extends string = string> {
   selectionMode?: "single" | undefined;
-  value?: string | null;
-  defaultValue?: string | null;
-  onChange?: (value: string | null) => void;
+  value?: TValue | null;
+  defaultValue?: TValue | null;
+  onChange?: (value: TValue | null) => void;
 }
 
-interface ToggleGroupMultipleProps {
+interface ToggleGroupMultipleProps<TValue extends string = string> {
   selectionMode: "multiple";
-  value?: readonly string[];
-  defaultValue?: readonly string[];
-  onChange?: (value: readonly string[]) => void;
+  value?: readonly TValue[];
+  defaultValue?: readonly TValue[];
+  onChange?: (value: readonly TValue[]) => void;
 }
 
-interface ToggleGroupBaseProps {
+interface ToggleGroupBaseProps<TValue extends string = string> {
   allowDeselect?: boolean;
   disabled?: boolean;
   size?: "sm" | "md";
   orientation?: "horizontal" | "vertical";
   wrap?: boolean;
-  highlighted?: string | null;
-  onHighlightChange?: (value: string | null) => void;
+  highlighted?: TValue | null;
+  onHighlightChange?: (value: TValue | null) => void;
   onNavigationBoundaryReached?: (
     direction: "previous" | "next",
     event: globalThis.KeyboardEvent,
@@ -50,7 +50,9 @@ interface ToggleGroupBaseProps {
   ref?: Ref<HTMLDivElement>;
 }
 
-export type ToggleGroupProps = ToggleGroupBaseProps & (ToggleGroupSingleProps | ToggleGroupMultipleProps);
+export type ToggleGroupProps<TValue extends string = string> =
+  & ToggleGroupBaseProps<TValue>
+  & (ToggleGroupSingleProps<TValue> | ToggleGroupMultipleProps<TValue>);
 
 function arraysEqual(a: readonly string[], b: readonly string[]): boolean {
   if (a === b) return true;
@@ -61,7 +63,7 @@ function arraysEqual(a: readonly string[], b: readonly string[]): boolean {
   return true;
 }
 
-export function ToggleGroup(props: ToggleGroupProps) {
+export function ToggleGroup<TValue extends string = string>(props: ToggleGroupProps<TValue>) {
   const {
     allowDeselect = false,
     disabled = false,
@@ -84,13 +86,15 @@ export function ToggleGroup(props: ToggleGroupProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const { items, registerItem, unregisterItem } = useSelectableCollection(containerRef);
 
+  // Public props narrow on TValue; internal state stays string-typed because the
+  // selectable-collection layer keys items by data-value strings.
   const singleProps = selectionMode === "single" ? (props as ToggleGroupSingleProps) : null;
   const multipleProps = selectionMode === "multiple" ? (props as ToggleGroupMultipleProps) : null;
 
   const [singleValue, setSingleValue, isSingleControlled] = useControllableState<string | null>({
     value: singleProps?.value,
     defaultValue: singleProps?.defaultValue ?? null,
-    onChange: singleProps?.onChange,
+    onChange: singleProps?.onChange as ((value: string | null) => void) | undefined,
   });
   useFormReset(
     containerRef,
@@ -102,13 +106,13 @@ export function ToggleGroup(props: ToggleGroupProps) {
   const [multipleValue, setMultipleValue] = useControllableState<readonly string[]>({
     value: multipleProps?.value,
     defaultValue: multipleProps?.defaultValue ?? [],
-    onChange: multipleProps?.onChange,
+    onChange: multipleProps?.onChange as ((value: readonly string[]) => void) | undefined,
   });
 
   const [highlightedValue, setHighlightedValue] = useControllableState<string | null>({
     value: controlledHighlighted,
     defaultValue: null,
-    onChange: onHighlightChange,
+    onChange: onHighlightChange as ((value: string | null) => void) | undefined,
   });
 
   const usesButtonSemantics = selectionMode === "multiple" || allowDeselect;

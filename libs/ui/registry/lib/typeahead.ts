@@ -9,6 +9,10 @@
  *
  * The function is rendering-agnostic: it returns the matched item and lets the
  * caller decide what to do (set highlight, scroll into view, etc.).
+ *
+ * Labels are compared with `String.prototype.toLocaleLowerCase()` using the
+ * host environment's default locale so locale-sensitive characters (e.g.
+ * Turkish dotted/dotless I) round-trip consistently with the query buffer.
  */
 export interface TypeaheadSearchOptions<Item> {
   items: readonly Item[];
@@ -32,7 +36,7 @@ export function typeaheadSearch<Item>({
   for (let offset = 0; offset < items.length; offset++) {
     const index = (startIndex + offset) % items.length;
     const item = items[index]!;
-    const label = getLabel(item).toLowerCase();
+    const label = getLabel(item).toLocaleLowerCase();
     if (label.startsWith(search)) return item;
   }
 

@@ -34,4 +34,56 @@ export const breadcrumbsDoc: ComponentDoc = {
     { name: "breadcrumbs-ellipsis", title: "Ellipsis" },
   ],
   keyboard: null,
+  props: {
+    Breadcrumbs: {
+      separator: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: '"/"',
+        description: "Separator rendered between items. Pass null to omit.",
+      },
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Breadcrumbs.Item children. The last item is auto-marked current when no item already sets current.",
+      },
+    },
+    "Breadcrumbs.Item": {
+      current: {
+        type: "boolean",
+        required: false,
+        defaultValue: "false",
+        description: 'Marks the item as the current page. Auto-applied to the last item when no item explicitly sets it. Adds aria-current="page" and bold styling.',
+      },
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Item content, typically a Breadcrumbs.Link or plain text.",
+      },
+    },
+    "Breadcrumbs.Link": {
+      href: {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description: "Anchor href. Omit when using the render-prop form with a framework Link.",
+      },
+      children: {
+        type: "ReactNode | (props: BreadcrumbsLinkRenderProps) => ReactNode",
+        required: true,
+        defaultValue: null,
+        description: "Link label, or a render function that receives ref, className, aria-current, and remaining anchor props.",
+      },
+    },
+    "Breadcrumbs.Ellipsis": {
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: '"..."',
+        description: "Ellipsis content (defaults to three dots).",
+      },
+    },
+  },
 }

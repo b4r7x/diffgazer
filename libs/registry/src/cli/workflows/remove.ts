@@ -42,6 +42,16 @@ export function findOrphanedNpmDeps<TItem>(opts: {
   return [...removedDeps].filter((d) => !remainingDeps.has(d));
 }
 
+export interface BlockedRemoval {
+  name: string;
+  dependents: string[];
+}
+
+export interface ExpandRequestedNamesResult {
+  toRemove: string[];
+  blocked: BlockedRemoval[];
+}
+
 export interface RunRemoveWorkflowOptions<TItem, TConfig> {
   cwd: string;
   names: string[];
@@ -71,6 +81,13 @@ export interface RunRemoveWorkflowOptions<TItem, TConfig> {
     cwd: string;
     config: TConfig;
   }) => string[];
+  // Expands user-requested names with cascade-orphaned transitives and surfaces
+  // items kept because a retained item still depends on them. Reported items are
+  // skipped, not failed.
+  expandRequestedNames?: (ctx: { cwd: string; config: TConfig; names: string[] }) => ExpandRequestedNamesResult;
+  // Runs after file removal completes successfully. Used for derived artifacts
+  // (e.g. CSS chunks) whose ownership is tracked in the manifest.
+  onAfterRemove?: (ctx: { cwd: string; config: TConfig; removedNames: string[] }) => void;
 }
 
 interface ResolveCtx<TItem, TConfig> {
@@ -177,9 +194,11 @@ function finalizeRemoval<TConfig>(opts: {
   config: TConfig;
   updateManifest: (ctx: { cwd: string; removedNames: string[] }) => void;
   findOrphanedDeps?: (ctx: { removedNames: string[]; cwd: string; config: TConfig }) => string[];
+  onAfterRemove?: (ctx: { cwd: string; config: TConfig; removedNames: string[] }) => void;
 }): void {
   cleanEmptyDirs([...opts.dirs]);
   opts.updateManifest({ cwd: opts.cwd, removedNames: opts.names });
+  opts.onAfterRemove?.({ cwd: opts.cwd, config: opts.config, removedNames: opts.names });
 
   const orphaned = opts.findOrphanedDeps?.({ removedNames: opts.names, cwd: opts.cwd, config: opts.config }) ?? [];
   if (orphaned.length > 0) {
@@ -194,9 +213,10 @@ function finalizeRemoval<TConfig>(opts: {
 function collectRemovalTargets<TItem, TConfig>(
   options: RunRemoveWorkflowOptions<TItem, TConfig>,
   config: TConfig,
+  expandedNames: string[],
 ): { files: Set<string>; dirs: Set<string>; removedNames: string[] } {
-  const { cwd, names } = options;
-  const removedSet = new Set(names);
+  const { cwd } = options;
+  const removedSet = new Set(expandedNames);
   const ctx = { cwd, config, resolveFilesForItem: options.resolveFilesForItem };
   const retainedItems = options.getAllItems().filter(
     (i) => !removedSet.has(options.getItemName(i)) && options.isInstalled({ cwd, config, item: i }),
@@ -207,8 +227,8 @@ function collectRemovalTargets<TItem, TConfig>(
     getItemOrThrow: options.getItemOrThrow,
     canRemoveFile: options.canRemoveFile,
     force: options.force,
-    requestedNames: names,
-  }, names, retainedFiles);
+    requestedNames: expandedNames,
+  }, expandedNames, retainedFiles);
 }
 
 async function executeRemoval<TItem, TConfig>(
@@ -229,7 +249,14 @@ async function executeRemoval<TItem, TConfig>(
     cwd, names: removedNames, removed, dirs, config,
     updateManifest: options.updateManifest,
     findOrphanedDeps: options.findOrphanedDeps,
+    onAfterRemove: options.onAfterRemove,
   });
+}
+
+function reportBlocked(blocked: BlockedRemoval[]): void {
+  for (const entry of blocked) {
+    info(`Keeping ${entry.name}; still required by: ${entry.dependents.join(", ")}`);
+  }
 }
 
 export async function runRemoveWorkflow<TItem, TConfig>(
@@ -238,9 +265,22 @@ export async function runRemoveWorkflow<TItem, TConfig>(
   const config = options.requireConfig(options.cwd);
   options.validateNames(options.names);
 
-  const { files, dirs, removedNames } = collectRemovalTargets(options, config);
+  const expansion = options.expandRequestedNames?.({ cwd: options.cwd, config, names: options.names })
+    ?? { toRemove: options.names, blocked: [] };
+  reportBlocked(expansion.blocked);
+
+  if (expansion.toRemove.length === 0) {
+    if (expansion.blocked.length === 0) {
+      info(`No installed files found for the specified ${options.itemPlural}.`);
+    }
+    return;
+  }
+
+  const { files, dirs, removedNames } = collectRemovalTargets(options, config, expansion.toRemove);
   if (files.size === 0) {
-    info(`No installed files found for the specified ${options.itemPlural}.`);
+    if (expansion.blocked.length === 0) {
+      info(`No installed files found for the specified ${options.itemPlural}.`);
+    }
     return;
   }
 

@@ -36,13 +36,14 @@ export const tabsTriggerVariants = cva(
   }
 );
 
-export interface TabsTriggerProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "value" | "disabled"> {
-  value: string;
+export interface TabsTriggerProps<TValue extends string = string>
+  extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "value" | "disabled"> {
+  value: TValue;
   disabled?: boolean;
   ref?: Ref<HTMLButtonElement>;
 }
 
-export function TabsTrigger({ value, children, className, disabled, ref, onClick, onFocus, ...rest }: TabsTriggerProps) {
+export function TabsTrigger<TValue extends string = string>({ value, children, className, disabled, ref, onClick, onFocus, ...rest }: TabsTriggerProps<TValue>) {
   const { tabsId, value: selectedValue, tabbableValue, onChange, onFocusChange, panelValues, variant, orientation } = useTabsContext();
   const isActive = selectedValue === value;
   const isTabbable = tabbableValue === value;

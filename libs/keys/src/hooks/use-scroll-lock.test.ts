@@ -119,4 +119,23 @@ describe("useScrollLock", () => {
     unmountA();
     expect(document.body.style.overflow).toBe("auto");
   });
+
+  it("locks the owner document body when target is derived from a trigger element's ownerDocument", () => {
+    const trigger = document.createElement("button");
+    document.body.appendChild(trigger);
+    document.body.style.overflow = "auto";
+
+    const ownerBody = trigger.ownerDocument.body;
+    const targetRef = { current: ownerBody };
+
+    const { unmount } = renderHook(() => useScrollLock({ target: targetRef }));
+
+    expect(ownerBody).toBe(document.body);
+    expect(document.body.style.overflow).toBe("hidden");
+
+    unmount();
+    expect(document.body.style.overflow).toBe("auto");
+
+    trigger.remove();
+  });
 });

@@ -16,6 +16,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { useDialogContext } from "./dialog-context";
 import { DialogTitle } from "./dialog-title";
+import { DialogDescription } from "./dialog-description";
 import { DialogShell } from "../shared/dialog-shell";
 import { PortalContainerProvider } from "../shared/portal-context";
 
@@ -65,7 +66,7 @@ export function DialogContent({
   "aria-labelledby": ariaLabelledBy,
   ...rest
 }: DialogContentProps) {
-  const { open, onOpenChange, contentId, titleId, descriptionId, hasTitle, hasMountedTitleRef, hasDescription, triggerRef } = useDialogContext();
+  const { open, onOpenChange, contentId, titleId, descriptionId, triggerRef } = useDialogContext();
   const close = () => onOpenChange(false);
   const shellRef = useRef<HTMLDialogElement>(null);
   const [container, setContainer] = useState<Element | null>(null);
@@ -75,7 +76,8 @@ export function DialogContent({
   });
   const hasAriaLabel = hasNonEmptyText(ariaLabel);
   const hasAriaLabelledBy = hasNonEmptyText(ariaLabelledBy);
-  const hasRenderableTitle = hasTitle || containsDialogTitleElement(children);
+  const hasRenderableTitle = containsDialogTitleElement(children);
+  const hasRenderableDescription = containsDialogDescriptionElement(children);
   const labelSourceId = hasAriaLabelledBy ? ariaLabelledBy : hasAriaLabel || !hasRenderableTitle ? undefined : titleId;
   const resolvedAriaLabel = hasAriaLabel
     ? ariaLabel
@@ -88,11 +90,11 @@ export function DialogContent({
 
   useEffect(() => {
     if (!open) return;
-    if (hasAriaLabel || hasAriaLabelledBy || hasRenderableTitle || hasMountedTitleRef.current) return;
+    if (hasAriaLabel || hasAriaLabelledBy || hasRenderableTitle) return;
     console.warn(
       "[Dialog] Modal dialog is missing an accessible name. Provide a Dialog.Title child, an aria-label prop, or an aria-labelledby prop. A fallback accessible name is applied at runtime.",
     );
-  }, [open, hasAriaLabel, hasAriaLabelledBy, hasRenderableTitle, hasMountedTitleRef]);
+  }, [open, hasAriaLabel, hasAriaLabelledBy, hasRenderableTitle]);
 
   return (
     <DialogShell
@@ -114,7 +116,7 @@ export function DialogContent({
       aria-modal="true"
       aria-label={resolvedAriaLabel}
       aria-labelledby={labelSourceId}
-      aria-describedby={hasDescription ? descriptionId : undefined}
+      aria-describedby={hasRenderableDescription ? descriptionId : undefined}
     >
       <PortalContainerProvider container={container}>
         {children}
@@ -128,5 +130,13 @@ function containsDialogTitleElement(children: ReactNode): boolean {
     if (!isValidElement<{ children?: ReactNode }>(child)) return false;
     if (child.type === DialogTitle) return true;
     return containsDialogTitleElement(child.props.children);
+  });
+}
+
+function containsDialogDescriptionElement(children: ReactNode): boolean {
+  return Children.toArray(children).some((child) => {
+    if (!isValidElement<{ children?: ReactNode }>(child)) return false;
+    if (child.type === DialogDescription) return true;
+    return containsDialogDescriptionElement(child.props.children);
   });
 }

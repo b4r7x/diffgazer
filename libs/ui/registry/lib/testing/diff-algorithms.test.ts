@@ -23,10 +23,11 @@ describe("computeDiff", () => {
     const after = "a\nb\nX\nd\ne";
     const result = computeDiff(before, after);
     expect(result.hunks).toHaveLength(1);
-    const changes = result.hunks[0].changes;
-    expect(changes.some((c) => c.type === "context")).toBe(true);
-    expect(changes.some((c) => c.type === "remove" && c.content === "c")).toBe(true);
-    expect(changes.some((c) => c.type === "add" && c.content === "X")).toBe(true);
+    const [hunk] = result.hunks;
+    if (!hunk) throw new Error("expected hunk");
+    expect(hunk.changes.some((c) => c.type === "context")).toBe(true);
+    expect(hunk.changes.some((c) => c.type === "remove" && c.content === "c")).toBe(true);
+    expect(hunk.changes.some((c) => c.type === "add" && c.content === "X")).toBe(true);
   });
 
   it("groups nearby changes into one hunk and distant changes into separate hunks", () => {
@@ -68,8 +69,8 @@ describe("computeWordSegments", () => {
   it("merges consecutive segments with the same changed flag", () => {
     const { old: oldSegs, new: newSegs } = computeWordSegments("xxx", "yyy");
     expect(oldSegs).toHaveLength(1);
-    expect(oldSegs[0].changed).toBe(true);
+    expect(oldSegs[0]?.changed).toBe(true);
     expect(newSegs).toHaveLength(1);
-    expect(newSegs[0].changed).toBe(true);
+    expect(newSegs[0]?.changed).toBe(true);
   });
 });

@@ -49,4 +49,108 @@ export const tooltipDoc: ComponentDoc = {
       { name: "tooltip-interactive", title: "Interactive triggers with keyboard" },
     ],
   },
+  props: {
+    Tooltip: {
+      content: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: 'Shorthand: when set, Tooltip renders children inside Tooltip.Trigger and content inside Tooltip.Content automatically. When omitted, compose Tooltip.Trigger and Tooltip.Content explicitly via children.',
+      },
+      open: {
+        type: "boolean",
+        required: false,
+        defaultValue: null,
+        description: "Controlled open state.",
+      },
+      defaultOpen: {
+        type: "boolean",
+        required: false,
+        defaultValue: "false",
+        description: "Initial open state for uncontrolled mode.",
+      },
+      onOpenChange: {
+        type: "(open: boolean) => void",
+        required: false,
+        defaultValue: null,
+        description: "Fired when the open state changes.",
+      },
+      enabled: {
+        type: "boolean",
+        required: false,
+        defaultValue: "true",
+        description: "Disables hover/focus triggering when false (use to suppress tooltips conditionally).",
+      },
+      delayMs: {
+        type: "number",
+        required: false,
+        defaultValue: "500",
+        description: "Show delay after pointer/focus enters the trigger.",
+      },
+      closeDelayMs: {
+        type: "number",
+        required: false,
+        defaultValue: "150",
+        description: "Hide delay after pointer/focus leaves the trigger or content.",
+      },
+      children: {
+        type: "ReactNode",
+        required: true,
+        defaultValue: null,
+        description: "Trigger element (shorthand mode) or full Tooltip.Trigger/Tooltip.Content composition.",
+      },
+    },
+    "Tooltip.Trigger": {
+      children: {
+        type: "ReactNode | (props: PopoverTriggerRenderProps) => ReactNode",
+        required: true,
+        defaultValue: null,
+        description: "Trigger element. Same render-prop and clone semantics as Popover.Trigger.",
+      },
+    },
+    "Tooltip.Content": {
+      side: {
+        type: '"top" | "bottom" | "left" | "right"',
+        required: false,
+        defaultValue: '"top"',
+        description: "Preferred side relative to the trigger.",
+      },
+      align: {
+        type: '"start" | "center" | "end"',
+        required: false,
+        defaultValue: '"center"',
+        description: "Alignment along the chosen side.",
+      },
+      sideOffset: {
+        type: "number",
+        required: false,
+        defaultValue: "4",
+        description: "Pixel gap from the trigger along the side axis.",
+      },
+      alignOffset: {
+        type: "number",
+        required: false,
+        defaultValue: "0",
+        description: "Pixel offset along the alignment axis.",
+      },
+      avoidCollisions: {
+        type: "boolean",
+        required: false,
+        defaultValue: "true",
+        description: "Flip and shift to keep the tooltip inside the viewport.",
+      },
+      collisionPadding: {
+        type: "number",
+        required: false,
+        defaultValue: "8",
+        description: "Minimum gap between the tooltip and the viewport edge.",
+      },
+      children: {
+        type: "ReactNode",
+        required: true,
+        defaultValue: null,
+        description: "Tooltip body content.",
+      },
+    },
+  },
 }

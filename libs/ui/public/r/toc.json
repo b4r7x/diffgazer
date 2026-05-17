@@ -6,7 +6,9 @@
   "dependencies": [
     "class-variance-authority"
   ],
-  "registryDependencies": [],
+  "registryDependencies": [
+    "https://diffgazer.com/r/ui/theme.json"
+  ],
   "files": [
     {
       "path": "registry/ui/toc/index.ts",

@@ -9,7 +9,6 @@ import type { SpinnerSize } from "./spinner";
 //   3 · 5   ← center (4) is always invisible
 //   6 7 8
 const SNAKE_PERIMETER = [0, 1, 2, 5, 8, 7, 6, 3] as const;
-const SNAKE_TAIL_LENGTH = 3;
 
 export const SNAKE_FRAME_COUNT = SNAKE_PERIMETER.length;
 
@@ -29,7 +28,7 @@ function getCellOpacity(frame: number, cellIndex: number): number {
   const positionInPerimeter = PERIMETER_POSITION.get(cellIndex);
   if (positionInPerimeter === undefined) return 0;
   const distanceBehindHead = (frame - positionInPerimeter + SNAKE_PERIMETER.length) % SNAKE_PERIMETER.length;
-  return distanceBehindHead < SNAKE_TAIL_LENGTH ? TRAIL_OPACITIES[distanceBehindHead] : INACTIVE_OPACITY;
+  return TRAIL_OPACITIES[distanceBehindHead] ?? INACTIVE_OPACITY;
 }
 
 interface SnakeGridProps {

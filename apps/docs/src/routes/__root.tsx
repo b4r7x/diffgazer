@@ -16,46 +16,35 @@ import { GlobalNotFound } from "@/components/not-found";
 import { NotFoundState } from "@/components/not-found-state";
 import { Button } from "@/components/ui/button/button";
 import { PRIMARY_DOCS_LIBRARY_ID } from "@/lib/docs-library";
+import { buildRootHeadDefaults } from "@/lib/seo";
 
 export const Route = createRootRoute({
-	head: () => ({
-		meta: [
-			{
-				charSet: "utf-8",
-			},
-			{
-				name: "viewport",
-				content: "width=device-width, initial-scale=1",
-			},
-			{
-				title: "diffgazer docs",
-			},
-			{
-				name: "description",
-				content:
-					"Unified documentation and generated registry artifacts for diffgazer libraries.",
-			},
-		],
-		links: [
-			{
-				rel: "preconnect",
-				href: "https://fonts.googleapis.com",
-			},
-			{
-				rel: "preconnect",
-				href: "https://fonts.gstatic.com",
-				crossOrigin: "anonymous",
-			},
-			{
-				rel: "stylesheet",
-				href: "https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap",
-			},
-			{
-				rel: "stylesheet",
-				href: appCss,
-			},
-		],
-	}),
+	head: () => {
+		const { meta, links: defaultLinks } = buildRootHeadDefaults();
+		return {
+			meta,
+			links: [
+				...defaultLinks,
+				{
+					rel: "preconnect",
+					href: "https://fonts.googleapis.com",
+				},
+				{
+					rel: "preconnect",
+					href: "https://fonts.gstatic.com",
+					crossOrigin: "anonymous",
+				},
+				{
+					rel: "stylesheet",
+					href: "https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap",
+				},
+				{
+					rel: "stylesheet",
+					href: appCss,
+				},
+			],
+		};
+	},
 
 	shellComponent: RootDocument,
 	component: RootLayout,

@@ -41,4 +41,164 @@ export const navigationListDoc: ComponentDoc = {
       { name: "navigation-list-interactive", title: "External @diffgazer/keys navigation" },
     ],
   },
+  props: {
+    NavigationList: {
+      selectedId: {
+        type: "string | null",
+        required: false,
+        defaultValue: null,
+        description: "Controlled selected item id.",
+      },
+      defaultSelectedId: {
+        type: "string | null",
+        required: false,
+        defaultValue: "null",
+        description: "Initial selected id for uncontrolled mode.",
+      },
+      highlighted: {
+        type: "string | null",
+        required: false,
+        defaultValue: null,
+        description: "Controlled highlighted (focused) item id.",
+      },
+      defaultHighlighted: {
+        type: "string | null",
+        required: false,
+        defaultValue: "null",
+        description: "Initial highlighted id for uncontrolled mode.",
+      },
+      onSelect: {
+        type: "(id: string) => void",
+        required: false,
+        defaultValue: null,
+        description: "Fired when an item is activated by click or Enter.",
+      },
+      onEnter: {
+        type: "(id: string, event: KeyboardEvent) => void",
+        required: false,
+        defaultValue: null,
+        description: "Fired when Enter activates an item. Receives the raw keyboard event for modifier-key handling.",
+      },
+      onHighlightChange: {
+        type: "(id: string | null) => void",
+        required: false,
+        defaultValue: null,
+        description: "Fired when the highlighted item changes.",
+      },
+      onNavigationBoundaryReached: {
+        type: '(direction: "previous" | "next", event: KeyboardEvent, key: string) => void',
+        required: false,
+        defaultValue: null,
+        description: "Fired when arrow navigation reaches the first/last item with wrap disabled, enabling cross-list navigation.",
+      },
+      focused: {
+        type: "boolean",
+        required: false,
+        defaultValue: "true",
+        description: "When false, removes the active visual treatment from the selected/highlighted item (useful when focus is elsewhere).",
+      },
+      wrap: {
+        type: "boolean",
+        required: false,
+        defaultValue: "true",
+        description: "When true, arrow navigation wraps at list boundaries.",
+      },
+      autoFocus: {
+        type: "boolean",
+        required: false,
+        defaultValue: "false",
+        description: "Auto-focus the list on mount.",
+      },
+      "aria-label": {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description: "Accessible name for the list container.",
+      },
+      children: {
+        type: "ReactNode",
+        required: true,
+        defaultValue: null,
+        description: "NavigationList.Item children.",
+      },
+    },
+    "NavigationList.Item": {
+      id: {
+        type: "string",
+        required: true,
+        defaultValue: null,
+        description: "Stable identifier matched against selectedId/highlighted.",
+      },
+      density: {
+        type: '"compact" | "default" | "comfortable"',
+        required: false,
+        defaultValue: '"default"',
+        description: "Padding scale for the item content.",
+      },
+      disabled: {
+        type: "boolean",
+        required: false,
+        defaultValue: "false",
+        description: "Disables activation; item is rendered with aria-disabled.",
+      },
+      children: {
+        type: "ReactNode",
+        required: true,
+        defaultValue: null,
+        description: "Item subparts (Title, Status, Meta, Badge, Subtitle).",
+      },
+    },
+    "NavigationList.Title": {
+      children: {
+        type: "ReactNode",
+        required: true,
+        defaultValue: null,
+        description: "Primary label. Used as aria-labelledby for the item.",
+      },
+    },
+    "NavigationList.Status": {
+      children: {
+        type: "ReactNode",
+        required: true,
+        defaultValue: null,
+        description: "Top-right status marker.",
+      },
+    },
+    "NavigationList.Meta": {
+      children: {
+        type: "ReactNode",
+        required: true,
+        defaultValue: null,
+        description: "Container for inline metadata (badges, dates). Wired to aria-describedby.",
+      },
+    },
+    "NavigationList.Subtitle": {
+      children: {
+        type: "ReactNode",
+        required: true,
+        defaultValue: null,
+        description: "Secondary metadata text. Wired to aria-describedby.",
+      },
+    },
+    "NavigationList.Badge": {
+      variant: {
+        type: '"success" | "warning" | "error" | "info" | "neutral"',
+        required: false,
+        defaultValue: '"neutral"',
+        description: "Badge color token. See Badge for full prop reference.",
+      },
+      size: {
+        type: '"sm" | "md" | "lg"',
+        required: false,
+        defaultValue: '"sm"',
+        description: "Badge size token.",
+      },
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Badge label.",
+      },
+    },
+  },
 }

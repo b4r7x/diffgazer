@@ -248,7 +248,8 @@
     "./theme-base.css": "./dist/theme-base.css",
     "./theme.css": "./dist/theme.css",
     "./sources.css": "./dist/sources.css",
-    "./styles.css": "./dist/styles.css"
+    "./styles.css": "./dist/styles.css",
+    "./package.json": "./package.json"
   },
   "files": [
     "dist",
@@ -260,10 +261,24 @@
     "!dist/_types/registry/ui/shared/**",
     "!dist/_types/shared",
     "!dist/_types/shared/**",
+    "!dist/artifacts",
+    "!dist/artifacts/**",
     "LICENSE",
     "README.md",
     "SECURITY.md",
     "SUPPORT.md"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "browserslist": [
+    "Chrome >= 111",
+    "Safari >= 16.4",
+    "Firefox >= 128",
+    "Edge >= 111",
+    "last 2 Chrome versions",
+    "last 2 Safari versions",
+    "last 2 Firefox versions"
   ],
   "scripts": {
     "build": "pnpm validate:registry && tsup && pnpm build:declarations && pnpm build:shadcn && pnpm build:docs-data && pnpm build:artifacts",
@@ -282,13 +297,18 @@
   "dependencies": {
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "figlet": "^1.10.0",
     "tailwind-merge": "^3.4.0"
   },
   "peerDependencies": {
     "@diffgazer/keys": ">=0.1.1",
+    "figlet": ">=1.10.0",
     "react": ">=19.2.0",
     "react-dom": ">=19.2.0"
+  },
+  "peerDependenciesMeta": {
+    "figlet": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@diffgazer/keys": "workspace:*",

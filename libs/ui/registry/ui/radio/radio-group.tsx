@@ -45,15 +45,15 @@ type RadioGroupRootProps = Omit<
   | "aria-disabled"
 >;
 
-export interface RadioGroupProps extends RadioGroupRootProps {
-  value?: string;
-  defaultValue?: string;
-  onChange?: (value: string) => void;
-  onNavigate?: (value: string, direction: RadioGroupNavigationDirection) => void;
-  onEnter?: (value: string, event: ReactKeyboardEvent<HTMLDivElement>) => void;
-  onHighlightChange?: (value: string | null) => void;
+export interface RadioGroupProps<TValue extends string = string> extends RadioGroupRootProps {
+  value?: TValue;
+  defaultValue?: TValue;
+  onChange?: (value: TValue) => void;
+  onNavigate?: (value: TValue, direction: RadioGroupNavigationDirection) => void;
+  onEnter?: (value: TValue, event: ReactKeyboardEvent<HTMLDivElement>) => void;
+  onHighlightChange?: (value: TValue | null) => void;
   onKeyDown?: (event: ReactKeyboardEvent) => void;
-  highlighted?: string | null;
+  highlighted?: TValue | null;
   orientation?: "vertical" | "horizontal";
   wrap?: boolean;
   keyboardNavigation?: boolean;
@@ -93,7 +93,7 @@ function getRadioNavigationDirection(key: string): RadioGroupNavigationDirection
   return null;
 }
 
-export function RadioGroup(props: RadioGroupProps) {
+export function RadioGroup<TValue extends string = string>(props: RadioGroupProps<TValue>) {
   const {
     value: controlledValue,
     defaultValue,
@@ -129,12 +129,14 @@ export function RadioGroup(props: RadioGroupProps) {
   const { items, registerItem, unregisterItem } = useSelectableCollection(containerRef);
   const [requiredInvalid, setRequiredInvalid] = useState(false);
 
+  // Public props narrow on TValue; internal state stays string-typed because the
+  // selectable-collection layer keys items by data-value strings.
   const [value, setValue] = useControllableState<string | undefined>({
     value: controlledValue,
     controlled: "value" in props,
     defaultValue,
     onChange: (next) => {
-      if (next !== undefined) onChange?.(next);
+      if (next !== undefined) onChange?.(next as TValue);
     },
   });
   useFormReset(containerRef, defaultValue, setValue, !("value" in props));
@@ -143,7 +145,7 @@ export function RadioGroup(props: RadioGroupProps) {
     value: controlledHighlighted,
     controlled: "highlighted" in props,
     defaultValue: null,
-    onChange: onHighlightChange,
+    onChange: onHighlightChange as ((value: string | null) => void) | undefined,
   });
 
   const enabledItems = getEnabledSelectableCollectionItems(items, disabled);
@@ -186,7 +188,7 @@ export function RadioGroup(props: RadioGroupProps) {
     setRequiredInvalid(false);
 
     const direction = getRadioNavigationDirection(navigationEventRef.current?.key ?? "");
-    if (direction !== null) onNavigate?.(next, direction);
+    if (direction !== null) onNavigate?.(next as TValue, direction);
 
     if (activationMode === "automatic") setValue(next);
   };
@@ -197,7 +199,7 @@ export function RadioGroup(props: RadioGroupProps) {
 
     setHighlightedValue(next);
     handleValueChange(next);
-    onEnter?.(next, event);
+    onEnter?.(next as TValue, event);
   };
 
   const { onKeyDown: navKeyDown } = useNavigation({

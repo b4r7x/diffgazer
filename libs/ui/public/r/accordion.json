@@ -7,6 +7,7 @@
     "class-variance-authority"
   ],
   "registryDependencies": [
+    "https://diffgazer.com/r/ui/theme.json",
     "https://diffgazer.com/r/ui/controllable-state.json",
     "https://diffgazer.com/r/ui/compose-refs.json",
     "https://diffgazer.com/r/ui/icons.json",
@@ -45,7 +46,7 @@
     },
     {
       "path": "registry/ui/accordion/accordion-content.tsx",
-      "content": "\"use client\";\n\nimport { type ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { useAccordionItemContext } from \"./accordion-context\";\n\nexport interface AccordionContentProps {\n  children: ReactNode;\n  className?: string;\n  region?: boolean;\n}\n\nexport function AccordionContent({ children, className, region = false }: AccordionContentProps) {\n  const { isOpen, triggerId, contentId } = useAccordionItemContext();\n  const exposesRegion = region && isOpen;\n\n  return (\n    <div\n      className={cn(\n        \"grid transition-[grid-template-rows] duration-200 ease-out\",\n        isOpen ? \"grid-rows-[1fr]\" : \"grid-rows-[0fr]\"\n      )}\n      aria-hidden={!isOpen || undefined}\n      inert={!isOpen || undefined}\n    >\n      <div\n        className={cn(\"overflow-hidden min-h-0 pt-2\", className)}\n        role={exposesRegion ? \"region\" : undefined}\n        id={contentId}\n        aria-labelledby={exposesRegion ? triggerId : undefined}\n      >\n        {children}\n      </div>\n    </div>\n  );\n}\n",
+      "content": "\"use client\";\n\nimport { type ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { useAccordionItemContext } from \"./accordion-context\";\n\nexport interface AccordionContentProps {\n  children: ReactNode;\n  className?: string;\n  region?: boolean;\n}\n\nexport function AccordionContent({ children, className, region = false }: AccordionContentProps) {\n  const { isOpen, triggerId, contentId } = useAccordionItemContext();\n  const exposesRegion = region && isOpen;\n\n  return (\n    <div\n      className={cn(\n        \"grid transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none\",\n        isOpen ? \"grid-rows-[1fr]\" : \"grid-rows-[0fr]\"\n      )}\n      aria-hidden={!isOpen || undefined}\n      inert={!isOpen || undefined}\n    >\n      <div\n        className={cn(\"overflow-hidden min-h-0 pt-2\", className)}\n        role={exposesRegion ? \"region\" : undefined}\n        id={contentId}\n        aria-labelledby={exposesRegion ? triggerId : undefined}\n      >\n        {children}\n      </div>\n    </div>\n  );\n}\n",
       "type": "registry:ui"
     },
     {

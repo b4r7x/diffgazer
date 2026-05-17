@@ -268,4 +268,58 @@ describe("useOutsideClick", () => {
     expect(secondHandler).toHaveBeenCalledOnce()
     expect(firstHandler).not.toHaveBeenCalled()
   })
+
+  it("attaches listeners to the ref's ownerDocument, not the host document", () => {
+    const altDoc = document.implementation.createHTMLDocument("alt")
+    const altInside = altDoc.createElement("div")
+    const altOutside = altDoc.createElement("div")
+    altDoc.body.append(altInside, altOutside)
+
+    const ref = createRef<HTMLElement>() as React.MutableRefObject<HTMLElement | null>
+    ref.current = altInside
+    const handler = vi.fn()
+
+    const altAddSpy = vi.spyOn(altDoc, "addEventListener")
+    const hostAddSpy = vi.spyOn(document, "addEventListener")
+
+    try {
+      renderHook(() => useOutsideClick(ref, handler, true))
+
+      // Listener registers on alt document, not host document.
+      const pointerLikeTypes = ["pointerdown", "mousedown", "touchstart"]
+      const altCalls = altAddSpy.mock.calls.filter(([type]) => pointerLikeTypes.includes(String(type)))
+      const hostCalls = hostAddSpy.mock.calls.filter(([type]) => pointerLikeTypes.includes(String(type)))
+
+      expect(altCalls.length).toBeGreaterThan(0)
+      expect(hostCalls).toHaveLength(0)
+    } finally {
+      altAddSpy.mockRestore()
+      hostAddSpy.mockRestore()
+    }
+  })
+
+  it("routes Escape from the ref's ownerDocument only", () => {
+    const altDoc = document.implementation.createHTMLDocument("alt")
+    const altInside = altDoc.createElement("div")
+    altDoc.body.append(altInside)
+
+    const ref = createRef<HTMLElement>() as React.MutableRefObject<HTMLElement | null>
+    ref.current = altInside
+    const handler = vi.fn()
+
+    const altAddSpy = vi.spyOn(altDoc, "addEventListener")
+    const hostAddSpy = vi.spyOn(document, "addEventListener")
+
+    try {
+      renderHook(() => useEscapeKey(handler, true, { ref }))
+
+      const altKeydown = altAddSpy.mock.calls.filter(([type]) => type === "keydown")
+      const hostKeydown = hostAddSpy.mock.calls.filter(([type]) => type === "keydown")
+      expect(altKeydown.length).toBeGreaterThan(0)
+      expect(hostKeydown).toHaveLength(0)
+    } finally {
+      altAddSpy.mockRestore()
+      hostAddSpy.mockRestore()
+    }
+  })
 })

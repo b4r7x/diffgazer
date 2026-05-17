@@ -20,12 +20,32 @@ component: "accordion"
 
 <Examples skipFirst />
 
+<APIReference />
 
 ## Accessibility
 
 <KeyboardNav />
 
 <AccessibilityNotes />
+
+## Region role
+
+`AccordionContent` accepts a `region` prop that opts the open panel into `role="region"` with `aria-labelledby` pointing at its trigger. The default is `false`.
+
+```tsx
+<Accordion.Content region>{children}</Accordion.Content>
+```
+
+The [APG accordion pattern](https://www.w3.org/WAI/ARIA/apg/patterns/accordion/) lists this role as optional ("MAY"), which is why the prop is opt-in rather than the default:
+
+- **Enable it** when each panel functions as its own landmark and the accordion has a small number of substantive sections (typically six or fewer). Assistive-technology users can then jump straight to a panel via the landmark rotor.
+- **Leave it off** when an accordion has many short items or stacks alongside other accordions on the page. Extra landmarks add noise to the rotor and dilute the value of true page-level regions.
+
+Behavior:
+
+- The role is only exposed while the panel is open. Collapsed panels never expose `role="region"`.
+- The accessible name comes from the trigger via `aria-labelledby`; no extra label markup is required on the panel.
+- All other a11y wiring (`aria-expanded`, `aria-controls`, native `<button>` semantics, `inert` on collapsed content) is unconditional and unaffected by this prop.
 
 ## Source
 

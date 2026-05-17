@@ -93,6 +93,37 @@ function resolveFocusableTarget(target: HTMLElement): HTMLElement | null {
   return getFirstFocusableElement(target);
 }
 
+/**
+ * Partition a layout into named focus zones (sidebar, main, footer, ...)
+ * and route arrow / Tab transitions between them.
+ *
+ * The active zone is exposed via `isZone(name)` for styling, and
+ * `getKeyOptions(name)` produces `useKey` options that are only enabled while
+ * that zone is active — useful for binding zone-local shortcuts.
+ *
+ * @example
+ * ```tsx
+ * function EditorLayout() {
+ *   const { isZone, getKeyOptions } = useFocusZone({
+ *     initial: "sidebar",
+ *     zones: ["sidebar", "main"] as const,
+ *     tabCycle: ["sidebar", "main"] as const,
+ *     transitions: ({ zone, key }) => {
+ *       if (zone === "sidebar" && key === "ArrowRight") return "main";
+ *       if (zone === "main" && key === "ArrowLeft") return "sidebar";
+ *       return null;
+ *     },
+ *   });
+ *   useKey("n", () => createFile(), getKeyOptions("sidebar"));
+ *   return (
+ *     <div className="flex">
+ *       <aside data-active={isZone("sidebar")}>...</aside>
+ *       <main data-active={isZone("main")}>...</main>
+ *     </div>
+ *   );
+ * }
+ * ```
+ */
 export function useFocusZone<T extends string>(
   options: UseFocusZoneOptions<T>,
 ): UseFocusZoneReturn<T> {

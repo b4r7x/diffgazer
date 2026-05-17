@@ -262,10 +262,10 @@ const expectedWorkspacePackageFiles = [
   "apps/web/package.json",
   "cli/add/package.json",
   "cli/diffgazer/package.json",
+  "cli/server/package.json",
   "libs/core/package.json",
   "libs/keys/package.json",
   "libs/registry/package.json",
-  "libs/server/package.json",
   "libs/ui/package.json",
 ];
 const workspacePackageFiles = packageFiles

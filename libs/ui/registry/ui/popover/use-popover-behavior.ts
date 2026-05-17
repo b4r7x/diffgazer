@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, type RefObject } from "react";
 import type { PopoverTriggerMode } from "./popover-context";
 
 export interface UsePopoverBehaviorOptions {
@@ -10,6 +10,7 @@ export interface UsePopoverBehaviorOptions {
   triggerMode?: PopoverTriggerMode;
   delayMs?: number;
   closeDelayMs?: number;
+  triggerRef?: RefObject<HTMLElement | null>;
 }
 
 export interface UsePopoverBehaviorReturn {
@@ -27,6 +28,7 @@ export function usePopoverBehavior({
   triggerMode = "click",
   delayMs = 500,
   closeDelayMs = 0,
+  triggerRef,
 }: UsePopoverBehaviorOptions): UsePopoverBehaviorReturn {
   const openTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -90,13 +92,14 @@ export function usePopoverBehavior({
       onOpenChange(false);
     };
     const scrollOpts = { capture: true, passive: true } as const;
-    window.addEventListener("scroll", close, scrollOpts);
-    window.addEventListener("resize", close);
+    const view = triggerRef?.current?.ownerDocument?.defaultView ?? window;
+    view.addEventListener("scroll", close, scrollOpts);
+    view.addEventListener("resize", close);
     return () => {
-      window.removeEventListener("scroll", close, scrollOpts);
-      window.removeEventListener("resize", close);
+      view.removeEventListener("scroll", close, scrollOpts);
+      view.removeEventListener("resize", close);
     };
-  }, [onOpenChange, open, triggerMode]);
+  }, [onOpenChange, open, triggerMode, triggerRef]);
 
   useEffect(() => {
     if (enabled) return;

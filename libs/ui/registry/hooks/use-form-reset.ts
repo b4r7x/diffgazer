@@ -1,6 +1,11 @@
 "use client";
 
-import { useEffectEvent, useLayoutEffect, type RefObject } from "react";
+import { useEffectEvent, useLayoutEffect, useRef, type RefObject } from "react";
+
+interface FormSubscription {
+  form: HTMLFormElement;
+  listener: (event: Event) => void;
+}
 
 export function useFormReset<T>(
   ref: RefObject<HTMLElement | null>,
@@ -12,12 +17,37 @@ export function useFormReset<T>(
     onReset(resetValue);
   });
 
-  useLayoutEffect(() => {
-    const form = enabled ? ref.current?.closest("form") ?? null : null;
-    if (!form) return;
+  // Track the attached form so target swaps don't churn the listener every render.
+  const subscriptionRef = useRef<FormSubscription | null>(null);
 
-    const listener = () => handleReset();
-    form.addEventListener("reset", listener);
-    return () => form.removeEventListener("reset", listener);
+  useLayoutEffect(() => {
+    const nextForm = enabled ? ref.current?.closest("form") ?? null : null;
+    const current = subscriptionRef.current;
+    if (current?.form === nextForm) return;
+
+    if (current) {
+      current.form.removeEventListener("reset", current.listener);
+      subscriptionRef.current = null;
+    }
+
+    if (!nextForm) return;
+
+    const listener = (event: Event) => {
+      queueMicrotask(() => {
+        if (event.defaultPrevented) return;
+        handleReset();
+      });
+    };
+    nextForm.addEventListener("reset", listener);
+    subscriptionRef.current = { form: nextForm, listener };
   });
+
+  useLayoutEffect(() => {
+    return () => {
+      const current = subscriptionRef.current;
+      if (!current) return;
+      current.form.removeEventListener("reset", current.listener);
+      subscriptionRef.current = null;
+    };
+  }, []);
 }

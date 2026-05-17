@@ -477,4 +477,132 @@ describe("useFocusTrap", () => {
       second.remove();
     });
   });
+
+  describe("document-level capture and focusin recapture", () => {
+    it("recaptures focus on the next Tab when focus has escaped outside the container", () => {
+      container = createContainer(
+        '<button id="a">A</button>',
+        '<button id="b">B</button>',
+      );
+      const outsideButton = document.createElement("button");
+      outsideButton.id = "outside";
+      document.body.appendChild(outsideButton);
+
+      renderTrap(container);
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+      expect(document.activeElement).toBe(container.querySelector("#a"));
+
+      // Focus escapes outside the container — the document-level focusin
+      // listener should recapture back to the last in-trap element.
+      outsideButton.focus();
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+      expect(document.activeElement).toBe(container.querySelector("#a"));
+
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+      const second = container.querySelector<HTMLElement>("#b")!;
+      second.focus();
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+      expect(document.activeElement).toBe(container.querySelector("#b"));
+
+      // Tab from in-trap should still wrap correctly after a prior escape.
+      const event = fireTab();
+      expect(event.defaultPrevented).toBe(true);
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+      expect(document.activeElement).toBe(container.querySelector("#a"));
+
+      outsideButton.remove();
+    });
+
+    it("traps Tab even when a descendant calls stopPropagation on keydown", () => {
+      container = createContainer(
+        '<button id="a">A</button>',
+        '<button id="b">B</button>',
+        '<button id="c">C</button>',
+      );
+      renderTrap(container);
+
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+      const last = container.querySelector<HTMLElement>("#c")!;
+      last.addEventListener("keydown", (e) => e.stopPropagation());
+      last.focus();
+
+      const event = fireTab();
+      expect(event.defaultPrevented).toBe(true);
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+      expect(document.activeElement).toBe(container.querySelector("#a"));
+    });
+
+    it("listens on the trap container's owning document, not the host document", () => {
+      const frame = document.createElement("iframe");
+      document.body.append(frame);
+      const frameDocument = frame.contentDocument;
+      expect(frameDocument).not.toBeNull();
+
+      const hostOutside = document.createElement("button");
+      hostOutside.id = "host-outside";
+      document.body.appendChild(hostOutside);
+      hostOutside.focus();
+
+      container = createContainerIn(
+        frameDocument!,
+        '<button id="a">A</button>',
+        '<button id="b">B</button>',
+      );
+
+      renderTrap(container, { restoreFocus: false });
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+      expect(frameDocument!.activeElement).toBe(container.querySelector("#a"));
+
+      // Tab in the host document must NOT be intercepted by the iframe trap.
+      hostOutside.focus();
+      expect(document.activeElement).toBe(hostOutside);
+      const hostEvent = fireTabFromActive(document);
+      expect(hostEvent.defaultPrevented).toBe(false);
+
+      // Tab inside the iframe document IS intercepted.
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+      const frameLast = container.querySelector<HTMLElement>("#b")!;
+      frameLast.focus();
+      const frameEvent = fireTabFromActive(frameDocument!);
+      expect(frameEvent.defaultPrevented).toBe(true);
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+      expect(frameDocument!.activeElement).toBe(container.querySelector("#a"));
+
+      hostOutside.remove();
+      frame.remove();
+    });
+
+    it("recaptures focus to the container when no tabbable children exist and container had no tabindex", () => {
+      container = document.createElement("div");
+      container.insertAdjacentHTML("beforeend", "<p>No focusable</p>");
+      document.body.appendChild(container);
+      expect(container.hasAttribute("tabindex")).toBe(false);
+
+      const outsideButton = document.createElement("button");
+      outsideButton.id = "outside";
+      document.body.appendChild(outsideButton);
+
+      const { unmount } = renderTrap(container, { restoreFocus: false });
+
+      // Trap activation focuses the container after assigning tabindex=-1.
+      expect(document.activeElement).toBe(container);
+
+      // Focus escapes; document-level focusin recaptures to the container.
+      outsideButton.focus();
+      expect(document.activeElement).toBe(container);
+
+      // Tab from outside the trap is intercepted via document-level capture and
+      // refocuses the container (since it is the only focusable target).
+      outsideButton.focus();
+      const tabEvent = fireTabFromActive(document);
+      expect(tabEvent.defaultPrevented).toBe(true);
+      expect(document.activeElement).toBe(container);
+
+      unmount();
+      // Trap teardown removes the temporary tabindex it assigned.
+      expect(container.hasAttribute("tabindex")).toBe(false);
+
+      outsideButton.remove();
+    });
+  });
 });

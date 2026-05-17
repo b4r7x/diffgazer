@@ -20,4 +20,34 @@ export const pagerDoc: ComponentDoc = {
     { name: "pager-single", title: "Single" },
   ],
   keyboard: null,
+  props: {
+    Pager: {
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: 'PagerLink children. Rendered inside <nav aria-label="Page navigation">.',
+      },
+    },
+    PagerLink: {
+      direction: {
+        type: '"previous" | "next"',
+        required: true,
+        defaultValue: null,
+        description: 'Selects the arrow glyph, rel attribute (prev/next), and alignment.',
+      },
+      href: {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description: "Anchor href. Omit when rendering a framework Link via the render-prop form.",
+      },
+      children: {
+        type: "ReactNode | (props: PagerLinkRenderProps) => ReactNode",
+        required: true,
+        defaultValue: null,
+        description: "Link label, or a render function that receives ref, className, rel, direction, and remaining anchor props for framework Link integration.",
+      },
+    },
+  },
 }

@@ -45,4 +45,44 @@ export const spinnerDoc: ComponentDoc = {
     { name: "spinner-label-positions", title: "Label Positions" },
   ],
   keyboard: null,
+  props: {
+    Spinner: {
+      variant: {
+        type: '"snake" | "braille" | "dots" | "pulse"',
+        required: false,
+        defaultValue: '"snake"',
+        description: "Animation style. Snake renders a 3x3 pixel grid; braille, dots, and pulse render text glyph sequences.",
+      },
+      size: {
+        type: '"sm" | "md" | "lg"',
+        required: false,
+        defaultValue: '"md"',
+        description: "Font size token applied to the glyph and label.",
+      },
+      labelPosition: {
+        type: '"right" | "left" | "top" | "bottom"',
+        required: false,
+        defaultValue: '"right"',
+        description: "Placement of the children label relative to the spinner glyph.",
+      },
+      gap: {
+        type: '"none" | "sm" | "md" | "lg"',
+        required: false,
+        defaultValue: '"md"',
+        description: "Space between the spinner glyph and its label.",
+      },
+      speed: {
+        type: "number",
+        required: false,
+        defaultValue: null,
+        description: "Frame interval in milliseconds. Overrides the variant default (snake 100, braille 80, dots 300, pulse 80).",
+      },
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Optional label. When omitted, the spinner uses aria-label=\"Loading\".",
+      },
+    },
+  },
 }

@@ -29,20 +29,6 @@ interface PackageJson {
   peerDependenciesMeta?: Record<string, { optional?: boolean }>;
 }
 
-/**
- * Components that must publish a non-empty `props` table in generated docs data.
- * Add a component here once its `component-docs/<name>.ts` authors a `props` field.
- * Missing generated JSON is tolerated on clean checkouts; present files must be non-empty.
- */
-const COMPONENTS_REQUIRING_PROPS = [
-  "button",
-  "command-palette",
-  "dialog",
-  "field",
-  "input",
-  "select",
-] as const;
-
 const ROOT = process.env.DIFFGAZER_UI_REGISTRY_ROOT
   ? resolve(process.env.DIFFGAZER_UI_REGISTRY_ROOT)
   : resolve(import.meta.dirname, "..");
@@ -278,46 +264,42 @@ function validateExamplesAvoidHiddenPaths(items: RegistryItem[]): string[] {
   return errors;
 }
 
-function validateDocumentedComponentProps(): string[] {
+interface GeneratedComponentDocsData {
+  props?: Record<string, Record<string, unknown>>;
+  docs?: { noProps?: unknown };
+}
+
+function countProps(propsTable: Record<string, Record<string, unknown>>): number {
+  return Object.values(propsTable).reduce(
+    (sum, group) => sum + Object.keys(group).length,
+    0,
+  );
+}
+
+function validatePublicComponentProps(items: RegistryItem[]): string[] {
   const errors: string[] = [];
-  const componentsUsingApiReference = new Set<string>();
-  const componentDocsDir = resolve(ROOT, "docs/content/components");
 
-  if (existsSync(componentDocsDir)) {
-    for (const entry of readdirSync(componentDocsDir)) {
-      if (!entry.endsWith(".mdx")) continue;
-      const source = readFileSync(resolve(componentDocsDir, entry), "utf-8");
-      if (source.includes("<APIReference />")) {
-        componentsUsingApiReference.add(entry.replace(/\.mdx$/, ""));
-      }
-    }
-  }
+  for (const item of items) {
+    if (item.type !== "registry:ui" || item.meta?.hidden) continue;
 
-  for (const componentName of new Set([...COMPONENTS_REQUIRING_PROPS, ...componentsUsingApiReference])) {
-    const dataPath = resolve(ROOT, "docs/generated/components", `${componentName}.json`);
-    if (!existsSync(dataPath)) {
-      continue;
-    }
-    let data: { props?: Record<string, Record<string, unknown>> };
+    const dataPath = resolve(ROOT, "docs/generated/components", `${item.name}.json`);
+    // Skip when generated docs JSON is absent (clean checkouts before prepare:artifacts).
+    if (!existsSync(dataPath)) continue;
+
+    let data: GeneratedComponentDocsData;
     try {
-      data = JSON.parse(readFileSync(dataPath, "utf-8")) as typeof data;
+      data = JSON.parse(readFileSync(dataPath, "utf-8")) as GeneratedComponentDocsData;
     } catch (err) {
-      errors.push(`${componentName} generated docs JSON is not valid: ${(err as Error).message}`);
+      errors.push(`${item.name} generated docs JSON is not valid: ${(err as Error).message}`);
       continue;
     }
 
-    const propsTable = data.props ?? {};
-    const totalProps = Object.values(propsTable).reduce(
-      (sum, group) => sum + Object.keys(group).length,
-      0,
-    );
+    if (data.docs?.noProps === true) continue;
 
-    if (totalProps === 0) {
-      if (componentsUsingApiReference.has(componentName)) {
-        errors.push(`${componentName} renders <APIReference /> but generated docs/generated/components/${componentName}.json has no props. Add a "props" field to registry/component-docs/${componentName}.ts or remove <APIReference /> from docs/content/components/${componentName}.mdx.`);
-      } else {
-        errors.push(`${componentName} is required to publish props but generated docs/generated/components/${componentName}.json has none. Add a "props" field to registry/component-docs/${componentName}.ts.`);
-      }
+    if (countProps(data.props ?? {}) === 0) {
+      errors.push(
+        `${item.name}: public component has empty props table in docs/generated/components/${item.name}.json. Populate the "props" field in registry/component-docs/${item.name}.ts, or set "noProps: true" on the exported doc if the component intentionally has no public props.`,
+      );
     }
   }
 
@@ -382,7 +364,7 @@ function validate(): string[] {
       errors.push(`package export "${exportPath}" uses a wildcard and can expose internals`);
     }
 
-    if (!exportPath.endsWith(".css")) {
+    if (!exportPath.endsWith(".css") && exportPath !== "./package.json") {
       errors.push(...validatePublicExportShape(exportsMap, exportPath));
     }
   }
@@ -432,7 +414,7 @@ function validate(): string[] {
 
   errors.push(...validateRegistryImportClosure(items));
   errors.push(...validateExamplesAvoidHiddenPaths(items));
-  errors.push(...validateDocumentedComponentProps());
+  errors.push(...validatePublicComponentProps(items));
 
   if (!Object.hasOwn(exportsMap, "./lib/utils")) {
     errors.push("package.json is missing export ./lib/utils");

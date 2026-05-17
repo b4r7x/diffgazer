@@ -18,7 +18,7 @@ const substepVariants = cva("flex items-center gap-2 py-1 text-sm", {
   variants: {
     status: {
       pending: "text-muted-foreground",
-      active: "text-foreground font-medium animate-pulse",
+      active: "text-foreground font-medium motion-safe:animate-pulse",
       completed: "text-foreground",
       error: "text-destructive font-medium",
     },

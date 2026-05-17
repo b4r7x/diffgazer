@@ -20,10 +20,12 @@ function splitDiffLines(value: string): string[] {
 function naiveEdits(oldLines: string[], newLines: string[]): DiffChange[] {
   const edits: DiffChange[] = [];
   for (let i = 0; i < oldLines.length; i++) {
-    edits.push({ type: "remove", content: oldLines[i], oldLine: i + 1, newLine: null });
+    const content = oldLines[i] ?? "";
+    edits.push({ type: "remove", content, oldLine: i + 1, newLine: null });
   }
   for (let j = 0; j < newLines.length; j++) {
-    edits.push({ type: "add", content: newLines[j], oldLine: null, newLine: j + 1 });
+    const content = newLines[j] ?? "";
+    edits.push({ type: "add", content, oldLine: null, newLine: j + 1 });
   }
   return edits;
 }
@@ -39,15 +41,23 @@ function lcsEdits(oldLines: string[], newLines: string[]): DiffChange[] {
   let i = m;
   let j = n;
   while (i > 0 || j > 0) {
+    const oldContent = oldLines[i - 1] ?? "";
+    const newContent = newLines[j - 1] ?? "";
     if (i > 0 && j > 0 && oldLines[i - 1] === newLines[j - 1]) {
-      edits.push({ type: "context", content: oldLines[i - 1], oldLine: i, newLine: j });
+      edits.push({ type: "context", content: oldContent, oldLine: i, newLine: j });
       i--;
       j--;
-    } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
-      edits.push({ type: "add", content: newLines[j - 1], oldLine: null, newLine: j });
+      continue;
+    }
+    const upRow = dp[i - 1] ?? [];
+    const curRow = dp[i] ?? [];
+    const left = curRow[j - 1] ?? 0;
+    const up = upRow[j] ?? 0;
+    if (j > 0 && (i === 0 || left >= up)) {
+      edits.push({ type: "add", content: newContent, oldLine: null, newLine: j });
       j--;
     } else {
-      edits.push({ type: "remove", content: oldLines[i - 1], oldLine: i, newLine: null });
+      edits.push({ type: "remove", content: oldContent, oldLine: i, newLine: null });
       i--;
     }
   }
@@ -58,22 +68,27 @@ function lcsEdits(oldLines: string[], newLines: string[]): DiffChange[] {
 function findChangeIndices(edits: DiffChange[]): number[] {
   const indices: number[] = [];
   for (let i = 0; i < edits.length; i++) {
-    if (edits[i].type !== "context") indices.push(i);
+    const edit = edits[i];
+    if (edit && edit.type !== "context") indices.push(i);
   }
   return indices;
 }
 
 function mergeNearbyRanges(indices: number[], gap: number): [number, number][] {
   const ranges: [number, number][] = [];
-  let start = indices[0];
-  let end = indices[0];
+  const first = indices[0];
+  if (first === undefined) return ranges;
+  let start = first;
+  let end = first;
   for (let k = 1; k < indices.length; k++) {
-    if (indices[k] - end <= gap) {
-      end = indices[k];
+    const idx = indices[k];
+    if (idx === undefined) continue;
+    if (idx - end <= gap) {
+      end = idx;
     } else {
       ranges.push([start, end]);
-      start = indices[k];
-      end = indices[k];
+      start = idx;
+      end = idx;
     }
   }
   ranges.push([start, end]);

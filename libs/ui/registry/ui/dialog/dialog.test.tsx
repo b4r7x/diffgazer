@@ -1,8 +1,12 @@
+import { readFileSync } from "node:fs"
+import { resolve } from "node:path"
+import { fileURLToPath } from "node:url"
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { axe } from "../../../testing/utils.js"
-import { afterEach, describe, it, expect, vi } from "vitest"
-import { useState } from "react"
+import { afterEach, afterAll, beforeAll, beforeEach, describe, it, expect, vi } from "vitest"
+import { useState, type ReactNode } from "react"
+import { renderToString } from "react-dom/server"
 import { Dialog } from "./index.js"
 import { Popover } from "../popover/index.js"
 
@@ -370,17 +374,19 @@ describe("Dialog", () => {
     warn.mockRestore()
   })
 
-  it("accepts a Dialog.Title wrapped in another component", () => {
+  it("accepts a Dialog.Title nested inside a pass-through wrapper", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
 
-    function WrappedTitle() {
-      return <Dialog.Title>Wrapped title</Dialog.Title>
+    function PassThroughWrapper({ children }: { children: ReactNode }) {
+      return <div>{children}</div>
     }
 
     render(
       <Dialog defaultOpen>
         <Dialog.Content>
-          <WrappedTitle />
+          <PassThroughWrapper>
+            <Dialog.Title>Wrapped title</Dialog.Title>
+          </PassThroughWrapper>
           <Dialog.Body>Body content</Dialog.Body>
         </Dialog.Content>
       </Dialog>
@@ -438,6 +444,63 @@ describe("Dialog", () => {
     )
     const dialog = screen.getByRole("dialog")
     expect(dialog).not.toHaveAttribute("aria-describedby")
+  })
+
+  it("emits aria-labelledby (not the aria-label fallback) on the SSR string for defaultOpen with a Title", () => {
+    const html = renderToString(
+      <Dialog defaultOpen>
+        <Dialog.Content>
+          <Dialog.Title>SSR title</Dialog.Title>
+        </Dialog.Content>
+      </Dialog>
+    )
+
+    expect(html).toContain("aria-labelledby=")
+    expect(html).toContain("SSR title")
+    expect(html).not.toContain('aria-label="Dialog"')
+  })
+
+  it("emits aria-describedby on the SSR string for defaultOpen with a Description", () => {
+    const html = renderToString(
+      <Dialog defaultOpen>
+        <Dialog.Content>
+          <Dialog.Title>SSR title</Dialog.Title>
+          <Dialog.Description>SSR description</Dialog.Description>
+        </Dialog.Content>
+      </Dialog>
+    )
+
+    expect(html).toContain("aria-describedby=")
+    expect(html).toContain("SSR description")
+  })
+
+  it("emits the same accessible-name shape on SSR and on client render (no post-mount flip)", () => {
+    const tree = (
+      <Dialog defaultOpen>
+        <Dialog.Content>
+          <Dialog.Title>Stable title</Dialog.Title>
+          <Dialog.Description>Stable description</Dialog.Description>
+        </Dialog.Content>
+      </Dialog>
+    )
+
+    const ssrHtml = renderToString(tree)
+    expect(ssrHtml).toContain("aria-labelledby=")
+    expect(ssrHtml).toContain("aria-describedby=")
+    expect(ssrHtml).not.toContain('aria-label="Dialog"')
+
+    render(tree)
+    const dialog = screen.getByRole("dialog", { name: "Stable title" })
+    const clientLabelledBy = dialog.getAttribute("aria-labelledby")
+    const clientDescribedBy = dialog.getAttribute("aria-describedby")
+    expect(clientLabelledBy).toBeTruthy()
+    expect(clientDescribedBy).toBeTruthy()
+    expect(dialog).not.toHaveAttribute("aria-label")
+
+    const title = screen.getByRole("heading", { name: "Stable title" })
+    const description = screen.getByText("Stable description")
+    expect(clientLabelledBy).toBe(title.id)
+    expect(clientDescribedBy).toBe(description.id)
   })
 
   it("has no a11y violations when open", async () => {
@@ -522,7 +585,9 @@ describe("Dialog", () => {
     const firstDialog = screen.getByRole("dialog", { name: "Dialog 1" })
     const secondDialog = screen.getByRole("dialog", { name: "Dialog 2" })
     const closeButtons = screen.getAllByRole("button", { name: "Close dialog" })
-    await userEvent.click(closeButtons[closeButtons.length - 1])
+    const lastClose = closeButtons[closeButtons.length - 1]
+    if (!lastClose) throw new Error("expected close button")
+    await userEvent.click(lastClose)
 
     expect(onOpenChange2).toHaveBeenCalledWith(false)
     expect(onOpenChange1).not.toHaveBeenCalled()
@@ -654,5 +719,248 @@ describe("Dialog", () => {
     expect(onClick).toHaveBeenCalled()
     expect(onCancel).toHaveBeenCalled()
     expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+})
+
+describe("Dialog fallback (no showModal)", () => {
+  let restoreShowModal: (() => void) | null = null
+
+  beforeEach(() => {
+    // iOS Safari < 15.4 lacks HTMLDialogElement.prototype.showModal. Simulate
+    // by deleting the property the test-setup polyfill installs; restore in
+    // afterEach so other suites keep the native path.
+    const descriptor = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "showModal")
+    Reflect.deleteProperty(HTMLDialogElement.prototype, "showModal")
+    restoreShowModal = () => {
+      if (descriptor) Object.defineProperty(HTMLDialogElement.prototype, "showModal", descriptor)
+    }
+  })
+
+  afterEach(() => {
+    restoreShowModal?.()
+    restoreShowModal = null
+  })
+
+  it("renders as div with role=dialog when showModal is unavailable", () => {
+    render(
+      <Dialog defaultOpen>
+        <Dialog.Content>
+          <Dialog.Title>Fallback dialog</Dialog.Title>
+          <Dialog.Body>Body content</Dialog.Body>
+          <Dialog.Close>Close</Dialog.Close>
+        </Dialog.Content>
+      </Dialog>
+    )
+
+    const dialog = screen.getByRole("dialog", { name: "Fallback dialog" })
+    expect(dialog.tagName).toBe("DIV")
+    expect(dialog).toHaveAttribute("aria-modal", "true")
+    expect(dialog).toHaveAttribute("data-state", "open")
+  })
+
+  it("closes on Escape in fallback path", async () => {
+    const onOpenChange = vi.fn()
+    render(
+      <Dialog defaultOpen onOpenChange={onOpenChange}>
+        <Dialog.Content>
+          <Dialog.Title>Fallback dialog</Dialog.Title>
+          <Dialog.Close>Close</Dialog.Close>
+        </Dialog.Content>
+      </Dialog>
+    )
+
+    const dialog = screen.getByRole("dialog", { name: "Fallback dialog" })
+    dialog.focus()
+    await userEvent.keyboard("{Escape}")
+
+    expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+
+  it("closes on outside tap in fallback path", () => {
+    const onOpenChange = vi.fn()
+    render(
+      <div>
+        <button>Outside</button>
+        <Dialog defaultOpen onOpenChange={onOpenChange}>
+          <Dialog.Content>
+            <Dialog.Title>Fallback dialog</Dialog.Title>
+            <Dialog.Close>Close</Dialog.Close>
+          </Dialog.Content>
+        </Dialog>
+      </div>
+    )
+
+    expect(screen.getByRole("dialog", { name: "Fallback dialog" })).toBeInTheDocument()
+    // fireEvent retained: document-level pointerdown listener attaches in capture phase
+    fireEvent.pointerDown(screen.getByRole("button", { name: "Outside" }))
+
+    expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+
+  it("marks background body siblings as inert while fallback dialog is open", () => {
+    render(
+      <>
+        <div data-testid="page-shell">Page shell</div>
+        <Dialog defaultOpen>
+          <Dialog.Content>
+            <Dialog.Title>Fallback dialog</Dialog.Title>
+            <Dialog.Close>Close</Dialog.Close>
+          </Dialog.Content>
+        </Dialog>
+      </>
+    )
+
+    expect(screen.getByRole("dialog", { name: "Fallback dialog" })).toBeInTheDocument()
+    // page-shell is rendered as a sibling of the dialog under body in jsdom
+    const pageShell = screen.getByTestId("page-shell")
+    const inertedAncestor = pageShell.closest("[inert]")
+    expect(inertedAncestor).not.toBeNull()
+  })
+})
+
+describe("Dialog body scroll lock (CSS-only)", () => {
+  // Source dialog.css lives at registry/ui/shared/dialog.css; this test reads
+  // the real file and asserts the body-lock rule both exists in source and
+  // takes effect on a live document, so any change to the selector or the
+  // declaration block is caught here. jsdom's CSSOM does not apply rules
+  // nested inside @layer blocks, so the rule is extracted and injected at the
+  // top level for the runtime assertions.
+  const DIALOG_CSS_PATH = resolve(fileURLToPath(import.meta.url), "../../shared/dialog.css")
+  const BODY_LOCK_RULE_RE = /body:has\(dialog\[open\]\)\s*\{[^}]*\}/
+  let styleElement: HTMLStyleElement | null = null
+
+  beforeAll(() => {
+    const sourceCss = readFileSync(DIALOG_CSS_PATH, "utf8")
+    const bodyLockRule = sourceCss.match(BODY_LOCK_RULE_RE)?.[0]
+    if (!bodyLockRule) {
+      throw new Error("dialog.css must declare a body:has(dialog[open]) rule for the scroll lock contract")
+    }
+    if (!/overflow\s*:\s*hidden/.test(bodyLockRule)) {
+      throw new Error("dialog.css body:has(dialog[open]) rule must set overflow: hidden")
+    }
+    styleElement = document.createElement("style")
+    styleElement.dataset.testSource = "dialog.css#body-lock"
+    styleElement.textContent = bodyLockRule
+    document.head.appendChild(styleElement)
+  })
+
+  afterAll(() => {
+    styleElement?.remove()
+    styleElement = null
+  })
+
+  it("locks body overflow while a Dialog is open and releases it on close", async () => {
+    const baselineOverflow = getComputedStyle(document.body).overflow
+    expect(baselineOverflow).not.toBe("hidden")
+
+    render(
+      <Dialog defaultOpen>
+        <Dialog.Content>
+          <Dialog.Title>Scroll lock dialog</Dialog.Title>
+          <Dialog.Close />
+        </Dialog.Content>
+      </Dialog>
+    )
+
+    const dialog = screen.getByRole("dialog", { name: "Scroll lock dialog" })
+    expect(getComputedStyle(document.body).overflow).toBe("hidden")
+
+    await userEvent.click(screen.getByRole("button", { name: "Close dialog" }))
+    await waitFor(() => expect(dialog).toHaveAttribute("data-state", "closed"))
+    // fireEvent retained: animationend has no user-event equivalent; presence transitions complete on this event
+    fireEvent.animationEnd(dialog)
+    await waitFor(() => expect(document.body).not.toContainElement(dialog))
+
+    expect(getComputedStyle(document.body).overflow).toBe(baselineOverflow)
+  })
+
+  it("keeps body locked while any of multiple open dialogs remains open", async () => {
+    render(
+      <>
+        <Dialog defaultOpen>
+          <Dialog.Content>
+            <Dialog.Title>Outer dialog</Dialog.Title>
+            <Dialog.Close>Close outer</Dialog.Close>
+          </Dialog.Content>
+        </Dialog>
+        <Dialog defaultOpen>
+          <Dialog.Content>
+            <Dialog.Title>Inner dialog</Dialog.Title>
+            <Dialog.Close>Close inner</Dialog.Close>
+          </Dialog.Content>
+        </Dialog>
+      </>
+    )
+
+    expect(getComputedStyle(document.body).overflow).toBe("hidden")
+
+    const innerDialog = screen.getByRole("dialog", { name: "Inner dialog" })
+    await userEvent.click(screen.getByRole("button", { name: "Close inner" }))
+    await waitFor(() => expect(innerDialog).toHaveAttribute("data-state", "closed"))
+    // fireEvent retained: animationend has no user-event equivalent
+    fireEvent.animationEnd(innerDialog)
+    await waitFor(() => expect(document.body).not.toContainElement(innerDialog))
+
+    expect(getComputedStyle(document.body).overflow).toBe("hidden")
+
+    const outerDialog = screen.getByRole("dialog", { name: "Outer dialog" })
+    await userEvent.click(screen.getByRole("button", { name: "Close outer" }))
+    await waitFor(() => expect(outerDialog).toHaveAttribute("data-state", "closed"))
+    // fireEvent retained: animationend has no user-event equivalent
+    fireEvent.animationEnd(outerDialog)
+    await waitFor(() => expect(document.body).not.toContainElement(outerDialog))
+
+    expect(getComputedStyle(document.body).overflow).not.toBe("hidden")
+  })
+})
+
+describe("Dialog prefers-reduced-motion (CSS-only)", () => {
+  // dialog.css declares a @media (prefers-reduced-motion: reduce) block that
+  // sets `animation: none !important` for both the <dialog> element and
+  // ::backdrop. jsdom does not evaluate @media in stylesheets, so the rule's
+  // declaration is extracted and injected unconditionally at the top level
+  // to simulate matchMedia returning true; getComputedStyle then reports
+  // the suppressed animation.
+  const DIALOG_CSS_PATH = resolve(fileURLToPath(import.meta.url), "../../shared/dialog.css")
+  const REDUCED_MOTION_RULE_RE = /@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{\s*dialog,?\s*\n?\s*dialog::backdrop\s*\{[^}]*\}\s*\}/
+  let styleElement: HTMLStyleElement | null = null
+
+  beforeAll(() => {
+    const sourceCss = readFileSync(DIALOG_CSS_PATH, "utf8")
+    const ruleBlock = sourceCss.match(REDUCED_MOTION_RULE_RE)?.[0]
+    if (!ruleBlock) {
+      throw new Error("dialog.css must declare a @media (prefers-reduced-motion: reduce) rule for dialog and dialog::backdrop")
+    }
+    if (!/animation:\s*none\s*!important/.test(ruleBlock)) {
+      throw new Error("dialog.css reduced-motion rule must set animation: none !important (not animation-duration: 0.01s)")
+    }
+    if (/animation-duration:\s*0\.01s/.test(ruleBlock)) {
+      throw new Error("dialog.css reduced-motion rule must no longer use animation-duration: 0.01s !important")
+    }
+    const declaration = ruleBlock.match(/\{[^{]*\{([^}]*)\}/)?.[1]
+    if (!declaration) throw new Error("dialog.css reduced-motion rule body could not be extracted")
+    styleElement = document.createElement("style")
+    styleElement.dataset.testSource = "dialog.css#reduced-motion"
+    styleElement.textContent = `dialog { ${declaration} }`
+    document.head.appendChild(styleElement)
+  })
+
+  afterAll(() => {
+    styleElement?.remove()
+    styleElement = null
+  })
+
+  it("suppresses dialog open animation under prefers-reduced-motion", () => {
+    render(
+      <Dialog defaultOpen>
+        <Dialog.Content>
+          <Dialog.Title>Reduced motion dialog</Dialog.Title>
+          <Dialog.Close />
+        </Dialog.Content>
+      </Dialog>,
+    )
+
+    const dialog = screen.getByRole("dialog", { name: "Reduced motion dialog" })
+    expect(getComputedStyle(dialog).animation).toBe("none")
   })
 })

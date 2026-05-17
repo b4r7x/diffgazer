@@ -1,14 +1,7 @@
-import { relative, resolve } from "node:path";
-import { collectFiles } from "./files.mjs";
-import { toPosixPath } from "./paths.mjs";
+export function validateArtifactPackSurface(_root, library, packedFiles) {
+  const leaked = packedFiles.filter((path) => path.startsWith("dist/artifacts/"));
 
-export function validateArtifactPackSurface(root, library, packedFiles) {
-  const packageRoot = resolve(root, library.workspaceDir);
-  const artifactRoot = resolve(packageRoot, "dist/artifacts");
-  const required = collectFiles(artifactRoot).map((file) => toPosixPath(relative(packageRoot, file)));
-  const missing = required.filter((path) => !packedFiles.includes(path));
-
-  return missing.length
-    ? [`${library.packageName} npm pack is missing docs artifacts: ${missing.join(", ")}`]
+  return leaked.length
+    ? [`${library.packageName} npm pack must not ship dist/artifacts: ${leaked.slice(0, 5).join(", ")}${leaked.length > 5 ? `, ... (${leaked.length} total)` : ""}`]
     : [];
 }

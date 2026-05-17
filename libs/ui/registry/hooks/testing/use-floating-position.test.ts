@@ -1,5 +1,5 @@
 import { createElement, useRef } from "react"
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { act, render, screen, waitFor } from "@testing-library/react"
 import {
   computePosition,
@@ -179,6 +179,149 @@ describe("useFloatingPosition", () => {
     })
   })
 
+  describe("rAF batching of scroll/resize", () => {
+    let rafCallbacks: FrameRequestCallback[] = []
+    let rafCancelCount = 0
+    const originalRequestAnimationFrame = Object.getOwnPropertyDescriptor(globalThis, "requestAnimationFrame")
+    const originalCancelAnimationFrame = Object.getOwnPropertyDescriptor(globalThis, "cancelAnimationFrame")
+
+    beforeEach(() => {
+      rafCallbacks = []
+      rafCancelCount = 0
+      // Boundary mock: replaces browser rAF/cAF scheduler so the test can assert exact frame coalescing
+      vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
+        rafCallbacks.push(cb)
+        return rafCallbacks.length
+      })
+      // Boundary mock: replaces browser rAF/cAF scheduler so the test can assert exact frame coalescing
+      vi.stubGlobal("cancelAnimationFrame", () => {
+        rafCancelCount += 1
+      })
+    })
+
+    afterEach(() => {
+      vi.unstubAllGlobals()
+      restoreProperty(globalThis, "requestAnimationFrame", originalRequestAnimationFrame)
+      restoreProperty(globalThis, "cancelAnimationFrame", originalCancelAnimationFrame)
+    })
+
+    function flushFrames() {
+      const callbacks = rafCallbacks
+      rafCallbacks = []
+      for (const cb of callbacks) cb(0)
+    }
+
+    it("coalesces multiple scroll/resize events within a frame into one update", async () => {
+      setViewport()
+      let triggerX = 100
+      const triggerRectCalls = vi.fn(() => makeDOMRect(triggerX, 100, 80, 40))
+      render(createElement(FloatingHarness, {
+        open: true,
+        getTriggerRect: triggerRectCalls,
+      }))
+
+      await waitFor(() => {
+        // getByTestId: hook output has no native role; harness pattern renders return values to data-testid for read-back
+        expect(screen.getByTestId("position")).toHaveTextContent("bottom:100:146")
+      })
+
+      const callsAfterMount = triggerRectCalls.mock.calls.length
+      rafCallbacks = []
+
+      triggerX = 250
+      act(() => {
+        for (let i = 0; i < 10; i++) {
+          window.dispatchEvent(new Event("scroll"))
+        }
+        window.dispatchEvent(new Event("resize"))
+      })
+
+      // call-count IS the contract: 11 listener invocations within one frame must schedule exactly one rAF
+      expect(rafCallbacks.length).toBe(1)
+      expect(triggerRectCalls.mock.calls.length).toBe(callsAfterMount)
+
+      act(() => {
+        flushFrames()
+      })
+
+      await waitFor(() => {
+        // getByTestId: hook output has no native role; harness pattern renders return values to data-testid for read-back
+        expect(screen.getByTestId("position")).toHaveTextContent("bottom:250:146")
+      })
+
+      const callsAfterFlush = triggerRectCalls.mock.calls.length
+      expect(callsAfterFlush - callsAfterMount).toBe(1)
+    })
+
+    it("schedules a fresh frame after the previous one flushed", async () => {
+      setViewport()
+      let triggerX = 100
+      render(createElement(FloatingHarness, {
+        open: true,
+        getTriggerRect: () => makeDOMRect(triggerX, 100, 80, 40),
+      }))
+
+      await waitFor(() => {
+        // getByTestId: hook output has no native role; harness pattern renders return values to data-testid for read-back
+        expect(screen.getByTestId("position")).toHaveTextContent("bottom:100:146")
+      })
+
+      rafCallbacks = []
+
+      triggerX = 200
+      act(() => {
+        window.dispatchEvent(new Event("scroll"))
+      })
+      expect(rafCallbacks.length).toBe(1)
+
+      act(() => {
+        flushFrames()
+      })
+
+      await waitFor(() => {
+        // getByTestId: hook output has no native role; harness pattern renders return values to data-testid for read-back
+        expect(screen.getByTestId("position")).toHaveTextContent("bottom:200:146")
+      })
+
+      triggerX = 350
+      act(() => {
+        window.dispatchEvent(new Event("scroll"))
+      })
+      expect(rafCallbacks.length).toBe(1)
+
+      act(() => {
+        flushFrames()
+      })
+
+      await waitFor(() => {
+        // getByTestId: hook output has no native role; harness pattern renders return values to data-testid for read-back
+        expect(screen.getByTestId("position")).toHaveTextContent("bottom:350:146")
+      })
+    })
+
+    it("cancels a pending frame on unmount", async () => {
+      setViewport()
+      const { unmount } = render(createElement(FloatingHarness, { open: true }))
+
+      await waitFor(() => {
+        // getByTestId: hook output has no native role; harness pattern renders return values to data-testid for read-back
+        expect(screen.getByTestId("position")).toHaveTextContent("bottom:100:146")
+      })
+
+      rafCallbacks = []
+      rafCancelCount = 0
+
+      act(() => {
+        window.dispatchEvent(new Event("scroll"))
+      })
+      expect(rafCallbacks.length).toBe(1)
+
+      unmount()
+
+      expect(rafCancelCount).toBe(1)
+    })
+  })
+
   it("disconnects observers and removes window listeners on cleanup", async () => {
     setViewport()
     const resizeObserverDescriptor = Object.getOwnPropertyDescriptor(globalThis, "ResizeObserver")
@@ -213,5 +356,196 @@ describe("useFloatingPosition", () => {
       removeListener.mockRestore()
       restoreProperty(globalThis, "ResizeObserver", resizeObserverDescriptor)
     }
+  })
+
+  it("derives viewport and listener target from the trigger's ownerDocument", async () => {
+    setViewport(1, 1)
+
+    const altDoc = document.implementation.createHTMLDocument("alt")
+    const altView = {
+      innerWidth: 1280,
+      innerHeight: 720,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      requestAnimationFrame: (cb: FrameRequestCallback) => {
+        cb(0)
+        return 1
+      },
+      cancelAnimationFrame: vi.fn(),
+      getComputedStyle: () => ({ overflow: "", overflowX: "", overflowY: "", display: "block" }),
+    }
+    Object.defineProperty(altDoc, "defaultView", { configurable: true, value: altView })
+
+    const hostAddListener = vi.spyOn(window, "addEventListener")
+
+    const trigger = altDoc.createElement("button")
+    const content = altDoc.createElement("div")
+    altDoc.body.append(trigger, content)
+    trigger.getBoundingClientRect = () => makeDOMRect(100, 100, 80, 40)
+    content.getBoundingClientRect = () => makeDOMRect(0, 0, 120, 50)
+
+    function CrossDocHarness() {
+      const triggerRef = useRef<HTMLElement | null>(trigger)
+      const { position, contentRef } = useFloatingPosition({
+        triggerRef,
+        open: true,
+        side: "bottom",
+        align: "center",
+        avoidCollisions: true,
+        collisionPadding: 0,
+      })
+      // Attach the cross-document content node so the hook's ref points at it.
+      contentRef.current = content
+      return createElement(
+        "div",
+        { "data-testid": "alt-position" },
+        formatPosition(position),
+      )
+    }
+
+    try {
+      render(createElement(CrossDocHarness))
+
+      await waitFor(() => {
+        // Center alignment with alt viewport 1280x720 puts content at trigger.left + width/2 - content.width/2 = 100 + 40 - 60 = 80
+        // getByTestId: hook output has no native role; harness pattern renders return values to data-testid for read-back
+        expect(screen.getByTestId("alt-position")).toHaveTextContent("bottom:80:146")
+      })
+
+      // Listeners attach on the trigger's own view, NOT the host window.
+      expect(altView.addEventListener).toHaveBeenCalledWith("scroll", expect.any(Function), { passive: true })
+      expect(altView.addEventListener).toHaveBeenCalledWith("resize", expect.any(Function))
+      // Walker must stop at iframe boundary: the host window must not receive any listeners from this hook.
+      const hostScrollResize = hostAddListener.mock.calls.filter(
+        ([type]) => type === "scroll" || type === "resize",
+      )
+      expect(hostScrollResize).toEqual([])
+    } finally {
+      hostAddListener.mockRestore()
+    }
+  })
+
+  describe("scroll-parent discovery", () => {
+    const originalGetComputedStyle = window.getComputedStyle
+    let overflowByElement: Map<Element, { overflow: string; overflowX: string; overflowY: string; display: string }>
+    let wrapperAddCalls: Array<[type: string, listener: unknown, options?: unknown]>
+    let restoreWrapperAdd: (() => void) | null
+
+    beforeEach(() => {
+      overflowByElement = new Map()
+      wrapperAddCalls = []
+      restoreWrapperAdd = null
+      // Boundary mock: stubs computed style so overflow detection can be exercised without a real CSS engine
+      window.getComputedStyle = ((el: Element) => {
+        const override = overflowByElement.get(el)
+        if (override) {
+          return {
+            overflow: override.overflow,
+            overflowX: override.overflowX,
+            overflowY: override.overflowY,
+            display: override.display,
+          } as CSSStyleDeclaration
+        }
+        return originalGetComputedStyle.call(window, el)
+      }) as typeof window.getComputedStyle
+    })
+
+    afterEach(() => {
+      restoreWrapperAdd?.()
+      window.getComputedStyle = originalGetComputedStyle
+    })
+
+    function ScrollParentHarness({
+      overflowStyle,
+      testId,
+    }: {
+      overflowStyle: { overflow?: string; overflowX?: string; overflowY?: string }
+      testId: string
+    }) {
+      const triggerRef = useRef<HTMLElement | null>(null)
+      const { position, contentRef } = useFloatingPosition({
+        triggerRef,
+        open: true,
+        side: "bottom",
+        align: "start",
+        avoidCollisions: false,
+      })
+      return createElement(
+        "div",
+        {
+          ref: (node: HTMLDivElement | null) => {
+            if (!node) return
+            overflowByElement.set(node, {
+              overflow: overflowStyle.overflow ?? "",
+              overflowX: overflowStyle.overflowX ?? "",
+              overflowY: overflowStyle.overflowY ?? "",
+              display: "block",
+            })
+            if (restoreWrapperAdd) return
+            const original = node.addEventListener.bind(node)
+            node.addEventListener = ((type: string, listener: EventListenerOrEventListenerObject, options?: AddEventListenerOptions | boolean) => {
+              wrapperAddCalls.push([type, listener, options])
+              original(type, listener, options)
+            }) as typeof node.addEventListener
+            restoreWrapperAdd = () => {
+              node.addEventListener = original as typeof node.addEventListener
+            }
+          },
+        },
+        createElement("button", {
+          ref: (n: HTMLButtonElement | null) => {
+            triggerRef.current = n
+            if (n) n.getBoundingClientRect = () => triggerRect
+          },
+        }),
+        createElement(
+          "div",
+          {
+            ref: (n: HTMLDivElement | null) => {
+              contentRef.current = n
+              if (n) n.getBoundingClientRect = () => contentRect
+            },
+            "data-testid": testId,
+          },
+          formatPosition(position),
+        ),
+      )
+    }
+
+    it.each([
+      {
+        name: "skips overflowing-but-non-scrollable ancestors (overflow: visible)",
+        overflowStyle: {},
+        testId: "non-scroll-position",
+        expectScrollListener: false,
+      },
+      {
+        name: "attaches to ancestor with overflow-y: auto",
+        overflowStyle: { overflowY: "auto" },
+        testId: "auto-scroll-position",
+        expectScrollListener: true,
+      },
+      {
+        name: "attaches to ancestor with overflow: scroll (transformed containing block case)",
+        overflowStyle: { overflow: "scroll" },
+        testId: "transform-scroll-position",
+        expectScrollListener: true,
+      },
+    ])("$name", async ({ overflowStyle, testId, expectScrollListener }) => {
+      setViewport()
+      render(createElement(ScrollParentHarness, { overflowStyle, testId }))
+
+      await waitFor(() => {
+        // getByTestId: hook output has no native role; harness pattern renders return values to data-testid for read-back
+        expect(screen.getByTestId(testId)).toHaveTextContent("bottom:100:146")
+      })
+
+      const wrapperScrollCalls = wrapperAddCalls.filter(([type]) => type === "scroll")
+      if (expectScrollListener) {
+        expect(wrapperScrollCalls.length).toBeGreaterThan(0)
+      } else {
+        expect(wrapperScrollCalls).toEqual([])
+      }
+    })
   })
 })

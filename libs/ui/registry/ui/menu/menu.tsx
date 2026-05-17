@@ -12,14 +12,14 @@ import { cn } from "@/lib/utils";
 import { MenuContext, type MenuContextValue } from "./menu-context";
 import { MenuItem } from "./menu-item";
 
-export interface MenuProps
+export interface MenuProps<TId extends string = string>
   extends Omit<ComponentPropsWithRef<"div">, "children" | "onKeyDown" | "onSelect"> {
-  selectedId?: string | null;
-  defaultSelectedId?: string | null;
-  highlighted?: string | null;
-  defaultHighlighted?: string | null;
-  onSelect?: (id: string) => void;
-  onHighlightChange?: (value: string | null) => void;
+  selectedId?: TId | null;
+  defaultSelectedId?: TId | null;
+  highlighted?: TId | null;
+  defaultHighlighted?: TId | null;
+  onSelect?: (id: TId) => void;
+  onHighlightChange?: (value: TId | null) => void;
   onClose?: () => void;
   variant?: "default" | "hub";
   wrap?: boolean;
@@ -28,7 +28,38 @@ export interface MenuProps
   onKeyDown?: (event: KeyboardEvent) => void;
 }
 
-export function Menu({
+/**
+ * Listbox-style menu with arrow-key navigation, typeahead, and Enter/Space
+ * activation. Use `MenuItem` for entries and `MenuDivider` to separate
+ * groups. Pair `selectedId` / `defaultSelectedId` with `onSelect` to mark a
+ * single item as active (role becomes `menuitemradio`); omit it for a plain
+ * action menu.
+ *
+ * @example
+ * ```tsx
+ * <Menu aria-label="File actions" onSelect={(id) => runAction(id)}>
+ *   <Menu.Item id="new">New file</Menu.Item>
+ *   <Menu.Item id="open">Open...</Menu.Item>
+ *   <Menu.Item id="save">Save</Menu.Item>
+ *   <Menu.Divider />
+ *   <Menu.Item id="delete" variant="danger">Delete</Menu.Item>
+ * </Menu>
+ * ```
+ *
+ * @example
+ * ```tsx
+ * const [branch, setBranch] = useState("main");
+ * <Menu
+ *   aria-label="Branch"
+ *   selectedId={branch}
+ *   onSelect={setBranch}
+ * >
+ *   <Menu.Item id="main">main</Menu.Item>
+ *   <Menu.Item id="develop">develop</Menu.Item>
+ * </Menu>
+ * ```
+ */
+export function Menu<TId extends string = string>({
   selectedId: controlledSelectedId,
   defaultSelectedId = null,
   highlighted: controlledHighlighted,
@@ -45,11 +76,11 @@ export function Menu({
   onKeyDown,
   ref,
   ...rootProps
-}: MenuProps) {
+}: MenuProps<TId>) {
   const idPrefix = useId();
   const selectionEnabled = controlledSelectedId !== undefined || defaultSelectedId !== null;
   const itemRole = selectionEnabled ? "menuitemradio" : "menuitem";
-  const items = useMemo(() => collectListboxItems(children, MenuItem), [children]);
+  const items = useMemo(() => collectListboxItems<TId>(children, MenuItem), [children]);
 
   const {
     selectedId,
@@ -57,7 +88,7 @@ export function Menu({
     handleItemActivate,
     handleItemHighlight,
     getContainerProps,
-  } = useListbox({
+  } = useListbox<TId>({
     selectedId: selectionEnabled ? controlledSelectedId : null,
     defaultSelectedId: selectionEnabled ? defaultSelectedId : null,
     highlighted: controlledHighlighted,
@@ -79,12 +110,14 @@ export function Menu({
     getItemId: getEncodedListboxItemId,
   });
 
+  // Public TId narrows the API; internal context stays string-keyed because the
+  // DOM uses data-value strings and child MenuItem ids are opaque to TS.
   const contextValue: MenuContextValue = useMemo(
     () => ({
       selectedId,
       highlighted,
-      activate: handleItemActivate,
-      highlight: handleItemHighlight,
+      activate: handleItemActivate as (id: string) => void,
+      highlight: handleItemHighlight as (id: string) => void,
       variant,
       idPrefix,
       itemRole,

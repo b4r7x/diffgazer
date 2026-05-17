@@ -5,6 +5,7 @@
   "description": "Terminal-styled multi-line text area",
   "dependencies": [],
   "registryDependencies": [
+    "https://diffgazer.com/r/ui/theme.json",
     "https://diffgazer.com/r/ui/input-variants.json"
   ],
   "files": [

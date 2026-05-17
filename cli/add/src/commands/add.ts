@@ -18,7 +18,7 @@ import {
   validateInstallNames,
 } from "../utils/namespaces.js";
 import type { ResolvedConfig } from "../context.js";
-import { buildComponentCssFileOps } from "./add/css-ops.js";
+import { planComponentCss } from "./add/css-ops.js";
 import { buildComponentFileOps, buildKeysFileOps } from "./add/file-ops.js";
 import { buildManifestMetadata, updateOwnedManifestEntries } from "./add/manifest.js";
 
@@ -27,19 +27,25 @@ function logIntegrationMode(mode: ResolvedIntegrationSelection["mode"]): void {
   if (mode === "@diffgazer/keys") info("Including integration: keyboard-navigation + @diffgazer/keys package");
 }
 
+interface CollectedFileOps {
+  fileOps: FileOp[];
+  cssChunksByItem: Map<string, string[]>;
+}
+
 function collectFileOps(
   resolved: string[],
   cwd: string,
   config: ResolvedConfig,
   selection: ResolvedIntegrationSelection,
   neededKeysHooks: string[],
-): FileOp[] {
+): CollectedFileOps {
   const fileOps = buildComponentFileOps(resolved, cwd, config, selection.mode);
-  fileOps.push(...buildComponentCssFileOps(resolved, cwd, config));
+  const cssPlan = planComponentCss(resolved, cwd, config);
+  if (cssPlan.fileOp) fileOps.push(cssPlan.fileOp);
   if (selection.hasKeyboardIntegration && selection.mode === "copy") {
     fileOps.push(...buildKeysFileOps(neededKeysHooks, cwd, config));
   }
-  return fileOps;
+  return { fileOps, cssChunksByItem: cssPlan.chunksByItem };
 }
 
 function computeMissingDeps(
@@ -82,6 +88,11 @@ const addBaseCommand = createAddCommand<ResolvedConfig>({
     const neededKeysHooks = resolveKeysHooksFromRegistry(
       resolved.map((name) => ctx.items.getOrThrow(name)),
     );
+    const explicitNames = new Set<string>([
+      ...namesByNamespace.ui.map((name) => `ui/${name}`),
+      ...namesByNamespace.keys.map((name) => `keys/${name}`),
+    ]);
+    const collected = collectFileOps(resolved, cwd, config, selection, neededKeysHooks);
 
     return {
       resolvedNames: [
@@ -89,7 +100,7 @@ const addBaseCommand = createAddCommand<ResolvedConfig>({
         ...namesByNamespace.keys.map((name) => `keys/${name}`),
       ],
       fileOps: [
-        ...collectFileOps(resolved, cwd, config, selection, neededKeysHooks),
+        ...collected.fileOps,
         ...buildKeysFileOps(namesByNamespace.keys, cwd, config),
       ],
       missingDeps: computeMissingDeps(resolved, selection, keysVersionSpec, cwd),
@@ -100,12 +111,13 @@ const addBaseCommand = createAddCommand<ResolvedConfig>({
           info("Keys hooks would be installed from bundled offline sources.");
         }
       },
-      onApplied: ({ resolvedNames, writeResult }) => {
-        updateOwnedManifestEntries(
-          cwd,
+      onApplied: ({ writeResult }) => {
+        updateOwnedManifestEntries(cwd, {
           writeResult,
-          buildManifestMetadata(selection.mode, keysVersionSpec),
-        );
+          metadata: buildManifestMetadata(selection.mode, keysVersionSpec),
+          explicitNames,
+          cssChunksByItem: collected.cssChunksByItem,
+        });
         if (selection.hasKeyboardIntegration && selection.mode === "copy") {
           info("Keyboard hooks copied alongside components. No additional packages needed.");
           info("For package imports, re-run with --integration=keys to use @diffgazer/keys.");

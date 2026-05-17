@@ -1,9 +1,9 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useRef } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, expectTypeOf, it, vi } from "vitest";
 import { testNavigationBehavior } from "../testing/navigation-behavior";
-import { useNavigation, type UseNavigationOptions } from "./use-navigation";
+import { useNavigation, type UseNavigationOptions, type UseNavigationReturn } from "./use-navigation";
 
 function itemId(value: string) {
   return value === "" ? "item-empty" : `item-${value}`;
@@ -841,6 +841,23 @@ describe("useNavigation", () => {
       await user.keyboard("{ArrowDown}");
 
       expect(document.activeElement).toBe(screen.getByRole("menuitem", { name: "B" }));
+    });
+  });
+
+  describe("types", () => {
+    it("narrows highlighted/onSelect to the supplied union", () => {
+      type Narrow = UseNavigationOptions<"a" | "b">;
+      type ReturnNarrow = UseNavigationReturn<"a" | "b">;
+
+      expectTypeOf<Narrow["highlighted"]>().toEqualTypeOf<"a" | "b" | null | undefined>();
+      expectTypeOf<NonNullable<Narrow["onSelect"]>>().parameter(0).toEqualTypeOf<"a" | "b">();
+      expectTypeOf<NonNullable<Narrow["onHighlightChange"]>>().parameter(0).toEqualTypeOf<"a" | "b" | null>();
+      expectTypeOf<ReturnNarrow["highlighted"]>().toEqualTypeOf<"a" | "b" | null>();
+    });
+
+    it("keeps the loose default contract when no generic is supplied", () => {
+      expectTypeOf<UseNavigationOptions["highlighted"]>().toEqualTypeOf<string | null | undefined>();
+      expectTypeOf<UseNavigationReturn["highlighted"]>().toEqualTypeOf<string | null>();
     });
   });
 });

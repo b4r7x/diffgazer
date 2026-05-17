@@ -136,7 +136,7 @@
     "zod": "^4.3.6"
   },
   "peerDependencies": {
-    "react": "^18.0.0 || ^19.0.0"
+    "react": ">=19.2.0"
   },
   "peerDependenciesMeta": {
     "react": {

@@ -189,6 +189,78 @@ describe("Field", () => {
     expect(combobox).toHaveAttribute("id", "region-select")
   })
 
+  it("treats empty string description and error as absent (no aria-describedby, no rendered text)", () => {
+    render(
+      <Field invalid>
+        <Field.Label>Email</Field.Label>
+        <Field.Control>
+          <Input />
+        </Field.Control>
+        <Field.Description>{""}</Field.Description>
+        <Field.Error>{""}</Field.Error>
+      </Field>,
+    )
+
+    const input = screen.getByRole("textbox", { name: "Email" })
+
+    expect(input).not.toHaveAttribute("aria-describedby")
+    expect(input).toHaveAccessibleDescription("")
+    expect(screen.queryByText("", { selector: "[data-slot='field-description']" })).not.toBeInTheDocument()
+    expect(screen.queryByText("", { selector: "[data-slot='field-error']" })).not.toBeInTheDocument()
+  })
+
+  it("treats arrays of only empty strings as absent", () => {
+    render(
+      <Field invalid>
+        <Field.Label>Email</Field.Label>
+        <Field.Control>
+          <Input />
+        </Field.Control>
+        <Field.Description>{[""]}</Field.Description>
+        <Field.Error>{["", ""]}</Field.Error>
+      </Field>,
+    )
+
+    const input = screen.getByRole("textbox", { name: "Email" })
+
+    expect(input).not.toHaveAttribute("aria-describedby")
+    expect(input).toHaveAccessibleDescription("")
+  })
+
+  it("renders description when content is the number zero", () => {
+    render(
+      <Field>
+        <Field.Label>Count</Field.Label>
+        <Field.Control>
+          <Input />
+        </Field.Control>
+        <Field.Description>{0}</Field.Description>
+      </Field>,
+    )
+
+    const input = screen.getByRole("textbox", { name: "Count" })
+
+    expect(input).toHaveAccessibleDescription("0")
+  })
+
+  it("renders description for fragments with content", () => {
+    render(
+      <Field>
+        <Field.Label>Email</Field.Label>
+        <Field.Control>
+          <Input />
+        </Field.Control>
+        <Field.Description>
+          <>Use your <strong>work</strong> email.</>
+        </Field.Description>
+      </Field>,
+    )
+
+    const input = screen.getByRole("textbox", { name: "Email" })
+
+    expect(input).toHaveAccessibleDescription("Use your work email.")
+  })
+
   it("has no a11y violations across Field configurations", async () => {
     const { container, rerender } = render(
       <Field>

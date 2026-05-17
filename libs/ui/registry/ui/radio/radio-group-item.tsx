@@ -5,7 +5,7 @@ import { useRadioGroupContext } from "./radio-group-context";
 import { Radio, type RadioProps } from "./radio";
 import { composeRefs } from "@/lib/compose-refs";
 
-export interface RadioGroupItemProps
+export interface RadioGroupItemProps<TValue extends string = string>
   extends Omit<
     RadioProps,
     | "checked"
@@ -21,20 +21,20 @@ export interface RadioGroupItemProps
     | "value"
     | "data-value"
   > {
-  value: string;
+  value: TValue;
   label: ReactNode;
   description?: ReactNode;
   disabled?: boolean;
 }
 
-export function RadioGroupItem({
+export function RadioGroupItem<TValue extends string = string>({
   value,
   label,
   description,
   disabled: itemDisabled,
   ref,
   ...radioProps
-}: RadioGroupItemProps) {
+}: RadioGroupItemProps<TValue>) {
   const context = useRadioGroupContext();
   const itemId = useId();
   const rootRef = useRef<HTMLDivElement>(null);

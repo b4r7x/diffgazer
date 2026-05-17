@@ -25,3 +25,5 @@ tmp/
 /libs/ui/docs/generated/
 *.tgz
 *.tsbuildinfo
+apps/docs/playwright-report/
+apps/docs/test-results/

@@ -2,8 +2,9 @@ import { createRef } from "react"
 import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { axe } from "../../../testing/utils.js"
-import { describe, it, expect, vi } from "vitest"
-import { ToggleGroup } from "./index.js"
+import { describe, it, expect, expectTypeOf, vi } from "vitest"
+import { ToggleGroup, type ToggleGroupItemProps } from "./index.js"
+import { type ToggleGroupProps } from "./toggle-group.js"
 
 type ToggleGroupSingleComponentProps = Extract<
   React.ComponentProps<typeof ToggleGroup>,
@@ -245,7 +246,7 @@ describe("ToggleGroup", () => {
   it("moves focus with ArrowRight", async () => {
     renderGroup({ defaultValue: "a" })
     const radios = getRadios()
-    radios[0].focus()
+    radios[0]?.focus()
     await userEvent.keyboard("{ArrowRight}")
     expect(radios[1]).toHaveFocus()
   })
@@ -397,7 +398,7 @@ describe("ToggleGroup", () => {
       onKeyDown: (event) => event.preventDefault(),
     })
 
-    getRadios()[0].focus()
+    getRadios()[0]?.focus()
     await userEvent.keyboard("{ArrowRight}")
 
     expect(getRadios()[0]).toHaveFocus()
@@ -531,5 +532,33 @@ describe("ToggleGroup multiple mode", () => {
       </ToggleGroup>,
     )
     expect(await axe(container)).toHaveNoViolations()
+  })
+})
+
+describe("ToggleGroup types", () => {
+  it("narrows single-mode value/onChange to the supplied union", () => {
+    type Single = Extract<ToggleGroupProps<"a" | "b">, { selectionMode?: "single" | undefined }>
+
+    expectTypeOf<Single["value"]>().toEqualTypeOf<"a" | "b" | null | undefined>()
+    expectTypeOf<Single["defaultValue"]>().toEqualTypeOf<"a" | "b" | null | undefined>()
+    expectTypeOf<NonNullable<Single["onChange"]>>().parameter(0).toEqualTypeOf<"a" | "b" | null>()
+  })
+
+  it("narrows multiple-mode value/onChange to the supplied union", () => {
+    type Multi = Extract<ToggleGroupProps<"a" | "b">, { selectionMode: "multiple" }>
+
+    expectTypeOf<Multi["value"]>().toEqualTypeOf<readonly ("a" | "b")[] | undefined>()
+    expectTypeOf<NonNullable<Multi["onChange"]>>().parameter(0).toEqualTypeOf<readonly ("a" | "b")[]>()
+  })
+
+  it("rejects ToggleGroupItem values outside the literal union", () => {
+    expectTypeOf<"c">().not.toMatchTypeOf<ToggleGroupItemProps<"a" | "b">["value"]>()
+    expectTypeOf<"a">().toMatchTypeOf<ToggleGroupItemProps<"a" | "b">["value"]>()
+  })
+
+  it("keeps the loose default contract when no generic is supplied", () => {
+    type Single = Extract<ToggleGroupProps, { selectionMode?: "single" | undefined }>
+    expectTypeOf<Single["value"]>().toEqualTypeOf<string | null | undefined>()
+    expectTypeOf<ToggleGroupItemProps["value"]>().toEqualTypeOf<string>()
   })
 })

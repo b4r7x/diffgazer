@@ -55,6 +55,29 @@ function releaseEntry(
   );
 }
 
+/**
+ * Capture the currently focused element so it can be restored later.
+ *
+ * Calls to `capture()` and `restore()` form a LIFO stack, so nested overlays
+ * (dialog inside dialog, popover inside menu) restore correctly without
+ * tracking targets manually. The hook also runs `restore` on unmount unless
+ * `restoreOnUnmount` is `false`.
+ *
+ * @example
+ * ```tsx
+ * function Drawer({ open, onClose, children }: DrawerProps) {
+ *   const { capture, restore } = useFocusRestore();
+ *   useEffect(() => {
+ *     if (!open) return;
+ *     capture();
+ *     return () => { restore(); };
+ *   }, [open, capture, restore]);
+ *   return open ? <aside role="dialog">{children}</aside> : null;
+ * }
+ * ```
+ *
+ * @returns `capture` / `restore` callbacks and the currently tracked `target`.
+ */
 export function useFocusRestore(
   options: UseFocusRestoreOptions = {},
 ): UseFocusRestoreReturn {

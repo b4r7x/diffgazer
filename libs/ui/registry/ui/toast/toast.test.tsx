@@ -1,4 +1,4 @@
-import { render, screen, act } from "@testing-library/react"
+import { render, screen, act, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { axe } from "../../../testing/utils.js"
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
@@ -101,6 +101,22 @@ describe("Toast", () => {
     expect(screen.getByText("Caution!")).toBeInTheDocument()
     expect(screen.getByText("FYI")).toBeInTheDocument()
     expect(screen.getByRole("alert")).toHaveTextContent("Failed!")
+  })
+
+  it("renders the loading toast spinner via the lazy chunk", async () => {
+    vi.useRealTimers()
+    render(<Toaster />)
+    act(() => { toast.loading("Working") })
+
+    const toastEl = screen.getByText("Working").closest('[role="status"]')
+    expect(toastEl).not.toBeNull()
+    // querySelector: Spinner sits inside an aria-hidden icon span and is
+    // excluded from the accessibility tree; this structural assertion
+    // confirms the Suspense fallback resolved and the spinner mounted.
+    await waitFor(() => {
+      expect(toastEl?.querySelector('[role="status"][aria-label="Loading"]')).not.toBeNull()
+    })
+    vi.useFakeTimers()
   })
 
   it("tracks a resolved promise via toast.promise()", async () => {
@@ -251,6 +267,110 @@ describe("Toast", () => {
     act(() => { vi.advanceTimersByTime(250) })
 
     expect(screen.getByText("Background toast")).toBeInTheDocument()
+  })
+
+  it("renders a toast triggered while a modal dialog is open", () => {
+    // Native <dialog>.showModal() promotes the dialog into the browser top-
+    // layer, hiding any z-index-positioned overlay. The Toaster opts into the
+    // Popover API when supported so its content joins the top-layer above the
+    // dialog; in environments without Popover support (jsdom) the toast stays
+    // in the DOM and is announced via role="alert".
+    render(
+      <>
+        <Dialog defaultOpen>
+          <Dialog.Content>
+            <Dialog.Title>Blocking dialog</Dialog.Title>
+          </Dialog.Content>
+        </Dialog>
+        <Toaster />
+      </>
+    )
+
+    act(() => { toast.error("Failed to save", { id: "over-dialog" }) })
+
+    const alert = screen.getByRole("alert")
+    expect(alert).toHaveTextContent("Failed to save")
+    expect(screen.getByRole("region", { name: "Notifications" })).toContainElement(alert)
+  })
+
+  it("activates Popover API on the container when the browser supports it", () => {
+    // Boundary mock: jsdom does not implement HTMLElement.prototype.popover /
+    // showPopover() / hidePopover() / :popover-open. Stub them per test so
+    // we can verify the Toaster's feature-detection branch on a supporting
+    // browser. The non-supporting branch stays covered by every other test.
+    const Proto = HTMLElement.prototype
+    const popoverDesc = Object.getOwnPropertyDescriptor(Proto, "popover")
+    const showDesc = Object.getOwnPropertyDescriptor(Proto, "showPopover")
+    const hideDesc = Object.getOwnPropertyDescriptor(Proto, "hidePopover")
+    const matchesDesc = Object.getOwnPropertyDescriptor(Proto, "matches")
+    const originalMatches = Proto.matches
+    let openCount = 0
+    Object.defineProperty(Proto, "popover", {
+      configurable: true,
+      get(this: HTMLElement) { return this.getAttribute("popover") },
+      set(this: HTMLElement, v: string | null) {
+        if (v == null) this.removeAttribute("popover")
+        else this.setAttribute("popover", v)
+      },
+    })
+    Object.defineProperty(Proto, "showPopover", {
+      configurable: true, writable: true,
+      value(this: HTMLElement) { openCount++; this.setAttribute("data-popover-open", "") },
+    })
+    Object.defineProperty(Proto, "hidePopover", {
+      configurable: true, writable: true,
+      value(this: HTMLElement) { openCount--; this.removeAttribute("data-popover-open") },
+    })
+    Object.defineProperty(Proto, "matches", {
+      configurable: true, writable: true,
+      value(this: HTMLElement, selector: string) {
+        if (selector === ":popover-open") return this.hasAttribute("data-popover-open")
+        return originalMatches.call(this, selector)
+      },
+    })
+
+    try {
+      // [popover] is hidden by the UA stylesheet until showPopover() runs;
+      // querySelector bypasses accessibility-tree filtering so we can read
+      // the attribute and confirm the container opted in.
+      // querySelector: structural assertion on the popover container which
+      // the UA stylesheet hides until top-layer promotion.
+      const { unmount, container } = render(<Toaster />)
+      // No toasts → popover should not be opened yet.
+      expect(openCount).toBe(0)
+
+      // First toast → popover opens once.
+      act(() => { toast("Top-layer toast", { id: "tl-1" }) })
+      const region = container.ownerDocument.querySelector("[role='region'][aria-label='Notifications']")
+      expect(region).not.toBeNull()
+      expect(region).toHaveAttribute("popover", "manual")
+      expect(region).toHaveAttribute("data-popover-open")
+      expect(openCount).toBe(1)
+
+      // Dismiss everything → effect cleanup hides the popover.
+      act(() => { toast.dismiss() })
+      act(() => { vi.advanceTimersByTime(250) })
+      expect(region).not.toHaveAttribute("data-popover-open")
+      expect(openCount).toBe(0)
+
+      // A new toast after dismissal re-issues showPopover(); a real browser
+      // moves the popover to the back of the top-layer, so a toast raised
+      // AFTER a dialog opens still paints above it.
+      act(() => { toast("Re-issued", { id: "tl-2" }) })
+      expect(region).toHaveAttribute("data-popover-open")
+      expect(openCount).toBe(1)
+
+      unmount()
+      expect(openCount).toBe(0)
+    } finally {
+      if (popoverDesc) Object.defineProperty(Proto, "popover", popoverDesc)
+      else Reflect.deleteProperty(Proto, "popover")
+      if (showDesc) Object.defineProperty(Proto, "showPopover", showDesc)
+      else Reflect.deleteProperty(Proto, "showPopover")
+      if (hideDesc) Object.defineProperty(Proto, "hidePopover", hideDesc)
+      else Reflect.deleteProperty(Proto, "hidePopover")
+      if (matchesDesc) Object.defineProperty(Proto, "matches", matchesDesc)
+    }
   })
 
   it("pauses auto-dismiss while document is hidden and resumes on return", () => {

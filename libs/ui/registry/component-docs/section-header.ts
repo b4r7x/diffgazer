@@ -19,4 +19,32 @@ export const sectionHeaderDoc: ComponentDoc = {
     { name: "section-header-variants", title: "Variants" },
   ],
   keyboard: null,
+  props: {
+    SectionHeader: {
+      as: {
+        type: '"h2" | "h3" | "h4"',
+        required: false,
+        defaultValue: '"h3"',
+        description: "Heading level. Choose the level that matches your document outline.",
+      },
+      variant: {
+        type: '"default" | "muted"',
+        required: false,
+        defaultValue: '"default"',
+        description: "Color intensity. Default uses foreground; muted uses muted-foreground.",
+      },
+      bordered: {
+        type: "boolean",
+        required: false,
+        defaultValue: "false",
+        description: "Adds a bottom border under the heading.",
+      },
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Heading text.",
+      },
+    },
+  },
 }

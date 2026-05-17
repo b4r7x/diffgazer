@@ -16,7 +16,7 @@ describe("public package surface", () => {
 
     function Harness() {
       const listRef = useRef<HTMLDivElement>(null);
-      const { onKeyDown, highlighted } = useNavigation({
+      const { onKeyDown, highlighted } = useNavigation<"one" | "two">({
         containerRef: listRef,
         role: "option",
         defaultHighlighted: "one",

@@ -35,6 +35,7 @@ If your environment supports skills, load these before acting:
 - `apps/web` owns product-specific composition, copy, domain flows, data fetching, and app-only layout decisions. Extract from web only when behavior is generic and reusable outside Diffgazer.
 - `libs/registry` owns registry contracts, shadcn/public registry validation/building, copy bundle behavior, and shared CLI workflow helpers.
 - `cli/add` owns the user-facing add/remove/list/diff commands and must preserve copy, package, and direct registry consumption paths.
+- `cli/server` owns the embedded Hono backend (review pipeline, git, config, shutdown token) consumed only by the `diffgazer` CLI. It is CLI-internal, not a reusable primitive, and ships bundled into the `diffgazer` binary via tsup `noExternal`.
 
 ## Extraction Rules
 

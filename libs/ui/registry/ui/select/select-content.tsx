@@ -262,7 +262,7 @@ export function SelectContent({
         data-side={position?.side}
         onAnimationEnd={onAnimationEnd}
         className={cn(
-          "fixed z-9999 border border-border bg-background shadow-2xl rounded-sm overflow-hidden outline-none",
+          "fixed z-[var(--z-popover)] border border-border bg-background shadow-2xl rounded-sm overflow-hidden outline-none",
           "data-[state=open]:animate-slide-in",
           "data-[state=closed]:animate-slide-out",
           className,

@@ -1,14 +1,49 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { assertBuiltCss, uiSmokeAppBody, writeNextFixture } from "./smoke-shared.mjs";
+
+const UI_FIGLET_EXPORT = "@diffgazer/ui/components/logo/figlet";
 
 function getPackageExports(root, packageDir, packageName) {
   const pkg = JSON.parse(readFileSync(resolve(root, packageDir, "package.json"), "utf-8"));
   return Object.keys(pkg.exports ?? {})
     .filter((exportPath) => exportPath !== ".")
-    .filter((exportPath) => !exportPath.endsWith(".css"))
+    .filter((exportPath) => !exportPath.endsWith(".css") && exportPath !== "./package.json")
     .map((exportPath) => `${packageName}${exportPath.slice(1)}`)
     .sort();
+}
+
+/**
+ * Emits an mjs import loop that exercises every UI export. The figlet subpath
+ * loads lazily, so the bare import must always succeed; the missing-peer
+ * failure surfaces only when getFigletText() is called. When figlet is NOT
+ * installed, this asserts that getFigletText() rejects with a message naming
+ * the optional peer dependency. When figlet IS installed (e.g. pnpm's
+ * autoInstallPeers picked it up), the bare import alone is enough.
+ */
+function uiImportLoopBody() {
+  return [
+    `const FIGLET_EXPORT = ${JSON.stringify(UI_FIGLET_EXPORT)};`,
+    "let figletInstalled = true;",
+    "try { require.resolve('figlet'); } catch { figletInstalled = false; }",
+    "for (const exportPath of exports) {",
+    "  const mod = await import(exportPath);",
+    "  if (exportPath !== FIGLET_EXPORT) continue;",
+    "  if (typeof mod.getFigletText !== 'function') {",
+    "    throw new Error(`Expected getFigletText export from ${FIGLET_EXPORT}`);",
+    "  }",
+    "  if (figletInstalled) continue;",
+    "  let caught;",
+    "  try { await mod.getFigletText('TEST'); } catch (error) { caught = error; }",
+    "  if (!caught) {",
+    "    throw new Error(`Expected getFigletText() to reject when figlet is not installed`);",
+    "  }",
+    "  const message = String(caught?.message ?? caught);",
+    "  if (!message.includes('optional peer dependency')) {",
+    "    throw new Error(`Expected error message to include \"optional peer dependency\"; got: ${message}`);",
+    "  }",
+    "}",
+  ];
 }
 
 export function writeUiPackageModeSmoke(root, projectDir) {
@@ -25,9 +60,7 @@ export function writeUiPackageModeSmoke(root, projectDir) {
       "import { Toaster } from '@diffgazer/ui/components/toast';",
       "import { Tooltip } from '@diffgazer/ui/components/tooltip';",
       "const exports = " + JSON.stringify(exports, null, 2) + ";",
-      "for (const exportPath of exports) {",
-      "  await import(exportPath);",
-      "}",
+      ...uiImportLoopBody(),
       "require.resolve('@diffgazer/ui/sources.css');",
       "require.resolve('@diffgazer/ui/styles.css');",
       "console.log(`OK: imported ${exports.length} @diffgazer/ui exports and resolved package CSS`);",
@@ -115,23 +148,27 @@ export function writeUiPackageModeSmoke(root, projectDir) {
 }
 
 export function writeUiCommonImportSmoke(root, projectDir) {
-  const exports = getPackageExports(root, "libs/ui", "@diffgazer/ui")
-    .filter((exportPath) => exportPath !== "@diffgazer/ui/components/logo/figlet");
+  const exports = getPackageExports(root, "libs/ui", "@diffgazer/ui");
   writeFileSync(
     resolve(projectDir, "common-imports.mjs"),
     [
       "import { createRequire } from 'node:module';",
       "const require = createRequire(import.meta.url);",
       "const exports = " + JSON.stringify(exports, null, 2) + ";",
-      "for (const exportPath of exports) {",
-      "  await import(exportPath);",
-      "}",
+      ...uiImportLoopBody(),
       "require.resolve('@diffgazer/ui/sources.css');",
       "require.resolve('@diffgazer/ui/styles.css');",
       "console.log(`OK: imported ${exports.length} common @diffgazer/ui exports`);",
       "",
     ].join("\n"),
   );
+  // Model the realistic consumer scenario for the optional figlet peer:
+  // a project that imports @diffgazer/ui without installing figlet. pnpm 10
+  // defaults auto-install-peers=true, which silently pulls figlet into the
+  // fixture and hides the documented missing-peer failure path. Drop the
+  // symlink so the getFigletText() call inside uiImportLoopBody actually
+  // exercises and asserts the "optional peer dependency" rejection.
+  rmSync(resolve(projectDir, "node_modules/figlet"), { recursive: true, force: true });
 }
 
 export function writeUiVitePackageSmoke(projectDir) {

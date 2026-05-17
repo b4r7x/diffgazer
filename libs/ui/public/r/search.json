@@ -6,7 +6,7 @@
   "files": [
     {
       "path": "registry/lib/search.ts",
-      "content": "export function matchesSearch(value: string, query: string): boolean {\n  return !query || value.toLowerCase().includes(query.toLowerCase());\n}\n",
+      "content": "/**\n * Case-insensitive substring match using the host environment's default locale.\n *\n * Uses `String.prototype.toLocaleLowerCase()` so locale-sensitive characters\n * (e.g. Turkish dotted/dotless I) lowercase consistently. Pass a locale tag to\n * `toLocaleLowerCase` directly at the call site if a non-default locale is\n * required; this helper accepts the runtime default.\n */\nexport function matchesSearch(value: string, query: string): boolean {\n  return !query || value.toLocaleLowerCase().includes(query.toLocaleLowerCase());\n}\n",
       "type": "registry:lib"
     }
   ],

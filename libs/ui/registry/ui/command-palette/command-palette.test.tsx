@@ -132,6 +132,32 @@ describe("CommandPalette", () => {
     expect(screen.getByRole("option", { name: /delete/i })).toBeInTheDocument()
   })
 
+  it("keeps input value synchronous while filtering converges for large item sets", async () => {
+    const items = Array.from({ length: 200 }, (_, index) => `item-${index}`)
+    render(
+      <CommandPalette open>
+        <CommandPalette.Content>
+          <CommandPalette.Input />
+          <CommandPalette.List>
+            {items.map((id) => (
+              <CommandPalette.Item key={id} id={id}>{id}</CommandPalette.Item>
+            ))}
+          </CommandPalette.List>
+        </CommandPalette.Content>
+      </CommandPalette>,
+    )
+
+    const input = screen.getByRole("combobox") as HTMLInputElement
+    await userEvent.type(input, "item-42")
+    expect(input.value).toBe("item-42")
+
+    await waitFor(() => {
+      const visible = screen.getAllByRole("option")
+      expect(visible).toHaveLength(1)
+      expect(visible[0]).toHaveAccessibleName(/^item-42\b/)
+    })
+  })
+
   it("activates item on click, calls onSelect, closes palette, and skips disabled items", async () => {
     const onActivate = vi.fn()
     const onOpenChange = vi.fn()

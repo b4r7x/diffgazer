@@ -34,4 +34,98 @@ export const tabsDoc: ComponentDoc = {
       { name: "tabs-keyboard", title: "Keyboard Navigation" },
     ],
   },
+  props: {
+    Tabs: {
+      value: {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description: "Controlled active tab value. Pair with onChange.",
+      },
+      defaultValue: {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description: "Initial active tab value for uncontrolled mode. Defaults to the first enabled Trigger.",
+      },
+      onChange: {
+        type: "(value: string) => void",
+        required: false,
+        defaultValue: null,
+        description: "Fired when the active tab changes.",
+      },
+      orientation: {
+        type: '"horizontal" | "vertical"',
+        required: false,
+        defaultValue: '"horizontal"',
+        description: "Tab list axis. Switches arrow-key navigation direction and aria-orientation.",
+      },
+      variant: {
+        type: '"default" | "underline"',
+        required: false,
+        defaultValue: '"default"',
+        description: "Visual style applied to triggers and the list.",
+      },
+      activationMode: {
+        type: '"automatic" | "manual"',
+        required: false,
+        defaultValue: '"automatic"',
+        description: "Automatic activates on focus; manual requires Enter or Space.",
+      },
+      children: {
+        type: "ReactNode",
+        required: true,
+        defaultValue: null,
+        description: "Tabs.List and Tabs.Content subparts.",
+      },
+    },
+    "Tabs.List": {
+      loop: {
+        type: "boolean",
+        required: false,
+        defaultValue: "true",
+        description: "When true, arrow navigation wraps from last to first trigger and vice versa.",
+      },
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Tabs.Trigger children.",
+      },
+    },
+    "Tabs.Trigger": {
+      value: {
+        type: "string",
+        required: true,
+        defaultValue: null,
+        description: "Stable identifier matched against Tabs value and the paired Tabs.Content.",
+      },
+      disabled: {
+        type: "boolean",
+        required: false,
+        defaultValue: "false",
+        description: "Disables activation and removes the trigger from arrow navigation.",
+      },
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Trigger label.",
+      },
+    },
+    "Tabs.Content": {
+      value: {
+        type: "string",
+        required: true,
+        defaultValue: null,
+        description: "Stable identifier paired with the matching Tabs.Trigger.",
+      },
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Panel content. Hidden when its trigger is not active.",
+      },
+    },
+  },
 }

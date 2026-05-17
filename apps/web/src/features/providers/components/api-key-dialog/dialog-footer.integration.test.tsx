@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { FooterProvider, useFooterData, usePageFooter } from "@diffgazer/core/footer";
@@ -90,5 +91,50 @@ describe("ApiKeyDialog footer integration", () => {
 
     expect(screen.getByText("Navigate Providers")).toBeInTheDocument();
     expect(screen.getByText("Back")).toBeInTheDocument();
+  });
+
+  it("returns focus to the trigger button after the dialog closes", async () => {
+    const user = userEvent.setup();
+
+    function TriggerStub() {
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <button type="button" onClick={() => setOpen(true)}>
+            Open API Key
+          </button>
+          <ApiKeyDialog
+            open={open}
+            onOpenChange={setOpen}
+            providerName="Z.AI"
+            envVarName="ZAI_API_KEY"
+            onSubmit={vi.fn().mockResolvedValue(undefined)}
+          />
+        </>
+      );
+    }
+
+    render(
+      <FooterProvider>
+        <KeyboardProvider>
+          <TriggerStub />
+        </KeyboardProvider>
+      </FooterProvider>,
+    );
+
+    const trigger = screen.getByRole("button", { name: "Open API Key" });
+    await user.click(trigger);
+
+    const dialog = await screen.findByRole("dialog", { name: /API Key/ });
+    expect(dialog).toBeInTheDocument();
+
+    const cancel = within(dialog).getByRole("button", { name: "Cancel" });
+    await user.click(cancel);
+
+    // fireEvent retained: animationend has no user-event equivalent; dialog close transition completes on this event
+    const dialogElement = document.querySelector("dialog");
+    if (dialogElement) fireEvent.animationEnd(dialogElement);
+
+    await waitFor(() => expect(trigger).toHaveFocus());
   });
 });

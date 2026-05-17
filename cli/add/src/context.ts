@@ -1,4 +1,4 @@
-import { dirname, relative, resolve } from "node:path";
+import { dirname, isAbsolute, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import {
@@ -36,6 +36,10 @@ export const DiffgazerAddConfigSchema = z.object({
     installedAt: z.string(),
     integrationMode: z.enum(["none", "copy", "@diffgazer/keys"]).optional(),
     keysVersion: z.string().optional(),
+    // "explicit" — user passed this name to `dgadd add`. "transitive" — pulled in as
+    // a registry dependency. Used to decide cascade-remove eligibility.
+    installedAs: z.enum(["explicit", "transitive"]).optional(),
+    cssChunks: z.array(z.string()).optional(),
     files: z.array(z.object({
       path: z.string(),
       hash: z.string(),
@@ -52,6 +56,8 @@ export type DiffgazerAddConfig = z.infer<typeof DiffgazerAddConfigSchema>;
 export type ManifestInstallMetadata = {
   integrationMode?: "none" | "copy" | "@diffgazer/keys";
   keysVersion?: string;
+  installedAs?: "explicit" | "transitive";
+  cssChunks?: string[];
   files?: ManifestOwnedFile[];
 };
 
@@ -77,6 +83,7 @@ export interface ResolvedConfig {
   componentsFsPath: string;
   libFsPath: string;
   hooksFsPath: string;
+  stylesFsPath: string;
 }
 
 export const SOURCE_ALIASES = {
@@ -115,7 +122,23 @@ export function resolveConfig(raw: DiffgazerAddConfig, cwd?: string): ResolvedCo
     componentsFsPath: resolved.components,
     libFsPath: resolved.lib,
     hooksFsPath: resolved.hooks,
+    stylesFsPath: deriveStylesFsPath(raw.tailwind?.css, resolved.lib, cwd),
   };
+}
+
+// dgadd init writes theme files alongside the Tailwind entry CSS (typically
+// `src/styles/styles.css`), so the theme registry item's `styles/*.css` paths
+// install into that same directory. Fall back to a sibling `styles/` next to
+// the lib dir when no tailwind config is present.
+function deriveStylesFsPath(tailwindCss: string | undefined, libFsPath: string, cwd?: string): string {
+  if (tailwindCss) {
+    const dir = toPosixPath(dirname(tailwindCss));
+    if (!cwd) return dir;
+    const absolute = isAbsolute(dir) ? dir : resolveProjectPath(cwd, dir);
+    return toPosixPath(relative(resolve(cwd), absolute));
+  }
+  const parent = toPosixPath(dirname(libFsPath));
+  return parent === "." ? "styles" : `${parent}/styles`;
 }
 
 export type RegistryFile = z.infer<typeof RegistryContentFileSchema>;
@@ -144,7 +167,7 @@ export function getRegistry(): RegistryBundle {
 const registry = createRegistryAccessors({
   loader: () => getRegistry(),
   itemLabel: "Component",
-  pathPrefixes: ["registry/ui/", "registry/hooks/", "registry/lib/"],
+  pathPrefixes: ["registry/ui/", "registry/hooks/", "registry/lib/", "styles/"],
 });
 
 const config = createConfigModule<DiffgazerAddConfig, ResolvedConfig, ManifestInstallMetadata>({

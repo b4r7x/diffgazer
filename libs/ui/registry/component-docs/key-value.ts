@@ -43,4 +43,70 @@ export const keyValueDoc: ComponentDoc = {
     { name: "key-value-list", title: "List" },
   ],
   keyboard: null,
+  props: {
+    KeyValue: {
+      layout: {
+        type: '"horizontal" | "vertical"',
+        required: false,
+        defaultValue: '"horizontal"',
+        description: "Horizontal places label and value side-by-side; vertical stacks them. Propagated to KeyValue.Item via context.",
+      },
+      bordered: {
+        type: "boolean",
+        required: false,
+        defaultValue: "false",
+        description: "Adds row borders and switches items to compact xs sizing. Propagated to KeyValue.Item via context.",
+      },
+      children: {
+        type: "ReactNode",
+        required: true,
+        defaultValue: null,
+        description: "KeyValue.Item rows rendered inside a semantic <dl>.",
+      },
+    },
+    "KeyValue.Item": {
+      label: {
+        type: "ReactNode",
+        required: true,
+        defaultValue: null,
+        description: "Label content rendered in a <dt>.",
+      },
+      value: {
+        type: "ReactNode",
+        required: true,
+        defaultValue: null,
+        description: "Value content rendered in a <dd>.",
+      },
+      variant: {
+        type: '"default" | "warning" | "info" | "success" | "error"',
+        required: false,
+        defaultValue: '"default"',
+        description: "Color token applied to the value. Info uses monospace; the rest are bold semantic colors.",
+      },
+      layout: {
+        type: '"horizontal" | "vertical"',
+        required: false,
+        defaultValue: "inherited from KeyValue",
+        description: "Per-row override of the parent layout.",
+      },
+      bordered: {
+        type: "boolean",
+        required: false,
+        defaultValue: "inherited from KeyValue",
+        description: "Per-row override of the parent bordered prop.",
+      },
+      labelClassName: {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description: "Class applied to the <dt> in addition to the variant classes.",
+      },
+      valueClassName: {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description: "Class applied to the <dd> in addition to the variant classes.",
+      },
+    },
+  },
 }

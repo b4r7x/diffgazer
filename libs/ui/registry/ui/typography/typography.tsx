@@ -13,6 +13,10 @@ export const typographyVariants = cva("font-mono text-muted-foreground", {
       xs: "text-xs",
       sm: "text-sm",
       base: "text-base",
+      lg: "text-lg",
+      xl: "text-xl",
+      "2xl": "text-2xl",
+      "3xl": "text-3xl",
     },
     lineClamp: {
       1: "line-clamp-1",
@@ -29,36 +33,58 @@ export const typographyVariants = cva("font-mono text-muted-foreground", {
   },
 });
 
+type TypographySize = NonNullable<VariantProps<typeof typographyVariants>["size"]>;
+
+const HEADING_DEFAULT_SIZE: Record<"h1" | "h2" | "h3" | "h4" | "h5" | "h6", TypographySize> = {
+  h1: "3xl",
+  h2: "2xl",
+  h3: "xl",
+  h4: "lg",
+  h5: "base",
+  h6: "sm",
+};
+
+type TypographyElement =
+  | "div"
+  | "p"
+  | "span"
+  | "h1"
+  | "h2"
+  | "h3"
+  | "h4"
+  | "h5"
+  | "h6";
+
 type TypographyOwnProps = VariantProps<typeof typographyVariants>;
-type TypographyElement = "div" | "p" | "span";
-type TypographyElementProps<T extends TypographyElement> = Omit<
+
+export type TypographyProps<T extends TypographyElement = "div"> = Omit<
   ComponentPropsWithRef<T>,
   keyof TypographyOwnProps | "as"
 > &
   TypographyOwnProps & {
-    as: T;
+    as?: T;
   };
 
-export type TypographyProps =
-  | (Omit<TypographyElementProps<"div">, "as"> & { as?: "div" })
-  | TypographyElementProps<"p">
-  | TypographyElementProps<"span">;
-
-export function Typography(props: TypographyProps) {
-  const { className, variant, size, lineClamp } = props;
-  const resolvedClassName = cn(typographyVariants({ variant, size, lineClamp }), className);
-
-  if (props.as === "p") {
-    const { as, ref, className: omittedClassName, variant: omittedVariant, size: omittedSize, lineClamp: omittedLineClamp, ...pProps } = props;
-    return <p ref={ref} className={resolvedClassName} {...pProps} />;
-  }
-  if (props.as === "span") {
-    const { as, ref, className: omittedClassName, variant: omittedVariant, size: omittedSize, lineClamp: omittedLineClamp, ...spanProps } = props;
-    return <span ref={ref} className={resolvedClassName} {...spanProps} />;
-  }
-
-  const { as, ref, className: omittedClassName, variant: omittedVariant, size: omittedSize, lineClamp: omittedLineClamp, ...divProps } = props;
+export function Typography<T extends TypographyElement = "div">(
+  props: TypographyProps<T>,
+) {
+  const { as, className, variant, size, lineClamp, ref, ...rest } =
+    props as TypographyProps<TypographyElement>;
+  const Tag = as ?? "div";
+  const resolvedSize =
+    size ?? (Tag in HEADING_DEFAULT_SIZE
+      ? HEADING_DEFAULT_SIZE[Tag as keyof typeof HEADING_DEFAULT_SIZE]
+      : undefined);
   return (
-    <div ref={ref} className={resolvedClassName} {...divProps} />
+    <Tag
+      // polymorphic ref: the element type is only known at the call site,
+      // so the ref type cannot be narrowed inside the generic component body.
+      ref={ref as never}
+      className={cn(
+        typographyVariants({ variant, size: resolvedSize, lineClamp }),
+        className,
+      )}
+      {...rest}
+    />
   );
 }

@@ -16,6 +16,38 @@ export interface UseKeyOptions {
   preventDefault?: boolean;
 }
 
+/**
+ * Register one or more keyboard shortcuts within the active keyboard scope.
+ *
+ * Accepts a single hotkey string, a list of hotkey strings sharing one
+ * handler, or a `{ hotkey: handler }` map for multiple distinct bindings.
+ * Modifiers are encoded in the hotkey string (e.g. `"mod+k"`, `"shift+/"`).
+ *
+ * @example
+ * ```tsx
+ * function CommandPaletteShortcut() {
+ *   const [open, setOpen] = useState(false);
+ *   useKey("mod+k", (event) => {
+ *     event.preventDefault();
+ *     setOpen(true);
+ *   });
+ *   return open ? <CommandPalette onClose={() => setOpen(false)} /> : null;
+ * }
+ * ```
+ *
+ * @example
+ * ```tsx
+ * useKey({
+ *   ArrowDown: () => moveSelection(1),
+ *   ArrowUp: () => moveSelection(-1),
+ *   Enter: () => activate(),
+ * }, { containerRef, focusWithinOnly: true });
+ * ```
+ *
+ * @param options - Includes `scope`, `enabled`, `allowInInput`, `containerRef`,
+ *   `focusWithinOnly`, and `preventDefault`. When `scope` is `null` the binding
+ *   is inactive; when omitted the nearest ancestor scope is used.
+ */
 export function useKey(
   hotkey: string,
   handler: KeyHandler,

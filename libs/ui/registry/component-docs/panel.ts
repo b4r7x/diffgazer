@@ -38,4 +38,76 @@ export const panelDoc: ComponentDoc = {
     { name: "panel-composed", title: "Composed" },
   ],
   keyboard: null,
+  props: {
+    Panel: {
+      as: {
+        type: '"div" | "article" | "section" | "aside"',
+        required: false,
+        defaultValue: '"div"',
+        description: "Rendered HTML element. Use semantic elements for accessible regions.",
+      },
+      variant: {
+        type: '"default" | "borderless"',
+        required: false,
+        defaultValue: '"default"',
+        description: "Visual treatment. Default applies a border and elevated shadow.",
+      },
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Panel subparts.",
+      },
+    },
+    PanelHeader: {
+      variant: {
+        type: '"default" | "terminal" | "subtle"',
+        required: false,
+        defaultValue: '"default"',
+        description: "Header style. Terminal is a compact uppercase bar; subtle is small centered muted text.",
+      },
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Header content. Use two children to render a label and a value separated by space-between.",
+      },
+    },
+    PanelContent: {
+      spacing: {
+        type: '"none" | "sm" | "md"',
+        required: false,
+        defaultValue: '"md"',
+        description: "Vertical gap applied between direct children inside the content area.",
+      },
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Body content.",
+      },
+    },
+    PanelFooter: {
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Footer metadata or actions.",
+      },
+    },
+    PanelLegend: {
+      tone: {
+        type: '"default" | "muted" | "info" | "success" | "warning" | "error" | "accent"',
+        required: false,
+        defaultValue: '"muted"',
+        description: "Color token applied to the floating legend label.",
+      },
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Legend text.",
+      },
+    },
+  },
 }

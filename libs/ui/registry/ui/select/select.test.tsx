@@ -1,9 +1,13 @@
+import { readFileSync } from "node:fs"
+import { resolve } from "node:path"
+import { fileURLToPath } from "node:url"
 import { Fragment, type ReactNode, createRef } from "react"
 import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { axe } from "../../../testing/utils.js"
-import { describe, it, expect, vi } from "vitest"
+import { afterAll, beforeAll, describe, it, expect, expectTypeOf, vi } from "vitest"
 import { Select, type SelectProps } from "./index.js"
+import { type SelectItemProps } from "./select-item.js"
 
 const PICK_FRUIT = "Pick a fruit"
 
@@ -903,5 +907,88 @@ describe("Select form submission", () => {
   it("omits FormData when name prop is omitted", () => {
     renderFormSelect({ defaultValue: "apple", items: ["Apple"] })
     expect(new FormData(getTestForm()).has("fruit")).toBe(false)
+  })
+})
+
+describe("Select prefers-reduced-motion", () => {
+  // Select content opts into the --animate-slide-in/out tokens declared in
+  // theme-base.css; the @media (prefers-reduced-motion: reduce) :root block
+  // overrides those tokens to `none`. The card-variant selected indicator
+  // uses motion-safe:animate-pulse, suppressed by reduced motion via
+  // Tailwind's motion-safe variant. jsdom does not evaluate @media in
+  // stylesheets, so the override is extracted and injected at the top level
+  // to simulate matchMedia returning true; the assertion reads the resolved
+  // CSS variable on :root and the rendered class names.
+  const THEME_BASE_CSS_PATH = resolve(fileURLToPath(import.meta.url), "../../../../styles/theme-base.css")
+  const REDUCED_MOTION_BLOCK_RE = /@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{\s*:root\s*\{[^}]*\}\s*\}/
+  let styleElement: HTMLStyleElement | null = null
+
+  beforeAll(() => {
+    const sourceCss = readFileSync(THEME_BASE_CSS_PATH, "utf8")
+    const reducedMotionBlock = sourceCss.match(REDUCED_MOTION_BLOCK_RE)?.[0]
+    if (!reducedMotionBlock) {
+      throw new Error("theme-base.css must declare a @media (prefers-reduced-motion: reduce) :root block")
+    }
+    const rootRule = reducedMotionBlock.match(/:root\s*\{[^}]*\}/)?.[0]
+    if (!rootRule) throw new Error("theme-base.css reduced-motion block must contain a :root rule")
+    styleElement = document.createElement("style")
+    styleElement.dataset.testSource = "theme-base.css#reduced-motion"
+    styleElement.textContent = rootRule
+    document.head.appendChild(styleElement)
+  })
+
+  afterAll(() => {
+    styleElement?.remove()
+    styleElement = null
+  })
+
+  it("opts dropdown content into --animate-slide-in/out tokens that the @media override neutralizes", async () => {
+    renderSelect({ defaultOpen: true, variant: "default" })
+
+    const listbox = await screen.findByRole("listbox")
+    expect(listbox.className).toMatch(/animate-slide-in/)
+    expect(listbox.className).toMatch(/animate-slide-out/)
+
+    const root = listbox.ownerDocument.documentElement
+    expect(getComputedStyle(root).getPropertyValue("--animate-slide-in").trim()).toBe("none")
+    expect(getComputedStyle(root).getPropertyValue("--animate-slide-out").trim()).toBe("none")
+  })
+
+  it("uses motion-safe variant on the card-variant selected indicator so reduced motion suppresses pulse", async () => {
+    renderSelect({ defaultOpen: true, defaultValue: "apple", highlighted: "apple", items: ["Apple"], variant: "card" })
+
+    const option = await screen.findByRole("option", { name: /apple/i })
+    const indicator = option.querySelector(".motion-safe\\:animate-pulse")
+    // querySelector: motion-safe variant is the load-bearing a11y contract; there is no accessible role for the visual indicator
+    expect(indicator).not.toBeNull()
+    expect(option.querySelector(".animate-pulse:not(.motion-safe\\:animate-pulse)")).toBeNull()
+  })
+})
+
+describe("Select types", () => {
+  it("narrows value/onChange in single mode to the supplied union", () => {
+    type SingleNarrow = Extract<SelectProps<"a" | "b">, { multiple?: false }>
+
+    expectTypeOf<SingleNarrow["value"]>().toEqualTypeOf<"a" | "b" | undefined>()
+    expectTypeOf<SingleNarrow["defaultValue"]>().toEqualTypeOf<"a" | "b" | undefined>()
+    expectTypeOf<NonNullable<SingleNarrow["onChange"]>>().parameter(0).toEqualTypeOf<"a" | "b">()
+  })
+
+  it("narrows value/onChange in multiple mode to the supplied union", () => {
+    type MultiNarrow = Extract<SelectProps<"a" | "b">, { multiple: true }>
+
+    expectTypeOf<MultiNarrow["value"]>().toEqualTypeOf<("a" | "b")[] | undefined>()
+    expectTypeOf<NonNullable<MultiNarrow["onChange"]>>().parameter(0).toEqualTypeOf<("a" | "b")[]>()
+  })
+
+  it("rejects SelectItem values outside the literal union", () => {
+    expectTypeOf<"c">().not.toMatchTypeOf<SelectItemProps<"a" | "b">["value"]>()
+    expectTypeOf<"a">().toMatchTypeOf<SelectItemProps<"a" | "b">["value"]>()
+  })
+
+  it("keeps the loose default contract when no generic is supplied", () => {
+    type Single = Extract<SelectProps, { multiple?: false }>
+    expectTypeOf<Single["value"]>().toEqualTypeOf<string | undefined>()
+    expectTypeOf<SelectItemProps["value"]>().toEqualTypeOf<string>()
   })
 })

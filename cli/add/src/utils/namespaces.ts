@@ -74,6 +74,27 @@ export function validateInstallNames(names: string[]): void {
   }
 }
 
+// Diff accepts hidden transitives (e.g. ui/portal, ui/dialog-shell) so users
+// can inspect drift in dependencies they did not explicitly install.
+export function validateAnyInstallableName(names: string[]): void {
+  const allUiNames = new Set(
+    ctx.registry.getAllItems()
+      .filter((item) => CLI_INSTALLABLE_TYPES.has(item.type))
+      .map((item) => item.name),
+  );
+  const allKeyNames = getKeysHookNames();
+
+  for (const raw of names) {
+    const parsed = parseInstallName(raw);
+    const valid = parsed.namespace === "ui"
+      ? allUiNames.has(parsed.name)
+      : allKeyNames.has(parsed.name);
+    if (!valid) {
+      throw new Error(`Item "${raw}" not found. Run \`dgadd list\` to see available ui/* and keys/* items.`);
+    }
+  }
+}
+
 export function splitInstallNames(names: string[]): {
   ui: string[];
   keys: string[];
@@ -116,6 +137,7 @@ export function getNamespacedItem(name: string): RegistryItem {
     meta: {},
   };
 }
+
 
 export function isNamespacedInstalled(cwd: string, config: ResolvedConfig, name: string): boolean {
   const parsed = parseInstallName(name);

@@ -20,8 +20,8 @@ import { useControllableState } from "@/hooks/use-controllable-state";
 import { composeRefs } from "@/lib/compose-refs";
 import { typeaheadSearch } from "@/lib/typeahead";
 
-export interface ListboxMetadataItem {
-  id: string;
+export interface ListboxMetadataItem<TId extends string = string> {
+  id: TId;
   disabled?: boolean;
 }
 
@@ -31,14 +31,14 @@ interface ListboxItemElementProps {
   children?: ReactNode;
 }
 
-export interface UseListboxOptions {
-  selectedId?: string | null;
-  defaultSelectedId?: string | null;
-  highlighted?: string | null;
-  defaultHighlighted?: string | null;
-  onSelect?: (id: string) => void;
-  onEnter?: (id: string, event: globalThis.KeyboardEvent) => void;
-  onHighlightChange?: (id: string | null) => void;
+export interface UseListboxOptions<TId extends string = string> {
+  selectedId?: TId | null;
+  defaultSelectedId?: TId | null;
+  highlighted?: TId | null;
+  defaultHighlighted?: TId | null;
+  onSelect?: (id: TId) => void;
+  onEnter?: (id: TId, event: globalThis.KeyboardEvent) => void;
+  onHighlightChange?: (id: TId | null) => void;
   onNavigationBoundaryReached?: (
     direction: "previous" | "next",
     event: globalThis.KeyboardEvent,
@@ -51,15 +51,15 @@ export interface UseListboxOptions {
   role?: "listbox" | "menu";
   itemRole?: Extract<NavigationRole, "option" | "menuitem" | "menuitemradio">;
   typeahead?: boolean;
-  items?: ListboxMetadataItem[];
-  getItemId?: (idPrefix: string, id: string) => string;
+  items?: ListboxMetadataItem<TId>[];
+  getItemId?: (idPrefix: string, id: TId) => string;
 }
 
-export interface UseListboxReturn {
-  selectedId: string | null;
-  highlighted: string | null;
-  handleItemHighlight: (id: string | null) => void;
-  handleItemActivate: (id: string) => void;
+export interface UseListboxReturn<TId extends string = string> {
+  selectedId: TId | null;
+  highlighted: TId | null;
+  handleItemHighlight: (id: TId | null) => void;
+  handleItemActivate: (id: TId) => void;
   getContainerProps: (ref?: Ref<HTMLDivElement>) => {
     ref: ReturnType<typeof composeRefs<HTMLDivElement>>;
     role: string;
@@ -73,19 +73,20 @@ export function getEncodedListboxItemId(idPrefix: string, id: string): string {
   return `${idPrefix}-${encodeURIComponent(id)}`;
 }
 
-export function collectListboxItems(
+export function collectListboxItems<TId extends string = string>(
   children: ReactNode,
   itemType: ElementType,
-): ListboxMetadataItem[] {
-  const items: ListboxMetadataItem[] = [];
+): ListboxMetadataItem<TId>[] {
+  const items: ListboxMetadataItem<TId>[] = [];
 
   Children.forEach(children, (child) => {
     if (!isValidElement<ListboxItemElementProps>(child)) return;
     if (child.type === itemType && typeof child.props.id === "string") {
-      items.push({ id: child.props.id, disabled: child.props.disabled });
+      // Child id is opaque to TS; consumers parameterize TId.
+      items.push({ id: child.props.id as TId, disabled: child.props.disabled });
       return;
     }
-    items.push(...collectListboxItems(child.props.children, itemType));
+    items.push(...collectListboxItems<TId>(child.props.children, itemType));
   });
 
   return items;
@@ -113,23 +114,26 @@ function hasDomItem(
   );
 }
 
-function hasEnabledMetadataItem(
-  items: ListboxMetadataItem[],
-  id: string | null,
-): id is string {
+function hasEnabledMetadataItem<TId extends string>(
+  items: ListboxMetadataItem<TId>[],
+  id: TId | null,
+): id is TId {
   return id !== null && items.some((item) => item.id === id && !item.disabled);
 }
 
-function hasMetadataItem(items: ListboxMetadataItem[], id: string | null): id is string {
+function hasMetadataItem<TId extends string>(
+  items: ListboxMetadataItem<TId>[],
+  id: TId | null,
+): id is TId {
   return id !== null && items.some((item) => item.id === id);
 }
 
-function resolveActiveDescendant(
-  items: ListboxMetadataItem[] | undefined,
-  highlighted: string | null,
-  selectedId: string | null,
+function resolveActiveDescendant<TId extends string>(
+  items: ListboxMetadataItem<TId>[] | undefined,
+  highlighted: TId | null,
+  selectedId: TId | null,
   containerRole: "listbox" | "menu",
-): string | null {
+): TId | null {
   if (!items) return highlighted ?? selectedId;
   // APG menus keep disabled items focusable, so they can be the active descendant.
   // Listboxes never expose disabled options as selected.
@@ -202,12 +206,12 @@ function getListboxItems(
   )).filter((item) => isOwnedListboxItem(item, container, containerRole));
 }
 
-function getFirstNavigableItemId(
+function getFirstNavigableItemId<TId extends string>(
   container: HTMLElement | null,
   itemRole: string,
   containerRole: "listbox" | "menu",
-  items?: ListboxMetadataItem[],
-): string | null {
+  items?: ListboxMetadataItem<TId>[],
+): TId | null {
   if (items) {
     const item = containerRole === "menu"
       ? items[0]
@@ -216,10 +220,11 @@ function getFirstNavigableItemId(
   }
 
   const firstItem = getListboxItems(container, itemRole, containerRole, containerRole === "menu")[0];
-  return firstItem?.dataset.value !== undefined ? firstItem.dataset.value : null;
+  // DOM boundary: data-value is opaque to TS; consumers parameterize TId.
+  return firstItem?.dataset.value !== undefined ? (firstItem.dataset.value as TId) : null;
 }
 
-export function useListbox({
+export function useListbox<TId extends string = string>({
   selectedId: controlledSelectedId,
   defaultSelectedId = null,
   highlighted: controlledHighlighted,
@@ -236,13 +241,13 @@ export function useListbox({
   itemRole = "option",
   typeahead = false,
   items,
-  getItemId = getEncodedListboxItemId,
-}: UseListboxOptions): UseListboxReturn {
+  getItemId = getEncodedListboxItemId as (idPrefix: string, id: TId) => string,
+}: UseListboxOptions<TId>): UseListboxReturn<TId> {
   const containerRef = useRef<HTMLDivElement>(null);
   const [domActiveDescendant, setDomActiveDescendant] = useState<string | null>(null);
   const readTypeaheadQuery = useTypeaheadBuffer();
 
-  const [selectedId, setSelectedId] = useControllableState<string | null>({
+  const [selectedId, setSelectedId] = useControllableState<TId | null>({
     value: controlledSelectedId,
     defaultValue: defaultSelectedId,
     onChange: (next) => {
@@ -250,14 +255,14 @@ export function useListbox({
     },
   });
 
-  const [highlighted, setHighlighted] = useControllableState<string | null>({
+  const [highlighted, setHighlighted] = useControllableState<TId | null>({
     value: controlledHighlighted,
     defaultValue: defaultHighlighted,
     onChange: onHighlightChange,
   });
 
-  const activeDescendantCandidate = resolveActiveDescendant(items, highlighted, selectedId, containerRole);
-  const activeDescendant = items ? activeDescendantCandidate : domActiveDescendant;
+  const activeDescendantCandidate = resolveActiveDescendant<TId>(items, highlighted, selectedId, containerRole);
+  const activeDescendant = items ? activeDescendantCandidate : (domActiveDescendant as TId | null);
 
   const syncDomActiveDescendant = useEffectEvent(() => {
     if (items) return;
@@ -267,7 +272,7 @@ export function useListbox({
       containerRole,
       idPrefix,
       activeDescendantCandidate,
-      getItemId,
+      getItemId as (idPrefix: string, id: string) => string,
       containerRole === "menu",
     )
       ? activeDescendantCandidate
@@ -296,23 +301,30 @@ export function useListbox({
     return () => observer.disconnect();
   }, [containerRole, getItemId, idPrefix, itemRole, items]);
 
-  const isItemEnabled = (id: string) => {
+  const isItemEnabled = (id: TId) => {
     return items
       ? hasEnabledMetadataItem(items, id)
-      : hasDomItem(containerRef.current, itemRole, containerRole, idPrefix, id, getItemId);
+      : hasDomItem(
+          containerRef.current,
+          itemRole,
+          containerRole,
+          idPrefix,
+          id,
+          getItemId as (idPrefix: string, id: string) => string,
+        );
   };
 
-  const activateItem = (next: string) => {
+  const activateItem = (next: TId) => {
     setSelectedId(next);
     setHighlighted(next);
   };
 
-  const handleItemActivate = (next: string) => {
+  const handleItemActivate = (next: TId) => {
     if (!isItemEnabled(next)) return;
     activateItem(next);
   };
 
-  const handleItemEnter = (next: string, event: globalThis.KeyboardEvent) => {
+  const handleItemEnter = (next: TId, event: globalThis.KeyboardEvent) => {
     if (!isItemEnabled(next)) return;
     activateItem(next);
     onEnter?.(next, event);
@@ -320,7 +332,7 @@ export function useListbox({
 
   const ensureActiveItem = useCallback(() => {
     if (activeDescendant !== null) return;
-    const firstItemId = getFirstNavigableItemId(containerRef.current, itemRole, containerRole, items);
+    const firstItemId = getFirstNavigableItemId<TId>(containerRef.current, itemRole, containerRole, items);
     if (firstItemId !== null) setHighlighted(firstItemId);
   }, [activeDescendant, containerRole, itemRole, items, setHighlighted]);
 
@@ -341,7 +353,7 @@ export function useListbox({
     return () => cancelAnimationFrame(frame);
   }, [autoFocus, ensureActiveItem]);
 
-  const { onKeyDown: navKeyDown } = useNavigation({
+  const { onKeyDown: navKeyDown } = useNavigation<TId>({
     containerRef,
     role: itemRole,
     wrap,
@@ -390,7 +402,8 @@ export function useListbox({
     });
 
     if (match) {
-      setHighlighted(match.dataset.value!);
+      // DOM boundary: data-value is opaque to TS; consumers parameterize TId.
+      setHighlighted(match.dataset.value! as TId);
       match.scrollIntoView?.({ block: "nearest" });
     }
   };

@@ -39,4 +39,64 @@ export const emptyStateDoc: ComponentDoc = {
     { name: "empty-state-live", title: "Dynamic (live)" },
   ],
   keyboard: null,
+  props: {
+    EmptyState: {
+      variant: {
+        type: '"centered" | "inline"',
+        required: false,
+        defaultValue: '"centered"',
+        description: "Root layout. Centered stacks children vertically; inline aligns them horizontally.",
+      },
+      size: {
+        type: '"sm" | "md" | "lg"',
+        required: false,
+        defaultValue: '"md"',
+        description: "Spacing and font-size scale propagated to all subparts via data-size attribute.",
+      },
+      live: {
+        type: "boolean",
+        required: false,
+        defaultValue: "false",
+        description: 'When true, adds role="status" and aria-live="polite" so screen readers announce the empty state.',
+      },
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "EmptyState subparts (Icon, Message, Description, Actions).",
+      },
+    },
+    EmptyStateIcon: {
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Visual marker. Always rendered with aria-hidden.",
+      },
+    },
+    EmptyStateMessage: {
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Primary empty-state copy.",
+      },
+    },
+    EmptyStateDescription: {
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Supporting copy.",
+      },
+    },
+    EmptyStateActions: {
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Action buttons or links.",
+      },
+    },
+  },
 }

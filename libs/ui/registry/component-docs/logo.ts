@@ -27,4 +27,20 @@ export const logoDoc: ComponentDoc = {
     { name: "logo-styled", title: "Styled" },
   ],
   keyboard: null,
+  props: {
+    Logo: {
+      text: {
+        type: "string",
+        required: true,
+        defaultValue: null,
+        description: "Display text, also used as the accessible name when asciiText is provided.",
+      },
+      asciiText: {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description: 'Precomputed ASCII art. When set, renders inside <pre role="img" aria-label={text}>.',
+      },
+    },
+  },
 }

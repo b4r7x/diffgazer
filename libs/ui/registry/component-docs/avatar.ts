@@ -49,4 +49,118 @@ export const avatarDoc: ComponentDoc = {
     { name: "avatar-group", title: "Group with Overflow" },
   ],
   keyboard: null,
+  props: {
+    Avatar: {
+      src: {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description: "Image URL. Ignored when children are provided.",
+      },
+      alt: {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description: 'Image alt text and accessible name. When omitted, falls back to a string `fallback`. When neither is set, the avatar uses role="presentation".',
+      },
+      fallback: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: '"?"',
+        description: "Shown when the image is loading, missing, or fails.",
+      },
+      size: {
+        type: '"sm" | "md" | "lg"',
+        required: false,
+        defaultValue: '"md"',
+        description: "Square size token. Inherits from an AvatarGroup parent when unset.",
+      },
+      onStatusChange: {
+        type: '(status: "idle" | "loading" | "loaded" | "error") => void',
+        required: false,
+        defaultValue: null,
+        description: "Fired when the image load status changes. Fires for the active image only.",
+      },
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Custom inner content. Replaces the default AvatarImage + AvatarFallback composition.",
+      },
+    },
+    AvatarImage: {
+      src: {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description: "Image URL.",
+      },
+      alt: {
+        type: "string",
+        required: false,
+        defaultValue: '""',
+        description: "Alt text. Defaults to empty when omitted since the parent Avatar already exposes a name.",
+      },
+    },
+    AvatarFallback: {
+      src: {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description: "Cascading fallback image. Tried before rendering children.",
+      },
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Initials or icon shown when no fallback image is available.",
+      },
+    },
+    AvatarGroup: {
+      max: {
+        type: "number",
+        required: false,
+        defaultValue: null,
+        description: "Hard cap on visible avatars. Extras render as an AvatarIndicator. When omitted, AvatarGroup measures overflow with Overflow.",
+      },
+      spacing: {
+        type: '"overlap" | "gap"',
+        required: false,
+        defaultValue: '"overlap"',
+        description: 'Overlap stacks avatars; gap spaces them apart.',
+      },
+      size: {
+        type: '"sm" | "md" | "lg" | null',
+        required: false,
+        defaultValue: '"md"',
+        description: "Default size applied to descendant Avatars that do not set their own size.",
+      },
+      "aria-label": {
+        type: "string",
+        required: false,
+        defaultValue: '"Avatars"',
+        description: 'Accessible label for the group container (rendered with role="group").',
+      },
+      children: {
+        type: "ReactNode",
+        required: true,
+        defaultValue: null,
+        description: "Avatar elements.",
+      },
+    },
+    AvatarIndicator: {
+      count: {
+        type: "number",
+        required: true,
+        defaultValue: null,
+        description: 'Number rendered as "+N". Used by AvatarGroup for overflow but available standalone.',
+      },
+      size: {
+        type: '"sm" | "md" | "lg"',
+        required: false,
+        defaultValue: null,
+        description: "Size override. Falls back to the AvatarGroup size.",
+      },
+    },
+  },
 }

@@ -12,6 +12,7 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
+        "https://diffgazer.com/r/ui/theme.json",
         "https://diffgazer.com/r/ui/controllable-state.json",
         "https://diffgazer.com/r/ui/compose-refs.json",
         "https://diffgazer.com/r/ui/icons.json",
@@ -67,6 +68,7 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
+        "https://diffgazer.com/r/ui/theme.json",
         "https://diffgazer.com/r/ui/spinner.json"
       ],
       "meta": {
@@ -92,6 +94,7 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
+        "https://diffgazer.com/r/ui/theme.json",
         "https://diffgazer.com/r/ui/overflow.json"
       ],
       "meta": {
@@ -140,7 +143,9 @@
       "dependencies": [
         "class-variance-authority"
       ],
-      "registryDependencies": [],
+      "registryDependencies": [
+        "https://diffgazer.com/r/ui/theme.json"
+      ],
       "meta": {
         "client": false
       },
@@ -164,6 +169,7 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
+        "https://diffgazer.com/r/ui/theme.json",
         "https://diffgazer.com/r/ui/input-variants.json"
       ],
       "meta": {
@@ -191,6 +197,7 @@
       "description": "Form field primitives for labels, controls, descriptions, and validation messages",
       "dependencies": [],
       "registryDependencies": [
+        "https://diffgazer.com/r/ui/theme.json",
         "https://diffgazer.com/r/ui/aria-utils.json",
         "https://diffgazer.com/r/ui/compose-refs.json"
       ],
@@ -215,6 +222,7 @@
       "description": "Terminal-styled multi-line text area",
       "dependencies": [],
       "registryDependencies": [
+        "https://diffgazer.com/r/ui/theme.json",
         "https://diffgazer.com/r/ui/input-variants.json"
       ],
       "meta": {
@@ -240,6 +248,7 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
+        "https://diffgazer.com/r/ui/theme.json",
         "https://diffgazer.com/r/ui/controllable-state.json"
       ],
       "meta": {
@@ -305,6 +314,7 @@
       "description": "Terminal-styled checkbox with bracket notation",
       "dependencies": [],
       "registryDependencies": [
+        "https://diffgazer.com/r/ui/theme.json",
         "https://diffgazer.com/r/ui/aria-utils.json",
         "https://diffgazer.com/r/ui/controllable-state.json",
         "https://diffgazer.com/r/ui/form-reset.json",
@@ -350,7 +360,9 @@
       "dependencies": [
         "class-variance-authority"
       ],
-      "registryDependencies": [],
+      "registryDependencies": [
+        "https://diffgazer.com/r/ui/theme.json"
+      ],
       "meta": {
         "client": false
       },
@@ -372,6 +384,7 @@
       "description": "Terminal-styled radio and radio group for single-selection with bracket notation",
       "dependencies": [],
       "registryDependencies": [
+        "https://diffgazer.com/r/ui/theme.json",
         "https://diffgazer.com/r/ui/aria-utils.json",
         "https://diffgazer.com/r/ui/controllable-state.json",
         "https://diffgazer.com/r/ui/form-reset.json",
@@ -417,7 +430,9 @@
       "dependencies": [
         "class-variance-authority"
       ],
-      "registryDependencies": [],
+      "registryDependencies": [
+        "https://diffgazer.com/r/ui/theme.json"
+      ],
       "meta": {
         "client": false
       },
@@ -454,7 +469,9 @@
       "title": "Scroll Area",
       "description": "Custom scrollable area with styled scrollbars",
       "dependencies": [],
-      "registryDependencies": [],
+      "registryDependencies": [
+        "https://diffgazer.com/r/ui/theme.json"
+      ],
       "meta": {
         "client": true
       },
@@ -477,7 +494,9 @@
       "dependencies": [
         "class-variance-authority"
       ],
-      "registryDependencies": [],
+      "registryDependencies": [
+        "https://diffgazer.com/r/ui/theme.json"
+      ],
       "meta": {
         "client": false
       },
@@ -528,7 +547,9 @@
       "dependencies": [
         "class-variance-authority"
       ],
-      "registryDependencies": [],
+      "registryDependencies": [
+        "https://diffgazer.com/r/ui/theme.json"
+      ],
       "meta": {
         "client": true
       },
@@ -559,7 +580,9 @@
       "dependencies": [
         "class-variance-authority"
       ],
-      "registryDependencies": [],
+      "registryDependencies": [
+        "https://diffgazer.com/r/ui/theme.json"
+      ],
       "meta": {
         "client": false
       },
@@ -582,7 +605,9 @@
       "dependencies": [
         "class-variance-authority"
       ],
-      "registryDependencies": [],
+      "registryDependencies": [
+        "https://diffgazer.com/r/ui/theme.json"
+      ],
       "meta": {
         "client": false
       },
@@ -621,7 +646,9 @@
       "dependencies": [
         "class-variance-authority"
       ],
-      "registryDependencies": [],
+      "registryDependencies": [
+        "https://diffgazer.com/r/ui/theme.json"
+      ],
       "meta": {
         "client": true
       },
@@ -652,7 +679,9 @@
       "dependencies": [
         "class-variance-authority"
       ],
-      "registryDependencies": [],
+      "registryDependencies": [
+        "https://diffgazer.com/r/ui/theme.json"
+      ],
       "meta": {
         "client": true
       },
@@ -674,6 +703,7 @@
       "description": "Container-aware overflow handling for items (dynamic fitting with indicator) and text (line clamping with tooltip).",
       "dependencies": [],
       "registryDependencies": [
+        "https://diffgazer.com/r/ui/theme.json",
         "https://diffgazer.com/r/ui/tooltip.json",
         "https://diffgazer.com/r/ui/overflow-detection.json",
         "https://diffgazer.com/r/ui/overflow-items.json",
@@ -708,6 +738,7 @@
       "description": "Minimal tooltip with hover delay and terminal styling. Built on Popover primitive with all 4-side positioning. Compound API (Trigger + Content) or shorthand content prop.",
       "dependencies": [],
       "registryDependencies": [
+        "https://diffgazer.com/r/ui/theme.json",
         "https://diffgazer.com/r/ui/popover.json"
       ],
       "meta": {
@@ -737,6 +768,7 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
+        "https://diffgazer.com/r/ui/theme.json",
         "https://diffgazer.com/r/ui/button.json",
         "https://diffgazer.com/r/ui/controllable-state.json",
         "https://diffgazer.com/r/keys/focus-restore.json",
@@ -814,11 +846,16 @@
       "dependencies": [],
       "registryDependencies": [
         "https://diffgazer.com/r/ui/compose-refs.json",
-        "https://diffgazer.com/r/ui/presence.json"
+        "https://diffgazer.com/r/ui/presence.json",
+        "https://diffgazer.com/r/keys/focus-trap.json",
+        "https://diffgazer.com/r/keys/scroll-lock.json"
       ],
       "meta": {
         "client": true,
-        "hidden": true
+        "hidden": true,
+        "optionalIntegrations": [
+          "keyboard-navigation"
+        ]
       },
       "files": [
         {
@@ -840,7 +877,9 @@
       "dependencies": [
         "class-variance-authority"
       ],
-      "registryDependencies": [],
+      "registryDependencies": [
+        "https://diffgazer.com/r/ui/theme.json"
+      ],
       "meta": {
         "client": false
       },
@@ -867,7 +906,9 @@
       "dependencies": [
         "class-variance-authority"
       ],
-      "registryDependencies": [],
+      "registryDependencies": [
+        "https://diffgazer.com/r/ui/theme.json"
+      ],
       "meta": {
         "client": false
       },
@@ -891,6 +932,7 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
+        "https://diffgazer.com/r/ui/theme.json",
         "https://diffgazer.com/r/ui/controllable-state.json",
         "https://diffgazer.com/r/keys/navigation.json",
         "https://diffgazer.com/r/ui/compose-refs.json"
@@ -937,6 +979,7 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
+        "https://diffgazer.com/r/ui/theme.json",
         "https://diffgazer.com/r/ui/listbox.json"
       ],
       "meta": {
@@ -977,6 +1020,7 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
+        "https://diffgazer.com/r/ui/theme.json",
         "https://diffgazer.com/r/ui/listbox.json",
         "https://diffgazer.com/r/ui/badge.json"
       ],
@@ -1038,6 +1082,7 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
+        "https://diffgazer.com/r/ui/theme.json",
         "https://diffgazer.com/r/ui/outside-click.json",
         "https://diffgazer.com/r/ui/spinner.json"
       ],
@@ -1087,6 +1132,7 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
+        "https://diffgazer.com/r/ui/theme.json",
         "https://diffgazer.com/r/ui/badge.json",
         "https://diffgazer.com/r/ui/controllable-state.json",
         "https://diffgazer.com/r/ui/step-status.json"
@@ -1135,6 +1181,7 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
+        "https://diffgazer.com/r/ui/theme.json",
         "https://diffgazer.com/r/ui/controllable-state.json",
         "https://diffgazer.com/r/ui/form-reset.json",
         "https://diffgazer.com/r/ui/compose-refs.json"
@@ -1162,6 +1209,7 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
+        "https://diffgazer.com/r/ui/theme.json",
         "https://diffgazer.com/r/keys/navigation.json",
         "https://diffgazer.com/r/ui/controllable-state.json",
         "https://diffgazer.com/r/ui/compose-refs.json",
@@ -1200,6 +1248,7 @@
       "description": "Code display with line numbers and scroll area",
       "dependencies": [],
       "registryDependencies": [
+        "https://diffgazer.com/r/ui/theme.json",
         "https://diffgazer.com/r/ui/scroll-area.json"
       ],
       "meta": {
@@ -1239,6 +1288,7 @@
       "description": "Diff viewer with unified and side-by-side modes. Accepts unified diff strings or before/after text. Keyboard navigation between hunks with j/k.",
       "dependencies": [],
       "registryDependencies": [
+        "https://diffgazer.com/r/ui/theme.json",
         "https://diffgazer.com/r/ui/diff.json",
         "https://diffgazer.com/r/keys/navigation.json",
         "https://diffgazer.com/r/ui/kbd.json"
@@ -1284,6 +1334,7 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
+        "https://diffgazer.com/r/ui/theme.json",
         "https://diffgazer.com/r/ui/step-status.json"
       ],
       "files": [
@@ -1314,6 +1365,7 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
+        "https://diffgazer.com/r/ui/theme.json",
         "https://diffgazer.com/r/ui/controllable-state.json",
         "https://diffgazer.com/r/keys/focus-restore.json",
         "https://diffgazer.com/r/keys/navigation.json",
@@ -1385,6 +1437,7 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
+        "https://diffgazer.com/r/ui/theme.json",
         "https://diffgazer.com/r/ui/aria-utils.json",
         "https://diffgazer.com/r/ui/controllable-state.json",
         "https://diffgazer.com/r/keys/navigation.json",
@@ -1464,7 +1517,9 @@
       "dependencies": [
         "class-variance-authority"
       ],
-      "registryDependencies": [],
+      "registryDependencies": [
+        "https://diffgazer.com/r/ui/theme.json"
+      ],
       "meta": {
         "client": true
       },
@@ -1496,6 +1551,7 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
+        "https://diffgazer.com/r/ui/theme.json",
         "https://diffgazer.com/r/ui/icons.json",
         "https://diffgazer.com/r/ui/controllable-state.json",
         "https://diffgazer.com/r/keys/navigation.json",
@@ -1572,7 +1628,9 @@
       "title": "Pager",
       "description": "Previous/next page navigation for sequential content",
       "dependencies": [],
-      "registryDependencies": [],
+      "registryDependencies": [
+        "https://diffgazer.com/r/ui/theme.json"
+      ],
       "meta": {
         "client": true
       },
@@ -1597,7 +1655,9 @@
       "title": "Logo",
       "description": "Static text logo primitive. Precompute ASCII art and pass it as asciiText.",
       "dependencies": [],
-      "registryDependencies": [],
+      "registryDependencies": [
+        "https://diffgazer.com/r/ui/theme.json"
+      ],
       "meta": {
         "client": false
       },
@@ -1618,7 +1678,9 @@
       "title": "Breadcrumbs",
       "description": "Compound breadcrumb navigation with auto-separator and composable parts",
       "dependencies": [],
-      "registryDependencies": [],
+      "registryDependencies": [
+        "https://diffgazer.com/r/ui/theme.json"
+      ],
       "meta": {
         "client": true
       },
@@ -1657,7 +1719,9 @@
       "dependencies": [
         "class-variance-authority"
       ],
-      "registryDependencies": [],
+      "registryDependencies": [
+        "https://diffgazer.com/r/ui/theme.json"
+      ],
       "meta": {
         "client": true
       },
@@ -1688,7 +1752,9 @@
       "dependencies": [
         "class-variance-authority"
       ],
-      "registryDependencies": [],
+      "registryDependencies": [
+        "https://diffgazer.com/r/ui/theme.json"
+      ],
       "meta": {
         "client": false
       },
@@ -2127,6 +2193,7 @@
       "description": "Floating content anchored to a trigger element. Supports click-to-open (popover) and hover (tooltip) modes with full 4-side positioning, flip, shift, and collision detection.",
       "dependencies": [],
       "registryDependencies": [
+        "https://diffgazer.com/r/ui/theme.json",
         "https://diffgazer.com/r/ui/portal.json",
         "https://diffgazer.com/r/ui/compose-refs.json",
         "https://diffgazer.com/r/ui/controllable-state.json",

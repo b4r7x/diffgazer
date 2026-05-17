@@ -23,4 +23,32 @@ export const badgeDoc: ComponentDoc = {
     { name: "badge-sizes", title: "Sizes" },
   ],
   keyboard: null,
+  props: {
+    Badge: {
+      variant: {
+        type: '"success" | "warning" | "error" | "info" | "neutral"',
+        required: false,
+        defaultValue: '"neutral"',
+        description: "Semantic color token. Picks foreground, background, border, and dot color together.",
+      },
+      size: {
+        type: '"sm" | "md" | "lg"',
+        required: false,
+        defaultValue: '"sm"',
+        description: "Padding and font-size token.",
+      },
+      dot: {
+        type: "boolean",
+        required: false,
+        defaultValue: "false",
+        description: "Renders a leading status dot in the variant color.",
+      },
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Badge label.",
+      },
+    },
+  },
 }

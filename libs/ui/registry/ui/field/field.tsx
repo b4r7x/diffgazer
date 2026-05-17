@@ -14,6 +14,7 @@ import {
   type HTMLAttributes,
   type LabelHTMLAttributes,
   type ReactElement,
+  type ReactNode,
   type Ref,
 } from "react";
 import { mergeIds } from "@/lib/aria-utils";
@@ -43,6 +44,14 @@ function useFieldContext(source: string) {
   return context;
 }
 
+function hasRenderableContent(children: ReactNode): boolean {
+  if (children === null || children === undefined || typeof children === "boolean") return false;
+  if (typeof children === "string") return children.length > 0;
+  if (typeof children === "number") return true;
+  if (Array.isArray(children)) return children.some(hasRenderableContent);
+  return true;
+}
+
 export interface FieldRootProps extends HTMLAttributes<HTMLDivElement> {
   controlId?: string;
   invalid?: boolean;
@@ -51,6 +60,25 @@ export interface FieldRootProps extends HTMLAttributes<HTMLDivElement> {
   ref?: Ref<HTMLDivElement>;
 }
 
+/**
+ * Form-field wrapper that wires a label, control, optional description, and
+ * optional error message together via shared `id` and ARIA relationships.
+ * The compound `Field.Label`, `Field.Control`, `Field.Description`, and
+ * `Field.Error` children read state from this root so consumers only set
+ * `invalid`, `required`, or `disabled` once.
+ *
+ * @example
+ * ```tsx
+ * <Field required invalid={Boolean(error)}>
+ *   <Field.Label>Email</Field.Label>
+ *   <Field.Control>
+ *     <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+ *   </Field.Control>
+ *   <Field.Description>We never share your address.</Field.Description>
+ *   <Field.Error>{error}</Field.Error>
+ * </Field>
+ * ```
+ */
 function FieldRoot({
   controlId,
   invalid = false,
@@ -175,7 +203,7 @@ export interface FieldDescriptionProps extends HTMLAttributes<HTMLParagraphEleme
 
 function FieldDescription({ className, children, ref, ...props }: FieldDescriptionProps) {
   const { defaultDescriptionId, setDescriptionId } = useFieldContext("Field.Description");
-  const hasChildren = children !== undefined && children !== null;
+  const hasChildren = hasRenderableContent(children);
   const resolvedId = props.id ?? defaultDescriptionId;
 
   useEffect(() => {
@@ -205,7 +233,7 @@ export interface FieldErrorProps extends HTMLAttributes<HTMLParagraphElement> {
 
 function FieldError({ className, children, ref, ...props }: FieldErrorProps) {
   const { defaultErrorId, setErrorId } = useFieldContext("Field.Error");
-  const hasChildren = children !== undefined && children !== null;
+  const hasChildren = hasRenderableContent(children);
   const resolvedId = props.id ?? defaultErrorId;
 
   useEffect(() => {

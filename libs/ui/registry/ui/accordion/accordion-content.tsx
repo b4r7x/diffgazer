@@ -17,7 +17,7 @@ export function AccordionContent({ children, className, region = false }: Accord
   return (
     <div
       className={cn(
-        "grid transition-[grid-template-rows] duration-200 ease-out",
+        "grid transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none",
         isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
       )}
       aria-hidden={!isOpen || undefined}

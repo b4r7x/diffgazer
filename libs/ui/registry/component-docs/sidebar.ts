@@ -55,4 +55,190 @@ export const sidebarDoc: ComponentDoc = {
     { name: "sidebar-render-prop", title: "Render Prop" },
   ],
   keyboard: null,
+  props: {
+    Sidebar: {
+      open: {
+        type: "boolean",
+        required: false,
+        defaultValue: null,
+        description: "Controlled open state. Ignored when wrapped in SidebarProvider.",
+      },
+      defaultOpen: {
+        type: "boolean",
+        required: false,
+        defaultValue: "true",
+        description: "Initial open state for uncontrolled standalone use.",
+      },
+      onOpenChange: {
+        type: "(open: boolean) => void",
+        required: false,
+        defaultValue: null,
+        description: "Fired when the open state changes (standalone mode).",
+      },
+      children: {
+        type: "ReactNode",
+        required: true,
+        defaultValue: null,
+        description: "Sidebar subparts (Header, Content, Footer, Trigger).",
+      },
+    },
+    "Sidebar.Provider": {
+      open: {
+        type: "boolean",
+        required: false,
+        defaultValue: null,
+        description: "Controlled open state shared with descendants.",
+      },
+      defaultOpen: {
+        type: "boolean",
+        required: false,
+        defaultValue: "true",
+        description: "Initial open state.",
+      },
+      onOpenChange: {
+        type: "(open: boolean) => void",
+        required: false,
+        defaultValue: null,
+        description: "Fired when the open state changes.",
+      },
+      children: {
+        type: "ReactNode",
+        required: true,
+        defaultValue: null,
+        description: "Sidebar and main content that need access to the open state via useSidebar().",
+      },
+    },
+    "Sidebar.Trigger": {
+      "aria-label": {
+        type: "string",
+        required: false,
+        defaultValue: '"Expand sidebar" / "Collapse sidebar"',
+        description: "Accessible name. Defaults to a state-derived label.",
+      },
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Trigger button content (typically an icon).",
+      },
+    },
+    "Sidebar.Header": {
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Top region content.",
+      },
+    },
+    "Sidebar.Content": {
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Scrollable middle region. Hidden, aria-hidden, and inert when the sidebar is collapsed.",
+      },
+    },
+    "Sidebar.Section": {
+      collapsible: {
+        type: "boolean",
+        required: false,
+        defaultValue: "false",
+        description: "When true, Sidebar.SectionTitle becomes a toggle that expands/collapses the section.",
+      },
+      open: {
+        type: "boolean",
+        required: false,
+        defaultValue: null,
+        description: "Controlled open state for the section.",
+      },
+      defaultOpen: {
+        type: "boolean",
+        required: false,
+        defaultValue: "true",
+        description: "Initial open state for the section.",
+      },
+      onOpenChange: {
+        type: "(open: boolean) => void",
+        required: false,
+        defaultValue: null,
+        description: "Fired when the section open state changes.",
+      },
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Section subparts (SectionTitle, Items).",
+      },
+    },
+    "Sidebar.SectionTitle": {
+      handle: {
+        type: "ReactNode | null",
+        required: false,
+        defaultValue: "<Chevron open={isOpen} size=\"sm\" />",
+        description: "Custom handle element for collapsible sections. Pass null to hide.",
+      },
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Section label.",
+      },
+    },
+    "Sidebar.Item": {
+      as: {
+        type: '"button" | "a"',
+        required: false,
+        defaultValue: '"button"',
+        description: 'Rendered element. Use "a" with href for navigation links.',
+      },
+      active: {
+        type: "boolean",
+        required: false,
+        defaultValue: "false",
+        description: 'Marks the item as the current page. Adds aria-current="page" and active styling.',
+      },
+      value: {
+        type: "string",
+        required: false,
+        defaultValue: "auto-generated id",
+        description: "Stable identifier exposed as data-value for keyboard navigation.",
+      },
+      disabled: {
+        type: "boolean",
+        required: false,
+        defaultValue: "false",
+        description: "Disables the item. Adds aria-disabled and removes from tab order.",
+      },
+      children: {
+        type: "ReactNode | (props: SidebarItemRenderProps) => ReactNode",
+        required: true,
+        defaultValue: null,
+        description: "Item content or a render function (for framework Link components) that receives ref, className, disabled, aria-current, and onClick.",
+      },
+    },
+    "Sidebar.ItemLabel": {
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Truncated label text.",
+      },
+    },
+    "Sidebar.ItemBadge": {
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Trailing badge or metadata (e.g. count, status).",
+      },
+    },
+    "Sidebar.Footer": {
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Bottom region content.",
+      },
+    },
+  },
 }

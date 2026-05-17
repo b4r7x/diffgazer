@@ -56,4 +56,56 @@ export const diffViewDoc: ComponentDoc = {
     description: "When the diff container is focused, j/k navigate between hunks. The active hunk scrolls into view and is highlighted with a ring. Press Escape to clear the selection.",
     examples: [], // No dedicated keyboard example — j/k navigation is demonstrated in diff-view-default
   },
+  props: {
+    DiffView: {
+      patch: {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description: "Unified diff string (git diff output). One of patch, before+after, or diff must be supplied.",
+      },
+      before: {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description: "Old text. Pair with after to let DiffView compute the diff via LCS.",
+      },
+      after: {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description: "New text. Pair with before.",
+      },
+      diff: {
+        type: "ParsedDiff",
+        required: false,
+        defaultValue: null,
+        description: "Pre-parsed diff data, useful when displaying one file out of a multi-file parseDiff() result.",
+      },
+      mode: {
+        type: '"unified" | "split"',
+        required: false,
+        defaultValue: '"unified"',
+        description: "Inline view or side-by-side comparison.",
+      },
+      showLineNumbers: {
+        type: "boolean",
+        required: false,
+        defaultValue: "false",
+        description: "Renders line-number gutters for both sides.",
+      },
+      disableWordDiff: {
+        type: "boolean",
+        required: false,
+        defaultValue: "false",
+        description: "Disables intra-line word-level highlighting.",
+      },
+      label: {
+        type: "string",
+        required: false,
+        defaultValue: '"Diff output"',
+        description: "Accessible name applied to the diff region.",
+      },
+    },
+  },
 }

@@ -3,7 +3,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 export const panelLegendVariants = cva(
-  "absolute -top-3 left-4 z-10 bg-background px-2 text-xs font-bold uppercase tracking-wider",
+  "absolute -top-3 left-4 z-[var(--z-base)] bg-background px-2 text-xs font-bold uppercase tracking-wider",
   {
     variants: {
       tone: {

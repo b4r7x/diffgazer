@@ -4,7 +4,9 @@
   "title": "Scroll Area",
   "description": "Custom scrollable area with styled scrollbars",
   "dependencies": [],
-  "registryDependencies": [],
+  "registryDependencies": [
+    "https://diffgazer.com/r/ui/theme.json"
+  ],
   "files": [
     {
       "path": "registry/ui/scroll-area/index.ts",

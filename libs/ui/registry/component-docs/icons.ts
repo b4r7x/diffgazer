@@ -30,4 +30,26 @@ export const iconsDoc: ComponentDoc = {
     { name: "chevron-animated", title: "Animated Toggle" },
   ],
   keyboard: null,
+  props: {
+    Chevron: {
+      direction: {
+        type: '"down" | "up" | "left" | "right"',
+        required: false,
+        defaultValue: '"right"',
+        description: "Base direction the chevron points before any rotation.",
+      },
+      open: {
+        type: "boolean",
+        required: false,
+        defaultValue: "false",
+        description: "Rotates 90 degrees clockwise from the base direction. Use for expand/collapse toggles.",
+      },
+      size: {
+        type: '"sm" | "md" | "lg"',
+        required: false,
+        defaultValue: '"sm"',
+        description: "Icon size token.",
+      },
+    },
+  },
 }

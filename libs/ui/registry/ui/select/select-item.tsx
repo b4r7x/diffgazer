@@ -46,8 +46,9 @@ function getItemState(isSelected: boolean, isHighlighted: boolean, multiple: boo
 
 export type SelectItemIndicator = "auto" | "checkbox" | "radio" | "none";
 
-export interface SelectItemProps extends Omit<ComponentPropsWithRef<"div">, "children" | "onSelect"> {
-  value: string;
+export interface SelectItemProps<TValue extends string = string>
+  extends Omit<ComponentPropsWithRef<"div">, "children" | "onSelect"> {
+  value: TValue;
   children: ReactNode;
   disabled?: boolean;
   /** Controls the selection indicator shown before the item label.
@@ -76,7 +77,7 @@ function renderIndicator(
   return isSelected ? CHECKMARK : null;
 }
 
-export function SelectItem({
+export function SelectItem<TValue extends string = string>({
   value: itemValue,
   children,
   disabled = false,
@@ -87,7 +88,7 @@ export function SelectItem({
   onClick,
   onMouseEnter,
   ...props
-}: SelectItemProps) {
+}: SelectItemProps<TValue>) {
   const {
     value,
     open,
@@ -144,7 +145,7 @@ export function SelectItem({
       )}
       <span>{children}</span>
       {variant === "card" && isHighlighted && isSelected && (
-        <span aria-hidden="true" className="ml-auto text-[10px] animate-pulse">&lt;</span>
+        <span aria-hidden="true" className="ml-auto text-[10px] motion-safe:animate-pulse">&lt;</span>
       )}
     </div>
   );

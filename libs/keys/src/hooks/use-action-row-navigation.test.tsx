@@ -1,7 +1,7 @@
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useRef } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, expectTypeOf, it, vi } from "vitest";
 import { KeyboardWrapper } from "../testing/test-utils";
 import { testNavigationBehavior } from "../testing/navigation-behavior";
 import {
@@ -285,5 +285,42 @@ describe("useActionRowNavigation", () => {
     await user.keyboard("{ArrowRight}");
     await user.keyboard(" ");
     expect(onAction).toHaveBeenCalledWith(1);
+  });
+
+  describe("types", () => {
+    it("narrows index and disabledActions when Actions tuple is provided", () => {
+      type TwoActions = readonly [() => void, () => void];
+      type Options = UseActionRowNavigationOptions<TwoActions>;
+
+      expectTypeOf<Options["actionCount"]>().toEqualTypeOf<2>();
+      expectTypeOf<NonNullable<Options["disabledActions"]>>().toEqualTypeOf<readonly [boolean, boolean]>();
+      // Tuple index narrowing: onAction/onNavigate accept only 0 | 1 (not number).
+      // We assert by checking that number is NOT assignable to the parameter.
+      expectTypeOf<number>().not.toMatchTypeOf<Parameters<Options["onAction"]>[0]>();
+      expectTypeOf<0>().toMatchTypeOf<Parameters<Options["onAction"]>[0]>();
+      expectTypeOf<1>().toMatchTypeOf<Parameters<Options["onAction"]>[0]>();
+      expectTypeOf<2>().not.toMatchTypeOf<Parameters<Options["onAction"]>[0]>();
+      expectTypeOf<number>().not.toMatchTypeOf<Parameters<NonNullable<Options["onNavigate"]>>[0]>();
+    });
+
+    it("rejects disabledActions whose length does not match Actions", () => {
+      type ThreeActions = readonly [() => void, () => void, () => void];
+
+      expectTypeOf<readonly [boolean, boolean]>().not.toMatchTypeOf<
+        NonNullable<UseActionRowNavigationOptions<ThreeActions>["disabledActions"]>
+      >();
+    });
+
+    it("rejects actionCount that disagrees with Actions length", () => {
+      type ThreeActions = readonly [() => void, () => void, () => void];
+
+      expectTypeOf<2>().not.toMatchTypeOf<UseActionRowNavigationOptions<ThreeActions>["actionCount"]>();
+    });
+
+    it("keeps the loose default contract when no generic is supplied", () => {
+      expectTypeOf<UseActionRowNavigationOptions["actionCount"]>().toEqualTypeOf<number>();
+      expectTypeOf<UseActionRowNavigationOptions["onAction"]>().parameter(0).toEqualTypeOf<number>();
+      expectTypeOf<NonNullable<UseActionRowNavigationOptions["disabledActions"]>>().toEqualTypeOf<readonly boolean[]>();
+    });
   });
 });

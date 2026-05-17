@@ -1,6 +1,6 @@
 # Testing Philosophy
 
-Test runner: **Vitest 4** for all 9 packages (`libs/core`, `libs/keys`, `libs/registry`, `libs/server`, `libs/ui`, `apps/web`, `apps/docs`, `cli/add`, `cli/diffgazer`). Test files are colocated with sources as `<name>.test.ts(x)`.
+Test runner: **Vitest 4** for all 9 packages (`libs/core`, `libs/keys`, `libs/registry`, `libs/ui`, `apps/web`, `apps/docs`, `cli/add`, `cli/diffgazer`, `cli/server`). Test files are colocated with sources as `<name>.test.ts(x)`.
 
 ## The Rules
 
@@ -38,8 +38,8 @@ Use `it.each` to collapse parameterizable cases (different keys → same action)
 `vi.mock(...)` is allowed at **system boundaries**:
 - Network / `fetch` (e.g. `@diffgazer/core/api/hooks` which wraps `createApi` over `fetch`, `@/lib/api` web singleton, AI SDK clients like `ai`, `@ai-sdk/google`, `@openrouter/ai-sdk-provider`, `zhipu-ai-provider`)
 - Filesystem (`node:fs`, `node:fs/promises`)
-- Subprocess (`node:child_process`, thin wrappers like `libs/server/src/shared/lib/git/service.ts` which `promisify(execFile)`)
-- OS keychain (`@napi-rs/keyring`, thin wrappers like `libs/server/src/shared/lib/config/keyring.ts` which dynamically loads the native addon)
+- Subprocess (`node:child_process`, thin wrappers like `cli/server/src/shared/lib/git/service.ts` which `promisify(execFile)`)
+- OS keychain (`@napi-rs/keyring`, thin wrappers like `cli/server/src/shared/lib/config/keyring.ts` which dynamically loads the native addon)
 - Timers (`setTimeout`/`setInterval`/`Date.now` via `vi.useFakeTimers()`)
 - Browser-only APIs unavailable in jsdom (`IntersectionObserver`, `ResizeObserver`, `matchMedia`, `HTMLDialogElement.showModal`/`close`)
 - External libraries with their own contract (`@tanstack/react-router` — routing decisions are explicit user behavior, the library is the boundary)
@@ -158,7 +158,7 @@ When reviewing or writing tests, run through this list:
 | libs/core | 46 | 380 | +1 |
 | libs/keys | 20 | 290 | +11 |
 | libs/registry | 12 | 140 | +8 |
-| libs/server | 39 | 374 | +9 |
+| cli/server | 39 | 374 | +9 |
 | libs/ui | 132 (multi-project ×2) | 1564 | +32 |
 | apps/web | 49 | 257 | +2 |
 | apps/docs | 6 | 61 | 0 |

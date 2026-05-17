@@ -24,7 +24,7 @@ describe("resolveDiffInput", () => {
  line3`
     const result = resolveDiffInput({ patch })
     expect(result.hunks).toHaveLength(1)
-    expect(result.hunks[0].changes).toHaveLength(4)
+    expect(result.hunks[0]?.changes).toHaveLength(4)
   })
 
   it("returns empty ParsedDiff for empty patch string", () => {

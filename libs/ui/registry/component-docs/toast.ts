@@ -40,4 +40,52 @@ export const toastDoc: ComponentDoc = {
     description: "Press Escape to dismiss the most recent toast.",
     examples: [],
   },
+  props: {
+    Toaster: {
+      position: {
+        type: '"top-left" | "top-center" | "top-right" | "bottom-left" | "bottom-center" | "bottom-right"',
+        required: false,
+        defaultValue: '"bottom-right"',
+        description: "Corner where toasts stack. Drives positioning classes and slide-in direction.",
+      },
+    },
+    "toast (function)": {
+      title: {
+        type: "string",
+        required: true,
+        defaultValue: null,
+        description: "Primary toast title (first positional argument).",
+      },
+      variant: {
+        type: '"info" | "success" | "warning" | "error" | "loading"',
+        required: false,
+        defaultValue: '"info"',
+        description: "Toast variant. Drives icon, color, and auto-dismiss behavior (error and loading persist).",
+      },
+      message: {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description: "Secondary detail text below the title.",
+      },
+      duration: {
+        type: "number",
+        required: false,
+        defaultValue: "5000",
+        description: "Auto-dismiss delay in ms. When action is set and duration is omitted, the toast persists indefinitely per WCAG 2.2.1.",
+      },
+      action: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Action element (e.g. a Button) rendered on the right.",
+      },
+      id: {
+        type: "string",
+        required: false,
+        defaultValue: "auto-generated",
+        description: "Stable id for updating an existing toast (used by toast.promise to swap loading -> success/error).",
+      },
+    },
+  },
 }

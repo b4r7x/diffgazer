@@ -8,7 +8,7 @@ All npm package names are external publish-gated as of May 2026. Public npm comm
 
 | Path | What it does | CSS setup |
 |------|-------------|-----------|
-| Manual copy / shadcn | `npx shadcn add https://diffgazer.com/r/ui/button.json` | Import copied `src/styles/styles.css` |
+| Manual copy / shadcn (future) | `npx shadcn add https://diffgazer.com/r/ui/button.json` (hosted registry not yet live — see [Hosted Registry Status](../../PACKAGE_GOVERNANCE.md#hosted-registry-status)) | Import copied `src/styles/styles.css` |
 | `dgadd` CLI | `pnpm exec dgadd add ui/button` | Import copied `src/styles/styles.css` |
 | npm package | `npm install @diffgazer/ui @diffgazer/keys` | Import `@diffgazer/ui/sources.css` and `@diffgazer/ui/styles.css` |
 
@@ -61,11 +61,15 @@ Runtime package mode exports compiled components, hooks, utilities, and CSS. It 
 
 `@diffgazer/ui/styles.css` imports the package theme and component CSS only. It intentionally does not import Tailwind, so every app has exactly one Tailwind import in its own global CSS entrypoint.
 
-### Direct shadcn / manual copy
+### Direct shadcn / manual copy (future, after publication)
+
+The hosted registry at `https://diffgazer.com/r/` is not yet live. After publication (see [Hosted Registry Status](../../PACKAGE_GOVERNANCE.md#hosted-registry-status)), the install command will be:
 
 ```bash
 npx shadcn add https://diffgazer.com/r/ui/button.json
 ```
+
+Until then, install with `pnpm exec dgadd add ui/button` or copy source directly from `https://github.com/b4r7x/diffgazer/tree/main/libs/ui/registry/ui/button`.
 
 Files install into your configured `components/ui` directory. Configure the `@ui` registry namespace in `components.json`; see docs for setup.
 
@@ -80,7 +84,13 @@ import { useScope } from "@diffgazer/keys";
 
 Icon primitives ship from `@diffgazer/ui`; there is no `lucide-react` peer or runtime dependency.
 
-`figlet` is a direct dependency because the explicit `@diffgazer/ui/components/logo/figlet` helper renders figlet text. Importing `@diffgazer/ui/components/logo` renders static text or caller-provided `asciiText` and does not load `figlet`.
+`figlet` is an optional peer dependency. The `./components/logo` entry renders static text or caller-provided `asciiText` and does not import `figlet`. The `./components/logo/figlet` helper loads `figlet` lazily inside `getFigletText`; install it only if you call this helper:
+
+```bash
+npm install figlet
+```
+
+Without `figlet` installed, importing `@diffgazer/ui/components/logo/figlet` still succeeds. The failure surfaces at call time: `getFigletText()` rejects with an error whose message mentions the `optional peer dependency 'figlet'`. All other `@diffgazer/ui` entries work unchanged.
 
 ## Entries
 
@@ -108,6 +118,31 @@ pnpm exec dgadd add ui/button --overwrite
 ```
 
 Review copied source in your own git diff before keeping updates.
+
+## Supported browsers
+
+`@diffgazer/ui` ships modern CSS and inherits the Tailwind CSS v4 baseline. The supported floor is:
+
+| Browser | Minimum version |
+|---------|-----------------|
+| Chrome  | 111             |
+| Edge    | 111             |
+| Safari  | 16.4            |
+| Firefox | 128             |
+
+The declared `browserslist` field in `package.json` matches this floor. Bundlers that read `browserslist` (esbuild, Lightning CSS, swc, browserslist-loaded postcss plugins) target the same versions automatically.
+
+### Cosmetic degradations within the supported floor
+
+These browsers run the library, but a few visual details fall back to a simpler render:
+
+- **Safari 16.4 - 18.1** ignores `scrollbar-gutter: stable` on `<html>`. The library wraps this declaration in `@supports (scrollbar-gutter: stable)`, so older Safari simply does not reserve the gutter and may shift layout when scrollbars toggle.
+- **Safari 16.4 - 17.x** falls back to a solid backdrop without blur for `dialog::backdrop`. The library emits `-webkit-backdrop-filter` alongside the unprefixed property, so blur works on Safari 18+ and the solid backdrop is the cosmetic fallback below that.
+- **Chrome below 117 / Safari below 17.4** snap accordion and stepper height transitions instead of animating `1fr ↔ 0fr` grid tracks. Functionally equivalent.
+
+### Out of scope
+
+Internet Explorer, legacy (EdgeHTML) Edge, and Safari below 16.4 are not supported. The library does not ship polyfills for `:has()`, `inert`, container queries, or other modern primitives required by Tailwind CSS v4.
 
 ## Repository metadata
 

@@ -70,7 +70,7 @@ export function parseDiff(patch: string): ParsedDiff[] {
         oldCount: Number(m[2] ?? 1),
         newStart: Number(m[3]),
         newCount: Number(m[4] ?? 1),
-        heading: m[5].trim(),
+        heading: (m[5] ?? "").trim(),
         changes: [],
       };
       current.hunks.push(hunk);

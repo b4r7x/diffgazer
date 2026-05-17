@@ -1,7 +1,10 @@
+import { readFileSync } from "node:fs"
+import { resolve } from "node:path"
+import { fileURLToPath } from "node:url"
 import { render, screen, act, fireEvent } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { axe } from "../../../testing/utils.js"
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
+import { afterAll, beforeAll, describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { Popover } from "./index.js"
 
 function renderClickPopover(props: Record<string, unknown> = {}) {
@@ -348,13 +351,58 @@ describe("Popover", () => {
     expect(screen.getByText("Popover body")).toHaveAttribute("data-state", "closed")
   })
 
-  it("requires an accessible name for dialog popovers", () => {
-    expect(() => render(
+  it("warns and applies a fallback accessible name for dialog popovers without aria-label or aria-labelledby", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+    render(
       <Popover defaultOpen>
         <Popover.Trigger>Open</Popover.Trigger>
         <Popover.Content role="dialog">Popover body</Popover.Content>
       </Popover>,
-    )).toThrow(/requires aria-label or aria-labelledby/)
+    )
+
+    const dialog = screen.getByRole("dialog", { name: "Popover" })
+    expect(dialog).toHaveAttribute("aria-label", "Popover")
+    expect(dialog).not.toHaveAttribute("aria-labelledby")
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("missing an accessible name"))
+
+    warn.mockRestore()
+  })
+
+  it("does not warn when dialog popover has aria-label", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+    render(
+      <Popover defaultOpen>
+        <Popover.Trigger>Open</Popover.Trigger>
+        <Popover.Content role="dialog" aria-label="Settings">Popover body</Popover.Content>
+      </Popover>,
+    )
+
+    expect(screen.getByRole("dialog", { name: "Settings" })).toBeInTheDocument()
+    expect(warn).not.toHaveBeenCalled()
+
+    warn.mockRestore()
+  })
+
+  it("does not warn when dialog popover has aria-labelledby", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+    render(
+      <>
+        <h2 id="external-popover-name">External name</h2>
+        <Popover defaultOpen>
+          <Popover.Trigger>Open</Popover.Trigger>
+          <Popover.Content role="dialog" aria-labelledby="external-popover-name">Popover body</Popover.Content>
+        </Popover>
+      </>,
+    )
+
+    const dialog = screen.getByRole("dialog", { name: "External name" })
+    expect(dialog).not.toHaveAttribute("aria-label")
+    expect(warn).not.toHaveBeenCalled()
+
+    warn.mockRestore()
   })
 
   it("composes content handlers and lets prevented Escape keep the popover open", async () => {
@@ -547,6 +595,81 @@ describe("Popover menu focus", () => {
   })
 })
 
+describe("Popover hover-mode touch", () => {
+  // The top-level beforeEach overrides PointerEvent with a stub that drops
+  // pointerType. These tests rely on pointerType to distinguish touch from
+  // mouse, so restore the jsdom-native PointerEvent for the block.
+  beforeEach(() => {
+    restorePointerEventSupport()
+  })
+
+  it("tap on passive trigger opens hover-mode popover and second tap closes it", () => {
+    render(
+      <Popover triggerMode="hover">
+        <Popover.Trigger>Passive label</Popover.Trigger>
+        <Popover.Content>Tooltip body</Popover.Content>
+      </Popover>,
+    )
+    const trigger = screen.getByText("Passive label")
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument()
+
+    // fireEvent retained: pointerType is required to distinguish touch from mouse; user-event cannot set it
+    fireEvent.pointerDown(trigger, { pointerType: "touch" })
+    expect(screen.getByRole("tooltip")).toHaveAttribute("data-state", "open")
+
+    // fireEvent retained: second-tap close path uses the same pointerType signal
+    fireEvent.pointerDown(trigger, { pointerType: "touch" })
+    expect(screen.getByRole("tooltip")).toHaveAttribute("data-state", "closed")
+  })
+
+  it("ignores mouse pointerdown on passive trigger so it does not double-fire with hover", () => {
+    render(
+      <Popover triggerMode="hover" delayMs={0}>
+        <Popover.Trigger>Passive label</Popover.Trigger>
+        <Popover.Content>Tooltip body</Popover.Content>
+      </Popover>,
+    )
+    const trigger = screen.getByText("Passive label")
+
+    // fireEvent retained: mouse pointerType must be set explicitly to assert the touch-only gate
+    fireEvent.pointerDown(trigger, { pointerType: "mouse" })
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument()
+  })
+
+  it("closes hover-mode popover when a tap lands outside trigger and content", () => {
+    render(
+      <div>
+        <button>Outside</button>
+        <Popover triggerMode="hover" defaultOpen>
+          <Popover.Trigger>Passive label</Popover.Trigger>
+          <Popover.Content>Tooltip body</Popover.Content>
+        </Popover>
+      </div>,
+    )
+    expect(screen.getByRole("tooltip")).toHaveAttribute("data-state", "open")
+
+    // fireEvent retained: document-level pointerdown listener attaches in capture phase; user.click would dispatch a different synthetic sequence
+    fireEvent.pointerDown(screen.getByRole("button", { name: "Outside" }))
+    expect(screen.getByRole("tooltip")).toHaveAttribute("data-state", "closed")
+  })
+
+  it("does not close when pointerdown lands inside the popover content", () => {
+    render(
+      <Popover triggerMode="hover" defaultOpen>
+        <Popover.Trigger>Passive label</Popover.Trigger>
+        <Popover.Content>
+          <button>Inside</button>
+        </Popover.Content>
+      </Popover>,
+    )
+    const inside = screen.getByRole("button", { name: "Inside" })
+
+    // fireEvent retained: contains() check requires pointerdown on the actual content element
+    fireEvent.pointerDown(inside)
+    expect(screen.getByRole("tooltip")).toHaveAttribute("data-state", "open")
+  })
+})
+
 describe("Popover hover timer cleanup", () => {
   beforeEach(() => {
     vi.useFakeTimers()
@@ -573,5 +696,59 @@ describe("Popover hover timer cleanup", () => {
     })
 
     expect(onOpenChange).not.toHaveBeenCalled()
+  })
+})
+
+describe("Popover prefers-reduced-motion", () => {
+  // Popover content opts into the --animate-slide-in / --animate-slide-out tokens
+  // declared in theme-base.css. Tailwind v4 compiles `animate-slide-in` to
+  // `animation: var(--animate-slide-in)`. The theme-base.css
+  // @media (prefers-reduced-motion: reduce) block overrides every --animate-*
+  // token to `none`, neutralizing the animation in real browsers. jsdom does
+  // not evaluate @media in stylesheets, so the override is extracted and
+  // injected at the top level to simulate matchMedia returning true; the
+  // assertion reads the resolved CSS variable on :root.
+  const THEME_BASE_CSS_PATH = resolve(fileURLToPath(import.meta.url), "../../../../styles/theme-base.css")
+  const REDUCED_MOTION_BLOCK_RE = /@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{\s*:root\s*\{[^}]*\}\s*\}/
+  let styleElement: HTMLStyleElement | null = null
+
+  beforeAll(() => {
+    const sourceCss = readFileSync(THEME_BASE_CSS_PATH, "utf8")
+    const reducedMotionBlock = sourceCss.match(REDUCED_MOTION_BLOCK_RE)?.[0]
+    if (!reducedMotionBlock) {
+      throw new Error("theme-base.css must declare a @media (prefers-reduced-motion: reduce) :root block")
+    }
+    const rootRule = reducedMotionBlock.match(/:root\s*\{[^}]*\}/)?.[0]
+    if (!rootRule || !/--animate-slide-in:\s*none/.test(rootRule) || !/--animate-slide-out:\s*none/.test(rootRule)) {
+      throw new Error("theme-base.css reduced-motion block must override --animate-slide-in and --animate-slide-out to none")
+    }
+    styleElement = document.createElement("style")
+    styleElement.dataset.testSource = "theme-base.css#reduced-motion"
+    styleElement.textContent = rootRule
+    document.head.appendChild(styleElement)
+  })
+
+  afterAll(() => {
+    styleElement?.remove()
+    styleElement = null
+  })
+
+  it("opts into --animate-slide-in/out tokens that the @media override neutralizes", async () => {
+    render(
+      <Popover defaultOpen>
+        <Popover.Trigger>Open</Popover.Trigger>
+        <Popover.Content role="dialog" aria-label="Popover menu">
+          Body
+        </Popover.Content>
+      </Popover>,
+    )
+
+    const content = await screen.findByRole("dialog", { name: "Popover menu" })
+    expect(content.className).toMatch(/animate-slide-in/)
+    expect(content.className).toMatch(/animate-slide-out/)
+
+    const root = content.ownerDocument.documentElement
+    expect(getComputedStyle(root).getPropertyValue("--animate-slide-in").trim()).toBe("none")
+    expect(getComputedStyle(root).getPropertyValue("--animate-slide-out").trim()).toBe("none")
   })
 })

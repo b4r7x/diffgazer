@@ -1,5 +1,14 @@
 /* @diffgazer/ui TUI Theme - Shared base (utility classes, animations, @theme mappings) */
 
+/*
+ * Cascade layer order. Declared before any other @layer rule so consumers can
+ * predict override resolution without depending on bundler source order.
+ * Lower layers in the list lose to higher layers: theme tokens < base styles
+ * < component styles < utilities. Tailwind v4 emits its own utilities and
+ * components into matching layer names.
+ */
+@layer theme, base, components, utilities;
+
 .tui-base {
   font-family: var(--tui-font-mono);
   background-color: var(--background);
@@ -58,8 +67,16 @@
   }
 }
 
-html {
-  scrollbar-gutter: stable;
+/*
+ * scrollbar-gutter: stable on global <html> avoids horizontal layout shift
+ * when scrollbars toggle. Safari did not ship scrollbar-gutter until 18.2;
+ * @supports keeps Safari 16.4-18.1 from inheriting a declaration it ignores
+ * silently. Older Safari simply does not reserve the gutter (cosmetic only).
+ */
+@supports (scrollbar-gutter: stable) {
+  html {
+    scrollbar-gutter: stable;
+  }
 }
 
 @custom-variant dark (&:where(.dark, .dark *, [data-theme="dark"], [data-theme="dark"] *));
@@ -140,6 +157,17 @@ html {
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: max(calc(var(--radius) - 4px), 1px);
+
+  /*
+   * Z-index scale for overlay surfaces. Native <dialog>.showModal() and the
+   * HTML Popover API paint in the browser top-layer, which sits above every
+   * z-index value — see apps/docs/content/docs/ui/theme/overview.mdx.
+   */
+  --z-base: 1;
+  --z-dropdown: 100;
+  --z-overlay: 200;
+  --z-popover: 300;
+  --z-toast: 400;
 
   --animate-fade-in: fade-in 0.2s ease-out;
   --animate-fade-out: fade-out 0.15s ease-in forwards;
@@ -269,6 +297,31 @@ html {
       transform: translateY(100%);
       opacity: 0;
     }
+  }
+}
+
+/*
+ * Tailwind v4 compiles `animate-<key>` to `animation: var(--animate-<key>)`.
+ * Overriding each animation token to `none` under prefers-reduced-motion
+ * neutralizes every token consumer (Popover, Select, Toast, future surfaces)
+ * without retrofitting `motion-safe:` everywhere. Components that use the
+ * arbitrary `animate-[...]` form or CSS-only animations handle reduced motion
+ * locally.
+ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --animate-fade-in: none;
+    --animate-fade-out: none;
+    --animate-slide-in: none;
+    --animate-slide-out: none;
+    --animate-slide-in-right: none;
+    --animate-slide-out-right: none;
+    --animate-slide-in-left: none;
+    --animate-slide-out-left: none;
+    --animate-slide-in-top: none;
+    --animate-slide-out-top: none;
+    --animate-slide-in-bottom: none;
+    --animate-slide-out-bottom: none;
   }
 }
 

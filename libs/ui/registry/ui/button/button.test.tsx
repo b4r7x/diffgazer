@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react"
+import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { axe } from "../../../testing/utils.js"
 import { describe, it, expect, vi } from "vitest"
@@ -29,6 +29,18 @@ describe("Button", () => {
     const btn = screen.getByRole("button")
     expect(btn).toHaveAttribute("aria-busy", "true")
     expect(btn).toBeDisabled()
+  })
+
+  it("renders the spinner indicator after the lazy chunk resolves", async () => {
+    render(<Button loading>Save</Button>)
+    const btn = screen.getByRole("button")
+    // querySelector: Spinner is wrapped in aria-hidden so it is excluded from
+    // the accessibility tree; this structural assertion confirms the lazy
+    // Suspense fallback resolved and the spinner mounted inside the button.
+    await waitFor(() => {
+      expect(btn.querySelector('[role="status"][aria-label="Loading"]')).not.toBeNull()
+    })
+    expect(screen.getByText("Save")).toHaveClass("sr-only")
   })
 
   it("is disabled when disabled prop is true", () => {

@@ -15,12 +15,14 @@ import { useMDXComponents } from "@/mdx-components"
 import type { ComponentData } from "@/types/docs-data"
 import { DocDataProvider, useDocData, type DocData, type HookData } from "@/components/docs-mdx/doc-data-context"
 import {
+  docsPath,
   getDocsLibraryConfig,
   parseDocsLibrary,
   sourceSlugsForLibrary,
   type DocsLibraryId,
 } from "@/lib/docs-library"
 import { loadDocData } from "@/lib/load-doc-data"
+import { buildPageSeo } from "@/lib/seo"
 import type { PageTree } from "@/lib/docs-tree"
 
 interface LoaderData {
@@ -51,15 +53,24 @@ export const Route = createFileRoute("/$lib/docs/$")({
 
     return { ...data, componentData, hookData }
   },
-  head: ({ loaderData }) => ({
-    meta: [
-      {
-        title: loaderData
-          ? `${loaderData.title} - ${getDocsLibraryConfig(loaderData.library).displayName} Docs`
-          : "Docs - diffgazer",
-      },
-    ],
-  }),
+  head: ({ loaderData, params }) => {
+    if (!loaderData) {
+      const fallbackLibrary = parseDocsLibrary(params.lib)
+      const fallbackPathname = docsPath(fallbackLibrary, params._splat ?? undefined)
+      const fallback = buildPageSeo({
+        title: "Docs - diffgazer",
+        pathname: fallbackPathname,
+      })
+      return { meta: fallback.meta, links: fallback.links }
+    }
+    const title = `${loaderData.title} - ${getDocsLibraryConfig(loaderData.library).displayName} Docs`
+    const seo = buildPageSeo({
+      title,
+      description: loaderData.description,
+      pathname: docsPath(loaderData.library, params._splat ?? undefined),
+    })
+    return { meta: seo.meta, links: seo.links }
+  },
 })
 
 const serverLoader = createServerFn({ method: "GET" })

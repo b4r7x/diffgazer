@@ -7,9 +7,13 @@ import type {
   ReactNode,
   Ref,
 } from "react";
+import { lazy, Suspense } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
-import { Spinner } from "../spinner/spinner";
+
+const LazySpinner = lazy(() =>
+  import("../spinner/spinner").then((m) => ({ default: m.Spinner })),
+);
 
 export const buttonVariants = cva(
   "inline-flex items-center justify-center font-mono whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background cursor-pointer",
@@ -103,7 +107,11 @@ function ButtonContent({
 }) {
   const inner = (
     <>
-      {loading && <Spinner variant="braille" size={spinnerSize} aria-hidden="true" gap="none" />}
+      {loading && (
+        <Suspense fallback={null}>
+          <LazySpinner variant="braille" size={spinnerSize} aria-hidden="true" gap="none" />
+        </Suspense>
+      )}
       <span className={loading ? "sr-only" : undefined}>{children}</span>
     </>
   );
@@ -117,6 +125,28 @@ function ButtonContent({
   return <>{inner}</>;
 }
 
+/**
+ * Terminal-styled button. Renders a `<button>` by default and an `<a>` when
+ * `as="a"` is passed. A render-prop form (`children` as a function) returns
+ * the resolved `className`, `disabled`, and ARIA props so the caller can
+ * apply them to a router-aware element.
+ *
+ * @example
+ * ```tsx
+ * <Button variant="primary" onClick={() => save()}>Save</Button>
+ * <Button as="a" href="/changelog" variant="link">Changelog</Button>
+ * <Button variant="destructive" loading={isDeleting} onClick={onDelete}>
+ *   Delete
+ * </Button>
+ * ```
+ *
+ * @example
+ * ```tsx
+ * <Button>
+ *   {(props) => <Link to="/settings" {...props}>Settings</Link>}
+ * </Button>
+ * ```
+ */
 export function Button(props: ButtonProps): ReactNode {
   const {
     className,

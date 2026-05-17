@@ -42,7 +42,9 @@ for (const item of registry.items) {
 
   const file =
     item.files.find((f: { path: string }) => f.path.endsWith("index.ts"))?.path ??
-    item.files[0].path;
+    item.files[0]?.path;
+
+  if (!file) throw new Error(`Registry item ${item.name} has no files`);
 
   entry[key] = resolve(import.meta.dirname, file);
 }

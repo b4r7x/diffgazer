@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useEffectEvent, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type RefCallback, type RefObject } from "react";
+import { useEffect, useEffectEvent, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type RefCallback, type RefObject } from "react";
 import type { ModelInfo } from "@diffgazer/core/schemas/config";
 import {
   containsActiveElement,
   findNavigationItemByValue,
+  useActionRowNavigation,
   useKey,
   useFocusZone,
   useScopedNavigation,
@@ -34,7 +35,6 @@ interface ModelDialogKeyboardReturn {
   filterIndex: number;
   setFilterIndex: (index: number | ((prev: number) => number)) => void;
   footerButtonIndex: number;
-  setFooterButtonIndex: (index: number) => void;
   getFooterButtonProps: (index: number) => {
     ref: RefCallback<HTMLButtonElement>;
     onFocus: () => void;
@@ -73,11 +73,6 @@ function getModelFocusTargetId({
   );
 }
 
-function getEnabledFooterButtonIndex(index: number, canConfirm: boolean) {
-  if (index === 1 && canConfirm) return 1;
-  return 0;
-}
-
 export function useModelDialogKeyboard({
   open,
   currentModel,
@@ -94,10 +89,8 @@ export function useModelDialogKeyboard({
 }: ModelDialogKeyboardOptions): ModelDialogKeyboardReturn {
   const [checkedModelId, setCheckedModelId] = useState<string | undefined>(currentModel);
   const [filterIndex, setFilterIndex] = useState(0);
-  const [footerButtonIndex, setFooterButtonIndex] = useState(1);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const hasHandledInitialFocusRef = useRef(false);
-  const footerButtonRefs = useRef(new Map<number, HTMLButtonElement>());
   const filterButtonRefs = useRef(new Map<number, HTMLButtonElement>());
   const canConfirm = filteredModels.length > 0;
   const { zone: focusZone, setZone: setFocusZone, isZone } = useFocusZone({
@@ -127,27 +120,54 @@ export function useModelDialogKeyboard({
     },
   });
 
-  const focusFooterButton = useCallback((index: number) => {
-    const targetIndex = getEnabledFooterButtonIndex(index, canConfirm);
-    setFooterButtonIndex(targetIndex);
-    footerButtonRefs.current.get(targetIndex)?.focus();
-  }, [canConfirm]);
+  const handleCancel = () => onOpenChange(false);
 
-  const isFooterButtonFocused = () => {
-    const button = footerButtonRefs.current.get(footerButtonIndex);
-    return button ? containsActiveElement(button) : false;
+  const handleConfirm = (explicitModelId?: string) => {
+    const nextModelId = [explicitModelId, checkedModelId, focusedModelId]
+      .find((id) => id != null && filteredModels.some((model) => model.id === id))
+      ?? filteredModels[0]?.id;
+    if (!nextModelId) return;
+    onSelect(nextModelId);
+    onOpenChange(false);
   };
 
-  const getFooterButtonProps = (index: number) => ({
-    ref: (node: HTMLButtonElement | null) => {
-      if (node) footerButtonRefs.current.set(index, node);
-      else footerButtonRefs.current.delete(index);
+  const footerActionRow = useActionRowNavigation({
+    enabled: open && isZone("footer"),
+    actionCount: 2,
+    disabledActions: [false, !canConfirm],
+    onAction: (index) => {
+      if (index === 0) handleCancel();
+      else if (index === 1 && canConfirm) handleConfirm();
     },
-    onFocus: () => {
-      setFocusZone("footer");
-      setFooterButtonIndex(getEnabledFooterButtonIndex(index, canConfirm));
+    onNavigationBoundaryReached: (direction) => {
+      if (direction !== "previous") return;
+      if (filteredModels.length === 0) {
+        focusFilterButton(filterIndex);
+        return;
+      }
+      setFocusZone("list");
+      focusBoundaryModel("last");
     },
+    wrap: false,
+    defaultZone: "actions",
+    defaultIndex: 1,
   });
+
+  const getFooterButtonProps = (index: number) => {
+    const actionProps = footerActionRow.getActionProps(index);
+    return {
+      ref: actionProps.ref,
+      onFocus: () => {
+        setFocusZone("footer");
+        actionProps.onFocus();
+      },
+    };
+  };
+
+  const enterFooter = (index: number) => {
+    setFocusZone("footer");
+    footerActionRow.enterActions(index);
+  };
 
   const focusFilterButton = (index: number) => {
     const nextIndex = ((index % TIER_FILTERS.length) + TIER_FILTERS.length) % TIER_FILTERS.length;
@@ -172,9 +192,7 @@ export function useModelDialogKeyboard({
       focusFilterButton(0);
       return;
     }
-
-    setFocusZone("footer");
-    focusFooterButton(1);
+    enterFooter(1);
   };
 
   const { highlighted: focusedModelId, highlight: focusModel } = useScopedNavigation({
@@ -204,12 +222,19 @@ export function useModelDialogKeyboard({
     return containsActiveElement(modelElement);
   };
 
+  const focusBoundaryModel = (target: "first" | "last") => {
+    const targetId =
+      target === "last"
+        ? filteredModels[filteredModels.length - 1]?.id
+        : filteredModels[0]?.id;
+    if (targetId) focusModelElement(targetId);
+  };
+
   const resetDialogState = useEffectEvent(() => {
     hasHandledInitialFocusRef.current = false;
     resetFilters();
     setFocusZone("list");
     setFilterIndex(0);
-    setFooterButtonIndex(canConfirm ? 1 : 0);
     setCheckedModelId(currentModel);
     const targetId = currentModel ?? models[0]?.id;
     if (targetId && focusModelElement(targetId)) {
@@ -251,35 +276,11 @@ export function useModelDialogKeyboard({
     repairListFocus();
   }, [open, focusZone, filteredModels, focusedModelId, currentModel]);
 
-  useEffect(() => {
-    if (!open || focusZone !== "footer" || canConfirm || footerButtonIndex !== 1) return;
-    focusFooterButton(0);
-  }, [canConfirm, focusFooterButton, footerButtonIndex, focusZone, open]);
-
-  const handleConfirm = (explicitModelId?: string) => {
-    const nextModelId = [explicitModelId, checkedModelId, focusedModelId]
-      .find((id) => id != null && filteredModels.some((model) => model.id === id))
-      ?? filteredModels[0]?.id;
-    if (!nextModelId) return;
-    onSelect(nextModelId);
-    onOpenChange(false);
-  };
-
   const handleUseCustom = () => {
     const customId = searchQuery.trim();
     if (!customId) return;
     onSelect(customId);
     onOpenChange(false);
-  };
-
-  const handleCancel = () => onOpenChange(false);
-
-  const focusBoundaryModel = (target: "first" | "last") => {
-    const targetId =
-      target === "last"
-        ? filteredModels[filteredModels.length - 1]?.id
-        : filteredModels[0]?.id;
-    if (targetId) focusModelElement(targetId);
   };
 
   useKey("ArrowDown", () => {
@@ -299,34 +300,12 @@ export function useModelDialogKeyboard({
     { enabled: open && isZone("filters"), preventDefault: true });
   useKey("ArrowDown", () => {
     if (filteredModels.length === 0) {
-      setFocusZone("footer");
-      focusFooterButton(0);
+      enterFooter(0);
       return;
     }
     setFocusZone("list");
     focusBoundaryModel("first");
   }, { enabled: open && isZone("filters"), preventDefault: true });
-
-  useKey("ArrowLeft", () => focusFooterButton(0), { enabled: open && isZone("footer") });
-  useKey("ArrowRight", () => focusFooterButton(1), { enabled: open && isZone("footer") });
-  useKey("ArrowUp", () => {
-    if (filteredModels.length === 0) {
-      focusFilterButton(filterIndex);
-      return;
-    }
-    setFocusZone("list");
-    focusBoundaryModel("last");
-  }, { enabled: open && isZone("footer") });
-  useKey("Enter", () => {
-    if (isFooterButtonFocused()) return;
-    if (footerButtonIndex === 0) handleCancel();
-    else if (canConfirm) handleConfirm();
-  }, { enabled: open && isZone("footer") });
-  useKey(" ", () => {
-    if (isFooterButtonFocused()) return;
-    if (footerButtonIndex === 0) handleCancel();
-    else if (canConfirm) handleConfirm();
-  }, { enabled: open && isZone("footer") });
 
   useKey("/", () => {
     if (focusZone !== "search") {
@@ -334,7 +313,6 @@ export function useModelDialogKeyboard({
     }
   }, { enabled: open, preventDefault: true });
   useKey("f", cycleTierFilter, { enabled: open && !isZone("search") });
-  useKey("Escape", handleCancel, { enabled: open && !isZone("search") });
 
   const handleSearchEscape = () => {
     if (searchQuery) {
@@ -374,8 +352,7 @@ export function useModelDialogKeyboard({
     if (event.key === "ArrowDown") {
       event.preventDefault();
       if (filteredModels.length === 0) {
-        setFocusZone("footer");
-        focusFooterButton(0);
+        enterFooter(0);
         return;
       }
       setFocusZone("list");
@@ -390,8 +367,7 @@ export function useModelDialogKeyboard({
     setCheckedModelId,
     filterIndex,
     setFilterIndex,
-    footerButtonIndex,
-    setFooterButtonIndex,
+    footerButtonIndex: footerActionRow.focusedIndex,
     getCloseButtonProps,
     getFooterButtonProps,
     getFilterButtonProps,

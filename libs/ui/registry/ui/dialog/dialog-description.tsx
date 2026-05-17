@@ -1,18 +1,13 @@
 "use client";
 
-import { useEffect, type HTMLAttributes } from "react";
+import { type HTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 import { useDialogContext } from "./dialog-context";
 
 export interface DialogDescriptionProps extends HTMLAttributes<HTMLParagraphElement> {}
 
 export function DialogDescription({ className, ...props }: DialogDescriptionProps) {
-  const { descriptionId, onDescriptionMount, onDescriptionUnmount } = useDialogContext();
-
-  useEffect(() => {
-    onDescriptionMount();
-    return onDescriptionUnmount;
-  }, [onDescriptionMount, onDescriptionUnmount]);
+  const { descriptionId } = useDialogContext();
 
   return (
     <p

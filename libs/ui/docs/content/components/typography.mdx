@@ -1,6 +1,6 @@
 ---
 title: "Typography"
-description: "Terminal-styled typography wrapper for consistent text styling. Provides variants for body text, prose content, and compact displays."
+description: "Terminal-styled typography wrapper for consistent text styling. Renders body text, prose, compact displays, and semantic h1-h6 headings."
 component: "typography"
 ---
 
@@ -16,10 +16,29 @@ component: "typography"
 
 <UsageSnippet />
 
+## Semantic headings
+
+Pass `as="h1"` through `as="h6"` to render semantic heading elements. Each level
+ships with a sensible default size; pass an explicit `size` prop to override.
+
+| `as` | Default `size` |
+| --- | --- |
+| `h1` | `3xl` |
+| `h2` | `2xl` |
+| `h3` | `xl` |
+| `h4` | `lg` |
+| `h5` | `base` |
+| `h6` | `sm` |
+
+`SectionHeader` remains the right primitive for the small, uppercase, tracked
+section labels common throughout the product surface; reach for `Typography`
+when you need general semantic headings outside that pattern.
+
 ## Examples
 
 <Examples skipFirst />
 
+<APIReference />
 
 ## Accessibility
 

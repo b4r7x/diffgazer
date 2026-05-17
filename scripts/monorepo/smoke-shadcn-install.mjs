@@ -384,7 +384,8 @@ function assertInstalledRegistryTree(fixture) {
   ]);
   assertFileContains(fixture, "src/components/ui/popover/popover-content.tsx", [
     "@/hooks/use-outside-click",
-    "data-[state=open]:animate-[slide-in_0.15s_ease-out]",
+    "data-[state=open]:animate-slide-in",
+    "data-[state=closed]:animate-slide-out",
   ]);
   assertFileContains(fixture, "src/components/ui/tooltip/tooltip-content.tsx", [
     "../popover/popover-content",
@@ -401,6 +402,37 @@ function assertFixtureBuilds(fixture, label) {
   run("pnpm run typecheck", fixture);
   run("pnpm run build", fixture);
   assertBuiltCss(fixture, { label });
+}
+
+function writeSoloButtonApp(fixture) {
+  writeFileSync(
+    join(fixture, "src/main.tsx"),
+    [
+      "import React from 'react';",
+      "import { createRoot } from 'react-dom/client';",
+      "import { Button } from '@/components/ui/button';",
+      "import './index.css';",
+      "",
+      "function App() {",
+      "  return (",
+      "    <main className=\"min-h-screen bg-background text-foreground p-6\">",
+      "      <Button variant=\"primary\">Solo Button</Button>",
+      "    </main>",
+      "  );",
+      "}",
+      "",
+      "createRoot(document.getElementById('root')!).render(<App />);",
+      "",
+    ].join("\n"),
+  );
+}
+
+function assertThemeFilesInstalled(fixture) {
+  for (const relative of ["styles/theme-base.css", "styles/theme.css", "styles/styles.css"]) {
+    if (!existsSync(join(fixture, relative))) {
+      throw new Error(`Expected theme file missing after solo install: ${relative}`);
+    }
+  }
 }
 
 const uiRegistryDir = resolve(root, "libs/ui/public/r");
@@ -429,6 +461,7 @@ console.log("OK: UI public registry dependencies are direct URL ready");
 const registryServer = await startRegistryServer(uiRegistryDir, keysRegistryDir);
 const directFixture = mkdtempSync(join(tmpdir(), "shadcn-smoke-direct-"));
 const namespaceFixture = mkdtempSync(join(tmpdir(), "shadcn-smoke-namespace-"));
+const soloFixture = mkdtempSync(join(tmpdir(), "shadcn-smoke-solo-"));
 
 try {
   writeShadcnFixture(directFixture, registryServer.baseUrl);
@@ -454,10 +487,29 @@ try {
 
   assertFixtureBuilds(namespaceFixture, "Built namespace shadcn");
   console.log("OK: shadcn direct namespace install type-checks and builds");
+
+  // NEW-017 regression: installing a single component must auto-install the theme
+  // registry item via transitive registryDependencies. Without it, theme tokens
+  // referenced by component class names resolve to nothing and the build is unstyled.
+  writeShadcnFixture(soloFixture, registryServer.baseUrl);
+  await runShadcnAdd(soloFixture, [`${registryServer.baseUrl}/ui/button.json`]);
+  assertThemeFilesInstalled(soloFixture);
+  console.log("OK: solo button install auto-pulled theme via registryDependencies");
+
+  writeSoloButtonApp(soloFixture);
+  run("pnpm run typecheck", soloFixture);
+  run("pnpm run build", soloFixture);
+  assertBuiltCss(soloFixture, {
+    label: "Built solo button shadcn",
+    // Dialog isn't part of solo install — only assert theme tokens reach final CSS.
+    expected: [".bg-primary", "--tui-bg"],
+  });
+  console.log("OK: solo button install type-checks and builds with auto-installed theme");
 } finally {
   await registryServer.close();
   rmSync(directFixture, { recursive: true, force: true });
   rmSync(namespaceFixture, { recursive: true, force: true });
+  rmSync(soloFixture, { recursive: true, force: true });
 }
 
 console.log("OK: shadcn direct-install smoke passed");

@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useEffect,
   useMemo,
   useRef,
   type ComponentPropsWithoutRef,
@@ -23,6 +24,8 @@ import {
 } from "@/hooks/use-floating-position";
 import { usePopoverContext, type PopoverPopupRole } from "./popover-context";
 import { useAutoFocus } from "./use-auto-focus";
+
+const FALLBACK_POPOVER_DIALOG_LABEL = "Popover";
 
 export interface PopoverContentProps
   extends Omit<ComponentPropsWithoutRef<"div">, "children" | "id" | "role" | "style"> {
@@ -96,10 +99,14 @@ export function PopoverContent({
     () => ({ ref: contentRef, excludeRefs: triggerExcludeRefs }),
     [contentRef, triggerExcludeRefs],
   );
+  const resolvedAriaLabel = ariaLabel ?? (isDialog && !ariaLabelledBy ? FALLBACK_POPOVER_DIALOG_LABEL : undefined);
 
-  if (isDialog && !hasAccessibleName) {
-    throw new Error("Popover.Content with role=\"dialog\" requires aria-label or aria-labelledby.");
-  }
+  useEffect(() => {
+    if (!open || !isDialog || hasAccessibleName) return;
+    console.warn(
+      "[Popover] Popover.Content with role=\"dialog\" is missing an accessible name. Provide an aria-label or aria-labelledby prop. A fallback accessible name is applied at runtime.",
+    );
+  }, [open, isDialog, hasAccessibleName]);
 
   useOutsideClick(
     contentRef,
@@ -156,7 +163,7 @@ export function PopoverContent({
         ref={composeRefs(presenceRef, contentRef, ref)}
         id={popoverId}
         role={contentRole}
-        aria-label={ariaLabel}
+        aria-label={resolvedAriaLabel}
         aria-labelledby={ariaLabelledBy}
         tabIndex={tabIndex ?? (isDialog ? -1 : undefined)}
         data-state={open ? "open" : "closed"}
@@ -167,9 +174,9 @@ export function PopoverContent({
         onKeyDown={handleKeyDown}
         onAnimationEnd={handleAnimationEnd}
         className={cn(
-          "fixed z-9999",
-          "data-[state=open]:animate-[slide-in_0.15s_ease-out]",
-          "data-[state=closed]:animate-[slide-out_0.15s_ease-in_forwards]",
+          "fixed z-[var(--z-popover)]",
+          "data-[state=open]:animate-slide-in",
+          "data-[state=closed]:animate-slide-out",
           className,
         )}
         style={

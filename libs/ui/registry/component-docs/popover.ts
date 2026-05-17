@@ -42,4 +42,126 @@ export const popoverDoc: ComponentDoc = {
       { name: "popover-basic", title: "Basic" },
     ],
   },
+  props: {
+    Popover: {
+      open: {
+        type: "boolean",
+        required: false,
+        defaultValue: null,
+        description: "Controlled open state. Pair with onOpenChange.",
+      },
+      defaultOpen: {
+        type: "boolean",
+        required: false,
+        defaultValue: "false",
+        description: "Initial open state for uncontrolled mode.",
+      },
+      onOpenChange: {
+        type: "(open: boolean) => void",
+        required: false,
+        defaultValue: null,
+        description: "Fired when the open state changes.",
+      },
+      triggerMode: {
+        type: '"click" | "hover"',
+        required: false,
+        defaultValue: '"click"',
+        description: 'Click toggles; hover opens on pointer/focus enter with a delay and closes on leave.',
+      },
+      popupRole: {
+        type: '"dialog" | "menu" | "listbox" | "tree" | "grid" | "tooltip"',
+        required: false,
+        defaultValue: null,
+        description: "Overrides the auto-detected aria-haspopup value applied to the trigger.",
+      },
+      enabled: {
+        type: "boolean",
+        required: false,
+        defaultValue: "true",
+        description: "When false, the popover never opens and trigger handlers are no-ops.",
+      },
+      delayMs: {
+        type: "number",
+        required: false,
+        defaultValue: "500",
+        description: "Hover mode only. Delay before opening on hover or focus.",
+      },
+      closeDelayMs: {
+        type: "number",
+        required: false,
+        defaultValue: "150 (hover) | 0 (click)",
+        description: "Delay before closing after hover/focus leaves the trigger or content.",
+      },
+      children: {
+        type: "ReactNode",
+        required: true,
+        defaultValue: null,
+        description: "Popover.Trigger and Popover.Content subparts.",
+      },
+    },
+    "Popover.Trigger": {
+      children: {
+        type: "ReactNode | (props: PopoverTriggerRenderProps) => ReactNode",
+        required: true,
+        defaultValue: null,
+        description: "Trigger element. Pass a single element (cloned with merged ARIA/handlers), text (wrapped in <button>), or a render function for full control.",
+      },
+    },
+    "Popover.Content": {
+      role: {
+        type: '"dialog" | "menu" | "listbox" | "tree" | "grid" | "tooltip"',
+        required: false,
+        defaultValue: null,
+        description: 'Popup ARIA role. Defaults to "tooltip" in hover mode. role="dialog" requires aria-label or aria-labelledby and throws otherwise.',
+      },
+      side: {
+        type: '"top" | "bottom" | "left" | "right"',
+        required: false,
+        defaultValue: '"bottom"',
+        description: "Preferred side relative to the trigger.",
+      },
+      align: {
+        type: '"start" | "center" | "end"',
+        required: false,
+        defaultValue: '"center"',
+        description: "Alignment along the chosen side.",
+      },
+      sideOffset: {
+        type: "number",
+        required: false,
+        defaultValue: "6",
+        description: "Pixel gap from the trigger along the side axis.",
+      },
+      alignOffset: {
+        type: "number",
+        required: false,
+        defaultValue: "0",
+        description: "Pixel offset along the alignment axis.",
+      },
+      avoidCollisions: {
+        type: "boolean",
+        required: false,
+        defaultValue: "true",
+        description: "Flips to the opposite side, then cross-axis sides, then shifts within the viewport.",
+      },
+      collisionPadding: {
+        type: "number",
+        required: false,
+        defaultValue: "8",
+        description: "Minimum gap between the content and the viewport edge during collision avoidance.",
+      },
+      autoFocus: {
+        type: "boolean",
+        required: false,
+        defaultValue: "true",
+        description: 'Dialog and menu roles only. When true, focuses the first focusable child on open (or the content itself for role="dialog" without a focusable child).',
+      },
+      children: {
+        type: "ReactNode",
+        required: true,
+        defaultValue: null,
+        description: "Popover body content.",
+      },
+    },
+  },
 }

@@ -1,17 +1,20 @@
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
-import { createRemoveCommand, findOrphanedNpmDeps, info } from "@diffgazer/registry/cli";
-import { ctx, type DiffgazerAddConfig } from "../context.js";
+import { readFileSync, writeFileSync } from "node:fs";
+import { createRemoveCommand, findOrphanedNpmDeps } from "@diffgazer/registry/cli";
+import { ctx, type DiffgazerAddConfig, type ResolvedConfig } from "../context.js";
 import { getKeysHookNames, resolveKeysCopyHookFiles, resolveKeysHooksFromRegistry } from "../utils/integration.js";
 import { getInstallBaseForFilePath, getInstallDirForBase } from "../utils/registry.js";
 import {
   getNamespacedItem,
   isNamespacedInstalled,
   parseInstallName,
-  publicInstallNames,
   validateInstallNames,
 } from "../utils/namespaces.js";
 import { normalizeManifestPath, resolveInstallPath, resolveProjectPath } from "../utils/paths.js";
+import { readInstalledCssChunkHashes, removeCssChunks } from "./add/css-ops.js";
+
+type ManifestEntry = NonNullable<DiffgazerAddConfig["installedComponents"]>[string];
+type Manifest = Record<string, ManifestEntry>;
 
 function sha256(content: string): string {
   return `sha256-${createHash("sha256").update(content).digest("hex")}`;
@@ -32,68 +35,163 @@ function ownedFileHash(cwd: string, itemName: string, absolutePath: string): str
   return files.find((file) => file.path === filePath)?.hash ?? null;
 }
 
-function hasCopyModeFiles(record: NonNullable<DiffgazerAddConfig["installedComponents"]>[string]): boolean {
+function hasCopyModeFiles(record: ManifestEntry): boolean {
   return record.integrationMode === "copy"
     || (record.files ?? []).some((file) => file.integrationMode === "copy");
 }
 
-function copyModeDependentsForKey(cwd: string, hookName: string): string[] {
-  const config = ctx.config.loadConfig(cwd);
-  if (!config.ok) return [];
+function loadManifest(cwd: string): Manifest {
+  return (ctx.config.getManifestItems(cwd) ?? {}) as Manifest;
+}
 
-  const manifest = config.config.installedComponents ?? {};
-  const dependents: string[] = [];
+function uiRegistryDependencyNames(installedName: string): string[] {
+  const parsed = parseInstallName(installedName);
+  if (parsed.namespace !== "ui") return [];
+  if (!ctx.registry.getItem(parsed.name)) return [];
+  return ctx.registry.resolveDeps([parsed.name]).filter((n) => n !== parsed.name);
+}
 
-  for (const [installedName, record] of Object.entries(manifest)) {
-    const parsed = parseInstallName(installedName);
-    if (parsed.namespace !== "ui" || !hasCopyModeFiles(record)) continue;
+function dependentsOf(
+  candidate: string,
+  manifest: Manifest,
+  removed: Set<string>,
+): string[] {
+  const parsed = parseInstallName(candidate);
+  const dependents = new Set<string>();
 
-    const registryItem = ctx.registry.getItem(parsed.name);
-    if (!registryItem) continue;
+  for (const installedName of Object.keys(manifest)) {
+    if (removed.has(installedName) || installedName === candidate) continue;
+    const installedParsed = parseInstallName(installedName);
 
-    if (resolveKeysHooksFromRegistry([registryItem]).includes(hookName)) {
-      dependents.push(parsed.publicName);
+    if (parsed.namespace === "ui" && installedParsed.namespace === "ui") {
+      if (uiRegistryDependencyNames(installedName).includes(parsed.name)) {
+        dependents.add(installedName);
+      }
+      continue;
+    }
+
+    if (parsed.namespace === "keys" && installedParsed.namespace === "ui") {
+      const record = manifest[installedName];
+      if (!record || !hasCopyModeFiles(record)) continue;
+      const registryItem = ctx.registry.getItem(installedParsed.name);
+      if (!registryItem) continue;
+      if (resolveKeysHooksFromRegistry([registryItem]).includes(parsed.name)) {
+        dependents.add(installedName);
+      }
     }
   }
 
-  return dependents;
+  return [...dependents];
 }
 
-function blocksRetainedCopyModeUi(
-  cwd: string,
-  itemName: string,
-  requestedNames: string[],
-  warnedRemovals: Set<string>,
-): boolean {
-  const parsed = parseInstallName(itemName);
-  if (parsed.namespace !== "keys") return false;
+interface ExpansionPlan {
+  toRemove: string[];
+  blocked: Array<{ name: string; dependents: string[] }>;
+}
 
-  const requestedPublicNames = new Set(requestedNames.map((name) => parseInstallName(name).publicName));
-  const dependents = copyModeDependentsForKey(cwd, parsed.name)
-    .filter((dependent) => !requestedPublicNames.has(dependent));
-  if (dependents.length === 0) return false;
-
-  const warningKey = `${cwd}:${parsed.publicName}`;
-  if (!warnedRemovals.has(warningKey)) {
-    warnedRemovals.add(warningKey);
-    info(
-      `Keeping ${parsed.publicName}; copied hook files are still required by installed copy-mode UI: `
-      + dependents.join(", "),
-    );
+// Cascade orphan transitives whose dependents are all being removed, then
+// surface explicitly-requested items that retained installed items still need.
+function expandRemoval(cwd: string, requestedNames: string[]): ExpansionPlan {
+  const manifest = loadManifest(cwd);
+  const requestedPublicNames = new Set(requestedNames.map((n) => parseInstallName(n).publicName));
+  const removed = new Set<string>();
+  for (const name of requestedPublicNames) {
+    if (manifest[name]) removed.add(name);
   }
 
-  return true;
+  let progressed = true;
+  while (progressed) {
+    progressed = false;
+    for (const [installedName, record] of Object.entries(manifest)) {
+      if (removed.has(installedName)) continue;
+      if (record.installedAs !== "transitive") continue;
+      if (dependentsOf(installedName, manifest, removed).length === 0) {
+        removed.add(installedName);
+        progressed = true;
+      }
+    }
+  }
+
+  const blocked: Array<{ name: string; dependents: string[] }> = [];
+  for (const name of requestedPublicNames) {
+    if (!manifest[name]) continue;
+    const dependents = dependentsOf(name, manifest, removed);
+    if (dependents.length > 0) {
+      blocked.push({ name, dependents });
+      removed.delete(name);
+    }
+  }
+
+  return { toRemove: [...removed], blocked };
 }
 
-const warnedBlockedHookRemovals = new Set<string>();
+function manifestItemsForResolve(cwd: string): ReturnType<typeof getNamespacedItem>[] {
+  return Object.keys(loadManifest(cwd))
+    .filter((name) => name.includes("/"))
+    .map(getNamespacedItem);
+}
+
+function removeOwnedCssChunks(
+  cwd: string,
+  config: ResolvedConfig,
+  removedNames: string[],
+  preRemovalChunksByItem: Map<string, string[]>,
+): void {
+  if (removedNames.length === 0) return;
+  const installedHashes = readInstalledCssChunkHashes(cwd, config);
+  if (installedHashes.size === 0) return;
+
+  // onAfterRemove fires after updateManifest, so the live manifest no longer
+  // lists removed items. Compute kept and removed chunk sets from the
+  // pre-removal snapshot captured during expandRequestedNames.
+  const removedSet = new Set(removedNames);
+  const keptChunkHashes = new Set<string>();
+  const chunksOfRemovedItems = new Set<string>();
+  for (const [name, hashes] of preRemovalChunksByItem) {
+    const target = removedSet.has(name) ? chunksOfRemovedItems : keptChunkHashes;
+    for (const hash of hashes) target.add(hash);
+  }
+
+  const candidates = new Set<string>();
+  for (const hash of installedHashes) {
+    if (chunksOfRemovedItems.has(hash) && !keptChunkHashes.has(hash)) {
+      candidates.add(hash);
+    }
+  }
+  if (candidates.size === 0) return;
+
+  const result = removeCssChunks(candidates, cwd, config);
+  if (result.fileOp) writeFileSync(result.fileOp.targetPath, result.fileOp.content);
+}
+
+// `getAllItems` is invoked inside the workflow without a cwd argument. The
+// workflow calls `requireConfig(cwd)` first, so the most recent cwd captured
+// here is the active call's cwd. CLI invocation is sequential per process.
+let activeCwd: string | null = null;
+
+// onAfterRemove runs after updateManifest, so it cannot see which chunks each
+// removed item used to own. Snapshot the pre-removal manifest's cssChunks
+// during expandRequestedNames (runs before any file deletion) and read it
+// later in onAfterRemove. Same per-process closure pattern as activeCwd.
+let preRemovalChunksByItem: Map<string, string[]> = new Map();
+
+function snapshotPreRemovalChunks(cwd: string): void {
+  const manifest = loadManifest(cwd);
+  preRemovalChunksByItem = new Map();
+  for (const [name, record] of Object.entries(manifest)) {
+    const hashes = record.cssChunks ?? [];
+    if (hashes.length > 0) preRemovalChunksByItem.set(name, [...hashes]);
+  }
+}
 
 export const removeCommand = createRemoveCommand({
   itemPlural: "items",
-  requireConfig: ctx.items.requireConfig,
+  requireConfig: (cwd) => {
+    activeCwd = cwd;
+    return ctx.items.requireConfig(cwd);
+  },
   validateNames: validateInstallNames,
-  getAllItems: () => publicInstallNames()
-    .filter((name) => name.includes("/"))
-    .map(getNamespacedItem),
+  getAllItems: () => activeCwd ? manifestItemsForResolve(activeCwd) : [],
   getItemOrThrow: getNamespacedItem,
   getItemName: (item) => item.name,
   isInstalled: ({ cwd, config, item }) => {
@@ -120,8 +218,7 @@ export const removeCommand = createRemoveCommand({
       return { absolutePath: resolveInstallPath(cwd, installDir, ctx.registry.relativePath(file)) };
     });
   },
-  canRemoveFile: ({ cwd, item, file, force, requestedNames = [] }) => {
-    if (blocksRetainedCopyModeUi(cwd, item.name, requestedNames, warnedBlockedHookRemovals)) return false;
+  canRemoveFile: ({ cwd, item, file, force }) => {
     if (force) return true;
     const expectedHash = ownedFileHash(cwd, item.name, file.absolutePath);
     if (!expectedHash) return false;
@@ -131,6 +228,7 @@ export const removeCommand = createRemoveCommand({
     resolveProjectPath(cwd, config.componentsFsPath),
     resolveProjectPath(cwd, config.hooksFsPath),
     resolveProjectPath(cwd, config.libFsPath),
+    resolveProjectPath(cwd, config.stylesFsPath),
   ],
   updateManifest: ({ cwd, removedNames }) => {
     const names = removedNames.map((name) => parseInstallName(name).publicName);
@@ -149,5 +247,12 @@ export const removeCommand = createRemoveCommand({
       getItemDeps: (c) => c.dependencies,
       isInstalled: (c) => checker(c.name),
     });
+  },
+  expandRequestedNames: ({ cwd, names }) => {
+    snapshotPreRemovalChunks(cwd);
+    return expandRemoval(cwd, names);
+  },
+  onAfterRemove: ({ cwd, config, removedNames }) => {
+    removeOwnedCssChunks(cwd, config, removedNames, preRemovalChunksByItem);
   },
 });

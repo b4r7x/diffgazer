@@ -25,7 +25,7 @@ export default function UsePresenceTooltipExample() {
             role="tooltip"
             data-state={open ? "open" : "closed"}
             onAnimationEnd={onAnimationEnd}
-            className="absolute left-1/2 -translate-x-1/2 top-full mt-1.5 z-50 whitespace-nowrap border border-border bg-background px-2 py-1 font-mono text-xs shadow-md data-[state=open]:animate-[slide-in_0.15s_ease-out] data-[state=closed]:animate-[slide-out_0.15s_ease-in_forwards]"
+            className="absolute left-1/2 -translate-x-1/2 top-full mt-1.5 z-[var(--z-popover)] whitespace-nowrap border border-border bg-background px-2 py-1 font-mono text-xs shadow-md data-[state=open]:animate-[slide-in_0.15s_ease-out] data-[state=closed]:animate-[slide-out_0.15s_ease-in_forwards]"
           >
             Terminal tooltip ▸
           </div>

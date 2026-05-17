@@ -52,6 +52,10 @@ async function assertSessionFresh(
 
 export async function resumeStreamById(c: Context): Promise<Response> {
   const id = c.req.param("id");
+  if (!id) {
+    return errorResponse(c, "Session not found", ReviewErrorCode.SESSION_NOT_FOUND, 404);
+  }
+
   const session = getSession(id);
   if (!session) {
     return errorResponse(c, "Session not found", ReviewErrorCode.SESSION_NOT_FOUND, 404);

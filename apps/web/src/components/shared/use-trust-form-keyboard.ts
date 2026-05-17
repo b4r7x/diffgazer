@@ -49,7 +49,7 @@ export function useTrustFormKeyboard({
     focusWithinOnly: true,
   });
 
-  const { highlighted, highlight } = useScopedNavigation({
+  const { highlighted, highlight } = useScopedNavigation<TrustFormAction>({
     containerRef: actionRowRef,
     role: "button",
     defaultHighlighted: "save",

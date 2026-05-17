@@ -4,7 +4,9 @@
   "title": "Breadcrumbs",
   "description": "Compound breadcrumb navigation with auto-separator and composable parts",
   "dependencies": [],
-  "registryDependencies": [],
+  "registryDependencies": [
+    "https://diffgazer.com/r/ui/theme.json"
+  ],
   "files": [
     {
       "path": "registry/ui/breadcrumbs/index.ts",

@@ -1,8 +1,13 @@
 import { act, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { axe } from "../../../testing/utils.js"
-import { describe, it, expect, vi } from "vitest"
-import { getEncodedListboxItemId, useListbox, type UseListboxOptions } from "../use-listbox.js"
+import { describe, it, expect, expectTypeOf, vi } from "vitest"
+import {
+  getEncodedListboxItemId,
+  useListbox,
+  type UseListboxOptions,
+  type UseListboxReturn,
+} from "../use-listbox.js"
 
 type ListboxItem = { id: string; label: string; disabled?: boolean }
 
@@ -404,4 +409,20 @@ describe("useListbox", () => {
     expect(activeDescendant).not.toContain("/")
     expect(document.getElementById(activeDescendant!)).toHaveTextContent("Special")
   })
+
+  describe("types", () => {
+    it("narrows selectedId/onSelect to the supplied union", () => {
+      type Narrow = UseListboxOptions<"a" | "b">;
+      type ReturnNarrow = UseListboxReturn<"a" | "b">;
+
+      expectTypeOf<Narrow["selectedId"]>().toEqualTypeOf<"a" | "b" | null | undefined>();
+      expectTypeOf<NonNullable<Narrow["onSelect"]>>().parameter(0).toEqualTypeOf<"a" | "b">();
+      expectTypeOf<ReturnNarrow["selectedId"]>().toEqualTypeOf<"a" | "b" | null>();
+    });
+
+    it("keeps the loose default contract when no generic is supplied", () => {
+      expectTypeOf<UseListboxOptions["selectedId"]>().toEqualTypeOf<string | null | undefined>();
+      expectTypeOf<UseListboxReturn["selectedId"]>().toEqualTypeOf<string | null>();
+    });
+  });
 })

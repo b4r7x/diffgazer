@@ -5,6 +5,7 @@
   "description": "Container-aware overflow handling for items (dynamic fitting with indicator) and text (line clamping with tooltip).",
   "dependencies": [],
   "registryDependencies": [
+    "https://diffgazer.com/r/ui/theme.json",
     "https://diffgazer.com/r/ui/tooltip.json",
     "https://diffgazer.com/r/ui/overflow-detection.json",
     "https://diffgazer.com/r/ui/overflow-items.json",

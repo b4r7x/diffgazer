@@ -5,6 +5,7 @@
   "description": "Terminal-styled checkbox with bracket notation",
   "dependencies": [],
   "registryDependencies": [
+    "https://diffgazer.com/r/ui/theme.json",
     "https://diffgazer.com/r/ui/aria-utils.json",
     "https://diffgazer.com/r/ui/controllable-state.json",
     "https://diffgazer.com/r/ui/form-reset.json",

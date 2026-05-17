@@ -1,9 +1,13 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useRef } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, expectTypeOf, it, vi } from "vitest";
 import { KeyboardWrapper } from "../testing/test-utils";
-import { useScopedNavigation, type UseScopedNavigationOptions } from "./use-scoped-navigation";
+import {
+  useScopedNavigation,
+  type UseScopedNavigationOptions,
+  type UseScopedNavigationReturn,
+} from "./use-scoped-navigation";
 import { useScope } from "./use-scope";
 
 function itemId(value: string, prefix = "item") {
@@ -255,5 +259,22 @@ describe("useScopedNavigation", () => {
 
     await user.keyboard("{ArrowDown}");
     expectActiveOptionText("b", "Outer items");
+  });
+
+  describe("types", () => {
+    it("narrows highlighted/onSelect to the supplied union", () => {
+      type Narrow = UseScopedNavigationOptions<"a" | "b">;
+      type ReturnNarrow = UseScopedNavigationReturn<"a" | "b">;
+
+      expectTypeOf<Narrow["highlighted"]>().toEqualTypeOf<"a" | "b" | null | undefined>();
+      expectTypeOf<NonNullable<Narrow["onSelect"]>>().parameter(0).toEqualTypeOf<"a" | "b">();
+      expectTypeOf<NonNullable<Narrow["onHighlightChange"]>>().parameter(0).toEqualTypeOf<"a" | "b" | null>();
+      expectTypeOf<ReturnNarrow["highlighted"]>().toEqualTypeOf<"a" | "b" | null>();
+    });
+
+    it("keeps the loose default contract when no generic is supplied", () => {
+      expectTypeOf<UseScopedNavigationOptions["highlighted"]>().toEqualTypeOf<string | null | undefined>();
+      expectTypeOf<UseScopedNavigationReturn["highlighted"]>().toEqualTypeOf<string | null>();
+    });
   });
 });

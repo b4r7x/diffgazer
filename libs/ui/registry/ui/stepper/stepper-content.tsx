@@ -16,7 +16,7 @@ export function StepperContent({ children, className, ...props }: StepperContent
     <div
       {...props}
       className={cn(
-        "grid transition-[grid-template-rows] duration-200 ease-out",
+        "grid transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none",
         isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
         className,
       )}

@@ -8,6 +8,7 @@ import {
   type Ref,
   useId,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { useControllableState } from "@/hooks/use-controllable-state";
@@ -16,10 +17,11 @@ import { TabsContext } from "./tabs-context";
 import { TabsContent } from "./tabs-content";
 import { TabsTrigger } from "./tabs-trigger";
 
-export interface TabsProps extends Omit<HTMLAttributes<HTMLDivElement>, "defaultValue" | "onChange"> {
-  value?: string;
-  onChange?: (value: string) => void;
-  defaultValue?: string;
+export interface TabsProps<TValue extends string = string>
+  extends Omit<HTMLAttributes<HTMLDivElement>, "defaultValue" | "onChange"> {
+  value?: TValue;
+  onChange?: (value: TValue) => void;
+  defaultValue?: TValue;
   orientation?: "horizontal" | "vertical";
   variant?: "default" | "underline";
   activationMode?: "automatic" | "manual";
@@ -68,7 +70,35 @@ function collectTabMetadata(children: ReactNode): TabMetadata {
   return metadata;
 }
 
-function TabsRoot({
+/**
+ * Tabbed view root. Renders `TabsList` (triggers) and `TabsContent` (panels)
+ * with ARIA `tablist` / `tab` / `tabpanel` roles wired automatically.
+ *
+ * `activationMode="manual"` decouples focus from selection so arrow keys move
+ * focus across triggers without switching the visible panel until Enter or
+ * Space is pressed — useful when panel content is expensive to mount.
+ *
+ * @example
+ * ```tsx
+ * <Tabs defaultValue="preview">
+ *   <TabsList>
+ *     <TabsTrigger value="preview">Preview</TabsTrigger>
+ *     <TabsTrigger value="code">Code</TabsTrigger>
+ *     <TabsTrigger value="tests">Tests</TabsTrigger>
+ *   </TabsList>
+ *   <TabsContent value="preview"><ComponentPreview /></TabsContent>
+ *   <TabsContent value="code"><CodeBlock language="tsx" /></TabsContent>
+ *   <TabsContent value="tests"><TestReport /></TabsContent>
+ * </Tabs>
+ * ```
+ *
+ * @example
+ * ```tsx
+ * const [tab, setTab] = useState("preview");
+ * <Tabs value={tab} onChange={setTab} activationMode="manual">...</Tabs>
+ * ```
+ */
+function TabsRoot<TValue extends string = string>({
   value: controlledValue,
   onChange,
   defaultValue,
@@ -79,15 +109,23 @@ function TabsRoot({
   className,
   ref,
   ...rest
-}: TabsProps) {
+}: TabsProps<TValue>) {
   const tabsId = useId();
   const { enabledValues, panelValues, triggerValues } = useMemo(() => collectTabMetadata(children), [children]);
   const [value, setValue] = useControllableState<string>({
     value: controlledValue,
     defaultValue: defaultValue ?? "",
-    onChange,
+    // TValue is a string subtype; downstream context uses string for runtime DOM matching.
+    onChange: onChange as ((value: string) => void) | undefined,
   });
   const [focusedValue, setFocusedValue] = useState<string | null>(null);
+  const hasWarnedNoTriggersRef = useRef(false);
+  if (triggerValues.length === 0 && !defaultValue && !hasWarnedNoTriggersRef.current) {
+    hasWarnedNoTriggersRef.current = true;
+    console.warn(
+      "[Tabs] No Tabs.Trigger children detected. Provide at least one Tabs.Trigger or set defaultValue to support lazy-loaded triggers.",
+    );
+  }
   const firstEnabledTab = enabledValues[0] ?? "";
   const resolvedValue = enabledValues.includes(value) ? value : firstEnabledTab;
   const resolvedFocusedValue = focusedValue !== null && enabledValues.includes(focusedValue)

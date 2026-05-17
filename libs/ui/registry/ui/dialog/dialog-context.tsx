@@ -8,13 +8,6 @@ export interface DialogContextValue {
   contentId: string;
   titleId: string;
   descriptionId: string;
-  hasMountedTitleRef: RefObject<boolean>;
-  hasTitle: boolean;
-  hasDescription: boolean;
-  onTitleMount: () => void;
-  onTitleUnmount: () => void;
-  onDescriptionMount: () => void;
-  onDescriptionUnmount: () => void;
   triggerRef: RefObject<HTMLElement | null>;
 }
 

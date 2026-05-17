@@ -10,7 +10,7 @@ export default function HorizontalStepperProgress() {
   const [currentIndex, setCurrentIndex] = useState(0)
   return (
     <div className="flex flex-col gap-4 items-start">
-      <HorizontalStepper steps={[...stepValues]} value={stepValues[currentIndex]}>
+      <HorizontalStepper steps={[...stepValues]} value={stepValues[currentIndex] ?? stepValues[0]}>
         {stepValues.map((v) => (
           <HorizontalStepper.Step key={v} value={v}>{v.toUpperCase()}</HorizontalStepper.Step>
         ))}

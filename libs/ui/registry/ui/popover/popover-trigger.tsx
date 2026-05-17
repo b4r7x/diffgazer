@@ -7,10 +7,12 @@ import {
   type KeyboardEventHandler,
   isValidElement,
   type MouseEventHandler,
+  type PointerEventHandler,
   type ReactElement,
   type ReactNode,
   type Ref,
   type RefCallback,
+  useEffect,
 } from "react";
 import { cn } from "@/lib/utils";
 import { composeRefs } from "@/lib/compose-refs";
@@ -27,6 +29,7 @@ export interface PopoverTriggerRenderProps {
   "aria-label"?: string;
   "aria-hidden"?: boolean;
   onClick?: MouseEventHandler<HTMLElement>;
+  onPointerDown?: PointerEventHandler<HTMLElement>;
   onMouseEnter?: MouseEventHandler<HTMLElement>;
   onMouseLeave?: MouseEventHandler<HTMLElement>;
   onFocus?: FocusEventHandler<HTMLElement>;
@@ -55,6 +58,7 @@ interface HoverTriggerElementProps {
   "aria-label"?: string;
   "aria-hidden"?: boolean;
   onClick?: MouseEventHandler<HTMLElement>;
+  onPointerDown?: PointerEventHandler<HTMLElement>;
   onMouseEnter?: MouseEventHandler<HTMLElement>;
   onMouseLeave?: MouseEventHandler<HTMLElement>;
   onFocus?: FocusEventHandler<HTMLElement>;
@@ -108,8 +112,37 @@ export function PopoverTrigger({
   const isRenderProp = typeof children === "function";
   const hoverClassName = isRenderProp ? className : cn("inline-flex", className);
 
+  // Hover-mode popover opened via tap (touch) or focus has no hover-leave to
+  // dismiss it. Mirror click-mode useOutsideClick semantics so any pointerdown
+  // outside the trigger and portaled content closes the popover.
+  useEffect(() => {
+    if (isClick || !open || !enabled) return;
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!(event.target instanceof Node)) return;
+      if (trigger.contains(event.target)) return;
+      const content = trigger.ownerDocument.getElementById(popoverId);
+      if (content?.contains(event.target)) return;
+      onOpenChange(false);
+    };
+    const doc = trigger.ownerDocument;
+    doc.addEventListener("pointerdown", handlePointerDown, { capture: true });
+    return () => doc.removeEventListener("pointerdown", handlePointerDown, { capture: true });
+  }, [enabled, isClick, onOpenChange, open, popoverId, triggerRef]);
+
   const handleHoverClick = () => {
     if (!enabled) return;
+    onOpenChange(!open);
+  };
+
+  // Touch devices have no hover. Without an explicit handler the passive <span>
+  // wrapper would be unreachable on touch. Only touch pointers toggle here —
+  // mouse/pen flow through the regular onClick/onMouseEnter handlers below to
+  // avoid double-firing.
+  const handlePassiveTouchPointerDown: PointerEventHandler<HTMLElement> = (event) => {
+    if (!enabled) return;
+    if (event.pointerType !== "touch") return;
     onOpenChange(!open);
   };
 
@@ -145,6 +178,7 @@ export function PopoverTrigger({
     ref: composedRef,
     className: hoverClassName,
     "aria-describedby": open ? popoverId : undefined,
+    onPointerDown: handlePassiveTouchPointerDown,
     onMouseEnter: onTriggerEnter,
     onMouseLeave: onTriggerLeave,
     onFocus: onTriggerEnter,
@@ -205,6 +239,7 @@ export function PopoverTrigger({
       role: child.props.role ?? (isClick || isNativeInteractive ? undefined : hoverProps.role),
       "aria-describedby": hoverProps["aria-describedby"],
       onClick: mergeHandlers(child.props.onClick, hoverProps.onClick, true),
+      onPointerDown: mergeHandlers(child.props.onPointerDown, hoverProps.onPointerDown),
       onMouseEnter: mergeHandlers(child.props.onMouseEnter, hoverProps.onMouseEnter),
       onMouseLeave: mergeHandlers(child.props.onMouseLeave, hoverProps.onMouseLeave),
       onFocus: mergeHandlers(child.props.onFocus, hoverProps.onFocus),

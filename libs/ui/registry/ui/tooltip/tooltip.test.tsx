@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react"
+import { render, screen, fireEvent } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { axe } from "../../../testing/utils.js"
 import { describe, it, expect } from "vitest"
@@ -118,5 +118,41 @@ describe("Tooltip trigger semantics", () => {
 
     await user.hover(wrapper)
     expect(screen.getByRole("tooltip")).toBeInTheDocument()
+  })
+})
+
+describe("Tooltip touch", () => {
+  it("reveals on touch tap of passive trigger and hides on second tap", () => {
+    render(
+      <Tooltip content="Tip text">
+        Passive label
+      </Tooltip>
+    )
+    const trigger = screen.getByText("Passive label")
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument()
+
+    // fireEvent retained: pointerType is required to distinguish touch from mouse; user-event cannot set it
+    fireEvent.pointerDown(trigger, { pointerType: "touch" })
+    expect(screen.getByRole("tooltip")).toHaveAttribute("data-state", "open")
+
+    // fireEvent retained: same pointerType signal closes the tooltip
+    fireEvent.pointerDown(trigger, { pointerType: "touch" })
+    expect(screen.getByRole("tooltip")).toHaveAttribute("data-state", "closed")
+  })
+
+  it("dismisses on outside tap", () => {
+    render(
+      <div>
+        <button>Outside</button>
+        <Tooltip content="Tip text" defaultOpen>
+          Passive label
+        </Tooltip>
+      </div>
+    )
+    expect(screen.getByRole("tooltip")).toHaveAttribute("data-state", "open")
+
+    // fireEvent retained: document-level pointerdown listener attaches in capture phase
+    fireEvent.pointerDown(screen.getByRole("button", { name: "Outside" }))
+    expect(screen.getByRole("tooltip")).toHaveAttribute("data-state", "closed")
   })
 })

@@ -2,8 +2,9 @@ import { render, screen, waitFor } from "@testing-library/react"
 import { useState } from "react"
 import userEvent from "@testing-library/user-event"
 import { axe } from "../../../testing/utils.js"
-import { describe, it, expect, vi } from "vitest"
-import { Radio, RadioGroup } from "./index.js"
+import { describe, it, expect, expectTypeOf, vi } from "vitest"
+import { Radio, RadioGroup, type RadioGroupItemProps } from "./index.js"
+import { type RadioGroupProps } from "./radio-group.js"
 import { Field } from "../field/index.js"
 
 function getForm(): HTMLFormElement {
@@ -819,4 +820,24 @@ describe("RadioGroup", () => {
     expect(onChange).toHaveBeenCalledTimes(1)
   })
 
+})
+
+describe("RadioGroup types", () => {
+  it("narrows value/onChange to the supplied literal union", () => {
+    type Narrow = RadioGroupProps<"sm" | "md" | "lg">
+
+    expectTypeOf<Narrow["value"]>().toEqualTypeOf<"sm" | "md" | "lg" | undefined>()
+    expectTypeOf<Narrow["defaultValue"]>().toEqualTypeOf<"sm" | "md" | "lg" | undefined>()
+    expectTypeOf<NonNullable<Narrow["onChange"]>>().parameter(0).toEqualTypeOf<"sm" | "md" | "lg">()
+  })
+
+  it("rejects RadioGroupItem values outside the literal union", () => {
+    expectTypeOf<"xl">().not.toMatchTypeOf<RadioGroupItemProps<"sm" | "md" | "lg">["value"]>()
+    expectTypeOf<"sm">().toMatchTypeOf<RadioGroupItemProps<"sm" | "md" | "lg">["value"]>()
+  })
+
+  it("keeps the loose default contract when no generic is supplied", () => {
+    expectTypeOf<RadioGroupProps["value"]>().toEqualTypeOf<string | undefined>()
+    expectTypeOf<RadioGroupItemProps["value"]>().toEqualTypeOf<string>()
+  })
 })

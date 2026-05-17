@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { KeyboardProvider } from "@diffgazer/keys";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import type { InputMethod } from "@/types/input-method";
 import { useApiKeyDialogKeyboard } from "./use-api-key-dialog-keyboard";
 
@@ -19,25 +19,22 @@ function Subject({
 }) {
   const [method, setMethod] = useState<InputMethod>("paste");
   const inputRef = useRef<HTMLInputElement>(null);
-  const cancelRef = useRef<HTMLButtonElement>(null);
-  const confirmRef = useRef<HTMLButtonElement>(null);
-  const { focused, setFocused, getMethodOptionProps } = useApiKeyDialogKeyboard({
+  const {
+    getMethodOptionProps,
+    getCancelProps,
+    getConfirmProps,
+  } = useApiKeyDialogKeyboard({
     open: true,
     method,
     setMethod,
     canSubmit,
     isSubmitting,
     inputRef,
-    cancelRef,
-    confirmRef,
     onSubmit,
     onClose,
   });
-
-  useEffect(() => {
-    if (focused === "cancel") cancelRef.current?.focus();
-    else if (focused === "confirm") confirmRef.current?.focus();
-  }, [focused]);
+  const cancelProps = getCancelProps();
+  const confirmProps = getConfirmProps();
 
   return (
     <>
@@ -48,14 +45,19 @@ function Subject({
       <div role="radio" aria-checked={method === "env"} tabIndex={0} {...getMethodOptionProps("env")}>
         Env
       </div>
-      <button ref={cancelRef} type="button" onFocus={() => setFocused("cancel")} onClick={onClose}>
+      <button
+        ref={cancelProps.ref}
+        type="button"
+        onFocus={cancelProps.onFocus}
+        onClick={onClose}
+      >
         Cancel
       </button>
       <button
-        ref={confirmRef}
+        ref={confirmProps.ref}
         type="button"
         disabled={!canSubmit}
-        onFocus={() => setFocused("confirm")}
+        onFocus={confirmProps.onFocus}
         onClick={() => onSubmit()}
       >
         Confirm

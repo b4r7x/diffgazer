@@ -21,4 +21,28 @@ export const kbdDoc: ComponentDoc = {
     { name: "kbd-group", title: "Group" },
   ],
   keyboard: null,
+  props: {
+    Kbd: {
+      size: {
+        type: '"sm" | "md"',
+        required: false,
+        defaultValue: '"md"',
+        description: "Padding and font-size token applied to the kbd glyph.",
+      },
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Key glyph or short label rendered inside the <kbd> element.",
+      },
+    },
+    KbdGroup: {
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Sequence of Kbd children rendered inline with a small gap.",
+      },
+    },
+  },
 }

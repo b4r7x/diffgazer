@@ -235,16 +235,20 @@ describe("DiffView", () => {
 
   it("computes empty file changes without fake blank lines", () => {
     const added = computeDiff("", "alpha\n")
-    expect(added.hunks[0].oldCount).toBe(0)
-    expect(added.hunks[0].newCount).toBe(1)
-    expect(added.hunks[0].changes).toEqual([
+    const [addedHunk] = added.hunks
+    if (!addedHunk) throw new Error("expected added hunk")
+    expect(addedHunk.oldCount).toBe(0)
+    expect(addedHunk.newCount).toBe(1)
+    expect(addedHunk.changes).toEqual([
       { type: "add", content: "alpha", oldLine: null, newLine: 1 },
     ])
 
     const removed = computeDiff("alpha\n", "")
-    expect(removed.hunks[0].oldCount).toBe(1)
-    expect(removed.hunks[0].newCount).toBe(0)
-    expect(removed.hunks[0].changes).toEqual([
+    const [removedHunk] = removed.hunks
+    if (!removedHunk) throw new Error("expected removed hunk")
+    expect(removedHunk.oldCount).toBe(1)
+    expect(removedHunk.newCount).toBe(0)
+    expect(removedHunk.changes).toEqual([
       { type: "remove", content: "alpha", oldLine: 1, newLine: null },
     ])
   })
@@ -307,8 +311,8 @@ describe("DiffView", () => {
     const parsed = computeDiff(before, after)
 
     expect(parsed.hunks).toHaveLength(1)
-    expect(parsed.hunks[0].oldCount).toBe(600)
-    expect(parsed.hunks[0].newCount).toBe(600)
+    expect(parsed.hunks[0]?.oldCount).toBe(600)
+    expect(parsed.hunks[0]?.newCount).toBe(600)
   })
 
   it("uses an aggregate word-diff budget and falls back to line-level changes", () => {
@@ -345,8 +349,11 @@ describe("DiffView", () => {
       />,
     )
 
-    expect(screen.getByText(removes[removes.length - 1].content)).toBeInTheDocument()
-    expect(screen.getByText(adds[adds.length - 1].content)).toBeInTheDocument()
+    const lastRemove = removes[removes.length - 1]
+    const lastAdd = adds[adds.length - 1]
+    if (!lastRemove || !lastAdd) throw new Error("expected non-empty change arrays")
+    expect(screen.getByText(lastRemove.content)).toBeInTheDocument()
+    expect(screen.getByText(lastAdd.content)).toBeInTheDocument()
   })
 
 })

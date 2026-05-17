@@ -163,4 +163,62 @@ describe("useFormReset", () => {
 
     expect(onReset).not.toHaveBeenCalled();
   });
+
+  it("skips reset when the consumer's own handler calls preventDefault", async () => {
+    const onReset = vi.fn();
+    function Cancelable() {
+      const ref = useRef<HTMLInputElement>(null);
+      const [value, setValue] = useState("initial");
+      useFormReset(ref, "initial", (nextValue) => {
+        onReset(nextValue);
+        setValue(nextValue);
+      });
+      return (
+        <form aria-label="Profile" onReset={(event) => event.preventDefault()}>
+          <input
+            ref={ref}
+            aria-label="Name"
+            value={value}
+            onChange={(event) => setValue(event.currentTarget.value)}
+          />
+        </form>
+      );
+    }
+    render(<Cancelable />);
+    const input = screen.getByRole("textbox", { name: /name/i });
+
+    await userEvent.clear(input);
+    await userEvent.type(input, "changed");
+
+    screen
+      .getByRole("form", { name: /profile/i })
+      .dispatchEvent(new Event("reset", { bubbles: true, cancelable: true }));
+
+    await Promise.resolve();
+    expect(onReset).not.toHaveBeenCalled();
+    expect(input).toHaveValue("changed");
+  });
+
+  it("does not churn the reset listener across rerenders with stable props", () => {
+    const addSpy = vi.spyOn(HTMLFormElement.prototype, "addEventListener");
+    const removeSpy = vi.spyOn(HTMLFormElement.prototype, "removeEventListener");
+    try {
+      const { rerender, unmount } = render(<ResettableInput defaultValue="initial" />);
+      for (let i = 0; i < 10; i += 1) {
+        rerender(<ResettableInput defaultValue="initial" />);
+      }
+
+      const resetAdds = addSpy.mock.calls.filter(([type]) => type === "reset");
+      const resetRemoves = removeSpy.mock.calls.filter(([type]) => type === "reset");
+      expect(resetAdds).toHaveLength(1);
+      expect(resetRemoves).toHaveLength(0);
+
+      unmount();
+      const resetRemovesAfterUnmount = removeSpy.mock.calls.filter(([type]) => type === "reset");
+      expect(resetRemovesAfterUnmount).toHaveLength(1);
+    } finally {
+      addSpy.mockRestore();
+      removeSpy.mockRestore();
+    }
+  });
 });

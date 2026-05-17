@@ -4,12 +4,13 @@ import { type HTMLAttributes, type Ref } from "react";
 import { cn } from "@/lib/utils";
 import { getTabPanelId, getTabTriggerId, useTabsContext } from "./tabs-context";
 
-export interface TabsContentProps extends HTMLAttributes<HTMLDivElement> {
-  value: string;
+export interface TabsContentProps<TValue extends string = string>
+  extends HTMLAttributes<HTMLDivElement> {
+  value: TValue;
   ref?: Ref<HTMLDivElement>;
 }
 
-export function TabsContent({ value, children, className, ref, ...rest }: TabsContentProps) {
+export function TabsContent<TValue extends string = string>({ value, children, className, ref, ...rest }: TabsContentProps<TValue>) {
   const { tabsId, value: selectedValue, orientation, triggerValues } = useTabsContext();
   const isActive = selectedValue === value;
   const triggerId = triggerValues.includes(value) ? getTabTriggerId(tabsId, value) : undefined;

@@ -6,7 +6,9 @@
   "dependencies": [
     "class-variance-authority"
   ],
-  "registryDependencies": [],
+  "registryDependencies": [
+    "https://diffgazer.com/r/ui/theme.json"
+  ],
   "files": [
     {
       "path": "registry/ui/card/index.ts",
@@ -45,7 +47,7 @@
     },
     {
       "path": "registry/ui/card/card-label.tsx",
-      "content": "import type { ComponentPropsWithRef } from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\n\nexport const cardLabelVariants = cva(\n  \"absolute -top-3 left-4 z-10 bg-background px-2 text-xs font-bold uppercase tracking-wider text-muted-foreground\",\n  {\n    variants: {\n      variant: {\n        border: \"border border-border\",\n        gap: \"\",\n      },\n    },\n    defaultVariants: { variant: \"border\" },\n  },\n);\n\nexport type CardLabelProps = ComponentPropsWithRef<\"div\"> & VariantProps<typeof cardLabelVariants>;\n\nexport function CardLabel({ className, variant, ...props }: CardLabelProps) {\n  return <div data-slot=\"card-label\" className={cn(cardLabelVariants({ variant }), className)} {...props} />;\n}\n",
+      "content": "import type { ComponentPropsWithRef } from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\n\nexport const cardLabelVariants = cva(\n  \"absolute -top-3 left-4 z-[var(--z-base)] bg-background px-2 text-xs font-bold uppercase tracking-wider text-muted-foreground\",\n  {\n    variants: {\n      variant: {\n        border: \"border border-border\",\n        gap: \"\",\n      },\n    },\n    defaultVariants: { variant: \"border\" },\n  },\n);\n\nexport type CardLabelProps = ComponentPropsWithRef<\"div\"> & VariantProps<typeof cardLabelVariants>;\n\nexport function CardLabel({ className, variant, ...props }: CardLabelProps) {\n  return <div data-slot=\"card-label\" className={cn(cardLabelVariants({ variant }), className)} {...props} />;\n}\n",
       "type": "registry:ui"
     },
     {

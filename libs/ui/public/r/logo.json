@@ -4,7 +4,9 @@
   "title": "Logo",
   "description": "Static text logo primitive. Precompute ASCII art and pass it as asciiText.",
   "dependencies": [],
-  "registryDependencies": [],
+  "registryDependencies": [
+    "https://diffgazer.com/r/ui/theme.json"
+  ],
   "files": [
     {
       "path": "registry/ui/logo/index.ts",

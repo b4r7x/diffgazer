@@ -3,8 +3,8 @@ import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { testNavigationBehavior } from "../../../../keys/src/testing/navigation-behavior.js"
 import { axe } from "../../../testing/utils.js"
-import { describe, it, expect, vi } from "vitest"
-import { Menu } from "./index.js"
+import { describe, it, expect, expectTypeOf, vi } from "vitest"
+import { Menu, type MenuProps, type MenuItemProps } from "./index.js"
 
 function renderMenu(props: Record<string, unknown> = {}) {
   return render(
@@ -476,5 +476,25 @@ describe("Menu keyboard navigation", () => {
       const value = target?.getAttribute("data-value") ?? ""
       return ITEM_IDS.findIndex((id) => id === value)
     },
+  })
+})
+
+describe("Menu types", () => {
+  it("narrows selectedId/onSelect to the supplied literal union", () => {
+    type Narrow = MenuProps<"main" | "develop">
+
+    expectTypeOf<Narrow["selectedId"]>().toEqualTypeOf<"main" | "develop" | null | undefined>()
+    expectTypeOf<Narrow["defaultSelectedId"]>().toEqualTypeOf<"main" | "develop" | null | undefined>()
+    expectTypeOf<NonNullable<Narrow["onSelect"]>>().parameter(0).toEqualTypeOf<"main" | "develop">()
+  })
+
+  it("rejects MenuItem ids outside the literal union", () => {
+    expectTypeOf<"feature">().not.toMatchTypeOf<MenuItemProps<"main" | "develop">["id"]>()
+    expectTypeOf<"main">().toMatchTypeOf<MenuItemProps<"main" | "develop">["id"]>()
+  })
+
+  it("keeps the loose default contract when no generic is supplied", () => {
+    expectTypeOf<MenuProps["selectedId"]>().toEqualTypeOf<string | null | undefined>()
+    expectTypeOf<MenuItemProps["id"]>().toEqualTypeOf<string>()
   })
 })

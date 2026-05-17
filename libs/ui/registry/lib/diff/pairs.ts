@@ -10,17 +10,30 @@ export function* collectEditPairs(
 ): Generator<DiffChange | EditPairGroup> {
   let i = 0;
   while (i < changes.length) {
-    if (changes[i].type === "context") {
-      yield changes[i];
+    const head = changes[i];
+    if (!head) {
+      i++;
+      continue;
+    }
+    if (head.type === "context") {
+      yield head;
       i++;
       continue;
     }
     const removes: DiffChange[] = [];
-    while (i < changes.length && changes[i].type === "remove")
-      removes.push(changes[i++]);
+    while (i < changes.length) {
+      const next = changes[i];
+      if (!next || next.type !== "remove") break;
+      removes.push(next);
+      i++;
+    }
     const adds: DiffChange[] = [];
-    while (i < changes.length && changes[i].type === "add")
-      adds.push(changes[i++]);
+    while (i < changes.length) {
+      const next = changes[i];
+      if (!next || next.type !== "add") break;
+      adds.push(next);
+      i++;
+    }
     yield { removes, adds };
   }
 }

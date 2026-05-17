@@ -60,12 +60,16 @@ npm install @diffgazer/ui @diffgazer/keys
 
 Package consumers import Tailwind CSS v4, `@diffgazer/ui/sources.css`, and `@diffgazer/ui/styles.css`. `@diffgazer/keys` is a required peer of `@diffgazer/ui` in package mode. Keys provider-backed APIs (`KeyboardProvider`, `useKey`, `useScope`, `useFocusZone`, `useScopedNavigation`) are package-only.
 
-### Direct shadcn / manual copy
+### Direct shadcn / manual copy (future, after publication)
+
+The hosted registry at `https://diffgazer.com/r/` is not yet live. After publication (see [PACKAGE_GOVERNANCE.md](./PACKAGE_GOVERNANCE.md#hosted-registry-status)), these commands will be:
 
 ```bash
 npx shadcn add https://diffgazer.com/r/ui/button.json
 npx shadcn add https://diffgazer.com/r/keys/navigation.json
 ```
+
+Until then, use `pnpm exec dgadd add ui/button keys/navigation` or `npm install` against locally packed tarballs.
 
 Versioning, release gates, migration expectations, and artifact ownership are documented in [PACKAGE_GOVERNANCE.md](./PACKAGE_GOVERNANCE.md).
 

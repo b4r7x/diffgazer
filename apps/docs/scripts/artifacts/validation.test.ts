@@ -182,9 +182,8 @@ describe("artifact validation", () => {
     );
   });
 
-  it("fails package artifact surface validation when packed files miss artifact payloads", () => {
+  it("fails package artifact surface validation when packed files include leaked artifact payloads", () => {
     const root = makeTempDir();
-    writeLibraryFixture(root);
 
     expect(
       validateArtifactPackSurface(root, {
@@ -196,7 +195,23 @@ describe("artifact validation", () => {
         "dist/artifacts/fingerprint.sha256",
       ]),
     ).toContain(
-      "@test/lib npm pack is missing docs artifacts: dist/artifacts/docs/index.mdx, dist/artifacts/generated/component-list.json, dist/artifacts/registry/registry.json",
+      "@test/lib npm pack must not ship dist/artifacts: dist/artifacts/artifact-manifest.json, dist/artifacts/fingerprint.sha256",
     );
+  });
+
+  it("passes package artifact surface validation when packed files exclude artifact payloads", () => {
+    const root = makeTempDir();
+
+    expect(
+      validateArtifactPackSurface(root, {
+        id: "test",
+        packageName: "@test/lib",
+        workspaceDir: ".",
+      }, [
+        "package.json",
+        "README.md",
+        "dist/index.js",
+      ]),
+    ).toEqual([]);
   });
 });

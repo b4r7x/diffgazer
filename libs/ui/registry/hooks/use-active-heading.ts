@@ -4,6 +4,15 @@ import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react"
 
 export type ActiveHeadingActivation = "top-line" | "viewport-center" | (number & {});
 
+/**
+ * Tracks the currently active heading by id.
+ *
+ * Limitation: this hook resolves headings and viewport metrics against the
+ * ambient host `document`/`window`. It is single-document only — it does not
+ * read heading positions from iframe documents, shadow roots, or detached
+ * documents. Callers that need cross-document active-heading tracking should
+ * mount one hook per document inside that document's React tree.
+ */
 export interface UseActiveHeadingOptions {
   ids: string[];
   containerId?: string;
