@@ -19,7 +19,7 @@ RUN pnpm --filter @diffgazer/core build
 RUN pnpm --filter @diffgazer/keys build
 RUN pnpm --filter @diffgazer/ui build
 
-ARG REGISTRY_ORIGIN=https://diffgazer.com
+ARG REGISTRY_ORIGIN=https://docs.diffgazer.b4r7.dev
 ENV REGISTRY_ORIGIN=${REGISTRY_ORIGIN}
 ENV DIFFGAZER_DEV=1
 

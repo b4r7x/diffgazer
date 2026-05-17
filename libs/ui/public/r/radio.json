@@ -5,14 +5,14 @@
   "description": "Terminal-styled radio and radio group for single-selection with bracket notation",
   "dependencies": [],
   "registryDependencies": [
-    "https://diffgazer.com/r/ui/theme.json",
-    "https://diffgazer.com/r/ui/aria-utils.json",
-    "https://diffgazer.com/r/ui/controllable-state.json",
-    "https://diffgazer.com/r/ui/form-reset.json",
-    "https://diffgazer.com/r/ui/compose-refs.json",
-    "https://diffgazer.com/r/keys/navigation.json",
-    "https://diffgazer.com/r/ui/selectable-collection.json",
-    "https://diffgazer.com/r/ui/selectable-variants.json"
+    "https://docs.diffgazer.b4r7.dev/r/ui/theme.json",
+    "https://docs.diffgazer.b4r7.dev/r/ui/aria-utils.json",
+    "https://docs.diffgazer.b4r7.dev/r/ui/controllable-state.json",
+    "https://docs.diffgazer.b4r7.dev/r/ui/form-reset.json",
+    "https://docs.diffgazer.b4r7.dev/r/ui/compose-refs.json",
+    "https://docs.diffgazer.b4r7.dev/r/keys/navigation.json",
+    "https://docs.diffgazer.b4r7.dev/r/ui/selectable-collection.json",
+    "https://docs.diffgazer.b4r7.dev/r/ui/selectable-variants.json"
   ],
   "files": [
     {

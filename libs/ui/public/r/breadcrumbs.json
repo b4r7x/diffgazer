@@ -5,7 +5,7 @@
   "description": "Compound breadcrumb navigation with auto-separator and composable parts",
   "dependencies": [],
   "registryDependencies": [
-    "https://diffgazer.com/r/ui/theme.json"
+    "https://docs.diffgazer.b4r7.dev/r/ui/theme.json"
   ],
   "files": [
     {

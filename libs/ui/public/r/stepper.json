@@ -7,10 +7,10 @@
     "class-variance-authority"
   ],
   "registryDependencies": [
-    "https://diffgazer.com/r/ui/theme.json",
-    "https://diffgazer.com/r/ui/badge.json",
-    "https://diffgazer.com/r/ui/controllable-state.json",
-    "https://diffgazer.com/r/ui/step-status.json"
+    "https://docs.diffgazer.b4r7.dev/r/ui/theme.json",
+    "https://docs.diffgazer.b4r7.dev/r/ui/badge.json",
+    "https://docs.diffgazer.b4r7.dev/r/ui/controllable-state.json",
+    "https://docs.diffgazer.b4r7.dev/r/ui/step-status.json"
   ],
   "files": [
     {

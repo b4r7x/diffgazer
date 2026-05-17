@@ -5,7 +5,7 @@
   "description": "Previous/next page navigation for sequential content",
   "dependencies": [],
   "registryDependencies": [
-    "https://diffgazer.com/r/ui/theme.json"
+    "https://docs.diffgazer.b4r7.dev/r/ui/theme.json"
   ],
   "files": [
     {

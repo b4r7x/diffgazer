@@ -5,11 +5,11 @@
   "description": "Shared listbox state and keyboard navigation hook. Manages selection, highlight, and container ARIA props for listbox-pattern components.",
   "dependencies": [],
   "registryDependencies": [
-    "https://diffgazer.com/r/ui/controllable-state.json",
-    "https://diffgazer.com/r/keys/navigation.json",
-    "https://diffgazer.com/r/ui/compose-refs.json",
-    "https://diffgazer.com/r/ui/typeahead.json",
-    "https://diffgazer.com/r/ui/typeahead-buffer.json"
+    "https://docs.diffgazer.b4r7.dev/r/ui/controllable-state.json",
+    "https://docs.diffgazer.b4r7.dev/r/keys/navigation.json",
+    "https://docs.diffgazer.b4r7.dev/r/ui/compose-refs.json",
+    "https://docs.diffgazer.b4r7.dev/r/ui/typeahead.json",
+    "https://docs.diffgazer.b4r7.dev/r/ui/typeahead-buffer.json"
   ],
   "files": [
     {

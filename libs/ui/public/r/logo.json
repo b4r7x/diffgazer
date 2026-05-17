@@ -5,7 +5,7 @@
   "description": "Static text logo primitive. Precompute ASCII art and pass it as asciiText.",
   "dependencies": [],
   "registryDependencies": [
-    "https://diffgazer.com/r/ui/theme.json"
+    "https://docs.diffgazer.b4r7.dev/r/ui/theme.json"
   ],
   "files": [
     {

@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DOCS_ROOT = resolve(HERE, "..");
-const DEFAULT_ORIGIN = "https://diffgazer.com";
+const DEFAULT_ORIGIN = "https://docs.diffgazer.b4r7.dev";
 
 function readLibrariesConfig() {
   const configPath = resolve(DOCS_ROOT, "config/docs-libraries.json");

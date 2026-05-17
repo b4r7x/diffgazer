@@ -7,9 +7,9 @@
     "class-variance-authority"
   ],
   "registryDependencies": [
-    "https://diffgazer.com/r/ui/theme.json",
-    "https://diffgazer.com/r/ui/listbox.json",
-    "https://diffgazer.com/r/ui/badge.json"
+    "https://docs.diffgazer.b4r7.dev/r/ui/theme.json",
+    "https://docs.diffgazer.b4r7.dev/r/ui/listbox.json",
+    "https://docs.diffgazer.b4r7.dev/r/ui/badge.json"
   ],
   "files": [
     {

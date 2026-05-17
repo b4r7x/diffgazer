@@ -4,7 +4,7 @@ import type {
   MetaHTMLAttributes,
 } from "react";
 
-const DEFAULT_ORIGIN = "https://diffgazer.com";
+const DEFAULT_ORIGIN = "https://docs.diffgazer.b4r7.dev";
 
 export const PUBLIC_ORIGIN: string = (() => {
   const raw = (typeof process !== "undefined" ? process.env.VITE_PUBLIC_ORIGIN : undefined)

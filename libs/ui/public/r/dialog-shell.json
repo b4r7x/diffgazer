@@ -5,10 +5,10 @@
   "description": "Native dialog element wrapper with presence animations and backdrop handling",
   "dependencies": [],
   "registryDependencies": [
-    "https://diffgazer.com/r/ui/compose-refs.json",
-    "https://diffgazer.com/r/ui/presence.json",
-    "https://diffgazer.com/r/keys/focus-trap.json",
-    "https://diffgazer.com/r/keys/scroll-lock.json"
+    "https://docs.diffgazer.b4r7.dev/r/ui/compose-refs.json",
+    "https://docs.diffgazer.b4r7.dev/r/ui/presence.json",
+    "https://docs.diffgazer.b4r7.dev/r/keys/focus-trap.json",
+    "https://docs.diffgazer.b4r7.dev/r/keys/scroll-lock.json"
   ],
   "files": [
     {

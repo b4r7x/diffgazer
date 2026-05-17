@@ -5,8 +5,8 @@
   "description": "Code display with line numbers and scroll area",
   "dependencies": [],
   "registryDependencies": [
-    "https://diffgazer.com/r/ui/theme.json",
-    "https://diffgazer.com/r/ui/scroll-area.json"
+    "https://docs.diffgazer.b4r7.dev/r/ui/theme.json",
+    "https://docs.diffgazer.b4r7.dev/r/ui/scroll-area.json"
   ],
   "files": [
     {

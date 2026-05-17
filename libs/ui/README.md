@@ -8,7 +8,7 @@ All npm package names are external publish-gated as of May 2026. Public npm comm
 
 | Path | What it does | CSS setup |
 |------|-------------|-----------|
-| Manual copy / shadcn (future) | `npx shadcn add https://diffgazer.com/r/ui/button.json` (hosted registry not yet live — see [Hosted Registry Status](../../PACKAGE_GOVERNANCE.md#hosted-registry-status)) | Import copied `src/styles/styles.css` |
+| Manual copy / shadcn (future) | `npx shadcn add https://docs.diffgazer.b4r7.dev/r/ui/button.json` (hosted registry not yet live — see [Hosted Registry Status](../../PACKAGE_GOVERNANCE.md#hosted-registry-status)) | Import copied `src/styles/styles.css` |
 | `dgadd` CLI | `pnpm exec dgadd add ui/button` | Import copied `src/styles/styles.css` |
 | npm package | `npm install @diffgazer/ui @diffgazer/keys` | Import `@diffgazer/ui/sources.css` and `@diffgazer/ui/styles.css` |
 
@@ -63,10 +63,10 @@ Runtime package mode exports compiled components, hooks, utilities, and CSS. It 
 
 ### Direct shadcn / manual copy (future, after publication)
 
-The hosted registry at `https://diffgazer.com/r/` is not yet live. After publication (see [Hosted Registry Status](../../PACKAGE_GOVERNANCE.md#hosted-registry-status)), the install command will be:
+The hosted registry at `https://docs.diffgazer.b4r7.dev/r/` is not yet live. After publication (see [Hosted Registry Status](../../PACKAGE_GOVERNANCE.md#hosted-registry-status)), the install command will be:
 
 ```bash
-npx shadcn add https://diffgazer.com/r/ui/button.json
+npx shadcn add https://docs.diffgazer.b4r7.dev/r/ui/button.json
 ```
 
 Until then, install with `pnpm exec dgadd add ui/button` or copy source directly from `https://github.com/b4r7x/diffgazer/tree/main/libs/ui/registry/ui/button`.

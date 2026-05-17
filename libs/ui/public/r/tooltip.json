@@ -5,8 +5,8 @@
   "description": "Minimal tooltip with hover delay and terminal styling. Built on Popover primitive with all 4-side positioning. Compound API (Trigger + Content) or shorthand content prop.",
   "dependencies": [],
   "registryDependencies": [
-    "https://diffgazer.com/r/ui/theme.json",
-    "https://diffgazer.com/r/ui/popover.json"
+    "https://docs.diffgazer.b4r7.dev/r/ui/theme.json",
+    "https://docs.diffgazer.b4r7.dev/r/ui/popover.json"
   ],
   "files": [
     {

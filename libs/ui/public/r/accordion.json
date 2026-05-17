@@ -7,11 +7,11 @@
     "class-variance-authority"
   ],
   "registryDependencies": [
-    "https://diffgazer.com/r/ui/theme.json",
-    "https://diffgazer.com/r/ui/controllable-state.json",
-    "https://diffgazer.com/r/ui/compose-refs.json",
-    "https://diffgazer.com/r/ui/icons.json",
-    "https://diffgazer.com/r/keys/navigation.json"
+    "https://docs.diffgazer.b4r7.dev/r/ui/theme.json",
+    "https://docs.diffgazer.b4r7.dev/r/ui/controllable-state.json",
+    "https://docs.diffgazer.b4r7.dev/r/ui/compose-refs.json",
+    "https://docs.diffgazer.b4r7.dev/r/ui/icons.json",
+    "https://docs.diffgazer.b4r7.dev/r/keys/navigation.json"
   ],
   "files": [
     {

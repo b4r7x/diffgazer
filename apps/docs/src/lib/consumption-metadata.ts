@@ -66,7 +66,7 @@ export function getConsumptionMetadata(
       paths: {
         copy: isKeysPackageOnly
           ? { available: false, note: "Requires KeyboardProvider; package-only." }
-          : { available: true, command: `npx shadcn add https://diffgazer.com/r/keys/${registryItemId}.json` },
+          : { available: true, command: `npx shadcn add https://docs.diffgazer.b4r7.dev/r/keys/${registryItemId}.json` },
         dgadd: isKeysPackageOnly
           ? { available: false, note: "Requires KeyboardProvider; package-only." }
           : { available: true, command: `pnpm exec dgadd add ${dgaddName}` },
@@ -95,7 +95,7 @@ export function getConsumptionMetadata(
     paths: {
       copy: {
         available: true,
-        command: `npx shadcn add https://diffgazer.com/r/ui/${itemId}.json`,
+        command: `npx shadcn add https://docs.diffgazer.b4r7.dev/r/ui/${itemId}.json`,
       },
       dgadd: {
         available: true,

@@ -7,20 +7,20 @@
     "class-variance-authority"
   ],
   "registryDependencies": [
-    "https://diffgazer.com/r/ui/theme.json",
-    "https://diffgazer.com/r/ui/aria-utils.json",
-    "https://diffgazer.com/r/ui/controllable-state.json",
-    "https://diffgazer.com/r/keys/navigation.json",
-    "https://diffgazer.com/r/ui/compose-refs.json",
-    "https://diffgazer.com/r/ui/floating-position.json",
-    "https://diffgazer.com/r/ui/form-reset.json",
-    "https://diffgazer.com/r/ui/icons.json",
-    "https://diffgazer.com/r/ui/outside-click.json",
-    "https://diffgazer.com/r/ui/portal.json",
-    "https://diffgazer.com/r/ui/presence.json",
-    "https://diffgazer.com/r/ui/search.json",
-    "https://diffgazer.com/r/ui/typeahead.json",
-    "https://diffgazer.com/r/ui/typeahead-buffer.json"
+    "https://docs.diffgazer.b4r7.dev/r/ui/theme.json",
+    "https://docs.diffgazer.b4r7.dev/r/ui/aria-utils.json",
+    "https://docs.diffgazer.b4r7.dev/r/ui/controllable-state.json",
+    "https://docs.diffgazer.b4r7.dev/r/keys/navigation.json",
+    "https://docs.diffgazer.b4r7.dev/r/ui/compose-refs.json",
+    "https://docs.diffgazer.b4r7.dev/r/ui/floating-position.json",
+    "https://docs.diffgazer.b4r7.dev/r/ui/form-reset.json",
+    "https://docs.diffgazer.b4r7.dev/r/ui/icons.json",
+    "https://docs.diffgazer.b4r7.dev/r/ui/outside-click.json",
+    "https://docs.diffgazer.b4r7.dev/r/ui/portal.json",
+    "https://docs.diffgazer.b4r7.dev/r/ui/presence.json",
+    "https://docs.diffgazer.b4r7.dev/r/ui/search.json",
+    "https://docs.diffgazer.b4r7.dev/r/ui/typeahead.json",
+    "https://docs.diffgazer.b4r7.dev/r/ui/typeahead-buffer.json"
   ],
   "files": [
     {
