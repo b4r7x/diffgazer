@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { useSelectContext } from "./select-context";
 import { matchesSearch } from "@/lib/search";
 import { isValueSelected, toOptionId } from "./select-utils";
+import { OverflowText } from "../overflow/overflow-text";
 
 const NBSP = "\u00a0";
 const BULLET = "\u25cf";
@@ -143,7 +144,13 @@ export function SelectItem<TValue extends string = string>({
           {indicatorText ?? CHECKMARK}
         </span>
       )}
-      <span>{children}</span>
+      {typeof children === "string" ? (
+        <OverflowText className="flex-1 min-w-0">{children}</OverflowText>
+      ) : (
+        // Non-string children skip OverflowText (which requires `children: string`);
+        // consumers using JSX labels should ensure their items fit or wrap manually.
+        <span className="flex-1 min-w-0 truncate">{children}</span>
+      )}
       {variant === "card" && isHighlighted && isSelected && (
         <span aria-hidden="true" className="ml-auto text-[10px] motion-safe:animate-pulse">&lt;</span>
       )}

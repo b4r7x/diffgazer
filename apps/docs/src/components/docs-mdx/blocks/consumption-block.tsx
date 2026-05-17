@@ -1,9 +1,13 @@
 import { CopyButton } from "@/components/copy-button"
-import { getConsumptionMetadata, PUBLISH_GATE_NOTE } from "@/lib/consumption-metadata"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { getConsumptionMetadata } from "@/lib/consumption-metadata"
 import { useLocation } from "@tanstack/react-router"
 import type { ConsumptionLibrary, ConsumptionItemKind, ConsumptionMetadata } from "@diffgazer/registry"
 import { useComponentData, useHookData } from "../doc-data-context"
 import { useCurrentLibrary } from "./use-current-library"
+
+type PathState = ConsumptionMetadata["paths"]["copy"]
+type Caption = { label: string; value?: string }
 
 function getRouteItem(pathname: string, library: ConsumptionLibrary): { section: string; itemId: string } | null {
   const segments = pathname.split("/").filter(Boolean)
@@ -25,38 +29,41 @@ function inferItemKind(library: ConsumptionLibrary, name: string, section?: stri
   return "component"
 }
 
-function PathRow({ label, path }: { label: string; path: ConsumptionMetadata["paths"]["copy"] }) {
-  if (!path.available) {
-    return (
-      <tr>
-        <td className="py-1.5 pr-3 text-xs font-mono text-muted-foreground align-top whitespace-nowrap">{label}</td>
-        <td className="py-1.5 text-xs text-muted-foreground italic">{path.note ?? "Not available"}</td>
-      </tr>
-    )
-  }
-
+function CommandBox({ command }: { command: string }) {
   return (
-    <tr>
-      <td className="py-1.5 pr-3 text-xs font-mono text-muted-foreground align-top whitespace-nowrap">{label}</td>
-      <td className="py-1.5">
-        {path.command && (
-          <div className="flex items-center gap-2 border border-border bg-background px-2 py-1 font-mono text-xs rounded">
-            <span className="text-muted-foreground select-none">$</span>
-            <span className="flex-1 break-all">{path.command}</span>
-            <CopyButton text={path.command} />
-          </div>
-        )}
-        {path.note && <p className="text-[11px] text-muted-foreground mt-1">{path.note}</p>}
-      </td>
-    </tr>
+    <div className="flex items-center gap-2 border border-border bg-background px-2 py-1 font-mono text-xs rounded">
+      <span className="text-muted-foreground select-none">$</span>
+      <span className="flex-1 break-all">{command}</span>
+      <CopyButton text={command} />
+    </div>
   )
 }
 
-function DetailRow({ label, value }: { label: string; value: string }) {
+function Captions({ items }: { items: Caption[] }) {
+  const visible = items.filter((item): item is Required<Caption> => Boolean(item.value))
+  if (visible.length === 0) return null
   return (
-    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[11px]">
-      <dt className="font-mono text-muted-foreground">{label}</dt>
-      <dd className="font-mono text-foreground break-all">{value}</dd>
+    <dl className="space-y-1">
+      {visible.map(({ label, value }) => (
+        <div key={label} className="flex flex-wrap items-baseline gap-x-2 text-[11px]">
+          <dt className="font-mono text-muted-foreground">{label}</dt>
+          <dd className="font-mono text-foreground break-all">{value}</dd>
+        </div>
+      ))}
+    </dl>
+  )
+}
+
+function PathBody({ path, captions }: { path: PathState; captions: Caption[] }) {
+  if (!path.available) {
+    return <p className="text-xs text-muted-foreground italic">{path.note ?? "Not available"}</p>
+  }
+
+  return (
+    <div className="space-y-2">
+      {path.command && <CommandBox command={path.command} />}
+      <Captions items={captions} />
+      {path.note && <p className="text-[11px] text-muted-foreground">{path.note}</p>}
     </div>
   )
 }
@@ -76,36 +83,57 @@ export function ConsumptionBlock() {
   const itemKind = inferItemKind(library, itemId, routeItem?.section)
   const meta = getConsumptionMetadata(library, itemId, itemKind)
 
+  const localDestination = meta.paths.copy.available ? meta.copyPath : undefined
+
+  const tabs: { value: string; label: string; path: PathState; captions: Caption[] }[] = [
+    {
+      value: "dgadd",
+      label: "dgadd",
+      path: meta.paths.dgadd,
+      captions: [
+        { label: "Installs to", value: localDestination },
+        { label: "Item", value: meta.dgaddName },
+      ],
+    },
+    {
+      value: "shadcn",
+      label: "shadcn CLI",
+      path: meta.paths.copy,
+      captions: [
+        { label: "Copies to", value: localDestination },
+      ],
+    },
+    {
+      value: "package",
+      label: "npm package",
+      path: meta.paths.package,
+      captions: [
+        { label: "Import", value: meta.packageImport },
+      ],
+    },
+  ]
+
+  const firstAvailable = tabs.find((t) => t.path.available)
+
   return (
-    <div className="space-y-3">
-      <table className="w-full">
-        <thead>
-          <tr className="border-b border-border">
-            <th className="pb-1.5 text-left text-xs font-bold text-foreground">Path</th>
-            <th className="pb-1.5 text-left text-xs font-bold text-foreground">Install</th>
-          </tr>
-        </thead>
-        <tbody>
-          <PathRow label="Manual copy / shadcn" path={meta.paths.copy} />
-          <PathRow label="dgadd" path={meta.paths.dgadd} />
-          <PathRow label="npm package" path={meta.paths.package} />
-        </tbody>
-      </table>
-
-      <dl className="space-y-1">
-        {meta.paths.copy.available && meta.copyPath && (
-          <DetailRow label="Copy target" value={meta.copyPath} />
-        )}
-        {meta.paths.dgadd.available && (
-          <DetailRow label="dgadd item" value={meta.dgaddName} />
-        )}
-        {meta.packageImport && (
-          <DetailRow label="Package import" value={meta.packageImport} />
-        )}
-      </dl>
-
-      {meta.publishGated && (
-        <p className="text-[11px] text-muted-foreground">{PUBLISH_GATE_NOTE}</p>
+    <div className="space-y-4">
+      {firstAvailable ? (
+        <Tabs defaultValue={firstAvailable.value}>
+          <TabsList>
+            {tabs.map((t) => (
+              <TabsTrigger key={t.value} value={t.value} disabled={!t.path.available}>
+                {t.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+          {tabs.map((t) => (
+            <TabsContent key={t.value} value={t.value}>
+              <PathBody path={t.path} captions={t.captions} />
+            </TabsContent>
+          ))}
+        </Tabs>
+      ) : (
+        <p className="text-xs text-muted-foreground italic">Not available</p>
       )}
 
       {meta.cssNote && library === "ui" && (

@@ -396,8 +396,8 @@ describe("docs-library source path mapping", () => {
       const source = readAbsolute(file)
       const relPath = file.slice(repoRoot.length + 1)
       expect(
-        source.includes("<ConsumptionBlock") || source.includes("<InstallCommand"),
-        `${relPath} must include consumption metadata (ConsumptionBlock or InstallCommand)`,
+        source.includes("<ConsumptionBlock"),
+        `${relPath} must include <ConsumptionBlock />`,
       ).toBe(true)
     }
   })
@@ -409,8 +409,8 @@ describe("docs-library source path mapping", () => {
       const source = readAbsolute(file)
       const relPath = file.slice(repoRoot.length + 1)
       expect(
-        source.includes("<ConsumptionBlock") || source.includes("<InstallCommand"),
-        `${relPath} must include consumption metadata (ConsumptionBlock or InstallCommand)`,
+        source.includes("<ConsumptionBlock"),
+        `${relPath} must include <ConsumptionBlock />`,
       ).toBe(true)
     }
   })

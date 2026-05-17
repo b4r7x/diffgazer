@@ -42,3 +42,4 @@ if (shouldPrepareLibraryArtifacts()) {
 }
 
 await import(pathToFileURL(resolve(DOCS_ROOT, "scripts/sync-artifacts.mjs")).href);
+await import(pathToFileURL(resolve(DOCS_ROOT, "scripts/generate-logo-ascii.mjs")).href);

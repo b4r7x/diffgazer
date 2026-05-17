@@ -15,6 +15,7 @@ import { SearchProvider } from "@/features/search/search-context";
 import { GlobalNotFound } from "@/components/not-found";
 import { NotFoundState } from "@/components/not-found-state";
 import { Button } from "@/components/ui/button/button";
+import { Toaster } from "@/components/ui/toast";
 import { PRIMARY_DOCS_LIBRARY_ID } from "@/lib/docs-library";
 import { buildRootHeadDefaults } from "@/lib/seo";
 
@@ -80,6 +81,7 @@ function RootLayout() {
 					<Outlet />
 					<SearchDialog />
 				</SearchProvider>
+				<Toaster />
 			</KeyboardProvider>
 		</TanstackProvider>
 	);

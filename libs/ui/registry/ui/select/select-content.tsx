@@ -269,7 +269,7 @@ export function SelectContent({
         )}
         style={
           position
-            ? { top: position.y, left: position.x, width: triggerWidth }
+            ? { top: position.y, left: position.x, minWidth: triggerWidth }
             : { visibility: "hidden" as const, position: "fixed" as const, top: 0, left: 0 }
         }
       >

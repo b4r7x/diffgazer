@@ -79,7 +79,7 @@ export const markdownMdxComponents: MDXComponents = {
   blockquote: ({ children }) => {
     const variant = detectCalloutVariant(children)
     return (
-      <Callout variant={variant} className="mb-4">
+      <Callout variant={variant} className="mb-4 [&_p]:max-w-none">
         {children}
       </Callout>
     )

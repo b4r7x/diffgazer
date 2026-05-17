@@ -2,6 +2,7 @@ import { useState } from "react"
 import { useLocation, useNavigate, useRouterState } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
 import { Logo } from "@/components/ui/logo/logo"
+import { LOGO_ASCII } from "@/generated/logo-ascii"
 import { Spinner } from "@/components/ui/spinner/spinner"
 import { Divider } from "@/components/ui/divider/divider"
 import {
@@ -89,6 +90,7 @@ export function Header({ library }: HeaderProps) {
         <div className="flex items-start gap-2 mt-2">
           <Logo
             text={activeLibrary.logoText}
+            asciiText={LOGO_ASCII[library]}
             className="text-foreground text-[6px] sm:text-[8px] transition-opacity duration-150"
           />
           <span className="bg-border text-foreground px-1.5 py-0.5 text-xs rounded-sm mt-2">
@@ -102,13 +104,13 @@ export function Header({ library }: HeaderProps) {
             <div className={cn(switching && "opacity-50 pointer-events-none")}>
               <Select
                 value={library}
-                onChange={(v) => void handleLibraryChange(v as string)}
+                onChange={(v) => void handleLibraryChange(v)}
               >
                 <SelectTrigger
-                  className="px-2 py-1 text-xs font-mono w-auto min-w-[120px]"
+                  className="px-2 py-1 text-xs font-mono w-auto min-w-[180px]"
                   aria-label="Select documentation library"
                 >
-                  <span>{activeLibrary.displayName}</span>
+                  <span className="truncate">{activeLibrary.displayName}</span>
                 </SelectTrigger>
                 <SelectContent>
                   {DOCS_LIBRARY_IDS.map((id) => {
