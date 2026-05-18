@@ -26,6 +26,8 @@ component: "popover"
 
 <AccessibilityNotes />
 
+When `role="dialog"` is used without `aria-label` or `aria-labelledby`, the content falls back to the accessible name `"Popover"` so assistive technology never sees an unlabeled dialog. Provide your own label for any production usage; the fallback exists to prevent silent accessibility regressions during development.
+
 ## Source
 
 <SourceViewer />

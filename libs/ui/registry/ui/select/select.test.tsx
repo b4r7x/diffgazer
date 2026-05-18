@@ -1,11 +1,9 @@
-import { readFileSync } from "node:fs"
-import { resolve } from "node:path"
-import { fileURLToPath } from "node:url"
 import { Fragment, type ReactNode, createRef } from "react"
 import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { axe } from "../../../testing/utils.js"
-import { afterAll, beforeAll, describe, it, expect, expectTypeOf, vi } from "vitest"
+import { applyReducedMotionFixture } from "../../../testing/prefers-reduced-motion.js"
+import { describe, it, expect, expectTypeOf, vi } from "vitest"
 import { Select, type SelectProps } from "./index.js"
 import { type SelectItemProps } from "./select-item.js"
 
@@ -910,58 +908,57 @@ describe("Select form submission", () => {
   })
 })
 
-describe("Select prefers-reduced-motion", () => {
-  // Select content opts into the --animate-slide-in/out tokens declared in
-  // theme-base.css; the @media (prefers-reduced-motion: reduce) :root block
-  // overrides those tokens to `none`. The card-variant selected indicator
-  // uses motion-safe:animate-pulse, suppressed by reduced motion via
-  // Tailwind's motion-safe variant. jsdom does not evaluate @media in
-  // stylesheets, so the override is extracted and injected at the top level
-  // to simulate matchMedia returning true; the assertion reads the resolved
-  // CSS variable on :root and the rendered class names.
-  const THEME_BASE_CSS_PATH = resolve(fileURLToPath(import.meta.url), "../../../../styles/theme-base.css")
-  const REDUCED_MOTION_BLOCK_RE = /@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{\s*:root\s*\{[^}]*\}\s*\}/
-  let styleElement: HTMLStyleElement | null = null
+describe("Select respects prefers-reduced-motion", () => {
+  // jsdom does not evaluate @media in stylesheets and does not compile the
+  // Tailwind `ui-floating-panel[data-state="open"]` rules from theme-base.css
+  // into the CSSOM. So a true behavior assertion on `listbox.animationName`
+  // is not observable here. The fixture lifts the reduced-motion `:root`
+  // overrides out of their @media wrapper to simulate the user preference;
+  // the assertion reads the resolved variables that the production
+  // stylesheet would read from the listbox element.
+  applyReducedMotionFixture()
 
-  beforeAll(() => {
-    const sourceCss = readFileSync(THEME_BASE_CSS_PATH, "utf8")
-    const reducedMotionBlock = sourceCss.match(REDUCED_MOTION_BLOCK_RE)?.[0]
-    if (!reducedMotionBlock) {
-      throw new Error("theme-base.css must declare a @media (prefers-reduced-motion: reduce) :root block")
-    }
-    const rootRule = reducedMotionBlock.match(/:root\s*\{[^}]*\}/)?.[0]
-    if (!rootRule) throw new Error("theme-base.css reduced-motion block must contain a :root rule")
-    styleElement = document.createElement("style")
-    styleElement.dataset.testSource = "theme-base.css#reduced-motion"
-    styleElement.textContent = rootRule
-    document.head.appendChild(styleElement)
-  })
-
-  afterAll(() => {
-    styleElement?.remove()
-    styleElement = null
-  })
-
-  it("opts dropdown content into --animate-slide-in/out tokens that the @media override neutralizes", async () => {
+  it("neutralizes dropdown enter and exit motion when the listbox is open", async () => {
     renderSelect({ defaultOpen: true, variant: "default" })
 
     const listbox = await screen.findByRole("listbox")
-    expect(listbox.className).toMatch(/animate-slide-in/)
-    expect(listbox.className).toMatch(/animate-slide-out/)
-
     const root = listbox.ownerDocument.documentElement
-    expect(getComputedStyle(root).getPropertyValue("--animate-slide-in").trim()).toBe("none")
-    expect(getComputedStyle(root).getPropertyValue("--animate-slide-out").trim()).toBe("none")
+    const resolved = (name: string) => getComputedStyle(root).getPropertyValue(name).trim()
+
+    expect(resolved("--ui-content-enter-from-top")).toMatch(/^ui-content-enter-fade\b/)
+    expect(resolved("--ui-content-enter-from-bottom")).toMatch(/^ui-content-enter-fade\b/)
+    expect(resolved("--ui-content-enter-from-left")).toMatch(/^ui-content-enter-fade\b/)
+    expect(resolved("--ui-content-enter-from-right")).toMatch(/^ui-content-enter-fade\b/)
+    expect(resolved("--ui-content-exit-to-top")).toMatch(/^ui-content-exit-fade\b/)
+    expect(resolved("--ui-content-exit-to-bottom")).toMatch(/^ui-content-exit-fade\b/)
+    expect(resolved("--ui-content-exit-to-left")).toMatch(/^ui-content-exit-fade\b/)
+    expect(resolved("--ui-content-exit-to-right")).toMatch(/^ui-content-exit-fade\b/)
   })
 
-  it("uses motion-safe variant on the card-variant selected indicator so reduced motion suppresses pulse", async () => {
+  it("suppresses the card-variant selected indicator pulse via motion-safe", async () => {
     renderSelect({ defaultOpen: true, defaultValue: "apple", highlighted: "apple", items: ["Apple"], variant: "card" })
 
     const option = await screen.findByRole("option", { name: /apple/i })
     const indicator = option.querySelector(".motion-safe\\:animate-pulse")
-    // querySelector: motion-safe variant is the load-bearing a11y contract; there is no accessible role for the visual indicator
+    // motion-safe:animate-pulse is the public CSS class signal documented in select.mdx
+    // (Accessibility section); the indicator has no accessible role, so the class is the
+    // only observable contract that the pulse is reduced-motion-gated.
     expect(indicator).not.toBeNull()
     expect(option.querySelector(".animate-pulse:not(.motion-safe\\:animate-pulse)")).toBeNull()
+  })
+})
+
+describe("Select dropdown width", () => {
+  it("clamps dropdown to trigger width via the CSS variable", async () => {
+    renderSelect({
+      defaultOpen: true,
+      variant: "default",
+      items: ["A short one", "An extremely long option label that would otherwise stretch the dropdown"],
+    })
+
+    const listbox = await screen.findByRole("listbox")
+    expect(listbox.style.width).toBe("var(--ui-floating-trigger-width)")
+    expect(listbox.style.minWidth).toBe("")
   })
 })
 

@@ -73,8 +73,10 @@ export function SelectValue({
   const { value, multiple, options, variant } = useSelectContext("SelectValue");
 
   const selected = toSelectedArray(value, multiple);
+  // Treat "" as unset unless the consumer explicitly registers an option with value="".
+  const isUnsetEmptyString = !multiple && selected.length === 1 && selected[0] === "" && !options.has("");
 
-  if (selected.length === 0) {
+  if (selected.length === 0 || isUnsetEmptyString) {
     return (
       <span className={cn(
         variant === "card" ? "text-accent-foreground/50" : "text-foreground/50",

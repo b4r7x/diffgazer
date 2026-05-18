@@ -29,8 +29,20 @@ describe("@diffgazer/ui registry closure metadata", () => {
   it("keeps dialog and popover portal context imports reachable", () => {
     expect(item("portal").files.map((file) => file.path)).toContain("registry/ui/shared/portal-context.tsx");
     expect(item("dialog").registryDependencies).toContain("portal");
-    expect(item("popover").registryDependencies).toContain("portal");
+    // Popover composes FloatingPanel, which transitively pulls in portal.
+    expect(transitiveRegistryDeps("popover")).toContain("portal");
   });
+
+  function transitiveRegistryDeps(name: string, visited = new Set<string>()): Set<string> {
+    if (visited.has(name)) return visited;
+    visited.add(name);
+    const entry = registry.items.find((e) => e.name === name);
+    for (const dep of entry?.registryDependencies ?? []) {
+      if (dep.startsWith("@")) continue;
+      transitiveRegistryDeps(dep, visited);
+    }
+    return visited;
+  }
 });
 
 describe("RegistryItemSchema shadcn-compatible fields", () => {

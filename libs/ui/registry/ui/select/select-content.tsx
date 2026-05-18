@@ -1,14 +1,13 @@
 "use client";
 
-import { Children, Fragment, cloneElement, isValidElement, useCallback, useLayoutEffect, useRef, useState, type AriaAttributes, type ReactNode, type KeyboardEvent, type Ref } from "react";
+import { Children, Fragment, cloneElement, isValidElement, useCallback, useLayoutEffect, useRef, type AriaAttributes, type ReactNode, type KeyboardEvent, type Ref } from "react";
 import { useNavigation } from "@/hooks/use-navigation";
-import { usePresence } from "@/hooks/use-presence";
 import { useTypeaheadBuffer } from "@/hooks/use-typeahead-buffer";
-import { useFloatingPosition, type FloatingSide, type FloatingAlign } from "@/hooks/use-floating-position";
+import { type FloatingSide, type FloatingAlign } from "@/hooks/use-floating-position";
 import { composeRefs } from "@/lib/compose-refs";
 import { typeaheadSearch } from "@/lib/typeahead";
 import { cn } from "@/lib/utils";
-import { Portal } from "../shared/portal";
+import { FloatingPanel } from "../floating-panel";
 import { useSelectContext } from "./select-context";
 import { matchesSearch } from "@/lib/search";
 import { isActiveOptionVisible, toOptionId } from "./select-utils";
@@ -48,7 +47,9 @@ export function SelectContent({
   onKeyDown,
   side = "bottom",
   align = "start",
-  sideOffset = 0,
+  // Tighter than FloatingPanel's default (6) so the dropdown reads as visually
+  // attached to the trigger. Override per-instance via the prop.
+  sideOffset = 4,
   collisionPadding = 8,
   ref,
 }: SelectContentProps) {
@@ -73,7 +74,6 @@ export function SelectContent({
   } = useSelectContext("SelectContent");
   const containerRef = useRef<HTMLDivElement>(null);
   const isDropdown = variant !== "card";
-  const [triggerWidth, setTriggerWidth] = useState<number | undefined>(undefined);
   const hasSearch = containsSelectSearchElement(children);
 
   const { onKeyDown: navKeyDown } = useNavigation({
@@ -151,18 +151,6 @@ export function SelectContent({
     moveSearchHighlight(e.key === "ArrowDown" ? 1 : -1);
   }
 
-  const { present, onAnimationEnd } = usePresence({ open: isDropdown && open, ref: containerRef });
-  const { position, contentRef: floatingContentRef } = useFloatingPosition({
-    triggerRef,
-    open: isDropdown && present,
-    side,
-    align,
-    sideOffset,
-    alignOffset: 0,
-    collisionPadding,
-    avoidCollisions: true,
-  });
-
   const initHighlight = useCallback(() => {
     if (highlighted !== null) return;
     const selectedValues = Array.isArray(value) ? value : value === null ? [] : [value];
@@ -181,14 +169,11 @@ export function SelectContent({
 
   useLayoutEffect(() => {
     if (!open) return;
-    if (isDropdown) {
-      setTriggerWidth(triggerRef.current?.getBoundingClientRect().width);
-    }
     if (!searchInputRef.current) {
       containerRef.current?.focus();
     }
     initHighlight();
-  }, [initHighlight, isDropdown, open, searchInputRef, triggerRef]);
+  }, [initHighlight, open, searchInputRef]);
 
   const handleKeyDown = (e: KeyboardEvent) => {
     onKeyDown?.(e);
@@ -214,7 +199,6 @@ export function SelectContent({
       navKeyDown(e);
       if (!e.ctrlKey && !e.metaKey && !e.altKey) handleTypeahead(e.key);
     }
-
   };
 
   const activeDescendant = isActiveOptionVisible(options, highlighted, searchQuery, matchesSearch)
@@ -251,32 +235,27 @@ export function SelectContent({
     );
   }
 
-  if (!present) return null;
-
   return (
-    <Portal>
-      <div
-        {...(hasSearch ? { onKeyDown: handleKeyDown } : listboxProps)}
-        ref={hasSearch ? composeRefs(selectContentRef, floatingContentRef, ref) : composeRefs(containerRef, selectContentRef, floatingContentRef, ref)}
-        data-state={open ? "open" : "closed"}
-        data-side={position?.side}
-        onAnimationEnd={onAnimationEnd}
-        className={cn(
-          "fixed z-[var(--z-popover)] border border-border bg-background shadow-2xl rounded-sm overflow-hidden outline-none",
-          "data-[state=open]:animate-slide-in",
-          "data-[state=closed]:animate-slide-out",
-          className,
-        )}
-        style={
-          position
-            ? { top: position.y, left: position.x, minWidth: triggerWidth }
-            : { visibility: "hidden" as const, position: "fixed" as const, top: 0, left: 0 }
-        }
-      >
-        {contentBody}
-        {searchQuery && <MatchCount options={options} searchQuery={searchQuery} />}
-      </div>
-    </Portal>
+    <FloatingPanel
+      {...(hasSearch ? { onKeyDown: handleKeyDown } : listboxProps)}
+      open={open}
+      triggerRef={triggerRef}
+      side={side}
+      align={align}
+      sideOffset={sideOffset}
+      collisionPadding={collisionPadding}
+      avoidCollisions
+      matchTriggerWidth
+      ref={hasSearch ? composeRefs(selectContentRef, ref) : composeRefs(containerRef, selectContentRef, ref)}
+      className={cn(
+        "border border-border bg-background shadow-2xl rounded-sm overflow-hidden outline-none",
+        className,
+      )}
+      style={{ width: "var(--ui-floating-trigger-width)" }}
+    >
+      {contentBody}
+      {searchQuery && <MatchCount options={options} searchQuery={searchQuery} />}
+    </FloatingPanel>
   );
 }
 

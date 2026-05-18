@@ -182,6 +182,25 @@
   --animate-slide-in-bottom: slide-in-bottom 0.2s ease-out;
   --animate-slide-out-bottom: slide-out-bottom 0.15s ease-in forwards;
 
+  /*
+   * Floating-surface animation contract (Popover, Select, future Menu/Combobox via FloatingPanel).
+   * Each `--ui-content-enter-from-<side>` / `--ui-content-exit-to-<side>` token holds the full
+   * `animation` shorthand for that direction, so `.ui-floating-panel[data-side="<side>"]` maps
+   * directly. All 8 directional tokens are kept (vs. collapsed to a single pair) so consumers
+   * can override per side with transform-based keyframes; `--ui-content-transform-origin` is
+   * set automatically by FloatingPanel for those overrides. Reduced motion overrides below.
+   */
+  --ui-content-enter-duration: 60ms;
+  --ui-content-exit-duration: 40ms;
+  --ui-content-enter-from-top: ui-content-enter-fade var(--ui-content-enter-duration) linear;
+  --ui-content-enter-from-bottom: ui-content-enter-fade var(--ui-content-enter-duration) linear;
+  --ui-content-enter-from-left: ui-content-enter-fade var(--ui-content-enter-duration) linear;
+  --ui-content-enter-from-right: ui-content-enter-fade var(--ui-content-enter-duration) linear;
+  --ui-content-exit-to-top: ui-content-exit-fade var(--ui-content-exit-duration) linear forwards;
+  --ui-content-exit-to-bottom: ui-content-exit-fade var(--ui-content-exit-duration) linear forwards;
+  --ui-content-exit-to-left: ui-content-exit-fade var(--ui-content-exit-duration) linear forwards;
+  --ui-content-exit-to-right: ui-content-exit-fade var(--ui-content-exit-duration) linear forwards;
+
   @keyframes fade-in {
     from {
       opacity: 0;
@@ -214,7 +233,7 @@
       opacity: 1;
     }
     to {
-      transform: translateY(4px);
+      transform: translateY(8px);
       opacity: 0;
     }
   }
@@ -298,6 +317,78 @@
       opacity: 0;
     }
   }
+
+}
+
+/*
+ * Floating-surface keyframes. Tailwind v4 keeps @keyframes nested in @theme only
+ * when their paired `--animate-*` variable is used; these are paired with
+ * `--ui-content-*` (not `--animate-*`), so they're declared at top level to
+ * ensure emission.
+ */
+@keyframes ui-content-enter-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes ui-content-exit-fade {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/*
+ * Public CSS variables for consumers to override per-instance:
+ *   --ui-floating-z         — z-index layer (default: var(--z-popover))
+ *   --ui-content-enter-from-{top|bottom|left|right}   — enter animation shorthand
+ *   --ui-content-exit-to-{top|bottom|left|right}      — exit animation shorthand
+ *   --ui-content-enter-duration, --ui-content-exit-duration
+ *   --ui-content-transform-origin  — set automatically; usable from transform-based overrides
+ *   --ui-floating-trigger-width    — set when matchTriggerWidth (Select etc.)
+ *
+ * Rules live in @layer components so consumer @layer utilities (e.g. animate-none)
+ * can override them without specificity escalation. The `[data-positioned]` gate
+ * prevents the first-frame race where the animation would otherwise start before
+ * `useFloatingPosition` has measured.
+ */
+@layer components {
+  .ui-floating-panel {
+    transform-origin: var(--ui-content-transform-origin, center);
+    z-index: var(--ui-floating-z, var(--z-popover));
+  }
+  .ui-floating-panel[data-state="open"][data-positioned][data-side="bottom"] {
+    animation: var(--ui-content-enter-from-top);
+  }
+  .ui-floating-panel[data-state="open"][data-positioned][data-side="top"] {
+    animation: var(--ui-content-enter-from-bottom);
+  }
+  .ui-floating-panel[data-state="open"][data-positioned][data-side="right"] {
+    animation: var(--ui-content-enter-from-left);
+  }
+  .ui-floating-panel[data-state="open"][data-positioned][data-side="left"] {
+    animation: var(--ui-content-enter-from-right);
+  }
+  .ui-floating-panel[data-state="closed"] {
+    pointer-events: none;
+  }
+  .ui-floating-panel[data-state="closed"][data-side="bottom"] {
+    animation: var(--ui-content-exit-to-top);
+  }
+  .ui-floating-panel[data-state="closed"][data-side="top"] {
+    animation: var(--ui-content-exit-to-bottom);
+  }
+  .ui-floating-panel[data-state="closed"][data-side="right"] {
+    animation: var(--ui-content-exit-to-left);
+  }
+  .ui-floating-panel[data-state="closed"][data-side="left"] {
+    animation: var(--ui-content-exit-to-right);
+  }
 }
 
 /*
@@ -322,6 +413,14 @@
     --animate-slide-out-top: none;
     --animate-slide-in-bottom: none;
     --animate-slide-out-bottom: none;
+    --ui-content-enter-from-top: ui-content-enter-fade var(--ui-content-enter-duration) linear;
+    --ui-content-enter-from-bottom: ui-content-enter-fade var(--ui-content-enter-duration) linear;
+    --ui-content-enter-from-left: ui-content-enter-fade var(--ui-content-enter-duration) linear;
+    --ui-content-enter-from-right: ui-content-enter-fade var(--ui-content-enter-duration) linear;
+    --ui-content-exit-to-top: ui-content-exit-fade var(--ui-content-exit-duration) linear forwards;
+    --ui-content-exit-to-bottom: ui-content-exit-fade var(--ui-content-exit-duration) linear forwards;
+    --ui-content-exit-to-left: ui-content-exit-fade var(--ui-content-exit-duration) linear forwards;
+    --ui-content-exit-to-right: ui-content-exit-fade var(--ui-content-exit-duration) linear forwards;
   }
 }
 

@@ -4,13 +4,11 @@ export const presenceDoc: HookDoc = {
   description:
     "Hook for animating mount/unmount transitions with CSS animations — keeps element in DOM during exit animation, removes after completion.",
   usage: {
-    code: `const { present, onAnimationEnd } = usePresence({ open });
+    code: `const ref = useRef<HTMLDivElement>(null);
+const { present } = usePresence({ open, ref });
 
 return present ? (
-  <div
-    data-state={open ? "open" : "closed"}
-    onAnimationEnd={onAnimationEnd}
-  >
+  <div ref={ref} data-state={open ? "open" : "closed"}>
     {children}
   </div>
 ) : null;`,
@@ -33,9 +31,9 @@ return present ? (
     },
   ],
   returns: {
-    type: "{ present: boolean; exiting: boolean; onAnimationEnd: (e: AnimationEvent) => void }",
+    type: "{ present: boolean; exiting: boolean; onAnimationEnd: (e: AnimationEvent) => void; onAnimationCancel: (e: AnimationEvent) => void }",
     description:
-      "Object with present flag for conditional rendering and onAnimationEnd callback for the animated element.",
+      "Object with present flag for conditional rendering plus optional React-synthetic-event callbacks. When a ref is supplied the hook attaches its own DOM listeners and most consumers only need `present`.",
     properties: [
       {
         name: "present",
@@ -49,14 +47,21 @@ return present ? (
         type: "boolean",
         required: true,
         description:
-          "True during the closing animation phase, after present becomes false but before onAnimationEnd is called.",
+          "True during the closing animation phase, after present becomes false but before the animation completes.",
       },
       {
         name: "onAnimationEnd",
         type: "(e: AnimationEvent) => void",
         required: true,
         description:
-          "Callback to attach to the animated element's onAnimationEnd. Filters bubbling events from children — only reacts to animations on the ref element itself.",
+          "Optional React-synthetic onAnimationEnd callback. Most consumers can ignore it — when a ref is supplied the hook attaches its own native animationend listener. Filters bubbling events from children when ref is provided.",
+      },
+      {
+        name: "onAnimationCancel",
+        type: "(e: AnimationEvent) => void",
+        required: true,
+        description:
+          "Optional React-synthetic onAnimationCancel callback. Same shape as onAnimationEnd; useful when consumers wire React synthetic events directly instead of relying on the hook's native listener.",
       },
     ],
   },
@@ -74,7 +79,7 @@ return present ? (
     {
       title: "Used by",
       content:
-        "Built into DialogShell (shared by DialogContent and CommandPaletteContent) and PopoverContent. Tooltip gets animation via PopoverContent delegation.",
+        "Built into FloatingPanel (the shared anchored-surface primitive) and DialogShell. Popover, Select, and Tooltip inherit presence transitions through FloatingPanel; CommandPaletteContent inherits through DialogShell.",
     },
   ],
   examples: [

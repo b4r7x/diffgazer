@@ -22,6 +22,7 @@ export interface FloatingPosition {
   y: number;
   side: FloatingSide;
   align: FloatingAlign;
+  triggerWidth: number;
 }
 
 export interface UseFloatingPositionReturn {
@@ -29,6 +30,8 @@ export interface UseFloatingPositionReturn {
   contentRef: RefObject<HTMLDivElement | null>;
 }
 
+// Placement flip target when collision avoidance fires; duplicates floating-panel's
+// CSS-edge map by data but the intent is the resolved opposite placement, not a CSS edge.
 const OPPOSITE_SIDE: Record<FloatingSide, FloatingSide> = {
   top: "bottom",
   bottom: "top",
@@ -248,7 +251,13 @@ export function useFloatingPosition({
       ? shift(resolvedX, resolvedY, contentRect, collisionPadding, vp)
       : { x: resolvedX, y: resolvedY };
 
-    setPosition({ x: pos.x, y: pos.y, side: finalSide, align: preferredAlign });
+    setPosition({
+      x: pos.x,
+      y: pos.y,
+      side: finalSide,
+      align: preferredAlign,
+      triggerWidth: triggerRect.width,
+    });
   }, [alignOffset, avoidCollisions, collisionPadding, preferredAlign, preferredSide, sideOffset, triggerRef]);
 
   const scheduleUpdate = useCallback(() => {

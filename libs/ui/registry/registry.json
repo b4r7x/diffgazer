@@ -1442,13 +1442,11 @@
         "controllable-state",
         "@diffgazer-keys/navigation",
         "compose-refs",
-        "floating-position",
+        "floating-panel",
         "form-reset",
         "icons",
         "outside-click",
         "overflow",
-        "portal",
-        "presence",
         "search",
         "typeahead",
         "typeahead-buffer"
@@ -2144,6 +2142,33 @@
       ]
     },
     {
+      "name": "floating-panel",
+      "type": "registry:ui",
+      "title": "FloatingPanel",
+      "description": "Headless floating surface primitive. Composes Portal, presence, and floating-position to render an anchored, animated panel with data-state, data-side, data-align, and data-positioned attributes plus a transform-origin custom property. Used by Popover, Select, and other anchored surfaces.",
+      "dependencies": [],
+      "registryDependencies": [
+        "theme",
+        "portal",
+        "presence",
+        "floating-position",
+        "compose-refs"
+      ],
+      "meta": {
+        "client": true
+      },
+      "files": [
+        {
+          "path": "registry/ui/floating-panel/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/floating-panel/floating-panel.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
       "name": "listbox",
       "type": "registry:hook",
       "title": "useListbox",
@@ -2195,12 +2220,10 @@
       "dependencies": [],
       "registryDependencies": [
         "theme",
-        "portal",
         "compose-refs",
         "controllable-state",
-        "floating-position",
+        "floating-panel",
         "outside-click",
-        "presence",
         "@diffgazer-keys/focusable"
       ],
       "meta": {

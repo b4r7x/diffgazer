@@ -26,6 +26,8 @@ component: "select"
 
 <AccessibilityNotes />
 
+The card-variant selected-state indicator pulses via the `motion-safe:animate-pulse` Tailwind class. The `motion-safe:` prefix gates the animation behind the user's `prefers-reduced-motion` setting — the class is part of the public CSS contract for the card variant. When `prefers-reduced-motion: reduce` is active, the pulse never plays.
+
 ## Source
 
 <SourceViewer />

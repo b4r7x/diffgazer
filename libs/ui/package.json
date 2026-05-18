@@ -197,6 +197,10 @@
       "types": "./dist/components/popover.d.ts",
       "import": "./dist/components/popover.js"
     },
+    "./components/floating-panel": {
+      "types": "./dist/components/floating-panel.d.ts",
+      "import": "./dist/components/floating-panel.js"
+    },
     "./hooks/controllable-state": {
       "types": "./dist/hooks/controllable-state.d.ts",
       "import": "./dist/hooks/controllable-state.js"

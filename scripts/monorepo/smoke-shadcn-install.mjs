@@ -384,8 +384,17 @@ function assertInstalledRegistryTree(fixture) {
   ]);
   assertFileContains(fixture, "src/components/ui/popover/popover-content.tsx", [
     "@/hooks/use-outside-click",
-    "data-[state=open]:animate-slide-in",
-    "data-[state=closed]:animate-slide-out",
+    "../floating-panel",
+    "FloatingPanel",
+  ]);
+  assertFileContains(fixture, "src/components/ui/floating-panel/floating-panel.tsx", [
+    "ui-floating-panel",
+    "data-positioned",
+    "--ui-content-transform-origin",
+    "@/lib/compose-refs",
+    "../shared/portal",
+    "@/hooks/use-presence",
+    "@/hooks/use-floating-position",
   ]);
   assertFileContains(fixture, "src/components/ui/tooltip/tooltip-content.tsx", [
     "../popover/popover-content",

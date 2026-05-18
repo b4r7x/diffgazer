@@ -71,3 +71,21 @@ Concretely:
 - Increasing `--z-toast` to an arbitrarily large number does not change this behavior.
 
 Use the z-index scale to order surfaces that all sit in the normal stacking context. Use the top-layer behavior intentionally when you need an element guaranteed to paint above everything else on the page.
+
+## Floating surface animation tokens
+
+`FloatingPanel` (and primitives that compose it — `Popover`, `Select`, future `Menu`/`Combobox`) reads these tokens to drive enter/exit animations. They are declared in `@theme` in `theme-base.css` and the `.ui-floating-panel` rule consumes them under the `@layer components` cascade.
+
+| Token                                         | Default                                                                | Used by                                                              |
+|-----------------------------------------------|------------------------------------------------------------------------|----------------------------------------------------------------------|
+| `--ui-floating-z`                             | `var(--z-popover)`                                                     | z-index of `.ui-floating-panel`.                                     |
+| `--ui-content-enter-duration`                 | `60ms`                                                                 | Shared duration for every directional enter token.                   |
+| `--ui-content-exit-duration`                  | `40ms`                                                                 | Shared duration for every directional exit token.                    |
+| `--ui-content-enter-from-{top\|bottom\|left\|right}` | `ui-content-enter-fade var(--ui-content-enter-duration) linear`        | `animation` shorthand applied while `[data-state="open"]`.           |
+| `--ui-content-exit-to-{top\|bottom\|left\|right}`    | `ui-content-exit-fade var(--ui-content-exit-duration) linear forwards` | `animation` shorthand applied while `[data-state="closed"]`.         |
+| `--ui-content-transform-origin`               | set by `FloatingPanel`                                                 | Resolved from `data-side`/`data-align`. Read it from transform-based keyframe overrides. |
+| `--ui-floating-trigger-width`                 | set by `FloatingPanel` when `matchTriggerWidth`                        | Width of the trigger, in pixels. Use as `width`, `min-width`, or `max-width` on the panel. |
+
+Under `prefers-reduced-motion: reduce`, all eight directional tokens collapse to the fade-only keyframes. Opacity transitions still run; directional motion does not. Override per instance to opt back in.
+
+See the [`FloatingPanel` page](../components/floating-panel#css-variables) for override examples.

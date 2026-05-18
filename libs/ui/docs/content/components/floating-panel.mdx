@@ -1,0 +1,105 @@
+---
+title: "FloatingPanel"
+description: "Headless floating surface primitive. Composes Portal, presence, and floating-position to render an anchored, animated panel with data-state, data-side, data-align, and data-positioned attributes plus a transform-origin custom property. Used by Popover, Select, and other anchored surfaces."
+component: "floating-panel"
+---
+
+<Example name="floating-panel-default" />
+
+## Installation
+
+<ConsumptionBlock />
+
+## Usage
+
+<UsageSnippet />
+
+`FloatingPanel` never closes itself. Wrap it in a primitive that owns dismiss (outside-click, escape, focus) and forward the resolved `open` boolean. The custom menu example below shows the pattern.
+
+## Examples
+
+<Examples skipFirst />
+
+<APIReference />
+
+## Accessibility
+
+`FloatingPanel` renders a bare `<div>`. Consumers must supply:
+
+- a `role` (for example `"dialog"`, `"menu"`, `"listbox"`, `"tooltip"`)
+- an accessible name via `aria-label` or `aria-labelledby`
+
+Emits a one-time `console.warn` per panel element when neither `role` nor `aria-label`/`aria-labelledby` is supplied.
+
+Descendants of the rendered panel can read positioning state via `useFloatingPanelContext()`:
+
+```tsx
+const { positioned, side, align } = useFloatingPanelContext()
+```
+
+`positioned` is `false` during the first paint and after the exit animation. Use it to defer effects (focus, measurement) until after the first measure — this is how `PopoverContent` defers `autoFocus`.
+
+<AccessibilityNotes />
+
+## CSS variables
+
+The panel reads these CSS custom properties from the `.ui-floating-panel` cascade. Override on the panel, an ancestor, or `:root`. The animation tokens collapse to fade under `prefers-reduced-motion: reduce` (see [Theme overview](../theme/overview#floating-surface-animation-tokens)).
+
+| Variable                            | Default                                                       | Purpose                                                                  |
+|-------------------------------------|---------------------------------------------------------------|--------------------------------------------------------------------------|
+| `--ui-floating-z`                   | `var(--z-popover)`                                            | z-index layer for the panel.                                             |
+| `--ui-content-enter-duration`       | `60ms`                                                        | Read by every directional enter token.                                   |
+| `--ui-content-exit-duration`        | `40ms`                                                        | Read by every directional exit token.                                    |
+| `--ui-content-enter-from-{top\|bottom\|left\|right}` | `ui-content-enter-fade var(--ui-content-enter-duration) linear` | Full `animation` shorthand the panel uses when entering from that side.  |
+| `--ui-content-exit-to-{top\|bottom\|left\|right}`    | `ui-content-exit-fade var(--ui-content-exit-duration) linear forwards` | Full `animation` shorthand the panel uses when exiting toward that side. |
+| `--ui-content-transform-origin`     | set by `FloatingPanel`                                        | Resolved from `data-side` and `data-align`. Read it from custom keyframes that animate `transform`. |
+| `--ui-floating-trigger-width`       | set by `FloatingPanel` when `matchTriggerWidth`               | Width of the trigger in pixels. Use as `width`, `min-width`, or `max-width` on the panel. |
+
+Override one direction with a transform-based keyframe:
+
+```css
+.my-panel[data-side="bottom"] {
+  --ui-content-enter-from-top:
+    my-slide-down var(--ui-content-enter-duration) cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes my-slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+    transform-origin: var(--ui-content-transform-origin);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+```
+
+Lower the panel below other surfaces by scoping `--ui-floating-z`:
+
+```css
+.my-tooltip-host {
+  --ui-floating-z: var(--z-dropdown);
+}
+```
+
+## Reduced motion
+
+Under `prefers-reduced-motion: reduce`, the four `--ui-content-enter-from-*` tokens collapse to the fade-only keyframe (`ui-content-enter-fade`) and the four `--ui-content-exit-to-*` tokens collapse to `ui-content-exit-fade`. Directional motion is neutralized; opacity transitions still run because they communicate state without simulating motion.
+
+Per-instance overrides win against the global reduced-motion fallback. If you need different motion under reduced motion for a specific panel, scope the override yourself with `@media (prefers-reduced-motion: reduce)`.
+
+## FAQ
+
+**The panel does not appear.** Check that `triggerRef.current` resolves to a DOM element before `open` flips to `true`. `FloatingPanel` measures against `triggerRef.current` on first paint; if the trigger has not mounted, no position resolves and the panel stays hidden.
+
+**My custom transform animation is not anchored.** Set `transform-origin: var(--ui-content-transform-origin)` inside your `@keyframes` rule. `FloatingPanel` writes the origin to the element on every measure based on the resolved side and align.
+
+**`useFloatingPanelContext()` throws.** The hook only works inside a rendered `FloatingPanel`. When the panel is closed, no provider mounts. Read the context from a child component rendered within `<FloatingPanel>` children, not from the wrapping primitive.
+
+**The exit animation never finishes.** `FloatingPanel` waits for `animationend` and falls back to `exitFallbackMs` (default `1000`). If you raise `--ui-content-exit-duration` past 500ms, raise `exitFallbackMs` to at least 2× the new value.
+
+## Source
+
+<SourceViewer />

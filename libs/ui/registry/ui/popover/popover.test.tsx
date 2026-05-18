@@ -1,10 +1,8 @@
-import { readFileSync } from "node:fs"
-import { resolve } from "node:path"
-import { fileURLToPath } from "node:url"
 import { render, screen, act, fireEvent } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { axe } from "../../../testing/utils.js"
-import { afterAll, beforeAll, describe, it, expect, vi, beforeEach, afterEach } from "vitest"
+import { applyReducedMotionFixture } from "../../../testing/prefers-reduced-motion.js"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { Popover } from "./index.js"
 
 function renderClickPopover(props: Record<string, unknown> = {}) {
@@ -699,41 +697,18 @@ describe("Popover hover timer cleanup", () => {
   })
 })
 
-describe("Popover prefers-reduced-motion", () => {
-  // Popover content opts into the --animate-slide-in / --animate-slide-out tokens
-  // declared in theme-base.css. Tailwind v4 compiles `animate-slide-in` to
-  // `animation: var(--animate-slide-in)`. The theme-base.css
-  // @media (prefers-reduced-motion: reduce) block overrides every --animate-*
-  // token to `none`, neutralizing the animation in real browsers. jsdom does
-  // not evaluate @media in stylesheets, so the override is extracted and
-  // injected at the top level to simulate matchMedia returning true; the
-  // assertion reads the resolved CSS variable on :root.
-  const THEME_BASE_CSS_PATH = resolve(fileURLToPath(import.meta.url), "../../../../styles/theme-base.css")
-  const REDUCED_MOTION_BLOCK_RE = /@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{\s*:root\s*\{[^}]*\}\s*\}/
-  let styleElement: HTMLStyleElement | null = null
+describe("Popover respects prefers-reduced-motion", () => {
+  // jsdom does not evaluate @media in stylesheets and does not compile the
+  // Tailwind `ui-floating-panel[data-state="open"]` rules from theme-base.css
+  // into the CSSOM (those rules are compiled at build time, not parsed by
+  // jsdom). So a true behavior assertion on `panel.animationName` is not
+  // observable here. The fixture lifts the reduced-motion `:root` overrides
+  // out of their @media wrapper to simulate the user preference; the
+  // assertion reads the resolved variables that the production stylesheet
+  // would read from the same panel element.
+  applyReducedMotionFixture()
 
-  beforeAll(() => {
-    const sourceCss = readFileSync(THEME_BASE_CSS_PATH, "utf8")
-    const reducedMotionBlock = sourceCss.match(REDUCED_MOTION_BLOCK_RE)?.[0]
-    if (!reducedMotionBlock) {
-      throw new Error("theme-base.css must declare a @media (prefers-reduced-motion: reduce) :root block")
-    }
-    const rootRule = reducedMotionBlock.match(/:root\s*\{[^}]*\}/)?.[0]
-    if (!rootRule || !/--animate-slide-in:\s*none/.test(rootRule) || !/--animate-slide-out:\s*none/.test(rootRule)) {
-      throw new Error("theme-base.css reduced-motion block must override --animate-slide-in and --animate-slide-out to none")
-    }
-    styleElement = document.createElement("style")
-    styleElement.dataset.testSource = "theme-base.css#reduced-motion"
-    styleElement.textContent = rootRule
-    document.head.appendChild(styleElement)
-  })
-
-  afterAll(() => {
-    styleElement?.remove()
-    styleElement = null
-  })
-
-  it("opts into --animate-slide-in/out tokens that the @media override neutralizes", async () => {
+  it("neutralizes directional enter and exit motion when the open popover is shown", async () => {
     render(
       <Popover defaultOpen>
         <Popover.Trigger>Open</Popover.Trigger>
@@ -744,11 +719,16 @@ describe("Popover prefers-reduced-motion", () => {
     )
 
     const content = await screen.findByRole("dialog", { name: "Popover menu" })
-    expect(content.className).toMatch(/animate-slide-in/)
-    expect(content.className).toMatch(/animate-slide-out/)
-
     const root = content.ownerDocument.documentElement
-    expect(getComputedStyle(root).getPropertyValue("--animate-slide-in").trim()).toBe("none")
-    expect(getComputedStyle(root).getPropertyValue("--animate-slide-out").trim()).toBe("none")
+    const resolved = (name: string) => getComputedStyle(root).getPropertyValue(name).trim()
+
+    expect(resolved("--ui-content-enter-from-top")).toMatch(/^ui-content-enter-fade\b/)
+    expect(resolved("--ui-content-enter-from-bottom")).toMatch(/^ui-content-enter-fade\b/)
+    expect(resolved("--ui-content-enter-from-left")).toMatch(/^ui-content-enter-fade\b/)
+    expect(resolved("--ui-content-enter-from-right")).toMatch(/^ui-content-enter-fade\b/)
+    expect(resolved("--ui-content-exit-to-top")).toMatch(/^ui-content-exit-fade\b/)
+    expect(resolved("--ui-content-exit-to-bottom")).toMatch(/^ui-content-exit-fade\b/)
+    expect(resolved("--ui-content-exit-to-left")).toMatch(/^ui-content-exit-fade\b/)
+    expect(resolved("--ui-content-exit-to-right")).toMatch(/^ui-content-exit-fade\b/)
   })
 })

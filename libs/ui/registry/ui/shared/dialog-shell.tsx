@@ -63,7 +63,10 @@ export function DialogShell({
 }: DialogShellProps) {
   const shellRef = useRef<HTMLElement | null>(null);
   const supportsShowModal = detectShowModalSupport();
-  const { present, onAnimationEnd } = usePresence({
+  // usePresence's native animationend/animationcancel listener owns the
+  // exit-complete path; do not also wire the returned React handler here or
+  // onClose would fire twice on the non-portaled <dialog>.
+  const { present } = usePresence({
     open,
     ref: shellRef,
     onExitComplete: () => {
@@ -172,10 +175,7 @@ export function DialogShell({
           onCancel?.(e);
           e.preventDefault();
         }}
-        onAnimationEnd={(e) => {
-          externalOnAnimationEnd?.(e);
-          onAnimationEnd(e);
-        }}
+        onAnimationEnd={externalOnAnimationEnd}
       >
         {children}
       </dialog>
@@ -202,10 +202,7 @@ export function DialogShell({
       className={className}
       onClick={onClick as unknown as ((e: MouseEvent<HTMLDivElement>) => void) | undefined}
       onKeyDown={handleFallbackKeyDown}
-      onAnimationEnd={(e) => {
-        externalOnAnimationEnd?.(e as unknown as AnimationEvent<HTMLDialogElement>);
-        onAnimationEnd(e);
-      }}
+      onAnimationEnd={externalOnAnimationEnd as unknown as ((e: AnimationEvent<HTMLDivElement>) => void) | undefined}
     >
       {children}
     </div>

@@ -87,7 +87,7 @@ export function SelectTrigger({
     >
       {children}
       {handle !== null && (
-        handle ?? <Chevron direction="down" open={open} size="sm" className="text-muted-foreground shrink-0" />
+        handle ?? <Chevron direction="down" size="sm" className="text-muted-foreground shrink-0" />
       )}
     </button>
   );

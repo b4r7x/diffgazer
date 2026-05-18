@@ -5,20 +5,16 @@ import {
   useMemo,
   useRef,
   type ComponentPropsWithoutRef,
-  type AnimationEvent,
   type KeyboardEvent,
   type MouseEvent,
   type ReactNode,
   type Ref,
+  type RefObject,
 } from "react";
-import { cn } from "@/lib/utils";
 import { composeRefs } from "@/lib/compose-refs";
-import { Portal } from "../shared/portal";
-import { usePortalContainer } from "../shared/portal-context";
+import { FloatingPanel, useFloatingPanelContext } from "../floating-panel";
 import { useEscapeKey, useOutsideClick } from "@/hooks/use-outside-click";
-import { usePresence } from "@/hooks/use-presence";
 import {
-  useFloatingPosition,
   type FloatingSide,
   type FloatingAlign,
 } from "@/hooks/use-floating-position";
@@ -61,7 +57,6 @@ export function PopoverContent({
   onMouseEnter,
   onMouseLeave,
   onKeyDown,
-  onAnimationEnd: externalOnAnimationEnd,
   ...rest
 }: PopoverContentProps) {
   const {
@@ -72,22 +67,9 @@ export function PopoverContent({
     onOpenChange,
     onContentEnter,
     onContentLeave,
-  } =
-    usePopoverContext();
-  const presenceRef = useRef<HTMLDivElement>(null);
-  const { present, onAnimationEnd } = usePresence({ open, ref: presenceRef });
-  const { position, contentRef } = useFloatingPosition({
-    triggerRef,
-    open: present,
-    side,
-    align,
-    sideOffset,
-    alignOffset,
-    avoidCollisions,
-    collisionPadding,
-  });
+  } = usePopoverContext();
+  const contentRef = useRef<HTMLDivElement>(null);
 
-  const portalContainer = usePortalContainer();
   const isHover = triggerMode === "hover";
   const isClick = triggerMode === "click";
   const contentRole = isHover ? "tooltip" : role;
@@ -97,7 +79,7 @@ export function PopoverContent({
   const triggerExcludeRefs = useMemo(() => [triggerRef], [triggerRef]);
   const escapeKeyOptions = useMemo(
     () => ({ ref: contentRef, excludeRefs: triggerExcludeRefs }),
-    [contentRef, triggerExcludeRefs],
+    [triggerExcludeRefs],
   );
   const resolvedAriaLabel = ariaLabel ?? (isDialog && !ariaLabelledBy ? FALLBACK_POPOVER_DIALOG_LABEL : undefined);
 
@@ -125,8 +107,6 @@ export function PopoverContent({
     triggerRef.current?.focus();
   }, open, escapeKeyOptions);
 
-  useAutoFocus(contentRef, open && (isDialog || isMenu) && autoFocus && position !== null, isDialog);
-
   const handleMouseEnter = (e: MouseEvent<HTMLDivElement>) => {
     onMouseEnter?.(e);
     if (isHover) onContentEnter();
@@ -149,44 +129,48 @@ export function PopoverContent({
     }
   };
 
-  const handleAnimationEnd = (e: AnimationEvent<HTMLDivElement>) => {
-    externalOnAnimationEnd?.(e);
-    onAnimationEnd(e);
-  };
-
-  if (!present) return null;
+  const shouldAutoFocus = open && (isDialog || isMenu) && autoFocus;
 
   return (
-    <Portal container={portalContainer ?? undefined}>
-      <div
-        {...rest}
-        ref={composeRefs(presenceRef, contentRef, ref)}
-        id={popoverId}
-        role={contentRole}
-        aria-label={resolvedAriaLabel}
-        aria-labelledby={ariaLabelledBy}
-        tabIndex={tabIndex ?? (isDialog ? -1 : undefined)}
-        data-state={open ? "open" : "closed"}
-        data-side={position?.side}
-        data-align={position?.align}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-        onKeyDown={handleKeyDown}
-        onAnimationEnd={handleAnimationEnd}
-        className={cn(
-          "fixed z-[var(--z-popover)]",
-          "data-[state=open]:animate-slide-in",
-          "data-[state=closed]:animate-slide-out",
-          className,
-        )}
-        style={
-          position
-            ? { top: position.y, left: position.x }
-            : { visibility: "hidden", position: "fixed", top: 0, left: 0 }
-        }
-      >
-        {children}
-      </div>
-    </Portal>
+    <FloatingPanel
+      {...rest}
+      open={open}
+      triggerRef={triggerRef}
+      side={side}
+      align={align}
+      sideOffset={sideOffset}
+      alignOffset={alignOffset}
+      avoidCollisions={avoidCollisions}
+      collisionPadding={collisionPadding}
+      ref={composeRefs(contentRef, ref)}
+      id={popoverId}
+      role={contentRole}
+      aria-label={resolvedAriaLabel}
+      aria-labelledby={ariaLabelledBy}
+      tabIndex={tabIndex ?? (isDialog ? -1 : undefined)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      onKeyDown={handleKeyDown}
+      className={className}
+    >
+      <PopoverAutoFocus contentRef={contentRef} enabled={shouldAutoFocus} fallbackToContainer={isDialog} />
+      {children}
+    </FloatingPanel>
   );
+}
+
+interface PopoverAutoFocusProps {
+  contentRef: RefObject<HTMLDivElement | null>;
+  enabled: boolean;
+  fallbackToContainer: boolean;
+}
+
+/**
+ * Defers autoFocus until FloatingPanel reports `positioned: true`.
+ * Rendered inside FloatingPanel so it can read positioning state via context.
+ */
+function PopoverAutoFocus({ contentRef, enabled, fallbackToContainer }: PopoverAutoFocusProps) {
+  const { positioned } = useFloatingPanelContext();
+  useAutoFocus(contentRef, enabled && positioned, fallbackToContainer);
+  return null;
 }

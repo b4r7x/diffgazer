@@ -1442,13 +1442,11 @@
         "https://docs.diffgazer.b4r7.dev/r/ui/controllable-state.json",
         "https://docs.diffgazer.b4r7.dev/r/keys/navigation.json",
         "https://docs.diffgazer.b4r7.dev/r/ui/compose-refs.json",
-        "https://docs.diffgazer.b4r7.dev/r/ui/floating-position.json",
+        "https://docs.diffgazer.b4r7.dev/r/ui/floating-panel.json",
         "https://docs.diffgazer.b4r7.dev/r/ui/form-reset.json",
         "https://docs.diffgazer.b4r7.dev/r/ui/icons.json",
         "https://docs.diffgazer.b4r7.dev/r/ui/outside-click.json",
         "https://docs.diffgazer.b4r7.dev/r/ui/overflow.json",
-        "https://docs.diffgazer.b4r7.dev/r/ui/portal.json",
-        "https://docs.diffgazer.b4r7.dev/r/ui/presence.json",
         "https://docs.diffgazer.b4r7.dev/r/ui/search.json",
         "https://docs.diffgazer.b4r7.dev/r/ui/typeahead.json",
         "https://docs.diffgazer.b4r7.dev/r/ui/typeahead-buffer.json"
@@ -2144,6 +2142,33 @@
       ]
     },
     {
+      "name": "floating-panel",
+      "type": "registry:ui",
+      "title": "FloatingPanel",
+      "description": "Headless floating surface primitive. Composes Portal, presence, and floating-position to render an anchored, animated panel with data-state, data-side, data-align, and data-positioned attributes plus a transform-origin custom property. Used by Popover, Select, and other anchored surfaces.",
+      "dependencies": [],
+      "registryDependencies": [
+        "https://docs.diffgazer.b4r7.dev/r/ui/theme.json",
+        "https://docs.diffgazer.b4r7.dev/r/ui/portal.json",
+        "https://docs.diffgazer.b4r7.dev/r/ui/presence.json",
+        "https://docs.diffgazer.b4r7.dev/r/ui/floating-position.json",
+        "https://docs.diffgazer.b4r7.dev/r/ui/compose-refs.json"
+      ],
+      "meta": {
+        "client": true
+      },
+      "files": [
+        {
+          "path": "registry/ui/floating-panel/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/floating-panel/floating-panel.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
       "name": "listbox",
       "type": "registry:hook",
       "title": "useListbox",
@@ -2195,12 +2220,10 @@
       "dependencies": [],
       "registryDependencies": [
         "https://docs.diffgazer.b4r7.dev/r/ui/theme.json",
-        "https://docs.diffgazer.b4r7.dev/r/ui/portal.json",
         "https://docs.diffgazer.b4r7.dev/r/ui/compose-refs.json",
         "https://docs.diffgazer.b4r7.dev/r/ui/controllable-state.json",
-        "https://docs.diffgazer.b4r7.dev/r/ui/floating-position.json",
+        "https://docs.diffgazer.b4r7.dev/r/ui/floating-panel.json",
         "https://docs.diffgazer.b4r7.dev/r/ui/outside-click.json",
-        "https://docs.diffgazer.b4r7.dev/r/ui/presence.json",
         "https://docs.diffgazer.b4r7.dev/r/keys/focusable.json"
       ],
       "meta": {
