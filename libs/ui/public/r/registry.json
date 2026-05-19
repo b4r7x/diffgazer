@@ -829,6 +829,10 @@
           "type": "registry:ui"
         },
         {
+          "path": "registry/ui/dialog/dialog-close-icon.tsx",
+          "type": "registry:ui"
+        },
+        {
           "path": "registry/ui/dialog/dialog-action.tsx",
           "type": "registry:ui"
         },

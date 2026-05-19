@@ -9,6 +9,7 @@ import {
   useState,
   type HTMLAttributes,
   type ReactNode,
+  type RefObject,
   type SyntheticEvent,
 } from "react";
 import { useFocusRestore } from "@/hooks/use-focus-restore";
@@ -20,8 +21,8 @@ import { DialogDescription } from "./dialog-description";
 import { DialogShell } from "../shared/dialog-shell";
 import { PortalContainerProvider } from "../shared/portal-context";
 
-const dialogContentVariants = cva(
-  "relative w-full max-h-[90vh] flex flex-col bg-background text-foreground border border-border shadow-2xl m-auto",
+export const dialogContentVariants = cva(
+  "relative w-full max-h-[90vh] flex flex-col bg-background text-foreground shadow-2xl m-auto",
   {
     variants: {
       size: {
@@ -30,13 +31,27 @@ const dialogContentVariants = cva(
         lg: "max-w-4xl",
         full: "max-w-full",
       },
+      frame: {
+        border: "border border-border",
+        none: "",
+      },
+      corners: {
+        none: "",
+        subtle: "",
+        standard: "",
+        bold: "",
+        outset: "",
+      },
     },
     defaultVariants: {
       size: "md",
+      frame: "border",
+      corners: "none",
     },
   }
 );
 
+/** Runtime fallback when no accessible name is provided. Devs should supply a real name via Dialog.Title, aria-label, or aria-labelledby. */
 const FALLBACK_DIALOG_LABEL = "Dialog";
 
 export interface DialogContentProps
@@ -46,6 +61,7 @@ export interface DialogContentProps
   className?: string;
   role?: "dialog" | "alertdialog";
   closeOnBackdropClick?: boolean;
+  initialFocus?: RefObject<HTMLElement | null>;
   onCancel?: (e: SyntheticEvent<HTMLDialogElement>) => void;
   onEscapeKeyDown?: (e: SyntheticEvent<HTMLDialogElement>) => void;
 }
@@ -54,11 +70,48 @@ function hasNonEmptyText(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
 
+type AccessibleNameInput = {
+  ariaLabel: string | undefined;
+  ariaLabelledBy: string | undefined;
+  titleId: string;
+  hasRenderableTitle: boolean;
+};
+
+type AccessibleNameOutput = {
+  "aria-label": string | undefined;
+  "aria-labelledby": string | undefined;
+};
+
+/**
+ * Precedence: aria-labelledby > aria-label > Dialog.Title > fallback ("Dialog").
+ * Exactly one of aria-label / aria-labelledby is set; the other is undefined.
+ */
+function resolveAccessibleName({
+  ariaLabel,
+  ariaLabelledBy,
+  titleId,
+  hasRenderableTitle,
+}: AccessibleNameInput): AccessibleNameOutput {
+  if (hasNonEmptyText(ariaLabelledBy)) {
+    return { "aria-label": undefined, "aria-labelledby": ariaLabelledBy };
+  }
+  if (hasNonEmptyText(ariaLabel)) {
+    return { "aria-label": ariaLabel, "aria-labelledby": undefined };
+  }
+  if (hasRenderableTitle) {
+    return { "aria-label": undefined, "aria-labelledby": titleId };
+  }
+  return { "aria-label": FALLBACK_DIALOG_LABEL, "aria-labelledby": undefined };
+}
+
 export function DialogContent({
   children,
   className,
   size,
+  frame,
+  corners,
   closeOnBackdropClick = true,
+  initialFocus,
   onEscapeKeyDown,
   onCancel,
   onAnimationEnd,
@@ -78,10 +131,14 @@ export function DialogContent({
   const hasAriaLabelledBy = hasNonEmptyText(ariaLabelledBy);
   const hasRenderableTitle = containsDialogTitleElement(children);
   const hasRenderableDescription = containsDialogDescriptionElement(children);
-  const labelSourceId = hasAriaLabelledBy ? ariaLabelledBy : hasAriaLabel || !hasRenderableTitle ? undefined : titleId;
-  const resolvedAriaLabel = hasAriaLabel
-    ? ariaLabel
-    : labelSourceId === undefined ? FALLBACK_DIALOG_LABEL : undefined;
+  const resolvedFrame = frame ?? "border";
+  const resolvedCorners = corners ?? "none";
+  const accessibleName = resolveAccessibleName({
+    ariaLabel,
+    ariaLabelledBy,
+    titleId,
+    hasRenderableTitle,
+  });
 
   const setShellRef = useCallback((node: HTMLDialogElement | null) => {
     shellRef.current = node;
@@ -92,7 +149,7 @@ export function DialogContent({
     if (!open) return;
     if (hasAriaLabel || hasAriaLabelledBy || hasRenderableTitle) return;
     console.warn(
-      "[Dialog] Modal dialog is missing an accessible name. Provide a Dialog.Title child, an aria-label prop, or an aria-labelledby prop. A fallback accessible name is applied at runtime.",
+      "[DialogContent] Missing accessible name. Precedence: aria-labelledby > aria-label > Dialog.Title > fallback. Fix: add <Dialog.Title>, pass aria-label=\"...\", or wrap the title in <VisuallyHidden> if it must be visually hidden. A fallback \"Dialog\" label is applied at runtime.",
     );
   }, [open, hasAriaLabel, hasAriaLabelledBy, hasRenderableTitle]);
 
@@ -102,6 +159,7 @@ export function DialogContent({
       open={open}
       id={contentId}
       dialogRef={setShellRef}
+      initialFocus={initialFocus}
       onBackdropClick={closeOnBackdropClick ? close : undefined}
       onCancel={(e) => {
         onCancel?.(e);
@@ -112,13 +170,19 @@ export function DialogContent({
       onBeforeShowModal={focusRestore.capture}
       onClose={focusRestore.restore}
       onAnimationEnd={onAnimationEnd}
-      className={cn(dialogContentVariants({ size }), className)}
+      className={cn(dialogContentVariants({ size, frame, corners }), className)}
+      data-slot="dialog-content"
+      data-frame={resolvedFrame}
+      data-corners={resolvedCorners}
       aria-modal="true"
-      aria-label={resolvedAriaLabel}
-      aria-labelledby={labelSourceId}
+      aria-label={accessibleName["aria-label"]}
+      aria-labelledby={accessibleName["aria-labelledby"]}
       aria-describedby={hasRenderableDescription ? descriptionId : undefined}
     >
       <PortalContainerProvider container={container}>
+        {resolvedCorners !== "none" ? (
+          <span aria-hidden="true" className="dlg-corners" />
+        ) : null}
         {children}
       </PortalContainerProvider>
     </DialogShell>

@@ -89,6 +89,7 @@ export function useModelDialogKeyboard({
 }: ModelDialogKeyboardOptions): ModelDialogKeyboardReturn {
   const [checkedModelId, setCheckedModelId] = useState<string | undefined>(currentModel);
   const [filterIndex, setFilterIndex] = useState(0);
+  const [tabFocusedFooterIndex, setTabFocusedFooterIndex] = useState<number | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const hasHandledInitialFocusRef = useRef(false);
   const filterButtonRefs = useRef(new Map<number, HTMLButtonElement>());
@@ -159,10 +160,15 @@ export function useModelDialogKeyboard({
       ref: actionProps.ref,
       onFocus: () => {
         setFocusZone("footer");
-        actionProps.onFocus();
+        setTabFocusedFooterIndex(index);
       },
     };
   };
+
+  const footerButtonIndex =
+    isZone("footer") && !footerActionRow.inActions && tabFocusedFooterIndex !== null
+      ? tabFocusedFooterIndex
+      : footerActionRow.focusedIndex;
 
   const enterFooter = (index: number) => {
     setFocusZone("footer");
@@ -276,6 +282,10 @@ export function useModelDialogKeyboard({
     repairListFocus();
   }, [open, focusZone, filteredModels, focusedModelId, currentModel]);
 
+  useEffect(() => {
+    if (focusZone !== "footer") setTabFocusedFooterIndex(null);
+  }, [focusZone]);
+
   const handleUseCustom = () => {
     const customId = searchQuery.trim();
     if (!customId) return;
@@ -367,7 +377,7 @@ export function useModelDialogKeyboard({
     setCheckedModelId,
     filterIndex,
     setFilterIndex,
-    footerButtonIndex: footerActionRow.focusedIndex,
+    footerButtonIndex,
     getCloseButtonProps,
     getFooterButtonProps,
     getFilterButtonProps,

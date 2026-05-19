@@ -12,7 +12,6 @@ interface FooterButtonProps {
 }
 
 interface ApiKeyFooterProps {
-  onCancel: () => void;
   onConfirm: () => void;
   canSubmit: boolean;
   isSubmitting: boolean;
@@ -30,7 +29,6 @@ const HINTS: KeyboardHint[] = [
 ];
 
 export function ApiKeyFooter({
-  onCancel,
   onConfirm,
   canSubmit,
   isSubmitting,
@@ -51,7 +49,6 @@ export function ApiKeyFooter({
         size="sm"
         bracket
         highlighted={cancelHighlighted}
-        onClick={onCancel}
         onFocus={cancelProps.onFocus}
       >
         Cancel

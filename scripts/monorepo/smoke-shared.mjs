@@ -224,6 +224,7 @@ export function uiSmokeAppBody(label) {
     `          <DialogHeader><DialogTitle>${label} Dialog</DialogTitle></DialogHeader>`,
     "          <DialogBody><p className=\"text-sm text-muted-foreground\">Dialog content</p></DialogBody>",
     "          <DialogFooter><DialogClose variant=\"ghost\">Close</DialogClose></DialogFooter>",
+    "          <DialogCloseIcon />",
     "        </DialogContent>",
     "      </Dialog>",
     "      <Select defaultOpen defaultValue=\"main\" width=\"md\">",

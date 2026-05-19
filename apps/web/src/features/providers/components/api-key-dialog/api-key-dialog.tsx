@@ -55,7 +55,7 @@ export function ApiKeyDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl overflow-hidden border border-tui-border shadow-2xl">
-        <DialogHeader className="bg-tui-selection/50 px-4 py-3">
+        <DialogHeader marker="none" className="bg-tui-selection/50 px-4 py-3">
           <DialogTitle className="min-w-0 flex-1 w-auto text-tui-blue tracking-wide">
             {providerName} API Key
           </DialogTitle>
@@ -84,7 +84,6 @@ export function ApiKeyDialog({
         </DialogBody>
 
         <ApiKeyFooter
-          onCancel={() => onOpenChange(false)}
           onConfirm={() => {
             void form.handleSubmit();
           }}

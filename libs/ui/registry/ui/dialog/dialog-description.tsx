@@ -12,6 +12,7 @@ export function DialogDescription({ className, ...props }: DialogDescriptionProp
   return (
     <p
       {...props}
+      data-slot="dialog-description"
       id={descriptionId}
       className={cn("text-xs text-foreground/70", className)}
     />

@@ -16,8 +16,9 @@ function DialogFooterRoot({ hints, className, children, ...props }: DialogFooter
 
   return (
     <div
+      data-slot="dialog-footer"
       className={cn(
-        "flex gap-3 items-center px-4 pb-4 border-x border-b shrink-0 bg-background text-foreground border-border",
+        "flex gap-3 items-center px-5 pt-3 pb-4 shrink-0 bg-background text-foreground",
         hasHints ? "justify-between" : "justify-end",
         className
       )}

@@ -6,34 +6,46 @@ import { useDialogContext } from "./dialog-context";
 
 export interface DialogTitleProps extends HTMLAttributes<HTMLHeadingElement> {
   as?: "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
-  decorated?: boolean;
+  /**
+   * Optional right-aligned eyebrow tag (e.g. "CONFIRM", "DESTRUCTIVE").
+   * Decorative — rendered aria-hidden so it does not leak into the accessible
+   * name. For semantic labels (live state), use aria-describedby on
+   * Dialog.Content or render a Dialog.Description.
+   *
+   * Typography is driven by CSS custom properties on [data-slot="dialog-content"]:
+   * --dlg-title-meta-size and --dlg-title-meta-tracking (see shared/dialog.css).
+   */
+  meta?: string;
 }
 
-const DASHES = "─".repeat(80);
-
-export function DialogTitle({ children, className, as: Tag = "h2", decorated = true, ...props }: DialogTitleProps) {
+export function DialogTitle({
+  children,
+  className,
+  as: Tag = "h2",
+  meta,
+  ...props
+}: DialogTitleProps) {
   const { titleId } = useDialogContext();
-
-  if (!decorated) {
-    return (
-      <Tag {...props} id={titleId} className={cn("font-bold text-sm", className)}>
-        {children}
-      </Tag>
-    );
-  }
 
   return (
     <Tag
       {...props}
       id={titleId}
-      className={cn("text-foreground select-none leading-none pt-1 px-1 w-full flex items-baseline", className)}
+      data-slot="dialog-title"
+      className={cn(
+        "flex items-center gap-2.5 text-sm font-bold text-foreground",
+        className,
+      )}
     >
-      <span className="shrink-0" aria-hidden="true">┌─ </span>
-      <span className="text-warning font-bold shrink-0 px-3" aria-hidden="true">✦ </span>
-      <span className="text-warning font-bold shrink-0">{children}</span>
-      <span className="text-warning font-bold shrink-0 px-3" aria-hidden="true"> ✦</span>
-      <span className="text-border flex-1 overflow-hidden shrink" aria-hidden="true"> {DASHES}</span>
-      <span className="shrink-0" aria-hidden="true">┐</span>
+      <span className="min-w-0 flex-1 truncate">{children}</span>
+      {meta ? (
+        <span
+          aria-hidden="true"
+          className="ml-auto shrink-0 text-[length:var(--dlg-title-meta-size)] font-normal uppercase tracking-[var(--dlg-title-meta-tracking)] text-muted"
+        >
+          {meta}
+        </span>
+      ) : null}
     </Tag>
   );
 }

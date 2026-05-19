@@ -80,3 +80,119 @@
     animation: none !important;
   }
 }
+
+/*
+ * DialogContent corner accents. Four corners total: dialog::before/::after =
+ * top corners, dialog > .dlg-corners::before/::after = bottom corners. The
+ * .dlg-corners span is only rendered when corners !== "none" so the
+ * default path stays a plain CSS rectangle.
+ */
+@layer components {
+  /*
+   * Token defaults applied to each non-none corners value individually so
+   * per-corner overrides have equal specificity and win via source order.
+   */
+  [data-slot="dialog-content"][data-corners="subtle"],
+  [data-slot="dialog-content"][data-corners="standard"],
+  [data-slot="dialog-content"][data-corners="bold"],
+  [data-slot="dialog-content"][data-corners="outset"] {
+    --dlg-corner-size: 18px;
+    --dlg-corner-weight: 2px;
+    --dlg-corner-color: var(--foreground);
+    --dlg-corner-offset: 0px;
+  }
+
+  [data-slot="dialog-content"][data-corners="subtle"] {
+    --dlg-corner-size: 12px;
+    --dlg-corner-weight: 1.5px;
+    --dlg-corner-color: var(--border);
+  }
+
+  [data-slot="dialog-content"][data-corners="bold"] {
+    --dlg-corner-size: 28px;
+    --dlg-corner-weight: 3px;
+  }
+
+  [data-slot="dialog-content"][data-corners="outset"] {
+    --dlg-corner-offset: -3px;
+  }
+
+  [data-slot="dialog-content"][data-corners]:not([data-corners="none"])::before,
+  [data-slot="dialog-content"][data-corners]:not([data-corners="none"])::after,
+  [data-slot="dialog-content"][data-corners]:not([data-corners="none"]) > .dlg-corners::before,
+  [data-slot="dialog-content"][data-corners]:not([data-corners="none"]) > .dlg-corners::after {
+    content: "";
+    position: absolute;
+    width: var(--dlg-corner-size);
+    height: var(--dlg-corner-size);
+    border: 0 solid var(--dlg-corner-color);
+    pointer-events: none;
+  }
+
+  [data-slot="dialog-content"][data-corners]:not([data-corners="none"])::before {
+    top: var(--dlg-corner-offset);
+    left: var(--dlg-corner-offset);
+    border-top-width: var(--dlg-corner-weight);
+    border-left-width: var(--dlg-corner-weight);
+  }
+
+  [data-slot="dialog-content"][data-corners]:not([data-corners="none"])::after {
+    top: var(--dlg-corner-offset);
+    right: var(--dlg-corner-offset);
+    border-top-width: var(--dlg-corner-weight);
+    border-right-width: var(--dlg-corner-weight);
+  }
+
+  [data-slot="dialog-content"][data-corners]:not([data-corners="none"]) > .dlg-corners::before {
+    bottom: var(--dlg-corner-offset);
+    left: var(--dlg-corner-offset);
+    border-bottom-width: var(--dlg-corner-weight);
+    border-left-width: var(--dlg-corner-weight);
+  }
+
+  [data-slot="dialog-content"][data-corners]:not([data-corners="none"]) > .dlg-corners::after {
+    bottom: var(--dlg-corner-offset);
+    right: var(--dlg-corner-offset);
+    border-bottom-width: var(--dlg-corner-weight);
+    border-right-width: var(--dlg-corner-weight);
+  }
+}
+
+/*
+ * DialogTitle eyebrow meta tag typography tokens. Centralized here so consumers
+ * can override the meta size/tracking globally without editing the primitive.
+ */
+@layer components {
+  [data-slot="dialog-content"] {
+    --dlg-title-meta-size: 11px;
+    --dlg-title-meta-tracking: 0.08em;
+  }
+}
+
+/*
+ * Inset for the optional Dialog.CloseIcon (top-right). Default clears the
+ * dialog edge; per-corner overrides push the button inward so it does not
+ * collide with the corner accents.
+ *   subtle  : 12px arms + 4px = 16px
+ *   standard: 18px arms + 4px = 22px
+ *   outset  : 18px arms (shifted -3px outside) + 4px ≈ 22px
+ *   bold    : 28px arms + 4px = 32px
+ */
+@layer components {
+  [data-slot="dialog-content"] {
+    --dlg-close-btn-inset: 0.5rem;
+  }
+
+  [data-slot="dialog-content"][data-corners="subtle"] {
+    --dlg-close-btn-inset: 16px;
+  }
+
+  [data-slot="dialog-content"][data-corners="standard"],
+  [data-slot="dialog-content"][data-corners="outset"] {
+    --dlg-close-btn-inset: 22px;
+  }
+
+  [data-slot="dialog-content"][data-corners="bold"] {
+    --dlg-close-btn-inset: 32px;
+  }
+}

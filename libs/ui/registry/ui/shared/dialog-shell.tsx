@@ -5,11 +5,13 @@ import {
   useEffect,
   useLayoutEffect,
   useRef,
+  useState,
   type AnimationEvent,
   type ReactNode,
   type HTMLAttributes,
   type KeyboardEvent,
   type MouseEvent,
+  type RefObject,
   type SyntheticEvent,
   type Ref,
 } from "react";
@@ -28,6 +30,7 @@ export interface DialogShellProps
   onClose?: () => void;
   children: ReactNode;
   dialogRef?: Ref<HTMLDialogElement>;
+  initialFocus?: RefObject<HTMLElement | null>;
 }
 
 // iOS Safari < 15.4 does not implement <dialog>.showModal(). Detect once per
@@ -35,6 +38,30 @@ export interface DialogShellProps
 function detectShowModalSupport(): boolean {
   if (typeof HTMLDialogElement === "undefined") return false;
   return "showModal" in HTMLDialogElement.prototype;
+}
+
+// Module-level stack of currently mounted, open DialogShell elements. Only the
+// topmost shell runs its focus trap so peer/stacked dialogs do not fight over
+// focus via competing focusin listeners on ownerDocument. Subscribers are
+// notified after every push/pop with the new top element; each shell updates
+// its local isTopShell state in response.
+const openShellStack: HTMLElement[] = [];
+const shellStackSubscribers = new Set<(top: HTMLElement | null) => void>();
+
+function notifyShellStack(): void {
+  const top = openShellStack.at(-1) ?? null;
+  for (const cb of shellStackSubscribers) cb(top);
+}
+
+function pushShell(element: HTMLElement): void {
+  openShellStack.push(element);
+  notifyShellStack();
+}
+
+function popShell(element: HTMLElement): void {
+  const index = openShellStack.lastIndexOf(element);
+  if (index >= 0) openShellStack.splice(index, 1);
+  notifyShellStack();
 }
 
 function isClickOutsideDialogRect(event: MouseEvent<HTMLDialogElement>, dialog: HTMLDialogElement): boolean {
@@ -57,6 +84,7 @@ export function DialogShell({
   children,
   className,
   dialogRef: externalDialogRef,
+  initialFocus,
   onClick,
   onAnimationEnd: externalOnAnimationEnd,
   ...props
@@ -78,10 +106,38 @@ export function DialogShell({
     },
   });
 
-  // Fallback path uses the same hooks every render; the `enabled` flag scopes
-  // them to non-native dialogs that are present.
+  // The focus trap runs on both the native and fallback paths so Tab cycling
+  // and initialFocus are honoured even when showModal() is available.
+  // DialogContent owns focus restoration via useFocusRestore, so this trap is
+  // configured with restoreFocus: false.
+  // fallbackActive still scopes the scroll lock, inert emulation, and
+  // outside-pointerdown listeners to the non-native path.
   const fallbackActive = !supportsShowModal && open && present;
-  useFocusTrap(shellRef, { enabled: fallbackActive, restoreFocus: false });
+  const trapActive = open && present;
+
+  // When dialogs stack (peer Dialog defaultOpen or programmatically opened
+  // dialog-in-dialog), only the topmost shell's trap stays enabled. Outer
+  // traps go dormant so their ownerDocument-level focusin listeners do not
+  // fight the inner trap. isTopShell defaults to false so the first-render
+  // useFocusTrap effect is a no-op; the layout effect then pushes onto the
+  // stack and notifies all subscribers, and the resulting setState triggers a
+  // follow-up render where exactly one shell activates its trap.
+  const [isTopShell, setIsTopShell] = useState(false);
+  useLayoutEffect(() => {
+    if (!trapActive) return;
+    const element = shellRef.current;
+    if (!element) return;
+    const updateTop = (top: HTMLElement | null) => setIsTopShell(top === element);
+    shellStackSubscribers.add(updateTop);
+    pushShell(element);
+    return () => {
+      shellStackSubscribers.delete(updateTop);
+      popShell(element);
+      setIsTopShell(false);
+    };
+  }, [trapActive]);
+
+  useFocusTrap(shellRef, { enabled: trapActive && isTopShell, restoreFocus: false, initialFocus });
   useScrollLock({ enabled: fallbackActive });
 
   useLayoutEffect(() => {

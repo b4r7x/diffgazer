@@ -8,7 +8,8 @@ export interface DialogBodyProps extends HTMLAttributes<HTMLDivElement> {}
 export function DialogBody({ className, ...props }: DialogBodyProps) {
   return (
     <div
-      className={cn("flex-1 overflow-y-auto border-x border-border px-6 py-6", className)}
+      data-slot="dialog-body"
+      className={cn("flex-1 overflow-y-auto px-5 py-5", className)}
       {...props}
     />
   );

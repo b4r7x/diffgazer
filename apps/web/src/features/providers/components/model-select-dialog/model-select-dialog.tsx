@@ -86,7 +86,6 @@ export function ModelSelectDialog({
     setFilterIndex,
     setFocusZone,
     handleConfirm,
-    handleCancel,
     handleUseCustom,
     handleFilterKeyDown,
     handleSearchEscape,
@@ -122,7 +121,7 @@ export function ModelSelectDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl overflow-hidden border border-tui-border shadow-2xl">
-        <DialogHeader className="flex-row items-center justify-between gap-3 bg-tui-selection/50 px-4 py-3">
+        <DialogHeader marker="none" className="flex-row items-center justify-between gap-3 bg-tui-selection/50 px-4 py-3">
           <DialogTitle className="min-w-0 flex-1 w-auto text-tui-blue tracking-wide">Select Model</DialogTitle>
           <DialogClose
             {...getCloseButtonProps()}
@@ -185,7 +184,6 @@ export function ModelSelectDialog({
             size="sm"
             bracket
             highlighted={focusZone === "footer" && footerButtonIndex === 0}
-            onClick={handleCancel}
           >
             Cancel
           </DialogClose>

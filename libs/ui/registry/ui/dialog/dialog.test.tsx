@@ -5,7 +5,7 @@ import { render, screen, fireEvent, waitFor, within } from "@testing-library/rea
 import userEvent from "@testing-library/user-event"
 import { axe } from "../../../testing/utils.js"
 import { afterEach, afterAll, beforeAll, beforeEach, describe, it, expect, vi } from "vitest"
-import { useState, type ReactNode } from "react"
+import { useRef, useState, type ReactNode, type SyntheticEvent } from "react"
 import { renderToString } from "react-dom/server"
 import { Dialog } from "./index.js"
 import { Popover } from "../popover/index.js"
@@ -312,6 +312,11 @@ describe("Dialog", () => {
     expect(trigger).toHaveAttribute("aria-controls", dialog.id)
   })
 
+  it("trigger advertises aria-haspopup='dialog' to assistive tech", () => {
+    renderDialog()
+    expect(screen.getByRole("button", { name: "Open" })).toHaveAttribute("aria-haspopup", "dialog")
+  })
+
   it("sets aria-labelledby pointing to the title", () => {
     renderDialog({ defaultOpen: true })
     const dialog = screen.getByRole("dialog", { name: "Test Title" })
@@ -338,7 +343,7 @@ describe("Dialog", () => {
     const dialog = screen.getByRole("dialog", { name: "Dialog" })
     expect(dialog).not.toHaveAttribute("aria-labelledby")
     expect(dialog).toHaveAttribute("aria-label", "Dialog")
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining("Modal dialog is missing an accessible name"))
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("[DialogContent] Missing accessible name"))
 
     warn.mockRestore()
   })
@@ -423,6 +428,60 @@ describe("Dialog", () => {
 
     const dialog = screen.getByRole("dialog", { name: "External dialog name" })
     expect(dialog).toHaveAttribute("aria-labelledby", "external-dialog-name")
+  })
+
+  it("aria-labelledby wins over both aria-label and Dialog.Title", () => {
+    render(
+      <>
+        <h2 id="external-name">External wins</h2>
+        <Dialog defaultOpen>
+          <Dialog.Content aria-labelledby="external-name" aria-label="ignored">
+            <Dialog.Title>Also ignored</Dialog.Title>
+            <Dialog.Body>Body content</Dialog.Body>
+          </Dialog.Content>
+        </Dialog>
+      </>
+    )
+
+    const dialog = screen.getByRole("dialog", { name: "External wins" })
+    expect(dialog).toHaveAttribute("aria-labelledby", "external-name")
+    expect(dialog).not.toHaveAttribute("aria-label")
+  })
+
+  it("aria-label wins over Dialog.Title when no aria-labelledby is provided", () => {
+    render(
+      <Dialog defaultOpen>
+        <Dialog.Content aria-label="Label wins">
+          <Dialog.Title>Ignored title</Dialog.Title>
+          <Dialog.Body>Body content</Dialog.Body>
+        </Dialog.Content>
+      </Dialog>
+    )
+
+    const dialog = screen.getByRole("dialog", { name: "Label wins" })
+    expect(dialog).toHaveAttribute("aria-label", "Label wins")
+    expect(dialog).not.toHaveAttribute("aria-labelledby")
+  })
+
+  it("warns exactly once per open across rerenders", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+    function Harness({ rev }: { rev: number }) {
+      return (
+        <Dialog defaultOpen>
+          <Dialog.Content>
+            <Dialog.Body>Body rev {rev}</Dialog.Body>
+          </Dialog.Content>
+        </Dialog>
+      )
+    }
+
+    const { rerender } = render(<Harness rev={1} />)
+    rerender(<Harness rev={2} />)
+    rerender(<Harness rev={3} />)
+
+    expect(warn).toHaveBeenCalledTimes(1)
+    warn.mockRestore()
   })
 
   it("sets aria-describedby when description is present", () => {
@@ -623,34 +682,33 @@ describe("Dialog", () => {
       )
     }
 
-    it("renders hints inside the footer subtree (not absolutely positioned)", () => {
+    it("renders hints inside the footer subtree", () => {
       renderWithHints()
       const dialog = screen.getByRole("dialog", { name: "Footer with hints" })
       const navigateHint = within(dialog).getByText("Navigate")
-      const footer = navigateHint.closest('[class*="border-x"]')
+      const footer = navigateHint.closest('[data-slot="dialog-footer"]')
       expect(footer).not.toBeNull()
       expect(footer).toContainElement(navigateHint)
-      expect(footer?.className).not.toContain("absolute")
     })
 
-    it("renders all hint glyphs as Kbd elements at the default size", () => {
+    it("renders all hint glyphs as Kbd elements", () => {
       renderWithHints()
       const dialog = screen.getByRole("dialog", { name: "Footer with hints" })
       for (const hint of hints) {
         const kbd = within(dialog).getByText(hint.key)
         expect(kbd.tagName).toBe("KBD")
-        expect(kbd.className).toContain("text-xs")
       }
     })
 
-    it("places hints and actions in a single flex row with items-center", () => {
+    it("orders hints before actions inside the footer", () => {
       renderWithHints()
       const dialog = screen.getByRole("dialog", { name: "Footer with hints" })
       const navigateHint = within(dialog).getByText("Navigate")
-      const footer = navigateHint.closest('[class*="border-x"]')
-      expect(footer?.className).toContain("items-center")
-      expect(footer?.className).not.toContain("items-end")
-      expect(footer?.className).toContain("justify-between")
+      const footer = navigateHint.closest('[data-slot="dialog-footer"]')
+      if (!footer) throw new Error("Expected dialog footer to be present")
+      const confirmAction = within(dialog).getByRole("button", { name: "Confirm" })
+      const FOLLOWING = Node.DOCUMENT_POSITION_FOLLOWING
+      expect(navigateHint.compareDocumentPosition(confirmAction) & FOLLOWING).toBe(FOLLOWING)
     })
 
     it("keeps Tab order across action buttons; hint glyphs are not focusable", async () => {
@@ -670,7 +728,7 @@ describe("Dialog", () => {
       }
     })
 
-    it("uses justify-end when no hints are provided", () => {
+    it("renders no hint glyphs when no hints are provided", () => {
       render(
         <Dialog defaultOpen>
           <Dialog.Content>
@@ -683,14 +741,205 @@ describe("Dialog", () => {
       )
       const dialog = screen.getByRole("dialog", { name: "No hints" })
       const action = within(dialog).getByRole("button", { name: "OK" })
-      const footer = action.closest('[class*="border-x"]')
-      expect(footer?.className).toContain("justify-end")
-      expect(footer?.className).not.toContain("justify-between")
+      const footer = action.closest('[data-slot="dialog-footer"]')
+      if (!footer) throw new Error("Expected dialog footer to be present")
+      expect(within(dialog).getByRole("button", { name: "OK" })).toBeInTheDocument()
+      expect(footer.querySelector("kbd")).toBeNull()
     })
 
     it("has no a11y violations when rendering hints", async () => {
       const { container } = renderWithHints()
       expect(await axe(container)).toHaveNoViolations()
+    })
+  })
+
+  describe("DialogContent frame and corners", () => {
+    it("defaults to frame='border' corners='none' and does not render a .dlg-corners host", () => {
+      render(
+        <Dialog defaultOpen>
+          <Dialog.Content>
+            <Dialog.Title>Default frame</Dialog.Title>
+          </Dialog.Content>
+        </Dialog>
+      )
+      const dialog = screen.getByRole("dialog", { name: "Default frame" })
+      expect(dialog).toHaveAttribute("data-slot", "dialog-content")
+      expect(dialog).toHaveAttribute("data-frame", "border")
+      expect(dialog).toHaveAttribute("data-corners", "none")
+      expect(dialog.querySelector(".dlg-corners")).toBeNull()
+    })
+
+    const cornersValues = ["subtle", "standard", "bold", "outset"] as const
+
+    for (const corners of cornersValues) {
+      it(`corners="${corners}" sets data-corners and renders the .dlg-corners host`, () => {
+        render(
+          <Dialog defaultOpen>
+            <Dialog.Content corners={corners}>
+              <Dialog.Title>Corners {corners}</Dialog.Title>
+            </Dialog.Content>
+          </Dialog>
+        )
+        const dialog = screen.getByRole("dialog", { name: `Corners ${corners}` })
+        expect(dialog).toHaveAttribute("data-corners", corners)
+        const host = dialog.querySelector(".dlg-corners")
+        expect(host).not.toBeNull()
+        expect(host).toHaveAttribute("aria-hidden", "true")
+      })
+    }
+
+    it("corners='none' does not render the .dlg-corners host", () => {
+      render(
+        <Dialog defaultOpen>
+          <Dialog.Content corners="none">
+            <Dialog.Title>No corners</Dialog.Title>
+          </Dialog.Content>
+        </Dialog>
+      )
+      const dialog = screen.getByRole("dialog", { name: "No corners" })
+      expect(dialog.querySelector(".dlg-corners")).toBeNull()
+    })
+
+    it.each([
+      { frame: "border" as const, corners: "none" as const, label: "default frame" },
+      { frame: "border" as const, corners: "standard" as const, label: "bracketed frame" },
+      { frame: "none" as const, corners: "standard" as const, label: "viewfinder standard" },
+      { frame: "none" as const, corners: "subtle" as const, label: "viewfinder subtle" },
+      { frame: "none" as const, corners: "bold" as const, label: "viewfinder bold" },
+      { frame: "none" as const, corners: "outset" as const, label: "viewfinder outset" },
+    ])("$label combination renders data-frame=$frame and data-corners=$corners", ({ frame, corners, label }) => {
+      render(
+        <Dialog defaultOpen>
+          <Dialog.Content frame={frame} corners={corners}>
+            <Dialog.Title>{label}</Dialog.Title>
+          </Dialog.Content>
+        </Dialog>
+      )
+      const dialog = screen.getByRole("dialog", { name: label })
+      expect(dialog).toHaveAttribute("data-frame", frame)
+      expect(dialog).toHaveAttribute("data-corners", corners)
+    })
+  })
+
+  describe("DialogTitle data-slot", () => {
+    it("exposes data-slot=\"dialog-title\" on the heading element", () => {
+      render(
+        <Dialog defaultOpen>
+          <Dialog.Content>
+            <Dialog.Title>Slotted title</Dialog.Title>
+          </Dialog.Content>
+        </Dialog>
+      )
+      const heading = screen.getByRole("heading", { name: "Slotted title" })
+      expect(heading).toHaveAttribute("data-slot", "dialog-title")
+    })
+  })
+
+  describe("DialogHeader marker and DialogTitle meta", () => {
+    it("renders an aria-hidden bar marker inside the header by default", () => {
+      render(
+        <Dialog defaultOpen>
+          <Dialog.Content>
+            <Dialog.Header>
+              <Dialog.Title>Bar title</Dialog.Title>
+            </Dialog.Header>
+          </Dialog.Content>
+        </Dialog>
+      )
+      const dialog = screen.getByRole("dialog", { name: "Bar title" })
+      const header = dialog.querySelector('[data-slot="dialog-header"]')
+      if (!header) throw new Error("Expected dialog header")
+      const bar = header.querySelector(':scope > [aria-hidden="true"]')
+      expect(bar).not.toBeNull()
+    })
+
+    it("omits the bar when marker is 'none'", () => {
+      render(
+        <Dialog defaultOpen>
+          <Dialog.Content>
+            <Dialog.Header marker="none">
+              <Dialog.Title>Plain title</Dialog.Title>
+            </Dialog.Header>
+          </Dialog.Content>
+        </Dialog>
+      )
+      const dialog = screen.getByRole("dialog", { name: "Plain title" })
+      const header = dialog.querySelector('[data-slot="dialog-header"]')
+      if (!header) throw new Error("Expected dialog header")
+      expect(header.querySelector(':scope > [aria-hidden="true"]')).toBeNull()
+    })
+
+    it("renders Title and Description inside the header subtree", () => {
+      render(
+        <Dialog defaultOpen>
+          <Dialog.Content>
+            <Dialog.Header>
+              <Dialog.Title>Column title</Dialog.Title>
+              <Dialog.Description>Column description</Dialog.Description>
+            </Dialog.Header>
+          </Dialog.Content>
+        </Dialog>
+      )
+      const heading = screen.getByRole("heading", { name: "Column title" })
+      const header = heading.closest('[data-slot="dialog-header"]')
+      if (!header) throw new Error("Expected dialog header")
+      expect(within(header as HTMLElement).getByRole("heading", { name: "Column title" })).toBe(heading)
+      expect(within(header as HTMLElement).getByText("Column description")).toBeInTheDocument()
+    })
+
+    it("renders the meta tag with aria-hidden so it stays out of the accessible name", () => {
+      render(
+        <Dialog defaultOpen>
+          <Dialog.Content>
+            <Dialog.Title meta="CONFIRM">Apply patch</Dialog.Title>
+          </Dialog.Content>
+        </Dialog>
+      )
+      const dialog = screen.getByRole("dialog", { name: "Apply patch" })
+      const meta = within(dialog).getByText("CONFIRM")
+      expect(meta).toHaveAttribute("aria-hidden", "true")
+    })
+
+    it("omits the meta tag when not provided", () => {
+      render(
+        <Dialog defaultOpen>
+          <Dialog.Content>
+            <Dialog.Title>No meta</Dialog.Title>
+          </Dialog.Content>
+        </Dialog>
+      )
+      const dialog = screen.getByRole("dialog", { name: "No meta" })
+      expect(within(dialog).queryByText("CONFIRM")).toBeNull()
+    })
+
+    it("marker='none' renders children as direct descendants of the header (no inner wrapper)", () => {
+      render(
+        <Dialog defaultOpen>
+          <Dialog.Content>
+            <Dialog.Header marker="none">
+              <Dialog.Title>Flat header</Dialog.Title>
+            </Dialog.Header>
+          </Dialog.Content>
+        </Dialog>
+      )
+      const header = screen.getByRole("dialog", { name: "Flat header" }).querySelector('[data-slot="dialog-header"]') as HTMLElement | null
+      if (!header) throw new Error("Expected dialog header")
+      expect(header.firstElementChild).toHaveAttribute("data-slot", "dialog-title")
+    })
+
+    it("marker='none' preserves automatic accessible-name resolution via Dialog.Title", () => {
+      render(
+        <Dialog defaultOpen>
+          <Dialog.Content>
+            <Dialog.Header marker="none">
+              <Dialog.Title>Auto labelled</Dialog.Title>
+            </Dialog.Header>
+          </Dialog.Content>
+        </Dialog>
+      )
+      const dialog = screen.getByRole("dialog", { name: "Auto labelled" })
+      expect(dialog).toHaveAttribute("aria-labelledby")
+      expect(dialog).not.toHaveAttribute("aria-label")
     })
   })
 
@@ -719,6 +968,93 @@ describe("Dialog", () => {
     expect(onClick).toHaveBeenCalled()
     expect(onCancel).toHaveBeenCalled()
     expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+
+  it("keeps the dialog open when consumer onCancel calls preventDefault", () => {
+    const onOpenChange = vi.fn()
+    const onCancel = vi.fn((event: SyntheticEvent<HTMLDialogElement>) => event.preventDefault())
+
+    render(
+      <Dialog defaultOpen onOpenChange={onOpenChange}>
+        <Dialog.Content onCancel={onCancel}>
+          <Dialog.Title>Cancel prevented</Dialog.Title>
+        </Dialog.Content>
+      </Dialog>
+    )
+
+    const dialog = screen.getByRole("dialog", { name: "Cancel prevented" })
+    // fireEvent retained: native <dialog> cancel event has no user-event equivalent
+    fireEvent(dialog, new Event("cancel", { bubbles: false }))
+
+    expect(onCancel).toHaveBeenCalled()
+    expect(onOpenChange).not.toHaveBeenCalled()
+    expect(dialog).toHaveAttribute("data-state", "open")
+  })
+
+  it("fires onEscapeKeyDown when the user dismisses with Escape", () => {
+    const onEscapeKeyDown = vi.fn()
+    const onOpenChange = vi.fn()
+
+    render(
+      <Dialog defaultOpen onOpenChange={onOpenChange}>
+        <Dialog.Content onEscapeKeyDown={onEscapeKeyDown}>
+          <Dialog.Title>Escape intercepted</Dialog.Title>
+        </Dialog.Content>
+      </Dialog>
+    )
+
+    const dialog = screen.getByRole("dialog", { name: "Escape intercepted" })
+    // fireEvent retained: native <dialog> cancel event has no user-event equivalent
+    fireEvent(dialog, new Event("cancel", { bubbles: false }))
+
+    expect(onEscapeKeyDown).toHaveBeenCalled()
+    expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+
+  it("keeps the dialog open when onEscapeKeyDown calls preventDefault", () => {
+    const onOpenChange = vi.fn()
+    const onEscapeKeyDown = vi.fn((event: SyntheticEvent<HTMLDialogElement>) => event.preventDefault())
+
+    render(
+      <Dialog defaultOpen onOpenChange={onOpenChange}>
+        <Dialog.Content onEscapeKeyDown={onEscapeKeyDown}>
+          <Dialog.Title>Escape prevented</Dialog.Title>
+        </Dialog.Content>
+      </Dialog>
+    )
+
+    const dialog = screen.getByRole("dialog", { name: "Escape prevented" })
+    // fireEvent retained: native <dialog> cancel event has no user-event equivalent
+    fireEvent(dialog, new Event("cancel", { bubbles: false }))
+
+    expect(onEscapeKeyDown).toHaveBeenCalled()
+    expect(onOpenChange).not.toHaveBeenCalled()
+    expect(dialog).toHaveAttribute("data-state", "open")
+  })
+
+  it("exposes role=\"alertdialog\" when DialogContent role is alertdialog", () => {
+    render(
+      <Dialog defaultOpen>
+        <Dialog.Content role="alertdialog">
+          <Dialog.Title>Destructive confirmation</Dialog.Title>
+        </Dialog.Content>
+      </Dialog>
+    )
+
+    expect(screen.getByRole("alertdialog", { name: "Destructive confirmation" })).toBeInTheDocument()
+  })
+
+  it("renders DialogTitle as the heading level set by the as prop", () => {
+    render(
+      <Dialog defaultOpen>
+        <Dialog.Content>
+          <Dialog.Title as="h3">Heading level three</Dialog.Title>
+        </Dialog.Content>
+      </Dialog>
+    )
+
+    const heading = screen.getByRole("heading", { name: "Heading level three", level: 3 })
+    expect(heading.tagName).toBe("H3")
   })
 })
 
@@ -962,5 +1298,341 @@ describe("Dialog prefers-reduced-motion (CSS-only)", () => {
 
     const dialog = screen.getByRole("dialog", { name: "Reduced motion dialog" })
     expect(getComputedStyle(dialog).animation).toBe("none")
+  })
+})
+
+describe("DialogContent corner CSS tokens (CSS-only)", () => {
+  // dialog.css declares corner accent rules nested inside @layer components.
+  // jsdom's CSSOM does not apply rules inside @layer, so every rule that
+  // targets [data-corners] is extracted and injected at the top level.
+  // The tests then assert getComputedStyle resolves the expected --dlg-corner-*
+  // custom properties per corners value.
+  const DIALOG_CSS_PATH = resolve(fileURLToPath(import.meta.url), "../../shared/dialog.css")
+  let styleElement: HTMLStyleElement | null = null
+
+  beforeAll(() => {
+    const sourceCss = readFileSync(DIALOG_CSS_PATH, "utf8")
+    if (!sourceCss.includes('[data-corners]:not([data-corners="none"])')) {
+      throw new Error('dialog.css must use [data-corners]:not([data-corners="none"]) as the non-none selector')
+    }
+    const rules = [...sourceCss.matchAll(/\[data-slot="dialog-content"\][^{]*\{[^}]*\}/g)].map(m => m[0])
+    if (rules.length === 0) {
+      throw new Error("dialog.css must declare [data-slot=\"dialog-content\"] corner rules")
+    }
+    styleElement = document.createElement("style")
+    styleElement.dataset.testSource = "dialog.css#corners"
+    styleElement.textContent = rules.join("\n")
+    document.head.appendChild(styleElement)
+  })
+
+  afterAll(() => {
+    styleElement?.remove()
+    styleElement = null
+  })
+
+  it("corners='standard' resolves to 18px / 2px / foreground / 0px", () => {
+    render(
+      <Dialog defaultOpen>
+        <Dialog.Content corners="standard">
+          <Dialog.Title>Standard corners</Dialog.Title>
+        </Dialog.Content>
+      </Dialog>,
+    )
+    const dialog = screen.getByRole("dialog", { name: "Standard corners" })
+    const styles = getComputedStyle(dialog)
+    expect(styles.getPropertyValue("--dlg-corner-size").trim()).toBe("18px")
+    expect(styles.getPropertyValue("--dlg-corner-weight").trim()).toBe("2px")
+    expect(styles.getPropertyValue("--dlg-corner-color").trim()).toBe("var(--foreground)")
+    expect(styles.getPropertyValue("--dlg-corner-offset").trim()).toBe("0px")
+  })
+
+  it("corners='subtle' resolves to 12px / 1.5px / border / 0px", () => {
+    render(
+      <Dialog defaultOpen>
+        <Dialog.Content corners="subtle">
+          <Dialog.Title>Subtle corners</Dialog.Title>
+        </Dialog.Content>
+      </Dialog>,
+    )
+    const dialog = screen.getByRole("dialog", { name: "Subtle corners" })
+    const styles = getComputedStyle(dialog)
+    expect(styles.getPropertyValue("--dlg-corner-size").trim()).toBe("12px")
+    expect(styles.getPropertyValue("--dlg-corner-weight").trim()).toBe("1.5px")
+    expect(styles.getPropertyValue("--dlg-corner-color").trim()).toBe("var(--border)")
+    expect(styles.getPropertyValue("--dlg-corner-offset").trim()).toBe("0px")
+  })
+
+  it("corners='bold' resolves to 28px / 3px / foreground / 0px", () => {
+    render(
+      <Dialog defaultOpen>
+        <Dialog.Content corners="bold">
+          <Dialog.Title>Bold corners</Dialog.Title>
+        </Dialog.Content>
+      </Dialog>,
+    )
+    const dialog = screen.getByRole("dialog", { name: "Bold corners" })
+    const styles = getComputedStyle(dialog)
+    expect(styles.getPropertyValue("--dlg-corner-size").trim()).toBe("28px")
+    expect(styles.getPropertyValue("--dlg-corner-weight").trim()).toBe("3px")
+    expect(styles.getPropertyValue("--dlg-corner-color").trim()).toBe("var(--foreground)")
+    expect(styles.getPropertyValue("--dlg-corner-offset").trim()).toBe("0px")
+  })
+
+  it("corners='outset' resolves to 18px / 2px / foreground / -3px offset", () => {
+    render(
+      <Dialog defaultOpen>
+        <Dialog.Content corners="outset">
+          <Dialog.Title>Outset corners</Dialog.Title>
+        </Dialog.Content>
+      </Dialog>,
+    )
+    const dialog = screen.getByRole("dialog", { name: "Outset corners" })
+    const styles = getComputedStyle(dialog)
+    expect(styles.getPropertyValue("--dlg-corner-size").trim()).toBe("18px")
+    expect(styles.getPropertyValue("--dlg-corner-weight").trim()).toBe("2px")
+    expect(styles.getPropertyValue("--dlg-corner-color").trim()).toBe("var(--foreground)")
+    expect(styles.getPropertyValue("--dlg-corner-offset").trim()).toBe("-3px")
+  })
+
+  it("corners='none' does not set any --dlg-corner-* custom properties", () => {
+    render(
+      <Dialog defaultOpen>
+        <Dialog.Content corners="none">
+          <Dialog.Title>No corners</Dialog.Title>
+        </Dialog.Content>
+      </Dialog>,
+    )
+    const dialog = screen.getByRole("dialog", { name: "No corners" })
+    const styles = getComputedStyle(dialog)
+    expect(styles.getPropertyValue("--dlg-corner-size").trim()).toBe("")
+    expect(styles.getPropertyValue("--dlg-corner-weight").trim()).toBe("")
+    expect(styles.getPropertyValue("--dlg-corner-color").trim()).toBe("")
+    expect(styles.getPropertyValue("--dlg-corner-offset").trim()).toBe("")
+  })
+})
+
+describe("Dialog.CloseIcon", () => {
+  it("renders a button with default aria-label=\"Close dialog\" when placed inside Dialog.Content", () => {
+    render(
+      <Dialog defaultOpen>
+        <Dialog.Content>
+          <Dialog.Title>With close icon</Dialog.Title>
+          <Dialog.CloseIcon />
+        </Dialog.Content>
+      </Dialog>
+    )
+    expect(screen.getByRole("button", { name: "Close dialog" })).toBeInTheDocument()
+  })
+
+  it("accepts a custom aria-label override", () => {
+    render(
+      <Dialog defaultOpen>
+        <Dialog.Content>
+          <Dialog.Title>Localized</Dialog.Title>
+          <Dialog.CloseIcon aria-label="Zamknij okno" />
+        </Dialog.Content>
+      </Dialog>
+    )
+    expect(screen.getByRole("button", { name: "Zamknij okno" })).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Close dialog" })).toBeNull()
+  })
+
+  it("clicking closes the dialog", async () => {
+    render(
+      <Dialog defaultOpen>
+        <Dialog.Content>
+          <Dialog.Title>Click closes</Dialog.Title>
+          <Dialog.CloseIcon />
+        </Dialog.Content>
+      </Dialog>
+    )
+    const dialog = screen.getByRole("dialog", { name: "Click closes" })
+    expect(dialog).toHaveAttribute("data-state", "open")
+    await userEvent.click(screen.getByRole("button", { name: "Close dialog" }))
+    expect(dialog).toHaveAttribute("data-state", "closed")
+  })
+
+  it("is tabbable and receives initial focus when it is the only focusable child", async () => {
+    render(
+      <Dialog defaultOpen>
+        <Dialog.Content>
+          <Dialog.Title>Tabbable</Dialog.Title>
+          <Dialog.CloseIcon />
+        </Dialog.Content>
+      </Dialog>
+    )
+    const closeIcon = screen.getByRole("button", { name: "Close dialog" })
+    await waitFor(() => expect(closeIcon).toHaveFocus())
+  })
+
+  it("exposes data-slot=\"dialog-close-icon\"", () => {
+    render(
+      <Dialog defaultOpen>
+        <Dialog.Content>
+          <Dialog.Title>Slotted</Dialog.Title>
+          <Dialog.CloseIcon />
+        </Dialog.Content>
+      </Dialog>
+    )
+    const closeIcon = screen.getByRole("button", { name: "Close dialog" })
+    expect(closeIcon).toHaveAttribute("data-slot", "dialog-close-icon")
+  })
+
+  it("is opt-in: a dialog without Dialog.CloseIcon has no top-right close button", () => {
+    render(
+      <Dialog defaultOpen>
+        <Dialog.Content>
+          <Dialog.Title>No close icon</Dialog.Title>
+          <Dialog.Body>Body content</Dialog.Body>
+        </Dialog.Content>
+      </Dialog>
+    )
+    const dialog = screen.getByRole("dialog", { name: "No close icon" })
+    expect(dialog.querySelector('[data-slot="dialog-close-icon"]')).toBeNull()
+    expect(screen.queryByRole("button", { name: "Close dialog" })).toBeNull()
+  })
+
+  it("consumer onClick can preventDefault to keep the dialog open", async () => {
+    render(
+      <Dialog defaultOpen>
+        <Dialog.Content>
+          <Dialog.Title>Prevented</Dialog.Title>
+          <Dialog.CloseIcon onClick={(e) => e.preventDefault()} />
+        </Dialog.Content>
+      </Dialog>
+    )
+    const dialog = screen.getByRole("dialog", { name: "Prevented" })
+    await userEvent.click(screen.getByRole("button", { name: "Close dialog" }))
+    expect(dialog).toHaveAttribute("data-state", "open")
+  })
+
+  it("has no a11y violations when rendered open", async () => {
+    const { container } = render(
+      <Dialog defaultOpen>
+        <Dialog.Content>
+          <Dialog.Title>A11y</Dialog.Title>
+          <Dialog.CloseIcon />
+        </Dialog.Content>
+      </Dialog>
+    )
+    expect(await axe(container)).toHaveNoViolations()
+  })
+})
+
+describe("Dialog focus trap", () => {
+  it("Tab from the last focusable wraps back to the first", async () => {
+    render(
+      <Dialog defaultOpen>
+        <Dialog.Content>
+          <Dialog.Title>Trapped dialog</Dialog.Title>
+          <Dialog.Footer>
+            <Dialog.Close>Cancel</Dialog.Close>
+            <Dialog.Action>Confirm</Dialog.Action>
+          </Dialog.Footer>
+        </Dialog.Content>
+      </Dialog>
+    )
+
+    const cancel = screen.getByRole("button", { name: "Cancel" })
+    const confirm = screen.getByRole("button", { name: "Confirm" })
+
+    confirm.focus()
+    expect(confirm).toHaveFocus()
+
+    await userEvent.tab()
+    expect(cancel).toHaveFocus()
+  })
+
+  it("Shift+Tab from the first focusable wraps to the last", async () => {
+    render(
+      <Dialog defaultOpen>
+        <Dialog.Content>
+          <Dialog.Title>Trapped dialog</Dialog.Title>
+          <Dialog.Footer>
+            <Dialog.Close>Cancel</Dialog.Close>
+            <Dialog.Action>Confirm</Dialog.Action>
+          </Dialog.Footer>
+        </Dialog.Content>
+      </Dialog>
+    )
+
+    const cancel = screen.getByRole("button", { name: "Cancel" })
+    const confirm = screen.getByRole("button", { name: "Confirm" })
+
+    cancel.focus()
+    expect(cancel).toHaveFocus()
+
+    await userEvent.tab({ shift: true })
+    expect(confirm).toHaveFocus()
+  })
+
+  it("focuses the initialFocus target on open when provided", async () => {
+    function InitialFocusDialog() {
+      const confirmRef = useRef<HTMLButtonElement>(null)
+      return (
+        <Dialog defaultOpen>
+          <Dialog.Content initialFocus={confirmRef}>
+            <Dialog.Title>Initial focus dialog</Dialog.Title>
+            <Dialog.Footer>
+              <Dialog.Close>Cancel</Dialog.Close>
+              <Dialog.Action ref={confirmRef}>Confirm</Dialog.Action>
+            </Dialog.Footer>
+          </Dialog.Content>
+        </Dialog>
+      )
+    }
+
+    render(<InitialFocusDialog />)
+
+    const confirm = screen.getByRole("button", { name: "Confirm" })
+    await waitFor(() => expect(confirm).toHaveFocus())
+  })
+
+  it("focuses the first focusable element on open when no initialFocus is provided", async () => {
+    render(
+      <Dialog defaultOpen>
+        <Dialog.Content>
+          <Dialog.Title>Default focus dialog</Dialog.Title>
+          <Dialog.Footer>
+            <Dialog.Close>Cancel</Dialog.Close>
+            <Dialog.Action>Confirm</Dialog.Action>
+          </Dialog.Footer>
+        </Dialog.Content>
+      </Dialog>
+    )
+
+    const cancel = screen.getByRole("button", { name: "Cancel" })
+    await waitFor(() => expect(cancel).toHaveFocus())
+  })
+
+  it("focuses the first footer action on open and Tab cycles through CloseIcon, wrapping at the boundaries", async () => {
+    render(
+      <Dialog defaultOpen>
+        <Dialog.Content>
+          <Dialog.Title>Trap with close icon</Dialog.Title>
+          <Dialog.Footer>
+            <Dialog.Close>Cancel</Dialog.Close>
+            <Dialog.Action>Confirm</Dialog.Action>
+          </Dialog.Footer>
+          <Dialog.CloseIcon />
+        </Dialog.Content>
+      </Dialog>
+    )
+
+    const cancel = screen.getByRole("button", { name: "Cancel" })
+    const confirm = screen.getByRole("button", { name: "Confirm" })
+    const closeIcon = screen.getByRole("button", { name: "Close dialog" })
+
+    await waitFor(() => expect(cancel).toHaveFocus())
+
+    await userEvent.tab()
+    expect(confirm).toHaveFocus()
+    await userEvent.tab()
+    expect(closeIcon).toHaveFocus()
+    await userEvent.tab()
+    expect(cancel).toHaveFocus()
+
+    await userEvent.tab({ shift: true })
+    expect(closeIcon).toHaveFocus()
   })
 })

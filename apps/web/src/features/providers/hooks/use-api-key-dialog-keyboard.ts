@@ -51,7 +51,11 @@ function getEffectiveFocused({
   canSubmit: boolean;
   focused: FocusElement;
 }): FocusElement {
-  if (inFooter) return footerIndex === 1 && canSubmit ? "confirm" : "cancel";
+  if (inFooter) {
+    if (focused === "confirm") return canSubmit ? "confirm" : "cancel";
+    if (focused === "cancel") return "cancel";
+    return footerIndex === 1 && canSubmit ? "confirm" : "cancel";
+  }
   if (!canSubmit && focused === "confirm") return "cancel";
   return focused;
 }
@@ -114,8 +118,8 @@ export function useApiKeyDialogKeyboard({
     return {
       ref: actionProps.ref,
       onFocus: () => {
-        actionProps.onFocus();
-        setFocused(index === 0 ? "cancel" : "confirm");
+        setZone("footer");
+        setFocusedInternal(index === 0 ? "cancel" : "confirm");
       },
     };
   };
@@ -216,8 +220,8 @@ export function useApiKeyDialogKeyboard({
   }, { enabled: open && isZone("input"), allowInInput: true });
 
   const inFooter = isZone("footer");
-  const cancelHighlighted = inFooter && footerActionRow.focusedIndex === 0;
-  const confirmHighlighted = inFooter && footerActionRow.focusedIndex === 1 && canSubmit;
+  const cancelHighlighted = inFooter && effectiveFocused === "cancel";
+  const confirmHighlighted = inFooter && effectiveFocused === "confirm";
 
   return {
     focused: effectiveFocused,

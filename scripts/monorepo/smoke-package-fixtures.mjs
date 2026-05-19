@@ -193,7 +193,7 @@ export function writeUiVitePackageSmoke(projectDir) {
       "import React from 'react';",
       "import { createRoot } from 'react-dom/client';",
       "import { Button } from '@diffgazer/ui/components/button';",
-      "import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter, DialogClose } from '@diffgazer/ui/components/dialog';",
+      "import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter, DialogClose, DialogCloseIcon } from '@diffgazer/ui/components/dialog';",
       "import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@diffgazer/ui/components/select';",
       "import './index.css';",
       "",
@@ -250,7 +250,7 @@ export function writeUiNextPackageSmoke(root, projectDir) {
     resolve(projectDir, "app/page.tsx"),
     [
       "import { Button } from '@diffgazer/ui/components/button';",
-      "import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter, DialogClose } from '@diffgazer/ui/components/dialog';",
+      "import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter, DialogClose, DialogCloseIcon } from '@diffgazer/ui/components/dialog';",
       "import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@diffgazer/ui/components/select';",
       "",
       "export default function Page() {",
