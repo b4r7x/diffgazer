@@ -4,7 +4,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@diffgazer/ui/componen
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { EmptyState } from "@diffgazer/ui/components/empty-state";
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
-import { CodeBlock, type CodeBlockLineType } from "@diffgazer/ui/components/code-block";
+import { CodeBlock, type CodeBlockLineState } from "@diffgazer/ui/components/code-block";
 import { DiffView, parseDiff } from "@diffgazer/ui/components/diff-view";
 import { Panel } from "@diffgazer/ui/components/panel";
 import { FixPlanChecklist } from "./fix-plan-checklist";
@@ -159,7 +159,7 @@ function canRenderStructuredPatch(patch: string) {
   return files.length === 1 && files[0]?.hunks.length > 0;
 }
 
-function getPatchLineType(line: string): CodeBlockLineType | undefined {
+function getPatchLineState(line: string): CodeBlockLineState | undefined {
   if (line.startsWith("+") && !line.startsWith("+++")) return "added";
   if (line.startsWith("-") && !line.startsWith("---")) return "removed";
   return undefined;
@@ -172,13 +172,13 @@ function PatchTabContent({ patch }: { patch: string }) {
 
   return (
     <CodeBlock label="Suggested patch">
-      <CodeBlock.Content>
+      <CodeBlock.Content tone="diff">
         {patch.split("\n").map((line, index) => (
           <CodeBlock.Line
             key={`${index}-${line}`}
             number={index + 1}
             content={line}
-            type={getPatchLineType(line)}
+            state={getPatchLineState(line)}
           />
         ))}
       </CodeBlock.Content>
@@ -200,7 +200,7 @@ function DetailsTabContent({
     .map((e, i) => ({
       number: e.range?.start ?? issue.line_start ?? i + 1,
       content: e.excerpt,
-      type: "highlight" as CodeBlockLineType,
+      state: "highlight" as CodeBlockLineState,
     }));
 
   return (
@@ -217,7 +217,7 @@ function DetailsTabContent({
                     key={`${line.number}-${line.content}`}
                     number={line.number}
                     content={line.content}
-                    type={line.type}
+                    state={line.state}
                   />
                 ))}
               </CodeBlock.Content>

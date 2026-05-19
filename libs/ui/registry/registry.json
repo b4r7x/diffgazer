@@ -1249,8 +1249,11 @@
       "name": "code-block",
       "type": "registry:ui",
       "title": "Code Block",
-      "description": "Code display with line numbers and scroll area",
-      "dependencies": [],
+      "description": "Code display with three visual variants (hairline, bare, terminal), per-line diff/highlight states, optional copy button, and optional auto-coloring via lowlight",
+      "dependencies": [
+        "class-variance-authority",
+        "lowlight"
+      ],
       "registryDependencies": [
         "theme",
         "scroll-area"
@@ -1268,6 +1271,10 @@
           "type": "registry:ui"
         },
         {
+          "path": "registry/ui/code-block/code-block-context.tsx",
+          "type": "registry:ui"
+        },
+        {
           "path": "registry/ui/code-block/code-block-content.tsx",
           "type": "registry:ui"
         },
@@ -1282,6 +1289,23 @@
         {
           "path": "registry/ui/code-block/code-block-line.tsx",
           "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/code-block/code-block-copy-button.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/code-block/code-block-highlight.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/code-block/highlight.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/shared/code-block.css",
+          "type": "registry:style",
+          "target": "~/styles/code-block.css"
         }
       ]
     },

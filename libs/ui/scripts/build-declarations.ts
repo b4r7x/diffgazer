@@ -224,6 +224,10 @@ try {
     "components/logo/figlet",
     resolve(declarationRoot, "registry/ui/logo/get-figlet-text.d.ts"),
   );
+  writePublicDeclaration(
+    "components/code-block/highlight",
+    resolve(declarationRoot, "registry/ui/code-block/highlight.d.ts"),
+  );
 } finally {
   rmSync(tempDir, { recursive: true, force: true });
 }

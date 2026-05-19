@@ -2,9 +2,12 @@
 
 import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils";
+import { useRequiredCodeBlockContext } from "./code-block-context";
 
 export type CodeBlockHeaderProps = ComponentProps<"div">;
 
 export function CodeBlockHeader({ className, ref, ...props }: CodeBlockHeaderProps) {
-  return <div ref={ref} className={cn("flex items-center justify-between px-4 py-2 border-b border-border bg-border/10", className)} {...props} />;
+  const context = useRequiredCodeBlockContext("CodeBlock.Header");
+  if (context.variant === "bare") return null;
+  return <div ref={ref} data-slot="code-block-header" className={cn(className)} {...props} />;
 }

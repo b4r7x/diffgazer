@@ -1,4 +1,4 @@
-import { CodeBlock, CodeBlockContent } from "@/components/ui/code-block"
+import { CodeBlock } from "@/components/ui/code-block"
 
 const code = `import { Button } from "@/components/ui/button"
 
@@ -12,8 +12,12 @@ export function App() {
 
 export default function CodeBlockDefault() {
   return (
-    <CodeBlock>
-      <CodeBlockContent>{code}</CodeBlockContent>
+    <CodeBlock language="tsx">
+      <CodeBlock.Header>
+        <CodeBlock.Label>app.tsx</CodeBlock.Label>
+        <CodeBlock.CopyButton source={code} />
+      </CodeBlock.Header>
+      <CodeBlock.Content>{code}</CodeBlock.Content>
     </CodeBlock>
   )
 }

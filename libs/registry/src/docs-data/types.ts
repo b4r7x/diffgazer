@@ -74,16 +74,22 @@ export interface ComponentDoc {
   props?: ComponentPropsTable
 }
 
-/** @see libs/ui/registry/ui/code-block/code-block-line.tsx CodeBlockToken (extends with `className`) */
+/**
+ * Token shape shared with libs/ui/registry/ui/code-block/code-block-line.tsx
+ * CodeBlockToken. The registry-side producers populate `text` + optional
+ * `color`; `className` is reserved for runtime-side inline styling and is
+ * unused by the docs-data pipeline.
+ */
 export interface CodeBlockToken {
   text: string
   color?: string
+  className?: string
 }
 
 export interface CodeBlockLine {
   number: number
   content: CodeBlockToken[]
-  type?: "highlight" | "added" | "removed"
+  state?: "highlight" | "added" | "removed"
 }
 
 export interface HookSourceData {

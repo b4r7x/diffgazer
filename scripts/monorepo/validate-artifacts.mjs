@@ -84,6 +84,7 @@ function validateUiPackageExports() {
   }
 
   registryExports.add("./components/logo/figlet");
+  registryExports.add("./components/code-block/highlight");
   registryExports.add("./lib/utils");
   registryExports.add("./theme-base.css");
   registryExports.add("./theme.css");

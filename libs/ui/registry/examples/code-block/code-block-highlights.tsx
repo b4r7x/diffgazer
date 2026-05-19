@@ -1,23 +1,26 @@
-import { CodeBlock, CodeBlockContent, CodeBlockLine } from "@/components/ui/code-block"
+import { CodeBlock } from "@/components/ui/code-block"
 
 const lines = [
   { content: "function calculateScore(review) {" },
-  { content: "  const base = review.findings.length", type: "removed" as const },
-  { content: "  const base = review.findings.filter(f => f.severity !== 'info').length", type: "added" as const },
+  { content: "  const base = review.findings.length", state: "removed" as const },
+  { content: "  const base = review.findings.filter(f => f.severity !== 'info').length", state: "added" as const },
   { content: "" },
-  { content: "  // Apply severity weights", type: "highlight" as const },
+  { content: "  // Apply severity weights", state: "highlight" as const },
   { content: "  return base * review.weight" },
   { content: "}" },
 ]
 
 export default function CodeBlockHighlights() {
   return (
-    <CodeBlock>
-      <CodeBlockContent>
+    <CodeBlock language="ts">
+      <CodeBlock.Header>
+        <CodeBlock.Label>scoring.ts</CodeBlock.Label>
+      </CodeBlock.Header>
+      <CodeBlock.Content tone="diff">
         {lines.map((line, i) => (
-          <CodeBlockLine key={i} number={i + 1} {...line} />
+          <CodeBlock.Line key={i} number={i + 1} {...line} />
         ))}
-      </CodeBlockContent>
+      </CodeBlock.Content>
     </CodeBlock>
   )
 }

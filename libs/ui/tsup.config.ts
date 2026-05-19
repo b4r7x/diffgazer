@@ -52,6 +52,7 @@ for (const item of registry.items) {
 // Add utils (cn function)
 entry["lib/utils"] = resolve(registryRoot, "lib/utils.ts");
 entry["components/logo/figlet"] = resolve(registryRoot, "ui/logo/get-figlet-text.ts");
+entry["components/code-block/highlight"] = resolve(registryRoot, "ui/code-block/highlight.ts");
 
 /**
  * Esbuild plugin that rewrites @/ alias imports and drops .css imports.
@@ -116,6 +117,7 @@ export default defineConfig({
     "clsx",
     "tailwind-merge",
     "figlet",
+    "lowlight",
   ],
   esbuildPlugins: [aliasPlugin()],
   async onSuccess() {

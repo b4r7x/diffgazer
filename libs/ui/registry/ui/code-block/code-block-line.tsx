@@ -1,43 +1,78 @@
 "use client";
 
-import type { ComponentProps } from "react";
-import { cn } from "@/lib/utils";
+import type { ComponentProps, ReactNode } from "react";
 
-/** @see @diffgazer/registry docs-data CodeBlockToken (base without `className`) */
+/**
+ * Token shape shared with @diffgazer/registry docs-data CodeBlockToken
+ * (registry-side producers omit `className`; both shapes are structurally
+ * compatible).
+ */
 export interface CodeBlockToken {
   text: string;
+  /** Inline CSS color; consumer-trusted — only pass values you control. */
   color?: string;
   className?: string;
 }
 
-export type CodeBlockLineType = "highlight" | "added" | "removed";
+export type CodeBlockLineState = "highlight" | "added" | "removed";
 
-export interface CodeBlockLineProps extends Omit<ComponentProps<"span">, "content"> {
+export interface CodeBlockLineProps extends Omit<ComponentProps<"span">, "content" | "children"> {
   number?: number;
-  content: string | CodeBlockToken[];
-  type?: CodeBlockLineType;
+  /** Plain text or a token array for inline-styled output. Ignored if `children` is provided. */
+  content?: string | CodeBlockToken[];
+  /** Pre-rendered line body. Takes precedence over `content`; the consumer renders inside <code>. */
+  children?: ReactNode;
+  state?: CodeBlockLineState;
 }
 
-export function CodeBlockLine({ number, content, type, className, ref, ...props }: CodeBlockLineProps) {
+const NON_BREAKING_SPACE = " ";
+
+function signCharacter(state: CodeBlockLineState | undefined): string {
+  if (state === "added") return "+";
+  if (state === "removed") return "−";
+  return NON_BREAKING_SPACE;
+}
+
+function renderContent(content: string | CodeBlockToken[] | undefined): ReactNode {
+  if (content == null) return null;
+  if (typeof content === "string") return content;
+  return content.map((token, i) => (
+    <span key={i} style={{ color: token.color }} className={token.className}>
+      {token.text}
+    </span>
+  ));
+}
+
+export function CodeBlockLine({
+  number,
+  content,
+  children,
+  state,
+  className,
+  ref,
+  ...props
+}: CodeBlockLineProps) {
+  const isDiffLine = state === "added" || state === "removed";
   return (
-    <span ref={ref} className={cn("flex", type === "highlight" && "bg-muted/50", className)} {...props}>
-      {number != null && (
-        <span aria-hidden="true" className="w-8 text-muted-foreground border-r border-border mr-2 text-right pr-1 select-none shrink-0">
+    <span
+      ref={ref}
+      data-slot="code-block-line"
+      data-line-state={state}
+      className={className}
+      {...props}
+    >
+      {number != null ? (
+        <span aria-hidden="true" data-slot="code-block-line-number">
           {number}
         </span>
-      )}
-      {(type === "added" || type === "removed") && (
-        <span className="sr-only">{type === "added" ? "Added: " : "Removed: "}</span>
-      )}
-      <code className={cn("whitespace-pre", type === "added" && "text-success", type === "removed" && "text-destructive")}>
-        {typeof content === "string"
-          ? content
-          : content.map((token, i) => (
-              <span key={i} style={{ color: token.color }} className={token.className}>
-                {token.text}
-              </span>
-            ))}
-      </code>
+      ) : null}
+      <span aria-hidden="true" data-slot="code-block-line-sign">
+        {signCharacter(state)}
+      </span>
+      {isDiffLine ? (
+        <span className="sr-only">{state === "added" ? "Added: " : "Removed: "}</span>
+      ) : null}
+      <code>{children ?? renderContent(content)}</code>
     </span>
   );
 }

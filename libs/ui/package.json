@@ -145,6 +145,10 @@
       "types": "./dist/components/code-block.d.ts",
       "import": "./dist/components/code-block.js"
     },
+    "./components/code-block/highlight": {
+      "types": "./dist/components/code-block/highlight.d.ts",
+      "import": "./dist/components/code-block/highlight.js"
+    },
     "./components/diff-view": {
       "types": "./dist/components/diff-view.d.ts",
       "import": "./dist/components/diff-view.js"
@@ -306,11 +310,15 @@
   "peerDependencies": {
     "@diffgazer/keys": ">=0.1.1",
     "figlet": ">=1.10.0",
+    "lowlight": ">=3.0.0",
     "react": ">=19.2.0",
     "react-dom": ">=19.2.0"
   },
   "peerDependenciesMeta": {
     "figlet": {
+      "optional": true
+    },
+    "lowlight": {
       "optional": true
     }
   },
@@ -318,7 +326,9 @@
     "@diffgazer/keys": "workspace:*",
     "@diffgazer/registry": "workspace:*",
     "@types/figlet": "^1.7.0",
+    "@types/hast": "^3.0.4",
     "@types/jsdom": "^28.0.3",
+    "lowlight": "^3.3.0",
     "@types/node": "^25.2.3",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
