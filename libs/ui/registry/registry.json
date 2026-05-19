@@ -1318,8 +1318,7 @@
       "registryDependencies": [
         "theme",
         "diff",
-        "@diffgazer-keys/navigation",
-        "kbd"
+        "@diffgazer-keys/navigation"
       ],
       "meta": {
         "client": true,
@@ -1347,6 +1346,11 @@
         {
           "path": "registry/ui/diff-view/diff-view-split.tsx",
           "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/shared/diff-view.css",
+          "type": "registry:style",
+          "target": "~/styles/diff-view.css"
         }
       ]
     },
@@ -1994,6 +1998,10 @@
         },
         {
           "path": "registry/lib/diff/resolve.ts",
+          "type": "registry:lib"
+        },
+        {
+          "path": "registry/lib/diff/identity.ts",
           "type": "registry:lib"
         }
       ]

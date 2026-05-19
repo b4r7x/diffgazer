@@ -1,6 +1,7 @@
 export { parseDiff } from "./parse.js";
 export { computeDiff } from "./compute.js";
 export { resolveDiffInput } from "./resolve.js";
+export { parsedDiffIdentity } from "./identity.js";
 export { computeWordSegments, annotateWordDiff, createWordDiffBudget } from "./word.js";
 export { toSplitRows } from "./split.js";
 export type { ParsedDiff, DiffHunk, DiffChange, ChangeType, DiffInput, DiffInputPatch, DiffInputCompare, DiffInputParsed } from "./parse.js";

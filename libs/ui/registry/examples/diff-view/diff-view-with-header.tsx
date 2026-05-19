@@ -17,5 +17,5 @@ const patch = `--- a/src/utils/score.ts
  export function isPassingScore(score: number): boolean {`
 
 export default function DiffViewWithHeader() {
-  return <DiffView patch={patch} mode="split" showLineNumbers />
+  return <DiffView patch={patch} label="Score helper diff" mode="split" showLineNumbers />
 }

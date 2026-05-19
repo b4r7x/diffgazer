@@ -6,7 +6,7 @@
   "files": [
     {
       "path": "registry/lib/diff/index.ts",
-      "content": "export { parseDiff } from \"./parse\";\nexport { computeDiff } from \"./compute\";\nexport { resolveDiffInput } from \"./resolve\";\nexport { computeWordSegments, annotateWordDiff, createWordDiffBudget } from \"./word\";\nexport { toSplitRows } from \"./split\";\nexport type { ParsedDiff, DiffHunk, DiffChange, ChangeType, DiffInput, DiffInputPatch, DiffInputCompare, DiffInputParsed } from \"./parse\";\nexport type { WordSegment, AnnotatedChange, WordDiffBudget } from \"./word\";\nexport type { SplitCell, SplitRow } from \"./split\";\n",
+      "content": "export { parseDiff } from \"./parse\";\nexport { computeDiff } from \"./compute\";\nexport { resolveDiffInput } from \"./resolve\";\nexport { parsedDiffIdentity } from \"./identity\";\nexport { computeWordSegments, annotateWordDiff, createWordDiffBudget } from \"./word\";\nexport { toSplitRows } from \"./split\";\nexport type { ParsedDiff, DiffHunk, DiffChange, ChangeType, DiffInput, DiffInputPatch, DiffInputCompare, DiffInputParsed } from \"./parse\";\nexport type { WordSegment, AnnotatedChange, WordDiffBudget } from \"./word\";\nexport type { SplitCell, SplitRow } from \"./split\";\n",
       "type": "registry:lib"
     },
     {
@@ -42,6 +42,11 @@
     {
       "path": "registry/lib/diff/resolve.ts",
       "content": "import type { ParsedDiff, DiffInput } from \"./parse\";\nimport { parseDiff } from \"./parse\";\nimport { computeDiff } from \"./compute\";\n\nconst EMPTY: ParsedDiff = { oldPath: null, newPath: null, hunks: [] };\n\nexport function resolveDiffInput(input: DiffInput): ParsedDiff {\n  if (\"diff\" in input && input.diff != null) return input.diff;\n  if (\"patch\" in input && input.patch != null) return parseDiff(input.patch)[0] ?? EMPTY;\n  if (\"before\" in input && input.before != null && \"after\" in input && input.after != null) {\n    return computeDiff(input.before, input.after);\n  }\n  return EMPTY;\n}\n",
+      "type": "registry:lib"
+    },
+    {
+      "path": "registry/lib/diff/identity.ts",
+      "content": "import type { ParsedDiff } from \"./parse\";\n\nexport function parsedDiffIdentity(parsed: ParsedDiff): string {\n  const hunks = parsed.hunks\n    .map(\n      (h) =>\n        `${h.oldStart},${h.oldCount},${h.newStart},${h.newCount},${h.changes.length},${h.heading}`,\n    )\n    .join(\";\");\n  return `${parsed.oldPath ?? \"\"}\\x00${parsed.newPath ?? \"\"}\\x00${parsed.hunks.length}\\x00${hunks}`;\n}\n",
       "type": "registry:lib"
     }
   ],

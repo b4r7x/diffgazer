@@ -1,25 +1,36 @@
 "use client";
 
 import {
-  useState,
-  useRef,
+  useId,
   useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent,
+  type ReactNode,
   type Ref,
   type RefObject,
-  type KeyboardEvent,
 } from "react";
-import { cn } from "@/lib/utils";
 import {
-  type ParsedDiff,
-  type DiffInputPatch,
   type DiffInputCompare,
   type DiffInputParsed,
+  type DiffInputPatch,
+  parsedDiffIdentity,
   resolveDiffInput,
 } from "@/lib/diff";
 import { useNavigation } from "@/hooks/use-navigation";
-import { Kbd } from "../kbd/kbd.js";
 import { UnifiedView } from "./diff-view-unified.js";
 import { SplitView } from "./diff-view-split.js";
+
+export type DiffViewVariant =
+  | "hairline"
+  | "bare"
+  | "dense"
+  | "viewfinder"
+  | "statusbar";
+
+export type DiffViewDensity = "compact" | "default" | "comfortable";
+export type DiffViewPalette = "default" | "okabe-ito";
 
 interface DiffViewBaseProps {
   mode?: "unified" | "split";
@@ -27,7 +38,19 @@ interface DiffViewBaseProps {
   disableWordDiff?: boolean;
   label?: string;
   className?: string;
-  ref?: Ref<HTMLDivElement>;
+  variant?: DiffViewVariant;
+  density?: DiffViewDensity;
+  palette?: DiffViewPalette;
+  /** CSS length for the opt-in vertical scroll wrapper. */
+  maxHeight?: string;
+  /**
+   * Optional headless slot rendered at the bottom of the figure when
+   * `variant="statusbar"`. Consumer fills it (e.g. diff stats, kbd hints).
+   * If `variant="statusbar"` and `statusBar` is not provided the bottom
+   * area is simply not rendered.
+   */
+  statusBar?: ReactNode;
+  ref?: Ref<HTMLElement>;
 }
 
 export type DiffViewProps = (
@@ -42,26 +65,6 @@ interface ActiveHunkState {
   value: string;
 }
 
-function getParsedDiffIdentity(parsed: ParsedDiff): string {
-  return JSON.stringify([
-    parsed.oldPath,
-    parsed.newPath,
-    parsed.hunks.map((hunk) => [
-      hunk.oldStart,
-      hunk.oldCount,
-      hunk.newStart,
-      hunk.newCount,
-      hunk.heading,
-      hunk.changes.map((change) => [
-        change.type,
-        change.content,
-        change.oldLine,
-        change.newLine,
-      ]),
-    ]),
-  ]);
-}
-
 function resolveActiveHunk(
   activeHunkState: ActiveHunkState | null,
   parsedIdentity: string,
@@ -73,80 +76,13 @@ function resolveActiveHunk(
   if (!Number.isInteger(activeIndex) || activeIndex < 0 || activeIndex >= hunkCount) {
     return null;
   }
-
   return activeHunkState.value;
 }
 
-function FileHeader({
-  oldPath,
-  newPath,
-}: {
-  oldPath: string | null;
-  newPath: string | null;
-}) {
+function getFileLabel(oldPath: string | null, newPath: string | null): string | null {
   if (!oldPath && !newPath) return null;
-
-  const label =
-    oldPath && newPath && oldPath !== newPath
-      ? `${oldPath} → ${newPath}`
-      : (oldPath ?? newPath);
-
-  return (
-    <div className="px-2 py-1 bg-muted/50 border-b border-border text-muted-foreground truncate">
-      {label}
-    </div>
-  );
-}
-
-function DiffContent({
-  parsed,
-  mode,
-  showLineNumbers,
-  disableWordDiff,
-  activeHunk,
-  onKeyDown,
-  containerRef,
-}: {
-  parsed: ParsedDiff;
-  mode: "unified" | "split";
-  showLineNumbers: boolean;
-  disableWordDiff: boolean;
-  activeHunk: string | null;
-  onKeyDown: (e: KeyboardEvent) => void;
-  containerRef: RefObject<HTMLElement | null>;
-}) {
-  if (parsed.hunks.length === 0) {
-    return (
-      <div
-        className="p-4 text-center text-muted-foreground text-sm"
-        role="status"
-      >
-        No changes
-      </div>
-    );
-  }
-  if (mode === "split") {
-    return (
-      <SplitView
-        parsed={parsed}
-        showLineNumbers={showLineNumbers}
-        disableWordDiff={disableWordDiff}
-        activeHunk={activeHunk}
-        onKeyDown={onKeyDown}
-        containerRef={containerRef}
-      />
-    );
-  }
-  return (
-    <UnifiedView
-      parsed={parsed}
-      showLineNumbers={showLineNumbers}
-      disableWordDiff={disableWordDiff}
-      activeHunk={activeHunk}
-      onKeyDown={onKeyDown}
-      containerRef={containerRef}
-    />
-  );
+  if (oldPath && newPath && oldPath !== newPath) return `${oldPath} → ${newPath}`;
+  return oldPath ?? newPath;
 }
 
 export function DiffView(props: DiffViewProps) {
@@ -156,26 +92,37 @@ export function DiffView(props: DiffViewProps) {
     disableWordDiff = false,
     label,
     className,
+    variant = "hairline",
+    density,
+    palette = "default",
+    maxHeight,
+    statusBar,
     ref,
   } = props;
+
   const patch = "patch" in props ? props.patch : undefined;
   const before = "before" in props ? props.before : undefined;
   const after = "after" in props ? props.after : undefined;
   const diff = "diff" in props ? props.diff : undefined;
-  const parsed = useMemo(
-    () => resolveDiffInput(props),
-    [patch, before, after, diff],
-  );
-  const containerRef = useRef<HTMLElement | null>(null);
-  const parsedIdentity = useMemo(() => getParsedDiffIdentity(parsed), [parsed]);
+  const parsed = useMemo(() => {
+    if (diff != null) return resolveDiffInput({ diff });
+    if (patch != null) return resolveDiffInput({ patch });
+    if (before != null && after != null) return resolveDiffInput({ before, after });
+    return resolveDiffInput({ patch: "" });
+  }, [patch, before, after, diff]);
+
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const parsedIdentity = useMemo(() => parsedDiffIdentity(parsed), [parsed]);
   const [activeHunkState, setActiveHunkState] = useState<ActiveHunkState | null>(null);
   const activeHunk = resolveActiveHunk(activeHunkState, parsedIdentity, parsed.hunks.length);
 
   const { onKeyDown: navKeyDown } = useNavigation({
-    containerRef,
+    containerRef: containerRef as RefObject<HTMLElement | null>,
     role: "button",
     highlighted: activeHunk,
-    onHighlightChange: (value) => { if (value !== null) setActiveHunkState({ parsedIdentity, value }); },
+    onHighlightChange: (value) => {
+      if (value !== null) setActiveHunkState({ parsedIdentity, value });
+    },
     upKeys: ["k"],
     downKeys: ["j"],
     wrap: false,
@@ -197,37 +144,90 @@ export function DiffView(props: DiffViewProps) {
       ? `Hunk ${activeIndex + 1} of ${parsed.hunks.length}${activeHunkData.heading ? `: ${activeHunkData.heading}` : ""}`
       : "";
 
-  return (
-    <div
-      ref={ref}
-      role="region"
-      aria-roledescription="diff"
-      aria-label={label ?? "Diff output"}
-      className={cn(
-        "group bg-background border border-border font-mono text-xs",
-        className,
-      )}
-    >
-      <FileHeader oldPath={parsed.oldPath} newPath={parsed.newPath} />
-      {parsed.hunks.length > 0 && (
-        <div className="hidden group-focus-within:flex items-center gap-1 px-2 py-0.5 text-[10px] text-muted-foreground border-b border-border">
-          <Kbd size="sm">j</Kbd>
-          <Kbd size="sm">k</Kbd>
-          <span>navigate hunks</span>
-        </div>
-      )}
-      <DiffContent
+  const resolvedDensity = density ?? (variant === "dense" ? "compact" : "default");
+  const fileLabel = getFileLabel(parsed.oldPath, parsed.newPath);
+  const showFigCaption = variant !== "bare" && fileLabel !== null;
+
+  const captionId = useId();
+  const ariaLabel = showFigCaption ? undefined : (label ?? "Diff output");
+  const ariaLabelledBy = showFigCaption ? captionId : undefined;
+
+  const style = maxHeight
+    ? ({ "--dv-max-h": maxHeight } as CSSProperties)
+    : undefined;
+
+  const isDense = variant === "dense";
+  const hasHunks = parsed.hunks.length > 0;
+
+  const body = hasHunks ? (
+    mode === "split" ? (
+      <SplitView
         parsed={parsed}
-        mode={mode}
         showLineNumbers={showLineNumbers}
         disableWordDiff={disableWordDiff}
+        isDense={isDense}
         activeHunk={activeHunk}
         onKeyDown={onKeyDown}
         containerRef={containerRef}
       />
+    ) : (
+      <UnifiedView
+        parsed={parsed}
+        showLineNumbers={showLineNumbers}
+        disableWordDiff={disableWordDiff}
+        isDense={isDense}
+        activeHunk={activeHunk}
+        onKeyDown={onKeyDown}
+        containerRef={containerRef}
+      />
+    )
+  ) : (
+    <div data-slot="diff-view-empty" role="status">
+      No changes
+    </div>
+  );
+
+  return (
+    <figure
+      ref={ref}
+      data-slot="diff-view"
+      data-variant={variant}
+      data-density={resolvedDensity}
+      data-diff-palette={palette}
+      data-mode={mode}
+      data-max-h={maxHeight ? "true" : undefined}
+      aria-roledescription="diff"
+      aria-label={ariaLabel}
+      aria-labelledby={ariaLabelledBy}
+      className={className}
+      style={style}
+    >
+      {variant === "viewfinder" && (
+        <span aria-hidden="true" data-slot="diff-view-corners">
+          <span className="vf-tl" />
+          <span className="vf-tr" />
+          <span className="vf-bl" />
+          <span className="vf-br" />
+        </span>
+      )}
+      {showFigCaption && (
+        <figcaption id={captionId} data-slot="diff-view-caption">
+          {fileLabel}
+        </figcaption>
+      )}
+      {hasHunks && maxHeight ? (
+        <div data-slot="diff-view-scroll-v" className="scrollbar-thin">
+          {body}
+        </div>
+      ) : (
+        body
+      )}
+      {variant === "statusbar" && statusBar != null && (
+        <div data-slot="diff-view-statusbar">{statusBar}</div>
+      )}
       <div className="sr-only" aria-live="polite" aria-atomic="true">
         {announcement}
       </div>
-    </div>
+    </figure>
   );
 }

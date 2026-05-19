@@ -16,11 +16,6 @@ const patch = `--- a/src/utils/score.ts
 
  export function isPassingScore(score: number): boolean {`
 
-export default function DiffViewLineNumbers() {
-  return (
-    <div className="flex flex-col gap-4">
-      <DiffView patch={patch} showLineNumbers />
-      <DiffView patch={patch} mode="split" showLineNumbers />
-    </div>
-  )
+export default function DiffViewPaletteOkabeIto() {
+  return <DiffView patch={patch} palette="okabe-ito" />
 }

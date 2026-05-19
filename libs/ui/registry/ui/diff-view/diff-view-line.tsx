@@ -2,11 +2,16 @@
 
 import type { ChangeType, WordSegment } from "@/lib/diff";
 
-export const LINE_STYLE: Record<ChangeType | "hunk", string | undefined> = {
-  remove: "text-destructive",
-  add: "text-success",
-  context: undefined,
-  hunk: "text-muted-foreground bg-muted/20 -mx-2 px-2",
+/**
+ * State name applied to `data-row` for CSS row tint selectors. Mirrors the
+ * ChangeType union plus "hunk" (separator) and "empty" (split-side gap).
+ */
+export type DiffRowState = "added" | "removed" | "context" | "hunk" | "empty";
+
+export const ROW_STATE: Record<ChangeType, DiffRowState> = {
+  add: "added",
+  remove: "removed",
+  context: "context",
 };
 
 export const SR_LABEL: Partial<Record<ChangeType, string>> = {
@@ -16,12 +21,11 @@ export const SR_LABEL: Partial<Record<ChangeType, string>> = {
 
 export const LINE_PREFIX: Record<ChangeType, string> = {
   add: "+",
-  remove: "-",
+  // U+2212 MINUS SIGN — visually balanced with "+", and copy-paste keeps
+  // a clearly minus-shaped glyph for downstream tools (delta / git compat).
+  remove: "−",
   context: " ",
 };
-
-export const LINE_NUMBER_CLASS =
-  "inline-block w-8 text-right pr-2 text-muted-foreground select-none";
 
 export function formatHunkHeader(hunk: {
   oldStart: number;
@@ -46,15 +50,12 @@ export function LineContent({
     return <>{content}</>;
   }
 
-  const bg =
-    type === "add"
-      ? "bg-success/20 rounded-sm"
-      : "bg-destructive/20 rounded-sm";
+  const word = type === "add" ? "added" : "removed";
   return (
     <>
       {wordSegments.map((seg, i) =>
         seg.changed ? (
-          <span key={i} className={bg}>
+          <span key={i} data-word={word}>
             {seg.text}
           </span>
         ) : (
