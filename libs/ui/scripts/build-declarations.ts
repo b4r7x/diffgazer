@@ -228,6 +228,10 @@ try {
     "components/code-block/highlight",
     resolve(declarationRoot, "registry/ui/code-block/highlight.d.ts"),
   );
+  writePublicDeclaration(
+    "components/command-palette/highlight",
+    resolve(declarationRoot, "registry/ui/command-palette/highlight.d.ts"),
+  );
 } finally {
   rmSync(tempDir, { recursive: true, force: true });
 }

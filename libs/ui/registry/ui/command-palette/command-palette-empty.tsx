@@ -1,6 +1,5 @@
 "use client";
 
-import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 import { useCommandPaletteContext } from "./command-palette-context";
 
@@ -13,7 +12,7 @@ export function CommandPaletteEmpty({ children, className }: CommandPaletteEmpty
   const { itemCount, search } = useCommandPaletteContext();
   if (itemCount > 0 || !search) return null;
   return (
-    <div role="status" aria-live="polite" className={cn("py-6 text-center text-sm text-muted-foreground", className)}>
+    <div role="status" aria-live="polite" data-slot="command-palette-empty" className={className}>
       {children}
     </div>
   );

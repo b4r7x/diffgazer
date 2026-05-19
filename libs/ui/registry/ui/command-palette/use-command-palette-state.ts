@@ -98,10 +98,11 @@ export function useCommandPaletteState({
 
   return useMemo(() => ({
     open: isOpen, onOpenChange: handleOpenChange, highlighted: getEffectiveHighlighted(highlighted, itemIds, isHighlightedControlled),
+    onHighlightChange: setHighlighted,
     onActivate: handleActivate, search, onSearchChange: setSearch,
     shouldFilter, filter, itemCount: itemIds.length,
     listId: `${paletteId}-list`, listRef, inputRef, navKeyDown, registerItem, unregisterItem,
-  }), [isOpen, handleOpenChange, handleActivate, highlighted, itemIds, isHighlightedControlled, search, setSearch, shouldFilter, filter, paletteId, navKeyDown, registerItem, unregisterItem]);
+  }), [isOpen, handleOpenChange, handleActivate, highlighted, itemIds, isHighlightedControlled, setHighlighted, search, setSearch, shouldFilter, filter, paletteId, navKeyDown, registerItem, unregisterItem]);
 }
 
 export interface CommandPaletteItemMetadata {

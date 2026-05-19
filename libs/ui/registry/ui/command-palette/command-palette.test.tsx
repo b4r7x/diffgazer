@@ -1,8 +1,12 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { axe } from "../../../testing/utils.js"
-import { afterEach, describe, it, expect, vi } from "vitest"
+import { afterEach, beforeAll, describe, it, expect, vi } from "vitest"
+import { readFileSync } from "node:fs"
+import { resolve } from "node:path"
+import { fileURLToPath } from "node:url"
 import { CommandPalette } from "./index.js"
+import { CommandPaletteHighlightItem, categorize, matchPositions } from "./highlight.js"
 import { StrictMode, createRef, useState } from "react"
 import { Popover } from "../popover/index.js"
 
@@ -132,7 +136,7 @@ describe("CommandPalette", () => {
     expect(screen.getByRole("option", { name: /delete/i })).toBeInTheDocument()
   })
 
-  it("keeps input value synchronous while filtering converges for large item sets", async () => {
+  it("filters a 200-item list down to the matching row", async () => {
     const items = Array.from({ length: 200 }, (_, index) => `item-${index}`)
     render(
       <CommandPalette open>
@@ -545,6 +549,238 @@ describe("CommandPalette", () => {
     await waitFor(() => expect(opener).toHaveFocus())
   })
 
+  it("emits data-frame on Content root and defaults to border", () => {
+    const { rerender } = render(
+      <CommandPalette open>
+        <CommandPalette.Content>
+          <CommandPalette.Input />
+          <CommandPalette.List>
+            <CommandPalette.Item id="a">A</CommandPalette.Item>
+          </CommandPalette.List>
+        </CommandPalette.Content>
+      </CommandPalette>,
+    )
+    expect(screen.getByRole("dialog")).toHaveAttribute("data-frame", "border")
+
+    rerender(
+      <CommandPalette open>
+        <CommandPalette.Content frame="terminal">
+          <CommandPalette.Input />
+          <CommandPalette.List>
+            <CommandPalette.Item id="a">A</CommandPalette.Item>
+          </CommandPalette.List>
+        </CommandPalette.Content>
+      </CommandPalette>,
+    )
+    expect(screen.getByRole("dialog")).toHaveAttribute("data-frame", "terminal")
+  })
+
+  it("emits data-density on Content root and defaults to compact", () => {
+    const { rerender } = render(
+      <CommandPalette open>
+        <CommandPalette.Content>
+          <CommandPalette.Input />
+          <CommandPalette.List>
+            <CommandPalette.Item id="a">A</CommandPalette.Item>
+          </CommandPalette.List>
+        </CommandPalette.Content>
+      </CommandPalette>,
+    )
+    expect(screen.getByRole("dialog")).toHaveAttribute("data-density", "compact")
+
+    rerender(
+      <CommandPalette open>
+        <CommandPalette.Content density="dense">
+          <CommandPalette.Input />
+          <CommandPalette.List>
+            <CommandPalette.Item id="a">A</CommandPalette.Item>
+          </CommandPalette.List>
+        </CommandPalette.Content>
+      </CommandPalette>,
+    )
+    expect(screen.getByRole("dialog")).toHaveAttribute("data-density", "dense")
+  })
+
+  it("propagates data-tone on items and defaults to neutral", () => {
+    render(
+      <CommandPalette open>
+        <CommandPalette.Content>
+          <CommandPalette.Input />
+          <CommandPalette.List>
+            <CommandPalette.Item id="ok">Plain</CommandPalette.Item>
+            <CommandPalette.Item id="rm" tone="destructive">Delete</CommandPalette.Item>
+          </CommandPalette.List>
+        </CommandPalette.Content>
+      </CommandPalette>,
+    )
+    expect(screen.getByRole("option", { name: "Plain" })).toHaveAttribute("data-tone", "neutral")
+    expect(screen.getByRole("option", { name: "Delete" })).toHaveAttribute("data-tone", "destructive")
+  })
+
+  it("moves highlight to the item under the mouse on mousemove", async () => {
+    render(
+      <CommandPalette open>
+        <CommandPalette.Content>
+          <CommandPalette.Input />
+          <CommandPalette.List>
+            <CommandPalette.Item id="copy">Copy</CommandPalette.Item>
+            <CommandPalette.Item id="paste">Paste</CommandPalette.Item>
+          </CommandPalette.List>
+        </CommandPalette.Content>
+      </CommandPalette>,
+    )
+    const copy = screen.getByRole("option", { name: /copy/i })
+    const paste = screen.getByRole("option", { name: /paste/i })
+    expect(copy).toHaveAttribute("aria-selected", "true")
+
+    fireEvent.mouseMove(paste)
+
+    expect(paste).toHaveAttribute("aria-selected", "true")
+    expect(copy).toHaveAttribute("aria-selected", "false")
+  })
+
+  describe("CommandPaletteHighlightItem", () => {
+    it("categorize maps verbs to tones", () => {
+      expect(categorize("Delete branch")).toBe("destructive")
+      expect(categorize("Go to History")).toBe("nav")
+      expect(categorize("Toggle theme")).toBe("settings")
+      expect(categorize("Ask the assistant")).toBe("ai")
+      expect(categorize("Run tests")).toBe("action")
+      expect(categorize("Random thing")).toBe("neutral")
+    })
+
+    it("categorize returns neutral for empty and whitespace-only input", () => {
+      expect(categorize("")).toBe("neutral")
+      expect(categorize("   ")).toBe("neutral")
+    })
+
+    it("matchPositions returns contiguous indices when substring present", () => {
+      expect(matchPositions("Run tests", "tests")).toEqual([4, 5, 6, 7, 8])
+      expect(matchPositions("Run tests", "zzz")).toEqual([])
+    })
+
+    it("matchPositions falls back to fuzzy non-contiguous indices", () => {
+      // "hwl" is not contiguous in "Hello World" but each char appears in order.
+      expect(matchPositions("Hello World", "hwl")).toEqual([0, 6, 9])
+    })
+
+    it("infers tone and wraps matched characters in <mark>", async () => {
+      render(
+        <CommandPalette open search="del">
+          <CommandPalette.Content>
+            <CommandPalette.Input />
+            <CommandPalette.List>
+              <CommandPaletteHighlightItem id="rm">Delete branch</CommandPaletteHighlightItem>
+            </CommandPalette.List>
+          </CommandPalette.Content>
+        </CommandPalette>,
+      )
+
+      const item = await screen.findByRole("option", { name: /delete branch/i })
+      expect(item).toHaveAttribute("data-tone", "destructive")
+      const marks = item.querySelectorAll('mark[data-slot="command-palette-item-match"]')
+      expect(marks.length).toBe(3)
+      expect(Array.from(marks).map((m) => m.textContent).join("")).toBe("Del")
+    })
+
+    it("explicit tone overrides inferred destructive tone", () => {
+      render(
+        <CommandPalette open>
+          <CommandPalette.Content>
+            <CommandPalette.Input />
+            <CommandPalette.List>
+              <CommandPaletteHighlightItem id="rm" tone="ai">Delete branch</CommandPaletteHighlightItem>
+            </CommandPalette.List>
+          </CommandPalette.Content>
+        </CommandPalette>,
+      )
+      expect(screen.getByRole("option", { name: /delete branch/i })).toHaveAttribute("data-tone", "ai")
+    })
+
+    it("preserves non-text children when search is active (no silent content loss)", async () => {
+      render(
+        <CommandPalette open search="del">
+          <CommandPalette.Content>
+            <CommandPalette.Input />
+            <CommandPalette.List>
+              <CommandPaletteHighlightItem id="rm" label="Delete branch">
+                Delete <strong>branch</strong>
+              </CommandPaletteHighlightItem>
+            </CommandPalette.List>
+          </CommandPalette.Content>
+        </CommandPalette>,
+      )
+
+      const item = await screen.findByRole("option", { name: /delete branch/i })
+      // The <strong> node must still be in the rendered output — the highlight
+      // wrapper must not strip mixed children to gain match marks.
+      expect(item.querySelector("strong")).not.toBeNull()
+      expect(item.querySelector("strong")?.textContent).toBe("branch")
+    })
+  })
+
+  it("keeps the consumer-provided shortcut visible on the selected row", () => {
+    render(
+      <CommandPalette open>
+        <CommandPalette.Content>
+          <CommandPalette.Input />
+          <CommandPalette.List>
+            <CommandPalette.Item id="theme" shortcut="⌘T">Switch Theme</CommandPalette.Item>
+          </CommandPalette.List>
+        </CommandPalette.Content>
+      </CommandPalette>,
+    )
+    const item = screen.getByRole("option", { name: /switch theme/i })
+    expect(item).toHaveAttribute("aria-selected", "true")
+    // The shortcut span must still render its consumer text — no ↵ swap.
+    const shortcut = item.querySelector('[data-slot="command-palette-item-shortcut"]')
+    expect(shortcut?.textContent).toBe("⌘T")
+    expect(item.textContent).not.toContain("↵")
+  })
+
+  it("keyboard ArrowDown advances past a mouse-hovered row", () => {
+    render(
+      <CommandPalette open>
+        <CommandPalette.Content>
+          <CommandPalette.Input />
+          <CommandPalette.List>
+            <CommandPalette.Item id="a">Alpha</CommandPalette.Item>
+            <CommandPalette.Item id="b">Bravo</CommandPalette.Item>
+            <CommandPalette.Item id="c">Charlie</CommandPalette.Item>
+          </CommandPalette.List>
+        </CommandPalette.Content>
+      </CommandPalette>,
+    )
+
+    const a = screen.getByRole("option", { name: "Alpha" })
+    const b = screen.getByRole("option", { name: "Bravo" })
+    const c = screen.getByRole("option", { name: "Charlie" })
+    expect(a).toHaveAttribute("aria-selected", "true")
+
+    fireEvent.mouseMove(b)
+    expect(b).toHaveAttribute("aria-selected", "true")
+
+    fireEvent.keyDown(screen.getByRole("combobox"), { key: "ArrowDown" })
+    expect(c).toHaveAttribute("aria-selected", "true")
+    expect(b).toHaveAttribute("aria-selected", "false")
+  })
+
+  it("keeps data-tone on disabled rows so consumers can still target them", () => {
+    render(
+      <CommandPalette open>
+        <CommandPalette.Content>
+          <CommandPalette.Input />
+          <CommandPalette.List>
+            <CommandPalette.Item id="rm" tone="destructive" disabled>Delete branch</CommandPalette.Item>
+          </CommandPalette.List>
+        </CommandPalette.Content>
+      </CommandPalette>,
+    )
+    const item = screen.getByRole("option", { name: /delete branch/i })
+    expect(item).toHaveAttribute("data-tone", "destructive")
+    expect(item).toHaveAttribute("aria-disabled", "true")
+  })
+
   it("keeps nested portals inside the command palette dialog", async () => {
     render(
       <CommandPalette open>
@@ -574,5 +810,111 @@ describe("CommandPalette", () => {
       expect(dialog.contains(popover)).toBe(true)
       expect(popover?.parentElement).not.toBe(document.body)
     })
+  })
+})
+
+describe("CommandPalette CSS contract", () => {
+  // command-palette.css declares frame/density/heading/item rules inside
+  // @layer components. jsdom's CSSOM does not apply rules nested inside
+  // @layer (and does not support pseudo-element getComputedStyle), so these
+  // tests assert the public CSS contract by parsing the source CSS for the
+  // selectors and declarations that frame/viewfinder/terminal/disabled depend on.
+  const CSS_PATH = resolve(fileURLToPath(import.meta.url), "../../shared/command-palette.css")
+  let css = ""
+
+  beforeAll(() => {
+    css = readFileSync(CSS_PATH, "utf8")
+  })
+
+  function ruleBody(selectorFragment: string): string | null {
+    const escaped = selectorFragment.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    const match = css.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`))
+    return match?.[1] ?? null
+  }
+
+  it("viewfinder selection draws a 2px left accent bar via ::after", () => {
+    const body = ruleBody(
+      '[data-slot="command-palette-content"][data-frame="viewfinder"] [data-slot="command-palette-item"][aria-selected="true"]::after',
+    )
+    expect(body).not.toBeNull()
+    expect(body).toContain("width: 2px")
+    expect(body).toContain("background: var(--cp-fg)")
+    expect(body).toContain('content: ""')
+  })
+
+  it("viewfinder group headings render uppercase with letter-spacing", () => {
+    const body = ruleBody(
+      '[data-slot="command-palette-content"][data-frame="viewfinder"] [data-slot="command-palette-group-heading"]',
+    )
+    expect(body).not.toBeNull()
+    expect(body).toContain("text-transform: uppercase")
+    expect(body).toContain("letter-spacing: 0.06em")
+    expect(body).toContain("font-size: 11px")
+  })
+
+  it("terminal frame heading adopts the kebab padding and lighter weight", () => {
+    const body = ruleBody(
+      '[data-slot="command-palette-content"][data-frame="terminal"] [data-slot="command-palette-group-heading"]',
+    )
+    expect(body).not.toBeNull()
+    expect(body).toContain("font-weight: 400")
+    expect(body).toContain("padding: 6px var(--cp-input-px) 2px")
+  })
+
+  it("terminal-frame selected row re-tints the tone bar to --cp-bg", () => {
+    const body = ruleBody(
+      '[data-slot="command-palette-content"][data-frame="terminal"] [data-slot="command-palette-item"][aria-selected="true"][data-tone]:not([data-tone="neutral"])::before',
+    )
+    expect(body).not.toBeNull()
+    expect(body).toContain("background: var(--cp-bg)")
+  })
+
+  it("disabled items hide the tone bar", () => {
+    const body = ruleBody(
+      '[data-slot="command-palette-item"][aria-disabled="true"]::before',
+    )
+    expect(body).not.toBeNull()
+    expect(body).toContain("display: none")
+  })
+
+  it("card frame defines a rounded shell with a gradient surface", () => {
+    const body = ruleBody(
+      '[data-slot="command-palette-content"][data-frame="card"]',
+    )
+    expect(body).not.toBeNull()
+    expect(body).toContain("border-radius: 8px")
+    expect(body).toContain("border: 1px solid var(--cp-border)")
+    expect(body).toContain("linear-gradient")
+  })
+
+  it("card frame items float with rounded selection inside the list padding", () => {
+    const itemBody = ruleBody(
+      '[data-slot="command-palette-content"][data-frame="card"] [data-slot="command-palette-item"]',
+    )
+    expect(itemBody).not.toBeNull()
+    expect(itemBody).toContain("margin: 0 var(--cp-list-p)")
+    expect(itemBody).toContain("border-radius: 6px")
+
+    const selectedBody = ruleBody(
+      '[data-slot="command-palette-content"][data-frame="card"] [data-slot="command-palette-item"][aria-selected="true"]',
+    )
+    expect(selectedBody).not.toBeNull()
+    expect(selectedBody).toContain("background: color-mix(in oklab, var(--cp-fg) 8%, transparent)")
+  })
+})
+
+describe("CommandPaletteContent card frame", () => {
+  it("emits data-frame=card on the dialog when frame=card is set", () => {
+    render(
+      <CommandPalette open>
+        <CommandPalette.Content frame="card">
+          <CommandPalette.Input />
+          <CommandPalette.List>
+            <CommandPalette.Item id="a">Alpha</CommandPalette.Item>
+          </CommandPalette.List>
+        </CommandPalette.Content>
+      </CommandPalette>,
+    )
+    expect(screen.getByRole("dialog")).toHaveAttribute("data-frame", "card")
   })
 })

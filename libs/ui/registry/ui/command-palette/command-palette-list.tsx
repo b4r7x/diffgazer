@@ -20,7 +20,8 @@ export function CommandPaletteList({ children, className, "aria-label": ariaLabe
       ref={composeRefs(listRef, ref)}
       role="listbox"
       aria-label={ariaLabel}
-      className={cn("flex-1 overflow-y-auto p-2 space-y-1", className)}
+      data-slot="command-palette-list"
+      className={cn("flex-1 overflow-y-auto", className)}
     >
       {children}
     </div>

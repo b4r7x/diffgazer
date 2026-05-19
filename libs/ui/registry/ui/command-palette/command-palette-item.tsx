@@ -1,27 +1,17 @@
 "use client";
 
-import { useDeferredValue, useId, useLayoutEffect, useRef, type ComponentPropsWithRef, type MouseEvent, type ReactNode } from "react";
-import { cva } from "class-variance-authority";
+import { useId, useLayoutEffect, useRef, type ComponentPropsWithRef, type MouseEvent, type ReactNode } from "react";
 import { composeRefs } from "@/lib/compose-refs";
-import { cn } from "@/lib/utils";
 import { useCommandPaletteContext } from "./command-palette-context";
 import { getCommandPaletteItemDomId } from "./use-command-palette-state";
 
-const itemVariants = cva(
-  "w-full text-left flex items-center justify-between px-3 py-2.5 text-sm group cursor-pointer select-none",
-  {
-    variants: {
-      selected: {
-        true: "bg-foreground text-background font-medium",
-        false: "text-foreground hover:bg-secondary hover:text-foreground transition-colors",
-      },
-      disabled: {
-        true: "opacity-50 cursor-not-allowed",
-      },
-    },
-    defaultVariants: { selected: false },
-  }
-);
+export type CommandPaletteItemTone =
+  | "neutral"
+  | "nav"
+  | "action"
+  | "settings"
+  | "destructive"
+  | "ai";
 
 export interface CommandPaletteItemProps
   extends Omit<ComponentPropsWithRef<"div">, "children" | "id" | "onSelect"> {
@@ -29,6 +19,7 @@ export interface CommandPaletteItemProps
   value?: string;
   icon?: ReactNode;
   shortcut?: string;
+  tone?: CommandPaletteItemTone;
   onSelect?: () => void;
   disabled?: boolean;
   children: ReactNode;
@@ -39,16 +30,19 @@ export function CommandPaletteItem({
   value,
   icon,
   shortcut,
+  tone = "neutral",
   onSelect,
   disabled = false,
   children,
   className,
   ref,
   onClick,
+  onMouseMove,
   ...props
 }: CommandPaletteItemProps) {
   const {
     highlighted,
+    onHighlightChange,
     onActivate,
     search,
     shouldFilter,
@@ -61,9 +55,7 @@ export function CommandPaletteItem({
   const rootRef = useRef<HTMLDivElement>(null);
 
   const searchValue = value ?? id;
-  // Defer at the consumer so the input's synchronous value drives typing while filtering can lag a frame.
-  const deferredSearch = useDeferredValue(search);
-  const isVisible = !shouldFilter || !deferredSearch || filter(searchValue, deferredSearch);
+  const isVisible = !shouldFilter || !search || filter(searchValue, search);
 
   useLayoutEffect(() => {
     registerItem({
@@ -80,9 +72,16 @@ export function CommandPaletteItem({
   if (!isVisible) return null;
 
   const isHighlighted = highlighted === id;
+
   const handleClick = (event: MouseEvent<HTMLDivElement>) => {
     onClick?.(event);
     if (!event.defaultPrevented && !disabled) onActivate(id);
+  };
+
+  const handleMouseMove = (event: MouseEvent<HTMLDivElement>) => {
+    onMouseMove?.(event);
+    if (event.defaultPrevented || disabled) return;
+    if (highlighted !== id) onHighlightChange(id);
   };
 
   return (
@@ -91,26 +90,22 @@ export function CommandPaletteItem({
       ref={composeRefs(rootRef, ref)}
       id={getCommandPaletteItemDomId(listId, id)}
       role="option"
+      data-slot="command-palette-item"
       data-value={id}
+      data-tone={tone}
       aria-selected={isHighlighted}
       aria-disabled={disabled || undefined}
       onClick={handleClick}
-      className={cn(itemVariants({ selected: isHighlighted, disabled }), className)}
+      onMouseMove={handleMouseMove}
+      className={className}
     >
-      <div className="flex items-center gap-3">
-        {icon && (
-          <span className={cn("text-[18px]", !isHighlighted && "text-muted-foreground group-hover:text-foreground")}>
-            {icon}
-          </span>
-        )}
-        <span>{children}</span>
-      </div>
-      {isHighlighted && (
-        <span className="text-[10px] font-bold opacity-70">{"\u21B5"}</span>
+      {icon !== undefined && (
+        <span data-slot="command-palette-item-icon">{icon}</span>
       )}
-      {!isHighlighted && shortcut && (
-        <span className="text-[10px] text-muted-foreground/70 group-hover:text-muted-foreground font-mono">{shortcut}</span>
-      )}
+      <span data-slot="command-palette-item-label">{children}</span>
+      {shortcut ? (
+        <span data-slot="command-palette-item-shortcut">{shortcut}</span>
+      ) : null}
     </div>
   );
 }

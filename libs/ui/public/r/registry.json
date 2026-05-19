@@ -1388,7 +1388,7 @@
       "name": "command-palette",
       "type": "registry:ui",
       "title": "Command Palette",
-      "description": "Terminal-inspired command palette with search, keyboard navigation, and grouped items",
+      "description": "Terminal-inspired command palette with search, keyboard navigation, grouped items, frame and density variants, and optional auto-coloring via the /highlight subpath",
       "dependencies": [
         "class-variance-authority"
       ],
@@ -1401,7 +1401,8 @@
         "https://docs.diffgazer.b4r7.dev/r/ui/dialog-shell.json",
         "https://docs.diffgazer.b4r7.dev/r/ui/portal.json",
         "https://docs.diffgazer.b4r7.dev/r/ui/search.json",
-        "https://docs.diffgazer.b4r7.dev/r/ui/selectable-collection.json"
+        "https://docs.diffgazer.b4r7.dev/r/ui/selectable-collection.json",
+        "https://docs.diffgazer.b4r7.dev/r/ui/kbd.json"
       ],
       "meta": {
         "client": true,
@@ -1451,8 +1452,21 @@
           "type": "registry:ui"
         },
         {
+          "path": "registry/ui/command-palette/command-palette-highlight.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/command-palette/highlight.ts",
+          "type": "registry:ui"
+        },
+        {
           "path": "registry/ui/command-palette/use-command-palette-state.ts",
           "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/shared/command-palette.css",
+          "type": "registry:style",
+          "target": "~/styles/command-palette.css"
         }
       ]
     },

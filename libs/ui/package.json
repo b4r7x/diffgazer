@@ -161,6 +161,10 @@
       "types": "./dist/components/command-palette.d.ts",
       "import": "./dist/components/command-palette.js"
     },
+    "./components/command-palette/highlight": {
+      "types": "./dist/components/command-palette/highlight.d.ts",
+      "import": "./dist/components/command-palette/highlight.js"
+    },
     "./components/select": {
       "types": "./dist/components/select.d.ts",
       "import": "./dist/components/select.js"

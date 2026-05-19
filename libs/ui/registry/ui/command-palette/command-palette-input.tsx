@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils";
 import { type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type Ref } from "react";
 import { composeRefs } from "@/lib/compose-refs";
+import { Kbd } from "@/components/ui/kbd";
 import { useCommandPaletteContext } from "./command-palette-context";
 import { getCommandPaletteItemDomId } from "./use-command-palette-state";
 
@@ -19,7 +20,7 @@ export interface CommandPaletteInputProps {
 }
 
 export function CommandPaletteInput({
-  placeholder = "Type a command...",
+  placeholder = "Type a command…",
   label = "Command search",
   prefix,
   suffix,
@@ -30,8 +31,12 @@ export function CommandPaletteInput({
   const { open, search, onSearchChange, navKeyDown, highlighted, listId, inputRef } = useCommandPaletteContext();
 
   return (
-    <div className={cn("flex items-center p-4 border-b border-border/60", className)}>
-      {prefix ?? <span className="text-foreground text-[20px] mr-3 font-bold select-none">&gt;</span>}
+    <div data-slot="command-palette-input" className={cn(className)}>
+      {prefix !== undefined ? (
+        <span data-slot="command-palette-input-prefix">{prefix}</span>
+      ) : (
+        <span data-slot="command-palette-input-prefix" data-default aria-hidden="true" />
+      )}
       <input
         ref={ref ? composeRefs(inputRef, ref) : inputRef}
         type="text"
@@ -57,12 +62,15 @@ export function CommandPaletteInput({
           if (INPUT_NAVIGATION_KEYS.has(e.key)) navKeyDown(e);
         }}
         placeholder={placeholder}
-        className="w-full bg-transparent border-none p-0 text-foreground placeholder-muted-foreground/70 font-mono text-sm caret-foreground h-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        className="flex-1 min-w-0 bg-transparent border-0 outline-none p-0 text-foreground placeholder-muted-foreground/70 font-mono caret-foreground"
+        style={{ fontSize: "var(--cp-text-size)" }}
       />
-      {suffix ?? (
-        <div className="text-[10px] font-bold text-muted-foreground border border-border px-1.5 py-0.5 rounded ml-2 select-none">
-          ESC
-        </div>
+      {suffix !== undefined ? (
+        <span data-slot="command-palette-input-suffix">{suffix}</span>
+      ) : (
+        <span data-slot="command-palette-input-suffix">
+          <Kbd size="sm">Esc</Kbd>
+        </span>
       )}
     </div>
   );

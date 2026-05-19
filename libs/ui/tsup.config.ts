@@ -53,6 +53,7 @@ for (const item of registry.items) {
 entry["lib/utils"] = resolve(registryRoot, "lib/utils.ts");
 entry["components/logo/figlet"] = resolve(registryRoot, "ui/logo/get-figlet-text.ts");
 entry["components/code-block/highlight"] = resolve(registryRoot, "ui/code-block/highlight.ts");
+entry["components/command-palette/highlight"] = resolve(registryRoot, "ui/command-palette/highlight.ts");
 
 /**
  * Esbuild plugin that rewrites @/ alias imports and drops .css imports.

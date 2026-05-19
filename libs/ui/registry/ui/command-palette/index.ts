@@ -6,7 +6,7 @@ import { CommandPaletteInput, type CommandPaletteInputProps } from "./command-pa
 import { CommandPaletteList, type CommandPaletteListProps } from "./command-palette-list";
 import { CommandPaletteGroup, type CommandPaletteGroupProps } from "./command-palette-group";
 import { CommandPaletteFooter, type CommandPaletteFooterProps } from "./command-palette-footer";
-import { CommandPaletteItem, type CommandPaletteItemProps } from "./command-palette-item";
+import { CommandPaletteItem, type CommandPaletteItemProps, type CommandPaletteItemTone } from "./command-palette-item";
 import { CommandPaletteEmpty, type CommandPaletteEmptyProps } from "./command-palette-empty";
 
 const CommandPalette = Object.assign(CommandPaletteRoot, {
@@ -24,6 +24,6 @@ export { CommandPaletteContent, type CommandPaletteContentProps };
 export { CommandPaletteInput, type CommandPaletteInputProps };
 export { CommandPaletteList, type CommandPaletteListProps };
 export { CommandPaletteGroup, type CommandPaletteGroupProps };
-export { CommandPaletteItem, type CommandPaletteItemProps };
+export { CommandPaletteItem, type CommandPaletteItemProps, type CommandPaletteItemTone };
 export { CommandPaletteEmpty, type CommandPaletteEmptyProps };
 export { CommandPaletteFooter, type CommandPaletteFooterProps };

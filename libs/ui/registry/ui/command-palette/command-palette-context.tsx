@@ -7,6 +7,7 @@ export interface CommandPaletteContextValue {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   highlighted: string | null;
+  onHighlightChange: (id: string | null) => void;
   onActivate: (id: string) => void;
   search: string;
   onSearchChange: (value: string) => void;
