@@ -15,7 +15,7 @@
     },
     {
       "path": "registry/ui/pager/pager.tsx",
-      "content": "\"use client\"\n\nimport type { ComponentPropsWithRef } from \"react\"\nimport { cn } from \"@/lib/utils\"\n\nexport interface PagerProps extends ComponentPropsWithRef<\"nav\"> {}\n\nexport function Pager({ className, ref, children, ...props }: PagerProps) {\n  return (\n    <nav\n      ref={ref}\n      aria-label=\"Page navigation\"\n      className={cn(\n        \"flex items-center justify-between border-t border-border pt-4 mt-8\",\n        className\n      )}\n      {...props}\n    >\n      {children}\n    </nav>\n  )\n}",
+      "content": "\"use client\"\n\nimport type { ComponentPropsWithRef } from \"react\"\nimport { cn } from \"@/lib/utils\"\n\nexport interface PagerProps extends ComponentPropsWithRef<\"nav\"> {}\n\nexport function Pager({ className, ref, children, ...props }: PagerProps) {\n  return (\n    <nav\n      ref={ref}\n      aria-label=\"Page navigation\"\n      className={cn(\n        \"flex items-center justify-between gap-4 border-t border-border pt-4 mt-8\",\n        className\n      )}\n      {...props}\n    >\n      {children}\n    </nav>\n  )\n}",
       "type": "registry:ui"
     },
     {

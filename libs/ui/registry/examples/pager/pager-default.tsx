@@ -2,9 +2,11 @@ import { Pager, PagerLink } from "@/components/ui/pager"
 
 export default function PagerDefault() {
   return (
-    <Pager>
-      <PagerLink direction="previous" href="/docs/components/button">button</PagerLink>
-      <PagerLink direction="next" href="/docs/components/checkbox">checkbox</PagerLink>
-    </Pager>
+    <div className="mx-auto w-full max-w-2xl">
+      <Pager>
+        <PagerLink direction="previous" href="/docs/components/button">Button</PagerLink>
+        <PagerLink direction="next" href="/docs/components/checkbox">Checkbox</PagerLink>
+      </Pager>
+    </div>
   )
 }

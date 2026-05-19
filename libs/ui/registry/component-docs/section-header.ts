@@ -10,7 +10,7 @@ export const sectionHeaderDoc: ComponentDoc = {
     },
     {
       title: "Heading Level",
-      content: "The as prop renders as h2, h3, or h4 (defaults to h3). All levels share the same uppercase tracking-wider styling.",
+      content: "The as prop renders as h2, h3, or h4 (defaults to h3). H2 reads largest, h3 is the default size, h4 reads smallest — all sharing the same uppercase tracking-wider styling.",
     },
   ],
   usage: { example: "section-header-default" },

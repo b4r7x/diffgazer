@@ -2,3 +2,4 @@
 @import "../styles/styles.css";
 @source "../registry/ui";
 @source "../registry/hooks";
+@source "../registry/examples";
