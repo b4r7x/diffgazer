@@ -1,0 +1,19 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "floating-indicator",
+  "title": "Floating Indicator",
+  "description": "Measures the rect of an active child inside a container so a single sliding indicator (segmented pill, tab marker) can transform between siblings via ResizeObserver + MutationObserver.",
+  "dependencies": [],
+  "registryDependencies": [],
+  "files": [
+    {
+      "path": "registry/hooks/use-floating-indicator.ts",
+      "content": "\"use client\";\n\nimport { useLayoutEffect, useState, type RefObject } from \"react\";\n\nexport interface FloatingIndicatorRect {\n  left: number;\n  width: number;\n  top: number;\n  height: number;\n}\n\n/**\n * Measures the bounding box of the currently active item inside a container\n * and returns it in container-relative coordinates. Used by sliding-pill\n * variants (Mantine FloatingIndicator pattern) so a single indicator element\n * can transform between siblings.\n *\n * The hook owns the CSS-escape of `activeValue` so the caller does not need\n * to import the DOM-only `CSS` global — keeping the SSR boundary explicit.\n *\n * A `MutationObserver` re-measures when the container's children change\n * (lazy lists, deferred mounts) so the indicator re-pins itself when the\n * active item appears later or is replaced.\n *\n * Returns `null` until the first measurement lands so consumers can suppress\n * the indicator entirely on first paint (avoids \"pill slides in from 0\" on\n * mount).\n */\nexport function useFloatingIndicator(\n  containerRef: RefObject<HTMLElement | null>,\n  activeValue: string | null,\n): FloatingIndicatorRect | null {\n  const [rect, setRect] = useState<FloatingIndicatorRect | null>(null);\n\n  useLayoutEffect(() => {\n    const container = containerRef.current;\n    if (!container || activeValue == null) {\n      setRect(null);\n      return;\n    }\n\n    const selector = `[data-value=\"${CSS.escape(activeValue)}\"]`;\n\n    const findTarget = (): HTMLElement | null => {\n      const node = container.querySelector(selector);\n      return node instanceof HTMLElement ? node : null;\n    };\n\n    let currentTarget: HTMLElement | null = null;\n    const resizeObserver = new ResizeObserver(() => measure());\n    const mutationObserver = new MutationObserver(() => measure());\n\n    const measure = () => {\n      const target = findTarget();\n      if (!target) {\n        if (currentTarget) {\n          resizeObserver.unobserve(currentTarget);\n          currentTarget = null;\n        }\n        setRect(null);\n        return;\n      }\n      if (target !== currentTarget) {\n        if (currentTarget) resizeObserver.unobserve(currentTarget);\n        resizeObserver.observe(target);\n        currentTarget = target;\n      }\n      const containerBox = container.getBoundingClientRect();\n      const itemBox = target.getBoundingClientRect();\n      setRect({\n        left: itemBox.left - containerBox.left,\n        width: itemBox.width,\n        top: itemBox.top - containerBox.top,\n        height: itemBox.height,\n      });\n    };\n\n    measure();\n    resizeObserver.observe(container);\n    mutationObserver.observe(container, { childList: true, subtree: true });\n\n    return () => {\n      resizeObserver.disconnect();\n      mutationObserver.disconnect();\n    };\n  }, [containerRef, activeValue]);\n\n  return rect;\n}\n",
+      "type": "registry:hook"
+    }
+  ],
+  "meta": {
+    "client": true
+  },
+  "type": "registry:hook"
+}

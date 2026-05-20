@@ -60,10 +60,10 @@ export function Toaster({ position = "bottom-right" }: ToasterProps) {
       ref={containerRef}
       role="region"
       aria-label="Notifications"
-      onMouseEnter={hasToasts ? pause : undefined}
-      onMouseLeave={hasToasts ? resume : undefined}
-      onFocus={hasToasts ? pause : undefined}
-      onBlur={hasToasts ? handleBlur : undefined}
+      onMouseEnter={pause}
+      onMouseLeave={resume}
+      onFocus={pause}
+      onBlur={handleBlur}
       className={cn(
         // UA stylesheet for [popover] applies inset:0, margin:auto, fit-content
         // sizing, plus a default border/padding/background. Override those so

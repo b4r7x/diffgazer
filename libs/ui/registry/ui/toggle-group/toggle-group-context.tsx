@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, type RefObject } from "react";
+import type { SegmentedSize, SegmentedVariant } from "@/lib/segmented-variants";
 
 export type ToggleGroupSelectionMode = "single" | "multiple";
 
@@ -10,7 +11,8 @@ export interface ToggleGroupContextValue {
   onChange: (value: string) => void;
   onHighlightChange: (value: string | null) => void;
   disabled: boolean;
-  size: "sm" | "md";
+  size: SegmentedSize;
+  variant: SegmentedVariant;
   highlightedValue: string | null;
   containerRef: RefObject<HTMLDivElement | null>;
   usesButtonSemantics: boolean;

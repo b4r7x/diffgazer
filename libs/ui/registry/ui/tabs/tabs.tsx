@@ -12,6 +12,7 @@ import {
   useState,
 } from "react";
 import { useControllableState } from "@/hooks/use-controllable-state";
+import type { SegmentedSize, SegmentedVariant } from "@/lib/segmented-variants";
 import { cn } from "@/lib/utils";
 import { TabsContext } from "./tabs-context";
 import { TabsContent } from "./tabs-content";
@@ -23,7 +24,19 @@ export interface TabsProps<TValue extends string = string>
   onChange?: (value: TValue) => void;
   defaultValue?: TValue;
   orientation?: "horizontal" | "vertical";
-  variant?: "default" | "underline";
+  /**
+   * Visual variant. Tabs shares its segmented chrome with `ToggleGroup` via the
+   * `segmentedItemVariants` / `segmentedContainerVariants` CVA module.
+   *   - `underline` — gapped row with a foreground underline on the active tab (default).
+   *   - `default`   — bordered button row; active = inverted block.
+   *   - `bracket`   — frameless, active tab wears `[ … ]` markers.
+   *   - `pill`      — joined track with a single sliding indicator. Horizontal-only:
+   *                   the shared sliding indicator slides along `left`/`width`, so
+   *                   pairing `variant="pill"` with `orientation="vertical"` leaves
+   *                   the indicator pinned to the top of the track.
+   */
+  variant?: SegmentedVariant;
+  size?: SegmentedSize;
   activationMode?: "automatic" | "manual";
   ref?: Ref<HTMLDivElement>;
 }
@@ -103,7 +116,8 @@ function TabsRoot<TValue extends string = string>({
   onChange,
   defaultValue,
   orientation = "horizontal",
-  variant = "default",
+  variant = "underline",
+  size = "sm",
   activationMode = "automatic",
   children,
   className,
@@ -143,9 +157,10 @@ function TabsRoot<TValue extends string = string>({
       triggerValues,
       orientation,
       variant,
+      size,
       activationMode,
     }),
-    [tabsId, resolvedValue, resolvedFocusedValue, activationMode, setValue, panelValues, triggerValues, orientation, variant],
+    [tabsId, resolvedValue, resolvedFocusedValue, activationMode, setValue, panelValues, triggerValues, orientation, variant, size],
   );
 
   return (

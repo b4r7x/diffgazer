@@ -217,6 +217,10 @@
       "types": "./dist/hooks/form-reset.d.ts",
       "import": "./dist/hooks/form-reset.js"
     },
+    "./hooks/floating-indicator": {
+      "types": "./dist/hooks/floating-indicator.d.ts",
+      "import": "./dist/hooks/floating-indicator.js"
+    },
     "./hooks/active-heading": {
       "types": "./dist/hooks/active-heading.d.ts",
       "import": "./dist/hooks/active-heading.js"

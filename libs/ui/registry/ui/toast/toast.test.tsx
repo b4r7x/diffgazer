@@ -1,5 +1,4 @@
-import { render, screen, act, waitFor } from "@testing-library/react"
-import userEvent from "@testing-library/user-event"
+import { render, screen, act, waitFor, fireEvent } from "@testing-library/react"
 import { axe } from "../../../testing/utils.js"
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { toast, Toaster } from "./index.js"
@@ -71,7 +70,7 @@ describe("Toast", () => {
     expect(screen.queryByText("Quick")).not.toBeInTheDocument()
   })
 
-  it("does not auto-dismiss error variant without explicit duration", () => {
+  it("does not auto-dismiss error tone without explicit duration", () => {
     render(<Toaster />)
     act(() => { toast.error("Error occurred") })
 
@@ -79,7 +78,7 @@ describe("Toast", () => {
     expect(screen.getByText("Error occurred")).toBeInTheDocument()
   })
 
-  it("auto-dismisses error variant with explicit duration", () => {
+  it("auto-dismisses error tone with explicit duration", () => {
     render(<Toaster />)
     act(() => { toast.error("Error occurred", { duration: 2000 }) })
 
@@ -88,7 +87,7 @@ describe("Toast", () => {
     expect(screen.queryByText("Error occurred")).not.toBeInTheDocument()
   })
 
-  it("creates toast via variant helpers", () => {
+  it("creates toast via tone helpers and tags data-tone", () => {
     render(<Toaster />)
     act(() => {
       toast.success("Saved!")
@@ -101,6 +100,19 @@ describe("Toast", () => {
     expect(screen.getByText("Caution!")).toBeInTheDocument()
     expect(screen.getByText("FYI")).toBeInTheDocument()
     expect(screen.getByRole("alert")).toHaveTextContent("Failed!")
+
+    // querySelector: data-tone is the public attribute contract — the role
+    // queries above prove ARIA semantics; this is a structural check on the
+    // tone tagging used by CSS selectors and downstream tooling.
+    const success = document.querySelector('[data-slot="toast"][data-tone="success"]')
+    expect(success).not.toBeNull()
+    expect(success).toHaveTextContent("Saved!")
+  })
+
+  it("renders role=alert for tone=error via the imperative options form", () => {
+    render(<Toaster />)
+    act(() => { toast("Boom", { tone: "error" }) })
+    expect(screen.getByRole("alert")).toHaveTextContent("Boom")
   })
 
   it("renders the loading toast spinner via the lazy chunk", async () => {
@@ -110,9 +122,6 @@ describe("Toast", () => {
 
     const toastEl = screen.getByText("Working").closest('[role="status"]')
     expect(toastEl).not.toBeNull()
-    // querySelector: Spinner sits inside an aria-hidden icon span and is
-    // excluded from the accessibility tree; this structural assertion
-    // confirms the Suspense fallback resolved and the spinner mounted.
     await waitFor(() => {
       expect(toastEl?.querySelector('[role="status"][aria-label="Loading"]')).not.toBeNull()
     })
@@ -270,11 +279,6 @@ describe("Toast", () => {
   })
 
   it("renders a toast triggered while a modal dialog is open", () => {
-    // Native <dialog>.showModal() promotes the dialog into the browser top-
-    // layer, hiding any z-index-positioned overlay. The Toaster opts into the
-    // Popover API when supported so its content joins the top-layer above the
-    // dialog; in environments without Popover support (jsdom) the toast stays
-    // in the DOM and is announced via role="alert".
     render(
       <>
         <Dialog defaultOpen>
@@ -330,16 +334,9 @@ describe("Toast", () => {
     })
 
     try {
-      // [popover] is hidden by the UA stylesheet until showPopover() runs;
-      // querySelector bypasses accessibility-tree filtering so we can read
-      // the attribute and confirm the container opted in.
-      // querySelector: structural assertion on the popover container which
-      // the UA stylesheet hides until top-layer promotion.
       const { unmount, container } = render(<Toaster />)
-      // No toasts → popover should not be opened yet.
       expect(openCount).toBe(0)
 
-      // First toast → popover opens once.
       act(() => { toast("Top-layer toast", { id: "tl-1" }) })
       const region = container.ownerDocument.querySelector("[role='region'][aria-label='Notifications']")
       expect(region).not.toBeNull()
@@ -347,15 +344,11 @@ describe("Toast", () => {
       expect(region).toHaveAttribute("data-popover-open")
       expect(openCount).toBe(1)
 
-      // Dismiss everything → effect cleanup hides the popover.
       act(() => { toast.dismiss() })
       act(() => { vi.advanceTimersByTime(250) })
       expect(region).not.toHaveAttribute("data-popover-open")
       expect(openCount).toBe(0)
 
-      // A new toast after dismissal re-issues showPopover(); a real browser
-      // moves the popover to the back of the top-layer, so a toast raised
-      // AFTER a dialog opens still paints above it.
       act(() => { toast("Re-issued", { id: "tl-2" }) })
       expect(region).toHaveAttribute("data-popover-open")
       expect(openCount).toBe(1)
@@ -373,11 +366,83 @@ describe("Toast", () => {
     }
   })
 
+  it("pauses auto-dismiss on pointer hover and resumes on leave (WCAG 2.2.1)", () => {
+    render(<Toaster />)
+    act(() => { toast("Hovered toast", { duration: 3000 }) })
+
+    act(() => { vi.advanceTimersByTime(1000) })
+
+    const region = screen.getByRole("region", { name: "Notifications" })
+    act(() => { fireEvent.mouseEnter(region) })
+
+    act(() => { vi.advanceTimersByTime(10000) })
+    expect(screen.getByText("Hovered toast")).toBeInTheDocument()
+
+    act(() => { fireEvent.mouseLeave(region) })
+    act(() => { vi.advanceTimersByTime(2000) })
+    act(() => { vi.advanceTimersByTime(250) })
+    expect(screen.queryByText("Hovered toast")).not.toBeInTheDocument()
+  })
+
+  it("pauses auto-dismiss when focus enters the region and resumes on blur (WCAG 2.2.1)", () => {
+    render(<Toaster />)
+    act(() => {
+      toast("Focusable toast", {
+        duration: 3000,
+        action: <button type="button">Undo</button>,
+      })
+    })
+
+    act(() => { vi.advanceTimersByTime(1000) })
+
+    const actionButton = screen.getByRole("button", { name: "Undo" })
+    act(() => { actionButton.focus() })
+
+    act(() => { vi.advanceTimersByTime(10000) })
+    expect(screen.getByText("Focusable toast")).toBeInTheDocument()
+
+    act(() => { actionButton.blur() })
+    act(() => { vi.advanceTimersByTime(2000) })
+    act(() => { vi.advanceTimersByTime(250) })
+    expect(screen.queryByText("Focusable toast")).not.toBeInTheDocument()
+  })
+
+  it("resumes auto-dismiss after the last toast is removed (no sticky-paused state)", () => {
+    render(<Toaster />)
+    act(() => { toast("First", { id: "stick-1" }) })
+
+    const region = screen.getByRole("region", { name: "Notifications" })
+    act(() => { fireEvent.mouseEnter(region) })
+
+    act(() => { toast.dismiss("stick-1") })
+    act(() => { vi.advanceTimersByTime(250) })
+    expect(screen.queryByText("First")).not.toBeInTheDocument()
+
+    // Cursor leaves the (now empty) region; without the fix, resume() never
+    // fires and the next toast inherits a frozen timer.
+    act(() => { fireEvent.mouseLeave(region) })
+
+    act(() => { toast("Second", { id: "stick-2", duration: 1000 }) })
+    act(() => { vi.advanceTimersByTime(1000) })
+    act(() => { vi.advanceTimersByTime(250) })
+    expect(screen.queryByText("Second")).not.toBeInTheDocument()
+  })
+
+  it("renders a visible focus ring on the close button (WCAG 2.4.13)", () => {
+    render(<Toaster />)
+    act(() => { toast("Closeable", { message: "Body" }) })
+    const close = screen.getByRole("button", { name: /Dismiss: Closeable/ })
+    // The focus-visible utilities below are the public a11y contract: a 2px
+    // primary-coloured ring offset 2px from the button matches the project's
+    // shared focus appearance (Button, Dialog.CloseIcon).
+    expect(close.className).toMatch(/focus-visible:ring-2/)
+    expect(close.className).toMatch(/focus-visible:ring-offset-2/)
+  })
+
   it("pauses auto-dismiss while document is hidden and resumes on return", () => {
     render(<Toaster />)
     act(() => { toast("Paused toast", { duration: 3000 }) })
 
-    // Consume part of the duration before hiding
     act(() => { vi.advanceTimersByTime(1000) })
 
     Object.defineProperty(document, "hidden", { value: true, writable: true, configurable: true })
@@ -385,11 +450,9 @@ describe("Toast", () => {
       document.dispatchEvent(new Event("visibilitychange"))
     })
 
-    // Time passes while hidden — toast should persist
     act(() => { vi.advanceTimersByTime(10000) })
     expect(screen.getByText("Paused toast")).toBeInTheDocument()
 
-    // Become visible again — remaining ~2000ms should elapse
     Object.defineProperty(document, "hidden", { value: false, writable: true, configurable: true })
     act(() => {
       document.dispatchEvent(new Event("visibilitychange"))
@@ -398,5 +461,102 @@ describe("Toast", () => {
     act(() => { vi.advanceTimersByTime(2000) })
     act(() => { vi.advanceTimersByTime(250) })
     expect(screen.queryByText("Paused toast")).not.toBeInTheDocument()
+  })
+
+  describe("variant layouts", () => {
+    function findToast(text: string) {
+      // querySelector: the toast root carries the data-variant attribute used
+      // by CSS and downstream tooling; ARIA queries don't expose attribute
+      // values. Looking up by visible text first guarantees we read the
+      // current toast regardless of layout shape.
+      return screen.getByText(text).closest('[data-slot="toast"]')
+    }
+
+    it("variant=\"card\" is the default", () => {
+      render(<Toaster />)
+      act(() => { toast("Card default") })
+      const root = findToast("Card default")
+      expect(root).toHaveAttribute("data-variant", "card")
+    })
+
+    it("variant=\"hud\" omits the close button and action", () => {
+      render(<Toaster />)
+      act(() => { toast("Copied", { variant: "hud" }) })
+      const root = findToast("Copied")
+      expect(root).toHaveAttribute("data-variant", "hud")
+      expect(root?.querySelector("button")).toBeNull()
+      expect(root?.querySelector('[data-slot="toast-action"]')).toBeNull()
+    })
+
+    it("variant=\"hud\" auto-dismisses even when an action is supplied (HUD drops the action, so persistence rule does not apply)", () => {
+      // HUD ignores `action`, so the toast must follow the default auto-dismiss
+      // behavior — not inherit the action-persists rule from card/countdown.
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+      try {
+        render(<Toaster />)
+        act(() => {
+          toast("Quick HUD", { variant: "hud", action: <button>Undo</button> })
+        })
+        expect(screen.getByText("Quick HUD")).toBeInTheDocument()
+
+        act(() => { vi.advanceTimersByTime(5000) })
+        act(() => { vi.advanceTimersByTime(250) })
+        expect(screen.queryByText("Quick HUD")).not.toBeInTheDocument()
+      } finally {
+        warn.mockRestore()
+      }
+    })
+
+    it("variant=\"hud\" warns in development when an action is provided", () => {
+      const prevEnv = process.env.NODE_ENV
+      process.env.NODE_ENV = "development"
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+      try {
+        render(<Toaster />)
+        act(() => {
+          toast("Saved", {
+            variant: "hud",
+            action: <button>Undo</button>,
+          })
+        })
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining("variant=\"hud\""))
+        const root = findToast("Saved")
+        expect(root?.querySelector('[data-slot="toast-action"]')).toBeNull()
+        expect(root?.textContent).not.toContain("Undo")
+      } finally {
+        warn.mockRestore()
+        process.env.NODE_ENV = prevEnv
+      }
+    })
+
+    it("variant=\"viewfinder\" renders four corner spans", () => {
+      render(<Toaster />)
+      act(() => { toast("Saved", { variant: "viewfinder", message: "All done" }) })
+      const root = findToast("Saved")
+      const corners = root?.querySelector('[data-slot="toast-corners"]')
+      expect(corners).not.toBeNull()
+      expect(corners?.querySelectorAll("span")).toHaveLength(4)
+    })
+
+    it("variant=\"hud\" stays role=status even for error tone (informational by definition)", () => {
+      render(<Toaster />)
+      act(() => { toast("Failed to copy", { tone: "error", variant: "hud" }) })
+      const root = findToast("Failed to copy")
+      expect(root).toHaveAttribute("role", "status")
+      // role="status" implies aria-live="polite" — we intentionally do not set
+      // it explicitly to avoid the WAI-ARIA "both role and aria-live" footgun.
+      expect(root).not.toHaveAttribute("aria-live")
+    })
+
+    it("variant=\"countdown\" renders an aria-hidden countdown slot", () => {
+      render(<Toaster />)
+      act(() => {
+        toast("Synced", { variant: "countdown", message: "12 files", duration: 5000 })
+      })
+      const root = findToast("Synced")
+      const countdown = root?.querySelector('[data-slot="toast-countdown"]')
+      expect(countdown).not.toBeNull()
+      expect(countdown).toHaveAttribute("aria-hidden", "true")
+    })
   })
 })

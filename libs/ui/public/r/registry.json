@@ -955,7 +955,9 @@
         "https://docs.diffgazer.b4r7.dev/r/ui/theme.json",
         "https://docs.diffgazer.b4r7.dev/r/ui/controllable-state.json",
         "https://docs.diffgazer.b4r7.dev/r/keys/navigation.json",
-        "https://docs.diffgazer.b4r7.dev/r/ui/compose-refs.json"
+        "https://docs.diffgazer.b4r7.dev/r/ui/compose-refs.json",
+        "https://docs.diffgazer.b4r7.dev/r/ui/floating-indicator.json",
+        "https://docs.diffgazer.b4r7.dev/r/ui/segmented-variants.json"
       ],
       "meta": {
         "client": true,
@@ -1234,7 +1236,9 @@
         "https://docs.diffgazer.b4r7.dev/r/ui/controllable-state.json",
         "https://docs.diffgazer.b4r7.dev/r/ui/compose-refs.json",
         "https://docs.diffgazer.b4r7.dev/r/ui/form-reset.json",
-        "https://docs.diffgazer.b4r7.dev/r/ui/selectable-collection.json"
+        "https://docs.diffgazer.b4r7.dev/r/ui/floating-indicator.json",
+        "https://docs.diffgazer.b4r7.dev/r/ui/selectable-collection.json",
+        "https://docs.diffgazer.b4r7.dev/r/ui/segmented-variants.json"
       ],
       "meta": {
         "client": true,
@@ -1865,6 +1869,23 @@
       ]
     },
     {
+      "name": "floating-indicator",
+      "type": "registry:hook",
+      "title": "Floating Indicator",
+      "description": "Measures the rect of an active child inside a container so a single sliding indicator (segmented pill, tab marker) can transform between siblings via ResizeObserver + MutationObserver.",
+      "dependencies": [],
+      "registryDependencies": [],
+      "meta": {
+        "client": true
+      },
+      "files": [
+        {
+          "path": "registry/hooks/use-floating-indicator.ts",
+          "type": "registry:hook"
+        }
+      ]
+    },
+    {
       "name": "active-heading",
       "type": "registry:hook",
       "title": "Active Heading",
@@ -2101,6 +2122,26 @@
       "files": [
         {
           "path": "registry/lib/selectable-variants.ts",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
+      "name": "segmented-variants",
+      "type": "registry:lib",
+      "title": "Segmented Variants",
+      "description": "Shared CVA + sliding-indicator class names for segmented controls (Tabs, ToggleGroup).",
+      "dependencies": [
+        "class-variance-authority"
+      ],
+      "registryDependencies": [],
+      "meta": {
+        "client": false,
+        "hidden": true
+      },
+      "files": [
+        {
+          "path": "registry/lib/segmented-variants.ts",
           "type": "registry:lib"
         }
       ]

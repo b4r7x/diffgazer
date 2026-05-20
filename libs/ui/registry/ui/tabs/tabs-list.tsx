@@ -3,6 +3,11 @@
 import { useRef, type FocusEvent, type HTMLAttributes, type KeyboardEvent, type Ref } from "react";
 import { composeRefs } from "@/lib/compose-refs";
 import { useNavigation } from "@/hooks/use-navigation";
+import { useFloatingIndicator } from "@/hooks/use-floating-indicator";
+import {
+  segmentedContainerVariants,
+  segmentedPillIndicatorClass,
+} from "@/lib/segmented-variants";
 import { cn } from "@/lib/utils";
 import { useTabsContext } from "./tabs-context";
 
@@ -54,21 +59,35 @@ export function TabsList({ children, className, loop = true, onBlur, onKeyDown, 
     if (!focusRemainsInside) onFocusChange(null);
   };
 
+  // Pill variant: a single absolutely-positioned indicator tracks the active
+  // tab's rect. The hook is null-fed when the variant doesn't use a pill, so
+  // the observer is never created.
+  const pillTargetValue = variant === "pill" ? value : null;
+  const pillRect = useFloatingIndicator(containerRef, pillTargetValue);
+
   return (
     <div
       ref={composeRefs(containerRef, ref)}
-      className={cn(
-        "flex font-mono",
-        variant === "underline" ? "border-b border-border gap-8" : "gap-1",
-        orientation === "vertical" && "flex-col",
-        className
-      )}
       role="tablist"
+      data-variant={variant}
+      data-orientation={orientation}
       aria-orientation={orientation}
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
+      className={cn(
+        segmentedContainerVariants({ variant, orientation }),
+        className,
+      )}
       {...rest}
     >
+      {variant === "pill" && pillRect && (
+        <span
+          aria-hidden="true"
+          data-slot="tabs-pill"
+          className={segmentedPillIndicatorClass}
+          style={{ left: pillRect.left, width: pillRect.width }}
+        />
+      )}
       {children}
     </div>
   );

@@ -3,6 +3,7 @@
   "pages": [
     "active-heading",
     "controllable-state",
+    "floating-indicator",
     "floating-position",
     "form-reset",
     "listbox",

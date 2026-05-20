@@ -4,6 +4,7 @@ import { useCallback, useMemo, useRef, type ReactNode, type Ref, type KeyboardEv
 import { useNavigation } from "@/hooks/use-navigation";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { useFormReset } from "@/hooks/use-form-reset";
+import { useFloatingIndicator } from "@/hooks/use-floating-indicator";
 import { composeRefs } from "@/lib/compose-refs";
 import {
   getEnabledSelectableCollectionItems,
@@ -11,6 +12,12 @@ import {
   resolveSelectableCollectionItemValue,
   useSelectableCollection,
 } from "@/lib/selectable-collection";
+import {
+  segmentedContainerVariants,
+  segmentedPillIndicatorClass,
+  type SegmentedSize,
+  type SegmentedVariant,
+} from "@/lib/segmented-variants";
 import { cn } from "@/lib/utils";
 import { ToggleGroupContext, type ToggleGroupSelectionMode } from "./toggle-group-context";
 
@@ -31,7 +38,15 @@ interface ToggleGroupMultipleProps<TValue extends string = string> {
 interface ToggleGroupBaseProps<TValue extends string = string> {
   allowDeselect?: boolean;
   disabled?: boolean;
-  size?: "sm" | "md";
+  size?: SegmentedSize;
+  /**
+   * Visual variant.
+   *   - `default` — bordered button row; active = inverted block.
+   *   - `bracket` — frameless, active item wears `[ … ]` markers.
+   *   - `pill`    — joined track with a single sliding indicator.
+   *   - `underline` — gapped row with a foreground underline on the active item.
+   */
+  variant?: SegmentedVariant;
   orientation?: "horizontal" | "vertical";
   wrap?: boolean;
   highlighted?: TValue | null;
@@ -54,20 +69,12 @@ export type ToggleGroupProps<TValue extends string = string> =
   & ToggleGroupBaseProps<TValue>
   & (ToggleGroupSingleProps<TValue> | ToggleGroupMultipleProps<TValue>);
 
-function arraysEqual(a: readonly string[], b: readonly string[]): boolean {
-  if (a === b) return true;
-  if (a.length !== b.length) return false;
-  for (let i = 0; i < a.length; i++) {
-    if (a[i] !== b[i]) return false;
-  }
-  return true;
-}
-
 export function ToggleGroup<TValue extends string = string>(props: ToggleGroupProps<TValue>) {
   const {
     allowDeselect = false,
     disabled = false,
     size = "sm",
+    variant = "default",
     orientation = "horizontal",
     wrap = true,
     highlighted: controlledHighlighted,
@@ -131,12 +138,11 @@ export function ToggleGroup<TValue extends string = string>(props: ToggleGroupPr
     (newValue: string | null) => {
       if (newValue === null) return;
       if (selectionMode === "multiple") {
-        setMultipleValue((prev) => {
-          const next = prev.includes(newValue)
+        setMultipleValue((prev) =>
+          prev.includes(newValue)
             ? prev.filter((v) => v !== newValue)
-            : [...prev, newValue];
-          return arraysEqual(prev, next) ? prev : next;
-        });
+            : [...prev, newValue],
+        );
         return;
       }
       setSingleValue((prev) => (prev === newValue && allowDeselect) ? null : newValue);
@@ -178,15 +184,24 @@ export function ToggleGroup<TValue extends string = string>(props: ToggleGroupPr
     onHighlightChange: setHighlightedValue,
     disabled,
     size,
+    variant,
     highlightedValue: activeHighlightedValue,
     containerRef,
     usesButtonSemantics,
     tabTargetValue,
     registerItem,
     unregisterItem,
-  }), [selectionMode, isItemSelected, handleValueChange, setHighlightedValue, disabled, size, activeHighlightedValue, usesButtonSemantics, tabTargetValue, registerItem, unregisterItem]);
+  }), [selectionMode, isItemSelected, handleValueChange, setHighlightedValue, disabled, size, variant, activeHighlightedValue, usesButtonSemantics, tabTargetValue, registerItem, unregisterItem]);
 
-  const renderHiddenInput = selectionMode === "single" && name && singleValue != null;
+  // Pill variant: a single absolutely-positioned indicator tracks the active
+  // item's rect. The hook is null-fed for `selectionMode="multiple"` (which
+  // uses button semantics with no single-active concept) and when the variant
+  // doesn't use a pill indicator, so the observer is never created.
+  const pillTargetValue =
+    variant === "pill" && selectionMode === "single" ? singleValue : null;
+  const pillRect = useFloatingIndicator(containerRef, pillTargetValue);
+
+  const hiddenInputValue = selectionMode === "single" && name ? singleValue : null;
 
   return (
     <ToggleGroupContext value={contextValue}>
@@ -194,20 +209,29 @@ export function ToggleGroup<TValue extends string = string>(props: ToggleGroupPr
         ref={composeRefs(containerRef, ref)}
         role={usesButtonSemantics ? "group" : "radiogroup"}
         data-diffgazer-selectable-owner={usesButtonSemantics ? "toggle" : "radio"}
+        data-variant={variant}
+        data-orientation={orientation}
         aria-label={label}
         aria-labelledby={ariaLabelledBy}
         aria-orientation={usesButtonSemantics ? undefined : orientation}
         aria-disabled={disabled || undefined}
         onKeyDown={handleKeyDown}
         className={cn(
-          "flex",
-          orientation === "vertical" ? "flex-col gap-1.5" : "gap-1.5",
-          wrap && orientation === "horizontal" && "flex-wrap",
+          segmentedContainerVariants({ variant, orientation }),
+          wrap && orientation === "horizontal" && variant !== "pill" && "flex-wrap",
           className,
         )}
       >
-        {renderHiddenInput && (
-          <input type="hidden" name={name} value={singleValue ?? ""} disabled={disabled} />
+        {variant === "pill" && pillRect && (
+          <span
+            aria-hidden="true"
+            data-slot="toggle-group-pill"
+            className={segmentedPillIndicatorClass}
+            style={{ left: pillRect.left, width: pillRect.width }}
+          />
+        )}
+        {hiddenInputValue != null && (
+          <input type="hidden" name={name} value={hiddenInputValue} disabled={disabled} />
         )}
         {children}
       </div>

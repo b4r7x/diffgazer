@@ -1,40 +1,35 @@
 "use client";
 
-import { type ButtonHTMLAttributes, type FocusEvent, type MouseEvent, type Ref } from "react";
-import { cva } from "class-variance-authority";
+import { type ButtonHTMLAttributes, type FocusEvent, type MouseEvent, type ReactNode, type Ref } from "react";
+import { segmentedItemVariants } from "@/lib/segmented-variants";
 import { cn } from "@/lib/utils";
 import { getTabPanelId, getTabTriggerId, useTabsContext } from "./tabs-context";
 
-export const tabsTriggerVariants = cva(
-  "text-sm font-mono transition-colors motion-reduce:transition-none cursor-pointer focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground",
-  {
-    variants: {
-      variant: {
-        default: "px-3 py-1 border border-border",
-        underline: "border-0 border-b-2 border-transparent bg-transparent rounded-none px-0 pb-3",
-      },
-      state: {
-        active: "",
-        inactive: "",
-      },
-      disabled: {
-        true: "opacity-50 cursor-not-allowed",
-        false: "",
-      },
-    },
-    compoundVariants: [
-      { variant: "default", state: "active", class: "bg-foreground text-background font-bold border-foreground" },
-      { variant: "default", state: "inactive", disabled: false, class: "bg-background text-foreground hover:bg-secondary focus-visible:bg-foreground focus-visible:text-background focus-visible:font-bold focus-visible:border-foreground" },
-      { variant: "underline", state: "active", class: "border-b-foreground text-foreground font-bold focus-visible:ring-1 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background" },
-      { variant: "underline", state: "inactive", disabled: false, class: "text-muted-foreground hover:text-foreground hover:border-b-border focus-visible:text-foreground focus-visible:border-b-foreground focus-visible:ring-1 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background" },
-    ],
-    defaultVariants: {
-      variant: "default",
-      state: "inactive",
-      disabled: false,
-    },
-  }
-);
+/**
+ * Bracket markers shown only when the trigger is active (variant="bracket").
+ * The spans stay in the DOM at all times with `opacity-0` so the trigger's
+ * measured width never changes between selected/unselected — neighbours don't
+ * shift when selection moves.
+ */
+function BracketMarkers({ children }: { children: ReactNode }) {
+  return (
+    <>
+      <span
+        aria-hidden="true"
+        className="mr-1 text-foreground opacity-0 group-data-[active=true]/segmented-item:opacity-100"
+      >
+        [
+      </span>
+      {children}
+      <span
+        aria-hidden="true"
+        className="ml-1 text-foreground opacity-0 group-data-[active=true]/segmented-item:opacity-100"
+      >
+        ]
+      </span>
+    </>
+  );
+}
 
 export interface TabsTriggerProps<TValue extends string = string>
   extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "value" | "disabled"> {
@@ -43,8 +38,35 @@ export interface TabsTriggerProps<TValue extends string = string>
   ref?: Ref<HTMLButtonElement>;
 }
 
-export function TabsTrigger<TValue extends string = string>({ value, children, className, disabled, ref, onClick, onFocus, ...rest }: TabsTriggerProps<TValue>) {
-  const { tabsId, value: selectedValue, tabbableValue, onChange, onFocusChange, panelValues, variant, orientation } = useTabsContext();
+/**
+ * Tabs.Trigger renders a `role="tab"` button that controls a `Tabs.Content`
+ * panel. It intentionally does NOT accept a `render` or `asChild` polymorphic
+ * escape hatch: WAI-ARIA forbids a `tab` from navigating URLs (a tab must own
+ * a tabpanel and not behave like a link). For link-based segmented navigation,
+ * use `ToggleGroup.Item` instead — its `radio` / button semantics are not tied
+ * to a tabpanel and can be polymorphic.
+ */
+export function TabsTrigger<TValue extends string = string>({
+  value,
+  children,
+  className,
+  disabled,
+  ref,
+  onClick,
+  onFocus,
+  ...rest
+}: TabsTriggerProps<TValue>) {
+  const {
+    tabsId,
+    value: selectedValue,
+    tabbableValue,
+    onChange,
+    onFocusChange,
+    panelValues,
+    variant,
+    size,
+    orientation,
+  } = useTabsContext();
   const isActive = selectedValue === value;
   const isTabbable = tabbableValue === value;
   const panelId = panelValues.includes(value) ? getTabPanelId(tabsId, value) : undefined;
@@ -79,15 +101,19 @@ export function TabsTrigger<TValue extends string = string>({ value, children, c
       data-diffgazer-navigation-item="tab"
       data-value={value}
       data-state={isActive ? "active" : "inactive"}
+      data-active={isActive || undefined}
       data-orientation={orientation}
       onClick={handleClick}
       onFocus={handleFocus}
       className={cn(
-        tabsTriggerVariants({ variant, state: isActive ? "active" : "inactive", disabled: !!disabled }),
-        className
+        // group/segmented-item lets the bracket markers (and any future
+        // decoration) react to data-active without a separate context read.
+        "group/segmented-item",
+        segmentedItemVariants({ variant, size }),
+        className,
       )}
     >
-      {children}
+      {variant === "bracket" ? <BracketMarkers>{children}</BracketMarkers> : children}
     </button>
   );
 }

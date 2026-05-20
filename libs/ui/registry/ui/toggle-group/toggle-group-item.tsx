@@ -10,23 +10,10 @@ import {
   useLayoutEffect,
   useRef,
 } from "react";
-import { cva } from "class-variance-authority";
 import { useToggleGroupContext } from "./toggle-group-context";
 import { composeRefs } from "@/lib/compose-refs";
+import { segmentedItemVariants } from "@/lib/segmented-variants";
 import { cn } from "@/lib/utils";
-
-const toggleItemVariants = cva(
-  "inline-flex items-center justify-center font-mono whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background cursor-pointer border border-border bg-transparent text-foreground hover:bg-secondary data-[active=true]:bg-primary data-[active=true]:text-primary-foreground data-[active=true]:border-primary data-[active=true]:hover:bg-primary/90",
-  {
-    variants: {
-      size: {
-        sm: "min-h-[44px] min-w-[44px] px-2 py-0.5 text-xs",
-        md: "h-9 px-4 py-2 text-sm",
-      },
-    },
-    defaultVariants: { size: "md" },
-  },
-);
 
 export interface ToggleGroupItemProps<TValue extends string = string>
   extends Omit<ComponentPropsWithRef<"button">, "children" | "disabled" | "value"> {
@@ -34,6 +21,32 @@ export interface ToggleGroupItemProps<TValue extends string = string>
   count?: number;
   disabled?: boolean;
   children: ReactNode;
+}
+
+/**
+ * Bracket markers shown only when the item is active (variant="bracket"). They
+ * stay in the DOM at all times with `opacity-0` so the item's measured width
+ * never changes between selected/unselected — neighbours don't shift when
+ * selection moves.
+ */
+function BracketMarkers({ children }: { children: ReactNode }) {
+  return (
+    <>
+      <span
+        aria-hidden="true"
+        className="mr-1 text-foreground opacity-0 group-data-[active=true]/segmented-item:opacity-100"
+      >
+        [
+      </span>
+      {children}
+      <span
+        aria-hidden="true"
+        className="ml-1 text-foreground opacity-0 group-data-[active=true]/segmented-item:opacity-100"
+      >
+        ]
+      </span>
+    </>
+  );
 }
 
 export function ToggleGroupItem<TValue extends string = string>({
@@ -56,7 +69,7 @@ export function ToggleGroupItem<TValue extends string = string>({
   const isHighlighted = context.highlightedValue === value;
   const isDisabled = context.disabled || !!disabled;
   const isTabTarget = !isDisabled && context.tabTargetValue === value;
-  const { registerItem, unregisterItem } = context;
+  const { registerItem, unregisterItem, variant } = context;
 
   const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
     onClick?.(event);
@@ -78,13 +91,23 @@ export function ToggleGroupItem<TValue extends string = string>({
 
   const handleFocus = (event: FocusEvent<HTMLButtonElement>) => {
     onFocus?.(event);
-    if (!event.defaultPrevented && !isDisabled) context.onHighlightChange(value);
+    if (!event.defaultPrevented) context.onHighlightChange(value);
   };
 
   useLayoutEffect(() => {
     registerItem(itemId, value, disabled === true, rootRef.current);
     return () => unregisterItem(itemId);
   }, [registerItem, unregisterItem, itemId, value, disabled]);
+
+  // BracketMarkers and `count` both use [..] brackets; when both apply, the
+  // count form ([label count]) wins and the active-state markers are
+  // suppressed to avoid nesting like [[label] count].
+  const renderedChildren =
+    variant === "bracket" && count == null ? (
+      <BracketMarkers>{children}</BracketMarkers>
+    ) : (
+      children
+    );
 
   return (
     <button
@@ -106,18 +129,24 @@ export function ToggleGroupItem<TValue extends string = string>({
       onMouseEnter={onMouseEnter}
       onFocus={handleFocus}
       className={cn(
-        toggleItemVariants({ size: context.size }),
-        isDisabled && "pointer-events-none opacity-50",
-        isHighlighted && !isActive && "bg-secondary",
+        // group/segmented-item lets the bracket markers (and any future
+        // decoration) react to data-active without a separate context read.
+        "group/segmented-item",
+        segmentedItemVariants({ variant, size: context.size }),
+        // Highlighted-but-not-active focus state: subtle bg only for variants
+        // that wear a background fill on hover. Pill and underline manage their
+        // own highlight via the indicator/border so they opt out.
+        isHighlighted && !isActive && variant === "default" && "bg-secondary",
+        isHighlighted && !isActive && variant === "bracket" && "text-foreground",
         className,
       )}
     >
       {count != null ? (
         <>
-          [{children} {count}]
+          [{renderedChildren} {count}]
         </>
       ) : (
-        children
+        renderedChildren
       )}
     </button>
   );

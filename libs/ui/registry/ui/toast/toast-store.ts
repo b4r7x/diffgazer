@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore, type ReactNode } from "react";
-import type { ToastVariant } from "./toast-variants";
+import type { ToastTone, ToastVariant } from "./toast-variants";
 
 export type ToastPosition =
   | "top-left"
@@ -13,6 +13,7 @@ export type ToastPosition =
 
 export interface Toast {
   id: string;
+  tone: ToastTone;
   variant: ToastVariant;
   title: string;
   message?: string;
@@ -22,6 +23,7 @@ export interface Toast {
 
 export interface ToastOptions {
   title: string;
+  tone?: ToastTone;
   variant?: ToastVariant;
   message?: string;
   /** Auto-dismiss delay in ms. When `action` is set and duration is omitted, the toast persists indefinitely (WCAG 2.2.1 — enough time). */
@@ -36,20 +38,21 @@ const MAX_TOASTS = 5;
 interface StoreState {
   toasts: Toast[];
   dismissingIds: Set<string>;
+  paused: boolean;
 }
 
-const INITIAL_STATE: StoreState = { toasts: [], dismissingIds: new Set() };
+const INITIAL_STATE: StoreState = { toasts: [], dismissingIds: new Set(), paused: false };
 
 interface TimerEntry {
   timeout: ReturnType<typeof setTimeout> | undefined;
   startedAt: number;
   remaining: number;
+  duration: number;
 }
 
 let state: StoreState = INITIAL_STATE;
 const listeners = new Set<() => void>();
 const timers = new Map<string, TimerEntry>();
-let paused = false;
 let fallbackToastId = 0;
 
 function emit() {
@@ -77,14 +80,15 @@ function getServerSnapshot(): StoreState {
   return INITIAL_STATE;
 }
 
-function scheduleAutoDismiss(id: string, variant: ToastVariant, duration?: number) {
-  if ((variant === "error" || variant === "loading") && duration === undefined) return;
+function scheduleAutoDismiss(id: string, tone: ToastTone, duration?: number) {
+  if ((tone === "error" || tone === "loading") && duration === undefined) return;
   const resolved = duration ?? DEFAULT_DURATION;
   if (!Number.isFinite(resolved) || resolved <= 0) return;
   const entry: TimerEntry = {
-    timeout: paused ? undefined : setTimeout(() => dismiss(id), resolved),
+    timeout: state.paused ? undefined : setTimeout(() => dismiss(id), resolved),
     startedAt: Date.now(),
     remaining: resolved,
+    duration: resolved,
   };
   timers.set(id, entry);
 }
@@ -109,20 +113,31 @@ function createToastId(): string {
 
 function create(options: ToastOptions): string {
   const id = options.id ?? createToastId();
-  const variant = options.variant ?? "info";
+  const tone = options.tone ?? "info";
+  const variant = options.variant ?? "card";
+
+  if (variant === "hud" && options.action !== undefined && process.env.NODE_ENV !== "production") {
+    console.warn(
+      "[Toast] variant=\"hud\" ignores `action`. Use variant=\"card\" or \"countdown\" for actionable toasts.",
+    );
+  }
+
+  const effectiveAction = variant === "hud" ? undefined : options.action;
   const newToast: Toast = {
-    id, variant,
+    id, tone, variant,
     title: options.title,
     message: options.message,
     duration: options.duration,
-    action: options.action,
+    action: effectiveAction,
   };
 
   clearTimer(id);
   const nextDismissing = new Set(state.dismissingIds);
   nextDismissing.delete(id);
-  if (!options.action || options.duration !== undefined) {
-    scheduleAutoDismiss(id, variant, options.duration);
+  // Persist indefinitely only when there's a real, rendered action (WCAG 2.2.1).
+  // HUD drops the action, so a HUD with an "action" still auto-dismisses.
+  if (!effectiveAction || options.duration !== undefined) {
+    scheduleAutoDismiss(id, tone, options.duration);
   }
 
   const nextToasts = resolveNextToasts(state.toasts, newToast);
@@ -131,7 +146,7 @@ function create(options: ToastOptions): string {
     if (!nextIds.has(dismissId)) nextDismissing.delete(dismissId);
   }
 
-  state = { toasts: nextToasts, dismissingIds: nextDismissing };
+  state = { ...state, toasts: nextToasts, dismissingIds: nextDismissing };
   emit();
   return id;
 }
@@ -139,11 +154,11 @@ function create(options: ToastOptions): string {
 export function dismiss(id?: string) {
   if (id) {
     state = {
-      toasts: state.toasts,
+      ...state,
       dismissingIds: new Set(state.dismissingIds).add(id),
     };
   } else {
-    state = { toasts: state.toasts, dismissingIds: new Set(state.toasts.map(t => t.id)) };
+    state = { ...state, dismissingIds: new Set(state.toasts.map(t => t.id)) };
   }
   emit();
 }
@@ -153,6 +168,7 @@ export function remove(id: string) {
   const nextDismissing = new Set(state.dismissingIds);
   nextDismissing.delete(id);
   state = {
+    ...state,
     toasts: state.toasts.filter((t) => t.id !== id),
     dismissingIds: nextDismissing,
   };
@@ -160,26 +176,52 @@ export function remove(id: string) {
 }
 
 export function pause() {
-  if (paused) return;
-  paused = true;
+  if (state.paused) return;
   for (const [, entry] of timers) {
     clearTimeout(entry.timeout);
     entry.remaining = Math.max(0, entry.remaining - (Date.now() - entry.startedAt));
   }
+  state = { ...state, paused: true };
+  emit();
 }
 
 export function resume() {
-  if (!paused) return;
-  paused = false;
+  if (!state.paused) return;
   for (const [id, entry] of timers) {
     entry.startedAt = Date.now();
     entry.timeout = setTimeout(() => dismiss(id), entry.remaining);
   }
+  state = { ...state, paused: false };
+  emit();
 }
 
-type VariantMethod = (title: string, options?: Omit<ToastOptions, "variant" | "title">) => string;
+/**
+ * Snapshot of the auto-dismiss timer for a single toast. Returned by-value so
+ * countdown visuals can compute `remaining / duration` without subscribing to
+ * the timer at frame rate. The store does not re-emit on timer tick; consumers
+ * that need smooth progress read this from a `requestAnimationFrame` loop.
+ */
+export interface ToastTimerSnapshot {
+  duration: number;
+  remaining: number;
+  startedAt: number;
+  paused: boolean;
+}
 
-interface ToastFn extends Record<ToastVariant, VariantMethod> {
+export function getTimerSnapshot(id: string): ToastTimerSnapshot | null {
+  const entry = timers.get(id);
+  if (!entry) return null;
+  return {
+    duration: entry.duration,
+    remaining: entry.remaining,
+    startedAt: entry.startedAt,
+    paused: state.paused,
+  };
+}
+
+type ToneMethod = (title: string, options?: Omit<ToastOptions, "tone" | "title">) => string;
+
+interface ToastFn extends Record<ToastTone, ToneMethod> {
   (title: string, options?: Omit<ToastOptions, "title">): string;
   dismiss: (id?: string) => void;
   promise: <T>(
@@ -192,8 +234,8 @@ interface ToastFn extends Record<ToastVariant, VariantMethod> {
   ) => Promise<T>;
 }
 
-function variantMethod(variant: ToastVariant): VariantMethod {
-  return (title, options) => create({ ...options, title, variant });
+function toneMethod(tone: ToastTone): ToneMethod {
+  return (title, options) => create({ ...options, title, tone });
 }
 
 function promiseToast<T>(
@@ -204,17 +246,17 @@ function promiseToast<T>(
     error: string | ((err: unknown) => string);
   },
 ): Promise<T> {
-  const id = create({ title: options.loading, variant: "loading" });
+  const id = create({ title: options.loading, tone: "loading" });
 
   return promise.then(
     (data) => {
       const title = typeof options.success === "function" ? options.success(data) : options.success;
-      create({ id, title, variant: "success" });
+      create({ id, title, tone: "success" });
       return data;
     },
     (err) => {
       const title = typeof options.error === "function" ? options.error(err) : options.error;
-      create({ id, title, variant: "error" });
+      create({ id, title, tone: "error" });
       throw err;
     },
   );
@@ -223,11 +265,11 @@ function promiseToast<T>(
 export const toast: ToastFn = Object.assign(
   (title: string, options?: Omit<ToastOptions, "title">) => create({ ...options, title }),
   {
-    success: variantMethod("success"),
-    error: variantMethod("error"),
-    warning: variantMethod("warning"),
-    info: variantMethod("info"),
-    loading: variantMethod("loading"),
+    success: toneMethod("success"),
+    error: toneMethod("error"),
+    warning: toneMethod("warning"),
+    info: toneMethod("info"),
+    loading: toneMethod("loading"),
     dismiss,
     promise: promiseToast,
   },

@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext } from "react";
+import type { SegmentedSize, SegmentedVariant } from "@/lib/segmented-variants";
 
 function encodeIdPart(value: string): string {
   return encodeURIComponent(value);
@@ -23,7 +24,8 @@ export interface TabsContextValue {
   panelValues: string[];
   triggerValues: string[];
   orientation: "horizontal" | "vertical";
-  variant: "default" | "underline";
+  variant: SegmentedVariant;
+  size: SegmentedSize;
   activationMode: "automatic" | "manual";
 }
 

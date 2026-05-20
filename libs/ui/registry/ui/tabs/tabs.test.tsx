@@ -527,6 +527,83 @@ describe("Tabs keyboard navigation", () => {
   })
 })
 
+describe("Tabs variants", () => {
+  it("defaults to variant='underline' and propagates it via data-variant on the tablist", () => {
+    renderTabs()
+    expect(screen.getByRole("tablist")).toHaveAttribute("data-variant", "underline")
+  })
+
+  it("propagates variant='default' via data-variant on the tablist", () => {
+    renderTabs({ variant: "default" })
+    expect(screen.getByRole("tablist")).toHaveAttribute("data-variant", "default")
+  })
+
+  it("renders a sliding pill indicator for variant='pill'", () => {
+    const { container } = render(
+      <Tabs defaultValue="b" variant="pill">
+        <Tabs.List>
+          <Tabs.Trigger value="a">Alpha</Tabs.Trigger>
+          <Tabs.Trigger value="b">Beta</Tabs.Trigger>
+        </Tabs.List>
+        <Tabs.Content value="a">Alpha content</Tabs.Content>
+        <Tabs.Content value="b">Beta content</Tabs.Content>
+      </Tabs>,
+    )
+    expect(container.querySelectorAll('[data-slot="tabs-pill"]').length).toBe(1)
+  })
+
+  it("omits the sliding pill indicator for variants other than 'pill'", () => {
+    const { container } = render(
+      <Tabs defaultValue="b" variant="default">
+        <Tabs.List>
+          <Tabs.Trigger value="a">Alpha</Tabs.Trigger>
+          <Tabs.Trigger value="b">Beta</Tabs.Trigger>
+        </Tabs.List>
+        <Tabs.Content value="a">Alpha content</Tabs.Content>
+        <Tabs.Content value="b">Beta content</Tabs.Content>
+      </Tabs>,
+    )
+    expect(container.querySelector('[data-slot="tabs-pill"]')).toBeNull()
+  })
+
+  it("renders bracket markers only on the active trigger in variant='bracket'", () => {
+    render(
+      <Tabs defaultValue="b" variant="bracket">
+        <Tabs.List>
+          <Tabs.Trigger value="a">Alpha</Tabs.Trigger>
+          <Tabs.Trigger value="b">Beta</Tabs.Trigger>
+        </Tabs.List>
+        <Tabs.Content value="a">Alpha content</Tabs.Content>
+        <Tabs.Content value="b">Beta content</Tabs.Content>
+      </Tabs>,
+    )
+    // Both triggers carry the bracket marker spans (so width stays steady),
+    // but only the active one has data-active set — the CSS opacity rule on
+    // group-data-[active=true]/segmented-item reveals them visually.
+    const activeTrigger = screen.getByRole("tab", { name: /beta/i })
+    const inactiveTrigger = screen.getByRole("tab", { name: /alpha/i })
+    expect(activeTrigger).toHaveAttribute("data-active", "true")
+    expect(inactiveTrigger).not.toHaveAttribute("data-active")
+    expect(activeTrigger).toHaveTextContent(/^\[\s*Beta\s*\]$/)
+    expect(inactiveTrigger).toHaveTextContent(/^\[\s*Alpha\s*\]$/)
+  })
+
+  it("marks the active trigger via data-active in variant='default'", () => {
+    render(
+      <Tabs defaultValue="b" variant="default">
+        <Tabs.List>
+          <Tabs.Trigger value="a">Alpha</Tabs.Trigger>
+          <Tabs.Trigger value="b">Beta</Tabs.Trigger>
+        </Tabs.List>
+        <Tabs.Content value="a">Alpha content</Tabs.Content>
+        <Tabs.Content value="b">Beta content</Tabs.Content>
+      </Tabs>,
+    )
+    expect(screen.getByRole("tab", { name: /alpha/i })).not.toHaveAttribute("data-active")
+    expect(screen.getByRole("tab", { name: /beta/i })).toHaveAttribute("data-active", "true")
+  })
+})
+
 describe("Tabs types", () => {
   it("narrows value to the supplied literal union", () => {
     type Narrow = TabsProps<"preview" | "code">
@@ -548,6 +625,15 @@ describe("Tabs types", () => {
   it("keeps the loose default contract when no generic is supplied", () => {
     expectTypeOf<TabsProps["value"]>().toEqualTypeOf<string | undefined>()
     expectTypeOf<TabsTriggerProps["value"]>().toEqualTypeOf<string>()
+  })
+
+  it("does not expose a polymorphic render or asChild escape hatch on Tabs.Trigger", () => {
+    // WAI-ARIA forbids a role="tab" from navigating URLs — Tabs.Trigger must
+    // not be swappable into <a> via render/asChild. Verify the prop type does
+    // not include either key.
+    expectTypeOf<TabsTriggerProps>().toHaveProperty("value")
+    expectTypeOf<TabsTriggerProps>().not.toHaveProperty("render")
+    expectTypeOf<TabsTriggerProps>().not.toHaveProperty("asChild")
   })
 })
 

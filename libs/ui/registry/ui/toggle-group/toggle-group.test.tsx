@@ -406,6 +406,81 @@ describe("ToggleGroup", () => {
   })
 })
 
+describe("ToggleGroup variants", () => {
+  it("propagates variant via data-variant on the root", () => {
+    const { rerender } = render(
+      <ToggleGroup label="Options" variant="pill" defaultValue="a">
+        <ToggleGroup.Item value="a">Alpha</ToggleGroup.Item>
+        <ToggleGroup.Item value="b">Beta</ToggleGroup.Item>
+      </ToggleGroup>,
+    )
+    expect(screen.getByRole("radiogroup")).toHaveAttribute("data-variant", "pill")
+
+    rerender(
+      <ToggleGroup label="Options" variant="underline" defaultValue="a">
+        <ToggleGroup.Item value="a">Alpha</ToggleGroup.Item>
+        <ToggleGroup.Item value="b">Beta</ToggleGroup.Item>
+      </ToggleGroup>,
+    )
+    expect(screen.getByRole("radiogroup")).toHaveAttribute("data-variant", "underline")
+  })
+
+  it("renders a sliding pill indicator only for variant='pill' single mode", () => {
+    const { container, rerender } = render(
+      <ToggleGroup label="Options" variant="pill" defaultValue="b">
+        <ToggleGroup.Item value="a">Alpha</ToggleGroup.Item>
+        <ToggleGroup.Item value="b">Beta</ToggleGroup.Item>
+      </ToggleGroup>,
+    )
+    expect(container.querySelectorAll('[data-slot="toggle-group-pill"]').length).toBe(1)
+
+    rerender(
+      <ToggleGroup label="Options" variant="default" defaultValue="b">
+        <ToggleGroup.Item value="a">Alpha</ToggleGroup.Item>
+        <ToggleGroup.Item value="b">Beta</ToggleGroup.Item>
+      </ToggleGroup>,
+    )
+    expect(container.querySelector('[data-slot="toggle-group-pill"]')).toBeNull()
+  })
+
+  it("suppresses the pill indicator in multiple-selection mode", () => {
+    const { container } = render(
+      <ToggleGroup
+        label="Options"
+        variant="pill"
+        selectionMode="multiple"
+        defaultValue={["a"]}
+      >
+        <ToggleGroup.Item value="a">Alpha</ToggleGroup.Item>
+        <ToggleGroup.Item value="b">Beta</ToggleGroup.Item>
+      </ToggleGroup>,
+    )
+    expect(container.querySelector('[data-slot="toggle-group-pill"]')).toBeNull()
+  })
+
+  it("renders count brackets in bracket variant without nesting bracket markers", () => {
+    render(
+      <ToggleGroup label="Options" variant="bracket" defaultValue="a">
+        <ToggleGroup.Item value="a" count={5}>Alpha</ToggleGroup.Item>
+      </ToggleGroup>,
+    )
+    const item = screen.getByRole("radio", { name: /alpha/i })
+    // Only the count brackets render; the bracket-marker spans are suppressed.
+    expect(item).toHaveTextContent(/^\[Alpha 5\]$/)
+  })
+
+  it("marks the active item via data-active in underline variant", () => {
+    render(
+      <ToggleGroup label="Options" variant="underline" defaultValue="b">
+        <ToggleGroup.Item value="a">Alpha</ToggleGroup.Item>
+        <ToggleGroup.Item value="b">Beta</ToggleGroup.Item>
+      </ToggleGroup>,
+    )
+    expect(screen.getByRole("radio", { name: /alpha/i })).not.toHaveAttribute("data-active")
+    expect(screen.getByRole("radio", { name: /beta/i })).toHaveAttribute("data-active", "true")
+  })
+})
+
 describe("ToggleGroup multiple mode", () => {
   function renderMultiple(
     onChange: (value: readonly string[]) => void = vi.fn(),

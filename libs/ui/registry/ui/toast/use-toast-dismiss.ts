@@ -2,8 +2,10 @@
 
 import { useRef, useEffect } from "react";
 
-// Fallback timeout for reduced-motion: onAnimationEnd won't fire when
-// motion-safe:animate-* classes are suppressed by prefers-reduced-motion.
+// Belt-and-braces removal: if onAnimationEnd fails to fire (animation disabled
+// via OS settings, forced-colors layer overrides, or the slide token resolved
+// to `none` before the reduced-motion fade class loaded), the toast must still
+// unmount. Matches the exit-animation budget (slide-out 0.15s + fade-out 0.15s).
 const DISMISS_FALLBACK_MS = 200;
 
 export function useToastDismiss(
