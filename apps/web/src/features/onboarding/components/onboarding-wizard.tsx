@@ -322,8 +322,8 @@ export function OnboardingWizard() {
           ))}
         </HorizontalStepper>
         {error && (
-          <Callout variant="error">
-            {error}
+          <Callout tone="error" live>
+            <Callout.Content>{error}</Callout.Content>
           </Callout>
         )}
         {renderStep()}

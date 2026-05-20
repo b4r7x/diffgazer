@@ -2,56 +2,63 @@ import type { ComponentDoc } from "./types"
 
 export const calloutDoc: ComponentDoc = {
   description:
-    "Dismissible alert box with semantic variants, auto-generated icons, and compound component architecture.",
+    "Dismissible alert box with tone-driven coloring, frame variants (inline / rail / bar), and a compound API.",
   anatomy: [
-    { name: "Callout", indent: 0, note: "Root (manages visibility state, provides variant context)" },
-    { name: "CalloutIcon", indent: 1, note: "Variant icon with default characters (overridable via children)" },
-    { name: "CalloutTitle", indent: 1, note: "Bold title text" },
-    { name: "CalloutContent", indent: 1, note: "Body text" },
-    { name: "CalloutDismiss", indent: 1, note: "Close button (triggers visibility change)" },
+    { name: "Callout", indent: 0, note: "Root (manages visibility, provides tone context)" },
+    { name: "Callout.Icon", indent: 1, note: "Tone icon — outlined 14px SVG (overridable via children)" },
+    { name: "Callout.Title", indent: 1, note: "Bold title text in the tone color" },
+    { name: "Callout.Content", indent: 1, note: "Body text in muted color" },
+    { name: "Callout.Dismiss", indent: 1, note: "Close button (24×24 with 4px padding)" },
   ],
   notes: [
     {
       title: "Compound Components",
       content:
-        "Use CalloutIcon, CalloutTitle, CalloutContent, and CalloutDismiss as children. Each part inherits the variant from the root Callout component via context.",
+        "Compose Callout.Icon, Callout.Title, Callout.Content, and Callout.Dismiss as children. Each part inherits the tone from the root Callout via context.",
     },
     {
-      title: "Layout",
+      title: "Frame variants",
       content:
-        "Use the layout prop to control arrangement: 'column' (default) places icon on the left with title and content stacked vertically; 'inline' places everything in a single row that wraps when needed; 'none' removes all layout styles for full custom control. Note: with layout='none', sub-components still emit grid-column positioning classes (col-start-1, col-start-2, etc.) which are inert outside a grid parent but may need overriding if you set your own grid.",
+        "frame=\"inline\" (default): hairline border at tone color + subtle tone bg. frame=\"rail\": no border, 2px inline-start rail at tone color. frame=\"bar\": neutral border + 4px tone marker bar, matching Dialog.Header marker=\"bar\".",
     },
     {
-      title: "Default Icons",
+      title: "Default icons",
       content:
-        "Each variant has a default icon character: info='i', warning='!', error='✕', success='✓'. Pass children to CalloutIcon to override with any ReactNode.",
+        "Each tone ships a default outlined SVG glyph. Pass children to Callout.Icon to override with any ReactNode.",
     },
     {
       title: "Dismissible",
       content:
-        "Add CalloutDismiss as a child to show a close button. In uncontrolled mode the callout self-dismisses. For controlled mode, pass open and onOpenChange to the root Callout.",
+        "Add Callout.Dismiss as a child to show a close button. In uncontrolled mode the callout self-dismisses. For controlled mode, pass open and onOpenChange to the root Callout.",
     },
     {
       title: "Accessibility",
       content:
-        "Static callouts do not set a role by default, except variant='error' which renders role='alert'. Pass live to render status semantics for info, warning, and success callouts that appear dynamically. You may still pass a native role prop when a specific landmark or live-region contract is needed.",
+        "Static callouts have no role. Pass live to opt into role=\"status\" (or role=\"alert\" for tone=\"error\") so assistive tech announces the message. A visually-hidden tone prefix (\"Warning:\", \"Error:\", …) is always rendered so the message is unambiguous without color.",
     },
   ],
   usage: { example: "callout-default" },
   examples: [
     { name: "callout-default", title: "Default" },
-    { name: "callout-variants", title: "Variants" },
-    { name: "callout-controlled", title: "Controlled Visibility" },
-    { name: "callout-custom-icon", title: "Custom Icon" },
+    { name: "callout-tones", title: "Tones" },
+    { name: "callout-frames", title: "Frames" },
+    { name: "callout-controlled", title: "Controlled visibility" },
+    { name: "callout-custom-icon", title: "Custom icon" },
   ],
   keyboard: null,
   props: {
     Callout: {
-      variant: {
+      tone: {
         type: '"info" | "warning" | "error" | "success"',
         required: false,
         defaultValue: '"info"',
-        description: "Semantic color and default icon set.",
+        description: "Semantic tone — drives color and default icon.",
+      },
+      frame: {
+        type: '"inline" | "rail" | "bar"',
+        required: false,
+        defaultValue: '"inline"',
+        description: "Visual frame: inline border, inline-start rail, or marker bar.",
       },
       open: {
         type: "boolean",
@@ -69,30 +76,24 @@ export const calloutDoc: ComponentDoc = {
         type: "(open: boolean) => void",
         required: false,
         defaultValue: null,
-        description: "Called when CalloutDismiss closes the callout or controlled state should change.",
-      },
-      layout: {
-        type: '"column" | "inline" | "none"',
-        required: false,
-        defaultValue: '"column"',
-        description: "Layout preset for icon, title, content, and dismiss button.",
+        description: "Called when Callout.Dismiss closes the callout or controlled state should change.",
       },
       live: {
         type: "boolean",
         required: false,
         defaultValue: "false",
-        description: "Adds live-region semantics for non-error callouts. Error callouts are alerts by default.",
+        description: "Opt into role=\"status\" (or role=\"alert\" for tone=\"error\") for live-region announcement.",
       },
     },
-    CalloutIcon: {
+    "Callout.Icon": {
       children: {
         type: "ReactNode",
         required: false,
-        defaultValue: "variant icon",
+        defaultValue: "tone icon",
         description: "Custom icon content. The icon is decorative and aria-hidden.",
       },
     },
-    CalloutTitle: {
+    "Callout.Title": {
       children: {
         type: "ReactNode",
         required: true,
@@ -100,7 +101,7 @@ export const calloutDoc: ComponentDoc = {
         description: "Title text for the callout.",
       },
     },
-    CalloutContent: {
+    "Callout.Content": {
       children: {
         type: "ReactNode",
         required: true,
@@ -108,7 +109,7 @@ export const calloutDoc: ComponentDoc = {
         description: "Body content for the callout.",
       },
     },
-    CalloutDismiss: {
+    "Callout.Dismiss": {
       children: {
         type: "ReactNode",
         required: false,

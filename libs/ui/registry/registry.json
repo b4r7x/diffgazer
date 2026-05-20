@@ -426,7 +426,7 @@
       "name": "panel",
       "type": "registry:ui",
       "title": "Panel",
-      "description": "Card-like container panel with composable terminal and section headers",
+      "description": "Card-like container with composable header, title, description, content, row, and footer primitives",
       "dependencies": [
         "class-variance-authority"
       ],
@@ -434,7 +434,7 @@
         "theme"
       ],
       "meta": {
-        "client": false
+        "client": true
       },
       "files": [
         {
@@ -446,7 +446,19 @@
           "type": "registry:ui"
         },
         {
+          "path": "registry/ui/panel/panel-context.tsx",
+          "type": "registry:ui"
+        },
+        {
           "path": "registry/ui/panel/panel-header.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/panel/panel-title.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/panel/panel-description.tsx",
           "type": "registry:ui"
         },
         {
@@ -454,11 +466,15 @@
           "type": "registry:ui"
         },
         {
+          "path": "registry/ui/panel/panel-row.tsx",
+          "type": "registry:ui"
+        },
+        {
           "path": "registry/ui/panel/panel-footer.tsx",
           "type": "registry:ui"
         },
         {
-          "path": "registry/ui/panel/panel-legend.tsx",
+          "path": "registry/ui/shared/panel.css",
           "type": "registry:ui"
         }
       ]

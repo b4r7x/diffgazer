@@ -5,7 +5,7 @@ import {
 } from "react";
 import type { TrustCapabilities } from "@diffgazer/core/schemas/config";
 import { Badge } from "@diffgazer/ui/components/badge";
-import { Callout, CalloutIcon, CalloutTitle, CalloutContent } from "@diffgazer/ui/components/callout";
+import { Callout } from "@diffgazer/ui/components/callout";
 import { Button } from "@diffgazer/ui/components/button";
 import { CheckboxGroup, CheckboxItem } from "@diffgazer/ui/components/checkbox";
 import { focusNavigationItem } from "@diffgazer/keys";
@@ -153,13 +153,13 @@ export function TrustPermissionsContent(props: TrustPermissionsContentProps) {
         ))}
       </CheckboxGroup>
 
-      <Callout variant="warning">
-        <CalloutIcon />
-        <CalloutTitle>SECURITY WARNING</CalloutTitle>
-        <CalloutContent>
+      <Callout tone="warning">
+        <Callout.Icon />
+        <Callout.Title>SECURITY WARNING</Callout.Title>
+        <Callout.Content>
           Run commands is currently unavailable. When enabled, it allows the AI to execute shell scripts.
           This grants significant access to your system.
-        </CalloutContent>
+        </Callout.Content>
       </Callout>
 
       {showActions && (

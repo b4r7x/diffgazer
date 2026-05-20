@@ -100,6 +100,10 @@
   --action: var(--tui-highlight);
   --action-foreground: var(--tui-highlight-fg);
 
+  /* Surface elevation steps. --surface-1 is one step lighter than --tui-bg
+     for Linear/Raycast-style elevated panels (Panel frame="surface"). */
+  --surface-1: #111111;
+
   --trans-fast: 0.15s ease;
   --radius: 0.25rem;
 }
@@ -197,4 +201,8 @@
 
   --action: var(--tui-violet);
   --action-foreground: #ffffff;
+
+  /* Surface elevation steps. --surface-1 is the elevated surface vs
+     --tui-bg (Linear-style cards / Panel frame="surface"). */
+  --surface-1: #ffffff;
 }

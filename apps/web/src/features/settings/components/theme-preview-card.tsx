@@ -1,4 +1,4 @@
-import { Panel, PanelHeader, PanelContent } from "@diffgazer/ui/components/panel";
+import { Panel } from "@diffgazer/ui/components/panel";
 import { Menu, MenuItem } from "@diffgazer/ui/components/menu";
 import { Badge } from "@diffgazer/ui/components/badge";
 import type { ResolvedTheme } from "@/types/theme";
@@ -19,11 +19,11 @@ export function ThemePreviewCard({ previewTheme }: ThemePreviewCardProps) {
     >
       <div className="w-full max-w-sm font-mono text-xs isolate">
         <Panel className="bg-tui-bg border-tui-border">
-          <PanelHeader>
-            <span>PREVIEW.tsx</span>
+          <Panel.Header marker="none">
+            <Panel.Title as="h3" className="font-normal">PREVIEW.tsx</Panel.Title>
             <span className="text-foreground">RO</span>
-          </PanelHeader>
-          <PanelContent spacing="none">
+          </Panel.Header>
+          <Panel.Content spacing="none">
             <Menu selectedId="selected" onSelect={() => {}}>
               <MenuItem id="normal">Normal Item</MenuItem>
               <MenuItem id="selected">Selected Item</MenuItem>
@@ -49,7 +49,7 @@ export function ThemePreviewCard({ previewTheme }: ThemePreviewCardProps) {
               <Badge variant="success">Success</Badge>
               <Badge variant="info">Info</Badge>
             </div>
-          </PanelContent>
+          </Panel.Content>
           <div className="px-3 py-1 text-center text-[10px] text-tui-muted border-t border-tui-border">
             Diffgazer v2.0
           </div>

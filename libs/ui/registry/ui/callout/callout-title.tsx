@@ -1,19 +1,20 @@
 "use client";
 
-import type { ReactNode, HTMLAttributes } from "react";
+import type { HTMLAttributes, ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { useCalloutContext, textColorByVariant } from "./callout-context";
 
 export interface CalloutTitleProps extends HTMLAttributes<HTMLSpanElement> {
   children: ReactNode;
 }
 
-export function CalloutTitle({ children, className, ...props }: CalloutTitleProps) {
-  const { variant } = useCalloutContext();
-
+export function CalloutTitle({ children, className, style, ...props }: CalloutTitleProps) {
   return (
     <span
-      className={cn("font-bold", textColorByVariant[variant], "col-start-2 row-start-1", className)}
+      style={{ gridArea: "title", ...style }}
+      className={cn(
+        "self-center font-bold text-[13px] leading-[1.4] text-[color:var(--cal-tone)]",
+        className,
+      )}
       {...props}
     >
       {children}

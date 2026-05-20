@@ -72,7 +72,6 @@ export function IssueListPane({
     <Panel
       as="aside"
       aria-label="Issue list"
-      variant="borderless"
       data-pane="list"
       data-focused={isPaneFocused || undefined}
       className={cn(

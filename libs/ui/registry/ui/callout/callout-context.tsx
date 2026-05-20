@@ -2,17 +2,10 @@
 
 import { createContext, useContext } from "react";
 
-export type CalloutVariant = "info" | "warning" | "error" | "success";
-
-export const textColorByVariant: Record<CalloutVariant, string> = {
-  info: "text-info-fg",
-  warning: "text-warning-fg",
-  error: "text-error-fg",
-  success: "text-success-fg",
-};
+export type CalloutTone = "info" | "warning" | "error" | "success";
 
 export interface CalloutContextValue {
-  variant: CalloutVariant;
+  tone: CalloutTone;
   onDismiss: () => void;
 }
 

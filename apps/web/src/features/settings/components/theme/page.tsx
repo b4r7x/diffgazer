@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { Shortcut } from "@diffgazer/core/schemas/ui";
 import type { WebTheme, ResolvedTheme } from "@/types/theme";
-import { Panel, PanelContent } from "@diffgazer/ui/components/panel";
+import { Panel } from "@diffgazer/ui/components/panel";
 import { Callout } from "@diffgazer/ui/components/callout";
 import { Button } from "@diffgazer/ui/components/button";
 import { ThemeSelectorContent } from "../theme-selector-content";
@@ -144,9 +144,11 @@ function SettingsThemeEditor({
   return (
     <div className="flex-1 flex flex-col p-6 min-h-0">
       <div className="grid grid-cols-[2fr_3fr] gap-6 w-full h-full min-h-0">
-        <Panel className="relative pt-4 flex flex-col h-full">
-          <Panel.Legend tone="accent">Theme Settings</Panel.Legend>
-          <PanelContent className="flex-1 flex flex-col">
+        <Panel tone="accent" className="relative pt-4 flex flex-col h-full">
+          <Panel.Header>
+            <Panel.Title>Theme Settings</Panel.Title>
+          </Panel.Header>
+          <Panel.Content className="flex-1 flex flex-col">
             <ThemeSelectorContent
               value={selectedTheme}
               highlighted={focusedTheme}
@@ -168,8 +170,10 @@ function SettingsThemeEditor({
             />
 
             <div className="mt-auto pt-6 space-y-4">
-              <Callout variant="info" layout="none">
-                Focus previews themes live. Space selects, Enter saves &amp; exits.
+              <Callout tone="info">
+                <Callout.Content>
+                  Focus previews themes live. Space selects, Enter saves &amp; exits.
+                </Callout.Content>
               </Callout>
 
               <div className="flex justify-end gap-3">
@@ -192,14 +196,16 @@ function SettingsThemeEditor({
                 </Button>
               </div>
             </div>
-          </PanelContent>
+          </Panel.Content>
         </Panel>
 
-        <Panel className="relative pt-4 flex flex-col h-full overflow-hidden">
-          <Panel.Legend tone="info">Live Preview</Panel.Legend>
-          <PanelContent className="flex-1 flex items-center justify-center p-0">
+        <Panel tone="info" className="relative pt-4 flex flex-col h-full overflow-hidden">
+          <Panel.Header>
+            <Panel.Title>Live Preview</Panel.Title>
+          </Panel.Header>
+          <Panel.Content className="flex-1 flex items-center justify-center p-0">
             <ThemePreviewCard previewTheme={previewResolved} />
-          </PanelContent>
+          </Panel.Content>
         </Panel>
       </div>
     </div>

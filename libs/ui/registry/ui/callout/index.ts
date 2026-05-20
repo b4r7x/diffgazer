@@ -1,6 +1,8 @@
 "use client";
 
-import { Callout as CalloutRoot, calloutVariants, type CalloutProps } from "./callout";
+import "../shared/callout.css";
+
+import { Callout as CalloutRoot, type CalloutProps, type CalloutFrame } from "./callout";
 import { CalloutIcon, type CalloutIconProps } from "./callout-icon";
 import { CalloutTitle, type CalloutTitleProps } from "./callout-title";
 import { CalloutContent, type CalloutContentProps } from "./callout-content";
@@ -13,9 +15,8 @@ const Callout = Object.assign(CalloutRoot, {
   Dismiss: CalloutDismiss,
 });
 
-export { Callout, type CalloutProps };
-export { calloutVariants };
-export { type CalloutVariant } from "./callout-context";
+export { Callout, type CalloutProps, type CalloutFrame };
+export { type CalloutTone } from "./callout-context";
 export { CalloutIcon, type CalloutIconProps };
 export { CalloutTitle, type CalloutTitleProps };
 export { CalloutContent, type CalloutContentProps };

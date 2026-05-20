@@ -1,23 +1,63 @@
-import type { ComponentPropsWithRef } from "react";
-import { cva, type VariantProps } from "class-variance-authority";
+"use client";
+
+import { Children, isValidElement, type HTMLAttributes, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { PanelTitle } from "./panel-title";
+import { PanelDescription } from "./panel-description";
 
-export const panelHeaderVariants = cva("", {
-  variants: {
-    variant: {
-      default: "flex items-center justify-between border-b border-border bg-secondary/30 px-6 py-4 text-sm font-semibold text-foreground",
-      terminal:
-        "flex items-center justify-between bg-secondary text-muted-foreground text-xs px-3 py-1 border-b border-border font-bold uppercase tracking-wider",
-      subtle:
-        "bg-secondary/30 text-muted-foreground text-xs p-2 border-b border-border uppercase tracking-widest text-center",
-    },
-  },
-  defaultVariants: { variant: "default" },
-});
+export interface PanelHeaderProps extends HTMLAttributes<HTMLDivElement> {
+  /**
+   * "bar" renders a 4px foreground accent bar to the left of the title and
+   * description column, matching Dialog's `marker="bar"`. Color follows
+   * `--panel-tone` (tone-tinted when the panel has a tone).
+   * "none" suppresses the bar; useful for `frame="rail"` (the rail is the
+   * marker) or custom header layouts.
+   */
+  marker?: "bar" | "none";
+}
 
-export type PanelHeaderProps = ComponentPropsWithRef<"div"> &
-  VariantProps<typeof panelHeaderVariants>;
+/**
+ * Compound header. Title and Description go in a left column; any other
+ * sibling (eyebrow tag, badge, button) lands in a right slot, vertically
+ * centered against the title baseline. The marker bar spans the full
+ * header height via `align-self: stretch`.
+ */
+export function PanelHeader({
+  className,
+  children,
+  marker = "bar",
+  ...props
+}: PanelHeaderProps) {
+  const { bodyChildren, endChildren } = partitionHeaderChildren(children);
+  const hasEnd = endChildren.length > 0;
 
-export function PanelHeader({ className, variant, ...props }: PanelHeaderProps) {
-  return <div data-slot="panel-header" className={cn(panelHeaderVariants({ variant }), className)} {...props} />;
+  return (
+    <div
+      {...props}
+      data-slot="panel-header"
+      data-marker={marker}
+      className={cn(className)}
+    >
+      <div data-slot="panel-header-body">{bodyChildren}</div>
+      {hasEnd ? <div data-slot="panel-header-end">{endChildren}</div> : null}
+    </div>
+  );
+}
+
+function isBodyChild(child: ReactNode): boolean {
+  if (!isValidElement(child)) return false;
+  return child.type === PanelTitle || child.type === PanelDescription;
+}
+
+function partitionHeaderChildren(children: ReactNode): {
+  bodyChildren: ReactNode[];
+  endChildren: ReactNode[];
+} {
+  const bodyChildren: ReactNode[] = [];
+  const endChildren: ReactNode[] = [];
+  for (const child of Children.toArray(children)) {
+    if (isBodyChild(child)) bodyChildren.push(child);
+    else endChildren.push(child);
+  }
+  return { bodyChildren, endChildren };
 }

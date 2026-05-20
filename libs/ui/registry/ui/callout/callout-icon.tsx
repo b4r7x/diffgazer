@@ -1,57 +1,54 @@
 "use client";
 
-import type { ReactNode, HTMLAttributes } from "react";
-import { cva } from "class-variance-authority";
-import { type CalloutVariant, useCalloutContext } from "./callout-context";
+import type { HTMLAttributes, ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { type CalloutTone, useCalloutContext } from "./callout-context";
 
-const iconVariants = cva(
-  "w-5 h-5 flex items-center justify-center text-xs font-bold rounded-sm shrink-0 mt-0.5 shadow-lg",
-  {
-    variants: {
-      variant: {
-        info: "bg-info-strong text-info-strong-foreground shadow-info-strong/20",
-        warning:
-          "bg-warning-strong text-warning-strong-foreground shadow-warning-strong/20",
-        error:
-          "bg-error-strong text-error-strong-foreground shadow-error-strong/20",
-        success:
-          "bg-success-strong text-success-strong-foreground shadow-success-strong/20",
-      },
-    },
-    defaultVariants: { variant: "info" },
-  },
-);
-
-const defaultIcons: Record<CalloutVariant, string> = {
-  info: "i",
-  warning: "!",
-  error: "✕",
-  success: "✓",
+const DEFAULT_ICON: Record<CalloutTone, ReactNode> = {
+  info: (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <circle cx="8" cy="8" r="7" />
+      <path d="M8 5v4M8 11h.01" />
+    </svg>
+  ),
+  warning: (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path d="M8 1.5L15 14H1L8 1.5z" />
+      <path d="M8 6v4M8 12h.01" />
+    </svg>
+  ),
+  error: (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <circle cx="8" cy="8" r="7" />
+      <path d="M5 5l6 6M11 5l-6 6" />
+    </svg>
+  ),
+  success: (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <circle cx="8" cy="8" r="7" />
+      <path d="M5 8.5l2 2 4-5" />
+    </svg>
+  ),
 };
 
-export interface CalloutIconProps extends HTMLAttributes<HTMLDivElement> {
+export interface CalloutIconProps extends HTMLAttributes<HTMLSpanElement> {
   children?: ReactNode;
 }
 
-export function CalloutIcon({
-  children,
-  className,
-  ...props
-}: CalloutIconProps) {
-  const { variant } = useCalloutContext();
+export function CalloutIcon({ children, className, style, ...props }: CalloutIconProps) {
+  const { tone } = useCalloutContext();
 
   return (
-    <div
+    <span
       aria-hidden="true"
+      style={{ gridArea: "icon", ...style }}
       className={cn(
-        iconVariants({ variant }),
-        "col-start-1 row-start-1 row-span-2",
+        "inline-flex items-center justify-center self-center w-4 h-4 text-[color:var(--cal-tone)] [&>svg]:w-[14px] [&>svg]:h-[14px]",
         className,
       )}
       {...props}
     >
-      {children ?? defaultIcons[variant]}
-    </div>
+      {children ?? DEFAULT_ICON[tone]}
+    </span>
   );
 }

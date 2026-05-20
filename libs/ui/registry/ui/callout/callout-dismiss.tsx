@@ -8,21 +8,32 @@ export interface CalloutDismissProps extends ButtonHTMLAttributes<HTMLButtonElem
   children?: ReactNode;
 }
 
-export function CalloutDismiss({ children, className, onClick, ...props }: CalloutDismissProps) {
+export function CalloutDismiss({
+  children,
+  className,
+  onClick,
+  style,
+  ...props
+}: CalloutDismissProps) {
   const { onDismiss } = useCalloutContext();
 
   return (
     <button
       type="button"
+      aria-label="Dismiss"
+      style={{ gridArea: "dismiss", ...style }}
       onClick={(e) => {
         onClick?.(e);
         if (!e.defaultPrevented) onDismiss();
       }}
       className={cn(
-        "col-start-3 row-start-1 shrink-0 font-mono text-sm min-h-[44px] min-w-[44px] flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity cursor-pointer focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        "self-center inline-flex items-center justify-center shrink-0",
+        "w-6 h-6 p-1 rounded-[var(--radius)] font-mono text-[13px] cursor-pointer",
+        "text-muted hover:text-foreground hover:bg-foreground/5",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--cal-tone)] focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        "transition-colors",
         className,
       )}
-      aria-label="Dismiss"
       {...props}
     >
       {children ?? "[x]"}

@@ -1,6 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
 import { InfoField } from "./info-field";
-import { Panel, PanelContent, PanelHeader } from "@diffgazer/ui/components/panel";
+import { Panel } from "@diffgazer/ui/components/panel";
 import type { ContextInfo } from "@diffgazer/core/schemas/ui";
 
 interface ContextSidebarProps {
@@ -14,8 +14,10 @@ export function ContextSidebar({ context, isTrusted, projectPath }: ContextSideb
 
   return (
     <Panel className="w-full max-w-md lg:w-80 h-fit shrink-0">
-      <PanelHeader>Context</PanelHeader>
-      <PanelContent>
+      <Panel.Header>
+        <Panel.Title>Context</Panel.Title>
+      </Panel.Header>
+      <Panel.Content>
         {isTrusted ? (
           context.trustedDir && (
             <InfoField label="Trusted" color="blue">
@@ -56,7 +58,7 @@ export function ContextSidebar({ context, isTrusted, projectPath }: ContextSideb
             </div>
           </InfoField>
         )}
-      </PanelContent>
+      </Panel.Content>
     </Panel>
   );
 }

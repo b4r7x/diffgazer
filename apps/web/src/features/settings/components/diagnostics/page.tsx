@@ -6,7 +6,7 @@ import { Button } from "@diffgazer/ui/components/button";
 import { Callout } from "@diffgazer/ui/components/callout";
 import { Divider } from "@diffgazer/ui/components/divider";
 import { KeyValue } from "@diffgazer/ui/components/key-value";
-import { Panel, PanelContent, PanelHeader } from "@diffgazer/ui/components/panel";
+import { Panel } from "@diffgazer/ui/components/panel";
 import { useDiagnosticsKeyboard } from "../../hooks/use-diagnostics-keyboard";
 
 type OverallState = "loading" | "error" | "empty" | "success";
@@ -108,12 +108,12 @@ export function DiagnosticsPage() {
         aria-busy={isRefreshingAll || isRefreshing}
         className="w-full max-w-2xl flex flex-col border-tui-border bg-[#161b22] shadow-lg"
       >
-        <PanelHeader className="bg-tui-selection border-tui-border px-4 py-2">
-          <span className="font-bold text-tui-fg">System Diagnostics</span>
+        <Panel.Header className="bg-tui-selection border-tui-border px-4 py-2">
+          <Panel.Title className="text-tui-fg">System Diagnostics</Panel.Title>
           <span className="text-xs text-tui-muted">{overallState}</span>
-        </PanelHeader>
+        </Panel.Header>
 
-        <PanelContent ref={focusFallbackRef} tabIndex={-1} className="p-6 space-y-8 focus:outline-none">
+        <Panel.Content ref={focusFallbackRef} tabIndex={-1} className="p-6 space-y-8 focus:outline-none">
           <div className="grid grid-cols-2 gap-x-8 text-sm">
             <div className="flex flex-col">
               <span className="text-tui-muted text-xs uppercase tracking-wider mb-1">Version Info</span>
@@ -193,11 +193,11 @@ export function DiagnosticsPage() {
           </div>
 
           {diagnosticsError && (
-            <Callout variant="error" layout="none" className="text-sm">
-              {diagnosticsError}
+            <Callout tone="error" live className="text-sm">
+              <Callout.Content>{diagnosticsError}</Callout.Content>
             </Callout>
           )}
-        </PanelContent>
+        </Panel.Content>
       </Panel>
     </div>
   );

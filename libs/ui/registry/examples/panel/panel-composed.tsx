@@ -1,36 +1,28 @@
-import { Panel, PanelHeader, PanelContent, PanelFooter } from "@/components/ui/panel"
+import { Panel } from "@/components/ui/panel"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 
 export default function PanelComposed() {
   return (
     <Panel>
-      <PanelHeader>
-        <span>Repository</span>
-        <span className="text-muted-foreground">main</span>
-      </PanelHeader>
-      <PanelContent spacing="sm">
-        <div className="flex justify-between text-xs py-1 border-b border-border">
-          <span className="text-muted-foreground">Branch</span>
-          <span className="text-foreground font-bold">main</span>
-        </div>
-        <div className="flex justify-between text-xs py-1 border-b border-border">
-          <span className="text-muted-foreground">Commit</span>
-          <span className="font-mono">a1b2c3d</span>
-        </div>
-        <div className="flex justify-between text-xs py-1 border-b border-border">
-          <span className="text-muted-foreground">Author</span>
-          <span>developer@example.com</span>
-        </div>
-        <div className="flex justify-between text-xs py-1">
-          <span className="text-muted-foreground">Files changed</span>
-          <span className="text-success font-bold">7</span>
-        </div>
-      </PanelContent>
-      <PanelFooter>
-        <div className="flex justify-between text-xs">
-          <span className="text-muted-foreground">Repository health</span>
-          <span className="text-success font-bold">stable</span>
-        </div>
-      </PanelFooter>
+      <Panel.Header>
+        <Panel.Title>Repository</Panel.Title>
+        <Panel.Description>diffgazer-workspace · last synced 4 minutes ago</Panel.Description>
+        <span className="text-[10px] font-bold uppercase tracking-widest text-muted">
+          MAIN
+        </span>
+        <Button variant="ghost" size="sm">Open</Button>
+      </Panel.Header>
+      <Panel.Content spacing="none">
+        <Panel.Row label="Branch" value="main" />
+        <Panel.Row label="Commit" value="a1b2c3d" />
+        <Panel.Row label="Author" value="developer@example.com" />
+        <Panel.Row label="Files changed" value={<Badge variant="success">7 OK</Badge>} />
+      </Panel.Content>
+      <Panel.Footer>
+        <span>Repository health</span>
+        <Badge variant="success">stable</Badge>
+      </Panel.Footer>
     </Panel>
   )
 }

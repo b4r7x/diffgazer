@@ -103,7 +103,9 @@ export function SettingsHubPage() {
     <div className="flex-1 flex flex-col items-center justify-center px-4 pb-12">
       <div className="w-full max-w-3xl">
         <Panel className="bg-tui-bg shadow-2xl">
-          <Panel.Legend>SETTINGS HUB</Panel.Legend>
+          <Panel.Header>
+            <Panel.Title>SETTINGS HUB</Panel.Title>
+          </Panel.Header>
           <Menu
             highlighted={effectiveHighlighted}
             onHighlightChange={setHighlighted}

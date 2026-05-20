@@ -5,7 +5,7 @@ import type { Shortcut } from "@diffgazer/core/schemas/ui";
 import { getErrorMessage } from "@diffgazer/core/errors";
 import { useKey, useScope } from "@diffgazer/keys";
 import { usePageFooter } from "@diffgazer/core/footer";
-import { Panel, PanelHeader, PanelContent } from "@diffgazer/ui/components/panel";
+import { Panel } from "@diffgazer/ui/components/panel";
 import { toast } from "@diffgazer/ui/components/toast";
 import { TrustPermissionsContent } from "@/components/shared/trust-permissions-content";
 import { NO_TRUST_CAPABILITIES, normalizeTrustCapabilities } from "@diffgazer/core/schemas/config";
@@ -122,8 +122,10 @@ function TrustPermissionsEditor({
   return (
     <div className="flex-1 flex items-center justify-center p-4">
       <Panel className="w-full max-w-2xl">
-        <PanelHeader>TRUST &amp; PERMISSIONS</PanelHeader>
-        <PanelContent>
+        <Panel.Header>
+          <Panel.Title>TRUST &amp; PERMISSIONS</Panel.Title>
+        </Panel.Header>
+        <Panel.Content>
           <TrustPermissionsContent
             directory={repoRoot ?? "Loading..."}
             value={capabilities}
@@ -136,7 +138,7 @@ function TrustPermissionsEditor({
             onSave={handleSave}
             onRevoke={handleRevoke}
           />
-        </PanelContent>
+        </Panel.Content>
       </Panel>
     </div>
   );

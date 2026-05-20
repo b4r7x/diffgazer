@@ -62,7 +62,6 @@ export function IssueDetailsPane({
       <Panel
         as="aside"
         aria-label="Issue details"
-        variant="borderless"
         data-pane="details"
         data-focused={isFocused || undefined}
         className={cn(
@@ -96,7 +95,6 @@ export function IssueDetailsPane({
     <Panel
       as="aside"
       aria-label="Issue details"
-      variant="borderless"
       data-pane="details"
       data-focused={isFocused || undefined}
       className={cn(

@@ -1,63 +1,99 @@
 "use client";
 
-import { type ReactNode, type HTMLAttributes, type Ref, useCallback, useMemo } from "react";
-import { cva } from "class-variance-authority";
+import {
+  Children,
+  isValidElement,
+  useCallback,
+  useMemo,
+  type CSSProperties,
+  type HTMLAttributes,
+  type ReactNode,
+  type Ref,
+} from "react";
 import { cn } from "@/lib/utils";
 import { useControllableState } from "@/hooks/use-controllable-state";
-import { CalloutContext, type CalloutVariant } from "./callout-context";
+import { CalloutContext, type CalloutTone } from "./callout-context";
+import { CalloutIcon } from "./callout-icon";
 
-export const calloutVariants = cva("relative border font-mono p-4", {
-  variants: {
-    variant: {
-      info: "border-info-border/40 bg-info-subtle",
-      warning: "border-warning-border/40 bg-warning-subtle",
-      error: "border-error-border/40 bg-error-subtle",
-      success: "border-success-border/40 bg-success-subtle",
-    },
-  },
-  defaultVariants: { variant: "info" },
-});
+export type CalloutFrame = "inline" | "rail" | "bar";
 
-type CalloutLayout = "column" | "inline" | "none";
+const TONE_LABEL: Record<CalloutTone, string> = {
+  info: "Info: ",
+  warning: "Warning: ",
+  error: "Error: ",
+  success: "Success: ",
+};
 
-const layoutClasses = {
-  column: "grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-4 gap-y-1",
-  inline: "flex flex-wrap items-center gap-4",
-  none: "",
-} as const;
+const TONE_ROLE_LIVE: Record<CalloutTone, "status" | "alert"> = {
+  info: "status",
+  warning: "status",
+  success: "status",
+  error: "alert",
+};
+
+function hasCalloutIcon(children: ReactNode): boolean {
+  let found = false;
+  Children.forEach(children, (child) => {
+    if (found) return;
+    if (isValidElement(child) && child.type === CalloutIcon) {
+      found = true;
+    }
+  });
+  return found;
+}
+
+interface GridStyle {
+  className: string;
+  style: CSSProperties;
+}
+
+function gridStyle(frame: CalloutFrame, hasIcon: boolean): GridStyle {
+  if (frame === "bar") {
+    if (hasIcon) {
+      return {
+        className: "grid items-start gap-x-[10px] gap-y-1 grid-cols-[4px_16px_minmax(0,1fr)_auto]",
+        style: { gridTemplateAreas: "'bar icon title dismiss' 'bar . body .'" },
+      };
+    }
+    return {
+      className: "grid items-start gap-x-[10px] gap-y-1 grid-cols-[4px_minmax(0,1fr)_auto]",
+      style: { gridTemplateAreas: "'bar title dismiss' 'bar body .'" },
+    };
+  }
+  if (hasIcon) {
+    return {
+      className: "grid items-start gap-x-[10px] gap-y-1 grid-cols-[16px_minmax(0,1fr)_auto]",
+      style: { gridTemplateAreas: "'icon title dismiss' '. body .'" },
+    };
+  }
+  return {
+    className: "grid items-start gap-x-[10px] gap-y-1 grid-cols-[minmax(0,1fr)_auto]",
+    style: { gridTemplateAreas: "'title dismiss' 'body .'" },
+  };
+}
 
 export interface CalloutProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
-  variant?: CalloutVariant;
+  tone?: CalloutTone;
+  frame?: CalloutFrame;
   open?: boolean;
   defaultOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
-  layout?: CalloutLayout;
-  /** Adds live-region semantics. Error callouts are alerts by default. */
+  /**
+   * When true, applies role="status" (or role="alert" for error tone) so
+   * assistive tech announces the message. Default false: no role.
+   */
   live?: boolean;
   ref?: Ref<HTMLDivElement>;
 }
 
-const variantRole: Record<CalloutVariant, string | undefined> = {
-  info: "status",
-  warning: "status",
-  error: "alert",
-  success: "status",
-};
-
-function getRole(variant: CalloutVariant, live: boolean): string | undefined {
-  if (variant === "error") return "alert";
-  if (live) return variantRole[variant];
-  return undefined;
-}
-
 export function Callout({
   className,
-  variant = "info",
+  tone = "info",
+  frame = "inline",
   open: controlledOpen,
   defaultOpen,
   onOpenChange,
-  layout = "column",
   live = false,
   ref,
   children,
@@ -70,29 +106,36 @@ export function Callout({
   });
 
   const onDismiss = useCallback(() => setOpen(false), [setOpen]);
-
-  const contextValue = useMemo(
-    () => ({ variant, onDismiss }),
-    [variant, onDismiss],
-  );
+  const contextValue = useMemo(() => ({ tone, onDismiss }), [tone, onDismiss]);
 
   if (!open) return null;
 
-  const role = getRole(variant, live);
+  const hasIcon = hasCalloutIcon(children);
+  const role = live ? TONE_ROLE_LIVE[tone] : undefined;
+  const grid = gridStyle(frame, hasIcon);
 
   return (
     <CalloutContext value={contextValue}>
       <div
         ref={ref}
         role={role}
-        className={cn(
-          calloutVariants({ variant }),
-          layoutClasses[layout],
-          className,
-        )}
+        data-slot="callout"
+        data-tone={tone}
+        data-frame={frame}
+        className={cn(className)}
         {...props}
       >
-        {children}
+        <div className={grid.className} style={grid.style}>
+          {frame === "bar" && (
+            <span
+              aria-hidden="true"
+              style={{ gridArea: "bar" }}
+              className="self-stretch w-1 rounded-[1px] bg-[color:var(--cal-tone)] forced-colors:bg-[CanvasText]"
+            />
+          )}
+          <span className="sr-only">{TONE_LABEL[tone]}</span>
+          {children}
+        </div>
       </div>
     </CalloutContext>
   );

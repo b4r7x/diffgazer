@@ -5,7 +5,7 @@ import { CodeBlock, CodeBlockContent, CodeBlockHeader, CodeBlockLabel } from "@/
 import { SectionHeader } from "@/components/ui/section-header/section-header"
 import { cn } from "@diffgazer/ui/lib/utils"
 
-type CalloutVariant = "warning" | "error" | "success" | "info"
+type CalloutTone = "warning" | "error" | "success" | "info"
 const PreCodeContext = createContext(false)
 
 function extractTextContent(children: ReactNode): string {
@@ -18,7 +18,7 @@ function extractTextContent(children: ReactNode): string {
   return ""
 }
 
-function detectCalloutVariant(children: ReactNode): CalloutVariant {
+function detectCalloutTone(children: ReactNode): CalloutTone {
   const text = extractTextContent(children).trimStart()
   if (text.startsWith("Warning:") || text.startsWith("**Warning**")) {
     return "warning"
@@ -77,10 +77,10 @@ export const markdownMdxComponents: MDXComponents = {
     </p>
   ),
   blockquote: ({ children }) => {
-    const variant = detectCalloutVariant(children)
+    const tone = detectCalloutTone(children)
     return (
-      <Callout variant={variant} className="mb-4 [&_p]:max-w-none">
-        {children}
+      <Callout tone={tone} className="mb-4 [&_p]:max-w-none">
+        <Callout.Content>{children}</Callout.Content>
       </Callout>
     )
   },

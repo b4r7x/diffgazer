@@ -1,18 +1,32 @@
-import { Panel as PanelRoot, type PanelProps, panelVariants } from "./panel";
-import { PanelHeader, type PanelHeaderProps, panelHeaderVariants } from "./panel-header";
-import { PanelContent, type PanelContentProps, panelContentVariants } from "./panel-content";
+"use client";
+
+import "../shared/panel.css";
+
+import { Panel as PanelRoot, type PanelProps } from "./panel";
+import { PanelHeader, type PanelHeaderProps } from "./panel-header";
+import { PanelTitle, type PanelTitleProps } from "./panel-title";
+import { PanelDescription, type PanelDescriptionProps } from "./panel-description";
+import {
+  PanelContent,
+  panelContentVariants,
+  type PanelContentProps,
+} from "./panel-content";
 import { PanelFooter, type PanelFooterProps } from "./panel-footer";
-import { PanelLegend, type PanelLegendProps, panelLegendVariants } from "./panel-legend";
+import { PanelRow, type PanelRowProps } from "./panel-row";
 
 const Panel = Object.assign(PanelRoot, {
-  Legend: PanelLegend,
   Header: PanelHeader,
+  Title: PanelTitle,
+  Description: PanelDescription,
   Content: PanelContent,
+  Row: PanelRow,
   Footer: PanelFooter,
 });
 
-export { Panel, type PanelProps, panelVariants };
-export { PanelLegend, type PanelLegendProps, panelLegendVariants };
-export { PanelHeader, type PanelHeaderProps, panelHeaderVariants };
+export { Panel, type PanelProps };
+export { PanelHeader, type PanelHeaderProps };
+export { PanelTitle, type PanelTitleProps };
+export { PanelDescription, type PanelDescriptionProps };
 export { PanelContent, type PanelContentProps, panelContentVariants };
 export { PanelFooter, type PanelFooterProps };
+export { PanelRow, type PanelRowProps };

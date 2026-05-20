@@ -1,50 +1,222 @@
-import type { ComponentPropsWithRef } from "react";
-import { cva, type VariantProps } from "class-variance-authority";
+"use client";
+
+import {
+  Children,
+  isValidElement,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  type ComponentPropsWithRef,
+  type ElementType,
+  type ReactNode,
+} from "react";
 import { cn } from "@/lib/utils";
+import { PanelContext, type PanelContextValue } from "./panel-context";
+import { PanelTitle } from "./panel-title";
+import { PanelDescription } from "./panel-description";
 
-export const panelVariants = cva("relative bg-background", {
-  variants: {
-    variant: {
-      default: "border border-border shadow-2xl",
-      borderless: "",
-    },
-  },
-  defaultVariants: { variant: "default" },
-});
+export type PanelElement = "div" | "article" | "section" | "aside";
 
-type PanelOwnProps = VariantProps<typeof panelVariants>;
-type PanelElement = "div" | "article" | "section" | "aside";
-type PanelElementProps<T extends PanelElement> = Omit<
+/** All visual chrome (frame, tone, density) is driven by data-attributes in
+ *  shared/panel.css; no class names are emitted from the root. */
+export type PanelFrame = "hairline" | "rail" | "viewfinder" | "surface";
+export type PanelTone = "info" | "success" | "warning" | "error" | "accent";
+export type PanelDensity = "default" | "compact";
+
+interface PanelOwnProps {
+  frame?: PanelFrame;
+  tone?: PanelTone;
+  density?: PanelDensity;
+}
+
+export type PanelProps<T extends PanelElement = "div"> = Omit<
   ComponentPropsWithRef<T>,
   keyof PanelOwnProps | "as"
 > &
   PanelOwnProps & {
-    as: T;
+    as?: T;
   };
 
-export type PanelProps =
-  | (Omit<PanelElementProps<"div">, "as"> & { as?: "div" })
-  | PanelElementProps<"article">
-  | PanelElementProps<"section">
-  | PanelElementProps<"aside">;
+/**
+ * Card-like container. Composes `Panel.Header`, `Panel.Title`,
+ * `Panel.Description`, `Panel.Content`, `Panel.Row`, and `Panel.Footer`.
+ *
+ * Accessibility:
+ *  - If `Panel.Title` is in the subtree OR `aria-label`/`aria-labelledby` is
+ *    supplied, the root renders as `<section>` (a landmark) with
+ *    `aria-labelledby` auto wired to the title's id.
+ *  - Otherwise the root renders as a plain `<div>` (no nameless landmark).
+ *  - `Panel.Description` is auto-wired via `aria-describedby` when present.
+ *
+ * Subcomponent detection is a synchronous child walk (mirrors `DialogContent`),
+ * so the first commit already carries the correct element type and ARIA
+ * relationships — no remount on second render, no a11y gap on initial paint.
+ *
+ * `tone` is a purely visual border-color tint. Status messaging (icon,
+ * dismissable, live region, role=alert) belongs in `Callout`, not Panel.
+ */
+export function Panel<T extends PanelElement = "div">(props: PanelProps<T>) {
+  const {
+    as,
+    ref,
+    className,
+    frame,
+    tone,
+    density,
+    children,
+    "aria-label": ariaLabel,
+    "aria-labelledby": ariaLabelledBy,
+    ...rest
+  } = props as PanelProps<PanelElement>;
 
-export function Panel(props: PanelProps) {
-  const { className, variant } = props;
-  const resolvedClassName = cn(panelVariants({ variant }), className);
+  const id = useId();
+  const titleId = `${id}-title`;
+  const descriptionId = `${id}-description`;
 
-  if (props.as === "article") {
-    const { as, ref, className: omittedClassName, variant: omittedVariant, ...articleProps } = props;
-    return <article data-slot="panel" ref={ref} className={resolvedClassName} {...articleProps} />;
-  }
-  if (props.as === "section") {
-    const { as, ref, className: omittedClassName, variant: omittedVariant, ...sectionProps } = props;
-    return <section data-slot="panel" ref={ref} className={resolvedClassName} {...sectionProps} />;
-  }
-  if (props.as === "aside") {
-    const { as, ref, className: omittedClassName, variant: omittedVariant, ...asideProps } = props;
-    return <aside data-slot="panel" ref={ref} className={resolvedClassName} {...asideProps} />;
-  }
+  const contextValue = useMemo<PanelContextValue>(
+    () => ({ titleId, descriptionId }),
+    [titleId, descriptionId],
+  );
 
-  const { as, ref, className: omittedClassName, variant: omittedVariant, ...divProps } = props;
-  return <div data-slot="panel" ref={ref} className={resolvedClassName} {...divProps} />;
+  const hasRenderableTitle = containsPanelTitleElement(children);
+  const hasRenderableDescription = containsPanelDescriptionElement(children);
+  const titleCount = hasRenderableTitle ? countPanelTitleElements(children) : 0;
+  const descriptionCount = hasRenderableDescription
+    ? countPanelDescriptionElements(children)
+    : 0;
+
+  useDevWarnOnDuplicate(titleCount, "Panel.Title", titleId);
+  useDevWarnOnDuplicate(descriptionCount, "Panel.Description", descriptionId);
+
+  const hasAriaName = isNonEmptyString(ariaLabel) || isNonEmptyString(ariaLabelledBy);
+  const isNamedRegion = hasRenderableTitle || hasAriaName;
+
+  const resolvedFrame = frame ?? "hairline";
+  const resolvedDensity = density ?? "default";
+  const Tag = (as ?? (isNamedRegion ? "section" : "div")) as ElementType;
+
+  const accessibleName = resolvePanelAccessibleName({
+    ariaLabel,
+    ariaLabelledBy,
+    titleId,
+    hasRenderableTitle,
+  });
+  const resolvedAriaDescribedBy = hasRenderableDescription ? descriptionId : undefined;
+
+  return (
+    <PanelContext value={contextValue}>
+      <Tag
+        {...rest}
+        ref={ref}
+        data-slot="panel"
+        data-frame={resolvedFrame}
+        data-tone={tone ?? undefined}
+        data-density={resolvedDensity}
+        aria-label={accessibleName["aria-label"]}
+        aria-labelledby={accessibleName["aria-labelledby"]}
+        aria-describedby={resolvedAriaDescribedBy}
+        className={cn(className)}
+      >
+        {resolvedFrame === "viewfinder" ? (
+          <span aria-hidden="true" data-slot="panel-corners">
+            <span className="vf-tl" />
+            <span className="vf-tr" />
+            <span className="vf-bl" />
+            <span className="vf-br" />
+          </span>
+        ) : null}
+        {children}
+      </Tag>
+    </PanelContext>
+  );
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+/**
+ * Resolves the panel's accessible name following ARIA precedence:
+ * explicit `aria-labelledby` > explicit `aria-label` > `<Panel.Title>` id.
+ * Exactly one of `aria-label` / `aria-labelledby` is set; the other is undefined.
+ * Mirrors Dialog's `resolveAccessibleName` at dialog-content.tsx:89-105.
+ */
+function resolvePanelAccessibleName({
+  ariaLabel,
+  ariaLabelledBy,
+  titleId,
+  hasRenderableTitle,
+}: {
+  ariaLabel: string | undefined;
+  ariaLabelledBy: string | undefined;
+  titleId: string;
+  hasRenderableTitle: boolean;
+}): { "aria-label": string | undefined; "aria-labelledby": string | undefined } {
+  if (isNonEmptyString(ariaLabelledBy)) {
+    return { "aria-label": undefined, "aria-labelledby": ariaLabelledBy };
+  }
+  if (isNonEmptyString(ariaLabel)) {
+    return { "aria-label": ariaLabel, "aria-labelledby": undefined };
+  }
+  if (hasRenderableTitle) {
+    return { "aria-label": undefined, "aria-labelledby": titleId };
+  }
+  return { "aria-label": undefined, "aria-labelledby": undefined };
+}
+
+function containsPanelTitleElement(children: ReactNode): boolean {
+  return Children.toArray(children).some((child) => {
+    if (!isValidElement<{ children?: ReactNode }>(child)) return false;
+    if (child.type === PanelTitle) return true;
+    return containsPanelTitleElement(child.props.children);
+  });
+}
+
+function containsPanelDescriptionElement(children: ReactNode): boolean {
+  return Children.toArray(children).some((child) => {
+    if (!isValidElement<{ children?: ReactNode }>(child)) return false;
+    if (child.type === PanelDescription) return true;
+    return containsPanelDescriptionElement(child.props.children);
+  });
+}
+
+function countPanelTitleElements(children: ReactNode): number {
+  let count = 0;
+  for (const child of Children.toArray(children)) {
+    if (!isValidElement<{ children?: ReactNode }>(child)) continue;
+    if (child.type === PanelTitle) count++;
+    count += countPanelTitleElements(child.props.children);
+  }
+  return count;
+}
+
+function countPanelDescriptionElements(children: ReactNode): number {
+  let count = 0;
+  for (const child of Children.toArray(children)) {
+    if (!isValidElement<{ children?: ReactNode }>(child)) continue;
+    if (child.type === PanelDescription) count++;
+    count += countPanelDescriptionElements(child.props.children);
+  }
+  return count;
+}
+
+/**
+ * Dev-only warning when more than one `Panel.Title` or `Panel.Description` is
+ * rendered. Duplicates would collide on the shared id used for
+ * `aria-labelledby` / `aria-describedby`, producing an a11y violation. Logged
+ * from an effect so it does not run during render in concurrent/Strict mode.
+ */
+function useDevWarnOnDuplicate(count: number, label: string, id: string): void {
+  const warnedRef = useRef(false);
+  useEffect(() => {
+    if (process.env.NODE_ENV === "production") return;
+    if (count > 1 && !warnedRef.current) {
+      warnedRef.current = true;
+      console.warn(
+        `[Panel] Multiple <${label}> rendered; the duplicate id "${id}" will cause an a11y violation. Use exactly one per Panel.`,
+      );
+    }
+    if (count <= 1) warnedRef.current = false;
+  }, [count, label, id]);
 }

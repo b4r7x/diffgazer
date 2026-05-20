@@ -4,7 +4,7 @@ import { cn } from "@diffgazer/ui/lib/utils";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { Badge } from "@diffgazer/ui/components/badge";
 import { Button } from "@diffgazer/ui/components/button";
-import { Callout, CalloutTitle, CalloutContent } from "@diffgazer/ui/components/callout";
+import { Callout } from "@diffgazer/ui/components/callout";
 import { ToggleGroup, ToggleGroupItem } from "@diffgazer/ui/components/toggle-group";
 import { ProgressList, type ProgressStepData } from "@/components/ui/progress";
 import { ActivityLog, type LogEntryData } from "./activity-log";
@@ -237,13 +237,13 @@ export function ReviewProgressView({
 
         {hasPartialFailure && !error && (
           <div className="pb-2">
-            <Callout variant="warning">
-              <CalloutTitle>Partial Analysis</CalloutTitle>
-              <CalloutContent>
+            <Callout tone="warning">
+              <Callout.Title>Partial Analysis</Callout.Title>
+              <Callout.Content>
                 {failedAgents.length} agent{failedAgents.length === 1 ? "" : "s"}{" "}
                 failed (likely rate limited): {failedAgentNames}. Results may be
                 incomplete.
-              </CalloutContent>
+              </Callout.Content>
             </Callout>
           </div>
         )}

@@ -42,8 +42,8 @@ export function StorageWizard({
           autoFocusList={!isLoading}
         />
 
-        <Callout variant="info" layout="inline">
-          You can change this setting later from the Settings menu.
+        <Callout tone="info">
+          <Callout.Content>You can change this setting later from the Settings menu.</Callout.Content>
         </Callout>
 
         {error && (

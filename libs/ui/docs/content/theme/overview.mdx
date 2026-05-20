@@ -34,13 +34,29 @@ Tailwind v4 emits its own utilities and components into the matching layer names
 
 When you add custom CSS, place it inside the appropriate `@layer` block to opt into the documented precedence. Unlayered CSS still loads, but it always wins over any `@layer` rule and therefore breaks the contract — keep that for one-off overrides you want to "always apply."
 
+## Surface Elevation
+
+Surface tokens describe stepwise elevation above the page background (`--tui-bg`). They are declared on `:root` and the `[data-theme="light"]` override block in `theme.css`.
+
+| Token         | Dark default | Light default | Used by                                                                 |
+|---------------|--------------|---------------|-------------------------------------------------------------------------|
+| `--surface-1` | `#111111`    | `#ffffff`     | `Panel frame="surface"` for Linear/Raycast-style elevated card surfaces |
+
+`--surface-1` is one step above `--tui-bg` in the dark theme and the elevated card surface in the light theme. Override it on `:root` (or any ancestor) to tint every elevated panel without forking the component:
+
+```css
+:root {
+  --surface-1: #161616;
+}
+```
+
 ## Z-Index Scale
 
 Five tokens cover every overlay surface in the library. They live in the `@theme` block of `theme-base.css` and are exposed as CSS variables:
 
 | Token            | Value | Used by                                  |
 |------------------|------:|------------------------------------------|
-| `--z-base`       |     1 | `CardLabel`, `PanelLegend` (in-flow chrome that must paint above neighboring siblings) |
+| `--z-base`       |     1 | `CardLabel` (in-flow chrome that must paint above neighboring siblings) |
 | `--z-dropdown`   |   100 | Reserved for future inline menu/select surfaces |
 | `--z-overlay`    |   200 | Reserved for full-viewport dim/scrim overlays |
 | `--z-popover`    |   300 | `Popover`, `Tooltip`, `Select` content   |

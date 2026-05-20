@@ -114,7 +114,6 @@ export function HistoryPage() {
         <Panel
           as="aside"
           aria-label="Review sections"
-          variant="borderless"
           data-pane="timeline"
           data-focused={focusZone === "timeline" || undefined}
           className="w-48 flex flex-col shrink-0 overflow-hidden border border-tui-border data-[focused]:border-tui-blue focus:outline-none"
@@ -139,7 +138,6 @@ export function HistoryPage() {
 
         <Panel
           as="section"
-          variant="borderless"
           data-pane="runs"
           data-focused={focusZone === "runs" || undefined}
           className="flex-1 min-w-0 flex flex-col overflow-hidden border border-tui-border data-[focused]:border-tui-blue focus:outline-none"
@@ -205,7 +203,6 @@ export function HistoryPage() {
         <Panel
           as="aside"
           aria-label="Review insights"
-          variant="borderless"
           data-pane="insights"
           data-focused={focusZone === "insights" || undefined}
           className="w-80 min-h-0 flex flex-col shrink-0 overflow-hidden border border-tui-border data-[focused]:border-tui-blue focus:outline-none"

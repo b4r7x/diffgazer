@@ -23,8 +23,12 @@ export function PreviewPanel() {
 
       <Input placeholder="Type something..." />
 
-      <Callout variant="info">This is an informational callout.</Callout>
-      <Callout variant="warning">This is a warning callout.</Callout>
+      <Callout tone="info">
+        <Callout.Content>This is an informational callout.</Callout.Content>
+      </Callout>
+      <Callout tone="warning">
+        <Callout.Content>This is a warning callout.</Callout.Content>
+      </Callout>
 
       <Panel>
         <PanelHeader>Panel Title</PanelHeader>

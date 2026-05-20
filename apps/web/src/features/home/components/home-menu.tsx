@@ -1,6 +1,6 @@
 import { Fragment } from "react";
 import { Menu, MenuDivider, MenuItem } from "@diffgazer/ui/components/menu";
-import { Panel, PanelHeader } from "@diffgazer/ui/components/panel";
+import { Panel } from "@diffgazer/ui/components/panel";
 import type { NavItem } from "@diffgazer/core/schemas/ui";
 import { isMenuActionDisabled, withGroupDividers } from "@diffgazer/core/navigation";
 
@@ -25,7 +25,11 @@ export function HomeMenu({
 
   return (
     <Panel className="w-full max-w-md lg:w-1/2 lg:max-w-lg h-fit flex flex-col">
-      <PanelHeader variant="subtle">Main Menu</PanelHeader>
+      <Panel.Header marker="none">
+        <Panel.Title className="text-xs uppercase tracking-widest text-muted text-center w-full font-normal">
+          Main Menu
+        </Panel.Title>
+      </Panel.Header>
       <div className="flex flex-col py-2">
         <Menu
           highlighted={highlighted}

@@ -1,17 +1,17 @@
-import { Panel, PanelHeader, PanelContent, PanelFooter } from "@/components/ui/panel"
+import { Panel } from "@/components/ui/panel"
 
 export default function PanelDefault() {
   return (
     <Panel>
-      <PanelHeader>Review Summary</PanelHeader>
-      <PanelContent>
-        <p className="text-sm text-foreground">
-          3 files changed, 12 additions, 4 deletions. All checks passed.
-        </p>
-      </PanelContent>
-      <PanelFooter>
-        <span className="text-xs text-muted-foreground">Last updated: just now</span>
-      </PanelFooter>
+      <Panel.Header>
+        <Panel.Title>Repository</Panel.Title>
+        <Panel.Description>diffgazer-workspace · last synced 4 minutes ago</Panel.Description>
+      </Panel.Header>
+      <Panel.Content spacing="none">
+        <Panel.Row label="Branch" value="main" />
+        <Panel.Row label="Commit" value="a1b2c3d" />
+        <Panel.Row label="Author" value="developer@example.com" />
+      </Panel.Content>
     </Panel>
   )
 }
