@@ -28,6 +28,7 @@ export function ProgressList({
 
   return (
     <Stepper
+      variant="tag"
       expandedIds={expandedIds}
       onExpandedChange={handleExpandedChange}
       className={cn('space-y-4', className)}

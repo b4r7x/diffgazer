@@ -10,11 +10,16 @@ export interface SidebarContentProps extends HTMLAttributes<HTMLDivElement> {
   ref?: Ref<HTMLDivElement>;
 }
 
+/**
+ * Scroll body for the sidebar. Hides itself when `state === "hidden"` so its
+ * descendants drop out of the tab order; rail state keeps it mounted (icons
+ * only) so collapsing does not lose focus or scroll position.
+ */
 export function SidebarContent({ ref, children, className, onKeyDown, ...props }: SidebarContentProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const { open, contentId } = useSidebar();
-  const collapsed = !open;
-  const ariaHidden = collapsed ? true : props["aria-hidden"];
+  const { state, contentId } = useSidebar();
+  const hidden = state === "hidden";
+  const ariaHidden = hidden ? true : props["aria-hidden"];
 
   const { onKeyDown: navKeyDown } = useNavigation({
     containerRef,
@@ -36,10 +41,16 @@ export function SidebarContent({ ref, children, className, onKeyDown, ...props }
       ref={composeRefs(containerRef, ref)}
       id={props.id ?? contentId}
       aria-hidden={ariaHidden}
-      inert={collapsed ? true : undefined}
-      hidden={collapsed || props.hidden || undefined}
-      data-collapsed={collapsed ? "" : undefined}
-      className={cn("flex-1 overflow-y-auto p-4", className)}
+      inert={hidden ? true : undefined}
+      hidden={hidden || props.hidden || undefined}
+      data-state={state}
+      className={cn(
+        "flex-1 overflow-y-auto p-4",
+        // Rail mode: zero horizontal padding so items center inside the 48px
+        // rail. Vertical padding stays so the first/last items breathe.
+        "group-data-[state=rail]/sidebar:px-0",
+        className,
+      )}
       onKeyDown={handleKeyDown}
     >
       {children}

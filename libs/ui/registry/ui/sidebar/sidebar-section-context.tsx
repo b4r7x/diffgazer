@@ -7,6 +7,7 @@ export interface SidebarSectionContextValue {
   open: boolean;
   onToggle: () => void;
   titleId: string;
+  panelId: string;
 }
 
 export const SidebarSectionContext = createContext<SidebarSectionContextValue | undefined>(undefined);

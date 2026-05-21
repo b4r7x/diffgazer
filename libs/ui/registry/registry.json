@@ -1157,7 +1157,8 @@
         "theme",
         "badge",
         "controllable-state",
-        "step-status"
+        "step-status",
+        "stepper-variants"
       ],
       "files": [
         {
@@ -1380,14 +1381,16 @@
       "title": "Horizontal Stepper",
       "description": "Horizontal step-by-step progress indicator",
       "meta": {
-        "client": true
+        "client": true,
+        "docsPage": false
       },
       "dependencies": [
         "class-variance-authority"
       ],
       "registryDependencies": [
         "theme",
-        "step-status"
+        "step-status",
+        "stepper-variants"
       ],
       "files": [
         {
@@ -1620,7 +1623,11 @@
         "icons",
         "controllable-state",
         "@diffgazer-keys/navigation",
-        "compose-refs"
+        "compose-refs",
+        "dialog",
+        "sidebar-variants",
+        "sidebar-intent",
+        "use-is-mobile"
       ],
       "meta": {
         "client": true,
@@ -1670,6 +1677,10 @@
           "type": "registry:ui"
         },
         {
+          "path": "registry/ui/sidebar/sidebar-section-content.tsx",
+          "type": "registry:ui"
+        },
+        {
           "path": "registry/ui/sidebar/sidebar-item.tsx",
           "type": "registry:ui"
         },
@@ -1684,6 +1695,11 @@
         {
           "path": "registry/ui/sidebar/sidebar-footer.tsx",
           "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/shared/sidebar.css",
+          "type": "registry:style",
+          "target": "~/styles/sidebar.css"
         }
       ]
     },
@@ -2212,6 +2228,89 @@
         {
           "path": "registry/lib/step-status.ts",
           "type": "registry:lib"
+        }
+      ]
+    },
+    {
+      "name": "stepper-variants",
+      "type": "registry:lib",
+      "title": "Stepper Variants",
+      "description": "Shared CVA visual contracts, indicator glyph dictionaries, and keyframe CSS for vertical and horizontal stepper variants.",
+      "dependencies": [
+        "class-variance-authority"
+      ],
+      "registryDependencies": [
+        "step-status"
+      ],
+      "meta": {
+        "client": false,
+        "hidden": true
+      },
+      "files": [
+        {
+          "path": "registry/lib/stepper-variants.ts",
+          "type": "registry:lib"
+        },
+        {
+          "path": "registry/ui/shared/stepper.css",
+          "type": "registry:style",
+          "target": "~/styles/stepper.css"
+        }
+      ]
+    },
+    {
+      "name": "sidebar-variants",
+      "type": "registry:lib",
+      "title": "Sidebar Variants",
+      "description": "Shared CVA visual contracts for the Sidebar primitive (container + item, five active-marker variants).",
+      "dependencies": [
+        "class-variance-authority"
+      ],
+      "registryDependencies": [],
+      "meta": {
+        "client": false,
+        "hidden": true
+      },
+      "files": [
+        {
+          "path": "registry/lib/sidebar-variants.ts",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
+      "name": "sidebar-intent",
+      "type": "registry:lib",
+      "title": "Sidebar Intent",
+      "description": "Sidebar item intent type and built-in dictionary mapping nav values to intent (info/success/warning/danger/accent/neutral).",
+      "dependencies": [],
+      "registryDependencies": [],
+      "meta": {
+        "client": false,
+        "hidden": true
+      },
+      "files": [
+        {
+          "path": "registry/lib/sidebar-intent.ts",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
+      "name": "use-is-mobile",
+      "type": "registry:hook",
+      "title": "useIsMobile",
+      "description": "matchMedia-backed hook that returns true when the viewport is narrower than a breakpoint (default 1024px).",
+      "dependencies": [],
+      "registryDependencies": [],
+      "meta": {
+        "client": true,
+        "hidden": true
+      },
+      "files": [
+        {
+          "path": "registry/hooks/use-is-mobile.ts",
+          "type": "registry:hook"
         }
       ]
     },

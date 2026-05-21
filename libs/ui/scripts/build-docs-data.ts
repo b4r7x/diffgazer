@@ -32,6 +32,15 @@ function isPublicItem(item: RegistryItem): boolean {
   return item.meta?.hidden !== true;
 }
 
+/**
+ * Items that ship as installable registry primitives but do not own a
+ * standalone docs page. Their docs live on a companion item's page (e.g.
+ * horizontal-stepper is documented as a section of the stepper page).
+ */
+function hasOwnDocsPage(item: RegistryItem): boolean {
+  return item.meta?.docsPage !== false;
+}
+
 function mapHookItem(item: RegistryItem): HookRegistryItem {
   return {
     name: item.name,
@@ -98,6 +107,14 @@ async function processComponent(
     .join("\n\n");
   const usageExample = docs?.usage?.example;
   const examplesData = readExamples(item.name, highlighter);
+  // Merge companion examples (other items' example folders) into exampleSource
+  // so a unified MDX page can render <Example name="..." /> for both primitives.
+  // The companion examples are intentionally NOT pushed onto `examples` so
+  // `<Examples skipFirst />` consumers stay scoped to the primary item.
+  for (const companionName of docs?.companionExamples ?? []) {
+    const companionData = readExamples(companionName, highlighter);
+    Object.assign(examplesData.exampleSource, companionData.exampleSource);
+  }
   const usageSnippet = docs?.usage?.code
     ?? (usageExample ? examplesData.exampleSource[usageExample]?.raw : undefined)
     ?? "";
@@ -139,7 +156,7 @@ buildDocsData({
   },
   components: {
     contentDir: resolve(ROOT, "docs/content/components"),
-    filter: (item) => item.type === "registry:ui" && isPublicItem(item),
+    filter: (item) => item.type === "registry:ui" && isPublicItem(item) && hasOwnDocsPage(item),
     processComponent,
   },
   libs: {

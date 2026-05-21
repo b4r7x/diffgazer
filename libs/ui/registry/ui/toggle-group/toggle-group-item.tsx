@@ -99,11 +99,11 @@ export function ToggleGroupItem<TValue extends string = string>({
     return () => unregisterItem(itemId);
   }, [registerItem, unregisterItem, itemId, value, disabled]);
 
-  // BracketMarkers and `count` both use [..] brackets; when both apply, the
-  // count form ([label count]) wins and the active-state markers are
-  // suppressed to avoid nesting like [[label] count].
+  // BracketMarkers apply to the bracket variant regardless of `count`. The
+  // count renders as a separate styled span after the label, so the brackets
+  // only ever wrap the actual children — never the count.
   const renderedChildren =
-    variant === "bracket" && count == null ? (
+    variant === "bracket" ? (
       <BracketMarkers>{children}</BracketMarkers>
     ) : (
       children
@@ -141,12 +141,17 @@ export function ToggleGroupItem<TValue extends string = string>({
         className,
       )}
     >
-      {count != null ? (
+      {renderedChildren}
+      {count != null && (
         <>
-          [{renderedChildren} {count}]
+          {" "}
+          <span
+            data-slot="toggle-group-count"
+            className="tabular-nums opacity-70"
+          >
+            {count}
+          </span>
         </>
-      ) : (
-        renderedChildren
       )}
     </button>
   );

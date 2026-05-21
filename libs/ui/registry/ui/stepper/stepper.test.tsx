@@ -2,7 +2,9 @@ import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { axe } from "../../../testing/utils.js"
 import { afterAll, beforeAll, describe, it, expect, vi } from "vitest"
-import { Stepper } from "./index.js"
+import type { StepperVariant } from "@/lib/stepper-variants"
+import { STEP_STATUSES, type StepStatus } from "@/lib/step-status"
+import { Stepper, getStepperIndicatorGlyph } from "./index.js"
 
 function renderStepper(props: Record<string, unknown> = {}) {
   return render(
@@ -153,9 +155,9 @@ describe("Stepper", () => {
     expect(await axe(container)).toHaveNoViolations()
   })
 
-  it("renders neutral default badge labels when no statusLabels prop is provided", () => {
+  it("renders the default tag glyphs when variant=\"tag\"", () => {
     render(
-      <Stepper>
+      <Stepper variant="tag">
         <Stepper.Step stepId="s1" status="completed">
           <Stepper.Trigger>Step 1</Stepper.Trigger>
         </Stepper.Step>
@@ -170,29 +172,29 @@ describe("Stepper", () => {
         </Stepper.Step>
       </Stepper>,
     )
-    expect(screen.getByRole("button", { name: /Step 1/ })).toHaveTextContent("Completed")
-    expect(screen.getByRole("button", { name: /Step 2/ })).toHaveTextContent("Active")
-    expect(screen.getByRole("button", { name: /Step 3/ })).toHaveTextContent("Pending")
-    expect(screen.getByRole("button", { name: /Step 4/ })).toHaveTextContent("Error")
+    expect(screen.getByRole("button", { name: /Step 1/ })).toHaveTextContent("DONE")
+    expect(screen.getByRole("button", { name: /Step 2/ })).toHaveTextContent("RUN")
+    expect(screen.getByRole("button", { name: /Step 3/ })).toHaveTextContent("WAIT")
+    expect(screen.getByRole("button", { name: /Step 4/ })).toHaveTextContent("FAIL")
   })
 
-  it("uses provided statusLabels for trigger badges", () => {
+  it("uses provided statusLabels for tag-variant indicators", () => {
     render(
-      <Stepper>
+      <Stepper variant="tag">
         <Stepper.Step stepId="s1" status="completed">
-          <Stepper.Trigger statusLabels={{ completed: "DONE", active: "RUN" }}>
+          <Stepper.Trigger statusLabels={{ completed: "PASS", active: "WORK" }}>
             Step 1
           </Stepper.Trigger>
         </Stepper.Step>
         <Stepper.Step stepId="s2" status="active">
-          <Stepper.Trigger statusLabels={{ completed: "DONE", active: "RUN" }}>
+          <Stepper.Trigger statusLabels={{ completed: "PASS", active: "WORK" }}>
             Step 2
           </Stepper.Trigger>
         </Stepper.Step>
       </Stepper>,
     )
-    expect(screen.getByRole("button", { name: /Step 1/ })).toHaveTextContent("DONE")
-    expect(screen.getByRole("button", { name: /Step 2/ })).toHaveTextContent("RUN")
+    expect(screen.getByRole("button", { name: /Step 1/ })).toHaveTextContent("PASS")
+    expect(screen.getByRole("button", { name: /Step 2/ })).toHaveTextContent("WORK")
   })
 
   it("uses provided statusLabels for substep fallback text", () => {
@@ -217,30 +219,197 @@ describe("Stepper", () => {
     expect(screen.getByText("custom detail")).toBeInTheDocument()
   })
 
-  it("does not tab into collapsed step content", async () => {
+  it("places a single tab stop on the active step (roving tabIndex)", async () => {
     const user = userEvent.setup()
     render(
       <Stepper>
-        <Stepper.Step stepId="s1" status="pending">
+        <Stepper.Step stepId="s1" status="completed">
           <Stepper.Trigger>Step 1</Stepper.Trigger>
-          <Stepper.Content>
-            <button type="button">Hidden action</button>
-          </Stepper.Content>
         </Stepper.Step>
         <Stepper.Step stepId="s2" status="active">
           <Stepper.Trigger>Step 2</Stepper.Trigger>
         </Stepper.Step>
-      </Stepper>
+        <Stepper.Step stepId="s3" status="pending">
+          <Stepper.Trigger>Step 3</Stepper.Trigger>
+        </Stepper.Step>
+      </Stepper>,
     )
 
-    const firstTrigger = screen.getByRole("button", { name: /Step 1/ })
-    const region = document.getElementById(firstTrigger.getAttribute("aria-controls")!)
-    expect(region).toHaveAttribute("inert")
+    const active = screen.getByRole("button", { name: /Step 2/ })
+    const completed = screen.getByRole("button", { name: /Step 1/ })
+    const pending = screen.getByRole("button", { name: /Step 3/ })
+
+    expect(active).toHaveAttribute("tabIndex", "0")
+    expect(completed).toHaveAttribute("tabIndex", "-1")
+    expect(pending).toHaveAttribute("tabIndex", "-1")
 
     await user.tab()
-    expect(firstTrigger).toHaveFocus()
-    await user.tab()
-    expect(screen.getByRole("button", { name: /Step 2/ })).toHaveFocus()
+    expect(active).toHaveFocus()
+  })
+
+  it("moves focus with arrow keys and Home/End, skipping disabled steps", async () => {
+    const user = userEvent.setup()
+    render(
+      <Stepper>
+        <Stepper.Step stepId="s1" status="completed">
+          <Stepper.Trigger>Step 1</Stepper.Trigger>
+        </Stepper.Step>
+        <Stepper.Step stepId="s2" status="disabled">
+          <Stepper.Trigger>Step 2</Stepper.Trigger>
+        </Stepper.Step>
+        <Stepper.Step stepId="s3" status="active">
+          <Stepper.Trigger>Step 3</Stepper.Trigger>
+        </Stepper.Step>
+        <Stepper.Step stepId="s4" status="pending">
+          <Stepper.Trigger>Step 4</Stepper.Trigger>
+        </Stepper.Step>
+      </Stepper>,
+    )
+
+    const s1 = screen.getByRole("button", { name: /Step 1/ })
+    const s3 = screen.getByRole("button", { name: /Step 3/ })
+    const s4 = screen.getByRole("button", { name: /Step 4/ })
+
+    s1.focus()
+    expect(s1).toHaveFocus()
+
+    await user.keyboard("{ArrowDown}")
+    expect(s3).toHaveFocus() // Step 2 is disabled — skipped
+
+    await user.keyboard("{End}")
+    expect(s4).toHaveFocus()
+
+    await user.keyboard("{Home}")
+    expect(s1).toHaveFocus()
+  })
+
+  it("marks disabled steps with aria-disabled and excludes them from tab order", () => {
+    render(
+      <Stepper>
+        <Stepper.Step stepId="s1" status="disabled">
+          <Stepper.Trigger>Locked step</Stepper.Trigger>
+        </Stepper.Step>
+        <Stepper.Step stepId="s2" status="active">
+          <Stepper.Trigger>Open step</Stepper.Trigger>
+        </Stepper.Step>
+      </Stepper>,
+    )
+
+    const disabled = screen.getByRole("button", { name: /Locked step/ })
+    expect(disabled).toHaveAttribute("aria-disabled", "true")
+    expect(disabled).toHaveAttribute("tabIndex", "-1")
+  })
+
+  it("renders a polite live region with the active step announcement", () => {
+    render(
+      <Stepper>
+        <Stepper.Step stepId="s1" status="completed">
+          <Stepper.Trigger>Step 1</Stepper.Trigger>
+        </Stepper.Step>
+        <Stepper.Step stepId="s2" status="active">
+          <Stepper.Trigger>Step 2</Stepper.Trigger>
+        </Stepper.Step>
+        <Stepper.Step stepId="s3" status="pending">
+          <Stepper.Trigger>Step 3</Stepper.Trigger>
+        </Stepper.Step>
+      </Stepper>,
+    )
+
+    const status = screen.getByRole("status")
+    expect(status).toHaveAttribute("aria-live", "polite")
+    expect(status).toHaveTextContent("Step 2 of 3: Step 2")
+  })
+})
+
+// ============================================================================
+// Variant matrix — each variant renders a distinct indicator per state. We
+// assert text content of the indicator span, not Tailwind classes.
+// ============================================================================
+describe("Stepper variant indicators", () => {
+  const STATIC_VARIANTS = ["ascii", "bullet", "tag", "progress"] as const satisfies readonly StepperVariant[]
+
+  it.each(STATIC_VARIANTS)("renders the %s glyph dictionary", (variant) => {
+    render(
+      <Stepper variant={variant}>
+        {STEP_STATUSES.map((status, idx) => (
+          <Stepper.Step key={status} stepId={`s${idx}`} status={status}>
+            <Stepper.Trigger>{`Label-${status}`}</Stepper.Trigger>
+          </Stepper.Step>
+        ))}
+      </Stepper>,
+    )
+
+    for (const status of STEP_STATUSES) {
+      const trigger = screen.getByRole("button", { name: new RegExp(`Label-${status}`) })
+      const expected = getStepperIndicatorGlyph(variant, status)
+      if (variant === "ascii" && status === "active") {
+        // The blinking cursor is rendered as `[` + `~` + `]` across nested
+        // spans — text content normalises to "[~]" without spaces.
+        expect(trigger).toHaveTextContent("[~]")
+      } else {
+        expect(trigger).toHaveTextContent(expected)
+      }
+    }
+  })
+
+  it("uses numbered variant glyphs for completed/error/skipped/disabled", () => {
+    render(
+      <Stepper variant="numbered">
+        <Stepper.Step stepId="s1" status="completed">
+          <Stepper.Trigger>Step 1</Stepper.Trigger>
+        </Stepper.Step>
+        <Stepper.Step stepId="s2" status="error">
+          <Stepper.Trigger>Step 2</Stepper.Trigger>
+        </Stepper.Step>
+        <Stepper.Step stepId="s3" status="skipped">
+          <Stepper.Trigger>Step 3</Stepper.Trigger>
+        </Stepper.Step>
+        <Stepper.Step stepId="s4" status="disabled">
+          <Stepper.Trigger>Step 4</Stepper.Trigger>
+        </Stepper.Step>
+      </Stepper>,
+    )
+    expect(screen.getByRole("button", { name: /Step 1/ })).toHaveTextContent("✓")
+    expect(screen.getByRole("button", { name: /Step 2/ })).toHaveTextContent("!")
+    expect(screen.getByRole("button", { name: /Step 3/ })).toHaveTextContent("—")
+    expect(screen.getByRole("button", { name: /Step 4/ })).toHaveTextContent("·")
+  })
+
+  it("writes data-variant on the root list and data-status on each step", () => {
+    render(
+      <Stepper variant="bullet">
+        <Stepper.Step stepId="s1" status="skipped">
+          <Stepper.Trigger>Step 1</Stepper.Trigger>
+        </Stepper.Step>
+      </Stepper>,
+    )
+    const list = screen.getByRole("list", { name: /Progress steps/ })
+    expect(list).toHaveAttribute("data-variant", "bullet")
+    const step = screen.getByRole("listitem")
+    expect(step).toHaveAttribute("data-status", "skipped")
+  })
+
+  it("getStepperIndicatorGlyph returns the canonical glyph per (variant, status) cell", () => {
+    // Spot-check a few cells — full dictionary is exercised above.
+    expect(getStepperIndicatorGlyph("ascii", "completed")).toBe("[x]")
+    expect(getStepperIndicatorGlyph("ascii", "pending")).toBe("[ ]")
+    expect(getStepperIndicatorGlyph("bullet", "active")).toBe("›")
+    expect(getStepperIndicatorGlyph("tag", "skipped")).toBe("SKIP")
+    expect(getStepperIndicatorGlyph("tag", "disabled")).toBe("OFF")
+    expect(getStepperIndicatorGlyph("progress", "completed")).toBe("███")
+    expect(getStepperIndicatorGlyph("numbered", "completed")).toBe("✓")
+    expect(getStepperIndicatorGlyph("numbered", "skipped")).toBe("—")
+  })
+
+  it("STEP_STATUSES exports the canonical six-state ordering", () => {
+    expect(STEP_STATUSES).toEqual([
+      "pending",
+      "active",
+      "completed",
+      "error",
+      "skipped",
+      "disabled",
+    ] satisfies StepStatus[])
   })
 })
 

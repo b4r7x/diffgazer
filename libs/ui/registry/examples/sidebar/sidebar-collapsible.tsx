@@ -3,6 +3,7 @@ import {
   SidebarHeader,
   SidebarContent,
   SidebarSection,
+  SidebarSectionContent,
   SidebarSectionTitle,
   SidebarItem,
   SidebarItemLabel,
@@ -10,33 +11,44 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar"
 
+// `block` variant — items use a soft fill on active rather than the `▸` glyph
+// prefix; the section title's own chevron (▾/▸) is the single disclosure cue
+// per group, avoiding double-decoration. Items wrapped in
+// `<SidebarSectionContent>` are the only ones that honor the section's open
+// state — items rendered outside that wrapper stay visible regardless.
 export default function SidebarCollapsible() {
   return (
-    <Sidebar defaultOpen className="w-64 border border-border rounded bg-background">
+    <Sidebar variant="block" className="w-64 border border-border rounded bg-background">
       <SidebarHeader>
         <span className="text-sm font-mono font-bold">File Browser</span>
       </SidebarHeader>
       <SidebarContent>
         <SidebarSection collapsible defaultOpen>
           <SidebarSectionTitle>src/</SidebarSectionTitle>
-          <SidebarItem active>index.ts</SidebarItem>
-          <SidebarItem>utils.ts</SidebarItem>
-          <SidebarItem>config.ts</SidebarItem>
+          <SidebarSectionContent>
+            <SidebarItem active>index.ts</SidebarItem>
+            <SidebarItem>utils.ts</SidebarItem>
+            <SidebarItem>config.ts</SidebarItem>
+          </SidebarSectionContent>
         </SidebarSection>
         <SidebarSection collapsible defaultOpen={false}>
           <SidebarSectionTitle>tests/</SidebarSectionTitle>
-          <SidebarItem>index.test.ts</SidebarItem>
-          <SidebarItem>utils.test.ts</SidebarItem>
+          <SidebarSectionContent>
+            <SidebarItem>index.test.ts</SidebarItem>
+            <SidebarItem>utils.test.ts</SidebarItem>
+          </SidebarSectionContent>
         </SidebarSection>
         <SidebarSection collapsible defaultOpen>
           <SidebarSectionTitle>docs/</SidebarSectionTitle>
-          <SidebarItem>
-            <SidebarItemLabel>README.md</SidebarItemLabel>
-            <SidebarItemBadge>
-              <span className="text-xs text-muted-foreground">draft</span>
-            </SidebarItemBadge>
-          </SidebarItem>
-          <SidebarItem>CHANGELOG.md</SidebarItem>
+          <SidebarSectionContent>
+            <SidebarItem>
+              <SidebarItemLabel>README.md</SidebarItemLabel>
+              <SidebarItemBadge>
+                <span className="text-xs text-muted-foreground">draft</span>
+              </SidebarItemBadge>
+            </SidebarItem>
+            <SidebarItem>CHANGELOG.md</SidebarItem>
+          </SidebarSectionContent>
         </SidebarSection>
       </SidebarContent>
       <SidebarFooter>

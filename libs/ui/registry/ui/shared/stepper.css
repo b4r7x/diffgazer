@@ -1,0 +1,114 @@
+/*
+ * Stepper variant CSS contract.
+ *
+ * Three things live in real CSS (not Tailwind utilities):
+ *
+ *   1. The `ascii` active-state blinking cursor (custom @keyframes). Wrapped
+ *      in motion-safe Tailwind utility on the consuming side; the keyframes
+ *      themselves are declared here.
+ *   2. The `numbered` variant's CSS counter — the digit shown in pending and
+ *      active states comes from `counter(step)` rendered through `::before`
+ *      on the indicator span. Tailwind's arbitrary value support for
+ *      `content-[counter(...)]` is unreliable across compilers.
+ *   3. The vertical connector line between steps. Composed via utilities the
+ *      connector clamped to a 2px sliver because `bottom: 0` plus a 30px
+ *      `<li>` left no room to draw. Real CSS lets the line overshoot the
+ *      `<li>` boundary so it visually bridges into the next indicator at any
+ *      row height. The `left` offset is variant-specific and centred on the
+ *      indicator column width (1ch ASCII → centred on the `x` in `[x]`, 20px
+ *      numbered square → centred at 10px, 1ch bullet → centred at 4px).
+ */
+
+@keyframes stepper-blink {
+  50% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /*
+   * Keep the cursor visible but stop animating it. The .motion-safe: utility
+   * on the consumer prevents the animation property from being set in the
+   * first place, but this guard catches any direct usage of the keyframes
+   * elsewhere.
+   */
+  [data-variant="ascii"] [data-stepper-cursor] {
+    animation: none !important;
+  }
+}
+
+/*
+ * Numbered indicator: render `counter(step)` for pending and active cells.
+ * Completed/error/skipped/disabled render an explicit glyph in JSX and the
+ * counter span is absent from the tree.
+ *
+ * The CSS counter is established on the <ol data-variant="numbered"> via the
+ * `[counter-reset:step]` Tailwind utility and incremented on each <li> via
+ * `[counter-increment:step]`. This rule paints the digit on the indicator
+ * span whose JSX renders an empty `[data-counter]` placeholder.
+ */
+[data-variant="numbered"] [data-counter]::before {
+  content: counter(step);
+}
+
+/*
+ * Vertical connector — shared geometry for ASCII, numbered, and bullet
+ * variants. `tag` and `progress` opt out (no rule). The `<li>` itself is
+ * positioned `relative` via the Tailwind base. Scoped to
+ * `[data-orientation="vertical"]` so the horizontal stepper's numbered
+ * variant (which has its own behind-the-square horizontal bar) is untouched.
+ *
+ * `top: 36px` clears the indicator glyph (sits at row top with `py-4`, so
+ * the glyph bottom edge lands at ~34px and the connector starts ~2px below).
+ * `bottom: -8px` overshoots the `<li>` boundary modestly so the line visually
+ * bridges into the next step's connector without dominating the row height —
+ * the row breathes around a short connector segment rather than a long line.
+ * The last step suppresses the connector.
+ */
+[data-orientation="vertical"][data-variant="ascii"] > li:not(:last-child)::before,
+[data-orientation="vertical"][data-variant="numbered"] > li:not(:last-child)::before,
+[data-orientation="vertical"][data-variant="bullet"] > li:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  top: 36px;
+  bottom: -8px;
+  width: 1px;
+  background: var(--color-border);
+}
+
+/*
+ * Per-variant horizontal alignment of the connector. Each value centres the
+ * 1px line on the visual middle of the indicator column.
+ */
+[data-orientation="vertical"][data-variant="ascii"] > li:not(:last-child)::before {
+  /* `[x]` is 3 mono chars wide; centre on the `x` (1.5ch from the left edge). */
+  left: calc(1.5ch + 0.5px);
+}
+
+[data-orientation="vertical"][data-variant="numbered"] > li:not(:last-child)::before {
+  /* 20px square indicator → centre at 10px (½px nudge keeps the 1px line crisp). */
+  left: 9.5px;
+  /* Square bottom sits at ~36px (16px paddingTop + 20px square). Push the
+   * connector start 2px below the square so it doesn't paint over the border. */
+  top: 38px;
+}
+
+[data-orientation="vertical"][data-variant="bullet"] > li:not(:last-child)::before {
+  /* 1ch indicator → centre at ½ch. Dashed style differentiates the low-chrome variant. */
+  left: calc(0.5ch + 0.5px);
+  background: transparent;
+  border-left: 1px dashed var(--color-border);
+  width: 0;
+}
+
+/*
+ * Completed steps recolour the connector so a finished segment reads as a
+ * filled timeline. Bullet uses `border-left-color` because the connector is
+ * a border, not a background.
+ */
+[data-orientation="vertical"][data-variant="ascii"] > li[data-status="completed"]:not(:last-child)::before,
+[data-orientation="vertical"][data-variant="numbered"] > li[data-status="completed"]:not(:last-child)::before {
+  background: var(--color-success);
+}
+
+[data-orientation="vertical"][data-variant="bullet"] > li[data-status="completed"]:not(:last-child)::before {
+  border-left-color: var(--color-success);
+}

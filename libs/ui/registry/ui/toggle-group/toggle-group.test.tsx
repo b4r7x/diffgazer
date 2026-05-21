@@ -139,13 +139,15 @@ describe("ToggleGroup", () => {
     expect(onChange).not.toHaveBeenCalled()
   })
 
-  it("renders count in item when provided", () => {
+  it("renders count as a styled span after the label (no literal brackets in default variant)", () => {
     render(
       <ToggleGroup label="Options">
         <ToggleGroup.Item value="a" count={5}>Alpha</ToggleGroup.Item>
       </ToggleGroup>
     )
-    expect(screen.getByRole("radio")).toHaveTextContent("[Alpha 5]")
+    const item = screen.getByRole("radio")
+    expect(item).toHaveTextContent(/^Alpha 5$/)
+    expect(item.querySelector('[data-slot="toggle-group-count"]')).toHaveTextContent("5")
   })
 
   it("works in uncontrolled mode with defaultValue", async () => {
@@ -458,15 +460,16 @@ describe("ToggleGroup variants", () => {
     expect(container.querySelector('[data-slot="toggle-group-pill"]')).toBeNull()
   })
 
-  it("renders count brackets in bracket variant without nesting bracket markers", () => {
+  it("keeps bracket markers around the label and renders count outside the brackets", () => {
     render(
       <ToggleGroup label="Options" variant="bracket" defaultValue="a">
         <ToggleGroup.Item value="a" count={5}>Alpha</ToggleGroup.Item>
       </ToggleGroup>,
     )
     const item = screen.getByRole("radio", { name: /alpha/i })
-    // Only the count brackets render; the bracket-marker spans are suppressed.
-    expect(item).toHaveTextContent(/^\[Alpha 5\]$/)
+    // Brackets wrap the label only; count is a separate styled span after.
+    expect(item).toHaveTextContent(/^\[Alpha\] 5$/)
+    expect(item.querySelector('[data-slot="toggle-group-count"]')).toHaveTextContent("5")
   })
 
   it("marks the active item via data-active in underline variant", () => {

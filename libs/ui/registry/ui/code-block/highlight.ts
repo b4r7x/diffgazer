@@ -1,1 +1,6 @@
-export { CodeBlockHighlight, type CodeBlockHighlightProps } from "./code-block-highlight.js";
+export {
+  CodeBlockHighlight,
+  createDefaultLowlight,
+  type CodeBlockHighlightProps,
+  type LowlightInstance,
+} from "./code-block-highlight.js";

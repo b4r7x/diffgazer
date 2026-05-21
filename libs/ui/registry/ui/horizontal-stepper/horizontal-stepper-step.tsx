@@ -1,27 +1,21 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils";
-import { useStepInfo, type StepStatus } from "./horizontal-stepper-context";
+import {
+  HORIZONTAL_STEP_INDICATOR_GLYPHS,
+  horizontalStepperBreadcrumbSeparatorClass,
+  horizontalStepperConnectorClass,
+  horizontalStepperGlyphVariants,
+  horizontalStepperLabelVariants,
+  horizontalStepperStepVariants,
+} from "@/lib/stepper-variants";
+import { useStepInfo, useStepperContext, type HorizontalStepStatus } from "./horizontal-stepper-context";
 
-export const stepVariants = cva("px-1.5 py-0.5", {
-  variants: {
-    status: {
-      active: "bg-foreground text-primary-foreground font-bold",
-      completed: "text-success",
-      pending: "text-muted-foreground",
-      error: "text-error-fg font-bold",
-    },
-  },
-  defaultVariants: { status: "pending" },
-});
-
-const srLabel: Record<StepStatus, string> = {
+const SR_LABEL: Record<HorizontalStepStatus, string> = {
   completed: "Completed: ",
   active: "Current: ",
   pending: "Upcoming: ",
-  error: "Error: ",
 };
 
 export interface HorizontalStepperStepProps {
@@ -30,20 +24,88 @@ export interface HorizontalStepperStepProps {
   className?: string;
 }
 
+/**
+ * Horizontal step. The connector between steps is rendered differently per
+ * variant:
+ *   - `ascii` — interleaves a `─── ` separator <li role="presentation">
+ *     between steps (only for index > 0).
+ *   - `numbered` — connector is a `::before` line on the step itself
+ *     (continuous bar behind the indicator squares).
+ *   - `breadcrumb` — interleaves a `/` separator <li role="presentation">.
+ *
+ * Keeping the connector as a presentational <li> instead of a CSS pseudo
+ * (for ascii/breadcrumb) preserves the <ol> as the single source of order;
+ * screen readers ignore the role="presentation" items.
+ */
 export function HorizontalStepperStep({ value, children, className }: HorizontalStepperStepProps) {
+  const { variant } = useStepperContext();
   const { status, index } = useStepInfo(value);
+  const showConnectorBefore = index > 0;
+
+  const glyph = renderGlyph(variant, status);
+
+  // For the `numbered` variant the connector lives in the step's pseudo-
+  // element; we expose the completion state via `data-conn-completed` so the
+  // CSS reads "completed connector = green line". Only `completed` steps fill
+  // their incoming segment — the active step's incoming connector stays
+  // border-coloured to read as still-in-progress, mirroring the vertical
+  // stepper spec where only segments leading INTO a completed indicator turn
+  // green.
+  const isConnCompleted = status === "completed";
 
   return (
-    <li aria-current={status === "active" ? "step" : undefined} className="flex items-center gap-1">
-      {index > 0 && (
-        <span aria-hidden="true" className={cn("mx-0.5", status === "completed" ? "text-success" : "text-border")}>
-          -
-        </span>
+    <>
+      {showConnectorBefore && variant === "ascii" && (
+        <li role="presentation" aria-hidden="true" className="inline-flex items-center">
+          <span
+            data-completed={status === "completed" ? "true" : undefined}
+            className={horizontalStepperConnectorClass}
+          >
+            ───
+          </span>
+        </li>
       )}
-      <span className={cn(stepVariants({ status }), className)}>
-        <span className="sr-only">{srLabel[status]}</span>
-        {children}
-      </span>
-    </li>
+      {showConnectorBefore && variant === "breadcrumb" && (
+        <li role="presentation" aria-hidden="true" className="inline-flex items-center">
+          <span className={horizontalStepperBreadcrumbSeparatorClass}>/</span>
+        </li>
+      )}
+      <li
+        aria-current={status === "active" ? "step" : undefined}
+        data-status={status}
+        data-conn-completed={isConnCompleted ? "true" : undefined}
+        className={cn(horizontalStepperStepVariants({ variant }), className)}
+      >
+        {glyph !== null && (
+          <span className={horizontalStepperGlyphVariants({ variant, status })}>
+            <span className="sr-only">{SR_LABEL[status]}</span>
+            {glyph}
+          </span>
+        )}
+        <span className={horizontalStepperLabelVariants({ variant, status })}>
+          {glyph === null && <span className="sr-only">{SR_LABEL[status]}</span>}
+          {children}
+        </span>
+      </li>
+    </>
   );
+}
+
+/**
+ * Glyph content per variant × status. `numbered` non-completed states return
+ * an empty placeholder whose CSS counter renders the digit. `breadcrumb`
+ * pending state has no glyph (label-only path-history feel); we return null
+ * to suppress the glyph span entirely.
+ */
+function renderGlyph(
+  variant: "ascii" | "numbered" | "breadcrumb",
+  status: HorizontalStepStatus,
+): ReactNode {
+  if (variant === "numbered") {
+    if (status === "completed") return "✓";
+    return <span data-counter aria-hidden="true" />;
+  }
+  if (variant === "breadcrumb" && status === "pending") return null;
+  const glyph = HORIZONTAL_STEP_INDICATOR_GLYPHS[variant][status];
+  return glyph || null;
 }

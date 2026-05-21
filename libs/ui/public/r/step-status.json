@@ -6,7 +6,7 @@
   "files": [
     {
       "path": "registry/lib/step-status.ts",
-      "content": "export type StepStatus = \"completed\" | \"active\" | \"pending\" | \"error\";\n",
+      "content": "/**\n * Canonical six-state lifecycle for Stepper and HorizontalStepper.\n *\n * `disabled` ≠ `pending` — a disabled step is gated by policy (cannot be\n * reached yet), whereas a pending step is simply not-yet-reached in linear\n * order. Keeping them distinct lets consumers express both \"this step is\n * locked behind a feature flag\" and \"this step is the next one in the flow\".\n *\n * `skipped` ≠ `completed` — a skipped step was intentionally bypassed (e.g.\n * an optional wizard step). Treating it as completed would corrupt downstream\n * data integrity. Renders with line-through and dim glyph.\n */\nexport type StepStatus =\n  | \"completed\"\n  | \"active\"\n  | \"pending\"\n  | \"error\"\n  | \"skipped\"\n  | \"disabled\";\n\n/** All six canonical statuses, ordered for iteration in tests/docs. */\nexport const STEP_STATUSES = [\n  \"pending\",\n  \"active\",\n  \"completed\",\n  \"error\",\n  \"skipped\",\n  \"disabled\",\n] as const satisfies readonly StepStatus[];\n\n/** A step is interactive when it can receive focus and respond to activation. */\nexport function isStepInteractive(status: StepStatus): boolean {\n  return status !== \"disabled\";\n}\n",
       "type": "registry:lib"
     }
   ],

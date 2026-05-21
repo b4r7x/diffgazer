@@ -72,6 +72,15 @@ export interface ComponentDoc {
   keyboard?: KeyboardSection | null
   tags?: string[]
   props?: ComponentPropsTable
+  /**
+   * Optional list of other registry item names whose examples should also be
+   * loaded into this component's docs page. Used when a single MDX page
+   * documents multiple closely-related primitives (e.g. stepper + horizontal
+   * stepper). Companion examples are merged into `exampleSource` but kept out
+   * of the primary `examples` list so explicit `<Example name="..." />`
+   * references still resolve.
+   */
+  companionExamples?: string[]
 }
 
 /**

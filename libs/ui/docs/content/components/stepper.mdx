@@ -1,6 +1,6 @@
 ---
 title: "Stepper"
-description: "Step-by-step progress indicator with expandable steps, substeps, and status badges. Compound component with context-based state management."
+description: "Step-by-step progress indicator with five vertical variants plus a compact horizontal sibling primitive."
 component: "stepper"
 ---
 
@@ -14,9 +14,108 @@ component: "stepper"
 
 <UsageSnippet />
 
-## Examples
+## Vertical variants
 
-<Examples skipFirst />
+Five visual variants share the same compound API and render the same six
+canonical states (`pending` · `active` · `completed` · `error` · `skipped` ·
+`disabled`). Switch with `variant` on the root `<Stepper>`.
+
+<Example name="stepper-variants" />
+
+### ASCII
+
+Default. Mono 1ch bracket glyphs (`[x] [~] [ ] [!]`) with a blinking cursor on
+the active step. Pure terminal idiom — matches dialog brackets, code-block
+chrome, and CLI output.
+
+<Example name="stepper-variant-ascii" />
+
+### Numbered
+
+20px square with the CSS-counter step number; swaps to `✓` on completed. Use
+for form wizards and onboarding where the step number matters to the user.
+
+<Example name="stepper-variant-numbered" />
+
+### Bullet
+
+Single Unicode glyph per state (`•` · `›` · `·` · `×`) with a dashed
+connector. Minimal chrome — use when the stepper is one of many UI elements.
+
+<Example name="stepper-variant-bullet" />
+
+### Tag
+
+Uppercase text tag (`DONE` · `RUN` · `WAIT` · `FAIL` · `SKIP` · `OFF`) with a
+fixed `min-width` so the active state never shifts neighbour widths. Use for
+CI / build / deploy surfaces where users read status as text.
+
+<Example name="stepper-variant-tag" />
+
+### Progress
+
+Unicode block-element bar (`███ / █▌░ / ░░░`) per step. Strong terminal
+flavor; best for short lists (3–5 steps) where granular per-step progress
+matters.
+
+<Example name="stepper-variant-progress" />
+
+## Six canonical states
+
+<Example name="stepper-state-matrix" />
+
+## Horizontal variants
+
+`HorizontalStepper` is a separate primitive for compact CI bars, wizard
+headers, and breadcrumb-style path bars where vertical space is precious. It
+shares the same variant vocabulary in spirit but exposes a different API:
+pass an ordered `steps` array and a single `value` (the active step id);
+each `HorizontalStepper.Step` derives `completed` / `active` / `pending`
+from its position relative to `value`.
+
+<Example name="horizontal-stepper-default" />
+
+### Horizontal — ASCII
+
+Inline `[x] Init ─── [~] Build ─── [ ] Deploy` with solid 1px connectors.
+
+<Example name="horizontal-stepper-variant-ascii" />
+
+### Horizontal — Numbered
+
+Material-flavoured numbered square above a continuous 1px line with
+uppercase labels below. Use for formal wizards (checkout, multi-step forms).
+
+<Example name="horizontal-stepper-variant-numbered" />
+
+### Horizontal — Breadcrumb
+
+`init / build › deploy / verify` slash separators with a caret on the active
+step. Closest match to a classic path bar.
+
+<Example name="horizontal-stepper-variant-breadcrumb" />
+
+## More examples
+
+### Auto tone
+
+<Example name="stepper-auto-tone" />
+
+### With substeps
+
+<Example name="stepper-substeps" />
+
+### Controlled expansion
+
+<Example name="stepper-interactive" />
+
+### Error recovery
+
+<Example name="stepper-custom" />
+
+### Keyboard navigation
+
+<Example name="stepper-keyboard" />
 
 <APIReference />
 

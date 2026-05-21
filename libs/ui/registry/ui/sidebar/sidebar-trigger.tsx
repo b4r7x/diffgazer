@@ -8,8 +8,35 @@ export interface SidebarTriggerProps extends ButtonHTMLAttributes<HTMLButtonElem
   ref?: Ref<HTMLButtonElement>;
 }
 
-export function SidebarTrigger({ ref, className, onClick, children, "aria-label": ariaLabel, ...props }: SidebarTriggerProps) {
-  const { open, contentId, toggleSidebar } = useSidebar();
+/**
+ * Toggle button for the sidebar's open/rail (desktop) or open/hidden (mobile)
+ * state. The default glyph is the terminal-style `[≡]` (collapsed) → `[×]`
+ * (open) pair — consumers can replace it via `children`.
+ */
+export function SidebarTrigger({
+  ref,
+  className,
+  onClick,
+  children,
+  "aria-label": ariaLabel,
+  ...props
+}: SidebarTriggerProps) {
+  const { state, isMobile, contentId, toggleSidebar, onStateChange } = useSidebar();
+  const isOpen = isMobile ? state !== "hidden" : state === "open";
+  const visualState: "open" | "collapsed" = isOpen ? "open" : "collapsed";
+  const labelDefault = isMobile
+    ? (isOpen ? "Close navigation" : "Open navigation")
+    : (isOpen ? "Collapse sidebar" : "Expand sidebar");
+
+  const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    onClick?.(event);
+    if (event.defaultPrevented) return;
+    if (isMobile) {
+      onStateChange(isOpen ? "hidden" : "open");
+    } else {
+      toggleSidebar();
+    }
+  };
 
   return (
     <button
@@ -17,15 +44,15 @@ export function SidebarTrigger({ ref, className, onClick, children, "aria-label"
       ref={ref}
       type="button"
       aria-controls={props["aria-controls"] ?? contentId}
-      aria-expanded={open}
-      aria-label={ariaLabel ?? (open ? "Collapse sidebar" : "Expand sidebar")}
-      className={cn("inline-flex items-center justify-center", className)}
-      onClick={(e) => {
-        onClick?.(e);
-        if (!e.defaultPrevented) toggleSidebar();
-      }}
+      aria-expanded={isOpen}
+      aria-label={ariaLabel ?? labelDefault}
+      data-state={visualState}
+      className={cn("inline-flex items-center justify-center font-mono", className)}
+      onClick={handleClick}
     >
-      {children}
+      {children ?? (
+        <span aria-hidden="true">{isOpen ? "[×]" : "[≡]"}</span>
+      )}
     </button>
   );
 }

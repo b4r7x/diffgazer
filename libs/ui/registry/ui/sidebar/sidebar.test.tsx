@@ -1,14 +1,16 @@
 import type { Ref } from "react"
-import { render, screen } from "@testing-library/react"
+import { act, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { axe } from "../../../testing/utils.js"
-import { describe, it, expect, vi } from "vitest"
+import { afterEach, describe, it, expect, vi } from "vitest"
 import { Sidebar } from "./index.js"
 
+type SidebarState = "open" | "rail" | "hidden"
+
 function renderSidebar(props: {
-  open?: boolean
-  defaultOpen?: boolean
-  onOpenChange?: (open: boolean) => void
+  state?: SidebarState
+  defaultState?: SidebarState
+  onStateChange?: (state: SidebarState) => void
 } = {}) {
   return render(
     <Sidebar.Provider {...props}>
@@ -39,8 +41,6 @@ describe("Sidebar", () => {
     await userEvent.click(trigger)
     expect(trigger).toHaveAttribute("aria-expanded", "false")
     expect(trigger).toHaveAttribute("aria-label", "Expand sidebar")
-    expect(content).toHaveAttribute("aria-hidden", "true")
-    expect(content).toHaveAttribute("inert")
   })
 
   it("skips closed sidebar content in tab order", async () => {
@@ -48,10 +48,10 @@ describe("Sidebar", () => {
     render(
       <>
         <button type="button">Before</button>
-        <Sidebar.Provider defaultOpen={false}>
+        <Sidebar.Provider defaultState="hidden">
           <Sidebar>
             <Sidebar.Content>
-              <Sidebar.Item>Hidden item</Sidebar.Item>
+              <Sidebar.Item as="button">Hidden item</Sidebar.Item>
             </Sidebar.Content>
             <Sidebar.Trigger>Toggle</Sidebar.Trigger>
           </Sidebar>
@@ -94,13 +94,13 @@ describe("Sidebar", () => {
     expect(trigger).toHaveAttribute("aria-expanded", "true")
   })
 
-  it("respects controlled open prop", async () => {
-    const onOpenChange = vi.fn()
-    renderSidebar({ open: true, onOpenChange })
+  it("respects controlled state prop", async () => {
+    const onStateChange = vi.fn()
+    renderSidebar({ state: "open", onStateChange })
     const trigger = screen.getByRole("button", { name: "Collapse sidebar" })
 
     await userEvent.click(trigger)
-    expect(onOpenChange).toHaveBeenCalledWith(false)
+    expect(onStateChange).toHaveBeenCalledWith("rail")
     expect(trigger).toHaveAttribute("aria-expanded", "true")
   })
 
@@ -127,8 +127,8 @@ describe("Sidebar", () => {
       <Sidebar.Provider>
         <Sidebar>
           <Sidebar.Content onKeyDown={(event) => event.preventDefault()}>
-            <Sidebar.Item value="one">One</Sidebar.Item>
-            <Sidebar.Item value="two">Two</Sidebar.Item>
+            <Sidebar.Item as="button" value="one">One</Sidebar.Item>
+            <Sidebar.Item as="button" value="two">Two</Sidebar.Item>
           </Sidebar.Content>
         </Sidebar>
       </Sidebar.Provider>,
@@ -145,9 +145,9 @@ describe("Sidebar", () => {
       <Sidebar.Provider>
         <Sidebar>
           <Sidebar.Content>
-            <Sidebar.Item>One</Sidebar.Item>
-            <Sidebar.Item>Two</Sidebar.Item>
-            <Sidebar.Item>Three</Sidebar.Item>
+            <Sidebar.Item as="button">One</Sidebar.Item>
+            <Sidebar.Item as="button">Two</Sidebar.Item>
+            <Sidebar.Item as="button">Three</Sidebar.Item>
           </Sidebar.Content>
         </Sidebar>
       </Sidebar.Provider>,
@@ -168,10 +168,10 @@ describe("Sidebar", () => {
       <Sidebar.Provider>
         <Sidebar>
           <Sidebar.Content>
-            <Sidebar.Item value="one">
+            <Sidebar.Item as="button" value="one">
               One <span data-value="nested">nested</span>
             </Sidebar.Item>
-            <Sidebar.Item value="two">Two</Sidebar.Item>
+            <Sidebar.Item as="button" value="two">Two</Sidebar.Item>
           </Sidebar.Content>
         </Sidebar>
       </Sidebar.Provider>,
@@ -298,7 +298,37 @@ describe("SidebarSection collapsible", () => {
 
     await userEvent.click(title)
     expect(title).toHaveAttribute("aria-expanded", "false")
-    expect(screen.queryByText("file.txt")).not.toBeInTheDocument()
+  })
+
+  it("toggles aria-hidden and inert on the section panel when collapsed", async () => {
+    render(
+      <Sidebar.Provider>
+        <Sidebar>
+          <Sidebar.Content>
+            <Sidebar.Section collapsible>
+              <Sidebar.SectionTitle>Files</Sidebar.SectionTitle>
+              <Sidebar.SectionContent>
+                <Sidebar.Item>file.txt</Sidebar.Item>
+              </Sidebar.SectionContent>
+            </Sidebar.Section>
+          </Sidebar.Content>
+        </Sidebar>
+      </Sidebar.Provider>,
+    )
+    const title = screen.getByRole("button", { name: "Files" })
+    const panelId = title.getAttribute("aria-controls")!
+    const panel = document.getElementById(panelId)!
+
+    // Open by default: no aria-hidden, no inert.
+    expect(panel).not.toHaveAttribute("aria-hidden")
+    expect(panel).not.toHaveAttribute("inert")
+
+    await userEvent.click(title)
+
+    // Collapsed: panel stays in DOM (so the height/opacity transition can run)
+    // but is removed from the a11y tree and the tab order.
+    expect(panel).toHaveAttribute("aria-hidden", "true")
+    expect(panel).toHaveAttribute("inert")
   })
 
   it("keeps a collapsible section open when title click is prevented", async () => {
@@ -336,8 +366,259 @@ describe("SidebarSection collapsible", () => {
     )
     const navs = screen.getAllByRole("navigation")
     expect(navs).toHaveLength(1)
-    expect(navs[0]).toHaveAccessibleName("Sidebar")
+    expect(navs[0]).toHaveAccessibleName("Primary")
     expect(screen.queryByRole("menu")).not.toBeInTheDocument()
   })
 
+  it("renders the section title as a real h3 heading", () => {
+    render(
+      <Sidebar.Provider>
+        <Sidebar>
+          <Sidebar.Content>
+            <Sidebar.Section>
+              <Sidebar.SectionTitle>Components</Sidebar.SectionTitle>
+              <Sidebar.Item>Button</Sidebar.Item>
+            </Sidebar.Section>
+          </Sidebar.Content>
+        </Sidebar>
+      </Sidebar.Provider>,
+    )
+    expect(screen.getByRole("heading", { level: 3, name: "Components" })).toBeInTheDocument()
+  })
+
+  it("renders the section title at a custom heading level", () => {
+    render(
+      <Sidebar.Provider>
+        <Sidebar>
+          <Sidebar.Content>
+            <Sidebar.Section>
+              <Sidebar.SectionTitle headingLevel="h2">Top</Sidebar.SectionTitle>
+              <Sidebar.Item>Item</Sidebar.Item>
+            </Sidebar.Section>
+          </Sidebar.Content>
+        </Sidebar>
+      </Sidebar.Provider>,
+    )
+    expect(screen.getByRole("heading", { level: 2, name: "Top" })).toBeInTheDocument()
+  })
+
+})
+
+describe("Sidebar variants", () => {
+  function renderWithVariant(variant: "caret" | "inverted" | "bar" | "bracket" | "block") {
+    return render(
+      <Sidebar variant={variant}>
+        <Sidebar.Content>
+          <Sidebar.Section>
+            <Sidebar.SectionTitle>Section</Sidebar.SectionTitle>
+            <Sidebar.Item as="button">Install</Sidebar.Item>
+            <Sidebar.Item as="button" active>Quickstart</Sidebar.Item>
+            <Sidebar.Item as="button">Theming</Sidebar.Item>
+          </Sidebar.Section>
+        </Sidebar.Content>
+      </Sidebar>,
+    )
+  }
+
+  it("defaults to caret variant on the nav root", () => {
+    render(
+      <Sidebar>
+        <Sidebar.Content>
+          <Sidebar.Item as="button">Item</Sidebar.Item>
+        </Sidebar.Content>
+      </Sidebar>,
+    )
+    expect(screen.getByRole("navigation")).toHaveAttribute("data-variant", "caret")
+  })
+
+  it("propagates the variant prop to the nav root", () => {
+    render(
+      <Sidebar variant="inverted">
+        <Sidebar.Content>
+          <Sidebar.Item as="button">Item</Sidebar.Item>
+        </Sidebar.Content>
+      </Sidebar>,
+    )
+    expect(screen.getByRole("navigation")).toHaveAttribute("data-variant", "inverted")
+  })
+
+  it("caret variant marks the active item and renders the ▸ glyph prefix", () => {
+    renderWithVariant("caret")
+    const active = screen.getByRole("button", { name: /Quickstart/i })
+    expect(active).toHaveAttribute("aria-current", "page")
+    expect(active).toHaveAttribute("data-active", "true")
+    expect(active.textContent).toContain("▸")
+    // Glyph stays on inactive rows too for the caret variant.
+    const inactive = screen.getByRole("button", { name: /Install/i })
+    expect(inactive.textContent).toContain("▸")
+    expect(inactive).not.toHaveAttribute("aria-current")
+  })
+
+  it("inverted variant marks the active item without a glyph prefix", () => {
+    renderWithVariant("inverted")
+    const active = screen.getByRole("button", { name: "Quickstart" })
+    expect(active).toHaveAttribute("aria-current", "page")
+    expect(active).toHaveAttribute("data-active", "true")
+    expect(active.textContent).not.toMatch(/[▸▾[\]*]/)
+  })
+
+  it("bar variant marks the active item without a glyph prefix", () => {
+    renderWithVariant("bar")
+    const active = screen.getByRole("button", { name: "Quickstart" })
+    expect(active).toHaveAttribute("aria-current", "page")
+    expect(active).toHaveAttribute("data-active", "true")
+    expect(active.textContent).not.toMatch(/[▸▾[\]*]/)
+  })
+
+  it("bracket variant renders [*] on active and [ ] on inactive items", () => {
+    renderWithVariant("bracket")
+    const active = screen.getByRole("button", { name: /Quickstart/i })
+    const inactive = screen.getByRole("button", { name: /Install/i })
+    expect(active).toHaveAttribute("aria-current", "page")
+    expect(active.textContent).toContain("[*]")
+    expect(inactive.textContent).toContain("[ ]")
+  })
+
+  it("block variant marks the active item without a glyph prefix", () => {
+    renderWithVariant("block")
+    const active = screen.getByRole("button", { name: "Quickstart" })
+    expect(active).toHaveAttribute("aria-current", "page")
+    expect(active).toHaveAttribute("data-active", "true")
+    expect(active.textContent).not.toMatch(/[▸▾[\]*]/)
+  })
+
+  it("keeps a single Primary nav landmark and h3 section title across variants", () => {
+    renderWithVariant("bracket")
+    const nav = screen.getByRole("navigation")
+    expect(nav).toHaveAccessibleName("Primary")
+    expect(nav).toHaveAttribute("data-variant", "bracket")
+    expect(screen.getByRole("heading", { level: 3, name: "Section" })).toBeInTheDocument()
+  })
+})
+
+describe("Sidebar Cmd/Ctrl+B hotkey", () => {
+  it("cycles open ↔ rail on Cmd+B", () => {
+    const onStateChange = vi.fn()
+    render(
+      <Sidebar.Provider defaultState="open" onStateChange={onStateChange}>
+        <Sidebar>
+          <Sidebar.Content>
+            <Sidebar.Item as="button">Item</Sidebar.Item>
+          </Sidebar.Content>
+        </Sidebar>
+      </Sidebar.Provider>,
+    )
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "b", metaKey: true }))
+    })
+    expect(onStateChange).toHaveBeenLastCalledWith("rail")
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "b", metaKey: true }))
+    })
+    expect(onStateChange).toHaveBeenLastCalledWith("open")
+  })
+
+  it("toggles hidden state on Shift+Cmd+B", () => {
+    const onStateChange = vi.fn()
+    render(
+      <Sidebar.Provider defaultState="open" onStateChange={onStateChange}>
+        <Sidebar>
+          <Sidebar.Content>
+            <Sidebar.Item as="button">Item</Sidebar.Item>
+          </Sidebar.Content>
+        </Sidebar>
+      </Sidebar.Provider>,
+    )
+
+    act(() => {
+      window.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "b", metaKey: true, shiftKey: true }),
+      )
+    })
+    expect(onStateChange).toHaveBeenLastCalledWith("hidden")
+  })
+
+  it("does not toggle when focus is in an editable target", () => {
+    const onStateChange = vi.fn()
+    render(
+      <Sidebar.Provider defaultState="open" onStateChange={onStateChange}>
+        <Sidebar>
+          <Sidebar.Content>
+            <Sidebar.Item as="button">Item</Sidebar.Item>
+          </Sidebar.Content>
+        </Sidebar>
+        <input aria-label="search" />
+      </Sidebar.Provider>,
+    )
+    const input = screen.getByLabelText("search")
+    input.focus()
+
+    act(() => {
+      input.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "b", metaKey: true, bubbles: true }),
+      )
+    })
+    expect(onStateChange).not.toHaveBeenCalled()
+  })
+})
+
+describe("Sidebar mobile sheet", () => {
+  const originalMatchMedia = window.matchMedia
+
+  function stubMatchMedia(isMobile: boolean) {
+    const mql = {
+      matches: isMobile,
+      media: "(max-width: 1023px)",
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      writable: true,
+      value: vi.fn().mockReturnValue(mql),
+    })
+  }
+
+  afterEach(() => {
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      writable: true,
+      value: originalMatchMedia,
+    })
+  })
+
+  it("renders the Dialog sheet branch when the viewport matches the mobile breakpoint", () => {
+    stubMatchMedia(true)
+    render(
+      <Sidebar.Provider>
+        <Sidebar>
+          <Sidebar.Content>
+            <Sidebar.Item as="button">Item</Sidebar.Item>
+          </Sidebar.Content>
+        </Sidebar>
+      </Sidebar.Provider>,
+    )
+    expect(screen.getByRole("dialog")).toBeInTheDocument()
+  })
+
+  it("renders the plain nav (no Dialog) on desktop viewports", () => {
+    stubMatchMedia(false)
+    render(
+      <Sidebar.Provider>
+        <Sidebar>
+          <Sidebar.Content>
+            <Sidebar.Item as="button">Item</Sidebar.Item>
+          </Sidebar.Content>
+        </Sidebar>
+      </Sidebar.Provider>,
+    )
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+    expect(screen.getByRole("navigation", { name: "Primary" })).toBeInTheDocument()
+  })
 })

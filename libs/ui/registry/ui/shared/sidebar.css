@@ -1,0 +1,53 @@
+/*
+ * Sidebar collapsible-section animation contract.
+ *
+ * Matches the floating-surface motion language used by Select / Popover
+ * (60ms enter / 40ms exit, linear, opacity fade) and extends it with a
+ * height tween so accordion sections animate cleanly without the snap
+ * caused by toggling `display: none` (the `hidden` attribute cannot
+ * transition).
+ *
+ * Mechanics:
+ *   - The collapsible panel is a CSS grid whose `grid-template-rows`
+ *     animates between `0fr` (closed) and `1fr` (open). Its single child
+ *     uses `min-height: 0; overflow: hidden` so the grid can squeeze the
+ *     row to zero. This is the bullet-proof modern accordion technique —
+ *     no JS height measurement, no `interpolate-size` / `@starting-style`
+ *     gating, works in every evergreen browser.
+ *   - Opacity fades alongside height using the same duration tokens as
+ *     `.ui-floating-panel` so the visual cadence matches Select.
+ *
+ * Reduced motion:
+ *   - `motion-reduce` (`prefers-reduced-motion: reduce`) zeroes the
+ *     transitions so the panel snaps. The element is always in the DOM,
+ *     so SR users tabbing through closed sections must still skip the
+ *     items — handled in JSX via `inert` + `aria-hidden`.
+ */
+
+[data-slot="sidebar-section-content"] {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition:
+    grid-template-rows var(--ui-content-enter-duration, 60ms) linear,
+    opacity var(--ui-content-enter-duration, 60ms) linear;
+}
+
+[data-slot="sidebar-section-content"][data-state="closed"] {
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows var(--ui-content-exit-duration, 40ms) linear,
+    opacity var(--ui-content-exit-duration, 40ms) linear;
+}
+
+[data-slot="sidebar-section-content"] > [data-slot="sidebar-section-content-inner"] {
+  min-height: 0;
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="sidebar-section-content"],
+  [data-slot="sidebar-section-content"][data-state="closed"] {
+    transition: none;
+  }
+}

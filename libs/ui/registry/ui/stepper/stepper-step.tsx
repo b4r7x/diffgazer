@@ -1,7 +1,20 @@
 "use client";
 
-import { Children, isValidElement, type ComponentProps, type ReactNode, useId, useMemo } from "react";
-import { useStepperContext, StepperStepContext, type StepStatus } from "./stepper-context";
+import {
+  Children,
+  isValidElement,
+  type ComponentProps,
+  type ReactNode,
+  useId,
+  useMemo,
+} from "react";
+import { cn } from "@/lib/utils";
+import { stepperStepVariants } from "@/lib/stepper-variants";
+import {
+  useStepperContext,
+  StepperStepContext,
+  type StepStatus,
+} from "./stepper-context";
 import { StepperContent } from "./stepper-content";
 
 export interface StepperStepProps
@@ -39,7 +52,14 @@ export function StepperStep({
 
   return (
     <StepperStepContext value={ctx}>
-      <li {...props} className={className} data-state={isExpanded ? "open" : "closed"}>{children}</li>
+      <li
+        {...props}
+        className={cn(stepperStepVariants(), className)}
+        data-state={isExpanded ? "open" : "closed"}
+        data-status={status}
+      >
+        {children}
+      </li>
     </StepperStepContext>
   );
 }

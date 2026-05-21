@@ -14,6 +14,13 @@ export interface SidebarSectionProps extends HTMLAttributes<HTMLDivElement> {
   defaultOpen?: boolean;
 }
 
+/**
+ * Group container. When `collapsible`, follows the ARIA disclosure pattern —
+ * the `<SidebarSectionTitle>` renders an `<hN><button aria-expanded …>…</button></hN>`
+ * that controls a sibling `<SidebarSectionContent>` panel (id wired via
+ * context). Items NOT wrapped in `<SidebarSectionContent>` render unhidden;
+ * this keeps non-collapsible sections trivial to compose.
+ */
 export function SidebarSection({
   ref,
   collapsible = false,
@@ -26,6 +33,7 @@ export function SidebarSection({
   ...rest
 }: SidebarSectionProps) {
   const titleId = useId();
+  const panelId = useId();
   const labelSourceId = ariaLabelledBy ?? (containsSidebarSectionTitleElement(children) ? titleId : undefined);
 
   const [isOpen, setIsOpen] = useControllableState<boolean>({
@@ -40,8 +48,9 @@ export function SidebarSection({
       open: isOpen,
       onToggle: () => setIsOpen(prev => !prev),
       titleId,
+      panelId,
     }),
-    [collapsible, isOpen, setIsOpen, titleId],
+    [collapsible, isOpen, setIsOpen, titleId, panelId],
   );
 
   return (

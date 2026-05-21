@@ -80,16 +80,18 @@ export const segmentedItemVariants = cva(
         ].join(" "),
       },
       size: {
-        sm: "min-h-11 px-3 text-xs",
-        md: "min-h-9 px-4 text-sm",
+        // sm = docs-toolbar density (36px). Assumes pointer:fine.
+        // md = WCAG 2.5.8 touch target (44px). Use for mobile primary actions
+        //      and any control consumed on coarse-pointer devices.
+        sm: "min-h-9 px-3 text-xs",
+        md: "min-h-11 px-4 text-sm",
       },
     },
     compoundVariants: [
-      // Pill items keep the 44px touch target (WCAG 2.5.8 + project rule) and
-      // add vertical padding so the label nests cleanly inside the 3px-inset
-      // pill track.
+      // Pill items add inner vertical padding so the label nests cleanly inside
+      // the 3px-inset pill track; row height inherits from sm/md above.
       { variant: "pill", size: "sm", className: "py-1.5" },
-      { variant: "pill", size: "md", className: "min-h-8 py-1.5" },
+      { variant: "pill", size: "md", className: "py-2" },
       // Underline items have no horizontal padding by default — gap on the row
       // provides spacing; padding would create a clickable border-bottom strip
       // that lies past the label. Vertical padding is added for visual weight

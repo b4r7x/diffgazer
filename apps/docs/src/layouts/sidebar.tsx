@@ -1,12 +1,5 @@
 import { useLocation, useRouterState, Link } from "@tanstack/react-router";
-import {
-  useEffectEvent,
-  useEffect,
-  useRef,
-  type KeyboardEvent,
-  type FocusEvent,
-} from "react";
-import { useNavigation } from "@diffgazer/keys";
+import { useEffect, useRef } from "react";
 import { Spinner } from "@/components/ui/spinner/spinner";
 import {
   Sidebar,
@@ -46,7 +39,8 @@ function isCliCommandPath(path: string): boolean {
 
 function isIndentedItem(path: string): boolean {
   const slug = getSlug(path);
-  if (DOCS_LIBRARY_IDS.some((id) => slug.startsWith(`${id}-`) && slug !== id)) return true;
+  if (DOCS_LIBRARY_IDS.some((id) => slug.startsWith(`${id}-`) && slug !== id))
+    return true;
   return isCliCommandPath(path);
 }
 
@@ -86,42 +80,6 @@ export function DocsSidebar({ tree, library, onNavigate }: DocsSidebarProps) {
   });
   const navContainerRef = useRef<HTMLDivElement>(null);
 
-  const { onKeyDown: keysKeyDown, highlight } = useNavigation({
-    containerRef: navContainerRef,
-    role: "menuitem",
-    wrap: false,
-    preventDefault: false,
-    onHighlightChange: (url) => {
-      const items =
-        navContainerRef.current?.querySelectorAll<HTMLElement>(
-          "[role='menuitem']",
-        );
-      const el = Array.from(items ?? []).find(
-        (item) => item.dataset.value === url,
-      );
-      el?.focus();
-    },
-  });
-
-  const handleKeyDown = useEffectEvent(
-    (e: KeyboardEvent<HTMLElement>) => {
-      if (["ArrowUp", "ArrowDown", "Home", "End"].includes(e.key)) {
-        e.preventDefault();
-      }
-      keysKeyDown(e);
-    },
-  );
-
-  const handleFocus = useEffectEvent(
-    (e: FocusEvent<HTMLDivElement>) => {
-      const target = (e.target as HTMLElement).closest<HTMLElement>(
-        "[data-value]",
-      );
-      const url = target?.dataset.value;
-      if (url) highlight(url);
-    },
-  );
-
   useEffect(() => {
     const el = navContainerRef.current?.querySelector<HTMLElement>(
       `[data-value="${pathname}"]`,
@@ -132,19 +90,14 @@ export function DocsSidebar({ tree, library, onNavigate }: DocsSidebarProps) {
   const sections = groupBySection(tree.children);
 
   return (
-    <Sidebar>
+    <Sidebar variant="bar" className="w-full">
       <SidebarHeader>
         <span className="text-muted-foreground text-xs font-mono">{`~/${library}/docs`}</span>
       </SidebarHeader>
 
       <SidebarContent className="p-0 overflow-hidden">
         <ScrollArea className="h-full">
-          <div
-            className="p-4"
-            ref={navContainerRef}
-            onKeyDown={handleKeyDown}
-            onFocus={handleFocus}
-          >
+          <div className="px-3 pt-2 pb-4" ref={navContainerRef}>
             {sections.map((section, i) => (
               <SidebarSection key={`${i}-${section.title}`}>
                 {section.title && (
@@ -162,7 +115,10 @@ export function DocsSidebar({ tree, library, onNavigate }: DocsSidebarProps) {
                   const isPending = pendingPathname === url;
 
                   return (
-                    <SidebarItem key={url} active={pathname === url || isPending}>
+                    <SidebarItem
+                      key={url}
+                      active={pathname === url || isPending}
+                    >
                       {({ ref: _ref, ...itemProps }) => (
                         <Link
                           to="/$lib/docs/$"
@@ -177,7 +133,9 @@ export function DocsSidebar({ tree, library, onNavigate }: DocsSidebarProps) {
                             <span
                               className={cn(
                                 "text-xs font-mono",
-                                indented ? "pl-5 text-muted-foreground" : "pl-2",
+                                indented
+                                  ? "pl-5 text-muted-foreground"
+                                  : "pl-2",
                               )}
                             >
                               {indented ? `· ${label}` : label}

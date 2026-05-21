@@ -1,9 +1,12 @@
 import type { MouseEvent } from "react"
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { afterEach, describe, expect, it, beforeEach, vi } from "vitest"
+import { common, createLowlight } from "lowlight"
 import { axe } from "../../../testing/utils.js"
 import { CodeBlock } from "./index.js"
-import { CodeBlockHighlight } from "./highlight.js"
+import { CodeBlockHighlight, createDefaultLowlight } from "./highlight.js"
+
+const lowlight = createLowlight(common)
 
 describe("CodeBlock", () => {
   afterEach(() => {
@@ -443,15 +446,26 @@ describe("CodeBlock", () => {
   })
 
   describe("highlight", () => {
-    it("emits hljs-* class names for tokenized code", () => {
+    it("emits hljs-* class names when a lowlight instance is provided", () => {
+      const { container } = render(
+        <CodeBlock language="ts">
+          <CodeBlockHighlight code="const x = 1" language="typescript" lowlight={lowlight} />
+        </CodeBlock>,
+      )
+
+      const tokens = container.querySelectorAll("[class*=\"hljs-\"]")
+      expect(tokens.length).toBeGreaterThan(0)
+    })
+
+    it("renders plain text (no hljs tokens) when no lowlight instance is provided", () => {
       const { container } = render(
         <CodeBlock language="ts">
           <CodeBlockHighlight code="const x = 1" language="typescript" />
         </CodeBlock>,
       )
 
-      const tokens = container.querySelectorAll("[class*=\"hljs-\"]")
-      expect(tokens.length).toBeGreaterThan(0)
+      expect(container.querySelectorAll("[class*=\"hljs-\"]").length).toBe(0)
+      expect(container.textContent).toContain("const x = 1")
     })
 
     it("applies lineStates, gutter signs, and hljs tokens together on diff rows", () => {
@@ -461,6 +475,7 @@ describe("CodeBlock", () => {
             code={"const a = 1\nconst b = 2"}
             language="typescript"
             lineStates={{ 1: "added", 2: "removed" }}
+            lowlight={lowlight}
           />
         </CodeBlock>,
       )
@@ -477,6 +492,14 @@ describe("CodeBlock", () => {
       // Highlighted tokens still render on diff-state rows.
       expect((lines[0]?.querySelectorAll("[class*=\"hljs-\"]").length ?? 0)).toBeGreaterThan(0)
       expect((lines[1]?.querySelectorAll("[class*=\"hljs-\"]").length ?? 0)).toBeGreaterThan(0)
+    })
+
+    it("createDefaultLowlight() loads lowlight lazily and returns a usable instance", async () => {
+      const instance = await createDefaultLowlight()
+      expect(typeof instance.highlight).toBe("function")
+      expect(typeof instance.highlightAuto).toBe("function")
+      const tree = instance.highlight("typescript", "const x = 1")
+      expect(tree.children.length).toBeGreaterThan(0)
     })
   })
 
