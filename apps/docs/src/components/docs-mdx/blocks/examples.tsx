@@ -4,6 +4,7 @@ import { CopyButton } from "@/components/copy-button"
 import { CodeBlock, CodeBlockContent, CodeBlockLine } from "@/components/ui/code-block"
 import { useDemos } from "@/lib/use-demos"
 import { resolveExamples } from "@/lib/resolve-examples"
+import { resolvePreviewFrame } from "@/lib/example-frames"
 import { useCurrentLibrary } from "./use-current-library"
 
 export function Examples({ skipFirst }: { skipFirst?: boolean }) {
@@ -19,7 +20,7 @@ export function Examples({ skipFirst }: { skipFirst?: boolean }) {
   if (examples.length === 0) return null
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-32">
       {examples.map((ex) => {
         const src = d.exampleSource?.[ex.name]
         if (!src) {
@@ -34,7 +35,7 @@ export function Examples({ skipFirst }: { skipFirst?: boolean }) {
               demo={demo}
               code={src.highlighted}
               rawCode={src.raw}
-              variant="stacked"
+              frame={resolvePreviewFrame(ex.name)}
             />
           )
         }

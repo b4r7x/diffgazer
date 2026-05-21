@@ -11,7 +11,7 @@ import {
 
 export default function SidebarVariantBlock() {
   return (
-    <Sidebar variant="block" className="w-64 h-80 border border-border bg-background">
+    <Sidebar variant="block" className="h-full">
       <SidebarHeader>
         <span className="text-xs font-mono text-muted-foreground">~/ui/docs</span>
       </SidebarHeader>

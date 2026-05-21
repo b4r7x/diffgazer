@@ -1,6 +1,7 @@
 import { useDocData } from "../doc-data-context"
 import { DemoPreview } from "@/components/demo-preview"
 import { useDemos } from "@/lib/use-demos"
+import { resolvePreviewFrame } from "@/lib/example-frames"
 import { useCurrentLibrary } from "./use-current-library"
 
 export function Example({ name }: { name: string }) {
@@ -20,6 +21,7 @@ export function Example({ name }: { name: string }) {
       demo={demos[name] ?? null}
       code={src.highlighted}
       rawCode={src.raw}
+      frame={resolvePreviewFrame(name)}
     />
   )
 }

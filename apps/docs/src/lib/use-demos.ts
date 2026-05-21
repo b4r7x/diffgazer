@@ -21,6 +21,8 @@ export function useDemos(libraryId: string): DemoMap {
       })
       .catch((err) => {
         if (!active) return
+        // Missing/broken demo bundles must not crash the docs page; render an
+        // invisible fallback so the surrounding MDX content stays readable.
         if (import.meta.env.DEV) console.warn("Failed to load demos:", err)
         setDemos(EMPTY_DEMOS)
       })

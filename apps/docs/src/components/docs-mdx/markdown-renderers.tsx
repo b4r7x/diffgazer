@@ -2,7 +2,7 @@ import type { MDXComponents } from "mdx/types"
 import { createContext, isValidElement, useContext, type ReactElement, type ReactNode } from "react"
 import { Callout } from "@/components/ui/callout"
 import { CodeBlock, CodeBlockContent, CodeBlockHeader, CodeBlockLabel } from "@/components/ui/code-block"
-import { SectionHeader } from "@/components/ui/section-header/section-header"
+import { Typography } from "@/components/ui/typography/typography"
 import { cn } from "@diffgazer/ui/lib/utils"
 
 type CalloutTone = "warning" | "error" | "success" | "info"
@@ -53,23 +53,29 @@ function CodeRenderer({ children, className }: { children: ReactNode; className?
 export const markdownMdxComponents: MDXComponents = {
   h1: () => null,
   h2: ({ children, className, id, ...props }) => (
-    <SectionHeader
+    <Typography
       as="h2"
+      size="2xl"
       id={id}
-      className={cn("mt-8 mb-4 scroll-mt-24", className)}
+      className={cn(
+        "font-bold text-foreground mt-16 mb-6 pb-3 border-b border-border scroll-mt-24",
+        className,
+      )}
       {...props}
     >
       {children}
-    </SectionHeader>
+    </Typography>
   ),
   h3: ({ children, className, id, ...props }) => (
-    <h3
+    <Typography
+      as="h3"
+      size="lg"
       id={id}
-      className={cn("text-xl font-bold text-foreground mt-6 mb-3 scroll-mt-24", className)}
+      className={cn("font-bold text-foreground mt-10 mb-4 scroll-mt-24", className)}
       {...props}
     >
       {children}
-    </h3>
+    </Typography>
   ),
   p: ({ children }) => (
     <p className="text-sm leading-relaxed text-muted-foreground mb-4 max-w-2xl">

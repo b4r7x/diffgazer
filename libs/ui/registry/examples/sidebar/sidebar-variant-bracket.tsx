@@ -11,7 +11,7 @@ import {
 
 export default function SidebarVariantBracket() {
   return (
-    <Sidebar variant="bracket" className="w-64 h-80 border border-border bg-background">
+    <Sidebar variant="bracket" className="h-full">
       <SidebarHeader>
         <span className="text-xs font-mono text-muted-foreground">~/ui/docs</span>
       </SidebarHeader>

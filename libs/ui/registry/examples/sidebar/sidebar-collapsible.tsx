@@ -18,7 +18,7 @@ import {
 // state — items rendered outside that wrapper stay visible regardless.
 export default function SidebarCollapsible() {
   return (
-    <Sidebar variant="block" className="w-64 border border-border rounded bg-background">
+    <Sidebar variant="block" className="h-full">
       <SidebarHeader>
         <span className="text-sm font-mono font-bold">File Browser</span>
       </SidebarHeader>

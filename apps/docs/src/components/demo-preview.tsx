@@ -2,30 +2,55 @@ import { Suspense, type ComponentType, type LazyExoticComponent } from "react"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { CodeBlock, CodeBlockContent, CodeBlockHeader, CodeBlockLabel, CodeBlockLine, type CodeBlockLineProps } from "@/components/ui/code-block"
 import { CopyButton } from "@/components/copy-button"
+import { Typography } from "@/components/ui/typography/typography"
+import { InsetPreviewPane } from "@/components/preview-inset-pane"
+import type { PreviewFrame } from "@/lib/example-frames"
 
 interface DemoPreviewProps {
   title?: string
   demo: LazyExoticComponent<ComponentType> | null
   code: CodeBlockLineProps[]
   rawCode: string
-  variant?: "tabbed" | "stacked"
+  frame?: PreviewFrame
 }
 
-function PreviewPane({ demo: Demo }: { demo: LazyExoticComponent<ComponentType> | null }) {
+const PREVIEW_FALLBACK = <div aria-hidden="true" className="h-full w-full" />
+
+function DemoNode({ demo: Demo }: { demo: LazyExoticComponent<ComponentType> | null }) {
+  if (!Demo) return PREVIEW_FALLBACK
   return (
-    <div className="border border-border bg-[radial-gradient(#333_1px,transparent_1px)] [background-size:20px_20px] p-12 flex items-center justify-center min-h-[320px] relative">
-      <div className="absolute top-0 left-0 px-3 py-1 bg-border/50 text-[10px] text-muted-foreground font-bold uppercase tracking-wider border-b border-r border-border">
-        Live Preview
+    <Suspense fallback={PREVIEW_FALLBACK}>
+      <Demo />
+    </Suspense>
+  )
+}
+
+function DefaultPreviewPane({ demo }: { demo: LazyExoticComponent<ComponentType> | null }) {
+  return (
+    <div className="border border-border bg-secondary/10 h-[360px] overflow-auto scrollbar-thin">
+      <div className="min-h-full flex items-center justify-center px-8 py-12">
+        <DemoNode demo={demo} />
       </div>
-      {Demo ? (
-        <Suspense fallback={<div className="flex items-center justify-center animate-pulse"><span className="text-muted-foreground text-xs">[loading...]</span></div>}>
-          <Demo />
-        </Suspense>
-      ) : (
-        <span className="text-muted-foreground text-xs">[no preview available]</span>
-      )}
     </div>
   )
+}
+
+function FillPreviewPane({ demo }: { demo: LazyExoticComponent<ComponentType> | null }) {
+  return (
+    <div className="border border-border bg-background h-[360px] overflow-auto scrollbar-thin">
+      <div className="h-full w-full [&>*]:h-full [&>*]:w-full">
+        <DemoNode demo={demo} />
+      </div>
+    </div>
+  )
+}
+
+function PreviewPane({ demo, frame }: { demo: LazyExoticComponent<ComponentType> | null; frame: PreviewFrame }) {
+  if (frame === "inset") return <InsetPreviewPane demo={demo} />
+  if (frame === "fill") return <FillPreviewPane demo={demo} />
+  if (frame === "default") return <DefaultPreviewPane demo={demo} />
+  frame satisfies never
+  return null
 }
 
 function CodePane({ code, rawCode }: { code: CodeBlockLineProps[]; rawCode: string }) {
@@ -44,35 +69,34 @@ function CodePane({ code, rawCode }: { code: CodeBlockLineProps[]; rawCode: stri
   )
 }
 
-export function DemoPreview({ title, demo, code, rawCode, variant = "tabbed" }: DemoPreviewProps) {
+export function DemoPreview({ title, demo, code, rawCode, frame = "default" }: DemoPreviewProps) {
   return (
     <div className="mb-6">
       {title && (
-        <p className="text-xs font-mono text-muted-foreground mb-2">{title}</p>
+        <Typography
+          as="h4"
+          size="base"
+          className="text-foreground font-bold uppercase tracking-wider mb-4"
+        >
+          {title}
+        </Typography>
       )}
-      {variant === "stacked" ? (
-        <>
+      <Tabs defaultValue="preview" variant="underline" size="sm">
+        <TabsList className="mb-3">
+          <TabsTrigger value="preview" className="text-xs">
+            Preview
+          </TabsTrigger>
+          <TabsTrigger value="code" className="text-xs">
+            Code
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="preview">
+          <PreviewPane demo={demo} frame={frame} />
+        </TabsContent>
+        <TabsContent value="code">
           <CodePane code={code} rawCode={rawCode} />
-          <PreviewPane demo={demo} />
-        </>
-      ) : (
-        <Tabs defaultValue="preview" variant="bracket">
-          <TabsList className="mb-2">
-            <TabsTrigger value="preview" className="text-xs">
-              Preview
-            </TabsTrigger>
-            <TabsTrigger value="code" className="text-xs">
-              Code
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent value="preview">
-            <PreviewPane demo={demo} />
-          </TabsContent>
-          <TabsContent value="code">
-            <CodePane code={code} rawCode={rawCode} />
-          </TabsContent>
-        </Tabs>
-      )}
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

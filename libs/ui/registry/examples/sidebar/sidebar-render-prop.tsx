@@ -13,7 +13,7 @@ import type { Ref } from "react"
 
 export default function SidebarRenderProp() {
   return (
-    <Sidebar className="w-64 border border-border rounded bg-background">
+    <Sidebar className="h-full">
       <SidebarHeader>
         <span className="text-sm font-mono font-bold">Navigation</span>
       </SidebarHeader>

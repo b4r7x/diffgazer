@@ -21,7 +21,7 @@ import {
  */
 export default function SidebarAutoTone() {
   return (
-    <Sidebar autoTone variant="bar" className="w-72 h-80 border border-border bg-background">
+    <Sidebar autoTone variant="bar" className="h-full">
       <SidebarHeader>
         <span className="text-xs font-mono text-muted-foreground">~/ci/pipeline</span>
       </SidebarHeader>

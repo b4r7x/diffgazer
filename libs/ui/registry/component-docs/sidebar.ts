@@ -67,7 +67,6 @@ export const sidebarDoc: ComponentDoc = {
   usage: { example: "sidebar-default" },
   examples: [
     { name: "sidebar-default", title: "Default" },
-    { name: "sidebar-variants", title: "Variants (interactive picker)" },
     { name: "sidebar-variant-caret", title: "Variant — caret" },
     { name: "sidebar-variant-inverted", title: "Variant — inverted" },
     { name: "sidebar-variant-bar", title: "Variant — bar" },

@@ -11,7 +11,7 @@ import {
 
 export default function SidebarVariantInverted() {
   return (
-    <Sidebar variant="inverted" className="w-64 h-80 border border-border bg-background">
+    <Sidebar variant="inverted" className="h-full">
       <SidebarHeader>
         <span className="text-xs font-mono text-muted-foreground">~/ui/docs</span>
       </SidebarHeader>

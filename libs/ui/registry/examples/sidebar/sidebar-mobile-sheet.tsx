@@ -20,7 +20,7 @@ import {
 export default function SidebarMobileSheet() {
   return (
     <SidebarProvider breakpoint={9999} defaultState="hidden">
-      <div className="flex flex-col gap-3 border border-border p-4 bg-background">
+      <div className="flex flex-col gap-3 p-4 bg-background">
         <div className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
           <SidebarTrigger className="border border-border px-2 py-1" />
           <span>~/ui/docs</span>

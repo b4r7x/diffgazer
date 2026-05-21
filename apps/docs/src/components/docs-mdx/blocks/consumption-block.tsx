@@ -31,9 +31,9 @@ function inferItemKind(library: ConsumptionLibrary, name: string, section?: stri
 
 function CommandBox({ command }: { command: string }) {
   return (
-    <div className="flex items-center gap-2 border border-border bg-background px-2 py-1 font-mono text-xs rounded">
+    <div className="flex items-center gap-3 border border-border bg-secondary/20 px-3.5 py-2.5 font-mono text-sm">
       <span className="text-muted-foreground select-none">$</span>
-      <span className="flex-1 break-all">{command}</span>
+      <span className="flex-1 break-all text-foreground">{command}</span>
       <CopyButton text={command} />
     </div>
   )
@@ -43,14 +43,16 @@ function Captions({ items }: { items: Caption[] }) {
   const visible = items.filter((item): item is Required<Caption> => Boolean(item.value))
   if (visible.length === 0) return null
   return (
-    <dl className="space-y-1">
+    <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1.5 text-xs font-mono leading-relaxed">
       {visible.map(({ label, value }) => (
-        <div key={label} className="flex flex-wrap items-baseline gap-x-2 text-[11px]">
-          <dt className="font-mono text-muted-foreground">{label}</dt>
-          <dd className="font-mono text-foreground break-all">{value}</dd>
-        </div>
+        <span key={label} className="inline-flex items-baseline gap-2">
+          <span className="text-muted-foreground">
+            [<span className="px-1 lowercase">{label}</span>]
+          </span>
+          <span className="text-foreground font-medium break-all">{value}</span>
+        </span>
       ))}
-    </dl>
+    </div>
   )
 }
 
@@ -60,10 +62,10 @@ function PathBody({ path, captions }: { path: PathState; captions: Caption[] }) 
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-4">
       {path.command && <CommandBox command={path.command} />}
       <Captions items={captions} />
-      {path.note && <p className="text-[11px] text-muted-foreground">{path.note}</p>}
+      {path.note && <p className="text-xs text-muted-foreground leading-relaxed">{path.note}</p>}
     </div>
   )
 }
@@ -116,10 +118,10 @@ export function ConsumptionBlock() {
   const firstAvailable = tabs.find((t) => t.path.available)
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {firstAvailable ? (
-        <Tabs defaultValue={firstAvailable.value}>
-          <TabsList>
+        <Tabs defaultValue={firstAvailable.value} variant="underline" size="sm">
+          <TabsList className="mb-4">
             {tabs.map((t) => (
               <TabsTrigger key={t.value} value={t.value} disabled={!t.path.available}>
                 {t.label}
@@ -137,11 +139,11 @@ export function ConsumptionBlock() {
       )}
 
       {meta.cssNote && library === "ui" && (
-        <p className="text-[11px] text-muted-foreground">{meta.cssNote}</p>
+        <p className="text-xs text-muted-foreground leading-relaxed border-t border-border/40 pt-3">{meta.cssNote}</p>
       )}
 
       {library === "keys" && (
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-xs text-muted-foreground leading-relaxed border-t border-border/40 pt-3">
           @diffgazer/keys requires no CSS or Tailwind setup.
         </p>
       )}

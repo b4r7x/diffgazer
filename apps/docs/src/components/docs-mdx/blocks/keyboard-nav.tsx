@@ -1,6 +1,7 @@
 import { useComponentData } from "../doc-data-context"
 import { DemoPreview } from "@/components/demo-preview"
 import { useDemos } from "@/lib/use-demos"
+import { resolvePreviewFrame } from "@/lib/example-frames"
 import { useCurrentLibrary } from "./use-current-library"
 
 export function KeyboardNav() {
@@ -24,6 +25,7 @@ export function KeyboardNav() {
               demo={demos[ex.name] ?? null}
               code={data.exampleSource[ex.name]?.highlighted ?? []}
               rawCode={data.exampleSource[ex.name]?.raw ?? ""}
+              frame={resolvePreviewFrame(ex.name)}
             />
           ))}
         </div>

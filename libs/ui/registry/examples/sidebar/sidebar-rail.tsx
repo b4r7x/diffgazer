@@ -21,7 +21,7 @@ import {
 export default function SidebarRail() {
   return (
     <SidebarProvider defaultState="rail">
-      <div className="flex items-stretch border border-border h-80 bg-background">
+      <div className="flex items-stretch h-80 bg-background">
         <Sidebar variant="block">
           <SidebarHeader>
             <span className="text-xs font-mono font-bold">DG</span>
