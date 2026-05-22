@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ComponentProps } from "react";
-import { cn } from "@/lib/utils";
+import { useEffect, useRef, useState, type ComponentProps, type ReactNode } from "react";
 
 export interface CodeBlockCopyButtonProps
   extends Omit<ComponentProps<"button">, "children" | "onCopy"> {
@@ -12,7 +11,7 @@ export interface CodeBlockCopyButtonProps
   /** Status message announced via aria-live when the copy succeeds. */
   copiedMessage?: string;
   /** Optional copy renderer override. Defaults to a clipboard icon. */
-  children?: ((state: "idle" | "copied") => React.ReactNode) | React.ReactNode;
+  children?: ((state: "idle" | "copied") => ReactNode) | ReactNode;
   /** Called after a successful clipboard write. */
   onCopy?: (source: string) => void;
   /** Called when clipboard write fails. */
@@ -108,7 +107,7 @@ export function CodeBlockCopyButton({
         data-slot="code-block-copy-button"
         data-state={state}
         aria-label={copyLabel}
-        className={cn(className)}
+        className={className}
         onClick={handleClick}
         {...props}
       >

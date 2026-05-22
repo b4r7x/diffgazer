@@ -68,14 +68,10 @@ const HomeSearchSchema = z.object({
   error: z.string().optional(),
 });
 
-export type HomeSearch = z.infer<typeof HomeSearchSchema>;
-
 const ReviewSearchSchema = z.object({
   mode: ReviewModeSchema.optional().default("unstaged"),
   live: z.boolean().optional(),
 });
-
-export type ReviewSearch = z.infer<typeof ReviewSearchSchema>;
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;

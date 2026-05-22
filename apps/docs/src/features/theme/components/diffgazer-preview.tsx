@@ -1,4 +1,5 @@
 import { buttonVariants } from "@/components/ui/button/button"
+import { CodeBlock } from "@/components/ui/code-block"
 
 const REVIEW_LENSES = [
   "Correctness",
@@ -43,7 +44,9 @@ export function DiffgazerPreview() {
         <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">
           Quick start
         </p>
-        <pre className="text-xs font-mono text-foreground whitespace-pre-wrap">{QUICK_START.join("\n")}</pre>
+        <CodeBlock variant="terminal">
+          <CodeBlock.Content showLineNumbers={false}>{QUICK_START.join("\n")}</CodeBlock.Content>
+        </CodeBlock>
       </div>
 
       <a

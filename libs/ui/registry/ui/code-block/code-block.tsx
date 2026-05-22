@@ -1,31 +1,25 @@
 "use client";
 
 import { Children, isValidElement, useId, useMemo, type ComponentProps, type ReactNode } from "react";
-import { cva, type VariantProps } from "class-variance-authority";
-import { cn } from "@/lib/utils";
+import { CodeBlockLabel } from "./code-block-label";
 import {
   CodeBlockProvider,
   type CodeBlockChrome,
   type CodeBlockVariant,
 } from "./code-block-context";
-import { CodeBlockLabel } from "./code-block-label";
 
-export const codeBlockVariants = cva("", {
-  variants: {
-    variant: {
-      hairline: "",
-      bare: "",
-      terminal: "",
-    },
-  },
-  defaultVariants: {
-    variant: "hairline",
-  },
-});
+function containsLabelElement(node: ReactNode): boolean {
+  for (const child of Children.toArray(node)) {
+    if (!isValidElement(child)) continue;
+    if (child.type === CodeBlockLabel) return true;
+    const nested = (child.props as { children?: ReactNode }).children;
+    if (nested && containsLabelElement(nested)) return true;
+  }
+  return false;
+}
 
-export interface CodeBlockProps
-  extends VariantProps<typeof codeBlockVariants>,
-    Omit<ComponentProps<"figure">, "children"> {
+export interface CodeBlockProps extends Omit<ComponentProps<"figure">, "children"> {
+  variant?: CodeBlockVariant;
   language?: string;
   /**
    * Visible label for the block (filename or language). When rendered via
@@ -44,23 +38,6 @@ export interface CodeBlockProps
   children?: ComponentProps<"figure">["children"];
 }
 
-function containsLabelElement(children: ReactNode): boolean {
-  return Children.toArray(children).some((child) => {
-    if (!isValidElement<{ children?: ReactNode }>(child)) return false;
-    if (child.type === CodeBlockLabel) return true;
-    return containsLabelElement(child.props.children);
-  });
-}
-
-/**
- * Accessible name precedence:
- *   aria-labelledby (consumer override)
- *   > aria-label (consumer override)
- *   > <CodeBlock.Label> rendered inside (matched via internal labelId)
- *   > `label` prop
- *   > `${language} code`
- *   > "Code block"
- */
 export function CodeBlock({
   variant,
   language,
@@ -69,8 +46,6 @@ export function CodeBlock({
   className,
   children,
   ref,
-  "aria-label": ariaLabel,
-  "aria-labelledby": ariaLabelledBy,
   ...props
 }: CodeBlockProps) {
   const resolvedVariant: CodeBlockVariant = variant ?? "hairline";
@@ -78,24 +53,20 @@ export function CodeBlock({
   const labelId = useId();
 
   const fallbackName = label ?? (language ? `${language} code` : "Code block");
-  const hasRenderableLabel = containsLabelElement(children);
 
   const contextValue = useMemo(
     () => ({ variant: resolvedVariant, chrome: resolvedChrome, labelId, language, fallbackName }),
     [resolvedVariant, resolvedChrome, labelId, language, fallbackName],
   );
 
-  // Honour an explicit consumer override first. Otherwise: when a Label is
-  // rendered inside, wire aria-labelledby to its id; when no Label is
-  // rendered, use aria-label so we never emit a dangling labelledby id.
-  let ariaProps: { "aria-label"?: string; "aria-labelledby"?: string };
-  if (ariaLabel || ariaLabelledBy) {
-    ariaProps = { "aria-label": ariaLabel, "aria-labelledby": ariaLabelledBy };
-  } else if (hasRenderableLabel) {
-    ariaProps = { "aria-labelledby": labelId };
-  } else {
-    ariaProps = { "aria-label": fallbackName };
-  }
+  const hasConsumerLabel = props["aria-label"] !== undefined || props["aria-labelledby"] !== undefined;
+  const hasRenderedLabel = !hasConsumerLabel && containsLabelElement(children);
+
+  const ariaProps = hasConsumerLabel
+    ? {}
+    : hasRenderedLabel
+      ? { "aria-labelledby": labelId }
+      : { "aria-label": fallbackName };
 
   return (
     <CodeBlockProvider value={contextValue}>
@@ -105,8 +76,8 @@ export function CodeBlock({
         data-variant={resolvedVariant}
         data-chrome={resolvedChrome}
         data-language={language}
+        className={className}
         {...ariaProps}
-        className={cn(codeBlockVariants({ variant: resolvedVariant }), className)}
         {...props}
       >
         {resolvedChrome === "dots" ? (

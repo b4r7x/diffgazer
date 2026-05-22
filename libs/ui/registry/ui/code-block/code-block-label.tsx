@@ -1,19 +1,20 @@
 "use client";
 
 import type { ComponentProps } from "react";
-import { cn } from "@/lib/utils";
 import { useRequiredCodeBlockContext } from "./code-block-context";
 
 export type CodeBlockLabelProps = ComponentProps<"span">;
 
 export function CodeBlockLabel({ id, className, children, ref, ...props }: CodeBlockLabelProps) {
   const context = useRequiredCodeBlockContext("CodeBlock.Label");
+  const resolvedId = id ?? context.labelId;
+
   return (
     <span
       ref={ref}
-      id={id ?? context.labelId}
+      id={resolvedId}
       data-slot="code-block-label"
-      className={cn(className)}
+      className={className}
       {...props}
     >
       {children}

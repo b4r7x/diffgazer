@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { useLocation, useNavigate, useRouterState } from "@tanstack/react-router"
+import { useLocation, useNavigate } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
 import { Logo } from "@/components/ui/logo/logo"
 import { LOGO_ASCII } from "@/generated/logo-ascii"
@@ -13,17 +13,18 @@ import {
 } from "@/components/ui/select"
 import { Breadcrumbs } from "@/components/breadcrumbs"
 import { useSearchOpen } from "@/features/search/search-context"
+import { Kbd } from "@/components/ui/kbd/kbd"
 import { cn } from "@diffgazer/ui/lib/utils"
 import {
   DOCS_LIBRARY_IDS,
   getDocsLibraryConfig,
   getRouteSlugsFromPathname,
   isDocsLibraryId,
-  isDocsPath,
   routeSlugsFromSourcePath,
   sourceSlugsForLibrary,
   type DocsLibraryId,
 } from "@/lib/docs-library"
+import { usePendingDocsRoute } from "@/lib/hooks/use-pending-docs-route"
 
 const resolveLibrarySwitchPath = createServerFn({ method: "GET" })
   .inputValidator((input: { targetLibrary: DocsLibraryId; currentSlugs: string[] }) => input)
@@ -48,12 +49,7 @@ interface HeaderProps {
 export function Header({ library }: HeaderProps) {
   const { setOpen } = useSearchOpen()
   const pathname = useLocation({ select: (location) => location.pathname })
-  const pendingDocsPathname = useRouterState({
-    select: (state) => {
-      if (state.status !== "pending") return null
-      return isDocsPath(state.location.pathname) ? state.location.pathname : null
-    },
-  })
+  const pendingDocsPathname = usePendingDocsRoute()
   const navigate = useNavigate()
   const [switching, setSwitching] = useState(false)
   const activeLibrary = getDocsLibraryConfig(library)
@@ -151,7 +147,7 @@ export function Header({ library }: HeaderProps) {
               aria-label="Search documentation"
             />
             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1 pointer-events-none">
-              <span className="border border-border bg-border/30 px-1.5 py-0.5 text-[10px] rounded-sm text-muted-foreground group-hover:border-muted-foreground group-hover:text-foreground transition-colors">/</span>
+              <Kbd size="sm" className="text-muted-foreground group-hover:border-muted-foreground group-hover:text-foreground transition-colors">/</Kbd>
             </div>
           </div>
         </div>

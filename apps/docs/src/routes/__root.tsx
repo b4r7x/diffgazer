@@ -89,7 +89,7 @@ function RootLayout() {
 
 function RootErrorBoundary({ reset }: { reset: () => void }) {
 	return (
-		<div className="px-4">
+		<main id="main-content" className="px-4">
 			<NotFoundState
 				variant="global"
 				statusLabel="ERROR"
@@ -106,7 +106,7 @@ function RootErrorBoundary({ reset }: { reset: () => void }) {
 					</Link>
 				}
 			/>
-		</div>
+		</main>
 	);
 }
 

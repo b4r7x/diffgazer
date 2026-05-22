@@ -1,4 +1,5 @@
 import { Accordion, AccordionHeader, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion"
+import { InlineCode } from "@/components/ui/code-block"
 
 export default function AccordionDefault() {
   return (
@@ -19,7 +20,7 @@ export default function AccordionDefault() {
         </AccordionHeader>
         <AccordionContent>
           <p className="text-sm text-muted-foreground">
-            Run <code className="text-xs bg-secondary text-foreground px-1 rounded">dgadd add button</code> to add a component to your project.
+            Run <InlineCode>dgadd add button</InlineCode> to add a component to your project.
           </p>
         </AccordionContent>
       </AccordionItem>

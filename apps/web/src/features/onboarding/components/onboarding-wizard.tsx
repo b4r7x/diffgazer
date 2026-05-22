@@ -164,6 +164,7 @@ export function OnboardingWizard() {
       await complete();
       navigate({ to: "/" });
     } catch {
+      // Error already displayed by useOnboarding's error state
     }
   };
 

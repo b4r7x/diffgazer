@@ -1,6 +1,6 @@
 import type React from "react"
 import { SectionHeader } from "@/components/ui/section-header/section-header"
-import { CodeBlock, CodeBlockContent, CodeBlockLine } from "@/components/ui/code-block"
+import { CodeBlock, CodeBlockContent, CodeBlockLine, InlineCode } from "@/components/ui/code-block"
 import {
   Accordion,
   AccordionItem,
@@ -37,7 +37,7 @@ export function SourceViewer({ files, mergedSource, installCommand, integrationN
         <p className="text-xs text-muted-foreground mb-3 mt-1">
           {installCommand && (
             <>
-              Install via CLI: <code className="text-[0.7rem] bg-muted px-1 py-0.5 rounded">{installCommand}</code>.
+              Install via CLI: <InlineCode>{installCommand}</InlineCode>.
               {" "}
               {LOCAL_DGADD_PREREQUISITE}
             </>

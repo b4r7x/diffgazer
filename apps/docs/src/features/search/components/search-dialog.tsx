@@ -1,4 +1,3 @@
-import { useEffect } from "react"
 import { useNavigate } from "@tanstack/react-router"
 import { useKey, useScope } from "@diffgazer/keys"
 import { useSearchOpen } from "../search-context"
@@ -10,6 +9,7 @@ import {
   CommandPaletteItem,
   CommandPaletteFooter,
 } from "@/components/ui/command-palette"
+import { Kbd } from "@/components/ui/kbd/kbd"
 import { type SearchStatus, useSearch } from "../hooks/use-search"
 import { getEnabledDocsLibraries } from "@/lib/docs-library"
 
@@ -72,14 +72,13 @@ export function SearchDialog() {
 
   useScope("search", { enabled: open })
 
-  useEffect(() => {
-    if (!open) search("")
-  }, [open, search])
-
   return (
     <CommandPalette
       open={open}
-      onOpenChange={setOpen}
+      onOpenChange={(next) => {
+        if (!next) search("")
+        setOpen(next)
+      }}
       search={query}
       onSearchChange={search}
       onActivate={(id) => navigate({ to: id })}
@@ -123,21 +122,17 @@ export function SearchDialog() {
         <CommandPaletteFooter>
           <div className="flex gap-3">
             <span className="flex items-center gap-1">
-              <span className="bg-border px-1 rounded text-muted-foreground">
-                ↑↓
-              </span>{" "}
+              <Kbd size="sm">↑↓</Kbd>{" "}
               Navigate
             </span>
             <span className="flex items-center gap-1">
-              <span className="bg-border px-1 rounded text-muted-foreground">
-                ↵
-              </span>{" "}
+              <Kbd size="sm">↵</Kbd>{" "}
               Select
             </span>
           </div>
           <div className="flex gap-2">
             <span className="flex items-center gap-1">
-              Triggered by <span className="text-foreground">[cmd+k]</span>
+              Triggered by <Kbd size="sm">⌘K</Kbd>
             </span>
           </div>
         </CommandPaletteFooter>

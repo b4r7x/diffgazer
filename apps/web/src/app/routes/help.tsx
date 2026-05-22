@@ -1,5 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
 import { Panel } from "@diffgazer/ui/components/panel";
+import { Kbd } from "@diffgazer/ui/components/kbd";
 import { useScope, useKey } from "@diffgazer/keys";
 import { usePageFooter } from "@diffgazer/core/footer";
 
@@ -39,9 +40,7 @@ export function HelpPage() {
                 <div className="flex flex-col gap-1">
                   {SHORTCUTS.map((s) => (
                     <div key={s.key} className="flex gap-3 text-sm">
-                      <span className="w-20 shrink-0 font-bold font-mono text-tui-fg">
-                        {s.key}
-                      </span>
+                      <Kbd className="w-20 shrink-0">{s.key}</Kbd>
                       <span className="text-tui-muted">{s.label}</span>
                     </div>
                   ))}

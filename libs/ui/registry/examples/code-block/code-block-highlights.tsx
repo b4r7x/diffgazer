@@ -16,7 +16,7 @@ export default function CodeBlockHighlights() {
       <CodeBlock.Header>
         <CodeBlock.Label>scoring.ts</CodeBlock.Label>
       </CodeBlock.Header>
-      <CodeBlock.Content tone="diff">
+      <CodeBlock.Content>
         {lines.map((line, i) => (
           <CodeBlock.Line key={i} number={i + 1} {...line} />
         ))}

@@ -29,6 +29,7 @@ import {
   SelectItem,
   SelectValue,
 } from "@/components/ui/select"
+import { Kbd } from "@/components/ui/kbd"
 
 function AppContent() {
   const [paletteOpen, setPaletteOpen] = useState(false)
@@ -122,11 +123,11 @@ function AppContent() {
 
       {/* Keyboard hints */}
       <div className="fixed bottom-4 right-4 text-[10px] text-muted-foreground font-mono space-y-0.5">
-        <div>Tab &mdash; cycle zones</div>
-        <div>Arrows &mdash; move between zones</div>
-        <div>Cmd+K &mdash; command palette</div>
-        <div>Cmd+D &mdash; confirm dialog</div>
-        <div>N (sidebar) &mdash; new file</div>
+        <div><Kbd size="sm">Tab</Kbd> &mdash; cycle zones</div>
+        <div><Kbd size="sm">&larr;</Kbd><Kbd size="sm">&rarr;</Kbd> &mdash; move between zones</div>
+        <div><Kbd size="sm">Cmd</Kbd><Kbd size="sm">K</Kbd> &mdash; command palette</div>
+        <div><Kbd size="sm">Cmd</Kbd><Kbd size="sm">D</Kbd> &mdash; confirm dialog</div>
+        <div><Kbd size="sm">N</Kbd> (sidebar) &mdash; new file</div>
       </div>
     </div>
   )
@@ -197,15 +198,11 @@ function AppCommandPalette({
         </CommandPaletteList>
         <CommandPaletteFooter>
           <span className="flex items-center gap-1">
-            <span className="bg-border px-1 rounded text-gray-300">
-              &uarr;&darr;
-            </span>{" "}
+            <Kbd size="sm">&uarr;&darr;</Kbd>{" "}
             Navigate
           </span>
           <span className="flex items-center gap-1">
-            <span className="bg-border px-1 rounded text-gray-300">
-              &crarr;
-            </span>{" "}
+            <Kbd size="sm">&crarr;</Kbd>{" "}
             Select
           </span>
         </CommandPaletteFooter>

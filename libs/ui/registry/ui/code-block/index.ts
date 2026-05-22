@@ -1,7 +1,7 @@
 "use client";
 
-import { CodeBlock as CodeBlockRoot, codeBlockVariants, type CodeBlockProps } from "./code-block";
-import { CodeBlockContent, type CodeBlockContentProps, type CodeBlockContentTone } from "./code-block-content";
+import { CodeBlock as CodeBlockRoot, type CodeBlockProps } from "./code-block";
+import { CodeBlockContent, type CodeBlockContentProps } from "./code-block-content";
 import { CodeBlockHeader, type CodeBlockHeaderProps } from "./code-block-header";
 import { CodeBlockLabel, type CodeBlockLabelProps } from "./code-block-label";
 import {
@@ -12,6 +12,7 @@ import {
 } from "./code-block-line";
 import { CodeBlockCopyButton, type CodeBlockCopyButtonProps } from "./code-block-copy-button";
 import type { CodeBlockVariant } from "./code-block-context";
+import { InlineCode } from "./inline-code";
 
 const CodeBlock = Object.assign(CodeBlockRoot, {
   Content: CodeBlockContent,
@@ -19,6 +20,7 @@ const CodeBlock = Object.assign(CodeBlockRoot, {
   Label: CodeBlockLabel,
   Line: CodeBlockLine,
   CopyButton: CodeBlockCopyButton,
+  Inline: InlineCode,
 });
 
 export {
@@ -28,10 +30,9 @@ export {
   CodeBlockLabel,
   CodeBlockLine,
   CodeBlockCopyButton,
-  codeBlockVariants,
+  InlineCode,
   type CodeBlockProps,
   type CodeBlockContentProps,
-  type CodeBlockContentTone,
   type CodeBlockHeaderProps,
   type CodeBlockLabelProps,
   type CodeBlockLineProps,

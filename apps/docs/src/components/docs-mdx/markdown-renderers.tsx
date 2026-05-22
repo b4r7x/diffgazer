@@ -1,7 +1,7 @@
 import type { MDXComponents } from "mdx/types"
 import { createContext, isValidElement, useContext, type ReactElement, type ReactNode } from "react"
 import { Callout } from "@/components/ui/callout"
-import { CodeBlock, CodeBlockContent, CodeBlockHeader, CodeBlockLabel } from "@/components/ui/code-block"
+import { CodeBlock, CodeBlockContent, CodeBlockHeader, CodeBlockLabel, InlineCode } from "@/components/ui/code-block"
 import { Typography } from "@/components/ui/typography/typography"
 import { cn } from "@diffgazer/ui/lib/utils"
 
@@ -43,11 +43,7 @@ function getLanguageLabel(children: ReactNode): string | undefined {
 function CodeRenderer({ children, className }: { children: ReactNode; className?: string }) {
   const isInsidePre = useContext(PreCodeContext)
   if (isInsidePre || className) return <code className={className}>{children}</code>
-  return (
-    <code className="bg-secondary text-foreground px-1.5 py-0.5 text-xs font-mono rounded-sm">
-      {children}
-    </code>
-  )
+  return <InlineCode>{children}</InlineCode>
 }
 
 export const markdownMdxComponents: MDXComponents = {
@@ -91,20 +87,26 @@ export const markdownMdxComponents: MDXComponents = {
     )
   },
   code: CodeRenderer,
-  pre: ({ children }) => (
-    <CodeBlock className="mb-4">
-      {getLanguageLabel(children) && (
-        <CodeBlockHeader>
-          <CodeBlockLabel>{getLanguageLabel(children)}</CodeBlockLabel>
-        </CodeBlockHeader>
-      )}
-      <CodeBlockContent className="shiki">
-        <PreCodeContext.Provider value={true}>
-          {children}
-        </PreCodeContext.Provider>
-      </CodeBlockContent>
-    </CodeBlock>
-  ),
+  pre: ({ children, ...rest }) => {
+    // data-language is set by the "preserve-language" Shiki transformer in source.config.ts
+    const dataLang = (rest as Record<string, unknown>)["data-language"]
+    const language = typeof dataLang === "string" ? dataLang : getLanguageLabel(children)
+    const isShell = language === "bash" || language === "sh" || language === "shell" || language === "zsh"
+    return (
+      <CodeBlock className="mb-4" variant={isShell ? "terminal" : undefined}>
+        {language && (
+          <CodeBlockHeader>
+            <CodeBlockLabel>{language}</CodeBlockLabel>
+          </CodeBlockHeader>
+        )}
+        <CodeBlockContent className="shiki" showLineNumbers={!isShell}>
+          <PreCodeContext.Provider value={true}>
+            {children}
+          </PreCodeContext.Provider>
+        </CodeBlockContent>
+      </CodeBlock>
+    )
+  },
   table: ({ children }) => (
     <div className="overflow-x-auto overflow-y-hidden mb-4 rounded-sm">
       <table className="w-full text-sm border-collapse border border-border">

@@ -7,8 +7,6 @@ import {
   type ShutdownResult,
 } from "@diffgazer/core/api";
 
-export type { ShutdownResult };
-
 export async function shutdown(): Promise<ShutdownResult> {
   let response;
   try {

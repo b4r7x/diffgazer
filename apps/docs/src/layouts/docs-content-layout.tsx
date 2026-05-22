@@ -1,8 +1,9 @@
-import { useRouter, useRouterState } from "@tanstack/react-router";
+import { useRouter } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Spinner } from "@/components/ui/spinner/spinner";
 import { cn } from "@diffgazer/ui/lib/utils";
-import { isDocsPath, type DocsLibraryId } from "@/lib/docs-library";
+import type { DocsLibraryId } from "@/lib/docs-library";
+import { usePendingDocsRoute } from "@/lib/hooks/use-pending-docs-route";
 import type { PageTree } from "@/lib/docs-tree";
 import { DocsSidebar } from "./sidebar";
 
@@ -40,12 +41,7 @@ export function DocsContentLayout({ tree, library, children }: DocsContentLayout
 	const [sidebarOpen, setSidebarOpen] = useState(false);
 	const mainRef = useRef<HTMLElement>(null);
 	const router = useRouter();
-	const pendingDocsPathname = useRouterState({
-		select: (state) => {
-			if (state.status !== "pending") return null;
-			return isDocsPath(state.location.pathname) ? state.location.pathname : null;
-		},
-	});
+	const pendingDocsPathname = usePendingDocsRoute();
 	const isDocsRoutePending = pendingDocsPathname !== null;
 
 	useEffect(() => {
@@ -70,7 +66,7 @@ export function DocsContentLayout({ tree, library, children }: DocsContentLayout
 				aria-label="Sidebar navigation"
 				aria-busy={isDocsRoutePending}
 				className={cn(
-					"fixed inset-y-0 left-0 z-50 w-[280px] shrink-0 border-r border-border flex flex-col bg-background transition-transform duration-150 ease-in-out relative",
+					"fixed inset-y-0 left-0 z-50 w-[280px] shrink-0 border-r border-border flex flex-col bg-background transition-transform duration-150 ease-in-out",
 					"lg:relative lg:translate-x-0 lg:inset-auto",
 					sidebarOpen ? "translate-x-0" : "-translate-x-full",
 				)}

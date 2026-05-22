@@ -11,6 +11,7 @@ import {
   SidebarItemLabel,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
+import { Kbd } from "@/components/ui/kbd"
 
 // In rail mode (48px), each item collapses to an icon-only row centered in the
 // rail. `<SidebarItemLabel>` is hidden via the nav's `data-state="rail"`
@@ -65,8 +66,8 @@ export default function SidebarRail() {
         </Sidebar>
         <div className="flex flex-col gap-2 p-4 text-xs text-muted-foreground font-mono">
           <SidebarTrigger className="self-start border border-border px-2 py-1" />
-          <p>Toggle the rail with the trigger or Cmd/Ctrl+B.</p>
-          <p>Shift+Cmd/Ctrl+B toggles the hidden state.</p>
+          <p>Toggle the rail with the trigger or <Kbd size="sm">Cmd/Ctrl</Kbd><Kbd size="sm">B</Kbd>.</p>
+          <p><Kbd size="sm">Shift</Kbd><Kbd size="sm">Cmd/Ctrl</Kbd><Kbd size="sm">B</Kbd> toggles the hidden state.</p>
         </div>
       </div>
     </SidebarProvider>

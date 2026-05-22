@@ -9,8 +9,6 @@ import { createWebQueryClient } from "../../lib/query-client";
 
 const queryClient = createWebQueryClient();
 
-export { queryClient };
-
 interface AppProvidersProps {
   children: ReactNode;
 }

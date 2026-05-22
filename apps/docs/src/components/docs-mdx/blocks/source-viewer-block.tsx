@@ -1,8 +1,9 @@
-import { useComponentData, useHookData } from "../doc-data-context"
+import { useComponentData, useHookData, type HookData } from "../doc-data-context"
+import type { ComponentData } from "@/types/docs-data"
 import { SourceViewer } from "@/components/source-viewer"
 import { SectionHeader } from "@/components/ui/section-header/section-header"
 import { CopyButton } from "@/components/copy-button"
-import { CodeBlock, CodeBlockContent, CodeBlockLine } from "@/components/ui/code-block"
+import { CodeBlock, CodeBlockContent, CodeBlockLine, InlineCode } from "@/components/ui/code-block"
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion"
 import { resolveCrossDepFiles } from "@/lib/cross-deps-data"
 import { getInstallCommand, type DocsLibraryId } from "@/lib/docs-library"
@@ -18,7 +19,7 @@ export function SourceViewerBlock() {
   return null
 }
 
-function ComponentSourceViewer({ data, library }: { data: NonNullable<ReturnType<typeof useComponentData>>; library: DocsLibraryId }) {
+function ComponentSourceViewer({ data, library }: { data: ComponentData; library: DocsLibraryId }) {
   const installCommand = getInstallCommand(library, data.name) ?? undefined
   const sourceFiles = Object.entries(data.source).map(([path, file]) => ({
     path,
@@ -27,6 +28,7 @@ function ComponentSourceViewer({ data, library }: { data: NonNullable<ReturnType
   }))
 
   if (data.crossDeps?.length) {
+    // CrossDepSourceFile.highlighted is narrower than CodeBlockLineProps[] — cast bridges the generated data shape
     sourceFiles.push(...resolveCrossDepFiles(data.crossDeps) as typeof sourceFiles)
   }
 
@@ -35,9 +37,9 @@ function ComponentSourceViewer({ data, library }: { data: NonNullable<ReturnType
     <>
       Keyboard hooks are included as standalone copies.
       For the full experience, use{" "}
-      <code className="text-[0.7rem] bg-muted px-1 py-0.5 rounded">
+      <InlineCode>
         --integration {externalDeps[0].library}
-      </code>.
+      </InlineCode>.
     </>
   ) : undefined
 
@@ -51,7 +53,7 @@ function ComponentSourceViewer({ data, library }: { data: NonNullable<ReturnType
   )
 }
 
-function HookSourceViewer({ data }: { data: NonNullable<ReturnType<typeof useHookData>> }) {
+function HookSourceViewer({ data }: { data: HookData }) {
   return (
     <div>
       <div className="flex items-center justify-between">

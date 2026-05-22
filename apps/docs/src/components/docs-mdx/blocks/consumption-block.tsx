@@ -3,8 +3,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { getConsumptionMetadata } from "@/lib/consumption-metadata"
 import { useLocation } from "@tanstack/react-router"
 import type { ConsumptionLibrary, ConsumptionItemKind, ConsumptionMetadata } from "@diffgazer/registry"
+import { getDocsLibraryFromPathname, PRIMARY_DOCS_LIBRARY_ID } from "@/lib/docs-library"
 import { useComponentData, useHookData } from "../doc-data-context"
-import { useCurrentLibrary } from "./use-current-library"
 
 type PathState = ConsumptionMetadata["paths"]["copy"]
 type Caption = { label: string; value?: string }
@@ -73,8 +73,8 @@ function PathBody({ path, captions }: { path: PathState; captions: Caption[] }) 
 export function ConsumptionBlock() {
   const componentData = useComponentData()
   const hookData = useHookData()
-  const library = useCurrentLibrary()
   const pathname = useLocation({ select: (location) => location.pathname })
+  const library = getDocsLibraryFromPathname(pathname) ?? PRIMARY_DOCS_LIBRARY_ID
 
   if (library !== "ui" && library !== "keys") return null
 

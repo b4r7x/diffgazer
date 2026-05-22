@@ -9,6 +9,7 @@ import {
   DialogClose,
   DialogAction,
 } from "@/components/ui/dialog"
+import { InlineCode } from "@/components/ui/code-block"
 
 export default function DialogHeaderFlat() {
   return (
@@ -20,7 +21,7 @@ export default function DialogHeaderFlat() {
         </DialogHeader>
         <DialogBody>
           <p className="text-sm leading-relaxed">
-            <code className="font-mono">marker=&quot;none&quot;</code> renders children as direct flex-col
+            <InlineCode>marker=&quot;none&quot;</InlineCode> renders children as direct flex-col
             descendants of the header — no accent bar, no inner wrapper. Use it for
             headers with a background color or a custom horizontal layout where the
             default 4px bar would clash.

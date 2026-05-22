@@ -1,5 +1,5 @@
 import { useComponentData } from "../doc-data-context"
-import { PropsTable } from "@/components/props-table"
+import { PropsTableBlock } from "./props-table-block"
 
 export function APIReference() {
   const componentData = useComponentData()
@@ -12,11 +12,7 @@ export function APIReference() {
   return (
     <>
       <h2 className="text-lg font-bold text-foreground mt-8 mb-4">API Reference</h2>
-      <div className="space-y-8">
-        {entries.map(([componentName, props]) => (
-          <PropsTable key={componentName} componentName={componentName} props={props} />
-        ))}
-      </div>
+      <PropsTableBlock />
     </>
   )
 }

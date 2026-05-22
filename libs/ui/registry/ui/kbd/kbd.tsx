@@ -1,4 +1,4 @@
-import type { HTMLAttributes, Ref } from "react";
+import type { ComponentProps } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
@@ -18,10 +18,8 @@ export const kbdVariants = cva(
 );
 
 export interface KbdProps
-  extends HTMLAttributes<HTMLElement>,
-    VariantProps<typeof kbdVariants> {
-  ref?: Ref<HTMLElement>;
-}
+  extends ComponentProps<"kbd">,
+    VariantProps<typeof kbdVariants> {}
 
 export function Kbd({ ref, className, size, ...props }: KbdProps) {
   return (

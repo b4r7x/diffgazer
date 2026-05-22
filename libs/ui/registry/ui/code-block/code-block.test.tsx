@@ -232,19 +232,6 @@ describe("CodeBlock", () => {
     })
   })
 
-  describe("content", () => {
-    it("sets data-tone=\"diff\" on the inner <pre> when tone=\"diff\"", () => {
-      const { container } = render(
-        <CodeBlock>
-          <CodeBlock.Content tone="diff">{"x"}</CodeBlock.Content>
-        </CodeBlock>,
-      )
-
-      const pre = container.querySelector("[data-slot=\"code-block-content\"]")
-      expect(pre).toHaveAttribute("data-tone", "diff")
-    })
-  })
-
   describe("line states", () => {
     it("renders data-line-state=\"added\" and a sr-only \"Added: \" prefix", () => {
       const { container } = render(

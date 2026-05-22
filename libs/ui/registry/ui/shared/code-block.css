@@ -36,6 +36,11 @@
     font-variant-numeric: tabular-nums;
   }
 
+  [data-slot="code-block-content"] > code {
+    display: block;
+    padding-inline: 12px;
+  }
+
   [data-slot="code-block"] [data-slot="code-block-line"] {
     display: flex;
     align-items: baseline;

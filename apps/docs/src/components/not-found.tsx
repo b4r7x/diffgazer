@@ -5,7 +5,7 @@ import { PRIMARY_DOCS_LIBRARY_ID } from "@/lib/docs-library"
 
 export function GlobalNotFound() {
   return (
-    <div className="px-4">
+    <main id="main-content" className="px-4">
       <NotFoundState
         variant="global"
         title="Page not found"
@@ -21,6 +21,6 @@ export function GlobalNotFound() {
           </Link>
         }
       />
-    </div>
+    </main>
   )
 }

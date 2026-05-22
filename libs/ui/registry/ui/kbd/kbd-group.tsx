@@ -1,9 +1,7 @@
-import type { HTMLAttributes, Ref } from "react";
+import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils";
 
-export interface KbdGroupProps extends HTMLAttributes<HTMLElement> {
-  ref?: Ref<HTMLElement>;
-}
+export interface KbdGroupProps extends ComponentProps<"kbd"> {}
 
 export function KbdGroup({
   ref,

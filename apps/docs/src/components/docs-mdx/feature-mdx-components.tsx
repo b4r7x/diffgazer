@@ -7,11 +7,11 @@ import { HookSource, LibraryHookSource } from "@/components/hook-source"
 import {
   Example,
   Examples,
-  PropsTable as PropsTableBlock,
-  ParameterTable as ParameterTableBlock,
+  PropsTable,
+  ParameterTable,
   ReturnsTable,
   UsageSnippet,
-  SourceViewer as SourceViewerBlock,
+  SourceViewer,
   KeyboardNav,
   AccessibilityNotes,
   Notes,
@@ -20,22 +20,19 @@ import {
 } from "./blocks"
 
 export const featureMdxComponents: MDXComponents = {
-  // Theme features
   ThemePlayground,
   VariableDiagram,
   ColorGrid,
   DiffgazerPreview,
-  // Integration features
   HookSource,
   LibraryHookSource,
-  // Rich MDX building blocks
   Example,
   Examples,
-  PropsTable: PropsTableBlock,
-  ParameterTable: ParameterTableBlock,
+  PropsTable,
+  ParameterTable,
   ReturnsTable,
   UsageSnippet,
-  SourceViewer: SourceViewerBlock,
+  SourceViewer,
   KeyboardNav,
   AccessibilityNotes,
   Notes,

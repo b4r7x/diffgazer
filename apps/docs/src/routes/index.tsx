@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button/button";
+import { Kbd } from "@/components/ui/kbd/kbd";
 import {
 	getEnabledDocsLibraries,
 	PRIMARY_DOCS_LIBRARY_ID,
@@ -11,7 +12,7 @@ const enabledLibraries = getEnabledDocsLibraries();
 
 function LandingPage() {
 	return (
-		<div className="flex items-center justify-center min-h-screen">
+		<main id="main-content" className="flex items-center justify-center min-h-screen">
 			<div className="text-center space-y-6">
 				<h1 className="text-4xl font-bold text-foreground">diffgazer docs hub</h1>
 
@@ -42,12 +43,10 @@ function LandingPage() {
 
 				<p className="text-muted-foreground text-xs">
 					Press{" "}
-					<kbd className="border border-border px-1.5 py-0.5 text-xs rounded">
-						Cmd+K
-					</kbd>{" "}
+					<Kbd>⌘K</Kbd>{" "}
 					to search
 				</p>
 			</div>
-		</div>
+		</main>
 	);
 }

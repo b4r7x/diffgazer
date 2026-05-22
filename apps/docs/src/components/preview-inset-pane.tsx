@@ -1,5 +1,6 @@
 import type { ComponentType, LazyExoticComponent, ReactNode } from "react"
 import { Suspense } from "react"
+import { Kbd } from "@/components/ui/kbd/kbd"
 
 /**
  * A3 docs-shell inset for layout-shaped component examples (Sidebar, etc.).
@@ -54,7 +55,7 @@ function FauxDocsTopbar() {
       </nav>
       <span className="flex items-center justify-between min-w-[180px] h-5 px-2 border border-border/60 bg-secondary/30">
         <span>Search docs…</span>
-        <span className="border border-border/60 px-1 text-[10px]">⌘K</span>
+        <Kbd size="sm">⌘K</Kbd>
       </span>
     </header>
   )

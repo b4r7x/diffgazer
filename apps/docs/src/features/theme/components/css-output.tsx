@@ -27,9 +27,7 @@ export function CssOutput({ primitives, defaults }: CssOutputProps) {
         <CodeBlockLabel>css</CodeBlockLabel>
         <CopyButton text={css} />
       </CodeBlockHeader>
-      <CodeBlockContent>
-        <code>{css}</code>
-      </CodeBlockContent>
+      <CodeBlockContent>{css}</CodeBlockContent>
     </CodeBlock>
   )
 }

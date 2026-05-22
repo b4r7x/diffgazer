@@ -170,7 +170,7 @@ function PatchTabContent({ patch }: { patch: string }) {
 
   return (
     <CodeBlock label="Suggested patch">
-      <CodeBlock.Content tone="diff">
+      <CodeBlock.Content>
         {patch.split("\n").map((line, index) => (
           <CodeBlock.Line
             key={`${index}-${line}`}

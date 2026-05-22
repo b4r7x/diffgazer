@@ -6,6 +6,7 @@ import {
   CardLabel,
   CardTitle,
 } from "@/components/ui/card"
+import { InlineCode } from "@/components/ui/code-block"
 
 export default function CardSizes() {
   return (
@@ -24,7 +25,7 @@ export default function CardSizes() {
         <CardLabel variant="gap">Inside Gap Label</CardLabel>
         <CardContent className="pt-6">
           <p className="text-sm text-muted-foreground">
-            Use <code>variant="border"</code> for a boxed label or <code>variant="gap"</code> for a clean border cutout.
+            Use <InlineCode>variant="border"</InlineCode> for a boxed label or <InlineCode>variant="gap"</InlineCode> for a clean border cutout.
           </p>
         </CardContent>
       </Card>

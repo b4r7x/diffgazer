@@ -8,6 +8,7 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog"
+import { InlineCode } from "@/components/ui/code-block"
 
 export default function DialogSizes() {
   return (
@@ -21,7 +22,7 @@ export default function DialogSizes() {
             </DialogHeader>
             <DialogBody>
               <p className="text-sm text-gray-300">
-                This dialog uses the <code className="text-muted-foreground font-mono">{size}</code> size variant.
+                This dialog uses the <InlineCode>{size}</InlineCode> size variant.
               </p>
             </DialogBody>
             <DialogFooter hints={[{ key: "Esc", label: "Close" }]}>

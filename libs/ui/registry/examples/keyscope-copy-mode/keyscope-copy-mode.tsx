@@ -16,6 +16,7 @@
  */
 import { useState, useRef, type KeyboardEvent } from "react"
 import { useNavigation } from "@/hooks/use-navigation"
+import { Kbd } from "@/components/ui/kbd"
 import { Menu, MenuItem, MenuDivider } from "@/components/ui/menu"
 import {
   Dialog,
@@ -74,7 +75,7 @@ export default function KeyscopeCopyMode() {
       {/* Confirm dialog (native <dialog>.showModal(); falls back to useFocusTrap + useScrollLock on iOS Safari < 15.4) */}
       <Dialog>
         <DialogTrigger className="fixed bottom-4 right-4 text-xs text-muted-foreground font-mono border border-border px-2 py-1 hover:bg-muted">
-          Save (Ctrl+S)
+          Save (<Kbd size="sm">Ctrl</Kbd><Kbd size="sm">S</Kbd>)
         </DialogTrigger>
         <DialogContent>
           <DialogHeader>

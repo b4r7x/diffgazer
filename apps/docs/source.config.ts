@@ -20,6 +20,14 @@ export default defineConfig({
         dark: docsCodeTheme,
       },
       defaultColor: false,
+      transformers: [
+        {
+          name: "preserve-language",
+          pre(node) {
+            node.properties["data-language"] = this.options.lang
+          },
+        },
+      ],
     },
   },
 })

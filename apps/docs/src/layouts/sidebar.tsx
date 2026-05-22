@@ -1,4 +1,4 @@
-import { useLocation, useRouterState, Link } from "@tanstack/react-router";
+import { useLocation, Link } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
 import { Spinner } from "@/components/ui/spinner/spinner";
 import {
@@ -12,6 +12,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area/scroll-area";
 import { cn } from "@diffgazer/ui/lib/utils";
 import { DOCS_LIBRARY_IDS, type DocsLibraryId } from "@/lib/docs-library";
+import { usePendingDocsRoute } from "@/lib/hooks/use-pending-docs-route";
 import type { PageTree, PageTreeNode } from "@/lib/docs-tree";
 
 interface DocsSidebarProps {
@@ -75,9 +76,7 @@ function splatFromUrl(url: string): string {
 
 export function DocsSidebar({ tree, library, onNavigate }: DocsSidebarProps) {
   const pathname = useLocation({ select: (l) => l.pathname });
-  const pendingPathname = useRouterState({
-    select: (s) => (s.status === "pending" ? s.location.pathname : undefined),
-  });
+  const pendingPathname = usePendingDocsRoute();
   const navContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
