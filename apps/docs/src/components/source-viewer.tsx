@@ -1,4 +1,5 @@
 import type React from "react"
+import { Typography } from "@/components/ui/typography/typography"
 import { SectionHeader } from "@/components/ui/section-header/section-header"
 import { CodeBlock, CodeBlockContent, CodeBlockLine, InlineCode } from "@/components/ui/code-block"
 import {
@@ -34,7 +35,7 @@ export function SourceViewer({ files, mergedSource, installCommand, integrationN
         )}
       </div>
       {(installCommand || integrationNote) && (
-        <p className="text-xs text-muted-foreground mb-3 mt-1">
+        <Typography as="p" size="xs" className="mb-3 mt-1">
           {installCommand && (
             <>
               Install via CLI: <InlineCode>{installCommand}</InlineCode>.
@@ -44,7 +45,7 @@ export function SourceViewer({ files, mergedSource, installCommand, integrationN
           )}
           {installCommand && integrationNote && " "}
           {integrationNote}
-        </p>
+        </Typography>
       )}
 
       <Accordion collapsible className="divide-y-0">

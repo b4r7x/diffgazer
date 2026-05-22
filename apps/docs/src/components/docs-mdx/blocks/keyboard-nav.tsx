@@ -1,3 +1,4 @@
+import { Typography } from "@/components/ui/typography/typography"
 import { useComponentData } from "../doc-data-context"
 import { DemoPreview } from "@/components/demo-preview"
 import { useDemos } from "@/lib/use-demos"
@@ -14,8 +15,8 @@ export function KeyboardNav() {
 
   return (
     <div>
-      <h3 className="font-bold text-sm text-foreground mb-3">Keyboard Navigation</h3>
-      <p className="text-sm text-muted-foreground mb-4">{description}</p>
+      <Typography as="h3" size="sm" className="font-bold text-foreground mb-3">Keyboard Navigation</Typography>
+      <Typography as="p" size="sm" className="mb-4">{description}</Typography>
       {examples.length > 0 && (
         <div className="space-y-6">
           {examples.map((ex) => (

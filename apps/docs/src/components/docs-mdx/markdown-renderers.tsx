@@ -74,9 +74,9 @@ export const markdownMdxComponents: MDXComponents = {
     </Typography>
   ),
   p: ({ children }) => (
-    <p className="text-sm leading-relaxed text-muted-foreground mb-4 max-w-2xl">
+    <Typography as="p" size="sm" className="mb-4 max-w-2xl">
       {children}
-    </p>
+    </Typography>
   ),
   blockquote: ({ children }) => {
     const tone = detectCalloutTone(children)

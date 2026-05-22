@@ -45,17 +45,18 @@ export function DocsPageHeader({
 
   return (
     <div className={cn("pb-8", bordered && "border-b border-border", className)}>
-      <h1
+      <Typography
+        as="h1"
         className={cn(
           "text-foreground font-bold",
           variant === "compact"
-            ? "font-mono text-2xl mb-2"
+            ? "text-2xl mb-2"
             : "text-3xl tracking-tight mb-4",
         )}
         data-pagefind-meta="title"
       >
         {title}
-      </h1>
+      </Typography>
 
       {hasTags && (
         <div className={cn("flex flex-wrap gap-2", hasDescription && "mb-3")}>
@@ -74,16 +75,17 @@ export function DocsPageHeader({
       )}
 
       {hasDescription && (
-        <p
+        <Typography
+          as="p"
           className={cn(
-            "text-muted-foreground max-w-3xl",
+            "max-w-3xl",
             variant === "compact"
-              ? "font-mono text-sm"
+              ? ""
               : "text-lg leading-relaxed",
           )}
         >
           {description}
-        </p>
+        </Typography>
       )}
     </div>
   )

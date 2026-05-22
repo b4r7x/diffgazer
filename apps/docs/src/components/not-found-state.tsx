@@ -6,6 +6,7 @@ import {
   EmptyStateMessage,
 } from "@/components/ui/empty-state";
 import { SectionHeader } from "@/components/ui/section-header/section-header";
+import { Typography } from "@/components/ui/typography/typography";
 import { cn } from "@diffgazer/ui/lib/utils";
 
 type NotFoundVariant = "docs" | "global";
@@ -46,9 +47,9 @@ export function NotFoundState({
       <div className={contentVariants[variant]}>
         <EmptyState variant="centered" className="py-0">
           <EmptyStateMessage>
-            <h1 className="font-mono text-2xl font-bold text-foreground">
+            <Typography as="h1" className="text-2xl font-bold text-foreground">
               {title}
-            </h1>
+            </Typography>
           </EmptyStateMessage>
           <EmptyStateDescription>{description}</EmptyStateDescription>
           <EmptyStateActions className="mt-5 gap-3 justify-center">

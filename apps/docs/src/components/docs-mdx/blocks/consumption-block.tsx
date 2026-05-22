@@ -1,3 +1,4 @@
+import { Typography } from "@/components/ui/typography/typography"
 import { CopyButton } from "@/components/copy-button"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { getConsumptionMetadata } from "@/lib/consumption-metadata"
@@ -58,14 +59,14 @@ function Captions({ items }: { items: Caption[] }) {
 
 function PathBody({ path, captions }: { path: PathState; captions: Caption[] }) {
   if (!path.available) {
-    return <p className="text-xs text-muted-foreground italic">{path.note ?? "Not available"}</p>
+    return <Typography as="p" size="xs" className="italic">{path.note ?? "Not available"}</Typography>
   }
 
   return (
     <div className="space-y-4">
       {path.command && <CommandBox command={path.command} />}
       <Captions items={captions} />
-      {path.note && <p className="text-xs text-muted-foreground leading-relaxed">{path.note}</p>}
+      {path.note && <Typography as="p" size="xs" className="leading-relaxed">{path.note}</Typography>}
     </div>
   )
 }
@@ -135,17 +136,17 @@ export function ConsumptionBlock() {
           ))}
         </Tabs>
       ) : (
-        <p className="text-xs text-muted-foreground italic">Not available</p>
+        <Typography as="p" size="xs" className="italic">Not available</Typography>
       )}
 
       {meta.cssNote && library === "ui" && (
-        <p className="text-xs text-muted-foreground leading-relaxed border-t border-border/40 pt-3">{meta.cssNote}</p>
+        <Typography as="p" size="xs" className="leading-relaxed border-t border-border/40 pt-3">{meta.cssNote}</Typography>
       )}
 
       {library === "keys" && (
-        <p className="text-xs text-muted-foreground leading-relaxed border-t border-border/40 pt-3">
+        <Typography as="p" size="xs" className="leading-relaxed border-t border-border/40 pt-3">
           @diffgazer/keys requires no CSS or Tailwind setup.
-        </p>
+        </Typography>
       )}
     </div>
   )

@@ -1,3 +1,4 @@
+import { Typography } from "@/components/ui/typography/typography"
 import { useComponentData } from "../doc-data-context"
 
 export function AccessibilityNotes() {
@@ -9,11 +10,11 @@ export function AccessibilityNotes() {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="font-bold text-sm text-foreground mb-3">Notes</h3>
+        <Typography as="h3" size="sm" className="font-bold text-foreground mb-3">Notes</Typography>
         {notes.map((note, i) => (
           <div key={i} className="mb-4">
-            <h4 className="text-sm font-bold text-foreground mb-1">{note.title}</h4>
-            <p className="text-sm text-muted-foreground">{note.content}</p>
+            <Typography as="h4" size="sm" className="font-bold text-foreground mb-1">{note.title}</Typography>
+            <Typography as="p" size="sm">{note.content}</Typography>
           </div>
         ))}
       </div>
