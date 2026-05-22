@@ -34,8 +34,8 @@ function DemoNode({ demo: Demo }: { demo: LazyExoticComponent<ComponentType> | n
 
 function DefaultPreviewPane({ demo }: { demo: LazyExoticComponent<ComponentType> | null }) {
   return (
-    <div className="border border-border bg-secondary/10 h-[360px] overflow-auto scrollbar-thin">
-      <div className="min-h-full flex items-center justify-center px-8 py-12">
+    <div className="border border-border bg-secondary/10">
+      <div className="min-h-[200px] flex items-center justify-center px-8 py-12">
         <DemoNode demo={demo} />
       </div>
     </div>
@@ -44,8 +44,8 @@ function DefaultPreviewPane({ demo }: { demo: LazyExoticComponent<ComponentType>
 
 function FillPreviewPane({ demo }: { demo: LazyExoticComponent<ComponentType> | null }) {
   return (
-    <div className="border border-border bg-background h-[360px] overflow-auto scrollbar-thin">
-      <div className="h-full w-full [&>*]:h-full [&>*]:w-full">
+    <div className="border border-border bg-background">
+      <div className="w-full [&>*]:w-full">
         <DemoNode demo={demo} />
       </div>
     </div>
@@ -83,7 +83,7 @@ export function DemoPreview({ title, demo, code, rawCode, frame = "default" }: D
         <Typography
           as="h4"
           size="base"
-          className="text-foreground font-bold uppercase tracking-wider mb-4"
+          className="text-foreground font-bold uppercase tracking-wider mb-2"
         >
           {title}
         </Typography>

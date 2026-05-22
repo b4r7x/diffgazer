@@ -1,3 +1,5 @@
+import { Typography } from "@/components/ui/typography/typography"
+
 interface Parameter {
   name: string
   type: string
@@ -7,6 +9,8 @@ interface Parameter {
 }
 
 export function ParameterTable({ params }: { params: Parameter[] }) {
+  const badgeClass = "px-1.5 py-0.5 border border-border text-[10px] text-muted-foreground rounded bg-background font-mono"
+
   return (
     <div>
       {params.map((param, index) => (
@@ -16,23 +20,23 @@ export function ParameterTable({ params }: { params: Parameter[] }) {
           )}
           <div className="py-4">
             <div className="flex items-center gap-2 flex-wrap mb-1">
-              <span className="text-base font-bold text-foreground">{param.name}</span>
+              <Typography as="span" size="base" className="font-bold text-foreground">{param.name}</Typography>
               <span className="text-xs text-muted-foreground font-mono">: {param.type}</span>
               {param.required && (
-                <span className="px-1.5 py-0.5 border border-border text-[10px] text-muted-foreground rounded bg-background font-mono">
+                <span className={badgeClass}>
                   required
                 </span>
               )}
-              {param.defaultValue && (
-                <span className="px-1.5 py-0.5 border border-border text-[10px] text-muted-foreground rounded bg-background font-mono">
+              {param.defaultValue != null && (
+                <span className={badgeClass}>
                   default: {param.defaultValue}
                 </span>
               )}
             </div>
             {param.description && (
-              <p className="text-muted-foreground text-sm max-w-2xl">
+              <Typography as="p" size="sm" className="max-w-2xl">
                 {param.description}
-              </p>
+              </Typography>
             )}
           </div>
         </div>

@@ -9,7 +9,7 @@ export function PropsTableBlock() {
   if (entries.length === 0) return null
 
   return (
-    <div className="space-y-8">
+    <div className="flex flex-col gap-6">
       {entries.map(([componentName, props]) => (
         <PropsTable key={componentName} componentName={componentName} props={props} />
       ))}
