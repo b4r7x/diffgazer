@@ -8,6 +8,7 @@ import { Badge } from "@diffgazer/ui/components/badge";
 import { Callout } from "@diffgazer/ui/components/callout";
 import { Button } from "@diffgazer/ui/components/button";
 import { CheckboxGroup, CheckboxItem } from "@diffgazer/ui/components/checkbox";
+import { cn } from "@diffgazer/ui/lib/utils";
 import { focusNavigationItem } from "@diffgazer/keys";
 import { useTrustFormKeyboard } from "./use-trust-form-keyboard";
 import {
@@ -39,6 +40,7 @@ interface TrustPermissionsContentPassiveProps extends TrustPermissionsContentBas
   keyboardScope?: never;
   onSave?: never;
   onRevoke?: never;
+  onListBoundaryNext?: () => void;
 }
 
 export type TrustPermissionsContentProps =
@@ -58,8 +60,11 @@ export function TrustPermissionsContent(props: TrustPermissionsContentProps) {
   const keyboardScope = showActions ? props.keyboardScope : undefined;
   const onSave = showActions ? props.onSave : undefined;
   const onRevoke = showActions ? props.onRevoke : undefined;
+  const onListBoundaryNext = !showActions ? props.onListBoundaryNext : undefined;
+  const contentRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const [listFocused, setListFocused] = useState<string | null>(() => getInitialFocusedCapability(value));
+  const [passiveListHasFocus, setPassiveListHasFocus] = useState(false);
 
   const selectedCapabilities = toSelectedCapabilityIds(value);
   const initialFocusedCapability = getInitialFocusedCapability(value);
@@ -97,9 +102,9 @@ export function TrustPermissionsContent(props: TrustPermissionsContentProps) {
     onChange(fromSelectedCapabilityIds(selected));
   };
 
-  const isListZone = focusZone === "list";
+  const isListZone = showActions ? focusZone === "list" : passiveListHasFocus;
 
-  const handleContentFocus = (e: ReactFocusEvent<HTMLDivElement>) => {
+  function handleContentFocus(e: ReactFocusEvent<HTMLDivElement>) {
     const target = e.target;
     if (!(target instanceof HTMLElement)) return;
 
@@ -109,12 +114,20 @@ export function TrustPermissionsContent(props: TrustPermissionsContentProps) {
     const nextFocusedValue = checkbox.dataset.value ?? null;
     if (!isFocusableCapability(nextFocusedValue)) return;
 
+    if (!showActions) setPassiveListHasFocus(true);
     handlePermissionFocus();
     setListFocused(nextFocusedValue);
-  };
+  }
+
+  function handleContentBlur(e: ReactFocusEvent<HTMLDivElement>) {
+    if (showActions) return;
+    const related = e.relatedTarget;
+    if (related instanceof Node && contentRef.current?.contains(related)) return;
+    setPassiveListHasFocus(false);
+  }
 
   return (
-    <div className="flex flex-col gap-6" onFocus={handleContentFocus}>
+    <div ref={contentRef} className="flex flex-col gap-6" onFocus={handleContentFocus} onBlur={handleContentBlur}>
       <div className="border-b border-tui-border pb-3">
         <div className="text-tui-muted text-xs mb-2 uppercase tracking-wide">
           Target Directory
@@ -136,11 +149,17 @@ export function TrustPermissionsContent(props: TrustPermissionsContentProps) {
         highlighted={isListZone ? effectiveListFocused : null}
         onHighlightChange={setListFocused}
         onNavigationBoundaryReached={(direction) => {
-          if (direction === "next" && showActions && !isLoading) focusActionButton("save");
+          if (direction !== "next") return;
+          if (showActions && !isLoading) {
+            focusActionButton("save");
+            return;
+          }
+          onListBoundaryNext?.();
         }}
-        keyboardNavigation={isListZone}
-        autoFocus={autoFocusList && isListZone && !isLoading}
+        keyboardNavigation={showActions ? isListZone : true}
+        autoFocus={autoFocusList && (showActions ? isListZone : true) && !isLoading}
         wrap={false}
+        className={cn("transition-opacity duration-150", !isListZone && "opacity-60")}
       >
         {TRUST_CAPABILITY_OPTIONS.map(({ id, label, description, disabled }) => (
           <CheckboxItem

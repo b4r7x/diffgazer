@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -37,6 +37,35 @@ function TrustPermissionsTestHarness({
       onRevoke={onRevoke}
       isLoading={isLoading}
     />
+  );
+}
+
+interface PassiveTestHarnessProps {
+  onListBoundaryNext?: () => void;
+  children?: ReactNode;
+}
+
+function PassiveTestHarness({
+  onListBoundaryNext,
+  children,
+}: PassiveTestHarnessProps) {
+  const [value, setValue] = useState<TrustCapabilities>({
+    readFiles: true,
+    runCommands: false,
+  });
+
+  return (
+    <>
+      <TrustPermissionsContent
+        directory="~/dev/projects/diffgazer-core"
+        value={value}
+        onChange={setValue}
+        showActions={false}
+        onListBoundaryNext={onListBoundaryNext}
+        autoFocusList
+      />
+      {children}
+    </>
   );
 }
 
@@ -183,6 +212,82 @@ describe("TrustPermissionsContent", () => {
 
     expect(onSave).not.toHaveBeenCalled();
     expect(onRevoke).not.toHaveBeenCalled();
+  });
+
+  it("calls onListBoundaryNext when arrowing past the last checkbox without actions", async () => {
+    const user = userEvent.setup();
+    const onBoundary = vi.fn();
+
+    render(
+      <KeyboardProvider>
+        <PassiveTestHarness onListBoundaryNext={onBoundary} />
+      </KeyboardProvider>,
+    );
+
+    const readFilesOption = screen.getByRole("checkbox", { name: /repository access/i });
+    await user.click(readFilesOption);
+    expect(readFilesOption).toHaveFocus();
+
+    await user.keyboard("{ArrowDown}");
+
+    expect(onBoundary).toHaveBeenCalledOnce();
+  });
+
+  it("clears checkbox highlight when focus leaves the list in passive mode", async () => {
+    const user = userEvent.setup();
+    const onBoundary = vi.fn();
+
+    render(
+      <KeyboardProvider>
+        <PassiveTestHarness
+          onListBoundaryNext={() => {
+            onBoundary();
+            screen.getByRole("button", { name: "Action" }).focus();
+          }}
+        >
+          <button>Action</button>
+        </PassiveTestHarness>
+      </KeyboardProvider>,
+    );
+
+    const readFilesOption = screen.getByRole("checkbox", { name: /repository access/i });
+    expect(readFilesOption).toHaveFocus();
+    expect(readFilesOption).toHaveAttribute("data-highlighted", "true");
+
+    await user.keyboard("{ArrowDown}");
+
+    expect(onBoundary).toHaveBeenCalledOnce();
+    const actionButton = screen.getByRole("button", { name: "Action" });
+    expect(actionButton).toHaveFocus();
+    expect(readFilesOption).not.toHaveAttribute("data-highlighted");
+  });
+
+  it("restores checkbox highlight when focus returns to the list in passive mode", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <KeyboardProvider>
+        <PassiveTestHarness
+          onListBoundaryNext={() => {
+            screen.getByRole("button", { name: "Action" }).focus();
+          }}
+        >
+          <button>Action</button>
+        </PassiveTestHarness>
+      </KeyboardProvider>,
+    );
+
+    const readFilesOption = screen.getByRole("checkbox", { name: /repository access/i });
+    expect(readFilesOption).toHaveFocus();
+
+    await user.keyboard("{ArrowDown}");
+    const actionButton = screen.getByRole("button", { name: "Action" });
+    expect(actionButton).toHaveFocus();
+    expect(readFilesOption).not.toHaveAttribute("data-highlighted");
+
+    await user.click(readFilesOption);
+    expect(readFilesOption).toHaveFocus();
+    expect(readFilesOption).toHaveAttribute("data-highlighted", "true");
   });
 
   it("keeps surrounding shortcuts active when actions are hidden", async () => {

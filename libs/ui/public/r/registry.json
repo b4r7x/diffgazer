@@ -282,6 +282,10 @@
         {
           "path": "registry/ui/callout/callout-dismiss.tsx",
           "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/shared/callout.css",
+          "type": "registry:ui"
         }
       ]
     },
