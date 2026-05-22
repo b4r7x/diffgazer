@@ -84,16 +84,16 @@ export function SearchDialog() {
     >
       <CommandPaletteContent size="md">
         <CommandPaletteInput placeholder="Search docs..." />
-        <CommandPaletteList>
+        <CommandPaletteList className={hasQuery ? "min-h-[240px]" : undefined}>
           {status === "loading" ? (
-            <div className="p-4 text-center text-muted-foreground text-xs font-mono">
-              <Spinner variant="dots" size="sm">Searching docs...</Spinner>
+            <div className="flex items-center justify-center min-h-[240px] text-muted-foreground text-xs font-mono">
+              <Spinner variant="braille" size="sm">Searching docs...</Spinner>
             </div>
           ) : statusView ? (
             <div
               role={statusView.role}
               aria-live={statusView.role === "status" ? "polite" : undefined}
-              className="p-4 text-center text-muted-foreground text-xs font-mono"
+              className="flex items-center justify-center min-h-[240px] text-muted-foreground text-xs font-mono"
             >
               {statusView.message}
             </div>

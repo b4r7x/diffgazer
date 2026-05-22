@@ -44,7 +44,7 @@ export function DocsPageHeader({
   const hasDescription = Boolean(description && description.length > 0)
 
   return (
-    <div className={cn("pb-8", bordered && "border-b border-border", className)}>
+    <div className={cn("pb-4", bordered && "border-b border-border", className)}>
       <Typography
         as="h1"
         className={cn(

@@ -105,29 +105,35 @@ export function useSearch() {
 
   useEffect(() => {
     const trimmedQuery = query.trim()
-    const id = ++generation.current
 
     if (!trimmedQuery) {
       setSearchState(SEARCH_IDLE_STATE)
       return
     }
 
-    const controller = new AbortController()
     setSearchState(SEARCH_LOADING_STATE)
 
-    doSearch({ data: trimmedQuery, signal: controller.signal })
-      .then((items) => {
-        if (id !== generation.current || controller.signal.aborted) return
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => {
+      const id = ++generation.current
 
-        setSearchState(toResolvedSearchState(toSearchResults(items)))
-      })
-      .catch((err) => {
-        if (id !== generation.current || controller.signal.aborted) return
-        if (import.meta.env.DEV) console.warn("Search failed:", err)
-        setSearchState({ status: "error", results: [], error: SEARCH_ERROR_MESSAGE })
-      })
+      doSearch({ data: trimmedQuery, signal: controller.signal })
+        .then((items) => {
+          if (id !== generation.current || controller.signal.aborted) return
 
-    return () => controller.abort()
+          setSearchState(toResolvedSearchState(toSearchResults(items)))
+        })
+        .catch((err) => {
+          if (id !== generation.current || controller.signal.aborted) return
+          if (import.meta.env.DEV) console.warn("Search failed:", err)
+          setSearchState({ status: "error", results: [], error: SEARCH_ERROR_MESSAGE })
+        })
+    }, 150)
+
+    return () => {
+      clearTimeout(timeoutId)
+      controller.abort()
+    }
   }, [query])
 
   return { query, ...searchState, search: setQuery }

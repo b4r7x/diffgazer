@@ -54,7 +54,7 @@ export const markdownMdxComponents: MDXComponents = {
       size="2xl"
       id={id}
       className={cn(
-        "font-bold text-foreground mt-16 mb-6 pb-3 border-b border-border scroll-mt-16",
+        "font-bold text-foreground mt-10 mb-4 pb-2 border-b border-border scroll-mt-16",
         className,
       )}
       {...props}
@@ -67,21 +67,21 @@ export const markdownMdxComponents: MDXComponents = {
       as="h3"
       size="lg"
       id={id}
-      className={cn("font-bold text-foreground mt-10 mb-4 scroll-mt-16", className)}
+      className={cn("font-bold text-foreground mt-6 mb-2 scroll-mt-16", className)}
       {...props}
     >
       {children}
     </Typography>
   ),
   p: ({ children }) => (
-    <Typography as="p" size="sm" className="mb-4 max-w-2xl">
+    <Typography as="p" size="sm" className="mb-4 max-w-3xl">
       {children}
     </Typography>
   ),
   blockquote: ({ children }) => {
     const tone = detectCalloutTone(children)
     return (
-      <Callout tone={tone} className="mb-4 [&_p]:max-w-none">
+      <Callout tone={tone} className="mb-4 [&_p]:max-w-none [&_p:last-child]:mb-0">
         <Callout.Content>{children}</Callout.Content>
       </Callout>
     )

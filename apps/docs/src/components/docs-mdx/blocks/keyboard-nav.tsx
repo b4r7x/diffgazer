@@ -16,7 +16,7 @@ export function KeyboardNav() {
   return (
     <div>
       <Typography as="h3" size="sm" className="font-bold text-foreground mb-3">Keyboard Navigation</Typography>
-      <Typography as="p" size="base" className="mb-4">{description}</Typography>
+      <Typography as="p" size="sm" className="mb-4">{description}</Typography>
       {examples.length > 0 && (
         <div className="space-y-6">
           {examples.map((ex) => (

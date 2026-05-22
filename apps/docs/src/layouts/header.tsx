@@ -105,7 +105,7 @@ export function Header({ library }: HeaderProps) {
               <span className="truncate">{activeLibrary.displayName}</span>
               {isHeaderBusy && <Spinner size="sm" className="ml-2 text-muted-foreground" />}
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="min-w-[200px]">
               {DOCS_LIBRARY_IDS.map((id) => {
                 const config = getDocsLibraryConfig(id)
                 return (
