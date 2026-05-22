@@ -29,7 +29,7 @@ export function CardLayout({
 }: CardLayoutProps) {
   return (
     <div className={cn("flex-1 flex flex-col items-center justify-center px-4", className)}>
-      <Card variant="panel" size={size} className="border-tui-border bg-tui-bg">
+      <Card surface="stacked" size={size} className="border-tui-border bg-tui-bg">
         {header ?? (title && (
           <Card.Header className="border-tui-border bg-tui-selection/30 px-6 py-4">
             <h1 className="text-xl font-bold text-tui-blue tracking-wide">

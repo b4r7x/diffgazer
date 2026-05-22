@@ -4,7 +4,7 @@ export const cardDoc: ComponentDoc = {
   description:
     "Simple bordered card primitives with floating border labels and semantic HTML support.",
   anatomy: [
-    { name: "Card", indent: 0, note: "Main bordered card surface with variant, size, and as props" },
+    { name: "Card", indent: 0, note: "Main card surface with surface, size, interactive, and as props" },
     { name: "CardLabel", indent: 1, note: "Floating border label with variant='border' or variant='gap'" },
     { name: "CardHeader", indent: 1, note: "Header region with grid layout and bottom border" },
     { name: "CardTitle", indent: 2, note: "Title text with configurable heading level (as prop)" },
@@ -15,9 +15,14 @@ export const cardDoc: ComponentDoc = {
   ],
   notes: [
     {
-      title: "Variants",
+      title: "Surfaces",
       content:
-        "Card is simple and bordered by default. Use variant='panel' to opt into an elevated panel-like treatment.",
+        "Card supports five surface treatments: flat (default clean border), stacked (paper stack depth with offset shadow), inset (recessed into the page), dotted (dashed wireframe border), and glow (subtle edge luminance). Use surface='flat' for everyday cards, surface='stacked' for elevated emphasis, surface='inset' for recessed areas, surface='dotted' for drafts or placeholders, and surface='glow' for highlighted content.",
+    },
+    {
+      title: "Interactive",
+      content:
+        "Add the interactive prop to enable hover and focus-visible states. Each surface has a unique hover treatment: flat brightens the border, stacked deepens the shadow, inset intensifies the inset shadow, dotted solidifies the border, and glow amplifies the luminance.",
     },
     {
       title: "Floating Border Labels",
@@ -53,6 +58,8 @@ export const cardDoc: ComponentDoc = {
   usage: { example: "card-default" },
   examples: [
     { name: "card-default", title: "Default" },
+    { name: "card-surfaces", title: "Surfaces" },
+    { name: "card-interactive", title: "Interactive" },
     { name: "card-sizes", title: "Sizes" },
     { name: "card-action", title: "Header Action" },
     { name: "card-article", title: "Article (accessible)" },
@@ -66,11 +73,17 @@ export const cardDoc: ComponentDoc = {
         defaultValue: '"div"',
         description: "Rendered HTML element. Use article/section/aside when the card is a self-contained content region.",
       },
-      variant: {
-        type: '"default" | "panel"',
+      surface: {
+        type: '"flat" | "stacked" | "inset" | "dotted" | "glow"',
         required: false,
-        defaultValue: '"default"',
-        description: "Visual treatment. Panel adds an elevated shadow.",
+        defaultValue: '"flat"',
+        description: "Surface treatment. Flat is a clean border, stacked adds paper-stack depth, inset recesses into the page, dotted uses a dashed wireframe border, and glow adds subtle edge luminance.",
+      },
+      interactive: {
+        type: "boolean",
+        required: false,
+        defaultValue: "false",
+        description: "Enables hover and focus-visible states with surface-specific treatments.",
       },
       size: {
         type: '"default" | "sm" | "md" | "lg"',

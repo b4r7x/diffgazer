@@ -30,13 +30,13 @@ export default function CardSizes() {
         </CardContent>
       </Card>
 
-      <Card size="lg" variant="panel">
+      <Card size="lg" surface="stacked">
         <CardHeader>
-          <CardTitle>Panel Variant</CardTitle>
-          <CardDescription>Elevated card treatment</CardDescription>
+          <CardTitle>Stacked Surface</CardTitle>
+          <CardDescription>Paper stack depth effect</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">Opt in with variant="panel" when you need extra weight.</p>
+          <p className="text-sm text-muted-foreground">Opt in with surface="stacked" when you need extra weight.</p>
         </CardContent>
       </Card>
     </div>
