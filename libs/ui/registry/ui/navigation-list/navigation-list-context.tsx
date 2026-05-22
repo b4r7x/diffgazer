@@ -2,6 +2,8 @@
 
 import { createContext, useContext } from "react";
 
+export type NavigationListIndicator = "bar" | "bar-thick" | "arrow" | "bracket";
+
 export interface NavigationListContextValue {
   selectedId: string | null;
   highlighted: string | null;
@@ -10,6 +12,7 @@ export interface NavigationListContextValue {
   focusContainer: () => void;
   focused: boolean;
   idPrefix: string;
+  indicator: NavigationListIndicator;
 }
 
 export const NavigationListContext = createContext<NavigationListContextValue | undefined>(undefined);

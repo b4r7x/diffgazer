@@ -11,13 +11,13 @@ import { cva } from "class-variance-authority";
 export type SegmentedVariant = "default" | "bracket" | "pill" | "underline";
 export type SegmentedSize = "sm" | "md";
 
-export const segmentedContainerVariants = cva("flex font-mono", {
+export const segmentedContainerVariants = cva("inline-flex font-mono", {
   variants: {
     variant: {
       default: "gap-1.5",
       bracket: "gap-0.5",
       pill: "relative isolate border border-border bg-background p-[3px]",
-      underline: "gap-6 border-b border-border",
+      underline: "relative gap-6 border-b border-border",
     },
     orientation: {
       horizontal: "",
@@ -74,9 +74,9 @@ export const segmentedItemVariants = cva(
           "data-[active=true]:text-primary-foreground",
         ].join(" "),
         underline: [
-          "border-0 border-b border-transparent -mb-px text-muted-foreground",
+          "border-0 text-muted-foreground",
           "hover:text-foreground",
-          "data-[active=true]:text-foreground data-[active=true]:border-b-foreground",
+          "data-[active=true]:text-foreground",
         ].join(" "),
       },
       size: {
@@ -96,8 +96,8 @@ export const segmentedItemVariants = cva(
       // provides spacing; padding would create a clickable border-bottom strip
       // that lies past the label. Vertical padding is added for visual weight
       // without dropping the touch-target height.
-      { variant: "underline", size: "sm", className: "px-0 pb-2" },
-      { variant: "underline", size: "md", className: "px-0 pb-3" },
+      { variant: "underline", size: "sm", className: "px-1 pb-2" },
+      { variant: "underline", size: "md", className: "px-1 pb-3" },
     ],
     defaultVariants: {
       variant: "default",
@@ -112,3 +112,12 @@ export const segmentedItemVariants = cva(
  */
 export const segmentedPillIndicatorClass =
   "pointer-events-none absolute top-[3px] bottom-[3px] z-0 bg-primary motion-safe:transition-[left,width] motion-safe:duration-150 motion-safe:ease-[cubic-bezier(0.2,0,0,1)]";
+
+/**
+ * Sliding underline indicator. Positioned absolutely inside the underline-variant
+ * container; `left`/`width` (horizontal) or `top`/`height` (vertical) are
+ * written by `useFloatingIndicator`. Replaces the old full-width container
+ * `border-b` so the line only spans the active item.
+ */
+export const segmentedUnderlineIndicatorClass =
+  "pointer-events-none absolute bg-foreground motion-safe:transition-[left,width,top,height] motion-safe:duration-150 motion-safe:ease-[cubic-bezier(0.2,0,0,1)]";

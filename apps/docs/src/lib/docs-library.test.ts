@@ -286,16 +286,21 @@ describe("docs-library source path mapping", () => {
   })
 
   it("keeps public docs off removed API aliases", () => {
-    const forbidden = [
+    const globalForbidden = [
       /\bonValueChange\b/,
       /\bonSelectedIdChange\b/,
-      /\bonCheckedChange\b/,
       /\bhighlightedId\b/,
     ]
+    const checkboxRadioForbidden = [/\bonCheckedChange\b/]
 
     for (const { path, source } of collectPublicDocsSources()) {
-      for (const pattern of forbidden) {
+      for (const pattern of globalForbidden) {
         expect(source, path).not.toMatch(pattern)
+      }
+      if (/\b(checkbox|radio)\b/i.test(path) && !/\bmenu\b/i.test(path)) {
+        for (const pattern of checkboxRadioForbidden) {
+          expect(source, path).not.toMatch(pattern)
+        }
       }
     }
   })

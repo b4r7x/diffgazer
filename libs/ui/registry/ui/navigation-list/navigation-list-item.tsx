@@ -13,6 +13,10 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { getEncodedListboxItemId } from "@/hooks/use-listbox";
 import { cn } from "@/lib/utils";
 import { useNavigationListContext } from "./navigation-list-context";
+import {
+  useNavigationListGroupContext,
+  useNavigationListGroupPositionContext,
+} from "./navigation-list-group-context";
 import { NavigationListItemContext } from "./navigation-list-item-context";
 import { NavigationListMeta } from "./navigation-list-meta";
 import { NavigationListSubtitle } from "./navigation-list-subtitle";
@@ -79,8 +83,10 @@ export function NavigationListItem({
   onFocus,
   ...rootProps
 }: NavigationListItemProps) {
-  const { selectedId, highlighted, activate, highlight, focusContainer, focused, idPrefix } =
+  const { selectedId, highlighted, activate, highlight, focusContainer, focused, idPrefix, indicator } =
     useNavigationListContext();
+  const groupContext = useNavigationListGroupContext();
+  const positionContext = useNavigationListGroupPositionContext();
   const isSelected = !disabled && selectedId === id;
   const isHighlighted = !disabled && highlighted === id;
   const hasHighlight = highlighted !== null;
@@ -135,10 +141,22 @@ export function NavigationListItem({
         onFocus={handleFocus}
         className={cn(itemVariants({ active: isActive, disabled }), "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground", className)}
       >
+        {groupContext.variant === "tree" && groupContext.depth > 0 && (
+          <span aria-hidden="true" className="text-muted-foreground font-mono text-sm select-none shrink-0 self-center">
+            {groupContext.linePrefix}{positionContext?.isLast ? "└── " : "├── "}
+          </span>
+        )}
         <div
+          data-indicator={indicator}
           className={cn(
-            "w-1 shrink-0",
-            isActive ? "bg-primary-foreground/40" : "bg-transparent group-hover:bg-muted"
+            "shrink-0",
+            (indicator === "bar" || indicator === "bar-thick") && [
+              indicator === "bar" ? "w-1" : "w-[4px]",
+              isActive
+                ? indicator === "bar" ? "bg-primary-foreground/40" : "bg-primary-foreground"
+                : "bg-transparent group-hover:bg-muted",
+            ],
+            (indicator === "arrow" || indicator === "bracket") && "w-1 bg-transparent",
           )}
         />
         <div className={contentVariants({ density })}>

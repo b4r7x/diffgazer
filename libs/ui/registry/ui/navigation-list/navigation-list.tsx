@@ -1,11 +1,35 @@
 "use client";
 
-import { type ComponentPropsWithRef, type ReactNode, type KeyboardEvent, useId, useMemo, useRef } from "react";
-import { collectListboxItems, getEncodedListboxItemId, useListbox } from "@/hooks/use-listbox";
+import { Children, isValidElement, type ComponentPropsWithRef, type ReactNode, type KeyboardEvent, useId, useMemo, useRef } from "react";
+import { type ListboxMetadataItem, getEncodedListboxItemId, useListbox } from "@/hooks/use-listbox";
 import { composeRefs } from "@/lib/compose-refs";
 import { cn } from "@/lib/utils";
-import { NavigationListContext } from "./navigation-list-context";
+import { NavigationListContext, type NavigationListIndicator } from "./navigation-list-context";
 import { NavigationListItem } from "./navigation-list-item";
+
+function collectNavigationListItems(children: ReactNode): ListboxMetadataItem[] {
+  const items: ListboxMetadataItem[] = [];
+
+  Children.forEach(children, (child) => {
+    if (!isValidElement<{ id?: string; disabled?: boolean; children?: ReactNode }>(child)) return;
+
+    if (child.type === NavigationListItem && typeof child.props.id === "string") {
+      items.push({ id: child.props.id, disabled: child.props.disabled });
+      return;
+    }
+
+    // Always collect items from groups regardless of expanded state.
+    // Collapsed groups hide children from the DOM, so useNavigation's
+    // DOM queries naturally exclude them from keyboard navigation.
+    // The metadata list is only used for active-descendant resolution
+    // and initial highlight — both safe with a superset.
+    if (child.props.children) {
+      items.push(...collectNavigationListItems(child.props.children));
+    }
+  });
+
+  return items;
+}
 
 export interface NavigationListProps
   extends Omit<ComponentPropsWithRef<"div">, "children" | "onKeyDown" | "onSelect"> {
@@ -21,6 +45,7 @@ export interface NavigationListProps
     event: globalThis.KeyboardEvent,
     key: string,
   ) => void;
+  indicator?: NavigationListIndicator;
   focused?: boolean;
   wrap?: boolean;
   autoFocus?: boolean;
@@ -37,6 +62,7 @@ export function NavigationList({
   onEnter,
   onHighlightChange,
   onNavigationBoundaryReached,
+  indicator = "bar",
   focused = true,
   wrap = true,
   autoFocus = false,
@@ -49,7 +75,7 @@ export function NavigationList({
 }: NavigationListProps) {
   const idPrefix = useId();
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const items = useMemo(() => collectListboxItems(children, NavigationListItem), [children]);
+  const items = useMemo(() => collectNavigationListItems(children), [children]);
 
   const {
     selectedId,
@@ -84,8 +110,9 @@ export function NavigationList({
       focusContainer: () => containerRef.current?.focus(),
       focused,
       idPrefix,
+      indicator,
     }),
-    [selectedId, highlighted, handleItemActivate, handleItemHighlight, focused, idPrefix],
+    [selectedId, highlighted, handleItemActivate, handleItemHighlight, focused, idPrefix, indicator],
   );
 
   return (

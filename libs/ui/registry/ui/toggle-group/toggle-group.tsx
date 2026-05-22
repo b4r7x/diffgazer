@@ -15,6 +15,7 @@ import {
 import {
   segmentedContainerVariants,
   segmentedPillIndicatorClass,
+  segmentedUnderlineIndicatorClass,
   type SegmentedSize,
   type SegmentedVariant,
 } from "@/lib/segmented-variants";
@@ -201,6 +202,10 @@ export function ToggleGroup<TValue extends string = string>(props: ToggleGroupPr
     variant === "pill" && selectionMode === "single" ? singleValue : null;
   const pillRect = useFloatingIndicator(containerRef, pillTargetValue);
 
+  const underlineTargetValue =
+    variant === "underline" && selectionMode === "single" ? singleValue : null;
+  const underlineRect = useFloatingIndicator(containerRef, underlineTargetValue);
+
   const hiddenInputValue = selectionMode === "single" && name ? singleValue : null;
 
   return (
@@ -218,6 +223,7 @@ export function ToggleGroup<TValue extends string = string>(props: ToggleGroupPr
         onKeyDown={handleKeyDown}
         className={cn(
           segmentedContainerVariants({ variant, orientation }),
+          "w-fit",
           wrap && orientation === "horizontal" && variant !== "pill" && "flex-wrap",
           className,
         )}
@@ -228,6 +234,18 @@ export function ToggleGroup<TValue extends string = string>(props: ToggleGroupPr
             data-slot="toggle-group-pill"
             className={segmentedPillIndicatorClass}
             style={{ left: pillRect.left, width: pillRect.width }}
+          />
+        )}
+        {variant === "underline" && underlineRect && (
+          <span
+            aria-hidden="true"
+            data-slot="toggle-group-underline"
+            className={segmentedUnderlineIndicatorClass}
+            style={
+              orientation === "vertical"
+                ? { top: underlineRect.top, height: underlineRect.height, right: 0, width: 1 }
+                : { left: underlineRect.left, width: underlineRect.width, bottom: 0, height: 1 }
+            }
           />
         )}
         {hiddenInputValue != null && (

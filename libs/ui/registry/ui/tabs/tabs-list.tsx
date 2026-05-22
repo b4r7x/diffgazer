@@ -7,6 +7,7 @@ import { useFloatingIndicator } from "@/hooks/use-floating-indicator";
 import {
   segmentedContainerVariants,
   segmentedPillIndicatorClass,
+  segmentedUnderlineIndicatorClass,
 } from "@/lib/segmented-variants";
 import { cn } from "@/lib/utils";
 import { useTabsContext } from "./tabs-context";
@@ -65,6 +66,9 @@ export function TabsList({ children, className, loop = true, onBlur, onKeyDown, 
   const pillTargetValue = variant === "pill" ? value : null;
   const pillRect = useFloatingIndicator(containerRef, pillTargetValue);
 
+  const underlineTargetValue = variant === "underline" ? value : null;
+  const underlineRect = useFloatingIndicator(containerRef, underlineTargetValue);
+
   return (
     <div
       ref={composeRefs(containerRef, ref)}
@@ -86,6 +90,18 @@ export function TabsList({ children, className, loop = true, onBlur, onKeyDown, 
           data-slot="tabs-pill"
           className={segmentedPillIndicatorClass}
           style={{ left: pillRect.left, width: pillRect.width }}
+        />
+      )}
+      {variant === "underline" && underlineRect && (
+        <span
+          aria-hidden="true"
+          data-slot="tabs-underline"
+          className={segmentedUnderlineIndicatorClass}
+          style={
+            orientation === "vertical"
+              ? { top: underlineRect.top, height: underlineRect.height, right: 0, width: 1 }
+              : { left: underlineRect.left, width: underlineRect.width, bottom: 0, height: 1 }
+          }
         />
       )}
       {children}

@@ -25,6 +25,7 @@ export const logoDoc: ComponentDoc = {
     { name: "logo-default", title: "Default" },
     { name: "logo-fonts", title: "ASCII Text" },
     { name: "logo-styled", title: "Styled" },
+    { name: "logo-figlet", title: "Figlet Integration" },
   ],
   keyboard: null,
   props: {

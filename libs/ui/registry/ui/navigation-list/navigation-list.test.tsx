@@ -473,6 +473,196 @@ describe("NavigationList", () => {
 
 })
 
+describe("NavigationList.Progress", () => {
+  it("renders with role=progressbar", () => {
+    render(
+      <NavigationList aria-label="Test nav">
+        <NavigationList.Item id="one">
+          <NavigationList.Title>One</NavigationList.Title>
+          <NavigationList.Meta>
+            <NavigationList.Progress value={50} />
+          </NavigationList.Meta>
+        </NavigationList.Item>
+      </NavigationList>,
+    )
+    expect(screen.getByRole("progressbar")).toBeInTheDocument()
+  })
+
+  it("has aria-valuenow matching value prop", () => {
+    render(
+      <NavigationList aria-label="Test nav">
+        <NavigationList.Item id="one">
+          <NavigationList.Title>One</NavigationList.Title>
+          <NavigationList.Meta>
+            <NavigationList.Progress value={73} />
+          </NavigationList.Meta>
+        </NavigationList.Item>
+      </NavigationList>,
+    )
+    const bar = screen.getByRole("progressbar")
+    expect(bar).toHaveAttribute("aria-valuenow", "73")
+  })
+
+  it("has aria-valuemin=0 and aria-valuemax=100", () => {
+    render(
+      <NavigationList aria-label="Test nav">
+        <NavigationList.Item id="one">
+          <NavigationList.Title>One</NavigationList.Title>
+          <NavigationList.Meta>
+            <NavigationList.Progress value={50} />
+          </NavigationList.Meta>
+        </NavigationList.Item>
+      </NavigationList>,
+    )
+    const bar = screen.getByRole("progressbar")
+    expect(bar).toHaveAttribute("aria-valuemin", "0")
+    expect(bar).toHaveAttribute("aria-valuemax", "100")
+  })
+
+  it("block variant renders █ and ░ characters", () => {
+    render(
+      <NavigationList aria-label="Test nav">
+        <NavigationList.Item id="one">
+          <NavigationList.Title>One</NavigationList.Title>
+          <NavigationList.Meta>
+            <NavigationList.Progress value={50} variant="block" width={10} />
+          </NavigationList.Meta>
+        </NavigationList.Item>
+      </NavigationList>,
+    )
+    const bar = screen.getByRole("progressbar")
+    expect(bar.textContent).toContain("█████")
+    expect(bar.textContent).toContain("░░░░░")
+  })
+
+  it("bar variant renders = and - characters inside [ ]", () => {
+    render(
+      <NavigationList aria-label="Test nav">
+        <NavigationList.Item id="one">
+          <NavigationList.Title>One</NavigationList.Title>
+          <NavigationList.Meta>
+            <NavigationList.Progress value={50} variant="bar" width={10} />
+          </NavigationList.Meta>
+        </NavigationList.Item>
+      </NavigationList>,
+    )
+    const bar = screen.getByRole("progressbar")
+    expect(bar.textContent).toContain("[=====-----]")
+  })
+
+  it("shows percentage label by default", () => {
+    render(
+      <NavigationList aria-label="Test nav">
+        <NavigationList.Item id="one">
+          <NavigationList.Title>One</NavigationList.Title>
+          <NavigationList.Meta>
+            <NavigationList.Progress value={50} />
+          </NavigationList.Meta>
+        </NavigationList.Item>
+      </NavigationList>,
+    )
+    expect(screen.getByRole("progressbar").textContent).toContain("50%")
+  })
+
+  it("hides percentage label when showLabel=false", () => {
+    render(
+      <NavigationList aria-label="Test nav">
+        <NavigationList.Item id="one">
+          <NavigationList.Title>One</NavigationList.Title>
+          <NavigationList.Meta>
+            <NavigationList.Progress value={50} showLabel={false} />
+          </NavigationList.Meta>
+        </NavigationList.Item>
+      </NavigationList>,
+    )
+    expect(screen.getByRole("progressbar").textContent).not.toContain("%")
+  })
+
+  it("color auto applies correct color based on value thresholds", () => {
+    const { rerender } = render(
+      <NavigationList aria-label="Test nav">
+        <NavigationList.Item id="one">
+          <NavigationList.Title>One</NavigationList.Title>
+          <NavigationList.Meta>
+            <NavigationList.Progress value={0} />
+          </NavigationList.Meta>
+        </NavigationList.Item>
+      </NavigationList>,
+    )
+    expect(screen.getByRole("progressbar")).toHaveAttribute("data-color", "muted")
+
+    rerender(
+      <NavigationList aria-label="Test nav">
+        <NavigationList.Item id="one">
+          <NavigationList.Title>One</NavigationList.Title>
+          <NavigationList.Meta>
+            <NavigationList.Progress value={30} />
+          </NavigationList.Meta>
+        </NavigationList.Item>
+      </NavigationList>,
+    )
+    expect(screen.getByRole("progressbar")).toHaveAttribute("data-color", "error")
+
+    rerender(
+      <NavigationList aria-label="Test nav">
+        <NavigationList.Item id="one">
+          <NavigationList.Title>One</NavigationList.Title>
+          <NavigationList.Meta>
+            <NavigationList.Progress value={60} />
+          </NavigationList.Meta>
+        </NavigationList.Item>
+      </NavigationList>,
+    )
+    expect(screen.getByRole("progressbar")).toHaveAttribute("data-color", "warning")
+
+    rerender(
+      <NavigationList aria-label="Test nav">
+        <NavigationList.Item id="one">
+          <NavigationList.Title>One</NavigationList.Title>
+          <NavigationList.Meta>
+            <NavigationList.Progress value={90} />
+          </NavigationList.Meta>
+        </NavigationList.Item>
+      </NavigationList>,
+    )
+    expect(screen.getByRole("progressbar")).toHaveAttribute("data-color", "success")
+  })
+
+  it("explicit color prop overrides auto", () => {
+    render(
+      <NavigationList aria-label="Test nav">
+        <NavigationList.Item id="one">
+          <NavigationList.Title>One</NavigationList.Title>
+          <NavigationList.Meta>
+            <NavigationList.Progress value={90} color="error" />
+          </NavigationList.Meta>
+        </NavigationList.Item>
+      </NavigationList>,
+    )
+    expect(screen.getByRole("progressbar")).toHaveAttribute("data-color", "error")
+  })
+
+  it("has no a11y violations with progress bars", async () => {
+    const { container } = render(
+      <NavigationList aria-label="Test nav">
+        <NavigationList.Item id="one">
+          <NavigationList.Title>Build</NavigationList.Title>
+          <NavigationList.Meta>
+            <NavigationList.Progress value={80} />
+          </NavigationList.Meta>
+        </NavigationList.Item>
+        <NavigationList.Item id="two">
+          <NavigationList.Title>Test</NavigationList.Title>
+          <NavigationList.Meta>
+            <NavigationList.Progress value={40} variant="bar" />
+          </NavigationList.Meta>
+        </NavigationList.Item>
+      </NavigationList>,
+    )
+    expect(await axe(container)).toHaveNoViolations()
+  })
+})
+
 describe("NavigationList keyboard navigation", () => {
   const ITEM_IDS = ["one", "two", "three"] as const
 
@@ -515,5 +705,335 @@ describe("NavigationList keyboard navigation", () => {
       const value = target?.getAttribute("data-value") ?? ""
       return ITEM_IDS.findIndex((id) => id === value)
     },
+  })
+})
+
+describe("NavigationListGroup", () => {
+  it("section variant renders header with label text", () => {
+    render(
+      <NavigationList aria-label="Test nav">
+        <NavigationList.Group label="Pull Requests">
+          <NavigationList.Item id="one">
+            <NavigationList.Title>One</NavigationList.Title>
+          </NavigationList.Item>
+        </NavigationList.Group>
+      </NavigationList>,
+    )
+
+    expect(screen.getByText("Pull Requests")).toBeInTheDocument()
+  })
+
+  it("section header shows count when provided", () => {
+    render(
+      <NavigationList aria-label="Test nav">
+        <NavigationList.Group label="Issues" count={4}>
+          <NavigationList.Item id="one">
+            <NavigationList.Title>One</NavigationList.Title>
+          </NavigationList.Item>
+        </NavigationList.Group>
+      </NavigationList>,
+    )
+
+    expect(screen.getByText("(4)")).toBeInTheDocument()
+  })
+
+  it("group renders with role=group and aria-label", () => {
+    render(
+      <NavigationList aria-label="Test nav">
+        <NavigationList.Group label="Section">
+          <NavigationList.Item id="one">
+            <NavigationList.Title>One</NavigationList.Title>
+          </NavigationList.Item>
+        </NavigationList.Group>
+      </NavigationList>,
+    )
+
+    const group = screen.getByRole("group", { name: "Section" })
+    expect(group).toBeInTheDocument()
+  })
+
+  it("click on header toggles expanded/collapsed", async () => {
+    render(
+      <NavigationList aria-label="Test nav">
+        <NavigationList.Group label="Section">
+          <NavigationList.Item id="one">
+            <NavigationList.Title>One</NavigationList.Title>
+          </NavigationList.Item>
+        </NavigationList.Group>
+      </NavigationList>,
+    )
+
+    const header = screen.getByText("Section")
+    expect(screen.getByRole("option", { name: "One" })).toBeInTheDocument()
+
+    await userEvent.click(header)
+    expect(screen.queryByRole("option", { name: "One" })).not.toBeInTheDocument()
+
+    await userEvent.click(header)
+    expect(screen.getByRole("option", { name: "One" })).toBeInTheDocument()
+  })
+
+  it("collapsed group hides children", () => {
+    render(
+      <NavigationList aria-label="Test nav">
+        <NavigationList.Group label="Section" defaultExpanded={false}>
+          <NavigationList.Item id="one">
+            <NavigationList.Title>One</NavigationList.Title>
+          </NavigationList.Item>
+        </NavigationList.Group>
+      </NavigationList>,
+    )
+
+    expect(screen.queryByRole("option", { name: "One" })).not.toBeInTheDocument()
+  })
+
+  it("keyboard navigation skips items in a collapsed uncontrolled group", async () => {
+    render(
+      <NavigationList aria-label="Test nav" defaultHighlighted="before">
+        <NavigationList.Item id="before">
+          <NavigationList.Title>Before</NavigationList.Title>
+        </NavigationList.Item>
+        <NavigationList.Group label="Collapsible">
+          <NavigationList.Item id="inside">
+            <NavigationList.Title>Inside</NavigationList.Title>
+          </NavigationList.Item>
+        </NavigationList.Group>
+        <NavigationList.Item id="after">
+          <NavigationList.Title>After</NavigationList.Title>
+        </NavigationList.Item>
+      </NavigationList>,
+    )
+
+    const listbox = screen.getByRole("listbox")
+    listbox.focus()
+
+    // Collapse the group by clicking the header
+    await userEvent.click(screen.getByText("Collapsible"))
+    expect(screen.queryByRole("option", { name: "Inside" })).not.toBeInTheDocument()
+
+    // Arrow down from "before" should skip the collapsed "inside" and land on "after"
+    await userEvent.keyboard("{ArrowDown}")
+    expect(listbox).toHaveAttribute(
+      "aria-activedescendant",
+      expect.stringContaining("-after"),
+    )
+  })
+
+  it("keyboard navigation skips group headers", async () => {
+    render(
+      <NavigationList aria-label="Test nav" defaultHighlighted="one">
+        <NavigationList.Group label="Section A">
+          <NavigationList.Item id="one">
+            <NavigationList.Title>One</NavigationList.Title>
+          </NavigationList.Item>
+        </NavigationList.Group>
+        <NavigationList.Group label="Section B">
+          <NavigationList.Item id="two">
+            <NavigationList.Title>Two</NavigationList.Title>
+          </NavigationList.Item>
+        </NavigationList.Group>
+      </NavigationList>,
+    )
+
+    const listbox = screen.getByRole("listbox")
+    listbox.focus()
+
+    await userEvent.keyboard("{ArrowDown}")
+    expect(listbox).toHaveAttribute(
+      "aria-activedescendant",
+      expect.stringContaining("-two"),
+    )
+  })
+
+  it("tree variant renders with connectors", () => {
+    render(
+      <NavigationList aria-label="Test nav">
+        <NavigationList.Group label="src" variant="tree">
+          <NavigationList.Item id="one">
+            <NavigationList.Title>Button.tsx</NavigationList.Title>
+          </NavigationList.Item>
+          <NavigationList.Item id="two">
+            <NavigationList.Title>Input.tsx</NavigationList.Title>
+          </NavigationList.Item>
+        </NavigationList.Group>
+      </NavigationList>,
+    )
+
+    expect(screen.getByRole("group", { name: /src/ })).toBeInTheDocument()
+
+    const firstItem = screen.getByRole("option", { name: "Button.tsx" })
+    const lastItem = screen.getByRole("option", { name: "Input.tsx" })
+    expect(firstItem.textContent).toContain("├──")
+    expect(lastItem.textContent).toContain("└──")
+  })
+
+  it("nested tree groups increment depth", () => {
+    render(
+      <NavigationList aria-label="Test nav">
+        <NavigationList.Group label="src" variant="tree">
+          <NavigationList.Group label="components" variant="tree">
+            <NavigationList.Item id="one">
+              <NavigationList.Title>Button.tsx</NavigationList.Title>
+            </NavigationList.Item>
+          </NavigationList.Group>
+        </NavigationList.Group>
+      </NavigationList>,
+    )
+
+    const item = screen.getByRole("option", { name: "Button.tsx" })
+    expect(item.textContent).toContain("└──")
+
+    expect(screen.getByRole("group", { name: /components/ })).toBeInTheDocument()
+  })
+
+  it("controlled expanded prop works", async () => {
+    const onExpandedChange = vi.fn()
+    const { rerender } = render(
+      <NavigationList aria-label="Test nav">
+        <NavigationList.Group label="Section" expanded={true} onExpandedChange={onExpandedChange}>
+          <NavigationList.Item id="one">
+            <NavigationList.Title>One</NavigationList.Title>
+          </NavigationList.Item>
+        </NavigationList.Group>
+      </NavigationList>,
+    )
+
+    expect(screen.getByRole("option", { name: "One" })).toBeInTheDocument()
+
+    await userEvent.click(screen.getByText("Section"))
+    expect(onExpandedChange).toHaveBeenCalledWith(false)
+    expect(screen.getByRole("option", { name: "One" })).toBeInTheDocument()
+
+    rerender(
+      <NavigationList aria-label="Test nav">
+        <NavigationList.Group label="Section" expanded={false} onExpandedChange={onExpandedChange}>
+          <NavigationList.Item id="one">
+            <NavigationList.Title>One</NavigationList.Title>
+          </NavigationList.Item>
+        </NavigationList.Group>
+      </NavigationList>,
+    )
+    expect(screen.queryByRole("option", { name: "One" })).not.toBeInTheDocument()
+  })
+
+  it("has no a11y violations with section groups", async () => {
+    const { container } = render(
+      <NavigationList aria-label="Test nav">
+        <NavigationList.Group label="Section" count={2}>
+          <NavigationList.Item id="one">
+            <NavigationList.Title>One</NavigationList.Title>
+          </NavigationList.Item>
+          <NavigationList.Item id="two">
+            <NavigationList.Title>Two</NavigationList.Title>
+          </NavigationList.Item>
+        </NavigationList.Group>
+      </NavigationList>,
+    )
+    expect(await axe(container)).toHaveNoViolations()
+  })
+
+  it("has no a11y violations with tree groups", async () => {
+    const { container } = render(
+      <NavigationList aria-label="Test nav">
+        <NavigationList.Group label="src" variant="tree">
+          <NavigationList.Item id="one">
+            <NavigationList.Title>Button.tsx</NavigationList.Title>
+          </NavigationList.Item>
+        </NavigationList.Group>
+      </NavigationList>,
+    )
+    expect(await axe(container)).toHaveNoViolations()
+  })
+})
+
+describe("NavigationList indicator variants", () => {
+  function renderWithIndicator(indicator?: "bar" | "bar-thick" | "arrow" | "bracket") {
+    return render(
+      <NavigationList
+        aria-label="Test nav"
+        selectedId="one"
+        focused
+        {...(indicator ? { indicator } : {})}
+      >
+        <NavigationList.Item id="one">
+          <NavigationList.Title>One</NavigationList.Title>
+        </NavigationList.Item>
+        <NavigationList.Item id="two">
+          <NavigationList.Title>Two</NavigationList.Title>
+        </NavigationList.Item>
+      </NavigationList>,
+    )
+  }
+
+  it("defaults to bar indicator", () => {
+    const { container } = renderWithIndicator()
+    // querySelector retained: data-indicator is a structural test hook on the indicator slot div, not an accessible element
+    const slot = container.querySelector("[data-indicator]") as HTMLElement
+    expect(slot).toBeTruthy()
+    expect(slot.getAttribute("data-indicator")).toBe("bar")
+  })
+
+  it("renders bar-thick indicator with wider slot", () => {
+    const { container } = renderWithIndicator("bar-thick")
+    // querySelector retained: data-indicator is a structural test hook on the indicator slot div
+    const slots = container.querySelectorAll("[data-indicator='bar-thick']")
+    expect(slots.length).toBeGreaterThan(0)
+  })
+
+  it("renders > glyph prefix on active item for arrow indicator", () => {
+    renderWithIndicator("arrow")
+    const activeItem = screen.getByRole("option", { name: "One" })
+    expect(activeItem.textContent).toContain(">")
+
+    const inactiveItem = screen.getByRole("option", { name: "Two" })
+    expect(inactiveItem.textContent).toContain(">")
+  })
+
+  it("renders [ ] wrapping on items for bracket indicator", () => {
+    renderWithIndicator("bracket")
+    const activeItem = screen.getByRole("option", { name: "One" })
+    expect(activeItem.textContent).toContain("[")
+    expect(activeItem.textContent).toContain("]")
+  })
+
+  it("does not affect keyboard navigation when indicator changes", async () => {
+    const onSelect = vi.fn()
+    render(
+      <NavigationList
+        aria-label="Test nav"
+        indicator="arrow"
+        defaultHighlighted="one"
+        onSelect={onSelect}
+      >
+        <NavigationList.Item id="one">
+          <NavigationList.Title>One</NavigationList.Title>
+        </NavigationList.Item>
+        <NavigationList.Item id="two">
+          <NavigationList.Title>Two</NavigationList.Title>
+        </NavigationList.Item>
+      </NavigationList>,
+    )
+
+    const listbox = screen.getByRole("listbox")
+    listbox.focus()
+    await userEvent.keyboard("{ArrowDown}")
+    await userEvent.keyboard("{Enter}")
+
+    expect(onSelect).toHaveBeenCalledWith("two")
+  })
+
+  it("has no a11y violations with bar-thick indicator", async () => {
+    const { container } = renderWithIndicator("bar-thick")
+    expect(await axe(container)).toHaveNoViolations()
+  })
+
+  it("has no a11y violations with arrow indicator", async () => {
+    const { container } = renderWithIndicator("arrow")
+    expect(await axe(container)).toHaveNoViolations()
+  })
+
+  it("has no a11y violations with bracket indicator", async () => {
+    const { container } = renderWithIndicator("bracket")
+    expect(await axe(container)).toHaveNoViolations()
   })
 })

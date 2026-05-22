@@ -10,6 +10,8 @@ component: "logo"
 
 <ConsumptionBlock />
 
+<div className="mt-2" />
+
 > The optional figlet helper at `@diffgazer/ui/components/logo/figlet` is only
 > available in npm package mode. Copy and `dgadd` installs do not vend it. If
 > you want runtime figlet output in copy mode, install figlet directly:
@@ -18,6 +20,22 @@ component: "logo"
 ## Usage
 
 <UsageSnippet />
+
+## Figlet Integration
+
+The optional `getFigletText` helper generates ASCII art at runtime using the
+[figlet](https://www.npmjs.com/package/figlet) library. It is available at
+`@diffgazer/ui/components/logo/figlet` (npm package mode only) and supports
+two fonts: `"Big"` and `"Small"`.
+
+```tsx
+import { getFigletText } from "@diffgazer/ui/components/logo/figlet"
+
+const ascii = await getFigletText("DG", "Big")
+```
+
+`figlet` is an optional peer dependency. Install it with
+`npm install figlet @types/figlet` before using `getFigletText`.
 
 ## Examples
 

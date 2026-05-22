@@ -23,24 +23,63 @@ function MenuItemIndicator({ isFocused, isSelected, className }: { isFocused: bo
   );
 }
 
+function MenuItemIconSlot({
+  icon,
+  isFocused,
+  isSelected,
+  iconIdleClassName,
+  indicatorIdleClassName,
+}: {
+  icon?: ReactNode;
+  isFocused: boolean;
+  isSelected: boolean;
+  iconIdleClassName?: string;
+  indicatorIdleClassName?: string;
+}) {
+  if (icon !== undefined) {
+    const isEmphasized = isFocused || isSelected;
+    return (
+      <span
+        aria-hidden="true"
+        className={cn(
+          "pr-4 shrink-0 inline-flex w-5 items-center justify-center self-center leading-none relative -top-[2px]",
+          !isEmphasized && iconIdleClassName,
+        )}
+      >
+        {icon}
+      </span>
+    );
+  }
+  return (
+    <MenuItemIndicator
+      isFocused={isFocused}
+      isSelected={isSelected}
+      className={indicatorIdleClassName}
+    />
+  );
+}
+
 interface DefaultItemLayoutProps {
   isFocused: boolean;
   isSelected: boolean;
   isDanger: boolean;
   hotkey?: number | string;
+  icon?: ReactNode;
   children: ReactNode;
 }
 
-function DefaultItemLayout({ isFocused, isSelected, isDanger, hotkey, children }: DefaultItemLayoutProps) {
+function DefaultItemLayout({ isFocused, isSelected, isDanger, hotkey, icon, children }: DefaultItemLayoutProps) {
   const idleColor = isDanger ? "text-destructive" : "text-foreground";
   const isEmphasized = isFocused || isSelected;
 
   return (
     <>
-      <MenuItemIndicator
+      <MenuItemIconSlot
+        icon={icon}
         isFocused={isFocused}
         isSelected={isSelected}
-        className={isEmphasized ? undefined : cn("transition-opacity opacity-0 group-hover:opacity-100", idleColor)}
+        iconIdleClassName={isEmphasized ? undefined : idleColor}
+        indicatorIdleClassName={isEmphasized ? undefined : cn("transition-opacity opacity-0 group-hover:opacity-100", idleColor)}
       />
       {hotkey !== undefined && (
         <span
@@ -62,6 +101,7 @@ interface HubItemLayoutProps {
   isSelected: boolean;
   value?: ReactNode;
   valueClassName: string;
+  icon?: ReactNode;
   children: ReactNode;
 }
 
@@ -70,6 +110,7 @@ function HubItemLayout({
   isSelected,
   value,
   valueClassName,
+  icon,
   children,
 }: HubItemLayoutProps) {
   const isEmphasized = isFocused || isSelected;
@@ -77,10 +118,11 @@ function HubItemLayout({
   return (
     <>
       <div className="flex items-center">
-        <MenuItemIndicator
+        <MenuItemIconSlot
+          icon={icon}
           isFocused={isFocused}
           isSelected={isSelected}
-          className={
+          indicatorIdleClassName={
             !isEmphasized ? "text-foreground opacity-0 group-hover:opacity-100 transition-opacity" : undefined
           }
         />
@@ -205,6 +247,7 @@ export interface MenuItemProps<TId extends string = string>
   disabled?: boolean;
   variant?: "default" | "danger";
   hotkey?: number | string;
+  icon?: ReactNode;
   value?: ReactNode;
   valueVariant?: "default" | "success" | "success-badge" | "muted";
   children: ReactNode;
@@ -216,6 +259,7 @@ export function MenuItem<TId extends string = string>({
   disabled = false,
   variant = "default",
   hotkey,
+  icon,
   value,
   valueVariant = "default",
   children,
@@ -261,6 +305,7 @@ export function MenuItem<TId extends string = string>({
       ref={ref}
       id={itemId}
       role={itemRole}
+      data-diffgazer-navigation-item="true"
       data-value={id}
       data-active={isActive || undefined}
       data-focus={isFocused || undefined}
@@ -278,11 +323,12 @@ export function MenuItem<TId extends string = string>({
           isSelected={isSelected}
           value={value}
           valueClassName={menuItemValue({ valueVariant, focused: isActive, active: isActive })}
+          icon={icon}
         >
           {children}
         </HubItemLayout>
       ) : (
-        <DefaultItemLayout isFocused={isFocused} isSelected={isSelected} isDanger={isDanger} hotkey={hotkey}>
+        <DefaultItemLayout isFocused={isFocused} isSelected={isSelected} isDanger={isDanger} hotkey={hotkey} icon={icon}>
           {children}
         </DefaultItemLayout>
       )}

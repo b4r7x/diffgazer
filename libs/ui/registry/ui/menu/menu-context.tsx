@@ -2,6 +2,11 @@
 
 import { createContext, useContext } from "react";
 
+export const MENU_ITEM_BASE_CLASS =
+  "cursor-pointer w-full transition-colors px-4 py-3 flex items-center font-mono duration-75";
+
+export type CustomActivator = () => void;
+
 export interface MenuContextValue {
   selectedId: string | null;
   highlighted: string | null;
@@ -10,6 +15,8 @@ export interface MenuContextValue {
   variant: "default" | "hub";
   idPrefix: string;
   itemRole: "menuitem" | "menuitemradio";
+  registerActivator: (id: string, handler: CustomActivator) => void;
+  unregisterActivator: (id: string) => void;
 }
 
 export const MenuContext = createContext<MenuContextValue | undefined>(undefined);

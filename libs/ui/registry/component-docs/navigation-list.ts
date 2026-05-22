@@ -4,12 +4,14 @@ export const navigationListDoc: ComponentDoc = {
   description: "Terminal-styled navigation sidebar list with selection, keyboard navigation, and composable item parts.",
   anatomy: [
     { name: "NavigationList", indent: 0, note: "Root (manages selection state)" },
+    { name: "NavigationList.Group", indent: 1, note: "Collapsible group with header (section or tree variant)" },
     { name: "NavigationList.Item", indent: 1, note: "Selectable list item container" },
     { name: "NavigationList.Title", indent: 2, note: "Primary item label" },
     { name: "NavigationList.Status", indent: 2, note: "Top-right status marker" },
     { name: "NavigationList.Meta", indent: 2, note: "Row 2 container for badges and subtitles" },
     { name: "NavigationList.Badge", indent: 2, note: "Standardized badge slot (uses Badge primitive)" },
     { name: "NavigationList.Subtitle", indent: 2, note: "Secondary metadata text" },
+    { name: "NavigationList.Progress", indent: 3, note: "ASCII progress bar (in Meta)" },
   ],
   notes: [
     {
@@ -28,12 +30,20 @@ export const navigationListDoc: ComponentDoc = {
       title: "Built-in Keyboard API",
       content: "NavigationList includes arrow-key navigation and exposes highlighted, onHighlightChange, onEnter, onNavigationBoundaryReached, autoFocus, focused, and onKeyDown for controlled highlight state or extra app-level shortcuts.",
     },
+    {
+      title: "Group Expand/Collapse",
+      content: "Group expand/collapse is a mouse-only visual enhancement. Keyboard users navigate all visible items directly via arrow keys. The ARIA listbox pattern does not support focusable group toggles; keyboard-operable group toggling would require restructuring to the ARIA tree pattern.",
+    },
   ],
   usage: { example: "navigation-list-default" },
   examples: [
     { name: "navigation-list-default", title: "Default" },
     { name: "navigation-list-density", title: "Density Variants" },
     { name: "navigation-list-interactive", title: "Controlled Selection" },
+    { name: "navigation-list-progress", title: "Progress Bars" },
+    { name: "navigation-list-sections", title: "Section Groups" },
+    { name: "navigation-list-tree", title: "Tree View" },
+    { name: "navigation-list-indicators", title: "Indicator Variants" },
   ],
   keyboard: {
     description: "Arrow keys navigate between items with wrapping. Enter activates the highlighted item. Home and End jump to the first and last items.",
@@ -102,6 +112,12 @@ export const navigationListDoc: ComponentDoc = {
         required: false,
         defaultValue: "true",
         description: "When true, arrow navigation wraps at list boundaries.",
+      },
+      indicator: {
+        type: '"bar" | "bar-thick" | "arrow" | "bracket"',
+        required: false,
+        defaultValue: '"bar"',
+        description: "Visual indicator style for the active/selected item.",
       },
       autoFocus: {
         type: "boolean",
@@ -198,6 +214,82 @@ export const navigationListDoc: ComponentDoc = {
         required: false,
         defaultValue: null,
         description: "Badge label.",
+      },
+    },
+    "NavigationList.Group": {
+      label: {
+        type: "string",
+        required: true,
+        defaultValue: null,
+        description: "Group header text.",
+      },
+      expanded: {
+        type: "boolean",
+        required: false,
+        defaultValue: null,
+        description: "Controlled expanded state.",
+      },
+      defaultExpanded: {
+        type: "boolean",
+        required: false,
+        defaultValue: "true",
+        description: "Initial expanded state for uncontrolled mode.",
+      },
+      onExpandedChange: {
+        type: "(expanded: boolean) => void",
+        required: false,
+        defaultValue: null,
+        description: "Fired when expanded state changes.",
+      },
+      count: {
+        type: "number",
+        required: false,
+        defaultValue: null,
+        description: "Optional count shown next to the label in section variant.",
+      },
+      variant: {
+        type: '"tree" | "section"',
+        required: false,
+        defaultValue: '"section"',
+        description: 'Visual treatment. "section" shows uppercase headers with counts, "tree" shows indented hierarchy with ASCII connectors.',
+      },
+      children: {
+        type: "ReactNode",
+        required: true,
+        defaultValue: null,
+        description: "NavigationList.Item or nested NavigationList.Group children.",
+      },
+    },
+    "NavigationList.Progress": {
+      value: {
+        type: "number",
+        required: true,
+        defaultValue: null,
+        description: "Progress percentage (0-100).",
+      },
+      variant: {
+        type: '"block" | "bar"',
+        required: false,
+        defaultValue: '"block"',
+        description: 'Bar style. "block" uses █░ characters, "bar" uses [==-] characters.',
+      },
+      width: {
+        type: "number",
+        required: false,
+        defaultValue: "10",
+        description: "Number of characters for the progress bar.",
+      },
+      color: {
+        type: '"auto" | "success" | "warning" | "error" | "muted"',
+        required: false,
+        defaultValue: '"auto"',
+        description: "Color token. Auto selects color based on value thresholds.",
+      },
+      showLabel: {
+        type: "boolean",
+        required: false,
+        defaultValue: "true",
+        description: "Shows percentage text after the bar.",
       },
     },
   },

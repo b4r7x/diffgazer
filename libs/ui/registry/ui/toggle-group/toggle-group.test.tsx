@@ -460,6 +460,43 @@ describe("ToggleGroup variants", () => {
     expect(container.querySelector('[data-slot="toggle-group-pill"]')).toBeNull()
   })
 
+  it("renders a floating underline indicator for variant='underline' in single mode", () => {
+    render(
+      <ToggleGroup label="Options" variant="underline" defaultValue="b">
+        <ToggleGroup.Item value="a">Alpha</ToggleGroup.Item>
+        <ToggleGroup.Item value="b">Beta</ToggleGroup.Item>
+      </ToggleGroup>,
+    )
+    expect(
+      screen.getByRole("radiogroup").querySelector('[data-slot="toggle-group-underline"]'),
+    ).not.toBeNull()
+  })
+
+  it("suppresses the underline indicator in multiple-selection mode", () => {
+    const { container } = render(
+      <ToggleGroup
+        label="Options"
+        variant="underline"
+        selectionMode="multiple"
+        defaultValue={["a"]}
+      >
+        <ToggleGroup.Item value="a">Alpha</ToggleGroup.Item>
+        <ToggleGroup.Item value="b">Beta</ToggleGroup.Item>
+      </ToggleGroup>,
+    )
+    expect(container.querySelector('[data-slot="toggle-group-underline"]')).toBeNull()
+  })
+
+  it("does not render underline indicator for other variants", () => {
+    const { container } = render(
+      <ToggleGroup label="Options" variant="default" defaultValue="b">
+        <ToggleGroup.Item value="a">Alpha</ToggleGroup.Item>
+        <ToggleGroup.Item value="b">Beta</ToggleGroup.Item>
+      </ToggleGroup>,
+    )
+    expect(container.querySelector('[data-slot="toggle-group-underline"]')).toBeNull()
+  })
+
   it("keeps bracket markers around the label and renders count outside the brackets", () => {
     render(
       <ToggleGroup label="Options" variant="bracket" defaultValue="a">

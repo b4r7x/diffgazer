@@ -566,6 +566,34 @@ describe("Tabs variants", () => {
     expect(container.querySelector('[data-slot="tabs-pill"]')).toBeNull()
   })
 
+  it("renders a floating underline indicator for variant='underline'", () => {
+    const { container } = render(
+      <Tabs defaultValue="b" variant="underline">
+        <Tabs.List>
+          <Tabs.Trigger value="a">Alpha</Tabs.Trigger>
+          <Tabs.Trigger value="b">Beta</Tabs.Trigger>
+        </Tabs.List>
+        <Tabs.Content value="a">Alpha content</Tabs.Content>
+        <Tabs.Content value="b">Beta content</Tabs.Content>
+      </Tabs>,
+    )
+    expect(container.querySelectorAll('[data-slot="tabs-underline"]').length).toBe(1)
+  })
+
+  it("does not render underline indicator for variant='pill'", () => {
+    const { container } = render(
+      <Tabs defaultValue="b" variant="pill">
+        <Tabs.List>
+          <Tabs.Trigger value="a">Alpha</Tabs.Trigger>
+          <Tabs.Trigger value="b">Beta</Tabs.Trigger>
+        </Tabs.List>
+        <Tabs.Content value="a">Alpha content</Tabs.Content>
+        <Tabs.Content value="b">Beta content</Tabs.Content>
+      </Tabs>,
+    )
+    expect(container.querySelector('[data-slot="tabs-underline"]')).toBeNull()
+  })
+
   it("renders bracket markers only on the active trigger in variant='bracket'", () => {
     render(
       <Tabs defaultValue="b" variant="bracket">

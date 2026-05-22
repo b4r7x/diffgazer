@@ -23,7 +23,12 @@ export const toggleGroupDoc: ComponentDoc = {
   usage: { example: "toggle-group-default" },
   examples: [
     { name: "toggle-group-default", title: "Default" },
+    { name: "toggle-group-variants", title: "Variants" },
     { name: "toggle-group-counts", title: "With Counts" },
+    { name: "toggle-group-multiple", title: "Multiple Selection" },
+    { name: "toggle-group-sizes", title: "Sizes" },
+    { name: "toggle-group-vertical", title: "Vertical" },
+    { name: "toggle-group-disabled", title: "Disabled" },
   ],
   keyboard: {
     description:

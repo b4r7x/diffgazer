@@ -6,6 +6,13 @@ export const menuDoc: ComponentDoc = {
     { name: "Menu", indent: 0, note: "Root (manages selection, variant context)" },
     { name: "MenuItem", indent: 1, note: "Selectable item with optional hotkey, value, variant" },
     { name: "MenuDivider", indent: 1, note: "Visual separator between groups" },
+    { name: "MenuGroup", indent: 1, note: "Semantic group with optional label" },
+    { name: "MenuLabel", indent: 2, note: "Group label text" },
+    { name: "MenuItemCheckbox", indent: 1, note: "Toggleable checkbox item" },
+    { name: "MenuItemRadio", indent: 1, note: "Radio-style selectable item" },
+    { name: "MenuSub", indent: 1, note: "Submenu container (manages open state)" },
+    { name: "MenuSubTrigger", indent: 2, note: "Trigger item that opens the submenu" },
+    { name: "MenuSubContent", indent: 2, note: "Floating panel for submenu content" },
   ],
   notes: [
     {
@@ -21,6 +28,10 @@ export const menuDoc: ComponentDoc = {
   examples: [
     { name: "menu-default", title: "Default" },
     { name: "menu-nested", title: "Hub Variant" },
+    { name: "menu-grouped", title: "Grouped with Labels" },
+    { name: "menu-checkbox-radio", title: "Checkbox and Radio Items" },
+    { name: "menu-icons", title: "Custom Icons" },
+    { name: "menu-submenu", title: "Submenu" },
   ],
   keyboard: {
     description: "Keyboard navigation is built-in. The menu-keyboard example demonstrates controlled mode with explicit state management. Arrow keys move focus, Enter activates selection.",
@@ -140,6 +151,12 @@ export const menuDoc: ComponentDoc = {
         defaultValue: '"default"',
         description: "Color treatment for the hub value.",
       },
+      icon: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Leading icon rendered in the indicator slot. Replaces the default ▐/> indicator when provided.",
+      },
       children: {
         type: "ReactNode",
         required: true,
@@ -153,6 +170,152 @@ export const menuDoc: ComponentDoc = {
         required: false,
         defaultValue: null,
         description: "Class applied to the separator. Renders role=\"separator\" with horizontal orientation.",
+      },
+    },
+    MenuGroup: {
+      label: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Optional label rendered via MenuLabel. When provided, the group is labelled via aria-labelledby.",
+      },
+      children: {
+        type: "ReactNode",
+        required: true,
+        defaultValue: null,
+        description: "MenuItem, MenuItemCheckbox, MenuItemRadio, or MenuDivider children.",
+      },
+    },
+    MenuLabel: {
+      children: {
+        type: "ReactNode",
+        required: true,
+        defaultValue: null,
+        description: "Label text for a MenuGroup.",
+      },
+    },
+    MenuItemCheckbox: {
+      id: {
+        type: "string",
+        required: true,
+        defaultValue: null,
+        description: "Stable identifier for the checkbox item.",
+      },
+      checked: {
+        type: "boolean",
+        required: false,
+        defaultValue: null,
+        description: "Controlled checked state.",
+      },
+      defaultChecked: {
+        type: "boolean",
+        required: false,
+        defaultValue: "false",
+        description: "Initial checked state for uncontrolled mode.",
+      },
+      onCheckedChange: {
+        type: "(checked: boolean) => void",
+        required: false,
+        defaultValue: null,
+        description: "Fired when the checked state toggles.",
+      },
+      disabled: {
+        type: "boolean",
+        required: false,
+        defaultValue: "false",
+        description: "Disables the checkbox item.",
+      },
+      children: {
+        type: "ReactNode",
+        required: true,
+        defaultValue: null,
+        description: "Checkbox item label.",
+      },
+    },
+    MenuItemRadio: {
+      id: {
+        type: "string",
+        required: true,
+        defaultValue: null,
+        description: "Stable identifier for the radio item.",
+      },
+      value: {
+        type: "string",
+        required: true,
+        defaultValue: null,
+        description: "Form-submission value for the radio item.",
+      },
+      disabled: {
+        type: "boolean",
+        required: false,
+        defaultValue: "false",
+        description: "Disables the radio item.",
+      },
+      children: {
+        type: "ReactNode",
+        required: true,
+        defaultValue: null,
+        description: "Radio item label.",
+      },
+    },
+    MenuSub: {
+      open: {
+        type: "boolean",
+        required: false,
+        defaultValue: null,
+        description: "Controlled open state for the submenu.",
+      },
+      defaultOpen: {
+        type: "boolean",
+        required: false,
+        defaultValue: "false",
+        description: "Initial open state for uncontrolled mode.",
+      },
+      onOpenChange: {
+        type: "(open: boolean) => void",
+        required: false,
+        defaultValue: null,
+        description: "Fired when the submenu open state changes.",
+      },
+      children: {
+        type: "ReactNode",
+        required: true,
+        defaultValue: null,
+        description: "MenuSubTrigger and MenuSubContent children.",
+      },
+    },
+    MenuSubTrigger: {
+      id: {
+        type: "string",
+        required: true,
+        defaultValue: null,
+        description: "Stable identifier for the submenu trigger item.",
+      },
+      disabled: {
+        type: "boolean",
+        required: false,
+        defaultValue: "false",
+        description: "Disables the submenu trigger.",
+      },
+      children: {
+        type: "ReactNode",
+        required: true,
+        defaultValue: null,
+        description: "Trigger label.",
+      },
+    },
+    MenuSubContent: {
+      children: {
+        type: "ReactNode",
+        required: true,
+        defaultValue: null,
+        description: "Menu items rendered inside the submenu floating panel.",
+      },
+      sideOffset: {
+        type: "number",
+        required: false,
+        defaultValue: "0",
+        description: "Offset from the trigger edge in pixels.",
       },
     },
   },
