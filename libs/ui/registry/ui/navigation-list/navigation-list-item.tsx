@@ -87,6 +87,7 @@ export function NavigationListItem({
     useNavigationListContext();
   const groupContext = useNavigationListGroupContext();
   const positionContext = useNavigationListGroupPositionContext();
+  const isTree = groupContext.variant === "tree" && groupContext.depth > 0;
   const isSelected = !disabled && selectedId === id;
   const isHighlighted = !disabled && highlighted === id;
   const hasHighlight = highlighted !== null;
@@ -118,8 +119,8 @@ export function NavigationListItem({
   };
 
   const itemContextValue = useMemo(
-    () => ({ labelId, descId }),
-    [labelId, descId],
+    () => ({ labelId, descId, isTree }),
+    [labelId, descId, isTree],
   );
 
   return (
@@ -139,29 +140,48 @@ export function NavigationListItem({
         onMouseDown={handleMouseDown}
         onClick={handleClick}
         onFocus={handleFocus}
-        className={cn(itemVariants({ active: isActive, disabled }), "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground", className)}
+        className={cn(
+          isTree
+            ? cn("flex cursor-pointer group", disabled && "opacity-50 cursor-not-allowed")
+            : itemVariants({ active: isActive, disabled }),
+          "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground",
+          className,
+        )}
       >
-        {groupContext.variant === "tree" && groupContext.depth > 0 && (
-          <span aria-hidden="true" className="text-muted-foreground font-mono text-sm select-none shrink-0 self-center">
+        {isTree && (
+          <span aria-hidden="true" className="text-muted-foreground font-mono text-sm select-none shrink-0 self-center leading-none">
             {groupContext.linePrefix}{positionContext?.isLast ? "└── " : "├── "}
           </span>
         )}
-        <div
-          data-indicator={indicator}
-          className={cn(
-            "shrink-0",
-            (indicator === "bar" || indicator === "bar-thick") && [
-              indicator === "bar" ? "w-1" : "w-[4px]",
-              isActive
-                ? indicator === "bar" ? "bg-primary-foreground/40" : "bg-primary-foreground"
-                : "bg-transparent group-hover:bg-muted",
-            ],
-            (indicator === "arrow" || indicator === "bracket") && "w-1 bg-transparent",
-          )}
-        />
-        <div className={contentVariants({ density })}>
-          {children}
-        </div>
+        {isTree ? (
+          <div className={cn(
+            "flex-1 flex items-center rounded-sm",
+            isActive ? "bg-primary text-primary-foreground" : "hover:bg-secondary",
+          )}>
+            <div className="flex-1 grid grid-cols-[1fr_auto] auto-rows-auto gap-y-0.5 py-0.5 px-1">
+              {children}
+            </div>
+          </div>
+        ) : (
+          <>
+            <div
+              data-indicator={indicator}
+              className={cn(
+                "shrink-0",
+                (indicator === "bar" || indicator === "bar-thick") && [
+                  indicator === "bar" ? "w-1" : "w-[4px]",
+                  isActive
+                    ? indicator === "bar" ? "bg-primary-foreground/40" : "bg-primary-foreground"
+                    : "bg-transparent group-hover:bg-muted",
+                ],
+                (indicator === "arrow" || indicator === "bracket") && "w-1 bg-transparent",
+              )}
+            />
+            <div className={contentVariants({ density })}>
+              {children}
+            </div>
+          </>
+        )}
       </div>
     </NavigationListItemContext>
   );

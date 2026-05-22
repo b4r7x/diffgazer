@@ -3,6 +3,7 @@
 import { Children, type ReactNode, useMemo } from "react";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { cn } from "@/lib/utils";
+import { Chevron } from "../icons/chevron";
 import {
   NavigationListGroupContext,
   NavigationListGroupPositionContext,
@@ -46,7 +47,7 @@ export function NavigationListGroup({
     if (variant !== "tree") return "";
     if (depth <= 1) return "";
     const isLast = position?.isLast ?? false;
-    return parentGroup.linePrefix + (isLast ? "   " : "│  ");
+    return parentGroup.linePrefix + (isLast ? "    " : "│   ");
   }, [variant, depth, position?.isLast, parentGroup.linePrefix]);
 
   const toggle = () => setExpanded((prev) => !prev);
@@ -58,9 +59,10 @@ export function NavigationListGroup({
     [variant, depth, linePrefix],
   );
 
-  const groupLabel = variant === "section" && count !== undefined
-    ? `${label} (${count})`
-    : label;
+  const groupLabel =
+    variant === "section" && count !== undefined
+      ? `${label} (${count})`
+      : label;
 
   const wrappedChildren = (
     <NavigationListGroupContext value={groupContextValue}>
@@ -93,24 +95,22 @@ export function NavigationListGroup({
         >
           <span className="text-[10px]">{expanded ? "▼" : "▶"}</span>
           <span>{label}</span>
-          {count !== undefined && (
-            <span>({count})</span>
-          )}
+          {count !== undefined && <span>({count})</span>}
         </div>
       ) : (
         <div
           aria-hidden="true"
           onClick={toggle}
-          className="flex w-full items-center text-muted-foreground font-mono text-sm cursor-pointer select-none hover:text-foreground/80"
-          style={{ paddingLeft: depth > 1 ? `${(depth - 1) * 1.5}rem` : undefined }}
+          className="flex w-full items-center py-0.5 text-muted-foreground font-mono text-sm cursor-pointer select-none hover:text-foreground/80"
           data-expanded={expanded}
         >
           {depth > 1 && (
             <span className="text-muted-foreground font-mono">
-              {linePrefix}{position?.isLast ? "└── " : "├── "}
+              {parentGroup.linePrefix}
+              {position?.isLast ? "└── " : "├── "}
             </span>
           )}
-          <span className="text-[10px] mr-1">{expanded ? "▼" : "▶"}</span>
+          <Chevron open={expanded} size="sm" className={depth > 1 ? "mx-1" : "mr-1"} />
           <span>{label}/</span>
         </div>
       )}

@@ -5,6 +5,7 @@ import { createContext, useContext } from "react";
 export interface NavigationListItemContextValue {
   labelId: string;
   descId: string;
+  isTree: boolean;
 }
 
 export const NavigationListItemContext = createContext<NavigationListItemContextValue | undefined>(undefined);

@@ -18,15 +18,17 @@ export interface NavigationListTitleProps {
 }
 
 export function NavigationListTitle({ children, className }: NavigationListTitleProps) {
-  const { labelId } = useNavigationListItemContext();
+  const { labelId, isTree } = useNavigationListItemContext();
   const { indicator } = useNavigationListContext();
   const glyph = INDICATOR_GLYPHS[indicator];
 
   return (
     <span id={labelId} className={cn("col-start-1 row-start-1 font-bold flex items-center group-data-[active]:text-primary-foreground", className)}>
-      <span aria-hidden="true" className="mr-2 opacity-30 group-data-[active]:opacity-100">{glyph}</span>
+      {!isTree && (
+        <span aria-hidden="true" className="mr-2 opacity-30 group-data-[active]:opacity-100">{glyph}</span>
+      )}
       {children}
-      {indicator === "bracket" && (
+      {!isTree && indicator === "bracket" && (
         <span aria-hidden="true" className="ml-2 opacity-30 group-data-[active]:opacity-100">{"]"}</span>
       )}
     </span>
