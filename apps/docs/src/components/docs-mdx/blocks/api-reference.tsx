@@ -11,7 +11,7 @@ export function APIReference() {
 
   return (
     <>
-      <Typography as="h2" size="2xl" id="api-reference" className="font-bold text-foreground mt-16 mb-6 pb-3 border-b border-border scroll-mt-24">
+      <Typography as="h2" size="2xl" id="api-reference" className="font-bold text-foreground mt-16 mb-6 pb-3 border-b border-border scroll-mt-16">
         API Reference
       </Typography>
       <PropsTableBlock />

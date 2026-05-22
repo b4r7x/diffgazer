@@ -6,11 +6,11 @@ export function Notes() {
   if (!data?.docs?.notes?.length) return null
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-6">
       {data.docs.notes.map((note) => (
-        <div key={note.title} className="border-l-2 border-border pl-3 py-1">
-          <Typography as="h4" size="sm" className="font-bold text-foreground mb-0.5">{note.title}</Typography>
-          <Typography as="p" size="sm">{note.content}</Typography>
+        <div key={note.title} className="border-l-2 border-border pl-4 py-2">
+          <Typography as="h4" size="sm" className="font-bold text-foreground mb-1.5">{note.title}</Typography>
+          <Typography as="p" size="base">{note.content}</Typography>
         </div>
       ))}
     </div>

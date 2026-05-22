@@ -3,7 +3,6 @@ import { useEffect, useRef } from "react";
 import { Spinner } from "@/components/ui/spinner/spinner";
 import {
   Sidebar,
-  SidebarHeader,
   SidebarContent,
   SidebarSection,
   SidebarSectionTitle,
@@ -90,10 +89,6 @@ export function DocsSidebar({ tree, library, onNavigate }: DocsSidebarProps) {
 
   return (
     <Sidebar variant="bar" className="w-full">
-      <SidebarHeader>
-        <span className="text-muted-foreground text-xs font-mono">{`~/${library}/docs`}</span>
-      </SidebarHeader>
-
       <SidebarContent className="p-0 overflow-hidden">
         <ScrollArea className="h-full">
           <div className="px-3 pt-2 pb-4" ref={navContainerRef}>

@@ -1,5 +1,5 @@
 import { useRouter } from "@tanstack/react-router";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { useState, type ReactNode, useEffect, useRef } from "react";
 import { cn } from "@diffgazer/ui/lib/utils";
 import type { DocsLibraryId } from "@/lib/docs-library";
 import { usePendingDocsRoute } from "@/lib/hooks/use-pending-docs-route";
@@ -42,7 +42,8 @@ export function DocsContentLayout({ tree, library, children }: DocsContentLayout
 				aria-busy={isDocsRoutePending}
 				className={cn(
 					"fixed inset-y-0 left-0 z-50 w-[280px] shrink-0 border-r border-border flex flex-col bg-background transition-transform duration-150 ease-in-out",
-					"lg:relative lg:translate-x-0 lg:inset-auto",
+					"lg:relative lg:inset-auto",
+					"lg:translate-x-0",
 					sidebarOpen ? "translate-x-0" : "-translate-x-full",
 				)}
 				data-pagefind-ignore
@@ -64,9 +65,6 @@ export function DocsContentLayout({ tree, library, children }: DocsContentLayout
 						<span className="block h-px w-4 bg-foreground" />
 						<span className="block h-px w-4 bg-foreground" />
 					</button>
-					<span className="text-muted-foreground text-xs font-mono ml-3">
-						{`~/${library}/docs`}
-					</span>
 				</div>
 
 				<div className="relative flex-1 min-w-0 min-h-0">

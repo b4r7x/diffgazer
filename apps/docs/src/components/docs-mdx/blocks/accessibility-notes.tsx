@@ -13,8 +13,8 @@ export function AccessibilityNotes() {
         <Typography as="h3" size="sm" className="font-bold text-foreground mb-3">Notes</Typography>
         {notes.map((note, i) => (
           <div key={i} className="mb-4">
-            <Typography as="h4" size="sm" className="font-bold text-foreground mb-1">{note.title}</Typography>
-            <Typography as="p" size="sm">{note.content}</Typography>
+            <Typography as="h4" size="sm" className="font-bold text-foreground mb-1.5">{note.title}</Typography>
+            <Typography as="p" size="base">{note.content}</Typography>
           </div>
         ))}
       </div>

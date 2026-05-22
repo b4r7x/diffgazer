@@ -54,7 +54,7 @@ export const markdownMdxComponents: MDXComponents = {
       size="2xl"
       id={id}
       className={cn(
-        "font-bold text-foreground mt-16 mb-6 pb-3 border-b border-border scroll-mt-24",
+        "font-bold text-foreground mt-16 mb-6 pb-3 border-b border-border scroll-mt-16",
         className,
       )}
       {...props}
@@ -67,7 +67,7 @@ export const markdownMdxComponents: MDXComponents = {
       as="h3"
       size="lg"
       id={id}
-      className={cn("font-bold text-foreground mt-10 mb-4 scroll-mt-24", className)}
+      className={cn("font-bold text-foreground mt-10 mb-4 scroll-mt-16", className)}
       {...props}
     >
       {children}
