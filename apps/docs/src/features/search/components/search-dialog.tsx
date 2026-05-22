@@ -10,6 +10,7 @@ import {
   CommandPaletteFooter,
 } from "@/components/ui/command-palette"
 import { Kbd } from "@/components/ui/kbd/kbd"
+import { Spinner } from "@/components/ui/spinner/spinner"
 import { type SearchStatus, useSearch } from "../hooks/use-search"
 import { getEnabledDocsLibraries } from "@/lib/docs-library"
 
@@ -45,9 +46,6 @@ function getSearchStatusView(
 ): SearchStatusView | null {
   if (!hasQuery) {
     return { message: "Type to search docs...", role: "status" }
-  }
-  if (status === "loading") {
-    return { message: "Searching docs...", role: "status" }
   }
   if (status === "error") {
     return { message: error ?? "Search failed. Try again.", role: "alert" }
@@ -87,7 +85,11 @@ export function SearchDialog() {
       <CommandPaletteContent size="md">
         <CommandPaletteInput placeholder="Search docs..." />
         <CommandPaletteList>
-          {statusView && (
+          {status === "loading" ? (
+            <div className="p-4 text-center text-muted-foreground text-xs font-mono">
+              <Spinner variant="dots" size="sm">Searching docs...</Spinner>
+            </div>
+          ) : statusView ? (
             <div
               role={statusView.role}
               aria-live={statusView.role === "status" ? "polite" : undefined}
@@ -95,7 +97,7 @@ export function SearchDialog() {
             >
               {statusView.message}
             </div>
-          )}
+          ) : null}
           {hasQuery &&
             status === "success" &&
             results.map((result) => (

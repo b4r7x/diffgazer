@@ -1,5 +1,6 @@
 import type { ComponentType, LazyExoticComponent, ReactNode } from "react"
 import { Suspense } from "react"
+import { Spinner } from "@/components/ui/spinner/spinner"
 import { Kbd } from "@/components/ui/kbd/kbd"
 
 /**
@@ -10,12 +11,18 @@ import { Kbd } from "@/components/ui/kbd/kbd"
  * decorative — `aria-hidden` so screen readers don't announce placeholder text.
  */
 
-const PREVIEW_FALLBACK = <div aria-hidden="true" className="h-full w-full" />
+const EMPTY_FALLBACK = <div aria-hidden="true" className="h-full w-full" />
+
+const LOADING_FALLBACK = (
+  <div className="flex h-full w-full items-center justify-center">
+    <Spinner variant="pulse" size="sm" />
+  </div>
+)
 
 function DemoSlot({ demo: Demo }: { demo: LazyExoticComponent<ComponentType> | null }) {
-  if (!Demo) return PREVIEW_FALLBACK
+  if (!Demo) return EMPTY_FALLBACK
   return (
-    <Suspense fallback={PREVIEW_FALLBACK}>
+    <Suspense fallback={LOADING_FALLBACK}>
       <Demo />
     </Suspense>
   )

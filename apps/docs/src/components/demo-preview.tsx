@@ -1,4 +1,5 @@
 import { Suspense, type ComponentType, type LazyExoticComponent } from "react"
+import { Spinner } from "@/components/ui/spinner/spinner"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { CodeBlock, CodeBlockContent, CodeBlockHeader, CodeBlockLabel, CodeBlockLine, type CodeBlockLineProps } from "@/components/ui/code-block"
 import { CopyButton } from "@/components/copy-button"
@@ -14,12 +15,18 @@ interface DemoPreviewProps {
   frame?: PreviewFrame
 }
 
-const PREVIEW_FALLBACK = <div aria-hidden="true" className="h-full w-full" />
+const EMPTY_FALLBACK = <div aria-hidden="true" className="h-full w-full" />
+
+const LOADING_FALLBACK = (
+  <div className="flex h-full w-full items-center justify-center">
+    <Spinner variant="pulse" size="sm" />
+  </div>
+)
 
 function DemoNode({ demo: Demo }: { demo: LazyExoticComponent<ComponentType> | null }) {
-  if (!Demo) return PREVIEW_FALLBACK
+  if (!Demo) return EMPTY_FALLBACK
   return (
-    <Suspense fallback={PREVIEW_FALLBACK}>
+    <Suspense fallback={LOADING_FALLBACK}>
       <Demo />
     </Suspense>
   )

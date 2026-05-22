@@ -1,6 +1,5 @@
 import { useRouter } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useRef, useState } from "react";
-import { Spinner } from "@/components/ui/spinner/spinner";
 import { cn } from "@diffgazer/ui/lib/utils";
 import type { DocsLibraryId } from "@/lib/docs-library";
 import { usePendingDocsRoute } from "@/lib/hooks/use-pending-docs-route";
@@ -11,30 +10,6 @@ interface DocsContentLayoutProps {
 	tree: PageTree;
 	library: DocsLibraryId;
 	children: ReactNode;
-}
-
-function RegionReloadOverlay({
-	label,
-	size = "md",
-	className,
-}: {
-	label: string;
-	size?: "sm" | "md" | "lg";
-	className?: string;
-}) {
-	return (
-		<div
-			aria-hidden="true"
-			className={cn(
-				"pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-background/65",
-				className,
-			)}
-		>
-			<div className="rounded-sm border border-border bg-background/90 px-3 py-2 shadow-sm">
-				<Spinner size={size}>{label}</Spinner>
-			</div>
-		</div>
-	);
 }
 
 export function DocsContentLayout({ tree, library, children }: DocsContentLayoutProps) {
@@ -73,9 +48,6 @@ export function DocsContentLayout({ tree, library, children }: DocsContentLayout
 				data-pagefind-ignore
 			>
 				<DocsSidebar tree={tree} library={library} onNavigate={() => setSidebarOpen(false)} />
-				{isDocsRoutePending && (
-					<RegionReloadOverlay label="reloading nav..." size="sm" className="z-10" />
-				)}
 			</aside>
 
 			<div className="flex-1 min-w-0 min-h-0 flex flex-col">
@@ -105,16 +77,13 @@ export function DocsContentLayout({ tree, library, children }: DocsContentLayout
 						aria-busy={isDocsRoutePending}
 						className={cn(
 							"h-full min-w-0 min-h-0 overflow-y-auto scrollbar-thin outline-none transition-opacity duration-150",
-							isDocsRoutePending && "opacity-80",
+							isDocsRoutePending && "opacity-60",
 						)}
 					>
 						<div className="max-w-7xl mx-auto px-6 py-10 min-h-full flex flex-col">
 							{children}
 						</div>
 					</main>
-					{isDocsRoutePending && (
-					<RegionReloadOverlay label="reloading docs..." className="z-10" />
-				)}
 				</div>
 			</div>
 		</div>

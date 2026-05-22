@@ -4,7 +4,7 @@ import browserCollections from "fumadocs-mdx:collections/browser"
 import { Suspense } from "react"
 import { DocsContentLayout } from "@/layouts/docs-content-layout"
 import { Route as DocsRoute } from "@/routes/$lib/docs"
-import { Spinner } from "@/components/ui/spinner/spinner"
+import { ContentSpinner } from "@/components/content-spinner"
 import {
   DocsPageBody,
   DocsPageHeader,
@@ -28,6 +28,7 @@ interface LoaderData {
 }
 
 export const Route = createFileRoute("/$lib/docs/")({
+  pendingMs: 150,
   component: LibraryIndexPage,
   loader: async ({ params }) => {
     const library = parseDocsLibrary(params.lib)
@@ -89,14 +90,6 @@ const clientLoader = browserCollections.docs.createClientLoader({
     )
   },
 })
-
-function ContentSpinner() {
-  return (
-    <div className="flex h-full items-center justify-center">
-      <Spinner size="md">loading...</Spinner>
-    </div>
-  )
-}
 
 function MdxContent({ path }: { path: string }) {
   return clientLoader.useContent(path)

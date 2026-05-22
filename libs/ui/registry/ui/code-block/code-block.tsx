@@ -38,6 +38,17 @@ export interface CodeBlockProps extends Omit<ComponentProps<"figure">, "children
   children?: ComponentProps<"figure">["children"];
 }
 
+function resolveAriaName(
+  props: { "aria-label"?: string; "aria-labelledby"?: string },
+  children: ComponentProps<"figure">["children"],
+  labelId: string,
+  fallbackName: string,
+): { "aria-label"?: string; "aria-labelledby"?: string } {
+  if (props["aria-label"] !== undefined || props["aria-labelledby"] !== undefined) return {};
+  if (containsLabelElement(children)) return { "aria-labelledby": labelId };
+  return { "aria-label": fallbackName };
+}
+
 export function CodeBlock({
   variant,
   language,
@@ -59,14 +70,7 @@ export function CodeBlock({
     [resolvedVariant, resolvedChrome, labelId, language, fallbackName],
   );
 
-  const hasConsumerLabel = props["aria-label"] !== undefined || props["aria-labelledby"] !== undefined;
-  const hasRenderedLabel = !hasConsumerLabel && containsLabelElement(children);
-
-  const ariaProps = hasConsumerLabel
-    ? {}
-    : hasRenderedLabel
-      ? { "aria-labelledby": labelId }
-      : { "aria-label": fallbackName };
+  const ariaProps = resolveAriaName(props, children, labelId, fallbackName);
 
   return (
     <CodeBlockProvider value={contextValue}>

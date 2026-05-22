@@ -5,7 +5,7 @@ import { Suspense } from "react"
 import { DocsContentLayout } from "@/layouts/docs-content-layout"
 import { Route as DocsRoute } from "@/routes/$lib/docs"
 import { DocsNotFoundBlock } from "@/components/docs-not-found"
-import { Spinner } from "@/components/ui/spinner/spinner"
+import { ContentSpinner } from "@/components/content-spinner"
 import {
   DocsPageBody,
   DocsPageHeader,
@@ -35,6 +35,7 @@ interface LoaderData {
 }
 
 export const Route = createFileRoute("/$lib/docs/$")({
+  pendingMs: 150,
   component: Page,
   loader: async ({ params }) => {
     const library = parseDocsLibrary(params.lib)
@@ -132,14 +133,6 @@ function Page() {
       componentData={data.componentData}
       hookData={data.hookData}
     />
-  )
-}
-
-function ContentSpinner() {
-  return (
-    <div className="flex h-full items-center justify-center">
-      <Spinner size="md">loading...</Spinner>
-    </div>
   )
 }
 
