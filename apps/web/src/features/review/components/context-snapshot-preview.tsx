@@ -22,7 +22,7 @@ export function ContextSnapshotPreview({ snapshot }: ContextSnapshotPreviewProps
         {snapshot.meta.charCount.toLocaleString()} chars
       </div>
       <CodeBlock label="Context snapshot preview" className="mt-3">
-        <CodeBlock.Content showLineNumbers={false} className="max-h-28 text-[10px] text-tui-muted">
+        <CodeBlock.Content showLineNumbers={false} className="max-h-28 text-2xs text-tui-muted">
           {contextPreview.preview}
           {contextPreview.truncated ? "\n... (preview)" : ""}
         </CodeBlock.Content>

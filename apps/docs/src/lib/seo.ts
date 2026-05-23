@@ -80,11 +80,14 @@ export function buildRootHeadDefaults(): { meta: MetaTag[]; links: LinkTag[] } {
     { name: "twitter:card", content: "summary" },
     { name: "twitter:title", content: DEFAULT_SITE_NAME },
     { name: "twitter:description", content: DEFAULT_SITE_DESCRIPTION },
+    { property: "og:image", content: `${PUBLIC_ORIGIN}/logo512.png` },
   ];
 
   const links: LinkTag[] = [
     { rel: "canonical", href: PUBLIC_ORIGIN },
     { rel: "manifest", href: "/manifest.json" },
+    { rel: "icon", href: "/favicon.ico" },
+    { rel: "apple-touch-icon", href: "/logo192.png" },
   ];
 
   return { meta, links };

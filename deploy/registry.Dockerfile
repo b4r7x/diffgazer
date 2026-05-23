@@ -21,8 +21,8 @@ RUN pnpm --filter @diffgazer/registry build \
 # Stage 2: Serve static JSON
 FROM nginx:1.27-alpine AS runtime
 
-COPY --from=builder /app/libs/ui/public/r/ /usr/share/nginx/html/ui/
-COPY --from=builder /app/libs/keys/public/r/ /usr/share/nginx/html/keys/
+COPY --from=builder /app/libs/ui/public/r/ /usr/share/nginx/html/r/ui/
+COPY --from=builder /app/libs/keys/public/r/ /usr/share/nginx/html/r/keys/
 COPY deploy/registry-nginx.conf /etc/nginx/conf.d/default.conf
 
 # Security: remove default nginx page, run as non-root
@@ -33,4 +33,4 @@ RUN rm -rf /usr/share/nginx/html/index.html \
 EXPOSE 80
 
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
-  CMD wget -q --spider http://localhost/ui/registry.json || exit 1
+  CMD wget -q --spider http://localhost/r/ui/registry.json || exit 1

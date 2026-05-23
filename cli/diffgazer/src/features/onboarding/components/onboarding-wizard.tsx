@@ -1,4 +1,4 @@
-import type { ReactElement } from "react";
+import { useEffect, useRef, type ReactElement } from "react";
 import { Box, useInput } from "ink";
 import {
   STEP_LABELS,
@@ -92,6 +92,12 @@ function WizardStepBody({ step, wizard }: WizardStepBodyProps): ReactElement | n
 export function OnboardingWizard(): ReactElement {
   const { columns } = useTerminalDimensions();
   const wizard = useOnboardingWizard();
+
+  const cleanupRef = useRef(wizard.cleanupEarlySave);
+  cleanupRef.current = wizard.cleanupEarlySave;
+  useEffect(() => {
+    return () => { void cleanupRef.current(); };
+  }, []);
 
   usePageFooter({
     shortcuts: getStepShortcuts(wizard.currentStep, wizard.focusArea, !wizard.canProceed),

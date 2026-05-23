@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { act, renderHook } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { AVAILABLE_PROVIDERS } from "@diffgazer/core/schemas/config";
 import { useWizardState } from "./use-wizard-state.js";
 
@@ -110,6 +110,71 @@ describe("useWizardState", () => {
 
     expect(result.current.wizardData.defaultLenses).toEqual(["security"]);
     expect(result.current.wizardData.secretsStorage).toBe("file");
+  });
+
+  it("acknowledgeEarlySave prevents cleanupEarlySave from deleting credentials", async () => {
+    const deleteCredentials = vi.fn().mockResolvedValue(undefined);
+    const saveCredentials = vi.fn().mockResolvedValue(undefined);
+
+    const { result } = renderHook(() =>
+      useWizardState(
+        {
+          secretsStorage: "file",
+          provider: "openrouter",
+          apiKey: "test-key",
+          inputMethod: "paste",
+          model: null,
+          defaultLenses: ["security"],
+          agentExecution: "sequential",
+        },
+        { saveCredentials, deleteCredentials },
+      ),
+    );
+
+    // Advance to provider step, then to api-key, to trigger early save on next
+    act(() => result.current.next()); // storage -> provider
+    act(() => result.current.next()); // provider -> api-key
+
+    // Next should trigger early-save for openrouter before model step
+    await act(async () => result.current.next()); // api-key -> model (early save)
+    expect(saveCredentials).toHaveBeenCalled();
+
+    // Acknowledge = mark early save consumed (final save will overwrite)
+    act(() => result.current.acknowledgeEarlySave());
+
+    // Cleanup should be a no-op since we acknowledged
+    await act(async () => { await result.current.cleanupEarlySave(); });
+    expect(deleteCredentials).not.toHaveBeenCalled();
+  });
+
+  it("cleanupEarlySave deletes credentials when not acknowledged", async () => {
+    const deleteCredentials = vi.fn().mockResolvedValue(undefined);
+    const saveCredentials = vi.fn().mockResolvedValue(undefined);
+
+    const { result } = renderHook(() =>
+      useWizardState(
+        {
+          secretsStorage: "file",
+          provider: "openrouter",
+          apiKey: "test-key",
+          inputMethod: "paste",
+          model: null,
+          defaultLenses: ["security"],
+          agentExecution: "sequential",
+        },
+        { saveCredentials, deleteCredentials },
+      ),
+    );
+
+    act(() => result.current.next()); // storage -> provider
+    act(() => result.current.next()); // provider -> api-key
+
+    await act(async () => result.current.next()); // early save
+    expect(saveCredentials).toHaveBeenCalled();
+
+    // Without acknowledging, cleanup should delete
+    await act(async () => { await result.current.cleanupEarlySave(); });
+    expect(deleteCredentials).toHaveBeenCalledWith("openrouter");
   });
 
   it("reaches the last step and reports it", () => {

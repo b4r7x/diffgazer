@@ -58,7 +58,7 @@ function AgentFilterBar({
     >
       <ToggleGroupItem
         value="all"
-        className="min-h-0 min-w-0 px-2 py-1 text-[10px]"
+        className="min-h-0 min-w-0 px-2 py-1 text-2xs"
       >
         All
       </ToggleGroupItem>
@@ -66,7 +66,7 @@ function AgentFilterBar({
         <ToggleGroupItem
           key={agent.id}
           value={agent.name}
-          className="min-h-0 min-w-0 px-2 py-1 text-[10px]"
+          className="min-h-0 min-w-0 px-2 py-1 text-2xs"
         >
           <Badge
             variant={agent.badgeVariant ?? "info"}
@@ -224,7 +224,7 @@ export function ReviewProgressView({
           <SectionHeader variant="muted" className="mb-0">
             Live Activity Log
           </SectionHeader>
-          <span className="text-[10px] text-muted-foreground font-mono">
+          <span className="text-2xs text-muted-foreground font-mono">
             tail -f agent.log
           </span>
         </div>

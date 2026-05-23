@@ -7,6 +7,7 @@ import { Callout } from "@diffgazer/ui/components/callout";
 import { Divider } from "@diffgazer/ui/components/divider";
 import { KeyValue } from "@diffgazer/ui/components/key-value";
 import { Panel } from "@diffgazer/ui/components/panel";
+import { Typography } from "@diffgazer/ui/components/typography";
 import { useDiagnosticsKeyboard } from "../../hooks/use-diagnostics-keyboard";
 
 type OverallState = "loading" | "error" | "empty" | "success";
@@ -106,7 +107,7 @@ export function DiagnosticsPage() {
         as="section"
         aria-label="system diagnostics"
         aria-busy={isRefreshingAll || isRefreshing}
-        className="w-full max-w-2xl flex flex-col border-tui-border bg-[#161b22] shadow-lg"
+        className="w-full max-w-2xl flex flex-col border-tui-border bg-tui-bg shadow-lg"
       >
         <Panel.Header className="bg-tui-selection border-tui-border px-4 py-2">
           <Panel.Title className="text-tui-fg">System Diagnostics</Panel.Title>
@@ -140,7 +141,7 @@ export function DiagnosticsPage() {
           <Divider className="border-dashed" />
 
           <div className="space-y-3">
-            <h3 className="text-tui-violet font-bold text-xs uppercase tracking-wider">Diagnostic Snapshot</h3>
+            <Typography as="h3" size="xs" className="text-tui-violet uppercase tracking-wider">Diagnostic Snapshot</Typography>
             <KeyValue className="font-mono">
               <KeyValue.Item
                 label="Health"

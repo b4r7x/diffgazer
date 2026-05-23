@@ -2,6 +2,7 @@ import React, { Suspense } from "react";
 import { Outlet } from "@tanstack/react-router";
 import { Button } from "@diffgazer/ui/components/button";
 import { Toaster } from "@diffgazer/ui/components/toast";
+import { Typography } from "@diffgazer/ui/components/typography";
 import { GlobalLayout } from "@/components/layout";
 import { FooterProvider } from "@diffgazer/core/footer";
 import { useServerStatus } from "@diffgazer/core/api/hooks";
@@ -54,11 +55,11 @@ export function RootLayout() {
 
   if (state.status === "error") {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[--tui-bg] text-[--tui-fg] space-y-4">
-        <h1 className="text-2xl font-bold text-[--tui-red]">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-tui-bg text-tui-fg space-y-4">
+        <Typography as="h1" size="2xl" className="text-tui-red">
           Server Disconnected
-        </h1>
-        <p className="text-[--tui-fg] opacity-60">
+        </Typography>
+        <p className="text-tui-fg opacity-60">
           {state.message || "Could not connect to Diffgazer server."}
         </p>
         <Button onClick={retry}>Retry Connection</Button>

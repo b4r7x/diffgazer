@@ -155,7 +155,7 @@ export function ModelSelectDialog({
             }}
           />
           {provider === OPENROUTER_PROVIDER_ID && (
-            <div className="px-4 pb-2 text-[10px] text-tui-muted">
+            <div className="px-4 pb-2 text-2xs text-tui-muted">
               {compatibilityLabel}
               {" "}
               You can enter a custom model ID at your own risk.

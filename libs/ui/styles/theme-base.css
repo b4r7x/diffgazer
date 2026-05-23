@@ -73,9 +73,32 @@
   animation: tui-blink 1s step-end infinite;
 }
 
+@keyframes tui-progress-indeterminate {
+  0% {
+    width: 40%;
+    transform: translateX(-100%);
+  }
+  50% {
+    width: 40%;
+    transform: translateX(150%);
+  }
+  100% {
+    width: 40%;
+    transform: translateX(-100%);
+  }
+}
+
+.progress-indeterminate {
+  animation: tui-progress-indeterminate 1.5s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .cursor-blink {
     animation: none;
+  }
+  .progress-indeterminate {
+    animation: none;
+    width: 40%;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb,
   .scrollbar-thin {
@@ -99,6 +122,9 @@
 
 @theme {
   --font-sans: "Inter", sans-serif;
+
+  --text-2xs: 0.625rem;
+  --text-3xs: 0.5625rem;
 
   --color-tui-bg: var(--tui-bg);
   --color-tui-fg: var(--tui-fg);

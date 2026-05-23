@@ -50,7 +50,7 @@ export function ThemePreviewCard({ previewTheme }: ThemePreviewCardProps) {
               <Badge variant="info">Info</Badge>
             </div>
           </Panel.Content>
-          <div className="px-3 py-1 text-center text-[10px] text-tui-muted border-t border-tui-border">
+          <div className="px-3 py-1 text-center text-2xs text-tui-muted border-t border-tui-border">
             Diffgazer v2.0
           </div>
         </Panel>

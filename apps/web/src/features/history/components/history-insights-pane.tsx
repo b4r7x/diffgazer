@@ -120,7 +120,7 @@ export function HistoryInsightsPane({
 
       {duration && (
         <div className="border-t border-tui-border p-3 bg-tui-selection/10">
-          <div className="text-[10px] text-tui-muted uppercase tracking-wider mb-1">Duration</div>
+          <div className="text-2xs text-tui-muted uppercase tracking-wider mb-1">Duration</div>
           <div className="text-sm font-mono text-tui-fg">{duration}</div>
         </div>
       )}

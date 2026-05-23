@@ -62,11 +62,11 @@ Package consumers import Tailwind CSS v4, `@diffgazer/ui/sources.css`, and `@dif
 
 ### Direct shadcn / manual copy (future, after publication)
 
-The hosted registry at `https://docs.diffgazer.b4r7.dev/r/` is not yet live. After publication (see [PACKAGE_GOVERNANCE.md](./PACKAGE_GOVERNANCE.md#hosted-registry-status)), these commands will be:
+The hosted registry at `https://r.b4r7.dev/` is not yet live. After publication (see [PACKAGE_GOVERNANCE.md](./PACKAGE_GOVERNANCE.md#hosted-registry-status)), these commands will be:
 
 ```bash
-npx shadcn add https://docs.diffgazer.b4r7.dev/r/ui/button.json
-npx shadcn add https://docs.diffgazer.b4r7.dev/r/keys/navigation.json
+npx shadcn add https://r.b4r7.dev/ui/button.json
+npx shadcn add https://r.b4r7.dev/keys/navigation.json
 ```
 
 Until then, use `pnpm exec dgadd add ui/button keys/navigation` or `npm install` against locally packed tarballs.

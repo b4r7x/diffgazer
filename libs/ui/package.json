@@ -209,6 +209,18 @@
       "types": "./dist/components/floating-panel.d.ts",
       "import": "./dist/components/floating-panel.js"
     },
+    "./components/switch": {
+      "types": "./dist/components/switch.d.ts",
+      "import": "./dist/components/switch.js"
+    },
+    "./components/progress": {
+      "types": "./dist/components/progress.d.ts",
+      "import": "./dist/components/progress.js"
+    },
+    "./components/skeleton": {
+      "types": "./dist/components/skeleton.d.ts",
+      "import": "./dist/components/skeleton.js"
+    },
     "./hooks/controllable-state": {
       "types": "./dist/hooks/controllable-state.d.ts",
       "import": "./dist/hooks/controllable-state.js"

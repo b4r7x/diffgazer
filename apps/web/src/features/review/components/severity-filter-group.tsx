@@ -3,6 +3,7 @@ import { useEffect, useRef, type KeyboardEvent, type Ref } from "react";
 import type { ReviewSeverity } from "@diffgazer/core/schemas/review";
 import { SEVERITY_ORDER } from "@diffgazer/core/schemas/presentation";
 import { ToggleGroup, ToggleGroupItem } from "@diffgazer/ui/components/toggle-group";
+import { Button } from "@diffgazer/ui/components/button";
 import { SEVERITY_CONFIG } from "@/components/ui/severity/constants";
 
 export type SeverityFilter = ReadonlySet<ReviewSeverity>;
@@ -92,7 +93,7 @@ export function SeverityFilterGroup({
               value={sev}
               aria-label={`${label} severity, ${count} ${count === 1 ? "issue" : "issues"}, ${isActive ? "selected" : "not selected"}`}
               className={cn(
-                "h-5 min-h-0 min-w-fit px-1.5 text-[11px] inline-flex items-center whitespace-nowrap tabular-nums focus-visible:ring-0 focus-visible:outline-none",
+                "h-5 min-h-0 min-w-fit px-1.5 text-xs inline-flex items-center whitespace-nowrap tabular-nums focus-visible:ring-0 focus-visible:outline-none",
                 isActive && SEVERITY_CONFIG[sev].color,
                 isFocused && focusedIndex === index && "border-tui-blue bg-tui-selection",
               )}
@@ -103,9 +104,9 @@ export function SeverityFilterGroup({
         })}
       </ToggleGroup>
       {isFilterActive && (
-        <button
+        <Button
           ref={resetButtonRef}
-          type="button"
+          variant="secondary"
           data-diffgazer-navigation-item="button"
           data-value={RESET_FILTER_VALUE}
           tabIndex={isResetFocused ? 0 : -1}
@@ -117,12 +118,13 @@ export function SeverityFilterGroup({
           onKeyDown={onKeyDown}
           aria-label="Reset severity filter"
           className={cn(
-            "h-5 min-h-0 min-w-fit px-1.5 text-[11px] inline-flex items-center whitespace-nowrap font-mono border border-border bg-transparent text-foreground hover:bg-secondary cursor-pointer focus-visible:ring-0 focus-visible:outline-none",
+            "h-5 min-h-0 min-w-fit px-1.5 text-xs focus-visible:ring-0 focus-visible:outline-none",
             isResetFocused && "border-tui-blue bg-tui-selection",
           )}
+          bracket
         >
-          [Reset]
-        </button>
+          Reset
+        </Button>
       )}
     </div>
   );

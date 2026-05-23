@@ -126,7 +126,7 @@ export function ProviderList({
                 filterButtonProps?.onFocus();
                 onFilterFocus?.(index);
               }}
-              className="min-h-0 min-w-0 px-2 py-0.5 text-[10px]"
+              className="min-h-0 min-w-0 px-2 py-0.5 text-2xs"
             >
               {f.label}
             </ToggleGroupItem>
@@ -180,7 +180,7 @@ export function ProviderList({
                     <NavigationListMeta className="shrink-0">
                       <NavigationListBadge
                         variant={tierBadge === 'FREE' ? 'success' : 'neutral'}
-                        className="shrink-0 text-[9px]"
+                        className="shrink-0 text-3xs"
                       >
                         {tierBadge}
                       </NavigationListBadge>

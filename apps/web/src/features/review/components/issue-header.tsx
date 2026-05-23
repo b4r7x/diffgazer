@@ -1,4 +1,5 @@
 import { cn } from "@diffgazer/ui/lib/utils";
+import { Typography } from "@diffgazer/ui/components/typography";
 import type { ReviewSeverity } from "@diffgazer/core/schemas/review";
 import { SEVERITY_CONFIG } from "@/components/ui/severity/constants";
 
@@ -15,9 +16,9 @@ export function IssueHeader({ title, severity, file, line, className }: IssueHea
 
   return (
     <div className={cn("mb-6", className)}>
-      <h1 className={cn("text-xl font-bold mb-1", severityColor)}>
+      <Typography as="h1" size="xl" className={cn("mb-1", severityColor)}>
         {title}
-      </h1>
+      </Typography>
       <div className="text-xs text-tui-muted">
         Location: <span className="text-tui-fg">{file}:{line}</span>
       </div>

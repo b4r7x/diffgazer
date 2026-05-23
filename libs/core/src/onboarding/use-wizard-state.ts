@@ -31,6 +31,8 @@ export interface UseWizardStateResult {
   setProvider: (provider: AIProvider) => void;
   /** Clean up early-saved credentials on wizard cancel. */
   cleanupEarlySave: () => Promise<void>;
+  /** Mark early-save as consumed (e.g. after final save overwrites it). */
+  acknowledgeEarlySave: () => void;
 }
 
 export function useWizardState(
@@ -110,6 +112,10 @@ export function useWizardState(
     }
   }, [earlySave]);
 
+  const acknowledgeEarlySave = useCallback(() => {
+    earlySavedProviderRef.current = null;
+  }, []);
+
   return {
     wizardData,
     stepIndex,
@@ -124,5 +130,6 @@ export function useWizardState(
     updateData,
     setProvider,
     cleanupEarlySave,
+    acknowledgeEarlySave,
   };
 }

@@ -944,6 +944,142 @@ describe("NavigationListGroup", () => {
     )
     expect(await axe(container)).toHaveNoViolations()
   })
+
+  it("ArrowRight expands a collapsed tree group header", async () => {
+    render(
+      <NavigationList aria-label="Test nav">
+        <NavigationList.Group label="src" variant="tree" headerId="src-group" defaultExpanded={false}>
+          <NavigationList.Item id="one">
+            <NavigationList.Title>Button.tsx</NavigationList.Title>
+          </NavigationList.Item>
+        </NavigationList.Group>
+      </NavigationList>,
+    )
+
+    const listbox = screen.getByRole("listbox")
+    listbox.focus()
+
+    expect(screen.queryByText("Button.tsx")).not.toBeInTheDocument()
+
+    await userEvent.keyboard("{ArrowDown}")
+    expect(listbox).toHaveAttribute("aria-activedescendant", expect.stringContaining("src-group"))
+
+    await userEvent.keyboard("{ArrowRight}")
+    expect(screen.getByText("Button.tsx")).toBeInTheDocument()
+  })
+
+  it("ArrowLeft collapses an expanded tree group header", async () => {
+    render(
+      <NavigationList aria-label="Test nav">
+        <NavigationList.Group label="src" variant="tree" headerId="src-group" defaultExpanded={true}>
+          <NavigationList.Item id="one">
+            <NavigationList.Title>Button.tsx</NavigationList.Title>
+          </NavigationList.Item>
+        </NavigationList.Group>
+      </NavigationList>,
+    )
+
+    const listbox = screen.getByRole("listbox")
+    listbox.focus()
+
+    expect(screen.getByText("Button.tsx")).toBeInTheDocument()
+
+    await userEvent.keyboard("{ArrowDown}")
+    expect(listbox).toHaveAttribute("aria-activedescendant", expect.stringContaining("src-group"))
+
+    await userEvent.keyboard("{ArrowLeft}")
+    expect(screen.queryByText("Button.tsx")).not.toBeInTheDocument()
+  })
+
+  it("ArrowLeft on a non-group item does nothing special", async () => {
+    render(
+      <NavigationList aria-label="Test nav" defaultHighlighted="one">
+        <NavigationList.Group label="src" variant="tree" headerId="src-group">
+          <NavigationList.Item id="one">
+            <NavigationList.Title>Button.tsx</NavigationList.Title>
+          </NavigationList.Item>
+        </NavigationList.Group>
+      </NavigationList>,
+    )
+
+    const listbox = screen.getByRole("listbox")
+    listbox.focus()
+
+    expect(listbox).toHaveAttribute("aria-activedescendant", expect.stringContaining("-one"))
+
+    await userEvent.keyboard("{ArrowLeft}")
+    expect(listbox).toHaveAttribute("aria-activedescendant", expect.stringContaining("-one"))
+    expect(screen.getByText("Button.tsx")).toBeInTheDocument()
+  })
+
+  it("Enter toggles tree group header expansion", async () => {
+    render(
+      <NavigationList aria-label="Test nav">
+        <NavigationList.Group label="src" variant="tree" headerId="src-group" defaultExpanded={true}>
+          <NavigationList.Item id="one">
+            <NavigationList.Title>Button.tsx</NavigationList.Title>
+          </NavigationList.Item>
+        </NavigationList.Group>
+      </NavigationList>,
+    )
+
+    const listbox = screen.getByRole("listbox")
+    listbox.focus()
+
+    await userEvent.keyboard("{ArrowDown}")
+    expect(listbox).toHaveAttribute("aria-activedescendant", expect.stringContaining("src-group"))
+
+    await userEvent.keyboard("{Enter}")
+    expect(screen.queryByText("Button.tsx")).not.toBeInTheDocument()
+  })
+
+  it("tree group header does not fire onSelect", async () => {
+    const onSelect = vi.fn()
+    render(
+      <NavigationList aria-label="Test nav" onSelect={onSelect}>
+        <NavigationList.Group label="src" variant="tree" headerId="src-group">
+          <NavigationList.Item id="one">
+            <NavigationList.Title>Button.tsx</NavigationList.Title>
+          </NavigationList.Item>
+        </NavigationList.Group>
+      </NavigationList>,
+    )
+
+    const listbox = screen.getByRole("listbox")
+    listbox.focus()
+
+    await userEvent.keyboard("{ArrowDown}")
+    await userEvent.keyboard("{Enter}")
+
+    expect(onSelect).not.toHaveBeenCalled()
+  })
+
+  it("tree group header is navigable with ArrowDown/ArrowUp", async () => {
+    render(
+      <NavigationList aria-label="Test nav">
+        <NavigationList.Item id="before">
+          <NavigationList.Title>Before</NavigationList.Title>
+        </NavigationList.Item>
+        <NavigationList.Group label="src" variant="tree" headerId="src-group">
+          <NavigationList.Item id="one">
+            <NavigationList.Title>Button.tsx</NavigationList.Title>
+          </NavigationList.Item>
+        </NavigationList.Group>
+      </NavigationList>,
+    )
+
+    const listbox = screen.getByRole("listbox")
+    listbox.focus()
+
+    await userEvent.keyboard("{ArrowDown}")
+    expect(listbox).toHaveAttribute("aria-activedescendant", expect.stringContaining("-before"))
+
+    await userEvent.keyboard("{ArrowDown}")
+    expect(listbox).toHaveAttribute("aria-activedescendant", expect.stringContaining("src-group"))
+
+    await userEvent.keyboard("{ArrowDown}")
+    expect(listbox).toHaveAttribute("aria-activedescendant", expect.stringContaining("-one"))
+  })
 })
 
 describe("NavigationList indicator variants", () => {

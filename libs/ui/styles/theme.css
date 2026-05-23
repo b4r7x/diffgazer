@@ -108,6 +108,7 @@
   --radius: 0.25rem;
 }
 
+/* Light theme — available for package consumers via data-theme="light" */
 [data-theme="light"] {
   /* Primitive TUI Colors - Diffgazer Light Theme */
   --tui-bg: #f7f8f5;

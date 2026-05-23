@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { cn } from "@diffgazer/ui/lib/utils";
 import { Card } from "@diffgazer/ui/components/card";
+import { Typography } from "@diffgazer/ui/components/typography";
 
 export interface CardLayoutProps {
   title?: string;
@@ -32,9 +33,9 @@ export function CardLayout({
       <Card surface="stacked" size={size} className="border-tui-border bg-tui-bg">
         {header ?? (title && (
           <Card.Header className="border-tui-border bg-tui-selection/30 px-6 py-4">
-            <h1 className="text-xl font-bold text-tui-blue tracking-wide">
+            <Typography as="h1" size="xl" className="text-tui-blue tracking-wide">
               {title}
-            </h1>
+            </Typography>
             {subtitle && (
               <p className="text-sm text-tui-muted mt-1">{subtitle}</p>
             )}

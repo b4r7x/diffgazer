@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "@diffgazer/ui/lib/utils";
+import { Button } from "@diffgazer/ui/components/button";
 
 export type InfoFieldColor = "blue" | "violet" | "green" | "yellow" | "red" | "muted";
 
@@ -38,14 +39,14 @@ export function InfoField({
 
   if (onClick) {
     return (
-      <button
-        type="button"
-        className={cn("w-full text-left cursor-pointer hover:opacity-80 transition-opacity", className)}
+      <Button
+        variant="ghost"
+        className={cn("w-full text-left h-auto whitespace-normal p-0 justify-start hover:bg-transparent hover:opacity-80 transition-opacity", className)}
         onClick={onClick}
         aria-label={ariaLabel ?? `${label} settings`}
       >
         {content}
-      </button>
+      </Button>
     );
   }
 
