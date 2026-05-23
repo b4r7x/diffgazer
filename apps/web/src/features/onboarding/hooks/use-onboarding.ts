@@ -20,7 +20,7 @@ const STEPS: OnboardingStep[] = [
 const INITIAL_PROVIDER = AVAILABLE_PROVIDERS[0];
 
 const INITIAL_DATA: WizardData = {
-  secretsStorage: "file",
+  secretsStorage: null,
   provider: INITIAL_PROVIDER?.id ?? null,
   apiKey: "",
   inputMethod: "paste",

@@ -8,7 +8,11 @@ function withData(overrides: Partial<WizardData>): WizardData {
 }
 
 describe("canProceed", () => {
-  it("allows advancing from storage regardless of selection", () => {
+  it("blocks storage step when no storage method is selected", () => {
+    expect(canProceed("storage", withData({ secretsStorage: null }))).toBe(false);
+  });
+
+  it("allows storage step when a storage method is selected", () => {
     expect(canProceed("storage", withData({ secretsStorage: "file" }))).toBe(true);
     expect(canProceed("storage", withData({ secretsStorage: "keyring" }))).toBe(true);
   });

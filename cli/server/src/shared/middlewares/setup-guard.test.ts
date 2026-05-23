@@ -48,6 +48,7 @@ describe("requireSetup", () => {
     projectRoot = mkdtempSync(join(tmpdir(), "diffgazer-setup-project-"));
     mkdirSync(join(projectRoot, ".git"));
     process.env.DIFFGAZER_HOME = diffgazerHome;
+    process.env.DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT = "1";
     // Suppress fire-and-forget persistence warnings emitted after teardown removes the temp dir.
     // The config store dispatches persist*Async without awaiting, so a pending write can land
     // after rmSync; production keeps this UX-friendly fire-and-forget pattern unchanged.
@@ -57,6 +58,7 @@ describe("requireSetup", () => {
 
   afterEach(() => {
     delete process.env.DIFFGAZER_HOME;
+    delete process.env.DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT;
     rmSync(diffgazerHome, { recursive: true, force: true });
     rmSync(projectRoot, { recursive: true, force: true });
     warnSpy.mockRestore();

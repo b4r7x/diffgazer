@@ -103,31 +103,31 @@ export function validatePublicRegistryFresh(options: ValidatePublicRegistryFresh
   }
 
   for (const sourceItem of allSourceItems) {
-    // Hidden items may not appear in the public registry index but must
-    // still have a per-item JSON file on disk.
     const isHidden = (sourceItem.meta as Record<string, unknown> | undefined)?.hidden;
-    if (isHidden && !publicByName.has(sourceItem.name)) {
-      // Validate that the per-item JSON exists even if not listed in index
-      const publicItemPath = resolve(rootDir, publicRegistryDir, `${sourceItem.name}.json`);
-      ensureExists(publicItemPath, `public registry item JSON (${sourceItem.name})`);
-      continue;
-    }
     const expectedItem = transformSourceItem?.({
       itemName: sourceItem.name,
       item: sourceItem,
     }) ?? sourceItem;
-    const publicItem = publicByName.get(sourceItem.name);
-    if (!publicItem) {
-      throw new Error(
-        [
-          `Public registry missing item "${sourceItem.name}".`,
-          `Run: ${fixCommand}`,
-        ].join("\n"),
-      );
+
+    // Visible items must appear in the public registry index.
+    // Hidden items are stripped from the index by afterBuild transforms,
+    // so skip the index-level check for them.
+    if (!isHidden) {
+      const publicItem = publicByName.get(sourceItem.name);
+      if (!publicItem) {
+        throw new Error(
+          [
+            `Public registry missing item "${sourceItem.name}".`,
+            `Run: ${fixCommand}`,
+          ].join("\n"),
+        );
+      }
+
+      compareItemFields("", expectedItem, publicItem, sourceItem.name, fixCommand);
     }
 
-    compareItemFields("", expectedItem, publicItem, sourceItem.name, fixCommand);
-
+    // Both hidden and visible items must have a per-item JSON file on disk
+    // with correct content.
     const publicItemPath = resolve(rootDir, publicRegistryDir, `${sourceItem.name}.json`);
     ensureExists(publicItemPath, `public registry item JSON (${sourceItem.name})`);
 

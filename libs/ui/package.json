@@ -320,6 +320,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:types": "vitest --typecheck --typecheck.only --run",
+    "prepack": "pnpm run build",
     "prepublishOnly": "pnpm run build && pnpm run type-check && pnpm run test && pnpm run validate:artifacts"
   },
   "dependencies": {
@@ -328,7 +329,7 @@
     "tailwind-merge": "^3.4.0"
   },
   "peerDependencies": {
-    "@diffgazer/keys": ">=0.1.1",
+    "@diffgazer/keys": ">=0.2.0",
     "figlet": ">=1.10.0",
     "lowlight": ">=3.0.0",
     "react": ">=19.2.0",

@@ -4,7 +4,7 @@ import type {
   ConsumptionItemKind,
 } from "@diffgazer/registry"
 
-const REGISTRY_ORIGIN = "https://r.b4r7.dev"
+const REGISTRY_ORIGIN = import.meta.env.VITE_REGISTRY_ORIGIN ?? "https://r.b4r7.dev"
 
 /** Keys hooks that require KeyboardProvider and are only available through the npm package. */
 const KEYS_PACKAGE_ONLY = new Set([
@@ -39,9 +39,9 @@ function getUiPackageSubpath(itemKind: ConsumptionItemKind): "components" | "hoo
 }
 
 function getUiCopyPath(itemId: string, itemKind: ConsumptionItemKind): string {
-  if (itemKind === "component") return `components/${itemId}`
-  if (itemKind === "hook") return `hooks/use-${itemId}.ts`
-  return `lib/${itemId}.ts`
+  if (itemKind === "component") return `src/components/ui/${itemId}`
+  if (itemKind === "hook") return `src/hooks/use-${itemId}.ts`
+  return `src/lib/${itemId}.ts`
 }
 
 export function getConsumptionMetadata(

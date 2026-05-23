@@ -2,7 +2,7 @@ import { StorageSelectorContent } from "@/components/shared/storage-selector-con
 import type { SecretsStorage } from "@diffgazer/core/schemas/config";
 
 interface StorageStepProps {
-  value: SecretsStorage;
+  value: SecretsStorage | null;
   onChange: (value: SecretsStorage) => void;
   onCommit?: (value: SecretsStorage) => void;
   keyboardNavigation?: boolean;

@@ -14,6 +14,7 @@ import {
 import { errorResponse, zodErrorHandler } from "../../shared/lib/http/response.js";
 import { getProjectRoot } from "../../shared/lib/http/request.js";
 import { createBodyLimitMiddleware } from "../../shared/middlewares/body-limit.js";
+import { createRateLimitMiddleware } from "../../shared/middlewares/rate-limit.js";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import { SaveConfigRequestSchema } from "@diffgazer/core/schemas/config";
 import { ProviderParamSchema, ActivateProviderBodySchema } from "./schemas.js";
@@ -21,6 +22,7 @@ import { ProviderParamSchema, ActivateProviderBodySchema } from "./schemas.js";
 const configRouter = new Hono();
 
 const bodyLimitMiddleware = createBodyLimitMiddleware(50);
+const modelFetchLimit = createRateLimitMiddleware("config:models", { maxRequests: 30, windowMs: 60_000 });
 
 configRouter.get("/init", (c): Response => {
   const projectRoot = getProjectRoot(c);
@@ -57,7 +59,7 @@ configRouter.get("/providers", (c): Response => {
   return c.json(data);
 });
 
-configRouter.get("/provider/openrouter/models", async (c): Promise<Response> => {
+configRouter.get("/provider/openrouter/models", modelFetchLimit, async (c): Promise<Response> => {
   const result = await getOpenRouterModels();
   if (!result.ok) {
     const status = result.error.code === ErrorCode.API_KEY_MISSING ? 400 : 500;

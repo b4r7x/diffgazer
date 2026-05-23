@@ -53,6 +53,7 @@
     "test:watch": "vitest",
     "test:types": "vitest --typecheck --typecheck.only --run",
     "verify:registry-cleanup": "node ../../apps/docs/scripts/verify-registry-cleanup.mjs --scope @diffgazer/keys",
+    "prepack": "pnpm run build",
     "prepublishOnly": "pnpm run build && pnpm run type-check && pnpm run test && pnpm run validate:artifacts",
     "playground": "pnpm --filter playground dev"
   },

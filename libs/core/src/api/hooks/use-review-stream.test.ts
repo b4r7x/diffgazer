@@ -10,7 +10,12 @@ import { useReviewStream } from "./use-review-stream.js";
 import type { Result } from "@diffgazer/core/result";
 import { ok, err } from "@diffgazer/core/result";
 import type { StreamReviewError } from "@diffgazer/core/review";
+import type { ResumeReviewResult } from "../review.js";
 import { ReviewErrorCode } from "@diffgazer/core/schemas/review";
+
+function fakeResumeResult(reviewId = "r"): ResumeReviewResult {
+  return { result: { summary: "", issues: [] }, reviewId };
+}
 
 function createApi(overrides: Partial<BoundApi> = {}): BoundApi {
   return {
@@ -28,7 +33,7 @@ function createWrapper(api: BoundApi) {
 
 describe("useReviewStream", () => {
   it("exposes a resumed review id before the stream returns", async () => {
-    let resolveResume: (result: Result<void, StreamReviewError>) => void = () => {};
+    let resolveResume: (result: Result<ResumeReviewResult, StreamReviewError>) => void = () => {};
     const resumeReviewStream = vi.fn<BoundApi["resumeReviewStream"]>().mockReturnValue(
       new Promise((resolve) => {
         resolveResume = resolve;
@@ -49,7 +54,7 @@ describe("useReviewStream", () => {
     expect(result.current.state.isStreaming).toBe(true);
 
     await act(async () => {
-      resolveResume(ok(undefined));
+      resolveResume(ok(fakeResumeResult("active-review")));
       await resumePromise;
     });
 
@@ -59,7 +64,7 @@ describe("useReviewStream", () => {
   });
 
   it("stop() halts streaming while preserving the active review id", async () => {
-    let resolveResume: (result: Result<void, StreamReviewError>) => void = () => {};
+    let resolveResume: (result: Result<ResumeReviewResult, StreamReviewError>) => void = () => {};
     const resumeReviewStream = vi.fn<BoundApi["resumeReviewStream"]>().mockReturnValue(
       new Promise((resolve) => {
         resolveResume = resolve;
@@ -86,13 +91,13 @@ describe("useReviewStream", () => {
     expect(result.current.state.reviewId).toBe("stop-review");
 
     await act(async () => {
-      resolveResume(ok(undefined));
+      resolveResume(ok(fakeResumeResult("stop-review")));
       await resumePromise!;
     });
   });
 
   it("abort() clears the review id and halts streaming", async () => {
-    let resolveResume: (result: Result<void, StreamReviewError>) => void = () => {};
+    let resolveResume: (result: Result<ResumeReviewResult, StreamReviewError>) => void = () => {};
     const resumeReviewStream = vi.fn<BoundApi["resumeReviewStream"]>().mockReturnValue(
       new Promise((resolve) => {
         resolveResume = resolve;
@@ -119,7 +124,7 @@ describe("useReviewStream", () => {
     expect(result.current.state.reviewId).toBeNull();
 
     await act(async () => {
-      resolveResume(ok(undefined));
+      resolveResume(ok(fakeResumeResult("abort-review")));
       await resumePromise!;
     });
   });
@@ -143,8 +148,8 @@ describe("useReviewStream", () => {
   });
 
   it("older resume finishing does not null the newer controller ref", async () => {
-    let resolveFirst: (result: Result<void, StreamReviewError>) => void = () => {};
-    let resolveSecond: (result: Result<void, StreamReviewError>) => void = () => {};
+    let resolveFirst: (result: Result<ResumeReviewResult, StreamReviewError>) => void = () => {};
+    let resolveSecond: (result: Result<ResumeReviewResult, StreamReviewError>) => void = () => {};
     const resumeReviewStream = vi.fn<BoundApi["resumeReviewStream"]>()
       .mockReturnValueOnce(new Promise((r) => { resolveFirst = r; }))
       .mockReturnValueOnce(new Promise((r) => { resolveSecond = r; }));
@@ -174,7 +179,7 @@ describe("useReviewStream", () => {
     // second's controller. Before the fix, this would null the ref and a
     // subsequent stop() would have nothing to abort.
     await act(async () => {
-      resolveFirst(ok(undefined));
+      resolveFirst(ok(fakeResumeResult("first-review")));
       await firstPromise!;
     });
 
@@ -185,13 +190,13 @@ describe("useReviewStream", () => {
     expect(result.current.state.isStreaming).toBe(false);
 
     await act(async () => {
-      resolveSecond(ok(undefined));
+      resolveSecond(ok(fakeResumeResult("second-review")));
       await secondPromise!;
     });
   });
 
   it("cancel() halts streaming and calls cancelReviewSession on the server", async () => {
-    let resolveResume: (result: Result<void, StreamReviewError>) => void = () => {};
+    let resolveResume: (result: Result<ResumeReviewResult, StreamReviewError>) => void = () => {};
     const resumeReviewStream = vi.fn<BoundApi["resumeReviewStream"]>().mockReturnValue(
       new Promise((resolve) => {
         resolveResume = resolve;
@@ -219,7 +224,7 @@ describe("useReviewStream", () => {
     expect(cancelReviewSession).toHaveBeenCalledWith("cancel-review");
 
     await act(async () => {
-      resolveResume(ok(undefined));
+      resolveResume(ok(fakeResumeResult("cancel-review")));
       await resumePromise!;
     });
   });

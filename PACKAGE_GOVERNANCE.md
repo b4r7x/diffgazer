@@ -25,6 +25,16 @@ Artifact handoff:
 - `@diffgazer/docs prepare:generated` syncs artifacts from packages when resolvable and falls back to workspace artifacts outside CI.
 - Artifact validation is non-mutating and must fail on fingerprint drift, missing manifest inputs, stale/tampered copied artifact directories, stale docs-host sync outputs, and copied artifact mirror drift.
 
+## Artifact Packaging
+
+`dist/artifacts` directories in `@diffgazer/ui` and `@diffgazer/keys` are excluded from npm
+tarballs by design. These directories contain registry metadata used by the docs build
+pipeline — not consumer-facing code.
+
+The docs site always deploys from the monorepo workspace, where `dist/artifacts` is available
+after `pnpm run prepare:library-artifacts`. Deploying docs from published npm packages is not
+a supported path.
+
 ## Versioning
 
 Published packages use semantic versioning through changesets. The current package version is the `version` field in each package's `package.json`; do not duplicate current versions in docs.

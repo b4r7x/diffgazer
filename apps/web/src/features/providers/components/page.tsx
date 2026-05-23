@@ -147,10 +147,10 @@ export function ProvidersPage() {
       {selectedProvider && (
         <>
           <ApiKeyDialog
+            key={selectedProvider.id}
             open={dialogs.apiKeyOpen}
             onOpenChange={dialogs.setApiKeyOpen}
             providerName={selectedProvider.name}
-            providerId={selectedProvider.id}
             envVarName={PROVIDER_ENV_VARS[selectedProvider.id]}
             secretsStorage={secretsStorage}
             onSubmit={(_method, value) => handlers.saveApiKey(

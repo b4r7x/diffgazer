@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react"
+import { renderToStaticMarkup } from "react-dom/server"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it } from "vitest"
 import { axe } from "../../../testing/utils.js"
@@ -259,6 +260,50 @@ describe("Field", () => {
     const input = screen.getByRole("textbox", { name: "Email" })
 
     expect(input).toHaveAccessibleDescription("Use your work email.")
+  })
+
+  it("has aria-labelledby on the control during initial render (not after effect)", () => {
+    render(
+      <Field>
+        <Field.Label>Username</Field.Label>
+        <Field.Control>
+          <Input />
+        </Field.Control>
+      </Field>,
+    )
+
+    const input = screen.getByRole("textbox", { name: "Username" })
+    const fieldLabel = screen.getByText("Username")
+
+    expect(input).toHaveAttribute("aria-labelledby", fieldLabel.id)
+  })
+
+  it("emits aria-labelledby in SSR output (no effect required)", () => {
+    const html = renderToStaticMarkup(
+      <Field controlId="ssr-test">
+        <Field.Label>Username</Field.Label>
+        <Field.Control>
+          <Input />
+        </Field.Control>
+      </Field>,
+    )
+
+    expect(html).toMatch(/aria-labelledby="[^"]+"/)
+  })
+
+  it("omits aria-describedby when FieldDescription is not rendered", () => {
+    render(
+      <Field>
+        <Field.Label>Username</Field.Label>
+        <Field.Control>
+          <Input />
+        </Field.Control>
+      </Field>,
+    )
+
+    const input = screen.getByRole("textbox", { name: "Username" })
+
+    expect(input).not.toHaveAttribute("aria-describedby")
   })
 
   it("has no a11y violations across Field configurations", async () => {

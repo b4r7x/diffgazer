@@ -204,7 +204,7 @@ describe("docs-library source path mapping", () => {
     const meta = getConsumptionMetadata("ui", "compose-refs", "lib")
 
     expect(meta.packageImport).toBe("@diffgazer/ui/lib/compose-refs")
-    expect(meta.copyPath).toBe("lib/compose-refs.ts")
+    expect(meta.copyPath).toBe("src/lib/compose-refs.ts")
     expect(meta.dgaddName).toBe("ui/compose-refs")
     expect(meta.paths.copy.command).toBe("npx shadcn add https://r.b4r7.dev/r/ui/compose-refs.json")
     expect(meta.paths.dgadd.command).toBe("pnpm exec dgadd add ui/compose-refs")

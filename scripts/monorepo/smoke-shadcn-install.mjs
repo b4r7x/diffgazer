@@ -35,6 +35,13 @@ const uiItems = [
   "command-palette",
   "block-bar",
   "diff-view",
+  "menu",
+  "navigation-list",
+  "code-block",
+  "sidebar",
+  "tabs",
+  "accordion",
+  "stepper",
 ];
 
 function registryRouteFromUrl(value) {

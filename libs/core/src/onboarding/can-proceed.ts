@@ -3,7 +3,7 @@ import type { OnboardingStep, WizardData } from "./types.js";
 export function canProceed(step: OnboardingStep, data: WizardData): boolean {
   switch (step) {
     case "storage":
-      return true;
+      return data.secretsStorage !== null;
     case "provider":
       return data.provider !== null;
     case "api-key":

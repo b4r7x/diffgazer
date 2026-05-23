@@ -14,7 +14,6 @@ export interface ApiKeyDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   providerName: string;
-  providerId?: string;
   envVarName: string;
   secretsStorage?: SecretsStorage | null;
   onSubmit: (method: "paste" | "env", value: string) => Promise<void>;
@@ -24,7 +23,6 @@ export function ApiKeyDialog({
   open,
   onOpenChange,
   providerName,
-  providerId,
   envVarName,
   secretsStorage,
   onSubmit,
@@ -39,8 +37,12 @@ export function ApiKeyDialog({
     envVarName,
     onSubmit,
     onOpenChange,
-    resetKey: `${providerId ?? providerName}:${open}`,
   });
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) form.reset();
+    onOpenChange(nextOpen);
+  };
 
   const {
     focused,
@@ -59,11 +61,11 @@ export function ApiKeyDialog({
     isSubmitting: form.isSubmitting,
     inputRef,
     onSubmit: form.handleSubmit,
-    onClose: () => onOpenChange(false),
+    onClose: () => handleOpenChange(false),
   });
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-xl overflow-hidden border border-tui-border shadow-2xl">
         <DialogHeader marker="none" className="bg-tui-selection/50 px-4 py-3">
           <DialogTitle className="min-w-0 flex-1 w-auto text-tui-blue tracking-wide">

@@ -15,7 +15,7 @@ export const WIZARD_STEPS = [
 export type OnboardingStep = (typeof WIZARD_STEPS)[number];
 
 export interface WizardData {
-  secretsStorage: SecretsStorage;
+  secretsStorage: SecretsStorage | null;
   provider: AIProvider | null;
   apiKey: string;
   inputMethod: InputMethod;

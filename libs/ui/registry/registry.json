@@ -293,7 +293,8 @@
         },
         {
           "path": "registry/ui/shared/callout.css",
-          "type": "registry:ui"
+          "type": "registry:style",
+          "target": "~/styles/callout.css"
         }
       ]
     },
@@ -491,7 +492,8 @@
         },
         {
           "path": "registry/ui/shared/panel.css",
-          "type": "registry:ui"
+          "type": "registry:style",
+          "target": "~/styles/panel.css"
         }
       ]
     },

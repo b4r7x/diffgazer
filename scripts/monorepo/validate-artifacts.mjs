@@ -113,7 +113,7 @@ function validateUiPackageExports() {
 }
 
 function listPackedFiles(packageDir) {
-  const output = execFileSync("npm", ["pack", "--dry-run", "--json"], {
+  const output = execFileSync("npm", ["pack", "--dry-run", "--json", "--ignore-scripts"], {
     cwd: resolve(root, packageDir),
     env: { ...process.env, npm_config_cache: resolve(root, "node_modules/.cache/npm-pack") },
     encoding: "utf-8",

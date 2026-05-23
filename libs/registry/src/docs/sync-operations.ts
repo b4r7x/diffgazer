@@ -5,7 +5,7 @@ import {
   readFileSync,
   writeFileSync,
 } from "node:fs";
-import { basename, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
 import { ensureExists, resetDir, collectJsonFiles, resolveInside } from "../utils/fs.js";
 import { writeJson } from "../utils/json.js";
 import { defaultLogger, type Logger } from "../logger.js";
@@ -286,8 +286,12 @@ export function runDocsSyncPass(params: {
     assertSafeLibraryId(artifact.id, `Library id "${artifact.id}"`);
   }
 
-  resetDir(paths.contentDir);
-  resetDir(paths.libraryAssetsDir);
+  for (const artifact of artifacts) {
+    resetDir(join(paths.contentDir, artifact.id));
+  }
+  for (const artifact of artifacts) {
+    resetDir(join(paths.libraryAssetsDir, artifact.id));
+  }
   syncPrimaryArtifacts(
     primaryArtifact,
     paths.generatedDir,

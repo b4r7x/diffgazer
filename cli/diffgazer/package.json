@@ -42,7 +42,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:types": "vitest --typecheck --typecheck.only --run",
-    "start": "node bin/diffgazer.js"
+    "start": "node bin/diffgazer.js",
+    "prepublishOnly": "pnpm run build && pnpm run type-check && pnpm run test"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.13",
