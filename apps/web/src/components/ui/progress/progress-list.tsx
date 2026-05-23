@@ -2,7 +2,7 @@ import { type ReactNode } from 'react';
 import { cn } from '@diffgazer/ui/lib/utils';
 import { Stepper } from "@diffgazer/ui/components/stepper";
 import { ProgressStep } from './progress-step';
-import type { ProgressStepData as BaseProgressStepData } from '@diffgazer/core/schemas/ui';
+import type { ProgressStepData as BaseProgressStepData } from '@diffgazer/core/schemas/presentation';
 
 export interface ProgressStepData extends BaseProgressStepData {
   content?: ReactNode;

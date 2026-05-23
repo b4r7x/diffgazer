@@ -1,10 +1,11 @@
 import { useRef, useState, type KeyboardEvent } from "react";
-import { useRouter } from "@tanstack/react-router";
+import { useCanGoBack, useLocation, useRouter } from "@tanstack/react-router";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
-import type { Shortcut } from "@diffgazer/core/schemas/ui";
-import { SEVERITY_ORDER } from "@diffgazer/core/schemas/ui";
+import type { Shortcut } from "@diffgazer/core/schemas/presentation";
+import { SEVERITY_ORDER } from "@diffgazer/core/schemas/presentation";
 import { findNavigationItemByValue, getNavigationItems, useFocusZone, useKey, useScopedNavigation } from "@diffgazer/keys";
 import { usePageFooter } from "@diffgazer/core/footer";
+import { resolveBackAction } from "@/lib/back-navigation";
 import { useSeverityFilter } from "./use-severity-filter";
 import { useIssueSelection } from "./use-issue-selection";
 import { useIssueDetailsTabs } from "./use-issue-details-tabs";
@@ -17,6 +18,7 @@ const REVIEW_SCOPE = "review";
 
 interface UseReviewResultsKeyboardOptions {
   issues: ReviewIssue[];
+  initialIssueId?: string | null;
 }
 
 function getReviewResultsFooter(
@@ -69,8 +71,10 @@ function severityFilterToKey(filter: ReadonlySet<ReviewIssue["severity"]>): stri
   return Array.from(filter).sort().join(",");
 }
 
-export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOptions) {
+export function useReviewResultsKeyboard({ issues, initialIssueId }: UseReviewResultsKeyboardOptions) {
   const router = useRouter();
+  const canGoBack = useCanGoBack();
+  const { pathname } = useLocation();
   const [focusZone, setFocusZone] = useState<FocusZone>("list");
   const filterRef = useRef<HTMLDivElement>(null);
 
@@ -86,7 +90,7 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
   } = useSeverityFilter({ issues });
 
   const { selectedIssue, selectedIssueId, setSelectedIssueId, highlightedIssueId, listRef } =
-    useIssueSelection({ filteredIssues, sourceKey: severityFilterToKey(severityFilter) });
+    useIssueSelection({ filteredIssues, sourceKey: severityFilterToKey(severityFilter), initialIssueId });
 
   const { activeTab, setActiveTab, completedSteps, handleToggleStep, detailsScrollRef, moveTab, scrollDetails } =
     useIssueDetailsTabs({ selectedIssue });
@@ -182,7 +186,14 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
     enabled: focusZone === "list" && filteredIssues.length === 0,
   });
 
-  useKey("Escape", () => router.history.back(), { scope: REVIEW_SCOPE });
+  useKey("Escape", () => {
+    const action = resolveBackAction(pathname, canGoBack);
+    if (action.type === "navigate") {
+      void router.navigate({ to: action.to });
+    } else if (action.type === "history") {
+      router.history.back();
+    }
+  }, { scope: REVIEW_SCOPE });
 
   useKey("ArrowLeft", () => setFocusedFilterIndex(lastFilterIndex), {
     scope: REVIEW_SCOPE,

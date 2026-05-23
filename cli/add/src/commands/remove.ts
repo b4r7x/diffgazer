@@ -95,8 +95,12 @@ function expandRemoval(cwd: string, requestedNames: string[]): ExpansionPlan {
   const manifest = loadManifest(cwd);
   const requestedPublicNames = new Set(requestedNames.map((n) => parseInstallName(n).publicName));
   const removed = new Set<string>();
+  const manifestAbsent = Object.keys(manifest).length === 0;
+
   for (const name of requestedPublicNames) {
-    if (manifest[name]) removed.add(name);
+    // When manifest is absent, include the requested name anyway so the
+    // downstream file-resolution logic can reconstruct paths from the registry.
+    if (manifest[name] || manifestAbsent) removed.add(name);
   }
 
   let progressed = true;

@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { AgentExecution } from "@diffgazer/core/schemas/config";
-import type { Shortcut } from "@diffgazer/core/schemas/ui";
+import type { Shortcut } from "@diffgazer/core/schemas/presentation";
 import { getErrorMessage } from "@diffgazer/core/errors";
 import { Button } from "@diffgazer/ui/components/button";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
@@ -32,7 +32,7 @@ export function SettingsAgentExecutionPage() {
   const effectiveFocusedMode = focusedMode ?? effectiveMode;
 
   useScope("settings-agent-execution");
-  useKey("Escape", () => navigate({ to: "/settings" }));
+  useKey("Escape", () => navigate({ to: "/settings" }), { enabled: !isSaving });
 
   const isDirty = settings ? settings.agentExecution !== effectiveMode : false;
   const canSave = !isSaving && isDirty;

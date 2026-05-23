@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
-import type { IssueTab as TabId } from "@diffgazer/core/schemas/ui";
+import type { IssueTab as TabId } from "@diffgazer/core/schemas/presentation";
 
 interface UseIssueDetailsTabsOptions {
   selectedIssue: ReviewIssue | null;

@@ -20,13 +20,15 @@ export default function TooltipInteractiveExample() {
       <Tooltip>
         <TooltipTrigger>
           {(triggerProps) => (
-            <button
-              {...triggerProps}
-              className="border border-foreground/30 px-3 py-1 font-mono text-sm"
-              disabled
-            >
-              delete
-            </button>
+            <span {...triggerProps} tabIndex={0} role="button" aria-disabled="true">
+              <button
+                className="border border-foreground/30 px-3 py-1 font-mono text-sm"
+                disabled
+                tabIndex={-1}
+              >
+                delete
+              </button>
+            </span>
           )}
         </TooltipTrigger>
         <TooltipContent>Remove selected items</TooltipContent>

@@ -1,5 +1,5 @@
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
-import type { LensStats } from "@diffgazer/core/schemas/ui";
+import type { LensStats } from "@diffgazer/core/schemas/presentation";
 
 export function buildLensStats(issues: ReviewIssue[]): LensStats[] {
   const counts: Record<string, number> = {};

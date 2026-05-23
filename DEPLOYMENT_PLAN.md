@@ -1,0 +1,817 @@
+# Deployment Plan: diffgazer-workspace → VPS + Coolify
+
+## What We're Building
+
+We need to deploy 4 services from a pnpm/Turborepo monorepo onto a VPS
+running Coolify (latest). Each service gets its own subdomain under `b4r7.dev`.
+The domain is registered at DNS provider.
+
+| Service | Subdomain | What it is | Tech |
+|---|---|---|---|
+| **Registry** | `r.b4r7.dev` | Static shadcn-compatible JSON registry | Nginx static |
+| **Docs** | `docs.b4r7.dev` | Component library documentation | Node.js SSR (TanStack Start + Nitro) |
+| **Landing** | `diffgazer.b4r7.dev` | Product page for diffgazer CLI | Vite + React + @diffgazer/ui |
+| **Hub** | `b4r7.dev` | Portfolio / project hub (placeholder) | Nginx static (single page) |
+
+### Architecture Diagram
+
+```
+Internet
+    |
+    ▼
+VPS (Coolify)
+    |
+    ▼
+Traefik (managed by Coolify, auto-SSL via Let's Encrypt)
+    |
+    ├── r.b4r7.dev          → registry container (nginx, static JSON)
+    ├── docs.b4r7.dev       → docs container (node:22-alpine, Nitro SSR)
+    ├── diffgazer.b4r7.dev  → landing container (nginx, static SPA)
+    └── b4r7.dev            → hub container (nginx, single HTML page)
+```
+
+All 4 are separate Coolify Resources pointing to the same Git repository.
+Coolify auto-deploys on push to `main` (zero cost — built-in feature).
+
+### Single-Variable Domain Config
+
+The registry domain (`r.b4r7.dev`) is controlled from ONE place:
+
+```
+libs/registry/src/constants.ts  →  REGISTRY_ORIGIN
+```
+
+This constant feeds into the build pipeline:
+1. `pnpm run prepare:artifacts` reads it
+2. Generates all 49 UI + 5 keys registry JSON files with correct URLs
+3. Docs `consumption-metadata.ts` imports it for install commands
+
+To change the registry domain in the future:
+1. Edit `REGISTRY_ORIGIN` in `libs/registry/src/constants.ts`
+2. Run `pnpm run prepare:artifacts`
+3. Commit the regenerated JSON files
+4. Push → Coolify auto-deploys
+
+The docs domain (`docs.b4r7.dev`) is controlled via:
+- Build-time env var `VITE_PUBLIC_ORIGIN` set in Coolify Resource settings
+- Flows to `seo.ts`, `generate-sitemap.mjs`
+- `robots.txt` must be updated manually (static file)
+
+---
+
+## Prerequisites
+
+- [ ] VPS with Coolify installed (latest)
+- [ ] Domain `b4r7.dev` registered at DNS provider
+- [ ] Git repo accessible from VPS (GitHub, public or with deploy key)
+- [ ] SSH access to VPS for initial setup
+
+---
+
+## Step 1: DNS Configuration (DNS provider Panel)
+
+Add these DNS records in the hosting provider domain management panel:
+
+```
+Type    Name    Value           TTL
+A       @       <VPS_IP>        3600
+A       *       <VPS_IP>        3600
+```
+
+The wildcard `*` record covers all subdomains (`r`, `docs`, `diffgazer`, and any future ones).
+
+Alternatively, if wildcard is not preferred, add individual records:
+
+```
+Type    Name        Value           TTL
+A       @           <VPS_IP>        3600
+A       r           <VPS_IP>        3600
+A       docs        <VPS_IP>        3600
+A       diffgazer   <VPS_IP>        3600
+```
+
+**Wait for DNS propagation** (usually 5-30 minutes with hosting provider).
+Verify: `host r.b4r7.dev` should return the VPS IP.
+
+---
+
+## Step 2: Code Changes (in the monorepo, before deploying)
+
+### 2.1: Change REGISTRY_ORIGIN
+
+File: `libs/registry/src/constants.ts`
+
+Change:
+```ts
+export const REGISTRY_ORIGIN = "https://docs.diffgazer.b4r7.dev";
+```
+To:
+```ts
+export const REGISTRY_ORIGIN = "https://r.b4r7.dev";
+```
+
+### 2.2: Update docs domain references
+
+**File: `apps/docs/src/lib/seo.ts`**
+Change `DEFAULT_ORIGIN` to `"https://docs.b4r7.dev"`.
+Note: this is also overridable via `VITE_PUBLIC_ORIGIN` env var at build time.
+
+**File: `apps/docs/scripts/generate-sitemap.mjs`**
+Change `DEFAULT_ORIGIN` to `"https://docs.b4r7.dev"`.
+
+**File: `apps/docs/public/robots.txt`**
+Change sitemap URL to `https://docs.b4r7.dev/sitemap.xml`.
+
+**File: `apps/docs/src/lib/consumption-metadata.ts`**
+The shadcn install command URLs must use `REGISTRY_ORIGIN` from `@diffgazer/registry`.
+Replace the two hardcoded `https://docs.diffgazer.b4r7.dev/r/...` strings with:
+
+```ts
+import { REGISTRY_ORIGIN } from "@diffgazer/registry";
+// ...
+`npx shadcn@latest add ${REGISTRY_ORIGIN}/ui/${itemId}.json`
+`npx shadcn@latest add ${REGISTRY_ORIGIN}/keys/${registryItemId}.json`
+```
+
+If `@diffgazer/registry` is not a dependency of `apps/docs`, add it (it's already a workspace package and already in deps).
+
+**File: `Dockerfile`** (root, for docs)
+Change ARG default:
+```dockerfile
+ARG REGISTRY_ORIGIN=https://r.b4r7.dev
+```
+
+**File: `docker-compose.yml`** (root)
+Change default:
+```yaml
+REGISTRY_ORIGIN: ${REGISTRY_ORIGIN:-https://r.b4r7.dev}
+```
+
+### 2.3: Regenerate all registry artifacts
+
+```sh
+pnpm run prepare:artifacts
+```
+
+This regenerates all `libs/ui/public/r/*.json` and `libs/keys/public/r/*.json` with
+the new `r.b4r7.dev` URLs in `registryDependencies`.
+
+Verify a regenerated file:
+```sh
+grep "r.b4r7.dev" libs/ui/public/r/button.json
+# Should show the new domain in registryDependencies URLs
+```
+
+### 2.4: Create deployment Dockerfiles
+
+**File: `deploy/registry.Dockerfile`**
+
+```dockerfile
+# Stage 1: Build registry artifacts
+FROM node:22-alpine AS builder
+
+RUN corepack enable && corepack prepare pnpm@10.28.2 --activate
+RUN apk add --no-cache git
+
+WORKDIR /app
+
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml turbo.json ./
+COPY libs/ libs/
+COPY scripts/ scripts/
+COPY cli/add/ cli/add/
+
+RUN pnpm install --frozen-lockfile
+
+RUN pnpm --filter @diffgazer/registry build \
+ && pnpm --filter @diffgazer/core build \
+ && pnpm --filter @diffgazer/keys build \
+ && pnpm --filter @diffgazer/ui build
+
+# Stage 2: Serve static JSON
+FROM nginx:1.27-alpine AS runtime
+
+COPY --from=builder /app/libs/ui/public/r/ /usr/share/nginx/html/ui/
+COPY --from=builder /app/libs/keys/public/r/ /usr/share/nginx/html/keys/
+COPY deploy/registry-nginx.conf /etc/nginx/conf.d/default.conf
+
+# Security: remove default nginx page, run as non-root
+RUN rm -rf /usr/share/nginx/html/index.html \
+ && rm -rf /usr/share/nginx/html/50x.html \
+ && chown -R nginx:nginx /usr/share/nginx/html
+
+EXPOSE 80
+
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+  CMD wget -q --spider http://localhost/ui/registry.json || exit 1
+```
+
+**File: `deploy/registry-nginx.conf`**
+
+```nginx
+server {
+    listen 80;
+    server_name _;
+    root /usr/share/nginx/html;
+
+    # Security headers
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    location / {
+        # CORS — required for shadcn CLI and npx fetches
+        add_header Access-Control-Allow-Origin "*" always;
+        add_header Access-Control-Allow-Methods "GET, HEAD, OPTIONS" always;
+        add_header Access-Control-Allow-Headers "Content-Type" always;
+
+        # Cache — registry JSON changes on deploy, not per-request
+        add_header Cache-Control "public, max-age=3600, s-maxage=86400" always;
+
+        # Content type
+        types { application/json json; }
+        default_type application/json;
+
+        # Handle CORS preflight
+        if ($request_method = OPTIONS) {
+            add_header Access-Control-Allow-Origin "*";
+            add_header Access-Control-Allow-Methods "GET, HEAD, OPTIONS";
+            add_header Access-Control-Allow-Headers "Content-Type";
+            add_header Content-Length 0;
+            return 204;
+        }
+
+        # Only allow GET and HEAD
+        limit_except GET HEAD OPTIONS {
+            deny all;
+        }
+    }
+
+    # Block everything that's not /ui/ or /keys/
+    location = / { return 404; }
+    location = /favicon.ico { return 204; }
+}
+```
+
+**File: `deploy/landing.Dockerfile`**
+
+```dockerfile
+# Stage 1: Build landing page
+FROM node:22-alpine AS builder
+
+RUN corepack enable && corepack prepare pnpm@10.28.2 --activate
+
+WORKDIR /app
+
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml turbo.json ./
+COPY apps/landing/ apps/landing/
+COPY libs/ libs/
+
+RUN pnpm install --frozen-lockfile
+
+RUN pnpm --filter @diffgazer/core build \
+ && pnpm --filter @diffgazer/keys build \
+ && pnpm --filter @diffgazer/ui build \
+ && pnpm --filter @diffgazer/landing build
+
+# Stage 2: Serve static SPA
+FROM nginx:1.27-alpine AS runtime
+
+COPY --from=builder /app/apps/landing/dist /usr/share/nginx/html
+COPY deploy/spa-nginx.conf /etc/nginx/conf.d/default.conf
+
+RUN chown -R nginx:nginx /usr/share/nginx/html
+
+EXPOSE 80
+
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+  CMD wget -q --spider http://localhost/ || exit 1
+```
+
+**File: `deploy/hub.Dockerfile`**
+
+```dockerfile
+# Simple static page — no build step needed
+FROM nginx:1.27-alpine AS runtime
+
+COPY apps/hub/public/ /usr/share/nginx/html/
+COPY deploy/spa-nginx.conf /etc/nginx/conf.d/default.conf
+
+RUN chown -R nginx:nginx /usr/share/nginx/html
+
+EXPOSE 80
+
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+  CMD wget -q --spider http://localhost/ || exit 1
+```
+
+**File: `deploy/spa-nginx.conf`** (shared by landing and hub)
+
+```nginx
+server {
+    listen 80;
+    server_name _;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Security headers
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    # SPA fallback
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Cache static assets aggressively
+    location ~* \.(js|css|png|jpg|gif|ico|svg|woff2?|ttf|eot)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+}
+```
+
+### 2.5: Create apps/landing (minimal diffgazer product page)
+
+```
+apps/landing/
+  package.json
+  vite.config.ts
+  tsconfig.json
+  index.html
+  src/
+    main.tsx
+    App.tsx
+    styles/
+      index.css
+```
+
+**File: `apps/landing/package.json`**
+
+```json
+{
+  "name": "@diffgazer/landing",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@diffgazer/ui": "workspace:*",
+    "@tailwindcss/vite": "^4.3.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "tailwindcss": "^4.3.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.13",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.3",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1"
+  }
+}
+```
+
+**File: `apps/landing/vite.config.ts`**
+
+```ts
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
+
+export default defineConfig({
+  plugins: [react(), tailwindcss()],
+  build: { outDir: "dist" },
+});
+```
+
+**File: `apps/landing/tsconfig.json`**
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "outDir": "dist",
+    "rootDir": "src"
+  },
+  "include": ["src"]
+}
+```
+
+**File: `apps/landing/index.html`**
+
+```html
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Diffgazer — AI Code Review for Your Terminal</title>
+    <meta name="description" content="Diffgazer is a local-first AI code review tool that runs in your terminal. Install it, point it at a repo, get structured feedback." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+```
+
+**File: `apps/landing/src/main.tsx`**
+
+```tsx
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import { App } from "./App";
+import "./styles/index.css";
+
+createRoot(document.getElementById("root")!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+);
+```
+
+**File: `apps/landing/src/styles/index.css`**
+
+```css
+@import "tailwindcss";
+@import "@diffgazer/ui/theme-base.css";
+@import "@diffgazer/ui/theme.css";
+@import "@diffgazer/ui/styles.css";
+@source "../";
+```
+
+**File: `apps/landing/src/App.tsx`**
+
+Build a simple landing page using @diffgazer/ui components (Panel, Button, Badge, etc).
+This is a placeholder — the user will build it out later. For now, just enough to verify
+that @diffgazer/ui renders correctly in a standalone app:
+
+```tsx
+export function App() {
+  return (
+    <div className="min-h-screen bg-background font-mono text-foreground">
+      <main className="mx-auto max-w-2xl px-4 py-16">
+        <h1 className="text-2xl font-bold text-tui-text">diffgazer</h1>
+        <p className="mt-4 text-tui-dim">
+          AI code review for your terminal. Local-first. Privacy-respecting.
+        </p>
+        <div className="mt-8 flex gap-4">
+          <code className="rounded border border-tui-border bg-tui-surface-1 px-3 py-2 text-sm text-tui-blue">
+            npm install -g diffgazer
+          </code>
+        </div>
+        <div className="mt-8">
+          <a
+            href="https://docs.b4r7.dev"
+            className="text-tui-blue underline hover:text-tui-text"
+          >
+            Documentation →
+          </a>
+        </div>
+      </main>
+    </div>
+  );
+}
+```
+
+### 2.6: Create apps/hub (minimal portfolio placeholder)
+
+```
+apps/hub/
+  public/
+    index.html
+```
+
+**File: `apps/hub/public/index.html`**
+
+```html
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>b4r7</title>
+    <style>
+      * { margin: 0; box-sizing: border-box; }
+      body {
+        font-family: "JetBrains Mono", monospace;
+        background: #0a0a0a; color: #e0e0e0;
+        display: flex; align-items: center; justify-content: center;
+        min-height: 100vh; padding: 2rem;
+      }
+      main { max-width: 480px; }
+      h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem; }
+      p { color: #888; font-size: 0.875rem; line-height: 1.6; }
+      a { color: #7aa2f7; text-decoration: underline; }
+      a:hover { color: #e0e0e0; }
+      ul { list-style: none; padding: 0; margin-top: 1.5rem; }
+      li { margin-bottom: 0.75rem; }
+      li::before { content: "> "; color: #555; }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <main>
+      <h1>b4r7</h1>
+      <p>Developer tools and open source projects.</p>
+      <ul>
+        <li><a href="https://diffgazer.b4r7.dev">diffgazer</a> — AI code review CLI</li>
+        <li><a href="https://docs.b4r7.dev">docs</a> — component library & keyboard hooks</li>
+        <li><a href="https://github.com/b4r7x">github</a></li>
+      </ul>
+    </main>
+  </body>
+</html>
+```
+
+No package.json needed — this is raw HTML served by nginx.
+
+### 2.7: Update turbo.json
+
+Add task entries for the new apps:
+
+```json
+"@diffgazer/landing#build": {
+  "dependsOn": ["^build"],
+  "outputs": ["dist/**"]
+}
+```
+
+No turbo entry needed for hub (no build step).
+
+### 2.8: Update root package.json scripts
+
+Add convenience scripts:
+
+```json
+"landing:dev": "pnpm --filter @diffgazer/landing dev",
+"landing:build": "turbo run build --filter=@diffgazer/landing"
+```
+
+### 2.9: Commit everything
+
+```sh
+git add deploy/ apps/landing/ apps/hub/
+git add libs/registry/src/constants.ts
+git add libs/ui/public/r/ libs/keys/public/r/
+git add apps/docs/src/lib/seo.ts
+git add apps/docs/src/lib/consumption-metadata.ts
+git add apps/docs/scripts/generate-sitemap.mjs
+git add apps/docs/public/robots.txt
+git add Dockerfile docker-compose.yml
+git add turbo.json package.json
+git commit -m "feat: deployment setup for Coolify with r.b4r7.dev registry"
+```
+
+---
+
+## Step 3: Coolify Configuration
+
+### 3.1: Connect Git Repository
+
+In Coolify dashboard:
+1. Go to Sources → Add Git Source
+2. Connect to GitHub (or add the repo URL directly)
+3. Authenticate with a deploy key or GitHub App
+
+### 3.2: Create Resource — Registry (r.b4r7.dev)
+
+1. New Resource → Application → Select the git repo
+2. Settings:
+   - **Name**: `registry`
+   - **Build Pack**: Dockerfile
+   - **Base Directory**: `/`
+   - **Dockerfile Location**: `deploy/registry.Dockerfile`
+   - **Domain**: `r.b4r7.dev`
+   - **Port**: `80`
+   - **Watch Paths**: `libs/ui/public/r/**,libs/keys/public/r/**,deploy/registry*`
+   - **Auto Deploy**: Enabled
+
+3. Advanced:
+   - **Health Check Path**: `/ui/registry.json`
+
+### 3.3: Create Resource — Docs (docs.b4r7.dev)
+
+1. New Resource → Application → Select the git repo
+2. Settings:
+   - **Name**: `docs`
+   - **Build Pack**: Dockerfile
+   - **Base Directory**: `/`
+   - **Dockerfile Location**: `Dockerfile`
+   - **Domain**: `docs.b4r7.dev`
+   - **Port**: `3000`
+   - **Watch Paths**: `apps/docs/**,libs/**,scripts/**`
+   - **Auto Deploy**: Enabled
+
+3. Environment Variables (Build):
+   - `REGISTRY_ORIGIN` = `https://r.b4r7.dev`
+   - `VITE_PUBLIC_ORIGIN` = `https://docs.b4r7.dev`
+
+4. Environment Variables (Runtime):
+   - `NODE_ENV` = `production`
+   - `PORT` = `3000`
+
+### 3.4: Create Resource — Landing (diffgazer.b4r7.dev)
+
+1. New Resource → Application → Select the git repo
+2. Settings:
+   - **Name**: `landing`
+   - **Build Pack**: Dockerfile
+   - **Base Directory**: `/`
+   - **Dockerfile Location**: `deploy/landing.Dockerfile`
+   - **Domain**: `diffgazer.b4r7.dev`
+   - **Port**: `80`
+   - **Watch Paths**: `apps/landing/**`
+   - **Auto Deploy**: Enabled
+
+### 3.5: Create Resource — Hub (b4r7.dev)
+
+1. New Resource → Application → Select the git repo
+2. Settings:
+   - **Name**: `hub`
+   - **Build Pack**: Dockerfile
+   - **Base Directory**: `/`
+   - **Dockerfile Location**: `deploy/hub.Dockerfile`
+   - **Domain**: `b4r7.dev`
+   - **Port**: `80`
+   - **Watch Paths**: `apps/hub/**`
+   - **Auto Deploy**: Enabled
+
+### 3.6: SSL Certificates
+
+Coolify + Traefik handle Let's Encrypt automatically per domain.
+If using a wildcard A record, Coolify can also issue a wildcard certificate
+for `*.b4r7.dev` — check Coolify Settings → Server → Wildcard Domain.
+
+---
+
+## Step 4: Deploy & Verify
+
+### 4.1: Trigger Initial Deploy
+
+Push to `main` triggers all 4 Resources to build and deploy.
+Or trigger manually from Coolify dashboard per Resource.
+
+### 4.2: Verification Checklist
+
+```sh
+# Registry — must return JSON with correct registryDependencies URLs
+curl -s https://r.b4r7.dev/ui/registry.json | head -20
+curl -s https://r.b4r7.dev/keys/registry.json | head -20
+curl -s https://r.b4r7.dev/ui/button.json | jq '.registryDependencies'
+
+# Docs — must return HTML
+curl -sI https://docs.b4r7.dev | head -5
+
+# Landing — must return HTML
+curl -sI https://diffgazer.b4r7.dev | head -5
+
+# Hub — must return HTML
+curl -sI https://b4r7.dev | head -5
+
+# SSL — all must be valid
+echo | openssl s_client -servername r.b4r7.dev -connect r.b4r7.dev:443 2>/dev/null | openssl x509 -noout -dates
+
+# CORS — registry must return Access-Control-Allow-Origin: *
+curl -sI https://r.b4r7.dev/ui/button.json | grep -i access-control
+
+# shadcn install test (the real proof)
+mkdir /tmp/shadcn-test && cd /tmp/shadcn-test
+npx shadcn@latest add https://r.b4r7.dev/ui/button.json
+# Should download and create the button component files
+```
+
+### 4.3: Update Smoke Tests
+
+After deployment is verified, update the smoke test origin:
+
+```sh
+# In scripts/monorepo/smoke-shadcn-install.mjs, change the registry URL
+# to use https://r.b4r7.dev instead of the old domain
+```
+
+---
+
+## Step 5: Post-Deploy Cleanup
+
+- [ ] Update `README.md` — change all install command URLs to `r.b4r7.dev`
+- [ ] Update `libs/ui/README.md` — same
+- [ ] Update `libs/keys/README.md` — same
+- [ ] Update `PACKAGE_GOVERNANCE.md` — mark hosted registry as live
+- [ ] Run `pnpm run smoke:shadcn` with new URLs
+- [ ] Verify `npx shadcn add https://r.b4r7.dev/ui/button.json` works from a clean project
+
+---
+
+## Security Checklist
+
+- [ ] Coolify dashboard NOT accessible on a public port without auth
+- [ ] Coolify admin password changed from default
+- [ ] SSH key auth only (no password SSH) on VPS
+- [ ] UFW firewall: allow 80, 443, 22 only
+- [ ] Registry nginx: GET/HEAD/OPTIONS only (POST/PUT/DELETE denied)
+- [ ] Registry nginx: X-Content-Type-Options, X-Frame-Options headers set
+- [ ] Docs container: runs as non-root user
+- [ ] No `.env` files or secrets committed to repo
+- [ ] Docker images use specific version tags (nginx:1.27-alpine, not :latest)
+- [ ] Health checks configured on all containers
+
+---
+
+## Coolify-Specific Notes
+
+### Watch Paths (selective redeploy)
+
+Coolify supports Watch Paths — only files matching the pattern trigger a redeploy.
+This prevents the "push to docs → registry redeploys" problem.
+
+If Watch Paths are not available in your Coolify version, all 4 Resources will
+redeploy on every push. This is safe (idempotent) but wastes build time.
+
+### Resource Limits
+
+On a VPS with limited RAM, set container limits in Coolify:
+
+| Resource | CPU Limit | Memory Limit |
+|---|---|---|
+| registry | 0.25 | 64MB |
+| docs | 1.0 | 512MB |
+| landing | 0.25 | 64MB |
+| hub | 0.1 | 32MB |
+
+The docs container needs the most resources (Node.js SSR).
+Registry, landing, and hub are nginx serving static files — minimal resources.
+
+### Custom Networks
+
+Do NOT define custom Docker networks in docker-compose or Dockerfiles.
+Coolify manages Traefik networking automatically. Custom networks cause
+intermittent HTTPS outages per Coolify docs.
+
+---
+
+## File Inventory (what to create)
+
+New files:
+```
+deploy/
+  registry.Dockerfile
+  registry-nginx.conf
+  landing.Dockerfile
+  hub.Dockerfile
+  spa-nginx.conf
+apps/landing/
+  package.json
+  vite.config.ts
+  tsconfig.json
+  index.html
+  src/main.tsx
+  src/App.tsx
+  src/styles/index.css
+apps/hub/
+  public/index.html
+```
+
+Modified files:
+```
+libs/registry/src/constants.ts          (REGISTRY_ORIGIN → r.b4r7.dev)
+apps/docs/src/lib/seo.ts               (DEFAULT_ORIGIN → docs.b4r7.dev)
+apps/docs/src/lib/consumption-metadata.ts  (import REGISTRY_ORIGIN)
+apps/docs/scripts/generate-sitemap.mjs  (DEFAULT_ORIGIN → docs.b4r7.dev)
+apps/docs/public/robots.txt            (sitemap URL → docs.b4r7.dev)
+Dockerfile                             (ARG default → r.b4r7.dev)
+docker-compose.yml                     (env default → r.b4r7.dev)
+turbo.json                             (add landing build task)
+package.json                           (add landing convenience scripts)
+libs/ui/public/r/*.json                (regenerated — 49 files)
+libs/keys/public/r/*.json              (regenerated — 5 files)
+```
+
+---
+
+## Estimated Timeline
+
+| Phase | Time |
+|---|---|
+| DNS setup | 5 min + 30 min propagation |
+| Code changes (step 2) | 30-60 min |
+| Coolify Resources setup (step 3) | 20 min |
+| First deploy + debug | 30-60 min |
+| Verification (step 4) | 15 min |
+| Post-deploy cleanup (step 5) | 15 min |
+| **Total** | **~2-3 hours** |

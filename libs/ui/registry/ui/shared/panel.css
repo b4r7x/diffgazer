@@ -182,7 +182,7 @@
   [data-slot="panel"][data-frame="surface"] {
     background: var(--surface-1);
     border: 1px solid transparent;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    box-shadow: inset 0 1px 0 color-mix(in oklab, var(--foreground) 4%, transparent);
   }
   [data-slot="panel"][data-frame="surface"] [data-slot="panel-header"] {
     border-block-end: 1px solid var(--panel-hairline);

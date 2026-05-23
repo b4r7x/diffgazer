@@ -20,5 +20,14 @@ export const requireRepoAccess = async (
     );
   }
 
+  if (trust.repoRoot !== projectRoot) {
+    return errorResponse(
+      c,
+      "Trust was granted for a different repository root. Re-grant trust for this directory.",
+      ErrorCode.TRUST_REQUIRED,
+      403
+    );
+  }
+
   await next();
 };

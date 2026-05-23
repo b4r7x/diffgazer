@@ -7,9 +7,10 @@
     "class-variance-authority"
   ],
   "registryDependencies": [
-    "https://docs.diffgazer.b4r7.dev/r/ui/theme.json",
-    "https://docs.diffgazer.b4r7.dev/r/ui/step-status.json",
-    "https://docs.diffgazer.b4r7.dev/r/ui/stepper-variants.json"
+    "https://r.b4r7.dev/r/ui/theme.json",
+    "https://r.b4r7.dev/r/ui/step-status.json",
+    "https://r.b4r7.dev/r/ui/stepper-variants.json",
+    "https://r.b4r7.dev/r/ui/utils.json"
   ],
   "files": [
     {

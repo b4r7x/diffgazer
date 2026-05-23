@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { SeverityCounts } from "@diffgazer/core/schemas/ui";
+import type { SeverityCounts } from "@diffgazer/core/schemas/presentation";
 import { makeIssue } from "@/testing";
 import { HistoryInsightsPane } from "./history-insights-pane";
 

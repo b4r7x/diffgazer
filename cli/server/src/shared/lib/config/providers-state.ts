@@ -91,6 +91,10 @@ export function isFileStorage(state: ConfigState): boolean {
   return (state.settings.secretsStorage ?? "file") === "file";
 }
 
+export function isStorageConfigured(state: ConfigState): boolean {
+  return state.settings.secretsStorage !== null;
+}
+
 export function fileHasSecret(
   secretsState: SecretsState,
   providerId: string,

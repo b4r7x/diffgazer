@@ -69,7 +69,7 @@ describe("config state", () => {
     expect(loadSecrets()).toEqual({ providers: { gemini: "key-123" } });
   });
 
-  it("normalizes trust capabilities while preserving stored values", async () => {
+  it("validates trust records and drops invalid entries while preserving valid ones", async () => {
     await writeJson("trust.json", {
       projects: {
         "proj-1": {
@@ -79,18 +79,21 @@ describe("config state", () => {
         },
         "proj-2": {
           projectId: "proj-2",
-          projectPath: "/proj-2",
+          repoRoot: "/proj-2",
+          trustedAt: "2024-01-01T00:00:00.000Z",
           capabilities: { readFiles: true, runCommands: false },
+          trustMode: "persistent",
         },
       },
     });
     const { loadTrust } = await loadState();
 
-    expect(loadTrust()).toMatchObject({
-      projects: {
-        "proj-1": { capabilities: { readFiles: false, runCommands: false } },
-        "proj-2": { capabilities: { readFiles: true, runCommands: false } },
-      },
+    const trust = loadTrust();
+    // proj-1 is dropped because it lacks required fields (repoRoot, trustedAt, trustMode)
+    expect(trust.projects["proj-1"]).toBeUndefined();
+    // proj-2 is valid and preserved
+    expect(trust.projects["proj-2"]).toMatchObject({
+      capabilities: { readFiles: true, runCommands: false },
     });
   });
 

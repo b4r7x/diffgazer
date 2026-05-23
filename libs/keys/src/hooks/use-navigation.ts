@@ -200,8 +200,8 @@ export function useNavigationCore<TValue extends string = string>({
  *
  * Returns an `onKeyDown` handler that moves the highlighted/focused item
  * with arrow, Home, and End keys, plus `highlight` / `isHighlighted` helpers
- * for visual state. Pair `role` with the matching `data-nav-item` value on
- * each child (or use `getNavigationItemProps`).
+ * for visual state. Pair `role` with the matching `data-diffgazer-navigation-item`
+ * value on each child (or use `getNavigationItemProps`).
  *
  * @example
  * ```tsx
@@ -220,7 +220,7 @@ export function useNavigationCore<TValue extends string = string>({
  *         <li
  *           key={file.id}
  *           role="option"
- *           data-nav-item="option"
+ *           data-diffgazer-navigation-item="option"
  *           data-value={file.id}
  *           aria-selected={highlighted === file.id}
  *           tabIndex={-1}

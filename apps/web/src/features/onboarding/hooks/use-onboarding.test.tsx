@@ -237,7 +237,7 @@ describe("OnboardingWizard", () => {
       });
       expect(mockSaveConfig).toHaveBeenCalledWith({
         provider: "gemini",
-        apiKey: "env",
+        apiKey: { kind: "env", varName: "GOOGLE_API_KEY" },
         model: "gemini-2.5-pro",
       });
     });

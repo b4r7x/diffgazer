@@ -1,4 +1,4 @@
-import { createContext, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
+import { createContext, useCallback, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 import type { ResolvedTheme, ThemeContextValue, WebTheme } from "@/types/theme";
 import { useSettings, useSaveSettings } from "@diffgazer/core/api/hooks";
 
@@ -58,17 +58,17 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     document.documentElement.setAttribute("data-theme", resolved);
   }, [resolved]);
 
-  const setTheme = (newTheme: WebTheme) => {
+  const setTheme = useCallback(async (newTheme: WebTheme): Promise<void> => {
     setLocalOverride(newTheme);
     localStorage.setItem(STORAGE_KEY, newTheme);
-    saveSettings.mutate({ theme: newTheme });
-  };
+    await saveSettings.mutateAsync({ theme: newTheme });
+  }, [saveSettings.mutateAsync]);
 
-  const value: ThemeContextValue = {
+  const value = useMemo<ThemeContextValue>(() => ({
     theme: effectiveTheme,
     resolved,
     setTheme,
-  };
+  }), [effectiveTheme, resolved, setTheme]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

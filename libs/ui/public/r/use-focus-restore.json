@@ -1,0 +1,25 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "use-focus-restore",
+  "title": "useFocusRestore",
+  "description": "Client re-export of @diffgazer/keys useFocusRestore for registry consumers.",
+  "dependencies": [],
+  "registryDependencies": [
+    "https://r.b4r7.dev/r/keys/focus-restore.json"
+  ],
+  "files": [
+    {
+      "path": "registry/hooks/use-focus-restore.ts",
+      "content": "\"use client\";\n\nexport { useFocusRestore, type UseFocusRestoreOptions, type UseFocusRestoreReturn } from \"@diffgazer/keys\";\n",
+      "type": "registry:hook"
+    }
+  ],
+  "meta": {
+    "client": true,
+    "hidden": true,
+    "optionalIntegrations": [
+      "keyboard-navigation"
+    ]
+  },
+  "type": "registry:hook"
+}

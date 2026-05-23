@@ -27,6 +27,7 @@ export type ReviewAction =
   | { type: "START" }
   | { type: "EVENT"; event: ReviewEvent }
   | { type: "COMPLETE" }
+  | { type: "COMPLETE_WITH_RESULT"; issues: ReviewIssue[] }
   | { type: "ERROR"; error: string }
   | { type: "RESET" };
 
@@ -174,14 +175,17 @@ function handleStepEvent(state: ReviewState, event: StepEvent): ReviewState {
         events: appendEvent(state.events, event),
       };
 
-    case "step_error":
+    case "step_error": {
+      // Context step errors are non-fatal warnings; the review continues
+      // without project context. Only stop streaming for critical step failures.
+      const isFatal = event.step !== "context";
       return {
         ...state,
         steps: updateStepStatus(state.steps, event.step, "error"),
         events: appendEvent(state.events, event),
-        error: event.error,
-        isStreaming: false,
+        ...(isFatal ? { error: event.error, isStreaming: false } : {}),
       };
+    }
   }
 }
 
@@ -304,6 +308,9 @@ export function reviewReducer(state: ReviewState, action: ReviewAction): ReviewS
 
     case "COMPLETE":
       return { ...state, isStreaming: false };
+
+    case "COMPLETE_WITH_RESULT":
+      return { ...state, isStreaming: false, issues: action.issues };
 
     case "ERROR":
       return { ...state, isStreaming: false, error: action.error };

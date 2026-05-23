@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { ReactElement } from "react";
 import { Box, Text } from "ink";
-import type { AIProvider } from "@diffgazer/core/schemas/config";
+import type { AIProvider, CredentialRef } from "@diffgazer/core/schemas/config";
 import { useTheme } from "../../../theme/theme-context.js";
 import { Dialog } from "../../../components/ui/dialog.js";
 import { Button } from "../../../components/ui/button.js";
@@ -35,8 +35,13 @@ export function ApiKeyOverlay({
     const value = method === "paste" ? apiKey : envVar;
     if (!value || saving) return;
 
+    const credentialRef: CredentialRef =
+      method === "env"
+        ? { kind: "env", varName: value }
+        : { kind: "literal", value };
+
     saveConfig.mutate(
-      { provider: providerId as AIProvider, apiKey: value },
+      { provider: providerId as AIProvider, apiKey: credentialRef },
       {
         onSuccess: () => {
           onSave(value, method);

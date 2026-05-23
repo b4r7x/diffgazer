@@ -7,14 +7,15 @@
     "class-variance-authority"
   ],
   "registryDependencies": [
-    "https://docs.diffgazer.b4r7.dev/r/ui/theme.json",
-    "https://docs.diffgazer.b4r7.dev/r/ui/button.json",
-    "https://docs.diffgazer.b4r7.dev/r/ui/controllable-state.json",
-    "https://docs.diffgazer.b4r7.dev/r/keys/focus-restore.json",
-    "https://docs.diffgazer.b4r7.dev/r/ui/dialog-shell.json",
-    "https://docs.diffgazer.b4r7.dev/r/ui/compose-refs.json",
-    "https://docs.diffgazer.b4r7.dev/r/ui/portal.json",
-    "https://docs.diffgazer.b4r7.dev/r/ui/kbd.json"
+    "https://r.b4r7.dev/r/ui/theme.json",
+    "https://r.b4r7.dev/r/ui/button.json",
+    "https://r.b4r7.dev/r/ui/controllable-state.json",
+    "https://r.b4r7.dev/r/keys/focus-restore.json",
+    "https://r.b4r7.dev/r/ui/dialog-shell.json",
+    "https://r.b4r7.dev/r/ui/compose-refs.json",
+    "https://r.b4r7.dev/r/ui/portal.json",
+    "https://r.b4r7.dev/r/ui/kbd.json",
+    "https://r.b4r7.dev/r/ui/utils.json"
   ],
   "files": [
     {

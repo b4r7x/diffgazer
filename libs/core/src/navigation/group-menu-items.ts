@@ -1,4 +1,4 @@
-import type { NavItem } from "../schemas/ui/navigation.js";
+import type { NavItem } from "../schemas/presentation/navigation.js";
 
 export type MenuGroup = NavItem["group"];
 

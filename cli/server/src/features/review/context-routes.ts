@@ -48,6 +48,7 @@ export async function refreshContextHandler(
       meta: snapshot.meta,
     });
   } catch (error) {
-    return errorResponse(c, getErrorMessage(error), ErrorCode.INTERNAL_ERROR, 500);
+    console.error("[context] Failed to refresh project context:", getErrorMessage(error));
+    return errorResponse(c, "Failed to refresh project context", ErrorCode.INTERNAL_ERROR, 500);
   }
 }

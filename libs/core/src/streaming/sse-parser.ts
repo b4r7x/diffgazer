@@ -1,6 +1,6 @@
 import { safeParseJson } from "../json.js";
 
-const MAX_BUFFER_SIZE = 1024 * 1024;
+const MAX_BUFFER_SIZE = 16 * 1024 * 1024;
 
 export interface SSEParserOptions<T> {
   onEvent: (data: T) => void;

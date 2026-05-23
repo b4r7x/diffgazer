@@ -15,15 +15,18 @@ export interface ReviewCompleteData {
 interface UseReviewLifecycleOptions {
   mode: ReviewMode;
   onComplete?: (data: ReviewCompleteData) => void;
+  onStreamNotFound?: (reviewId: string) => void;
 }
 
-export function useReviewLifecycle({ mode, onComplete }: UseReviewLifecycleOptions) {
+export function useReviewLifecycle({ mode, onComplete, onStreamNotFound }: UseReviewLifecycleOptions) {
   const navigate = useNavigate();
   const params = useParams({ strict: false });
   const { isConfigured, provider, model, isLoading: configLoading } = useConfigData();
 
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
+  const onStreamNotFoundRef = useRef(onStreamNotFound);
+  onStreamNotFoundRef.current = onStreamNotFound;
   const streamStateRef = useRef<ReviewStreamState | null>(null);
 
   const base = useReviewLifecycleBase({
@@ -38,8 +41,12 @@ export function useReviewLifecycle({ mode, onComplete }: UseReviewLifecycleOptio
         reviewId: s?.reviewId ?? null,
       });
     },
-    onNotFoundInSession: () => {
-      navigate({ to: '/' });
+    onNotFoundInSession: (reviewId: string) => {
+      if (onStreamNotFoundRef.current) {
+        onStreamNotFoundRef.current(reviewId);
+      } else {
+        navigate({ to: '/' });
+      }
     },
     onStaleSession: () => {
       toast.error('Session Expired', { message: 'The review session has become stale. Please start a new review.' });
@@ -50,22 +57,21 @@ export function useReviewLifecycle({ mode, onComplete }: UseReviewLifecycleOptio
   streamStateRef.current = base.streamState;
 
   const handleCancel = () => {
-    base.stream.stop();
+    base.stream.cancel(streamStateRef.current?.reviewId ?? null);
     navigate({ to: '/' });
   };
 
   const handleViewResults = () => {
-    base.stream.stop();
     base.skipDelay();
   };
 
   const handleSetupProvider = () => {
-    base.stream.stop();
+    base.stream.cancel(streamStateRef.current?.reviewId ?? null);
     navigate({ to: '/settings/providers' });
   };
 
   const handleSwitchMode = () => {
-    base.stream.stop();
+    base.stream.cancel(streamStateRef.current?.reviewId ?? null);
     navigate({ to: '/', replace: true });
   };
 

@@ -43,8 +43,8 @@ async function configureProvider(
   options: { apiKey?: string; model?: string } = {},
 ) {
   const store = await loadStore();
-  store.updateSettings({ secretsStorage: "file" });
-  store.saveProviderCredentials({
+  await store.updateSettings({ secretsStorage: "file" });
+  await store.saveProviderCredentials({
     provider,
     apiKey: options.apiKey ?? "sk-test",
     model: options.model,
@@ -118,7 +118,7 @@ describe("config service", () => {
       },
     });
 
-    store.deleteProviderCredentials("gemini");
+    await store.deleteProviderCredentials("gemini");
     expect(checkConfig()).toMatchObject({ ok: true, value: { configured: false } });
   });
 
@@ -144,19 +144,19 @@ describe("config service", () => {
   it("activates providers using the store's model requirements", async () => {
     const { activateProvider } = await loadService();
 
-    expect(activateProvider({ provider: "gemini" })).toMatchObject({
+    expect(await activateProvider({ provider: "gemini" })).toMatchObject({
       ok: false,
       error: { code: "INVALID_BODY" },
     });
 
     await configureProvider("gemini", { model: "gemini-2.5-flash" });
-    expect(activateProvider({ provider: "gemini", model: "gemini-2.5-pro" }))
+    expect(await activateProvider({ provider: "gemini", model: "gemini-2.5-pro" }))
       .toMatchObject({
         ok: true,
         value: { provider: "gemini", model: "gemini-2.5-pro" },
       });
 
-    expect(activateProvider({ provider: "unknown" as AIProvider, model: "m1" }))
+    expect(await activateProvider({ provider: "unknown" as AIProvider, model: "m1" }))
       .toMatchObject({
         ok: false,
         error: { code: "PROVIDER_NOT_FOUND" },
@@ -218,8 +218,8 @@ describe("config service", () => {
     expect(initial.missing).toEqual(["secretsStorage", "provider", "model", "trust"]);
 
     const store = await configureProvider("gemini", { model: "gemini-2.5-flash" });
-    const project = store.getProjectInfo(projectRoot);
-    store.saveTrust(trustConfig(project.projectId));
+    const project = store.ensureProjectFile(projectRoot);
+    await store.saveTrust(trustConfig(project.projectId!));
 
     expect(getSetupStatus(projectRoot)).toMatchObject({
       hasSecretsStorage: true,
@@ -233,9 +233,11 @@ describe("config service", () => {
   });
 
   it("persists config service writes through the real store", async () => {
+    const store = await loadStore();
+    await store.updateSettings({ secretsStorage: "file" });
     const { saveConfig } = await loadService();
 
-    const result = saveConfig({
+    const result = await saveConfig({
       provider: "gemini",
       apiKey: "sk-123",
       model: "gemini-2.5-flash",

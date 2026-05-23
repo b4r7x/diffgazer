@@ -3,7 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { KeyboardProvider } from "@diffgazer/keys";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
-import { SEVERITY_ORDER } from "@diffgazer/core/schemas/ui";
+import { SEVERITY_ORDER } from "@diffgazer/core/schemas/presentation";
 import { Footer } from "@/components/layout";
 import { FooterProvider, useFooterData } from "@diffgazer/core/footer";
 
@@ -13,7 +13,10 @@ vi.mock("@tanstack/react-router", () => ({
     history: {
       back: vi.fn(),
     },
+    navigate: vi.fn(),
   }),
+  useCanGoBack: () => false,
+  useLocation: () => ({ pathname: "/review/test-id" }),
 }));
 
 import { ReviewResultsView } from "./review-results-view";

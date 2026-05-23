@@ -84,11 +84,16 @@ export function validatePublicRegistryFresh(options: ValidatePublicRegistryFresh
 
   const sourceRegistry = readJson(resolve(rootDir, sourceRegistryPath), RegistrySchema);
   const publicRegistry = readJson(resolve(rootDir, publicRegistryDir, "registry.json"), RegistrySchema);
-  const sourceItems = sourceRegistry.items;
+  const allSourceItems = sourceRegistry.items;
+  // Hidden items are intentionally stripped from the public registry index by
+  // afterBuild transforms. Only compare visible items for the count check.
+  const visibleSourceItems = allSourceItems.filter(
+    (item) => !(item.meta as Record<string, unknown> | undefined)?.hidden,
+  );
   const publicItems = publicRegistry.items;
   const publicByName = new Map(publicItems.map((item) => [item.name, item]));
 
-  if (sourceItems.length !== publicItems.length) {
+  if (visibleSourceItems.length !== publicItems.length) {
     throw new Error(
       [
         "Public registry item count does not match source registry.",
@@ -97,7 +102,16 @@ export function validatePublicRegistryFresh(options: ValidatePublicRegistryFresh
     );
   }
 
-  for (const sourceItem of sourceItems) {
+  for (const sourceItem of allSourceItems) {
+    // Hidden items may not appear in the public registry index but must
+    // still have a per-item JSON file on disk.
+    const isHidden = (sourceItem.meta as Record<string, unknown> | undefined)?.hidden;
+    if (isHidden && !publicByName.has(sourceItem.name)) {
+      // Validate that the per-item JSON exists even if not listed in index
+      const publicItemPath = resolve(rootDir, publicRegistryDir, `${sourceItem.name}.json`);
+      ensureExists(publicItemPath, `public registry item JSON (${sourceItem.name})`);
+      continue;
+    }
     const expectedItem = transformSourceItem?.({
       itemName: sourceItem.name,
       item: sourceItem,

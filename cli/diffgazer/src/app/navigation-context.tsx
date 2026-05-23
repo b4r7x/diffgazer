@@ -26,13 +26,18 @@ export function NavigationProvider({
   const [stack, setStack] = useState<Route[]>([]);
 
   const navigate = (newRoute: Route) => {
-    setStack((prev) => [...prev.slice(-(MAX_STACK_SIZE - 1)), route]);
+    if (newRoute.screen === "home") {
+      setStack([]);
+    } else {
+      setStack((prev) => [...prev.slice(-(MAX_STACK_SIZE - 1)), route]);
+    }
     setRoute(newRoute);
   };
 
   const goBack = () => {
     const backTarget = getBackTarget(route.screen);
     if (backTarget) {
+      setStack([]);
       setRoute(backTarget);
       return;
     }

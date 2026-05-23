@@ -20,8 +20,10 @@ export function CodeBlockContent({
 }: CodeBlockContentProps) {
   const context = useRequiredCodeBlockContext("CodeBlock.Content");
   const hasExplicitName = Boolean(ariaLabel || ariaLabelledBy);
-  const resolvedLabelledBy = ariaLabelledBy ?? (hasExplicitName ? undefined : context.labelId);
-  const resolvedLabel = hasExplicitName ? ariaLabel : context.fallbackName;
+  // Only reference labelId when a CodeBlock.Label is actually rendered,
+  // otherwise the aria-labelledby would point at a non-existent element.
+  const resolvedLabelledBy = ariaLabelledBy ?? (hasExplicitName || !context.hasLabel ? undefined : context.labelId);
+  const resolvedLabel = hasExplicitName ? ariaLabel : (context.hasLabel ? undefined : context.fallbackName);
 
   return (
     <ScrollArea

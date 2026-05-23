@@ -3,7 +3,7 @@ import { useTheme } from "../../../theme/theme-context.js";
 import type { CliColorTokens } from "../../../theme/palettes.js";
 import { ScrollArea } from "../../../components/ui/scroll-area.js";
 import { Badge } from "../../../components/ui/badge.js";
-import { type LogEntryData, TAG_BADGE_VARIANTS } from "@diffgazer/core/schemas/ui";
+import { type LogEntryData, TAG_BADGE_VARIANTS } from "@diffgazer/core/schemas/presentation";
 import { formatTimestamp } from "@diffgazer/core/format";
 
 export interface ActivityLogProps {
@@ -25,7 +25,7 @@ export function ActivityLog({ entries, height = 10, isActive = false }: Activity
   const { tokens } = useTheme();
 
   return (
-    <ScrollArea height={height} isActive={isActive}>
+    <ScrollArea height={height} isActive={isActive} autoTail>
       {entries.map((entry) => (
         <Box key={entry.id} gap={1}>
           <Text color={tokens.muted}>{formatTimestamp(entry.timestamp)}</Text>

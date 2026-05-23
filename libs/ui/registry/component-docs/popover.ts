@@ -112,7 +112,7 @@ export const popoverDoc: ComponentDoc = {
         type: '"dialog" | "menu" | "listbox" | "tree" | "grid" | "tooltip"',
         required: false,
         defaultValue: null,
-        description: 'Popup ARIA role. Defaults to "tooltip" in hover mode. role="dialog" requires aria-label or aria-labelledby and throws otherwise.',
+        description: 'Popup ARIA role. Defaults to "tooltip" in hover mode. role="dialog" should have aria-label or aria-labelledby; a dev warning is logged and the content falls back to its fallback name when missing.',
       },
       side: {
         type: '"top" | "bottom" | "left" | "right"',

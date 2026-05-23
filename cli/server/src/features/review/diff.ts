@@ -13,6 +13,12 @@ import { type EmitFn, type ReviewAbort } from "./types.js";
 import { type Result, ok, err } from "@diffgazer/core/result";
 
 const MAX_DIFF_SIZE_BYTES = 524288; // 512KB
+const DIFFGAZER_DIR_PREFIX = ".diffgazer/";
+
+function isDiffgazerPath(filePath: string): boolean {
+  const normalized = filePath.replace(/^\.\//, "");
+  return normalized === ".diffgazer" || normalized.startsWith(DIFFGAZER_DIR_PREFIX);
+}
 
 export function filterDiffByFiles(
   parsed: ParsedDiff,
@@ -55,7 +61,7 @@ export async function resolveGitDiff(params: {
 
   let diff: string;
   try {
-    diff = await gitService.getDiff(mode);
+    diff = await gitService.getDiff(mode, files);
   } catch (error: unknown) {
     return err(reviewAbort(
       createGitDiffError(error).message,
@@ -73,6 +79,20 @@ export async function resolveGitDiff(params: {
   }
 
   let parsed = parseDiff(diff);
+
+  const externalFiles = parsed.files.filter((f) => !isDiffgazerPath(f.filePath));
+  if (externalFiles.length !== parsed.files.length) {
+    const totalStats = externalFiles.reduce(
+      (acc, file) => ({
+        filesChanged: acc.filesChanged + 1,
+        additions: acc.additions + file.stats.additions,
+        deletions: acc.deletions + file.stats.deletions,
+        totalSizeBytes: acc.totalSizeBytes + file.stats.sizeBytes,
+      }),
+      { filesChanged: 0, additions: 0, deletions: 0, totalSizeBytes: 0 },
+    );
+    parsed = { files: externalFiles, totalStats };
+  }
 
   if (files && files.length > 0) {
     parsed = filterDiffByFiles(parsed, files);

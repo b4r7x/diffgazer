@@ -1,6 +1,6 @@
 import { formatTimestamp } from '@diffgazer/core/format';
 import { cn } from '@diffgazer/ui/lib/utils';
-import type { LogTagType } from '@diffgazer/core/schemas/ui';
+import type { LogTagType } from '@diffgazer/core/schemas/presentation';
 import { Badge } from '@diffgazer/ui/components/badge';
 
 const TAG_VARIANTS: Record<LogTagType, { variant: "success" | "warning" | "error" | "info" | "neutral"; className?: string }> = {

@@ -1,5 +1,5 @@
 import type { ReviewMetadata, ReviewSeverity } from "@diffgazer/core/schemas/review";
-import type { TimelineItem } from "@diffgazer/core/schemas/ui";
+import type { TimelineItem } from "@diffgazer/core/schemas/presentation";
 import { getDateKey, getDateLabel, getTimestamp } from "@diffgazer/core/format";
 
 export const HISTORY_SECTION_ALL_ID = "all";

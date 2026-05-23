@@ -115,9 +115,9 @@
       "types": "./dist/schemas/context/index.d.ts",
       "import": "./dist/schemas/context/index.js"
     },
-    "./schemas/ui": {
-      "types": "./dist/schemas/ui/index.d.ts",
-      "import": "./dist/schemas/ui/index.js"
+    "./schemas/presentation": {
+      "types": "./dist/schemas/presentation/index.d.ts",
+      "import": "./dist/schemas/presentation/index.js"
     }
   },
   "scripts": {

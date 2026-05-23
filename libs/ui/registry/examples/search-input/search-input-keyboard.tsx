@@ -5,6 +5,11 @@ import { SearchInput } from "@/components/ui/search-input"
 import { useRef, useState } from "react"
 
 const items = ["Components", "Hooks", "Utilities", "Themes", "Plugins"]
+const listboxId = "search-results"
+
+function getOptionId(item: string) {
+  return `${listboxId}-${item.toLowerCase()}`
+}
 
 export default function SearchInputKeyboard() {
   const [query, setQuery] = useState("")
@@ -30,6 +35,11 @@ export default function SearchInputKeyboard() {
           highlight("")
         }}
         placeholder="Search items..."
+        role="combobox"
+        aria-controls={listboxId}
+        aria-activedescendant={highlighted ? getOptionId(highlighted) : undefined}
+        aria-expanded={filtered.length > 0}
+        aria-autocomplete="list"
         onEscape={() => {
           setQuery("")
           highlight("")
@@ -39,10 +49,11 @@ export default function SearchInputKeyboard() {
         }}
         onKeyDown={onKeyDown}
       />
-      <ul ref={listRef} role="listbox" className="font-mono text-xs">
+      <ul ref={listRef} id={listboxId} role="listbox" className="font-mono text-xs">
         {filtered.map((item) => (
           <li
             key={item}
+            id={getOptionId(item)}
             role="option"
             data-value={item}
             aria-selected={isHighlighted(item)}

@@ -59,7 +59,7 @@ describe("navigation item utilities", () => {
     document.body.replaceChildren();
   });
 
-  it("queries data-contract items before role fallbacks", () => {
+  it("merges data-contract and role items in DOM order", () => {
     const container = mountContainer("listbox");
     appendElement(container, {
       value: "contract",
@@ -70,6 +70,7 @@ describe("navigation item utilities", () => {
 
     expect(values(getNavigationItems(container, { type: "option" }))).toEqual([
       "contract",
+      "role",
     ]);
   });
 
@@ -240,6 +241,41 @@ describe("navigation item utilities", () => {
 
     expect(focusNavigationItem(container, { type: "button", value: "missing", fallback: "last" })).toBe("last");
     expect(document.activeElement).toBe(last);
+  });
+
+  it("returns mixed-selector items sorted by DOM order", () => {
+    const container = mountContainer("listbox");
+    // role item first in DOM
+    appendElement(container, { role: "option", value: "role-first" });
+    // data-contract item second in DOM
+    appendElement(container, {
+      value: "contract-second",
+      attributes: { [NAVIGATION_ITEM_ATTRIBUTE]: "option" },
+    });
+    // role item third in DOM
+    appendElement(container, { role: "option", value: "role-third" });
+
+    expect(values(getNavigationItems(container, { type: "option" }))).toEqual([
+      "role-first",
+      "contract-second",
+      "role-third",
+    ]);
+  });
+
+  it("deduplicates elements matched by multiple selectors", () => {
+    const container = mountContainer("listbox");
+    // Element matches both data-contract and role selectors
+    appendElement(container, {
+      role: "option",
+      value: "both",
+      attributes: { [NAVIGATION_ITEM_ATTRIBUTE]: "option" },
+    });
+    appendElement(container, { role: "option", value: "role-only" });
+
+    expect(values(getNavigationItems(container, { type: "option" }))).toEqual([
+      "both",
+      "role-only",
+    ]);
   });
 
   it("matches unsafe data values without interpolating them into selectors", () => {

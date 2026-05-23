@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { FooterProvider } from "@diffgazer/core/footer";
 import { Toaster } from "@diffgazer/ui/components/toast";
-import type { ContextInfo } from "@diffgazer/core/schemas/ui";
+import type { ContextInfo } from "@diffgazer/core/schemas/presentation";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
 import type { ShutdownResult } from "@diffgazer/core/api";
 import type { ReactNode } from "react";

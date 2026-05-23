@@ -11,7 +11,7 @@ import { LensStatsTable } from "./lens-stats-table.js";
 import { IssuePreviewItem } from "./issue-preview-item.js";
 import { buildLensStats } from "./summary-view-helpers.js";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
-import { SEVERITY_ORDER, type Shortcut } from "@diffgazer/core/schemas/ui";
+import { SEVERITY_ORDER, type Shortcut } from "@diffgazer/core/schemas/presentation";
 import { buildReviewSummary } from "@diffgazer/core/review";
 
 export interface ReviewSummaryViewProps {

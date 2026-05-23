@@ -19,6 +19,7 @@ export default function UseFocusTrapBasic() {
         <div
           ref={trapRef}
           role="dialog"
+          aria-modal="true"
           aria-label="Confirm action"
           tabIndex={-1}
           style={{ marginTop: 8, padding: 12, border: "1px solid currentColor" }}

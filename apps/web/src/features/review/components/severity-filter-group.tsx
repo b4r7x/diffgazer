@@ -1,7 +1,7 @@
 import { cn } from "@diffgazer/ui/lib/utils";
 import { useEffect, useRef, type KeyboardEvent, type Ref } from "react";
 import type { ReviewSeverity } from "@diffgazer/core/schemas/review";
-import { SEVERITY_ORDER } from "@diffgazer/core/schemas/ui";
+import { SEVERITY_ORDER } from "@diffgazer/core/schemas/presentation";
 import { ToggleGroup, ToggleGroupItem } from "@diffgazer/ui/components/toggle-group";
 import { SEVERITY_CONFIG } from "@/components/ui/severity/constants";
 

@@ -1,0 +1,25 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "use-focus-trap",
+  "title": "useFocusTrap",
+  "description": "Client re-export of @diffgazer/keys useFocusTrap for registry consumers.",
+  "dependencies": [],
+  "registryDependencies": [
+    "https://r.b4r7.dev/r/keys/focus-trap.json"
+  ],
+  "files": [
+    {
+      "path": "registry/hooks/use-focus-trap.ts",
+      "content": "\"use client\";\n\nexport { useFocusTrap, type UseFocusTrapOptions } from \"@diffgazer/keys\";\n",
+      "type": "registry:hook"
+    }
+  ],
+  "meta": {
+    "client": true,
+    "hidden": true,
+    "optionalIntegrations": [
+      "keyboard-navigation"
+    ]
+  },
+  "type": "registry:hook"
+}

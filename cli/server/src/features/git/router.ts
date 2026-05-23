@@ -29,16 +29,15 @@ gitRouter.get("/status", async (c): Promise<Response> => {
   const result = await resolveServiceOrResponse(c);
   if (!result.ok) return result.response;
 
-  try {
-    const status = await result.service.getStatus();
-    if (!status.isGitRepo) {
-      return errorResponse(c, "Not a git repository", ErrorCode.NOT_GIT_REPO, 400);
-    }
-    return c.json(status);
-  } catch (error) {
-    console.error("[diffgazer] git status error:", error);
-    return errorResponse(c, "Failed to retrieve git status", ErrorCode.COMMAND_FAILED, 500);
+  const statusResult = await result.service.getStatus();
+  if (!statusResult.ok) {
+    return errorResponse(c, statusResult.error.message, ErrorCode.COMMAND_FAILED, 500);
   }
+  const status = statusResult.value;
+  if (!status.isGitRepo) {
+    return errorResponse(c, "Not a git repository", ErrorCode.NOT_GIT_REPO, 400);
+  }
+  return c.json(status);
 });
 
 gitRouter.get("/diff", zValidator("query", GitDiffQuerySchema, zodErrorHandler), async (c): Promise<Response> => {
@@ -48,12 +47,15 @@ gitRouter.get("/diff", zValidator("query", GitDiffQuerySchema, zodErrorHandler),
   const { mode: modeParam } = c.req.valid("query");
   const mode = modeParam ?? "unstaged";
 
-  try {
-    const status = await result.service.getStatus();
-    if (!status.isGitRepo) {
-      return errorResponse(c, "Not a git repository", ErrorCode.NOT_GIT_REPO, 400);
-    }
+  const statusResult = await result.service.getStatus();
+  if (!statusResult.ok) {
+    return errorResponse(c, statusResult.error.message, ErrorCode.COMMAND_FAILED, 500);
+  }
+  if (!statusResult.value.isGitRepo) {
+    return errorResponse(c, "Not a git repository", ErrorCode.NOT_GIT_REPO, 400);
+  }
 
+  try {
     const diff = await result.service.getDiff(mode);
     return c.json({ diff, mode });
   } catch (error) {

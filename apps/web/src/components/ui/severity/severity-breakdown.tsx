@@ -1,5 +1,5 @@
-import type { SeverityCounts } from '@diffgazer/core/schemas/ui';
-import { SEVERITY_ORDER, SEVERITY_LABELS } from '@diffgazer/core/schemas/ui';
+import type { SeverityCounts } from '@diffgazer/core/schemas/presentation';
+import { SEVERITY_ORDER, SEVERITY_LABELS } from '@diffgazer/core/schemas/presentation';
 import { SeverityBar } from './severity-bar';
 import { cn } from '@diffgazer/ui/lib/utils';
 

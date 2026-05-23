@@ -38,10 +38,12 @@ export default function UseNavigationTabs() {
         {tabs.map((tab) => (
           <button
             key={tab.id}
+            id={`tab-${tab.id}`}
             type="button"
             role="tab"
             data-value={tab.id}
             aria-selected={isHighlighted(tab.id)}
+            aria-controls={`panel-${tab.id}`}
             tabIndex={isHighlighted(tab.id) ? 0 : -1}
             className={`px-4 py-2 text-sm cursor-pointer ${
               isHighlighted(tab.id)
@@ -54,7 +56,12 @@ export default function UseNavigationTabs() {
           </button>
         ))}
       </div>
-      <div role="tabpanel" className="p-4 text-sm text-muted-foreground">
+      <div
+        id={`panel-${activeTab}`}
+        role="tabpanel"
+        aria-labelledby={`tab-${activeTab}`}
+        className="p-4 text-sm text-muted-foreground"
+      >
         {activeContent?.content}
       </div>
     </div>

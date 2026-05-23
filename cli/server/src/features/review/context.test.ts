@@ -19,7 +19,7 @@ let statusHash = "hash-1";
 
 function makeGitService(overrides: Partial<GitService> = {}): GitService {
   return {
-    getStatus: vi.fn(async () => ({
+    getStatus: vi.fn(async () => ok({
       isGitRepo: true,
       branch: "main",
       remoteBranch: null,

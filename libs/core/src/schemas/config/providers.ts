@@ -83,8 +83,8 @@ export const GLM_MODEL_INFO: Record<GLMModel, ModelInfo> = {
   "glm-4.7-flash": {
     id: "glm-4.7-flash",
     name: "GLM-4.7 Flash",
-    description: "Fast GLM-4.7 variant; listed with promotional free usage through 2026-03-31.",
-    tier: "free",
+    description: "Fast GLM-4.7 variant; promotional free period ended 2026-03-31.",
+    tier: "paid",
   },
 };
 
@@ -106,6 +106,7 @@ export type OpenRouterModel = z.infer<typeof OpenRouterModelSchema>;
 export const OpenRouterModelCacheSchema = z.object({
   models: z.array(OpenRouterModelSchema),
   fetchedAt: z.string().datetime(),
+  keyHash: z.string().optional(),
 });
 
 export type OpenRouterModelCache = z.infer<typeof OpenRouterModelCacheSchema>;
@@ -191,10 +192,16 @@ export const UserConfigSchema = z
   });
 export type UserConfig = z.infer<typeof UserConfigSchema>;
 
+export const CredentialRefSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("literal"), value: z.string().min(1) }),
+  z.object({ kind: z.literal("env"), varName: z.string().min(1) }),
+]);
+export type CredentialRef = z.infer<typeof CredentialRefSchema>;
+
 export const SaveConfigRequestSchema = z.object({
   provider: AIProviderSchema,
-  apiKey: z.string().min(1),
-  model: z.string().min(1).optional(),
+  apiKey: z.union([z.string().trim().min(1, "API key must not be empty"), CredentialRefSchema]),
+  model: z.string().trim().min(1, "Model must not be empty").optional(),
 });
 export type SaveConfigRequest = z.infer<typeof SaveConfigRequestSchema>;
 
@@ -245,7 +252,7 @@ export type ProvidersStatusResponse = z.infer<typeof ProvidersStatusResponseSche
 /** Server-side project info with trust config. @see cli/add/src/utils/detect.ts for the CLI detection variant. */
 export const ProjectInfoSchema = z.object({
   path: z.string(),
-  projectId: z.string(),
+  projectId: z.string().nullable(),
   trust: TrustConfigSchema.nullable(),
 });
 export type ProjectInfo = z.infer<typeof ProjectInfoSchema>;

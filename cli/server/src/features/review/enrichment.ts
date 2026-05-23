@@ -91,12 +91,17 @@ export async function enrichIssues(
   gitService: EnrichGitService,
   onEvent: (event: EnrichProgressEvent) => void,
   signal?: AbortSignal,
+  reviewedFiles?: Set<string>,
 ): Promise<ReviewIssue[]> {
   if (signal?.aborted) return issues;
 
   const results: ReviewIssue[] = [];
   for (const issue of issues) {
     if (signal?.aborted) {
+      results.push(issue);
+      continue;
+    }
+    if (reviewedFiles && !reviewedFiles.has(issue.file)) {
       results.push(issue);
       continue;
     }

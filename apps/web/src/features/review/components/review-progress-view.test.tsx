@@ -51,6 +51,26 @@ describe("ReviewProgressView", () => {
     expect(screen.queryByText("Cancel")).not.toBeInTheDocument();
   });
 
+  it("omits View Results shortcut when onViewResults is not provided", async () => {
+    renderView({ isRunning: true, onCancel: vi.fn() });
+
+    expect(await screen.findByText("Cancel")).toBeInTheDocument();
+    expect(screen.queryByText("View Results")).not.toBeInTheDocument();
+  });
+
+  it("Enter does not fire onViewResults when it is not provided", async () => {
+    const user = userEvent.setup();
+    const onViewResults = vi.fn();
+
+    // Simulate error state: not running, error present, no onViewResults provided
+    renderView({ isRunning: false, error: "API key error", onCancel: vi.fn() });
+
+    await screen.findByText("Cancel");
+    await user.keyboard("{Enter}");
+
+    expect(onViewResults).not.toHaveBeenCalled();
+  });
+
   it("runs progress shortcuts when result and cancel actions are available", async () => {
     const user = userEvent.setup();
     const onViewResults = vi.fn();

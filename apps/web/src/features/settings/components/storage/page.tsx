@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { SecretsStorage } from "@diffgazer/core/schemas/config";
-import type { Shortcut } from "@diffgazer/core/schemas/ui";
+import type { Shortcut } from "@diffgazer/core/schemas/presentation";
 import { getErrorMessage } from "@diffgazer/core/errors";
 import { Button } from "@diffgazer/ui/components/button";
 import { Callout } from "@diffgazer/ui/components/callout";
@@ -26,7 +26,7 @@ export function SettingsStoragePage() {
   const effectiveStorage = storageChoice ?? settings?.secretsStorage ?? null;
 
   useScope("settings-storage");
-  useKey("Escape", () => navigate({ to: "/settings" }));
+  useKey("Escape", () => navigate({ to: "/settings" }), { enabled: !isSaving });
 
   const isDirty = settings?.secretsStorage !== effectiveStorage;
   const canSave = !isSaving && !!effectiveStorage && isDirty;

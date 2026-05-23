@@ -11,8 +11,6 @@ import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import type { AgentStreamEvent } from "@diffgazer/core/schemas/events";
 import type { AIClient, AIError } from "../../shared/lib/ai/types.js";
 import type { FileDiff, ParsedDiff } from "../../shared/lib/diff/types.js";
-import { parseDiff } from "../../shared/lib/diff/parser.js";
-import { createGitService } from "../../shared/lib/git/service.js";
 import {
   addDrilldownToReview,
   getReview as getStoredReview,
@@ -23,13 +21,28 @@ import type { DrilldownAIResponse } from "./schemas.js";
 import type { DrilldownError, HandleDrilldownError } from "./types.js";
 import { recordTrace } from "./trace.js";
 
+const reviewLocks = new Map<string, Promise<unknown>>();
+
+function withReviewLock<T>(reviewId: string, fn: () => Promise<T>): Promise<T> {
+  const prev = reviewLocks.get(reviewId) ?? Promise.resolve();
+  const next = prev.then(fn, fn);
+  reviewLocks.set(reviewId, next);
+  next.then(
+    () => { if (reviewLocks.get(reviewId) === next) reviewLocks.delete(reviewId); },
+    () => { if (reviewLocks.get(reviewId) === next) reviewLocks.delete(reviewId); },
+  );
+  return next;
+}
+
 interface DrilldownOptions {
   traceSteps?: TraceRef[];
   onEvent?: (event: AgentStreamEvent) => void;
+  signal?: AbortSignal;
 }
 
 interface HandleDrilldownOptions {
   review?: SavedReview;
+  signal?: AbortSignal;
 }
 
 export async function drilldownIssue(
@@ -69,11 +82,12 @@ export async function drilldownIssue(
 
   const prompt = buildDrilldownPrompt(issue, diff, allIssues);
 
+  const signal = options?.signal;
   const result: Result<DrilldownAIResponse, AIError> = await recordTrace(
     steps,
     "generateAnalysis",
     `issue analysis: ${issue.id} - ${issue.title}`,
-    () => client.generate(prompt, DrilldownResponseSchema),
+    () => client.generate(prompt, DrilldownResponseSchema, { signal }),
   );
 
   if (!result.ok) {
@@ -106,7 +120,10 @@ export async function drilldownIssueById(
     });
   }
 
-  return drilldownIssue(client, issue, diff, reviewResult.issues, options);
+  return drilldownIssue(client, issue, diff, reviewResult.issues, {
+    ...options,
+    signal: options?.signal,
+  });
 }
 
 export async function handleDrilldownRequest(
@@ -124,16 +141,11 @@ export async function handleDrilldownRequest(
     return err(createError(ErrorCode.NOT_FOUND, "Review not found"));
   }
 
-  let parsed = savedReview.diff;
+  const parsed = savedReview.diff;
   if (!parsed) {
-    const gitService = createGitService({ cwd: projectPath });
-    try {
-      parsed = parseDiff(await gitService.getDiff(savedReview.metadata.mode ?? "unstaged"));
-    } catch {
-      return err(
-        createError(ErrorCode.COMMAND_FAILED, "Failed to retrieve git diff"),
-      );
-    }
+    return err(
+      createError(ErrorCode.COMMAND_FAILED, "Stored diff is missing for this review"),
+    );
   }
 
   const drilldownResult = await drilldownIssueById(
@@ -141,13 +153,13 @@ export async function handleDrilldownRequest(
     issueId,
     savedReview.result,
     parsed,
+    { signal: options.signal },
   );
 
   if (!drilldownResult.ok) return drilldownResult;
 
-  const saveResult = await addDrilldownToReview(
-    reviewId,
-    drilldownResult.value,
+  const saveResult = await withReviewLock(reviewId, () =>
+    addDrilldownToReview(reviewId, drilldownResult.value),
   );
   if (!saveResult.ok) return saveResult;
 

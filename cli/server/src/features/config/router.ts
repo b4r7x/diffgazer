@@ -70,9 +70,9 @@ configRouter.post(
   "/",
   bodyLimitMiddleware,
   zValidator("json", SaveConfigRequestSchema, zodErrorHandler),
-  (c): Response => {
+  async (c): Promise<Response> => {
     const body = c.req.valid("json");
-    const result = saveConfig(body);
+    const result = await saveConfig(body);
     if (!result.ok) {
       return errorResponse(c, result.error.message, result.error.code, 400);
     }
@@ -85,10 +85,10 @@ configRouter.post(
   bodyLimitMiddleware,
   zValidator("param", ProviderParamSchema),
   zValidator("json", ActivateProviderBodySchema, zodErrorHandler),
-  (c): Response => {
+  async (c): Promise<Response> => {
     const { providerId } = c.req.valid("param");
     const { model } = c.req.valid("json");
-    const result = activateProvider({ provider: providerId, model });
+    const result = await activateProvider({ provider: providerId, model });
     if (!result.ok) {
       const status = result.error.code === "PROVIDER_NOT_FOUND" ? 404 : 400;
       return errorResponse(c, result.error.message, result.error.code, status);
@@ -100,9 +100,9 @@ configRouter.post(
 configRouter.delete(
   "/provider/:providerId",
   zValidator("param", ProviderParamSchema, zodErrorHandler),
-  (c): Response => {
+  async (c): Promise<Response> => {
     const { providerId } = c.req.valid("param");
-    const result = deleteProvider(providerId);
+    const result = await deleteProvider(providerId);
     if (!result.ok) {
       return errorResponse(c, result.error.message, result.error.code, 400);
     }
@@ -110,8 +110,8 @@ configRouter.delete(
   },
 );
 
-configRouter.delete("/", (c): Response => {
-  const result = deleteConfig();
+configRouter.delete("/", async (c): Promise<Response> => {
+  const result = await deleteConfig();
   if (!result.ok) {
     const status = result.error.code === ErrorCode.CONFIG_NOT_FOUND ? 404 : 400;
     return errorResponse(c, result.error.message, result.error.code, status);

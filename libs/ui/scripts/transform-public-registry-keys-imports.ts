@@ -95,6 +95,7 @@ interface RegistryFileWithContent {
 interface PublicRegistryItemJson {
   registryDependencies?: string[];
   files?: RegistryFileWithContent[];
+  meta?: { hidden?: boolean };
 }
 
 interface PublicRegistryIndexJson {
@@ -132,6 +133,12 @@ export function transformUiPublicRegistryKeysImports(outputDir: string): void {
   const indexPath = join(outputDir, "registry.json");
   const index = JSON.parse(readFileSync(indexPath, "utf-8")) as PublicRegistryIndexJson;
   let indexChanged = false;
+
+  if (index.items) {
+    const before = index.items.length;
+    index.items = index.items.filter((item) => !item.meta?.hidden);
+    if (index.items.length !== before) indexChanged = true;
+  }
 
   for (const item of index.items ?? []) {
     indexChanged = transformRegistryDependencies(item) || indexChanged;

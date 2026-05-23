@@ -32,9 +32,11 @@ export function TrustPanel({ onAccept }: TrustPanelProps): ReactElement {
 
   function handleAccept() {
     if (!initQuery.data) return;
+    const { projectId } = initQuery.data.project;
+    if (!projectId) return;
     saveTrust.mutate(
       {
-        projectId: initQuery.data.project.projectId,
+        projectId,
         repoRoot: initQuery.data.project.path,
         capabilities: {
           readFiles: checked.includes("readFiles"),
@@ -95,7 +97,7 @@ export function TrustPanel({ onAccept }: TrustPanelProps): ReactElement {
           </CheckboxGroup>
 
           <Box gap={1}>
-            <Button variant="success" onPress={handleAccept} disabled={saving || !initQuery.data}>
+            <Button variant="success" onPress={handleAccept} isActive={!saving && !!initQuery.data} disabled={saving || !initQuery.data}>
               {actionLabel}
             </Button>
           </Box>

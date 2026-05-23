@@ -2,7 +2,7 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { KeyboardProvider } from "@diffgazer/keys";
-import { Toaster } from "@diffgazer/ui/components/toast";
+import { toast, Toaster } from "@diffgazer/ui/components/toast";
 import { FooterProvider } from "@diffgazer/core/footer";
 import { ConfigProvider } from "@/app/providers/config-provider";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -44,6 +44,8 @@ vi.mock("@tanstack/react-router", () => ({
     navigate: mockNavigate,
   }),
   useSearch: () => routeState.search,
+  useCanGoBack: () => false,
+  useLocation: () => ({ pathname: "/review/test-id" }),
 }));
 
 // Boundary mock: api/hooks is the HTTP-data fetch boundary; we provide canned data and assert on the resulting UI.
@@ -132,6 +134,7 @@ function renderPage() {
 }
 
 function resetReviewMocks() {
+  toast.dismiss();
   routeState.params = {};
   routeState.search = {};
   mockBack.mockReset();
@@ -284,6 +287,98 @@ describe("ReviewPage no-reviewId redirect", () => {
     renderPage();
 
     expect(screen.getByRole("status")).toHaveTextContent("Redirecting...");
+  });
+});
+
+describe("ReviewPage stale live session falls back to saved review", () => {
+  const STALE_REVIEW_ID = "33333333-3333-4333-8333-333333333333";
+
+  interface CapturedCallbacks {
+    onNotFoundInSession: ((reviewId: string) => void) | null;
+  }
+
+  let captured: CapturedCallbacks;
+
+  beforeEach(() => {
+    resetReviewMocks();
+    captured = { onNotFoundInSession: null };
+    routeState.params = { reviewId: STALE_REVIEW_ID };
+    routeState.search = { mode: "staged", live: true };
+    mockUseReviewLifecycleBase.mockImplementation(
+      (opts: { onNotFoundInSession?: (id: string) => void }) => {
+        captured.onNotFoundInSession = opts.onNotFoundInSession ?? null;
+        return {
+          streamState: {
+            ...makeStreamState(),
+            reviewId: STALE_REVIEW_ID,
+          },
+          loadingMessage: null,
+          isNoDiffError: false,
+          stream: { stop: vi.fn(), abort: vi.fn(), cancel: vi.fn() },
+          skipDelay: vi.fn(),
+          setHasStarted: vi.fn(),
+        };
+      },
+    );
+  });
+
+  it("falls back to saved review when live stream returns 404 and saved review exists", async () => {
+    const savedIssue = makeIssue({
+      id: "saved-1",
+      title: "Saved fallback issue",
+      symptom: "Saved fallback symptom",
+    });
+    mockUseReview.mockReturnValue(
+      reviewQuery({
+        isSuccess: true,
+        data: {
+          review: {
+            metadata: { id: STALE_REVIEW_ID },
+            result: { summary: "Saved summary", issues: [savedIssue] },
+          },
+        },
+      }),
+    );
+
+    renderPage();
+
+    // Initially streaming
+    expect(screen.getByText("Progress Overview")).toBeInTheDocument();
+
+    // Simulate stream 404 -- onNotFoundInSession fires from use-review-start
+    await act(() => {
+      captured.onNotFoundInSession?.(STALE_REVIEW_ID);
+    });
+
+    // Falls back to saved review results
+    expect(await screen.findByText(`Analysis #${STALE_REVIEW_ID}`)).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /saved fallback issue/i })).toBeInTheDocument();
+    expect(mockNavigate).not.toHaveBeenCalledWith({ to: "/" });
+  });
+
+  it("shows error toast and navigates home when both stream and saved review return 404", async () => {
+    mockUseReview.mockReturnValue(
+      reviewQuery({
+        isError: true,
+        error: apiError(404),
+      }),
+    );
+
+    renderPage();
+
+    expect(screen.getByText("Progress Overview")).toBeInTheDocument();
+
+    // Simulate stream 404
+    await act(() => {
+      captured.onNotFoundInSession?.(STALE_REVIEW_ID);
+    });
+
+    // Should show exactly one error toast and navigate home -- not loop
+    const errorToast = await screen.findByRole("alert");
+    expect(errorToast).toHaveTextContent(/live session has expired/i);
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith({ to: "/" });
+    });
   });
 });
 

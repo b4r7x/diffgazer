@@ -1,5 +1,5 @@
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
-import { calculateSeverityCounts, type SeverityCounts } from "@diffgazer/core/schemas/ui";
+import { calculateSeverityCounts, type SeverityCounts } from "@diffgazer/core/schemas/presentation";
 
 export interface ReviewSummary {
   severityCounts: SeverityCounts;

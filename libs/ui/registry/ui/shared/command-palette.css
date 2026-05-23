@@ -73,13 +73,13 @@
   /* Frame: border (default) — single 1px hairline. */
   [data-slot="command-palette-content"][data-frame="border"] {
     border: 1px solid var(--cp-border);
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+    box-shadow: 0 20px 60px oklch(0% 0 0 / 0.6);
   }
 
   /* Frame: viewfinder — no border, four corner brackets. */
   [data-slot="command-palette-content"][data-frame="viewfinder"] {
     border: 0;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+    box-shadow: 0 20px 60px oklch(0% 0 0 / 0.6);
   }
 
   [data-slot="command-palette-content"][data-frame="viewfinder"]::before,
@@ -127,7 +127,7 @@
     border: 0;
     border-top: 2px solid var(--cp-fg);
     border-bottom: 2px solid var(--cp-fg);
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+    box-shadow: 0 20px 60px oklch(0% 0 0 / 0.6);
     --cp-prefix-content: "$";
   }
 
@@ -141,14 +141,14 @@
     border: 1px solid var(--cp-border);
     border-radius: 8px;
     background: linear-gradient(140deg, color-mix(in oklab, var(--cp-fg) 6%, var(--cp-bg)) 0%, var(--cp-bg) 100%);
-    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.7);
+    box-shadow: 0 30px 80px oklch(0% 0 0 / 0.7);
     overflow: hidden;
   }
 
   /* Frame: none — bare. */
   [data-slot="command-palette-content"][data-frame="none"] {
     border: 0;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+    box-shadow: 0 20px 60px oklch(0% 0 0 / 0.6);
   }
 
   /* Input row */

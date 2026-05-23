@@ -54,7 +54,6 @@ export function StepperTrigger({
   children,
   className,
   onClick,
-  onFocus,
   statusLabels,
   disabled: disabledProp,
   ...props

@@ -1,6 +1,6 @@
 import { cn } from "@diffgazer/ui/lib/utils";
 import { Kbd } from "@diffgazer/ui/components/kbd";
-import type { Shortcut } from "@diffgazer/core/schemas/ui";
+import type { Shortcut } from "@diffgazer/core/schemas/presentation";
 
 interface FooterProps {
   shortcuts: Shortcut[];
@@ -22,7 +22,7 @@ function renderShortcuts(items: Shortcut[]) {
 export function Footer({ shortcuts, rightShortcuts, className = "" }: FooterProps) {
   return (
     <footer
-      className={cn("bg-tui-fg text-black p-2 font-bold text-xs shrink-0 flex justify-between items-center", className)}
+      className={cn("bg-foreground text-background p-2 font-bold text-xs shrink-0 flex justify-between items-center", className)}
     >
       <div className="flex gap-4">{renderShortcuts(shortcuts)}</div>
       {rightShortcuts && rightShortcuts.length > 0 && (

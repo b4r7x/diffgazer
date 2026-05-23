@@ -8,7 +8,7 @@ import { SeverityBreakdown } from "@/components/ui/severity/severity-breakdown";
 import { isListNavigationKey } from "@diffgazer/keys";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { SEVERITY_CONFIG } from "@/components/ui/severity/constants";
-import type { SeverityCounts } from "@diffgazer/core/schemas/ui";
+import type { SeverityCounts } from "@diffgazer/core/schemas/presentation";
 import { capitalize } from "@diffgazer/core/strings";
 
 export interface HistoryInsightsPaneProps {

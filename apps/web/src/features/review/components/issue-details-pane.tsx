@@ -11,7 +11,7 @@ import { FixPlanChecklist } from "./fix-plan-checklist";
 import { IssueHeader } from "./issue-header";
 
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
-import { isIssueTab, type IssueTab as TabId } from "@diffgazer/core/schemas/ui";
+import { isIssueTab, type IssueTab as TabId } from "@diffgazer/core/schemas/presentation";
 import type { DetailsEmptyKind } from "@diffgazer/core/review";
 
 export type { DetailsEmptyKind };

@@ -131,7 +131,7 @@ function ManualTextEdit({
       if (key.return || key.escape || key.upArrow || key.downArrow || key.tab) {
         return;
       }
-      if (input.length === 1 && !key.ctrl && !key.meta) {
+      if (input.length >= 1 && !key.ctrl && !key.meta) {
         onChange(value + input);
       }
     },

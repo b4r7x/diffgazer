@@ -356,4 +356,54 @@ index abc1234..def5678 100644
     expect(content).toContain("+added");
     expect(content).toContain(" line1");
   });
+
+  it("parses Git quoted paths with C-style escapes", () => {
+    const diff = `diff --git "a/path with \\"quotes\\".ts" "b/path with \\"quotes\\".ts"
+--- "a/path with \\"quotes\\".ts"
++++ "b/path with \\"quotes\\".ts"
+@@ -1,2 +1,3 @@
+ line1
++added
+ line2`;
+
+    const result = parseDiff(diff);
+
+    expect(result.files).toHaveLength(1);
+    expect(result.files[0]!.filePath).toBe('path with "quotes".ts');
+    expect(result.files[0]!.operation).toBe("modify");
+    expect(result.files[0]!.stats.additions).toBe(1);
+  });
+
+  it("parses Git quoted paths with tab escapes", () => {
+    const diff = `diff --git "a/dir\\twith\\ttabs/file.ts" "b/dir\\twith\\ttabs/file.ts"
+--- "a/dir\\twith\\ttabs/file.ts"
++++ "b/dir\\twith\\ttabs/file.ts"
+@@ -1,2 +1,3 @@
+ line1
++added
+ line2`;
+
+    const result = parseDiff(diff);
+
+    expect(result.files).toHaveLength(1);
+    expect(result.files[0]!.filePath).toBe("dir\twith\ttabs/file.ts");
+  });
+
+  it("handles quoted rename paths", () => {
+    const diff = `diff --git "a/old \\"name\\".ts" "b/new \\"name\\".ts"
+rename from "old \\"name\\".ts"
+rename to "new \\"name\\".ts"
+--- "a/old \\"name\\".ts"
++++ "b/new \\"name\\".ts"
+@@ -1,2 +1,2 @@
+ line1
+-old
++new`;
+
+    const result = parseDiff(diff);
+
+    expect(result.files[0]!.operation).toBe("rename");
+    expect(result.files[0]!.filePath).toBe('new "name".ts');
+    expect(result.files[0]!.previousPath).toBe('old "name".ts');
+  });
 });

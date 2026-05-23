@@ -13,31 +13,29 @@ export interface IssuePreviewItemProps {
   className?: string;
 }
 
-export function IssuePreviewItem({
+function IssuePreviewContent({
   title,
   file,
   line,
   category,
-  severity,
-  onClick,
-  className,
-}: IssuePreviewItemProps) {
-  const { icon, color, label, borderColor } = SEVERITY_CONFIG[severity];
-  const isClickable = Boolean(onClick);
-  const Tag = isClickable ? "button" : "div";
-
+  icon,
+  color,
+  label,
+  borderColor,
+  isClickable,
+}: {
+  title: string;
+  file: string;
+  line: number;
+  category: string;
+  icon: string;
+  color: string;
+  label: string;
+  borderColor: string;
+  isClickable: boolean;
+}) {
   return (
-    <Tag
-      type={isClickable ? "button" : undefined}
-      onClick={onClick}
-      className={cn(
-        'flex items-center justify-between p-3 w-full text-left',
-        'bg-tui-bg border-b border-tui-border last:border-b-0',
-        isClickable && 'hover:bg-tui-selection cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tui-blue',
-        'group transition-colors',
-        className
-      )}
-    >
+    <>
       <div className="flex items-center gap-4">
         <span className={cn('font-bold text-lg', color)} aria-hidden="true">
           {icon}
@@ -65,6 +63,46 @@ export function IssuePreviewItem({
           {label}
         </Badge>
       </div>
-    </Tag>
+    </>
+  );
+}
+
+export function IssuePreviewItem({
+  title,
+  file,
+  line,
+  category,
+  severity,
+  onClick,
+  className,
+}: IssuePreviewItemProps) {
+  const { icon, color, label, borderColor } = SEVERITY_CONFIG[severity];
+  const contentProps = { title, file, line, category, icon, color, label, borderColor };
+  const sharedClassName = cn(
+    'flex items-center justify-between p-3 w-full text-left',
+    'bg-tui-bg border-b border-tui-border last:border-b-0',
+    'group transition-colors',
+    className,
+  );
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className={cn(
+          sharedClassName,
+          'hover:bg-tui-selection cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tui-blue',
+        )}
+      >
+        <IssuePreviewContent {...contentProps} isClickable />
+      </button>
+    );
+  }
+
+  return (
+    <div className={sharedClassName}>
+      <IssuePreviewContent {...contentProps} isClickable={false} />
+    </div>
   );
 }

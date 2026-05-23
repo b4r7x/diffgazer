@@ -17,8 +17,8 @@ function App() {
 }
 
 function Modal({ onClose }: { onClose: () => void }) {
-  useScope("modal")
-  useKey("Escape", onClose)
+  const scope = useScope("modal")
+  useKey("Escape", onClose, { scope })
 
   return (
     <div role="dialog" aria-label="Modal" style={{ marginTop: 8, padding: 12, border: "1px solid currentColor" }}>

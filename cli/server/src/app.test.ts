@@ -76,6 +76,79 @@ describe("CORS configuration", () => {
   });
 });
 
+describe("CORS in packaged mode", () => {
+  let originalPackaged: string | undefined;
+
+  beforeEach(() => {
+    originalPackaged = process.env.DIFFGAZER_PACKAGED;
+    process.env.DIFFGAZER_PACKAGED = "1";
+  });
+
+  afterEach(() => {
+    if (originalPackaged === undefined) {
+      delete process.env.DIFFGAZER_PACKAGED;
+    } else {
+      process.env.DIFFGAZER_PACKAGED = originalPackaged;
+    }
+  });
+
+  it("allows same-origin requests (matching host and port)", async () => {
+    const app = createApp();
+    const res = await app.request("/api/health", {
+      method: "OPTIONS",
+      headers: {
+        Host: "localhost:3000",
+        Origin: "http://localhost:3000",
+        "Access-Control-Request-Method": "GET",
+      },
+    });
+
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBe("http://localhost:3000");
+  });
+
+  it("rejects cross-port localhost requests", async () => {
+    const app = createApp();
+    const res = await app.request("/api/health", {
+      method: "OPTIONS",
+      headers: {
+        Host: "localhost:3000",
+        Origin: "http://localhost:3001",
+        "Access-Control-Request-Method": "GET",
+      },
+    });
+
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBeNull();
+  });
+
+  it("rejects cross-host localhost requests", async () => {
+    const app = createApp();
+    const res = await app.request("/api/health", {
+      method: "OPTIONS",
+      headers: {
+        Host: "localhost:3000",
+        Origin: "http://127.0.0.1:3000",
+        "Access-Control-Request-Method": "GET",
+      },
+    });
+
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBeNull();
+  });
+
+  it("rejects external origins", async () => {
+    const app = createApp();
+    const res = await app.request("/api/health", {
+      method: "OPTIONS",
+      headers: {
+        Host: "localhost:3000",
+        Origin: "https://evil.com",
+        "Access-Control-Request-Method": "GET",
+      },
+    });
+
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBeNull();
+  });
+});
+
 describe("security headers", () => {
   it.each([
     { header: "X-Frame-Options", expected: "DENY" },
@@ -91,15 +164,165 @@ describe("security headers", () => {
 });
 
 describe("error handling", () => {
+  let originalToken: string | undefined;
+
+  beforeEach(() => {
+    originalToken = process.env.DIFFGAZER_SHUTDOWN_TOKEN;
+    process.env.DIFFGAZER_SHUTDOWN_TOKEN = "test-token";
+  });
+
+  afterEach(() => {
+    if (originalToken === undefined) {
+      delete process.env.DIFFGAZER_SHUTDOWN_TOKEN;
+    } else {
+      process.env.DIFFGAZER_SHUTDOWN_TOKEN = originalToken;
+    }
+  });
+
   it("returns a JSON 404 body for unknown routes", async () => {
     const app = createApp();
     const res = await app.request("/api/nonexistent", {
-      headers: { Host: "localhost:3000" },
+      headers: { Host: "localhost:3000", [SHUTDOWN_TOKEN_HEADER]: "test-token" },
     });
 
     expect(res.status).toBe(404);
     const body = (await res.json()) as { error: { message: string } };
     expect(body.error.message).toBe("Not Found");
+  });
+});
+
+describe("API token middleware", () => {
+  let originalToken: string | undefined;
+
+  beforeEach(() => {
+    originalToken = process.env.DIFFGAZER_SHUTDOWN_TOKEN;
+    process.env.DIFFGAZER_SHUTDOWN_TOKEN = "test-api-token";
+  });
+
+  afterEach(() => {
+    if (originalToken === undefined) {
+      delete process.env.DIFFGAZER_SHUTDOWN_TOKEN;
+    } else {
+      process.env.DIFFGAZER_SHUTDOWN_TOKEN = originalToken;
+    }
+  });
+
+  it("allows /api/health without a token", async () => {
+    const app = createApp();
+    const res = await app.request("/api/health", {
+      headers: { Host: "localhost:3000" },
+    });
+
+    expect(res.status).toBe(200);
+  });
+
+  it.each(["/api/config", "/api/settings", "/api/git", "/api/review"])(
+    "rejects %s without a valid token",
+    async (route) => {
+      const app = createApp();
+      const res = await app.request(route, {
+        headers: { Host: "localhost:3000" },
+      });
+
+      expect(res.status).toBe(403);
+      const body = (await res.json()) as { error: { message: string } };
+      expect(body.error.message).toBe("Unauthorized");
+    }
+  );
+
+  it("allows CORS preflight (OPTIONS) without a token", async () => {
+    const app = createApp();
+    const res = await app.request("/api/config", {
+      method: "OPTIONS",
+      headers: {
+        Host: "localhost:3000",
+        Origin: "http://localhost:3001",
+        "Access-Control-Request-Method": "POST",
+      },
+    });
+
+    expect(res.status).not.toBe(403);
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBe("http://localhost:3001");
+  });
+
+  it("does not reject a tokenized request at the middleware level", async () => {
+    const app = createApp();
+    const res = await app.request("/api/config", {
+      headers: {
+        Host: "localhost:3000",
+        [SHUTDOWN_TOKEN_HEADER]: "test-api-token",
+      },
+    });
+
+    // The token middleware should pass; downstream may still fail for other reasons (setup, trust, etc.)
+    // but the response body should NOT be the token middleware's "Unauthorized" rejection.
+    if (res.status === 403) {
+      const body = (await res.json()) as { error?: { message: string } };
+      expect(body.error?.message).not.toBe("Unauthorized");
+    }
+  });
+});
+
+describe("CORS origin rejection", () => {
+  let originalToken: string | undefined;
+
+  beforeEach(() => {
+    originalToken = process.env.DIFFGAZER_SHUTDOWN_TOKEN;
+    process.env.DIFFGAZER_SHUTDOWN_TOKEN = "test-token";
+  });
+
+  afterEach(() => {
+    if (originalToken === undefined) {
+      delete process.env.DIFFGAZER_SHUTDOWN_TOKEN;
+    } else {
+      process.env.DIFFGAZER_SHUTDOWN_TOKEN = originalToken;
+    }
+  });
+
+  it("rejects POST from a non-localhost origin before the handler runs", async () => {
+    const app = createApp();
+    const res = await app.request("/api/config", {
+      method: "POST",
+      headers: {
+        Host: "localhost:3000",
+        Origin: "https://evil.com",
+        "Content-Type": "text/plain",
+        [SHUTDOWN_TOKEN_HEADER]: "test-token",
+      },
+    });
+
+    expect(res.status).toBe(403);
+    const body = (await res.json()) as { error: { message: string } };
+    expect(body.error.message).toBe("Forbidden");
+  });
+
+  it("allows POST from a localhost origin", async () => {
+    const app = createApp();
+    const res = await app.request("/api/config", {
+      method: "POST",
+      headers: {
+        Host: "localhost:3000",
+        Origin: "http://localhost:3001",
+        "Content-Type": "application/json",
+        [SHUTDOWN_TOKEN_HEADER]: "test-token",
+      },
+    });
+
+    // Not rejected by CORS — may fail for other reasons but not 403-Forbidden
+    expect(res.status).not.toBe(403);
+  });
+
+  it("allows GET from a non-localhost origin (safe method)", async () => {
+    const app = createApp();
+    const res = await app.request("/api/health", {
+      method: "GET",
+      headers: {
+        Host: "localhost:3000",
+        Origin: "https://evil.com",
+      },
+    });
+
+    expect(res.status).toBe(200);
   });
 });
 
@@ -144,8 +367,8 @@ describe("shutdown route", () => {
     });
 
     expect(res.status).toBe(403);
-    const body = (await res.json()) as { ok: boolean; message?: string };
-    expect(body).toEqual({ ok: false, message: "Shutdown is not authorized." });
+    const body = (await res.json()) as { error: { message: string } };
+    expect(body.error.message).toBe("Unauthorized");
     expect(killSpy).not.toHaveBeenCalled();
   });
 
@@ -163,8 +386,8 @@ describe("shutdown route", () => {
     });
 
     expect(res.status).toBe(403);
-    const body = (await res.json()) as { ok: boolean; message?: string };
-    expect(body).toEqual({ ok: false, message: "Shutdown is not authorized." });
+    const body = (await res.json()) as { error: { message: string } };
+    expect(body.error.message).toBe("Unauthorized");
     expect(killSpy).not.toHaveBeenCalled();
   });
 

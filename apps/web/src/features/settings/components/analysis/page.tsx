@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import type { Shortcut } from "@diffgazer/core/schemas/ui";
+import type { Shortcut } from "@diffgazer/core/schemas/presentation";
 import { getErrorMessage } from "@diffgazer/core/errors";
 import { Button } from "@diffgazer/ui/components/button";
 import { CardLayout } from "@/components/ui/card-layout";
@@ -44,7 +44,7 @@ export function SettingsAnalysisPage() {
   })();
 
   useScope("settings-analysis");
-  useKey("Escape", () => navigate({ to: "/settings" }));
+  useKey("Escape", () => navigate({ to: "/settings" }), { enabled: !isSaving });
 
   const canSave = !isSaving && isDirty && hasLensSelection;
 

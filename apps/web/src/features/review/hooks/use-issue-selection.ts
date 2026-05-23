@@ -4,10 +4,11 @@ import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 interface UseIssueSelectionOptions {
   filteredIssues: ReviewIssue[];
   sourceKey?: string;
+  initialIssueId?: string | null;
 }
 
-export function useIssueSelection({ filteredIssues, sourceKey }: UseIssueSelectionOptions) {
-  const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
+export function useIssueSelection({ filteredIssues, sourceKey, initialIssueId }: UseIssueSelectionOptions) {
+  const [selectedIssueId, setSelectedIssueId] = useState<string | null>(initialIssueId ?? null);
   const [prevSourceKey, setPrevSourceKey] = useState(sourceKey);
   const listRef = useRef<HTMLDivElement>(null);
 

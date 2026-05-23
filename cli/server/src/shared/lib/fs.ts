@@ -13,10 +13,55 @@ const ensureDirSync = (dirPath: string, mode: number = DEFAULT_DIR_MODE): void =
   fs.mkdirSync(dirPath, { recursive: true, mode });
 };
 
-export const readJsonFileSync = <T>(filePath: string): T | null => {
+export type JsonReadResult<T> =
+  | { status: "ok"; data: T }
+  | { status: "missing" }
+  | { status: "corrupt"; error: string };
+
+export const readJsonFileSyncSafe = <T>(filePath: string): JsonReadResult<T> => {
   try {
     const content = fs.readFileSync(filePath, "utf-8");
-    return JSON.parse(content) as T;
+    return { status: "ok", data: JSON.parse(content) as T };
+  } catch (error) {
+    if (isNodeError(error, "ENOENT")) return { status: "missing" };
+    return { status: "corrupt", error: getErrorMessage(error) };
+  }
+};
+
+export const quarantineCorruptFile = (filePath: string): string => {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const backupPath = `${filePath}.${timestamp}.backup`;
+  fs.renameSync(filePath, backupPath);
+  return backupPath;
+};
+
+export interface JsonFileWithMtime<T> {
+  data: T;
+  mtimeMs: number;
+}
+
+export const getFileMtimeMs = (filePath: string): number | null => {
+  try {
+    return fs.statSync(filePath).mtimeMs;
+  } catch {
+    return null;
+  }
+};
+
+export const readJsonFileSync = <T>(filePath: string): T | null => {
+  const result = readJsonFileSyncSafe<T>(filePath);
+  if (result.status === "ok") return result.data;
+  if (result.status === "missing") return null;
+  console.warn(`[fs] Failed to parse JSON from ${filePath}:`, result.error);
+  return null;
+};
+
+export const readJsonFileSyncWithMtime = <T>(filePath: string): JsonFileWithMtime<T> | null => {
+  try {
+    const content = fs.readFileSync(filePath, "utf-8");
+    const data = JSON.parse(content) as T;
+    const mtimeMs = fs.statSync(filePath).mtimeMs;
+    return { data, mtimeMs };
   } catch (error) {
     if (isNodeError(error, "ENOENT")) return null;
     console.warn(`[fs] Failed to parse JSON from ${filePath}:`, getErrorMessage(error));

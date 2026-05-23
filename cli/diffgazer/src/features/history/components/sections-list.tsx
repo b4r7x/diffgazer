@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 import { Box, Text } from "ink";
-import type { TimelineItem } from "@diffgazer/core/schemas/ui";
+import type { TimelineItem } from "@diffgazer/core/schemas/presentation";
 import { NavigationList } from "../../../components/ui/navigation-list.js";
 import { useTheme } from "../../../theme/theme-context.js";
 

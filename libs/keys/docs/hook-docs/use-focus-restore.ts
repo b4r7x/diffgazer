@@ -40,7 +40,7 @@ export const useFocusRestoreDoc: HookDoc = {
     },
   ],
   returns: {
-    type: "{ capture: () => HTMLElement | null; restore: () => boolean; target: HTMLElement | null }",
+    type: "{ capture: (ownerDocument?: Document) => HTMLElement | null; restore: () => boolean; target: HTMLElement | null }",
     description:
       "capture stores the current focus target, restore focuses the captured or fallback target, and target exposes the last captured element.",
   },

@@ -101,7 +101,7 @@ describe("buildReviewPrompt", () => {
   ])("omits project context for $label context", ({ context }) => {
     const prompt = buildReviewPrompt(makeLens(), makeDiff(), context);
 
-    expect(prompt).not.toContain("<project-context>");
+    expect(prompt).not.toContain('<project-context data-untrusted="true">');
   });
 
   it("lists every changed file", () => {
@@ -176,11 +176,11 @@ describe("buildDrilldownPrompt", () => {
 
     for (const section of [
       SECURITY_HARDENING_PROMPT,
-      "<issue>",
+      '<issue data-untrusted="true">',
       "</issue>",
       '<code-diff file="test.ts">',
       "</code-diff>",
-      "<other-issues>",
+      '<other-issues data-untrusted="true">',
       "</other-issues>",
       "No other issues identified",
       "Respond with JSON matching this schema.",

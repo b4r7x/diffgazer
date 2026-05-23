@@ -34,7 +34,6 @@ function getInsightScrollHeight({
 
 export function HistoryScreen(): ReactElement {
   useScope("history");
-  useBackHandler();
 
   const { tokens } = useTheme();
   const { columns, rows, isNarrow, isMedium } = useResponsive();
@@ -44,6 +43,8 @@ export function HistoryScreen(): ReactElement {
     onOpenReview: (reviewId) => navigate({ screen: "review", reviewId }),
   });
 
+  useBackHandler({ isActive: screen.focusZone !== "search" });
+
   const { shortcuts, rightShortcuts } = getHistoryFooter(screen.focusZone);
   usePageFooter({ shortcuts, rightShortcuts });
 
@@ -52,6 +53,21 @@ export function HistoryScreen(): ReactElement {
       screen.cycleFocusZone();
     }
   });
+
+  useInput(
+    (input, key) => {
+      if (key.escape) {
+        screen.setSearchQuery("");
+        screen.setFocusZone("runs");
+        return;
+      }
+      if (key.downArrow) {
+        screen.setFocusZone("timeline");
+        return;
+      }
+    },
+    { isActive: screen.focusZone === "search" },
+  );
 
   useInput(
     (input) => {

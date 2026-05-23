@@ -93,14 +93,44 @@ function scheduleAutoDismiss(id: string, tone: ToastTone, duration?: number) {
   timers.set(id, entry);
 }
 
+function isEvictable(t: Toast): boolean {
+  // Persistent toasts (with actions and no explicit duration) and
+  // error/loading toasts without duration should not be evicted before
+  // transient toasts (WCAG 2.2.1 — enough time).
+  if (t.action && t.duration === undefined) return false;
+  if ((t.tone === "error" || t.tone === "loading") && t.duration === undefined) return false;
+  return true;
+}
+
 function resolveNextToasts(current: Toast[], incoming: Toast): Toast[] {
   const existingIdx = current.findIndex((t) => t.id === incoming.id);
   if (existingIdx >= 0) return current.map((t) => (t.id === incoming.id ? incoming : t));
 
   const all = [...current, incoming];
-  const evicted = all.slice(0, Math.max(0, all.length - MAX_TOASTS));
+  if (all.length <= MAX_TOASTS) return all;
+
+  // Evict transient toasts first (oldest first), then persistent ones
+  // only if no transient candidates remain.
+  const evictCount = all.length - MAX_TOASTS;
+  const evicted: Toast[] = [];
+  const remaining = [...all];
+
+  // First pass: evict oldest transient toasts
+  for (let i = 0; i < remaining.length && evicted.length < evictCount; i++) {
+    if (isEvictable(remaining[i]!)) {
+      evicted.push(remaining.splice(i, 1)[0]!);
+      i--; // adjust index after splice
+    }
+  }
+
+  // Second pass: if still over limit, evict oldest persistent toasts
+  while (remaining.length > MAX_TOASTS) {
+    const removed = remaining.shift();
+    if (removed) evicted.push(removed);
+  }
+
   for (const t of evicted) clearTimer(t.id);
-  return all.slice(-MAX_TOASTS);
+  return remaining;
 }
 
 function createToastId(): string {

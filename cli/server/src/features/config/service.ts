@@ -1,6 +1,7 @@
 import { type Result, ok, err } from "@diffgazer/core/result";
 import { createError } from "@diffgazer/core/errors";
 import type { AIProvider, SetupField, SetupStatus } from "@diffgazer/core/schemas/config";
+import { UserConfigSchema } from "@diffgazer/core/schemas/config";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import type { SecretsStorageError } from "../../shared/lib/config/types.js";
 import type { AppError } from "@diffgazer/core/errors";
@@ -38,6 +39,12 @@ export const getProvidersStatus = (): ProvidersStatusResponse => {
   };
 };
 
+function isKeyReadable(provider: { provider: string } | null): boolean {
+  if (!provider) return false;
+  const keyResult = getProviderApiKey(provider.provider);
+  return keyResult.ok && keyResult.value !== null;
+}
+
 export const getSetupStatus = (projectRoot?: string): SetupStatus => {
   const settings = getSettings();
   const providers = getProviders();
@@ -45,7 +52,7 @@ export const getSetupStatus = (projectRoot?: string): SetupStatus => {
   const project = getProjectInfo(projectRoot);
 
   const hasSecretsStorage = settings.secretsStorage !== null;
-  const hasProvider = activeProvider !== null;
+  const hasProvider = activeProvider !== null && isKeyReadable(activeProvider);
   const hasModel = Boolean(activeProvider?.model);
   const hasTrust = Boolean(project.trust?.capabilities.readFiles);
 
@@ -86,7 +93,8 @@ export const getInitState = (projectRoot?: string): InitResponse => {
 
 export const saveConfig = (
   input: SaveConfigRequest
-): Result<ProviderStatus, SecretsStorageError> => {
+): Promise<Result<ProviderStatus, SecretsStorageError>> => {
+  // apiKey may be a string (legacy/literal) or CredentialRef (structured)
   return saveProviderCredentials({
     provider: input.provider,
     apiKey: input.apiKey,
@@ -114,31 +122,55 @@ export const checkConfig = (): Result<ConfigCheckResponse, SecretsStorageError> 
   return ok({ configured: true, config: configResult.value });
 };
 
-export const activateProvider = (input: {
+export const activateProvider = async (input: {
   provider: AIProvider;
   model?: string;
-}): Result<ActivateProviderResponse, { message: string; code: string }> => {
+}): Promise<Result<ActivateProviderResponse, { message: string; code: string }>> => {
   const { provider, model } = input;
 
-  if (!model) {
-    const existing = getProviders().find((p) => p.provider === provider);
-    if (!existing?.model) {
-      return err(createError("INVALID_BODY", "Model selection is required"));
-    }
-  }
-
-  const active = activateProviderInStore(input);
-  if (!active) {
+  const existing = getProviders().find((p) => p.provider === provider);
+  if (!existing) {
     return err(createError("PROVIDER_NOT_FOUND", "Provider not found"));
   }
 
-  return ok({ provider: active.provider, model: active.model });
+  if (!model && !existing.model) {
+    return err(createError("INVALID_BODY", "Model selection is required"));
+  }
+
+  // Block activation if the provider has no API key configured
+  const apiKeyResult = getProviderApiKey(provider);
+  if (apiKeyResult.ok && !apiKeyResult.value) {
+    return err(createError("INVALID_BODY", "API key required before selecting model"));
+  }
+
+  // Validate the model against provider-level constraints
+  const effectiveModel = model ?? existing.model;
+  if (effectiveModel) {
+    const now = new Date().toISOString();
+    const validation = UserConfigSchema.safeParse({
+      provider,
+      model: effectiveModel,
+      createdAt: now,
+      updatedAt: now,
+    });
+    if (!validation.success) {
+      return err(createError("INVALID_BODY", "Model is not valid for the selected provider"));
+    }
+  }
+
+  const result = await activateProviderInStore(input);
+  if (!result.ok) return result;
+  if (!result.value) {
+    return err(createError("PROVIDER_NOT_FOUND", "Provider not found"));
+  }
+
+  return ok({ provider: result.value.provider, model: result.value.model });
 };
 
-export const deleteProvider = (
+export const deleteProvider = async (
   providerId: AIProvider
-): Result<DeleteProviderResponse, SecretsStorageError> => {
-  const deletedResult = deleteProviderCredentials(providerId);
+): Promise<Result<DeleteProviderResponse, SecretsStorageError>> => {
+  const deletedResult = await deleteProviderCredentials(providerId);
   if (!deletedResult.ok) return deletedResult;
 
   return ok({
@@ -147,14 +179,14 @@ export const deleteProvider = (
   });
 };
 
-export const deleteConfig = (): Result<DeleteConfigResponse, SecretsStorageError | AppError<"CONFIG_NOT_FOUND">> => {
+export const deleteConfig = async (): Promise<Result<DeleteConfigResponse, SecretsStorageError | AppError<"CONFIG_NOT_FOUND">>> => {
   const configResult = getConfig();
   if (!configResult.ok) return configResult;
   if (!configResult.value) {
     return err(createError(ErrorCode.CONFIG_NOT_FOUND, "No active configuration to delete"));
   }
 
-  const deletedResult = deleteProviderCredentials(configResult.value.provider);
+  const deletedResult = await deleteProviderCredentials(configResult.value.provider);
   if (!deletedResult.ok) return deletedResult;
   return ok({ deleted: deletedResult.value });
 };

@@ -37,7 +37,14 @@ export function AgentBoard({ agents }: AgentBoardProps) {
               <div className="text-xs text-tui-muted mt-1 truncate">
                 {agent.currentAction ?? "Standing by"}
               </div>
-              <div className="mt-2 h-1 w-full bg-tui-border">
+              <div
+                role="progressbar"
+                aria-valuenow={Math.round(agent.progress)}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label={`${agent.meta.name} progress`}
+                className="mt-2 h-1 w-full bg-tui-border"
+              >
                 <div
                   className={cn("h-1 transition-all", status.bar)}
                   style={{ width: `${Math.max(0, Math.min(100, agent.progress))}%` }}

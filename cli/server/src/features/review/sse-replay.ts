@@ -36,11 +36,43 @@ export async function streamActiveSessionToSSE(
     return;
   }
 
+  // Subscribe BEFORE reading the snapshot to close the race window where
+  // events arrive between snapshot read and subscribe. Buffer live events
+  // during replay; drain afterward, deduplicating by reference identity.
+  const liveQueue: FullReviewStreamEvent[] = [];
+  let draining = false;
+
+  const earlyUnsub = subscribe(session.reviewId, (event) => {
+    if (!draining) {
+      liveQueue.push(event);
+    }
+  });
+
+  if (!earlyUnsub) {
+    // Session already gone
+    try {
+      await writeStreamEvent(stream, STALE_ERROR_EVENT);
+    } catch (e) {
+      if (clientSignal?.aborted || isAbortError(e)) {
+        return;
+      }
+      console.warn("SSE terminal write failed:", e);
+      throw e;
+    }
+    return;
+  }
+
+  // Snapshot the events array length AND capture references now, before
+  // the live array can be mutated by cap-replacement or new pushes.
+  const snapshotLength = session.events.length;
+  const replayedSet = new Set(session.events.slice(0, snapshotLength));
+
   let replayedTerminalEvent = false;
-  for (const event of session.events) {
+  for (const event of replayedSet) {
     try {
       await writeStreamEvent(stream, event);
     } catch (error) {
+      earlyUnsub();
       if (clientSignal?.aborted || isAbortError(error)) {
         return;
       }
@@ -50,11 +82,25 @@ export async function streamActiveSessionToSSE(
       replayedTerminalEvent = true;
     }
   }
+
   if (replayedTerminalEvent || session.isComplete) {
+    earlyUnsub();
+    // Drain any remaining buffered live events that arrived during replay
+    for (const event of liveQueue) {
+      if (replayedSet.has(event)) continue;
+      try {
+        await writeStreamEvent(stream, event);
+      } catch (error) {
+        if (clientSignal?.aborted || isAbortError(error)) return;
+        throw error;
+      }
+    }
     return;
   }
 
-  const replayCursor = session.events.length;
+  // Transition to live streaming. Remove the early subscriber and wire up
+  // the full promise-based subscriber + completion listener.
+  earlyUnsub();
 
   await new Promise<void>((resolve, reject) => {
     let done = false;
@@ -98,7 +144,10 @@ export async function streamActiveSessionToSSE(
     }
     clientSignal?.addEventListener("abort", onClientAbort, { once: true });
 
-    unsubscribe = subscribe(session.reviewId, (event) => {
+    // Drain buffered live events first, then subscribe for new ones.
+    draining = true;
+    const processEvent = (event: FullReviewStreamEvent): void => {
+      if (replayedSet.has(event)) return;
       if (isTerminalEvent(event)) terminalClaimed = true;
       pendingWrite = pendingWrite.then(() => writeStreamEvent(stream, event));
       pendingWrite.then(
@@ -114,7 +163,13 @@ export async function streamActiveSessionToSSE(
           finish(() => reject(e));
         },
       );
-    });
+    };
+
+    for (const event of liveQueue) {
+      processEvent(event);
+    }
+
+    unsubscribe = subscribe(session.reviewId, processEvent);
 
     if (!unsubscribe) {
       writeTerminal(STALE_ERROR_EVENT);
@@ -132,7 +187,7 @@ export async function streamActiveSessionToSSE(
         finish(resolve);
         return;
       }
-      const terminalEvent = [...latest.events].slice(replayCursor).reverse().find(isTerminalEvent)
+      const terminalEvent = [...latest.events].slice(snapshotLength).reverse().find(isTerminalEvent)
         ?? [...latest.events].reverse().find(isTerminalEvent);
       if (terminalEvent) {
         writeTerminal(terminalEvent);

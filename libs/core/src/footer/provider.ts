@@ -6,8 +6,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { Shortcut } from "../schemas/ui/index.js";
-import { areShortcutsEqual } from "../schemas/ui/index.js";
+import type { Shortcut } from "../schemas/presentation/index.js";
+import { areShortcutsEqual } from "../schemas/presentation/index.js";
 import type { FooterActions, FooterData } from "./types.js";
 
 const FooterDataContext = createContext<FooterData | null>(null);

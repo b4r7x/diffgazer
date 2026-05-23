@@ -13,8 +13,10 @@ export {
   saveWizard,
   type SettingsPayload,
   type SaveWizardCallbacks,
+  type SaveWizardResult,
 } from "./save-wizard.js";
 export {
   useWizardState,
   type UseWizardStateResult,
+  type EarlySaveCallbacks,
 } from "./use-wizard-state.js";

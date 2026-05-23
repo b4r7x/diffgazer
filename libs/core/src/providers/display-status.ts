@@ -1,5 +1,5 @@
 import type { DisplayStatus } from "@diffgazer/core/schemas/config";
-import type { BadgeVariant } from "@diffgazer/core/schemas/ui";
+import type { BadgeVariant } from "@diffgazer/core/schemas/presentation";
 
 interface DisplayStatusConfig {
   label: string;

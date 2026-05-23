@@ -39,6 +39,8 @@
     "web:dev": "pnpm --filter @diffgazer/web dev",
     "web:build": "turbo run build --filter=@diffgazer/web",
     "web:preview": "pnpm --filter @diffgazer/web preview",
+    "landing:dev": "pnpm --filter @diffgazer/landing dev",
+    "landing:build": "turbo run build --filter=@diffgazer/landing",
     "diffgazer:dev": "pnpm --filter diffgazer dev",
     "diffgazer:build": "pnpm --filter diffgazer build",
     "diffgazer:start": "pnpm --filter diffgazer start",
@@ -54,6 +56,7 @@
     "release": "changeset publish --provenance"
   },
   "devDependencies": {
+    "@changesets/changelog-git": "^0.2.1",
     "@changesets/changelog-github": "^0.6.0",
     "@changesets/cli": "^2.30.0",
     "@chialab/vitest-axe": "^0.19.1",
@@ -84,7 +87,8 @@
       "rollup": "^4.59.0",
       "vite": "^7.3.2",
       "undici": "^7.24.0",
-      "path-to-regexp": "^8.4.0"
+      "path-to-regexp": "^8.4.0",
+      "ws": "^8.21.0"
     }
   }
 }

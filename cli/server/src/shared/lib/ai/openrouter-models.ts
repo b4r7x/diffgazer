@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { getErrorMessage } from "@diffgazer/core/errors";
 import { type Result, ok, err } from "@diffgazer/core/result";
 import {
@@ -8,6 +9,9 @@ import {
 } from "@diffgazer/core/schemas/config";
 import { getGlobalOpenRouterModelsPath } from "../paths.js";
 import { readJsonFileSync, writeJsonFileSync } from "../fs.js";
+
+const hashApiKey = (apiKey: string): string =>
+  createHash("sha256").update(apiKey).digest("hex").slice(0, 16);
 
 const OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models";
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -123,6 +127,7 @@ export const fetchOpenRouterModels = async (apiKey: string): Promise<Result<Open
 export const getOpenRouterModelsWithCache = async (
   apiKey: string
 ): Promise<Result<{ models: OpenRouterModel[]; fetchedAt: string; cached: boolean }, { message: string }>> => {
+  const currentKeyHash = hashApiKey(apiKey);
   const cache = loadOpenRouterModelCache();
   const cacheTime = cache ? Date.parse(cache.fetchedAt) : NaN;
   const cacheValid = Number.isFinite(cacheTime) && Date.now() - cacheTime < CACHE_TTL_MS;
@@ -130,8 +135,9 @@ export const getOpenRouterModelsWithCache = async (
     ? cache.models.filter((model) => (model.supportedParameters?.length ?? 0) > 0).length
     : 0;
   const cacheHasParams = cacheWithParams > 0;
+  const cacheKeyMatches = cache?.keyHash === currentKeyHash;
 
-  if (cache && cacheValid && cacheHasParams) {
+  if (cache && cacheValid && cacheHasParams && cacheKeyMatches) {
     console.info(
       `[openrouter-models] cache hit: models=${cache.models.length} withParams=${cacheWithParams}`
     );
@@ -142,7 +148,7 @@ export const getOpenRouterModelsWithCache = async (
   if (fetchResult.ok) {
     const models = fetchResult.value;
     const fetchedAt = new Date().toISOString();
-    persistOpenRouterModelCache({ models, fetchedAt });
+    persistOpenRouterModelCache({ models, fetchedAt, keyHash: currentKeyHash });
     const withParams = models.filter((model) => (model.supportedParameters?.length ?? 0) > 0)
       .length;
     console.info(
@@ -151,7 +157,7 @@ export const getOpenRouterModelsWithCache = async (
     return ok({ models, fetchedAt, cached: false });
   }
 
-  if (cache) {
+  if (cache && cacheKeyMatches) {
     console.info(
       `[openrouter-models] fetch failed, using cache: models=${cache.models.length} withParams=${cacheWithParams}`
     );

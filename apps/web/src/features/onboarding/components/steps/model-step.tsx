@@ -145,6 +145,16 @@ function OpenRouterModelList({
     return (
       <div className="space-y-4">
         <p className="text-sm text-tui-red font-mono">Failed to load models: {error}</p>
+        <p className="text-sm text-tui-muted font-mono">
+          Enter a model ID manually (e.g. openai/gpt-4o):
+        </p>
+        <input
+          type="text"
+          value={value ?? ""}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="openai/gpt-4o"
+          className="w-full px-3 py-2 bg-tui-bg border border-tui-border text-tui-fg font-mono text-sm rounded"
+        />
       </div>
     );
   }

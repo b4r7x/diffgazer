@@ -29,18 +29,37 @@ function findElements(container: HTMLElement, selector: string): HTMLElement[] {
   return Array.from(container.querySelectorAll<HTMLElement>(selector));
 }
 
-function queryFirstMatchingGroup(
+function queryAllMatchingGroups(
   container: HTMLElement,
   selectors: string[],
   filter?: (element: HTMLElement) => boolean,
 ): HTMLElement[] {
+  const seen = new Set<HTMLElement>();
+  const merged: HTMLElement[] = [];
+
   for (const selector of selectors) {
-    const elements = filter
-      ? findElements(container, selector).filter(filter)
-      : findElements(container, selector);
-    if (elements.length > 0) return elements;
+    const elements = findElements(container, selector);
+    for (const el of elements) {
+      if (seen.has(el)) continue;
+      if (filter && !filter(el)) continue;
+      seen.add(el);
+      merged.push(el);
+    }
   }
-  return [];
+
+  // querySelectorAll returns elements in DOM order within each selector,
+  // but merged results from multiple selectors may interleave. Sort by
+  // DOM order using compareDocumentPosition.
+  if (merged.length > 1) {
+    merged.sort((a, b) => {
+      const pos = a.compareDocumentPosition(b);
+      if (pos & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
+      if (pos & Node.DOCUMENT_POSITION_PRECEDING) return 1;
+      return 0;
+    });
+  }
+
+  return merged;
 }
 
 function matchesNavigationDataContract(element: HTMLElement, type: NavigationItemType): boolean {
@@ -117,7 +136,7 @@ export function getNavigationItems(
 ): HTMLElement[] {
   if (!container) return [];
 
-  return queryFirstMatchingGroup(
+  return queryAllMatchingGroups(
     container,
     buildNavigationSelectors(query.type, query.skipDisabled ?? true),
     (element) => matchesNavigationDataContract(element, query.type)

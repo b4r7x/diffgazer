@@ -1,4 +1,4 @@
-import { severityRank } from "@diffgazer/core/schemas/ui";
+import { severityRank } from "@diffgazer/core/schemas/presentation";
 import type {
   ReviewIssue,
   ReviewSeverity,
@@ -43,6 +43,13 @@ export function sortIssuesBySeverity(issues: ReviewIssue[]): ReviewIssue[] {
   });
 }
 
+function stripDiffPrefix(line: string): string {
+  if (line.length > 0 && (line[0] === "+" || line[0] === " ")) {
+    return line.slice(1);
+  }
+  return line;
+}
+
 function extractEvidenceFromDiff(file: FileDiff, lineStart: number | null, lineEnd: number | null): EvidenceRef[] {
   if (lineStart === null) return [];
 
@@ -53,19 +60,42 @@ function extractEvidenceFromDiff(file: FileDiff, lineStart: number | null, lineE
 
   if (!matchingHunk) return [];
 
-  const lines = matchingHunk.content.split("\n");
-  const relativeStart = lineStart - matchingHunk.newStart;
-  const relativeEnd = lineEnd !== null ? lineEnd - matchingHunk.newStart : relativeStart;
-  const excerpt = lines.slice(relativeStart, relativeEnd + 1).join("\n");
+  const effectiveEnd = lineEnd ?? lineStart;
+  const rawLines = matchingHunk.content.split("\n");
+  const excerptLines: string[] = [];
+  let newLine = matchingHunk.newStart;
+
+  for (const raw of rawLines) {
+    if (raw.startsWith("@@") || raw.startsWith("-") || raw.startsWith("\\ ")) {
+      continue;
+    }
+    if (newLine >= lineStart && newLine <= effectiveEnd) {
+      excerptLines.push(stripDiffPrefix(raw));
+    }
+    newLine++;
+    if (newLine > effectiveEnd) break;
+  }
+
+  const excerpt = excerptLines.join("\n");
+
+  const fallbackLines: string[] = [];
+  if (!excerpt) {
+    let count = 0;
+    for (const raw of rawLines) {
+      if (raw.startsWith("@@") || raw.startsWith("-") || raw.startsWith("\\ ")) continue;
+      fallbackLines.push(stripDiffPrefix(raw));
+      if (++count >= 5) break;
+    }
+  }
 
   return [
     {
       type: "code" as const,
       title: `Code at ${file.filePath}:${lineStart}`,
-      sourceId: `${file.filePath}:${lineStart}-${lineEnd ?? lineStart}`,
+      sourceId: `${file.filePath}:${lineStart}-${effectiveEnd}`,
       file: file.filePath,
-      range: { start: lineStart, end: lineEnd ?? lineStart },
-      excerpt: excerpt || lines.slice(0, 5).join("\n"),
+      range: { start: lineStart, end: effectiveEnd },
+      excerpt: excerpt || fallbackLines.join("\n"),
     },
   ];
 }

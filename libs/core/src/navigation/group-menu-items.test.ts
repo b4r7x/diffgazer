@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import type { NavItem } from "../schemas/ui/navigation.js";
+import type { NavItem } from "../schemas/presentation/navigation.js";
 import { groupMenuItems, withGroupDividers } from "./group-menu-items.js";
 
 const FIXTURE: NavItem[] = [

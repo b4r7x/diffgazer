@@ -7,13 +7,33 @@ export interface ActiveSession {
   headCommit: string;
   statusHash: string;
   mode: ReviewMode;
+  scopeKey: string;
   startedAt: Date;
   events: FullReviewStreamEvent[];
   isComplete: boolean;
   isReady: boolean;
+  capWarningEmitted: boolean;
   subscribers: Set<(event: FullReviewStreamEvent) => void>;
   completionListeners: Set<() => void>;
   controller: AbortController;
+}
+
+export function buildScopeKey(params: {
+  files?: string[];
+  lenses?: string[];
+  profile?: string;
+}): string {
+  const parts: string[] = [];
+  if (params.files && params.files.length > 0) {
+    parts.push(`f:${[...params.files].sort().join(",")}`);
+  }
+  if (params.lenses && params.lenses.length > 0) {
+    parts.push(`l:${[...params.lenses].sort().join(",")}`);
+  }
+  if (params.profile) {
+    parts.push(`p:${params.profile}`);
+  }
+  return parts.join("|");
 }
 
 const MAX_SESSIONS = 50;
@@ -31,6 +51,12 @@ function storeSessionEvent(session: ActiveSession, event: FullReviewStreamEvent)
     session.events.push(event);
     return true;
   }
+
+  if (!session.capWarningEmitted) {
+    session.capWarningEmitted = true;
+    console.warn(`[sessions] Event cap (${MAX_EVENTS_PER_SESSION}) reached for session ${session.reviewId}`);
+  }
+
   if (!isTerminalEvent(event)) {
     return false;
   }
@@ -72,7 +98,16 @@ function evictOldestSession(): void {
     const session = activeSessions.get(oldest.id);
     if (session && !session.isComplete) {
       session.controller.abort("evicted");
+      const evictionEvent: FullReviewStreamEvent = {
+        type: "error",
+        error: {
+          code: ReviewErrorCode.SESSION_STALE,
+          message: "Review session evicted due to session limit.",
+        },
+      };
+      storeSessionEvent(session, evictionEvent);
       session.isComplete = true;
+      notifySubscribers(session, evictionEvent);
       session.subscribers.clear();
       notifyCompletion(session);
     }
@@ -85,7 +120,16 @@ function cleanupStaleSessions(): void {
   for (const [id, session] of activeSessions) {
     if (!session.isComplete && now - session.startedAt.getTime() > SESSION_TIMEOUT_MS) {
       session.controller.abort("timeout");
+      const timeoutEvent: FullReviewStreamEvent = {
+        type: "error",
+        error: {
+          code: ReviewErrorCode.SESSION_STALE,
+          message: "Review session timed out.",
+        },
+      };
+      storeSessionEvent(session, timeoutEvent);
       session.isComplete = true;
+      notifySubscribers(session, timeoutEvent);
       session.subscribers.clear();
       notifyCompletion(session);
       activeSessions.delete(id);
@@ -101,7 +145,8 @@ export function createSession(
   projectPath: string,
   headCommit: string,
   statusHash: string,
-  mode: ReviewMode
+  mode: ReviewMode,
+  scopeKey: string = "",
 ): ActiveSession {
   if (activeSessions.size >= MAX_SESSIONS) {
     evictOldestSession();
@@ -113,10 +158,12 @@ export function createSession(
     headCommit,
     statusHash,
     mode,
+    scopeKey,
     startedAt: new Date(),
     events: [],
     isComplete: false,
     isReady: false,
+    capWarningEmitted: false,
     subscribers: new Set(),
     completionListeners: new Set(),
     controller: new AbortController(),
@@ -222,7 +269,8 @@ export function getActiveSessionForProject(
   projectPath: string,
   headCommit: string,
   statusHash: string,
-  mode: ReviewMode
+  mode: ReviewMode,
+  scopeKey: string = "",
 ): ActiveSession | undefined {
   for (const session of activeSessions.values()) {
     if (
@@ -230,6 +278,7 @@ export function getActiveSessionForProject(
       session.headCommit === headCommit &&
       session.statusHash === statusHash &&
       session.mode === mode &&
+      session.scopeKey === scopeKey &&
       !session.isComplete &&
       session.isReady
     ) {

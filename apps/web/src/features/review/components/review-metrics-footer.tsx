@@ -1,7 +1,7 @@
 import { SectionHeader } from '@diffgazer/ui/components/section-header';
 import { KeyValue } from '@diffgazer/ui/components/key-value';
 import { Timer } from './timer';
-import type { ReviewProgressMetrics } from '@diffgazer/core/schemas/ui';
+import type { ReviewProgressMetrics } from '@diffgazer/core/schemas/presentation';
 
 interface ReviewMetricsFooterProps {
   metrics: ReviewProgressMetrics;

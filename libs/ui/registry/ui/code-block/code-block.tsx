@@ -65,9 +65,11 @@ export function CodeBlock({
 
   const fallbackName = label ?? (language ? `${language} code` : "Code block");
 
+  const hasLabel = containsLabelElement(children);
+
   const contextValue = useMemo(
-    () => ({ variant: resolvedVariant, chrome: resolvedChrome, labelId, language, fallbackName }),
-    [resolvedVariant, resolvedChrome, labelId, language, fallbackName],
+    () => ({ variant: resolvedVariant, chrome: resolvedChrome, labelId, hasLabel, language, fallbackName }),
+    [resolvedVariant, resolvedChrome, labelId, hasLabel, language, fallbackName],
   );
 
   const ariaProps = resolveAriaName(props, children, labelId, fallbackName);

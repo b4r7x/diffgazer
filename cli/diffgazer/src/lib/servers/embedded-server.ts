@@ -72,6 +72,7 @@ export function createEmbeddedServer(
     if (config.projectRoot) {
       process.env.DIFFGAZER_PROJECT_ROOT = config.projectRoot;
     }
+    process.env.DIFFGAZER_PACKAGED = "1";
 
     const { createApp } = await import("@diffgazer/server");
     if (state === "stopped") {
@@ -106,7 +107,7 @@ export function createEmbeddedServer(
     );
 
     try {
-      server = serve({ fetch: app.fetch, port: config.port }, (info) => {
+      server = serve({ fetch: app.fetch, port: config.port, hostname: "127.0.0.1" }, (info) => {
         if (state === "stopped") {
           return;
         }
@@ -114,6 +115,17 @@ export function createEmbeddedServer(
         state = "running";
         const address = `http://localhost:${info.port}`;
         config.onReady?.(address);
+      });
+
+      server.on("error", (err: NodeJS.ErrnoException) => {
+        state = "idle";
+        if (err.code === "EADDRINUSE") {
+          console.error(`Port ${config.port} is already in use. Close the other process or set a different PORT.`);
+        } else if (err.code === "EACCES") {
+          console.error(`Permission denied binding to port ${config.port}. Try a port above 1024.`);
+        } else {
+          console.error("Server listen error:", err);
+        }
       });
     } catch (err) {
       state = "idle";

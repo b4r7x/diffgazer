@@ -2,6 +2,7 @@ import { z } from "zod";
 import { UuidSchema, createdAtField } from "../shared/fields.js";
 import { ReviewResultSchema } from "./issues.js";
 import { LensIdSchema, ProfileIdSchema, DrilldownResultSchema } from "./lens.js";
+import { LensStatSchema } from "../events/agent.js";
 
 export const ReviewModeSchema = z.enum(["staged", "unstaged", "files"]);
 export type ReviewMode = z.infer<typeof ReviewModeSchema>;
@@ -81,5 +82,6 @@ export const SavedReviewSchema = z.object({
   diff: ParsedDiffSchema.optional(),
   gitContext: ReviewGitContextSchema,
   drilldowns: z.array(DrilldownResultSchema),
+  lensStats: z.array(LensStatSchema).optional(),
 });
 export type SavedReview = z.infer<typeof SavedReviewSchema>;

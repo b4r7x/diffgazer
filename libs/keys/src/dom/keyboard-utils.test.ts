@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { matchesHotkey, isInputElement, isEditableElement } from "./keyboard-utils";
+import { canonicalizeHotkey, matchesHotkey, isInputElement, isEditableElement } from "./keyboard-utils";
 
 function makeKeyEvent(
   key: string,
@@ -31,6 +31,11 @@ describe("matchesHotkey", () => {
     { event: makeKeyEvent("Escape"), hotkey: "esc" },
     { event: makeKeyEvent("ArrowUp"), hotkey: "up" },
     { event: makeKeyEvent(" "), hotkey: "space" },
+    { event: makeKeyEvent("?", { shift: true }), hotkey: "shift+question" },
+    { event: makeKeyEvent("+"), hotkey: "plus" },
+    { event: makeKeyEvent("/"), hotkey: "slash" },
+    { event: makeKeyEvent("!", { shift: true }), hotkey: "shift+exclamation" },
+    { event: makeKeyEvent("+"), hotkey: "+" },
   ])("resolves alias '$hotkey' to its canonical key", ({ event, hotkey }) => {
     expect(matchesHotkey(event, hotkey)).toBe(true);
   });
@@ -69,6 +74,29 @@ describe("matchesHotkey", () => {
     expect(matchesHotkey(makeKeyEvent("k"), "mod+k")).toBe(false);
   });
 
+  describe("unknown modifier validation", () => {
+    it("returns false for an unknown modifier", () => {
+      const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      expect(matchesHotkey(makeKeyEvent("k", { ctrl: true }), "Hyper+k")).toBe(false);
+      spy.mockRestore();
+    });
+
+    it("warns in development for an unknown modifier", () => {
+      const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      matchesHotkey(makeKeyEvent("k"), "Super+k");
+      expect(spy).toHaveBeenCalledWith(
+        expect.stringContaining("unknown modifier"),
+      );
+      spy.mockRestore();
+    });
+
+    it("returns false for partially valid modifiers when one is unknown", () => {
+      const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      expect(matchesHotkey(makeKeyEvent("k", { ctrl: true }), "Ctrl+Hyper+k")).toBe(false);
+      spy.mockRestore();
+    });
+  });
+
   describe("uppercase letter shift matching", () => {
     it("matches uppercase G when shift is held", () => {
       expect(matchesHotkey(makeKeyEvent("G", { shift: true }), "G")).toBe(true);
@@ -85,6 +113,32 @@ describe("matchesHotkey", () => {
     it("matches lowercase g without shift", () => {
       expect(matchesHotkey(makeKeyEvent("g"), "g")).toBe(true);
     });
+  });
+});
+
+describe("canonicalizeHotkey", () => {
+  it("collapses aliases to the same canonical form", () => {
+    expect(canonicalizeHotkey("esc")).toBe(canonicalizeHotkey("Escape"));
+    expect(canonicalizeHotkey("up")).toBe(canonicalizeHotkey("ArrowUp"));
+    expect(canonicalizeHotkey("space")).toBe(canonicalizeHotkey(" "));
+  });
+
+  it("sorts modifiers consistently", () => {
+    expect(canonicalizeHotkey("Shift+Ctrl+s")).toBe(canonicalizeHotkey("Ctrl+Shift+s"));
+  });
+
+  it("normalizes shifted punctuation aliases", () => {
+    expect(canonicalizeHotkey("shift+question")).toBe(canonicalizeHotkey("shift+?"));
+  });
+
+  it("handles the bare plus key without breaking the delimiter", () => {
+    // "plus" alias resolves to "+", which is also the delimiter
+    expect(canonicalizeHotkey("plus")).toBe(canonicalizeHotkey("+"));
+    expect(canonicalizeHotkey("mod+plus")).toBe(canonicalizeHotkey("mod++"));
+  });
+
+  it("normalizes uppercase letter to shift+lowercase", () => {
+    expect(canonicalizeHotkey("G")).toBe(canonicalizeHotkey("shift+g"));
   });
 });
 

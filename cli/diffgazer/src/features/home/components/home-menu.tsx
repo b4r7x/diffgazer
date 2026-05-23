@@ -1,7 +1,7 @@
 import { Fragment } from "react";
 import { Menu } from "../../../components/ui/menu.js";
 import { Panel } from "../../../components/ui/panel.js";
-import { MENU_ITEMS } from "@diffgazer/core/schemas/ui";
+import { MENU_ITEMS } from "@diffgazer/core/schemas/presentation";
 import { isMenuActionDisabled, withGroupDividers } from "@diffgazer/core/navigation";
 
 interface HomeMenuProps {

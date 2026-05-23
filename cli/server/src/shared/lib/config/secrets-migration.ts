@@ -47,25 +47,43 @@ export function migrateSecretsStorage(
       );
     }
 
-    for (const [providerId, apiKey] of Object.entries(secretsState.providers)) {
+    const envEntries: Record<string, { kind: "env"; varName: string }> = {};
+    for (const [providerId, entry] of Object.entries(secretsState.providers)) {
+      // Env credential refs stay in the file -- they reference env vars, not keyring secrets
+      if (typeof entry !== "string" && entry.kind === "env") {
+        envEntries[providerId] = entry;
+        continue;
+      }
+      const apiKey = typeof entry === "string" ? entry : "";
       const writeResult = writeKeyringSecret(getApiKeyName(providerId), apiKey);
       if (!writeResult.ok) return writeResult;
     }
 
-    try {
-      removeSecretsFile();
-    } catch (error) {
-      console.warn(
-        `[diffgazer] Failed to remove secrets file after migration: ${getErrorMessage(error)}`,
-      );
+    if (Object.keys(envEntries).length === 0) {
+      try {
+        removeSecretsFile();
+      } catch (error) {
+        console.warn(
+          `[diffgazer] Failed to remove secrets file after migration: ${getErrorMessage(error)}`,
+        );
+      }
     }
-    return ok({ nextSecrets: { providers: {} }, removedFileSecrets: true, keyringDeletions: [] });
+    return ok({ nextSecrets: { providers: envEntries }, removedFileSecrets: Object.keys(envEntries).length === 0, keyringDeletions: [] });
   }
 
   if (fromStorage === "keyring" && toStorage === "file") {
-    const nextSecrets: Record<string, string> = {};
+    const nextSecrets: SecretsState["providers"] = {};
+    // Preserve env entries that are already in the file (they don't live in keyring)
+    for (const [providerId, entry] of Object.entries(secretsState.providers)) {
+      if (typeof entry !== "string" && entry.kind === "env") {
+        nextSecrets[providerId] = entry;
+      }
+    }
+    const keyringMigrated: string[] = [];
     for (const provider of configState.providers) {
       if (!provider.hasApiKey) continue;
+      // Skip providers that have env refs -- already handled above
+      if (nextSecrets[provider.provider]) continue;
       const secretResult = readKeyringSecret(getApiKeyName(provider.provider));
       if (!secretResult.ok) return secretResult;
       if (secretResult.value === null) {
@@ -77,12 +95,13 @@ export function migrateSecretsStorage(
         );
       }
       nextSecrets[provider.provider] = secretResult.value;
+      keyringMigrated.push(provider.provider);
     }
 
     return ok({
       nextSecrets: { providers: nextSecrets },
       removedFileSecrets: false,
-      keyringDeletions: Object.keys(nextSecrets),
+      keyringDeletions: keyringMigrated,
     });
   }
 

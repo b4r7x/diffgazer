@@ -27,7 +27,7 @@ function HealthGate({ children }: { children: ReactNode }): ReactElement {
   useInput(
     (input) => {
       if (input === "r") {
-        void retry();
+        retry().catch(() => {});
       }
     },
     { isActive: state.status === "error" },
@@ -73,7 +73,14 @@ function GlobalShortcuts(): null {
   const { navigate, route } = useNavigation();
   const { handleExit } = useExit();
 
+  const isGated = route.screen === "onboarding";
+
   const onKeyboard = useEffectEvent((key: string) => {
+    if (isGated) {
+      if (key === "q") handleExit();
+      return;
+    }
+
     switch (key) {
       case "q":
         handleExit();

@@ -1,5 +1,7 @@
 "use client";
 
+// @hidden-imports-ok — copy-mode examples import hidden registry hooks by design.
+
 /**
  * Copy-mode example: components use locally copied hooks
  * instead of the @diffgazer/keys package.

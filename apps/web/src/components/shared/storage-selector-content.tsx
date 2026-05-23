@@ -17,7 +17,7 @@ const STORAGE_OPTIONS: Array<{ value: SecretsStorage; label: string; description
   {
     value: "file",
     label: "File Storage (Local)",
-    description: "Store secrets in an encrypted file on your filesystem. Simple and portable.",
+    description: "Store secrets in a local file with OS file permissions (mode 0600). Simple and portable. For stronger protection, consider the system keyring.",
   },
   {
     value: "keyring",

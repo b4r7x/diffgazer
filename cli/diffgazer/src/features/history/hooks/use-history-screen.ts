@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useReviews, useReview } from "@diffgazer/core/api/hooks";
 import { formatDuration, getDateKey } from "@diffgazer/core/format";
 import type { ReviewIssue, ReviewMetadata } from "@diffgazer/core/schemas/review";
-import type { SeverityCounts } from "@diffgazer/core/schemas/ui";
+import type { SeverityCounts } from "@diffgazer/core/schemas/presentation";
 import {
   buildTimelineItems,
   getEmptyRunsMessage,

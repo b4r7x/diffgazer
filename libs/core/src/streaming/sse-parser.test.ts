@@ -102,7 +102,8 @@ describe("parseSSEStream", () => {
 
   it("cancels parsing when the buffered data exceeds the limit", async () => {
     const onBufferOverflow = vi.fn();
-    const reader = createMockReader(["a".repeat(500 * 1024), "b".repeat(500 * 1024), "c".repeat(500 * 1024)]);
+    const chunkSize = 6 * 1024 * 1024;
+    const reader = createMockReader(["a".repeat(chunkSize), "b".repeat(chunkSize), "c".repeat(chunkSize)]);
     const events: unknown[] = [];
 
     const result = await parseSSEStream(reader, {
@@ -118,7 +119,7 @@ describe("parseSSEStream", () => {
   });
 
   it("does not require an overflow handler and leaves valid sub-limit data alone", async () => {
-    const overflowReader = createMockReader(["x".repeat(1024 * 1024 + 1)]);
+    const overflowReader = createMockReader(["x".repeat(16 * 1024 * 1024 + 1)]);
     const overflow = await parseSSEStream(overflowReader, {
       onEvent: () => undefined,
       parseEvent: identity,
@@ -127,7 +128,7 @@ describe("parseSSEStream", () => {
     expect(overflow).toEqual({ completed: false });
     expect(overflowReader.cancel).toHaveBeenCalledOnce();
 
-    const underLimitReader = createMockReader(["x".repeat(1024 * 1024 - 100)]);
+    const underLimitReader = createMockReader(["x".repeat(16 * 1024 * 1024 - 100)]);
     const underLimit = await parseSSEStream(underLimitReader, {
       onEvent: () => undefined,
       parseEvent: identity,

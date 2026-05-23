@@ -1,6 +1,6 @@
 {
   "name": "@diffgazer/ui",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Terminal-inspired React UI component library",
   "homepage": "https://github.com/b4r7x/diffgazer/tree/main/libs/ui",
   "repository": {
@@ -269,6 +269,8 @@
   },
   "files": [
     "dist",
+    "!dist/artifacts",
+    "!dist/artifacts/**",
     "!dist/components/dialog-shell.js",
     "!dist/components/dialog-shell.d.ts",
     "!dist/components/portal.js",
@@ -277,8 +279,6 @@
     "!dist/_types/registry/ui/shared/**",
     "!dist/_types/shared",
     "!dist/_types/shared/**",
-    "!dist/artifacts",
-    "!dist/artifacts/**",
     "LICENSE",
     "README.md",
     "SECURITY.md",

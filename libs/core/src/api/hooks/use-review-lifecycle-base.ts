@@ -24,6 +24,7 @@ export interface UseReviewLifecycleBaseResult {
   stream: {
     stop: () => void;
     abort: () => void;
+    cancel: (reviewId: string | null) => void;
   };
 
   streamState: ReviewStreamState;
@@ -83,6 +84,7 @@ export function useReviewLifecycleBase(
     stream: {
       stop: stream.stop,
       abort: stream.abort,
+      cancel: stream.cancel,
     },
     streamState: stream.state,
     isNoDiffError,

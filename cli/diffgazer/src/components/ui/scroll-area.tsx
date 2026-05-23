@@ -1,4 +1,4 @@
-import { useState, Children } from "react";
+import { useState, useRef, Children } from "react";
 import type { ReactNode } from "react";
 import { Box, Text, useInput } from "ink";
 import { useTheme } from "../../theme/theme-context.js";
@@ -6,43 +6,69 @@ import { useTheme } from "../../theme/theme-context.js";
 export interface ScrollAreaProps {
   height: number;
   isActive?: boolean;
+  autoTail?: boolean;
   children: ReactNode;
 }
 
 export function ScrollArea({
   height,
   isActive = false,
+  autoTail = false,
   children,
 }: ScrollAreaProps) {
   const { tokens } = useTheme();
   const [scrollOffset, setScrollOffset] = useState(0);
+  const prevTotalRef = useRef(0);
+  const userScrolledRef = useRef(false);
 
   const childArray = Children.toArray(children);
   const totalItems = childArray.length;
   const maxOffset = Math.max(0, totalItems - height);
+  let clampedOffset = Math.min(scrollOffset, maxOffset);
+
+  if (clampedOffset !== scrollOffset) {
+    setScrollOffset(clampedOffset);
+  }
+
+  if (autoTail && totalItems > prevTotalRef.current && !userScrolledRef.current) {
+    setScrollOffset(maxOffset);
+  }
+  prevTotalRef.current = totalItems;
 
   useInput(
     (_input, key) => {
       if (key.upArrow) {
+        userScrolledRef.current = true;
         setScrollOffset((prev) => Math.max(0, prev - 1));
       } else if (key.downArrow) {
-        setScrollOffset((prev) => Math.min(maxOffset, prev + 1));
+        setScrollOffset((prev) => {
+          const next = Math.min(maxOffset, prev + 1);
+          if (next >= maxOffset) userScrolledRef.current = false;
+          return next;
+        });
       } else if (key.pageUp) {
+        userScrolledRef.current = true;
         setScrollOffset((prev) => Math.max(0, prev - height));
       } else if (key.pageDown) {
-        setScrollOffset((prev) => Math.min(maxOffset, prev + height));
+        setScrollOffset((prev) => {
+          const next = Math.min(maxOffset, prev + height);
+          if (next >= maxOffset) userScrolledRef.current = false;
+          return next;
+        });
       } else if (key.home) {
+        userScrolledRef.current = true;
         setScrollOffset(0);
       } else if (key.end) {
+        userScrolledRef.current = false;
         setScrollOffset(maxOffset);
       }
     },
     { isActive },
   );
 
-  const canScrollUp = scrollOffset > 0;
-  const canScrollDown = scrollOffset < maxOffset;
-  const visibleChildren = childArray.slice(scrollOffset, scrollOffset + height);
+  const canScrollUp = clampedOffset > 0;
+  const canScrollDown = clampedOffset < maxOffset;
+  const visibleChildren = childArray.slice(clampedOffset, clampedOffset + height);
 
   return (
     <Box flexDirection="column">

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Box, Text } from "ink";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import type { DetailsEmptyKind } from "@diffgazer/core/review";
@@ -58,10 +59,12 @@ function DetailsTab({
   issue,
   completedSteps,
   onToggleStep,
+  isActive,
 }: {
   issue: ReviewIssue;
   completedSteps: Set<number>;
   onToggleStep: (step: number) => void;
+  isActive: boolean;
 }) {
   const { tokens } = useTheme();
   const codeEvidence = issue.evidence.filter((e) => e.type === "code");
@@ -109,6 +112,7 @@ function DetailsTab({
             steps={issue.fixPlan}
             completedSteps={completedSteps}
             onToggle={onToggleStep}
+            isActive={isActive}
           />
         </Box>
       ) : null}
@@ -220,6 +224,18 @@ export function IssueDetailsPane({
   completedSteps,
   onToggleStep,
 }: IssueDetailsPaneProps) {
+  const [activeTab, setActiveTab] = useState("details");
+  const [trackedIssueId, setTrackedIssueId] = useState<string | undefined>(undefined);
+
+  if (issue && issue.id !== trackedIssueId) {
+    setTrackedIssueId(issue.id);
+    setActiveTab("details");
+  }
+
+  const effectiveTab =
+    activeTab === "patch" && !issue?.suggested_patch ? "details" : activeTab;
+
+
   if (!issue) {
     const empty = EMPTY_COPY[emptyKind];
     return (
@@ -237,7 +253,7 @@ export function IssueDetailsPane({
       <Box paddingX={1} paddingTop={1}>
         <IssueHeader issue={issue} />
       </Box>
-      <Tabs defaultValue="details">
+      <Tabs value={effectiveTab} onValueChange={setActiveTab}>
         <Tabs.List isActive={isActive}>
           <Tabs.Trigger value="details">Details</Tabs.Trigger>
           <Tabs.Trigger value="explain">Explain</Tabs.Trigger>
@@ -252,6 +268,7 @@ export function IssueDetailsPane({
               issue={issue}
               completedSteps={completedSteps}
               onToggleStep={onToggleStep}
+              isActive={isActive}
             />
           </ScrollArea>
         </Tabs.Content>

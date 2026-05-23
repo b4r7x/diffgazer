@@ -12,10 +12,64 @@ export interface UseFocusTrapOptions {
   enabled?: boolean;
 }
 
+interface TrapEntry {
+  container: HTMLElement;
+  ownerDocument: Document;
+  initialFocus: RefObject<HTMLElement | null> | undefined;
+  lastFocused: HTMLElement;
+  handleKeyDown: (event: KeyboardEvent) => void;
+  handleFocusIn: (event: FocusEvent) => void;
+  observer: MutationObserver;
+  suspended: boolean;
+}
+
 interface ActiveTrap {
   container: HTMLElement;
   restoreFocus: boolean;
   release: () => void;
+}
+
+// Module-level trap stack: only the top (last) entry captures focus.
+// When a new trap activates, the previous top is suspended (listeners removed).
+// When the top trap releases, the next-in-stack is re-armed (listeners re-attached).
+const trapStack: TrapEntry[] = [];
+
+function suspendEntry(entry: TrapEntry): void {
+  if (entry.suspended) return;
+  entry.ownerDocument.removeEventListener("keydown", entry.handleKeyDown, true);
+  entry.ownerDocument.removeEventListener("focusin", entry.handleFocusIn, true);
+  entry.observer.disconnect();
+  entry.suspended = true;
+}
+
+function resumeEntry(entry: TrapEntry): void {
+  if (!entry.suspended) return;
+  entry.ownerDocument.addEventListener("keydown", entry.handleKeyDown, true);
+  entry.ownerDocument.addEventListener("focusin", entry.handleFocusIn, true);
+  entry.observer.observe(entry.container, { childList: true, subtree: true });
+  entry.suspended = false;
+  // Recapture focus into the resumed trap's container
+  const target = entry.container.contains(entry.lastFocused) && entry.lastFocused.isConnected
+    ? entry.lastFocused
+    : pickInitialTarget(entry.container, entry.initialFocus);
+  target.focus();
+}
+
+function pushTrap(entry: TrapEntry): void {
+  const prev = trapStack.at(-1);
+  if (prev) suspendEntry(prev);
+  trapStack.push(entry);
+}
+
+function removeTrap(entry: TrapEntry): void {
+  const index = trapStack.indexOf(entry);
+  if (index < 0) return;
+  const wasTop = index === trapStack.length - 1;
+  trapStack.splice(index, 1);
+  if (wasTop) {
+    const newTop = trapStack.at(-1);
+    if (newTop) resumeEntry(newTop);
+  }
 }
 
 function pickInitialTarget(
@@ -37,6 +91,11 @@ function isInsideContainer(container: HTMLElement, target: EventTarget | null): 
  * Trap Tab focus inside `containerRef` while mounted. Focus is moved into the
  * container on activation and restored to the previously focused element on
  * unmount (when `restoreFocus` is true).
+ *
+ * Nested traps are supported via a module-level trap stack. When a new trap
+ * activates, the previous top trap is suspended (its listeners are detached).
+ * When the inner trap releases, the outer trap is re-armed and recaptures
+ * focus into its container.
  *
  * @example
  * ```tsx
@@ -76,12 +135,13 @@ export function useFocusTrap(
 ): void {
   const { initialFocus, restoreFocus = true, enabled = true } = options;
   const activeTrapRef = useRef<ActiveTrap | null>(null);
-  // useFocusRestore manages the nested-trap stack so outer traps remain
-  // dormant while an inner trap is active. Restoration itself happens in this
-  // hook's release() so listeners are detached BEFORE focus moves out of the
-  // container — otherwise the document-level focusin recapture re-traps the
-  // restored target. `restoreOnUnmount: false` prevents the stack hook from
-  // moving focus during its own unmount cleanup.
+  const trapEntryRef = useRef<TrapEntry | null>(null);
+  // useFocusRestore manages the focus-restore stack so nested overlays
+  // restore correctly. Restoration itself happens in this hook's release()
+  // so listeners are detached BEFORE focus moves out of the container --
+  // otherwise the document-level focusin recapture re-traps the restored
+  // target. `restoreOnUnmount: false` prevents the stack hook from moving
+  // focus during its own unmount cleanup.
   const { capture } = useFocusRestore({
     enabled: restoreFocus,
     restoreOnUnmount: false,
@@ -110,11 +170,8 @@ export function useFocusTrap(
     const originalTabIndex = container.getAttribute("tabindex");
     if (!hadTabIndex) container.setAttribute("tabindex", "-1");
 
-    const initialTarget = pickInitialTarget(container, initialFocus);
-    initialTarget.focus();
-    let lastFocused: HTMLElement = container.contains(ownerDocument.activeElement)
-      ? (ownerDocument.activeElement as HTMLElement)
-      : initialTarget;
+    // lastFocused is set after initial focus below
+    let lastFocused: HTMLElement = container;
 
     const recapture = () => {
       const target = container.contains(lastFocused) && lastFocused.isConnected
@@ -127,6 +184,8 @@ export function useFocusTrap(
       const target = event.target;
       if (isInsideContainer(container, target)) {
         lastFocused = target;
+        // Keep the stack entry in sync so resume() can use it
+        if (trapEntryRef.current) trapEntryRef.current.lastFocused = target;
         return;
       }
       recapture();
@@ -175,24 +234,64 @@ export function useFocusTrap(
       if (lastFocused.isConnected && container.contains(lastFocused)) return;
       recapture();
     });
-    observer.observe(container, { childList: true, subtree: true });
 
+    // Build the stack entry and push it BEFORE attaching listeners or
+    // focusing. pushTrap suspends the previous top trap so its focusin
+    // handler does not recapture focus away from this new trap.
+    const entry: TrapEntry = {
+      container,
+      ownerDocument,
+      initialFocus,
+      lastFocused,
+      handleKeyDown,
+      handleFocusIn,
+      observer,
+      suspended: false,
+    };
+    trapEntryRef.current = entry;
+    pushTrap(entry);
+
+    // Attach listeners and focus now that the outer trap is suspended
     ownerDocument.addEventListener("keydown", handleKeyDown, true);
     ownerDocument.addEventListener("focusin", handleFocusIn, true);
+    observer.observe(container, { childList: true, subtree: true });
+
+    const initialTarget = pickInitialTarget(container, initialFocus);
+    initialTarget.focus();
+    lastFocused = container.contains(ownerDocument.activeElement)
+      ? (ownerDocument.activeElement as HTMLElement)
+      : initialTarget;
+    entry.lastFocused = lastFocused;
 
     activeTrapRef.current = {
       container,
       restoreFocus,
       release: () => {
+        // Detach own listeners BEFORE removing from the stack. removeTrap
+        // calls resumeEntry on the outer trap which focuses into the outer
+        // container — if our focusin listener is still attached, it would
+        // see that focus escaped and recapture, fighting the outer trap.
         ownerDocument.removeEventListener("keydown", handleKeyDown, true);
         ownerDocument.removeEventListener("focusin", handleFocusIn, true);
         observer.disconnect();
+
+        // Remove from stack. This re-arms the outer trap (if any) which
+        // recaptures focus into its container.
+        removeTrap(entry);
+        trapEntryRef.current = null;
+
         if (!hadTabIndex) {
           container.removeAttribute("tabindex");
         } else if (originalTabIndex !== null) {
           container.setAttribute("tabindex", originalTabIndex);
         }
-        if (restoreFocus) restoreFocusTarget(restoreTarget);
+
+        // Only restore focus to pre-trap target if there is no outer trap
+        // waiting. When an outer trap exists, resumeEntry() already moved
+        // focus back into the outer container.
+        if (restoreFocus && trapStack.length === 0) {
+          restoreFocusTarget(restoreTarget);
+        }
       },
     };
   });

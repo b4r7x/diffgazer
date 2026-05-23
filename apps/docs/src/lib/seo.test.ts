@@ -48,7 +48,7 @@ describe("buildPageSeo", () => {
       `${PUBLIC_ORIGIN}/ui/docs/components/button`,
     );
     expect(findMeta(seo.meta, "property", "og:site_name")?.content).toBe(DEFAULT_SITE_NAME);
-    expect(findMeta(seo.meta, "name", "twitter:card")?.content).toBe("summary_large_image");
+    expect(findMeta(seo.meta, "name", "twitter:card")?.content).toBe("summary");
     expect(findMeta(seo.meta, "name", "twitter:title")?.content).toBe("Button - UI Docs");
     expect(findMeta(seo.meta, "name", "twitter:description")?.content).toBe("Button primitive");
 
@@ -86,10 +86,19 @@ describe("buildRootHeadDefaults", () => {
     expect(findMeta(meta, "name", "viewport")?.content).toBe("width=device-width, initial-scale=1");
     expect(findMeta(meta, "name", "theme-color")?.content).toBe("#000000");
     expect(findMeta(meta, "name", "description")?.content).toBe(DEFAULT_SITE_DESCRIPTION);
-    expect(findMeta(meta, "name", "twitter:card")?.content).toBe("summary_large_image");
+    expect(findMeta(meta, "name", "twitter:card")?.content).toBe("summary");
     expect(findTitle(meta)?.title).toBe(DEFAULT_SITE_NAME);
 
     const manifest = links.find((link) => link.rel === "manifest");
     expect(manifest?.href).toBe("/manifest.json");
+  });
+
+  it("includes a root canonical link and og:url from PUBLIC_ORIGIN", () => {
+    const { meta, links } = buildRootHeadDefaults();
+
+    const canonical = links.find((link) => link.rel === "canonical");
+    expect(canonical?.href).toBe(PUBLIC_ORIGIN);
+
+    expect(findMeta(meta, "property", "og:url")?.content).toBe(PUBLIC_ORIGIN);
   });
 });

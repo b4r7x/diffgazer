@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { KeyboardProvider } from "@diffgazer/keys";
-import { MENU_ITEMS } from "@diffgazer/core/schemas/ui";
+import { MENU_ITEMS } from "@diffgazer/core/schemas/presentation";
 import type { ReactNode } from "react";
 import { HomeMenu } from "./home-menu";
 

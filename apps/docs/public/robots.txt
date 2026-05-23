@@ -2,4 +2,4 @@
 User-agent: *
 Disallow:
 
-Sitemap: https://docs.diffgazer.b4r7.dev/sitemap.xml
+Sitemap: https://docs.b4r7.dev/sitemap.xml

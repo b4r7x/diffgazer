@@ -1,0 +1,25 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "use-scroll-lock",
+  "title": "useScrollLock",
+  "description": "Client re-export of @diffgazer/keys useScrollLock for registry consumers.",
+  "dependencies": [],
+  "registryDependencies": [
+    "https://r.b4r7.dev/r/keys/scroll-lock.json"
+  ],
+  "files": [
+    {
+      "path": "registry/hooks/use-scroll-lock.ts",
+      "content": "\"use client\";\n\nexport { useScrollLock } from \"@diffgazer/keys\";\nexport type { UseScrollLockOptions } from \"@diffgazer/keys\";\n",
+      "type": "registry:hook"
+    }
+  ],
+  "meta": {
+    "client": true,
+    "hidden": true,
+    "optionalIntegrations": [
+      "keyboard-navigation"
+    ]
+  },
+  "type": "registry:hook"
+}

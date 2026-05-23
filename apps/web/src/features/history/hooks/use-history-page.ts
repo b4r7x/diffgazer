@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { HistoryFocusZone, Run } from "@/features/history/types";
 import type { ReviewMetadata } from "@diffgazer/core/schemas/review";
-import { SEVERITY_ORDER } from "@diffgazer/core/schemas/ui";
+import { SEVERITY_ORDER } from "@diffgazer/core/schemas/presentation";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { useReviews, useReview } from "@diffgazer/core/api/hooks";
 import { formatDuration, getDateKey, getTimestamp } from "@diffgazer/core/format";
@@ -171,7 +171,7 @@ export function useHistoryPage() {
   const handleIssueClick = (issueId: string) => {
     setHighlightedIssueId(issueId);
     if (selectedRunId) {
-      navigate({ to: "/review/{-$reviewId}", params: { reviewId: selectedRunId } });
+      navigate({ to: "/review/{-$reviewId}", params: { reviewId: selectedRunId }, search: { issueId } });
     }
   };
 

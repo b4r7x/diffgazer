@@ -14,7 +14,7 @@ import { ReviewMetricsFooter } from "./review-metrics-footer";
 import { useReviewProgressKeyboard } from "../hooks/use-review-progress-keyboard";
 import type { AgentState } from "@diffgazer/core/schemas/events";
 import type { ReviewContextResponse } from "@diffgazer/core/api/types";
-import type { BadgeVariant, ReviewProgressMetrics } from "@diffgazer/core/schemas/ui";
+import type { BadgeVariant, ReviewProgressMetrics } from "@diffgazer/core/schemas/presentation";
 
 export interface ReviewProgressData {
   steps: ProgressStepData[];

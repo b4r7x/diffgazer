@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import type { Shortcut } from "@diffgazer/core/schemas/ui";
+import type { Shortcut } from "@diffgazer/core/schemas/presentation";
 import { useKey, useScope } from "@diffgazer/keys";
 import { useActionRowNavigation } from "@diffgazer/keys";
 import { usePageFooter } from "@diffgazer/core/footer";

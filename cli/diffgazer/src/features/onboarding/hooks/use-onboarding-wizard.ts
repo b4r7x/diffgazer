@@ -17,7 +17,7 @@ import {
   useWizardState,
   type InputMethod,
 } from "@diffgazer/core/onboarding";
-import { useSaveSettings, useSaveConfig } from "@diffgazer/core/api/hooks";
+import { useSaveSettings, useSaveConfig, useDeleteProviderCredentials } from "@diffgazer/core/api/hooks";
 import { useNavigation } from "../../../app/navigation-context.js";
 
 type FocusArea = "step" | "nav";
@@ -40,13 +40,23 @@ function isInputMethod(v: string): v is InputMethod {
 
 export function useOnboardingWizard() {
   const { navigate } = useNavigation();
-  const wizard = useWizardState();
-  const [focusArea, setFocusArea] = useState<FocusArea>("step");
-  const [error, setError] = useState<string | null>(null);
-
   const saveSettings = useSaveSettings();
   const saveConfig = useSaveConfig();
-  const isSaving = saveSettings.isPending || saveConfig.isPending;
+  const deleteCredentials = useDeleteProviderCredentials();
+
+  const wizard = useWizardState(undefined, {
+    saveCredentials: async (provider, apiKey) => {
+      await saveConfig.mutateAsync({ provider, apiKey });
+    },
+    deleteCredentials: async (provider) => {
+      await deleteCredentials.mutateAsync(provider);
+    },
+  });
+  const [focusArea, setFocusArea] = useState<FocusArea>("step");
+  const [navIndex, setNavIndex] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+
+  const isSaving = saveSettings.isPending || saveConfig.isPending || wizard.isEarlySaving;
 
   function handleProviderChange(v: string) {
     if (isAIProvider(v)) wizard.setProvider(v);
@@ -78,15 +88,15 @@ export function useOnboardingWizard() {
 
   async function handleComplete() {
     setError(null);
-    try {
-      await saveWizard(wizard.wizardData, {
-        saveSettings: (payload) => saveSettings.mutateAsync(payload),
-        saveConfig: (payload) => saveConfig.mutateAsync(payload),
-      });
-      navigate({ screen: "home" });
-    } catch (e) {
-      setError(getErrorMessage(e, "Setup failed"));
+    const result = await saveWizard(wizard.wizardData, {
+      saveSettings: (payload) => saveSettings.mutateAsync(payload),
+      saveConfig: (payload) => saveConfig.mutateAsync(payload),
+    });
+    if (result.status === "partial") {
+      setError(getErrorMessage(result.error, "Setup failed"));
+      return;
     }
+    navigate({ screen: "home" });
   }
 
   function handleNext() {
@@ -97,16 +107,24 @@ export function useOnboardingWizard() {
     }
     wizard.next();
     setFocusArea("step");
+    setNavIndex(0);
   }
 
   function handleBack() {
     if (wizard.isFirstStep) return;
     wizard.back();
     setFocusArea("step");
+    setNavIndex(0);
   }
 
   function toggleFocusArea() {
     setFocusArea((prev) => (prev === "step" ? "nav" : "step"));
+    setNavIndex(0);
+  }
+
+  function moveNavIndex(direction: 1 | -1) {
+    const buttonCount = wizard.isFirstStep ? 1 : 2;
+    setNavIndex((i) => Math.max(0, Math.min(buttonCount - 1, i + direction)));
   }
 
   return {
@@ -118,6 +136,7 @@ export function useOnboardingWizard() {
     isLastStep: wizard.isLastStep,
     canProceed: wizard.canProceed,
     focusArea,
+    navIndex,
     isSaving,
     error,
 
@@ -131,5 +150,6 @@ export function useOnboardingWizard() {
     handleNext,
     handleBack,
     toggleFocusArea,
+    moveNavIndex,
   };
 }

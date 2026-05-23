@@ -270,7 +270,6 @@ export function useActionRowNavigation<
 
   const activateFocusedAction = (event: KeyboardEvent) => {
     if (!isIndexEnabled(focusedIndex, actionCount, disabledKey)) return;
-    if (isRegisteredActionFocused()) return;
     event.preventDefault();
     // focusedIndex is guarded by isIndexEnabled (0..actionCount-1).
     onAction(focusedIndex as ActionRowIndex<Actions>);

@@ -22,7 +22,7 @@ const DEFAULT_MODELS = Object.fromEntries(
 
 const DEFAULT_TEMPERATURE = 0.7;
 const DEFAULT_MAX_TOKENS = 65536;
-const DEFAULT_MAX_RETRIES = 0;
+const DEFAULT_MAX_RETRIES = 2;
 const DEFAULT_TIMEOUT_MS = 300_000;
 
 const AI_ERROR_RULES: ErrorRule<AIErrorCode>[] = [
@@ -80,7 +80,7 @@ function createLanguageModel(config: AIClientConfig): Result<LanguageModel, AIEr
       return ok(zhipu(modelId as Parameters<typeof zhipu>[0]));
     }
     case "openrouter": {
-      const openrouter = createOpenRouter({ apiKey, compatibility: "strict" });
+      const openrouter = createOpenRouter({ apiKey, compatibility: "strict", extraBody: { provider: { require_parameters: true } } });
       // OpenRouter's AI SDK provider implements the same doGenerate/doStream interface
       // as Vercel AI SDK's LanguageModel, but exports an incompatible type due to SDK
       // version drift between @openrouter/ai-sdk-provider and the `ai` package. The
@@ -156,16 +156,26 @@ export function createAIClient(config: AIClientConfig): Result<AIClient, AIError
 
     async generateStream(
       prompt: string,
-      callbacks: StreamCallbacks
+      callbacks: StreamCallbacks,
+      options?: { signal?: AbortSignal }
     ): Promise<void> {
       try {
         const timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+        const timeoutSignal =
+          timeoutMs > 0 && typeof AbortSignal !== "undefined" && "timeout" in AbortSignal
+            ? AbortSignal.timeout(timeoutMs)
+            : undefined;
+        const externalSignal = options?.signal;
+        const abortSignal =
+          timeoutSignal && externalSignal
+            ? AbortSignal.any([timeoutSignal, externalSignal])
+            : timeoutSignal ?? externalSignal;
         const result = streamText({
           model: languageModel,
           prompt,
           temperature: config.temperature ?? DEFAULT_TEMPERATURE,
           maxOutputTokens: config.maxTokens ?? DEFAULT_MAX_TOKENS,
-          timeout: timeoutMs > 0 ? { totalMs: timeoutMs, chunkMs: Math.min(5000, timeoutMs) } : undefined,
+          abortSignal,
         });
 
         const chunks: string[] = [];

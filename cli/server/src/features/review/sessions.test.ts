@@ -198,6 +198,27 @@ describe("session bounds and subscriber failures", () => {
     expect(getSession("bulk-50")).toBeDefined();
   });
 
+  it("emits an error event when evicting the oldest session", () => {
+    const received: FullReviewStreamEvent[] = [];
+    // Create the victim first so it has the oldest startedAt
+    const victim = createTrackedSession("evict-oldest");
+    subscribe(victim.reviewId, (event) => received.push(event));
+
+    for (let i = 0; i < 49; i += 1) {
+      vi.advanceTimersByTime(1);
+      createTrackedSession(`evict-${i}`);
+    }
+
+    // This 51st session triggers eviction of the oldest (victim)
+    vi.advanceTimersByTime(1);
+    createTrackedSession("evict-trigger");
+
+    expect(received).toMatchObject([
+      { type: "error", error: { code: ReviewErrorCode.SESSION_STALE } },
+    ]);
+    expect(getSession("evict-oldest")).toBeUndefined();
+  });
+
   it("continues dispatching when an async subscriber rejects", async () => {
     // Suppress the expected console.error noise; we assert on the public
     // observable contract (the second subscriber still receives the event),

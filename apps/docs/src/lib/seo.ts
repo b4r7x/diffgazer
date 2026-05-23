@@ -4,7 +4,7 @@ import type {
   MetaHTMLAttributes,
 } from "react";
 
-const DEFAULT_ORIGIN = "https://docs.diffgazer.b4r7.dev";
+const DEFAULT_ORIGIN = "https://docs.b4r7.dev";
 
 export const PUBLIC_ORIGIN: string = (() => {
   const raw = (typeof process !== "undefined" ? process.env.VITE_PUBLIC_ORIGIN : undefined)
@@ -55,7 +55,7 @@ export function buildPageSeo({ title, description, pathname, type = "article" }:
     { property: "og:type", content: type },
     { property: "og:url", content: canonical },
     { property: "og:site_name", content: DEFAULT_SITE_NAME },
-    { name: "twitter:card", content: "summary_large_image" },
+    { name: "twitter:card", content: "summary" },
     { name: "twitter:title", content: title },
     { name: "twitter:description", content: resolvedDescription },
   ];
@@ -74,14 +74,18 @@ export function buildRootHeadDefaults(): { meta: MetaTag[]; links: LinkTag[] } {
     { name: "theme-color", content: DEFAULT_THEME_COLOR },
     { property: "og:site_name", content: DEFAULT_SITE_NAME },
     { property: "og:type", content: "website" },
+    { property: "og:url", content: PUBLIC_ORIGIN },
     { property: "og:title", content: DEFAULT_SITE_NAME },
     { property: "og:description", content: DEFAULT_SITE_DESCRIPTION },
-    { name: "twitter:card", content: "summary_large_image" },
+    { name: "twitter:card", content: "summary" },
     { name: "twitter:title", content: DEFAULT_SITE_NAME },
     { name: "twitter:description", content: DEFAULT_SITE_DESCRIPTION },
   ];
 
-  const links: LinkTag[] = [{ rel: "manifest", href: "/manifest.json" }];
+  const links: LinkTag[] = [
+    { rel: "canonical", href: PUBLIC_ORIGIN },
+    { rel: "manifest", href: "/manifest.json" },
+  ];
 
   return { meta, links };
 }

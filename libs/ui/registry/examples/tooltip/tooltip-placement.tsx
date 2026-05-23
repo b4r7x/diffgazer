@@ -8,9 +8,9 @@ export default function TooltipPlacementExample() {
       {sides.map((side) => (
         <Tooltip key={side}>
           <Tooltip.Trigger>
-            <span className="border border-foreground/30 px-3 py-1 font-mono text-sm">
+            <button type="button" className="border border-foreground/30 px-3 py-1 font-mono text-sm">
               {side}
-            </span>
+            </button>
           </Tooltip.Trigger>
           <Tooltip.Content side={side}>
             Tooltip on {side}

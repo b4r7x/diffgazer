@@ -53,7 +53,7 @@ export {
   getTabbableElements,
   isFocusable,
 } from "./dom/focusable.js";
-export { isEditableElement, isInputElement } from "./dom/keyboard-utils.js";
+export { canonicalizeHotkey, isEditableElement, isInputElement } from "./dom/keyboard-utils.js";
 export {
   getRestorableFocusTarget,
   restoreFocus,

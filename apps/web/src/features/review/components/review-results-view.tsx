@@ -7,9 +7,10 @@ import { useReviewResultsKeyboard } from "../hooks/use-review-results-keyboard";
 interface ReviewResultsViewProps {
   issues: ReviewIssue[];
   reviewId: string | null;
+  initialIssueId?: string | null;
 }
 
-export function ReviewResultsView({ issues, reviewId }: ReviewResultsViewProps) {
+export function ReviewResultsView({ issues, reviewId, initialIssueId }: ReviewResultsViewProps) {
   const {
     filteredIssues,
     selectedIssue,
@@ -34,7 +35,7 @@ export function ReviewResultsView({ issues, reviewId }: ReviewResultsViewProps) 
     detailsScrollRef,
     completedSteps,
     handleToggleStep,
-  } = useReviewResultsKeyboard({ issues });
+  } = useReviewResultsKeyboard({ issues, initialIssueId });
   const detailsEmptyKind = selectDetailsEmptyKind(issues.length, filteredIssues.length);
 
   return (

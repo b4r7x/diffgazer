@@ -1,5 +1,5 @@
 import { Box } from "ink";
-import type { ProgressStepData } from "@diffgazer/core/schemas/ui";
+import type { ProgressStepData } from "@diffgazer/core/schemas/presentation";
 import { ProgressStep } from "./progress-step.js";
 
 export interface ProgressListProps {

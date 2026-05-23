@@ -6,7 +6,7 @@ import {
   type SeverityCounts,
   SEVERITY_ORDER,
   SEVERITY_LABELS,
-} from "@diffgazer/core/schemas/ui";
+} from "@diffgazer/core/schemas/presentation";
 import { useTheme } from "../../../theme/theme-context.js";
 import { severityColor } from "../../../theme/severity.js";
 

@@ -12,6 +12,7 @@ export type { ReviewCompleteData };
 export interface ReviewContainerProps {
   mode: ReviewMode;
   onComplete?: (data: ReviewCompleteData) => void;
+  onStreamNotFound?: (reviewId: string) => void;
 }
 
 export function ReviewLoadingMessage({ message }: { message: string }) {
@@ -26,7 +27,7 @@ export function ReviewLoadingMessage({ message }: { message: string }) {
   );
 }
 
-export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
+export function ReviewContainer({ mode, onComplete, onStreamNotFound }: ReviewContainerProps) {
   const {
     state,
     isConfigured,
@@ -38,7 +39,7 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
     handleViewResults,
     handleSetupProvider,
     handleSwitchMode,
-  } = useReviewLifecycle({ mode, onComplete });
+  } = useReviewLifecycle({ mode, onComplete, onStreamNotFound });
 
   const contextStep = state.steps.find(s => s.id === 'context');
   const contextReady = contextStep?.status === 'completed' && !!state.reviewId;
@@ -87,12 +88,18 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
     );
   }
 
+  // Only enable View Results after the terminal complete event from the server
+  // (report step completed). Do NOT gate on !isStreaming alone -- that is also
+  // true after errors, which would let Enter navigate to an empty results page.
+  const reportStep = state.steps.find(s => s.id === 'report');
+  const canViewResults = reportStep?.status === 'completed';
+
   return (
     <ReviewProgressView
       data={progressData}
       isRunning={state.isStreaming}
       error={state.error}
-      onViewResults={handleViewResults}
+      onViewResults={canViewResults ? handleViewResults : undefined}
       onCancel={handleCancel}
     />
   );

@@ -37,6 +37,27 @@ Joined with `+`. The **last** segment is the key, everything before it is a modi
 - **Strict modifier matching**: all four modifier keys (`ctrl`, `shift`, `alt`, `meta`) must match exactly. Pressing `Ctrl+Shift+K` will not match `"mod+k"` — it would match `"mod+shift+k"`.
 - **Platform detection**: `mod` resolves via `navigator.userAgent` (cached after first check).
 
+## Shifted Punctuation Aliases
+
+The `+` delimiter makes shifted punctuation like `?` or `+` ambiguous. Use named aliases:
+
+| Alias | Resolved to |
+|-------|-------------|
+| `question` | `?` |
+| `plus` | `+` |
+| `exclamation` | `!` |
+| `at` | `@` |
+| `hash` | `#` |
+| `dollar` | `$` |
+| `percent` | `%` |
+| `caret` | `^` |
+| `ampersand` | `&` |
+| `asterisk` | `*` |
+| `tilde` | `~` |
+| `pipe` | `\|` |
+| `backslash` | `\` |
+| `slash` | `/` |
+
 ## Examples
 
 ```tsx
@@ -44,13 +65,20 @@ Joined with `+`. The **last** segment is the key, everything before it is a modi
 useKey("Escape", handleClose);
 useKey("Enter", handleSubmit);
 
-// With modifiers
-useKey("mod+k", openSearch);
-useKey("mod+shift+p", openCommandPalette);
+// With modifiers — use preventDefault for browser-reserved combos
+useKey("mod+k", openSearch, { preventDefault: true });
+useKey("mod+shift+p", openCommandPalette, { preventDefault: true });
+
+// Arrow keys in containers — preventDefault stops native scrolling
+useKey(["ArrowUp", "ArrowDown"], handleNavigate, { preventDefault: true });
 
 // Using aliases
 useKey("esc", handleClose);  // same as "Escape"
 
+// Shifted punctuation aliases
+useKey("shift+question", openHelp);  // matches Shift+?
+useKey("mod+plus", zoomIn, { preventDefault: true });  // matches Cmd/Ctrl++
+
 // Multiple keys
-useKey(["ArrowUp", "ArrowDown"], handleNavigate);
+useKey(["ArrowUp", "ArrowDown"], handleNavigate, { preventDefault: true });
 ```

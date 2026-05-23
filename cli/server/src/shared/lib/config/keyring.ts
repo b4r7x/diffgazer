@@ -50,16 +50,16 @@ const checkKeyringAvailability = (keyring: KeyringModule): boolean => {
 };
 
 export const isKeyringAvailable = (): boolean => {
-  if (cachedKeyringAvailable !== null) return cachedKeyringAvailable;
+  if (cachedKeyringAvailable === true) return true;
 
   const keyring = loadKeyring();
   if (!keyring) {
-    cachedKeyringAvailable = false;
     return false;
   }
 
-  cachedKeyringAvailable = checkKeyringAvailability(keyring);
-  return cachedKeyringAvailable;
+  const available = checkKeyringAvailability(keyring);
+  if (available) cachedKeyringAvailable = true;
+  return available;
 };
 
 const requireKeyring = (): Result<KeyringModule, SecretsStorageError> => {

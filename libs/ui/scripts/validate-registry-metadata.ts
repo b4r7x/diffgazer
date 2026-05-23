@@ -35,6 +35,10 @@ const ROOT = process.env.DIFFGAZER_UI_REGISTRY_ROOT
 const REGISTRY_SCHEMA = "https://ui.shadcn.com/schema/registry.json";
 const KEYBOARD_NAVIGATION_INTEGRATION = "keyboard-navigation";
 const KEYS_REGISTRY_PREFIXES = ["@diffgazer-keys/", "@diffgazer/keys/"] as const;
+const ALLOWED_REGISTRY_DEP_ORIGINS = [
+  "https://docs.b4r7.dev",
+  "https://r.b4r7.dev",
+] as const;
 const SOURCE_EXTENSIONS = ["", ".ts", ".tsx", ".js", ".jsx"] as const;
 const INDEX_FILES = ["index.ts", "index.tsx", "index.js", "index.jsx"] as const;
 
@@ -123,8 +127,13 @@ function hasKeysRegistryDependency(item: RegistryItem): boolean {
   );
 }
 
+function stripTemplateLiterals(source: string): string {
+  return source.replace(/`[^`]*`/gs, "``");
+}
+
 function extractLocalImports(source: string): string[] {
   const imports = new Set<string>();
+  const cleaned = stripTemplateLiterals(source);
   const patterns = [
     /\bimport\s+(?:type\s+)?[\s\S]*?\s+from\s+["']([^"']+)["']/g,
     /\bexport\s+(?:type\s+)?[\s\S]*?\s+from\s+["']([^"']+)["']/g,
@@ -135,7 +144,7 @@ function extractLocalImports(source: string): string[] {
 
   for (const pattern of patterns) {
     let match: RegExpExecArray | null;
-    while ((match = pattern.exec(source)) !== null) {
+    while ((match = pattern.exec(cleaned)) !== null) {
       const specifier = match[1];
       if (
         specifier &&
@@ -159,7 +168,8 @@ function normalizeRegistryPath(path: string): string {
 function existingRegistryPath(modulePath: string): string | null {
   for (const extension of SOURCE_EXTENSIONS) {
     const path = `${modulePath}${extension}`;
-    if (existsSync(resolve(ROOT, path))) return normalizeRegistryPath(path);
+    const resolved = resolve(ROOT, path);
+    if (existsSync(resolved) && statSync(resolved).isFile()) return normalizeRegistryPath(path);
   }
 
   for (const indexFile of INDEX_FILES) {
@@ -208,10 +218,12 @@ function resolveRegistryDependencyClosure(item: RegistryItem, itemsByName: Map<s
     const dependencyName = pending.pop();
     if (!dependencyName || closure.has(dependencyName)) continue;
 
+    // Always add the dependency name to the closure (including external @diffgazer-keys/* items).
+    closure.add(dependencyName);
+
     const dependency = itemsByName.get(dependencyName);
     if (!dependency) continue;
 
-    closure.add(dependencyName);
     pending.push(...(dependency.registryDependencies ?? []));
   }
 
@@ -249,6 +261,7 @@ function validateExamplesAvoidHiddenPaths(items: RegistryItem[]): string[] {
 
   for (const exampleFile of walk(examplesDir)) {
     const source = readFileSync(exampleFile, "utf-8");
+    if (source.includes("@hidden-imports-ok")) continue;
     const exampleRelPath = normalizeRegistryPath(relative(ROOT, exampleFile));
 
     for (const specifier of extractLocalImports(source)) {
@@ -323,12 +336,29 @@ function validateRegistryImportClosure(items: RegistryItem[]): string[] {
         if (!importedPath) continue;
 
         const importedItemName = namesByFile.get(importedPath);
-        if (!importedItemName || importedItemName === item.name) continue;
+        if (importedItemName === item.name) continue;
+
+        if (!importedItemName) {
+          errors.push(
+            `${item.name} imports ${specifier} from ${file.path}, which resolves to ${importedPath} but is not declared in any registry item's files[]`
+          );
+          continue;
+        }
 
         if (!closure.has(importedItemName)) {
-          errors.push(
-            `${item.name} imports ${specifier} from ${file.path}, which resolves to registry item ${importedItemName} but is missing from registryDependencies closure`
+          // A UI hook shim (e.g. use-focus-trap) that re-exports from @diffgazer/keys
+          // is satisfied when the importer already depends on the matching @diffgazer-keys/* item.
+          const importedItem = itemsByName.get(importedItemName);
+          const shimKeysDeps = (importedItem?.registryDependencies ?? []).filter(
+            (dep) => KEYS_REGISTRY_PREFIXES.some((prefix) => dep.startsWith(prefix))
           );
+          const satisfiedByKeys = shimKeysDeps.length > 0 && shimKeysDeps.every((dep) => closure.has(dep));
+
+          if (!satisfiedByKeys) {
+            errors.push(
+              `${item.name} imports ${specifier} from ${file.path}, which resolves to registry item ${importedItemName} but is missing from registryDependencies closure`
+            );
+          }
         }
       }
     }
@@ -379,6 +409,20 @@ function validate(): string[] {
     for (const dep of item.registryDependencies ?? []) {
       if (dep.startsWith("@diffgazer/keys/")) {
         errors.push(`${item.name} uses scoped package-style keys dependency "${dep}"; use @diffgazer-keys/<hook>`);
+      }
+
+      if (dep.startsWith("http://") || dep.startsWith("https://")) {
+        try {
+          const depUrl = new URL(dep);
+          const origin = depUrl.origin;
+          if (!ALLOWED_REGISTRY_DEP_ORIGINS.some((allowed) => origin === allowed)) {
+            errors.push(
+              `${item.name} registryDependency "${dep}" has origin "${origin}" not in allowlist: ${ALLOWED_REGISTRY_DEP_ORIGINS.join(", ")}`,
+            );
+          }
+        } catch {
+          errors.push(`${item.name} registryDependency "${dep}" is not a valid URL`);
+        }
       }
     }
 
