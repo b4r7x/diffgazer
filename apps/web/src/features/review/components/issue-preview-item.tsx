@@ -1,6 +1,7 @@
 import { cn } from "@diffgazer/ui/lib/utils";
 import type { ReviewSeverity } from '@diffgazer/core/schemas/review';
 import { Badge } from '@diffgazer/ui/components/badge';
+import { Button } from '@diffgazer/ui/components/button';
 import { SEVERITY_CONFIG } from '@/components/ui/severity/constants';
 
 export interface IssuePreviewItemProps {
@@ -54,7 +55,7 @@ function IssuePreviewContent({
         <Badge
           size="sm"
           className={cn(
-            'text-[10px] uppercase',
+            'text-2xs uppercase',
             borderColor,
             color,
             'bg-transparent',
@@ -87,16 +88,16 @@ export function IssuePreviewItem({
 
   if (onClick) {
     return (
-      <button
-        type="button"
+      <Button
+        variant="ghost"
         onClick={onClick}
         className={cn(
           sharedClassName,
-          'hover:bg-tui-selection cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tui-blue',
+          'h-auto justify-between rounded-none hover:bg-tui-selection focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tui-blue',
         )}
       >
         <IssuePreviewContent {...contentProps} isClickable />
-      </button>
+      </Button>
     );
   }
 

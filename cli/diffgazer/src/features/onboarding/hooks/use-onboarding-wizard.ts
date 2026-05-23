@@ -96,6 +96,7 @@ export function useOnboardingWizard() {
       setError(getErrorMessage(result.error, "Setup failed"));
       return;
     }
+    wizard.acknowledgeEarlySave();
     navigate({ screen: "home" });
   }
 
@@ -147,6 +148,7 @@ export function useOnboardingWizard() {
     handleApiKeyChange,
     handleModelChange,
     handleLensesChange,
+    cleanupEarlySave: wizard.cleanupEarlySave,
     handleNext,
     handleBack,
     toggleFocusArea,

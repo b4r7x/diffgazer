@@ -87,7 +87,7 @@ export function ApiKeyDialog({
             getMethodOptionProps={getMethodOptionProps}
           />
 
-          <div className="text-[11px] text-muted-foreground border-t border-tui-border/40 pt-3 leading-relaxed">
+          <div className="text-xs text-muted-foreground border-t border-tui-border/40 pt-3 leading-relaxed">
             Note: {storageNote}
           </div>
         </DialogBody>

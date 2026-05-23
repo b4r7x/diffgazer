@@ -68,4 +68,67 @@ describe("Typography", () => {
 
     expect(ref.current).toBe(screen.getByRole("heading", { level: 2 }));
   });
+
+  it.each([
+    { weight: "normal" as const, expected: "font-normal" },
+    { weight: "medium" as const, expected: "font-medium" },
+    { weight: "semibold" as const, expected: "font-semibold" },
+    { weight: "bold" as const, expected: "font-bold" },
+  ])(
+    "renders $weight weight with class $expected",
+    ({ weight, expected }) => {
+      render(<Typography weight={weight}>Text</Typography>);
+      expect(screen.getByText("Text")).toHaveClass(expected);
+    },
+  );
+
+  it.each([
+    { color: "default" as const, expected: "text-muted-foreground" },
+    { color: "muted" as const, expected: "text-muted-foreground" },
+    { color: "foreground" as const, expected: "text-foreground" },
+    { color: "accent" as const, expected: "text-primary" },
+  ])(
+    "renders $color color with class $expected",
+    ({ color, expected }) => {
+      render(<Typography color={color}>Text</Typography>);
+      expect(screen.getByText("Text")).toHaveClass(expected);
+    },
+  );
+
+  it("renders truncate class when truncate is true", () => {
+    render(<Typography truncate>Truncated text</Typography>);
+    expect(screen.getByText("Truncated text")).toHaveClass("truncate");
+  });
+
+  it("does not render truncate class by default", () => {
+    render(<Typography>Normal text</Typography>);
+    expect(screen.getByText("Normal text")).not.toHaveClass("truncate");
+  });
+
+  it.each([
+    { as: "h1" as const, level: 1 },
+    { as: "h2" as const, level: 2 },
+    { as: "h3" as const, level: 3 },
+    { as: "h4" as const, level: 4 },
+    { as: "h5" as const, level: 5 },
+    { as: "h6" as const, level: 6 },
+  ])(
+    "$as auto-defaults to bold weight",
+    ({ as, level }) => {
+      render(<Typography as={as}>Heading</Typography>);
+      expect(screen.getByRole("heading", { level })).toHaveClass("font-bold");
+    },
+  );
+
+  it("explicit weight overrides heading auto-default", () => {
+    render(
+      <Typography as="h1" weight="medium">
+        Override
+      </Typography>,
+    );
+
+    const heading = screen.getByRole("heading", { level: 1 });
+    expect(heading).toHaveClass("font-medium");
+    expect(heading).not.toHaveClass("font-bold");
+  });
 });

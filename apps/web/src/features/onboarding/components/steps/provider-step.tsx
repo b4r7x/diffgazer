@@ -76,7 +76,7 @@ export function ProviderStep({
                   <Badge
                     variant={tierBadge === "FREE" ? "success" : "neutral"}
                     size="sm"
-                    className="text-[9px]"
+                    className="text-3xs"
                   >
                     {tierBadge}
                   </Badge>

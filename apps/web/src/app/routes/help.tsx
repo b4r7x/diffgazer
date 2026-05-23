@@ -1,6 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { Panel } from "@diffgazer/ui/components/panel";
 import { Kbd } from "@diffgazer/ui/components/kbd";
+import { Typography } from "@diffgazer/ui/components/typography";
 import { useScope, useKey } from "@diffgazer/keys";
 import { usePageFooter } from "@diffgazer/core/footer";
 
@@ -34,9 +35,9 @@ export function HelpPage() {
           <Panel.Content>
             <div className="flex flex-col gap-6 pt-2">
               <section>
-                <h2 className="text-xs font-bold uppercase tracking-wider text-tui-muted mb-3">
+                <Typography as="h2" size="xs" color="muted" className="uppercase tracking-wider mb-3">
                   Keyboard Shortcuts
-                </h2>
+                </Typography>
                 <div className="flex flex-col gap-1">
                   {SHORTCUTS.map((s) => (
                     <div key={s.key} className="flex gap-3 text-sm">
@@ -48,9 +49,9 @@ export function HelpPage() {
               </section>
 
               <section>
-                <h2 className="text-xs font-bold uppercase tracking-wider text-tui-muted mb-3">
+                <Typography as="h2" size="xs" color="muted" className="uppercase tracking-wider mb-3">
                   About
-                </h2>
+                </Typography>
                 <p className="text-sm text-tui-muted">
                   diffgazer — Local-only AI code review for your terminal.
                 </p>

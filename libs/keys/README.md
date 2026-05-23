@@ -8,7 +8,7 @@ All npm package names are external publish-gated as of May 2026. Public npm comm
 
 | Path | Standalone hooks | Provider-backed APIs |
 |------|-----------------|---------------------|
-| Manual copy / shadcn (future) | `npx shadcn add https://docs.diffgazer.b4r7.dev/r/keys/navigation.json` (hosted registry not yet live — see [Hosted Registry Status](../../PACKAGE_GOVERNANCE.md#hosted-registry-status)) | Not available |
+| Manual copy / shadcn (future) | `npx shadcn add https://r.b4r7.dev/keys/navigation.json` (hosted registry not yet live — see [Hosted Registry Status](../../PACKAGE_GOVERNANCE.md#hosted-registry-status)) | Not available |
 | `dgadd` CLI | `pnpm exec dgadd add keys/navigation` | Not available |
 | npm package | `npm install @diffgazer/keys` | `npm install @diffgazer/keys` |
 

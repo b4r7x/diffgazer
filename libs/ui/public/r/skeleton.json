@@ -1,0 +1,27 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "skeleton",
+  "title": "Skeleton",
+  "description": "Loading placeholder with pulse animation",
+  "dependencies": [],
+  "registryDependencies": [
+    "https://r.b4r7.dev/r/ui/theme.json",
+    "https://r.b4r7.dev/r/ui/utils.json"
+  ],
+  "files": [
+    {
+      "path": "registry/ui/skeleton/index.ts",
+      "content": "export { Skeleton, type SkeletonProps } from \"./skeleton\";\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/skeleton/skeleton.tsx",
+      "content": "import type { HTMLAttributes, Ref } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport interface SkeletonProps extends HTMLAttributes<HTMLDivElement> {\n  className?: string;\n  ref?: Ref<HTMLDivElement>;\n}\n\nexport function Skeleton({ className, ref, ...props }: SkeletonProps) {\n  return (\n    <div\n      ref={ref}\n      aria-hidden=\"true\"\n      className={cn(\n        \"rounded-sm bg-secondary motion-safe:animate-pulse\",\n        className,\n      )}\n      {...props}\n    />\n  );\n}\n",
+      "type": "registry:ui"
+    }
+  ],
+  "meta": {
+    "client": false
+  },
+  "type": "registry:ui"
+}

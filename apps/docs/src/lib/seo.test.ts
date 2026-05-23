@@ -93,6 +93,22 @@ describe("buildRootHeadDefaults", () => {
     expect(manifest?.href).toBe("/manifest.json");
   });
 
+  it("includes favicon and apple-touch-icon links", () => {
+    const { links } = buildRootHeadDefaults();
+
+    const favicon = links.find((link) => link.rel === "icon");
+    expect(favicon?.href).toBe("/favicon.ico");
+
+    const appleTouchIcon = links.find((link) => link.rel === "apple-touch-icon");
+    expect(appleTouchIcon?.href).toBe("/logo192.png");
+  });
+
+  it("includes og:image meta tag", () => {
+    const { meta } = buildRootHeadDefaults();
+
+    expect(findMeta(meta, "property", "og:image")?.content).toBe(`${PUBLIC_ORIGIN}/logo512.png`);
+  });
+
   it("includes a root canonical link and og:url from PUBLIC_ORIGIN", () => {
     const { meta, links } = buildRootHeadDefaults();
 

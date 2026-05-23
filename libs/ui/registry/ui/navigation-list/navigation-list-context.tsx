@@ -4,6 +4,11 @@ import { createContext, useContext } from "react";
 
 export type NavigationListIndicator = "bar" | "bar-thick" | "arrow" | "bracket";
 
+export interface GroupHeaderRegistration {
+  toggle: () => void;
+  expanded: boolean;
+}
+
 export interface NavigationListContextValue {
   selectedId: string | null;
   highlighted: string | null;
@@ -13,6 +18,9 @@ export interface NavigationListContextValue {
   focused: boolean;
   idPrefix: string;
   indicator: NavigationListIndicator;
+  registerGroupHeader: (id: string, registration: GroupHeaderRegistration) => void;
+  unregisterGroupHeader: (id: string) => void;
+  groupHeaders: Map<string, GroupHeaderRegistration>;
 }
 
 export const NavigationListContext = createContext<NavigationListContextValue | undefined>(undefined);

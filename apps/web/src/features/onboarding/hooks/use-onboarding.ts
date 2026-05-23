@@ -111,6 +111,7 @@ export function useOnboarding() {
     setIsSubmitting(true);
     setError(null);
     try {
+      earlySavedProviderRef.current = null;
       await saveSettings.mutateAsync({
         secretsStorage: wizardData.secretsStorage,
         defaultLenses: wizardData.defaultLenses,

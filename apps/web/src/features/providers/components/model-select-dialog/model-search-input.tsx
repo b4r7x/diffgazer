@@ -61,14 +61,14 @@ export function ModelSearchInput({
             variant="secondary"
             onClick={onUseCustom}
             disabled={!canUseCustom}
-            className="h-auto px-2 py-1 text-[10px]"
+            className="h-auto px-2 py-1 text-2xs"
           >
             Use ID
           </Button>
         )}
       </div>
       {showCustomAction && (
-        <div className="pt-2 text-[10px] text-tui-muted">
+        <div className="pt-2 text-2xs text-tui-muted">
           Tip: enter a custom model ID and press Enter
         </div>
       )}

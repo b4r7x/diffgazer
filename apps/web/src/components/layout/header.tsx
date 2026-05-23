@@ -52,7 +52,7 @@ function DiffgazerWordmark() {
       className={cn(
         "text-tui-blue font-bold",
         WORDMARK_ASCII ? undefined : "opacity-50",
-        "text-[8px] md:text-[10px] lg:text-xs",
+        "text-3xs md:text-2xs lg:text-xs",
         "[zoom:0.8] md:[zoom:1] lg:[zoom:1.2]",
       )}
     />

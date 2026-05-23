@@ -2,6 +2,7 @@ import { cn } from '@diffgazer/ui/lib/utils';
 import { Panel, PanelContent } from '@diffgazer/ui/components/panel';
 import { SectionHeader } from '@diffgazer/ui/components/section-header';
 import { Button } from '@diffgazer/ui/components/button';
+import { Typography } from '@diffgazer/ui/components/typography';
 import { SeverityBreakdown } from '@/components/ui/severity';
 import { IssuePreviewItem } from './issue-preview-item';
 import { LensStatsTable, type LensStats } from './lens-stats-table';
@@ -31,9 +32,9 @@ export function AnalysisSummary({
   return (
     <div className={cn('flex flex-col gap-6', className)}>
       <div className="border-l-4 border-tui-green pl-6 py-2 bg-tui-selection/20">
-        <h1 className="text-2xl font-bold text-tui-green mb-2">
+        <Typography as="h1" size="2xl" className="text-tui-green mb-2">
           Analysis Complete #{stats.runId}
-        </h1>
+        </Typography>
         <p className="text-sm text-tui-muted">
           Found <span className="text-tui-fg font-bold">{stats.totalIssues} issues</span> across{' '}
           <span className="text-tui-fg font-bold">{stats.filesAnalyzed} files</span>.
@@ -68,9 +69,9 @@ export function AnalysisSummary({
 
       {topIssues.length > 0 && (
         <div>
-          <h3 className="text-tui-violet font-bold mb-3 flex items-center gap-2 text-sm uppercase tracking-wider">
+          <Typography as="h3" size="sm" className="text-tui-violet mb-3 flex items-center gap-2 uppercase tracking-wider">
             <span aria-hidden="true">!</span> Top Issues Preview
-          </h3>
+          </Typography>
           <div className="border border-tui-border rounded-sm overflow-hidden">
             {topIssues.map((issue) => (
               <IssuePreviewItem

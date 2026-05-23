@@ -1,21 +1,26 @@
 "use client";
 
-import { Children, isValidElement, type ComponentPropsWithRef, type ReactNode, type KeyboardEvent, useId, useMemo, useRef } from "react";
+import { Children, isValidElement, useCallback, type ComponentPropsWithRef, type ReactNode, type KeyboardEvent, useId, useMemo, useRef } from "react";
 import { type ListboxMetadataItem, getEncodedListboxItemId, useListbox } from "@/hooks/use-listbox";
 import { composeRefs } from "@/lib/compose-refs";
 import { cn } from "@/lib/utils";
-import { NavigationListContext, type NavigationListIndicator } from "./navigation-list-context";
+import { NavigationListContext, type NavigationListIndicator, type GroupHeaderRegistration } from "./navigation-list-context";
 import { NavigationListItem } from "./navigation-list-item";
+import { NavigationListGroup } from "./navigation-list-group";
 
 function collectNavigationListItems(children: ReactNode): ListboxMetadataItem[] {
   const items: ListboxMetadataItem[] = [];
 
   Children.forEach(children, (child) => {
-    if (!isValidElement<{ id?: string; disabled?: boolean; children?: ReactNode }>(child)) return;
+    if (!isValidElement<{ id?: string; disabled?: boolean; children?: ReactNode; variant?: string; headerId?: string }>(child)) return;
 
     if (child.type === NavigationListItem && typeof child.props.id === "string") {
       items.push({ id: child.props.id, disabled: child.props.disabled });
       return;
+    }
+
+    if (child.type === NavigationListGroup && child.props.variant === "tree" && typeof child.props.headerId === "string") {
+      items.push({ id: child.props.headerId });
     }
 
     // Always collect items from groups regardless of expanded state.
@@ -75,7 +80,50 @@ export function NavigationList({
 }: NavigationListProps) {
   const idPrefix = useId();
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const groupHeadersRef = useRef<Map<string, GroupHeaderRegistration>>(new Map());
   const items = useMemo(() => collectNavigationListItems(children), [children]);
+
+  const handleGroupKeyDown = useCallback((event: KeyboardEvent) => {
+    onKeyDown?.(event);
+    if (event.defaultPrevented) return;
+
+    const key = event.key;
+    if (key !== "ArrowLeft" && key !== "ArrowRight" && key !== "Enter" && key !== " ") return;
+
+    const container = containerRef.current;
+    if (!container) return;
+    const activeId = container.getAttribute("aria-activedescendant");
+    if (!activeId) return;
+
+    const activeEl = container.ownerDocument.getElementById(activeId);
+    if (!activeEl) return;
+    const itemValue = activeEl.dataset.value;
+    if (!itemValue) return;
+
+    const registration = groupHeadersRef.current.get(itemValue);
+    if (!registration) return;
+
+    if (key === "ArrowRight") {
+      if (!registration.expanded) {
+        event.preventDefault();
+        registration.toggle();
+      }
+      return;
+    }
+
+    if (key === "ArrowLeft") {
+      if (registration.expanded) {
+        event.preventDefault();
+        registration.toggle();
+      }
+      return;
+    }
+
+    if (key === "Enter" || key === " ") {
+      event.preventDefault();
+      registration.toggle();
+    }
+  }, [onKeyDown]);
 
   const {
     selectedId,
@@ -95,11 +143,19 @@ export function NavigationList({
     wrap,
     idPrefix,
     autoFocus,
-    onKeyDown,
+    onKeyDown: handleGroupKeyDown,
     typeahead: true,
     items,
     getItemId: getEncodedListboxItemId,
   });
+
+  const registerGroupHeader = useCallback((id: string, registration: GroupHeaderRegistration) => {
+    groupHeadersRef.current.set(id, registration);
+  }, []);
+
+  const unregisterGroupHeader = useCallback((id: string) => {
+    groupHeadersRef.current.delete(id);
+  }, []);
 
   const contextValue = useMemo(
     () => ({
@@ -111,8 +167,11 @@ export function NavigationList({
       focused,
       idPrefix,
       indicator,
+      registerGroupHeader,
+      unregisterGroupHeader,
+      groupHeaders: groupHeadersRef.current,
     }),
-    [selectedId, highlighted, handleItemActivate, handleItemHighlight, focused, idPrefix, indicator],
+    [selectedId, highlighted, handleItemActivate, handleItemHighlight, focused, idPrefix, indicator, registerGroupHeader, unregisterGroupHeader],
   );
 
   return (

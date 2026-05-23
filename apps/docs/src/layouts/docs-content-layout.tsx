@@ -1,10 +1,23 @@
 import { useRouter } from "@tanstack/react-router";
-import { useState, type ReactNode, useEffect, useRef } from "react";
+import { useState, useSyncExternalStore, type ReactNode, useEffect, useRef } from "react";
 import { cn } from "@diffgazer/ui/lib/utils";
 import type { DocsLibraryId } from "@/lib/docs-library";
 import { usePendingDocsRoute } from "@/lib/hooks/use-pending-docs-route";
 import type { PageTree } from "@/lib/docs-tree";
 import { DocsSidebar } from "./sidebar";
+
+const LG_QUERY = "(min-width: 1024px)";
+function subscribeDesktop(cb: () => void) {
+	const mql = window.matchMedia(LG_QUERY);
+	mql.addEventListener("change", cb);
+	return () => mql.removeEventListener("change", cb);
+}
+function getDesktopSnapshot() {
+	return window.matchMedia(LG_QUERY).matches;
+}
+function getDesktopServerSnapshot() {
+	return true;
+}
 
 interface DocsContentLayoutProps {
 	tree: PageTree;
@@ -14,6 +27,9 @@ interface DocsContentLayoutProps {
 
 export function DocsContentLayout({ tree, library, children }: DocsContentLayoutProps) {
 	const [sidebarOpen, setSidebarOpen] = useState(false);
+	const isDesktop = useSyncExternalStore(subscribeDesktop, getDesktopSnapshot, getDesktopServerSnapshot);
+	const sidebarInert = !isDesktop && !sidebarOpen;
+	const mainInert = !isDesktop && sidebarOpen;
 	const mainRef = useRef<HTMLElement>(null);
 	const router = useRouter();
 	const pendingDocsPathname = usePendingDocsRoute();
@@ -40,6 +56,7 @@ export function DocsContentLayout({ tree, library, children }: DocsContentLayout
 				id="sidebar-nav"
 				aria-label="Sidebar navigation"
 				aria-busy={isDocsRoutePending}
+				inert={sidebarInert || undefined}
 				className={cn(
 					"fixed inset-y-0 left-0 z-50 w-[280px] shrink-0 border-r border-border flex flex-col bg-background transition-transform duration-150 ease-in-out",
 					"lg:relative lg:inset-auto",
@@ -73,6 +90,7 @@ export function DocsContentLayout({ tree, library, children }: DocsContentLayout
 						id="main-content"
 						tabIndex={-1}
 						aria-busy={isDocsRoutePending}
+						inert={mainInert || undefined}
 						className={cn(
 							"h-full min-w-0 min-h-0 overflow-y-auto scrollbar-thin outline-none transition-opacity duration-150",
 							isDocsRoutePending && "opacity-60",

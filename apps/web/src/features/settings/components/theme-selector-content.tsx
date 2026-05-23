@@ -83,7 +83,7 @@ export function ThemeSelectorContent({
 
   return (
     <div className="space-y-3">
-      <div className="text-sm font-mono text-[--tui-fg]/60">Select Interface Theme:</div>
+      <div className="text-sm font-mono text-tui-fg/60">Select Interface Theme:</div>
       <RadioGroup
         value={value}
         onChange={handleChange}

@@ -79,7 +79,7 @@ export function AnalysisStep({
                     <Badge
                       variant={option.badgeVariant}
                       size="sm"
-                      className="text-[9px]"
+                      className="text-3xs"
                     >
                       {option.badgeLabel}
                     </Badge>

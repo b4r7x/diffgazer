@@ -27,7 +27,7 @@ export function LensStatsTable({ lenses, className }: LensStatsTableProps) {
             )}
           >
             <td className="py-3 pl-2 flex items-center gap-2">
-              <span className={cn('text-[16px]', lens.iconColor)} aria-hidden="true">
+              <span className={cn('text-base', lens.iconColor)} aria-hidden="true">
                 {lens.icon}
               </span>
               {lens.name}

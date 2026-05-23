@@ -406,6 +406,24 @@ describe("useFocusTrap", () => {
       // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       expect(document.activeElement).toBe(container.querySelector("#b"));
     });
+
+    it("recaptures focus when the focused element becomes disabled", async () => {
+      container = createContainer(
+        '<button id="a">A</button>',
+        '<button id="b">B</button>',
+      );
+      renderTrap(container);
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+      const btnA = container.querySelector<HTMLButtonElement>("#a")!;
+      expect(document.activeElement).toBe(btnA);
+
+      await act(async () => {
+        btnA.disabled = true;
+      });
+
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+      expect(document.activeElement).toBe(container.querySelector("#b"));
+    });
   });
 
   describe("initialFocus guards", () => {

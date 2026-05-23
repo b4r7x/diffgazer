@@ -89,7 +89,7 @@ export function ProviderDetails({
           Provider Details: {provider.name}
         </SectionHeader>
         {provider.displayStatus === 'active' && (
-          <span className="text-[10px] text-tui-green font-mono flex items-center gap-1">
+          <span className="text-2xs text-tui-green font-mono flex items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full bg-tui-green"></span> Active
           </span>
         )}

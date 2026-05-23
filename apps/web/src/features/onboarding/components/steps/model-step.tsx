@@ -4,6 +4,7 @@ import type { AIProvider } from "@diffgazer/core/schemas/config";
 import { getStaticModelsForProvider } from "@diffgazer/core/providers";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
 import { Badge } from "@diffgazer/ui/components/badge";
+import { Input } from "@diffgazer/ui/components/input";
 import { useOpenRouterModelsMapped } from "@diffgazer/core/providers";
 import { resolveAvailableValue } from "@diffgazer/core/select";
 import { toVerticalBoundaryDirection } from "@diffgazer/keys";
@@ -102,14 +103,14 @@ function StaticModelList({
               <span className="flex items-center gap-2">
                 {model.name}
                 {model.recommended && (
-                  <Badge variant="success" size="sm" className="text-[9px]">
+                  <Badge variant="success" size="sm" className="text-3xs">
                     RECOMMENDED
                   </Badge>
                 )}
                 <Badge
                   variant={model.tier === "free" ? "success" : "neutral"}
                   size="sm"
-                  className="text-[9px]"
+                  className="text-3xs"
                 >
                   {model.tier.toUpperCase()}
                 </Badge>
@@ -148,12 +149,11 @@ function OpenRouterModelList({
         <p className="text-sm text-tui-muted font-mono">
           Enter a model ID manually (e.g. openai/gpt-4o):
         </p>
-        <input
+        <Input
           type="text"
           value={value ?? ""}
           onChange={(e) => onChange(e.target.value)}
           placeholder="openai/gpt-4o"
-          className="w-full px-3 py-2 bg-tui-bg border border-tui-border text-tui-fg font-mono text-sm rounded"
         />
       </div>
     );
@@ -184,7 +184,7 @@ function OpenRouterModelList({
                   <Badge
                     variant={model.tier === "free" ? "success" : "neutral"}
                     size="sm"
-                    className="text-[9px]"
+                    className="text-3xs"
                   >
                     {model.tier.toUpperCase()}
                   </Badge>

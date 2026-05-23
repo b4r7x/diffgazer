@@ -63,7 +63,7 @@ export function ModelFilterTabs({
             onClick={() => {
               onTabClick(idx);
             }}
-            className="uppercase text-[10px] min-h-0 min-w-0 h-auto px-2 py-0.5"
+            className="uppercase text-2xs min-h-0 min-w-0 h-auto px-2 py-0.5"
           >
             {filter}
           </ToggleGroupItem>
