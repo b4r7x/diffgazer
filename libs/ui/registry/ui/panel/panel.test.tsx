@@ -319,64 +319,6 @@ describe("Panel", () => {
     },
   );
 
-  describe("dev-warn on duplicate Panel.Title / Panel.Description", () => {
-    afterEach(() => {
-      vi.restoreAllMocks();
-    });
-
-    it("warns when two <Panel.Title> children are rendered", () => {
-      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-
-      render(
-        <Panel>
-          <Panel.Header>
-            <Panel.Title>First</Panel.Title>
-            <Panel.Title>Second</Panel.Title>
-          </Panel.Header>
-        </Panel>,
-      );
-
-      expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining("Multiple <Panel.Title>"),
-      );
-    });
-
-    it("warns when two <Panel.Description> children are rendered", () => {
-      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-
-      render(
-        <Panel>
-          <Panel.Header>
-            <Panel.Title>Release</Panel.Title>
-            <Panel.Description>First</Panel.Description>
-            <Panel.Description>Second</Panel.Description>
-          </Panel.Header>
-        </Panel>,
-      );
-
-      expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining("Multiple <Panel.Description>"),
-      );
-    });
-
-    it("does not warn for one of each", () => {
-      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-
-      render(
-        <Panel>
-          <Panel.Header>
-            <Panel.Title>Release</Panel.Title>
-            <Panel.Description>v1</Panel.Description>
-          </Panel.Header>
-        </Panel>,
-      );
-
-      expect(warnSpy).not.toHaveBeenCalledWith(
-        expect.stringContaining("[Panel]"),
-      );
-    });
-  });
-
   it("has no a11y violations across the full frame × tone matrix", async () => {
     const frames = ["hairline", "rail", "viewfinder", "surface"] as const;
     const tones = ["info", "success", "warning", "error", "accent"] as const;

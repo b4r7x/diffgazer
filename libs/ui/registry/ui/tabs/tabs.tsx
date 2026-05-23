@@ -8,7 +8,6 @@ import {
   type Ref,
   useId,
   useMemo,
-  useRef,
   useState,
 } from "react";
 import { useControllableState } from "@/hooks/use-controllable-state";
@@ -133,13 +132,6 @@ function TabsRoot<TValue extends string = string>({
     onChange: onChange as ((value: string) => void) | undefined,
   });
   const [focusedValue, setFocusedValue] = useState<string | null>(null);
-  const hasWarnedNoTriggersRef = useRef(false);
-  if (triggerValues.length === 0 && !defaultValue && !hasWarnedNoTriggersRef.current) {
-    hasWarnedNoTriggersRef.current = true;
-    console.warn(
-      "[Tabs] No Tabs.Trigger children detected. Provide at least one Tabs.Trigger or set defaultValue to support lazy-loaded triggers.",
-    );
-  }
   const firstEnabledTab = enabledValues[0] ?? "";
   const resolvedValue = enabledValues.includes(value) ? value : firstEnabledTab;
   const resolvedFocusedValue = focusedValue !== null && enabledValues.includes(focusedValue)

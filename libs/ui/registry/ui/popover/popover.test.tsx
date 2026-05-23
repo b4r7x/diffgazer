@@ -349,9 +349,7 @@ describe("Popover", () => {
     expect(screen.getByText("Popover body")).toHaveAttribute("data-state", "closed")
   })
 
-  it("warns and applies a fallback accessible name for dialog popovers without aria-label or aria-labelledby", () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
-
+  it("applies a fallback accessible name for dialog popovers without aria-label or aria-labelledby", () => {
     render(
       <Popover defaultOpen>
         <Popover.Trigger>Open</Popover.Trigger>
@@ -362,14 +360,9 @@ describe("Popover", () => {
     const dialog = screen.getByRole("dialog", { name: "Popover" })
     expect(dialog).toHaveAttribute("aria-label", "Popover")
     expect(dialog).not.toHaveAttribute("aria-labelledby")
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining("missing an accessible name"))
-
-    warn.mockRestore()
   })
 
-  it("does not warn when dialog popover has aria-label", () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
-
+  it("uses explicit aria-label for dialog popover", () => {
     render(
       <Popover defaultOpen>
         <Popover.Trigger>Open</Popover.Trigger>
@@ -378,14 +371,9 @@ describe("Popover", () => {
     )
 
     expect(screen.getByRole("dialog", { name: "Settings" })).toBeInTheDocument()
-    expect(warn).not.toHaveBeenCalled()
-
-    warn.mockRestore()
   })
 
-  it("does not warn when dialog popover has aria-labelledby", () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
-
+  it("uses explicit aria-labelledby for dialog popover", () => {
     render(
       <>
         <h2 id="external-popover-name">External name</h2>
@@ -398,9 +386,6 @@ describe("Popover", () => {
 
     const dialog = screen.getByRole("dialog", { name: "External name" })
     expect(dialog).not.toHaveAttribute("aria-label")
-    expect(warn).not.toHaveBeenCalled()
-
-    warn.mockRestore()
   })
 
   it("composes content handlers and lets prevented Escape keep the popover open", async () => {

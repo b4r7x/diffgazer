@@ -1,10 +1,19 @@
 import type { ApiClient, ApiClientConfig, ApiError, RequestOptions } from "./types.js";
+import { SHUTDOWN_TOKEN_HEADER } from "./protocol.js";
 
 function createApiError(message: string, status: number, code?: string): ApiError {
   const error = new Error(message) as ApiError;
   error.status = status;
   error.code = code;
   return error;
+}
+
+function resolveToken(
+  shutdownToken: string | (() => string | undefined) | undefined,
+): string | undefined {
+  const token = typeof shutdownToken === "function" ? shutdownToken() : shutdownToken;
+  const normalized = token?.trim();
+  return normalized || undefined;
 }
 
 export function createApiClient(config: ApiClientConfig): ApiClient {
@@ -40,9 +49,11 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
       if (queryString) url += `?${queryString}`;
     }
 
+    const token = resolveToken(config.shutdownToken);
     const headers: Record<string, string> = {
       Accept: "application/json",
       ...projectHeaders,
+      ...(token ? { [SHUTDOWN_TOKEN_HEADER]: token } : {}),
       ...options?.headers,
     };
     if (options?.body !== undefined) {

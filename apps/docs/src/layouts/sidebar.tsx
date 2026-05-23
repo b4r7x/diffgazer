@@ -34,7 +34,7 @@ function getSlug(path: string): string {
 }
 
 function isCliCommandPath(path: string): boolean {
-  return /^\/[^/]+\/docs\/cli\/.+/.test(path) && getSlug(path) !== "cli";
+  return /^\/[^/]+\/cli\/.+/.test(path) && getSlug(path) !== "cli";
 }
 
 function isIndentedItem(path: string): boolean {
@@ -70,7 +70,7 @@ function groupBySection(children: PageTreeNode[]): Section[] {
 }
 
 function splatFromUrl(url: string): string {
-  return url.split("/").slice(3).join("/");
+  return url.split("/").slice(2).join("/");
 }
 
 export function DocsSidebar({ tree, library, onNavigate }: DocsSidebarProps) {
@@ -115,7 +115,7 @@ export function DocsSidebar({ tree, library, onNavigate }: DocsSidebarProps) {
                     >
                       {({ ref: _ref, ...itemProps }) => (
                         <Link
-                          to="/$lib/docs/$"
+                          to="/$lib/$"
                           params={{ lib: library, _splat: splatFromUrl(url) }}
                           onClick={onNavigate}
                           data-value={url}

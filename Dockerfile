@@ -30,6 +30,7 @@ RUN pnpm --filter @diffgazer/ui build
 ARG DIFFGAZER_DEV
 ENV DIFFGAZER_DEV=${DIFFGAZER_DEV}
 
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN pnpm --filter @diffgazer/docs build
 
 # ── Stage 2: Runtime ──────────────────────────────────────────────────

@@ -21,13 +21,13 @@ function findTitle(meta: ReturnType<typeof buildPageSeo>["meta"]) {
 
 describe("buildCanonicalUrl", () => {
   it("prepends the public origin to absolute pathnames", () => {
-    expect(buildCanonicalUrl("/ui/docs/components/button")).toBe(
-      `${PUBLIC_ORIGIN}/ui/docs/components/button`,
+    expect(buildCanonicalUrl("/ui/components/button")).toBe(
+      `${PUBLIC_ORIGIN}/ui/components/button`,
     );
   });
 
   it("normalises relative pathnames into absolute ones before joining", () => {
-    expect(buildCanonicalUrl("ui/docs")).toBe(`${PUBLIC_ORIGIN}/ui/docs`);
+    expect(buildCanonicalUrl("ui")).toBe(`${PUBLIC_ORIGIN}/ui`);
   });
 });
 
@@ -36,7 +36,7 @@ describe("buildPageSeo", () => {
     const seo = buildPageSeo({
       title: "Button - UI Docs",
       description: "Button primitive",
-      pathname: "/ui/docs/components/button",
+      pathname: "/ui/components/button",
     });
 
     expect(findTitle(seo.meta)?.title).toBe("Button - UI Docs");
@@ -45,7 +45,7 @@ describe("buildPageSeo", () => {
     expect(findMeta(seo.meta, "property", "og:description")?.content).toBe("Button primitive");
     expect(findMeta(seo.meta, "property", "og:type")?.content).toBe("article");
     expect(findMeta(seo.meta, "property", "og:url")?.content).toBe(
-      `${PUBLIC_ORIGIN}/ui/docs/components/button`,
+      `${PUBLIC_ORIGIN}/ui/components/button`,
     );
     expect(findMeta(seo.meta, "property", "og:site_name")?.content).toBe(DEFAULT_SITE_NAME);
     expect(findMeta(seo.meta, "name", "twitter:card")?.content).toBe("summary");
@@ -53,13 +53,13 @@ describe("buildPageSeo", () => {
     expect(findMeta(seo.meta, "name", "twitter:description")?.content).toBe("Button primitive");
 
     const canonical = seo.links.find((link) => link.rel === "canonical");
-    expect(canonical?.href).toBe(`${PUBLIC_ORIGIN}/ui/docs/components/button`);
+    expect(canonical?.href).toBe(`${PUBLIC_ORIGIN}/ui/components/button`);
   });
 
   it("falls back to the default site description when no per-page description is given", () => {
     const seo = buildPageSeo({
       title: "Library Index",
-      pathname: "/ui/docs",
+      pathname: "/ui",
     });
 
     expect(findMeta(seo.meta, "name", "description")?.content).toBe(DEFAULT_SITE_DESCRIPTION);

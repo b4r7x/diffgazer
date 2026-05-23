@@ -507,26 +507,17 @@ describe("Toast", () => {
       }
     })
 
-    it("variant=\"hud\" warns in development when an action is provided", () => {
-      const prevEnv = process.env.NODE_ENV
-      process.env.NODE_ENV = "development"
-      const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
-      try {
-        render(<Toaster />)
-        act(() => {
-          toast("Saved", {
-            variant: "hud",
-            action: <button>Undo</button>,
-          })
+    it("variant=\"hud\" silently drops the action prop", () => {
+      render(<Toaster />)
+      act(() => {
+        toast("Saved", {
+          variant: "hud",
+          action: <button>Undo</button>,
         })
-        expect(warn).toHaveBeenCalledWith(expect.stringContaining("variant=\"hud\""))
-        const root = findToast("Saved")
-        expect(root?.querySelector('[data-slot="toast-action"]')).toBeNull()
-        expect(root?.textContent).not.toContain("Undo")
-      } finally {
-        warn.mockRestore()
-        process.env.NODE_ENV = prevEnv
-      }
+      })
+      const root = findToast("Saved")
+      expect(root?.querySelector('[data-slot="toast-action"]')).toBeNull()
+      expect(root?.textContent).not.toContain("Undo")
     })
 
     it("variant=\"viewfinder\" renders four corner spans", () => {

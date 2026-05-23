@@ -14,7 +14,7 @@ export function createApi(config: ApiClientConfig) {
     ...bindConfig(client),
     ...bindGit(client),
     ...bindReview(client),
-    ...bindShutdown(client, config.shutdownToken),
+    ...bindShutdown(client),
   };
 }
 
