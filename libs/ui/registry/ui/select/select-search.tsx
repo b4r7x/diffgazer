@@ -32,6 +32,7 @@ export function SelectSearch({
     variant,
     searchInputRef,
     ariaInvalid,
+    ariaLabelledBy,
     required,
     options,
     highlighted,
@@ -56,7 +57,8 @@ export function SelectSearch({
         ref={searchInputRef}
         type="search"
         role="combobox"
-        aria-label={ariaLabel ?? "Search options"}
+        aria-labelledby={ariaLabelledBy || undefined}
+        aria-label={ariaLabelledBy ? undefined : (ariaLabel ?? "Search options")}
         aria-controls={listboxId}
         aria-expanded={open}
         aria-activedescendant={activeDescendant}

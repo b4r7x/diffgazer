@@ -23,10 +23,12 @@ function createMockContext(headers: Record<string, string> = {}) {
 describe("getProjectRoot", () => {
   let originalPackaged: string | undefined;
   let originalProjectRoot: string | undefined;
+  let originalDevUnsafe: string | undefined;
 
   beforeEach(() => {
     originalPackaged = process.env.DIFFGAZER_PACKAGED;
     originalProjectRoot = process.env.DIFFGAZER_PROJECT_ROOT;
+    originalDevUnsafe = process.env.DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT;
     vi.mocked(resolveProjectRoot).mockClear();
   });
 
@@ -41,16 +43,34 @@ describe("getProjectRoot", () => {
     } else {
       process.env.DIFFGAZER_PROJECT_ROOT = originalProjectRoot;
     }
+    if (originalDevUnsafe === undefined) {
+      delete process.env.DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT;
+    } else {
+      process.env.DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT = originalDevUnsafe;
+    }
   });
 
-  it("passes the client header in dev mode", () => {
+  it("passes the client header in dev mode with explicit opt-in", () => {
     delete process.env.DIFFGAZER_PACKAGED;
+    process.env.DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT = "1";
     const c = createMockContext({ "x-diffgazer-project-root": "/user/supplied" });
 
     getProjectRoot(c);
 
     expect(resolveProjectRoot).toHaveBeenCalledWith(
       expect.objectContaining({ header: "/user/supplied" }),
+    );
+  });
+
+  it("ignores the client header in dev mode without opt-in", () => {
+    delete process.env.DIFFGAZER_PACKAGED;
+    delete process.env.DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT;
+    const c = createMockContext({ "x-diffgazer-project-root": "/user/supplied" });
+
+    getProjectRoot(c);
+
+    expect(resolveProjectRoot).toHaveBeenCalledWith(
+      expect.objectContaining({ header: undefined }),
     );
   });
 

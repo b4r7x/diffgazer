@@ -6,10 +6,8 @@ import {
   createContext,
   isValidElement,
   useContext,
-  useEffect,
   useId,
   useMemo,
-  useState,
   type AriaAttributes,
   type HTMLAttributes,
   type LabelHTMLAttributes,
@@ -31,9 +29,6 @@ interface FieldContextValue {
   invalid: boolean;
   required: boolean | undefined;
   disabled: boolean | undefined;
-  setLabelId: (value: string | undefined) => void;
-  setDescriptionId: (value: string | undefined) => void;
-  setErrorId: (value: string | undefined) => void;
 }
 
 const FieldContext = createContext<FieldContextValue | undefined>(undefined);
@@ -79,6 +74,49 @@ export interface FieldRootProps extends HTMLAttributes<HTMLDivElement> {
  * </Field>
  * ```
  */
+/**
+ * Scan direct Field children to detect which slots are present. Returns
+ * deterministic IDs only for slots that are actually rendered, so ARIA
+ * attributes are correct from the first render without useEffect.
+ */
+function detectFieldSlots(
+  children: ReactNode,
+  defaultLabelId: string,
+  defaultDescriptionId: string,
+  defaultErrorId: string,
+  invalid: boolean,
+) {
+  let labelId: string | undefined;
+  let descriptionId: string | undefined;
+  let errorId: string | undefined;
+
+  Children.forEach(children, (child) => {
+    if (!isValidElement(child)) return;
+    if (child.type === FieldLabel) {
+      labelId = (child.props as FieldLabelProps).id ?? defaultLabelId;
+    }
+    if (child.type === FieldDescription) {
+      const descProps = child.props as FieldDescriptionProps & { children?: ReactNode };
+      if (hasRenderableContent(descProps.children)) {
+        descriptionId = descProps.id ?? defaultDescriptionId;
+      }
+    }
+    if (child.type === FieldError) {
+      const errProps = child.props as FieldErrorProps & { children?: ReactNode };
+      if (hasRenderableContent(errProps.children)) {
+        errorId = errProps.id ?? defaultErrorId;
+      }
+    }
+  });
+
+  const describedBy = mergeIds(
+    descriptionId,
+    invalid ? errorId : undefined,
+  );
+
+  return { labelId, descriptionId, errorId, describedBy };
+}
+
 function FieldRoot({
   controlId,
   invalid = false,
@@ -94,12 +132,13 @@ function FieldRoot({
   const defaultLabelId = `${resolvedControlId}-label`;
   const defaultDescriptionId = `${resolvedControlId}-description`;
   const defaultErrorId = `${resolvedControlId}-error`;
-  const [labelId, setLabelId] = useState<string | undefined>(undefined);
-  const [descriptionId, setDescriptionId] = useState<string | undefined>(undefined);
-  const [errorId, setErrorId] = useState<string | undefined>(undefined);
-  const describedBy = mergeIds(
-    descriptionId,
-    invalid ? errorId : undefined,
+
+  const { labelId, describedBy } = detectFieldSlots(
+    children,
+    defaultLabelId,
+    defaultDescriptionId,
+    defaultErrorId,
+    invalid,
   );
 
   const contextValue = useMemo(
@@ -113,9 +152,6 @@ function FieldRoot({
       invalid,
       required,
       disabled,
-      setLabelId,
-      setDescriptionId,
-      setErrorId,
     }),
     [resolvedControlId, defaultLabelId, labelId, defaultDescriptionId, defaultErrorId, describedBy, invalid, required, disabled],
   );
@@ -141,13 +177,8 @@ export interface FieldLabelProps extends LabelHTMLAttributes<HTMLLabelElement> {
 }
 
 function FieldLabel({ className, children, ref, id, ...props }: FieldLabelProps) {
-  const { controlId, required, defaultLabelId, setLabelId } = useFieldContext("Field.Label");
+  const { controlId, required, defaultLabelId } = useFieldContext("Field.Label");
   const resolvedId = id ?? defaultLabelId;
-
-  useEffect(() => {
-    setLabelId(resolvedId);
-    return () => setLabelId(undefined);
-  }, [resolvedId, setLabelId]);
 
   return (
     <label
@@ -202,15 +233,9 @@ export interface FieldDescriptionProps extends HTMLAttributes<HTMLParagraphEleme
 }
 
 function FieldDescription({ className, children, ref, ...props }: FieldDescriptionProps) {
-  const { defaultDescriptionId, setDescriptionId } = useFieldContext("Field.Description");
+  const { defaultDescriptionId } = useFieldContext("Field.Description");
   const hasChildren = hasRenderableContent(children);
   const resolvedId = props.id ?? defaultDescriptionId;
-
-  useEffect(() => {
-    if (!hasChildren) return;
-    setDescriptionId(resolvedId);
-    return () => setDescriptionId(undefined);
-  }, [hasChildren, resolvedId, setDescriptionId]);
 
   if (!hasChildren) return null;
 
@@ -232,15 +257,9 @@ export interface FieldErrorProps extends HTMLAttributes<HTMLParagraphElement> {
 }
 
 function FieldError({ className, children, ref, ...props }: FieldErrorProps) {
-  const { defaultErrorId, setErrorId } = useFieldContext("Field.Error");
+  const { defaultErrorId } = useFieldContext("Field.Error");
   const hasChildren = hasRenderableContent(children);
   const resolvedId = props.id ?? defaultErrorId;
-
-  useEffect(() => {
-    if (!hasChildren) return;
-    setErrorId(resolvedId);
-    return () => setErrorId(undefined);
-  }, [hasChildren, resolvedId, setErrorId]);
 
   if (!hasChildren) return null;
 

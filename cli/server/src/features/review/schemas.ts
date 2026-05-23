@@ -32,7 +32,7 @@ export const CreateReviewBodySchema = z.object({
     .pipe(z.array(LensIdSchema).max(MAX_LENSES))
     .transform((arr) => (arr.length === 0 ? undefined : arr))
     .optional(),
-  files: z.array(z.string()).optional(),
+  files: z.array(z.string().max(500).regex(/^[^\0]+$/)).max(200).optional(),
 }).refine(
   (data) => data.mode !== "files" || (Array.isArray(data.files) && data.files.length > 0),
   { message: "files[] must be non-empty when mode is 'files'", path: ["files"] },

@@ -61,6 +61,8 @@ export const createApp = (): Hono => {
   app.use("*", async (c, next) => {
     c.res.headers.set("X-Frame-Options", "DENY");
     c.res.headers.set("X-Content-Type-Options", "nosniff");
+    c.res.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=(), bluetooth=(), midi=(), display-capture=()");
+    c.res.headers.set("Referrer-Policy", "no-referrer");
     await next();
   });
 

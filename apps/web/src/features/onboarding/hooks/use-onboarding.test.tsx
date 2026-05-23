@@ -106,6 +106,7 @@ async function clickNext(user: ReturnType<typeof userEvent.setup>) {
 
 async function walkToFinalStepWithDefaults(user: ReturnType<typeof userEvent.setup>) {
   await expectStep(/secrets storage/i);
+  await user.click(getRadio(/file storage/i));
   await clickNext(user);
 
   await expectStep(/ai provider/i);
@@ -143,6 +144,7 @@ describe("OnboardingWizard", () => {
     renderWizard();
 
     await expectStep(/secrets storage/i);
+    await user.click(getRadio(/file storage/i));
     await clickNext(user);
 
     await expectStep(/ai provider/i);
@@ -163,6 +165,7 @@ describe("OnboardingWizard", () => {
     renderWizard();
 
     await expectStep(/secrets storage/i);
+    await user.click(getRadio(/file storage/i));
     expect(getRadio(/file storage/i)).toHaveAttribute("aria-checked", "true");
     await clickNext(user);
 

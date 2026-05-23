@@ -96,6 +96,9 @@ export function useProvidersKeyboard({
     listContainerRef.current?.focus();
   };
 
+  // Filter button ref management and focus logic is structurally similar to
+  // use-model-dialog-keyboard but differs in index clamping (clamp here vs
+  // modulo wrap there) and downstream zone transitions, so it stays local.
   const focusFilterButton = (index: number) => {
     const nextIndex = Math.max(0, Math.min(PROVIDER_FILTERS.length - 1, index));
     setZone("filters");

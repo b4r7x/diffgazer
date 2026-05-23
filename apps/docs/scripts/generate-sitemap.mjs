@@ -134,21 +134,32 @@ function resolveOrigin() {
   return DEFAULT_ORIGIN;
 }
 
+function buildRobotsTxt(origin) {
+  return `# https://www.robotstxt.org/robotstxt.html\nUser-agent: *\nDisallow:\n\nSitemap: ${origin}/sitemap.xml\n`;
+}
+
 export function writeSitemap(outDir = resolve(DOCS_ROOT, ".output/public")) {
   if (!existsSync(outDir)) {
     mkdirSync(outDir, { recursive: true });
   }
+  const origin = resolveOrigin();
   const pages = getPreRenderPages();
-  const xml = buildSitemapXml(pages, resolveOrigin());
-  const target = join(outDir, "sitemap.xml");
-  writeFileSync(target, xml, "utf-8");
-  return { target, count: pages.length };
+  const xml = buildSitemapXml(pages, origin);
+  const sitemapTarget = join(outDir, "sitemap.xml");
+  writeFileSync(sitemapTarget, xml, "utf-8");
+
+  const robotsTxt = buildRobotsTxt(origin);
+  const robotsTarget = join(outDir, "robots.txt");
+  writeFileSync(robotsTarget, robotsTxt, "utf-8");
+
+  return { target: sitemapTarget, robotsTarget, count: pages.length };
 }
 
 const invokedDirectly = import.meta.url === `file://${process.argv[1]}`;
 if (invokedDirectly) {
   const outDirArg = process.argv[2];
   const outDir = outDirArg ? resolve(process.cwd(), outDirArg) : undefined;
-  const { target, count } = writeSitemap(outDir);
+  const { target, robotsTarget, count } = writeSitemap(outDir);
   console.log(`[sitemap] wrote ${count} urls to ${target}`);
+  console.log(`[robots] wrote ${robotsTarget}`);
 }

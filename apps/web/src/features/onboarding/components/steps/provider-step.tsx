@@ -47,6 +47,7 @@ export function ProviderStep({
         Select an AI provider for code reviews.
       </p>
       <RadioGroup
+        aria-label="Select AI provider"
         value={value ?? undefined}
         onChange={handleChange}
         highlighted={enabled ? effectiveHighlighted : null}

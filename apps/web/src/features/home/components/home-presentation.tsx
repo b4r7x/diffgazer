@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import type { useNavigate } from "@tanstack/react-router";
 import type { ContextInfo, MenuAction, Shortcut } from "@diffgazer/core/schemas/presentation";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
@@ -216,19 +216,7 @@ export function HomePagePresentation({
   useKey("s", () => navigate({ to: "/settings" }));
   useKey("h", () => handleActivate("history"));
 
-  // KEY-011: shifted punctuation ("?") is not matchable via useKey due to
-  // event.shiftKey mismatch. Direct keydown listener as workaround.
-  const handleActivateRef = useRef(handleActivate);
-  handleActivateRef.current = handleActivate;
-  useEffect(() => {
-    const listener = (event: KeyboardEvent) => {
-      if (event.key !== "?") return;
-      event.preventDefault();
-      handleActivateRef.current("help");
-    };
-    window.addEventListener("keydown", listener);
-    return () => window.removeEventListener("keydown", listener);
-  }, []);
+  useKey("shift+?", () => handleActivate("help"));
 
   if (needsTrust && projectId && repoRoot) {
     return <TrustPanel directory={repoRoot} projectId={projectId} />;

@@ -2,6 +2,7 @@ import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { zodErrorHandler } from "../../shared/lib/http/response.js";
 import { createBodyLimitMiddleware } from "../../shared/middlewares/body-limit.js";
+import { createRateLimitMiddleware } from "../../shared/middlewares/rate-limit.js";
 import { requireSetup } from "../../shared/middlewares/setup-guard.js";
 import { requireRepoAccess } from "../../shared/middlewares/trust-guard.js";
 import {
@@ -26,10 +27,13 @@ import { getContextHandler, refreshContextHandler } from "./context-routes.js";
 const reviewRouter = new Hono();
 
 const bodyLimitMiddleware = createBodyLimitMiddleware(50);
+const reviewCreationLimit = createRateLimitMiddleware("review:create", { maxRequests: 10, windowMs: 60_000 });
+const drilldownLimit = createRateLimitMiddleware("review:drilldown", { maxRequests: 20, windowMs: 60_000 });
 
 reviewRouter.post(
   "/reviews",
   bodyLimitMiddleware,
+  reviewCreationLimit,
   requireSetup,
   requireRepoAccess,
   zValidator("json", CreateReviewBodySchema, zodErrorHandler),
@@ -95,6 +99,7 @@ reviewRouter.delete(
 reviewRouter.post(
   "/reviews/:id/drilldown",
   bodyLimitMiddleware,
+  drilldownLimit,
   requireSetup,
   requireRepoAccess,
   zValidator("param", ReviewIdParamSchema, zodErrorHandler),

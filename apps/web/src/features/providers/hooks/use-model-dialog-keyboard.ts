@@ -175,6 +175,10 @@ export function useModelDialogKeyboard({
     footerActionRow.enterActions(index);
   };
 
+  // Filter button ref management and focus logic is structurally similar to
+  // use-providers-keyboard but differs in index wrapping (modulo here vs clamp
+  // there) and downstream zone transitions, so it stays local rather than
+  // being extracted into a shared helper.
   const focusFilterButton = (index: number) => {
     const nextIndex = ((index % TIER_FILTERS.length) + TIER_FILTERS.length) % TIER_FILTERS.length;
     setFocusZone("filters");

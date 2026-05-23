@@ -289,6 +289,39 @@ function countProps(propsTable: Record<string, Record<string, unknown>>): number
   );
 }
 
+const BARE_KEYS_IMPORT_RE = /from\s+["']@diffgazer\/keys["']/;
+
+function validateNoPublicKeysImports(): string[] {
+  const errors: string[] = [];
+  const registryDir = resolve(ROOT, "public/r");
+  if (!existsSync(registryDir)) return errors;
+
+  for (const entry of readdirSync(registryDir)) {
+    if (!entry.endsWith(".json") || entry === "registry.json") continue;
+
+    const filePath = resolve(registryDir, entry);
+    let data: { meta?: { hidden?: boolean }; files?: { content?: string; path?: string }[] };
+    try {
+      data = JSON.parse(readFileSync(filePath, "utf-8"));
+    } catch {
+      continue;
+    }
+
+    if (data.meta?.hidden) continue;
+
+    for (const file of data.files ?? []) {
+      if (typeof file.content !== "string") continue;
+      if (BARE_KEYS_IMPORT_RE.test(file.content)) {
+        errors.push(
+          `Public (non-hidden) registry item "${entry}" file "${file.path ?? "(unknown)"}" contains bare @diffgazer/keys import; only hidden shims may reference the package directly`,
+        );
+      }
+    }
+  }
+
+  return errors;
+}
+
 function validatePublicComponentProps(items: RegistryItem[]): string[] {
   const errors: string[] = [];
 
@@ -437,8 +470,8 @@ function validate(): string[] {
 
   for (const item of items) {
     for (const file of item.files ?? []) {
-      if (file.path.endsWith(".css") && !existsSync(resolve(ROOT, file.path))) {
-        errors.push(`${item.name} references missing CSS file ${file.path}`);
+      if (!existsSync(resolve(ROOT, file.path))) {
+        errors.push(`File declared in registry but missing from disk: ${file.path} (item: ${item.name})`);
       }
     }
 
@@ -496,6 +529,7 @@ function validate(): string[] {
   errors.push(...validateOrphanFiles(items));
   errors.push(...validateExamplesAvoidHiddenPaths(items));
   errors.push(...validatePublicComponentProps(items));
+  errors.push(...validateNoPublicKeysImports());
 
   if (!Object.hasOwn(exportsMap, "./lib/utils")) {
     errors.push("package.json is missing export ./lib/utils");

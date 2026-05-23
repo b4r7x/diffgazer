@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event"
 import { axe } from "../../../testing/utils.js"
 import { applyReducedMotionFixture } from "../../../testing/prefers-reduced-motion.js"
 import { describe, it, expect, expectTypeOf, vi } from "vitest"
+import { Field } from "../field/index.js"
 import { Select, type SelectProps } from "./index.js"
 import { type SelectItemProps } from "./select-item.js"
 
@@ -725,6 +726,31 @@ describe("Select accessibility", () => {
       expect(await axe(container)).toHaveNoViolations()
     },
   )
+
+  it("search input uses Field label via aria-labelledby when inside a Field", () => {
+    render(
+      <Field>
+        <Field.Label>Region</Field.Label>
+        <Field.Control>
+          <Select variant="card" defaultOpen>
+            <Select.Trigger>
+              <Select.Value placeholder="Pick a region" />
+            </Select.Trigger>
+            <Select.Content>
+              <Select.Search />
+              <Select.Item value="us">United States</Select.Item>
+              <Select.Item value="eu">Europe</Select.Item>
+            </Select.Content>
+          </Select>
+        </Field.Control>
+      </Field>,
+    )
+
+    const searchInput = screen.getByRole("combobox", { name: "Region" })
+    const fieldLabel = screen.getByText("Region")
+    expect(searchInput).toHaveAttribute("aria-labelledby", fieldLabel.id)
+    expect(searchInput).not.toHaveAttribute("aria-label")
+  })
 })
 
 describe("Select form submission", () => {

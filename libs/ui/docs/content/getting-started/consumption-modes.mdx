@@ -55,6 +55,10 @@ Runtime package prerequisites:
 @import "@diffgazer/ui/styles.css";
 ```
 
+## Visible vs. Hidden Registry Items
+
+`registry.json` is the visible catalog of directly installable items. Items marked `"hidden": true` in their `meta` are internal dependencies (e.g. `portal`, shared primitives) that are not listed in the public registry index but are installed transitively when a visible item declares them in `registryDependencies`. The public `registry.json` served to consumers contains only visible items; hidden items still have per-item JSON files on disk so transitive resolution works, but they do not appear in `dgadd list` or `npx shadcn add` catalogs.
+
 ## Keyboard Integration
 
 Copy-first mode has two keyboard integration options:

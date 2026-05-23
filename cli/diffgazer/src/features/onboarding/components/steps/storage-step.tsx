@@ -4,7 +4,7 @@ import { useTheme } from "../../../../theme/theme-context.js";
 import { StorageSelector } from "../../../settings/components/storage-selector.js";
 
 interface StorageStepProps {
-  value: string;
+  value: string | null;
   onChange: (value: string) => void;
   isActive?: boolean;
 }
@@ -20,7 +20,7 @@ export function StorageStep({
       <Text color={tokens.muted}>
         Choose where Diffgazer stores your API keys and secrets.
       </Text>
-      <StorageSelector value={value} onChange={onChange} isActive={isActive} />
+      <StorageSelector value={value ?? undefined} onChange={onChange} isActive={isActive} />
     </Box>
   );
 }

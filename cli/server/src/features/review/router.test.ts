@@ -20,11 +20,13 @@ beforeEach(async () => {
   await mkdir(join(projectA, ".git"));
   await mkdir(join(projectB, ".git"));
   process.env.DIFFGAZER_HOME = tempHome;
+  process.env.DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT = "1";
   vi.resetModules();
 });
 
 afterEach(async () => {
   delete process.env.DIFFGAZER_HOME;
+  delete process.env.DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT;
   await rm(tempHome, { recursive: true, force: true, maxRetries: 3, retryDelay: 20 });
   await rm(projectA, { recursive: true, force: true, maxRetries: 3, retryDelay: 20 });
   await rm(projectB, { recursive: true, force: true, maxRetries: 3, retryDelay: 20 });
@@ -250,6 +252,70 @@ describe("POST /api/review/reviews validation", () => {
     });
 
     expect(response.status).toBeGreaterThanOrEqual(400);
+  });
+});
+
+describe("POST /api/review/reviews files[] input limits", () => {
+  it("rejects files arrays exceeding 200 items", async () => {
+    await configureSetup(projectA);
+    const app = await createReviewApp();
+
+    const response = await app.request("/api/review/reviews", {
+      method: "POST",
+      headers: {
+        [PROJECT_ROOT_HEADER]: projectA,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        mode: "files",
+        files: Array.from({ length: 201 }, (_, i) => `file-${i}.ts`),
+      }),
+    });
+
+    expect(response.status).toBe(400);
+    const body = (await response.json()) as { error: { code: string } };
+    expect(body.error.code).toBe("VALIDATION_ERROR");
+  });
+
+  it("rejects file paths exceeding 500 characters", async () => {
+    await configureSetup(projectA);
+    const app = await createReviewApp();
+
+    const response = await app.request("/api/review/reviews", {
+      method: "POST",
+      headers: {
+        [PROJECT_ROOT_HEADER]: projectA,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        mode: "files",
+        files: ["a".repeat(501)],
+      }),
+    });
+
+    expect(response.status).toBe(400);
+    const body = (await response.json()) as { error: { code: string } };
+    expect(body.error.code).toBe("VALIDATION_ERROR");
+  });
+
+  it("accepts files arrays within limits", async () => {
+    await configureSetup(projectA);
+    const app = await createReviewApp();
+
+    const response = await app.request("/api/review/reviews", {
+      method: "POST",
+      headers: {
+        [PROJECT_ROOT_HEADER]: projectA,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        mode: "files",
+        files: ["src/index.ts", "src/app.tsx"],
+      }),
+    });
+
+    // Should not be rejected by validation (may fail for other reasons like missing git repo)
+    expect(response.status).not.toBe(400);
   });
 });
 

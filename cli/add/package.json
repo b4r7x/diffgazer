@@ -49,6 +49,7 @@
     "prebuild": "pnpm run generate:bundles",
     "build": "rm -rf dist && tsup && node --import tsx scripts/copy-generated.ts",
     "validate:artifacts": "pnpm --dir ../.. validate:artifacts",
+    "prepack": "pnpm run build",
     "prepublishOnly": "pnpm run build && pnpm run type-check && pnpm run test && pnpm run validate:artifacts",
     "dev": "tsc --watch",
     "type-check": "tsc --noEmit",

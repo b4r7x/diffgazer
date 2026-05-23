@@ -6,6 +6,10 @@ interface UseReviewProgressKeyboardOptions {
   onCancel?: () => void;
 }
 
+// App-specific interactive-target check. Unlike `isEditableElement` from
+// @diffgazer/keys (which only matches text-editable inputs/textareas/contenteditable),
+// this also matches buttons, links, and tabbable elements. A generic
+// `isInteractiveTarget` helper could be extracted to @diffgazer/keys later.
 function isInteractiveTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   return Boolean(target.closest("button,a,input,select,textarea,[role='button'],[tabindex]:not([tabindex='-1'])"));

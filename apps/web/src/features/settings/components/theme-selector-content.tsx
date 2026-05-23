@@ -85,6 +85,7 @@ export function ThemeSelectorContent({
     <div className="space-y-3">
       <div className="text-sm font-mono text-tui-fg/60">Select Interface Theme:</div>
       <RadioGroup
+        aria-label="Select interface theme"
         value={value}
         onChange={handleChange}
         onHighlightChange={handleHighlightChange}

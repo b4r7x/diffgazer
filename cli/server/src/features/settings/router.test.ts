@@ -42,6 +42,7 @@ describe("settings trust routes — server-scoped project", () => {
     mkdirSync(join(projectRootA, ".git"));
     mkdirSync(join(projectRootB, ".git"));
     process.env.DIFFGAZER_HOME = diffgazerHome;
+    process.env.DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT = "1";
     originalToken = process.env.DIFFGAZER_SHUTDOWN_TOKEN;
     process.env.DIFFGAZER_SHUTDOWN_TOKEN = TEST_TOKEN;
     warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
@@ -51,6 +52,7 @@ describe("settings trust routes — server-scoped project", () => {
   afterEach(() => {
     delete process.env.DIFFGAZER_HOME;
     delete process.env.DIFFGAZER_PROJECT_ROOT;
+    delete process.env.DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT;
     if (originalToken === undefined) {
       delete process.env.DIFFGAZER_SHUTDOWN_TOKEN;
     } else {

@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -17,6 +18,24 @@ const webRoot = join(moduleDir, "web");
 const indexHtmlPath = join(webRoot, "index.html");
 
 type EmbeddedServerState = "idle" | "starting" | "running" | "stopped";
+
+export function buildHtmlShell(html: string, token: string): { body: string; csp: string } {
+  const nonce = randomBytes(16).toString("base64");
+  const script = `<script nonce="${nonce}">window.__DIFFGAZER_SHUTDOWN_TOKEN__=${JSON.stringify(token)};</script>`;
+  const csp = [
+    "default-src 'self'",
+    `script-src 'self' 'nonce-${nonce}'`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    "font-src 'self' data:",
+    "connect-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "frame-ancestors 'none'",
+    "form-action 'self'",
+  ].join("; ");
+  return { body: html.replace("</head>", `${script}</head>`), csp };
+}
 
 function isHtmlShellPath(pathname: string): boolean {
   return pathname === "/index.html" || extname(pathname) === "";
@@ -93,9 +112,10 @@ export function createEmbeddedServer(
           "DIFFGAZER_SHUTDOWN_TOKEN is required to serve the embedded SPA. Call ensureShutdownToken() before starting the server.",
         );
       }
-      const html = readFileSync(indexHtmlPath, "utf-8");
-      const script = `<script>window.__DIFFGAZER_SHUTDOWN_TOKEN__=${JSON.stringify(token)};</script>`;
-      return c.html(html.replace("</head>", `${script}</head>`));
+      const rawHtml = readFileSync(indexHtmlPath, "utf-8");
+      const { body, csp } = buildHtmlShell(rawHtml, token);
+      c.header("Content-Security-Policy", csp);
+      return c.html(body);
     });
     app.use(
       "/*",

@@ -153,6 +153,7 @@ describe("security headers", () => {
   it.each([
     { header: "X-Frame-Options", expected: "DENY" },
     { header: "X-Content-Type-Options", expected: "nosniff" },
+    { header: "Referrer-Policy", expected: "no-referrer" },
   ])("sets $header to $expected on every response", async ({ header, expected }) => {
     const app = createApp();
     const res = await app.request("/api/health", {
@@ -160,6 +161,19 @@ describe("security headers", () => {
     });
 
     expect(res.headers.get(header)).toBe(expected);
+  });
+
+  it("sets a restrictive Permissions-Policy on every response", async () => {
+    const app = createApp();
+    const res = await app.request("/api/health", {
+      headers: { Host: "localhost:3000" },
+    });
+
+    const policy = res.headers.get("Permissions-Policy");
+    expect(policy).toBeTruthy();
+    expect(policy).toContain("camera=()");
+    expect(policy).toContain("microphone=()");
+    expect(policy).toContain("geolocation=()");
   });
 });
 
