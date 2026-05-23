@@ -66,6 +66,15 @@ export function useReviewStream() {
     dispatch({ type: "RESET" });
   };
 
+  /** Abort the client stream AND tell the server to stop work. Fire-and-forget. */
+  const cancel = (reviewId: string | null) => {
+    cancelStream("cancel");
+    dispatch({ type: "COMPLETE" });
+    if (reviewId) {
+      api.cancelReviewSession(reviewId).catch(() => {});
+    }
+  };
+
   const resume = async (reviewId: string): Promise<Result<void, StreamReviewError>> => {
     cancelStream("resume");
 
@@ -88,11 +97,12 @@ export function useReviewStream() {
 
       if (abortController.signal.aborted) {
         dispatch({ type: "RESET" });
-        return result;
+        return result.ok ? ok(undefined) : result;
       }
 
       if (result.ok) {
-        dispatch({ type: "COMPLETE" });
+        const finalIssues = result.value.result.issues;
+        dispatch({ type: "COMPLETE_WITH_RESULT", issues: finalIssues });
         return ok(undefined);
       }
 
@@ -100,11 +110,11 @@ export function useReviewStream() {
         result.error.code === ReviewErrorCode.SESSION_STALE ||
         result.error.code === ReviewErrorCode.SESSION_NOT_FOUND
       ) {
-        return result;
+        return err(result.error);
       }
 
       dispatch({ type: "ERROR", error: result.error.message });
-      return result;
+      return err(result.error);
     } catch (e) {
       if (abortController.signal.aborted) {
         dispatch({ type: "RESET" });
@@ -114,7 +124,9 @@ export function useReviewStream() {
       dispatch({ type: "ERROR", error: message });
       return err({ code: "STREAM_ERROR" as const, message });
     } finally {
-      abortControllerRef.current = null;
+      if (abortControllerRef.current === abortController) {
+        abortControllerRef.current = null;
+      }
     }
   };
 
@@ -122,5 +134,5 @@ export function useReviewStream() {
     return () => cancelStream("cleanup");
   }, []);
 
-  return { state, stop, abort, resume };
+  return { state, stop, abort, cancel, resume };
 }

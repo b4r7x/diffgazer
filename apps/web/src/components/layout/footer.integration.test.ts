@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import type { Shortcut } from "@diffgazer/core/schemas/ui";
+import type { Shortcut } from "@diffgazer/core/schemas/presentation";
 import { Footer } from "@/components/layout";
 import { createElement } from "react";
 import { FooterProvider, useFooterData, usePageFooter } from "@diffgazer/core/footer";

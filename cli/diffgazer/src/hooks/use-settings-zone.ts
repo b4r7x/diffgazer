@@ -6,6 +6,7 @@ type SettingsZone = "list" | "buttons";
 interface UseSettingsZoneOptions {
   buttonCount: number;
   disabled?: boolean;
+  initialZone?: SettingsZone;
 }
 
 interface SettingsZoneResult {
@@ -18,8 +19,9 @@ interface SettingsZoneResult {
 export function useSettingsZone({
   buttonCount,
   disabled = false,
+  initialZone = "list",
 }: UseSettingsZoneOptions): SettingsZoneResult {
-  const [zone, setZone] = useState<SettingsZone>("list");
+  const [zone, setZone] = useState<SettingsZone>(initialZone);
   const [buttonIndex, setButtonIndex] = useState(0);
 
   useInput(

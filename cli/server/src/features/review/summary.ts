@@ -3,7 +3,7 @@ import type {
   ReviewResult,
   ReviewSeverity,
 } from "@diffgazer/core/schemas/review";
-import { severityRank } from "@diffgazer/core/schemas/ui";
+import { severityRank } from "@diffgazer/core/schemas/presentation";
 
 export function generateExecutiveSummary(
   issues: ReviewIssue[],

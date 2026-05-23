@@ -127,8 +127,13 @@ function collectFilesToRemove<TItem, TConfig>(
     const removableFiles: RemoveWorkflowFile[] = [];
     let blocked = false;
     for (const file of ctx.resolveFilesForItem({ cwd: ctx.cwd, config: ctx.config, item })) {
-      if (!existsSync(file.absolutePath) || retainedFiles.has(file.absolutePath)) continue;
+      if (!existsSync(file.absolutePath)) {
+        info(`Skipping ${relative(ctx.cwd, file.absolutePath)}: file not found on disk`);
+        continue;
+      }
+      if (retainedFiles.has(file.absolutePath)) continue;
       if (ctx.canRemoveFile && !ctx.canRemoveFile({ cwd: ctx.cwd, config: ctx.config, item, file, force: ctx.force, requestedNames: ctx.requestedNames })) {
+        info(`Skipping ${name}: ${relative(ctx.cwd, file.absolutePath)} has been modified (use --force to override)`);
         blocked = true;
         break;
       }

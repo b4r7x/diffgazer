@@ -6,7 +6,6 @@ export const HELP_TEXT = `Usage: diffgazer [options]
 Product CLI for reviewing code changes with Diffgazer.
 
 Options:
-  --dev              Run in development mode
   --tui              Start the beta terminal UI (incomplete; not recommended)
   --theme <theme>    Start TUI with a specific theme (only with --tui)
   -V, --version      Display version

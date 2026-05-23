@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { ReactElement } from "react";
-import { Box, Text } from "ink";
+import { Box, Text, useInput } from "ink";
 import { useTheme } from "../../../theme/theme-context.js";
 import { RadioGroup } from "../../../components/ui/radio.js";
 import { Input } from "../../../components/ui/input.js";
@@ -26,6 +26,15 @@ export function ApiKeyMethodSelector({
 }: ApiKeyMethodSelectorProps): ReactElement {
   const { tokens } = useTheme();
   const [inputFocused, setInputFocused] = useState(false);
+
+  useInput(
+    (_input, key) => {
+      if (key.tab) {
+        setInputFocused((f) => !f);
+      }
+    },
+    { isActive },
+  );
 
   function handleMethodChange(value: string) {
     setInputFocused(false);

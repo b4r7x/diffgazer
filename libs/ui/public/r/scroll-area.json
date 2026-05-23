@@ -5,7 +5,8 @@
   "description": "Custom scrollable area with styled scrollbars",
   "dependencies": [],
   "registryDependencies": [
-    "https://docs.diffgazer.b4r7.dev/r/ui/theme.json"
+    "https://r.b4r7.dev/r/ui/theme.json",
+    "https://r.b4r7.dev/r/ui/utils.json"
   ],
   "files": [
     {

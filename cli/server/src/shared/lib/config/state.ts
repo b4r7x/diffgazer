@@ -5,8 +5,8 @@ import {
   getGlobalTrustPath,
   getProjectInfoPath,
 } from "../paths.js";
-import { readJsonFileSync, writeJsonFileSync, writeJsonFile, removeFileSync } from "../fs.js";
-import { AI_PROVIDERS, type AIProvider, type ProviderStatus, type SettingsConfig, type SecretsStorage, type TrustCapabilities } from "@diffgazer/core/schemas/config";
+import { readJsonFileSync, readJsonFileSyncSafe, quarantineCorruptFile, writeJsonFileSync, writeJsonFile, removeFileSync } from "../fs.js";
+import { TrustConfigSchema, AI_PROVIDERS, PROVIDER_ENV_VARS, type AIProvider, type ProviderStatus, type SettingsConfig, type SecretsStorage, type TrustCapabilities, type TrustConfig } from "@diffgazer/core/schemas/config";
 import type {
   ConfigState,
   ProjectFile,
@@ -51,8 +51,17 @@ const normalizeProviders = (providers: ProviderStatus[]): ProviderStatus[] => {
   }));
 };
 
+const loadOrQuarantine = <T>(filePath: string, label: string): T | null => {
+  const result = readJsonFileSyncSafe<T>(filePath);
+  if (result.status === "ok") return result.data;
+  if (result.status === "missing") return null;
+  const backupPath = quarantineCorruptFile(filePath);
+  console.warn(`[config] Corrupt ${label} at ${filePath} — quarantined as ${backupPath}. Loading defaults.`);
+  return null;
+};
+
 export const loadConfig = (): ConfigState => {
-  const stored = readJsonFileSync<ConfigState>(CONFIG_PATH());
+  const stored = loadOrQuarantine<ConfigState>(CONFIG_PATH(), "config");
   const settings = { ...DEFAULT_SETTINGS, ...(stored?.settings ?? {}) };
   const providers = normalizeProviders(stored?.providers ?? DEFAULT_PROVIDERS);
 
@@ -63,44 +72,46 @@ export const loadConfig = (): ConfigState => {
 };
 
 export const loadSecrets = (): SecretsState => {
-  const stored = readJsonFileSync<SecretsState>(SECRETS_PATH());
+  const stored = loadOrQuarantine<SecretsState>(SECRETS_PATH(), "secrets");
   if (!stored?.providers) {
     return { providers: {} };
   }
 
-  return { providers: { ...stored.providers } };
-};
-
-const normalizeTrustCapabilities = (
-  capabilities: TrustCapabilities | null | undefined,
-): TrustCapabilities => {
-  if (!capabilities) {
-    return { readFiles: false, runCommands: false };
+  // Migrate legacy "env" sentinel strings to structured env refs
+  const migrated: SecretsState["providers"] = {};
+  for (const [key, value] of Object.entries(stored.providers)) {
+    if (value === "env") {
+      const isProvider = isValidAIProvider(key);
+      const varName = isProvider ? PROVIDER_ENV_VARS[key] : key.toUpperCase();
+      migrated[key] = { kind: "env", varName };
+    } else {
+      migrated[key] = value;
+    }
   }
 
-  return {
-    readFiles: Boolean(capabilities.readFiles),
-    runCommands: Boolean(capabilities.runCommands),
-  };
+  return { providers: migrated };
+};
+
+const validateTrustRecord = (projectId: string, raw: unknown): TrustConfig | null => {
+  const result = TrustConfigSchema.safeParse(raw);
+  if (result.success) return result.data;
+  console.warn(`[config] Dropping invalid trust record for ${projectId}: ${result.error.message}`);
+  return null;
 };
 
 export const loadTrust = (): TrustState => {
-  const stored = readJsonFileSync<TrustState>(TRUST_PATH());
+  const stored = loadOrQuarantine<TrustState>(TRUST_PATH(), "trust");
   if (!stored?.projects) {
     return { projects: {} };
   }
 
-  const normalized = Object.fromEntries(
-    Object.entries(stored.projects).map(([projectId, config]) => [
-      projectId,
-      {
-        ...config,
-        capabilities: normalizeTrustCapabilities(config.capabilities),
-      },
-    ])
-  );
+  const validated: Record<string, TrustConfig> = {};
+  for (const [projectId, config] of Object.entries(stored.projects)) {
+    const record = validateTrustRecord(projectId, config);
+    if (record) validated[projectId] = record;
+  }
 
-  return { projects: normalized };
+  return { projects: validated };
 };
 
 export const persistConfig = (state: ConfigState): void => {
@@ -155,12 +166,16 @@ export const syncProvidersWithSecrets = (
   return nextProviders;
 };
 
-export const readOrCreateProjectFile = (projectRoot: string): ProjectFile => {
+export const readProjectFile = (projectRoot: string): ProjectFile | null => {
   const projectInfoPath = getProjectInfoPath(projectRoot);
   const stored = readJsonFileSync<ProjectFile>(projectInfoPath);
-  if (stored?.projectId) {
-    return stored;
-  }
+  if (stored?.projectId) return stored;
+  return null;
+};
+
+export const createProjectFile = (projectRoot: string): ProjectFile => {
+  const existing = readProjectFile(projectRoot);
+  if (existing) return existing;
 
   const created: ProjectFile = {
     projectId: randomUUID(),
@@ -168,6 +183,8 @@ export const readOrCreateProjectFile = (projectRoot: string): ProjectFile => {
     createdAt: new Date().toISOString(),
   };
 
-  writeJsonFileSync(projectInfoPath, created, 0o600);
+  writeJsonFileSync(getProjectInfoPath(projectRoot), created, 0o600);
   return created;
 };
+
+export const readOrCreateProjectFile = createProjectFile;

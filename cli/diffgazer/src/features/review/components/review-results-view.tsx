@@ -1,7 +1,7 @@
 import { useState, type ReactElement } from "react";
 import { Box, Text } from "ink";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
-import type { UISeverityFilter, Shortcut } from "@diffgazer/core/schemas/ui";
+import type { UISeverityFilter, Shortcut } from "@diffgazer/core/schemas/presentation";
 import {
   filterIssuesBySeverity,
   selectDetailsEmptyKind,
@@ -10,7 +10,7 @@ import { useTheme } from "../../../theme/theme-context.js";
 import { useResponsive } from "../../../hooks/use-terminal-dimensions.js";
 import { usePageFooter } from "@diffgazer/core/footer";
 import { useReviewKeyboard } from "../hooks/use-review-keyboard.js";
-import { IssueListPane } from "./issue-list-pane.js";
+import { IssueListPane, type IssueListSubZone } from "./issue-list-pane.js";
 import { IssueDetailsPane } from "./issue-details-pane.js";
 
 export interface ReviewResultsViewProps {
@@ -41,6 +41,7 @@ export function ReviewResultsView({
     issues[0]?.id,
   );
   const [activeZone, setActiveZone] = useState<Zone>("list");
+  const [listSubZone, setListSubZone] = useState<IssueListSubZone>("issues");
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(
     () => new Set(),
   );
@@ -62,7 +63,7 @@ export function ReviewResultsView({
 
   useReviewKeyboard({
     onIssueNav(direction) {
-      if (activeZone !== "list" || filteredIssues.length === 0) return;
+      if (activeZone !== "list" || listSubZone === "filter" || filteredIssues.length === 0) return;
       const currentIndex = filteredIssues.findIndex(
         (i) => i.id === selectedIssueId,
       );
@@ -136,6 +137,8 @@ export function ReviewResultsView({
             height={listScrollHeight}
             severityFilter={severityFilter}
             onSeverityFilterChange={setSeverityFilter}
+            subZone={listSubZone}
+            onSubZoneChange={setListSubZone}
           />
         </Box>
         <Box

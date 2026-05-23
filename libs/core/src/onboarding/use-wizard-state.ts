@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { AVAILABLE_PROVIDERS, type AIProvider } from "@diffgazer/core/schemas/config";
 import { canProceed } from "./can-proceed.js";
 import { getInitialWizardData } from "./defaults.js";
@@ -10,6 +10,11 @@ import {
 } from "./steps.js";
 import type { OnboardingStep, WizardData } from "./types.js";
 
+export interface EarlySaveCallbacks {
+  saveCredentials: (provider: AIProvider, apiKey: string) => Promise<void>;
+  deleteCredentials: (provider: AIProvider) => Promise<void>;
+}
+
 export interface UseWizardStateResult {
   wizardData: WizardData;
   stepIndex: number;
@@ -18,17 +23,24 @@ export interface UseWizardStateResult {
   isFirstStep: boolean;
   isLastStep: boolean;
   canProceed: boolean;
+  /** True while an early-save is in flight. */
+  isEarlySaving: boolean;
   next: () => void;
   back: () => void;
   updateData: (partial: Partial<WizardData>) => void;
   setProvider: (provider: AIProvider) => void;
+  /** Clean up early-saved credentials on wizard cancel. */
+  cleanupEarlySave: () => Promise<void>;
 }
 
 export function useWizardState(
   initial: WizardData = getInitialWizardData(),
+  earlySave?: EarlySaveCallbacks,
 ): UseWizardStateResult {
   const [wizardData, setWizardData] = useState<WizardData>(initial);
   const [stepIndex, setStepIndex] = useState(0);
+  const [isEarlySaving, setIsEarlySaving] = useState(false);
+  const earlySavedProviderRef = useRef<AIProvider | null>(null);
 
   const currentStep = getStepAt(stepIndex);
   const isFirst = isFirstStepIndex(stepIndex);
@@ -37,6 +49,32 @@ export function useWizardState(
 
   const next = () => {
     if (!canProceedNow || isLast) return;
+    const nextStep = getStepAt(stepIndex + 1);
+
+    // Early-save credentials before model step for providers that need API key
+    // to fetch models (e.g. OpenRouter)
+    if (
+      nextStep === "model" &&
+      wizardData.provider === "openrouter" &&
+      earlySave &&
+      (wizardData.apiKey || wizardData.inputMethod === "env")
+    ) {
+      setIsEarlySaving(true);
+      const apiKey =
+        wizardData.inputMethod === "env" ? "env" : wizardData.apiKey;
+      earlySave
+        .saveCredentials(wizardData.provider, apiKey)
+        .then(() => {
+          earlySavedProviderRef.current = wizardData.provider;
+          setStepIndex((prev) => prev + 1);
+        })
+        .catch(() => {
+          // Save failed; stay on current step
+        })
+        .finally(() => setIsEarlySaving(false));
+      return;
+    }
+
     setStepIndex((prev) => prev + 1);
   };
 
@@ -64,6 +102,14 @@ export function useWizardState(
     }));
   };
 
+  const cleanupEarlySave = useCallback(async () => {
+    const provider = earlySavedProviderRef.current;
+    if (provider && earlySave) {
+      earlySavedProviderRef.current = null;
+      await earlySave.deleteCredentials(provider).catch(() => {});
+    }
+  }, [earlySave]);
+
   return {
     wizardData,
     stepIndex,
@@ -72,9 +118,11 @@ export function useWizardState(
     isFirstStep: isFirst,
     isLastStep: isLast,
     canProceed: canProceedNow,
+    isEarlySaving,
     next,
     back,
     updateData,
     setProvider,
+    cleanupEarlySave,
   };
 }

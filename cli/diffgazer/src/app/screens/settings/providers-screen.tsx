@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { ReactElement } from "react";
-import { Box, Text } from "ink";
+import { Box, Text, useInput } from "ink";
 import { AVAILABLE_PROVIDERS, OPENROUTER_PROVIDER_ID } from "@diffgazer/core/schemas/config";
 import { mapProvidersWithStatus } from "@diffgazer/core/providers";
 import { useProviderStatus, useDeleteProviderCredentials, guardQueryState } from "@diffgazer/core/api/hooks";
@@ -66,6 +66,7 @@ export function ProvidersScreen(): ReactElement {
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
   const [apiKeyOpen, setApiKeyOpen] = useState(false);
   const [modelSelectOpen, setModelSelectOpen] = useState(false);
+  const [zone, setZone] = useState<"list" | "details">("list");
 
   const providers = providerQuery.data
     ? mapProvidersWithStatus(providerQuery.data).map(toListItem)
@@ -99,9 +100,20 @@ export function ProvidersScreen(): ReactElement {
     deleteCredentials.mutate(selectedId);
   }
 
-  const isListActive = !apiKeyOpen && !modelSelectOpen;
+  const isOverlayOpen = apiKeyOpen || modelSelectOpen;
+  const isListActive = !isOverlayOpen && zone === "list";
+  const isDetailsActive = !isOverlayOpen && zone === "details";
 
-  useBackHandler({ isActive: isListActive });
+  useInput(
+    (_input, key) => {
+      if (key.tab) {
+        setZone((z) => (z === "list" ? "details" : "list"));
+      }
+    },
+    { isActive: !isOverlayOpen },
+  );
+
+  useBackHandler({ isActive: !isOverlayOpen });
 
   const guard = guardQueryState(providerQuery, {
     loading: () => (
@@ -154,10 +166,11 @@ export function ProvidersScreen(): ReactElement {
               flexDirection="column"
               flexGrow={1}
               borderStyle="single"
-              borderColor={tokens.border}
+              borderColor={isDetailsActive ? tokens.accent : tokens.border}
             >
               <ProviderDetails
                 provider={selectedDetail}
+                isActive={isDetailsActive}
                 onConfigureKey={handleConfigureKey}
                 onSelectModel={handleSelectModel}
                 onRemove={handleRemoveProvider}

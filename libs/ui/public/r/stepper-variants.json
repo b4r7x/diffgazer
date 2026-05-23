@@ -7,7 +7,7 @@
     "class-variance-authority"
   ],
   "registryDependencies": [
-    "https://docs.diffgazer.b4r7.dev/r/ui/step-status.json"
+    "https://r.b4r7.dev/r/ui/step-status.json"
   ],
   "files": [
     {

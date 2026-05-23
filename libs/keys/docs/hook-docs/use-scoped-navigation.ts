@@ -34,9 +34,9 @@ export const useScopedNavigationDoc: HookDoc = {
     },
     {
       name: "onHighlightChange",
-      type: "(value: string) => void",
+      type: "(value: string | null) => void",
       required: false,
-      description: "Called when the controlled highlight value should change.",
+      description: "Called when the controlled highlight value should change. Receives null when highlight is cleared.",
     },
     {
       name: "onSelect",
@@ -168,9 +168,9 @@ export const useScopedNavigationDoc: HookDoc = {
       },
       {
         name: "highlight",
-        type: "(value: string) => void",
+        type: "(value: string | null) => void",
         required: true,
-        description: "Imperatively set the highlighted item.",
+        description: "Imperatively set the highlighted item. Pass null to clear.",
       },
     ],
   },

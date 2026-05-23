@@ -1,7 +1,11 @@
+import { createHash } from "node:crypto";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+
+const hashApiKey = (apiKey: string): string =>
+  createHash("sha256").update(apiKey).digest("hex").slice(0, 16);
 
 import {
   loadOpenRouterModelCache,
@@ -167,6 +171,7 @@ describe("getOpenRouterModelsWithCache", () => {
         },
       ],
       fetchedAt: new Date().toISOString(),
+      keyHash: hashApiKey("key"),
     };
     writeCacheFile(cache);
 
@@ -217,6 +222,7 @@ describe("getOpenRouterModelsWithCache", () => {
         },
       ],
       fetchedAt: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
+      keyHash: hashApiKey("key"),
     };
     writeCacheFile(cache);
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("network error"));

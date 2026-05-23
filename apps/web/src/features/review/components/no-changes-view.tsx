@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { useScope, useKey, useActionRowNavigation } from '@diffgazer/keys';
 import { usePageFooter } from "@diffgazer/core/footer";
-import type { Shortcut } from "@diffgazer/core/schemas/ui";
+import type { Shortcut } from "@diffgazer/core/schemas/presentation";
 import { Button } from '@diffgazer/ui/components/button';
 import type { ReviewMode } from '@diffgazer/core/schemas/review';
 

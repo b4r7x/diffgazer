@@ -41,6 +41,7 @@ export interface AIClient {
   generate<T extends z.ZodType>(prompt: string, schema: T, options?: { signal?: AbortSignal }): Promise<Result<z.infer<T>, AIError>>;
   generateStream(
     prompt: string,
-    callbacks: StreamCallbacks
+    callbacks: StreamCallbacks,
+    options?: { signal?: AbortSignal }
   ): Promise<void>;
 }

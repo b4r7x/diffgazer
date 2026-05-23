@@ -31,7 +31,7 @@ function ThreePanelLayout() {
         if (zone === "preview") return "content";
         if (zone === "content") return "sidebar";
       }
-      return null; // block movement
+      return null; // decline — key falls through
     },
     tabCycle: ["sidebar", "content", "preview"],
   });
@@ -97,7 +97,7 @@ transitions: ({ zone, key }) => {
 },
 ```
 
-Returning `null` blocks the movement -- the zone stays where it is. The hook also validates the return value against the `zones` array, so returning a string that isn't in `zones` is treated the same as `null`.
+Returning `null` declines the transition -- the key event falls through to the next handler (it does not block or consume the event). The hook also validates the return value against the `zones` array, so returning a string that isn't in `zones` is treated the same as `null`.
 
 Arrow key listeners are only registered when `transitions` is provided. If you only use `tabCycle` for movement, no arrow key handlers are set up.
 

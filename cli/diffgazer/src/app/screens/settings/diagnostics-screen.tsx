@@ -49,6 +49,7 @@ export function DiagnosticsScreen(): ReactElement {
   const { isButtonActive } = useSettingsZone({
     buttonCount: 2,
     disabled: isRefreshing,
+    initialZone: "buttons",
   });
 
   usePageFooter({

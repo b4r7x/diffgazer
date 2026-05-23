@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { cn } from '@diffgazer/ui/lib/utils';
 import { LogEntry } from './log-entry';
 import { ScrollArea } from '@diffgazer/ui/components/scroll-area';
-import type { LogEntryData as BaseLogEntryData } from '@diffgazer/core/schemas/ui';
+import type { LogEntryData as BaseLogEntryData } from '@diffgazer/core/schemas/presentation';
 
 export interface LogEntryData extends Omit<BaseLogEntryData, 'message'> {
   message: React.ReactNode;
@@ -44,6 +44,9 @@ export function ActivityLog({
     <ScrollArea
       ref={scrollRef}
       onScroll={handleScroll}
+      role="log"
+      aria-live="polite"
+      aria-label="Activity log"
       className={cn('flex-1 font-mono text-sm leading-relaxed', className)}
       {...props}
     >

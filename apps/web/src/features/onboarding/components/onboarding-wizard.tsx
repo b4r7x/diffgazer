@@ -1,10 +1,10 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { CardLayout } from "@/components/ui/card-layout";
 import { Button } from "@diffgazer/ui/components/button";
 import { Callout } from "@diffgazer/ui/components/callout";
 import { cn } from "@diffgazer/ui/lib/utils";
-import type { Shortcut } from "@diffgazer/core/schemas/ui";
+import type { Shortcut } from "@diffgazer/core/schemas/presentation";
 import { usePageFooter } from "@diffgazer/core/footer";
 import { useActionRowNavigation } from "@diffgazer/keys";
 import { useScope } from "@diffgazer/keys";
@@ -119,7 +119,15 @@ export function OnboardingWizard() {
     updateData,
     setProvider,
     complete,
+    cleanupEarlySave,
   } = useOnboarding();
+
+  // Clean up early-saved credentials if wizard is abandoned (unmount without completing)
+  const cleanupRef = useRef(cleanupEarlySave);
+  cleanupRef.current = cleanupEarlySave;
+  useEffect(() => {
+    return () => { void cleanupRef.current(); };
+  }, []);
 
   const buttonCount = isFirstStep ? 1 : 2;
   const primaryButtonIndex = isFirstStep ? 0 : 1;

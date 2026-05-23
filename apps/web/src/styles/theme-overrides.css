@@ -308,10 +308,15 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: max(calc(var(--radius) - 4px), 1px);
 
-  --animate-fade-in: fade-in 0.2s ease-out;
-  --animate-slide-in: slide-in 0.2s ease-out;
-  --animate-slide-in-right: slide-in-right 0.2s ease-out;
-  --animate-slide-out-right: slide-out-right 0.15s ease-in forwards;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :root {
+    --animate-fade-in: fade-in 0.2s ease-out;
+    --animate-slide-in: slide-in 0.2s ease-out;
+    --animate-slide-in-right: slide-in-right 0.2s ease-out;
+    --animate-slide-out-right: slide-out-right 0.15s ease-in forwards;
+  }
 
   @keyframes fade-in {
     from {

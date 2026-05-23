@@ -40,7 +40,7 @@ const DIFF = [
 
 function makeGitService(overrides: Partial<GitService> = {}): GitService {
   return {
-    getStatus: vi.fn(async () => ({
+    getStatus: vi.fn(async () => ok({
       isGitRepo: true,
       branch: "main",
       remoteBranch: null,
@@ -275,11 +275,11 @@ describe("handleDrilldownRequest", () => {
 
     await saveReviewWithIssues([makeIssue()]);
     await removeStoredDiff();
-    failNextDiff = true;
-    const gitFailure = await handleDrilldownRequest(makeMockClient(), REVIEW_ID, "issue-1", "/project");
-    expect(gitFailure.ok).toBe(false);
-    if (!gitFailure.ok) expect(gitFailure.error.code).toBe("COMMAND_FAILED");
+    const missingDiff = await handleDrilldownRequest(makeMockClient(), REVIEW_ID, "issue-1", "/project");
+    expect(missingDiff.ok).toBe(false);
+    if (!missingDiff.ok) expect(missingDiff.error.code).toBe("COMMAND_FAILED");
 
+    await saveReviewWithIssues([makeIssue()]);
     const missingIssue = await handleDrilldownRequest(makeMockClient(), REVIEW_ID, "missing", "/project");
     expect(missingIssue.ok).toBe(false);
     if (!missingIssue.ok) expect(missingIssue.error.code).toBe("ISSUE_NOT_FOUND");

@@ -77,6 +77,11 @@ export function NavigationListGroup({
     </NavigationListGroupContext>
   );
 
+  // KEY-024: The toggle is aria-hidden because a <button> inside
+  // role="listbox" > role="group" violates aria-required-children.
+  // Keyboard collapse requires routing through the listbox navigation
+  // system (e.g., a key binding when the group header is highlighted).
+  // Until that integration exists, collapse remains pointer-only.
   return (
     <div
       role="group"

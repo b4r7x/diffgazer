@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { promisify } from "node:util";
 import { GIT_FILE_STATUS_CODES, type GitStatus, type GitStatusFiles, type GitFileEntry, type GitFileStatusCode } from "@diffgazer/core/schemas/git";
 import type { GitBlameInfo, ReviewMode } from "@diffgazer/core/schemas/review";
@@ -10,6 +12,12 @@ import type { BranchInfo, CategorizedFile } from "./types.js";
 const execFileAsync = promisify(execFile);
 
 const GIT_DIFF_MAX_BUFFER = 5 * 1024 * 1024;
+
+const SANITIZED_GIT_ENV: Record<string, string> = {
+  GIT_EXTERNAL_DIFF: "",
+  GIT_PAGER: "",
+  GIT_DIFF_OPTS: "",
+};
 
 const EMPTY_GIT_STATUS: GitStatus = {
   isGitRepo: false,
@@ -114,6 +122,10 @@ function isInternalDiffgazerPath(pathPart: string): boolean {
   return normalized === INTERNAL_DIFFGAZER_DIR || normalized.startsWith(`${INTERNAL_DIFFGAZER_DIR}/`);
 }
 
+function isUntrackedLine(line: string): boolean {
+  return line.length >= 2 && line[0] === "?" && line[1] === "?";
+}
+
 function isExternalStatusLine(line: string): boolean {
   if (line.length < 3) return false;
   const pathPart = line.slice(3).trim();
@@ -126,6 +138,10 @@ function isExternalStatusLine(line: string): boolean {
 export function createGitService(options: { cwd?: string; timeout?: number } = {}) {
   const { cwd = process.cwd(), timeout = 10000 } = options;
 
+  function safeEnv(): Record<string, string | undefined> {
+    return { ...process.env, ...SANITIZED_GIT_ENV };
+  }
+
   async function isGitInstalled(): Promise<boolean> {
     try {
       await execFileAsync("git", ["--version"], { timeout });
@@ -136,30 +152,42 @@ export function createGitService(options: { cwd?: string; timeout?: number } = {
     }
   }
 
-  async function getStatus(): Promise<GitStatus> {
+  async function getStatus(): Promise<Result<GitStatus, { message: string }>> {
     try {
-      const { stdout } = await execFileAsync("git", ["status", "--porcelain=v1", "-b"], { cwd, timeout });
+      const { stdout } = await execFileAsync(
+        "git",
+        ["--no-optional-locks", "-c", "core.fsmonitor=false", "status", "--porcelain=v1", "-b"],
+        { cwd, timeout, env: safeEnv() },
+      );
       const parsed = parseGitStatusOutput(stdout);
-      const hasChanges = parsed.files.staged.length > 0 || parsed.files.unstaged.length > 0 || parsed.files.untracked.length > 0;
-      return { isGitRepo: true, ...parsed, hasChanges };
+      const isExternal = (entry: GitFileEntry) => !isInternalDiffgazerPath(entry.path);
+      parsed.files.staged = parsed.files.staged.filter(isExternal);
+      parsed.files.unstaged = parsed.files.unstaged.filter(isExternal);
+      parsed.files.untracked = parsed.files.untracked.filter(isExternal);
+      const hasChanges = parsed.files.staged.length > 0 || parsed.files.unstaged.length > 0;
+      return ok({ isGitRepo: true, ...parsed, hasChanges });
     } catch (error) {
-      console.warn("[git] failed to get status:", getErrorMessage(error));
-      return EMPTY_GIT_STATUS;
+      const msg = getErrorMessage(error);
+      console.warn("[git] failed to get status:", msg);
+      return err({ message: msg });
     }
   }
 
-  async function getDiff(mode: ReviewMode = "unstaged"): Promise<string> {
-    const args = mode === "staged" ? ["diff", "--cached"] : ["diff"];
-    // "files" mode falls through to unstaged diff intentionally —
-    // file filtering is applied after diff retrieval by the caller.
-    const { stdout } = await execFileAsync("git", args, { cwd, timeout, maxBuffer: GIT_DIFF_MAX_BUFFER });
+  async function getDiff(mode: ReviewMode = "unstaged", pathspecs?: string[]): Promise<string> {
+    const args = mode === "staged"
+      ? ["diff", "--cached", "--no-ext-diff", "--no-textconv", "--no-color"]
+      : ["diff", "--no-ext-diff", "--no-textconv", "--no-color"];
+    if (pathspecs && pathspecs.length > 0) {
+      args.push("--", ...pathspecs);
+    }
+    const { stdout } = await execFileAsync("git", args, { cwd, timeout, maxBuffer: GIT_DIFF_MAX_BUFFER, env: safeEnv() });
     return stdout;
   }
 
   async function getBlame(file: string, line: number): Promise<GitBlameInfo | null> {
     try {
-      const args = ["blame", "-L", `${line},${line}`, "--porcelain", file];
-      const { stdout } = await execFileAsync("git", args, { cwd, timeout });
+      const args = ["blame", "-L", `${line},${line}`, "--porcelain", "--", file];
+      const { stdout } = await execFileAsync("git", args, { cwd, timeout, env: safeEnv() });
 
       const lines = stdout.split("\n");
       const commit = lines[0]?.split(" ")[0] ?? "";
@@ -181,10 +209,16 @@ export function createGitService(options: { cwd?: string; timeout?: number } = {
     }
   }
 
-  async function getFileLines(file: string, startLine: number, endLine: number): Promise<string[]> {
+  async function getFileLines(file: string, startLine: number, endLine: number, source: "HEAD" | "worktree" = "worktree"): Promise<string[]> {
     try {
+      if (source === "worktree") {
+        const filePath = join(cwd, file);
+        const content = await readFile(filePath, "utf-8");
+        const allLines = content.split("\n");
+        return allLines.slice(Math.max(0, startLine - 1), endLine);
+      }
       const args = ["show", `HEAD:${file}`];
-      const { stdout } = await execFileAsync("git", args, { cwd, timeout, maxBuffer: GIT_DIFF_MAX_BUFFER });
+      const { stdout } = await execFileAsync("git", args, { cwd, timeout, maxBuffer: GIT_DIFF_MAX_BUFFER, env: safeEnv() });
       const allLines = stdout.split("\n");
       return allLines.slice(Math.max(0, startLine - 1), endLine);
     } catch (error) {
@@ -195,28 +229,55 @@ export function createGitService(options: { cwd?: string; timeout?: number } = {
 
   async function getHeadCommit(): Promise<Result<string, { message: string }>> {
     try {
-      const { stdout } = await execFileAsync("git", ["rev-parse", "HEAD"], { cwd, timeout });
+      const { stdout } = await execFileAsync("git", ["rev-parse", "HEAD"], { cwd, timeout, env: safeEnv() });
       const commit = stdout.trim();
       if (!commit) {
         return err({ message: "Empty commit hash returned from git rev-parse HEAD" });
       }
       return ok(commit);
     } catch (error) {
+      const msg = getErrorMessage(error, "");
+      // Unborn HEAD (initial repo with no commits yet) — represent explicitly
+      // to allow staged initial commit reviews.
+      if (msg.includes("unknown revision") || msg.includes("bad default revision")) {
+        return ok("UNBORN");
+      }
       return err({ message: getErrorMessage(error, "Failed to get HEAD commit") });
     }
   }
 
   async function getStatusHash(): Promise<string> {
     try {
-      const { stdout } = await execFileAsync("git", ["status", "--porcelain"], { cwd, timeout });
-      const lines = stdout
+      const { stdout } = await execFileAsync(
+        "git",
+        ["--no-optional-locks", "-c", "core.fsmonitor=false", "status", "--porcelain"],
+        { cwd, timeout, env: safeEnv() },
+      );
+      const externalLines = stdout
         .split("\n")
-        .filter((line) => line.length > 0 && isExternalStatusLine(line))
+        .filter((line) => line.length > 0 && isExternalStatusLine(line) && !isUntrackedLine(line))
         .sort();
-      if (lines.length === 0) {
+      if (externalLines.length === 0) {
         return "";
       }
-      return createHash("sha256").update(lines.join("\n")).digest("hex").slice(0, 16);
+
+      const hash = createHash("sha256");
+      hash.update(externalLines.join("\n"));
+
+      // Include diff contents so the hash changes when file content changes
+      // even if the status lines remain the same.
+      try {
+        const [{ stdout: unstagedDiff }, { stdout: stagedDiff }] = await Promise.all([
+          execFileAsync("git", ["diff", "--no-ext-diff", "--no-textconv", "--no-color"], { cwd, timeout, maxBuffer: GIT_DIFF_MAX_BUFFER, env: safeEnv() }),
+          execFileAsync("git", ["diff", "--cached", "--no-ext-diff", "--no-textconv", "--no-color"], { cwd, timeout, maxBuffer: GIT_DIFF_MAX_BUFFER, env: safeEnv() }),
+        ]);
+        if (unstagedDiff) hash.update(unstagedDiff);
+        if (stagedDiff) hash.update(stagedDiff);
+      } catch {
+        // Diff read failure is non-fatal; status lines alone still provide a hash.
+      }
+
+      return hash.digest("hex").slice(0, 16);
     } catch (error) {
       console.warn("[git] failed to get status hash:", getErrorMessage(error));
       return "";

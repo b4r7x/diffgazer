@@ -244,6 +244,7 @@ describe("HistoryPage keyboard navigation", () => {
     expect(mockNavigate).toHaveBeenLastCalledWith({
       to: "/review/{-$reviewId}",
       params: { reviewId: "11111111-1111-4111-8111-111111111111" },
+      search: { issueId: "issue-b" },
     });
   });
 

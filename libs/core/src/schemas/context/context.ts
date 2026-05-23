@@ -48,6 +48,7 @@ export const ProjectContextMetaSchema = z.object({
   generatedAt: z.string(),
   root: z.string(),
   statusHash: z.string(),
+  headCommit: z.string().optional(),
   charCount: z.number(),
 });
 export type ProjectContextMeta = z.infer<typeof ProjectContextMetaSchema>;

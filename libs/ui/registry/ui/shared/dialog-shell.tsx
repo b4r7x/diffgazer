@@ -210,6 +210,21 @@ export function DialogShell({
     shellRef.current = node;
   };
 
+  /**
+   * When the native <dialog> API is unavailable, the fallback <div> is exposed
+   * through `dialogRef` which is typed as `Ref<HTMLDialogElement>`. Consumers
+   * (or internal code) holding that ref may call `showModal()` / `close()` —
+   * methods that don't exist on a plain div. Attach no-op polyfills so those
+   * calls don't crash.
+   */
+  const setFallbackShellRef = (node: HTMLElement | null) => {
+    if (node && !("showModal" in node)) {
+      (node as unknown as HTMLDialogElement).showModal = () => {};
+      (node as unknown as HTMLDialogElement).close = () => {};
+    }
+    shellRef.current = node;
+  };
+
   if (supportsShowModal) {
     const dialogRef: Ref<HTMLDialogElement> = externalDialogRef
       ? composeRefs(setShellRef, externalDialogRef)
@@ -251,7 +266,7 @@ export function DialogShell({
   return (
     <div
       {...(props as HTMLAttributes<HTMLDivElement>)}
-      ref={composeRefs(setShellRef, externalDialogRef as unknown as Ref<HTMLDivElement> | undefined)}
+      ref={composeRefs(setFallbackShellRef, externalDialogRef as unknown as Ref<HTMLDivElement> | undefined)}
       role="dialog"
       tabIndex={-1}
       data-state={open ? "open" : "closed"}

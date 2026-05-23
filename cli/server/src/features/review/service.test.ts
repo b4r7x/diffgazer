@@ -123,7 +123,7 @@ function makeGitService(options: {
   } = options;
 
   return {
-    getStatus: async () => ({
+    getStatus: async () => ok({
       isGitRepo: true,
       branch: "main",
       remoteBranch: null,
@@ -399,5 +399,73 @@ describe("streamActiveSessionToSSE", () => {
     expect(parsedEvents(stream)).toMatchObject([
       { type: "error", error: { code: ReviewErrorCode.SESSION_STALE } },
     ]);
+  });
+});
+
+describe("POST-to-stream integration", () => {
+  it("creates a review session, streams events, and ends with a terminal complete", async () => {
+    const aiClient = makeAIClient();
+    const result = await createReviewSession(aiClient, {
+      mode: "unstaged",
+      projectPath: projectRoot,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    trackSessionWithRunner(result.value.reviewId);
+
+    const session = getSession(result.value.reviewId);
+    expect(session).toBeDefined();
+
+    const stream = makeMockStream();
+
+    await vi.waitFor(() => {
+      if (!session!.isComplete) throw new Error("session not complete yet");
+    });
+
+    await streamActiveSessionToSSE(stream, session!);
+
+    const events = parsedEvents(stream);
+    const types = events.map((e) => e.type);
+
+    expect(types).toContain("step_start");
+    expect(types).toContain("review_started");
+    expect(types[types.length - 1]).toBe("complete");
+
+    const completeEvent = events.find((e) => e.type === "complete");
+    expect(completeEvent).toBeDefined();
+    if (completeEvent?.type === "complete") {
+      expect(completeEvent.result.issues.length).toBeGreaterThanOrEqual(0);
+      expect(completeEvent.reviewId).toBe(result.value.reviewId);
+    }
+  });
+
+  it("streams a terminal error when the diff is empty", async () => {
+    vi.mocked(createGitService).mockReturnValue(makeGitService({ diff: "" }));
+
+    const aiClient = makeAIClient();
+    const result = await createReviewSession(aiClient, {
+      mode: "unstaged",
+      projectPath: projectRoot,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    trackSessionWithRunner(result.value.reviewId);
+
+    const session = getSession(result.value.reviewId);
+    expect(session).toBeDefined();
+
+    await vi.waitFor(() => {
+      if (!session!.isComplete) throw new Error("session not complete yet");
+    });
+
+    const stream = makeMockStream();
+    await streamActiveSessionToSSE(stream, session!);
+
+    const events = parsedEvents(stream);
+    const lastEvent = events[events.length - 1];
+
+    expect(lastEvent?.type).toBe("error");
   });
 });

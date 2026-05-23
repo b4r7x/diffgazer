@@ -91,8 +91,12 @@ describe("public registry target paths", () => {
   const publicRegistry = loadPublicRegistry();
 
   // The source registry is the single source of truth for install layout.
-  // The public registry must mirror it exactly.
-  for (const sourceItem of registry.items) {
+  // The public registry must mirror it exactly (hidden items are excluded
+  // from the public index but still have per-item JSON files).
+  const visibleItems = registry.items.filter(
+    (item) => !item.meta?.hidden,
+  );
+  for (const sourceItem of visibleItems) {
     const expectedTargets = sourceItem.files
       .map((file) => file.target ?? file.path)
       .sort();
@@ -117,9 +121,11 @@ describe("public registry target paths", () => {
 });
 
 describe("public registry import rewriting", () => {
-  const PUBLIC_ITEMS = ["navigation", "focus-restore", "focus-trap", "scroll-lock", "focusable"];
+  const publicItems = readdirSync(PUBLIC_DIR)
+    .filter((entry) => entry.endsWith(".json") && entry !== "registry.json")
+    .map((entry) => entry.replace(/\.json$/, ""));
 
-  for (const itemName of PUBLIC_ITEMS) {
+  for (const itemName of publicItems) {
     describe(itemName, () => {
       const item = loadPublicItem(itemName);
 
@@ -131,6 +137,17 @@ describe("public registry import rewriting", () => {
             jsImports,
             `${file.target ?? file.path} has .js imports: ${jsImports?.join(", ")}`,
           ).toBeNull();
+        }
+      });
+
+      it("has no @diffgazer/keys package imports in content", () => {
+        const packageImport = /(?:from|import)\s+["']@diffgazer\/keys["']/;
+        for (const file of item.files) {
+          if (typeof file.content !== "string") continue;
+          expect(
+            file.content,
+            `${file.target ?? file.path} has @diffgazer/keys package import`,
+          ).not.toMatch(packageImport);
         }
       });
     });
@@ -211,10 +228,13 @@ describe("focusable as transitive dependency", () => {
     expect(focusable.meta?.hidden).toBe(true);
   });
 
-  it("focusable is marked hidden in public registry", () => {
+  it("focusable is excluded from public registry index but has per-item JSON", () => {
     const publicRegistry = loadPublicRegistry();
-    const focusable = getRegistryItem(publicRegistry, "focusable");
-    expect(focusable.meta?.hidden).toBe(true);
+    const inIndex = publicRegistry.items.some((item) => item.name === "focusable");
+    expect(inIndex).toBe(false);
+
+    const publicItem = loadPublicItem("focusable");
+    expect(publicItem.meta?.hidden).toBe(true);
   });
 
   it("focusable is included as a file in navigation and focus-trap items", () => {

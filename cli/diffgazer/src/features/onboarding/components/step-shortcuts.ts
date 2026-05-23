@@ -1,4 +1,4 @@
-import type { Shortcut } from "@diffgazer/core/schemas/ui";
+import type { Shortcut } from "@diffgazer/core/schemas/presentation";
 import type { OnboardingStep } from "@diffgazer/core/onboarding";
 
 export function getStepShortcuts(

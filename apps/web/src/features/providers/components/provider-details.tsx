@@ -29,10 +29,10 @@ export interface ProviderDetailsProps {
 
 function getButtonConfig(actions: ProviderActions, provider: ProviderWithStatus, disableSelectProvider: boolean) {
   return [
-    { action: actions.onSelectProvider, label: 'Select Provider', variant: 'primary' as const, disabled: disableSelectProvider },
+    { action: actions.onSelectProvider, label: 'Select Provider', variant: 'primary' as const, disabled: disableSelectProvider || !provider.hasApiKey },
     { action: actions.onSetApiKey, label: 'Set API Key', variant: 'secondary' as const },
     { action: actions.onRemoveKey, label: 'Remove Key', variant: 'destructive' as const, disabled: !provider.hasApiKey },
-    { action: actions.onSelectModel, label: 'Select Model...', variant: 'link' as const },
+    { action: actions.onSelectModel, label: 'Select Model...', variant: 'link' as const, disabled: !provider.hasApiKey },
   ];
 }
 

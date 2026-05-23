@@ -478,6 +478,80 @@ describe("useFocusTrap", () => {
     });
   });
 
+  describe("nested trap stack", () => {
+    it("inner trap captures focus while outer trap is suspended, and outer recaptures on inner release", () => {
+      // Set up outer trap
+      container = createContainer(
+        '<button id="o1">O1</button>',
+        '<button id="o2">O2</button>',
+      );
+      const outerEl = container;
+      const outerRef: RefObject<HTMLElement | null> = { current: outerEl };
+      const innerEl = createContainer(
+        '<button id="i1">I1</button>',
+        '<button id="i2">I2</button>',
+      );
+      const innerRef: RefObject<HTMLElement | null> = { current: innerEl };
+
+      // Render both traps in a single component to share the React tree.
+      // The inner trap is toggled via a prop.
+      const { rerender } = renderHook(
+        ({ innerEnabled }: { innerEnabled: boolean }) => {
+          useFocusTrap(outerRef, { restoreFocus: false });
+          useFocusTrap(innerRef, { restoreFocus: false, enabled: innerEnabled });
+        },
+        { initialProps: { innerEnabled: false } },
+      );
+
+      // Outer trap has focus
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+      expect(document.activeElement).toBe(outerEl.querySelector("#o1"));
+
+      // Enable inner trap
+      rerender({ innerEnabled: true });
+
+      // Inner trap should capture focus
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+      expect(document.activeElement).toBe(innerEl.querySelector("#i1"));
+
+      // Tab inside inner trap should wrap within inner, not escape to outer
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+      const innerLast = innerEl.querySelector<HTMLElement>("#i2")!;
+      innerLast.focus();
+      const event = fireTab();
+      expect(event.defaultPrevented).toBe(true);
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+      expect(document.activeElement).toBe(innerEl.querySelector("#i1"));
+
+      // Focus escaping to outside should be recaptured by the inner trap,
+      // not the outer (outer is suspended).
+      const outsideButton = document.createElement("button");
+      outsideButton.id = "outside";
+      document.body.appendChild(outsideButton);
+      outsideButton.focus();
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+      expect(document.activeElement).toBe(innerEl.querySelector("#i1"));
+
+      // Disable inner trap — outer should recapture focus
+      rerender({ innerEnabled: false });
+
+      // Focus should be back in the outer trap's container
+      expect(outerEl.contains(document.activeElement)).toBe(true);
+
+      // Tab should now work within outer trap
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+      const outerLast = outerEl.querySelector<HTMLElement>("#o2")!;
+      outerLast.focus();
+      const outerEvent = fireTab();
+      expect(outerEvent.defaultPrevented).toBe(true);
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+      expect(document.activeElement).toBe(outerEl.querySelector("#o1"));
+
+      outsideButton.remove();
+      innerEl.remove();
+    });
+  });
+
   describe("document-level capture and focusin recapture", () => {
     it("recaptures focus on the next Tab when focus has escaped outside the container", () => {
       container = createContainer(

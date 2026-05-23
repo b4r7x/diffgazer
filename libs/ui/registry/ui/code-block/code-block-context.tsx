@@ -10,6 +10,7 @@ export interface CodeBlockContextValue {
   variant: CodeBlockVariant;
   chrome: CodeBlockChrome;
   labelId: string;
+  hasLabel: boolean;
   language: string | undefined;
   fallbackName: string;
 }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { getErrorMessage } from "@diffgazer/core/errors";
 import type { InputMethod } from "@/types/input-method";
 
@@ -12,6 +12,8 @@ interface UseApiKeyFormOptions {
   onSubmit: (method: InputMethod, value: string) => Promise<void>;
   onRemoveKey?: () => Promise<void>;
   onOpenChange: (open: boolean) => void;
+  /** Reset form state when this value changes (e.g. selectedProvider?.id). */
+  resetKey?: string | null;
 }
 
 export function useApiKeyForm({
@@ -19,10 +21,18 @@ export function useApiKeyForm({
   onSubmit,
   onRemoveKey,
   onOpenChange,
+  resetKey,
 }: UseApiKeyFormOptions) {
   const [method, setMethod] = useState<InputMethod>("paste");
   const [keyValue, setKeyValue] = useState("");
   const [formStatus, setFormStatus] = useState<FormStatus>({ status: "idle" });
+
+  // Reset form when provider changes or dialog reopens
+  useEffect(() => {
+    setMethod("paste");
+    setKeyValue("");
+    setFormStatus({ status: "idle" });
+  }, [resetKey]);
 
   const handleSubmit = async (submitMethod: InputMethod = method) => {
     if (formStatus.status === "submitting") return;

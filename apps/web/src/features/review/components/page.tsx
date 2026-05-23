@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
+  useNavigate,
   useParams,
   useRouter,
   useSearch,
@@ -10,6 +11,7 @@ import { ReviewResultsView } from "./review-results-view";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { isApiError, useReviewErrorHandler } from "../hooks";
 import { useReview } from "@diffgazer/core/api/hooks";
+import { toast } from "@diffgazer/ui/components/toast";
 
 interface ReviewData {
   issues: ReviewIssue[];
@@ -25,7 +27,8 @@ type SavedReviewOutcome =
   | { kind: "results"; data: ReviewData }
   | { kind: "fallback-to-stream" }
   | { kind: "report-error"; error: unknown }
-  | { kind: "loading" };
+  | { kind: "loading" }
+  | { kind: "not-found" };
 
 const REVIEW_ROUTE = "/review/{-$reviewId}" as const;
 
@@ -35,7 +38,10 @@ function getLiveReviewId(state: LiveReviewState | null): string | null {
   return state.reviewData.reviewId;
 }
 
-function getSavedReviewOutcome(savedReviewQuery: ReturnType<typeof useReview>): SavedReviewOutcome {
+function getSavedReviewOutcome(
+  savedReviewQuery: ReturnType<typeof useReview>,
+  streamNotFound: boolean,
+): SavedReviewOutcome {
   if (savedReviewQuery.isSuccess) {
     const savedReview = savedReviewQuery.data?.review;
     if (savedReview?.result) {
@@ -44,11 +50,17 @@ function getSavedReviewOutcome(savedReviewQuery: ReturnType<typeof useReview>): 
         data: { issues: savedReview.result.issues, reviewId: savedReview.metadata.id },
       };
     }
+    // Saved review exists but has no result. If we already tried the stream
+    // and it 404'd, there is nothing to show -- report not-found instead of
+    // looping back to the dead stream.
+    if (streamNotFound) return { kind: "not-found" };
     return { kind: "fallback-to-stream" };
   }
 
   if (savedReviewQuery.isError) {
     if (isApiError(savedReviewQuery.error) && savedReviewQuery.error.status === 404) {
+      // Same loop guard: stream already 404'd, saved also 404'd.
+      if (streamNotFound) return { kind: "not-found" };
       return { kind: "fallback-to-stream" };
     }
     return { kind: "report-error", error: savedReviewQuery.error };
@@ -62,24 +74,33 @@ export function ReviewPage() {
   const search = useSearch({ from: REVIEW_ROUTE });
   const reviewMode = search.mode;
   const isLiveNavigation = search.live === true;
+  const initialIssueId = search.issueId ?? null;
   const reviewId = params.reviewId ?? null;
   const [liveState, setLiveState] = useState<LiveReviewState | null>(
     reviewId && isLiveNavigation ? { phase: "streaming", reviewId } : null,
   );
+  const [streamNotFound, setStreamNotFound] = useState(false);
+  const notFoundReportedRef = useRef(false);
 
   const router = useRouter();
+  const navigate = useNavigate();
   const { handleApiError } = useReviewErrorHandler();
 
   const liveReviewId = getLiveReviewId(liveState);
   const isLiveReviewRoute = Boolean(reviewId && liveReviewId === reviewId);
   const shouldLoadSavedReview = Boolean(reviewId && !isLiveReviewRoute && !liveState);
   const savedReviewQuery = useReview(shouldLoadSavedReview ? (reviewId ?? "") : "");
-  const savedOutcome = shouldLoadSavedReview ? getSavedReviewOutcome(savedReviewQuery) : null;
+  const savedOutcome = shouldLoadSavedReview ? getSavedReviewOutcome(savedReviewQuery, streamNotFound) : null;
   const savedOutcomeKind = savedOutcome?.kind ?? null;
   const savedErrorForReport = savedOutcome?.kind === "report-error" ? savedOutcome.error : null;
 
   const handleComplete = (data: ReviewCompleteData) => {
     setLiveState({ phase: "summary", reviewData: data });
+  };
+
+  const handleStreamNotFound = () => {
+    setStreamNotFound(true);
+    setLiveState(null);
   };
 
   useEffect(() => {
@@ -94,12 +115,23 @@ export function ReviewPage() {
     }
   }, [savedOutcomeKind, savedErrorForReport, handleApiError]);
 
+  useEffect(() => {
+    if (savedOutcomeKind === "not-found" && !notFoundReportedRef.current) {
+      notFoundReportedRef.current = true;
+      toast.error("Review Not Found", {
+        message: "The live session has expired and no saved results are available.",
+      });
+      navigate({ to: "/" });
+    }
+  }, [savedOutcomeKind, navigate]);
+
   if (savedOutcome) {
     if (savedOutcome.kind === "results") {
       return (
         <ReviewResultsView
           issues={savedOutcome.data.issues}
           reviewId={savedOutcome.data.reviewId}
+          initialIssueId={initialIssueId}
         />
       );
     }
@@ -118,6 +150,7 @@ export function ReviewPage() {
         <ReviewContainer
           mode={reviewMode}
           onComplete={handleComplete}
+          onStreamNotFound={handleStreamNotFound}
         />
       );
 
@@ -138,6 +171,7 @@ export function ReviewPage() {
         <ReviewResultsView
           issues={currentLiveState.reviewData.issues}
           reviewId={currentLiveState.reviewData.reviewId}
+          initialIssueId={initialIssueId}
         />
       );
   }

@@ -9,9 +9,21 @@ function classifyDiffLine(line: string): DiffLineType {
 }
 
 const DIFF_HEADER_PATTERN = /^diff --git a\/(.+) b\/(.+)$/;
+const DIFF_HEADER_QUOTED_PATTERN = /^diff --git "a\/(.+)" "b\/(.+)"$/;
 const HUNK_HEADER_PATTERN = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/;
 const OLD_FILE_PATTERN = /^--- (?:a\/(.+)|\/dev\/null)$/;
+const OLD_FILE_QUOTED_PATTERN = /^--- "a\/(.+)"$/;
 const NEW_FILE_PATTERN = /^\+\+\+ (?:b\/(.+)|\/dev\/null)$/;
+const NEW_FILE_QUOTED_PATTERN = /^\+\+\+ "b\/(.+)"$/;
+
+function unquoteGitPath(path: string): string {
+  return path.replace(/\\([\\"])/g, "$1")
+    .replace(/\\t/g, "\t")
+    .replace(/\\n/g, "\n")
+    .replace(/\\([0-7]{3})/g, (_, octal: string) =>
+      String.fromCharCode(parseInt(octal, 8))
+    );
+}
 
 function determineOperation(oldPath: string | null, newPath: string | null, previousPath: string | null): DiffOperation {
   if (oldPath === null) return "add";
@@ -95,32 +107,42 @@ export function parseDiff(diffText: string): ParsedDiff {
   while (i < lines.length) {
     const line = lines[i];
 
-    const headerMatch = line?.match(DIFF_HEADER_PATTERN);
+    const headerMatch = line?.match(DIFF_HEADER_PATTERN) ?? line?.match(DIFF_HEADER_QUOTED_PATTERN);
     if (headerMatch) {
+      const isQuotedHeader = line?.startsWith('diff --git "');
       const fileStartIndex = i;
-      let oldPath: string | null = headerMatch[1] ?? null;
-      let newPath: string | null = headerMatch[2] ?? null;
+      let oldPath: string | null = isQuotedHeader
+        ? unquoteGitPath(headerMatch[1] ?? "")
+        : headerMatch[1] ?? null;
+      let newPath: string | null = isQuotedHeader
+        ? unquoteGitPath(headerMatch[2] ?? "")
+        : headerMatch[2] ?? null;
       let previousPath: string | null = null;
 
       i++;
 
-      while (i < lines.length && !lines[i]?.startsWith("---") && !lines[i]?.startsWith("diff --git ")) {
+      while (i < lines.length && !lines[i]?.startsWith("---") && !lines[i]?.startsWith('--- "') && !lines[i]?.startsWith("diff --git ")) {
         const renameLine = lines[i];
         if (renameLine?.startsWith("rename from ")) {
-          previousPath = renameLine.slice(12);
+          const rawPath = renameLine.slice(12);
+          previousPath = rawPath.startsWith('"') && rawPath.endsWith('"')
+            ? unquoteGitPath(rawPath.slice(1, -1))
+            : rawPath;
         }
         i++;
       }
 
-      const oldMatch = lines[i]?.match(OLD_FILE_PATTERN);
+      const oldMatch = lines[i]?.match(OLD_FILE_PATTERN) ?? lines[i]?.match(OLD_FILE_QUOTED_PATTERN);
       if (oldMatch) {
-        oldPath = oldMatch[1] ?? null;
+        const isQuoted = lines[i]?.startsWith('--- "');
+        oldPath = isQuoted ? unquoteGitPath(oldMatch[1] ?? "") : (oldMatch[1] ?? null);
         i++;
       }
 
-      const newMatch = lines[i]?.match(NEW_FILE_PATTERN);
+      const newMatch = lines[i]?.match(NEW_FILE_PATTERN) ?? lines[i]?.match(NEW_FILE_QUOTED_PATTERN);
       if (newMatch) {
-        newPath = newMatch[1] ?? null;
+        const isQuoted = lines[i]?.startsWith('+++ "');
+        newPath = isQuoted ? unquoteGitPath(newMatch[1] ?? "") : (newMatch[1] ?? null);
         i++;
       }
 

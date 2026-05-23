@@ -1,3 +1,4 @@
+import type { Context } from "hono";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { SHUTDOWN_TOKEN_HEADER } from "@diffgazer/core/api";
@@ -8,16 +9,33 @@ import { gitRouter } from "./features/git/router.js";
 import { reviewRouter } from "./features/review/router.js";
 import { shutdownRouter } from "./features/shutdown/router.js";
 
+const isPackaged = (): boolean =>
+  process.env.DIFFGAZER_PACKAGED === "1";
+
 const isLocalhostOrigin = (origin: string): boolean => {
   try {
     const url = new URL(origin);
-    return url.hostname === "localhost" || url.hostname === "127.0.0.1";
+    return url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === "[::1]";
+  } catch {
+    return false;
+  }
+};
+
+const isSameOrigin = (origin: string, hostHeader: string | undefined): boolean => {
+  if (!hostHeader) return false;
+  try {
+    const url = new URL(origin);
+    const originHost = url.port
+      ? `${url.hostname}:${url.port}`
+      : url.hostname;
+    return originHost === hostHeader;
   } catch {
     return false;
   }
 };
 
 const ALLOWED_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
+const UNSAFE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
 const getHostname = (hostHeader: string | null | undefined): string | null => {
   if (!hostHeader) return null;
@@ -46,11 +64,37 @@ export const createApp = (): Hono => {
     await next();
   });
 
+  app.use("/api/*", async (c, next) => {
+    const origin = c.req.header("origin");
+    if (origin && !isLocalhostOrigin(origin) && UNSAFE_METHODS.has(c.req.method)) {
+      return c.json({ error: { message: "Forbidden" } }, 403);
+    }
+    return next();
+  });
+
+  app.use("/api/*", async (c, next) => {
+    if (c.req.method === "OPTIONS") {
+      return next();
+    }
+    const pathname = new URL(c.req.url).pathname;
+    if (pathname === "/api/health") {
+      return next();
+    }
+    const token = process.env.DIFFGAZER_SHUTDOWN_TOKEN?.trim();
+    if (!token || c.req.header(SHUTDOWN_TOKEN_HEADER) !== token) {
+      return c.json({ error: { message: "Unauthorized" } }, 403);
+    }
+    return next();
+  });
+
   app.use(
     "/api/*",
     cors({
-      origin: (origin) => {
+      origin: (origin: string, c: Context) => {
         if (!origin) return origin;
+        if (isPackaged()) {
+          return isSameOrigin(origin, c.req.header("host")) ? origin : "";
+        }
         return isLocalhostOrigin(origin) ? origin : "";
       },
       allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],

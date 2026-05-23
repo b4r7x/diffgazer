@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { TrustCapabilities, TrustConfig } from "@diffgazer/core/schemas/config";
-import type { Shortcut } from "@diffgazer/core/schemas/ui";
+import type { Shortcut } from "@diffgazer/core/schemas/presentation";
 import { getErrorMessage } from "@diffgazer/core/errors";
 import { useKey, useScope } from "@diffgazer/keys";
 import { usePageFooter } from "@diffgazer/core/footer";
@@ -98,8 +98,8 @@ function TrustPermissionsEditor({
         projectId,
         repoRoot,
         capabilities,
-        trustMode: "persistent",
-        trustedAt: new Date().toISOString(),
+        trustMode: trust?.trustMode ?? "persistent",
+        trustedAt: trust?.trustedAt ?? new Date().toISOString(),
       });
       toast.success("Saved", { message: "Trust permissions updated" });
       navigate({ to: "/settings" });

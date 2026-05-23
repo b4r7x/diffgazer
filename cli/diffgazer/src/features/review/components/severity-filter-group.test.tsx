@@ -1,7 +1,7 @@
 import { test, describe, afterEach, expect } from "vitest";
 import { useState } from "react";
 import { render, cleanup } from "ink-testing-library";
-import { SEVERITY_ORDER, type UISeverityFilter } from "@diffgazer/core/schemas/ui";
+import { SEVERITY_ORDER, type UISeverityFilter } from "@diffgazer/core/schemas/presentation";
 import { CliThemeProvider } from "../../../theme/theme-context.js";
 import { SeverityFilterGroup } from "./severity-filter-group.js";
 

@@ -80,30 +80,6 @@
       ]
     },
     {
-      "name": "focusable",
-      "type": "registry:hook",
-      "title": "Focusable Utilities",
-      "description": "DOM helpers for discovering focusable and tabbable elements",
-      "dependencies": [],
-      "registryDependencies": [],
-      "meta": {
-        "client": true,
-        "hidden": true
-      },
-      "files": [
-        {
-          "path": "src/dom/focusable.ts",
-          "type": "registry:hook",
-          "target": "src/hooks/utils/focusable.ts"
-        },
-        {
-          "path": "src/dom/dom.ts",
-          "type": "registry:hook",
-          "target": "src/hooks/utils/dom.ts"
-        }
-      ]
-    },
-    {
       "name": "focus-trap",
       "type": "registry:hook",
       "title": "Focus Trap",

@@ -116,6 +116,7 @@ describe("add command", () => {
       "src/components/ui/spinner/spinner.tsx",
       "src/components/ui/spinner/use-spinner-animation.ts",
       "src/components/ui/spinner/spinner-snake-grid.tsx",
+      "src/lib/utils.ts",
     ];
     for (const relativePath of preExisting) {
       const absolutePath = join(root, relativePath);
@@ -242,13 +243,13 @@ describe("add command", () => {
     runDgadd(["add", "ui/dialog", "--cwd", root, "--yes", "--skip-install"]);
     const afterFirst = readFileSync(join(root, "src/styles/styles.css"), "utf-8");
 
-    const markerPattern = /\/\* dgadd:css [a-f0-9]{16} \*\//g;
+    const markerPattern = /\/\* dgadd:css [a-f0-9]{16}(?: \S+)? \*\//g;
     const startCountFirst = (afterFirst.match(markerPattern) ?? []).length;
     expect(startCountFirst, "expected sentinel markers after first add").toBeGreaterThan(0);
 
     const perturbed = afterFirst
       .replace(/\n\n/g, "\n\n\n")
-      .replace(/(dgadd:css [a-f0-9]{16} \*\/)/, "$1\n/* user comment */");
+      .replace(/(dgadd:css [a-f0-9]{16}(?: \S+)? \*\/)/, "$1\n/* user comment */");
     writeFileSync(join(root, "src/styles/styles.css"), perturbed);
 
     runDgadd(["add", "ui/dialog", "--cwd", root, "--yes", "--skip-install"]);
@@ -259,7 +260,7 @@ describe("add command", () => {
       startCountSecond,
       "re-running add must not append duplicate chunks under whitespace/comment edits",
     ).toBe(startCountFirst);
-    const sentinelEnds = (afterSecond.match(/\/\* dgadd:css-end [a-f0-9]{16} \*\//g) ?? []).length;
+    const sentinelEnds = (afterSecond.match(/\/\* dgadd:css-end [a-f0-9]{16}(?: \S+)? \*\//g) ?? []).length;
     expect(sentinelEnds, "every chunk is bounded by matching markers").toBe(startCountSecond);
   });
 
@@ -526,7 +527,7 @@ describe("css ownership", () => {
 
     const cssBefore = readFileSync(join(root, "src/styles/styles.css"), "utf-8");
     expect(cssBefore).toMatch(/dialog::backdrop/);
-    const markerPattern = /\/\* dgadd:css [a-f0-9]{16} \*\//g;
+    const markerPattern = /\/\* dgadd:css [a-f0-9]{16}(?: \S+)? \*\//g;
     expect((cssBefore.match(markerPattern) ?? []).length).toBeGreaterThan(0);
 
     runDgadd(["remove", "ui/dialog", "--cwd", root, "--yes"]);
@@ -574,7 +575,7 @@ describe("css chunk drift detection", () => {
     const stylesPath = join(root, "src/styles/styles.css");
     const stylesContent = readFileSync(stylesPath, "utf-8");
     const chunkStripped = stylesContent.replace(
-      /\/\* dgadd:css [a-f0-9]{16} \*\/[\s\S]*?\/\* dgadd:css-end [a-f0-9]{16} \*\/\n*/g,
+      /\/\* dgadd:css [a-f0-9]{16}(?: \S+)? \*\/[\s\S]*?\/\* dgadd:css-end [a-f0-9]{16}(?: \S+)? \*\/\n*/g,
       "",
     );
     expect(chunkStripped).not.toMatch(/dialog::backdrop/);
@@ -616,7 +617,7 @@ describe("css chunk ownership on remove", () => {
 
     const cssAfter = readFileSync(join(root, "src/styles/styles.css"), "utf-8");
     expect(cssAfter).toMatch(/dialog::backdrop/);
-    const markerPattern = /\/\* dgadd:css [a-f0-9]{16} \*\//g;
+    const markerPattern = /\/\* dgadd:css [a-f0-9]{16}(?: \S+)? \*\//g;
     expect((cssAfter.match(markerPattern) ?? []).length).toBe(ownerHashes.length);
 
     const finalManifest = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
@@ -627,7 +628,7 @@ describe("css chunk ownership on remove", () => {
     runDgadd(["add", "ui/dialog", "--cwd", root, "--yes", "--skip-install"]);
 
     const cssBefore = readFileSync(join(root, "src/styles/styles.css"), "utf-8");
-    const markerPattern = /\/\* dgadd:css [a-f0-9]{16} \*\//g;
+    const markerPattern = /\/\* dgadd:css [a-f0-9]{16}(?: \S+)? \*\//g;
     expect((cssBefore.match(markerPattern) ?? []).length).toBeGreaterThan(0);
     expect(cssBefore).toMatch(/dialog::backdrop/);
 

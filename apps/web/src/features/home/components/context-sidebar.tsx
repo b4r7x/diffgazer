@@ -1,7 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { InfoField } from "./info-field";
 import { Panel } from "@diffgazer/ui/components/panel";
-import type { ContextInfo } from "@diffgazer/core/schemas/ui";
+import type { ContextInfo } from "@diffgazer/core/schemas/presentation";
 
 interface ContextSidebarProps {
   context: ContextInfo;

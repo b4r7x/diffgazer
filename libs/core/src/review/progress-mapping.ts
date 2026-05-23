@@ -3,7 +3,7 @@ import type {
   ProgressStepData,
   ProgressStatus,
   ProgressSubstepData,
-} from "@diffgazer/core/schemas/ui";
+} from "@diffgazer/core/schemas/presentation";
 import { truncate } from "@diffgazer/core/strings";
 import { getAgentDetail, mapStepStatus as mapStepStatusCore } from "./display.js";
 

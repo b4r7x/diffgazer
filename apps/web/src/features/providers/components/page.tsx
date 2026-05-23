@@ -1,4 +1,4 @@
-import type { Shortcut } from "@diffgazer/core/schemas/ui";
+import type { Shortcut } from "@diffgazer/core/schemas/presentation";
 import { usePageFooter } from "@diffgazer/core/footer";
 import { ProviderList } from "@/features/providers/components/provider-list";
 import { ProviderDetails } from "@/features/providers/components/provider-details";
@@ -6,6 +6,7 @@ import { ApiKeyDialog } from "@/features/providers/components/api-key-dialog/api
 import { ModelSelectDialog } from "@/features/providers/components/model-select-dialog/model-select-dialog";
 import { useProvidersPageState } from "@/features/providers/hooks/use-providers-page-state";
 import { PROVIDER_ENV_VARS } from "@diffgazer/core/schemas/config";
+import { useConfigData } from "@/app/providers/config-provider";
 
 export function getProvidersFooter(
   focusZone: "input" | "filters" | "list" | "buttons",
@@ -70,6 +71,8 @@ export function ProvidersPage() {
     handlers,
     keyboard,
   } = useProvidersPageState();
+
+  const { secretsStorage } = useConfigData();
 
   const footer = dialogs.anyOpen
     ? { shortcuts: [] as Shortcut[], rightShortcuts: [] as Shortcut[] }
@@ -147,7 +150,9 @@ export function ProvidersPage() {
             open={dialogs.apiKeyOpen}
             onOpenChange={dialogs.setApiKeyOpen}
             providerName={selectedProvider.name}
+            providerId={selectedProvider.id}
             envVarName={PROVIDER_ENV_VARS[selectedProvider.id]}
+            secretsStorage={secretsStorage}
             onSubmit={(_method, value) => handlers.saveApiKey(
               selectedProvider.id,
               value,

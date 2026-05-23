@@ -5,7 +5,7 @@ import { Button } from '@diffgazer/ui/components/button';
 import { SeverityBreakdown } from '@/components/ui/severity';
 import { IssuePreviewItem } from './issue-preview-item';
 import { LensStatsTable, type LensStats } from './lens-stats-table';
-import type { AnalysisStats, SeverityCounts, IssuePreview } from '@diffgazer/core/schemas/ui';
+import type { AnalysisStats, SeverityCounts, IssuePreview } from '@diffgazer/core/schemas/presentation';
 
 export type { IssuePreview };
 

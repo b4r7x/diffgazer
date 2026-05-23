@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import type { Shortcut } from "@diffgazer/core/schemas/ui";
+import type { Shortcut } from "@diffgazer/core/schemas/presentation";
 import type { WebTheme, ResolvedTheme } from "@/types/theme";
 import { Panel } from "@diffgazer/ui/components/panel";
 import { Callout } from "@diffgazer/ui/components/callout";
 import { Button } from "@diffgazer/ui/components/button";
+import { toast } from "@diffgazer/ui/components/toast";
 import { ThemeSelectorContent } from "../theme-selector-content";
 import { ThemePreviewCard } from "../theme-preview-card";
 import { useTheme } from "@/hooks/use-theme";
@@ -58,10 +59,14 @@ function SettingsThemeEditor({
 
   const handleCancel = () => navigate({ to: "/settings" });
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!canSave) return;
-    setTheme(selectedTheme);
-    navigate({ to: "/settings" });
+    try {
+      await setTheme(selectedTheme);
+      navigate({ to: "/settings" });
+    } catch {
+      toast.error("Failed to Save Theme", { message: "Could not persist theme settings." });
+    }
   };
 
   const footer = useActionRowNavigation({
@@ -70,7 +75,7 @@ function SettingsThemeEditor({
     disabledActions: [false, isSaveDisabled],
     onAction: (index) => {
       if (index === 0) handleCancel();
-      else if (index === 1 && canSave) handleSave();
+      else if (index === 1 && canSave) void handleSave();
     },
   });
 
@@ -103,11 +108,15 @@ function SettingsThemeEditor({
     if (isWebTheme(value)) selectTheme(value);
   };
 
-  const handleEnterOnList = (value: string) => {
+  const handleEnterOnList = async (value: string) => {
     if (!isWebTheme(value)) return;
     selectTheme(value);
-    setTheme(value);
-    navigate({ to: "/settings" });
+    try {
+      await setTheme(value);
+      navigate({ to: "/settings" });
+    } catch {
+      toast.error("Failed to Save Theme", { message: "Could not persist theme settings." });
+    }
   };
 
   const themeOptions: WebTheme[] = ["auto", "dark", "light"];

@@ -16,7 +16,7 @@ import { initializeAIClient } from "../../shared/lib/ai/client.js";
 import { createReviewSession } from "./service.js";
 import { handleDrilldownRequest } from "./drilldown.js";
 import { ReviewErrorCode, type ReviewMode } from "@diffgazer/core/schemas/review";
-import { getActiveSessionForProject } from "./sessions.js";
+import { getActiveSessionForProject, getSession, cancelSession, deleteSession } from "./sessions.js";
 import { handleStoreError } from "./errors.js";
 
 export async function getReviewForProject(id: string, projectPath: string) {
@@ -127,6 +127,7 @@ export async function getReviewHandler(c: Context, id: string): Promise<Response
 }
 
 export async function deleteReviewHandler(c: Context, id: string): Promise<Response> {
+  const projectPath = getProjectRoot(c);
   const existing = await getStoredReview(id);
   if (!existing.ok) {
     if (existing.error.code === "NOT_FOUND") {
@@ -134,13 +135,31 @@ export async function deleteReviewHandler(c: Context, id: string): Promise<Respo
     }
     return handleStoreError(c, existing.error);
   }
-  if (existing.value.metadata.projectPath !== getProjectRoot(c)) {
+  if (existing.value.metadata.projectPath !== projectPath) {
     return c.json({ existed: false });
   }
 
-  const result = await deleteStoredReview(id);
+  const result = await deleteStoredReview(id, projectPath);
   if (!result.ok) return handleStoreError(c, result.error);
+  if (result.value.existed) {
+    deleteSession(id);
+  }
   return c.json({ existed: result.value.existed });
+}
+
+export async function cancelSessionHandler(c: Context, id: string): Promise<Response> {
+  const session = getSession(id);
+  if (!session) {
+    return c.json({ cancelled: false });
+  }
+  if (session.projectPath !== getProjectRoot(c)) {
+    return c.json({ cancelled: false });
+  }
+  if (session.isComplete) {
+    return c.json({ cancelled: false });
+  }
+  cancelSession(id);
+  return c.json({ cancelled: true });
 }
 
 export async function drilldownHandler(
@@ -162,7 +181,7 @@ export async function drilldownHandler(
     id,
     body.issueId,
     projectPath,
-    { review: reviewResult.value },
+    { review: reviewResult.value, signal: c.req.raw.signal },
   );
 
   if (!result.ok) {

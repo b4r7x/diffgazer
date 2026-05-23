@@ -38,12 +38,12 @@ describe("buildConfigPayload", () => {
 
     expect(buildConfigPayload(data)).toEqual({
       provider: "gemini",
-      apiKey: "real-key",
+      apiKey: { kind: "literal", value: "real-key" },
       model: "gemini-2.5-pro",
     });
   });
 
-  it("substitutes literal 'env' for the api key when env method is selected", () => {
+  it("sends structured env credential ref when env method is selected", () => {
     const data = withData({
       provider: "gemini",
       model: "gemini-2.5-pro",
@@ -51,7 +51,24 @@ describe("buildConfigPayload", () => {
       apiKey: "ignored",
     });
 
-    expect(buildConfigPayload(data).apiKey).toBe("env");
+    expect(buildConfigPayload(data).apiKey).toEqual({
+      kind: "env",
+      varName: "GOOGLE_API_KEY",
+    });
+  });
+
+  it("sends structured literal credential ref when paste method is selected", () => {
+    const data = withData({
+      provider: "gemini",
+      model: "gemini-2.5-pro",
+      inputMethod: "paste",
+      apiKey: "real-key",
+    });
+
+    expect(buildConfigPayload(data).apiKey).toEqual({
+      kind: "literal",
+      value: "real-key",
+    });
   });
 
   it("omits the model when none is selected", () => {
@@ -85,8 +102,9 @@ describe("saveWizard", () => {
       agentExecution: "sequential",
     });
 
-    await saveWizard(data, { saveSettings, saveConfig });
+    const result = await saveWizard(data, { saveSettings, saveConfig });
 
+    expect(result).toEqual({ status: "complete" });
     expect(callOrder).toEqual(["settings", "config"]);
     expect(saveSettings).toHaveBeenCalledWith({
       secretsStorage: "file",
@@ -95,20 +113,47 @@ describe("saveWizard", () => {
     });
     expect(saveConfig).toHaveBeenCalledWith({
       provider: "gemini",
-      apiKey: "real-key",
+      apiKey: { kind: "literal", value: "real-key" },
       model: "gemini-2.5-pro",
     });
   });
 
-  it("propagates settings save failure without calling saveConfig", async () => {
+  it("returns partial result on settings save failure without calling saveConfig", async () => {
     const saveSettings = vi.fn(async () => {
       throw new Error("boom");
     });
     const saveConfig = vi.fn();
 
-    await expect(
-      saveWizard(getInitialWizardData(), { saveSettings, saveConfig }),
-    ).rejects.toThrow("boom");
+    const result = await saveWizard(getInitialWizardData(), { saveSettings, saveConfig });
+
+    expect(result.status).toBe("partial");
+    if (result.status === "partial") {
+      expect(result.completedSteps).toEqual([]);
+      expect(result.error).toBeInstanceOf(Error);
+    }
     expect(saveConfig).not.toHaveBeenCalled();
+  });
+
+  it("returns partial result on config save failure after settings succeeds", async () => {
+    const saveSettings = vi.fn(async () => {});
+    const saveConfig = vi.fn(async () => {
+      throw new Error("config fail");
+    });
+
+    const data = withData({
+      secretsStorage: "file",
+      provider: "gemini",
+      model: "gemini-2.5-pro",
+      inputMethod: "paste",
+      apiKey: "real-key",
+    });
+
+    const result = await saveWizard(data, { saveSettings, saveConfig });
+
+    expect(result.status).toBe("partial");
+    if (result.status === "partial") {
+      expect(result.completedSteps).toEqual(["settings"]);
+      expect(result.error).toBeInstanceOf(Error);
+    }
   });
 });

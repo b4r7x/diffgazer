@@ -2,7 +2,7 @@ import { useRef } from 'react';
 import type { AIProvider } from '@diffgazer/core/schemas/config';
 import { useScope, useKey, useActionRowNavigation } from '@diffgazer/keys';
 import { usePageFooter } from "@diffgazer/core/footer";
-import type { Shortcut } from "@diffgazer/core/schemas/ui";
+import type { Shortcut } from "@diffgazer/core/schemas/presentation";
 import { Button } from '@diffgazer/ui/components/button';
 
 export interface ApiKeyMissingViewProps {

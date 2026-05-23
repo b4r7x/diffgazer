@@ -6,5 +6,5 @@ export default defineConfig({
   target: "node20",
   outDir: "dist",
   clean: false,
-  noExternal: ["@diffgazer/core", "@diffgazer/server"],
+  noExternal: ["@diffgazer/core", "@diffgazer/server", "@diffgazer/keys"],
 });

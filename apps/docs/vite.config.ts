@@ -84,7 +84,7 @@ const config = defineConfig(() => {
         "@/lib/step-status": resolve(import.meta.dirname, "registry/lib/step-status"),
         "@/lib/focus": resolve(import.meta.dirname, "registry/lib/focus"),
         "@/lib/typeahead": resolve(import.meta.dirname, "registry/lib/typeahead"),
-        "@/lib/utils": resolve(import.meta.dirname, "registry/lib/utils"),
+        "@/lib/utils": resolve(import.meta.dirname, "src/lib/utils"),
         "@/lib/diff": resolve(import.meta.dirname, "registry/lib/diff"),
         "@diffgazer/keys": resolve(import.meta.dirname, "../../libs/keys/src"),
         "@diffgazer/registry": resolve(import.meta.dirname, "../../libs/registry/src"),

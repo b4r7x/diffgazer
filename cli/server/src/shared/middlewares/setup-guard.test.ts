@@ -18,15 +18,15 @@ async function createApp(): Promise<Hono> {
 
 async function configureReadySetup(): Promise<void> {
   const store = await import("../lib/config/store.js");
-  store.updateSettings({ secretsStorage: "file" });
-  store.saveProviderCredentials({
+  await store.updateSettings({ secretsStorage: "file" });
+  await store.saveProviderCredentials({
     provider: "gemini",
     apiKey: "sk-test",
     model: "gemini-2.5-flash",
   });
-  const project = store.getProjectInfo(projectRoot);
-  store.saveTrust({
-    projectId: project.projectId,
+  const project = store.ensureProjectFile(projectRoot);
+  await store.saveTrust({
+    projectId: project.projectId!,
     repoRoot: projectRoot,
     trustedAt: "2024-01-01T00:00:00.000Z",
     capabilities: { readFiles: true, runCommands: false },

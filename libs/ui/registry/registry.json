@@ -16,7 +16,8 @@
         "controllable-state",
         "compose-refs",
         "icons",
-        "@diffgazer-keys/navigation"
+        "@diffgazer-keys/navigation",
+        "utils"
       ],
       "meta": {
         "client": true,
@@ -69,7 +70,8 @@
       ],
       "registryDependencies": [
         "theme",
-        "spinner"
+        "spinner",
+        "utils"
       ],
       "meta": {
         "client": true
@@ -95,7 +97,8 @@
       ],
       "registryDependencies": [
         "theme",
-        "overflow"
+        "overflow",
+        "utils"
       ],
       "meta": {
         "client": true
@@ -144,7 +147,8 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
-        "theme"
+        "theme",
+        "utils"
       ],
       "meta": {
         "client": false
@@ -170,7 +174,8 @@
       ],
       "registryDependencies": [
         "theme",
-        "input-variants"
+        "input-variants",
+        "utils"
       ],
       "meta": {
         "client": true
@@ -199,7 +204,8 @@
       "registryDependencies": [
         "theme",
         "aria-utils",
-        "compose-refs"
+        "compose-refs",
+        "utils"
       ],
       "meta": {
         "client": true
@@ -223,7 +229,8 @@
       "dependencies": [],
       "registryDependencies": [
         "theme",
-        "input-variants"
+        "input-variants",
+        "utils"
       ],
       "meta": {
         "client": true
@@ -249,7 +256,8 @@
       ],
       "registryDependencies": [
         "theme",
-        "controllable-state"
+        "controllable-state",
+        "utils"
       ],
       "meta": {
         "client": true
@@ -325,7 +333,8 @@
         "@diffgazer-keys/navigation",
         "compose-refs",
         "selectable-collection",
-        "selectable-variants"
+        "selectable-variants",
+        "utils"
       ],
       "meta": {
         "client": true,
@@ -365,7 +374,8 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
-        "theme"
+        "theme",
+        "utils"
       ],
       "meta": {
         "client": false
@@ -395,7 +405,8 @@
         "compose-refs",
         "@diffgazer-keys/navigation",
         "selectable-collection",
-        "selectable-variants"
+        "selectable-variants",
+        "utils"
       ],
       "meta": {
         "client": true,
@@ -435,7 +446,8 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
-        "theme"
+        "theme",
+        "utils"
       ],
       "meta": {
         "client": true
@@ -490,7 +502,8 @@
       "description": "Custom scrollable area with styled scrollbars",
       "dependencies": [],
       "registryDependencies": [
-        "theme"
+        "theme",
+        "utils"
       ],
       "meta": {
         "client": true
@@ -515,7 +528,8 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
-        "theme"
+        "theme",
+        "utils"
       ],
       "meta": {
         "client": false
@@ -568,7 +582,8 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
-        "theme"
+        "theme",
+        "utils"
       ],
       "meta": {
         "client": true
@@ -601,7 +616,8 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
-        "theme"
+        "theme",
+        "utils"
       ],
       "meta": {
         "client": false
@@ -626,7 +642,8 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
-        "theme"
+        "theme",
+        "utils"
       ],
       "meta": {
         "client": false
@@ -667,7 +684,8 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
-        "theme"
+        "theme",
+        "utils"
       ],
       "meta": {
         "client": true
@@ -700,7 +718,8 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
-        "theme"
+        "theme",
+        "utils"
       ],
       "meta": {
         "client": true
@@ -727,7 +746,8 @@
         "tooltip",
         "overflow-detection",
         "overflow-items",
-        "compose-refs"
+        "compose-refs",
+        "utils"
       ],
       "meta": {
         "client": true
@@ -759,7 +779,8 @@
       "dependencies": [],
       "registryDependencies": [
         "theme",
-        "popover"
+        "popover",
+        "utils"
       ],
       "meta": {
         "client": true
@@ -795,7 +816,8 @@
         "dialog-shell",
         "compose-refs",
         "portal",
-        "kbd"
+        "kbd",
+        "utils"
       ],
       "meta": {
         "client": true,
@@ -902,7 +924,8 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
-        "theme"
+        "theme",
+        "utils"
       ],
       "meta": {
         "client": false
@@ -931,7 +954,8 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
-        "theme"
+        "theme",
+        "utils"
       ],
       "meta": {
         "client": false
@@ -961,7 +985,8 @@
         "@diffgazer-keys/navigation",
         "compose-refs",
         "floating-indicator",
-        "segmented-variants"
+        "segmented-variants",
+        "utils"
       ],
       "meta": {
         "client": true,
@@ -1006,7 +1031,9 @@
       ],
       "registryDependencies": [
         "theme",
-        "listbox"
+        "listbox",
+        "utils",
+        "floating-panel"
       ],
       "meta": {
         "client": true,
@@ -1034,6 +1061,26 @@
         {
           "path": "registry/ui/menu/menu-context.tsx",
           "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/menu/menu-group.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/menu/menu-item-checkbox.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/menu/menu-item-radio.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/menu/menu-label.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/menu/menu-sub.tsx",
+          "type": "registry:ui"
         }
       ]
     },
@@ -1048,7 +1095,9 @@
       "registryDependencies": [
         "theme",
         "listbox",
-        "badge"
+        "badge",
+        "utils",
+        "icons"
       ],
       "meta": {
         "client": true,
@@ -1096,6 +1145,18 @@
         {
           "path": "registry/ui/navigation-list/navigation-list-item-context.tsx",
           "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/navigation-list/navigation-list-group.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/navigation-list/navigation-list-group-context.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/navigation-list/navigation-list-progress.tsx",
+          "type": "registry:ui"
         }
       ]
     },
@@ -1110,7 +1171,8 @@
       "registryDependencies": [
         "theme",
         "outside-click",
-        "spinner"
+        "spinner",
+        "utils"
       ],
       "meta": {
         "client": true
@@ -1162,7 +1224,8 @@
         "badge",
         "controllable-state",
         "step-status",
-        "stepper-variants"
+        "stepper-variants",
+        "utils"
       ],
       "files": [
         {
@@ -1211,7 +1274,8 @@
         "theme",
         "controllable-state",
         "form-reset",
-        "compose-refs"
+        "compose-refs",
+        "utils"
       ],
       "meta": {
         "client": true
@@ -1243,7 +1307,8 @@
         "form-reset",
         "floating-indicator",
         "selectable-collection",
-        "segmented-variants"
+        "segmented-variants",
+        "utils"
       ],
       "meta": {
         "client": true,
@@ -1281,7 +1346,8 @@
       ],
       "registryDependencies": [
         "theme",
-        "scroll-area"
+        "scroll-area",
+        "utils"
       ],
       "meta": {
         "client": true
@@ -1325,6 +1391,10 @@
         },
         {
           "path": "registry/ui/code-block/highlight.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/code-block/inline-code.tsx",
           "type": "registry:ui"
         },
         {
@@ -1394,7 +1464,8 @@
       "registryDependencies": [
         "theme",
         "step-status",
-        "stepper-variants"
+        "stepper-variants",
+        "utils"
       ],
       "files": [
         {
@@ -1433,7 +1504,8 @@
         "portal",
         "search",
         "selectable-collection",
-        "kbd"
+        "kbd",
+        "utils"
       ],
       "meta": {
         "client": true,
@@ -1522,7 +1594,8 @@
         "overflow",
         "search",
         "typeahead",
-        "typeahead-buffer"
+        "typeahead-buffer",
+        "utils"
       ],
       "meta": {
         "client": true,
@@ -1590,7 +1663,8 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
-        "theme"
+        "theme",
+        "utils"
       ],
       "meta": {
         "client": true
@@ -1631,7 +1705,8 @@
         "dialog",
         "sidebar-variants",
         "sidebar-intent",
-        "use-is-mobile"
+        "use-is-mobile",
+        "utils"
       ],
       "meta": {
         "client": true,
@@ -1714,7 +1789,8 @@
       "description": "Previous/next page navigation for sequential content",
       "dependencies": [],
       "registryDependencies": [
-        "theme"
+        "theme",
+        "utils"
       ],
       "meta": {
         "client": true
@@ -1741,7 +1817,8 @@
       "description": "Static text logo primitive. Precompute ASCII art and pass it as asciiText.",
       "dependencies": [],
       "registryDependencies": [
-        "theme"
+        "theme",
+        "utils"
       ],
       "meta": {
         "client": false
@@ -1764,7 +1841,8 @@
       "description": "Compound breadcrumb navigation with auto-separator and composable parts",
       "dependencies": [],
       "registryDependencies": [
-        "theme"
+        "theme",
+        "utils"
       ],
       "meta": {
         "client": true
@@ -1805,7 +1883,8 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
-        "theme"
+        "theme",
+        "utils"
       ],
       "meta": {
         "client": true
@@ -1838,7 +1917,8 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
-        "theme"
+        "theme",
+        "utils"
       ],
       "meta": {
         "client": false
@@ -2074,6 +2154,25 @@
       "files": [
         {
           "path": "registry/lib/compose-refs.ts",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
+      "name": "utils",
+      "type": "registry:lib",
+      "title": "Utilities",
+      "description": "Shared cn() class-name merge utility (clsx + tailwind-merge).",
+      "dependencies": [
+        "clsx",
+        "tailwind-merge"
+      ],
+      "meta": {
+        "client": false
+      },
+      "files": [
+        {
+          "path": "registry/lib/utils.ts",
           "type": "registry:lib"
         }
       ]
@@ -2319,6 +2418,98 @@
       ]
     },
     {
+      "name": "use-navigation",
+      "type": "registry:hook",
+      "title": "useNavigation",
+      "description": "Client re-export of @diffgazer/keys useNavigation for registry consumers.",
+      "dependencies": [],
+      "registryDependencies": [
+        "@diffgazer-keys/navigation"
+      ],
+      "meta": {
+        "client": true,
+        "hidden": true,
+        "optionalIntegrations": [
+          "keyboard-navigation"
+        ]
+      },
+      "files": [
+        {
+          "path": "registry/hooks/use-navigation.ts",
+          "type": "registry:hook"
+        }
+      ]
+    },
+    {
+      "name": "use-focus-restore",
+      "type": "registry:hook",
+      "title": "useFocusRestore",
+      "description": "Client re-export of @diffgazer/keys useFocusRestore for registry consumers.",
+      "dependencies": [],
+      "registryDependencies": [
+        "@diffgazer-keys/focus-restore"
+      ],
+      "meta": {
+        "client": true,
+        "hidden": true,
+        "optionalIntegrations": [
+          "keyboard-navigation"
+        ]
+      },
+      "files": [
+        {
+          "path": "registry/hooks/use-focus-restore.ts",
+          "type": "registry:hook"
+        }
+      ]
+    },
+    {
+      "name": "use-focus-trap",
+      "type": "registry:hook",
+      "title": "useFocusTrap",
+      "description": "Client re-export of @diffgazer/keys useFocusTrap for registry consumers.",
+      "dependencies": [],
+      "registryDependencies": [
+        "@diffgazer-keys/focus-trap"
+      ],
+      "meta": {
+        "client": true,
+        "hidden": true,
+        "optionalIntegrations": [
+          "keyboard-navigation"
+        ]
+      },
+      "files": [
+        {
+          "path": "registry/hooks/use-focus-trap.ts",
+          "type": "registry:hook"
+        }
+      ]
+    },
+    {
+      "name": "use-scroll-lock",
+      "type": "registry:hook",
+      "title": "useScrollLock",
+      "description": "Client re-export of @diffgazer/keys useScrollLock for registry consumers.",
+      "dependencies": [],
+      "registryDependencies": [
+        "@diffgazer-keys/scroll-lock"
+      ],
+      "meta": {
+        "client": true,
+        "hidden": true,
+        "optionalIntegrations": [
+          "keyboard-navigation"
+        ]
+      },
+      "files": [
+        {
+          "path": "registry/hooks/use-scroll-lock.ts",
+          "type": "registry:hook"
+        }
+      ]
+    },
+    {
       "name": "search",
       "type": "registry:lib",
       "title": "Search Utilities",
@@ -2362,7 +2553,8 @@
         "portal",
         "presence",
         "floating-position",
-        "compose-refs"
+        "compose-refs",
+        "utils"
       ],
       "meta": {
         "client": true
@@ -2434,7 +2626,8 @@
         "controllable-state",
         "floating-panel",
         "outside-click",
-        "@diffgazer-keys/focusable"
+        "@diffgazer-keys/focusable",
+        "utils"
       ],
       "meta": {
         "client": true,

@@ -71,6 +71,7 @@ const HomeSearchSchema = z.object({
 const ReviewSearchSchema = z.object({
   mode: ReviewModeSchema.optional().default("unstaged"),
   live: z.boolean().optional(),
+  issueId: z.string().optional(),
 });
 
 const UUID_REGEX =

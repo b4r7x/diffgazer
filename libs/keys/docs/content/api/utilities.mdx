@@ -184,3 +184,45 @@ interface KeyboardContextValue {
 - `useKeyboardContext` returns the active keyboard context and throws if `KeyboardProvider` is missing.
 - `useOptionalKeyboardContext` returns the active keyboard context or `null` if `KeyboardProvider` is missing.
 - This is what `useKey` uses internally. You probably don't need this directly unless you're building a custom hook on top of @diffgazer/keys.
+
+---
+
+## isEditableElement and isInputElement
+
+Predicate functions for classifying event targets. Used internally by `KeyboardProvider` to skip non-`allowInInput` handlers, and useful when building custom keyboard hooks.
+
+```ts
+import { isEditableElement, isInputElement } from "@diffgazer/keys";
+```
+
+### Signature
+
+```ts
+function isInputElement(target: EventTarget | null): boolean;
+function isEditableElement(target: EventTarget | null): boolean;
+```
+
+### Behavior
+
+- `isInputElement` returns `true` for `<input>`, `<textarea>`, `<select>`, and `contenteditable` elements.
+- `isEditableElement` is stricter: returns `true` only for elements that accept text editing keys (text-like inputs, textarea, contenteditable). Returns `false` for checkboxes, radios, selects, buttons, disabled, and readonly inputs.
+
+---
+
+## canonicalizeHotkey
+
+Normalizes a hotkey string so that aliases and modifier orderings collapse to a single canonical form. Useful when building registries or deduplicating hotkey bindings.
+
+```ts
+import { canonicalizeHotkey } from "@diffgazer/keys";
+```
+
+### Signature
+
+```ts
+function canonicalizeHotkey(hotkey: string): string;
+```
+
+### Behavior
+
+Resolves key aliases (`esc` to `escape`, `up` to `arrowup`, `question` to `?`), normalizes `mod` to `meta` or `ctrl`, and sorts modifiers alphabetically. Two hotkey strings that match the same physical key event will produce the same canonical string.

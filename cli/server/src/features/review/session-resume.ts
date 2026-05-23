@@ -82,7 +82,7 @@ export async function resumeStreamById(c: Context): Promise<Response> {
         await writeSSEError(
           stream,
           getErrorMessage(error),
-          ErrorCode.INTERNAL_ERROR,
+          ReviewErrorCode.GENERATION_FAILED,
         );
       } catch (e) {
         console.warn("SSE error write failed:", e);

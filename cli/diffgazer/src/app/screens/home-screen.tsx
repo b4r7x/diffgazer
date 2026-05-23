@@ -7,13 +7,13 @@ import { useBackHandler } from "../../hooks/use-back-handler.js";
 import { useResponsive } from "../../hooks/use-terminal-dimensions.js";
 import { useInit, useReviews, useActiveReviewSession, useShutdown } from "@diffgazer/core/api/hooks";
 import { deriveTrustStatus } from "@diffgazer/core/navigation";
-import type { ContextInfo, Shortcut } from "@diffgazer/core/schemas/ui";
+import type { ContextInfo, Shortcut } from "@diffgazer/core/schemas/presentation";
 import { useExit } from "../../hooks/use-exit.js";
 import { createHomeMenuAction } from "../../features/home/lib/create-home-menu-action.js";
 import { ContextSidebar } from "../../features/home/components/context-sidebar.js";
 import { HomeMenu } from "../../features/home/components/home-menu.js";
 import { TrustPanel } from "../../features/home/components/trust-panel.js";
-import { MAIN_MENU_SHORTCUTS } from "@diffgazer/core/schemas/ui";
+import { MAIN_MENU_SHORTCUTS } from "@diffgazer/core/schemas/presentation";
 
 const TRUST_FOOTER_SHORTCUTS: Shortcut[] = [
   { key: "↑/↓", label: "Navigate Permissions" },
@@ -41,7 +41,8 @@ export function HomeScreen(): ReactElement {
   const shutdown = useShutdown();
 
   const mostRecent = reviewsData?.reviews[0];
-  const hasActiveSession = sessionData?.session != null;
+  const activeSession = sessionData?.session ?? null;
+  const hasActiveSession = activeSession != null;
 
   const trustConfig = initData?.project.trust ?? null;
   const projectId = initData?.project.projectId;
@@ -70,9 +71,15 @@ export function HomeScreen(): ReactElement {
     refreshInit();
   }
 
+  const routeCompatibleSession =
+    activeSession && (activeSession.mode === "unstaged" || activeSession.mode === "staged")
+      ? { reviewId: activeSession.reviewId, mode: activeSession.mode as "unstaged" | "staged" }
+      : null;
+
   const onAction = createHomeMenuAction({
     navigate,
     hasActiveSession,
+    activeSession: routeCompatibleSession,
     isTrusted,
     shutdown,
     onExit: handleExit,

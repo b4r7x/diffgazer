@@ -5,12 +5,13 @@
   "description": "Floating content anchored to a trigger element. Supports click-to-open (popover) and hover (tooltip) modes with full 4-side positioning, flip, shift, and collision detection.",
   "dependencies": [],
   "registryDependencies": [
-    "https://docs.diffgazer.b4r7.dev/r/ui/theme.json",
-    "https://docs.diffgazer.b4r7.dev/r/ui/compose-refs.json",
-    "https://docs.diffgazer.b4r7.dev/r/ui/controllable-state.json",
-    "https://docs.diffgazer.b4r7.dev/r/ui/floating-panel.json",
-    "https://docs.diffgazer.b4r7.dev/r/ui/outside-click.json",
-    "https://docs.diffgazer.b4r7.dev/r/keys/focusable.json"
+    "https://r.b4r7.dev/r/ui/theme.json",
+    "https://r.b4r7.dev/r/ui/compose-refs.json",
+    "https://r.b4r7.dev/r/ui/controllable-state.json",
+    "https://r.b4r7.dev/r/ui/floating-panel.json",
+    "https://r.b4r7.dev/r/ui/outside-click.json",
+    "https://r.b4r7.dev/r/keys/focusable.json",
+    "https://r.b4r7.dev/r/ui/utils.json"
   ],
   "files": [
     {

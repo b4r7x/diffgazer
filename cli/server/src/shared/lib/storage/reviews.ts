@@ -1,5 +1,6 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { join } from "node:path";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import {
   SavedReviewSchema,
   ReviewMetadataSchema,
@@ -12,7 +13,7 @@ import { createCollection } from "./persistence.js";
 import type { StoreError, DateFieldsOf, SaveReviewOptions } from "./types.js";
 import { getGlobalDiffgazerDir } from "../paths.js";
 import { type Result, ok } from "@diffgazer/core/result";
-import { calculateSeverityCounts } from "@diffgazer/core/schemas/ui";
+import { calculateSeverityCounts } from "@diffgazer/core/schemas/presentation";
 
 function filterByProjectAndSort<T extends { projectPath: string }>(
   items: T[],
@@ -28,8 +29,49 @@ function filterByProjectAndSort<T extends { projectPath: string }>(
 
 // Legacy on-disk directory name kept as "triage-reviews" to avoid data migration
 const REVIEWS_DIR = join(getGlobalDiffgazerDir(), "triage-reviews");
+const PROJECT_INDEX_DIR = join(REVIEWS_DIR, ".index");
 const getReviewFile = (reviewId: string): string =>
   join(REVIEWS_DIR, `${reviewId}.json`);
+
+function projectIndexPath(projectPath: string): string {
+  const hash = createHash("sha256").update(projectPath).digest("hex").slice(0, 16);
+  return join(PROJECT_INDEX_DIR, `${hash}.json`);
+}
+
+async function readProjectIndex(projectPath: string): Promise<string[]> {
+  try {
+    const raw = await readFile(projectIndexPath(projectPath), "utf-8");
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+async function writeProjectIndex(projectPath: string, ids: string[]): Promise<void> {
+  try {
+    await mkdir(PROJECT_INDEX_DIR, { recursive: true });
+    await writeFile(projectIndexPath(projectPath), JSON.stringify(ids), "utf-8");
+  } catch (e) {
+    console.warn("[reviews] failed to write project index:", e);
+  }
+}
+
+async function addToProjectIndex(projectPath: string, reviewId: string): Promise<void> {
+  const ids = await readProjectIndex(projectPath);
+  if (!ids.includes(reviewId)) {
+    ids.push(reviewId);
+    await writeProjectIndex(projectPath, ids);
+  }
+}
+
+async function removeFromProjectIndex(projectPath: string, reviewId: string): Promise<void> {
+  const ids = await readProjectIndex(projectPath);
+  const filtered = ids.filter((id) => id !== reviewId);
+  if (filtered.length !== ids.length) {
+    await writeProjectIndex(projectPath, filtered);
+  }
+}
 
 const reviewStore = createCollection<SavedReview, ReviewMetadata>({
   name: "review",
@@ -105,10 +147,12 @@ export async function saveReview(
     diff: options.diff,
     gitContext,
     drilldowns: options.drilldowns ?? [],
+    ...(options.lensStats ? { lensStats: options.lensStats } : {}),
   };
 
   const writeResult = await reviewStore.write(savedReview);
   if (!writeResult.ok) return writeResult;
+  await addToProjectIndex(options.projectPath, metadata.id);
   return ok(metadata);
 }
 
@@ -131,15 +175,8 @@ export async function addDrilldownToReview(
   return reviewStore.write(review);
 }
 
-export async function listReviews(
-  projectPath?: string
-): Promise<Result<{ items: ReviewMetadata[]; warnings: string[] }, StoreError>> {
-  const result = await reviewStore.list();
-  if (!result.ok) return result;
-
-  const items = filterByProjectAndSort(result.value.items, projectPath, "createdAt");
-
-  const migratedItems = await Promise.all(
+async function migrateMetadataList(items: ReviewMetadata[]): Promise<ReviewMetadata[]> {
+  return Promise.all(
     items.map(async (metadata) => {
       const totalCounted =
         metadata.blockerCount + metadata.highCount + metadata.mediumCount + metadata.lowCount + metadata.nitCount;
@@ -158,6 +195,47 @@ export async function listReviews(
       return metadata;
     })
   );
+}
+
+export async function listReviews(
+  projectPath?: string
+): Promise<Result<{ items: ReviewMetadata[]; warnings: string[] }, StoreError>> {
+  // When a project path is given, try the project index first for faster lookup.
+  if (projectPath) {
+    const indexedIds = await readProjectIndex(projectPath);
+    if (indexedIds.length > 0) {
+      const warnings: string[] = [];
+      const items: ReviewMetadata[] = [];
+      for (const id of indexedIds) {
+        const readResult = await reviewStore.read(id);
+        if (!readResult.ok) {
+          warnings.push(`Failed to read review ${id}: ${readResult.error.message}`);
+          continue;
+        }
+        if (readResult.value.metadata.projectPath === projectPath) {
+          items.push(readResult.value.metadata);
+        }
+      }
+      const sorted = filterByProjectAndSort(items, undefined, "createdAt");
+
+      const migratedItems = await migrateMetadataList(sorted);
+      return ok({ items: migratedItems, warnings });
+    }
+  }
+
+  // Fallback: full scan (also used for global listing or when no index exists)
+  const result = await reviewStore.list();
+  if (!result.ok) return result;
+
+  const items = filterByProjectAndSort(result.value.items, projectPath, "createdAt");
+
+  // Lazily build project index from full scan when projectPath is provided
+  if (projectPath && items.length > 0) {
+    const ids = items.map((m) => m.id);
+    writeProjectIndex(projectPath, ids).catch(() => {});
+  }
+
+  const migratedItems = await migrateMetadataList(items);
 
   return ok({ items: migratedItems, warnings: result.value.warnings });
 }
@@ -180,7 +258,11 @@ export async function getReview(
 }
 
 export async function deleteReview(
-  reviewId: string
+  reviewId: string,
+  projectPath?: string,
 ): Promise<Result<{ existed: boolean }, StoreError>> {
+  if (projectPath) {
+    removeFromProjectIndex(projectPath, reviewId).catch(() => {});
+  }
   return reviewStore.remove(reviewId);
 }

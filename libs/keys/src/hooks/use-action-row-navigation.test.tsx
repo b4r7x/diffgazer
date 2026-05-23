@@ -287,6 +287,17 @@ describe("useActionRowNavigation", () => {
     expect(onAction).toHaveBeenCalledWith(1);
   });
 
+  it("fires onAction even when DOM focus is already on the target button", async () => {
+    const { onAction, user } = renderActionRow();
+
+    await waitFor(() => expectFocused(getButton("Cancel")));
+
+    // Focus is already on the Cancel button via the action row navigation.
+    // Enter should still fire onAction (KEY-002).
+    await user.keyboard("{Enter}");
+    expect(onAction).toHaveBeenCalledWith(0);
+  });
+
   describe("types", () => {
     it("narrows index and disabledActions when Actions tuple is provided", () => {
       type TwoActions = readonly [() => void, () => void];

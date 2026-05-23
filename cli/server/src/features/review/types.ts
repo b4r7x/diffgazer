@@ -1,4 +1,4 @@
-import type { FullReviewStreamEvent, StepId } from "@diffgazer/core/schemas/events";
+import type { FullReviewStreamEvent, StepId, LensStat } from "@diffgazer/core/schemas/events";
 import type { LensId, ProfileId, ReviewIssue, ReviewMode } from "@diffgazer/core/schemas/review";
 import type { ErrorCode } from "@diffgazer/core/schemas/errors";
 import type { AIError } from "../../shared/lib/ai/types.js";
@@ -25,6 +25,7 @@ export interface ResolvedConfig {
 export interface ReviewOutcome {
   issues: ReviewIssue[];
   summary: string;
+  lensStats?: LensStat[];
 }
 
 export interface ReviewAbort {

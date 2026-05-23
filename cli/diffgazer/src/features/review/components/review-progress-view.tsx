@@ -17,7 +17,7 @@ import type {
   LogEntryData,
   ProgressStepData,
   Shortcut,
-} from "@diffgazer/core/schemas/ui";
+} from "@diffgazer/core/schemas/presentation";
 import type { ReviewContextResponse } from "@diffgazer/core/api/types";
 import type { FileProgress } from "@diffgazer/core/review";
 
@@ -145,6 +145,7 @@ export function ReviewProgressView({
             agents={agentOptions}
             active={agentFilter}
             onChange={setAgentFilter}
+            isActive={false}
           />
         </Box>
       ) : null}

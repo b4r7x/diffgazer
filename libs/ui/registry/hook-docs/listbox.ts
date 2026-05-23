@@ -4,9 +4,15 @@ export const listboxDoc: HookDoc = {
   description:
     "Shared listbox state and keyboard navigation hook. Manages selection, highlight, and container ARIA props for listbox-pattern components like menu and navigation-list.",
   usage: {
-    code: `const { selectedId, highlighted, handleItemActivate, getContainerProps } =
+    code: `const items = [
+  { id: "apple", label: "Apple" },
+  { id: "banana", label: "Banana" },
+];
+
+const { selectedId, highlighted, handleItemActivate, getContainerProps } =
   useListbox({
     idPrefix: "my-list",
+    items: items.map((item) => ({ id: item.id })),
     onSelect: (id) => console.log("selected", id),
   });
 
@@ -17,6 +23,7 @@ return (
         key={item.id}
         id={\`my-list-\${item.id}\`}
         role="option"
+        data-value={item.id}
         aria-selected={selectedId === item.id}
         onClick={() => handleItemActivate(item.id)}
       >

@@ -163,7 +163,7 @@ export function ProviderList({
               const statusText = `[${badge.label.toUpperCase()}]`;
               const subtitleText = !provider.model
                 ? "Select model"
-                : (provider.defaultModel || undefined);
+                : (provider.model || undefined);
 
               return (
                 <NavigationListItem

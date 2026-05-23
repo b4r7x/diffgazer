@@ -13,5 +13,8 @@
     "@diffgazer/server",
     "@diffgazer/web",
     "@diffgazer/docs"
-  ]
+  ],
+  "___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH": {
+    "onlyUpdatePeerDependentsWhenOutOfRange": true
+  }
 }

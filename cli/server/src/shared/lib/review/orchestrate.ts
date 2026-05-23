@@ -190,7 +190,9 @@ export async function orchestrateReview(
     spanId: orchestratorSpanId,
   });
 
-  if (sorted.length === 0 && lastError !== null) {
+  const allLensesFailed = failedLenses.length === lenses.length && lenses.length > 0;
+
+  if (allLensesFailed && lastError !== null) {
     if (orchestrationOptions.partialOnAllFailed) {
       return ok({
         summary: combinedSummary || `Analysis incomplete: ${getErrorMessage(lastError)}`,

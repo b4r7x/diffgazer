@@ -5,9 +5,13 @@ import { useNavigation } from "@diffgazer/keys"
 
 const items = ["Apple", "Banana", "Cherry", "Date", "Elderberry"]
 
+function getOptionId(item: string) {
+  return `fruit-${item.toLowerCase()}`
+}
+
 export default function UseNavigationBasic() {
   const containerRef = useRef<HTMLDivElement>(null)
-  const { isHighlighted, onKeyDown } = useNavigation({
+  const { highlighted, isHighlighted, onKeyDown } = useNavigation({
     containerRef,
     role: "option",
     wrap: true,
@@ -23,11 +27,13 @@ export default function UseNavigationBasic() {
         tabIndex={0}
         role="listbox"
         aria-label="Fruits"
+        aria-activedescendant={highlighted ? getOptionId(highlighted) : undefined}
         style={{ padding: 4, border: "1px solid currentColor" }}
       >
         {items.map((item) => (
           <div
             key={item}
+            id={getOptionId(item)}
             role="option"
             aria-selected={isHighlighted(item)}
             data-value={item}

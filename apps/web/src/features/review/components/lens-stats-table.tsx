@@ -1,5 +1,5 @@
 import { cn } from '@diffgazer/ui/lib/utils';
-import type { LensStats } from '@diffgazer/core/schemas/ui';
+import type { LensStats } from '@diffgazer/core/schemas/presentation';
 
 export type { LensStats };
 

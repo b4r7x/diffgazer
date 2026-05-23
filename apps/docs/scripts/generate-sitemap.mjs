@@ -1,10 +1,11 @@
-import { readdirSync, readFileSync, statSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { readdirSync, readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { join, resolve, relative, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DOCS_ROOT = resolve(HERE, "..");
-const DEFAULT_ORIGIN = "https://docs.diffgazer.b4r7.dev";
+const DEFAULT_ORIGIN = "https://docs.b4r7.dev";
 
 function readLibrariesConfig() {
   const configPath = resolve(DOCS_ROOT, "config/docs-libraries.json");
@@ -76,11 +77,33 @@ function resolveItemMdxSource(libId, routeSegment, name) {
   return existsSync(candidate) ? candidate : null;
 }
 
+/** Cache git log timestamps so we only spawn once per source file. */
+const gitTimestampCache = new Map();
+
+function getGitTimestamp(filePath) {
+  if (gitTimestampCache.has(filePath)) return gitTimestampCache.get(filePath);
+  try {
+    const iso = execFileSync(
+      "git",
+      ["log", "-1", "--format=%aI", "--", filePath],
+      { encoding: "utf-8", stdio: ["ignore", "pipe", "ignore"] },
+    ).trim();
+    const result = iso || null;
+    gitTimestampCache.set(filePath, result);
+    return result;
+  } catch {
+    gitTimestampCache.set(filePath, null);
+    return null;
+  }
+}
+
 function formatLastMod(sourcePath) {
   if (sourcePath && existsSync(sourcePath)) {
-    return statSync(sourcePath).mtime.toISOString();
+    const gitDate = getGitTimestamp(sourcePath);
+    if (gitDate) return new Date(gitDate).toISOString();
   }
-  return new Date().toISOString();
+  // Fallback: fixed date so the sitemap is reproducible across builds.
+  return "2025-01-01T00:00:00.000Z";
 }
 
 function escapeXml(value) {

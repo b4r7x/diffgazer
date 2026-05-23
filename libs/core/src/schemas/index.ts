@@ -5,4 +5,4 @@ export * from "./events/index.js";
 export * from "./review/index.js";
 export * from "./git/index.js";
 export * from "./context/index.js";
-export * from "./ui/index.js";
+export * from "./presentation/index.js";

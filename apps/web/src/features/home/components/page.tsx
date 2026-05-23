@@ -1,8 +1,8 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import type { ContextInfo } from "@diffgazer/core/schemas/ui";
+import type { ContextInfo } from "@diffgazer/core/schemas/presentation";
 import { useActiveReviewSession, useApi, useCreateReview } from "@diffgazer/core/api/hooks";
 import { deriveTrustStatus } from "@diffgazer/core/navigation";
-import { MENU_ITEMS } from "@diffgazer/core/schemas/ui";
+import { MENU_ITEMS } from "@diffgazer/core/schemas/presentation";
 import { useScopedRouteState, clearScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { useConfigData } from "@/app/providers/config-provider";
 import { useReviewHistory } from "@/features/history/hooks/use-review-history";

@@ -30,13 +30,64 @@ async function readFileDirectory(
   }
 }
 
+const FALLBACK_WORKSPACE_ROOTS: Array<{ dir: string; kind: WorkspacePackage["kind"] }> = [
+  { dir: "apps", kind: "app" },
+  { dir: "packages", kind: "package" },
+];
+
+function parseWorkspaceYaml(content: string): string[] {
+  const lines = content.split("\n");
+  const globs: string[] = [];
+  let inPackages = false;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed === "packages:" || trimmed.startsWith("packages:")) {
+      inPackages = true;
+      continue;
+    }
+    if (inPackages) {
+      if (/^\w/.test(trimmed) && !trimmed.startsWith("-")) {
+        break;
+      }
+      const match = trimmed.match(/^-\s+["']?([^"']+)["']?$/);
+      if (match?.[1]) {
+        globs.push(match[1]);
+      }
+    }
+  }
+  return globs;
+}
+
+function resolveWorkspaceRoots(
+  globs: string[],
+): Array<{ dir: string; kind: WorkspacePackage["kind"] }> {
+  return globs.map((glob) => {
+    const dir = glob.replace(/\/\*$/, "");
+    const kind: WorkspacePackage["kind"] = dir.startsWith("app") ? "app" : "package";
+    return { dir, kind };
+  });
+}
+
+async function getWorkspaceRoots(
+  projectPath: string,
+): Promise<Array<{ dir: string; kind: WorkspacePackage["kind"] }>> {
+  const yamlPath = path.join(projectPath, "pnpm-workspace.yaml");
+  try {
+    const content = await readFile(yamlPath, "utf8");
+    const globs = parseWorkspaceYaml(content);
+    if (globs.length > 0) {
+      return resolveWorkspaceRoots(globs);
+    }
+  } catch {
+    // pnpm-workspace.yaml not found — fall through to defaults
+  }
+  return FALLBACK_WORKSPACE_ROOTS;
+}
+
 async function discoverWorkspacePackages(
   projectPath: string,
 ): Promise<WorkspacePackage[]> {
-  const roots: Array<{ dir: string; kind: WorkspacePackage["kind"] }> = [
-    { dir: "apps", kind: "app" },
-    { dir: "packages", kind: "package" },
-  ];
+  const roots = await getWorkspaceRoots(projectPath);
 
   const packages: WorkspacePackage[] = [];
 
@@ -206,10 +257,19 @@ export async function buildProjectContextSnapshot(
   await mkdir(contextDir, { recursive: true });
 
   const gitService = createGitService({ cwd: projectPath });
-  const currentHash = await gitService.getStatusHash().catch(() => "");
+  const [currentHash, headCommitResult] = await Promise.all([
+    gitService.getStatusHash().catch(() => ""),
+    gitService.getHeadCommit().catch(() => ({ ok: false as const, error: { message: "unknown" } })),
+  ]);
+  const currentHeadCommit = headCommitResult.ok ? headCommitResult.value : "";
 
   const cached = await loadContextSnapshot(contextDir);
-  if (cached && !options.force && cached.meta.statusHash === currentHash) {
+  if (
+    cached &&
+    !options.force &&
+    cached.meta.statusHash === currentHash &&
+    (cached.meta.headCommit ?? "") === currentHeadCommit
+  ) {
     return cached;
   }
 
@@ -232,7 +292,6 @@ export async function buildProjectContextSnapshot(
   const markdownSections: string[] = [];
   markdownSections.push(`# Project Context Snapshot`);
   markdownSections.push(`Generated: ${new Date().toISOString()}`);
-  markdownSections.push(`Root: ${projectPath}`);
   markdownSections.push("");
   markdownSections.push("## Project Info");
   if (packageJson) {
@@ -282,6 +341,7 @@ export async function buildProjectContextSnapshot(
     generatedAt: new Date().toISOString(),
     root: projectPath,
     statusHash: currentHash,
+    headCommit: currentHeadCommit || undefined,
     charCount: rawMarkdown.length,
   };
 

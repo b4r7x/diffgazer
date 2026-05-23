@@ -36,10 +36,10 @@ async function createReviewApp(): Promise<Hono> {
 }
 
 async function trustProject(projectRoot: string): Promise<void> {
-  const { getProjectInfo, saveTrust } = await import("../../shared/lib/config/store.js");
-  const project = getProjectInfo(projectRoot);
-  saveTrust({
-    projectId: project.projectId,
+  const { ensureProjectFile, saveTrust } = await import("../../shared/lib/config/store.js");
+  const project = ensureProjectFile(projectRoot);
+  await saveTrust({
+    projectId: project.projectId!,
     repoRoot: projectRoot,
     trustedAt: "2024-01-01T00:00:00.000Z",
     capabilities: { readFiles: true, runCommands: false },
@@ -190,8 +190,8 @@ async function configureSetup(projectRoot: string): Promise<void> {
   const { updateSettings, saveProviderCredentials } = await import(
     "../../shared/lib/config/store.js"
   );
-  updateSettings({ secretsStorage: "file" });
-  saveProviderCredentials({
+  await updateSettings({ secretsStorage: "file" });
+  await saveProviderCredentials({
     provider: "gemini",
     apiKey: "test-key-not-real",
     model: "gemini-2.0-flash",

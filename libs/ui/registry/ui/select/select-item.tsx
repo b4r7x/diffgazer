@@ -31,7 +31,7 @@ const selectItemVariants = cva(
     compoundVariants: [
       { variant: "card", state: ["default", "selectedMulti"], class: "text-muted-foreground hover:bg-border/30" },
       { variant: "card", state: "highlighted", class: "text-muted-foreground bg-border/30" },
-      { variant: "card", state: ["selected", "selectedMultiHighlighted"], class: "bg-muted-foreground text-white font-medium" },
+      { variant: "card", state: ["selected", "selectedMultiHighlighted"], class: "bg-muted-foreground text-background font-medium" },
     ],
     defaultVariants: { state: "default", variant: "default" },
   }

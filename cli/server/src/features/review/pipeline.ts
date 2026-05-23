@@ -28,7 +28,7 @@ import {
 } from "./types.js";
 import { type Result, ok, err } from "@diffgazer/core/result";
 import { getErrorMessage } from "@diffgazer/core/errors";
-import { stepStart, stepComplete } from "./step-events.js";
+import { stepStart, stepComplete, stepError } from "./step-events.js";
 import { generateReport } from "./summary.js";
 
 export async function resolveReviewConfig(params: {
@@ -50,11 +50,12 @@ export async function resolveReviewConfig(params: {
   try {
     const contextSnapshot = await buildProjectContextSnapshot(projectPath);
     projectContext = contextSnapshot.markdown;
+    await emit(stepComplete("context"));
   } catch (error) {
     console.warn("[review] project context snapshot failed:", getErrorMessage(error));
     projectContext = "";
+    await emit(stepError("context", `Context build failed: ${getErrorMessage(error)}`));
   }
-  await emit(stepComplete("context"));
 
   return { activeLenses, profile, projectContext };
 }
@@ -83,7 +84,7 @@ export async function executeReview(params: {
     {
       concurrency: getSettings().agentExecution === "parallel" ? config.activeLenses.length : 1,
       projectContext: config.projectContext,
-      partialOnAllFailed: true,
+      partialOnAllFailed: false,
       signal,
     },
   );
@@ -94,7 +95,7 @@ export async function executeReview(params: {
 
   await emit(stepComplete("review"));
 
-  return ok({ issues: result.value.issues, summary: result.value.summary });
+  return ok({ issues: result.value.issues, summary: result.value.summary, lensStats: result.value.lensStats });
 }
 
 export async function finalizeReview(params: {
@@ -109,6 +110,7 @@ export async function finalizeReview(params: {
   activeLenses: LensId[];
   startTime: number;
   signal?: AbortSignal;
+  headCommit?: string;
 }): Promise<Result<ReviewResult, ReviewAbort>> {
   const {
     outcome,
@@ -122,10 +124,12 @@ export async function finalizeReview(params: {
     activeLenses,
     startTime,
     signal,
+    headCommit,
   } = params;
 
   await emit(stepStart("enrich"));
 
+  const reviewedFiles = new Set(parsed.files.map((f) => f.filePath));
   const enrichedIssues = await enrichIssues(
     outcome.issues,
     gitService,
@@ -133,6 +137,7 @@ export async function finalizeReview(params: {
       await emit(event);
     },
     signal,
+    reviewedFiles,
   );
 
   await emit(stepComplete("enrich"));
@@ -143,8 +148,9 @@ export async function finalizeReview(params: {
 
   await emit(stepComplete("report"));
 
-  const status = await gitService.getStatus().catch(() => null);
+  const statusResult = await gitService.getStatus().catch(() => null);
   signal?.throwIfAborted();
+  const status = statusResult?.ok ? statusResult.value : null;
 
   const saveResult = await saveReview({
     reviewId,
@@ -153,10 +159,11 @@ export async function finalizeReview(params: {
     result: finalResult,
     diff: parsed,
     branch: status?.branch ?? null,
-    commit: null,
+    commit: headCommit ?? null,
     profile: profileId,
     lenses: activeLenses,
     durationMs: Date.now() - startTime,
+    lensStats: outcome.lensStats,
   });
 
   if (!saveResult.ok) {

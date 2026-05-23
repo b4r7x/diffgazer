@@ -48,7 +48,7 @@ interface GlobalLayoutProps {
 
 export function GlobalLayout({ children }: GlobalLayoutProps) {
   return (
-    <div className="tui-base h-screen flex flex-col overflow-hidden selection:bg-tui-blue selection:text-black">
+    <div className="tui-base h-screen min-w-[768px] flex flex-col overflow-hidden selection:bg-tui-blue selection:text-black">
       <ConnectedHeader />
       <main className="flex-1 flex flex-col overflow-hidden">{children}</main>
       <ConnectedFooter />

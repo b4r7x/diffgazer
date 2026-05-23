@@ -12,6 +12,7 @@ import {
   ReviewIdParamSchema,
 } from "./schemas.js";
 import {
+  cancelSessionHandler,
   createReviewHandler,
   deleteReviewHandler,
   drilldownHandler,
@@ -49,6 +50,14 @@ reviewRouter.get(
   requireRepoAccess,
   zValidator("query", ActiveSessionQuerySchema, zodErrorHandler),
   (c) => getActiveSessionHandler(c, c.req.valid("query").mode ?? "unstaged"),
+);
+
+reviewRouter.delete(
+  "/sessions/:id",
+  requireSetup,
+  requireRepoAccess,
+  zValidator("param", ReviewIdParamSchema, zodErrorHandler),
+  (c) => cancelSessionHandler(c, c.req.valid("param").id),
 );
 
 reviewRouter.get(

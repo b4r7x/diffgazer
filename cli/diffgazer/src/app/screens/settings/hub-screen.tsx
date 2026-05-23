@@ -9,7 +9,7 @@ import { Panel } from "../../../components/ui/panel.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
 import { Spinner } from "../../../components/ui/spinner.js";
 import { Menu } from "../../../components/ui/menu.js";
-import { SETTINGS_MENU_ITEMS, type SettingsAction } from "@diffgazer/core/schemas/ui";
+import { SETTINGS_MENU_ITEMS, type SettingsAction } from "@diffgazer/core/schemas/presentation";
 import { SETTINGS_SHORTCUTS } from "../../../config/navigation.js";
 import { useNavigation } from "../../navigation-context.js";
 import type { Route } from "../../routes.js";

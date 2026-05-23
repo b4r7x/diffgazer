@@ -4,6 +4,7 @@ import { useTheme } from "../../../../theme/theme-context.js";
 import { RadioGroup } from "../../../../components/ui/radio.js";
 import { Badge } from "../../../../components/ui/badge.js";
 import { Spinner } from "../../../../components/ui/spinner.js";
+import { Input } from "../../../../components/ui/input.js";
 import { useOpenRouterModels, guardQueryState } from "@diffgazer/core/api/hooks";
 import { AVAILABLE_PROVIDERS } from "@diffgazer/core/schemas/config";
 import type { ModelInfo, OpenRouterModel } from "@diffgazer/core/schemas/config";
@@ -84,6 +85,13 @@ export function ModelStep({
         <Box flexDirection="column" gap={1}>
           <Text color={tokens.muted}>{subtitle}</Text>
           <Text color={tokens.error}>Failed to load models: {err.message}</Text>
+          <Text color={tokens.muted}>Enter a model ID manually (e.g. openai/gpt-4o):</Text>
+          <Input
+            value={value}
+            onChange={onChange}
+            placeholder="openai/gpt-4o"
+            isActive={isActive}
+          />
         </Box>
       ),
     });

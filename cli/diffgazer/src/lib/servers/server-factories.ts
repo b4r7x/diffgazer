@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 import open from "open";
 import { getErrorMessage } from "@diffgazer/core/errors";
 import { config } from "../../config.js";
@@ -6,6 +8,20 @@ import { createApiServer } from "./api-server.js";
 import type { ServerController } from "./create-process-server.js";
 import { createEmbeddedServer } from "./embedded-server.js";
 import { createWebServer } from "./web-server.js";
+
+export function findGitRoot(startPath: string): string {
+  let current = resolve(startPath);
+  while (true) {
+    if (existsSync(join(current, ".git"))) {
+      return current;
+    }
+    const parent = dirname(current);
+    if (parent === current) {
+      return resolve(startPath);
+    }
+    current = parent;
+  }
+}
 
 type BrowserOpener = (address: string) => Promise<unknown>;
 
@@ -77,11 +93,12 @@ export function createDevServerFactories(
 export function createProdServerFactories(
   options: ServerFactoryOptions = {},
 ): Array<() => ServerController> {
+  const projectRoot = findGitRoot(process.cwd());
   return [
     () =>
       createEmbeddedServer({
         port: parsePortEnv(process.env.PORT, config.ports.api),
-        projectRoot: process.cwd(),
+        projectRoot,
         onReady: createOpenBrowserHandler(options.openBrowser),
       }),
   ];

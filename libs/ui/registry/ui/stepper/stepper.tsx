@@ -112,6 +112,12 @@ export function Stepper({
     return target?.id ?? null;
   }, [steps]);
 
+  // Note: Stepper implements its own roving focus instead of using
+  // @diffgazer/keys useNavigation. The navigation contract differs: Stepper
+  // items use `data-step-id` attribute selectors and filter by
+  // `aria-disabled`, while useNavigation uses `data-value` + role-based
+  // selectors. Routing through useNavigation would require rewriting the
+  // step trigger data contract, which is a public API change.
   const moveFocus = useCallback(
     (next: (count: number, current: number) => number) => {
       const list = listRef.current;

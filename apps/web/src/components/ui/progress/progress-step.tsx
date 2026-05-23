@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Stepper, StepperSubstep, type SubstepStatus } from "@diffgazer/ui/components/stepper";
-import type { ProgressStatus, ProgressSubstepData } from '@diffgazer/core/schemas/ui';
+import type { ProgressStatus, ProgressSubstepData } from '@diffgazer/core/schemas/presentation';
 
 export type { ProgressStatus };
 

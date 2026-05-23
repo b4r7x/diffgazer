@@ -43,10 +43,15 @@ export interface ResumeReviewOptions {
   onEnrichEvent?: CoreStreamReviewOptions["onEnrichEvent"];
 }
 
+export interface ResumeReviewResult {
+  result: import("@diffgazer/core/schemas/review").ReviewResult;
+  reviewId: string;
+}
+
 export async function resumeReviewStream(
   client: ApiClient,
   options: ResumeReviewOptions
-): Promise<Result<void, StreamReviewError>> {
+): Promise<Result<ResumeReviewResult, StreamReviewError>> {
   const { reviewId, signal, ...handlers } = options;
 
   let response: Response;
@@ -73,13 +78,16 @@ export async function resumeReviewStream(
     return err({ code: "STREAM_ERROR", message: "No response body" });
   }
 
-  const result = await processReviewStream(reader, handlers);
+  const streamResult = await processReviewStream(reader, handlers);
 
-  if (!result.ok) {
-    return err(result.error);
+  if (!streamResult.ok) {
+    return err(streamResult.error);
   }
 
-  return ok(undefined);
+  return ok({
+    result: streamResult.value.result,
+    reviewId: streamResult.value.reviewId,
+  });
 }
 
 export async function getReviews(
@@ -125,6 +133,13 @@ export async function deleteReview(
   return client.delete<{ existed: boolean }>(`/api/review/reviews/${id}`);
 }
 
+export async function cancelReviewSession(
+  client: ApiClient,
+  reviewId: string,
+): Promise<{ cancelled: boolean }> {
+  return client.delete<{ cancelled: boolean }>(`/api/review/sessions/${reviewId}`);
+}
+
 export async function runReviewDrilldown(
   client: ApiClient,
   reviewId: string,
@@ -144,6 +159,7 @@ export const bindReview = (client: ApiClient) => ({
   getReviewContext: () => getReviewContext(client),
   refreshReviewContext: (options?: { force?: boolean }) => refreshReviewContext(client, options),
   deleteReview: (id: string) => deleteReview(client, id),
+  cancelReviewSession: (reviewId: string) => cancelReviewSession(client, reviewId),
   runReviewDrilldown: (reviewId: string, issueId: string) =>
     runReviewDrilldown(client, reviewId, issueId),
 });

@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { useNavigate } from "@tanstack/react-router";
-import type { ContextInfo, MenuAction, Shortcut } from "@diffgazer/core/schemas/ui";
+import type { ContextInfo, MenuAction, Shortcut } from "@diffgazer/core/schemas/presentation";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
 import { isApiError, type ShutdownResult } from "@diffgazer/core/api";
 import { isReviewStartAction } from "@diffgazer/core/navigation";
-import { MAIN_MENU_SHORTCUTS, MENU_ITEMS } from "@diffgazer/core/schemas/ui";
+import { MAIN_MENU_SHORTCUTS, MENU_ITEMS } from "@diffgazer/core/schemas/presentation";
 import { useKey, useScope } from "@diffgazer/keys";
 import { usePageFooter } from "@diffgazer/core/footer";
 import { toast } from "@diffgazer/ui/components/toast";
@@ -205,7 +205,7 @@ export function HomePagePresentation({
     rightShortcuts: needsTrust
       ? [
           { key: "s", label: "Settings" },
-          { key: "h", label: "Help" },
+          { key: "?", label: "Help" },
         ]
       : [],
   });
@@ -214,7 +214,21 @@ export function HomePagePresentation({
     void handleQuit();
   });
   useKey("s", () => navigate({ to: "/settings" }));
-  useKey("h", () => handleActivate("help"));
+  useKey("h", () => handleActivate("history"));
+
+  // KEY-011: shifted punctuation ("?") is not matchable via useKey due to
+  // event.shiftKey mismatch. Direct keydown listener as workaround.
+  const handleActivateRef = useRef(handleActivate);
+  handleActivateRef.current = handleActivate;
+  useEffect(() => {
+    const listener = (event: KeyboardEvent) => {
+      if (event.key !== "?") return;
+      event.preventDefault();
+      handleActivateRef.current("help");
+    };
+    window.addEventListener("keydown", listener);
+    return () => window.removeEventListener("keydown", listener);
+  }, []);
 
   if (needsTrust && projectId && repoRoot) {
     return <TrustPanel directory={repoRoot} projectId={projectId} />;

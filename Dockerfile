@@ -14,14 +14,18 @@ COPY scripts/ scripts/
 
 RUN pnpm install --frozen-lockfile
 
+ARG REGISTRY_ORIGIN=https://r.b4r7.dev
+ENV REGISTRY_ORIGIN=${REGISTRY_ORIGIN}
+
 RUN pnpm --filter @diffgazer/registry build
 RUN pnpm --filter @diffgazer/core build
 RUN pnpm --filter @diffgazer/keys build
 RUN pnpm --filter @diffgazer/ui build
 
-ARG REGISTRY_ORIGIN=https://docs.diffgazer.b4r7.dev
-ENV REGISTRY_ORIGIN=${REGISTRY_ORIGIN}
-ENV DIFFGAZER_DEV=1
+# DIFFGAZER_DEV is only set when explicitly passed as a build arg.
+# Without it, artifact sync auto-detects workspace vs package mode.
+ARG DIFFGAZER_DEV
+ENV DIFFGAZER_DEV=${DIFFGAZER_DEV}
 
 RUN pnpm --filter @diffgazer/docs build
 

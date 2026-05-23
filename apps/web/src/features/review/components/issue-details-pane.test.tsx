@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
-import type { IssueTab } from "@diffgazer/core/schemas/ui";
+import type { IssueTab } from "@diffgazer/core/schemas/presentation";
 import { makeIssue } from "@/testing";
 import { IssueDetailsPane } from "./issue-details-pane";
 

@@ -9,16 +9,8 @@ export function Footer() {
           <span>Switch Focus</span>
         </div>
         <div className="flex items-center gap-1.5 hover:text-foreground transition-colors">
-          <Kbd size="sm">j/k</Kbd>
-          <span>Scroll</span>
-        </div>
-        <div className="flex items-center gap-1.5 hover:text-foreground transition-colors">
           <Kbd size="sm">/</Kbd>
           <span>Search</span>
-        </div>
-        <div className="flex items-center gap-1.5 hover:text-foreground transition-colors">
-          <Kbd size="sm">c</Kbd>
-          <span>Copy Code</span>
         </div>
       </div>
       <div className="flex items-center gap-1.5 hover:text-foreground transition-colors">

@@ -130,8 +130,15 @@ describe("ThemeProvider", () => {
     expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
   });
 
-  it("persists the chosen theme to localStorage and saves it through the API", () => {
+  it("persists the chosen theme to localStorage and saves it through the API", async () => {
     let capturedSetTheme: ThemeContextValue["setTheme"] | undefined;
+    const mockMutateAsync = vi.fn().mockResolvedValue(undefined);
+    mockUseSaveSettings.mockReturnValue({
+      mutate: mockMutate,
+      mutateAsync: mockMutateAsync,
+      isPending: false,
+      error: null,
+    });
 
     render(
       <ThemeProvider>
@@ -140,10 +147,12 @@ describe("ThemeProvider", () => {
     );
 
     expect(capturedSetTheme).toBeDefined();
-    capturedSetTheme!("dark");
+    await act(async () => {
+      await capturedSetTheme!("dark");
+    });
 
     expect(localStorage.getItem("diffgazer-theme")).toBe("dark");
-    expect(mockMutate).toHaveBeenCalledWith({ theme: "dark" });
+    expect(mockMutateAsync).toHaveBeenCalledWith({ theme: "dark" });
   });
 
   it("applies the chosen theme immediately even when the settings cache is stale", () => {

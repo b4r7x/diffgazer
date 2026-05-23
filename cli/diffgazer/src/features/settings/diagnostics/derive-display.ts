@@ -1,5 +1,5 @@
 import type { SetupStatus } from "@diffgazer/core/schemas/config";
-import type { BadgeVariant } from "@diffgazer/core/schemas/ui";
+import type { BadgeVariant } from "@diffgazer/core/schemas/presentation";
 import type { ContextStatus } from "./derive-actions.js";
 
 export type ServerStatus = "checking" | "connected" | "error";

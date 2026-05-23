@@ -52,7 +52,7 @@ export interface UseScopedNavigationReturn<TValue extends string = string> {
  *         <li
  *           key={item.id}
  *           role="option"
- *           data-nav-item="option"
+ *           data-diffgazer-navigation-item="option"
  *           data-value={item.id}
  *           aria-selected={highlighted === item.id}
  *         >

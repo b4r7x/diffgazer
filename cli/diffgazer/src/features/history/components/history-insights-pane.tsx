@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 import { Box, Text, useInput } from "ink";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
-import { SEVERITY_ORDER, type SeverityCounts } from "@diffgazer/core/schemas/ui";
+import { SEVERITY_ORDER, type SeverityCounts } from "@diffgazer/core/schemas/presentation";
 import { capitalize } from "@diffgazer/core/strings";
 import { ScrollArea } from "../../../components/ui/scroll-area.js";
 import { SeverityBreakdown } from "../../review/components/severity-breakdown.js";

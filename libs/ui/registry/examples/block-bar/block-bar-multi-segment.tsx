@@ -10,7 +10,7 @@ export default function BlockBarMultiSegment() {
         { value: 25, variant: "warning" },
         { value: 15, variant: "error" },
       ]}
-      aria-valuetext="60 passed, 25 warnings, 15 failures"
+      valueText="60 passed, 25 warnings, 15 failures"
     />
   );
 }

@@ -5,7 +5,7 @@ import { getLibrariesWithArtifacts } from "./src/lib/docs-library"
 
 export function docsDataRebuild(): Plugin {
   const APP_ROOT = resolve(import.meta.dirname)
-  const WORKSPACE_ROOT = resolve(APP_ROOT, "../../..")
+  const WORKSPACE_ROOT = resolve(APP_ROOT, "../..")
   const IS_DEV = Boolean(process.env.DIFFGAZER_DEV)
   const isVitest = Boolean(process.env.VITEST)
   let server: ViteDevServer

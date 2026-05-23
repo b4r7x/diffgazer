@@ -18,9 +18,9 @@ async function createApp(): Promise<Hono> {
 
 async function saveTrust(readFiles: boolean): Promise<void> {
   const store = await import("../lib/config/store.js");
-  const project = store.getProjectInfo(projectRoot);
-  store.saveTrust({
-    projectId: project.projectId,
+  const project = store.ensureProjectFile(projectRoot);
+  await store.saveTrust({
+    projectId: project.projectId!,
     repoRoot: projectRoot,
     trustedAt: "2024-01-01T00:00:00.000Z",
     capabilities: { readFiles, runCommands: false },
@@ -86,5 +86,24 @@ describe("requireRepoAccess", () => {
 
     expect(response.status).toBe(200);
     expect(body).toEqual({ ok: true });
+  });
+
+  it("blocks requests when trust repoRoot does not match the resolved project root", async () => {
+    const store = await import("../lib/config/store.js");
+    const project = store.ensureProjectFile(projectRoot);
+    await store.saveTrust({
+      projectId: project.projectId!,
+      repoRoot: "/some/other/path",
+      trustedAt: "2024-01-01T00:00:00.000Z",
+      capabilities: { readFiles: true, runCommands: false },
+      trustMode: "persistent",
+    });
+    const app = await createApp();
+
+    const response = await request(app);
+    const body = await response.json() as { error: { code: string } };
+
+    expect(response.status).toBe(403);
+    expect(body.error.code).toBe("TRUST_REQUIRED");
   });
 });

@@ -219,7 +219,8 @@ export function useFocusZone<T extends string>(
     allowInInput,
   });
 
-  useScope(scope ?? null, { enabled: enabled && !!scope });
+  const hasExplicitScope = "scope" in options;
+  useScope(hasExplicitScope ? (scope ?? null) : null, { enabled: enabled && hasExplicitScope && scope != null });
 
   useEffect(() => {
     if (!enabled || !focus) return;

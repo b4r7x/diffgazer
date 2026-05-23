@@ -1,10 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router"
+import { createFileRoute, notFound } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
 import browserCollections from "fumadocs-mdx:collections/browser"
 import { Suspense } from "react"
 import { DocsContentLayout } from "@/layouts/docs-content-layout"
 import { Route as DocsRoute } from "@/routes/$lib/docs"
-import { DocsNotFoundBlock } from "@/components/docs-not-found"
 import { ContentSpinner } from "@/components/content-spinner"
 import {
   DocsPageBody,
@@ -41,7 +40,7 @@ export const Route = createFileRoute("/$lib/docs/$")({
     const library = parseDocsLibrary(params.lib)
     const routeSlugs = params._splat?.split("/") ?? []
     const data = await serverLoader({ data: { library, routeSlugs } })
-    if (!data) return null
+    if (!data) throw notFound()
 
     const [componentData, hookData] = await Promise.all([
       loadDocData<ComponentData>(library, "components", data.component),
@@ -55,15 +54,7 @@ export const Route = createFileRoute("/$lib/docs/$")({
     return { ...data, componentData, hookData }
   },
   head: ({ loaderData, params }) => {
-    if (!loaderData) {
-      const fallbackLibrary = parseDocsLibrary(params.lib)
-      const fallbackPathname = docsPath(fallbackLibrary, params._splat ?? undefined)
-      const fallback = buildPageSeo({
-        title: "Docs - diffgazer",
-        pathname: fallbackPathname,
-      })
-      return { meta: fallback.meta, links: fallback.links }
-    }
+    if (!loaderData) return {}
     const title = `${loaderData.title} - ${getDocsLibraryConfig(loaderData.library).displayName} Docs`
     const seo = buildPageSeo({
       title,
@@ -120,10 +111,6 @@ const clientLoader = browserCollections.docs.createClientLoader({
 function Page() {
   const data = Route.useLoaderData()
   const { pageTree, library } = DocsRoute.useLoaderData()
-
-  if (!data) {
-    return <DocsNotFoundBlock tree={pageTree} library={library} />
-  }
 
   return (
     <MdxDocsPage

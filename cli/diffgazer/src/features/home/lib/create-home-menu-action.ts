@@ -1,11 +1,19 @@
 import type { UseMutationResult } from "@tanstack/react-query";
-import type { MenuAction } from "@diffgazer/core/schemas/ui";
+import type { MenuAction } from "@diffgazer/core/schemas/presentation";
 import { isReviewStartAction } from "@diffgazer/core/navigation";
 import type { Route } from "../../../app/routes.js";
+
+type RouteReviewMode = Extract<Route, { screen: "review" }>["mode"];
+
+export interface ActiveSessionInfo {
+  reviewId: string;
+  mode: NonNullable<RouteReviewMode>;
+}
 
 export interface HomeMenuActionOptions {
   navigate: (route: Route) => void;
   hasActiveSession: boolean;
+  activeSession?: ActiveSessionInfo | null;
   isTrusted?: boolean;
   shutdown: Pick<UseMutationResult<unknown, unknown, void, unknown>, "mutate">;
   onExit: () => void;
@@ -14,6 +22,7 @@ export interface HomeMenuActionOptions {
 export function createHomeMenuAction({
   navigate,
   hasActiveSession,
+  activeSession,
   isTrusted = false,
   shutdown,
   onExit,
@@ -35,7 +44,13 @@ export function createHomeMenuAction({
       case "review-files":
         return;
       case "resume-review":
-        if (hasActiveSession) {
+        if (hasActiveSession && activeSession) {
+          navigate({
+            screen: "review",
+            reviewId: activeSession.reviewId,
+            mode: activeSession.mode,
+          });
+        } else if (hasActiveSession) {
           navigate({ screen: "review" });
         }
         return;

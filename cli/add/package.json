@@ -1,6 +1,6 @@
 {
   "name": "@diffgazer/add",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Diffgazer registry installer for UI components and keyboard hooks",
   "license": "MIT",
   "author": "diffgazer",

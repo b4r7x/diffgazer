@@ -4,14 +4,14 @@ import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import {
   type UISeverityFilter,
   calculateSeverityCounts,
-} from "@diffgazer/core/schemas/ui";
+} from "@diffgazer/core/schemas/presentation";
 import { useTheme } from "../../../theme/theme-context.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
 import { getVisibleSliceOffset } from "../../../lib/visible-slice-offset.js";
 import { IssuePreviewItem } from "./issue-preview-item.js";
 import { SeverityFilterGroup } from "./severity-filter-group.js";
 
-type SubZone = "filter" | "issues";
+export type IssueListSubZone = "filter" | "issues";
 
 export interface IssueListPaneProps {
   issues: ReviewIssue[];
@@ -23,6 +23,8 @@ export interface IssueListPaneProps {
   height?: number;
   severityFilter: UISeverityFilter;
   onSeverityFilterChange: (filter: UISeverityFilter) => void;
+  subZone?: IssueListSubZone;
+  onSubZoneChange?: (zone: IssueListSubZone) => void;
 }
 
 export function IssueListPane({
@@ -35,11 +37,15 @@ export function IssueListPane({
   height = 15,
   severityFilter,
   onSeverityFilterChange,
+  subZone: externalSubZone,
+  onSubZoneChange,
 }: IssueListPaneProps) {
   const { tokens } = useTheme();
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const [trackedIssueCount, setTrackedIssueCount] = useState(issues.length);
-  const [subZone, setSubZone] = useState<SubZone>("issues");
+  const [internalSubZone, setInternalSubZone] = useState<IssueListSubZone>("issues");
+  const subZone = externalSubZone ?? internalSubZone;
+  const setSubZone = onSubZoneChange ?? setInternalSubZone;
   const counts = calculateSeverityCounts(allIssues);
 
   if (issues.length !== trackedIssueCount) {
@@ -50,7 +56,7 @@ export function IssueListPane({
   useInput(
     (input, key) => {
       if (subZone === "filter") {
-        if (key.downArrow || input === "j") {
+        if (key.downArrow) {
           setSubZone("issues");
         }
         // Left/right/enter/space handled by SeverityFilterGroup.
@@ -58,7 +64,7 @@ export function IssueListPane({
       }
 
       if (issues.length === 0) {
-        if (key.upArrow || input === "k") {
+        if (key.upArrow) {
           setSubZone("filter");
         }
         return;

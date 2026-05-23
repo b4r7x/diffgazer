@@ -60,14 +60,14 @@ export function usePresence({
   }
 
   function onAnimationEnd(e: AnimationEvent) {
-    if (ref && e.target !== ref.current) return;
+    if (ref) return; // native listener handles it
     const expected = exitAnimationNameRef.current;
     if (expected && e.animationName !== expected) return;
     commitExit();
   }
 
   function onAnimationCancel(e: AnimationEvent) {
-    if (ref && e.target !== ref.current) return;
+    if (ref) return; // native listener handles it
     const expected = exitAnimationNameRef.current;
     if (expected && e.animationName !== expected) return;
     commitExit();

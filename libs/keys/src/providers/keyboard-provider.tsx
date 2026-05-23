@@ -13,7 +13,7 @@ import {
 } from "react";
 import { DECLINE } from "../core/normalize-key-input.js";
 import { getOwnerView } from "../dom/dom.js";
-import { isEditableElement, matchesHotkey } from "../dom/keyboard-utils.js";
+import { canonicalizeHotkey, isEditableElement, matchesHotkey } from "../dom/keyboard-utils.js";
 
 type Handler = (event: KeyboardEvent) => unknown;
 
@@ -145,8 +145,8 @@ export function KeyboardProvider({ children }: { children: ReactNode }) {
 
     const isEditable = isEditableElement(event.target);
 
-    for (const [hotkey, entries] of scopeHandlers) {
-      if (!matchesHotkey(event, hotkey)) continue;
+    for (const [canonicalKey, entries] of scopeHandlers) {
+      if (!matchesHotkey(event, canonicalKey)) continue;
 
       for (let idx = entries.length - 1; idx >= 0; idx -= 1) {
         const entry = entries[idx]!;
@@ -161,13 +161,18 @@ export function KeyboardProvider({ children }: { children: ReactNode }) {
           const result = entry.handler(event);
           if (result === DECLINE) continue;
         } catch (error) {
-          console.error(`[@diffgazer/keys] Handler error for "${hotkey}":`, error);
+          console.error(`[@diffgazer/keys] Handler error for "${canonicalKey}":`, error);
         }
         return;
       }
     }
   });
 
+  // KEY-019: The provider installs its keydown listener on `window`, which
+  // means it only captures events from the provider's own document. Cross-
+  // document scenarios (iframes, multi-window) require either a provider per
+  // document or a future API that aggregates ownerDocuments from registered
+  // containerRefs. This is a known single-document limitation.
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       handleKeyDown(event);
@@ -177,36 +182,37 @@ export function KeyboardProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const register = useCallback((scope: string, hotkey: string, handler: Handler, options?: HandlerOptions) => {
+    const canonical = canonicalizeHotkey(hotkey);
     let scopeHandlers = handlers.current.get(scope);
     if (!scopeHandlers) {
       scopeHandlers = new Map<string, HandlerEntry[]>();
       handlers.current.set(scope, scopeHandlers);
     }
 
-    const existingEntries = scopeHandlers.get(hotkey) ?? [];
+    const existingEntries = scopeHandlers.get(canonical) ?? [];
     const entry: HandlerEntry = {
       id: nextHandlerId.current,
       handler,
       options,
     };
     nextHandlerId.current += 1;
-    scopeHandlers.set(hotkey, [...existingEntries, entry]);
+    scopeHandlers.set(canonical, [...existingEntries, entry]);
 
     return () => {
       const activeScopeHandlers = handlers.current.get(scope);
       if (!activeScopeHandlers) return;
 
-      const currentEntries = activeScopeHandlers.get(hotkey);
+      const currentEntries = activeScopeHandlers.get(canonical);
       if (!currentEntries) return;
 
       const remainingEntries = currentEntries.filter((candidate) => candidate.id !== entry.id);
       if (remainingEntries.length === 0) {
-        activeScopeHandlers.delete(hotkey);
+        activeScopeHandlers.delete(canonical);
         if (activeScopeHandlers.size === 0) {
           handlers.current.delete(scope);
         }
       } else {
-        activeScopeHandlers.set(hotkey, remainingEntries);
+        activeScopeHandlers.set(canonical, remainingEntries);
       }
     };
   }, []);

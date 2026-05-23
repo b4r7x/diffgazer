@@ -1,5 +1,5 @@
 import { Box, Text } from "ink";
-import type { ContextInfo } from "@diffgazer/core/schemas/ui";
+import type { ContextInfo } from "@diffgazer/core/schemas/presentation";
 import { Panel } from "../../../components/ui/panel.js";
 import { KeyValue } from "../../../components/ui/key-value.js";
 import { useTheme } from "../../../theme/theme-context.js";

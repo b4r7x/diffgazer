@@ -5,11 +5,12 @@
   "description": "Headless floating surface primitive. Composes Portal, presence, and floating-position to render an anchored, animated panel with data-state, data-side, data-align, and data-positioned attributes plus a transform-origin custom property. Used by Popover, Select, and other anchored surfaces.",
   "dependencies": [],
   "registryDependencies": [
-    "https://docs.diffgazer.b4r7.dev/r/ui/theme.json",
-    "https://docs.diffgazer.b4r7.dev/r/ui/portal.json",
-    "https://docs.diffgazer.b4r7.dev/r/ui/presence.json",
-    "https://docs.diffgazer.b4r7.dev/r/ui/floating-position.json",
-    "https://docs.diffgazer.b4r7.dev/r/ui/compose-refs.json"
+    "https://r.b4r7.dev/r/ui/theme.json",
+    "https://r.b4r7.dev/r/ui/portal.json",
+    "https://r.b4r7.dev/r/ui/presence.json",
+    "https://r.b4r7.dev/r/ui/floating-position.json",
+    "https://r.b4r7.dev/r/ui/compose-refs.json",
+    "https://r.b4r7.dev/r/ui/utils.json"
   ],
   "files": [
     {

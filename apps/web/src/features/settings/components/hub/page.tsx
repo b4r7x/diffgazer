@@ -8,7 +8,7 @@ import { useScopedRouteState, clearScopedRouteState } from "@/hooks/use-scoped-r
 import { useTheme } from "@/hooks/use-theme";
 import { useSettings } from "@diffgazer/core/api/hooks";
 import type { AgentExecution } from "@diffgazer/core/schemas/config";
-import { SETTINGS_MENU_ITEMS, type SettingsAction } from "@diffgazer/core/schemas/ui";
+import { SETTINGS_MENU_ITEMS, type SettingsAction } from "@diffgazer/core/schemas/presentation";
 import { SETTINGS_SHORTCUTS } from "@/config/navigation";
 
 const SETTINGS_ROUTES: Record<SettingsAction, string> = {

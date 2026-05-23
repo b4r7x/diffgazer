@@ -2,7 +2,7 @@ import { Box, Text } from "ink";
 import type {
   ProgressStatus,
   ProgressSubstepData,
-} from "@diffgazer/core/schemas/ui";
+} from "@diffgazer/core/schemas/presentation";
 import { Spinner } from "../../../components/ui/spinner.js";
 import { Badge } from "../../../components/ui/badge.js";
 import { useTheme } from "../../../theme/theme-context.js";

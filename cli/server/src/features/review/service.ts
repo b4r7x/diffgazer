@@ -7,6 +7,7 @@ import {
 import type { Result } from "@diffgazer/core/result";
 import { ok, err } from "@diffgazer/core/result";
 import {
+  buildScopeKey,
   createSession,
   markReady,
   addEvent,
@@ -92,9 +93,10 @@ export async function createReviewSession(
   }
 
   const headCommit = headCommitResult.value;
+  const scopeKey = buildScopeKey({ files, lenses: lensIds, profile: profileId });
 
   if (headCommit) {
-    const existingSession = getActiveSessionForProject(projectPath, headCommit, statusHash, mode);
+    const existingSession = getActiveSessionForProject(projectPath, headCommit, statusHash, mode, scopeKey);
     if (existingSession) {
       return ok({ reviewId: existingSession.reviewId, session: existingSession });
     }
@@ -103,7 +105,7 @@ export async function createReviewSession(
   cancelStaleSessionsForProjectMode(projectPath, mode, headCommit, statusHash);
 
   const reviewId = randomUUID();
-  const session = createSession(reviewId, projectPath, headCommit, statusHash, mode);
+  const session = createSession(reviewId, projectPath, headCommit, statusHash, mode, scopeKey);
   markReady(reviewId);
 
   void runReviewSession(
@@ -157,9 +159,13 @@ async function runReviewSession(
     }
     const outcome = outcomeResult.value;
 
+    const headCommitResult = await gitService.getHeadCommit();
+    const headCommit = headCommitResult.ok ? headCommitResult.value : undefined;
+
     const finalResultResult = await finalizeReview({
       outcome, gitService, emit, reviewId, projectPath, mode,
       parsed, profileId, activeLenses: config.activeLenses, startTime, signal,
+      headCommit,
     });
     if (!finalResultResult.ok) {
       await handleReviewFailure(finalResultResult.error, emit, reviewId);

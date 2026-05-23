@@ -62,6 +62,11 @@ interface RegistryFileWithContent {
 
 interface PublicRegistryItemJson {
   files?: RegistryFileWithContent[];
+  meta?: { hidden?: boolean };
+}
+
+interface PublicRegistryIndexJson {
+  items?: PublicRegistryItemJson[];
 }
 
 function buildItemPathMaps(registryPath: string): Map<string, Map<string, string>> {
@@ -97,6 +102,17 @@ export function createKeysSourceContentTransform(
 }
 
 export function transformKeysPublicRegistryImports(outputDir: string): void {
+  const indexPath = join(outputDir, "registry.json");
+  const index = JSON.parse(readFileSync(indexPath, "utf-8")) as PublicRegistryIndexJson;
+
+  if (index.items) {
+    const before = index.items.length;
+    index.items = index.items.filter((item) => !item.meta?.hidden);
+    if (index.items.length !== before) {
+      writeFileSync(indexPath, `${JSON.stringify(index, null, 2)}\n`);
+    }
+  }
+
   for (const entry of readdirSync(outputDir)) {
     if (!entry.endsWith(".json") || entry === "registry.json") continue;
 
