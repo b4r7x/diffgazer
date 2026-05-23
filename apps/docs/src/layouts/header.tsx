@@ -72,7 +72,7 @@ export function Header({ library }: HeaderProps) {
       })
 
       await navigate({
-        to: "/$lib/docs/$",
+        to: "/$lib/$",
         params: { lib: targetLib, _splat: slugs.join("/") },
       })
     } finally {

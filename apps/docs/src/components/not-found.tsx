@@ -11,7 +11,7 @@ export function GlobalNotFound() {
         title="Page not found"
         description="The requested route does not exist."
         primaryAction={
-          <Link to="/$lib/docs" params={{ lib: PRIMARY_DOCS_LIBRARY_ID }}>
+          <Link to="/$lib" params={{ lib: PRIMARY_DOCS_LIBRARY_ID }}>
             <Button variant="primary">Open docs</Button>
           </Link>
         }

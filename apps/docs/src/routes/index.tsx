@@ -22,7 +22,7 @@ function LandingPage() {
 				</p>
 
 				<div className="flex items-center justify-center gap-3">
-					<Link to="/$lib/docs" params={{ lib: PRIMARY_DOCS_LIBRARY_ID }}>
+					<Link to="/$lib" params={{ lib: PRIMARY_DOCS_LIBRARY_ID }}>
 						<Button variant="primary" bracket>
 							Get Started
 						</Button>
@@ -30,7 +30,7 @@ function LandingPage() {
 					{enabledLibraries.map((lib) => (
 						<Link
 							key={lib.id}
-							to="/$lib/docs/$"
+							to="/$lib/$"
 							params={{
 								lib: lib.id,
 								_splat: lib.defaultRouteSlugs.join("/"),

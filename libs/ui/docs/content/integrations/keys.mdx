@@ -111,14 +111,14 @@ function Editor() {
 
 | Hook | Purpose | Provider Required | Docs |
 |------|---------|:-:|------|
-| `useNavigation` | DOM-driven list/tab navigation (arrow keys, Home/End, Enter) | No | [Navigation](/ui/docs/integrations/keys-navigation) |
-| `useFocusTrap` | Trap Tab/Shift+Tab within a container | No | [Utilities](/ui/docs/integrations/keys-utilities) |
-| `useFocusRestore` | Capture and restore focus around temporary UI | No | [Utilities](/ui/docs/integrations/keys-utilities) |
-| `useScrollLock` | Prevent scrolling (ref-counted) | No | [Utilities](/ui/docs/integrations/keys-utilities) |
-| `useKey` | Bind keyboard shortcuts (single, array, or key map) | Yes* | [useKey](/ui/docs/integrations/keys-usekey) |
-| `useScope` | Push a named scope onto the stack | Yes | [useKey](/ui/docs/integrations/keys-usekey) |
-| `useFocusZone` | Multi-zone keyboard navigation with transitions | Yes | [Focus Zones](/ui/docs/integrations/keys-focus) |
-| `keys()` | Map multiple hotkeys to the same handler | No | [Utilities](/ui/docs/integrations/keys-utilities) |
+| `useNavigation` | DOM-driven list/tab navigation (arrow keys, Home/End, Enter) | No | [Navigation](/ui/integrations/keys-navigation) |
+| `useFocusTrap` | Trap Tab/Shift+Tab within a container | No | [Utilities](/ui/integrations/keys-utilities) |
+| `useFocusRestore` | Capture and restore focus around temporary UI | No | [Utilities](/ui/integrations/keys-utilities) |
+| `useScrollLock` | Prevent scrolling (ref-counted) | No | [Utilities](/ui/integrations/keys-utilities) |
+| `useKey` | Bind keyboard shortcuts (single, array, or key map) | Yes* | [useKey](/ui/integrations/keys-usekey) |
+| `useScope` | Push a named scope onto the stack | Yes | [useKey](/ui/integrations/keys-usekey) |
+| `useFocusZone` | Multi-zone keyboard navigation with transitions | Yes | [Focus Zones](/ui/integrations/keys-focus) |
+| `keys()` | Map multiple hotkeys to the same handler | No | [Utilities](/ui/integrations/keys-utilities) |
 
 \* `useKey` silently does nothing without a provider — safe to use in portable components.
 
@@ -128,7 +128,7 @@ function Editor() {
 
 ## Patterns with @diffgazer/ui
 
-@diffgazer/ui components declare their keyboard dependencies through registry metadata. In copy mode, `dgadd` can copy standalone hooks. In keys mode and runtime package mode, imports resolve through `@diffgazer/keys`. Components that expose controlled highlight state, selection state, or `onKeyDown` composition can still be coordinated by app-level handlers. See the [Patterns](/ui/docs/integrations/keys-patterns) page for complete integration examples with Menu, Dialog, CommandPalette, Tabs, and multi-zone layouts.
+@diffgazer/ui components declare their keyboard dependencies through registry metadata. In copy mode, `dgadd` can copy standalone hooks. In keys mode and runtime package mode, imports resolve through `@diffgazer/keys`. Components that expose controlled highlight state, selection state, or `onKeyDown` composition can still be coordinated by app-level handlers. See the [Patterns](/ui/integrations/keys-patterns) page for complete integration examples with Menu, Dialog, CommandPalette, Tabs, and multi-zone layouts.
 
 ---
 
@@ -158,4 +158,4 @@ function Editor() {
 
 <LibraryHookSource library="ui" sectionTitle="Utility Hook Source Code" hint={<>Copy these hooks into your project or install via a local CLI tarball before publication: <code className="text-xs bg-border px-1 rounded">pnpm exec dgadd add ui/controllable-state</code></>} />
 
-For the complete API reference, visit the [@diffgazer/keys documentation](/keys/docs/api).
+For the complete API reference, visit the [@diffgazer/keys documentation](/keys/api).

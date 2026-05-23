@@ -21,7 +21,7 @@ export function DocsNotFoundBlock({ tree, library }: DocsNotFoundBlockProps) {
         description="The page you requested does not exist or was moved."
         primaryAction={(
           <Link
-            to="/$lib/docs/$"
+            to="/$lib/$"
             params={{ lib: library, _splat: defaultRouteSlugs.join("/") }}
           >
             <Button variant="primary">Go to docs home</Button>

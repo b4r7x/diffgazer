@@ -76,7 +76,7 @@ function toSearchResult(item: ServerSearchResult): SearchResult | null {
         : (item.breadcrumbs[item.breadcrumbs.length - 1] ?? item.content),
     ),
     excerpt: item.type !== "page" ? stripMarkTags(item.content) : "",
-    section: url.match(/^\/[^/]+\/docs\/([^/]+)/)?.[1] ?? "general",
+    section: url.match(/^\/[^/]+\/([^/]+)/)?.[1] ?? "general",
     library,
   }
 }

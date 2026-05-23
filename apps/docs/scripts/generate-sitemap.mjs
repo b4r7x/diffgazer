@@ -20,7 +20,7 @@ export function getPreRenderPages() {
   const pages = [
     { path: "/", source: null },
     ...enabledLibraries.map((lib) => ({
-      path: `/${lib.id}/docs`,
+      path: `/${lib.id}`,
       source: findLibraryIntroSource(contentDir, lib.id),
     })),
   ];
@@ -42,7 +42,7 @@ export function getPreRenderPages() {
 
       const libRel = rel.slice(`${lib.id}/`.length).replace(/(?:^|\/)index$/, "");
       if (libRel.length === 0) continue;
-      pages.push({ path: `/${lib.id}/docs/${libRel}`, source: full });
+      pages.push({ path: `/${lib.id}/${libRel}`, source: full });
     }
   }
   walkMdx(contentDir);
@@ -66,7 +66,7 @@ function pushGeneratedListPages(pages, libId, fileName, routeSegment) {
   const items = JSON.parse(readFileSync(listPath, "utf-8"));
   for (const item of items) {
     pages.push({
-      path: `/${libId}/docs/${routeSegment}/${item.name}`,
+      path: `/${libId}/${routeSegment}/${item.name}`,
       source: resolveItemMdxSource(libId, routeSegment, item.name),
     });
   }

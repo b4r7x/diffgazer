@@ -442,42 +442,14 @@ describe("Tabs", () => {
     expect(missingPanel).not.toHaveAttribute("aria-labelledby")
   })
 
-  it("warns once and does not crash when rendered without triggers or defaultValue", () => {
-    // Boundary mock: capture dev console warning emitted by Tabs when triggers are missing.
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
-
-    const { rerender } = render(
+  it("does not crash when rendered without triggers or defaultValue", () => {
+    render(
       <Tabs>
         <Tabs.List />
       </Tabs>,
     )
 
     expect(screen.queryByRole("tab")).toBeNull()
-    expect(warnSpy).toHaveBeenCalledTimes(1)
-    expect(warnSpy.mock.calls[0]?.[0]).toMatch(/\[Tabs\].*Tabs\.Trigger/)
-
-    rerender(
-      <Tabs>
-        <Tabs.List />
-      </Tabs>,
-    )
-    expect(warnSpy).toHaveBeenCalledTimes(1)
-
-    warnSpy.mockRestore()
-  })
-
-  it("does not warn when triggers are absent but defaultValue is set (lazy-loaded triggers)", () => {
-    // Boundary mock: verify Tabs stays silent when consumer has declared intent via defaultValue.
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
-
-    render(
-      <Tabs defaultValue="async-one">
-        <Tabs.List />
-      </Tabs>,
-    )
-
-    expect(warnSpy).not.toHaveBeenCalled()
-    warnSpy.mockRestore()
   })
 
   it("respects defaultValue once lazy-loaded triggers mount", async () => {

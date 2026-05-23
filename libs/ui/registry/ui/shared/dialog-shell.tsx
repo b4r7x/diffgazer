@@ -1,15 +1,11 @@
 "use client";
 
 import {
-  useCallback,
-  useEffect,
   useLayoutEffect,
   useRef,
   useState,
-  type AnimationEvent,
   type ReactNode,
   type HTMLAttributes,
-  type KeyboardEvent,
   type MouseEvent,
   type RefObject,
   type SyntheticEvent,
@@ -17,7 +13,6 @@ import {
 } from "react";
 import { usePresence } from "@/hooks/use-presence";
 import { useFocusTrap } from "@/hooks/use-focus-trap";
-import { useScrollLock } from "@/hooks/use-scroll-lock";
 import { composeRefs } from "@/lib/compose-refs";
 
 export interface DialogShellProps
@@ -31,13 +26,6 @@ export interface DialogShellProps
   children: ReactNode;
   dialogRef?: Ref<HTMLDialogElement>;
   initialFocus?: RefObject<HTMLElement | null>;
-}
-
-// iOS Safari < 15.4 does not implement <dialog>.showModal(). Detect once per
-// load; the polyfill in test-setup keeps existing tests on the native path.
-function detectShowModalSupport(): boolean {
-  if (typeof HTMLDialogElement === "undefined") return false;
-  return "showModal" in HTMLDialogElement.prototype;
 }
 
 // Module-level stack of currently mounted, open DialogShell elements. Only the
@@ -90,7 +78,6 @@ export function DialogShell({
   ...props
 }: DialogShellProps) {
   const shellRef = useRef<HTMLElement | null>(null);
-  const supportsShowModal = detectShowModalSupport();
   // usePresence's native animationend/animationcancel listener owns the
   // exit-complete path; do not also wire the returned React handler here or
   // onClose would fire twice on the non-portaled <dialog>.
@@ -99,20 +86,15 @@ export function DialogShell({
     ref: shellRef,
     onExitComplete: () => {
       const element = shellRef.current;
-      if (supportsShowModal && element instanceof HTMLDialogElement && element.open) {
+      if (element instanceof HTMLDialogElement && element.open) {
         element.close();
       }
       onClose?.();
     },
   });
 
-  // The focus trap runs on both the native and fallback paths so Tab cycling
-  // and initialFocus are honoured even when showModal() is available.
   // DialogContent owns focus restoration via useFocusRestore, so this trap is
   // configured with restoreFocus: false.
-  // fallbackActive still scopes the scroll lock, inert emulation, and
-  // outside-pointerdown listeners to the non-native path.
-  const fallbackActive = !supportsShowModal && open && present;
   const trapActive = open && present;
 
   // When dialogs stack (peer Dialog defaultOpen or programmatically opened
@@ -138,10 +120,8 @@ export function DialogShell({
   }, [trapActive]);
 
   useFocusTrap(shellRef, { enabled: trapActive && isTopShell, restoreFocus: false, initialFocus });
-  useScrollLock({ enabled: fallbackActive });
 
   useLayoutEffect(() => {
-    if (!supportsShowModal) return;
     const element = shellRef.current;
     if (!(element instanceof HTMLDialogElement)) return;
     if (open && present && !element.open) {
@@ -149,60 +129,7 @@ export function DialogShell({
       element.showModal();
       onAfterShowModal?.();
     }
-  }, [onAfterShowModal, onBeforeShowModal, open, present, supportsShowModal]);
-
-  useLayoutEffect(() => {
-    if (supportsShowModal) return;
-    const element = shellRef.current;
-    if (!open || !present || !element) return;
-    onBeforeShowModal?.(element.ownerDocument);
-    onAfterShowModal?.();
-  }, [onAfterShowModal, onBeforeShowModal, open, present, supportsShowModal]);
-
-  useEffect(() => {
-    if (!fallbackActive) return;
-    const element = shellRef.current;
-    if (!element) return;
-    // Native <dialog> showModal() makes the rest of the document inert. Emulate
-    // by walking from the dialog up to <body>, inerting the siblings at each
-    // level so every element that is NOT an ancestor of the dialog becomes
-    // inert without inerting the dialog itself.
-    const body = element.ownerDocument.body;
-    const inerted: Element[] = [];
-    let cursor: Element | null = element;
-    while (cursor && cursor !== body && cursor.parentElement) {
-      for (const sibling of Array.from(cursor.parentElement.children)) {
-        if (sibling === cursor) continue;
-        if (sibling.hasAttribute("inert")) continue;
-        sibling.setAttribute("inert", "");
-        inerted.push(sibling);
-      }
-      cursor = cursor.parentElement;
-    }
-    return () => {
-      for (const sibling of inerted) sibling.removeAttribute("inert");
-    };
-  }, [fallbackActive]);
-
-  const handleFallbackOutsidePointerDown = useCallback((event: globalThis.PointerEvent) => {
-    if (!(event.target instanceof Node)) return;
-    const element = shellRef.current;
-    if (!element || element.contains(event.target)) return;
-    // onBackdropClick's signature expects a React synthetic event, but all
-    // current consumers (dialog-content, command-palette-content) discard the
-    // argument. Pass a structurally-compatible stand-in to keep the public
-    // API unchanged.
-    onBackdropClick?.(event as unknown as MouseEvent<HTMLDialogElement>);
-  }, [onBackdropClick]);
-
-  useEffect(() => {
-    if (!fallbackActive) return;
-    const element = shellRef.current;
-    if (!element) return;
-    const doc = element.ownerDocument;
-    doc.addEventListener("pointerdown", handleFallbackOutsidePointerDown, { capture: true });
-    return () => doc.removeEventListener("pointerdown", handleFallbackOutsidePointerDown, { capture: true });
-  }, [fallbackActive, handleFallbackOutsidePointerDown]);
+  }, [onAfterShowModal, onBeforeShowModal, open, present]);
 
   if (!present) return null;
 
@@ -210,72 +137,29 @@ export function DialogShell({
     shellRef.current = node;
   };
 
-  /**
-   * When the native <dialog> API is unavailable, the fallback <div> is exposed
-   * through `dialogRef` which is typed as `Ref<HTMLDialogElement>`. Consumers
-   * (or internal code) holding that ref may call `showModal()` / `close()` —
-   * methods that don't exist on a plain div. Attach no-op polyfills so those
-   * calls don't crash.
-   */
-  const setFallbackShellRef = (node: HTMLElement | null) => {
-    if (node && !("showModal" in node)) {
-      (node as unknown as HTMLDialogElement).showModal = () => {};
-      (node as unknown as HTMLDialogElement).close = () => {};
-    }
-    shellRef.current = node;
-  };
-
-  if (supportsShowModal) {
-    const dialogRef: Ref<HTMLDialogElement> = externalDialogRef
-      ? composeRefs(setShellRef, externalDialogRef)
-      : setShellRef;
-    return (
-      <dialog
-        {...props}
-        ref={dialogRef}
-        data-state={open ? "open" : "closed"}
-        className={className}
-        onClick={(e: MouseEvent<HTMLDialogElement>) => {
-          onClick?.(e);
-          const element = shellRef.current;
-          if (element instanceof HTMLDialogElement && e.target === element && isClickOutsideDialogRect(e, element)) {
-            onBackdropClick?.(e);
-          }
-        }}
-        onCancel={(e) => {
-          onCancel?.(e);
-          e.preventDefault();
-        }}
-        onAnimationEnd={externalOnAnimationEnd}
-      >
-        {children}
-      </dialog>
-    );
-  }
-
-  // Fallback path renders a <div role="dialog"> instead of <dialog>; bridge
-  // typed handlers through the shared SyntheticEvent supertype because the
-  // public DialogShell API is typed for HTMLDialogElement.
-  const handleFallbackKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.key !== "Escape") return;
-    onCancel?.(e as unknown as SyntheticEvent<HTMLDialogElement>);
-    if (e.defaultPrevented) return;
-    e.preventDefault();
-  };
-
+  const dialogRef: Ref<HTMLDialogElement> = externalDialogRef
+    ? composeRefs(setShellRef, externalDialogRef)
+    : setShellRef;
   return (
-    <div
-      {...(props as HTMLAttributes<HTMLDivElement>)}
-      ref={composeRefs(setFallbackShellRef, externalDialogRef as unknown as Ref<HTMLDivElement> | undefined)}
-      role="dialog"
-      tabIndex={-1}
+    <dialog
+      {...props}
+      ref={dialogRef}
       data-state={open ? "open" : "closed"}
       className={className}
-      onClick={onClick as unknown as ((e: MouseEvent<HTMLDivElement>) => void) | undefined}
-      onKeyDown={handleFallbackKeyDown}
-      onAnimationEnd={externalOnAnimationEnd as unknown as ((e: AnimationEvent<HTMLDivElement>) => void) | undefined}
+      onClick={(e: MouseEvent<HTMLDialogElement>) => {
+        onClick?.(e);
+        const element = shellRef.current;
+        if (element instanceof HTMLDialogElement && e.target === element && isClickOutsideDialogRect(e, element)) {
+          onBackdropClick?.(e);
+        }
+      }}
+      onCancel={(e) => {
+        onCancel?.(e);
+        e.preventDefault();
+      }}
+      onAnimationEnd={externalOnAnimationEnd}
     >
       {children}
-    </div>
+    </dialog>
   );
 }

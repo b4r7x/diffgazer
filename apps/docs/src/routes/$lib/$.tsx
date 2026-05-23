@@ -3,7 +3,7 @@ import { createServerFn } from "@tanstack/react-start"
 import browserCollections from "fumadocs-mdx:collections/browser"
 import { Suspense } from "react"
 import { DocsContentLayout } from "@/layouts/docs-content-layout"
-import { Route as DocsRoute } from "@/routes/$lib/docs"
+import { Route as DocsRoute } from "@/routes/$lib"
 import { ContentSpinner } from "@/components/content-spinner"
 import {
   DocsPageBody,
@@ -33,7 +33,7 @@ interface LoaderData {
   library: DocsLibraryId
 }
 
-export const Route = createFileRoute("/$lib/docs/$")({
+export const Route = createFileRoute("/$lib/$")({
   pendingMs: 150,
   component: Page,
   loader: async ({ params }) => {

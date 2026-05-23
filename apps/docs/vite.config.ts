@@ -87,7 +87,6 @@ const config = defineConfig(() => {
         "@/lib/utils": resolve(import.meta.dirname, "src/lib/utils"),
         "@/lib/diff": resolve(import.meta.dirname, "registry/lib/diff"),
         "@diffgazer/keys": resolve(import.meta.dirname, "../../libs/keys/src"),
-        "@diffgazer/registry": resolve(import.meta.dirname, "../../libs/registry/src"),
         "@": resolve(import.meta.dirname, "./src"),
       },
       dedupe: ["react", "react-dom"],

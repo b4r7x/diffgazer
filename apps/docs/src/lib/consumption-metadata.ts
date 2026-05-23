@@ -1,9 +1,10 @@
-import {
-  REGISTRY_ORIGIN,
-  type ConsumptionMetadata,
-  type ConsumptionLibrary,
-  type ConsumptionItemKind,
+import type {
+  ConsumptionMetadata,
+  ConsumptionLibrary,
+  ConsumptionItemKind,
 } from "@diffgazer/registry"
+
+const REGISTRY_ORIGIN = "https://r.b4r7.dev"
 
 /** Keys hooks that require KeyboardProvider and are only available through the npm package. */
 const KEYS_PACKAGE_ONLY = new Set([

@@ -98,7 +98,7 @@ Focusable helpers use the same DOM contract as focus traps and overlays. `getFoc
 
 ## DOM focus restore utilities
 
-Plain DOM helpers used by [useFocusRestore](/keys/docs/hooks/use-focus-restore). Use these when you are writing non-hook code that still needs the same focus target contract.
+Plain DOM helpers used by [useFocusRestore](/keys/hooks/use-focus-restore). Use these when you are writing non-hook code that still needs the same focus target contract.
 
 ```ts
 import {
@@ -116,13 +116,13 @@ function restoreFocus(target: HTMLElement | null, options?: { preventScroll?: bo
 
 `getRestorableFocusTarget()` ignores `body`, `documentElement`, disconnected nodes, and missing DOM. `restoreFocus()` focuses a connected target and returns whether focus moved there.
 
-For React components, prefer [useFocusRestore](/keys/docs/hooks/use-focus-restore). The hook owns the nested overlay stack and the cleanup behavior.
+For React components, prefer [useFocusRestore](/keys/hooks/use-focus-restore). The hook owns the nested overlay stack and the cleanup behavior.
 
 ---
 
 ## keys
 
-Utility to create a `Record<string, KeyHandler>` from an array of hotkeys and a single handler. Useful with the key-map overload of [useKey](/keys/docs/hooks/use-key).
+Utility to create a `Record<string, KeyHandler>` from an array of hotkeys and a single handler. Useful with the key-map overload of [useKey](/keys/hooks/use-key).
 
 ```ts
 import { keys } from "@diffgazer/keys";

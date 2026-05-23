@@ -236,7 +236,7 @@ Use as a runtime package for `KeyboardProvider` and hooks after publication, or 
 
 ## Hosted Registry Status
 
-The hosted shadcn-style registry at `https://r.b4r7.dev/` is **not yet live**. DNS for `r.b4r7.dev` does not resolve to a serving registry yet, so every `npx shadcn add https://r.b4r7.dev/...` snippet in READMEs and docs is gated as future use until publication.
+The hosted shadcn-style registry at `https://r.b4r7.dev` is **not yet live**. DNS for `r.b4r7.dev` does not resolve to a serving registry yet, so every `npx shadcn add https://r.b4r7.dev/r/...` snippet in READMEs and docs is gated as future use until publication.
 
 Until the hosted registry endpoints serve `200 OK` for `/r/ui/registry.json`, `/r/ui/<item>.json`, and `/r/keys/<item>.json`, use one of the supported install paths:
 
@@ -247,8 +247,8 @@ Until the hosted registry endpoints serve `200 OK` for `/r/ui/registry.json`, `/
 After deployment, hosted-registry availability is verified by:
 
 1. `host r.b4r7.dev` resolves to the deploy target.
-2. `curl -fI https://r.b4r7.dev/ui/registry.json` returns `200`.
-3. `curl -fI https://r.b4r7.dev/ui/button.json` returns `200`.
+2. `curl -fI https://r.b4r7.dev/r/ui/registry.json` returns `200`.
+3. `curl -fI https://r.b4r7.dev/r/ui/button.json` returns `200`.
 4. A CI smoke step in the release-readiness workflow asserts the same three responses on every release run.
 
 Once those checks pass, un-gate the hosted-shadcn install snippets in `README.md`, `libs/ui/README.md`, `libs/keys/README.md`, and `apps/docs/content/docs/**/*.mdx`, and remove the "future" preambles introduced by T-DIST-DEPLOY.

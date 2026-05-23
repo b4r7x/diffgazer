@@ -90,14 +90,14 @@ export function parseDocsLibrary(value: string | null | undefined): DocsLibraryI
 export function getDocsLibraryFromPathname(pathname: string): DocsLibraryId | null {
   const segments = splitPathname(pathname);
   const library = segments[0];
-  if (library && segments.length >= 2 && segments[1] === "docs" && isDocsLibraryId(library)) {
+  if (library && isDocsLibraryId(library)) {
     return library;
   }
   return null;
 }
 
 export function getRouteSlugsFromPathname(pathname: string, library: DocsLibraryId): string[] {
-  const expectedPrefix = `/${library}/docs`;
+  const expectedPrefix = `/${library}`;
   if (pathname === expectedPrefix) {
     return [];
   }
@@ -110,9 +110,11 @@ export function getRouteSlugsFromPathname(pathname: string, library: DocsLibrary
   return normalizeRouteSlugs(rel.split("/"));
 }
 
+const DOCS_PATH_PATTERN = new RegExp(`^/(?:${KNOWN_LIBRARY_IDS.join("|")})(?:/|$)`);
+
 export function isDocsPath(pathname?: string | null): boolean {
   if (!pathname) return false;
-  return /^\/[^/]+\/docs(?:\/|$)/.test(pathname);
+  return DOCS_PATH_PATTERN.test(pathname);
 }
 
 export function docsPath(library: DocsLibraryId, slugs?: string[] | string): string {
@@ -123,10 +125,10 @@ export function docsPath(library: DocsLibraryId, slugs?: string[] | string): str
       : [];
 
   if (normalized.length === 0) {
-    return `/${library}/docs`;
+    return `/${library}`;
   }
 
-  return `/${library}/docs/${normalized.join("/")}`;
+  return `/${library}/${normalized.join("/")}`;
 }
 
 export function sourceSlugsForLibrary(library: DocsLibraryId, routeSlugs: string[]): string[] {

@@ -101,7 +101,7 @@ function RootErrorBoundary({ reset }: { reset: () => void }) {
 					</Button>
 				}
 				secondaryAction={
-					<Link to="/$lib/docs" params={{ lib: PRIMARY_DOCS_LIBRARY_ID }}>
+					<Link to="/$lib" params={{ lib: PRIMARY_DOCS_LIBRARY_ID }}>
 						<Button variant="ghost">Open docs</Button>
 					</Link>
 				}

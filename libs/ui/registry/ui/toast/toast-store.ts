@@ -146,12 +146,6 @@ function create(options: ToastOptions): string {
   const tone = options.tone ?? "info";
   const variant = options.variant ?? "card";
 
-  if (variant === "hud" && options.action !== undefined && process.env.NODE_ENV !== "production") {
-    console.warn(
-      "[Toast] variant=\"hud\" ignores `action`. Use variant=\"card\" or \"countdown\" for actionable toasts.",
-    );
-  }
-
   const effectiveAction = variant === "hud" ? undefined : options.action;
   const newToast: Toast = {
     id, tone, variant,

@@ -3,7 +3,6 @@
 import {
   createContext,
   useContext,
-  useEffect,
   useMemo,
   useRef,
   type ComponentPropsWithoutRef,
@@ -140,9 +139,6 @@ function buildPanelStyle(
   return base;
 }
 
-// Module-level: dedups warnings per panel element; GC cleans up on unmount.
-const warnedNodes = new WeakSet<HTMLElement>();
-
 /**
  * FloatingPanel renders a portaled, animated panel anchored to a trigger.
  *
@@ -205,20 +201,6 @@ export function FloatingPanel({
     }),
     [positioned, position?.side, position?.align],
   );
-
-  // No NODE_ENV gate: shadcn smoke fixtures don't ship @types/node, so process.env reads fail typecheck.
-  useEffect(() => {
-    const el = panelRef.current;
-    if (!el || warnedNodes.has(el)) return;
-    const hasRole = el.hasAttribute("role");
-    const hasLabel = el.hasAttribute("aria-label") || el.hasAttribute("aria-labelledby");
-    if (!hasRole && !hasLabel) {
-      warnedNodes.add(el);
-      console.warn(
-        "[FloatingPanel] Rendered without `role` or `aria-label`/`aria-labelledby`. Assistive technology will see an unlabeled container. Set a role (e.g. \"dialog\", \"menu\") and supply an accessible name.",
-      );
-    }
-  }, [present]);
 
   if (!present) return null;
 

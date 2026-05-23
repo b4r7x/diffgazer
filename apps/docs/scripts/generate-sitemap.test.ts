@@ -21,17 +21,17 @@ describe("getPreRenderPages", () => {
 
   it("emits a single landing page per enabled library", () => {
     const pages = getPreRenderPages();
-    const uiLanding = pages.filter((page) => page.path === "/ui/docs");
-    const keysLanding = pages.filter((page) => page.path === "/keys/docs");
+    const uiLanding = pages.filter((page) => page.path === "/ui");
+    const keysLanding = pages.filter((page) => page.path === "/keys");
 
     expect(uiLanding).toHaveLength(1);
     expect(keysLanding).toHaveLength(1);
   });
 
-  it("does not include the orphaned /ui/docs/index path", () => {
+  it("does not include the orphaned /ui/index path", () => {
     const pages = getPreRenderPages();
-    expect(pages.some((page) => page.path === "/ui/docs/index")).toBe(false);
-    expect(pages.some((page) => page.path === "/keys/docs/index")).toBe(false);
+    expect(pages.some((page) => page.path === "/ui/index")).toBe(false);
+    expect(pages.some((page) => page.path === "/keys/index")).toBe(false);
   });
 
   it("does not include the non-existent /docs route", () => {
@@ -43,7 +43,7 @@ describe("getPreRenderPages", () => {
     const pages = getPreRenderPages();
     const hookPaths = pages
       .map((page) => page.path)
-      .filter((path) => path.startsWith("/keys/docs/hooks/") || path.startsWith("/ui/docs/hooks/"));
+      .filter((path) => path.startsWith("/keys/hooks/") || path.startsWith("/ui/hooks/"));
 
     expect(new Set(hookPaths).size).toBe(hookPaths.length);
     expect(hookPaths.length).toBeGreaterThan(0);
@@ -53,7 +53,7 @@ describe("getPreRenderPages", () => {
     const pages = getPreRenderPages();
     const componentPaths = pages
       .map((page) => page.path)
-      .filter((path) => path.startsWith("/ui/docs/components/"));
+      .filter((path) => path.startsWith("/ui/components/"));
 
     expect(new Set(componentPaths).size).toBe(componentPaths.length);
     expect(componentPaths.length).toBeGreaterThan(0);
@@ -61,7 +61,7 @@ describe("getPreRenderPages", () => {
 
   it("resolves a source MDX file for landing pages so lastmod can use mtime", () => {
     const pages = getPreRenderPages();
-    const uiLanding = pages.find((page) => page.path === "/ui/docs");
+    const uiLanding = pages.find((page) => page.path === "/ui");
 
     expect(uiLanding).toBeDefined();
     expect(uiLanding?.source).not.toBeNull();

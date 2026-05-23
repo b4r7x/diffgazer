@@ -4,7 +4,6 @@ import {
   Children,
   isValidElement,
   useCallback,
-  useEffect,
   useRef,
   useState,
   type HTMLAttributes,
@@ -127,8 +126,6 @@ export function DialogContent({
     fallback: triggerRef.current,
     restoreOnUnmount: false,
   });
-  const hasAriaLabel = hasNonEmptyText(ariaLabel);
-  const hasAriaLabelledBy = hasNonEmptyText(ariaLabelledBy);
   const hasRenderableTitle = containsDialogTitleElement(children);
   const hasRenderableDescription = containsDialogDescriptionElement(children);
   const resolvedFrame = frame ?? "border";
@@ -144,14 +141,6 @@ export function DialogContent({
     shellRef.current = node;
     setContainer(node);
   }, []);
-
-  useEffect(() => {
-    if (!open) return;
-    if (hasAriaLabel || hasAriaLabelledBy || hasRenderableTitle) return;
-    console.warn(
-      "[DialogContent] Missing accessible name. Precedence: aria-labelledby > aria-label > Dialog.Title > fallback. Fix: add <Dialog.Title>, pass aria-label=\"...\", or wrap the title in <VisuallyHidden> if it must be visually hidden. A fallback \"Dialog\" label is applied at runtime.",
-    );
-  }, [open, hasAriaLabel, hasAriaLabelledBy, hasRenderableTitle]);
 
   return (
     <DialogShell

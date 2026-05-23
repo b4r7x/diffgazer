@@ -3,10 +3,8 @@
 import {
   Children,
   isValidElement,
-  useEffect,
   useId,
   useMemo,
-  useRef,
   type ComponentPropsWithRef,
   type ElementType,
   type ReactNode,
@@ -81,14 +79,6 @@ export function Panel<T extends PanelElement = "div">(props: PanelProps<T>) {
 
   const hasRenderableTitle = containsPanelTitleElement(children);
   const hasRenderableDescription = containsPanelDescriptionElement(children);
-  const titleCount = hasRenderableTitle ? countPanelTitleElements(children) : 0;
-  const descriptionCount = hasRenderableDescription
-    ? countPanelDescriptionElements(children)
-    : 0;
-
-  useDevWarnOnDuplicate(titleCount, "Panel.Title", titleId);
-  useDevWarnOnDuplicate(descriptionCount, "Panel.Description", descriptionId);
-
   const hasAriaName = isNonEmptyString(ariaLabel) || isNonEmptyString(ariaLabelledBy);
   const isNamedRegion = hasRenderableTitle || hasAriaName;
 
@@ -179,44 +169,4 @@ function containsPanelDescriptionElement(children: ReactNode): boolean {
     if (child.type === PanelDescription) return true;
     return containsPanelDescriptionElement(child.props.children);
   });
-}
-
-function countPanelTitleElements(children: ReactNode): number {
-  let count = 0;
-  for (const child of Children.toArray(children)) {
-    if (!isValidElement<{ children?: ReactNode }>(child)) continue;
-    if (child.type === PanelTitle) count++;
-    count += countPanelTitleElements(child.props.children);
-  }
-  return count;
-}
-
-function countPanelDescriptionElements(children: ReactNode): number {
-  let count = 0;
-  for (const child of Children.toArray(children)) {
-    if (!isValidElement<{ children?: ReactNode }>(child)) continue;
-    if (child.type === PanelDescription) count++;
-    count += countPanelDescriptionElements(child.props.children);
-  }
-  return count;
-}
-
-/**
- * Dev-only warning when more than one `Panel.Title` or `Panel.Description` is
- * rendered. Duplicates would collide on the shared id used for
- * `aria-labelledby` / `aria-describedby`, producing an a11y violation. Logged
- * from an effect so it does not run during render in concurrent/Strict mode.
- */
-function useDevWarnOnDuplicate(count: number, label: string, id: string): void {
-  const warnedRef = useRef(false);
-  useEffect(() => {
-    if (process.env.NODE_ENV === "production") return;
-    if (count > 1 && !warnedRef.current) {
-      warnedRef.current = true;
-      console.warn(
-        `[Panel] Multiple <${label}> rendered; the duplicate id "${id}" will cause an a11y violation. Use exactly one per Panel.`,
-      );
-    }
-    if (count <= 1) warnedRef.current = false;
-  }, [count, label, id]);
 }

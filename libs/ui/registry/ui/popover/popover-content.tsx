@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  useEffect,
   useMemo,
   useRef,
   type ComponentPropsWithoutRef,
@@ -73,7 +72,6 @@ export function PopoverContent({
   const isHover = triggerMode === "hover";
   const isClick = triggerMode === "click";
   const contentRole = isHover ? "tooltip" : role;
-  const hasAccessibleName = Boolean(ariaLabel || ariaLabelledBy);
   const isDialog = contentRole === "dialog";
   const isMenu = contentRole === "menu";
   const triggerExcludeRefs = useMemo(() => [triggerRef], [triggerRef]);
@@ -82,13 +80,6 @@ export function PopoverContent({
     [triggerExcludeRefs],
   );
   const resolvedAriaLabel = ariaLabel ?? (isDialog && !ariaLabelledBy ? FALLBACK_POPOVER_DIALOG_LABEL : undefined);
-
-  useEffect(() => {
-    if (!open || !isDialog || hasAccessibleName) return;
-    console.warn(
-      "[Popover] Popover.Content with role=\"dialog\" is missing an accessible name. Provide an aria-label or aria-labelledby prop. A fallback accessible name is applied at runtime.",
-    );
-  }, [open, isDialog, hasAccessibleName]);
 
   useOutsideClick(
     contentRef,

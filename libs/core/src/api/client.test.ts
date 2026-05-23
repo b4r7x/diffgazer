@@ -131,6 +131,38 @@ describe("createApiClient", () => {
       expect(lastHeaders().get("X-Custom")).toBe("value");
     });
 
+    it("includes shutdown token header when configured with a string", async () => {
+      const tokenClient = createApiClient({
+        baseUrl: "http://localhost:3000",
+        shutdownToken: " my-token ",
+      });
+      mockFetch.mockResolvedValue(jsonResponse({}));
+
+      await tokenClient.get("/api/test");
+
+      expect(lastHeaders().get("x-diffgazer-shutdown-token")).toBe("my-token");
+    });
+
+    it("includes shutdown token header when configured with a function", async () => {
+      const tokenClient = createApiClient({
+        baseUrl: "http://localhost:3000",
+        shutdownToken: () => "fn-token",
+      });
+      mockFetch.mockResolvedValue(jsonResponse({}));
+
+      await tokenClient.post("/api/reviews", { mode: "staged" });
+
+      expect(lastHeaders().get("x-diffgazer-shutdown-token")).toBe("fn-token");
+    });
+
+    it("omits shutdown token header when not configured", async () => {
+      mockFetch.mockResolvedValue(jsonResponse({}));
+
+      await client.get("/api/test");
+
+      expect(lastHeaders().get("x-diffgazer-shutdown-token")).toBeNull();
+    });
+
     it("includes request headers only on that request", async () => {
       mockFetch.mockResolvedValueOnce(jsonResponse({}));
 

@@ -46,7 +46,7 @@ describe("mapPageTreeForLibrary", () => {
     expect(uiTree.children[0]).toEqual({
       type: "page",
       name: "installation",
-      url: "/ui/docs/getting-started/installation",
+      url: "/ui/getting-started/installation",
     })
 
     const keysTree = mapPageTreeForLibrary(SOURCE_TREE, "keys")
@@ -54,7 +54,7 @@ describe("mapPageTreeForLibrary", () => {
     expect(keysTree.children[0]).toEqual({
       type: "page",
       name: "navigation",
-      url: "/keys/docs/guides/navigation",
+      url: "/keys/guides/navigation",
     })
   })
 })

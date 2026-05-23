@@ -329,9 +329,7 @@ describe("Dialog", () => {
     expect(screen.getByRole("dialog")).toHaveAttribute("aria-modal", "true")
   })
 
-  it("warns and applies a fallback name when content has no Dialog.Title or explicit aria name", () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
-
+  it("applies a fallback name when content has no Dialog.Title or explicit aria name", () => {
     render(
       <Dialog defaultOpen>
         <Dialog.Content>
@@ -343,45 +341,9 @@ describe("Dialog", () => {
     const dialog = screen.getByRole("dialog", { name: "Dialog" })
     expect(dialog).not.toHaveAttribute("aria-labelledby")
     expect(dialog).toHaveAttribute("aria-label", "Dialog")
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining("[DialogContent] Missing accessible name"))
-
-    warn.mockRestore()
-  })
-
-  it("does not warn when Dialog.Title is provided", () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
-
-    render(
-      <Dialog defaultOpen>
-        <Dialog.Content>
-          <Dialog.Title>Labeled dialog</Dialog.Title>
-          <Dialog.Body>Body content</Dialog.Body>
-        </Dialog.Content>
-      </Dialog>
-    )
-
-    expect(warn).not.toHaveBeenCalled()
-    warn.mockRestore()
-  })
-
-  it("does not warn when aria-label is provided without a title", () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
-
-    render(
-      <Dialog defaultOpen>
-        <Dialog.Content aria-label="Named dialog">
-          <Dialog.Body>Body content</Dialog.Body>
-        </Dialog.Content>
-      </Dialog>
-    )
-
-    expect(warn).not.toHaveBeenCalled()
-    warn.mockRestore()
   })
 
   it("accepts a Dialog.Title nested inside a pass-through wrapper", () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
-
     function PassThroughWrapper({ children }: { children: ReactNode }) {
       return <div>{children}</div>
     }
@@ -398,7 +360,6 @@ describe("Dialog", () => {
     )
 
     expect(screen.getByRole("dialog", { name: "Wrapped title" })).toBeInTheDocument()
-    expect(warn).not.toHaveBeenCalled()
   })
 
   it("uses an explicit aria-label without pointing to a missing title", () => {
@@ -461,27 +422,6 @@ describe("Dialog", () => {
     const dialog = screen.getByRole("dialog", { name: "Label wins" })
     expect(dialog).toHaveAttribute("aria-label", "Label wins")
     expect(dialog).not.toHaveAttribute("aria-labelledby")
-  })
-
-  it("warns exactly once per open across rerenders", () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
-
-    function Harness({ rev }: { rev: number }) {
-      return (
-        <Dialog defaultOpen>
-          <Dialog.Content>
-            <Dialog.Body>Body rev {rev}</Dialog.Body>
-          </Dialog.Content>
-        </Dialog>
-      )
-    }
-
-    const { rerender } = render(<Harness rev={1} />)
-    rerender(<Harness rev={2} />)
-    rerender(<Harness rev={3} />)
-
-    expect(warn).toHaveBeenCalledTimes(1)
-    warn.mockRestore()
   })
 
   it("sets aria-describedby when description is present", () => {
@@ -1055,102 +995,6 @@ describe("Dialog", () => {
 
     const heading = screen.getByRole("heading", { name: "Heading level three", level: 3 })
     expect(heading.tagName).toBe("H3")
-  })
-})
-
-describe("Dialog fallback (no showModal)", () => {
-  let restoreShowModal: (() => void) | null = null
-
-  beforeEach(() => {
-    // iOS Safari < 15.4 lacks HTMLDialogElement.prototype.showModal. Simulate
-    // by deleting the property the test-setup polyfill installs; restore in
-    // afterEach so other suites keep the native path.
-    const descriptor = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "showModal")
-    Reflect.deleteProperty(HTMLDialogElement.prototype, "showModal")
-    restoreShowModal = () => {
-      if (descriptor) Object.defineProperty(HTMLDialogElement.prototype, "showModal", descriptor)
-    }
-  })
-
-  afterEach(() => {
-    restoreShowModal?.()
-    restoreShowModal = null
-  })
-
-  it("renders as div with role=dialog when showModal is unavailable", () => {
-    render(
-      <Dialog defaultOpen>
-        <Dialog.Content>
-          <Dialog.Title>Fallback dialog</Dialog.Title>
-          <Dialog.Body>Body content</Dialog.Body>
-          <Dialog.Close>Close</Dialog.Close>
-        </Dialog.Content>
-      </Dialog>
-    )
-
-    const dialog = screen.getByRole("dialog", { name: "Fallback dialog" })
-    expect(dialog.tagName).toBe("DIV")
-    expect(dialog).toHaveAttribute("aria-modal", "true")
-    expect(dialog).toHaveAttribute("data-state", "open")
-  })
-
-  it("closes on Escape in fallback path", async () => {
-    const onOpenChange = vi.fn()
-    render(
-      <Dialog defaultOpen onOpenChange={onOpenChange}>
-        <Dialog.Content>
-          <Dialog.Title>Fallback dialog</Dialog.Title>
-          <Dialog.Close>Close</Dialog.Close>
-        </Dialog.Content>
-      </Dialog>
-    )
-
-    const dialog = screen.getByRole("dialog", { name: "Fallback dialog" })
-    dialog.focus()
-    await userEvent.keyboard("{Escape}")
-
-    expect(onOpenChange).toHaveBeenCalledWith(false)
-  })
-
-  it("closes on outside tap in fallback path", () => {
-    const onOpenChange = vi.fn()
-    render(
-      <div>
-        <button>Outside</button>
-        <Dialog defaultOpen onOpenChange={onOpenChange}>
-          <Dialog.Content>
-            <Dialog.Title>Fallback dialog</Dialog.Title>
-            <Dialog.Close>Close</Dialog.Close>
-          </Dialog.Content>
-        </Dialog>
-      </div>
-    )
-
-    expect(screen.getByRole("dialog", { name: "Fallback dialog" })).toBeInTheDocument()
-    // fireEvent retained: document-level pointerdown listener attaches in capture phase
-    fireEvent.pointerDown(screen.getByRole("button", { name: "Outside" }))
-
-    expect(onOpenChange).toHaveBeenCalledWith(false)
-  })
-
-  it("marks background body siblings as inert while fallback dialog is open", () => {
-    render(
-      <>
-        <div data-testid="page-shell">Page shell</div>
-        <Dialog defaultOpen>
-          <Dialog.Content>
-            <Dialog.Title>Fallback dialog</Dialog.Title>
-            <Dialog.Close>Close</Dialog.Close>
-          </Dialog.Content>
-        </Dialog>
-      </>
-    )
-
-    expect(screen.getByRole("dialog", { name: "Fallback dialog" })).toBeInTheDocument()
-    // page-shell is rendered as a sibling of the dialog under body in jsdom
-    const pageShell = screen.getByTestId("page-shell")
-    const inertedAncestor = pageShell.closest("[inert]")
-    expect(inertedAncestor).not.toBeNull()
   })
 })
 
