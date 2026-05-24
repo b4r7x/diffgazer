@@ -1,7 +1,7 @@
 import { useComponentData, useHookData, type HookData } from "../doc-data-context"
 import type { ComponentData } from "@/types/docs-data"
 import { SourceViewer } from "@/components/source-viewer"
-import { SectionHeader } from "@/components/ui/section-header/section-header"
+import { Typography } from "@/components/ui/typography/typography"
 import { CopyButton } from "@/components/copy-button"
 import { CodeBlock, CodeBlockContent, CodeBlockLine, InlineCode } from "@/components/ui/code-block"
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion"
@@ -55,9 +55,11 @@ function ComponentSourceViewer({ data, library }: { data: ComponentData; library
 
 function HookSourceViewer({ data }: { data: HookData }) {
   return (
-    <div>
-      <div className="flex items-center justify-between">
-        <SectionHeader as="h3">Source</SectionHeader>
+    <div className="mb-8">
+      <div className="flex items-baseline justify-between mt-10 mb-4 pb-2 border-b border-border scroll-mt-16" id="source">
+        <Typography as="h2" size="2xl" className="font-bold text-foreground">
+          Source
+        </Typography>
         <CopyButton text={data.source.raw} label={`Copy ${data.title}`} />
       </div>
       <Accordion collapsible className="divide-y-0">
