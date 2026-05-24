@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://diffgazer.com/schema/diffgazer.json",
+  "$id": "https://r.b4r7.dev/schema/diffgazer.json",
   "title": "Diffgazer Installer Config",
   "type": "object",
   "additionalProperties": false,
@@ -57,7 +57,6 @@
       "type": "object",
       "additionalProperties": {
         "type": "object",
-        "additionalProperties": false,
         "properties": {
           "installedAt": {
             "type": "string"
@@ -72,6 +71,55 @@
           },
           "keysVersion": {
             "type": "string"
+          },
+          "installedAs": {
+            "type": "string",
+            "enum": [
+              "explicit",
+              "transitive"
+            ]
+          },
+          "cssChunks": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "hash": {
+                  "type": "string"
+                },
+                "item": {
+                  "type": "string"
+                },
+                "registryIntegrity": {
+                  "type": "string"
+                },
+                "cliVersion": {
+                  "type": "string"
+                },
+                "integrationMode": {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "copy",
+                    "@diffgazer/keys"
+                  ]
+                }
+              },
+              "required": [
+                "path",
+                "hash",
+                "item"
+              ]
+            }
           }
         },
         "required": [

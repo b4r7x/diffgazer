@@ -324,6 +324,11 @@ export const PROVIDER_ENV_VARS: Record<AIProvider, string> = {
   openrouter: 'OPENROUTER_API_KEY',
 };
 
+/** The set of env var names that are valid for `CredentialRef` with `kind: "env"`. */
+export const ALLOWED_CREDENTIAL_ENV_VARS: ReadonlySet<string> = new Set(
+  Object.values(PROVIDER_ENV_VARS),
+);
+
 const SETUP_FIELDS = ["secretsStorage", "provider", "model", "trust"] as const;
 const SetupFieldSchema = z.enum(SETUP_FIELDS);
 export type SetupField = z.infer<typeof SetupFieldSchema>;

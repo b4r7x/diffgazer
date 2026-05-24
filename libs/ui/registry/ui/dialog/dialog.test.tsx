@@ -343,6 +343,52 @@ describe("Dialog", () => {
     expect(dialog).toHaveAttribute("aria-label", "Dialog")
   })
 
+  it("warns in dev when falling back to hardcoded dialog label", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+    render(
+      <Dialog defaultOpen>
+        <Dialog.Content>
+          <Dialog.Body>Body content</Dialog.Body>
+        </Dialog.Content>
+      </Dialog>
+    )
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("No accessible name provided"),
+    )
+    warnSpy.mockRestore()
+  })
+
+  it("preserves consumer aria-describedby and merges with description id", () => {
+    render(
+      <Dialog defaultOpen>
+        <Dialog.Content aria-describedby="external-help">
+          <Dialog.Title>Described dialog</Dialog.Title>
+          <Dialog.Description>Internal description</Dialog.Description>
+        </Dialog.Content>
+      </Dialog>
+    )
+
+    const dialog = screen.getByRole("dialog", { name: "Described dialog" })
+    const describedBy = dialog.getAttribute("aria-describedby")!
+    expect(describedBy).toContain("external-help")
+    const description = screen.getByText("Internal description")
+    expect(describedBy).toContain(description.id)
+  })
+
+  it("keeps consumer aria-describedby when no description is rendered", () => {
+    render(
+      <Dialog defaultOpen>
+        <Dialog.Content aria-describedby="external-help">
+          <Dialog.Title>External only</Dialog.Title>
+        </Dialog.Content>
+      </Dialog>
+    )
+
+    const dialog = screen.getByRole("dialog", { name: "External only" })
+    expect(dialog).toHaveAttribute("aria-describedby", "external-help")
+  })
+
   it("accepts a Dialog.Title nested inside a pass-through wrapper", () => {
     function PassThroughWrapper({ children }: { children: ReactNode }) {
       return <div>{children}</div>

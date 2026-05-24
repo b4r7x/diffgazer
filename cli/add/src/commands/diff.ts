@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createDiffCommand } from "@diffgazer/registry/cli";
@@ -31,12 +31,14 @@ function resolveIntegrationMode(cwd: string, itemName: string, manifestPath: str
 
 // Materialize each extracted chunk to a tmp file so the diff workflow's
 // readFileSync(localPath) sees the chunk content rather than the full
-// styles.css. One dir per process; OS reclaims it without explicit cleanup.
+// styles.css. Unique dir via mkdtempSync; cleaned up on process exit.
 let chunkScratchDir: string | null = null;
 function chunkScratchPath(itemName: string, hash: string): string {
   if (!chunkScratchDir) {
-    chunkScratchDir = join(tmpdir(), `dgadd-diff-${process.pid}`);
-    mkdirSync(chunkScratchDir, { recursive: true });
+    chunkScratchDir = mkdtempSync(join(tmpdir(), "dgadd-diff-"));
+    process.on("exit", () => {
+      try { rmSync(chunkScratchDir!, { recursive: true, force: true }); } catch {}
+    });
   }
   const safeName = itemName.replace(/[^a-zA-Z0-9_-]/g, "_");
   return join(chunkScratchDir, `${safeName}-${hash}.css`);

@@ -5,8 +5,19 @@ import {
 	getEnabledDocsLibraries,
 	PRIMARY_DOCS_LIBRARY_ID,
 } from "@/lib/docs-library";
+import { buildPageSeo } from "@/lib/seo";
 
-export const Route = createFileRoute("/")({ component: LandingPage });
+export const Route = createFileRoute("/")({
+	component: LandingPage,
+	head: () => {
+		const seo = buildPageSeo({
+			title: "diffgazer docs hub",
+			pathname: "/",
+			type: "website",
+		});
+		return { meta: seo.meta, links: seo.links };
+	},
+});
 
 const enabledLibraries = getEnabledDocsLibraries();
 

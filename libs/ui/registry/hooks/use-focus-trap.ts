@@ -1,3 +1,5 @@
 "use client";
 
-export { useFocusTrap, type UseFocusTrapOptions } from "@diffgazer/keys";
+import { useFocusTrap, type UseFocusTrapOptions } from "@diffgazer/keys";
+
+export { useFocusTrap, type UseFocusTrapOptions };

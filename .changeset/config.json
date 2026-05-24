@@ -3,7 +3,7 @@
   "changelog": ["@changesets/changelog-github", { "repo": "b4r7x/diffgazer" }],
   "commit": false,
   "fixed": [],
-  "linked": [],
+  "linked": [["@diffgazer/ui", "@diffgazer/keys"]],
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
@@ -12,7 +12,9 @@
     "@diffgazer/registry",
     "@diffgazer/server",
     "@diffgazer/web",
-    "@diffgazer/docs"
+    "@diffgazer/docs",
+    "@diffgazer/landing",
+    "@diffgazer/hub"
   ],
   "___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH": {
     "onlyUpdatePeerDependentsWhenOutOfRange": true

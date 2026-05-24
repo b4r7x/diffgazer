@@ -84,7 +84,6 @@ export function buildRootHeadDefaults(): { meta: MetaTag[]; links: LinkTag[] } {
   ];
 
   const links: LinkTag[] = [
-    { rel: "canonical", href: PUBLIC_ORIGIN },
     { rel: "manifest", href: "/manifest.json" },
     { rel: "icon", href: "/favicon.ico" },
     { rel: "apple-touch-icon", href: "/logo192.png" },

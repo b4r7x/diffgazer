@@ -127,7 +127,7 @@ describe("validate-registry-metadata", () => {
     expect(output).toContain("widget contains a client file but omits meta.client");
     expect(output).toContain("widget imports @/lib/helper");
     expect(output).toContain("package.json sideEffects must preserve CSS exports");
-    expect(output).toContain("@diffgazer/keys must not be marked optional");
+
     expect(output).toContain("keyboard-widget depends on keys registry hooks but omits meta.optionalIntegrations keyboard-navigation");
   });
 });

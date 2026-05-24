@@ -306,6 +306,20 @@ describe("Field", () => {
     expect(input).not.toHaveAttribute("aria-describedby")
   })
 
+  it("FieldError has role='alert' for live-region semantics", () => {
+    render(
+      <Field invalid>
+        <Field.Label>Email</Field.Label>
+        <Field.Control>
+          <Input />
+        </Field.Control>
+        <Field.Error>Email is required.</Field.Error>
+      </Field>,
+    )
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Email is required.")
+  })
+
   it("has no a11y violations across Field configurations", async () => {
     const { container, rerender } = render(
       <Field>

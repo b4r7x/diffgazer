@@ -126,8 +126,10 @@ function collectFilesToRemove<TItem, TConfig>(
     const item = ctx.getItemOrThrow(name);
     const removableFiles: RemoveWorkflowFile[] = [];
     let blocked = false;
+    let hadMissingFiles = false;
     for (const file of ctx.resolveFilesForItem({ cwd: ctx.cwd, config: ctx.config, item })) {
       if (!existsSync(file.absolutePath)) {
+        hadMissingFiles = true;
         info(`Skipping ${relative(ctx.cwd, file.absolutePath)}: file not found on disk`);
         continue;
       }
@@ -140,7 +142,7 @@ function collectFilesToRemove<TItem, TConfig>(
       removableFiles.push(file);
     }
     if (blocked) continue;
-    if (removableFiles.length > 0) {
+    if (removableFiles.length > 0 || (ctx.force && hadMissingFiles)) {
       removedNames.push(name);
     }
     for (const file of removableFiles) {
@@ -159,21 +161,29 @@ function showRemovePreview(cwd: string, files: Set<string>): void {
   newline();
 }
 
-function deleteFiles(cwd: string, files: Set<string>, allowedBaseDirs: string[]): number {
+interface DeleteResult {
+  removed: number;
+  failures: string[];
+}
+
+function deleteFiles(cwd: string, files: Set<string>, allowedBaseDirs: string[]): DeleteResult {
   for (const file of files) {
     ensureWithinAnyDir(file, allowedBaseDirs);
   }
 
   let removed = 0;
+  const failures: string[] = [];
   for (const file of files) {
     try {
       rmSync(file);
       removed++;
     } catch (e) {
-      error(`Failed to remove ${relative(cwd, file)}: ${toErrorMessage(e)}`);
+      const rel = relative(cwd, file);
+      error(`Failed to remove ${rel}: ${toErrorMessage(e)}`);
+      failures.push(rel);
     }
   }
-  return removed;
+  return { removed, failures };
 }
 
 async function confirmRemoval(files: Set<string>, yes: boolean, dryRun: boolean): Promise<boolean> {
@@ -249,7 +259,13 @@ async function executeRemoval<TItem, TConfig>(
   if (!shouldProceed) return;
 
   const allowedBaseDirs = options.resolveAllowedBaseDirs({ cwd, config });
-  const removed = deleteFiles(cwd, files, allowedBaseDirs);
+  const { removed, failures } = deleteFiles(cwd, files, allowedBaseDirs);
+
+  if (failures.length > 0) {
+    error(`Aborting: ${failures.length} file(s) could not be removed. Manifest and CSS left unchanged.`);
+    return;
+  }
+
   finalizeRemoval({
     cwd, names: removedNames, removed, dirs, config,
     updateManifest: options.updateManifest,
@@ -282,9 +298,24 @@ export async function runRemoveWorkflow<TItem, TConfig>(
   }
 
   const { files, dirs, removedNames } = collectRemovalTargets(options, config, expansion.toRemove);
-  if (files.size === 0) {
+  if (files.size === 0 && removedNames.length === 0) {
     if (expansion.blocked.length === 0) {
       info(`No installed files found for the specified ${options.itemPlural}.`);
+    }
+    return;
+  }
+
+  if (files.size === 0 && removedNames.length > 0) {
+    // All owned files are already gone (stale entries). Clean up the manifest.
+    if (!options.dryRun) {
+      options.updateManifest({ cwd: options.cwd, removedNames });
+      options.onAfterRemove?.({ cwd: options.cwd, config, removedNames });
+      newline();
+      success(`Cleaned ${removedNames.length} stale manifest entry/entries (${removedNames.join(", ")}).`);
+      newline();
+    } else {
+      info(`Would clean ${removedNames.length} stale manifest entry/entries (${removedNames.join(", ")}).`);
+      info("(dry run - no changes made)");
     }
     return;
   }

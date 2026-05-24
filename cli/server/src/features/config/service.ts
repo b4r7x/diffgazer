@@ -1,7 +1,7 @@
 import { type Result, ok, err } from "@diffgazer/core/result";
 import { createError } from "@diffgazer/core/errors";
-import type { AIProvider, SetupField, SetupStatus } from "@diffgazer/core/schemas/config";
-import { UserConfigSchema } from "@diffgazer/core/schemas/config";
+import type { AIProvider, CredentialRef, SetupField, SetupStatus } from "@diffgazer/core/schemas/config";
+import { ALLOWED_CREDENTIAL_ENV_VARS, UserConfigSchema } from "@diffgazer/core/schemas/config";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import type { SecretsStorageError } from "../../shared/lib/config/types.js";
 import type { AppError } from "@diffgazer/core/errors";
@@ -91,10 +91,41 @@ export const getInitState = (projectRoot?: string): InitResponse => {
   };
 };
 
+/** Validate a credential ref or literal API key before persisting. */
+function validateCredential(
+  apiKey: string | CredentialRef,
+): Result<void, { message: string; code: string }> {
+  if (typeof apiKey === "string") {
+    if (apiKey.trim().length === 0) {
+      return err(createError(ErrorCode.CREDENTIAL_INVALID, "API key must not be empty or whitespace-only"));
+    }
+    return ok(undefined);
+  }
+  if (apiKey.kind === "literal") {
+    if (apiKey.value.trim().length === 0) {
+      return err(createError(ErrorCode.CREDENTIAL_INVALID, "API key must not be empty or whitespace-only"));
+    }
+    return ok(undefined);
+  }
+  // kind: "env"
+  if (!ALLOWED_CREDENTIAL_ENV_VARS.has(apiKey.varName)) {
+    const allowed = [...ALLOWED_CREDENTIAL_ENV_VARS].join(", ");
+    return err(
+      createError(
+        ErrorCode.CREDENTIAL_INVALID,
+        `Environment variable "${apiKey.varName}" is not an allowed provider key. Allowed: ${allowed}`,
+      ),
+    );
+  }
+  return ok(undefined);
+}
+
 export const saveConfig = (
   input: SaveConfigRequest
-): Promise<Result<ProviderStatus, SecretsStorageError>> => {
-  // apiKey may be a string (legacy/literal) or CredentialRef (structured)
+): Promise<Result<ProviderStatus, SecretsStorageError | { message: string; code: string }>> => {
+  const validation = validateCredential(input.apiKey);
+  if (!validation.ok) return Promise.resolve(validation);
+
   return saveProviderCredentials({
     provider: input.provider,
     apiKey: input.apiKey,

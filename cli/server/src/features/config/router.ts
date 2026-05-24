@@ -15,6 +15,7 @@ import { errorResponse, zodErrorHandler } from "../../shared/lib/http/response.j
 import { getProjectRoot } from "../../shared/lib/http/request.js";
 import { createBodyLimitMiddleware } from "../../shared/middlewares/body-limit.js";
 import { createRateLimitMiddleware } from "../../shared/middlewares/rate-limit.js";
+import { requireRepoAccess } from "../../shared/middlewares/trust-guard.js";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import { SaveConfigRequestSchema } from "@diffgazer/core/schemas/config";
 import { ProviderParamSchema, ActivateProviderBodySchema } from "./schemas.js";
@@ -84,8 +85,9 @@ configRouter.post(
 
 configRouter.post(
   "/provider/:providerId/activate",
+  requireRepoAccess,
   bodyLimitMiddleware,
-  zValidator("param", ProviderParamSchema),
+  zValidator("param", ProviderParamSchema, zodErrorHandler),
   zValidator("json", ActivateProviderBodySchema, zodErrorHandler),
   async (c): Promise<Response> => {
     const { providerId } = c.req.valid("param");
@@ -101,6 +103,7 @@ configRouter.post(
 
 configRouter.delete(
   "/provider/:providerId",
+  requireRepoAccess,
   zValidator("param", ProviderParamSchema, zodErrorHandler),
   async (c): Promise<Response> => {
     const { providerId } = c.req.valid("param");
@@ -112,7 +115,7 @@ configRouter.delete(
   },
 );
 
-configRouter.delete("/", async (c): Promise<Response> => {
+configRouter.delete("/", requireRepoAccess, async (c): Promise<Response> => {
   const result = await deleteConfig();
   if (!result.ok) {
     const status = result.error.code === ErrorCode.CONFIG_NOT_FOUND ? 404 : 400;

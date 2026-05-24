@@ -5,7 +5,7 @@
   "homepage": "https://github.com/b4r7x/diffgazer/tree/main/libs/ui",
   "repository": {
     "type": "git",
-    "url": "https://github.com/b4r7x/diffgazer.git",
+    "url": "git+https://github.com/b4r7x/diffgazer.git",
     "directory": "libs/ui"
   },
   "bugs": {
@@ -336,6 +336,9 @@
     "react-dom": ">=19.2.0"
   },
   "peerDependenciesMeta": {
+    "@diffgazer/keys": {
+      "optional": true
+    },
     "figlet": {
       "optional": true
     },

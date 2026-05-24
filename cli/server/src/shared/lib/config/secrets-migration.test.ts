@@ -8,14 +8,8 @@ const keyring = vi.hoisted(() => ({
   writeKeyringSecret: vi.fn(),
 }));
 
-const stateMocks = vi.hoisted(() => ({
-  removeSecretsFile: vi.fn(),
-}));
-
 // Boundary mock: keyring wraps the OS keychain via @napi-rs/keyring; tests provide canned secret read/write/delete results.
 vi.mock("./keyring.js", () => keyring);
-// Boundary mock: state wraps on-disk JSON config persistence; tests stub removeSecretsFile to observe the migration side effect without touching the filesystem.
-vi.mock("./state.js", () => stateMocks);
 
 const { migrateSecretsStorage, finalizeKeyringDeletions, getApiKeyName } = await import(
   "./secrets-migration.js"
@@ -64,12 +58,16 @@ describe("migrateSecretsStorage", () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.value.removedFileSecrets).toBe(false);
+      expect(result.value.shouldDeleteSecretsFile).toBe(false);
       expect(result.value.nextSecrets).toEqual({ providers: { gemini: "k" } });
     }
     expect(keyring.writeKeyringSecret).not.toHaveBeenCalled();
   });
 
-  it("writes each file secret to the keyring and clears the file map", () => {
+  it("writes each file secret to the keyring, verifies read-back, and defers file deletion", () => {
+    // readKeyringSecret is used for verification -- return the same value that was written
+    keyring.readKeyringSecret.mockReturnValue({ ok: true, value: "g-key" });
+
     const result = migrateSecretsStorage(
       makeConfigState(),
       { providers: { gemini: "g-key" } },
@@ -80,11 +78,14 @@ describe("migrateSecretsStorage", () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.value.nextSecrets.providers).toEqual({});
-      expect(result.value.removedFileSecrets).toBe(true);
+      // File is NOT removed by migrateSecretsStorage -- caller handles it after persisting config
+      expect(result.value.removedFileSecrets).toBe(false);
+      expect(result.value.shouldDeleteSecretsFile).toBe(true);
       expect(result.value.keyringDeletions).toEqual([]);
     }
     expect(keyring.writeKeyringSecret).toHaveBeenCalledWith("api_key_gemini", "g-key");
-    expect(stateMocks.removeSecretsFile).toHaveBeenCalled();
+    // Verification read-back must occur after write
+    expect(keyring.readKeyringSecret).toHaveBeenCalledWith("api_key_gemini");
   });
 
   it("returns KEYRING_UNAVAILABLE when migrating to keyring without keyring support", () => {
@@ -104,6 +105,66 @@ describe("migrateSecretsStorage", () => {
     expect(keyring.writeKeyringSecret).not.toHaveBeenCalled();
   });
 
+  it("rolls back keyring writes when a subsequent write fails", () => {
+    let writeCount = 0;
+    keyring.writeKeyringSecret.mockImplementation(() => {
+      writeCount++;
+      if (writeCount === 2) {
+        return { ok: false, error: { code: "KEYRING_WRITE_FAILED", message: "write failed" } };
+      }
+      return { ok: true, value: undefined };
+    });
+    keyring.readKeyringSecret.mockReturnValue({ ok: true, value: "key-a" });
+
+    const result = migrateSecretsStorage(
+      makeConfigState(),
+      { providers: { gemini: "key-a", openrouter: "key-b" } },
+      "file",
+      "keyring",
+    );
+
+    expect(result.ok).toBe(false);
+    // The first successful write must be rolled back
+    expect(keyring.deleteKeyringSecret).toHaveBeenCalledWith("api_key_gemini");
+  });
+
+  it("rolls back keyring writes when read-back verification fails", () => {
+    keyring.readKeyringSecret.mockReturnValue({ ok: true, value: "wrong-value" });
+
+    const result = migrateSecretsStorage(
+      makeConfigState(),
+      { providers: { gemini: "g-key" } },
+      "file",
+      "keyring",
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe("SECRETS_MIGRATION_FAILED");
+    }
+    // No successful writes to rollback (verification failed on the first provider)
+    expect(keyring.deleteKeyringSecret).not.toHaveBeenCalled();
+  });
+
+  it("does not signal file deletion when env entries remain", () => {
+    const result = migrateSecretsStorage(
+      makeConfigState(),
+      { providers: { gemini: { kind: "env", varName: "GEMINI_API_KEY" } } },
+      "file",
+      "keyring",
+    );
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.shouldDeleteSecretsFile).toBe(false);
+      expect(result.value.nextSecrets.providers).toEqual({
+        gemini: { kind: "env", varName: "GEMINI_API_KEY" },
+      });
+    }
+    // No literal secrets to write to keyring
+    expect(keyring.writeKeyringSecret).not.toHaveBeenCalled();
+  });
+
   it("reads keyring secrets and defers their deletion until the caller persists the file copy", () => {
     const result = migrateSecretsStorage(
       makeConfigState(),
@@ -118,6 +179,7 @@ describe("migrateSecretsStorage", () => {
         gemini: "key-from-keyring",
       });
       expect(result.value.keyringDeletions).toEqual(["gemini"]);
+      expect(result.value.shouldDeleteSecretsFile).toBe(false);
     }
     // The migration itself must NOT touch the keyring. Deletion is the caller's
     // responsibility, executed only after the file copy is durably persisted.
@@ -125,9 +187,6 @@ describe("migrateSecretsStorage", () => {
   });
 
   it("does NOT delete keyring entries if the caller crashes before persisting the file (crash-safety)", () => {
-    // Simulate the keyring→file migration up to the point where the file copy
-    // is about to be persisted. If a crash occurs here, the keyring must still
-    // hold the secret so the migration can be safely retried on next start.
     const result = migrateSecretsStorage(
       makeConfigState(),
       { providers: {} },
@@ -138,9 +197,6 @@ describe("migrateSecretsStorage", () => {
 
     // Caller never invokes finalizeKeyringDeletions (process crashed).
     expect(keyring.deleteKeyringSecret).not.toHaveBeenCalled();
-    // The keyring read returned the value, so the in-memory plan has it;
-    // critically, the OS keyring is still untouched and the next run will
-    // re-read it successfully.
     expect(keyring.readKeyringSecret).toHaveBeenCalledWith("api_key_gemini");
   });
 
@@ -148,7 +204,6 @@ describe("migrateSecretsStorage", () => {
     finalizeKeyringDeletions(["gemini", "zai"]);
     expect(keyring.deleteKeyringSecret).toHaveBeenCalledWith("api_key_gemini");
     expect(keyring.deleteKeyringSecret).toHaveBeenCalledWith("api_key_zai");
-    // call-count IS the contract: keyring deletion must run exactly once per queued provider (no skipped providers, no spurious extra deletes)
     expect(keyring.deleteKeyringSecret).toHaveBeenCalledTimes(2);
   });
 

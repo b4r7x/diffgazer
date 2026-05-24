@@ -10,7 +10,7 @@
   "files": [
     {
       "path": "registry/hooks/use-navigation.ts",
-      "content": "\"use client\";\n\nexport {\n  useNavigation,\n  type NavigationRole,\n  type UseNavigationOptions,\n  type UseNavigationReturn,\n} from \"@diffgazer/keys\";\n",
+      "content": "\"use client\";\n\nimport { useNavigation, type NavigationRole, type UseNavigationOptions, type UseNavigationReturn } from \"@/hooks/use-navigation\";\n\nexport { useNavigation, type NavigationRole, type UseNavigationOptions, type UseNavigationReturn };\n",
       "type": "registry:hook"
     }
   ],

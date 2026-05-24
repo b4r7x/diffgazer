@@ -2,3 +2,4 @@ packages:
   - "apps/*"
   - "cli/*"
   - "libs/*"
+  - "libs/keys/artifacts"

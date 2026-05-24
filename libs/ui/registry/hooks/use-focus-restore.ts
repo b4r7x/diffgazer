@@ -1,3 +1,5 @@
 "use client";
 
-export { useFocusRestore, type UseFocusRestoreOptions, type UseFocusRestoreReturn } from "@diffgazer/keys";
+import { useFocusRestore, type UseFocusRestoreOptions, type UseFocusRestoreReturn } from "@diffgazer/keys";
+
+export { useFocusRestore, type UseFocusRestoreOptions, type UseFocusRestoreReturn };

@@ -15,6 +15,11 @@ overrides:
   undici: ^7.24.0
   path-to-regexp: ^8.4.0
   ws: ^8.21.0
+  fast-uri: '>=3.1.2'
+  express-rate-limit: '>=8.2.2'
+  qs: '>=6.15.2'
+  h3: '>=2.0.1-rc.18'
+  h3-v2: npm:h3@>=2.0.1-rc.18
 
 importers:
 
@@ -72,8 +77,8 @@ importers:
         specifier: ^4.21.0
         version: 4.21.0
       turbo:
-        specifier: ^2.6.3
-        version: 2.8.9
+        specifier: ^2.9.14
+        version: 2.9.14
       vitest:
         specifier: ^4.1.0
         version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.2.3)(jsdom@28.1.0(@noble/hashes@1.8.0))(msw@2.12.10(@types/node@25.2.3)(typescript@5.9.3))(vite@7.3.3(@types/node@25.2.3)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.21.0))
@@ -365,9 +370,6 @@ importers:
       '@inkjs/ui':
         specifier: ^2.0.0
         version: 2.0.0(ink@6.8.0(@types/react@19.2.14)(react@19.2.4))
-      '@napi-rs/keyring':
-        specifier: ^1.2.0
-        version: 1.2.0
       '@tanstack/react-query':
         specifier: ^5.80.7
         version: 5.95.2(react@19.2.4)
@@ -426,6 +428,10 @@ importers:
       vitest:
         specifier: ^4.1.0
         version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.2.3)(jsdom@28.1.0(@noble/hashes@1.8.0))(msw@2.12.10(@types/node@25.2.3)(typescript@5.9.3))(vite@7.3.3(@types/node@25.2.3)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.21.0))
+    optionalDependencies:
+      '@napi-rs/keyring':
+        specifier: ^1.2.0
+        version: 1.2.0
 
   cli/server:
     dependencies:
@@ -475,15 +481,9 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.80.7
         version: 5.95.2(react@19.2.4)
-      clsx:
-        specifier: ^2.1.1
-        version: 2.1.1
       figlet:
         specifier: ^1.10.0
         version: 1.10.0
-      tailwind-merge:
-        specifier: ^3.4.0
-        version: 3.4.1
       zod:
         specifier: ^4.3.6
         version: 4.3.6
@@ -539,6 +539,15 @@ importers:
       vitest:
         specifier: ^4.1.0
         version: 4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.2.3)(jsdom@28.1.0(@noble/hashes@1.8.0))(msw@2.12.10(@types/node@25.2.3)(typescript@5.9.3))(vite@7.3.3(@types/node@25.2.3)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.21.0))
+
+  libs/keys/artifacts:
+    devDependencies:
+      '@diffgazer/keys':
+        specifier: workspace:*
+        version: link:..
+      '@diffgazer/registry':
+        specifier: workspace:*
+        version: link:../../registry
 
   libs/registry:
     dependencies:
@@ -2256,6 +2265,36 @@ packages:
   '@ts-morph/common@0.27.0':
     resolution: {integrity: sha512-Wf29UqxWDpc+i61k3oIOzcUfQt79PIT9y/MWfAGlrkjg6lBC1hwDECLXPVJAhWjiGbfBCxZd65F/LIZF3+jeJQ==}
 
+  '@turbo/darwin-64@2.9.14':
+    resolution: {integrity: sha512-t7QiPflaEyBE4oayeZtSmu4mEfjgIrcNlNNl1z1dmIVPqEdtA7+CfTf8d7KXsOGPh6aNgWjKxyvQg9uGfDQF+A==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@turbo/darwin-arm64@2.9.14':
+    resolution: {integrity: sha512-d23147mC9BsCPA9mJ0h/ubcpbRgcJBXbcG3+Vq7YLhjz3IXuvQsJ1UXH8f4MD76ZjJ4m/E4aRdJV+MW88CDfbw==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@turbo/linux-64@2.9.14':
+    resolution: {integrity: sha512-P3ZKB5tuUDdDQWuAsACGUR1qv9W7BNWxdxqVJ0kZNuNNPRaVYTPPikLcp79+GiEcW3npsR+KyP38lnQiBc5aSA==}
+    cpu: [x64]
+    os: [linux]
+
+  '@turbo/linux-arm64@2.9.14':
+    resolution: {integrity: sha512-ZRTlzcUMrrPv9ZuDzRF9n60Ym13bKeG9jDB8WjxyLhWNzV+AJQN+zdpIk3NJYf2zQsGUm1mNar2P0elRzLw25g==}
+    cpu: [arm64]
+    os: [linux]
+
+  '@turbo/windows-64@2.9.14':
+    resolution: {integrity: sha512-exanwN6sIduZwykYeiTQj8kCmOhazP5WOz3bvXMcYtjhL6Z3iRWLewKrXCBq0bqwSP3iBMb/AerRCnHI4lx46A==}
+    cpu: [x64]
+    os: [win32]
+
+  '@turbo/windows-arm64@2.9.14':
+    resolution: {integrity: sha512-fVdCsnmYoKICsycbWuuGp6Jvi51/3G/UluFWuAUCvR8PIW5IJkAk5BM9UF8PSm0Q2IphWHFZjYEgjHsh3B9y/g==}
+    cpu: [arm64]
+    os: [win32]
+
   '@tybys/wasm-util@0.10.1':
     resolution: {integrity: sha512-9tTaPJLSiejZKx+Bmog4uSubteqTvFrVrURwkmHixBo0G4seD0zUxp98E1DzUBJxLQ3NPwXrGKDiVjwx/DpPsg==}
 
@@ -3096,8 +3135,8 @@ packages:
     resolution: {integrity: sha512-knvyeauYhqjOYvQ66MznSMs83wmHrCycNEN6Ao+2AeYEfxUIkuiVxdEa1qlGEPK+We3n0THiDciYSsCcgW/DoA==}
     engines: {node: '>=12.0.0'}
 
-  express-rate-limit@8.2.1:
-    resolution: {integrity: sha512-PCZEIEIxqwhzw4KF0n7QF4QqruVTcF73O5kFKUnGOyjbCCgizBBiFaYpd/fnBLUMPw/BWw9OsiN7GgrNYr7j6g==}
+  express-rate-limit@8.5.2:
+    resolution: {integrity: sha512-5Kb34ipNX694DH48vN9irak1Qx30nb0PLYHXfJgw4YEjiC3ZEmZJhwOp+VfiCYwFzvFTdB9QkArYS5kXa2cx2A==}
     engines: {node: '>= 16'}
     peerDependencies:
       express: '>= 4.11'
@@ -3122,8 +3161,8 @@ packages:
     resolution: {integrity: sha512-7MptL8U0cqcFdzIzwOTHoilX9x5BrNqye7Z/LuC7kCMRio1EMSyqRK3BEAUD7sXRq4iT4AzTVuZdhgQ2TCvYLg==}
     engines: {node: '>=8.6.0'}
 
-  fast-uri@3.1.0:
-    resolution: {integrity: sha512-iPeeDKJSWf4IEOasVVrknXpaBV0IApz/gp7S2bb7Z4Lljbl2MGJRqInZiUrQwV16cpzw/D3S5j5Julj/gT52AA==}
+  fast-uri@3.1.2:
+    resolution: {integrity: sha512-rVjf7ArG3LTk+FS6Yw81V1DLuZl1bRbNrev6Tmd/9RaroeeRRJhAt7jg/6YFxbvAQXUCavSoZhPPj6oOx+5KjQ==}
 
   fastq@1.20.1:
     resolution: {integrity: sha512-GGToxJ/w1x32s/D2EKND7kTil4n8OVk/9mycTc4VDza13lOvpUZTGX3mFSCtV9ksdGBVzvsyAVLM6mHFThxXxw==}
@@ -3355,16 +3394,6 @@ packages:
     resolution: {integrity: sha512-DKKrynuQRne0PNpEbzuEdHlYOMksHSUI8Zc9Unei5gTsMNA2/vMpoMz/yKba50pejK56qj98qM0SjYxAKi13gQ==}
     engines: {node: ^12.22.0 || ^14.16.0 || ^16.0.0 || >=17.0.0}
 
-  h3@2.0.1-rc.16:
-    resolution: {integrity: sha512-h+pjvyujdo9way8qj6FUbhaQcHlR8FEq65EhTX9ViT5pK8aLj68uFl4hBkF+hsTJAH+H1END2Yv6hTIsabGfag==}
-    engines: {node: '>=20.11.1'}
-    hasBin: true
-    peerDependencies:
-      crossws: ^0.4.1
-    peerDependenciesMeta:
-      crossws:
-        optional: true
-
   h3@2.0.1-rc.21:
     resolution: {integrity: sha512-lDeqAgCQXWT7C+5Zs3ler2phZPeX5yTk9KqQuL8taSSngIhcPR0r83TZyYwTO/cLogm6a4+9slZcngrfdyZtrQ==}
     engines: {node: '>=20.11.1'}
@@ -3520,8 +3549,8 @@ packages:
   inline-style-parser@0.2.7:
     resolution: {integrity: sha512-Nb2ctOyNR8DqQoR0OwRG95uNWIC0C1lCgf5Naz5H6Ji72KZ8OcFZLz2P5sNgwlyoJ8Yif11oMuYs5pBQa86csA==}
 
-  ip-address@10.0.1:
-    resolution: {integrity: sha512-NWv9YLW4PoW2B7xtzaS3NCot75m6nK7Icdv0o3lfMceJVRfSoQwqD4wEH5rLwoKJwUiZ/rfpiVBhnaF0FK4HoA==}
+  ip-address@10.2.0:
+    resolution: {integrity: sha512-/+S6j4E9AHvW9SWMSEY9Xfy66O5PWvVEJ08O0y5JGyEKQpojb0K0GKpz/v5HJ/G0vi3D2sjGK78119oXZeE0qA==}
     engines: {node: '>= 12'}
 
   ipaddr.js@1.9.1:
@@ -4454,8 +4483,8 @@ packages:
     resolution: {integrity: sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==}
     engines: {node: '>=6'}
 
-  qs@6.15.0:
-    resolution: {integrity: sha512-mAZTtNCeetKMH+pSjrb76NAM8V9a05I9aBZOHztWy/UqcJdQYNsf59vrRKWnojAT9Y+GbIvoTBC++CPHqpDBhQ==}
+  qs@6.15.2:
+    resolution: {integrity: sha512-Rzq0KEyX/w/tEybncDgdkZrJgVUsUMk3xjh3t5bv3S1HTAtg+uOYt72+ZfwiQwKdysThkTBdL/rTi6HDmX9Ddw==}
     engines: {node: '>=0.6'}
 
   quansync@0.2.11:
@@ -4987,38 +5016,8 @@ packages:
     engines: {node: '>=18.0.0'}
     hasBin: true
 
-  turbo-darwin-64@2.8.9:
-    resolution: {integrity: sha512-KnCw1ZI9KTnEAhdI9avZrnZ/z4wsM++flMA1w8s8PKOqi5daGpFV36qoPafg4S8TmYMe52JPWEoFr0L+lQ5JIw==}
-    cpu: [x64]
-    os: [darwin]
-
-  turbo-darwin-arm64@2.8.9:
-    resolution: {integrity: sha512-CbD5Y2NKJKBXTOZ7z7Cc7vGlFPZkYjApA7ri9lH4iFwKV1X7MoZswh9gyRLetXYWImVX1BqIvP8KftulJg/wIA==}
-    cpu: [arm64]
-    os: [darwin]
-
-  turbo-linux-64@2.8.9:
-    resolution: {integrity: sha512-OXC9HdCtsHvyH+5KUoH8ds+p5WU13vdif0OPbsFzZca4cUXMwKA3HWwUuCgQetk0iAE4cscXpi/t8A263n3VTg==}
-    cpu: [x64]
-    os: [linux]
-
-  turbo-linux-arm64@2.8.9:
-    resolution: {integrity: sha512-yI5n8jNXiFA6+CxnXG0gO7h5ZF1+19K8uO3/kXPQmyl37AdiA7ehKJQOvf9OPAnmkGDHcF2HSCPltabERNRmug==}
-    cpu: [arm64]
-    os: [linux]
-
-  turbo-windows-64@2.8.9:
-    resolution: {integrity: sha512-/OztzeGftJAg258M/9vK2ZCkUKUzqrWXJIikiD2pm8TlqHcIYUmepDbyZSDfOiUjMy6NzrLFahpNLnY7b5vNgg==}
-    cpu: [x64]
-    os: [win32]
-
-  turbo-windows-arm64@2.8.9:
-    resolution: {integrity: sha512-xZ2VTwVTjIqpFZKN4UBxDHCPM3oJ2J5cpRzCBSmRpJ/Pn33wpiYjs+9FB2E03svKaD04/lSSLlEUej0UYsugfg==}
-    cpu: [arm64]
-    os: [win32]
-
-  turbo@2.8.9:
-    resolution: {integrity: sha512-G+Mq8VVQAlpz/0HTsxiNNk/xywaHGl+dk1oiBREgOEVCCDjXInDlONWUn5srRnC9s5tdHTFD1bx1N19eR4hI+g==}
+  turbo@2.9.14:
+    resolution: {integrity: sha512-BQqXRr4UoWI3UPFrtznCLykYHxwxWh53iCB57x092jPMjIlW1wnm3N895g5irpiXmnxUhREBB0n6+y8BHhs4nw==}
     hasBin: true
 
   type-fest@5.4.4:
@@ -6299,7 +6298,7 @@ snapshots:
       eventsource: 3.0.7
       eventsource-parser: 3.0.6
       express: 5.2.1
-      express-rate-limit: 8.2.1(express@5.2.1)
+      express-rate-limit: 8.5.2(express@5.2.1)
       hono: 4.12.19
       jose: 6.1.3
       json-schema-typed: 8.0.2
@@ -6968,7 +6967,7 @@ snapshots:
       '@tanstack/router-core': 1.168.3
       '@tanstack/start-client-core': 1.167.3
       '@tanstack/start-storage-context': 1.166.17
-      h3-v2: h3@2.0.1-rc.16(crossws@0.4.5(srvx@0.11.15))
+      h3-v2: h3@2.0.1-rc.21(crossws@0.4.5(srvx@0.11.15))
       seroval: 1.5.1
     transitivePeerDependencies:
       - crossws
@@ -7022,6 +7021,24 @@ snapshots:
       fast-glob: 3.3.3
       minimatch: 10.2.5
       path-browserify: 1.0.1
+
+  '@turbo/darwin-64@2.9.14':
+    optional: true
+
+  '@turbo/darwin-arm64@2.9.14':
+    optional: true
+
+  '@turbo/linux-64@2.9.14':
+    optional: true
+
+  '@turbo/linux-arm64@2.9.14':
+    optional: true
+
+  '@turbo/windows-64@2.9.14':
+    optional: true
+
+  '@turbo/windows-arm64@2.9.14':
+    optional: true
 
   '@tybys/wasm-util@0.10.1':
     dependencies:
@@ -7215,7 +7232,7 @@ snapshots:
   ajv@8.18.0:
     dependencies:
       fast-deep-equal: 3.1.3
-      fast-uri: 3.1.0
+      fast-uri: 3.1.2
       json-schema-traverse: 1.0.0
       require-from-string: 2.0.2
 
@@ -7309,7 +7326,7 @@ snapshots:
       http-errors: 2.0.1
       iconv-lite: 0.7.2
       on-finished: 2.4.1
-      qs: 6.15.0
+      qs: 6.15.2
       raw-body: 3.0.2
       type-is: 2.0.1
     transitivePeerDependencies:
@@ -7844,10 +7861,10 @@ snapshots:
 
   expect-type@1.3.0: {}
 
-  express-rate-limit@8.2.1(express@5.2.1):
+  express-rate-limit@8.5.2(express@5.2.1):
     dependencies:
       express: 5.2.1
-      ip-address: 10.0.1
+      ip-address: 10.2.0
 
   express@5.2.1:
     dependencies:
@@ -7871,7 +7888,7 @@ snapshots:
       once: 1.4.0
       parseurl: 1.3.3
       proxy-addr: 2.0.7
-      qs: 6.15.0
+      qs: 6.15.2
       range-parser: 1.2.1
       router: 2.2.0
       send: 1.2.1
@@ -7898,7 +7915,7 @@ snapshots:
       merge2: 1.4.1
       micromatch: 4.0.8
 
-  fast-uri@3.1.0: {}
+  fast-uri@3.1.2: {}
 
   fastq@1.20.1:
     dependencies:
@@ -8113,13 +8130,6 @@ snapshots:
 
   graphql@16.12.0: {}
 
-  h3@2.0.1-rc.16(crossws@0.4.5(srvx@0.11.15)):
-    dependencies:
-      rou3: 0.8.1
-      srvx: 0.11.15
-    optionalDependencies:
-      crossws: 0.4.5(srvx@0.11.15)
-
   h3@2.0.1-rc.21(crossws@0.4.5(srvx@0.11.15)):
     dependencies:
       rou3: 0.8.1
@@ -8322,7 +8332,7 @@ snapshots:
 
   inline-style-parser@0.2.7: {}
 
-  ip-address@10.0.1: {}
+  ip-address@10.2.0: {}
 
   ipaddr.js@1.9.1: {}
 
@@ -9462,7 +9472,7 @@ snapshots:
 
   punycode@2.3.1: {}
 
-  qs@6.15.0:
+  qs@6.15.2:
     dependencies:
       side-channel: 1.1.0
 
@@ -10140,32 +10150,14 @@ snapshots:
     optionalDependencies:
       fsevents: 2.3.3
 
-  turbo-darwin-64@2.8.9:
-    optional: true
-
-  turbo-darwin-arm64@2.8.9:
-    optional: true
-
-  turbo-linux-64@2.8.9:
-    optional: true
-
-  turbo-linux-arm64@2.8.9:
-    optional: true
-
-  turbo-windows-64@2.8.9:
-    optional: true
-
-  turbo-windows-arm64@2.8.9:
-    optional: true
-
-  turbo@2.8.9:
+  turbo@2.9.14:
     optionalDependencies:
-      turbo-darwin-64: 2.8.9
-      turbo-darwin-arm64: 2.8.9
-      turbo-linux-64: 2.8.9
-      turbo-linux-arm64: 2.8.9
-      turbo-windows-64: 2.8.9
-      turbo-windows-arm64: 2.8.9
+      '@turbo/darwin-64': 2.9.14
+      '@turbo/darwin-arm64': 2.9.14
+      '@turbo/linux-64': 2.9.14
+      '@turbo/linux-arm64': 2.9.14
+      '@turbo/windows-64': 2.9.14
+      '@turbo/windows-arm64': 2.9.14
 
   type-fest@5.4.4:
     dependencies:

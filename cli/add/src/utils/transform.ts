@@ -1,3 +1,4 @@
+import { KEYS_PACKAGE_IMPORT_TARGETS } from "@diffgazer/registry";
 import type { ResolvedConfig } from "../context.js";
 import { SOURCE_ALIASES } from "../context.js";
 import { getKeysHookImportNames } from "./integration.js";
@@ -155,30 +156,6 @@ export function rewriteRelativeJsExtensionsForCopy(content: string): string {
     (_: string, prefix: string, quote: string, specifier: string) => `${prefix}${quote}${specifier}${quote}`,
   );
 }
-
-const KEYS_PACKAGE_IMPORT_TARGETS = new Map<string, string>([
-  ["useNavigation", "use-navigation"],
-  ["useFocusRestore", "use-focus-restore"],
-  ["useFocusTrap", "use-focus-trap"],
-  ["useScrollLock", "use-scroll-lock"],
-  ["getNavigationItems", "utils/navigation-items"],
-  ["containsActiveElement", "utils/navigation-items"],
-  ["findNavigationItemByValue", "utils/navigation-items"],
-  ["focusNavigationItem", "utils/navigation-items"],
-  ["getFocusedNavigationValue", "utils/navigation-items"],
-  ["getNavigationItemProps", "utils/navigation-items"],
-  ["NAVIGATION_ITEM_ATTRIBUTE", "utils/navigation-items"],
-  ["getFocusableElements", "utils/focusable"],
-  ["getFirstFocusableElement", "utils/focusable"],
-  ["getTabbableElements", "utils/focusable"],
-  ["isFocusable", "utils/focusable"],
-  ["isEditableElement", "utils/keyboard-utils"],
-  ["isInputElement", "utils/keyboard-utils"],
-  ["getRestorableFocusTarget", "utils/focus-restore"],
-  ["restoreFocus", "utils/focus-restore"],
-  ["getVerticalArrowDirection", "utils/navigation-directions"],
-  ["toVerticalBoundaryDirection", "utils/navigation-directions"],
-]);
 
 function specifierName(specifier: string): string {
   return specifier

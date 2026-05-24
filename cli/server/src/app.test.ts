@@ -416,9 +416,9 @@ describe("shutdown route", () => {
     });
 
     expect(res.status).toBe(503);
-    const body = (await res.json()) as { ok: boolean; message?: string };
-    expect(body.ok).toBe(false);
-    expect(body.message).toBe("Shutdown is not available in this environment.");
+    const body = (await res.json()) as { error: { message: string; code: string } };
+    expect(body.error.message).toBe("Shutdown is not available in this environment.");
+    expect(body.error.code).toBe("SERVICE_UNAVAILABLE");
     expect(killSpy).not.toHaveBeenCalled();
   });
 
@@ -433,9 +433,9 @@ describe("shutdown route", () => {
     });
 
     expect(res.status).toBe(503);
-    const body = (await res.json()) as { ok: boolean; message?: string };
-    expect(body.ok).toBe(false);
-    expect(body.message).toBe("Shutdown is not available in this environment.");
+    const body = (await res.json()) as { error: { message: string; code: string } };
+    expect(body.error.message).toBe("Shutdown is not available in this environment.");
+    expect(body.error.code).toBe("SERVICE_UNAVAILABLE");
     expect(killSpy).not.toHaveBeenCalled();
   });
 

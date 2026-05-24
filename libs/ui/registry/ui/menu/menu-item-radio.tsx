@@ -80,6 +80,7 @@ export function MenuItemRadio({
       ref={ref}
       id={itemId}
       role="menuitemradio"
+      tabIndex={-1}
       data-diffgazer-navigation-item="true"
       data-value={id}
       data-active={isActive || undefined}

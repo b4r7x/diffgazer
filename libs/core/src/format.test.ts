@@ -6,6 +6,7 @@ import {
   formatTimestampOrNA,
   getDateKey,
   getDateLabel,
+  getTimestamp,
 } from "./format.js";
 
 describe("formatTime", () => {
@@ -85,6 +86,36 @@ describe("getDateLabel", () => {
     expect(getDateLabel("2025-01-15T08:00:00.000Z", { showYear: true })).toMatch(
       /^Jan\s+15,\s+2025$/,
     );
+  });
+});
+
+describe("getTimestamp", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-02-09T14:30:00.000Z"));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("returns a formatted time string matching H:MM AM/PM pattern", () => {
+    const result = getTimestamp("2026-02-09T14:30:00.000Z");
+    expect(result).toMatch(/^\d{1,2}:\d{2}\s[AP]M$/);
+  });
+
+  it("formats a morning timestamp", () => {
+    const result = getTimestamp("2026-02-09T09:05:00.000Z");
+    expect(result).toMatch(/^\d{1,2}:05\s[AP]M$/);
+  });
+
+  it("formats midnight boundary", () => {
+    const result = getTimestamp("2026-02-09T00:00:00.000Z");
+    expect(result).toMatch(/^\d{1,2}:00\s[AP]M$/);
+  });
+
+  it("returns 'Invalid Date' for an unparseable date string", () => {
+    expect(getTimestamp("not-a-date")).toBe("Invalid Date");
   });
 });
 

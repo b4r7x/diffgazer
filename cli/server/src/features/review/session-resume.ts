@@ -22,7 +22,7 @@ async function assertSessionFresh(
   projectPath: string,
 ): Promise<Result<void, FreshnessFailure>> {
   const gitService = createGitService({ cwd: projectPath });
-  const [headCommitResult, currentStatusHash] = await Promise.all([
+  const [headCommitResult, statusHashResult] = await Promise.all([
     gitService.getHeadCommit(),
     gitService.getStatusHash(),
   ]);
@@ -37,8 +37,9 @@ async function assertSessionFresh(
 
   const currentHeadCommit = headCommitResult.value;
   if (
+    statusHashResult === null ||
     currentHeadCommit !== session.headCommit ||
-    currentStatusHash !== session.statusHash
+    statusHashResult !== session.statusHash
   ) {
     return err({
       code: ReviewErrorCode.SESSION_STALE,

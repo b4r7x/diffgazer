@@ -152,6 +152,7 @@ export function MenuSubTrigger({
       ref={composeRefs(triggerRef, ref)}
       id={itemId}
       role={itemRole}
+      tabIndex={-1}
       data-diffgazer-navigation-item="true"
       data-value={id}
       data-active={isFocused || undefined}

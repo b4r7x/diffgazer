@@ -224,6 +224,36 @@ describe("runLensAnalysis", () => {
     }
   });
 
+  it("filters out issues referencing files not in the reviewed diff", async () => {
+    const diff = makeDiff(1); // Only src/file-0.ts
+    const validIssue = makeIssue("1", "src/file-0.ts");
+    const hallucinatedIssue = makeIssue("2", "src/nonexistent.ts");
+    const client = makeMockAIClient(
+      ok({ summary: "Found 2 issues", issues: [validIssue, hallucinatedIssue] }),
+    );
+    const events: Array<AgentStreamEvent | StepEvent> = [];
+    const onEvent = (e: AgentStreamEvent | StepEvent) => events.push(e);
+
+    const promise = runLensAnalysis(
+      client,
+      CORRECTNESS_LENS,
+      diff,
+      onEvent,
+      makeContext(),
+    );
+    await vi.advanceTimersByTimeAsync(100);
+    const result = await promise;
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.issues).toHaveLength(1);
+      expect(result.value.issues[0]!.file).toBe("src/file-0.ts");
+    }
+
+    const issueEvents = events.filter((e) => e.type === "issue_found");
+    expect(issueEvents).toHaveLength(1);
+  });
+
   it("stops emitting progress events after the generate call rejects", async () => {
     const diff = makeDiff(1);
     const rejectError = new Error("Network failure");

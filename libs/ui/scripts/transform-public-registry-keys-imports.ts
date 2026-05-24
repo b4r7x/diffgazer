@@ -1,30 +1,6 @@
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { REGISTRY_ORIGIN } from "@diffgazer/registry";
-
-const KEYS_PACKAGE_IMPORT_TARGETS = new Map<string, string>([
-  ["useNavigation", "use-navigation"],
-  ["useFocusRestore", "use-focus-restore"],
-  ["useFocusTrap", "use-focus-trap"],
-  ["useScrollLock", "use-scroll-lock"],
-  ["getNavigationItems", "utils/navigation-items"],
-  ["containsActiveElement", "utils/navigation-items"],
-  ["findNavigationItemByValue", "utils/navigation-items"],
-  ["focusNavigationItem", "utils/navigation-items"],
-  ["getFocusedNavigationValue", "utils/navigation-items"],
-  ["getNavigationItemProps", "utils/navigation-items"],
-  ["NAVIGATION_ITEM_ATTRIBUTE", "utils/navigation-items"],
-  ["getFocusableElements", "utils/focusable"],
-  ["getFirstFocusableElement", "utils/focusable"],
-  ["getTabbableElements", "utils/focusable"],
-  ["isFocusable", "utils/focusable"],
-  ["isEditableElement", "utils/keyboard-utils"],
-  ["isInputElement", "utils/keyboard-utils"],
-  ["getRestorableFocusTarget", "utils/focus-restore"],
-  ["restoreFocus", "utils/focus-restore"],
-  ["getVerticalArrowDirection", "utils/navigation-directions"],
-  ["toVerticalBoundaryDirection", "utils/navigation-directions"],
-]);
+import { KEYS_PACKAGE_IMPORT_TARGETS, REGISTRY_ORIGIN } from "@diffgazer/registry";
 
 function specifierName(specifier: string): string {
   return specifier
@@ -83,9 +59,14 @@ function stripRelativeJsExtensions(content: string): string {
   );
 }
 
+function stripCssSideEffectImports(content: string): string {
+  return content.replace(/^\s*import\s+["'][^"']+\.css["'];?\s*\n?/gm, "");
+}
+
 export function transformUiPublicRegistryKeysImportContent(content: string): string {
   const keysRewritten = content.split("\n").map(rewriteKeysPackageImportLine).join("\n");
-  return stripRelativeJsExtensions(keysRewritten);
+  const cssStripped = stripCssSideEffectImports(keysRewritten);
+  return stripRelativeJsExtensions(cssStripped);
 }
 
 interface RegistryFileWithContent {

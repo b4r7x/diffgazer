@@ -13,3 +13,25 @@ tmp
 **/coverage
 *.tgz
 *.tsbuildinfo
+
+# Secrets and environment files
+.env
+.env.*
+**/.env
+**/.env.*
+
+# Workspace and audit artifacts
+.diffgazer/
+.worktrees/
+.audit-runs/
+tmp/
+specs/
+agent-specs/
+agent-skills/
+HANDOFF_*
+DEPLOYMENT_*
+SOTA-AUDIT*
+PACKAGE_GOVERNANCE*
+AUDIT_*
+OPUS_AUDIT_*
+FIX_SPEC_*

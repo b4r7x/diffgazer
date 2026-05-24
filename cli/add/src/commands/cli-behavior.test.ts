@@ -303,6 +303,24 @@ describe("remove command", () => {
     expect(config.installedComponents?.["ui/button"]).toBeUndefined();
   });
 
+  test("remove --force cleans stale manifest entries when owned files are already missing", () => {
+    runDgadd(["add", "ui/button", "--cwd", root, "--yes", "--skip-install"]);
+
+    const buttonDir = join(root, "src/components/ui/button");
+    rmSync(buttonDir, { recursive: true, force: true });
+    expect(existsSync(buttonDir)).toBe(false);
+
+    const before = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
+    expect(before.installedComponents?.["ui/button"]).toBeTruthy();
+
+    expect(() =>
+      runDgadd(["remove", "ui/button", "--cwd", root, "--yes", "--force"]),
+    ).not.toThrow();
+
+    const after = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
+    expect(after.installedComponents?.["ui/button"]).toBeUndefined();
+  });
+
   test("remove --dry-run previews owned files without changing files or manifest", () => {
     runDgadd(["add", "ui/button", "--cwd", root, "--yes", "--skip-install"]);
     const buttonIndex = join(root, "src/components/ui/button/index.ts");

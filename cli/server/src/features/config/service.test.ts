@@ -251,4 +251,118 @@ describe("config service", () => {
       { timeout: 1000, interval: 10 },
     );
   });
+
+  describe("credential validation", () => {
+    it("rejects env credential refs with disallowed env var names", async () => {
+      const store = await loadStore();
+      await store.updateSettings({ secretsStorage: "file" });
+      const { saveConfig } = await loadService();
+
+      const result = await saveConfig({
+        provider: "gemini",
+        apiKey: { kind: "env", varName: "AWS_SECRET_ACCESS_KEY" },
+        model: "gemini-2.5-flash",
+      });
+
+      expect(result).toMatchObject({
+        ok: false,
+        error: { code: "CREDENTIAL_INVALID" },
+      });
+      expect(result.ok === false && result.error.message).toContain("AWS_SECRET_ACCESS_KEY");
+      expect(result.ok === false && result.error.message).toContain("not an allowed provider key");
+    });
+
+    it("accepts env credential refs with allowed provider env vars", async () => {
+      const store = await loadStore();
+      await store.updateSettings({ secretsStorage: "file" });
+      const { saveConfig } = await loadService();
+
+      const result = await saveConfig({
+        provider: "gemini",
+        apiKey: { kind: "env", varName: "GOOGLE_API_KEY" },
+        model: "gemini-2.5-flash",
+      });
+
+      expect(result).toMatchObject({ ok: true });
+    });
+
+    it("accepts ZAI_API_KEY as a valid credential env var", async () => {
+      const store = await loadStore();
+      await store.updateSettings({ secretsStorage: "file" });
+      const { saveConfig } = await loadService();
+
+      const result = await saveConfig({
+        provider: "zai",
+        apiKey: { kind: "env", varName: "ZAI_API_KEY" },
+      });
+
+      expect(result).toMatchObject({ ok: true });
+    });
+
+    it("accepts OPENROUTER_API_KEY as a valid credential env var", async () => {
+      const store = await loadStore();
+      await store.updateSettings({ secretsStorage: "file" });
+      const { saveConfig } = await loadService();
+
+      const result = await saveConfig({
+        provider: "openrouter",
+        apiKey: { kind: "env", varName: "OPENROUTER_API_KEY" },
+      });
+
+      expect(result).toMatchObject({ ok: true });
+    });
+
+    it("rejects literal credential refs with whitespace-only values", async () => {
+      const store = await loadStore();
+      await store.updateSettings({ secretsStorage: "file" });
+      const { saveConfig } = await loadService();
+
+      const result = await saveConfig({
+        provider: "gemini",
+        apiKey: { kind: "literal", value: "   " },
+        model: "gemini-2.5-flash",
+      });
+
+      expect(result).toMatchObject({
+        ok: false,
+        error: { code: "CREDENTIAL_INVALID" },
+      });
+      expect(result.ok === false && result.error.message).toContain("empty or whitespace-only");
+    });
+
+    it("rejects whitespace-only legacy string API keys", async () => {
+      const store = await loadStore();
+      await store.updateSettings({ secretsStorage: "file" });
+      const { saveConfig } = await loadService();
+
+      const result = await saveConfig({
+        provider: "gemini",
+        apiKey: "   ",
+        model: "gemini-2.5-flash",
+      });
+
+      expect(result).toMatchObject({
+        ok: false,
+        error: { code: "CREDENTIAL_INVALID" },
+      });
+    });
+
+    it("rejects arbitrary env var names that look like secrets", async () => {
+      const store = await loadStore();
+      await store.updateSettings({ secretsStorage: "file" });
+      const { saveConfig } = await loadService();
+
+      for (const varName of ["DATABASE_URL", "GITHUB_TOKEN", "HOME"]) {
+        const result = await saveConfig({
+          provider: "openrouter",
+          apiKey: { kind: "env", varName },
+        });
+
+        expect(result).toMatchObject({
+          ok: false,
+          error: { code: "CREDENTIAL_INVALID" },
+        });
+      }
+    });
+  });
 });

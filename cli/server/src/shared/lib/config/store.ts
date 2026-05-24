@@ -260,6 +260,15 @@ export function createConfigStore(): ConfigStore {
       if (migrateResult.value.keyringDeletions.length > 0) {
         finalizeKeyringDeletions(migrateResult.value.keyringDeletions);
       }
+      if (migrateResult.value.shouldDeleteSecretsFile) {
+        try {
+          removeSecretsFile();
+        } catch (error) {
+          console.warn(
+            `[diffgazer] Failed to remove secrets file after migration: ${getErrorMessage(error)}`,
+          );
+        }
+      }
 
       return ok(getSettings());
     }

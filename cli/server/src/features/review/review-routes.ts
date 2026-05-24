@@ -81,7 +81,7 @@ export async function getActiveSessionHandler(
   const projectPath = getProjectRoot(c);
   const gitService = createGitService({ cwd: projectPath });
 
-  const [headCommitResult, statusHash] = await Promise.all([
+  const [headCommitResult, statusHashResult] = await Promise.all([
     gitService.getHeadCommit(),
     gitService.getStatusHash(),
   ]);
@@ -89,7 +89,10 @@ export async function getActiveSessionHandler(
     return errorResponse(c, "Failed to inspect repository state", ErrorCode.INTERNAL_ERROR, 500);
   }
 
-  const session = getActiveSessionForProject(projectPath, headCommitResult.value, statusHash, mode);
+  if (statusHashResult === null) {
+    return c.json({ session: null });
+  }
+  const session = getActiveSessionForProject(projectPath, headCommitResult.value, statusHashResult, mode);
   if (!session) {
     return c.json({ session: null });
   }

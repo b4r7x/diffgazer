@@ -33,6 +33,10 @@ Traefik (managed by Coolify, auto-SSL via Let's Encrypt)
 All 4 are separate Coolify Resources pointing to the same Git repository.
 Coolify auto-deploys on push to `main` (zero cost — built-in feature).
 
+> **Reverse proxy details**: See [`deploy/REVERSE_PROXY.md`](deploy/REVERSE_PROXY.md) for
+> Traefik label reference, TLS/HSTS defense-in-depth notes, firewall requirements,
+> and post-deploy verification commands for every subdomain.
+
 ### Single-Variable Domain Config
 
 The registry domain (`r.b4r7.dev`) is controlled from ONE place:
@@ -129,8 +133,8 @@ Replace the two hardcoded `https://docs.diffgazer.b4r7.dev/r/...` strings with:
 ```ts
 import { REGISTRY_ORIGIN } from "@diffgazer/registry";
 // ...
-`npx shadcn@latest add ${REGISTRY_ORIGIN}/ui/${itemId}.json`
-`npx shadcn@latest add ${REGISTRY_ORIGIN}/keys/${registryItemId}.json`
+`npx shadcn@latest add ${REGISTRY_ORIGIN}/r/ui/${itemId}.json`
+`npx shadcn@latest add ${REGISTRY_ORIGIN}/r/keys/${registryItemId}.json`
 ```
 
 If `@diffgazer/registry` is not a dependency of `apps/docs`, add it (it's already a workspace package and already in deps).
@@ -162,174 +166,15 @@ grep "r.b4r7.dev" libs/ui/public/r/button.json
 # Should show the new domain in registryDependencies URLs
 ```
 
-### 2.4: Create deployment Dockerfiles
+### 2.4: Create deployment Dockerfiles and nginx configs
 
-**File: `deploy/registry.Dockerfile`**
+See the actual files for current configuration (these are the source of truth):
 
-```dockerfile
-# Stage 1: Build registry artifacts
-FROM node:22-alpine AS builder
-
-RUN corepack enable && corepack prepare pnpm@10.28.2 --activate
-RUN apk add --no-cache git
-
-WORKDIR /app
-
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml turbo.json ./
-COPY libs/ libs/
-COPY scripts/ scripts/
-COPY cli/add/ cli/add/
-
-RUN pnpm install --frozen-lockfile
-
-RUN pnpm --filter @diffgazer/registry build \
- && pnpm --filter @diffgazer/core build \
- && pnpm --filter @diffgazer/keys build \
- && pnpm --filter @diffgazer/ui build
-
-# Stage 2: Serve static JSON
-FROM nginx:1.27-alpine AS runtime
-
-COPY --from=builder /app/libs/ui/public/r/ /usr/share/nginx/html/ui/
-COPY --from=builder /app/libs/keys/public/r/ /usr/share/nginx/html/keys/
-COPY deploy/registry-nginx.conf /etc/nginx/conf.d/default.conf
-
-# Security: remove default nginx page, run as non-root
-RUN rm -rf /usr/share/nginx/html/index.html \
- && rm -rf /usr/share/nginx/html/50x.html \
- && chown -R nginx:nginx /usr/share/nginx/html
-
-EXPOSE 80
-
-HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
-  CMD wget -q --spider http://localhost/ui/registry.json || exit 1
-```
-
-**File: `deploy/registry-nginx.conf`**
-
-```nginx
-server {
-    listen 80;
-    server_name _;
-    root /usr/share/nginx/html;
-
-    # Security headers
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-Frame-Options "DENY" always;
-    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-
-    location / {
-        # CORS — required for shadcn CLI and npx fetches
-        add_header Access-Control-Allow-Origin "*" always;
-        add_header Access-Control-Allow-Methods "GET, HEAD, OPTIONS" always;
-        add_header Access-Control-Allow-Headers "Content-Type" always;
-
-        # Cache — registry JSON changes on deploy, not per-request
-        add_header Cache-Control "public, max-age=3600, s-maxage=86400" always;
-
-        # Content type
-        types { application/json json; }
-        default_type application/json;
-
-        # Handle CORS preflight
-        if ($request_method = OPTIONS) {
-            add_header Access-Control-Allow-Origin "*";
-            add_header Access-Control-Allow-Methods "GET, HEAD, OPTIONS";
-            add_header Access-Control-Allow-Headers "Content-Type";
-            add_header Content-Length 0;
-            return 204;
-        }
-
-        # Only allow GET and HEAD
-        limit_except GET HEAD OPTIONS {
-            deny all;
-        }
-    }
-
-    # Block everything that's not /ui/ or /keys/
-    location = / { return 404; }
-    location = /favicon.ico { return 204; }
-}
-```
-
-**File: `deploy/landing.Dockerfile`**
-
-```dockerfile
-# Stage 1: Build landing page
-FROM node:22-alpine AS builder
-
-RUN corepack enable && corepack prepare pnpm@10.28.2 --activate
-
-WORKDIR /app
-
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml turbo.json ./
-COPY apps/landing/ apps/landing/
-COPY libs/ libs/
-
-RUN pnpm install --frozen-lockfile
-
-RUN pnpm --filter @diffgazer/core build \
- && pnpm --filter @diffgazer/keys build \
- && pnpm --filter @diffgazer/ui build \
- && pnpm --filter @diffgazer/landing build
-
-# Stage 2: Serve static SPA
-FROM nginx:1.27-alpine AS runtime
-
-COPY --from=builder /app/apps/landing/dist /usr/share/nginx/html
-COPY deploy/spa-nginx.conf /etc/nginx/conf.d/default.conf
-
-RUN chown -R nginx:nginx /usr/share/nginx/html
-
-EXPOSE 80
-
-HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
-  CMD wget -q --spider http://localhost/ || exit 1
-```
-
-**File: `deploy/hub.Dockerfile`**
-
-```dockerfile
-# Simple static page — no build step needed
-FROM nginx:1.27-alpine AS runtime
-
-COPY apps/hub/public/ /usr/share/nginx/html/
-COPY deploy/spa-nginx.conf /etc/nginx/conf.d/default.conf
-
-RUN chown -R nginx:nginx /usr/share/nginx/html
-
-EXPOSE 80
-
-HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
-  CMD wget -q --spider http://localhost/ || exit 1
-```
-
-**File: `deploy/spa-nginx.conf`** (shared by landing and hub)
-
-```nginx
-server {
-    listen 80;
-    server_name _;
-    root /usr/share/nginx/html;
-    index index.html;
-
-    # Security headers
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-
-    # SPA fallback
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-
-    # Cache static assets aggressively
-    location ~* \.(js|css|png|jpg|gif|ico|svg|woff2?|ttf|eot)$ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
-}
-```
+- [`deploy/registry.Dockerfile`](deploy/registry.Dockerfile) -- builds registry artifacts and serves static JSON via nginx.
+- [`deploy/registry-nginx.conf`](deploy/registry-nginx.conf) -- nginx config for the registry (CORS, rate limiting, security headers, explicit `/r/ui/` and `/r/keys/` location blocks).
+- [`deploy/landing.Dockerfile`](deploy/landing.Dockerfile) -- builds the landing SPA and serves via nginx.
+- [`deploy/hub.Dockerfile`](deploy/hub.Dockerfile) -- serves the hub static page via nginx.
+- [`deploy/spa-nginx.conf`](deploy/spa-nginx.conf) -- shared nginx config for landing and hub (SPA fallback, security headers, gzip, asset caching).
 
 ### 2.5: Create apps/landing (minimal diffgazer product page)
 
@@ -598,12 +443,12 @@ In Coolify dashboard:
    - **Base Directory**: `/`
    - **Dockerfile Location**: `deploy/registry.Dockerfile`
    - **Domain**: `r.b4r7.dev`
-   - **Port**: `80`
+   - **Port**: `8080`
    - **Watch Paths**: `libs/ui/public/r/**,libs/keys/public/r/**,deploy/registry*`
    - **Auto Deploy**: Enabled
 
 3. Advanced:
-   - **Health Check Path**: `/ui/registry.json`
+   - **Health Check Path**: `/r/ui/registry.json`
 
 ### 3.3: Create Resource — Docs (docs.b4r7.dev)
 
@@ -635,7 +480,7 @@ In Coolify dashboard:
    - **Base Directory**: `/`
    - **Dockerfile Location**: `deploy/landing.Dockerfile`
    - **Domain**: `diffgazer.b4r7.dev`
-   - **Port**: `80`
+   - **Port**: `8080`
    - **Watch Paths**: `apps/landing/**`
    - **Auto Deploy**: Enabled
 
@@ -648,7 +493,7 @@ In Coolify dashboard:
    - **Base Directory**: `/`
    - **Dockerfile Location**: `deploy/hub.Dockerfile`
    - **Domain**: `b4r7.dev`
-   - **Port**: `80`
+   - **Port**: `8080`
    - **Watch Paths**: `apps/hub/**`
    - **Auto Deploy**: Enabled
 
@@ -671,9 +516,9 @@ Or trigger manually from Coolify dashboard per Resource.
 
 ```sh
 # Registry — must return JSON with correct registryDependencies URLs
-curl -s https://r.b4r7.dev/ui/registry.json | head -20
-curl -s https://r.b4r7.dev/keys/registry.json | head -20
-curl -s https://r.b4r7.dev/ui/button.json | jq '.registryDependencies'
+curl -s https://r.b4r7.dev/r/ui/registry.json | head -20
+curl -s https://r.b4r7.dev/r/keys/registry.json | head -20
+curl -s https://r.b4r7.dev/r/ui/button.json | jq '.registryDependencies'
 
 # Docs — must return HTML
 curl -sI https://docs.b4r7.dev | head -5
@@ -688,11 +533,11 @@ curl -sI https://b4r7.dev | head -5
 echo | openssl s_client -servername r.b4r7.dev -connect r.b4r7.dev:443 2>/dev/null | openssl x509 -noout -dates
 
 # CORS — registry must return Access-Control-Allow-Origin: *
-curl -sI https://r.b4r7.dev/ui/button.json | grep -i access-control
+curl -sI https://r.b4r7.dev/r/ui/button.json | grep -i access-control
 
 # shadcn install test (the real proof)
 mkdir /tmp/shadcn-test && cd /tmp/shadcn-test
-npx shadcn@latest add https://r.b4r7.dev/ui/button.json
+npx shadcn@latest add https://r.b4r7.dev/r/ui/button.json
 # Should download and create the button component files
 ```
 
@@ -714,7 +559,7 @@ After deployment is verified, update the smoke test origin:
 - [ ] Update `libs/keys/README.md` — same
 - [ ] Update `PACKAGE_GOVERNANCE.md` — mark hosted registry as live
 - [ ] Run `pnpm run smoke:shadcn` with new URLs
-- [ ] Verify `npx shadcn add https://r.b4r7.dev/ui/button.json` works from a clean project
+- [ ] Verify `npx shadcn add https://r.b4r7.dev/r/ui/button.json` works from a clean project
 
 ---
 

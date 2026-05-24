@@ -17,6 +17,14 @@ import {
 const ROOT = resolve(import.meta.dirname, "..");
 const REGISTRY_PATH = resolve(ROOT, "registry/registry.json");
 
+/** Rewrite copy-mode `@/` import paths to package-mode `@diffgazer/ui/` paths for docs snippets. */
+function rewriteSnippetImports(snippet: string): string {
+  return snippet
+    .replace(/from ["']@\/components\/ui\/([^"']+)["']/g, 'from "@diffgazer/ui/components/$1"')
+    .replace(/from ["']@\/hooks\/([^"']+)["']/g, 'from "@diffgazer/ui/hooks/$1"')
+    .replace(/from ["']@\/lib\/([^"']+)["']/g, 'from "@diffgazer/ui/lib/$1"');
+}
+
 function loadRegistryItems(): RegistryItem[] {
   return (JSON.parse(readFileSync(REGISTRY_PATH, "utf-8")) as { items?: RegistryItem[] }).items ?? [];
 }
@@ -115,9 +123,10 @@ async function processComponent(
     const companionData = readExamples(companionName, highlighter);
     Object.assign(examplesData.exampleSource, companionData.exampleSource);
   }
-  const usageSnippet = docs?.usage?.code
+  const rawSnippet = docs?.usage?.code
     ?? (usageExample ? examplesData.exampleSource[usageExample]?.raw : undefined)
     ?? "";
+  const usageSnippet = rawSnippet ? rewriteSnippetImports(rawSnippet) : "";
 
   return {
     name: item.name,

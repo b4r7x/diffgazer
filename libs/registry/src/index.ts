@@ -130,3 +130,5 @@ export {
 
 export { defaultLogger } from "./logger.js";
 export type { Logger } from "./logger.js";
+
+export { KEYS_PACKAGE_IMPORT_TARGETS } from "./keys-imports.js";

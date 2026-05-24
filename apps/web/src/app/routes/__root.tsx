@@ -71,7 +71,7 @@ export function RootLayout() {
     <FooterProvider>
       <GlobalLayout>
         <RouteErrorBoundary>
-          <Suspense fallback={null}>
+          <Suspense fallback={<div className="flex h-full items-center justify-center bg-tui-bg text-tui-fg font-mono"><span className="text-tui-muted">Loading...</span></div>}>
             <Outlet />
           </Suspense>
         </RouteErrorBoundary>

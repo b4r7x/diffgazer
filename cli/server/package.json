@@ -31,7 +31,6 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@napi-rs/keyring": "^1.1.6",
     "@types/node": "^25.2.0",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"

@@ -4,6 +4,9 @@ export const ErrorCode = {
   INTERNAL_ERROR: "INTERNAL_ERROR",
   NOT_FOUND: "NOT_FOUND",
   VALIDATION_ERROR: "VALIDATION_ERROR",
+  FORBIDDEN: "FORBIDDEN",
+  UNAUTHORIZED: "UNAUTHORIZED",
+  SERVICE_UNAVAILABLE: "SERVICE_UNAVAILABLE",
   AI_ERROR: "AI_ERROR",
   AI_CLIENT_ERROR: "AI_CLIENT_ERROR",
   API_KEY_MISSING: "API_KEY_MISSING",
@@ -16,13 +19,10 @@ export const ErrorCode = {
   INVALID_PATH: "INVALID_PATH",
   TRUST_REQUIRED: "TRUST_REQUIRED",
   SETUP_REQUIRED: "SETUP_REQUIRED",
+  CREDENTIAL_INVALID: "CREDENTIAL_INVALID",
 } as const;
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
-
-const ErrorCodeSchema = z.enum(
-  Object.values(ErrorCode) as [ErrorCode, ...ErrorCode[]]
-);
 
 export const SHARED_ERROR_CODES = [
   "INTERNAL_ERROR",

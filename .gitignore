@@ -27,3 +27,6 @@ tmp/
 *.tsbuildinfo
 apps/docs/playwright-report/
 apps/docs/test-results/
+AUDIT_*.md
+OPUS_AUDIT_*.md
+FIX_SPEC_*.md

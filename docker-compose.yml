@@ -8,11 +8,21 @@ services:
         VITE_PUBLIC_ORIGIN: ${VITE_PUBLIC_ORIGIN:-https://docs.b4r7.dev}
         VITE_REGISTRY_ORIGIN: ${VITE_REGISTRY_ORIGIN:-https://r.b4r7.dev}
     ports:
-      - "${PORT:-3000}:3000"
+      - "127.0.0.1:${PORT:-3000}:3000"
     environment:
       - NODE_ENV=production
       - PORT=3000
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3000/"]
       interval: 30s
@@ -27,12 +37,23 @@ services:
       context: .
       dockerfile: deploy/registry.Dockerfile
     ports:
-      - "8081:80"
+      - "127.0.0.1:8081:8080"
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+          cpus: '0.25'
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/r/ui/registry.json"]
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/r/ui/registry.json"]
       interval: 30s
       timeout: 5s
       retries: 3
+      start_period: 5s
     restart: unless-stopped
     networks:
       - diffgazer
@@ -42,12 +63,23 @@ services:
       context: .
       dockerfile: deploy/landing.Dockerfile
     ports:
-      - "8082:80"
+      - "127.0.0.1:8082:8080"
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+          cpus: '0.25'
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/"]
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/"]
       interval: 30s
       timeout: 5s
       retries: 3
+      start_period: 5s
     restart: unless-stopped
     networks:
       - diffgazer
@@ -57,12 +89,23 @@ services:
       context: .
       dockerfile: deploy/hub.Dockerfile
     ports:
-      - "8083:80"
+      - "127.0.0.1:8083:8080"
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+          cpus: '0.25'
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/"]
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/"]
       interval: 30s
       timeout: 5s
       retries: 3
+      start_period: 5s
     restart: unless-stopped
     networks:
       - diffgazer
