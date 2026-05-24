@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { toast } from "@diffgazer/ui/components/toast";
-import type { AIProvider } from "@diffgazer/core/schemas/config";
+import type { AIProvider, CredentialRef } from "@diffgazer/core/schemas/config";
 import { getErrorMessage } from "@diffgazer/core/errors";
 import { useSubmitGuard } from "@diffgazer/core/forms";
 import { useProviders } from "./use-providers";
@@ -19,7 +19,7 @@ export function useProviderManagement() {
 
   const handleSaveApiKey = async (
     providerId: AIProvider,
-    value: string,
+    value: string | CredentialRef,
     opts?: { openModelDialog?: boolean },
   ) => {
     await withGuard(async () => {

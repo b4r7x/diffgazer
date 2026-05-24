@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test"
 
 test.describe("Popover", () => {
 	test("opens on click and exposes accessible content", async ({ page }) => {
-		await page.goto("/ui/docs/components/popover")
+		await page.goto("/ui/components/popover")
 		await expect(page.getByRole("heading", { level: 1, name: /popover/i })).toBeVisible()
 
 		const trigger = page.getByRole("button", { name: /click me/i }).first()

@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test"
 
 test.describe("Button", () => {
 	test("default examples render with no a11y violations", async ({ page }) => {
-		await page.goto("/ui/docs/components/button")
+		await page.goto("/ui/components/button")
 		const heading = page.getByRole("heading", { level: 1, name: /button/i })
 		await expect(heading).toBeVisible()
 

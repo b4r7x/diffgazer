@@ -20,6 +20,9 @@ ENV REGISTRY_ORIGIN=${REGISTRY_ORIGIN}
 ARG VITE_PUBLIC_ORIGIN=https://docs.b4r7.dev
 ENV VITE_PUBLIC_ORIGIN=${VITE_PUBLIC_ORIGIN}
 
+ARG VITE_REGISTRY_ORIGIN=https://r.b4r7.dev
+ENV VITE_REGISTRY_ORIGIN=${VITE_REGISTRY_ORIGIN}
+
 RUN pnpm --filter @diffgazer/registry build
 RUN pnpm --filter @diffgazer/core build
 RUN pnpm --filter @diffgazer/keys build

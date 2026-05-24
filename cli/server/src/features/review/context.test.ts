@@ -185,4 +185,31 @@ describe("buildProjectContextSnapshot", () => {
     expect(treeSection).toContain("          - f/");
     expect(treeSection).not.toContain("file.ts");
   });
+
+  it("rejects workspace globs that escape the project root", async () => {
+    // Place a sibling directory with a package.json that should NOT be discovered
+    const siblingDir = join(dirname(projectRoot), "sibling-project");
+    await mkdir(join(siblingDir, "evil-pkg"), { recursive: true });
+    await writeJson(join(siblingDir, "evil-pkg", "package.json"), {
+      name: "@evil/pkg",
+      version: "1.0.0",
+    });
+
+    // The project has a workspace.yaml with a glob that tries to escape
+    await writeProjectFile("package.json", JSON.stringify({ name: "safe-root", version: "1.0.0" }));
+    await writeProjectFile(
+      "pnpm-workspace.yaml",
+      "packages:\n  - '../sibling-project/*'\n  - 'apps/*'\n",
+    );
+    await writeProjectFile("apps/web/package.json", JSON.stringify({ name: "@safe/web" }));
+
+    const result = await buildProjectContextSnapshot(projectRoot);
+
+    const packageNames = result.graph.packages.map((pkg) => pkg.name);
+    expect(packageNames).toContain("@safe/web");
+    expect(packageNames).not.toContain("@evil/pkg");
+
+    // Cleanup sibling
+    await rm(siblingDir, { recursive: true, force: true });
+  });
 });

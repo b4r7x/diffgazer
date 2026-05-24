@@ -48,7 +48,7 @@ export function useOnboarding() {
   const canProceedNow = canProceed(currentStep, wizardData);
 
   const next = () => {
-    if (!canProceedNow || isLastStep) return;
+    if (!canProceedNow || isLastStep || isEarlySaving) return;
     const nextStep = STEPS[stepIndex + 1];
 
     // Early-save credentials before model step for OpenRouter
@@ -58,6 +58,7 @@ export function useOnboarding() {
       (wizardData.apiKey || wizardData.inputMethod === "env")
     ) {
       setIsEarlySaving(true);
+      setError(null);
       const apiKey =
         wizardData.inputMethod === "env"
           ? { kind: "env" as const, varName: PROVIDER_ENV_VARS[wizardData.provider] }
@@ -68,8 +69,8 @@ export function useOnboarding() {
           earlySavedProviderRef.current = wizardData.provider;
           setStepIndex((prev) => prev + 1);
         })
-        .catch(() => {
-          // Save failed; stay on current step
+        .catch((e) => {
+          setError(getErrorMessage(e, "Failed to save credentials"));
         })
         .finally(() => setIsEarlySaving(false));
       return;

@@ -113,6 +113,7 @@ export function OnboardingWizard() {
     isLastStep,
     canProceed,
     isSubmitting,
+    isEarlySaving,
     error,
     next,
     back,
@@ -131,10 +132,11 @@ export function OnboardingWizard() {
 
   const buttonCount = isFirstStep ? 1 : 2;
   const primaryButtonIndex = isFirstStep ? 0 : 1;
-  const canActivatePrimary = isLastStep ? canProceed && !isSubmitting : canProceed;
+  const isBusy = isSubmitting || isEarlySaving;
+  const canActivatePrimary = isLastStep ? canProceed && !isBusy : canProceed && !isEarlySaving;
   const disabledFooterActions = isFirstStep
     ? [!canActivatePrimary]
-    : [isSubmitting, !canActivatePrimary];
+    : [isBusy, !canActivatePrimary];
 
   useScope("onboarding");
 
@@ -291,8 +293,8 @@ export function OnboardingWizard() {
               variant="secondary"
               size="sm"
               onClick={handleBack}
-              disabled={isSubmitting}
-              className={cn(footer.inActions && footer.focusedIndex === 0 && !isSubmitting && "ring-2 ring-tui-blue")}
+              disabled={isBusy}
+              className={cn(footer.inActions && footer.focusedIndex === 0 && !isBusy && "ring-2 ring-tui-blue")}
             >
               Back
             </Button>
@@ -306,7 +308,7 @@ export function OnboardingWizard() {
               disabled={!canActivatePrimary}
               className={cn(footer.inActions && footer.focusedIndex === primaryButtonIndex && canActivatePrimary && "ring-2 ring-tui-blue")}
             >
-              {isSubmitting ? "Saving..." : "Complete Setup"}
+              {isBusy ? "Saving..." : "Complete Setup"}
             </Button>
           ) : (
             <Button

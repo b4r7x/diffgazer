@@ -23,6 +23,7 @@ FROM nginx:1.27-alpine AS runtime
 
 COPY --from=builder /app/libs/ui/public/r/ /usr/share/nginx/html/r/ui/
 COPY --from=builder /app/libs/keys/public/r/ /usr/share/nginx/html/r/keys/
+COPY --from=builder /app/apps/docs/public/schema/ /usr/share/nginx/html/schema/
 COPY deploy/registry-nginx.conf /etc/nginx/conf.d/default.conf
 
 # Security: remove default nginx page, run as non-root

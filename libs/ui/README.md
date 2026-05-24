@@ -94,9 +94,20 @@ Without `figlet` installed, importing `@diffgazer/ui/components/logo/figlet` sti
 
 ## Entries
 
-- `@diffgazer/ui/components/*`
-- `@diffgazer/ui/hooks/*`
-- `@diffgazer/ui/lib/*`
+- `@diffgazer/ui/components/*` (see package.json exports for the full component list)
+- `@diffgazer/ui/hooks/controllable-state`
+- `@diffgazer/ui/hooks/form-reset`
+- `@diffgazer/ui/hooks/floating-indicator`
+- `@diffgazer/ui/hooks/active-heading`
+- `@diffgazer/ui/hooks/overflow-detection`
+- `@diffgazer/ui/hooks/overflow-items`
+- `@diffgazer/ui/hooks/outside-click`
+- `@diffgazer/ui/hooks/presence`
+- `@diffgazer/ui/hooks/floating-position`
+- `@diffgazer/ui/hooks/listbox`
+- `@diffgazer/ui/lib/compose-refs`
+- `@diffgazer/ui/lib/selectable-collection`
+- `@diffgazer/ui/lib/utils`
 - `@diffgazer/ui/theme-base.css`
 - `@diffgazer/ui/theme.css`
 - `@diffgazer/ui/sources.css`
@@ -106,7 +117,7 @@ Without `figlet` installed, importing `@diffgazer/ui/components/logo/figlet` sti
 
 - React `>=19.2.0`
 - React DOM `>=19.2.0`
-- `@diffgazer/keys >= 0.1.1`
+- `@diffgazer/keys >= 0.2.0`
 
 ## Versioning and Migration
 

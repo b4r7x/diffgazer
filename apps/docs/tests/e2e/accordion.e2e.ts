@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test"
 
 test.describe("Accordion", () => {
 	test("expands and collapses panels with no a11y violations", async ({ page }) => {
-		await page.goto("/ui/docs/components/accordion")
+		await page.goto("/ui/components/accordion")
 		await expect(page.getByRole("heading", { level: 1, name: /accordion/i })).toBeVisible()
 
 		const installTrigger = page

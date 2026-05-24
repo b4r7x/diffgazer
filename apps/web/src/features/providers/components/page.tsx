@@ -1,4 +1,5 @@
 import type { Shortcut } from "@diffgazer/core/schemas/presentation";
+import type { CredentialRef } from "@diffgazer/core/schemas/config";
 import { usePageFooter } from "@diffgazer/core/footer";
 import { ProviderList } from "@/features/providers/components/provider-list";
 import { ProviderDetails } from "@/features/providers/components/provider-details";
@@ -153,11 +154,17 @@ export function ProvidersPage() {
             providerName={selectedProvider.name}
             envVarName={PROVIDER_ENV_VARS[selectedProvider.id]}
             secretsStorage={secretsStorage}
-            onSubmit={(_method, value) => handlers.saveApiKey(
-              selectedProvider.id,
-              value,
-              { openModelDialog: selectedProvider.id === "openrouter" && !selectedProvider.model },
-            )}
+            onSubmit={(method, value) => {
+              const apiKey: string | CredentialRef =
+                method === "env"
+                  ? { kind: "env", varName: value }
+                  : value;
+              return handlers.saveApiKey(
+                selectedProvider.id,
+                apiKey,
+                { openModelDialog: selectedProvider.id === "openrouter" && !selectedProvider.model },
+              );
+            }}
           />
           <ModelSelectDialog
             open={dialogs.modelOpen}

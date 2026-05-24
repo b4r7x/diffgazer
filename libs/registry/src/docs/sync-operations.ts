@@ -287,10 +287,15 @@ export function runDocsSyncPass(params: {
   }
 
   for (const artifact of artifacts) {
-    resetDir(join(paths.contentDir, artifact.id));
+    const docsSource = resolve(artifact.artifactRoot, artifact.manifest.docs.contentDir);
+    if (existsSync(docsSource)) {
+      resetDir(join(paths.contentDir, artifact.id));
+    }
   }
   for (const artifact of artifacts) {
-    resetDir(join(paths.libraryAssetsDir, artifact.id));
+    if (artifact.manifest.docs.assetsDir) {
+      resetDir(join(paths.libraryAssetsDir, artifact.id));
+    }
   }
   syncPrimaryArtifacts(
     primaryArtifact,
