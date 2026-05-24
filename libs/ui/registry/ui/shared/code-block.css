@@ -52,7 +52,8 @@
 
   [data-slot="code-block-line-number"] {
     flex: 0 0 auto;
-    min-width: 2ch;
+    width: var(--cb-line-number-w, 2ch);
+    min-width: var(--cb-line-number-w, 2ch);
     padding-right: 12px;
     text-align: right;
     user-select: none;
