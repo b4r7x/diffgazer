@@ -219,3 +219,76 @@ describe("Part E: stale dependency metadata removed", () => {
     expect(overflow?.dependencies ?? []).not.toContain("class-variance-authority");
   });
 });
+
+describe("Part F: CSS side-effect imports stripped from public registry content", () => {
+  it("no public registry file content contains JS side-effect CSS imports", () => {
+    const CSS_SIDE_EFFECT_IMPORT = /^\s*import\s+["'][^"']+\.css["'];?\s*$/m;
+    const leaks: string[] = [];
+    for (const item of readPublicRegistryItems()) {
+      for (const file of item.files ?? []) {
+        if (typeof file.content !== "string") continue;
+        file.content.split("\n").forEach((line, i) => {
+          if (CSS_SIDE_EFFECT_IMPORT.test(line)) {
+            leaks.push(`${item.name}/${file.path}:${i + 1}: ${line.trim()}`);
+          }
+        });
+      }
+    }
+    expect(leaks, `Found CSS side-effect import leaks:\n${leaks.join("\n")}`).toEqual([]);
+  });
+
+  it("transform strips CSS side-effect imports from content", () => {
+    const input = [
+      '"use client";',
+      '',
+      'import "../shared/stepper.css";',
+      '',
+      'import { Stepper } from "./stepper";',
+    ].join("\n");
+
+    const result = transformUiPublicRegistryKeysImportContent(input);
+
+    expect(result).not.toContain("stepper.css");
+    expect(result).toContain('import { Stepper } from "./stepper";');
+  });
+
+  it("does not strip CSS @import inside CSS file content", () => {
+    const cssContent = '@import "./theme-base.css";\n\n:root { --bg: #000; }';
+    const result = transformUiPublicRegistryKeysImportContent(cssContent);
+    expect(result).toContain('@import "./theme-base.css"');
+  });
+});
+
+describe("Part G: export-from re-exports rewritten in public registry", () => {
+  it("no public registry file content contains export-from @diffgazer/keys", () => {
+    const EXPORT_FROM_KEYS = /export\s+\{[^}]*\}\s+from\s+["']@diffgazer\/keys["']/;
+    const leaks: string[] = [];
+    for (const item of readPublicRegistryItems()) {
+      for (const file of item.files ?? []) {
+        if (typeof file.content !== "string") continue;
+        if (EXPORT_FROM_KEYS.test(file.content)) {
+          leaks.push(`${item.name}/${file.path}`);
+        }
+      }
+    }
+    expect(leaks, `Found export-from @diffgazer/keys leaks:\n${leaks.join("\n")}`).toEqual([]);
+  });
+});
+
+describe("Part H: stepper CSS declared in source registry", () => {
+  const STEPPER_COMPONENTS = ["stepper", "horizontal-stepper"];
+
+  it.each(STEPPER_COMPONENTS)(
+    "%s declares stepper.css in its files array",
+    (componentName) => {
+      const registry = readSourceRegistry();
+      const item = registry.items?.find((i) => i.name === componentName);
+      expect(item, `${componentName} must exist in registry`).toBeDefined();
+
+      const cssFile = item?.files?.find((f) => f.path.endsWith("stepper.css"));
+      expect(cssFile, `${componentName} must include stepper.css`).toBeDefined();
+      expect(cssFile?.type).toBe("registry:style");
+      expect(cssFile?.target).toBe("~/styles/stepper.css");
+    },
+  );
+});

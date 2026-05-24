@@ -213,7 +213,7 @@ export const menuDoc: ComponentDoc = {
         defaultValue: "false",
         description: "Initial checked state for uncontrolled mode.",
       },
-      onCheckedChange: {
+      onChange: {
         type: "(checked: boolean) => void",
         required: false,
         defaultValue: null,

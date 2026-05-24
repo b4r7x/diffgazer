@@ -162,7 +162,7 @@ const globs = workspaceYaml
   .map((line) => line.slice(2).replace(/"|'/g, ''));
 addResult(
   "workspace globs match target roots",
-  JSON.stringify(globs.slice().sort()) === JSON.stringify(["apps/*", "cli/*", "libs/*"]),
+  JSON.stringify(globs.slice().sort()) === JSON.stringify(["apps/*", "cli/*", "libs/*", "libs/keys/artifacts"]),
   `found ${JSON.stringify(globs)}`,
 );
 
@@ -309,7 +309,7 @@ assertPackageMetadata(
   "libs/keys",
   "libs/keys",
   ["."],
-  ["dist", "registry", "public/r", "internal-docs-manifest.json", "README.md", "LICENSE", "SECURITY.md", "SUPPORT.md"],
+  ["dist", "internal-docs-manifest.json", "README.md", "LICENSE", "SECURITY.md", "SUPPORT.md"],
   false,
 );
 

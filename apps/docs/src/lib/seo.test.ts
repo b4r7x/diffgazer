@@ -109,11 +109,15 @@ describe("buildRootHeadDefaults", () => {
     expect(findMeta(meta, "property", "og:image")?.content).toBe(`${PUBLIC_ORIGIN}/logo512.png`);
   });
 
-  it("includes a root canonical link and og:url from PUBLIC_ORIGIN", () => {
-    const { meta, links } = buildRootHeadDefaults();
+  it("does not include a root canonical link (pages set their own)", () => {
+    const { links } = buildRootHeadDefaults();
 
     const canonical = links.find((link) => link.rel === "canonical");
-    expect(canonical?.href).toBe(PUBLIC_ORIGIN);
+    expect(canonical).toBeUndefined();
+  });
+
+  it("includes og:url from PUBLIC_ORIGIN", () => {
+    const { meta } = buildRootHeadDefaults();
 
     expect(findMeta(meta, "property", "og:url")?.content).toBe(PUBLIC_ORIGIN);
   });

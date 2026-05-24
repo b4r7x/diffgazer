@@ -1,5 +1,5 @@
 # ── Stage 1: Build ────────────────────────────────────────────────────
-FROM node:22-alpine AS builder
+FROM node:22-alpine@sha256:968df39aedcea65eeb078fb336ed7191baf48f972b4479711397108be0966920 AS builder
 
 RUN corepack enable && corepack prepare pnpm@10.28.2 --activate
 RUN apk add --no-cache git
@@ -37,13 +37,13 @@ ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN pnpm --filter @diffgazer/docs build
 
 # ── Stage 2: Runtime ──────────────────────────────────────────────────
-FROM node:22-alpine AS runtime
-
-RUN corepack enable && corepack prepare pnpm@10.28.2 --activate
+FROM node:22-alpine@sha256:968df39aedcea65eeb078fb336ed7191baf48f972b4479711397108be0966920 AS runtime
 
 WORKDIR /app
 
-COPY --from=builder /app/apps/docs/.output .output/
+COPY --from=builder --chown=node:node /app/apps/docs/.output .output/
+
+USER node
 
 ENV NODE_ENV=production
 ENV PORT=3000

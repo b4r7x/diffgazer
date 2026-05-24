@@ -9,10 +9,11 @@ import { diffCommand } from "./commands/diff.js";
 import { removeCommand } from "./commands/remove.js";
 
 function normalizeShadcnStyleArgs(argv: string[]): string[] {
-  const firstArg = argv[2];
-  if (!firstArg || firstArg.startsWith("-")) return argv;
-  if (!/^(ui|keys)\/[^/]+$/.test(firstArg)) return argv;
-  return [argv[0]!, argv[1]!, "add", ...argv.slice(2)];
+  const userArgs = argv.slice(2);
+  const firstArg = userArgs[0];
+  if (!firstArg || firstArg.startsWith("-")) return userArgs;
+  if (!/^(ui|keys)\/[^/]+$/.test(firstArg)) return userArgs;
+  return ["add", ...userArgs];
 }
 
 const program = createCli({
@@ -30,5 +31,4 @@ const program = createCli({
   ],
 });
 
-process.argv = normalizeShadcnStyleArgs(process.argv);
-runCli(program);
+runCli(program, normalizeShadcnStyleArgs(process.argv));

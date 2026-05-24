@@ -305,6 +305,7 @@ export function MenuItem<TId extends string = string>({
       ref={ref}
       id={itemId}
       role={itemRole}
+      tabIndex={-1}
       data-diffgazer-navigation-item="true"
       data-value={id}
       data-active={isActive || undefined}

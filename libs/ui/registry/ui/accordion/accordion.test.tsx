@@ -114,6 +114,13 @@ describe("Accordion", () => {
     expect(onChange).toHaveBeenCalledWith("two")
   })
 
+  it("controlled single mode calls onChange with null when collapsing", async () => {
+    const onChange = vi.fn()
+    renderAccordion({ value: "one", onChange })
+    await userEvent.click(screen.getByRole("button", { name: "Section One" }))
+    expect(onChange).toHaveBeenCalledWith(null)
+  })
+
   it("controlled multiple mode calls onChange with updated array", async () => {
     const onChange = vi.fn()
     renderAccordion({ type: "multiple", value: ["one"], onChange })
@@ -143,6 +150,28 @@ describe("Accordion", () => {
     await userEvent.click(trigger)
     expect(onClick).toHaveBeenCalledOnce()
     expect(trigger).toHaveAttribute("aria-expanded", "false")
+  })
+
+  it("forwards aria-label to the root group", () => {
+    renderAccordion({ "aria-label": "FAQ" })
+    expect(screen.getByRole("group", { name: "FAQ" })).toBeInTheDocument()
+  })
+
+  it("forwards aria-labelledby to the root group", () => {
+    render(
+      <>
+        <h2 id="faq-heading">Questions</h2>
+        <Accordion aria-labelledby="faq-heading">
+          <Accordion.Item value="one">
+            <Accordion.Header>
+              <Accordion.Trigger>Section One</Accordion.Trigger>
+            </Accordion.Header>
+            <Accordion.Content>Content One</Accordion.Content>
+          </Accordion.Item>
+        </Accordion>
+      </>
+    )
+    expect(screen.getByRole("group", { name: "Questions" })).toBeInTheDocument()
   })
 
   it("has no a11y violations", async () => {

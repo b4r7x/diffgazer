@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { mockExecFileAsync, mockReadFile } = vi.hoisted(() => ({
+const { mockExecFileAsync, mockReadFile, mockRealpath, mockLstat } = vi.hoisted(() => ({
   mockExecFileAsync: vi.fn(),
   mockReadFile: vi.fn(),
+  mockRealpath: vi.fn(),
+  mockLstat: vi.fn(),
 }));
 
 // Boundary mock: node:child_process is the Node.js external-process boundary; createGitService spawns the `git` CLI, so tests stub execFile to provide canned stdout/stderr.
@@ -18,9 +20,11 @@ vi.mock("node:child_process", () => {
   return { execFile: execFileFn };
 });
 
-// Boundary mock: node:fs/promises for worktree file reads
+// Boundary mock: node:fs/promises for worktree file reads and path traversal checks
 vi.mock("node:fs/promises", () => ({
   readFile: mockReadFile,
+  realpath: mockRealpath,
+  lstat: mockLstat,
 }));
 
 import { createGitService } from "./service.js";
@@ -31,6 +35,12 @@ function setupExecResult(stdout: string) {
 
 function setupExecError(error: Error) {
   mockExecFileAsync.mockRejectedValue(error);
+}
+
+function setupWorktreeFileRead(cwd: string, filePath: string, content: string) {
+  mockRealpath.mockImplementation(async (p: string) => p);
+  mockLstat.mockResolvedValue({ isFile: () => true });
+  mockReadFile.mockResolvedValue(content);
 }
 
 describe("createGitService", () => {
@@ -313,7 +323,7 @@ describe("createGitService", () => {
   describe("getFileLines", () => {
     it("reads from the worktree by default", async () => {
       const fileContent = "line1\nline2\nline3\nline4\nline5";
-      mockReadFile.mockResolvedValue(fileContent);
+      setupWorktreeFileRead("/test", "/test/src/file.ts", fileContent);
       const git = createGitService({ cwd: "/test" });
 
       const lines = await git.getFileLines("src/file.ts", 2, 4);
@@ -358,12 +368,66 @@ describe("createGitService", () => {
     });
 
     it("returns an empty array when worktree file read fails", async () => {
+      mockRealpath.mockImplementation(async (p: string) => p);
+      mockLstat.mockResolvedValue({ isFile: () => true });
       mockReadFile.mockRejectedValue(new Error("ENOENT"));
       const git = createGitService({ cwd: "/test" });
 
       const lines = await git.getFileLines("nonexistent.ts", 1, 5);
 
       expect(lines).toEqual([]);
+    });
+
+    it("returns empty for path traversal via ../../etc/passwd", async () => {
+      mockRealpath.mockImplementation(async (p: string) => {
+        if (p === "/test") return "/test";
+        if (p === "/etc/passwd") return "/etc/passwd";
+        return p;
+      });
+      const git = createGitService({ cwd: "/test" });
+
+      const lines = await git.getFileLines("../../etc/passwd", 1, 5);
+
+      expect(lines).toEqual([]);
+      expect(mockReadFile).not.toHaveBeenCalled();
+    });
+
+    it("returns empty for a symlink that resolves outside cwd", async () => {
+      mockRealpath.mockImplementation(async (p: string) => {
+        if (p === "/test") return "/test";
+        if (p === "/test/link.ts") return "/outside/secret.ts";
+        return p;
+      });
+      const git = createGitService({ cwd: "/test" });
+
+      const lines = await git.getFileLines("link.ts", 1, 5);
+
+      expect(lines).toEqual([]);
+      expect(mockReadFile).not.toHaveBeenCalled();
+    });
+
+    it("returns empty for a FIFO (non-regular file)", async () => {
+      mockRealpath.mockImplementation(async (p: string) => p);
+      mockLstat.mockResolvedValue({ isFile: () => false });
+      const git = createGitService({ cwd: "/test" });
+
+      const lines = await git.getFileLines("src/fifo", 1, 5);
+
+      expect(lines).toEqual([]);
+      expect(mockReadFile).not.toHaveBeenCalled();
+    });
+
+    it("returns empty when realpath of file fails and resolved path escapes cwd", async () => {
+      mockRealpath.mockImplementation(async (p: string) => {
+        if (p === "/test") return "/test";
+        throw new Error("ENOENT");
+      });
+      const git = createGitService({ cwd: "/test" });
+
+      const lines = await git.getFileLines("../../etc/shadow", 1, 5);
+
+      expect(lines).toEqual([]);
+      expect(mockReadFile).not.toHaveBeenCalled();
     });
   });
 
@@ -470,6 +534,37 @@ describe("createGitService", () => {
       expect(args).toContain("--no-optional-locks");
       expect(args).toContain("core.fsmonitor=false");
     });
+
+    it.each([
+      "GIT_DIFF_OPTS",
+      "GIT_DIR",
+      "GIT_WORK_TREE",
+      "GIT_INDEX_FILE",
+      "GIT_CONFIG",
+      "GIT_CONFIG_GLOBAL",
+      "GIT_CONFIG_SYSTEM",
+      "GIT_CONFIG_COUNT",
+      "GIT_CONFIG_PARAMETERS",
+      "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+      "GIT_OBJECT_DIRECTORY",
+      "GIT_CEILING_DIRECTORIES",
+      "GIT_EXEC_PATH",
+      "GIT_SSH_COMMAND",
+      "GIT_ASKPASS",
+      "GIT_PROXY_COMMAND",
+      "GIT_HOOKS_PATH",
+      "GIT_TEMPLATE_DIR",
+    ])("clears %s from the environment to prevent parent pollution", async (envVar) => {
+      process.env[envVar] = "/some/polluted/value";
+      setupExecResult("## main\n");
+      const git = createGitService({ cwd: "/test" });
+
+      await git.getStatus();
+
+      const callEnv = mockExecFileAsync.mock.calls[0]?.[2]?.env;
+      expect(callEnv?.[envVar]).toBe("");
+      delete process.env[envVar];
+    });
   });
 
   describe(".diffgazer filtering in status", () => {
@@ -562,13 +657,13 @@ describe("createGitService", () => {
       expect(hash).toMatch(/^[0-9a-f]{16}$/);
     });
 
-    it("returns an empty string when the underlying command fails", async () => {
+    it("returns null when the underlying command fails", async () => {
       setupExecError(new Error("git error"));
       const git = createGitService({ cwd: "/test" });
 
       const hash = await git.getStatusHash();
 
-      expect(hash).toBe("");
+      expect(hash).toBeNull();
     });
   });
 });

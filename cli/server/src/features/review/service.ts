@@ -80,7 +80,7 @@ export async function createReviewSession(
   const projectPath = projectPathOption ?? process.cwd();
   const gitService = createGitService({ cwd: projectPath });
 
-  const [headCommitResult, statusHash] = await Promise.all([
+  const [headCommitResult, statusHashResult] = await Promise.all([
     gitService.getHeadCommit(),
     gitService.getStatusHash(),
   ]);
@@ -93,9 +93,10 @@ export async function createReviewSession(
   }
 
   const headCommit = headCommitResult.value;
+  const statusHash = statusHashResult ?? "";
   const scopeKey = buildScopeKey({ files, lenses: lensIds, profile: profileId });
 
-  if (headCommit) {
+  if (headCommit && statusHashResult !== null) {
     const existingSession = getActiveSessionForProject(projectPath, headCommit, statusHash, mode, scopeKey);
     if (existingSession) {
       return ok({ reviewId: existingSession.reviewId, session: existingSession });

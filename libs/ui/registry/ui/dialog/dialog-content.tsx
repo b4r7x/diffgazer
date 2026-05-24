@@ -4,6 +4,7 @@ import {
   Children,
   isValidElement,
   useCallback,
+  useEffect,
   useRef,
   useState,
   type HTMLAttributes,
@@ -13,6 +14,7 @@ import {
 } from "react";
 import { useFocusRestore } from "@/hooks/use-focus-restore";
 import { cva, type VariantProps } from "class-variance-authority";
+import { mergeIds } from "@/lib/aria-utils";
 import { cn } from "@/lib/utils";
 import { useDialogContext } from "./dialog-context";
 import { DialogTitle } from "./dialog-title";
@@ -116,6 +118,7 @@ export function DialogContent({
   onAnimationEnd,
   "aria-label": ariaLabel,
   "aria-labelledby": ariaLabelledBy,
+  "aria-describedby": ariaDescribedBy,
   ...rest
 }: DialogContentProps) {
   const { open, onOpenChange, contentId, titleId, descriptionId, triggerRef } = useDialogContext();
@@ -136,6 +139,21 @@ export function DialogContent({
     titleId,
     hasRenderableTitle,
   });
+
+  const isFallbackName = accessibleName["aria-label"] === FALLBACK_DIALOG_LABEL;
+
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "production" && isFallbackName) {
+      console.warn(
+        "Dialog: No accessible name provided. Add a <Dialog.Title>, aria-label, or aria-labelledby prop.",
+      );
+    }
+  }, [isFallbackName]);
+
+  const resolvedDescribedBy = mergeIds(
+    ariaDescribedBy,
+    hasRenderableDescription ? descriptionId : undefined,
+  );
 
   const setShellRef = useCallback((node: HTMLDialogElement | null) => {
     shellRef.current = node;
@@ -166,7 +184,7 @@ export function DialogContent({
       aria-modal="true"
       aria-label={accessibleName["aria-label"]}
       aria-labelledby={accessibleName["aria-labelledby"]}
-      aria-describedby={hasRenderableDescription ? descriptionId : undefined}
+      aria-describedby={resolvedDescribedBy}
     >
       <PortalContainerProvider container={container}>
         {resolvedCorners !== "none" ? (

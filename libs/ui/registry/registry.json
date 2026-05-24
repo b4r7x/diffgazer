@@ -819,6 +819,7 @@
         "compose-refs",
         "portal",
         "kbd",
+        "aria-utils",
         "utils"
       ],
       "meta": {
@@ -1261,6 +1262,11 @@
         {
           "path": "registry/ui/stepper/stepper-substep.tsx",
           "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/shared/stepper.css",
+          "type": "registry:style",
+          "target": "~/styles/stepper.css"
         }
       ]
     },
@@ -1485,6 +1491,11 @@
         {
           "path": "registry/ui/horizontal-stepper/horizontal-stepper-step.tsx",
           "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/shared/stepper.css",
+          "type": "registry:style",
+          "target": "~/styles/stepper.css"
         }
       ]
     },
@@ -1817,7 +1828,9 @@
       "type": "registry:ui",
       "title": "Logo",
       "description": "Static text logo primitive. Precompute ASCII art and pass it as asciiText.",
-      "dependencies": [],
+      "dependencies": [
+        "figlet"
+      ],
       "registryDependencies": [
         "theme",
         "utils"

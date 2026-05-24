@@ -265,6 +265,7 @@ function FieldError({ className, children, ref, ...props }: FieldErrorProps) {
 
   return (
     <p
+      role="alert"
       {...props}
       ref={ref}
       id={resolvedId}

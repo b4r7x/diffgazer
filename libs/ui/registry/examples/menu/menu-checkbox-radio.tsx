@@ -14,16 +14,16 @@ export default function MenuCheckboxRadio() {
     <div className="w-64 border border-border">
       <Menu aria-label="View options" selectedId={sortBy} onSelect={setSortBy}>
         <MenuLabel>VIEW OPTIONS</MenuLabel>
-        <MenuItemCheckbox id="hidden" checked={showHidden} onCheckedChange={setShowHidden}>
+        <MenuItemCheckbox id="hidden" checked={showHidden} onChange={setShowHidden}>
           Show Hidden Files
         </MenuItemCheckbox>
-        <MenuItemCheckbox id="line-numbers" checked={lineNumbers} onCheckedChange={setLineNumbers}>
+        <MenuItemCheckbox id="line-numbers" checked={lineNumbers} onChange={setLineNumbers}>
           Line Numbers
         </MenuItemCheckbox>
-        <MenuItemCheckbox id="word-wrap" checked={wordWrap} onCheckedChange={setWordWrap}>
+        <MenuItemCheckbox id="word-wrap" checked={wordWrap} onChange={setWordWrap}>
           Word Wrap
         </MenuItemCheckbox>
-        <MenuItemCheckbox id="minimap" checked={minimap} onCheckedChange={setMinimap}>
+        <MenuItemCheckbox id="minimap" checked={minimap} onChange={setMinimap}>
           Minimap
         </MenuItemCheckbox>
         <MenuDivider />

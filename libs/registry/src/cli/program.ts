@@ -65,8 +65,11 @@ export function createCli(options: CliOptions): Command {
   return program;
 }
 
-export function runCli(program: Command): void {
-  program.parseAsync().catch((err) => {
+export function runCli(program: Command, argv?: string[]): void {
+  const parsePromise = argv
+    ? program.parseAsync(argv, { from: "user" })
+    : program.parseAsync();
+  parsePromise.catch((err) => {
     if (err instanceof CancelError) {
       clack.cancel("Cancelled.");
       process.exit(0);

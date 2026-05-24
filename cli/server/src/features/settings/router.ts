@@ -78,8 +78,13 @@ settingsRouter.post(
     }
 
     const existingTrust = getTrust(project.projectId);
+
+    // Normalize capabilities: runCommands is not yet supported, always strip
+    const capabilities = { ...body.capabilities, runCommands: false };
+
     const trustConfig = {
       ...body,
+      capabilities,
       projectId: project.projectId,
       repoRoot: projectRoot,
       // Preserve trustedAt on edits; only generate on first grant

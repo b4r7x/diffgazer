@@ -19,12 +19,12 @@ const CHECKBOX_UNCHECKED = "[ ]";
 export interface MenuItemCheckboxProps
   extends Omit<
     ComponentPropsWithRef<"div">,
-    "id" | "children" | "role" | "aria-checked" | "aria-disabled" | "data-value" | "ref"
+    "id" | "children" | "role" | "aria-checked" | "aria-disabled" | "data-value" | "onChange" | "ref"
   > {
   id: string;
   checked?: boolean;
   defaultChecked?: boolean;
-  onCheckedChange?: (checked: boolean) => void;
+  onChange?: (checked: boolean) => void;
   disabled?: boolean;
   children: ReactNode;
   ref?: Ref<HTMLDivElement>;
@@ -34,7 +34,7 @@ export function MenuItemCheckbox({
   id,
   checked: controlledChecked,
   defaultChecked = false,
-  onCheckedChange,
+  onChange,
   disabled = false,
   children,
   className,
@@ -50,7 +50,7 @@ export function MenuItemCheckbox({
   const [isChecked, setIsChecked] = useControllableState<boolean>({
     value: controlledChecked,
     defaultValue: defaultChecked,
-    onChange: onCheckedChange,
+    onChange,
   });
 
   const isFocused = highlighted === id;
@@ -97,6 +97,7 @@ export function MenuItemCheckbox({
       ref={ref}
       id={itemId}
       role="menuitemcheckbox"
+      tabIndex={-1}
       data-diffgazer-navigation-item="true"
       data-value={id}
       data-active={(!disabled && isFocused) || undefined}

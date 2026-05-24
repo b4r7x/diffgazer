@@ -11,8 +11,25 @@ const keyring = vi.hoisted(() => ({
   writeKeyringSecret: vi.fn(),
 }));
 
+const fsHooks = vi.hoisted(() => ({
+  writeJsonFileSyncHook: null as ((filePath: string, data: unknown, mode?: number) => void) | null,
+}));
+
 // Boundary mock: keyring wraps the OS keychain via @napi-rs/keyring; tests provide canned secret read/write results so store behavior can be exercised without a real keychain.
 vi.mock("./keyring.js", () => keyring);
+// Partial mock: intercept writeJsonFileSync so individual tests can inject write failures.
+vi.mock("../fs.js", async (importOriginal) => {
+  const real = await importOriginal<typeof import("../fs.js")>();
+  return {
+    ...real,
+    writeJsonFileSync: (filePath: string, data: unknown, mode?: number) => {
+      if (fsHooks.writeJsonFileSyncHook) {
+        return fsHooks.writeJsonFileSyncHook(filePath, data, mode);
+      }
+      return real.writeJsonFileSync(filePath, data, mode);
+    },
+  };
+});
 
 let diffgazerHome: string;
 
@@ -82,6 +99,7 @@ describe("config store", () => {
   });
 
   afterEach(() => {
+    fsHooks.writeJsonFileSyncHook = null;
     delete process.env.DIFFGAZER_HOME;
     rmSync(diffgazerHome, { recursive: true, force: true });
     warnSpy.mockRestore();
@@ -241,12 +259,16 @@ describe("config store", () => {
       providers: [{ provider: "gemini", hasApiKey: true, isActive: true }],
     });
     writeJson(secretsPath(), { providers: { gemini: "file-key" } });
+    // Read-back verification: return the written value so the migration succeeds.
+    keyring.readKeyringSecret.mockReturnValue({ ok: true, value: "file-key" });
     const store = await loadStore();
 
     const result = await store.updateSettings({ secretsStorage: "keyring" });
 
     expect(result).toMatchObject({ ok: true });
     expect(keyring.writeKeyringSecret).toHaveBeenCalledWith("api_key_gemini", "file-key");
+    // Verification: the migration reads back the written value to confirm the keyring persisted it.
+    expect(keyring.readKeyringSecret).toHaveBeenCalledWith("api_key_gemini");
     await expectFileMissingEventually(secretsPath());
   });
 
@@ -289,27 +311,36 @@ describe("config store", () => {
     });
     keyring.readKeyringSecret.mockReturnValue({ ok: true, value: "keyring-key" });
 
-    // Make the secrets directory unwritable to force a persist failure.
-    const secretsDir = join(diffgazerHome, "unwritable");
-    mkdirSync(secretsDir);
-    const originalSecretsPath = secretsPath;
-    // Use a non-existent nested path under a read-only dir to force a write failure.
-    // However, the atomic write may still succeed on some OS. If the migration succeeds,
-    // verifying the keyring was cleaned up is sufficient for crash-safety.
     const store = await loadStore();
-    const result = await store.updateSettings({ secretsStorage: "file" });
 
-    // On macOS, the atomic rename can succeed even over obstacles. Either outcome is
-    // acceptable: ok: true (migration completed, keyring cleaned) or ok: false
-    // (persist failed, keyring preserved). Both are safe for crash recovery.
-    if (result.ok) {
-      // Migration completed -- verify keyring was cleaned up.
-      expect(readJson<{ providers: Record<string, string> }>(secretsPath())).toEqual({
-        providers: { gemini: "keyring-key" },
-      });
-    } else {
-      // Persist failed -- keyring should be preserved.
+    // Inject a deterministic write failure: hook writeJsonFileSync to throw only
+    // when persisting secrets.json. The config.json persist (step 1 of the
+    // two-phase migration) has already succeeded by the time secrets are written,
+    // so this selectively breaks step 2 without affecting step 1.
+    let configWriteCount = 0;
+    fsHooks.writeJsonFileSyncHook = (filePath: string, data: unknown, mode?: number) => {
+      if (filePath.endsWith("secrets.json")) {
+        throw new Error("Injected secrets.json write failure");
+      }
+      // Allow config.json writes through to the real implementation.
+      configWriteCount++;
+      writeJson(filePath, data);
+    };
+
+    try {
+      await expect(store.updateSettings({ secretsStorage: "file" })).rejects.toThrow(
+        "Injected secrets.json write failure",
+      );
+
+      // Config.json was written successfully (step 1 completed).
+      expect(configWriteCount).toBeGreaterThanOrEqual(1);
+      // The keyring entry must NOT have been deleted — the file persist failed
+      // before the cleanup phase, so the secret is still safely in the keyring.
       expect(keyring.deleteKeyringSecret).not.toHaveBeenCalled();
+      // No secrets.json should exist — the write was interrupted.
+      expect(existsSync(secretsPath())).toBe(false);
+    } finally {
+      fsHooks.writeJsonFileSyncHook = null;
     }
   });
 

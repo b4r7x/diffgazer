@@ -44,6 +44,8 @@ interface ConfigActionsContextValue {
   deleteProviderCredentials: (provider: AIProvider) => Promise<void>;
 }
 
+const EMPTY_PROVIDERS: ProviderStatus[] = [];
+
 const ConfigDataContext = createContext<ConfigDataContextValue | undefined>(undefined);
 const ConfigActionsContext = createContext<ConfigActionsContextValue | undefined>(undefined);
 
@@ -72,7 +74,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   const provider = initData?.config?.provider;
   const model = initData?.config?.model;
   const isConfigured = initData?.setup?.isConfigured ?? false;
-  const providerStatus = providersQuery.data ?? initData?.providers ?? [];
+  const providerStatus = providersQuery.data ?? initData?.providers ?? EMPTY_PROVIDERS;
   const projectId = initData?.project?.projectId ?? null;
   const repoRoot = initData?.project?.path ?? null;
   const trust = initData?.project?.trust ?? null;

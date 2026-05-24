@@ -454,9 +454,10 @@ function validate(): string[] {
     }
   }
 
-  if (packageJson.peerDependenciesMeta?.["@diffgazer/keys"]?.optional) {
-    errors.push("@diffgazer/keys must not be marked optional while package entries can import it");
-  }
+  // @diffgazer/keys is intentionally optional: 50 of 62 registry items don't use it.
+  // Package-mode consumers who install keyboard-interactive components (accordion,
+  // dialog, tabs, etc.) must install keys separately. The tsup alias plugin
+  // externalizes keys imports, so missing keys throws a clear runtime error.
 
   for (const exportPath of Object.keys(exportsMap)) {
     if (exportPath.includes("*")) {

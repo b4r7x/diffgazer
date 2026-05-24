@@ -18,11 +18,13 @@ const ACCORDION_ROOT_ATTRIBUTE = "data-diffgazer-accordion-root";
 export interface AccordionSingleProps {
   type?: "single";
   value?: string;
-  onChange?: (value: string | undefined) => void;
+  onChange?: (value: string | null) => void;
   defaultValue?: string;
   collapsible?: boolean;
   children: ReactNode;
   className?: string;
+  "aria-label"?: string;
+  "aria-labelledby"?: string;
   ref?: Ref<HTMLDivElement>;
   onKeyDown?: (event: ReactKeyboardEvent) => void;
 }
@@ -34,6 +36,8 @@ export interface AccordionMultipleProps {
   defaultValue?: string[];
   children: ReactNode;
   className?: string;
+  "aria-label"?: string;
+  "aria-labelledby"?: string;
   ref?: Ref<HTMLDivElement>;
   onKeyDown?: (event: ReactKeyboardEvent) => void;
 }
@@ -63,7 +67,7 @@ function containsActiveElement(el: HTMLElement): boolean {
 }
 
 function AccordionRoot(props: AccordionProps) {
-  const { ref, onKeyDown: externalOnKeyDown } = props;
+  const { ref, onKeyDown: externalOnKeyDown, "aria-label": ariaLabel, "aria-labelledby": ariaLabelledBy } = props;
   const { openValues, onToggle, collapsible } = useAccordionState(props);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -116,6 +120,8 @@ function AccordionRoot(props: AccordionProps) {
       <div
         ref={composeRefs(containerRef, ref)}
         role="group"
+        aria-label={ariaLabel}
+        aria-labelledby={ariaLabelledBy}
         className={cn("divide-y divide-border", props.className)}
         onKeyDown={handleKeyDown}
         {...{ [ACCORDION_ROOT_ATTRIBUTE]: "" }}

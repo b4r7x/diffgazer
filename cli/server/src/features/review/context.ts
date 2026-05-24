@@ -189,11 +189,15 @@ const CONTEXT_EXCLUDE_DIRS = new Set([
   ".turbo",
 ]);
 
+const MAX_TREE_NODES = 1000;
+const MAX_CONTEXT_BYTES = 50_000;
+
 async function buildFileTree(
   root: string,
   depth: number,
   baseRoot: string = root,
   visited: Set<string> = new Set(),
+  counter: { count: number; truncated: boolean } = { count: 0, truncated: false },
 ): Promise<FileTreeNode[]> {
   if (depth < 0) return [];
 
@@ -207,13 +211,18 @@ async function buildFileTree(
   const nodes: FileTreeNode[] = [];
 
   for (const entry of entries) {
+    if (counter.count >= MAX_TREE_NODES) {
+      counter.truncated = true;
+      break;
+    }
     if (CONTEXT_EXCLUDE_DIRS.has(entry.name)) continue;
     const fullPath = path.join(root, entry.name);
     const relativePath = path.relative(baseRoot, fullPath);
+    counter.count += 1;
     if (entry.isDirectory) {
       const children =
         depth > 0
-          ? await buildFileTree(fullPath, depth - 1, baseRoot, visited)
+          ? await buildFileTree(fullPath, depth - 1, baseRoot, visited, counter)
           : undefined;
       nodes.push({
         name: entry.name,
@@ -273,10 +282,11 @@ export async function buildProjectContextSnapshot(
   await mkdir(contextDir, { recursive: true });
 
   const gitService = createGitService({ cwd: projectPath });
-  const [currentHash, headCommitResult] = await Promise.all([
-    gitService.getStatusHash().catch(() => ""),
+  const [statusHashResult, headCommitResult] = await Promise.all([
+    gitService.getStatusHash().catch(() => null),
     gitService.getHeadCommit().catch(() => ({ ok: false as const, error: { message: "unknown" } })),
   ]);
+  const currentHash = statusHashResult ?? "";
   const currentHeadCommit = headCommitResult.ok ? headCommitResult.value : "";
 
   const cached = await loadContextSnapshot(contextDir);
@@ -291,7 +301,8 @@ export async function buildProjectContextSnapshot(
 
   const packages = await discoverWorkspacePackages(projectPath);
   const workspaceSummary = formatWorkspaceGraph(packages);
-  const fileTree = await buildFileTree(projectPath, DEFAULT_TREE_DEPTH);
+  const treeCounter = { count: 0, truncated: false };
+  const fileTree = await buildFileTree(projectPath, DEFAULT_TREE_DEPTH, projectPath, new Set(), treeCounter);
 
   const packageJson = await readJsonFile<{
     name?: string;
@@ -332,8 +343,15 @@ export async function buildProjectContextSnapshot(
   markdownSections.push("");
   markdownSections.push("## File Tree");
   markdownSections.push(...formatFileTree(fileTree));
+  if (treeCounter.truncated) {
+    markdownSections.push(`\n(File tree truncated at ${MAX_TREE_NODES} nodes)`);
+  }
 
-  const rawMarkdown = markdownSections.join("\n");
+  let rawMarkdown = markdownSections.join("\n");
+  if (Buffer.byteLength(rawMarkdown, "utf-8") > MAX_CONTEXT_BYTES) {
+    rawMarkdown = Buffer.from(rawMarkdown, "utf-8").subarray(0, MAX_CONTEXT_BYTES).toString("utf-8");
+    rawMarkdown += "\n\n(Context truncated to fit size limit)";
+  }
 
   const graph: ProjectContextGraph = {
     generatedAt: new Date().toISOString(),
@@ -359,6 +377,7 @@ export async function buildProjectContextSnapshot(
     statusHash: currentHash,
     headCommit: currentHeadCommit || undefined,
     charCount: rawMarkdown.length,
+    ...(treeCounter.truncated ? { treeTruncated: true } : {}),
   };
 
   await atomicWriteFile(

@@ -22,7 +22,7 @@ function normalizeStateOptions(
     value: "value" in props ? (props.value === undefined ? [] : [props.value]) : undefined,
     controlled: "value" in props,
     defaultValue: props.defaultValue !== undefined ? [props.defaultValue] : [],
-    onChange: props.onChange ? (v: string[]) => props.onChange?.(v[0]) : undefined,
+    onChange: props.onChange ? (v: string[]) => props.onChange?.(v[0] ?? null) : undefined,
   };
 }
 

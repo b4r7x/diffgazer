@@ -12,10 +12,10 @@ type Caption = { label: string; value?: string }
 
 function getRouteItem(pathname: string, library: ConsumptionLibrary): { section: string; itemId: string } | null {
   const segments = pathname.split("/").filter(Boolean)
-  if (segments[0] !== library || segments[1] !== "docs") return null
+  if (segments[0] !== library) return null
 
-  const section = segments[2]
-  const itemId = segments[3]
+  const section = segments[1]
+  const itemId = segments[2]
   if (!section || !itemId) return null
 
   return { section, itemId }

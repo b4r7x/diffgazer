@@ -24,6 +24,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup pnpm
         uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
@@ -59,6 +60,15 @@ jobs:
       - name: Package smoke
         run: DIFFGAZER_SMOKE_ALLOW_NETWORK=1 DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run smoke:packages
 
+      - name: Dirty-tree guard (post-verify and smoke)
+        run: |
+          status="$(git status --short)"
+          if [ -n "$status" ]; then
+            echo "::error::Tree is dirty after verify/smoke steps"
+            echo "$status"
+            exit 1
+          fi
+
       - name: Changeset status
         run: pnpm changeset status --since=origin/main
 
@@ -74,6 +84,15 @@ jobs:
       - name: Pack diffgazer
         run: pnpm --filter diffgazer pack --dry-run
 
+      - name: Dirty-tree guard (post-pack)
+        run: |
+          status="$(git status --short)"
+          if [ -n "$status" ]; then
+            echo "::error::Tree is dirty after pack steps"
+            echo "$status"
+            exit 1
+          fi
+
   e2e:
     name: Docs E2E (Playwright + axe + visual)
     needs: verify
@@ -84,6 +103,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup pnpm
         uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8

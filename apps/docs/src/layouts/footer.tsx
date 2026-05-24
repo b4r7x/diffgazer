@@ -13,10 +13,7 @@ export function Footer() {
           <span>Search</span>
         </div>
       </div>
-      <div className="flex items-center gap-1.5 hover:text-foreground transition-colors">
-        <Kbd size="sm">Esc</Kbd>
-        <span>Back</span>
-      </div>
+      <div />
     </footer>
   )
 }

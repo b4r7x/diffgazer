@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { join } from "node:path";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
+import { atomicWriteFile } from "../fs.js";
 import {
   SavedReviewSchema,
   ReviewMetadataSchema,
@@ -51,7 +52,7 @@ async function readProjectIndex(projectPath: string): Promise<string[]> {
 async function writeProjectIndex(projectPath: string, ids: string[]): Promise<void> {
   try {
     await mkdir(PROJECT_INDEX_DIR, { recursive: true });
-    await writeFile(projectIndexPath(projectPath), JSON.stringify(ids), "utf-8");
+    await atomicWriteFile(projectIndexPath(projectPath), JSON.stringify(ids));
   } catch (e) {
     console.warn("[reviews] failed to write project index:", e);
   }

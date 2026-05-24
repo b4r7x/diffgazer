@@ -13,13 +13,31 @@ import {
   readKeyringSecret,
   writeKeyringSecret,
 } from "./keyring.js";
-import { removeSecretsFile } from "./state.js";
 
 export const getApiKeyName = (provider: string): string => `api_key_${provider}`;
+
+/** Best-effort rollback of keyring writes on migration failure. */
+function rollbackKeyringWrites(providerIds: readonly string[]): void {
+  for (const providerId of providerIds) {
+    const result = deleteKeyringSecret(getApiKeyName(providerId));
+    if (!result.ok) {
+      console.warn(
+        `[diffgazer] Failed to rollback keyring write for '${providerId}': ${result.error.message}`,
+      );
+    }
+  }
+}
 
 export interface MigrationResult {
   nextSecrets: SecretsState;
   removedFileSecrets: boolean;
+  /**
+   * When true, the caller must delete the secrets file AFTER the new config
+   * state (secretsStorage changed) has been durably persisted. If a crash
+   * occurs before deletion, the file still exists and the migration can be
+   * safely re-run on next start.
+   */
+  shouldDeleteSecretsFile: boolean;
   /**
    * Provider IDs whose keyring entries must be deleted AFTER the file copy of
    * the secrets has been durably persisted. The caller is responsible for
@@ -37,7 +55,7 @@ export function migrateSecretsStorage(
   toStorage: SecretsStorage,
 ): Result<MigrationResult, SecretsStorageError> {
   if (fromStorage === toStorage) {
-    return ok({ nextSecrets: secretsState, removedFileSecrets: false, keyringDeletions: [] });
+    return ok({ nextSecrets: secretsState, removedFileSecrets: false, shouldDeleteSecretsFile: false, keyringDeletions: [] });
   }
 
   if (fromStorage === "file" && toStorage === "keyring") {
@@ -48,27 +66,49 @@ export function migrateSecretsStorage(
     }
 
     const envEntries: Record<string, { kind: "env"; varName: string }> = {};
+    const writtenProviders: string[] = [];
+
     for (const [providerId, entry] of Object.entries(secretsState.providers)) {
-      // Env credential refs stay in the file -- they reference env vars, not keyring secrets
       if (typeof entry !== "string" && entry.kind === "env") {
         envEntries[providerId] = entry;
         continue;
       }
       const apiKey = typeof entry === "string" ? entry : "";
-      const writeResult = writeKeyringSecret(getApiKeyName(providerId), apiKey);
-      if (!writeResult.ok) return writeResult;
-    }
 
-    if (Object.keys(envEntries).length === 0) {
-      try {
-        removeSecretsFile();
-      } catch (error) {
-        console.warn(
-          `[diffgazer] Failed to remove secrets file after migration: ${getErrorMessage(error)}`,
+      // Phase 1: Write secret to keyring
+      const writeResult = writeKeyringSecret(getApiKeyName(providerId), apiKey);
+      if (!writeResult.ok) {
+        rollbackKeyringWrites(writtenProviders);
+        return writeResult;
+      }
+
+      // Phase 2: Verify the secret can be read back
+      const verifyResult = readKeyringSecret(getApiKeyName(providerId));
+      if (!verifyResult.ok || verifyResult.value !== apiKey) {
+        rollbackKeyringWrites(writtenProviders);
+        return err(
+          createError<SecretsStorageErrorCode>(
+            "SECRETS_MIGRATION_FAILED",
+            `Keyring read-back verification failed for provider '${providerId}'`,
+          ),
         );
       }
+
+      writtenProviders.push(providerId);
     }
-    return ok({ nextSecrets: { providers: envEntries }, removedFileSecrets: Object.keys(envEntries).length === 0, keyringDeletions: [] });
+
+    // File deletion is deferred to the caller -- the caller must persist the
+    // updated config state (secretsStorage = "keyring") BEFORE deleting the
+    // old secrets file. A crash between config persist and file deletion is
+    // safe: the file still exists and the migration can be re-run.
+    const shouldDelete = Object.keys(envEntries).length === 0;
+
+    return ok({
+      nextSecrets: { providers: envEntries },
+      removedFileSecrets: false,
+      shouldDeleteSecretsFile: shouldDelete,
+      keyringDeletions: [],
+    });
   }
 
   if (fromStorage === "keyring" && toStorage === "file") {
@@ -101,11 +141,12 @@ export function migrateSecretsStorage(
     return ok({
       nextSecrets: { providers: nextSecrets },
       removedFileSecrets: false,
+      shouldDeleteSecretsFile: false,
       keyringDeletions: keyringMigrated,
     });
   }
 
-  return ok({ nextSecrets: secretsState, removedFileSecrets: false, keyringDeletions: [] });
+  return ok({ nextSecrets: secretsState, removedFileSecrets: false, shouldDeleteSecretsFile: false, keyringDeletions: [] });
 }
 
 /**

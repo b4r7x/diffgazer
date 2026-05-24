@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { lstat, readFile, realpath } from "node:fs/promises";
+import { join, resolve, sep } from "node:path";
 import { promisify } from "node:util";
 import { GIT_FILE_STATUS_CODES, type GitStatus, type GitStatusFiles, type GitFileEntry, type GitFileStatusCode } from "@diffgazer/core/schemas/git";
 import type { GitBlameInfo, ReviewMode } from "@diffgazer/core/schemas/review";
@@ -17,6 +17,23 @@ const SANITIZED_GIT_ENV: Record<string, string> = {
   GIT_EXTERNAL_DIFF: "",
   GIT_PAGER: "",
   GIT_DIFF_OPTS: "",
+  GIT_DIR: "",
+  GIT_WORK_TREE: "",
+  GIT_INDEX_FILE: "",
+  GIT_CONFIG: "",
+  GIT_CONFIG_GLOBAL: "",
+  GIT_CONFIG_SYSTEM: "",
+  GIT_CONFIG_COUNT: "",
+  GIT_CONFIG_PARAMETERS: "",
+  GIT_ALTERNATE_OBJECT_DIRECTORIES: "",
+  GIT_OBJECT_DIRECTORY: "",
+  GIT_CEILING_DIRECTORIES: "",
+  GIT_EXEC_PATH: "",
+  GIT_SSH_COMMAND: "",
+  GIT_ASKPASS: "",
+  GIT_PROXY_COMMAND: "",
+  GIT_HOOKS_PATH: "",
+  GIT_TEMPLATE_DIR: "",
 };
 
 const EMPTY_GIT_STATUS: GitStatus = {
@@ -212,11 +229,22 @@ export function createGitService(options: { cwd?: string; timeout?: number } = {
   async function getFileLines(file: string, startLine: number, endLine: number, source: "HEAD" | "worktree" = "worktree"): Promise<string[]> {
     try {
       if (source === "worktree") {
-        const filePath = join(cwd, file);
-        const content = await readFile(filePath, "utf-8");
+        const resolved = resolve(cwd, file);
+        const realCwd = await realpath(cwd);
+        const realResolved = await realpath(resolved).catch(() => resolved);
+        if (realResolved !== realCwd && !realResolved.startsWith(realCwd + sep)) {
+          return [];
+        }
+        const stat = await lstat(realResolved);
+        if (!stat.isFile()) {
+          return [];
+        }
+        const content = await readFile(realResolved, "utf-8");
         const allLines = content.split("\n");
         return allLines.slice(Math.max(0, startLine - 1), endLine);
       }
+      // Note: git show object syntax (HEAD:path) doesn't accept a -- separator;
+      // option injection is structurally impossible since the arg starts with "HEAD:".
       const args = ["show", `HEAD:${file}`];
       const { stdout } = await execFileAsync("git", args, { cwd, timeout, maxBuffer: GIT_DIFF_MAX_BUFFER, env: safeEnv() });
       const allLines = stdout.split("\n");
@@ -246,7 +274,7 @@ export function createGitService(options: { cwd?: string; timeout?: number } = {
     }
   }
 
-  async function getStatusHash(): Promise<string> {
+  async function getStatusHash(): Promise<string | null> {
     try {
       const { stdout } = await execFileAsync(
         "git",
@@ -280,7 +308,7 @@ export function createGitService(options: { cwd?: string; timeout?: number } = {
       return hash.digest("hex").slice(0, 16);
     } catch (error) {
       console.warn("[git] failed to get status hash:", getErrorMessage(error));
-      return "";
+      return null;
     }
   }
 

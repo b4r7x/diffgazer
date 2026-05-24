@@ -3,7 +3,9 @@
   "name": "logo",
   "title": "Logo",
   "description": "Static text logo primitive. Precompute ASCII art and pass it as asciiText.",
-  "dependencies": [],
+  "dependencies": [
+    "figlet"
+  ],
   "registryDependencies": [
     "https://r.b4r7.dev/r/ui/theme.json",
     "https://r.b4r7.dev/r/ui/utils.json"

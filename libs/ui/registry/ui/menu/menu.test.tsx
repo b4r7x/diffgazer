@@ -1024,11 +1024,11 @@ describe("MenuItemCheckbox", () => {
     expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-another"))
   })
 
-  it("calls onCheckedChange callback", async () => {
+  it("calls onChange callback", async () => {
     const onChange = vi.fn()
     render(
       <Menu aria-label="Options" defaultHighlighted="opt">
-        <Menu.ItemCheckbox id="opt" onCheckedChange={onChange}>Option</Menu.ItemCheckbox>
+        <Menu.ItemCheckbox id="opt" onChange={onChange}>Option</Menu.ItemCheckbox>
       </Menu>,
     )
     const menu = screen.getByRole("menu")

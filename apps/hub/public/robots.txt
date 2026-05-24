@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://b4r7.dev/sitemap.xml

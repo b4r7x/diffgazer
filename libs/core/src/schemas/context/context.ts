@@ -50,6 +50,7 @@ export const ProjectContextMetaSchema = z.object({
   statusHash: z.string(),
   headCommit: z.string().optional(),
   charCount: z.number(),
+  treeTruncated: z.boolean().optional(),
 });
 export type ProjectContextMeta = z.infer<typeof ProjectContextMetaSchema>;
 

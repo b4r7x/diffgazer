@@ -2,6 +2,9 @@ import type { Context } from "hono";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { SHUTDOWN_TOKEN_HEADER } from "@diffgazer/core/api";
+import { ErrorCode } from "@diffgazer/core/schemas/errors";
+import { safeTokenMatch } from "./shared/lib/crypto.js";
+import { errorResponse } from "./shared/lib/http/response.js";
 import { healthRouter } from "./features/health/router.js";
 import { configRouter } from "./features/config/router.js";
 import { settingsRouter } from "./features/settings/router.js";
@@ -52,7 +55,7 @@ export const createApp = (): Hono => {
   app.use("*", async (c, next) => {
     const hostname = getHostname(c.req.header("host"));
     if (!hostname || !ALLOWED_HOSTS.has(hostname)) {
-      return c.json({ error: { message: "Forbidden" } }, 403);
+      return errorResponse(c, "Forbidden", ErrorCode.FORBIDDEN, 403);
     }
 
     return next();
@@ -69,7 +72,7 @@ export const createApp = (): Hono => {
   app.use("/api/*", async (c, next) => {
     const origin = c.req.header("origin");
     if (origin && !isLocalhostOrigin(origin) && UNSAFE_METHODS.has(c.req.method)) {
-      return c.json({ error: { message: "Forbidden" } }, 403);
+      return errorResponse(c, "Forbidden", ErrorCode.FORBIDDEN, 403);
     }
     return next();
   });
@@ -83,8 +86,8 @@ export const createApp = (): Hono => {
       return next();
     }
     const token = process.env.DIFFGAZER_SHUTDOWN_TOKEN?.trim();
-    if (!token || c.req.header(SHUTDOWN_TOKEN_HEADER) !== token) {
-      return c.json({ error: { message: "Unauthorized" } }, 403);
+    if (!token || !safeTokenMatch(c.req.header(SHUTDOWN_TOKEN_HEADER), token)) {
+      return errorResponse(c, "Unauthorized", ErrorCode.UNAUTHORIZED, 403);
     }
     return next();
   });
@@ -114,12 +117,12 @@ export const createApp = (): Hono => {
   app.route("/api/shutdown", shutdownRouter);
 
   app.notFound((c) => {
-    return c.json({ error: { message: "Not Found" } }, 404);
+    return errorResponse(c, "Not Found", ErrorCode.NOT_FOUND, 404);
   });
 
   app.onError((err, c) => {
     console.error("Unhandled error:", err);
-    return c.json({ error: { message: "Internal Server Error" } }, 500);
+    return errorResponse(c, "Internal Server Error", ErrorCode.INTERNAL_ERROR, 500);
   });
 
   return app;

@@ -201,7 +201,10 @@ export async function runLensAnalysis(
     return result;
   }
 
-  const issuesWithEvidence = result.value.issues.map((issue: ReviewIssue) => ensureIssueEvidence(issue, diff));
+  const diffFilePaths = new Set(diff.files.map((f) => f.filePath));
+  const issuesWithEvidence = result.value.issues
+    .filter((issue: ReviewIssue) => diffFilePaths.has(issue.file))
+    .map((issue: ReviewIssue) => ensureIssueEvidence(issue, diff));
 
   for (const issue of issuesWithEvidence) {
     onEvent({

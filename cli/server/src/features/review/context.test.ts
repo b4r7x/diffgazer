@@ -186,6 +186,30 @@ describe("buildProjectContextSnapshot", () => {
     expect(treeSection).not.toContain("file.ts");
   });
 
+  it("truncates file tree when node count exceeds cap", async () => {
+    // Create enough files to exceed the 1000-node cap
+    for (let i = 0; i < 1100; i++) {
+      await writeProjectFile(`files/file-${String(i).padStart(4, "0")}.ts`, "");
+    }
+
+    const result = await buildProjectContextSnapshot(projectRoot, { force: true });
+
+    expect(result.markdown).toContain("File tree truncated at 1000 nodes");
+    expect(result.meta.treeTruncated).toBe(true);
+  });
+
+  it("truncates context markdown when byte size exceeds cap", async () => {
+    // Create a large README to push total context beyond 50KB
+    const largeContent = "X".repeat(60_000);
+    await writeProjectFile("package.json", JSON.stringify({ name: "big-project", version: "1.0.0" }));
+    await writeProjectFile("README.md", largeContent);
+
+    const result = await buildProjectContextSnapshot(projectRoot, { force: true });
+
+    expect(Buffer.byteLength(result.markdown, "utf-8")).toBeLessThanOrEqual(50_000 + 50);
+    expect(result.markdown).toContain("Context truncated to fit size limit");
+  });
+
   it("rejects workspace globs that escape the project root", async () => {
     // Place a sibling directory with a package.json that should NOT be discovered
     const siblingDir = join(dirname(projectRoot), "sibling-project");

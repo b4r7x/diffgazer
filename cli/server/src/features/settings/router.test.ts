@@ -131,6 +131,33 @@ describe("settings trust routes — server-scoped project", () => {
     expect(body.projects[0]!.projectId).toBe(projectA.projectId);
   });
 
+  it("POST /trust normalizes runCommands to false even when client sends true", async () => {
+    const store = await getStore();
+    store.ensureProjectFile(projectRootA);
+
+    const app = await loadApp();
+    const res = await app.request("/api/settings/trust", {
+      method: "POST",
+      headers: {
+        Host: "localhost:3000",
+        "Content-Type": "application/json",
+        [SHUTDOWN_TOKEN_HEADER]: TEST_TOKEN,
+        [PROJECT_ROOT_HEADER]: projectRootA,
+      },
+      body: JSON.stringify({
+        projectId: "client-supplied",
+        repoRoot: "/client-supplied",
+        trustedAt: new Date().toISOString(),
+        capabilities: { readFiles: true, runCommands: true },
+        trustMode: "persistent",
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { trust: { capabilities: { runCommands: boolean } } };
+    expect(body.trust.capabilities.runCommands).toBe(false);
+  });
+
   it("DELETE /trust derives project from server, cannot delete another project's trust", async () => {
     const store = await getStore();
     const projectA = store.ensureProjectFile(projectRootA);
