@@ -49,6 +49,26 @@ describe("useApiKeyForm", () => {
     expect(onSubmit).toHaveBeenCalledWith("env", "OPENAI_API_KEY");
   });
 
+  it("passes env method and var name so callers can construct a CredentialRef", async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() =>
+      useApiKeyForm(defaultProps({ onSubmit, envVarName: "OPENROUTER_API_KEY" }))
+    );
+
+    await act(async () => {
+      await result.current.handleSubmit("env");
+    });
+
+    expect(onSubmit).toHaveBeenCalledWith("env", "OPENROUTER_API_KEY");
+
+    // Verify the caller can transform to CredentialRef as page.tsx now does
+    const [method, value] = onSubmit.mock.calls[0] as [string, string];
+    const credentialRef = method === "env"
+      ? { kind: "env" as const, varName: value }
+      : value;
+    expect(credentialRef).toEqual({ kind: "env", varName: "OPENROUTER_API_KEY" });
+  });
+
   it("ignores a second submit while the first is still in flight", async () => {
     let resolveSubmit!: () => void;
     const onSubmit = vi.fn().mockImplementation(

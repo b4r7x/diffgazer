@@ -7,6 +7,8 @@ import { error, isSilentMode } from "./logger.js";
 const VALID_PKG_NAME = /^(@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/i;
 const VERSION_SPEC_PATTERN = /^[a-zA-Z0-9._\-~/^*@:+]+$/;
 
+const REJECTED_PROTOCOLS = ["file:", "git+", "git:", "https:", "http:"];
+
 export function depName(dep: string): string {
   if (!dep.includes("@")) return dep;
   const searchFrom = dep.startsWith("@") ? dep.indexOf("/") + 1 : 0;
@@ -30,8 +32,25 @@ export function normalizeVersionSpec(raw: unknown, packageName = "package"): str
   return spec;
 }
 
+/** Reject dependency strings that use protocols, absolute paths, or path traversal. */
+export function validateDependencyProtocol(dep: string): void {
+  const lower = dep.toLowerCase();
+  for (const protocol of REJECTED_PROTOCOLS) {
+    if (lower.startsWith(protocol)) {
+      throw new Error(`Rejected dependency "${dep}": ${protocol} sources are not allowed.`);
+    }
+  }
+  if (dep.startsWith("/") || dep.startsWith("\\")) {
+    throw new Error(`Rejected dependency "${dep}": absolute paths are not allowed.`);
+  }
+  if (dep.includes("..")) {
+    throw new Error(`Rejected dependency "${dep}": path traversal is not allowed.`);
+  }
+}
+
 function validatePackageNames(deps: string[]): void {
   for (const dep of deps) {
+    validateDependencyProtocol(dep);
     if (!VALID_PKG_NAME.test(depName(dep))) {
       throw new Error(`Invalid package name: "${dep}"`);
     }

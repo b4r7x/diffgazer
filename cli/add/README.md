@@ -101,7 +101,7 @@ pnpm exec dgadd ui/button
 | `--dry-run` | Preview changes without writing files | `false` |
 | `--skip-install` | Write files without installing npm dependencies | `false` |
 | `--integration <mode>` | Keyboard integration mode: `ask \| none \| copy \| keys` | `ask` |
-| `--keys-version <version>` | Version/range used by `@diffgazer/keys` package mode | `^0.1.1` |
+| `--keys-version <version>` | Version/range used by `@diffgazer/keys` package mode | `^0.2.0` |
 | `-y, --yes` | Skip confirmation prompts | `false` |
 
 `copy` mode installs bundled offline hook source. `keys` mode rewrites local hook imports to `@diffgazer/keys` and installs the package dependency. `--yes` uses `copy` mode for components that require keyboard hooks; `none` is rejected for those components because it would leave unresolved local hook imports.

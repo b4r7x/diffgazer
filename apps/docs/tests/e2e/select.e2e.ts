@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test"
 
 test.describe("Select", () => {
 	test("opens listbox via keyboard and reports no a11y violations", async ({ page }) => {
-		await page.goto("/ui/docs/components/select")
+		await page.goto("/ui/components/select")
 		await expect(page.getByRole("heading", { level: 1, name: /select/i })).toBeVisible()
 
 		const combo = page.getByRole("combobox").first()

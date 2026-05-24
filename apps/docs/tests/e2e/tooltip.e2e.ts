@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test"
 
 test.describe("Tooltip", () => {
 	test("appears on hover and is accessible", async ({ page }) => {
-		await page.goto("/ui/docs/components/tooltip")
+		await page.goto("/ui/components/tooltip")
 		await expect(page.getByRole("heading", { level: 1, name: /tooltip/i })).toBeVisible()
 
 		const previewPane = page

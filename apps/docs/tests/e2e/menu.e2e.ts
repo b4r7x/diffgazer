@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test"
 
 test.describe("Menu", () => {
 	test("supports arrow-key navigation and is accessible", async ({ page }) => {
-		await page.goto("/ui/docs/components/menu")
+		await page.goto("/ui/components/menu")
 		await expect(page.getByRole("heading", { level: 1, name: /menu/i })).toBeVisible()
 
 		const menu = page.getByRole("menu", { name: /file actions/i }).first()

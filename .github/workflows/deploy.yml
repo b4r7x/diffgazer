@@ -18,7 +18,7 @@ permissions:
 jobs:
   build-and-push:
     name: Build and Push Images
-    if: github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch'
+    if: ${{ (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main') || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
@@ -66,7 +66,7 @@ jobs:
 
   deploy:
     name: Deploy to VPS
-    if: github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch'
+    if: ${{ (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main') || github.event_name == 'workflow_dispatch' }}
     needs: build-and-push
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -82,6 +82,6 @@ jobs:
         if: success()
         run: |
           sleep 30
-          curl -fsS --retry 3 --retry-delay 10 https://docs.b4r7.dev > /dev/null || echo "::warning::docs.b4r7.dev not responding"
-          curl -fsS --retry 3 --retry-delay 10 https://r.b4r7.dev/r/ui/registry.json > /dev/null || echo "::warning::registry not responding"
-          curl -fsS --retry 3 --retry-delay 10 https://diffgazer.b4r7.dev > /dev/null || echo "::warning::landing not responding"
+          curl -fsS --retry 5 --retry-delay 15 https://docs.b4r7.dev > /dev/null
+          curl -fsS --retry 5 --retry-delay 15 https://r.b4r7.dev/r/ui/registry.json > /dev/null
+          curl -fsS --retry 5 --retry-delay 15 https://diffgazer.b4r7.dev > /dev/null

@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test"
 
 test.describe("Toast", () => {
 	test("appears on trigger, exposes status role, no a11y violations", async ({ page }) => {
-		await page.goto("/ui/docs/components/toast")
+		await page.goto("/ui/components/toast")
 		await expect(page.getByRole("heading", { level: 1, name: /toast/i })).toBeVisible()
 
 		const trigger = page.getByRole("button", { name: /^success$/i }).first()

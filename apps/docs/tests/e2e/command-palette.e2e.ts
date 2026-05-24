@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test"
 
 test.describe("CommandPalette", () => {
 	test("filters items by typing and remains accessible", async ({ page }) => {
-		await page.goto("/ui/docs/components/command-palette")
+		await page.goto("/ui/components/command-palette")
 		await expect(page.getByRole("heading", { level: 1, name: /command palette/i })).toBeVisible()
 
 		const trigger = page.getByRole("button", { name: /open command palette/i }).first()

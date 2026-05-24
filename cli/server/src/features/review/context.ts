@@ -68,6 +68,22 @@ function resolveWorkspaceRoots(
   });
 }
 
+async function filterEscapedRoots(
+  roots: Array<{ dir: string; kind: WorkspacePackage["kind"] }>,
+  projectPath: string,
+): Promise<Array<{ dir: string; kind: WorkspacePackage["kind"] }>> {
+  const normalizedProject = await realpath(projectPath).catch(() => path.resolve(projectPath));
+  const results: Array<{ dir: string; kind: WorkspacePackage["kind"] }> = [];
+  for (const root of roots) {
+    const resolved = path.resolve(normalizedProject, root.dir);
+    const real = await realpath(resolved).catch(() => resolved);
+    if (real === normalizedProject || real.startsWith(normalizedProject + path.sep)) {
+      results.push(root);
+    }
+  }
+  return results;
+}
+
 async function getWorkspaceRoots(
   projectPath: string,
 ): Promise<Array<{ dir: string; kind: WorkspacePackage["kind"] }>> {
@@ -76,7 +92,7 @@ async function getWorkspaceRoots(
     const content = await readFile(yamlPath, "utf8");
     const globs = parseWorkspaceYaml(content);
     if (globs.length > 0) {
-      return resolveWorkspaceRoots(globs);
+      return await filterEscapedRoots(resolveWorkspaceRoots(globs), projectPath);
     }
   } catch {
     // pnpm-workspace.yaml not found — fall through to defaults

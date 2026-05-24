@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test"
 
 test.describe("Tabs", () => {
 	test("switches via ArrowRight and is accessible", async ({ page }) => {
-		await page.goto("/ui/docs/components/tabs")
+		await page.goto("/ui/components/tabs")
 		await expect(page.getByRole("heading", { level: 1, name: /tabs/i })).toBeVisible()
 
 		const tablist = page
