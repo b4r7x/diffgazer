@@ -37,37 +37,6 @@ export interface MenuProps<TId extends string = string>
   onKeyDown?: (event: KeyboardEvent) => void;
 }
 
-/**
- * Listbox-style menu with arrow-key navigation, typeahead, and Enter/Space
- * activation. Use `MenuItem` for entries and `MenuDivider` to separate
- * groups. Pair `selectedId` / `defaultSelectedId` with `onSelect` to mark a
- * single item as active (role becomes `menuitemradio`); omit it for a plain
- * action menu.
- *
- * @example
- * ```tsx
- * <Menu aria-label="File actions" onSelect={(id) => runAction(id)}>
- *   <Menu.Item id="new">New file</Menu.Item>
- *   <Menu.Item id="open">Open...</Menu.Item>
- *   <Menu.Item id="save">Save</Menu.Item>
- *   <Menu.Divider />
- *   <Menu.Item id="delete" variant="danger">Delete</Menu.Item>
- * </Menu>
- * ```
- *
- * @example
- * ```tsx
- * const [branch, setBranch] = useState("main");
- * <Menu
- *   aria-label="Branch"
- *   selectedId={branch}
- *   onSelect={setBranch}
- * >
- *   <Menu.Item id="main">main</Menu.Item>
- *   <Menu.Item id="develop">develop</Menu.Item>
- * </Menu>
- * ```
- */
 const MENU_ITEM_TYPES: ElementType[] = [MenuItem, MenuItemCheckbox, MenuItemRadio, MenuSubTrigger];
 
 function collectMenuItems<TId extends string = string>(

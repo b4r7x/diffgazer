@@ -13,22 +13,7 @@ import { SidebarProvider } from "./sidebar-provider";
 
 export interface SidebarProps extends HTMLAttributes<HTMLElement> {
   ref?: Ref<HTMLElement>;
-  /**
-   * Visual variant. Active-marker treatment changes per variant; row metrics
-   * stay identical so glyph slots line up across variants.
-   *   - `caret`    — `▸` glyph prefix; active = `font-semibold`, no row bg.
-   *   - `inverted` — TUI cursor line; active = full-bleed `bg-foreground`.
-   *   - `bar`      — 1px `border-l` on active; zero radius, no fill.
-   *   - `bracket`  — `[*]` (active) / `[ ]` (inactive) glyph prefix.
-   *   - `block`    — soft `bg-foreground/8` fill on active.
-   */
   variant?: SidebarVariant;
-  /**
-   * Opt-in: render a `data-intent` dot before each item's label and derive
-   * intent from the item `value` via the built-in dictionary when not
-   * explicitly set. Color is decoration only (WCAG 1.4.1) — pair with text
-   * cues such as labels or badges.
-   */
   autoTone?: boolean;
   children: ReactNode;
 }
@@ -63,12 +48,6 @@ function SidebarNav({
   );
 }
 
-/**
- * Reads context state to decide whether to render the inline nav or the
- * mobile sheet wrapper. Kept separate so the host (Provider) can render
- * `aria-live` announcers + mobile sheet without re-entering the Sidebar
- * branch logic.
- */
 function SidebarShell({
   ref,
   variant,
@@ -127,16 +106,6 @@ function SidebarShell({
   );
 }
 
-/**
- * `Sidebar` is a "Sidebar inside provider" convenience: passing it without an
- * outer `<SidebarProvider>` instantiates one automatically. When nested inside
- * an existing provider (e.g. for an app that mounts the same provider once at
- * the root and renders the sidebar in multiple slots), it reuses that context.
- *
- * Mobile breakpoint and hotkey config live on `<SidebarProvider>`; this
- * convenience signature does not surface them — use `<SidebarProvider>`
- * directly when you need them.
- */
 export function Sidebar({
   ref,
   variant,

@@ -33,24 +33,7 @@ export interface SidebarItemRenderProps {
 interface SidebarItemSharedProps {
   active?: boolean;
   value?: string;
-  /**
-   * Optional intent for `data-intent`. When `autoTone` is enabled on the
-   * parent `<Sidebar>` and `intent` is omitted, the intent is inferred from
-   * `value` via the built-in dictionary. Color is decoration only
-   * (WCAG 1.4.1) — provide a text/glyph cue alongside (label or badge).
-   */
   intent?: SidebarIntent;
-  /**
-   * Either a renderable node (icon, label, badge) or a render-prop callback
-   * that receives the wired-up props for composing a custom element such as a
-   * framework `<Link>`.
-   *
-   * Render-prop consumers compose their own decoration — the caret/bracket
-   * variant glyph and the `autoTone` intent dot are NOT injected automatically
-   * through the render prop. Use the built-in element rendering (`as="a"` or
-   * `as="button"`) to get the glyph and dot for free, or replicate them in
-   * your render callback.
-   */
   children: ReactNode | ((props: SidebarItemRenderProps) => ReactNode);
   className?: string;
   disabled?: boolean;
@@ -81,13 +64,6 @@ const INTENT_DOT_CLASSES: Record<SidebarIntent, string> = {
   accent: "bg-[var(--accent,oklch(0.62_0.20_295))]",
 };
 
-/**
- * Glyph prefix for `caret` and `bracket` variants. Rendered as `aria-hidden`
- * so screen readers skip it — the label text remains the sole accessible
- * name. Brackets stay visible for inactive rows per spec, with monospaced
- * tabular alignment ensuring no width-shift on selection. Hidden in rail mode
- * so items collapse to icon-only rows centered in the 48px rail.
- */
 function VariantGlyph({ variant, active }: { variant: SidebarVariant; active: boolean }) {
   if (variant === "caret") {
     return (
@@ -128,13 +104,6 @@ function IntentDot({ intent }: { intent: SidebarIntent }) {
   );
 }
 
-/**
- * Renders as `<a>` by default (the spec contract — items are navigation links
- * unless explicitly action buttons). Pass `as="button"` for non-navigation
- * actions (e.g. toggles, ephemeral commands). The render-prop variant
- * `{children}` as function applies when integrating with framework Link
- * components (TanStack Router `<Link>`, Next.js `<Link>`).
- */
 export function SidebarItem(props: SidebarItemProps): ReactNode {
   const generatedId = useId();
   const { variant, autoTone } = useSidebarChrome();

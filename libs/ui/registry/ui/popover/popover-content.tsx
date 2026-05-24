@@ -156,10 +156,6 @@ interface PopoverAutoFocusProps {
   fallbackToContainer: boolean;
 }
 
-/**
- * Defers autoFocus until FloatingPanel reports `positioned: true`.
- * Rendered inside FloatingPanel so it can read positioning state via context.
- */
 function PopoverAutoFocus({ contentRef, enabled, fallbackToContainer }: PopoverAutoFocusProps) {
   const { positioned } = useFloatingPanelContext();
   useAutoFocus(contentRef, enabled && positioned, fallbackToContainer);

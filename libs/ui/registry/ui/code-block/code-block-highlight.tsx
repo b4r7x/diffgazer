@@ -2,13 +2,6 @@ import { createElement, type ReactNode } from "react";
 import { CodeBlockContent, type CodeBlockContentProps } from "./code-block-content";
 import { CodeBlockLine, type CodeBlockLineState } from "./code-block-line";
 
-/**
- * Minimal HAST shape we walk to render highlighted tokens. Defined inline so
- * consumers do not need `@types/hast` installed to type-check the published
- * declarations — only the optional `lowlight` peer is required, and only when
- * the consumer actually calls `createDefaultLowlight()` or constructs their
- * own lowlight instance.
- */
 interface HastText {
   type: "text";
   value: string;
@@ -25,12 +18,6 @@ interface HastRoot {
   children: HastNode[];
 }
 
-/**
- * Duck-typed shape of a `lowlight` instance — the two methods we call. Accepting
- * the instance as a prop keeps the optional `lowlight` peer out of this module's
- * static graph; consumers either pass their own (`createLowlight(common)`) or
- * use `createDefaultLowlight()` which lazy-imports lowlight at call time.
- */
 export interface LowlightInstance {
   highlight(language: string, value: string): HastRoot;
   highlightAuto(value: string): HastRoot;
@@ -41,12 +28,6 @@ const MISSING_DEPENDENCY_MESSAGE =
 
 let lowlightPromise: Promise<LowlightInstance> | null = null;
 
-/**
- * Lazy-loads `lowlight` + its `common` language preset and returns a cached
- * instance. Resolves to a `LowlightInstance` consumers can hand to
- * `<CodeBlockHighlight lowlight={…}>`. Rejects with a clear error message when
- * the optional peer is not installed.
- */
 export function createDefaultLowlight(): Promise<LowlightInstance> {
   if (!lowlightPromise) {
     lowlightPromise = import("lowlight")
@@ -59,18 +40,9 @@ export function createDefaultLowlight(): Promise<LowlightInstance> {
 }
 
 export interface CodeBlockHighlightProps extends Omit<CodeBlockContentProps, "children"> {
-  /** Source code to highlight. Each newline becomes a separate row. */
   code: string;
-  /** Language identifier (any name the supplied lowlight instance supports). */
   language?: string;
-  /** Optional diff/highlight state per 1-based line number. */
   lineStates?: Record<number, CodeBlockLineState>;
-  /**
-   * Optional `lowlight` instance. When omitted the code renders as plain text
-   * (no `hljs-*` token classes). Pass an instance to opt into syntax
-   * highlighting — keeps the optional `lowlight` peer out of consumers that
-   * do not need it.
-   */
   lowlight?: LowlightInstance;
 }
 

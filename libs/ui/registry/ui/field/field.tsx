@@ -55,30 +55,6 @@ export interface FieldRootProps extends HTMLAttributes<HTMLDivElement> {
   ref?: Ref<HTMLDivElement>;
 }
 
-/**
- * Form-field wrapper that wires a label, control, optional description, and
- * optional error message together via shared `id` and ARIA relationships.
- * The compound `Field.Label`, `Field.Control`, `Field.Description`, and
- * `Field.Error` children read state from this root so consumers only set
- * `invalid`, `required`, or `disabled` once.
- *
- * @example
- * ```tsx
- * <Field required invalid={Boolean(error)}>
- *   <Field.Label>Email</Field.Label>
- *   <Field.Control>
- *     <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
- *   </Field.Control>
- *   <Field.Description>We never share your address.</Field.Description>
- *   <Field.Error>{error}</Field.Error>
- * </Field>
- * ```
- */
-/**
- * Scan direct Field children to detect which slots are present. Returns
- * deterministic IDs only for slots that are actually rendered, so ARIA
- * attributes are correct from the first render without useEffect.
- */
 function detectFieldSlots(
   children: ReactNode,
   defaultLabelId: string,

@@ -2,10 +2,6 @@
 
 import type { ChangeType, WordSegment } from "@/lib/diff";
 
-/**
- * State name applied to `data-row` for CSS row tint selectors. Mirrors the
- * ChangeType union plus "hunk" (separator) and "empty" (split-side gap).
- */
 export type DiffRowState = "added" | "removed" | "context" | "hunk" | "empty";
 
 export const ROW_STATE: Record<ChangeType, DiffRowState> = {

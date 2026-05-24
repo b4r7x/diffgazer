@@ -10,11 +10,6 @@ export type SidebarSectionTitleHeadingLevel = "h1" | "h2" | "h3" | "h4" | "h5" |
 export interface SidebarSectionTitleProps extends HTMLAttributes<HTMLElement> {
   ref?: Ref<HTMLElement>;
   handle?: ReactNode | null;
-  /**
-   * Heading level to render. Default `"h3"` matches the typical sidebar
-   * placement under a page `<h1>` and a `<h2>` section header — the level
-   * that keeps screen-reader heading-rotor navigation predictable.
-   */
   headingLevel?: SidebarSectionTitleHeadingLevel;
 }
 
@@ -24,14 +19,6 @@ export interface SidebarSectionTitleProps extends HTMLAttributes<HTMLElement> {
 const HEADING_CLASS_NAME =
   "px-2 py-2 text-muted-foreground text-xs font-mono font-normal lowercase tracking-normal m-0 group-data-[state=rail]/sidebar:hidden";
 
-/**
- * Renders the section title as a real heading (`<h3>` by default) so screen
- * readers expose it via the heading-rotor. Collapsible sections follow the
- * ARIA disclosure pattern — `<hN><button aria-expanded aria-controls=…>…</button></hN>` —
- * keeping the heading semantic and the toggle interactive without nesting
- * roles incorrectly. `aria-controls` targets the sibling
- * `<SidebarSectionContent>` panel id, exposed via section context.
- */
 export function SidebarSectionTitle({
   ref,
   children,

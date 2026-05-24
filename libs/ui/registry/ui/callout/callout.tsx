@@ -79,10 +79,6 @@ export interface CalloutProps extends HTMLAttributes<HTMLDivElement> {
   open?: boolean;
   defaultOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
-  /**
-   * When true, applies role="status" (or role="alert" for error tone) so
-   * assistive tech announces the message. Default false: no role.
-   */
   live?: boolean;
   ref?: Ref<HTMLDivElement>;
 }

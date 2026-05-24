@@ -4,17 +4,11 @@ import { useEffect, useRef, useState, type ComponentProps, type ReactNode } from
 
 export interface CodeBlockCopyButtonProps
   extends Omit<ComponentProps<"button">, "children" | "onCopy"> {
-  /** Source text to copy to the clipboard. */
   source: string;
-  /** Accessible label for the button. Defaults to "Copy code to clipboard". */
   copyLabel?: string;
-  /** Status message announced via aria-live when the copy succeeds. */
   copiedMessage?: string;
-  /** Optional copy renderer override. Defaults to a clipboard icon. */
   children?: ((state: "idle" | "copied") => ReactNode) | ReactNode;
-  /** Called after a successful clipboard write. */
   onCopy?: (source: string) => void;
-  /** Called when clipboard write fails. */
   onCopyError?: (error: unknown) => void;
 }
 

@@ -40,13 +40,6 @@ interface ToggleGroupBaseProps<TValue extends string = string> {
   allowDeselect?: boolean;
   disabled?: boolean;
   size?: SegmentedSize;
-  /**
-   * Visual variant.
-   *   - `default` — bordered button row; active = inverted block.
-   *   - `bracket` — frameless, active item wears `[ … ]` markers.
-   *   - `pill`    — joined track with a single sliding indicator.
-   *   - `underline` — gapped row with a foreground underline on the active item.
-   */
   variant?: SegmentedVariant;
   orientation?: "horizontal" | "vertical";
   wrap?: boolean;

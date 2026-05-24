@@ -193,7 +193,4 @@ export function focusNavigationItem(
   return target.dataset.value;
 }
 
-/**
- * Re-exported from `./focusable.js` for ergonomic discovery alongside navigation utilities.
- */
 export const getFocusableElements = getFocusableElementsImpl;

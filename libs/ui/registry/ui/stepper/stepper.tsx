@@ -26,15 +26,6 @@ export interface StepperProps
   expandedIds?: string[];
   defaultExpandedIds?: string[];
   onExpandedChange?: (ids: string[]) => void;
-  /**
-   * Visual variant:
-   *   - `ascii` — `[x] [~] [ ] [!]` mono 1ch glyph, blinking `~` on active.
-   *   - `numbered` — 20px square with CSS-counter step number; ✓ on completed.
-   *   - `bullet` — single Unicode glyph, dashed connector for low chrome.
-   *   - `tag` — uppercase text tag (DONE/RUN/WAIT/FAIL/SKIP/OFF) with fixed
-   *     `min-width` so active state does not shift neighbour widths.
-   *   - `progress` — `███ / █▌░ / ░░░` Unicode block-element bar per step.
-   */
   variant?: StepperVariant;
   children: ReactNode;
 }
@@ -45,12 +36,6 @@ interface StepDescriptor {
   label: string | undefined;
 }
 
-/**
- * Walk direct children for StepperStep elements. Direct-children only matches
- * the existing composition contract; wrappers that synthesize steps are not
- * supported. Returns step ids + statuses (and the trigger label when it is a
- * plain string) in DOM order.
- */
 function collectSteps(children: ReactNode): StepDescriptor[] {
   return Children.toArray(children).flatMap((child) => {
     if (!isValidElement(child) || child.type !== StepperStep) return [];
@@ -59,11 +44,6 @@ function collectSteps(children: ReactNode): StepDescriptor[] {
   });
 }
 
-/**
- * Walk a step's children for the direct `StepperTrigger` child and return its
- * label when it is a plain string. Non-string children (icons, nested nodes)
- * return undefined; the live region falls back to "Step N of M" without label.
- */
 function extractTriggerLabel(children: ReactNode): string | undefined {
   for (const child of Children.toArray(children)) {
     if (!isValidElement(child) || child.type !== StepperTrigger) continue;
@@ -74,19 +54,6 @@ function extractTriggerLabel(children: ReactNode): string | undefined {
   return undefined;
 }
 
-/**
- * Stepper root.
- *
- * Implements a roving tabIndex: only one step trigger holds `tabIndex={0}` at
- * a time (the active step if interactive, otherwise the first interactive
- * step). Arrow keys move highlight, Home/End jump to first/last enabled,
- * disabled steps are skipped. Editable targets inside step content keep their
- * native keyboard handling.
- *
- * The live region announces "Step {n} of {total}: {label}" when a step's
- * status flips to active. Label is sourced from the active step's
- * `StepperTrigger` children via `extractTriggerLabel` (string children only).
- */
 export function Stepper({
   expandedIds,
   defaultExpandedIds,
@@ -224,11 +191,6 @@ interface StepperLiveRegionProps {
   total: number;
 }
 
-/**
- * Polite live region. Keyed by the active step id so React tears down and
- * remounts on each transition — guarantees the announcement is read even if
- * the label text happens to be identical.
- */
 function StepperLiveRegion({ activeStepId, label, position, total }: StepperLiveRegionProps) {
   const message = label
     ? `Step ${position} of ${total}: ${label}`

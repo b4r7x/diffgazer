@@ -7,7 +7,6 @@ import { useRequiredCodeBlockContext } from "./code-block-context";
 
 export interface CodeBlockContentProps extends ComponentProps<"div"> {
   showLineNumbers?: boolean;
-  /** Total line count — used to fix gutter width. Inferred automatically when omitted. */
   lineCount?: number;
 }
 

@@ -20,12 +20,6 @@ export function categorize(value: string): CommandPaletteItemTone {
   return "neutral";
 }
 
-/**
- * Return indices of characters in `value` that match `search`. The first pass
- * is a case-insensitive contiguous substring scan; if absent, fall back to a
- * left-to-right fuzzy walk that returns the first occurrence of each search
- * character. Returns [] when no match is possible.
- */
 export function matchPositions(value: string, search: string): number[] {
   if (!search) return [];
   const lowerValue = value.toLowerCase();
@@ -88,19 +82,6 @@ export interface CommandPaletteHighlightItemProps extends Omit<CommandPaletteIte
   label?: string;
 }
 
-/**
- * Wraps CommandPaletteItem with automatic tone classification (from the
- * label's leading verb) and inline match-highlighting against the current
- * search query.
- *
- * - Pass `tone` to override the inferred tone.
- * - When `children` is plain text (string/number, or an array of those), the
- *   matched characters are wrapped in <mark data-slot="command-palette-item-match">.
- * - When `children` mixes in elements (icons, <strong>, etc.) the wrapper
- *   cannot recover the full text — `children` renders untouched (no marks)
- *   to avoid silent content loss. Use the optional `label` prop to drive
- *   tone categorization and search-matching for those rows.
- */
 export function CommandPaletteHighlightItem({
   tone,
   value,

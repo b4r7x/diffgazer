@@ -125,28 +125,6 @@ function ButtonContent({
   return <>{inner}</>;
 }
 
-/**
- * Terminal-styled button. Renders a `<button>` by default and an `<a>` when
- * `as="a"` is passed. A render-prop form (`children` as a function) returns
- * the resolved `className`, `disabled`, and ARIA props so the caller can
- * apply them to a router-aware element.
- *
- * @example
- * ```tsx
- * <Button variant="primary" onClick={() => save()}>Save</Button>
- * <Button as="a" href="/changelog" variant="link">Changelog</Button>
- * <Button variant="destructive" loading={isDeleting} onClick={onDelete}>
- *   Delete
- * </Button>
- * ```
- *
- * @example
- * ```tsx
- * <Button>
- *   {(props) => <Link to="/settings" {...props}>Settings</Link>}
- * </Button>
- * ```
- */
 export function Button(props: ButtonProps): ReactNode {
   const {
     className,

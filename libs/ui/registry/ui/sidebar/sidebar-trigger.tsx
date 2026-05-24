@@ -8,11 +8,6 @@ export interface SidebarTriggerProps extends ButtonHTMLAttributes<HTMLButtonElem
   ref?: Ref<HTMLButtonElement>;
 }
 
-/**
- * Toggle button for the sidebar's open/rail (desktop) or open/hidden (mobile)
- * state. The default glyph is the terminal-style `[≡]` (collapsed) → `[×]`
- * (open) pair — consumers can replace it via `children`.
- */
 export function SidebarTrigger({
   ref,
   className,

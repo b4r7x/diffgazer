@@ -41,14 +41,7 @@ interface DiffViewBaseProps {
   variant?: DiffViewVariant;
   density?: DiffViewDensity;
   palette?: DiffViewPalette;
-  /** CSS length for the opt-in vertical scroll wrapper. */
   maxHeight?: string;
-  /**
-   * Optional headless slot rendered at the bottom of the figure when
-   * `variant="statusbar"`. Consumer fills it (e.g. diff stats, kbd hints).
-   * If `variant="statusbar"` and `statusBar` is not provided the bottom
-   * area is simply not rendered.
-   */
   statusBar?: ReactNode;
   ref?: Ref<HTMLElement>;
 }

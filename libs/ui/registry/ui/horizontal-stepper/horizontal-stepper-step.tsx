@@ -24,19 +24,6 @@ export interface HorizontalStepperStepProps {
   className?: string;
 }
 
-/**
- * Horizontal step. The connector between steps is rendered differently per
- * variant:
- *   - `ascii` — interleaves a `─── ` separator <li role="presentation">
- *     between steps (only for index > 0).
- *   - `numbered` — connector is a `::before` line on the step itself
- *     (continuous bar behind the indicator squares).
- *   - `breadcrumb` — interleaves a `/` separator <li role="presentation">.
- *
- * Keeping the connector as a presentational <li> instead of a CSS pseudo
- * (for ascii/breadcrumb) preserves the <ol> as the single source of order;
- * screen readers ignore the role="presentation" items.
- */
 export function HorizontalStepperStep({ value, children, className }: HorizontalStepperStepProps) {
   const { variant } = useStepperContext();
   const { status, index } = useStepInfo(value);
@@ -91,12 +78,6 @@ export function HorizontalStepperStep({ value, children, className }: Horizontal
   );
 }
 
-/**
- * Glyph content per variant × status. `numbered` non-completed states return
- * an empty placeholder whose CSS counter renders the digit. `breadcrumb`
- * pending state has no glyph (label-only path-history feel); we return null
- * to suppress the glyph span entirely.
- */
 function renderGlyph(
   variant: "ascii" | "numbered" | "breadcrumb",
   status: HorizontalStepStatus,

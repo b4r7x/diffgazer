@@ -96,35 +96,6 @@ export interface UseActionRowNavigationReturn {
   };
 }
 
-/**
- * Two-zone keyboard navigation for content + a horizontal row of actions
- * (Cancel / Submit footers, toolbar buttons under a form, etc.).
- *
- * ArrowDown moves focus from the content zone into the action row,
- * ArrowUp exits back, ArrowLeft/Right move between actions, and
- * Enter/Space activates the focused action. Disabled actions are skipped
- * automatically.
- *
- * @example
- * ```tsx
- * function ConfirmFooter({ open }: { open: boolean }) {
- *   const containerRef = useRef<HTMLDivElement>(null);
- *   const { getActionProps, focusedIndex } = useActionRowNavigation({
- *     enabled: open,
- *     actionCount: 2,
- *     onAction: (index) => (index === 0 ? cancel() : confirm()),
- *     containerRef,
- *     defaultZone: "actions",
- *   });
- *   return (
- *     <div ref={containerRef}>
- *       <button {...getActionProps(0)} aria-current={focusedIndex === 0}>Cancel</button>
- *       <button {...getActionProps(1)} aria-current={focusedIndex === 1}>Confirm</button>
- *     </div>
- *   );
- * }
- * ```
- */
 export function useActionRowNavigation<
   Actions extends readonly unknown[] = readonly unknown[],
 >({

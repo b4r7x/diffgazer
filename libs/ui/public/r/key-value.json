@@ -13,7 +13,7 @@
   "files": [
     {
       "path": "registry/ui/key-value/index.ts",
-      "content": "\"use client\";\n\nimport { KeyValue as KeyValueRoot, type KeyValueProps } from \"./key-value\";\nimport type { KeyValueLayout, KeyValueVariant } from \"./key-value-context\";\nimport { KeyValueItem, type KeyValueItemProps } from \"./key-value-item\";\n\nconst KeyValue = Object.assign(KeyValueRoot, { Item: KeyValueItem });\n\nexport { KeyValue, type KeyValueProps, type KeyValueLayout };\nexport { KeyValueItem, type KeyValueItemProps, type KeyValueVariant };\n\n",
+      "content": "\"use client\";\n\nimport { KeyValue as KeyValueRoot, type KeyValueProps } from \"./key-value\";\nimport type { KeyValueLayout, KeyValueVariant } from \"./key-value-context\";\nimport { KeyValueItem, type KeyValueItemProps } from \"./key-value-item\";\n\nconst KeyValue = Object.assign(KeyValueRoot, { Item: KeyValueItem });\n\nexport { KeyValue, type KeyValueProps, type KeyValueLayout };\nexport { KeyValueItem, type KeyValueItemProps, type KeyValueVariant };\n",
       "type": "registry:ui"
     },
     {

@@ -23,33 +23,6 @@ export interface PopoverProps {
   closeDelayMs?: number;
 }
 
-/**
- * Floating popover root, exported as `Popover` (with `Popover.Trigger` and
- * `Popover.Content` children). Manages open state, hover/click trigger
- * behavior, and the ARIA `popup` role on the content element.
- *
- * `triggerMode="hover"` uses `delayMs` to debounce open and `closeDelayMs`
- * (default `150ms` on hover) to debounce close so users can move the pointer
- * into the panel without it disappearing.
- *
- * @example
- * ```tsx
- * <Popover>
- *   <Popover.Trigger>Filters</Popover.Trigger>
- *   <Popover.Content>
- *     <FilterForm onApply={apply} />
- *   </Popover.Content>
- * </Popover>
- * ```
- *
- * @example
- * ```tsx
- * <Popover triggerMode="hover" delayMs={200}>
- *   <Popover.Trigger>@octocat</Popover.Trigger>
- *   <Popover.Content role="tooltip">User card preview</Popover.Content>
- * </Popover>
- * ```
- */
 export function PopoverRoot({
   children,
   open: controlledOpen,

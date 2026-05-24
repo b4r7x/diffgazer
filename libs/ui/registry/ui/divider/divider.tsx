@@ -24,7 +24,6 @@ export interface DividerProps
   extends HTMLAttributes<HTMLDivElement>,
     Omit<VariantProps<typeof dividerVariants>, "orientation"> {
   ref?: Ref<HTMLDivElement>;
-  /** When true (default), screen readers skip this separator. Set to false for meaningful content boundaries. */
   decorative?: boolean;
   orientation?: "horizontal" | "vertical";
 }

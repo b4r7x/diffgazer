@@ -241,11 +241,6 @@ function CountdownBar({ id, tone }: { id: string; tone: ToastTone }) {
   );
 }
 
-/**
- * Static fallback rendered under prefers-reduced-motion via `motion-reduce:`
- * modifiers. Shows discrete tick marks instead of an animated bar; the
- * rendering does not change after mount, satisfying WCAG 2.3.3.
- */
 function ReducedMotionTicks({ tone }: { tone: ToastTone }) {
   return (
     <span

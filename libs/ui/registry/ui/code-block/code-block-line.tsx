@@ -1,13 +1,7 @@
 import type { ComponentProps, ReactNode } from "react";
 
-/**
- * Token shape shared with @diffgazer/registry docs-data CodeBlockToken
- * (registry-side producers omit `className`; both shapes are structurally
- * compatible).
- */
 export interface CodeBlockToken {
   text: string;
-  /** Inline CSS color; consumer-trusted — only pass values you control. */
   color?: string;
   className?: string;
 }
@@ -16,9 +10,7 @@ export type CodeBlockLineState = "highlight" | "added" | "removed";
 
 export interface CodeBlockLineProps extends Omit<ComponentProps<"span">, "content" | "children"> {
   number?: number;
-  /** Plain text or a token array for inline-styled output. Ignored if `children` is provided. */
   content?: string | CodeBlockToken[];
-  /** Pre-rendered line body. Takes precedence over `content`; the consumer renders inside <code>. */
   children?: ReactNode;
   state?: CodeBlockLineState;
 }

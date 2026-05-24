@@ -52,14 +52,7 @@ export interface SelectItemProps<TValue extends string = string>
   value: TValue;
   children: ReactNode;
   disabled?: boolean;
-  /** Controls the selection indicator shown before the item label.
-   * - `"auto"` (default): `[x]`/`[ ]` in multiple mode, `✓` in single mode
-   * - `"checkbox"`: always shows `[x]`/`[ ]`
-   * - `"radio"`: shows `[ • ]`/`[ ]` radio-style
-   * - `"none"`: no indicator (text-only)
-   */
   indicator?: SelectItemIndicator;
-  /** Text for search/typeahead matching. Defaults to children text or value. */
   textValue?: string;
 }
 

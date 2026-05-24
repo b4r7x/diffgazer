@@ -27,7 +27,6 @@ export interface AccordionTriggerProps
   extends Omit<ComponentPropsWithRef<"button">, "children">,
     Omit<VariantProps<typeof triggerVariants>, "disabled"> {
   children: ReactNode;
-  /** Custom handle element. Defaults to an animated Chevron. Pass `null` to hide. */
   handle?: ReactNode | null;
 }
 

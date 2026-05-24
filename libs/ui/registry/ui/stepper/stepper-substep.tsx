@@ -43,7 +43,6 @@ const SUBSTEP_STATUS_LABEL_COLORS: Record<SubstepStatus, string | undefined> = {
 export interface StepperSubstepProps
   extends Omit<ComponentProps<"div">, "children">,
     Omit<SubstepData, "id"> {
-  /** Override per-status fallback text shown when `detail` is not provided. */
   statusLabels?: Partial<Record<SubstepStatus, string>>;
 }
 

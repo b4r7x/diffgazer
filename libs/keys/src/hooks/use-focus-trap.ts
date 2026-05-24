@@ -87,48 +87,8 @@ function isInsideContainer(container: HTMLElement, target: EventTarget | null): 
   return target instanceof View.Node && container.contains(target as Node);
 }
 
-/**
- * Trap Tab focus inside `containerRef` while mounted. Focus is moved into the
- * container on activation and restored to the previously focused element on
- * unmount (when `restoreFocus` is true).
- *
- * Nested traps are supported via a module-level trap stack. When a new trap
- * activates, the previous top trap is suspended (its listeners are detached).
- * When the inner trap releases, the outer trap is re-armed and recaptures
- * focus into its container.
- *
- * @example
- * ```tsx
- * function ConfirmDialog({ onClose }: { onClose: () => void }) {
- *   const containerRef = useRef<HTMLDivElement>(null);
- *   const confirmRef = useRef<HTMLButtonElement>(null);
- *   useFocusTrap(containerRef, { initialFocus: confirmRef });
- *   useKey("Escape", onClose);
- *   return (
- *     <div ref={containerRef} role="dialog" aria-modal="true">
- *       <p>Discard changes?</p>
- *       <button onClick={onClose}>Cancel</button>
- *       <button ref={confirmRef} onClick={onClose}>Discard</button>
- *     </div>
- *   );
- * }
- * ```
- *
- * Effect-on-every-render is intentional. React does not re-fire effects when
- * `containerRef.current` mutates while the ref object stays stable. Consumers
- * pass a stable RefObject that React assigns the latest DOM node to, and the
- * trap must detach from the previous node and attach to the new one as soon
- * as that happens. The early-return below compares `activeTrapRef.current`
- * against the live `containerRef.current` and short-circuits when nothing
- * changed, so the per-render cost is one ref read plus two equality checks.
- *
- * Listeners attach on `container.ownerDocument` in the capture phase so a
- * descendant calling `event.stopPropagation()` cannot bypass the trap, and so
- * Tab presses fire even when focus has escaped the container. A `focusin`
- * capture listener recaptures escaped focus to the last in-trap element (or
- * the initial target on first activation), and a MutationObserver re-targets
- * focus when the focused element is removed from the container.
- */
+// Effect-on-every-render is intentional: React does not re-fire effects when
+// containerRef.current mutates while the ref object stays stable.
 export function useFocusTrap(
   containerRef: RefObject<HTMLElement | null>,
   options: UseFocusTrapOptions = {},

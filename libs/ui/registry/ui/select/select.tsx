@@ -17,17 +17,12 @@ interface SelectBaseProps<TValue extends string = string>
   onHighlightChange?: (value: TValue | null) => void;
   disabled?: boolean;
   variant?: "default" | "card";
-  /** Sets the width of the Select container. "full" fills the parent. */
   width?: "sm" | "md" | "lg" | "full";
-  /** Name attribute for the hidden form input */
   name?: string;
   required?: boolean;
   "aria-invalid"?: AriaAttributes["aria-invalid"];
-  /** Applied to the interactive combobox trigger so labels can target it. */
   id?: string;
-  /** Applied to the trigger so description/error live on the combobox itself. */
   "aria-describedby"?: string;
-  /** Applied to the trigger so a Field.Label can name the combobox. */
   "aria-labelledby"?: string;
   children: ReactNode;
   ref?: Ref<HTMLDivElement>;
@@ -58,40 +53,6 @@ const widthClasses = {
   full: "w-full",
 } satisfies Record<NonNullable<SelectBaseProps["width"]>, string>;
 
-/**
- * Combobox-style select root. Supports single and multiple selection, an
- * optional search input, and form integration via `name` / `required`
- * (a hidden native `<select>` is rendered for form submission).
- *
- * Pass `multiple` to opt into multi-select; the `value` / `defaultValue` /
- * `onChange` types switch from `string` to `string[]` accordingly.
- *
- * @example
- * ```tsx
- * <Select defaultValue="main" name="branch">
- *   <SelectTrigger>
- *     <SelectValue placeholder="Branch..." />
- *   </SelectTrigger>
- *   <SelectContent>
- *     <SelectItem value="main">main</SelectItem>
- *     <SelectItem value="develop">develop</SelectItem>
- *     <SelectItem value="feature/auth">feature/auth</SelectItem>
- *   </SelectContent>
- * </Select>
- * ```
- *
- * @example
- * ```tsx
- * const [tags, setTags] = useState<string[]>([]);
- * <Select multiple value={tags} onChange={setTags}>
- *   <SelectTrigger><SelectValue placeholder="Tags..." /></SelectTrigger>
- *   <SelectContent>
- *     <SelectItem value="bug">bug</SelectItem>
- *     <SelectItem value="feature">feature</SelectItem>
- *   </SelectContent>
- * </Select>
- * ```
- */
 export function Select<TValue extends string = string>(props: SelectProps<TValue>) {
   const {
     open,

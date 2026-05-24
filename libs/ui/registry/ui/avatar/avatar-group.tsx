@@ -8,7 +8,6 @@ import { Overflow } from "../overflow/overflow";
 
 export interface AvatarGroupProps {
   max?: number;
-  /** How avatars are spaced. "overlap" (default) stacks them, "gap" adds spacing between. */
   spacing?: "overlap" | "gap";
   children: ReactNode;
   size?: "sm" | "md" | "lg" | null;

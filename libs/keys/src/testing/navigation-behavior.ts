@@ -3,32 +3,16 @@ import userEvent from "@testing-library/user-event";
 import { expect, it } from "vitest";
 
 export interface NavigationCase {
-  /** Key passed to userEvent.keyboard (e.g. "{ArrowDown}", "{Home}") OR a raw key for fireEvent fallback. */
   readonly key: string;
-  /** Expected index of the active item AFTER the key press, given the initialActive index. */
   readonly expectedActiveIndex: number;
-  /** Optional: human label for the test name suffix. Defaults to the key. */
   readonly label?: string;
 }
 
 export interface TestNavigationBehaviorOptions {
-  /** A function that renders the component and returns the RTL result. Called fresh per case. */
   readonly setup: () => RenderResult;
-  /** Accessible names of the navigable items, in DOM order. Used to locate items by getByRole/getByText. */
   readonly items: readonly string[];
-  /**
-   * Index of the item that starts focused/active. Defaults to 0.
-   * Consumers must arrange this initial state inside `setup`; the helper does not seed focus.
-   * Used by consumers to compute each case's `expectedActiveIndex`.
-   */
   readonly initialActive?: number;
-  /** The navigation cases to test. */
   readonly cases: readonly NavigationCase[];
-  /**
-   * Custom resolver for the currently-active item's index, given the render result.
-   * Default behavior: read aria-activedescendant on the container, or document.activeElement.
-   * Provide this when the component uses a different active-tracking convention.
-   */
   readonly getActiveIndex?: (rendered: RenderResult) => number;
 }
 
@@ -73,12 +57,7 @@ interface PreparedCase extends NavigationCase {
   readonly displayLabel: string;
 }
 
-/**
- * Generate one `it.each` block running every case in `cases`.
- * Each iteration renders fresh via `setup`, presses the key, asserts the active index.
- *
- * MUST be called inside a `describe(...)` block at the test-file top level — it calls `it.each` directly.
- */
+// Must be called inside a describe() block -- it calls it.each directly.
 export function testNavigationBehavior(options: TestNavigationBehaviorOptions): void {
   const { setup, items, cases, getActiveIndex } = options;
   const resolveActiveIndex = getActiveIndex ?? ((rendered: RenderResult) => defaultGetActiveIndex(rendered, items));

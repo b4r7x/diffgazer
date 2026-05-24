@@ -38,7 +38,6 @@ export type TocItemRenderProps = AnchorHTMLAttributes<HTMLAnchorElement> & {
 export interface TocItemProps extends Omit<ComponentPropsWithRef<"a">, "children"> {
   children: ReactNode | ((props: TocItemRenderProps) => ReactNode);
   active?: boolean;
-  /** Heading level (2 = h2, 3 = h3, etc). Values below 2 are treated as 2. */
   depth?: number;
 }
 

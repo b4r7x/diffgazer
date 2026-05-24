@@ -23,12 +23,6 @@ export interface ToggleGroupItemProps<TValue extends string = string>
   children: ReactNode;
 }
 
-/**
- * Bracket markers shown only when the item is active (variant="bracket"). They
- * stay in the DOM at all times with `opacity-0` so the item's measured width
- * never changes between selected/unselected — neighbours don't shift when
- * selection moves.
- */
 function BracketMarkers({ children }: { children: ReactNode }) {
   return (
     <>

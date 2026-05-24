@@ -1,15 +1,3 @@
-/**
- * Sentinel returned from a `KeyHandler` to signal that the handler did not
- * handle the event. The keyboard provider will fall through to the next
- * registered handler for the same hotkey.
- *
- * Equivalent to returning `false`. Prefer `DECLINE` at call sites for clarity:
- *
- *     useKey("Enter", () => {
- *       if (!shouldHandle) return DECLINE;
- *       ...
- *     });
- */
 export const DECLINE = false as const;
 export type Decline = typeof DECLINE;
 

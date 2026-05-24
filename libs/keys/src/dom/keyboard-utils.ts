@@ -42,11 +42,6 @@ function isMac(): boolean {
   return _isMac;
 }
 
-/**
- * Canonicalize a hotkey string so that aliases like "esc" and "Escape"
- * resolve to the same form. Used at registration time to ensure two
- * registrations for the same physical hotkey share a single slot.
- */
 export function canonicalizeHotkey(hotkey: string): string {
   const rawParts = hotkey.split("+");
   let rawKey = rawParts.pop() ?? "";
@@ -168,16 +163,6 @@ function hasContentEditableAttribute(element: HTMLElement): boolean {
   return value === "" || value === "true" || value === "plaintext-only";
 }
 
-/**
- * Returns true when the target accepts text editing keys (Arrow/Home/End/Enter/Space).
- *
- * - text-like inputs (text, search, url, email, password, tel, number, date, ...)
- * - textarea
- * - contenteditable elements (true / "" / "plaintext-only")
- *
- * Returns false for select, checkboxes, radios, disabled/readonly inputs,
- * and elements whose contenteditable is "false".
- */
 export function isEditableElement(target: EventTarget | null): boolean {
   if (!isHTMLElement(target)) return false;
 

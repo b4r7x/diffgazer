@@ -11,7 +11,6 @@ import { isActiveOptionVisible, toOptionId } from "./select-utils";
 
 export interface SelectTriggerProps extends Omit<ComponentPropsWithRef<"button">, "children" | "type" | "disabled" | "id"> {
   children: ReactNode;
-  /** Custom handle element. Defaults to an animated Chevron. Pass `null` to hide. */
   handle?: ReactNode | null;
 }
 
