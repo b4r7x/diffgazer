@@ -226,7 +226,7 @@
       "type": "registry:ui",
       "title": "Textarea",
       "description": "Terminal-styled multi-line text area",
-      "dependencies": [],
+      "dependencies": ["class-variance-authority"],
       "registryDependencies": [
         "theme",
         "input-variants",
@@ -502,7 +502,7 @@
       "type": "registry:ui",
       "title": "Scroll Area",
       "description": "Custom scrollable area with styled scrollbars",
-      "dependencies": [],
+      "dependencies": ["class-variance-authority"],
       "registryDependencies": [
         "theme",
         "utils"

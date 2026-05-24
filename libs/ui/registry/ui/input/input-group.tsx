@@ -3,7 +3,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { inputSizeClasses } from "@/lib/input-variants";
 import { cn } from "@/lib/utils";
 
-const inputGroupVariants = cva(
+export const inputGroupVariants = cva(
   "flex w-full items-center gap-2 bg-background border border-border text-foreground font-mono placeholder:text-foreground/50 transition-colors focus-within:border-foreground focus-within:ring-1 focus-within:ring-foreground has-[input[aria-invalid=true]]:border-2 has-[input[aria-invalid=true]]:border-destructive has-[input[aria-invalid=true]]:focus-within:border-destructive has-[input[aria-invalid=true]]:focus-within:ring-destructive",
   {
     variants: {
@@ -15,7 +15,7 @@ const inputGroupVariants = cva(
   },
 );
 
-type InputGroupVariantProps = VariantProps<typeof inputGroupVariants>;
+export type InputGroupVariantProps = VariantProps<typeof inputGroupVariants>;
 
 function isPlainDecorativeAffix(value: ReactNode) {
   return typeof value === "string" || typeof value === "number";

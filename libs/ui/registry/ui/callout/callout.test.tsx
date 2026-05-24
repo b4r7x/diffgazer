@@ -5,7 +5,7 @@ import { describe, it, expect } from "vitest"
 import { Callout } from "./index.js"
 
 function getGrid(container: HTMLElement): HTMLElement {
-  const grid = container.querySelector("[data-frame] > div") as HTMLElement
+  const grid = container.querySelector("[data-frame] > [data-has-icon]") as HTMLElement
   expect(grid).not.toBeNull()
   return grid
 }
@@ -55,9 +55,7 @@ describe("Callout structure", () => {
       </Callout>,
     )
     const grid = getGrid(container)
-    expect(grid.style.gridTemplateAreas).toContain("'title dismiss'")
-    expect(grid.style.gridTemplateAreas).toContain("'body .'")
-    expect(grid.style.gridTemplateAreas).not.toContain("icon")
+    expect(grid).toHaveAttribute("data-has-icon", "false")
   })
 
   it("reserves the icon column when Callout.Icon child is present", () => {
@@ -68,11 +66,11 @@ describe("Callout structure", () => {
       </Callout>,
     )
     const grid = getGrid(container)
-    expect(grid.style.gridTemplateAreas).toContain("'icon title dismiss'")
+    expect(grid).toHaveAttribute("data-has-icon", "true")
   })
 
   it("places title and dismiss on row 1 and body on row 2", () => {
-    const { container } = render(
+    render(
       <Callout>
         <Callout.Icon />
         <Callout.Title>Heading</Callout.Title>
@@ -80,9 +78,6 @@ describe("Callout structure", () => {
         <Callout.Dismiss />
       </Callout>,
     )
-    const grid = getGrid(container)
-    // row 1: icon title dismiss; row 2: . body .
-    expect(grid.style.gridTemplateAreas).toBe("'icon title dismiss' '. body .'")
     expect(screen.getByText("Heading").style.gridArea).toBe("title")
     expect(screen.getByText("Body").style.gridArea).toBe("body")
     expect(screen.getByRole("button", { name: "Dismiss" }).style.gridArea).toBe("dismiss")

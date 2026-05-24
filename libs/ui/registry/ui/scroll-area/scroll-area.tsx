@@ -1,15 +1,24 @@
 "use client";
 
 import { type ComponentPropsWithRef, type KeyboardEvent } from "react";
+import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
-export type ScrollOrientation = "vertical" | "horizontal" | "both";
+export const scrollAreaVariants = cva(
+  "scrollbar-thin rounded-[inherit] [scrollbar-gutter:stable]",
+  {
+    variants: {
+      orientation: {
+        vertical: "overflow-y-auto overflow-x-hidden",
+        horizontal: "overflow-x-auto overflow-y-hidden",
+        both: "overflow-auto",
+      },
+    },
+    defaultVariants: { orientation: "vertical" },
+  },
+);
 
-const orientationClasses: Record<ScrollOrientation, string> = {
-  vertical: "overflow-y-auto overflow-x-hidden",
-  horizontal: "overflow-x-auto overflow-y-hidden",
-  both: "overflow-auto",
-};
+export type ScrollOrientation = NonNullable<VariantProps<typeof scrollAreaVariants>["orientation"]>;
 
 export interface ScrollAreaProps extends ComponentPropsWithRef<"div"> {
   orientation?: ScrollOrientation;
@@ -107,9 +116,8 @@ export function ScrollArea({
       tabIndex={canKeyboardScroll ? (tabIndex ?? 0) : tabIndex}
       onKeyDown={canKeyboardScroll ? handleKeyDown : onKeyDown}
       className={cn(
-        "scrollbar-thin rounded-[inherit] [scrollbar-gutter:stable]",
+        scrollAreaVariants({ orientation }),
         canKeyboardScroll && "focus:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-        orientationClasses[orientation],
         className,
       )}
       {...props}

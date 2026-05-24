@@ -14,7 +14,7 @@ import {
   type RefObject,
   type Ref,
 } from "react";
-import { cva } from "class-variance-authority";
+import { cva, type VariantProps } from "class-variance-authority";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { getEncodedListboxItemId } from "@/hooks/use-listbox";
 import { cn } from "@/lib/utils";
@@ -93,7 +93,7 @@ const SUB_CHEVRON = "▶";
 const INDICATOR_ACTIVE = "▌";
 const INDICATOR_IDLE = ">";
 
-const menuSubTriggerBase = cva("cursor-pointer w-full transition-colors px-4 py-3 flex items-center font-mono duration-75", {
+export const menuSubTriggerBase = cva("cursor-pointer w-full transition-colors px-4 py-3 flex items-center font-mono duration-75", {
   variants: {
     state: {
       normal: "hover:bg-secondary group",
@@ -102,6 +102,8 @@ const menuSubTriggerBase = cva("cursor-pointer w-full transition-colors px-4 py-
   },
   defaultVariants: { state: "normal" },
 });
+
+export type MenuSubTriggerVariantProps = VariantProps<typeof menuSubTriggerBase>;
 
 export interface MenuSubTriggerProps {
   id: string;

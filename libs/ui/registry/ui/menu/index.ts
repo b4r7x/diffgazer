@@ -7,7 +7,7 @@ import { MenuItemRadio, type MenuItemRadioProps } from "./menu-item-radio";
 import { MenuDivider, type MenuDividerProps } from "./menu-divider";
 import { MenuGroup, type MenuGroupProps } from "./menu-group";
 import { MenuLabel, type MenuLabelProps } from "./menu-label";
-import { MenuSub, MenuSubTrigger, MenuSubContent, type MenuSubProps, type MenuSubTriggerProps, type MenuSubContentProps } from "./menu-sub";
+import { MenuSub, MenuSubTrigger, MenuSubContent, menuSubTriggerBase, type MenuSubProps, type MenuSubTriggerProps, type MenuSubContentProps, type MenuSubTriggerVariantProps } from "./menu-sub";
 
 const Menu = Object.assign(MenuRoot, {
   Item: MenuItem,
@@ -29,5 +29,5 @@ export { MenuDivider, type MenuDividerProps };
 export { MenuGroup, type MenuGroupProps };
 export { MenuLabel, type MenuLabelProps };
 export { MenuSub, type MenuSubProps };
-export { MenuSubTrigger, type MenuSubTriggerProps };
+export { MenuSubTrigger, menuSubTriggerBase, type MenuSubTriggerProps, type MenuSubTriggerVariantProps };
 export { MenuSubContent, type MenuSubContentProps };

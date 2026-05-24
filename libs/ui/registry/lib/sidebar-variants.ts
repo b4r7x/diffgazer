@@ -1,25 +1,7 @@
 import { cva } from "class-variance-authority";
 
-/**
- * Visual contract for the Sidebar primitive. Five variants share the same
- * row metrics (24px line height, 12px JBMono, 1ch caret/check slot) so the
- * choice is purely a matter of active-marker treatment — picked at the
- * `<Sidebar variant="…">` root and propagated via context to items.
- *
- * Active-hover precedence: each variant ships `hover:` *and*
- * `data-[active=true]:hover:` rules. The latter wins on equal specificity by
- * adding one attribute selector, so hovering the active item keeps the active
- * background instead of leaking to the inactive hover tone. Same pattern as
- * `segmented-variants.ts`.
- */
 export type SidebarVariant = "caret" | "inverted" | "bar" | "bracket" | "block";
 
-/**
- * Root chrome: width-tweened tristate plus the font/family contract. Width
- * tween runs 180ms; `motion-reduce` removes the transition but the state still
- * flips. `hidden` state slides off-canvas (`-translate-x-full`) so focused
- * elements unmount cleanly while remaining in the DOM for animation reentry.
- */
 export const sidebarContainerVariants = cva(
   [
     // group/sidebar lets descendants (item label/badge/glyph, section title)
@@ -45,18 +27,6 @@ export const sidebarContainerVariants = cva(
   },
 );
 
-/**
- * Row contract. JBMono is monospaced so the 400 → 600 weight bump on the
- * active item does not shift glyph advance widths; no width-reservation
- * pseudo-element is required.
- *
- * V2 `inverted` bleeds past the surrounding `<SidebarContent>` `p-4` so the
- * active row reaches both shell edges. The negative `-mx-4` + compensating
- * `px-6` keeps the label's left edge identical to inactive rows.
- *
- * V3 `bar` shifts the row left by 1px and pads `pl-[calc(0.5rem-1px)]` so
- * the 1px active border-l does not nudge the label sideways when toggled.
- */
 export const sidebarItemVariants = cva(
   [
     "flex items-center gap-2 w-full min-w-0 px-2 py-1 text-sm",

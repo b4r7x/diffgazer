@@ -1,34 +1,10 @@
-import { cva } from "class-variance-authority";
+import { cva, type VariantProps } from "class-variance-authority";
 import type { StepStatus } from "./step-status";
 
-/**
- * Shared visual contract for the vertical Stepper.
- *
- * Five variants change how the indicator glyph and connector line render. The
- * 1ch / fixed-width indicator across all five variants keeps every label
- * aligned regardless of state, and the active state never adds weight to the
- * label (`font-bold` shifts neighbour widths on proportional fallbacks). Active
- * is signalled by glyph swap + color, not by typography size.
- *
- * `data-variant` is written on the root <ol> and `data-status` is written on
- * each <li> so theme overrides can target any variant × state cell.
- */
 export type StepperVariant = "ascii" | "numbered" | "bullet" | "tag" | "progress";
-
-/**
- * Horizontal Stepper variants. H1/H3 share the inline glyph + label layout; H2
- * stacks a numbered square above the connector line (Material-flavoured).
- */
-export type HorizontalStepperVariant = "ascii" | "numbered" | "breadcrumb";
 
 export type StepperOrientation = "vertical" | "horizontal";
 
-/**
- * Root container. Connector lines render through `::before` pseudo-elements on
- * the <li> in CSS-counter aware variants (numbered). For variants without
- * counters, the connector still draws via the same `::before` driven by
- * `data-status`.
- */
 export const stepperRootVariants = cva("flex flex-col list-none m-0 p-0 font-mono", {
   variants: {
     variant: {
@@ -42,25 +18,10 @@ export const stepperRootVariants = cva("flex flex-col list-none m-0 p-0 font-mon
   defaultVariants: { variant: "ascii" },
 });
 
-/**
- * Item (<li>) wrapper. `relative` anchors the connector pseudo defined in
- * `shared/stepper.css` — geometry there lets the line overshoot the `<li>`
- * boundary at any row height (compact 30px rows clamped the utility version
- * to a 2px sliver). Variants opt in by data-variant; tag and progress have
- * no rule and therefore no connector.
- *
- * Layout: `grid grid-cols-[auto_1fr]` so the indicator column is sized by its
- * content (1ch ascii, 20px numbered, 1ch bullet, 72px tag, 3ch progress) and
- * the label column flexes.
- */
 export const stepperStepVariants = cva(
   "relative grid grid-cols-[auto_1fr] gap-x-2.5 items-start py-4 [counter-increment:step]",
 );
 
-/**
- * Indicator container shared across variants. Per-variant glyph sizing lives
- * in the indicator variant; this is the layout / typography spine.
- */
 export const stepperIndicatorVariants = cva(
   "inline-flex shrink-0 font-mono tabular-nums leading-[1.4] select-none",
   {
@@ -153,11 +114,6 @@ export const stepperIndicatorVariants = cva(
   },
 );
 
-/**
- * Step label, shared across variants. State styling is uniform: active = bold
- * fg, completed = fg, pending = dim, error = destructive, skipped = strike-
- * through, disabled = dim + low opacity.
- */
 export const stepperLabelVariants = cva("text-[13px] leading-[1.4] font-medium", {
   variants: {
     status: {
@@ -172,11 +128,6 @@ export const stepperLabelVariants = cva("text-[13px] leading-[1.4] font-medium",
   defaultVariants: { status: "pending" },
 });
 
-/**
- * Trigger button. Owns the click target + arrow-key handling. The active
- * background highlight applies only to `variant="tag"` to match the round-1
- * spec; other variants are chromeless rows.
- */
 export const stepperTriggerVariants = cva(
   "flex items-start gap-2.5 appearance-none bg-transparent border-0 p-0 text-left w-full " +
     "font-[inherit] cursor-pointer rounded-none " +
@@ -185,12 +136,7 @@ export const stepperTriggerVariants = cva(
     "aria-disabled:cursor-not-allowed aria-disabled:opacity-60",
 );
 
-/**
- * Glyph map for the static-content variants. The `ascii` "active" cell renders
- * a nested span (`<span class="cursor">~</span>`) for the blinking cursor so
- * it's intentionally omitted from this dictionary — the trigger renders that
- * cell directly.
- */
+// ascii "active" glyph is rendered as JSX (blinking cursor), so it's empty here.
 export const STEP_INDICATOR_GLYPHS: Record<
   Exclude<StepperVariant, "numbered">,
   Record<StepStatus, string>
@@ -229,11 +175,6 @@ export const STEP_INDICATOR_GLYPHS: Record<
   },
 };
 
-/**
- * Numbered variant's "completed" glyph; non-completed states render the CSS
- * counter via `::before { content: counter(step) }`. We don't put the counter
- * here because it needs the parent <li>'s counter scope.
- */
 export const NUMBERED_COMPLETED_GLYPH = "✓";
 export const NUMBERED_ERROR_GLYPH = "!";
 export const NUMBERED_SKIPPED_GLYPH = "—";
@@ -256,6 +197,8 @@ export const horizontalStepperRootVariants = cva(
     defaultVariants: { variant: "ascii" },
   },
 );
+
+export type HorizontalStepperVariant = NonNullable<VariantProps<typeof horizontalStepperRootVariants>["variant"]>;
 
 export const horizontalStepperStepVariants = cva("relative inline-flex items-center", {
   variants: {
@@ -354,17 +297,11 @@ export const horizontalStepperLabelVariants = cva("font-mono", {
   defaultVariants: { variant: "ascii", status: "pending" },
 });
 
-/** ASCII connector "── ── ──" between H1 steps. */
 export const horizontalStepperConnectorClass =
   "mx-1.5 text-border-strong data-[completed=true]:text-success";
 
-/** Breadcrumb separator "/" between H3 steps. */
 export const horizontalStepperBreadcrumbSeparatorClass = "text-border-strong";
 
-/**
- * Horizontal glyph dictionary mirrors the vertical contract: numbered uses CSS
- * counters for non-completed states, ascii/breadcrumb use literal glyphs.
- */
 export const HORIZONTAL_STEP_INDICATOR_GLYPHS: Record<
   Exclude<HorizontalStepperVariant, "numbered">,
   Record<StepStatus, string>

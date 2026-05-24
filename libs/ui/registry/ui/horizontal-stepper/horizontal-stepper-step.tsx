@@ -64,12 +64,12 @@ export function HorizontalStepperStep({ value, children, className }: Horizontal
         className={cn(horizontalStepperStepVariants({ variant }), className)}
       >
         {glyph !== null && (
-          <span className={horizontalStepperGlyphVariants({ variant, status })}>
+          <span className={cn(horizontalStepperGlyphVariants({ variant, status }))}>
             <span className="sr-only">{SR_LABEL[status]}</span>
             {glyph}
           </span>
         )}
-        <span className={horizontalStepperLabelVariants({ variant, status })}>
+        <span className={cn(horizontalStepperLabelVariants({ variant, status }))}>
           {glyph === null && <span className="sr-only">{SR_LABEL[status]}</span>}
           {children}
         </span>

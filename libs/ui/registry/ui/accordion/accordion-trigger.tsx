@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { Chevron } from "../icons/chevron";
 import { useAccordionContext, useAccordionItemContext } from "./accordion-context";
 
-const triggerVariants = cva(
+export const triggerVariants = cva(
   "flex w-full items-center gap-2 font-mono text-muted-foreground hover:text-foreground transition-colors cursor-pointer disabled:cursor-not-allowed disabled:hover:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground",
   {
     variants: {
@@ -22,6 +22,8 @@ const triggerVariants = cva(
     defaultVariants: { variant: "default", disabled: false },
   }
 );
+
+export type AccordionTriggerVariantProps = VariantProps<typeof triggerVariants>;
 
 export interface AccordionTriggerProps
   extends Omit<ComponentPropsWithRef<"button">, "children">,

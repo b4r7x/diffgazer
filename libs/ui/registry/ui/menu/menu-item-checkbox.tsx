@@ -11,7 +11,8 @@ import {
 import { getEncodedListboxItemId } from "@/hooks/use-listbox";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { cn } from "@/lib/utils";
-import { MENU_ITEM_BASE_CLASS, useMenuContext } from "./menu-context";
+import { useMenuContext } from "./menu-context";
+import { getItemState, menuItemBase, menuItemIndicator, menuItemLabel } from "./menu-item";
 
 const CHECKBOX_CHECKED = "[x]";
 const CHECKBOX_UNCHECKED = "[ ]";
@@ -83,13 +84,7 @@ export function MenuItemCheckbox({
     if (disabled) event.preventDefault();
   };
 
-  const stateClass = disabled
-    ? isFocused
-      ? "opacity-60 cursor-not-allowed bg-secondary text-foreground"
-      : "opacity-50 cursor-not-allowed hover:bg-transparent"
-    : isFocused
-      ? "bg-primary text-primary-foreground font-bold"
-      : "hover:bg-secondary group";
+  const state = getItemState(disabled, isFocused, false);
 
   return (
     <div
@@ -107,18 +102,15 @@ export function MenuItemCheckbox({
       onMouseDown={handleMouseDown}
       onClick={handleClick}
       onFocus={handleFocus}
-      className={cn(MENU_ITEM_BASE_CLASS, stateClass, className)}
+      className={cn(menuItemBase({ menuVariant: "default", state, colorVariant: "default" }), className)}
     >
       <span
         aria-hidden="true"
-        className={cn(
-          "pr-4 shrink-0 inline-flex items-center justify-center self-center leading-none font-mono text-xs",
-          !isFocused && !disabled && "transition-opacity opacity-60 group-hover:opacity-100",
-        )}
+        className={menuItemIndicator({ idle: !isFocused && !disabled || undefined })}
       >
         {isChecked ? CHECKBOX_CHECKED : CHECKBOX_UNCHECKED}
       </span>
-      <span className={cn("tracking-wide", !isFocused && !disabled && "group-hover:text-foreground")}>
+      <span className={menuItemLabel({ idle: !isFocused && !disabled || undefined })}>
         {children}
       </span>
     </div>

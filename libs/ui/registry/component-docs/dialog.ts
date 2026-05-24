@@ -51,7 +51,7 @@ export const dialogDoc: ComponentDoc = {
     {
       title: "Extending DialogContent styles",
       content:
-        "dialogContentVariants is the CVA used by DialogContent. Re-export it to compose custom variants for product-specific dialog shells — e.g. extend the base classes with bg/border tokens, or add new size keys. The frame and corners variants intentionally hold empty class strings; their visual styling is driven by [data-frame] / [data-corners] selectors in shared/dialog.css.",
+        "dialogContentVariants is the CVA used by DialogContent. Re-export it to compose custom variants for product-specific dialog shells — e.g. extend the base classes with bg/border tokens, or add new size keys. The corners prop is a plain TypeScript type (DialogCorners) whose visual styling is driven by [data-corners] selectors in shared/dialog.css.",
     },
   ],
   usage: { example: "dialog-default" },

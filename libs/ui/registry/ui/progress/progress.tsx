@@ -1,10 +1,10 @@
 "use client";
 
 import type { Ref } from "react";
-import { cva } from "class-variance-authority";
+import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
-export type ProgressSize = "sm" | "md";
+export type ProgressSize = NonNullable<VariantProps<typeof trackVariants>["size"]>;
 
 export interface ProgressProps {
   value?: number;
@@ -16,7 +16,7 @@ export interface ProgressProps {
   ref?: Ref<HTMLDivElement>;
 }
 
-const trackVariants = cva(
+export const trackVariants = cva(
   "relative w-full overflow-hidden rounded-sm bg-secondary font-mono",
   {
     variants: {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useLayoutEffect } from "react";
+import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { matchesSearch } from "@/lib/search";
 import { useSelectContext } from "./select-context";
@@ -13,11 +14,23 @@ export interface SelectSearchProps {
   "aria-label"?: string;
 }
 
-function searchBorderClass(variant: string, position: string): string {
-  if (variant === "card") return "border-b border-foreground";
-  if (position === "top") return "border-b border-border";
-  return "border-t border-border";
-}
+const selectSearchVariants = cva("flex items-center gap-2 px-3 py-2", {
+  variants: {
+    variant: {
+      default: "",
+      card: "border-b border-foreground",
+    },
+    position: {
+      top: "",
+      bottom: "",
+    },
+  },
+  compoundVariants: [
+    { variant: "default", position: "top", className: "border-b border-border" },
+    { variant: "default", position: "bottom", className: "border-t border-border" },
+  ],
+  defaultVariants: { variant: "default", position: "bottom" },
+});
 
 export function SelectSearch({
   placeholder = "Search...",
@@ -49,7 +62,7 @@ export function SelectSearch({
   if (!open) return null;
 
   return (
-    <div className={cn("flex items-center gap-2 px-3 py-2", searchBorderClass(variant, position))}>
+    <div className={selectSearchVariants({ variant, position })}>
       <span className="text-foreground/50 text-sm font-mono shrink-0">
         &gt;
       </span>

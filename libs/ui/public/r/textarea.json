@@ -3,7 +3,9 @@
   "name": "textarea",
   "title": "Textarea",
   "description": "Terminal-styled multi-line text area",
-  "dependencies": [],
+  "dependencies": [
+    "class-variance-authority"
+  ],
   "registryDependencies": [
     "https://r.b4r7.dev/r/ui/theme.json",
     "https://r.b4r7.dev/r/ui/input-variants.json",
@@ -17,7 +19,7 @@
     },
     {
       "path": "registry/ui/textarea/textarea.tsx",
-      "content": "\"use client\";\n\nimport type { TextareaHTMLAttributes, Ref } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { inputVariants } from \"@/lib/input-variants\";\n\nexport interface TextareaProps\n  extends Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, \"size\"> {\n  ref?: Ref<HTMLTextAreaElement>;\n  size?: \"sm\" | \"md\" | \"lg\";\n}\n\nexport function Textarea({\n  className,\n  size,\n  ref,\n  ...props\n}: TextareaProps) {\n  return (\n    <textarea\n      className={cn(\n        inputVariants({ size }),\n        \"h-auto min-h-20 resize-y\",\n        className\n      )}\n      ref={ref}\n      {...props}\n    />\n  );\n}\n",
+      "content": "\"use client\";\n\nimport type { TextareaHTMLAttributes, Ref } from \"react\";\nimport { type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\nimport { inputVariants } from \"@/lib/input-variants\";\n\nexport interface TextareaProps\n  extends Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, \"size\">,\n    VariantProps<typeof inputVariants> {\n  ref?: Ref<HTMLTextAreaElement>;\n}\n\nexport function Textarea({\n  className,\n  size,\n  ref,\n  ...props\n}: TextareaProps) {\n  return (\n    <textarea\n      className={cn(\n        inputVariants({ size }),\n        \"h-auto min-h-20 resize-y\",\n        className\n      )}\n      ref={ref}\n      {...props}\n    />\n  );\n}\n",
       "type": "registry:ui"
     }
   ],

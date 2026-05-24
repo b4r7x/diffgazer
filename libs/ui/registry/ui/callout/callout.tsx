@@ -5,7 +5,6 @@ import {
   isValidElement,
   useCallback,
   useMemo,
-  type CSSProperties,
   type HTMLAttributes,
   type ReactNode,
   type Ref,
@@ -42,34 +41,17 @@ function hasCalloutIcon(children: ReactNode): boolean {
   return found;
 }
 
-interface GridStyle {
-  className: string;
-  style: CSSProperties;
-}
-
-function gridStyle(frame: CalloutFrame, hasIcon: boolean): GridStyle {
+function gridClassName(frame: CalloutFrame, hasIcon: boolean): string {
   if (frame === "bar") {
     if (hasIcon) {
-      return {
-        className: "grid items-start gap-x-[10px] gap-y-1 grid-cols-[4px_16px_minmax(0,1fr)_auto]",
-        style: { gridTemplateAreas: "'bar icon title dismiss' 'bar . body .'" },
-      };
+      return "grid items-start gap-x-[10px] gap-y-1 grid-cols-[4px_16px_minmax(0,1fr)_auto]";
     }
-    return {
-      className: "grid items-start gap-x-[10px] gap-y-1 grid-cols-[4px_minmax(0,1fr)_auto]",
-      style: { gridTemplateAreas: "'bar title dismiss' 'bar body .'" },
-    };
+    return "grid items-start gap-x-[10px] gap-y-1 grid-cols-[4px_minmax(0,1fr)_auto]";
   }
   if (hasIcon) {
-    return {
-      className: "grid items-start gap-x-[10px] gap-y-1 grid-cols-[16px_minmax(0,1fr)_auto]",
-      style: { gridTemplateAreas: "'icon title dismiss' '. body .'" },
-    };
+    return "grid items-start gap-x-[10px] gap-y-1 grid-cols-[16px_minmax(0,1fr)_auto]";
   }
-  return {
-    className: "grid items-start gap-x-[10px] gap-y-1 grid-cols-[minmax(0,1fr)_auto]",
-    style: { gridTemplateAreas: "'title dismiss' 'body .'" },
-  };
+  return "grid items-start gap-x-[10px] gap-y-1 grid-cols-[minmax(0,1fr)_auto]";
 }
 
 export interface CalloutProps extends HTMLAttributes<HTMLDivElement> {
@@ -108,7 +90,6 @@ export function Callout({
 
   const hasIcon = hasCalloutIcon(children);
   const role = live ? TONE_ROLE_LIVE[tone] : undefined;
-  const grid = gridStyle(frame, hasIcon);
 
   return (
     <CalloutContext value={contextValue}>
@@ -121,7 +102,10 @@ export function Callout({
         className={cn(className)}
         {...props}
       >
-        <div className={grid.className} style={grid.style}>
+        <div
+          data-has-icon={String(hasIcon)}
+          className={gridClassName(frame, hasIcon)}
+        >
           {frame === "bar" && (
             <span
               aria-hidden="true"

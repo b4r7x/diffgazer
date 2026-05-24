@@ -1,3 +1,3 @@
 "use client";
 
-export { ScrollArea, type ScrollAreaProps, type ScrollOrientation } from "./scroll-area";
+export { ScrollArea, scrollAreaVariants, type ScrollAreaProps, type ScrollOrientation } from "./scroll-area";

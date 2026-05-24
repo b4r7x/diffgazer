@@ -30,10 +30,18 @@ const itemVariants = cva("flex cursor-pointer group", {
     disabled: {
       true: "opacity-50 cursor-not-allowed",
     },
+    tree: {
+      true: "",
+      false: "",
+    },
   },
+  compoundVariants: [
+    { tree: true, active: false, className: "hover:bg-transparent border-b-0" },
+  ],
   defaultVariants: {
     active: false,
     disabled: false,
+    tree: false,
   },
 });
 
@@ -141,9 +149,7 @@ export function NavigationListItem({
         onClick={handleClick}
         onFocus={handleFocus}
         className={cn(
-          isTree
-            ? cn("flex cursor-pointer group", disabled && "opacity-50 cursor-not-allowed")
-            : itemVariants({ active: isActive, disabled }),
+          itemVariants({ active: isActive, disabled, tree: isTree || undefined }),
           "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground",
           className,
         )}

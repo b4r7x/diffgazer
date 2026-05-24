@@ -25,7 +25,7 @@ const VARIANT_CONFIG: Record<SpinnerVariant, { frames: number; speed: number }> 
   pulse: { frames: PULSE_FRAMES.length, speed: 80 },
 };
 
-const spinnerVariants = cva("inline-flex items-center font-mono", {
+export const spinnerVariants = cva("inline-flex items-center font-mono", {
   variants: {
     size: {
       sm: "text-xs",

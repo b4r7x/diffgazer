@@ -1,9 +1,6 @@
 import { type ComponentPropsWithRef } from "react";
-import { cva } from "class-variance-authority";
+import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
-
-export type EmptyStateSize = "sm" | "md" | "lg";
-export type EmptyStateVariant = "centered" | "inline";
 
 export const emptyStateVariants = cva("group/es text-muted-foreground", {
   variants: {
@@ -27,6 +24,9 @@ export const emptyStateVariants = cva("group/es text-muted-foreground", {
   ],
   defaultVariants: { variant: "centered", size: "md" },
 });
+
+export type EmptyStateSize = NonNullable<VariantProps<typeof emptyStateVariants>["size"]>;
+export type EmptyStateVariant = NonNullable<VariantProps<typeof emptyStateVariants>["variant"]>;
 
 export type EmptyStateProps = ComponentPropsWithRef<"div"> & {
   variant?: EmptyStateVariant;

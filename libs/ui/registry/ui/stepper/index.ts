@@ -15,6 +15,8 @@ import {
 import { StepperContent, type StepperContentProps } from "./stepper-content";
 import {
   StepperSubstep,
+  substepVariants,
+  substepLabelVariants,
   type StepperSubstepProps,
   type SubstepData,
   SUBSTEP_STATUS_BADGE_VARIANTS,
@@ -39,6 +41,8 @@ export {
 export { StepperContent, type StepperContentProps };
 export {
   StepperSubstep,
+  substepVariants,
+  substepLabelVariants,
   type StepperSubstepProps,
   type SubstepData,
   type SubstepStatus,

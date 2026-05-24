@@ -1,11 +1,8 @@
 "use client";
 
 import type { ComponentPropsWithRef, MouseEvent } from "react";
-import { cva } from "class-variance-authority";
+import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
-
-export type LabelColor = "default" | "primary" | "success" | "warning" | "error";
-export type LabelOrientation = "vertical" | "horizontal";
 
 export interface LabelProps extends ComponentPropsWithRef<"label"> {
   color?: LabelColor;
@@ -26,6 +23,22 @@ export const labelVariants = cva("text-xs uppercase font-bold select-none", {
   },
   defaultVariants: { color: "default" },
 });
+
+export const labelWrapperVariants = cva(
+  "has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-70",
+  {
+    variants: {
+      orientation: {
+        vertical: "flex flex-col gap-1",
+        horizontal: "flex items-center gap-2",
+      },
+    },
+    defaultVariants: { orientation: "vertical" },
+  },
+);
+
+export type LabelColor = NonNullable<VariantProps<typeof labelVariants>["color"]>;
+export type LabelOrientation = NonNullable<VariantProps<typeof labelWrapperVariants>["orientation"]>;
 
 function RequiredIndicator() {
   return <span className="text-destructive" aria-hidden="true"> *</span>;
@@ -53,15 +66,11 @@ export function Label({
     return (
       <label
         ref={ref}
-        className={cn(
-          orientation === "vertical" ? "flex flex-col gap-1" : "flex items-center gap-2",
-          "has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-70",
-          className,
-        )}
+        className={cn(labelWrapperVariants({ orientation }), className)}
         onMouseDown={handleMouseDown}
         {...props}
       >
-        <span className={labelVariants({ color })}>
+        <span className={cn(labelVariants({ color }))}>
           {label}
           {required && <RequiredIndicator />}
         </span>

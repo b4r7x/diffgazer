@@ -7,7 +7,6 @@ export interface DiffChange {
   newLine: number | null;
 }
 
-/** Single-file hunk shape consumed by the diff renderer. */
 export interface DiffHunk {
   oldStart: number;
   oldCount: number;
@@ -17,7 +16,6 @@ export interface DiffHunk {
   changes: DiffChange[];
 }
 
-/** Single-file parsed diff consumed by the diff renderer. */
 export interface ParsedDiff {
   oldPath: string | null;
   newPath: string | null;

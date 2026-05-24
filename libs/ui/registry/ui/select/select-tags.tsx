@@ -1,8 +1,19 @@
 "use client";
 
+import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { useSelectContext } from "./select-context";
 import { toSelectedArray } from "./select-utils";
+
+const selectTagsPlaceholderVariants = cva("", {
+  variants: {
+    variant: {
+      default: "text-foreground/50",
+      card: "text-accent-foreground/50",
+    },
+  },
+  defaultVariants: { variant: "default" },
+});
 
 export interface SelectTagsProps {
   placeholder?: string;
@@ -17,7 +28,7 @@ export function SelectTags({ placeholder = "Select...", className }: SelectTagsP
   const selected = toSelectedArray(value, multiple);
 
   if (selected.length === 0) {
-    return <span className={variant === "card" ? "text-accent-foreground/50" : "text-foreground/50"}>{placeholder}</span>;
+    return <span className={selectTagsPlaceholderVariants({ variant })}>{placeholder}</span>;
   }
 
   return (
