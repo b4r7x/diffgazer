@@ -1,9 +1,20 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { useSelectContext, type SelectOptionMetadata } from "./select-context";
 import { toSelectedArray } from "./select-utils";
+
+const selectValuePlaceholderVariants = cva("", {
+  variants: {
+    variant: {
+      default: "text-foreground/50",
+      card: "text-accent-foreground/50",
+    },
+  },
+  defaultVariants: { variant: "default" },
+});
 
 export type SelectValueDisplay = "count" | "list" | "truncate";
 
@@ -78,10 +89,7 @@ export function SelectValue({
 
   if (selected.length === 0 || isUnsetEmptyString) {
     return (
-      <span className={cn(
-        variant === "card" ? "text-accent-foreground/50" : "text-foreground/50",
-        className,
-      )}>
+      <span className={cn(selectValuePlaceholderVariants({ variant }), className)}>
         {placeholder}
       </span>
     );

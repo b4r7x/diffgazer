@@ -1,0 +1,187 @@
+---
+title: Variant Conventions
+description: How @diffgazer/ui decides between CVA, CSS files, Records, and plain Tailwind for component variants.
+---
+
+## Decision Rules
+
+Pick the first rule that matches:
+
+1. **Component has named variant dimensions** (size, variant, tone, density) → **CVA**
+2. **Variant key maps to a non-class value** (ASCII character, tag default, content string) → **Record**
+3. **Styling requires `@keyframes`, CSS counters, `::before`/`::after` positioning, multi-attribute data selectors, or `forced-colors`/`prefers-reduced-motion` overrides** → **CSS file**
+4. **Single boolean conditional, no dimensions** → **plain Tailwind + `cn()`**
+
+Everything else defaults to CVA.
+
+---
+
+## CVA Pattern
+
+Every component with variant dimensions follows this shape:
+
+```tsx
+import { cva, type VariantProps } from "class-variance-authority";
+import { cn } from "@/lib/utils";
+
+export const buttonVariants = cva(
+  "inline-flex items-center justify-center font-mono transition-colors disabled:pointer-events-none disabled:opacity-50",
+  {
+    variants: {
+      variant: {
+        primary: "bg-foreground text-background hover:bg-foreground/90",
+        ghost: "hover:bg-secondary",
+        outline: "border border-border bg-transparent hover:bg-secondary",
+      },
+      size: {
+        sm: "h-7 px-2.5 text-xs",
+        md: "h-8 px-3 text-sm",
+        lg: "h-9 px-4 text-sm",
+      },
+    },
+    compoundVariants: [
+      { variant: "outline", size: "sm", className: "border-2" },
+    ],
+    defaultVariants: { variant: "primary", size: "md" },
+  }
+);
+
+export interface ButtonProps
+  extends React.ComponentProps<"button">,
+    VariantProps<typeof buttonVariants> {}
+
+export function Button({ className, variant, size, ...props }: ButtonProps) {
+  return (
+    <button
+      className={cn(buttonVariants({ variant, size }), className)}
+      {...props}
+    />
+  );
+}
+```
+
+### Rules
+
+- **Export** the variants function so other components can compose it.
+- **Export** `VariantProps<typeof X>` for type-safe consumption.
+- **Use `compoundVariants`** for combination-dependent styles. Do not use ternaries inside `cn()` for things that depend on two variant axes.
+- **Use `defaultVariants`** — not fallback logic at the call site.
+- **Wrap with `cn()`** so consumers can override classes via `className`.
+
+### Shared Variant Modules
+
+Extract to `registry/lib/` when two or more components share the same variant axes:
+
+| Module | Used by |
+|---|---|
+| `selectable-variants.ts` | Checkbox, Radio |
+| `segmented-variants.ts` | Tabs, ToggleGroup |
+| `input-variants.ts` | Input, InputGroup, Textarea |
+| `stepper-variants.ts` | Stepper, HorizontalStepper |
+| `sidebar-variants.ts` | Sidebar |
+
+Keep variants local when only one component uses them.
+
+---
+
+## When CSS Files Are Justified
+
+CSS files handle things Tailwind utilities cannot express. Put **only** these in CSS:
+
+| Content | Why |
+|---|---|
+| `@keyframes` | Tailwind references animation tokens, but keyframe blocks must be declared in CSS |
+| CSS counters (`counter()`, `counter-increment`) | No Tailwind equivalent |
+| `::before`/`::after` with variant-specific positioning | Pseudo-element geometry tied to data-attribute selectors |
+| Complex multi-attribute selectors (`[data-state="open"][data-side="bottom"]`) | Unreadable as arbitrary Tailwind variants |
+| `forced-colors`, `prefers-reduced-motion` overrides | Document-level media query overrides |
+| Scrollbar styling (`::-webkit-scrollbar-*`) | Not covered by Tailwind utilities |
+
+### Current CSS files and why they exist
+
+| File | Justified content |
+|---|---|
+| `stepper.css` | `@keyframes stepper-blink`, CSS counter for numbered variant, `::before` connector line positioning |
+| `sidebar.css` | `grid-template-rows` transition with data-attribute state selectors |
+| `code-block.css` | Syntax token color classes (`.code-*`, `.hljs-*`), variant chrome via multi-attribute selectors, forced-colors |
+| `diff-view.css` | Row state coloring via multi-attribute selectors, colorblind palette via `[data-diff-palette]`, forced-colors |
+| `dialog.css` | Corner accent `::before`/`::after` geometry, `body:has(dialog[open])` scroll lock, open/close keyframes |
+| `command-palette.css` | Density CSS custom properties, multi-attribute frame/density/tone selectors, forced-colors |
+| `callout.css` | Tone cascade via CSS custom properties, frame chrome via data-attributes, forced-colors |
+| `panel.css` | Frame chrome (hairline/rail/viewfinder/surface) via multi-attribute selectors, forced-colors |
+
+**What does NOT belong in CSS files:**
+
+- Variant class logic reachable via CVA (sizes, colors, intents)
+- Hover/focus/active states reachable via Tailwind utilities
+- Conditional styling driven by component props
+- Layout and spacing
+- `@apply` blocks
+
+---
+
+## When Records Are OK
+
+Use a `Record<VariantKey, T>` when the mapping produces **non-className values**:
+
+```tsx
+// OK: maps to content characters, not classes
+const selectableIndicators: Record<string, string> = {
+  checked: "✓",
+  unchecked: "○",
+  indeterminate: "–",
+};
+
+// OK: maps heading tag to default prop value
+const HEADING_DEFAULT_SIZE: Record<HeadingTag, TypographySize> = {
+  h1: "2xl", h2: "xl", h3: "lg", h4: "md", h5: "sm", h6: "xs",
+};
+```
+
+Do **not** use a Record when the values are className strings that duplicate a CVA variant axis. Use CVA instead.
+
+---
+
+## Anti-Patterns
+
+### CVA-as-type-guard
+
+Defining CVA variants where every value is `""` and the real styling lives in a CSS file:
+
+```tsx
+// BAD: CVA does nothing, CSS does the work via [data-frame]
+frame: { border: "", viewfinder: "", terminal: "", card: "", none: "" }
+```
+
+If the CSS file owns the styling, use a plain TypeScript type for the prop and skip CVA:
+
+```tsx
+// GOOD: honest about where styling lives
+type Frame = "border" | "viewfinder" | "terminal" | "card" | "none";
+```
+
+### Parallel Records duplicating CVA keys
+
+```tsx
+// BAD: same variant keys in both CVA and a separate Record
+const badgeVariants = cva("...", { variants: { variant: { success: "...", error: "..." } } });
+const dotColorMap: Record<BadgeVariant, string> = { success: "bg-green-500", error: "bg-red-500" };
+```
+
+Fold it into the CVA as a compound variant, or use a CSS custom property set by the CVA class.
+
+### Raw ternaries when sibling uses CVA
+
+```tsx
+// BAD: MenuItem uses CVA for state, but MenuItemCheckbox duplicates the same logic as ternaries
+className={isHighlighted ? "bg-accent text-accent-foreground" : "text-foreground"}
+```
+
+If a sibling component already has a CVA for the same variant axis, reuse it.
+
+### Mixed 3-system styling
+
+Avoid combining CSS file + Tailwind classes + inline `style` objects in the same component. Pick one primary approach:
+
+- **CSS-driven components** (code-block, diff-view): CSS file + data-attributes, minimal Tailwind
+- **CVA-driven components** (button, badge, switch): CVA + Tailwind, no CSS file

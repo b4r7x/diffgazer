@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@/lib/utils";
+import { cva } from "class-variance-authority";
 import type { SpinnerSize } from "./spinner";
 
 // 3×3 grid positions (0–8, left-to-right top-to-bottom).
@@ -16,11 +16,27 @@ const PERIMETER_POSITION = new Map<number, number>(SNAKE_PERIMETER.map((cell, i)
 const TRAIL_OPACITIES = [1, 0.6, 0.3] as const;
 const INACTIVE_OPACITY = 0.15;
 
-const DOT_SIZES: Record<SpinnerSize, { dot: string; gap: string }> = {
-  sm: { dot: "h-1 w-1", gap: "gap-[3px]" },
-  md: { dot: "h-1.5 w-1.5", gap: "gap-[3px]" },
-  lg: { dot: "h-2 w-2", gap: "gap-1" },
-};
+export const snakeGridDotVariants = cva("rounded-sm bg-current", {
+  variants: {
+    size: {
+      sm: "h-1 w-1",
+      md: "h-1.5 w-1.5",
+      lg: "h-2 w-2",
+    },
+  },
+  defaultVariants: { size: "md" },
+});
+
+export const snakeGridContainerVariants = cva("grid grid-cols-3", {
+  variants: {
+    size: {
+      sm: "gap-[3px]",
+      md: "gap-[3px]",
+      lg: "gap-1",
+    },
+  },
+  defaultVariants: { size: "md" },
+});
 
 const CELL_INDICES = [0, 1, 2, 3, 4, 5, 6, 7, 8] as const;
 
@@ -37,11 +53,10 @@ interface SnakeGridProps {
 }
 
 export function SnakeGrid({ frame, size }: SnakeGridProps) {
-  const { dot, gap } = DOT_SIZES[size];
-  const dotClassName = cn("rounded-sm bg-current", dot);
+  const dotClassName = snakeGridDotVariants({ size });
 
   return (
-    <span className={cn("grid grid-cols-3", gap)}>
+    <span className={snakeGridContainerVariants({ size })}>
       {CELL_INDICES.map(cellIndex => (
         <span
           key={cellIndex}

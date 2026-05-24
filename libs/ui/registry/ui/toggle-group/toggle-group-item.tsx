@@ -126,12 +126,11 @@ export function ToggleGroupItem<TValue extends string = string>({
         // group/segmented-item lets the bracket markers (and any future
         // decoration) react to data-active without a separate context read.
         "group/segmented-item",
-        segmentedItemVariants({ variant, size: context.size }),
-        // Highlighted-but-not-active focus state: subtle bg only for variants
-        // that wear a background fill on hover. Pill and underline manage their
-        // own highlight via the indicator/border so they opt out.
-        isHighlighted && !isActive && variant === "default" && "bg-secondary",
-        isHighlighted && !isActive && variant === "bracket" && "text-foreground",
+        segmentedItemVariants({
+          variant,
+          size: context.size,
+          highlighted: isHighlighted && !isActive || undefined,
+        }),
         className,
       )}
     >

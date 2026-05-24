@@ -2,7 +2,7 @@
 
 import { Dialog as DialogRoot, type DialogProps } from "./dialog";
 import { DialogTrigger, type DialogTriggerProps, type DialogTriggerRenderProps } from "./dialog-trigger";
-import { DialogContent, dialogContentVariants, type DialogContentProps } from "./dialog-content";
+import { DialogContent, dialogContentVariants, type DialogContentProps, type DialogCorners } from "./dialog-content";
 import { DialogHeader, type DialogHeaderProps } from "./dialog-header";
 import { DialogTitle, type DialogTitleProps } from "./dialog-title";
 import { DialogDescription, type DialogDescriptionProps } from "./dialog-description";
@@ -28,7 +28,7 @@ const Dialog = Object.assign(DialogRoot, {
 
 export { Dialog, type DialogProps };
 export { DialogTrigger, type DialogTriggerProps, type DialogTriggerRenderProps };
-export { DialogContent, dialogContentVariants, type DialogContentProps };
+export { DialogContent, dialogContentVariants, type DialogContentProps, type DialogCorners };
 export { DialogHeader, type DialogHeaderProps };
 export { DialogTitle, type DialogTitleProps };
 export { DialogDescription, type DialogDescriptionProps };

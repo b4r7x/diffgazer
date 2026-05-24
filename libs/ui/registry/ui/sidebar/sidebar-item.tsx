@@ -10,6 +10,7 @@ import type {
   Ref,
 } from "react";
 
+import { cva } from "class-variance-authority";
 import { resolveSidebarIntent, type SidebarIntent } from "@/lib/sidebar-intent";
 import { sidebarItemVariants, type SidebarVariant } from "@/lib/sidebar-variants";
 import { cn } from "@/lib/utils";
@@ -55,14 +56,22 @@ export interface SidebarItemAsButtonProps
 
 export type SidebarItemProps = SidebarItemAsAnchorProps | SidebarItemAsButtonProps;
 
-const INTENT_DOT_CLASSES: Record<SidebarIntent, string> = {
-  neutral: "bg-muted-foreground",
-  info: "bg-[var(--info,oklch(0.62_0.20_240))]",
-  success: "bg-[var(--success,oklch(0.62_0.20_145))]",
-  warning: "bg-[var(--warning,oklch(0.62_0.20_75))]",
-  danger: "bg-[var(--danger,oklch(0.62_0.20_25))]",
-  accent: "bg-[var(--accent,oklch(0.62_0.20_295))]",
-};
+export const sidebarIntentDotVariants = cva(
+  "inline-block w-1.5 h-1.5 shrink-0 mr-1 group-data-[state=rail]/sidebar:hidden",
+  {
+    variants: {
+      intent: {
+        neutral: "bg-muted-foreground",
+        info: "bg-[var(--info,oklch(0.62_0.20_240))]",
+        success: "bg-[var(--success,oklch(0.62_0.20_145))]",
+        warning: "bg-[var(--warning,oklch(0.62_0.20_75))]",
+        danger: "bg-[var(--danger,oklch(0.62_0.20_25))]",
+        accent: "bg-[var(--accent,oklch(0.62_0.20_295))]",
+      },
+    },
+    defaultVariants: { intent: "neutral" },
+  },
+);
 
 function VariantGlyph({ variant, active }: { variant: SidebarVariant; active: boolean }) {
   if (variant === "caret") {
@@ -96,10 +105,7 @@ function IntentDot({ intent }: { intent: SidebarIntent }) {
     <span
       aria-hidden="true"
       data-intent={intent}
-      className={cn(
-        "inline-block w-1.5 h-1.5 shrink-0 mr-1 group-data-[state=rail]/sidebar:hidden",
-        INTENT_DOT_CLASSES[intent],
-      )}
+      className={sidebarIntentDotVariants({ intent })}
     />
   );
 }

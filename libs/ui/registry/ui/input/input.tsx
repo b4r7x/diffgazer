@@ -3,7 +3,7 @@ import type { VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { inputVariants } from "@/lib/input-variants";
 
-type InputVariantProps = VariantProps<typeof inputVariants>;
+export type InputVariantProps = VariantProps<typeof inputVariants>;
 
 export interface InputProps
   extends Omit<InputHTMLAttributes<HTMLInputElement>, "size"> {

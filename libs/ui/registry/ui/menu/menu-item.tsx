@@ -135,9 +135,9 @@ function HubItemLayout({
   );
 }
 
-type ItemState = "normal" | "focused" | "selected" | "disabled" | "disabledFocused";
+export type ItemState = "normal" | "focused" | "selected" | "disabled" | "disabledFocused";
 
-function getItemState(disabled: boolean, isFocused: boolean, isSelected: boolean): ItemState {
+export function getItemState(disabled: boolean, isFocused: boolean, isSelected: boolean): ItemState {
   if (disabled && isFocused) return "disabledFocused";
   if (disabled) return "disabled";
   if (isFocused) return "focused";
@@ -145,7 +145,7 @@ function getItemState(disabled: boolean, isFocused: boolean, isSelected: boolean
   return "normal";
 }
 
-const menuItemBase = cva("cursor-pointer w-full transition-colors", {
+export const menuItemBase = cva("cursor-pointer w-full transition-colors", {
   variants: {
     menuVariant: {
       default: "px-4 py-3 flex items-center font-mono duration-75",
@@ -176,7 +176,30 @@ const menuItemBase = cva("cursor-pointer w-full transition-colors", {
   defaultVariants: { menuVariant: "default", state: "normal", colorVariant: "default" },
 });
 
-const menuItemValue = cva("font-mono text-xs", {
+export const menuItemIndicator = cva(
+  "pr-4 shrink-0 inline-flex items-center justify-center self-center leading-none font-mono text-xs",
+  {
+    variants: {
+      idle: {
+        true: "transition-opacity opacity-60 group-hover:opacity-100",
+        false: "",
+      },
+    },
+    defaultVariants: { idle: false },
+  },
+);
+
+export const menuItemLabel = cva("tracking-wide", {
+  variants: {
+    idle: {
+      true: "group-hover:text-foreground",
+      false: "",
+    },
+  },
+  defaultVariants: { idle: false },
+});
+
+export const menuItemValue = cva("font-mono text-xs", {
   variants: {
     valueVariant: {
       default: "",

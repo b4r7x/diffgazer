@@ -14,7 +14,7 @@ export interface SubstepData {
   detail?: string;
 }
 
-const substepVariants = cva("flex items-center gap-2 py-1 text-sm", {
+export const substepVariants = cva("flex items-center gap-2 py-1 text-sm", {
   variants: {
     status: {
       pending: "text-muted-foreground",
@@ -33,12 +33,17 @@ export const SUBSTEP_STATUS_BADGE_VARIANTS: Record<SubstepStatus, "success" | "i
   error: "error",
 };
 
-const SUBSTEP_STATUS_LABEL_COLORS: Record<SubstepStatus, string | undefined> = {
-  pending: undefined,
-  active: "text-muted-foreground",
-  completed: "text-success",
-  error: "text-destructive",
-};
+export const substepLabelVariants = cva("", {
+  variants: {
+    status: {
+      pending: "",
+      active: "text-muted-foreground",
+      completed: "text-success",
+      error: "text-destructive",
+    },
+  },
+  defaultVariants: { status: "pending" },
+});
 
 export interface StepperSubstepProps
   extends Omit<ComponentProps<"div">, "children">,
@@ -56,7 +61,6 @@ export function StepperSubstep({
   ...props
 }: StepperSubstepProps) {
   const statusText = detail ?? statusLabels?.[status];
-  const labelColor = SUBSTEP_STATUS_LABEL_COLORS[status];
 
   return (
     <div {...props} className={cn(substepVariants({ status }), className)}>
@@ -65,7 +69,7 @@ export function StepperSubstep({
       </Badge>
       <span>{label}</span>
       {statusText && (
-        <span className={cn("ml-auto text-xs", detail ? "text-muted-foreground" : labelColor)}>
+        <span className={cn("ml-auto text-xs", detail ? "text-muted-foreground" : substepLabelVariants({ status }))}>
           {statusText}
         </span>
       )}

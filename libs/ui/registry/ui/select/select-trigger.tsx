@@ -1,6 +1,7 @@
 "use client";
 
 import type { ComponentPropsWithRef, KeyboardEvent, ReactNode } from "react";
+import { cva } from "class-variance-authority";
 import { resolveAriaInvalid } from "@/lib/aria-utils";
 import { composeRefs } from "@/lib/compose-refs";
 import { cn } from "@/lib/utils";
@@ -8,6 +9,19 @@ import { Chevron } from "../icons/chevron";
 import { useSelectContext } from "./select-context";
 import { matchesSearch } from "@/lib/search";
 import { isActiveOptionVisible, toOptionId } from "./select-utils";
+
+const selectTriggerVariants = cva(
+  "flex items-center justify-between w-full px-3 py-2 text-sm font-mono cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground",
+  {
+    variants: {
+      variant: {
+        default: "border border-border bg-background text-foreground hover:bg-secondary",
+        card: "bg-foreground text-accent-foreground border-b border-foreground font-bold text-xs uppercase tracking-wider",
+      },
+    },
+    defaultVariants: { variant: "default" },
+  }
+);
 
 export interface SelectTriggerProps extends Omit<ComponentPropsWithRef<"button">, "children" | "type" | "disabled" | "id"> {
   children: ReactNode;
@@ -76,13 +90,7 @@ export function SelectTrigger({
         if (!event.defaultPrevented) onOpenChange(!open);
       }}
       onKeyDown={handleKeyDown}
-      className={cn(
-        "flex items-center justify-between w-full px-3 py-2 text-sm font-mono cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground",
-        variant === "card"
-          ? "bg-foreground text-accent-foreground border-b border-foreground font-bold text-xs uppercase tracking-wider"
-          : "border border-border bg-background text-foreground hover:bg-secondary",
-        className
-      )}
+      className={cn(selectTriggerVariants({ variant }), className)}
     >
       {children}
       {handle !== null && (

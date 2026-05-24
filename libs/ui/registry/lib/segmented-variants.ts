@@ -1,13 +1,5 @@
 import { cva } from "class-variance-authority";
 
-/**
- * Shared visual contract for segmented controls (ToggleGroup, Tabs).
- *
- * The variant decides the chrome (joined-bordered row vs inset pill track vs
- * gapped underline tabs vs frameless bracket markers). The same CVA is used by
- * both primitives so pixels stay locked; ARIA stays on each primitive's root
- * (role="radiogroup|group" for ToggleGroup, role="tablist" for Tabs).
- */
 export type SegmentedVariant = "default" | "bracket" | "pill" | "underline";
 export type SegmentedSize = "sm" | "md";
 
@@ -33,19 +25,8 @@ export const segmentedContainerVariants = cva("inline-flex font-mono", {
   },
 });
 
-/**
- * Single item visual contract. JetBrains Mono is monospaced so the 400 → 700
- * weight bump on active items does not change glyph advance widths, and no
- * width-reservation pseudo-element is needed. If the library is ever used with
- * a proportional font, the active item will need an explicit `min-width`
- * derived from its bold rendering.
- *
- * Active-hover precedence: each variant ships `hover:` *and*
- * `data-[active=true]:hover:` rules. The latter wins on equal specificity by
- * adding one attribute selector, so hover on the active item keeps the active
- * background instead of leaking to the inactive hover tone. This pattern is
- * Tailwind v3- and v4-safe (no `not-*` modifier required).
- */
+// JBMono is monospaced so bold-on-active doesn't shift glyph widths.
+// If a proportional font is ever used, active items will need explicit min-width.
 export const segmentedItemVariants = cva(
   [
     "relative inline-flex items-center justify-center whitespace-nowrap font-mono",
@@ -86,6 +67,9 @@ export const segmentedItemVariants = cva(
         sm: "min-h-9 px-3 text-xs",
         md: "min-h-11 px-4 text-sm",
       },
+      highlighted: {
+        true: "",
+      },
     },
     compoundVariants: [
       // Pill items add inner vertical padding so the label nests cleanly inside
@@ -98,6 +82,11 @@ export const segmentedItemVariants = cva(
       // without dropping the touch-target height.
       { variant: "underline", size: "sm", className: "px-1 pb-2" },
       { variant: "underline", size: "md", className: "px-1 pb-3" },
+      // Highlighted-but-not-active focus state for variants that wear a
+      // background fill on hover. Pill and underline manage their own highlight
+      // via the indicator/border so they opt out.
+      { variant: "default", highlighted: true, className: "bg-secondary" },
+      { variant: "bracket", highlighted: true, className: "text-foreground" },
     ],
     defaultVariants: {
       variant: "default",
@@ -106,18 +95,8 @@ export const segmentedItemVariants = cva(
   },
 );
 
-/**
- * Sliding indicator pill. Positioned absolutely inside the pill-variant
- * container; its `left`/`width` are written by `useFloatingIndicator`.
- */
 export const segmentedPillIndicatorClass =
   "pointer-events-none absolute top-[3px] bottom-[3px] z-0 bg-primary motion-safe:transition-[left,width] motion-safe:duration-150 motion-safe:ease-[cubic-bezier(0.2,0,0,1)]";
 
-/**
- * Sliding underline indicator. Positioned absolutely inside the underline-variant
- * container; `left`/`width` (horizontal) or `top`/`height` (vertical) are
- * written by `useFloatingIndicator`. Replaces the old full-width container
- * `border-b` so the line only spans the active item.
- */
 export const segmentedUnderlineIndicatorClass =
   "pointer-events-none absolute bg-foreground motion-safe:transition-[left,width,top,height] motion-safe:duration-150 motion-safe:ease-[cubic-bezier(0.2,0,0,1)]";

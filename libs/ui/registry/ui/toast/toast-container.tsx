@@ -3,7 +3,7 @@
 import { useEffect, useRef, type FocusEvent } from "react";
 import { cn } from "@/lib/utils";
 import { useToastStore, dismiss, remove, pause, resume, type ToastPosition } from "./toast-store";
-import { positionClasses } from "./toast-variants";
+import { toastPositionVariants } from "./toast-variants";
 import { Toast } from "./toast";
 import { useToastContainer } from "./use-toast-container";
 
@@ -72,8 +72,7 @@ export function Toaster({ position = "bottom-right" }: ToasterProps) {
         "fixed z-[var(--z-toast)] flex gap-2 pointer-events-none",
         "[&[popover]]:m-0 [&[popover]]:p-0 [&[popover]]:max-w-none [&[popover]]:max-h-none [&[popover]]:w-auto [&[popover]]:h-auto",
         "[&[popover]]:bg-transparent [&[popover]]:border-0 [&[popover]]:overflow-visible",
-        position.startsWith("top") ? "flex-col" : "flex-col-reverse",
-        positionClasses[position],
+        toastPositionVariants({ position }),
       )}
     >
       {toasts.map((t) => (

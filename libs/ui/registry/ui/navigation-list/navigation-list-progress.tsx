@@ -1,9 +1,23 @@
 "use client";
 
+import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
-type ProgressColor = "auto" | "success" | "warning" | "error" | "muted";
 type ProgressVariant = "block" | "bar";
+
+export const progressColorVariants = cva("", {
+  variants: {
+    color: {
+      success: "text-success",
+      warning: "text-warning",
+      error: "text-destructive",
+      muted: "text-muted-foreground",
+    },
+  },
+  defaultVariants: { color: "muted" },
+});
+
+type ProgressColor = "auto" | NonNullable<VariantProps<typeof progressColorVariants>["color"]>;
 
 export interface NavigationListProgressProps {
   value: number;
@@ -13,13 +27,6 @@ export interface NavigationListProgressProps {
   showLabel?: boolean;
   className?: string;
 }
-
-const colorClasses: Record<Exclude<ProgressColor, "auto">, string> = {
-  success: "text-success",
-  warning: "text-warning",
-  error: "text-destructive",
-  muted: "text-muted-foreground",
-};
 
 function resolveColorKey(value: number, color: ProgressColor): Exclude<ProgressColor, "auto"> {
   if (color !== "auto") return color;
@@ -61,7 +68,7 @@ export function NavigationListProgress({
       data-color={colorKey}
       className={cn(
         "font-mono text-[10px] whitespace-pre leading-none",
-        colorClasses[colorKey],
+        progressColorVariants({ color: colorKey }),
         "group-data-[active]:text-primary-foreground/70",
         className,
       )}

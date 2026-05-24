@@ -9,7 +9,8 @@ import type {
 } from "react";
 import { getEncodedListboxItemId } from "@/hooks/use-listbox";
 import { cn } from "@/lib/utils";
-import { MENU_ITEM_BASE_CLASS, useMenuContext } from "./menu-context";
+import { useMenuContext } from "./menu-context";
+import { getItemState, menuItemBase, menuItemIndicator, menuItemLabel } from "./menu-item";
 
 const RADIO_SELECTED = "(*)";
 const RADIO_UNSELECTED = "( )";
@@ -64,15 +65,7 @@ export function MenuItemRadio({
     if (disabled) event.preventDefault();
   };
 
-  const stateClass = disabled
-    ? isFocused
-      ? "opacity-60 cursor-not-allowed bg-secondary text-foreground"
-      : "opacity-50 cursor-not-allowed hover:bg-transparent"
-    : isFocused
-      ? "bg-primary text-primary-foreground font-bold"
-      : isSelected
-        ? "bg-primary text-primary-foreground font-bold group"
-        : "hover:bg-secondary group";
+  const state = getItemState(disabled, isFocused, isSelected);
 
   return (
     <div
@@ -91,18 +84,15 @@ export function MenuItemRadio({
       onMouseDown={handleMouseDown}
       onClick={handleClick}
       onFocus={handleFocus}
-      className={cn(MENU_ITEM_BASE_CLASS, stateClass, className)}
+      className={cn(menuItemBase({ menuVariant: "default", state, colorVariant: "default" }), className)}
     >
       <span
         aria-hidden="true"
-        className={cn(
-          "pr-4 shrink-0 inline-flex items-center justify-center self-center leading-none font-mono text-xs",
-          !isActive && !disabled && "transition-opacity opacity-60 group-hover:opacity-100",
-        )}
+        className={menuItemIndicator({ idle: !isActive && !disabled || undefined })}
       >
         {isSelected ? RADIO_SELECTED : RADIO_UNSELECTED}
       </span>
-      <span className={cn("tracking-wide", !isActive && !disabled && "group-hover:text-foreground")}>
+      <span className={menuItemLabel({ idle: !isActive && !disabled || undefined })}>
         {children}
       </span>
     </div>

@@ -1,7 +1,4 @@
-/**
- * Sidebar intent contract. Color is decoration (WCAG 1.4.1) — consumers must
- * pair `intent` with a glyph or text cue (the label itself, a badge, an icon).
- */
+// Color is decoration (WCAG 1.4.1) — consumers must pair intent with a glyph or text cue.
 export type SidebarIntent =
   | "neutral"
   | "info"
@@ -10,11 +7,6 @@ export type SidebarIntent =
   | "danger"
   | "accent";
 
-/**
- * Built-in dictionary mapping common nav values (status/route names) to intent.
- * Keys are matched against the item's `value` after lowercasing and
- * hyphen-normalising whitespace.
- */
 const INTENT_DICTIONARY: Record<string, SidebarIntent> = {
   added: "success",
   create: "success",
@@ -39,12 +31,6 @@ function normalizeIntentKey(value: string): string {
   return value.trim().toLowerCase().replace(/\s+/g, "-");
 }
 
-/**
- * Resolution order:
- *   1. explicit `intent` prop on the item
- *   2. built-in dictionary lookup on the normalised `value`
- *   3. `neutral`
- */
 export function resolveSidebarIntent(
   explicitIntent: SidebarIntent | undefined,
   value: string | undefined,

@@ -2,7 +2,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import type { CSSProperties, Ref, SVGProps } from "react";
 import { cn } from "@/lib/utils";
 
-const chevronVariants = cva(
+export const chevronVariants = cva(
   "shrink-0 motion-safe:transition-transform motion-safe:duration-200",
   {
     variants: {

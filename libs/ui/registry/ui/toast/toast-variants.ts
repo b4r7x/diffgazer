@@ -43,13 +43,18 @@ export const toastToneBg = cva("", {
   defaultVariants: { tone: "info" },
 });
 
-export const toastToneBorderColor: Record<ToastTone, string> = {
-  success: "border-success-fg",
-  error: "border-error-fg",
-  warning: "border-warning-fg",
-  info: "border-info-fg",
-  loading: "border-info-fg",
-};
+export const toastToneCornerBorder = cva("", {
+  variants: {
+    tone: {
+      success: "border-success-fg",
+      error: "border-error-fg",
+      warning: "border-warning-fg",
+      info: "border-info-fg",
+      loading: "border-info-fg",
+    },
+  },
+  defaultVariants: { tone: "info" },
+});
 
 export const toastShellVariants = cva("font-mono", {
   variants: {
@@ -70,28 +75,47 @@ export const icons: Record<Exclude<ToastTone, "loading">, string> = {
   info: "i",
 };
 
-export const slideAnimations = {
-  left:   { in: "motion-safe:animate-slide-in-left",   out: "motion-safe:animate-slide-out-left"   },
-  right:  { in: "motion-safe:animate-slide-in-right",  out: "motion-safe:animate-slide-out-right"  },
-  top:    { in: "motion-safe:animate-slide-in-top",    out: "motion-safe:animate-slide-out-top"    },
-  bottom: { in: "motion-safe:animate-slide-in-bottom", out: "motion-safe:animate-slide-out-bottom" },
-} as const;
+export type ToastSide = "left" | "right" | "top" | "bottom";
 
-export const reducedMotionFade = {
-  in: "motion-reduce:animate-[fade-in_0.15s_ease-out]",
-  out: "motion-reduce:animate-[fade-out_0.15s_ease-in_forwards]",
-} as const;
+export const toastSlideInVariants = cva("motion-reduce:animate-[fade-in_0.15s_ease-out]", {
+  variants: {
+    side: {
+      left: "motion-safe:animate-slide-in-left",
+      right: "motion-safe:animate-slide-in-right",
+      top: "motion-safe:animate-slide-in-top",
+      bottom: "motion-safe:animate-slide-in-bottom",
+    },
+  },
+  defaultVariants: { side: "right" },
+});
 
-export const positionToSide: Record<ToastPosition, keyof typeof slideAnimations> = {
+export const toastSlideOutVariants = cva("motion-reduce:animate-[fade-out_0.15s_ease-in_forwards]", {
+  variants: {
+    side: {
+      left: "motion-safe:animate-slide-out-left",
+      right: "motion-safe:animate-slide-out-right",
+      top: "motion-safe:animate-slide-out-top",
+      bottom: "motion-safe:animate-slide-out-bottom",
+    },
+  },
+  defaultVariants: { side: "right" },
+});
+
+export const positionToSide: Record<ToastPosition, ToastSide> = {
   "top-left": "left",    "top-center": "top",      "top-right": "right",
   "bottom-left": "left", "bottom-center": "bottom", "bottom-right": "right",
 };
 
-export const positionClasses: Record<ToastPosition, string> = {
-  "top-left": "top-4 left-4 right-4 sm:right-auto sm:left-8 sm:w-80",
-  "top-center": "top-4 left-4 right-4 sm:inset-x-0 sm:mx-auto sm:w-80",
-  "top-right": "top-4 left-4 right-4 sm:left-auto sm:right-8 sm:w-80",
-  "bottom-left": "bottom-4 left-4 right-4 sm:right-auto sm:left-8 sm:w-80",
-  "bottom-center": "bottom-4 left-4 right-4 sm:inset-x-0 sm:mx-auto sm:w-80",
-  "bottom-right": "bottom-4 left-4 right-4 sm:left-auto sm:right-8 sm:w-80",
-};
+export const toastPositionVariants = cva("", {
+  variants: {
+    position: {
+      "top-left": "flex-col top-4 left-4 right-4 sm:right-auto sm:left-8 sm:w-80",
+      "top-center": "flex-col top-4 left-4 right-4 sm:inset-x-0 sm:mx-auto sm:w-80",
+      "top-right": "flex-col top-4 left-4 right-4 sm:left-auto sm:right-8 sm:w-80",
+      "bottom-left": "flex-col-reverse bottom-4 left-4 right-4 sm:right-auto sm:left-8 sm:w-80",
+      "bottom-center": "flex-col-reverse bottom-4 left-4 right-4 sm:inset-x-0 sm:mx-auto sm:w-80",
+      "bottom-right": "flex-col-reverse bottom-4 left-4 right-4 sm:left-auto sm:right-8 sm:w-80",
+    },
+  },
+  defaultVariants: { position: "bottom-right" },
+});

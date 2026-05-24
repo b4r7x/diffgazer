@@ -1,13 +1,14 @@
 "use client";
 
 import type { TextareaHTMLAttributes, Ref } from "react";
+import { type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { inputVariants } from "@/lib/input-variants";
 
 export interface TextareaProps
-  extends Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "size"> {
+  extends Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "size">,
+    VariantProps<typeof inputVariants> {
   ref?: Ref<HTMLTextAreaElement>;
-  size?: "sm" | "md" | "lg";
 }
 
 export function Textarea({

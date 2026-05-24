@@ -4,12 +4,6 @@ import { cn } from "@/lib/utils";
 
 type HeadingTag = "h2" | "h3" | "h4";
 
-const HEADING_SIZE: Record<HeadingTag, string> = {
-  h2: "text-sm",
-  h3: "text-xs",
-  h4: "text-[11px]",
-};
-
 export const sectionHeaderVariants = cva(
   "font-bold mb-2 uppercase tracking-wider",
   {
@@ -21,8 +15,13 @@ export const sectionHeaderVariants = cva(
       bordered: {
         true: "border-b border-border pb-2",
       },
+      as: {
+        h2: "text-sm",
+        h3: "text-xs",
+        h4: "text-[11px]",
+      },
     },
-    defaultVariants: { variant: "default", bordered: false },
+    defaultVariants: { variant: "default", bordered: false, as: "h3" },
   },
 );
 
@@ -45,7 +44,7 @@ export function SectionHeader({
   return (
     <Tag
       ref={ref}
-      className={cn(sectionHeaderVariants({ variant, bordered }), HEADING_SIZE[Tag], className)}
+      className={cn(sectionHeaderVariants({ variant, bordered, as: Tag }), className)}
       {...props}
     >
       {children}

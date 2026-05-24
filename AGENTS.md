@@ -96,6 +96,7 @@ This is a documented exception to the generic `value/defaultValue/onChange(value
 
 ## UI Library Rules
 
+- Follow the variant conventions in `libs/ui/docs/content/patterns/variants.mdx`: CVA for named variant dimensions, CSS files only for things Tailwind cannot express, Records only for non-class values, plain Tailwind for single boolean conditionals.
 - Build primitives that compose. Keep repeated app layouts in `apps/web` unless the abstraction is generic.
 - Components must preserve accessible roles, labels, descriptions, invalid/disabled state, keyboard behavior, and form submission semantics.
 - `Field` owns label/control/description/error ARIA wiring. Controls must merge external ARIA props rather than replacing them.

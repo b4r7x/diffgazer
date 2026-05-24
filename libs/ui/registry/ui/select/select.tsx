@@ -1,6 +1,7 @@
 "use client";
 
 import { Children, isValidElement, useMemo, type AriaAttributes, type ComponentPropsWithoutRef, type ReactNode, type Ref } from "react";
+import { cva } from "class-variance-authority";
 import { composeRefs } from "@/lib/compose-refs";
 import { cn } from "@/lib/utils";
 import { SelectContext, type SelectOptionMetadata } from "./select-context";
@@ -46,12 +47,21 @@ export type SelectProps<TValue extends string = string> =
   | SelectSingleProps<TValue>
   | SelectMultipleProps<TValue>;
 
-const widthClasses = {
-  sm: "w-48",
-  md: "w-64",
-  lg: "w-80",
-  full: "w-full",
-} satisfies Record<NonNullable<SelectBaseProps["width"]>, string>;
+const selectRootVariants = cva("relative", {
+  variants: {
+    variant: {
+      default: "",
+      card: "border border-foreground bg-background shadow-[8px_8px_0px_0px_color-mix(in_srgb,var(--border)_50%,transparent)]",
+    },
+    width: {
+      sm: "w-48",
+      md: "w-64",
+      lg: "w-80",
+      full: "w-full",
+    },
+  },
+  defaultVariants: { variant: "default" },
+});
 
 export function Select<TValue extends string = string>(props: SelectProps<TValue>) {
   const {
@@ -142,9 +152,7 @@ export function Select<TValue extends string = string>(props: SelectProps<TValue
         {...rootProps}
         ref={composeRefs(wrapperRef, ref)}
         className={cn(
-          "relative",
-          width && widthClasses[width],
-          variant === "card" && "border border-foreground bg-background shadow-[8px_8px_0px_0px_color-mix(in_srgb,var(--border)_50%,transparent)]",
+          selectRootVariants({ variant, width: width ?? undefined }),
           className
         )}
       >

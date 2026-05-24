@@ -21,7 +21,7 @@ export const commandPaletteDoc: ComponentDoc = {
     },
     {
       title: "Variants & Density",
-      content: 'CommandPaletteContent exposes two orthogonal axes. `frame` picks the shell chrome — "border" (1px hairline, default), "viewfinder" (no border, four corner brackets + 2px left accent bar on selection), "terminal" (top + bottom 2px rules, inverted selection, prefix glyph becomes $), "card" (rounded 8px shell with a subtle gradient surface and floating rounded selection — Linear-ish), or "none" (bare shell for embedding). `density` picks the typographic & spacing surface — "compact" (default), "comfortable", or "dense". The frame and density variants intentionally hold empty class strings; their visual styling is driven by [data-frame] / [data-density] selectors in shared/command-palette.css, so consumers can override token values per-instance via CSS custom properties.',
+      content: 'CommandPaletteContent exposes two orthogonal axes. `frame` picks the shell chrome — "border" (1px hairline, default), "viewfinder" (no border, four corner brackets + 2px left accent bar on selection), "terminal" (top + bottom 2px rules, inverted selection, prefix glyph becomes $), "card" (rounded 8px shell with a subtle gradient surface and floating rounded selection — Linear-ish), or "none" (bare shell for embedding). `density` picks the typographic & spacing surface — "compact" (default), "comfortable", or "dense". Both are plain TypeScript types (CommandPaletteFrame, CommandPaletteDensity) whose visual styling is driven by [data-frame] / [data-density] selectors in shared/command-palette.css, so consumers can override token values per-instance via CSS custom properties.',
     },
     {
       title: "Optional auto-coloring",

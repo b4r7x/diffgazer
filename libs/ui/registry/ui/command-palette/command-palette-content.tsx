@@ -8,15 +8,16 @@ import { useCommandPaletteContext } from "./command-palette-context";
 import { DialogShell } from "../shared/dialog-shell";
 import { PortalContainerProvider } from "../shared/portal-context";
 
+export type CommandPaletteFrame = "border" | "viewfinder" | "terminal" | "card" | "none";
+export type CommandPaletteDensity = "compact" | "comfortable" | "dense";
+
 export const commandPaletteContentVariants = cva(
   "relative flex flex-col max-h-[80vh] m-auto w-full font-mono",
   {
     variants: {
       size: { sm: "max-w-sm", md: "max-w-xl", lg: "max-w-2xl" },
-      frame: { border: "", viewfinder: "", terminal: "", card: "", none: "" },
-      density: { compact: "", comfortable: "", dense: "" },
     },
-    defaultVariants: { size: "md", frame: "border", density: "compact" },
+    defaultVariants: { size: "md" },
   }
 );
 
@@ -30,6 +31,8 @@ export interface CommandPaletteContentProps extends VariantProps<typeof commandP
   children: ReactNode;
   className?: string;
   label?: string;
+  frame?: CommandPaletteFrame | null;
+  density?: CommandPaletteDensity | null;
 }
 
 export function CommandPaletteContent({
@@ -66,7 +69,7 @@ export function CommandPaletteContent({
       onBackdropClick={() => onOpenChange(false)}
       onCancel={() => search ? onSearchChange("") : onOpenChange(false)}
       onClose={focusRestore.restore}
-      className={cn(commandPaletteContentVariants({ size, frame, density }), className)}
+      className={cn(commandPaletteContentVariants({ size }), className)}
       data-slot="command-palette-content"
       data-frame={resolvedFrame}
       data-density={resolvedDensity}

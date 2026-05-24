@@ -1,8 +1,23 @@
 "use client";
 
 import { useMemo, type ComponentPropsWithRef, type ReactNode } from "react";
+import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { KeyValueContext, type KeyValueLayout } from "./key-value-context";
+
+export const keyValueVariants = cva("grid", {
+  variants: {
+    layout: {
+      horizontal: "grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-6 gap-y-2",
+      vertical: "grid-cols-1 gap-y-1",
+    },
+    bordered: {
+      true: "gap-y-0",
+      false: "",
+    },
+  },
+  defaultVariants: { layout: "horizontal", bordered: false },
+});
 
 export interface KeyValueProps extends ComponentPropsWithRef<"dl"> {
   layout?: KeyValueLayout;
@@ -24,14 +39,7 @@ export function KeyValue({
     <KeyValueContext value={contextValue}>
       <dl
         ref={ref}
-        className={cn(
-          "grid",
-          layout === "horizontal"
-            ? "grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-6 gap-y-2"
-            : "grid-cols-1 gap-y-1",
-          bordered && "gap-y-0",
-          className,
-        )}
+        className={cn(keyValueVariants({ layout, bordered }), className)}
         {...props}
       >
         {children}

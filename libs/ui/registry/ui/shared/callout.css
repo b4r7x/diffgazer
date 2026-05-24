@@ -11,12 +11,13 @@
  *   --cal-subtle subtle background tint (used by inline + rail frames)
  *
  * Frame chrome (border, rail, bar background) is selected by [data-frame].
- * Grid layout for icon/title/content/dismiss lives in callout.tsx because
- * it depends on whether <Callout.Icon> is present.
+ * Grid layout (grid-template-areas) is driven by [data-frame] combined
+ * with [data-has-icon] on the inner grid element. The icon column is
+ * collapsed when no <Callout.Icon> child is present.
  *
  * For architectural parity with Panel (shared/panel.css), all chrome and
  * forced-colors fallbacks live in this file; the React component only emits
- * data-attributes and the per-render grid template.
+ * data-attributes.
  */
 @layer components {
   [data-slot="callout"] {
@@ -86,6 +87,28 @@
     background: color-mix(in oklab, var(--foreground) 2%, transparent);
     padding: 12px 14px;
   }
+}
+
+/* ============================================================
+   Grid layout: template areas driven by [data-frame] and
+   [data-has-icon] on the inner grid element.
+   ============================================================ */
+
+/* inline / rail without icon */
+[data-slot="callout"] > [data-has-icon="false"] {
+  grid-template-areas: "title dismiss" "body .";
+}
+/* inline / rail with icon */
+[data-slot="callout"] > [data-has-icon="true"] {
+  grid-template-areas: "icon title dismiss" ". body .";
+}
+/* bar without icon */
+[data-slot="callout"][data-frame="bar"] > [data-has-icon="false"] {
+  grid-template-areas: "bar title dismiss" "bar body .";
+}
+/* bar with icon */
+[data-slot="callout"][data-frame="bar"] > [data-has-icon="true"] {
+  grid-template-areas: "bar icon title dismiss" "bar . body .";
 }
 
 /* ============================================================

@@ -5,24 +5,16 @@ import { cn } from "@/lib/utils";
 export type BadgeVariant = "success" | "warning" | "error" | "info" | "neutral";
 export type BadgeSize = "sm" | "md" | "lg";
 
-const dotColorMap: Record<BadgeVariant, string> = {
-  success: "bg-success-strong",
-  warning: "bg-warning-strong",
-  error: "bg-error-strong",
-  info: "bg-info-strong",
-  neutral: "bg-neutral-strong",
-};
-
 export const badgeVariants = cva(
   "inline-flex items-center font-bold tracking-wider rounded-sm border shrink-0 whitespace-nowrap",
   {
     variants: {
       variant: {
-        success: "bg-success-subtle text-success-fg border-success-border",
-        warning: "bg-warning-subtle text-warning-fg border-warning-border",
-        error: "bg-error-subtle text-error-fg border-error-border",
-        info: "bg-info-subtle text-info-fg border-info-border",
-        neutral: "bg-neutral-subtle text-neutral-fg border-neutral-border",
+        success: "[--badge-dot:var(--color-success-strong)] bg-success-subtle text-success-fg border-success-border",
+        warning: "[--badge-dot:var(--color-warning-strong)] bg-warning-subtle text-warning-fg border-warning-border",
+        error: "[--badge-dot:var(--color-error-strong)] bg-error-subtle text-error-fg border-error-border",
+        info: "[--badge-dot:var(--color-info-strong)] bg-info-subtle text-info-fg border-info-border",
+        neutral: "[--badge-dot:var(--color-neutral-strong)] bg-neutral-subtle text-neutral-fg border-neutral-border",
       },
       size: {
         sm: "px-2 py-0.5 text-xs",
@@ -45,7 +37,7 @@ export interface BadgeProps
 export function Badge({
   ref,
   className,
-  variant = "neutral",
+  variant,
   size,
   dot,
   children,
@@ -60,10 +52,7 @@ export function Badge({
       {dot && (
         <span
           aria-hidden="true"
-          className={cn(
-            "mr-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full",
-            dotColorMap[variant],
-          )}
+          className="mr-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[--badge-dot]"
         />
       )}
       {children}

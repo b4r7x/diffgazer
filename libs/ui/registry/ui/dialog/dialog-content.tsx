@@ -22,6 +22,8 @@ import { DialogDescription } from "./dialog-description";
 import { DialogShell } from "../shared/dialog-shell";
 import { PortalContainerProvider } from "../shared/portal-context";
 
+export type DialogCorners = "none" | "subtle" | "standard" | "bold" | "outset";
+
 export const dialogContentVariants = cva(
   "relative w-full max-h-[90vh] flex flex-col bg-background text-foreground shadow-2xl m-auto",
   {
@@ -36,18 +38,10 @@ export const dialogContentVariants = cva(
         border: "border border-border",
         none: "",
       },
-      corners: {
-        none: "",
-        subtle: "",
-        standard: "",
-        bold: "",
-        outset: "",
-      },
     },
     defaultVariants: {
       size: "md",
       frame: "border",
-      corners: "none",
     },
   }
 );
@@ -59,6 +53,7 @@ export interface DialogContentProps
     Omit<HTMLAttributes<HTMLDialogElement>, "children" | "className"> {
   children: ReactNode;
   className?: string;
+  corners?: DialogCorners | null;
   role?: "dialog" | "alertdialog";
   closeOnBackdropClick?: boolean;
   initialFocus?: RefObject<HTMLElement | null>;
@@ -172,7 +167,7 @@ export function DialogContent({
       onBeforeShowModal={focusRestore.capture}
       onClose={focusRestore.restore}
       onAnimationEnd={onAnimationEnd}
-      className={cn(dialogContentVariants({ size, frame, corners }), className)}
+      className={cn(dialogContentVariants({ size, frame }), className)}
       data-slot="dialog-content"
       data-frame={resolvedFrame}
       data-corners={resolvedCorners}

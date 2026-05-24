@@ -8,11 +8,11 @@ import {
   toastShellVariants,
   toastToneBg,
   toastToneBorder,
-  toastToneBorderColor,
+  toastToneCornerBorder,
   toastToneText,
+  toastSlideInVariants,
+  toastSlideOutVariants,
   icons,
-  slideAnimations,
-  reducedMotionFade,
   positionToSide,
   type ToastTone,
 } from "./toast-variants";
@@ -44,8 +44,7 @@ export function Toast(props: ToastProps) {
   const { id, tone, variant, dismissing, position, onRemove } = props;
   const { onAnimationEnd } = useToastDismiss(dismissing ?? false, id, onRemove);
   const side = positionToSide[position];
-  const animation = dismissing ? slideAnimations[side].out : slideAnimations[side].in;
-  const fade = dismissing ? reducedMotionFade.out : reducedMotionFade.in;
+  const animation = dismissing ? toastSlideOutVariants({ side }) : toastSlideInVariants({ side });
   // HUD is informational by definition (single-line confirmation) — even an
   // error-tone HUD stays role="status" so it doesn't preempt screen-reader
   // output. Card/viewfinder/countdown use the tone mapping so error tones
@@ -59,7 +58,7 @@ export function Toast(props: ToastProps) {
       data-slot="toast"
       data-tone={tone}
       data-variant={variant}
-      className={cn("pointer-events-auto", toastShellVariants({ variant }), toneAccent, animation, fade)}
+      className={cn("pointer-events-auto", toastShellVariants({ variant }), toneAccent, animation)}
       onAnimationEnd={onAnimationEnd}
     >
       <ToastLayout {...props} />
@@ -165,7 +164,7 @@ function ViewfinderLayout({ id, tone, title, message, onDismiss }: ToastProps) {
 }
 
 function ViewfinderCorners({ tone }: { tone: ToastTone }) {
-  const colorClass = toastToneBorderColor[tone];
+  const colorClass = toastToneCornerBorder({ tone });
   return (
     <span aria-hidden="true" data-slot="toast-corners" className="pointer-events-none">
       <span className={cn("absolute -top-px -left-px w-3.5 h-3.5 border-0 border-t-2 border-l-2", colorClass)} />
