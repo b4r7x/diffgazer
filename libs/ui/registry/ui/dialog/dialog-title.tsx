@@ -6,15 +6,6 @@ import { useDialogContext } from "./dialog-context";
 
 export interface DialogTitleProps extends HTMLAttributes<HTMLHeadingElement> {
   as?: "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
-  /**
-   * Optional right-aligned eyebrow tag (e.g. "CONFIRM", "DESTRUCTIVE").
-   * Decorative — rendered aria-hidden so it does not leak into the accessible
-   * name. For semantic labels (live state), use aria-describedby on
-   * Dialog.Content or render a Dialog.Description.
-   *
-   * Typography is driven by CSS custom properties on [data-slot="dialog-content"]:
-   * --dlg-title-meta-size and --dlg-title-meta-tracking (see shared/dialog.css).
-   */
   meta?: string;
 }
 

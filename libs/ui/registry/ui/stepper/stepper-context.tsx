@@ -6,19 +6,12 @@ import type { StepperVariant } from "@/lib/stepper-variants";
 
 export type { StepStatus };
 
-/**
- * Sub-steps retain the original four-state lifecycle. The six-state expansion
- * applies to top-level steps where `skipped`/`disabled` carry workflow
- * semantics; sub-steps describe agent activity within an active step, where
- * those states are not meaningful.
- */
 export type SubstepStatus = "pending" | "active" | "completed" | "error";
 
 export interface StepperContextValue {
   expandedIds: string[];
   onToggle: (id: string) => void;
   variant: StepperVariant;
-  /** Stable id of the trigger that owns the single roving tab stop. */
   tabTargetId: string | null;
 }
 

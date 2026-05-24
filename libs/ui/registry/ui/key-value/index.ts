@@ -8,4 +8,3 @@ const KeyValue = Object.assign(KeyValueRoot, { Item: KeyValueItem });
 
 export { KeyValue, type KeyValueProps, type KeyValueLayout };
 export { KeyValueItem, type KeyValueItemProps, type KeyValueVariant };
-

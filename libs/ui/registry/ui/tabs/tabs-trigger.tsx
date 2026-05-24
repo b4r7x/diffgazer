@@ -5,12 +5,6 @@ import { segmentedItemVariants } from "@/lib/segmented-variants";
 import { cn } from "@/lib/utils";
 import { getTabPanelId, getTabTriggerId, useTabsContext } from "./tabs-context";
 
-/**
- * Bracket markers shown only when the trigger is active (variant="bracket").
- * The spans stay in the DOM at all times with `opacity-0` so the trigger's
- * measured width never changes between selected/unselected — neighbours don't
- * shift when selection moves.
- */
 function BracketMarkers({ children }: { children: ReactNode }) {
   return (
     <>
@@ -38,14 +32,6 @@ export interface TabsTriggerProps<TValue extends string = string>
   ref?: Ref<HTMLButtonElement>;
 }
 
-/**
- * Tabs.Trigger renders a `role="tab"` button that controls a `Tabs.Content`
- * panel. It intentionally does NOT accept a `render` or `asChild` polymorphic
- * escape hatch: WAI-ARIA forbids a `tab` from navigating URLs (a tab must own
- * a tabpanel and not behave like a link). For link-based segmented navigation,
- * use `ToggleGroup.Item` instead — its `radio` / button semantics are not tied
- * to a tabpanel and can be polymorphic.
- */
 export function TabsTrigger<TValue extends string = string>({
   value,
   children,

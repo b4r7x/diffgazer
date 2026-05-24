@@ -26,44 +26,6 @@ export interface UseScopedNavigationReturn<TValue extends string = string> {
   highlight: (value: TValue | null) => void;
 }
 
-/**
- * Like `useNavigation`, but bindings flow through the active `KeyboardProvider`
- * scope instead of a local `onKeyDown` handler.
- *
- * Use this when the navigation container needs to share keyboard precedence
- * with sibling scopes (popovers, dialogs, command palettes), or when the
- * list lives inside a portal where wiring `onKeyDown` is awkward. Requires a
- * `KeyboardProvider` ancestor and throws otherwise.
- *
- * @example
- * ```tsx
- * function CommandList({ items }: { items: { id: string; label: string }[] }) {
- *   const listRef = useRef<HTMLUListElement>(null);
- *   const { highlighted } = useScopedNavigation({
- *     containerRef: listRef,
- *     role: "option",
- *     scope: "command-palette",
- *     focusWithinOnly: true,
- *     onSelect: (id) => runCommand(id),
- *   });
- *   return (
- *     <ul ref={listRef} role="listbox">
- *       {items.map((item) => (
- *         <li
- *           key={item.id}
- *           role="option"
- *           data-diffgazer-navigation-item="option"
- *           data-value={item.id}
- *           aria-selected={highlighted === item.id}
- *         >
- *           {item.label}
- *         </li>
- *       ))}
- *     </ul>
- *   );
- * }
- * ```
- */
 export function useScopedNavigation<TValue extends string = string>(
   options: UseScopedNavigationOptions<TValue>,
 ): UseScopedNavigationReturn<TValue> {

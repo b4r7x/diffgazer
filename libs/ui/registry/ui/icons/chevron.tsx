@@ -31,7 +31,6 @@ export interface ChevronProps
   extends Omit<SVGProps<SVGSVGElement>, "ref">,
     VariantProps<typeof chevronVariants> {
   direction?: ChevronDirection;
-  /** When true, rotates 90° clockwise from base direction (expand/collapse toggle). */
   open?: boolean;
   ref?: Ref<SVGSVGElement>;
 }

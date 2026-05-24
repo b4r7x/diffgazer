@@ -19,11 +19,6 @@ import {
   useStepperStepContext,
 } from "./stepper-context";
 
-/**
- * Default uppercase labels for the `variant="tag"` glyph and screen-reader
- * fallbacks across other variants. Consumers can override any subset via
- * `statusLabels`.
- */
 export const DEFAULT_STEP_STATUS_LABELS: Record<StepStatus, string> = {
   completed: "DONE",
   active: "RUN",
@@ -33,7 +28,6 @@ export const DEFAULT_STEP_STATUS_LABELS: Record<StepStatus, string> = {
   disabled: "OFF",
 };
 
-/** SR prefix per status — read before the step label by assistive tech. */
 const STATUS_SR_PREFIX: Record<StepStatus, string> = {
   completed: "Completed:",
   active: "Current:",
@@ -46,7 +40,6 @@ const STATUS_SR_PREFIX: Record<StepStatus, string> = {
 export interface StepperTriggerProps
   extends Omit<ComponentProps<"button">, "children" | "type"> {
   children: ReactNode;
-  /** Override the per-status indicator text (used by `variant="tag"`). */
   statusLabels?: Partial<Record<StepStatus, string>>;
 }
 
@@ -110,17 +103,6 @@ interface GlyphProps {
   tagLabel: string;
 }
 
-/**
- * Indicator content per (variant × status). The `numbered` variant injects a
- * CSS counter via `::before` for non-completed/error/skipped/disabled cells;
- * we emit an empty span there so the pseudo-element provides the digit.
- *
- * The `ascii` active cell wraps the `~` in a `cursor` span that drives the
- * blink animation defined inline in `<StepperVariantsStyles />` (mounted once
- * by the registry; consumers using copy mode pick up the keyframes from the
- * same source file). The blink is wrapped in `motion-safe:` so reduced-motion
- * users see a static `[~]`.
- */
 function Glyph({ variant, status, tagLabel }: GlyphProps) {
   if (variant === "numbered") {
     if (status === "completed") return <>{NUMBERED_COMPLETED_GLYPH}</>;
@@ -154,10 +136,6 @@ function Glyph({ variant, status, tagLabel }: GlyphProps) {
   return <>{STEP_INDICATOR_GLYPHS[variant][status]}</>;
 }
 
-/**
- * Build a static map of every variant × status indicator string for tests
- * and downstream tooling that needs to assert glyphs without rendering.
- */
 export function getStepperIndicatorGlyph(
   variant: StepperVariant,
   status: StepStatus,

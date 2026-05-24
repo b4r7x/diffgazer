@@ -9,42 +9,13 @@ export interface SidebarProviderProps {
   state?: SidebarState;
   defaultState?: SidebarState;
   onStateChange?: (state: SidebarState) => void;
-  /**
-   * Viewport width (in pixels) below which the sidebar collapses into a
-   * mobile sheet. Default `1024` (Tailwind `lg`).
-   */
   breakpoint?: number;
-  /**
-   * Keyboard shortcut character (case-insensitive). `Cmd/Ctrl+<key>` cycles
-   * `open` ↔ `rail`; `Shift+Cmd/Ctrl+<key>` toggles `hidden`. Pass `null` to
-   * disable the hotkey. Default `"b"` (VS Code convention).
-   */
   shortcutKey?: string | null;
   children: ReactNode;
 }
 
-/**
- * Cookie name for persistence — documented for SSR consumers.
- *
- * The provider intentionally does NOT read or write the cookie. SSR
- * frameworks (TanStack Start, Next.js App Router) should parse the cookie
- * in their route loader and pass the value as `defaultState`, then mirror
- * `onStateChange` writes back via `document.cookie` (`SameSite=Lax`, 1y).
- * Doing the read inside the provider would either cause a hydration
- * mismatch (server snapshot != cookie value) or force every consumer to
- * deal with hidden environment assumptions.
- */
 export const SIDEBAR_STATE_COOKIE = "dg_sidebar_state";
 
-/**
- * Minimal editable-target guard for the global Cmd/Ctrl+B hotkey. A more
- * thorough version lives in `@diffgazer/keys` as `isEditableElement` (handles
- * input types, disabled/readOnly, etc.), but the sidebar primitive is meant to
- * install cleanly in copy mode without pulling that full keys/focus surface in
- * just for the hotkey suppression. The hotkey only fires for plain
- * INPUT/TEXTAREA/SELECT/contentEditable targets, which is the realistic typing
- * surface a user wouldn't want to clobber with a sidebar toggle.
- */
 function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   if (target.isContentEditable) return true;

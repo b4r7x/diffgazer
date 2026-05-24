@@ -11,14 +11,6 @@ import { HorizontalStepperContext } from "./horizontal-stepper-context";
 export interface HorizontalStepperProps {
   steps: string[];
   value: string;
-  /**
-   * Visual variant:
-   *   - `ascii` — `[x] Init ─── [~] Build ─── [ ] Deploy`, solid 1px connectors.
-   *   - `numbered` — numbered square above a continuous 1px line; label below
-   *     uppercase. Material-adapted, with no width shift on active.
-   *   - `breadcrumb` — `init / build › deploy / verify`, slash separators,
-   *     caret on the active step.
-   */
   variant?: HorizontalStepperVariant;
   children: ReactNode;
   className?: string;

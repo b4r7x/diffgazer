@@ -31,7 +31,6 @@ export const emptyStateVariants = cva("group/es text-muted-foreground", {
 export type EmptyStateProps = ComponentPropsWithRef<"div"> & {
   variant?: EmptyStateVariant;
   size?: EmptyStateSize;
-  /** When true, adds role="status" and aria-live="polite" so screen readers announce dynamic empty states. */
   live?: boolean;
 };
 

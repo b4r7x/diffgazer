@@ -23,17 +23,6 @@ export interface TabsProps<TValue extends string = string>
   onChange?: (value: TValue) => void;
   defaultValue?: TValue;
   orientation?: "horizontal" | "vertical";
-  /**
-   * Visual variant. Tabs shares its segmented chrome with `ToggleGroup` via the
-   * `segmentedItemVariants` / `segmentedContainerVariants` CVA module.
-   *   - `underline` — gapped row with a foreground underline on the active tab (default).
-   *   - `default`   — bordered button row; active = inverted block.
-   *   - `bracket`   — frameless, active tab wears `[ … ]` markers.
-   *   - `pill`      — joined track with a single sliding indicator. Horizontal-only:
-   *                   the shared sliding indicator slides along `left`/`width`, so
-   *                   pairing `variant="pill"` with `orientation="vertical"` leaves
-   *                   the indicator pinned to the top of the track.
-   */
   variant?: SegmentedVariant;
   size?: SegmentedSize;
   activationMode?: "automatic" | "manual";
@@ -82,34 +71,6 @@ function collectTabMetadata(children: ReactNode): TabMetadata {
   return metadata;
 }
 
-/**
- * Tabbed view root. Renders `TabsList` (triggers) and `TabsContent` (panels)
- * with ARIA `tablist` / `tab` / `tabpanel` roles wired automatically.
- *
- * `activationMode="manual"` decouples focus from selection so arrow keys move
- * focus across triggers without switching the visible panel until Enter or
- * Space is pressed — useful when panel content is expensive to mount.
- *
- * @example
- * ```tsx
- * <Tabs defaultValue="preview">
- *   <TabsList>
- *     <TabsTrigger value="preview">Preview</TabsTrigger>
- *     <TabsTrigger value="code">Code</TabsTrigger>
- *     <TabsTrigger value="tests">Tests</TabsTrigger>
- *   </TabsList>
- *   <TabsContent value="preview"><ComponentPreview /></TabsContent>
- *   <TabsContent value="code"><CodeBlock language="tsx" /></TabsContent>
- *   <TabsContent value="tests"><TestReport /></TabsContent>
- * </Tabs>
- * ```
- *
- * @example
- * ```tsx
- * const [tab, setTab] = useState("preview");
- * <Tabs value={tab} onChange={setTab} activationMode="manual">...</Tabs>
- * ```
- */
 function TabsRoot<TValue extends string = string>({
   value: controlledValue,
   onChange,

@@ -6,11 +6,6 @@ export interface PanelRowProps extends Omit<HTMLAttributes<HTMLDivElement>, "chi
   value: ReactNode;
 }
 
-/**
- * Key-value row primitive. Adjacent `Panel.Row` siblings get an automatic
- * top border via the `[data-slot="panel-row"] + [data-slot="panel-row"]`
- * adjacent-sibling combinator in shared/panel.css.
- */
 export function PanelRow({ label, value, className, ...props }: PanelRowProps) {
   return (
     <div

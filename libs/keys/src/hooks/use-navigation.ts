@@ -28,10 +28,6 @@ export interface UseNavigationOptions<TValue extends string = string> {
   wrap?: boolean;
   enabled?: boolean;
   preventDefault?: boolean;
-  /**
-   * Called when a non-wrapping boundary is reached. Receives the direction,
-   * the originating KeyboardEvent, and the key that triggered the boundary.
-   */
   onNavigationBoundaryReached?: (
     direction: "previous" | "next",
     event: globalThis.KeyboardEvent,
@@ -195,44 +191,6 @@ export function useNavigationCore<TValue extends string = string>({
   return { highlighted, isHighlighted, highlight, move, focusIndex, handleSelect, handleEnter, getElements };
 }
 
-/**
- * Roving keyboard navigation for a list of items inside `containerRef`.
- *
- * Returns an `onKeyDown` handler that moves the highlighted/focused item
- * with arrow, Home, and End keys, plus `highlight` / `isHighlighted` helpers
- * for visual state. Pair `role` with the matching `data-diffgazer-navigation-item`
- * value on each child (or use `getNavigationItemProps`).
- *
- * @example
- * ```tsx
- * function FileList({ files }: { files: { id: string; name: string }[] }) {
- *   const containerRef = useRef<HTMLUListElement>(null);
- *   const { highlighted, onKeyDown } = useNavigation({
- *     containerRef,
- *     role: "option",
- *     orientation: "vertical",
- *     moveFocus: true,
- *     onSelect: (id) => openFile(id),
- *   });
- *   return (
- *     <ul ref={containerRef} onKeyDown={onKeyDown} role="listbox">
- *       {files.map((file) => (
- *         <li
- *           key={file.id}
- *           role="option"
- *           data-diffgazer-navigation-item="option"
- *           data-value={file.id}
- *           aria-selected={highlighted === file.id}
- *           tabIndex={-1}
- *         >
- *           {file.name}
- *         </li>
- *       ))}
- *     </ul>
- *   );
- * }
- * ```
- */
 export function useNavigation<TValue extends string = string>(
   options: UseNavigationOptions<TValue>,
 ): UseNavigationReturn<TValue> {

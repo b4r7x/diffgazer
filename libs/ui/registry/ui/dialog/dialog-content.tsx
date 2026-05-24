@@ -52,7 +52,6 @@ export const dialogContentVariants = cva(
   }
 );
 
-/** Runtime fallback when no accessible name is provided. Devs should supply a real name via Dialog.Title, aria-label, or aria-labelledby. */
 const FALLBACK_DIALOG_LABEL = "Dialog";
 
 export interface DialogContentProps
@@ -83,10 +82,6 @@ type AccessibleNameOutput = {
   "aria-labelledby": string | undefined;
 };
 
-/**
- * Precedence: aria-labelledby > aria-label > Dialog.Title > fallback ("Dialog").
- * Exactly one of aria-label / aria-labelledby is set; the other is undefined.
- */
 function resolveAccessibleName({
   ariaLabel,
   ariaLabelledBy,

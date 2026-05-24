@@ -16,8 +16,6 @@ import { PanelDescription } from "./panel-description";
 
 export type PanelElement = "div" | "article" | "section" | "aside";
 
-/** All visual chrome (frame, tone, density) is driven by data-attributes in
- *  shared/panel.css; no class names are emitted from the root. */
 export type PanelFrame = "hairline" | "rail" | "viewfinder" | "surface";
 export type PanelTone = "info" | "success" | "warning" | "error" | "accent";
 export type PanelDensity = "default" | "compact";
@@ -36,24 +34,6 @@ export type PanelProps<T extends PanelElement = "div"> = Omit<
     as?: T;
   };
 
-/**
- * Card-like container. Composes `Panel.Header`, `Panel.Title`,
- * `Panel.Description`, `Panel.Content`, `Panel.Row`, and `Panel.Footer`.
- *
- * Accessibility:
- *  - If `Panel.Title` is in the subtree OR `aria-label`/`aria-labelledby` is
- *    supplied, the root renders as `<section>` (a landmark) with
- *    `aria-labelledby` auto wired to the title's id.
- *  - Otherwise the root renders as a plain `<div>` (no nameless landmark).
- *  - `Panel.Description` is auto-wired via `aria-describedby` when present.
- *
- * Subcomponent detection is a synchronous child walk (mirrors `DialogContent`),
- * so the first commit already carries the correct element type and ARIA
- * relationships — no remount on second render, no a11y gap on initial paint.
- *
- * `tone` is a purely visual border-color tint. Status messaging (icon,
- * dismissable, live region, role=alert) belongs in `Callout`, not Panel.
- */
 export function Panel<T extends PanelElement = "div">(props: PanelProps<T>) {
   const {
     as,
@@ -126,12 +106,6 @@ function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
 
-/**
- * Resolves the panel's accessible name following ARIA precedence:
- * explicit `aria-labelledby` > explicit `aria-label` > `<Panel.Title>` id.
- * Exactly one of `aria-label` / `aria-labelledby` is set; the other is undefined.
- * Mirrors Dialog's `resolveAccessibleName` at dialog-content.tsx:89-105.
- */
 function resolvePanelAccessibleName({
   ariaLabel,
   ariaLabelledBy,

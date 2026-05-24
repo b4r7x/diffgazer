@@ -21,19 +21,7 @@ function containsLabelElement(node: ReactNode): boolean {
 export interface CodeBlockProps extends Omit<ComponentProps<"figure">, "children"> {
   variant?: CodeBlockVariant;
   language?: string;
-  /**
-   * Visible label for the block (filename or language). When rendered via
-   * <CodeBlock.Label>, the same string is exposed as the accessible name via
-   * aria-labelledby. Pass `label` if you do NOT render a Label inside the
-   * header and want to set the accessible name from the root.
-   */
   label?: string;
-  /**
-   * Decorative chrome rendered in the header strip.
-   *   - "dots" — three desaturated terminal-style dots on the left edge.
-   *   - "none" — no chrome decoration.
-   * Defaults to "dots" for variant="terminal", "none" otherwise.
-   */
   chrome?: CodeBlockChrome;
   children?: ComponentProps<"figure">["children"];
 }

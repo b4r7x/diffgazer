@@ -14,14 +14,6 @@ export interface DialogActionProps
   [dataAttribute: `data-${string}`]: unknown;
 }
 
-/**
- * Primary action button for the dialog footer. Renders the shared `Button`
- * primitive in `action` variant with `bracket` enabled by default.
- *
- * Calls `onClick`, then dismisses the dialog unless the consumer calls
- * `e.preventDefault()` (e.g. to keep the dialog open during async validation
- * or form submission failure).
- */
 export function DialogAction({
   children,
   onClick,

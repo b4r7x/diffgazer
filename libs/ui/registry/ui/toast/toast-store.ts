@@ -26,7 +26,6 @@ export interface ToastOptions {
   tone?: ToastTone;
   variant?: ToastVariant;
   message?: string;
-  /** Auto-dismiss delay in ms. When `action` is set and duration is omitted, the toast persists indefinitely (WCAG 2.2.1 — enough time). */
   duration?: number;
   action?: ReactNode;
   id?: string;
@@ -219,12 +218,6 @@ export function resume() {
   emit();
 }
 
-/**
- * Snapshot of the auto-dismiss timer for a single toast. Returned by-value so
- * countdown visuals can compute `remaining / duration` without subscribing to
- * the timer at frame rate. The store does not re-emit on timer tick; consumers
- * that need smooth progress read this from a `requestAnimationFrame` loop.
- */
 export interface ToastTimerSnapshot {
   duration: number;
   remaining: number;

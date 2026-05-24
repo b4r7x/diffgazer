@@ -6,7 +6,6 @@ import { useAvatarContext } from "./avatar-context";
 import { useImageStatus } from "./use-image-status";
 
 export interface AvatarFallbackProps {
-  /** Cascading fallback image URL. Tried before rendering children. */
   src?: string;
   children?: ReactNode;
   className?: string;

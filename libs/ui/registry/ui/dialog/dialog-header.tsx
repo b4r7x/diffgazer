@@ -4,18 +4,6 @@ import type { HTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
 export interface DialogHeaderProps extends HTMLAttributes<HTMLDivElement> {
-  /**
-   * "bar" (default) renders a 4px foreground accent bar spanning the title and
-   * description column — the decorated header form.
-   * "none" is the neutral form intended for headers with a background, custom
-   * horizontal layouts, or compositions where the bar would clash. Consumer
-   * className overrides (padding, flex direction, background) merge cleanly on
-   * both variants via tailwind-merge.
-   *
-   * "bar" currently renders in foreground color. Severity-aware coloring
-   * (warning/destructive) is reserved for a future iteration; do not rely on
-   * the bar's color for semantic state.
-   */
   marker?: "bar" | "none";
 }
 

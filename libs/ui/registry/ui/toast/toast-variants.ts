@@ -1,14 +1,6 @@
 import { cva } from "class-variance-authority";
 import type { ToastPosition } from "./toast-store";
 
-/**
- * Shared visual contract for toast layouts.
- *
- * `tone` is severity (success/error/warning/info/loading) and drives accent
- * color. `variant` is the layout shell (hud / card / viewfinder / countdown);
- * each variant owns its full internal structure. The shell CVA only handles
- * the outer box (sizing, background, border, position context).
- */
 export type ToastTone = "success" | "error" | "warning" | "info" | "loading";
 export type ToastVariant = "hud" | "card" | "viewfinder" | "countdown";
 
@@ -51,11 +43,6 @@ export const toastToneBg = cva("", {
   defaultVariants: { tone: "info" },
 });
 
-/**
- * Border-color classes for viewfinder corner brackets. CVA cannot generate
- * these because Tailwind needs literal class names for JIT scanning of the
- * `border-{token}-fg` palette.
- */
 export const toastToneBorderColor: Record<ToastTone, string> = {
   success: "border-success-fg",
   error: "border-error-fg",
@@ -90,14 +77,6 @@ export const slideAnimations = {
   bottom: { in: "motion-safe:animate-slide-in-bottom", out: "motion-safe:animate-slide-out-bottom" },
 } as const;
 
-/**
- * Under prefers-reduced-motion the slide tokens collapse to `animation: none`
- * (theme-base.css). To still drive `onAnimationEnd` for dismissal and give a
- * minimal opacity cue, we reference the `fade-in`/`fade-out` keyframes by
- * name — those keyframe definitions are not gated by the reduced-motion media
- * query, only the `--animate-fade-*` tokens are. Opacity fade has no motion
- * vector, satisfying WCAG 2.3.3 while keeping the dismiss lifecycle intact.
- */
 export const reducedMotionFade = {
   in: "motion-reduce:animate-[fade-in_0.15s_ease-out]",
   out: "motion-reduce:animate-[fade-out_0.15s_ease-in_forwards]",

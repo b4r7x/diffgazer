@@ -34,10 +34,8 @@ export const avatarVariants = cva(
 export interface AvatarProps
   extends HTMLAttributes<HTMLSpanElement>,
     VariantProps<typeof avatarVariants> {
-  /** Image source URL. Ignored when children are provided. */
   src?: string;
   alt?: string;
-  /** Fallback content shown when image fails. Ignored when children are provided. */
   fallback?: ReactNode;
   onStatusChange?: (status: AvatarStatus) => void;
   ref?: Ref<HTMLSpanElement>;

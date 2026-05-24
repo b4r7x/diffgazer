@@ -6,12 +6,6 @@ import type { HorizontalStepperVariant } from "@/lib/stepper-variants";
 
 export type { StepStatus };
 
-/**
- * Status subset returned by `useStepInfo`. The horizontal-stepper derives a
- * step's status from its index relative to the current `value` — only
- * active/completed/pending are reachable. Per-step skipped/disabled/error
- * are the vertical Stepper's surface.
- */
 export type HorizontalStepStatus = Extract<StepStatus, "active" | "completed" | "pending">;
 
 interface StepperContextValue {

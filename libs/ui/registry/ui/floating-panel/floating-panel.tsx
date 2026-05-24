@@ -26,20 +26,13 @@ interface FloatingCSS extends CSSProperties {
 }
 
 export interface FloatingPanelContextValue {
-  /** True once the panel has measured against its trigger; false during the first paint and after exit. */
   positioned: boolean;
-  /** Resolved side after collision handling, or null before first measure. */
   side: FloatingSide | null;
-  /** Resolved align after collision handling, or null before first measure. */
   align: FloatingAlign | null;
 }
 
 const FloatingPanelContext = createContext<FloatingPanelContextValue | undefined>(undefined);
 
-/**
- * Read FloatingPanel's resolved positioning state from any descendant of the rendered panel.
- * Throws when used outside a FloatingPanel.
- */
 export function useFloatingPanelContext(): FloatingPanelContextValue {
   const ctx = useContext(FloatingPanelContext);
   if (ctx === undefined) {
@@ -50,13 +43,7 @@ export function useFloatingPanelContext(): FloatingPanelContextValue {
 
 export interface FloatingPanelProps
   extends Omit<ComponentPropsWithoutRef<"div">, "style"> {
-  /**
-   * Controlled open state. There is no `defaultOpen`. FloatingPanel never closes
-   * itself; wrap it in a primitive that owns dismiss (outside-click, escape,
-   * focus management) and forward the resolved boolean here.
-   */
   open: boolean;
-  /** Anchor element the panel positions against. Must be a stable RefObject. */
   triggerRef: RefObject<HTMLElement | null>;
   side?: FloatingSide;
   align?: FloatingAlign;
@@ -64,28 +51,10 @@ export interface FloatingPanelProps
   alignOffset?: number;
   avoidCollisions?: boolean;
   collisionPadding?: number;
-  /** When true, exposes `--ui-floating-trigger-width` so callers can size the panel against the trigger (use as `width`, `min-width`, or `max-width`). */
   matchTriggerWidth?: boolean;
-  /**
-   * Max ms to wait for `animationend` before forcing unmount.
-   * Default 1000ms (≥25× the default `--ui-content-exit-duration` of 40ms).
-   * If you raise `--ui-content-exit-duration` past 500ms, raise this to at
-   * least 2× the new value to avoid stranding state in "closing".
-   */
   exitFallbackMs?: number;
-  /**
-   * Explicit portal target, forwarded to `Portal`. Falls back to the ambient
-   * `PortalContainerProvider` scope, then the scoped container's
-   * `ownerDocument.body`, then `document.body`.
-   */
   portalContainer?: Element | null;
   onExitComplete?: () => void;
-  /**
-   * Caller styles merged BEFORE internal positioning styles. Structural keys
-   * (`position`, `top`, `left`, `visibility`, `--ui-content-transform-origin`,
-   * `--ui-floating-trigger-width`) cannot be overridden by callers; everything
-   * else (background, min-width, border, transform, etc.) passes through.
-   */
   style?: CSSProperties;
   children?: ReactNode;
   ref?: Ref<HTMLDivElement>;
@@ -139,22 +108,6 @@ function buildPanelStyle(
   return base;
 }
 
-/**
- * FloatingPanel renders a portaled, animated panel anchored to a trigger.
- *
- * Public CSS custom properties written to the panel element:
- * - `--ui-content-transform-origin` — always set, derived from resolved side/align.
- * - `--ui-floating-trigger-width` — set only when `matchTriggerWidth` is true.
- *
- * Public CSS variables read from the `.ui-floating-panel` rule (override on the
- * panel or an ancestor):
- * - `--ui-floating-z` — z-index layer; defaults to `var(--z-popover)`. Tooltip
- *   consumers can lower it, Toast-anchored consumers can raise it.
- *
- * Descendants of the rendered panel can subscribe to positioning state via
- * `useFloatingPanelContext()` — useful for adapters that need to defer effects
- * (focus, measurement) until after the first measure.
- */
 export function FloatingPanel({
   open,
   triggerRef,

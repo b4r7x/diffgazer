@@ -11,35 +11,6 @@ export interface DialogProps {
   children: ReactNode;
 }
 
-/**
- * Modal dialog root. Owns the open/closed state and ARIA wiring for its
- * compound children (`Dialog.Trigger`, `Dialog.Content`, `Dialog.Title`,
- * `Dialog.Description`, `Dialog.Body`, `Dialog.Footer`, `Dialog.Close`,
- * `Dialog.Action`). Supports both controlled and uncontrolled usage.
- *
- * @example
- * ```tsx
- * <Dialog>
- *   <Dialog.Trigger>Delete branch</Dialog.Trigger>
- *   <Dialog.Content>
- *     <Dialog.Header>
- *       <Dialog.Title>Delete branch</Dialog.Title>
- *       <Dialog.Description>This action cannot be undone.</Dialog.Description>
- *     </Dialog.Header>
- *     <Dialog.Footer>
- *       <Dialog.Close>Cancel</Dialog.Close>
- *       <Dialog.Action onClick={onDelete}>Delete</Dialog.Action>
- *     </Dialog.Footer>
- *   </Dialog.Content>
- * </Dialog>
- * ```
- *
- * @example
- * ```tsx
- * const [open, setOpen] = useState(false);
- * <Dialog open={open} onOpenChange={setOpen}>...</Dialog>
- * ```
- */
 export function Dialog({ open: controlledOpen, defaultOpen, onOpenChange, children }: DialogProps) {
   const [isOpen, setIsOpen] = useControllableState({
     value: controlledOpen,

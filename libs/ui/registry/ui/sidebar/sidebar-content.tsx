@@ -10,11 +10,6 @@ export interface SidebarContentProps extends HTMLAttributes<HTMLDivElement> {
   ref?: Ref<HTMLDivElement>;
 }
 
-/**
- * Scroll body for the sidebar. Hides itself when `state === "hidden"` so its
- * descendants drop out of the tab order; rail state keeps it mounted (icons
- * only) so collapsing does not lose focus or scroll position.
- */
 export function SidebarContent({ ref, children, className, onKeyDown, ...props }: SidebarContentProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const { state, contentId } = useSidebar();

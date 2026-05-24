@@ -71,11 +71,6 @@ export function SplitView({
   );
 }
 
-/**
- * A side is a sequence of separators interleaved with cells. Both panes
- * render the same separators (full @@ header text in the code cell) at the
- * same positions; only the cell content differs.
- */
 type SideEntry =
   | { kind: "separator"; hunkIndex: number; row: Extract<SplitRow, { kind: "separator" }> }
   | { kind: "cell"; cell: SplitCell };
@@ -117,11 +112,6 @@ function SplitSide({
   disableWordDiff: boolean;
   isDense: boolean;
   activeHunk: string | null;
-  /**
-   * Only one side registers `data-diffgazer-navigation-item` per hunk so
-   * `useNavigation` finds each hunk exactly once (otherwise j/k would
-   * skip every other position in split mode).
-   */
   registerNavigationItems: boolean;
 }) {
   return (

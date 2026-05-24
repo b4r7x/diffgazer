@@ -6,22 +6,9 @@ import { PanelTitle } from "./panel-title";
 import { PanelDescription } from "./panel-description";
 
 export interface PanelHeaderProps extends HTMLAttributes<HTMLDivElement> {
-  /**
-   * "bar" renders a 4px foreground accent bar to the left of the title and
-   * description column, matching Dialog's `marker="bar"`. Color follows
-   * `--panel-tone` (tone-tinted when the panel has a tone).
-   * "none" suppresses the bar; useful for `frame="rail"` (the rail is the
-   * marker) or custom header layouts.
-   */
   marker?: "bar" | "none";
 }
 
-/**
- * Compound header. Title and Description go in a left column; any other
- * sibling (eyebrow tag, badge, button) lands in a right slot, vertically
- * centered against the title baseline. The marker bar spans the full
- * header height via `align-self: stretch`.
- */
 export function PanelHeader({
   className,
   children,
