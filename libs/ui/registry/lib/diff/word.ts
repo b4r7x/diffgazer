@@ -1,6 +1,6 @@
-import type { DiffChange } from "./parse.js";
-import { buildLcsTable } from "./lcs.js";
-import { collectEditPairs } from "./pairs.js";
+import type { DiffChange } from "./parse";
+import { buildLcsTable } from "./lcs";
+import { collectEditPairs } from "./pairs";
 
 export interface WordSegment {
   text: string;

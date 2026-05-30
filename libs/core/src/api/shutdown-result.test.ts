@@ -6,7 +6,7 @@ import {
   shutdownCloseBlockedResult,
   shutdownClosedResult,
   shutdownNetworkError,
-} from "./shutdown-result.js";
+} from "./shutdown-result";
 
 describe("shutdown result mapping", () => {
   describe("mapShutdownResponseToResult", () => {

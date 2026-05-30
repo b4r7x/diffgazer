@@ -7,11 +7,11 @@ export type ActiveHeadingActivation = "top-line" | "viewport-center" | (number &
 /**
  * Tracks the currently active heading by id.
  *
- * Limitation: this hook resolves headings and viewport metrics against the
- * ambient host `document`/`window`. It is single-document only — it does not
- * read heading positions from iframe documents, shadow roots, or detached
- * documents. Callers that need cross-document active-heading tracking should
- * mount one hook per document inside that document's React tree.
+ * Headings and viewport metrics resolve against `ownerDocument` (default: the
+ * ambient `document`). Pass `ownerDocument` to track headings inside an iframe
+ * or other secondary document; the hook reads its `defaultView` for viewport
+ * size, scroll position, `matchMedia`, and resize listeners. It does not cross
+ * document boundaries on its own — one hook tracks one document.
  */
 export interface UseActiveHeadingOptions {
   ids: string[];
@@ -27,6 +27,8 @@ export interface UseActiveHeadingOptions {
   settleDelay?: number;
   /** Watch for DOM changes via MutationObserver. Disable for static content. @default true */
   observe?: boolean;
+  /** Document to resolve headings and viewport metrics against. @default the ambient `document` */
+  ownerDocument?: Document;
 }
 
 export interface UseActiveHeadingReturn {
@@ -34,13 +36,13 @@ export interface UseActiveHeadingReturn {
   scrollTo: (id: string) => void;
 }
 
-function getContainer(id: string | undefined): HTMLElement | null {
+function getContainer(doc: Document, id: string | undefined): HTMLElement | null {
   if (!id) return null;
-  const el = document.getElementById(id);
+  const el = doc.getElementById(id);
   return el instanceof HTMLElement ? el : null;
 }
 
-function getViewportMetrics(container: HTMLElement | null) {
+function getViewportMetrics(doc: Document, container: HTMLElement | null) {
   if (container) {
     return {
       top: container.getBoundingClientRect().top,
@@ -50,14 +52,15 @@ function getViewportMetrics(container: HTMLElement | null) {
     };
   }
 
-  const root = document.documentElement;
-  const body = document.body;
-  const scrollTop = window.scrollY || root.scrollTop || body?.scrollTop || 0;
+  const view = doc.defaultView;
+  const root = doc.documentElement;
+  const body = doc.body;
+  const scrollTop = (view?.scrollY ?? 0) || root.scrollTop || body?.scrollTop || 0;
   const scrollHeight = Math.max(root.scrollHeight, body?.scrollHeight ?? 0);
 
   return {
     top: 0,
-    height: window.innerHeight,
+    height: view?.innerHeight ?? 0,
     scrollTop,
     scrollHeight,
   };
@@ -71,9 +74,9 @@ function findLastAbove(elements: HTMLElement[], line: number, thresholdRatio = 0
   return null;
 }
 
-function resolveScrollBehavior(): ScrollBehavior {
-  return typeof window.matchMedia === "function" &&
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+function resolveScrollBehavior(view: (Window & typeof globalThis) | null): ScrollBehavior {
+  return view && typeof view.matchMedia === "function" &&
+    view.matchMedia("(prefers-reduced-motion: reduce)").matches
     ? "auto"
     : "smooth";
 }
@@ -103,7 +106,9 @@ export function useActiveHeading({
   enabled = true,
   settleDelay = 150,
   observe = true,
+  ownerDocument,
 }: UseActiveHeadingOptions): UseActiveHeadingReturn {
+  const doc = ownerDocument ?? document;
   const idsKey = ids.join("\0");
   const [activeId, setActiveId] = useState<string | null>(ids[0] ?? null);
   const scrollingToRef = useRef<string | null>(null);
@@ -111,9 +116,9 @@ export function useActiveHeading({
   const update = useEffectEvent((): void => {
     if (scrollingToRef.current !== null) return;
 
-    const container = getContainer(containerId);
+    const container = getContainer(doc, containerId);
     const elements = ids
-      .map((id) => document.getElementById(id))
+      .map((id) => doc.getElementById(id))
       .filter((el): el is HTMLElement => el instanceof HTMLElement);
 
     if (elements.length === 0) {
@@ -121,7 +126,7 @@ export function useActiveHeading({
       return;
     }
 
-    const { top, height, scrollTop, scrollHeight } = getViewportMetrics(container);
+    const { top, height, scrollTop, scrollHeight } = getViewportMetrics(doc, container);
     const bottomMarginPx = Math.max(0, bottomMargin) * height;
 
     if (bottomLock && scrollTop + height >= scrollHeight - 2 - bottomMarginPx) {
@@ -134,7 +139,7 @@ export function useActiveHeading({
     let next = findLastAbove(elements, activationLine, t) ?? elements[0]?.id ?? null;
 
     if (next && elements.length > 1) {
-      const pickedEl = document.getElementById(next);
+      const pickedEl = doc.getElementById(next);
       if (pickedEl && pickedEl.getBoundingClientRect().bottom < top) {
         next = findLastAbove(elements, top + height * 0.5) ?? next;
       }
@@ -151,16 +156,19 @@ export function useActiveHeading({
 
     setActiveId(ids[0] ?? null);
 
-    const container = getContainer(containerId);
-    const scrollTarget: EventTarget = container ?? window;
-    const hasScrollEnd = "onscrollend" in window;
+    const view = doc.defaultView;
+    if (!view) return;
+
+    const container = getContainer(doc, containerId);
+    const scrollTarget: EventTarget = container ?? view;
+    const hasScrollEnd = "onscrollend" in doc;
     let frame = 0;
 
     const scheduleUpdate = (): void => {
       if (scrollingToRef.current !== null) {
         if (!hasScrollEnd) {
-          if (settleTimerRef.current !== 0) window.clearTimeout(settleTimerRef.current);
-          settleTimerRef.current = window.setTimeout(() => {
+          if (settleTimerRef.current !== 0) view.clearTimeout(settleTimerRef.current);
+          settleTimerRef.current = view.setTimeout(() => {
             settleTimerRef.current = 0;
             scrollingToRef.current = null;
             update();
@@ -170,7 +178,7 @@ export function useActiveHeading({
       }
 
       if (frame !== 0) return;
-      frame = window.requestAnimationFrame(() => {
+      frame = view.requestAnimationFrame(() => {
         frame = 0;
         update();
       });
@@ -183,49 +191,50 @@ export function useActiveHeading({
     };
 
     scrollTarget.addEventListener("scroll", scheduleUpdate, { passive: true });
-    window.addEventListener("resize", scheduleUpdate);
+    view.addEventListener("resize", scheduleUpdate);
     if (hasScrollEnd) scrollTarget.addEventListener("scrollend", handleScrollEnd);
 
     let mutationObs: MutationObserver | null = null;
-    if (observe) {
-      mutationObs = new MutationObserver(scheduleUpdate);
-      mutationObs.observe(container ?? document.body, { childList: true, subtree: true });
+    if (observe && typeof view.MutationObserver === "function") {
+      mutationObs = new view.MutationObserver(scheduleUpdate);
+      mutationObs.observe(container ?? doc.body, { childList: true, subtree: true });
     }
 
     scheduleUpdate();
 
     return () => {
       scrollTarget.removeEventListener("scroll", scheduleUpdate);
-      window.removeEventListener("resize", scheduleUpdate);
+      view.removeEventListener("resize", scheduleUpdate);
       if (hasScrollEnd) scrollTarget.removeEventListener("scrollend", handleScrollEnd);
       mutationObs?.disconnect();
-      if (frame !== 0) window.cancelAnimationFrame(frame);
-      if (settleTimerRef.current !== 0) window.clearTimeout(settleTimerRef.current);
+      if (frame !== 0) view.cancelAnimationFrame(frame);
+      if (settleTimerRef.current !== 0) view.clearTimeout(settleTimerRef.current);
     };
-  }, [idsKey, containerId, activation, topOffset, bottomMargin, threshold, bottomLock, enabled, settleDelay, observe]);
+  }, [doc, idsKey, containerId, activation, topOffset, bottomMargin, threshold, bottomLock, enabled, settleDelay, observe]);
 
   const scrollTo = useCallback((id: string) => {
-    const heading = document.getElementById(id);
+    const heading = doc.getElementById(id);
     if (!(heading instanceof HTMLElement)) return;
 
     scrollingToRef.current = id;
     setActiveId(id);
 
-    const container = getContainer(containerId);
-    const behavior = resolveScrollBehavior();
+    const view = doc.defaultView;
+    const container = getContainer(doc, containerId);
+    const behavior = resolveScrollBehavior(view);
 
     if (container) {
       const containerRect = container.getBoundingClientRect();
       const headingRect = heading.getBoundingClientRect();
       const relativeTop = headingRect.top - containerRect.top + container.scrollTop;
       container.scrollTo({ top: Math.max(0, relativeTop - scrollOffset), behavior });
-    } else {
-      window.scrollTo({
-        top: Math.max(0, window.scrollY + heading.getBoundingClientRect().top - scrollOffset),
+    } else if (view) {
+      view.scrollTo({
+        top: Math.max(0, view.scrollY + heading.getBoundingClientRect().top - scrollOffset),
         behavior,
       });
     }
-  }, [containerId, scrollOffset]);
+  }, [doc, containerId, scrollOffset]);
 
   return { activeId, scrollTo };
 }

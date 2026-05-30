@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  useEffect,
   useId,
   useRef,
   useState,
@@ -134,10 +133,6 @@ export function Checkbox({
 
   useFormReset(rootRef, defaultChecked, setIsChecked, controlledBool === undefined);
 
-  useEffect(() => {
-    if (isChecked) setNativeInvalid(false);
-  }, [isChecked]);
-
   const toggle = () => {
     if (disabled) return;
     setNativeInvalid(false);
@@ -171,6 +166,8 @@ export function Checkbox({
   return (
     <>
       {(name || required) && (
+        // Validation/submission-only mirror: aria-hidden keeps it out of the
+        // a11y tree, so naming/invalid/described-by live on the visible control.
         <input
           type="checkbox"
           name={name}
@@ -182,7 +179,6 @@ export function Checkbox({
           tabIndex={-1}
           readOnly
           aria-hidden={true}
-          aria-label={ariaLabel ?? (typeof label === "string" ? label : name)}
           onInvalid={(event) => {
             event.preventDefault();
             setNativeInvalid(true);

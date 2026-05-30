@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { containsActiveElement } from "./focusable";
+import { containsActiveElement } from "./focusable.js";
 import {
   NAVIGATION_ITEM_ATTRIBUTE,
   findNavigationItemByValue,
@@ -8,7 +8,7 @@ import {
   getNavigationItemProps,
   getNavigationItems,
   type NavigationItemType,
-} from "./navigation-items";
+} from "./navigation-items.js";
 
 function mountContainer(role?: string) {
   const container = document.createElement("div");

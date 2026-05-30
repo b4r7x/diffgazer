@@ -1,8 +1,8 @@
 import { render, screen } from "@testing-library/react"
 import { describe, it, expect } from "vitest"
-import { Dialog } from "../dialog/index.js"
-import { Popover } from "../popover/index.js"
-import { Select } from "../select/index.js"
+import { Dialog } from "../dialog/index"
+import { Popover } from "../popover/index"
+import { Select } from "../select/index"
 
 // axe skipped: portal-tree integration test; dialog/popover/select primitive tests own a11y assertions.
 

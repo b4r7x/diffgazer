@@ -2,12 +2,13 @@ import { existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import open from "open";
 import { getErrorMessage } from "@diffgazer/core/errors";
-import { config } from "../../config.js";
-import type { CliMode } from "../../types/cli.js";
-import { createApiServer } from "./api-server.js";
-import type { ServerController } from "./create-process-server.js";
-import { createEmbeddedServer } from "./embedded-server.js";
-import { createWebServer } from "./web-server.js";
+import { parsePortEnv } from "@diffgazer/core/env";
+import { config } from "../../config";
+import type { CliMode } from "../../types/cli";
+import { createApiServer } from "./api-server";
+import type { ServerController } from "./create-process-server";
+import { createEmbeddedServer } from "./embedded-server";
+import { createWebServer } from "./web-server";
 
 export function findGitRoot(startPath: string): string {
   let current = resolve(startPath);
@@ -46,28 +47,6 @@ export function openBrowserAddress(
 
 function createOpenBrowserHandler(openBrowser = true): ((address: string) => void) | undefined {
   return openBrowser ? (address) => openBrowserAddress(address) : undefined;
-}
-
-export function parsePortEnv(
-  value: string | undefined,
-  defaultPort: number,
-  variableName = "PORT",
-): number {
-  if (value === undefined) {
-    return defaultPort;
-  }
-
-  const trimmed = value.trim();
-  if (!/^\d+$/.test(trimmed)) {
-    throw new Error(`Invalid ${variableName} "${value}": expected an integer from 1 to 65535.`);
-  }
-
-  const port = Number(trimmed);
-  if (!Number.isInteger(port) || port < 1 || port > 65535) {
-    throw new Error(`Invalid ${variableName} "${value}": expected an integer from 1 to 65535.`);
-  }
-
-  return port;
 }
 
 export function createDevServerFactories(

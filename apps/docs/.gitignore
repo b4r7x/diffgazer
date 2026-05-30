@@ -3,6 +3,7 @@
 .vite/
 .cache/
 .source/
+.lighthouseci/
 src/routeTree.gen.ts
 src/generated/
 content/docs/components/

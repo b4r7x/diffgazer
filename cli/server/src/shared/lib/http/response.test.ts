@@ -37,13 +37,13 @@ describe("errorResponse", () => {
     });
   });
 
-  it("falls back to 500 for unsupported status codes", async () => {
-    const { response, body } = await requestError((ctx) =>
-      errorResponse(ctx, "Weird error", "CUSTOM_CODE", 999),
-    );
-
-    expect(response.status).toBe(500);
-    expect(body.error).toEqual({ message: "Weird error", code: "CUSTOM_CODE" });
+  it("emits each declared error status, including 413 payload-too-large", async () => {
+    for (const status of [400, 401, 403, 404, 409, 413, 422, 429, 500, 503] as const) {
+      const { response } = await requestError((ctx) =>
+        errorResponse(ctx, "err", "CODE", status),
+      );
+      expect(response.status).toBe(status);
+    }
   });
 });
 

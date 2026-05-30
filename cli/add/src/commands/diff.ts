@@ -31,17 +31,43 @@ function resolveIntegrationMode(cwd: string, itemName: string, manifestPath: str
 
 // Materialize each extracted chunk to a tmp file so the diff workflow's
 // readFileSync(localPath) sees the chunk content rather than the full
-// styles.css. Unique dir via mkdtempSync; cleaned up on process exit.
+// styles.css. Unique dir via mkdtempSync, removed by cleanup handlers
+// registered the first time a scratch file is requested. A bare
+// `process.on("exit")` handler covers normal completion and the `process.exit`
+// the CLI error handler performs, but never runs on default SIGINT/SIGTERM
+// disposition — so those signals get their own handlers that clean up and
+// re-exit with the conventional code.
 let chunkScratchDir: string | null = null;
+
 function chunkScratchPath(itemName: string, hash: string): string {
   if (!chunkScratchDir) {
     chunkScratchDir = mkdtempSync(join(tmpdir(), "dgadd-diff-"));
-    process.on("exit", () => {
-      try { rmSync(chunkScratchDir!, { recursive: true, force: true }); } catch {}
-    });
+    installScratchCleanupHandlers();
   }
   const safeName = itemName.replace(/[^a-zA-Z0-9_-]/g, "_");
   return join(chunkScratchDir, `${safeName}-${hash}.css`);
+}
+
+function cleanupChunkScratchDir(): void {
+  if (!chunkScratchDir) return;
+  try {
+    rmSync(chunkScratchDir, { recursive: true, force: true });
+  } catch {
+    // Non-critical: a failed rm only leaves an OS-tmp dir the OS reclaims.
+  }
+  chunkScratchDir = null;
+}
+
+const SIGNAL_EXIT_CODES = { SIGINT: 130, SIGTERM: 143 } as const;
+
+function installScratchCleanupHandlers(): void {
+  process.once("exit", cleanupChunkScratchDir);
+  for (const signal of Object.keys(SIGNAL_EXIT_CODES) as Array<keyof typeof SIGNAL_EXIT_CODES>) {
+    process.once(signal, () => {
+      cleanupChunkScratchDir();
+      process.exit(SIGNAL_EXIT_CODES[signal]);
+    });
+  }
 }
 
 interface ChunkDriftFile {

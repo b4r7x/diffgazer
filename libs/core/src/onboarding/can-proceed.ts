@@ -1,4 +1,4 @@
-import type { OnboardingStep, WizardData } from "./types.js";
+import type { OnboardingStep, WizardData } from "./types";
 
 export function canProceed(step: OnboardingStep, data: WizardData): boolean {
   switch (step) {

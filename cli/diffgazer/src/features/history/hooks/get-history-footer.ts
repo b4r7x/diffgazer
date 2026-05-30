@@ -1,5 +1,5 @@
 import type { Shortcut } from "@diffgazer/core/schemas/presentation";
-import type { HistoryFocusZone } from "../types.js";
+import type { HistoryFocusZone } from "../types";
 
 export interface HistoryFooter {
   shortcuts: Shortcut[];

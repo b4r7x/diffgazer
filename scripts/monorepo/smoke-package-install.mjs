@@ -1,8 +1,15 @@
 #!/usr/bin/env node
 
+// Exit-code contract: this smoke runner exits non-zero when a check fails. A
+// failed assertion throws, which Node surfaces as a non-zero exit; temp-project
+// cleanup runs inside withTempPackageProject's try/finally before the throw
+// propagates. Do not swap the throws for process.exit() — that would bypass the
+// finally cleanup and leak temp project directories.
+
 import {
   writeKeysPackageModeSmoke,
   writeUiCommonImportSmoke,
+  writeUiKeysAbsentSmoke,
   writeUiNextPackageSmoke,
   writeUiPackageModeSmoke,
   writeUiVitePackageSmoke,
@@ -27,6 +34,19 @@ function assertSmoke(name, result, expect = /OK/) {
 }
 
 const packages = [
+  // Runs first so the keys-optional contract (HANDOFF-1 / DECISION-1) is proven
+  // before any keys-installing fixture; it does not depend on a built keys package.
+  {
+    name: "@diffgazer/ui",
+    label: "@diffgazer/ui without @diffgazer/keys (optional peer)",
+    installDeps: [
+      "react@^19.2.0",
+      "react-dom@^19.2.0",
+    ],
+    prepare: (projectDir) => writeUiKeysAbsentSmoke(projectDir),
+    steps: [step("node", "keys-absent.mjs")],
+    expect: /OK: @diffgazer\/ui works without @diffgazer\/keys/,
+  },
   {
     name: "@diffgazer/ui",
     label: "@diffgazer/ui common imports",

@@ -56,6 +56,25 @@ describe("rate limit middleware", () => {
     expect(afterReset.status).toBe(200);
   });
 
+  it("keeps state per static key, so request volume does not grow the window map", async () => {
+    // The window map is keyed by the fixed middleware key (config:models,
+    // review:create, review:drilldown) — never per-request or per-client — so a
+    // flood of requests reuses one entry rather than accumulating unbounded state.
+    vi.useFakeTimers();
+    const app = createApp("test:bounded", 5, 1_000);
+
+    for (let cycle = 0; cycle < 100; cycle++) {
+      for (let i = 0; i < 5; i++) {
+        const ok = await app.request("/test", { method: "POST" });
+        expect(ok.status).toBe(200);
+      }
+      const blocked = await app.request("/test", { method: "POST" });
+      expect(blocked.status).toBe(429);
+      // Window expiry resets the single entry in place — no new keys created.
+      vi.advanceTimersByTime(1_001);
+    }
+  });
+
   it("tracks separate keys independently", async () => {
     const app = new Hono();
     app.post("/a", createRateLimitMiddleware("key:a", { maxRequests: 1, windowMs: 60_000 }), (c) =>

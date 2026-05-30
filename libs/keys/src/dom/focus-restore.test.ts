@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { getRestorableFocusTarget, restoreFocus } from "./focus-restore";
+import { getRestorableFocusTarget, restoreFocus } from "./focus-restore.js";
 
 function button(label: string, ownerDocument: Document = document) {
   const element = ownerDocument.createElement("button");

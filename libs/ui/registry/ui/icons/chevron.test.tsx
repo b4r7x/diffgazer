@@ -1,7 +1,7 @@
 import { createRef } from "react";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { Chevron } from "./index.js";
+import { Chevron } from "./index";
 
 // axe skipped: decorative SVG icon with no semantic role under test.
 

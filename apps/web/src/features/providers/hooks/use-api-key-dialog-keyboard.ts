@@ -1,7 +1,7 @@
 import { useEffect, useEffectEvent, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type RefCallback, type RefObject } from "react";
 import { getVerticalArrowDirection, useActionRowNavigation, useFocusZone, useKey, useScope } from "@diffgazer/keys";
 import type { FocusElement } from "@/types/focus-element";
-import type { InputMethod } from "@/types/input-method";
+import type { InputMethod } from "@diffgazer/core/onboarding";
 
 type FocusZone = "radios" | "input" | "footer";
 

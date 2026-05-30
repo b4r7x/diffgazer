@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { createGitService } from "../../shared/lib/git/service.js";
 import type { AIClient } from "../../shared/lib/ai/types.js";
+import type { FullReviewStreamEvent, StepId } from "@diffgazer/core/schemas/events";
+import { log } from "../../shared/lib/log.js";
 import {
   ReviewErrorCode,
 } from "@diffgazer/core/schemas/review";
@@ -31,6 +33,29 @@ import {
   normalizeReviewStreamError,
   reviewStreamError,
 } from "./stream-events.js";
+
+/** Logs per-step latency from the review stream so each phase is observable. */
+function logStepTiming(
+  event: FullReviewStreamEvent,
+  reviewId: string,
+  startedAt: Map<StepId, number>,
+): void {
+  if (event.type === "step_start") {
+    startedAt.set(event.step, performance.now());
+    return;
+  }
+  if (event.type === "step_complete" || event.type === "step_error") {
+    const started = startedAt.get(event.step);
+    if (started === undefined) return;
+    startedAt.delete(event.step);
+    log(event.type === "step_error" ? "warn" : "info", "review_step", {
+      reviewId,
+      step: event.step,
+      status: event.type === "step_error" ? "error" : "complete",
+      durationMs: Math.round((performance.now() - started) * 1000) / 1000,
+    });
+  }
+}
 
 async function handleReviewFailure(
   error: unknown,
@@ -97,7 +122,7 @@ export async function createReviewSession(
   const scopeKey = buildScopeKey({ files, lenses: lensIds, profile: profileId });
 
   if (headCommit && statusHashResult !== null) {
-    const existingSession = getActiveSessionForProject(projectPath, headCommit, statusHash, mode, scopeKey);
+    const existingSession = getActiveSessionForProject(projectPath, { headCommit, statusHash, mode, scopeKey });
     if (existingSession) {
       return ok({ reviewId: existingSession.reviewId, session: existingSession });
     }
@@ -106,7 +131,7 @@ export async function createReviewSession(
   cancelStaleSessionsForProjectMode(projectPath, mode, headCommit, statusHash);
 
   const reviewId = randomUUID();
-  const session = createSession(reviewId, projectPath, headCommit, statusHash, mode, scopeKey);
+  const session = createSession(reviewId, { projectPath, headCommit, statusHash, mode, scopeKey });
   markReady(reviewId);
 
   void runReviewSession(
@@ -138,8 +163,10 @@ async function runReviewSession(
   const projectPath = projectPathOption ?? process.cwd();
   const gitService = createGitService({ cwd: projectPath });
 
+  const stepStartedAt = new Map<StepId, number>();
   const emit: EmitFn = async (event) => {
     if (signal.aborted) return;
+    logStepTiming(event, reviewId, stepStartedAt);
     addEvent(reviewId, event);
   };
 

@@ -15,7 +15,7 @@ const trackedIds = new Set<string>();
 
 function createTrackedSession(reviewId: string) {
   trackedIds.add(reviewId);
-  const session = createSession(reviewId, "/project", "abc", "hash", "staged");
+  const session = createSession(reviewId, { projectPath: "/project", headCommit: "abc", statusHash: "hash", mode: "staged" });
   markReady(reviewId);
   return session;
 }

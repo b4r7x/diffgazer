@@ -1,6 +1,6 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { useFocusRestore } from "./use-focus-restore";
+import { useFocusRestore } from "./use-focus-restore.js";
 
 function button(label: string) {
   const element = document.createElement("button");

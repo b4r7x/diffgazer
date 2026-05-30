@@ -1,8 +1,9 @@
-import { printDiffgazerBanner } from "./banner.js";
-import { ensureShutdownToken } from "./lib/shutdown-token.js";
-import type { ServerController } from "./lib/servers/create-process-server.js";
-import { createServerFactories as createModeServerFactories } from "./lib/servers/server-factories.js";
-import type { CliMode } from "./types/cli.js";
+import { printDiffgazerBanner } from "./banner";
+import { config } from "./config";
+import { ensureShutdownToken } from "./lib/shutdown-token";
+import type { ServerController } from "./lib/servers/create-process-server";
+import { createServerFactories as createModeServerFactories } from "./lib/servers/server-factories";
+import type { CliMode } from "./types/cli";
 
 interface WebLauncherOptions {
   mode: CliMode;
@@ -13,8 +14,6 @@ interface WebLauncherDependencies {
   createServerFactories?: typeof createModeServerFactories;
   printBanner?: () => void;
 }
-
-const SHUTDOWN_TIMEOUT_MS = 3000;
 
 export function startWeb(
   options: WebLauncherOptions,
@@ -33,7 +32,7 @@ export function startWeb(
   };
 
   const stopAndExit = (): void => {
-    void stopWithTimeout(stop, SHUTDOWN_TIMEOUT_MS).finally(() => {
+    void stopWithTimeout(stop, config.shutdown.gracefulMs).finally(() => {
       process.exit(0);
     });
   };

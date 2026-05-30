@@ -1,7 +1,7 @@
 import type { AgentStreamEvent, AgentId, StepEvent, EnrichEvent } from "@diffgazer/core/schemas/events";
 import { AGENT_METADATA, STEP_METADATA } from "@diffgazer/core/schemas/events";
 import type { LogEntryData } from "@diffgazer/core/schemas/presentation";
-import { truncate } from "../strings.js";
+import { truncate } from "../strings";
 
 function getAgent(agentId: AgentId): { label: string; name: string } {
   const meta = AGENT_METADATA[agentId];

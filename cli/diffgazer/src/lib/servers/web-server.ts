@@ -1,7 +1,7 @@
 import {
   createProcessServer,
   type ServerController,
-} from "./create-process-server.js";
+} from "./create-process-server";
 
 export interface WebServerConfig {
   cwd: string;

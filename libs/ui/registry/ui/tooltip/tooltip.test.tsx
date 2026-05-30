@@ -1,8 +1,8 @@
 import { render, screen, fireEvent } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { axe } from "../../../testing/utils.js"
+import { axe } from "../../../testing/utils"
 import { describe, it, expect } from "vitest"
-import { Tooltip } from "./index.js"
+import { Tooltip } from "./index"
 
 describe("Tooltip", () => {
   it("renders content when defaultOpen is true", () => {

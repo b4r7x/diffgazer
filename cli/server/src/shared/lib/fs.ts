@@ -119,6 +119,8 @@ export async function writeJsonFile(
     await fs.promises.writeFile(tempPath, content, { mode });
     await fs.promises.rename(tempPath, filePath);
   } catch (error) {
+    // Best-effort temp-file cleanup; the original error is what callers need, and
+    // a leftover .tmp on an unlink failure is harmless (it is uniquely named).
     try { await fs.promises.unlink(tempPath); } catch {}
     throw error;
   }
@@ -134,6 +136,8 @@ export async function atomicWriteFile(
     await fs.promises.writeFile(tempPath, content, { mode });
     await fs.promises.rename(tempPath, filePath);
   } catch (error) {
+    // Best-effort temp-file cleanup; the original error is what callers need, and
+    // a leftover .tmp on an unlink failure is harmless (it is uniquely named).
     try { await fs.promises.unlink(tempPath); } catch {}
     throw error;
   }

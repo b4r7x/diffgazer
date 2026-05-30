@@ -8,27 +8,38 @@ import {
 import { basename, join, resolve } from "node:path";
 import { ensureExists, resetDir, collectJsonFiles, resolveInside } from "../utils/fs.js";
 import { writeJson } from "../utils/json.js";
+import { assertSafeLibraryId } from "./library-id-validation.js";
 import { defaultLogger, type Logger } from "../logger.js";
 import type { LoadedLibraryArtifacts, AfterSyncContext, SyncOutputPaths } from "./types.js";
-
-const SAFE_LIBRARY_ID_RE = /^[a-z0-9][a-z0-9-]*$/i;
-
-function assertSafeLibraryId(id: string, label: string): void {
-  if (SAFE_LIBRARY_ID_RE.test(id)) return;
-  throw new Error(`${label} must be a safe library id`);
-}
 
 function resolveNamespaceDir(baseDir: string, id: string, label: string): string {
   assertSafeLibraryId(id, label);
   return resolveInside(baseDir, id, label);
 }
 
-function assertNoUnrewrittenOrigin(dir: string, targetOrigin: string, sourceOrigin: string): void {
+function assertNoUnrewrittenOrigin(
+  dir: string,
+  targetOrigin: string,
+  sourceOrigin: string,
+  logger: Logger,
+): void {
   if (targetOrigin === sourceOrigin) return;
 
   const offenders: string[] = [];
   for (const jsonFile of collectJsonFiles(dir)) {
-    const raw = readFileSync(jsonFile, "utf-8");
+    if (!existsSync(jsonFile)) {
+      logger.debug(`[docs-sync] Skipping origin check for missing file: ${jsonFile}`);
+      continue;
+    }
+    let raw: string;
+    try {
+      raw = readFileSync(jsonFile, "utf-8");
+    } catch (error) {
+      throw new Error(
+        `Failed to read registry output for origin check: ${jsonFile}`,
+        { cause: error },
+      );
+    }
     if (raw.includes(sourceOrigin)) {
       offenders.push(jsonFile);
     }
@@ -205,6 +216,7 @@ function syncRegistries(
   publicRegistryDir: string,
   origin: string,
   sourceOrigin: string,
+  logger: Logger,
 ): void {
   resetDir(publicRegistryDir);
 
@@ -225,7 +237,7 @@ function syncRegistries(
     cpSync(sourceDir, outputDir, { recursive: true, force: true });
   }
 
-  assertNoUnrewrittenOrigin(publicRegistryDir, origin, sourceOrigin);
+  assertNoUnrewrittenOrigin(publicRegistryDir, origin, sourceOrigin, logger);
 }
 
 function copyExamplesForLibrary(
@@ -260,6 +272,9 @@ function copyExamplesForLibrary(
   );
 }
 
+// Precondition: every `artifact.id` (including `primaryArtifact.id`) must already
+// be a safe library id. `syncDocsFromArtifacts` validates this at the public
+// boundary; each namespaced path resolution here re-checks via `resolveNamespaceDir`.
 export function runDocsSyncPass(params: {
   artifacts: LoadedLibraryArtifacts[];
   primaryArtifact: LoadedLibraryArtifacts;
@@ -280,11 +295,6 @@ export function runDocsSyncPass(params: {
     rootTitle,
     logger = defaultLogger,
   } = params;
-
-  assertSafeLibraryId(primaryArtifact.id, "Primary library id");
-  for (const artifact of artifacts) {
-    assertSafeLibraryId(artifact.id, `Library id "${artifact.id}"`);
-  }
 
   for (const artifact of artifacts) {
     const docsSource = resolve(artifact.artifactRoot, artifact.manifest.docs.contentDir);
@@ -334,5 +344,5 @@ export function runDocsSyncPass(params: {
   logger.info(
     `[docs-sync] Syncing registries (origin asserted: ${origin})...`,
   );
-  syncRegistries(artifacts, paths.publicRegistryDir, origin, sourceOrigin);
+  syncRegistries(artifacts, paths.publicRegistryDir, origin, sourceOrigin, logger);
 }

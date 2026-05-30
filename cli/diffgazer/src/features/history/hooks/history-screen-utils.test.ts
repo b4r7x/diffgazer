@@ -6,7 +6,7 @@ import {
   mapHistoryRun,
   nextHistoryZone,
   sortIssuesBySeverity,
-} from "./history-screen-utils.js";
+} from "./history-screen-utils";
 
 function makeReview(overrides: Partial<ReviewMetadata> = {}): ReviewMetadata {
   return {

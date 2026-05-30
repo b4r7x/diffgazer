@@ -50,17 +50,54 @@ export function buildComponentFileOps(
   });
 }
 
+// Multiple keys hooks can resolve to the same installed file (shared helpers
+// under hooks/utils/*). Merge those into one owned file op: identical content
+// collapses while every requesting hook is recorded as a co-owner, and
+// divergent content for the same target is a generator bug worth surfacing.
+function mergeKeysHookFileOps(
+  resolvedFiles: Array<{ hook: string; relativePath: string; content: string }>,
+  cwd: string,
+  hooksFsPath: string,
+): OwnedFileOp[] {
+  const byTargetPath = new Map<string, OwnedFileOp>();
+  for (const file of resolvedFiles) {
+    const sourceName = `keys/${file.hook}`;
+    const targetPath = resolveInstallPath(cwd, hooksFsPath, file.relativePath);
+    const content = rewriteRelativeJsExtensionsForCopy(file.content);
+    const existing = byTargetPath.get(targetPath);
+
+    if (existing) {
+      if (existing.content !== content) {
+        throw new Error(`Conflicting bundled keys hook content for "${file.relativePath}".`);
+      }
+      existing.sourceNames = [
+        ...new Set([existing.sourceName, ...(existing.sourceNames ?? []), sourceName]
+          .filter((name): name is string => name !== undefined)),
+      ];
+      continue;
+    }
+
+    byTargetPath.set(targetPath, {
+      targetPath,
+      content,
+      relativePath: file.relativePath,
+      installDir: hooksFsPath,
+      sourceName,
+      sourceNames: [sourceName],
+    });
+  }
+
+  return [...byTargetPath.values()];
+}
+
 export function buildKeysFileOps(
   neededKeysHooks: string[],
   cwd: string,
   config: ResolvedConfig,
 ): FileOp[] {
   assertInsideProject(cwd, config.hooksFsPath);
-  const resolvedHooks = neededKeysHooks.map((hook) => ({
-    hook,
-    resolved: resolveKeysCopyHookFiles([hook]),
-  }));
-  const missingHooks = resolvedHooks.flatMap(({ resolved }) => resolved.missingHooks);
+  const resolvedHooks = neededKeysHooks.map((hook) => resolveKeysCopyHookFiles([hook]));
+  const missingHooks = resolvedHooks.flatMap((resolved) => resolved.missingHooks);
 
   if (missingHooks.length > 0) {
     throw new Error(
@@ -69,36 +106,6 @@ export function buildKeysFileOps(
     );
   }
 
-  const byTargetPath = new Map<string, OwnedFileOp>();
-  for (const { resolved } of resolvedHooks) {
-    for (const file of resolved.files) {
-      const sourceName = `keys/${file.hook}`;
-      const targetPath = resolveInstallPath(cwd, config.hooksFsPath, file.relativePath);
-      const content = rewriteRelativeJsExtensionsForCopy(file.content);
-      const existing = byTargetPath.get(targetPath);
-
-      if (existing) {
-        if (existing.content !== content) {
-          throw new Error(`Conflicting bundled keys hook content for "${file.relativePath}".`);
-        }
-        existing.sourceNames = [
-          ...new Set([existing.sourceName, ...(existing.sourceNames ?? []), sourceName]
-            .filter((name): name is string => name !== undefined)),
-        ];
-        continue;
-      }
-
-      const op: OwnedFileOp = {
-        targetPath,
-        content,
-        relativePath: file.relativePath,
-        installDir: config.hooksFsPath,
-        sourceName,
-        sourceNames: [sourceName],
-      };
-      byTargetPath.set(targetPath, op);
-    }
-  }
-
-  return [...byTargetPath.values()];
+  const resolvedFiles = resolvedHooks.flatMap((resolved) => resolved.files);
+  return mergeKeysHookFileOps(resolvedFiles, cwd, config.hooksFsPath);
 }

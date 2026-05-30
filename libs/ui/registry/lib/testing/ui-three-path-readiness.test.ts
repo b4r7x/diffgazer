@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   transformUiPublicRegistryKeysImportContent,
-} from "../../../scripts/transform-public-registry-keys-imports.js";
+} from "../../../scripts/transform-public-registry-keys-imports";
 
 const ROOT = resolve(fileURLToPath(import.meta.url), "../../../..");
 const PUBLIC_REGISTRY_DIR = resolve(ROOT, "public/r");

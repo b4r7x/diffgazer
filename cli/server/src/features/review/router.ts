@@ -1,7 +1,7 @@
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { zodErrorHandler } from "../../shared/lib/http/response.js";
-import { createBodyLimitMiddleware } from "../../shared/middlewares/body-limit.js";
+import { createBodyLimitMiddleware, DEFAULT_BODY_LIMIT_KB } from "../../shared/middlewares/body-limit.js";
 import { createRateLimitMiddleware } from "../../shared/middlewares/rate-limit.js";
 import { requireSetup } from "../../shared/middlewares/setup-guard.js";
 import { requireRepoAccess } from "../../shared/middlewares/trust-guard.js";
@@ -26,7 +26,7 @@ import { getContextHandler, refreshContextHandler } from "./context-routes.js";
 
 const reviewRouter = new Hono();
 
-const bodyLimitMiddleware = createBodyLimitMiddleware(50);
+const bodyLimitMiddleware = createBodyLimitMiddleware(DEFAULT_BODY_LIMIT_KB);
 const reviewCreationLimit = createRateLimitMiddleware("review:create", { maxRequests: 10, windowMs: 60_000 });
 const drilldownLimit = createRateLimitMiddleware("review:drilldown", { maxRequests: 20, windowMs: 60_000 });
 

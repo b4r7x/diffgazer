@@ -11,8 +11,10 @@ import { useMemo, useSyncExternalStore } from "react";
  * hint or a cookie instead.
  */
 export function useIsMobile(breakpoint = 1024): boolean {
-  // Memoize subscribe/getSnapshot so useSyncExternalStore does not detach and
-  // re-attach the matchMedia listener on every parent render.
+  // Required, not defensive: useSyncExternalStore re-subscribes whenever the
+  // subscribe/getSnapshot identities change, so under React 19 concurrent
+  // rendering an unmemoized pair would detach and re-attach the matchMedia
+  // listener on every parent render. Memoizing keeps the subscription stable.
   const { subscribe, getSnapshot } = useMemo(() => {
     const query = `(max-width: ${breakpoint - 1}px)`;
     return {

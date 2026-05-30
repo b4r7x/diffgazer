@@ -46,23 +46,50 @@ function isTerminalEvent(event: FullReviewStreamEvent): boolean {
   return event.type === "complete" || event.type === "error";
 }
 
-function storeSessionEvent(session: ActiveSession, event: FullReviewStreamEvent): boolean {
+/**
+ * Builds the non-terminal notice replayed/streamed to the client when the
+ * per-session event cap is hit and progress events start being dropped. It is a
+ * `chunk` event because that is the only union member with a free-text payload
+ * and a no-op effect on UI step/agent state (it maps to the optional `onChunk`
+ * client callback). This signals partial progress to the client instead of
+ * dropping events silently. (F155)
+ */
+function capWarningEvent(): FullReviewStreamEvent {
+  return {
+    type: "chunk",
+    content: `[diffgazer] Event cap (${MAX_EVENTS_PER_SESSION}) reached; subsequent progress events may be incomplete.`,
+  };
+}
+
+type StoreEventResult =
+  | { stored: true }
+  | { stored: false; firstDrop: boolean };
+
+/**
+ * Appends an event to the session buffer, bounding growth at
+ * `MAX_EVENTS_PER_SESSION`. Terminal events overwrite the last slot so the
+ * outcome is always observable. Non-terminal events past the cap are dropped;
+ * the first such drop is reported via `firstDrop` so the caller can emit a
+ * single client-facing cap notice.
+ */
+function storeSessionEvent(session: ActiveSession, event: FullReviewStreamEvent): StoreEventResult {
   if (session.events.length < MAX_EVENTS_PER_SESSION) {
     session.events.push(event);
-    return true;
+    return { stored: true };
   }
 
-  if (!session.capWarningEmitted) {
+  const firstDrop = !session.capWarningEmitted;
+  if (firstDrop) {
     session.capWarningEmitted = true;
     console.warn(`[sessions] Event cap (${MAX_EVENTS_PER_SESSION}) reached for session ${session.reviewId}`);
   }
 
   if (!isTerminalEvent(event)) {
-    return false;
+    return { stored: false, firstDrop };
   }
 
   session.events[session.events.length - 1] = event;
-  return true;
+  return { stored: true };
 }
 
 function notifySubscribers(session: ActiveSession, event: FullReviewStreamEvent): void {
@@ -137,16 +164,32 @@ function cleanupStaleSessions(): void {
   }
 }
 
-const cleanupInterval = setInterval(cleanupStaleSessions, 5 * 60 * 1000);
+let cleanupInterval: ReturnType<typeof setInterval> | null = setInterval(
+  cleanupStaleSessions,
+  5 * 60 * 1000,
+);
 cleanupInterval.unref();
+
+/**
+ * Clears the stale-session cleanup interval. Call on server shutdown/SIGTERM and
+ * in test teardown so the timer does not outlive the process or leak across tests.
+ */
+export function shutdownSessions(): void {
+  if (cleanupInterval) {
+    clearInterval(cleanupInterval);
+    cleanupInterval = null;
+  }
+}
 
 export function createSession(
   reviewId: string,
-  projectPath: string,
-  headCommit: string,
-  statusHash: string,
-  mode: ReviewMode,
-  scopeKey: string = "",
+  options: {
+    projectPath: string;
+    headCommit: string;
+    statusHash: string;
+    mode: ReviewMode;
+    scopeKey?: string;
+  },
 ): ActiveSession {
   if (activeSessions.size >= MAX_SESSIONS) {
     evictOldestSession();
@@ -154,11 +197,11 @@ export function createSession(
 
   const session: ActiveSession = {
     reviewId,
-    projectPath,
-    headCommit,
-    statusHash,
-    mode,
-    scopeKey,
+    projectPath: options.projectPath,
+    headCommit: options.headCommit,
+    statusHash: options.statusHash,
+    mode: options.mode,
+    scopeKey: options.scopeKey ?? "",
     startedAt: new Date(),
     events: [],
     isComplete: false,
@@ -181,9 +224,22 @@ export function markReady(reviewId: string): void {
 
 export function addEvent(reviewId: string, event: FullReviewStreamEvent): void {
   const session = activeSessions.get(reviewId);
-  if (session && !session.isComplete) {
-    if (!storeSessionEvent(session, event)) return;
+  if (!session || session.isComplete) return;
+
+  const result = storeSessionEvent(session, event);
+  if (result.stored) {
     notifySubscribers(session, event);
+    return;
+  }
+
+  // Event was dropped at the cap. On the first drop, surface a single
+  // non-terminal notice so the client knows the stream is incomplete instead
+  // of the events vanishing silently. The notice is stored (one-time overflow
+  // past the cap) so late SSE replays still see it, then streamed live. (F155)
+  if (result.firstDrop) {
+    const notice = capWarningEvent();
+    session.events.push(notice);
+    notifySubscribers(session, notice);
   }
 }
 
@@ -267,17 +323,20 @@ export function onSessionComplete(
 
 export function getActiveSessionForProject(
   projectPath: string,
-  headCommit: string,
-  statusHash: string,
-  mode: ReviewMode,
-  scopeKey: string = "",
+  options: {
+    headCommit: string;
+    statusHash: string;
+    mode: ReviewMode;
+    scopeKey?: string;
+  },
 ): ActiveSession | undefined {
+  const scopeKey = options.scopeKey ?? "";
   for (const session of activeSessions.values()) {
     if (
       session.projectPath === projectPath &&
-      session.headCommit === headCommit &&
-      session.statusHash === statusHash &&
-      session.mode === mode &&
+      session.headCommit === options.headCommit &&
+      session.statusHash === options.statusHash &&
+      session.mode === options.mode &&
       session.scopeKey === scopeKey &&
       !session.isComplete &&
       session.isReady

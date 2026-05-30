@@ -3,9 +3,9 @@ import type { Context } from "hono";
 import { err } from "@diffgazer/core/result";
 import { createError } from "@diffgazer/core/errors";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
-import { errorResponse } from "../../shared/lib/http/response.js";
+import { errorResponse, type ErrorStatus } from "../../shared/lib/http/response.js";
 import { getProjectRoot } from "../../shared/lib/http/request.js";
-import { isValidProjectPath } from "../../shared/lib/validation.js";
+import { isValidProjectPath, resolvesToSameProject } from "../../shared/lib/validation.js";
 import { createGitService } from "../../shared/lib/git/service.js";
 import {
   deleteReview as deleteStoredReview,
@@ -18,6 +18,7 @@ import { handleDrilldownRequest } from "./drilldown.js";
 import { ReviewErrorCode, type ReviewMode } from "@diffgazer/core/schemas/review";
 import { getActiveSessionForProject, getSession, cancelSession, deleteSession } from "./sessions.js";
 import { handleStoreError } from "./errors.js";
+import type { HandleDrilldownError } from "./types.js";
 
 export async function getReviewForProject(id: string, projectPath: string) {
   const result = await getStoredReview(id);
@@ -28,20 +29,33 @@ export async function getReviewForProject(id: string, projectPath: string) {
   return result;
 }
 
-export function getRequestedProjectPath(c: Context): string | Response {
+type RequestedProjectPath =
+  | { ok: true; projectPath: string }
+  | { ok: false; response: Response };
+
+export async function getRequestedProjectPath(c: Context): Promise<RequestedProjectPath> {
   const projectPath = getProjectRoot(c);
   const queryProjectPath = c.req.query("projectPath");
-  if (!queryProjectPath) return projectPath;
+  if (!queryProjectPath) return { ok: true, projectPath };
 
   if (!isValidProjectPath(queryProjectPath)) {
-    return errorResponse(c, "Invalid project path", ErrorCode.INVALID_PATH, 400);
+    return { ok: false, response: errorResponse(c, "Invalid project path", ErrorCode.INVALID_PATH, 400) };
   }
 
-  if (resolve(queryProjectPath) !== projectPath) {
-    return errorResponse(c, "projectPath does not match request project", ErrorCode.VALIDATION_ERROR, 400);
+  // The requested path must identify the request's project root. The fast string
+  // check covers the common exact-match case; the realpath check follows symlinks
+  // so a spoofed or traversal path that resolves elsewhere is rejected.
+  const matchesProject =
+    resolve(queryProjectPath) === projectPath ||
+    (await resolvesToSameProject(queryProjectPath, projectPath));
+  if (!matchesProject) {
+    return {
+      ok: false,
+      response: errorResponse(c, "projectPath does not match request project", ErrorCode.VALIDATION_ERROR, 400),
+    };
   }
 
-  return projectPath;
+  return { ok: true, projectPath };
 }
 
 export async function createReviewHandler(
@@ -92,7 +106,11 @@ export async function getActiveSessionHandler(
   if (statusHashResult === null) {
     return c.json({ session: null });
   }
-  const session = getActiveSessionForProject(projectPath, headCommitResult.value, statusHashResult, mode);
+  const session = getActiveSessionForProject(projectPath, {
+    headCommit: headCommitResult.value,
+    statusHash: statusHashResult,
+    mode,
+  });
   if (!session) {
     return c.json({ session: null });
   }
@@ -109,10 +127,10 @@ export async function getActiveSessionHandler(
 }
 
 export async function listReviewsHandler(c: Context): Promise<Response> {
-  const projectPath = getRequestedProjectPath(c);
-  if (projectPath instanceof Response) return projectPath;
+  const requested = await getRequestedProjectPath(c);
+  if (!requested.ok) return requested.response;
 
-  const result = await listStoredReviews(projectPath);
+  const result = await listStoredReviews(requested.projectPath);
   if (!result.ok) return handleStoreError(c, result.error);
 
   return c.json({
@@ -188,15 +206,20 @@ export async function drilldownHandler(
   );
 
   if (!result.ok) {
-    const code = result.error.code;
-    let status: 400 | 404 | 500 = 500;
-    if (code === "ISSUE_NOT_FOUND" || code === "NOT_FOUND") {
-      status = 404;
-    } else if (code === "VALIDATION_ERROR") {
-      status = 400;
-    }
-    return errorResponse(c, result.error.message, code, status);
+    return errorResponse(c, result.error.message, result.error.code, drilldownErrorStatus(result.error.code));
   }
 
   return c.json({ drilldown: result.value });
+}
+
+function drilldownErrorStatus(code: HandleDrilldownError["code"]): ErrorStatus {
+  switch (code) {
+    case "ISSUE_NOT_FOUND":
+    case "NOT_FOUND":
+      return 404;
+    case "VALIDATION_ERROR":
+      return 400;
+    default:
+      return 500;
+  }
 }

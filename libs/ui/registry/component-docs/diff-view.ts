@@ -5,6 +5,11 @@ export const diffViewDoc: ComponentDoc = {
     "Diff viewer with unified and side-by-side modes, five visual variants (hairline, bare, dense, viewfinder, statusbar), orthogonal density and palette axes, an opt-in vertical scroll wrapper, and a consumer-filled status-bar slot. Renders as a <figure> with accessible-name resolution via aria-labelledby (figcaption) or aria-label fallback, and exposes keyboard hunk navigation (j/k + Escape).",
   notes: [
     {
+      title: "Requires @diffgazer/keys (package mode)",
+      content:
+        "DiffView's keyboard hunk navigation (j/k + Escape) imports from the optional @diffgazer/keys peer. Package/npm consumers must install it: `npm install @diffgazer/keys`. Importing @diffgazer/ui/components/diff-view without keys fails at module load with an error naming the missing @diffgazer/keys package. Copy/dgadd consumers do not need the package — copy mode rewrites the keyboard hooks to local source.",
+    },
+    {
       title: "Variants",
       content:
         'variant="hairline" (default) is the dashboard-grade safe default with a 1px soft border. variant="bare" removes all chrome and renders a 2px left rule that turns accent on hover; the figcaption is suppressed. variant="dense" tightens typography and adds visible dividers between number columns for Gerrit/Reviewable-style review density. variant="viewfinder" renders four bracketed corners for the diff family-consistent inspection language. variant="statusbar" renders a hairline top + content + an optional consumer-filled bottom slot. All variant chrome is driven by [data-variant] selectors in shared/diff-view.css.',

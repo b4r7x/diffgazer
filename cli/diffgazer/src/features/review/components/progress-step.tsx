@@ -3,10 +3,10 @@ import type {
   ProgressStatus,
   ProgressSubstepData,
 } from "@diffgazer/core/schemas/presentation";
-import { Spinner } from "../../../components/ui/spinner.js";
-import { Badge } from "../../../components/ui/badge.js";
-import { useTheme } from "../../../theme/theme-context.js";
-import type { CliColorTokens } from "../../../theme/palettes.js";
+import { Spinner } from "../../../components/ui/spinner";
+import { Badge } from "../../../components/ui/badge";
+import { useTheme } from "../../../theme/theme-context";
+import type { CliColorTokens } from "../../../theme/palettes";
 
 export interface ProgressStepProps {
   name: string;

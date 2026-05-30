@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { resolveTabTarget } from "../resolve-tab-target.js"
+import { resolveTabTarget } from "../resolve-tab-target"
 
 describe("resolveTabTarget", () => {
   function makeContainer(items: { value: string; disabled?: boolean }[]) {

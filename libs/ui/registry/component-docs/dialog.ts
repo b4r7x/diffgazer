@@ -19,6 +19,11 @@ export const dialogDoc: ComponentDoc = {
   ],
   notes: [
     {
+      title: "Requires @diffgazer/keys (package mode)",
+      content:
+        "DialogContent's focus restore (returning focus to the trigger on close) imports from the optional @diffgazer/keys peer. Package/npm consumers must install it: `npm install @diffgazer/keys`. Importing @diffgazer/ui/components/dialog without keys fails at module load with an error naming the missing @diffgazer/keys package. Copy/dgadd consumers do not need the package — copy mode rewrites the focus-restore hook to local source.",
+    },
+    {
       title: "Compound Architecture",
       content:
         "Dialog is composed of 10 parts: Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogFooter (with DialogFooter.Hints and DialogFooter.Actions sub-components), DialogClose, and DialogAction.",

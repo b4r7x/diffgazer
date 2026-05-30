@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { getErrorMessage } from "@diffgazer/core/errors";
-import type { InputMethod } from "@/types/input-method";
+import type { InputMethod } from "@diffgazer/core/onboarding";
 
 type FormStatus =
   | { status: "idle" }

@@ -12,14 +12,16 @@ describe("IssueListPane row highlight inversion", () => {
   it("marks the highlighted row with data-active so theming can invert chip colors", () => {
     render(
       <IssueListPane
-        issues={issues}
-        allIssues={issues}
-        selectedIssueId="issue-1"
-        highlightedIssueId="issue-1"
-        onSelectIssue={vi.fn()}
-        severityFilter={new Set()}
-        onSeverityFilterChange={vi.fn()}
-        isFocused
+        listState={{
+          issues,
+          allIssues: issues,
+          selectedIssueId: "issue-1",
+          highlightedIssueId: "issue-1",
+        }}
+        callbacks={{ onSelectIssue: vi.fn() }}
+        filter={{ severityFilter: new Set(), onSeverityFilterChange: vi.fn() }}
+        refs={{}}
+        ui={{ isFocused: true }}
       />,
     );
 

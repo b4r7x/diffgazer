@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Box, Text, useInput } from "ink";
-import { useTheme } from "../../../theme/theme-context.js";
-import { Badge, type BadgeProps } from "../../../components/ui/badge.js";
+import { useTheme } from "../../../theme/theme-context";
+import { Badge, type BadgeProps } from "../../../components/ui/badge";
 
 type BadgeVariant = NonNullable<BadgeProps["variant"]>;
 

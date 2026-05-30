@@ -20,7 +20,8 @@
     "pretype-check": "pnpm prepare:generated && node ./scripts/generate-route-tree.mjs",
     "type-check": "tsc --noEmit",
     "pretest:e2e": "test -f .output/public/index.html || (echo 'Error: .output/public/index.html not found. Run pnpm build first.' && exit 1)",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "lighthouse": "lhci autorun"
   },
   "dependencies": {
     "@diffgazer/core": "workspace:*",
@@ -48,6 +49,7 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.11.2",
     "@biomejs/biome": "2.3.14",
+    "@lhci/cli": "^0.15.1",
     "@playwright/test": "^1.60.0",
     "@tanstack/router-generator": "^1.167.9",
     "@testing-library/dom": "^10.4.0",

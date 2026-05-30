@@ -1,7 +1,7 @@
 import { Box, Text } from "ink";
-import { useTheme } from "../../../theme/theme-context.js";
-import { SectionHeader } from "../../../components/ui/section-header.js";
-import { KeyValue } from "../../../components/ui/key-value.js";
+import { useTheme } from "../../../theme/theme-context";
+import { SectionHeader } from "../../../components/ui/section-header";
+import { KeyValue } from "../../../components/ui/key-value";
 import type { ReviewContextResponse } from "@diffgazer/core/api/types";
 
 interface ContextSnapshotPreviewProps {

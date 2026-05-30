@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest"
 import { renderHook, act } from "@testing-library/react"
-import { usePresence } from "../use-presence.js"
+import { usePresence } from "../use-presence"
 import { createRef, type AnimationEvent } from "react"
 
 // usePresence callbacks read .target and .animationName from React's animation

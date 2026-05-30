@@ -10,14 +10,13 @@ import {
   PRIMARY_DOCS_LIBRARY_ID,
   type DocsLibraryId,
 } from "@/lib/docs-library"
-import { mapPageTreeForLibrary, type PageTree } from "@/lib/docs-tree"
+import { fromFumadocsRoot, mapPageTreeForLibrary } from "@/lib/docs-tree"
 
 const docsShellLoader = createServerFn({ method: "GET" })
   .inputValidator((input: { library: DocsLibraryId }) => input)
   .handler(async ({ data }) => {
     const { source } = await import("@/lib/source")
-    // fumadocs-core PageTree type differs from local definition at the boundary
-    const pageTree = mapPageTreeForLibrary(source.pageTree as unknown as PageTree, data.library)
+    const pageTree = mapPageTreeForLibrary(fromFumadocsRoot(source.pageTree), data.library)
 
     return {
       library: data.library,

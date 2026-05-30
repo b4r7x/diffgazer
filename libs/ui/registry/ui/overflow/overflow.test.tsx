@@ -1,8 +1,8 @@
 import { createRef } from "react"
 import { act, render, screen } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { Overflow } from "./index.js"
-import { OverflowText } from "./overflow-text.js"
+import { Overflow } from "./index"
+import { OverflowText } from "./overflow-text"
 
 // axe skipped: behavior depends on mocked layout dimensions, so axe cannot evaluate real overflow truncation/tooltip semantics here.
 

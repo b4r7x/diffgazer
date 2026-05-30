@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import type { Context } from "hono";
-import type { ServerController } from "./create-process-server.js";
+import type { ServerController } from "./create-process-server";
 
 export interface EmbeddedServerConfig {
   port: number;

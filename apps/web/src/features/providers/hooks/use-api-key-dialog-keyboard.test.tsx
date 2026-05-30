@@ -3,7 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { useRef, useState } from "react";
-import type { InputMethod } from "@/types/input-method";
+import type { InputMethod } from "@diffgazer/core/onboarding";
 import { useApiKeyDialogKeyboard } from "./use-api-key-dialog-keyboard";
 
 function Subject({

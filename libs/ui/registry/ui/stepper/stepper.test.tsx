@@ -1,10 +1,10 @@
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { axe } from "../../../testing/utils.js"
+import { axe } from "../../../testing/utils"
 import { afterAll, beforeAll, describe, it, expect, vi } from "vitest"
 import type { StepperVariant } from "@/lib/stepper-variants"
 import { STEP_STATUSES, type StepStatus } from "@/lib/step-status"
-import { Stepper, getStepperIndicatorGlyph } from "./index.js"
+import { Stepper, getStepperIndicatorGlyph } from "./index"
 
 function renderStepper(props: Record<string, unknown> = {}) {
   return render(

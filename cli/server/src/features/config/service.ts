@@ -17,20 +17,11 @@ import type {
   ProvidersStatusResponse,
   SaveConfigRequest,
 } from "@diffgazer/core/schemas/config";
-import {
-  activateProvider as activateProviderInStore,
-  deleteProviderCredentials,
-  getActiveProvider,
-  getProjectInfo,
-  getProviderApiKey,
-  getProviders,
-  getSettings,
-  saveProviderCredentials,
-} from "../../shared/lib/config/store.js";
+import { getStore } from "../../shared/lib/config/store.js";
 import { getOpenRouterModelsWithCache } from "../../shared/lib/ai/openrouter-models.js";
 
 export const getProvidersStatus = (): ProvidersStatusResponse => {
-  const providers = getProviders();
+  const providers = getStore().getProviders();
   const activeProvider = providers.find((provider) => provider.isActive)?.provider;
 
   return {
@@ -41,15 +32,15 @@ export const getProvidersStatus = (): ProvidersStatusResponse => {
 
 function isKeyReadable(provider: { provider: string } | null): boolean {
   if (!provider) return false;
-  const keyResult = getProviderApiKey(provider.provider);
+  const keyResult = getStore().getProviderApiKey(provider.provider);
   return keyResult.ok && keyResult.value !== null;
 }
 
 export const getSetupStatus = (projectRoot?: string): SetupStatus => {
-  const settings = getSettings();
-  const providers = getProviders();
+  const settings = getStore().getSettings();
+  const providers = getStore().getProviders();
   const activeProvider = providers.find((p) => p.isActive) ?? null;
-  const project = getProjectInfo(projectRoot);
+  const project = getStore().getProjectInfo(projectRoot);
 
   const hasSecretsStorage = settings.secretsStorage !== null;
   const hasProvider = activeProvider !== null && isKeyReadable(activeProvider);
@@ -76,17 +67,17 @@ export const getSetupStatus = (projectRoot?: string): SetupStatus => {
 };
 
 export const getInitState = (projectRoot?: string): InitResponse => {
-  const providers = getProviders();
+  const providers = getStore().getProviders();
   const activeProvider = providers.find((provider) => provider.isActive) ?? null;
 
   return {
     config: activeProvider
       ? { provider: activeProvider.provider, model: activeProvider.model }
       : null,
-    settings: getSettings(),
+    settings: getStore().getSettings(),
     providers,
     configured: providers.some((provider) => provider.isActive),
-    project: getProjectInfo(projectRoot),
+    project: getStore().getProjectInfo(projectRoot),
     setup: getSetupStatus(projectRoot),
   };
 };
@@ -126,7 +117,7 @@ export const saveConfig = (
   const validation = validateCredential(input.apiKey);
   if (!validation.ok) return Promise.resolve(validation);
 
-  return saveProviderCredentials({
+  return getStore().saveProviderCredentials({
     provider: input.provider,
     apiKey: input.apiKey,
     model: input.model,
@@ -134,10 +125,10 @@ export const saveConfig = (
 };
 
 export const getConfig = (): Result<ConfigResponse | null, SecretsStorageError> => {
-  const active = getActiveProvider();
+  const active = getStore().getActiveProvider();
   if (!active) return ok(null);
 
-  const apiKeyResult = getProviderApiKey(active.provider);
+  const apiKeyResult = getStore().getProviderApiKey(active.provider);
   if (!apiKeyResult.ok) return apiKeyResult;
   if (!apiKeyResult.value) return ok(null);
 
@@ -159,7 +150,7 @@ export const activateProvider = async (input: {
 }): Promise<Result<ActivateProviderResponse, { message: string; code: string }>> => {
   const { provider, model } = input;
 
-  const existing = getProviders().find((p) => p.provider === provider);
+  const existing = getStore().getProviders().find((p) => p.provider === provider);
   if (!existing) {
     return err(createError("PROVIDER_NOT_FOUND", "Provider not found"));
   }
@@ -169,7 +160,7 @@ export const activateProvider = async (input: {
   }
 
   // Block activation if the provider has no API key configured
-  const apiKeyResult = getProviderApiKey(provider);
+  const apiKeyResult = getStore().getProviderApiKey(provider);
   if (apiKeyResult.ok && !apiKeyResult.value) {
     return err(createError("INVALID_BODY", "API key required before selecting model"));
   }
@@ -189,7 +180,7 @@ export const activateProvider = async (input: {
     }
   }
 
-  const result = await activateProviderInStore(input);
+  const result = await getStore().activateProvider(input);
   if (!result.ok) return result;
   if (!result.value) {
     return err(createError("PROVIDER_NOT_FOUND", "Provider not found"));
@@ -201,7 +192,7 @@ export const activateProvider = async (input: {
 export const deleteProvider = async (
   providerId: AIProvider
 ): Promise<Result<DeleteProviderResponse, SecretsStorageError>> => {
-  const deletedResult = await deleteProviderCredentials(providerId);
+  const deletedResult = await getStore().deleteProviderCredentials(providerId);
   if (!deletedResult.ok) return deletedResult;
 
   return ok({
@@ -217,7 +208,7 @@ export const deleteConfig = async (): Promise<Result<DeleteConfigResponse, Secre
     return err(createError(ErrorCode.CONFIG_NOT_FOUND, "No active configuration to delete"));
   }
 
-  const deletedResult = await deleteProviderCredentials(configResult.value.provider);
+  const deletedResult = await getStore().deleteProviderCredentials(configResult.value.provider);
   if (!deletedResult.ok) return deletedResult;
   return ok({ deleted: deletedResult.value });
 };
@@ -225,7 +216,7 @@ export const deleteConfig = async (): Promise<Result<DeleteConfigResponse, Secre
 export const getOpenRouterModels = async (): Promise<
   Result<OpenRouterModelsResponse, { message: string; code: string }>
 > => {
-  const apiKeyResult = getProviderApiKey("openrouter");
+  const apiKeyResult = getStore().getProviderApiKey("openrouter");
   if (!apiKeyResult.ok) return err(apiKeyResult.error);
   if (!apiKeyResult.value) {
     return err(

@@ -6,21 +6,21 @@ import {
   WIZARD_STEPS,
   type OnboardingStep,
 } from "@diffgazer/core/onboarding";
-import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions.js";
+import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions";
 import { usePageFooter } from "@diffgazer/core/footer";
-import { Button } from "../../../components/ui/button.js";
-import { Spinner } from "../../../components/ui/spinner.js";
-import { Callout } from "../../../components/ui/callout.js";
-import { SectionHeader } from "../../../components/ui/section-header.js";
-import { WizardProgress } from "./wizard-progress.js";
-import { StorageStep } from "./steps/storage-step.js";
-import { ProviderStep } from "./steps/provider-step.js";
-import { ApiKeyStep } from "./steps/api-key-step.js";
-import { ModelStep } from "./steps/model-step.js";
-import { AnalysisStep } from "./steps/analysis-step.js";
-import { ExecutionStep } from "./steps/execution-step.js";
-import { useOnboardingWizard } from "../hooks/use-onboarding-wizard.js";
-import { getStepShortcuts } from "./step-shortcuts.js";
+import { Button } from "../../../components/ui/button";
+import { Spinner } from "../../../components/ui/spinner";
+import { Callout } from "../../../components/ui/callout";
+import { SectionHeader } from "../../../components/ui/section-header";
+import { WizardProgress } from "./wizard-progress";
+import { StorageStep } from "./steps/storage-step";
+import { ProviderStep } from "./steps/provider-step";
+import { ApiKeyStep } from "./steps/api-key-step";
+import { ModelStep } from "./steps/model-step";
+import { AnalysisStep } from "./steps/analysis-step";
+import { ExecutionStep } from "./steps/execution-step";
+import { useOnboardingWizard } from "../hooks/use-onboarding-wizard";
+import { getStepShortcuts } from "./step-shortcuts";
 
 const STEP_LABEL_LIST = WIZARD_STEPS.map((step) => STEP_LABELS[step]);
 

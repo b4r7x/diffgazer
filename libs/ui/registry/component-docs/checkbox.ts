@@ -22,6 +22,11 @@ export const checkboxDoc: ComponentDoc = {
   ],
   notes: [
     {
+      title: "Requires @diffgazer/keys (package mode)",
+      content:
+        "CheckboxGroup's arrow-key navigation imports from the optional @diffgazer/keys peer. Package/npm consumers must install it: `npm install @diffgazer/keys`. Importing @diffgazer/ui/components/checkbox without keys fails at module load with an error naming the missing @diffgazer/keys package. Standalone Checkbox still needs it because the subpath bundles the group. Copy/dgadd consumers do not need the package — copy mode rewrites the keyboard hooks to local source.",
+    },
+    {
       title: "Indeterminate State",
       content:
         "Checkbox supports a third state: checked='indeterminate' renders [-] (x variant) or [ - ] (bullet variant). This is useful for parent checkboxes representing partially-selected groups.",

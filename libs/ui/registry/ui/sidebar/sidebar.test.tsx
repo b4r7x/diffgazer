@@ -1,9 +1,9 @@
 import type { Ref } from "react"
 import { act, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { axe } from "../../../testing/utils.js"
+import { axe } from "../../../testing/utils"
 import { afterEach, describe, it, expect, vi } from "vitest"
-import { Sidebar } from "./index.js"
+import { Sidebar } from "./index"
 
 type SidebarState = "open" | "rail" | "hidden"
 

@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { RadioGroup } from "../../../components/ui/radio.js";
+import { RadioGroup } from "../../../components/ui/radio";
 
 interface StorageSelectorProps {
   value?: string;

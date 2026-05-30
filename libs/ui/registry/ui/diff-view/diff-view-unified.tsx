@@ -13,7 +13,7 @@ import {
   SR_LABEL,
   formatHunkHeader,
   LineContent,
-} from "./diff-view-line.js";
+} from "./diff-view-line";
 
 type UnifiedHunk = { hunk: ParsedDiff["hunks"][number]; changes: AnnotatedChange[] };
 

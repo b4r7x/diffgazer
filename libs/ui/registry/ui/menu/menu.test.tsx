@@ -1,10 +1,10 @@
 import { createRef } from "react"
 import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { testNavigationBehavior } from "../../../../keys/src/testing/navigation-behavior.js"
-import { axe } from "../../../testing/utils.js"
+import { testNavigationBehavior } from "../../../../keys/src/testing/navigation-behavior"
+import { axe } from "../../../testing/utils"
 import { describe, it, expect, expectTypeOf, vi } from "vitest"
-import { Menu, type MenuProps, type MenuItemProps, MenuItemCheckbox, MenuItemRadio, MenuGroup, MenuLabel, MenuSub, MenuSubTrigger, MenuSubContent } from "./index.js"
+import { Menu, type MenuProps, type MenuItemProps, MenuItemCheckbox, MenuItemRadio, MenuGroup, MenuLabel, MenuSub, MenuSubTrigger, MenuSubContent } from "./index"
 
 function renderMenu(props: Record<string, unknown> = {}) {
   return render(

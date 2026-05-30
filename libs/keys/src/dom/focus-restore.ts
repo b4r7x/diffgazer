@@ -26,6 +26,9 @@ export function restoreFocus(
 ): boolean {
   if (!target?.isConnected) return false;
 
+  // Some environments reject the FocusOptions argument (older engines, certain
+  // jsdom versions). Fall back to a plain focus() so restoration still works;
+  // losing preventScroll is acceptable degradation.
   try {
     target.focus({ preventScroll: options.preventScroll });
   } catch {

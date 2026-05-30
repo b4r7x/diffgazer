@@ -3,7 +3,9 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
-  "sideEffects": false,
+  "sideEffects": [
+    "./dist/testing/dom-polyfills.js"
+  ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -22,6 +24,10 @@
     "./strings": {
       "types": "./dist/strings.d.ts",
       "import": "./dist/strings.js"
+    },
+    "./env": {
+      "types": "./dist/env.d.ts",
+      "import": "./dist/env.js"
     },
     "./format": {
       "types": "./dist/format.d.ts",
@@ -118,6 +124,10 @@
     "./schemas/presentation": {
       "types": "./dist/schemas/presentation/index.d.ts",
       "import": "./dist/schemas/presentation/index.js"
+    },
+    "./testing/dom-polyfills": {
+      "types": "./dist/testing/dom-polyfills.d.ts",
+      "import": "./dist/testing/dom-polyfills.js"
     }
   },
   "scripts": {

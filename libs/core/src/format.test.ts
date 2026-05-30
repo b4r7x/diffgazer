@@ -7,7 +7,7 @@ import {
   getDateKey,
   getDateLabel,
   getTimestamp,
-} from "./format.js";
+} from "./format";
 
 describe("formatTime", () => {
   it.each([

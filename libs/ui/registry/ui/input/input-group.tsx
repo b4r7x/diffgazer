@@ -27,6 +27,10 @@ export interface InputGroupProps
   size?: InputGroupVariantProps["size"];
   prefix?: ReactNode;
   suffix?: ReactNode;
+  /** Hide the prefix from assistive tech. Defaults to true for plain text/number affixes. */
+  prefixAriaHidden?: boolean;
+  /** Hide the suffix from assistive tech. Defaults to true for plain text/number affixes. */
+  suffixAriaHidden?: boolean;
   inputClassName?: string;
 }
 
@@ -36,12 +40,14 @@ export function InputGroup({
   size,
   prefix,
   suffix,
+  prefixAriaHidden,
+  suffixAriaHidden,
   disabled,
   ref,
   ...props
 }: InputGroupProps) {
-  const hidePrefix = isPlainDecorativeAffix(prefix);
-  const hideSuffix = isPlainDecorativeAffix(suffix);
+  const hidePrefix = prefixAriaHidden ?? isPlainDecorativeAffix(prefix);
+  const hideSuffix = suffixAriaHidden ?? isPlainDecorativeAffix(suffix);
 
   return (
     <div

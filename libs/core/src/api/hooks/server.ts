@@ -1,6 +1,6 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { serverQueries } from "./queries/server.js";
-import { useApi } from "./context.js";
+import { serverQueries } from "./queries/server";
+import { useApi } from "./context";
 
 export type ServerState =
   | { status: "checking" }

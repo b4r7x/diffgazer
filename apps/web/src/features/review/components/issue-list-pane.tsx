@@ -9,52 +9,65 @@ import { Panel } from "@diffgazer/ui/components/panel";
 import { SEVERITY_CONFIG } from "@/components/ui/severity/constants";
 import { isListNavigationKey } from "@diffgazer/keys";
 
-export interface IssueListPaneProps {
+interface IssueListState {
   issues: ReviewIssue[];
   allIssues: ReviewIssue[];
   selectedIssueId: string | null;
+  highlightedIssueId?: string | null;
+}
+
+interface IssueListCallbacks {
   onSelectIssue: (id: string) => void;
   onHighlightIssue?: (id: string | null) => void;
   onListBoundaryReached?: (direction: "previous" | "next") => void;
+  onListFocus?: () => void;
+}
+
+interface IssueListFilter {
   severityFilter: SeverityFilter;
   onSeverityFilterChange: (filter: SeverityFilter) => void;
   onSeverityFilterReset?: () => void;
   onSeverityFilterBoundary?: (direction: "previous" | "next") => void;
-  isFocused: boolean;
-  isFilterFocused?: boolean;
   focusedFilterIndex?: number;
   onFocusedFilterIndexChange?: (index: number) => void;
-  filterRef?: Ref<HTMLDivElement>;
+  isFilterFocused?: boolean;
   onFilterKeyDown?: (event: KeyboardEvent) => void;
-  highlightedIssueId?: string | null;
-  onListFocus?: () => void;
+}
+
+interface IssueListRefs {
+  filterRef?: Ref<HTMLDivElement>;
   listRef?: Ref<HTMLDivElement>;
+}
+
+interface IssueListUi {
+  isFocused: boolean;
   title?: string;
   className?: string;
 }
 
+export interface IssueListPaneProps {
+  listState: IssueListState;
+  callbacks: IssueListCallbacks;
+  filter: IssueListFilter;
+  refs: IssueListRefs;
+  ui: IssueListUi;
+}
+
 export function IssueListPane({
-  issues,
-  allIssues,
-  selectedIssueId,
-  onSelectIssue,
-  onHighlightIssue,
-  onListBoundaryReached,
-  severityFilter,
-  onSeverityFilterChange,
-  onSeverityFilterReset,
-  onSeverityFilterBoundary,
-  isFocused,
-  isFilterFocused,
-  focusedFilterIndex,
-  onFocusedFilterIndexChange,
-  filterRef,
-  onFilterKeyDown,
-  highlightedIssueId,
-  onListFocus,
-  listRef,
-  title = "Analysis",
-  className,
+  listState: { issues, allIssues, selectedIssueId, highlightedIssueId },
+  callbacks: { onSelectIssue, onHighlightIssue, onListBoundaryReached, onListFocus },
+  filter: {
+    severityFilter,
+    onSeverityFilterChange,
+    onSeverityFilterReset,
+    onSeverityFilterBoundary,
+    focusedFilterIndex,
+    onFocusedFilterIndexChange,
+    isFilterFocused,
+    onFilterKeyDown,
+  },
+  refs: { filterRef, listRef },
+  ui: { isFocused, title = "Analysis", className },
 }: IssueListPaneProps) {
   const counts = calculateSeverityCounts(allIssues);
   const isFilterActive = severityFilter.size > 0;

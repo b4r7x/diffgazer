@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { render, renderHook, screen, cleanup } from "@testing-library/react";
 import { createElement, useRef } from "react";
-import { useScrollLock } from "./use-scroll-lock";
+import { useScrollLock } from "./use-scroll-lock.js";
 
 describe("useScrollLock", () => {
   afterEach(() => {

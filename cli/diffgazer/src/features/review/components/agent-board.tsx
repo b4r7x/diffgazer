@@ -1,8 +1,8 @@
 import { Box, Text } from "ink";
-import { Badge, type BadgeProps } from "../../../components/ui/badge.js";
-import { SectionHeader } from "../../../components/ui/section-header.js";
-import { Spinner } from "../../../components/ui/spinner.js";
-import { useTheme } from "../../../theme/theme-context.js";
+import { Badge, type BadgeProps } from "../../../components/ui/badge";
+import { SectionHeader } from "../../../components/ui/section-header";
+import { Spinner } from "../../../components/ui/spinner";
+import { useTheme } from "../../../theme/theme-context";
 import { getAgentDetail } from "@diffgazer/core/review";
 import type { AgentState, AgentStatus } from "@diffgazer/core/schemas/events";
 

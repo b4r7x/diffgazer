@@ -4,11 +4,11 @@ import {
   BlockBar as BlockBarRoot,
   type BlockBarProps,
   type BlockBarSegmentData,
-} from "./block-bar.js";
+} from "./block-bar";
 import {
   BlockBarSegment,
   type BlockBarSegmentProps,
-} from "./block-bar-segment.js";
+} from "./block-bar-segment";
 
 const BlockBar = Object.assign(BlockBarRoot, {
   Segment: BlockBarSegment,

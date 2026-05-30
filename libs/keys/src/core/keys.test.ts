@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { keys } from "./keys";
+import { keys } from "./keys.js";
 
 const noop = () => {};
 

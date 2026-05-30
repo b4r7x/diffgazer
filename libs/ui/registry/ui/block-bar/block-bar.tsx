@@ -9,8 +9,8 @@ import {
   type ReactNode,
 } from "react";
 import { cn } from "@/lib/utils";
-import { BlockBarContext } from "./block-bar-context.js";
-import { BlockBarSegment, type SegmentVariant } from "./block-bar-segment.js";
+import { BlockBarContext } from "./block-bar-context";
+import { BlockBarSegment, type SegmentVariant } from "./block-bar-segment";
 
 const MAX_BAR_WIDTH = 200;
 

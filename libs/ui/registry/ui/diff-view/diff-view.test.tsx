@@ -1,9 +1,9 @@
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { createRef, useLayoutEffect } from "react"
-import { axe } from "../../../testing/utils.js"
+import { axe } from "../../../testing/utils"
 import { describe, it, expect } from "vitest"
-import { DiffView, computeDiff } from "./index.js"
+import { DiffView, computeDiff } from "./index"
 import type { ParsedDiff } from "@/lib/diff"
 
 const ONE_HUNK: ParsedDiff = {

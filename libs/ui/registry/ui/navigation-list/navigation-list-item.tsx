@@ -108,6 +108,9 @@ export function NavigationListItem({
     hasDescriptionChild(children, NavigationListSubtitle) ? `${descId}-sub` : null,
   ].filter(Boolean).join(" ") || undefined;
 
+  const activeBarColorClass = indicator === "bar" ? "bg-primary-foreground/40" : "bg-primary-foreground";
+  const indicatorColorClass = isActive ? activeBarColorClass : "bg-transparent group-hover:bg-muted";
+
   const handleClick = (event: MouseEvent<HTMLDivElement>) => {
     onClick?.(event);
     if (event.defaultPrevented || disabled) return;
@@ -176,9 +179,7 @@ export function NavigationListItem({
                 "shrink-0",
                 (indicator === "bar" || indicator === "bar-thick") && [
                   indicator === "bar" ? "w-1" : "w-[4px]",
-                  isActive
-                    ? indicator === "bar" ? "bg-primary-foreground/40" : "bg-primary-foreground"
-                    : "bg-transparent group-hover:bg-muted",
+                  indicatorColorClass,
                 ],
                 (indicator === "arrow" || indicator === "bracket") && "w-1 bg-transparent",
               )}

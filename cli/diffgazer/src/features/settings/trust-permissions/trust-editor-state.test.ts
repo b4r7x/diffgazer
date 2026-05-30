@@ -5,7 +5,7 @@ import {
   getInitialDraft,
   getTrustEditorKey,
   resolveEditorView,
-} from "./trust-editor-state.js";
+} from "./trust-editor-state";
 
 const TRUSTED_AT = "2026-05-13T12:00:00.000Z";
 

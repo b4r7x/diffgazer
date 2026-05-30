@@ -1,13 +1,13 @@
 import { act, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { axe } from "../../../testing/utils.js"
+import { axe } from "../../../testing/utils"
 import { describe, it, expect, expectTypeOf, vi } from "vitest"
 import {
   getEncodedListboxItemId,
   useListbox,
   type UseListboxOptions,
   type UseListboxReturn,
-} from "../use-listbox.js"
+} from "../use-listbox"
 
 type ListboxItem = { id: string; label: string; disabled?: boolean }
 

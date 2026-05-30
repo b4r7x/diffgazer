@@ -1,12 +1,11 @@
 import type { Context } from "hono";
-import type { ContentfulStatusCode } from "hono/utils/http-status";
-import { errorResponse } from "../../shared/lib/http/response.js";
+import { errorResponse, type ErrorStatus } from "../../shared/lib/http/response.js";
 import type {
   StoreError,
   StoreErrorCode,
 } from "../../shared/lib/storage/types.js";
 
-const errorCodeToStatus = (code: StoreErrorCode): ContentfulStatusCode => {
+const errorCodeToStatus = (code: StoreErrorCode): ErrorStatus => {
   switch (code) {
     case "NOT_FOUND":
       return 404;

@@ -1,4 +1,4 @@
-import type { DiffChange } from "./parse.js";
+import type { DiffChange } from "./parse";
 
 export interface EditPairGroup {
   removes: DiffChange[];

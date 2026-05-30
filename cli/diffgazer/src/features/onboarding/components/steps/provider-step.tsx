@@ -1,8 +1,8 @@
 import type { ReactElement } from "react";
 import { Box, Text } from "ink";
-import { useTheme } from "../../../../theme/theme-context.js";
-import { RadioGroup } from "../../../../components/ui/radio.js";
-import { Spinner } from "../../../../components/ui/spinner.js";
+import { useTheme } from "../../../../theme/theme-context";
+import { RadioGroup } from "../../../../components/ui/radio";
+import { Spinner } from "../../../../components/ui/spinner";
 import { useProviderStatus, guardQueryState } from "@diffgazer/core/api/hooks";
 import { AVAILABLE_PROVIDERS } from "@diffgazer/core/schemas/config";
 import type { ProviderStatus } from "@diffgazer/core/schemas/config";

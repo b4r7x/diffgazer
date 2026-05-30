@@ -1,5 +1,5 @@
 import { useLocation, Link } from "@tanstack/react-router";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type MouseEvent } from "react";
 import { Spinner } from "@/components/ui/spinner/spinner";
 import {
   Sidebar,
@@ -21,8 +21,14 @@ interface DocsSidebarProps {
 }
 
 interface Section {
+  key: string;
   title: string;
   items: PageTreeNode[];
+}
+
+function sectionKey(title: string, items: PageTreeNode[]): string {
+  const firstUrl = items.find((item) => item.url)?.url;
+  return `${title}::${firstUrl ?? ""}`;
 }
 
 function formatSectionLabel(title: string): string {
@@ -44,33 +50,39 @@ function isIndentedItem(path: string): boolean {
   return isCliCommandPath(path);
 }
 
+function pushSection(sections: Section[], title: string, items: PageTreeNode[]): void {
+  sections.push({ key: sectionKey(title, items), title, items });
+}
+
 function groupBySection(children: PageTreeNode[]): Section[] {
   const sections: Section[] = [];
-  let current: Section | null = null;
+  let current: { title: string; items: PageTreeNode[] } | null = null;
 
   for (const node of children) {
     if (node.type === "separator") {
-      if (current) sections.push(current);
+      if (current) pushSection(sections, current.title, current.items);
       current = { title: node.name, items: [] };
     } else if (node.type === "folder") {
-      if (current) sections.push(current);
-      sections.push({
-        title: node.name,
-        items: node.children?.filter((c) => c.type === "page") ?? [],
-      });
+      if (current) pushSection(sections, current.title, current.items);
+      pushSection(sections, node.name, node.children?.filter((c) => c.type === "page") ?? []);
       current = null;
     } else if (node.type === "page") {
       if (!current) current = { title: "", items: [] };
       current.items.push(node);
     }
   }
-  if (current && current.items.length > 0) sections.push(current);
+  if (current && current.items.length > 0) pushSection(sections, current.title, current.items);
 
   return sections;
 }
 
 function splatFromUrl(url: string): string {
   return url.split("/").slice(2).join("/");
+}
+
+/** A new-tab/background click (middle button or modifier) should not dismiss the sidebar. */
+export function isPrimaryNavigationClick(event: MouseEvent): boolean {
+  return event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
 }
 
 export function DocsSidebar({ tree, library, onNavigate }: DocsSidebarProps) {
@@ -92,8 +104,8 @@ export function DocsSidebar({ tree, library, onNavigate }: DocsSidebarProps) {
       <SidebarContent className="p-0 overflow-hidden">
         <ScrollArea className="h-full">
           <div className="px-3 pt-2 pb-4" ref={navContainerRef}>
-            {sections.map((section, i) => (
-              <SidebarSection key={`${i}-${section.title}`}>
+            {sections.map((section) => (
+              <SidebarSection key={section.key}>
                 {section.title && (
                   <SidebarSectionTitle>
                     {formatSectionLabel(section.title)}/
@@ -112,12 +124,14 @@ export function DocsSidebar({ tree, library, onNavigate }: DocsSidebarProps) {
                     <SidebarItem
                       key={url}
                       active={pathname === url || isPending}
+                      onClick={(event) => {
+                        if (isPrimaryNavigationClick(event)) onNavigate?.();
+                      }}
                     >
                       {({ ref: _ref, ...itemProps }) => (
                         <Link
                           to="/$lib/$"
                           params={{ lib: library, _splat: splatFromUrl(url) }}
-                          onClick={onNavigate}
                           data-value={url}
                           {...itemProps}
                         >

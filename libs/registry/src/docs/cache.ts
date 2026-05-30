@@ -44,7 +44,7 @@ export function readSyncState(stateFilePath: string, logger: Logger = defaultLog
       syncedAt: parsed.syncedAt,
     };
   } catch (err) {
-    logger.debug?.(`Failed to parse sync state at ${stateFilePath}: ${err instanceof Error ? err.message : String(err)}`);
+    logger.debug(`Failed to parse sync state at ${stateFilePath}: ${err instanceof Error ? err.message : String(err)}`);
     return null;
   }
 }

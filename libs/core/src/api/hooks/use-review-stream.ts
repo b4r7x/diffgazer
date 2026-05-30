@@ -9,7 +9,7 @@ import {
 } from "@diffgazer/core/review";
 import { type Result, ok, err } from "@diffgazer/core/result";
 import { ReviewErrorCode } from "@diffgazer/core/schemas/review";
-import { useApi } from "./context.js";
+import { useApi } from "./context";
 
 export interface ReviewStreamState extends ReviewState {
   reviewId: string | null;

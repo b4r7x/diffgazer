@@ -1,9 +1,9 @@
 import { useState } from "react";
 import type { ReactElement } from "react";
 import { Box, Text, useInput } from "ink";
-import { useTheme } from "../../../theme/theme-context.js";
-import { RadioGroup } from "../../../components/ui/radio.js";
-import { Input } from "../../../components/ui/input.js";
+import { useTheme } from "../../../theme/theme-context";
+import { RadioGroup } from "../../../components/ui/radio";
+import { Input } from "../../../components/ui/input";
 
 interface ApiKeyMethodSelectorProps {
   method: "paste" | "env";

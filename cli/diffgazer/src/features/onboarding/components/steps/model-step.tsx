@@ -1,10 +1,10 @@
 import type { ReactElement } from "react";
 import { Box, Text } from "ink";
-import { useTheme } from "../../../../theme/theme-context.js";
-import { RadioGroup } from "../../../../components/ui/radio.js";
-import { Badge } from "../../../../components/ui/badge.js";
-import { Spinner } from "../../../../components/ui/spinner.js";
-import { Input } from "../../../../components/ui/input.js";
+import { useTheme } from "../../../../theme/theme-context";
+import { RadioGroup } from "../../../../components/ui/radio";
+import { Badge } from "../../../../components/ui/badge";
+import { Spinner } from "../../../../components/ui/spinner";
+import { Input } from "../../../../components/ui/input";
 import { useOpenRouterModels, guardQueryState } from "@diffgazer/core/api/hooks";
 import { AVAILABLE_PROVIDERS } from "@diffgazer/core/schemas/config";
 import type { ModelInfo, OpenRouterModel } from "@diffgazer/core/schemas/config";

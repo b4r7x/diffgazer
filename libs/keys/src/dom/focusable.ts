@@ -34,7 +34,11 @@ function isInert(element: HTMLElement): boolean {
 }
 
 function isAriaHidden(element: HTMLElement): boolean {
-  return element.closest('[aria-hidden="true"]') !== null;
+  // Walk to the nearest ancestor with an explicit aria-hidden setting. A closer
+  // aria-hidden="false" overrides a farther aria-hidden="true", so only the
+  // first explicit value decides visibility.
+  const nearest = element.closest('[aria-hidden="true"],[aria-hidden="false"]');
+  return nearest?.getAttribute("aria-hidden") === "true";
 }
 
 function isInsideDisabledFieldset(element: HTMLElement): boolean {

@@ -1,8 +1,8 @@
 import { createRef } from "react";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { axe } from "../../../testing/utils.js";
-import { Card } from "./index.js";
+import { axe } from "../../../testing/utils";
+import { Card } from "./index";
 
 describe("Card", () => {
   it("renders children as a div by default", () => {

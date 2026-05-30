@@ -104,12 +104,6 @@ export function ReviewPage() {
   };
 
   useEffect(() => {
-    if (savedOutcomeKind === "fallback-to-stream" && reviewId) {
-      setLiveState({ phase: "streaming", reviewId });
-    }
-  }, [savedOutcomeKind, reviewId]);
-
-  useEffect(() => {
     if (savedOutcomeKind === "report-error") {
       handleApiError(savedErrorForReport);
     }
@@ -125,7 +119,10 @@ export function ReviewPage() {
     }
   }, [savedOutcomeKind, navigate]);
 
-  if (savedOutcome) {
+  // `fallback-to-stream` is handled by deriving the streaming view below
+  // (the live state falls back to a fresh stream), so it intentionally does
+  // not short-circuit here.
+  if (savedOutcome && savedOutcome.kind !== "fallback-to-stream") {
     if (savedOutcome.kind === "results") {
       return (
         <ReviewResultsView

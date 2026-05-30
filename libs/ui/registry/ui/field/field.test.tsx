@@ -2,11 +2,11 @@ import { render, screen } from "@testing-library/react"
 import { renderToStaticMarkup } from "react-dom/server"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it } from "vitest"
-import { axe } from "../../../testing/utils.js"
-import { Input, InputGroup } from "../input/index.js"
-import { Textarea } from "../textarea/index.js"
-import { Select } from "../select/index.js"
-import { Field } from "./index.js"
+import { axe } from "../../../testing/utils"
+import { Input, InputGroup } from "../input/index"
+import { Textarea } from "../textarea/index"
+import { Select } from "../select/index"
+import { Field } from "./index"
 
 describe("Field", () => {
   it("wires required, invalid, description, and error state to the control", () => {

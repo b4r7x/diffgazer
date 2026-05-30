@@ -1,9 +1,9 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react"
 import { useRef, useState } from "react"
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { axe } from "../../../testing/utils.js"
-import { applyReducedMotionFixture } from "../../../testing/prefers-reduced-motion.js"
-import { FloatingPanel, useFloatingPanelContext } from "./index.js"
+import { axe } from "../../../testing/utils"
+import { applyReducedMotionFixture } from "../../../testing/prefers-reduced-motion"
+import { FloatingPanel, useFloatingPanelContext } from "./index"
 import type { FloatingAlign, FloatingSide } from "@/hooks/use-floating-position"
 
 interface TriggerRect {
