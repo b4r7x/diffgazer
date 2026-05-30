@@ -1,6 +1,6 @@
 import { test, describe, expect } from "vitest";
 import type { InitResponse, SettingsConfig } from "@diffgazer/core/schemas/config";
-import { buildHubValues } from "./hub-screen-values.js";
+import { buildHubValues } from "./hub-screen-values";
 
 function makeInit(overrides: Partial<InitResponse> = {}): InitResponse {
   return {

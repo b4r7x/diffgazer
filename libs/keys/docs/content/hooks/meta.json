@@ -1,6 +1,7 @@
 {
   "title": "Hooks",
   "pages": [
+    "index",
     "use-action-row-navigation",
     "use-focus-restore",
     "use-focus-trap",

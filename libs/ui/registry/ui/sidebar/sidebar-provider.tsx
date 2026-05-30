@@ -6,6 +6,12 @@ import { useIsMobile } from "@/hooks/use-is-mobile";
 import { SidebarContext, type SidebarState } from "./sidebar-context";
 
 export interface SidebarProviderProps {
+  /**
+   * Documented exception to the `value`/`onChange` control convention: the
+   * sidebar exposes a tri-state value (`"open" | "rail" | "hidden"`), so the
+   * boolean `collapsed`/`onCollapsedChange` shape cannot represent it. `state`
+   * and `onStateChange` are the semantic names for this tri-state control.
+   */
   state?: SidebarState;
   defaultState?: SidebarState;
   onStateChange?: (state: SidebarState) => void;

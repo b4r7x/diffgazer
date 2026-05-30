@@ -1,4 +1,4 @@
 {
   "title": "Patterns",
-  "pages": ["keyboard-navigation", "compound-components", "interaction-states", "variants"]
+  "pages": ["index", "keyboard-navigation", "compound-components", "interaction-states", "variants"]
 }

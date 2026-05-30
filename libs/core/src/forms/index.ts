@@ -1,1 +1,1 @@
-export { useSubmitGuard, type UseSubmitGuardResult } from "./use-submit-guard.js";
+export { useSubmitGuard, type UseSubmitGuardResult } from "./use-submit-guard";

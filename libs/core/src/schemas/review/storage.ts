@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { UuidSchema, createdAtField } from "../shared/fields.js";
-import { ReviewResultSchema } from "./issues.js";
-import { LensIdSchema, ProfileIdSchema, DrilldownResultSchema } from "./lens.js";
-import { LensStatSchema } from "../events/agent.js";
+import { UuidSchema, createdAtField } from "../shared/fields";
+import { ReviewResultSchema } from "./issues";
+import { LensIdSchema, ProfileIdSchema, DrilldownResultSchema } from "./lens";
+import { LensStatSchema } from "../events/agent";
 
 export const ReviewModeSchema = z.enum(["staged", "unstaged", "files"]);
 export type ReviewMode = z.infer<typeof ReviewModeSchema>;

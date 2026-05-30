@@ -3,12 +3,16 @@
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
+    "types": ["vite/client"],
     "jsx": "react-jsx",
     "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "outDir": "dist",
-    "rootDir": "src"
+    "noEmit": true
   },
   "include": ["src"],
   "exclude": ["**/*.test.ts", "**/*.test.tsx"]

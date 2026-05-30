@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { canonicalizeHotkey, matchesHotkey, isInputElement, isEditableElement } from "./keyboard-utils";
+import { canonicalizeHotkey, matchesHotkey, isInputElement, isEditableElement } from "./keyboard-utils.js";
 
 function makeKeyEvent(
   key: string,
@@ -51,7 +51,7 @@ describe("matchesHotkey", () => {
 
     // Re-import to get a fresh module with reset _isMac cache
     vi.resetModules();
-    const { matchesHotkey: freshMatchesHotkey } = await import("./keyboard-utils");
+    const { matchesHotkey: freshMatchesHotkey } = await import("./keyboard-utils.js");
 
     expect(freshMatchesHotkey(makeKeyEvent("k", { meta: true }), "mod+k")).toBe(true);
     expect(freshMatchesHotkey(makeKeyEvent("k", { ctrl: true }), "mod+k")).toBe(false);

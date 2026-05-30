@@ -7,8 +7,8 @@ import {
   SEVERITY_ORDER,
   SEVERITY_LABELS,
 } from "@diffgazer/core/schemas/presentation";
-import { useTheme } from "../../../theme/theme-context.js";
-import { severityColor } from "../../../theme/severity.js";
+import { useTheme } from "../../../theme/theme-context";
+import { severityColor } from "../../../theme/severity";
 
 export interface SeverityFilterGroupProps {
   currentFilter: UISeverityFilter;
@@ -27,11 +27,11 @@ export function SeverityFilterGroup({
   const isFilterActive = currentFilter.size > 0;
   const resetIndex = SEVERITY_ORDER.length;
   const maxIndex = isFilterActive ? resetIndex : SEVERITY_ORDER.length - 1;
-  const [focusedIndex, setFocusedIndex] = useState(0);
-
-  if (focusedIndex > maxIndex) {
-    setFocusedIndex(maxIndex);
-  }
+  const [rawFocusedIndex, setFocusedIndex] = useState(0);
+  // Derive the clamp instead of writing state during render: when the filter
+  // becomes inactive the Reset chip disappears and maxIndex shrinks, so the
+  // stored index is clamped for display until the next keyboard write.
+  const focusedIndex = Math.min(rawFocusedIndex, maxIndex);
 
   const toggleSeverity = (severity: ReviewSeverity) => {
     const next = new Set(currentFilter);
@@ -43,11 +43,11 @@ export function SeverityFilterGroup({
   useInput(
     (input, key) => {
       if (key.leftArrow) {
-        setFocusedIndex((prev) => Math.max(0, prev - 1));
+        setFocusedIndex(Math.max(0, focusedIndex - 1));
         return;
       }
       if (key.rightArrow) {
-        setFocusedIndex((prev) => Math.min(maxIndex, prev + 1));
+        setFocusedIndex(Math.min(maxIndex, focusedIndex + 1));
         return;
       }
       if (key.return || input === " ") {

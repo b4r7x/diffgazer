@@ -6,10 +6,10 @@ import {
   fromSelectedCapabilityIds,
   toSelectedCapabilityIds,
 } from "@diffgazer/core/schemas/config";
-import { CheckboxGroup } from "../../../components/ui/checkbox.js";
-import { Callout } from "../../../components/ui/callout.js";
-import { Badge } from "../../../components/ui/badge.js";
-import { useTheme } from "../../../theme/theme-context.js";
+import { CheckboxGroup } from "../../../components/ui/checkbox";
+import { Callout } from "../../../components/ui/callout";
+import { Badge } from "../../../components/ui/badge";
+import { useTheme } from "../../../theme/theme-context";
 
 interface TrustPermissionsContentProps {
   directory: string;

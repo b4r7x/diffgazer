@@ -29,16 +29,7 @@ export function parseInstallName(value: string): InstallName {
   );
 }
 
-export function publicInstallNames(): string[] {
-  const uiItems = ctx.registry.getPublicItems().filter((item) => CLI_INSTALLABLE_TYPES.has(item.type));
-  const publicKeysHooks = [...getPublicKeysHookNames()];
-  return [
-    ...uiItems.map((item) => `ui/${item.name}`),
-    ...publicKeysHooks.map((name) => `keys/${name}`),
-  ];
-}
-
-export function publicListNames(): string[] {
+export function publicAvailableNames(): string[] {
   const uiItems = ctx.registry.getPublicItems().filter((item) => CLI_INSTALLABLE_TYPES.has(item.type));
   const publicKeysHooks = [...getPublicKeysHookNames()];
   return [
@@ -55,44 +46,42 @@ export function allListNames(): string[] {
   ];
 }
 
-export function validateInstallNames(names: string[]): void {
-  const uiNames = new Set(
-    ctx.registry.getPublicItems()
-      .filter((item) => CLI_INSTALLABLE_TYPES.has(item.type))
-      .map((item) => item.name),
-  );
-  const publicKeyNames = getPublicKeysHookNames();
-
+function validateInstallNamesAgainst(names: string[], uiNames: Set<string>, keyNames: Set<string>): void {
   for (const raw of names) {
     const parsed = parseInstallName(raw);
     const valid = parsed.namespace === "ui"
       ? uiNames.has(parsed.name)
-      : publicKeyNames.has(parsed.name);
+      : keyNames.has(parsed.name);
     if (!valid) {
       throw new Error(`Item "${raw}" not found. Run \`dgadd list\` to see available ui/* and keys/* items.`);
     }
   }
 }
 
-// Diff accepts hidden transitives (e.g. ui/portal, ui/dialog-shell) so users
-// can inspect drift in dependencies they did not explicitly install.
-export function validateAnyInstallableName(names: string[]): void {
-  const allUiNames = new Set(
-    ctx.registry.getAllItems()
+function installableUiNames(items: RegistryItem[]): Set<string> {
+  return new Set(
+    items
       .filter((item) => CLI_INSTALLABLE_TYPES.has(item.type))
       .map((item) => item.name),
   );
-  const allKeyNames = getKeysHookNames();
+}
 
-  for (const raw of names) {
-    const parsed = parseInstallName(raw);
-    const valid = parsed.namespace === "ui"
-      ? allUiNames.has(parsed.name)
-      : allKeyNames.has(parsed.name);
-    if (!valid) {
-      throw new Error(`Item "${raw}" not found. Run \`dgadd list\` to see available ui/* and keys/* items.`);
-    }
-  }
+export function validateInstallNames(names: string[]): void {
+  validateInstallNamesAgainst(
+    names,
+    installableUiNames(ctx.registry.getPublicItems()),
+    getPublicKeysHookNames(),
+  );
+}
+
+// Diff accepts hidden transitives (e.g. ui/portal, ui/dialog-shell) so users
+// can inspect drift in dependencies they did not explicitly install.
+export function validateAnyInstallableName(names: string[]): void {
+  validateInstallNamesAgainst(
+    names,
+    installableUiNames(ctx.registry.getAllItems()),
+    getKeysHookNames(),
+  );
 }
 
 export function splitInstallNames(names: string[]): {

@@ -1,7 +1,7 @@
 import type { UseMutationResult } from "@tanstack/react-query";
 import type { MenuAction } from "@diffgazer/core/schemas/presentation";
 import { isReviewStartAction } from "@diffgazer/core/navigation";
-import type { Route } from "../../../app/routes.js";
+import type { Route } from "../../../app/routes";
 
 type RouteReviewMode = Extract<Route, { screen: "review" }>["mode"];
 

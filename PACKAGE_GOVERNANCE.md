@@ -11,7 +11,15 @@ Public package targets:
 - `@diffgazer/ui` - React `>=19.2.0` component package.
 - `@diffgazer/keys` - React `>=19.2.0` keyboard hooks package.
 
-As of May 6, 2026, `npm view @diffgazer/add`, `npm view @diffgazer/ui`, and `npm view @diffgazer/keys` are treated as external publish-gate checks. Treat these as publish targets until registry availability is verified.
+**Publish gate: NOT YET PUBLISHED.** These are publish targets, not live npm packages. Verify current status before relying on any npm install path:
+
+```bash
+npm view @diffgazer/add version
+npm view @diffgazer/ui version
+npm view @diffgazer/keys version
+```
+
+A package is published once `npm view` returns a version (a 404 means still gated). See [Hosted Registry Status](#hosted-registry-status) for the registry-endpoint checks.
 
 Workspace-only packages:
 

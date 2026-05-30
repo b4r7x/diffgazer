@@ -5,8 +5,8 @@ import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
 import { createApi, type BoundApi } from "@diffgazer/core/api";
 import { GEMINI_MODEL_INFO } from "@diffgazer/core/schemas/config";
-import { CliThemeProvider } from "../../../theme/theme-context.js";
-import { ModelSelectOverlay } from "./model-select-overlay.js";
+import { CliThemeProvider } from "../../../theme/theme-context";
+import { ModelSelectOverlay } from "./model-select-overlay";
 
 const ARROW_UP = "[A";
 const ARROW_DOWN = "[B";

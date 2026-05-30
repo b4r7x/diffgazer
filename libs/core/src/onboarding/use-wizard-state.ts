@@ -1,14 +1,14 @@
 import { useCallback, useRef, useState } from "react";
 import { AVAILABLE_PROVIDERS, type AIProvider } from "@diffgazer/core/schemas/config";
-import { canProceed } from "./can-proceed.js";
-import { getInitialWizardData } from "./defaults.js";
+import { canProceed } from "./can-proceed";
+import { getInitialWizardData } from "./defaults";
 import {
   WIZARD_STEPS,
   getStepAt,
   isFirstStepIndex,
   isLastStepIndex,
-} from "./steps.js";
-import type { OnboardingStep, WizardData } from "./types.js";
+} from "./steps";
+import type { OnboardingStep, WizardData } from "./types";
 
 export interface EarlySaveCallbacks {
   saveCredentials: (provider: AIProvider, apiKey: string) => Promise<void>;

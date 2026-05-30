@@ -7,15 +7,9 @@ import {
   shouldSkipSync,
 } from "./cache.js";
 import { resolveSyncOutputPaths } from "./paths.js";
+import { assertSafeLibraryId } from "./library-id-validation.js";
 import { defaultLogger } from "../logger.js";
 import type { SyncDocsOptions, SyncDocsResult } from "./types.js";
-
-const SAFE_LIBRARY_ID_RE = /^[a-z0-9][a-z0-9-]*$/i;
-
-function assertSafeLibraryId(id: string, label: string): void {
-  if (SAFE_LIBRARY_ID_RE.test(id)) return;
-  throw new Error(`${label} must be a safe library id`);
-}
 
 export function syncDocsFromArtifacts(options: SyncDocsOptions): SyncDocsResult {
   const {

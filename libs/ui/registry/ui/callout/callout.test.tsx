@@ -1,8 +1,8 @@
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { axe } from "../../../testing/utils.js"
+import { axe } from "../../../testing/utils"
 import { describe, it, expect } from "vitest"
-import { Callout } from "./index.js"
+import { Callout } from "./index"
 
 function getGrid(container: HTMLElement): HTMLElement {
   const grid = container.querySelector("[data-frame] > [data-has-icon]") as HTMLElement

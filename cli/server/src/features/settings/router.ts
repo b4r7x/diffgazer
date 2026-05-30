@@ -4,16 +4,7 @@ import { TrustConfigSchema } from "@diffgazer/core/schemas/config";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import { errorResponse, zodErrorHandler } from "../../shared/lib/http/response.js";
 import { createBodyLimitMiddleware } from "../../shared/middlewares/body-limit.js";
-import {
-  ensureProjectFile,
-  getProjectInfo,
-  getSettings,
-  getTrust,
-  listTrustedProjects,
-  removeTrust,
-  saveTrust,
-  updateSettings,
-} from "../../shared/lib/config/store.js";
+import { getStore } from "../../shared/lib/config/store.js";
 import { getProjectRoot } from "../../shared/lib/http/request.js";
 import { SettingsSchema } from "./schemas.js";
 
@@ -22,7 +13,7 @@ const settingsRouter = new Hono();
 const bodyLimitMiddleware = createBodyLimitMiddleware(10);
 
 settingsRouter.get("/", (c) => {
-  return c.json(getSettings());
+  return c.json(getStore().getSettings());
 });
 
 settingsRouter.post(
@@ -31,7 +22,7 @@ settingsRouter.post(
   zValidator("json", SettingsSchema, zodErrorHandler),
   async (c) => {
     const patch = c.req.valid("json");
-    const result = await updateSettings(patch);
+    const result = await getStore().updateSettings(patch);
     if (!result.ok) {
       return errorResponse(c, result.error.message, result.error.code, 400);
     }
@@ -43,11 +34,11 @@ settingsRouter.get(
   "/trust",
   (c) => {
     const projectRoot = getProjectRoot(c);
-    const project = getProjectInfo(projectRoot);
+    const project = getStore().getProjectInfo(projectRoot);
     if (!project.projectId) {
       return errorResponse(c, "Failed to resolve project identity", "PROJECT_ERROR", 500);
     }
-    const trust = getTrust(project.projectId);
+    const trust = getStore().getTrust(project.projectId);
     if (!trust) {
       return errorResponse(c, "Trust not found for project", ErrorCode.NOT_FOUND, 404);
     }
@@ -57,8 +48,8 @@ settingsRouter.get(
 
 settingsRouter.get("/trust/list", (c) => {
   const projectRoot = getProjectRoot(c);
-  const project = getProjectInfo(projectRoot);
-  const all = listTrustedProjects();
+  const project = getStore().getProjectInfo(projectRoot);
+  const all = getStore().listTrustedProjects();
   const scoped = all.filter((t) => t.projectId === project.projectId);
   return c.json({ projects: scoped });
 });
@@ -72,12 +63,12 @@ settingsRouter.post(
     const projectRoot = getProjectRoot(c);
 
     // Server-derive identity fields -- never trust the client for these.
-    const project = ensureProjectFile(projectRoot);
+    const project = getStore().ensureProjectFile(projectRoot);
     if (!project.projectId) {
       return errorResponse(c, "Failed to resolve project identity", "PROJECT_ERROR", 500);
     }
 
-    const existingTrust = getTrust(project.projectId);
+    const existingTrust = getStore().getTrust(project.projectId);
 
     // Normalize capabilities: runCommands is not yet supported, always strip
     const capabilities = { ...body.capabilities, runCommands: false };
@@ -91,7 +82,7 @@ settingsRouter.post(
       trustedAt: existingTrust?.trustedAt ?? new Date().toISOString(),
     };
 
-    const result = await saveTrust(trustConfig);
+    const result = await getStore().saveTrust(trustConfig);
     if (!result.ok) {
       return errorResponse(c, result.error.message, result.error.code, 400);
     }
@@ -103,11 +94,11 @@ settingsRouter.delete(
   "/trust",
   async (c) => {
     const projectRoot = getProjectRoot(c);
-    const project = getProjectInfo(projectRoot);
+    const project = getStore().getProjectInfo(projectRoot);
     if (!project.projectId) {
       return errorResponse(c, "Failed to resolve project identity", "PROJECT_ERROR", 500);
     }
-    const result = await removeTrust(project.projectId);
+    const result = await getStore().removeTrust(project.projectId);
     if (!result.ok) {
       return errorResponse(c, result.error.message, result.error.code, 400);
     }

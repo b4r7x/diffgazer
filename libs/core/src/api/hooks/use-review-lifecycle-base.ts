@@ -1,13 +1,13 @@
-import { useReviewStream } from "./use-review-stream.js";
-import { useSettings } from "./config.js";
-import { useReviewStart } from "./use-review-start.js";
-import { useReviewCompletion } from "./use-review-completion.js";
+import { useReviewStream } from "./use-review-stream";
+import { useSettings } from "./config";
+import { useReviewStart } from "./use-review-start";
+import { useReviewCompletion } from "./use-review-completion";
 import {
   isNoDiffError as checkNoDiffError,
   isCheckingForChanges as checkForChanges,
   getLoadingMessage,
 } from "@diffgazer/core/review";
-import type { ReviewStreamState } from "./use-review-stream.js";
+import type { ReviewStreamState } from "./use-review-stream";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
 
 export interface UseReviewLifecycleBaseOptions {
@@ -25,22 +25,27 @@ export interface UseReviewLifecycleBaseResult {
     stop: () => void;
     abort: () => void;
     cancel: (reviewId: string | null) => void;
+    state: ReviewStreamState;
   };
 
-  streamState: ReviewStreamState;
+  checks: {
+    isNoDiffError: boolean;
+    isCheckingForChanges: boolean;
+    loadingMessage: string | null;
+  };
 
-  isNoDiffError: boolean;
-  isCheckingForChanges: boolean;
-  loadingMessage: string | null;
+  completion: {
+    isCompleting: boolean;
+    skipDelay: () => void;
+    resetCompletion: () => void;
+  };
 
-  isCompleting: boolean;
-  skipDelay: () => void;
-  resetCompletion: () => void;
-
-  hasStarted: boolean;
-  hasStreamed: boolean;
-  setHasStarted: (value: boolean) => void;
-  setHasStreamed: (value: boolean) => void;
+  start: {
+    hasStarted: boolean;
+    hasStreamed: boolean;
+    setHasStarted: (value: boolean) => void;
+    setHasStreamed: (value: boolean) => void;
+  };
 }
 
 export function useReviewLifecycleBase(
@@ -85,17 +90,23 @@ export function useReviewLifecycleBase(
       stop: stream.stop,
       abort: stream.abort,
       cancel: stream.cancel,
+      state: stream.state,
     },
-    streamState: stream.state,
-    isNoDiffError,
-    isCheckingForChanges,
-    loadingMessage,
-    isCompleting,
-    skipDelay,
-    resetCompletion,
-    hasStarted,
-    hasStreamed,
-    setHasStarted,
-    setHasStreamed,
+    checks: {
+      isNoDiffError,
+      isCheckingForChanges,
+      loadingMessage,
+    },
+    completion: {
+      isCompleting,
+      skipDelay,
+      resetCompletion,
+    },
+    start: {
+      hasStarted,
+      hasStreamed,
+      setHasStarted,
+      setHasStreamed,
+    },
   };
 }

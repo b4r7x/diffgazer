@@ -1,5 +1,5 @@
 import { parseArgs } from "node:util";
-import type { CliMode } from "./types/cli.js";
+import type { CliMode } from "./types/cli";
 
 export const HELP_TEXT = `Usage: diffgazer [options]
 

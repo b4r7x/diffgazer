@@ -8,7 +8,7 @@ import {
   SR_LABEL,
   formatHunkHeader,
   LineContent,
-} from "./diff-view-line.js";
+} from "./diff-view-line";
 
 export function SplitView({
   parsed,

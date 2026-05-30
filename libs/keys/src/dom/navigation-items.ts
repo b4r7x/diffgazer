@@ -1,4 +1,4 @@
-import { containsActiveElement, getFocusableElements as getFocusableElementsImpl } from "./focusable.js";
+import { containsActiveElement } from "./focusable.js";
 
 export const NAVIGATION_ITEM_ATTRIBUTE = "data-diffgazer-navigation-item";
 
@@ -192,5 +192,3 @@ export function focusNavigationItem(
   target.focus({ preventScroll: query.preventScroll });
   return target.dataset.value;
 }
-
-export const getFocusableElements = getFocusableElementsImpl;

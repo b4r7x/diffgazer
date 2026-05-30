@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { parseDiff } from "../diff/parse.js";
-import { toSplitRows } from "../diff/split.js";
-import type { DiffChange } from "../diff/parse.js";
+import { parseDiff } from "../diff/parse";
+import { toSplitRows } from "../diff/split";
+import type { DiffChange } from "../diff/parse";
 
 describe("parseDiff", () => {
   const basicPatch = [

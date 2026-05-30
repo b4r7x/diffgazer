@@ -1,5 +1,5 @@
 import { Box, Text } from "ink";
-import { useTheme } from "../../../theme/theme-context.js";
+import { useTheme } from "../../../theme/theme-context";
 import { formatTime } from "@diffgazer/core/format";
 
 export interface ReviewMetricsFooterProps {

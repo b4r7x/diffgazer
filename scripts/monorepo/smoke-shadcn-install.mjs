@@ -1,5 +1,11 @@
 #!/usr/bin/env node
 
+// Exit-code contract: this smoke runner exits non-zero when a check fails. A
+// failed assertion throws, which Node surfaces as a non-zero exit; the registry
+// server is closed and temp-dir cleanup runs in the try/finally block before the
+// throw propagates. Do not swap the throws for process.exit() — that would
+// bypass the finally cleanup and leak the server and fixture directories.
+
 import { spawn } from "node:child_process";
 import { createServer } from "node:http";
 import {
@@ -16,9 +22,12 @@ import {
   quoteArgs,
   assertBuiltCss,
   installViteFixtureDeps,
+  joinLines,
   run,
   writeViteFixture,
 } from "./smoke-shared.mjs";
+import { ENV } from "./artifacts/env.mjs";
+import { collectMissingClosure } from "./registry-closure.mjs";
 
 const root = process.cwd();
 const uiPackageJsonPath = resolve(root, "libs/ui/package.json");
@@ -69,7 +78,7 @@ function runFileAsync(command, args, cwd = root, options = {}) {
   return new Promise((resolveRun, reject) => {
     const child = spawn(command, args, {
       cwd,
-      env: { ...process.env, CI: "1", ...options.env },
+      env: { ...process.env, [ENV.ci]: "1", ...options.env },
       stdio: ["ignore", "pipe", "pipe"],
       shell: options.shell ?? false,
     });
@@ -160,8 +169,31 @@ function assertDirectRegistryDependencies(registryDir, names, label) {
   }
 }
 
+function makeRegistryResolver(registryDirs) {
+  return (ref) => {
+    const route = registryRouteFromUrl(ref);
+    if (!route) return null;
+
+    const [, namespace, fileName] = route.split("/");
+    const registryDir = registryDirs.get(namespace);
+    if (!registryDir) return null;
+
+    const name = fileName.replace(/\.json$/, "");
+    const item = loadRegistryItem(registryDir, name);
+    return item ? { id: route, item } : null;
+  };
+}
+
+function assertRegistryClosure(registryDirs, rootRefs, label) {
+  const missing = collectMissingClosure(rootRefs, makeRegistryResolver(registryDirs));
+  if (missing.length > 0) {
+    const details = missing.map(({ ref, reason }) => `${ref} (${reason})`).join(", ");
+    throw new Error(`${label} registry dependency closure is incomplete: ${details}`);
+  }
+}
+
 async function runShadcnAdd(fixture, items) {
-  const override = process.env.DIFFGAZER_SHADCN_COMMAND;
+  const override = process.env[ENV.shadcnCommand];
   const addArgs = ["add", ...items, "--cwd", fixture, "--yes", "--overwrite"];
 
   if (override) {
@@ -198,7 +230,7 @@ function getWorkspaceShadcnSpec() {
 function writeSmokeApp(fixture) {
   writeFileSync(
     join(fixture, "src/main.tsx"),
-    [
+    joinLines(
       "import React from 'react';",
       "import { createRoot } from 'react-dom/client';",
       "import { Button } from '@/components/ui/button';",
@@ -254,7 +286,7 @@ function writeSmokeApp(fixture) {
       "",
       "createRoot(document.getElementById('root')!).render(<App />);",
       "",
-    ].join("\n"),
+    ),
   );
 }
 
@@ -284,30 +316,24 @@ function importInstalledStyle(fixture, relativePath) {
   writeFileSync(cssPath, css.replace(baseImport, `${baseImport}\n${importLine}`));
 }
 
-function startRegistryServer(uiRegistryDir, keysRegistryDir) {
-  const registryDirs = new Map([
-    ["ui", uiRegistryDir],
-    ["keys", keysRegistryDir],
-  ]);
-  let baseUrl = "";
-
-  function rewriteRegistryUrls(value) {
-    if (typeof value === "string") {
-      const route = registryRouteFromUrl(value);
-      return route ? `${baseUrl}${route}` : value;
-    }
-    if (Array.isArray(value)) {
-      return value.map(rewriteRegistryUrls);
-    }
-    if (value && typeof value === "object") {
-      return Object.fromEntries(
-        Object.entries(value).map(([key, item]) => [key, rewriteRegistryUrls(item)]),
-      );
-    }
-    return value;
+export function rewriteRegistryUrls(value, baseUrl) {
+  if (typeof value === "string") {
+    const route = registryRouteFromUrl(value);
+    return route ? `${baseUrl}${route}` : value;
   }
+  if (Array.isArray(value)) {
+    return value.map((item) => rewriteRegistryUrls(item, baseUrl));
+  }
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [key, rewriteRegistryUrls(item, baseUrl)]),
+    );
+  }
+  return value;
+}
 
-  const server = createServer((request, response) => {
+export function createRegistryHandler(registryDirs, getBaseUrl) {
+  return (request, response) => {
     try {
       const url = new URL(request.url ?? "/", "http://127.0.0.1");
       const pathParts = url.pathname.split("/").filter(Boolean);
@@ -328,11 +354,20 @@ function startRegistryServer(uiRegistryDir, keysRegistryDir) {
 
       response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
       const json = JSON.parse(readFileSync(filePath, "utf-8"));
-      response.end(JSON.stringify(rewriteRegistryUrls(json), null, 2));
+      response.end(JSON.stringify(rewriteRegistryUrls(json, getBaseUrl()), null, 2));
     } catch (error) {
       response.writeHead(500).end(error instanceof Error ? error.message : String(error));
     }
-  });
+  };
+}
+
+function startRegistryServer(uiRegistryDir, keysRegistryDir) {
+  const registryDirs = new Map([
+    ["ui", uiRegistryDir],
+    ["keys", keysRegistryDir],
+  ]);
+  let baseUrl = "";
+  const server = createServer(createRegistryHandler(registryDirs, () => baseUrl));
 
   return new Promise((resolveServer, reject) => {
     server.once("error", reject);
@@ -424,7 +459,7 @@ function assertFixtureBuilds(fixture, label) {
 function writeSoloButtonApp(fixture) {
   writeFileSync(
     join(fixture, "src/main.tsx"),
-    [
+    joinLines(
       "import React from 'react';",
       "import { createRoot } from 'react-dom/client';",
       "import { Button } from '@/components/ui/button';",
@@ -440,7 +475,7 @@ function writeSoloButtonApp(fixture) {
       "",
       "createRoot(document.getElementById('root')!).render(<App />);",
       "",
-    ].join("\n"),
+    ),
   );
 }
 
@@ -474,6 +509,17 @@ console.log("OK: keys public registry has no .js import specifiers");
 
 assertDirectRegistryDependencies(uiRegistryDir, uiItems, "UI");
 console.log("OK: UI public registry dependencies are direct URL ready");
+
+const registryDirs = new Map([
+  ["ui", uiRegistryDir],
+  ["keys", keysRegistryDir],
+]);
+const closureRoots = [
+  ...uiItems.map((name) => `https://r.b4r7.dev/r/ui/${name}.json`),
+  ...keysItems.map((name) => `https://r.b4r7.dev/r/keys/${name}.json`),
+];
+assertRegistryClosure(registryDirs, closureRoots, "public");
+console.log("OK: representative registry items resolve their full dependency closure");
 
 const registryServer = await startRegistryServer(uiRegistryDir, keysRegistryDir);
 const directFixture = mkdtempSync(join(tmpdir(), "shadcn-smoke-direct-"));

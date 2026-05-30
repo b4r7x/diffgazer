@@ -18,7 +18,7 @@ import {
   type InputMethod,
 } from "@diffgazer/core/onboarding";
 import { useSaveSettings, useSaveConfig, useDeleteProviderCredentials } from "@diffgazer/core/api/hooks";
-import { useNavigation } from "../../../app/navigation-context.js";
+import { useNavigation } from "../../../app/navigation-context";
 
 type FocusArea = "step" | "nav";
 

@@ -7,7 +7,7 @@ import {
   getSetupVariant,
   getContextLabel,
   getContextVariant,
-} from "./derive-display.js";
+} from "./derive-display";
 
 const SETUP_STATUS_READY: SetupStatus = {
   hasSecretsStorage: true,

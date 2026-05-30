@@ -1,11 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
-vi.mock("./lib/shutdown-token.js", () => ({
+vi.mock("./lib/shutdown-token", () => ({
   ensureShutdownToken: vi.fn(),
 }));
 
-import type { ServerController } from "./lib/servers/create-process-server.js";
-import { startWeb } from "./web-launcher.js";
+import type { ServerController } from "./lib/servers/create-process-server";
+import { startWeb } from "./web-launcher";
 
 function createMockServer(): ServerController & { startCalls: number; stopCalls: number } {
   const server = {

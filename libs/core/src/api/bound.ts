@@ -1,9 +1,9 @@
-import type { ApiClientConfig } from "./types.js";
-import { createApiClient } from "./client.js";
-import { bindConfig } from "./config.js";
-import { bindGit } from "./git.js";
-import { bindReview } from "./review.js";
-import { bindShutdown } from "./shutdown.js";
+import type { ApiClientConfig } from "./types";
+import { createApiClient } from "./client";
+import { bindConfig } from "./config";
+import { bindGit } from "./git";
+import { bindReview } from "./review";
+import { bindShutdown } from "./shutdown";
 
 export function createApi(config: ApiClientConfig) {
   const client = createApiClient(config);

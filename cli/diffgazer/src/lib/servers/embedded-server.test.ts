@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildHtmlShell } from "./embedded-server.js";
+import { buildHtmlShell } from "./embedded-server";
 
 const MINIMAL_HTML = "<!DOCTYPE html><html><head></head><body></body></html>";
 

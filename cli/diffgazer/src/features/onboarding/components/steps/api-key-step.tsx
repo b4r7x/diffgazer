@@ -2,8 +2,8 @@ import type { ReactElement } from "react";
 import { Box, Text } from "ink";
 import { AVAILABLE_PROVIDERS, PROVIDER_ENV_VARS } from "@diffgazer/core/schemas/config";
 import type { AIProvider } from "@diffgazer/core/schemas/config";
-import { useTheme } from "../../../../theme/theme-context.js";
-import { ApiKeyMethodSelector } from "../../../providers/components/api-key-method-selector.js";
+import { useTheme } from "../../../../theme/theme-context";
+import { ApiKeyMethodSelector } from "../../../providers/components/api-key-method-selector";
 
 interface ApiKeyStepProps {
   provider: AIProvider;

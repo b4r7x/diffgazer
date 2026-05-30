@@ -19,8 +19,8 @@ import {
   resolveDiffInput,
 } from "@/lib/diff";
 import { useNavigation } from "@/hooks/use-navigation";
-import { UnifiedView } from "./diff-view-unified.js";
-import { SplitView } from "./diff-view-split.js";
+import { UnifiedView } from "./diff-view-unified";
+import { SplitView } from "./diff-view-split";
 
 export type DiffViewVariant =
   | "hairline"

@@ -2,12 +2,12 @@ import { useState } from "react";
 import type { ReactElement } from "react";
 import { Box, Text } from "ink";
 import type { AIProvider, CredentialRef } from "@diffgazer/core/schemas/config";
-import { useTheme } from "../../../theme/theme-context.js";
-import { Dialog } from "../../../components/ui/dialog.js";
-import { Button } from "../../../components/ui/button.js";
-import { Spinner } from "../../../components/ui/spinner.js";
+import { useTheme } from "../../../theme/theme-context";
+import { Dialog } from "../../../components/ui/dialog";
+import { Button } from "../../../components/ui/button";
+import { Spinner } from "../../../components/ui/spinner";
 import { useSaveConfig } from "@diffgazer/core/api/hooks";
-import { ApiKeyMethodSelector } from "./api-key-method-selector.js";
+import { ApiKeyMethodSelector } from "./api-key-method-selector";
 
 interface ApiKeyOverlayProps {
   open: boolean;

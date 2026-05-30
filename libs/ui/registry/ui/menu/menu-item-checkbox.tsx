@@ -12,7 +12,7 @@ import { getEncodedListboxItemId } from "@/hooks/use-listbox";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { cn } from "@/lib/utils";
 import { useMenuContext } from "./menu-context";
-import { getItemState, menuItemBase, menuItemIndicator, menuItemLabel } from "./menu-item";
+import { getItemState, menuItemBase, menuItemIndicator, menuItemLabel } from "./menu-item-variants";
 
 const CHECKBOX_CHECKED = "[x]";
 const CHECKBOX_UNCHECKED = "[ ]";
@@ -84,7 +84,7 @@ export function MenuItemCheckbox({
     if (disabled) event.preventDefault();
   };
 
-  const state = getItemState(disabled, isFocused, false);
+  const state = getItemState({ disabled, isFocused, isSelected: false });
 
   return (
     <div

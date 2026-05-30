@@ -2,12 +2,12 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useRef } from "react";
 import { afterEach, describe, expect, expectTypeOf, it, vi } from "vitest";
-import { KeyboardWrapper } from "../testing/test-utils";
-import { testNavigationBehavior } from "../testing/navigation-behavior";
+import { KeyboardWrapper } from "../testing/test-utils.js";
+import { testNavigationBehavior } from "../testing/navigation-behavior.js";
 import {
   useActionRowNavigation,
   type UseActionRowNavigationOptions,
-} from "./use-action-row-navigation";
+} from "./use-action-row-navigation.js";
 
 function getActionRowActiveIndex(): number {
   const active = document.activeElement;

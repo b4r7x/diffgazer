@@ -1,6 +1,7 @@
+import type { CodeBlockLineProps } from "@/components/ui/code-block"
 import { hooksData, libsData } from "@/generated/library-data"
 
-type SourceEntry = { source: { raw: string; highlighted: Array<{ number: number }> } }
+type SourceEntry = { source: { raw: string; highlighted: CodeBlockLineProps[] } }
 type SourceDataMap = Record<string, SourceEntry>
 
 function buildDataMap(): Record<string, Record<string, SourceDataMap>> {
@@ -25,7 +26,7 @@ const pathPrefixes: Record<string, string> = {
 export interface CrossDepSourceFile {
   path: string
   raw: string
-  highlighted: Array<{ number: number }>
+  highlighted: CodeBlockLineProps[]
 }
 
 export function resolveCrossDepFiles(
@@ -42,7 +43,7 @@ export function resolveCrossDepFiles(
         files.push({
           path: `${prefix}${item}.ts`,
           raw: entry.source.raw,
-          highlighted: entry.source.highlighted as CrossDepSourceFile["highlighted"],
+          highlighted: entry.source.highlighted,
         })
       }
     }

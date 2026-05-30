@@ -1,6 +1,6 @@
-import type { ParsedDiff, DiffInput } from "./parse.js";
-import { parseDiff } from "./parse.js";
-import { computeDiff } from "./compute.js";
+import type { ParsedDiff, DiffInput } from "./parse";
+import { parseDiff } from "./parse";
+import { computeDiff } from "./compute";
 
 const EMPTY: ParsedDiff = { oldPath: null, newPath: null, hunks: [] };
 

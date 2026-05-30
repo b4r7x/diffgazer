@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { selectDetailsEmptyKind } from "./details-empty.js";
+import { selectDetailsEmptyKind } from "./details-empty";
 
 describe("selectDetailsEmptyKind", () => {
   it("returns no-issues when the source list is empty", () => {

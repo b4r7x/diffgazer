@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { describe, expect, it } from "vitest";
-import { isHTMLElementForContainer, mergeIds, resolveAriaInvalid } from "../aria-utils.js";
+import { isHTMLElementForContainer, mergeIds, resolveAriaInvalid } from "../aria-utils";
 
 describe("resolveAriaInvalid", () => {
   it.each([

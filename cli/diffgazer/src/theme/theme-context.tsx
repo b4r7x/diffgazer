@@ -1,7 +1,7 @@
 import { createContext, useContext, useState } from "react";
 import type { ReactNode } from "react";
-import type { CliColorTokens } from "./palettes.js";
-import { darkPalette, lightPalette, palettes } from "./palettes.js";
+import type { CliColorTokens } from "./palettes";
+import { darkPalette, lightPalette, palettes } from "./palettes";
 
 interface CliThemeContextValue {
   tokens: CliColorTokens;

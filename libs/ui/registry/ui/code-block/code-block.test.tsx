@@ -2,9 +2,9 @@ import type { MouseEvent } from "react"
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { afterEach, describe, expect, it, beforeEach, vi } from "vitest"
 import { common, createLowlight } from "lowlight"
-import { axe } from "../../../testing/utils.js"
-import { CodeBlock } from "./index.js"
-import { CodeBlockHighlight, createDefaultLowlight } from "./highlight.js"
+import { axe } from "../../../testing/utils"
+import { CodeBlock } from "./index"
+import { CodeBlockHighlight, createDefaultLowlight } from "./highlight"
 
 const lowlight = createLowlight(common)
 
@@ -432,30 +432,39 @@ describe("CodeBlock", () => {
     })
   })
 
+  // jsdom does not compute syntax-highlight colors, so highlighting is verified
+  // by its observable DOM effect: lowlight splits a line's source into token
+  // <span> elements inside <code>, whereas plain text stays a single text node.
+  function codeTokenCount(line: Element): number {
+    return line.querySelector("code")?.querySelectorAll("span").length ?? 0
+  }
+
   describe("highlight", () => {
-    it("emits hljs-* class names when a lowlight instance is provided", () => {
-      const { container } = render(
+    it("tokenizes source into styled spans when a lowlight instance is provided", () => {
+      render(
         <CodeBlock language="ts">
           <CodeBlockHighlight code="const x = 1" language="typescript" lowlight={lowlight} />
         </CodeBlock>,
       )
 
-      const tokens = container.querySelectorAll("[class*=\"hljs-\"]")
-      expect(tokens.length).toBeGreaterThan(0)
+      const line = document.querySelector("[data-slot=\"code-block-line\"]")!
+      expect(codeTokenCount(line)).toBeGreaterThan(0)
+      expect(line.querySelector("code")).toHaveTextContent("const x = 1")
     })
 
-    it("renders plain text (no hljs tokens) when no lowlight instance is provided", () => {
-      const { container } = render(
+    it("renders source as plain text when no lowlight instance is provided", () => {
+      render(
         <CodeBlock language="ts">
           <CodeBlockHighlight code="const x = 1" language="typescript" />
         </CodeBlock>,
       )
 
-      expect(container.querySelectorAll("[class*=\"hljs-\"]").length).toBe(0)
-      expect(container.textContent).toContain("const x = 1")
+      const line = document.querySelector("[data-slot=\"code-block-line\"]")!
+      expect(codeTokenCount(line)).toBe(0)
+      expect(line.querySelector("code")).toHaveTextContent("const x = 1")
     })
 
-    it("applies lineStates, gutter signs, and hljs tokens together on diff rows", () => {
+    it("applies lineStates, gutter signs, and tokenized highlighting together on diff rows", () => {
       const { container } = render(
         <CodeBlock language="ts">
           <CodeBlockHighlight
@@ -476,9 +485,9 @@ describe("CodeBlock", () => {
       expect(
         lines[1]?.querySelector("[data-slot=\"code-block-line-sign\"]")?.textContent,
       ).toBe("−")
-      // Highlighted tokens still render on diff-state rows.
-      expect((lines[0]?.querySelectorAll("[class*=\"hljs-\"]").length ?? 0)).toBeGreaterThan(0)
-      expect((lines[1]?.querySelectorAll("[class*=\"hljs-\"]").length ?? 0)).toBeGreaterThan(0)
+      // Highlighting still tokenizes the code on diff-state rows.
+      expect(codeTokenCount(lines[0]!)).toBeGreaterThan(0)
+      expect(codeTokenCount(lines[1]!)).toBeGreaterThan(0)
     })
 
     it("createDefaultLowlight() loads lowlight lazily and returns a usable instance", async () => {

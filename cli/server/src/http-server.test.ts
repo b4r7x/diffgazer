@@ -1,7 +1,8 @@
 import { createServer, type Server } from "node:http";
 import { afterEach, describe, expect, it } from "vitest";
 import type { ServerType } from "@hono/node-server";
-import { DEFAULT_DEV_SERVER_PORT, formatListenError, parsePortEnv, startDevServer } from "./dev-server.js";
+import { parsePortEnv } from "@diffgazer/core/env";
+import { DEFAULT_DEV_SERVER_PORT, formatListenError, startDevServer } from "./http-server.js";
 
 const openServers: Array<Server | ServerType> = [];
 
@@ -33,17 +34,17 @@ function closeServer(server: Server | ServerType): Promise<void> {
   });
 }
 
-describe("dev server startup", () => {
+describe("http server startup", () => {
   afterEach(async () => {
     await Promise.all(openServers.splice(0).map((server) => closeServer(server)));
   });
 
   it("parses PORT strictly", () => {
-    expect(parsePortEnv(undefined)).toBe(DEFAULT_DEV_SERVER_PORT);
-    expect(parsePortEnv(" 3002 ")).toBe(3002);
+    expect(parsePortEnv(undefined, DEFAULT_DEV_SERVER_PORT)).toBe(DEFAULT_DEV_SERVER_PORT);
+    expect(parsePortEnv(" 3002 ", DEFAULT_DEV_SERVER_PORT)).toBe(3002);
 
     for (const value of ["", "0", "65536", "abc", "3.14"]) {
-      expect(() => parsePortEnv(value)).toThrow(
+      expect(() => parsePortEnv(value, DEFAULT_DEV_SERVER_PORT)).toThrow(
         `Invalid PORT "${value}": expected an integer from 1 to 65535.`,
       );
     }

@@ -1,6 +1,6 @@
 import { Fragment } from "react";
-import { Menu } from "../../../components/ui/menu.js";
-import { Panel } from "../../../components/ui/panel.js";
+import { Menu } from "../../../components/ui/menu";
+import { Panel } from "../../../components/ui/panel";
 import { MENU_ITEMS } from "@diffgazer/core/schemas/presentation";
 import { isMenuActionDisabled, withGroupDividers } from "@diffgazer/core/navigation";
 

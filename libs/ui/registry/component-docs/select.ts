@@ -47,6 +47,11 @@ export const selectDoc: ComponentDoc = {
   ],
   notes: [
     {
+      title: "Requires @diffgazer/keys (package mode)",
+      content:
+        "Select's built-in keyboard navigation imports from the optional @diffgazer/keys peer. Package/npm consumers must install it: `npm install @diffgazer/keys`. Importing @diffgazer/ui/components/select without keys fails at module load with an error naming the missing @diffgazer/keys package. Copy/dgadd consumers do not need the package — copy mode rewrites the keyboard hooks to local source.",
+    },
+    {
       title: "Composition Contract",
       content:
         "Use Select.Trigger, Select.Content, Select.Item, and the other Select parts as explicit children in the Select JSX tree. Custom option UI belongs inside Select.Item, with textValue when the visible content is not plain text. Components that create items internally from an opaque wrapper are not part of the current public contract.",

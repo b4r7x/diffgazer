@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { act, renderHook } from "@testing-library/react"
-import { useActiveHeading, type ActiveHeadingActivation } from "../use-active-heading.js"
+import { useActiveHeading, type ActiveHeadingActivation } from "../use-active-heading"
 
 const originalInnerHeight = Object.getOwnPropertyDescriptor(window, "innerHeight")
 const originalScrollY = Object.getOwnPropertyDescriptor(window, "scrollY")
@@ -203,6 +203,59 @@ describe("useActiveHeading", () => {
       expect(removeListener).toHaveBeenCalledWith("resize", expect.any(Function))
     } finally {
       removeListener.mockRestore()
+    }
+  })
+
+  it("resolves headings and scroll listeners against a supplied ownerDocument", () => {
+    const altDoc = document.implementation.createHTMLDocument("alt")
+    const altView = {
+      innerHeight: 600,
+      scrollY: 0,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      requestAnimationFrame: (cb: FrameRequestCallback) => {
+        cb(0)
+        return 1
+      },
+      cancelAnimationFrame: vi.fn(),
+      clearTimeout: vi.fn(),
+      setTimeout: vi.fn(() => 0),
+      matchMedia: () => ({ matches: false }) as MediaQueryList,
+    }
+    Object.defineProperty(altDoc, "defaultView", { configurable: true, value: altView })
+
+    for (const id of ["a1", "a2"]) {
+      const h = altDoc.createElement("h2")
+      h.id = id
+      altDoc.body.appendChild(h)
+    }
+    altDoc.getElementById("a1")!.getBoundingClientRect = () => makeDOMRect(0)
+    altDoc.getElementById("a2")!.getBoundingClientRect = () => makeDOMRect(100)
+
+    const hostAddListener = vi.spyOn(window, "addEventListener")
+    try {
+      const { result } = renderHook(() =>
+        useActiveHeading({
+          ids: ["a1", "a2"],
+          activation: "viewport-center",
+          topOffset: 0,
+          bottomLock: false,
+          observe: false,
+          ownerDocument: altDoc,
+        }),
+      )
+
+      // Active heading is read from the alt document's headings, not the host's.
+      expect(result.current.activeId).toBe("a2")
+      // Scroll/resize listeners attach to the alt document's view, never the host window.
+      expect(altView.addEventListener).toHaveBeenCalledWith("scroll", expect.any(Function), { passive: true })
+      expect(altView.addEventListener).toHaveBeenCalledWith("resize", expect.any(Function))
+      const hostScrollResize = hostAddListener.mock.calls.filter(
+        ([type]) => type === "scroll" || type === "resize",
+      )
+      expect(hostScrollResize).toEqual([])
+    } finally {
+      hostAddListener.mockRestore()
     }
   })
 })

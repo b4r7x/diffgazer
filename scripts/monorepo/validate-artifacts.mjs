@@ -5,6 +5,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
   assertNoDuplicateDemoKeys,
+  collectBundleRelativeJsImportErrors,
   collectTreeParityErrors,
   validateIntegrityBundle,
   validateLibraryArtifacts,
@@ -16,6 +17,8 @@ import {
 } from "./artifacts/sync.mjs";
 import { readJson } from "./artifacts/json.mjs";
 import { validateArtifactPackSurface } from "./artifacts/pack-surface.mjs";
+import { runValidationChecks } from "./artifacts/run-checks.mjs";
+import { ENV } from "./artifacts/env.mjs";
 
 const root = process.cwd();
 const docsRoot = resolve(root, "apps/docs");
@@ -156,7 +159,7 @@ function validateUiDeclarationsAvoidHiddenShared(packedFiles) {
 }
 
 function packageFilesNeedTrackedPolicyCheck() {
-  return process.env.CI === "true" || process.env.DIFFGAZER_REQUIRE_TRACKED_POLICY === "1";
+  return process.env[ENV.ci] === "true" || process.env[ENV.requireTrackedPolicy] === "1";
 }
 
 function gitTrackedFiles(paths) {
@@ -262,8 +265,14 @@ checks.push(...collectArtifactSyncValidationErrors({
 const registryBundle = readJson(resolve(root, "cli/add/src/generated/registry-bundle.json"));
 checks.push(...assertNoDuplicateDemoKeys(registryBundle.items ?? [], "@diffgazer/add registry bundle"));
 
-if (checks.length > 0) {
-  throw new Error(["Artifact validation failed.", ...checks].join("\n"));
-}
+const keysCopyBundle = readJson(resolve(root, "cli/add/src/generated/keys-copy-bundle.json"));
+checks.push(...collectBundleRelativeJsImportErrors(registryBundle.items, "@diffgazer/add registry bundle"));
+checks.push(...collectBundleRelativeJsImportErrors(keysCopyBundle.items, "@diffgazer/add keys copy bundle"));
 
-console.log("OK: artifact validation passed");
+// Exit-code contract: this validator exits non-zero when any check fails so CI
+// gates can branch on it. The shared runner reports failures and exits 1
+// explicitly rather than relying on an uncaught throw.
+runValidationChecks(checks, {
+  failureHeader: "Artifact validation failed.",
+  successMessage: "OK: artifact validation passed",
+});

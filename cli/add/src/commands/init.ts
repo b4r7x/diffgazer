@@ -1,8 +1,23 @@
 import { existsSync, mkdirSync } from "node:fs";
+import { z } from "zod";
 import { detectProject } from "../utils/detect.js";
 import { createInitCommand, writeFileSafe, installDepsWithSpinner, heading, warn, REGISTRY_ORIGIN } from "@diffgazer/registry/cli";
 import { ctx, getRegistry, VERSION } from "../context.js";
 import { assertInsideProject, resolveInstallPath, resolveProjectPath } from "../utils/paths.js";
+
+// The init command declares `--components-dir <path>` (defaulted) and
+// `--allow-missing-alias`. Commander hands callbacks a loosely-typed options
+// bag, so validate the init-specific fields at the boundary instead of casting.
+const InitOptionsSchema = z.object({
+  componentsDir: z.string().default("src/components/ui"),
+  allowMissingAlias: z.boolean().optional(),
+}).passthrough();
+
+export type InitOptions = z.infer<typeof InitOptionsSchema>;
+
+function parseInitOptions(opts: Record<string, unknown>): InitOptions {
+  return InitOptionsSchema.parse(opts);
+}
 
 /**
  * Lockfile names tracked across the package managers dgadd supports. Every name
@@ -30,9 +45,9 @@ export const KNOWN_LOCKFILES = [
  */
 export function buildInitPlannedPaths(
   cwd: string,
-  opts: { componentsDir?: unknown; [key: string]: unknown },
+  opts: Record<string, unknown>,
 ): string[] {
-  const { componentsDir, libDir, stylesDir, hooksDir } = derivePaths(cwd, String(opts.componentsDir));
+  const { componentsDir, libDir, stylesDir, hooksDir } = derivePaths(cwd, parseInitOptions(opts).componentsDir);
   return [
     `${componentsDir}/`,
     `${hooksDir}/`,
@@ -120,14 +135,15 @@ export const initCommand = createInitCommand({
     { flags: "--allow-missing-alias", description: "Initialize even when the app has no TypeScript/bundler source alias" },
   ],
   detectProject: (cwd, opts) => {
-    const { project, componentsDir, libDir, stylesDir, hooksDir } = derivePaths(cwd, String(opts.componentsDir));
+    const initOptions = parseInitOptions(opts);
+    const { project, componentsDir, libDir, stylesDir, hooksDir } = derivePaths(cwd, initOptions.componentsDir);
 
     assertInsideProject(cwd, componentsDir);
     assertInsideProject(cwd, libDir);
     assertInsideProject(cwd, stylesDir);
     assertInsideProject(cwd, hooksDir);
 
-    if (!project.hasPathAlias && !opts.allowMissingAlias) {
+    if (!project.hasPathAlias && !initOptions.allowMissingAlias) {
       throw new Error(
         "dgadd requires a TypeScript or Vite alias that resolves to your source directory. "
         + "Configure it in your TypeScript and bundler config, then rerun init. "
@@ -147,7 +163,7 @@ export const initCommand = createInitCommand({
   },
   plannedPaths: (cwd, opts) => buildInitPlannedPaths(cwd, opts),
   createFiles: (cwd, opts) => {
-    const { componentsDir, libDir, stylesDir, hooksDir } = derivePaths(cwd, String(opts.componentsDir));
+    const { componentsDir, libDir, stylesDir, hooksDir } = derivePaths(cwd, parseInitOptions(opts).componentsDir);
     const registry = getRegistry();
 
     return [
@@ -165,7 +181,7 @@ export const initCommand = createInitCommand({
     if (!ok) warn("You can install them manually later.");
   },
   writeConfig: (cwd, opts) => {
-    const { project, componentsDir, libDir, stylesDir, hooksDir } = derivePaths(cwd, String(opts.componentsDir));
+    const { project, componentsDir, libDir, stylesDir, hooksDir } = derivePaths(cwd, parseInitOptions(opts).componentsDir);
 
     const stripSource = (p: string) => {
       const prefix = project.sourceDir === "." ? "" : `${project.sourceDir}/`;

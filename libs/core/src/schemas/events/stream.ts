@@ -2,13 +2,13 @@ import { z } from "zod";
 import {
   AgentStreamEventSchema,
   type AgentStreamEvent,
-} from "./agent.js";
-import { EnrichEventSchema, type EnrichEvent } from "./enrich.js";
+} from "./agent";
+import { EnrichEventSchema, type EnrichEvent } from "./enrich";
 import {
   ReviewStreamEventSchema,
   type ReviewStreamEvent as BaseReviewStreamEvent,
-} from "../review/issues.js";
-import { StepEventSchema, type StepEvent } from "./step.js";
+} from "../review/issues";
+import { StepEventSchema, type StepEvent } from "./step";
 
 // Compose the full event union from the four already-named sub-unions. Adding
 // a new event type means extending its owning sub-union; this file does not

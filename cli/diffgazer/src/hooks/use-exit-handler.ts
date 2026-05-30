@@ -1,6 +1,6 @@
 import { useEffect, useEffectEvent } from "react";
 import { useInput } from "ink";
-import { useExit } from "./use-exit.js";
+import { useExit } from "./use-exit";
 
 interface ExitHandlerOptions {
   onExit?: () => void;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { matchesSearch } from "../search.js";
+import { matchesSearch } from "../search";
 
 describe("matchesSearch", () => {
   it.each([

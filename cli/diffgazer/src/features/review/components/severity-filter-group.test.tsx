@@ -1,9 +1,13 @@
-import { test, describe, afterEach, expect } from "vitest";
+import { test, describe, afterEach, expect, vi } from "vitest";
 import { useState } from "react";
 import { render, cleanup } from "ink-testing-library";
-import { SEVERITY_ORDER, type UISeverityFilter } from "@diffgazer/core/schemas/presentation";
-import { CliThemeProvider } from "../../../theme/theme-context.js";
-import { SeverityFilterGroup } from "./severity-filter-group.js";
+import {
+  SEVERITY_LABELS,
+  SEVERITY_ORDER,
+  type UISeverityFilter,
+} from "@diffgazer/core/schemas/presentation";
+import { CliThemeProvider } from "../../../theme/theme-context";
+import { SeverityFilterGroup } from "./severity-filter-group";
 
 const ARROW_RIGHT = "[C";
 
@@ -101,5 +105,74 @@ describe("CLI SeverityFilterGroup keyboard model", () => {
     await flush();
 
     expect(latest.size).toBe(0);
+  });
+});
+
+describe("CLI SeverityFilterGroup focus clamping", () => {
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
+
+  function renderControlled(filter: UISeverityFilter, onFilterChange = vi.fn()) {
+    const ui = (currentFilter: UISeverityFilter) => (
+      <CliThemeProvider initialTheme="dark">
+        <SeverityFilterGroup
+          currentFilter={currentFilter}
+          onFilterChange={onFilterChange}
+          issueCounts={ZERO_COUNTS}
+          isActive
+        />
+      </CliThemeProvider>
+    );
+    const result = render(ui(filter));
+    return { ...result, onFilterChange, rerenderWith: (next: UISeverityFilter) => result.rerender(ui(next)) };
+  }
+
+  test("clamps the focused index when the Reset chip disappears after an external filter clear", async () => {
+    const allSelected = new Set(SEVERITY_ORDER);
+    const { stdin, lastFrame, rerenderWith, onFilterChange } = renderControlled(allSelected);
+    await flush();
+
+    // Move focus onto the Reset chip (index === SEVERITY_ORDER.length).
+    for (let i = 0; i < SEVERITY_ORDER.length; i += 1) {
+      stdin.write(ARROW_RIGHT);
+      await flush();
+    }
+    expect(lastFrame()).toContain("[Reset]");
+
+    // Parent clears the filter externally: the Reset chip is gone and maxIndex
+    // shrinks, so the stored index now exceeds it.
+    rerenderWith(new Set());
+    await flush();
+    expect(lastFrame()).not.toContain("[Reset]");
+
+    // Enter must act on the clamped last severity, not the now-absent Reset chip.
+    onFilterChange.mockClear();
+    stdin.write("\r");
+    await flush();
+
+    const lastSeverity = SEVERITY_ORDER[SEVERITY_ORDER.length - 1]!;
+    expect(onFilterChange).toHaveBeenCalledTimes(1);
+    const nextFilter = onFilterChange.mock.calls[0]![0] as UISeverityFilter;
+    expect(nextFilter.has(lastSeverity)).toBe(true);
+  });
+
+  test("does not emit a setState-in-render warning while the index is clamped", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const allSelected = new Set(SEVERITY_ORDER);
+    const { stdin, lastFrame, rerenderWith } = renderControlled(allSelected);
+    await flush();
+
+    for (let i = 0; i < SEVERITY_ORDER.length; i += 1) {
+      stdin.write(ARROW_RIGHT);
+      await flush();
+    }
+    rerenderWith(new Set());
+    await flush();
+
+    expect(consoleError).not.toHaveBeenCalled();
+    // Component still renders its severities after the clamp.
+    expect(lastFrame()).toContain(SEVERITY_LABELS[SEVERITY_ORDER[0]]);
   });
 });

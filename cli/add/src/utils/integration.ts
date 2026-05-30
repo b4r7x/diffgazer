@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { computeIntegrity } from "@diffgazer/registry";
 import { CopyBundleSchema, type CopyBundle } from "@diffgazer/registry/schemas";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -38,8 +39,33 @@ function loadCopyBundle(): CopyBundle {
 
   const raw = JSON.parse(readFileSync(KEYS_COPY_BUNDLE_PATH, "utf-8")) as unknown;
   const parsed = CopyBundleSchema.parse(raw);
+  verifyBundleIntegrity(parsed);
   cachedCopyBundle = parsed;
   return parsed;
+}
+
+// The bundle ships with an integrity hash over its items; recompute it on load
+// so a corrupted or tampered generated file is rejected before its contents are
+// copied into a user's project. Mirrors buildCopyBundle's hashing input exactly
+// (the items array, without the integrity field).
+export function verifyBundleIntegrity(bundle: CopyBundle): void {
+  if (!bundle.integrity) {
+    throw new Error(
+      `Bundled keys copy hooks are missing an integrity hash.\nFile: ${KEYS_COPY_BUNDLE_PATH}\nRebuild dgadd package.`,
+    );
+  }
+  const actual = computeIntegrity(JSON.stringify({ items: bundle.items }));
+  if (actual !== bundle.integrity) {
+    throw new Error(
+      [
+        "Bundled keys copy hooks failed integrity verification.",
+        `File: ${KEYS_COPY_BUNDLE_PATH}`,
+        `Expected: ${bundle.integrity}`,
+        `Actual:   ${actual}`,
+        "The generated bundle is corrupted or was modified. Rebuild dgadd package.",
+      ].join("\n"),
+    );
+  }
 }
 
 function toHookRelativePath(path: string): string {

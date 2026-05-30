@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach, afterAll } from "vitest";
 import { ReviewErrorCode } from "@diffgazer/core/schemas/review";
 import type { FullReviewStreamEvent, StepId } from "@diffgazer/core/schemas/events";
 import {
@@ -12,6 +12,7 @@ import {
   markComplete,
   markReady,
   onSessionComplete,
+  shutdownSessions,
   subscribe,
 } from "./sessions.js";
 
@@ -27,13 +28,12 @@ function createTrackedSession(
   } = {},
 ) {
   createdSessionIds.add(reviewId);
-  return createSession(
-    reviewId,
-    options.projectPath ?? "/project",
-    options.headCommit ?? "abc",
-    options.statusHash ?? "hash",
-    options.mode ?? "staged",
-  );
+  return createSession(reviewId, {
+    projectPath: options.projectPath ?? "/project",
+    headCommit: options.headCommit ?? "abc",
+    statusHash: options.statusHash ?? "hash",
+    mode: options.mode ?? "staged",
+  });
 }
 
 function stepEvent(step: StepId = "diff"): FullReviewStreamEvent {
@@ -69,6 +69,12 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+// Tear down the module-level stale-cleanup interval so it never outlives the
+// suite (F151). Idempotent, so it is safe even if a test already called it.
+afterAll(() => {
+  shutdownSessions();
+});
+
 describe("review session lifecycle", () => {
   it("records events, notifies subscribers, becomes active when ready, and expires after completion", () => {
     const received: FullReviewStreamEvent[] = [];
@@ -83,11 +89,11 @@ describe("review session lifecycle", () => {
       isReady: false,
       isComplete: false,
     });
-    expect(getActiveSessionForProject("/project", "abc", "hash", "staged")).toBeUndefined();
+    expect(getActiveSessionForProject("/project", { headCommit: "abc", statusHash: "hash", mode: "staged" })).toBeUndefined();
 
     expect(subscribe(session.reviewId, (event) => received.push(event))).toBeTypeOf("function");
     markReady(session.reviewId);
-    expect(getActiveSessionForProject("/project", "abc", "hash", "staged")?.reviewId).toBe(
+    expect(getActiveSessionForProject("/project", { headCommit: "abc", statusHash: "hash", mode: "staged" })?.reviewId).toBe(
       session.reviewId,
     );
 
@@ -101,7 +107,7 @@ describe("review session lifecycle", () => {
     addEvent(session.reviewId, stepEvent("review"));
 
     expect(received).toEqual([event]);
-    expect(getActiveSessionForProject("/project", "abc", "hash", "staged")).toBeUndefined();
+    expect(getActiveSessionForProject("/project", { headCommit: "abc", statusHash: "hash", mode: "staged" })).toBeUndefined();
 
     vi.advanceTimersByTime(5 * 60 * 1000 + 1);
     expect(getSession(session.reviewId)).toBeUndefined();
@@ -144,7 +150,7 @@ describe("session cancellation", () => {
       { type: "error", error: { code: ReviewErrorCode.SESSION_STALE } },
     ]);
     expect(receivedEvents(session.reviewId).filter((event) => event.type === "error")).toHaveLength(1);
-    expect(getActiveSessionForProject("/project", "abc", "hash", "unstaged")).toBeUndefined();
+    expect(getActiveSessionForProject("/project", { headCommit: "abc", statusHash: "hash", mode: "unstaged" })).toBeUndefined();
   });
 
   it("cancels only ready sessions for the same project and mode when git state changes", () => {
@@ -164,11 +170,11 @@ describe("session cancellation", () => {
     expect(staleEvents).toMatchObject([
       { type: "error", error: { code: ReviewErrorCode.SESSION_STALE } },
     ]);
-    expect(getActiveSessionForProject("/project", "old-head", "old-hash", "unstaged")).toBeUndefined();
-    expect(getActiveSessionForProject("/project", "abc", "hash", "unstaged")?.reviewId).toBe(
+    expect(getActiveSessionForProject("/project", { headCommit: "old-head", statusHash: "old-hash", mode: "unstaged" })).toBeUndefined();
+    expect(getActiveSessionForProject("/project", { headCommit: "abc", statusHash: "hash", mode: "unstaged" })?.reviewId).toBe(
       keptByState.reviewId,
     );
-    expect(getActiveSessionForProject("/project", "abc", "hash", "staged")?.reviewId).toBe(
+    expect(getActiveSessionForProject("/project", { headCommit: "abc", statusHash: "hash", mode: "staged" })?.reviewId).toBe(
       keptByMode.reviewId,
     );
   });
@@ -179,7 +185,7 @@ describe("session cancellation", () => {
 
     cancelStaleSessionsForProjectMode("/project", "unstaged", "", "");
 
-    expect(getActiveSessionForProject("/project", "abc", "hash", "unstaged")?.reviewId).toBe(
+    expect(getActiveSessionForProject("/project", { headCommit: "abc", statusHash: "hash", mode: "unstaged" })?.reviewId).toBe(
       session.reviewId,
     );
   });
@@ -256,6 +262,33 @@ describe("session bounds and subscriber failures", () => {
       reviewId: session.reviewId,
     });
   });
+
+  it("emits one client-facing cap notice when non-terminal events are dropped past the cap", () => {
+    // Suppress the expected server-side cap console.warn; the contract under
+    // test is the client-facing notice, not the log line. (F155)
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const received: FullReviewStreamEvent[] = [];
+    const session = createTrackedSession("event-cap-notice");
+    subscribe(session.reviewId, (event) => received.push(event));
+
+    // Fill to the cap, then push three more non-terminal events that overflow.
+    for (let index = 0; index < 10_003; index += 1) {
+      addEvent(session.reviewId, stepEvent("review"));
+    }
+
+    const notices = received.filter(
+      (event): event is Extract<FullReviewStreamEvent, { type: "chunk" }> =>
+        event.type === "chunk",
+    );
+    expect(notices).toHaveLength(1);
+    expect(notices[0]?.content).toContain("may be incomplete");
+
+    // The notice is buffered exactly once so late SSE replays observe it too.
+    const stored = receivedEvents(session.reviewId).filter((event) => event.type === "chunk");
+    expect(stored).toHaveLength(1);
+    // The cap still bounds growth: real events (10k) + one notice overflow slot.
+    expect(receivedEvents(session.reviewId)).toHaveLength(10_001);
+  });
 });
 
 describe("onSessionComplete", () => {
@@ -318,5 +351,22 @@ describe("onSessionComplete", () => {
     markComplete(session.reviewId);
 
     expect(secondRan).toBe(true);
+  });
+});
+
+describe("shutdownSessions", () => {
+  it("clears the stale-cleanup interval and is idempotent", () => {
+    // Use real timers so clearInterval is the genuine global, not a fake-timer stub.
+    vi.useRealTimers();
+    const clearSpy = vi.spyOn(globalThis, "clearInterval");
+
+    shutdownSessions();
+    expect(clearSpy).toHaveBeenCalledTimes(1);
+
+    // A second call must be a no-op (the interval handle was already released).
+    shutdownSessions();
+    expect(clearSpy).toHaveBeenCalledTimes(1);
+
+    clearSpy.mockRestore();
   });
 });

@@ -1,6 +1,6 @@
 import { test, describe, expect } from "vitest";
 import type { Key } from "ink";
-import { inkKeyToHotkey, isLetterKey } from "./ink-key.js";
+import { inkKeyToHotkey, isLetterKey } from "./ink-key";
 
 const emptyKey: Key = {
   upArrow: false,

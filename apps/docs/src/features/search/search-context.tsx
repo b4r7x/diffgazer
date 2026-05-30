@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react"
+import { createContext, useContext, useState, type ReactNode } from "react"
 
 interface SearchContextValue {
   open: boolean
@@ -9,8 +9,7 @@ const SearchContext = createContext<SearchContextValue | null>(null)
 
 export function SearchProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false)
-  const value = useMemo(() => ({ open, setOpen }), [open, setOpen])
-  return <SearchContext value={value}>{children}</SearchContext>
+  return <SearchContext value={{ open, setOpen }}>{children}</SearchContext>
 }
 
 export function useSearchOpen() {

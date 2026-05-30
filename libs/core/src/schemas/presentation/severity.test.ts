@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { calculateSeverityCounts, severityRank } from "./severity.js";
-import type { ReviewSeverity } from "../review/issues.js";
+import { calculateSeverityCounts, severityRank } from "./severity";
+import type { ReviewSeverity } from "../review/issues";
 
 describe("severityRank", () => {
   it("returns lower rank for more severe levels", () => {

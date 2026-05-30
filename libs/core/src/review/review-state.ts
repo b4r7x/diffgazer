@@ -266,45 +266,49 @@ function handleToolEvent(
   };
 }
 
+// Routes a review event to the handler that owns its sub-type. Step, file,
+// enrich, and tool events have dedicated handlers; the orchestrator-complete
+// total and all remaining agent/issue events fall through to the agent path.
+function dispatchEvent(state: ReviewState, event: ReviewEvent): ReviewState {
+  if (isStepEvent(event)) {
+    return handleStepEvent(state, event);
+  }
+
+  if (event.type === "file_start" || event.type === "file_complete") {
+    return handleFileEvent(state, event);
+  }
+
+  if (event.type === "enrich_progress") {
+    return handleEnrichEvent(state, event);
+  }
+
+  if (event.type === "tool_call" || event.type === "tool_start") {
+    return handleToolEvent(state, event);
+  }
+
+  if (event.type === "orchestrator_complete" && event.filesAnalyzed) {
+    return {
+      ...state,
+      fileProgress: { ...state.fileProgress, total: event.filesAnalyzed },
+      events: appendEvent(state.events, event),
+    };
+  }
+
+  return {
+    ...state,
+    agents: updateAgents(state.agents, event),
+    issues: updateIssues(state.issues, event),
+    events: appendEvent(state.events, event),
+  };
+}
+
 export function reviewReducer(state: ReviewState, action: ReviewAction): ReviewState {
   switch (action.type) {
     case "START":
       return { ...createInitialReviewState(), isStreaming: true };
 
-    case "EVENT": {
-      const event = action.event;
-
-      if (isStepEvent(event)) {
-        return handleStepEvent(state, event);
-      }
-
-      if (event.type === "file_start" || event.type === "file_complete") {
-        return handleFileEvent(state, event);
-      }
-
-      if (event.type === "enrich_progress") {
-        return handleEnrichEvent(state, event);
-      }
-
-      if (event.type === "tool_call" || event.type === "tool_start") {
-        return handleToolEvent(state, event);
-      }
-
-      if (event.type === "orchestrator_complete" && event.filesAnalyzed) {
-        return {
-          ...state,
-          fileProgress: { ...state.fileProgress, total: event.filesAnalyzed },
-          events: appendEvent(state.events, event),
-        };
-      }
-
-      return {
-        ...state,
-        agents: updateAgents(state.agents, event),
-        issues: updateIssues(state.issues, event),
-        events: appendEvent(state.events, event),
-      };
-    }
+    case "EVENT":
+      return dispatchEvent(state, action.event);
 
     case "COMPLETE":
       return { ...state, isStreaming: false };

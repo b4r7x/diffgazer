@@ -73,8 +73,8 @@ export function useReviewLifecycle(): {
   // container's `state.error && phase !== streaming/completing` Callout fires.
   const displayPhase = getDisplayPhase({
     hasStartFailed,
-    hasStarted: lifecycle.hasStarted,
-    isCompleting: lifecycle.isCompleting,
+    hasStarted: lifecycle.start.hasStarted,
+    isCompleting: lifecycle.completion.isCompleting,
     phase,
   });
 
@@ -82,9 +82,9 @@ export function useReviewLifecycle(): {
     setMode(selectedMode);
     setStartError(null);
     lifecycle.stream.abort();
-    lifecycle.resetCompletion();
-    lifecycle.setHasStarted(false);
-    lifecycle.setHasStreamed(false);
+    lifecycle.completion.resetCompletion();
+    lifecycle.start.setHasStarted(false);
+    lifecycle.start.setHasStreamed(false);
     setPhase("streaming");
     try {
       const result = await createReview.mutateAsync({ mode: selectedMode });
@@ -95,7 +95,7 @@ export function useReviewLifecycle(): {
   }
 
   function goToSummary() {
-    lifecycle.skipDelay();
+    lifecycle.completion.skipDelay();
   }
 
   function goToResults() {
@@ -104,9 +104,9 @@ export function useReviewLifecycle(): {
 
   function reset() {
     setStartError(null);
-    lifecycle.resetCompletion();
-    lifecycle.setHasStarted(false);
-    lifecycle.setHasStreamed(false);
+    lifecycle.completion.resetCompletion();
+    lifecycle.start.setHasStarted(false);
+    lifecycle.start.setHasStreamed(false);
     setPhase("streaming");
     setReviewId(undefined);
     lifecycle.stream.abort();
@@ -114,20 +114,20 @@ export function useReviewLifecycle(): {
 
   const state: ReviewLifecycleState = {
     phase: displayPhase,
-    reviewId: lifecycle.streamState.reviewId ?? null,
-    startedAt: lifecycle.streamState.startedAt,
-    issues: lifecycle.streamState.issues,
-    steps: lifecycle.streamState.steps,
-    agents: lifecycle.streamState.agents,
-    events: lifecycle.streamState.events,
-    fileProgress: lifecycle.streamState.fileProgress,
-    error: startError ?? lifecycle.streamState.error,
+    reviewId: lifecycle.stream.state.reviewId ?? null,
+    startedAt: lifecycle.stream.state.startedAt,
+    issues: lifecycle.stream.state.issues,
+    steps: lifecycle.stream.state.steps,
+    agents: lifecycle.stream.state.agents,
+    events: lifecycle.stream.state.events,
+    fileProgress: lifecycle.stream.state.fileProgress,
+    error: startError ?? lifecycle.stream.state.error,
     isConfigured,
     provider,
     model,
-    isNoDiffError: lifecycle.isNoDiffError,
-    isCheckingForChanges: lifecycle.isCheckingForChanges,
-    loadingMessage: lifecycle.loadingMessage,
+    isNoDiffError: lifecycle.checks.isNoDiffError,
+    isCheckingForChanges: lifecycle.checks.isCheckingForChanges,
+    loadingMessage: lifecycle.checks.loadingMessage,
   };
 
   return { state, start, goToSummary, goToResults, reset };

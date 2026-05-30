@@ -38,9 +38,9 @@ async function createReviewApp(): Promise<Hono> {
 }
 
 async function trustProject(projectRoot: string): Promise<void> {
-  const { ensureProjectFile, saveTrust } = await import("../../shared/lib/config/store.js");
-  const project = ensureProjectFile(projectRoot);
-  await saveTrust({
+  const { getStore } = await import("../../shared/lib/config/store.js");
+  const project = getStore().ensureProjectFile(projectRoot);
+  await getStore().saveTrust({
     projectId: project.projectId!,
     repoRoot: projectRoot,
     trustedAt: "2024-01-01T00:00:00.000Z",
@@ -189,11 +189,9 @@ describe("POST /api/review/reviews", () => {
 });
 
 async function configureSetup(projectRoot: string): Promise<void> {
-  const { updateSettings, saveProviderCredentials } = await import(
-    "../../shared/lib/config/store.js"
-  );
-  await updateSettings({ secretsStorage: "file" });
-  await saveProviderCredentials({
+  const { getStore } = await import("../../shared/lib/config/store.js");
+  await getStore().updateSettings({ secretsStorage: "file" });
+  await getStore().saveProviderCredentials({
     provider: "gemini",
     apiKey: "test-key-not-real",
     model: "gemini-2.0-flash",

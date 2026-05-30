@@ -35,7 +35,8 @@ async function loadService() {
 }
 
 async function loadStore() {
-  return import("../../shared/lib/config/store.js");
+  const { getStore } = await import("../../shared/lib/config/store.js");
+  return getStore();
 }
 
 async function configureProvider(

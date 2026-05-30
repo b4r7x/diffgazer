@@ -39,15 +39,12 @@ export function getInstallDirForBase(
   return config.stylesFsPath;
 }
 
-export function prepareFileContent(
-  file: RegistryFile,
-  item: RegistryItem,
-  config: { aliases: ResolvedConfig["aliases"]; rsc: boolean },
+function applyIntegrationRewrite(
+  content: string,
+  integrationMode: "none" | "copy" | "@diffgazer/keys" | undefined,
 ): string {
-  let content = file.content.replace(CSS_SIDE_EFFECT_IMPORT_RE, "").replace(/\n{3,}/g, "\n\n");
-  content = rewriteRelativeJsExtensionsForCopy(content);
-  content = transformImports(content, config.aliases);
-  content = handleRscDirective(content, metaField(item, "client", true), config.rsc);
+  if (integrationMode === "@diffgazer/keys") return rewriteLocalImportsForKeysPackage(content);
+  if (integrationMode === "copy") return rewriteKeysPackageImportsForCopy(content);
   return content;
 }
 
@@ -57,10 +54,10 @@ export function prepareFileContentForIntegration(
   config: { aliases: ResolvedConfig["aliases"]; rsc: boolean },
   integrationMode?: "none" | "copy" | "@diffgazer/keys",
 ): string {
-  const content = integrationMode === "@diffgazer/keys"
-    ? rewriteLocalImportsForKeysPackage(file.content)
-    : integrationMode === "copy"
-      ? rewriteKeysPackageImportsForCopy(file.content)
-      : file.content;
-  return prepareFileContent({ ...file, content }, item, config);
+  let content = applyIntegrationRewrite(file.content, integrationMode);
+  content = content.replace(CSS_SIDE_EFFECT_IMPORT_RE, "").replace(/\n{3,}/g, "\n\n");
+  content = rewriteRelativeJsExtensionsForCopy(content);
+  content = transformImports(content, config.aliases);
+  content = handleRscDirective(content, metaField(item, "client", true), config.rsc);
+  return content;
 }

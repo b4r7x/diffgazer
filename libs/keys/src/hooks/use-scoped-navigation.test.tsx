@@ -2,13 +2,13 @@ import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useRef } from "react";
 import { afterEach, describe, expect, expectTypeOf, it, vi } from "vitest";
-import { KeyboardWrapper } from "../testing/test-utils";
+import { KeyboardWrapper } from "../testing/test-utils.js";
 import {
   useScopedNavigation,
   type UseScopedNavigationOptions,
   type UseScopedNavigationReturn,
-} from "./use-scoped-navigation";
-import { useScope } from "./use-scope";
+} from "./use-scoped-navigation.js";
+import { useScope } from "./use-scope.js";
 
 function itemId(value: string, prefix = "item") {
   return `${prefix}-${value}`;

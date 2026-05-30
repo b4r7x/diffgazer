@@ -8,6 +8,10 @@
   "include": [
     "tsup.config.ts",
     "scripts/**/*.ts",
-    "shared/**/*.ts"
+    "shared/**/*.ts",
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "src/**/*.test.ts"
   ]
 }

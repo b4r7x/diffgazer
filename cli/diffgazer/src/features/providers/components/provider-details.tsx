@@ -2,10 +2,10 @@ import { useState, type ReactElement } from "react";
 import { Box, Text, useInput } from "ink";
 import type { DisplayStatus } from "@diffgazer/core/schemas/config";
 import { getDisplayStatusBadge } from "@diffgazer/core/providers";
-import { useTheme } from "../../../theme/theme-context.js";
-import { KeyValue } from "../../../components/ui/key-value.js";
-import { Badge } from "../../../components/ui/badge.js";
-import { Button } from "../../../components/ui/button.js";
+import { useTheme } from "../../../theme/theme-context";
+import { KeyValue } from "../../../components/ui/key-value";
+import { Badge } from "../../../components/ui/badge";
+import { Button } from "../../../components/ui/button";
 
 export interface ProviderDetailData {
   id: string;

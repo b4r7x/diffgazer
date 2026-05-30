@@ -1,5 +1,5 @@
 import { test, describe, expect } from "vitest";
-import { moveHighlight } from "./highlight-navigation.js";
+import { moveHighlight } from "./highlight-navigation";
 
 const items = (
   ids: string[],

@@ -5,14 +5,26 @@ import { getKeysHookImportNames } from "./integration.js";
 
 const IMPORT_PREFIX = String.raw`(from\s+|import\(\s*|require\(\s*)(["'])`;
 
-// Canonical: shared/string-utils.ts — duplicated here because CLI rootDir: "src" prevents external imports
-const escapeForRegex = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+// Mirrors the validate-artifacts gate (collectBundleRelativeJsImportErrors): the
+// bare side-effect form `import "./x.js"` must be stripped too, or the gate would
+// flag a copied side-effect import with no transform able to fix it.
+const RELATIVE_JS_IMPORT_RE = new RegExp(
+  String.raw`(from\s+|import\(\s*|require\(\s*|import\s+(?=["']))(["'])(\.{1,2}/[^"']+)\.js\2`,
+  "g",
+);
+const KEYS_PACKAGE_IMPORT_LINE_RE =
+  /^(\s*)import\s+(type\s+)?\{([^}]+)\}\s+from\s+(["'])@diffgazer\/keys\4;?\s*$/;
 
-function replaceSubpathAlias(
-  text: string,
-  regex: RegExp,
-  aliasBase: string,
-): string {
+// Kept local on purpose. `dgadd` publishes as a self-contained npm bundle, so
+// pulling a one-line regex-escape from a workspace package would drag that
+// package's whole dependency graph into the binary. Same decoupling rationale
+// as `sha256` (utils/hashing.ts) and registry `computeIntegrity`.
+function escapeForRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function replaceSubpathAlias(options: { text: string; regex: RegExp; aliasBase: string }): string {
+  const { text, regex, aliasBase } = options;
   return text.replace(
     regex,
     (_: string, prefix: string, quote: string, subpath: string) =>
@@ -45,16 +57,17 @@ function replaceLine(text: string, aliases: ResolvedConfig["aliases"], regexes: 
     if (subpath === "utils") return match;
     return `${prefix}${quote}${aliases.lib}/${subpath}${quote}`;
   });
-  result = replaceSubpathAlias(result, regexes.rePrefixHooks, aliases.hooks);
-  result = replaceSubpathAlias(result, regexes.rePrefixComponents, aliases.components);
+  result = replaceSubpathAlias({ text: result, regex: regexes.rePrefixHooks, aliasBase: aliases.hooks });
+  result = replaceSubpathAlias({ text: result, regex: regexes.rePrefixComponents, aliasBase: aliases.components });
   return result;
 }
 
-function replaceClosingBlockComment(
-  line: string,
-  aliases: ResolvedConfig["aliases"],
-  regexes: CompiledAliasRegexes,
-): { result: string; stillInBlock: boolean } {
+function replaceClosingBlockComment(options: {
+  line: string;
+  aliases: ResolvedConfig["aliases"];
+  regexes: CompiledAliasRegexes;
+}): { result: string; stillInBlock: boolean } {
+  const { line, aliases, regexes } = options;
   const closeIdx = line.indexOf("*/");
   if (closeIdx === -1) return { result: line, stillInBlock: true };
   return {
@@ -63,12 +76,13 @@ function replaceClosingBlockComment(
   };
 }
 
-function replaceWithBlockComment(
-  line: string,
-  openIdx: number,
-  aliases: ResolvedConfig["aliases"],
-  regexes: CompiledAliasRegexes,
-): { result: string; opensBlock: boolean } {
+function replaceWithBlockComment(options: {
+  line: string;
+  openIdx: number;
+  aliases: ResolvedConfig["aliases"];
+  regexes: CompiledAliasRegexes;
+}): { result: string; opensBlock: boolean } {
+  const { line, openIdx, aliases, regexes } = options;
   const closeIdx = line.indexOf("*/", openIdx + 2);
   if (closeIdx === -1) {
     return {
@@ -106,14 +120,14 @@ export function transformImports(
   let inBlockComment = false;
   const transformed = lines.map((line) => {
     if (inBlockComment) {
-      const out = replaceClosingBlockComment(line, aliases, regexes);
+      const out = replaceClosingBlockComment({ line, aliases, regexes });
       inBlockComment = out.stillInBlock;
       return out.result;
     }
 
     const openIdx = line.indexOf("/*");
     if (openIdx !== -1) {
-      const out = replaceWithBlockComment(line, openIdx, aliases, regexes);
+      const out = replaceWithBlockComment({ line, openIdx, aliases, regexes });
       inBlockComment = out.opensBlock;
       return out.result;
     }
@@ -152,7 +166,7 @@ export function handleRscDirective(
 
 export function rewriteRelativeJsExtensionsForCopy(content: string): string {
   return content.replace(
-    new RegExp(`${IMPORT_PREFIX}(\\.{1,2}/[^"']+)\\.js\\2`, "g"),
+    RELATIVE_JS_IMPORT_RE,
     (_: string, prefix: string, quote: string, specifier: string) => `${prefix}${quote}${specifier}${quote}`,
   );
 }
@@ -170,7 +184,7 @@ function renderImport(specifiers: string[], target: string, quote: string): stri
 }
 
 function rewriteKeysPackageImportLine(line: string): string {
-  const match = /^(\s*)import\s+(type\s+)?\{([^}]+)\}\s+from\s+(["'])@diffgazer\/keys\4;?\s*$/.exec(line);
+  const match = KEYS_PACKAGE_IMPORT_LINE_RE.exec(line);
   if (!match) return line;
 
   const indent = match[1] ?? "";
@@ -185,7 +199,7 @@ function rewriteKeysPackageImportLine(line: string): string {
 
     const target = KEYS_PACKAGE_IMPORT_TARGETS.get(specifierName(specifier));
     if (!target) {
-      unknown.push(`${typePrefix}${specifier}`.trim());
+      unknown.push(specifierName(specifier));
       continue;
     }
 
@@ -194,12 +208,21 @@ function rewriteKeysPackageImportLine(line: string): string {
     grouped.set(target, specifiers);
   }
 
+  // Copy mode resolves `@diffgazer/keys` exports to local hook files. An export
+  // missing from KEYS_PACKAGE_IMPORT_TARGETS would otherwise be re-emitted as a
+  // package import that a copy-only install cannot resolve — fail loudly so the
+  // import-target map stays in sync with the keys public surface.
+  if (unknown.length > 0) {
+    throw new Error(
+      `Cannot rewrite @diffgazer/keys import for copy mode: no local hook target for `
+      + `${unknown.map((name) => `"${name}"`).join(", ")}. `
+      + "Update KEYS_PACKAGE_IMPORT_TARGETS in @diffgazer/registry.",
+    );
+  }
+
   const rewritten = [...grouped.entries()].map(([target, specifiers]) =>
     indent + renderImport(specifiers, target, quote)
   );
-  if (unknown.length > 0) {
-    rewritten.push(`${indent}import { ${unknown.join(", ")} } from ${quote}@diffgazer/keys${quote};`);
-  }
 
   return rewritten.length > 0 ? rewritten.join("\n") : line;
 }
@@ -208,6 +231,12 @@ export function rewriteKeysPackageImportsForCopy(content: string): string {
   return content.split("\n").map(rewriteKeysPackageImportLine).join("\n");
 }
 
+// Both are derived from the copy bundle, which `@diffgazer/registry` loads once
+// and treats as immutable for the process lifetime. They are memoized for the
+// process and intentionally never invalidated: the alternation regex below is
+// O(hooks) to build and the inputs cannot change between CLI commands in a
+// single run. A long-lived process that hot-swaps the bundle is not a supported
+// mode; if that ever changes, expose a reset alongside the bundle reload.
 let _keysHookFiles: Set<string> | null = null;
 let _reLocalHookImport: RegExp | null = null;
 
@@ -238,12 +267,15 @@ interface ParsedKeysImport {
   isTypeImport: boolean;
 }
 
-function parseKeysImportLine(
-  line: string,
-  lineIndex: number,
-  regex: RegExp,
-  hookNames: Set<string>,
-): ParsedKeysImport | null {
+interface ParseKeysImportLineOptions {
+  line: string;
+  lineIndex: number;
+  regex: RegExp;
+  hookNames: Set<string>;
+}
+
+function parseKeysImportLine(options: ParseKeysImportLineOptions): ParsedKeysImport | null {
+  const { line, lineIndex, regex, hookNames } = options;
   const m = regex.exec(line);
   if (!m) return null;
 
@@ -309,7 +341,7 @@ export function rewriteLocalImportsForKeysPackage(content: string): string {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     if (!line) continue;
-    const result = parseKeysImportLine(line, i, regex, hookNames);
+    const result = parseKeysImportLine({ line, lineIndex: i, regex, hookNames });
     if (result) parsed.push(result);
   }
 

@@ -5,11 +5,27 @@ description: Get started with @diffgazer/ui by initializing your project and add
 
 `@diffgazer/ui` components are installed as source files. Use `dgadd` to copy components and optional `@diffgazer/keys` hooks into your app.
 
-> Public npm package names are external publish-gated as of May 6, 2026. Use the local workspace smoke flow below until `npm view @diffgazer/add version`, `npm view @diffgazer/ui version`, and `npm view @diffgazer/keys version` succeed.
+> **Warning:** Temporary: packages publish-gated. `@diffgazer/add`, `@diffgazer/ui`, and `@diffgazer/keys` are external publish-gated as of May 6, 2026. The package-manager commands below work only after `npm view @diffgazer/add version`, `npm view @diffgazer/ui version`, and `npm view @diffgazer/keys version` succeed. Until then, use the [pre-publication local validation](#pre-publication-local-validation) flow.
 
-## Current Local Validation
+## Install (after publication)
 
-From this repository:
+Once `@diffgazer/add` is published, run the installer with your package manager and add a component:
+
+```bash
+pnpm dlx @diffgazer/add init
+pnpm dlx @diffgazer/add add ui/button
+```
+
+```bash
+npx @diffgazer/add init
+npx @diffgazer/add add ui/button
+```
+
+Verify availability first with `npm view @diffgazer/add version`. Status as of May 6, 2026: not yet published — use the pre-publication flow below.
+
+## Pre-Publication Local Validation
+
+Until the packages are published, validate from this repository:
 
 ```bash
 pnpm run smoke:packages

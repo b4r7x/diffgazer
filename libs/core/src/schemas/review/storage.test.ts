@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ReviewMetadataSchema } from "./storage.js";
+import { ReviewMetadataSchema } from "./storage";
 
 describe("ReviewMetadataSchema transform — mode backwards compat", () => {
   const baseMetadata = {

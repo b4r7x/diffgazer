@@ -17,7 +17,7 @@ async function createApp(): Promise<Hono> {
 }
 
 async function configureReadySetup(): Promise<void> {
-  const store = await import("../lib/config/store.js");
+  const store = (await import("../lib/config/store.js")).getStore();
   await store.updateSettings({ secretsStorage: "file" });
   await store.saveProviderCredentials({
     provider: "gemini",

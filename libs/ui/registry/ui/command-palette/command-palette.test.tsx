@@ -1,14 +1,14 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { axe } from "../../../testing/utils.js"
+import { axe } from "../../../testing/utils"
 import { afterEach, beforeAll, describe, it, expect, vi } from "vitest"
 import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import { fileURLToPath } from "node:url"
-import { CommandPalette } from "./index.js"
-import { CommandPaletteHighlightItem, categorize, matchPositions } from "./highlight.js"
+import { CommandPalette } from "./index"
+import { CommandPaletteHighlightItem, categorize, matchPositions } from "./highlight"
 import { StrictMode, createRef, useState } from "react"
-import { Popover } from "../popover/index.js"
+import { Popover } from "../popover/index"
 
 afterEach(() => {
   vi.restoreAllMocks()

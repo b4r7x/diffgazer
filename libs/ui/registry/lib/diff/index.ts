@@ -1,9 +1,9 @@
-export { parseDiff } from "./parse.js";
-export { computeDiff } from "./compute.js";
-export { resolveDiffInput } from "./resolve.js";
-export { parsedDiffIdentity } from "./identity.js";
-export { computeWordSegments, annotateWordDiff, createWordDiffBudget } from "./word.js";
-export { toSplitRows } from "./split.js";
-export type { ParsedDiff, DiffHunk, DiffChange, ChangeType, DiffInput, DiffInputPatch, DiffInputCompare, DiffInputParsed } from "./parse.js";
-export type { WordSegment, AnnotatedChange, WordDiffBudget } from "./word.js";
-export type { SplitCell, SplitRow } from "./split.js";
+export { parseDiff } from "./parse";
+export { computeDiff } from "./compute";
+export { resolveDiffInput } from "./resolve";
+export { parsedDiffIdentity } from "./identity";
+export { computeWordSegments, annotateWordDiff, createWordDiffBudget } from "./word";
+export { toSplitRows } from "./split";
+export type { ParsedDiff, DiffHunk, DiffChange, ChangeType, DiffInput, DiffInputPatch, DiffInputCompare, DiffInputParsed } from "./parse";
+export type { WordSegment, AnnotatedChange, WordDiffBudget } from "./word";
+export type { SplitCell, SplitRow } from "./split";

@@ -3,4 +3,4 @@ export {
   type CommandPaletteHighlightItemProps,
   categorize,
   matchPositions,
-} from "./command-palette-highlight.js";
+} from "./command-palette-highlight";

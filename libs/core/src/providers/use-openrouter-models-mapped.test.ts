@@ -7,11 +7,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mockUseOpenRouterModels = vi.fn();
 
 // Boundary mock: useOpenRouterModels is the OpenRouter HTTP-data fetch hook; we provide canned hook return values to drive UI behavior assertions.
-vi.mock("../api/hooks/config.js", () => ({
+vi.mock("../api/hooks/config", () => ({
   useOpenRouterModels: (...args: unknown[]) => mockUseOpenRouterModels(...args),
 }));
 
-const { useOpenRouterModelsMapped } = await import("./use-openrouter-models-mapped.js");
+const { useOpenRouterModelsMapped } = await import("./use-openrouter-models-mapped");
 
 describe("useOpenRouterModelsMapped", () => {
   beforeEach(() => {

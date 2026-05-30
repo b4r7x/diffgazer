@@ -1,9 +1,9 @@
 import { render, screen, act, waitFor, fireEvent } from "@testing-library/react"
-import { axe } from "../../../testing/utils.js"
+import { axe } from "../../../testing/utils"
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { toast, Toaster } from "./index.js"
-import { dismiss, remove, useToastStore } from "./toast-store.js"
-import { Dialog } from "../dialog/index.js"
+import { toast, Toaster } from "./index"
+import { dismiss, remove, useToastStore } from "./toast-store"
+import { Dialog } from "../dialog/index"
 
 function StoreReader({ onRead }: { onRead: (ids: string[]) => void }) {
   const { toasts } = useToastStore()

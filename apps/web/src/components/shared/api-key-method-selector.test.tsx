@@ -4,7 +4,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ApiKeyMethodSelector } from "./api-key-method-selector";
 import type { FocusElement } from "@/types/focus-element";
-import type { InputMethod } from "@/types/input-method";
+import type { InputMethod } from "@diffgazer/core/onboarding";
 
 function Subject() {
   const inputRef = useRef<HTMLInputElement>(null);

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createApiClient } from "./client.js";
+import { createApiClient } from "./client";
 
 const mockFetch = vi.fn();
 // Boundary mock: replaces the global fetch network boundary so tests can stub HTTP responses without hitting a real server.
@@ -277,6 +277,44 @@ describe("createApiClient", () => {
       mockFetch.mockResolvedValue(new Response("not json", { status: 200, headers: { "Content-Type": "text/plain" } }));
 
       await expect(client.get("/api/test")).rejects.toThrow("Invalid JSON response");
+    });
+  });
+
+  describe("response validation", () => {
+    const numberSchema = (body: unknown): { value: number } => {
+      if (typeof body !== "object" || body === null || typeof (body as { value?: unknown }).value !== "number") {
+        throw new Error("Expected { value: number }");
+      }
+      return body as { value: number };
+    };
+
+    it("returns the validated body when the schema accepts it", async () => {
+      mockFetch.mockResolvedValue(jsonResponse({ value: 42 }));
+
+      const result = await client.get<{ value: number }>("/api/test", undefined, numberSchema);
+
+      expect(result).toEqual({ value: 42 });
+    });
+
+    it("rejects an invalid body with a structured ApiError", async () => {
+      expect.assertions(3);
+      mockFetch.mockResolvedValue(jsonResponse({ value: "not-a-number" }));
+
+      try {
+        await client.get<{ value: number }>("/api/test", undefined, numberSchema);
+      } catch (error) {
+        expect((error as Error).message).toBe("Expected { value: number }");
+        expect((error as { status: number }).status).toBe(422);
+        expect((error as { code: string }).code).toBe("INVALID_RESPONSE");
+      }
+    });
+
+    it("trusts the body shape when no schema is provided", async () => {
+      mockFetch.mockResolvedValue(jsonResponse({ value: "not-a-number" }));
+
+      const result = await client.get<{ value: number }>("/api/test");
+
+      expect(result).toEqual({ value: "not-a-number" });
     });
   });
 

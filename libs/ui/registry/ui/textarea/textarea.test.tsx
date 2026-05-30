@@ -1,8 +1,8 @@
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it } from "vitest"
-import { axe } from "../../../testing/utils.js"
-import { Textarea } from "./index.js"
+import { axe } from "../../../testing/utils"
+import { Textarea } from "./index"
 
 describe("Textarea", () => {
   it("accepts multiline text as a native textbox", async () => {

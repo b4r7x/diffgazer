@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
-import { axe } from "../../../testing/utils.js"
-import { KeyValue } from "./index.js"
+import { axe } from "../../../testing/utils"
+import { KeyValue } from "./index"
 
 describe("KeyValue", () => {
   it("renders dt and dd as direct dl children", () => {

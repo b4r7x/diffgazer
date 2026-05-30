@@ -2,7 +2,7 @@ import { test, describe, expect } from "vitest";
 import {
   deriveDiagnosticsActions,
   triggerDiagnosticsRefreshAll,
-} from "./derive-actions.js";
+} from "./derive-actions";
 
 describe("deriveDiagnosticsActions", () => {
   test("shows 'Generate Context' when no snapshot exists", () => {

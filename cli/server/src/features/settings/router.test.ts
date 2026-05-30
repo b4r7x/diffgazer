@@ -2,7 +2,6 @@ import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import type { Hono } from "hono";
 import { SHUTDOWN_TOKEN_HEADER } from "@diffgazer/core/api";
 import { PROJECT_ROOT_HEADER } from "../../shared/lib/paths.js";
 
@@ -12,13 +11,14 @@ let diffgazerHome: string;
 let projectRootA: string;
 let projectRootB: string;
 
-async function loadApp(): Promise<Hono> {
+async function loadApp() {
   const { createApp } = await import("../../app.js");
   return createApp();
 }
 
-async function getStore() {
-  return import("../../shared/lib/config/store.js");
+async function loadStore() {
+  const { getStore } = await import("../../shared/lib/config/store.js");
+  return getStore();
 }
 
 function trustForProject(projectId: string, repoRoot: string) {
@@ -65,7 +65,7 @@ describe("settings trust routes — server-scoped project", () => {
   });
 
   it("GET /trust derives project from server, ignoring client projectId query", async () => {
-    const store = await getStore();
+    const store = await loadStore();
     const project = store.ensureProjectFile(projectRootA);
     expect(project.projectId).toBeTruthy();
     const trust = trustForProject(project.projectId!, projectRootA);
@@ -86,7 +86,7 @@ describe("settings trust routes — server-scoped project", () => {
   });
 
   it("GET /trust returns 404 when asking for a different project's trust", async () => {
-    const store = await getStore();
+    const store = await loadStore();
     // Ensure both projects have identity files so the route can resolve projectId
     store.ensureProjectFile(projectRootA);
     const projectB = store.ensureProjectFile(projectRootB);
@@ -108,7 +108,7 @@ describe("settings trust routes — server-scoped project", () => {
   });
 
   it("GET /trust/list only returns the server-resolved project's trust", async () => {
-    const store = await getStore();
+    const store = await loadStore();
     const projectA = store.ensureProjectFile(projectRootA);
     const projectB = store.ensureProjectFile(projectRootB);
     expect(projectA.projectId).toBeTruthy();
@@ -132,7 +132,7 @@ describe("settings trust routes — server-scoped project", () => {
   });
 
   it("POST /trust normalizes runCommands to false even when client sends true", async () => {
-    const store = await getStore();
+    const store = await loadStore();
     store.ensureProjectFile(projectRootA);
 
     const app = await loadApp();
@@ -159,7 +159,7 @@ describe("settings trust routes — server-scoped project", () => {
   });
 
   it("DELETE /trust derives project from server, cannot delete another project's trust", async () => {
-    const store = await getStore();
+    const store = await loadStore();
     const projectA = store.ensureProjectFile(projectRootA);
     const projectB = store.ensureProjectFile(projectRootB);
     expect(projectA.projectId).toBeTruthy();

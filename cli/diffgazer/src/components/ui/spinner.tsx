@@ -1,7 +1,6 @@
-import type { ReactNode } from "react";
 import { Box, Text } from "ink";
 import InkSpinner from "ink-spinner";
-import { useTheme } from "../../theme/theme-context.js";
+import { useTheme } from "../../theme/theme-context";
 
 export interface SpinnerProps {
   variant?: "dots" | "braille" | "snake";

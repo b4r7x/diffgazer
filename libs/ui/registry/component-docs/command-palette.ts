@@ -4,6 +4,11 @@ export const commandPaletteDoc: ComponentDoc = {
   description: "Terminal-styled command palette with built-in search filtering, grouped items, and keyboard navigation. Uses native dialog element with backdrop blur. Two orthogonal visual axes on Content (frame and density) keep visual chrome configurable without touching internals.",
   notes: [
     {
+      title: "Requires @diffgazer/keys (package mode)",
+      content:
+        "CommandPalette's arrow-key navigation and focus restoration import from the optional @diffgazer/keys peer. Package/npm consumers must install it: `npm install @diffgazer/keys`. Importing @diffgazer/ui/components/command-palette without keys fails at module load with an error naming the missing @diffgazer/keys package. Copy/dgadd consumers do not need the package — copy mode rewrites the keyboard hooks to local source.",
+    },
+    {
       title: "Controlled Open State",
       content: "CommandPalette is opened from outside via open/onOpenChange. Wire a trigger button (or a global keyboard shortcut) to setOpen(true). Search and highlight state can also be controlled via search/onSearchChange and highlighted/onHighlightChange, or left uncontrolled.",
     },

@@ -3,12 +3,12 @@ import { resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { axe } from "../../../testing/utils.js"
+import { axe } from "../../../testing/utils"
 import { afterEach, afterAll, beforeAll, beforeEach, describe, it, expect, vi } from "vitest"
 import { useRef, useState, type ReactNode, type SyntheticEvent } from "react"
 import { renderToString } from "react-dom/server"
-import { Dialog } from "./index.js"
-import { Popover } from "../popover/index.js"
+import { Dialog } from "./index"
+import { Popover } from "../popover/index"
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -752,6 +752,8 @@ describe("Dialog", () => {
       expect(dialog).toHaveAttribute("data-slot", "dialog-content")
       expect(dialog).toHaveAttribute("data-frame", "border")
       expect(dialog).toHaveAttribute("data-corners", "none")
+      // .dlg-corners is a purely decorative host with no ARIA role; its presence
+      // keyed to the `corners` prop is the only observable contract in jsdom.
       expect(dialog.querySelector(".dlg-corners")).toBeNull()
     })
 
@@ -835,6 +837,8 @@ describe("Dialog", () => {
       const dialog = screen.getByRole("dialog", { name: "Bar title" })
       const header = dialog.querySelector('[data-slot="dialog-header"]')
       if (!header) throw new Error("Expected dialog header")
+      // The header marker is a decorative aria-hidden bar with no role; the
+      // structural query is the only way to assert its `marker` prop contract.
       const bar = header.querySelector(':scope > [aria-hidden="true"]')
       expect(bar).not.toBeNull()
     })

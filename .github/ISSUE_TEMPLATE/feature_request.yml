@@ -3,6 +3,10 @@ description: Propose a new capability or improvement.
 title: "[feat] "
 labels: ["enhancement"]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing, please skim the project rules: [CONTRIBUTING.md](https://github.com/b4r7x/diffgazer/blob/main/CONTRIBUTING.md) and [AGENTS.md](https://github.com/b4r7x/diffgazer/blob/main/AGENTS.md).
   - type: textarea
     id: motivation
     attributes:
