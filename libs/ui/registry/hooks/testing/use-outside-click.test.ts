@@ -2,7 +2,7 @@ import { StrictMode } from "react"
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { renderHook } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { useEscapeKey, useOutsideClick } from "../use-outside-click.js"
+import { useEscapeKey, useOutsideClick } from "../use-outside-click"
 import { createRef } from "react"
 
 let restorePointerEventSupport = () => {}

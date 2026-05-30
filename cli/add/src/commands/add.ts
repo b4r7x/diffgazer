@@ -13,7 +13,7 @@ import {
   type ResolvedIntegrationSelection,
 } from "../utils/add-integration.js";
 import {
-  publicInstallNames,
+  publicAvailableNames,
   splitInstallNames,
   validateInstallNames,
 } from "../utils/namespaces.js";
@@ -66,7 +66,7 @@ const addBaseCommand = createAddCommand<ResolvedConfig>({
   emptyRequestedMessage: "No items specified. Usage: dgadd add ui/button keys/navigation",
   allIgnoresSpecifiedWarning: "--all flag ignores specified item names.",
   requireConfig: ctx.items.requireConfig,
-  getPublicNames: () => publicInstallNames(),
+  getPublicNames: () => publicAvailableNames(),
   validateRequestedNames: validateInstallNames,
   extraOptions: [
     { flags: "--integration <mode>", description: "Optional keyboard integration mode: ask | none | copy | keys", default: "ask" },

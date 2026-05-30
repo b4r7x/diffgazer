@@ -5,10 +5,7 @@ import {
   type DocsLibraryConfigData,
 } from "./docs-libraries-config";
 
-type RawLibraryId = (typeof rawConfig.libraries)[number]["id"];
-export type DocsLibraryId = RawLibraryId;
-export type ArtifactSource = ArtifactSourceConfig;
-export type DocsLibraryConfig = DocsLibraryConfigData;
+export type DocsLibraryId = (typeof rawConfig.libraries)[number]["id"];
 
 const KNOWN_LIBRARY_IDS = docsLibrariesConfig.libraries.map((l) => l.id) as readonly DocsLibraryId[];
 export const DOCS_LIBRARY_IDS: readonly DocsLibraryId[] = KNOWN_LIBRARY_IDS;
@@ -18,7 +15,7 @@ export const LOCAL_DGADD_PREREQUISITE =
 
 const LIBRARY_CONFIG = Object.fromEntries(
   docsLibrariesConfig.libraries.map((library) => [library.id, library]),
-) as Record<string, DocsLibraryConfig>;
+) as Record<string, DocsLibraryConfigData>;
 
 export const SOURCE_DOCS_PREFIX = "/docs/";
 
@@ -34,7 +31,7 @@ export function isDocsLibraryId(value: string): value is DocsLibraryId {
   return (KNOWN_LIBRARY_IDS as readonly string[]).includes(value);
 }
 
-export function getDocsLibraryConfig(lib: DocsLibraryId): DocsLibraryConfig {
+export function getDocsLibraryConfig(lib: DocsLibraryId): DocsLibraryConfigData {
   const config = LIBRARY_CONFIG[lib];
   if (!config) {
     throw new Error(`Unknown docs library: "${lib}"`);
@@ -42,7 +39,7 @@ export function getDocsLibraryConfig(lib: DocsLibraryId): DocsLibraryConfig {
   return config;
 }
 
-export function getEnabledDocsLibraries(): DocsLibraryConfig[] {
+export function getEnabledDocsLibraries(): DocsLibraryConfigData[] {
   return docsLibrariesConfig.libraries.filter((config) => config.enabled);
 }
 
@@ -71,9 +68,9 @@ export function getInstallCommand(library: DocsLibraryId, itemName: string): str
   return `${installer.command} ${item}`;
 }
 
-export function getLibrariesWithArtifacts(): (DocsLibraryConfig & { artifactSource: ArtifactSource })[] {
+export function getLibrariesWithArtifacts(): (DocsLibraryConfigData & { artifactSource: ArtifactSourceConfig })[] {
   return getEnabledDocsLibraries().filter(
-    (c): c is DocsLibraryConfig & { artifactSource: ArtifactSource } => !!c.artifactSource,
+    (c): c is DocsLibraryConfigData & { artifactSource: ArtifactSourceConfig } => !!c.artifactSource,
   );
 }
 

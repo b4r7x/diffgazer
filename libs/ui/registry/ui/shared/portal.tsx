@@ -18,6 +18,13 @@ export interface PortalProps {
  * Cross-document callers (iframe overlays, popovers from a different document)
  * should pass `container` directly or wrap consumers in a `PortalContainerProvider`
  * so the portal target shares its ownerDocument with the surrounding tree.
+ *
+ * SSR/hydration: this is a client component. When no DOM document exists (server
+ * render) it renders nothing, so the server HTML carries no portal content. That
+ * is hydration-safe because portaled children never occupy a host position inside
+ * the hydrated tree — on the client they mount into the resolved target without a
+ * mismatch. Consumers needing server-rendered overlay content must render outside
+ * a Portal.
  */
 export function Portal({ children, container }: PortalProps) {
   const scopedContainer = usePortalContainer();

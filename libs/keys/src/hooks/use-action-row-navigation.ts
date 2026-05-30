@@ -284,7 +284,7 @@ export function useActionRowNavigation<
       if (node) actionRefs.current.set(index, node);
       else actionRefs.current.delete(index);
     }) as RefCallback<HTMLElement>,
-    "data-action-index": index as number,
+    "data-action-index": index,
     onFocus: () => {
       if (!isIndexEnabled(index, actionCount, disabledKey)) return;
       setZone("actions");

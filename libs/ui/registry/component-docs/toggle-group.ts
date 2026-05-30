@@ -5,6 +5,11 @@ export const toggleGroupDoc: ComponentDoc = {
     "Compound toggle button group with keyboard navigation for single selection.",
   notes: [
     {
+      title: "Requires @diffgazer/keys (package mode)",
+      content:
+        "ToggleGroup's arrow-key navigation imports from the optional @diffgazer/keys peer. Package/npm consumers must install it: `npm install @diffgazer/keys`. Importing @diffgazer/ui/components/toggle-group without keys fails at module load with an error naming the missing @diffgazer/keys package. Copy/dgadd consumers do not need the package — copy mode rewrites the keyboard hooks to local source.",
+    },
+    {
       title: "Compound Component",
       content:
         "ToggleGroup uses compound sub-components (ToggleGroup.Item) rather than a data array. Each item accepts children for the label and an optional count prop that renders as [label count].",

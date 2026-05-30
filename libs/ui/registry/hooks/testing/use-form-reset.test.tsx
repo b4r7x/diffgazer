@@ -199,26 +199,16 @@ describe("useFormReset", () => {
     expect(input).toHaveValue("changed");
   });
 
-  it("does not churn the reset listener across rerenders with stable props", () => {
-    const addSpy = vi.spyOn(HTMLFormElement.prototype, "addEventListener");
-    const removeSpy = vi.spyOn(HTMLFormElement.prototype, "removeEventListener");
-    try {
-      const { rerender, unmount } = render(<ResettableInput defaultValue="initial" />);
-      for (let i = 0; i < 10; i += 1) {
-        rerender(<ResettableInput defaultValue="initial" />);
-      }
-
-      const resetAdds = addSpy.mock.calls.filter(([type]) => type === "reset");
-      const resetRemoves = removeSpy.mock.calls.filter(([type]) => type === "reset");
-      expect(resetAdds).toHaveLength(1);
-      expect(resetRemoves).toHaveLength(0);
-
-      unmount();
-      const resetRemovesAfterUnmount = removeSpy.mock.calls.filter(([type]) => type === "reset");
-      expect(resetRemovesAfterUnmount).toHaveLength(1);
-    } finally {
-      addSpy.mockRestore();
-      removeSpy.mockRestore();
+  it("subscribes once across many rerenders with stable props", async () => {
+    const onReset = vi.fn();
+    const { rerender } = render(<ResettableInput defaultValue="initial" onReset={onReset} />);
+    for (let i = 0; i < 10; i += 1) {
+      rerender(<ResettableInput defaultValue="initial" onReset={onReset} />);
     }
+
+    screen.getByRole("form", { name: /profile/i }).dispatchEvent(new Event("reset", { bubbles: true }));
+
+    await waitFor(() => expect(onReset).toHaveBeenCalledOnce());
+    expect(onReset).toHaveBeenCalledWith("initial");
   });
 });

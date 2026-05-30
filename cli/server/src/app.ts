@@ -5,6 +5,8 @@ import { SHUTDOWN_TOKEN_HEADER } from "@diffgazer/core/api";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import { safeTokenMatch } from "./shared/lib/crypto.js";
 import { errorResponse } from "./shared/lib/http/response.js";
+import { log } from "./shared/lib/log.js";
+import { requestLogger, REQUEST_ID_HEADER, type RequestLoggerEnv } from "./shared/middlewares/request-logger.js";
 import { healthRouter } from "./features/health/router.js";
 import { configRouter } from "./features/config/router.js";
 import { settingsRouter } from "./features/settings/router.js";
@@ -49,8 +51,12 @@ const getHostname = (hostHeader: string | null | undefined): string | null => {
   return hostHeader.split(":")[0] ?? null;
 };
 
-export const createApp = (): Hono => {
-  const app = new Hono();
+export type AppEnv = RequestLoggerEnv;
+
+export const createApp = (): Hono<AppEnv> => {
+  const app = new Hono<AppEnv>();
+
+  app.use("*", requestLogger);
 
   app.use("*", async (c, next) => {
     const hostname = getHostname(c.req.header("host"));
@@ -87,7 +93,7 @@ export const createApp = (): Hono => {
     }
     const token = process.env.DIFFGAZER_SHUTDOWN_TOKEN?.trim();
     if (!token || !safeTokenMatch(c.req.header(SHUTDOWN_TOKEN_HEADER), token)) {
-      return errorResponse(c, "Unauthorized", ErrorCode.UNAUTHORIZED, 403);
+      return errorResponse(c, "Unauthorized", ErrorCode.UNAUTHORIZED, 401);
     }
     return next();
   });
@@ -120,9 +126,27 @@ export const createApp = (): Hono => {
     return errorResponse(c, "Not Found", ErrorCode.NOT_FOUND, 404);
   });
 
+  // F148: only the log-stack + generic-500 half applies here. Domain failures
+  // use the Result<T, AppError> pattern and are mapped to status codes via
+  // errorResponse/handleStoreError/drilldownErrorStatus at the route layer, so
+  // no coded AppError ever reaches this global handler. Anything that does throw
+  // is an unexpected bug — branching on AppError.code here would be dead code.
   app.onError((err, c) => {
-    console.error("Unhandled error:", err);
-    return errorResponse(c, "Internal Server Error", ErrorCode.INTERNAL_ERROR, 500);
+    const startTime = c.get("startTime");
+    const requestId = c.get("requestId");
+    log("error", "unhandled_error", {
+      requestId,
+      method: c.req.method,
+      path: new URL(c.req.url).pathname,
+      status: 500,
+      durationMs: startTime ? Math.round((performance.now() - startTime) * 1000) / 1000 : undefined,
+      error: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+    });
+    // A thrown error skips the request-logger tail, so set the id header here too.
+    const response = errorResponse(c, "Internal Server Error", ErrorCode.INTERNAL_ERROR, 500);
+    if (requestId) response.headers.set(REQUEST_ID_HEADER, requestId);
+    return response;
   });
 
   return app;

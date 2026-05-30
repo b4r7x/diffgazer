@@ -101,6 +101,33 @@ export function createKeysSourceContentTransform(
   };
 }
 
+export function assertNoRelativeJsImports(outputDir: string): void {
+  const offenders: string[] = [];
+
+  for (const entry of readdirSync(outputDir)) {
+    if (!entry.endsWith(".json")) continue;
+
+    const item = JSON.parse(readFileSync(join(outputDir, entry), "utf-8")) as PublicRegistryItemJson;
+    for (const file of item.files ?? []) {
+      if (typeof file.content !== "string") continue;
+      const matches = file.content.match(new RegExp(RELATIVE_JS_IMPORT.source, "g"));
+      if (matches) {
+        offenders.push(`${entry} (${file.target ?? file.path}): ${matches.join(", ")}`);
+      }
+    }
+  }
+
+  if (offenders.length > 0) {
+    throw new Error(
+      [
+        "Generated keys public registry contains relative .js import specifiers:",
+        ...offenders,
+        "Strip .js from libs/keys/src source imports; do not rely on the downstream UI build cleanup.",
+      ].join("\n"),
+    );
+  }
+}
+
 export function transformKeysPublicRegistryImports(outputDir: string): void {
   const indexPath = join(outputDir, "registry.json");
   const index = JSON.parse(readFileSync(indexPath, "utf-8")) as PublicRegistryIndexJson;

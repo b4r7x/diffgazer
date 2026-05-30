@@ -92,7 +92,27 @@ npm install figlet
 
 Without `figlet` installed, importing `@diffgazer/ui/components/logo/figlet` still succeeds. The failure surfaces at call time: `getFigletText()` rejects with an error whose message mentions the `optional peer dependency 'figlet'`. All other `@diffgazer/ui` entries work unchanged.
 
+`lowlight` is an optional peer dependency used only for syntax highlighting in `./components/code-block`. The component loads `lowlight` lazily, so install it only if you render highlighted code:
+
+```bash
+npm install lowlight
+```
+
+### Optional peers by entry
+
+Only install the optional peer an entry needs:
+
+| Optional peer | Entries that need it |
+| --- | --- |
+| `@diffgazer/keys` | keyboard-backed components: `./components/accordion`, `./components/select`, `./components/tabs`, `./components/checkbox`, `./components/radio`, `./components/sidebar`, `./components/toggle-group`, `./components/command-palette`, `./components/diff-view`, plus the re-export hooks `./hooks/*` that wrap keys |
+| `figlet` | `./components/logo/figlet` (lazy; the default `./components/logo` does not need it) |
+| `lowlight` | `./components/code-block` (lazy) |
+
 ## Entries
+
+This package is ESM-subpath-only: it has no top-level `.` export and no `main`/`types`
+field. Import the specific subpath you need (listed below); `exports`-aware tooling
+(bundlers, TypeScript `bundler`/`node16` resolution) resolves each entry directly.
 
 - `@diffgazer/ui/components/*` (see package.json exports for the full component list)
 - `@diffgazer/ui/hooks/controllable-state`
@@ -117,7 +137,9 @@ Without `figlet` installed, importing `@diffgazer/ui/components/logo/figlet` sti
 
 - React `>=19.2.0`
 - React DOM `>=19.2.0`
-- `@diffgazer/keys >= 0.2.0`
+- `@diffgazer/keys >= 0.2.0` (optional — only keyboard-backed entries need it; see Optional peers by entry)
+- `figlet >= 1.10.0` (optional — only `./components/logo/figlet`)
+- `lowlight >= 3.0.0` (optional — only `./components/code-block`)
 
 ## Versioning and Migration
 

@@ -144,12 +144,10 @@ function resetReviewMocks() {
   mockUseReview.mockReturnValue(reviewQuery({}));
   mockUseReviewLifecycleBase.mockReset();
   mockUseReviewLifecycleBase.mockReturnValue({
-    streamState: makeStreamState(),
-    loadingMessage: null,
-    isNoDiffError: false,
-    stream: { stop: vi.fn() },
-    skipDelay: vi.fn(),
-    setHasStarted: vi.fn(),
+    stream: { stop: vi.fn(), abort: vi.fn(), cancel: vi.fn(), state: makeStreamState() },
+    checks: { loadingMessage: null, isNoDiffError: false, isCheckingForChanges: false },
+    completion: { isCompleting: false, skipDelay: vi.fn(), resetCompletion: vi.fn() },
+    start: { hasStarted: true, hasStreamed: true, setHasStarted: vi.fn(), setHasStreamed: vi.fn() },
   });
 }
 
@@ -199,15 +197,15 @@ describe("ReviewPage saved review loading", () => {
     routeState.params = { reviewId };
     routeState.search = { mode: "unstaged", live: true };
     mockUseReviewLifecycleBase.mockReturnValue({
-      streamState: {
-        ...makeStreamState(),
-        reviewId,
+      stream: {
+        stop: vi.fn(),
+        abort: vi.fn(),
+        cancel: vi.fn(),
+        state: { ...makeStreamState(), reviewId },
       },
-      loadingMessage: null,
-      isNoDiffError: false,
-      stream: { stop: vi.fn() },
-      skipDelay: vi.fn(),
-      setHasStarted: vi.fn(),
+      checks: { loadingMessage: null, isNoDiffError: false, isCheckingForChanges: false },
+      completion: { isCompleting: false, skipDelay: vi.fn(), resetCompletion: vi.fn() },
+      start: { hasStarted: true, hasStreamed: true, setHasStarted: vi.fn(), setHasStreamed: vi.fn() },
     });
 
     renderPage();
@@ -308,15 +306,15 @@ describe("ReviewPage stale live session falls back to saved review", () => {
       (opts: { onNotFoundInSession?: (id: string) => void }) => {
         captured.onNotFoundInSession = opts.onNotFoundInSession ?? null;
         return {
-          streamState: {
-            ...makeStreamState(),
-            reviewId: STALE_REVIEW_ID,
+          stream: {
+            stop: vi.fn(),
+            abort: vi.fn(),
+            cancel: vi.fn(),
+            state: { ...makeStreamState(), reviewId: STALE_REVIEW_ID },
           },
-          loadingMessage: null,
-          isNoDiffError: false,
-          stream: { stop: vi.fn(), abort: vi.fn(), cancel: vi.fn() },
-          skipDelay: vi.fn(),
-          setHasStarted: vi.fn(),
+          checks: { loadingMessage: null, isNoDiffError: false, isCheckingForChanges: false },
+          completion: { isCompleting: false, skipDelay: vi.fn(), resetCompletion: vi.fn() },
+          start: { hasStarted: true, hasStreamed: true, setHasStarted: vi.fn(), setHasStreamed: vi.fn() },
         };
       },
     );
@@ -399,16 +397,15 @@ describe("ReviewPage live review phase transitions", () => {
     mockUseReviewLifecycleBase.mockImplementation((opts: { onComplete?: () => void }) => {
       capturedOnComplete = opts.onComplete ?? null;
       return {
-        streamState: {
-          ...makeStreamState(),
-          reviewId: LIVE_REVIEW_ID,
-          issues: completedIssues,
+        stream: {
+          stop: vi.fn(),
+          abort: vi.fn(),
+          cancel: vi.fn(),
+          state: { ...makeStreamState(), reviewId: LIVE_REVIEW_ID, issues: completedIssues },
         },
-        loadingMessage: null,
-        isNoDiffError: false,
-        stream: { stop: vi.fn() },
-        skipDelay: vi.fn(),
-        setHasStarted: vi.fn(),
+        checks: { loadingMessage: null, isNoDiffError: false, isCheckingForChanges: false },
+        completion: { isCompleting: false, skipDelay: vi.fn(), resetCompletion: vi.fn() },
+        start: { hasStarted: true, hasStreamed: true, setHasStarted: vi.fn(), setHasStreamed: vi.fn() },
       };
     });
   });

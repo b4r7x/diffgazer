@@ -101,69 +101,29 @@ Verify: `host r.b4r7.dev` should return the VPS IP.
 
 ## Step 2: Code Changes (in the monorepo, before deploying)
 
-### 2.1: Change REGISTRY_ORIGIN
+The domain/origin code changes in 2.1–2.3 are **already applied in the working tree**.
+This section now records what is done, what remains, and how to verify.
 
-File: `libs/registry/src/constants.ts`
+#### Completed (origins point at `r.b4r7.dev` / `docs.b4r7.dev`)
 
-Change:
-```ts
-export const REGISTRY_ORIGIN = "https://docs.diffgazer.b4r7.dev";
-```
-To:
-```ts
-export const REGISTRY_ORIGIN = "https://r.b4r7.dev";
-```
+- `libs/registry/src/constants.ts` — `REGISTRY_ORIGIN = "https://r.b4r7.dev"`.
+- `apps/docs/src/lib/seo.ts` — `DEFAULT_ORIGIN = "https://docs.b4r7.dev"` (overridable via `VITE_PUBLIC_ORIGIN`).
+- `apps/docs/scripts/generate-sitemap.mjs` — `DEFAULT_ORIGIN = "https://docs.b4r7.dev"`.
+- `apps/docs/src/lib/consumption-metadata.ts` — shadcn URLs derive from `REGISTRY_ORIGIN` / `VITE_REGISTRY_ORIGIN`, no hardcoded origin.
+- `Dockerfile` (root) — `ARG REGISTRY_ORIGIN=https://r.b4r7.dev` (and `VITE_REGISTRY_ORIGIN`).
+- `docker-compose.yml` (root) — `REGISTRY_ORIGIN`, `VITE_PUBLIC_ORIGIN`, `VITE_REGISTRY_ORIGIN` default to the production origins.
 
-### 2.2: Update docs domain references
+#### Remaining
 
-**File: `apps/docs/src/lib/seo.ts`**
-Change `DEFAULT_ORIGIN` to `"https://docs.b4r7.dev"`.
-Note: this is also overridable via `VITE_PUBLIC_ORIGIN` env var at build time.
+- `apps/docs/public/robots.txt` — no committed source file yet; the sitemap URL currently lives only in build output. Add a source `robots.txt` pointing its sitemap at `https://docs.b4r7.dev/sitemap.xml` if a committed copy is wanted.
+- Regenerate registry artifacts so `public/r/*.json` `registryDependencies` carry the production origin (see Verification).
 
-**File: `apps/docs/scripts/generate-sitemap.mjs`**
-Change `DEFAULT_ORIGIN` to `"https://docs.b4r7.dev"`.
-
-**File: `apps/docs/public/robots.txt`**
-Change sitemap URL to `https://docs.b4r7.dev/sitemap.xml`.
-
-**File: `apps/docs/src/lib/consumption-metadata.ts`**
-The shadcn install command URLs must use `REGISTRY_ORIGIN` from `@diffgazer/registry`.
-Replace the two hardcoded `https://docs.diffgazer.b4r7.dev/r/...` strings with:
-
-```ts
-import { REGISTRY_ORIGIN } from "@diffgazer/registry";
-// ...
-`npx shadcn@latest add ${REGISTRY_ORIGIN}/r/ui/${itemId}.json`
-`npx shadcn@latest add ${REGISTRY_ORIGIN}/r/keys/${registryItemId}.json`
-```
-
-If `@diffgazer/registry` is not a dependency of `apps/docs`, add it (it's already a workspace package and already in deps).
-
-**File: `Dockerfile`** (root, for docs)
-Change ARG default:
-```dockerfile
-ARG REGISTRY_ORIGIN=https://r.b4r7.dev
-```
-
-**File: `docker-compose.yml`** (root)
-Change default:
-```yaml
-REGISTRY_ORIGIN: ${REGISTRY_ORIGIN:-https://r.b4r7.dev}
-```
-
-### 2.3: Regenerate all registry artifacts
+#### Verification
 
 ```sh
 pnpm run prepare:artifacts
-```
-
-This regenerates all `libs/ui/public/r/*.json` and `libs/keys/public/r/*.json` with
-the new `r.b4r7.dev` URLs in `registryDependencies`.
-
-Verify a regenerated file:
-```sh
-grep "r.b4r7.dev" libs/ui/public/r/button.json
-# Should show the new domain in registryDependencies URLs
+grep "r.b4r7.dev" libs/ui/public/r/button.json   # registryDependencies use the production origin
+grep -r "docs.diffgazer.b4r7.dev" libs apps cli   # should return nothing (old origin fully removed)
 ```
 
 ### 2.4: Create deployment Dockerfiles and nginx configs
@@ -408,7 +368,11 @@ Add convenience scripts:
 "landing:build": "turbo run build --filter=@diffgazer/landing"
 ```
 
-### 2.9: Commit everything
+### 2.9: Commit the deployment changes
+
+The `deploy/`, `apps/landing/`, `apps/hub/`, origin, Dockerfile, compose, turbo, and
+script changes from this Step already exist in the tree. Once the registry artifacts
+are regenerated (2.3), stage and commit the full set:
 
 ```sh
 git add deploy/ apps/landing/ apps/hub/
@@ -417,7 +381,6 @@ git add libs/ui/public/r/ libs/keys/public/r/
 git add apps/docs/src/lib/seo.ts
 git add apps/docs/src/lib/consumption-metadata.ts
 git add apps/docs/scripts/generate-sitemap.mjs
-git add apps/docs/public/robots.txt
 git add Dockerfile docker-compose.yml
 git add turbo.json package.json
 git commit -m "feat: deployment setup for Coolify with r.b4r7.dev registry"

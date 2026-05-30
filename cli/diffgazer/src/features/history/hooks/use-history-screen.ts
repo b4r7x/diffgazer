@@ -11,16 +11,16 @@ import {
   resolveSelectedDateId,
   resolveSelectedRunId,
 } from "@diffgazer/core/review";
-import type { HistoryFocusZone } from "../types.js";
+import type { HistoryFocusZone } from "../types";
 import {
   buildHistorySeverityCounts,
   mapHistoryRun,
   nextHistoryZone,
   sortIssuesBySeverity,
   type MappedRun,
-} from "./history-screen-utils.js";
+} from "./history-screen-utils";
 
-export type { MappedRun } from "./history-screen-utils.js";
+export type { MappedRun } from "./history-screen-utils";
 
 export interface UseHistoryScreenResult {
   reviewsQuery: ReturnType<typeof useReviews>;

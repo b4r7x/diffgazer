@@ -2,8 +2,8 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { useState } from "react"
 import { describe, it, expect, vi } from "vitest"
-import { Dialog } from "../dialog/index.js"
-import { Popover } from "../popover/index.js"
+import { Dialog } from "../dialog/index"
+import { Popover } from "../popover/index"
 
 // axe skipped: nested-overlay escape behavior test; dialog/popover primitive tests own a11y assertions.
 

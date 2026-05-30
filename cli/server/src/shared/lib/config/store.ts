@@ -1,6 +1,5 @@
 import { resolveProjectRoot } from "../paths.js";
 import { type Result, ok, err } from "@diffgazer/core/result";
-import { getErrorMessage } from "@diffgazer/core/errors";
 import type {
   AIProvider,
   CredentialRef,
@@ -9,14 +8,11 @@ import type {
   SettingsConfig,
   TrustConfig,
 } from "@diffgazer/core/schemas/config";
-import { PROVIDER_ENV_VARS } from "@diffgazer/core/schemas/config";
 import type {
   ConfigState,
-  SecretEntry,
   SecretsState,
   SecretsStorageError,
   SecretsStorageErrorCode,
-  TrustState,
 } from "./types.js";
 import {
   deleteKeyringSecret,
@@ -26,12 +22,10 @@ import {
 import {
   loadConfig,
   loadSecrets,
-  loadTrust,
   persistConfig as persistConfigSync_,
   persistConfigAsync,
   persistSecrets,
   persistSecretsAsync,
-  persistTrustAsync,
   readProjectFile,
   createProjectFile,
   removeSecretsFile,
@@ -53,51 +47,12 @@ import {
   getApiKeyName,
   migrateSecretsStorage,
 } from "./secrets-migration.js";
+import { toSecretEntry, resolveSecretEntry, persistError } from "./secrets-store.js";
+import { createTrustStore, type TrustStore } from "./trust-store.js";
 import { getFileMtimeMs } from "../fs.js";
-import {
-  getGlobalConfigPath,
-  getGlobalSecretsPath,
-  getGlobalTrustPath,
-} from "../paths.js";
-
-/** Normalize a credential input (string or CredentialRef) into a SecretEntry for persistence. */
-function toSecretEntry(
-  apiKey: string | CredentialRef,
-  providerId: AIProvider,
-): { entry: SecretEntry; resolvedValue: string | null } {
-  if (typeof apiKey === "string") {
-    // Migrate legacy "env" sentinel strings
-    if (apiKey === "env") {
-      const varName = PROVIDER_ENV_VARS[providerId];
-      return {
-        entry: { kind: "env", varName },
-        resolvedValue: process.env[varName] ?? null,
-      };
-    }
-    return { entry: apiKey, resolvedValue: apiKey };
-  }
-  if (apiKey.kind === "env") {
-    return {
-      entry: { kind: "env", varName: apiKey.varName },
-      resolvedValue: process.env[apiKey.varName] ?? null,
-    };
-  }
-  return { entry: apiKey.value, resolvedValue: apiKey.value };
-}
-
-/** Resolve a secret entry to its runtime value. */
-function resolveSecretEntry(entry: SecretEntry): string | null {
-  if (typeof entry === "string") return entry;
-  if (entry.kind === "env") return process.env[entry.varName] ?? null;
-  return null;
-}
-
-function persistError(operation: string, cause: unknown): SecretsStorageError {
-  return {
-    code: "PERSIST_FAILED" as SecretsStorageErrorCode,
-    message: `Failed to persist ${operation}: ${getErrorMessage(cause)}`,
-  };
-}
+import { getGlobalConfigPath, getGlobalSecretsPath } from "../paths.js";
+import { getErrorMessage } from "@diffgazer/core/errors";
+import { log } from "../log.js";
 
 export interface ConfigStore {
   getSettings(): SettingsConfig;
@@ -116,14 +71,29 @@ export interface ConfigStore {
   deleteProviderCredentials(providerId: AIProvider): Promise<Result<boolean, SecretsStorageError>>;
 }
 
+/**
+ * Composes the config store from the stateless persistence/migration helpers
+ * (`state.ts`, `providers-state.ts`, `secrets-migration.ts`, `secrets-store.ts`,
+ * `keyring.ts`) and the one cleanly separable stateful slice, `trust-store.ts`.
+ *
+ * F100 deferral: the STRUCTURE.md §6 plan also called for `config-persistence`
+ * and `providers-store` modules. Those two are deliberately retained inline here
+ * rather than extracted. `configState` and `secretsState` are a single shared
+ * mutable aggregate: `updateSettings` (storage migration) and the provider-
+ * credential methods (`saveProviderCredentials`/`activateProvider`/
+ * `deleteProviderCredentials`) both mutate `configState.providers` and
+ * `secretsState.providers` and depend on the same mtime-guarded persist
+ * wrappers. Splitting them into separate stateful factories would require
+ * threading that mutable state across module boundaries as injected
+ * dependencies, which leaks state and weakens SRP rather than improving it. The
+ * only state slice that does not touch config/secrets — trust — was extracted.
+ */
 export function createConfigStore(): ConfigStore {
   let configState: ConfigState = loadConfig();
   let secretsState: SecretsState = loadSecrets();
-  let trustState: TrustState = loadTrust();
-  const sessionTrust: Record<string, TrustConfig> = {};
+  const trustStore: TrustStore = createTrustStore();
 
   let configMtimeMs: number | null = getFileMtimeMs(getGlobalConfigPath());
-  let trustMtimeMs: number | null = getFileMtimeMs(getGlobalTrustPath());
   let secretsMtimeMs: number | null = getFileMtimeMs(getGlobalSecretsPath());
 
   const initialStorage = effectiveStorage(configState);
@@ -156,31 +126,6 @@ export function createConfigStore(): ConfigStore {
   const persistConfigSync = (): void => {
     persistConfigSync_(configState);
     configMtimeMs = getFileMtimeMs(getGlobalConfigPath());
-  };
-
-  const persistTrust = async (
-    failOnConflict: boolean = false,
-  ): Promise<Result<void, SecretsStorageError>> => {
-    const currentMtime = getFileMtimeMs(getGlobalTrustPath());
-    if (trustMtimeMs !== null && currentMtime !== null && currentMtime !== trustMtimeMs) {
-      if (failOnConflict) {
-        return err({
-          code: "CONCURRENCY_CONFLICT" as SecretsStorageErrorCode,
-          message: "Trust file was modified concurrently; operation rejected for safety",
-        });
-      }
-      const diskTrust = loadTrust();
-      trustState = {
-        projects: { ...diskTrust.projects, ...trustState.projects },
-      };
-    }
-    try {
-      await persistTrustAsync(trustState);
-      trustMtimeMs = getFileMtimeMs(getGlobalTrustPath());
-      return ok(undefined);
-    } catch (cause) {
-      return err(persistError("trust", cause));
-    }
   };
 
   const persistFileSecrets = async (): Promise<Result<void, SecretsStorageError>> => {
@@ -264,9 +209,9 @@ export function createConfigStore(): ConfigStore {
         try {
           removeSecretsFile();
         } catch (error) {
-          console.warn(
-            `[diffgazer] Failed to remove secrets file after migration: ${getErrorMessage(error)}`,
-          );
+          // Non-fatal: the new backend already holds the secrets; a stale file
+          // is cleaned up on next migration. Surface it via the structured log.
+          log("warn", "secrets_file_cleanup_failed", { error: getErrorMessage(error) });
         }
       }
 
@@ -308,68 +253,23 @@ export function createConfigStore(): ConfigStore {
   const getProjectInfo = (projectRoot?: string): ProjectInfo => {
     const resolvedRoot = resolveRoot(projectRoot);
     const projectFile = readProjectFile(resolvedRoot);
-    const trust = projectFile
-      ? sessionTrust[projectFile.projectId] ?? trustState.projects[projectFile.projectId] ?? null
-      : null;
 
     return {
       path: resolvedRoot,
       projectId: projectFile?.projectId ?? null,
-      trust,
+      trust: projectFile ? trustStore.getTrust(projectFile.projectId) : null,
     };
   };
 
   const ensureProjectFile = (projectRoot: string): ProjectInfo => {
     const resolvedRoot = resolveRoot(projectRoot);
     const projectFile = createProjectFile(resolvedRoot);
-    const trust = sessionTrust[projectFile.projectId] ?? trustState.projects[projectFile.projectId] ?? null;
 
     return {
       path: resolvedRoot,
       projectId: projectFile.projectId,
-      trust,
+      trust: trustStore.getTrust(projectFile.projectId),
     };
-  };
-
-  const getTrust = (projectId: string): TrustConfig | null =>
-    sessionTrust[projectId] ?? trustState.projects[projectId] ?? null;
-
-  const listTrustedProjects = (): TrustConfig[] =>
-    Object.values({ ...trustState.projects, ...sessionTrust });
-
-  const saveTrust = async (
-    config: TrustConfig,
-  ): Promise<Result<TrustConfig, SecretsStorageError>> => {
-    if (config.trustMode === "session") {
-      sessionTrust[config.projectId] = config;
-      return ok(config);
-    }
-    trustState.projects[config.projectId] = config;
-    const result = await persistTrust(false);
-    if (!result.ok) {
-      delete trustState.projects[config.projectId];
-      return result;
-    }
-    return ok(config);
-  };
-
-  const removeTrust = async (
-    projectId: string,
-  ): Promise<Result<boolean, SecretsStorageError>> => {
-    const inSession = projectId in sessionTrust;
-    const inPersistent = projectId in trustState.projects;
-    if (!inSession && !inPersistent) return ok(false);
-    if (inSession) delete sessionTrust[projectId];
-    if (inPersistent) {
-      const backup = trustState.projects[projectId];
-      delete trustState.projects[projectId];
-      const result = await persistTrust(true);
-      if (!result.ok) {
-        trustState.projects[projectId] = backup!;
-        return result;
-      }
-    }
-    return ok(true);
   };
 
   const saveProviderCredentials = async (input: {
@@ -497,34 +397,22 @@ export function createConfigStore(): ConfigStore {
     getProviderApiKey,
     getProjectInfo,
     ensureProjectFile,
-    getTrust,
-    listTrustedProjects,
-    saveTrust,
-    removeTrust,
+    getTrust: trustStore.getTrust,
+    listTrustedProjects: trustStore.listTrustedProjects,
+    saveTrust: trustStore.saveTrust,
+    removeTrust: trustStore.removeTrust,
     saveProviderCredentials,
     activateProvider,
     deleteProviderCredentials,
   };
 }
 
-// Lazy singleton — avoids filesystem reads at import time
+// Lazy singleton — avoids filesystem reads at import time. Safe as a single
+// instance because Node's event loop is single-threaded, so there is no
+// concurrent first-call race to guard against.
 let _store: ConfigStore | null = null;
-function getStore(): ConfigStore {
+
+export function getStore(): ConfigStore {
   if (!_store) _store = createConfigStore();
   return _store;
 }
-
-export const getSettings: ConfigStore["getSettings"] = (...args) => getStore().getSettings(...args);
-export const updateSettings: ConfigStore["updateSettings"] = (...args) => getStore().updateSettings(...args);
-export const getProviders: ConfigStore["getProviders"] = (...args) => getStore().getProviders(...args);
-export const getActiveProvider: ConfigStore["getActiveProvider"] = (...args) => getStore().getActiveProvider(...args);
-export const getProviderApiKey: ConfigStore["getProviderApiKey"] = (...args) => getStore().getProviderApiKey(...args);
-export const getProjectInfo: ConfigStore["getProjectInfo"] = (...args) => getStore().getProjectInfo(...args);
-export const ensureProjectFile: ConfigStore["ensureProjectFile"] = (...args) => getStore().ensureProjectFile(...args);
-export const getTrust: ConfigStore["getTrust"] = (...args) => getStore().getTrust(...args);
-export const listTrustedProjects: ConfigStore["listTrustedProjects"] = (...args) => getStore().listTrustedProjects(...args);
-export const saveTrust: ConfigStore["saveTrust"] = (...args) => getStore().saveTrust(...args);
-export const removeTrust: ConfigStore["removeTrust"] = (...args) => getStore().removeTrust(...args);
-export const saveProviderCredentials: ConfigStore["saveProviderCredentials"] = (...args) => getStore().saveProviderCredentials(...args);
-export const activateProvider: ConfigStore["activateProvider"] = (...args) => getStore().activateProvider(...args);
-export const deleteProviderCredentials: ConfigStore["deleteProviderCredentials"] = (...args) => getStore().deleteProviderCredentials(...args);

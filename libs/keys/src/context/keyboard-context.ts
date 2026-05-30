@@ -1,6 +1,6 @@
 "use client";
 
-import { useContext, useMemo } from "react";
+import { useContext } from "react";
 import {
   KeyboardRegistryContext,
   KeyboardScopeContext,
@@ -31,17 +31,15 @@ export function useKeyboardContext(): KeyboardContextValue {
   const registry = useKeyboardRegistryContext();
   const scope = useKeyboardScopeContext();
 
-  return useMemo(() => ({ activeScope: scope.activeScope, ...registry }), [registry, scope]);
+  return { activeScope: scope.activeScope, ...registry };
 }
 
 export function useOptionalKeyboardContext(): KeyboardContextValue | null {
   const registry = useContext(KeyboardRegistryContext);
   const scope = useContext(KeyboardScopeContext);
 
-  return useMemo(() => {
-    if (registry === undefined || scope === undefined) return null;
-    return { activeScope: scope.activeScope, ...registry };
-  }, [registry, scope]);
+  if (registry === undefined || scope === undefined) return null;
+  return { activeScope: scope.activeScope, ...registry };
 }
 
 export function useOptionalKeyboardRegistryContext(): KeyboardRegistryContextValue | null {

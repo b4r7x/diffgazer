@@ -1,18 +1,17 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { setImmediate as waitImmediate } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { test, describe, expect } from "vitest";
-import { resolveCliAction } from "./cli-options.js";
-import { parsePortEnv, openBrowserAddress } from "./lib/servers/server-factories.js";
-import { isSpaNavigationRequest } from "./lib/servers/embedded-server.js";
-import { ensureShutdownToken } from "./lib/shutdown-token.js";
-import { startWeb } from "./web-launcher.js";
+import { parsePortEnv } from "@diffgazer/core/env";
+import { resolveCliAction } from "./cli-options";
+import { openBrowserAddress } from "./lib/servers/server-factories";
+import { isSpaNavigationRequest } from "./lib/servers/embedded-server";
+import { ensureShutdownToken } from "./lib/shutdown-token";
+import { startWeb } from "./web-launcher";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const cliEntry = resolve(repoRoot, "cli/diffgazer/src/index.tsx");
-const packageJson = resolve(repoRoot, "cli/diffgazer/package.json");
 
 function runDiffgazer(args: string[]): string {
   return execFileSync(process.execPath, ["--import", "tsx", cliEntry, ...args], {
@@ -89,10 +88,12 @@ describe("diffgazer CLI options", () => {
     expect(output).toMatch(/--theme <theme>\s+Start TUI with a specific theme \(only with --tui\)/);
   });
 
-  test("prints package version", () => {
-    const metadata = JSON.parse(readFileSync(packageJson, "utf-8")) as { version: string };
-
-    expect(runDiffgazer(["--version"]).trim()).toBe(metadata.version);
+  test("prints a version without reading package.json at runtime", () => {
+    // The published binary injects package.json's version at build time (tsup
+    // `define`). Run from source via tsx the define is absent, so the CLI must
+    // fall back to the documented dev placeholder instead of crashing on a
+    // missing/renamed package.json.
+    expect(runDiffgazer(["--version"]).trim()).toBe("0.0.0-dev");
   });
 
   test("exits with an error for invalid options", () => {

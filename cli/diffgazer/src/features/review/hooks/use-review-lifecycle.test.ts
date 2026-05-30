@@ -1,5 +1,5 @@
 import { test, describe, expect } from "vitest";
-import { getDisplayPhase } from "./use-review-lifecycle.js";
+import { getDisplayPhase } from "./use-review-lifecycle";
 
 describe("getDisplayPhase", () => {
   test("returns 'summary' when the start request failed", () => {

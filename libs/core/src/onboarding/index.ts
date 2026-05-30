@@ -2,11 +2,11 @@ export type {
   InputMethod,
   OnboardingStep,
   WizardData,
-} from "./types.js";
-export { INPUT_METHODS, WIZARD_STEPS } from "./types.js";
-export { STEP_LABELS, STEP_TITLES } from "./steps.js";
-export { getInitialWizardData } from "./defaults.js";
-export { canProceed } from "./can-proceed.js";
+} from "./types";
+export { INPUT_METHODS, WIZARD_STEPS } from "./types";
+export { STEP_LABELS, STEP_TITLES } from "./steps";
+export { getInitialWizardData } from "./defaults";
+export { canProceed } from "./can-proceed";
 export {
   buildSettingsPayload,
   buildConfigPayload,
@@ -14,9 +14,9 @@ export {
   type SettingsPayload,
   type SaveWizardCallbacks,
   type SaveWizardResult,
-} from "./save-wizard.js";
+} from "./save-wizard";
 export {
   useWizardState,
   type UseWizardStateResult,
   type EarlySaveCallbacks,
-} from "./use-wizard-state.js";
+} from "./use-wizard-state";

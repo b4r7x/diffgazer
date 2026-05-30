@@ -1,6 +1,6 @@
 import { renderHook, act } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { useTypeaheadBuffer } from "../use-typeahead-buffer.js";
+import { useTypeaheadBuffer } from "../use-typeahead-buffer";
 
 describe("useTypeaheadBuffer", () => {
   beforeEach(() => {

@@ -40,16 +40,13 @@ export function useDiagnosticsKeyboard({
   const [isRefreshingAll, setIsRefreshingAll] = useState(false);
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<string | null>(null);
-  const refreshAllInFlight = useRef(false);
   const focusFallbackRef = useRef<HTMLDivElement>(null);
 
   useScope(SETTINGS_DIAGNOSTICS_SCOPE);
 
   const handleRefreshAll = async () => {
-    if (refreshAllInFlight.current) return;
-    if (isRefreshingContext) return;
+    if (isRefreshingAll || isRefreshingContext) return;
 
-    refreshAllInFlight.current = true;
     setIsRefreshingAll(true);
     setRefreshError(null);
 
@@ -62,7 +59,6 @@ export function useDiagnosticsKeyboard({
       setLastRefreshedAt(new Date().toISOString());
       if (failedCount > 0) setRefreshError("Refresh failed for some diagnostics sources.");
     } finally {
-      refreshAllInFlight.current = false;
       setIsRefreshingAll(false);
     }
   };

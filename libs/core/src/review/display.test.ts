@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AgentState, StepState } from "@diffgazer/core/schemas/events";
-import { getAgentDetail, mapStepStatus } from "./display.js";
+import { getAgentDetail, mapStepStatus } from "./display";
 
 function makeAgent(overrides: Partial<AgentState> = {}): AgentState {
   return {

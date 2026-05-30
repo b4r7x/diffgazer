@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest"
 import { renderHook, act } from "@testing-library/react"
-import { useControllableState } from "../use-controllable-state.js"
+import { useControllableState } from "../use-controllable-state"
 
 describe("useControllableState", () => {
   it("without value prop, exposes defaultValue and updates via setState", () => {

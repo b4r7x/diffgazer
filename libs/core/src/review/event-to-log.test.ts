@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { convertAgentEventsToLogEntries } from "./event-to-log.js";
+import { convertAgentEventsToLogEntries } from "./event-to-log";
 import type { AgentStreamEvent, EnrichEvent, StepEvent } from "@diffgazer/core/schemas/events";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 

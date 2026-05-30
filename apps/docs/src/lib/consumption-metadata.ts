@@ -4,7 +4,13 @@ import type {
   ConsumptionItemKind,
 } from "@diffgazer/registry"
 
-const REGISTRY_ORIGIN = import.meta.env.VITE_REGISTRY_ORIGIN ?? "https://r.b4r7.dev"
+/**
+ * Origin that serves the public shadcn registry JSON (`/r/<library>/<item>.json`).
+ * Production points at `https://r.b4r7.dev`; set `VITE_REGISTRY_ORIGIN` to a
+ * preview/local origin to render install commands against a different registry.
+ */
+const DEFAULT_REGISTRY_ORIGIN = "https://r.b4r7.dev"
+const REGISTRY_ORIGIN = import.meta.env.VITE_REGISTRY_ORIGIN ?? DEFAULT_REGISTRY_ORIGIN
 
 /** Keys hooks that require KeyboardProvider and are only available through the npm package. */
 const KEYS_PACKAGE_ONLY = new Set([

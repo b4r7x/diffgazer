@@ -2,19 +2,19 @@ import { useState } from "react";
 import type { ReactElement } from "react";
 import { Box, Text } from "ink";
 import type { LensId } from "@diffgazer/core/schemas/review";
-import { useScope } from "../../../hooks/use-scope.js";
+import { useScope } from "../../../hooks/use-scope";
 import { usePageFooter } from "@diffgazer/core/footer";
-import { useBackHandler } from "../../../hooks/use-back-handler.js";
-import { useNavigation } from "../../navigation-context.js";
-import { useSettingsZone } from "../../../hooks/use-settings-zone.js";
-import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions.js";
+import { useBackHandler } from "../../../hooks/use-back-handler";
+import { useNavigation } from "../../navigation-context";
+import { useSettingsZone } from "../../../hooks/use-settings-zone";
+import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions";
 import { useSettings, useSaveSettings, guardQueryState } from "@diffgazer/core/api/hooks";
-import { Panel } from "../../../components/ui/panel.js";
-import { SectionHeader } from "../../../components/ui/section-header.js";
-import { Button } from "../../../components/ui/button.js";
-import { Spinner } from "../../../components/ui/spinner.js";
-import { AnalysisSelector, lensOptions } from "../../../features/settings/components/analysis-selector.js";
-import { isLensSelectionDirty, resolveEffectiveLenses } from "../../../features/settings/lens-selection.js";
+import { Panel } from "../../../components/ui/panel";
+import { SectionHeader } from "../../../components/ui/section-header";
+import { Button } from "../../../components/ui/button";
+import { Spinner } from "../../../components/ui/spinner";
+import { AnalysisSelector, lensOptions } from "../../../features/settings/components/analysis-selector";
+import { isLensSelectionDirty, resolveEffectiveLenses } from "../../../features/settings/lens-selection";
 
 const LIST_SHORTCUTS = [
   { key: "Esc", label: "Back" },

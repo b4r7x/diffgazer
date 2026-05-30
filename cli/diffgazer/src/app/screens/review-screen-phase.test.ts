@@ -1,6 +1,6 @@
 import { test, describe, expect } from "vitest";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
-import { selectReviewScreenPhase } from "./review-screen-phase.js";
+import { selectReviewScreenPhase } from "./review-screen-phase";
 
 function makeSavedData(opts: {
   id: string;

@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
-import { Logo } from "./index.js"
+import { Logo } from "./index"
 
 // axe skipped: decorative ASCII/text branding mark; accessible name validated by RTL queries.
 

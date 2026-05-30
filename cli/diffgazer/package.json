@@ -2,7 +2,7 @@
   "name": "diffgazer",
   "version": "0.1.4",
   "description": "Diffgazer - Development toolkit",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/b4r7x/diffgazer.git",

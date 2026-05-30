@@ -74,7 +74,7 @@ export function createHookDocLoader(
     try {
       assertSafeRelativeFileName(fileName)
     } catch (err) {
-      logger.warn?.(`Rejected hook doc name: ${err}`)
+      logger.warn(`Rejected hook doc name: ${err}`)
       return null
     }
     const docPath = resolve(resolvedDocsDir, `${fileName}.ts`)
@@ -89,7 +89,7 @@ export function createHookDocLoader(
       if (!isHookDoc(value)) return null
       return value
     } catch (err) {
-      logger.warn?.(`Failed to load hook doc: ${err}`)
+      logger.warn(`Failed to load hook doc: ${err}`)
       return null
     }
   }

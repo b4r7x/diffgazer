@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { UserConfigSchema } from "./providers.js";
+import { UserConfigSchema } from "./providers";
 
 const now = new Date().toISOString();
 const baseConfig = {

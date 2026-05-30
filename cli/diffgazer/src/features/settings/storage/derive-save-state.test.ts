@@ -1,5 +1,5 @@
 import { test, describe, expect } from "vitest";
-import { deriveStorageSaveState } from "./derive-save-state.js";
+import { deriveStorageSaveState } from "./derive-save-state";
 
 describe("deriveStorageSaveState", () => {
   test("falls back to 'file' when nothing is persisted or chosen", () => {

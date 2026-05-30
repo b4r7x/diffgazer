@@ -1,6 +1,6 @@
 import type { Context, Next } from "hono";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
-import { getProjectInfo } from "../lib/config/store.js";
+import { getStore } from "../lib/config/store.js";
 import { getProjectRoot } from "../lib/http/request.js";
 import { errorResponse } from "../lib/http/response.js";
 
@@ -9,7 +9,7 @@ export const requireRepoAccess = async (
   next: Next
 ): Promise<Response | void> => {
   const projectRoot = getProjectRoot(c);
-  const { trust } = getProjectInfo(projectRoot);
+  const { trust } = getStore().getProjectInfo(projectRoot);
 
   if (!trust?.capabilities.readFiles) {
     return errorResponse(

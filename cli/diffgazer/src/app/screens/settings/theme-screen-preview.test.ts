@@ -1,7 +1,7 @@
 import { test, describe, expect } from "vitest";
 import { THEME_TOKEN_KEYS } from "@diffgazer/core/theme";
-import { darkPalette, lightPalette } from "../../../theme/palettes.js";
-import { TOKEN_GROUPS, paletteForTheme } from "./theme-screen-preview.js";
+import { darkPalette, lightPalette } from "../../../theme/palettes";
+import { TOKEN_GROUPS, paletteForTheme } from "./theme-screen-preview";
 
 describe("theme-screen-preview", () => {
   test("paletteForTheme returns darkPalette for 'dark'", () => {

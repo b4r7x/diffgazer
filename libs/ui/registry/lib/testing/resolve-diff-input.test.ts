@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
-import { resolveDiffInput } from "../diff/resolve.js"
-import type { ParsedDiff } from "../diff/parse.js"
+import { resolveDiffInput } from "../diff/resolve"
+import type { ParsedDiff } from "../diff/parse"
 
 const EMPTY: ParsedDiff = { oldPath: null, newPath: null, hunks: [] }
 

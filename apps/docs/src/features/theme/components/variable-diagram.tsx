@@ -33,6 +33,8 @@ export function VariableDiagram({ className }: VariableDiagramProps) {
   const primitiveRefs = useRef<Map<number, HTMLDivElement>>(new Map())
   const semanticRefs = useRef<Map<string, HTMLDivElement>>(new Map())
 
+  // useEffectEvent (stable in React 19.2): the resize handler reads the latest
+  // refs/state but must not re-subscribe the listener on every render.
   const computeLines = useEffectEvent(() => {
     const container = containerRef.current
     if (!container) return

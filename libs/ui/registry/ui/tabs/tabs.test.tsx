@@ -1,11 +1,11 @@
 import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { testNavigationBehavior } from "../../../../keys/src/testing/navigation-behavior.js"
-import { axe } from "../../../testing/utils.js"
+import { testNavigationBehavior } from "../../../../keys/src/testing/navigation-behavior"
+import { axe } from "../../../testing/utils"
 import { describe, it, expect, expectTypeOf, vi } from "vitest"
-import { Tabs } from "./index.js"
-import { TabsTrigger, type TabsTriggerProps } from "./tabs-trigger.js"
-import { type TabsProps } from "./tabs.js"
+import { Tabs } from "./index"
+import { TabsTrigger, type TabsTriggerProps } from "./tabs-trigger"
+import { type TabsProps } from "./tabs"
 import { useState } from "react"
 import { renderToString } from "react-dom/server"
 
@@ -521,6 +521,8 @@ describe("Tabs variants", () => {
         <Tabs.Content value="b">Beta content</Tabs.Content>
       </Tabs>,
     )
+    // The sliding indicator is a presentational element with no ARIA role; its
+    // per-variant presence is the public DOM contract that tabs.css positions.
     expect(container.querySelectorAll('[data-slot="tabs-pill"]').length).toBe(1)
   })
 
@@ -549,6 +551,8 @@ describe("Tabs variants", () => {
         <Tabs.Content value="b">Beta content</Tabs.Content>
       </Tabs>,
     )
+    // Like the pill, the floating underline is a presentational, role-less
+    // element; its per-variant presence is the documented DOM contract.
     expect(container.querySelectorAll('[data-slot="tabs-underline"]').length).toBe(1)
   })
 

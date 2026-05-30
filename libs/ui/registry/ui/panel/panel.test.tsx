@@ -1,8 +1,8 @@
 import { createRef } from "react";
 import { render, screen } from "@testing-library/react";
 import { afterEach, assertType, describe, expect, it, vi } from "vitest";
-import { axe } from "../../../testing/utils.js";
-import { Panel, type PanelProps } from "./index.js";
+import { axe } from "../../../testing/utils";
+import { Panel, type PanelProps } from "./index";
 
 function getRoot(container: HTMLElement): HTMLElement {
   const root = container.querySelector('[data-slot="panel"]');

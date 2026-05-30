@@ -1,4 +1,4 @@
-import type { ApiClient, ShutdownResponse } from "./types.js";
+import type { ApiClient, ShutdownResponse } from "./types";
 
 export async function shutdown(client: ApiClient): Promise<ShutdownResponse> {
   return client.post<ShutdownResponse>("/api/shutdown", {});

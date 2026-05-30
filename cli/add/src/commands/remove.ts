@@ -1,7 +1,7 @@
-import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import { createRemoveCommand, findOrphanedNpmDeps } from "@diffgazer/registry/cli";
 import { ctx, type DiffgazerAddConfig, type ResolvedConfig } from "../context.js";
+import { sha256 } from "../utils/hashing.js";
 import { getKeysHookNames, resolveKeysCopyHookFiles, resolveKeysHooksFromRegistry } from "../utils/integration.js";
 import { getInstallBaseForFilePath, getInstallDirForBase } from "../utils/registry.js";
 import {
@@ -15,10 +15,6 @@ import { readInstalledCssChunkHashes, removeCssChunks } from "./add/css-ops.js";
 
 type ManifestEntry = NonNullable<DiffgazerAddConfig["installedComponents"]>[string];
 type Manifest = Record<string, ManifestEntry>;
-
-function sha256(content: string): string {
-  return `sha256-${createHash("sha256").update(content).digest("hex")}`;
-}
 
 function ownedFileHash(cwd: string, itemName: string, absolutePath: string): string | null {
   const parsed = parseInstallName(itemName);
@@ -168,44 +164,75 @@ function removeOwnedCssChunks(
   if (result.fileOp) writeFileSync(result.fileOp.targetPath, result.fileOp.content);
 }
 
-// `getAllItems` is invoked inside the workflow without a cwd argument. The
-// workflow calls `requireConfig(cwd)` first, so the most recent cwd captured
-// here is the active call's cwd. CLI invocation is sequential per process.
-let activeCwd: string | null = null;
+// The remove workflow invokes its callbacks in phases that cannot pass state to
+// one another through arguments:
+//   - `getAllItems` runs with no cwd; the workflow calls `requireConfig(cwd)`
+//     first, so the active cwd captured there is the one to resolve against.
+//   - `onAfterRemove` runs after `updateManifest`, so the live manifest no
+//     longer lists removed items; the pre-removal cssChunks must be snapshotted
+//     during `expandRequestedNames` (before any deletion) and read back later.
+// The registry command factory (B7-owned) cannot thread a per-call context
+// through these callbacks, so the state lives in one object instead of loose
+// module-level bindings. `beginInvocation` resets it on the first callback
+// (`requireConfig`) so a previous `dgadd remove` run can never bleed cwd or
+// chunk snapshots into the next within a long-lived process.
+export interface RemoveWorkflowContext {
+  readonly activeCwd: string | null;
+  readonly preRemovalChunksByItem: Map<string, string[]>;
+  beginInvocation(cwd: string): void;
+  snapshotPreRemovalChunks(chunksByItem: Map<string, string[]>): void;
+}
 
-// onAfterRemove runs after updateManifest, so it cannot see which chunks each
-// removed item used to own. Snapshot the pre-removal manifest's cssChunks
-// during expandRequestedNames (runs before any file deletion) and read it
-// later in onAfterRemove. Same per-process closure pattern as activeCwd.
-let preRemovalChunksByItem: Map<string, string[]> = new Map();
+export function createRemoveWorkflowContext(): RemoveWorkflowContext {
+  let activeCwd: string | null = null;
+  let preRemovalChunksByItem = new Map<string, string[]>();
+  return {
+    get activeCwd() { return activeCwd; },
+    get preRemovalChunksByItem() { return preRemovalChunksByItem; },
+    beginInvocation(cwd) {
+      activeCwd = cwd;
+      preRemovalChunksByItem = new Map();
+    },
+    snapshotPreRemovalChunks(chunksByItem) {
+      preRemovalChunksByItem = chunksByItem;
+    },
+  };
+}
 
-function snapshotPreRemovalChunks(cwd: string): void {
+function readPreRemovalChunks(cwd: string): Map<string, string[]> {
   const manifest = loadManifest(cwd);
-  preRemovalChunksByItem = new Map();
+  const snapshot = new Map<string, string[]>();
   for (const [name, record] of Object.entries(manifest)) {
     const hashes = record.cssChunks ?? [];
-    if (hashes.length > 0) preRemovalChunksByItem.set(name, [...hashes]);
+    if (hashes.length > 0) snapshot.set(name, [...hashes]);
   }
+  return snapshot;
 }
+
+function resolveKeyName(itemName: string): string | null {
+  const parsed = parseInstallName(itemName);
+  if (parsed.namespace === "keys") return parsed.name;
+  if (getKeysHookNames().has(itemName)) return itemName;
+  return null;
+}
+
+const removeWorkflow = createRemoveWorkflowContext();
 
 export const removeCommand = createRemoveCommand({
   itemPlural: "items",
   requireConfig: (cwd) => {
-    activeCwd = cwd;
+    removeWorkflow.beginInvocation(cwd);
     return ctx.items.requireConfig(cwd);
   },
   validateNames: validateInstallNames,
-  getAllItems: () => activeCwd ? manifestItemsForResolve(activeCwd) : [],
+  getAllItems: () => removeWorkflow.activeCwd ? manifestItemsForResolve(removeWorkflow.activeCwd) : [],
   getItemOrThrow: getNamespacedItem,
   getItemName: (item) => item.name,
   isInstalled: ({ cwd, config, item }) => {
     return isNamespacedInstalled(cwd, config, item.name);
   },
   resolveFilesForItem: ({ cwd, config, item }) => {
-    const parsed = parseInstallName(item.name);
-    const keyName = parsed.namespace === "keys"
-      ? parsed.name
-      : getKeysHookNames().has(item.name) ? item.name : null;
+    const keyName = resolveKeyName(item.name);
     if (keyName) {
       const { files, missingHooks } = resolveKeysCopyHookFiles([keyName]);
       if (missingHooks.length > 0) {
@@ -253,10 +280,10 @@ export const removeCommand = createRemoveCommand({
     });
   },
   expandRequestedNames: ({ cwd, names }) => {
-    snapshotPreRemovalChunks(cwd);
+    removeWorkflow.snapshotPreRemovalChunks(readPreRemovalChunks(cwd));
     return expandRemoval(cwd, names);
   },
   onAfterRemove: ({ cwd, config, removedNames }) => {
-    removeOwnedCssChunks(cwd, config, removedNames, preRemovalChunksByItem);
+    removeOwnedCssChunks(cwd, config, removedNames, removeWorkflow.preRemovalChunksByItem);
   },
 });

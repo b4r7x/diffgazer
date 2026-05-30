@@ -11,7 +11,8 @@ import type {
   SettingsConfig,
   TrustConfig,
 } from "@diffgazer/core/schemas/config";
-import type { ApiClient, TrustListResponse, TrustResponse } from "./types.js";
+import { OpenRouterModelsResponseSchema } from "@diffgazer/core/schemas/config";
+import type { ApiClient, TrustListResponse, TrustResponse } from "./types";
 
 export async function getProviderStatus(
   client: ApiClient
@@ -23,7 +24,13 @@ export async function getProviderStatus(
 export async function getOpenRouterModels(
   client: ApiClient
 ): Promise<OpenRouterModelsResponse> {
-  return client.get<OpenRouterModelsResponse>("/api/config/provider/openrouter/models");
+  // OpenRouter's model catalog is externally controlled and changes often, so
+  // validate the payload shape rather than trusting the response type.
+  return client.get<OpenRouterModelsResponse>(
+    "/api/config/provider/openrouter/models",
+    undefined,
+    (body) => OpenRouterModelsResponseSchema.parse(body),
+  );
 }
 
 export async function saveConfig(client: ApiClient, config: SaveConfigRequest): Promise<void> {

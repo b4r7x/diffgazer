@@ -3,4 +3,4 @@ export {
   createDefaultLowlight,
   type CodeBlockHighlightProps,
   type LowlightInstance,
-} from "./code-block-highlight.js";
+} from "./code-block-highlight";

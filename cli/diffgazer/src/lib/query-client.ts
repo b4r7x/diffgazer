@@ -1,7 +1,7 @@
-import { QueryClient } from "@tanstack/react-query";
+import { createQueryClientBase } from "@diffgazer/core/api";
 
 export function createCliQueryClient() {
-  return new QueryClient({
+  return createQueryClientBase({
     defaultOptions: {
       queries: {
         networkMode: "always",

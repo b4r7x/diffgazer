@@ -10,7 +10,7 @@ import type {
 import { getEncodedListboxItemId } from "@/hooks/use-listbox";
 import { cn } from "@/lib/utils";
 import { useMenuContext } from "./menu-context";
-import { getItemState, menuItemBase, menuItemIndicator, menuItemLabel } from "./menu-item";
+import { getItemState, menuItemBase, menuItemIndicator, menuItemLabel } from "./menu-item-variants";
 
 const RADIO_SELECTED = "(*)";
 const RADIO_UNSELECTED = "( )";
@@ -65,7 +65,7 @@ export function MenuItemRadio({
     if (disabled) event.preventDefault();
   };
 
-  const state = getItemState(disabled, isFocused, isSelected);
+  const state = getItemState({ disabled, isFocused, isSelected });
 
   return (
     <div

@@ -7,6 +7,12 @@ import { useImageStatus } from "./use-image-status";
 
 export interface AvatarImageProps
   extends Omit<ImgHTMLAttributes<HTMLImageElement>, "alt"> {
+  /**
+   * Accessible name for the image. Defaults to `""`, treating the avatar as
+   * decorative so it is skipped by assistive tech and the surrounding control
+   * (button, link, card) supplies the accessible name. Pass an explicit `alt`
+   * when the avatar is the sole label for its container.
+   */
   alt?: string;
   ref?: Ref<HTMLImageElement>;
 }

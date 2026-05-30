@@ -1,11 +1,11 @@
 import type { ReactElement } from "react";
 import { Box, Text } from "ink";
-import { useScope } from "../../hooks/use-scope.js";
+import { useScope } from "../../hooks/use-scope";
 import { usePageFooter } from "@diffgazer/core/footer";
-import { useBackHandler } from "../../hooks/use-back-handler.js";
-import { useTerminalDimensions } from "../../hooks/use-terminal-dimensions.js";
-import { Panel } from "../../components/ui/panel.js";
-import { SectionHeader } from "../../components/ui/section-header.js";
+import { useBackHandler } from "../../hooks/use-back-handler";
+import { useTerminalDimensions } from "../../hooks/use-terminal-dimensions";
+import { Panel } from "../../components/ui/panel";
+import { SectionHeader } from "../../components/ui/section-header";
 
 const SHORTCUTS = [
   { key: "↑/↓", label: "Navigate Menus and Lists" },

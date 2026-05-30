@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  useEffect,
   useRef,
   useState,
   type AriaAttributes,
@@ -140,10 +139,6 @@ export function Switch({
   const resolvedAriaInvalid = resolveAriaInvalid(ariaInvalid, nativeInvalid && required && !isChecked);
 
   useFormReset(rootRef, defaultChecked, setIsChecked, controlledChecked === undefined);
-
-  useEffect(() => {
-    if (isChecked) setNativeInvalid(false);
-  }, [isChecked]);
 
   const toggle = () => {
     if (disabled) return;

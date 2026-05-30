@@ -1,5 +1,5 @@
 import { Box, Text, useInput } from "ink";
-import { useTheme } from "../../../theme/theme-context.js";
+import { useTheme } from "../../../theme/theme-context";
 import { TIER_FILTERS, type TierFilter } from "@diffgazer/core/providers";
 
 interface TierFilterTabsProps {

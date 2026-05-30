@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { computeDiff } from "../diff/compute.js";
-import { computeWordSegments } from "../diff/word.js";
+import { computeDiff } from "../diff/compute";
+import { computeWordSegments } from "../diff/word";
 
 describe("computeDiff", () => {
   it("returns no hunks for identical input", () => {

@@ -1,6 +1,6 @@
 import { test, describe, expect } from "vitest";
-import { createHomeMenuAction, type HomeMenuActionOptions } from "./create-home-menu-action.js";
-import type { Route } from "../../../app/routes.js";
+import { createHomeMenuAction, type HomeMenuActionOptions } from "./create-home-menu-action";
+import type { Route } from "../../../app/routes";
 
 interface Harness {
   dispatch: (action: string) => void;

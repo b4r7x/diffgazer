@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { RegistryItemSchema } from "../registry-types.js";
+import { RegistryItemSchema as CliRegistryItemSchema } from "../cli/registry.js";
 
 describe("@diffgazer/ui registry closure metadata", () => {
   const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../../..");
@@ -102,5 +103,44 @@ describe("RegistryItemSchema shadcn-compatible fields", () => {
     expect(parsed.docs).toBeUndefined();
     expect(parsed.categories).toBeUndefined();
     expect(parsed.author).toBeUndefined();
+  });
+});
+
+// The CLI installer schema (cli/registry.ts) is the base RegistryItemSchema
+// (registry-types.ts) plus a path-containment refinement on registry files.
+// These tests lock that relationship so the two stay compatible: a valid item
+// must parse under both, the divergence (CLI rejects unsafe paths) stays intact,
+// and the field sets must not drift apart.
+describe("RegistryItemSchema base/CLI compatibility", () => {
+  const validItem = {
+    name: "example",
+    type: "registry:ui",
+    files: [{ path: "registry/ui/example.tsx", content: "export default 42" }],
+    dependencies: ["react"],
+    registryDependencies: ["button"],
+  };
+
+  it("accepts a valid relative-path item under both the base and CLI schemas", () => {
+    const base = RegistryItemSchema.parse(validItem);
+    const cli = CliRegistryItemSchema.parse(validItem);
+    expect(cli.name).toBe(base.name);
+    expect(cli.files.map((f) => f.path)).toEqual(base.files.map((f) => f.path));
+  });
+
+  it("keeps the divergence: the CLI schema rejects file paths the base accepts", () => {
+    const absolute = { ...validItem, files: [{ path: "/etc/passwd", content: "" }] };
+    const traversal = { ...validItem, files: [{ path: "../escape.tsx", content: "" }] };
+
+    expect(RegistryItemSchema.safeParse(absolute).success).toBe(true);
+    expect(RegistryItemSchema.safeParse(traversal).success).toBe(true);
+
+    expect(CliRegistryItemSchema.safeParse(absolute).success).toBe(false);
+    expect(CliRegistryItemSchema.safeParse(traversal).success).toBe(false);
+  });
+
+  it("shares the same item-level field set so neither side drifts", () => {
+    expect(Object.keys(CliRegistryItemSchema.shape).sort()).toEqual(
+      Object.keys(RegistryItemSchema.shape).sort(),
+    );
   });
 });

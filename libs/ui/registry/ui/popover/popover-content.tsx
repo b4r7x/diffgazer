@@ -25,6 +25,13 @@ const FALLBACK_POPOVER_DIALOG_LABEL = "Popover";
 export interface PopoverContentProps
   extends Omit<ComponentPropsWithoutRef<"div">, "children" | "id" | "role" | "style"> {
   children: ReactNode;
+  /**
+   * Popup role. Ignored when the popover opens on hover: hover popovers are
+   * always `role="tooltip"`. For click/focus popovers this role is used as-is
+   * (e.g. `"dialog"` or `"menu"`); a `"dialog"` popup also gains a fallback
+   * accessible name and is focusable. Switch `triggerMode` off hover to take
+   * control of the role.
+   */
   role?: PopoverPopupRole;
   side?: FloatingSide;
   align?: FloatingAlign;

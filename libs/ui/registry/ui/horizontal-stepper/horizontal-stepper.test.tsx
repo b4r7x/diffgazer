@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react"
-import { axe } from "../../../testing/utils.js"
+import { axe } from "../../../testing/utils"
 import { describe, it, expect } from "vitest"
-import { HorizontalStepper } from "./index.js"
+import { HorizontalStepper } from "./index"
 
 const steps = ["intro", "config", "review", "done"]
 

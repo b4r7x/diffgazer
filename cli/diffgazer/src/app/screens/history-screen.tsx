@@ -1,22 +1,22 @@
 import type { ReactElement } from "react";
 import { Box, Text, useInput } from "ink";
 import { guardQueryState } from "@diffgazer/core/api/hooks";
-import { useScope } from "../../hooks/use-scope.js";
+import { useScope } from "../../hooks/use-scope";
 import { usePageFooter } from "@diffgazer/core/footer";
-import { useBackHandler } from "../../hooks/use-back-handler.js";
-import { useResponsive } from "../../hooks/use-terminal-dimensions.js";
-import { useTheme } from "../../theme/theme-context.js";
-import { useNavigation } from "../navigation-context.js";
-import { Panel } from "../../components/ui/panel.js";
-import { SectionHeader } from "../../components/ui/section-header.js";
-import { Spinner } from "../../components/ui/spinner.js";
-import { EmptyState } from "../../components/ui/empty-state.js";
-import { Input } from "../../components/ui/input.js";
-import { SectionsList } from "../../features/history/components/sections-list.js";
-import { RunsList } from "../../features/history/components/runs-list.js";
-import { HistoryInsightsPane } from "../../features/history/components/history-insights-pane.js";
-import { useHistoryScreen } from "../../features/history/hooks/use-history-screen.js";
-import { getHistoryFooter } from "../../features/history/hooks/get-history-footer.js";
+import { useBackHandler } from "../../hooks/use-back-handler";
+import { useResponsive } from "../../hooks/use-terminal-dimensions";
+import { useTheme } from "../../theme/theme-context";
+import { useNavigation } from "../navigation-context";
+import { Panel } from "../../components/ui/panel";
+import { SectionHeader } from "../../components/ui/section-header";
+import { Spinner } from "../../components/ui/spinner";
+import { EmptyState } from "../../components/ui/empty-state";
+import { Input } from "../../components/ui/input";
+import { SectionsList } from "../../features/history/components/sections-list";
+import { RunsList } from "../../features/history/components/runs-list";
+import { HistoryInsightsPane } from "../../features/history/components/history-insights-pane";
+import { useHistoryScreen } from "../../features/history/hooks/use-history-screen";
+import { getHistoryFooter } from "../../features/history/hooks/get-history-footer";
 
 function getInsightScrollHeight({
   isNarrow,
@@ -55,7 +55,7 @@ export function HistoryScreen(): ReactElement {
   });
 
   useInput(
-    (input, key) => {
+    (_input, key) => {
       if (key.escape) {
         screen.setSearchQuery("");
         screen.setFocusZone("runs");

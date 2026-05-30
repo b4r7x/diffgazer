@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveAvailableValue } from "./resolve-available-value.js";
+import { resolveAvailableValue } from "./resolve-available-value";
 
 describe("resolveAvailableValue", () => {
   it("returns the first candidate found in the values tuple", () => {

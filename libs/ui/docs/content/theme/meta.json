@@ -1,4 +1,4 @@
 {
   "title": "Theme",
-  "pages": ["overview", "colors", "typography", "dark-mode", "diffgazer"]
+  "pages": ["index", "overview", "colors", "typography", "dark-mode", "diffgazer"]
 }

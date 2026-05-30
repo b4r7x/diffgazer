@@ -1,11 +1,10 @@
 import { execa, type ResultPromise } from "execa";
+import { config as appConfig } from "../../config";
 
 export interface ServerController {
   start: () => void;
   stop: () => Promise<void>;
 }
-
-const FORCE_KILL_DELAY_MS = 2000;
 
 export interface ProcessServerConfig {
   command: string;
@@ -15,6 +14,12 @@ export interface ProcessServerConfig {
   env?: Record<string, string>;
   readyPattern: string;
   onReady?: (address: string) => void;
+  /**
+   * Optional readiness verification run after `readyPattern` is seen on stdout.
+   * `onReady` fires only once this resolves, so a stdout banner alone does not
+   * declare the server ready. Rejecting suppresses `onReady`.
+   */
+  readyCheck?: (address: string) => Promise<void>;
 }
 
 interface ProcessErrorLike {
@@ -50,11 +55,27 @@ export function createProcessServer(
   config: ProcessServerConfig,
 ): ServerController {
   let serverProcess: ResultPromise | null = null;
+  let signaledReady = false;
+
+  async function confirmReady(address: string): Promise<boolean> {
+    if (!config.readyCheck) {
+      return true;
+    }
+    try {
+      await config.readyCheck(address);
+      return true;
+    } catch (err) {
+      console.error(formatProcessError(err));
+      return false;
+    }
+  }
 
   function start(): void {
     if (serverProcess) {
       return;
     }
+
+    signaledReady = false;
 
     let env = globalThis.process.env;
     if (config.env) {
@@ -71,13 +92,18 @@ export function createProcessServer(
     serverProcess = childProcess;
 
     childProcess.stdout?.on("data", (data: Buffer) => {
-      if (childProcess !== serverProcess) {
+      if (childProcess !== serverProcess || signaledReady) {
         return;
       }
 
       if (data.toString().includes(config.readyPattern)) {
+        signaledReady = true;
         const address = `http://localhost:${config.port}`;
-        config.onReady?.(address);
+        void confirmReady(address).then((ready) => {
+          if (ready && childProcess === serverProcess) {
+            config.onReady?.(address);
+          }
+        });
       }
     });
 
@@ -105,7 +131,7 @@ export function createProcessServer(
 
       const forceKillTimer = setTimeout(() => {
         child.kill("SIGKILL");
-      }, FORCE_KILL_DELAY_MS);
+      }, appConfig.shutdown.forceKillMs);
 
       try {
         await child;

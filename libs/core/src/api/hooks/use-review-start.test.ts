@@ -6,7 +6,7 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { err, ok } from "@diffgazer/core/result";
 import { ReviewErrorCode } from "@diffgazer/core/schemas/review";
-import { useReviewStart, type UseReviewStartOptions } from "./use-review-start.js";
+import { useReviewStart, type UseReviewStartOptions } from "./use-review-start";
 
 function StrictModeWrapper({ children }: { children: ReactNode }) {
   return createElement(StrictMode, null, children);

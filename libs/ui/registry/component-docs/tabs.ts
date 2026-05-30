@@ -10,6 +10,11 @@ export const tabsDoc: ComponentDoc = {
   ],
   notes: [
     {
+      title: "Requires @diffgazer/keys (package mode)",
+      content:
+        "TabsList's arrow-key navigation imports from the optional @diffgazer/keys peer. Package/npm consumers must install it: `npm install @diffgazer/keys`. Importing @diffgazer/ui/components/tabs without keys fails at module load with an error naming the missing @diffgazer/keys package. Copy/dgadd consumers do not need the package — copy mode rewrites the keyboard hooks to local source.",
+    },
+    {
       title: "Composition Contract",
       content:
         "Use Tabs.List, Tabs.Trigger, and Tabs.Content as explicit children in the Tabs JSX tree. Custom tab visuals belong inside Tabs.Trigger. Components that create triggers internally from an opaque wrapper are not part of the current public contract.",

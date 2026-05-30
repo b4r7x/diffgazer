@@ -65,9 +65,9 @@ function validateArtifactManifest(manifest) {
   if (!Array.isArray(manifest.inputs) || manifest.inputs.length === 0) {
     errors.push("inputs: Expected non-empty array");
   } else {
-    manifest.inputs.forEach((input, index) =>
-      validateRelativePath(input, `inputs.${index}`, errors),
-    );
+    manifest.inputs.forEach((input, index) => {
+      validateRelativePath(input, `inputs.${index}`, errors);
+    });
   }
 
   if (validateObject(manifest.docs, "docs", errors)) {
@@ -405,6 +405,25 @@ export function validateIntegrityBundle(filePath, keys, label) {
     const expected = computeBundleIntegrity(bundle, keys);
     if (bundle.integrity !== expected) {
       errors.push(`${label}: bundle integrity mismatch; expected ${expected}, found ${bundle.integrity}`);
+    }
+  }
+
+  return errors;
+}
+
+const RELATIVE_JS_IMPORT =
+  /(?:\bfrom\s+|\bimport\s*\(\s*|\brequire\s*\(\s*|\bimport\s+)(["'])\.{1,2}\/[^"']+\.js\1/g;
+
+export function collectBundleRelativeJsImportErrors(items, label) {
+  const errors = [];
+
+  for (const item of items ?? []) {
+    for (const file of item?.files ?? []) {
+      if (typeof file?.content !== "string") continue;
+      const matches = file.content.match(RELATIVE_JS_IMPORT);
+      if (matches) {
+        errors.push(`${label}: ${file.target ?? file.path} has relative .js import specifiers: ${matches.join(", ")}`);
+      }
     }
   }
 

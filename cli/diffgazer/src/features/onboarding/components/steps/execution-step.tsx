@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 import { Box, Text } from "ink";
-import { useTheme } from "../../../../theme/theme-context.js";
-import { RadioGroup } from "../../../../components/ui/radio.js";
+import { useTheme } from "../../../../theme/theme-context";
+import { RadioGroup } from "../../../../components/ui/radio";
 
 interface ExecutionStepProps {
   value?: string;

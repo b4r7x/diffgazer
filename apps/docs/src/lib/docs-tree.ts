@@ -1,3 +1,4 @@
+import type { Node as FumadocsNode, Root as FumadocsRoot } from "fumadocs-core/page-tree";
 import { docsPath, getDocsLibraryConfig, routeSlugsFromSourcePath, type DocsLibraryId } from "@/lib/docs-library";
 
 export interface PageTreeNode {
@@ -10,6 +11,39 @@ export interface PageTreeNode {
 export interface PageTree {
   name: string;
   children: PageTreeNode[];
+}
+
+/**
+ * fumadocs page-tree node names are typed as `ReactNode`. Ours are plain
+ * strings (they come from MDX titles / meta.json), so coerce defensively at
+ * the boundary instead of casting the whole tree.
+ */
+function nodeName(name: unknown): string {
+  return typeof name === "string" ? name : "";
+}
+
+function fromFumadocsNode(node: FumadocsNode): PageTreeNode {
+  if (node.type === "folder") {
+    // fumadocs folders carry no top-level url (only an optional `index` page);
+    // the local tree treats folders as url-less groups.
+    return {
+      type: "folder",
+      name: nodeName(node.name),
+      children: node.children.map(fromFumadocsNode),
+    };
+  }
+  if (node.type === "separator") {
+    return { type: "separator", name: nodeName(node.name) };
+  }
+  return { type: "page", name: nodeName(node.name), url: node.url };
+}
+
+/** Adapt the fumadocs `Root` (ReactNode names) into the local string-typed `PageTree`. */
+export function fromFumadocsRoot(root: FumadocsRoot): PageTree {
+  return {
+    name: nodeName(root.name),
+    children: root.children.map(fromFumadocsNode),
+  };
 }
 
 function normalizeSeparators(nodes: PageTreeNode[]): PageTreeNode[] {

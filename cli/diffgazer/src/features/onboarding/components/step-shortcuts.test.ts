@@ -1,6 +1,6 @@
 import { test, describe, expect } from "vitest";
 import { WIZARD_STEPS, type OnboardingStep } from "@diffgazer/core/onboarding";
-import { getStepShortcuts } from "./step-shortcuts.js";
+import { getStepShortcuts } from "./step-shortcuts";
 
 describe("getStepShortcuts", () => {
   test("returns step-area shortcuts for every wizard step when focus is 'step'", () => {

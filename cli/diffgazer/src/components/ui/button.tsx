@@ -1,7 +1,6 @@
-import type { ReactNode } from "react";
 import { Box, Text, useInput } from "ink";
 import Spinner from "ink-spinner";
-import { useTheme } from "../../theme/theme-context.js";
+import { useTheme } from "../../theme/theme-context";
 
 export interface ButtonProps {
   variant?: "primary" | "secondary" | "destructive" | "success" | "ghost" | "outline";

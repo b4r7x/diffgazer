@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
-import { useScope } from "../../hooks/use-scope.js";
-import { OnboardingWizard } from "../../features/onboarding/components/onboarding-wizard.js";
+import { useScope } from "../../hooks/use-scope";
+import { OnboardingWizard } from "../../features/onboarding/components/onboarding-wizard";
 
 export function OnboardingScreen(): ReactElement {
   useScope("onboarding");

@@ -1,5 +1,5 @@
 import type { ReviewSeverity } from "@diffgazer/core/schemas/review";
-import type { CliColorTokens } from "./palettes.js";
+import type { CliColorTokens } from "./palettes";
 
 export function severityColor(severity: ReviewSeverity, tokens: CliColorTokens): string {
   const map: Record<ReviewSeverity, string> = {

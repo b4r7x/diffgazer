@@ -13,7 +13,7 @@ import {
 } from "./service.js";
 import { errorResponse, zodErrorHandler } from "../../shared/lib/http/response.js";
 import { getProjectRoot } from "../../shared/lib/http/request.js";
-import { createBodyLimitMiddleware } from "../../shared/middlewares/body-limit.js";
+import { createBodyLimitMiddleware, DEFAULT_BODY_LIMIT_KB } from "../../shared/middlewares/body-limit.js";
 import { createRateLimitMiddleware } from "../../shared/middlewares/rate-limit.js";
 import { requireRepoAccess } from "../../shared/middlewares/trust-guard.js";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
@@ -22,7 +22,7 @@ import { ProviderParamSchema, ActivateProviderBodySchema } from "./schemas.js";
 
 const configRouter = new Hono();
 
-const bodyLimitMiddleware = createBodyLimitMiddleware(50);
+const bodyLimitMiddleware = createBodyLimitMiddleware(DEFAULT_BODY_LIMIT_KB);
 const modelFetchLimit = createRateLimitMiddleware("config:models", { maxRequests: 30, windowMs: 60_000 });
 
 configRouter.get("/init", (c): Response => {

@@ -1,5 +1,5 @@
 import { useContext, useEffect, useEffectEvent } from "react";
-import { KeyboardContext } from "../app/providers/keyboard-provider.js";
+import { KeyboardContext } from "../app/providers/keyboard-provider";
 
 export function useKey(hotkey: string, handler: () => void, scope?: string): void {
   const ctx = useContext(KeyboardContext);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { TrustCapabilities } from "./settings.js";
+import type { TrustCapabilities } from "./settings";
 import {
   NO_TRUST_CAPABILITIES,
   TRUST_CAPABILITY_OPTIONS,
@@ -8,7 +8,7 @@ import {
   isFocusableCapability,
   normalizeTrustCapabilities,
   toSelectedCapabilityIds,
-} from "./trust-capabilities-model.js";
+} from "./trust-capabilities-model";
 
 describe("trust capabilities model", () => {
   describe("normalizeTrustCapabilities", () => {

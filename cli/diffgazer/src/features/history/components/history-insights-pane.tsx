@@ -3,12 +3,12 @@ import { Box, Text, useInput } from "ink";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { SEVERITY_ORDER, type SeverityCounts } from "@diffgazer/core/schemas/presentation";
 import { capitalize } from "@diffgazer/core/strings";
-import { ScrollArea } from "../../../components/ui/scroll-area.js";
-import { SeverityBreakdown } from "../../review/components/severity-breakdown.js";
-import { EmptyState } from "../../../components/ui/empty-state.js";
-import { SectionHeader } from "../../../components/ui/section-header.js";
-import { useTheme } from "../../../theme/theme-context.js";
-import { severityColor } from "../../../theme/severity.js";
+import { ScrollArea } from "../../../components/ui/scroll-area";
+import { SeverityBreakdown } from "../../review/components/severity-breakdown";
+import { EmptyState } from "../../../components/ui/empty-state";
+import { SectionHeader } from "../../../components/ui/section-header";
+import { useTheme } from "../../../theme/theme-context";
+import { severityColor } from "../../../theme/severity";
 
 export interface HistoryInsightsPaneProps {
   runId: string | null;

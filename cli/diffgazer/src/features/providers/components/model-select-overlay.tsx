@@ -3,12 +3,12 @@ import type { ReactElement } from "react";
 import { Box, Text, useInput } from "ink";
 import type { AIProvider, ModelInfo } from "@diffgazer/core/schemas/config";
 import { OPENROUTER_PROVIDER_ID } from "@diffgazer/core/schemas/config";
-import { useTheme } from "../../../theme/theme-context.js";
-import type { CliColorTokens } from "../../../theme/palettes.js";
-import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions.js";
-import { Dialog } from "../../../components/ui/dialog.js";
-import { Button } from "../../../components/ui/button.js";
-import { Spinner } from "../../../components/ui/spinner.js";
+import { useTheme } from "../../../theme/theme-context";
+import type { CliColorTokens } from "../../../theme/palettes";
+import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions";
+import { Dialog } from "../../../components/ui/dialog";
+import { Button } from "../../../components/ui/button";
+import { Spinner } from "../../../components/ui/spinner";
 import { useActivateProvider } from "@diffgazer/core/api/hooks";
 import {
   cycleTierFilter,
@@ -17,10 +17,10 @@ import {
   useOpenRouterModelsMapped,
   type TierFilter,
 } from "@diffgazer/core/providers";
-import { SearchInput } from "./model-search-input.js";
-import { TierFilterTabs } from "./tier-filter-tabs.js";
-import { ModelListItem } from "./model-list-item.js";
-import { getCompatibilityLabel } from "./model-select-helpers.js";
+import { SearchInput } from "./model-search-input";
+import { TierFilterTabs } from "./tier-filter-tabs";
+import { ModelListItem } from "./model-list-item";
+import { getCompatibilityLabel } from "./model-select-helpers";
 
 type FocusZone = "search" | "filters" | "list";
 

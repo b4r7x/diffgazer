@@ -1,8 +1,8 @@
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it } from "vitest"
-import { axe } from "../../../testing/utils.js"
-import { Input, InputGroup } from "./index.js"
+import { axe } from "../../../testing/utils"
+import { Input, InputGroup } from "./index"
 
 describe("Input", () => {
   it("accepts typed text as a native textbox", async () => {
@@ -78,6 +78,19 @@ describe("Input", () => {
     )
 
     expect(screen.getByRole("button", { name: "Browse" })).toBeInTheDocument()
+  })
+
+  it("lets consumers hide a decorative non-string affix from assistive tech", () => {
+    render(
+      <InputGroup
+        aria-label="Amount"
+        prefix={<span data-testid="currency">USD</span>}
+        prefixAriaHidden
+      />,
+    )
+
+    const prefix = screen.getByTestId("currency").parentElement
+    expect(prefix).toHaveAttribute("aria-hidden", "true")
   })
 
   it("forwards aria-invalid through InputGroup to the nested input", () => {

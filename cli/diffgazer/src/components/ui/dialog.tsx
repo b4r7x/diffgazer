@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Box, Text, useInput } from "ink";
-import { useTheme } from "../../theme/theme-context.js";
-import { useTerminalDimensions } from "../../hooks/use-terminal-dimensions.js";
+import { useTheme } from "../../theme/theme-context";
+import { useTerminalDimensions } from "../../hooks/use-terminal-dimensions";
 
 export interface DialogProps {
   open?: boolean;

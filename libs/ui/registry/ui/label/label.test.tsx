@@ -1,9 +1,9 @@
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it } from "vitest"
-import { axe } from "../../../testing/utils.js"
-import { Input } from "../input/index.js"
-import { Label } from "./index.js"
+import { axe } from "../../../testing/utils"
+import { Input } from "../input/index"
+import { Label } from "./index"
 
 describe("Label", () => {
   it("labels and focuses an external control through htmlFor", async () => {

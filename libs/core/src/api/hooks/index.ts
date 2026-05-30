@@ -1,4 +1,4 @@
-export { ApiProvider, useApi } from "./context.js";
+export { ApiProvider, useApi } from "./context";
 
 export {
   useSettings,
@@ -10,7 +10,7 @@ export {
   useSaveConfig,
   useActivateProvider,
   useDeleteProviderCredentials,
-} from "./config.js";
+} from "./config";
 
 export {
   useReviews,
@@ -20,39 +20,39 @@ export {
   useCreateReview,
   useDeleteReview,
   useRefreshReviewContext,
-} from "./review.js";
+} from "./review";
 
-export { useSaveTrust, useDeleteTrust } from "./trust.js";
+export { useSaveTrust, useDeleteTrust } from "./trust";
 
-export { useServerStatus, useShutdown } from "./server.js";
+export { useServerStatus, useShutdown } from "./server";
 
 export {
   useReviewStart,
   type UseReviewStartOptions,
   type UseReviewStartResult,
-} from "./use-review-start.js";
+} from "./use-review-start";
 
-export { useReviewStream, type ReviewStreamState } from "./use-review-stream.js";
-export type { StreamReviewError } from "../review.js";
+export { useReviewStream, type ReviewStreamState } from "./use-review-stream";
+export type { StreamReviewError } from "../review";
 
 export {
   useReviewCompletion,
   type UseReviewCompletionOptions,
   type UseReviewCompletionResult,
-} from "./use-review-completion.js";
+} from "./use-review-completion";
 
 export {
   useReviewLifecycleBase,
   type UseReviewLifecycleBaseOptions,
   type UseReviewLifecycleBaseResult,
-} from "./use-review-lifecycle-base.js";
+} from "./use-review-lifecycle-base";
 
 export {
   useDiagnosticsData,
   type DiagnosticsData,
   type ContextStatus,
-} from "./diagnostics.js";
+} from "./diagnostics";
 
-export { matchQueryState, guardQueryState } from "./match-query-state.js";
+export { matchQueryState, guardQueryState } from "./match-query-state";
 
-export { configQueries } from "./queries/config.js";
+export { configQueries } from "./queries/config";

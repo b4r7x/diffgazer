@@ -1,20 +1,20 @@
 import { useEffect, useRef, type ReactElement } from "react";
 import { Box } from "ink";
-import { useNavigation } from "../../../app/navigation-context.js";
-import { useReviewLifecycle } from "../hooks/use-review-lifecycle.js";
+import { useNavigation } from "../../../app/navigation-context";
+import { useReviewLifecycle } from "../hooks/use-review-lifecycle";
 import { useReviewContext } from "@diffgazer/core/api/hooks";
 import {
   convertAgentEventsToLogEntries,
   mapStepsToProgressData,
 } from "@diffgazer/core/review";
-import { Spinner } from "../../../components/ui/spinner.js";
-import { Callout } from "../../../components/ui/callout.js";
-import { Button } from "../../../components/ui/button.js";
-import { ReviewProgressView } from "./review-progress-view.js";
-import { ReviewSummaryView } from "./review-summary-view.js";
-import { ReviewResultsView } from "./review-results-view.js";
-import { NoChangesView } from "./no-changes-view.js";
-import { ApiKeyMissingView } from "./api-key-missing-view.js";
+import { Spinner } from "../../../components/ui/spinner";
+import { Callout } from "../../../components/ui/callout";
+import { Button } from "../../../components/ui/button";
+import { ReviewProgressView } from "./review-progress-view";
+import { ReviewSummaryView } from "./review-summary-view";
+import { ReviewResultsView } from "./review-results-view";
+import { NoChangesView } from "./no-changes-view";
+import { ApiKeyMissingView } from "./api-key-missing-view";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
 
 interface ReviewContainerProps {

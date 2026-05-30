@@ -6,6 +6,13 @@ import type {
 
 const DEFAULT_ORIGIN = "https://docs.b4r7.dev";
 
+/**
+ * This module is isomorphic: it runs during server prerender (Nitro/Node) and
+ * in the browser bundle. `process.env` is the runtime source on the server;
+ * `import.meta.env` is statically inlined by Vite for the client build. Reading
+ * `process.env` first lets the deployed server override the build-time value
+ * without rebuilding, then falls back to the client-inlined value.
+ */
 export const PUBLIC_ORIGIN: string = (() => {
   const raw = (typeof process !== "undefined" ? process.env.VITE_PUBLIC_ORIGIN : undefined)
     ?? import.meta.env.VITE_PUBLIC_ORIGIN;

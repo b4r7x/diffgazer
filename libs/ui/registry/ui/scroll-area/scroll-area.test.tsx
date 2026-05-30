@@ -1,8 +1,8 @@
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { axe } from "../../../testing/utils.js"
+import { axe } from "../../../testing/utils"
 import { describe, it, expect, vi } from "vitest"
-import { ScrollArea } from "./scroll-area.js"
+import { ScrollArea } from "./scroll-area"
 
 describe("ScrollArea", () => {
   function renderScrollArea(props: Record<string, unknown> = {}) {

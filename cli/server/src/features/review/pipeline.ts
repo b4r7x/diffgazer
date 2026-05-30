@@ -7,13 +7,14 @@ import {
   type ReviewMode,
 } from "@diffgazer/core/schemas/review";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
+import type { SettingsConfig } from "@diffgazer/core/schemas/config";
 import type {
   ReviewResult,
 } from "@diffgazer/core/schemas/review";
 import type {
   EnrichProgressEvent,
 } from "@diffgazer/core/schemas/events";
-import { getSettings } from "../../shared/lib/config/store.js";
+import { getStore } from "../../shared/lib/config/store.js";
 import { getProfile } from "../../shared/lib/review/profiles.js";
 import { orchestrateReview } from "../../shared/lib/review/orchestrate.js";
 import { buildProjectContextSnapshot } from "./context.js";
@@ -31,6 +32,20 @@ import { getErrorMessage } from "@diffgazer/core/errors";
 import { stepStart, stepComplete, stepError } from "./step-events.js";
 import { generateReport } from "./summary.js";
 
+const DEFAULT_LENSES: LensId[] = ["correctness"];
+
+/** Resolve the active lenses using an explicit ordered fallback. */
+function resolveActiveLenses(
+  lensIds: LensId[] | undefined,
+  profile: ReturnType<typeof getProfile> | undefined,
+  settings: SettingsConfig,
+): LensId[] {
+  if (lensIds) return lensIds;
+  if (profile?.lenses) return profile.lenses;
+  if (settings.defaultLenses) return settings.defaultLenses;
+  return DEFAULT_LENSES;
+}
+
 export async function resolveReviewConfig(params: {
   lensIds?: LensId[];
   profileId?: ProfileId;
@@ -40,10 +55,8 @@ export async function resolveReviewConfig(params: {
   const { lensIds, profileId, projectPath, emit } = params;
 
   const profile = profileId ? getProfile(profileId) : undefined;
-  const settings = getSettings();
-  const activeLenses = lensIds ??
-    profile?.lenses ??
-    settings.defaultLenses ?? ["correctness"];
+  const settings = getStore().getSettings();
+  const activeLenses = resolveActiveLenses(lensIds, profile, settings);
 
   await emit(stepStart("context"));
   let projectContext = "";
@@ -82,7 +95,7 @@ export async function executeReview(params: {
       await emit(event);
     },
     {
-      concurrency: getSettings().agentExecution === "parallel" ? config.activeLenses.length : 1,
+      concurrency: getStore().getSettings().agentExecution === "parallel" ? config.activeLenses.length : 1,
       projectContext: config.projectContext,
       partialOnAllFailed: false,
       signal,

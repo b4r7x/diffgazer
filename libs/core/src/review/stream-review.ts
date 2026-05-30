@@ -2,8 +2,8 @@ import type { LensId, ProfileId, ReviewMode } from "@diffgazer/core/schemas/revi
 import type { ReviewResult, ReviewError } from "@diffgazer/core/schemas/review";
 import type { AgentStreamEvent, EnrichEvent, FullReviewStreamEvent, StepEvent } from "@diffgazer/core/schemas/events";
 import { FullReviewStreamEventSchema } from "@diffgazer/core/schemas/events";
-import { parseSSEStream } from "../streaming/sse-parser.js";
-import { ok, err, type Result } from "../result.js";
+import { parseSSEStream } from "../streaming/sse-parser";
+import { ok, err, type Result } from "../result";
 
 interface StreamReviewRequest {
   mode?: ReviewMode;

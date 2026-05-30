@@ -1,6 +1,6 @@
 import { Box } from "ink";
 import type { ReviewSeverity } from "@diffgazer/core/schemas/review";
-import { SeverityBar } from "./severity-bar.js";
+import { SeverityBar } from "./severity-bar";
 
 export interface SeverityBreakdownProps {
   issues: Array<{ severity: ReviewSeverity; count: number }>;

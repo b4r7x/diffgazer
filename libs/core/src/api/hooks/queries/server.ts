@@ -1,5 +1,5 @@
 import { queryOptions } from "@tanstack/react-query";
-import type { BoundApi } from "../../bound.js";
+import type { BoundApi } from "../../bound";
 
 export const serverQueries = {
   all: () => ["server"] as const,

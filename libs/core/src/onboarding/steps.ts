@@ -1,6 +1,6 @@
-import { WIZARD_STEPS, type OnboardingStep } from "./types.js";
+import { WIZARD_STEPS, type OnboardingStep } from "./types";
 
-export { WIZARD_STEPS } from "./types.js";
+export { WIZARD_STEPS } from "./types";
 
 export const STEP_LABELS: Record<OnboardingStep, string> = {
   storage: "Storage",

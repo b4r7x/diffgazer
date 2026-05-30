@@ -3,6 +3,7 @@
 import { execSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { readJson } from "./artifacts/json.mjs";
+import { runValidationChecks } from "./artifacts/run-checks.mjs";
 
 const output = [];
 
@@ -138,6 +139,38 @@ function assertRootMetadata() {
   addResult("root repository metadata", missing.length === 0, missing.join("; "));
 }
 
+// Markers for the two licenses Diffgazer ships (PACKAGE_GOVERNANCE.md): MIT for
+// the libraries/add/root, Apache-2.0 for the diffgazer CLI. A package's
+// `license` field must match the LICENSE file shipped next to it.
+const LICENSE_MARKERS = {
+  MIT: "MIT License",
+  "Apache-2.0": "Apache License",
+};
+
+function assertLicenseFilesMatch(parsedPackages) {
+  const mismatches = [];
+
+  for (const [file, parsed] of parsedPackages) {
+    const licenseField = parsed.license;
+    if (!licenseField) continue;
+
+    const licensePath = file.replace(/package\.json$/, "LICENSE");
+    if (!existsSync(licensePath)) continue;
+
+    const marker = LICENSE_MARKERS[licenseField];
+    if (!marker) {
+      mismatches.push(`${file}: unknown license "${licenseField}" (expected one of ${Object.keys(LICENSE_MARKERS).join(", ")})`);
+      continue;
+    }
+
+    if (!readFileSync(licensePath, "utf8").includes(marker)) {
+      mismatches.push(`${file}: license "${licenseField}" does not match ${licensePath}`);
+    }
+  }
+
+  addResult("package license fields match LICENSE files", mismatches.length === 0, mismatches.slice(0, 10).join("; "));
+}
+
 function listPackageJsonFiles() {
   const files = execSync("rg --files -g 'package.json' -g '!node_modules/**' --no-heading", {
     encoding: "utf8",
@@ -257,6 +290,8 @@ for (const [file, parsed] of parsedPackages) {
 addResult("no link: or file: local deps", badLinkFile.length === 0, badLinkFile.slice(0, 10).join(", "));
 addResult("internal local deps use workspace protocol", badInternalProtocol.length === 0, badInternalProtocol.slice(0, 10).join(", "));
 
+assertLicenseFilesMatch(parsedPackages);
+
 const expectedWorkspacePackageFiles = [
   "apps/docs/package.json",
   "apps/hub/package.json",
@@ -352,7 +387,11 @@ if (jsonOut) {
   );
 }
 
-if (output.some((x) => !x.ok)) {
-  console.error("Invariant checks failed");
-  throw new Error("Invariant checks failed");
-}
+// Exit-code contract: this script exits non-zero when any invariant fails so
+// CI gates can branch on it. Per-check PASS/FAIL lines are printed above; the
+// shared runner prints the failure header plus the failed checks and exits 1
+// explicitly here rather than relying on an uncaught throw.
+const failures = output
+  .filter((x) => !x.ok)
+  .map((x) => `  ${x.name}${x.details ? ` (${x.details})` : ""}`);
+runValidationChecks(failures, { failureHeader: "Invariant checks failed" });

@@ -1,8 +1,8 @@
 import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { axe } from "../../../testing/utils.js"
+import { axe } from "../../../testing/utils"
 import { describe, it, expect, vi } from "vitest"
-import { Switch } from "./index.js"
+import { Switch } from "./index"
 
 function getForm(name = "Test form"): HTMLFormElement {
   const form = screen.getByRole("form", { name })
@@ -147,6 +147,24 @@ describe("Switch", () => {
     expect(form.reportValidity()).toBe(false)
     expect(sw).toHaveFocus()
     await waitFor(() => expect(sw).toHaveAttribute("aria-invalid", "true"))
+  })
+
+  it("clears the invalid state once the required switch is turned on", async () => {
+    render(
+      <form aria-label="Test form">
+        <Switch name="accept" required aria-label="Accept" />
+      </form>
+    )
+
+    const form = getForm()
+    const sw = screen.getByRole("switch", { name: /accept/i })
+
+    expect(form.reportValidity()).toBe(false)
+    await waitFor(() => expect(sw).toHaveAttribute("aria-invalid", "true"))
+
+    await userEvent.click(sw)
+    expect(form.checkValidity()).toBe(true)
+    expect(sw).not.toHaveAttribute("aria-invalid")
   })
 
   it("lets consumer click handlers prevent the built-in toggle", async () => {

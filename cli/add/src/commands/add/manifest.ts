@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import type { FileOp } from "@diffgazer/registry/cli";
 import { ctx, getRegistry, VERSION } from "../../context.js";
@@ -8,12 +7,9 @@ import type {
   ManifestOwnedFile,
 } from "../../context.js";
 import type { ResolvedIntegrationSelection } from "../../utils/add-integration.js";
+import { sha256 } from "../../utils/hashing.js";
 import { toPosixPath } from "../../utils/paths.js";
 import { isOwnedFileOp } from "./file-ops.js";
-
-export function sha256(content: string): string {
-  return `sha256-${createHash("sha256").update(content).digest("hex")}`;
-}
 
 export function buildManifestMetadata(
   mode: ResolvedIntegrationSelection["mode"],

@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react"
-import { axe } from "../../../testing/utils.js"
+import { axe } from "../../../testing/utils"
 import { describe, it, expect } from "vitest"
-import { Progress } from "./index.js"
+import { Progress } from "./index"
 
 describe("Progress", () => {
   it("renders with progressbar role and ARIA attributes", () => {
@@ -37,6 +37,8 @@ describe("Progress", () => {
   })
 
   it("applies size variants", () => {
+    // `size` is a public variant; jsdom does not compute Tailwind heights, so the
+    // size class is the documented contract signal for the track height.
     const { rerender } = render(<Progress value={50} size="sm" aria-label="Progress" />)
     const bar = screen.getByRole("progressbar")
     expect(bar.className).toContain("h-1")
@@ -55,16 +57,16 @@ describe("Progress", () => {
     expect(screen.getByRole("progressbar", { name: "File upload" })).toBeInTheDocument()
   })
 
-  it("applies indeterminate animation class when no value", () => {
-    const { container } = render(<Progress aria-label="Loading" />)
-    const fill = container.querySelector("[role=progressbar] > div")
-    expect(fill?.className).toContain("progress-indeterminate")
+  it("reflects a determinate value as the fill width", () => {
+    render(<Progress value={25} max={50} aria-label="Progress" />)
+    const fill = screen.getByRole("progressbar").firstElementChild
+    expect(fill).toHaveStyle({ width: "50%" })
   })
 
-  it("does not apply indeterminate animation when value is set", () => {
-    const { container } = render(<Progress value={50} aria-label="Progress" />)
-    const fill = container.querySelector("[role=progressbar] > div")
-    expect(fill?.className).not.toContain("progress-indeterminate")
+  it("does not constrain the fill width when indeterminate", () => {
+    render(<Progress aria-label="Loading" />)
+    const fill = screen.getByRole("progressbar").firstElementChild
+    expect((fill as HTMLElement).style.width).toBe("")
   })
 
   it("has no a11y violations", async () => {

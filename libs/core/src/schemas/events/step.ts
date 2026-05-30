@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { LIFECYCLE_STATUSES } from "../shared/statuses.js";
+import { LIFECYCLE_STATUSES } from "../shared/statuses";
 
 // Step IDs match the workflow phases
 export const STEP_IDS = ["diff", "context", "review", "enrich", "report"] as const;
@@ -69,14 +69,18 @@ export function createInitialSteps(): StepState[] {
   }));
 }
 
-const STEP_EVENT_TYPES = new Set<string>(["review_started", "step_start", "step_complete", "step_error"]);
-
-export function isStepEvent(event: unknown): event is StepEvent {
+/** Narrows an unknown value to an object carrying a string `type` discriminant. */
+export function hasEventType(event: unknown): event is { type: string } {
   return (
     typeof event === "object" &&
     event !== null &&
     "type" in event &&
-    typeof (event as { type: unknown }).type === "string" &&
-    STEP_EVENT_TYPES.has((event as { type: string }).type)
+    typeof (event as { type?: unknown }).type === "string"
   );
+}
+
+const STEP_EVENT_TYPES = new Set<string>(["review_started", "step_start", "step_complete", "step_error"]);
+
+export function isStepEvent(event: unknown): event is StepEvent {
+  return hasEventType(event) && STEP_EVENT_TYPES.has(event.type);
 }

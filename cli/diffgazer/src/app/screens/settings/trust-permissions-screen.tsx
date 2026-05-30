@@ -10,22 +10,22 @@ import {
   useDeleteTrust,
   guardQueryState,
 } from "@diffgazer/core/api/hooks";
-import { useScope } from "../../../hooks/use-scope.js";
+import { useScope } from "../../../hooks/use-scope";
 import { usePageFooter } from "@diffgazer/core/footer";
-import { useBackHandler } from "../../../hooks/use-back-handler.js";
-import { useSettingsZone } from "../../../hooks/use-settings-zone.js";
-import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions.js";
-import { Panel } from "../../../components/ui/panel.js";
-import { SectionHeader } from "../../../components/ui/section-header.js";
-import { Spinner } from "../../../components/ui/spinner.js";
-import { Button } from "../../../components/ui/button.js";
-import { TrustPermissionsContent } from "../../../features/settings/components/trust-permissions-content.js";
+import { useBackHandler } from "../../../hooks/use-back-handler";
+import { useSettingsZone } from "../../../hooks/use-settings-zone";
+import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions";
+import { Panel } from "../../../components/ui/panel";
+import { SectionHeader } from "../../../components/ui/section-header";
+import { Spinner } from "../../../components/ui/spinner";
+import { Button } from "../../../components/ui/button";
+import { TrustPermissionsContent } from "../../../features/settings/components/trust-permissions-content";
 import {
   buildSavePayload,
   getInitialDraft,
   resolveEditorView,
   type TrustDraft,
-} from "../../../features/settings/trust-permissions/trust-editor-state.js";
+} from "../../../features/settings/trust-permissions/trust-editor-state";
 
 const TRUST_FORM_SHORTCUTS = [
   { key: "↑/↓", label: "Navigate" },

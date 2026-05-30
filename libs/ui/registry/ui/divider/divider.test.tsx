@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
-import { Divider } from "./index.js"
+import { Divider } from "./index"
 
 // axe skipped: aria-hidden vs role=separator semantics are asserted directly in tests below.
 

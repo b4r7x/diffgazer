@@ -1,8 +1,10 @@
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join, posix, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import {
+  assertNoRelativeJsImports,
   rewriteImportsForTargetLayout,
   transformKeysPublicRegistryImportContent,
 } from "../scripts/transform-public-registry-imports.js";
@@ -218,6 +220,35 @@ describe("public registry import parser coverage", () => {
       "./required.js",
       "./setup.js",
     ]);
+  });
+});
+
+describe("build-side relative .js assertion", () => {
+  let dir: string | null = null;
+
+  afterEach(() => {
+    if (dir) rmSync(dir, { recursive: true, force: true });
+    dir = null;
+  });
+
+  function writeItem(name: string, content: string): void {
+    dir ??= mkdtempSync(join(tmpdir(), "keys-build-assert-"));
+    writeFileSync(
+      join(dir, `${name}.json`),
+      JSON.stringify({ files: [{ target: `src/hooks/${name}.ts`, content }] }),
+    );
+  }
+
+  it("throws when generated registry content carries a relative .js specifier", () => {
+    writeItem("use-bad", 'import { x } from "./utils/x.js";\n');
+
+    expect(() => assertNoRelativeJsImports(dir!)).toThrowError(/relative \.js import specifiers/);
+  });
+
+  it("passes when generated registry content has no relative .js specifiers", () => {
+    writeItem("use-good", 'import { x } from "./utils/x";\n');
+
+    expect(() => assertNoRelativeJsImports(dir!)).not.toThrow();
   });
 });
 

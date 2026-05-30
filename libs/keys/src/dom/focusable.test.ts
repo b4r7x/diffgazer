@@ -125,6 +125,15 @@ describe("focusable utilities", () => {
       expect(ids).toEqual(["c"]);
     });
 
+    it("honors a closer aria-hidden=\"false\" that overrides a farther aria-hidden=\"true\"", () => {
+      const c = mount(`
+        <div aria-hidden="true"><div aria-hidden="false"><button id="a">A</button></div></div>
+        <div aria-hidden="false"><button id="b">B</button></div>
+      `);
+      const ids = getFocusableElements(c).map((el) => el.id);
+      expect(ids).toEqual(["a", "b"]);
+    });
+
     it("includes contenteditable elements", () => {
       const c = mount(`
         <div id="a" contenteditable="true">CE</div>

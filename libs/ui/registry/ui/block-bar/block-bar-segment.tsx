@@ -6,7 +6,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import {
   useBlockBarContext,
   computeFilledCount,
-} from "./block-bar-context.js";
+} from "./block-bar-context";
 
 const segmentVariants = cva("", {
   variants: {

@@ -1,12 +1,12 @@
 import { Fragment, type ReactNode, createRef } from "react"
 import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { axe } from "../../../testing/utils.js"
-import { applyReducedMotionFixture } from "../../../testing/prefers-reduced-motion.js"
+import { axe } from "../../../testing/utils"
+import { applyReducedMotionFixture } from "../../../testing/prefers-reduced-motion"
 import { describe, it, expect, expectTypeOf, vi } from "vitest"
-import { Field } from "../field/index.js"
-import { Select, type SelectProps } from "./index.js"
-import { type SelectItemProps } from "./select-item.js"
+import { Field } from "../field/index"
+import { Select, type SelectProps } from "./index"
+import { type SelectItemProps } from "./select-item"
 
 const PICK_FRUIT = "Pick a fruit"
 

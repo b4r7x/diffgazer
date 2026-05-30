@@ -1,18 +1,18 @@
 "use client";
 
-import { Children, Fragment, cloneElement, isValidElement, useCallback, useLayoutEffect, useRef, type AriaAttributes, type ReactNode, type KeyboardEvent, type Ref } from "react";
+import { Children, isValidElement, useCallback, useLayoutEffect, useRef, type ReactNode, type KeyboardEvent, type Ref } from "react";
 import { useNavigation } from "@/hooks/use-navigation";
-import { useTypeaheadBuffer } from "@/hooks/use-typeahead-buffer";
 import { type FloatingSide, type FloatingAlign } from "@/hooks/use-floating-position";
 import { composeRefs } from "@/lib/compose-refs";
-import { typeaheadSearch } from "@/lib/typeahead";
 import { cn } from "@/lib/utils";
 import { FloatingPanel } from "../floating-panel";
 import { useSelectContext } from "./select-context";
 import { matchesSearch } from "@/lib/search";
 import { isActiveOptionVisible, toOptionId } from "./select-utils";
+import { getVisibleEnabledOptions } from "./get-visible-enabled-options";
+import { useSelectTypeahead } from "./use-select-typeahead";
+import { SearchableContent, type SearchableListboxProps } from "./searchable-content";
 import { SelectSearch } from "./select-search";
-import { SelectEmpty } from "./select-empty";
 import type { SelectOptionMetadata } from "./select-context";
 
 export interface SelectContentProps {
@@ -27,19 +27,6 @@ export interface SelectContentProps {
 }
 
 const SEARCH_INPUT_NAV_KEYS = new Set(["ArrowUp", "ArrowDown", "Enter"]);
-type ListboxProps = {
-  id: string;
-  role: "listbox";
-  tabIndex: -1;
-  "aria-multiselectable": boolean | undefined;
-  "aria-activedescendant": string | undefined;
-  "aria-labelledby": string;
-  "aria-required": boolean | undefined;
-  "aria-invalid": AriaAttributes["aria-invalid"] | undefined;
-  onKeyDown?: (event: KeyboardEvent<HTMLDivElement>) => void;
-};
-
-type SearchableListboxProps = Omit<ListboxProps, "onKeyDown">;
 
 export function SelectContent({
   children,
@@ -87,45 +74,10 @@ export function SelectContent({
     scopeToContainer: true,
   });
 
-  const readTypeaheadQuery = useTypeaheadBuffer();
-
-  function handleTypeahead(key: string): void {
-    const query = readTypeaheadQuery(key);
-    if (query === null) return;
-
-    const visibleOptions = getVisibleEnabledOptionEntries();
-    if (visibleOptions.length === 0) return;
-
-    const currentIndex = highlighted === null
-      ? -1
-      : visibleOptions.findIndex(([itemValue]) => itemValue === highlighted);
-
-    const match = typeaheadSearch({
-      items: visibleOptions,
-      query,
-      currentIndex,
-      getLabel: ([, option]) => option.label,
-    });
-
-    if (match) setHighlighted(match[0]);
-  }
-
-  function getVisibleEnabledOptionEntries(): Array<[string, SelectOptionMetadata]> {
-    const entries: Array<[string, SelectOptionMetadata]> = [];
-    for (const [itemValue, option] of options) {
-      if (!option.disabled && matchesSearch(option.label, searchQuery)) {
-        entries.push([itemValue, option]);
-      }
-    }
-    return entries;
-  }
-
-  function getVisibleEnabledOptions(): string[] {
-    return getVisibleEnabledOptionEntries().map(([itemValue]) => itemValue);
-  }
+  const handleTypeahead = useSelectTypeahead({ options, searchQuery, highlighted, setHighlighted });
 
   function moveSearchHighlight(direction: 1 | -1): void {
-    const visibleOptions = getVisibleEnabledOptions();
+    const visibleOptions = getVisibleEnabledOptions(options, searchQuery);
     if (visibleOptions.length === 0) return;
 
     const currentIndex = highlighted === null ? -1 : visibleOptions.indexOf(highlighted);
@@ -216,7 +168,7 @@ export function SelectContent({
   } satisfies SearchableListboxProps;
   const listboxProps = hasSearch
     ? listboxPropsBase
-    : { ...listboxPropsBase, onKeyDown: handleKeyDown } satisfies ListboxProps;
+    : { ...listboxPropsBase, onKeyDown: handleKeyDown };
   const contentBody = hasSearch
     ? <SearchableContent listboxProps={listboxProps} ref={containerRef}>{children}</SearchableContent>
     : children;
@@ -259,76 +211,6 @@ export function SelectContent({
   );
 }
 
-function SearchableContent({
-  children,
-  listboxProps,
-  ref,
-}: {
-  children: ReactNode;
-  listboxProps: SearchableListboxProps;
-  ref: Ref<HTMLDivElement>;
-}) {
-  const { searchChildren, optionChildren, emptyChildren } = partitionSelectSearchChildren(children);
-
-  return (
-    <>
-      {searchChildren}
-      <div {...listboxProps} ref={ref} className="p-1 space-y-0.5 outline-none">
-        {optionChildren}
-      </div>
-      {emptyChildren}
-    </>
-  );
-}
-
-function isSelectSearchElement(child: ReactNode): boolean {
-  return isValidElement(child) && child.type === SelectSearch;
-}
-
-function isSelectEmptyElement(child: ReactNode): boolean {
-  return isValidElement(child) && child.type === SelectEmpty;
-}
-
-function partitionSelectSearchChildren(children: ReactNode): {
-  searchChildren: ReactNode[];
-  optionChildren: ReactNode[];
-  emptyChildren: ReactNode[];
-} {
-  const searchChildren: ReactNode[] = [];
-  const optionChildren: ReactNode[] = [];
-  const emptyChildren: ReactNode[] = [];
-
-  Children.forEach(children, (child) => {
-    if (isSelectSearchElement(child)) {
-      searchChildren.push(child);
-      return;
-    }
-
-    if (isSelectEmptyElement(child)) {
-      emptyChildren.push(child);
-      return;
-    }
-
-    if (!isValidElement<{ children?: ReactNode }>(child) || !containsPartitionedSelectElement(child.props.children)) {
-      optionChildren.push(child);
-      return;
-    }
-
-    const nested = partitionSelectSearchChildren(child.props.children);
-    searchChildren.push(...nested.searchChildren);
-    emptyChildren.push(...nested.emptyChildren);
-    if (nested.optionChildren.length === 0) return;
-
-    if (child.type === Fragment) {
-      optionChildren.push(...nested.optionChildren);
-    } else {
-      optionChildren.push(cloneElement(child, undefined, nested.optionChildren));
-    }
-  });
-
-  return { searchChildren, optionChildren, emptyChildren };
-}
-
 function containsSelectSearchElement(children: ReactNode): boolean {
   return Children.toArray(children).some((child) => {
     if (isSelectSearchElement(child)) return true;
@@ -337,12 +219,8 @@ function containsSelectSearchElement(children: ReactNode): boolean {
   });
 }
 
-function containsPartitionedSelectElement(children: ReactNode): boolean {
-  return Children.toArray(children).some((child) => {
-    if (isSelectSearchElement(child) || isSelectEmptyElement(child)) return true;
-    if (!isValidElement<{ children?: ReactNode }>(child)) return false;
-    return containsPartitionedSelectElement(child.props.children);
-  });
+function isSelectSearchElement(child: ReactNode): boolean {
+  return isValidElement(child) && child.type === SelectSearch;
 }
 
 function MatchCount({ options, searchQuery }: { options: ReadonlyMap<string, SelectOptionMetadata>; searchQuery: string }) {

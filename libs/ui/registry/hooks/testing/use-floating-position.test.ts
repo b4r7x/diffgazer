@@ -9,7 +9,7 @@ import {
   wouldOverflow,
   type FloatingAlign,
   type FloatingSide,
-} from "../use-floating-position.js"
+} from "../use-floating-position"
 
 function makeDOMRect(x: number, y: number, width: number, height: number): DOMRect {
   return {
@@ -102,12 +102,12 @@ afterEach(() => {
 
 describe("floating position helpers", () => {
   it("computes placement, overflow, shift, and collision fallback", () => {
-    expect(computePosition(triggerRect, contentRect, "bottom", "start", 6, 10)).toEqual({ x: 110, y: 146 })
-    expect(wouldOverflow(700, 100, contentRect, 8, viewport)).toBe(true)
-    expect(shift(750, 580, contentRect, 8, viewport)).toEqual({ x: 672, y: 542 })
+    expect(computePosition({ triggerRect, contentRect, side: "bottom", align: "start", sideOffset: 6, alignOffset: 10 })).toEqual({ x: 110, y: 146 })
+    expect(wouldOverflow({ x: 700, y: 100, contentRect, padding: 8, vp: viewport })).toBe(true)
+    expect(shift({ x: 750, y: 580, contentRect, padding: 8, vp: viewport })).toEqual({ x: 672, y: 542 })
 
     const nearBottom = makeDOMRect(100, 540, 80, 40)
-    expect(resolveCollisionPosition(nearBottom, contentRect, "bottom", "center", 6, 0, 8, viewport)).toMatchObject({
+    expect(resolveCollisionPosition({ triggerRect: nearBottom, contentRect, preferredSide: "bottom", preferredAlign: "center", sideOffset: 6, alignOffset: 0, collisionPadding: 8, vp: viewport })).toMatchObject({
       side: "top",
       x: 80,
       y: 484,

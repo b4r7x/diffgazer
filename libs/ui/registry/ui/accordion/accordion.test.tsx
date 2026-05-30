@@ -1,10 +1,10 @@
 import { createRef } from "react"
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { testNavigationBehavior } from "../../../../keys/src/testing/navigation-behavior.js"
-import { axe } from "../../../testing/utils.js"
+import { testNavigationBehavior } from "../../../../keys/src/testing/navigation-behavior"
+import { axe } from "../../../testing/utils"
 import { afterAll, beforeAll, describe, it, expect, vi } from "vitest"
-import { Accordion } from "./index.js"
+import { Accordion } from "./index"
 
 function renderAccordion(props: Record<string, unknown> = {}) {
   return render(
@@ -452,13 +452,17 @@ describe("Accordion inert on collapsed content", () => {
       </Accordion>
     )
 
-    const expandedContent = screen.getByText("Button One").parentElement?.parentElement
-    if (!expandedContent) throw new Error("Expected expanded accordion content wrapper")
-    expect(expandedContent).not.toHaveAttribute("inert")
+    function inertWrapperFor(triggerName: string): HTMLElement {
+      const trigger = screen.getByRole("button", { name: triggerName })
+      const contentId = trigger.getAttribute("aria-controls")
+      if (!contentId) throw new Error("Accordion trigger must reference a content id via aria-controls")
+      const wrapper = document.getElementById(contentId)?.parentElement
+      if (!wrapper) throw new Error("Expected accordion content to have a transition wrapper parent")
+      return wrapper
+    }
 
-    const collapsedContent = screen.getByText("Button Two").parentElement?.parentElement
-    if (!collapsedContent) throw new Error("Expected collapsed accordion content wrapper")
-    expect(collapsedContent).toHaveAttribute("inert")
+    expect(inertWrapperFor("Section One")).not.toHaveAttribute("inert")
+    expect(inertWrapperFor("Section Two")).toHaveAttribute("inert")
   })
 })
 

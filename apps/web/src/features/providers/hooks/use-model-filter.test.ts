@@ -53,6 +53,10 @@ describe("useModelFilter", () => {
     expect(result.current.tierFilter).toBe("paid");
     expect(modelIds(result.current.filteredModels)).toEqual(["gpt-4", "claude"]);
 
+    act(() => result.current.cycleTierFilter());
+    expect(result.current.tierFilter).toBe("all");
+    expect(modelIds(result.current.filteredModels)).toEqual(["gpt-4", "gpt-35", "claude", "gemini"]);
+
     act(() => {
       result.current.setSearchQuery("gemini");
       result.current.resetFilters();

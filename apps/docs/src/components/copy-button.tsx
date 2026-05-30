@@ -40,7 +40,9 @@ export function CopyButton({ text, className, label, title, successMessage }: Co
       showCopied()
       toast.success(successMessage ?? "Copied to clipboard")
     } catch (error) {
-      console.error("CopyButton: failed to write to clipboard", error)
+      if (import.meta.env.DEV) {
+        console.error("CopyButton: failed to write to clipboard", error)
+      }
       toast.error("Couldn't copy to clipboard")
     }
   }

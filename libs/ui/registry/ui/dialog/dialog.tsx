@@ -11,7 +11,7 @@ export interface DialogProps {
   children: ReactNode;
 }
 
-export function Dialog({ open: controlledOpen, defaultOpen, onOpenChange, children }: DialogProps) {
+function DialogRoot({ open: controlledOpen, defaultOpen, onOpenChange, children }: DialogProps) {
   const [isOpen, setIsOpen] = useControllableState({
     value: controlledOpen,
     defaultValue: defaultOpen ?? false,
@@ -38,3 +38,5 @@ export function Dialog({ open: controlledOpen, defaultOpen, onOpenChange, childr
     </DialogContext>
   );
 }
+
+export { DialogRoot as Dialog };
