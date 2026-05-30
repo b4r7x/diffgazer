@@ -1,7 +1,7 @@
 import { renderToString } from "react-dom/server";
 import { JSDOM } from "jsdom";
 import { describe, expect, it } from "vitest";
-import { SectionHeader } from "./index.js";
+import { SectionHeader } from "./index";
 
 // axe skipped: SSR-only output check; full a11y is exercised by the companion client test.
 

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { KeyboardProvider, useNavigation } from "@diffgazer/keys";
-import { axe } from "../../testing/utils.js";
+import { axe } from "../../testing/utils";
 import { CheckboxGroup, CheckboxItem } from "./checkbox";
 
 function CheckboxGroupWithKeyboard() {

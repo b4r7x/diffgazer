@@ -1,5 +1,5 @@
 import { createContext, useContext } from "react";
-import type { BoundApi } from "../bound.js";
+import type { BoundApi } from "../bound";
 
 const ApiContext = createContext<BoundApi | null>(null);
 

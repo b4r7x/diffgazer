@@ -5,11 +5,11 @@ import {
   type UISeverityFilter,
   calculateSeverityCounts,
 } from "@diffgazer/core/schemas/presentation";
-import { useTheme } from "../../../theme/theme-context.js";
-import { SectionHeader } from "../../../components/ui/section-header.js";
-import { getVisibleSliceOffset } from "../../../lib/visible-slice-offset.js";
-import { IssuePreviewItem } from "./issue-preview-item.js";
-import { SeverityFilterGroup } from "./severity-filter-group.js";
+import { useTheme } from "../../../theme/theme-context";
+import { SectionHeader } from "../../../components/ui/section-header";
+import { getVisibleSliceOffset } from "../../../lib/visible-slice-offset";
+import { IssuePreviewItem } from "./issue-preview-item";
+import { SeverityFilterGroup } from "./severity-filter-group";
 
 export type IssueListSubZone = "filter" | "issues";
 

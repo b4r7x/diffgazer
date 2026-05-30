@@ -1,9 +1,9 @@
 import { Box, Text } from "ink";
 import type { ReactNode } from "react";
-import { Header } from "./header.js";
-import { Footer } from "./footer.js";
-import { useTerminalDimensions } from "../../hooks/use-terminal-dimensions.js";
-import { useNavigation } from "../../app/navigation-context.js";
+import { Header } from "./header";
+import { Footer } from "./footer";
+import { useTerminalDimensions } from "../../hooks/use-terminal-dimensions";
+import { useNavigation } from "../../app/navigation-context";
 import { useFooterData } from "@diffgazer/core/footer";
 import { useInit } from "@diffgazer/core/api/hooks";
 import { getProviderDisplayStatus, getProviderDisplay } from "@diffgazer/core/providers";

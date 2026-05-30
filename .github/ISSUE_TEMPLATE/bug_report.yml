@@ -3,6 +3,10 @@ description: Report unexpected behavior in a Diffgazer package.
 title: "[bug] "
 labels: ["bug"]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing, please skim the project rules: [CONTRIBUTING.md](https://github.com/b4r7x/diffgazer/blob/main/CONTRIBUTING.md) and [AGENTS.md](https://github.com/b4r7x/diffgazer/blob/main/AGENTS.md).
   - type: textarea
     id: current
     attributes:

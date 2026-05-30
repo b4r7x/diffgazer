@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
-import { useExitHandler } from "../../hooks/use-exit-handler.js";
-import { useServers } from "../../hooks/use-servers.js";
-import type { ServerController } from "../../lib/servers/create-process-server.js";
+import { useExitHandler } from "../../hooks/use-exit-handler";
+import { useServers } from "../../hooks/use-servers";
+import type { ServerController } from "../../lib/servers/create-process-server";
 
 interface ServerProviderProps {
   children: ReactNode;

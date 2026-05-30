@@ -14,7 +14,7 @@ import {
   matchesHistoryQuery,
   resolveSelectedDateId,
   resolveSelectedRunId,
-} from "./history.js";
+} from "./history";
 
 function makeMetadata(overrides: Partial<ReviewMetadata> = {}): ReviewMetadata {
   return {

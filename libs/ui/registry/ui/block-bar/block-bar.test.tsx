@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
-import { BlockBar } from "./index.js"
+import { BlockBar } from "./index"
 
 // axe skipped: meter role semantics (label/value/min/max) are asserted directly via aria-* attribute checks.
 

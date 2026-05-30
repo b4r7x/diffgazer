@@ -1,19 +1,19 @@
 import { useState, type ReactElement } from "react";
 import { Box } from "ink";
-import { useNavigation } from "../navigation-context.js";
-import { useScope } from "../../hooks/use-scope.js";
-import { useBackHandler } from "../../hooks/use-back-handler.js";
+import { useNavigation } from "../navigation-context";
+import { useScope } from "../../hooks/use-scope";
+import { useBackHandler } from "../../hooks/use-back-handler";
 import { useReview } from "@diffgazer/core/api/hooks";
-import { ReviewContainer } from "../../features/review/components/review-container.js";
-import { ReviewResultsView } from "../../features/review/components/review-results-view.js";
-import { ReviewSummaryView } from "../../features/review/components/review-summary-view.js";
-import { Spinner } from "../../components/ui/spinner.js";
+import { ReviewContainer } from "../../features/review/components/review-container";
+import { ReviewResultsView } from "../../features/review/components/review-results-view";
+import { ReviewSummaryView } from "../../features/review/components/review-summary-view";
+import { Spinner } from "../../components/ui/spinner";
 import { usePageFooter } from "@diffgazer/core/footer";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
 import {
   selectReviewScreenPhase,
   type SavedReviewData,
-} from "./review-screen-phase.js";
+} from "./review-screen-phase";
 
 interface SavedReviewViewProps {
   saved: SavedReviewData;

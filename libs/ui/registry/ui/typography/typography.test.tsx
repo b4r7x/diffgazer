@@ -1,7 +1,7 @@
 import { createRef } from "react";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { Typography } from "./index.js";
+import { Typography } from "./index";
 
 // axe skipped: presentational text wrapper; semantics depend on the `as` element chosen by the consumer.
 
@@ -96,6 +96,8 @@ describe("Typography", () => {
   );
 
   it("renders truncate class when truncate is true", () => {
+    // `truncate` is a public prop; jsdom cannot compute text-overflow, so the
+    // `truncate` utility class is the documented contract for single-line ellipsis.
     render(<Typography truncate>Truncated text</Typography>);
     expect(screen.getByText("Truncated text")).toHaveClass("truncate");
   });

@@ -6,7 +6,7 @@ import {
 import { getTimestamp } from "@diffgazer/core/format";
 import type { ReviewIssue, ReviewMetadata } from "@diffgazer/core/schemas/review";
 import { SEVERITY_ORDER, type SeverityCounts } from "@diffgazer/core/schemas/presentation";
-import type { HistoryFocusZone } from "../types.js";
+import type { HistoryFocusZone } from "../types";
 
 export interface MappedRun {
   id: string;

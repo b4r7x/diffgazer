@@ -1,9 +1,9 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { axe } from "../../../testing/utils.js"
+import { axe } from "../../../testing/utils"
 import { describe, it, expect, vi } from "vitest"
-import { Checkbox } from "./index.js"
-import { Field } from "../field/index.js"
+import { Checkbox } from "./index"
+import { Field } from "../field/index"
 
 function getForm(name = "Test form"): HTMLFormElement {
   const form = screen.getByRole("form", { name })

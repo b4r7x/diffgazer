@@ -238,11 +238,31 @@ describe("API token middleware", () => {
         headers: { Host: "localhost:3000" },
       });
 
-      expect(res.status).toBe(403);
+      expect(res.status).toBe(401);
       const body = (await res.json()) as { error: { message: string } };
       expect(body.error.message).toBe("Unauthorized");
     }
   );
+
+  it("uses 401 for a missing token and reserves 403 for a forbidden host", async () => {
+    const app = createApp();
+
+    const unauthorized = await app.request("/api/config", {
+      headers: { Host: "localhost:3000" },
+    });
+    expect(unauthorized.status).toBe(401);
+    expect(((await unauthorized.json()) as { error: { message: string } }).error.message).toBe(
+      "Unauthorized",
+    );
+
+    const forbidden = await app.request("/api/config", {
+      headers: { Host: "evil.com" },
+    });
+    expect(forbidden.status).toBe(403);
+    expect(((await forbidden.json()) as { error: { message: string } }).error.message).toBe(
+      "Forbidden",
+    );
+  });
 
   it("allows CORS preflight (OPTIONS) without a token", async () => {
     const app = createApp();
@@ -269,11 +289,8 @@ describe("API token middleware", () => {
     });
 
     // The token middleware should pass; downstream may still fail for other reasons (setup, trust, etc.)
-    // but the response body should NOT be the token middleware's "Unauthorized" rejection.
-    if (res.status === 403) {
-      const body = (await res.json()) as { error?: { message: string } };
-      expect(body.error?.message).not.toBe("Unauthorized");
-    }
+    // but the response should NOT be the token middleware's 401 "Unauthorized" rejection.
+    expect(res.status).not.toBe(401);
   });
 });
 
@@ -380,7 +397,7 @@ describe("shutdown route", () => {
       headers: { Host: "localhost:3000" },
     });
 
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(401);
     const body = (await res.json()) as { error: { message: string } };
     expect(body.error.message).toBe("Unauthorized");
     expect(killSpy).not.toHaveBeenCalled();
@@ -399,7 +416,7 @@ describe("shutdown route", () => {
       },
     });
 
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(401);
     const body = (await res.json()) as { error: { message: string } };
     expect(body.error.message).toBe("Unauthorized");
     expect(killSpy).not.toHaveBeenCalled();
@@ -509,5 +526,23 @@ describe("shutdown route", () => {
     vi.runOnlyPendingTimers();
     // call-count IS the contract: shutdown is idempotent — two POSTs must result in exactly one SIGTERM (not zero, not two)
     expect(killSpy).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("request observability", () => {
+  it("attaches an X-Request-Id header to successful responses", async () => {
+    const app = createApp();
+    const res = await app.request("/api/health", { headers: { Host: "localhost:3000" } });
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("X-Request-Id")).toMatch(/[0-9a-f-]{36}/);
+  });
+
+  it("attaches an X-Request-Id header even to rejected requests", async () => {
+    const app = createApp();
+    const res = await app.request("/api/config", { headers: { Host: "evil.com" } });
+
+    expect(res.status).toBe(403);
+    expect(res.headers.get("X-Request-Id")).toMatch(/[0-9a-f-]{36}/);
   });
 });

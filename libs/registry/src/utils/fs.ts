@@ -40,7 +40,14 @@ export function resolveInside(baseDir: string, relPath: string, label: string): 
 
 export function resetDir(path: string): void {
   rmSync(path, { recursive: true, force: true });
-  mkdirSync(path, { recursive: true });
+  try {
+    mkdirSync(path, { recursive: true });
+  } catch (error) {
+    throw new Error(
+      `resetDir removed "${path}" but failed to recreate it; the directory no longer exists.`,
+      { cause: error },
+    );
+  }
 }
 
 export function collectAllFiles(rootDir: string, out: string[] = []): string[] {

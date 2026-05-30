@@ -4,18 +4,6 @@ import type { AddressInfo } from "node:net";
 export const DEFAULT_DEV_SERVER_HOSTNAME = "127.0.0.1";
 export const DEFAULT_DEV_SERVER_PORT = 3000;
 
-export function parsePortEnv(value: string | undefined, fallback = DEFAULT_DEV_SERVER_PORT): number {
-  if (value === undefined) return fallback;
-
-  const trimmed = value.trim();
-  const port = Number(trimmed);
-  if (!/^\d+$/.test(trimmed) || !Number.isInteger(port) || port < 1 || port > 65535) {
-    throw new Error(`Invalid PORT "${value}": expected an integer from 1 to 65535.`);
-  }
-
-  return port;
-}
-
 function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
   return error instanceof Error && "code" in error;
 }

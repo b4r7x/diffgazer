@@ -1,5 +1,5 @@
 import { cn } from "@diffgazer/ui/lib/utils";
-import { useEffect, useRef, type KeyboardEvent, type Ref } from "react";
+import type { KeyboardEvent, Ref } from "react";
 import type { ReviewSeverity } from "@diffgazer/core/schemas/review";
 import { SEVERITY_ORDER } from "@diffgazer/core/schemas/presentation";
 import { ToggleGroup, ToggleGroupItem } from "@diffgazer/ui/components/toggle-group";
@@ -37,18 +37,9 @@ export function SeverityFilterGroup({
   className,
   ref,
 }: SeverityFilterGroupProps) {
-  const resetButtonRef = useRef<HTMLButtonElement>(null);
   const isFilterActive = activeFilter.size > 0;
   const resetIndex = SEVERITY_ORDER.length;
   const isResetFocused = !!isFocused && focusedIndex === resetIndex;
-
-  useEffect(() => {
-    if (!isResetFocused) return;
-    const button = resetButtonRef.current;
-    if (!button) return;
-    if (button === button.ownerDocument.activeElement) return;
-    button.focus();
-  }, [isResetFocused]);
 
   const handleValueChange = (value: readonly string[]) => {
     onFilterChange(new Set(value as readonly ReviewSeverity[]));
@@ -105,7 +96,6 @@ export function SeverityFilterGroup({
       </ToggleGroup>
       {isFilterActive && (
         <Button
-          ref={resetButtonRef}
           variant="secondary"
           data-diffgazer-navigation-item="button"
           data-value={RESET_FILTER_VALUE}

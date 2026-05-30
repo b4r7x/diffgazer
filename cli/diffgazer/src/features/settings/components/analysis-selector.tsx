@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 import { Box, Text } from "ink";
-import { CheckboxGroup } from "../../../components/ui/checkbox.js";
-import { Badge } from "../../../components/ui/badge.js";
+import { CheckboxGroup } from "../../../components/ui/checkbox";
+import { Badge } from "../../../components/ui/badge";
 import { buildLensOptions } from "@diffgazer/core/schemas/events";
 import type { LensId } from "@diffgazer/core/schemas/review";
 

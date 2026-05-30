@@ -1,8 +1,8 @@
 import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { axe } from "../../../testing/utils.js"
+import { axe } from "../../../testing/utils"
 import { describe, it, expect, vi } from "vitest"
-import { SearchInput } from "./index.js"
+import { SearchInput } from "./index"
 
 function renderSearchInput(props: Record<string, unknown> = {}) {
   return render(<SearchInput aria-label="Search" {...props} />)

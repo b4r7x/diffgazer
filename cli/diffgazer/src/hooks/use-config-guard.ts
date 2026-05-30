@@ -1,6 +1,6 @@
 import { useEffect, useEffectEvent } from "react";
 import { useConfigCheck } from "@diffgazer/core/api/hooks";
-import { useNavigation } from "../app/navigation-context.js";
+import { useNavigation } from "../app/navigation-context";
 
 type ConfigGuardState = "checking" | "configured" | "not-configured";
 

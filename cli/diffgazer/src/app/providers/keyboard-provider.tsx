@@ -1,7 +1,7 @@
 import { createContext, useCallback, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useInput } from "ink";
-import { inkKeyToHotkey, isLetterKey } from "../../lib/ink-key.js";
+import { inkKeyToHotkey, isLetterKey } from "../../lib/ink-key";
 
 /** @see libs/keys/src/providers/keyboard-provider.tsx KeyboardContextValue (browser-based variant with DOM event routing) */
 export interface KeyboardContextValue {

@@ -87,6 +87,7 @@ export interface ButtonRenderProps<T extends HTMLElement = HTMLElement> {
   disabled?: boolean;
   "aria-busy"?: boolean;
   "aria-disabled"?: boolean;
+  "data-loading"?: boolean;
   tabIndex?: number;
 }
 
@@ -95,6 +96,10 @@ interface ButtonRenderPropProps<T extends HTMLElement = HTMLElement> extends But
   ref?: Ref<T>;
   as?: undefined;
   children: (props: ButtonRenderProps<T>) => ReactNode;
+}
+
+function isRenderPropProps(props: ButtonProps): props is ButtonRenderPropProps {
+  return typeof props.children === "function";
 }
 
 function ButtonContent({
@@ -148,19 +153,23 @@ export function Button(props: ButtonProps): ReactNode {
     className,
   );
 
-  if (typeof children === "function") {
+  if (isRenderPropProps(props)) {
     const ariaProps = {
       "aria-busy": loading || undefined,
       "aria-disabled": isDisabled || undefined,
+      "data-loading": loading || undefined,
       ...(isDisabled && { tabIndex: -1 as const }),
     };
-    return children({
-      ref: (props as ButtonRenderPropProps).ref,
+    return props.children({
+      ref: props.ref,
       className: resolvedClassName,
       disabled: isDisabled || undefined,
       ...ariaProps,
     });
   }
+
+  // The render-function form is handled above, so props is narrowed and children is element content here.
+  const content = props.children;
 
   const spinnerSize: "sm" | "md" | "lg" =
     size === "sm" || size === "md" || size === "lg" ? size : "sm";
@@ -169,9 +178,10 @@ export function Button(props: ButtonProps): ReactNode {
     const ariaProps = {
       "aria-busy": loading || undefined,
       "aria-disabled": isDisabled || undefined,
+      "data-loading": loading || undefined,
       ...(isDisabled && { tabIndex: -1 as const }),
     };
-    const { ref, href, onClick, ...anchorProps } = rest as Omit<
+    const { ref, href, onClick, role: consumerRole, ...anchorProps } = rest as Omit<
       ButtonAsAnchorProps,
       keyof ButtonSharedProps | "children" | "className" | "as"
     >;
@@ -180,9 +190,10 @@ export function Button(props: ButtonProps): ReactNode {
       <a
         className={resolvedClassName}
         ref={ref}
-        href={href}
-        {...ariaProps}
+        href={isDisabled ? undefined : href}
         {...anchorProps}
+        {...ariaProps}
+        role={isDisabled ? "link" : consumerRole}
         onClick={(event: ReactMouseEvent<HTMLAnchorElement>) => {
           if (isDisabled) {
             event.preventDefault();
@@ -192,7 +203,7 @@ export function Button(props: ButtonProps): ReactNode {
         }}
       >
         <ButtonContent loading={loading} bracket={!!bracket} spinnerSize={spinnerSize}>
-          {children}
+          {content}
         </ButtonContent>
       </a>
     );
@@ -209,11 +220,12 @@ export function Button(props: ButtonProps): ReactNode {
       className={resolvedClassName}
       ref={ref}
       aria-busy={loading || undefined}
+      data-loading={loading || undefined}
       disabled={isDisabled}
       {...buttonProps}
     >
       <ButtonContent loading={loading} bracket={!!bracket} spinnerSize={spinnerSize}>
-        {children}
+        {content}
       </ButtonContent>
     </button>
   );

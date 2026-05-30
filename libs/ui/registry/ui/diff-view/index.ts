@@ -6,7 +6,7 @@ export {
   type DiffViewVariant,
   type DiffViewDensity,
   type DiffViewPalette,
-} from "./diff-view.js";
+} from "./diff-view";
 export { parseDiff, computeDiff, resolveDiffInput } from "@/lib/diff";
 export type {
   ParsedDiff,

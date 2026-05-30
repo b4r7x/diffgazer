@@ -1,7 +1,9 @@
 import type { InputHTMLAttributes, Ref } from "react";
 import type { VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
-import { inputVariants } from "@/lib/input-variants";
+import { inputSizeClasses, inputVariants } from "@/lib/input-variants";
+
+export { inputSizeClasses, inputVariants };
 
 export type InputVariantProps = VariantProps<typeof inputVariants>;
 

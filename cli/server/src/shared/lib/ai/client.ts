@@ -13,7 +13,7 @@ import type {
 import { type Result, ok, err } from "@diffgazer/core/result";
 import { createError, toError, getErrorMessage } from "@diffgazer/core/errors";
 import { AVAILABLE_PROVIDERS, type AIProvider } from "@diffgazer/core/schemas/config";
-import { getActiveProvider, getProviderApiKey } from "../config/store.js";
+import { getStore } from "../config/store.js";
 import { classifyError, type ErrorRule } from "../errors.js";
 
 const DEFAULT_MODELS = Object.fromEntries(
@@ -48,6 +48,19 @@ const AI_ERROR_RULES: ErrorRule<AIErrorCode>[] = [
   },
 ];
 
+/**
+ * Runtime narrowing for SDK-version drift: confirms a provider-returned object
+ * exposes the `doGenerate`/`doStream` methods that define `ai`'s LanguageModel.
+ */
+function isLanguageModel(value: unknown): value is LanguageModel {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as Record<string, unknown>).doGenerate === "function" &&
+    typeof (value as Record<string, unknown>).doStream === "function"
+  );
+}
+
 function classifyApiError(error: unknown): AIError {
   const { code, message } = classifyError(error, AI_ERROR_RULES, {
     code: "MODEL_ERROR",
@@ -81,14 +94,12 @@ function createLanguageModel(config: AIClientConfig): Result<LanguageModel, AIEr
     }
     case "openrouter": {
       const openrouter = createOpenRouter({ apiKey, compatibility: "strict", extraBody: { provider: { require_parameters: true } } });
-      // OpenRouter's AI SDK provider implements the same doGenerate/doStream interface
-      // as Vercel AI SDK's LanguageModel, but exports an incompatible type due to SDK
-      // version drift between @openrouter/ai-sdk-provider and the `ai` package. The
-      // double assertion bridges this type-level gap. Runtime compatibility is validated
-      // below by checking for required LanguageModel methods.
-      const model = openrouter.chat(modelId as Parameters<typeof openrouter.chat>[0]) as unknown as LanguageModel;
-      if (typeof (model as Record<string, unknown>).doGenerate !== "function" ||
-          typeof (model as Record<string, unknown>).doStream !== "function") {
+      // OpenRouter's AI SDK provider implements the same doGenerate/doStream
+      // interface as Vercel AI SDK's LanguageModel but exports an incompatible
+      // type due to SDK version drift between @openrouter/ai-sdk-provider and the
+      // `ai` package. `isLanguageModel` narrows the unknown shape at runtime.
+      const model: unknown = openrouter.chat(modelId as Parameters<typeof openrouter.chat>[0]);
+      if (!isLanguageModel(model)) {
         return err(
           createError<AIErrorCode>("MODEL_ERROR", `OpenRouter model "${modelId}" does not implement LanguageModel interface`)
         );
@@ -201,7 +212,8 @@ export function createAIClient(config: AIClientConfig): Result<AIClient, AIError
 }
 
 export function initializeAIClient(): Result<AIClient, AIError> {
-  const activeProvider = getActiveProvider();
+  const store = getStore();
+  const activeProvider = store.getActiveProvider();
   if (!activeProvider) {
     return err(createError<AIErrorCode>("UNSUPPORTED_PROVIDER", "AI provider not configured"));
   }
@@ -210,7 +222,7 @@ export function initializeAIClient(): Result<AIClient, AIError> {
     return err(createError<AIErrorCode>("MODEL_ERROR", "Model selection is required"));
   }
 
-  const apiKeyResult = getProviderApiKey(activeProvider.provider);
+  const apiKeyResult = store.getProviderApiKey(activeProvider.provider);
   if (!apiKeyResult.ok) {
     return err(createError<AIErrorCode>("MODEL_ERROR", apiKeyResult.error.message));
   }

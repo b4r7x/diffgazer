@@ -1,8 +1,7 @@
 import { useEffectEvent } from "react";
 import { useApp } from "ink";
-import { stopAllServers } from "./use-servers.js";
-
-const SHUTDOWN_TIMEOUT_MS = 3000;
+import { config } from "../config";
+import { stopAllServers } from "./use-servers";
 
 export function useExit(): { handleExit: () => void } {
   const { exit } = useApp();
@@ -17,7 +16,7 @@ export function useExit(): { handleExit: () => void } {
 
 async function shutdownAndExit(): Promise<void> {
   const timeout = new Promise<"timeout">((resolve) => {
-    setTimeout(() => resolve("timeout"), SHUTDOWN_TIMEOUT_MS);
+    setTimeout(() => resolve("timeout"), config.shutdown.gracefulMs);
   });
   await Promise.race([stopAllServers(), timeout]);
   process.exit(0);

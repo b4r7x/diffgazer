@@ -2,6 +2,7 @@ import { readFileSync, rmSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  collectBundleRelativeJsImportErrors,
   computeBundleIntegrity,
   collectTreeParityErrors,
   computeStrictInputsFingerprint,
@@ -213,5 +214,63 @@ describe("artifact validation", () => {
         "dist/index.js",
       ]),
     ).toEqual([]);
+  });
+});
+
+describe("collectBundleRelativeJsImportErrors", () => {
+  it("flags relative .js import specifiers in bundled file content", () => {
+    const items = [
+      {
+        files: [
+          {
+            target: "src/hooks/use-focus-restore.ts",
+            content: 'import { restoreFocus } from "./utils/focus-restore.js";\n',
+          },
+        ],
+      },
+    ];
+
+    expect(collectBundleRelativeJsImportErrors(items, "bundle")).toEqual([
+      'bundle: src/hooks/use-focus-restore.ts has relative .js import specifiers: from "./utils/focus-restore.js"',
+    ]);
+  });
+
+  it("flags static, dynamic, and require relative .js specifiers", () => {
+    const items = [
+      {
+        files: [
+          {
+            path: "registry/ui/x/index.ts",
+            content: [
+              'import "./setup.js";',
+              'const lazy = import("../lazy.js");',
+              'const req = require("./dep.js");',
+            ].join("\n"),
+          },
+        ],
+      },
+    ];
+
+    expect(collectBundleRelativeJsImportErrors(items, "bundle")).toEqual([
+      'bundle: registry/ui/x/index.ts has relative .js import specifiers: import "./setup.js", import("../lazy.js", require("./dep.js"',
+    ]);
+  });
+
+  it("passes when content carries no relative .js specifiers", () => {
+    const items = [
+      {
+        files: [
+          {
+            target: "src/hooks/use-focus-restore.ts",
+            content: [
+              'import { restoreFocus } from "./utils/focus-restore";',
+              'import { Big } from "figlet/importable-fonts/Big.js";',
+            ].join("\n"),
+          },
+        ],
+      },
+    ];
+
+    expect(collectBundleRelativeJsImportErrors(items, "bundle")).toEqual([]);
   });
 });

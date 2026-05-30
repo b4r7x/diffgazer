@@ -1,9 +1,42 @@
 import { execSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, statSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { ENV } from "./artifacts/env.mjs";
 
 export function quoteArgs(args) {
   return args.map((arg) => JSON.stringify(arg)).join(" ");
+}
+
+export function joinLines(...lines) {
+  return lines.join("\n");
+}
+
+export class CommandFailedError extends Error {
+  constructor(cmd, { exitCode, stdout, stderr, cause } = {}) {
+    super(`Command failed (exit ${exitCode}): ${cmd}`);
+    this.name = "CommandFailedError";
+    this.cmd = cmd;
+    this.exitCode = exitCode ?? null;
+    this.stdout = stdout ?? "";
+    this.stderr = stderr ?? "";
+    if (cause !== undefined) this.cause = cause;
+  }
+
+  get output() {
+    return `${this.stdout}${this.stderr}`;
+  }
+}
+
+export function resolveAndCollectMissing(deps, resolveFn) {
+  const missing = [];
+  for (const dep of deps) {
+    try {
+      resolveFn(dep);
+    } catch {
+      missing.push(dep);
+    }
+  }
+  return missing;
 }
 
 export function packageNameFromSpec(spec) {
@@ -17,7 +50,7 @@ export function packageNameFromSpec(spec) {
 }
 
 export function networkAllowed() {
-  return process.env.DIFFGAZER_SMOKE_ALLOW_NETWORK === "1";
+  return process.env[ENV.smokeAllowNetwork] === "1";
 }
 
 export function pnpmAddFlags() {
@@ -40,6 +73,7 @@ function viteFixtureDependencySpecs(root) {
     "react-dom",
     "@types/react",
     "@types/react-dom",
+    "@types/node",
     "typescript",
     "vite",
     "@vitejs/plugin-react",
@@ -98,7 +132,7 @@ export function writeViteFixture(fixture, options = {}) {
   }, null, 2));
   writeFileSync(
     resolve(fixture, "vite.config.mjs"),
-    [
+    joinLines(
       "import { defineConfig } from 'vite';",
       "import react from '@vitejs/plugin-react';",
       "import tailwindcss from '@tailwindcss/vite';",
@@ -108,12 +142,12 @@ export function writeViteFixture(fixture, options = {}) {
       "  resolve: { alias: { '@': new URL('./src', import.meta.url).pathname } },",
       "});",
       "",
-    ].join("\n"),
+    ),
   );
   writeFileSync(resolve(fixture, "index.html"), `<div id="root"></div><script type="module" src="/src/main.tsx"></script>\n`);
 
   if (withLibUtils) {
-    writeFileSync(resolve(fixture, "src/lib/utils.ts"), [
+    writeFileSync(resolve(fixture, "src/lib/utils.ts"), joinLines(
       'import { type ClassValue, clsx } from "clsx";',
       'import { twMerge } from "tailwind-merge";',
       "",
@@ -121,7 +155,7 @@ export function writeViteFixture(fixture, options = {}) {
       "  return twMerge(clsx(inputs));",
       "}",
       "",
-    ].join("\n"));
+    ));
   }
 
   if (indexCss) {
@@ -218,7 +252,7 @@ export function writeNextFixture(fixture, options = {}) {
 export function uiSmokeAppBody(label) {
   return [
     "    <main className=\"min-h-screen bg-background text-foreground p-6\">",
-    `      <Button variant=\"primary\">${label} Button</Button>`,
+    `      <Button variant="primary">${label} Button</Button>`,
     "      <Dialog defaultOpen>",
     "        <DialogContent>",
     `          <DialogHeader><DialogTitle>${label} Dialog</DialogTitle></DialogHeader>`,
@@ -241,16 +275,16 @@ export function uiSmokeAppBody(label) {
 export function skipMissingSmokeDeps(label, missing) {
   if (missing.length === 0) return false;
 
-  if (process.env.DIFFGAZER_SMOKE_STRICT_SKIPS === "1") {
+  if (process.env[ENV.smokeStrictSkips] === "1") {
     throw new Error(
       `Required smoke dependencies missing for ${label}: ${missing.join(", ")}. `
-      + "Install them locally or set DIFFGAZER_SMOKE_ALLOW_NETWORK=1.",
+      + `Install them locally or set ${ENV.smokeAllowNetwork}=1.`,
     );
   }
 
   console.log(
     `SKIP: ${label} (missing local dependencies: ${missing.join(", ")}; `
-    + "set DIFFGAZER_SMOKE_ALLOW_NETWORK=1 to install them, or DIFFGAZER_SMOKE_STRICT_SKIPS=1 to fail on skips)",
+    + `set ${ENV.smokeAllowNetwork}=1 to install them, or ${ENV.smokeStrictSkips}=1 to fail on skips)`,
   );
   return true;
 }
@@ -286,11 +320,23 @@ export function assertBuiltCss(fixture, options = {}) {
 
 export function run(cmd, cwdOrOptions) {
   const options = typeof cwdOrOptions === "string" ? { cwd: cwdOrOptions } : (cwdOrOptions ?? {});
-  return execSync(cmd, {
-    encoding: "utf8",
-    cwd: options.cwd,
-    env: options.env ? { ...process.env, ...options.env } : undefined,
-    stdio: ["ignore", "pipe", "pipe"],
-    shell: true,
-  });
+  try {
+    return execSync(cmd, {
+      encoding: "utf8",
+      cwd: options.cwd,
+      env: options.env ? { ...process.env, ...options.env } : undefined,
+      stdio: ["ignore", "pipe", "pipe"],
+      shell: true,
+    });
+  } catch (error) {
+    if (error && typeof error === "object" && typeof error.status === "number") {
+      throw new CommandFailedError(cmd, {
+        exitCode: error.status,
+        stdout: error.stdout?.toString() ?? "",
+        stderr: error.stderr?.toString() ?? "",
+        cause: error,
+      });
+    }
+    throw error;
+  }
 }

@@ -4,7 +4,7 @@ import {
   reviewReducer,
   type ReviewAction,
   type ReviewState,
-} from "./review-state.js";
+} from "./review-state";
 import type { AgentStreamEvent, EnrichEvent, StepEvent } from "@diffgazer/core/schemas/events";
 
 const ts = "2025-02-01T10:00:00Z";
@@ -329,5 +329,83 @@ describe("review-state", () => {
       expect.objectContaining({ id: "detective", status: "complete" }),
       expect.objectContaining({ id: "guardian", status: "running" }),
     ]);
+  });
+
+  describe("EVENT routing", () => {
+    it("routes step events to step handling", () => {
+      const state = reviewReducer(startedState(), {
+        type: "EVENT",
+        event: { type: "step_start", step: "review", timestamp: ts } satisfies StepEvent,
+      });
+
+      expect(state.steps.find((step) => step.id === "review")?.status).toBe("active");
+    });
+
+    it("routes orchestrator-scoped file events to file progress", () => {
+      const state = reviewReducer(startedState(), {
+        type: "EVENT",
+        event: { type: "file_start", file: "src/app.ts", index: 2, total: 5, scope: "orchestrator", timestamp: ts },
+      });
+
+      expect(state.fileProgress.currentFile).toBe("src/app.ts");
+      expect(state.agents).toEqual([]);
+    });
+
+    it("routes enrich events to history only", () => {
+      const enrichEvent: EnrichEvent = {
+        type: "enrich_progress",
+        issueId: "i1",
+        enrichmentType: "blame",
+        status: "started",
+        timestamp: ts,
+      };
+      const before = startedState();
+      const state = reviewReducer(before, { type: "EVENT", event: enrichEvent });
+
+      expect(state.events.at(-1)).toEqual(enrichEvent);
+      expect(state.agents).toBe(before.agents);
+      expect(state.steps).toBe(before.steps);
+      expect(state.fileProgress).toBe(before.fileProgress);
+    });
+
+    it("routes tool events to the originating agent action", () => {
+      const state = reduce(
+        [
+          { type: "EVENT", event: { type: "agent_start", agent: detective, timestamp: ts } },
+          {
+            type: "EVENT",
+            event: { type: "tool_call", agent: "detective", tool: "grep", input: "needle", timestamp: ts },
+          },
+        ],
+        startedState(),
+      );
+
+      expect(state.agents.find((agent) => agent.id === "detective")?.currentAction).toBe("Using tool: grep");
+    });
+
+    it("routes orchestrator_complete with a file count to the total", () => {
+      const state = reviewReducer(startedState(), {
+        type: "EVENT",
+        event: {
+          type: "orchestrator_complete",
+          summary: "Done",
+          totalIssues: 0,
+          lensStats: [],
+          filesAnalyzed: 9,
+          timestamp: ts,
+        },
+      });
+
+      expect(state.fileProgress.total).toBe(9);
+    });
+
+    it("routes unmatched agent events to agent state", () => {
+      const state = reviewReducer(startedState(), {
+        type: "EVENT",
+        event: { type: "agent_start", agent: optimizer, timestamp: ts },
+      });
+
+      expect(state.agents).toEqual([expect.objectContaining({ id: "optimizer", status: "running" })]);
+    });
   });
 });

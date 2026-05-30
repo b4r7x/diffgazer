@@ -5,7 +5,7 @@ import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
 import { cn } from "@diffgazer/ui/lib/utils";
 import { getVerticalArrowDirection } from "@diffgazer/keys";
 import type { FocusElement } from "@/types/focus-element";
-import type { InputMethod } from "@/types/input-method";
+import type { InputMethod } from "@diffgazer/core/onboarding";
 
 interface ApiKeyMethodSelectorProps {
   value: InputMethod;

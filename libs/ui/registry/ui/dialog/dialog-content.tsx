@@ -95,6 +95,22 @@ function resolveAccessibleName({
   return { "aria-label": FALLBACK_DIALOG_LABEL, "aria-labelledby": undefined };
 }
 
+/**
+ * Provide an accessible name through one of three paths (precedence order):
+ *
+ * 1. `aria-labelledby` pointing at existing element id(s);
+ * 2. an explicit `aria-label` string;
+ * 3. a rendered `<Dialog.Title>`, whose id is wired automatically.
+ *
+ * ```tsx
+ * <Dialog.Content><Dialog.Title>Settings</Dialog.Title>…</Dialog.Content>
+ * <Dialog.Content aria-label="Settings">…</Dialog.Content>
+ * <Dialog.Content aria-labelledby="settings-heading">…</Dialog.Content>
+ * ```
+ *
+ * If none are present the dialog falls back to the label "Dialog" and warns in
+ * dev so the dialog still has a usable name rather than failing to open.
+ */
 export function DialogContent({
   children,
   className,

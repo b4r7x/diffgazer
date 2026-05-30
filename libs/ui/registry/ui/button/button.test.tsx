@@ -1,9 +1,9 @@
 import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { axe } from "../../../testing/utils.js"
+import { axe } from "../../../testing/utils"
 import { describe, it, expect, vi } from "vitest"
-import type { ButtonRenderProps } from "./button.js"
-import { Button } from "./index.js"
+import type { ButtonRenderProps } from "./button"
+import { Button } from "./index"
 
 describe("Button", () => {
   it("renders as a button element by default", () => {
@@ -24,10 +24,11 @@ describe("Button", () => {
     expect(link).toHaveAttribute("href", "/test")
   })
 
-  it("shows loading state with aria-busy", () => {
+  it("shows loading state with aria-busy and a data-loading hook", () => {
     render(<Button loading>Save</Button>)
     const btn = screen.getByRole("button")
     expect(btn).toHaveAttribute("aria-busy", "true")
+    expect(btn).toHaveAttribute("data-loading", "true")
     expect(btn).toBeDisabled()
   })
 
@@ -58,6 +59,34 @@ describe("Button", () => {
 
     expect(spy).not.toHaveBeenCalled()
     expect(event.defaultPrevented).toBe(true)
+  })
+
+  it("removes a disabled anchor from the tab order and makes it non-navigable", async () => {
+    render(
+      <>
+        <Button as="a" href="/before">Before</Button>
+        <Button as="a" href="/test" disabled>Link</Button>
+        <Button as="a" href="/after">After</Button>
+      </>,
+    )
+    const disabled = screen.getByRole("link", { name: "Link" })
+    expect(disabled).toHaveAttribute("aria-disabled", "true")
+    expect(disabled).toHaveAttribute("tabindex", "-1")
+    expect(disabled).not.toHaveAttribute("href")
+
+    screen.getByRole("link", { name: "Before" }).focus()
+    await userEvent.tab()
+
+    expect(screen.getByRole("link", { name: "After" })).toHaveFocus()
+    expect(disabled).not.toHaveFocus()
+  })
+
+  it("keeps a consumer tabIndex on an enabled anchor but forces -1 when disabled", () => {
+    const { rerender } = render(<Button as="a" href="/test" tabIndex={3}>Link</Button>)
+    expect(screen.getByRole("link")).toHaveAttribute("tabindex", "3")
+
+    rerender(<Button as="a" href="/test" tabIndex={3} disabled>Link</Button>)
+    expect(screen.getByRole("link")).toHaveAttribute("tabindex", "-1")
   })
 
   it("renders bracket decoration when bracket is true", () => {

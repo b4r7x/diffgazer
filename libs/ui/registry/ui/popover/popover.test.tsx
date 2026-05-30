@@ -1,9 +1,9 @@
 import { render, screen, act, fireEvent } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { axe } from "../../../testing/utils.js"
-import { applyReducedMotionFixture } from "../../../testing/prefers-reduced-motion.js"
+import { axe } from "../../../testing/utils"
+import { applyReducedMotionFixture } from "../../../testing/prefers-reduced-motion"
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { Popover } from "./index.js"
+import { Popover } from "./index"
 
 function renderClickPopover(props: Record<string, unknown> = {}) {
   return render(

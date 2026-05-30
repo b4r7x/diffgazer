@@ -1,7 +1,8 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
-import { axe } from "../../../testing/utils.js"
+import { axe } from "../../../testing/utils"
 import { describe, it, expect, vi } from "vitest"
-import { Avatar } from "./index.js"
+import { Avatar } from "./index"
+import { Card } from "../card/index"
 
 function getAvatarImage(container: HTMLElement): HTMLImageElement {
   // querySelector retained: <img> has no accessible role until it loads (jsdom never paints it); structural assertion is the contract — the test needs the element to fire load/error against
@@ -143,6 +144,22 @@ describe("Avatar", () => {
     render(<Avatar fallback="JD" />)
     const fallback = screen.getByText("JD")
     expect(fallback).toBeInTheDocument()
+  })
+
+  it("keeps a decorative avatar from overriding its container's accessible name", () => {
+    const { container } = render(
+      <Card as="article" aria-label="Jane Doe">
+        <Avatar src="https://example.com/avatar.jpg" />
+        <span>Jane Doe</span>
+      </Card>,
+    )
+
+    // No alt -> the image is decorative and the avatar root is presentational.
+    fireEvent.load(getAvatarImage(container))
+
+    const card = screen.getByRole("article", { name: "Jane Doe" })
+    expect(card).toBeInTheDocument()
+    expect(getAvatarImage(container)).toHaveAttribute("alt", "")
   })
 
   it("hides fallback from accessibility tree when image successfully loads", () => {

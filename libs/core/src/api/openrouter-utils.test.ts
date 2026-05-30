@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { OpenRouterModel } from "@diffgazer/core/schemas/config";
-import { isOpenRouterCompatible, mapOpenRouterModels } from "./openrouter-utils.js";
+import { isOpenRouterCompatible, mapOpenRouterModels } from "./openrouter-utils";
 
 describe("isOpenRouterCompatible", () => {
   it.each([
@@ -15,6 +15,8 @@ describe("isOpenRouterCompatible", () => {
 });
 
 function makeModel(overrides: Partial<OpenRouterModel> & Pick<OpenRouterModel, "id">): OpenRouterModel {
+  // Cast: the literal omits no required field, but the spread's inferred type is
+  // widened by `Partial<OpenRouterModel>`, so the assertion restores the full shape.
   return {
     name: "",
     description: "",
@@ -47,6 +49,8 @@ describe("mapOpenRouterModels", () => {
 
   it("falls back to the id when description is missing", () => {
     const [mapped] = mapOpenRouterModels([
+      // Cast: deliberately feeds `undefined` into the non-optional `description`
+      // to exercise the runtime id-fallback path that types alone forbid.
       makeModel({ id: "openrouter/no-desc", name: "n", description: undefined as unknown as string }),
     ]);
     expect(mapped?.description).toBe("openrouter/no-desc");

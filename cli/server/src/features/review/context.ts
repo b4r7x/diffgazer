@@ -1,254 +1,17 @@
-import { readFile, mkdir, readdir, access, realpath } from "node:fs/promises";
+import { readFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import type {
-  FileTreeNode,
   ProjectContextGraph,
   ProjectContextMeta,
   ProjectContextSnapshot,
 } from "@diffgazer/core/schemas/context";
 import { createGitService } from "../../shared/lib/git/service.js";
 import { readJsonFile, atomicWriteFile } from "../../shared/lib/fs.js";
+import { discoverWorkspacePackages, formatWorkspaceGraph } from "./workspace-discovery.js";
+import { buildFileTree, formatFileTree, MAX_TREE_NODES } from "./file-tree.js";
 
-type WorkspacePackage = {
-  name: string;
-  dir: string;
-  kind: "app" | "package";
-  dependencies: string[];
-};
-
-async function readFileDirectory(
-  dirPath: string,
-): Promise<Array<{ name: string; isDirectory: boolean }>> {
-  try {
-    const entries = await readdir(dirPath, { withFileTypes: true });
-    return entries.map((entry) => ({
-      name: entry.name,
-      isDirectory: entry.isDirectory(),
-    }));
-  } catch {
-    return [];
-  }
-}
-
-const FALLBACK_WORKSPACE_ROOTS: Array<{ dir: string; kind: WorkspacePackage["kind"] }> = [
-  { dir: "apps", kind: "app" },
-  { dir: "packages", kind: "package" },
-];
-
-function parseWorkspaceYaml(content: string): string[] {
-  const lines = content.split("\n");
-  const globs: string[] = [];
-  let inPackages = false;
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (trimmed === "packages:" || trimmed.startsWith("packages:")) {
-      inPackages = true;
-      continue;
-    }
-    if (inPackages) {
-      if (/^\w/.test(trimmed) && !trimmed.startsWith("-")) {
-        break;
-      }
-      const match = trimmed.match(/^-\s+["']?([^"']+)["']?$/);
-      if (match?.[1]) {
-        globs.push(match[1]);
-      }
-    }
-  }
-  return globs;
-}
-
-function resolveWorkspaceRoots(
-  globs: string[],
-): Array<{ dir: string; kind: WorkspacePackage["kind"] }> {
-  return globs.map((glob) => {
-    const dir = glob.replace(/\/\*$/, "");
-    const kind: WorkspacePackage["kind"] = dir.startsWith("app") ? "app" : "package";
-    return { dir, kind };
-  });
-}
-
-async function filterEscapedRoots(
-  roots: Array<{ dir: string; kind: WorkspacePackage["kind"] }>,
-  projectPath: string,
-): Promise<Array<{ dir: string; kind: WorkspacePackage["kind"] }>> {
-  const normalizedProject = await realpath(projectPath).catch(() => path.resolve(projectPath));
-  const results: Array<{ dir: string; kind: WorkspacePackage["kind"] }> = [];
-  for (const root of roots) {
-    const resolved = path.resolve(normalizedProject, root.dir);
-    const real = await realpath(resolved).catch(() => resolved);
-    if (real === normalizedProject || real.startsWith(normalizedProject + path.sep)) {
-      results.push(root);
-    }
-  }
-  return results;
-}
-
-async function getWorkspaceRoots(
-  projectPath: string,
-): Promise<Array<{ dir: string; kind: WorkspacePackage["kind"] }>> {
-  const yamlPath = path.join(projectPath, "pnpm-workspace.yaml");
-  try {
-    const content = await readFile(yamlPath, "utf8");
-    const globs = parseWorkspaceYaml(content);
-    if (globs.length > 0) {
-      return await filterEscapedRoots(resolveWorkspaceRoots(globs), projectPath);
-    }
-  } catch {
-    // pnpm-workspace.yaml not found — fall through to defaults
-  }
-  return FALLBACK_WORKSPACE_ROOTS;
-}
-
-async function discoverWorkspacePackages(
-  projectPath: string,
-): Promise<WorkspacePackage[]> {
-  const roots = await getWorkspaceRoots(projectPath);
-
-  const packages: WorkspacePackage[] = [];
-
-  for (const root of roots) {
-    const absoluteRoot = path.join(projectPath, root.dir);
-    try { await access(absoluteRoot); } catch { continue; }
-
-    const entries = await readFileDirectory(absoluteRoot);
-    for (const entry of entries) {
-      if (!entry.isDirectory) continue;
-      const pkgJsonPath = path.join(absoluteRoot, entry.name, "package.json");
-      const pkgJson = await readJsonFile<{
-        name?: string;
-        dependencies?: Record<string, string>;
-        devDependencies?: Record<string, string>;
-        peerDependencies?: Record<string, string>;
-      }>(pkgJsonPath);
-      if (!pkgJson?.name) continue;
-      const dependencies = new Set<string>();
-      Object.keys(pkgJson.dependencies ?? {}).forEach((dep) =>
-        dependencies.add(dep),
-      );
-      Object.keys(pkgJson.devDependencies ?? {}).forEach((dep) =>
-        dependencies.add(dep),
-      );
-      Object.keys(pkgJson.peerDependencies ?? {}).forEach((dep) =>
-        dependencies.add(dep),
-      );
-
-      packages.push({
-        name: pkgJson.name,
-        dir: path.join(root.dir, entry.name),
-        kind: root.kind,
-        dependencies: Array.from(dependencies),
-      });
-    }
-  }
-
-  return packages;
-}
-
-function formatWorkspaceGraph(packages: WorkspacePackage[]): string {
-  if (packages.length === 0) {
-    return "No workspace packages detected.";
-  }
-
-  const nameToPkg = new Map(packages.map((pkg) => [pkg.name, pkg]));
-  const edges = packages.map((pkg) => ({
-    from: pkg.name,
-    to: pkg.dependencies.filter((dep) => nameToPkg.has(dep)),
-  }));
-
-  const lines: string[] = [];
-  lines.push(`Workspace packages: ${packages.length}`);
-  lines.push("");
-  lines.push("Packages:");
-  for (const pkg of packages) {
-    lines.push(`- ${pkg.name} (${pkg.kind}, ${pkg.dir})`);
-  }
-
-  lines.push("");
-  lines.push("Dependency graph (internal only):");
-  for (const edge of edges) {
-    if (edge.to.length === 0) {
-      lines.push(`- ${edge.from} -> (none)`);
-    } else {
-      lines.push(`- ${edge.from} -> ${edge.to.join(", ")}`);
-    }
-  }
-
-  return lines.join("\n");
-}
-
-const CONTEXT_EXCLUDE_DIRS = new Set([
-  ".git",
-  ".diffgazer",
-  "node_modules",
-  "dist",
-  "build",
-  ".next",
-  "coverage",
-  "out",
-  ".turbo",
-]);
-
-const MAX_TREE_NODES = 1000;
 const MAX_CONTEXT_BYTES = 50_000;
-
-async function buildFileTree(
-  root: string,
-  depth: number,
-  baseRoot: string = root,
-  visited: Set<string> = new Set(),
-  counter: { count: number; truncated: boolean } = { count: 0, truncated: false },
-): Promise<FileTreeNode[]> {
-  if (depth < 0) return [];
-
-  // Prevent symlink cycles by tracking visited real paths
-  const real = await realpath(root).catch(() => root);
-  if (visited.has(real)) return [];
-  visited.add(real);
-
-  const entries = await readFileDirectory(root);
-  entries.sort((a, b) => a.name.localeCompare(b.name));
-  const nodes: FileTreeNode[] = [];
-
-  for (const entry of entries) {
-    if (counter.count >= MAX_TREE_NODES) {
-      counter.truncated = true;
-      break;
-    }
-    if (CONTEXT_EXCLUDE_DIRS.has(entry.name)) continue;
-    const fullPath = path.join(root, entry.name);
-    const relativePath = path.relative(baseRoot, fullPath);
-    counter.count += 1;
-    if (entry.isDirectory) {
-      const children =
-        depth > 0
-          ? await buildFileTree(fullPath, depth - 1, baseRoot, visited, counter)
-          : undefined;
-      nodes.push({
-        name: entry.name,
-        path: relativePath,
-        type: "dir",
-        children,
-      });
-    } else {
-      nodes.push({ name: entry.name, path: relativePath, type: "file" });
-    }
-  }
-
-  return nodes;
-}
-
-function formatFileTree(nodes: FileTreeNode[], indent = 0): string[] {
-  const lines: string[] = [];
-  const prefix = "  ".repeat(indent);
-  for (const node of nodes) {
-    lines.push(`${prefix}- ${node.name}${node.type === "dir" ? "/" : ""}`);
-    if (node.children && node.children.length > 0) {
-      lines.push(...formatFileTree(node.children, indent + 1));
-    }
-  }
-  return lines;
-}
+const DEFAULT_TREE_DEPTH = 5;
 
 export async function loadContextSnapshot(
   contextDir: string,
@@ -271,8 +34,6 @@ export async function loadContextSnapshot(
     return null;
   }
 }
-
-const DEFAULT_TREE_DEPTH = 5;
 
 export async function buildProjectContextSnapshot(
   projectPath: string,
@@ -302,7 +63,10 @@ export async function buildProjectContextSnapshot(
   const packages = await discoverWorkspacePackages(projectPath);
   const workspaceSummary = formatWorkspaceGraph(packages);
   const treeCounter = { count: 0, truncated: false };
-  const fileTree = await buildFileTree(projectPath, DEFAULT_TREE_DEPTH, projectPath, new Set(), treeCounter);
+  const fileTree = await buildFileTree(projectPath, {
+    depth: DEFAULT_TREE_DEPTH,
+    counter: treeCounter,
+  });
 
   const packageJson = await readJsonFile<{
     name?: string;

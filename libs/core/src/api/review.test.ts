@@ -3,9 +3,9 @@ import {
   createReview,
   getActiveReviewSession,
   resumeReviewStream,
-} from "./review.js";
-import type { ApiClient } from "./types.js";
-import { createMockClient as createClient } from "../testing/factories.js";
+} from "./review";
+import type { ApiClient } from "./types";
+import { createMockClient as createClient } from "../testing/factories";
 
 function streamResponse(events: unknown[]): Response {
   const encoder = new TextEncoder();

@@ -1,13 +1,13 @@
-import { useRef, useState } from "react";
+import { useReducer, useRef } from "react";
 import { getErrorMessage } from "@diffgazer/core/errors";
 import { AVAILABLE_PROVIDERS, PROVIDER_ENV_VARS } from "@diffgazer/core/schemas/config";
 import type { AIProvider } from "@diffgazer/core/schemas/config";
 import { LENS_IDS } from "@diffgazer/core/schemas/review";
-import type { InputMethod } from "@/types/input-method";
 import { useConfigActions } from "@/app/providers/config-provider";
 import { setConfiguredGuardCache } from "@/lib/config-guard-cache";
 import { useSaveSettings, useSaveConfig, useDeleteProviderCredentials } from "@diffgazer/core/api/hooks";
 import { canProceed, type OnboardingStep, type WizardData } from "@diffgazer/core/onboarding";
+import { createInitialState, onboardingReducer } from "./onboarding-reducer";
 
 const STEPS: OnboardingStep[] = [
   "storage",
@@ -34,11 +34,8 @@ export function useOnboarding() {
   const saveSettings = useSaveSettings();
   const saveConfig = useSaveConfig();
   const deleteCredentials = useDeleteProviderCredentials();
-  const [wizardData, setWizardData] = useState<WizardData>(INITIAL_DATA);
-  const [stepIndex, setStepIndex] = useState(0);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isEarlySaving, setIsEarlySaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [state, dispatch] = useReducer(onboardingReducer, INITIAL_DATA, createInitialState);
+  const { wizardData, stepIndex, isSubmitting, isEarlySaving, error } = state;
   const earlySavedProviderRef = useRef<AIProvider | null>(null);
 
   const currentStep = STEPS[stepIndex] ?? STEPS[0]!;
@@ -57,8 +54,7 @@ export function useOnboarding() {
       wizardData.provider === "openrouter" &&
       (wizardData.apiKey || wizardData.inputMethod === "env")
     ) {
-      setIsEarlySaving(true);
-      setError(null);
+      dispatch({ type: "startEarlySave" });
       const apiKey =
         wizardData.inputMethod === "env"
           ? { kind: "env" as const, varName: PROVIDER_ENV_VARS[wizardData.provider] }
@@ -67,16 +63,16 @@ export function useOnboarding() {
         .mutateAsync({ provider: wizardData.provider, apiKey })
         .then(() => {
           earlySavedProviderRef.current = wizardData.provider;
-          setStepIndex((prev) => prev + 1);
+          dispatch({ type: "advanceStep" });
         })
         .catch((e) => {
-          setError(getErrorMessage(e, "Failed to save credentials"));
+          dispatch({ type: "setError", error: getErrorMessage(e, "Failed to save credentials") });
         })
-        .finally(() => setIsEarlySaving(false));
+        .finally(() => dispatch({ type: "endEarlySave" }));
       return;
     }
 
-    setStepIndex((prev) => prev + 1);
+    dispatch({ type: "advanceStep" });
   };
 
   const cleanupEarlySave = async () => {
@@ -89,28 +85,21 @@ export function useOnboarding() {
 
   const back = () => {
     if (isFirstStep) return;
-    setStepIndex((prev) => prev - 1);
+    dispatch({ type: "back" });
   };
 
   const updateData = (partial: Partial<WizardData>) => {
-    setWizardData((prev) => ({ ...prev, ...partial }));
+    dispatch({ type: "updateData", partial });
   };
 
   const setProvider = (provider: AIProvider) => {
     const info = AVAILABLE_PROVIDERS.find((p) => p.id === provider);
-    setWizardData((prev) => ({
-      ...prev,
-      provider,
-      model: info?.defaultModel || null,
-      apiKey: "",
-      inputMethod: "paste" as InputMethod,
-    }));
+    dispatch({ type: "setProvider", provider, model: info?.defaultModel || null });
   };
 
   const complete = async () => {
     if (!wizardData.provider || !wizardData.model) return;
-    setIsSubmitting(true);
-    setError(null);
+    dispatch({ type: "startSubmit" });
     try {
       earlySavedProviderRef.current = null;
       await saveSettings.mutateAsync({
@@ -129,10 +118,10 @@ export function useOnboarding() {
       await refreshConfig(true);
       setConfiguredGuardCache(true);
     } catch (e) {
-      setError(getErrorMessage(e, "Setup failed"));
+      dispatch({ type: "setError", error: getErrorMessage(e, "Setup failed") });
       throw e;
     } finally {
-      setIsSubmitting(false);
+      dispatch({ type: "endSubmit" });
     }
   };
 

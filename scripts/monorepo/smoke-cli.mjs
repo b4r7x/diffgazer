@@ -1,5 +1,11 @@
 #!/usr/bin/env node
 
+// Exit-code contract: this smoke runner exits non-zero when a check fails. A
+// failed assertion throws, which Node surfaces as a non-zero exit; temp-dir
+// cleanup runs in the try/finally blocks around each fixture before the throw
+// propagates. Do not swap the throws for process.exit() — that would bypass the
+// finally cleanup and leak fixture directories.
+
 import {
   existsSync,
   mkdtempSync,
@@ -16,7 +22,10 @@ import {
   networkAllowed,
   pnpmAddFlags,
   assertBuiltCss,
+  CommandFailedError,
   installViteFixtureDeps,
+  joinLines,
+  resolveAndCollectMissing,
   resolveLocalDependency as resolveWorkspaceDependency,
   run,
   skipMissingSmokeDeps,
@@ -32,11 +41,11 @@ function runFailure(cmd, cwd = root) {
     const output = run(cmd, cwd);
     throw new Error(`Expected command to fail but it succeeded: ${cmd}\n${output.slice(0, 250)}`);
   } catch (err) {
-    if (!err || typeof err !== "object" || typeof err.status !== "number") {
+    if (!(err instanceof CommandFailedError)) {
       throw err;
     }
 
-    return `${err.stdout ?? ""}${err.stderr ?? ""}`;
+    return err.output;
   }
 }
 
@@ -45,15 +54,7 @@ function escapeRegExp(value) {
 }
 
 function missingLocalDeps(deps) {
-  const missing = [];
-  for (const dep of deps) {
-    try {
-      resolveWorkspaceDependency(root, dep);
-    } catch {
-      missing.push(dep);
-    }
-  }
-  return missing;
+  return resolveAndCollectMissing(deps, (dep) => resolveWorkspaceDependency(root, dep));
 }
 
 function installDeps(fixture, depSpecs) {
@@ -66,16 +67,16 @@ function installDeps(fixture, depSpecs) {
 function writeNextCopyFirstApp(fixture) {
   writeFileSync(
     join(fixture, "app/globals.css"),
-    [
+    joinLines(
       '@import "tailwindcss";',
       '@import "../src/styles/styles.css";',
       '@source "../src";',
       "",
-    ].join("\n"),
+    ),
   );
   writeFileSync(
     join(fixture, "app/layout.tsx"),
-    [
+    joinLines(
       "import './globals.css';",
       "import type { ReactNode } from 'react';",
       "",
@@ -83,11 +84,11 @@ function writeNextCopyFirstApp(fixture) {
       "  return <html lang=\"en\"><body>{children}</body></html>;",
       "}",
       "",
-    ].join("\n"),
+    ),
   );
   writeFileSync(
     join(fixture, "app/page.tsx"),
-    [
+    joinLines(
       "'use client';",
       "",
       "import { Button } from '@/components/ui/button';",
@@ -100,31 +101,38 @@ function writeNextCopyFirstApp(fixture) {
       "  );",
       "}",
       "",
-    ].join("\n"),
+    ),
   );
 }
 
 function writeCopyFirstApp(fixture) {
   writeFileSync(
     join(fixture, "src/index.css"),
-    [
+    joinLines(
       '@import "tailwindcss";',
       '@import "./styles/styles.css";',
       '@source ".";',
       "",
-    ].join("\n"),
+    ),
   );
   writeFileSync(
     join(fixture, "src/main.tsx"),
-    [
-      "import React from 'react';",
+    joinLines(
+      "import React, { useRef } from 'react';",
       "import { createRoot } from 'react-dom/client';",
       "import { Button } from '@/components/ui/button';",
       "import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter, DialogClose, DialogCloseIcon } from '@/components/ui/dialog';",
       "import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';",
+      // Exercise the rewritten copy-mode hook: in copy mode dgadd rewrites
+      // keys/navigation's `@diffgazer/keys` imports to this local path. Importing
+      // and calling it proves the rewrite produces a consumable hook, not just a
+      // file that happens to type-check unused.
+      "import { useNavigation } from '@/hooks/use-navigation';",
       "import './index.css';",
       "",
       "function App() {",
+      "  const containerRef = useRef<HTMLDivElement>(null);",
+      "  useNavigation({ containerRef, role: 'option' });",
       "  return (",
       ...uiSmokeAppBody("Copy"),
       "  );",
@@ -132,14 +140,14 @@ function writeCopyFirstApp(fixture) {
       "",
       "createRoot(document.getElementById('root')!).render(<App />);",
       "",
-    ].join("\n"),
+    ),
   );
 }
 
 function writeKeysPackageSelectApp(fixture) {
   writeFileSync(
     join(fixture, "src/main.tsx"),
-    [
+    joinLines(
       "import React from 'react';",
       "import { createRoot } from 'react-dom/client';",
       "import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';",
@@ -158,7 +166,7 @@ function writeKeysPackageSelectApp(fixture) {
       "",
       "createRoot(document.getElementById('root')!).render(<App />);",
       "",
-    ].join("\n"),
+    ),
   );
 }
 
@@ -345,7 +353,7 @@ function runInstallDependencySmoke() {
     if (!installedPackageJson.dependencies?.["class-variance-authority"]) {
       throw new Error("dgadd init without --skip-install did not install class-variance-authority");
     }
-    if (!installedPackageJson.dependencies?.["clsx"]) {
+    if (!installedPackageJson.dependencies?.clsx) {
       throw new Error("dgadd init without --skip-install did not install clsx");
     }
     if (!installedPackageJson.dependencies?.["tailwind-merge"]) {

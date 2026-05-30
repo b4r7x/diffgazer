@@ -1,5 +1,5 @@
-import type { ApiClient, ApiClientConfig, ApiError, RequestOptions } from "./types.js";
-import { SHUTDOWN_TOKEN_HEADER } from "./protocol.js";
+import type { ApiClient, ApiClientConfig, ApiError, RequestOptions, ResponseValidator } from "./types";
+import { SHUTDOWN_TOKEN_HEADER } from "./protocol";
 
 function createApiError(message: string, status: number, code?: string): ApiError {
   const error = new Error(message) as ApiError;
@@ -26,13 +26,28 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
   }
 
   /**
-   * Parses JSON from a response without runtime type validation.
-   * Callers are responsible for validating the shape of T if needed.
+   * Parses a JSON response body.
+   *
+   * Contract: when a `validate` function (e.g. a Zod schema's `.parse`) is
+   * supplied, the body is validated and a failed validation is surfaced as a
+   * structured `ApiError` (HTTP 422) rather than leaking the validator's own
+   * error to the call site. When `validate` is omitted, the body is trusted as
+   * `T` — the caller asserts the response shape and owns the risk of a
+   * malformed payload. Prefer passing a schema for endpoints whose payload is
+   * dynamic or externally controlled.
    */
-  async function parse<T>(response: Response): Promise<T> {
+  async function parse<T>(response: Response, validate?: ResponseValidator<T>): Promise<T> {
     const body = await response.json().catch(() => null);
     if (body === null) {
       throw createApiError("Invalid JSON response", response.status);
+    }
+    if (validate) {
+      try {
+        return validate(body);
+      } catch (cause) {
+        const message = cause instanceof Error ? cause.message : "Response validation failed";
+        throw createApiError(message, 422, "INVALID_RESPONSE");
+      }
     }
     return body as T;
   }
@@ -82,21 +97,21 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
   }
 
   return {
-    get: async <T>(path: string, params?: Record<string, string>): Promise<T> => {
+    get: async <T>(path: string, params?: Record<string, string>, schema?: ResponseValidator<T>): Promise<T> => {
       const response = await send("GET", path, { params });
-      return parse<T>(response);
+      return parse<T>(response, schema);
     },
-    post: async <T>(path: string, body?: unknown, options?: Omit<RequestOptions, "body" | "params">): Promise<T> => {
+    post: async <T>(path: string, body?: unknown, options?: Omit<RequestOptions, "body" | "params">, schema?: ResponseValidator<T>): Promise<T> => {
       const response = await send("POST", path, { body, ...options });
-      return parse<T>(response);
+      return parse<T>(response, schema);
     },
-    put: async <T>(path: string, body?: unknown, options?: Omit<RequestOptions, "body" | "params">): Promise<T> => {
+    put: async <T>(path: string, body?: unknown, options?: Omit<RequestOptions, "body" | "params">, schema?: ResponseValidator<T>): Promise<T> => {
       const response = await send("PUT", path, { body, ...options });
-      return parse<T>(response);
+      return parse<T>(response, schema);
     },
-    delete: async <T>(path: string, params?: Record<string, string>): Promise<T> => {
+    delete: async <T>(path: string, params?: Record<string, string>, schema?: ResponseValidator<T>): Promise<T> => {
       const response = await send("DELETE", path, { params });
-      return parse<T>(response);
+      return parse<T>(response, schema);
     },
     request: send,
   };

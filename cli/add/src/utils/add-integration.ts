@@ -50,6 +50,15 @@ export function applyIntegrationDeps(
   return [...depSet];
 }
 
+async function promptIntegrationMode(skipPrompts: boolean): Promise<ResolvedIntegrationMode> {
+  if (skipPrompts) return "copy";
+  const selectedMode = await promptSelect("Choose keyboard integration mode:", [
+    { value: "copy", label: "Copy hooks", hint: "Copy local navigation hooks from keys registry" },
+    { value: "@diffgazer/keys", label: "Keys package", hint: "Use package imports from @diffgazer/keys" },
+  ]);
+  return selectedMode as ResolvedIntegrationMode;
+}
+
 export async function resolveIntegrations(
   requestedNames: string[],
   mode: IntegrationMode,
@@ -64,20 +73,20 @@ export async function resolveIntegrations(
     return { mode: "none", hasKeyboardIntegration: false };
   }
 
-  if (mode === "none") {
-    throw new Error(
-      "Selected components require keyboard hooks. Use --integration=copy to copy bundled hooks "
-      + "or --integration=keys to import @diffgazer/keys.",
-    );
+  switch (mode) {
+    case "none":
+      throw new Error(
+        "Selected components require keyboard hooks. Use --integration=copy to copy bundled hooks "
+        + "or --integration=keys to import @diffgazer/keys.",
+      );
+    case "copy":
+    case "@diffgazer/keys":
+      return { mode, hasKeyboardIntegration };
+    case "ask":
+      return { mode: await promptIntegrationMode(skipPrompts), hasKeyboardIntegration };
+    default: {
+      const exhaustive: never = mode;
+      throw new Error(`Unhandled integration mode: ${String(exhaustive)}`);
+    }
   }
-
-  if (mode !== "ask") return { mode, hasKeyboardIntegration };
-  if (skipPrompts) return { mode: "copy", hasKeyboardIntegration };
-
-  const selectedMode = await promptSelect("Choose keyboard integration mode:", [
-    { value: "copy", label: "Copy hooks", hint: "Copy local navigation hooks from keys registry" },
-    { value: "@diffgazer/keys", label: "Keys package", hint: "Use package imports from @diffgazer/keys" },
-  ]);
-
-  return { mode: selectedMode as ResolvedIntegrationMode, hasKeyboardIntegration };
 }

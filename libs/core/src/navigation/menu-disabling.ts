@@ -1,4 +1,4 @@
-import type { MenuAction } from "../schemas/presentation/navigation.js";
+import type { MenuAction } from "../schemas/presentation/navigation";
 
 export interface MenuDisablingContext {
   isTrusted: boolean;

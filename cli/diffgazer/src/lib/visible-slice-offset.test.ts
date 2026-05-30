@@ -1,5 +1,5 @@
 import { test, describe, expect } from "vitest";
-import { getVisibleSliceOffset } from "./visible-slice-offset.js";
+import { getVisibleSliceOffset } from "./visible-slice-offset";
 
 describe("getVisibleSliceOffset", () => {
   test("returns 0 when total fits in the window", () => {

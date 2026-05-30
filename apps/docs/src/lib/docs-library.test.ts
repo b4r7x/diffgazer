@@ -398,6 +398,7 @@ describe("docs-library source path mapping", () => {
     const hookPages = listRepoFiles("libs/ui/docs/content/hooks", ".mdx")
 
     for (const file of [...componentPages, ...hookPages]) {
+      if (file.endsWith("/index.mdx")) continue
       const source = readAbsolute(file)
       const relPath = file.slice(repoRoot.length + 1)
       expect(
@@ -411,6 +412,7 @@ describe("docs-library source path mapping", () => {
     const hookPages = listRepoFiles("libs/keys/docs/content/hooks", ".mdx")
 
     for (const file of hookPages) {
+      if (file.endsWith("/index.mdx")) continue
       const source = readAbsolute(file)
       const relPath = file.slice(repoRoot.length + 1)
       expect(
@@ -427,7 +429,7 @@ describe("docs-library source path mapping", () => {
       .sort()
     const documentedHookSlugs = listRepoFiles("libs/keys/docs/content/hooks", ".mdx")
       .map((file) => file.replace(/\.mdx$/, "").split("/").at(-1))
-      .filter((slug): slug is string => typeof slug === "string")
+      .filter((slug): slug is string => typeof slug === "string" && slug !== "index")
       .sort()
 
     expect(documentedHookSlugs).toEqual(exportedHookSlugs)

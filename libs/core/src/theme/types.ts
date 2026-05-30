@@ -1,4 +1,4 @@
-import type { ThemeTokenKey } from "./token-keys.js";
+import type { ThemeTokenKey } from "./token-keys";
 
 /**
  * Per-app theme token map. CLI palettes resolve to hex strings; web maps to

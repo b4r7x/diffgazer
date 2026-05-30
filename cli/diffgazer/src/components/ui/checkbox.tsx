@@ -1,10 +1,10 @@
 import { createContext, useState, useContext } from "react";
 import type { ReactElement, ReactNode } from "react";
 import { Box, Text, useInput } from "ink";
-import { useTheme } from "../../theme/theme-context.js";
-import type { CliColorTokens } from "../../theme/palettes.js";
-import { collectChildItems } from "../../lib/list-navigation.js";
-import { moveHighlight } from "../../lib/highlight-navigation.js";
+import { useTheme } from "../../theme/theme-context";
+import type { CliColorTokens } from "../../theme/palettes";
+import { collectChildItems } from "../../lib/list-navigation";
+import { moveHighlight } from "../../lib/highlight-navigation";
 
 export interface CheckboxGroupProps<T extends string = string> {
   value?: T[];

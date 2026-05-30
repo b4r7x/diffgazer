@@ -1,5 +1,5 @@
 import { test, describe, expect } from "vitest";
-import { getCompatibilityLabel } from "./model-select-helpers.js";
+import { getCompatibilityLabel } from "./model-select-helpers";
 
 describe("getCompatibilityLabel", () => {
   test("reports no models available when total is zero", () => {

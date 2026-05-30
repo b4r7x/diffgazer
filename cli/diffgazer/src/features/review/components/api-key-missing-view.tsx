@@ -1,7 +1,7 @@
 import { Box } from "ink";
-import { Callout } from "../../../components/ui/callout.js";
-import { Button } from "../../../components/ui/button.js";
-import { Panel } from "../../../components/ui/panel.js";
+import { Callout } from "../../../components/ui/callout";
+import { Button } from "../../../components/ui/button";
+import { Panel } from "../../../components/ui/panel";
 
 export interface ApiKeyMissingViewProps {
   provider?: string;

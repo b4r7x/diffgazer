@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest"
-import { composeRefs } from "../compose-refs.js"
+import { composeRefs } from "../compose-refs"
 
 describe("composeRefs", () => {
   it("calls function refs with the element", () => {

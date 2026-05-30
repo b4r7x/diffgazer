@@ -1,6 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
-import type { BoundApi } from "../../bound.js";
+import type { BoundApi } from "../../bound";
 
 export const reviewQueries = {
   all: () => ["review"] as const,

@@ -4,7 +4,7 @@ import { getVerticalArrowDirection, useKey } from "@diffgazer/keys";
 import type { AIProvider } from "@diffgazer/core/schemas/config";
 import { ApiKeyMethodSelector } from "@/components/shared/api-key-method-selector";
 import type { FocusElement } from "@/types/focus-element";
-import type { InputMethod } from "@/types/input-method";
+import type { InputMethod } from "@diffgazer/core/onboarding";
 
 interface ApiKeyStepProps {
   provider: AIProvider;

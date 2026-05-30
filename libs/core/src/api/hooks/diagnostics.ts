@@ -1,7 +1,7 @@
 import type { SetupStatus } from "@diffgazer/core/schemas/config";
-import { useServerStatus, type ServerState } from "./server.js";
-import { useInit } from "./config.js";
-import { useReviewContext, useRefreshReviewContext } from "./review.js";
+import { useServerStatus, type ServerState } from "./server";
+import { useInit } from "./config";
+import { useReviewContext, useRefreshReviewContext } from "./review";
 
 export type ContextStatus = "loading" | "ready" | "missing" | "error";
 

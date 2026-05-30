@@ -2,9 +2,9 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, renderHook, screen, cleanup, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
-import { useKey } from "./use-key";
-import { useScope } from "./use-scope";
-import { fireKey, KeyboardWrapper, StrictKeyboardWrapper } from "../testing/test-utils";
+import { useKey } from "./use-key.js";
+import { useScope } from "./use-scope.js";
+import { fireKey, KeyboardWrapper, StrictKeyboardWrapper } from "../testing/test-utils.js";
 
 describe("useKey", () => {
   afterEach(() => {
@@ -151,6 +151,49 @@ describe("useKey", () => {
       fireKey("Escape");
       expect(secondHandler).toHaveBeenCalled();
       expect(callCount).toBe(2);
+    });
+
+    it("keeps registration order stable across rerenders when the key set is unchanged", async () => {
+      const user = userEvent.setup();
+      const winner = vi.fn();
+
+      // Two handlers on the same key. Dispatch is priority-ordered: the
+      // last-registered handler wins (see the decline test above). If a rerender
+      // re-registered the first handler, it would move to the tail and start
+      // winning — so a stable winner across rerenders proves no re-registration.
+      function First() {
+        const [bump, setBump] = useState(0);
+        useKey("x", () => {});
+        return (
+          <button type="button" onClick={() => setBump(bump + 1)}>
+            Bump first
+          </button>
+        );
+      }
+
+      function Second() {
+        useKey("x", winner);
+        return null;
+      }
+
+      render(
+        <>
+          <First />
+          <Second />
+        </>,
+        { wrapper: KeyboardWrapper },
+      );
+
+      act(() => fireKey("x"));
+      expect(winner).toHaveBeenCalledTimes(1);
+
+      // Re-render only First several times; its key set never changes.
+      await user.click(screen.getByRole("button", { name: "Bump first" }));
+      await user.click(screen.getByRole("button", { name: "Bump first" }));
+
+      act(() => fireKey("x"));
+      // Second still wins, proving First did not re-register to the tail.
+      expect(winner).toHaveBeenCalledTimes(2);
     });
   });
 

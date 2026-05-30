@@ -2,10 +2,10 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, act, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useEffect, useRef, type ReactNode } from "react";
-import { useKeyboardContext } from "../context/keyboard-context";
-import { useScope } from "../hooks/use-scope";
-import { DECLINE } from "../core/normalize-key-input";
-import { fireKey as pressKey, KeyboardWrapper } from "../testing/test-utils";
+import { useKeyboardContext } from "../context/keyboard-context.js";
+import { useScope } from "../hooks/use-scope.js";
+import { DECLINE } from "../core/normalize-key-input.js";
+import { fireKey as pressKey, KeyboardWrapper } from "../testing/test-utils.js";
 
 function fireKeyFrom(element: Element, key: string) {
   act(() => {

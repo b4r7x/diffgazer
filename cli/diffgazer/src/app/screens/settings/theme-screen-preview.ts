@@ -9,8 +9,8 @@ import {
   darkPalette,
   lightPalette,
   type CliColorTokens,
-} from "../../../theme/palettes.js";
-import type { CliTheme } from "../../../features/settings/components/theme-selector.js";
+} from "../../../theme/palettes";
+import type { CliTheme } from "../../../features/settings/components/theme-selector";
 
 /** Palette swatch grouping shown in the Live Preview panel. */
 export const TOKEN_GROUPS: ReadonlyArray<{

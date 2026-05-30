@@ -1,9 +1,9 @@
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { axe } from "../../../testing/utils.js"
+import { axe } from "../../../testing/utils"
 import { describe, it, expect } from "vitest"
-import { Pager } from "./index.js"
-import type { PagerLinkRenderProps } from "./pager-link.js"
+import { Pager } from "./index"
+import type { PagerLinkRenderProps } from "./pager-link"
 
 describe("Pager", () => {
   it("links are keyboard accessible", async () => {

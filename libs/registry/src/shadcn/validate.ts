@@ -49,22 +49,26 @@ const PublicItemSchema = RegistryItemSchema.extend({
   files: z.array(RegistryFileSchema).optional(),
 }).passthrough();
 
-const itemFields = Object.keys(RegistryItemSchema.shape).filter((field) => field !== "files");
+// Keys of the Zod shape are exactly `keyof RegistryItem`, so this assertion is sound
+// and lets call sites index `RegistryItem` without per-field casts.
+const itemFields = (Object.keys(RegistryItemSchema.shape) as (keyof RegistryItem)[]).filter(
+  (field) => field !== "files",
+);
 const fileMetadataFields = Object.keys(RegistryFileSchema.shape).filter((field) => field !== "content");
 const arrayDefaultFields = new Set(["dependencies", "registryDependencies", "devDependencies", "envVars", "categories"]);
 
 function compareItemFields(
   prefix: string,
   expectedItem: RegistryItem,
-  actualItem: Partial<Record<keyof RegistryItem, unknown>>,
+  actualItem: Partial<RegistryItem>,
   itemName: string,
   fixCommand: string,
 ): void {
   for (const field of itemFields) {
     ensureSameValue({
       label: `${prefix}${field}`,
-      a: expectedItem[field as keyof RegistryItem],
-      b: actualItem[field as keyof RegistryItem],
+      a: expectedItem[field],
+      b: actualItem[field],
       defaultValue: arrayDefaultFields.has(field) ? [] : undefined,
       itemName,
       fixCommand,

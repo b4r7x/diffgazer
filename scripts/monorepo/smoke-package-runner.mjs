@@ -6,6 +6,7 @@ import {
   networkAllowed,
   packageNameFromSpec,
   pnpmAddFlags,
+  resolveAndCollectMissing,
   skipMissingSmokeDeps,
 } from "./smoke-shared.mjs";
 
@@ -93,18 +94,14 @@ function missingLocalInstallDeps(root, workspacePackage, smoke) {
     ...(smoke.workspaceDeps ?? []),
     ...(smoke.dependencySourcePackages ?? []),
   ];
-  const missing = [];
 
-  for (const depSpec of smoke.installDeps ?? []) {
-    const depName = packageNameFromSpec(depSpec);
-    if (!depName || depName.startsWith("@diffgazer/")) continue;
+  const depNames = (smoke.installDeps ?? [])
+    .map((depSpec) => packageNameFromSpec(depSpec))
+    .filter((depName) => depName && !depName.startsWith("@diffgazer/"));
 
-    try {
-      resolveInstalledDependency(root, workspacePackage, depName, dependencySourcePackages);
-    } catch {
-      missing.push(depName);
-    }
-  }
+  const missing = resolveAndCollectMissing(depNames, (depName) =>
+    resolveInstalledDependency(root, workspacePackage, depName, dependencySourcePackages),
+  );
 
   return [...new Set(missing)];
 }
@@ -119,7 +116,7 @@ export function shouldRunPackageSmoke(root, item) {
 }
 
 function parsePackOutput(raw) {
-  const starts = [...raw.matchAll(/[\[{]/g)].map((match) => match.index ?? 0);
+  const starts = [...raw.matchAll(/[[{]/g)].map((match) => match.index ?? 0);
   const ends = [...raw.matchAll(/[\]}]/g)].map((match) => match.index ?? 0).reverse();
 
   for (const start of starts) {

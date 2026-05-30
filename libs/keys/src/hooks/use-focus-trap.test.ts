@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { renderHook, cleanup, act } from "@testing-library/react";
 import { useRef, type RefObject } from "react";
-import { useFocusTrap } from "./use-focus-trap";
+import { useFocusTrap } from "./use-focus-trap.js";
 
 // File convention: this suite asserts focus-trap focus movement to specific
 // elements identified by `#id`. The buttons are intentionally labelled "A"/"B"/"C"

@@ -207,6 +207,8 @@ export function CheckboxGroup<T extends string = string>(props: CheckboxGroupPro
         onKeyDown={handleKeyDown}
       >
         {required && (
+          // Validation-only mirror: aria-hidden keeps it out of the a11y tree,
+          // so naming and invalid state live on the visible role="group".
           <input
             type="checkbox"
             required
@@ -214,8 +216,6 @@ export function CheckboxGroup<T extends string = string>(props: CheckboxGroupPro
             disabled={disabled}
             tabIndex={-1}
             aria-hidden={true}
-            aria-label={ariaLabel ?? (typeof label === "string" ? label : "Required checkbox group")}
-            aria-labelledby={ariaLabelledBy}
             readOnly
             className="sr-only"
             onInvalid={(event) => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
-import { buildReviewSummary } from "./build-summary.js";
+import { buildReviewSummary } from "./build-summary";
 
 function makeIssue(overrides: Partial<ReviewIssue> & Pick<ReviewIssue, "id" | "severity">): ReviewIssue {
   return {

@@ -117,9 +117,11 @@ export async function buildHooksData(params: {
     logger.info(`Skipped hook MDX generation (${hooksCount} hooks, hand-authored MDX)`)
   }
 
-  const metaPages = Object.values(enrichedData)
+  const hookPages = Object.values(enrichedData)
     .sort((a, b) => a.name.localeCompare(b.name))
     .map((h) => h.name)
+  const hasIndexPage = existsSync(resolve(hooksConfig.contentDir, "index.mdx"))
+  const metaPages = hasIndexPage ? ["index", ...hookPages] : hookPages
   writeJson(
     resolve(hooksConfig.contentDir, "meta.json"),
     { title: "Hooks", pages: metaPages },

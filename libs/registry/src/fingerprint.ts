@@ -10,7 +10,7 @@ export function computeInputsFingerprint(rootDir: string, inputs: string[], logg
   for (const inputRel of inputs) {
     const inputAbs = resolve(rootDir, inputRel);
     if (!existsSync(inputAbs)) {
-      logger.warn?.(`Fingerprint input not found, skipping: ${inputAbs}`);
+      logger.warn(`Fingerprint input not found, skipping: ${inputAbs}`);
       continue;
     }
     const stats = statSync(inputAbs);

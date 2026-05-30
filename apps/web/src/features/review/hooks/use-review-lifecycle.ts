@@ -54,7 +54,7 @@ export function useReviewLifecycle({ mode, onComplete, onStreamNotFound }: UseRe
     },
   });
 
-  streamStateRef.current = base.streamState;
+  streamStateRef.current = base.stream.state;
 
   const handleCancel = () => {
     base.stream.cancel(streamStateRef.current?.reviewId ?? null);
@@ -62,7 +62,7 @@ export function useReviewLifecycle({ mode, onComplete, onStreamNotFound }: UseRe
   };
 
   const handleViewResults = () => {
-    base.skipDelay();
+    base.completion.skipDelay();
   };
 
   const handleSetupProvider = () => {
@@ -76,12 +76,12 @@ export function useReviewLifecycle({ mode, onComplete, onStreamNotFound }: UseRe
   };
 
   return {
-    state: base.streamState,
+    state: base.stream.state,
     isConfigured,
     provider,
     model,
-    loadingMessage: base.loadingMessage,
-    isNoDiffError: base.isNoDiffError,
+    loadingMessage: base.checks.loadingMessage,
+    isNoDiffError: base.checks.isNoDiffError,
     handleCancel,
     handleViewResults,
     handleSetupProvider,

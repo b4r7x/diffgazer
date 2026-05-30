@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, type ReactNode } from "react";
-import type { Route, ScreenName } from "./routes.js";
-import { getBackTarget } from "./back-navigation.js";
+import { createContext, useContext, useState, type ReactNode } from "react";
+import type { Route } from "./routes";
+import { getBackTarget } from "./back-navigation";
 
 const MAX_STACK_SIZE = 20;
 
@@ -64,11 +64,7 @@ export function NavigationProvider({
     canGoBack,
   };
 
-  return (
-    <NavigationContext value={value}>
-      {children}
-    </NavigationContext>
-  );
+  return <NavigationContext value={value}>{children}</NavigationContext>;
 }
 
 export function useNavigation(): NavigationContextValue {

@@ -1,5 +1,5 @@
-import type { DiffChange, DiffHunk, ParsedDiff } from "./parse.js";
-import { buildLcsTable } from "./lcs.js";
+import type { DiffChange, DiffHunk, ParsedDiff } from "./parse";
+import { buildLcsTable } from "./lcs";
 
 const CONTEXT = 3;
 

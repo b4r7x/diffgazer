@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { typeaheadSearch } from "../typeahead.js";
+import { typeaheadSearch } from "../typeahead";
 
 interface TestItem {
   id: string;

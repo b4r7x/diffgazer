@@ -41,6 +41,8 @@ export const selectableIndicatorVariants = cva("font-bold shrink-0 whitespace-no
       md: "min-w-[4ch]",
       lg: "text-lg min-w-[4ch]",
     },
+    // checked/highlighted carry no standalone classes but must be declared so the
+    // typed call sites can pass them and the compound variant below can match.
     checked: {
       true: "",
       false: "",

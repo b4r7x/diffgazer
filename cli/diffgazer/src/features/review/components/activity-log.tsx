@@ -1,8 +1,8 @@
 import { Box, Text } from "ink";
-import { useTheme } from "../../../theme/theme-context.js";
-import type { CliColorTokens } from "../../../theme/palettes.js";
-import { ScrollArea } from "../../../components/ui/scroll-area.js";
-import { Badge } from "../../../components/ui/badge.js";
+import { useTheme } from "../../../theme/theme-context";
+import type { CliColorTokens } from "../../../theme/palettes";
+import { ScrollArea } from "../../../components/ui/scroll-area";
+import { Badge } from "../../../components/ui/badge";
 import { type LogEntryData, TAG_BADGE_VARIANTS } from "@diffgazer/core/schemas/presentation";
 import { formatTimestamp } from "@diffgazer/core/format";
 

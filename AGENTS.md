@@ -36,6 +36,11 @@ If your environment supports skills, load these before acting:
 - `libs/registry` owns registry contracts, shadcn/public registry validation/building, copy bundle behavior, and shared CLI workflow helpers.
 - `cli/add` owns the user-facing add/remove/list/diff commands and must preserve copy, package, and direct registry consumption paths.
 - `cli/server` owns the embedded Hono backend (review pipeline, git, config, shutdown token) consumed only by the `diffgazer` CLI. It is CLI-internal, not a reusable primitive, and ships bundled into the `diffgazer` binary via tsup `noExternal`.
+- `libs/core` owns private business logic shared between the CLI and apps: Zod schemas/types (config, review, events, presentation, git, context), result/error types, format/string utilities, review state machines, provider filtering, API client factories, shared env/port parsing, and form/API/derived-state React hooks. It must not import from `apps/*` or `cli/*`.
+- `cli/diffgazer` owns the public `diffgazer` CLI binary with two modes: web (embeds the built `@diffgazer/web` SPA behind a local `cli/server` Hono server) and TUI (Ink terminal UI). It is a binary, not a library; it stays thin and consumes `libs/core`, `libs/keys`, and `cli/server` rather than holding app-specific features.
+- `apps/docs` owns the component and hook documentation site. It consumes `libs/core`, `libs/keys`, `libs/registry`, and `libs/ui` to build the registry browser, theme visualizer, and consumption examples. It must consume `@diffgazer/ui`, never mirror it; extract only generic utilities from docs, never docs-specific layout.
+- `apps/landing` owns the marketing landing page. It uses only `libs/ui` (currently for theme CSS) and carries no product/domain logic and no docs utilities.
+- `apps/hub` is a stub (planned portfolio/app-index). Keep it scaffolded to sibling-app conventions and free of app-specific logic until a documented boundary exists.
 
 ## Extraction Rules
 

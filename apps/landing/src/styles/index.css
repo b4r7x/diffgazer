@@ -1,5 +1,15 @@
 @import "tailwindcss";
+/* @diffgazer/ui is a dependency for CSS theme tokens only (TUI palette,
+   base + component styles). Landing imports no @diffgazer/ui components, so
+   the package is invisible to a JS-only dependency check — keep it declared. */
 @import "@diffgazer/ui/theme-base.css";
 @import "@diffgazer/ui/theme.css";
 @import "@diffgazer/ui/styles.css";
 @source "../";
+
+body {
+  min-height: 100vh;
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-mono);
+}

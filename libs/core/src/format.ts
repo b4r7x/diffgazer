@@ -22,10 +22,6 @@ export function formatTimestamp(timestamp: Date | string): string {
   return `${hours}:${minutes}:${seconds}`;
 }
 
-function formatTimestampLocale(date: Date | string | number): string {
-  return new Date(date).toLocaleString();
-}
-
 export function getDateKey(dateStr: string): string {
   return dateStr.slice(0, 10);
 }
@@ -61,5 +57,5 @@ export function formatTimestampOrNA(
   value: string | null | undefined,
   fallback = "N/A",
 ): string {
-  return value ? formatTimestampLocale(value) : fallback;
+  return value ? new Date(value).toLocaleString() : fallback;
 }

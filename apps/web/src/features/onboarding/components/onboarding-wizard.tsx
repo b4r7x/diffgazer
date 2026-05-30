@@ -1,14 +1,10 @@
-import { useEffect, useRef } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { useEffect, useEffectEvent, useRef } from "react";
 import { CardLayout } from "@/components/ui/card-layout";
 import { Button } from "@diffgazer/ui/components/button";
 import { Callout } from "@diffgazer/ui/components/callout";
 import { cn } from "@diffgazer/ui/lib/utils";
-import type { Shortcut } from "@diffgazer/core/schemas/presentation";
-import { usePageFooter } from "@diffgazer/core/footer";
-import { useActionRowNavigation } from "@diffgazer/keys";
-import { useScope } from "@diffgazer/keys";
 import { useOnboarding } from "../hooks/use-onboarding";
+import { useOnboardingKeyboard } from "../hooks/use-onboarding-keyboard";
 import { HorizontalStepper } from "@diffgazer/ui/components/horizontal-stepper";
 import { StorageStep } from "./steps/storage-step";
 import { ProviderStep } from "./steps/provider-step";
@@ -17,93 +13,9 @@ import { ModelStep } from "./steps/model-step";
 import { AnalysisStep } from "./steps/analysis-step";
 import { ExecutionStep } from "./steps/execution-step";
 import type { AgentExecution } from "@diffgazer/core/schemas/config";
-import {
-  canProceed as canProceedForStep,
-  type OnboardingStep,
-  type WizardData,
-} from "@diffgazer/core/onboarding";
-
-const STEP_TITLES: Record<OnboardingStep, string> = {
-  storage: "Secrets Storage",
-  provider: "AI Provider",
-  "api-key": "API Key",
-  model: "Model Selection",
-  analysis: "Analysis Configuration",
-  execution: "Agent Execution",
-};
-
-const STEP_LABELS: Record<OnboardingStep, string> = {
-  storage: "Storage",
-  provider: "Provider",
-  "api-key": "API Key",
-  model: "Model",
-  analysis: "Analysis",
-  execution: "Execution",
-};
-
-function getStepShortcuts(
-  currentStep: OnboardingStep,
-  isButtonsZone: boolean,
-  actionDisabled = false,
-): Shortcut[] {
-  if (isButtonsZone) {
-    return [
-      { key: "←/→", label: "Move Action" },
-      { key: "Enter/Space", label: "Activate Action", disabled: actionDisabled },
-      { key: "↑", label: "Back to Options" },
-    ];
-  }
-
-  switch (currentStep) {
-    case "storage":
-      return [
-        { key: "↑/↓", label: "Navigate" },
-        { key: "Space", label: "Select Storage" },
-        { key: "Enter", label: "Select & Next" },
-        { key: "↓", label: "Focus Actions" },
-      ];
-    case "provider":
-      return [
-        { key: "↑/↓", label: "Navigate Providers" },
-        { key: "Space", label: "Select Provider" },
-        { key: "Enter", label: "Select & Next" },
-        { key: "↓", label: "Focus Actions" },
-      ];
-    case "api-key":
-      return [
-        { key: "↑/↓", label: "Navigate Fields" },
-        { key: "Space", label: "Select Method" },
-        { key: "Enter", label: "Select & Next" },
-        { key: "↓", label: "Focus Actions" },
-      ];
-    case "model":
-      return [
-        { key: "↑/↓", label: "Navigate Models" },
-        { key: "Space", label: "Select Model" },
-        { key: "Enter", label: "Select & Next" },
-        { key: "↓", label: "Focus Actions" },
-      ];
-    case "analysis":
-      return [
-        { key: "↑/↓", label: "Navigate" },
-        { key: "Space", label: "Toggle Option" },
-        { key: "Enter", label: "Toggle & Next" },
-        { key: "↓", label: "Focus Actions" },
-      ];
-    case "execution":
-      return [
-        { key: "↑/↓", label: "Navigate Modes" },
-        { key: "Space", label: "Select Mode" },
-        { key: "Enter", label: "Select & Next" },
-        { key: "↓", label: "Focus Actions" },
-      ];
-    default:
-      return [];
-  }
-}
+import { STEP_LABELS, STEP_TITLES } from "./onboarding-shortcuts";
 
 export function OnboardingWizard() {
-  const navigate = useNavigate();
   const focusFallbackRef = useRef<HTMLDivElement>(null);
   const {
     currentStep,
@@ -124,93 +36,35 @@ export function OnboardingWizard() {
   } = useOnboarding();
 
   // Clean up early-saved credentials if wizard is abandoned (unmount without completing)
-  const cleanupRef = useRef(cleanupEarlySave);
-  cleanupRef.current = cleanupEarlySave;
+  const runCleanup = useEffectEvent(() => {
+    void cleanupEarlySave();
+  });
   useEffect(() => {
-    return () => { void cleanupRef.current(); };
+    return () => runCleanup();
   }, []);
 
-  const buttonCount = isFirstStep ? 1 : 2;
-  const primaryButtonIndex = isFirstStep ? 0 : 1;
-  const isBusy = isSubmitting || isEarlySaving;
-  const canActivatePrimary = isLastStep ? canProceed && !isBusy : canProceed && !isEarlySaving;
-  const disabledFooterActions = isFirstStep
-    ? [!canActivatePrimary]
-    : [isBusy, !canActivatePrimary];
-
-  useScope("onboarding");
-
-  const footer = useActionRowNavigation({
-    enabled: true,
-    actionCount: buttonCount,
-    disabledActions: disabledFooterActions,
-    disabledFocusFallbackRef: focusFallbackRef,
-    allowInInput: true,
-    onAction: (index) => {
-      if (isFirstStep) {
-        handlePrimaryAction();
-        return;
-      }
-      if (index === 0) {
-        handleBack();
-        return;
-      }
-      handlePrimaryAction();
-    },
+  const {
+    footer,
+    primaryButtonIndex,
+    isBusy,
+    canActivatePrimary,
+    handleBack,
+    handlePrimaryAction,
+    handleStepBoundary,
+    handleStepCommit,
+  } = useOnboardingKeyboard({
+    currentStep,
+    wizardData,
+    isFirstStep,
+    isLastStep,
+    canProceed,
+    isSubmitting,
+    isEarlySaving,
+    next,
+    back,
+    complete,
+    focusFallbackRef,
   });
-
-  const handleNext = () => {
-    next();
-    footer.reset();
-  };
-
-  const handleBack = () => {
-    back();
-    footer.reset();
-  };
-
-  const handleComplete = async () => {
-    try {
-      await complete();
-      navigate({ to: "/" });
-    } catch {
-      // Error already displayed by useOnboarding's error state
-    }
-  };
-
-  const handlePrimaryAction = () => {
-    if (!canActivatePrimary) return;
-    if (isLastStep) {
-      void handleComplete();
-    } else {
-      handleNext();
-    }
-  };
-
-  usePageFooter({
-    shortcuts: getStepShortcuts(
-      currentStep,
-      footer.inActions,
-      footer.isFocusedActionDisabled,
-    ),
-  });
-
-  const handleStepBoundary = (direction: "up" | "down") => {
-    if (direction !== "down") return;
-    footer.enterActions();
-  };
-
-  const handleStepCommit = (partial: Partial<WizardData> = {}) => {
-    const projectedData = { ...wizardData, ...partial };
-    if (!canProceedForStep(currentStep, projectedData)) return;
-
-    if (isLastStep) {
-      footer.enterActions(primaryButtonIndex);
-      return;
-    }
-
-    handleNext();
-  };
 
   const renderStep = () => {
     switch (currentStep) {

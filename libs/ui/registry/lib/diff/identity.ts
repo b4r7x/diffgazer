@@ -1,4 +1,4 @@
-import type { ParsedDiff } from "./parse.js";
+import type { ParsedDiff } from "./parse";
 
 export function parsedDiffIdentity(parsed: ParsedDiff): string {
   const hunks = parsed.hunks

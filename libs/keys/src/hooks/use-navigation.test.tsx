@@ -1,9 +1,9 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { afterEach, describe, expect, expectTypeOf, it, vi } from "vitest";
-import { testNavigationBehavior } from "../testing/navigation-behavior";
-import { useNavigation, type UseNavigationOptions, type UseNavigationReturn } from "./use-navigation";
+import { testNavigationBehavior } from "../testing/navigation-behavior.js";
+import { useNavigation, type UseNavigationOptions, type UseNavigationReturn } from "./use-navigation.js";
 
 function itemId(value: string) {
   return value === "" ? "item-empty" : `item-${value}`;
@@ -115,6 +115,59 @@ describe("useNavigation", () => {
     await user.keyboard("{ArrowUp}{ArrowUp}{ArrowUp}");
     expect(onNavigationBoundaryReached).toHaveBeenCalledWith("previous", expect.any(KeyboardEvent), "ArrowUp");
     expectActiveOptionText("a");
+  });
+
+  it("invokes the latest inline boundary callback after rerenders without losing navigation", async () => {
+    const spy = vi.fn();
+
+    function RerenderingHost() {
+      const [tick, setTick] = useState(0);
+      const ref = useRef<HTMLDivElement>(null);
+      const result = useNavigation({
+        containerRef: ref,
+        role: "option",
+        defaultHighlighted: "c",
+        wrap: false,
+        // fresh inline closure on every render; it must not become stale and
+        // must not break navigation through repeated re-registration.
+        onNavigationBoundaryReached: (direction) => spy(direction, tick),
+      });
+
+      return (
+        <div>
+          <button type="button" onClick={() => setTick((value) => value + 1)}>
+            Bump
+          </button>
+          <div
+            ref={ref}
+            role="listbox"
+            aria-label="Items"
+            aria-activedescendant={result.highlighted === null ? undefined : itemId(result.highlighted)}
+            tabIndex={0}
+            onKeyDown={result.onKeyDown}
+          >
+            <div id="item-a" role="option" data-value="a">a</div>
+            <div id="item-b" role="option" data-value="b">b</div>
+            <div id="item-c" role="option" data-value="c">c</div>
+          </div>
+        </div>
+      );
+    }
+
+    render(<RerenderingHost />);
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Bump" }));
+    await user.click(screen.getByRole("button", { name: "Bump" }));
+    await user.click(screen.getByRole("listbox", { name: "Items" }));
+
+    await user.keyboard("{ArrowDown}");
+    // latest closure fires (tick === 2), proving no stale capture from re-registration
+    expect(spy).toHaveBeenLastCalledWith("next", 2);
+
+    // navigation still works after the churn
+    await user.keyboard("{ArrowUp}");
+    expectActiveOptionText("b");
   });
 
   it("supports Home, End, and starting navigation without an initial highlight", async () => {

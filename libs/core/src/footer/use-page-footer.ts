@@ -1,7 +1,7 @@
 import { useEffect } from "react";
-import type { Shortcut } from "../schemas/presentation/index.js";
-import { useFooterActions } from "./provider.js";
-import type { PageFooterOptions } from "./types.js";
+import type { Shortcut } from "../schemas/presentation/index";
+import { useFooterActions } from "./provider";
+import type { PageFooterOptions } from "./types";
 
 const EMPTY_SHORTCUTS: Shortcut[] = [];
 

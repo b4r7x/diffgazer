@@ -66,7 +66,8 @@ async function expectFileMissingEventually(filePath: string): Promise<void> {
 }
 
 async function loadStore() {
-  return import("./store.js");
+  const { getStore } = await import("./store.js");
+  return getStore();
 }
 
 function trustConfig(overrides: Partial<TrustConfig> = {}): TrustConfig {

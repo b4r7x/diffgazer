@@ -1,5 +1,5 @@
 import { test, describe, expect } from "vitest";
-import { formatIssueLineRange } from "./issue-details-helpers.js";
+import { formatIssueLineRange } from "./issue-details-helpers";
 
 describe("formatIssueLineRange", () => {
   test("renders '?' when start is missing", () => {

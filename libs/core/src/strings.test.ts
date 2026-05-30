@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { capitalize, truncate } from "./strings.js";
+import { capitalize, truncate } from "./strings";
 
 describe("capitalize", () => {
   it.each([

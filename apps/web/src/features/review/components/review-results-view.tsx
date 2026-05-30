@@ -47,25 +47,30 @@ export function ReviewResultsView({ issues, reviewId, initialIssueId }: ReviewRe
       </div>
       <div data-row="review" className="flex flex-1 overflow-hidden">
         <IssueListPane
-          issues={filteredIssues}
-          allIssues={issues}
-          selectedIssueId={selectedIssueId}
-          onSelectIssue={setSelectedIssueId}
-          onHighlightIssue={selectIssue}
-          onListBoundaryReached={handleListBoundary}
-          severityFilter={severityFilter}
-          onSeverityFilterChange={setSeverityFilter}
-          onSeverityFilterReset={resetSeverityFilter}
-          onSeverityFilterBoundary={handleSeverityFilterBoundary}
-          isFocused={focusZone === "list"}
-          isFilterFocused={focusZone === "filters"}
-          focusedFilterIndex={focusedFilterIndex}
-          onFocusedFilterIndexChange={setFocusedFilterIndex}
-          filterRef={filterRef}
-          onFilterKeyDown={handleFilterKeyDown}
-          highlightedIssueId={highlightedIssueId}
-          onListFocus={handleListFocus}
-          listRef={listRef}
+          listState={{
+            issues: filteredIssues,
+            allIssues: issues,
+            selectedIssueId,
+            highlightedIssueId,
+          }}
+          callbacks={{
+            onSelectIssue: setSelectedIssueId,
+            onHighlightIssue: selectIssue,
+            onListBoundaryReached: handleListBoundary,
+            onListFocus: handleListFocus,
+          }}
+          filter={{
+            severityFilter,
+            onSeverityFilterChange: setSeverityFilter,
+            onSeverityFilterReset: resetSeverityFilter,
+            onSeverityFilterBoundary: handleSeverityFilterBoundary,
+            focusedFilterIndex,
+            onFocusedFilterIndexChange: setFocusedFilterIndex,
+            isFilterFocused: focusZone === "filters",
+            onFilterKeyDown: handleFilterKeyDown,
+          }}
+          refs={{ filterRef, listRef }}
+          ui={{ isFocused: focusZone === "list" }}
         />
         <IssueDetailsPane
           issue={selectedIssue}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { ServerController } from "../lib/servers/create-process-server.js";
+import type { ServerController } from "../lib/servers/create-process-server";
 
 const activeServerSets = new Set<readonly ServerController[]>();
 

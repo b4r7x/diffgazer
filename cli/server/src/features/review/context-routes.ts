@@ -16,10 +16,12 @@ export async function getContextHandler(c: Context): Promise<Response> {
   const contextDir = getProjectDiffgazerDir(projectRoot);
   const snapshot = await loadContextSnapshot(contextDir);
 
-  if (!snapshot) {
+  if (!snapshot || !snapshot.markdown.trim()) {
     return errorResponse(c, "Context snapshot not found", ErrorCode.NOT_FOUND, 404);
   }
 
+  // `text` and `markdown` carry the same content; the web client offers both a
+  // plain-text and a Markdown download of the snapshot from these two fields.
   return c.json({
     text: snapshot.markdown,
     markdown: snapshot.markdown,

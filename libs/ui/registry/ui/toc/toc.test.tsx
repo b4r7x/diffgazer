@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
-import { axe } from "../../../testing/utils.js"
-import { Toc } from "./index.js"
+import { axe } from "../../../testing/utils"
+import { Toc } from "./index"
 
 describe("Toc", () => {
   it("renders a named navigation landmark with list semantics", () => {

@@ -1,7 +1,7 @@
 import { Box, Text } from "ink";
 import type { ModelInfo } from "@diffgazer/core/schemas/config";
-import { useTheme } from "../../../theme/theme-context.js";
-import { Badge } from "../../../components/ui/badge.js";
+import { useTheme } from "../../../theme/theme-context";
+import { Badge } from "../../../components/ui/badge";
 
 interface ModelListItemProps {
   model: ModelInfo;

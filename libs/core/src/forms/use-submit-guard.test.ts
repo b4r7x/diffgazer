@@ -3,7 +3,7 @@
  */
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { useSubmitGuard } from "./use-submit-guard.js";
+import { useSubmitGuard } from "./use-submit-guard";
 
 describe("useSubmitGuard", () => {
   it("starts in non-submitting state", () => {

@@ -8,7 +8,7 @@ import {
   useFocusRestore,
   useKey,
   useNavigation,
-} from "./index";
+} from "./index.js";
 
 describe("public package surface", () => {
   it("exports the primary hooks and navigation helpers from the root entry", async () => {

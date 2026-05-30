@@ -1,11 +1,11 @@
 import { render, screen, waitFor } from "@testing-library/react"
 import { useState } from "react"
 import userEvent from "@testing-library/user-event"
-import { axe } from "../../../testing/utils.js"
+import { axe } from "../../../testing/utils"
 import { describe, it, expect, expectTypeOf, vi } from "vitest"
-import { Radio, RadioGroup, type RadioGroupItemProps } from "./index.js"
-import { type RadioGroupProps } from "./radio-group.js"
-import { Field } from "../field/index.js"
+import { Radio, RadioGroup, type RadioGroupItemProps } from "./index"
+import { type RadioGroupProps } from "./radio-group"
+import { Field } from "../field/index"
 
 function getForm(): HTMLFormElement {
   const form = screen.getByRole("form", { name: "Test form" })
@@ -242,6 +242,8 @@ describe("Radio", () => {
     radio.focus()
     await userEvent.keyboard(" ")
 
+    // onClick/onKeyDown are native event callbacks with no semantic value;
+    // the contract here is that the consumer's handlers compose and fire.
     expect(onClick).toHaveBeenCalledOnce()
     expect(onKeyDown).toHaveBeenCalled()
     expect(radio).toHaveAttribute("data-source", "external")

@@ -4,20 +4,20 @@ import { Box, Text, useInput } from "ink";
 import { AVAILABLE_PROVIDERS, OPENROUTER_PROVIDER_ID } from "@diffgazer/core/schemas/config";
 import { mapProvidersWithStatus } from "@diffgazer/core/providers";
 import { useProviderStatus, useDeleteProviderCredentials, guardQueryState } from "@diffgazer/core/api/hooks";
-import { useScope } from "../../../hooks/use-scope.js";
+import { useScope } from "../../../hooks/use-scope";
 import { usePageFooter } from "@diffgazer/core/footer";
-import { useBackHandler } from "../../../hooks/use-back-handler.js";
-import { useResponsive } from "../../../hooks/use-terminal-dimensions.js";
-import { useTheme } from "../../../theme/theme-context.js";
-import { Panel } from "../../../components/ui/panel.js";
-import { SectionHeader } from "../../../components/ui/section-header.js";
-import { Spinner } from "../../../components/ui/spinner.js";
-import { ProviderList } from "../../../features/providers/components/provider-list.js";
-import type { ProviderListItem } from "../../../features/providers/components/provider-list.js";
-import { ProviderDetails } from "../../../features/providers/components/provider-details.js";
-import type { ProviderDetailData } from "../../../features/providers/components/provider-details.js";
-import { ApiKeyOverlay } from "../../../features/providers/components/api-key-overlay.js";
-import { ModelSelectOverlay } from "../../../features/providers/components/model-select-overlay.js";
+import { useBackHandler } from "../../../hooks/use-back-handler";
+import { useResponsive } from "../../../hooks/use-terminal-dimensions";
+import { useTheme } from "../../../theme/theme-context";
+import { Panel } from "../../../components/ui/panel";
+import { SectionHeader } from "../../../components/ui/section-header";
+import { Spinner } from "../../../components/ui/spinner";
+import { ProviderList } from "../../../features/providers/components/provider-list";
+import type { ProviderListItem } from "../../../features/providers/components/provider-list";
+import { ProviderDetails } from "../../../features/providers/components/provider-details";
+import type { ProviderDetailData } from "../../../features/providers/components/provider-details";
+import { ApiKeyOverlay } from "../../../features/providers/components/api-key-overlay";
+import { ModelSelectOverlay } from "../../../features/providers/components/model-select-overlay";
 
 function toListItem(provider: ProviderListItem): ProviderListItem {
   return {

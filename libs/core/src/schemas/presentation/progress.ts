@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { LIFECYCLE_STATUSES } from "../shared/statuses.js";
+import { LIFECYCLE_STATUSES } from "../shared/statuses";
 
 const PROGRESS_STATUSES = ["completed", "active", "pending"] as const;
 const ProgressStatusSchema = z.enum(PROGRESS_STATUSES);

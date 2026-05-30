@@ -1,0 +1,5 @@
+@import "tailwindcss";
+@import "@diffgazer/ui/theme-base.css";
+@import "@diffgazer/ui/theme.css";
+@import "@diffgazer/ui/styles.css";
+@source "../";

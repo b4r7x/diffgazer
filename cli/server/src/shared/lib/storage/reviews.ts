@@ -233,7 +233,9 @@ export async function listReviews(
   // Lazily build project index from full scan when projectPath is provided
   if (projectPath && items.length > 0) {
     const ids = items.map((m) => m.id);
-    writeProjectIndex(projectPath, ids).catch(() => {});
+    writeProjectIndex(projectPath, ids).catch((e) =>
+      console.warn("[reviews] project index write failed:", e),
+    );
   }
 
   const migratedItems = await migrateMetadataList(items);
@@ -263,7 +265,9 @@ export async function deleteReview(
   projectPath?: string,
 ): Promise<Result<{ existed: boolean }, StoreError>> {
   if (projectPath) {
-    removeFromProjectIndex(projectPath, reviewId).catch(() => {});
+    removeFromProjectIndex(projectPath, reviewId).catch((e) =>
+      console.warn("[reviews] project index removal failed:", e),
+    );
   }
   return reviewStore.remove(reviewId);
 }

@@ -6,7 +6,7 @@ import {
   cycleTierFilter,
   filterModels,
   getStaticModelsForProvider,
-} from "./models.js";
+} from "./models";
 
 const makeModel = (
   id: string,

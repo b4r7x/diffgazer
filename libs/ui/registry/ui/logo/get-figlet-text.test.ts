@@ -12,7 +12,7 @@ afterEach(() => {
 
 describe("getFigletText", () => {
   it("renders multi-line ASCII art for the requested text when figlet is installed", async () => {
-    const { getFigletText } = await import("./get-figlet-text.js")
+    const { getFigletText } = await import("./get-figlet-text")
 
     const result = await getFigletText("OK", "Small")
 
@@ -29,7 +29,7 @@ describe("getFigletText", () => {
       return actual
     })
 
-    const { getFigletText } = await import("./get-figlet-text.js")
+    const { getFigletText } = await import("./get-figlet-text")
 
     await getFigletText("A", "Big")
     await getFigletText("B", "Big")
@@ -44,7 +44,7 @@ describe("getFigletText", () => {
       throw new Error("Cannot find module 'figlet'")
     })
 
-    const { getFigletText } = await import("./get-figlet-text.js")
+    const { getFigletText } = await import("./get-figlet-text")
 
     await expect(getFigletText("OK")).rejects.toThrow(
       /optional peer dependency 'figlet'/,

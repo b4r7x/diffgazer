@@ -23,10 +23,6 @@ import { FloatingPanel } from "../floating-panel/floating-panel";
 import { useMenuContext } from "./menu-context";
 import { Menu as MenuRoot } from "./menu";
 
-// ---------------------------------------------------------------------------
-// MenuSubContext
-// ---------------------------------------------------------------------------
-
 interface MenuSubContextValue {
   open: boolean;
   onOpenChange: (next: boolean) => void;
@@ -43,10 +39,6 @@ function useMenuSubContext(): MenuSubContextValue {
   }
   return ctx;
 }
-
-// ---------------------------------------------------------------------------
-// MenuSub
-// ---------------------------------------------------------------------------
 
 export interface MenuSubProps {
   open?: boolean;
@@ -84,10 +76,6 @@ export function MenuSub({
     <MenuSubContext value={ctx}>{children}</MenuSubContext>
   );
 }
-
-// ---------------------------------------------------------------------------
-// MenuSubTrigger
-// ---------------------------------------------------------------------------
 
 const SUB_CHEVRON = "▶";
 const INDICATOR_ACTIVE = "▌";
@@ -185,10 +173,6 @@ export function MenuSubTrigger({
     </div>
   );
 }
-
-// ---------------------------------------------------------------------------
-// MenuSubContent
-// ---------------------------------------------------------------------------
 
 export interface MenuSubContentProps {
   children: ReactNode;

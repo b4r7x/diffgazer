@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react"
-import { axe } from "../../../testing/utils.js"
+import { axe } from "../../../testing/utils"
 import { describe, it, expect } from "vitest"
-import { Breadcrumbs } from "./index.js"
+import { Breadcrumbs } from "./index"
 
 describe("Breadcrumbs", () => {
   it("renders as navigation with correct aria-label", () => {

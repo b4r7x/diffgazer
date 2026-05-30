@@ -1,1 +1,1 @@
-export { useTimer, type UseTimerOptions, type UseTimerResult } from "./use-timer.js";
+export { useTimer, type UseTimerOptions, type UseTimerResult } from "./use-timer";

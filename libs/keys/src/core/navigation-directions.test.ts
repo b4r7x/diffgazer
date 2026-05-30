@@ -3,7 +3,7 @@ import {
   getVerticalArrowDirection,
   isListNavigationKey,
   toVerticalBoundaryDirection,
-} from "./navigation-directions";
+} from "./navigation-directions.js";
 
 describe("navigation direction helpers", () => {
   it("maps vertical arrow keys to semantic directions", () => {

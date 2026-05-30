@@ -1,17 +1,17 @@
 import { useState, type ReactElement } from "react";
 import { Box, Text } from "ink";
-import { useTheme } from "../../../theme/theme-context.js";
-import { useResponsive } from "../../../hooks/use-terminal-dimensions.js";
-import { SectionHeader } from "../../../components/ui/section-header.js";
-import { Button } from "../../../components/ui/button.js";
-import { Callout } from "../../../components/ui/callout.js";
+import { useTheme } from "../../../theme/theme-context";
+import { useResponsive } from "../../../hooks/use-terminal-dimensions";
+import { SectionHeader } from "../../../components/ui/section-header";
+import { Button } from "../../../components/ui/button";
+import { Callout } from "../../../components/ui/callout";
 import { usePageFooter } from "@diffgazer/core/footer";
-import { ProgressList } from "./progress-list.js";
-import { ActivityLog } from "./activity-log.js";
-import { AgentBoard } from "./agent-board.js";
-import { AgentFilterBar } from "./agent-filter-bar.js";
-import { ContextSnapshotPreview } from "./context-snapshot-preview.js";
-import { ReviewMetricsFooter } from "./review-metrics-footer.js";
+import { ProgressList } from "./progress-list";
+import { ActivityLog } from "./activity-log";
+import { AgentBoard } from "./agent-board";
+import { AgentFilterBar } from "./agent-filter-bar";
+import { ContextSnapshotPreview } from "./context-snapshot-preview";
+import { ReviewMetricsFooter } from "./review-metrics-footer";
 import type { AgentState } from "@diffgazer/core/schemas/events";
 import type {
   LogEntryData,
