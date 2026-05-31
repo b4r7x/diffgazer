@@ -263,6 +263,34 @@ describe("session bounds and subscriber failures", () => {
     });
   });
 
+  it("preserves the cap warning in the buffer after a terminal event overflows the cap", () => {
+    // Suppress the expected server-side cap console.warn; the contract under
+    // test is that the buffered cap notice survives terminal replacement so a
+    // late SSE subscriber replaying session.events sees both.
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const session = createTrackedSession("cap-then-terminal");
+
+    // Fill to the cap, then overflow with a non-terminal event so the warning
+    // is appended as the final slot, then emit the terminal complete event.
+    for (let index = 0; index < 10_000; index += 1) {
+      addEvent(session.reviewId, stepEvent("review"));
+    }
+    addEvent(session.reviewId, stepEvent("review")); // first drop -> appends notice
+    addEvent(session.reviewId, completeEvent(session.reviewId));
+
+    const stored = receivedEvents(session.reviewId);
+
+    // Late SSE subscriber replays the buffer and must see the terminal result...
+    const terminals = stored.filter((event) => event.type === "complete");
+    expect(terminals).toHaveLength(1);
+    expect(terminals[0]).toMatchObject({ type: "complete", reviewId: session.reviewId });
+
+    // ...AND the cap warning that progress events were truncated.
+    const notices = stored.filter((event) => event.type === "chunk");
+    expect(notices).toHaveLength(1);
+    expect(notices[0]?.content).toContain("may be incomplete");
+  });
+
   it("emits one client-facing cap notice when non-terminal events are dropped past the cap", () => {
     // Suppress the expected server-side cap console.warn; the contract under
     // test is the client-facing notice, not the log line. (F155)
@@ -368,5 +396,55 @@ describe("shutdownSessions", () => {
     expect(clearSpy).toHaveBeenCalledTimes(1);
 
     clearSpy.mockRestore();
+  });
+
+  it("aborts an active session, errors its subscriber, and clears it on shutdown", () => {
+    const received: FullReviewStreamEvent[] = [];
+    const session = createTrackedSession("shutdown-active", { mode: "unstaged" });
+    markReady(session.reviewId);
+    subscribe(session.reviewId, (event) => received.push(event));
+
+    shutdownSessions();
+
+    // The in-flight review work is aborted...
+    expect(session.controller.signal.aborted).toBe(true);
+    // ...the subscriber sees a terminal stale error...
+    expect(received).toMatchObject([
+      { type: "error", error: { code: ReviewErrorCode.SESSION_STALE } },
+    ]);
+    // ...and the session is removed so no SSE client keeps the process alive.
+    expect(getSession(session.reviewId)).toBeUndefined();
+    expect(
+      getActiveSessionForProject("/project", { headCommit: "abc", statusHash: "hash", mode: "unstaged" }),
+    ).toBeUndefined();
+  });
+});
+
+describe("scoped active-session lookup", () => {
+  it("finds a session created with a scope key only when the same scope is supplied", () => {
+    const session = createSession("scoped", {
+      projectPath: "/scoped",
+      headCommit: "head",
+      statusHash: "status",
+      mode: "unstaged",
+      scopeKey: "p:strict",
+    });
+    createdSessionIds.add("scoped");
+    markReady("scoped");
+
+    // A mode-only lookup (empty scope key) must NOT match the scoped session.
+    expect(
+      getActiveSessionForProject("/scoped", { headCommit: "head", statusHash: "status", mode: "unstaged" }),
+    ).toBeUndefined();
+
+    // The same scope key resolves the session.
+    expect(
+      getActiveSessionForProject("/scoped", {
+        headCommit: "head",
+        statusHash: "status",
+        mode: "unstaged",
+        scopeKey: "p:strict",
+      })?.reviewId,
+    ).toBe(session.reviewId);
   });
 });

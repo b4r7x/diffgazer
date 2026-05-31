@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { ProviderWithStatus } from "@diffgazer/core/schemas/config";
-import { PROVIDER_FILTERS, filterProviders } from "./filter";
+import { PROVIDER_FILTERS, filterProviders } from "./filter.js";
 
 const PROVIDERS: ProviderWithStatus[] = [
   {

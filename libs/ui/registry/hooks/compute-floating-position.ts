@@ -6,7 +6,7 @@ import {
   type Viewport,
 } from "./floating-position-constants";
 
-export function computePosition(options: {
+function computePositionFrom(options: {
   triggerRect: DOMRect;
   contentRect: DOMRect;
   side: FloatingSide;
@@ -64,7 +64,7 @@ export function computePosition(options: {
   return { x, y };
 }
 
-export function wouldOverflow(options: {
+function wouldOverflowFrom(options: {
   x: number;
   y: number;
   contentRect: DOMRect;
@@ -80,7 +80,7 @@ export function wouldOverflow(options: {
   );
 }
 
-export function shift(options: {
+function shiftFrom(options: {
   x: number;
   y: number;
   contentRect: DOMRect;
@@ -94,7 +94,7 @@ export function shift(options: {
   };
 }
 
-export function resolveCollisionPosition(options: {
+function resolveCollisionPositionFrom(options: {
   triggerRect: DOMRect;
   contentRect: DOMRect;
   preferredSide: FloatingSide;
@@ -113,13 +113,13 @@ export function resolveCollisionPosition(options: {
   ];
 
   for (const side of candidates) {
-    const pos = computePosition({ triggerRect, contentRect, side, align: preferredAlign, sideOffset, alignOffset });
-    if (!wouldOverflow({ x: pos.x, y: pos.y, contentRect, padding: collisionPadding, vp })) {
+    const pos = computePositionFrom({ triggerRect, contentRect, side, align: preferredAlign, sideOffset, alignOffset });
+    if (!wouldOverflowFrom({ x: pos.x, y: pos.y, contentRect, padding: collisionPadding, vp })) {
       return { ...pos, side };
     }
   }
 
-  const fallback = computePosition({
+  const fallback = computePositionFrom({
     triggerRect,
     contentRect,
     side: preferredSide,
@@ -128,4 +128,60 @@ export function resolveCollisionPosition(options: {
     alignOffset,
   });
   return { ...fallback, side: preferredSide };
+}
+
+// Public helpers keep the positional call shape so existing copy/package consumers
+// (including plain JS) keep working. The object-form internals above are used by
+// callers that benefit from named arguments.
+export function computePosition(
+  triggerRect: DOMRect,
+  contentRect: DOMRect,
+  side: FloatingSide,
+  align: FloatingAlign,
+  sideOffset: number,
+  alignOffset: number,
+): { x: number; y: number } {
+  return computePositionFrom({ triggerRect, contentRect, side, align, sideOffset, alignOffset });
+}
+
+export function wouldOverflow(
+  x: number,
+  y: number,
+  contentRect: DOMRect,
+  padding: number,
+  vp: Viewport,
+): boolean {
+  return wouldOverflowFrom({ x, y, contentRect, padding, vp });
+}
+
+export function shift(
+  x: number,
+  y: number,
+  contentRect: DOMRect,
+  padding: number,
+  vp: Viewport,
+): { x: number; y: number } {
+  return shiftFrom({ x, y, contentRect, padding, vp });
+}
+
+export function resolveCollisionPosition(
+  triggerRect: DOMRect,
+  contentRect: DOMRect,
+  preferredSide: FloatingSide,
+  preferredAlign: FloatingAlign,
+  sideOffset: number,
+  alignOffset: number,
+  collisionPadding: number,
+  vp: Viewport,
+): { x: number; y: number; side: FloatingSide } {
+  return resolveCollisionPositionFrom({
+    triggerRect,
+    contentRect,
+    preferredSide,
+    preferredAlign,
+    sideOffset,
+    alignOffset,
+    collisionPadding,
+    vp,
+  });
 }

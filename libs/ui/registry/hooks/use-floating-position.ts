@@ -120,11 +120,11 @@ export function useFloatingPosition({
     const vp: Viewport = { width: view.innerWidth, height: view.innerHeight };
 
     const { x: resolvedX, y: resolvedY, side: finalSide } = avoidCollisions
-      ? resolveCollisionPosition({ triggerRect, contentRect, preferredSide, preferredAlign, sideOffset, alignOffset, collisionPadding, vp })
-      : { ...computePosition({ triggerRect, contentRect, side: preferredSide, align: preferredAlign, sideOffset, alignOffset }), side: preferredSide };
+      ? resolveCollisionPosition(triggerRect, contentRect, preferredSide, preferredAlign, sideOffset, alignOffset, collisionPadding, vp)
+      : { ...computePosition(triggerRect, contentRect, preferredSide, preferredAlign, sideOffset, alignOffset), side: preferredSide };
 
     const pos = avoidCollisions
-      ? shift({ x: resolvedX, y: resolvedY, contentRect, padding: collisionPadding, vp })
+      ? shift(resolvedX, resolvedY, contentRect, collisionPadding, vp)
       : { x: resolvedX, y: resolvedY };
 
     setPosition({

@@ -108,9 +108,11 @@ describe("RegistryItemSchema shadcn-compatible fields", () => {
 
 // The CLI installer schema (cli/registry.ts) is the base RegistryItemSchema
 // (registry-types.ts) plus a path-containment refinement on registry files.
-// These tests lock that relationship so the two stay compatible: a valid item
-// must parse under both, the divergence (CLI rejects unsafe paths) stays intact,
-// and the field sets must not drift apart.
+// The installer (CLI) schema is a public consumption contract and MUST reject
+// absolute and parent-escaping file paths before any path is resolved against a
+// consumer's project root. These tests lock that contract: a valid relative item
+// parses under both schemas, the CLI schema rejects unsafe paths, and the field
+// sets must not drift apart.
 describe("RegistryItemSchema base/CLI compatibility", () => {
   const validItem = {
     name: "example",
@@ -127,15 +129,13 @@ describe("RegistryItemSchema base/CLI compatibility", () => {
     expect(cli.files.map((f) => f.path)).toEqual(base.files.map((f) => f.path));
   });
 
-  it("keeps the divergence: the CLI schema rejects file paths the base accepts", () => {
-    const absolute = { ...validItem, files: [{ path: "/etc/passwd", content: "" }] };
-    const traversal = { ...validItem, files: [{ path: "../escape.tsx", content: "" }] };
-
-    expect(RegistryItemSchema.safeParse(absolute).success).toBe(true);
-    expect(RegistryItemSchema.safeParse(traversal).success).toBe(true);
-
-    expect(CliRegistryItemSchema.safeParse(absolute).success).toBe(false);
-    expect(CliRegistryItemSchema.safeParse(traversal).success).toBe(false);
+  it.each([
+    { label: "absolute path", path: "/etc/passwd" },
+    { label: "parent-escaping path", path: "../escape.tsx" },
+    { label: "windows absolute path", path: "C:\\windows\\system32" },
+  ])("the CLI installer schema rejects an unsafe $label", ({ path }) => {
+    const unsafe = { ...validItem, files: [{ path, content: "" }] };
+    expect(CliRegistryItemSchema.safeParse(unsafe).success).toBe(false);
   });
 
   it("shares the same item-level field set so neither side drifts", () => {

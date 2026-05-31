@@ -76,9 +76,8 @@ export interface ConfigStore {
  * (`state.ts`, `providers-state.ts`, `secrets-migration.ts`, `secrets-store.ts`,
  * `keyring.ts`) and the one cleanly separable stateful slice, `trust-store.ts`.
  *
- * F100 deferral: the STRUCTURE.md §6 plan also called for `config-persistence`
- * and `providers-store` modules. Those two are deliberately retained inline here
- * rather than extracted. `configState` and `secretsState` are a single shared
+ * `config-persistence` and `providers-store` are deliberately retained inline
+ * here rather than extracted. `configState` and `secretsState` are a single shared
  * mutable aggregate: `updateSettings` (storage migration) and the provider-
  * credential methods (`saveProviderCredentials`/`activateProvider`/
  * `deleteProviderCredentials`) both mutate `configState.providers` and

@@ -4,7 +4,7 @@ import {
   GEMINI_MODEL_INFO,
   GLM_MODEL_INFO,
 } from "@diffgazer/core/schemas/config";
-import { mapOpenRouterModels } from "../api/openrouter-utils";
+import { mapOpenRouterModels } from "../api/openrouter-utils.js";
 
 export const TIER_FILTERS = ["all", "free", "paid"] as const;
 export type TierFilter = (typeof TIER_FILTERS)[number];

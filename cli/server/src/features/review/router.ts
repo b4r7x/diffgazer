@@ -53,7 +53,15 @@ reviewRouter.get(
   requireSetup,
   requireRepoAccess,
   zValidator("query", ActiveSessionQuerySchema, zodErrorHandler),
-  (c) => getActiveSessionHandler(c, c.req.valid("query").mode ?? "unstaged"),
+  (c) => {
+    const query = c.req.valid("query");
+    return getActiveSessionHandler(c, {
+      mode: query.mode ?? "unstaged",
+      profile: query.profile,
+      lenses: query.lenses,
+      files: query.files,
+    });
+  },
 );
 
 reviewRouter.delete(

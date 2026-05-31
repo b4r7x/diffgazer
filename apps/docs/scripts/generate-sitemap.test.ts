@@ -49,6 +49,26 @@ describe("getPreRenderPages", () => {
     expect(hookPaths.length).toBeGreaterThan(0);
   });
 
+  it("includes the hook index routes when hooks/index.mdx exists", () => {
+    const pages = getPreRenderPages();
+
+    const uiHooksIndex = pages.filter((page) => page.path === "/ui/hooks");
+    const keysHooksIndex = pages.filter((page) => page.path === "/keys/hooks");
+
+    expect(uiHooksIndex).toHaveLength(1);
+    expect(keysHooksIndex).toHaveLength(1);
+    expect(uiHooksIndex[0]?.source).toContain(`${docsRoot}/content/docs/ui/hooks/index.mdx`);
+    expect(keysHooksIndex[0]?.source).toContain(`${docsRoot}/content/docs/keys/hooks/index.mdx`);
+  });
+
+  it("still includes generated hook item routes alongside the hook index", () => {
+    const pages = getPreRenderPages();
+    const paths = pages.map((page) => page.path);
+
+    expect(paths).toContain("/ui/hooks/controllable-state");
+    expect(paths).toContain("/keys/hooks/use-focus-trap");
+  });
+
   it("emits component pages exactly once via the generated component list", () => {
     const pages = getPreRenderPages();
     const componentPaths = pages

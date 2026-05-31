@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createQueryClientBase } from "./query-client";
+import { createQueryClientBase } from "./query-client.js";
 
 type RetryFn = (failureCount: number, error: unknown) => boolean;
 

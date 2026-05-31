@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ReviewSeveritySchema } from "../review/issues";
+import { ReviewSeveritySchema } from "../review/issues.js";
 
 const AnalysisStatsSchema = z.object({
   runId: z.string(),

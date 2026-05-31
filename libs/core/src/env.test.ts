@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parsePortEnv } from "./env";
+import { parsePortEnv } from "./env.js";
 
 describe("parsePortEnv", () => {
   it("returns the fallback when the value is undefined", () => {

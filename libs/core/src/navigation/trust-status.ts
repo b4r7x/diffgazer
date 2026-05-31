@@ -1,4 +1,4 @@
-import type { TrustConfig } from "../schemas/config/settings";
+import type { TrustConfig } from "../schemas/config/settings.js";
 
 export type TrustStatus = "trusted" | "untrusted" | "unknown";
 

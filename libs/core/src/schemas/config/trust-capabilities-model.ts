@@ -1,4 +1,4 @@
-import type { TrustCapabilities } from "./settings";
+import type { TrustCapabilities } from "./settings.js";
 
 export type TrustCapabilityId = keyof TrustCapabilities;
 

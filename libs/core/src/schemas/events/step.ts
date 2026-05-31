@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { LIFECYCLE_STATUSES } from "../shared/statuses";
+import { LIFECYCLE_STATUSES } from "../shared/statuses.js";
 
 // Step IDs match the workflow phases
 export const STEP_IDS = ["diff", "context", "review", "enrich", "report"] as const;
