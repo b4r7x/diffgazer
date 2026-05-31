@@ -3,7 +3,7 @@ import type {
   ProviderInfo,
   ProviderStatus,
 } from "@diffgazer/core/schemas/config";
-import { mapProvidersWithStatus } from "./list";
+import { mapProvidersWithStatus } from "./list.js";
 
 const PROVIDERS: ProviderInfo[] = [
   { id: "gemini", name: "Gemini", defaultModel: "gemini-2.5-flash", models: ["gemini-2.5-flash"] },

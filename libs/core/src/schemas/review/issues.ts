@@ -1,15 +1,15 @@
 import { z } from "zod";
 import {
   createDomainErrorSchema,
-} from "../errors";
+} from "../errors.js";
 import {
   ReviewSeveritySchema,
   type LensId,
   type ReviewProfile,
   type SeverityFilter,
-} from "./shared";
+} from "./shared.js";
 
-export { REVIEW_SEVERITY, ReviewSeveritySchema, type ReviewSeverity } from "./shared";
+export { REVIEW_SEVERITY, ReviewSeveritySchema, type ReviewSeverity } from "./shared.js";
 
 export const REVIEW_CATEGORY = [
   "correctness",
@@ -137,7 +137,7 @@ export const ReviewStreamEventSchema = z.discriminatedUnion("type", [
 ]);
 export type ReviewStreamEvent = z.infer<typeof ReviewStreamEventSchema>;
 
-export { SeverityFilterSchema, type SeverityFilter } from "./shared";
+export { SeverityFilterSchema, type SeverityFilter } from "./shared.js";
 
 export interface ReviewOptions {
   profile?: ReviewProfile;

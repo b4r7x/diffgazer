@@ -12,7 +12,7 @@ import type {
   TrustConfig,
 } from "@diffgazer/core/schemas/config";
 import { OpenRouterModelsResponseSchema } from "@diffgazer/core/schemas/config";
-import type { ApiClient, TrustListResponse, TrustResponse } from "./types";
+import type { ApiClient, TrustListResponse, TrustResponse } from "./types.js";
 
 export async function getProviderStatus(
   client: ApiClient

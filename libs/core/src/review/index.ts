@@ -5,22 +5,22 @@ export {
   type ReviewEvent,
   type ReviewAction,
   type FileProgress,
-} from "./review-state";
+} from "./review-state.js";
 export {
   processReviewStream,
   type StreamReviewOptions,
   type StreamReviewError,
-} from "./stream-review";
+} from "./stream-review.js";
 export {
   filterIssuesBySeverity,
-} from "./filtering";
-export { convertAgentEventsToLogEntries } from "./event-to-log";
+} from "./filtering.js";
+export { convertAgentEventsToLogEntries } from "./event-to-log.js";
 export {
   mapStepStatus,
   getAgentDetail,
   type UIStepStatus,
-} from "./display";
-export { isNoDiffError, isCheckingForChanges, getLoadingMessage } from "./lifecycle-helpers";
+} from "./display.js";
+export { isNoDiffError, isCheckingForChanges, getLoadingMessage } from "./lifecycle-helpers.js";
 export {
   HISTORY_SECTION_ALL_ID,
   HISTORY_SECTION_ALL_LABEL,
@@ -40,7 +40,7 @@ export {
   type ReviewListItem,
   type RunSummaryParts,
   type SeverityPart,
-} from "./history";
-export { buildReviewSummary, type ReviewSummary } from "./build-summary";
-export { selectDetailsEmptyKind, type DetailsEmptyKind } from "./details-empty";
-export { mapStepsToProgressData } from "./progress-mapping";
+} from "./history.js";
+export { buildReviewSummary, type ReviewSummary } from "./build-summary.js";
+export { selectDetailsEmptyKind, type DetailsEmptyKind } from "./details-empty.js";
+export { mapStepsToProgressData } from "./progress-mapping.js";

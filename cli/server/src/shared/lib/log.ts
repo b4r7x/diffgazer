@@ -7,7 +7,15 @@ const resolveThreshold = (): number => {
   // collide with console spies; honor an explicit override otherwise.
   if (process.env.VITEST) return Number.POSITIVE_INFINITY;
   const configured = process.env.DIFFGAZER_LOG_LEVEL as LogLevel | undefined;
-  return LEVEL_ORDER[configured ?? "info"] ?? LEVEL_ORDER.info;
+  if (configured && LEVEL_ORDER[configured] !== undefined) {
+    return LEVEL_ORDER[configured];
+  }
+  // The packaged CLI runs this server in the user-facing `diffgazer` process, so
+  // default it to `warn` to keep per-request info logs out of the terminal.
+  // Diagnostics stay available via an explicit DIFFGAZER_LOG_LEVEL=info. The
+  // standalone/dev server keeps the verbose `info` default.
+  const packagedDefault = process.env.DIFFGAZER_PACKAGED === "1";
+  return packagedDefault ? LEVEL_ORDER.warn : LEVEL_ORDER.info;
 };
 
 /**

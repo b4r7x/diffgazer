@@ -4,13 +4,13 @@
 import { createElement, type ReactNode } from "react";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import type { BoundApi } from "../bound";
-import { ApiProvider } from "./context";
-import { useReviewStream } from "./use-review-stream";
+import type { BoundApi } from "../bound.js";
+import { ApiProvider } from "./context.js";
+import { useReviewStream } from "./use-review-stream.js";
 import type { Result } from "@diffgazer/core/result";
 import { ok, err } from "@diffgazer/core/result";
 import type { StreamReviewError } from "@diffgazer/core/review";
-import type { ResumeReviewResult } from "../review";
+import type { ResumeReviewResult } from "../review.js";
 import { ReviewErrorCode } from "@diffgazer/core/schemas/review";
 
 function fakeResumeResult(reviewId = "r"): ResumeReviewResult {

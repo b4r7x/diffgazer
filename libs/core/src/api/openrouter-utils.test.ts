@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { OpenRouterModel } from "@diffgazer/core/schemas/config";
-import { isOpenRouterCompatible, mapOpenRouterModels } from "./openrouter-utils";
+import { isOpenRouterCompatible, mapOpenRouterModels } from "./openrouter-utils.js";
 
 describe("isOpenRouterCompatible", () => {
   it.each([

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createApiClient } from "./client";
+import { createApiClient } from "./client.js";
 
 const mockFetch = vi.fn();
 // Boundary mock: replaces the global fetch network boundary so tests can stub HTTP responses without hitting a real server.

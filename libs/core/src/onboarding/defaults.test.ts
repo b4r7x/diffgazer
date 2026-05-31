@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { AVAILABLE_PROVIDERS } from "@diffgazer/core/schemas/config";
 import { LENS_IDS } from "@diffgazer/core/schemas/review";
-import { getInitialWizardData } from "./defaults";
+import { getInitialWizardData } from "./defaults.js";
 
 describe("getInitialWizardData", () => {
   it("preselects the first available provider", () => {

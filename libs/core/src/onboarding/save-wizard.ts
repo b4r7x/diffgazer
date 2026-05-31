@@ -3,7 +3,7 @@ import {
   type SaveConfigRequest,
   type SettingsConfig,
 } from "@diffgazer/core/schemas/config";
-import type { WizardData } from "./types";
+import type { WizardData } from "./types.js";
 
 export type SettingsPayload = Pick<
   SettingsConfig,

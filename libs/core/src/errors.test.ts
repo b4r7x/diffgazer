@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getErrorMessage, toError } from "./errors";
+import { getErrorMessage, toError } from "./errors.js";
 
 describe("getErrorMessage", () => {
   it.each([

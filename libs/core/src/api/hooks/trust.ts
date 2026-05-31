@@ -1,8 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { TrustConfig } from "@diffgazer/core/schemas/config";
-import { trustQueries } from "./queries/trust";
-import { configQueries } from "./queries/config";
-import { useApi } from "./context";
+import { trustQueries } from "./queries/trust.js";
+import { configQueries } from "./queries/config.js";
+import { useApi } from "./context.js";
 
 export function useSaveTrust() {
   const api = useApi();

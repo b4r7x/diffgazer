@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getBackTarget } from "./back-target";
+import { getBackTarget } from "./back-target.js";
 
 describe("getBackTarget", () => {
   it("returns the settings root for a settings sub-route", () => {

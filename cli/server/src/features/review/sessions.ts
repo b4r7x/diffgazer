@@ -52,13 +52,16 @@ function isTerminalEvent(event: FullReviewStreamEvent): boolean {
  * `chunk` event because that is the only union member with a free-text payload
  * and a no-op effect on UI step/agent state (it maps to the optional `onChunk`
  * client callback). This signals partial progress to the client instead of
- * dropping events silently. (F155)
+ * dropping events silently.
  */
+const CAP_WARNING_CONTENT = `[diffgazer] Event cap (${MAX_EVENTS_PER_SESSION}) reached; subsequent progress events may be incomplete.`;
+
 function capWarningEvent(): FullReviewStreamEvent {
-  return {
-    type: "chunk",
-    content: `[diffgazer] Event cap (${MAX_EVENTS_PER_SESSION}) reached; subsequent progress events may be incomplete.`,
-  };
+  return { type: "chunk", content: CAP_WARNING_CONTENT };
+}
+
+function isCapWarningEvent(event: FullReviewStreamEvent | undefined): boolean {
+  return event?.type === "chunk" && event.content === CAP_WARNING_CONTENT;
 }
 
 type StoreEventResult =
@@ -88,7 +91,16 @@ function storeSessionEvent(session: ActiveSession, event: FullReviewStreamEvent)
     return { stored: false, firstDrop };
   }
 
-  session.events[session.events.length - 1] = event;
+  // Terminal events must always be observable. They overwrite an older progress
+  // slot rather than the final slot, because once the cap is hit the final slot
+  // holds the cap warning (appended by addEvent). Overwriting it would hide the
+  // truncation notice from late SSE replays. When no warning has been appended
+  // yet, the final slot is a progress event and is safe to overwrite.
+  const lastIndex = session.events.length - 1;
+  const overwriteIndex = isCapWarningEvent(session.events[lastIndex])
+    ? Math.max(lastIndex - 1, 0)
+    : lastIndex;
+  session.events[overwriteIndex] = event;
   return { stored: true };
 }
 
@@ -171,13 +183,35 @@ let cleanupInterval: ReturnType<typeof setInterval> | null = setInterval(
 cleanupInterval.unref();
 
 /**
- * Clears the stale-session cleanup interval. Call on server shutdown/SIGTERM and
- * in test teardown so the timer does not outlive the process or leak across tests.
+ * Tears down all in-memory session state for server shutdown/SIGTERM and test
+ * teardown: clears the stale-session cleanup interval, aborts every active
+ * session's in-flight review work, emits a terminal error to its subscribers,
+ * and clears subscribers/listeners so no SSE client keeps the process alive.
  */
 export function shutdownSessions(): void {
   if (cleanupInterval) {
     clearInterval(cleanupInterval);
     cleanupInterval = null;
+  }
+
+  for (const [id, session] of activeSessions) {
+    if (!session.isComplete) {
+      session.controller.abort("shutdown");
+      const shutdownEvent: FullReviewStreamEvent = {
+        type: "error",
+        error: {
+          code: ReviewErrorCode.SESSION_STALE,
+          message: "Review session aborted because the server is shutting down.",
+        },
+      };
+      storeSessionEvent(session, shutdownEvent);
+      session.isComplete = true;
+      notifySubscribers(session, shutdownEvent);
+      notifyCompletion(session);
+    }
+    session.subscribers.clear();
+    session.completionListeners.clear();
+    activeSessions.delete(id);
   }
 }
 
@@ -235,7 +269,7 @@ export function addEvent(reviewId: string, event: FullReviewStreamEvent): void {
   // Event was dropped at the cap. On the first drop, surface a single
   // non-terminal notice so the client knows the stream is incomplete instead
   // of the events vanishing silently. The notice is stored (one-time overflow
-  // past the cap) so late SSE replays still see it, then streamed live. (F155)
+  // past the cap) so late SSE replays still see it, then streamed live.
   if (result.firstDrop) {
     const notice = capWarningEvent();
     session.events.push(notice);

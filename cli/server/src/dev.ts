@@ -13,8 +13,12 @@ try {
   });
 
   const shutdown = (): void => {
+    // Abort active reviews and close subscribers first so no in-flight work or
+    // SSE client keeps the server alive, then close the HTTP server and exit.
     shutdownSessions();
-    server.close();
+    server.close(() => {
+      process.exit(0);
+    });
   };
   process.once("SIGTERM", shutdown);
   process.once("SIGINT", shutdown);

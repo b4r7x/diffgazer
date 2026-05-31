@@ -6,7 +6,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import {
   useReviewCompletion,
   type UseReviewCompletionOptions,
-} from "./use-review-completion";
+} from "./use-review-completion.js";
 
 function createOptions(
   overrides: Partial<UseReviewCompletionOptions> = {},

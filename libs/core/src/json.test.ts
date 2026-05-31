@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { safeParseJson } from "./json";
+import { safeParseJson } from "./json.js";
 
 const errorFactory = (message: string, details?: string) => ({
   code: "PARSE_ERROR" as const,

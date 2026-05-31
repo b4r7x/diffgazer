@@ -13,18 +13,6 @@
 //                                JSON). No subprocess, so latency is deterministic
 //                                (always runs).
 //
-// Documented deferrals (the other two SLO scenarios named in the finding):
-//   - POST /api/review (review p95) — full review pipeline. Drives a real model
-//     call, so it needs a live AI provider key and cannot run unattended in CI.
-//     OPT-IN only via DIFFGAZER_BENCH_REVIEW=1; otherwise loudly skipped.
-//   - GET /api/git/diff (diff parse) — blocked in this harness by a defect in the
-//     git service's env sanitization: safeEnv() sets GIT_DIR="" (empty string),
-//     which makes git exit `fatal: not a git repository: ''` regardless of cwd,
-//     so the git endpoints return 500 here. Reproduced with both a shell git call
-//     and Node's execFileAsync; masked in service.test.ts because that suite mocks
-//     execFile. Flagged for the cli/server owners; benching diff parse is deferred
-//     until the sanitization is fixed (delete the keys vs set empty string).
-//
 // Failure modes are split so the bench can gate in CI without flaking:
 //   - Functional failures (non-200, crash, auth 403, setup error) ALWAYS hard-fail
 //     (exit 1). These are machine-independent regression guards.
@@ -48,6 +36,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { ENV } from "./artifacts/env.mjs";
+import { checkSlo, summarizeStatuses } from "./artifacts/benchmark-slo.mjs";
 
 const root = process.cwd();
 
@@ -113,7 +102,7 @@ function timeRequest(baseUrl, path, headers) {
 
 async function runScenario(baseUrl, { path, headers, totalRequests, concurrency }) {
   const durations = [];
-  let lastStatus = 0;
+  const statuses = [];
   let issued = 0;
 
   async function worker() {
@@ -121,7 +110,7 @@ async function runScenario(baseUrl, { path, headers, totalRequests, concurrency 
       issued += 1;
       const { ms, status } = await timeRequest(baseUrl, path, headers);
       durations.push(ms);
-      lastStatus = status;
+      statuses.push(status);
     }
   }
 
@@ -131,29 +120,9 @@ async function runScenario(baseUrl, { path, headers, totalRequests, concurrency 
 
   return {
     ...summarize(durations),
-    status: lastStatus,
+    ...summarizeStatuses(statuses),
     requestsPerSecond: (durations.length / wallMs) * 1000,
   };
-}
-
-// Functional failures (wrong status) always gate; latency/throughput breaches
-// only gate under strict mode so machine-dependent timings do not flake CI.
-function checkSlo({ functionalFailures, latencyBreaches }, label, result, slo) {
-  if (result.status !== 200) {
-    functionalFailures.push(`${label} returned ${result.status}, expected 200`);
-    return;
-  }
-  if (result.p95 > slo.p95Ms) {
-    latencyBreaches.push(`${label} p95 ${result.p95.toFixed(2)}ms exceeds SLO ${slo.p95Ms}ms`);
-  }
-  if (result.p99 > slo.p99Ms) {
-    latencyBreaches.push(`${label} p99 ${result.p99.toFixed(2)}ms exceeds SLO ${slo.p99Ms}ms`);
-  }
-  if (result.requestsPerSecond < slo.minRequestsPerSecond) {
-    latencyBreaches.push(
-      `${label} ${result.requestsPerSecond.toFixed(0)} req/s is below SLO ${slo.minRequestsPerSecond} req/s`,
-    );
-  }
 }
 
 function listen(server) {
@@ -225,21 +194,6 @@ async function main() {
     });
     report("GET /api/config/init", configInit);
     checkSlo(collectors, "GET /api/config/init", configInit, SLO.configInit);
-
-    // The review-pipeline scenario (review p95) drives a real model call, so it
-    // needs a provider API key and cannot run unattended in CI. It is opt-in to
-    // keep the default bench hermetic; document the gap loudly when skipped.
-    if (process.env[ENV.benchReviewPipeline] === "1") {
-      functionalFailures.push(
-        `${ENV.benchReviewPipeline}=1 review-pipeline scenario is not implemented yet; `
-        + "remove the flag or implement the authenticated POST /api/review driver.",
-      );
-    } else {
-      console.log(
-        `SKIP: POST /api/review (review p95) — needs a live AI provider key; `
-        + `set ${ENV.benchReviewPipeline}=1 to opt in once a fixture key is available.`,
-      );
-    }
   } finally {
     await new Promise((resolveClose) => server.close(() => resolveClose()));
   }

@@ -5,9 +5,9 @@ import {
   SEVERITY_TOKEN_KEYS,
   STATUS_TOKEN_KEYS,
   THEME_TOKEN_KEYS,
-} from "./token-keys";
-import type { ThemeTokenKey } from "./token-keys";
-import type { ThemeTokens } from "./types";
+} from "./token-keys.js";
+import type { ThemeTokenKey } from "./token-keys.js";
+import type { ThemeTokens } from "./types.js";
 
 describe("THEME_TOKEN_KEYS", () => {
   it("aggregates every group with no duplicates", () => {

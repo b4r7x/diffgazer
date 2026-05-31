@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { filterIssuesBySeverity } from "./filtering";
+import { filterIssuesBySeverity } from "./filtering.js";
 import type { ReviewIssue, ReviewSeverity } from "@diffgazer/core/schemas/review";
 
 const makeIssue = (severity: ReviewIssue["severity"], id: string): ReviewIssue => ({

@@ -1,4 +1,4 @@
-import type { ShutdownResponse } from "./types";
+import type { ShutdownResponse } from "./types.js";
 
 export type ShutdownResult =
   | { status: "closed" }

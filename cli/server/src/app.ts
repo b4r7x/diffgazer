@@ -92,7 +92,14 @@ export const createApp = (): Hono<AppEnv> => {
       return next();
     }
     const token = process.env.DIFFGAZER_SHUTDOWN_TOKEN?.trim();
-    if (!token || !safeTokenMatch(c.req.header(SHUTDOWN_TOKEN_HEADER), token)) {
+    // Split dev may run without a shared token. Packaged runs fail closed, and
+    // any explicitly configured token is enforced in every mode.
+    const shouldRequireToken = isPackaged() || Boolean(token);
+    const requestHasValidToken = token
+      ? safeTokenMatch(c.req.header(SHUTDOWN_TOKEN_HEADER), token)
+      : false;
+
+    if (shouldRequireToken && !requestHasValidToken) {
       return errorResponse(c, "Unauthorized", ErrorCode.UNAUTHORIZED, 401);
     }
     return next();
@@ -126,11 +133,11 @@ export const createApp = (): Hono<AppEnv> => {
     return errorResponse(c, "Not Found", ErrorCode.NOT_FOUND, 404);
   });
 
-  // F148: only the log-stack + generic-500 half applies here. Domain failures
-  // use the Result<T, AppError> pattern and are mapped to status codes via
-  // errorResponse/handleStoreError/drilldownErrorStatus at the route layer, so
-  // no coded AppError ever reaches this global handler. Anything that does throw
-  // is an unexpected bug — branching on AppError.code here would be dead code.
+  // Domain failures use the Result<T, AppError> pattern and are mapped to status
+  // codes via errorResponse/handleStoreError/drilldownErrorStatus at the route
+  // layer, so no coded AppError ever reaches this global handler. Anything that
+  // does throw is an unexpected bug, so this only logs and returns a generic 500;
+  // branching on AppError.code here would be dead code.
   app.onError((err, c) => {
     const startTime = c.get("startTime");
     const requestId = c.get("requestId");

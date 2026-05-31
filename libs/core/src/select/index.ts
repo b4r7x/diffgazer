@@ -1,1 +1,1 @@
-export { resolveAvailableValue } from "./resolve-available-value";
+export { resolveAvailableValue } from "./resolve-available-value.js";

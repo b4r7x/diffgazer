@@ -1,13 +1,13 @@
-import { useReviewStream } from "./use-review-stream";
-import { useSettings } from "./config";
-import { useReviewStart } from "./use-review-start";
-import { useReviewCompletion } from "./use-review-completion";
+import { useReviewStream } from "./use-review-stream.js";
+import { useSettings } from "./config.js";
+import { useReviewStart } from "./use-review-start.js";
+import { useReviewCompletion } from "./use-review-completion.js";
 import {
   isNoDiffError as checkNoDiffError,
   isCheckingForChanges as checkForChanges,
   getLoadingMessage,
 } from "@diffgazer/core/review";
-import type { ReviewStreamState } from "./use-review-stream";
+import type { ReviewStreamState } from "./use-review-stream.js";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
 
 export interface UseReviewLifecycleBaseOptions {

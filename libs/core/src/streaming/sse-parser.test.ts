@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { parseSSEStream } from "./sse-parser";
+import { parseSSEStream } from "./sse-parser.js";
 
 function createMockReader(chunks: string[]): ReadableStreamDefaultReader<Uint8Array> {
   const encoder = new TextEncoder();
