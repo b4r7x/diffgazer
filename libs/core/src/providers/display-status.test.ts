@@ -3,7 +3,7 @@ import {
   getDisplayStatusBadge,
   getProviderDisplay,
   getProviderDisplayStatus,
-} from "./display-status";
+} from "./display-status.js";
 
 describe("getDisplayStatusBadge", () => {
   it("maps each display status to its badge label and variant", () => {

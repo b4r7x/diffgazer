@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { act, renderHook } from "@testing-library/react"
+import { JSDOM } from "jsdom"
 import { useActiveHeading, type ActiveHeadingActivation } from "../use-active-heading"
 
 const originalInnerHeight = Object.getOwnPropertyDescriptor(window, "innerHeight")
@@ -209,6 +210,9 @@ describe("useActiveHeading", () => {
   it("resolves headings and scroll listeners against a supplied ownerDocument", () => {
     const altDoc = document.implementation.createHTMLDocument("alt")
     const altView = {
+      // Same-realm document, so its elements are host HTMLElement instances; the
+      // hook reads the constructor from defaultView, so the mocked view exposes it.
+      HTMLElement: window.HTMLElement,
       innerHeight: 600,
       scrollY: 0,
       addEventListener: vi.fn(),
@@ -256,6 +260,61 @@ describe("useActiveHeading", () => {
       expect(hostScrollResize).toEqual([])
     } finally {
       hostAddListener.mockRestore()
+    }
+  })
+
+  it("filters headings from a cross-realm ownerDocument whose elements are not host HTMLElement instances", () => {
+    // A second JSDOM realm has its own HTMLElement constructor, so its elements
+    // are NOT `instanceof` the host realm's HTMLElement. F006: filtering must
+    // derive the constructor from `ownerDocument.defaultView`, not the host.
+    const realm = new JSDOM("<!doctype html><html><body></body></html>", { pretendToBeVisual: true })
+    const crossDoc = realm.window.document
+
+    expect(crossDoc.getElementById).toBeDefined()
+    const cross = (id: string) => crossDoc.getElementById(id)!
+
+    for (const id of ["x1", "x2"]) {
+      const h = crossDoc.createElement("h2")
+      h.id = id
+      crossDoc.body.appendChild(h)
+    }
+    // Guard the premise: cross-realm elements are not host HTMLElement instances.
+    expect(cross("x1") instanceof HTMLElement).toBe(false)
+    expect(cross("x1") instanceof realm.window.HTMLElement).toBe(true)
+
+    cross("x1").getBoundingClientRect = () => makeDOMRect(0)
+    cross("x2").getBoundingClientRect = () => makeDOMRect(100)
+    Object.defineProperty(realm.window, "innerHeight", { configurable: true, value: 600 })
+    Object.defineProperty(realm.window, "scrollY", { configurable: true, value: 0 })
+    realm.window.matchMedia = () => ({ matches: false }) as MediaQueryList
+    // Drive the realm's animation frame synchronously so the effect's first update runs.
+    Object.defineProperty(realm.window, "requestAnimationFrame", {
+      configurable: true,
+      value: (cb: FrameRequestCallback) => {
+        cb(0)
+        return 1
+      },
+    })
+    Object.defineProperty(realm.window, "cancelAnimationFrame", { configurable: true, value: () => {} })
+
+    try {
+      const { result } = renderHook(() =>
+        useActiveHeading({
+          ids: ["x1", "x2"],
+          activation: "viewport-center",
+          topOffset: 0,
+          bottomLock: false,
+          observe: false,
+          ownerDocument: crossDoc,
+        }),
+      )
+
+      // viewport center = 300; x2 at top 100 is the last heading above the line.
+      // Before the F006 fix the host-realm `instanceof HTMLElement` filter dropped
+      // both cross-realm headings and activeId fell back to the first id ("x1").
+      expect(result.current.activeId).toBe("x2")
+    } finally {
+      realm.window.close()
     }
   })
 })

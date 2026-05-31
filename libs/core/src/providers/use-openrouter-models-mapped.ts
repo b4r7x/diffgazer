@@ -1,7 +1,7 @@
 import type { ModelInfo, AIProvider } from "@diffgazer/core/schemas/config";
 import { OPENROUTER_PROVIDER_ID } from "@diffgazer/core/schemas/config";
-import { useOpenRouterModels } from "../api/hooks/config";
-import { isOpenRouterCompatible, mapOpenRouterModels } from "../api/openrouter-utils";
+import { useOpenRouterModels } from "../api/hooks/config.js";
+import { isOpenRouterCompatible, mapOpenRouterModels } from "../api/openrouter-utils.js";
 
 export interface OpenRouterModelsState {
   models: ModelInfo[];

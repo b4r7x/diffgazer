@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
-import { reviewQueries } from "./queries/review";
-import { useApi } from "./context";
+import { reviewQueries } from "./queries/review.js";
+import { useApi } from "./context.js";
 
 export function useReviews(projectPath?: string) {
   const api = useApi();

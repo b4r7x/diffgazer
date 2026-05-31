@@ -1,4 +1,4 @@
-import type { Shortcut } from "../schemas/presentation/index";
+import type { Shortcut } from "../schemas/presentation/index.js";
 
 export interface FooterData {
   shortcuts: Shortcut[];

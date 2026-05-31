@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import type { NavItem } from "../schemas/presentation/navigation";
-import { groupMenuItems, withGroupDividers } from "./group-menu-items";
+import type { NavItem } from "../schemas/presentation/navigation.js";
+import { groupMenuItems, withGroupDividers } from "./group-menu-items.js";
 
 const FIXTURE: NavItem[] = [
   { id: "review-unstaged", label: "Review Unstaged", group: "review" },

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { shutdown } from "./shutdown";
-import type { ApiClient } from "./types";
-import { createMockClient } from "../testing/factories";
+import { shutdown } from "./shutdown.js";
+import type { ApiClient } from "./types.js";
+import { createMockClient } from "../testing/factories.js";
 
 describe("shutdown API", () => {
   let client: ApiClient;

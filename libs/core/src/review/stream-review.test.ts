@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { processReviewStream } from "./stream-review";
+import { processReviewStream } from "./stream-review.js";
 
 function createSSEReader(events: unknown[]): ReadableStreamDefaultReader<Uint8Array> {
   const encoder = new TextEncoder();

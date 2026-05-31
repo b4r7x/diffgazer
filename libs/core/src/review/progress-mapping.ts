@@ -5,7 +5,7 @@ import type {
   ProgressSubstepData,
 } from "@diffgazer/core/schemas/presentation";
 import { truncate } from "@diffgazer/core/strings";
-import { getAgentDetail, mapStepStatus as mapStepStatusCore } from "./display";
+import { getAgentDetail, mapStepStatus as mapStepStatusCore } from "./display.js";
 
 const STATUS_TO_PROGRESS: Record<string, ProgressStatus> = {
   pending: "pending",

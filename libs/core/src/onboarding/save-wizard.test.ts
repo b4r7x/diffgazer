@@ -3,9 +3,9 @@ import {
   buildConfigPayload,
   buildSettingsPayload,
   saveWizard,
-} from "./save-wizard";
-import { getInitialWizardData } from "./defaults";
-import type { WizardData } from "./types";
+} from "./save-wizard.js";
+import { getInitialWizardData } from "./defaults.js";
+import type { WizardData } from "./types.js";
 
 function withData(overrides: Partial<WizardData>): WizardData {
   return { ...getInitialWizardData(), ...overrides };

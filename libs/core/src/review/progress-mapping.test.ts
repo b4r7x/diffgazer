@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { StepState, AgentState } from "@diffgazer/core/schemas/events";
-import { mapStepsToProgressData } from "./progress-mapping";
+import { mapStepsToProgressData } from "./progress-mapping.js";
 
 function makeStep(id: StepState["id"], label: string, status: StepState["status"] = "pending"): StepState {
   return { id, label, status };

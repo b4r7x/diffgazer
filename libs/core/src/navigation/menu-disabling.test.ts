@@ -3,7 +3,7 @@ import {
   isMenuActionDisabled,
   isReviewAction,
   isReviewStartAction,
-} from "./menu-disabling";
+} from "./menu-disabling.js";
 
 describe("isReviewStartAction", () => {
   it("matches the three review-start ids only", () => {

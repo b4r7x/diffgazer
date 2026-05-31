@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { z } from "zod";
-import { ensureExists } from "../utils/fs.js";
+import { ensureExists, isRelativeSubpath } from "../utils/fs.js";
 import { readJson } from "../utils/json.js";
 import { RegistryFileSchema, RegistryItemSchema, RegistrySchema } from "../registry-types.js";
 
@@ -76,6 +76,15 @@ function compareItemFields(
   }
 }
 
+function ensureSafeFilePath(path: string, itemName: string, origin: string): void {
+  if (!isRelativeSubpath(path)) {
+    throw new Error(
+      `Unsafe registry file path "${path}" in ${origin} for "${itemName}". ` +
+        "Registry file paths must be relative and must not contain '..' segments.",
+    );
+  }
+}
+
 export function validatePublicRegistryFresh(options: ValidatePublicRegistryFreshOptions): void {
   const {
     rootDir,
@@ -136,6 +145,14 @@ export function validatePublicRegistryFresh(options: ValidatePublicRegistryFresh
     ensureExists(publicItemPath, `public registry item JSON (${sourceItem.name})`);
 
     const publicItemJson = readJson(publicItemPath, PublicItemSchema);
+
+    for (const file of expectedItem.files) {
+      ensureSafeFilePath(file.path, sourceItem.name, "source registry");
+    }
+    for (const file of publicItemJson.files ?? []) {
+      ensureSafeFilePath(file.path, sourceItem.name, "public registry");
+    }
+
     const publicFilesByPath = new Map((publicItemJson.files ?? []).map((file) => [file.path, file]));
 
     compareItemFields("item JSON ", expectedItem, publicItemJson, sourceItem.name, fixCommand);

@@ -3,6 +3,7 @@
   "extends": "../../libs/core/tsconfig/test.json",
   "compilerOptions": {
     "rootDir": ".",
+    "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "noEmit": true
   },

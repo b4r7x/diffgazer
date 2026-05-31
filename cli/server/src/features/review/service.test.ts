@@ -40,6 +40,8 @@ let cancelSession: SessionsModule["cancelSession"];
 let createSession: SessionsModule["createSession"];
 let deleteSession: SessionsModule["deleteSession"];
 let getSession: SessionsModule["getSession"];
+let getActiveSessionForProject: SessionsModule["getActiveSessionForProject"];
+let buildScopeKey: SessionsModule["buildScopeKey"];
 let markComplete: SessionsModule["markComplete"];
 let markReady: SessionsModule["markReady"];
 let createGitService: GitModule["createGitService"];
@@ -190,6 +192,8 @@ beforeAll(async () => {
   createSession = sessions.createSession;
   deleteSession = sessions.deleteSession;
   getSession = sessions.getSession;
+  getActiveSessionForProject = sessions.getActiveSessionForProject;
+  buildScopeKey = sessions.buildScopeKey;
   markComplete = sessions.markComplete;
   markReady = sessions.markReady;
   createGitService = git.createGitService;
@@ -264,6 +268,33 @@ describe("createReviewSession", () => {
     if (result.ok) return;
     expect(result.error.message).toContain("Failed to inspect repository state");
     expect(result.error.message).toContain("HEAD unavailable");
+  });
+
+  it("makes a scoped review discoverable by active-session lookup using the same scope", async () => {
+    const result = await createReviewSession(makeAIClient(), {
+      mode: "unstaged",
+      profile: "strict",
+      projectPath: projectRoot,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    trackSessionWithRunner(result.value.reviewId);
+
+    const lookup = {
+      headCommit: "abc123",
+      statusHash: "hash123",
+      mode: "unstaged" as const,
+    };
+
+    // A mode-only lookup (empty scope key) must NOT find the scoped session.
+    expect(getActiveSessionForProject(projectRoot, lookup)).toBeUndefined();
+
+    // The matching scope key resolves the session created through the API.
+    const scopeKey = buildScopeKey({ profile: "strict" });
+    expect(getActiveSessionForProject(projectRoot, { ...lookup, scopeKey })?.reviewId).toBe(
+      result.value.reviewId,
+    );
   });
 
   it("cancels stale sessions before creating a new one", async () => {

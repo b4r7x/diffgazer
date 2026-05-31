@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { REVIEW_SEVERITY, type ReviewSeverity } from "../review/issues";
+import { REVIEW_SEVERITY, type ReviewSeverity } from "../review/issues.js";
 
 export { REVIEW_SEVERITY as SEVERITY_ORDER };
 

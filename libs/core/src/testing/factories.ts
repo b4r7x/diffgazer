@@ -1,5 +1,5 @@
 import { vi } from "vitest";
-import type { ApiClient } from "../api/types";
+import type { ApiClient } from "../api/types.js";
 
 export function createMockClient(): ApiClient {
   return {

@@ -4,14 +4,14 @@
 import { act, renderHook } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
 import { describe, expect, it } from "vitest";
-import type { Shortcut } from "../schemas/presentation/index";
+import type { Shortcut } from "../schemas/presentation/index.js";
 import {
   FooterProvider,
   MAIN_MENU_SHORTCUTS,
   useFooterActions,
   useFooterData,
   usePageFooter,
-} from "./index";
+} from "./index.js";
 
 function wrapper({ children }: { children: ReactNode }) {
   return createElement(FooterProvider, null, children);

@@ -43,8 +43,6 @@ updates:
     # Workspace packages version independently; bump declared ranges in the
     # manifest that owns the dependency rather than widening a shared range.
     versioning-strategy: increase
-    allow:
-      - dependency-type: "direct"
     groups:
       minor-and-patch:
         update-types:

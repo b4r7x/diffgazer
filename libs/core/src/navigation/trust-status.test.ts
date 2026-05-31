@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import type { TrustConfig } from "../schemas/config/settings";
-import { deriveTrustStatus } from "./trust-status";
+import type { TrustConfig } from "../schemas/config/settings.js";
+import { deriveTrustStatus } from "./trust-status.js";
 
 function makeTrust(overrides: Partial<TrustConfig> = {}): TrustConfig {
   return {

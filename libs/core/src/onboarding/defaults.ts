@@ -1,6 +1,6 @@
 import { AVAILABLE_PROVIDERS } from "@diffgazer/core/schemas/config";
 import { LENS_IDS } from "@diffgazer/core/schemas/review";
-import type { WizardData } from "./types";
+import type { WizardData } from "./types.js";
 
 export function getInitialWizardData(): WizardData {
   const firstProvider = AVAILABLE_PROVIDERS[0];

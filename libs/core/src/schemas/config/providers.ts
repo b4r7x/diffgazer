@@ -1,9 +1,9 @@
 import { z } from "zod";
 import {
   timestampFields,
-} from "../shared/fields";
-import { SettingsConfigSchema, TrustConfigSchema } from "./settings";
-import { GEMINI_MODELS, GLM_MODELS } from "./models";
+} from "../shared/fields.js";
+import { SettingsConfigSchema, TrustConfigSchema } from "./settings.js";
+import { GEMINI_MODELS, GLM_MODELS } from "./models.js";
 
 export const AI_PROVIDERS = ["gemini", "zai", "zai-coding", "openrouter"] as const;
 export const AIProviderSchema = z.enum(AI_PROVIDERS);
