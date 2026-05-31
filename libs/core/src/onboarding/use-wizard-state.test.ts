@@ -4,7 +4,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { AVAILABLE_PROVIDERS } from "@diffgazer/core/schemas/config";
-import { useWizardState } from "./use-wizard-state";
+import { useWizardState } from "./use-wizard-state.js";
 
 describe("useWizardState", () => {
   it("starts on the first step with default data", () => {

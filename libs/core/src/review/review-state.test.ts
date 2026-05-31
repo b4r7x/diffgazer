@@ -4,7 +4,7 @@ import {
   reviewReducer,
   type ReviewAction,
   type ReviewState,
-} from "./review-state";
+} from "./review-state.js";
 import type { AgentStreamEvent, EnrichEvent, StepEvent } from "@diffgazer/core/schemas/events";
 
 const ts = "2025-02-01T10:00:00Z";

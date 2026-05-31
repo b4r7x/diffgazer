@@ -36,10 +36,15 @@ export interface UseActiveHeadingReturn {
   scrollTo: (id: string) => void;
 }
 
+function isOwnerHTMLElement(doc: Document, value: unknown): value is HTMLElement {
+  const ctor = doc.defaultView?.HTMLElement;
+  return ctor ? value instanceof ctor : false;
+}
+
 function getContainer(doc: Document, id: string | undefined): HTMLElement | null {
   if (!id) return null;
   const el = doc.getElementById(id);
-  return el instanceof HTMLElement ? el : null;
+  return isOwnerHTMLElement(doc, el) ? el : null;
 }
 
 function getViewportMetrics(doc: Document, container: HTMLElement | null) {
@@ -108,18 +113,18 @@ export function useActiveHeading({
   observe = true,
   ownerDocument,
 }: UseActiveHeadingOptions): UseActiveHeadingReturn {
-  const doc = ownerDocument ?? document;
+  const doc = ownerDocument ?? (typeof document !== "undefined" ? document : null);
   const idsKey = ids.join("\0");
   const [activeId, setActiveId] = useState<string | null>(ids[0] ?? null);
   const scrollingToRef = useRef<string | null>(null);
   const settleTimerRef = useRef<number>(0);
   const update = useEffectEvent((): void => {
-    if (scrollingToRef.current !== null) return;
+    if (doc === null || scrollingToRef.current !== null) return;
 
     const container = getContainer(doc, containerId);
     const elements = ids
       .map((id) => doc.getElementById(id))
-      .filter((el): el is HTMLElement => el instanceof HTMLElement);
+      .filter((el): el is HTMLElement => isOwnerHTMLElement(doc, el));
 
     if (elements.length === 0) {
       setActiveId(ids[0] ?? null);
@@ -149,7 +154,7 @@ export function useActiveHeading({
   });
 
   useEffect(() => {
-    if (!enabled || ids.length === 0) {
+    if (doc === null || !enabled || ids.length === 0) {
       setActiveId(null);
       return;
     }
@@ -213,8 +218,9 @@ export function useActiveHeading({
   }, [doc, idsKey, containerId, activation, topOffset, bottomMargin, threshold, bottomLock, enabled, settleDelay, observe]);
 
   const scrollTo = useCallback((id: string) => {
+    if (doc === null) return;
     const heading = doc.getElementById(id);
-    if (!(heading instanceof HTMLElement)) return;
+    if (!isOwnerHTMLElement(doc, heading)) return;
 
     scrollingToRef.current = id;
     setActiveId(id);

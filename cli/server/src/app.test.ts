@@ -294,6 +294,73 @@ describe("API token middleware", () => {
   });
 });
 
+describe("API token gate scoping (standalone dev vs packaged)", () => {
+  let originalToken: string | undefined;
+  let originalPackaged: string | undefined;
+
+  beforeEach(() => {
+    originalToken = process.env.DIFFGAZER_SHUTDOWN_TOKEN;
+    originalPackaged = process.env.DIFFGAZER_PACKAGED;
+  });
+
+  afterEach(() => {
+    if (originalToken === undefined) {
+      delete process.env.DIFFGAZER_SHUTDOWN_TOKEN;
+    } else {
+      process.env.DIFFGAZER_SHUTDOWN_TOKEN = originalToken;
+    }
+    if (originalPackaged === undefined) {
+      delete process.env.DIFFGAZER_PACKAGED;
+    } else {
+      process.env.DIFFGAZER_PACKAGED = originalPackaged;
+    }
+  });
+
+  it("does not 401 standalone dev API requests when no token is configured and not packaged", async () => {
+    delete process.env.DIFFGAZER_SHUTDOWN_TOKEN;
+    delete process.env.DIFFGAZER_PACKAGED;
+    const app = createApp();
+
+    const res = await app.request("/api/config", {
+      headers: { Host: "localhost:3000" },
+    });
+
+    // The gate is skipped in standalone dev; the request reaches downstream
+    // routing instead of being rejected as Unauthorized.
+    expect(res.status).not.toBe(401);
+  });
+
+  it("still 401s packaged API requests when no token is configured", async () => {
+    delete process.env.DIFFGAZER_SHUTDOWN_TOKEN;
+    process.env.DIFFGAZER_PACKAGED = "1";
+    const app = createApp();
+
+    const res = await app.request("/api/config", {
+      headers: { Host: "localhost:3000" },
+    });
+
+    expect(res.status).toBe(401);
+    const body = (await res.json()) as { error: { message: string } };
+    expect(body.error.message).toBe("Unauthorized");
+  });
+
+  it("enforces a configured token even when not packaged", async () => {
+    process.env.DIFFGAZER_SHUTDOWN_TOKEN = "configured-token";
+    delete process.env.DIFFGAZER_PACKAGED;
+    const app = createApp();
+
+    const rejected = await app.request("/api/config", {
+      headers: { Host: "localhost:3000" },
+    });
+    expect(rejected.status).toBe(401);
+
+    const accepted = await app.request("/api/config", {
+      headers: { Host: "localhost:3000", [SHUTDOWN_TOKEN_HEADER]: "configured-token" },
+    });
+    expect(accepted.status).not.toBe(401);
+  });
+});
+
 describe("CORS origin rejection", () => {
   let originalToken: string | undefined;
 

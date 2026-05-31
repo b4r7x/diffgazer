@@ -1,5 +1,5 @@
-import type { AIProvider, ProviderInfo } from "./providers";
-import { GEMINI_MODELS, GLM_MODELS } from "./models";
+import type { AIProvider, ProviderInfo } from "./providers.js";
+import { GEMINI_MODELS, GLM_MODELS } from "./models.js";
 
 export const OPENROUTER_PROVIDER_ID: AIProvider = "openrouter";
 

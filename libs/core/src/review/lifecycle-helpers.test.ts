@@ -4,7 +4,7 @@ import {
   getLoadingMessage,
   isCheckingForChanges,
   isNoDiffError,
-} from "./lifecycle-helpers";
+} from "./lifecycle-helpers.js";
 
 function makeStep(id: string, status: StepState["status"]): StepState {
   return { id, label: id, status } as StepState;

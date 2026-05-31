@@ -7,6 +7,5 @@ export const ENV = {
   smokeStrictSkips: "DIFFGAZER_SMOKE_STRICT_SKIPS",
   shadcnCommand: "DIFFGAZER_SHADCN_COMMAND",
   requireTrackedPolicy: "DIFFGAZER_REQUIRE_TRACKED_POLICY",
-  benchReviewPipeline: "DIFFGAZER_BENCH_REVIEW",
   ci: "CI",
 };

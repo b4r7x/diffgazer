@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { canProceed } from "./can-proceed";
-import { getInitialWizardData } from "./defaults";
-import type { WizardData } from "./types";
+import { canProceed } from "./can-proceed.js";
+import { getInitialWizardData } from "./defaults.js";
+import type { WizardData } from "./types.js";
 
 function withData(overrides: Partial<WizardData>): WizardData {
   return { ...getInitialWizardData(), ...overrides };

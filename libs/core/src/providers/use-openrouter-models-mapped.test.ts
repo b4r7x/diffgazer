@@ -11,7 +11,7 @@ vi.mock("../api/hooks/config", () => ({
   useOpenRouterModels: (...args: unknown[]) => mockUseOpenRouterModels(...args),
 }));
 
-const { useOpenRouterModelsMapped } = await import("./use-openrouter-models-mapped");
+const { useOpenRouterModelsMapped } = await import("./use-openrouter-models-mapped.js");
 
 describe("useOpenRouterModelsMapped", () => {
   beforeEach(() => {

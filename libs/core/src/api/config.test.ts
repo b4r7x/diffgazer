@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { getProviderStatus, getTrust, deleteTrust, activateProvider } from "./config";
-import type { ApiClient } from "./types";
-import { createMockClient } from "../testing/factories";
+import { getProviderStatus, getTrust, deleteTrust, activateProvider } from "./config.js";
+import type { ApiClient } from "./types.js";
+import { createMockClient } from "../testing/factories.js";
 
 describe("config API functions", () => {
   let client: ApiClient;

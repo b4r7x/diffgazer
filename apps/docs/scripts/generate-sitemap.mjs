@@ -29,7 +29,10 @@ export function getPreRenderPages() {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       const full = join(dir, entry.name);
       if (entry.isDirectory()) {
-        if (entry.name === "components" || entry.name === "hooks") continue;
+        if (entry.name === "components" || entry.name === "hooks") {
+          pushSectionIndexPage(pages, contentDir, enabledLibraries, full);
+          continue;
+        }
         walkMdx(full);
         continue;
       }
@@ -53,6 +56,17 @@ export function getPreRenderPages() {
   }
 
   return pages;
+}
+
+function pushSectionIndexPage(pages, contentDir, enabledLibraries, sectionDir) {
+  const indexSource = join(sectionDir, "index.mdx");
+  if (!existsSync(indexSource)) return;
+
+  const rel = relative(contentDir, sectionDir);
+  const lib = enabledLibraries.find((l) => rel.startsWith(`${l.id}/`));
+  if (!lib) return;
+
+  pages.push({ path: `/${rel}`, source: indexSource });
 }
 
 function findLibraryIntroSource(contentDir, libId) {

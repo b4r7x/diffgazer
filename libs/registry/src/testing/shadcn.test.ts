@@ -409,6 +409,30 @@ describe("validatePublicRegistryFresh", () => {
     ).not.toThrow();
   });
 
+  it.each([
+    { label: "absolute source file path", path: "/etc/passwd" },
+    { label: "parent-escaping source file path", path: "../escape.tsx" },
+    { label: "windows absolute source file path", path: "C:\\windows\\system32" },
+  ])("rejects an $label in the public registry validation path", ({ path }) => {
+    setupRegistry(
+      tempDir,
+      [{ name: "button", files: [{ path }] }],
+      undefined,
+      { button: [{ path, content: "// button\n" }] },
+    );
+    expectValidationThrows(tempDir, /Unsafe registry file path/);
+  });
+
+  it("rejects an unsafe file path that only appears in the public registry artifact", () => {
+    setupRegistry(
+      tempDir,
+      [{ name: "button", files: [{ path: "registry/ui/button.tsx" }] }],
+      undefined,
+      { button: [{ path: "../escape.tsx", content: "// button - registry/ui/button.tsx\n" }] },
+    );
+    expectValidationThrows(tempDir, /Unsafe registry file path/);
+  });
+
   it("accepts a registry with multiple items whose source and public artifacts match", () => {
     setupRegistry(tempDir, [
       {
