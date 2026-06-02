@@ -1,109 +1,146 @@
-import { Suspense, type ComponentType, type LazyExoticComponent } from "react"
-import { Spinner } from "@/components/ui/spinner/spinner"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { CodeBlock, CodeBlockContent, CodeBlockHeader, CodeBlockLabel, CodeBlockLine, type CodeBlockLineProps } from "@/components/ui/code-block"
-import { CopyButton } from "@/components/copy-button"
-import { Typography } from "@/components/ui/typography/typography"
-import { InsetPreviewPane } from "@/components/preview-inset-pane"
-import type { PreviewFrame } from "@/lib/example-frames"
+import { type ComponentType, type LazyExoticComponent, Suspense } from "react";
+import { CopyButton } from "@/components/copy-button";
+import { InsetPreviewPane } from "@/components/preview-inset-pane";
+import {
+	CodeBlock,
+	CodeBlockContent,
+	CodeBlockHeader,
+	CodeBlockLabel,
+	CodeBlockLine,
+	type CodeBlockLineProps,
+} from "@/components/ui/code-block";
+import { Spinner } from "@/components/ui/spinner/spinner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Typography } from "@/components/ui/typography/typography";
+import type { PreviewFrame } from "@/lib/example-frames";
 
 interface DemoPreviewProps {
-  title?: string
-  demo: LazyExoticComponent<ComponentType> | null
-  code: CodeBlockLineProps[]
-  rawCode: string
-  frame?: PreviewFrame
+	title?: string;
+	demo: LazyExoticComponent<ComponentType> | null;
+	code: CodeBlockLineProps[];
+	rawCode: string;
+	frame?: PreviewFrame;
 }
 
-const EMPTY_FALLBACK = <div aria-hidden="true" className="h-full w-full" />
+const EMPTY_FALLBACK = <div aria-hidden="true" className="h-full w-full" />;
 
 const LOADING_FALLBACK = (
-  <div className="flex h-full w-full items-center justify-center">
-    <Spinner variant="pulse" size="sm" />
-  </div>
-)
+	<div className="flex h-full w-full items-center justify-center">
+		<Spinner variant="pulse" size="sm" />
+	</div>
+);
 
-function DemoNode({ demo: Demo }: { demo: LazyExoticComponent<ComponentType> | null }) {
-  if (!Demo) return EMPTY_FALLBACK
-  return (
-    <Suspense fallback={LOADING_FALLBACK}>
-      <Demo />
-    </Suspense>
-  )
+function DemoNode({
+	demo: Demo,
+}: {
+	demo: LazyExoticComponent<ComponentType> | null;
+}) {
+	if (!Demo) return EMPTY_FALLBACK;
+	return (
+		<Suspense fallback={LOADING_FALLBACK}>
+			<Demo />
+		</Suspense>
+	);
 }
 
-function DefaultPreviewPane({ demo }: { demo: LazyExoticComponent<ComponentType> | null }) {
-  return (
-    <div className="border border-border bg-secondary/10">
-      <div className="min-h-[200px] flex items-center justify-center px-8 py-12">
-        <DemoNode demo={demo} />
-      </div>
-    </div>
-  )
+function DefaultPreviewPane({
+	demo,
+}: {
+	demo: LazyExoticComponent<ComponentType> | null;
+}) {
+	return (
+		<div className="border border-border bg-secondary/10">
+			<div className="min-h-[200px] flex items-center justify-center px-8 py-12">
+				<DemoNode demo={demo} />
+			</div>
+		</div>
+	);
 }
 
-function FillPreviewPane({ demo }: { demo: LazyExoticComponent<ComponentType> | null }) {
-  return (
-    <div className="border border-border bg-background">
-      <div className="w-full [&>*]:w-full">
-        <DemoNode demo={demo} />
-      </div>
-    </div>
-  )
+function FillPreviewPane({
+	demo,
+}: {
+	demo: LazyExoticComponent<ComponentType> | null;
+}) {
+	return (
+		<div className="border border-border bg-background">
+			<div className="w-full [&>*]:w-full">
+				<DemoNode demo={demo} />
+			</div>
+		</div>
+	);
 }
 
-function PreviewPane({ demo, frame }: { demo: LazyExoticComponent<ComponentType> | null; frame: PreviewFrame }) {
-  if (frame === "inset") return <InsetPreviewPane demo={demo} />
-  if (frame === "fill") return <FillPreviewPane demo={demo} />
-  if (frame === "default") return <DefaultPreviewPane demo={demo} />
-  frame satisfies never
-  return null
+function PreviewPane({
+	demo,
+	frame,
+}: {
+	demo: LazyExoticComponent<ComponentType> | null;
+	frame: PreviewFrame;
+}) {
+	if (frame === "inset") return <InsetPreviewPane demo={demo} />;
+	if (frame === "fill") return <FillPreviewPane demo={demo} />;
+	if (frame === "default") return <DefaultPreviewPane demo={demo} />;
+	frame satisfies never;
+	return null;
 }
 
-function CodePane({ code, rawCode }: { code: CodeBlockLineProps[]; rawCode: string }) {
-  return (
-    <CodeBlock className="rounded-none">
-      <CodeBlockHeader>
-        <CodeBlockLabel>tsx</CodeBlockLabel>
-        <CopyButton text={rawCode} />
-      </CodeBlockHeader>
-      <CodeBlockContent>
-        {code.map(line => (
-          <CodeBlockLine key={line.number} {...line} />
-        ))}
-      </CodeBlockContent>
-    </CodeBlock>
-  )
+function CodePane({
+	code,
+	rawCode,
+}: {
+	code: CodeBlockLineProps[];
+	rawCode: string;
+}) {
+	return (
+		<CodeBlock className="rounded-none">
+			<CodeBlockHeader>
+				<CodeBlockLabel>tsx</CodeBlockLabel>
+				<CopyButton text={rawCode} />
+			</CodeBlockHeader>
+			<CodeBlockContent>
+				{code.map((line) => (
+					<CodeBlockLine key={line.number} {...line} />
+				))}
+			</CodeBlockContent>
+		</CodeBlock>
+	);
 }
 
-export function DemoPreview({ title, demo, code, rawCode, frame = "default" }: DemoPreviewProps) {
-  return (
-    <div className="mb-6">
-      {title && (
-        <Typography
-          as="h4"
-          size="base"
-          className="text-foreground font-bold uppercase tracking-wider mb-2"
-        >
-          {title}
-        </Typography>
-      )}
-      <Tabs defaultValue="preview" variant="underline" size="sm">
-        <TabsList className="mb-3">
-          <TabsTrigger value="preview" className="text-xs">
-            Preview
-          </TabsTrigger>
-          <TabsTrigger value="code" className="text-xs">
-            Code
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent value="preview">
-          <PreviewPane demo={demo} frame={frame} />
-        </TabsContent>
-        <TabsContent value="code">
-          <CodePane code={code} rawCode={rawCode} />
-        </TabsContent>
-      </Tabs>
-    </div>
-  )
+export function DemoPreview({
+	title,
+	demo,
+	code,
+	rawCode,
+	frame = "default",
+}: DemoPreviewProps) {
+	return (
+		<div className="mb-6">
+			{title && (
+				<Typography
+					as="h4"
+					size="base"
+					className="text-foreground font-bold uppercase tracking-wider mb-2"
+				>
+					{title}
+				</Typography>
+			)}
+			<Tabs defaultValue="preview" variant="underline" size="sm">
+				<TabsList className="mb-3">
+					<TabsTrigger value="preview" className="text-xs">
+						Preview
+					</TabsTrigger>
+					<TabsTrigger value="code" className="text-xs">
+						Code
+					</TabsTrigger>
+				</TabsList>
+				<TabsContent value="preview">
+					<PreviewPane demo={demo} frame={frame} />
+				</TabsContent>
+				<TabsContent value="code">
+					<CodePane code={code} rawCode={rawCode} />
+				</TabsContent>
+			</Tabs>
+		</div>
+	);
 }

@@ -110,6 +110,7 @@ export function useReviewStream() {
         result.error.code === ReviewErrorCode.SESSION_STALE ||
         result.error.code === ReviewErrorCode.SESSION_NOT_FOUND
       ) {
+        dispatch({ type: "RESET" });
         return err(result.error);
       }
 

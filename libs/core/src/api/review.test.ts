@@ -141,33 +141,4 @@ describe("getActiveReviewSession", () => {
     expect(withoutMode.session).toBeNull();
     expect(withoutModeClient.get).toHaveBeenCalledWith("/api/review/sessions/active", undefined);
   });
-
-  it("sends scope params so a scoped review is discoverable on resume", async () => {
-    const client = createClient();
-    vi.mocked(client.get).mockResolvedValue({ session: null });
-
-    await getActiveReviewSession(client, "staged", {
-      profile: "quick",
-      lenses: ["security", "correctness"],
-      files: ["a.ts", "b.ts"],
-    });
-
-    expect(client.get).toHaveBeenCalledWith("/api/review/sessions/active", {
-      mode: "staged",
-      profile: "quick",
-      lenses: "security,correctness",
-      files: "a.ts,b.ts",
-    });
-  });
-
-  it("omits empty scope arrays from the query params", async () => {
-    const client = createClient();
-    vi.mocked(client.get).mockResolvedValue({ session: null });
-
-    await getActiveReviewSession(client, "unstaged", { lenses: [], files: [] });
-
-    expect(client.get).toHaveBeenCalledWith("/api/review/sessions/active", {
-      mode: "unstaged",
-    });
-  });
 });

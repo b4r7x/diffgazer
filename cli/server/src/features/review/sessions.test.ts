@@ -70,7 +70,7 @@ afterEach(() => {
 });
 
 // Tear down the module-level stale-cleanup interval so it never outlives the
-// suite (F151). Idempotent, so it is safe even if a test already called it.
+// suite. Idempotent, so it is safe even if a test already called it.
 afterAll(() => {
   shutdownSessions();
 });
@@ -293,7 +293,7 @@ describe("session bounds and subscriber failures", () => {
 
   it("emits one client-facing cap notice when non-terminal events are dropped past the cap", () => {
     // Suppress the expected server-side cap console.warn; the contract under
-    // test is the client-facing notice, not the log line. (F155)
+    // test is the client-facing notice, not the log line.
     vi.spyOn(console, "warn").mockImplementation(() => {});
     const received: FullReviewStreamEvent[] = [];
     const session = createTrackedSession("event-cap-notice");

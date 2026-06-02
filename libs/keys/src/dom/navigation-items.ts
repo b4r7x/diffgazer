@@ -1,4 +1,4 @@
-import { containsActiveElement } from "./focusable.js";
+import { containsActiveElement, documentOrder } from "./focusable.js";
 
 export const NAVIGATION_ITEM_ATTRIBUTE = "data-diffgazer-navigation-item";
 
@@ -49,14 +49,9 @@ function queryAllMatchingGroups(
 
   // querySelectorAll returns elements in DOM order within each selector,
   // but merged results from multiple selectors may interleave. Sort by
-  // DOM order using compareDocumentPosition.
+  // DOM order using the realm-safe comparator shared with focusable.
   if (merged.length > 1) {
-    merged.sort((a, b) => {
-      const pos = a.compareDocumentPosition(b);
-      if (pos & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
-      if (pos & Node.DOCUMENT_POSITION_PRECEDING) return 1;
-      return 0;
-    });
+    merged.sort(documentOrder);
   }
 
   return merged;

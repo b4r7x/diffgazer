@@ -21,7 +21,10 @@ type EmbeddedServerState = "idle" | "starting" | "running" | "stopped";
 
 export function buildHtmlShell(html: string, token: string): { body: string; csp: string } {
   const nonce = randomBytes(16).toString("base64");
-  const script = `<script nonce="${nonce}">window.__DIFFGAZER_SHUTDOWN_TOKEN__=${JSON.stringify(token)};</script>`;
+  // Escape angle brackets so the serialized value can never terminate the
+  // inline <script> element (a </script> or <!-- sequence in the token).
+  const serializedToken = JSON.stringify(token).replace(/</g, "\\u003c").replace(/>/g, "\\u003e");
+  const script = `<script nonce="${nonce}">window.__DIFFGAZER_SHUTDOWN_TOKEN__=${serializedToken};</script>`;
   const csp = [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}'`,
@@ -117,14 +120,7 @@ export function createEmbeddedServer(
       c.header("Content-Security-Policy", csp);
       return c.html(body);
     });
-    app.use(
-      "/*",
-      serveStatic({
-        root: webRoot,
-        rewriteRequestPath: (path, c) =>
-          isSpaNavigationRequest(c, path) ? "/index.html" : path,
-      }),
-    );
+    app.use("/*", serveStatic({ root: webRoot }));
 
     try {
       server = serve({ fetch: app.fetch, port: config.port, hostname: "127.0.0.1" }, (info) => {
@@ -155,15 +151,21 @@ export function createEmbeddedServer(
 
   return {
     start,
-    stop: () => {
+    stop: async () => {
       state = "stopped";
+      // Abort in-flight reviews and clear SSE subscribers first so open streams
+      // resolve and the HTTP server can drain; otherwise close() never fires its
+      // callback while a review stream keeps a connection alive.
+      const { shutdownSessions } = await import("@diffgazer/server");
+      shutdownSessions();
+
       if (!server) {
-        return Promise.resolve();
+        return;
       }
 
       const closing = server;
       server = null;
-      return new Promise<void>((resolve) => {
+      await new Promise<void>((resolve) => {
         closing.close(() => resolve());
       });
     },

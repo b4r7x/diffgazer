@@ -105,28 +105,13 @@ export async function getReview(
   return client.get<ReviewResponse>(`/api/review/reviews/${id}`);
 }
 
-export interface ActiveReviewSessionOptions {
-  profile?: string;
-  lenses?: string[];
-  files?: string[];
-}
-
 export async function getActiveReviewSession(
   client: ApiClient,
   mode?: ReviewMode,
-  scope: ActiveReviewSessionOptions = {},
 ): Promise<ActiveReviewSessionResponse> {
-  // Scope must mirror createReview so a scoped review is discoverable on resume.
-  // Arrays are sent as comma-separated values; omitted scope matches mode-only
-  // sessions (empty scope key) on the server.
-  const params: Record<string, string> = {};
-  if (mode) params.mode = mode;
-  if (scope.profile) params.profile = scope.profile;
-  if (scope.lenses && scope.lenses.length > 0) params.lenses = scope.lenses.join(",");
-  if (scope.files && scope.files.length > 0) params.files = scope.files.join(",");
   return client.get<ActiveReviewSessionResponse>(
     "/api/review/sessions/active",
-    Object.keys(params).length > 0 ? params : undefined,
+    mode ? { mode } : undefined,
   );
 }
 
@@ -172,8 +157,7 @@ export const bindReview = (client: ApiClient) => ({
   resumeReviewStream: (options: ResumeReviewOptions) => resumeReviewStream(client, options),
   getReviews: (projectPath?: string) => getReviews(client, projectPath),
   getReview: (id: string) => getReview(client, id),
-  getActiveReviewSession: (mode?: ReviewMode, scope?: ActiveReviewSessionOptions) =>
-    getActiveReviewSession(client, mode, scope),
+  getActiveReviewSession: (mode?: ReviewMode) => getActiveReviewSession(client, mode),
   getReviewContext: () => getReviewContext(client),
   refreshReviewContext: (options?: { force?: boolean }) => refreshReviewContext(client, options),
   deleteReview: (id: string) => deleteReview(client, id),

@@ -27,7 +27,6 @@ const AgentMetaSchema = z.object({
   name: z.string(),
   badgeLabel: z.string().optional(),
   badgeVariant: z.enum(["success", "warning", "error", "info", "neutral"]).optional(),
-  emoji: z.string().optional(),
   description: z.string(),
 }).transform((data) => ({
   id: data.id,

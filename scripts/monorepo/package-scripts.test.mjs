@@ -8,8 +8,8 @@ const rootPackageJson = JSON.parse(
   readFileSync(fileURLToPath(new URL("../../package.json", import.meta.url)), "utf-8"),
 );
 
-// F012: the benchmark only gates latency/throughput SLOs under strict mode, so
-// the CI/release chains must run `pnpm run bench` with the strict env var or
+// The benchmark only gates latency/throughput SLOs under strict mode, so the
+// CI/release chains must run `pnpm run bench` with the strict env var or
 // breaches silently pass.
 test("test-ci runs the benchmark under strict skip mode", () => {
   assert.match(
@@ -25,7 +25,19 @@ test("release-check runs the benchmark under strict skip mode", () => {
   );
 });
 
-// F015: the dead review opt-in contract was removed; no script env name should
+// `verify` is the local dev command and runs `bench`/`smoke` non-strict, so the
+// per-PR gate gets its bench/smoke strictness only from the workflow env prefix.
+// Pin that prefix on the real per-PR gate so a workflow refactor can't silently
+// drop SLO gating.
+test("the release-readiness Verify step runs verify under strict skip mode", () => {
+  const workflow = readFileSync(
+    fileURLToPath(new URL("../../.github/workflows/release-readiness.yml", import.meta.url)),
+    "utf-8",
+  );
+  assert.match(workflow, /DIFFGAZER_SMOKE_STRICT_SKIPS=1[^\n]*pnpm run verify/);
+});
+
+// The dead review opt-in contract was removed; no script env name should
 // reintroduce it.
 test("the benchmark review opt-in env var is not part of the script env contract", () => {
   assert.equal(ENV.benchReviewPipeline, undefined);

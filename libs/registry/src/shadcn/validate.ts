@@ -137,6 +137,18 @@ export function validatePublicRegistryFresh(options: ValidatePublicRegistryFresh
       }
 
       compareItemFields("", expectedItem, publicItem, sourceItem.name, fixCommand);
+
+      for (const file of publicItem.files) {
+        ensureSafeFilePath(file.path, sourceItem.name, "public registry index");
+        if (file.target) ensureSafeFilePath(file.target, sourceItem.name, "public registry index");
+      }
+      ensureSameValue({
+        label: "index files",
+        a: expectedItem.files.map((file) => file.path),
+        b: publicItem.files.map((file) => file.path),
+        itemName: sourceItem.name,
+        fixCommand,
+      });
     }
 
     // Both hidden and visible items must have a per-item JSON file on disk
@@ -148,9 +160,11 @@ export function validatePublicRegistryFresh(options: ValidatePublicRegistryFresh
 
     for (const file of expectedItem.files) {
       ensureSafeFilePath(file.path, sourceItem.name, "source registry");
+      if (file.target) ensureSafeFilePath(file.target, sourceItem.name, "source registry");
     }
     for (const file of publicItemJson.files ?? []) {
       ensureSafeFilePath(file.path, sourceItem.name, "public registry");
+      if (file.target) ensureSafeFilePath(file.target, sourceItem.name, "public registry");
     }
 
     const publicFilesByPath = new Map((publicItemJson.files ?? []).map((file) => [file.path, file]));

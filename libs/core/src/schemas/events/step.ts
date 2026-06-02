@@ -79,7 +79,9 @@ export function hasEventType(event: unknown): event is { type: string } {
   );
 }
 
-const STEP_EVENT_TYPES = new Set<string>(["review_started", "step_start", "step_complete", "step_error"]);
+const STEP_EVENT_TYPES = new Set<string>(
+  StepEventSchema.options.flatMap((option) => [...option.shape.type.values]),
+);
 
 export function isStepEvent(event: unknown): event is StepEvent {
   return hasEventType(event) && STEP_EVENT_TYPES.has(event.type);

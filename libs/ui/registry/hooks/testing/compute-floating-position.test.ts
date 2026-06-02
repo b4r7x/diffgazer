@@ -61,7 +61,7 @@ describe("computePosition", () => {
     expect(shifted.x - base.x).toBe(10)
   })
 
-  // F007: the public helper must keep the positional signature so existing plain-JS
+  // The public helper must keep the positional signature so existing plain-JS
   // copy/package consumers (no TS checking) keep getting correct results.
   it("interprets the first argument as the trigger rect, not an options object", () => {
     // The audited break: an options-object call would read the wrong fields and

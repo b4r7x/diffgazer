@@ -203,6 +203,22 @@ describe("error handling", () => {
     const body = (await res.json()) as { error: { message: string } };
     expect(body.error.message).toBe("Not Found");
   });
+
+  it("returns a generic JSON 500 with a request id when a route throws", async () => {
+    const app = createApp();
+    app.get("/__throws__", () => {
+      throw new Error("boom");
+    });
+
+    const res = await app.request("/__throws__", { headers: { Host: "localhost:3000" } });
+
+    expect(res.status).toBe(500);
+    // The request-logger tail runs through onError and sets the id header, so
+    // the generic error response still carries exactly one X-Request-Id.
+    expect(res.headers.get("X-Request-Id")).toMatch(/[0-9a-f-]{36}/);
+    const body = (await res.json()) as { error: { message: string } };
+    expect(body.error.message).toBe("Internal Server Error");
+  });
 });
 
 describe("API token middleware", () => {

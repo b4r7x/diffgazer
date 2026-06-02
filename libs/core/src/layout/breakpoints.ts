@@ -12,12 +12,6 @@ export function getBreakpointTier(columns: number): BreakpointTier {
   return "wide";
 }
 
-export function getBreakpointTierFromPx(px: number): BreakpointTier {
-  if (px < BREAKPOINTS.medium.minPx) return "narrow";
-  if (px < BREAKPOINTS.wide.minPx) return "medium";
-  return "wide";
-}
-
 export interface ResponsiveResult {
   tier: BreakpointTier;
   isNarrow: boolean;

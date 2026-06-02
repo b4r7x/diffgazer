@@ -117,7 +117,6 @@ export function HomePagePresentation({
   };
 
   const navigateToReview = (reviewId: string, mode: ReviewMode) => {
-    clearScopedRouteState("/review", "highlighted");
     navigate({
       to: "/review/{-$reviewId}",
       params: { reviewId },

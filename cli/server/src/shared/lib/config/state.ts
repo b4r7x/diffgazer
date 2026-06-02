@@ -186,5 +186,3 @@ export const createProjectFile = (projectRoot: string): ProjectFile => {
   writeJsonFileSync(getProjectInfoPath(projectRoot), created, 0o600);
   return created;
 };
-
-export const readOrCreateProjectFile = createProjectFile;

@@ -22,9 +22,9 @@ export function areShortcutsEqual(a: Shortcut[], b: Shortcut[]): boolean {
   return true;
 }
 
-// Wording chosen per slot-07 F10: "Navigate" / "Select" / "Quit" matches the
-// rest of the keyboard model (`j/k Navigate` in review, `Enter Select`
-// everywhere else). Both web and CLI consume this single constant.
+// "Navigate"/"Select"/"Quit" matches the rest of the keyboard model
+// (`j/k Navigate` in review, `Enter Select` everywhere else). Both web and CLI
+// consume this single constant.
 export const MAIN_MENU_SHORTCUTS: Shortcut[] = [
   { key: "↑/↓", label: "Navigate" },
   { key: "Enter", label: "Select" },

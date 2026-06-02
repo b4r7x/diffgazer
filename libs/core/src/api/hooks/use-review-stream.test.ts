@@ -264,6 +264,7 @@ describe("useReviewStream", () => {
     });
 
     expect(result.current.state.error).toBeNull();
+    expect(result.current.state.isStreaming).toBe(false);
     expect(returnedResult!.ok).toBe(false);
     if (!returnedResult!.ok) {
       expect(returnedResult!.error.code).toBe(ReviewErrorCode.SESSION_STALE);

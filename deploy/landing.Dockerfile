@@ -13,6 +13,11 @@ COPY scripts/ scripts/
 
 RUN pnpm install --frozen-lockfile
 
+# Vite inlines VITE_-prefixed values at build time, so the docs origin override
+# must be present before the landing build runs.
+ARG VITE_DOCS_ORIGIN=https://docs.b4r7.dev
+ENV VITE_DOCS_ORIGIN=${VITE_DOCS_ORIGIN}
+
 RUN pnpm --filter @diffgazer/registry build \
  && pnpm --filter @diffgazer/core build \
  && pnpm --filter @diffgazer/keys build \

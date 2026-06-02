@@ -190,6 +190,36 @@ describe("useActiveHeading", () => {
     expect(scrollTo).toHaveBeenCalledWith({ top: 350, behavior: "smooth" })
   })
 
+  it("resumes scroll-spy after scrollTo targets an already-in-view heading", () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+    try {
+      // scrollTo to an in-view heading produces no movement, so neither
+      // "scroll" nor "scrollend" fires; the guard must still release on settle.
+      Object.defineProperty(window, "scrollTo", { configurable: true, value: vi.fn() })
+      const { result } = renderActiveHeading()
+      flushFrames()
+
+      act(() => {
+        result.current.scrollTo("h2")
+      })
+      expect(result.current.activeId).toBe("h2")
+
+      act(() => {
+        vi.advanceTimersByTime(150)
+      })
+
+      setHeadingRect("h3", 250)
+      act(() => {
+        window.dispatchEvent(new Event("scroll"))
+      })
+      flushFrames()
+
+      expect(result.current.activeId).toBe("h3")
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it("cleans up observers, listeners, and pending animation frames on unmount", () => {
     const removeListener = vi.spyOn(window, "removeEventListener")
     try {
@@ -265,8 +295,8 @@ describe("useActiveHeading", () => {
 
   it("filters headings from a cross-realm ownerDocument whose elements are not host HTMLElement instances", () => {
     // A second JSDOM realm has its own HTMLElement constructor, so its elements
-    // are NOT `instanceof` the host realm's HTMLElement. F006: filtering must
-    // derive the constructor from `ownerDocument.defaultView`, not the host.
+    // are NOT `instanceof` the host realm's HTMLElement. Filtering must derive
+    // the constructor from `ownerDocument.defaultView`, not the host.
     const realm = new JSDOM("<!doctype html><html><body></body></html>", { pretendToBeVisual: true })
     const crossDoc = realm.window.document
 
@@ -310,8 +340,8 @@ describe("useActiveHeading", () => {
       )
 
       // viewport center = 300; x2 at top 100 is the last heading above the line.
-      // Before the F006 fix the host-realm `instanceof HTMLElement` filter dropped
-      // both cross-realm headings and activeId fell back to the first id ("x1").
+      // A host-realm `instanceof HTMLElement` filter would drop both cross-realm
+      // headings and activeId would fall back to the first id ("x1").
       expect(result.current.activeId).toBe("x2")
     } finally {
       realm.window.close()

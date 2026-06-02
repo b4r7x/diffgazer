@@ -3,8 +3,6 @@ import { toast } from "@diffgazer/ui/components/toast";
 import { useNavigate } from "@tanstack/react-router";
 import { isApiError } from "@diffgazer/core/api/types";
 
-export { isApiError };
-
 export function useReviewErrorHandler() {
   const navigate = useNavigate();
 

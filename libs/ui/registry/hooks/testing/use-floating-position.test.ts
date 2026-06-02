@@ -1,6 +1,7 @@
 import { createElement, useRef } from "react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { act, render, screen, waitFor } from "@testing-library/react"
+import { JSDOM } from "jsdom"
 import {
   computePosition,
   resolveCollisionPosition,
@@ -422,6 +423,105 @@ describe("useFloatingPosition", () => {
       expect(hostScrollResize).toEqual([])
     } finally {
       hostAddListener.mockRestore()
+    }
+  })
+
+  it("discovers a cross-realm overflow ancestor and observes resize via the trigger's own realm", async () => {
+    // A second JSDOM realm has its own HTMLElement/ResizeObserver. Its elements
+    // are NOT `instanceof` the host realm's HTMLElement, so the host-realm
+    // scroll-ancestor check and the host ResizeObserver both miss them.
+    const hostResizeObserverDescriptor = Object.getOwnPropertyDescriptor(globalThis, "ResizeObserver")
+    const hostObserve = vi.fn()
+    Object.defineProperty(globalThis, "ResizeObserver", {
+      configurable: true,
+      value: class {
+        observe() {
+          hostObserve()
+        }
+        disconnect() {}
+      },
+    })
+
+    const realm = new JSDOM("<!doctype html><html><body></body></html>", {
+      pretendToBeVisual: true,
+      url: "https://example.test/",
+    })
+    const realmWindow = realm.window as unknown as Window & typeof globalThis
+    const crossDoc = realm.window.document
+
+    const wrapper = crossDoc.createElement("div")
+    const trigger = crossDoc.createElement("button")
+    const content = crossDoc.createElement("div")
+    wrapper.appendChild(trigger)
+    crossDoc.body.append(wrapper, content)
+
+    // Guard the premise: the overflow ancestor is not a host HTMLElement instance.
+    expect(wrapper instanceof HTMLElement).toBe(false)
+    expect(wrapper instanceof realm.window.HTMLElement).toBe(true)
+
+    trigger.getBoundingClientRect = () => makeDOMRect(100, 100, 80, 40)
+    content.getBoundingClientRect = () => makeDOMRect(0, 0, 120, 50)
+
+    Object.defineProperty(realmWindow, "innerWidth", { configurable: true, value: 800 })
+    Object.defineProperty(realmWindow, "innerHeight", { configurable: true, value: 600 })
+    realmWindow.getComputedStyle = ((el: Element) =>
+      el === wrapper
+        ? ({ overflow: "", overflowX: "", overflowY: "auto", display: "block" } as CSSStyleDeclaration)
+        : ({ overflow: "", overflowX: "", overflowY: "", display: "block" } as CSSStyleDeclaration)) as typeof window.getComputedStyle
+    Object.defineProperty(realmWindow, "requestAnimationFrame", {
+      configurable: true,
+      value: (cb: FrameRequestCallback) => {
+        cb(0)
+        return 1
+      },
+    })
+    Object.defineProperty(realmWindow, "cancelAnimationFrame", { configurable: true, value: () => {} })
+
+    const realmObserve = vi.fn()
+    Object.defineProperty(realmWindow, "ResizeObserver", {
+      configurable: true,
+      value: class {
+        observe(target: Element) {
+          realmObserve(target)
+        }
+        disconnect() {}
+      },
+    })
+
+    const wrapperAddListener = vi.spyOn(wrapper, "addEventListener")
+
+    function CrossRealmHarness() {
+      const triggerRef = useRef<HTMLElement | null>(trigger)
+      const { contentRef } = useFloatingPosition({
+        triggerRef,
+        open: true,
+        side: "bottom",
+        align: "start",
+        avoidCollisions: false,
+      })
+      contentRef.current = content as unknown as HTMLDivElement
+      return createElement("div", { "data-testid": "cross-realm-ready" }, "ready")
+    }
+
+    try {
+      render(createElement(CrossRealmHarness))
+
+      await waitFor(() => {
+        expect(screen.getByTestId("cross-realm-ready")).toHaveTextContent("ready")
+      })
+
+      // Scroll-ancestor discovery must reach the cross-realm overflow wrapper.
+      const wrapperScrollCalls = wrapperAddListener.mock.calls.filter(([type]) => type === "scroll")
+      expect(wrapperScrollCalls.length).toBeGreaterThan(0)
+
+      // Resize observation must run against the trigger's own realm, not the host.
+      expect(realmObserve).toHaveBeenCalledWith(trigger)
+      expect(realmObserve).toHaveBeenCalledWith(content)
+      expect(hostObserve).not.toHaveBeenCalled()
+    } finally {
+      wrapperAddListener.mockRestore()
+      realm.window.close()
+      restoreProperty(globalThis, "ResizeObserver", hostResizeObserverDescriptor)
     }
   })
 

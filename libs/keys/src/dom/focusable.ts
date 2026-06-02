@@ -68,7 +68,7 @@ export function isFocusable(element: HTMLElement | null): boolean {
 const DOCUMENT_POSITION_PRECEDING = 0x02;
 const DOCUMENT_POSITION_FOLLOWING = 0x04;
 
-function documentOrder(a: HTMLElement, b: HTMLElement): number {
+export function documentOrder(a: HTMLElement, b: HTMLElement): number {
   const pos = a.compareDocumentPosition(b);
   if (pos & DOCUMENT_POSITION_FOLLOWING) return -1;
   if (pos & DOCUMENT_POSITION_PRECEDING) return 1;

@@ -1,14 +1,11 @@
 /**
  * CLI-oriented display helpers for review progress steps.
  *
- * `mapStepStatus` maps schema-aligned step statuses ("active"/"completed"/"pending")
- * to CLI naming conventions ("running"/"complete"/"error"/"pending"). The web app has
- * its own `mapStepStatus` in `apps/web/src/features/review/components/review-container.utils.ts`
- * because it maps to a 3-value `ProgressStatus` type ("active"/"completed"/"pending")
- * with no "error" variant (errors fall back to "pending").
- *
- * This is intentional divergence — the web and CLI have different UI status models,
- * not a duplication bug.
+ * `mapStepStatus` maps schema step statuses to the 4-value CLI `UIStepStatus`
+ * ("pending"/"running"/"complete"/"error"). The web progress view derives its
+ * status from the same function via `mapStepsToProgressData` (progress-mapping.ts),
+ * which collapses "error" to "pending" because the web `ProgressStatus` has no
+ * "error" variant. This is the single source of truth for step-status mapping.
  */
 import type { StepState, AgentState } from "@diffgazer/core/schemas/events";
 

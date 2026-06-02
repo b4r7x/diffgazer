@@ -135,7 +135,7 @@ describe("config state", () => {
   });
 
   it("reads an existing project file or creates one under the project .diffgazer directory", async () => {
-    const { readOrCreateProjectFile } = await loadState();
+    const { createProjectFile } = await loadState();
     const projectRoot = path.join(tempHome, "project");
     const projectFile = path.join(projectRoot, ".diffgazer", "project.json");
     await mkdir(path.dirname(projectFile), { recursive: true });
@@ -145,10 +145,10 @@ describe("config state", () => {
       createdAt: "2024-01-01",
     }), "utf-8");
 
-    expect(readOrCreateProjectFile(projectRoot).projectId).toBe("existing-id");
+    expect(createProjectFile(projectRoot).projectId).toBe("existing-id");
 
     const newRoot = path.join(tempHome, "new-project");
-    const created = readOrCreateProjectFile(newRoot);
+    const created = createProjectFile(newRoot);
     expect(created).toMatchObject({ repoRoot: newRoot });
     await expect(readJson(path.join(newRoot, ".diffgazer", "project.json"))).resolves.toMatchObject({
       projectId: created.projectId,

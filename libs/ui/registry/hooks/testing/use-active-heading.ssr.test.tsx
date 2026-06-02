@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { useActiveHeading } from "../use-active-heading";
 
 // Runs in the "ssr" vitest project (node environment, no jsdom), so `document`
-// and `window` are undefined here. F005: the hook must not read browser globals
+// and `window` are undefined here, so the hook must not read browser globals
 // during render.
 
 function Toc() {
