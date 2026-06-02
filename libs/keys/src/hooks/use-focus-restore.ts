@@ -23,11 +23,8 @@ interface FocusRestoreEntry {
   target: HTMLElement | null;
 }
 
-// KEY-020: The restore stack is global (module-scoped). In multi-document
-// scenarios (iframes, multi-window), entries from different documents share
-// this stack. A per-document `WeakMap<Document, FocusRestoreEntry[]>` would
-// isolate them, but requires threading ownerDocument through capture/restore
-// calls. This is a known limitation paired with KEY-019.
+// The restore stack is module-scoped, so every document shares one stack;
+// entries from different documents (iframes/multi-window) are not isolated.
 const focusRestoreStack: FocusRestoreEntry[] = [];
 
 function removeEntry(entry: FocusRestoreEntry): void {

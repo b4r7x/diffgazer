@@ -23,9 +23,7 @@ function ownedFileHash(cwd: string, itemName: string, absolutePath: string): str
   if (!config.ok) return null;
 
   const manifest = config.config.installedComponents ?? {};
-  const record =
-    manifest[parsed.publicName] ??
-    (getKeysHookNames().has(parsed.name) ? manifest[`keys/${parsed.name}`] : undefined);
+  const record = manifest[parsed.publicName];
   const files = record?.files ?? [];
   const filePath = normalizeManifestPath(cwd, absolutePath);
   return files.find((file) => file.path === filePath)?.hash ?? null;

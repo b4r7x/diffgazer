@@ -12,7 +12,7 @@ import {
   type RefObject,
 } from "react";
 import { DECLINE } from "../core/normalize-key-input.js";
-import { getOwnerView } from "../dom/dom.js";
+import { getOwnerView, isNode } from "../dom/dom.js";
 import { canonicalizeHotkey, isEditableElement, matchesHotkey } from "../dom/keyboard-utils.js";
 
 type Handler = (event: KeyboardEvent) => unknown;
@@ -90,7 +90,7 @@ function isEventWithinContainer(eventTarget: EventTarget | null, options?: Handl
   const container = containerRef.current;
   if (!container) return false;
   const View = getOwnerView(container);
-  if (!View || !(eventTarget instanceof View.Node)) return false;
+  if (!isNode(eventTarget, View)) return false;
   return container.contains(eventTarget);
 }
 
@@ -168,11 +168,9 @@ export function KeyboardProvider({ children }: { children: ReactNode }) {
     }
   });
 
-  // KEY-019: The provider installs its keydown listener on `window`, which
-  // means it only captures events from the provider's own document. Cross-
-  // document scenarios (iframes, multi-window) require either a provider per
-  // document or a future API that aggregates ownerDocuments from registered
-  // containerRefs. This is a known single-document limitation.
+  // The keydown listener is installed on `window`, so it only captures events
+  // from the provider's own document; cross-document scenarios (iframes,
+  // multi-window) need a provider per document.
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       handleKeyDown(event);

@@ -1,12 +1,12 @@
-export { Example } from "./example"
-export { Examples } from "./examples"
-export { PropsTableBlock as PropsTable } from "./props-table-block"
-export { ParameterTableBlock as ParameterTable } from "./parameter-table-block"
-export { ReturnsTable } from "./returns-table"
-export { UsageSnippet } from "./usage-snippet"
-export { SourceViewerBlock as SourceViewer } from "./source-viewer-block"
-export { KeyboardNav } from "./keyboard-nav"
-export { AccessibilityNotes } from "./accessibility-notes"
-export { Notes } from "./notes"
-export { ConsumptionBlock } from "./consumption-block"
-export { APIReference } from "./api-reference"
+export { AccessibilityNotes } from "./accessibility-notes";
+export { APIReference } from "./api-reference";
+export { ConsumptionBlock } from "./consumption-block";
+export { Example } from "./example";
+export { Examples } from "./examples";
+export { KeyboardNav } from "./keyboard-nav";
+export { Notes } from "./notes";
+export { ParameterTableBlock as ParameterTable } from "./parameter-table-block";
+export { PropsTableBlock as PropsTable } from "./props-table-block";
+export { ReturnsTable } from "./returns-table";
+export { SourceViewerBlock as SourceViewer } from "./source-viewer-block";
+export { UsageSnippet } from "./usage-snippet";

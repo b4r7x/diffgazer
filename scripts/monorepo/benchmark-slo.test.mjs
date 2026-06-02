@@ -62,6 +62,24 @@ test("checkSlo skips latency checks once a functional failure is recorded", () =
   assert.deepEqual(latencyBreaches, []);
 });
 
+test("checkSlo records nothing when an all-200 run is within every SLO", () => {
+  const functionalFailures = [];
+  const latencyBreaches = [];
+  const result = {
+    ...summarizeStatuses([200, 200]),
+    p95: 10,
+    p99: 20,
+    requestsPerSecond: 10000,
+  };
+  checkSlo({ functionalFailures, latencyBreaches }, "GET /health", result, {
+    p95Ms: 50,
+    p99Ms: 100,
+    minRequestsPerSecond: 500,
+  });
+  assert.deepEqual(functionalFailures, []);
+  assert.deepEqual(latencyBreaches, []);
+});
+
 test("checkSlo records latency breaches when all responses are 200", () => {
   const functionalFailures = [];
   const latencyBreaches = [];

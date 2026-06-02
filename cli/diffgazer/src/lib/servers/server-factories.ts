@@ -45,14 +45,19 @@ export function openBrowserAddress(
     });
 }
 
-function createOpenBrowserHandler(openBrowser = true): ((address: string) => void) | undefined {
-  return openBrowser ? (address) => openBrowserAddress(address) : undefined;
+export function createReadyHandler(openBrowser = true): (address: string) => void {
+  return (address) => {
+    console.log(`Diffgazer is running at ${address}`);
+    if (openBrowser) {
+      openBrowserAddress(address);
+    }
+  };
 }
 
 export function createDevServerFactories(
   options: ServerFactoryOptions = {},
 ): Array<() => ServerController> {
-  const onReady = createOpenBrowserHandler(options.openBrowser);
+  const onReady = createReadyHandler(options.openBrowser);
 
   return [
     () =>
@@ -78,7 +83,7 @@ export function createProdServerFactories(
       createEmbeddedServer({
         port: parsePortEnv(process.env.PORT, config.ports.api),
         projectRoot,
-        onReady: createOpenBrowserHandler(options.openBrowser),
+        onReady: createReadyHandler(options.openBrowser),
       }),
   ];
 }

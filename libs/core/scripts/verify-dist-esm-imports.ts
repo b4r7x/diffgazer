@@ -29,7 +29,7 @@ for (const file of collectFiles(DIST)) {
   const content = readFileSync(file, "utf-8");
   for (const match of content.matchAll(RELATIVE_IMPORT)) {
     const specifier = match[2];
-    if (specifier && !specifier.endsWith(".js") && !specifier.endsWith(".json")) {
+    if (specifier && !specifier.endsWith(".js")) {
       offenders.push(`${file}: ${match[0].trim()}`);
     }
   }

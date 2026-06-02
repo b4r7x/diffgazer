@@ -4,7 +4,7 @@ import { Panel } from "@diffgazer/ui/components/panel";
 import { useConfigData } from "@/app/providers/config-provider";
 import { useScope, useKey } from "@diffgazer/keys";
 import { usePageFooter } from "@diffgazer/core/footer";
-import { useScopedRouteState, clearScopedRouteState } from "@/hooks/use-scoped-route-state";
+import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { useTheme } from "@/hooks/use-theme";
 import { useSettings } from "@diffgazer/core/api/hooks";
 import type { AgentExecution } from "@diffgazer/core/schemas/config";
@@ -56,7 +56,6 @@ export function SettingsHubPage() {
   const handleActivate = (id: string) => {
     const route = SETTINGS_ROUTES[id as SettingsAction];
     if (route) {
-      clearScopedRouteState(route, "highlighted");
       navigate({ to: route });
     }
   };

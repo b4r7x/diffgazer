@@ -1,9 +1,15 @@
-import { useRouter } from "@tanstack/react-router";
-import { useState, useSyncExternalStore, type ReactNode, useEffect, useRef } from "react";
 import { cn } from "@diffgazer/ui/lib/utils";
+import { useRouter } from "@tanstack/react-router";
+import {
+	type ReactNode,
+	useEffect,
+	useRef,
+	useState,
+	useSyncExternalStore,
+} from "react";
 import type { DocsLibraryId } from "@/lib/docs-library";
-import { usePendingDocsRoute } from "@/lib/hooks/use-pending-docs-route";
 import type { PageTree } from "@/lib/docs-tree";
+import { usePendingDocsRoute } from "@/lib/hooks/use-pending-docs-route";
 import { DocsSidebar } from "./sidebar";
 
 const LG_QUERY = "(min-width: 1024px)";
@@ -25,9 +31,17 @@ interface DocsContentLayoutProps {
 	children: ReactNode;
 }
 
-export function DocsContentLayout({ tree, library, children }: DocsContentLayoutProps) {
+export function DocsContentLayout({
+	tree,
+	library,
+	children,
+}: DocsContentLayoutProps) {
 	const [sidebarOpen, setSidebarOpen] = useState(false);
-	const isDesktop = useSyncExternalStore(subscribeDesktop, getDesktopSnapshot, getDesktopServerSnapshot);
+	const isDesktop = useSyncExternalStore(
+		subscribeDesktop,
+		getDesktopSnapshot,
+		getDesktopServerSnapshot,
+	);
 	const sidebarInert = !isDesktop && !sidebarOpen;
 	const mainInert = !isDesktop && sidebarOpen;
 	const mainRef = useRef<HTMLElement>(null);
@@ -45,8 +59,9 @@ export function DocsContentLayout({ tree, library, children }: DocsContentLayout
 	return (
 		<div className="flex flex-1 min-h-0 overflow-hidden">
 			{sidebarOpen && (
-				<div
-					role="presentation"
+				<button
+					type="button"
+					aria-label="Close sidebar navigation"
 					className="fixed inset-0 bg-black/50 z-40 lg:hidden"
 					onClick={() => setSidebarOpen(false)}
 				/>
@@ -65,7 +80,11 @@ export function DocsContentLayout({ tree, library, children }: DocsContentLayout
 				)}
 				data-pagefind-ignore
 			>
-				<DocsSidebar tree={tree} library={library} onNavigate={() => setSidebarOpen(false)} />
+				<DocsSidebar
+					tree={tree}
+					library={library}
+					onNavigate={() => setSidebarOpen(false)}
+				/>
 			</aside>
 
 			<div className="flex-1 min-w-0 min-h-0 flex flex-col">

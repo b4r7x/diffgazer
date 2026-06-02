@@ -122,7 +122,13 @@ export const ReviewErrorCode = {
 
 export type ReviewErrorCode = (typeof ReviewErrorCode)[keyof typeof ReviewErrorCode];
 
-const REVIEW_SPECIFIC_CODES = Object.values(ReviewErrorCode) as [string, ...string[]];
+const REVIEW_SPECIFIC_CODES = [
+  ReviewErrorCode.NO_DIFF,
+  ReviewErrorCode.AI_ERROR,
+  ReviewErrorCode.GENERATION_FAILED,
+  ReviewErrorCode.SESSION_NOT_FOUND,
+  ReviewErrorCode.SESSION_STALE,
+] as const;
 
 export const ReviewErrorSchema = createDomainErrorSchema(REVIEW_SPECIFIC_CODES);
 /** @see diffgazer/apps/server/src/shared/lib/review/types.ts ReviewError (lightweight server-internal variant) */

@@ -9,7 +9,8 @@ import { ReviewContainer, ReviewLoadingMessage, type ReviewCompleteData } from "
 import { ReviewSummaryView } from "./review-summary-view";
 import { ReviewResultsView } from "./review-results-view";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
-import { isApiError, useReviewErrorHandler } from "../hooks";
+import { useReviewErrorHandler } from "../hooks";
+import { isApiError } from "@diffgazer/core/api";
 import { useReview } from "@diffgazer/core/api/hooks";
 import { toast } from "@diffgazer/ui/components/toast";
 

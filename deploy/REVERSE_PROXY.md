@@ -43,7 +43,7 @@ host ports to `127.0.0.1` so they are never exposed to the public internet.
 | `r.b4r7.dev` | registry | 8080 | `deploy/registry.Dockerfile` | Static JSON (shadcn registry) |
 | `docs.b4r7.dev` | docs | 3000 | `Dockerfile` (root) | Node.js SSR (TanStack Start + Nitro) |
 | `diffgazer.b4r7.dev` | landing | 8080 | `deploy/landing.Dockerfile` | Static SPA (Vite + React) |
-| `b4r7.dev` | hub | 8080 | `deploy/hub.Dockerfile` | Static HTML (single page) |
+| `b4r7.dev` | hub | 8080 | `deploy/hub.Dockerfile` | Static SPA (Vite + React) |
 
 ---
 
@@ -76,14 +76,16 @@ For each service, set the domain in the Coolify Resource settings:
 - **Domain**: `diffgazer.b4r7.dev`
 - **Port**: `8080`
 - **Health Check Path**: `/`
-- **Watch Paths**: `apps/landing/**`
+- **Watch Paths**: `apps/landing/**,libs/ui/**`
+- **Build-time env vars**:
+  - `VITE_DOCS_ORIGIN=https://docs.b4r7.dev`
 
 ### Hub (`b4r7.dev`)
 
 - **Domain**: `b4r7.dev`
 - **Port**: `8080`
 - **Health Check Path**: `/`
-- **Watch Paths**: `apps/hub/**`
+- **Watch Paths**: `apps/hub/**,libs/ui/**`
 
 ---
 

@@ -293,7 +293,7 @@ describe("useActionRowNavigation", () => {
     await waitFor(() => expectFocused(getButton("Cancel")));
 
     // Focus is already on the Cancel button via the action row navigation.
-    // Enter should still fire onAction (KEY-002).
+    // Enter should still fire onAction.
     await user.keyboard("{Enter}");
     expect(onAction).toHaveBeenCalledWith(0);
   });

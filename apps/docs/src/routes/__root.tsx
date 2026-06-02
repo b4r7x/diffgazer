@@ -1,23 +1,22 @@
+import { KeyboardProvider } from "@diffgazer/keys";
 import {
+	createRootRoute,
 	HeadContent,
+	Link,
 	Outlet,
 	Scripts,
-	Link,
-	createRootRoute,
 } from "@tanstack/react-router";
-import type { ReactNode } from "react";
 import { TanstackProvider } from "fumadocs-core/framework/tanstack";
-import { KeyboardProvider } from "@diffgazer/keys";
-
-import appCss from "../index.css?url";
-import { SearchDialog } from "@/features/search/components/search-dialog";
-import { SearchProvider } from "@/features/search/search-context";
+import type { ReactNode } from "react";
 import { GlobalNotFound } from "@/components/not-found";
 import { NotFoundState } from "@/components/not-found-state";
 import { Button } from "@/components/ui/button/button";
 import { Toaster } from "@/components/ui/toast";
+import { SearchDialog } from "@/features/search/components/search-dialog";
+import { SearchProvider } from "@/features/search/search-context";
 import { PRIMARY_DOCS_LIBRARY_ID } from "@/lib/docs-library";
 import { buildRootHeadDefaults } from "@/lib/seo";
+import appCss from "../index.css?url";
 
 export const Route = createRootRoute({
 	head: () => {

@@ -77,7 +77,8 @@ function getNearestOverflowAncestor(node: Node): HTMLElement | null {
   if (isLastTraversableNode(parent)) {
     return node.ownerDocument?.body ?? null;
   }
-  if (parent instanceof HTMLElement && isOverflowElement(parent)) {
+  const HTMLElementCtor = parent.ownerDocument?.defaultView?.HTMLElement;
+  if (HTMLElementCtor && parent instanceof HTMLElementCtor && isOverflowElement(parent)) {
     return parent;
   }
   return getNearestOverflowAncestor(parent);
@@ -157,7 +158,8 @@ export function useFloatingPosition({
     const content = contentRef.current;
     if (!trigger || !content) return;
 
-    const ResizeObserverCtor = globalThis.ResizeObserver;
+    const view = trigger.ownerDocument?.defaultView ?? window;
+    const ResizeObserverCtor = view.ResizeObserver;
     const observer = typeof ResizeObserverCtor === "function" ? new ResizeObserverCtor(scheduleUpdate) : null;
     observer?.observe(trigger);
     observer?.observe(content);
@@ -166,7 +168,6 @@ export function useFloatingPosition({
     for (const parent of scrollParents) {
       parent.addEventListener("scroll", scheduleUpdate, { passive: true });
     }
-    const view = trigger.ownerDocument?.defaultView ?? window;
     view.addEventListener("scroll", scheduleUpdate, { passive: true });
     view.addEventListener("resize", scheduleUpdate);
 

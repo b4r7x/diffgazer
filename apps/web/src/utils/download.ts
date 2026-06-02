@@ -8,6 +8,10 @@ export function downloadAsFile(
   const anchor = document.createElement("a");
   anchor.href = url;
   anchor.download = filename;
+  document.body.appendChild(anchor);
   anchor.click();
-  URL.revokeObjectURL(url);
+  anchor.remove();
+  // WebKit reads the blob URL asynchronously after click(); revoking it in the
+  // same task aborts the download, so defer the revoke past the current task.
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }

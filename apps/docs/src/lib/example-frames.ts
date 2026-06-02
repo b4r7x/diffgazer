@@ -9,27 +9,24 @@
  * surrounding layout. Inline components (buttons, fields, badges) stay
  * `"default"`.
  */
-export type PreviewFrame = "default" | "inset" | "fill"
+export type PreviewFrame = "default" | "inset" | "fill";
 
 const INSET_EXAMPLES = new Set<string>([
-  "sidebar-default",
-  "sidebar-collapsible",
-  "sidebar-variant-bar",
-  "sidebar-variant-block",
-  "sidebar-variant-bracket",
-  "sidebar-variant-caret",
-  "sidebar-variant-inverted",
-  "sidebar-render-prop",
-  "sidebar-auto-tone",
-])
+	"sidebar-default",
+	"sidebar-collapsible",
+	"sidebar-variant-bar",
+	"sidebar-variant-block",
+	"sidebar-variant-bracket",
+	"sidebar-variant-caret",
+	"sidebar-variant-inverted",
+	"sidebar-render-prop",
+	"sidebar-auto-tone",
+]);
 
-const FILL_EXAMPLES = new Set<string>([
-  "sidebar-rail",
-  "sidebar-mobile-sheet",
-])
+const FILL_EXAMPLES = new Set<string>(["sidebar-rail", "sidebar-mobile-sheet"]);
 
 export function resolvePreviewFrame(exampleName: string): PreviewFrame {
-  if (INSET_EXAMPLES.has(exampleName)) return "inset"
-  if (FILL_EXAMPLES.has(exampleName)) return "fill"
-  return "default"
+	if (INSET_EXAMPLES.has(exampleName)) return "inset";
+	if (FILL_EXAMPLES.has(exampleName)) return "fill";
+	return "default";
 }

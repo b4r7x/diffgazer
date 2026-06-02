@@ -62,6 +62,8 @@ services:
     build:
       context: .
       dockerfile: deploy/landing.Dockerfile
+      args:
+        VITE_DOCS_ORIGIN: ${VITE_DOCS_ORIGIN:-https://docs.b4r7.dev}
     ports:
       - "127.0.0.1:8082:8080"
     deploy:

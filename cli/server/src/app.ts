@@ -6,7 +6,7 @@ import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import { safeTokenMatch } from "./shared/lib/crypto.js";
 import { errorResponse } from "./shared/lib/http/response.js";
 import { log } from "./shared/lib/log.js";
-import { requestLogger, REQUEST_ID_HEADER, type RequestLoggerEnv } from "./shared/middlewares/request-logger.js";
+import { requestLogger, type RequestLoggerEnv } from "./shared/middlewares/request-logger.js";
 import { healthRouter } from "./features/health/router.js";
 import { configRouter } from "./features/config/router.js";
 import { settingsRouter } from "./features/settings/router.js";
@@ -139,21 +139,15 @@ export const createApp = (): Hono<AppEnv> => {
   // does throw is an unexpected bug, so this only logs and returns a generic 500;
   // branching on AppError.code here would be dead code.
   app.onError((err, c) => {
-    const startTime = c.get("startTime");
-    const requestId = c.get("requestId");
+    // The requestLogger tail still runs (onError resolves the middleware chain),
+    // so it logs the completed request and re-sets the id header. Log only the
+    // crash diagnostic the tail cannot provide.
     log("error", "unhandled_error", {
-      requestId,
-      method: c.req.method,
-      path: new URL(c.req.url).pathname,
-      status: 500,
-      durationMs: startTime ? Math.round((performance.now() - startTime) * 1000) / 1000 : undefined,
+      requestId: c.get("requestId"),
       error: err instanceof Error ? err.message : String(err),
       stack: err instanceof Error ? err.stack : undefined,
     });
-    // A thrown error skips the request-logger tail, so set the id header here too.
-    const response = errorResponse(c, "Internal Server Error", ErrorCode.INTERNAL_ERROR, 500);
-    if (requestId) response.headers.set(REQUEST_ID_HEADER, requestId);
-    return response;
+    return errorResponse(c, "Internal Server Error", ErrorCode.INTERNAL_ERROR, 500);
   });
 
   return app;

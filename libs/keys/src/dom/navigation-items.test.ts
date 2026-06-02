@@ -54,6 +54,20 @@ function values(elements: HTMLElement[]) {
   return elements.map((element) => element.dataset.value);
 }
 
+function withGlobalNodeUnavailable(run: () => void): void {
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, "Node");
+  Object.defineProperty(globalThis, "Node", { configurable: true, value: undefined });
+  try {
+    run();
+  } finally {
+    if (descriptor) {
+      Object.defineProperty(globalThis, "Node", descriptor);
+    } else {
+      delete (globalThis as { Node?: typeof Node }).Node;
+    }
+  }
+}
+
 describe("navigation item utilities", () => {
   afterEach(() => {
     document.body.replaceChildren();
@@ -72,6 +86,22 @@ describe("navigation item utilities", () => {
       "contract",
       "role",
     ]);
+  });
+
+  it("sorts merged selector groups in document order without the global Node constructor", () => {
+    const container = mountContainer("listbox");
+    appendElement(container, {
+      value: "contract",
+      attributes: { [NAVIGATION_ITEM_ATTRIBUTE]: "option" },
+    });
+    appendElement(container, { role: "option", value: "role" });
+
+    withGlobalNodeUnavailable(() => {
+      expect(values(getNavigationItems(container, { type: "option" }))).toEqual([
+        "contract",
+        "role",
+      ]);
+    });
   });
 
   it("queries native buttons, radios, and checkboxes with data values", () => {

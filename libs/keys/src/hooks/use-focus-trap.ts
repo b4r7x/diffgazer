@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, type RefObject } from "react";
-import { getOwnerView } from "../dom/dom.js";
+import { getOwnerView, isNode } from "../dom/dom.js";
 import { restoreFocus as restoreFocusTarget } from "../dom/focus-restore.js";
 import { getFocusableElements, getTabbableElements, isFocusable } from "../dom/focusable.js";
 import { useFocusRestore } from "./use-focus-restore.js";
@@ -83,8 +83,7 @@ function pickInitialTarget(
 
 function isInsideContainer(container: HTMLElement, target: EventTarget | null): target is HTMLElement {
   const View = getOwnerView(container);
-  if (!View) return false;
-  return target instanceof View.Node && container.contains(target as Node);
+  return isNode(target, View) && container.contains(target);
 }
 
 // Effect-on-every-render is intentional: React does not re-fire effects when

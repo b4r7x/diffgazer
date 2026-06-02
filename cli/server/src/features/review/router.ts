@@ -55,12 +55,7 @@ reviewRouter.get(
   zValidator("query", ActiveSessionQuerySchema, zodErrorHandler),
   (c) => {
     const query = c.req.valid("query");
-    return getActiveSessionHandler(c, {
-      mode: query.mode ?? "unstaged",
-      profile: query.profile,
-      lenses: query.lenses,
-      files: query.files,
-    });
+    return getActiveSessionHandler(c, { mode: query.mode ?? "unstaged" });
   },
 );
 

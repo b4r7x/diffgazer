@@ -16,8 +16,7 @@ import { initializeAIClient } from "../../shared/lib/ai/client.js";
 import { createReviewSession } from "./service.js";
 import { handleDrilldownRequest } from "./drilldown.js";
 import { ReviewErrorCode, type ReviewMode } from "@diffgazer/core/schemas/review";
-import { buildScopeKey, getActiveSessionForProject, getSession, cancelSession, deleteSession } from "./sessions.js";
-import type { LensId, ProfileId } from "@diffgazer/core/schemas/review";
+import { getActiveSessionForProject, getSession, cancelSession, deleteSession } from "./sessions.js";
 import { handleStoreError } from "./errors.js";
 import type { HandleDrilldownError } from "./types.js";
 
@@ -91,12 +90,7 @@ export async function createReviewHandler(
 
 export async function getActiveSessionHandler(
   c: Context,
-  query: {
-    mode: ReviewMode;
-    profile?: ProfileId;
-    lenses?: LensId[];
-    files?: string[];
-  },
+  query: { mode: ReviewMode },
 ): Promise<Response> {
   const projectPath = getProjectRoot(c);
   const gitService = createGitService({ cwd: projectPath });
@@ -112,16 +106,10 @@ export async function getActiveSessionHandler(
   if (statusHashResult === null) {
     return c.json({ session: null });
   }
-  const scopeKey = buildScopeKey({
-    files: query.files,
-    lenses: query.lenses,
-    profile: query.profile,
-  });
   const session = getActiveSessionForProject(projectPath, {
     headCommit: headCommitResult.value,
     statusHash: statusHashResult,
     mode: query.mode,
-    scopeKey,
   });
   if (!session) {
     return c.json({ session: null });

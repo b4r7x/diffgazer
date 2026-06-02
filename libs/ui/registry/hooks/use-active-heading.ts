@@ -240,7 +240,18 @@ export function useActiveHeading({
         behavior,
       });
     }
-  }, [doc, containerId, scrollOffset]);
+
+    // A no-movement programmatic scroll fires neither "scroll" nor "scrollend",
+    // so release the guard on a settle timer to keep scroll-spy from freezing.
+    if (view) {
+      if (settleTimerRef.current !== 0) view.clearTimeout(settleTimerRef.current);
+      settleTimerRef.current = view.setTimeout(() => {
+        settleTimerRef.current = 0;
+        scrollingToRef.current = null;
+        update();
+      }, settleDelay);
+    }
+  }, [doc, containerId, scrollOffset, settleDelay]);
 
   return { activeId, scrollTo };
 }

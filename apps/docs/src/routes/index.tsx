@@ -23,9 +23,14 @@ const enabledLibraries = getEnabledDocsLibraries();
 
 function LandingPage() {
 	return (
-		<main id="main-content" className="flex items-center justify-center min-h-screen">
+		<main
+			id="main-content"
+			className="flex items-center justify-center min-h-screen"
+		>
 			<div className="text-center space-y-6">
-				<h1 className="text-4xl font-bold text-foreground">diffgazer docs hub</h1>
+				<h1 className="text-4xl font-bold text-foreground">
+					diffgazer docs hub
+				</h1>
 
 				<p className="text-muted-foreground text-sm max-w-md mx-auto">
 					Select docs by library. Generated registry endpoints are packaged for
@@ -53,9 +58,7 @@ function LandingPage() {
 				</div>
 
 				<p className="text-muted-foreground text-xs">
-					Press{" "}
-					<Kbd>⌘K</Kbd>{" "}
-					to search
+					Press <Kbd>⌘K</Kbd> to search
 				</p>
 			</div>
 		</main>

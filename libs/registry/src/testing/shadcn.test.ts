@@ -433,6 +433,54 @@ describe("validatePublicRegistryFresh", () => {
     expectValidationThrows(tempDir, /Unsafe registry file path/);
   });
 
+  it.each([
+    { label: "parent-escaping", target: "../../escape.ts" },
+    { label: "absolute", target: "/etc/passwd" },
+  ])("rejects a safe file path with an $label target", ({ target }) => {
+    setupRegistry(
+      tempDir,
+      [{ name: "button", files: [{ path: "registry/ui/button.tsx", target: "~/components/button.tsx" }] }],
+      undefined,
+      {
+        button: [
+          {
+            path: "registry/ui/button.tsx",
+            content: "// button - registry/ui/button.tsx\n",
+            target,
+          },
+        ],
+      },
+    );
+    expectValidationThrows(tempDir, /Unsafe registry file path/);
+  });
+
+  it("rejects an unsafe file path injected only into the public registry index", () => {
+    setupRegistry(
+      tempDir,
+      [{ name: "button", files: [{ path: "registry/ui/button.tsx" }] }],
+      [{ name: "button", files: [{ path: "../escape.tsx" }] }],
+    );
+    expectValidationThrows(tempDir, /Unsafe registry file path/);
+  });
+
+  it("rejects an unsafe target injected only into the public registry index", () => {
+    setupRegistry(
+      tempDir,
+      [{ name: "button", files: [{ path: "registry/ui/button.tsx", target: "~/components/button.tsx" }] }],
+      [{ name: "button", files: [{ path: "registry/ui/button.tsx", target: "/etc/passwd" }] }],
+    );
+    expectValidationThrows(tempDir, /Unsafe registry file path/);
+  });
+
+  it("rejects a public registry index whose file paths diverge from source", () => {
+    setupRegistry(
+      tempDir,
+      [{ name: "button", files: [{ path: "registry/ui/button.tsx" }] }],
+      [{ name: "button", files: [{ path: "registry/ui/other.tsx" }] }],
+    );
+    expectValidationThrows(tempDir, /index files mismatch/);
+  });
+
   it("accepts a registry with multiple items whose source and public artifacts match", () => {
     setupRegistry(tempDir, [
       {

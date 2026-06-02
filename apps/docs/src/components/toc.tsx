@@ -1,11 +1,11 @@
 import type { TableOfContents } from "fumadocs-core/toc";
 import { type MouseEvent, useEffect, useRef } from "react";
+import { ScrollArea } from "@/components/ui/scroll-area/scroll-area";
+import { Toc, TocItem, TocList } from "@/components/ui/toc";
 import {
 	type ActiveHeadingActivation,
 	useActiveHeading,
 } from "@/hooks/use-active-heading";
-import { ScrollArea } from "@/components/ui/scroll-area/scroll-area";
-import { Toc, TocItem, TocList } from "@/components/ui/toc";
 
 function parseHeadingId(url: string): string | null {
 	const hashIndex = url.indexOf("#");
