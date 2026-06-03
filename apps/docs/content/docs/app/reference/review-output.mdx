@@ -1,0 +1,90 @@
+---
+title: Review output and severities
+description: The shape of a finished review, how findings are ranked by severity, and how they group by category.
+---
+
+A finished review is a summary line plus a flat list of findings. Every finding carries the same fixed set of fields, so the [results view](/app/web/results) always has the same data to draw from no matter which lens produced it. This page documents that data model: the severity levels, the categories, the fields on a single issue, and the built-in profiles that decide which lenses run.
+
+If you want to know how findings get produced in the first place, read [the review pipeline](/app/concepts/review-pipeline). This page is about what comes out the other end.
+
+## Severities
+
+Every finding has exactly one severity. There are five, listed here from most to least severe:
+
+| Severity  | Meaning                                                              |
+|-----------|---------------------------------------------------------------------|
+| `blocker` | Ship-stopping. A correctness or security fault you should not merge. |
+| `high`    | Serious. Worth fixing before merge in most cases.                   |
+| `medium`  | A real problem, but not urgent.                                     |
+| `low`     | Minor. Safe to defer.                                               |
+| `nit`     | Cosmetic or stylistic. Take it or leave it.                         |
+
+Internally, severities are ranked by their position in that order, and the rank counts up as severity goes down. Blocker ranks lowest, nit ranks highest, so "lower rank means more severe." That rule drives the severity filter in the results list and the sort order of the issue list, where blockers float to the top.
+
+The terminal UI colors each severity differently, and the exact color depends on the active theme. Blocker is red, high is orange, medium is yellow or amber, low is blue, and nit is a muted gray. The high-contrast palette keeps the same hue assignments but brightens them. Treat the hue as a quick severity cue, not a precise value; the palettes pick theme-appropriate shades rather than one fixed code per level.
+
+## Categories
+
+Each finding is also tagged with one category, describing what kind of problem it is. There are seven:
+
+| Category      | What it covers                                          |
+|---------------|--------------------------------------------------------|
+| `correctness` | Logic errors, broken behavior, wrong results.          |
+| `security`    | Vulnerabilities, unsafe handling, exposure.            |
+| `performance` | Slow paths, wasted work, scaling problems.             |
+| `api`         | API surface and contract problems.                     |
+| `tests`       | Missing or inadequate test coverage.                   |
+| `readability` | Code that is hard to follow.                            |
+| `style`       | Formatting and stylistic conventions.                  |
+
+> Note: The seven categories are not the same as the five lenses. A lens is a reviewer pass with a focus area (correctness, security, performance, simplicity, tests). A category is the label attached to a finding. The two lists overlap but do not match: `api`, `readability`, and `style` are categories with no lens of the same name, and `simplicity` is a lens whose findings surface under categories like `readability`. So a review running three lenses can still return findings across more than three categories.
+
+## Issue fields
+
+A single finding follows a fixed shape. The results view spreads these across a few tabs, but the underlying record is one object:
+
+| Field             | Type             | Description                                                        |
+|-------------------|------------------|-------------------------------------------------------------------|
+| `id`              | string           | Stable identifier for the finding.                                |
+| `severity`        | severity         | One of the five levels above.                                     |
+| `category`        | category         | One of the seven categories above.                                |
+| `title`           | string           | Short headline for the finding.                                   |
+| `file`            | string           | The file the finding points at.                                   |
+| `line_start`      | number or null   | First line of the range, or null when not line-specific.          |
+| `line_end`        | number or null   | Last line of the range, or null.                                  |
+| `rationale`       | string           | The reasoning behind the finding.                                 |
+| `recommendation`  | string           | What to do about it.                                              |
+| `suggested_patch` | string or null   | A proposed fix as a diff, or null when none was produced.         |
+| `confidence`      | number (0 to 1)  | How sure the reviewer is, from 0 to 1.                            |
+| `symptom`         | string           | What is observably wrong.                                         |
+| `whyItMatters`    | string           | Why the finding is worth your attention.                          |
+| `fixPlan`         | step[] (optional)| Ordered steps to fix it; each has an action and optional files and risk. |
+| `betterOptions`   | string[] (optional) | Alternative approaches worth considering.                      |
+| `testsToAdd`      | string[] (optional) | Tests that would catch this in future.                         |
+| `evidence`        | evidence[]       | Supporting references: code excerpts, docs, traces, or external sources. |
+| `trace`           | trace[] (optional) | The agent steps taken to reach the finding.                     |
+| `enrichment`      | object (optional)| Added context such as git blame and surrounding lines.            |
+
+The optional fields are exactly that. A finding with no suggested fix has `suggested_patch` set to null and no Patch tab in the results view, and a finding with no `trace` shows an empty Trace tab. For how each of these renders, see [reading results](/app/web/results).
+
+## Profiles
+
+A profile is a named preset that picks which lenses run and, optionally, a minimum severity to keep. Four ship built in:
+
+| Profile    | Name                | Lenses                              | Minimum severity |
+|------------|---------------------|-------------------------------------|------------------|
+| `quick`    | Quick Review        | correctness                         | high             |
+| `strict`   | Strict Review       | correctness, security, tests        | none             |
+| `perf`     | Performance Review  | correctness, performance            | medium           |
+| `security` | Security Audit      | security, correctness               | none             |
+
+`quick` is the fast path: it runs only the correctness lens and drops anything below high severity, so you see blockers and high-severity issues and nothing else. `strict` is the broad pass with no severity floor, so it surfaces everything down to nits across correctness, security, and tests. `perf` pairs the performance lens with a correctness baseline and hides anything below medium. `security` leads with the security lens, backed by correctness, and keeps every severity.
+
+When a profile sets a minimum severity, findings below that level are filtered out before you ever see them. A profile with no minimum returns the full range.
+
+## Related
+
+- [Reading results](/app/web/results) shows how these fields render across the issue tabs.
+- [The review pipeline](/app/concepts/review-pipeline) explains how findings get produced.
+- [Reference: providers](/app/reference/providers) covers the models that generate them.
+- [Reference: environment variables](/app/reference/environment-variables) lists the variables diffgazer reads.

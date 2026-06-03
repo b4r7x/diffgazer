@@ -1,0 +1,34 @@
+---
+title: FAQ
+description: Short answers to the questions that come up most about running diffgazer.
+---
+
+These are the questions people ask most often, with a link to the page that covers each one in full.
+
+### Does my code leave my machine?
+
+No. diffgazer runs an embedded server on your own machine and reviews your code locally, so your source and your API keys never reach a service we run. The only thing that ever crosses the network is the review request you send to your own model provider, under your own account, when you ask for a review. See [Privacy and security](/app/concepts/privacy) for how that holds up layer by layer.
+
+### Which providers can I use?
+
+Six are enabled and selectable: Google Gemini, Z.ai, Z.ai Coding Plan, OpenRouter, Groq, and Cerebras. You bring your own key for whichever one you pick, either stored by diffgazer or read from an environment variable you name. The [Providers reference](/app/reference/providers) lists the env var, default model, and base URL for each one.
+
+### Can I run diffgazer in Docker or on a server?
+
+No. diffgazer is a local npm binary that opens a browser tab on your own machine, so there is no headless server mode to deploy. The repo does ship a `Dockerfile`, a `docker-compose.yml`, and a reverse-proxy setup, but those host the project's own sites (the docs, landing, and registry), not the review CLI. Install it where you work with `npm install -g diffgazer` and run `diffgazer` from inside a repository.
+
+### How do I change the port?
+
+Set the `PORT` environment variable before you launch. It defaults to `3000` for the API server, and the value must be an integer from 1 to 65535. The [Server reference](/app/reference/server) covers the embedded server and the variables that shape how it runs.
+
+### Is the terminal UI ready?
+
+Not yet. The terminal UI is a beta and still incomplete, so web mode is the default and the full-featured way to review. Try the TUI with `diffgazer --tui` if you want to, but expect gaps until it leaves beta. See [Terminal UI](/app/tui/index) for what works today.
+
+### Where is my config stored?
+
+Globally, under `~/.diffgazer`: settings in `config.json`, API keys in `secrets.json`, and per-project trust records in `trust.json`. Each repository you review also gets a small `.diffgazer/project.json` inside it that pins a stable id for trust to point at. You can move the global directory by setting `DIFFGAZER_HOME`; the full layout is in [Configuration](/app/reference/configuration).
+
+### Still stuck?
+
+If something is broken rather than just unclear, work through [Troubleshooting](/app/operations/troubleshooting) for the common failures and their fixes.

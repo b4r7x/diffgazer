@@ -1,0 +1,45 @@
+---
+title: Environment variables
+description: The environment variables diffgazer reads and the ones it sets for itself.
+---
+
+diffgazer reads a handful of environment variables, and it sets a few more on its own when it runs packaged. The two groups behave very differently, so this page keeps them apart: the first table is variables you can set to change behavior, and the second is variables diffgazer injects internally that you should not set by hand. Most settings live in config rather than the environment, so reach for these only when you need to override where files live, how much it logs, or which port it binds.
+
+## Variables you set
+
+These are safe to set in your shell or process environment. Anything not listed here is either a setting (see [Configuration](/app/reference/configuration)) or an internal variable covered below.
+
+| Variable | Effect | Default |
+| --- | --- | --- |
+| `PORT` | Port for the API server. It must be an integer from 1 to 65535; an out-of-range or non-numeric value fails fast with an error rather than falling back silently. | `3000` for the API server (the web dev server uses `3001`) |
+| `DIFFGAZER_HOME` | Moves the global directory somewhere other than `~/.diffgazer`. When set, `config.json`, `secrets.json`, and `trust.json` all resolve under this path. | `~/.diffgazer` |
+| `DIFFGAZER_PROJECT_ROOT` | The repository root the server reviews. The packaged CLI sets this for you from the project you launched in; set it yourself only when running the server outside the CLI. | The current working directory, walked up to its git root |
+| `DIFFGAZER_LOG_LEVEL` | The lowest log level the server emits: `debug`, `info`, `warn`, or `error`. An unrecognized value is ignored and the default applies. | `warn` when packaged, `info` for the standalone dev server |
+| `DIFFGAZER_OFFLINE` | Skips the live models.dev catalog fetch and uses the bundled snapshot. Any value except unset, empty, `0`, or `false` turns it on. | Off (the live fetch runs) |
+| `DIFFGAZER_FORCE_KILL_DELAY_MS` | Milliseconds to wait after `SIGTERM` before sending `SIGKILL` to a child process. Raise it for slow shutdowns, for example in CI. Must be a positive integer; anything else is ignored. | `2000` |
+| `GOOGLE_API_KEY` | API key for Google Gemini. | Unset |
+| `ZAI_API_KEY` | API key for Z.ai and Z.ai Coding Plan. Both providers read the same variable. | Unset |
+| `OPENROUTER_API_KEY` | API key for OpenRouter. | Unset |
+| `GROQ_API_KEY` | API key for Groq. | Unset |
+| `CEREBRAS_API_KEY` | API key for Cerebras. | Unset |
+
+The five provider keys map to the six enabled providers because Z.ai and Z.ai Coding Plan share `ZAI_API_KEY`. You do not have to put a key in the environment at all: you can store it in diffgazer instead, or store only the variable's name and let diffgazer read the live value each run. For the full provider-to-variable mapping and how stored keys work, see [Providers](/app/reference/providers).
+
+> Note: The root `.env.example` is out of date and does not document `DIFFGAZER_HOME`, `DIFFGAZER_LOG_LEVEL`, `DIFFGAZER_OFFLINE`, `DIFFGAZER_FORCE_KILL_DELAY_MS`, or `DIFFGAZER_PROJECT_ROOT`, and it lists only three of the five provider keys. The variables read in code, not the example file, are authoritative. This table reflects the code.
+
+## Set automatically
+
+diffgazer sets these itself. They exist so the packaged CLI and its embedded server can talk to each other; treat them as outputs of how diffgazer runs, not as knobs. Setting them by hand has no useful effect and can break shutdown or the embedded app.
+
+| Variable | What sets it | Why it exists |
+| --- | --- | --- |
+| `DIFFGAZER_SHUTDOWN_TOKEN` | The CLI, before it starts the embedded server. | Authenticates the shutdown request from the embedded web app. The server refuses to serve the packaged app without it. |
+| `DIFFGAZER_CLI_PID` | The CLI, set to its own process id at startup. | Lets the embedded server terminate the parent CLI process when the app asks to shut down. |
+| `DIFFGAZER_PACKAGED` | The CLI, set to `1` when serving the embedded app. | Flags packaged mode, which changes defaults such as the log level and how the server resolves the project root. |
+
+## Related
+
+- [Providers](/app/reference/providers): the model providers and which environment variable each one reads for its key.
+- [Configuration](/app/reference/configuration): the config files and the settings that the environment overrides.
+- [Server](/app/reference/server): the embedded server that consumes the automatic variables above.
+- [Troubleshooting](/app/operations/troubleshooting): what to check when a port, a key, or shutdown is not behaving.

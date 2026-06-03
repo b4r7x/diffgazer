@@ -3,11 +3,16 @@
   "root": true,
   "pages": [
     "---Getting Started---",
-    "installation",
-    "first-review",
-    "---Reviewing---",
-    "review-modes",
+    "...getting-started",
+    "---Concepts---",
+    "...concepts",
+    "---Web Mode---",
+    "...web",
+    "---Terminal UI---",
+    "...tui",
     "---Reference---",
-    "cli"
+    "...reference",
+    "---Operations---",
+    "...operations"
   ]
 }

@@ -1,0 +1,37 @@
+---
+title: Themes
+description: The color palettes the terminal UI ships with and how to pick one.
+---
+
+The terminal UI renders in one of a few fixed color palettes. You don't have to configure anything to get a sensible default, but if your terminal picks the wrong one or you want a specific look, the `--theme` flag and the auto-detection below give you control. This page lists the palettes the TUI actually ships with and explains how it chooses between them.
+
+## Palettes
+
+Three palettes are built in:
+
+| Theme | What it looks like |
+| --- | --- |
+| `dark` | A dark palette based on GitHub's Dark Default colors. This is the fallback whenever a theme can't be resolved. |
+| `light` | A light palette based on GitHub's Light Default colors, for bright terminals. |
+| `high-contrast` | A black-and-white base with bold, maximally distinct accent colors, aimed at accessibility. |
+
+## Choosing a theme
+
+Pass `--theme` to start the TUI in a specific palette:
+
+```bash
+diffgazer --theme high-contrast --tui
+```
+
+`--theme` only does anything alongside `--tui`. Run it on its own and the CLI exits with an error rather than guessing, since the web UI manages its own theme.
+
+If you don't pass a theme, the TUI starts in `auto` and tries to match your terminal. Auto-detection reads the `COLORFGBG` environment variable that many terminals set, takes the background value from it, and picks `light` when that value points at a light background; otherwise it stays on `dark`. When you name a theme that isn't one of the three above, the TUI falls back to `dark` instead of failing.
+
+> Note: The theme you save in your config and the theme the TUI renders are drawn from two different lists. The settings schema, which is what gets written to your config file, accepts `auto`, `dark`, `light`, and `terminal`. The TUI's own palette set is `dark`, `light`, and `high-contrast`. So `terminal` is a valid value to store but has no matching TUI palette (it resolves to `dark`), and `high-contrast` is a real TUI palette that the saved settings can't currently name. When the two disagree, the settings schema is the authority for what your config may hold.
+
+## Related
+
+- [Terminal UI](/app/tui/index) covers starting and moving around the TUI.
+- [Keybindings](/app/tui/keybindings) lists the keys for each screen.
+- [CLI reference](/app/reference/cli) documents every flag, including `--theme` and `--tui`.
+- [Configuration](/app/reference/configuration) describes the config file the theme setting is saved to.

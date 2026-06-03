@@ -31,7 +31,7 @@
       "logoText": "diffgazer",
       "githubUrl": "https://github.com/b4r7x/diffgazer",
       "enabled": true,
-      "defaultRouteSlugs": ["installation"]
+      "defaultRouteSlugs": ["getting-started"]
     }
   ]
 }

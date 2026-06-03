@@ -1,0 +1,59 @@
+---
+title: The review pipeline
+description: How a review goes from a diff to ranked issues.
+---
+
+A review in diffgazer is a fixed sequence of steps that turns your git diff into a ranked list of issues. The work that finds those issues is split across review **lenses**: focused perspectives like correctness, security, or performance. Each lens is driven by its own **agent**, a named reviewer that knows how to look for one kind of problem. You pick which lenses run, the pipeline runs their agents over your changes, and what comes back is a deduplicated, severity-sorted report.
+
+## Steps
+
+Every review moves through the same five steps in order. The labels below are the exact ones the UI shows as the review progresses.
+
+### Collect diff
+
+The pipeline reads your changes from git. By default that means unstaged changes; staged mode reads what you have already added with `git add`. If there is nothing to review, the step stops and tells you which mode to try instead. Anything under `.diffgazer/` is dropped before analysis so the tool never reviews its own state files. If you passed an explicit file list, the diff is narrowed to just those files.
+
+### Project context
+
+Before any agent runs, diffgazer builds a short snapshot of the repository: a small graph and summary that gives the agents something to reason against beyond the raw patch. This step is best-effort. If the snapshot fails to build, the review keeps going with empty context rather than aborting.
+
+### Review issues
+
+This is where the agents do their work. The active lenses run over the diff, each agent reporting the issues it finds for its lens. Results from every lens are merged, near-duplicate findings are collapsed, anything below your severity threshold is filtered out, incomplete findings are dropped, and the survivors are sorted by severity. If a lens fails, the others still finish and the report notes the partial result.
+
+### Enrich context
+
+Each surviving issue gets extra detail attached: git blame for the lines it points at, plus surrounding context from the changed files. This is what lets a finding say who last touched a line and show the code around it rather than just a line number.
+
+### Generate report
+
+The enriched issues and the combined summary are assembled into the final report, which is then persisted to disk along with the branch, commit, profile, lenses, and how long the run took. Once this step completes, the review is saved and available in your history.
+
+> Note: A single review caps the total diff at 512KB. Past that, the run stops and asks you to review fewer files or use file filtering. The limit is on the combined byte size of all changed files in the diff, not on any single file.
+
+## Lenses and agents
+
+Five lenses ship with diffgazer, and each maps to exactly one agent. The lens is the perspective you choose; the agent is the reviewer that applies it.
+
+| Lens | Agent | What it looks for |
+| --- | --- | --- |
+| correctness | Detective | Finds bugs and logic errors |
+| security | Guardian | Identifies security vulnerabilities |
+| performance | Optimizer | Spots performance bottlenecks |
+| simplicity | Simplifier | Reduces complexity and improves readability |
+| tests | Tester | Evaluates test coverage and quality |
+
+Which lenses run comes from an ordered fallback: an explicit lens list wins, then the active profile's lenses, then your configured default lenses, and finally correctness on its own if nothing else is set. See [providers and models](/app/concepts/providers-and-models) for how each agent reaches your AI provider.
+
+## Sequential vs parallel
+
+The `agentExecution` setting decides whether agents run one at a time or all at once. It defaults to sequential, so by default each lens runs in turn rather than concurrently. Switching it to parallel raises the concurrency to the number of active lenses, so every agent runs at the same time. Either way the merge, filter, and sort happen after all agents finish, so the final report is identical; only the timing and the load on your provider change. You set this in [configuration](/app/reference/configuration).
+
+## Backend capabilities not in the UI
+
+The review backend exposes more than the web app drives. Issue drilldown is the clearest example: there is a route at `POST /reviews/:id/drilldown` that re-analyzes a single issue in depth, but the web SPA never calls it, so it is not currently in the UI. The same goes for starting a review with a lens filter, a profile, or an explicit file list. The backend route accepts all of those, but the web app only ever sends the review mode and relies on your saved default lenses. The git status and diff routes are likewise backend endpoints with no dedicated screen. Treat these as backend capabilities, not features you can reach from the web app today.
+
+## Related
+
+- [Providers and models](/app/concepts/providers-and-models) covers how agents talk to your configured AI provider.
+- [Review output](/app/reference/review-output) describes the shape of the report this pipeline produces.
