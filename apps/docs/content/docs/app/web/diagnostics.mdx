@@ -1,0 +1,39 @@
+---
+title: Diagnostics and context
+description: Check the health of your setup and rebuild the project context snapshot.
+---
+
+Diagnostics is a status screen for the current directory. It tells you whether the local server is reachable, whether setup is complete, which provider is active, and whether diffgazer has a project context snapshot to work from, all in one place. It also gives you a button to rebuild that snapshot when the repo has moved on. Reach for this screen when a review will not start, when results look stale, or when you just want to confirm everything is wired up. It assumes onboarding is done and the repository is trusted; until then the setup and provider rows will report what is still missing rather than show a clean bill of health. You open it from the [settings](/app/web/settings) hub.
+
+## Diagnostics screen
+
+The screen is a single panel titled "System Diagnostics". Its header carries a one-word overall state that summarizes the panel below: it reads loading while a check is in flight, error when the server and context are both failing, empty when there is no provider and no context yet, and success once things are in order. Above the checks, a short line names the build ("Diffgazer Web" and the current mode) next to the context snapshot's status and, when one exists, the time it was generated.
+
+The core of the screen is the diagnostic snapshot, a list of four rows:
+
+| Row | What it reports |
+| --- | --- |
+| Health | The local server connection: "Checking..." while it probes, "Connected" when reachable, or "Error:" with the message when it is not. |
+| Setup | Whether onboarding is complete: "Ready" when it is, "Incomplete" with the missing pieces listed, or "Unavailable" if the status could not be read. |
+| Provider | The active provider, with its model in parentheses when one is set, or "Unavailable" when no provider is configured. |
+| Refreshed | When the checks last ran, or "Unavailable" if they have not run this session. |
+
+The Setup row names what is still missing by field, drawn from a fixed set: secretsStorage, provider, model, and trust. So an incomplete setup might read "Incomplete (model, trust)", which tells you exactly what to finish. Each of those is something you complete during [onboarding](/app/web/onboarding) or change later in [settings](/app/web/settings).
+
+Two actions sit below the list. "Refresh Diagnostics" re-runs the checks and updates the Refreshed time; use it after you change a setting in another screen and want to confirm the result here. The second button rebuilds the project context and is covered next. If any check fails, the panel shows the error message in a callout at the bottom, surfacing the refresh, context, or server error in that order.
+
+## Refresh project context
+
+Project context is a snapshot of your repository (its graph and summary) that diffgazer builds so a review has structure to reason about beyond the raw diff. The context snapshot line and the second button on this screen both reflect that snapshot's state, which is one of four values: loading while it is being fetched, ready when a snapshot exists, missing when there is none yet, or error when it could not be loaded.
+
+The button label follows that state. It reads "Generate Context" when no snapshot exists, "Regenerate Context" when one is already in place, and "Working..." while the rebuild runs. The action is available when the snapshot is ready or missing, and it is held disabled while context is still loading or in an error state, or while either refresh is already running. Activating it rebuilds the snapshot from the current repository and sends a forced refresh to `POST /api/review/context/refresh`; when it succeeds, the snapshot status and its generated time update in place.
+
+Regenerate context after the repository has changed in a way the snapshot would miss, such as pulling new commits, switching branches, or moving files around, so the next review reasons about the current state rather than an old picture. The review pipeline builds and uses this context as one of its phases; for where it fits in the run, see [how it works](/app/concepts/how-it-works).
+
+> Tip: If the Health row shows an error, the rest of the screen will not have much to report. The usual cause is that the `diffgazer` process in your terminal has stopped. Start it again, then use Refresh Diagnostics to re-check.
+
+## Related
+
+- [Settings](/app/web/settings) — where Diagnostics opens from, and where you fix what it flags.
+- [Onboarding](/app/web/onboarding) — complete the provider, key, model, and trust that the Setup row checks.
+- [How it works](/app/concepts/how-it-works) — where project context fits in the review pipeline.

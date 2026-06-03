@@ -1,0 +1,12 @@
+{
+  "title": "Reference",
+  "pages": [
+    "index",
+    "cli",
+    "configuration",
+    "providers",
+    "review-output",
+    "environment-variables",
+    "server"
+  ]
+}

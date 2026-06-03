@@ -1,0 +1,44 @@
+---
+title: Running a review
+description: Start a review in web mode and follow it live.
+---
+
+The review screen is where you kick off a review of your working changes and watch it run from start to finish. It is the main thing you do in web mode. Before you get here, finish [onboarding](/app/web/onboarding) so a provider, API key, and model are configured, and make sure the current directory is trusted. If the directory is not trusted yet, the menu will refuse to start a review and point you to Settings to grant permissions first.
+
+## Start a review
+
+1. Run `diffgazer` inside the repository you want reviewed. It starts a local server and opens the web app in your browser, landing on the home screen.
+2. Pick what to review from the menu. Choose **Review Unstaged** to review your working-tree changes, or **Review Staged** to review only what you have staged. The keyboard shortcuts are `r` and `R`.
+3. The selection creates a review session (`POST /api/review/reviews`) and takes you straight to the live progress screen for that session.
+
+If a provider or model is not set up, the screen tells you what is missing and links you back to provider settings instead of starting. For the full provider, key, and trust walkthrough, see [onboarding](/app/web/onboarding).
+
+## Watch progress
+
+The progress screen has two panes. On the left is a progress overview of the five pipeline phases; on the right is a live activity log. Both update as the run sends events over a server-sent events stream (`GET /api/review/reviews/:id/stream`). The stream is the mechanism behind everything you see move on this screen, so if it stops, the screen stops updating.
+
+The five phases run in order:
+
+| Phase | What it does |
+| --- | --- |
+| Collect diff | Gathers the code changes for the chosen mode |
+| Project context | Builds the repo graph and summary |
+| Review issues | Analyzes the diff with your lenses |
+| Enrich context | Adds git blame and surrounding context |
+| Generate report | Synthesizes the final report |
+
+Below the phase list is the agent board. Each analysis agent gets a row showing its name, a status badge (waiting, running, done, or failed), its current action, and a progress bar. The board fills in and the bars advance as agent events arrive on the stream. If one or more agents fail, often from rate limiting, the activity pane shows a partial-analysis notice naming the agents that dropped out, and the run keeps going with what it could finish.
+
+You can filter the activity log by agent to focus on a single one, or leave it on All to watch everything. To stop a run before it finishes, press `Esc`. That cancels the review session and returns you to the home screen.
+
+## When it finishes
+
+When the report phase completes, the View Results action turns on (press `Enter`) and takes you to the [results](/app/web/results) screen, where the findings are laid out by severity and category.
+
+> Tip: Pressing Ctrl+C in the terminal where you launched `diffgazer` stops the local server and ends the session. Closing the browser tab alone does not shut the server down.
+
+## Related
+
+- [Reading results](/app/web/results)
+- [Review history](/app/web/history)
+- [The review pipeline](/app/concepts/review-pipeline)

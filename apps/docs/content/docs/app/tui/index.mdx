@@ -1,0 +1,36 @@
+---
+title: Terminal UI (beta)
+description: Review from the terminal with a keyboard-first interface.
+---
+
+> Warning: The terminal UI is a beta and still incomplete, so it is not recommended for everyday use. Web mode is the default and the full-featured way to review. Reach for the TUI only if you want to try it or you cannot use a browser.
+
+The terminal UI is an Ink-based, keyboard-first way to run a review without leaving your shell. It runs the same review pipeline as web mode but draws the result in the terminal instead of a browser tab, so it suits machines with no browser or a workflow you would rather keep entirely on the keyboard. Until it leaves beta, expect gaps: web mode covers more, and a few keys advertised on screen do not yet match what the app listens for (see [Keybindings](/app/tui/keybindings)).
+
+## Start the TUI
+
+```bash
+diffgazer --tui
+```
+
+That launches the terminal UI in the current repository instead of opening the browser.
+
+```bash
+diffgazer --tui --theme dark
+```
+
+`--theme` picks the color palette for the terminal UI, and it only applies together with `--tui`. Passing `--theme` without `--tui` is an error. The available values are covered in [Themes](/app/tui/themes).
+
+## Moving around
+
+Navigation is entirely keyboard-driven. The arrow keys move through menus and lists, Enter selects or confirms, and Esc steps back when there is somewhere to go back to. From most screens you can press `s` to open settings and `q` to quit. Each screen also shows its own shortcuts in the footer. For the full per-screen set, including the review and history screens, see [Keybindings](/app/tui/keybindings).
+
+## Exit
+
+Press `q` or Ctrl+C to quit. Either one shuts down the local server before exiting.
+
+## Related
+
+- [Keybindings](/app/tui/keybindings) lists the keys for each screen and flags where the on-screen hints drift from the real bindings.
+- [Themes](/app/tui/themes) covers the palettes and the `--theme` flag.
+- [CLI reference](/app/reference/cli) documents every command and flag, including `--tui` and `--theme`.

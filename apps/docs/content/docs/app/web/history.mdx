@@ -1,0 +1,29 @@
+---
+title: History
+description: Browse past reviews and jump back into a specific issue.
+---
+
+Every review you run gets saved, and the history screen is where you go back to them. It lists the runs for the current repository, lets you open any one of them, and can drop you straight onto a single issue from an earlier run. This page assumes you have finished onboarding and trusted the repo, since history only shows reviews for a project the server already knows about. If you have not run a review yet, start one from [reviewing](/app/web/reviewing) first; there is nothing to browse until at least one run exists.
+
+## Browse past reviews
+
+The screen is split into three panes. On the left, **Sections** groups your runs, with an "All" entry plus one entry per day that has reviews. The middle pane, **Reviews**, lists the runs in the selected section, newest first, each showing its short ID, when it ran, the branch, and a one-line summary of what it found. The right pane, **Insights**, reflects whichever run is selected: a severity breakdown, the list of issues in that run, and how long the run took.
+
+Pick a day in Sections to narrow the middle list to that day, or stay on "All" to see everything. The search box above the panes filters the run list by ID, so if you remember part of a run's identifier you can type it to jump straight to it. The runs themselves come from `GET /api/review/reviews`, which returns the saved reviews for the current project.
+
+## Open a review
+
+Selecting a run in the middle pane updates the Insights pane in place, which is enough when you only want the severity counts or the issue titles. To open the full review, activate the run: press Enter or Space on the highlighted run, press `o`, or double-click it. That navigates to the review screen for that run, where the issues render with their full detail. Opening a run fetches it with `GET /api/review/reviews/:id`, so the detail you see is the saved report for that exact review.
+
+## Deep-link to an issue
+
+You do not have to open a run and then hunt for the finding you care about. The Insights pane lists every issue in the selected run, sorted by severity, each labelled with its severity and starting line. Clicking an issue (or pressing Enter on it) opens the review screen for that run with that specific issue already selected, so you land on the finding instead of the top of the report. See [reading results](/app/web/results) for how the issue then reads once you are there.
+
+> Tip: Press `/` from anywhere on the screen to jump into the search box, and Escape to clear the query or step back out.
+
+## Related
+
+- [Reviewing](/app/web/reviewing) covers running a new review, which is what fills this list.
+- [Reading results](/app/web/results) explains the issue view you land on after opening a run or an issue.
+- [Web mode overview](/app/web/index) maps the rest of the screens.
+- [Review output](/app/reference/review-output) describes the shape of a saved review.

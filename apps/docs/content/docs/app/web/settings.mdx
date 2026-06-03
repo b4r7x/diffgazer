@@ -1,0 +1,58 @@
+---
+title: Settings
+description: Configure theme, providers, storage, agent execution, analysis, and trust from the web settings hub.
+---
+
+Settings is where you change how diffgazer behaves before and during a review: which AI provider it uses, where it keeps your API keys, which agents run, and what the app is allowed to read. It opens from the main menu and lands on a hub that lists every settings area with its current value, so you can see your provider, theme, and storage choice at a glance before drilling in. This page assumes onboarding is done and the repository is trusted. If it is not, the provider and trust areas are where you finish that setup, and the rest of the hub will show "Not configured" or "Not trusted" until you do.
+
+## The settings hub
+
+The hub is a single menu. Each row names a settings area and shows its current state on the right, so the screen doubles as a status summary. The areas are:
+
+| Area | What it controls |
+| --- | --- |
+| Trust & Permissions | Whether diffgazer may read files and git metadata in this directory |
+| Theme | The color theme of the web UI |
+| Provider | Which AI provider runs your reviews, and its API key and model |
+| Secrets Storage | Where API keys are stored on disk |
+| Agent Execution | Whether analysis agents run one at a time or all at once |
+| Analysis | Which agents run during a review |
+| Diagnostics | System health checks for this directory |
+
+Pick a row to open that area. Each area is its own screen with a Cancel and a Save action; nothing is written until you save, and Cancel or Esc returns you to the hub without changing anything. The hub footer shows the config file path, `~/.diffgazer/config.json`, which is where these choices are persisted. For the full shape of that file and every field it holds, see [configuration](/app/reference/configuration).
+
+## Theme, storage, and agent execution
+
+Theme controls the look of the web UI. You choose between auto, dark, and light, with a live preview that follows whichever option is focused. Auto follows your system's dark or light setting.
+
+> Note: The stored theme schema also defines a `terminal` value used by the TUI, but the web theme picker only offers auto, dark, and light. The schema is the source of truth for what can be saved; the web UI deliberately exposes the three it renders.
+
+Secrets Storage decides where your API keys live. Two options exist:
+
+- File storage keeps secrets in a local file with restrictive OS file permissions (mode `0600`). It is simple and portable.
+- System keyring uses your operating system's keychain, which is more secure and integrated with the OS.
+
+Changes to storage take effect immediately after you save. For more on how keys are handled and what stays local, see [privacy](/app/concepts/privacy).
+
+Agent Execution controls scheduling, not which agents run. Sequential runs each agent one after another and works with every provider and tier. Parallel runs all agents at once, which is faster but can hit rate limits on free tiers. It defaults to sequential. The final report is the same either way; only the timing changes.
+
+## Provider and analysis
+
+The Provider area is where you pick the AI provider for reviews, enter or remove its API key, and choose a model. You can search and filter the provider list, and each provider shows its capabilities. API keys can be entered directly or pointed at an environment variable instead, so a key never has to be typed into the app at all. For background on providers and models, see [providers](/app/reference/providers).
+
+The Analysis area chooses which agents run during a review. You toggle agents on and off, and at least one has to stay selected. If you have not picked any, every agent runs by default. The set you save here becomes the default agent list for reviews started from the web app.
+
+## Trust and permissions
+
+Trust controls what diffgazer is allowed to do in the current directory. It is scoped per project, so trusting one repository does not trust another. The screen shows the target directory and the capabilities you can grant, with Save and Revoke actions. Saving writes the trust grant for this directory; Revoke removes it.
+
+One capability is available today: repository access, which lets diffgazer read files and git metadata so reviews have something to analyze. The other listed capability, run commands (running tests or lint), is unavailable. The server forces it off on every save regardless of what the client sends, the option is disabled in the UI, and a security warning explains that, when it is eventually enabled, it would let the AI execute shell scripts. Treat run commands as off and not selectable for now.
+
+> Warning: Trust grants real access. Repository access lets the review read every file and git detail in the trusted directory. Only trust directories whose contents you are comfortable sending to your configured AI provider.
+
+## Related
+
+- [Configuration](/app/reference/configuration) documents the config file these settings write to.
+- [Providers](/app/reference/providers) covers provider selection, keys, and models in depth.
+- [Privacy](/app/concepts/privacy) explains where keys and data live and what leaves your machine.
+- [Diagnostics](/app/web/diagnostics) runs health checks against the current directory.

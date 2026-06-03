@@ -1,0 +1,12 @@
+{
+  "title": "Web Mode",
+  "pages": [
+    "index",
+    "onboarding",
+    "reviewing",
+    "results",
+    "history",
+    "settings",
+    "diagnostics"
+  ]
+}

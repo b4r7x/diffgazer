@@ -1,0 +1,41 @@
+---
+title: Installation
+description: Install the diffgazer CLI and confirm it runs.
+---
+
+diffgazer is a single global binary. It needs Node.js 20 or newer (see the `engines` field in its `package.json`).
+
+## Requirements
+
+- Node.js 20 or newer.
+- A `git` binary on your PATH. diffgazer shells out to `git` to read your status and diffs, so reviews fail if `git` is missing or you run it outside a repository.
+- At least one model provider key. diffgazer brings no model of its own; you supply one. See [providers and models](/app/concepts/providers-and-models).
+
+## Install
+
+```bash
+npm install -g diffgazer
+```
+
+## Verify
+
+```bash
+diffgazer --version
+```
+
+This prints the installed version, which confirms the binary is on your PATH.
+
+## Run it
+
+```bash
+diffgazer
+```
+
+Run this from inside a repository with changes. diffgazer starts its local web environment and opens it in your browser. If port 3000 is already taken, set a different one with `PORT`, for example `PORT=4000 diffgazer`.
+
+> Tip: For a walkthrough of what the review screen shows, see [your first review](/app/getting-started/first-review).
+
+## Next steps
+
+- [Your first review](/app/getting-started/first-review): run diffgazer against your changes and read the result.
+- [Providers and models](/app/concepts/providers-and-models): pick a provider and add the key diffgazer needs.

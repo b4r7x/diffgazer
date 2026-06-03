@@ -1,0 +1,77 @@
+---
+title: Your first review
+description: Run diffgazer and read your first review, from install to findings.
+---
+
+The fastest path is three commands, run from inside a git repository that has uncommitted changes. Before a review can start you also need a key for one supported provider, which you paste during the setup wizard on first run.
+
+## Prerequisites
+
+- A git repository with changes to review. diffgazer reads your working diff, so it needs something uncommitted (or staged) to look at.
+- Node.js 20 or newer, and a `git` binary on your PATH.
+- An API key for one supported provider. The wizard lists them on first run; the default is Google Gemini, which has a free tier.
+
+## Steps
+
+1. Install the CLI: `npm install -g diffgazer`.
+2. Change into the repo you want to review: `cd your-project`.
+3. Start it: `diffgazer`. It prints a banner, starts a local server at `http://localhost:3000`, and opens that address in your browser.
+4. Complete the setup wizard: choose where secrets are stored, pick a provider, paste your key, select a model, confirm the analysis agents, and pick how they run.
+5. Trust the repository when prompted, leaving "read files" enabled so diffgazer can read your code.
+6. From the main menu, choose `Review Unstaged` (or `Review Staged`) to start a review.
+7. Read the findings: skim the summary, press Enter to open the full review, then move through the issue list to read each finding.
+
+```bash
+npm install -g diffgazer
+cd your-project
+diffgazer
+```
+
+> Tip: If port 3000 is already taken, set another one with `PORT`, for example `PORT=4000 diffgazer`.
+
+## What the first run looks like
+
+On first launch diffgazer has no saved configuration, so the browser opens straight into the setup wizard. It walks through six steps in order:
+
+- **Secrets storage.** Where your API keys live: a local file (saved with `0600` permissions) or your operating system keyring.
+- **Provider.** The AI provider to review with. The list is generated from the providers diffgazer supports, and the top option is preselected.
+- **API key.** Paste your key, or point diffgazer at the provider's environment variable if you already export one.
+- **Model.** The model to run. The list loads from the provider, with recommended and free-tier models tagged.
+- **Analysis.** Which review agents run. All five are on by default: correctness, security, performance, simplicity, and tests.
+- **Agent execution.** Run agents one after another (sequential, which works on every tier) or all at once (parallel, which is faster but more likely to hit rate limits on free tiers).
+
+Finish with **Complete Setup**. For a step-by-step tour of every option, see [onboarding](/app/web/onboarding).
+
+## Trust the directory
+
+Before the first review, diffgazer asks you to trust the current repository. The trust screen shows the target directory and a permissions list. "Read files" is enabled by default and is what a review needs; "run commands" is unavailable today. Choose **Trust & Continue** to save the grant for this directory.
+
+Trust is per directory. If you skip it, the menu's review actions stay blocked and starting one shows a "Directory Not Trusted" message.
+
+## Run a review
+
+The main menu offers two ways to review your changes:
+
+- **Review Unstaged** looks at your working-tree changes that are not yet staged.
+- **Review Staged** looks at changes you have already `git add`-ed.
+
+Pick one and diffgazer collects the diff, gathers surrounding code as context, and streams the run live. While it works you see a progress overview, the active agents, and a live activity log. If a repo has nothing to review in the mode you picked, diffgazer says so and offers to switch modes instead. See [reviewing](/app/web/reviewing) for the run screen in detail.
+
+## Read the findings
+
+When the run finishes you land on a summary: total issues, files analyzed, a breakdown by severity, and the top findings. Press Enter to open the full review.
+
+The full review is a two-pane layout. The left pane lists every issue and lets you filter by severity (blocker, high, medium, low, nit). The right pane shows the selected issue across a few tabs:
+
+- **Details.** The symptom, why it matters, a fix plan you can check off, and any suggested tests.
+- **Explain.** The rationale and recommendation in prose.
+- **Trace.** The steps the agent took, when that data is available.
+- **Patch.** A suggested patch, rendered with the diff viewer, when the finding includes one.
+
+## What's next
+
+- [Reviewing in the web environment](/app/web/reviewing) covers reading findings, drilling into a diff, and re-running a review.
+- [CLI reference](/app/reference/cli) lists every command and flag, including the terminal UI.
+- [Troubleshooting](/app/operations/troubleshooting) helps when setup looks complete but a review still will not start.
+
+> Tip: Stop diffgazer with `Ctrl+C` in the terminal where it is running. That signals a graceful shutdown of the local server.

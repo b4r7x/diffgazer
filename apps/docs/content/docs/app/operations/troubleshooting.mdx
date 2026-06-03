@@ -1,0 +1,108 @@
+---
+title: Troubleshooting
+description: Fix the common failures when running diffgazer.
+---
+
+Most failures fall into a handful of buckets: setup isn't finished, the repo isn't trusted yet, the port is taken, the provider rejected the request, or there's nothing to review. Each one below gives you the symptom you'll see, why it happens, and how to get past it.
+
+## Setup required
+
+**Symptom.** A review won't start. The request comes back with a `503` and a `SETUP_REQUIRED` code, and the message names what's missing, for example "Setup incomplete. Missing: provider".
+
+**Cause.** Some routes are gated behind a setup check that runs before the handler. Until onboarding is complete, the server refuses to start a review rather than fail halfway through. The check looks at your config and reports exactly which pieces aren't ready yet.
+
+**Fix.** Finish onboarding. You need an active provider with a model and an API key in place. Once setup reports ready, the same request goes through. See [providers reference](/app/reference/providers) for which key each provider reads and what the default model is.
+
+## Trust required
+
+**Symptom.** A review or a file-touching action returns a `403` with a `TRUST_REQUIRED` code. The message is either "Repository access not granted. Update Trust & Permissions to continue." or "Trust was granted for a different repository root. Re-grant trust for this directory."
+
+**Cause.** Reading your repository is an explicit, per-directory decision. Routes that read files run behind a trust gate that checks two things. First, the current project must have the read-files capability granted. Second, the grant has to match the exact repository root you're working in. A grant made for one directory does not carry over to another.
+
+**Fix.** Open Trust and Permissions and grant repository access for the directory you're in. If you moved the project or opened a different checkout, re-grant trust for the new root. Granting trust covers reading files; it does not enable running commands. For the full picture of what stays local, see [privacy and security](/app/concepts/privacy).
+
+## No changes to review
+
+**Symptom.** A review stops immediately with a `NO_DIFF` code. In staged mode the message is "No staged changes found. Use 'git add' to stage files, or review unstaged changes instead." In unstaged mode it's "No unstaged changes found. Make some edits first, or review staged changes instead."
+
+**Cause.** diffgazer reviews a git diff. If the mode you picked has an empty diff, there's nothing to send to the model, so the run ends before it starts. Note that changes inside the `.diffgazer/` directory are filtered out of the diff, so a change set that only touches diffgazer's own files counts as empty.
+
+**Fix.** Make sure the mode matches where your changes are. Stage files with `git add` for a staged review, or edit some tracked files for an unstaged one. If you scoped the review to specific files and none of them have changes in that mode, widen the file selection.
+
+## Not a git repository
+
+**Symptom.** A review fails early with a git error before any diff is read.
+
+**Cause.** diffgazer runs git in your project directory to produce the diff. If the directory isn't a git working tree, git has nothing to diff and the underlying command fails.
+
+**Fix.** Run diffgazer from inside a git repository. Initialize one with `git init` if you haven't, or change into the project directory that already has a `.git` folder.
+
+## Diff too large
+
+**Symptom.** A review aborts with a message like "Diff too large (0.73MB exceeds 0.50MB limit). Try reviewing fewer files or use file filtering."
+
+**Cause.** A single review caps the combined diff at 512KB. The limit is on the total byte size of every changed file in the diff, not on any one file, so several medium files can cross it together.
+
+**Fix.** Review fewer files at once. Scope the run to the files you care about, or split a large change into smaller reviews. The cap protects the run from sending an oversized prompt to your provider.
+
+## Port already in use
+
+**Symptom.** The server fails to start and the console prints "Port 3000 is already in use. Close the other process or set a different PORT." Under the hood this is an `EADDRINUSE` bind error on `127.0.0.1`.
+
+**Cause.** The embedded server binds to a fixed port (3000 by default). If another process already holds that port, the bind fails and the server can't come up.
+
+**Fix.** Free the port or pick another one. To run on a different port, set the `PORT` environment variable before launching:
+
+```bash
+PORT=4000 diffgazer
+```
+
+`PORT` must be an integer from 1 to 65535. Anything outside that range is rejected at startup with an "Invalid PORT" error rather than silently falling back. To free the default port instead, stop whatever is already listening on it.
+
+> Tip: If you're not sure what's holding the port, `lsof -i :3000` on macOS or Linux shows the process so you can stop it.
+
+## Permission denied on the port
+
+**Symptom.** The server fails to start with "Permission denied binding to port 3000. Try a port above 1024." This is an `EACCES` error from the bind.
+
+**Cause.** On most systems, binding to a low port (below 1024) requires elevated privileges. If `PORT` is set to a privileged port and your process isn't allowed to claim it, the bind is denied.
+
+**Fix.** Use a non-privileged port. Set `PORT` to a value above 1024 and launch again:
+
+```bash
+PORT=8080 diffgazer
+```
+
+## Web assets not found
+
+**Symptom.** The server logs a "Web assets not found" error naming the path it looked in, and never opens the browser.
+
+**Cause.** The web mode serves a built copy of the app bundled next to the server. If that bundle is missing from the install, the server has nothing to serve and stops before binding.
+
+**Fix.** Reinstall or rebuild diffgazer so the web assets ship with the binary. A fresh install from the published package includes them. If you're running from a local checkout, build the project first so the web bundle exists.
+
+## Provider or key errors
+
+**Symptom.** Setup or activation rejects your provider, or a review fails partway through with a provider-side error. Common cases are a missing key, an invalid key, a rate limit from the provider, or a model that doesn't exist for the provider you chose.
+
+**Cause.** diffgazer sends the review to the provider you configured, using the key and model you set. If the key is absent or wrong, the provider refuses. If you select a model that isn't in that provider's catalog, activation fails before any request goes out. OpenRouter is the exception there, since its model list comes from a live route rather than the bundled catalog.
+
+**Fix.** Confirm the provider has a valid key and a model it actually offers. The [providers reference](/app/reference/providers) lists the exact environment variable each provider reads, its default model, and its base URL. A frequent gotcha: Google Gemini reads `GOOGLE_API_KEY`, not `GEMINI_API_KEY`.
+
+> Note: Running several review passes in parallel can trip a provider's rate limit on a free tier. If you see rate-limit errors, slow the run down by reviewing fewer files at once, or move to a plan with higher limits.
+
+## Stopping a stuck process
+
+**Symptom.** A review hangs, or the server won't quit cleanly.
+
+**Cause.** Web mode runs a server and waits. A review holds an open stream while it's in flight, which can make shutdown feel slow because the server drains that connection first.
+
+**Fix.** Press Ctrl+C in the terminal where diffgazer is running. On the first signal it stops the server, aborts in-flight reviews, and exits. If a child process is slow to die after the stop signal, diffgazer force-kills it after a short delay (2 seconds by default). You can lengthen that delay on a slow machine with `DIFFGAZER_FORCE_KILL_DELAY_MS`, set in milliseconds:
+
+```bash
+DIFFGAZER_FORCE_KILL_DELAY_MS=5000 diffgazer
+```
+
+## Still stuck
+
+If none of the above matches what you're seeing, check the [FAQ](/app/operations/faq) for the short answers to common questions. If it's a bug or something the docs don't cover, open an issue at https://github.com/b4r7x/diffgazer/issues with the error message and what you ran.

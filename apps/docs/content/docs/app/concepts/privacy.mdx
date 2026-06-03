@@ -1,0 +1,67 @@
+---
+title: Privacy and security
+description: Why your code and your keys stay on your machine.
+---
+
+The pitch is simple: **diffgazer runs an embedded local server and reviews your code on your own machine, so your source and your API keys never reach a service we run.** The only thing that ever leaves your computer is the request you choose to send to your own model provider. This page walks through how that holds up, layer by layer, so you can trust the claim instead of taking it on faith.
+
+## Localhost binding and the host allowlist
+
+The embedded server only answers requests that came from your own machine. Before any route runs, it reads the `Host` header and checks it against a fixed allowlist of `localhost`, `127.0.0.1`, and `::1`. A request that arrives with any other host gets a `403 Forbidden` and goes no further. That guard runs as early middleware, registered before any route handler, so it covers every endpoint, not just the API.
+
+This matters because a host that is not on the list usually means the request was aimed at the machine from somewhere else, for example through a DNS name that resolves to your box. Pinning to localhost names closes that path. Combined with the server binding to `127.0.0.1` when it starts, there is no public interface for someone on your network to reach.
+
+## CSRF protection on writes
+
+Even on localhost, a page open in your browser could try to call the API in the background. diffgazer blocks the dangerous version of that. For any state-changing method (`POST`, `PUT`, `PATCH`, or `DELETE`), the server inspects the request `Origin`. If an origin is present and it is not a localhost origin, the request is rejected with a `403`. A random site you happen to be visiting cannot quietly drive your review backend.
+
+Cross-origin rules are enforced again at the CORS layer. In a packaged build the server only reflects an origin back when it exactly matches the request host; in local development it allows localhost origins. Either way, browsers will not hand a foreign page a usable response from the API.
+
+## Hardening headers
+
+Every response carries a small set of headers that lock down how a browser may treat it:
+
+| Header | Value | What it does |
+| --- | --- | --- |
+| `X-Frame-Options` | `DENY` | The UI cannot be framed by another site, which blocks clickjacking. |
+| `X-Content-Type-Options` | `nosniff` | The browser will not guess a content type, so a response cannot be coerced into running as the wrong type. |
+| `Permissions-Policy` | camera, microphone, geolocation, payment, USB, Bluetooth, MIDI, and display-capture all disabled | The page cannot ask for these device capabilities. |
+| `Referrer-Policy` | `no-referrer` | Outbound navigations do not leak the local URL you came from. |
+
+These apply to the whole app, set by middleware that runs on every request.
+
+## The shutdown token
+
+The server protects its API with a per-run secret. On startup the CLI generates a fresh token from 32 random bytes and hands it to the server through the environment. Every API request, with two deliberate exceptions, has to present that token in the `x-diffgazer-shutdown-token` header, and the server compares it with a constant-time check so a wrong guess leaks nothing through timing. A request without a valid token gets a `401 Unauthorized`.
+
+The two exceptions are the health check at `/api/health`, so a probe can confirm the server is up without holding the secret, and `OPTIONS` preflight requests, which carry no body. The enforcement rule is fail-closed where it counts: a packaged build always requires the token, and any run that has a token configured enforces it in every mode. A split development setup without a shared token is the only case that runs without it.
+
+Because the token is minted new on each run and lives only in process memory and the environment, it is not written to disk and does not persist between sessions.
+
+## Where secrets are stored
+
+Your provider API keys are not kept in plaintext lying around. diffgazer prefers your operating system keyring, the same vault your OS uses for other credentials, through a native keyring binding registered under the app name `diffgazer`. Before trusting it, diffgazer runs a quick self-test that writes, reads back, and deletes a throwaway value, so it only uses the keyring when the keyring actually works on your system.
+
+When the keyring is not available, diffgazer falls back to a file under your global config directory. That file is written with `0600` permissions, meaning only your user account can read or write it; group and other users get nothing. The same `0600` mode is used for the config, secrets, and trust files, and for the per-project info file. So even in the file fallback, a secret on disk is readable only by you.
+
+> Tip: If you would rather keep keys out of any diffgazer-managed storage entirely, providers can also be backed by an environment variable reference instead of a stored secret. See [Providers and models](/app/concepts/providers-and-models) and [Configuration](/app/reference/configuration) for how that is set up.
+
+## The trust gate
+
+Reading your repository is not automatic. Routes that touch repository files run behind a trust gate that checks two things before letting the request through. First, the current project must have been granted the `readFiles` capability; without it the request is refused with a `403` and a message telling you to update Trust and Permissions. Second, the trust grant has to match the exact repository root you are working in. If trust was granted for a different directory, the server refuses and asks you to re-grant for this one, so a grant for one repo cannot be reused to read another.
+
+This is what makes "diffgazer reads your code" an explicit decision per repository rather than a blanket permission.
+
+## What leaves the machine
+
+After all of the above, exactly one thing crosses the network boundary, and only when you ask for a review: the request to the model provider you chose. diffgazer builds a client for your active provider, one of Google Gemini, Z.AI, Z.AI Coding Plan, OpenRouter, Groq, or Cerebras, using the API key and model you configured, and sends the review prompt directly to that provider's endpoint. There is no diffgazer-hosted relay in the path; the call goes from your machine to the provider you picked.
+
+That means your diff and the prompt built around it go to your provider under your account, governed by your provider's data policy, not ours. We never see it. If you want the request itself to leave less behind, that is a question of which provider and model you choose, which is covered in [Providers and models](/app/concepts/providers-and-models).
+
+> Note: A provider may use what you send according to its own terms. diffgazer keeps the data local up to the moment you send a review, but it cannot control what happens on the provider side. Choose a provider whose data policy you are comfortable with.
+
+## Related
+
+- [The review pipeline](/app/concepts/review-pipeline) — what each review step does and where the provider call happens.
+- [Providers and models](/app/concepts/providers-and-models) — bringing your own model and keys, and where they go.
+- [How it works](/app/concepts/how-it-works) — the overview of the CLI, the embedded server, and the UI.

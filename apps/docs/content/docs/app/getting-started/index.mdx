@@ -1,0 +1,28 @@
+---
+title: Introduction
+description: Local-first AI code review for your working changes, in the browser or the terminal.
+---
+
+<DiffgazerPreview />
+
+diffgazer is a local binary that reviews your uncommitted changes with AI. Run it inside any repository and it reads what you have changed, then hands back a structured review. Web mode is the default and opens in your browser; the terminal UI is opt-in and still in beta.
+
+## How review works
+
+diffgazer takes the diff of your working changes, gathers the surrounding code as context, and sends both to five review agents that each look at the change through one lens: correctness, security, performance, simplicity, and tests. Their findings come back as one report you read inline against the diff. For the full pipeline, see [how it works](/app/concepts/how-it-works).
+
+## Two ways to review
+
+By default `diffgazer` starts a local web environment and opens it in your browser, which is the path most people should use. The same review also runs in a keyboard-first terminal UI behind the `--tui` flag, but that mode is an incomplete beta and not recommended yet. The marketing copy still calls diffgazer terminal-native; the honest version is that the browser is the default today and the terminal UI is catching up. See [web mode](/app/web/index) and the [terminal UI](/app/tui/index) for the details of each.
+
+## Local and private
+
+diffgazer runs entirely on your machine. There is no server to deploy and nothing about your diff is uploaded to a dashboard you do not control. Your source and your provider keys stay local, and the only thing that leaves is the request to the model provider you chose. See [privacy](/app/concepts/privacy) for what is sent and what is not.
+
+## Where to go next
+
+- [Installation](/app/getting-started/installation): requirements and the global install
+- [Your first review](/app/getting-started/first-review): run diffgazer and read the result
+- [How it works](/app/concepts/how-it-works): the diff-to-report pipeline in detail
+- [Privacy](/app/concepts/privacy): what stays local and what is sent
+- [CLI reference](/app/reference/cli): every command-line option

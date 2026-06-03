@@ -1,0 +1,74 @@
+---
+title: Keybindings
+description: The full keyboard reference for the terminal UI, grouped by screen.
+---
+
+The terminal UI is driven entirely from the keyboard. A few keys work everywhere, and each screen adds its own. This page lists them all. If you only want the basics, the [terminal UI overview](/app/tui/index) covers the handful you need to get moving.
+
+## Global keys
+
+These work on every screen once you are past onboarding. During onboarding only `q` is live, so you can always back out.
+
+| Key | Action |
+| --- | --- |
+| `q` | Quit |
+| `s` | Open settings |
+| `?` | Open help |
+| Ctrl+C | Quit |
+
+`s` and `?` are no-ops when you are already on that screen, so pressing `s` inside settings does nothing rather than stacking another screen.
+
+## Home menu
+
+The home screen is a menu. You can move through it with the arrow keys and press Enter to pick an item, or jump straight to an item with its letter.
+
+| Key | Action |
+| --- | --- |
+| ↑ / ↓ | Move through the menu |
+| Enter | Open the highlighted item |
+| `r` | Review unstaged changes |
+| `R` | Review staged changes |
+| `l` | Resume the last review |
+| `h` | History |
+| `s` | Settings |
+| `?` | Help |
+| `q` | Quit |
+
+## Review
+
+Inside a review the same letters do different work, because the screen owns the navigation. You move through the issue list with `j` and `k`, switch between the list and the details pane with Tab, and switch tabs inside the details pane with the left and right arrow keys.
+
+| Key | Action |
+| --- | --- |
+| `j` | Move down the issue list |
+| `k` | Move up the issue list |
+| Tab | Switch pane |
+| ← / → | Switch tab in the details pane |
+| Esc | Go back |
+
+> Note: The help screen and the review footer both advertise `1` - `4` for switching tabs, but those keys do nothing here. The handler exists in the code but is never wired up, so tabs only respond to the arrow keys.
+
+## Help screen
+
+The help screen prints its own shortcut list and acts as the in-app cheat sheet. Press `?` from anywhere to open it and Esc to leave.
+
+| Key | Action |
+| --- | --- |
+| ↑ / ↓ | Navigate menus and lists |
+| Enter | Select or confirm |
+| Esc | Go back |
+| Tab | Switch pane |
+| 1 - 4 | Switch tab (in review) |
+| `j` / `k` | Scroll content |
+| `r` | Review unstaged changes |
+| `R` | Review staged changes |
+| `s` | Open settings |
+| `q` | Quit |
+
+> Note: The help screen's list and the home menu have drifted apart. The home menu binds `l` to resume the last review and `h` to history, but neither key appears on the help screen. Both keys work on the home screen; the help screen just does not list them yet. The table above reflects what each screen actually does, not what the help screen claims.
+
+## Related
+
+- [Terminal UI overview](/app/tui/index) covers what the beta TUI is and how to start it.
+- [Themes](/app/tui/themes) lists the palettes you can pass to `--theme`.
+- [CLI reference](/app/reference/cli) documents every command-line option for the `diffgazer` binary.
