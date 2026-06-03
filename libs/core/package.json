@@ -45,6 +45,10 @@
       "types": "./dist/providers/index.d.ts",
       "import": "./dist/providers/index.js"
     },
+    "./catalog": {
+      "types": "./dist/catalog/index.d.ts",
+      "import": "./dist/catalog/index.js"
+    },
     "./review": {
       "types": "./dist/review/index.d.ts",
       "import": "./dist/review/index.js"
@@ -133,8 +137,9 @@
   "scripts": {
     "build": "tsc && pnpm verify:dist-esm",
     "verify:dist-esm": "node --import tsx scripts/verify-dist-esm-imports.ts",
+    "generate:catalog-snapshot": "node --import tsx scripts/generate-catalog-snapshot.ts",
     "dev": "tsc --watch",
-    "type-check": "tsc --noEmit",
+    "type-check": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json && tsc --noEmit -p scripts/tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:types": "vitest --typecheck --typecheck.only --run"

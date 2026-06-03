@@ -38,4 +38,11 @@ export const configQueries = {
       queryFn: () => api.getOpenRouterModels(),
       staleTime: 5 * 60_000,
     }),
+
+  providerModels: (api: BoundApi, providerId: string) =>
+    queryOptions({
+      queryKey: [...configQueries.all(), "provider-models", providerId] as const,
+      queryFn: () => api.getProviderModels(providerId),
+      staleTime: 5 * 60_000,
+    }),
 };

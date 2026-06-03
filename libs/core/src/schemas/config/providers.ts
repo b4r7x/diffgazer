@@ -3,9 +3,8 @@ import {
   timestampFields,
 } from "../shared/fields.js";
 import { SettingsConfigSchema, TrustConfigSchema } from "./settings.js";
-import { GEMINI_MODELS, GLM_MODELS } from "./models.js";
 
-export const AI_PROVIDERS = ["gemini", "zai", "zai-coding", "openrouter"] as const;
+export const AI_PROVIDERS = ["gemini", "zai", "zai-coding", "openrouter", "groq", "cerebras"] as const;
 export const AIProviderSchema = z.enum(AI_PROVIDERS);
 export type AIProvider = z.infer<typeof AIProviderSchema>;
 
@@ -13,7 +12,6 @@ export const ProviderInfoSchema = z.object({
   id: AIProviderSchema,
   name: z.string(),
   defaultModel: z.string(),
-  models: z.array(z.string()).readonly(),
 });
 export type ProviderInfo = z.infer<typeof ProviderInfoSchema>;
 
@@ -29,28 +27,18 @@ export const ProviderWithStatusSchema = ProviderInfoSchema.extend({
 });
 export type ProviderWithStatus = z.infer<typeof ProviderWithStatusSchema>;
 
-function isValidModelForProvider(provider: AIProvider, model: string): boolean {
-  switch (provider) {
-    case "gemini":
-      return (GEMINI_MODELS as readonly string[]).includes(model);
-    case "zai":
-    case "zai-coding":
-      return (GLM_MODELS as readonly string[]).includes(model);
-    case "openrouter":
-      return true;
-    default:
-      return false;
-  }
-}
-
+// Models come live from the catalog, so this schema-level check only enforces a
+// non-empty model id. Catalog-membership enforcement lives in the server's
+// activateProvider, which rejects a model absent from the provider's resolved
+// catalog (OpenRouter excepted — its models come from its own live route).
 export const UserConfigSchema = z
   .object({
     provider: AIProviderSchema,
     model: z.string().optional(),
     ...timestampFields,
   })
-  .refine((data) => !data.model || isValidModelForProvider(data.provider, data.model), {
-    message: "Model is not valid for the selected provider",
+  .refine((data) => data.model === undefined || data.model.trim().length > 0, {
+    message: "Model must not be empty",
     path: ["model"],
   });
 export type UserConfig = z.infer<typeof UserConfigSchema>;

@@ -5,8 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
 import { createApi, type BoundApi } from "@diffgazer/core/api";
 import { KeyboardProvider } from "@diffgazer/keys";
-import { AVAILABLE_PROVIDERS, GEMINI_MODEL_INFO } from "@diffgazer/core/schemas/config";
-import type { InitResponse } from "@diffgazer/core/schemas/config";
+import { AVAILABLE_PROVIDERS } from "@diffgazer/core/schemas/config";
+import type { InitResponse, ProviderModelsResponse } from "@diffgazer/core/schemas/config";
 import { FooterProvider } from "@diffgazer/core/footer";
 import { ConfigProvider } from "@/app/providers/config-provider";
 import {
@@ -24,6 +24,34 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 import { OnboardingWizard } from "../components/onboarding-wizard";
+
+const GEMINI_CATALOG: ProviderModelsResponse = {
+  models: [
+    {
+      id: "gemini-2.5-flash",
+      name: "Gemini 2.5 Flash",
+      description: "1M context",
+      tier: "free",
+      recommended: true,
+    },
+    { id: "gemini-2.5-pro", name: "Gemini 2.5 Pro", description: "1M context", tier: "free" },
+    {
+      id: "gemini-3-pro-preview",
+      name: "Gemini 3 Pro Preview",
+      description: "1M context",
+      tier: "paid",
+    },
+  ],
+  fetchedAt: new Date().toISOString(),
+  source: "live",
+  cached: false,
+};
+
+function geminiModel(id: string) {
+  const model = GEMINI_CATALOG.models.find((m) => m.id === id);
+  if (!model) throw new Error(`Gemini catalog fixture is missing model "${id}"`);
+  return model;
+}
 
 function makeInitResponse(overrides: Partial<InitResponse> = {}): InitResponse {
   return {
@@ -56,6 +84,7 @@ let mockLoadInit: Mock<BoundApi["loadInit"]>;
 let mockGetProviderStatus: Mock<BoundApi["getProviderStatus"]>;
 let mockSaveSettings: Mock<BoundApi["saveSettings"]>;
 let mockSaveConfig: Mock<BoundApi["saveConfig"]>;
+let mockGetProviderModels: Mock<BoundApi["getProviderModels"]>;
 
 function createTestApi(): BoundApi {
   return {
@@ -64,6 +93,7 @@ function createTestApi(): BoundApi {
     getProviderStatus: mockGetProviderStatus,
     saveSettings: mockSaveSettings,
     saveConfig: mockSaveConfig,
+    getProviderModels: mockGetProviderModels,
   } satisfies BoundApi;
 }
 
@@ -137,6 +167,9 @@ describe("OnboardingWizard", () => {
       .mockResolvedValue([{ provider: "gemini", hasApiKey: false, isActive: false }]);
     mockSaveSettings = vi.fn<BoundApi["saveSettings"]>().mockResolvedValue(undefined);
     mockSaveConfig = vi.fn<BoundApi["saveConfig"]>().mockResolvedValue(undefined);
+    mockGetProviderModels = vi
+      .fn<BoundApi["getProviderModels"]>()
+      .mockResolvedValue(GEMINI_CATALOG);
   });
 
   it("disables the Next action on the api-key step until canProceed is satisfied", async () => {
@@ -179,9 +212,13 @@ describe("OnboardingWizard", () => {
     await clickNext(user);
 
     await expectStep(/model selection/i);
-    const defaultModelName = GEMINI_MODEL_INFO[firstProvider.defaultModel as keyof typeof GEMINI_MODEL_INFO]?.name;
-    expect(defaultModelName).toBeTruthy();
-    expect(getRadio(new RegExp(escapeRegExp(defaultModelName!), "i"))).toHaveAttribute("aria-checked", "true");
+    const defaultModelName = geminiModel(firstProvider.defaultModel).name;
+    await waitFor(() =>
+      expect(getRadio(new RegExp(escapeRegExp(defaultModelName), "i"))).toHaveAttribute(
+        "aria-checked",
+        "true",
+      ),
+    );
   });
 
   it("marks the app as configured after a successful completion", async () => {
@@ -220,7 +257,10 @@ describe("OnboardingWizard", () => {
     await clickNext(user);
 
     await expectStep(/model selection/i);
-    const proModelName = GEMINI_MODEL_INFO["gemini-2.5-pro"].name;
+    const proModelName = geminiModel("gemini-2.5-pro").name;
+    await waitFor(() =>
+      expect(getRadio(new RegExp(escapeRegExp(proModelName), "i"))).toBeInTheDocument(),
+    );
     await user.click(getRadio(new RegExp(escapeRegExp(proModelName), "i")));
     await clickNext(user);
 

@@ -7,7 +7,6 @@ const PROVIDERS: ProviderWithStatus[] = [
     id: "gemini",
     name: "Google Gemini",
     defaultModel: "gemini-2.5-flash",
-    models: ["gemini-2.5-flash"],
     hasApiKey: true,
     isActive: true,
     model: "gemini-2.5-flash",
@@ -17,7 +16,6 @@ const PROVIDERS: ProviderWithStatus[] = [
     id: "zai",
     name: "Z.AI",
     defaultModel: "glm-4.7",
-    models: ["glm-4.7"],
     hasApiKey: true,
     isActive: false,
     displayStatus: "configured",
@@ -26,7 +24,6 @@ const PROVIDERS: ProviderWithStatus[] = [
     id: "zai-coding",
     name: "Z.AI Coding Plan",
     defaultModel: "glm-4.7",
-    models: ["glm-4.7"],
     hasApiKey: false,
     isActive: false,
     displayStatus: "needs-key",
@@ -35,7 +32,6 @@ const PROVIDERS: ProviderWithStatus[] = [
     id: "openrouter",
     name: "OpenRouter",
     defaultModel: "",
-    models: [],
     hasApiKey: false,
     isActive: false,
     displayStatus: "needs-key",
@@ -65,18 +61,16 @@ describe("filterProviders", () => {
     ]);
   });
 
-  it("filters by free tier (includes mixed-tier providers)", () => {
+  it("filters 'free' to providers with a curated free tier", () => {
     const result = ids(filterProviders(PROVIDERS, "free"));
     expect(result).toContain("gemini");
     expect(result).toContain("zai");
+    expect(result).toContain("openrouter");
     expect(result).not.toContain("zai-coding");
   });
 
-  it("filters by paid tier (excludes free and mixed)", () => {
-    const result = ids(filterProviders(PROVIDERS, "paid"));
-    expect(result).toContain("zai-coding");
-    expect(result).not.toContain("gemini");
-    expect(result).not.toContain("zai");
+  it("filters 'paid' to providers without a curated free tier", () => {
+    expect(ids(filterProviders(PROVIDERS, "paid"))).toEqual(["zai-coding"]);
   });
 
   it("matches search query against name and id", () => {

@@ -1,12 +1,6 @@
 import { describe, it, expect } from "vitest";
-import type { ModelInfo, OpenRouterModel } from "@diffgazer/core/schemas/config";
-import {
-  TIER_FILTERS,
-  buildModels,
-  cycleTierFilter,
-  filterModels,
-  getStaticModelsForProvider,
-} from "./models.js";
+import type { ModelInfo } from "@diffgazer/core/schemas/config";
+import { TIER_FILTERS, cycleTierFilter, filterModels } from "./models.js";
 
 const makeModel = (
   id: string,
@@ -73,61 +67,5 @@ describe("cycleTierFilter", () => {
 
   it("matches TIER_FILTERS order", () => {
     expect(TIER_FILTERS).toEqual(["all", "free", "paid"]);
-  });
-});
-
-describe("getStaticModelsForProvider", () => {
-  it("returns gemini model info for gemini provider", () => {
-    const models = getStaticModelsForProvider("gemini");
-    expect(models.length).toBeGreaterThan(0);
-    expect(models.every((m) => m.id.startsWith("gemini"))).toBe(true);
-  });
-
-  it("returns GLM models for zai providers", () => {
-    const zai = getStaticModelsForProvider("zai");
-    const zaiCoding = getStaticModelsForProvider("zai-coding");
-    expect(zai.length).toBeGreaterThan(0);
-    expect(zai).toEqual(zaiCoding);
-  });
-
-  it("returns empty array for openrouter", () => {
-    expect(getStaticModelsForProvider("openrouter")).toEqual([]);
-  });
-});
-
-describe("buildModels", () => {
-  it("maps OpenRouter models for openrouter provider", () => {
-    const openRouterModels: OpenRouterModel[] = [
-      {
-        id: "or/free-model",
-        name: "Free Model",
-        description: "A free model",
-        contextLength: 8000,
-        pricing: { prompt: "0", completion: "0" },
-        isFree: true,
-      },
-      {
-        id: "or/paid-model",
-        name: "Paid Model",
-        description: "A paid model",
-        contextLength: 16000,
-        pricing: { prompt: "1", completion: "1" },
-        isFree: false,
-      },
-    ];
-    const result = buildModels("openrouter", openRouterModels);
-    expect(result.map((m) => m.id)).toEqual(["or/free-model", "or/paid-model"]);
-    expect(result.map((m) => m.tier)).toEqual(["free", "paid"]);
-  });
-
-  it("returns gemini static models for gemini", () => {
-    const result = buildModels("gemini", []);
-    expect(result.length).toBeGreaterThan(0);
-    expect(result.every((m) => typeof m.description === "string")).toBe(true);
-  });
-
-  it("returns GLM static models for zai", () => {
-    const result = buildModels("zai", []);
-    expect(result.length).toBeGreaterThan(0);
   });
 });

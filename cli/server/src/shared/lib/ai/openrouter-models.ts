@@ -8,7 +8,7 @@ import {
   type OpenRouterModelCache,
 } from "@diffgazer/core/schemas/config";
 import { getGlobalOpenRouterModelsPath } from "../paths.js";
-import { readJsonFileSync, writeJsonFileSync } from "../fs.js";
+import { loadDiskCache, withTtlAndFallback } from "./disk-cache.js";
 
 const hashApiKey = (apiKey: string): string =>
   createHash("sha256").update(apiKey).digest("hex").slice(0, 16);
@@ -77,18 +77,11 @@ const mapOpenRouterModel = (raw: unknown): OpenRouterModel | null => {
   return parsed.success ? parsed.data : null;
 };
 
-export const loadOpenRouterModelCache = (): OpenRouterModelCache | null => {
-  const path = getGlobalOpenRouterModelsPath();
-  const data = readJsonFileSync<OpenRouterModelCache>(path);
-  if (!data) return null;
-  const parsed = OpenRouterModelCacheSchema.safeParse(data);
-  return parsed.success ? parsed.data : null;
-};
+const countWithParams = (models: OpenRouterModel[]): number =>
+  models.filter((model) => (model.supportedParameters?.length ?? 0) > 0).length;
 
-export const persistOpenRouterModelCache = (cache: OpenRouterModelCache): void => {
-  const path = getGlobalOpenRouterModelsPath();
-  writeJsonFileSync(path, cache);
-};
+export const loadOpenRouterModelCache = (): OpenRouterModelCache | null =>
+  loadDiskCache(getGlobalOpenRouterModelsPath(), OpenRouterModelCacheSchema);
 
 export const fetchOpenRouterModels = async (apiKey: string): Promise<Result<OpenRouterModel[], { message: string }>> => {
   let response: Response;
@@ -128,41 +121,32 @@ export const getOpenRouterModelsWithCache = async (
   apiKey: string
 ): Promise<Result<{ models: OpenRouterModel[]; fetchedAt: string; cached: boolean }, { message: string }>> => {
   const currentKeyHash = hashApiKey(apiKey);
-  const cache = loadOpenRouterModelCache();
-  const cacheTime = cache ? Date.parse(cache.fetchedAt) : NaN;
-  const cacheValid = Number.isFinite(cacheTime) && Date.now() - cacheTime < CACHE_TTL_MS;
-  const cacheWithParams = cache
-    ? cache.models.filter((model) => (model.supportedParameters?.length ?? 0) > 0).length
-    : 0;
-  const cacheHasParams = cacheWithParams > 0;
-  const cacheKeyMatches = cache?.keyHash === currentKeyHash;
 
-  if (cache && cacheValid && cacheHasParams && cacheKeyMatches) {
-    console.info(
-      `[openrouter-models] cache hit: models=${cache.models.length} withParams=${cacheWithParams}`
-    );
-    return ok({ models: cache.models, fetchedAt: cache.fetchedAt, cached: true });
+  const resolution = await withTtlAndFallback({
+    path: getGlobalOpenRouterModelsPath(),
+    schema: OpenRouterModelCacheSchema,
+    ttlMs: CACHE_TTL_MS,
+    isCacheUsable: (entry) => countWithParams(entry.models) > 0,
+    keyHashOf: (entry) => entry.keyHash,
+    currentKeyHash,
+    fetcher: async () => {
+      const fetchResult = await fetchOpenRouterModels(apiKey);
+      if (!fetchResult.ok) return fetchResult;
+      return ok({ models: fetchResult.value, fetchedAt: new Date().toISOString(), keyHash: currentKeyHash });
+    },
+  });
+
+  if (!resolution.ok) return err({ message: resolution.error.message });
+
+  const { entry, cached, cacheWasFresh } = resolution.value;
+  const stats = `models=${entry.models.length} withParams=${countWithParams(entry.models)}`;
+  if (!cached) {
+    console.info(`[openrouter-models] fetched: ${stats} cacheWasFresh=${cacheWasFresh}`);
+  } else if (cacheWasFresh) {
+    console.info(`[openrouter-models] cache hit: ${stats}`);
+  } else {
+    console.info(`[openrouter-models] fetch failed, using cache: ${stats}`);
   }
 
-  const fetchResult = await fetchOpenRouterModels(apiKey);
-  if (fetchResult.ok) {
-    const models = fetchResult.value;
-    const fetchedAt = new Date().toISOString();
-    persistOpenRouterModelCache({ models, fetchedAt, keyHash: currentKeyHash });
-    const withParams = models.filter((model) => (model.supportedParameters?.length ?? 0) > 0)
-      .length;
-    console.info(
-      `[openrouter-models] fetched: models=${models.length} withParams=${withParams} cacheWasValid=${cacheValid}`
-    );
-    return ok({ models, fetchedAt, cached: false });
-  }
-
-  if (cache && cacheKeyMatches) {
-    console.info(
-      `[openrouter-models] fetch failed, using cache: models=${cache.models.length} withParams=${cacheWithParams}`
-    );
-    return ok({ models: cache.models, fetchedAt: cache.fetchedAt, cached: true });
-  }
-
-  return err({ message: fetchResult.error.message });
+  return ok({ models: entry.models, fetchedAt: entry.fetchedAt, cached });
 };

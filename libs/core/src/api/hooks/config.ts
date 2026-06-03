@@ -28,6 +28,11 @@ export function useOpenRouterModels(options?: { enabled?: boolean }) {
   return useQuery({ ...configQueries.openRouterModels(api), ...options });
 }
 
+export function useProviderModels(providerId: string, options?: { enabled?: boolean }) {
+  const api = useApi();
+  return useQuery({ ...configQueries.providerModels(api, providerId), ...options });
+}
+
 export function useSaveSettings() {
   const api = useApi();
   const qc = useQueryClient();

@@ -9,7 +9,6 @@ const hashApiKey = (apiKey: string): string =>
 
 import {
   loadOpenRouterModelCache,
-  persistOpenRouterModelCache,
   fetchOpenRouterModels,
   getOpenRouterModelsWithCache,
 } from "./openrouter-models.js";
@@ -56,19 +55,6 @@ describe("loadOpenRouterModelCache", () => {
     const result = loadOpenRouterModelCache();
     expect(result).not.toBeNull();
     expect(result!.models).toHaveLength(1);
-  });
-});
-
-describe("persistOpenRouterModelCache", () => {
-  it("writes cache to the global OpenRouter models file", () => {
-    const cache = {
-      models: [],
-      fetchedAt: new Date().toISOString(),
-    };
-
-    persistOpenRouterModelCache(cache);
-
-    expect(JSON.parse(fs.readFileSync(cachePath(), "utf-8"))).toEqual(cache);
   });
 });
 

@@ -1,11 +1,10 @@
 import { useState, type ReactNode } from "react";
 import { AVAILABLE_PROVIDERS } from "@diffgazer/core/schemas/config";
-import type { AIProvider } from "@diffgazer/core/schemas/config";
-import { getStaticModelsForProvider } from "@diffgazer/core/providers";
+import type { AIProvider, ModelInfo } from "@diffgazer/core/schemas/config";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
 import { Badge } from "@diffgazer/ui/components/badge";
 import { Input } from "@diffgazer/ui/components/input";
-import { useOpenRouterModelsMapped } from "@diffgazer/core/providers";
+import { useOpenRouterModelsMapped, useProviderModelsMapped } from "@diffgazer/core/providers";
 import { resolveAvailableValue } from "@diffgazer/core/select";
 import { toVerticalBoundaryDirection } from "@diffgazer/keys";
 
@@ -69,23 +68,25 @@ function ModelRadioGroup({
   );
 }
 
-function StaticModelList({
-  provider,
+interface ModelInfoListProps extends Omit<ModelStepProps, "provider"> {
+  subtitle: string;
+  models: ModelInfo[];
+}
+
+function ModelInfoList({
+  subtitle,
+  models,
   value,
   onChange,
   onCommit,
   enabled = true,
   onBoundaryReached,
-}: ModelStepProps) {
-  const models = getStaticModelsForProvider(provider);
-  const providerInfo = AVAILABLE_PROVIDERS.find((p) => p.id === provider);
+}: ModelInfoListProps) {
   const modelIds = models.map((model) => model.id);
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-tui-muted font-mono">
-        Select a model for {providerInfo?.name ?? provider}.
-      </p>
+      <p className="text-sm text-tui-muted font-mono">{subtitle}</p>
       <ModelRadioGroup
         modelIds={modelIds}
         value={value}
@@ -124,6 +125,67 @@ function StaticModelList({
   );
 }
 
+function CatalogModelList({
+  provider,
+  value,
+  onChange,
+  onCommit,
+  enabled = true,
+  onBoundaryReached,
+}: ModelStepProps) {
+  const { models, loading, error } = useProviderModelsMapped(true, provider);
+  const providerInfo = AVAILABLE_PROVIDERS.find((p) => p.id === provider);
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <p className="text-sm text-tui-muted font-mono">Loading models...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-4">
+        <p className="text-sm text-tui-red font-mono">Failed to load models: {error}</p>
+        <p className="text-sm text-tui-muted font-mono">Enter a model ID manually:</p>
+        <Input
+          type="text"
+          value={value ?? ""}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={providerInfo?.defaultModel ?? "model-id"}
+        />
+      </div>
+    );
+  }
+
+  if (models.length === 0) {
+    return (
+      <div className="space-y-4">
+        <p className="text-sm text-tui-muted font-mono">No models available. Enter a model ID manually:</p>
+        <Input
+          type="text"
+          value={value ?? ""}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={providerInfo?.defaultModel ?? "model-id"}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <ModelInfoList
+      subtitle={`Select a model for ${providerInfo?.name ?? provider}.`}
+      models={models}
+      value={value}
+      onChange={onChange}
+      onCommit={onCommit}
+      enabled={enabled}
+      onBoundaryReached={onBoundaryReached}
+    />
+  );
+}
+
 function OpenRouterModelList({
   value,
   onChange,
@@ -132,7 +194,6 @@ function OpenRouterModelList({
   onBoundaryReached,
 }: Omit<ModelStepProps, "provider">) {
   const { models, loading, error } = useOpenRouterModelsMapped(true, "openrouter");
-  const modelIds = models.map((model) => model.id);
 
   if (loading) {
     return (
@@ -160,41 +221,16 @@ function OpenRouterModelList({
   }
 
   return (
-    <div className="space-y-4">
-      <p className="text-sm text-tui-muted font-mono">
-        Select a model from OpenRouter.
-      </p>
-      <div className="max-h-64 overflow-y-auto scrollbar-hide">
-        <ModelRadioGroup
-          modelIds={modelIds}
-          value={value}
-          onChange={onChange}
-          onCommit={onCommit}
-          enabled={enabled}
-          onBoundaryReached={onBoundaryReached}
-          className="space-y-1"
-        >
-          {models.map((model) => (
-            <RadioGroupItem
-              key={model.id}
-              value={model.id}
-              label={
-                <span className="flex items-center gap-2">
-                  {model.name}
-                  <Badge
-                    variant={model.tier === "free" ? "success" : "neutral"}
-                    size="sm"
-                    className="text-3xs"
-                  >
-                    {model.tier.toUpperCase()}
-                  </Badge>
-                </span>
-              }
-              description={model.description}
-            />
-          ))}
-        </ModelRadioGroup>
-      </div>
+    <div className="max-h-64 overflow-y-auto scrollbar-hide">
+      <ModelInfoList
+        subtitle="Select a model from OpenRouter."
+        models={models}
+        value={value}
+        onChange={onChange}
+        onCommit={onCommit}
+        enabled={enabled}
+        onBoundaryReached={onBoundaryReached}
+      />
     </div>
   );
 }
@@ -219,7 +255,7 @@ export function ModelStep({
     );
   }
   return (
-    <StaticModelList
+    <CatalogModelList
       provider={provider}
       value={value}
       onChange={onChange}

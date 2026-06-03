@@ -135,11 +135,12 @@ This is a documented exception to the generic `value/defaultValue/onChange(value
 
 ## Verification Gates
 
+- `type-check` covers source, test, AND build-script files. Apps (`web`, `landing`, `hub`) use a solution `tsconfig.json` (`files: []` + `references` to `tsconfig.app.json` and `tsconfig.test.json`) and run `tsc -b`; `libs/core`, `libs/keys`, `libs/registry`, `libs/ui`, and `apps/docs` chain `tsc --noEmit -p tsconfig.test.json`. Build scripts under `scripts/` are owned by a node-typed `scripts/tsconfig.json` (`cli/add`, `libs/core`, `libs/keys`, `libs/ui`) — the nearest discoverable config so the editor resolves `node:*`, `process`, and `import.meta.dirname`, chained into `type-check` for CI. Do not re-add a `*.test.*` exclude (or leave a `scripts/` dir uncovered by a discoverable, correctly-typed `tsconfig.json`) without keeping those files type-checked and editor-resolvable, or jest-dom matchers (`toHaveTextContent`, etc.), node globals, and other type errors silently regress in the editor while CI stays green.
 - After keys changes: run focused keys tests and `pnpm --filter @diffgazer/keys type-check`.
 - After UI primitive changes: run focused UI tests and `pnpm --filter @diffgazer/ui type-check`.
 - After web adoption changes: run focused web tests and `pnpm --filter @diffgazer/web type-check`.
 - After registry, CLI, docs, or public handoff changes: run `pnpm run prepare:artifacts` and `pnpm run validate:artifacts:check`.
-- Before declaring SOTA/ready: run `DIFFGAZER_SKIP_ARTIFACT_PREPARE=1 pnpm exec turbo run type-check`, `DIFFGAZER_SKIP_ARTIFACT_PREPARE=1 pnpm exec turbo run test`, `DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run smoke`, and `pnpm run verify:monorepo`.
+- Before declaring SOTA/ready: run `DIFFGAZER_SKIP_ARTIFACT_PREPARE=1 pnpm exec turbo run type-check`, `DIFFGAZER_SKIP_ARTIFACT_PREPARE=1 pnpm exec turbo run test`, `DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run smoke`, and `pnpm run verify:monorepo`. The catalog smoke validates the bundled offline snapshot on every run; add `DIFFGAZER_SMOKE_ALLOW_NETWORK=1` (as CI does) to also validate the live models.dev fetch.
 - Always run `git diff --check` before final response.
 
 ## Dependency Policy

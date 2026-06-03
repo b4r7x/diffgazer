@@ -13,14 +13,14 @@ import { useActivateProvider } from "@diffgazer/core/api/hooks";
 import {
   cycleTierFilter,
   filterModels,
-  getStaticModelsForProvider,
+  getCompatibilityLabel,
   useOpenRouterModelsMapped,
+  useProviderModelsMapped,
   type TierFilter,
 } from "@diffgazer/core/providers";
 import { SearchInput } from "./model-search-input";
 import { TierFilterTabs } from "./tier-filter-tabs";
 import { ModelListItem } from "./model-list-item";
-import { getCompatibilityLabel } from "./model-select-helpers";
 
 type FocusZone = "search" | "filters" | "list";
 
@@ -87,20 +87,22 @@ export function ModelSelectOverlay({
   providerId,
   selectedId,
   onSelect,
-}: ModelSelectOverlayProps): ReactElement | null {
+}: ModelSelectOverlayProps): ReactElement {
   const { tokens } = useTheme();
   const { columns } = useTerminalDimensions();
   const isOpenRouter = providerId === OPENROUTER_PROVIDER_ID;
   const openRouter = useOpenRouterModelsMapped(open, providerId as AIProvider);
+  const catalog = useProviderModelsMapped(open, providerId as AIProvider);
   const activateProvider = useActivateProvider();
 
-  const loading = openRouter.loading;
+  const loading = isOpenRouter ? openRouter.loading : catalog.loading;
   const saving = activateProvider.isPending;
-  const error = activateProvider.error?.message ?? openRouter.error ?? undefined;
+  const error =
+    activateProvider.error?.message ??
+    (isOpenRouter ? openRouter.error : catalog.error) ??
+    undefined;
 
-  const models = isOpenRouter
-    ? openRouter.models
-    : getStaticModelsForProvider(providerId as AIProvider);
+  const models = isOpenRouter ? openRouter.models : catalog.models;
 
   const [searchQuery, setSearchQuery] = useState("");
   const [tierFilter, setTierFilter] = useState<TierFilter>("all");
@@ -238,7 +240,7 @@ export function ModelSelectOverlay({
               contentWidth,
               tokens,
             })}
-            {saving && <Spinner label="Saving\u2026" />}
+            {saving && <Spinner label="Saving…" />}
           </Box>
         </Dialog.Body>
         <Dialog.Footer>

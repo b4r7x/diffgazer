@@ -1,7 +1,14 @@
 import { type Result, ok, err } from "@diffgazer/core/result";
-import { createError } from "@diffgazer/core/errors";
+import { createError, getErrorMessage } from "@diffgazer/core/errors";
 import type { AIProvider, CredentialRef, SetupField, SetupStatus } from "@diffgazer/core/schemas/config";
-import { ALLOWED_CREDENTIAL_ENV_VARS, UserConfigSchema } from "@diffgazer/core/schemas/config";
+import {
+  PROVIDER_ENV_VARS,
+  PROVIDER_DISABLED,
+  ProviderModelsResponseSchema,
+  type CatalogErrorCode,
+  type ProviderModelsResponse,
+} from "@diffgazer/core/schemas/config";
+import { PROVIDER_OVERLAY, SURFACED_OVERLAYS, type ProviderOverlay } from "@diffgazer/core/catalog";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import type { SecretsStorageError } from "../../shared/lib/config/types.js";
 import type { AppError } from "@diffgazer/core/errors";
@@ -19,6 +26,7 @@ import type {
 } from "@diffgazer/core/schemas/config";
 import { getStore } from "../../shared/lib/config/store.js";
 import { getOpenRouterModelsWithCache } from "../../shared/lib/ai/openrouter-models.js";
+import { getProviderModels as getProviderModelsFromCatalog } from "../../shared/lib/ai/models-dev-catalog.js";
 
 export const getProvidersStatus = (): ProvidersStatusResponse => {
   const providers = getStore().getProviders();
@@ -84,6 +92,7 @@ export const getInitState = (projectRoot?: string): InitResponse => {
 
 /** Validate a credential ref or literal API key before persisting. */
 function validateCredential(
+  provider: AIProvider,
   apiKey: string | CredentialRef,
 ): Result<void, { message: string; code: string }> {
   if (typeof apiKey === "string") {
@@ -98,13 +107,14 @@ function validateCredential(
     }
     return ok(undefined);
   }
-  // kind: "env"
-  if (!ALLOWED_CREDENTIAL_ENV_VARS.has(apiKey.varName)) {
-    const allowed = [...ALLOWED_CREDENTIAL_ENV_VARS].join(", ");
+  // kind: "env" — a provider may only reference its OWN env var, not another
+  // provider's allowed key (no cross-provider credential binding).
+  const expected = PROVIDER_ENV_VARS[provider];
+  if (apiKey.varName !== expected) {
     return err(
       createError(
         ErrorCode.CREDENTIAL_INVALID,
-        `Environment variable "${apiKey.varName}" is not an allowed provider key. Allowed: ${allowed}`,
+        `Environment variable "${apiKey.varName}" is not the key for provider "${provider}". Expected: ${expected}`,
       ),
     );
   }
@@ -114,7 +124,7 @@ function validateCredential(
 export const saveConfig = (
   input: SaveConfigRequest
 ): Promise<Result<ProviderStatus, SecretsStorageError | { message: string; code: string }>> => {
-  const validation = validateCredential(input.apiKey);
+  const validation = validateCredential(input.provider, input.apiKey);
   if (!validation.ok) return Promise.resolve(validation);
 
   return getStore().saveProviderCredentials({
@@ -159,24 +169,25 @@ export const activateProvider = async (input: {
     return err(createError("INVALID_BODY", "Model selection is required"));
   }
 
-  // Block activation if the provider has no API key configured
+  // Block activation when the credential cannot be confirmed: a failed read fails
+  // closed, and a successful read with no key means none is configured yet.
   const apiKeyResult = getStore().getProviderApiKey(provider);
-  if (apiKeyResult.ok && !apiKeyResult.value) {
+  if (!apiKeyResult.ok) {
+    return err(createError("INVALID_BODY", apiKeyResult.error.message));
+  }
+  if (!apiKeyResult.value) {
     return err(createError("INVALID_BODY", "API key required before selecting model"));
   }
 
-  // Validate the model against provider-level constraints
+  // Reject a model id absent from the provider's resolved catalog. OpenRouter is
+  // exempt: its models come from the live key-gated route, not the catalog.
   const effectiveModel = model ?? existing.model;
-  if (effectiveModel) {
-    const now = new Date().toISOString();
-    const validation = UserConfigSchema.safeParse({
-      provider,
-      model: effectiveModel,
-      createdAt: now,
-      updatedAt: now,
-    });
-    if (!validation.success) {
-      return err(createError("INVALID_BODY", "Model is not valid for the selected provider"));
+  if (effectiveModel && provider !== "openrouter") {
+    const { models } = await getProviderModelsFromCatalog(provider);
+    if (!models.some((m) => m.id === effectiveModel)) {
+      return err(
+        createError("MODEL_ERROR", `Model "${effectiveModel}" is not available for provider "${provider}".`),
+      );
     }
   }
 
@@ -237,4 +248,38 @@ export const getOpenRouterModels = async (): Promise<
     );
   }
   return ok(result.value);
+};
+
+/** Resolve a route provider id to its overlay, or null when the id is unknown. */
+function resolveProviderOverlay(providerId: string): ProviderOverlay | null {
+  return (PROVIDER_OVERLAY as Record<string, ProviderOverlay>)[providerId]
+    ?? SURFACED_OVERLAYS[providerId]
+    ?? null;
+}
+
+/**
+ * Error codes getProviderModels can return, so the router can map them to HTTP
+ * statuses exhaustively instead of bucketing everything into 500.
+ */
+export type ProviderModelsErrorCode = CatalogErrorCode | typeof ErrorCode.VALIDATION_ERROR;
+
+export const getProviderModels = async (
+  providerId: string,
+): Promise<Result<ProviderModelsResponse, { message: string; code: ProviderModelsErrorCode }>> => {
+  const overlay = resolveProviderOverlay(providerId);
+  if (!overlay) {
+    return err(createError(ErrorCode.VALIDATION_ERROR, `Unknown provider: ${providerId}`));
+  }
+  // D4: OpenRouter is never served from the models.dev catalog. Its models come
+  // from the live key-gated /provider/openrouter/models route because the catalog
+  // lacks the per-model supported_parameters the compatibility gate depends on.
+  if (providerId === "openrouter" || !overlay.enabled) {
+    return err(createError<CatalogErrorCode>(PROVIDER_DISABLED, `Provider '${providerId}' is not served by the catalog`));
+  }
+  try {
+    const payload = await getProviderModelsFromCatalog(providerId as AIProvider);
+    return ok(ProviderModelsResponseSchema.parse(payload));
+  } catch (error) {
+    return err(createError(ErrorCode.INTERNAL_ERROR, getErrorMessage(error, "Failed to load provider models")));
+  }
 };

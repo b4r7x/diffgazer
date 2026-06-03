@@ -2,6 +2,7 @@ import { generateObject, streamText, type LanguageModel } from "ai";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createZhipu } from "zhipu-ai-provider";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import type { z } from "zod";
 import type {
   AIClient,
@@ -11,14 +12,10 @@ import type {
   AIErrorCode,
 } from "./types.js";
 import { type Result, ok, err } from "@diffgazer/core/result";
-import { createError, toError, getErrorMessage } from "@diffgazer/core/errors";
-import { AVAILABLE_PROVIDERS, type AIProvider } from "@diffgazer/core/schemas/config";
+import { createError, toError } from "@diffgazer/core/errors";
+import { PROVIDER_OVERLAY } from "@diffgazer/core/catalog";
 import { getStore } from "../config/store.js";
 import { classifyError, type ErrorRule } from "../errors.js";
-
-const DEFAULT_MODELS = Object.fromEntries(
-  AVAILABLE_PROVIDERS.map((p) => [p.id, p.defaultModel])
-) as Record<AIProvider, string>;
 
 const DEFAULT_TEMPERATURE = 0.7;
 const DEFAULT_MAX_TOKENS = 65536;
@@ -48,10 +45,8 @@ const AI_ERROR_RULES: ErrorRule<AIErrorCode>[] = [
   },
 ];
 
-/**
- * Runtime narrowing for SDK-version drift: confirms a provider-returned object
- * exposes the `doGenerate`/`doStream` methods that define `ai`'s LanguageModel.
- */
+// Some provider SDKs export a LanguageModel type that drifts from `ai`'s own;
+// narrow the returned object structurally instead of trusting the static type.
 function isLanguageModel(value: unknown): value is LanguageModel {
   return (
     typeof value === "object" &&
@@ -69,47 +64,65 @@ function classifyApiError(error: unknown): AIError {
   return createError<AIErrorCode>(code, message);
 }
 
+function resolveAbortSignal(config: AIClientConfig, externalSignal?: AbortSignal): AbortSignal | undefined {
+  const timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const timeoutSignal =
+    timeoutMs > 0 && typeof AbortSignal !== "undefined" && "timeout" in AbortSignal
+      ? AbortSignal.timeout(timeoutMs)
+      : undefined;
+  if (timeoutSignal && externalSignal) {
+    return AbortSignal.any([timeoutSignal, externalSignal]);
+  }
+  return timeoutSignal ?? externalSignal;
+}
+
 function createLanguageModel(config: AIClientConfig): Result<LanguageModel, AIError> {
   const { provider, apiKey, model } = config;
-  const modelId = model ?? DEFAULT_MODELS[provider];
+  const overlay = PROVIDER_OVERLAY[provider];
+  if (!overlay) {
+    return err(createError<AIErrorCode>("UNSUPPORTED_PROVIDER", `Unsupported provider: ${provider}`));
+  }
+
+  const modelId = model ?? overlay.defaultModel;
+  if (!modelId) {
+    return err(createError<AIErrorCode>("MODEL_ERROR", `A model id is required for provider "${provider}"`));
+  }
 
   switch (provider) {
     case "gemini": {
       const google = createGoogleGenerativeAI({ apiKey });
       return ok(google(modelId as Parameters<typeof google>[0]));
     }
-    case "zai": {
-      const zhipu = createZhipu({
-        apiKey,
-        baseURL: "https://api.z.ai/api/paas/v4",
-      });
-      return ok(zhipu(modelId as Parameters<typeof zhipu>[0]));
-    }
+    case "zai":
     case "zai-coding": {
-      const zhipu = createZhipu({
-        apiKey,
-        baseURL: "https://api.z.ai/api/coding/paas/v4",
-      });
+      if (!overlay.baseURL) {
+        return err(createError<AIErrorCode>("UNSUPPORTED_PROVIDER", `Provider "${provider}" is missing a baseURL`));
+      }
+      const zhipu = createZhipu({ apiKey, baseURL: overlay.baseURL });
       return ok(zhipu(modelId as Parameters<typeof zhipu>[0]));
     }
     case "openrouter": {
       const openrouter = createOpenRouter({ apiKey, compatibility: "strict", extraBody: { provider: { require_parameters: true } } });
-      // OpenRouter's AI SDK provider implements the same doGenerate/doStream
-      // interface as Vercel AI SDK's LanguageModel but exports an incompatible
-      // type due to SDK version drift between @openrouter/ai-sdk-provider and the
-      // `ai` package. `isLanguageModel` narrows the unknown shape at runtime.
-      const model: unknown = openrouter.chat(modelId as Parameters<typeof openrouter.chat>[0]);
-      if (!isLanguageModel(model)) {
+      const sdkModel: unknown = openrouter.chat(modelId as Parameters<typeof openrouter.chat>[0]);
+      if (!isLanguageModel(sdkModel)) {
         return err(
           createError<AIErrorCode>("MODEL_ERROR", `OpenRouter model "${modelId}" does not implement LanguageModel interface`)
         );
       }
-      return ok(model);
+      return ok(sdkModel);
     }
-    default:
-      return err(
-        createError<AIErrorCode>("UNSUPPORTED_PROVIDER", `Unsupported provider: ${provider}`)
-      );
+    case "groq":
+    case "cerebras": {
+      if (!overlay.baseURL) {
+        return err(createError<AIErrorCode>("UNSUPPORTED_PROVIDER", `Provider "${provider}" is missing a baseURL`));
+      }
+      const compatible = createOpenAICompatible({ name: provider, apiKey, baseURL: overlay.baseURL });
+      const sdkModel: unknown = compatible.chatModel(modelId);
+      if (!isLanguageModel(sdkModel)) {
+        return err(createError<AIErrorCode>("MODEL_ERROR", `${provider} model "${modelId}" does not implement LanguageModel interface`));
+      }
+      return ok(sdkModel);
+    }
   }
 }
 
@@ -118,10 +131,6 @@ export function createAIClient(config: AIClientConfig): Result<AIClient, AIError
     return err(
       createError<AIErrorCode>("API_KEY_INVALID", `${config.provider} API key is required`)
     );
-  }
-
-  if (!config.provider) {
-    return err(createError<AIErrorCode>("UNSUPPORTED_PROVIDER", "AI provider is required"));
   }
 
   const languageModelResult = createLanguageModel(config);
@@ -139,16 +148,7 @@ export function createAIClient(config: AIClientConfig): Result<AIClient, AIError
       options?: { signal?: AbortSignal }
     ): Promise<Result<z.infer<T>, AIError>> {
       try {
-        const timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-        const timeoutSignal =
-          timeoutMs > 0 && typeof AbortSignal !== "undefined" && "timeout" in AbortSignal
-            ? AbortSignal.timeout(timeoutMs)
-            : undefined;
-        const externalSignal = options?.signal;
-        const abortSignal =
-          timeoutSignal && externalSignal
-            ? AbortSignal.any([timeoutSignal, externalSignal])
-            : timeoutSignal ?? externalSignal;
+        const abortSignal = resolveAbortSignal(config, options?.signal);
         const result = await generateObject({
           model: languageModel,
           prompt,
@@ -171,16 +171,7 @@ export function createAIClient(config: AIClientConfig): Result<AIClient, AIError
       options?: { signal?: AbortSignal }
     ): Promise<void> {
       try {
-        const timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-        const timeoutSignal =
-          timeoutMs > 0 && typeof AbortSignal !== "undefined" && "timeout" in AbortSignal
-            ? AbortSignal.timeout(timeoutMs)
-            : undefined;
-        const externalSignal = options?.signal;
-        const abortSignal =
-          timeoutSignal && externalSignal
-            ? AbortSignal.any([timeoutSignal, externalSignal])
-            : timeoutSignal ?? externalSignal;
+        const abortSignal = resolveAbortSignal(config, options?.signal);
         const result = streamText({
           model: languageModel,
           prompt,

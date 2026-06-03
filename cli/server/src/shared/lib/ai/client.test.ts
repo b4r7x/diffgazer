@@ -41,6 +41,13 @@ vi.mock("@openrouter/ai-sdk-provider", () => ({
   })),
 }));
 
+// Boundary mock: @ai-sdk/openai-compatible is the OpenAI-compatible external HTTP client (groq, cerebras).
+vi.mock("@ai-sdk/openai-compatible", () => ({
+  createOpenAICompatible: vi.fn(() => ({
+    chatModel: vi.fn(() => ({ doGenerate: vi.fn(), doStream: vi.fn() })),
+  })),
+}));
+
 let diffgazerHome: string;
 
 function writeJson(filePath: string, value: unknown): void {
@@ -105,7 +112,7 @@ describe("createAIClient", () => {
     "creates a client bound to the %s provider",
     async (provider) => {
       const { createAIClient } = await loadClient();
-      const result = createAIClient({ apiKey: "test-key", provider });
+      const result = createAIClient({ apiKey: "test-key", provider, model: "some-model" });
       expect(result.ok).toBe(true);
       if (result.ok) expect(result.value.provider).toBe(provider);
     },
@@ -360,5 +367,68 @@ describe("generateStream", () => {
 
     expect(receivedChunks).toEqual(["hello", "world"]);
     expect(completedText).toBe("helloworld");
+  });
+});
+
+describe("createLanguageModel openai-compatible providers", () => {
+  beforeEach(setupTempHome);
+  afterEach(teardownTempHome);
+
+  it.each([
+    { provider: "groq" as const, baseURL: "https://api.groq.com/openai/v1" },
+    { provider: "cerebras" as const, baseURL: "https://api.cerebras.ai/v1" },
+  ])("creates a $provider client via the openai-compatible factory using the overlay baseURL", async ({ provider, baseURL }) => {
+    const { createOpenAICompatible } = await import("@ai-sdk/openai-compatible");
+    const { createAIClient } = await loadClient();
+    const result = createAIClient({ apiKey: "test-key", provider });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.value.provider).toBe(provider);
+    expect(createOpenAICompatible).toHaveBeenCalledWith(expect.objectContaining({ apiKey: "test-key", baseURL, name: provider }));
+  });
+
+  it("uses the overlay defaultModel when no model is supplied for an openai-compatible provider", async () => {
+    const { createOpenAICompatible } = await import("@ai-sdk/openai-compatible");
+    const { PROVIDER_OVERLAY } = await import("@diffgazer/core/catalog");
+    const { createAIClient } = await loadClient();
+    const result = createAIClient({ apiKey: "test-key", provider: "cerebras" });
+    expect(result.ok).toBe(true);
+    const chatModel = vi.mocked(createOpenAICompatible).mock.results[0]!.value.chatModel;
+    expect(chatModel).toHaveBeenCalledWith(PROVIDER_OVERLAY.cerebras.defaultModel);
+  });
+});
+
+describe("createLanguageModel zhipu providers", () => {
+  beforeEach(setupTempHome);
+  afterEach(teardownTempHome);
+
+  it.each(["zai", "zai-coding"] as const)(
+    "creates a %s client via the zhipu factory using the overlay baseURL",
+    async (provider) => {
+      const { createZhipu } = await import("zhipu-ai-provider");
+      const { PROVIDER_OVERLAY } = await import("@diffgazer/core/catalog");
+      const { createAIClient } = await loadClient();
+      const result = createAIClient({ apiKey: "test-key", provider });
+      expect(result.ok).toBe(true);
+      if (result.ok) expect(result.value.provider).toBe(provider);
+      expect(createZhipu).toHaveBeenCalledWith({
+        apiKey: "test-key",
+        baseURL: PROVIDER_OVERLAY[provider].baseURL,
+      });
+    },
+  );
+});
+
+describe("createLanguageModel openrouter without a model", () => {
+  beforeEach(setupTempHome);
+  afterEach(teardownTempHome);
+
+  it("rejects an empty model id as MODEL_ERROR instead of forwarding it to the SDK", async () => {
+    const { createAIClient } = await loadClient();
+    const result = createAIClient({ apiKey: "test-key", provider: "openrouter" });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe("MODEL_ERROR");
+    }
   });
 });

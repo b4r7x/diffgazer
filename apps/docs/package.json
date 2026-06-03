@@ -18,7 +18,7 @@
     "lint": "biome lint",
     "check": "biome check",
     "pretype-check": "pnpm prepare:generated && node ./scripts/generate-route-tree.mjs",
-    "type-check": "tsc --noEmit",
+    "type-check": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
     "pretest:e2e": "test -f .output/public/index.html || (echo 'Error: .output/public/index.html not found. Run pnpm build first.' && exit 1)",
     "test:e2e": "playwright test",
     "lighthouse": "lhci autorun"
