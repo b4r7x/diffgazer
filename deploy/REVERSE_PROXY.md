@@ -22,7 +22,6 @@ Traefik (managed by Coolify, auto-SSL via Let's Encrypt)
     +-- r.b4r7.dev          --> registry container (nginx, port 8080)
     +-- docs.b4r7.dev       --> docs container (Node.js Nitro, port 3000)
     +-- diffgazer.b4r7.dev  --> landing container (nginx, port 8080)
-    +-- b4r7.dev            --> hub container (nginx, port 8080)
 ```
 
 Traefik runs as a Coolify-managed service. It:
@@ -43,7 +42,6 @@ host ports to `127.0.0.1` so they are never exposed to the public internet.
 | `r.b4r7.dev` | registry | 8080 | `deploy/registry.Dockerfile` | Static JSON (shadcn registry) |
 | `docs.b4r7.dev` | docs | 3000 | `Dockerfile` (root) | Node.js SSR (TanStack Start + Nitro) |
 | `diffgazer.b4r7.dev` | landing | 8080 | `deploy/landing.Dockerfile` | Static SPA (Vite + React) |
-| `b4r7.dev` | hub | 8080 | `deploy/hub.Dockerfile` | Static SPA (Vite + React) |
 
 ---
 
@@ -79,13 +77,6 @@ For each service, set the domain in the Coolify Resource settings:
 - **Watch Paths**: `apps/landing/**,libs/ui/**`
 - **Build-time env vars**:
   - `VITE_DOCS_ORIGIN=https://docs.b4r7.dev`
-
-### Hub (`b4r7.dev`)
-
-- **Domain**: `b4r7.dev`
-- **Port**: `8080`
-- **Health Check Path**: `/`
-- **Watch Paths**: `apps/hub/**,libs/ui/**`
 
 ---
 
@@ -124,15 +115,6 @@ labels:
   - "traefik.http.routers.landing.tls=true"
   - "traefik.http.routers.landing.tls.certresolver=letsencrypt"
   - "traefik.http.services.landing.loadbalancer.server.port=8080"
-
-# Hub example
-labels:
-  - "traefik.enable=true"
-  - "traefik.http.routers.hub.rule=Host(`b4r7.dev`)"
-  - "traefik.http.routers.hub.entrypoints=https"
-  - "traefik.http.routers.hub.tls=true"
-  - "traefik.http.routers.hub.tls.certresolver=letsencrypt"
-  - "traefik.http.services.hub.loadbalancer.server.port=8080"
 ```
 
 ### HTTPS redirection middleware
@@ -160,7 +142,7 @@ HSTS is set at two levels:
    globally. This covers all subdomains as soon as traffic reaches the proxy.
 
 2. **Application level**: The Nitro server (docs) and nginx configs (registry,
-   landing, hub) set their own security headers including CSP and framing
+   landing) set their own security headers including CSP and framing
    controls. This is defense in depth -- if Traefik is bypassed or
    misconfigured, the application still enforces security headers.
 
@@ -170,7 +152,7 @@ header is already present, the application-level header reinforces it;
 if Traefik is bypassed or misconfigured, the application still enforces
 HSTS on its own. In addition, they set:
 - `X-Content-Type-Options: nosniff`
-- `X-Frame-Options: DENY` (registry) or `SAMEORIGIN` (landing, hub)
+- `X-Frame-Options: DENY` (registry) or `SAMEORIGIN` (landing)
 - `Referrer-Policy: strict-origin-when-cross-origin`
 - `Content-Security-Policy` (per-service)
 - `Permissions-Policy` (restrictive)
@@ -194,7 +176,6 @@ ports:
   - "127.0.0.1:3000:3000"   # docs
   - "127.0.0.1:8081:8080"   # registry
   - "127.0.0.1:8082:8080"   # landing
-  - "127.0.0.1:8083:8080"   # hub
 ```
 
 This prevents direct access to container ports from the public internet.
@@ -214,7 +195,6 @@ To verify containers are not exposed:
 curl -s --connect-timeout 3 http://<VPS_IP>:3000   # should timeout
 curl -s --connect-timeout 3 http://<VPS_IP>:8081   # should timeout
 curl -s --connect-timeout 3 http://<VPS_IP>:8082   # should timeout
-curl -s --connect-timeout 3 http://<VPS_IP>:8083   # should timeout
 ```
 
 ---
@@ -235,9 +215,6 @@ curl -sI https://docs.b4r7.dev | head -5
 
 # Landing -- must return HTML with 200
 curl -sI https://diffgazer.b4r7.dev | head -5
-
-# Hub -- must return HTML with 200
-curl -sI https://b4r7.dev | head -5
 ```
 
 ### TLS certificates
@@ -247,7 +224,6 @@ curl -sI https://b4r7.dev | head -5
 echo | openssl s_client -servername r.b4r7.dev -connect r.b4r7.dev:443 2>/dev/null | openssl x509 -noout -dates -issuer
 echo | openssl s_client -servername docs.b4r7.dev -connect docs.b4r7.dev:443 2>/dev/null | openssl x509 -noout -dates -issuer
 echo | openssl s_client -servername diffgazer.b4r7.dev -connect diffgazer.b4r7.dev:443 2>/dev/null | openssl x509 -noout -dates -issuer
-echo | openssl s_client -servername b4r7.dev -connect b4r7.dev:443 2>/dev/null | openssl x509 -noout -dates -issuer
 ```
 
 ### HTTPS redirect
@@ -257,7 +233,6 @@ echo | openssl s_client -servername b4r7.dev -connect b4r7.dev:443 2>/dev/null |
 curl -sI http://r.b4r7.dev/r/ui/registry.json | head -3
 curl -sI http://docs.b4r7.dev | head -3
 curl -sI http://diffgazer.b4r7.dev | head -3
-curl -sI http://b4r7.dev | head -3
 ```
 
 ### HSTS header

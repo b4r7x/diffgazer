@@ -219,7 +219,7 @@ describe("docs-library source path mapping", () => {
 		expect(getInstallCommand("keys", "navigation")).toBe(
 			"pnpm exec dgadd add keys/navigation",
 		);
-		expect(getInstallCommand("diffgazer", "getting-started")).toBeNull();
+		expect(getInstallCommand("app", "installation")).toBeNull();
 	});
 
 	it("keeps installer handoff publish-gated and local-first", () => {

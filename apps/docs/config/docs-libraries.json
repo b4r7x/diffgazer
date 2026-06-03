@@ -26,12 +26,12 @@
       }
     },
     {
-      "id": "diffgazer",
-      "displayName": "Diffgazer",
+      "id": "app",
+      "displayName": "diffgazer",
       "logoText": "diffgazer",
       "githubUrl": "https://github.com/b4r7x/diffgazer",
-      "enabled": false,
-      "defaultRouteSlugs": ["getting-started"]
+      "enabled": true,
+      "defaultRouteSlugs": ["installation"]
     }
   ]
 }

@@ -19,6 +19,12 @@ describe("getPreRenderPages", () => {
 		expect(pages.some((page) => page.path === "/")).toBe(true);
 	});
 
+	it("prerenders the diffgazer product-docs landing exactly once", () => {
+		const pages = getPreRenderPages();
+		const appLanding = pages.filter((page) => page.path === "/app");
+		expect(appLanding).toHaveLength(1);
+	});
+
 	it("emits a single landing page per enabled library", () => {
 		const pages = getPreRenderPages();
 		const uiLanding = pages.filter((page) => page.path === "/ui");

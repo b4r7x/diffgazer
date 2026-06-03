@@ -1,5 +1,5 @@
 import browserCollections from "fumadocs-mdx:collections/browser";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { Suspense } from "react";
 import { ContentSpinner } from "@/components/content-spinner";
@@ -15,7 +15,7 @@ import {
 	getDocsLibraryConfig,
 	parseDocsLibrary,
 } from "@/lib/docs-library";
-import type { PageTree, PageTreeNode } from "@/lib/docs-tree";
+import { collectLandingSections, type PageTree } from "@/lib/docs-tree";
 import { buildPageSeo } from "@/lib/seo";
 import { useMDXComponents } from "@/mdx-components";
 import { Route as DocsRoute } from "@/routes/$lib";
@@ -116,38 +116,8 @@ function LibraryIndexPage() {
 	);
 }
 
-interface LandingSection {
-	name: string;
-	items: Array<{ name: string; url: string }>;
-}
-
-function collectLandingSections(tree: PageTree): LandingSection[] {
-	const sections: LandingSection[] = [];
-	let current: LandingSection | null = null;
-	for (const node of tree.children) {
-		if (node.type === "separator") {
-			current = { name: node.name, items: [] };
-			sections.push(current);
-			continue;
-		}
-		const item = toLandingItem(node);
-		if (!item) continue;
-		if (!current) {
-			current = { name: tree.name, items: [] };
-			sections.push(current);
-		}
-		current.items.push(item);
-	}
-	return sections.filter((section) => section.items.length > 0);
-}
-
-function toLandingItem(
-	node: PageTreeNode,
-): { name: string; url: string } | null {
-	if (node.type === "page" && node.url) {
-		return { name: node.name, url: node.url };
-	}
-	return null;
+function splatFromUrl(url: string): string {
+	return url.split("/").slice(2).join("/");
 }
 
 function ProgrammaticLibraryLanding({
@@ -175,12 +145,13 @@ function ProgrammaticLibraryLanding({
 							<ul className="space-y-1.5">
 								{section.items.map((item) => (
 									<li key={item.url}>
-										<a
-											href={item.url}
+										<Link
+											to="/$lib/$"
+											params={{ lib: library, _splat: splatFromUrl(item.url) }}
 											className="text-foreground hover:underline font-mono"
 										>
 											{item.name}
-										</a>
+										</Link>
 									</li>
 								))}
 							</ul>

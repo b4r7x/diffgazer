@@ -40,7 +40,6 @@ If your environment supports skills, load these before acting:
 - `cli/diffgazer` owns the public `diffgazer` CLI binary with two modes: web (embeds the built `@diffgazer/web` SPA behind a local `cli/server` Hono server) and TUI (Ink terminal UI). It is a binary, not a library; it stays thin and consumes `libs/core`, `libs/keys`, and `cli/server` rather than holding app-specific features.
 - `apps/docs` owns the component and hook documentation site. It consumes `libs/core`, `libs/keys`, `libs/registry`, and `libs/ui` to build the registry browser, theme visualizer, and consumption examples. It must consume `@diffgazer/ui`, never mirror it; extract only generic utilities from docs, never docs-specific layout.
 - `apps/landing` owns the marketing landing page. It uses only `libs/ui` (currently for theme CSS) and carries no product/domain logic and no docs utilities.
-- `apps/hub` is a stub (planned portfolio/app-index). Keep it scaffolded to sibling-app conventions and free of app-specific logic until a documented boundary exists.
 
 ## Extraction Rules
 
@@ -135,7 +134,7 @@ This is a documented exception to the generic `value/defaultValue/onChange(value
 
 ## Verification Gates
 
-- `type-check` covers source, test, AND build-script files. Apps (`web`, `landing`, `hub`) use a solution `tsconfig.json` (`files: []` + `references` to `tsconfig.app.json` and `tsconfig.test.json`) and run `tsc -b`; `libs/core`, `libs/keys`, `libs/registry`, `libs/ui`, and `apps/docs` chain `tsc --noEmit -p tsconfig.test.json`. Build scripts under `scripts/` are owned by a node-typed `scripts/tsconfig.json` (`cli/add`, `libs/core`, `libs/keys`, `libs/ui`) — the nearest discoverable config so the editor resolves `node:*`, `process`, and `import.meta.dirname`, chained into `type-check` for CI. Do not re-add a `*.test.*` exclude (or leave a `scripts/` dir uncovered by a discoverable, correctly-typed `tsconfig.json`) without keeping those files type-checked and editor-resolvable, or jest-dom matchers (`toHaveTextContent`, etc.), node globals, and other type errors silently regress in the editor while CI stays green.
+- `type-check` covers source, test, AND build-script files. Apps (`web`, `landing`) use a solution `tsconfig.json` (`files: []` + `references` to `tsconfig.app.json` and `tsconfig.test.json`) and run `tsc -b`; `libs/core`, `libs/keys`, `libs/registry`, `libs/ui`, and `apps/docs` chain `tsc --noEmit -p tsconfig.test.json`. Build scripts under `scripts/` are owned by a node-typed `scripts/tsconfig.json` (`cli/add`, `libs/core`, `libs/keys`, `libs/ui`) — the nearest discoverable config so the editor resolves `node:*`, `process`, and `import.meta.dirname`, chained into `type-check` for CI. Do not re-add a `*.test.*` exclude (or leave a `scripts/` dir uncovered by a discoverable, correctly-typed `tsconfig.json`) without keeping those files type-checked and editor-resolvable, or jest-dom matchers (`toHaveTextContent`, etc.), node globals, and other type errors silently regress in the editor while CI stays green.
 - After keys changes: run focused keys tests and `pnpm --filter @diffgazer/keys type-check`.
 - After UI primitive changes: run focused UI tests and `pnpm --filter @diffgazer/ui type-check`.
 - After web adoption changes: run focused web tests and `pnpm --filter @diffgazer/web type-check`.
