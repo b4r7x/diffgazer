@@ -1,51 +1,7 @@
-import type { AIProvider, ModelInfo, OpenRouterModel } from "@diffgazer/core/schemas/config";
-import {
-  AVAILABLE_PROVIDERS,
-  GEMINI_MODEL_INFO,
-  GLM_MODEL_INFO,
-} from "@diffgazer/core/schemas/config";
-import { mapOpenRouterModels } from "../api/openrouter-utils.js";
+import type { ModelInfo } from "@diffgazer/core/schemas/config";
 
 export const TIER_FILTERS = ["all", "free", "paid"] as const;
 export type TierFilter = (typeof TIER_FILTERS)[number];
-
-export function getStaticModelsForProvider(providerId: AIProvider): ModelInfo[] {
-  switch (providerId) {
-    case "gemini":
-      return Object.values(GEMINI_MODEL_INFO);
-    case "zai":
-    case "zai-coding":
-      return Object.values(GLM_MODEL_INFO);
-    case "openrouter":
-      return [];
-    default:
-      return [];
-  }
-}
-
-export function buildModels(
-  providerId: AIProvider,
-  openRouterModels: OpenRouterModel[],
-): ModelInfo[] {
-  if (providerId === "openrouter") {
-    return mapOpenRouterModels(openRouterModels);
-  }
-
-  const staticModels = getStaticModelsForProvider(providerId);
-  if (staticModels.length > 0) {
-    return staticModels;
-  }
-
-  const provider = AVAILABLE_PROVIDERS.find((p) => p.id === providerId);
-  if (!provider) return [];
-
-  return provider.models.map((id) => ({
-    id,
-    name: id,
-    description: id,
-    tier: "paid" as const,
-  }));
-}
 
 export function filterModels(
   models: ModelInfo[],

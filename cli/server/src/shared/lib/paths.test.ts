@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import * as path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { getGlobalDiffgazerDir, resolveProjectRoot } from "./paths.js";
+import { getGlobalDiffgazerDir, getGlobalModelsDevCatalogPath, resolveProjectRoot } from "./paths.js";
 
 let tempRoot: string;
 
@@ -74,5 +74,19 @@ describe("getGlobalDiffgazerDir", () => {
 
     delete process.env.DIFFGAZER_HOME;
     expect(getGlobalDiffgazerDir()).toBe(path.join(homedir(), ".diffgazer"));
+  });
+});
+
+describe("getGlobalModelsDevCatalogPath", () => {
+  it("resolves models-dev.json under the global diffgazer dir", () => {
+    process.env.DIFFGAZER_HOME = tempRoot;
+    expect(getGlobalModelsDevCatalogPath()).toBe(path.join(tempRoot, "models-dev.json"));
+  });
+
+  it("defaults under the user home when DIFFGAZER_HOME is unset", () => {
+    delete process.env.DIFFGAZER_HOME;
+    expect(getGlobalModelsDevCatalogPath()).toBe(
+      path.join(homedir(), ".diffgazer", "models-dev.json"),
+    );
   });
 });

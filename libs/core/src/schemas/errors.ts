@@ -32,7 +32,7 @@ export const SHARED_ERROR_CODES = [
 
 export type SharedErrorCode = (typeof SHARED_ERROR_CODES)[number];
 
-function createDomainErrorCodes<const T extends readonly string[]>(specificCodes: T) {
+export function createDomainErrorCodes<const T extends readonly string[]>(specificCodes: T) {
   return [...SHARED_ERROR_CODES, ...specificCodes] as const;
 }
 

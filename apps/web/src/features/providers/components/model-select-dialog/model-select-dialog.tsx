@@ -12,9 +12,12 @@ import {
 } from "@diffgazer/ui/components/dialog";
 import { type AIProvider } from "@diffgazer/core/schemas/config";
 import { OPENROUTER_PROVIDER_ID } from "@diffgazer/core/schemas/config";
-import { getStaticModelsForProvider } from "@diffgazer/core/providers";
 import { useModelFilter } from "../../hooks/use-model-filter";
-import { useOpenRouterModelsMapped } from "@diffgazer/core/providers";
+import {
+  getCompatibilityLabel,
+  useOpenRouterModelsMapped,
+  useProviderModelsMapped,
+} from "@diffgazer/core/providers";
 import { useModelDialogKeyboard } from "../../hooks/use-model-dialog-keyboard";
 import { ModelSearchInput } from "./model-search-input";
 import { ModelFilterTabs } from "./model-filter-tabs";
@@ -35,23 +38,6 @@ const FOOTER_HINTS: KeyboardHint[] = [
   { key: "f", label: "Filter" },
 ];
 
-function getCompatibilityLabel({
-  total,
-  compatible,
-  hasParams,
-}: {
-  total: number;
-  compatible: number;
-  hasParams: boolean;
-}) {
-  if (total === 0) return "No models available.";
-  if (compatible < total) {
-    return `Showing ${compatible}/${total} models that support structured outputs.`;
-  }
-  if (hasParams) return "Showing models that support structured outputs.";
-  return "Compatibility unknown; showing all models.";
-}
-
 export function ModelSelectDialog({
   open,
   onOpenChange,
@@ -60,13 +46,12 @@ export function ModelSelectDialog({
   onSelect,
 }: ModelSelectDialogProps) {
   const openRouter = useOpenRouterModelsMapped(open, provider);
+  const catalog = useProviderModelsMapped(open, provider);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const listContainerRef = useRef<HTMLDivElement>(null);
 
-  const models =
-    provider === OPENROUTER_PROVIDER_ID
-      ? openRouter.models
-      : getStaticModelsForProvider(provider);
+  const isOpenRouter = provider === OPENROUTER_PROVIDER_ID;
+  const models = isOpenRouter ? openRouter.models : catalog.models;
 
   const {
     searchQuery,
@@ -112,11 +97,9 @@ export function ModelSelectDialog({
     onOpenChange,
   });
 
-  const emptyLabel =
-    provider === OPENROUTER_PROVIDER_ID
-      ? openRouter.error ?? "No models match your search"
-      : "No models match your search";
-  const compatibilityLabel = getCompatibilityLabel(openRouter);
+  const catalogError = isOpenRouter ? openRouter.error : catalog.error;
+  const emptyLabel = catalogError ?? "No models match your search";
+  const isLoading = isOpenRouter ? openRouter.loading : catalog.loading;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -138,7 +121,7 @@ export function ModelSelectDialog({
             onFocus={() => setFocusZone("search")}
             onEscape={handleSearchEscape}
             onArrowDown={handleSearchArrowDown}
-            showCustomAction={provider === OPENROUTER_PROVIDER_ID}
+            showCustomAction={isOpenRouter}
             onUseCustom={handleUseCustom}
           />
 
@@ -154,9 +137,9 @@ export function ModelSelectDialog({
               setFilterIndex(idx);
             }}
           />
-          {provider === OPENROUTER_PROVIDER_ID && (
+          {isOpenRouter && (
             <div className="px-4 pb-2 text-2xs text-tui-muted">
-              {compatibilityLabel}
+              {getCompatibilityLabel(openRouter)}
               {" "}
               You can enter a custom model ID at your own risk.
             </div>
@@ -172,7 +155,7 @@ export function ModelSelectDialog({
             onConfirm={handleConfirm}
             onHighlightChange={handleListHighlightChange}
             onBoundaryReached={handleListBoundaryReached}
-            isLoading={provider === OPENROUTER_PROVIDER_ID && openRouter.loading}
+            isLoading={isLoading}
             emptyLabel={emptyLabel}
           />
         </DialogBody>

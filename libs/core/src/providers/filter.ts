@@ -24,12 +24,12 @@ export function filterProviders(
   } else if (filter === "needs-key") {
     filtered = filtered.filter((p) => !p.hasApiKey);
   } else if (filter === "free") {
-    filtered = filtered.filter((p) => {
-      const tier = PROVIDER_CAPABILITIES[p.id]?.tier;
-      return tier === "free" || tier === "mixed";
-    });
+    // D2: the provider free/paid filter keys off the curated hasFreeTier fact
+    // (surfaced as the binary tierBadge), not the derived per-model `tier` whose
+    // "mixed" value would drop every free-tier provider that also has a paid model.
+    filtered = filtered.filter((p) => PROVIDER_CAPABILITIES[p.id]?.tierBadge === "FREE");
   } else if (filter === "paid") {
-    filtered = filtered.filter((p) => PROVIDER_CAPABILITIES[p.id]?.tier === "paid");
+    filtered = filtered.filter((p) => PROVIDER_CAPABILITIES[p.id]?.tierBadge === "PAID");
   }
 
   const trimmed = searchQuery.trim();

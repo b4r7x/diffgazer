@@ -5,10 +5,12 @@ import { RadioGroup } from "../../../../components/ui/radio";
 import { Badge } from "../../../../components/ui/badge";
 import { Spinner } from "../../../../components/ui/spinner";
 import { Input } from "../../../../components/ui/input";
-import { useOpenRouterModels, guardQueryState } from "@diffgazer/core/api/hooks";
-import { AVAILABLE_PROVIDERS } from "@diffgazer/core/schemas/config";
-import type { ModelInfo, OpenRouterModel } from "@diffgazer/core/schemas/config";
-import { GEMINI_MODEL_INFO, GLM_MODEL_INFO } from "@diffgazer/core/schemas/config";
+import {
+  useOpenRouterModelsMapped,
+  useProviderModelsMapped,
+} from "@diffgazer/core/providers";
+import { AVAILABLE_PROVIDERS, OPENROUTER_PROVIDER_ID } from "@diffgazer/core/schemas/config";
+import type { AIProvider, ModelInfo } from "@diffgazer/core/schemas/config";
 
 interface ModelStepProps {
   value?: string;
@@ -34,30 +36,7 @@ function modelInfoToOption(info: ModelInfo): ModelOption {
   return { id: info.id, name: info.name, badges };
 }
 
-function openRouterToOption(model: OpenRouterModel): ModelOption {
-  const badges: ModelOption["badges"] = [];
-  if (model.isFree) {
-    badges.push({ label: "free", variant: "success" });
-  }
-  return { id: model.id, name: model.name, badges };
-}
-
-function getStaticModels(provider: string): ModelOption[] {
-  switch (provider) {
-    case "gemini":
-      return Object.values(GEMINI_MODEL_INFO).map(modelInfoToOption);
-    case "zai":
-    case "zai-coding":
-      return Object.values(GLM_MODEL_INFO).map(modelInfoToOption);
-    default:
-      return [];
-  }
-}
-
 function getSubtitle(provider: string): string {
-  if (provider === "openrouter") {
-    return "Select a model from OpenRouter.";
-  }
   const info = AVAILABLE_PROVIDERS.find((p) => p.id === provider);
   return `Select a model for ${info?.name ?? provider}.`;
 }
@@ -69,38 +48,44 @@ export function ModelStep({
   isActive = true,
 }: ModelStepProps): ReactElement {
   const { tokens } = useTheme();
-  const isOpenRouter = provider === "openrouter";
-  const openRouterQuery = useOpenRouterModels({ enabled: isOpenRouter });
-  const subtitle = getSubtitle(provider);
+  const isOpenRouter = provider === OPENROUTER_PROVIDER_ID;
+  const openRouter = useOpenRouterModelsMapped(true, provider as AIProvider);
+  const catalog = useProviderModelsMapped(true, provider as AIProvider);
 
-  if (isOpenRouter) {
-    const guard = guardQueryState(openRouterQuery, {
-      loading: () => (
-        <Box flexDirection="column" gap={1}>
-          <Text color={tokens.muted}>{subtitle}</Text>
-          <Spinner label="Loading OpenRouter models..." />
-        </Box>
-      ),
-      error: (err) => (
-        <Box flexDirection="column" gap={1}>
-          <Text color={tokens.muted}>{subtitle}</Text>
-          <Text color={tokens.error}>Failed to load models: {err.message}</Text>
-          <Text color={tokens.muted}>Enter a model ID manually (e.g. openai/gpt-4o):</Text>
-          <Input
-            value={value}
-            onChange={onChange}
-            placeholder="openai/gpt-4o"
-            isActive={isActive}
-          />
-        </Box>
-      ),
-    });
-    if (guard) return guard;
+  const subtitle = isOpenRouter
+    ? "Select a model from OpenRouter."
+    : getSubtitle(provider);
+  const loading = isOpenRouter ? openRouter.loading : catalog.loading;
+  const error = isOpenRouter ? openRouter.error : catalog.error;
+
+  if (loading) {
+    return (
+      <Box flexDirection="column" gap={1}>
+        <Text color={tokens.muted}>{subtitle}</Text>
+        <Spinner label={isOpenRouter ? "Loading OpenRouter models…" : "Loading models…"} />
+      </Box>
+    );
   }
 
-  const models: ModelOption[] = isOpenRouter
-    ? (openRouterQuery.data?.models ?? []).map(openRouterToOption)
-    : getStaticModels(provider);
+  if (error) {
+    return (
+      <Box flexDirection="column" gap={1}>
+        <Text color={tokens.muted}>{subtitle}</Text>
+        <Text color={tokens.error}>Failed to load models: {error}</Text>
+        <Text color={tokens.muted}>
+          {isOpenRouter ? "Enter a model ID manually (e.g. openai/gpt-4o):" : "Enter a model ID manually:"}
+        </Text>
+        <Input
+          value={value}
+          onChange={onChange}
+          placeholder={isOpenRouter ? "openai/gpt-4o" : undefined}
+          isActive={isActive}
+        />
+      </Box>
+    );
+  }
+
+  const models = (isOpenRouter ? openRouter.models : catalog.models).map(modelInfoToOption);
 
   if (models.length === 0) {
     return (

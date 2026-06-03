@@ -1,65 +1,151 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { createElement, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { KeyboardProvider } from "@diffgazer/keys";
+import { FooterProvider } from "@diffgazer/core/footer";
 import { createApi, type BoundApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
-import { GEMINI_MODEL_INFO } from "@diffgazer/core/schemas/config";
-import type { OpenRouterModelsResponse } from "@diffgazer/core/schemas/config";
+import type {
+  OpenRouterModelsResponse,
+  ProviderModelsResponse,
+} from "@diffgazer/core/schemas/config";
 import { escapeRegExp } from "@/testing";
 import { ModelStep } from "./model-step";
 
-describe("ModelStep", () => {
-  it("commits the current selected static model when Enter is pressed", async () => {
-    const geminiModels = Object.values(GEMINI_MODEL_INFO);
-    const selectedModel = geminiModels.find(
-      (model) => model.id !== geminiModels[0]?.id,
-    );
-    if (!selectedModel) throw new Error("ModelStep test needs at least two Gemini models");
+const GEMINI_CATALOG: ProviderModelsResponse = {
+  models: [
+    {
+      id: "gemini-2.5-flash",
+      name: "Gemini 2.5 Flash",
+      description: "1M context",
+      tier: "free",
+      recommended: true,
+    },
+    { id: "gemini-2.5-pro", name: "Gemini 2.5 Pro", description: "1M context", tier: "free" },
+    {
+      id: "gemini-3-pro-preview",
+      name: "Gemini 3 Pro Preview",
+      description: "1M context",
+      tier: "paid",
+    },
+  ],
+  fetchedAt: new Date().toISOString(),
+  source: "live",
+  cached: false,
+};
 
+function geminiModel(id: string) {
+  const model = GEMINI_CATALOG.models.find((m) => m.id === id);
+  if (!model) throw new Error(`Gemini catalog fixture is missing model "${id}"`);
+  return model;
+}
+
+function makeWrapper(api: BoundApi) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>
+      <ApiProvider value={api}>
+        <FooterProvider>
+          <KeyboardProvider>{children}</KeyboardProvider>
+        </FooterProvider>
+      </ApiProvider>
+    </QueryClientProvider>
+  );
+}
+
+function renderGemini(props: {
+  value: string | null;
+  onChange?: (model: string) => void;
+  onCommit?: (model: string) => void;
+}) {
+  const getProviderModels = vi
+    .fn<() => Promise<ProviderModelsResponse>>()
+    .mockResolvedValue(GEMINI_CATALOG);
+  const api = { ...createApi({ baseUrl: "http://localhost" }), getProviderModels } satisfies BoundApi;
+  render(
+    <ModelStep
+      provider="gemini"
+      value={props.value}
+      onChange={props.onChange ?? vi.fn()}
+      onCommit={props.onCommit ?? vi.fn()}
+    />,
+    { wrapper: makeWrapper(api) },
+  );
+  return { getProviderModels };
+}
+
+describe("ModelStep", () => {
+  it("commits the current selected catalog model when Enter is pressed", async () => {
+    const selectedModel = geminiModel("gemini-2.5-pro");
     const user = userEvent.setup();
     const onCommit = vi.fn();
 
-    render(
-      <ModelStep
-        provider="gemini"
-        value={selectedModel.id}
-        onChange={vi.fn()}
-        onCommit={onCommit}
-      />,
-    );
+    renderGemini({ value: selectedModel.id, onCommit });
 
+    await waitFor(() =>
+      expect(
+        screen.getByRole("radio", { name: new RegExp(escapeRegExp(selectedModel.name)) }),
+      ).toBeInTheDocument(),
+    );
     screen.getByRole("radio", { name: new RegExp(escapeRegExp(selectedModel.name)) }).focus();
     await user.keyboard("{Enter}");
 
     expect(onCommit).toHaveBeenCalledWith(selectedModel.id);
   });
 
-  it("commits the highlighted static model after keyboard navigation", async () => {
-    const geminiModels = Object.values(GEMINI_MODEL_INFO);
-    const selectedModel = geminiModels[0];
-    const highlightedModel = geminiModels[1];
-    if (!selectedModel || !highlightedModel) {
-      throw new Error("ModelStep test needs at least two Gemini models");
-    }
-
+  it("commits the highlighted catalog model after keyboard navigation", async () => {
+    const selectedModel = geminiModel("gemini-2.5-flash");
+    const highlightedModel = geminiModel("gemini-2.5-pro");
     const user = userEvent.setup();
     const onCommit = vi.fn();
 
-    render(
-      <ModelStep
-        provider="gemini"
-        value={selectedModel.id}
-        onChange={vi.fn()}
-        onCommit={onCommit}
-      />,
-    );
+    renderGemini({ value: selectedModel.id, onCommit });
 
+    await waitFor(() =>
+      expect(
+        screen.getByRole("radio", { name: new RegExp(escapeRegExp(selectedModel.name)) }),
+      ).toBeInTheDocument(),
+    );
     screen.getByRole("radio", { name: new RegExp(escapeRegExp(selectedModel.name)) }).focus();
     await user.keyboard("{ArrowDown}{Enter}");
 
     expect(onCommit).toHaveBeenCalledWith(highlightedModel.id);
+  });
+
+  it("renders the recommended and tier badges from the catalog", async () => {
+    renderGemini({ value: "gemini-2.5-flash" });
+
+    const flashRadio = await screen.findByRole("radio", { name: /Gemini 2\.5 Flash/ });
+    expect(flashRadio).toHaveTextContent(/recommended/i);
+    expect(flashRadio).toHaveTextContent(/free/i);
+  });
+
+  it("offers a manual model-id input when the catalog resolves with no models", async () => {
+    const user = userEvent.setup();
+    const getProviderModels = vi.fn<() => Promise<ProviderModelsResponse>>().mockResolvedValue({
+      models: [],
+      fetchedAt: new Date().toISOString(),
+      source: "snapshot",
+      cached: false,
+    });
+    const api = {
+      ...createApi({ baseUrl: "http://localhost" }),
+      getProviderModels,
+    } satisfies BoundApi;
+
+    function Harness() {
+      const [model, setModel] = useState<string | null>(null);
+      return <ModelStep provider="gemini" value={model} onChange={setModel} onCommit={vi.fn()} />;
+    }
+
+    render(<Harness />, { wrapper: makeWrapper(api) });
+
+    const input = await screen.findByPlaceholderText("gemini-2.5-flash");
+    await user.type(input, "gemini-custom");
+
+    expect(input).toHaveValue("gemini-custom");
   });
 
   it("commits the selected OpenRouter model after models load", async () => {
@@ -92,20 +178,10 @@ describe("ModelStep", () => {
       cached: false,
     });
 
-    const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false } },
-    });
     const api = {
       ...createApi({ baseUrl: "http://localhost" }),
       getOpenRouterModels: mockGetOpenRouterModels,
     } satisfies BoundApi;
-
-    const wrapper = ({ children }: { children: ReactNode }) =>
-      createElement(
-        QueryClientProvider,
-        { client: queryClient },
-        createElement(ApiProvider, { value: api }, children),
-      );
 
     render(
       <ModelStep
@@ -114,7 +190,7 @@ describe("ModelStep", () => {
         onChange={vi.fn()}
         onCommit={onCommit}
       />,
-      { wrapper },
+      { wrapper: makeWrapper(api) },
     );
 
     await waitFor(() => {

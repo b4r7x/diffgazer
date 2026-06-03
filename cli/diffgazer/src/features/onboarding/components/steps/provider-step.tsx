@@ -4,7 +4,7 @@ import { useTheme } from "../../../../theme/theme-context";
 import { RadioGroup } from "../../../../components/ui/radio";
 import { Spinner } from "../../../../components/ui/spinner";
 import { useProviderStatus, guardQueryState } from "@diffgazer/core/api/hooks";
-import { AVAILABLE_PROVIDERS } from "@diffgazer/core/schemas/config";
+import { AVAILABLE_PROVIDERS, OPENROUTER_PROVIDER_ID } from "@diffgazer/core/schemas/config";
 import type { ProviderStatus } from "@diffgazer/core/schemas/config";
 
 interface ProviderStepProps {
@@ -19,13 +19,9 @@ function getProviderLabel(status: ProviderStatus): string {
 }
 
 function getProviderDescription(status: ProviderStatus): string {
-  const info = AVAILABLE_PROVIDERS.find((p) => p.id === status.provider);
-  if (!info || info.models.length === 0) {
-    return status.provider === "openrouter"
-      ? "Access multiple providers via a single API"
-      : "";
-  }
-  return info.models.join(", ");
+  return status.provider === OPENROUTER_PROVIDER_ID
+    ? "Access multiple providers via a single API"
+    : "";
 }
 
 export function ProviderStep({

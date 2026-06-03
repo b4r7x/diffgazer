@@ -8,22 +8,25 @@ import {
   getConfig,
   getInitState,
   getOpenRouterModels,
+  getProviderModels,
   getProvidersStatus,
   saveConfig,
+  type ProviderModelsErrorCode,
 } from "./service.js";
-import { errorResponse, zodErrorHandler } from "../../shared/lib/http/response.js";
+import { errorResponse, zodErrorHandler, type ErrorStatus } from "../../shared/lib/http/response.js";
 import { getProjectRoot } from "../../shared/lib/http/request.js";
 import { createBodyLimitMiddleware, DEFAULT_BODY_LIMIT_KB } from "../../shared/middlewares/body-limit.js";
 import { createRateLimitMiddleware } from "../../shared/middlewares/rate-limit.js";
 import { requireRepoAccess } from "../../shared/middlewares/trust-guard.js";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
-import { SaveConfigRequestSchema } from "@diffgazer/core/schemas/config";
-import { ProviderParamSchema, ActivateProviderBodySchema } from "./schemas.js";
+import { PROVIDER_DISABLED, SaveConfigRequestSchema } from "@diffgazer/core/schemas/config";
+import { ProviderParamSchema, ActivateProviderBodySchema, ProviderModelsParamSchema } from "./schemas.js";
 
 const configRouter = new Hono();
 
 const bodyLimitMiddleware = createBodyLimitMiddleware(DEFAULT_BODY_LIMIT_KB);
-const modelFetchLimit = createRateLimitMiddleware("config:models", { maxRequests: 30, windowMs: 60_000 });
+const openRouterModelFetchLimit = createRateLimitMiddleware("config:openrouter-models", { maxRequests: 30, windowMs: 60_000 });
+const catalogModelFetchLimit = createRateLimitMiddleware("config:catalog-models", { maxRequests: 30, windowMs: 60_000 });
 
 configRouter.get("/init", (c): Response => {
   const projectRoot = getProjectRoot(c);
@@ -60,7 +63,7 @@ configRouter.get("/providers", (c): Response => {
   return c.json(data);
 });
 
-configRouter.get("/provider/openrouter/models", modelFetchLimit, async (c): Promise<Response> => {
+configRouter.get("/provider/openrouter/models", openRouterModelFetchLimit, async (c): Promise<Response> => {
   const result = await getOpenRouterModels();
   if (!result.ok) {
     const status = result.error.code === ErrorCode.API_KEY_MISSING ? 400 : 500;
@@ -68,6 +71,29 @@ configRouter.get("/provider/openrouter/models", modelFetchLimit, async (c): Prom
   }
   return c.json(result.value);
 });
+
+const PROVIDER_MODELS_ERROR_STATUS: Record<ProviderModelsErrorCode, ErrorStatus> = {
+  [ErrorCode.VALIDATION_ERROR]: 400,
+  [PROVIDER_DISABLED]: 404,
+  [ErrorCode.API_KEY_MISSING]: 400,
+  [ErrorCode.RATE_LIMITED]: 429,
+  [ErrorCode.INTERNAL_ERROR]: 500,
+};
+
+configRouter.get(
+  "/provider/:id/models",
+  catalogModelFetchLimit,
+  zValidator("param", ProviderModelsParamSchema, zodErrorHandler),
+  async (c): Promise<Response> => {
+    const { id } = c.req.valid("param");
+    const result = await getProviderModels(id);
+    if (!result.ok) {
+      const status = PROVIDER_MODELS_ERROR_STATUS[result.error.code] ?? 500;
+      return errorResponse(c, result.error.message, result.error.code, status);
+    }
+    return c.json(result.value);
+  },
+);
 
 configRouter.post(
   "/",

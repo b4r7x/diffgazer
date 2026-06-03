@@ -19,12 +19,15 @@
     "test:types": "vitest --typecheck --typecheck.only --run"
   },
   "dependencies": {
+    "@ai-sdk/cerebras": "^2.0.54",
     "@ai-sdk/google": "^3.0.21",
+    "@ai-sdk/groq": "^3.0.39",
+    "@ai-sdk/openai-compatible": "^2.0.48",
+    "@diffgazer/core": "workspace:*",
     "@hono/node-server": "^1.19.13",
     "@hono/zod-validator": "^0.7.6",
     "@napi-rs/keyring": "^1.2.0",
     "@openrouter/ai-sdk-provider": "^2.1.1",
-    "@diffgazer/core": "workspace:*",
     "ai": "^6.0.71",
     "hono": "^4.12.18",
     "zhipu-ai-provider": "^0.2.2",

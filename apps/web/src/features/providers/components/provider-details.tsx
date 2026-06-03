@@ -38,6 +38,7 @@ function getButtonConfig(actions: ProviderActions, provider: ProviderWithStatus,
 
 function getEmptyModelPlaceholder(provider: ProviderWithStatus): string {
   if (provider.id === OPENROUTER_PROVIDER_ID) return "Model required";
+  if (!provider.defaultModel) return "No default model";
   return `${provider.defaultModel} (default)`;
 }
 

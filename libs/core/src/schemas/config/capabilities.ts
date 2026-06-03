@@ -1,93 +1,66 @@
 import type { AIProvider, ProviderInfo } from "./providers.js";
-import { GEMINI_MODELS, GLM_MODELS } from "./models.js";
+import {
+  PROVIDER_OVERLAY,
+  type ProviderOverlay,
+  type ProviderCapabilities,
+  deriveCapabilities,
+  CATALOG_SNAPSHOT,
+} from "@diffgazer/core/catalog";
 
 export const OPENROUTER_PROVIDER_ID: AIProvider = "openrouter";
 
-export const AVAILABLE_PROVIDERS: ProviderInfo[] = [
-  {
-    id: "gemini",
-    name: "Google Gemini",
-    defaultModel: "gemini-2.5-flash",
-    models: [...GEMINI_MODELS],
-  },
-  {
-    id: "zai",
-    name: "Z.AI",
-    defaultModel: "glm-4.7",
-    models: [...GLM_MODELS],
-  },
-  {
-    id: "zai-coding",
-    name: "Z.AI Coding Plan",
-    defaultModel: "glm-4.7",
-    models: [...GLM_MODELS],
-  },
-  {
-    id: "openrouter",
-    name: "OpenRouter",
-    defaultModel: "",
-    models: [],
-  },
-];
+/**
+ * Title-case a provider id ("zai-coding" -> "Zai Coding"). Safety-only
+ * last-resort fallback: every enabled provider resolves a name from its overlay
+ * or the snapshot, so this is only reached if both are ever absent.
+ */
+function humanize(id: string): string {
+  return id
+    .split(/[-_]/)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
 
-export const PROVIDER_CAPABILITIES: Record<AIProvider, {
-  toolCalling: string;
-  jsonMode: string;
-  streaming: string;
-  contextWindow: string;
-  tier: 'free' | 'paid' | 'mixed';
-  tierBadge: 'FREE' | 'PAID';
-  capabilities: string[];
-  costDescription: string;
-}> = {
-  gemini: {
-    toolCalling: 'Supported (Gemini function calling)',
-    jsonMode: 'Supported (structured output / JSON schema)',
-    streaming: 'Supported (generateContentStream / SDK streams)',
-    contextWindow: 'Model-dependent (default gemini-2.5-flash supports up to 1M tokens)',
-    tier: 'mixed',
-    tierBadge: 'FREE',
-    capabilities: ['TOOLS', 'JSON', 'FAST'],
-    costDescription: 'Gemini 2.5 models have free and paid tiers; pricing and limits depend on model/version and account usage tier.',
-  },
-  zai: {
-    toolCalling: 'Supported (Chat Completions tools)',
-    jsonMode: 'Supported (json_object / json_schema)',
-    streaming: 'Supported (Chat Completions stream=true)',
-    contextWindow: 'Up to 200K tokens (GLM-4.7 series)',
-    tier: 'mixed',
-    tierBadge: 'FREE',
-    capabilities: ['FAST', 'TOOLS'],
-    costDescription: 'Model-based pricing. Free and paid tiers vary by model and current Z.AI plan terms.',
-  },
-  "zai-coding": {
-    toolCalling: 'Supported (Chat Completions tools)',
-    jsonMode: 'Supported (json_object / json_schema)',
-    streaming: 'Supported (Chat Completions stream=true)',
-    contextWindow: 'Up to 200K tokens (GLM-4.7 series)',
-    tier: 'paid',
-    tierBadge: 'PAID',
-    capabilities: ['FAST', 'TOOLS'],
-    costDescription: 'Uses the Z.AI coding endpoint. Pricing and limits depend on selected model and current Z.AI plan terms.',
-  },
-  openrouter: {
-    toolCalling: 'Varies by model',
-    jsonMode: 'Varies by model',
-    streaming: 'Supported (model-dependent)',
-    contextWindow: 'Varies by model',
-    tier: 'mixed',
-    tierBadge: 'PAID',
-    capabilities: ['MULTI-PROVIDER'],
-    costDescription: 'Unified API across providers. Model availability, capabilities, and pricing are model-specific.',
-  },
-};
+/**
+ * Resolve a provider's human display name. PRIMARY source is the models.dev
+ * provider `name` (from CATALOG_SNAPSHOT for the overlay's primary modelsDevId);
+ * `overlay.displayName` is a curated OVERRIDE (today only gemini); humanize(id)
+ * is the last-resort fallback.
+ */
+export function resolveProviderDisplayName(provider: AIProvider): string {
+  const overlay = PROVIDER_OVERLAY[provider];
+  const primaryModelsDevId = overlay.modelsDevIds[0];
+  const modelsDevName = primaryModelsDevId ? CATALOG_SNAPSHOT[primaryModelsDevId]?.name : undefined;
+  return overlay.displayName ?? modelsDevName ?? humanize(provider);
+}
 
-export const PROVIDER_ENV_VARS: Record<AIProvider, string> = {
-  gemini: 'GOOGLE_API_KEY',
-  zai: 'ZAI_API_KEY',
-  'zai-coding': 'ZAI_API_KEY',
-  openrouter: 'OPENROUTER_API_KEY',
-};
+const ENABLED_PROVIDER_IDS = (Object.entries(PROVIDER_OVERLAY) as [AIProvider, ProviderOverlay][])
+  .filter(([, overlay]) => overlay.enabled)
+  .map(([id]) => id);
+
+export const AVAILABLE_PROVIDERS: ProviderInfo[] = ENABLED_PROVIDER_IDS.map((id) => ({
+  id,
+  name: resolveProviderDisplayName(id),
+  defaultModel: PROVIDER_OVERLAY[id].defaultModel,
+}));
+
+// Capability prose (tool calling, JSON mode, context window, tier) is stable per
+// provider, so it is derived once from the bundled CATALOG_SNAPSHOT rather than
+// the live route — only the per-provider model LIST is served live via
+// `GET /provider/:id/models`. Keyed over every overlay id (not just enabled) so
+// the record stays exhaustive over AIProvider as a provider is enabled/disabled.
+export const PROVIDER_CAPABILITIES = Object.fromEntries(
+  (Object.keys(PROVIDER_OVERLAY) as AIProvider[]).map((id) => [
+    id,
+    deriveCapabilities(CATALOG_SNAPSHOT, id),
+  ]),
+) as Record<AIProvider, ProviderCapabilities>;
+
+export const PROVIDER_ENV_VARS = Object.fromEntries(
+  (Object.entries(PROVIDER_OVERLAY) as [AIProvider, ProviderOverlay][]).map(
+    ([id, overlay]) => [id, overlay.diffgazerEnvVar],
+  ),
+) as Record<AIProvider, string>;
 
 /** The set of env var names that are valid for `CredentialRef` with `kind: "env"`. */
 export const ALLOWED_CREDENTIAL_ENV_VARS: ReadonlySet<string> = new Set(

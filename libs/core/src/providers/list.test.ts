@@ -6,9 +6,9 @@ import type {
 import { mapProvidersWithStatus } from "./list.js";
 
 const PROVIDERS: ProviderInfo[] = [
-  { id: "gemini", name: "Gemini", defaultModel: "gemini-2.5-flash", models: ["gemini-2.5-flash"] },
-  { id: "zai", name: "Z.AI", defaultModel: "glm-4.7", models: ["glm-4.7"] },
-  { id: "openrouter", name: "OpenRouter", defaultModel: "", models: [] },
+  { id: "gemini", name: "Gemini", defaultModel: "gemini-2.5-flash" },
+  { id: "zai", name: "Z.AI", defaultModel: "glm-4.7" },
+  { id: "openrouter", name: "OpenRouter", defaultModel: "" },
 ];
 
 describe("mapProvidersWithStatus", () => {
@@ -40,12 +40,11 @@ describe("mapProvidersWithStatus", () => {
     expect(result.every((p) => !p.isActive)).toBe(true);
   });
 
-  it("preserves provider info (name, defaultModel, models)", () => {
+  it("preserves provider info (name, defaultModel)", () => {
     const result = mapProvidersWithStatus([], PROVIDERS);
     const openRouter = result.find((p) => p.id === "openrouter");
     expect(openRouter?.name).toBe("OpenRouter");
     expect(openRouter?.defaultModel).toBe("");
-    expect(openRouter?.models).toEqual([]);
   });
 
   it("returns same order as input providers", () => {

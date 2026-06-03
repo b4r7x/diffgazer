@@ -316,7 +316,7 @@
     "build:artifacts": "node --import tsx scripts/build-publish-artifacts.ts",
     "validate:registry": "node --import tsx scripts/validate-registry-metadata.ts",
     "validate:artifacts": "pnpm --dir ../.. validate:artifacts",
-    "type-check": "tsc --noEmit && tsc --noEmit -p tsconfig.tools.json",
+    "type-check": "tsc --noEmit && tsc --noEmit -p tsconfig.tools.json && tsc --noEmit -p tsconfig.test.json && tsc --noEmit -p scripts/tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:types": "vitest --typecheck --typecheck.only --run",

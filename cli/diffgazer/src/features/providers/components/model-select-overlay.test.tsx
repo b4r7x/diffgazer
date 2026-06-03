@@ -1,19 +1,71 @@
-import { test, describe, afterEach, expect } from "vitest";
+import { test, describe, afterEach, expect, vi } from "vitest";
 import type { ReactNode } from "react";
 import { render, cleanup } from "ink-testing-library";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
 import { createApi, type BoundApi } from "@diffgazer/core/api";
-import { GEMINI_MODEL_INFO } from "@diffgazer/core/schemas/config";
+import type {
+  ActivateProviderResponse,
+  OpenRouterModelsResponse,
+  ProviderModelsResponse,
+} from "@diffgazer/core/schemas/config";
 import { CliThemeProvider } from "../../../theme/theme-context";
 import { ModelSelectOverlay } from "./model-select-overlay";
 
 const ARROW_UP = "[A";
 const ARROW_DOWN = "[B";
 
+// Free-first 5-model Gemini layout (3 free, 2 paid), matching the catalog's
+// deterministic free-first ordering. The transform (P1) produces this order; the
+// overlay test feeds the same shape over the boundary-mocked api.
+const GEMINI_CATALOG: ProviderModelsResponse = {
+  models: [
+    { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash", description: "1M ctx", tier: "free" },
+    {
+      id: "gemini-2.5-flash-lite",
+      name: "Gemini 2.5 Flash-Lite",
+      description: "1M ctx",
+      tier: "free",
+    },
+    { id: "gemini-2.5-pro", name: "Gemini 2.5 Pro", description: "1M ctx", tier: "free" },
+    {
+      id: "gemini-3-flash-preview",
+      name: "Gemini 3 Flash Preview",
+      description: "1M ctx",
+      tier: "paid",
+    },
+    {
+      id: "gemini-3-pro-preview",
+      name: "Gemini 3 Pro Preview",
+      description: "1M ctx",
+      tier: "paid",
+    },
+  ],
+  fetchedAt: new Date().toISOString(),
+  source: "live",
+  cached: false,
+};
+
+function geminiName(id: string): string {
+  const model = GEMINI_CATALOG.models.find((m) => m.id === id);
+  if (!model) throw new Error(`Gemini catalog fixture is missing model "${id}"`);
+  return model.name ?? id;
+}
+
 async function flush(times = 4): Promise<void> {
   for (let i = 0; i < times; i += 1) {
     await new Promise((resolve) => setImmediate(resolve));
+  }
+}
+
+// Poll on a macrotask boundary. React Query resolves the mocked api over a
+// microtask chain whose React-scheduler commit can land a few macrotasks later,
+// and a mounted ink Spinner runs a real setInterval; yielding to setTimeout(0)
+// each attempt lets both settle deterministically instead of racing setImmediate.
+async function flushUntil(predicate: () => boolean, attempts = 200): Promise<void> {
+  for (let i = 0; i < attempts; i += 1) {
+    if (predicate()) return;
+    await new Promise((resolve) => setTimeout(resolve, 0));
   }
 }
 
@@ -26,12 +78,19 @@ function makeQueryClient(): QueryClient {
   });
 }
 
-function Wrapper({ children }: { children: ReactNode }) {
+function makeGeminiApi(): BoundApi {
+  const getProviderModels = vi
+    .fn<() => Promise<ProviderModelsResponse>>()
+    .mockResolvedValue(GEMINI_CATALOG);
+  return { ...createApi({ baseUrl: "http://localhost" }), getProviderModels } satisfies BoundApi;
+}
+
+function Wrapper({ children, api }: { children: ReactNode; api?: BoundApi }) {
   const queryClient = makeQueryClient();
-  const api = createApi({ baseUrl: "http://localhost" }) satisfies BoundApi;
+  const boundApi = api ?? makeGeminiApi();
   return (
     <QueryClientProvider client={queryClient}>
-      <ApiProvider value={api}>
+      <ApiProvider value={boundApi}>
         <CliThemeProvider initialTheme="dark">{children}</CliThemeProvider>
       </ApiProvider>
     </QueryClientProvider>
@@ -52,12 +111,12 @@ function countPrefixes(frame: string | undefined, name: string): {
   };
 }
 
-describe("ModelSelectOverlay ArrowUp after list shrinks (W9.5 bug fix)", () => {
+describe("ModelSelectOverlay ArrowUp after the tier filter shrinks the list", () => {
   afterEach(() => {
     cleanup();
   });
 
-  test("rebases ArrowUp on safeHighlightIndex so the highlight moves one step backward in the shrunken list, not stays on the last visible item", async () => {
+  test("after the filter shrinks the list, ArrowUp from the clamped last item moves the highlight one item back instead of sticking on the last item", async () => {
     const { stdin, lastFrame } = render(
       <Wrapper>
         <ModelSelectOverlay
@@ -69,11 +128,11 @@ describe("ModelSelectOverlay ArrowUp after list shrinks (W9.5 bug fix)", () => {
       </Wrapper>,
     );
 
-    await flush();
+    await flushUntil(() => lastFrame()?.includes(geminiName("gemini-3-flash-preview")) ?? false);
 
     const initialFrame = lastFrame();
     expect(
-      initialFrame?.includes(GEMINI_MODEL_INFO["gemini-3-flash-preview"].name),
+      initialFrame?.includes(geminiName("gemini-3-flash-preview")),
       "initial frame should list gemini models",
     ).toBeTruthy();
 
@@ -83,26 +142,26 @@ describe("ModelSelectOverlay ArrowUp after list shrinks (W9.5 bug fix)", () => {
       await flush();
     }
 
-    const lastModelName = GEMINI_MODEL_INFO["gemini-2.5-pro"].name;
+    const lastModelName = geminiName("gemini-3-pro-preview");
     const afterDown = countPrefixes(lastFrame(), lastModelName);
     expect(
       afterDown.highlighted,
       `after 4 ArrowDown presses, the last gemini model should be highlighted. Frame: ${lastFrame()}`,
     ).toBe(1);
 
-    // Shrink the filter to "paid" — 2 models out of 5. With Gemini static data:
+    // Shrink the filter to "paid" — 2 of the 5 models. With this free-first data:
     //   free: 2.5-flash, 2.5-flash-lite, 2.5-pro
     //   paid: 3-flash-preview, 3-pro-preview
-    // "f" cycles all -> free -> paid. Two presses get us to "paid".
+    // "f" cycles all -> free -> paid, so two presses land on "paid".
     stdin.write("f");
     await flush();
     stdin.write("f");
     await flush();
 
     // Sanity: only the 2 paid models are visible now.
-    const paidFirst = GEMINI_MODEL_INFO["gemini-3-flash-preview"].name;
-    const paidSecond = GEMINI_MODEL_INFO["gemini-3-pro-preview"].name;
-    const freeAny = GEMINI_MODEL_INFO["gemini-2.5-flash"].name;
+    const paidFirst = geminiName("gemini-3-flash-preview");
+    const paidSecond = geminiName("gemini-3-pro-preview");
+    const freeAny = geminiName("gemini-2.5-flash");
     const shrunkenFrame = lastFrame();
     expect(
       shrunkenFrame?.includes(paidFirst) && shrunkenFrame?.includes(paidSecond),
@@ -113,21 +172,15 @@ describe("ModelSelectOverlay ArrowUp after list shrinks (W9.5 bug fix)", () => {
       "after switching tier filter to 'paid', free models should not be visible",
     ).toBeTruthy();
 
-    // Before pressing ArrowUp: highlightIndex is still 4 (stale), but
-    // safeHighlightIndex clamps to min(4, 1) = 1, so the second paid model
-    // is highlighted.
+    // The highlight had moved past the shrunken list, so it lands clamped on
+    // the last visible (second paid) model.
     const beforeArrowUp = countPrefixes(lastFrame(), paidSecond);
     expect(
       beforeArrowUp.highlighted,
-      "before ArrowUp, the clamped (safeHighlightIndex=1) item should be highlighted",
+      "before ArrowUp, the last visible paid model should be highlighted",
     ).toBe(1);
 
-    // The bug being fixed by Wave 9 slot 05:
-    //   Pre-fix:  setHighlightIndex((prev - 1 + len) % len) with stale prev=4
-    //             → (4 - 1 + 2) % 2 = 1, highlight stays on paidSecond.
-    //   Post-fix: setHighlightIndex((safeHighlightIndex - 1 + len) % len)
-    //             with safeHighlightIndex=1 → (1 - 1 + 2) % 2 = 0,
-    //             highlight moves to paidFirst.
+    // ArrowUp must step back one item rather than staying on the last item.
     stdin.write(ARROW_UP);
     await flush();
 
@@ -136,11 +189,251 @@ describe("ModelSelectOverlay ArrowUp after list shrinks (W9.5 bug fix)", () => {
 
     expect(
       afterArrowUpFirst.highlighted,
-      `after ArrowUp from clamped index 1, the FIRST paid model should be highlighted. Frame: ${lastFrame()}`,
+      `after ArrowUp, the first paid model should be highlighted. Frame: ${lastFrame()}`,
     ).toBe(1);
     expect(
       afterArrowUpSecond.highlighted,
-      "after ArrowUp from clamped index 1, the second paid model should no longer be highlighted",
+      "after ArrowUp, the second paid model should no longer be highlighted",
     ).toBe(0);
+  });
+});
+
+const OPENROUTER_MODELS: OpenRouterModelsResponse = {
+  models: [
+    {
+      id: "openai/gpt-4o",
+      name: "GPT-4o",
+      description: "Flagship",
+      contextLength: 128000,
+      supportedParameters: ["response_format"],
+      pricing: { prompt: "0", completion: "0" },
+      isFree: false,
+    },
+    {
+      id: "anthropic/claude-3.5",
+      name: "Claude 3.5",
+      description: "Anthropic",
+      contextLength: 200000,
+      supportedParameters: ["response_format"],
+      pricing: { prompt: "0", completion: "0" },
+      isFree: false,
+    },
+  ],
+  fetchedAt: new Date().toISOString(),
+  cached: false,
+};
+
+function createDeferred<T>(): { promise: Promise<T>; resolve: (value: T) => void; reject: (reason: unknown) => void } {
+  let resolve!: (value: T) => void;
+  let reject!: (reason: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
+describe("ModelSelectOverlay selection (Enter -> activate -> close)", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  test("activates the highlighted model on Enter, then calls onSelect with its id and closes after the activate mutation resolves", async () => {
+    const onSelect = vi.fn();
+    const onOpenChange = vi.fn();
+    const activateProvider = vi
+      .fn<(providerId: string, model?: string) => Promise<ActivateProviderResponse>>()
+      .mockResolvedValue({ provider: "gemini", model: "gemini-2.5-flash" });
+    const api = { ...makeGeminiApi(), activateProvider } satisfies BoundApi;
+
+    const { stdin, lastFrame } = render(
+      <Wrapper api={api}>
+        <ModelSelectOverlay
+          open={true}
+          onOpenChange={onOpenChange}
+          providerId="gemini"
+          onSelect={onSelect}
+        />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes(geminiName("gemini-2.5-flash")) ?? false);
+
+    // The first model is highlighted by default; confirm Enter on it.
+    stdin.write("\r");
+    await flushUntil(() => onSelect.mock.calls.length > 0);
+
+    expect(activateProvider).toHaveBeenCalledWith("gemini", "gemini-2.5-flash");
+    expect(onSelect).toHaveBeenCalledWith("gemini-2.5-flash");
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+});
+
+describe("ModelSelectOverlay saving state", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  test("shows the Saving spinner and freezes the highlight while the activate mutation is pending", async () => {
+    const deferred = createDeferred<ActivateProviderResponse>();
+    const activateProvider = vi
+      .fn<(providerId: string, model?: string) => Promise<ActivateProviderResponse>>()
+      .mockReturnValue(deferred.promise);
+    const api = { ...makeGeminiApi(), activateProvider } satisfies BoundApi;
+
+    const { stdin, lastFrame } = render(
+      <Wrapper api={api}>
+        <ModelSelectOverlay
+          open={true}
+          onOpenChange={() => {}}
+          providerId="gemini"
+          onSelect={() => {}}
+        />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes(geminiName("gemini-2.5-flash")) ?? false);
+
+    const firstName = geminiName("gemini-2.5-flash");
+    expect(countPrefixes(lastFrame(), firstName).highlighted).toBe(1);
+
+    // Begin activation; the mutation never settles, so the overlay stays in the saving state.
+    stdin.write("\r");
+    await flushUntil(() => lastFrame()?.includes("Saving") ?? false);
+
+    expect(lastFrame()).toContain("Saving");
+
+    // Arrow keys must be inert while saving: the highlight stays on the first model.
+    stdin.write(ARROW_DOWN);
+    await flush();
+    stdin.write(ARROW_DOWN);
+    await flush();
+
+    expect(
+      countPrefixes(lastFrame(), firstName).highlighted,
+      `highlight should stay on the first model while saving. Frame: ${lastFrame()}`,
+    ).toBe(1);
+    const secondName = geminiName("gemini-2.5-flash-lite");
+    expect(countPrefixes(lastFrame(), secondName).highlighted).toBe(0);
+  });
+
+  test("renders the activate error message when the mutation rejects", async () => {
+    const activateProvider = vi
+      .fn<(providerId: string, model?: string) => Promise<ActivateProviderResponse>>()
+      .mockRejectedValue(new Error("Activation failed: missing credentials"));
+    const api = { ...makeGeminiApi(), activateProvider } satisfies BoundApi;
+
+    const { stdin, lastFrame } = render(
+      <Wrapper api={api}>
+        <ModelSelectOverlay
+          open={true}
+          onOpenChange={() => {}}
+          providerId="gemini"
+          onSelect={() => {}}
+        />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes(geminiName("gemini-2.5-flash")) ?? false);
+
+    stdin.write("\r");
+    await flushUntil(() => lastFrame()?.includes("Activation failed") ?? false);
+
+    expect(lastFrame()).toContain("Activation failed: missing credentials");
+  });
+});
+
+describe("ModelSelectOverlay selected marker", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  test("marks exactly the selectedId row as the current model", async () => {
+    const { lastFrame } = render(
+      <Wrapper>
+        <ModelSelectOverlay
+          open={true}
+          onOpenChange={() => {}}
+          providerId="gemini"
+          selectedId="gemini-2.5-pro"
+          onSelect={() => {}}
+        />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes(geminiName("gemini-2.5-pro")) ?? false);
+
+    const selectedName = geminiName("gemini-2.5-pro");
+    const frame = lastFrame() ?? "";
+    const escapedSelected = selectedName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+    // The selected row renders the "[*]" check; every other row renders "[ ]".
+    expect(frame.match(new RegExp(`\\[\\*\\]\\s+${escapedSelected}`)) ?? []).toHaveLength(1);
+    expect((frame.match(/\[\*\]/g) ?? []).length, `only one row should be marked selected. Frame: ${frame}`).toBe(1);
+  });
+});
+
+describe("ModelSelectOverlay OpenRouter compatibility", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  test("renders the OpenRouter structured-output compatibility label", async () => {
+    const getOpenRouterModels = vi
+      .fn<() => Promise<OpenRouterModelsResponse>>()
+      .mockResolvedValue(OPENROUTER_MODELS);
+    const api = { ...createApi({ baseUrl: "http://localhost" }), getOpenRouterModels } satisfies BoundApi;
+
+    const { lastFrame } = render(
+      <Wrapper api={api}>
+        <ModelSelectOverlay
+          open={true}
+          onOpenChange={() => {}}
+          providerId="openrouter"
+          onSelect={() => {}}
+        />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes("GPT-4o") ?? false);
+
+    expect(lastFrame()).toContain("structured outputs");
+  });
+});
+
+describe("ModelSelectOverlay long description", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  test("truncates a description that overflows the row width with an ellipsis instead of the full text", async () => {
+    const longDescription =
+      "A very long model description that easily overflows the terminal row width FULLTAILVISIBLE";
+    const catalog: ProviderModelsResponse = {
+      models: [{ id: "gemini-2.5-flash", name: "Flash", description: longDescription, tier: "free" }],
+      fetchedAt: new Date().toISOString(),
+      source: "live",
+      cached: false,
+    };
+    const getProviderModels = vi
+      .fn<() => Promise<ProviderModelsResponse>>()
+      .mockResolvedValue(catalog);
+    const api = { ...createApi({ baseUrl: "http://localhost" }), getProviderModels } satisfies BoundApi;
+
+    const { lastFrame } = render(
+      <Wrapper api={api}>
+        <ModelSelectOverlay
+          open={true}
+          onOpenChange={() => {}}
+          providerId="gemini"
+          onSelect={() => {}}
+        />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes("Flash") ?? false);
+
+    expect(lastFrame()).toContain("…");
+    expect(lastFrame()).not.toContain("FULLTAILVISIBLE");
   });
 });

@@ -6,6 +6,7 @@ export {
   useConfigCheck,
   useProviderStatus,
   useOpenRouterModels,
+  useProviderModels,
   useSaveSettings,
   useSaveConfig,
   useActivateProvider,

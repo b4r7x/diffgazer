@@ -17,7 +17,11 @@ export function matchQueryState<T>(
   // surface the error rather than silently render outdated content.
   if (query.error) return handlers.error(query.error);
   if (query.data !== undefined) return handlers.success(query.data);
-  return handlers.loading();
+  // A disabled query (`enabled: false`) is `isLoading: false` with no data and
+  // `fetchStatus: "idle"`. Only show loading when a fetch is actually running;
+  // otherwise render nothing so the caller is not stuck behind a fake spinner.
+  if (query.fetchStatus !== "idle") return handlers.loading();
+  return null;
 }
 
 /**
@@ -34,5 +38,8 @@ export function guardQueryState<T>(
   if (query.isLoading) return callbacks.loading();
   if (query.error) return callbacks.error(query.error);
   if (query.data !== undefined) return null;
-  return callbacks.loading();
+  // A disabled query (`enabled: false`) is idle with no data; do not return a
+  // loading element that would never resolve. Only guard while a fetch runs.
+  if (query.fetchStatus !== "idle") return callbacks.loading();
+  return null;
 }

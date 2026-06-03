@@ -137,6 +137,22 @@ pnpm run release-check                # verify + smoke:packages + pack --dry-run
 
 `turbo run test:types` is wired in `verify`, `test-ci`, and `release-check` as a required step.
 
+### Catalog smoke: bundled snapshot (offline) + live models.dev (network)
+
+`pnpm run smoke:modelsdev` asserts `gemini`/`groq`/`cerebras` each resolve to a
+non-empty `ModelInfo[]` via `catalogToModelInfo` from the `@diffgazer/core/catalog`
+surface. It is part of the `smoke` chain.
+
+On every run it validates the bundled offline snapshot (`CATALOG_SNAPSHOT`) — the
+design D6 guarantee that the picker is never blank on first run/offline — so a bad
+snapshot regenerate is caught even with no network. This makes
+`DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run smoke` pass offline.
+
+Adding `DIFFGAZER_SMOKE_ALLOW_NETWORK=1` additionally fetches the live
+`https://models.dev/api.json`, parses it with the shipped `parseModelsDevCatalog`,
+and runs the same assertions against the live data. CI pairs both flags, so the
+release gate validates both the offline snapshot and the live fetch.
+
 ## Anti-pattern reference
 
 When reviewing or writing tests, run through this list:

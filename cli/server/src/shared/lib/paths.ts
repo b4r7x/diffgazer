@@ -90,6 +90,9 @@ export const getGlobalTrustPath = (): string =>
 export const getGlobalOpenRouterModelsPath = (): string =>
   path.join(getGlobalDiffgazerDir(), "openrouter-models.json");
 
+export const getGlobalModelsDevCatalogPath = (): string =>
+  path.join(getGlobalDiffgazerDir(), "models-dev.json");
+
 export const getProjectDiffgazerDir = (projectRoot: string): string =>
   path.join(projectRoot, ".diffgazer");
 

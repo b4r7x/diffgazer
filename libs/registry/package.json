@@ -28,7 +28,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "type-check": "tsc --noEmit",
+    "type-check": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:types": "vitest --typecheck --typecheck.only --run"

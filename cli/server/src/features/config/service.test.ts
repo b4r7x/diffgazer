@@ -15,10 +15,14 @@ const openRouter = vi.hoisted(() => ({
   getOpenRouterModelsWithCache: vi.fn(),
 }));
 
+const catalog = vi.hoisted(() => ({ getProviderModels: vi.fn() }));
+
 // Boundary mock: keyring wraps the OS keychain via @napi-rs/keyring; tests provide canned secret read/write results.
 vi.mock("../../shared/lib/config/keyring.js", () => keyring);
 // Boundary mock: openrouter-models wraps the OpenRouter HTTP API (network boundary); tests provide canned model list responses so service behavior can be exercised offline.
 vi.mock("../../shared/lib/ai/openrouter-models.js", () => openRouter);
+// Boundary mock: models-dev-catalog wraps the models.dev HTTP API + disk cache.
+vi.mock("../../shared/lib/ai/models-dev-catalog.js", () => catalog);
 
 let diffgazerHome: string;
 let projectRoot: string;
@@ -151,6 +155,15 @@ describe("config service", () => {
     });
 
     await configureProvider("gemini", { model: "gemini-2.5-flash" });
+    catalog.getProviderModels.mockResolvedValue({
+      models: [
+        { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash", description: "", tier: "free" },
+        { id: "gemini-2.5-pro", name: "Gemini 2.5 Pro", description: "", tier: "paid" },
+      ],
+      fetchedAt: "2026-06-02T00:00:00.000Z",
+      source: "live",
+      cached: false,
+    });
     expect(await activateProvider({ provider: "gemini", model: "gemini-2.5-pro" }))
       .toMatchObject({
         ok: true,
@@ -162,6 +175,56 @@ describe("config service", () => {
         ok: false,
         error: { code: "PROVIDER_NOT_FOUND" },
       });
+  });
+
+  it("rejects a model that is absent from the provider's catalog with MODEL_ERROR", async () => {
+    await configureProvider("gemini", { model: "gemini-2.5-flash" });
+    catalog.getProviderModels.mockResolvedValue({
+      models: [{ id: "gemini-2.5-flash", name: "Gemini 2.5 Flash", description: "", tier: "free" }],
+      fetchedAt: "2026-06-02T00:00:00.000Z",
+      source: "live",
+      cached: false,
+    });
+    const { activateProvider } = await loadService();
+
+    const result = await activateProvider({ provider: "gemini", model: "totally-fake-model-xyz" });
+
+    expect(catalog.getProviderModels).toHaveBeenCalledWith("gemini");
+    expect(result).toMatchObject({ ok: false, error: { code: "MODEL_ERROR" } });
+    expect(result.ok === false && result.error.message).toContain("totally-fake-model-xyz");
+    expect(result.ok === false && result.error.message).toContain("gemini");
+  });
+
+  it("exempts openrouter from catalog membership validation", async () => {
+    await configureProvider("openrouter", { apiKey: "sk-openrouter", model: "some-router-model" });
+    const { activateProvider } = await loadService();
+
+    const result = await activateProvider({ provider: "openrouter", model: "any/router-model:free" });
+
+    expect(catalog.getProviderModels).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      ok: true,
+      value: { provider: "openrouter", model: "any/router-model:free" },
+    });
+  });
+
+  it("blocks activation when the provider's API key read fails", async () => {
+    writeJson(configPath(), {
+      settings: { secretsStorage: "keyring" },
+      providers: [
+        { provider: "gemini", hasApiKey: true, isActive: false, model: "gemini-2.5-flash" },
+      ],
+    });
+    keyring.readKeyringSecret.mockReturnValue({
+      ok: false,
+      error: { code: "KEYRING_READ_FAILED", message: "keychain locked" },
+    });
+    const { activateProvider } = await loadService();
+
+    const result = await activateProvider({ provider: "gemini", model: "gemini-2.5-flash" });
+
+    expect(catalog.getProviderModels).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ ok: false, error: { code: "INVALID_BODY" } });
   });
 
   it("fetches OpenRouter models with the stored OpenRouter API key", async () => {
@@ -254,7 +317,7 @@ describe("config service", () => {
   });
 
   describe("credential validation", () => {
-    it("rejects env credential refs with disallowed env var names", async () => {
+    it("rejects env credential refs whose var name is not the provider's own key", async () => {
       const store = await loadStore();
       await store.updateSettings({ secretsStorage: "file" });
       const { saveConfig } = await loadService();
@@ -270,7 +333,7 @@ describe("config service", () => {
         error: { code: "CREDENTIAL_INVALID" },
       });
       expect(result.ok === false && result.error.message).toContain("AWS_SECRET_ACCESS_KEY");
-      expect(result.ok === false && result.error.message).toContain("not an allowed provider key");
+      expect(result.ok === false && result.error.message).toContain("not the key for provider");
     });
 
     it("accepts env credential refs with allowed provider env vars", async () => {
@@ -285,6 +348,24 @@ describe("config service", () => {
       });
 
       expect(result).toMatchObject({ ok: true });
+    });
+
+    it("rejects an allowed env var bound to a different provider than its own", async () => {
+      const store = await loadStore();
+      await store.updateSettings({ secretsStorage: "file" });
+      const { saveConfig } = await loadService();
+
+      const result = await saveConfig({
+        provider: "gemini",
+        apiKey: { kind: "env", varName: "OPENROUTER_API_KEY" },
+        model: "gemini-2.5-flash",
+      });
+
+      expect(result).toMatchObject({
+        ok: false,
+        error: { code: "CREDENTIAL_INVALID" },
+      });
+      expect(result.ok === false && result.error.message).toContain("GOOGLE_API_KEY");
     });
 
     it("accepts ZAI_API_KEY as a valid credential env var", async () => {
@@ -365,5 +446,78 @@ describe("config service", () => {
         });
       }
     });
+  });
+});
+
+describe("getProviderModels (catalog)", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.clearAllMocks();
+  });
+
+  it("returns the slim catalog payload for an enabled provider", async () => {
+    catalog.getProviderModels.mockResolvedValue({
+      models: [{ id: "gemini-2.5-flash", name: "Gemini 2.5 Flash", description: "1M context", tier: "free", recommended: true }],
+      fetchedAt: "2026-06-02T00:00:00.000Z",
+      source: "live",
+      cached: false,
+    });
+    const { getProviderModels } = await loadService();
+    const result = await getProviderModels("gemini");
+    expect(catalog.getProviderModels).toHaveBeenCalledWith("gemini");
+    expect(result).toMatchObject({ ok: true, value: { models: [{ id: "gemini-2.5-flash", tier: "free", recommended: true }], source: "live", cached: false } });
+  });
+
+  it("rejects an unknown provider id with VALIDATION_ERROR without touching the catalog", async () => {
+    const { getProviderModels } = await loadService();
+    const result = await getProviderModels("not-a-provider" as AIProvider);
+    expect(catalog.getProviderModels).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ ok: false, error: { code: "VALIDATION_ERROR" } });
+  });
+
+  it("rejects a surfaced-but-disabled provider with the typed PROVIDER_DISABLED code", async () => {
+    const { CatalogErrorSchema } = await import("@diffgazer/core/schemas/config");
+    const { getProviderModels } = await loadService();
+
+    const result = await getProviderModels("mistral");
+
+    expect(catalog.getProviderModels).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ ok: false, error: { code: "PROVIDER_DISABLED" } });
+    // The error is a real typed domain error, not an ad-hoc string.
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(CatalogErrorSchema.safeParse(result.error).success).toBe(true);
+  });
+
+  it("refuses to serve OpenRouter from the catalog so it stays on its live key-gated route (D4)", async () => {
+    const { CatalogErrorSchema } = await import("@diffgazer/core/schemas/config");
+    const { getProviderModels } = await loadService();
+
+    const result = await getProviderModels("openrouter");
+
+    expect(catalog.getProviderModels).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ ok: false, error: { code: "PROVIDER_DISABLED" } });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(CatalogErrorSchema.safeParse(result.error).success).toBe(true);
+  });
+
+  it("rejects a catalog payload whose fetchedAt is not an RFC-3339 datetime at the boundary", async () => {
+    catalog.getProviderModels.mockResolvedValue({
+      models: [{ id: "gemini-2.5-flash", name: "Gemini 2.5 Flash", description: "", tier: "free" }],
+      fetchedAt: "not-a-datetime",
+      source: "live",
+      cached: false,
+    });
+    const { getProviderModels } = await loadService();
+
+    const result = await getProviderModels("gemini");
+
+    expect(result).toMatchObject({ ok: false, error: { code: "INTERNAL_ERROR" } });
+  });
+
+  it("propagates catalog failures as INTERNAL_ERROR", async () => {
+    catalog.getProviderModels.mockRejectedValue(new Error("catalog unavailable"));
+    const { getProviderModels } = await loadService();
+    const result = await getProviderModels("groq");
+    expect(result).toMatchObject({ ok: false, error: { code: "INTERNAL_ERROR", message: "catalog unavailable" } });
   });
 });

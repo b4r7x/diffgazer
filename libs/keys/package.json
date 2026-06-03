@@ -76,7 +76,7 @@
     "verify:dist-esm": "node --import tsx scripts/verify-dist-esm-imports.ts",
     "validate:artifacts": "pnpm --dir ../.. validate:artifacts",
     "dev": "tsc --watch",
-    "type-check": "tsc --noEmit",
+    "type-check": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json && tsc --noEmit -p scripts/tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:types": "vitest --typecheck --typecheck.only --run",

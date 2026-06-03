@@ -11,7 +11,35 @@ vi.mock("../api/hooks/config", () => ({
   useOpenRouterModels: (...args: unknown[]) => mockUseOpenRouterModels(...args),
 }));
 
-const { useOpenRouterModelsMapped } = await import("./use-openrouter-models-mapped.js");
+const { useOpenRouterModelsMapped, getCompatibilityLabel } = await import(
+  "./use-openrouter-models-mapped.js"
+);
+
+describe("getCompatibilityLabel", () => {
+  it("reports no models available when total is zero", () => {
+    expect(getCompatibilityLabel({ total: 0, compatible: 0, hasParams: false })).toBe(
+      "No models available.",
+    );
+  });
+
+  it("reports filtered compatibility ratio when compatible < total", () => {
+    expect(getCompatibilityLabel({ total: 100, compatible: 42, hasParams: true })).toBe(
+      "Showing 42/100 models that support structured outputs.",
+    );
+  });
+
+  it("reports full compatibility when all models match", () => {
+    expect(getCompatibilityLabel({ total: 5, compatible: 5, hasParams: true })).toBe(
+      "Showing models that support structured outputs.",
+    );
+  });
+
+  it("reports unknown compatibility when no model exposes params", () => {
+    expect(getCompatibilityLabel({ total: 5, compatible: 5, hasParams: false })).toBe(
+      "Compatibility unknown; showing all models.",
+    );
+  });
+});
 
 describe("useOpenRouterModelsMapped", () => {
   beforeEach(() => {

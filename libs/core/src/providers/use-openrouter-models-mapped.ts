@@ -12,6 +12,19 @@ export interface OpenRouterModelsState {
   hasParams: boolean;
 }
 
+export function getCompatibilityLabel({
+  total,
+  compatible,
+  hasParams,
+}: Pick<OpenRouterModelsState, "total" | "compatible" | "hasParams">): string {
+  if (total === 0) return "No models available.";
+  if (compatible < total) {
+    return `Showing ${compatible}/${total} models that support structured outputs.`;
+  }
+  if (hasParams) return "Showing models that support structured outputs.";
+  return "Compatibility unknown; showing all models.";
+}
+
 const EMPTY_STATE: OpenRouterModelsState = {
   models: [],
   loading: false,

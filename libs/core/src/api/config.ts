@@ -7,11 +7,15 @@ import type {
   InitResponse,
   ProvidersStatusResponse,
   OpenRouterModelsResponse,
+  ProviderModelsResponse,
   SaveConfigRequest,
   SettingsConfig,
   TrustConfig,
 } from "@diffgazer/core/schemas/config";
-import { OpenRouterModelsResponseSchema } from "@diffgazer/core/schemas/config";
+import {
+  OpenRouterModelsResponseSchema,
+  ProviderModelsResponseSchema,
+} from "@diffgazer/core/schemas/config";
 import type { ApiClient, TrustListResponse, TrustResponse } from "./types.js";
 
 export async function getProviderStatus(
@@ -30,6 +34,19 @@ export async function getOpenRouterModels(
     "/api/config/provider/openrouter/models",
     undefined,
     (body) => OpenRouterModelsResponseSchema.parse(body),
+  );
+}
+
+export async function getProviderModels(
+  client: ApiClient,
+  providerId: string
+): Promise<ProviderModelsResponse> {
+  // The catalog is models.dev-backed and changes often, so validate the slim
+  // payload shape rather than trusting the response type.
+  return client.get<ProviderModelsResponse>(
+    `/api/config/provider/${providerId}/models`,
+    undefined,
+    (body) => ProviderModelsResponseSchema.parse(body),
   );
 }
 
@@ -104,6 +121,7 @@ export async function deleteTrust(
 export const bindConfig = (client: ApiClient) => ({
   getProviderStatus: () => getProviderStatus(client),
   getOpenRouterModels: () => getOpenRouterModels(client),
+  getProviderModels: (providerId: string) => getProviderModels(client, providerId),
   saveConfig: (config: SaveConfigRequest) => saveConfig(client, config),
   getSettings: () => getSettings(client),
   saveSettings: (settings: Partial<SettingsConfig>) => saveSettings(client, settings),
