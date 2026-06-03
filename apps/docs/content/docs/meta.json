@@ -3,6 +3,7 @@
   "root": true,
   "pages": [
     "...ui",
-    "...keys"
+    "...keys",
+    "...app"
   ]
 }

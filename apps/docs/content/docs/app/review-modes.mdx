@@ -1,0 +1,32 @@
+---
+title: Review modes
+description: The default web environment and the opt-in beta terminal UI.
+---
+
+# Review modes
+
+diffgazer can review in two environments. The web environment is the default; the terminal UI is an opt-in beta.
+
+## Web (default)
+
+```bash
+diffgazer
+```
+
+Starts a local server, serves the review UI, and opens your browser. Exit with `Ctrl+C`.
+
+## Terminal UI (beta)
+
+```bash
+diffgazer --tui
+```
+
+A keyboard-first Ink terminal UI for reviewing without leaving the shell. It is **incomplete and not recommended for normal use** while it is in beta. Exit with `q` or `Ctrl+C`.
+
+Start the beta TUI with a specific theme:
+
+```bash
+diffgazer --tui --theme <theme>
+```
+
+The `--theme` option only applies together with `--tui`.

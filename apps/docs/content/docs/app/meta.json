@@ -1,0 +1,13 @@
+{
+  "title": "diffgazer",
+  "root": true,
+  "pages": [
+    "---Getting Started---",
+    "installation",
+    "first-review",
+    "---Reviewing---",
+    "review-modes",
+    "---Reference---",
+    "cli"
+  ]
+}

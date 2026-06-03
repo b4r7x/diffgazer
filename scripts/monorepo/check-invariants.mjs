@@ -294,7 +294,6 @@ assertLicenseFilesMatch(parsedPackages);
 
 const expectedWorkspacePackageFiles = [
   "apps/docs/package.json",
-  "apps/hub/package.json",
   "apps/landing/package.json",
   "apps/web/package.json",
   "cli/add/package.json",

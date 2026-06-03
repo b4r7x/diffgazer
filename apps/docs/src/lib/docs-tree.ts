@@ -21,6 +21,48 @@ export interface PageTree {
 	children: PageTreeNode[];
 }
 
+export interface LandingItem {
+	name: string;
+	url: string;
+}
+
+export interface LandingSection {
+	name: string;
+	items: LandingItem[];
+}
+
+function toLandingItem(node: PageTreeNode): LandingItem | null {
+	if (node.type === "page" && node.url) {
+		return { name: node.name, url: node.url };
+	}
+	return null;
+}
+
+/**
+ * Groups a mapped page tree into separator-delimited sections. Leading pages
+ * before the first separator fall back to a section named after the tree, and
+ * empty sections are dropped.
+ */
+export function collectLandingSections(tree: PageTree): LandingSection[] {
+	const sections: LandingSection[] = [];
+	let current: LandingSection | null = null;
+	for (const node of tree.children) {
+		if (node.type === "separator") {
+			current = { name: node.name, items: [] };
+			sections.push(current);
+			continue;
+		}
+		const item = toLandingItem(node);
+		if (!item) continue;
+		if (!current) {
+			current = { name: tree.name, items: [] };
+			sections.push(current);
+		}
+		current.items.push(item);
+	}
+	return sections.filter((section) => section.items.length > 0);
+}
+
 /**
  * fumadocs page-tree node names are typed as `ReactNode`. Ours are plain
  * strings (they come from MDX titles / meta.json), so coerce defensively at

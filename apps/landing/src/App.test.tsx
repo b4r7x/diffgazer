@@ -1,31 +1,87 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import axe from "axe-core";
 import { describe, it, expect } from "vitest";
 import { App } from "./App";
+import {
+  DOCS_URL,
+  GITHUB_URL,
+  INSTALL_COMMAND,
+} from "./content";
+
+// jsdom cannot compute layout, so color-contrast is unreliable here and is
+// disabled — mirrors the @diffgazer/ui axe helper.
+async function runAxe(container: Element) {
+  return axe.run(container, {
+    rules: { "color-contrast": { enabled: false } },
+  });
+}
 
 describe("Landing App", () => {
-  it("renders heading and install command", () => {
+  it("renders the product name as the page heading", () => {
     render(<App />);
-    expect(screen.getByRole("heading", { name: /diffgazer/i })).toBeInTheDocument();
-    expect(screen.getByText(/npm install/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 1, name: /diffgazer/i }),
+    ).toBeInTheDocument();
   });
 
-  it("has documentation link pointing at the default docs origin", () => {
+  it("exposes hero CTAs linked to install, docs, and GitHub", () => {
     render(<App />);
-    expect(screen.getByRole("link", { name: /documentation/i })).toHaveAttribute(
+
+    expect(screen.getByRole("link", { name: /^install$/i })).toHaveAttribute(
       "href",
-      "https://docs.b4r7.dev",
+      "#install",
+    );
+
+    // Docs and GitHub appear in the hero and the footer; every instance must
+    // resolve to the canonical target.
+    const docsLinks = screen.getAllByRole("link", { name: /documentation/i });
+    expect(docsLinks.length).toBeGreaterThan(0);
+    docsLinks.forEach((link) => expect(link).toHaveAttribute("href", DOCS_URL));
+
+    const githubLinks = screen.getAllByRole("link", { name: /github/i });
+    expect(githubLinks.length).toBeGreaterThan(0);
+    githubLinks.forEach((link) =>
+      expect(link).toHaveAttribute("href", GITHUB_URL),
     );
   });
 
-  it("exposes header, main, and footer landmarks", () => {
+  it("renders the sample diff with added and removed rows", () => {
     render(<App />);
-    expect(screen.getByRole("banner")).toBeInTheDocument();
-    expect(screen.getByRole("main")).toBeInTheDocument();
-    expect(screen.getByRole("contentinfo")).toBeInTheDocument();
+    // The DiffView figure is named by the diffed file path (role + text).
+    const diff = screen.getByRole("figure", { name: /score\.ts/i });
+
+    // Row state is exposed accessibly via screen-reader prefixes, not classes.
+    expect(within(diff).getAllByText(/^Added:/).length).toBeGreaterThan(0);
+    expect(within(diff).getAllByText(/^Removed:/).length).toBeGreaterThan(0);
+
+    // The diff body carries the changed source so it is not an empty shell.
+    expect(within(diff).getAllByText(/calculateScore/).length).toBeGreaterThan(0);
   });
 
-  it("targets the main landmark from the skip link", () => {
+  it("offers a j/k navigation hint in the showcase status bar", () => {
+    render(<App />);
+    expect(screen.getByText("j")).toBeInTheDocument();
+    expect(screen.getByText("k")).toBeInTheDocument();
+  });
+
+  it("labels the install command and copies it on click", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    expect(screen.getByLabelText("Install command")).toHaveTextContent(
+      INSTALL_COMMAND,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: /copy install command/i }),
+    );
+
+    expect(await navigator.clipboard.readText()).toBe(INSTALL_COMMAND);
+    expect(screen.getByRole("button", { name: /copied/i })).toBeInTheDocument();
+  });
+
+  it("keeps a skip-to-content link targeting the main landmark", () => {
     render(<App />);
     const skipLink = screen.getByRole("link", { name: /skip to content/i });
     expect(skipLink).toHaveAttribute("href", "#main");
@@ -36,24 +92,20 @@ describe("Landing App", () => {
     const user = userEvent.setup();
     render(<App />);
     await user.tab();
-    expect(screen.getByRole("link", { name: /skip to content/i })).toHaveFocus();
+    expect(
+      screen.getByRole("link", { name: /skip to content/i }),
+    ).toHaveFocus();
   });
 
-  it("labels the install command for assistive tech", () => {
+  it("exposes banner, main, and contentinfo landmarks", () => {
     render(<App />);
-    expect(screen.getByLabelText("Install command")).toHaveTextContent(
-      "npm install -g diffgazer",
-    );
+    expect(screen.getByRole("banner")).toBeInTheDocument();
+    expect(screen.getByRole("main")).toBeInTheDocument();
+    expect(screen.getByRole("contentinfo")).toBeInTheDocument();
   });
 
-  it("copies the install command and reflects the copied state", async () => {
-    const user = userEvent.setup();
-    render(<App />);
-    const copyButton = screen.getByRole("button", { name: /copy install command/i });
-
-    await user.click(copyButton);
-
-    expect(await navigator.clipboard.readText()).toBe("npm install -g diffgazer");
-    expect(screen.getByRole("button", { name: /copied/i })).toBeInTheDocument();
+  it("has no axe violations", async () => {
+    const { container } = render(<App />);
+    expect(await runAxe(container)).toHaveNoViolations();
   });
 });

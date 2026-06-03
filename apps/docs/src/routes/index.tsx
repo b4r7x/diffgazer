@@ -1,17 +1,38 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { Button } from "@/components/ui/button/button";
-import { Kbd } from "@/components/ui/kbd/kbd";
+import { createFileRoute } from "@tanstack/react-router";
+import { createServerFn } from "@tanstack/react-start";
+import { HomeView } from "@/features/home/components/home-view";
+import { buildHomeLibrary, type HomeLibrary } from "@/features/home/home-data";
+import { getEnabledDocsLibraries, parseDocsLibrary } from "@/lib/docs-library";
 import {
-	getEnabledDocsLibraries,
-	PRIMARY_DOCS_LIBRARY_ID,
-} from "@/lib/docs-library";
+	collectLandingSections,
+	fromFumadocsRoot,
+	mapPageTreeForLibrary,
+} from "@/lib/docs-tree";
 import { buildPageSeo } from "@/lib/seo";
 
+const homeLoader = createServerFn({ method: "GET" }).handler(
+	async (): Promise<{ libraries: HomeLibrary[] }> => {
+		const { source } = await import("@/lib/source");
+		const root = fromFumadocsRoot(source.pageTree);
+
+		const libraries = getEnabledDocsLibraries().map((config) => {
+			const library = parseDocsLibrary(config.id);
+			const sections = collectLandingSections(
+				mapPageTreeForLibrary(root, library),
+			);
+			return buildHomeLibrary(config, library, sections);
+		});
+
+		return { libraries };
+	},
+);
+
 export const Route = createFileRoute("/")({
-	component: LandingPage,
+	component: HomePage,
+	loader: () => homeLoader(),
 	head: () => {
 		const seo = buildPageSeo({
-			title: "diffgazer docs hub",
+			title: "diffgazer docs",
 			pathname: "/",
 			type: "website",
 		});
@@ -19,48 +40,7 @@ export const Route = createFileRoute("/")({
 	},
 });
 
-const enabledLibraries = getEnabledDocsLibraries();
-
-function LandingPage() {
-	return (
-		<main
-			id="main-content"
-			className="flex items-center justify-center min-h-screen"
-		>
-			<div className="text-center space-y-6">
-				<h1 className="text-4xl font-bold text-foreground">
-					diffgazer docs hub
-				</h1>
-
-				<p className="text-muted-foreground text-sm max-w-md mx-auto">
-					Select docs by library. Generated registry endpoints are packaged for
-					shadcn compatibility and will be hosted with the docs deployment.
-				</p>
-
-				<div className="flex items-center justify-center gap-3">
-					<Link to="/$lib" params={{ lib: PRIMARY_DOCS_LIBRARY_ID }}>
-						<Button variant="primary" bracket>
-							Get Started
-						</Button>
-					</Link>
-					{enabledLibraries.map((lib) => (
-						<Link
-							key={lib.id}
-							to="/$lib/$"
-							params={{
-								lib: lib.id,
-								_splat: lib.defaultRouteSlugs.join("/"),
-							}}
-						>
-							<Button variant="outline">{lib.id}</Button>
-						</Link>
-					))}
-				</div>
-
-				<p className="text-muted-foreground text-xs">
-					Press <Kbd>⌘K</Kbd> to search
-				</p>
-			</div>
-		</main>
-	);
+function HomePage() {
+	const { libraries } = Route.useLoaderData();
+	return <HomeView libraries={libraries} />;
 }

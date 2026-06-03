@@ -1,44 +1,34 @@
-import { CopyButton } from "./copy-button";
-import {
-  DOCS_LINK_TEXT,
-  DOCS_URL,
-  INSTALL_COMMAND,
-  PRODUCT_NAME,
-  TAGLINE,
-} from "./content";
+import { Hero } from "./sections/hero";
+import { ValueProps } from "./sections/value-props";
+import { Showcase } from "./sections/showcase";
+import { Install } from "./sections/install";
+import { Footer } from "./sections/footer";
+import { PRODUCT_NAME } from "./content";
 
 export function App() {
   return (
     <>
       <a
         href="#main"
-        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-10 focus:rounded focus:border focus:border-tui-border focus:bg-tui-surface-1 focus:px-3 focus:py-2 focus:text-tui-fg"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-10 focus:rounded-sm focus:border focus:border-border focus:bg-background focus:px-3 focus:py-2 focus:text-foreground"
       >
         Skip to content
       </a>
-      <header className="mx-auto max-w-2xl px-4 pt-16">
-        <h1 className="text-2xl font-bold text-tui-fg">{PRODUCT_NAME}</h1>
+      <header className="mx-auto max-w-3xl px-4 pt-8">
+        <span className="font-mono text-sm font-bold tracking-widest text-muted-foreground">
+          {PRODUCT_NAME}
+        </span>
       </header>
-      <main id="main" className="mx-auto max-w-2xl px-4 py-8">
-        <p className="text-tui-dim">{TAGLINE}</p>
-        <div className="mt-8 flex flex-wrap items-center gap-4">
-          <code
-            aria-label="Install command"
-            className="rounded border border-tui-border bg-tui-surface-1 px-3 py-2 text-sm text-tui-blue"
-          >
-            {INSTALL_COMMAND}
-          </code>
-          <CopyButton text={INSTALL_COMMAND} label="Copy install command" />
-        </div>
+      <main
+        id="main"
+        className="mx-auto flex max-w-3xl flex-col gap-24 px-4 py-16 sm:py-24"
+      >
+        <Hero />
+        <ValueProps />
+        <Showcase />
+        <Install />
       </main>
-      <footer className="mx-auto max-w-2xl px-4 pb-16">
-        <a
-          href={DOCS_URL}
-          className="text-tui-blue underline hover:text-tui-fg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
-        >
-          {DOCS_LINK_TEXT}
-        </a>
-      </footer>
+      <Footer />
     </>
   );
 }
