@@ -1,11 +1,24 @@
 ---
 title: Patterns
-description: Conventions for composition, interaction states, and variants across @diffgazer/ui.
+description: Cross-cutting conventions every @diffgazer/ui primitive follows — keyboard handling, compound composition, interaction states, and variants.
 ---
 
-Cross-cutting conventions the components follow, useful when composing or extending them.
+Conventions every `@diffgazer/ui` primitive follows. Read the relevant one before composing or extending a component, or before authoring a new variant dimension.
 
-- [Keyboard Navigation](/ui/patterns/keyboard-navigation) — shared keyboard interaction model
-- [Compound Components](/ui/patterns/compound-components) — multi-part component composition
-- [Interaction States](/ui/patterns/interaction-states) — hover, focus, active, and disabled states
-- [Variants](/ui/patterns/variants) — CVA, CSS, and Record conventions for variant styling
+| Pattern | Read it when |
+|---------|--------------|
+| [Keyboard Navigation](/ui/patterns/keyboard-navigation) | A component needs arrow-key or keyboard handling. Explains the headless-friendly philosophy: primitives expose `highlighted`, `onKeyDown`, and selection control points and compose with `@diffgazer/keys`. |
+| [Compound Components](/ui/patterns/compound-components) | Building a multi-part component whose pieces share state through React Context — Dialog, Tabs, Menu, NavigationList. |
+| [Interaction States](/ui/patterns/interaction-states) | Styling hover, highlight, or selected. The three independent TUI states: mouse hover, keyboard cursor, and persistent choice. |
+| [Variant Conventions](/ui/patterns/variants) | Deciding between CVA, a Record, a CSS file, or plain Tailwind for a variant dimension. |
+
+## Choosing a variant approach
+
+Variants are the load-bearing convention — the contract referenced from the UI Library Rules. Pick the first rule that matches:
+
+- Named variant dimensions (size, variant, tone, density) → **CVA**.
+- A variant key that maps to a non-class value → **Record**.
+- Styling that needs `@keyframes`, CSS counters, pseudo-element geometry, multi-attribute data selectors, or forced-colors / reduced-motion overrides → **CSS file**.
+- A single boolean conditional with no dimensions → **plain Tailwind + `cn()`**.
+
+See [Variant Conventions](/ui/patterns/variants) for the full rules, shared variant modules, and anti-patterns.

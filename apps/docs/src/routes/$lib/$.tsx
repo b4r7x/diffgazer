@@ -1,5 +1,5 @@
 import browserCollections from "fumadocs-mdx:collections/browser";
-import { createFileRoute, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { Suspense } from "react";
 import { ContentSpinner } from "@/components/content-spinner";
@@ -14,15 +14,17 @@ import {
 	DocsPageHeader,
 	DocsPageLayout,
 } from "@/components/docs-page";
+import { Pager } from "@/components/ui/pager";
 import { DocsContentLayout } from "@/layouts/docs-content-layout";
 import {
 	type DocsLibraryId,
 	docsPath,
 	getDocsLibraryConfig,
 	parseDocsLibrary,
+	routeSplatFromDocsPath,
 	sourceSlugsForLibrary,
 } from "@/lib/docs-library";
-import type { PageTree } from "@/lib/docs-tree";
+import { findPageNeighbors, type PageTree } from "@/lib/docs-tree";
 import { loadDocData } from "@/lib/load-doc-data";
 import { buildPageSeo } from "@/lib/seo";
 import { useMDXComponents } from "@/mdx-components";
@@ -116,11 +118,14 @@ const clientLoader = browserCollections.docs.createClientLoader({
 
 function Page() {
 	const data = Route.useLoaderData();
+	const { _splat } = Route.useParams();
 	const { pageTree, library } = DocsRoute.useLoaderData();
+	const pageUrl = docsPath(library, _splat?.split("/") ?? []);
 
 	return (
 		<MdxDocsPage
 			path={data.path}
+			pageUrl={pageUrl}
 			tree={pageTree}
 			library={library}
 			componentData={data.componentData}
@@ -140,12 +145,14 @@ function buildDocData(
 
 function MdxDocsPage({
 	path,
+	pageUrl,
 	tree,
 	library,
 	componentData,
 	hookData,
 }: {
 	path: string;
+	pageUrl: string;
 	tree: PageTree;
 	library: DocsLibraryId;
 	componentData: ComponentData | null;
@@ -160,7 +167,64 @@ function MdxDocsPage({
 					<MdxContent path={path} />
 				</Suspense>
 			</DocDataProvider>
+			<DocsFooterPager pageUrl={pageUrl} tree={tree} library={library} />
 		</DocsContentLayout>
+	);
+}
+
+function DocsFooterPager({
+	pageUrl,
+	tree,
+	library,
+}: {
+	pageUrl: string;
+	tree: PageTree;
+	library: DocsLibraryId;
+}) {
+	const { previous, next } = findPageNeighbors(tree, pageUrl);
+
+	return (
+		<Pager>
+			{previous ? (
+				<Pager.Link direction="previous">
+					{({ className, rel }) => (
+						<Link
+							to="/$lib/$"
+							params={{
+								lib: library,
+								_splat: routeSplatFromDocsPath(previous.url),
+							}}
+							className={className}
+							rel={rel}
+						>
+							<span aria-hidden="true">&larr; </span>
+							{`Previous: ${previous.name}`}
+						</Link>
+					)}
+				</Pager.Link>
+			) : (
+				<span className="text-xs font-mono text-muted-foreground">EOF</span>
+			)}
+
+			{next && (
+				<Pager.Link direction="next">
+					{({ className, rel }) => (
+						<Link
+							to="/$lib/$"
+							params={{
+								lib: library,
+								_splat: routeSplatFromDocsPath(next.url),
+							}}
+							className={className}
+							rel={rel}
+						>
+							{`Next: ${next.name}`}
+							<span aria-hidden="true"> &rarr;</span>
+						</Link>
+					)}
+				</Pager.Link>
+			)}
+		</Pager>
 	);
 }
 

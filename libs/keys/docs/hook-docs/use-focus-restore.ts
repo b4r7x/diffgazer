@@ -58,6 +58,7 @@ export const useFocusRestoreDoc: HookDoc = {
   ],
   examples: [
     { name: "use-focus-restore-basic", title: "Temporary panel focus restore" },
+    { name: "use-focus-restore-fallback", title: "Triggerless palette with fallback" },
   ],
   tags: ["standalone", "focus", "accessibility", "overlay"],
 }

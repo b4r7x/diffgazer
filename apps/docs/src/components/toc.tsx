@@ -1,11 +1,23 @@
 import type { TableOfContents } from "fumadocs-core/toc";
-import { type MouseEvent, useEffect, useRef } from "react";
+import {
+	type MouseEvent,
+	type ReactNode,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 import { ScrollArea } from "@/components/ui/scroll-area/scroll-area";
 import { Toc, TocItem, TocList } from "@/components/ui/toc";
 import {
 	type ActiveHeadingActivation,
 	useActiveHeading,
 } from "@/hooks/use-active-heading";
+
+interface TocEntry {
+	depth: number;
+	title: ReactNode;
+	id: string;
+}
 
 function parseHeadingId(url: string): string | null {
 	const hashIndex = url.indexOf("#");
@@ -17,6 +29,50 @@ function parseHeadingId(url: string): string | null {
 	} catch {
 		return rawHash;
 	}
+}
+
+// Entries from the compile-time fumadocs TOC (markdown `##`/`###` only). Used
+// as the SSR/first-paint seed so hydration matches and markdown pages keep
+// their existing TOC without a flash.
+function entriesFromToc(toc: TableOfContents): TocEntry[] {
+	return toc.flatMap((item) => {
+		const id = parseHeadingId(item.url);
+		if (!id) return [];
+		return [{ depth: item.depth, title: item.title, id }];
+	});
+}
+
+// Entries from the rendered DOM. This is the complete, document-order set of
+// section headings the reader sees, including runtime headings the compile-time
+// TOC never sees — `<Step>` titles and feature blocks like the API reference.
+// The TOC's own "On this page" heading renders without an id and is skipped.
+function entriesFromDom(doc: Document, containerId: string): TocEntry[] {
+	const container = doc.getElementById(containerId);
+	if (!container) return [];
+
+	const seen = new Set<string>();
+	const entries: TocEntry[] = [];
+
+	for (const heading of container.querySelectorAll<HTMLElement>(
+		"h2[id], h3[id]",
+	)) {
+		const { id } = heading;
+		if (!id || seen.has(id)) continue;
+		seen.add(id);
+		entries.push({
+			depth: heading.tagName === "H3" ? 3 : 2,
+			title: heading.textContent?.trim() ?? "",
+			id,
+		});
+	}
+
+	return entries;
+}
+
+// Headings change identity only when their level or id changes, so the (depth,
+// id) sequence is enough to detect a real difference and skip redundant updates.
+function entriesSignature(entries: TocEntry[]): string {
+	return entries.map((e) => `${e.depth}:${e.id}`).join("\n");
 }
 
 function isPlainLeftClick(event: MouseEvent<HTMLAnchorElement>): boolean {
@@ -46,11 +102,35 @@ export function TableOfContentsPanel({
 }: TableOfContentsPanelProps) {
 	const itemRefs = useRef(new Map<string, HTMLAnchorElement>());
 
-	const tocEntries = toc.flatMap((item) => {
-		const id = parseHeadingId(item.url);
-		if (!id) return [];
-		return [{ depth: item.depth, title: item.title, id, key: item.url }];
-	});
+	const [tocEntries, setTocEntries] = useState<TocEntry[]>(() =>
+		entriesFromToc(toc),
+	);
+
+	// Source the rendered entries from the DOM after mount. Headings arrive
+	// asynchronously (Suspense-loaded MDX) and include runtime-injected ones
+	// (`<Step>` titles, API reference), so the static TOC alone is incomplete.
+	// Observe the content container to refresh as headings appear or change.
+	useEffect(() => {
+		const containerId = "main-content";
+		const container = document.getElementById(containerId);
+		if (!container) return;
+
+		let current = entriesSignature(entriesFromToc(toc));
+
+		const sync = () => {
+			const next = entriesFromDom(document, containerId);
+			const signature = entriesSignature(next);
+			if (signature === current) return;
+			current = signature;
+			setTocEntries(next);
+		};
+
+		sync();
+
+		const observer = new MutationObserver(sync);
+		observer.observe(container, { childList: true, subtree: true });
+		return () => observer.disconnect();
+	}, [toc]);
 
 	const headingIds = tocEntries.map((e) => e.id);
 
@@ -127,7 +207,7 @@ export function TableOfContentsPanel({
 
 							return (
 								<TocItem
-									key={entry.key}
+									key={entry.id}
 									ref={(element) => {
 										if (element) {
 											itemRefs.current.set(entry.id, element);

@@ -4,7 +4,17 @@ description: "Push a named scope onto the keyboard scope stack. Handlers in deep
 hook: "use-scope"
 ---
 
+`useScope` declares a keyboard scope for the part of the tree it lives in. While the scope is active, shortcuts registered under it ([`useKey`](/keys/hooks/use-key) with `scope`, or [`useScopedNavigation`](/keys/hooks/use-scoped-navigation)) win over shortcuts owned by shallower scopes. The scope is pushed on mount and popped automatically on unmount, so layered overlays capture keys for exactly as long as they are open.
+
 <UsageSnippet />
+
+## When to use it
+
+- A dialog, drawer, or popover should claim `Escape` (or arrow keys) while open, shadowing a page-level binding for the same combo.
+- Several overlays can stack and each deeper one should take priority until it closes.
+- A region needs to register provider shortcuts under a stable, named scope.
+
+Scopes describe priority, not focus containment. To restrict a shortcut to a DOM subtree, use `containerRef` + `focusWithinOnly` on [`useKey`](/keys/hooks/use-key). The two compose. For the full model see the [scopes guide](/keys/guides/scopes).
 
 ## Installation
 
@@ -18,6 +28,8 @@ hook: "use-scope"
 
 <ReturnsTable />
 
+Pass the returned value as the `scope` option to `useKey` so a binding registers under this scope.
+
 ## Examples
 
 <Examples />
@@ -25,5 +37,17 @@ hook: "use-scope"
 ## Notes
 
 <Notes />
+
+## Edge cases
+
+- **`name: null`.** Pass `null` to skip pushing a scope while keeping the Hook call — the supported way to make a scope conditional without breaking the Rules of Hooks.
+- **Ordering across a commit.** Declarative scopes are ordered by React component identity, keeping siblings and nested overlays deterministic within a single commit. Imperative `pushScope` calls from the provider sit above declarative scopes until popped.
+- **Requires a provider.** `useScope` reads the registry context and must live inside a [`KeyboardProvider`](/keys/api/keyboard-provider) tree.
+
+## Related
+
+- [`useKey`](/keys/hooks/use-key) — register a shortcut under the scope this hook returns.
+- [`KeyboardProvider`](/keys/api/keyboard-provider) — owns the scope stack and key dispatch.
+- [Scopes guide](/keys/guides/scopes) — stacking, priority, and imperative pushes.
 
 <SourceViewer />

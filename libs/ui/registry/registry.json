@@ -2408,7 +2408,7 @@
       "name": "sidebar-variants",
       "type": "registry:lib",
       "title": "Sidebar Variants",
-      "description": "Shared CVA visual contracts for the Sidebar primitive (container + item, five active-marker variants).",
+      "description": "Shared CVA visual contracts for the Sidebar primitive (container + item, six active-marker variants).",
       "dependencies": [
         "class-variance-authority"
       ],

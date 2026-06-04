@@ -19,19 +19,22 @@ describe("getPreRenderPages", () => {
 		expect(pages.some((page) => page.path === "/")).toBe(true);
 	});
 
-	it("prerenders the diffgazer product-docs landing exactly once", () => {
+	it("omits the library roots that redirect to their first page", () => {
 		const pages = getPreRenderPages();
-		const appLanding = pages.filter((page) => page.path === "/app");
-		expect(appLanding).toHaveLength(1);
+		for (const root of ["/ui", "/keys", "/app"]) {
+			expect(pages.some((page) => page.path === root)).toBe(false);
+		}
 	});
 
-	it("emits a single landing page per enabled library", () => {
+	it("lists the first-page redirect targets instead of the library roots", () => {
 		const pages = getPreRenderPages();
-		const uiLanding = pages.filter((page) => page.path === "/ui");
-		const keysLanding = pages.filter((page) => page.path === "/keys");
-
-		expect(uiLanding).toHaveLength(1);
-		expect(keysLanding).toHaveLength(1);
+		for (const firstPage of [
+			"/ui/getting-started",
+			"/keys/getting-started",
+			"/app/getting-started",
+		]) {
+			expect(pages.some((page) => page.path === firstPage)).toBe(true);
+		}
 	});
 
 	it("does not include the orphaned /ui/index path", () => {
@@ -92,14 +95,14 @@ describe("getPreRenderPages", () => {
 		expect(componentPaths.length).toBeGreaterThan(0);
 	});
 
-	it("resolves a source MDX file for landing pages so lastmod can use mtime", () => {
+	it("resolves a source MDX file for the first-page targets so lastmod can use mtime", () => {
 		const pages = getPreRenderPages();
-		const uiLanding = pages.find((page) => page.path === "/ui");
+		const uiFirstPage = pages.find((page) => page.path === "/ui/getting-started");
 
-		expect(uiLanding).toBeDefined();
-		expect(uiLanding?.source).not.toBeNull();
-		expect(uiLanding?.source).toContain(
-			`${docsRoot}/content/docs/ui/index.mdx`,
+		expect(uiFirstPage).toBeDefined();
+		expect(uiFirstPage?.source).not.toBeNull();
+		expect(uiFirstPage?.source).toContain(
+			`${docsRoot}/content/docs/ui/getting-started/index.mdx`,
 		);
 	});
 });

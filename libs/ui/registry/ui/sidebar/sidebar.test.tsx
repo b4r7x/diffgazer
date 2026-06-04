@@ -405,7 +405,9 @@ describe("SidebarSection collapsible", () => {
 })
 
 describe("Sidebar variants", () => {
-  function renderWithVariant(variant: "caret" | "inverted" | "bar" | "bracket" | "block") {
+  function renderWithVariant(
+    variant: "caret" | "inverted" | "bar" | "bracket" | "block" | "terminal",
+  ) {
     return render(
       <Sidebar variant={variant}>
         <Sidebar.Content>
@@ -484,6 +486,17 @@ describe("Sidebar variants", () => {
     const active = screen.getByRole("button", { name: "Quickstart" })
     expect(active).toHaveAttribute("aria-current", "page")
     expect(active).toHaveAttribute("data-active", "true")
+    expect(active.textContent).not.toMatch(/[▸▾[\]*]/)
+  })
+
+  it("terminal variant renders the > prompt only on the active item", () => {
+    renderWithVariant("terminal")
+    const active = screen.getByRole("button", { name: /Quickstart/i })
+    const inactive = screen.getByRole("button", { name: /Install/i })
+    expect(active).toHaveAttribute("aria-current", "page")
+    expect(active).toHaveAttribute("data-active", "true")
+    expect(active.textContent).toContain(">")
+    expect(inactive.textContent).not.toContain(">")
     expect(active.textContent).not.toMatch(/[▸▾[\]*]/)
   })
 

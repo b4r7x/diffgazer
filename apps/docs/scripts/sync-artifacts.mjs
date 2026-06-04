@@ -24,6 +24,10 @@ const DOCS_LIBRARIES_CONFIG_PATH = resolve(
 const docsLibraries = readDocsLibrariesConfig(DOCS_LIBRARIES_CONFIG_PATH);
 const artifactLibraries = getArtifactLibraries(docsLibraries);
 
+const authoredRootPages = docsLibraries.libraries
+	.filter((library) => library.enabled && !library.artifactSource)
+	.map((library) => `...${library.id}`);
+
 const syncMode = resolveArtifactSyncMode(process.env, {
 	libraries: artifactLibraries,
 	resolveFromDir: DOCS_ROOT,
@@ -39,6 +43,7 @@ const syncResult = syncDocsFromArtifacts({
 	}),
 	sourceOrigin: REGISTRY_ORIGIN,
 	mode: syncMode,
+	extraRootPages: authoredRootPages,
 });
 
 const primaryArtifact = syncResult.artifacts.find(

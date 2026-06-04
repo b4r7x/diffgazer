@@ -41,6 +41,7 @@ export const useScrollLockDoc: HookDoc = {
   ],
   examples: [
     { name: "use-scroll-lock-basic", title: "Lock body scroll in a modal" },
+    { name: "use-scroll-lock-target", title: "Lock a specific scroll container" },
   ],
   tags: ["standalone", "scroll", "utility"],
 }

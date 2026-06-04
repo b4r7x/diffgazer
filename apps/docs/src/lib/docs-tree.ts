@@ -38,6 +38,44 @@ function toLandingItem(node: PageTreeNode): LandingItem | null {
 	return null;
 }
 
+/** Depth-first list of navigable pages in sidebar order, skipping separators and url-less folders. */
+function flattenPageTree(tree: PageTree): LandingItem[] {
+	const pages: LandingItem[] = [];
+	const walk = (nodes: PageTreeNode[]) => {
+		for (const node of nodes) {
+			const item = toLandingItem(node);
+			if (item) pages.push(item);
+			if (node.children) walk(node.children);
+		}
+	};
+	walk(tree.children);
+	return pages;
+}
+
+/**
+ * The first navigable page in sidebar order, i.e. the page the sidebar renders
+ * at the top once separators and url-less folders are skipped. The bare library
+ * root redirects here so visitors never land on an empty library shell.
+ */
+export function firstNavigablePage(tree: PageTree): LandingItem | null {
+	return flattenPageTree(tree)[0] ?? null;
+}
+
+export interface PageNeighbors {
+	previous: LandingItem | null;
+	next: LandingItem | null;
+}
+
+export function findPageNeighbors(tree: PageTree, url: string): PageNeighbors {
+	const pages = flattenPageTree(tree);
+	const index = pages.findIndex((page) => page.url === url);
+	if (index === -1) return { previous: null, next: null };
+	return {
+		previous: pages[index - 1] ?? null,
+		next: pages[index + 1] ?? null,
+	};
+}
+
 /**
  * Groups a mapped page tree into separator-delimited sections. Leading pages
  * before the first separator fall back to a section named after the tree, and
@@ -96,25 +134,28 @@ export function fromFumadocsRoot(root: FumadocsRoot): PageTree {
 	};
 }
 
+/**
+ * A separator labels the section that follows it up to the next separator.
+ * Library scoping filters out the other libraries' pages but keeps their
+ * separators, leaving empty and consecutive separators (including a now-leading
+ * one in front of the active library's first real section). Drop separators that
+ * label no following content and, in a consecutive run, keep only the last so
+ * the surviving label belongs to the pages that follow it.
+ */
 function normalizeSeparators(nodes: PageTreeNode[]): PageTreeNode[] {
 	const result: PageTreeNode[] = [];
+	let pendingSeparator: PageTreeNode | null = null;
 
 	for (const node of nodes) {
 		if (node.type === "separator") {
-			if (
-				result.length === 0 ||
-				result[result.length - 1]?.type === "separator"
-			) {
-				continue;
-			}
-			result.push(node);
+			pendingSeparator = node;
 			continue;
 		}
+		if (pendingSeparator) {
+			result.push(pendingSeparator);
+			pendingSeparator = null;
+		}
 		result.push(node);
-	}
-
-	while (result[result.length - 1]?.type === "separator") {
-		result.pop();
 	}
 
 	return result;

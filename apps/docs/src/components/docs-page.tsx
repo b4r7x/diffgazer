@@ -21,14 +21,10 @@ export function DocsPageLayout({
 	);
 }
 
-type DocsPageHeaderVariant = "compact" | "prominent";
-
 interface DocsPageHeaderProps {
 	title: string;
 	description?: string | null;
 	tags?: string[];
-	variant?: DocsPageHeaderVariant;
-	bordered?: boolean;
 	className?: string;
 }
 
@@ -36,25 +32,16 @@ export function DocsPageHeader({
 	title,
 	description,
 	tags,
-	variant = "compact",
-	bordered = false,
 	className,
 }: DocsPageHeaderProps) {
 	const hasTags = Boolean(tags && tags.length > 0);
 	const hasDescription = Boolean(description && description.length > 0);
 
 	return (
-		<div
-			className={cn("pb-4", bordered && "border-b border-border", className)}
-		>
+		<div className={cn("pb-4", className)}>
 			<Typography
 				as="h1"
-				className={cn(
-					"text-foreground font-bold",
-					variant === "compact"
-						? "text-2xl mb-2"
-						: "text-3xl tracking-tight mb-4",
-				)}
+				className="text-2xl font-bold text-foreground mb-2"
 				data-pagefind-meta="title"
 			>
 				{title}
@@ -65,10 +52,7 @@ export function DocsPageHeader({
 					{tags?.map((tag) => (
 						<span
 							key={tag}
-							className={cn(
-								"px-2 py-1 border border-border text-[10px] uppercase tracking-wider text-muted-foreground",
-								variant === "compact" && "font-mono",
-							)}
+							className="px-2 py-1 border border-border font-mono text-[10px] uppercase tracking-wider text-muted-foreground"
 						>
 							{tag}
 						</span>
@@ -77,13 +61,7 @@ export function DocsPageHeader({
 			)}
 
 			{hasDescription && (
-				<Typography
-					as="p"
-					className={cn(
-						"max-w-3xl",
-						variant === "compact" ? "" : "text-lg leading-relaxed",
-					)}
-				>
+				<Typography as="p" className="max-w-3xl">
 					{description}
 				</Typography>
 			)}

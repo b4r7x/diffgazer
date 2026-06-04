@@ -4,7 +4,16 @@ description: "Prevent body or element scrolling with reference counting. Multipl
 hook: "use-scroll-lock"
 ---
 
+`useScrollLock` prevents an element from scrolling while it is enabled, then restores the previous overflow when released. Locks are **reference-counted** per element, so two overlays can lock `document.body` independently and scrolling is only restored once both release. It is **standalone** (no provider) and ships as a copy-paste utility hook.
+
 <UsageSnippet />
+
+## When to use it
+
+- Freeze background scroll behind a modal, drawer, sheet, or full-screen overlay.
+- Lock a specific scroll container (pass `target`) rather than the whole page.
+
+Pair it with [`useFocusTrap`](/keys/hooks/use-focus-trap) to hold focus inside a modal while its background is locked.
 
 ## Limitations
 
@@ -14,7 +23,7 @@ hook: "use-scroll-lock"
 - **No iOS Safari rubber-band guard.** Setting `overflow: hidden` on body does not stop iOS touch scrolling. The page can still pan-scroll on iOS while the lock is active.
 - **No scrollbar-gutter compensation.** Removing the body scrollbar on desktop browsers causes a horizontal layout shift. Apply a `scrollbar-gutter: stable` CSS rule, reserve `padding-right`, or use the native `<dialog>` element (which compensates automatically) when this matters.
 
-Opt-in `preventLayoutShift` and `preventIosRubberBand` flags are planned as a follow-up for full parity.
+Layout-shift and iOS rubber-band compensation are not part of the current surface; the workarounds above cover them.
 
 ## Installation
 
@@ -35,5 +44,14 @@ Opt-in `preventLayoutShift` and `preventIosRubberBand` flags are planned as a fo
 ## Notes
 
 <Notes />
+
+## Edge cases
+
+- **Toggling `enabled`.** Flipping `enabled` to `false` releases this hook's lock immediately; the element stays locked while any other lock remains.
+
+## Related
+
+- [`useFocusTrap`](/keys/hooks/use-focus-trap) — trap focus inside the modal whose background you lock.
+- [Focus and scroll guide](/keys/guides/focus-and-scroll) — composing scroll lock with focus management.
 
 <SourceViewer />

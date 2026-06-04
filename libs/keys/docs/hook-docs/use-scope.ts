@@ -43,6 +43,9 @@ export const useScopeDoc: HookDoc = {
         "useScope is a provider-dependent hook. It must be used within a <KeyboardProvider> tree.",
     },
   ],
-  examples: [{ name: "use-scope-basic", title: "Basic scope usage" }],
+  examples: [
+    { name: "use-scope-basic", title: "Basic scope usage" },
+    { name: "use-scope-nested", title: "Nested scopes resolve deepest-first" },
+  ],
   tags: ["provider-dependent", "scope"],
 }

@@ -16,6 +16,8 @@ import {
 	PropsTable,
 	ReturnsTable,
 	SourceViewer,
+	Step,
+	Steps,
 	UsageSnippet,
 } from "./blocks";
 
@@ -33,6 +35,8 @@ export const featureMdxComponents: MDXComponents = {
 	ReturnsTable,
 	UsageSnippet,
 	SourceViewer,
+	Steps,
+	Step,
 	KeyboardNav,
 	AccessibilityNotes,
 	Notes,

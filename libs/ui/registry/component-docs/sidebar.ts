@@ -2,7 +2,7 @@ import type { ComponentDoc } from "./types"
 
 export const sidebarDoc: ComponentDoc = {
   description:
-    "Full-height navigation sidebar with tri-state visibility (open/rail/hidden), five active-marker variants, collapsible sections, optional intent tones, mobile sheet, and a configurable global hotkey. Composable parts plus two context providers.",
+    "Full-height navigation sidebar with tri-state visibility (open/rail/hidden), six active-marker variants, collapsible sections, optional intent tones, mobile sheet, and a configurable global hotkey. Composable parts plus two context providers.",
   anatomy: [
     { name: "SidebarProvider", indent: 0, note: "Optional wrapper for external state control. Owns breakpoint + shortcutKey." },
     { name: "Sidebar", indent: 1, note: "Root nav element (standalone or within SidebarProvider). Owns variant + autoTone." },
@@ -46,7 +46,7 @@ export const sidebarDoc: ComponentDoc = {
     {
       title: "Visual variants",
       content:
-        "Five active-marker variants share row metrics (24px line height, JBMono 12px) so glyph slots stay aligned: caret (▸ glyph prefix; active = font-semibold), inverted (full-bleed bg-foreground row), bar (1px border-l on active), bracket ([*]/[ ] glyph prefix), block (soft bg-foreground/8 fill on active). Selected via <Sidebar variant=…> and propagated to items via context. Exposed as data-variant on the nav root.",
+        "Six active-marker variants share row metrics (24px line height, JBMono 12px) so glyph slots stay aligned: caret (▸ glyph prefix; active = font-semibold), inverted (full-bleed bg-foreground row), bar (1px border-l on active), bracket ([*]/[ ] glyph prefix), block (soft bg-foreground/8 fill on active), terminal (`>` prompt prefix on active; 1px hairline left rail, no bg fill). Selected via <Sidebar variant=…> and propagated to items via context. Exposed as data-variant on the nav root.",
     },
     {
       title: "Auto-tone (intent dot)",
@@ -87,11 +87,11 @@ export const sidebarDoc: ComponentDoc = {
   props: {
     Sidebar: {
       variant: {
-        type: '"caret" | "inverted" | "bar" | "bracket" | "block"',
+        type: '"caret" | "inverted" | "bar" | "bracket" | "block" | "terminal"',
         required: false,
         defaultValue: '"caret"',
         description:
-          'Visual variant. "caret" prefixes each item with ▸; "inverted" full-bleeds the active row with bg-foreground; "bar" draws a 1px left border on active; "bracket" prefixes items with [*]/[ ]; "block" applies a soft bg-foreground/8 fill on active. Propagated to items via context and exposed as data-variant on the nav root.',
+          'Visual variant. "caret" prefixes each item with ▸; "inverted" full-bleeds the active row with bg-foreground; "bar" draws a 1px left border on active; "bracket" prefixes items with [*]/[ ]; "block" applies a soft bg-foreground/8 fill on active; "terminal" prefixes active items with a `>` prompt and draws a 1px hairline left rail with no background fill. Propagated to items via context and exposed as data-variant on the nav root.',
       },
       autoTone: {
         type: "boolean",

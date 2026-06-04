@@ -176,6 +176,7 @@ export const useFocusZoneDoc: HookDoc = {
   ],
   examples: [
     { name: "use-focus-zone-basic", title: "Multi-zone layout navigation" },
+    { name: "use-focus-zone-tab-cycle", title: "Tab-cycle regions with focus targets" },
   ],
   tags: ["provider-dependent", "focus", "zones"],
 }

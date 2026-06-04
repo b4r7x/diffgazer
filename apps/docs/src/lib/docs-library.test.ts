@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { render, screen } from "@testing-library/react";
 import { createElement, Suspense } from "react";
@@ -41,10 +41,63 @@ function readAbsolute(path: string): string {
 	return readFileSync(path, "utf8");
 }
 
-function collectExampleNamesFromComponentDocs(): Set<string> {
-	const names = new Set<string>();
+function basename(file: string): string {
+	return (
+		file
+			.replace(/\.(ts|tsx|mdx)$/, "")
+			.split("/")
+			.at(-1) ?? ""
+	);
+}
+
+// A single referenced example, carrying the (library, item) scope it is
+// resolved against at runtime. The renderer reads `data.exampleSource[name]`,
+// which is built per (library, item) — only files in that item's own example
+// dir (plus declared companion dirs). The guard must mirror that scope instead
+// of flattening every basename into one cross-library/cross-item set.
+type ExampleRef = {
+	library: "ui" | "keys";
+	item: string;
+	name: string;
+};
+
+function exampleDirForLibrary(library: "ui" | "keys"): string {
+	return library === "ui"
+		? "libs/ui/registry/examples"
+		: "libs/keys/registry/examples";
+}
+
+// Component docs may merge sibling example dirs into a page's exampleSource via
+// `companionExamples` (see libs/ui/scripts/build-docs-data.ts processComponent).
+// Both the component doc and its matching MDX page share that scope at runtime.
+function collectCompanionExamples(): Map<string, string[]> {
+	const companions = new Map<string, string[]>();
 	for (const file of listRepoFiles("libs/ui/registry/component-docs", ".ts")) {
 		const source = readAbsolute(file);
+		const block = source.match(/companionExamples:\s*\[([^\]]*)\]/);
+		if (!block) continue;
+		const items = [...block[1].matchAll(/"([a-z0-9-]+)"/g)].map((m) => m[1]);
+		if (items.length > 0) companions.set(basename(file), items);
+	}
+	return companions;
+}
+
+const COMPANION_EXAMPLES = collectCompanionExamples();
+
+function exampleExists(library: "ui" | "keys", item: string, name: string): boolean {
+	const dir = exampleDirForLibrary(library);
+	const scopes = [item, ...(COMPANION_EXAMPLES.get(item) ?? [])];
+	return scopes.some((scope) =>
+		existsSync(resolve(repoRoot, dir, scope, `${name}.tsx`)),
+	);
+}
+
+function collectExampleRefsFromComponentDocs(): ExampleRef[] {
+	const refs: ExampleRef[] = [];
+	for (const file of listRepoFiles("libs/ui/registry/component-docs", ".ts")) {
+		const item = basename(file);
+		const source = readAbsolute(file);
+		const names = new Set<string>();
 		for (const block of source.matchAll(/examples:\s*\[([\s\S]*?)\]/g)) {
 			for (const match of block[1].matchAll(/name: "([a-z0-9-]+)"/g)) {
 				names.add(match[1]);
@@ -53,26 +106,41 @@ function collectExampleNamesFromComponentDocs(): Set<string> {
 		for (const match of source.matchAll(/example: "([a-z0-9-]+)"/g)) {
 			names.add(match[1]);
 		}
+		for (const name of names) {
+			refs.push({ library: "ui", item, name });
+		}
 	}
-	return names;
+	return refs;
 }
 
-function collectExampleNamesFromHookDocs(): Set<string> {
-	const names = new Set<string>();
-	for (const file of listRepoFiles("libs/ui/registry/hook-docs", ".ts")) {
-		const source = readAbsolute(file);
-		for (const block of source.matchAll(/examples:\s*\[([\s\S]*?)\]/g)) {
-			for (const match of block[1].matchAll(/name: "([a-z0-9-]+)"/g)) {
-				names.add(match[1]);
+const HOOK_DOC_DIRS: Array<{ dir: string; library: "ui" | "keys" }> = [
+	{ dir: "libs/ui/registry/hook-docs", library: "ui" },
+	{ dir: "libs/keys/docs/hook-docs", library: "keys" },
+];
+
+function listHookDocFiles(): string[] {
+	return HOOK_DOC_DIRS.flatMap(({ dir }) => listRepoFiles(dir, ".ts"));
+}
+
+function collectExampleRefsFromHookDocs(): ExampleRef[] {
+	const refs: ExampleRef[] = [];
+	for (const { dir, library } of HOOK_DOC_DIRS) {
+		for (const file of listRepoFiles(dir, ".ts")) {
+			const item = basename(file);
+			const source = readAbsolute(file);
+			for (const block of source.matchAll(/examples:\s*\[([\s\S]*?)\]/g)) {
+				for (const match of block[1].matchAll(/name: "([a-z0-9-]+)"/g)) {
+					refs.push({ library, item, name: match[1] });
+				}
 			}
 		}
 	}
-	return names;
+	return refs;
 }
 
 function collectHookDocExampleCounts(): Map<string, number> {
 	const counts = new Map<string, number>();
-	for (const file of listRepoFiles("libs/ui/registry/hook-docs", ".ts")) {
+	for (const file of listHookDocFiles()) {
 		const hook = file.replace(/\.ts$/, "").split("/").at(-1);
 		if (!hook) continue;
 
@@ -88,8 +156,13 @@ function collectHookDocExampleCounts(): Map<string, number> {
 	return counts;
 }
 
+const HOOK_PAGE_DIRS = [
+	"libs/ui/docs/content/hooks",
+	"libs/keys/docs/content/hooks",
+];
+
 function collectHookPagesWithExamplesSection(): string[] {
-	return listRepoFiles("libs/ui/docs/content/hooks", ".mdx")
+	return HOOK_PAGE_DIRS.flatMap((dir) => listRepoFiles(dir, ".mdx"))
 		.filter((file) => readAbsolute(file).includes("<Examples />"))
 		.map((file) =>
 			file
@@ -100,15 +173,31 @@ function collectHookPagesWithExamplesSection(): string[] {
 		.filter((hook): hook is string => typeof hook === "string");
 }
 
-function collectMdxExampleNames(): Set<string> {
-	const names = new Set<string>();
+// The renderer joins a UI page to its component record via the frontmatter
+// `component:` value, not the filename (route loader: loadDocData("components",
+// data.component)). That record owns the exampleSource the page renders
+// <Example name=...> against, so the guard must scope by the same key. Pages
+// with example refs but no `component:` resolve to no record at runtime, which
+// silently drops the example; surface that as an unresolvable scope so the
+// guard fails loudly instead of skipping a broken page.
+function frontmatterComponent(source: string): string | null {
+	const block = source.match(/^---\n([\s\S]*?)\n---/);
+	if (!block) return null;
+	const field = block[1].match(/^component:\s*"?([a-z0-9-]+)"?\s*$/m);
+	return field ? field[1] : null;
+}
+
+function collectMdxExampleRefs(): ExampleRef[] {
+	const refs: ExampleRef[] = [];
 	for (const file of listRepoFiles("libs/ui/docs/content", ".mdx")) {
 		const source = readAbsolute(file);
+		const item =
+			frontmatterComponent(source) ?? `${basename(file)} (no component frontmatter)`;
 		for (const match of source.matchAll(/<Example\s+name="([^"]+)"/g)) {
-			names.add(match[1]);
+			refs.push({ library: "ui", item, name: match[1] });
 		}
 	}
-	return names;
+	return refs;
 }
 
 function collectPublicDocsSources(): Array<{ path: string; source: string }> {
@@ -146,18 +235,6 @@ function collectInputLikeDocsSources(): Array<{
 	];
 
 	return paths.map((path) => ({ path, source: readRepoFile(path) }));
-}
-
-function collectExampleFileNames(): Set<string> {
-	return new Set(
-		listRepoFiles("libs/ui/registry/examples", ".tsx").map(
-			(file) =>
-				file
-					.replace(/\.tsx$/, "")
-					.split("/")
-					.at(-1) ?? "",
-		),
-	);
 }
 
 function camelToKebab(value: string): string {
@@ -301,13 +378,19 @@ describe("docs-library source path mapping", () => {
 	});
 
 	it("fails static validation when component, hook docs, or pages reference missing examples", () => {
-		const referenced = new Set([
-			...collectExampleNamesFromComponentDocs(),
-			...collectExampleNamesFromHookDocs(),
-			...collectMdxExampleNames(),
-		]);
-		const available = collectExampleFileNames();
-		const missing = [...referenced].filter((name) => !available.has(name));
+		const referenced = [
+			...collectExampleRefsFromComponentDocs(),
+			...collectExampleRefsFromHookDocs(),
+			...collectMdxExampleRefs(),
+		];
+		// A reference is "missing" exactly when the renderer would throw
+		// "Missing <library> docs example source: <name>": the name is absent
+		// from the (library, item) example dir (and its companion dirs) that
+		// builds the page's exampleSource. Report item + name so a failure
+		// points at the exact broken reference instead of a bare basename.
+		const missing = referenced
+			.filter((ref) => !exampleExists(ref.library, ref.item, ref.name))
+			.map((ref) => `${ref.library}/${ref.item}: ${ref.name}`);
 
 		expect(missing).toEqual([]);
 	});

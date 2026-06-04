@@ -4,120 +4,62 @@ description: "Provider-backed two-zone keyboard navigation for rows with inline 
 hook: "use-action-row-navigation"
 ---
 
-`useActionRowNavigation` coordinates a row's main content zone with an actions zone. It is useful for dense list, table, inbox, review, and command-result rows where arrow keys should move into actions, between actions, and back to content.
+`useActionRowNavigation` coordinates a row's main content with a strip of inline action buttons. It splits the row into two zones — `content` and `actions` — and wires the arrow keys so the keyboard can step into the actions, move between them, activate one, and step back out. It is built for dense list, table, inbox, review, and command-result rows.
+
+It composes [`useFocusZone`](/keys/hooks/use-focus-zone) (the two zones) with [`useKey`](/keys/hooks/use-key) (the per-zone bindings), so it requires `KeyboardProvider` and is package-only.
+
+<UsageSnippet />
+
+## When to use it
+
+- A row has both a primary target (open, navigate) and secondary actions (approve, archive, delete) that should be reachable without a mouse.
+- Actions live to the side of the row content and should be entered with a single arrow press, not by Tabbing through every button on the page.
+- Some actions are conditionally disabled and keyboard movement must skip them rather than landing on dead controls.
+
+For a plain list with no per-row action strip, use [`useNavigation`](/keys/hooks/use-navigation) or [`useScopedNavigation`](/keys/hooks/use-scoped-navigation) instead.
 
 ## Installation
 
 <ConsumptionBlock />
 
-This hook uses `useFocusZone` and `useKey`, so it requires `KeyboardProvider` and is package-only.
+## Parameters
 
----
+<ParameterTable />
 
-## API
+## Returns
 
-```ts
-function useActionRowNavigation(
-  options: UseActionRowNavigationOptions
-): UseActionRowNavigationReturn
-```
+<ReturnsTable />
 
-### Parameters
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `enabled` | `boolean` | Yes | Enables row keyboard handling. |
-| `actionCount` | `number` | Yes | Number of action controls managed by the row. |
-| `onAction` | `(index: number) => void` | Yes | Called when Enter or Space activates the focused action. |
-| `disabledActions` | `readonly boolean[]` | No | Marks individual action indexes as disabled so navigation skips them. |
-| `disabledFocusFallbackRef` | `RefObject<HTMLElement \| null>` | No | Receives focus when no enabled action can be focused. |
-| `containerRef` | `RefObject<HTMLElement \| null>` | No | Limits zone handling to one row subtree. |
-| `allowInInput` | `boolean` | No | Allows row shortcuts to run from editable targets. Defaults to `false`. |
-| `wrap` | `boolean` | No | Wraps left/right action navigation. Defaults to `false`. |
-| `defaultZone` | `"content" \| "actions"` | No | Initial zone. Defaults to `"content"`. |
-| `defaultIndex` | `number` | No | Initial action index. Defaults to `0`. |
-| `canExitActions` | `boolean` | No | Allows ArrowUp to leave the actions zone. Defaults to `true`. |
-| `onNavigate` | `(index: number) => void` | No | Called when navigation lands on an action index. |
-| `onNavigationBoundaryReached` | `(direction: "previous" \| "next") => void` | No | Called when navigation cannot move past a boundary. |
-
-### Returns
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `inActions` | `boolean` | Whether the row is currently in the actions zone. |
-| `focusedIndex` | `number` | Current focused action index. |
-| `isFocusedActionDisabled` | `boolean` | Whether the current action index is disabled. |
-| `enterActions` | `(index?: number) => number \| null` | Moves into the actions zone and focuses the requested or first enabled action. |
-| `exitActions` | `() => void` | Leaves the actions zone when exits are allowed. |
-| `reset` | `(initialIndex?: number) => void` | Returns to content and resets the action index. |
-| `getActionProps` | `(index: number) => { ref; "data-action-index"; onFocus }` | Props to spread onto each action element. |
-
----
-
-## Usage
-
-```tsx
-import { useRef } from "react"
-import { KeyboardProvider, useActionRowNavigation } from "@diffgazer/keys"
-
-function ReviewRow() {
-  const rowRef = useRef<HTMLDivElement>(null)
-  const fallbackRef = useRef<HTMLButtonElement>(null)
-  const disabledActions = [false, true, false]
-  const row = useActionRowNavigation({
-    enabled: true,
-    actionCount: 3,
-    disabledActions,
-    containerRef: rowRef,
-    disabledFocusFallbackRef: fallbackRef,
-    onAction: (index) => {
-      console.log("activate action", index)
-    },
-  })
-
-  return (
-    <div ref={rowRef}>
-      <button ref={fallbackRef} type="button">
-        Open issue
-      </button>
-      <div role="group" aria-label="Issue actions">
-        <button type="button" {...row.getActionProps(0)}>
-          Accept
-        </button>
-        <button type="button" disabled {...row.getActionProps(1)}>
-          Ignore
-        </button>
-        <button type="button" {...row.getActionProps(2)}>
-          Details
-        </button>
-      </div>
-    </div>
-  )
-}
-
-export function App() {
-  return (
-    <KeyboardProvider>
-      <ReviewRow />
-    </KeyboardProvider>
-  )
-}
-```
-
----
-
-## Keyboard Behavior
+## Keyboard behavior
 
 | Key | Zone | Behavior |
 |-----|------|----------|
-| `ArrowDown` | content | Enters actions and focuses the first enabled action. |
-| `ArrowLeft` | actions | Moves to the previous enabled action, or reports the previous boundary. |
-| `ArrowRight` | actions | Moves to the next enabled action, or reports the next boundary. |
-| `ArrowUp` | actions | Exits actions when `canExitActions` is enabled. |
-| `Enter` / `Space` | actions | Calls `onAction(focusedIndex)` when focus is not already on the registered native action. |
+| `ArrowDown` | content | Enters the actions zone and focuses the first enabled action. |
+| `ArrowLeft` | actions | Moves to the previous enabled action. At the left edge it wraps (when `wrap`) or reports the `"previous"` boundary. |
+| `ArrowRight` | actions | Moves to the next enabled action. At the right edge it wraps (when `wrap`) or reports the `"next"` boundary. |
+| `ArrowUp` | actions | Exits the actions zone back to content when `canExitActions` is `true`. |
+| `Enter` / `Space` | actions | Calls `onAction(focusedIndex)` for the focused, enabled action. |
+
+The row only handles these keys while focus is inside `containerRef`. Bindings register through `KeyboardProvider`, so they participate in the scope stack.
+
+## Examples
+
+<Examples />
 
 ## Notes
 
-- Disabled actions are skipped for keyboard movement and activation.
-- `containerRef` scopes zone handling to the row, which prevents sibling rows from responding to the same key press.
-- Use `disabledFocusFallbackRef` when all actions may be disabled and focus should return to stable content.
+<Notes />
+
+## Edge cases
+
+- **All actions disabled.** Entering the actions zone with no enabled action returns focus to `disabledFocusFallbackRef`, or blurs the focused action when the ref is omitted. `enterActions` returns `null` in this case.
+- **Disabled flags change at runtime.** Update `disabledActions` and the hook re-resolves the focused index on the next render; if the focused action becomes disabled it moves to the first enabled one, or leaves the zone when none remain.
+- **`getActionProps` is required per action.** The hook focuses and tracks actions through the `ref` and `onFocus` it returns. Spread it onto every action element, including disabled ones, so indexes stay aligned.
+
+## Related
+
+- [`useFocusZone`](/keys/hooks/use-focus-zone) — the underlying two-zone primitive.
+- [`useNavigation`](/keys/hooks/use-navigation) — single-zone list navigation without an action strip.
+- [`useKey`](/keys/hooks/use-key) — the per-zone key registration this hook builds on.
+
+<SourceViewer />

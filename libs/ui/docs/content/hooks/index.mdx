@@ -1,17 +1,38 @@
 ---
 title: Hooks
-description: Headless hooks that power @diffgazer/ui components and can be reused directly.
+description: Per-hook API reference for the headless hooks that power @diffgazer/ui.
 ---
 
-Reusable hooks for state, positioning, overflow, and focus behavior. Each is installable through `dgadd`.
+The headless hooks behind `@diffgazer/ui`. Each is standalone — it takes a ref or options, returns state or props, and carries no runtime dependencies (except [`listbox`](/ui/hooks/listbox), which reuses the keys navigation engine). Copy any of them with `dgadd add ui/<hook>`, or import from the package.
 
-- [active-heading](/ui/hooks/active-heading) — track the heading in view for a table of contents
-- [controllable-state](/ui/hooks/controllable-state) — controlled and uncontrolled value state
-- [floating-indicator](/ui/hooks/floating-indicator) — animate an indicator across active items
-- [floating-position](/ui/hooks/floating-position) — position floating content against an anchor
-- [form-reset](/ui/hooks/form-reset) — run a callback when an enclosing form resets
-- [listbox](/ui/hooks/listbox) — active-descendant listbox navigation and typeahead
-- [outside-click](/ui/hooks/outside-click) — detect clicks outside an element
-- [overflow-detection](/ui/hooks/overflow-detection) — detect when content overflows its container
-- [overflow-items](/ui/hooks/overflow-items) — partition items into visible and overflow sets
-- [presence](/ui/hooks/presence) — keep elements mounted through exit animations
+## State
+
+| Hook | Use it for |
+|------|------------|
+| [`controllable-state`](/ui/hooks/controllable-state) | A control that supports both controlled and uncontrolled modes via `value`, `defaultValue`, and `onChange`. |
+| [`form-reset`](/ui/hooks/form-reset) | Resetting an uncontrolled custom control when its enclosing native `<form>` resets. |
+| [`presence`](/ui/hooks/presence) | Keeping an element mounted through its CSS exit animation, then unmounting after it ends. |
+
+## Positioning & overflow
+
+| Hook | Use it for |
+|------|------------|
+| [`floating-position`](/ui/hooks/floating-position) | Anchoring floating content to a trigger with 4-side placement, flip, shift, and collision detection. |
+| [`floating-indicator`](/ui/hooks/floating-indicator) | Sliding one indicator (tab marker, segmented pill) to the active child by measuring its rect. |
+| [`overflow-detection`](/ui/hooks/overflow-detection) | Detecting whether an element's content overflows horizontally, vertically, or either. |
+| [`overflow-items`](/ui/hooks/overflow-items) | Measuring how many items fit in a container and tracking the overflow count. |
+
+## Interaction
+
+| Hook | Use it for |
+|------|------------|
+| [`listbox`](/ui/hooks/listbox) | Selection, highlight, ARIA, and keyboard navigation for listbox- or menu-pattern lists. |
+| [`outside-click`](/ui/hooks/outside-click) | Closing a dropdown, popover, or dialog when the user clicks outside a referenced element. |
+
+## Document
+
+| Hook | Use it for |
+|------|------------|
+| [`active-heading`](/ui/hooks/active-heading) | Tracking the active heading for a table of contents (top-line or viewport-center activation, with `scrollTo`). |
+
+Need keyboard or focus behavior instead? See the [keys hooks](/keys/hooks) for navigation, focus trap, focus restore, and scope-aware variants.

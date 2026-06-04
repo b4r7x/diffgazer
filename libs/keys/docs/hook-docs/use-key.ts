@@ -96,6 +96,7 @@ export const useKeyDoc: HookDoc = {
   examples: [
     { name: "use-key-basic", title: "Basic hotkey binding" },
     { name: "use-key-map", title: "Key map with multiple bindings" },
+    { name: "use-key-scoped", title: "Container-scoped shortcut" },
   ],
   tags: ["provider-dependent", "hotkey", "keyboard"],
 }
