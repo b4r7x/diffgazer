@@ -24,6 +24,7 @@ export function syncDocsFromArtifacts(options: SyncDocsOptions): SyncDocsResult 
     afterSync,
     outputPaths: outputPathOverrides,
     rootTitle,
+    extraRootPages,
     logger = defaultLogger,
   } = options;
 
@@ -51,6 +52,8 @@ export function syncDocsFromArtifacts(options: SyncDocsOptions): SyncDocsResult 
     origin,
     syncSchemaVersion,
     artifacts,
+    extraRootPages ?? [],
+    rootTitle,
   );
   const syncState = readSyncState(paths.stateFilePath, logger);
 
@@ -66,7 +69,7 @@ export function syncDocsFromArtifacts(options: SyncDocsOptions): SyncDocsResult 
   }
 
   logger.info("[docs-sync] Syncing docs and generated artifacts...");
-  runDocsSyncPass({ artifacts, primaryArtifact, paths, origin, sourceOrigin, afterSync, rootTitle, logger });
+  runDocsSyncPass({ artifacts, primaryArtifact, paths, origin, sourceOrigin, afterSync, rootTitle, extraRootPages, logger });
 
   writeSyncState(paths.stateFilePath, {
     fingerprint: syncFingerprint,

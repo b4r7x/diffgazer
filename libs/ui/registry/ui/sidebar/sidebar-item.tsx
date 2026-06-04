@@ -97,6 +97,16 @@ function VariantGlyph({ variant, active }: { variant: SidebarVariant; active: bo
       </span>
     );
   }
+  if (variant === "terminal") {
+    return (
+      <span
+        aria-hidden="true"
+        className="inline-block w-[1ch] shrink-0 text-foreground tabular-nums group-data-[state=rail]/sidebar:hidden"
+      >
+        {active ? ">" : " "}
+      </span>
+    );
+  }
   return null;
 }
 

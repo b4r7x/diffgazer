@@ -9,22 +9,57 @@ The fastest path to a review is three commands, run from inside a git repository
 
 - A git repository with uncommitted changes to review.
 - Node.js 20 or newer.
-- An API key for one provider: Gemini, Z.ai, Z.ai Coding, OpenRouter, Groq, or Cerebras.
+- An API key for one provider: Gemini, Z.AI, Z.AI Coding Plan, OpenRouter, Groq, or Cerebras.
 
 ## Steps
 
-1. Install the CLI: `npm install -g diffgazer`.
-2. Change into the repo you want to review: `cd your-project`.
-3. Start diffgazer: `diffgazer`. It launches a local server and opens the web environment in your browser.
-4. Complete onboarding: pick a provider, paste your key, choose a model, and trust the repo.
-5. Start a review from the web environment.
-6. Read the findings inline against your diff.
+<Steps>
+
+<Step title="Install the CLI">
 
 ```bash
 npm install -g diffgazer
+```
+
+</Step>
+
+<Step title="Change into your repo">
+
+```bash
 cd your-project
+```
+
+</Step>
+
+<Step title="Start diffgazer">
+
+```bash
 diffgazer
 ```
+
+It launches a local server and opens the web environment in your browser.
+
+</Step>
+
+<Step title="Complete onboarding">
+
+Pick a provider, paste your key, choose a model, and trust the repo.
+
+</Step>
+
+<Step title="Start a review">
+
+Start a review from the web environment.
+
+</Step>
+
+<Step title="Read the findings">
+
+Read the findings inline against your diff.
+
+</Step>
+
+</Steps>
 
 > Tip: When you are done, stop the server with `Ctrl+C` in the terminal where diffgazer is running.
 
@@ -41,7 +76,7 @@ diffgazer blocks a review until setup is complete and returns a clear list of wh
 
 If any item is missing, finish it in onboarding and run the review again.
 
-## What's next
+## Where to go next
 
 - [Reviewing in the web environment](/app/web/reviewing) covers how to read findings, drill into a diff, and re-run a review.
 - [CLI reference](/app/reference/cli) lists every command and flag, including the terminal UI.

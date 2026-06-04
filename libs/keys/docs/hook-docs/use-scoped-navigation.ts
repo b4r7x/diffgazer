@@ -196,6 +196,10 @@ export const useScopedNavigationDoc: HookDoc = {
       name: "use-scoped-navigation-basic",
       title: "Scoped navigation in a menu",
     },
+    {
+      name: "use-scoped-navigation-focus-within",
+      title: "Two lists with focusWithinOnly",
+    },
   ],
   tags: ["provider-dependent", "navigation", "scope"],
 }

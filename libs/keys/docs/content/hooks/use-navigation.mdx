@@ -4,7 +4,25 @@ description: "Standalone keyboard navigation for role-based lists. Uses DOM quer
 hook: "use-navigation"
 ---
 
+`useNavigation` adds arrow-key navigation, selection, and focus tracking to any list of role-attributed elements. It is **standalone** — it returns an `onKeyDown` handler you attach to the container and needs no provider. Items are discovered from the DOM by ARIA `role`, so the hook stays declarative and works with whatever markup you already render.
+
 <UsageSnippet />
+
+## When to use it
+
+- Listboxes, menus, radio groups, tab bars, and command lists embedded inside a single component.
+- Cases where you control the container and can attach `onKeyDown` directly.
+- Copy-paste consumers that want list navigation without pulling in `KeyboardProvider`.
+
+When arrow keys should work without the user first clicking into the list, or the list is the main content of a panel that must respect a scope stack, use [`useScopedNavigation`](/keys/hooks/use-scoped-navigation) instead. For deeper guidance see the [navigation guide](/keys/guides/navigation).
+
+## DOM contract
+
+Three things must hold for item discovery to work:
+
+1. A container element with a ref passed as `containerRef`.
+2. Child elements with a matching `role` attribute.
+3. Each child carries a `data-value` attribute — the value the hook reports as `highlighted` and passes to `onSelect` / `onEnter`.
 
 ## Installation
 
@@ -18,6 +36,18 @@ hook: "use-navigation"
 
 <ReturnsTable />
 
+## Keyboard behavior
+
+| Key | Behavior |
+|-----|----------|
+| `ArrowDown` / `ArrowUp` | Move highlight (vertical orientation). |
+| `ArrowRight` / `ArrowLeft` | Move highlight (horizontal orientation). |
+| `Home` / `End` | Jump to the first / last item. Not configurable. |
+| `Enter` | Calls `onEnter(value)`, falling back to `onSelect(value)` when `onEnter` is omitted. |
+| `Space` | Calls `onSelect(value)`. |
+
+Selection mirrors ARIA semantics: Space toggles, Enter activates. On every move the hook calls `scrollIntoView({ block: "nearest" })` so long lists keep the focused item visible. Custom keys can be supplied with `upKeys` / `downKeys` (for example vim-style `j` / `k`).
+
 ## Examples
 
 <Examples />
@@ -25,5 +55,18 @@ hook: "use-navigation"
 ## Notes
 
 <Notes />
+
+## Edge cases
+
+- **Disabled items.** With `skipDisabled` (default), items exposing `aria-disabled="true"`, `data-disabled`, or native `disabled` are skipped during movement.
+- **Nested collections.** `scopeToContainer` (default) excludes items owned by a nested collection of the same family — an outer radiogroup ignores radios inside an inner radiogroup.
+- **Boundaries.** With `wrap: false`, hitting the first or last item fires `onNavigationBoundaryReached(direction, event, key)` instead of wrapping — useful for moving focus to an adjacent region.
+- **`moveFocus`.** By default the hook only updates highlight state. Set `moveFocus` to also move DOM focus to the highlighted element (common for `role="tab"`).
+
+## Related
+
+- [`useScopedNavigation`](/keys/hooks/use-scoped-navigation) — the provider-backed, scope-aware counterpart.
+- [Navigation guide](/keys/guides/navigation) — controlled vs uncontrolled, orientation, and tab patterns.
+- [Utilities](/keys/api/utilities) — the DOM helpers behind item discovery.
 
 <SourceViewer />

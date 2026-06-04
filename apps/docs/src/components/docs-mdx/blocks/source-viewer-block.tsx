@@ -91,7 +91,7 @@ function HookSourceViewer({ data }: { data: HookData }) {
 				className="flex items-baseline justify-between mt-10 mb-4 pb-2 border-b border-border scroll-mt-16"
 				id="source"
 			>
-				<Typography as="h2" size="2xl" className="font-bold text-foreground">
+				<Typography as="h2" size="xl" className="font-bold text-foreground">
 					Source
 				</Typography>
 				<CopyButton text={data.source.raw} label={`Copy ${data.title}`} />

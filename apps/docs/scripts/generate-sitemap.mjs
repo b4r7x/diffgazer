@@ -23,13 +23,10 @@ export function getPreRenderPages() {
 	const enabledLibraries = readLibrariesConfig();
 	const contentDir = resolve(DOCS_ROOT, "content/docs");
 
-	const pages = [
-		{ path: "/", source: null },
-		...enabledLibraries.map((lib) => ({
-			path: `/${lib.id}`,
-			source: findLibraryIntroSource(contentDir, lib.id),
-		})),
-	];
+	// Library roots (/ui, /keys, /app) 307-redirect to their first page, so the
+	// sitemap lists those canonical first pages (emitted by walkMdx) rather than
+	// the redirecting roots.
+	const pages = [{ path: "/", source: null }];
 
 	function walkMdx(dir) {
 		for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -75,11 +72,6 @@ function pushSectionIndexPage(pages, contentDir, enabledLibraries, sectionDir) {
 	if (!lib) return;
 
 	pages.push({ path: `/${rel}`, source: indexSource });
-}
-
-function findLibraryIntroSource(contentDir, libId) {
-	const candidate = resolve(contentDir, libId, "index.mdx");
-	return existsSync(candidate) ? candidate : null;
 }
 
 function pushGeneratedListPages(pages, libId, fileName, routeSegment) {

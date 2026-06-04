@@ -9,4 +9,5 @@ export { ParameterTableBlock as ParameterTable } from "./parameter-table-block";
 export { PropsTableBlock as PropsTable } from "./props-table-block";
 export { ReturnsTable } from "./returns-table";
 export { SourceViewerBlock as SourceViewer } from "./source-viewer-block";
+export { Step, Steps } from "./steps";
 export { UsageSnippet } from "./usage-snippet";

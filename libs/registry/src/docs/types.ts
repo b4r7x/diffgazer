@@ -19,6 +19,7 @@ export interface SyncDocsOptions {
   afterSync?: (ctx: AfterSyncContext) => void;
   outputPaths?: Partial<SyncOutputPathsConfig>;
   rootTitle?: string;
+  extraRootPages?: string[];
   logger?: Logger;
 }
 

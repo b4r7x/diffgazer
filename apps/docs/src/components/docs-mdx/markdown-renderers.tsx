@@ -72,10 +72,10 @@ export const markdownMdxComponents: MDXComponents = {
 	h2: ({ children, className, id, ...props }) => (
 		<Typography
 			as="h2"
-			size="2xl"
+			size="xl"
 			id={id}
 			className={cn(
-				"font-bold text-foreground mt-10 mb-4 pb-2 border-b border-border scroll-mt-16",
+				"font-bold text-foreground mt-10 mb-4 pb-2 border-b border-border scroll-mt-16 first:mt-0",
 				className,
 			)}
 			{...props}
@@ -89,7 +89,7 @@ export const markdownMdxComponents: MDXComponents = {
 			size="lg"
 			id={id}
 			className={cn(
-				"font-bold text-foreground mt-6 mb-2 scroll-mt-16",
+				"font-bold text-foreground mt-6 mb-2 scroll-mt-16 first:mt-0",
 				className,
 			)}
 			{...props}
@@ -98,7 +98,7 @@ export const markdownMdxComponents: MDXComponents = {
 		</Typography>
 	),
 	p: ({ children }) => (
-		<Typography as="p" size="sm" className="mb-4 max-w-3xl">
+		<Typography as="p" size="sm" className="mt-4 mb-4 max-w-3xl first:mt-0">
 			{children}
 		</Typography>
 	),
@@ -107,7 +107,7 @@ export const markdownMdxComponents: MDXComponents = {
 		return (
 			<Callout
 				tone={tone}
-				className="mb-4 [&_p]:max-w-none [&_p:last-child]:mb-0"
+				className="mt-4 mb-4 first:mt-0 [&_p]:max-w-none [&_p:last-child]:mb-0"
 			>
 				<Callout.Content>{children}</Callout.Content>
 			</Callout>
@@ -125,7 +125,10 @@ export const markdownMdxComponents: MDXComponents = {
 			language === "shell" ||
 			language === "zsh";
 		return (
-			<CodeBlock className="mb-4" variant={isShell ? "terminal" : undefined}>
+			<CodeBlock
+				className="mt-4 mb-4 first:mt-0"
+				variant={isShell ? "terminal" : undefined}
+			>
 				{language && (
 					<CodeBlockHeader>
 						<CodeBlockLabel>{language}</CodeBlockLabel>
@@ -140,7 +143,7 @@ export const markdownMdxComponents: MDXComponents = {
 		);
 	},
 	table: ({ children }) => (
-		<div className="overflow-x-auto overflow-y-hidden mb-4 rounded-sm">
+		<div className="overflow-x-auto overflow-y-hidden mt-4 mb-4 rounded-sm first:mt-0">
 			<table className="w-full text-sm border-collapse border border-border">
 				{children}
 			</table>
@@ -173,12 +176,12 @@ export const markdownMdxComponents: MDXComponents = {
 		);
 	},
 	ul: ({ children }) => (
-		<ul className="list-none space-y-1 mb-4 ml-4 text-sm text-foreground/90 [&>li]:before:content-['-']">
+		<ul className="list-none space-y-1 mt-4 mb-4 ml-4 text-sm text-foreground/90 first:mt-0 [&>li]:before:content-['-']">
 			{children}
 		</ul>
 	),
 	ol: ({ children }) => (
-		<ol className="list-none space-y-1 mb-4 ml-4 text-sm text-foreground/90 [counter-reset:list-counter] [&>li]:before:content-[counter(list-counter,decimal)_'._'] [&>li]:[counter-increment:list-counter]">
+		<ol className="list-none space-y-1 mt-4 mb-4 ml-4 text-sm text-foreground/90 first:mt-0 [counter-reset:list-counter] [&>li]:before:content-[counter(list-counter,decimal)_'._'] [&>li]:[counter-increment:list-counter]">
 			{children}
 		</ol>
 	),

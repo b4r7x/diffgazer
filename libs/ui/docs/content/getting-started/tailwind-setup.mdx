@@ -1,9 +1,9 @@
 ---
 title: Tailwind Setup
-description: Configure Tailwind CSS 4 with the @diffgazer/ui theme variables.
+description: Configure Tailwind CSS 4 and the @diffgazer/ui theme variables.
 ---
 
-@diffgazer/ui requires Tailwind CSS 4 with the @diffgazer/ui theme variables. CSS setup depends on the consumption path:
+`@diffgazer/ui` requires Tailwind CSS 4 with the `@diffgazer/ui` theme variables. The CSS entrypoint depends on the consumption path:
 
 | Path | CSS entrypoint |
 |------|---------------|
@@ -12,13 +12,19 @@ description: Configure Tailwind CSS 4 with the @diffgazer/ui theme variables.
 
 `@diffgazer/keys` requires no CSS or Tailwind setup.
 
-## 1. Install Tailwind 4
+## Vite Setup
+
+<Steps>
+
+<Step title="Install Tailwind 4">
 
 ```bash
 pnpm add -D tailwindcss @tailwindcss/vite
 ```
 
-## 2. Configure Vite
+</Step>
+
+<Step title="Configure Vite">
 
 ```ts
 // vite.config.ts
@@ -30,7 +36,9 @@ export default defineConfig({
 })
 ```
 
-## 3. Import the component CSS
+</Step>
+
+<Step title="Import the component CSS">
 
 If you initialized with `dgadd`, import the copied CSS entry from your app CSS:
 
@@ -40,7 +48,11 @@ If you initialized with `dgadd`, import the copied CSS entry from your app CSS:
 @import "./styles/styles.css";
 ```
 
-`src/styles/styles.css` is the canonical component CSS entrypoint. It contains the copied theme import plus component-level CSS that copied components expect.
+`src/styles/styles.css` is the canonical component CSS entrypoint. It contains the copied theme import plus the component-level CSS that copied components expect.
+
+</Step>
+
+</Steps>
 
 In the workspace source, `libs/ui/styles/styles.css` is the seed entry that imports `theme.css`. `dgadd init` and the package build materialize the canonical component entry by appending registry component CSS, such as dialog backdrop and body-lock rules, to that seed.
 
@@ -99,7 +111,7 @@ If you install `@diffgazer/ui` as a runtime npm package instead of copying sourc
 
 ## Theme Variables
 
-@diffgazer/ui uses a two-layer CSS variable system:
+`@diffgazer/ui` uses a two-layer CSS variable system:
 
 **Layer 1 -- Primitives** (`--tui-*`): Raw color values from the Diffgazer monochrome palette.
 
@@ -126,7 +138,7 @@ See [Theme Overview](/ui/theme/overview) for the full variable diagram.
 
 ## Yarn PnP
 
-Package mode no longer requires consumers to hard-code a `node_modules` `@source` path. Use `@import "@diffgazer/ui/sources.css";` so package source hints travel with the published package, then validate your app's CSS tooling in a PnP workspace before relying on package mode.
+Package mode does not require consumers to hard-code a `node_modules` `@source` path. Use `@import "@diffgazer/ui/sources.css";` so package source hints travel with the published package, then validate your app's CSS tooling in a PnP workspace before relying on package mode.
 
 ## Dark Mode
 
@@ -144,7 +156,7 @@ See [Dark Mode](/ui/theme/dark-mode) for theme switching implementation.
 
 ## Font
 
-@diffgazer/ui uses JetBrains Mono for the terminal aesthetic. Add this once in your app `<head>`:
+`@diffgazer/ui` uses JetBrains Mono for the terminal aesthetic. Add this once in your app `<head>`:
 
 ```html
 <link rel="preconnect" href="https://fonts.googleapis.com" />

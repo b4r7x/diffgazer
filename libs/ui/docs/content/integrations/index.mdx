@@ -1,13 +1,30 @@
 ---
 title: Integrations
-description: Use @diffgazer/ui together with @diffgazer/keys for keyboard-first behavior.
+description: Compose @diffgazer/ui components with @diffgazer/keys hooks for scopes, shortcuts, and navigation.
 ---
 
-How `@diffgazer/ui` components compose with `@diffgazer/keys` for scopes, shortcuts, and navigation.
+`@diffgazer/ui` components stay headless about keyboard behavior and compose with `@diffgazer/keys` for scopes, shortcuts, and navigation. Some keys APIs are **standalone** — they take a ref and run anywhere, copyable through `dgadd`. The rest are **provider-backed**: they register through [`KeyboardProvider`](/keys/api/keyboard-provider) to share one dispatcher and the scope stack, and ship package-only.
 
-- [Keys Overview](/ui/integrations/keys) — hooks reference and provider requirements
-- [useKey](/ui/integrations/keys-usekey) — bind shortcuts and push scopes
-- [Navigation](/ui/integrations/keys-navigation) — arrow-key list and tab navigation
-- [Focus Zones](/ui/integrations/keys-focus) — multi-zone keyboard navigation
-- [Utilities](/ui/integrations/keys-utilities) — focus trap, restore, and scroll lock
-- [Patterns](/ui/integrations/keys-patterns) — end-to-end integration examples
+## Reference & utilities
+
+| Page | What it gives you |
+|------|-------------------|
+| [Keys Overview](/ui/integrations/keys) | Hooks reference, the four install paths, and which capability each path unlocks. |
+| [Utilities](/ui/integrations/keys-utilities) | Standalone focus trap, focus restore, and scroll lock; package-only navigation-item helpers and `keys()` mapping. |
+
+## Per-area integration
+
+| Page | What it gives you |
+|------|-------------------|
+| [useKey](/ui/integrations/keys-usekey) | Bind shortcuts (single key, array, or key map) and push named scopes. Requires `KeyboardProvider`. |
+| [Navigation](/ui/integrations/keys-navigation) | DOM-driven arrow-key navigation for lists, menus, and tab bars; Home/End and Enter/Space. Standalone. |
+| [Focus Zones](/ui/integrations/keys-focus) | Move focus between layout regions via arrow keys and Tab cycling. Requires `KeyboardProvider`. |
+| [Patterns](/ui/integrations/keys-patterns) | End-to-end examples for Menu, Dialog, CommandPalette, Tabs, and multi-zone layouts. |
+
+## Which page do I need?
+
+- A keyboard **shortcut** — [useKey](/ui/integrations/keys-usekey) (requires `KeyboardProvider`).
+- **List, menu, or tab** movement — [Navigation](/ui/integrations/keys-navigation) (standalone).
+- Movement **between regions** of a layout — [Focus Zones](/ui/integrations/keys-focus) (requires `KeyboardProvider`).
+- **Focus trap, focus restore, or scroll lock** — [Utilities](/ui/integrations/keys-utilities) (standalone).
+- A **full worked example** — [Patterns](/ui/integrations/keys-patterns).

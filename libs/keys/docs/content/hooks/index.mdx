@@ -3,14 +3,35 @@ title: Hooks
 description: Per-hook API reference for @diffgazer/keys.
 ---
 
-Standalone and provider-backed keyboard hooks. Standalone hooks work without a provider; the rest require `KeyboardProvider`.
+Keyboard and focus hooks split into two groups. **Standalone** hooks work anywhere — they take a ref, return handlers or run effects, and need no setup. **Provider-backed** hooks register through [`KeyboardProvider`](/keys/api/keyboard-provider) so they share one key dispatcher and participate in the scope stack; wrap your app (or the relevant subtree) in a provider to use them.
 
-- [useNavigation](/keys/hooks/use-navigation) — DOM-driven list and tab navigation
-- [useFocusTrap](/keys/hooks/use-focus-trap) — trap Tab and Shift+Tab within a container
-- [useFocusRestore](/keys/hooks/use-focus-restore) — capture and restore focus around temporary UI
-- [useScrollLock](/keys/hooks/use-scroll-lock) — ref-counted scroll prevention
-- [useKey](/keys/hooks/use-key) — bind keyboard shortcuts (requires provider)
-- [useScope](/keys/hooks/use-scope) — push a named scope onto the stack (requires provider)
-- [useScopedNavigation](/keys/hooks/use-scoped-navigation) — scope-aware list navigation (requires provider)
-- [useActionRowNavigation](/keys/hooks/use-action-row-navigation) — row and action-cell navigation (requires provider)
-- [useFocusZone](/keys/hooks/use-focus-zone) — multi-zone navigation with transitions (requires provider)
+## Standalone hooks
+
+No provider required. Copyable through `dgadd` or the public registry.
+
+| Hook | Use it for |
+|------|------------|
+| [`useNavigation`](/keys/hooks/use-navigation) | Arrow-key movement, selection, and focus tracking across a role-based list or tab bar. |
+| [`useFocusTrap`](/keys/hooks/use-focus-trap) | Keeping Tab and Shift+Tab focus inside a modal or overlay container. |
+| [`useFocusRestore`](/keys/hooks/use-focus-restore) | Returning focus to where the user was after triggerless temporary UI closes. |
+| [`useScrollLock`](/keys/hooks/use-scroll-lock) | Freezing body or container scroll behind an overlay, with reference counting. |
+
+## Provider-backed hooks
+
+Require [`KeyboardProvider`](/keys/api/keyboard-provider). Package-only, since dispatch goes through the shared registry.
+
+| Hook | Use it for |
+|------|------------|
+| [`useKey`](/keys/hooks/use-key) | Binding an individual shortcut, optionally scoped to a region or scope. |
+| [`useScope`](/keys/hooks/use-scope) | Letting a dialog or drawer shadow a page-level shortcut while it is open. |
+| [`useScopedNavigation`](/keys/hooks/use-scoped-navigation) | Scope-aware list navigation that works without first clicking into the list. |
+| [`useActionRowNavigation`](/keys/hooks/use-action-row-navigation) | Two-zone rows with content plus a strip of inline action buttons. |
+| [`useFocusZone`](/keys/hooks/use-focus-zone) | Moving focus between regions of a layout via arrow keys or Tab. |
+
+## Choosing a navigation hook
+
+- Movement **within one list** — [`useNavigation`](/keys/hooks/use-navigation) (standalone, you attach `onKeyDown`) or [`useScopedNavigation`](/keys/hooks/use-scoped-navigation) (provider-backed, scope-aware, no `onKeyDown`).
+- Movement **between regions** of a layout — [`useFocusZone`](/keys/hooks/use-focus-zone).
+- A **row with inline actions** — [`useActionRowNavigation`](/keys/hooks/use-action-row-navigation).
+
+See the [navigation](/keys/guides/navigation), [scopes](/keys/guides/scopes), and [focus zones](/keys/guides/focus-zones) guides for end-to-end patterns.

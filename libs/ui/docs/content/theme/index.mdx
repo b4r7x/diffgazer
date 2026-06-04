@@ -1,12 +1,22 @@
 ---
 title: Theme
-description: Design tokens, color system, typography, and dark mode for @diffgazer/ui.
+description: The @diffgazer/ui two-layer CSS variable system — primitives, semantic tokens, color, typography, and dark mode.
 ---
 
-The terminal-inspired token system and how to customize colors, typography, and modes.
+@diffgazer/ui themes through a two-layer CSS variable system. Primitives (`--tui-bg`, `--tui-fg`, `--tui-blue`, …) define the raw palette. Semantic tokens (`--background`, `--foreground`, `--primary`, …) reference those primitives for functional meaning, and every component reads only the semantic layer.
 
-- [Overview](/ui/theme/overview) — token architecture and how theming works
-- [Colors](/ui/theme/colors) — color tokens and semantic roles
-- [Typography](/ui/theme/typography) — font tokens and type scale
-- [Dark Mode](/ui/theme/dark-mode) — switching and customizing modes
-- [Diffgazer Theme](/ui/theme/diffgazer) — the default Diffgazer look
+Override the primitives to reskin every component at once. Override semantic tokens for fine-grained control. Tokens resolve through four cascade layers declared on the first line of `theme-base.css`:
+
+```css
+@layer theme, base, components, utilities;
+```
+
+## In this section
+
+| Page | Covers |
+|------|--------|
+| [Overview](/ui/theme/overview) | Two-layer variable architecture, cascade-layer order, and the surface-elevation and z-index scales for overlay surfaces. |
+| [Colors](/ui/theme/colors) | The full palette as a copy-to-clipboard swatch grid mapped to CSS variable names. |
+| [Typography](/ui/theme/typography) | JetBrains Mono font stack, the fixed (non-fluid) size scale, and the two weights. |
+| [Dark Mode](/ui/theme/dark-mode) | `[data-theme]` switching, the `[data-theme="light"]` override block, persistence, and flash prevention. |
+| [Diffgazer](/ui/theme/diffgazer) | The Diffgazer CLI itself — local review workflow, review lenses, and install. |

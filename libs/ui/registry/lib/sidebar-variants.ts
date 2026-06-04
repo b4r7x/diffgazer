@@ -1,6 +1,12 @@
 import { cva } from "class-variance-authority";
 
-export type SidebarVariant = "caret" | "inverted" | "bar" | "bracket" | "block";
+export type SidebarVariant =
+  | "caret"
+  | "inverted"
+  | "bar"
+  | "bracket"
+  | "block"
+  | "terminal";
 
 export const sidebarContainerVariants = cva(
   [
@@ -71,7 +77,7 @@ export const sidebarItemVariants = cva(
           "border-l border-transparent -ml-px pl-[calc(0.5rem+3px)]",
           "text-foreground/70 hover:text-foreground hover:bg-foreground/5",
           "data-[active=true]:text-foreground data-[active=true]:font-semibold data-[active=true]:border-l-foreground",
-          "data-[active=true]:hover:bg-foreground/5",
+          "data-[active=true]:bg-foreground/5 data-[active=true]:hover:bg-foreground/5",
         ].join(" "),
         bracket: [
           "text-foreground/70 hover:text-foreground hover:bg-foreground/5",
@@ -82,6 +88,17 @@ export const sidebarItemVariants = cva(
           "text-foreground/70 hover:text-foreground hover:bg-foreground/5",
           "data-[active=true]:bg-foreground/8 data-[active=true]:text-foreground data-[active=true]:font-semibold",
           "data-[active=true]:hover:bg-foreground/10",
+        ].join(" "),
+        // Terminal/TUI rail: every row carries a faint 1px left rail so stacked
+        // items form one continuous hairline (the "grid" of the CLI aesthetic).
+        // Active brightens its rail segment to foreground and the text to
+        // foreground — no background fill, austere by design. -ml-px collapses
+        // the row border onto the section gutter so the rail stays 1px wide.
+        terminal: [
+          "border-l border-border -ml-px pl-[calc(0.5rem+3px)]",
+          "text-foreground/60 hover:text-foreground hover:border-foreground/40",
+          "data-[active=true]:text-foreground data-[active=true]:border-l-foreground",
+          "data-[active=true]:hover:border-l-foreground",
         ].join(" "),
       },
     },

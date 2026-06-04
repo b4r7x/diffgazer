@@ -1,39 +1,70 @@
 ---
 title: Installation
-description: Install @diffgazer/keys as a package or copy standalone hooks with dgadd.
+description: Install @diffgazer/keys as a package, or copy standalone hooks into your app with dgadd.
 ---
 
-`@diffgazer/keys` is a hooks-first keyboard accessibility toolkit for React.
+`@diffgazer/keys` ships two ways. Install the package when you need the provider-backed hooks; copy standalone hooks with `dgadd` when you want to own the source outright. The [introduction](/keys/getting-started/) covers which hooks fall into each group.
 
-## Package Install
+> **Warning:** Both `@diffgazer/keys` and `@diffgazer/add` are external publish-gated as of May 6, 2026. Run the package-manager commands below only after `npm view @diffgazer/keys version` and `npm view @diffgazer/add version` succeed; until then, validate against a locally packed workspace tarball.
 
-Use the package when you need provider-backed hooks such as `KeyboardProvider`, `useKey`, `useScope`, `useScopedNavigation`, `useActionRowNavigation`, or `useFocusZone`.
+## Package install
 
-`@diffgazer/keys` is external publish-gated as of May 6, 2026. Use the npm command only after `npm view @diffgazer/keys version` succeeds, or validate with a locally packed workspace tarball.
+Use the package when you need provider-backed hooks: `KeyboardProvider`, `useKey`, `useScope`, `useScopedNavigation`, `useActionRowNavigation`, or `useFocusZone`.
+
+<Steps>
+
+<Step title="Install the package">
 
 ```bash
 npm install @diffgazer/keys
 ```
 
+</Step>
+
+<Step title="Wrap your app and use a hook">
+
+Provider-backed hooks read from `KeyboardProvider`, so mount it above any component that uses them:
+
 ```tsx
 import { KeyboardProvider, useKey } from "@diffgazer/keys"
 ```
 
-## Copy Standalone Hooks
+</Step>
 
-Use `dgadd` when you want source-owned standalone hooks with no package runtime dependency.
+</Steps>
+
+## Copy standalone hooks
+
+Use `dgadd` for source-owned standalone hooks with no package runtime dependency. The copied hooks land in your configured hooks directory, usually `src/hooks`.
+
+<Steps>
+
+<Step title="Initialize dgadd">
 
 ```bash
 pnpm exec dgadd init
+```
+
+</Step>
+
+<Step title="Add the hooks you need">
+
+Add one hook, or several at once:
+
+```bash
 pnpm exec dgadd add keys/navigation
 pnpm exec dgadd add keys/focus-trap keys/focus-restore keys/scroll-lock
 ```
 
-`@diffgazer/add` is also publish-gated. Before publication, install a local `@diffgazer/add` tarball into a fixture app and run `pnpm exec dgadd`. Use `npx @diffgazer/add ...` only after `npm view @diffgazer/add version` succeeds.
+For a single item you can drop the `add` keyword — `pnpm exec dgadd keys/navigation` resolves the same way.
 
-The copied hooks are installed into your configured hooks directory, usually `src/hooks`.
+</Step>
 
-## Direct shadcn / Manual Copy (future, after publication)
+</Steps>
+
+> **Note:** `@diffgazer/add` is publish-gated too. Before publication, install a local `@diffgazer/add` tarball into a fixture app and run `pnpm exec dgadd`. Use `npx @diffgazer/add ...` only after `npm view @diffgazer/add version` succeeds.
+
+## Direct shadcn / manual copy
 
 The hosted registry at `https://r.b4r7.dev/` is not yet live. After publication, public keys registry items will be installable directly with shadcn:
 
@@ -42,27 +73,40 @@ npx shadcn add https://r.b4r7.dev/r/keys/navigation.json
 npx shadcn add https://r.b4r7.dev/r/keys/focus-trap.json
 ```
 
-Until then, use `pnpm exec dgadd add keys/navigation` or copy source directly from `https://github.com/b4r7x/diffgazer/tree/main/libs/keys/src/hooks`.
+Until then, use `pnpm exec dgadd add keys/navigation`, or copy source directly from [the keys hooks on GitHub](https://github.com/b4r7x/diffgazer/tree/main/libs/keys/src/hooks). Files install to `src/hooks/use-navigation.ts`, `src/hooks/utils/navigation-items.ts`, and so on.
 
-Files install to `src/hooks/use-navigation.ts`, `src/hooks/utils/navigation-items.ts`, etc.
+## API availability by path
 
-## API Availability by Path
+Standalone hooks install through every path. Provider-backed APIs depend on `KeyboardProvider` and ship only with the package.
 
-Standalone hooks available through all three paths (package, dgadd, direct copy):
-
-- `useNavigation`, `useFocusRestore`, `useFocusTrap`, `useScrollLock`
-
-Package-only APIs (require `KeyboardProvider`, not available through copy paths):
-
-- `KeyboardProvider`, `useKey`, `useScope`, `useScopedNavigation`, `useActionRowNavigation`, `useFocusZone`, `keys`, `useKeyboardContext`, `useOptionalKeyboardContext`
+| API | Package | dgadd | Direct copy |
+|---|---|---|---|
+| `useNavigation` | Yes | Yes | Yes |
+| `useFocusTrap` | Yes | Yes | Yes |
+| `useFocusRestore` | Yes | Yes | Yes |
+| `useScrollLock` | Yes | Yes | Yes |
+| `KeyboardProvider` | Yes | No | No |
+| `useKey` | Yes | No | No |
+| `useScope` | Yes | No | No |
+| `useScopedNavigation` | Yes | No | No |
+| `useActionRowNavigation` | Yes | No | No |
+| `useFocusZone` | Yes | No | No |
+| `keys` | Yes | No | No |
+| `useKeyboardContext` | Yes | No | No |
+| `useOptionalKeyboardContext` | Yes | No | No |
 
 ## With @diffgazer/ui
 
-Keyboard-enabled UI components can install required hooks automatically:
+Keyboard-enabled UI components can install their required hooks for you. Pick the integration mode that matches how you consume keys:
 
 ```bash
 pnpm exec dgadd add ui/menu --integration copy
 pnpm exec dgadd add ui/dialog --integration keys
 ```
 
-`copy` mode writes local hook source. `keys` mode imports from the `@diffgazer/keys` package.
+`copy` writes local hook source; `keys` imports from the `@diffgazer/keys` package.
+
+## Where to go next
+
+- [API Reference](/keys/api): every hook, option, and return value.
+- [Navigation Guide](/keys/guides/navigation): build list and tab navigation with the copied hooks.

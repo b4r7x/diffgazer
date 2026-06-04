@@ -1,10 +1,44 @@
 ---
 title: Utils
-description: Shared utilities for class names, refs, and selectable collections.
+description: Dependency-light helpers the UI primitives build on — ref composition, selectable-item collections, and shadcn namespace interop.
 ---
 
-Small utilities the components depend on, installable through `dgadd` and importable directly.
+Shared, dependency-light utilities the components build on. Each is copyable through `dgadd` or the shadcn CLI and importable from the package; you own the copied source.
 
-- [shadcn Namespace](/ui/utils/shadcn-namespace) — namespaced item names and shadcn interop
-- [compose-refs](/ui/utils/compose-refs) — merge multiple refs onto one element
-- [selectable-collection](/ui/utils/selectable-collection) — shared selectable-item helpers
+## Documented utilities
+
+| Utility | Kind | What it does |
+|---------|------|--------------|
+| [`composeRefs`](/ui/utils/compose-refs) | function | Merge any number of React refs — callback, object, `null`, or `undefined` — into one ref callback, for the React 19 ref-as-prop pattern. |
+| [`selectable-collection`](/ui/utils/selectable-collection) | collection | DOM-order item registry plus enabled-item filtering and `highlighted`/`selected`/first-enabled value resolution for compound selection components. |
+| [`shadcn Namespace`](/ui/utils/shadcn-namespace) | interop | Map `@ui` / `@diffgazer-keys` shadcn registry aliases in `components.json` so namespaced installs resolve UI and keys items. |
+
+## Installing
+
+`composeRefs` and `selectable-collection` install like any other item; the file lands at `lib/<util>.ts`.
+
+```bash
+pnpm exec dgadd add ui/compose-refs
+```
+
+They are also pulled in automatically when you add a component that depends on them — `composeRefs` ships with `select`, `menu`, `tabs`, `radio`, `checkbox`, `navigation-list`, and `command-palette`.
+
+Import from the copied source, or from the package in package mode:
+
+```tsx
+// Copy mode
+import { cn } from "@/lib/utils";
+import { composeRefs } from "@/lib/compose-refs";
+
+// Package mode
+import { cn } from "@diffgazer/ui/lib/utils";
+import { composeRefs } from "@diffgazer/ui/lib/compose-refs";
+```
+
+## Other registry utilities
+
+The registry ships more `registry:lib` helpers without standalone pages here. They install the same way (`dgadd add ui/<name>`) and come along with the components that use them:
+
+- `utils` — `cn()` class-name merge (`clsx` + `tailwind-merge`), imported by every component.
+- `aria-utils`, `focus`, `typeahead`, `search`, `resolve-tab-target` — ARIA, focus, and keyboard-interaction helpers shared across form and listbox composites.
+- `selectable-variants`, `segmented-variants`, `input-variants`, `stepper-variants`, `sidebar-variants` — CVA variant definitions co-located with their components.

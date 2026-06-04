@@ -13,6 +13,7 @@ export type PreviewFrame = "default" | "inset" | "fill";
 
 const INSET_EXAMPLES = new Set<string>([
 	"sidebar-default",
+	"sidebar-variants",
 	"sidebar-collapsible",
 	"sidebar-variant-bar",
 	"sidebar-variant-block",

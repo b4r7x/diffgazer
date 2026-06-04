@@ -4,7 +4,17 @@ description: "Manage focus across multiple zones with arrow key and Tab transiti
 hook: "use-focus-zone"
 ---
 
+`useFocusZone` models a layout as a set of named zones and moves focus between them on arrow keys or Tab. It tracks which zone is active, optionally drives DOM focus to a target per zone, and hands back `getKeyOptions` so each zone's own shortcuts only fire while that zone holds focus. It is generic over the zone type — use `as const` arrays for full inference of zone names.
+
 <UsageSnippet />
+
+## When to use it
+
+- A composite layout (sidebar + main, toolbar + canvas, search + results + preview) where arrow keys or Tab should jump between regions.
+- A region whose internal keyboard handlers should be gated on that region being active.
+- Two-zone row patterns — though for "content plus inline actions" rows, reach for the purpose-built [`useActionRowNavigation`](/keys/hooks/use-action-row-navigation), which is built on this hook.
+
+For movement **within** a single list, use [`useNavigation`](/keys/hooks/use-navigation) or [`useScopedNavigation`](/keys/hooks/use-scoped-navigation). `useFocusZone` handles movement **between** regions. See the [focus zones guide](/keys/guides/focus-zones).
 
 ## Installation
 
@@ -18,6 +28,15 @@ hook: "use-focus-zone"
 
 <ReturnsTable />
 
+## Keyboard behavior
+
+| Key | Behavior |
+|-----|----------|
+| Arrow keys | Run `transitions({ zone, key })`; return the target zone to move, or `null` to block. Arrow handling is inert when no `transitions` function is supplied. |
+| `Tab` / `Shift+Tab` | Cycle forward / backward through `tabCycle`. When `tabCycle` is omitted, Tab keeps native browser behavior. |
+
+When the `focus` option is set, changing zones moves DOM focus to the zone's target (a ref, a getter, or a `{ container, target }` pair). Initial mount does not steal focus unless `autoFocus` is `true`. `getZoneProps(zone)` returns `data-focused` for styling the active region.
+
 ## Examples
 
 <Examples />
@@ -25,5 +44,17 @@ hook: "use-focus-zone"
 ## Notes
 
 <Notes />
+
+## Edge cases
+
+- **Controlled mode.** Pass `zone` + `onZoneChange` to own the active zone; omit `zone` and rely on `initial` for uncontrolled state.
+- **Shared page scope.** When several zones share one provider scope, pass `containerRef` + `focusWithinOnly` so transitions only fire while focus is inside the layout.
+- **`focus` with `{ container, target }`.** The pair form skips focus repair while focus is already inside `container`, which avoids yanking focus away from a control the user is interacting with.
+
+## Related
+
+- [`useActionRowNavigation`](/keys/hooks/use-action-row-navigation) — a two-zone row built on `useFocusZone`.
+- [`useScopedNavigation`](/keys/hooks/use-scoped-navigation) — move within a zone once focus lands there.
+- [Focus zones guide](/keys/guides/focus-zones) — transitions, tab cycling, and focus targets.
 
 <SourceViewer />

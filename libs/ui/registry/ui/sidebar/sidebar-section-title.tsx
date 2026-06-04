@@ -17,7 +17,7 @@ export interface SidebarSectionTitleProps extends HTMLAttributes<HTMLElement> {
 // rail. The section divider (top border between sibling sections) becomes the
 // visual group separator in rail.
 const HEADING_CLASS_NAME =
-  "px-2 py-2 text-muted-foreground text-xs font-mono font-normal lowercase tracking-normal m-0 group-data-[state=rail]/sidebar:hidden";
+  "px-2 pt-4 pb-1.5 text-muted-foreground text-xs font-mono font-medium uppercase tracking-wider m-0 group-data-[state=rail]/sidebar:hidden";
 
 export function SidebarSectionTitle({
   ref,

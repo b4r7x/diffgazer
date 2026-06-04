@@ -1,9 +1,9 @@
 ---
 title: Installation
-description: Get started with @diffgazer/ui by initializing your project and adding components.
+description: Initialize a project with dgadd and add @diffgazer/ui components as source.
 ---
 
-`@diffgazer/ui` components are installed as source files. Use `dgadd` to copy components and optional `@diffgazer/keys` hooks into your app.
+`@diffgazer/ui` components install as source files. `dgadd` copies components and optional `@diffgazer/keys` hooks into your app and tracks them for later updates.
 
 > **Warning:** Temporary: packages publish-gated. `@diffgazer/add`, `@diffgazer/ui`, and `@diffgazer/keys` are external publish-gated as of May 6, 2026. The package-manager commands below work only after `npm view @diffgazer/add version`, `npm view @diffgazer/ui version`, and `npm view @diffgazer/keys version` succeed. Until then, use the [pre-publication local validation](#pre-publication-local-validation) flow.
 
@@ -25,22 +25,34 @@ Verify availability first with `npm view @diffgazer/add version`. Status as of M
 
 ## Pre-Publication Local Validation
 
-Until the packages are published, validate from this repository:
+Until the packages are published, validate `dgadd` from a locally packed tarball.
+
+<Steps>
+
+<Step title="Validate the packaged flow">
+
+Run the package smoke check from this repository:
 
 ```bash
 pnpm run smoke:packages
 ```
 
-To test `dgadd` in a separate fixture app before publication, pack and install the local CLI package:
+</Step>
 
-From this repository:
+<Step title="Pack the local CLI">
+
+To test `dgadd` in a separate fixture app, build and pack `@diffgazer/add` from this repository:
 
 ```bash
 pnpm --filter @diffgazer/add build
 pnpm --filter @diffgazer/add pack --pack-destination /tmp/diffgazer-packs
 ```
 
-From the target fixture app:
+</Step>
+
+<Step title="Install and run in the fixture app">
+
+From the target fixture app, install the tarball and run `dgadd`:
 
 ```bash
 pnpm add -D /tmp/diffgazer-packs/diffgazer-add-*.tgz
@@ -48,11 +60,19 @@ pnpm exec dgadd init
 pnpm exec dgadd add ui/button
 ```
 
-## Required App Wiring
+</Step>
 
-Configure a TypeScript or Vite source alias before running `dgadd init`, for example `@/*` or `~/*`. The initializer rejects projects without a source alias unless `--allow-missing-alias` is passed for an app whose tooling already resolves source aliases.
+</Steps>
 
-Add the source alias to TypeScript and to your bundler or framework:
+## Setup
+
+<Steps>
+
+<Step title="Configure a source alias">
+
+`dgadd init` requires a TypeScript or Vite source alias such as `@/*` or `~/*`. It rejects projects without one unless `--allow-missing-alias` is passed for an app whose tooling already resolves source aliases.
+
+Add the alias to TypeScript:
 
 ```json
 {
@@ -65,7 +85,7 @@ Add the source alias to TypeScript and to your bundler or framework:
 }
 ```
 
-For Vite, mirror the same source alias in `vite.config.ts`:
+For Vite, mirror the same alias in `vite.config.ts`:
 
 ```ts
 import { resolve } from "node:path"
@@ -80,39 +100,47 @@ export default defineConfig({
 })
 ```
 
-Then import the copied Tailwind/theme entry from your app CSS:
-
-```css
-@import "tailwindcss";
-@import "./styles/styles.css";
-```
-
 See [TypeScript](/ui/getting-started/typescript) and [Tailwind Setup](/ui/getting-started/tailwind-setup) for framework-specific details.
 
-## Initialize
+</Step>
 
-After the local `@diffgazer/add` tarball is installed and the required app wiring is in place, use one command style consistently:
+<Step title="Initialize">
+
+With the local tarball installed and the source alias in place, run `init` once and add a component:
 
 ```bash
 pnpm exec dgadd init
 pnpm exec dgadd add ui/button
 ```
 
-This creates `diffgazer.json`, records the aliases used by `dgadd`, creates install directories, writes `src/lib/utils.ts`, and copies `src/styles/theme.css` plus `src/styles/styles.css`. It does not edit your TypeScript config, bundler config, or app CSS entrypoint.
+This creates `diffgazer.json`, records the aliases `dgadd` uses, creates install directories, writes `src/lib/utils.ts`, and copies `src/styles/theme.css` plus `src/styles/styles.css`. It does not edit your TypeScript config, bundler config, or app CSS entrypoint.
 
-## Add Components
+</Step>
+
+<Step title="Import the component CSS">
+
+Import the copied Tailwind/theme entry from your app CSS:
+
+```css
+@import "tailwindcss";
+@import "./styles/styles.css";
+```
+
+</Step>
+
+<Step title="Add components">
+
+Add components by namespaced item name. Bare names are rejected:
 
 ```bash
 pnpm exec dgadd add ui/dialog ui/tabs ui/menu
 ```
 
-Bare names are rejected. Use the namespaced item name:
+</Step>
 
-```bash
-pnpm exec dgadd add ui/button
-```
+</Steps>
 
-## Add Keyboard Hooks
+## Keyboard Hooks
 
 Standalone hooks can be copied directly:
 
@@ -120,18 +148,18 @@ Standalone hooks can be copied directly:
 pnpm exec dgadd add keys/navigation keys/focus-trap keys/focus-restore keys/scroll-lock
 ```
 
-Components with keyboard behavior can choose copy mode or package mode:
+Components with keyboard behavior choose copy mode or package mode:
 
 ```bash
 pnpm exec dgadd add ui/menu --integration copy
 pnpm exec dgadd add ui/menu --integration keys
 ```
 
-`copy` mode installs local hook source. `keys` mode imports hooks from `@diffgazer/keys`.
+`copy` installs local hook source. `keys` imports hooks from `@diffgazer/keys`.
 
 ## Package Managers
 
-Use these package-manager one-shot commands only after `@diffgazer/add` is published:
+Use these one-shot commands only after `@diffgazer/add` is published:
 
 ```bash
 pnpm dlx @diffgazer/add init

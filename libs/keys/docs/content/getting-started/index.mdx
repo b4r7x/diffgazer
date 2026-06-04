@@ -1,33 +1,37 @@
 ---
 title: Introduction
-description: Scoped keyboard hooks for React >=19.2.0.
+description: Keyboard-first behavior hooks for React 19.2 and newer, with no runtime dependencies.
 ---
 
-`@diffgazer/keys` provides keyboard navigation hooks for React `>=19.2.0` applications.
+`@diffgazer/keys` is a keyboard-first behavior library for React `>=19.2.0`. It ships scopes, key registration, list navigation, focus zones, focus trap and restore, and small focus and scroll helpers as hooks. It has no runtime dependencies.
 
-## Hook Categories
+The hooks fall into two groups, and which group a hook belongs to decides how you install it.
 
-Standalone hooks work independently with no provider or runtime dependency when copied through `dgadd`:
+## Standalone hooks
 
-- `useNavigation`
-- `useFocusTrap`
-- `useFocusRestore`
-- `useScrollLock`
+Standalone hooks work on their own. They need no provider and carry no package runtime dependency once copied into your app with [`dgadd`](/keys/getting-started/installation), so you can own the source outright.
 
-Provider-backed hooks require `KeyboardProvider` from the package:
+- `useNavigation` — roving keyboard navigation for role-based lists and tabs.
+- `useFocusTrap` — confine focus to a container, for dialogs and popovers.
+- `useFocusRestore` — restore focus to the previously focused element.
+- `useScrollLock` — lock body scroll while an overlay is open.
 
-- `useKey`
-- `useScope`
-- `useScopedNavigation`
-- `useActionRowNavigation`
-- `useFocusZone`
+## Provider-backed hooks
 
-## Integration With @diffgazer/ui
+Provider-backed hooks read from a shared keyboard context, so they require `KeyboardProvider` from the package and are not available through the copy paths.
 
-`@diffgazer/ui` components are visual primitives. Components that need keyboard behavior can use copied hooks or package-mode imports from `@diffgazer/keys`.
+- `useKey` — register a keyboard shortcut in the active scope.
+- `useScope` — define and activate a scope.
+- `useScopedNavigation` — list navigation bound to a scope.
+- `useActionRowNavigation` — horizontal navigation across a row of actions.
+- `useFocusZone` — group focusable regions into a navigable zone.
 
-## Next Steps
+## Integration with @diffgazer/ui
 
-- [Installation](/keys/getting-started/installation)
-- [API Reference](/keys/api)
-- [Navigation Guide](/keys/guides/navigation)
+`@diffgazer/ui` components are visual primitives. Components that need keyboard behavior consume these hooks, either as copied source or as package imports from `@diffgazer/keys`. See the installation guide for both modes.
+
+## Where to go next
+
+- [Installation](/keys/getting-started/installation): install the package or copy standalone hooks with `dgadd`.
+- [API Reference](/keys/api): every hook, option, and return value.
+- [Navigation Guide](/keys/guides/navigation): build list and tab navigation step by step.

@@ -1,13 +1,13 @@
 ---
 title: TypeScript
-description: Configure TypeScript path aliases and compiler options for @diffgazer/ui components.
+description: Configure path aliases, strict mode, and the React version for @diffgazer/ui.
 ---
 
-@diffgazer/ui components are written in TypeScript and require path alias configuration.
+`@diffgazer/ui` components are written in TypeScript and require path alias configuration.
 
 ## Path Aliases
 
-Components import through the source alias recorded by `dgadd init`. Configure a root source alias such as `@/*` or `~/*` in your `tsconfig.json`:
+Components import through the source alias recorded by `dgadd init`. Configure a root source alias such as `@/*` or `~/*` in `tsconfig.json`:
 
 ```json
 {
@@ -20,7 +20,7 @@ Components import through the source alias recorded by `dgadd init`. Configure a
 }
 ```
 
-And in `vite.config.ts`:
+And mirror it in `vite.config.ts`:
 
 ```ts
 import { resolve } from "node:path"
@@ -41,7 +41,7 @@ For Next App Router, configure the same source alias path in `tsconfig.json` or 
 
 ## Strict Mode
 
-@diffgazer/ui components are written with `strict: true`. We recommend enabling it:
+Components are written with `strict: true`. We recommend enabling it:
 
 ```json
 {
@@ -57,7 +57,7 @@ For Next App Router, configure the same source alias path in `tsconfig.json` or 
 
 ## React
 
-@diffgazer/ui targets React `>=19.2.0`. Ensure your project uses React `>=19.2.0`:
+`@diffgazer/ui` targets React `>=19.2.0`. Ensure your project uses a compatible version:
 
 ```json
 {
@@ -68,4 +68,9 @@ For Next App Router, configure the same source alias path in `tsconfig.json` or 
 }
 ```
 
-@diffgazer/ui follows React `>=19.2.0` hook semantics and uses memoization hooks only where stable callback identity is part of the component contract.
+Components follow React `>=19.2.0` hook semantics and use memoization hooks only where stable callback identity is part of the component contract.
+
+## Where to go next
+
+- [Installation](/ui/getting-started/installation) — add components with `dgadd`
+- [Tailwind Setup](/ui/getting-started/tailwind-setup) — theme tokens and CSS entrypoint

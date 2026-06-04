@@ -13,7 +13,7 @@ export function APIReference() {
 		<>
 			<Typography
 				as="h2"
-				size="2xl"
+				size="xl"
 				id="api-reference"
 				className="font-bold text-foreground mt-10 mb-4 pb-2 border-b border-border scroll-mt-16"
 			>

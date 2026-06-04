@@ -56,6 +56,7 @@ export const useFocusTrapDoc: HookDoc = {
   ],
   examples: [
     { name: "use-focus-trap-basic", title: "Modal focus trap" },
+    { name: "use-focus-trap-initial-focus", title: "Custom initial focus" },
   ],
   tags: ["standalone", "focus", "accessibility"],
 }

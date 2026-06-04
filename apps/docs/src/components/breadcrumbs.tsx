@@ -9,8 +9,12 @@ import { isDocsLibraryId } from "@/lib/docs-library";
  * when adding/removing `index.mdx` files.
  */
 export const SECTIONS_WITH_INDEX = new Set([
-	"app",
-	"ui",
+	"app/concepts",
+	"app/getting-started",
+	"app/operations",
+	"app/reference",
+	"app/tui",
+	"app/web",
 	"ui/cli",
 	"ui/getting-started",
 	"ui/hooks",
@@ -18,7 +22,6 @@ export const SECTIONS_WITH_INDEX = new Set([
 	"ui/patterns",
 	"ui/theme",
 	"ui/utils",
-	"keys",
 	"keys/api",
 	"keys/cli",
 	"keys/getting-started",

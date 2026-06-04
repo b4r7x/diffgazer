@@ -202,8 +202,12 @@ function writeRootMeta(
   artifacts: LoadedLibraryArtifacts[],
   contentDir: string,
   title = "Documentation",
+  extraRootPages: string[] = [],
 ): void {
-  const pages = artifacts.map((artifact) => `...${artifact.id}`);
+  const pages = [
+    ...artifacts.map((artifact) => `...${artifact.id}`),
+    ...extraRootPages,
+  ];
   writeJson(resolve(contentDir, "meta.json"), {
     title,
     root: true,
@@ -283,6 +287,7 @@ export function runDocsSyncPass(params: {
   sourceOrigin: string;
   afterSync?: (ctx: AfterSyncContext) => void;
   rootTitle?: string;
+  extraRootPages?: string[];
   logger?: Logger;
 }): void {
   const {
@@ -293,6 +298,7 @@ export function runDocsSyncPass(params: {
     sourceOrigin,
     afterSync,
     rootTitle,
+    extraRootPages,
     logger = defaultLogger,
   } = params;
 
@@ -339,7 +345,7 @@ export function runDocsSyncPass(params: {
     });
   }
 
-  writeRootMeta(artifacts, paths.contentDir, rootTitle);
+  writeRootMeta(artifacts, paths.contentDir, rootTitle, extraRootPages);
 
   logger.info(
     `[docs-sync] Syncing registries (origin asserted: ${origin})...`,

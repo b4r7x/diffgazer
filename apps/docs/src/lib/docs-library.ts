@@ -156,6 +156,11 @@ export function docsPath(
 	return `/${library}/${normalized.join("/")}`;
 }
 
+/** Inverse of docsPath: a docs page url ("/{library}/{...slugs}") to the TanStack route _splat ("{...slugs}"). */
+export function routeSplatFromDocsPath(url: string): string {
+	return url.split("/").slice(2).join("/");
+}
+
 export function sourceSlugsForLibrary(
 	library: DocsLibraryId,
 	routeSlugs: string[],
