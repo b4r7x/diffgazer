@@ -1,12 +1,12 @@
 "use client";
 
-import { type ComponentPropsWithRef, type MouseEvent, type ReactNode } from "react";
 import { cva } from "class-variance-authority";
-import { cn } from "@/lib/utils";
-import { useSelectContext } from "./select-context";
+import type { ComponentPropsWithRef, MouseEvent, ReactNode } from "react";
 import { matchesSearch } from "@/lib/search";
-import { isValueSelected, toOptionId } from "./select-utils";
+import { cn } from "@/lib/utils";
 import { OverflowText } from "../overflow/overflow-text";
+import { useSelectContext } from "./select-context";
+import { isValueSelected, toOptionId } from "./selection";
 
 const NBSP = "\u00a0";
 const BULLET = "\u25cf";
@@ -112,6 +112,8 @@ export function SelectItem<TValue extends string = string>({
   };
 
   return (
+    // biome-ignore lint/a11y/useFocusableInteractive: WAI-ARIA listbox pattern — option stays non-focusable while the listbox container holds focus and aria-activedescendant tracks the active option.
+    // biome-ignore lint/a11y/useKeyWithClickEvents: Enter/Space selection is handled centrally by the select listbox, not per option.
     <div
       {...props}
       ref={ref}

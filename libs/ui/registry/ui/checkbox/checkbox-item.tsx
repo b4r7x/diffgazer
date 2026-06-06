@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useLayoutEffect, useRef, type ReactNode, type Ref } from "react";
+import { type ReactNode, type Ref, useId, useLayoutEffect, useRef } from "react";
 import { composeRefs } from "@/lib/compose-refs";
 import { Checkbox, type CheckboxProps } from "./checkbox";
 import { useCheckboxGroupContext } from "./checkbox-group-context";

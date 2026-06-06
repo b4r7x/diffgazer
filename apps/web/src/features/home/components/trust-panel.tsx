@@ -1,12 +1,12 @@
-import { useRef, useState, type KeyboardEvent } from "react";
-import type { TrustCapabilities } from "@diffgazer/core/schemas/config";
-import { getErrorMessage } from "@diffgazer/core/errors";
-import { focusNavigationItem } from "@diffgazer/keys";
-import { CardLayout } from "@/components/ui/card-layout";
-import { toast } from "@diffgazer/ui/components/toast";
-import { Button } from "@diffgazer/ui/components/button";
-import { TrustPermissionsContent } from "@/components/shared/trust-permissions-content";
 import { useSaveTrust } from "@diffgazer/core/api/hooks";
+import { getErrorMessage } from "@diffgazer/core/errors";
+import type { TrustCapabilities } from "@diffgazer/core/schemas/config";
+import { focusNavigationItem } from "@diffgazer/keys";
+import { Button } from "@diffgazer/ui/components/button";
+import { toast } from "@diffgazer/ui/components/toast";
+import { type KeyboardEvent, useRef, useState } from "react";
+import { TrustPermissionsContent } from "@/components/shared/trust-permissions-content";
+import { CardLayout } from "@/components/ui/card-layout";
 
 export interface TrustPanelProps {
   directory: string;

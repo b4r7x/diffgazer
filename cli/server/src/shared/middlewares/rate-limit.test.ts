@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createRateLimitMiddleware, resetRateLimitsForTests } from "./rate-limit.js";
 
 afterEach(() => {

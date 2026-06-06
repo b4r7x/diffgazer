@@ -44,16 +44,3 @@ export function moveHighlight<T extends NavigableItem>(
     ((isMovingForward && isAtEnd) || (isMovingBackward && isAtStart));
   return { index: nextIdx, id: nextItem.id, hitBoundary };
 }
-
-/**
- * Resolves the next index without item identity, used by list primitives
- * that track only an index (e.g. CheckboxGroup).
- */
-export function stepIndex(
-  currentIndex: number,
-  direction: 1 | -1,
-  length: number,
-  wrap: boolean,
-): number {
-  return clampIndex(currentIndex, direction, length, wrap);
-}

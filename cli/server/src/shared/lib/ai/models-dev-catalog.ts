@@ -1,17 +1,17 @@
-import { z } from "zod";
-import { getErrorMessage } from "@diffgazer/core/errors";
-import { type Result, ok, err } from "@diffgazer/core/result";
-import type { AIProvider, ProviderModelsResponse } from "@diffgazer/core/schemas/config";
 import {
-  parseModelsDevCatalog,
-  catalogToModelInfo,
   CATALOG_SNAPSHOT,
-  PROVIDER_OVERLAY,
-  ModelsDevCatalogSchema,
+  catalogToModelInfo,
   type ModelsDevCatalog,
+  ModelsDevCatalogSchema,
+  PROVIDER_OVERLAY,
+  parseModelsDevCatalog,
 } from "@diffgazer/core/catalog";
-import { getGlobalModelsDevCatalogPath } from "../paths.js";
+import { getErrorMessage } from "@diffgazer/core/errors";
+import { err, ok, type Result } from "@diffgazer/core/result";
+import type { AIProvider, ProviderModelsResponse } from "@diffgazer/core/schemas/config";
+import { z } from "zod";
 import { quarantineCorruptFile, readJsonFileSyncSafe } from "../fs.js";
+import { getGlobalModelsDevCatalogPath } from "../paths.js";
 import { type DiskCacheState, isEntryFresh, persistDiskCache } from "./disk-cache.js";
 
 const MODELS_DEV_URL = "https://models.dev/api.json";
@@ -59,9 +59,11 @@ const peekFetchedAt = (raw: unknown): string | undefined => {
 };
 
 /**
- * Like {@link loadDiskCacheState} but memoizes the expensive full-catalog parse per
- * cache generation. The missing/corrupt/ok distinction is preserved exactly so the
- * corrupt-quarantine and shrink-guard-baseline logic is unchanged.
+ * Reads the cache via `readJsonFileSyncSafe` and resolves the same
+ * missing/corrupt/ok distinction the disk-cache primitives provide, but memoizes
+ * the expensive full-catalog parse per cache generation. The distinction is
+ * preserved exactly so the corrupt-quarantine and shrink-guard-baseline logic is
+ * unchanged.
  */
 const loadCacheStateMemoized = (path: string): DiskCacheState<ModelsDevCatalogCache> => {
   const read = readJsonFileSyncSafe<unknown>(path);
@@ -208,12 +210,12 @@ const snapshotResult = (provider: AIProvider): ProviderModelsResult => ({
 /**
  * models.dev keeps its own three-tier orchestration rather than routing through the
  * shared `withTtlAndFallback` (the D6 unification helper that OpenRouter uses). It
- * deliberately reuses the cache *primitives* (`loadDiskCacheState`/`persistDiskCache`
- * via `loadCacheStateMemoized` + `persistIfNotDroppingProviders`) and the shared
- * `isEntryFresh` predicate, but the orchestration here models behavior the two-tier
- * helper does not: a third bundled-snapshot tier, a per-provider non-empty
- * fall-through (never a blank picker), a single-provider-drop poison guard on
- * persistence, and a corrupt-cache quarantine that still seeds a shrink-guard
+ * deliberately reuses the cache *primitives* (`readJsonFileSyncSafe` via
+ * `loadCacheStateMemoized`, `persistDiskCache` via `persistIfNotDroppingProviders`)
+ * and the shared `isEntryFresh` predicate, but the orchestration here models
+ * behavior the two-tier helper does not: a third bundled-snapshot tier, a
+ * per-provider non-empty fall-through (never a blank picker), a single-provider-drop
+ * poison guard on persistence, and a corrupt-cache quarantine that still seeds a shrink-guard
  * baseline. Forcing it through `withTtlAndFallback` would lose those. See design.md
  * D6 for the recorded exception.
  */

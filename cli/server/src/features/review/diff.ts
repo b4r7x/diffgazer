@@ -1,16 +1,17 @@
-import { createGitDiffError } from "../../shared/lib/git/errors.js";
-import { parseDiff } from "../../shared/lib/diff/parser.js";
-import type { ParsedDiff } from "../../shared/lib/diff/types.js";
-import type { ReviewMode } from "@diffgazer/core/schemas/review";
+import { err, ok, type Result } from "@diffgazer/core/result";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import type {
   ReviewStartedEvent,
 } from "@diffgazer/core/schemas/events";
+import type { ReviewMode } from "@diffgazer/core/schemas/review";
+import { parseDiff } from "../../shared/lib/diff/parser.js";
+import { computeTotalStats } from "../../shared/lib/diff/total-stats.js";
+import type { ParsedDiff } from "../../shared/lib/diff/types.js";
+import { createGitDiffError } from "../../shared/lib/git/errors.js";
 import type { createGitService } from "../../shared/lib/git/service.js";
 import { reviewAbort } from "./abort.js";
-import { stepStart, stepComplete } from "./step-events.js";
-import { type EmitFn, type ReviewAbort } from "./types.js";
-import { type Result, ok, err } from "@diffgazer/core/result";
+import { stepComplete, stepStart } from "./stream/steps.js";
+import type { EmitFn, ReviewAbort } from "./types.js";
 
 const MAX_DIFF_SIZE_BYTES = 524288; // 512KB
 const DIFFGAZER_DIR_PREFIX = ".diffgazer/";
@@ -35,17 +36,7 @@ export function filterDiffByFiles(
     return normalizedFiles.has(normalizedPath);
   });
 
-  const totalStats = filteredFiles.reduce(
-    (acc, file) => ({
-      filesChanged: acc.filesChanged + 1,
-      additions: acc.additions + file.stats.additions,
-      deletions: acc.deletions + file.stats.deletions,
-      totalSizeBytes: acc.totalSizeBytes + file.stats.sizeBytes,
-    }),
-    { filesChanged: 0, additions: 0, deletions: 0, totalSizeBytes: 0 },
-  );
-
-  return { files: filteredFiles, totalStats };
+  return { files: filteredFiles, totalStats: computeTotalStats(filteredFiles) };
 }
 
 export async function resolveGitDiff(params: {
@@ -82,16 +73,7 @@ export async function resolveGitDiff(params: {
 
   const externalFiles = parsed.files.filter((f) => !isDiffgazerPath(f.filePath));
   if (externalFiles.length !== parsed.files.length) {
-    const totalStats = externalFiles.reduce(
-      (acc, file) => ({
-        filesChanged: acc.filesChanged + 1,
-        additions: acc.additions + file.stats.additions,
-        deletions: acc.deletions + file.stats.deletions,
-        totalSizeBytes: acc.totalSizeBytes + file.stats.sizeBytes,
-      }),
-      { filesChanged: 0, additions: 0, deletions: 0, totalSizeBytes: 0 },
-    );
-    parsed = { files: externalFiles, totalStats };
+    parsed = { files: externalFiles, totalStats: computeTotalStats(externalFiles) };
   }
 
   if (files && files.length > 0) {

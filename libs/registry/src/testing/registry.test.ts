@@ -1,9 +1,9 @@
-import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { RegistryItemSchema } from "../registry-types.js";
+import { describe, expect, it } from "vitest";
 import { RegistryItemSchema as CliRegistryItemSchema } from "../cli/registry.js";
+import { RegistryItemSchema } from "../registry-types.js";
 
 describe("@diffgazer/ui registry closure metadata", () => {
   const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../../..");

@@ -1,14 +1,14 @@
-import { render, screen, fireEvent } from "@testing-library/react"
+import { fireEvent, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { axe } from "../../../testing/utils"
-import { describe, it, expect } from "vitest"
+import { describe, expect, it } from "vitest"
+import { axe } from "../../../testing/axe"
 import { Tooltip } from "./index"
 
 describe("Tooltip", () => {
   it("renders content when defaultOpen is true", () => {
     render(
       <Tooltip content="Tip text" defaultOpen>
-        <button>Hover me</button>
+        <button type="button">Hover me</button>
       </Tooltip>
     )
     expect(screen.getByRole("tooltip")).toBeInTheDocument()
@@ -19,7 +19,7 @@ describe("Tooltip", () => {
     const user = userEvent.setup()
     render(
       <Tooltip content="Tip text" enabled={false} delayMs={0}>
-        <button>Hover me</button>
+        <button type="button">Hover me</button>
       </Tooltip>
     )
     await user.hover(screen.getByText("Hover me"))
@@ -30,7 +30,7 @@ describe("Tooltip", () => {
     const { container } = render(
       <div>
         <Tooltip content="Tip text" defaultOpen>
-          <button>Hover me</button>
+          <button type="button">Hover me</button>
         </Tooltip>
       </div>
     )
@@ -41,7 +41,7 @@ describe("Tooltip", () => {
     const { container } = render(
       <div>
         <Tooltip content="Tip text">
-          <button>Hover me</button>
+          <button type="button">Hover me</button>
         </Tooltip>
       </div>
     )
@@ -53,7 +53,7 @@ describe("Tooltip keyboard", () => {
   it("shows on focus via tab", async () => {
     render(
       <Tooltip content="Tip text" delayMs={0}>
-        <button>Focus me</button>
+        <button type="button">Focus me</button>
       </Tooltip>
     )
 
@@ -64,7 +64,7 @@ describe("Tooltip keyboard", () => {
   it("dismisses on Escape", async () => {
     render(
       <Tooltip content="Tip text" defaultOpen>
-        <button>Hover me</button>
+        <button type="button">Hover me</button>
       </Tooltip>
     )
     expect(screen.getByRole("tooltip")).toBeInTheDocument()
@@ -79,7 +79,7 @@ describe("Tooltip trigger semantics", () => {
   it("enhances an interactive child without nesting controls", () => {
     render(
       <Tooltip content="Tip text">
-        <button>Hover me</button>
+        <button type="button">Hover me</button>
       </Tooltip>
     )
     const button = screen.getByRole("button", { name: "Hover me" })
@@ -105,7 +105,7 @@ describe("Tooltip trigger semantics", () => {
     const user = userEvent.setup()
     render(
       <Tooltip content="Disabled tip" delayMs={0}>
-        <button disabled>Unavailable</button>
+        <button type="button" disabled>Unavailable</button>
       </Tooltip>
     )
 
@@ -143,7 +143,7 @@ describe("Tooltip touch", () => {
   it("dismisses on outside tap", () => {
     render(
       <div>
-        <button>Outside</button>
+        <button type="button">Outside</button>
         <Tooltip content="Tip text" defaultOpen>
           Passive label
         </Tooltip>

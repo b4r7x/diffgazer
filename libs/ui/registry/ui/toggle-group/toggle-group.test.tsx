@@ -1,10 +1,10 @@
-import { createRef } from "react"
 import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { axe } from "../../../testing/utils"
-import { describe, it, expect, expectTypeOf, vi } from "vitest"
+import { createRef } from "react"
+import { describe, expect, expectTypeOf, it, vi } from "vitest"
+import { axe } from "../../../testing/axe"
 import { ToggleGroup, type ToggleGroupItemProps } from "./index"
-import { type ToggleGroupProps } from "./toggle-group"
+import type { ToggleGroupProps } from "./toggle-group"
 
 type ToggleGroupSingleComponentProps = Extract<
   React.ComponentProps<typeof ToggleGroup>,

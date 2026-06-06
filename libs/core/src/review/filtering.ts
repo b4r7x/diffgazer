@@ -1,4 +1,4 @@
-import type { ReviewIssue, ReviewSeverity } from "@diffgazer/core/schemas/review";
+import type { ReviewIssue, ReviewSeverity } from "../schemas/review/index.js";
 
 export function filterIssuesBySeverity(
   issues: ReviewIssue[],

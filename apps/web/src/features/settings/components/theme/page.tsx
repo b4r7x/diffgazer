@@ -1,17 +1,17 @@
-import { useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
-import type { Shortcut } from "@diffgazer/core/schemas/presentation";
-import type { WebTheme, ResolvedTheme } from "@/types/theme";
-import { Panel } from "@diffgazer/ui/components/panel";
-import { Callout } from "@diffgazer/ui/components/callout";
-import { Button } from "@diffgazer/ui/components/button";
-import { toast } from "@diffgazer/ui/components/toast";
-import { ThemeSelectorContent } from "../theme-selector-content";
-import { ThemePreviewCard } from "../theme-preview-card";
-import { useTheme } from "@/hooks/use-theme";
-import { useKey, useScope } from "@diffgazer/keys";
 import { usePageFooter } from "@diffgazer/core/footer";
-import { useActionRowNavigation } from "@diffgazer/keys";
+import { deriveSaveState } from "@diffgazer/core/forms";
+import type { Shortcut } from "@diffgazer/core/schemas/presentation";
+import { useActionRowNavigation, useKey, useScope } from "@diffgazer/keys";
+import { Button } from "@diffgazer/ui/components/button";
+import { Callout } from "@diffgazer/ui/components/callout";
+import { Panel } from "@diffgazer/ui/components/panel";
+import { toast } from "@diffgazer/ui/components/toast";
+import { useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
+import { useTheme } from "@/hooks/use-theme";
+import type { ResolvedTheme, WebTheme } from "@/types/theme";
+import { ThemePreviewCard } from "./preview-card";
+import { ThemeSelectorContent } from "./selector-content";
 
 function resolveTheme(theme: WebTheme, systemResolved?: ResolvedTheme | null): ResolvedTheme {
   return theme === "auto" ? (systemResolved ?? "dark") : theme;
@@ -54,7 +54,12 @@ function SettingsThemeEditor({
   const previewResolved = resolveTheme(previewTheme, systemResolved);
   useScope("settings-theme");
 
-  const canSave = selectedTheme !== savedTheme;
+  const { canSave } = deriveSaveState<WebTheme>({
+    persisted: savedTheme,
+    choice: selectedTheme,
+    saving: false,
+    fallback: savedTheme,
+  });
   const isSaveDisabled = !canSave;
 
   const handleCancel = () => navigate({ to: "/settings" });

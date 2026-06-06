@@ -1,8 +1,8 @@
 "use client";
 
 import {
-  BlockBar as BlockBarRoot,
   type BlockBarProps,
+  BlockBar as BlockBarRoot,
   type BlockBarSegmentData,
 } from "./block-bar";
 import {

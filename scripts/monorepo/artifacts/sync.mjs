@@ -1,8 +1,8 @@
-import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { basename, relative, resolve } from "node:path";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { basename, resolve } from "node:path";
 import { assertSafeLibraryId } from "./config.mjs";
 import { readJson } from "./json.mjs";
-import { resolveInside, toPosixPath } from "./paths.mjs";
+import { resolveInside } from "./paths.mjs";
 import {
   collectPathParityErrors,
   collectTreeParityErrors,
@@ -82,76 +82,6 @@ function directoryHasFiles(dirPath) {
   return false;
 }
 
-function resolveRegistryFilePath(registryDir, registryFilePath) {
-  const relativePath = registryFilePath.replace(/^registry[\\/]/, "");
-  return resolveInside(registryDir, relativePath, `registry CSS file path ${registryFilePath}`);
-}
-
-function getRegistryCssFilePaths(artifact) {
-  const registryDirRel = artifact.manifest.source?.registryDir;
-  if (!registryDirRel) return [];
-
-  const registryDir = resolveInside(artifact.artifactRoot, registryDirRel, `${artifact.id} source registry path`);
-  const registryIndex = resolveInside(registryDir, "registry.json", `${artifact.id} source registry index`);
-  if (!existsSync(registryIndex)) return [];
-
-  const registry = readJson(registryIndex);
-  const seen = new Set();
-  const cssFiles = [];
-
-  for (const item of registry.items ?? []) {
-    if (item.type === "registry:theme") continue;
-    for (const file of item.files ?? []) {
-      if (typeof file.path !== "string" || !file.path.endsWith(".css")) continue;
-      const cssPath = resolveRegistryFilePath(registryDir, file.path);
-      if (seen.has(cssPath)) continue;
-      seen.add(cssPath);
-      cssFiles.push(cssPath);
-    }
-  }
-
-  return cssFiles;
-}
-
-export function getMaterializedPrimaryStylesContent(artifact) {
-  const stylesDirRel = artifact.manifest.source?.stylesDir;
-  if (!stylesDirRel) return null;
-
-  const stylesDir = resolveInside(artifact.artifactRoot, stylesDirRel, `${artifact.id} source styles path`);
-  const stylesPath = resolveInside(stylesDir, "styles.css", `${artifact.id} source styles entry`);
-  if (!existsSync(stylesPath)) return null;
-
-  const seed = readFileSync(stylesPath, "utf-8")
-    .replace(/^\/\* Canonical style seed\.[\s\S]*?\*\/\n?/, "/* Canonical materialized component CSS entry for the docs app. */\n")
-    .trimEnd();
-  const chunks = [seed];
-  for (const cssPath of getRegistryCssFilePaths(artifact)) {
-    if (existsSync(cssPath)) {
-      chunks.push(readFileSync(cssPath, "utf-8").trimEnd());
-    }
-  }
-
-  return `${chunks.filter(Boolean).join("\n\n")}\n`;
-}
-
-export function materializePrimaryStylesFromArtifact(docsRoot, artifact) {
-  const materialized = getMaterializedPrimaryStylesContent(artifact);
-  if (materialized == null) return;
-  writeFileSync(resolve(docsRoot, "styles/styles.css"), materialized);
-}
-
-function createPrimaryRegistryOutputFilter(docsRoot, primaryLibraryId, artifacts) {
-  const secondaryLibraryExamplePrefixes = artifacts
-    .filter((artifact) => artifact.id !== primaryLibraryId)
-    .map((artifact) => `examples/${artifact.id}/`);
-  const primaryRegistryOutputDir = resolve(docsRoot, "registry");
-
-  return (path) => {
-    const relPath = `${toPosixPath(relative(primaryRegistryOutputDir, path))}/`;
-    return !secondaryLibraryExamplePrefixes.some((prefix) => relPath.startsWith(prefix));
-  };
-}
-
 function collectBaseOutputErrors(docsRoot, artifact) {
   const libraryId = artifact.id;
 
@@ -191,52 +121,68 @@ function collectAssetOutputErrors(docsRoot, artifact) {
 function collectPrimaryGeneratedErrors(docsRoot, artifact) {
   if (!artifact.manifest.docs.generatedDir) return [];
 
-  return collectTreeParityErrors(
-    resolveInside(artifact.artifactRoot, artifact.manifest.docs.generatedDir, `${artifact.id} generated artifact path`),
-    resolve(docsRoot, "src/generated", artifact.id),
-    `${artifact.id} generated sync`,
+  const artifactGeneratedDir = resolveInside(
+    artifact.artifactRoot,
+    artifact.manifest.docs.generatedDir,
+    `${artifact.id} generated artifact path`,
   );
-}
+  const outputGeneratedDir = resolve(docsRoot, "src/generated", artifact.id);
+  const isNotDemoIndex = (filePath) => basename(filePath) !== "demo-index.ts";
 
-function collectPrimarySourceRegistryErrors(docsRoot, artifact, primaryRegistryOutputFilter) {
-  if (!artifact.manifest.source?.registryDir) return [];
+  const errors = [
+    ...collectTreeParityErrors(
+      artifactGeneratedDir,
+      outputGeneratedDir,
+      `${artifact.id} generated sync`,
+      {
+        sourceFilter: isNotDemoIndex,
+        artifactFilter: isNotDemoIndex,
+      },
+    ),
+  ];
 
-  return collectTreeParityErrors(
-    resolveInside(artifact.artifactRoot, artifact.manifest.source.registryDir, `${artifact.id} source registry artifact path`),
-    resolve(docsRoot, "registry"),
-    `${artifact.id} source registry sync`,
-    { artifactFilter: primaryRegistryOutputFilter },
-  );
-}
-
-function collectPrimaryStyleErrors(docsRoot, artifact) {
-  if (!artifact.manifest.source?.stylesDir) return [];
-
-  const libraryId = artifact.id;
-  const artifactStylesDir = resolveInside(artifact.artifactRoot, artifact.manifest.source.stylesDir, `${libraryId} source styles artifact path`);
-  const docsStylesDir = resolve(docsRoot, "styles");
-  const errors = collectTreeParityErrors(
-    artifactStylesDir,
-    docsStylesDir,
-    `${libraryId} styles sync`,
-    {
-      sourceFilter: (path) => basename(path) !== "styles.css",
-      artifactFilter: (path) => basename(path) !== "styles.css",
-    },
-  );
-
-  const expectedStyles = getMaterializedPrimaryStylesContent(artifact);
-  if (expectedStyles != null) {
-    const actualStylesPath = resolve(docsStylesDir, "styles.css");
-    const actualStyles = existsSync(actualStylesPath)
-      ? readFileSync(actualStylesPath, "utf-8")
-      : null;
-    if (actualStyles !== expectedStyles) {
-      errors.push(`${libraryId} styles sync: materialized styles.css differs from artifact source styles plus registry CSS`);
-    }
+  if (artifact.manifest.generated?.demoIndex) {
+    errors.push(...collectGeneratedDemoIndexErrors(
+      resolve(artifactGeneratedDir, "demo-index.ts"),
+      resolve(outputGeneratedDir, "demo-index.ts"),
+      `${artifact.id} generated sync demo-index.ts`,
+      (content) => rewriteDemoIndexForViteGlob(content),
+    ));
   }
 
   return errors;
+}
+
+export function rewriteDemoIndexForViteGlob(content) {
+  const entries = Array.from(
+    content.matchAll(
+      /^\s+"([^"]+)": lazy\(\(\) => import\("([^"]+)"\)\),$/gm,
+    ),
+  );
+  if (entries.length === 0) return content;
+
+  return [
+    `import { lazy } from "react"`,
+    `import type { ComponentType, LazyExoticComponent } from "react"`,
+    "",
+    "type DemoModule = { default: ComponentType }",
+    `const demoModules = import.meta.glob<DemoModule>("../../../registry/examples/**/*.tsx")`,
+    "",
+    "function lazyDemo(path: string): LazyExoticComponent<ComponentType> {",
+    "  const load = demoModules[path]",
+    "  if (!load) {",
+    "    return lazy(() => Promise.reject(new Error(`Missing demo module: ${path}`)))",
+    "  }",
+    "  return lazy(load)",
+    "}",
+    "",
+    "export const demos: Record<string, LazyExoticComponent<ComponentType>> = {",
+    ...entries.map(([, demoName, importPath]) => {
+      return `  "${demoName}": lazyDemo("${importPath}.tsx"),`;
+    }),
+    "}",
+    "",
+  ].join("\n");
 }
 
 function collectSecondaryGeneratedErrors(docsRoot, artifact) {
@@ -277,7 +223,7 @@ function collectSecondaryExampleErrors(docsRoot, artifact) {
   return [];
 }
 
-function rewriteSecondaryDemoIndexImports(content, libraryId) {
+export function rewriteSecondaryDemoIndexImports(content, libraryId) {
   return content.replace(
     /import\("([^"]*?registry\/examples\/)([^"]+)"\)/g,
     (_match, _prefix, examplePath) => {
@@ -287,6 +233,19 @@ function rewriteSecondaryDemoIndexImports(content, libraryId) {
       return `import("../../../registry/examples/${namespacedExamplePath}")`;
     },
   );
+}
+
+function collectGeneratedDemoIndexErrors(artifactPath, outputPath, label, rewriteExpected) {
+  if (!existsSync(artifactPath)) {
+    return [`${label}: missing source path ${artifactPath}`];
+  }
+  if (!existsSync(outputPath)) {
+    return [`${label}: missing artifact path ${outputPath}`];
+  }
+
+  const expected = rewriteExpected(readFileSync(artifactPath, "utf-8"));
+  const actual = readFileSync(outputPath, "utf-8");
+  return expected === actual ? [] : [`${label}: artifact differs from rewritten docs runtime demo index`];
 }
 
 function collectSecondaryGeneratedFileErrors(docsRoot, artifact, generatedFile) {
@@ -302,16 +261,14 @@ function collectSecondaryGeneratedFileErrors(docsRoot, artifact, generatedFile) 
     return collectPathParityErrors(artifactPath, outputPath, label);
   }
 
-  if (!existsSync(artifactPath)) {
-    return [`${label}: missing source path ${artifactPath}`];
-  }
-  if (!existsSync(outputPath)) {
-    return [`${label}: missing artifact path ${outputPath}`];
-  }
-
-  const expected = rewriteSecondaryDemoIndexImports(readFileSync(artifactPath, "utf-8"), artifact.id);
-  const actual = readFileSync(outputPath, "utf-8");
-  return expected === actual ? [] : [`${label}: artifact differs from rewritten secondary demo index`];
+  return collectGeneratedDemoIndexErrors(
+    artifactPath,
+    outputPath,
+    label,
+    (content) => rewriteDemoIndexForViteGlob(
+      rewriteSecondaryDemoIndexImports(content, artifact.id),
+    ),
+  );
 }
 
 function collectArtifactOutputParityErrors(params) {
@@ -321,7 +278,6 @@ function collectArtifactOutputParityErrors(params) {
     artifacts = [],
   } = params;
   const errors = [];
-  const primaryRegistryOutputFilter = createPrimaryRegistryOutputFilter(docsRoot, primaryLibraryId, artifacts);
 
   for (const artifact of artifacts) {
     try {
@@ -330,8 +286,6 @@ function collectArtifactOutputParityErrors(params) {
 
       if (artifact.id === primaryLibraryId) {
         errors.push(...collectPrimaryGeneratedErrors(docsRoot, artifact));
-        errors.push(...collectPrimarySourceRegistryErrors(docsRoot, artifact, primaryRegistryOutputFilter));
-        errors.push(...collectPrimaryStyleErrors(docsRoot, artifact));
       } else {
         errors.push(...collectSecondaryGeneratedErrors(docsRoot, artifact));
         errors.push(...collectSecondaryExampleErrors(docsRoot, artifact));
@@ -374,8 +328,6 @@ export function collectArtifactSyncValidationErrors(params) {
 
   const requiredRootFiles = [
     "content/docs/meta.json",
-    "registry/registry.json",
-    "styles/styles.css",
     "src/generated/demo-loaders.ts",
   ];
 

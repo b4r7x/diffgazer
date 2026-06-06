@@ -1,6 +1,6 @@
 "use client"
 
-import { Menu, MenuItem, MenuDivider } from "@/components/ui/menu"
+import { Menu, MenuDivider, MenuItem } from "@/components/ui/menu"
 
 export default function MenuIcons() {
   return (

@@ -1,5 +1,5 @@
-import { Chevron } from "@/components/ui/icons"
 import { Breadcrumbs } from "@/components/ui/breadcrumbs"
+import { Chevron } from "@/components/ui/icons"
 
 export default function BreadcrumbsCustomSeparator() {
   return (

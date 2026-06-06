@@ -1,7 +1,7 @@
 "use client"
 
-import { useRef } from "react"
 import { useNavigation } from "@diffgazer/keys"
+import { useRef } from "react"
 
 const items = ["Apple", "Banana", "Cherry", "Date", "Elderberry"]
 
@@ -31,6 +31,7 @@ export default function UseNavigationBasic() {
         style={{ padding: 4, border: "1px solid currentColor" }}
       >
         {items.map((item) => (
+          // biome-ignore lint/a11y/useFocusableInteractive: WAI-ARIA listbox/activedescendant pattern — options stay non-focusable; the listbox container holds focus and aria-activedescendant tracks the active option.
           <div
             key={item}
             id={getOptionId(item)}

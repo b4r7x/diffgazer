@@ -1,6 +1,6 @@
-import { Typography } from "@/components/ui/typography/typography";
+import { Typography } from "@diffgazer/ui/components/typography";
 import { useComponentData } from "../doc-data-context";
-import { PropsTableBlock } from "./props-table-block";
+import { PropsTableBlock } from "./props-table";
 
 export function APIReference() {
 	const componentData = useComponentData();

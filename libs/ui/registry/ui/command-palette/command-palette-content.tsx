@@ -1,12 +1,12 @@
 "use client";
 
+import { cva, type VariantProps } from "class-variance-authority";
 import { type ReactNode, useCallback, useState } from "react";
 import { useFocusRestore } from "@/hooks/use-focus-restore";
-import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
-import { useCommandPaletteContext } from "./command-palette-context";
 import { DialogShell } from "../shared/dialog-shell";
 import { PortalContainerProvider } from "../shared/portal-context";
+import { useCommandPaletteContext } from "./command-palette-context";
 
 export type CommandPaletteFrame = "border" | "viewfinder" | "terminal" | "card" | "none";
 export type CommandPaletteDensity = "compact" | "comfortable" | "dense";
@@ -81,6 +81,7 @@ export function CommandPaletteContent({
           <span aria-hidden="true" className="cp-corners" />
         ) : null}
         {children}
+        {/* biome-ignore lint/a11y/useSemanticElements: role="status" is the sr-only results-count live region; <output> carries form-association semantics that do not fit here. */}
         <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
           {getLiveText(search, itemCount)}
         </div>

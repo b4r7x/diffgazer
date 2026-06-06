@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   getRestorableFocusTarget,
-  restoreFocus,
   type RestoreFocusOptions,
+  restoreFocus,
 } from "../dom/focus-restore.js";
 
 export interface UseFocusRestoreOptions extends RestoreFocusOptions {

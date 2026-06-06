@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, type RefObject } from "react";
 import { getFirstFocusableElement } from "@diffgazer/keys";
+import { type RefObject, useEffect } from "react";
 
 export function useAutoFocus(
   ref: RefObject<HTMLElement | null>,

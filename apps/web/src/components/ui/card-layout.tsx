@@ -1,7 +1,7 @@
-import type { ReactNode } from "react";
-import { cn } from "@diffgazer/ui/lib/utils";
 import { Card } from "@diffgazer/ui/components/card";
 import { Typography } from "@diffgazer/ui/components/typography";
+import { cn } from "@diffgazer/ui/lib/utils";
+import type { ReactNode } from "react";
 
 export interface CardLayoutProps {
   title?: string;

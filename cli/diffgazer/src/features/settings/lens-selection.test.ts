@@ -1,5 +1,5 @@
-import { test, describe, expect } from "vitest";
 import type { LensId } from "@diffgazer/core/schemas/review";
+import { describe, expect, test } from "vitest";
 import { isLensSelectionDirty, resolveEffectiveLenses } from "./lens-selection";
 
 const ALL: LensId[] = ["correctness", "security", "performance", "simplicity", "tests"];

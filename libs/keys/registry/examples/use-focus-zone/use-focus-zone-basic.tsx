@@ -1,7 +1,7 @@
 "use client"
 
-import { useRef } from "react"
 import { KeyboardProvider, useFocusZone, useScopedNavigation } from "@diffgazer/keys"
+import { useRef } from "react"
 
 type Zone = "sidebar" | "main"
 
@@ -67,6 +67,7 @@ function Pane({
       <h4>{title}</h4>
       <div ref={containerRef} role="listbox">
         {items.map((item) => (
+          // biome-ignore lint/a11y/useFocusableInteractive: WAI-ARIA listbox pattern — options stay non-focusable; the listbox container holds focus and active state is tracked via aria-selected.
           <div
             key={item}
             role="option"

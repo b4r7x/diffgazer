@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Track the last password set, so availability check's write/read roundtrip succeeds
 let lastSetPassword: string | null = null;
@@ -25,7 +25,6 @@ function setupKeyringAvailable() {
     getPassword = mockGetPassword;
     setPassword = mockSetPassword;
     deletePassword = mockDeletePassword;
-    constructor(_service: string, _account: string) {}
   }
 
   mockRequireModule.mockReturnValue({ Entry: MockEntry });

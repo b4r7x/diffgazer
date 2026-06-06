@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ComponentProps, type ReactNode } from "react";
+import { type ComponentProps, type ReactNode, useEffect, useRef, useState } from "react";
 
 export interface CodeBlockCopyButtonProps
   extends Omit<ComponentProps<"button">, "children" | "onCopy"> {

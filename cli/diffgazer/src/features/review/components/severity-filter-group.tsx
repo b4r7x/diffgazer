@@ -1,13 +1,13 @@
-import { useState } from "react";
-import { Box, Text, useInput } from "ink";
-import type { ReviewSeverity } from "@diffgazer/core/schemas/review";
 import {
-  type UISeverityFilter,
-  type SeverityCounts,
-  SEVERITY_ORDER,
   SEVERITY_LABELS,
+  SEVERITY_ORDER,
+  type SeverityCounts,
+  type UISeverityFilter,
 } from "@diffgazer/core/schemas/presentation";
-import { useTheme } from "../../../theme/theme-context";
+import type { ReviewSeverity } from "@diffgazer/core/schemas/review";
+import { Box, Text, useInput } from "ink";
+import { useState } from "react";
+import { useTheme } from "../../../app/providers/theme";
 import { severityColor } from "../../../theme/severity";
 
 export interface SeverityFilterGroupProps {

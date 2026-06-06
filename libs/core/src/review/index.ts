@@ -1,46 +1,45 @@
+export { buildLensStats, buildReviewSummary, type ReviewSummary } from "./build-summary.js";
+export { type DetailsEmptyKind, selectDetailsEmptyKind } from "./details-empty.js";
 export {
-  reviewReducer,
-  createInitialReviewState,
-  type ReviewState,
-  type ReviewEvent,
-  type ReviewAction,
-  type FileProgress,
-} from "./review-state.js";
-export {
-  processReviewStream,
-  type StreamReviewOptions,
-  type StreamReviewError,
-} from "./stream-review.js";
+  getAgentDetail,
+  mapStepStatus,
+  type UIStepStatus,
+} from "./display.js";
+export { convertAgentEventsToLogEntries } from "./event-to-log.js";
 export {
   filterIssuesBySeverity,
 } from "./filtering.js";
-export { convertAgentEventsToLogEntries } from "./event-to-log.js";
 export {
-  mapStepStatus,
-  getAgentDetail,
-  type UIStepStatus,
-} from "./display.js";
-export { isNoDiffError, isCheckingForChanges, getLoadingMessage } from "./lifecycle-helpers.js";
-export {
-  HISTORY_SECTION_ALL_ID,
-  HISTORY_SECTION_ALL_LABEL,
-  buildReviewListItem,
+  buildHistoryRunSummary,
   buildTimelineItems,
-  durationMsToSeconds,
+  filterReviewsForHistory,
   getEmptyRunsMessage,
   getRunBranchLabel,
   getRunDisplayId,
   getRunSummaryParts,
   getRunSummaryText,
-  groupByDate,
+  HISTORY_SECTION_ALL_ID,
+  HISTORY_SECTION_ALL_LABEL,
+  type HistoryRunSummary,
   matchesHistoryQuery,
+  metadataToSeverityCounts,
+  type RunSummaryParts,
   resolveSelectedDateId,
   resolveSelectedRunId,
-  type DateGroup,
-  type ReviewListItem,
-  type RunSummaryParts,
   type SeverityPart,
 } from "./history.js";
-export { buildReviewSummary, type ReviewSummary } from "./build-summary.js";
-export { selectDetailsEmptyKind, type DetailsEmptyKind } from "./details-empty.js";
+export { getLoadingMessage, isCheckingForChanges, isNoDiffError } from "./lifecycle.js";
 export { mapStepsToProgressData } from "./progress-mapping.js";
+export {
+  createInitialReviewState,
+  type FileProgress,
+  type ReviewAction,
+  type ReviewEvent,
+  type ReviewState,
+  reviewReducer,
+} from "./state.js";
+export {
+  processReviewStream,
+  type StreamReviewError,
+  type StreamReviewOptions,
+} from "./stream.js";

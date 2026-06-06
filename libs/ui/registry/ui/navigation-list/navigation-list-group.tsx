@@ -1,6 +1,6 @@
 "use client";
 
-import { Children, type ReactNode, type MouseEvent, type FocusEvent, useEffect, useId, useMemo } from "react";
+import { Children, type FocusEvent, type MouseEvent, type ReactNode, useEffect, useId, useMemo } from "react";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { getEncodedListboxItemId } from "@/hooks/use-listbox";
 import { cn } from "@/lib/utils";
@@ -39,7 +39,7 @@ export function NavigationListGroup({
   const parentGroup = useNavigationListGroupContext();
   const position = useNavigationListGroupPositionContext();
   const generatedId = useId();
-  const headerId = variant === "tree" ? (controlledHeaderId ?? `__group_${generatedId}`) : undefined;
+  const treeHeaderId = controlledHeaderId ?? `__group_${generatedId}`;
 
   const [expanded, setExpanded] = useControllableState<boolean>({
     value: controlledExpanded,
@@ -74,6 +74,7 @@ export function NavigationListGroup({
     <NavigationListGroupContext value={groupContextValue}>
       {arrayChildren.map((child, index) => (
         <NavigationListGroupPositionContext
+          // biome-ignore lint/suspicious/noArrayIndexKey: this wrapper provides positional context (isLast) for children rendered in fixed order; the position index is the identity by design.
           key={index}
           value={{ isLast: index === arrayChildren.length - 1 }}
         >
@@ -84,6 +85,7 @@ export function NavigationListGroup({
   );
 
   return (
+    // biome-ignore lint/a11y/useSemanticElements: role="group" labels a related set of navigation options; <fieldset> is for form controls and is not appropriate here.
     <div
       role="group"
       aria-label={groupLabel}
@@ -96,7 +98,7 @@ export function NavigationListGroup({
         <SectionHeader label={label} count={count} expanded={expanded} toggle={toggle} />
       ) : (
         <TreeHeader
-          headerId={headerId!}
+          headerId={treeHeaderId}
           label={label}
           expanded={expanded}
           toggle={toggle}
@@ -163,6 +165,8 @@ function TreeHeader({ headerId, label, expanded, toggle, depth, parentLinePrefix
   };
 
   return (
+    // biome-ignore lint/a11y/useFocusableInteractive: WAI-ARIA listbox pattern — this collapsible group header is an option that stays non-focusable while the container holds focus and aria-activedescendant tracks the active option.
+    // biome-ignore lint/a11y/useKeyWithClickEvents: Enter/Space toggle is handled centrally by the navigation list container, not per header.
     <div
       id={itemId}
       role="option"

@@ -1,6 +1,6 @@
-import { Box, Text } from "ink";
 import type { Shortcut } from "@diffgazer/core/schemas/presentation";
-import { useTheme } from "../../theme/theme-context";
+import { Box, Text } from "ink";
+import { useTheme } from "../../app/providers/theme";
 
 export interface FooterProps {
   shortcuts: Shortcut[];

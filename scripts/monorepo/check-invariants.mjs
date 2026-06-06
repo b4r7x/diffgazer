@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { execSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { readJson } from "./artifacts/json.mjs";
 import { runValidationChecks } from "./artifacts/run-checks.mjs";
 
@@ -181,8 +181,6 @@ function listPackageJsonFiles() {
     .filter(Boolean);
 }
 
-const jsonOut = process.argv.includes("--json");
-
 addResult("root workspace file exists", existsSync("pnpm-workspace.yaml"));
 addResult("root policy files exist", existsSync("SECURITY.md") && existsSync("SUPPORT.md"));
 assertRootMetadata();
@@ -343,7 +341,7 @@ assertPackageMetadata(
   "libs/keys",
   "libs/keys",
   ["."],
-  ["dist", "internal-docs-manifest.json", "README.md", "LICENSE", "SECURITY.md", "SUPPORT.md"],
+  ["dist", "README.md", "LICENSE", "SECURITY.md", "SUPPORT.md"],
   false,
 );
 
@@ -363,6 +361,40 @@ assertCliPackageMetadata(
   ["dist", "README.md", "LICENSE", "SECURITY.md", "SUPPORT.md"],
 );
 
+// Publishable packages are the non-private workspaces that carry a
+// `publishConfig` block (today: diffgazer, @diffgazer/add, @diffgazer/ui,
+// @diffgazer/keys). The two invariants below govern the published tarball
+// surface; private workspaces (registry, core, server, apps, keys-artifacts)
+// are intentionally exempt.
+const publishablePackages = [...parsedPackages.entries()].filter(
+  ([, parsed]) => !parsed.private && parsed.publishConfig,
+);
+
+// T-609: build-time docs/registry config must never ship in a published
+// tarball. `internal-docs-manifest.json` points at docs/registry inputs that
+// are not in the package `files` set, so packing it ships dangling references.
+const manifestInFiles = publishablePackages
+  .filter(([, parsed]) => (parsed.files ?? []).includes("internal-docs-manifest.json"))
+  .map(([file]) => file);
+addResult(
+  "no publishable package ships internal-docs-manifest.json",
+  manifestInFiles.length === 0,
+  manifestInFiles.join(", "),
+);
+
+// T-610: every publishable package declares the same engines.node floor so the
+// supported Node version is a single governed contract, not per-package drift.
+const engineFloors = publishablePackages.map(([file, parsed]) => ({
+  file,
+  node: parsed.engines?.node,
+}));
+const uniqueEngineFloors = [...new Set(engineFloors.map((e) => e.node))];
+addResult(
+  "publishable packages share one engines.node",
+  uniqueEngineFloors.length === 1 && uniqueEngineFloors[0] != null,
+  engineFloors.map((e) => `${e.file}: ${e.node ?? "missing"}`).join(", "),
+);
+
 const turboConfig = readJson("turbo.json");
 const docsOutputs = turboConfig.tasks?.["@diffgazer/docs#build"]?.outputs ?? [];
 addResult(
@@ -378,13 +410,6 @@ addResult(
   webBuildScript.includes("turbo"),
   webBuildScript,
 );
-
-if (jsonOut) {
-  writeFileSync(
-    "docs/migration/014-monorepo-restructure/invariant-check-results.json",
-    JSON.stringify(output, null, 2),
-  );
-}
 
 // Exit-code contract: this script exits non-zero when any invariant fails so
 // CI gates can branch on it. Per-check PASS/FAIL lines are printed above; the

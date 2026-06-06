@@ -1,6 +1,6 @@
-import { Box, Text } from "ink";
 import type { ReviewSeverity } from "@diffgazer/core/schemas/review";
-import { useTheme } from "../../../theme/theme-context";
+import { Box, Text } from "ink";
+import { useTheme } from "../../../app/providers/theme";
 import { Badge } from "../../../components/ui/badge";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions";
 import { severityVariant } from "../../../theme/severity-variant";
@@ -14,7 +14,7 @@ export interface IssuePreviewItemProps {
 
 function truncatePath(filePath: string, maxLength: number): string {
   if (filePath.length <= maxLength) return filePath;
-  return "\u2026" + filePath.slice(-(maxLength - 1));
+  return `\u2026${filePath.slice(-(maxLength - 1))}`;
 }
 
 export function IssuePreviewItem({

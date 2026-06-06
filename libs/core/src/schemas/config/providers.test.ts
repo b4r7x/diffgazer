@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { UserConfigSchema } from "./providers.js";
+import { describe, expect, it } from "vitest";
+import { AI_PROVIDERS, AIProviderSchema, UserConfigSchema } from "./providers.js";
 
 const now = new Date().toISOString();
 const baseConfig = {
@@ -28,5 +28,27 @@ describe("UserConfigSchema refine — model/provider validation", () => {
     const result = UserConfigSchema.safeParse({ ...baseConfig, ...overrides });
 
     expect(result.success).toBe(success);
+  });
+});
+
+describe("AI_PROVIDERS enum membership", () => {
+  it("includes the four original providers plus groq and cerebras", () => {
+    expect([...AI_PROVIDERS]).toEqual([
+      "gemini",
+      "zai",
+      "zai-coding",
+      "openrouter",
+      "groq",
+      "cerebras",
+    ]);
+  });
+
+  it("parses groq and cerebras as valid providers", () => {
+    expect(AIProviderSchema.safeParse("groq").success).toBe(true);
+    expect(AIProviderSchema.safeParse("cerebras").success).toBe(true);
+  });
+
+  it("rejects an unknown provider id", () => {
+    expect(AIProviderSchema.safeParse("anthropic").success).toBe(false);
   });
 });

@@ -1,8 +1,8 @@
 "use client";
 
-import { Children, Fragment, cloneElement, isValidElement, type AriaAttributes, type KeyboardEvent, type ReactNode, type Ref } from "react";
-import { SelectSearch } from "./select-search";
+import { type AriaAttributes, Children, cloneElement, Fragment, isValidElement, type KeyboardEvent, type ReactNode, type Ref } from "react";
 import { SelectEmpty } from "./select-empty";
+import { SelectSearch } from "./select-search";
 
 type ListboxProps = {
   id: string;

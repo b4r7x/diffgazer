@@ -1,0 +1,86 @@
+// Post-move dead-file / dead-export / unused-dependency sweep that neither Biome
+// nor dependency-cruiser performs.
+//
+// STAGED ADOPTION: knip runs as a non-blocking REPORT (`pnpm run knip`). It is
+// intentionally NOT wired into the blocking `verify` / `test-ci` / `check` gates
+// yet. Workspace path aliases and the dual-mode registry source produce expected
+// false positives. Triage the reported findings, then promote individual rules to
+// errors (via the `rules` map) and add `knip` to the gate as a follow-up.
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "ignoreBinaries": ["depcruise", "biome", "turbo", "playwright", "lhci"],
+  "ignoreDependencies": ["@diffgazer/.+"],
+  "ignore": [
+    "**/dist/**",
+    "**/.output/**",
+    "**/.turbo/**",
+    "**/.source/**",
+    "**/coverage/**",
+    "**/generated/**",
+    "**/*.gen.ts",
+    "libs/ui/public/r/**",
+    "libs/keys/public/r/**",
+    "libs/core/src/catalog/catalog-snapshot.ts",
+    "apps/docs/registry/**"
+  ],
+  "workspaces": {
+    ".": {
+      "entry": ["scripts/monorepo/**/*.mjs", "scripts/monorepo/**/*.test.mjs"]
+    },
+    "apps/web": {
+      "entry": ["src/main.tsx", "src/routes/**/*.tsx", "vite.config.ts", "vitest.config.ts"]
+    },
+    "apps/landing": {
+      "entry": ["src/main.tsx", "index.html", "vite.config.ts", "vitest.config.ts"]
+    },
+    "apps/docs": {
+      "entry": [
+        "src/client.tsx",
+        "src/server.ts",
+        "src/router.tsx",
+        "src/routes/**/*.tsx",
+        "vite.config.ts",
+        "source.config.ts",
+        "playwright.config.ts",
+        "scripts/**/*.{ts,mjs}"
+      ]
+    },
+    "cli/add": {
+      "entry": ["src/index.ts", "scripts/**/*.ts", "tsup.config.ts", "vitest.config.ts"]
+    },
+    "cli/server": {
+      "entry": ["src/index.ts", "src/serve.ts", "vitest.config.ts"]
+    },
+    "cli/diffgazer": {
+      "entry": ["src/index.tsx", "bin/diffgazer.js", "tsup.config.ts", "vitest.config.ts"]
+    },
+    "libs/core": {
+      "entry": ["src/**/index.ts", "src/*.ts", "scripts/**/*.ts", "vitest.config.ts"]
+    },
+    "libs/keys": {
+      "entry": [
+        "src/index.ts",
+        "scripts/**/*.ts",
+        "registry/**/*.{ts,tsx}",
+        "vitest.config.ts"
+      ]
+    },
+    "libs/ui": {
+      "entry": [
+        "registry/ui/**/index.ts",
+        "registry/hooks/**/*.ts",
+        "registry/lib/**/*.ts",
+        "registry/**/*.{ts,tsx}",
+        "scripts/**/*.ts",
+        "tsup.config.ts",
+        "vitest.config.ts"
+      ]
+    },
+    "libs/registry": {
+      "entry": ["src/index.ts", "src/schemas.ts", "src/cli/index.ts", "vitest.config.ts"]
+    },
+    "libs/keys/artifacts": {
+      "entry": ["src/**/*.ts"]
+    }
+  }
+}

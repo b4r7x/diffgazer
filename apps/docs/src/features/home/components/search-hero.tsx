@@ -1,5 +1,5 @@
-import { Kbd } from "@/components/ui/kbd/kbd";
-import { useSearchOpen } from "@/features/search/search-context";
+import { Kbd } from "@diffgazer/ui/components/kbd";
+import { useSearchOpen } from "@/lib/search-context";
 
 export function SearchHero() {
 	const { setOpen } = useSearchOpen();
@@ -25,9 +25,7 @@ export function SearchHero() {
 				<circle cx="11" cy="11" r="8" />
 				<path d="m21 21-4.3-4.3" />
 			</svg>
-			<span className="flex-1 text-left">
-				Search docs, components, hooks…
-			</span>
+			<span className="flex-1 text-left">Search docs, components, hooks…</span>
 			<Kbd size="sm" className="text-muted-foreground">
 				⌘K
 			</Kbd>

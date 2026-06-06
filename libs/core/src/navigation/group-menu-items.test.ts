@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { NavItem } from "../schemas/presentation/navigation.js";
 import { groupMenuItems, withGroupDividers } from "./group-menu-items.js";
 

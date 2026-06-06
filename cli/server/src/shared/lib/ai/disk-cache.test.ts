@@ -1,9 +1,9 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
-import { isEntryFresh, loadDiskCache, loadDiskCacheState, persistDiskCache, withTtlAndFallback } from "./disk-cache.js";
+import { isEntryFresh, loadDiskCache, persistDiskCache, withTtlAndFallback } from "./disk-cache.js";
 
 const EntrySchema = z.object({
   payload: z.array(z.string()),
@@ -38,33 +38,6 @@ describe("loadDiskCache", () => {
     const entry: Entry = { payload: ["a", "b"], fetchedAt: new Date().toISOString() };
     writeRaw(entry);
     expect(loadDiskCache(cachePath(), EntrySchema)).toEqual(entry);
-  });
-});
-
-describe("loadDiskCacheState", () => {
-  it("reports a missing file distinctly from an unloadable one", () => {
-    const state = loadDiskCacheState(cachePath(), EntrySchema);
-    expect(state.status).toBe("missing");
-  });
-
-  it("reports corrupt when the file exists but is not valid JSON", () => {
-    fs.writeFileSync(cachePath(), "{ not json");
-    const state = loadDiskCacheState(cachePath(), EntrySchema);
-    expect(state.status).toBe("corrupt");
-  });
-
-  it("reports corrupt when the stored JSON fails schema validation", () => {
-    writeRaw({ payload: "not-an-array", fetchedAt: "x" });
-    const state = loadDiskCacheState(cachePath(), EntrySchema);
-    expect(state.status).toBe("corrupt");
-  });
-
-  it("reports ok with the parsed entry when valid", () => {
-    const entry: Entry = { payload: ["a"], fetchedAt: new Date().toISOString() };
-    writeRaw(entry);
-    const state = loadDiskCacheState(cachePath(), EntrySchema);
-    expect(state.status).toBe("ok");
-    if (state.status === "ok") expect(state.entry).toEqual(entry);
   });
 });
 

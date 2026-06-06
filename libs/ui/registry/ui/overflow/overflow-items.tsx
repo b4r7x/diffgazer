@@ -1,9 +1,9 @@
 "use client";
 
 import { Children, type ComponentPropsWithRef, type ReactNode } from "react";
+import { useOverflowItems } from "@/hooks/use-overflow-items";
 import { composeRefs } from "@/lib/compose-refs";
 import { cn } from "@/lib/utils";
-import { useOverflowItems } from "@/hooks/use-overflow-items";
 
 export interface OverflowIndicatorRenderProps {
   count: number;
@@ -60,6 +60,7 @@ export function OverflowItems({
           {item}
         </div>
       ))}
+      {/* biome-ignore lint/a11y/useAriaPropsSupportedByRole: role is conditionally "status" (Biome cannot resolve the ternary); aria-label is applied in the same branch and is valid for the status role. */}
       <div
         className={cn("shrink-0", overflowCount === 0 && hiddenClass)}
         role={overflowCount > 0 ? "status" : undefined}

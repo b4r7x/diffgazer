@@ -34,7 +34,7 @@ export interface MenuItemWithDivider {
  * (review → navigation → system) regardless of the caller's input order.
  * Within each group, the relative order of items is preserved (stable sort).
  *
- * This guarantees the pre-extraction `home-menu.tsx` rendering contract:
+ * This guarantees the home menu rendering contract:
  * callers do not need to keep their menu definitions group-sorted.
  */
 export function withGroupDividers(items: readonly NavItem[]): MenuItemWithDivider[] {

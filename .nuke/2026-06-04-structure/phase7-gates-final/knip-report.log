@@ -1,0 +1,226 @@
+
+> @diffgazer/repo@0.0.0 knip /Users/voitz/Projects/diffgazer-workspace
+> knip
+
+Unused files (38)
+apps/docs/src/lib/styles.ts                                   
+apps/docs/src/lib/utils.ts                                    
+audits/2026-05-31/remediation-workflow.mjs                    
+audits/2026-06-01/phase-runner.workflow.mjs                   
+audits/2026-06-01/reaudit.workflow.mjs                        
+libs/keys/docs/hook-docs/use-action-row-navigation.ts         
+libs/keys/docs/hook-docs/use-focus-restore.ts                 
+libs/keys/docs/hook-docs/use-focus-trap.ts                    
+libs/keys/docs/hook-docs/use-focus-zone.ts                    
+libs/keys/docs/hook-docs/use-key.ts                           
+libs/keys/docs/hook-docs/use-navigation.ts                    
+libs/keys/docs/hook-docs/use-scope.ts                         
+libs/keys/docs/hook-docs/use-scoped-navigation.ts             
+libs/keys/docs/hook-docs/use-scroll-lock.ts                   
+libs/keys/examples/playground/src/app.tsx                     
+libs/keys/examples/playground/src/components/demo-wrapper.tsx 
+libs/keys/examples/playground/src/components/kbd.tsx          
+libs/keys/examples/playground/src/components/layout.tsx       
+libs/keys/examples/playground/src/demos/command-palette.tsx   
+libs/keys/examples/playground/src/demos/focus-trap.tsx        
+libs/keys/examples/playground/src/demos/focus-zones.tsx       
+libs/keys/examples/playground/src/demos/global-shortcuts.tsx  
+libs/keys/examples/playground/src/demos/list-navigation.tsx   
+libs/keys/examples/playground/src/demos/scoped-dialog.tsx     
+libs/keys/examples/playground/src/demos/tab-bar.tsx           
+libs/keys/examples/playground/src/demos/use-transient-value.ts
+libs/keys/examples/playground/src/main.tsx                    
+libs/keys/examples/playground/src/styles.css                  
+libs/keys/examples/playground/vite.config.ts                  
+libs/ui/registry/ui/shared/code-block.css                     
+libs/ui/registry/ui/shared/command-palette.css                
+libs/ui/registry/ui/shared/dialog.css                         
+libs/ui/registry/ui/shared/diff-view.css                      
+libs/ui/registry/ui/shared/sidebar.css                        
+libs/ui/styles/sources.css                                    
+libs/ui/styles/styles.css                                     
+libs/ui/styles/theme-base.css                                 
+libs/ui/styles/theme.css                                      
+Unused dependencies (10)
+@tanstack/router-plugin   apps/docs/package.json:32:6    
+class-variance-authority  apps/docs/package.json:33:6    
+clsx                      apps/docs/package.json:34:6    
+tailwind-merge            apps/docs/package.json:41:6    
+@clack/prompts            cli/add/package.json:61:6      
+commander                 cli/add/package.json:62:6      
+diff                      cli/add/package.json:63:6      
+figlet                    cli/add/package.json:64:6      
+picocolors                cli/add/package.json:65:6      
+figlet                    cli/diffgazer/package.json:54:6
+Unused devDependencies (18)
+@types/figlet           apps/docs/package.json:54:6    
+@types/figlet           libs/core/package.json:165:6   
+shadcn                  libs/keys/package.json:70:6    
+@types/diff             libs/registry/package.json:59:6
+@types/figlet           libs/registry/package.json:60:6
+@types/figlet           libs/ui/package.json:351:6     
+@types/hast             libs/ui/package.json:352:6     
+shadcn                  libs/ui/package.json:360:6     
+@chialab/vitest-axe     package.json:67:6              
+@tailwindcss/postcss    package.json:68:6              
+@testing-library/react  package.json:70:6              
+jsdom                   package.json:74:6              
+next                    package.json:76:6              
+postcss                 package.json:77:6              
+react                   package.json:78:6              
+react-dom               package.json:79:6              
+tsup                    package.json:80:6              
+vitest                  package.json:83:6              
+Referenced optional peerDependencies (1)
+figlet  libs/ui/package.json
+Unlisted binaries (2)
+dev  package.json                         
+rg   scripts/monorepo/check-invariants.mjs
+Unused exports (54)
+DocDataProvider                            apps/docs/src/components/docs-mdx/index.ts:3:2               
+useComponentData                           apps/docs/src/components/docs-mdx/index.ts:4:2               
+useDocData                                 apps/docs/src/components/docs-mdx/index.ts:5:2               
+useHookData                                apps/docs/src/components/docs-mdx/index.ts:6:2               
+MAPPED_TUI_PRIMITIVES                      apps/docs/src/features/theme/tui-primitives.ts:93:14         
+PUBLISH_GATED                              apps/docs/src/lib/consumption-metadata.ts:29:14              
+PUBLISH_GATE_NOTE                          apps/docs/src/lib/consumption-metadata.ts:31:14              
+DEFAULT_THEME_COLOR                        apps/docs/src/lib/seo.ts:28:14                               
+getHistoryFooter                 function  apps/web/src/features/history/hooks/use-keyboard.ts:30:17    
+getProvidersFooter               function  apps/web/src/features/providers/components/page.tsx:12:17    
+SAFE_BACK_FALLBACK_ROUTE                   apps/web/src/lib/back-navigation.ts:5:14                     
+DiffgazerAddConfigSchema                   cli/add/src/context.ts:21:14                                 
+resolveConfig                    function  cli/add/src/context.ts:103:17                                
+NavigationContext                          cli/diffgazer/src/app/providers/navigation-provider.tsx:14:14
+SCREEN_MAP                                 cli/diffgazer/src/app/router.tsx:18:14                       
+SCREEN_NAMES                               cli/diffgazer/src/app/routes.ts:18:14                        
+createDevServerFactories         function  cli/diffgazer/src/lib/servers/factories.ts:19:17             
+createProdServerFactories        function  cli/diffgazer/src/lib/servers/factories.ts:39:17             
+formatProcessError               function  cli/diffgazer/src/lib/servers/process.ts:36:17               
+highContrastPalette                        cli/diffgazer/src/theme/palettes.ts:65:14                    
+getReviewForProject              function  cli/server/src/features/review/handlers.ts:23:23             
+getRequestedProjectPath          function  cli/server/src/features/review/handlers.ts:36:23             
+DEFAULT_DEV_SERVER_HOSTNAME                cli/server/src/http-server.ts:4:14                           
+REQUEST_ID_HEADER                          cli/server/src/shared/middlewares/request-logger.ts:5:14     
+getOpenRouterModels              function  libs/core/src/api/config.ts:28:23                            
+getProviderModels                function  libs/core/src/api/config.ts:40:23                            
+saveConfig                       function  libs/core/src/api/config.ts:53:23                            
+getSettings                      function  libs/core/src/api/config.ts:57:23                            
+saveSettings                     function  libs/core/src/api/config.ts:61:23                            
+deleteProviderCredentials        function  libs/core/src/api/config.ts:79:23                            
+loadInit                         function  libs/core/src/api/config.ts:86:23                            
+checkConfig                      function  libs/core/src/api/config.ts:90:23                            
+getConfig                        function  libs/core/src/api/config.ts:94:23                            
+deleteConfig                     function  libs/core/src/api/config.ts:98:23                            
+listTrustedProjects              function  libs/core/src/api/config.ts:106:23                           
+saveTrust                        function  libs/core/src/api/config.ts:110:23                           
+getGitStatus                     function  libs/core/src/api/git.ts:5:23                                
+getGitDiff                       function  libs/core/src/api/git.ts:13:23                               
+getReviews                       function  libs/core/src/api/review.ts:93:23                            
+getReview                        function  libs/core/src/api/review.ts:101:23                           
+getReviewContext                 function  libs/core/src/api/review.ts:118:23                           
+refreshReviewContext             function  libs/core/src/api/review.ts:124:23                           
+deleteReview                     function  libs/core/src/api/review.ts:131:23                           
+cancelReviewSession              function  libs/core/src/api/review.ts:138:23                           
+runReviewDrilldown               function  libs/core/src/api/review.ts:145:23                           
+useKeyboardScopeContext          function  libs/keys/src/providers/keyboard-context.ts:45:17            
+RegistrySourceFileSchema                   libs/registry/src/cli/bundler/schemas.ts:4:14                
+RegistrySourceItemSchema                   libs/registry/src/cli/bundler/schemas.ts:10:14               
+resolveRegistryDeps              function  libs/registry/src/cli/registry.ts:83:17                      
+collectNpmDeps                   function  libs/registry/src/cli/registry.ts:123:17                     
+ArtifactManifestDocsSchema                 libs/registry/src/manifest.ts:13:14                          
+ArtifactManifestRegistrySchema             libs/registry/src/manifest.ts:20:14                          
+ArtifactManifestIntegritySchema            libs/registry/src/manifest.ts:32:14                          
+injectReducedMotionTheme         function  libs/ui/testing/prefers-reduced-motion.ts:46:17              
+Unused exported types (57)
+DocData                    type       apps/docs/src/components/docs-mdx/index.ts:1:15                             
+HookData                   type       apps/docs/src/components/docs-mdx/index.ts:1:24                             
+DocsLibrariesConfigData    type       apps/docs/src/lib/libraries-config.ts:32:13                                 
+AnatomyNode                type       apps/docs/src/types/data.ts:14:2                                            
+ComponentNote              type       apps/docs/src/types/data.ts:15:2                                            
+KeyboardSection            type       apps/docs/src/types/data.ts:16:2                                            
+ComponentDoc               type       apps/docs/src/types/data.ts:17:2                                            
+ComponentPropsTable        type       apps/docs/src/types/data.ts:19:2                                            
+DocsData                   type       apps/docs/src/types/data.ts:45:13                                           
+ProgressStatus             type       apps/web/src/components/ui/progress/step.tsx:5:15                           
+InfoFieldColor             type       apps/web/src/features/home/components/info-field.tsx:5:13                   
+FocusElement               type       apps/web/src/features/providers/components/api-key-dialog/dialog.tsx:10:15  
+DetailsEmptyKind           type       apps/web/src/features/review/components/issue-details-pane.tsx:16:15        
+AnalysisOption             interface  apps/web/src/features/settings/components/analysis/selector-content.tsx:7:18
+BackTarget                 type       apps/web/src/lib/back-navigation.ts:3:13                                    
+ResolvedIntegrationMode    type       cli/add/src/commands/add/integration.ts:7:13                                
+InstallNamespace           type       cli/add/src/utils/namespaces.ts:8:13                                        
+ProviderDisplayStatus      type       cli/diffgazer/src/components/layout/header.tsx:5:13                         
+CalloutTitleProps          interface  cli/diffgazer/src/components/ui/callout.tsx:10:18                           
+CalloutContentProps        interface  cli/diffgazer/src/components/ui/callout.tsx:14:18                           
+CheckboxItemProps          interface  cli/diffgazer/src/components/ui/checkbox.tsx:20:18                          
+DialogContentProps         interface  cli/diffgazer/src/components/ui/dialog.tsx:12:18                            
+DialogHeaderProps          interface  cli/diffgazer/src/components/ui/dialog.tsx:16:18                            
+DialogTitleProps           interface  cli/diffgazer/src/components/ui/dialog.tsx:20:18                            
+DialogBodyProps            interface  cli/diffgazer/src/components/ui/dialog.tsx:24:18                            
+DialogFooterProps          interface  cli/diffgazer/src/components/ui/dialog.tsx:28:18                            
+MenuItemProps              interface  cli/diffgazer/src/components/ui/menu.tsx:20:18                              
+NavigationListItemProps    interface  cli/diffgazer/src/components/ui/navigation-list.tsx:19:18                   
+NavigationListTitleProps   interface  cli/diffgazer/src/components/ui/navigation-list.tsx:25:18                   
+RadioGroupItemProps        interface  cli/diffgazer/src/components/ui/radio.tsx:21:18                             
+ActiveSessionInfo          interface  cli/diffgazer/src/features/home/lib/create-menu-action.ts:8:18              
+AgentFilterOption          interface  cli/diffgazer/src/features/review/components/agent-filter-bar.tsx:8:18      
+LensStats                  type       cli/diffgazer/src/features/review/components/lens-stats-table.tsx:5:15      
+ReviewPhase                type       cli/diffgazer/src/features/review/hooks/use-lifecycle.ts:7:13               
+StreamMetadata             interface  cli/server/src/shared/lib/ai/types.ts:18:18                                 
+EnvCredentialRef           interface  cli/server/src/shared/lib/config/types.ts:10:18                             
+GitDiffErrorCode           type       cli/server/src/shared/lib/git/errors.ts:5:15                                
+ClassifiedError            interface  cli/server/src/shared/lib/git/types.ts:11:18                                
+StoreError                 type       cli/server/src/shared/lib/storage/persistence.ts:107:27                     
+StoreErrorCode             type       cli/server/src/shared/lib/storage/persistence.ts:107:39                     
+NavigationCase             interface  libs/keys/src/testing/navigation-behavior.ts:5:18                           
+CopyDirEntry               interface  libs/registry/src/artifacts.ts:12:18                                        
+RequiredPathEntry          interface  libs/registry/src/artifacts.ts:17:18                                        
+AfterCopyContext           interface  libs/registry/src/artifacts.ts:22:18                                        
+SharedCommandOptions       interface  libs/registry/src/cli/command-factories.ts:21:18                            
+AddWorkflowPlan            interface  libs/registry/src/cli/workflows/add.ts:31:18                                
+BlockedRemoval             interface  libs/registry/src/cli/workflows/remove.ts:45:18                             
+DemoIndexConfig            interface  libs/registry/src/docs-data/build.ts:23:18                                  
+LibsConfig                 interface  libs/registry/src/docs-data/build.ts:28:18                                  
+DocNote                    interface  libs/registry/src/docs-data/types.ts:1:18                                   
+HookParameter              interface  libs/registry/src/docs-data/types.ts:17:18                                  
+HookReturn                 interface  libs/registry/src/docs-data/types.ts:25:18                                  
+CodeBlockToken             interface  libs/registry/src/docs-data/types.ts:92:18                                  
+ConsumptionPathOption      interface  libs/registry/src/docs-data/types.ts:118:18                                 
+ArtifactManifestDocs       type       libs/registry/src/manifest.ts:52:13                                         
+ArtifactManifestRegistry   type       libs/registry/src/manifest.ts:53:13                                         
+ArtifactManifestIntegrity  type       libs/registry/src/manifest.ts:54:13                                         
+Configuration hints (49)
+libs/keys                                                       knip.json  Add entry and/or refine project files in wor…
+libs/ui                                                         knip.json  Add entry and/or refine project files in wor…
+. (root)                                                        knip.json  Add entry and/or refine project files in wor…
+apps/docs                                                       knip.json  Add entry and/or refine project files in wor…
+**/dist/**                                                      knip.json  Remove from ignore                           
+**/.output/**                                                   knip.json  Remove from ignore                           
+**/.turbo/**                                                    knip.json  Remove from ignore                           
+**/.source/**                                                   knip.json  Remove from ignore                           
+**/coverage/**                                                  knip.json  Remove from ignore                           
+**/generated/**                                                 knip.json  Remove from ignore                           
+**/*.gen.ts                                                     knip.json  Remove from ignore                           
+libs/ui/public/r/**                                             knip.json  Remove from ignore                           
+libs/keys/public/r/**                                           knip.json  Remove from ignore                           
+libs/core/src/catalog/catalog-snapshot.ts                       knip.json  Remove from ignore                           
+...1 more similar hints                                                                                                 
+depcruise                                                       knip.json  Remove from ignoreBinaries                   
+biome                                                           knip.json  Remove from ignoreBinaries                   
+turbo                                                           knip.json  Remove from ignoreBinaries                   
+playwright                                                      knip.json  Remove from ignoreBinaries                   
+lhci                                                            knip.json  Remove from ignoreBinaries                   
+src/routes/**/*.tsx                        apps/web             knip.json  Refine entry pattern (no matches)            
+[src/**/*.ts]                              libs/keys/artifacts  knip.json  Refine entry pattern (no matches)            
+src/index.tsx                              cli/diffgazer        knip.json  Remove redundant entry pattern               
+bin/diffgazer.js                           cli/diffgazer        knip.json  Remove redundant entry pattern               
+tsup.config.ts                             cli/diffgazer        knip.json  Remove redundant entry pattern               
+vitest.config.ts                           cli/diffgazer        knip.json  Remove redundant entry pattern               
+src/main.tsx                               apps/landing         knip.json  Remove redundant entry pattern               
+vite.config.ts                             apps/landing         knip.json  Remove redundant entry pattern               
+vitest.config.ts                           apps/landing         knip.json  Remove redundant entry pattern               
+vite.config.ts                             apps/docs            knip.json  Remove redundant entry pattern               
+playwright.config.ts                       apps/docs            knip.json  Remove redundant entry pattern               
+src/main.tsx                               apps/web             knip.json  Remove redundant entry pattern               
+...17 more similar hints                                                                                                
+ ELIFECYCLE  Command failed with exit code 1.

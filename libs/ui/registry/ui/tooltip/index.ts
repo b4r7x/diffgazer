@@ -1,11 +1,11 @@
 "use client";
 
-import { TooltipRoot, type TooltipProps } from "./tooltip";
 import {
   PopoverTrigger as TooltipTrigger,
   type PopoverTriggerProps as TooltipTriggerProps,
   type PopoverTriggerRenderProps as TooltipTriggerRenderProps,
 } from "../popover/popover-trigger";
+import { type TooltipProps, TooltipRoot } from "./tooltip";
 import {
   TooltipContent,
   type TooltipContentProps,

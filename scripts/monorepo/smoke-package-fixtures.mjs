@@ -172,21 +172,24 @@ export function writeUiCommonImportSmoke(root, projectDir) {
 }
 
 /**
- * Models a consumer who installs @diffgazer/ui WITHOUT the optional
- * @diffgazer/keys peer (HANDOFF-1 / DECISION-1: keys must stay optional). Two
- * contracts are asserted:
- *   1. A keys-free component (Button) imports and SSR-renders with no keys present.
+ * Models a package-mode consumer who installs @diffgazer/ui but forgets the
+ * REQUIRED @diffgazer/keys peer (T-608/F-234: keyboard-backed exports static-import
+ * keys, so it is a required peer for package mode). Two contracts are asserted:
+ *   1. A keys-free component (Button) still imports and SSR-renders, so the missing
+ *      peer only affects keyboard-backed entries — not the whole package.
  *   2. A keys-backed subpath (select) fails at import with a native
  *      ERR_MODULE_NOT_FOUND that names "@diffgazer/keys" — the actionable signal
- *      a consumer needs to know which optional peer to install. It cannot be a
+ *      telling the consumer which required peer to install. It cannot be a
  *      figlet-style custom-message lazy load: the keys exports are React hooks
  *      (cannot be dynamically imported and called conditionally) and the copy-mode
  *      import rewriter is anchored to the static import form, so the import stays
  *      static and the failure is the native resolver error.
  *
- * pnpm 10 defaults auto-install-peers=true and may hoist @diffgazer/keys into the
- * fixture; the keys removal in writeUiKeysAbsentSmoke drops it so the keys-backed
- * import genuinely fails.
+ * Copy/dgadd consumers are unaffected (copy mode rewrites keys imports to local
+ * source); this fixture only covers package mode. pnpm 10 defaults
+ * auto-install-peers=true and may hoist @diffgazer/keys into the fixture; the keys
+ * removal in writeUiKeysAbsentSmoke drops it so the keys-backed import genuinely
+ * fails as it would for a consumer who skipped the required peer.
  */
 function uiKeysAbsentBody() {
   return [
@@ -201,7 +204,7 @@ function uiKeysAbsentBody() {
     "  throw new Error(`Expected keys-free Button SSR to render 'Save'; got: ${html}`);",
     "}",
     "",
-    "// Prove the optional peer is genuinely absent first. Without this, an",
+    "// Prove the required peer is genuinely absent first. Without this, an",
     "// ERR_MODULE_NOT_FOUND naming '@diffgazer/keys' could also be raised by a",
     "// keys package that IS installed but internally references a broken path,",
     "// since that path contains the same '@diffgazer/keys' substring. Asserting",
@@ -223,7 +226,7 @@ function uiKeysAbsentBody() {
     "if (!String(caught.message).includes('@diffgazer/keys')) {",
     "  throw new Error(`Expected the failure to name '@diffgazer/keys'; got: ${caught.message}`);",
     "}",
-    "console.log('OK: @diffgazer/ui works without @diffgazer/keys; keys-backed subpath fails naming the missing peer');",
+    "console.log('OK: keys-free @diffgazer/ui entries work without @diffgazer/keys; keys-backed subpath fails naming the missing required peer');",
     "",
   ];
 }

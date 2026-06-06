@@ -1,7 +1,7 @@
-import { useState } from "react";
-import type { ReviewIssue, ReviewSeverity } from "@diffgazer/core/schemas/review";
-import { SEVERITY_ORDER } from "@diffgazer/core/schemas/presentation";
 import { filterIssuesBySeverity } from "@diffgazer/core/review";
+import { SEVERITY_ORDER } from "@diffgazer/core/schemas/presentation";
+import type { ReviewIssue, ReviewSeverity } from "@diffgazer/core/schemas/review";
+import { useState } from "react";
 
 interface UseSeverityFilterOptions {
   issues: ReviewIssue[];

@@ -1,4 +1,4 @@
-import { Accordion, AccordionHeader, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion"
+import { Accordion, AccordionContent, AccordionHeader, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { InlineCode } from "@/components/ui/code-block"
 
 export default function AccordionDefault() {

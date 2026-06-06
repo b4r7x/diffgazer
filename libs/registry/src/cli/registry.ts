@@ -1,11 +1,11 @@
 import { existsSync, readFileSync } from "node:fs";
 import { isAbsolute, win32 } from "node:path";
 import { z } from "zod";
+import { REGISTRY_ORIGIN } from "../constants.js";
 import { RegistryFileSchema as BaseRegistryFileSchema, RegistryItemSchema as BaseRegistryItemSchema } from "../registry-types.js";
-import { toErrorMessage } from "./logger.js";
 import { getRelativePath } from "./fs.js";
 import { computeIntegrity } from "./integrity.js";
-import { REGISTRY_ORIGIN } from "../constants.js";
+import { toErrorMessage } from "./terminal.js";
 
 export const RegistryFileSchema = BaseRegistryFileSchema.extend({
   path: z.string()

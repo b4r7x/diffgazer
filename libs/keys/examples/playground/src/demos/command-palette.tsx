@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from "react";
 import { useKey, useScope, useScopedNavigation } from "@diffgazer/keys";
+import { useEffect, useRef, useState } from "react";
 import { DemoWrapper } from "../components/demo-wrapper";
 import { useTransientValue } from "./use-transient-value";
 
@@ -48,7 +48,7 @@ export function CommandPaletteDemo() {
     setQuery("");
   }, { enabled: open, scope: "command-palette" });
 
-  const { highlighted, isHighlighted } = useScopedNavigation({
+  const { isHighlighted } = useScopedNavigation({
     containerRef,
     role: "option",
     onEnter: (value) => selectCommand(value),
@@ -94,8 +94,14 @@ export function CommandPaletteDemo() {
       )}
 
       {open && (
-        <div className="demo-overlay" onClick={() => { setOpen(false); setQuery(""); }}>
-          <div className="demo-dialog" onClick={(e) => e.stopPropagation()}>
+        <div className="demo-overlay">
+          <button
+            type="button"
+            aria-label="Close command palette"
+            className="demo-overlay-backdrop"
+            onClick={() => { setOpen(false); setQuery(""); }}
+          />
+          <div className="demo-dialog">
             <input
               ref={inputRef}
               className="demo-input"
@@ -106,16 +112,19 @@ export function CommandPaletteDemo() {
             />
             <div ref={containerRef} className="demo-list">
               {filtered.map((cmd) => (
-                <div
+                <button
+                  type="button"
                   key={cmd.id}
                   role="option"
+                  tabIndex={-1}
+                  aria-selected={isHighlighted(cmd.id)}
                   data-value={cmd.id}
                   className={`demo-list-item${isHighlighted(cmd.id) ? " demo-list-item--focused" : ""}`}
                   onClick={() => selectCommand(cmd.id)}
                 >
                   <span style={{ marginRight: 8 }}>{cmd.icon}</span>
                   {cmd.label}
-                </div>
+                </button>
               ))}
               {filtered.length === 0 && (
                 <div style={{ padding: "10px 12px", color: "var(--color-text-muted)", fontSize: 14 }}>

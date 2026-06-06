@@ -1,5 +1,6 @@
 "use client";
 
+import { cva, type VariantProps } from "class-variance-authority";
 import type {
   AnchorHTMLAttributes,
   ButtonHTMLAttributes,
@@ -8,7 +9,6 @@ import type {
   Ref,
 } from "react";
 import { lazy, Suspense } from "react";
-import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const LazySpinner = lazy(() =>

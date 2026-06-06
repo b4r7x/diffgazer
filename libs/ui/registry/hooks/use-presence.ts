@@ -1,12 +1,12 @@
 "use client";
 
 import {
+  type AnimationEvent,
+  type RefObject,
   useEffect,
   useEffectEvent,
   useRef,
   useState,
-  type AnimationEvent,
-  type RefObject,
 } from "react";
 
 type Phase = "hidden" | "open" | "closing";

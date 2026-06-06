@@ -114,10 +114,6 @@ syncDocsFromArtifacts({
 
 MIT
 
-## Compatibility note
-
-`@diffgazer/registry` is the legacy standalone package name. Active monorepo imports should use `@diffgazer/registry` or `@diffgazer/registry/schemas`.
-
 ## Repository metadata
 
 - **Source:** https://github.com/b4r7x/diffgazer/tree/main/libs/registry

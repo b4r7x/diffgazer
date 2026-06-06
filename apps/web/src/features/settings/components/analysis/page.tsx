@@ -1,16 +1,15 @@
-import { useRef, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
-import type { Shortcut } from "@diffgazer/core/schemas/presentation";
+import { matchQueryState, useSaveSettings, useSettings } from "@diffgazer/core/api/hooks";
 import { getErrorMessage } from "@diffgazer/core/errors";
-import { Button } from "@diffgazer/ui/components/button";
-import { CardLayout } from "@/components/ui/card-layout";
-import { useKey, useScope } from "@diffgazer/keys";
 import { usePageFooter } from "@diffgazer/core/footer";
-import { useActionRowNavigation } from "@diffgazer/keys";
-import { useSettings, useSaveSettings, matchQueryState } from "@diffgazer/core/api/hooks";
 import { buildLensOptions } from "@diffgazer/core/schemas/events";
+import type { Shortcut } from "@diffgazer/core/schemas/presentation";
 import type { LensId } from "@diffgazer/core/schemas/review";
-import { AnalysisSelectorContent } from "./analysis-selector-content";
+import { useActionRowNavigation, useKey, useScope } from "@diffgazer/keys";
+import { Button } from "@diffgazer/ui/components/button";
+import { useNavigate } from "@tanstack/react-router";
+import { useRef, useState } from "react";
+import { CardLayout } from "@/components/ui/card-layout";
+import { AnalysisSelectorContent } from "./selector-content";
 
 const lensOptions = buildLensOptions();
 

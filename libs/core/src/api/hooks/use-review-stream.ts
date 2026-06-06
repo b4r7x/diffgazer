@@ -1,14 +1,14 @@
-import { useReducer, useRef, useEffect } from "react";
+import { useEffect, useReducer, useRef } from "react";
+import { err, ok, type Result } from "../../result.js";
 import {
-  reviewReducer,
   createInitialReviewState,
-  type ReviewState,
   type ReviewAction,
   type ReviewEvent,
+  type ReviewState,
+  reviewReducer,
   type StreamReviewError,
-} from "@diffgazer/core/review";
-import { type Result, ok, err } from "@diffgazer/core/result";
-import { ReviewErrorCode } from "@diffgazer/core/schemas/review";
+} from "../../review/index.js";
+import { ReviewErrorCode } from "../../schemas/review/index.js";
 import { useApi } from "./context.js";
 
 export interface ReviewStreamState extends ReviewState {
@@ -132,7 +132,12 @@ export function useReviewStream() {
   };
 
   useEffect(() => {
-    return () => cancelStream("cleanup");
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort("cleanup");
+        abortControllerRef.current = null;
+      }
+    };
   }, []);
 
   return { state, stop, abort, cancel, resume };

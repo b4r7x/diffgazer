@@ -1,23 +1,24 @@
-import React, { Suspense } from "react";
-import { Outlet } from "@tanstack/react-router";
+import { useServerStatus } from "@diffgazer/core/api/hooks";
+import { FooterProvider } from "@diffgazer/core/footer";
 import { Button } from "@diffgazer/ui/components/button";
 import { Toaster } from "@diffgazer/ui/components/toast";
 import { Typography } from "@diffgazer/ui/components/typography";
-import { GlobalLayout } from "@/components/layout";
-import { FooterProvider } from "@diffgazer/core/footer";
-import { useServerStatus } from "@diffgazer/core/api/hooks";
+import { Outlet } from "@tanstack/react-router";
+import React, { Suspense } from "react";
+import { GlobalLayout } from "@/components/layout/global";
 
-class RouteErrorBoundary extends React.Component<
-  { children: React.ReactNode },
-  { error: Error | null }
-> {
-  state = { error: null as Error | null };
+interface RouteErrorBoundaryState {
+  error: Error | null;
+}
 
-  static getDerivedStateFromError(error: Error) {
+class RouteErrorBoundary extends React.Component<{ children: React.ReactNode }, RouteErrorBoundaryState> {
+  override state: RouteErrorBoundaryState = { error: null };
+
+  static getDerivedStateFromError(error: Error): RouteErrorBoundaryState {
     return { error };
   }
 
-  render() {
+  override render() {
     if (this.state.error) {
       return (
         <div className="flex h-screen items-center justify-center bg-tui-bg text-tui-fg font-mono">

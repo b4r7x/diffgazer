@@ -1,15 +1,15 @@
 "use client";
 
 import type { ComponentPropsWithRef, CSSProperties, ReactNode } from "react";
-import { cn } from "@/lib/utils";
-import { composeRefs } from "@/lib/compose-refs";
 import { useOverflow } from "@/hooks/use-overflow";
+import { composeRefs } from "@/lib/compose-refs";
+import { cn } from "@/lib/utils";
+import {
+  type PopoverTriggerRenderProps,
+  PopoverTrigger as TooltipTrigger,
+} from "../popover/popover-trigger";
 import { TooltipRoot as Tooltip } from "../tooltip/tooltip";
 import { TooltipContent } from "../tooltip/tooltip-content";
-import {
-  PopoverTrigger as TooltipTrigger,
-  type PopoverTriggerRenderProps,
-} from "../popover/popover-trigger";
 
 function resolveTooltipContent(
   tooltip: ReactNode | boolean | undefined,

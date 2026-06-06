@@ -7,7 +7,7 @@ import bigFont from "figlet/importable-fonts/Big.js";
  * fonts are bundled dependencies that can be loaded eagerly.
  *
  * This intentionally diverges from the browser counterpart in
- * `libs/ui/registry/ui/logo/get-figlet-text.ts`, which loads figlet and its
+ * `libs/ui/registry/ui/logo/figlet-text.ts`, which loads figlet and its
  * fonts via async dynamic `import()` because figlet is an optional peer there
  * and must be code-split out of the browser bundle. The two implementations
  * are kept separate on purpose: a shared module would force one runtime's

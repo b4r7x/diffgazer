@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { containsActiveElement } from "./focusable.js";
 import {
-  NAVIGATION_ITEM_ATTRIBUTE,
   findNavigationItemByValue,
   focusNavigationItem,
   getFocusedNavigationValue,
   getNavigationItemProps,
   getNavigationItems,
+  NAVIGATION_ITEM_ATTRIBUTE,
   type NavigationItemType,
 } from "./navigation-items.js";
 

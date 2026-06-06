@@ -16,6 +16,7 @@ export default function FloatingPositionBasicExample() {
   return (
     <div className="relative py-12">
       <button
+        type="button"
         ref={triggerRef}
         onClick={() => setOpen((v) => !v)}
         className="font-mono text-sm border border-border px-3 py-1.5 bg-background hover:bg-muted transition-colors"

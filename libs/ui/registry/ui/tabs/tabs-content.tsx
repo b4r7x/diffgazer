@@ -1,6 +1,6 @@
 "use client";
 
-import { type HTMLAttributes, type Ref } from "react";
+import type { HTMLAttributes, Ref } from "react";
 import { cn } from "@/lib/utils";
 import { getTabPanelId, getTabTriggerId, useTabsContext } from "./tabs-context";
 

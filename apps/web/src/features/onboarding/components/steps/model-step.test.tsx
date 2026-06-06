@@ -1,17 +1,17 @@
-import { describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { useState, type ReactNode } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { KeyboardProvider } from "@diffgazer/keys";
-import { FooterProvider } from "@diffgazer/core/footer";
-import { createApi, type BoundApi } from "@diffgazer/core/api";
+import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
+import { FooterProvider } from "@diffgazer/core/footer";
 import type {
   OpenRouterModelsResponse,
   ProviderModelsResponse,
 } from "@diffgazer/core/schemas/config";
-import { escapeRegExp } from "@/testing";
+import { KeyboardProvider } from "@diffgazer/keys";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { type ReactNode, useState } from "react";
+import { describe, expect, it, vi } from "vitest";
+import { escapeRegExp } from "@/testing/escape-regexp";
 import { ModelStep } from "./model-step";
 
 const GEMINI_CATALOG: ProviderModelsResponse = {

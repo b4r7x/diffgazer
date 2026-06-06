@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from "react";
 import { useKey } from "@diffgazer/keys";
+import { useEffect, useRef, useState } from "react";
 import { DemoWrapper } from "../components/demo-wrapper";
 
 export function GlobalShortcutsDemo() {

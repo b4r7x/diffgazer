@@ -1,21 +1,13 @@
-import { type Result, ok, err } from "@diffgazer/core/result";
-import { createError, getErrorMessage } from "@diffgazer/core/errors";
-import type { AIProvider, CredentialRef, SetupField, SetupStatus } from "@diffgazer/core/schemas/config";
-import {
-  PROVIDER_ENV_VARS,
-  PROVIDER_DISABLED,
-  ProviderModelsResponseSchema,
-  type CatalogErrorCode,
-  type ProviderModelsResponse,
-} from "@diffgazer/core/schemas/config";
-import { PROVIDER_OVERLAY, SURFACED_OVERLAYS, type ProviderOverlay } from "@diffgazer/core/catalog";
-import { ErrorCode } from "@diffgazer/core/schemas/errors";
-import type { SecretsStorageError } from "../../shared/lib/config/types.js";
+import { PROVIDER_OVERLAY, type ProviderOverlay, SURFACED_OVERLAYS } from "@diffgazer/core/catalog";
 import type { AppError } from "@diffgazer/core/errors";
+import { createError, getErrorMessage } from "@diffgazer/core/errors";
+import { err, ok, type Result } from "@diffgazer/core/result";
 import type {
   ActivateProviderResponse,
+  AIProvider,
   ConfigCheckResponse,
   CurrentConfigResponse as ConfigResponse,
+  CredentialRef,
   DeleteConfigResponse,
   DeleteProviderCredentialsResponse as DeleteProviderResponse,
   InitResponse,
@@ -24,9 +16,21 @@ import type {
   ProvidersStatusResponse,
   SaveConfigRequest,
 } from "@diffgazer/core/schemas/config";
-import { getStore } from "../../shared/lib/config/store.js";
-import { getOpenRouterModelsWithCache } from "../../shared/lib/ai/openrouter-models.js";
+import {
+  type CatalogErrorCode,
+  PROVIDER_DISABLED,
+  PROVIDER_ENV_VARS,
+  type ProviderModelsResponse,
+  ProviderModelsResponseSchema,
+} from "@diffgazer/core/schemas/config";
+import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import { getProviderModels as getProviderModelsFromCatalog } from "../../shared/lib/ai/models-dev-catalog.js";
+import { getOpenRouterModelsWithCache } from "../../shared/lib/ai/openrouter-models.js";
+import { getSetupStatus } from "../../shared/lib/config/setup-status.js";
+import { getStore } from "../../shared/lib/config/store.js";
+import type { SecretsStorageError } from "../../shared/lib/config/types.js";
+
+export { getSetupStatus };
 
 export const getProvidersStatus = (): ProvidersStatusResponse => {
   const providers = getStore().getProviders();
@@ -35,42 +39,6 @@ export const getProvidersStatus = (): ProvidersStatusResponse => {
   return {
     providers,
     activeProvider,
-  };
-};
-
-function isKeyReadable(provider: { provider: string } | null): boolean {
-  if (!provider) return false;
-  const keyResult = getStore().getProviderApiKey(provider.provider);
-  return keyResult.ok && keyResult.value !== null;
-}
-
-export const getSetupStatus = (projectRoot?: string): SetupStatus => {
-  const settings = getStore().getSettings();
-  const providers = getStore().getProviders();
-  const activeProvider = providers.find((p) => p.isActive) ?? null;
-  const project = getStore().getProjectInfo(projectRoot);
-
-  const hasSecretsStorage = settings.secretsStorage !== null;
-  const hasProvider = activeProvider !== null && isKeyReadable(activeProvider);
-  const hasModel = Boolean(activeProvider?.model);
-  const hasTrust = Boolean(project.trust?.capabilities.readFiles);
-
-  const missing: SetupField[] = [];
-  if (!hasSecretsStorage) missing.push("secretsStorage");
-  if (!hasProvider) missing.push("provider");
-  if (!hasModel) missing.push("model");
-  if (!hasTrust) missing.push("trust");
-
-  const isConfigured = hasSecretsStorage && hasProvider && hasModel;
-
-  return {
-    hasSecretsStorage,
-    hasProvider,
-    hasModel,
-    hasTrust,
-    isConfigured,
-    isReady: isConfigured && hasTrust,
-    missing,
   };
 };
 

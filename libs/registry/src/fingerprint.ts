@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
-import { collectAllFiles, relativePath } from "./utils/fs.js";
 import { defaultLogger, type Logger } from "./logger.js";
+import { collectAllFiles, relativePath } from "./utils/fs.js";
 
 export function computeInputsFingerprint(rootDir: string, inputs: string[], logger: Logger = defaultLogger): string {
   const hash = createHash("sha256");

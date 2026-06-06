@@ -1,27 +1,27 @@
 "use client";
 
+import { cva, type VariantProps } from "class-variance-authority";
 import {
   createContext,
+  type FocusEvent,
+  type KeyboardEvent,
+  type MouseEvent,
+  type ReactNode,
+  type Ref,
+  type RefObject,
   useContext,
   useEffect,
   useId,
   useMemo,
   useRef,
-  type KeyboardEvent,
-  type MouseEvent,
-  type FocusEvent,
-  type ReactNode,
-  type RefObject,
-  type Ref,
 } from "react";
-import { cva, type VariantProps } from "class-variance-authority";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { getEncodedListboxItemId } from "@/hooks/use-listbox";
-import { cn } from "@/lib/utils";
 import { composeRefs } from "@/lib/compose-refs";
+import { cn } from "@/lib/utils";
 import { FloatingPanel } from "../floating-panel/floating-panel";
-import { useMenuContext } from "./menu-context";
 import { Menu as MenuRoot } from "./menu";
+import { useMenuContext } from "./menu-context";
 
 interface MenuSubContextValue {
   open: boolean;
@@ -138,6 +138,9 @@ export function MenuSubTrigger({
   };
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: submenu trigger is a menuitem with centralized keyboard handling owned by the menu container via useNavigation.
+    // biome-ignore lint/a11y/useAriaPropsSupportedByRole: role is the dynamic itemRole that Biome cannot statically resolve to the menuitem role that supports these aria props.
+    // biome-ignore lint/a11y/useKeyWithClickEvents: arrow/Enter open-submenu handling is centralized on the menu container, not on this item.
     <div
       ref={composeRefs(triggerRef, ref)}
       id={itemId}

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "aria",
+  "title": "ARIA Utilities",
+  "description": "Shared ARIA helpers for form controls: resolveAriaInvalid, mergeIds, isHTMLElementForContainer.",
+  "files": [
+    {
+      "path": "registry/lib/aria.ts",
+      "content": "import type { AriaAttributes } from \"react\";\n\nexport function resolveAriaInvalid(\n  ariaInvalid: AriaAttributes[\"aria-invalid\"],\n  forceInvalid?: boolean,\n) {\n  if (forceInvalid) return true;\n  if (ariaInvalid === true || ariaInvalid === \"true\" || ariaInvalid === \"grammar\" || ariaInvalid === \"spelling\") {\n    return ariaInvalid;\n  }\n  if (ariaInvalid === false || ariaInvalid === \"false\") return ariaInvalid;\n  return undefined;\n}\n\nexport function mergeIds(...values: Array<string | undefined>) {\n  const ids = values.flatMap((value) => value?.split(/\\s+/).filter(Boolean) ?? []);\n  return ids.length > 0 ? ids.join(\" \") : undefined;\n}\n\nexport function isHTMLElementForContainer(value: unknown, container: HTMLElement | null): value is HTMLElement {\n  const View = container?.ownerDocument.defaultView;\n  return Boolean(View && value instanceof View.HTMLElement);\n}\n",
+      "type": "registry:lib"
+    }
+  ],
+  "meta": {
+    "client": false,
+    "hidden": true
+  },
+  "type": "registry:lib"
+}

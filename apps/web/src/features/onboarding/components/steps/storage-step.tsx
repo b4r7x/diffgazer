@@ -1,5 +1,5 @@
-import { StorageSelectorContent } from "@/components/shared/storage-selector-content";
 import type { SecretsStorage } from "@diffgazer/core/schemas/config";
+import { StorageSelectorContent } from "@/components/shared/storage-selector-content";
 
 interface StorageStepProps {
   value: SecretsStorage | null;

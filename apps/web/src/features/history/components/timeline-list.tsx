@@ -1,6 +1,6 @@
-import { NavigationList } from "@diffgazer/ui/components/navigation-list";
 import type { TimelineItem } from "@diffgazer/core/schemas/presentation";
 import { isListNavigationKey, toVerticalBoundaryDirection } from "@diffgazer/keys";
+import { NavigationList } from "@diffgazer/ui/components/navigation-list";
 
 export interface TimelineListProps {
   items: TimelineItem[];

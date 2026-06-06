@@ -1,7 +1,7 @@
 import { createServer, type Server } from "node:http";
-import { afterEach, describe, expect, it } from "vitest";
-import type { ServerType } from "@hono/node-server";
 import { parsePortEnv } from "@diffgazer/core/env";
+import type { ServerType } from "@hono/node-server";
+import { afterEach, describe, expect, it } from "vitest";
 import { DEFAULT_DEV_SERVER_PORT, formatListenError, startDevServer } from "./http-server.js";
 
 const openServers: Array<Server | ServerType> = [];

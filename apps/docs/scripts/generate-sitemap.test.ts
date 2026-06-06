@@ -1,7 +1,7 @@
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { getPreRenderPages } from "./generate-sitemap.mjs";
+import { getPreRenderPages } from "./generate-sitemap.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const docsRoot = resolve(__dirname, "..");
@@ -97,7 +97,9 @@ describe("getPreRenderPages", () => {
 
 	it("resolves a source MDX file for the first-page targets so lastmod can use mtime", () => {
 		const pages = getPreRenderPages();
-		const uiFirstPage = pages.find((page) => page.path === "/ui/getting-started");
+		const uiFirstPage = pages.find(
+			(page) => page.path === "/ui/getting-started",
+		);
 
 		expect(uiFirstPage).toBeDefined();
 		expect(uiFirstPage?.source).not.toBeNull();

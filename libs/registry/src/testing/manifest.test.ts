@@ -1,10 +1,10 @@
-import { mkdirSync, mkdtempSync, writeFileSync, rmSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { join, resolve } from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { buildRegistryArtifacts } from "../artifacts.js";
-import { validateManifest, ArtifactManifestSchema, createArtifactManifest, loadValidatedManifest } from "../manifest.js";
 import type { ArtifactManifest } from "../manifest.js";
+import { ArtifactManifestSchema, createArtifactManifest, loadValidatedManifest, validateManifest } from "../manifest.js";
 
 const validManifest: ArtifactManifest = {
   schemaVersion: 1,

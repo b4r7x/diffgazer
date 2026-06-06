@@ -1,0 +1,174 @@
+
+> @diffgazer/repo@0.0.0 smoke /Users/voitz/Projects/diffgazer-workspace
+> pnpm run smoke:cli && pnpm run smoke:packages && pnpm run smoke:shadcn && pnpm run smoke:modelsdev
+
+
+> @diffgazer/repo@0.0.0 smoke:cli /Users/voitz/Projects/diffgazer-workspace
+> pnpm --filter @diffgazer/add build && node scripts/monorepo/smoke-cli.mjs
+
+
+> @diffgazer/add@0.1.1 prebuild /Users/voitz/Projects/diffgazer-workspace/cli/add
+> pnpm run generate:bundles
+
+
+> @diffgazer/add@0.1.1 generate:bundles /Users/voitz/Projects/diffgazer-workspace/cli/add
+> node --import tsx scripts/bundle-registry.ts && node --import tsx scripts/generate-keys-copy-bundle.ts
+
+  Bundling registry...
+
+  Bundle summary:
+  Bundled 83 components (323 files)
+  Bundle size: 814.9 KB
+  Integrity: sha256-4a3c136199f045f063373c4a20f07b493039c7401b5c2bab989b606f7eac06a5
+  Output: /Users/voitz/Projects/diffgazer-workspace/cli/add/src/generated/registry-bundle.json
+
+  Dependencies:
+    accordion: @diffgazer/keys
+    code-block: lowlight
+    logo: figlet
+    use-navigation: @diffgazer/keys
+    use-focus-restore: @diffgazer/keys
+    use-focus-trap: @diffgazer/keys
+    use-scroll-lock: @diffgazer/keys
+    popover: @diffgazer/keys
+Wrote keys copy bundle: /Users/voitz/Projects/diffgazer-workspace/cli/add/src/generated/keys-copy-bundle.json (5 items)
+
+> @diffgazer/add@0.1.1 build /Users/voitz/Projects/diffgazer-workspace/cli/add
+> rm -rf dist && tsup && node --import tsx scripts/copy-generated.ts
+
+CLI Building entry: src/index.ts
+CLI Using tsconfig: tsconfig.json
+CLI tsup v8.5.1
+CLI Using tsup config: /Users/voitz/Projects/diffgazer-workspace/cli/add/tsup.config.ts
+CLI Target: node18
+CLI Cleaning output folder
+ESM Build start
+ESM dist/index.js 815.08 KB
+ESM ⚡️ Build success in 38ms
+OK: diffgazer --help
+OK: diffgazer --version
+OK: diffgazer --theme without --tui
+OK: dgadd --help
+OK: dgadd ui item
+OK: dgadd keys item
+OK: dgadd copy-first init/add/list/diff/remove typecheck/build flow
+OK: dgadd Next copy-first build flow
+OK: dgadd add without --skip-install
+OK: keys package integration dependency install/build flow
+OK: bare name rejection
+OK: CLI smoke checks passed
+
+> @diffgazer/repo@0.0.0 smoke:packages /Users/voitz/Projects/diffgazer-workspace
+> node scripts/monorepo/smoke-package-install.mjs
+
+OK: @diffgazer/ui works without @diffgazer/keys; keys-backed subpath fails naming the missing peer
+OK: imported 64 common @diffgazer/ui exports
+OK: imported 64 @diffgazer/ui exports and resolved package CSS
+OK: @diffgazer/ui SSR render
+vite v7.3.3 building client environment for production...
+transforming...
+✓ 84 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                             0.17 kB │ gzip:  0.15 kB
+dist/assets/index-DNEm3cqp.css            124.71 kB │ gzip: 19.03 kB
+dist/assets/spinner-IV3PAVH6-07COqsNi.js    2.59 kB │ gzip:  1.27 kB
+dist/assets/index-An_lO9sz.js             282.64 kB │ gzip: 88.86 kB
+✓ built in 769ms
+OK: Vite package-mode Tailwind CSS output
+OK: @diffgazer/keys import and package.json export
+▲ Next.js 16.2.6 (webpack)
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 3.6s
+  Running TypeScript ...
+
+  We detected TypeScript in your project and reconfigured your tsconfig.json file for you.
+  The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:
+
+  	- include was updated to add '.next/types/**/*.ts'
+  	- include was updated to add '.next/dev/types/**/*.ts'
+
+  The following mandatory changes were made to your tsconfig.json:
+
+  	- jsx was set to react-jsx (next.js uses the React automatic runtime)
+
+  Finished TypeScript in 1039ms ...
+  Collecting page data using 4 workers ...
+  Generating static pages using 4 workers (0/3) ...
+✓ Generating static pages using 4 workers (3/3) in 289ms
+  Finalizing page optimization ...
+  Collecting build traces ...
+
+Route (app)
+┌ ○ /
+└ ○ /_not-found
+
+
+○  (Static)  prerendered as static content
+OK: Next package-mode Tailwind CSS output
+Usage: diffgazer [options]
+
+Product CLI for reviewing code changes with Diffgazer.
+
+Options:
+  --tui              Start the beta terminal UI (incomplete; not recommended)
+  --theme <theme>    Start TUI with a specific theme (only with --tui)
+  -V, --version      Display version
+  -h, --help         Display help
+Usage: dgadd [options] [command]
+
+Install Diffgazer UI components and keys hooks into your React project
+
+Options:
+  -V, --version                output the version number
+  -s, --silent                 Suppress all output except errors
+  -h, --help                   display help for command
+
+Commands:
+  init [options]               Initialize project configuration
+  add [options] [items...]     Add ui/* components or keys/* hooks to your
+                               project
+  list [options]               List available items
+  diff [options] [items...]    Compare local items with registry versions
+  remove [options] <items...>  Remove items from your project
+OK: package install smoke tests passed
+
+> @diffgazer/repo@0.0.0 smoke:shadcn /Users/voitz/Projects/diffgazer-workspace
+> node scripts/monorepo/smoke-shadcn-install.mjs
+
+OK: all representative registry items exist
+OK: keys items have target fields on all files
+OK: keys public registry has no .js import specifiers
+OK: UI public registry dependencies are direct URL ready
+OK: representative registry items resolve their full dependency closure
+OK: shadcn CLI installed UI items and transitive keys through direct local registry URLs
+OK: shadcn CLI installed standalone keys items through direct local registry URLs
+OK: shadcn CLI installed UI items through local namespace registries
+OK: shadcn CLI installed keys items through local namespace registries
+OK: shadcn CLI resolved UI and keys registry dependency trees
+OK: shadcn direct URL install type-checks and builds
+OK: shadcn direct namespace install type-checks and builds
+OK: solo button install auto-pulled theme via registryDependencies
+OK: solo button install type-checks and builds with auto-installed theme
+OK: shadcn direct-install smoke passed
+
+> @diffgazer/repo@0.0.0 smoke:modelsdev /Users/voitz/Projects/diffgazer-workspace
+> pnpm --filter @diffgazer/core build && node scripts/monorepo/smoke-modelsdev.mjs
+
+
+> @diffgazer/core@0.0.1 build /Users/voitz/Projects/diffgazer-workspace/libs/core
+> tsc && pnpm verify:dist-esm
+
+
+> @diffgazer/core@0.0.1 verify:dist-esm /Users/voitz/Projects/diffgazer-workspace/libs/core
+> node --import tsx scripts/verify-dist-esm-imports.ts
+
+[core] dist ESM relative imports carry .js OK
+OK: gemini -> 21 models (bundled snapshot)
+OK: zai -> 13 models (bundled snapshot)
+OK: zai-coding -> 5 models (bundled snapshot)
+OK: groq -> 27 models (bundled snapshot)
+OK: cerebras -> 3 models (bundled snapshot)
+OK: CATALOG_SNAPSHOT inlined in diffgazer bundle (found 'gpt-oss-120b')
+OK: live models.dev catalog offline snapshot smoke passed

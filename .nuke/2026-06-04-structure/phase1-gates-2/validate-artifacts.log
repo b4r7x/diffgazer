@@ -1,0 +1,5 @@
+
+> @diffgazer/repo@0.0.0 validate:artifacts:check /Users/voitz/Projects/diffgazer-workspace
+> node scripts/monorepo/validate-artifacts.mjs
+
+OK: artifact validation passed

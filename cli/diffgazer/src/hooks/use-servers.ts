@@ -1,15 +1,6 @@
 import { useEffect, useState } from "react";
-import type { ServerController } from "../lib/servers/create-process-server";
-
-const activeServerSets = new Set<readonly ServerController[]>();
-
-export async function stopAllServers(): Promise<void> {
-  const snapshots = [...activeServerSets];
-  activeServerSets.clear();
-  await Promise.allSettled(
-    snapshots.flatMap((servers) => servers.map((server) => server.stop())),
-  );
-}
+import type { ServerController } from "../lib/servers/process";
+import { activeServerSets } from "../lib/servers/stop-all";
 
 export function useServers(
   createServers: ReadonlyArray<() => ServerController>,
@@ -17,7 +8,9 @@ export function useServers(
   const [servers] = useState(() => createServers.map((create) => create()));
 
   useEffect(() => {
-    servers.forEach((server) => server.start());
+    for (const server of servers) {
+      server.start();
+    }
     activeServerSets.add(servers);
     return () => {
       servers.forEach((server) => {

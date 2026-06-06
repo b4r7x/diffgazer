@@ -1,8 +1,8 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { runInitWorkflow } from "@diffgazer/registry/cli";
+import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { buildInitPlannedPaths, KNOWN_LOCKFILES } from "./init.js";
 
 let root: string;
@@ -63,11 +63,11 @@ describe("dgadd init rollback after install side effects", () => {
         // writeConfig failure must restore the file content and remove the
         // freshly-created lockfile.
         afterFiles: async (cwd) => {
-          const mutated = JSON.stringify(
+          const mutated = `${JSON.stringify(
             { name: "fixture", type: "module", dependencies: { clsx: "^2.0.0" } },
             null,
             2,
-          ) + "\n";
+          )}\n`;
           writeFileSync(join(cwd, "package.json"), mutated);
           writeFileSync(join(cwd, "pnpm-lock.yaml"), "lockfileVersion: '9.0'\n");
         },

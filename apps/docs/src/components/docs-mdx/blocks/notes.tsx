@@ -1,4 +1,4 @@
-import { Typography } from "@/components/ui/typography/typography";
+import { Typography } from "@diffgazer/ui/components/typography";
 import { useHookData } from "../doc-data-context";
 
 export function Notes() {

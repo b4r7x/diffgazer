@@ -1,20 +1,20 @@
 import { dirname, isAbsolute, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { z } from "zod";
 import {
   aliasPathSchema,
   BaseRegistryBundleSchema,
-  RegistryContentFileSchema,
-  RegistryContentItemSchema,
   createConfigModule,
   createInstallChecker,
   createItemAccessors,
   createRegistryAccessors,
   createRegistryLoader,
+  type RegistryContentFileSchema,
+  type RegistryContentItemSchema,
   readPackageVersion,
   resolveAliasedPaths,
 } from "@diffgazer/registry/cli";
-import { toPosixPath, resolveProjectPath } from "./utils/paths.js";
+import { z } from "zod";
+import { resolveProjectPath, toPosixPath } from "./utils/paths.js";
 
 export const VERSION = readPackageVersion(import.meta.url, "../package.json");
 

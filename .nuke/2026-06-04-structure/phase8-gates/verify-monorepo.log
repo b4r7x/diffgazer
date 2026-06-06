@@ -1,0 +1,27 @@
+
+> @diffgazer/repo@0.0.0 verify:monorepo /Users/voitz/Projects/diffgazer-workspace
+> node scripts/monorepo/check-invariants.mjs
+
+root workspace file exists: PASS
+root policy files exist: PASS
+root repository metadata: PASS
+workspace globs match target roots: PASS (found ["apps/*","cli/*","libs/*","libs/keys/artifacts"])
+no .gitmodules: PASS
+no gitlink entries: PASS
+no nested repo config: PASS
+no nested .git directories: PASS
+no nested pnpm-lock.yaml: PASS
+no nested pnpm-workspace.yaml: PASS
+no link: or file: local deps: PASS
+internal local deps use workspace protocol: PASS
+package license fields match LICENSE files: PASS
+workspace package list under target roots: PASS (found 10: apps/docs/package.json, apps/landing/package.json, apps/web/package.json, cli/add/package.json, cli/diffgazer/package.json, cli/server/package.json, libs/core/package.json, libs/keys/package.json, libs/registry/package.json, libs/ui/package.json)
+nested package.json files are documented exceptions: PASS (libs/keys/artifacts/package.json, libs/keys/examples/playground/package.json)
+libs/ui/package.json: package metadata: PASS
+libs/keys/package.json: package metadata: PASS
+cli/diffgazer/package.json: CLI package metadata: PASS
+cli/add/package.json: CLI package metadata: PASS
+no publishable package ships internal-docs-manifest.json: PASS
+publishable packages share one engines.node: PASS (libs/keys/package.json: >=20.0.0, cli/diffgazer/package.json: >=20.0.0, libs/ui/package.json: >=20.0.0, cli/add/package.json: >=20.0.0)
+turbo docs build includes .output: PASS (outputs: ["dist/**",".output/**"])
+web:build uses turbo for dependency chain: PASS (turbo run build --filter=@diffgazer/web)

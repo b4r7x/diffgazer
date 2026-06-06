@@ -1,9 +1,9 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { createRemoveCommand, findOrphanedNpmDeps } from "@diffgazer/registry/cli";
 import { ctx, type DiffgazerAddConfig, type ResolvedConfig } from "../context.js";
+import { readInstalledCssChunkHashes, removeCssChunks } from "../utils/css-chunks.js";
 import { sha256 } from "../utils/hashing.js";
-import { getKeysHookNames, resolveKeysCopyHookFiles, resolveKeysHooksFromRegistry } from "../utils/integration.js";
-import { getInstallBaseForFilePath, getInstallDirForBase } from "../utils/registry.js";
+import { getKeysHookNames, resolveKeysCopyHookFiles, resolveKeysHooksFromRegistry } from "../utils/keys-copy-bundle.js";
 import {
   getNamespacedItem,
   isNamespacedInstalled,
@@ -11,7 +11,7 @@ import {
   validateInstallNames,
 } from "../utils/namespaces.js";
 import { normalizeManifestPath, resolveInstallPath, resolveProjectPath } from "../utils/paths.js";
-import { readInstalledCssChunkHashes, removeCssChunks } from "./add/css-ops.js";
+import { getInstallBaseForFilePath, getInstallDirForBase } from "../utils/registry.js";
 
 type ManifestEntry = NonNullable<DiffgazerAddConfig["installedComponents"]>[string];
 type Manifest = Record<string, ManifestEntry>;

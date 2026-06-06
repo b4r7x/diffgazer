@@ -1,13 +1,13 @@
-import type { Shortcut } from "@diffgazer/core/schemas/presentation";
-import type { CredentialRef } from "@diffgazer/core/schemas/config";
 import { usePageFooter } from "@diffgazer/core/footer";
-import { ProviderList } from "@/features/providers/components/provider-list";
-import { ProviderDetails } from "@/features/providers/components/provider-details";
-import { ApiKeyDialog } from "@/features/providers/components/api-key-dialog/api-key-dialog";
-import { ModelSelectDialog } from "@/features/providers/components/model-select-dialog/model-select-dialog";
-import { useProvidersPageState } from "@/features/providers/hooks/use-providers-page-state";
+import type { CredentialRef } from "@diffgazer/core/schemas/config";
 import { PROVIDER_ENV_VARS } from "@diffgazer/core/schemas/config";
-import { useConfigData } from "@/app/providers/config-provider";
+import type { Shortcut } from "@diffgazer/core/schemas/presentation";
+import { useConfigData } from "@/app/providers/config";
+import { ApiKeyDialog } from "@/features/providers/components/api-key-dialog/dialog";
+import { ProviderDetails } from "@/features/providers/components/details";
+import { ProviderList } from "@/features/providers/components/list";
+import { ModelSelectDialog } from "@/features/providers/components/model-select-dialog/dialog";
+import { useProvidersPageState } from "@/features/providers/hooks/use-page-state";
 
 export function getProvidersFooter(
   focusZone: "input" | "filters" | "list" | "buttons",
@@ -97,7 +97,7 @@ export function ProvidersPage() {
   if (isLoading) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <span className="text-tui-muted" role="status" aria-live="polite">Loading providers...</span>
+        <output className="text-tui-muted" aria-live="polite">Loading providers...</output>
       </div>
     );
   }

@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffectEvent, useId, useLayoutEffect } from "react";
 import type { RefObject } from "react";
-import type { HandlerOptions } from "../providers/keyboard-provider.js";
-import { useOptionalKeyboardRegistryContext } from "../context/keyboard-context.js";
+import { useEffectEvent, useId, useLayoutEffect } from "react";
 import type { KeyHandler } from "../core/normalize-key-input.js";
 import { normalizeKeyInput } from "../core/normalize-key-input.js";
+import type { HandlerOptions } from "../providers/keyboard.js";
+import { useOptionalKeyboardRegistryContext } from "../providers/keyboard-context.js";
 
 export interface UseKeyOptions {
   enabled?: boolean;
@@ -68,6 +68,7 @@ export function useKey(
       }
     : undefined;
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: deps are intentionally the stable primitive options plus the derived `registrationVersion` string; depending on the per-render `handlerMap`/`registrationKeys`/`handlerOptions` objects would re-register on every render. Latest handlers are read via the stable `dispatch` effect event.
   useLayoutEffect(() => {
     if (enabled === false) return;
     if (!register) return;
@@ -85,7 +86,9 @@ export function useKey(
       ),
     );
 
-    return () => cleanups.forEach((cleanup) => cleanup());
+    return () => {
+      for (const cleanup of cleanups) cleanup();
+    };
   }, [
     register,
     getScopeForOrder,

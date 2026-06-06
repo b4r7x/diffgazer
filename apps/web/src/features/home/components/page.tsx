@@ -1,13 +1,13 @@
-import { useNavigate, useSearch } from "@tanstack/react-router";
-import type { ContextInfo } from "@diffgazer/core/schemas/presentation";
 import { useActiveReviewSession, useApi, useCreateReview } from "@diffgazer/core/api/hooks";
 import { deriveTrustStatus } from "@diffgazer/core/navigation";
+import type { ContextInfo } from "@diffgazer/core/schemas/presentation";
 import { MENU_ITEMS } from "@diffgazer/core/schemas/presentation";
-import { useScopedRouteState, clearScopedRouteState } from "@/hooks/use-scoped-route-state";
-import { useConfigData } from "@/app/providers/config-provider";
-import { useReviewHistory } from "@/features/history/hooks/use-review-history";
-import { shutdown } from "@/features/home/utils/shutdown";
-import { HomePagePresentation } from "./home-presentation";
+import { useNavigate, useSearch } from "@tanstack/react-router";
+import { useConfigData } from "@/app/providers/config";
+import { shutdown } from "@/features/home/shutdown";
+import { useReviewHistory } from "@/hooks/use-review-history";
+import { clearScopedRouteState, useScopedRouteState } from "@/hooks/use-scoped-route-state";
+import { HomePagePresentation } from "./presentation";
 
 const MAIN_MENU_ITEMS = MENU_ITEMS.filter((item) => item.id !== "help");
 

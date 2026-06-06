@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, type RefObject } from "react";
+import { createContext, type RefObject, useContext } from "react";
 import type { SegmentedSize, SegmentedVariant } from "@/lib/segmented-variants";
 
 export type ToggleGroupSelectionMode = "single" | "multiple";

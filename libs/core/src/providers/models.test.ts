@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
-import type { ModelInfo } from "@diffgazer/core/schemas/config";
-import { TIER_FILTERS, cycleTierFilter, filterModels } from "./models.js";
+import { describe, expect, it } from "vitest";
+import type { ModelInfo } from "../schemas/config/index.js";
+import { cycleTierFilter, filterModels, TIER_FILTERS } from "./models.js";
 
 const makeModel = (
   id: string,

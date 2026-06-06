@@ -2,11 +2,11 @@
 
 import {
   Children,
-  isValidElement,
-  useMemo,
   type HTMLAttributes,
+  isValidElement,
   type ReactElement,
   type ReactNode,
+  useMemo,
 } from "react";
 import { cn } from "@/lib/utils";
 import { BlockBarContext } from "./block-bar-context";
@@ -113,6 +113,7 @@ function BlockBarRoot({
 
   return (
     <BlockBarContext value={contextValue}>
+      {/* biome-ignore lint/a11y/useAriaPropsSupportedByRole: role is conditionally "meter" (Biome cannot resolve the ternary); all aria-value* props are applied in the same branch and are valid for the meter role. */}
       <div
         {...props}
         role={hasAccessibleName ? "meter" : undefined}
@@ -140,6 +141,7 @@ function BlockBarRoot({
             {segments || !hasChildren
               ? resolvedSegments.map((seg, i) => (
                 <BlockBarSegment
+                  // biome-ignore lint/suspicious/noArrayIndexKey: bar segments render in fixed left-to-right order and are never reordered; segments have no stable id, so the index is the identity.
                   key={i}
                   value={seg.value}
                   variant={seg.variant}

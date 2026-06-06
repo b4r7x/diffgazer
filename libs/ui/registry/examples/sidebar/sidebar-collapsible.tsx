@@ -1,14 +1,14 @@
 import {
   Sidebar,
-  SidebarHeader,
   SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarItem,
+  SidebarItemBadge,
+  SidebarItemLabel,
   SidebarSection,
   SidebarSectionContent,
   SidebarSectionTitle,
-  SidebarItem,
-  SidebarItemLabel,
-  SidebarItemBadge,
-  SidebarFooter,
 } from "@/components/ui/sidebar"
 
 // `block` variant — items use a soft fill on active rather than the `▸` glyph

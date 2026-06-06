@@ -1,9 +1,10 @@
-import { describe, it, expect } from "vitest";
-import { Hono } from "hono";
-import type { Handler } from "hono";
-import { z } from "zod";
-import { errorResponse, zodErrorHandler } from "./response.js";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
+import type { Handler } from "hono";
+import { Hono } from "hono";
+import { describe, expect, it } from "vitest";
+import { z } from "zod";
+import { requireValue } from "../../../testing/assertions.js";
+import { errorResponse, zodErrorHandler } from "./response.js";
 
 type ErrorBody = {
   error: {
@@ -53,7 +54,9 @@ describe("zodErrorHandler", () => {
       name: 123,
       age: "nope",
     });
-    const { response, body } = await requestError((ctx) => zodErrorHandler(result, ctx)!);
+    const { response, body } = await requestError((ctx) =>
+      requireValue(zodErrorHandler(result, ctx), "zod error response")
+    );
 
     expect(response.status).toBe(400);
     expect(body.error).toEqual({
@@ -79,7 +82,9 @@ describe("zodErrorHandler", () => {
       success: false as const,
       error: { issues: [] } as unknown as z.core.$ZodError,
     };
-    const { body } = await requestError((ctx) => zodErrorHandler(result, ctx)!);
+    const { body } = await requestError((ctx) =>
+      requireValue(zodErrorHandler(result, ctx), "zod error response")
+    );
 
     expect(body.error.message).toBe("Invalid body");
   });

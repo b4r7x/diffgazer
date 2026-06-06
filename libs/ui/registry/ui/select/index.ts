@@ -1,13 +1,13 @@
 "use client";
 
-import { Select as SelectRoot, type SelectProps } from "./select";
-import { SelectTrigger, type SelectTriggerProps } from "./select-trigger";
+import { type SelectProps, Select as SelectRoot } from "./select";
 import { SelectContent, type SelectContentProps } from "./select-content";
+import { SelectEmpty, type SelectEmptyProps } from "./select-empty";
 import { SelectItem, type SelectItemProps } from "./select-item";
 import { SelectSearch, type SelectSearchProps } from "./select-search";
-import { SelectValue, type SelectValueProps, type SelectValueDisplay, type SelectValueRenderProps } from "./select-value";
-import { SelectEmpty, type SelectEmptyProps } from "./select-empty";
 import { SelectTags, type SelectTagsProps } from "./select-tags";
+import { SelectTrigger, type SelectTriggerProps } from "./select-trigger";
+import { SelectValue, type SelectValueDisplay, type SelectValueProps, type SelectValueRenderProps } from "./select-value";
 
 const Select = Object.assign(SelectRoot, {
   Trigger: SelectTrigger,

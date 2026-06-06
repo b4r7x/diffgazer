@@ -1,10 +1,10 @@
-import type { ReactElement } from "react";
 import { Box, Text } from "ink";
-import { NavigationList } from "../../../components/ui/navigation-list";
-import { EmptyState } from "../../../components/ui/empty-state";
+import type { ReactElement } from "react";
+import { useTheme } from "../../../app/providers/theme";
 import { Badge } from "../../../components/ui/badge";
-import { useTheme } from "../../../theme/theme-context";
-import type { MappedRun } from "../hooks/use-history-screen";
+import { EmptyState } from "../../../components/ui/empty-state";
+import { NavigationList } from "../../../components/ui/navigation-list";
+import type { MappedRun } from "../hooks/use-screen";
 
 export interface RunsListProps {
   runs: MappedRun[];

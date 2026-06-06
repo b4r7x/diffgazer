@@ -1,11 +1,11 @@
-import { useState } from "react";
-import { Box, Text, useInput } from "ink";
-import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import {
-  type UISeverityFilter,
   calculateSeverityCounts,
+  type UISeverityFilter,
 } from "@diffgazer/core/schemas/presentation";
-import { useTheme } from "../../../theme/theme-context";
+import type { ReviewIssue } from "@diffgazer/core/schemas/review";
+import { Box, Text, useInput } from "ink";
+import { useState } from "react";
+import { useTheme } from "../../../app/providers/theme";
 import { SectionHeader } from "../../../components/ui/section-header";
 import { getVisibleSliceOffset } from "../../../lib/visible-slice-offset";
 import { IssuePreviewItem } from "./issue-preview-item";

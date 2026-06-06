@@ -2,8 +2,8 @@ import type {
   ProviderInfo,
   ProviderStatus,
   ProviderWithStatus,
-} from "@diffgazer/core/schemas/config";
-import { AVAILABLE_PROVIDERS } from "@diffgazer/core/schemas/config";
+} from "../schemas/config/index.js";
+import { AVAILABLE_PROVIDERS } from "../schemas/config/index.js";
 
 export function mapProvidersWithStatus(
   statuses: ProviderStatus[],

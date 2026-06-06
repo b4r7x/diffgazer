@@ -41,6 +41,15 @@ If your environment supports skills, load these before acting:
 - `apps/docs` owns the component and hook documentation site. It consumes `libs/core`, `libs/keys`, `libs/registry`, and `libs/ui` to build the registry browser, theme visualizer, and consumption examples. It must consume `@diffgazer/ui`, never mirror it; extract only generic utilities from docs, never docs-specific layout.
 - `apps/landing` owns the marketing landing page. It uses only `libs/ui` (currently for theme CSS) and carries no product/domain logic and no docs utilities.
 
+## Per-Surface Taxonomy
+
+This is the single source of truth for how each workspace is shaped. Bulletproof-react PRINCIPLES apply everywhere — vertical slices, unidirectional imports (`shared → features → app`), rule of two before promoting to shared, colocate-first. The bulletproof DIR TAXONOMY applies only to the UI surfaces; servers, the command CLI, and the libraries keep their own idiomatic layout.
+
+- **UI surfaces (`apps/web`, `apps/docs`, `apps/landing`, `cli/diffgazer` Ink TUI).** Bulletproof-react taxonomy: `app/` for providers, routers, and thin routes where the surface owns that shell; on-demand `features/<x>/{components,hooks,lib}`; shared `components/{ui,shared,layout}`, `hooks/`, `lib/`, `config/`, `types/`, and `testing/`. `apps/docs` keeps the TanStack-owned `routes/` root plus `router.tsx`/`client.tsx`/`server.ts`; `apps/landing` stays intentionally small and only adds taxonomy folders when the surface earns them; `apps/web` keeps `utils/`; `cli/diffgazer` keeps `lib/servers/` launcher adapters and `theme/`. Flat-sibling colocation; no internal barrels.
+- **Hono server (`cli/server`).** Feature-backend, not bulletproof-react: a `createApp()` factory (`app.ts`) separate from the runtime entry (`http-server.ts`/`serve.ts`) and the lib entry (`index.ts`); `features/<domain>/{router,service,schemas,types}` mounted via `app.route()`; colocated zod schemas with `zValidator`; `shared/{lib,middlewares}/`. NO Rails-style controllers (they break Hono type inference).
+- **Command CLI (`cli/add`).** Command-screaming `commands/` — one file or folder per subcommand (folder = spec + handler split) — with domain logic in `utils/` and a shared `context.ts`. NOT bulletproof-react taxonomy.
+- **Publishable libraries (`libs/core`, `libs/ui`, `libs/keys`, `libs/registry`).** Organized by domain module behind ONE `src/index.ts` public entry plus granular subpath `exports`; no `features/` taxonomy. `libs/ui` additionally keeps per-component registry folders with colocated tests and a per-component `index.ts` (the sanctioned copy/shadcn distribution surface).
+
 ## Extraction Rules
 
 - Extract primitives, not product widgets. Do not move app-specific components such as history progress lists, breakdown bars, onboarding copy, or domain cards into `libs/ui`.

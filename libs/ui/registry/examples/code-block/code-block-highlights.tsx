@@ -18,6 +18,7 @@ export default function CodeBlockHighlights() {
       </CodeBlock.Header>
       <CodeBlock.Content>
         {lines.map((line, i) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: code lines render in fixed source order and are never reordered; the line index is the stable identity.
           <CodeBlock.Line key={i} number={i + 1} {...line} />
         ))}
       </CodeBlock.Content>

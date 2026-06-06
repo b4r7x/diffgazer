@@ -1,10 +1,10 @@
-import { CopyButton } from "@/components/copy-button";
-import { DemoPreview } from "@/components/demo-preview";
 import {
 	CodeBlock,
 	CodeBlockContent,
 	CodeBlockLine,
-} from "@/components/ui/code-block";
+} from "@diffgazer/ui/components/code-block";
+import { CopyButton } from "@/components/copy-button";
+import { DemoPreview } from "@/components/demo-preview";
 import { resolvePreviewFrame } from "@/lib/example-frames";
 import { resolveExamples } from "@/lib/resolve-examples";
 import { useDemos } from "@/lib/use-demos";

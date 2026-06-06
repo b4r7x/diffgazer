@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { mkdtempSync, rmSync as realRmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Track which files rmSync should fail on.
 const rmSyncFailPaths = vi.hoisted(() => new Set<string>());
@@ -22,8 +22,8 @@ vi.mock("node:fs", async (importOriginal) => {
 });
 
 // Boundary mock: logger — suppress output and auto-confirm prompts.
-vi.mock("../cli/logger.js", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../cli/logger.js")>();
+vi.mock("../cli/terminal.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../cli/terminal.js")>();
   return {
     ...actual,
     error: vi.fn(),

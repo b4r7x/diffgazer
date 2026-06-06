@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { Layout } from "./components/layout";
-import { GlobalShortcutsDemo } from "./demos/global-shortcuts";
-import { ScopedDialogDemo } from "./demos/scoped-dialog";
-import { FocusZonesDemo } from "./demos/focus-zones";
-import { ListNavigationDemo } from "./demos/list-navigation";
-import { TabBarDemo } from "./demos/tab-bar";
 import { CommandPaletteDemo } from "./demos/command-palette";
 import { FocusTrapDemo } from "./demos/focus-trap";
+import { FocusZonesDemo } from "./demos/focus-zones";
+import { GlobalShortcutsDemo } from "./demos/global-shortcuts";
+import { ListNavigationDemo } from "./demos/list-navigation";
+import { ScopedDialogDemo } from "./demos/scoped-dialog";
+import { TabBarDemo } from "./demos/tab-bar";
 
 const demos = [
   { id: "global-shortcuts", title: "Global Shortcuts", section: "Basics" },

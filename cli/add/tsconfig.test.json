@@ -1,9 +1,9 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
-  "extends": "../../libs/core/tsconfig/cli-test.json",
+  "extends": "../../libs/core/tsconfig/node-nodenext-test.json",
   "compilerOptions": {
     "rootDir": "."
   },
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*.ts", "tests/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }

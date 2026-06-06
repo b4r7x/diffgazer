@@ -2,12 +2,12 @@
 
 import {
   Sidebar,
-  SidebarProvider,
-  SidebarHeader,
   SidebarContent,
+  SidebarHeader,
+  SidebarItem,
+  SidebarProvider,
   SidebarSection,
   SidebarSectionTitle,
-  SidebarItem,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 

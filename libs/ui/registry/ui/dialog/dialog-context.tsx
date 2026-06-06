@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, type MouseEventHandler, type RefObject } from "react";
+import { createContext, type MouseEventHandler, type RefObject, useContext } from "react";
 
 export interface DialogContextValue {
   open: boolean;

@@ -1,11 +1,12 @@
 import { render, screen } from "@testing-library/react"
-import { renderToStaticMarkup } from "react-dom/server"
 import userEvent from "@testing-library/user-event"
+import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it } from "vitest"
-import { axe } from "../../../testing/utils"
+import { axe } from "../../../testing/axe"
+import { requireAttribute } from "../../testing/assertions"
 import { Input, InputGroup } from "../input/index"
-import { Textarea } from "../textarea/index"
 import { Select } from "../select/index"
+import { Textarea } from "../textarea/index"
 import { Field } from "./index"
 
 describe("Field", () => {
@@ -132,7 +133,7 @@ describe("Field", () => {
     )
 
     const input = screen.getByRole("textbox")
-    const labelledBy = input.getAttribute("aria-labelledby")!
+    const labelledBy = requireAttribute(input, "aria-labelledby")
     expect(labelledBy).toContain("external-label")
 
     const fieldLabel = screen.getByText("Username")
@@ -252,7 +253,7 @@ describe("Field", () => {
           <Input />
         </Field.Control>
         <Field.Description>
-          <>Use your <strong>work</strong> email.</>
+          Use your <strong>work</strong> email.
         </Field.Description>
       </Field>,
     )

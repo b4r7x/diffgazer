@@ -1,8 +1,8 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
-import { describe, it, expect } from "vitest";
-import { App } from "./App";
+import { describe, expect, it } from "vitest";
+import { App } from "./app";
 import {
   DOCS_URL,
   GITHUB_URL,
@@ -37,13 +37,15 @@ describe("Landing App", () => {
     // resolve to the canonical target.
     const docsLinks = screen.getAllByRole("link", { name: /documentation/i });
     expect(docsLinks.length).toBeGreaterThan(0);
-    docsLinks.forEach((link) => expect(link).toHaveAttribute("href", DOCS_URL));
+    for (const link of docsLinks) {
+      expect(link).toHaveAttribute("href", DOCS_URL);
+    }
 
     const githubLinks = screen.getAllByRole("link", { name: /github/i });
     expect(githubLinks.length).toBeGreaterThan(0);
-    githubLinks.forEach((link) =>
-      expect(link).toHaveAttribute("href", GITHUB_URL),
-    );
+    for (const link of githubLinks) {
+      expect(link).toHaveAttribute("href", GITHUB_URL);
+    }
   });
 
   it("renders the sample diff with added and removed rows", () => {

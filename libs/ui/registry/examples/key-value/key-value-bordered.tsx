@@ -1,5 +1,5 @@
-import { KeyValue } from "@/components/ui/key-value"
 import { Badge } from "@/components/ui/badge"
+import { KeyValue } from "@/components/ui/key-value"
 
 export default function KeyValueBordered() {
   return (

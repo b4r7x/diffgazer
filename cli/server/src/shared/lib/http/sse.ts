@@ -1,7 +1,5 @@
 import type { SSEWriter } from "./types.js";
 
-export type { SSEWriter } from "./types.js";
-
 export const writeSSEError = async (
   stream: SSEWriter,
   message: string,

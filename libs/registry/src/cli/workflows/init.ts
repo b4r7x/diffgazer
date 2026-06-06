@@ -1,8 +1,8 @@
 import { existsSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
-import { info, success, warn, heading, fileAction, newline, promptConfirm } from "../logger.js";
-import type { ConfigLoadResult } from "../config.js";
 import pc from "picocolors";
+import type { ConfigLoadResult } from "../config.js";
+import { fileAction, heading, info, newline, promptConfirm, success, warn } from "../terminal.js";
 
 export interface InitWorkflowOptions<TConfig> {
   cwd: string;

@@ -1,11 +1,8 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
-  "extends": "../../libs/core/tsconfig/test.json",
+  "extends": "../../libs/core/tsconfig/node-nodenext-test.json",
   "compilerOptions": {
-    "rootDir": ".",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "noEmit": true
+    "rootDir": "."
   },
   "include": ["src/**/*.ts", "src/**/*.test.ts"],
   "exclude": ["node_modules", "dist"]

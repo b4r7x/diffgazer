@@ -17,14 +17,22 @@ export default defineConfig({
         test: {
           name: "jsdom",
           environment: "jsdom",
-          include: ["registry/**/*.test.ts", "registry/**/*.test.tsx"],
-          exclude: ["registry/**/*.ssr.test.tsx"],
-          setupFiles: ["./test-setup.ts"],
+          include: [
+            "registry/**/*.test.ts",
+            "registry/**/*.test.tsx",
+            "scripts/**/*.test.ts",
+          ],
+          exclude: ["registry/**/ssr/*.test.tsx"],
+          setupFiles: ["./src/test-setup.ts"],
           typecheck: {
             enabled: true,
             tsconfig: "./tsconfig.test.json",
-            include: ["registry/**/*.test.ts", "registry/**/*.test.tsx"],
-            exclude: ["registry/**/*.ssr.test.tsx"],
+            include: [
+              "registry/**/*.test.ts",
+              "registry/**/*.test.tsx",
+              "scripts/**/*.test.ts",
+            ],
+            exclude: ["registry/**/ssr/*.test.tsx"],
           },
         },
       },
@@ -33,11 +41,11 @@ export default defineConfig({
         test: {
           name: "ssr",
           environment: "node",
-          include: ["registry/**/*.ssr.test.tsx"],
+          include: ["registry/**/ssr/*.test.tsx"],
           typecheck: {
             enabled: true,
             tsconfig: "./tsconfig.test.json",
-            include: ["registry/**/*.ssr.test.tsx"],
+            include: ["registry/**/ssr/*.test.tsx"],
           },
         },
       },

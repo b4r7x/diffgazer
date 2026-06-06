@@ -1,11 +1,11 @@
 "use client";
 
-import { useRef, type InputHTMLAttributes, type KeyboardEvent, type ReactNode, type Ref } from "react";
 import { cva } from "class-variance-authority";
-import { cn } from "@/lib/utils";
+import { type InputHTMLAttributes, type KeyboardEvent, type ReactNode, type Ref, useRef } from "react";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { useFormReset } from "@/hooks/use-form-reset";
 import { composeRefs } from "@/lib/compose-refs";
+import { cn } from "@/lib/utils";
 
 const searchInputVariants = cva(
   "flex items-center gap-2 bg-background border border-border font-mono shrink-0 transition-colors motion-reduce:transition-none focus-within:border-foreground has-[input[aria-invalid=true]]:border-destructive",
@@ -79,7 +79,7 @@ export function SearchInput({
   };
 
   return (
-    <search
+    <div
       className={cn(
         searchInputVariants({ size, disabled }),
         className,
@@ -98,6 +98,6 @@ export function SearchInput({
         {...rest}
         className="flex-1 bg-transparent font-mono text-foreground placeholder:text-foreground/50 focus:outline-none disabled:cursor-not-allowed [&::-webkit-search-cancel-button]:appearance-none"
       />
-    </search>
+    </div>
   );
 }

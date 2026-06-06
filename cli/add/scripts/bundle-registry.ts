@@ -1,4 +1,4 @@
-import { readFileSync, existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { createBundler } from "@diffgazer/registry/cli";
 
@@ -25,7 +25,7 @@ const bundle = createBundler({
     const themeContent = readFileSync(themePath, "utf-8")
       .replace(/^@import\s+["']\.\/theme-base\.css["'];\s*\n?/m, "");
     return {
-      theme: baseContent + "\n" + themeContent,
+      theme: `${baseContent}\n${themeContent}`,
       styles: readFileSync(stylesPath, "utf-8"),
     };
   },

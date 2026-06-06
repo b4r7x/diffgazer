@@ -3,12 +3,12 @@ import userEvent from "@testing-library/user-event";
 import { useRef } from "react";
 import { afterEach, describe, expect, expectTypeOf, it, vi } from "vitest";
 import { KeyboardWrapper } from "../testing/test-utils.js";
+import { useScope } from "./use-scope.js";
 import {
-  useScopedNavigation,
   type UseScopedNavigationOptions,
   type UseScopedNavigationReturn,
+  useScopedNavigation,
 } from "./use-scoped-navigation.js";
-import { useScope } from "./use-scope.js";
 
 function itemId(value: string, prefix = "item") {
   return `${prefix}-${value}`;
@@ -96,7 +96,7 @@ describe("useScopedNavigation", () => {
 
     function MoveFocusList() {
       const ref = useRef<HTMLDivElement>(null);
-      const result = useScopedNavigation({
+      useScopedNavigation({
         containerRef: ref,
         role: "button",
         defaultHighlighted: "a",

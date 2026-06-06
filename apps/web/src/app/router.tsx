@@ -1,20 +1,20 @@
-import { lazy } from "react";
-import {
-  createRoute,
-  createRootRoute,
-  createRouter,
-  redirect,
-  Outlet,
-} from "@tanstack/react-router";
-import { z } from "zod";
 import { ReviewModeSchema } from "@diffgazer/core/schemas/review";
-import { RootLayout } from "./routes/__root";
-import { HomePage } from "./routes/home";
-import { ReviewPage } from "./routes/review";
+import {
+  createRootRoute,
+  createRoute,
+  createRouter,
+  Outlet,
+  redirect,
+} from "@tanstack/react-router";
+import { lazy } from "react";
+import { z } from "zod";
 import {
   requireConfigured,
   requireNotConfigured,
 } from "../lib/config-guards";
+import { RootLayout } from "./routes/__root";
+import { HomePage } from "./routes/home";
+import { ReviewPage } from "./routes/review";
 
 const SettingsHubPage = lazy(() =>
   import("./routes/settings").then((m) => ({ default: m.SettingsHubPage })),

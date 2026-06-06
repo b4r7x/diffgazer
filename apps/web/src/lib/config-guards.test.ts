@@ -1,8 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  invalidateConfigGuardCache,
-  setConfiguredGuardCache,
-} from "./config-guard-cache";
 
 const { mockCheckConfig, mockLoadInit } = vi.hoisted(() => ({
   mockCheckConfig: vi.fn(),
@@ -17,7 +13,9 @@ vi.mock("@/lib/api", () => ({
   },
 }));
 
-import { requireConfigured, requireNotConfigured } from "./config-guards";
+let setConfiguredGuardCache: typeof import("./config-guard-cache").setConfiguredGuardCache;
+let requireConfigured: typeof import("./config-guards").requireConfigured;
+let requireNotConfigured: typeof import("./config-guards").requireNotConfigured;
 
 async function expectRedirectTo(promise: Promise<unknown>, to: string) {
   try {
@@ -31,9 +29,11 @@ async function expectRedirectTo(promise: Promise<unknown>, to: string) {
 }
 
 describe("config guards", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
-    invalidateConfigGuardCache();
+    vi.resetModules();
+    ({ setConfiguredGuardCache } = await import("./config-guard-cache"));
+    ({ requireConfigured, requireNotConfigured } = await import("./config-guards"));
   });
 
   it("redirects completed users away from onboarding on direct URL access", async () => {

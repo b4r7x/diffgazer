@@ -1,0 +1,42 @@
+---
+title: dgadd list
+description: List available diffgazer registry items.
+---
+
+## Usage
+
+```bash
+pnpm exec dgadd list
+```
+
+Use `npx @diffgazer/add list` only after `npm view @diffgazer/add version` succeeds. Before publication, install a locally packed `@diffgazer/add` tarball into the target app and run `pnpm exec dgadd`.
+
+## Examples
+
+```bash
+pnpm exec dgadd list
+pnpm exec dgadd list --json
+pnpm exec dgadd list --installed
+```
+
+## Options
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--cwd <path>` | Working directory | `.` |
+| `--json` | Output as JSON | `false` |
+| `--installed` | Show only installed items | `false` |
+| `--all` | Include hidden/internal items | `false` |
+
+## Output
+
+Names are shown with their install namespace:
+
+```text
+ui/button
+ui/dialog
+keys/navigation
+keys/focus-trap
+keys/focus-restore
+keys/scroll-lock
+```

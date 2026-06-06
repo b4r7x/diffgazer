@@ -1,5 +1,5 @@
-import type { ReviewMode } from "@diffgazer/core/schemas/review";
-import type { GitStatus } from "@diffgazer/core/schemas/git";
+import type { GitStatus } from "../schemas/git.js";
+import type { ReviewMode } from "../schemas/review/index.js";
 import type { ApiClient, GitDiffResponse } from "./types.js";
 
 export async function getGitStatus(

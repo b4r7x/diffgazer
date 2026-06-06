@@ -1,8 +1,9 @@
-import { Box, Text } from "ink";
-import { useTheme } from "../../../theme/theme-context";
-import { SectionHeader } from "../../../components/ui/section-header";
-import { KeyValue } from "../../../components/ui/key-value";
 import type { ReviewContextResponse } from "@diffgazer/core/api/types";
+import { pluralize } from "@diffgazer/core/strings";
+import { Box, Text } from "ink";
+import { useTheme } from "../../../app/providers/theme";
+import { KeyValue } from "../../../components/ui/key-value";
+import { SectionHeader } from "../../../components/ui/section-header";
 
 interface ContextSnapshotPreviewProps {
   snapshot: ReviewContextResponse;
@@ -27,7 +28,7 @@ export function ContextSnapshotPreview({ snapshot }: ContextSnapshotPreviewProps
         <KeyValue label="Project" value={projectName} labelWidth={labelWidth} />
         <KeyValue
           label="Changed"
-          value={`${changedFiles} file${changedFiles !== 1 ? "s" : ""}`}
+          value={pluralize(changedFiles, "file")}
           labelWidth={labelWidth}
         />
         {(totalAdditions > 0 || totalDeletions > 0) && (

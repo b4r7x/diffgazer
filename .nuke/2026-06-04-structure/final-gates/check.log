@@ -1,0 +1,83 @@
+
+> @diffgazer/repo@0.0.0 check /Users/voitz/Projects/diffgazer-workspace
+> biome lint scripts/monorepo && turbo run check && pnpm run depcruise
+
+Checked 31 files in 26ms. No fixes applied.
+• turbo 2.9.14
+
+   • Packages in scope: @diffgazer/add, @diffgazer/core, @diffgazer/docs, @diffgazer/keys, @diffgazer/keys-artifacts, @diffgazer/landing, @diffgazer/registry, @diffgazer/server, @diffgazer/ui, @diffgazer/web, diffgazer
+   • Running check in 11 packages
+   • Remote caching disabled
+
+@diffgazer/registry:check: cache hit, replaying logs 726234f05fae09e8
+@diffgazer/registry:check: 
+@diffgazer/registry:check: > @diffgazer/registry@0.1.0 check /Users/voitz/Projects/diffgazer-workspace/libs/registry
+@diffgazer/registry:check: > biome check .
+@diffgazer/registry:check: 
+@diffgazer/registry:check: Checked 85 files in 20ms. No fixes applied.
+@diffgazer/core:check: cache miss, executing 7dcc943ef5ca8283
+@diffgazer/keys:check: cache hit, replaying logs 07c93500ef650ce6
+@diffgazer/keys:check: 
+@diffgazer/keys:check: > @diffgazer/keys@0.2.0 check /Users/voitz/Projects/diffgazer-workspace/libs/keys
+@diffgazer/keys:check: > biome check .
+@diffgazer/keys:check: 
+@diffgazer/keys:check: Checked 118 files in 52ms. No fixes applied.
+@diffgazer/ui:check: cache hit, replaying logs ef953423215d94ba
+@diffgazer/ui:check: 
+@diffgazer/ui:check: > @diffgazer/ui@0.2.0 check /Users/voitz/Projects/diffgazer-workspace/libs/ui
+@diffgazer/ui:check: > biome check .
+@diffgazer/ui:check: 
+@diffgazer/ui:check: Checked 816 files in 118ms. No fixes applied.
+@diffgazer/docs:check: cache miss, executing 8d412a919d2af883
+@diffgazer/add:check: cache hit, replaying logs 722be3fb630bb238
+@diffgazer/add:check: 
+@diffgazer/add:check: > @diffgazer/add@0.1.1 check /Users/voitz/Projects/diffgazer-workspace/cli/add
+@diffgazer/add:check: > biome check .
+@diffgazer/add:check: 
+@diffgazer/add:check: Checked 35 files in 63ms. No fixes applied.
+@diffgazer/core:check: 
+@diffgazer/core:check: > @diffgazer/core@0.0.1 check /Users/voitz/Projects/diffgazer-workspace/libs/core
+@diffgazer/core:check: > biome check .
+@diffgazer/core:check: 
+@diffgazer/docs:check: 
+@diffgazer/docs:check: > @diffgazer/docs@ check /Users/voitz/Projects/diffgazer-workspace/apps/docs
+@diffgazer/docs:check: > biome check src scripts vite.config.ts vite-plugin-docs-rebuild.ts source.config.ts
+@diffgazer/docs:check: 
+@diffgazer/core:check: Checked 202 files in 53ms. No fixes applied.
+@diffgazer/docs:check: Checked 102 files in 52ms. No fixes applied.
+@diffgazer/server:check: cache miss, executing a57d7aaeefafc091
+@diffgazer/landing:check: cache miss, executing 58a611ae4592363f
+@diffgazer/web:check: cache miss, executing ee05b54634cbb55b
+@diffgazer/server:check: 
+@diffgazer/server:check: > @diffgazer/server@0.1.0 check /Users/voitz/Projects/diffgazer-workspace/cli/server
+@diffgazer/server:check: > biome check .
+@diffgazer/server:check: 
+@diffgazer/web:check: 
+@diffgazer/web:check: > @diffgazer/web@0.1.0 check /Users/voitz/Projects/diffgazer-workspace/apps/web
+@diffgazer/web:check: > biome check
+@diffgazer/web:check: 
+@diffgazer/landing:check: 
+@diffgazer/landing:check: > @diffgazer/landing@ check /Users/voitz/Projects/diffgazer-workspace/apps/landing
+@diffgazer/landing:check: > biome check .
+@diffgazer/landing:check: 
+@diffgazer/landing:check: Checked 19 files in 14ms. No fixes applied.
+@diffgazer/server:check: Checked 137 files in 52ms. No fixes applied.
+@diffgazer/web:check: Checked 195 files in 65ms. No fixes applied.
+diffgazer:check: cache miss, executing c73eebe2c93c4a39
+diffgazer:check: 
+diffgazer:check: > diffgazer@0.1.4 check /Users/voitz/Projects/diffgazer-workspace/cli/diffgazer
+diffgazer:check: > biome check .
+diffgazer:check: 
+diffgazer:check: Checked 175 files in 26ms. No fixes applied.
+
+ Tasks:    10 successful, 10 total
+Cached:    4 cached, 10 total
+  Time:    1.165s 
+
+
+> @diffgazer/repo@0.0.0 depcruise /Users/voitz/Projects/diffgazer-workspace
+> depcruise --config .dependency-cruiser.cjs apps cli libs
+
+
+✔ no dependency violations found (1936 modules, 3266 dependencies cruised)
+

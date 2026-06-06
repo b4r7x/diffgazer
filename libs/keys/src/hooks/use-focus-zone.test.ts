@@ -1,10 +1,10 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
-import { renderHook, render, screen, act, cleanup } from "@testing-library/react";
+import { act, cleanup, render, renderHook, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createElement, useEffect, useRef, useState } from "react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { fireKey, KeyboardWrapper } from "../testing/test-utils.js";
 import { useFocusZone } from "./use-focus-zone.js";
 import { useKey } from "./use-key.js";
-import { fireKey, KeyboardWrapper } from "../testing/test-utils.js";
 
 const wrapper = KeyboardWrapper;
 

@@ -1,6 +1,6 @@
-import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { makeIssue } from "@/testing";
+import { describe, expect, it, vi } from "vitest";
+import { makeIssue } from "@/testing/factories";
 import { IssueListPane } from "./issue-list-pane";
 
 const issues = [

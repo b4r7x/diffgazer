@@ -1,20 +1,20 @@
 import { createHash, randomUUID } from "node:crypto";
-import { join } from "node:path";
 import { mkdir, readFile } from "node:fs/promises";
-import { atomicWriteFile } from "../fs.js";
+import { join } from "node:path";
+import { ok, type Result } from "@diffgazer/core/result";
+import { calculateSeverityCounts } from "@diffgazer/core/schemas/presentation";
 import {
-  SavedReviewSchema,
+  type DrilldownResult,
+  type ReviewGitContext,
+  type ReviewMetadata,
   ReviewMetadataSchema,
   type SavedReview,
-  type ReviewMetadata,
-  type ReviewGitContext,
-  type DrilldownResult,
+  SavedReviewSchema,
 } from "@diffgazer/core/schemas/review";
-import { createCollection } from "./persistence.js";
-import type { StoreError, DateFieldsOf, SaveReviewOptions } from "./types.js";
+import { atomicWriteFile } from "../fs.js";
 import { getGlobalDiffgazerDir } from "../paths.js";
-import { type Result, ok } from "@diffgazer/core/result";
-import { calculateSeverityCounts } from "@diffgazer/core/schemas/presentation";
+import { createCollection } from "./persistence.js";
+import type { DateFieldsOf, SaveReviewOptions, StoreError } from "./types.js";
 
 function filterByProjectAndSort<T extends { projectPath: string }>(
   items: T[],

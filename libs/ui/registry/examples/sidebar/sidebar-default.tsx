@@ -1,13 +1,13 @@
 import {
   Sidebar,
-  SidebarHeader,
   SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarItem,
+  SidebarItemBadge,
+  SidebarItemLabel,
   SidebarSection,
   SidebarSectionTitle,
-  SidebarItem,
-  SidebarItemLabel,
-  SidebarItemBadge,
-  SidebarFooter,
 } from "@/components/ui/sidebar"
 
 export default function SidebarDefault() {

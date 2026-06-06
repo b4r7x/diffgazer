@@ -1,6 +1,3 @@
-import { type ComponentType, type LazyExoticComponent, Suspense } from "react";
-import { CopyButton } from "@/components/copy-button";
-import { InsetPreviewPane } from "@/components/preview-inset-pane";
 import {
 	CodeBlock,
 	CodeBlockContent,
@@ -8,10 +5,18 @@ import {
 	CodeBlockLabel,
 	CodeBlockLine,
 	type CodeBlockLineProps,
-} from "@/components/ui/code-block";
-import { Spinner } from "@/components/ui/spinner/spinner";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Typography } from "@/components/ui/typography/typography";
+} from "@diffgazer/ui/components/code-block";
+import { Spinner } from "@diffgazer/ui/components/spinner";
+import {
+	Tabs,
+	TabsContent,
+	TabsList,
+	TabsTrigger,
+} from "@diffgazer/ui/components/tabs";
+import { Typography } from "@diffgazer/ui/components/typography";
+import { type ComponentType, type LazyExoticComponent, Suspense } from "react";
+import { CopyButton } from "@/components/copy-button";
+import { InsetPreviewPane } from "@/components/preview-inset-pane";
 import type { PreviewFrame } from "@/lib/example-frames";
 
 interface DemoPreviewProps {

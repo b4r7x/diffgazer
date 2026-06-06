@@ -1,5 +1,5 @@
-import { DiffView } from "@diffgazer/ui/components/diff-view";
 import { CodeBlock } from "@diffgazer/ui/components/code-block";
+import { DiffView } from "@diffgazer/ui/components/diff-view";
 import { Kbd } from "@diffgazer/ui/components/kbd";
 import {
   DIFF_STATS,

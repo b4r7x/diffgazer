@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
-import { cn } from '@diffgazer/ui/lib/utils';
-import { LogEntry } from './log-entry';
-import { ScrollArea } from '@diffgazer/ui/components/scroll-area';
 import type { LogEntryData as BaseLogEntryData } from '@diffgazer/core/schemas/presentation';
+import { ScrollArea } from '@diffgazer/ui/components/scroll-area';
+import { cn } from '@diffgazer/ui/lib/utils';
+import { useEffect, useRef, useState } from 'react';
+import { LogEntry } from './log-entry';
 
 export interface LogEntryData extends Omit<BaseLogEntryData, 'message'> {
   message: React.ReactNode;
@@ -34,6 +34,7 @@ export function ActivityLog({
     setIsNearBottom(distanceFromBottom <= 50);
   };
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `entries` is an intentional re-run trigger — the effect must scroll to the newest entry whenever the list changes, even though it does not read `entries` directly.
   useEffect(() => {
     if (autoScroll && isNearBottom && scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;

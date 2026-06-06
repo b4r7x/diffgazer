@@ -1,10 +1,10 @@
-import { useState, type KeyboardEvent } from "react";
 import { buildLensOptions } from "@diffgazer/core/schemas/events";
 import type { LensId } from "@diffgazer/core/schemas/review";
-import { CheckboxGroup, CheckboxItem } from "@diffgazer/ui/components/checkbox";
-import { Badge } from "@diffgazer/ui/components/badge";
-import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { toVerticalBoundaryDirection } from "@diffgazer/keys";
+import { Badge } from "@diffgazer/ui/components/badge";
+import { CheckboxGroup, CheckboxItem } from "@diffgazer/ui/components/checkbox";
+import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
+import { type KeyboardEvent, useState } from "react";
 
 const LENS_OPTIONS = buildLensOptions();
 

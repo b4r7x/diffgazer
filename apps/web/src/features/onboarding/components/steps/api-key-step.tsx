@@ -1,10 +1,10 @@
-import { useRef, useState, type KeyboardEvent } from "react";
+import type { InputMethod } from "@diffgazer/core/onboarding";
+import type { AIProvider } from "@diffgazer/core/schemas/config";
 import { AVAILABLE_PROVIDERS, PROVIDER_ENV_VARS } from "@diffgazer/core/schemas/config";
 import { getVerticalArrowDirection, useKey } from "@diffgazer/keys";
-import type { AIProvider } from "@diffgazer/core/schemas/config";
+import { type KeyboardEvent, useRef, useState } from "react";
 import { ApiKeyMethodSelector } from "@/components/shared/api-key-method-selector";
 import type { FocusElement } from "@/types/focus-element";
-import type { InputMethod } from "@diffgazer/core/onboarding";
 
 interface ApiKeyStepProps {
   provider: AIProvider;

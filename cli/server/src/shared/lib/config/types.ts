@@ -1,5 +1,5 @@
-import type { ProviderStatus, ProjectInfo, SettingsConfig, SecretsStorage, TrustConfig } from "@diffgazer/core/schemas/config";
 import type { AppError } from "@diffgazer/core/errors";
+import type { ProviderStatus, SettingsConfig, TrustConfig } from "@diffgazer/core/schemas/config";
 
 export interface ConfigState {
   settings: SettingsConfig;

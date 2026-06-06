@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
-import { createElement } from "react";
 import type { UseQueryResult } from "@tanstack/react-query";
+import { createElement } from "react";
+import { describe, expect, it } from "vitest";
 import { guardQueryState, matchQueryState } from "./match-query-state.js";
 
 type QueryShape<T> = Pick<

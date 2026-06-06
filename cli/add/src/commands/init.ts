@@ -1,8 +1,8 @@
 import { existsSync, mkdirSync } from "node:fs";
+import { createInitCommand, heading, installDepsWithSpinner, REGISTRY_ORIGIN, warn, writeFileSafe } from "@diffgazer/registry/cli";
 import { z } from "zod";
-import { detectProject } from "../utils/detect.js";
-import { createInitCommand, writeFileSafe, installDepsWithSpinner, heading, warn, REGISTRY_ORIGIN } from "@diffgazer/registry/cli";
 import { ctx, getRegistry, VERSION } from "../context.js";
+import { detectProject } from "../utils/detect.js";
 import { assertInsideProject, resolveInstallPath, resolveProjectPath } from "../utils/paths.js";
 
 // The init command declares `--components-dir <path>` (defaulted) and
@@ -90,8 +90,8 @@ function createDirs(cwd: string, componentsDir: string, hooksDir: string): FileR
   if (!compExists) mkdirSync(compPath, { recursive: true });
   if (!hookExists) mkdirSync(hookPath, { recursive: true });
   return [
-    { action: compExists ? "skipped" : "created", path: componentsDir + "/" },
-    { action: hookExists ? "skipped" : "created", path: hooksDir + "/" },
+    { action: compExists ? "skipped" : "created", path: `${componentsDir}/` },
+    { action: hookExists ? "skipped" : "created", path: `${hooksDir}/` },
   ];
 }
 

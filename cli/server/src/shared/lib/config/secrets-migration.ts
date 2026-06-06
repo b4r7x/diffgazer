@@ -1,18 +1,18 @@
-import { type Result, ok, err } from "@diffgazer/core/result";
-import { createError, getErrorMessage } from "@diffgazer/core/errors";
+import { createError, } from "@diffgazer/core/errors";
+import { err, ok, type Result } from "@diffgazer/core/result";
 import type { SecretsStorage } from "@diffgazer/core/schemas/config";
-import type {
-  ConfigState,
-  SecretsState,
-  SecretsStorageError,
-  SecretsStorageErrorCode,
-} from "./types.js";
 import {
   deleteKeyringSecret,
   isKeyringAvailable,
   readKeyringSecret,
   writeKeyringSecret,
 } from "./keyring.js";
+import type {
+  ConfigState,
+  SecretsState,
+  SecretsStorageError,
+  SecretsStorageErrorCode,
+} from "./types.js";
 
 export const getApiKeyName = (provider: string): string => `api_key_${provider}`;
 

@@ -1,26 +1,26 @@
 "use client";
 
+import { cva, type VariantProps } from "class-variance-authority";
 import {
   Children,
+  type HTMLAttributes,
   isValidElement,
+  type ReactNode,
+  type RefObject,
+  type SyntheticEvent,
   useCallback,
   useEffect,
   useRef,
   useState,
-  type HTMLAttributes,
-  type ReactNode,
-  type RefObject,
-  type SyntheticEvent,
 } from "react";
 import { useFocusRestore } from "@/hooks/use-focus-restore";
-import { cva, type VariantProps } from "class-variance-authority";
-import { mergeIds } from "@/lib/aria-utils";
+import { mergeIds } from "@/lib/aria";
 import { cn } from "@/lib/utils";
-import { useDialogContext } from "./dialog-context";
-import { DialogTitle } from "./dialog-title";
-import { DialogDescription } from "./dialog-description";
 import { DialogShell } from "../shared/dialog-shell";
 import { PortalContainerProvider } from "../shared/portal-context";
+import { useDialogContext } from "./dialog-context";
+import { DialogDescription } from "./dialog-description";
+import { DialogTitle } from "./dialog-title";
 
 export type DialogCorners = "none" | "subtle" | "standard" | "bold" | "outset";
 

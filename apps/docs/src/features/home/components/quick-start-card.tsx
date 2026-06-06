@@ -1,9 +1,9 @@
+import { Card } from "@diffgazer/ui/components/card";
+import { Divider } from "@diffgazer/ui/components/divider";
+import { Chevron } from "@diffgazer/ui/components/icons";
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { Card } from "@/components/ui/card/card";
-import { Divider } from "@/components/ui/divider/divider";
-import { Chevron } from "@/components/ui/icons";
-import type { DocsLibraryId } from "@/lib/docs-library";
+import type { DocsLibraryId } from "@/lib/library";
 
 interface QuickStartCardProps {
 	title: string;

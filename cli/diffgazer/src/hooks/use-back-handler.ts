@@ -1,5 +1,5 @@
 import { useInput } from "ink";
-import { useNavigation } from "../app/navigation-context";
+import { useNavigation } from "../app/providers/navigation-provider";
 
 interface BackHandlerOptions {
   isActive?: boolean;

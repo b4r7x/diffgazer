@@ -1,17 +1,19 @@
 /**
  * @vitest-environment jsdom
  */
-import { createElement, type ReactNode } from "react";
+
 import { act, renderHook, waitFor } from "@testing-library/react";
+import { createElement, type ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
+import type { Result } from "../../result.js";
+import { err, ok } from "../../result.js";
+import type { StreamReviewError } from "../../review/index.js";
+import { ReviewErrorCode } from "../../schemas/review/index.js";
+import { requirePromise, requireValue } from "../../testing/assertions.js";
 import type { BoundApi } from "../bound.js";
+import type { ResumeReviewResult } from "../review.js";
 import { ApiProvider } from "./context.js";
 import { useReviewStream } from "./use-review-stream.js";
-import type { Result } from "@diffgazer/core/result";
-import { ok, err } from "@diffgazer/core/result";
-import type { StreamReviewError } from "@diffgazer/core/review";
-import type { ResumeReviewResult } from "../review.js";
-import { ReviewErrorCode } from "@diffgazer/core/schemas/review";
 
 function fakeResumeResult(reviewId = "r"): ResumeReviewResult {
   return { result: { summary: "", issues: [] }, reviewId };
@@ -45,7 +47,7 @@ describe("useReviewStream", () => {
       wrapper: createWrapper(api),
     });
 
-    let resumePromise: Promise<Result<void, StreamReviewError>>;
+    let resumePromise: Promise<Result<void, StreamReviewError>> | undefined;
     act(() => {
       resumePromise = result.current.resume("active-review");
     });
@@ -92,7 +94,7 @@ describe("useReviewStream", () => {
 
     await act(async () => {
       resolveResume(ok(fakeResumeResult("stop-review")));
-      await resumePromise!;
+      await requirePromise(resumePromise, "stop resume promise");
     });
   });
 
@@ -109,7 +111,7 @@ describe("useReviewStream", () => {
       wrapper: createWrapper(api),
     });
 
-    let resumePromise: Promise<Result<void, StreamReviewError>>;
+    let resumePromise: Promise<Result<void, StreamReviewError>> | undefined;
     act(() => {
       resumePromise = result.current.resume("abort-review");
     });
@@ -125,7 +127,7 @@ describe("useReviewStream", () => {
 
     await act(async () => {
       resolveResume(ok(fakeResumeResult("abort-review")));
-      await resumePromise!;
+      await requirePromise(resumePromise, "abort resume promise");
     });
   });
 
@@ -160,7 +162,7 @@ describe("useReviewStream", () => {
     });
 
     // Start first resume
-    let firstPromise: Promise<Result<void, StreamReviewError>>;
+    let firstPromise: Promise<Result<void, StreamReviewError>> | undefined;
     act(() => {
       firstPromise = result.current.resume("first-review");
     });
@@ -168,7 +170,7 @@ describe("useReviewStream", () => {
     await waitFor(() => expect(result.current.state.isStreaming).toBe(true));
 
     // Start second resume (cancels first internally)
-    let secondPromise: Promise<Result<void, StreamReviewError>>;
+    let secondPromise: Promise<Result<void, StreamReviewError>> | undefined;
     act(() => {
       secondPromise = result.current.resume("second-review");
     });
@@ -180,7 +182,7 @@ describe("useReviewStream", () => {
     // subsequent stop() would have nothing to abort.
     await act(async () => {
       resolveFirst(ok(fakeResumeResult("first-review")));
-      await firstPromise!;
+      await requirePromise(firstPromise, "first resume promise");
     });
 
     // The second stream can still be stopped (controller ref not nulled)
@@ -191,7 +193,7 @@ describe("useReviewStream", () => {
 
     await act(async () => {
       resolveSecond(ok(fakeResumeResult("second-review")));
-      await secondPromise!;
+      await requirePromise(secondPromise, "second resume promise");
     });
   });
 
@@ -209,7 +211,7 @@ describe("useReviewStream", () => {
       wrapper: createWrapper(api),
     });
 
-    let resumePromise: Promise<Result<void, StreamReviewError>>;
+    let resumePromise: Promise<Result<void, StreamReviewError>> | undefined;
     act(() => {
       resumePromise = result.current.resume("cancel-review");
     });
@@ -225,7 +227,7 @@ describe("useReviewStream", () => {
 
     await act(async () => {
       resolveResume(ok(fakeResumeResult("cancel-review")));
-      await resumePromise!;
+      await requirePromise(resumePromise, "cancel resume promise");
     });
   });
 
@@ -258,16 +260,17 @@ describe("useReviewStream", () => {
       wrapper: createWrapper(api),
     });
 
-    let returnedResult: Result<void, StreamReviewError>;
+    let returnedResult: Result<void, StreamReviewError> | undefined;
     await act(async () => {
       returnedResult = await result.current.resume("stale-review");
     });
 
     expect(result.current.state.error).toBeNull();
     expect(result.current.state.isStreaming).toBe(false);
-    expect(returnedResult!.ok).toBe(false);
-    if (!returnedResult!.ok) {
-      expect(returnedResult!.error.code).toBe(ReviewErrorCode.SESSION_STALE);
+    const resumeResult = requireValue(returnedResult, "resume result");
+    expect(resumeResult.ok).toBe(false);
+    if (!resumeResult.ok) {
+      expect(resumeResult.error.code).toBe(ReviewErrorCode.SESSION_STALE);
     }
   });
 });

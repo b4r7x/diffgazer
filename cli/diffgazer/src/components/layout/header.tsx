@@ -1,5 +1,5 @@
 import { Box, Text } from "ink";
-import { useTheme } from "../../theme/theme-context";
+import { useTheme } from "../../app/providers/theme";
 
 /** @see diffgazer/apps/web/src/components/layout/header.tsx ProviderDisplayStatus (identical web variant) */
 export type ProviderDisplayStatus = "active" | "idle";

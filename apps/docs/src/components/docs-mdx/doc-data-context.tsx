@@ -1,6 +1,6 @@
+import type { CodeBlockLineProps } from "@diffgazer/ui/components/code-block";
 import { createContext, type ReactNode, useContext } from "react";
-import type { CodeBlockLineProps } from "@/components/ui/code-block";
-import type { ComponentData } from "@/types/docs-data";
+import type { ComponentData } from "@/types/data";
 
 export interface HookData {
 	name: string;

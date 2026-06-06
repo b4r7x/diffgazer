@@ -1,4 +1,4 @@
-import type { AIProvider } from "@diffgazer/core/schemas/config";
+import type { AIProvider } from "../schemas/config/index.js";
 
 /** Which PRICED models a provider's free quota covers. `'all'` = whole provider. */
 type FreeTierSelector = "all" | { ids?: string[]; families?: string[] };

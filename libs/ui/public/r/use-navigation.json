@@ -10,7 +10,7 @@
   "files": [
     {
       "path": "registry/hooks/use-navigation.ts",
-      "content": "\"use client\";\n\nimport { useNavigation, type NavigationRole, type UseNavigationOptions, type UseNavigationReturn } from \"@/hooks/use-navigation\";\n\nexport { useNavigation, type NavigationRole, type UseNavigationOptions, type UseNavigationReturn };\n",
+      "content": "\"use client\";\n\nimport { type NavigationRole, type UseNavigationOptions, type UseNavigationReturn, useNavigation } from \"@/hooks/use-navigation\";\n\nexport { useNavigation, type NavigationRole, type UseNavigationOptions, type UseNavigationReturn };\n",
       "type": "registry:hook"
     }
   ],

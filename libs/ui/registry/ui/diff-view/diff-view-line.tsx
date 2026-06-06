@@ -51,6 +51,7 @@ export function LineContent({
     <>
       {wordSegments.map((seg, i) =>
         seg.changed ? (
+          // biome-ignore lint/suspicious/noArrayIndexKey: word-diff segments render in fixed order within an immutable line and are never reordered; the segment index is the stable identity.
           <span key={i} data-word={word}>
             {seg.text}
           </span>

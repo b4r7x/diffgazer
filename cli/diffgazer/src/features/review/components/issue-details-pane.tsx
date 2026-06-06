@@ -1,18 +1,18 @@
-import { useState } from "react";
-import { Box, Text } from "ink";
-import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import type { DetailsEmptyKind } from "@diffgazer/core/review";
-import { useTheme } from "../../../theme/theme-context";
-import { Tabs } from "../../../components/ui/tabs";
-import { SectionHeader } from "../../../components/ui/section-header";
-import { ScrollArea } from "../../../components/ui/scroll-area";
-import { EmptyState } from "../../../components/ui/empty-state";
+import type { ReviewIssue } from "@diffgazer/core/schemas/review";
+import { Box, Text } from "ink";
+import { useState } from "react";
+import { useTheme } from "../../../app/providers/theme";
 import { Badge } from "../../../components/ui/badge";
+import { EmptyState } from "../../../components/ui/empty-state";
+import { ScrollArea } from "../../../components/ui/scroll-area";
+import { SectionHeader } from "../../../components/ui/section-header";
+import { Tabs } from "../../../components/ui/tabs";
+import { severityVariant } from "../../../theme/severity-variant";
+import { formatIssueLineRange } from "../lib/issue-line-range";
 import { CodeSnippet } from "./code-snippet";
 import { DiffView } from "./diff-view";
 import { FixPlanChecklist } from "./fix-plan-checklist";
-import { severityVariant } from "../../../theme/severity-variant";
-import { formatIssueLineRange } from "./issue-details-helpers";
 
 const EMPTY_COPY: Record<
   DetailsEmptyKind,

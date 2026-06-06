@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, type AriaAttributes, type RefObject } from "react";
+import { type AriaAttributes, createContext, type RefObject, useContext } from "react";
 
 export interface SelectOptionMetadata {
   label: string;

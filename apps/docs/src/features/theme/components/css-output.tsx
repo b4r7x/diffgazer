@@ -1,10 +1,10 @@
-import { CopyButton } from "@/components/copy-button";
 import {
 	CodeBlock,
 	CodeBlockContent,
 	CodeBlockHeader,
 	CodeBlockLabel,
-} from "@/components/ui/code-block";
+} from "@diffgazer/ui/components/code-block";
+import { CopyButton } from "@/components/copy-button";
 
 interface CssOutputProps {
 	primitives: Record<string, string>;

@@ -1,7 +1,7 @@
-import { useEffectEvent } from "react";
 import { useApp } from "ink";
+import { useEffectEvent } from "react";
 import { config } from "../config";
-import { stopAllServers } from "./use-servers";
+import { stopAllServers } from "../lib/servers/stop-all";
 
 export function useExit(): { handleExit: () => void } {
   const { exit } = useApp();

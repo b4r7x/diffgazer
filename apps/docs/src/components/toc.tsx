@@ -1,3 +1,9 @@
+import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
+import { Toc, TocItem, TocList } from "@diffgazer/ui/components/toc";
+import {
+	type ActiveHeadingActivation,
+	useActiveHeading,
+} from "@diffgazer/ui/hooks/active-heading";
 import type { TableOfContents } from "fumadocs-core/toc";
 import {
 	type MouseEvent,
@@ -6,12 +12,6 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { ScrollArea } from "@/components/ui/scroll-area/scroll-area";
-import { Toc, TocItem, TocList } from "@/components/ui/toc";
-import {
-	type ActiveHeadingActivation,
-	useActiveHeading,
-} from "@/hooks/use-active-heading";
 
 interface TocEntry {
 	depth: number;

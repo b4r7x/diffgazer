@@ -1,6 +1,6 @@
-import type { ReviewIssue, EnrichmentData } from "@diffgazer/core/schemas/review";
-import type { EnrichProgressEvent } from "@diffgazer/core/schemas/events";
 import { getErrorMessage } from "@diffgazer/core/errors";
+import type { EnrichProgressEvent } from "@diffgazer/core/schemas/events";
+import type { EnrichmentData, ReviewIssue } from "@diffgazer/core/schemas/review";
 
 const CONTEXT_LINES = 5;
 

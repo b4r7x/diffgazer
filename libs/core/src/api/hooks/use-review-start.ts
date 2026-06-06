@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from "react";
-import type { Result } from "@diffgazer/core/result";
-import type { StreamReviewError } from "@diffgazer/core/review";
-import { ReviewErrorCode } from "@diffgazer/core/schemas/review";
-import type { ReviewMode } from "@diffgazer/core/schemas/review";
+import { useEffect, useRef, useState } from "react";
+import type { Result } from "../../result.js";
+import type { StreamReviewError } from "../../review/index.js";
+import type { ReviewMode } from "../../schemas/review/index.js";
+import { ReviewErrorCode } from "../../schemas/review/index.js";
 
 export interface UseReviewStartOptions {
   mode: ReviewMode;

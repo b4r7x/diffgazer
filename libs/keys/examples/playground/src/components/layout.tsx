@@ -30,6 +30,7 @@ export function Layout({ demos, activeDemo, onSelect, children }: LayoutProps) {
             <div className="playground-sidebar__section-label">{section}</div>
             {items.map((item) => (
               <button
+                type="button"
                 key={item.id}
                 className={`playground-sidebar__item${item.id === activeDemo ? " playground-sidebar__item--active" : ""}`}
                 onClick={() => onSelect(item.id)}

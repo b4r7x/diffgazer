@@ -1,12 +1,11 @@
+import { isArrayDirty } from "@diffgazer/core/forms";
 import type { LensId } from "@diffgazer/core/schemas/review";
 
 export function isLensSelectionDirty(
   currentLenses: LensId[],
   selectedLenses: LensId[] | null,
 ): boolean {
-  if (selectedLenses === null) return false;
-  if (currentLenses.length !== selectedLenses.length) return true;
-  return currentLenses.some((lens) => !selectedLenses.includes(lens));
+  return isArrayDirty(currentLenses, selectedLenses);
 }
 
 export function resolveEffectiveLenses(

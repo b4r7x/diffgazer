@@ -6,7 +6,7 @@ import {
 	isDocsLibraryId,
 	routeSlugsFromSourcePath,
 	SOURCE_DOCS_PREFIX,
-} from "@/lib/docs-library";
+} from "@/lib/library";
 import { searchAPI } from "@/lib/search-server";
 
 export interface SearchResult {

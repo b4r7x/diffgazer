@@ -1,6 +1,6 @@
-import { Box, Text } from "ink";
 import type { LensStats } from "@diffgazer/core/schemas/presentation";
-import { useTheme } from "../../../theme/theme-context";
+import { Box, Text } from "ink";
+import { useTheme } from "../../../app/providers/theme";
 
 export type { LensStats };
 

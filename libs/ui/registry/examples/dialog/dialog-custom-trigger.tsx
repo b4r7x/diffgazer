@@ -1,15 +1,15 @@
+import { Button } from "@/components/ui/button"
 import {
   Dialog,
-  DialogTrigger,
+  DialogAction,
+  DialogBody,
+  DialogClose,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogBody,
-  DialogFooter,
-  DialogClose,
-  DialogAction,
+  DialogTrigger,
 } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
 
 export default function DialogCustomTrigger() {
   return (

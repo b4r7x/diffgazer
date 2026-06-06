@@ -4,12 +4,12 @@ import {
 	type DocsLibraryId,
 	parseDocsLibrary,
 	routeSplatFromDocsPath,
-} from "@/lib/docs-library";
+} from "@/lib/library";
 import {
 	firstNavigablePage,
 	fromFumadocsRoot,
 	mapPageTreeForLibrary,
-} from "@/lib/docs-tree";
+} from "@/lib/page-tree";
 
 const resolveFirstPageSplat = createServerFn({ method: "GET" })
 	.inputValidator((input: { library: DocsLibraryId }) => input)

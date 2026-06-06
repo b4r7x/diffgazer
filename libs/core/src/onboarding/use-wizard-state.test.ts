@@ -3,7 +3,7 @@
  */
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { AVAILABLE_PROVIDERS } from "@diffgazer/core/schemas/config";
+import { AVAILABLE_PROVIDERS } from "../schemas/config/index.js";
 import { useWizardState } from "./use-wizard-state.js";
 
 describe("useWizardState", () => {

@@ -1,18 +1,18 @@
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { relative, resolve } from "node:path";
-import {
-  hasKeysRegistryDependency,
-  extractLocalImports,
-  normalizeRegistryPath,
-  resolveImportToRegistryPath,
-  type RegistryItem,
-} from "../src/validation/registry-validation-fs.js";
-import { validateRegistryImportClosure } from "../src/validation/registry-import-validator.js";
-import { validateOrphanFiles } from "../src/validation/registry-orphan-validator.js";
 import {
   validatePublicComponentProps,
   validatePublicExportShape,
-} from "../src/validation/registry-exports-validator.js";
+} from "./registry/exports.js";
+import {
+  extractLocalImports,
+  hasKeysRegistryDependency,
+  normalizeRegistryPath,
+  type RegistryItem,
+  resolveImportToRegistryPath,
+} from "./registry/fs.js";
+import { validateRegistryImportClosure } from "./registry/imports.js";
+import { validateOrphanFiles } from "./registry/orphans.js";
 
 interface Registry {
   $schema?: string;
@@ -22,6 +22,7 @@ interface Registry {
 interface PackageJson {
   exports?: Record<string, unknown>;
   sideEffects?: boolean | string[];
+  peerDependencies?: Record<string, string>;
   peerDependenciesMeta?: Record<string, { optional?: boolean }>;
 }
 
@@ -160,20 +161,31 @@ function validateNoPublicKeysImports(): string[] {
 
 const KEYS_PEER_NAME = "@diffgazer/keys";
 
-// F306: keep package.json's @diffgazer/keys peer in sync with the registry.
-// Public, installable components that need keyboard hooks must not force every
-// consumer to install keys, so the peer stays optional (HANDOFF-1 / DECISION-1).
-function validateKeysPeerOptionalFlag(packageJson: PackageJson, items: RegistryItem[]): string[] {
+// T-608 / F-234: keep package.json's @diffgazer/keys peer in sync with the
+// registry. Shipped package exports (accordion.tsx, popover/use-auto-focus.ts,
+// and other keyboard-backed entries) statically import @diffgazer/keys at module
+// top, so `npm install @diffgazer/ui` without keys throws ERR_MODULE_NOT_FOUND.
+// keys is therefore a REQUIRED peer for package mode: it must be present in
+// peerDependencies and must NOT be flagged optional in peerDependenciesMeta.
+function validateKeysRequiredPeer(packageJson: PackageJson, items: RegistryItem[]): string[] {
   const hasPublicKeysItem = items.some((item) => !item.meta?.hidden && hasKeysRegistryDependency(item));
   if (!hasPublicKeysItem) return [];
 
-  if (packageJson.peerDependenciesMeta?.[KEYS_PEER_NAME]?.optional !== true) {
-    return [
-      `public registry items depend on keys hooks, so package.json peerDependenciesMeta["${KEYS_PEER_NAME}"].optional must be true (HANDOFF-1: keys stays an optional peer)`,
-    ];
+  const errors: string[] = [];
+
+  if (packageJson.peerDependencies?.[KEYS_PEER_NAME] === undefined) {
+    errors.push(
+      `public registry items statically import keys hooks, so package.json peerDependencies must declare "${KEYS_PEER_NAME}" (T-608/F-234: keys is a required peer for package mode)`,
+    );
   }
 
-  return [];
+  if (packageJson.peerDependenciesMeta?.[KEYS_PEER_NAME]?.optional === true) {
+    errors.push(
+      `public registry items statically import keys hooks, so package.json peerDependenciesMeta["${KEYS_PEER_NAME}"].optional must not be true (T-608/F-234: shipped exports static-import keys, so it is a required peer)`,
+    );
+  }
+
+  return errors;
 }
 
 function validate(): string[] {
@@ -194,16 +206,15 @@ function validate(): string[] {
     }
   }
 
-  // @diffgazer/keys is intentionally an optional peer: most registry items don't
-  // use it, so a Button-only consumer installs no keys. Package-mode consumers who
-  // install keyboard-backed components (accordion, select, tabs, etc.) must install
-  // keys separately. The tsup alias plugin externalizes keys imports as static ESM
-  // specifiers, so importing a keys-backed subpath without keys fails at module load
-  // with a native ERR_MODULE_NOT_FOUND naming "@diffgazer/keys" (the actionable
-  // signal). This cannot be a figlet-style custom-message lazy load: the hooks are
-  // React hooks (cannot be dynamically imported and called conditionally) and the
-  // copy-mode import rewriter is anchored to the static import form.
-  errors.push(...validateKeysPeerOptionalFlag(packageJson, items));
+  // @diffgazer/keys is a required peer for package mode. Keyboard-backed exports
+  // (accordion, select, tabs, popover, etc.) static-import keys at module top, so
+  // the tsup alias plugin externalizes those imports as static ESM specifiers and
+  // importing such a subpath without keys fails at module load with a native
+  // ERR_MODULE_NOT_FOUND naming "@diffgazer/keys". Because the failure is at import
+  // (not a figlet-style lazy call), "optional" would be a lie for package consumers:
+  // keys must stay in peerDependencies and must not be flagged optional. Copy/dgadd
+  // consumers are unaffected — copy mode rewrites the keys imports to local source.
+  errors.push(...validateKeysRequiredPeer(packageJson, items));
 
   for (const exportPath of Object.keys(exportsMap)) {
     if (exportPath.includes("*")) {

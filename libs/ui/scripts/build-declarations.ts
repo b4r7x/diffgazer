@@ -12,18 +12,8 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, relative, resolve } from "node:path";
-import { extractDiffgazerKeysHookNames } from "../shared/registry-types.js";
-
-type RegistryItem = {
-  name: string;
-  type: "registry:ui" | "registry:hook" | "registry:lib" | "registry:theme";
-  files: Array<{ path: string }>;
-  registryDependencies?: string[];
-};
-
-type Registry = {
-  items: RegistryItem[];
-};
+import { registryItemToDistKey, resolveKeysHookFiles } from "@diffgazer/registry/cli";
+import type { Registry, RegistryItem } from "./registry/types.js";
 
 const packageRoot = resolve(import.meta.dirname, "..");
 const registryRoot = resolve(packageRoot, "registry");
@@ -33,19 +23,7 @@ const registry = JSON.parse(
   readFileSync(resolve(registryRoot, "registry.json"), "utf-8"),
 ) as Registry;
 
-/**
- * Mirror tsup's keys-hook detection so declaration imports of `@/hooks/use-<keys-hook>`
- * resolve to the published `@diffgazer/keys` specifier instead of an internal relative path.
- */
-const DIFFGAZER_KEYS_HOOK_FILES = new Set(
-  Array.from(extractDiffgazerKeysHookNames(registry.items)).map((name) => `use-${name}`),
-);
-
-function registryItemToDistKey(item: Pick<RegistryItem, "type" | "name">): string {
-  if (item.type === "registry:hook") return `hooks/${item.name}`;
-  if (item.type === "registry:lib") return `lib/${item.name}`;
-  return `components/${item.name}`;
-}
+const DIFFGAZER_KEYS_HOOK_FILES = resolveKeysHookFiles(registry.items);
 
 function registryItemToSourcePath(item: RegistryItem): string {
   return (
@@ -200,8 +178,11 @@ try {
     rewriteDeclarationImports(declaration);
   }
 
+  // Only items backing a public `exports` entry get a public `.d.ts` re-export.
+  // `meta.hidden` is the single allowlist source (mirrors tsup.config.ts): hidden
+  // items are internal and must not produce orphan dist declarations.
   for (const item of registry.items) {
-    if (item.type === "registry:theme") continue;
+    if (item.type === "registry:theme" || item.meta?.hidden) continue;
 
     const sourcePath = registryItemToSourcePath(item);
     if (!sourcePath) {
@@ -222,7 +203,7 @@ try {
   );
   writePublicDeclaration(
     "components/logo/figlet",
-    resolve(declarationRoot, "registry/ui/logo/get-figlet-text.d.ts"),
+    resolve(declarationRoot, "registry/ui/logo/figlet-text.d.ts"),
   );
   writePublicDeclaration(
     "components/code-block/highlight",

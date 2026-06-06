@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useLayoutEffect, useState, type RefObject } from "react";
+import { type RefObject, useCallback, useLayoutEffect, useState } from "react";
 
 export interface SelectableCollectionItem {
   id: string;

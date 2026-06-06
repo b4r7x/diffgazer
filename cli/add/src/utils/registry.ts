@@ -1,5 +1,5 @@
 import { metaField } from "@diffgazer/registry/cli";
-import type { ResolvedConfig, RegistryFile, RegistryItem } from "../context.js";
+import type { RegistryFile, RegistryItem, ResolvedConfig } from "../context.js";
 import {
   handleRscDirective,
   rewriteKeysPackageImportsForCopy,

@@ -1,10 +1,10 @@
-import type { StepState, AgentState, AgentStatus } from "@diffgazer/core/schemas/events";
+import type { AgentState, AgentStatus, StepState } from "../schemas/events/index.js";
 import type {
-  ProgressStepData,
   ProgressStatus,
+  ProgressStepData,
   ProgressSubstepData,
-} from "@diffgazer/core/schemas/presentation";
-import { truncate } from "@diffgazer/core/strings";
+} from "../schemas/presentation/index.js";
+import { truncate } from "../strings.js";
 import { getAgentDetail, mapStepStatus as mapStepStatusCore } from "./display.js";
 
 const STATUS_TO_PROGRESS: Record<string, ProgressStatus> = {

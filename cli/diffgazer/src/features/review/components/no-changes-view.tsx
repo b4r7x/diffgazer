@@ -1,7 +1,7 @@
-import { Box } from "ink";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
-import { Callout } from "../../../components/ui/callout";
+import { Box } from "ink";
 import { Button } from "../../../components/ui/button";
+import { Callout } from "../../../components/ui/callout";
 import { Panel } from "../../../components/ui/panel";
 
 export interface NoChangesViewProps {

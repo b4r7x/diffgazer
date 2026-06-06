@@ -1,0 +1,73 @@
+• turbo 2.9.14
+
+   • Packages in scope: @diffgazer/add, @diffgazer/core, @diffgazer/docs, @diffgazer/keys, @diffgazer/keys-artifacts, @diffgazer/landing, @diffgazer/registry, @diffgazer/server, @diffgazer/ui, @diffgazer/web, diffgazer
+   • Running type-check in 11 packages
+   • Remote caching disabled
+
+@diffgazer/registry:type-check: cache hit, replaying logs 00b367fd45670d19
+@diffgazer/registry:type-check: 
+@diffgazer/registry:type-check: > @diffgazer/registry@0.1.0 type-check /Users/voitz/Projects/diffgazer-workspace/libs/registry
+@diffgazer/registry:type-check: > tsc --noEmit && tsc --noEmit -p tsconfig.test.json
+@diffgazer/registry:type-check: 
+@diffgazer/core:type-check: cache hit, replaying logs 4c8f0b2a8db3d6ff
+@diffgazer/core:type-check: 
+@diffgazer/core:type-check: > @diffgazer/core@0.0.1 type-check /Users/voitz/Projects/diffgazer-workspace/libs/core
+@diffgazer/core:type-check: > tsc --noEmit && tsc --noEmit -p tsconfig.test.json && tsc --noEmit -p scripts/tsconfig.json
+@diffgazer/core:type-check: 
+@diffgazer/keys:type-check: cache hit, replaying logs b3a5033d1c0de1f2
+@diffgazer/keys:type-check: 
+@diffgazer/keys:type-check: > @diffgazer/keys@0.2.0 type-check /Users/voitz/Projects/diffgazer-workspace/libs/keys
+@diffgazer/keys:type-check: > tsc --noEmit && tsc --noEmit -p tsconfig.test.json && tsc --noEmit -p scripts/tsconfig.json
+@diffgazer/keys:type-check: 
+@diffgazer/server:type-check: cache miss, executing 75db04b590a455c2
+@diffgazer/ui:type-check: cache hit, replaying logs 27d0b58ef8235877
+@diffgazer/ui:type-check: 
+@diffgazer/ui:type-check: > @diffgazer/ui@0.2.0 type-check /Users/voitz/Projects/diffgazer-workspace/libs/ui
+@diffgazer/ui:type-check: > tsc --noEmit && tsc --noEmit -p tsconfig.tools.json && tsc --noEmit -p tsconfig.test.json && tsc --noEmit -p scripts/tsconfig.json
+@diffgazer/ui:type-check: 
+@diffgazer/landing:type-check: cache hit, replaying logs 1be18c60b3546d4e
+@diffgazer/docs:type-check: cache hit, replaying logs a2e6d4e579f0ca97
+@diffgazer/docs:type-check: 
+@diffgazer/docs:type-check: > @diffgazer/docs@ pretype-check /Users/voitz/Projects/diffgazer-workspace/apps/docs
+@diffgazer/docs:type-check: > pnpm prepare:generated && node ./scripts/generate-route-tree.mjs
+@diffgazer/docs:type-check: 
+@diffgazer/docs:type-check: 
+@diffgazer/docs:type-check: > @diffgazer/docs@ prepare:generated /Users/voitz/Projects/diffgazer-workspace/apps/docs
+@diffgazer/docs:type-check: > node ./scripts/prepare-generated.mjs
+@diffgazer/docs:type-check: 
+@diffgazer/docs:type-check: [docs-sync] Mode: workspace
+@diffgazer/docs:type-check: [docs-sync] Artifacts unchanged; skipping sync.
+@diffgazer/docs:type-check: [logo-ascii] wrote 3 logo + 1 heading entries to /Users/voitz/Projects/diffgazer-workspace/apps/docs/src/generated/logo-ascii.ts
+@diffgazer/docs:type-check: [sections-with-index] wrote 18 sections to /Users/voitz/Projects/diffgazer-workspace/apps/docs/src/generated/sections-with-index.ts
+@diffgazer/docs:type-check: 
+@diffgazer/docs:type-check: > @diffgazer/docs@ type-check /Users/voitz/Projects/diffgazer-workspace/apps/docs
+@diffgazer/docs:type-check: > tsc --noEmit && tsc --noEmit -p tsconfig.test.json
+@diffgazer/landing:type-check: 
+@diffgazer/landing:type-check: > @diffgazer/landing@ type-check /Users/voitz/Projects/diffgazer-workspace/apps/landing
+@diffgazer/landing:type-check: > tsc -b
+@diffgazer/landing:type-check: 
+@diffgazer/docs:type-check: 
+@diffgazer/web:type-check: cache hit, replaying logs 604b4e0e504643a1
+@diffgazer/web:type-check: 
+@diffgazer/web:type-check: > @diffgazer/web@0.1.0 type-check /Users/voitz/Projects/diffgazer-workspace/apps/web
+@diffgazer/web:type-check: > tsc -b
+@diffgazer/web:type-check: 
+@diffgazer/add:type-check: cache hit, replaying logs d8011f5813b7e6f8
+@diffgazer/add:type-check: 
+@diffgazer/add:type-check: > @diffgazer/add@0.1.1 type-check /Users/voitz/Projects/diffgazer-workspace/cli/add
+@diffgazer/add:type-check: > tsc --noEmit
+@diffgazer/add:type-check: 
+@diffgazer/server:type-check: 
+@diffgazer/server:type-check: > @diffgazer/server@0.1.0 type-check /Users/voitz/Projects/diffgazer-workspace/cli/server
+@diffgazer/server:type-check: > tsc --noEmit
+@diffgazer/server:type-check: 
+diffgazer:type-check: cache miss, executing dfe9f5c2e4c2ced3
+diffgazer:type-check: 
+diffgazer:type-check: > diffgazer@0.1.4 type-check /Users/voitz/Projects/diffgazer-workspace/cli/diffgazer
+diffgazer:type-check: > tsc --noEmit
+diffgazer:type-check: 
+
+ Tasks:    10 successful, 10 total
+Cached:    8 cached, 10 total
+  Time:    6.124s 
+

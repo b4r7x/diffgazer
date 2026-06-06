@@ -11,11 +11,12 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { syncDocsFromArtifacts } from "../docs/index.js";
-import type { SyncLibraryConfig } from "../docs/types.js";
+import { syncDocsFromArtifacts } from "../docs-sync/sync.js";
+import type { SyncLibraryConfig } from "../docs-sync/types.js";
 import { computeInputsFingerprint } from "../fingerprint.js";
-import { writeJson as writeJsonFile } from "../utils/json.js";
 import type { ArtifactManifest } from "../manifest.js";
+import { writeJson as writeJsonFile } from "../utils/json.js";
+import { requireValue } from "./assertions.js";
 
 const TEST_ORIGIN = "https://diffgazer.com";
 
@@ -106,7 +107,10 @@ function createLibraryFixture(
     $schema: "test",
     items: [],
   });
-  writeText(join(artifactRoot, "source/styles/styles.css"), "/* styles */\n");
+  writeText(
+    join(artifactRoot, "source/registry/examples/demo/demo-basic.tsx"),
+    "export default function Demo() { return null }\n",
+  );
 
   for (const relPath of Object.values(generated)) {
     writeJson(join(artifactRoot, relPath), { from: relPath });
@@ -513,12 +517,11 @@ describe("syncDocsFromArtifacts", () => {
     const second = runSync(fixture.config);
     expect(second.synced).toBe(false);
 
-    const missingOutput = join(
-      docsRoot,
-      "src/generated",
-      fixture.config.id,
-      fixture.generatedOutputBasenames[0]!,
+    const generatedOutputBasename = requireValue(
+      fixture.generatedOutputBasenames[0],
+      "fixture generated output basename",
     );
+    const missingOutput = join(docsRoot, "src/generated", fixture.config.id, generatedOutputBasename);
     unlinkSync(missingOutput);
 
     const third = runSync(fixture.config);

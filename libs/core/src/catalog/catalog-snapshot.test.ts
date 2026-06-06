@@ -1,9 +1,10 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+import type { AIProvider } from "../schemas/config/index.js";
+import { requireValue } from "../testing/assertions.js";
 import { CATALOG_SNAPSHOT } from "./catalog-snapshot.js";
-import { ModelsDevCatalogSchema } from "./schema.js";
 import { PROVIDER_OVERLAY } from "./provider-overlay.js";
+import { ModelsDevCatalogSchema } from "./schema.js";
 import { catalogToModelInfo } from "./transform.js";
-import type { AIProvider } from "@diffgazer/core/schemas/config";
 
 describe("CATALOG_SNAPSHOT", () => {
   it("conforms to ModelsDevCatalogSchema", () => {
@@ -32,7 +33,7 @@ describe("CATALOG_SNAPSHOT", () => {
     // models.dev provider `name` in the snapshot, so it must survive the trim.
     for (const overlay of Object.values(PROVIDER_OVERLAY)) {
       if (!overlay.enabled || overlay.sdkKind === "openrouter") continue;
-      const sourceId = overlay.modelsDevIds[0]!;
+      const sourceId = requireValue(overlay.modelsDevIds[0], "provider source id");
       expect(CATALOG_SNAPSHOT[sourceId]?.name, `snapshot ${sourceId} must keep name`).toBeTruthy();
     }
   });

@@ -14,29 +14,27 @@
  * `meta.client` flag.
  */
 
-import { defineConfig } from "tsup";
+import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { cpSync, mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
+import { registryItemToDistKey, resolveKeysHookFiles } from "@diffgazer/registry/cli";
 import type { Plugin } from "esbuild";
-import { type Registry, type RegistryItem, extractDiffgazerKeysHookNames } from "./shared/registry-types.js";
-
-/** Maps a registry item to its dist output path (e.g. `components/button`). */
-function registryItemToDistKey(item: Pick<RegistryItem, "type" | "name">): string {
-  if (item.type === "registry:hook") return `hooks/${item.name}`;
-  if (item.type === "registry:lib") return `lib/${item.name}`;
-  return `components/${item.name}`;
-}
+import { defineConfig } from "tsup";
+import type { Registry } from "./scripts/registry/types.js";
 
 const registryRoot = resolve(import.meta.dirname, "registry");
 const registry = JSON.parse(readFileSync(resolve(registryRoot, "registry.json"), "utf-8")) as Registry;
 
 /** Keys hooks derived from registry refs, with `use-` prefix for hook matching. */
-const DIFFGAZER_KEYS_HOOKS = new Set([...extractDiffgazerKeysHookNames(registry.items)].map((name) => `use-${name}`));
+const DIFFGAZER_KEYS_HOOKS = resolveKeysHookFiles(registry.items);
 
 const entry: Record<string, string> = {};
 
+// Only registry items that back a public `exports` entry are emitted as dist
+// entry points. `meta.hidden` is the single allowlist source: hidden items are
+// internal (keys-mirror hooks, shared shims, variant/util helpers), are bundled
+// into shared chunks via splitting, and must not produce orphan dist entries.
 for (const item of registry.items) {
-  if (item.type === "registry:theme") continue;
+  if (item.type === "registry:theme" || item.meta?.hidden) continue;
 
   const key = registryItemToDistKey(item);
 
@@ -51,7 +49,7 @@ for (const item of registry.items) {
 
 // Add utils (cn function)
 entry["lib/utils"] = resolve(registryRoot, "lib/utils.ts");
-entry["components/logo/figlet"] = resolve(registryRoot, "ui/logo/get-figlet-text.ts");
+entry["components/logo/figlet"] = resolve(registryRoot, "ui/logo/figlet-text.ts");
 entry["components/code-block/highlight"] = resolve(registryRoot, "ui/code-block/highlight.ts");
 entry["components/command-palette/highlight"] = resolve(registryRoot, "ui/command-palette/highlight.ts");
 
@@ -187,6 +185,30 @@ export default defineConfig({
     }
     if (missing.length > 0) {
       throw new Error(`${missing.length} entry points missing from dist: ${missing.join(", ")}`);
+    }
+
+    // Assert the emitted dist entry set exactly equals the package `exports`
+    // import targets. This fails the build if a registry item is added without
+    // a matching export (orphan dist entry) or an export points at a missing
+    // entry, keeping the published surface and the dist contents in lockstep.
+    const pkg = JSON.parse(
+      readFileSync(resolve(import.meta.dirname, "package.json"), "utf-8"),
+    ) as { exports: Record<string, { import?: string } | string> };
+    const exportKeys = new Set(
+      Object.values(pkg.exports)
+        .map((value) => (typeof value === "object" ? value.import : undefined))
+        .filter((target): target is string => Boolean(target))
+        .map((target) => target.replace(/^\.\/dist\//, "").replace(/\.js$/, "")),
+    );
+    const entryKeys = new Set(Object.keys(entry));
+    const orphanEntries = [...entryKeys].filter((key) => !exportKeys.has(key));
+    const unbackedExports = [...exportKeys].filter((key) => !entryKeys.has(key));
+    if (orphanEntries.length || unbackedExports.length) {
+      throw new Error(
+        `dist entry set does not match exports map.\n` +
+          (orphanEntries.length ? `  dist entries not in exports: ${orphanEntries.sort().join(", ")}\n` : "") +
+          (unbackedExports.length ? `  exports with no dist entry: ${unbackedExports.sort().join(", ")}\n` : ""),
+      );
     }
   },
 });

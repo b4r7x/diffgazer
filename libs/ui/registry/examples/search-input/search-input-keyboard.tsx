@@ -1,8 +1,8 @@
 "use client"
 
 import { useNavigation } from "@diffgazer/keys"
-import { SearchInput } from "@/components/ui/search-input"
 import { useRef, useState } from "react"
+import { SearchInput } from "@/components/ui/search-input"
 
 const items = ["Components", "Hooks", "Utilities", "Themes", "Plugins"]
 const listboxId = "search-results"
@@ -49,11 +49,14 @@ export default function SearchInputKeyboard() {
         }}
         onKeyDown={onKeyDown}
       />
+      {/* biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: WAI-ARIA combobox pattern — role="listbox" on a <ul> is the standard popup list paired with the combobox input. */}
       <ul ref={listRef} id={listboxId} role="listbox" className="font-mono text-xs">
         {filtered.map((item) => (
+          // biome-ignore lint/a11y/useFocusableInteractive: options stay non-focusable; the combobox input keeps focus and aria-activedescendant tracks the active option.
           <li
             key={item}
             id={getOptionId(item)}
+            // biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: WAI-ARIA listbox pattern — role="option" on a <li> is the standard option element inside the listbox.
             role="option"
             data-value={item}
             aria-selected={isHighlighted(item)}

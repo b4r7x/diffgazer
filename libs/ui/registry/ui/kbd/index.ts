@@ -1,4 +1,4 @@
-import { Kbd as KbdRoot, kbdVariants, type KbdProps } from "./kbd";
+import { type KbdProps, Kbd as KbdRoot, kbdVariants } from "./kbd";
 import { KbdGroup, type KbdGroupProps } from "./kbd-group";
 
 const Kbd = Object.assign(KbdRoot, {

@@ -26,6 +26,7 @@ export default function ListboxBasicExample() {
   })
 
   return (
+    // biome-ignore lint/a11y/useAriaPropsSupportedByRole: getContainerProps applies role="listbox" dynamically, which Biome cannot resolve; aria-label is valid for the listbox role.
     <div
       {...getContainerProps()}
       aria-label="Example options"
@@ -35,6 +36,8 @@ export default function ListboxBasicExample() {
         const selected = selectedId === option.id
         const highlighted = highlightedItemId === option.id
         return (
+          // biome-ignore lint/a11y/useFocusableInteractive: WAI-ARIA listbox/activedescendant pattern — options stay non-focusable; the listbox container holds focus and aria-activedescendant tracks the active option.
+          // biome-ignore lint/a11y/useKeyWithClickEvents: option activation via Enter/Space is handled by the listbox container's onKeyDown, not per option.
           <div
             key={option.id}
             id={getEncodedListboxItemId("example-listbox", option.id)}

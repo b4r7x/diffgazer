@@ -1,0 +1,1962 @@
+
+> @diffgazer/repo@0.0.0 check /Users/voitz/Projects/diffgazer-workspace
+> biome lint scripts/monorepo && turbo run check && pnpm run depcruise
+
+Checked 31 files in 31ms. No fixes applied.
+• turbo 2.9.14
+
+   • Packages in scope: @diffgazer/add, @diffgazer/core, @diffgazer/docs, @diffgazer/keys, @diffgazer/keys-artifacts, @diffgazer/landing, @diffgazer/registry, @diffgazer/server, @diffgazer/ui, @diffgazer/web, diffgazer
+   • Running check in 11 packages
+   • Remote caching disabled
+
+@diffgazer/registry:check: cache miss, executing a861bd3edc2e7190
+@diffgazer/registry:check: 
+@diffgazer/registry:check: > @diffgazer/registry@0.1.0 check /Users/voitz/Projects/diffgazer-workspace/libs/registry
+@diffgazer/registry:check: > biome check .
+@diffgazer/registry:check: 
+@diffgazer/registry:check: src/cli/config.ts:63:33 lint/style/useTemplate  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/registry:check: 
+@diffgazer/registry:check:   i Template literals are preferred over string concatenation.
+@diffgazer/registry:check:   
+@diffgazer/registry:check:     61 │   const configPath = resolve(cwd, configFileName);
+@diffgazer/registry:check:     62 │   try {
+@diffgazer/registry:check:   > 63 │     atomicWriteFile(configPath, JSON.stringify(data, null, 2) + "\n");
+@diffgazer/registry:check:        │                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+@diffgazer/registry:check:     64 │   } catch (e) {
+@diffgazer/registry:check:     65 │     throw new Error(`Failed to write config to ${configPath}: ${toErrorMessage(e)}`);
+@diffgazer/registry:check:   
+@diffgazer/registry:check:   i Unsafe fix: Use a template literal.
+@diffgazer/registry:check:   
+@diffgazer/registry:check:      61  61 │     const configPath = resolve(cwd, configFileName);
+@diffgazer/registry:check:      62  62 │     try {
+@diffgazer/registry:check:      63     │ - ····atomicWriteFile(configPath,·JSON.stringify(data,·null,·2)·+·"\n");
+@diffgazer/registry:check:          63 │ + ····atomicWriteFile(configPath,·`${JSON.stringify(data,·null,·2)}\n`);
+@diffgazer/registry:check:      64  64 │     } catch (e) {
+@diffgazer/registry:check:      65  65 │       throw new Error(`Failed to write config to ${configPath}: ${toErrorMessage(e)}`);
+@diffgazer/registry:check:   
+@diffgazer/registry:check: 
+@diffgazer/registry:check: src/docs-data/naming.ts:9:10 lint/style/useTemplate  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/registry:check: 
+@diffgazer/registry:check:   i Template literals are preferred over string concatenation.
+@diffgazer/registry:check:   
+@diffgazer/registry:check:      8 │ export function toDocExportName(name: string): string {
+@diffgazer/registry:check:    > 9 │   return kebabToCamelCase(name) + "Doc"
+@diffgazer/registry:check:        │          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+@diffgazer/registry:check:     10 │ }
+@diffgazer/registry:check:     11 │ 
+@diffgazer/registry:check:   
+@diffgazer/registry:check:   i Unsafe fix: Use a template literal.
+@diffgazer/registry:check:   
+@diffgazer/registry:check:      7  7 │   
+@diffgazer/registry:check:      8  8 │   export function toDocExportName(name: string): string {
+@diffgazer/registry:check:      9    │ - ··return·kebabToCamelCase(name)·+·"Doc"
+@diffgazer/registry:check:         9 │ + ··return·`${kebabToCamelCase(name)}Doc`
+@diffgazer/registry:check:     10 10 │   }
+@diffgazer/registry:check:     11 11 │   
+@diffgazer/registry:check:   
+@diffgazer/registry:check: 
+@diffgazer/registry:check: src/testing/verify-rsc.test.ts:48:26 lint/style/useTemplate  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/registry:check: 
+@diffgazer/registry:check:   i Template literals are preferred over string concatenation.
+@diffgazer/registry:check:   
+@diffgazer/registry:check:     47 │   it("counts every client source file whose dist output kept the directive", () => {
+@diffgazer/registry:check:   > 48 │     writeSrc("index.ts", USE_CLIENT + "export const a = 1;\n");
+@diffgazer/registry:check:        │                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+@diffgazer/registry:check:     49 │     writeSrc("hooks/use-key.ts", USE_CLIENT + "export const b = 2;\n");
+@diffgazer/registry:check:     50 │     writeSrc("dom/focusable.ts", "export const c = 3;\n");
+@diffgazer/registry:check:   
+@diffgazer/registry:check:   i Unsafe fix: Use a template literal.
+@diffgazer/registry:check:   
+@diffgazer/registry:check:     46 46 │   
+@diffgazer/registry:check:     47 47 │     it("counts every client source file whose dist output kept the directive", () => {
+@diffgazer/registry:check:     48    │ - ····writeSrc("index.ts",·USE_CLIENT·+·"export·const·a·=·1;\n");
+@diffgazer/registry:check:        48 │ + ····writeSrc("index.ts",·`${USE_CLIENT}export·const·a·=·1;\n`);
+@diffgazer/registry:check:     49 49 │       writeSrc("hooks/use-key.ts", USE_CLIENT + "export const b = 2;\n");
+@diffgazer/registry:check:     50 50 │       writeSrc("dom/focusable.ts", "export const c = 3;\n");
+@diffgazer/registry:check:   
+@diffgazer/registry:check: 
+@diffgazer/registry:check: src/testing/verify-rsc.test.ts:49:34 lint/style/useTemplate  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/registry:check: 
+@diffgazer/registry:check:   i Template literals are preferred over string concatenation.
+@diffgazer/registry:check:   
+@diffgazer/registry:check:     47 │   it("counts every client source file whose dist output kept the directive", () => {
+@diffgazer/registry:check:     48 │     writeSrc("index.ts", USE_CLIENT + "export const a = 1;\n");
+@diffgazer/registry:check:   > 49 │     writeSrc("hooks/use-key.ts", USE_CLIENT + "export const b = 2;\n");
+@diffgazer/registry:check:        │                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+@diffgazer/registry:check:     50 │     writeSrc("dom/focusable.ts", "export const c = 3;\n");
+@diffgazer/registry:check:     51 │ 
+@diffgazer/registry:check:   
+@diffgazer/registry:check:   i Unsafe fix: Use a template literal.
+@diffgazer/registry:check:   
+@diffgazer/registry:check:     47 47 │     it("counts every client source file whose dist output kept the directive", () => {
+@diffgazer/registry:check:     48 48 │       writeSrc("index.ts", USE_CLIENT + "export const a = 1;\n");
+@diffgazer/registry:check:     49    │ - ····writeSrc("hooks/use-key.ts",·USE_CLIENT·+·"export·const·b·=·2;\n");
+@diffgazer/registry:check:        49 │ + ····writeSrc("hooks/use-key.ts",·`${USE_CLIENT}export·const·b·=·2;\n`);
+@diffgazer/registry:check:     50 50 │       writeSrc("dom/focusable.ts", "export const c = 3;\n");
+@diffgazer/registry:check:     51 51 │   
+@diffgazer/registry:check:   
+@diffgazer/registry:check: 
+@diffgazer/registry:check: src/testing/verify-rsc.test.ts:52:27 lint/style/useTemplate  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/registry:check: 
+@diffgazer/registry:check:   i Template literals are preferred over string concatenation.
+@diffgazer/registry:check:   
+@diffgazer/registry:check:     50 │     writeSrc("dom/focusable.ts", "export const c = 3;\n");
+@diffgazer/registry:check:     51 │ 
+@diffgazer/registry:check:   > 52 │     writeDist("index.js", USE_CLIENT + "export const a = 1;\n");
+@diffgazer/registry:check:        │                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+@diffgazer/registry:check:     53 │     writeDist("hooks/use-key.js", USE_CLIENT + "export const b = 2;\n");
+@diffgazer/registry:check:     54 │     writeDist("dom/focusable.js", "export const c = 3;\n");
+@diffgazer/registry:check:   
+@diffgazer/registry:check:   i Unsafe fix: Use a template literal.
+@diffgazer/registry:check:   
+@diffgazer/registry:check:     50 50 │       writeSrc("dom/focusable.ts", "export const c = 3;\n");
+@diffgazer/registry:check:     51 51 │   
+@diffgazer/registry:check:     52    │ - ····writeDist("index.js",·USE_CLIENT·+·"export·const·a·=·1;\n");
+@diffgazer/registry:check:        52 │ + ····writeDist("index.js",·`${USE_CLIENT}export·const·a·=·1;\n`);
+@diffgazer/registry:check:     53 53 │       writeDist("hooks/use-key.js", USE_CLIENT + "export const b = 2;\n");
+@diffgazer/registry:check:     54 54 │       writeDist("dom/focusable.js", "export const c = 3;\n");
+@diffgazer/registry:check:   
+@diffgazer/registry:check: 
+@diffgazer/registry:check: src/testing/verify-rsc.test.ts:53:35 lint/style/useTemplate  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/registry:check: 
+@diffgazer/registry:check:   i Template literals are preferred over string concatenation.
+@diffgazer/registry:check:   
+@diffgazer/registry:check:     52 │     writeDist("index.js", USE_CLIENT + "export const a = 1;\n");
+@diffgazer/registry:check:   > 53 │     writeDist("hooks/use-key.js", USE_CLIENT + "export const b = 2;\n");
+@diffgazer/registry:check:        │                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+@diffgazer/registry:check:     54 │     writeDist("dom/focusable.js", "export const c = 3;\n");
+@diffgazer/registry:check:     55 │ 
+@diffgazer/registry:check:   
+@diffgazer/registry:check:   i Unsafe fix: Use a template literal.
+@diffgazer/registry:check:   
+@diffgazer/registry:check:     51 51 │   
+@diffgazer/registry:check:     52 52 │       writeDist("index.js", USE_CLIENT + "export const a = 1;\n");
+@diffgazer/registry:check:     53    │ - ····writeDist("hooks/use-key.js",·USE_CLIENT·+·"export·const·b·=·2;\n");
+@diffgazer/registry:check:        53 │ + ····writeDist("hooks/use-key.js",·`${USE_CLIENT}export·const·b·=·2;\n`);
+@diffgazer/registry:check:     54 54 │       writeDist("dom/focusable.js", "export const c = 3;\n");
+@diffgazer/registry:check:     55 55 │   
+@diffgazer/registry:check:   
+@diffgazer/registry:check: 
+@diffgazer/registry:check: src/testing/verify-rsc.test.ts:60:40 lint/style/useTemplate  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/registry:check: 
+@diffgazer/registry:check:   i Template literals are preferred over string concatenation.
+@diffgazer/registry:check:   
+@diffgazer/registry:check:     59 │   it("maps .tsx sources to their .js dist output", () => {
+@diffgazer/registry:check:   > 60 │     writeSrc("providers/keyboard.tsx", USE_CLIENT + "export const p = 1;\n");
+@diffgazer/registry:check:        │                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+@diffgazer/registry:check:     61 │     writeDist("providers/keyboard.js", USE_CLIENT + "export const p = 1;\n");
+@diffgazer/registry:check:     62 │ 
+@diffgazer/registry:check:   
+@diffgazer/registry:check:   i Unsafe fix: Use a template literal.
+@diffgazer/registry:check:   
+@diffgazer/registry:check:     58 58 │   
+@diffgazer/registry:check:     59 59 │     it("maps .tsx sources to their .js dist output", () => {
+@diffgazer/registry:check:     60    │ - ····writeSrc("providers/keyboard.tsx",·USE_CLIENT·+·"export·const·p·=·1;\n");
+@diffgazer/registry:check:        60 │ + ····writeSrc("providers/keyboard.tsx",·`${USE_CLIENT}export·const·p·=·1;\n`);
+@diffgazer/registry:check:     61 61 │       writeDist("providers/keyboard.js", USE_CLIENT + "export const p = 1;\n");
+@diffgazer/registry:check:     62 62 │   
+@diffgazer/registry:check:   
+@diffgazer/registry:check: 
+@diffgazer/registry:check: src/testing/verify-rsc.test.ts:61:40 lint/style/useTemplate  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/registry:check: 
+@diffgazer/registry:check:   i Template literals are preferred over string concatenation.
+@diffgazer/registry:check:   
+@diffgazer/registry:check:     59 │   it("maps .tsx sources to their .js dist output", () => {
+@diffgazer/registry:check:     60 │     writeSrc("providers/keyboard.tsx", USE_CLIENT + "export const p = 1;\n");
+@diffgazer/registry:check:   > 61 │     writeDist("providers/keyboard.js", USE_CLIENT + "export const p = 1;\n");
+@diffgazer/registry:check:        │                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+@diffgazer/registry:check:     62 │ 
+@diffgazer/registry:check:     63 │     expect(run()).toBe(1);
+@diffgazer/registry:check:   
+@diffgazer/registry:check:   i Unsafe fix: Use a template literal.
+@diffgazer/registry:check:   
+@diffgazer/registry:check:     59 59 │     it("maps .tsx sources to their .js dist output", () => {
+@diffgazer/registry:check:     60 60 │       writeSrc("providers/keyboard.tsx", USE_CLIENT + "export const p = 1;\n");
+@diffgazer/registry:check:     61    │ - ····writeDist("providers/keyboard.js",·USE_CLIENT·+·"export·const·p·=·1;\n");
+@diffgazer/registry:check:        61 │ + ····writeDist("providers/keyboard.js",·`${USE_CLIENT}export·const·p·=·1;\n`);
+@diffgazer/registry:check:     62 62 │   
+@diffgazer/registry:check:     63 63 │       expect(run()).toBe(1);
+@diffgazer/registry:check:   
+@diffgazer/registry:check: 
+@diffgazer/registry:check: src/testing/verify-rsc.test.ts:67:26 lint/style/useTemplate  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/registry:check: 
+@diffgazer/registry:check:   i Template literals are preferred over string concatenation.
+@diffgazer/registry:check:   
+@diffgazer/registry:check:     66 │   it("throws naming the dist file when the directive is stripped from dist", () => {
+@diffgazer/registry:check:   > 67 │     writeSrc("index.ts", USE_CLIENT + "export const a = 1;\n");
+@diffgazer/registry:check:        │                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+@diffgazer/registry:check:     68 │     writeDist("index.js", "export const a = 1;\n");
+@diffgazer/registry:check:     69 │ 
+@diffgazer/registry:check:   
+@diffgazer/registry:check:   i Unsafe fix: Use a template literal.
+@diffgazer/registry:check:   
+@diffgazer/registry:check:     65 65 │   
+@diffgazer/registry:check:     66 66 │     it("throws naming the dist file when the directive is stripped from dist", () => {
+@diffgazer/registry:check:     67    │ - ····writeSrc("index.ts",·USE_CLIENT·+·"export·const·a·=·1;\n");
+@diffgazer/registry:check:        67 │ + ····writeSrc("index.ts",·`${USE_CLIENT}export·const·a·=·1;\n`);
+@diffgazer/registry:check:     68 68 │       writeDist("index.js", "export const a = 1;\n");
+@diffgazer/registry:check:     69 69 │   
+@diffgazer/registry:check:   
+@diffgazer/registry:check: 
+@diffgazer/registry:check: src/testing/verify-rsc.test.ts:74:34 lint/style/useTemplate  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/registry:check: 
+@diffgazer/registry:check:   i Template literals are preferred over string concatenation.
+@diffgazer/registry:check:   
+@diffgazer/registry:check:     73 │   it("throws on a missing dist output instead of skipping silently", () => {
+@diffgazer/registry:check:   > 74 │     writeSrc("hooks/use-key.ts", USE_CLIENT + "export const b = 2;\n");
+@diffgazer/registry:check:        │                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+@diffgazer/registry:check:     75 │ 
+@diffgazer/registry:check:     76 │     expect(run).toThrow(/use-key\.js \(missing dist output\)/);
+@diffgazer/registry:check:   
+@diffgazer/registry:check:   i Unsafe fix: Use a template literal.
+@diffgazer/registry:check:   
+@diffgazer/registry:check:     72 72 │   
+@diffgazer/registry:check:     73 73 │     it("throws on a missing dist output instead of skipping silently", () => {
+@diffgazer/registry:check:     74    │ - ····writeSrc("hooks/use-key.ts",·USE_CLIENT·+·"export·const·b·=·2;\n");
+@diffgazer/registry:check:        74 │ + ····writeSrc("hooks/use-key.ts",·`${USE_CLIENT}export·const·b·=·2;\n`);
+@diffgazer/registry:check:     75 75 │   
+@diffgazer/registry:check:     76 76 │       expect(run).toThrow(/use-key\.js \(missing dist output\)/);
+@diffgazer/registry:check:   
+@diffgazer/registry:check: 
+@diffgazer/registry:check: src/testing/verify-rsc.test.ts:80:31 lint/style/useTemplate  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/registry:check: 
+@diffgazer/registry:check:   i Template literals are preferred over string concatenation.
+@diffgazer/registry:check:   
+@diffgazer/registry:check:     79 │   it("ignores test files and skipped directories", () => {
+@diffgazer/registry:check:   > 80 │     writeSrc("index.test.ts", USE_CLIENT + "export const t = 1;\n");
+@diffgazer/registry:check:        │                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+@diffgazer/registry:check:     81 │     writeSrc("testing/test-utils.tsx", USE_CLIENT + "export const u = 1;\n");
+@diffgazer/registry:check:     82 │     writeSrc("cli/program.ts", USE_CLIENT + "export const v = 1;\n");
+@diffgazer/registry:check:   
+@diffgazer/registry:check:   i Unsafe fix: Use a template literal.
+@diffgazer/registry:check:   
+@diffgazer/registry:check:     78 78 │   
+@diffgazer/registry:check:     79 79 │     it("ignores test files and skipped directories", () => {
+@diffgazer/registry:check:     80    │ - ····writeSrc("index.test.ts",·USE_CLIENT·+·"export·const·t·=·1;\n");
+@diffgazer/registry:check:        80 │ + ····writeSrc("index.test.ts",·`${USE_CLIENT}export·const·t·=·1;\n`);
+@diffgazer/registry:check:     81 81 │       writeSrc("testing/test-utils.tsx", USE_CLIENT + "export const u = 1;\n");
+@diffgazer/registry:check:     82 82 │       writeSrc("cli/program.ts", USE_CLIENT + "export const v = 1;\n");
+@diffgazer/registry:check:   
+@diffgazer/registry:check: 
+@diffgazer/registry:check: src/testing/verify-rsc.test.ts:81:40 lint/style/useTemplate  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/registry:check: 
+@diffgazer/registry:check:   i Template literals are preferred over string concatenation.
+@diffgazer/registry:check:   
+@diffgazer/registry:check:     79 │   it("ignores test files and skipped directories", () => {
+@diffgazer/registry:check:     80 │     writeSrc("index.test.ts", USE_CLIENT + "export const t = 1;\n");
+@diffgazer/registry:check:   > 81 │     writeSrc("testing/test-utils.tsx", USE_CLIENT + "export const u = 1;\n");
+@diffgazer/registry:check:        │                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+@diffgazer/registry:check:     82 │     writeSrc("cli/program.ts", USE_CLIENT + "export const v = 1;\n");
+@diffgazer/registry:check:     83 │ 
+@diffgazer/registry:check:   
+@diffgazer/registry:check:   i Unsafe fix: Use a template literal.
+@diffgazer/registry:check:   
+@diffgazer/registry:check:     79 79 │     it("ignores test files and skipped directories", () => {
+@diffgazer/registry:check:     80 80 │       writeSrc("index.test.ts", USE_CLIENT + "export const t = 1;\n");
+@diffgazer/registry:check:     81    │ - ····writeSrc("testing/test-utils.tsx",·USE_CLIENT·+·"export·const·u·=·1;\n");
+@diffgazer/registry:check:        81 │ + ····writeSrc("testing/test-utils.tsx",·`${USE_CLIENT}export·const·u·=·1;\n`);
+@diffgazer/registry:check:     82 82 │       writeSrc("cli/program.ts", USE_CLIENT + "export const v = 1;\n");
+@diffgazer/registry:check:     83 83 │   
+@diffgazer/registry:check:   
+@diffgazer/registry:check: 
+@diffgazer/registry:check: src/testing/verify-rsc.test.ts:82:32 lint/style/useTemplate  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/registry:check: 
+@diffgazer/registry:check:   i Template literals are preferred over string concatenation.
+@diffgazer/registry:check:   
+@diffgazer/registry:check:     80 │     writeSrc("index.test.ts", USE_CLIENT + "export const t = 1;\n");
+@diffgazer/registry:check:     81 │     writeSrc("testing/test-utils.tsx", USE_CLIENT + "export const u = 1;\n");
+@diffgazer/registry:check:   > 82 │     writeSrc("cli/program.ts", USE_CLIENT + "export const v = 1;\n");
+@diffgazer/registry:check:        │                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+@diffgazer/registry:check:     83 │ 
+@diffgazer/registry:check:     84 │     expect(run()).toBe(0);
+@diffgazer/registry:check:   
+@diffgazer/registry:check:   i Unsafe fix: Use a template literal.
+@diffgazer/registry:check:   
+@diffgazer/registry:check:     80 80 │       writeSrc("index.test.ts", USE_CLIENT + "export const t = 1;\n");
+@diffgazer/registry:check:     81 81 │       writeSrc("testing/test-utils.tsx", USE_CLIENT + "export const u = 1;\n");
+@diffgazer/registry:check:     82    │ - ····writeSrc("cli/program.ts",·USE_CLIENT·+·"export·const·v·=·1;\n");
+@diffgazer/registry:check:        82 │ + ····writeSrc("cli/program.ts",·`${USE_CLIENT}export·const·v·=·1;\n`);
+@diffgazer/registry:check:     83 83 │   
+@diffgazer/registry:check:     84 84 │       expect(run()).toBe(0);
+@diffgazer/registry:check:   
+@diffgazer/registry:check: 
+@diffgazer/registry:check: src/testing/verify-rsc.test.ts:88:26 lint/style/useTemplate  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/registry:check: 
+@diffgazer/registry:check:   i Template literals are preferred over string concatenation.
+@diffgazer/registry:check:   
+@diffgazer/registry:check:     87 │   it("detects a directive placed below a leading license comment", () => {
+@diffgazer/registry:check:   > 88 │     writeSrc("index.ts", "/* license */\n" + USE_CLIENT + "export const a = 1;\n");
+@diffgazer/registry:check:        │                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+@diffgazer/registry:check:     89 │     writeDist("index.js", "/* license */\n" + USE_CLIENT + "export const a = 1;\n");
+@diffgazer/registry:check:     90 │ 
+@diffgazer/registry:check:   
+@diffgazer/registry:check:   i Unsafe fix: Use a template literal.
+@diffgazer/registry:check:   
+@diffgazer/registry:check:     86 86 │   
+@diffgazer/registry:check:     87 87 │     it("detects a directive placed below a leading license comment", () => {
+@diffgazer/registry:check:     88    │ - ····writeSrc("index.ts",·"/*·license·*/\n"·+·USE_CLIENT·+·"export·const·a·=·1;\n");
+@diffgazer/registry:check:        88 │ + ····writeSrc("index.ts",·`/*·license·*/\n${USE_CLIENT}export·const·a·=·1;\n`);
+@diffgazer/registry:check:     89 89 │       writeDist("index.js", "/* license */\n" + USE_CLIENT + "export const a = 1;\n");
+@diffgazer/registry:check:     90 90 │   
+@diffgazer/registry:check:   
+@diffgazer/registry:check: 
+@diffgazer/registry:check: src/testing/verify-rsc.test.ts:89:27 lint/style/useTemplate  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/registry:check: 
+@diffgazer/registry:check:   i Template literals are preferred over string concatenation.
+@diffgazer/registry:check:   
+@diffgazer/registry:check:     87 │   it("detects a directive placed below a leading license comment", () => {
+@diffgazer/registry:check:     88 │     writeSrc("index.ts", "/* license */\n" + USE_CLIENT + "export const a = 1;\n");
+@diffgazer/registry:check:   > 89 │     writeDist("index.js", "/* license */\n" + USE_CLIENT + "export const a = 1;\n");
+@diffgazer/registry:check:        │                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+@diffgazer/registry:check:     90 │ 
+@diffgazer/registry:check:     91 │     expect(run()).toBe(1);
+@diffgazer/registry:check:   
+@diffgazer/registry:check:   i Unsafe fix: Use a template literal.
+@diffgazer/registry:check:   
+@diffgazer/registry:check:     87 87 │     it("detects a directive placed below a leading license comment", () => {
+@diffgazer/registry:check:     88 88 │       writeSrc("index.ts", "/* license */\n" + USE_CLIENT + "export const a = 1;\n");
+@diffgazer/registry:check:     89    │ - ····writeDist("index.js",·"/*·license·*/\n"·+·USE_CLIENT·+·"export·const·a·=·1;\n");
+@diffgazer/registry:check:        89 │ + ····writeDist("index.js",·`/*·license·*/\n${USE_CLIENT}export·const·a·=·1;\n`);
+@diffgazer/registry:check:     90 90 │   
+@diffgazer/registry:check:     91 91 │       expect(run()).toBe(1);
+@diffgazer/registry:check:   
+@diffgazer/registry:check: 
+@diffgazer/registry:check: src/testing/bundler.test.ts:68:19 lint/correctness/noUnusedFunctionParameters  FIXABLE  ━━━━━━━━━━━━
+@diffgazer/registry:check: 
+@diffgazer/registry:check:   ! This parameter is unused.
+@diffgazer/registry:check:   
+@diffgazer/registry:check:     66 │     {
+@diffgazer/registry:check:     67 │       label: "absolute path outside registry root",
+@diffgazer/registry:check:   > 68 │       buildPath: (rootDir: string) => {
+@diffgazer/registry:check:        │                   ^^^^^^^
+@diffgazer/registry:check:     69 │         const outsidePath = join(tmpdir(), "outside-registry-source.ts");
+@diffgazer/registry:check:     70 │         writeFileSync(outsidePath, "export const outside = true;\n");
+@diffgazer/registry:check:   
+@diffgazer/registry:check:   i Unused parameters might be the result of an incomplete refactoring.
+@diffgazer/registry:check:   
+@diffgazer/registry:check:   i Unsafe fix: If this is intentional, prepend rootDir with an underscore.
+@diffgazer/registry:check:   
+@diffgazer/registry:check:      66  66 │       {
+@diffgazer/registry:check:      67  67 │         label: "absolute path outside registry root",
+@diffgazer/registry:check:      68     │ - ······buildPath:·(rootDir:·string)·=>·{
+@diffgazer/registry:check:          68 │ + ······buildPath:·(_rootDir:·string)·=>·{
+@diffgazer/registry:check:      69  69 │           const outsidePath = join(tmpdir(), "outside-registry-source.ts");
+@diffgazer/registry:check:      70  70 │           writeFileSync(outsidePath, "export const outside = true;\n");
+@diffgazer/registry:check:   
+@diffgazer/registry:check: 
+@diffgazer/registry:check: src/testing/docs-data.test.ts:56:12 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/registry:check: 
+@diffgazer/registry:check:   ! Forbidden non-null assertion.
+@diffgazer/registry:check:   
+@diffgazer/registry:check:     54 │   it("starts line numbering at 1", () => {
+@diffgazer/registry:check:     55 │     const lines = highlightCode(highlighter, "a\nb\nc", "typescript", TEST_THEME_NAME);
+@diffgazer/registry:check:   > 56 │     expect(lines[0]!.number).toBe(1);
+@diffgazer/registry:check:        │            ^^^^^^^^^
+@diffgazer/registry:check:     57 │     expect(lines[1]!.number).toBe(2);
+@diffgazer/registry:check:     58 │     expect(lines[2]!.number).toBe(3);
+@diffgazer/registry:check:   
+@diffgazer/registry:check:   i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+@diffgazer/registry:check:   
+@diffgazer/registry:check:      54  54 │     it("starts line numbering at 1", () => {
+@diffgazer/registry:check:      55  55 │       const lines = highlightCode(highlighter, "a\nb\nc", "typescript", TEST_THEME_NAME);
+@diffgazer/registry:check:      56     │ - ····expect(lines[0]!.number).toBe(1);
+@diffgazer/registry:check:          56 │ + ····expect(lines[0]?.number).toBe(1);
+@diffgazer/registry:check:      57  57 │       expect(lines[1]!.number).toBe(2);
+@diffgazer/registry:check:      58  58 │       expect(lines[2]!.number).toBe(3);
+@diffgazer/registry:check:   
+@diffgazer/registry:check: 
+@diffgazer/registry:check: src/testing/docs-data.test.ts:57:12 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/registry:check: 
+@diffgazer/registry:check:   ! Forbidden non-null assertion.
+@diffgazer/registry:check:   
+@diffgazer/registry:check:     55 │     const lines = highlightCode(highlighter, "a\nb\nc", "typescript", TEST_THEME_NAME);
+@diffgazer/registry:check:     56 │     expect(lines[0]!.number).toBe(1);
+@diffgazer/registry:check:   > 57 │     expect(lines[1]!.number).toBe(2);
+@diffgazer/registry:check:        │            ^^^^^^^^^
+@diffgazer/registry:check:     58 │     expect(lines[2]!.number).toBe(3);
+@diffgazer/registry:check:     59 │   });
+@diffgazer/registry:check:   
+@diffgazer/registry:check:   i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+@diffgazer/registry:check:   
+@diffgazer/registry:check:      55  55 │       const lines = highlightCode(highlighter, "a\nb\nc", "typescript", TEST_THEME_NAME);
+@diffgazer/registry:check:      56  56 │       expect(lines[0]!.number).toBe(1);
+@diffgazer/registry:check:      57     │ - ····expect(lines[1]!.number).toBe(2);
+@diffgazer/registry:check:          57 │ + ····expect(lines[1]?.number).toBe(2);
+@diffgazer/registry:check:      58  58 │       expect(lines[2]!.number).toBe(3);
+@diffgazer/registry:check:      59  59 │     });
+@diffgazer/registry:check:   
+@diffgazer/registry:check: 
+@diffgazer/registry:check: src/testing/docs-data.test.ts:58:12 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/registry:check: 
+@diffgazer/registry:check:   ! Forbidden non-null assertion.
+@diffgazer/registry:check:   
+@diffgazer/registry:check:     56 │     expect(lines[0]!.number).toBe(1);
+@diffgazer/registry:check:     57 │     expect(lines[1]!.number).toBe(2);
+@diffgazer/registry:check:   > 58 │     expect(lines[2]!.number).toBe(3);
+@diffgazer/registry:check:        │            ^^^^^^^^^
+@diffgazer/registry:check:     59 │   });
+@diffgazer/registry:check:     60 │ 
+@diffgazer/registry:check:   
+@diffgazer/registry:check:   i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+@diffgazer/registry:check:   
+@diffgazer/registry:check:      56  56 │       expect(lines[0]!.number).toBe(1);
+@diffgazer/registry:check:      57  57 │       expect(lines[1]!.number).toBe(2);
+@diffgazer/registry:check:      58     │ - ····expect(lines[2]!.number).toBe(3);
+@diffgazer/registry:check:          58 │ + ····expect(lines[2]?.number).toBe(3);
+@diffgazer/registry:check:      59  59 │     });
+@diffgazer/registry:check:      60  60 │   
+@diffgazer/registry:check:   
+@diffgazer/registry:check: 
+@diffgazer/registry:check: src/testing/docs-data.test.ts:110:19 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/registry:check: 
+@diffgazer/registry:check:   ! Forbidden non-null assertion.
+@diffgazer/registry:check:   
+@diffgazer/registry:check:     109 │     expect(result).toHaveProperty("alpha");
+@diffgazer/registry:check:   > 110 │     const entry = result["alpha"]!;
+@diffgazer/registry:check:         │                   ^^^^^^^^^^^^^^^^
+@diffgazer/registry:check:     111 │     expect(entry.name).toBe("alpha");
+@diffgazer/registry:check:     112 │     expect(entry.title).toBe("Alpha Hook");
+@diffgazer/registry:check:   
+@diffgazer/registry:check: 
+@diffgazer/registry:check: The number of diagnostics exceeds the limit allowed. Use --max-diagnostics to increase it.
+@diffgazer/registry:check: Diagnostics not shown: 20.
+@diffgazer/registry:check: Checked 84 files in 22ms. No fixes applied.
+@diffgazer/registry:check: Found 18 warnings.
+@diffgazer/registry:check: Found 22 infos.
+@diffgazer/core:check: cache miss, executing 53dcc7688cf71ce5
+@diffgazer/keys:check: cache miss, executing 16b9e264bde99aa2
+@diffgazer/core:check: 
+@diffgazer/core:check: > @diffgazer/core@0.0.1 check /Users/voitz/Projects/diffgazer-workspace/libs/core
+@diffgazer/core:check: > biome check .
+@diffgazer/core:check: 
+@diffgazer/keys:check: 
+@diffgazer/keys:check: > @diffgazer/keys@0.2.0 check /Users/voitz/Projects/diffgazer-workspace/libs/keys
+@diffgazer/keys:check: > biome check .
+@diffgazer/keys:check: 
+@diffgazer/keys:check: scripts/transform-public-registry-imports.test.ts:138:44 lint/style/noNonNullAssertion ━━━━━━━━━━━━━
+@diffgazer/keys:check: 
+@diffgazer/keys:check:   ! Forbidden non-null assertion.
+@diffgazer/keys:check:   
+@diffgazer/keys:check:     136 │     writeItem("use-bad", 'import { x } from "./utils/x.js";\n');
+@diffgazer/keys:check:     137 │ 
+@diffgazer/keys:check:   > 138 │     expect(() => assertNoRelativeJsImports(dir!)).toThrowError(/relative \.js import specifiers/);
+@diffgazer/keys:check:         │                                            ^^^^
+@diffgazer/keys:check:     139 │   });
+@diffgazer/keys:check:     140 │ 
+@diffgazer/keys:check:   
+@diffgazer/keys:check: 
+@diffgazer/keys:check: scripts/transform-public-registry-imports.test.ts:144:44 lint/style/noNonNullAssertion ━━━━━━━━━━━━━
+@diffgazer/keys:check: 
+@diffgazer/keys:check:   ! Forbidden non-null assertion.
+@diffgazer/keys:check:   
+@diffgazer/keys:check:     142 │     writeItem("use-good", 'import { x } from "./utils/x";\n');
+@diffgazer/keys:check:     143 │ 
+@diffgazer/keys:check:   > 144 │     expect(() => assertNoRelativeJsImports(dir!)).not.toThrow();
+@diffgazer/keys:check:         │                                            ^^^^
+@diffgazer/keys:check:     145 │   });
+@diffgazer/keys:check:     146 │ });
+@diffgazer/keys:check:   
+@diffgazer/keys:check: 
+@diffgazer/keys:check: src/dom/focus-restore.test.ts:49:39 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/keys:check: 
+@diffgazer/keys:check:   ! Forbidden non-null assertion.
+@diffgazer/keys:check:   
+@diffgazer/keys:check:     47 │     expect(frameDocument).not.toBeNull();
+@diffgazer/keys:check:     48 │ 
+@diffgazer/keys:check:   > 49 │     const trigger = button("Trigger", frameDocument!);
+@diffgazer/keys:check:        │                                       ^^^^^^^^^^^^^^
+@diffgazer/keys:check:     50 │     const other = button("Other", frameDocument!);
+@diffgazer/keys:check:     51 │ 
+@diffgazer/keys:check:   
+@diffgazer/keys:check: 
+@diffgazer/keys:check: src/dom/focus-restore.test.ts:50:35 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/keys:check: 
+@diffgazer/keys:check:   ! Forbidden non-null assertion.
+@diffgazer/keys:check:   
+@diffgazer/keys:check:     49 │     const trigger = button("Trigger", frameDocument!);
+@diffgazer/keys:check:   > 50 │     const other = button("Other", frameDocument!);
+@diffgazer/keys:check:        │                                   ^^^^^^^^^^^^^^
+@diffgazer/keys:check:     51 │ 
+@diffgazer/keys:check:     52 │     trigger.focus();
+@diffgazer/keys:check:   
+@diffgazer/keys:check: 
+@diffgazer/keys:check: src/dom/focus-restore.test.ts:53:37 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/keys:check: 
+@diffgazer/keys:check:   ! Forbidden non-null assertion.
+@diffgazer/keys:check:   
+@diffgazer/keys:check:     52 │     trigger.focus();
+@diffgazer/keys:check:   > 53 │     expect(getRestorableFocusTarget(frameDocument!)).toBe(trigger);
+@diffgazer/keys:check:        │                                     ^^^^^^^^^^^^^^
+@diffgazer/keys:check:     54 │ 
+@diffgazer/keys:check:     55 │     other.focus();
+@diffgazer/keys:check:   
+@diffgazer/keys:check: 
+@diffgazer/keys:check: src/dom/focus-restore.test.ts:57:12 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/keys:check: 
+@diffgazer/keys:check:   ! Forbidden non-null assertion.
+@diffgazer/keys:check:   
+@diffgazer/keys:check:     55 │     other.focus();
+@diffgazer/keys:check:     56 │     expect(restoreFocus(trigger)).toBe(true);
+@diffgazer/keys:check:   > 57 │     expect(frameDocument!.activeElement).toBe(trigger);
+@diffgazer/keys:check:        │            ^^^^^^^^^^^^^^
+@diffgazer/keys:check:     58 │   });
+@diffgazer/keys:check:     59 │ });
+@diffgazer/keys:check:   
+@diffgazer/keys:check:   i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+@diffgazer/keys:check:   
+@diffgazer/keys:check:     55 55 │       other.focus();
+@diffgazer/keys:check:     56 56 │       expect(restoreFocus(trigger)).toBe(true);
+@diffgazer/keys:check:     57    │ - ····expect(frameDocument!.activeElement).toBe(trigger);
+@diffgazer/keys:check:        57 │ + ····expect(frameDocument?.activeElement).toBe(trigger);
+@diffgazer/keys:check:     58 58 │     });
+@diffgazer/keys:check:     59 59 │   });
+@diffgazer/keys:check:   
+@diffgazer/keys:check: 
+@diffgazer/keys:check: src/hooks/use-focus-trap.test.ts:93:24 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/keys:check: 
+@diffgazer/keys:check:   ! Forbidden non-null assertion.
+@diffgazer/keys:check:   
+@diffgazer/keys:check:     91 │       );
+@diffgazer/keys:check:     92 │       // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+@diffgazer/keys:check:   > 93 │       const targetEl = container.querySelector<HTMLElement>("#b")!;
+@diffgazer/keys:check:        │                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+@diffgazer/keys:check:     94 │ 
+@diffgazer/keys:check:     95 │       renderHook(() => {
+@diffgazer/keys:check:   
+@diffgazer/keys:check: 
+@diffgazer/keys:check: src/hooks/use-focus-trap.test.ts:110:24 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/keys:check: 
+@diffgazer/keys:check:   ! Forbidden non-null assertion.
+@diffgazer/keys:check:   
+@diffgazer/keys:check:     108 │       );
+@diffgazer/keys:check:     109 │       // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+@diffgazer/keys:check:   > 110 │       const targetEl = container.querySelector<HTMLElement>("#a")!;
+@diffgazer/keys:check:         │                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+@diffgazer/keys:check:     111 │ 
+@diffgazer/keys:check:     112 │       renderHook(() => {
+@diffgazer/keys:check:   
+@diffgazer/keys:check: 
+@diffgazer/keys:check: src/hooks/use-focus-trap.test.ts:132:20 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/keys:check: 
+@diffgazer/keys:check:   ! Forbidden non-null assertion.
+@diffgazer/keys:check:   
+@diffgazer/keys:check:     131 │       // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+@diffgazer/keys:check:   > 132 │       const last = container.querySelector<HTMLElement>("#c")!;
+@diffgazer/keys:check:         │                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+@diffgazer/keys:check:     133 │       last.focus();
+@diffgazer/keys:check:     134 │       const tabEvent = fireTab();
+@diffgazer/keys:check:   
+@diffgazer/keys:check: 
+@diffgazer/keys:check: src/hooks/use-focus-trap.test.ts:155:23 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/keys:check: 
+@diffgazer/keys:check:   ! Forbidden non-null assertion.
+@diffgazer/keys:check:   
+@diffgazer/keys:check:     154 │       // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+@diffgazer/keys:check:   > 155 │       const newLast = container.querySelector<HTMLElement>("#c")!;
+@diffgazer/keys:check:         │                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+@diffgazer/keys:check:     156 │       newLast.focus();
+@diffgazer/keys:check:     157 │ 
+@diffgazer/keys:check:   
+@diffgazer/keys:check: 
+@diffgazer/keys:check: src/hooks/use-focus-trap.test.ts:174:20 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/keys:check: 
+@diffgazer/keys:check:   ! Forbidden non-null assertion.
+@diffgazer/keys:check:   
+@diffgazer/keys:check:     173 │       // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+@diffgazer/keys:check:   > 174 │       const last = container.querySelector<HTMLElement>("#a")!;
+@diffgazer/keys:check:         │                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+@diffgazer/keys:check:     175 │       last.focus();
+@diffgazer/keys:check:     176 │ 
+@diffgazer/keys:check:   
+@diffgazer/keys:check: 
+@diffgazer/core:check: src/catalog/schema.test.ts:11:32 lint/complexity/useLiteralKeys  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/core:check: 
+@diffgazer/keys:check: src/hooks/use-focus-trap.test.ts:190:24 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/keys:check: 
+@diffgazer/keys:check:   ! Forbidden non-null assertion.
+@diffgazer/keys:check:   
+@diffgazer/core:check:   i The computed expression can be simplified without the use of a string literal.
+@diffgazer/keys:check:     188 │       );
+@diffgazer/core:check:   
+@diffgazer/core:check:      9 │       expect(catalog[id], `provider ${id} should parse`).toBeDefined();
+@diffgazer/core:check:     10 │     }
+@diffgazer/core:check:   > 11 │     expect(Object.keys(catalog["google"]!.models)).toContain("gemini-2.5-flash");
+@diffgazer/keys:check:     189 │       // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+@diffgazer/core:check:        │                                ^^^^^^^^
+@diffgazer/keys:check:   > 190 │       const targetEl = container.querySelector<HTMLElement>("#a")!;
+@diffgazer/core:check:     12 │   });
+@diffgazer/keys:check:         │                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+@diffgazer/keys:check:     191 │ 
+@diffgazer/keys:check:     192 │       renderHook(() => {
+@diffgazer/core:check:     13 │ 
+@diffgazer/core:check:   
+@diffgazer/core:check:   i Unsafe fix: Use a literal key instead.
+@diffgazer/core:check:   
+@diffgazer/keys:check:   
+@diffgazer/keys:check: 
+@diffgazer/keys:check: src/hooks/use-focus-trap.test.ts:211:24 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/keys:check: 
+@diffgazer/core:check:      9  9 │         expect(catalog[id], `provider ${id} should parse`).toBeDefined();
+@diffgazer/keys:check:   ! Forbidden non-null assertion.
+@diffgazer/core:check:     10 10 │       }
+@diffgazer/core:check:     11    │ - ····expect(Object.keys(catalog["google"]!.models)).toContain("gemini-2.5-flash");
+@diffgazer/core:check:        11 │ + ····expect(Object.keys(catalog.google!.models)).toContain("gemini-2.5-flash");
+@diffgazer/core:check:     12 12 │     });
+@diffgazer/core:check:     13 13 │   
+@diffgazer/core:check:   
+@diffgazer/core:check: 
+@diffgazer/keys:check:   
+@diffgazer/keys:check:     209 │       );
+@diffgazer/keys:check:     210 │       // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+@diffgazer/core:check: src/catalog/schema.test.ts:16:27 lint/complexity/useLiteralKeys  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/core:check: 
+@diffgazer/core:check:   i The computed expression can be simplified without the use of a string literal.
+@diffgazer/core:check:   
+@diffgazer/keys:check:   > 211 │       const targetEl = container.querySelector<HTMLElement>("#a")!;
+@diffgazer/core:check:     14 │   it("preserves model fields the catalog reads (cost, limit, capability flags, dates)", () => {
+@diffgazer/keys:check:         │                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+@diffgazer/keys:check:     212 │ 
+@diffgazer/core:check:     15 │     const catalog = parseModelsDevCatalog(RAW_CATALOG);
+@diffgazer/core:check:   > 16 │     const flash = catalog["google"]!.models["gemini-2.5-flash"]!;
+@diffgazer/core:check:        │                           ^^^^^^^^
+@diffgazer/keys:check:     213 │       renderHook(() => {
+@diffgazer/core:check:     17 │     expect(flash.cost).toEqual({ input: 0.3, output: 2.5, cache_read: 0.03 });
+@diffgazer/keys:check:   
+@diffgazer/keys:check: 
+@diffgazer/keys:check: src/hooks/use-focus-trap.test.ts:231:9 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/keys:check: 
+@diffgazer/keys:check:   ! Forbidden non-null assertion.
+@diffgazer/keys:check:   
+@diffgazer/core:check:     18 │     expect(flash.limit?.context).toBe(1048576);
+@diffgazer/keys:check:     229 │       expect(frameDocument).not.toBeNull();
+@diffgazer/core:check:   
+@diffgazer/keys:check:     230 │       container = createContainerIn(
+@diffgazer/keys:check:   > 231 │         frameDocument!,
+@diffgazer/core:check:   i Unsafe fix: Use a literal key instead.
+@diffgazer/core:check:   
+@diffgazer/keys:check:         │         ^^^^^^^^^^^^^^
+@diffgazer/keys:check:     232 │         '<button id="a">A</button>',
+@diffgazer/keys:check:     233 │         '<button id="b">B</button>',
+@diffgazer/keys:check:   
+@diffgazer/keys:check: 
+@diffgazer/core:check:     14 14 │     it("preserves model fields the catalog reads (cost, limit, capability flags, dates)", () => {
+@diffgazer/core:check:     15 15 │       const catalog = parseModelsDevCatalog(RAW_CATALOG);
+@diffgazer/keys:check: src/hooks/use-focus-trap.test.ts:238:14 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━━━━━━
+@diffgazer/keys:check: 
+@diffgazer/core:check:     16    │ - ····const·flash·=·catalog["google"]!.models["gemini-2.5-flash"]!;
+@diffgazer/keys:check:   ! Forbidden non-null assertion.
+@diffgazer/keys:check:   
+@diffgazer/keys:check:     236 │       renderTrap(container, { restoreFocus: false });
+@diffgazer/core:check:        16 │ + ····const·flash·=·catalog.google!.models["gemini-2.5-flash"]!;
+@diffgazer/keys:check:     237 │       // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+@diffgazer/core:check:     17 17 │       expect(flash.cost).toEqual({ input: 0.3, output: 2.5, cache_read: 0.03 });
+@diffgazer/keys:check:   > 238 │       expect(frameDocument!.activeElement).toBe(container.querySelector("#a"));
+@diffgazer/core:check:     18 18 │       expect(flash.limit?.context).toBe(1048576);
+@diffgazer/core:check:   
+@diffgazer/core:check: 
+@diffgazer/keys:check:         │              ^^^^^^^^^^^^^^
+@diffgazer/keys:check:     239 │ 
+@diffgazer/keys:check:     240 │       // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+@diffgazer/core:check: src/catalog/schema.test.ts:26:31 lint/complexity/useLiteralKeys  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/core:check: 
+@diffgazer/keys:check:   
+@diffgazer/core:check:   i The computed expression can be simplified without the use of a string literal.
+@diffgazer/keys:check:   i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+@diffgazer/core:check:   
+@diffgazer/keys:check:   
+@diffgazer/core:check:     24 │   it("keeps a model with absent cost (cost stays undefined, not zeroed)", () => {
+@diffgazer/core:check:     25 │     const catalog = parseModelsDevCatalog(RAW_CATALOG);
+@diffgazer/core:check:   > 26 │     const embedding = catalog["google"]!.models["gemini-embedding-001"]!;
+@diffgazer/core:check:        │                               ^^^^^^^^
+@diffgazer/core:check:     27 │     expect(embedding.cost).toBeUndefined();
+@diffgazer/core:check:     28 │   });
+@diffgazer/core:check:   
+@diffgazer/core:check:   i Unsafe fix: Use a literal key instead.
+@diffgazer/core:check:   
+@diffgazer/core:check:     24 24 │     it("keeps a model with absent cost (cost stays undefined, not zeroed)", () => {
+@diffgazer/core:check:     25 25 │       const catalog = parseModelsDevCatalog(RAW_CATALOG);
+@diffgazer/keys:check:     236 236 │         renderTrap(container, { restoreFocus: false });
+@diffgazer/core:check:     26    │ - ····const·embedding·=·catalog["google"]!.models["gemini-embedding-001"]!;
+@diffgazer/core:check:        26 │ + ····const·embedding·=·catalog.google!.models["gemini-embedding-001"]!;
+@diffgazer/keys:check:     237 237 │         // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+@diffgazer/core:check:     27 27 │       expect(embedding.cost).toBeUndefined();
+@diffgazer/core:check:     28 28 │     });
+@diffgazer/core:check:   
+@diffgazer/core:check: 
+@diffgazer/keys:check:     238     │ - ······expect(frameDocument!.activeElement).toBe(container.querySelector("#a"));
+@diffgazer/core:check: src/catalog/schema.test.ts:32:28 lint/complexity/useLiteralKeys  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/core:check: 
+@diffgazer/core:check:   i The computed expression can be simplified without the use of a string literal.
+@diffgazer/core:check:   
+@diffgazer/keys:check:         238 │ + ······expect(frameDocument?.activeElement).toBe(container.querySelector("#a"));
+@diffgazer/keys:check:     239 239 │   
+@diffgazer/core:check:     30 │   it("skips one malformed model but keeps its siblings (per-model safeParse)", () => {
+@diffgazer/core:check:     31 │     const catalog = parseModelsDevCatalog(RAW_CATALOG_WITH_BAD_MODEL);
+@diffgazer/core:check:   > 32 │     const models = catalog["google"]!.models;
+@diffgazer/keys:check:     240 240 │         // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+@diffgazer/keys:check:   
+@diffgazer/keys:check: 
+@diffgazer/core:check:        │                            ^^^^^^^^
+@diffgazer/core:check:     33 │     expect(models["broken-model"]).toBeUndefined();
+@diffgazer/core:check:     34 │     expect(models["gemini-2.5-flash"]).toBeDefined();
+@diffgazer/keys:check: src/hooks/use-focus-trap.test.ts:241:20 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/core:check:   
+@diffgazer/core:check:   i Unsafe fix: Use a literal key instead.
+@diffgazer/core:check:   
+@diffgazer/keys:check: 
+@diffgazer/keys:check:   ! Forbidden non-null assertion.
+@diffgazer/keys:check:   
+@diffgazer/core:check:     30 30 │     it("skips one malformed model but keeps its siblings (per-model safeParse)", () => {
+@diffgazer/core:check:     31 31 │       const catalog = parseModelsDevCatalog(RAW_CATALOG_WITH_BAD_MODEL);
+@diffgazer/keys:check:     240 │       // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+@diffgazer/core:check:     32    │ - ····const·models·=·catalog["google"]!.models;
+@diffgazer/core:check:        32 │ + ····const·models·=·catalog.google!.models;
+@diffgazer/keys:check:   > 241 │       const last = container.querySelector<HTMLElement>("#b")!;
+@diffgazer/keys:check:         │                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+@diffgazer/keys:check:     242 │       last.focus();
+@diffgazer/core:check:     33 33 │       expect(models["broken-model"]).toBeUndefined();
+@diffgazer/core:check:     34 34 │       expect(models["gemini-2.5-flash"]).toBeDefined();
+@diffgazer/core:check:   
+@diffgazer/core:check: 
+@diffgazer/keys:check:     243 │       const event = fireTabFromActive(frameDocument!);
+@diffgazer/keys:check:   
+@diffgazer/keys:check: 
+@diffgazer/core:check: src/catalog/schema.test.ts:42:20 lint/complexity/useLiteralKeys  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/core:check: 
+@diffgazer/core:check:   i The computed expression can be simplified without the use of a string literal.
+@diffgazer/keys:check: src/hooks/use-focus-trap.test.ts:243:39 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/keys:check: 
+@diffgazer/keys:check:   ! Forbidden non-null assertion.
+@diffgazer/keys:check:   
+@diffgazer/core:check:   
+@diffgazer/core:check:     40 │     const raw = { google: { id: "google", models: {}, unknownField: 42 } };
+@diffgazer/core:check:     41 │     const catalog = parseModelsDevCatalog(raw);
+@diffgazer/core:check:   > 42 │     expect(catalog["google"]).toBeDefined();
+@diffgazer/keys:check:     241 │       const last = container.querySelector<HTMLElement>("#b")!;
+@diffgazer/keys:check:     242 │       last.focus();
+@diffgazer/keys:check:   > 243 │       const event = fireTabFromActive(frameDocument!);
+@diffgazer/core:check:        │                    ^^^^^^^^
+@diffgazer/core:check:     43 │     expect(Object.keys(catalog["google"]!)).not.toContain("unknownField");
+@diffgazer/core:check:     44 │   });
+@diffgazer/core:check:   
+@diffgazer/core:check:   i Unsafe fix: Use a literal key instead.
+@diffgazer/keys:check:         │                                       ^^^^^^^^^^^^^^
+@diffgazer/core:check:   
+@diffgazer/keys:check:     244 │       expect(event.defaultPrevented).toBe(true);
+@diffgazer/core:check:     40 40 │       const raw = { google: { id: "google", models: {}, unknownField: 42 } };
+@diffgazer/core:check:     41 41 │       const catalog = parseModelsDevCatalog(raw);
+@diffgazer/keys:check:     245 │       // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+@diffgazer/keys:check:   
+@diffgazer/keys:check: 
+@diffgazer/core:check:     42    │ - ····expect(catalog["google"]).toBeDefined();
+@diffgazer/core:check:        42 │ + ····expect(catalog.google).toBeDefined();
+@diffgazer/keys:check: src/hooks/use-focus-trap.test.ts:246:14 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━━━━━━
+@diffgazer/keys:check: 
+@diffgazer/keys:check:   ! Forbidden non-null assertion.
+@diffgazer/keys:check:   
+@diffgazer/core:check:     43 43 │       expect(Object.keys(catalog["google"]!)).not.toContain("unknownField");
+@diffgazer/core:check:     44 44 │     });
+@diffgazer/core:check:   
+@diffgazer/core:check: 
+@diffgazer/keys:check:     244 │       expect(event.defaultPrevented).toBe(true);
+@diffgazer/core:check: src/api/hooks/use-review-stream.test.ts:96:13 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/core:check: 
+@diffgazer/core:check:   ! Forbidden non-null assertion.
+@diffgazer/core:check:   
+@diffgazer/core:check:     94 │     await act(async () => {
+@diffgazer/core:check:     95 │       resolveResume(ok(fakeResumeResult("stop-review")));
+@diffgazer/keys:check:     245 │       // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+@diffgazer/core:check:   > 96 │       await resumePromise!;
+@diffgazer/core:check:        │             ^^^^^^^^^^^^^^
+@diffgazer/core:check:     97 │     });
+@diffgazer/core:check:     98 │   });
+@diffgazer/core:check:   
+@diffgazer/core:check: 
+@diffgazer/keys:check:   > 246 │       expect(frameDocument!.activeElement).toBe(container.querySelector("#a"));
+@diffgazer/keys:check:         │              ^^^^^^^^^^^^^^
+@diffgazer/core:check: src/api/hooks/use-review-stream.test.ts:129:13 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/core:check: 
+@diffgazer/core:check:   ! Forbidden non-null assertion.
+@diffgazer/core:check:   
+@diffgazer/keys:check:     247 │ 
+@diffgazer/core:check:     127 │     await act(async () => {
+@diffgazer/keys:check:     248 │       frame.remove();
+@diffgazer/keys:check:   
+@diffgazer/core:check:     128 │       resolveResume(ok(fakeResumeResult("abort-review")));
+@diffgazer/core:check:   > 129 │       await resumePromise!;
+@diffgazer/core:check:         │             ^^^^^^^^^^^^^^
+@diffgazer/keys:check:   i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+@diffgazer/keys:check:   
+@diffgazer/core:check:     130 │     });
+@diffgazer/core:check:     131 │   });
+@diffgazer/core:check:   
+@diffgazer/core:check: 
+@diffgazer/core:check: src/api/hooks/use-review-stream.test.ts:184:13 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/core:check: 
+@diffgazer/core:check:   ! Forbidden non-null assertion.
+@diffgazer/core:check:   
+@diffgazer/core:check:     182 │     await act(async () => {
+@diffgazer/core:check:     183 │       resolveFirst(ok(fakeResumeResult("first-review")));
+@diffgazer/core:check:   > 184 │       await firstPromise!;
+@diffgazer/core:check:         │             ^^^^^^^^^^^^^
+@diffgazer/core:check:     185 │     });
+@diffgazer/core:check:     186 │ 
+@diffgazer/core:check:   
+@diffgazer/core:check: 
+@diffgazer/core:check: src/api/hooks/use-review-stream.test.ts:195:13 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/core:check: 
+@diffgazer/core:check:   ! Forbidden non-null assertion.
+@diffgazer/core:check:   
+@diffgazer/core:check:     193 │     await act(async () => {
+@diffgazer/keys:check:     244 244 │         expect(event.defaultPrevented).toBe(true);
+@diffgazer/core:check:     194 │       resolveSecond(ok(fakeResumeResult("second-review")));
+@diffgazer/keys:check:     245 245 │         // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+@diffgazer/core:check:   > 195 │       await secondPromise!;
+@diffgazer/core:check:         │             ^^^^^^^^^^^^^^
+@diffgazer/core:check:     196 │     });
+@diffgazer/core:check:     197 │   });
+@diffgazer/core:check:   
+@diffgazer/core:check: 
+@diffgazer/keys:check:     246     │ - ······expect(frameDocument!.activeElement).toBe(container.querySelector("#a"));
+@diffgazer/core:check: src/api/hooks/use-review-stream.test.ts:229:13 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/core:check: 
+@diffgazer/core:check:   ! Forbidden non-null assertion.
+@diffgazer/core:check:   
+@diffgazer/keys:check:         246 │ + ······expect(frameDocument?.activeElement).toBe(container.querySelector("#a"));
+@diffgazer/keys:check:     247 247 │   
+@diffgazer/keys:check:     248 248 │         frame.remove();
+@diffgazer/core:check:     227 │     await act(async () => {
+@diffgazer/keys:check:   
+@diffgazer/keys:check: 
+@diffgazer/core:check:     228 │       resolveResume(ok(fakeResumeResult("cancel-review")));
+@diffgazer/core:check:   > 229 │       await resumePromise!;
+@diffgazer/core:check:         │             ^^^^^^^^^^^^^^
+@diffgazer/keys:check: src/hooks/use-focus-trap.test.ts:321:29 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━━━━━━
+@diffgazer/keys:check: 
+@diffgazer/core:check:     230 │     });
+@diffgazer/core:check:     231 │   });
+@diffgazer/core:check:   
+@diffgazer/core:check: 
+@diffgazer/keys:check:   ! Forbidden non-null assertion.
+@diffgazer/keys:check:   
+@diffgazer/core:check: src/api/hooks/use-review-stream.test.ts:269:12 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━
+@diffgazer/core:check: 
+@diffgazer/keys:check:     319 │       expect(frameDocument).not.toBeNull();
+@diffgazer/core:check:   ! Forbidden non-null assertion.
+@diffgazer/core:check:   
+@diffgazer/keys:check:     320 │ 
+@diffgazer/keys:check:   > 321 │       const outsideButton = frameDocument!.createElement("button");
+@diffgazer/core:check:     267 │     expect(result.current.state.error).toBeNull();
+@diffgazer/keys:check:         │                             ^^^^^^^^^^^^^^
+@diffgazer/core:check:     268 │     expect(result.current.state.isStreaming).toBe(false);
+@diffgazer/keys:check:     322 │       outsideButton.textContent = "Outside";
+@diffgazer/core:check:   > 269 │     expect(returnedResult!.ok).toBe(false);
+@diffgazer/core:check:         │            ^^^^^^^^^^^^^^^
+@diffgazer/keys:check:     323 │       frameDocument!.body.append(outsideButton);
+@diffgazer/keys:check:   
+@diffgazer/core:check:     270 │     if (!returnedResult!.ok) {
+@diffgazer/core:check:     271 │       expect(returnedResult!.error.code).toBe(ReviewErrorCode.SESSION_STALE);
+@diffgazer/core:check:   
+@diffgazer/keys:check:   i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+@diffgazer/keys:check:   
+@diffgazer/core:check:   i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+@diffgazer/core:check:   
+@diffgazer/core:check:     267 267 │       expect(result.current.state.error).toBeNull();
+@diffgazer/core:check:     268 268 │       expect(result.current.state.isStreaming).toBe(false);
+@diffgazer/core:check:     269     │ - ····expect(returnedResult!.ok).toBe(false);
+@diffgazer/keys:check:     319 319 │         expect(frameDocument).not.toBeNull();
+@diffgazer/core:check:         269 │ + ····expect(returnedResult?.ok).toBe(false);
+@diffgazer/keys:check:     320 320 │   
+@diffgazer/core:check:     270 270 │       if (!returnedResult!.ok) {
+@diffgazer/keys:check:     321     │ - ······const·outsideButton·=·frameDocument!.createElement("button");
+@diffgazer/core:check:     271 271 │         expect(returnedResult!.error.code).toBe(ReviewErrorCode.SESSION_STALE);
+@diffgazer/core:check:   
+@diffgazer/core:check: 
+@diffgazer/keys:check:         321 │ + ······const·outsideButton·=·frameDocument?.createElement("button");
+@diffgazer/keys:check:     322 322 │         outsideButton.textContent = "Outside";
+@diffgazer/core:check: src/api/hooks/use-review-stream.test.ts:270:10 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━
+@diffgazer/core:check: 
+@diffgazer/keys:check:     323 323 │         frameDocument!.body.append(outsideButton);
+@diffgazer/keys:check:   
+@diffgazer/core:check:   ! Forbidden non-null assertion.
+@diffgazer/core:check:   
+@diffgazer/keys:check: 
+@diffgazer/core:check:     268 │     expect(result.current.state.isStreaming).toBe(false);
+@diffgazer/core:check:     269 │     expect(returnedResult!.ok).toBe(false);
+@diffgazer/keys:check: src/hooks/use-scope.test.tsx:88:24 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/keys:check: 
+@diffgazer/core:check:   > 270 │     if (!returnedResult!.ok) {
+@diffgazer/core:check:         │          ^^^^^^^^^^^^^^^
+@diffgazer/keys:check:   ! Forbidden non-null assertion.
+@diffgazer/keys:check:   
+@diffgazer/keys:check:     86 │       const scope = `scope-${index}`;
+@diffgazer/core:check:     271 │       expect(returnedResult!.error.code).toBe(ReviewErrorCode.SESSION_STALE);
+@diffgazer/keys:check:     87 │       useScope(scope);
+@diffgazer/core:check:     272 │     }
+@diffgazer/core:check:   
+@diffgazer/keys:check:   > 88 │       useKey("Escape", handlers[index]!, { scope });
+@diffgazer/keys:check:        │                        ^^^^^^^^^^^^^^^^
+@diffgazer/keys:check:     89 │       return null;
+@diffgazer/core:check:   i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+@diffgazer/core:check:   
+@diffgazer/keys:check:     90 │     }
+@diffgazer/keys:check: The number of diagnostics exceeds the limit allowed. Use --max-diagnostics to increase it.
+@diffgazer/keys:check: Diagnostics not shown: 24.
+@diffgazer/keys:check: Checked 117 files in 56ms. No fixes applied.
+@diffgazer/keys:check: Found 44 warnings.
+@diffgazer/keys:check:   
+@diffgazer/keys:check: 
+@diffgazer/core:check:     268 268 │       expect(result.current.state.isStreaming).toBe(false);
+@diffgazer/core:check:     269 269 │       expect(returnedResult!.ok).toBe(false);
+@diffgazer/core:check:     270     │ - ····if·(!returnedResult!.ok)·{
+@diffgazer/core:check:         270 │ + ····if·(!returnedResult?.ok)·{
+@diffgazer/core:check:     271 271 │         expect(returnedResult!.error.code).toBe(ReviewErrorCode.SESSION_STALE);
+@diffgazer/core:check:     272 272 │       }
+@diffgazer/core:check:   
+@diffgazer/core:check: 
+@diffgazer/core:check: src/api/hooks/use-review-stream.test.ts:271:14 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━
+@diffgazer/core:check: 
+@diffgazer/core:check:   ! Forbidden non-null assertion.
+@diffgazer/core:check:   
+@diffgazer/core:check:     269 │     expect(returnedResult!.ok).toBe(false);
+@diffgazer/core:check:     270 │     if (!returnedResult!.ok) {
+@diffgazer/core:check:   > 271 │       expect(returnedResult!.error.code).toBe(ReviewErrorCode.SESSION_STALE);
+@diffgazer/core:check:         │              ^^^^^^^^^^^^^^^
+@diffgazer/core:check:     272 │     }
+@diffgazer/core:check:     273 │   });
+@diffgazer/core:check:   
+@diffgazer/core:check:   i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+@diffgazer/core:check:   
+@diffgazer/core:check:     269 269 │       expect(returnedResult!.ok).toBe(false);
+@diffgazer/core:check:     270 270 │       if (!returnedResult!.ok) {
+@diffgazer/core:check:     271     │ - ······expect(returnedResult!.error.code).toBe(ReviewErrorCode.SESSION_STALE);
+@diffgazer/core:check:         271 │ + ······expect(returnedResult?.error.code).toBe(ReviewErrorCode.SESSION_STALE);
+@diffgazer/core:check:     272 272 │       }
+@diffgazer/core:check:     273 273 │     });
+@diffgazer/core:check:   
+@diffgazer/core:check: 
+@diffgazer/core:check: src/catalog/catalog-snapshot.test.ts:35:24 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/core:check: 
+@diffgazer/core:check:   ! Forbidden non-null assertion.
+@diffgazer/core:check:   
+@diffgazer/core:check:     33 │     for (const overlay of Object.values(PROVIDER_OVERLAY)) {
+@diffgazer/core:check:     34 │       if (!overlay.enabled || overlay.sdkKind === "openrouter") continue;
+@diffgazer/core:check:   > 35 │       const sourceId = overlay.modelsDevIds[0]!;
+@diffgazer/core:check:        │                        ^^^^^^^^^^^^^^^^^^^^^^^^
+@diffgazer/core:check:     36 │       expect(CATALOG_SNAPSHOT[sourceId]?.name, `snapshot ${sourceId} must keep name`).toBeTruthy();
+@diffgazer/core:check:     37 │     }
+@diffgazer/core:check:   
+@diffgazer/core:check: 
+@diffgazer/core:check: src/catalog/schema.test.ts:11:24 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/core:check: 
+@diffgazer/core:check:   ! Forbidden non-null assertion.
+@diffgazer/core:check:   
+@diffgazer/core:check:      9 │       expect(catalog[id], `provider ${id} should parse`).toBeDefined();
+@diffgazer/core:check:     10 │     }
+@diffgazer/core:check:   > 11 │     expect(Object.keys(catalog["google"]!.models)).toContain("gemini-2.5-flash");
+@diffgazer/core:check:        │                        ^^^^^^^^^^^^^^^^^^
+@diffgazer/core:check:     12 │   });
+@diffgazer/core:check:     13 │ 
+@diffgazer/core:check:   
+@diffgazer/core:check:   i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+@diffgazer/core:check:   
+@diffgazer/core:check:      9  9 │         expect(catalog[id], `provider ${id} should parse`).toBeDefined();
+@diffgazer/core:check:     10 10 │       }
+@diffgazer/core:check:     11    │ - ····expect(Object.keys(catalog["google"]!.models)).toContain("gemini-2.5-flash");
+@diffgazer/core:check:        11 │ + ····expect(Object.keys(catalog["google"]?.models)).toContain("gemini-2.5-flash");
+@diffgazer/core:check:     12 12 │     });
+@diffgazer/core:check:     13 13 │   
+@diffgazer/core:check:   
+@diffgazer/core:check: 
+@diffgazer/core:check: src/catalog/schema.test.ts:16:19 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/core:check: 
+@diffgazer/core:check:   ! Forbidden non-null assertion.
+@diffgazer/core:check:   
+@diffgazer/core:check:     14 │   it("preserves model fields the catalog reads (cost, limit, capability flags, dates)", () => {
+@diffgazer/core:check:     15 │     const catalog = parseModelsDevCatalog(RAW_CATALOG);
+@diffgazer/core:check:   > 16 │     const flash = catalog["google"]!.models["gemini-2.5-flash"]!;
+@diffgazer/core:check:        │                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+@diffgazer/core:check:     17 │     expect(flash.cost).toEqual({ input: 0.3, output: 2.5, cache_read: 0.03 });
+@diffgazer/core:check:     18 │     expect(flash.limit?.context).toBe(1048576);
+@diffgazer/core:check:   
+@diffgazer/core:check: 
+@diffgazer/core:check: src/catalog/schema.test.ts:16:19 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/core:check: 
+@diffgazer/core:check:   ! Forbidden non-null assertion.
+@diffgazer/core:check:   
+@diffgazer/core:check:     14 │   it("preserves model fields the catalog reads (cost, limit, capability flags, dates)", () => {
+@diffgazer/core:check:     15 │     const catalog = parseModelsDevCatalog(RAW_CATALOG);
+@diffgazer/core:check:   > 16 │     const flash = catalog["google"]!.models["gemini-2.5-flash"]!;
+@diffgazer/core:check:        │                   ^^^^^^^^^^^^^^^^^^
+@diffgazer/core:check:     17 │     expect(flash.cost).toEqual({ input: 0.3, output: 2.5, cache_read: 0.03 });
+@diffgazer/core:check:     18 │     expect(flash.limit?.context).toBe(1048576);
+@diffgazer/core:check:   
+@diffgazer/core:check:   i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+@diffgazer/core:check:   
+@diffgazer/core:check:     14 14 │     it("preserves model fields the catalog reads (cost, limit, capability flags, dates)", () => {
+@diffgazer/core:check:     15 15 │       const catalog = parseModelsDevCatalog(RAW_CATALOG);
+@diffgazer/core:check:     16    │ - ····const·flash·=·catalog["google"]!.models["gemini-2.5-flash"]!;
+@diffgazer/core:check:        16 │ + ····const·flash·=·catalog["google"]?.models["gemini-2.5-flash"]!;
+@diffgazer/core:check:     17 17 │       expect(flash.cost).toEqual({ input: 0.3, output: 2.5, cache_read: 0.03 });
+@diffgazer/core:check:     18 18 │       expect(flash.limit?.context).toBe(1048576);
+@diffgazer/core:check:   
+@diffgazer/core:check: 
+@diffgazer/core:check: src/catalog/schema.test.ts:26:23 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/core:check: 
+@diffgazer/core:check:   ! Forbidden non-null assertion.
+@diffgazer/core:check:   
+@diffgazer/core:check:     24 │   it("keeps a model with absent cost (cost stays undefined, not zeroed)", () => {
+@diffgazer/core:check:     25 │     const catalog = parseModelsDevCatalog(RAW_CATALOG);
+@diffgazer/core:check:   > 26 │     const embedding = catalog["google"]!.models["gemini-embedding-001"]!;
+@diffgazer/core:check:        │                       ^^^^^^^^^^^^^^^^^^
+@diffgazer/core:check:     27 │     expect(embedding.cost).toBeUndefined();
+@diffgazer/core:check:     28 │   });
+@diffgazer/core:check:   
+@diffgazer/core:check:   i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+@diffgazer/core:check:   
+@diffgazer/core:check:     24 24 │     it("keeps a model with absent cost (cost stays undefined, not zeroed)", () => {
+@diffgazer/core:check:     25 25 │       const catalog = parseModelsDevCatalog(RAW_CATALOG);
+@diffgazer/core:check:     26    │ - ····const·embedding·=·catalog["google"]!.models["gemini-embedding-001"]!;
+@diffgazer/core:check:        26 │ + ····const·embedding·=·catalog["google"]?.models["gemini-embedding-001"]!;
+@diffgazer/core:check:     27 27 │       expect(embedding.cost).toBeUndefined();
+@diffgazer/core:check:     28 28 │     });
+@diffgazer/core:check:   
+@diffgazer/core:check: 
+@diffgazer/core:check: src/catalog/schema.test.ts:26:23 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/core:check: 
+@diffgazer/core:check:   ! Forbidden non-null assertion.
+@diffgazer/core:check:   
+@diffgazer/core:check:     24 │   it("keeps a model with absent cost (cost stays undefined, not zeroed)", () => {
+@diffgazer/core:check:     25 │     const catalog = parseModelsDevCatalog(RAW_CATALOG);
+@diffgazer/core:check:   > 26 │     const embedding = catalog["google"]!.models["gemini-embedding-001"]!;
+@diffgazer/core:check:        │                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+@diffgazer/core:check:     27 │     expect(embedding.cost).toBeUndefined();
+@diffgazer/core:check:     28 │   });
+@diffgazer/core:check:   
+@diffgazer/core:check: 
+@diffgazer/core:check: src/catalog/schema.test.ts:32:20 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/core:check: 
+@diffgazer/core:check:   ! Forbidden non-null assertion.
+@diffgazer/core:check:   
+@diffgazer/core:check:     30 │   it("skips one malformed model but keeps its siblings (per-model safeParse)", () => {
+@diffgazer/core:check:     31 │     const catalog = parseModelsDevCatalog(RAW_CATALOG_WITH_BAD_MODEL);
+@diffgazer/core:check:   > 32 │     const models = catalog["google"]!.models;
+@diffgazer/core:check:        │                    ^^^^^^^^^^^^^^^^^^
+@diffgazer/core:check:     33 │     expect(models["broken-model"]).toBeUndefined();
+@diffgazer/core:check:     34 │     expect(models["gemini-2.5-flash"]).toBeDefined();
+@diffgazer/core:check:   
+@diffgazer/core:check:   i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+@diffgazer/core:check:   
+@diffgazer/core:check:     30 30 │     it("skips one malformed model but keeps its siblings (per-model safeParse)", () => {
+@diffgazer/core:check:     31 31 │       const catalog = parseModelsDevCatalog(RAW_CATALOG_WITH_BAD_MODEL);
+@diffgazer/core:check:     32    │ - ····const·models·=·catalog["google"]!.models;
+@diffgazer/core:check:        32 │ + ····const·models·=·catalog["google"]?.models;
+@diffgazer/core:check:     33 33 │       expect(models["broken-model"]).toBeUndefined();
+@diffgazer/core:check:     34 34 │       expect(models["gemini-2.5-flash"]).toBeDefined();
+@diffgazer/core:check:   
+@diffgazer/core:check: 
+@diffgazer/core:check: The number of diagnostics exceeds the limit allowed. Use --max-diagnostics to increase it.
+@diffgazer/core:check: Diagnostics not shown: 34.
+@diffgazer/core:check: Checked 199 files in 59ms. No fixes applied.
+@diffgazer/core:check: Found 46 warnings.
+@diffgazer/core:check: Found 8 infos.
+@diffgazer/ui:check: cache miss, executing dc3fbc51f911cb27
+@diffgazer/server:check: cache miss, executing c81ed7d5ca568f70
+@diffgazer/ui:check: 
+@diffgazer/ui:check: > @diffgazer/ui@0.2.0 check /Users/voitz/Projects/diffgazer-workspace/libs/ui
+@diffgazer/ui:check: > biome check .
+@diffgazer/ui:check: 
+@diffgazer/server:check: 
+@diffgazer/server:check: > @diffgazer/server@0.1.0 check /Users/voitz/Projects/diffgazer-workspace/cli/server
+@diffgazer/server:check: > biome check .
+@diffgazer/server:check: 
+@diffgazer/server:check: src/features/config/service.test.ts:286:39 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/server:check: 
+@diffgazer/server:check:   ! Forbidden non-null assertion.
+@diffgazer/server:check:   
+@diffgazer/server:check:     284 │     const store = await configureProvider("gemini", { model: "gemini-2.5-flash" });
+@diffgazer/server:check:     285 │     const project = store.ensureProjectFile(projectRoot);
+@diffgazer/server:check:   > 286 │     await store.saveTrust(trustConfig(project.projectId!));
+@diffgazer/server:check:         │                                       ^^^^^^^^^^^^^^^^^^
+@diffgazer/server:check:     287 │ 
+@diffgazer/server:check:     288 │     expect(getSetupStatus(projectRoot)).toMatchObject({
+@diffgazer/server:check:   
+@diffgazer/server:check: 
+@diffgazer/server:check: src/features/review/enrichment.test.ts:37:12 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━
+@diffgazer/server:check: 
+@diffgazer/server:check:   ! Forbidden non-null assertion.
+@diffgazer/server:check:   
+@diffgazer/server:check:     36 │     expect(result).toHaveLength(1);
+@diffgazer/server:check:   > 37 │     expect(result[0]!.enrichment).not.toBeNull();
+@diffgazer/server:check:        │            ^^^^^^^^^^
+@diffgazer/server:check:     38 │     expect(result[0]!.enrichment!.blame).toEqual({
+@diffgazer/server:check:     39 │       author: "John",
+@diffgazer/server:check:   
+@diffgazer/server:check:   i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+@diffgazer/server:check:   
+@diffgazer/server:check:      35  35 │   
+@diffgazer/server:check:      36  36 │       expect(result).toHaveLength(1);
+@diffgazer/server:check:      37     │ - ····expect(result[0]!.enrichment).not.toBeNull();
+@diffgazer/server:check:          37 │ + ····expect(result[0]?.enrichment).not.toBeNull();
+@diffgazer/server:check:      38  38 │       expect(result[0]!.enrichment!.blame).toEqual({
+@diffgazer/server:check:      39  39 │         author: "John",
+@diffgazer/server:check:   
+@diffgazer/server:check: 
+@diffgazer/server:check: src/features/review/enrichment.test.ts:38:12 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━
+@diffgazer/server:check: 
+@diffgazer/server:check:   ! Forbidden non-null assertion.
+@diffgazer/server:check:   
+@diffgazer/server:check:     36 │     expect(result).toHaveLength(1);
+@diffgazer/server:check:     37 │     expect(result[0]!.enrichment).not.toBeNull();
+@diffgazer/server:check:   > 38 │     expect(result[0]!.enrichment!.blame).toEqual({
+@diffgazer/server:check:        │            ^^^^^^^^^^
+@diffgazer/server:check:     39 │       author: "John",
+@diffgazer/server:check:     40 │       authorEmail: "john@test.com",
+@diffgazer/server:check:   
+@diffgazer/server:check:   i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+@diffgazer/server:check:   
+@diffgazer/server:check:      36  36 │       expect(result).toHaveLength(1);
+@diffgazer/server:check:      37  37 │       expect(result[0]!.enrichment).not.toBeNull();
+@diffgazer/server:check:      38     │ - ····expect(result[0]!.enrichment!.blame).toEqual({
+@diffgazer/server:check:          38 │ + ····expect(result[0]?.enrichment!.blame).toEqual({
+@diffgazer/server:check:      39  39 │         author: "John",
+@diffgazer/server:check:      40  40 │         authorEmail: "john@test.com",
+@diffgazer/server:check:   
+@diffgazer/server:check: 
+@diffgazer/server:check: src/features/review/enrichment.test.ts:38:12 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━
+@diffgazer/server:check: 
+@diffgazer/server:check:   ! Forbidden non-null assertion.
+@diffgazer/server:check:   
+@diffgazer/server:check:     36 │     expect(result).toHaveLength(1);
+@diffgazer/server:check:     37 │     expect(result[0]!.enrichment).not.toBeNull();
+@diffgazer/server:check:   > 38 │     expect(result[0]!.enrichment!.blame).toEqual({
+@diffgazer/server:check:        │            ^^^^^^^^^^^^^^^^^^^^^^
+@diffgazer/server:check:     39 │       author: "John",
+@diffgazer/server:check:     40 │       authorEmail: "john@test.com",
+@diffgazer/server:check:   
+@diffgazer/server:check:   i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+@diffgazer/server:check:   
+@diffgazer/server:check:      36  36 │       expect(result).toHaveLength(1);
+@diffgazer/server:check:      37  37 │       expect(result[0]!.enrichment).not.toBeNull();
+@diffgazer/server:check:      38     │ - ····expect(result[0]!.enrichment!.blame).toEqual({
+@diffgazer/server:check:          38 │ + ····expect(result[0]!.enrichment?.blame).toEqual({
+@diffgazer/server:check:      39  39 │         author: "John",
+@diffgazer/server:check:      40  40 │         authorEmail: "john@test.com",
+@diffgazer/server:check:   
+@diffgazer/server:check: 
+@diffgazer/server:check: src/features/review/enrichment.test.ts:71:12 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━
+@diffgazer/server:check: 
+@diffgazer/server:check:   ! Forbidden non-null assertion.
+@diffgazer/server:check:   
+@diffgazer/server:check:     69 │     const result = await enrichIssues(issues, gitService, onEvent);
+@diffgazer/server:check:     70 │ 
+@diffgazer/server:check:   > 71 │     expect(result[0]!.enrichment!.blame).toBeNull();
+@diffgazer/server:check:        │            ^^^^^^^^^^
+@diffgazer/server:check:     72 │     expect(result[0]!.enrichment!.context).toBeNull();
+@diffgazer/server:check:     73 │     expect(gitService.getBlame).not.toHaveBeenCalled();
+@diffgazer/server:check:   
+@diffgazer/server:check:   i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+@diffgazer/server:check:   
+@diffgazer/server:check:      69  69 │       const result = await enrichIssues(issues, gitService, onEvent);
+@diffgazer/server:check:      70  70 │   
+@diffgazer/server:check:      71     │ - ····expect(result[0]!.enrichment!.blame).toBeNull();
+@diffgazer/server:check:          71 │ + ····expect(result[0]?.enrichment!.blame).toBeNull();
+@diffgazer/server:check:      72  72 │       expect(result[0]!.enrichment!.context).toBeNull();
+@diffgazer/server:check:      73  73 │       expect(gitService.getBlame).not.toHaveBeenCalled();
+@diffgazer/server:check:   
+@diffgazer/server:check: 
+@diffgazer/server:check: src/features/review/enrichment.test.ts:71:12 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━
+@diffgazer/server:check: 
+@diffgazer/server:check:   ! Forbidden non-null assertion.
+@diffgazer/server:check:   
+@diffgazer/server:check:     69 │     const result = await enrichIssues(issues, gitService, onEvent);
+@diffgazer/server:check:     70 │ 
+@diffgazer/server:check:   > 71 │     expect(result[0]!.enrichment!.blame).toBeNull();
+@diffgazer/server:check:        │            ^^^^^^^^^^^^^^^^^^^^^^
+@diffgazer/server:check:     72 │     expect(result[0]!.enrichment!.context).toBeNull();
+@diffgazer/server:check:     73 │     expect(gitService.getBlame).not.toHaveBeenCalled();
+@diffgazer/server:check:   
+@diffgazer/server:check:   i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+@diffgazer/server:check:   
+@diffgazer/server:check:      69  69 │       const result = await enrichIssues(issues, gitService, onEvent);
+@diffgazer/server:check:      70  70 │   
+@diffgazer/server:check:      71     │ - ····expect(result[0]!.enrichment!.blame).toBeNull();
+@diffgazer/server:check:          71 │ + ····expect(result[0]!.enrichment?.blame).toBeNull();
+@diffgazer/server:check:      72  72 │       expect(result[0]!.enrichment!.context).toBeNull();
+@diffgazer/server:check:      73  73 │       expect(gitService.getBlame).not.toHaveBeenCalled();
+@diffgazer/server:check:   
+@diffgazer/server:check: 
+@diffgazer/server:check: src/features/review/enrichment.test.ts:72:12 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━
+@diffgazer/server:check: 
+@diffgazer/server:check:   ! Forbidden non-null assertion.
+@diffgazer/server:check:   
+@diffgazer/server:check:     71 │     expect(result[0]!.enrichment!.blame).toBeNull();
+@diffgazer/server:check:   > 72 │     expect(result[0]!.enrichment!.context).toBeNull();
+@diffgazer/server:check:        │            ^^^^^^^^^^
+@diffgazer/server:check:     73 │     expect(gitService.getBlame).not.toHaveBeenCalled();
+@diffgazer/server:check:     74 │   });
+@diffgazer/server:check:   
+@diffgazer/server:check:   i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+@diffgazer/server:check:   
+@diffgazer/server:check:      70  70 │   
+@diffgazer/server:check:      71  71 │       expect(result[0]!.enrichment!.blame).toBeNull();
+@diffgazer/server:check:      72     │ - ····expect(result[0]!.enrichment!.context).toBeNull();
+@diffgazer/server:check:          72 │ + ····expect(result[0]?.enrichment!.context).toBeNull();
+@diffgazer/server:check:      73  73 │       expect(gitService.getBlame).not.toHaveBeenCalled();
+@diffgazer/server:check:      74  74 │     });
+@diffgazer/server:check:   
+@diffgazer/server:check: 
+@diffgazer/server:check: src/features/review/enrichment.test.ts:72:12 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━
+@diffgazer/server:check: 
+@diffgazer/server:check:   ! Forbidden non-null assertion.
+@diffgazer/server:check:   
+@diffgazer/server:check:     71 │     expect(result[0]!.enrichment!.blame).toBeNull();
+@diffgazer/server:check:   > 72 │     expect(result[0]!.enrichment!.context).toBeNull();
+@diffgazer/server:check:        │            ^^^^^^^^^^^^^^^^^^^^^^
+@diffgazer/server:check:     73 │     expect(gitService.getBlame).not.toHaveBeenCalled();
+@diffgazer/server:check:     74 │   });
+@diffgazer/server:check:   
+@diffgazer/server:check:   i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+@diffgazer/server:check:   
+@diffgazer/server:check:      70  70 │   
+@diffgazer/server:check:      71  71 │       expect(result[0]!.enrichment!.blame).toBeNull();
+@diffgazer/server:check:      72     │ - ····expect(result[0]!.enrichment!.context).toBeNull();
+@diffgazer/server:check:          72 │ + ····expect(result[0]!.enrichment?.context).toBeNull();
+@diffgazer/server:check:      73  73 │       expect(gitService.getBlame).not.toHaveBeenCalled();
+@diffgazer/server:check:      74  74 │     });
+@diffgazer/server:check:   
+@diffgazer/server:check: 
+@diffgazer/server:check: src/features/review/enrichment.test.ts:89:12 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━
+@diffgazer/server:check: 
+@diffgazer/server:check:   ! Forbidden non-null assertion.
+@diffgazer/server:check:   
+@diffgazer/server:check:     87 │     // First should succeed with null blame, second should fall back to original
+@diffgazer/server:check:     88 │     expect(result).toHaveLength(2);
+@diffgazer/server:check:   > 89 │     expect(result[0]!.enrichment!.blame).toBeNull();
+@diffgazer/server:check:        │            ^^^^^^^^^^
+@diffgazer/server:check:     90 │     // Second issue failed entirely, falls back to original
+@diffgazer/server:check:     91 │     expect(result[1]!.id).toBe("i2");
+@diffgazer/server:check:   
+@diffgazer/server:check:   i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+@diffgazer/server:check:   
+@diffgazer/server:check:      87  87 │       // First should succeed with null blame, second should fall back to original
+@diffgazer/server:check:      88  88 │       expect(result).toHaveLength(2);
+@diffgazer/server:check:      89     │ - ····expect(result[0]!.enrichment!.blame).toBeNull();
+@diffgazer/server:check:          89 │ + ····expect(result[0]?.enrichment!.blame).toBeNull();
+@diffgazer/server:check:      90  90 │       // Second issue failed entirely, falls back to original
+@diffgazer/server:check:      91  91 │       expect(result[1]!.id).toBe("i2");
+@diffgazer/server:check:   
+@diffgazer/server:check: 
+@diffgazer/server:check: src/features/review/enrichment.test.ts:89:12 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━
+@diffgazer/server:check: 
+@diffgazer/server:check:   ! Forbidden non-null assertion.
+@diffgazer/server:check:   
+@diffgazer/server:check:     87 │     // First should succeed with null blame, second should fall back to original
+@diffgazer/server:check:     88 │     expect(result).toHaveLength(2);
+@diffgazer/server:check:   > 89 │     expect(result[0]!.enrichment!.blame).toBeNull();
+@diffgazer/server:check:        │            ^^^^^^^^^^^^^^^^^^^^^^
+@diffgazer/server:check:     90 │     // Second issue failed entirely, falls back to original
+@diffgazer/server:check:     91 │     expect(result[1]!.id).toBe("i2");
+@diffgazer/server:check:   
+@diffgazer/server:check:   i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+@diffgazer/server:check:   
+@diffgazer/server:check:      87  87 │       // First should succeed with null blame, second should fall back to original
+@diffgazer/server:check:      88  88 │       expect(result).toHaveLength(2);
+@diffgazer/server:check:      89     │ - ····expect(result[0]!.enrichment!.blame).toBeNull();
+@diffgazer/server:check:          89 │ + ····expect(result[0]!.enrichment?.blame).toBeNull();
+@diffgazer/server:check:      90  90 │       // Second issue failed entirely, falls back to original
+@diffgazer/server:check:      91  91 │       expect(result[1]!.id).toBe("i2");
+@diffgazer/server:check:   
+@diffgazer/server:check: 
+@diffgazer/server:check: src/features/review/enrichment.test.ts:91:12 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━
+@diffgazer/server:check: 
+@diffgazer/server:check:   ! Forbidden non-null assertion.
+@diffgazer/server:check:   
+@diffgazer/server:check:     89 │     expect(result[0]!.enrichment!.blame).toBeNull();
+@diffgazer/server:check:     90 │     // Second issue failed entirely, falls back to original
+@diffgazer/server:check:   > 91 │     expect(result[1]!.id).toBe("i2");
+@diffgazer/server:check:        │            ^^^^^^^^^^
+@diffgazer/server:check:     92 │   });
+@diffgazer/server:check:     93 │ 
+@diffgazer/server:check:   
+@diffgazer/server:check:   i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+@diffgazer/server:check:   
+@diffgazer/server:check:      89  89 │       expect(result[0]!.enrichment!.blame).toBeNull();
+@diffgazer/server:check:      90  90 │       // Second issue failed entirely, falls back to original
+@diffgazer/server:check:      91     │ - ····expect(result[1]!.id).toBe("i2");
+@diffgazer/server:check:          91 │ + ····expect(result[1]?.id).toBe("i2");
+@diffgazer/server:check:      92  92 │     });
+@diffgazer/server:check:      93  93 │   
+@diffgazer/server:check:   
+@diffgazer/server:check: 
+@diffgazer/server:check: src/features/review/handlers.ts:5:10 lint/correctness/noUnusedImports  FIXABLE  ━━━━━━━━━━━━━━━━━━━━
+@diffgazer/server:check: 
+@diffgazer/server:check:   ! Several of these imports are unused.
+@diffgazer/server:check:   
+@diffgazer/server:check:     3 │ import { err } from "@diffgazer/core/result";
+@diffgazer/server:check:     4 │ import { ErrorCode } from "@diffgazer/core/schemas/errors";
+@diffgazer/server:check:   > 5 │ import { ReviewErrorCode, type ReviewMode } from "@diffgazer/core/schemas/review";
+@diffgazer/server:check:       │          ^^^^^^^^^^^^^^^
+@diffgazer/server:check:     6 │ import type { Context } from "hono";
+@diffgazer/server:check:     7 │ import { initializeAIClient } from "../../shared/lib/ai/client.js";
+@diffgazer/server:check:   
+@diffgazer/server:check:   i Unused imports might be the result of an incomplete refactoring.
+@diffgazer/server:check:   
+@diffgazer/server:check:   i Unsafe fix: Remove the unused imports.
+@diffgazer/server:check:   
+@diffgazer/server:check:     5 │ import·{·ReviewErrorCode,·type·ReviewMode·}·from·"@diffgazer/core/schemas/review";
+@diffgazer/server:check:       │          -----------------                                                        
+@diffgazer/server:check: 
+@diffgazer/server:check: src/features/review/router.test.ts:44:16 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/server:check: 
+@diffgazer/server:check:   ! Forbidden non-null assertion.
+@diffgazer/server:check:   
+@diffgazer/server:check:     42 │   const project = getStore().ensureProjectFile(projectRoot);
+@diffgazer/server:check:     43 │   await getStore().saveTrust({
+@diffgazer/server:check:   > 44 │     projectId: project.projectId!,
+@diffgazer/server:check:        │                ^^^^^^^^^^^^^^^^^^
+@diffgazer/server:check:     45 │     repoRoot: projectRoot,
+@diffgazer/server:check:     46 │     trustedAt: "2024-01-01T00:00:00.000Z",
+@diffgazer/server:check:   
+@diffgazer/server:check: 
+@diffgazer/server:check: src/features/settings/router.test.ts:71:35 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/server:check: 
+@diffgazer/server:check:   ! Forbidden non-null assertion.
+@diffgazer/server:check:   
+@diffgazer/server:check:     69 │     const project = store.ensureProjectFile(projectRootA);
+@diffgazer/server:check:     70 │     expect(project.projectId).toBeTruthy();
+@diffgazer/server:check:   > 71 │     const trust = trustForProject(project.projectId!, projectRootA);
+@diffgazer/server:check:        │                                   ^^^^^^^^^^^^^^^^^^
+@diffgazer/server:check:     72 │     await store.saveTrust(trust);
+@diffgazer/server:check:     73 │ 
+@diffgazer/server:check:   
+@diffgazer/server:check: 
+@diffgazer/server:check: src/features/settings/router.test.ts:94:35 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/server:check: 
+@diffgazer/server:check:   ! Forbidden non-null assertion.
+@diffgazer/server:check:   
+@diffgazer/server:check:     92 │     const projectB = store.ensureProjectFile(projectRootB);
+@diffgazer/server:check:     93 │     expect(projectB.projectId).toBeTruthy();
+@diffgazer/server:check:   > 94 │     const trust = trustForProject(projectB.projectId!, projectRootB);
+@diffgazer/server:check:        │                                   ^^^^^^^^^^^^^^^^^^^
+@diffgazer/server:check:     95 │     await store.saveTrust(trust);
+@diffgazer/server:check:     96 │ 
+@diffgazer/server:check:   
+@diffgazer/server:check: 
+@diffgazer/server:check: src/features/settings/router.test.ts:116:43 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/server:check: 
+@diffgazer/server:check:   ! Forbidden non-null assertion.
+@diffgazer/server:check:   
+@diffgazer/server:check:     114 │     expect(projectA.projectId).toBeTruthy();
+@diffgazer/server:check:     115 │     expect(projectB.projectId).toBeTruthy();
+@diffgazer/server:check:   > 116 │     await store.saveTrust(trustForProject(projectA.projectId!, projectRootA));
+@diffgazer/server:check:         │                                           ^^^^^^^^^^^^^^^^^^^
+@diffgazer/server:check:     117 │     await store.saveTrust(trustForProject(projectB.projectId!, projectRootB));
+@diffgazer/server:check:     118 │ 
+@diffgazer/server:check:   
+@diffgazer/server:check: 
+@diffgazer/server:check: src/features/settings/router.test.ts:117:43 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/server:check: 
+@diffgazer/server:check:   ! Forbidden non-null assertion.
+@diffgazer/server:check:   
+@diffgazer/server:check:     115 │     expect(projectB.projectId).toBeTruthy();
+@diffgazer/server:check:     116 │     await store.saveTrust(trustForProject(projectA.projectId!, projectRootA));
+@diffgazer/server:check:   > 117 │     await store.saveTrust(trustForProject(projectB.projectId!, projectRootB));
+@diffgazer/server:check:         │                                           ^^^^^^^^^^^^^^^^^^^
+@diffgazer/server:check:     118 │ 
+@diffgazer/server:check:     119 │     const app = await loadApp();
+@diffgazer/server:check:   
+@diffgazer/server:check: 
+@diffgazer/server:check: src/features/settings/router.test.ts:131:12 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━━
+@diffgazer/server:check: 
+@diffgazer/server:check:   ! Forbidden non-null assertion.
+@diffgazer/server:check:   
+@diffgazer/server:check:     129 │     const body = (await res.json()) as { projects: Array<{ projectId: string }> };
+@diffgazer/server:check:     130 │     expect(body.projects).toHaveLength(1);
+@diffgazer/server:check:   > 131 │     expect(body.projects[0]!.projectId).toBe(projectA.projectId);
+@diffgazer/server:check:         │            ^^^^^^^^^^^^^^^^^
+@diffgazer/server:check:     132 │   });
+@diffgazer/server:check:     133 │ 
+@diffgazer/server:check:   
+@diffgazer/server:check:   i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+@diffgazer/server:check:   
+@diffgazer/server:check:     129 129 │       const body = (await res.json()) as { projects: Array<{ projectId: string }> };
+@diffgazer/server:check:     130 130 │       expect(body.projects).toHaveLength(1);
+@diffgazer/server:check:     131     │ - ····expect(body.projects[0]!.projectId).toBe(projectA.projectId);
+@diffgazer/server:check:         131 │ + ····expect(body.projects[0]?.projectId).toBe(projectA.projectId);
+@diffgazer/server:check:     132 132 │     });
+@diffgazer/server:check:     133 133 │   
+@diffgazer/server:check:   
+@diffgazer/server:check: 
+@diffgazer/server:check: src/features/settings/router.test.ts:167:43 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/server:check: The number of diagnostics exceeds the limit allowed. Use --max-diagnostics to increase it.
+@diffgazer/server:check: Diagnostics not shown: 110.
+@diffgazer/server:check: Checked 135 files in 133ms. No fixes applied.
+@diffgazer/server:check: 
+@diffgazer/server:check: Found 128 warnings.
+@diffgazer/server:check: Found 2 infos.
+@diffgazer/server:check:   ! Forbidden non-null assertion.
+@diffgazer/server:check:   
+@diffgazer/server:check:     165 │     expect(projectA.projectId).toBeTruthy();
+@diffgazer/server:check:     166 │     expect(projectB.projectId).toBeTruthy();
+@diffgazer/server:check:   > 167 │     await store.saveTrust(trustForProject(projectA.projectId!, projectRootA));
+@diffgazer/server:check:         │                                           ^^^^^^^^^^^^^^^^^^^
+@diffgazer/server:check:     168 │     await store.saveTrust(trustForProject(projectB.projectId!, projectRootB));
+@diffgazer/server:check:     169 │ 
+@diffgazer/server:check:   
+@diffgazer/server:check: 
+@diffgazer/server:check: src/features/settings/router.test.ts:168:43 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/server:check: 
+@diffgazer/server:check:   ! Forbidden non-null assertion.
+@diffgazer/server:check:   
+@diffgazer/server:check:     166 │     expect(projectB.projectId).toBeTruthy();
+@diffgazer/server:check:     167 │     await store.saveTrust(trustForProject(projectA.projectId!, projectRootA));
+@diffgazer/server:check:   > 168 │     await store.saveTrust(trustForProject(projectB.projectId!, projectRootB));
+@diffgazer/server:check:         │                                           ^^^^^^^^^^^^^^^^^^^
+@diffgazer/server:check:     169 │ 
+@diffgazer/server:check:     170 │     const app = await loadApp();
+@diffgazer/server:check:   
+@diffgazer/server:check: 
+@diffgazer/ui:check: registry/hooks/testing/use-active-heading.test.ts:266:5 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━
+@diffgazer/ui:check: 
+@diffgazer/ui:check:   ! Forbidden non-null assertion.
+@diffgazer/ui:check:   
+@diffgazer/ui:check:     264 │       altDoc.body.appendChild(h)
+@diffgazer/ui:check:     265 │     }
+@diffgazer/ui:check:   > 266 │     altDoc.getElementById("a1")!.getBoundingClientRect = () => makeDOMRect(0)
+@diffgazer/ui:check:         │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+@diffgazer/ui:check:     267 │     altDoc.getElementById("a2")!.getBoundingClientRect = () => makeDOMRect(100)
+@diffgazer/ui:check:     268 │ 
+@diffgazer/ui:check:   
+@diffgazer/ui:check: 
+@diffgazer/ui:check: registry/hooks/testing/use-active-heading.test.ts:267:5 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━
+@diffgazer/ui:check: 
+@diffgazer/ui:check:   ! Forbidden non-null assertion.
+@diffgazer/ui:check:   
+@diffgazer/ui:check:     265 │     }
+@diffgazer/ui:check:     266 │     altDoc.getElementById("a1")!.getBoundingClientRect = () => makeDOMRect(0)
+@diffgazer/ui:check:   > 267 │     altDoc.getElementById("a2")!.getBoundingClientRect = () => makeDOMRect(100)
+@diffgazer/ui:check:         │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+@diffgazer/ui:check:     268 │ 
+@diffgazer/ui:check:     269 │     const hostAddListener = vi.spyOn(window, "addEventListener")
+@diffgazer/ui:check:   
+@diffgazer/ui:check: 
+@diffgazer/ui:check: registry/hooks/testing/use-active-heading.test.ts:304:35 lint/style/noNonNullAssertion ━━━━━━━━━━━━━
+@diffgazer/ui:check: 
+@diffgazer/ui:check:   ! Forbidden non-null assertion.
+@diffgazer/ui:check:   
+@diffgazer/ui:check:     303 │     expect(crossDoc.getElementById).toBeDefined()
+@diffgazer/ui:check:   > 304 │     const cross = (id: string) => crossDoc.getElementById(id)!
+@diffgazer/ui:check:         │                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+@diffgazer/ui:check:     305 │ 
+@diffgazer/ui:check:     306 │     for (const id of ["x1", "x2"]) {
+@diffgazer/ui:check:   
+@diffgazer/ui:check: 
+@diffgazer/ui:check: registry/hooks/testing/use-listbox.test.tsx:413:36 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━
+@diffgazer/ui:check: 
+@diffgazer/ui:check:   ! Forbidden non-null assertion.
+@diffgazer/ui:check:   
+@diffgazer/ui:check:     411 │     expect(activeDescendant).not.toContain(" ")
+@diffgazer/ui:check:     412 │     expect(activeDescendant).not.toContain("/")
+@diffgazer/ui:check:   > 413 │     expect(document.getElementById(activeDescendant!)).toHaveTextContent("Special")
+@diffgazer/ui:check:         │                                    ^^^^^^^^^^^^^^^^^
+@diffgazer/ui:check:     414 │   })
+@diffgazer/ui:check:     415 │ 
+@diffgazer/ui:check:   
+@diffgazer/ui:check: 
+@diffgazer/ui:check: registry/hooks/use-active-heading.ts:76:18 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━━━
+@diffgazer/ui:check: 
+@diffgazer/ui:check:   ! Forbidden non-null assertion.
+@diffgazer/ui:check:   
+@diffgazer/ui:check:     74 │ function findLastAbove(elements: HTMLElement[], line: number, thresholdRatio = 0): string | null {
+@diffgazer/ui:check:     75 │   for (let i = elements.length - 1; i >= 0; i--) {
+@diffgazer/ui:check:   > 76 │     const rect = elements[i]!.getBoundingClientRect();
+@diffgazer/ui:check:        │                  ^^^^^^^^^^^^
+@diffgazer/ui:check:     77 │     if (rect.top + rect.height * thresholdRatio <= line) return elements[i]!.id;
+@diffgazer/ui:check:     78 │   }
+@diffgazer/ui:check:   
+@diffgazer/ui:check:   i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+@diffgazer/ui:check:   
+@diffgazer/ui:check:      74  74 │   function findLastAbove(elements: HTMLElement[], line: number, thresholdRatio = 0): string | null {
+@diffgazer/ui:check:      75  75 │     for (let i = elements.length - 1; i >= 0; i--) {
+@diffgazer/ui:check:      76     │ - ····const·rect·=·elements[i]!.getBoundingClientRect();
+@diffgazer/ui:check:          76 │ + ····const·rect·=·elements[i]?.getBoundingClientRect();
+@diffgazer/ui:check:      77  77 │       if (rect.top + rect.height * thresholdRatio <= line) return elements[i]!.id;
+@diffgazer/ui:check:      78  78 │     }
+@diffgazer/ui:check:   
+@diffgazer/ui:check: 
+@diffgazer/ui:check: registry/hooks/use-active-heading.ts:77:65 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━━━
+@diffgazer/ui:check: 
+@diffgazer/ui:check:   ! Forbidden non-null assertion.
+@diffgazer/ui:check:   
+@diffgazer/ui:check:     75 │   for (let i = elements.length - 1; i >= 0; i--) {
+@diffgazer/ui:check:     76 │     const rect = elements[i]!.getBoundingClientRect();
+@diffgazer/ui:check:   > 77 │     if (rect.top + rect.height * thresholdRatio <= line) return elements[i]!.id;
+@diffgazer/ui:check:        │                                                                 ^^^^^^^^^^^^
+@diffgazer/ui:check:     78 │   }
+@diffgazer/ui:check:     79 │   return null;
+@diffgazer/ui:check:   
+@diffgazer/ui:check:   i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+@diffgazer/ui:check:   
+@diffgazer/ui:check:      75  75 │     for (let i = elements.length - 1; i >= 0; i--) {
+@diffgazer/ui:check:      76  76 │       const rect = elements[i]!.getBoundingClientRect();
+@diffgazer/ui:check:      77     │ - ····if·(rect.top·+·rect.height·*·thresholdRatio·<=·line)·return·elements[i]!.id;
+@diffgazer/ui:check:          77 │ + ····if·(rect.top·+·rect.height·*·thresholdRatio·<=·line)·return·elements[i]?.id;
+@diffgazer/ui:check:      78  78 │     }
+@diffgazer/ui:check:      79  79 │     return null;
+@diffgazer/ui:check:   
+@diffgazer/ui:check: 
+@diffgazer/ui:check: registry/hooks/use-listbox.ts:277:22 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/ui:check: 
+@diffgazer/ui:check:   ! Forbidden non-null assertion.
+@diffgazer/ui:check:   
+@diffgazer/ui:check:     275 │     if (match) {
+@diffgazer/ui:check:     276 │       // DOM boundary: data-value is opaque to TS; consumers parameterize TId.
+@diffgazer/ui:check:   > 277 │       setHighlighted(match.dataset.value! as TId);
+@diffgazer/ui:check:         │                      ^^^^^^^^^^^^^^^^^^^^
+@diffgazer/ui:check:     278 │       match.scrollIntoView?.({ block: "nearest" });
+@diffgazer/ui:check:     279 │     }
+@diffgazer/ui:check:   
+@diffgazer/ui:check: 
+@diffgazer/ui:check: registry/hooks/use-overflow-items.ts:35:35 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/ui:check: 
+@diffgazer/ui:check:   ! Forbidden non-null assertion.
+@diffgazer/ui:check:   
+@diffgazer/ui:check:     33 │   let usedWidth = 0;
+@diffgazer/ui:check:     34 │   for (let i = 0; i < widths.length; i++) {
+@diffgazer/ui:check:   > 35 │     const nextWidth = usedWidth + widths[i]! + (i > 0 ? safeGap : 0);
+@diffgazer/ui:check:        │                                   ^^^^^^^^^^
+@diffgazer/ui:check:     36 │     const remaining = widths.length - (i + 1);
+@diffgazer/ui:check:     37 │     const reserve = remaining > 0 ? safeIndicatorWidth + safeGap : 0;
+@diffgazer/ui:check:   
+@diffgazer/ui:check: 
+@diffgazer/ui:check: registry/lib/testing/pairs.test.ts:48:20 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/ui:check: 
+@diffgazer/ui:check:   ! Forbidden non-null assertion.
+@diffgazer/ui:check:   
+@diffgazer/ui:check:     46 │     ])];
+@diffgazer/ui:check:     47 │     expect(result).toHaveLength(3);
+@diffgazer/ui:check:   > 48 │     expect(isGroup(result[0]!)).toBe(true);
+@diffgazer/ui:check:        │                    ^^^^^^^^^^
+@diffgazer/ui:check:     49 │     expect(result[1]).toMatchObject({ type: "context", content: "ctx" });
+@diffgazer/ui:check:     50 │     expect(isGroup(result[2]!)).toBe(true);
+@diffgazer/ui:check:   
+@diffgazer/ui:check: 
+@diffgazer/ui:check: registry/lib/testing/pairs.test.ts:50:20 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/ui:check: 
+@diffgazer/ui:check:   ! Forbidden non-null assertion.
+@diffgazer/ui:check:   
+@diffgazer/ui:check:     48 │     expect(isGroup(result[0]!)).toBe(true);
+@diffgazer/ui:check:     49 │     expect(result[1]).toMatchObject({ type: "context", content: "ctx" });
+@diffgazer/ui:check:   > 50 │     expect(isGroup(result[2]!)).toBe(true);
+@diffgazer/ui:check:        │                    ^^^^^^^^^^
+@diffgazer/ui:check:     51 │   });
+@diffgazer/ui:check:     52 │ });
+@diffgazer/ui:check:   
+@diffgazer/ui:check: 
+@diffgazer/ui:check: registry/lib/typeahead.ts:17:34 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/ui:check: 
+@diffgazer/ui:check:   ! Forbidden non-null assertion.
+@diffgazer/ui:check:   
+@diffgazer/ui:check:     16 │   const isCyclingChar = query.length > 1 && query.split("").every((char) => char === query[0]);
+@diffgazer/ui:check:   > 17 │   const search = isCyclingChar ? query[0]! : query;
+@diffgazer/ui:check:        │                                  ^^^^^^^^^
+@diffgazer/ui:check:     18 │   const startIndex = isCyclingChar || query.length === 1 ? currentIndex + 1 : 0;
+@diffgazer/ui:check:     19 │ 
+@diffgazer/ui:check:   
+@diffgazer/ui:check: 
+@diffgazer/ui:check: registry/lib/typeahead.ts:22:18 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/ui:check: 
+@diffgazer/ui:check:   ! Forbidden non-null assertion.
+@diffgazer/ui:check:   
+@diffgazer/ui:check:     20 │   for (let offset = 0; offset < items.length; offset++) {
+@diffgazer/ui:check:     21 │     const index = (startIndex + offset) % items.length;
+@diffgazer/ui:check:   > 22 │     const item = items[index]!;
+@diffgazer/ui:check:        │                  ^^^^^^^^^^^^^
+@diffgazer/ui:check:     23 │     const label = getLabel(item).toLocaleLowerCase();
+@diffgazer/ui:check:     24 │     if (label.startsWith(search)) return item;
+@diffgazer/ui:check:   
+@diffgazer/ui:check: 
+@diffgazer/ui:check: registry/ui/checkbox/checkbox.test.tsx:61:20 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/ui:check: 
+@diffgazer/ui:check:   ! Forbidden non-null assertion.
+@diffgazer/ui:check:   
+@diffgazer/ui:check:     59 │     render(<Checkbox label="Accept" description="You must accept to proceed" />)
+@diffgazer/ui:check:     60 │     const checkbox = screen.getByRole("checkbox")
+@diffgazer/ui:check:   > 61 │     const descId = checkbox.getAttribute("aria-describedby")!
+@diffgazer/ui:check:        │                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+@diffgazer/ui:check:     62 │     expect(document.getElementById(descId)).toHaveTextContent("You must accept to proceed")
+@diffgazer/ui:check:     63 │   })
+@diffgazer/ui:check:   
+@diffgazer/ui:check: 
+@diffgazer/ui:check: registry/ui/code-block/code-block.test.tsx:450:20 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━
+@diffgazer/ui:check: 
+@diffgazer/ui:check:   ! Forbidden non-null assertion.
+@diffgazer/ui:check:   
+@diffgazer/ui:check:     448 │       )
+@diffgazer/ui:check:     449 │ 
+@diffgazer/ui:check:   > 450 │       const line = document.querySelector("[data-slot=\"code-block-line\"]")!
+@diffgazer/ui:check:         │                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+@diffgazer/ui:check:     451 │       expect(codeTokenCount(line)).toBeGreaterThan(0)
+@diffgazer/ui:check:     452 │       expect(line.querySelector("code")).toHaveTextContent("const x = 1")
+@diffgazer/ui:check:   
+@diffgazer/ui:check: 
+@diffgazer/ui:check: registry/ui/code-block/code-block.test.tsx:462:20 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━
+@diffgazer/ui:check: 
+@diffgazer/ui:check:   ! Forbidden non-null assertion.
+@diffgazer/ui:check:   
+@diffgazer/ui:check:     460 │       )
+@diffgazer/ui:check:     461 │ 
+@diffgazer/ui:check:   > 462 │       const line = document.querySelector("[data-slot=\"code-block-line\"]")!
+@diffgazer/ui:check:         │                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+@diffgazer/ui:check:     463 │       expect(codeTokenCount(line)).toBe(0)
+@diffgazer/ui:check:     464 │       expect(line.querySelector("code")).toHaveTextContent("const x = 1")
+@diffgazer/ui:check:   
+@diffgazer/ui:check: 
+@diffgazer/ui:check: registry/ui/code-block/code-block.test.tsx:489:29 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━
+@diffgazer/ui:check: 
+@diffgazer/ui:check:   ! Forbidden non-null assertion.
+@diffgazer/ui:check:   
+@diffgazer/ui:check:     487 │       ).toBe("−")
+@diffgazer/ui:check:     488 │       // Highlighting still tokenizes the code on diff-state rows.
+@diffgazer/ui:check:   > 489 │       expect(codeTokenCount(lines[0]!)).toBeGreaterThan(0)
+@diffgazer/ui:check:         │                             ^^^^^^^^^
+@diffgazer/ui:check:     490 │       expect(codeTokenCount(lines[1]!)).toBeGreaterThan(0)
+@diffgazer/ui:check:     491 │     })
+@diffgazer/ui:check:   
+@diffgazer/ui:check: 
+@diffgazer/ui:check: registry/ui/code-block/code-block.test.tsx:490:29 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━
+@diffgazer/ui:check: 
+@diffgazer/ui:check:   ! Forbidden non-null assertion.
+@diffgazer/ui:check:   
+@diffgazer/ui:check:     488 │       // Highlighting still tokenizes the code on diff-state rows.
+@diffgazer/ui:check:     489 │       expect(codeTokenCount(lines[0]!)).toBeGreaterThan(0)
+@diffgazer/ui:check:   > 490 │       expect(codeTokenCount(lines[1]!)).toBeGreaterThan(0)
+@diffgazer/ui:check:         │                             ^^^^^^^^^
+@diffgazer/ui:check:     491 │     })
+@diffgazer/ui:check:     492 │ 
+@diffgazer/ui:check:   
+@diffgazer/ui:check: 
+@diffgazer/ui:check: registry/ui/field/field.test.tsx:135:24 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/ui:check: 
+@diffgazer/ui:check:   ! Forbidden non-null assertion.
+@diffgazer/ui:check:   
+@diffgazer/ui:check:     134 │     const input = screen.getByRole("textbox")
+@diffgazer/ui:check:   > 135 │     const labelledBy = input.getAttribute("aria-labelledby")!
+@diffgazer/ui:check:         │                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+@diffgazer/ui:check:     136 │     expect(labelledBy).toContain("external-label")
+@diffgazer/ui:check:     137 │ 
+@diffgazer/ui:check:   
+@diffgazer/ui:check: 
+@diffgazer/ui:check: registry/ui/horizontal-stepper/horizontal-stepper.test.tsx:22:24 lint/style/noNonNullAssertion ━━━━━━━━━━
+@diffgazer/ui:check: 
+@diffgazer/ui:check:   ! Forbidden non-null assertion.
+@diffgazer/ui:check:   
+@diffgazer/ui:check:     20 │   it("marks active step and provides screen reader labels for all statuses", () => {
+@diffgazer/ui:check:     21 │     renderStepper("config")
+@diffgazer/ui:check:   > 22 │     const configItem = screen.getByText("Config").closest("li")!
+@diffgazer/ui:check:        │                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+@diffgazer/ui:check:     23 │     expect(configItem).toHaveAttribute("aria-current", "step")
+@diffgazer/ui:check:     24 │     expect(screen.getByText("Current:")).toBeInTheDocument()
+@diffgazer/ui:check:   
+@diffgazer/ui:check: 
+@diffgazer/ui:check: registry/ui/horizontal-stepper/horizontal-stepper.test.tsx:26:23 lint/style/noNonNullAssertion ━━━━━━━━━━
+@diffgazer/ui:check: 
+@diffgazer/ui:check:   ! Forbidden non-null assertion.
+@diffgazer/ui:check:   
+@diffgazer/ui:check:     24 │     expect(screen.getByText("Current:")).toBeInTheDocument()
+@diffgazer/ui:check:     25 │ 
+@diffgazer/ui:check:   > 26 │     const introItem = screen.getByText("Intro").closest("li")!
+@diffgazer/ui:check:        │                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+@diffgazer/ui:check:     27 │     expect(introItem).not.toHaveAttribute("aria-current")
+@diffgazer/ui:check:     28 │     expect(screen.getByText("Completed:")).toBeInTheDocument()
+@diffgazer/ui:check:   
+@diffgazer/ui:check: 
+@diffgazer/ui:check: The number of diagnostics exceeds the limit allowed. Use --max-diagnostics to increase it.
+@diffgazer/ui:check: Diagnostics not shown: 28.
+@diffgazer/ui:check: Checked 816 files in 216ms. No fixes applied.
+@diffgazer/ui:check: Found 45 warnings.
+@diffgazer/ui:check: Found 3 infos.
+@diffgazer/landing:check: cache miss, executing 089304a931731775
+@diffgazer/docs:check: cache miss, executing c4260e2b2c87c66e
+@diffgazer/add:check: cache miss, executing 1c6e3a1b68ef18f8
+@diffgazer/web:check: cache miss, executing 0a6d9349e6c5001c
+@diffgazer/docs:check: 
+@diffgazer/docs:check: > @diffgazer/docs@ check /Users/voitz/Projects/diffgazer-workspace/apps/docs
+@diffgazer/docs:check: > biome check
+@diffgazer/docs:check: 
+@diffgazer/web:check: 
+@diffgazer/web:check: > @diffgazer/web@0.1.0 check /Users/voitz/Projects/diffgazer-workspace/apps/web
+@diffgazer/web:check: > biome check
+@diffgazer/web:check: 
+@diffgazer/add:check: 
+@diffgazer/add:check: > @diffgazer/add@0.1.1 check /Users/voitz/Projects/diffgazer-workspace/cli/add
+@diffgazer/add:check: > biome check .
+@diffgazer/add:check: 
+@diffgazer/landing:check: 
+@diffgazer/landing:check: > @diffgazer/landing@ check /Users/voitz/Projects/diffgazer-workspace/apps/landing
+@diffgazer/landing:check: > biome check .
+@diffgazer/landing:check: 
+@diffgazer/landing:check: Checked 19 files in 7ms. No fixes applied.
+@diffgazer/add:check: scripts/bundle-registry.ts:28:14 lint/style/useTemplate  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/add:check: 
+@diffgazer/add:check:   i Template literals are preferred over string concatenation.
+@diffgazer/add:check:   
+@diffgazer/add:check:     26 │       .replace(/^@import\s+["']\.\/theme-base\.css["'];\s*\n?/m, "");
+@diffgazer/add:check:     27 │     return {
+@diffgazer/add:check:   > 28 │       theme: baseContent + "\n" + themeContent,
+@diffgazer/add:check:        │              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+@diffgazer/add:check:     29 │       styles: readFileSync(stylesPath, "utf-8"),
+@diffgazer/add:check:     30 │     };
+@diffgazer/add:check:   
+@diffgazer/add:check:   i Unsafe fix: Use a template literal.
+@diffgazer/add:check:   
+@diffgazer/add:check:     26 26 │         .replace(/^@import\s+["']\.\/theme-base\.css["'];\s*\n?/m, "");
+@diffgazer/add:check:     27 27 │       return {
+@diffgazer/add:check:     28    │ - ······theme:·baseContent·+·"\n"·+·themeContent,
+@diffgazer/add:check:        28 │ + ······theme:·`${baseContent}\n${themeContent}`,
+@diffgazer/add:check:     29 29 │         styles: readFileSync(stylesPath, "utf-8"),
+@diffgazer/add:check:     30 30 │       };
+@diffgazer/add:check:   
+@diffgazer/add:check: 
+@diffgazer/add:check: src/commands/init.test.ts:66:27 lint/style/useTemplate  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/add:check: 
+@diffgazer/add:check:   i Template literals are preferred over string concatenation.
+@diffgazer/add:check:   
+@diffgazer/add:check:     64 │         // freshly-created lockfile.
+@diffgazer/add:check:     65 │         afterFiles: async (cwd) => {
+@diffgazer/add:check:   > 66 │           const mutated = JSON.stringify(
+@diffgazer/add:check:        │                           ^^^^^^^^^^^^^^^
+@diffgazer/add:check:   > 67 │             { name: "fixture", type: "module", dependencies: { clsx: "^2.0.0" } },
+@diffgazer/add:check:   > 68 │             null,
+@diffgazer/add:check:   > 69 │             2,
+@diffgazer/add:check:   > 70 │           ) + "\n";
+@diffgazer/add:check:        │           ^^^^^^^^
+@diffgazer/add:check:     71 │           writeFileSync(join(cwd, "package.json"), mutated);
+@diffgazer/add:check:     72 │           writeFileSync(join(cwd, "pnpm-lock.yaml"), "lockfileVersion: '9.0'\n");
+@diffgazer/add:check:   
+@diffgazer/add:check:   i Unsafe fix: Use a template literal.
+@diffgazer/add:check:   
+@diffgazer/add:check:      64  64 │           // freshly-created lockfile.
+@diffgazer/add:check:      65  65 │           afterFiles: async (cwd) => {
+@diffgazer/add:check:      66     │ - ··········const·mutated·=·JSON.stringify(
+@diffgazer/add:check:          66 │ + ··········const·mutated·=·`${JSON.stringify(
+@diffgazer/add:check:      67  67 │               { name: "fixture", type: "module", dependencies: { clsx: "^2.0.0" } },
+@diffgazer/add:check:      68  68 │               null,
+@diffgazer/add:check:      69  69 │               2,
+@diffgazer/add:check:      70     │ - ··········)·+·"\n";
+@diffgazer/add:check:          70 │ + ··········)}\n`;
+@diffgazer/add:check:      71  71 │             writeFileSync(join(cwd, "package.json"), mutated);
+@diffgazer/add:check:      72  72 │             writeFileSync(join(cwd, "pnpm-lock.yaml"), "lockfileVersion: '9.0'\n");
+@diffgazer/add:check:   
+@diffgazer/add:check: 
+@diffgazer/add:check: src/commands/init.ts:93:57 lint/style/useTemplate  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/add:check: 
+@diffgazer/add:check:   i Template literals are preferred over string concatenation.
+@diffgazer/add:check:   
+@diffgazer/add:check:     91 │   if (!hookExists) mkdirSync(hookPath, { recursive: true });
+@diffgazer/add:check:     92 │   return [
+@diffgazer/add:check:   > 93 │     { action: compExists ? "skipped" : "created", path: componentsDir + "/" },
+@diffgazer/add:check:        │                                                         ^^^^^^^^^^^^^^^^^^^
+@diffgazer/add:check:     94 │     { action: hookExists ? "skipped" : "created", path: hooksDir + "/" },
+@diffgazer/add:check:     95 │   ];
+@diffgazer/add:check:   
+@diffgazer/add:check:   i Unsafe fix: Use a template literal.
+@diffgazer/add:check:   
+@diffgazer/add:check:      91  91 │     if (!hookExists) mkdirSync(hookPath, { recursive: true });
+@diffgazer/add:check:      92  92 │     return [
+@diffgazer/add:check:      93     │ - ····{·action:·compExists·?·"skipped"·:·"created",·path:·componentsDir·+·"/"·},
+@diffgazer/add:check:          93 │ + ····{·action:·compExists·?·"skipped"·:·"created",·path:·`${componentsDir}/`·},
+@diffgazer/add:check:      94  94 │       { action: hookExists ? "skipped" : "created", path: hooksDir + "/" },
+@diffgazer/add:check:      95  95 │     ];
+@diffgazer/add:check:   
+@diffgazer/add:check: 
+@diffgazer/add:check: src/commands/init.ts:94:57 lint/style/useTemplate  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/add:check: 
+@diffgazer/add:check:   i Template literals are preferred over string concatenation.
+@diffgazer/add:check:   
+@diffgazer/add:check:     92 │   return [
+@diffgazer/add:check:     93 │     { action: compExists ? "skipped" : "created", path: componentsDir + "/" },
+@diffgazer/add:check:   > 94 │     { action: hookExists ? "skipped" : "created", path: hooksDir + "/" },
+@diffgazer/add:check:        │                                                         ^^^^^^^^^^^^^^
+@diffgazer/add:check:     95 │   ];
+@diffgazer/add:check:     96 │ }
+@diffgazer/add:check:   
+@diffgazer/add:check:   i Unsafe fix: Use a template literal.
+@diffgazer/add:check:   
+@diffgazer/add:check:      92  92 │     return [
+@diffgazer/add:check:      93  93 │       { action: compExists ? "skipped" : "created", path: componentsDir + "/" },
+@diffgazer/add:check:      94     │ - ····{·action:·hookExists·?·"skipped"·:·"created",·path:·hooksDir·+·"/"·},
+@diffgazer/add:check:          94 │ + ····{·action:·hookExists·?·"skipped"·:·"created",·path:·`${hooksDir}/`·},
+@diffgazer/add:check:      95  95 │     ];
+@diffgazer/add:check:      96  96 │   }
+@diffgazer/add:check:   
+@diffgazer/add:check: 
+@diffgazer/add:check: src/utils/detect.ts:43:8 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/add:check: 
+@diffgazer/add:check:   ! Forbidden non-null assertion.
+@diffgazer/add:check:   
+@diffgazer/add:check:     41 │   return aliases.find((alias) => alias.importPrefix === "@")
+@diffgazer/add:check:     42 │     ?? aliases.find((alias) => alias.importPrefix === "~")
+@diffgazer/add:check:   > 43 │     ?? aliases[0]!;
+@diffgazer/add:check:        │        ^^^^^^^^^^^
+@diffgazer/add:check:     44 │ }
+@diffgazer/add:check:     45 │ 
+@diffgazer/add:check:   
+@diffgazer/add:check: 
+@diffgazer/add:check: src/utils/detect.ts:104:24 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/add:check: 
+@diffgazer/add:check:   ! Forbidden non-null assertion.
+@diffgazer/add:check:   
+@diffgazer/add:check:     102 │   }
+@diffgazer/add:check:     103 │   const [, major, minor] = match;
+@diffgazer/add:check:   > 104 │   const maj = parseInt(major!, 10);
+@diffgazer/add:check:         │                        ^^^^^^
+@diffgazer/add:check:     105 │   const min = parseInt(minor!, 10);
+@diffgazer/add:check:     106 │   return maj > 13 || (maj === 13 && min >= 4);
+@diffgazer/add:check:   
+@diffgazer/add:check: 
+@diffgazer/add:check: src/utils/detect.ts:105:24 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/add:check: 
+@diffgazer/add:check:   ! Forbidden non-null assertion.
+@diffgazer/add:check:   
+@diffgazer/add:check:     103 │   const [, major, minor] = match;
+@diffgazer/add:check:     104 │   const maj = parseInt(major!, 10);
+@diffgazer/add:check:   > 105 │   const min = parseInt(minor!, 10);
+@diffgazer/add:check:         │                        ^^^^^^
+@diffgazer/add:check:     106 │   return maj > 13 || (maj === 13 && min >= 4);
+@diffgazer/add:check:     107 │ }
+@diffgazer/add:check:   
+@diffgazer/add:check: 
+@diffgazer/add:check: src/utils/keys-copy-bundle.test.ts:30:14 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/add:check: 
+@diffgazer/add:check:   ! Forbidden non-null assertion.
+@diffgazer/add:check:   
+@diffgazer/add:check:     28 │       items: [
+@diffgazer/add:check:     29 │         {
+@diffgazer/add:check:   > 30 │           ...bundle.items[0]!,
+@diffgazer/add:check:        │              ^^^^^^^^^^^^^^^^
+@diffgazer/add:check:     31 │           files: [{ ...bundle.items[0]!.files[0]!, content: "export const useFocusTrap = () => evil();\n" }],
+@diffgazer/add:check:     32 │         },
+@diffgazer/add:check:   
+@diffgazer/add:check: 
+@diffgazer/add:check: src/utils/keys-copy-bundle.test.ts:31:24 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/add:check: 
+@diffgazer/add:check:   ! Forbidden non-null assertion.
+@diffgazer/add:check:   
+@diffgazer/add:check:     29 │         {
+@diffgazer/add:check:     30 │           ...bundle.items[0]!,
+@diffgazer/add:check:   > 31 │           files: [{ ...bundle.items[0]!.files[0]!, content: "export const useFocusTrap = () => evil();\n" }],
+@diffgazer/add:check:        │                        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+@diffgazer/add:check:     32 │         },
+@diffgazer/add:check:     33 │       ],
+@diffgazer/add:check:   
+@diffgazer/add:check: 
+@diffgazer/add:check: src/utils/keys-copy-bundle.test.ts:31:24 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━━━━━
+@diffgazer/add:check: 
+@diffgazer/add:check:   ! Forbidden non-null assertion.
+@diffgazer/add:check:   
+@diffgazer/add:check:     29 │         {
+@diffgazer/add:check:     30 │           ...bundle.items[0]!,
+@diffgazer/add:check:   > 31 │           files: [{ ...bundle.items[0]!.files[0]!, content: "export const useFocusTrap = () => evil();\n" }],
+@diffgazer/add:check:        │                        ^^^^^^^^^^^^^^^^
+@diffgazer/add:check:     32 │         },
+@diffgazer/add:check:     33 │       ],
+@diffgazer/add:check:   
+@diffgazer/add:check:   i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+@diffgazer/add:check:   
+@diffgazer/add:check:     29 29 │           {
+@diffgazer/add:check:     30 30 │             ...bundle.items[0]!,
+@diffgazer/add:check:     31    │ - ··········files:·[{·...bundle.items[0]!.files[0]!,·content:·"export·const·useFocusTrap·=·()·=>·evil();\n"·}],
+@diffgazer/add:check:        31 │ + ··········files:·[{·...bundle.items[0]?.files[0]!,·content:·"export·const·useFocusTrap·=·()·=>·evil();\n"·}],
+@diffgazer/add:check:     32 32 │           },
+@diffgazer/add:check:     33 33 │         ],
+@diffgazer/add:check:   
+@diffgazer/add:check: 
+@diffgazer/add:check: src/utils/keys-copy-bundle.ts:14:57 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/add:check: 
+@diffgazer/add:check:   ! Forbidden non-null assertion.
+@diffgazer/add:check:   
+@diffgazer/add:check:     12 │     resolve(__dirname, "../generated", fileName),
+@diffgazer/add:check:     13 │   ];
+@diffgazer/add:check:   > 14 │   return candidates.find((path) => existsSync(path)) ?? candidates[0]!;
+@diffgazer/add:check:        │                                                         ^^^^^^^^^^^^^^
+@diffgazer/add:check:     15 │ }
+@diffgazer/add:check:     16 │ 
+@diffgazer/add:check:   
+@diffgazer/add:check: 
+@diffgazer/add:check: src/utils/transform.ts:321:19 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/add:check: 
+@diffgazer/add:check:   ! Forbidden non-null assertion.
+@diffgazer/add:check:   
+@diffgazer/add:check:     319 │   for (let i = 0; i < lines.length; i++) {
+@diffgazer/add:check:     320 │     if (!matchedIndices.has(i)) {
+@diffgazer/add:check:   > 321 │       result.push(lines[i]!);
+@diffgazer/add:check:         │                   ^^^^^^^^^
+@diffgazer/add:check:     322 │       continue;
+@diffgazer/add:check:     323 │     }
+@diffgazer/add:check:   
+@diffgazer/add:check: 
+@diffgazer/add:check: tests/e2e/cli.e2e.ts:626:25 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/add:check: 
+@diffgazer/add:check:   ! Forbidden non-null assertion.
+@diffgazer/add:check:   
+@diffgazer/add:check:     624 │       .find(([, record]) => (record.cssChunks ?? []).length > 0);
+@diffgazer/add:check:     625 │     expect(chunkOwnerEntry, "expected at least one item to record cssChunks").toBeTruthy();
+@diffgazer/add:check:   > 626 │     const ownerHashes = chunkOwnerEntry![1].cssChunks!;
+@diffgazer/add:check:         │                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+@diffgazer/add:check:     627 │ 
+@diffgazer/add:check:     628 │     // Grant the same chunk hashes to ui/button (explicit, so it is preserved
+@diffgazer/add:check:   
+@diffgazer/add:check: 
+@diffgazer/add:check: tests/e2e/cli.e2e.ts:626:25 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@diffgazer/add:check: 
+@diffgazer/add:check:   ! Forbidden non-null assertion.
+@diffgazer/add:check:   
+@diffgazer/add:check:     624 │       .find(([, record]) => (record.cssChunks ?? []).length > 0);
+@diffgazer/add:check:     625 │     expect(chunkOwnerEntry, "expected at least one item to record cssChunks").toBeTruthy();
+@diffgazer/add:check:   > 626 │     const ownerHashes = chunkOwnerEntry![1].cssChunks!;
+@diffgazer/add:check:         │                         ^^^^^^^^^^^^^^^^
+@diffgazer/add:check:     627 │ 
+@diffgazer/add:check:     628 │     // Grant the same chunk hashes to ui/button (explicit, so it is preserved
+@diffgazer/add:check:   
+@diffgazer/add:check:   i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+@diffgazer/add:check:   
+@diffgazer/add:check:     624 624 │         .find(([, record]) => (record.cssChunks ?? []).length > 0);
+@diffgazer/add:check:     625 625 │       expect(chunkOwnerEntry, "expected at least one item to record cssChunks").toBeTruthy();
+@diffgazer/add:check:     626     │ - ····const·ownerHashes·=·chunkOwnerEntry![1].cssChunks!;
+@diffgazer/add:check:         626 │ + ····const·ownerHashes·=·chunkOwnerEntry?.[1].cssChunks!;
+@diffgazer/add:check:     627 627 │   
+@diffgazer/add:check:     628 628 │       // Grant the same chunk hashes to ui/button (explicit, so it is preserved
+@diffgazer/add:check:   
+@diffgazer/add:check: 
+@diffgazer/add:check: Checked 35 files in 50ms. No fixes applied.
+@diffgazer/add:check: Found 10 warnings.
+@diffgazer/add:check: Found 4 infos.
+@diffgazer/web:check: Checked 195 files in 71ms. No fixes applied.
+@diffgazer/docs:check: Checked 134 files in 79ms. No fixes applied.
+diffgazer:check: cache miss, executing 77d1fa10e67866d8
+diffgazer:check: 
+diffgazer:check: > diffgazer@0.1.4 check /Users/voitz/Projects/diffgazer-workspace/cli/diffgazer
+diffgazer:check: > biome check .
+diffgazer:check: 
+diffgazer:check: Checked 175 files in 30ms. No fixes applied.
+
+ Tasks:    10 successful, 10 total
+Cached:    0 cached, 10 total
+  Time:    2.052s 
+
+
+> @diffgazer/repo@0.0.0 depcruise /Users/voitz/Projects/diffgazer-workspace
+> depcruise --config .dependency-cruiser.cjs apps cli libs
+
+
+  warn no-orphans: libs/core/src/get-figlet.ts
+  warn no-orphans: libs/core/src/breakpoints.ts
+  warn no-orphans: apps/web/src/features/providers/components/list.tsx
+  warn no-orphans: apps/web/src/features/history/hooks/use-keyboard.ts
+  warn no-orphans: apps/web/src/features/help/components/page.tsx
+  warn no-orphans: apps/web/src/components/ui/card-layout.tsx
+
+x 6 dependency violations (0 errors, 6 warnings). 1979 modules, 3353 dependencies cruised.
+

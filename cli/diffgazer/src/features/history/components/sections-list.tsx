@@ -1,8 +1,8 @@
-import type { ReactElement } from "react";
-import { Box, Text } from "ink";
 import type { TimelineItem } from "@diffgazer/core/schemas/presentation";
+import { Box, Text } from "ink";
+import type { ReactElement } from "react";
+import { useTheme } from "../../../app/providers/theme";
 import { NavigationList } from "../../../components/ui/navigation-list";
-import { useTheme } from "../../../theme/theme-context";
 
 export interface SectionsListProps {
   items: TimelineItem[];

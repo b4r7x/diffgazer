@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
 import { KeyboardProvider, useKey, useScope } from "@diffgazer/keys"
+import { useState } from "react"
 
 function Page() {
   const [log, setLog] = useState("page")

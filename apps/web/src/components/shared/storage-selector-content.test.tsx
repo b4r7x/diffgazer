@@ -1,8 +1,8 @@
-import { useState } from "react";
-import { describe, expect, it, vi } from "vitest";
+import type { SecretsStorage } from "@diffgazer/core/schemas/config";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { SecretsStorage } from "@diffgazer/core/schemas/config";
+import { useState } from "react";
+import { describe, expect, it, vi } from "vitest";
 import { StorageSelectorContent } from "./storage-selector-content";
 
 function StorageSelectorHarness() {

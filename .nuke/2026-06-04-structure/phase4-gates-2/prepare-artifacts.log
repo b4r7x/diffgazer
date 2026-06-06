@@ -1,0 +1,414 @@
+
+> @diffgazer/repo@0.0.0 prepare:artifacts /Users/voitz/Projects/diffgazer-workspace
+> pnpm run prepare:library-artifacts && DIFFGAZER_SKIP_ARTIFACT_PREPARE=1 pnpm --filter @diffgazer/docs prepare:generated
+
+
+> @diffgazer/repo@0.0.0 prepare:library-artifacts /Users/voitz/Projects/diffgazer-workspace
+> pnpm --filter @diffgazer/core generate:catalog-snapshot && pnpm --filter @diffgazer/registry build && pnpm --filter @diffgazer/keys build && pnpm --filter @diffgazer/ui build && pnpm --filter @diffgazer/add generate:bundles && node --import tsx cli/add/scripts/copy-generated.ts
+
+
+> @diffgazer/core@0.0.1 generate:catalog-snapshot /Users/voitz/Projects/diffgazer-workspace/libs/core
+> node --import tsx scripts/generate-catalog-snapshot.ts
+
+[catalog-snapshot] wrote 9 providers to /Users/voitz/Projects/diffgazer-workspace/libs/core/src/catalog/catalog-snapshot.ts
+
+> @diffgazer/registry@0.1.0 build /Users/voitz/Projects/diffgazer-workspace/libs/registry
+> tsc
+
+
+> @diffgazer/keys@0.2.0 build /Users/voitz/Projects/diffgazer-workspace/libs/keys
+> pnpm validate:registry && rm -rf dist && tsc && pnpm verify:dist-esm && pnpm verify:rsc && pnpm build:shadcn && pnpm build:artifacts
+
+
+> @diffgazer/keys@0.2.0 validate:registry /Users/voitz/Projects/diffgazer-workspace/libs/keys
+> node --import tsx scripts/validate-registry-closure.ts
+
+
+> @diffgazer/keys@0.2.0 verify:dist-esm /Users/voitz/Projects/diffgazer-workspace/libs/keys
+> node --import tsx scripts/verify-dist-esm-imports.ts
+
+[keys] dist ESM relative imports carry .js OK
+
+> @diffgazer/keys@0.2.0 verify:rsc /Users/voitz/Projects/diffgazer-workspace/libs/keys
+> node --import tsx scripts/verify-rsc-directives.ts
+
+[keys] RSC client directives OK (12 dist outputs guarded)
+
+> @diffgazer/keys@0.2.0 build:shadcn /Users/voitz/Projects/diffgazer-workspace/libs/keys
+> node --import tsx scripts/build-shadcn-registry.ts
+
+- Building navigation...
+- Building focus-restore...
+- Building focusable...
+- Building focus-trap...
+- Building scroll-lock...
+✔ Building registry.
+
+> @diffgazer/keys@0.2.0 build:artifacts /Users/voitz/Projects/diffgazer-workspace/libs/keys
+> pnpm build:docs-data && node --import tsx scripts/build-publish-artifacts.ts
+
+
+> @diffgazer/keys@0.2.0 build:docs-data /Users/voitz/Projects/diffgazer-workspace/libs/keys
+> node --import tsx scripts/build-docs-data.ts
+
+Found 9 hooks (4 registry + 5 extra)
+Wrote 9 per-hook JSON files
+Wrote hook-list.json (9 entries)
+Skipped hook MDX generation (9 hooks, hand-authored MDX)
+Wrote 9 hook MDX pages + meta.json
+Wrote keys-hooks.json (4 hooks)
+Wrote demo-index.ts
+
+--- Build Summary (keys) ---
+Hooks: 9
+Errors: 0
+Build completed successfully.
+[keys] artifact manifest written: /Users/voitz/Projects/diffgazer-workspace/libs/keys/dist/artifacts/artifact-manifest.json
+[keys] artifact fingerprint: 9ced7f71123e7271944e2b9224a02004d62a8234595bcb1a61351a235aa1a05c
+[keys-artifacts] copied artifacts from /Users/voitz/Projects/diffgazer-workspace/libs/keys/dist/artifacts
+
+> @diffgazer/ui@0.2.0 build /Users/voitz/Projects/diffgazer-workspace/libs/ui
+> pnpm validate:registry && tsup && pnpm verify:rsc && pnpm build:declarations && pnpm build:shadcn && pnpm build:docs-data && pnpm build:artifacts
+
+
+> @diffgazer/ui@0.2.0 validate:registry /Users/voitz/Projects/diffgazer-workspace/libs/ui
+> node --import tsx scripts/validate-registry-metadata.ts
+
+[ui] registry metadata OK
+CLI Building entry: {"components/accordion":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/accordion/index.ts","components/button":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/button/index.ts","components/avatar":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/avatar/index.ts","components/badge":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/badge/index.ts","components/input":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/input/index.ts","components/field":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/field/index.ts","components/textarea":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/textarea/index.ts","components/callout":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/callout/index.ts","components/portal":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/shared/portal.tsx","components/checkbox":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/checkbox/index.ts","components/icons":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/icons/index.ts","components/radio":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/radio/index.ts","components/panel":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/panel/index.ts","components/scroll-area":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/scroll-area/index.ts","components/card":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/card/index.ts","components/block-bar":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/block-bar/index.ts","components/section-header":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/section-header/index.ts","components/empty-state":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/empty-state/index.ts","components/key-value":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/key-value/index.ts","components/label":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/label/index.ts","components/overflow":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/overflow/index.ts","components/tooltip":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/tooltip/index.ts","components/dialog":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/dialog/index.ts","components/dialog-shell":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/shared/dialog-shell.tsx","components/kbd":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/kbd/index.ts","components/divider":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/divider/index.ts","components/tabs":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/tabs/index.ts","components/menu":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/menu/index.ts","components/navigation-list":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/navigation-list/index.ts","components/toast":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/toast/index.ts","components/stepper":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/stepper/index.ts","components/search-input":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/search-input/index.ts","components/toggle-group":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/toggle-group/index.ts","components/code-block":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/code-block/index.ts","components/diff-view":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/diff-view/index.ts","components/horizontal-stepper":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/horizontal-stepper/index.ts","components/command-palette":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/command-palette/index.ts","components/select":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/select/index.ts","components/spinner":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/spinner/index.ts","components/sidebar":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/sidebar/index.ts","components/pager":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/pager/index.ts","components/logo":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/logo/index.ts","components/breadcrumbs":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/breadcrumbs/index.ts","components/toc":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/toc/index.ts","components/typography":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/typography/index.ts","hooks/controllable-state":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/hooks/use-controllable-state.ts","hooks/form-reset":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/hooks/use-form-reset.ts","hooks/floating-indicator":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/hooks/use-floating-indicator.ts","hooks/active-heading":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/hooks/use-active-heading.ts","hooks/overflow-detection":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/hooks/use-overflow.ts","hooks/overflow-items":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/hooks/use-overflow-items.ts","hooks/outside-click":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/hooks/use-outside-click.ts","hooks/presence":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/hooks/use-presence.ts","lib/diff":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/lib/diff/index.ts","lib/compose-refs":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/lib/compose-refs.ts","lib/utils":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/lib/utils.ts","lib/aria":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/lib/aria.ts","lib/typeahead":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/lib/typeahead.ts","lib/selectable-variants":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/lib/selectable-variants.ts","lib/segmented-variants":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/lib/segmented-variants.ts","lib/selectable-collection":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/lib/selectable-collection.ts","lib/input-variants":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/lib/input-variants.ts","lib/step-status":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/lib/step-status.ts","lib/stepper-variants":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/lib/stepper-variants.ts","lib/sidebar-variants":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/sidebar/sidebar-variants.ts","lib/sidebar-intent":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/sidebar/sidebar-intent.ts","hooks/use-is-mobile":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/hooks/use-is-mobile.ts","hooks/use-navigation":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/hooks/use-navigation.ts","hooks/use-focus-restore":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/hooks/use-focus-restore.ts","hooks/use-focus-trap":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/hooks/use-focus-trap.ts","hooks/use-scroll-lock":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/hooks/use-scroll-lock.ts","lib/search":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/lib/search.ts","hooks/floating-position":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/hooks/use-floating-position.ts","components/floating-panel":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/floating-panel/index.ts","hooks/listbox":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/hooks/use-listbox.ts","hooks/typeahead-buffer":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/hooks/use-typeahead-buffer.ts","components/popover":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/popover/index.ts","components/switch":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/switch/index.ts","components/progress":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/progress/index.ts","components/skeleton":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/skeleton/index.ts","components/logo/figlet":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/logo/figlet-text.ts","components/code-block/highlight":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/code-block/highlight.ts","components/command-palette/highlight":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/command-palette/highlight.ts"}
+CLI Using tsconfig: tsconfig.json
+CLI tsup v8.5.1
+CLI Using tsup config: /Users/voitz/Projects/diffgazer-workspace/libs/ui/tsup.config.ts
+CLI Target: es2022
+CLI Cleaning output folder
+ESM Build start
+ESM dist/chunk-6AFY5L56.js                       0 B
+ESM dist/hooks/floating-position.js              256.00 B
+ESM dist/components/command-palette/highlight.js 3.04 KB
+ESM dist/spinner-IV3PAVH6.js                     153.00 B
+ESM dist/components/code-block/highlight.js      2.18 KB
+ESM dist/hooks/typeahead-buffer.js               108.00 B
+ESM dist/components/floating-panel.js            369.00 B
+ESM dist/components/switch.js                    4.31 KB
+ESM dist/components/progress.js                  1.41 KB
+ESM dist/hooks/listbox.js                        316.00 B
+ESM dist/components/skeleton.js                  421.00 B
+ESM dist/lib/sidebar-variants.js                 152.00 B
+ESM dist/hooks/use-is-mobile.js                  94.00 B
+ESM dist/lib/sidebar-intent.js                   98.00 B
+ESM dist/hooks/use-navigation.js                 128.00 B
+ESM dist/components/popover.js                   605.00 B
+ESM dist/hooks/use-focus-restore.js              135.00 B
+ESM dist/lib/search.js                           84.00 B
+ESM dist/lib/aria.js                             176.00 B
+ESM dist/hooks/use-scroll-lock.js                129.00 B
+ESM dist/lib/segmented-variants.js               294.00 B
+ESM dist/lib/typeahead.js                        88.00 B
+ESM dist/components/logo/figlet.js               1.19 KB
+ESM dist/lib/input-variants.js                   124.00 B
+ESM dist/hooks/use-focus-trap.js                 126.00 B
+ESM dist/lib/step-status.js                      126.00 B
+ESM dist/hooks/outside-click.js                  134.00 B
+ESM dist/lib/stepper-variants.js                 1.03 KB
+ESM dist/hooks/presence.js                       94.00 B
+ESM dist/lib/selectable-variants.js              380.00 B
+ESM dist/hooks/active-heading.js                 6.60 KB
+ESM dist/hooks/overflow-items.js                 150.00 B
+ESM dist/lib/diff.js                             354.00 B
+ESM dist/components/pager.js                     1.62 KB
+ESM dist/hooks/overflow-detection.js             94.00 B
+ESM dist/hooks/controllable-state.js             112.00 B
+ESM dist/lib/utils.js                            62.00 B
+ESM dist/components/toc.js                       2.28 KB
+ESM dist/components/logo.js                      555.00 B
+ESM dist/hooks/form-reset.js                     96.00 B
+ESM dist/components/typography.js                2.03 KB
+ESM dist/hooks/floating-indicator.js             112.00 B
+ESM dist/components/breadcrumbs.js               4.06 KB
+ESM dist/components/code-block.js                6.51 KB
+ESM dist/chunk-3YWJ6QQ5.js                       3.40 KB
+ESM dist/components/toggle-group.js              10.84 KB
+ESM dist/lib/compose-refs.js                     80.00 B
+ESM dist/chunk-6Z4FHG5Y.js                       6.78 KB
+ESM dist/components/horizontal-stepper.js        4.47 KB
+ESM dist/chunk-WLFM3QJY.js                       12.34 KB
+ESM dist/chunk-YWO67C6J.js                       5.00 KB
+ESM dist/chunk-AYW4YIKG.js                       178.00 B
+ESM dist/components/select.js                    37.02 KB
+ESM dist/components/spinner.js                   155.00 B
+ESM dist/components/sidebar.js                   19.14 KB
+ESM dist/components/kbd.js                       188.00 B
+ESM dist/chunk-IG5672ZP.js                       845.00 B
+ESM dist/chunk-JLX3RWSV.js                       5.34 KB
+ESM dist/chunk-ILA5OXHL.js                       746.00 B
+ESM dist/chunk-M2SQNVUZ.js                       522.00 B
+ESM dist/components/command-palette.js           7.74 KB
+ESM dist/components/tabs.js                      10.05 KB
+ESM dist/components/menu.js                      24.53 KB
+ESM dist/components/divider.js                   1.81 KB
+ESM dist/components/navigation-list.js           21.12 KB
+ESM dist/chunk-ANOF6YBU.js                       9.94 KB
+ESM dist/chunk-UBDYIZJS.js                       3.93 KB
+ESM dist/chunk-4IGFB3XU.js                       693.00 B
+ESM dist/components/toast.js                     20.65 KB
+ESM dist/chunk-YHVT5XCE.js                       821.00 B
+ESM dist/chunk-RJZDWL2N.js                       1.75 KB
+ESM dist/components/stepper.js                   13.79 KB
+ESM dist/chunk-AIYZVMZG.js                       254.00 B
+ESM dist/chunk-QQCY3IHT.js                       10.53 KB
+ESM dist/components/search-input.js              2.52 KB
+ESM dist/components/diff-view.js                 15.55 KB
+ESM dist/lib/selectable-collection.js            560.00 B
+ESM dist/components/key-value.js                 3.26 KB
+ESM dist/components/empty-state.js               3.35 KB
+ESM dist/components/overflow.js                  553.00 B
+ESM dist/components/tooltip.js                   662.00 B
+ESM dist/components/dialog.js                    791.00 B
+ESM dist/components/dialog-shell.js              156.00 B
+ESM dist/components/portal.js                    115.00 B
+ESM dist/chunk-M63N76UE.js                       14.69 KB
+ESM dist/components/checkbox.js                  11.87 KB
+ESM dist/components/icons.js                     141.00 B
+ESM dist/chunk-HJD6NP4C.js                       3.16 KB
+ESM dist/components/radio.js                     14.76 KB
+ESM dist/chunk-CUBJ5D4G.js                       3.46 KB
+ESM dist/chunk-IICUP5F6.js                       2.63 KB
+ESM dist/components/label.js                     2.21 KB
+ESM dist/components/panel.js                     7.47 KB
+ESM dist/chunk-JJ5ED7WE.js                       1.14 KB
+ESM dist/components/section-header.js            985.00 B
+ESM dist/components/scroll-area.js               167.00 B
+ESM dist/components/block-bar.js                 5.90 KB
+ESM dist/components/button.js                    151.00 B
+ESM dist/chunk-BA2RCCLS.js                       4.75 KB
+ESM dist/chunk-YNKMWJU4.js                       1.26 KB
+ESM dist/components/accordion.js                 9.29 KB
+ESM dist/chunk-K7HWVFFB.js                       2.32 KB
+ESM dist/components/card.js                      5.48 KB
+ESM dist/chunk-CZUHZGNC.js                       1.94 KB
+ESM dist/chunk-QQME7DQA.js                       1.44 KB
+ESM dist/chunk-Q7NMCJZD.js                       3.24 KB
+ESM dist/chunk-7C42UDEK.js                       4.03 KB
+ESM dist/chunk-2GUJLT3W.js                       1.32 KB
+ESM dist/chunk-F6JT5W4G.js                       3.21 KB
+ESM dist/chunk-ILJI4XJW.js                       7.59 KB
+ESM dist/components/badge.js                     133.00 B
+ESM dist/chunk-NFRUBB7H.js                       680.00 B
+ESM dist/chunk-66VOVZZC.js                       15.01 KB
+ESM dist/components/input.js                     2.83 KB
+ESM dist/chunk-PYM5PU5N.js                       7.96 KB
+ESM dist/chunk-VOU576W7.js                       706.00 B
+ESM dist/chunk-C6JARL7D.js                       2.43 KB
+ESM dist/components/field.js                     5.57 KB
+ESM dist/chunk-74WMQPTR.js                       765.00 B
+ESM dist/chunk-D64DSFWG.js                       695.00 B
+ESM dist/components/callout.js                   6.81 KB
+ESM dist/components/avatar.js                    7.30 KB
+ESM dist/chunk-PWTVMIUN.js                       1.63 KB
+ESM dist/chunk-H4ZBKY7P.js                       920.00 B
+ESM dist/components/textarea.js                  524.00 B
+ESM dist/chunk-OECJ6KZF.js                       803.00 B
+ESM dist/chunk-22XYRA5X.js                       173.00 B
+ESM dist/chunk-Y2JJSZWY.js                       1.12 KB
+ESM ⚡️ Build success in 55ms
+Injected "use client" into 0 entry points
+
+> @diffgazer/ui@0.2.0 verify:rsc /Users/voitz/Projects/diffgazer-workspace/libs/ui
+> node --import tsx scripts/verify-rsc-directives.ts
+
+[ui] RSC client directives OK
+
+> @diffgazer/ui@0.2.0 build:declarations /Users/voitz/Projects/diffgazer-workspace/libs/ui
+> node --import tsx scripts/build-declarations.ts
+
+
+> @diffgazer/ui@0.2.0 build:shadcn /Users/voitz/Projects/diffgazer-workspace/libs/ui
+> node --import tsx scripts/build-shadcn-registry.ts
+
+- Building accordion...
+- Building button...
+- Building avatar...
+- Building badge...
+- Building input...
+- Building field...
+- Building textarea...
+- Building callout...
+- Building portal...
+- Building checkbox...
+- Building icons...
+- Building radio...
+- Building panel...
+- Building scroll-area...
+- Building card...
+- Building block-bar...
+- Building section-header...
+- Building empty-state...
+- Building key-value...
+- Building label...
+- Building overflow...
+- Building tooltip...
+- Building dialog...
+- Building dialog-shell...
+- Building kbd...
+- Building divider...
+- Building tabs...
+- Building menu...
+- Building navigation-list...
+- Building toast...
+- Building stepper...
+- Building search-input...
+- Building toggle-group...
+- Building code-block...
+- Building diff-view...
+- Building horizontal-stepper...
+- Building command-palette...
+- Building select...
+- Building spinner...
+- Building sidebar...
+- Building pager...
+- Building logo...
+- Building breadcrumbs...
+- Building toc...
+- Building typography...
+- Building controllable-state...
+- Building form-reset...
+- Building floating-indicator...
+- Building active-heading...
+- Building overflow-detection...
+- Building overflow-items...
+- Building outside-click...
+- Building presence...
+- Building theme...
+- Building diff...
+- Building compose-refs...
+- Building utils...
+- Building aria...
+- Building typeahead...
+- Building selectable-variants...
+- Building segmented-variants...
+- Building selectable-collection...
+- Building input-variants...
+- Building step-status...
+- Building stepper-variants...
+- Building sidebar-variants...
+- Building sidebar-intent...
+- Building use-is-mobile...
+- Building use-navigation...
+- Building use-focus-restore...
+- Building use-focus-trap...
+- Building use-scroll-lock...
+- Building search...
+- Building floating-position...
+- Building floating-panel...
+- Building listbox...
+- Building typeahead-buffer...
+- Building popover...
+- Building switch...
+- Building progress...
+- Building skeleton...
+✔ Building registry.
+
+> @diffgazer/ui@0.2.0 build:docs-data /Users/voitz/Projects/diffgazer-workspace/libs/ui
+> node --import tsx scripts/build-docs-data.ts
+
+Processing: accordion
+Processing: button
+Processing: avatar
+Processing: badge
+Processing: input
+Processing: field
+Processing: textarea
+Processing: callout
+Processing: checkbox
+Processing: icons
+Processing: radio
+Processing: panel
+Processing: scroll-area
+Processing: card
+Processing: block-bar
+Processing: section-header
+Processing: empty-state
+Processing: key-value
+Processing: label
+Processing: overflow
+Processing: tooltip
+Processing: dialog
+Processing: kbd
+Processing: divider
+Processing: tabs
+Processing: menu
+Processing: navigation-list
+Processing: toast
+Processing: stepper
+Processing: search-input
+Processing: toggle-group
+Processing: code-block
+Processing: diff-view
+Processing: command-palette
+Processing: select
+Processing: spinner
+Processing: sidebar
+Processing: pager
+Processing: logo
+Processing: breadcrumbs
+Processing: toc
+Processing: typography
+Processing: floating-panel
+Processing: popover
+Processing: switch
+Processing: progress
+Processing: skeleton
+Wrote 47 per-component JSON files
+Wrote component-list.json (47 entries)
+Skipped component MDX generation (47 components, hand-authored MDX)
+Found 10 hooks (10 registry + 0 extra)
+Wrote 10 per-hook JSON files
+Wrote hook-list.json (10 entries)
+Skipped hook MDX generation (10 hooks, hand-authored MDX)
+Wrote 10 hook MDX pages + meta.json
+Wrote ui-hooks.json (10 hooks)
+Wrote ui-libs.json (3 libs)
+Wrote demo-index.ts
+
+--- Build Summary (ui) ---
+Components: 47
+Hooks: 10
+Libs: 3
+Errors: 0
+Build completed successfully.
+
+> @diffgazer/ui@0.2.0 build:artifacts /Users/voitz/Projects/diffgazer-workspace/libs/ui
+> node --import tsx scripts/build-publish-artifacts.ts
+
+[ui] artifact manifest written: /Users/voitz/Projects/diffgazer-workspace/libs/ui/dist/artifacts/artifact-manifest.json
+[ui] artifact fingerprint: fa545d461291b52548e9b205ba3db71a435ae9c8e4c208e13f92196671b5f5e5
+
+> @diffgazer/add@0.1.1 generate:bundles /Users/voitz/Projects/diffgazer-workspace/cli/add
+> node --import tsx scripts/bundle-registry.ts && node --import tsx scripts/generate-keys-copy-bundle.ts
+
+  Bundling registry...
+
+  Bundle summary:
+  Bundled 81 components (321 files)
+  Bundle size: 811.8 KB
+  Integrity: sha256-8ac4f841116467c50858514e6fb199d9993f363bbdcfbdde55e0b9d027bead12
+  Output: /Users/voitz/Projects/diffgazer-workspace/cli/add/src/generated/registry-bundle.json
+
+  Dependencies:
+    accordion: @diffgazer/keys
+    code-block: lowlight
+    logo: figlet
+    use-navigation: @diffgazer/keys
+    use-focus-restore: @diffgazer/keys
+    use-focus-trap: @diffgazer/keys
+    use-scroll-lock: @diffgazer/keys
+    popover: @diffgazer/keys
+Wrote keys copy bundle: /Users/voitz/Projects/diffgazer-workspace/cli/add/src/generated/keys-copy-bundle.json (5 items)
+
+> @diffgazer/docs@ prepare:generated /Users/voitz/Projects/diffgazer-workspace/apps/docs
+> node ./scripts/prepare-generated.mjs
+
+[docs-sync] Mode: workspace
+[docs-sync] Artifacts unchanged; skipping sync.
+[logo-ascii] wrote 3 logo + 1 heading entries to /Users/voitz/Projects/diffgazer-workspace/apps/docs/src/generated/logo-ascii.ts
+[sections-with-index] wrote 18 sections to /Users/voitz/Projects/diffgazer-workspace/apps/docs/src/generated/sections-with-index.ts

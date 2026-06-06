@@ -73,8 +73,10 @@ function getViewportMetrics(doc: Document, container: HTMLElement | null) {
 
 function findLastAbove(elements: HTMLElement[], line: number, thresholdRatio = 0): string | null {
   for (let i = elements.length - 1; i >= 0; i--) {
-    const rect = elements[i]!.getBoundingClientRect();
-    if (rect.top + rect.height * thresholdRatio <= line) return elements[i]!.id;
+    const element = elements[i];
+    if (!element) continue;
+    const rect = element.getBoundingClientRect();
+    if (rect.top + rect.height * thresholdRatio <= line) return element.id;
   }
   return null;
 }
@@ -153,6 +155,7 @@ export function useActiveHeading({
     setActiveId(next);
   });
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: idsKey is the serialized form of ids (ids.join("\0")); depending on the array identity would re-run this effect every render, so ids.length/ids[0] reads are covered by idsKey.
   useEffect(() => {
     if (doc === null || !enabled || ids.length === 0) {
       setActiveId(null);

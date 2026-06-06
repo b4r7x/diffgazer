@@ -1,7 +1,7 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+import type { AgentStreamEvent, EnrichEvent, StepEvent } from "../schemas/events/index.js";
+import type { ReviewIssue } from "../schemas/review/index.js";
 import { convertAgentEventsToLogEntries } from "./event-to-log.js";
-import type { AgentStreamEvent, EnrichEvent, StepEvent } from "@diffgazer/core/schemas/events";
-import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 
 const timestamp = "2025-02-01T10:00:00Z";
 
@@ -165,7 +165,7 @@ describe("convertAgentEventsToLogEntries", () => {
       ...(expected.isError !== undefined && { isError: expected.isError }),
     }));
     for (const text of expected.messageIncludes ?? []) {
-      expect(entry!.message).toContain(text);
+      expect(entry?.message).toContain(text);
     }
   });
 
@@ -174,8 +174,8 @@ describe("convertAgentEventsToLogEntries", () => {
       { type: "agent_thinking", agent: "detective", thought: "A".repeat(200), timestamp },
     ]);
 
-    expect(entry!.tagType).toBe("thinking");
-    expect(entry!.message.length).toBeLessThanOrEqual(100);
+    expect(entry?.tagType).toBe("thinking");
+    expect(entry?.message.length).toBeLessThanOrEqual(100);
   });
 
   it("preserves event order and generates unique ids", () => {
@@ -189,8 +189,8 @@ describe("convertAgentEventsToLogEntries", () => {
     expect(ids.every((id) => id.length > 0)).toBe(true);
     expect(new Set(ids).size).toBe(entries.length);
     expect(entries.map((entry) => entry.tag)).toEqual(["START", "DET", "SEC"]);
-    expect(entries[0]!.message).toContain("3 files");
-    expect(entries[1]!.message).toContain("1 issue");
-    expect(entries[1]!.message).not.toContain("1 issues");
+    expect(entries[0]?.message).toContain("3 files");
+    expect(entries[1]?.message).toContain("1 issue");
+    expect(entries[1]?.message).not.toContain("1 issues");
   });
 });

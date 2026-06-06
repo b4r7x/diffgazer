@@ -9,7 +9,8 @@
     "registry/**/*.ts",
     "registry/**/*.tsx",
     "shared/**/*.ts",
-    "test-setup.ts"
+    "scripts/**/*.test.ts",
+    "src/test-setup.ts"
   ],
   "exclude": ["node_modules", "dist"]
 }

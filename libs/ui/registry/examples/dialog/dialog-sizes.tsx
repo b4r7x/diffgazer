@@ -1,14 +1,14 @@
+import { InlineCode } from "@/components/ui/code-block"
 import {
   Dialog,
-  DialogTrigger,
+  DialogBody,
+  DialogClose,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogBody,
-  DialogFooter,
-  DialogClose,
+  DialogTrigger,
 } from "@/components/ui/dialog"
-import { InlineCode } from "@/components/ui/code-block"
 
 export default function DialogSizes() {
   return (

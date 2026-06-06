@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { useAccordionItemContext } from "./accordion-context";
 
@@ -23,6 +23,7 @@ export function AccordionContent({ children, className, region = false }: Accord
       aria-hidden={!isOpen || undefined}
       inert={!isOpen || undefined}
     >
+      {/* biome-ignore lint/a11y/useAriaPropsSupportedByRole: role is conditionally "region" (Biome cannot resolve the ternary); aria-labelledby is applied only in the same branch and is valid for the region role. */}
       <div
         className={cn("overflow-hidden min-h-0 pt-2", className)}
         role={exposesRegion ? "region" : undefined}

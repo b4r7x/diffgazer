@@ -1,11 +1,11 @@
-import { test, describe, afterEach, expect, vi } from "vitest";
-import type { ReactNode } from "react";
-import { render, cleanup } from "ink-testing-library";
-import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
+import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
-import { createApi, type BoundApi } from "@diffgazer/core/api";
 import type { ProviderModelsResponse } from "@diffgazer/core/schemas/config";
-import { CliThemeProvider } from "../../../../theme/theme-context";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { cleanup, render } from "ink-testing-library";
+import type { ReactNode } from "react";
+import { afterEach, describe, expect, test, vi } from "vitest";
+import { CliThemeProvider } from "../../../../app/providers/theme";
 import { ModelStep } from "./model-step";
 
 const GEMINI_CATALOG: ProviderModelsResponse = {

@@ -13,18 +13,29 @@
     },
     "@diffgazer/landing#build": {
       "dependsOn": ["^build"],
+      "env": ["VITE_DOCS_ORIGIN"],
+      "outputs": ["dist/**"]
+    },
+    "@diffgazer/web#build": {
+      "dependsOn": ["^build"],
+      "env": ["VITE_API_URL", "VITE_DIFFGAZER_SHUTDOWN_TOKEN"],
       "outputs": ["dist/**"]
     },
     "diffgazer#build": {
-      "dependsOn": ["^build", "@diffgazer/web#build"],
+      "dependsOn": ["^build"],
       "outputs": ["dist/**"]
     },
     "type-check": {
       "dependsOn": ["^type-check"]
     },
     "test": {
-      "dependsOn": ["^test"],
-      "outputs": ["coverage/**"]
+      "dependsOn": ["^test", "^build"]
+    },
+    "@diffgazer/add#test": {
+      "dependsOn": ["^build", "generate:bundles"]
+    },
+    "generate:bundles": {
+      "outputs": ["src/generated/**"]
     },
     "test:types": {
       "dependsOn": ["^build", "^test:types"],
@@ -36,9 +47,6 @@
     },
     "check": {
       "dependsOn": ["^check"]
-    },
-    "prepare:generated": {
-      "cache": false
     }
   }
 }

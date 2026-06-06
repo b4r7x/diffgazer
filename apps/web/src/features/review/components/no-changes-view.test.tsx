@@ -1,9 +1,9 @@
+import { FooterProvider } from "@diffgazer/core/footer";
+import type { ReviewMode } from "@diffgazer/core/schemas/review";
+import { KeyboardProvider } from "@diffgazer/keys";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { KeyboardProvider } from "@diffgazer/keys";
-import { FooterProvider } from "@diffgazer/core/footer";
 import { describe, expect, it, vi } from "vitest";
-import type { ReviewMode } from "@diffgazer/core/schemas/review";
 import { NoChangesView, type NoChangesViewProps } from "./no-changes-view";
 
 function renderView(props: Partial<NoChangesViewProps> = {}) {

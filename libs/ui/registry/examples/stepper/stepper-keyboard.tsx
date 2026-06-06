@@ -1,8 +1,8 @@
 "use client"
 
 import { useNavigation } from "@diffgazer/keys"
-import { Stepper } from "@/components/ui/stepper"
 import { useRef, useState } from "react"
+import { Stepper } from "@/components/ui/stepper"
 
 const steps = [
   { id: "checkout", label: "Checkout repository", status: "completed" as const, detail: "Cloned main branch at commit a3f8c21." },

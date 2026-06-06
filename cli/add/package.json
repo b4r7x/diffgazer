@@ -6,7 +6,7 @@
   "author": "diffgazer",
   "type": "module",
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "repository": {
     "type": "git",
@@ -51,17 +51,17 @@
     "validate:artifacts": "pnpm --dir ../.. validate:artifacts",
     "prepack": "pnpm run build",
     "prepublishOnly": "pnpm run build && pnpm run type-check && pnpm run test && pnpm run validate:artifacts",
-    "dev": "tsc --watch",
+    "dev": "tsc --noEmit --watch",
     "type-check": "tsc --noEmit",
-    "test": "pnpm --filter @diffgazer/registry build && pnpm run generate:bundles && vitest run",
-    "test:watch": "vitest",
-    "test:types": "vitest --typecheck --typecheck.only --run"
+    "check": "biome check .",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@clack/prompts": "^0.11.0",
     "commander": "^13.0.0",
     "diff": "^8.0.3",
-    "figlet": "^1.8.0",
+    "figlet": "^1.10.0",
     "picocolors": "^1.1.0",
     "zod": "^4.3.6"
   },
@@ -71,7 +71,7 @@
     "@diffgazer/ui": "workspace:*",
     "@types/node": "^25.2.3",
     "tsup": "^8.5.1",
-    "tsx": "^4.0.0",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vitest": "^4.1.0"
   }

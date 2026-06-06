@@ -1,6 +1,6 @@
 import { createRequire } from "node:module";
-import { type Result, ok, err } from "@diffgazer/core/result";
 import { createError, getErrorMessage } from "@diffgazer/core/errors";
+import { err, ok, type Result } from "@diffgazer/core/result";
 import type { SecretsStorageError, SecretsStorageErrorCode } from "./types.js";
 
 type KeyringModule = typeof import("@napi-rs/keyring");

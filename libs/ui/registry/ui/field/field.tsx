@@ -1,21 +1,21 @@
 "use client";
 
 import {
+  type AriaAttributes,
   Children,
   cloneElement,
   createContext,
-  isValidElement,
-  useContext,
-  useId,
-  useMemo,
-  type AriaAttributes,
   type HTMLAttributes,
+  isValidElement,
   type LabelHTMLAttributes,
   type ReactElement,
   type ReactNode,
   type Ref,
+  useContext,
+  useId,
+  useMemo,
 } from "react";
-import { mergeIds } from "@/lib/aria-utils";
+import { mergeIds } from "@/lib/aria";
 import { composeRefs } from "@/lib/compose-refs";
 import { cn } from "@/lib/utils";
 

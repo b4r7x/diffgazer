@@ -57,3 +57,7 @@ await import(
 await import(
 	pathToFileURL(resolve(DOCS_ROOT, "scripts/generate-logo-ascii.mjs")).href
 );
+await import(
+	pathToFileURL(resolve(DOCS_ROOT, "scripts/generate-sections-with-index.mjs"))
+		.href
+);

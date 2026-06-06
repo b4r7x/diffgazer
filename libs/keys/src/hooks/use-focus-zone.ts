@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
-import { useKey } from "./use-key.js";
-import type { UseKeyOptions } from "./use-key.js";
-import { useScope } from "./use-scope.js";
+import { type RefObject, useCallback, useEffect, useRef, useState } from "react";
 import { DECLINE } from "../core/normalize-key-input.js";
-import { isHTMLElement } from "../dom/dom.js";
+import { isHTMLElement } from "../dom/element-guards.js";
 import { containsActiveElement, getFirstFocusableElement, isFocusable } from "../dom/focusable.js";
+import type { UseKeyOptions } from "./use-key.js";
+import { useKey } from "./use-key.js";
+import { useScope } from "./use-scope.js";
 
 type ZoneTransition<T extends string> = (params: {
   zone: T;
@@ -210,15 +210,17 @@ export function useFocusZone<T extends string>(
       if (!isHTMLElement(target)) return;
       for (const zone of zones as readonly T[]) {
         const { container } = resolveFocusTarget(targets[zone]);
-        if (container && container.contains(target)) {
+        if (container?.contains(target)) {
           setZoneValue(zone);
           return;
         }
       }
     }
 
-    docs.forEach((doc) => doc.addEventListener("focusin", handleFocusIn));
-    return () => docs.forEach((doc) => doc.removeEventListener("focusin", handleFocusIn));
+    for (const doc of docs) doc.addEventListener("focusin", handleFocusIn);
+    return () => {
+      for (const doc of docs) doc.removeEventListener("focusin", handleFocusIn);
+    };
   }, [enabled, focus, zones, setZoneValue]);
 
   const safeZone = zones.includes(currentZone) ? currentZone : zones[0];

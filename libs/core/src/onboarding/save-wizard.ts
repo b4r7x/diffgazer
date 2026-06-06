@@ -2,7 +2,7 @@ import {
   PROVIDER_ENV_VARS,
   type SaveConfigRequest,
   type SettingsConfig,
-} from "@diffgazer/core/schemas/config";
+} from "../schemas/config/index.js";
 import type { WizardData } from "./types.js";
 
 export type SettingsPayload = Pick<

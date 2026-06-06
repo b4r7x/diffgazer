@@ -2,20 +2,20 @@
 
 import {
   Children,
-  isValidElement,
   type ComponentProps,
+  isValidElement,
   type ReactNode,
   useId,
   useMemo,
 } from "react";
-import { cn } from "@/lib/utils";
 import { stepperStepVariants } from "@/lib/stepper-variants";
+import { cn } from "@/lib/utils";
+import { StepperContent } from "./stepper-content";
 import {
-  useStepperContext,
   StepperStepContext,
   type StepStatus,
+  useStepperContext,
 } from "./stepper-context";
-import { StepperContent } from "./stepper-content";
 
 export interface StepperStepProps
   extends Omit<ComponentProps<"li">, "children"> {

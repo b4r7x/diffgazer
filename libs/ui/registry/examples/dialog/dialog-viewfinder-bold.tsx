@@ -1,14 +1,14 @@
 import {
   Dialog,
-  DialogTrigger,
+  DialogAction,
+  DialogBody,
+  DialogClose,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
-  DialogBody,
-  DialogFooter,
-  DialogClose,
-  DialogAction,
+  DialogTrigger,
 } from "@/components/ui/dialog"
 
 export default function DialogViewfinderBold() {

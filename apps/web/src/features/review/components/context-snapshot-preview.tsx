@@ -1,8 +1,8 @@
-import { SectionHeader } from "@diffgazer/ui/components/section-header";
+import type { ReviewContextResponse } from "@diffgazer/core/api/types";
 import { Button } from "@diffgazer/ui/components/button";
 import { CodeBlock } from "@diffgazer/ui/components/code-block";
+import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { downloadAsFile } from "@/utils/download";
-import type { ReviewContextResponse } from "@diffgazer/core/api/types";
 
 interface ContextSnapshotPreviewProps {
   snapshot: ReviewContextResponse;

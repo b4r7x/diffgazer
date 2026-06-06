@@ -1,12 +1,12 @@
-import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
 import { lstat, readFile, realpath } from "node:fs/promises";
-import { join, resolve, sep } from "node:path";
+import { resolve, sep } from "node:path";
 import { promisify } from "node:util";
-import { GIT_FILE_STATUS_CODES, type GitStatus, type GitStatusFiles, type GitFileEntry, type GitFileStatusCode } from "@diffgazer/core/schemas/git";
-import type { GitBlameInfo, ReviewMode } from "@diffgazer/core/schemas/review";
-import { type Result, ok, err } from "@diffgazer/core/result";
 import { getErrorMessage } from "@diffgazer/core/errors";
+import { err, ok, type Result } from "@diffgazer/core/result";
+import { GIT_FILE_STATUS_CODES, type GitFileEntry, type GitFileStatusCode, type GitStatus, type GitStatusFiles } from "@diffgazer/core/schemas/git";
+import type { GitBlameInfo, ReviewMode } from "@diffgazer/core/schemas/review";
 import type { BranchInfo, CategorizedFile } from "./types.js";
 
 const execFileAsync = promisify(execFile);
@@ -36,7 +36,7 @@ const SANITIZED_GIT_ENV: Record<string, string> = {
   GIT_TEMPLATE_DIR: "",
 };
 
-const EMPTY_GIT_STATUS: GitStatus = {
+const _EMPTY_GIT_STATUS: GitStatus = {
   isGitRepo: false,
   branch: null,
   remoteBranch: null,

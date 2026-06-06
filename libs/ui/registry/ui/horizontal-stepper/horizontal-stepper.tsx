@@ -1,11 +1,11 @@
 "use client";
 
-import { useMemo, type ReactNode } from "react";
-import { cn } from "@/lib/utils";
+import { type ReactNode, useMemo } from "react";
 import {
-  horizontalStepperRootVariants,
   type HorizontalStepperVariant,
+  horizontalStepperRootVariants,
 } from "@/lib/stepper-variants";
+import { cn } from "@/lib/utils";
 import { HorizontalStepperContext } from "./horizontal-stepper-context";
 
 export interface HorizontalStepperProps {

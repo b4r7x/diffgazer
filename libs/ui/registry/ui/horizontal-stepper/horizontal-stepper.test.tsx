@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react"
-import { axe } from "../../../testing/utils"
-import { describe, it, expect } from "vitest"
+import { describe, expect, it } from "vitest"
+import { axe } from "../../../testing/axe"
+import { closestElement } from "../../testing/assertions"
 import { HorizontalStepper } from "./index"
 
 const steps = ["intro", "config", "review", "done"]
@@ -19,11 +20,11 @@ function renderStepper(activeStep: string, variant?: "ascii" | "numbered" | "bre
 describe("HorizontalStepper", () => {
   it("marks active step and provides screen reader labels for all statuses", () => {
     renderStepper("config")
-    const configItem = screen.getByText("Config").closest("li")!
+    const configItem = closestElement(screen.getByText("Config"), "li", "Config list item")
     expect(configItem).toHaveAttribute("aria-current", "step")
     expect(screen.getByText("Current:")).toBeInTheDocument()
 
-    const introItem = screen.getByText("Intro").closest("li")!
+    const introItem = closestElement(screen.getByText("Intro"), "li", "Intro list item")
     expect(introItem).not.toHaveAttribute("aria-current")
     expect(screen.getByText("Completed:")).toBeInTheDocument()
 
@@ -65,9 +66,9 @@ describe("HorizontalStepper", () => {
 describe("HorizontalStepper ascii variant", () => {
   it("renders [x] / [~] / [ ] glyphs per status", () => {
     renderStepper("config", "ascii")
-    const intro = screen.getByText("Intro").closest("li")!
-    const config = screen.getByText("Config").closest("li")!
-    const review = screen.getByText("Review").closest("li")!
+    const intro = closestElement(screen.getByText("Intro"), "li", "Intro list item")
+    const config = closestElement(screen.getByText("Config"), "li", "Config list item")
+    const review = closestElement(screen.getByText("Review"), "li", "Review list item")
 
     expect(intro).toHaveTextContent("[x]")
     expect(config).toHaveTextContent("[~]")
@@ -86,12 +87,12 @@ describe("HorizontalStepper ascii variant", () => {
 describe("HorizontalStepper numbered variant", () => {
   it("renders ✓ for completed and an empty counter placeholder for active/pending", () => {
     renderStepper("config", "numbered")
-    const intro = screen.getByText("Intro").closest("li")!
+    const intro = closestElement(screen.getByText("Intro"), "li", "Intro list item")
     expect(intro).toHaveTextContent("✓")
     // Active/pending render an empty <span data-counter> — assert presence rather
     // than glyph (the digit comes from CSS counter via ::before, which jsdom
     // does not paint).
-    const config = screen.getByText("Config").closest("li")!
+    const config = closestElement(screen.getByText("Config"), "li", "Config list item")
     expect(config.querySelector("[data-counter]")).toBeTruthy()
   })
 
@@ -105,8 +106,8 @@ describe("HorizontalStepper numbered variant", () => {
 describe("HorizontalStepper breadcrumb variant", () => {
   it("renders ✓ / › glyphs for completed/active and suppresses pending glyph", () => {
     renderStepper("config", "breadcrumb")
-    const intro = screen.getByText("Intro").closest("li")!
-    const config = screen.getByText("Config").closest("li")!
+    const intro = closestElement(screen.getByText("Intro"), "li", "Intro list item")
+    const config = closestElement(screen.getByText("Config"), "li", "Config list item")
     expect(intro).toHaveTextContent("✓")
     expect(config).toHaveTextContent("›")
   })

@@ -3,7 +3,7 @@ import {
   getKeysHookNames,
   getPublicKeysHookNames,
   resolveKeysCopyHookFiles,
-} from "./integration.js";
+} from "./keys-copy-bundle.js";
 
 export type InstallNamespace = "ui" | "keys";
 const CLI_INSTALLABLE_TYPES = new Set(["registry:ui", "registry:hook", "registry:lib"]);

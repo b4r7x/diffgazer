@@ -1,0 +1,112 @@
+
+> @diffgazer/keys@0.2.0 prepack /Users/voitz/Projects/diffgazer-workspace/libs/keys
+> pnpm run build
+
+
+> @diffgazer/keys@0.2.0 build /Users/voitz/Projects/diffgazer-workspace/libs/keys
+> pnpm validate:registry && rm -rf dist && tsc && pnpm verify:dist-esm && pnpm verify:rsc && pnpm build:shadcn && pnpm build:artifacts
+
+
+> @diffgazer/keys@0.2.0 validate:registry /Users/voitz/Projects/diffgazer-workspace/libs/keys
+> node --import tsx scripts/validate-registry-closure.ts
+
+
+> @diffgazer/keys@0.2.0 verify:dist-esm /Users/voitz/Projects/diffgazer-workspace/libs/keys
+> node --import tsx scripts/verify-dist-esm-imports.ts
+
+[keys] dist ESM relative imports carry .js OK
+
+> @diffgazer/keys@0.2.0 verify:rsc /Users/voitz/Projects/diffgazer-workspace/libs/keys
+> node --import tsx scripts/verify-rsc-directives.ts
+
+[keys] RSC client directives OK (12 dist outputs guarded)
+
+> @diffgazer/keys@0.2.0 build:shadcn /Users/voitz/Projects/diffgazer-workspace/libs/keys
+> node --import tsx scripts/build-shadcn-registry.ts
+
+- Building navigation...
+- Building focus-restore...
+- Building focusable...
+- Building focus-trap...
+- Building scroll-lock...
+✔ Building registry.
+
+> @diffgazer/keys@0.2.0 build:artifacts /Users/voitz/Projects/diffgazer-workspace/libs/keys
+> pnpm build:docs-data && node --import tsx scripts/build-publish-artifacts.ts
+
+
+> @diffgazer/keys@0.2.0 build:docs-data /Users/voitz/Projects/diffgazer-workspace/libs/keys
+> node --import tsx scripts/build-docs-data.ts
+
+Found 9 hooks (4 registry + 5 extra)
+Wrote 9 per-hook JSON files
+Wrote hook-list.json (9 entries)
+Skipped hook MDX generation (9 hooks, hand-authored MDX)
+Wrote 9 hook MDX pages + meta.json
+Wrote keys-hooks.json (4 hooks)
+Wrote demo-index.ts
+
+--- Build Summary (keys) ---
+Hooks: 9
+Errors: 0
+Build completed successfully.
+[keys] artifact manifest written: /Users/voitz/Projects/diffgazer-workspace/libs/keys/dist/artifacts/artifact-manifest.json
+[keys] artifact fingerprint: 4e7167990f642f74409de4960fef90935cc277e9ccc9dd68acb03fa2795030cb
+[keys-artifacts] copied artifacts from /Users/voitz/Projects/diffgazer-workspace/libs/keys/dist/artifacts
+📦  @diffgazer/keys@0.2.0
+Tarball Contents
+dist/core/keys.d.ts
+dist/core/keys.js
+dist/core/list-navigation.d.ts
+dist/core/list-navigation.js
+dist/core/navigation-directions.d.ts
+dist/core/navigation-directions.js
+dist/core/navigation-dispatch.d.ts
+dist/core/navigation-dispatch.js
+dist/core/normalize-key-input.d.ts
+dist/core/normalize-key-input.js
+dist/dom/element-guards.d.ts
+dist/dom/element-guards.js
+dist/dom/focus-restore.d.ts
+dist/dom/focus-restore.js
+dist/dom/focusable.d.ts
+dist/dom/focusable.js
+dist/dom/hotkey.d.ts
+dist/dom/hotkey.js
+dist/dom/navigation-items.d.ts
+dist/dom/navigation-items.js
+dist/hooks/use-action-row-navigation.d.ts
+dist/hooks/use-action-row-navigation.js
+dist/hooks/use-focus-restore.d.ts
+dist/hooks/use-focus-restore.js
+dist/hooks/use-focus-trap.d.ts
+dist/hooks/use-focus-trap.js
+dist/hooks/use-focus-zone.d.ts
+dist/hooks/use-focus-zone.js
+dist/hooks/use-key.d.ts
+dist/hooks/use-key.js
+dist/hooks/use-navigation.d.ts
+dist/hooks/use-navigation.js
+dist/hooks/use-scope.d.ts
+dist/hooks/use-scope.js
+dist/hooks/use-scoped-navigation.d.ts
+dist/hooks/use-scoped-navigation.js
+dist/hooks/use-scroll-lock.d.ts
+dist/hooks/use-scroll-lock.js
+dist/index.d.ts
+dist/index.js
+dist/providers/keyboard-context.d.ts
+dist/providers/keyboard-context.js
+dist/providers/keyboard.d.ts
+dist/providers/keyboard.js
+dist/testing/navigation-behavior.d.ts
+dist/testing/navigation-behavior.js
+dist/testing/test-utils.d.ts
+dist/testing/test-utils.js
+LICENSE
+package.json
+README.md
+SECURITY.md
+SUPPORT.md
+Tarball Details
+/Users/voitz/Projects/diffgazer-workspace/diffgazer-keys-0.2.0.tgz

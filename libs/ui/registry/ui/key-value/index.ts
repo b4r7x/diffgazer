@@ -1,8 +1,8 @@
 "use client";
 
-import { KeyValue as KeyValueRoot, keyValueVariants, type KeyValueProps } from "./key-value";
+import { type KeyValueProps, KeyValue as KeyValueRoot, keyValueVariants } from "./key-value";
 import type { KeyValueLayout, KeyValueVariant } from "./key-value-context";
-import { KeyValueItem, labelVariants as keyValueLabelVariants, valueVariants as keyValueValueVariants, type KeyValueItemProps } from "./key-value-item";
+import { KeyValueItem, type KeyValueItemProps, labelVariants as keyValueLabelVariants, valueVariants as keyValueValueVariants } from "./key-value-item";
 
 const KeyValue = Object.assign(KeyValueRoot, { Item: KeyValueItem });
 

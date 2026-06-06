@@ -7,12 +7,16 @@ import { nitro } from "nitro/vite";
 import type { PluginOption } from "vite";
 import { defineConfig } from "vite";
 import viteTsConfigPaths from "vite-tsconfig-paths";
-import { getPreRenderPages as enumeratePreRenderPages } from "./scripts/generate-sitemap.mjs";
+import { getPreRenderPages as enumeratePreRenderPages } from "./scripts/generate-sitemap.ts";
 import * as MdxConfig from "./source.config";
 import { docsDataRebuild } from "./vite-plugin-docs-rebuild";
 
 function getPreRenderPages(): Array<{ path: string }> {
 	return enumeratePreRenderPages().map(({ path }) => ({ path }));
+}
+
+function uiRegistryPath(subpath: string): string {
+	return resolve(import.meta.dirname, "../../libs/ui/registry", subpath);
 }
 
 const config = defineConfig(() => {
@@ -22,7 +26,7 @@ const config = defineConfig(() => {
 	const plugins: PluginOption[] = [
 		mdx(MdxConfig),
 		viteTsConfigPaths({
-			projects: ["./tsconfig.json", "./registry/tsconfig.json"],
+			projects: ["./tsconfig.json"],
 		}),
 		tailwindcss(),
 		docsDataRebuild(),
@@ -42,21 +46,15 @@ const config = defineConfig(() => {
 	return {
 		test: isVitest
 			? {
-					typecheck: {
-						enabled: false,
-						tsconfig: "./tsconfig.test.json",
-						include: [
-							"src/**/*.test.ts",
-							"src/**/*.test.tsx",
-							"scripts/**/*.test.ts",
-						],
-					},
+					environment: "jsdom",
+					setupFiles: ["./src/test-setup.ts"],
 				}
 			: undefined,
 		server: {
 			port: 3000,
 		},
 		build: {
+			chunkSizeWarningLimit: 1_500,
 			rollupOptions: {
 				output: {
 					manualChunks(id) {
@@ -75,61 +73,31 @@ const config = defineConfig(() => {
 			noExternal: ["@diffgazer/keys"],
 		},
 		resolve: {
+			// The generated demo examples under registry/examples (lazily imported by
+			// the docs demo loader) are shadcn copy-source authored against the
+			// @/components/ui, @/hooks, and @/lib aliases. Point them at the real
+			// libs/ui/registry source so demos resolve without a duplicated mirror.
 			alias: {
-				"@/components/ui": resolve(import.meta.dirname, "registry/ui"),
-				"@/hooks": resolve(import.meta.dirname, "registry/hooks"),
-				"@/lib/aria-utils": resolve(
-					import.meta.dirname,
-					"registry/lib/aria-utils",
+				"@/components/ui": uiRegistryPath("ui"),
+				"@/hooks": uiRegistryPath("hooks"),
+				"@/lib/utils": uiRegistryPath("lib/utils"),
+				"@/lib/aria": uiRegistryPath("lib/aria"),
+				"@/lib/compose-refs": uiRegistryPath("lib/compose-refs"),
+				"@/lib/diff": uiRegistryPath("lib/diff"),
+				"@/lib/floating-position": uiRegistryPath("lib/floating-position"),
+				"@/lib/floating-position-constants": uiRegistryPath(
+					"lib/floating-position-constants",
 				),
-				"@/lib/compose-refs": resolve(
-					import.meta.dirname,
-					"registry/lib/compose-refs",
+				"@/lib/input-variants": uiRegistryPath("lib/input-variants"),
+				"@/lib/search": uiRegistryPath("lib/search"),
+				"@/lib/segmented-variants": uiRegistryPath("lib/segmented-variants"),
+				"@/lib/selectable-collection": uiRegistryPath(
+					"lib/selectable-collection",
 				),
-				"@/lib/selectable-collection": resolve(
-					import.meta.dirname,
-					"registry/lib/selectable-collection",
-				),
-				"@/lib/selectable-variants": resolve(
-					import.meta.dirname,
-					"registry/lib/selectable-variants",
-				),
-				"@/lib/segmented-variants": resolve(
-					import.meta.dirname,
-					"registry/lib/segmented-variants",
-				),
-				"@/lib/sidebar-variants": resolve(
-					import.meta.dirname,
-					"registry/lib/sidebar-variants",
-				),
-				"@/lib/sidebar-intent": resolve(
-					import.meta.dirname,
-					"registry/lib/sidebar-intent",
-				),
-				"@/lib/stepper-variants": resolve(
-					import.meta.dirname,
-					"registry/lib/stepper-variants",
-				),
-				"@/lib/input-variants": resolve(
-					import.meta.dirname,
-					"registry/lib/input-variants",
-				),
-				"@/lib/resolve-tab-target": resolve(
-					import.meta.dirname,
-					"registry/lib/resolve-tab-target",
-				),
-				"@/lib/search": resolve(import.meta.dirname, "registry/lib/search"),
-				"@/lib/step-status": resolve(
-					import.meta.dirname,
-					"registry/lib/step-status",
-				),
-				"@/lib/focus": resolve(import.meta.dirname, "registry/lib/focus"),
-				"@/lib/typeahead": resolve(
-					import.meta.dirname,
-					"registry/lib/typeahead",
-				),
-				"@/lib/utils": resolve(import.meta.dirname, "src/lib/utils"),
-				"@/lib/diff": resolve(import.meta.dirname, "registry/lib/diff"),
+				"@/lib/selectable-variants": uiRegistryPath("lib/selectable-variants"),
+				"@/lib/step-status": uiRegistryPath("lib/step-status"),
+				"@/lib/stepper-variants": uiRegistryPath("lib/stepper-variants"),
+				"@/lib/typeahead": uiRegistryPath("lib/typeahead"),
 				"@diffgazer/keys": resolve(import.meta.dirname, "../../libs/keys/src"),
 				"@": resolve(import.meta.dirname, "./src"),
 			},

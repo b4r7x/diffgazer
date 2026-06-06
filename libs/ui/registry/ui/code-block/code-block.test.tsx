@@ -1,10 +1,11 @@
-import type { MouseEvent } from "react"
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
-import { afterEach, describe, expect, it, beforeEach, vi } from "vitest"
 import { common, createLowlight } from "lowlight"
-import { axe } from "../../../testing/utils"
-import { CodeBlock } from "./index"
+import type { MouseEvent } from "react"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { axe } from "../../../testing/axe"
+import { requireElement } from "../../testing/assertions"
 import { CodeBlockHighlight, createDefaultLowlight } from "./highlight"
+import { CodeBlock } from "./index"
 
 const lowlight = createLowlight(common)
 
@@ -447,7 +448,10 @@ describe("CodeBlock", () => {
         </CodeBlock>,
       )
 
-      const line = document.querySelector("[data-slot=\"code-block-line\"]")!
+      const line = requireElement(
+        document.querySelector("[data-slot=\"code-block-line\"]"),
+        "highlighted code line",
+      )
       expect(codeTokenCount(line)).toBeGreaterThan(0)
       expect(line.querySelector("code")).toHaveTextContent("const x = 1")
     })
@@ -459,7 +463,10 @@ describe("CodeBlock", () => {
         </CodeBlock>,
       )
 
-      const line = document.querySelector("[data-slot=\"code-block-line\"]")!
+      const line = requireElement(
+        document.querySelector("[data-slot=\"code-block-line\"]"),
+        "plain code line",
+      )
       expect(codeTokenCount(line)).toBe(0)
       expect(line.querySelector("code")).toHaveTextContent("const x = 1")
     })
@@ -486,8 +493,8 @@ describe("CodeBlock", () => {
         lines[1]?.querySelector("[data-slot=\"code-block-line-sign\"]")?.textContent,
       ).toBe("−")
       // Highlighting still tokenizes the code on diff-state rows.
-      expect(codeTokenCount(lines[0]!)).toBeGreaterThan(0)
-      expect(codeTokenCount(lines[1]!)).toBeGreaterThan(0)
+      expect(codeTokenCount(requireElement(lines[0], "added diff line"))).toBeGreaterThan(0)
+      expect(codeTokenCount(requireElement(lines[1], "removed diff line"))).toBeGreaterThan(0)
     })
 
     it("createDefaultLowlight() loads lowlight lazily and returns a usable instance", async () => {

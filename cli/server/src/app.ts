@@ -1,21 +1,19 @@
+import { SHUTDOWN_TOKEN_HEADER } from "@diffgazer/core/api";
+import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import type { Context } from "hono";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { SHUTDOWN_TOKEN_HEADER } from "@diffgazer/core/api";
-import { ErrorCode } from "@diffgazer/core/schemas/errors";
+import { configRouter } from "./features/config/router.js";
+import { gitRouter } from "./features/git/router.js";
+import { healthRouter } from "./features/health.js";
+import { reviewRouter } from "./features/review/router.js";
+import { settingsRouter } from "./features/settings/router.js";
+import { shutdownRouter } from "./features/shutdown/router.js";
 import { safeTokenMatch } from "./shared/lib/crypto.js";
 import { errorResponse } from "./shared/lib/http/response.js";
 import { log } from "./shared/lib/log.js";
-import { requestLogger, type RequestLoggerEnv } from "./shared/middlewares/request-logger.js";
-import { healthRouter } from "./features/health/router.js";
-import { configRouter } from "./features/config/router.js";
-import { settingsRouter } from "./features/settings/router.js";
-import { gitRouter } from "./features/git/router.js";
-import { reviewRouter } from "./features/review/router.js";
-import { shutdownRouter } from "./features/shutdown/router.js";
-
-const isPackaged = (): boolean =>
-  process.env.DIFFGAZER_PACKAGED === "1";
+import { isPackaged } from "./shared/lib/paths.js";
+import { type RequestLoggerEnv, requestLogger } from "./shared/middlewares/request-logger.js";
 
 const isLocalhostOrigin = (origin: string): boolean => {
   try {

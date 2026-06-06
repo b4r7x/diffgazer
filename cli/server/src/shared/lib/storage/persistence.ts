@@ -1,11 +1,11 @@
-import { mkdir, readFile, readdir, unlink } from "node:fs/promises";
-import type { ZodType } from "zod";
-import { type Result, ok, err } from "@diffgazer/core/result";
+import { mkdir, readdir, readFile, unlink } from "node:fs/promises";
 import { createError, getErrorMessage } from "@diffgazer/core/errors";
 import { safeParseJson } from "@diffgazer/core/json";
-import { UuidSchema } from "@diffgazer/core/schemas/shared/fields";
+import { err, ok, type Result } from "@diffgazer/core/result";
+import { UuidSchema } from "@diffgazer/core/schemas/fields";
+import type { ZodType } from "zod";
 import { atomicWriteFile as atomicWrite, isNodeError } from "../fs.js";
-import type { StoreErrorCode, StoreError, CollectionConfig, Collection } from "./types.js";
+import type { Collection, CollectionConfig, StoreError, StoreErrorCode } from "./types.js";
 
 const isValidUuid = (id: string): boolean => UuidSchema.safeParse(id).success;
 
@@ -104,7 +104,7 @@ async function extractMetadataFromFile<M>(
   );
 }
 
-export type { StoreErrorCode, StoreError, Collection } from "./types.js";
+export type { Collection, StoreError, StoreErrorCode } from "./types.js";
 
 export function createCollection<T, M>(config: CollectionConfig<T, M>): Collection<T, M> {
   const { name, dir, filePath, schema, getMetadata, getId, metadataSchema } = config;
@@ -131,7 +131,7 @@ export function createCollection<T, M>(config: CollectionConfig<T, M>): Collecti
 
     const id = getId(item);
     const path = filePath(id);
-    const content = JSON.stringify(item, null, 2) + "\n";
+    const content = `${JSON.stringify(item, null, 2)}\n`;
 
     return safeAtomicWrite(path, content, name);
   }

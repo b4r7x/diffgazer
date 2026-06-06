@@ -1,4 +1,4 @@
-import { SectionHeader } from "@/components/ui/section-header/section-header";
+import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { useCopyFeedback } from "@/lib/use-copy-feedback";
 
 interface ColorSwatch {

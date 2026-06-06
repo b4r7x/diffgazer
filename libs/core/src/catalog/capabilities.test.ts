@@ -1,7 +1,7 @@
-import { describe, it, expect } from "vitest";
-import { parseModelsDevCatalog } from "./schema.js";
+import { describe, expect, it } from "vitest";
 import { deriveCapabilities } from "./capabilities.js";
-import { RAW_CATALOG } from "./__fixtures__/catalog.fixture.js";
+import { RAW_CATALOG } from "./fixtures.js";
+import { parseModelsDevCatalog } from "./schema.js";
 
 const catalog = parseModelsDevCatalog(RAW_CATALOG);
 

@@ -1,4 +1,4 @@
-import { Spinner } from "@/components/ui/spinner/spinner";
+import { Spinner } from "@diffgazer/ui/components/spinner";
 
 export function ContentSpinner() {
 	return (

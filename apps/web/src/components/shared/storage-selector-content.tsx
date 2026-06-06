@@ -1,7 +1,7 @@
-import { useId, useState } from "react";
 import type { SecretsStorage } from "@diffgazer/core/schemas/config";
-import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
 import { toVerticalBoundaryDirection } from "@diffgazer/keys";
+import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
+import { useId, useState } from "react";
 
 export interface StorageSelectorContentProps {
   value: SecretsStorage | null;

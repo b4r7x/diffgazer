@@ -1,4 +1,5 @@
 import browserCollections from "fumadocs-mdx:collections/browser";
+import { Pager } from "@diffgazer/ui/components/pager";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { Suspense } from "react";
@@ -9,13 +10,12 @@ import {
 	type HookData,
 	useDocData,
 } from "@/components/docs-mdx/doc-data-context";
+import { DocsContentLayout } from "@/components/layout/content-layout";
 import {
 	DocsPageBody,
 	DocsPageHeader,
 	DocsPageLayout,
-} from "@/components/docs-page";
-import { Pager } from "@/components/ui/pager";
-import { DocsContentLayout } from "@/layouts/docs-content-layout";
+} from "@/components/page-layout";
 import {
 	type DocsLibraryId,
 	docsPath,
@@ -23,13 +23,13 @@ import {
 	parseDocsLibrary,
 	routeSplatFromDocsPath,
 	sourceSlugsForLibrary,
-} from "@/lib/docs-library";
-import { findPageNeighbors, type PageTree } from "@/lib/docs-tree";
+} from "@/lib/library";
 import { loadDocData } from "@/lib/load-doc-data";
+import { findPageNeighbors, type PageTree } from "@/lib/page-tree";
 import { buildPageSeo } from "@/lib/seo";
 import { useMDXComponents } from "@/mdx-components";
 import { Route as DocsRoute } from "@/routes/$lib";
-import type { ComponentData } from "@/types/docs-data";
+import type { ComponentData } from "@/types/data";
 
 interface LoaderData {
 	path: string;

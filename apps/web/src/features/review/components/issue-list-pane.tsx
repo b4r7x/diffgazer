@@ -1,13 +1,13 @@
-import type { KeyboardEvent, Ref } from "react";
-import { cn } from "@diffgazer/ui/lib/utils";
-import { SeverityFilterGroup, type SeverityFilter } from "./severity-filter-group";
 import { calculateSeverityCounts } from "@diffgazer/core/schemas/presentation";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
-import { NavigationList } from "@diffgazer/ui/components/navigation-list";
-import { EmptyState } from "@diffgazer/ui/components/empty-state";
-import { Panel } from "@diffgazer/ui/components/panel";
-import { SEVERITY_CONFIG } from "@/components/ui/severity/constants";
 import { isListNavigationKey } from "@diffgazer/keys";
+import { EmptyState } from "@diffgazer/ui/components/empty-state";
+import { NavigationList } from "@diffgazer/ui/components/navigation-list";
+import { Panel } from "@diffgazer/ui/components/panel";
+import { cn } from "@diffgazer/ui/lib/utils";
+import type { KeyboardEvent, Ref } from "react";
+import { SEVERITY_CONFIG } from "@/components/ui/severity/constants";
+import { type SeverityFilter, SeverityFilterGroup } from "./severity-filter-group";
 
 interface IssueListState {
   issues: ReviewIssue[];

@@ -1,0 +1,22 @@
+cli/server/src/features/config/service.ts:5: trailing whitespace.
++import type { 
+cli/server/src/features/config/service.ts:6: trailing whitespace.
++  ActivateProviderResponse,AIProvider, 
+cli/server/src/features/config/service.ts:8: trailing whitespace.
++  CurrentConfigResponse as ConfigResponse,CredentialRef, 
+cli/server/src/shared/lib/review/analysis.ts:6: trailing whitespace.
++import type { Lens, 
+cli/server/src/shared/lib/review/orchestrate.ts:6: trailing whitespace.
++import type { LensId, 
+libs/registry/src/cli/index.ts:3: trailing whitespace.
++export {createAddCommand, 
+libs/registry/src/cli/index.ts:4: trailing whitespace.
++  createDiffCommand, 
+libs/registry/src/cli/index.ts:9: trailing whitespace.
++  aliasPathSchema, 
+libs/registry/src/cli/index.ts:12: trailing whitespace.
++  loadJsonConfig, resolveAliasedPaths,updateManifest,writeJsonConfig, 
+libs/registry/src/cli/index.ts:25: trailing whitespace.
++  createRegistryLoader, 
+libs/registry/src/cli/index.ts:28: trailing whitespace.
++  type RegistryItem, 

@@ -1,5 +1,5 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
-import type { ConfigState, SecretsState } from "./types.js";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { ConfigState, } from "./types.js";
 
 const keyring = vi.hoisted(() => ({
   deleteKeyringSecret: vi.fn(),

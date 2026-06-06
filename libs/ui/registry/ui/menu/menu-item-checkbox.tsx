@@ -1,15 +1,15 @@
 "use client";
 
 import {
-  useEffect,
   type ComponentPropsWithRef,
   type FocusEvent,
   type MouseEvent,
   type ReactNode,
   type Ref,
+  useEffect,
 } from "react";
-import { getEncodedListboxItemId } from "@/hooks/use-listbox";
 import { useControllableState } from "@/hooks/use-controllable-state";
+import { getEncodedListboxItemId } from "@/hooks/use-listbox";
 import { cn } from "@/lib/utils";
 import { useMenuContext } from "./menu-context";
 import { getItemState, menuItemBase, menuItemIndicator, menuItemLabel } from "./menu-item-variants";
@@ -87,6 +87,7 @@ export function MenuItemCheckbox({
   const state = getItemState({ disabled, isFocused, isSelected: false });
 
   return (
+    // biome-ignore lint/a11y/useKeyWithClickEvents: Enter/Space toggle is handled centrally by the menu container via useNavigation, not per item.
     <div
       {...rootProps}
       ref={ref}

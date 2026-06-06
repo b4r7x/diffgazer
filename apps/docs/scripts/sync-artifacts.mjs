@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -9,9 +9,9 @@ import {
 import {
 	assertArtifactSyncOutputs,
 	getArtifactLibraries,
-	materializePrimaryStylesFromArtifact,
 	readDocsLibrariesConfig,
 	resolveArtifactSyncMode,
+	rewriteDemoIndexForViteGlob,
 } from "../../../scripts/monorepo/artifacts/sync.mjs";
 
 const DOCS_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -45,13 +45,6 @@ const syncResult = syncDocsFromArtifacts({
 	mode: syncMode,
 	extraRootPages: authoredRootPages,
 });
-
-const primaryArtifact = syncResult.artifacts.find(
-	(artifact) => artifact.id === docsLibraries.primaryLibraryId,
-);
-if (primaryArtifact) {
-	materializePrimaryStylesFromArtifact(DOCS_ROOT, primaryArtifact);
-}
 
 const demoEntries = artifactLibraries
 	.filter((lib) =>
@@ -115,6 +108,21 @@ writeFileSync(
 	join(DOCS_ROOT, "src/generated/library-data.ts"),
 	libraryDataContent,
 );
+
+for (const lib of artifactLibraries) {
+	const demoIndexPath = join(
+		DOCS_ROOT,
+		"src/generated",
+		lib.id,
+		"demo-index.ts",
+	);
+	if (!existsSync(demoIndexPath)) continue;
+
+	writeFileSync(
+		demoIndexPath,
+		rewriteDemoIndexForViteGlob(readFileSync(demoIndexPath, "utf-8")),
+	);
+}
 
 assertArtifactSyncOutputs({
 	docsRoot: DOCS_ROOT,

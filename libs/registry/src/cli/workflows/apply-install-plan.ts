@@ -1,13 +1,12 @@
+import { showDryRunDeps, showDryRunPreview } from "../dry-run-preview.js";
 import {
-  formatWriteSummary,
-  installDepsWithRollback,
-  showDryRunDeps,
-  showDryRunPreview,
   type FileOp,
+  formatWriteSummary,
   type WriteFilesResult,
   writeFilesWithRollback,
-} from "../add-helpers.js";
-import { heading, info, newline, promptConfirm, success } from "../logger.js";
+} from "../file-write-rollback.js";
+import { installDepsWithRollback } from "../install-deps.js";
+import { heading, info, newline, promptConfirm, success } from "../terminal.js";
 
 export interface ApplyInstallPlanOptions {
   cwd: string;

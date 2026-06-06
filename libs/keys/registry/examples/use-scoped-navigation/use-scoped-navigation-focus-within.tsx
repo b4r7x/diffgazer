@@ -1,7 +1,7 @@
 "use client"
 
-import { useRef } from "react"
 import { KeyboardProvider, useScopedNavigation } from "@diffgazer/keys"
+import { useRef } from "react"
 
 const left = ["Inbox", "Drafts", "Sent", "Archive"]
 const right = ["Today", "This week", "Later"]
@@ -29,6 +29,7 @@ function List({ label, items }: { label: string; items: string[] }) {
         style={{ padding: 4, border: "1px solid currentColor" }}
       >
         {items.map((item) => (
+          // biome-ignore lint/a11y/useFocusableInteractive: WAI-ARIA listbox pattern — options stay non-focusable; the listbox container holds focus and active state is tracked via aria-selected.
           <div
             key={item}
             role="option"

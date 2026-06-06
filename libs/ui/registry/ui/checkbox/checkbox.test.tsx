@@ -1,9 +1,10 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { axe } from "../../../testing/utils"
-import { describe, it, expect, vi } from "vitest"
-import { Checkbox } from "./index"
+import { describe, expect, it, vi } from "vitest"
+import { axe } from "../../../testing/axe"
+import { requireAttribute } from "../../testing/assertions"
 import { Field } from "../field/index"
+import { Checkbox } from "./index"
 
 function getForm(name = "Test form"): HTMLFormElement {
   const form = screen.getByRole("form", { name })
@@ -58,7 +59,7 @@ describe("Checkbox", () => {
   it("links description via aria-describedby", () => {
     render(<Checkbox label="Accept" description="You must accept to proceed" />)
     const checkbox = screen.getByRole("checkbox")
-    const descId = checkbox.getAttribute("aria-describedby")!
+    const descId = requireAttribute(checkbox, "aria-describedby")
     expect(document.getElementById(descId)).toHaveTextContent("You must accept to proceed")
   })
 

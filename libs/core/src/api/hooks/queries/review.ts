@@ -1,5 +1,5 @@
 import { queryOptions } from "@tanstack/react-query";
-import type { ReviewMode } from "@diffgazer/core/schemas/review";
+import type { ReviewMode } from "../../../schemas/review/index.js";
 import type { BoundApi } from "../../bound.js";
 
 export const reviewQueries = {

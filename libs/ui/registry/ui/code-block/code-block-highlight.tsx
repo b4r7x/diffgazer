@@ -98,6 +98,7 @@ export function CodeBlockHighlight({
         const number = i + 1;
         return (
           <CodeBlockLine
+            // biome-ignore lint/suspicious/noArrayIndexKey: code lines render in fixed source order and are never reordered; the line index is the stable identity (line content can repeat).
             key={i}
             number={showLineNumbers ? number : undefined}
             state={lineStates?.[number]}

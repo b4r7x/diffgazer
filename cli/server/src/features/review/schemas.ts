@@ -1,10 +1,10 @@
-import { z } from "zod";
 import {
+  DrilldownResultSchema,
   LensIdSchema,
   ProfileIdSchema,
   ReviewModeSchema,
-  DrilldownResultSchema,
 } from "@diffgazer/core/schemas/review";
+import { z } from "zod";
 
 export const ReviewIdParamSchema = z.object({
   id: z.string().uuid(),

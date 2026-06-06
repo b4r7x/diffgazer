@@ -1,7 +1,7 @@
 "use client";
 
-import { toast, Toaster } from "@/components/ui/toast"
 import { Button } from "@/components/ui/button"
+import { Toaster, toast } from "@/components/ui/toast"
 
 function simulateAsync(shouldFail = false): Promise<{ count: number }> {
   return new Promise((resolve, reject) => {

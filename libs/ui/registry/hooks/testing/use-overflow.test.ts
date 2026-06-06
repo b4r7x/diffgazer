@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { render, act } from "@testing-library/react"
+import { act, render } from "@testing-library/react"
 import React from "react"
-import { useOverflow, type OverflowDirection } from "../use-overflow"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { type OverflowDirection, useOverflow } from "../use-overflow"
 
 let resizeCallbacks: (() => void)[] = []
 let mutationCallbacks: (() => void)[] = []

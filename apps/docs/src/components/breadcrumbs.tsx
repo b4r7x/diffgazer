@@ -1,33 +1,7 @@
+import { Breadcrumbs as BreadcrumbsBase } from "@diffgazer/ui/components/breadcrumbs";
 import { useLocation } from "@tanstack/react-router";
-import { Breadcrumbs as BreadcrumbsBase } from "@/components/ui/breadcrumbs";
-import { isDocsLibraryId } from "@/lib/docs-library";
-
-/**
- * Sections that have index pages and can be linked.
- * Sections not listed here render as plain text to avoid 404s.
- * Validated against the `content/docs` tree by breadcrumbs.test.ts; update both
- * when adding/removing `index.mdx` files.
- */
-export const SECTIONS_WITH_INDEX = new Set([
-	"app/concepts",
-	"app/getting-started",
-	"app/operations",
-	"app/reference",
-	"app/tui",
-	"app/web",
-	"ui/cli",
-	"ui/getting-started",
-	"ui/hooks",
-	"ui/integrations",
-	"ui/patterns",
-	"ui/theme",
-	"ui/utils",
-	"keys/api",
-	"keys/cli",
-	"keys/getting-started",
-	"keys/guides",
-	"keys/hooks",
-]);
+import { SECTIONS_WITH_INDEX } from "@/generated/sections-with-index";
+import { isDocsLibraryId } from "@/lib/library";
 
 function hasIndexPage(
 	library: string,

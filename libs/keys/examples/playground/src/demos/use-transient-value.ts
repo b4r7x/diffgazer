@@ -19,7 +19,11 @@ export function useTransientValue<T>(initialValue: T, timeoutMs: number) {
     }, timeoutMs);
   };
 
-  useEffect(() => clearTimer, []);
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current !== null) window.clearTimeout(timeoutRef.current);
+    };
+  }, []);
 
   return [value, show] as const;
 }

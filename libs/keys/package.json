@@ -19,49 +19,21 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
-    "./navigation": {
-      "types": "./dist/hooks/use-navigation.d.ts",
-      "import": "./dist/hooks/use-navigation.js"
-    },
-    "./focus-restore": {
-      "types": "./dist/hooks/use-focus-restore.d.ts",
-      "import": "./dist/hooks/use-focus-restore.js"
-    },
-    "./focus-trap": {
-      "types": "./dist/hooks/use-focus-trap.d.ts",
-      "import": "./dist/hooks/use-focus-trap.js"
-    },
-    "./scroll-lock": {
-      "types": "./dist/hooks/use-scroll-lock.d.ts",
-      "import": "./dist/hooks/use-scroll-lock.js"
-    },
-    "./focusable": {
-      "types": "./dist/dom/focusable.d.ts",
-      "import": "./dist/dom/focusable.js"
-    },
     "./package.json": "./package.json"
-  },
-  "typesVersions": {
-    "*": {
-      "navigation": ["./dist/hooks/use-navigation.d.ts"],
-      "focus-restore": ["./dist/hooks/use-focus-restore.d.ts"],
-      "focus-trap": ["./dist/hooks/use-focus-trap.d.ts"],
-      "scroll-lock": ["./dist/hooks/use-scroll-lock.d.ts"],
-      "focusable": ["./dist/dom/focusable.d.ts"]
-    }
   },
   "files": [
     "dist",
     "!dist/artifacts",
     "!dist/artifacts/**",
-    "internal-docs-manifest.json",
+    "!dist/testing",
+    "!dist/testing/**",
     "README.md",
     "LICENSE",
     "SECURITY.md",
     "SUPPORT.md"
   ],
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "bugs": {
     "url": "https://github.com/b4r7x/diffgazer/issues"
@@ -77,27 +49,26 @@
     "validate:artifacts": "pnpm --dir ../.. validate:artifacts",
     "dev": "tsc --watch",
     "type-check": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json && tsc --noEmit -p scripts/tsconfig.json",
+    "check": "biome check .",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:types": "vitest --typecheck --typecheck.only --run",
-    "verify:registry-cleanup": "node ../../apps/docs/scripts/verify-registry-cleanup.mjs --scope @diffgazer/keys",
     "prepack": "pnpm run build",
-    "prepublishOnly": "pnpm run build && pnpm run type-check && pnpm run test && pnpm run validate:artifacts",
-    "playground": "pnpm --filter playground dev"
+    "prepublishOnly": "pnpm run build && pnpm run type-check && pnpm run test && pnpm run validate:artifacts"
   },
   "peerDependencies": {
     "react": ">=19.2.0"
   },
   "devDependencies": {
     "@diffgazer/registry": "workspace:*",
-    "@testing-library/react": "^16.0.0",
+    "@testing-library/react": "^16.3.2",
     "@types/node": "^25.2.3",
     "@types/react": "^19.2.0",
     "jsdom": "^28.0.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "shadcn": "^4.7.0",
-    "tsx": "^4.0.0",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vitest": "^4.1.0"
   },

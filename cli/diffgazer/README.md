@@ -33,7 +33,9 @@ pnpm --filter diffgazer start
 
 ## Global Install (npm)
 
-The public `diffgazer` npm package is published. Run `npm view diffgazer version` to verify the current published version. For local development, use the workspace development and production commands above.
+`diffgazer` is external publish-gated as of May 2026; public `npm install -g diffgazer` / `npx diffgazer` commands are valid only after `npm view diffgazer version` succeeds. Use the workspace dev/start commands above until then.
+
+After publication, the public commands are:
 
 ```bash
 npm install -g diffgazer

@@ -1,5 +1,13 @@
+import { PROVIDER_DISABLED, SaveConfigRequestSchema } from "@diffgazer/core/schemas/config";
+import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
+import { getProjectRoot } from "../../shared/lib/http/request.js";
+import { type ErrorStatus, errorResponse, zodErrorHandler } from "../../shared/lib/http/response.js";
+import { createBodyLimitMiddleware, DEFAULT_BODY_LIMIT_KB } from "../../shared/middlewares/body-limit.js";
+import { createRateLimitMiddleware } from "../../shared/middlewares/rate-limit.js";
+import { requireRepoAccess } from "../../shared/middlewares/trust-guard.js";
+import { ActivateProviderBodySchema, ProviderModelsParamSchema, ProviderParamSchema } from "./schemas.js";
 import {
   activateProvider,
   checkConfig,
@@ -10,17 +18,9 @@ import {
   getOpenRouterModels,
   getProviderModels,
   getProvidersStatus,
-  saveConfig,
   type ProviderModelsErrorCode,
+  saveConfig,
 } from "./service.js";
-import { errorResponse, zodErrorHandler, type ErrorStatus } from "../../shared/lib/http/response.js";
-import { getProjectRoot } from "../../shared/lib/http/request.js";
-import { createBodyLimitMiddleware, DEFAULT_BODY_LIMIT_KB } from "../../shared/middlewares/body-limit.js";
-import { createRateLimitMiddleware } from "../../shared/middlewares/rate-limit.js";
-import { requireRepoAccess } from "../../shared/middlewares/trust-guard.js";
-import { ErrorCode } from "@diffgazer/core/schemas/errors";
-import { PROVIDER_DISABLED, SaveConfigRequestSchema } from "@diffgazer/core/schemas/config";
-import { ProviderParamSchema, ActivateProviderBodySchema, ProviderModelsParamSchema } from "./schemas.js";
 
 const configRouter = new Hono();
 

@@ -4,8 +4,7 @@
   "docs": {
     "format": "mdx",
     "contentDir": "docs/content",
-    "metaFile": "docs/content/meta.json",
-    "assetsDir": "docs/assets"
+    "metaFile": "docs/content/meta.json"
   },
   "registry": {
     "namespace": "@diffgazer/keys",

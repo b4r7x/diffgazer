@@ -1,0 +1,360 @@
+
+> @diffgazer/repo@0.0.0 test:scripts /Users/voitz/Projects/diffgazer-workspace
+> node --test "scripts/monorepo/**/*.test.mjs"
+
+TAP version 13
+# Subtest: summarizeStatuses reports zero failures for an all-200 run
+ok 1 - summarizeStatuses reports zero failures for an all-200 run
+  ---
+  duration_ms: 0.591625
+  type: 'test'
+  ...
+# Subtest: summarizeStatuses tracks an earlier non-200 even when the final request is 200
+ok 2 - summarizeStatuses tracks an earlier non-200 even when the final request is 200
+  ---
+  duration_ms: 0.326833
+  type: 'test'
+  ...
+# Subtest: summarizeStatuses counts every non-200 and keeps the first failing status
+ok 3 - summarizeStatuses counts every non-200 and keeps the first failing status
+  ---
+  duration_ms: 1.046541
+  type: 'test'
+  ...
+# Subtest: checkSlo records a functional failure when any non-200 response occurred
+ok 4 - checkSlo records a functional failure when any non-200 response occurred
+  ---
+  duration_ms: 0.33725
+  type: 'test'
+  ...
+# Subtest: checkSlo skips latency checks once a functional failure is recorded
+ok 5 - checkSlo skips latency checks once a functional failure is recorded
+  ---
+  duration_ms: 0.261916
+  type: 'test'
+  ...
+# Subtest: checkSlo records nothing when an all-200 run is within every SLO
+ok 6 - checkSlo records nothing when an all-200 run is within every SLO
+  ---
+  duration_ms: 0.096208
+  type: 'test'
+  ...
+# Subtest: checkSlo records latency breaches when all responses are 200
+ok 7 - checkSlo records latency breaches when all responses are 200
+  ---
+  duration_ms: 0.134833
+  type: 'test'
+  ...
+# Subtest: runValidationChecks prints the success message and does not exit when there are no failures
+ok 8 - runValidationChecks prints the success message and does not exit when there are no failures
+  ---
+  duration_ms: 1.324791
+  type: 'test'
+  ...
+# Subtest: runValidationChecks stays silent on success when no successMessage is given
+ok 9 - runValidationChecks stays silent on success when no successMessage is given
+  ---
+  duration_ms: 0.090542
+  type: 'test'
+  ...
+# Subtest: runValidationChecks reports failures on stderr and exits 1
+ok 10 - runValidationChecks reports failures on stderr and exits 1
+  ---
+  duration_ms: 32.847167
+  type: 'test'
+  ...
+# Subtest: assertCatalogProviders returns a summary line per provider when all resolve to models
+ok 11 - assertCatalogProviders returns a summary line per provider when all resolve to models
+  ---
+  duration_ms: 1.405084
+  type: 'test'
+  ...
+# Subtest: assertCatalogProviders throws attributing the failure to the injected source
+ok 12 - assertCatalogProviders throws attributing the failure to the injected source
+  ---
+  duration_ms: 0.451625
+  type: 'test'
+  ...
+# Subtest: enabledSnapshotProviders returns enabled providers that ship in the snapshot, excluding the OpenRouter live path
+ok 13 - enabledSnapshotProviders returns enabled providers that ship in the snapshot, excluding the OpenRouter live path
+  ---
+  duration_ms: 0.300875
+  type: 'test'
+  ...
+# Subtest: findSnapshotInBundle returns the first bundle file containing the snapshot marker
+ok 14 - findSnapshotInBundle returns the first bundle file containing the snapshot marker
+  ---
+  duration_ms: 0.198833
+  type: 'test'
+  ...
+# Subtest: findSnapshotInBundle returns null when no bundle file inlines the snapshot marker
+ok 15 - findSnapshotInBundle returns null when no bundle file inlines the snapshot marker
+  ---
+  duration_ms: 0.813583
+  type: 'test'
+  ...
+# Subtest: sync artifacts helper config parsing
+    # Subtest: parses docs libraries config and derives enabled artifact libraries
+    ok 1 - parses docs libraries config and derives enabled artifact libraries
+      ---
+      duration_ms: 2.41275
+      type: 'test'
+      ...
+    # Subtest: rejects malformed artifact library config
+    ok 2 - rejects malformed artifact library config
+      ---
+      duration_ms: 0.308875
+      type: 'test'
+      ...
+    # Subtest: rejects unsafe artifact library ids and workspace paths
+    ok 3 - rejects unsafe artifact library ids and workspace paths
+      ---
+      duration_ms: 0.647959
+      type: 'test'
+      ...
+    # Subtest: switches sync mode based on DIFFGAZER_DEV
+    ok 4 - switches sync mode based on DIFFGAZER_DEV
+      ---
+      duration_ms: 0.340875
+      type: 'test'
+      ...
+    # Subtest: auto-falls back to workspace when local artifact packages are not resolvable
+    ok 5 - auto-falls back to workspace when local artifact packages are not resolvable
+      ---
+      duration_ms: 0.275833
+      type: 'test'
+      ...
+    # Subtest: keeps package mode in CI even when artifact packages are not resolvable
+    ok 6 - keeps package mode in CI even when artifact packages are not resolvable
+      ---
+      duration_ms: 0.116417
+      type: 'test'
+      ...
+    # Subtest: keeps package mode when local artifact packages are resolvable
+    ok 7 - keeps package mode when local artifact packages are resolvable
+      ---
+      duration_ms: 0.117333
+      type: 'test'
+      ...
+    # Subtest: reports missing prepared workspace artifact files
+    ok 8 - reports missing prepared workspace artifact files
+      ---
+      duration_ms: 6.414208
+      type: 'test'
+      ...
+    # Subtest: rejects escaped prepared workspace artifact paths
+    ok 9 - rejects escaped prepared workspace artifact paths
+      ---
+      duration_ms: 1.371917
+      type: 'test'
+      ...
+    1..9
+ok 16 - sync artifacts helper config parsing
+  ---
+  duration_ms: 13.056667
+  type: 'suite'
+  ...
+# Subtest: sync artifacts helper output validation
+    # Subtest: accepts the current checked-in generated namespace outputs
+    ok 1 - accepts the current checked-in generated namespace outputs
+      ---
+      duration_ms: 0.419417
+      type: 'test'
+      ...
+    # Subtest: reports missing namespace outputs and primary mismatch
+    ok 2 - reports missing namespace outputs and primary mismatch
+      ---
+      duration_ms: 3.883667
+      type: 'test'
+      ...
+    # Subtest: rejects unsafe namespace output ids before resolving output paths
+    ok 3 - rejects unsafe namespace output ids before resolving output paths
+      ---
+      duration_ms: 0.372542
+      type: 'test'
+      ...
+    # Subtest: reports generated sync output drift against loaded artifacts
+    ok 4 - reports generated sync output drift against loaded artifacts
+      ---
+      duration_ms: 9.612792
+      type: 'test'
+      ...
+    # Subtest: accepts secondary demo index imports rewritten to docs example namespace
+    ok 5 - accepts secondary demo index imports rewritten to docs example namespace
+      ---
+      duration_ms: 6.12
+      type: 'test'
+      ...
+    # Subtest: reports missing secondary copied examples
+    ok 6 - reports missing secondary copied examples
+      ---
+      duration_ms: 4.443875
+      type: 'test'
+      ...
+    # Subtest: rejects loaded artifact paths that escape the artifact root
+    ok 7 - rejects loaded artifact paths that escape the artifact root
+      ---
+      duration_ms: 3.047583
+      type: 'test'
+      ...
+    1..7
+ok 17 - sync artifacts helper output validation
+  ---
+  duration_ms: 28.450958
+  type: 'suite'
+  ...
+# Subtest: artifact validation
+    # Subtest: accepts fresh library artifacts
+    ok 1 - accepts fresh library artifacts
+      ---
+      duration_ms: 12.626
+      type: 'test'
+      ...
+    # Subtest: fails closed when fingerprint inputs are missing
+    ok 2 - fails closed when fingerprint inputs are missing
+      ---
+      duration_ms: 3.597667
+      type: 'test'
+      ...
+    # Subtest: fails when public registry artifacts are stale or tampered
+    ok 3 - fails when public registry artifacts are stale or tampered
+      ---
+      duration_ms: 3.269667
+      type: 'test'
+      ...
+    # Subtest: fails when manifest-declared docs artifacts are stale or tampered
+    ok 4 - fails when manifest-declared docs artifacts are stale or tampered
+      ---
+      duration_ms: 3.64975
+      type: 'test'
+      ...
+    # Subtest: rejects artifact manifest paths that escape the artifact root
+    ok 5 - rejects artifact manifest paths that escape the artifact root
+      ---
+      duration_ms: 3.741625
+      type: 'test'
+      ...
+    # Subtest: honors manifest-declared artifact roots instead of defaulting to dist artifacts
+    ok 6 - honors manifest-declared artifact roots instead of defaulting to dist artifacts
+      ---
+      duration_ms: 3.370625
+      type: 'test'
+      ...
+    # Subtest: validates copied artifact mirrors without recomputing source fingerprints
+    ok 7 - validates copied artifact mirrors without recomputing source fingerprints
+      ---
+      duration_ms: 0.7395
+      type: 'test'
+      ...
+    # Subtest: fails tampered integrity bundles
+    ok 8 - fails tampered integrity bundles
+      ---
+      duration_ms: 0.384208
+      type: 'test'
+      ...
+    # Subtest: requires every declared integrity bundle key
+    ok 9 - requires every declared integrity bundle key
+      ---
+      duration_ms: 0.435375
+      type: 'test'
+      ...
+    # Subtest: fails package artifact surface validation when packed files include leaked artifact payloads
+    ok 10 - fails package artifact surface validation when packed files include leaked artifact payloads
+      ---
+      duration_ms: 0.250333
+      type: 'test'
+      ...
+    # Subtest: passes package artifact surface validation when packed files exclude artifact payloads
+    ok 11 - passes package artifact surface validation when packed files exclude artifact payloads
+      ---
+      duration_ms: 0.136583
+      type: 'test'
+      ...
+    1..11
+ok 18 - artifact validation
+  ---
+  duration_ms: 32.85575
+  type: 'suite'
+  ...
+# Subtest: collectBundleRelativeJsImportErrors
+    # Subtest: flags relative .js import specifiers in bundled file content
+    ok 1 - flags relative .js import specifiers in bundled file content
+      ---
+      duration_ms: 0.192791
+      type: 'test'
+      ...
+    # Subtest: flags static, dynamic, and require relative .js specifiers
+    ok 2 - flags static, dynamic, and require relative .js specifiers
+      ---
+      duration_ms: 0.047625
+      type: 'test'
+      ...
+    # Subtest: passes when content carries no relative .js specifiers
+    ok 3 - passes when content carries no relative .js specifiers
+      ---
+      duration_ms: 0.042542
+      type: 'test'
+      ...
+    1..3
+ok 19 - collectBundleRelativeJsImportErrors
+  ---
+  duration_ms: 0.330167
+  type: 'suite'
+  ...
+# Subtest: test-ci runs the benchmark under strict skip mode
+ok 20 - test-ci runs the benchmark under strict skip mode
+  ---
+  duration_ms: 0.375084
+  type: 'test'
+  ...
+# Subtest: release-check runs the benchmark under strict skip mode
+ok 21 - release-check runs the benchmark under strict skip mode
+  ---
+  duration_ms: 0.047875
+  type: 'test'
+  ...
+# Subtest: the release-readiness Verify step runs verify under strict skip mode
+ok 22 - the release-readiness Verify step runs verify under strict skip mode
+  ---
+  duration_ms: 1.10625
+  type: 'test'
+  ...
+# Subtest: the benchmark review opt-in env var is not part of the script env contract
+ok 23 - the benchmark review opt-in env var is not part of the script env contract
+  ---
+  duration_ms: 0.175291
+  type: 'test'
+  ...
+# Subtest: collectMissingClosure resolves a complete dependency tree
+ok 24 - collectMissingClosure resolves a complete dependency tree
+  ---
+  duration_ms: 0.589584
+  type: 'test'
+  ...
+# Subtest: collectMissingClosure catches a transitively-referenced missing dependency
+ok 25 - collectMissingClosure catches a transitively-referenced missing dependency
+  ---
+  duration_ms: 0.129833
+  type: 'test'
+  ...
+# Subtest: collectMissingClosure flags a resolved item that ships no files
+ok 26 - collectMissingClosure flags a resolved item that ships no files
+  ---
+  duration_ms: 0.055667
+  type: 'test'
+  ...
+# Subtest: collectMissingClosure terminates on cyclic dependencies
+ok 27 - collectMissingClosure terminates on cyclic dependencies
+  ---
+  duration_ms: 0.047083
+  type: 'test'
+  ...
+1..27
+# tests 53
+# suites 4
+# pass 53
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 145.23925

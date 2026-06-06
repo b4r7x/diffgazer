@@ -3,13 +3,13 @@ import {
   createDomainErrorSchema,
 } from "../errors.js";
 import {
-  ReviewSeveritySchema,
   type LensId,
   type ReviewProfile,
+  ReviewSeveritySchema,
   type SeverityFilter,
-} from "./shared.js";
+} from "./enums.js";
 
-export { REVIEW_SEVERITY, ReviewSeveritySchema, type ReviewSeverity } from "./shared.js";
+export { REVIEW_SEVERITY, type ReviewSeverity, ReviewSeveritySchema } from "./enums.js";
 
 export const REVIEW_CATEGORY = [
   "correctness",
@@ -143,7 +143,7 @@ export const ReviewStreamEventSchema = z.discriminatedUnion("type", [
 ]);
 export type ReviewStreamEvent = z.infer<typeof ReviewStreamEventSchema>;
 
-export { SeverityFilterSchema, type SeverityFilter } from "./shared.js";
+export { type SeverityFilter, SeverityFilterSchema } from "./enums.js";
 
 export interface ReviewOptions {
   profile?: ReviewProfile;

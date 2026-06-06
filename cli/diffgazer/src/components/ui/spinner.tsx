@@ -1,6 +1,6 @@
 import { Box, Text } from "ink";
 import InkSpinner from "ink-spinner";
-import { useTheme } from "../../theme/theme-context";
+import { useTheme } from "../../app/providers/theme";
 
 export interface SpinnerProps {
   variant?: "dots" | "braille" | "snake";

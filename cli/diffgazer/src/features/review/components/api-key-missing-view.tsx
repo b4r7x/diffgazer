@@ -1,6 +1,6 @@
 import { Box } from "ink";
-import { Callout } from "../../../components/ui/callout";
 import { Button } from "../../../components/ui/button";
+import { Callout } from "../../../components/ui/callout";
 import { Panel } from "../../../components/ui/panel";
 
 export interface ApiKeyMissingViewProps {

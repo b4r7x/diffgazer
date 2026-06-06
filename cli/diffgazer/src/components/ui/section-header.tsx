@@ -1,5 +1,5 @@
 import { Box, Text } from "ink";
-import { useTheme } from "../../theme/theme-context";
+import { useTheme } from "../../app/providers/theme";
 
 export interface SectionHeaderProps {
   variant?: "default" | "muted";

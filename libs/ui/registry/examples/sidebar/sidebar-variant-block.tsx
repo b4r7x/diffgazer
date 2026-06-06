@@ -1,12 +1,12 @@
 import {
   Sidebar,
-  SidebarHeader,
   SidebarContent,
+  SidebarHeader,
+  SidebarItem,
+  SidebarItemBadge,
+  SidebarItemLabel,
   SidebarSection,
   SidebarSectionTitle,
-  SidebarItem,
-  SidebarItemLabel,
-  SidebarItemBadge,
 } from "@/components/ui/sidebar"
 
 export default function SidebarVariantBlock() {

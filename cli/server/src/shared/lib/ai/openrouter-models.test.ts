@@ -2,13 +2,12 @@ import { createHash } from "node:crypto";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const hashApiKey = (apiKey: string): string =>
   createHash("sha256").update(apiKey).digest("hex").slice(0, 16);
 
 import {
-  loadOpenRouterModelCache,
   fetchOpenRouterModels,
   getOpenRouterModelsWithCache,
 } from "./openrouter-models.js";
@@ -30,32 +29,6 @@ beforeEach(() => {
 afterEach(() => {
   delete process.env.DIFFGAZER_HOME;
   fs.rmSync(testHome, { recursive: true, force: true });
-});
-
-describe("loadOpenRouterModelCache", () => {
-  it("returns null when no cache file exists", () => {
-    expect(loadOpenRouterModelCache()).toBeNull();
-  });
-
-  it("returns parsed cache when valid", () => {
-    const cache = {
-      models: [
-        {
-          id: "model-1",
-          name: "Model 1",
-          contextLength: 4096,
-          pricing: { prompt: "0.001", completion: "0.002" },
-          isFree: false,
-        },
-      ],
-      fetchedAt: new Date().toISOString(),
-    };
-    writeCacheFile(cache);
-
-    const result = loadOpenRouterModelCache();
-    expect(result).not.toBeNull();
-    expect(result!.models).toHaveLength(1);
-  });
 });
 
 describe("fetchOpenRouterModels", () => {
@@ -80,7 +53,7 @@ describe("fetchOpenRouterModels", () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.value).toHaveLength(1);
-      expect(result.value[0]!.id).toBe("openai/gpt-4");
+      expect(result.value[0]?.id).toBe("openai/gpt-4");
     }
     expect(fetch).toHaveBeenCalledWith(
       "https://openrouter.ai/api/v1/models",
@@ -122,7 +95,7 @@ describe("fetchOpenRouterModels", () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.value).toHaveLength(1);
-      expect(result.value[0]!.id).toBe("valid/model");
+      expect(result.value[0]?.id).toBe("valid/model");
     }
   });
 

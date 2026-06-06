@@ -1,7 +1,7 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { useState } from "react"
-import { describe, it, expect, vi } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import { Dialog } from "../dialog/index"
 import { Popover } from "../popover/index"
 
@@ -22,7 +22,7 @@ describe("Nested overlay: Popover inside Dialog", () => {
           <Popover triggerMode="click" defaultOpen onOpenChange={onPopoverChange}>
             <Popover.Trigger>Open Popover</Popover.Trigger>
             <Popover.Content aria-label="Nested popover">
-              <button>Inside Popover</button>
+              <button type="button">Inside Popover</button>
             </Popover.Content>
           </Popover>
         </Dialog.Content>
@@ -114,6 +114,7 @@ describe("Nested overlay: Dialog inside Dialog", () => {
           <Dialog.Content>
             <Dialog.Title>Dialog 2</Dialog.Title>
             <Dialog.Body>Second body</Dialog.Body>
+            {/* biome-ignore lint/a11y/noAutofocus: test fixture seeds initial focus inside the nested dialog to exercise nested-overlay focus/escape behavior. */}
             <button type="button" autoFocus onClick={secondAction}>Second action</button>
           </Dialog.Content>
         </Dialog>

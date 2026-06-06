@@ -1,4 +1,4 @@
-import { isHTMLElement, isHTMLInputElement } from "./dom.js";
+import { isHTMLElement, isHTMLInputElement } from "./element-guards.js";
 
 const FOCUSABLE_SELECTOR = [
   "a[href]",
@@ -44,7 +44,7 @@ function isInsideDisabledFieldset(element: HTMLElement): boolean {
   while (fieldset) {
     // Element is inside a disabled fieldset; check it isn't inside the first <legend>.
     const legend = fieldset.querySelector(":scope > legend");
-    if (legend && legend.contains(element)) {
+    if (legend?.contains(element)) {
       // descendants of the first legend are not disabled per spec; keep searching upward
       fieldset = fieldset.parentElement?.closest<HTMLFieldSetElement>("fieldset[disabled]") ?? null;
       continue;

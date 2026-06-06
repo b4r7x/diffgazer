@@ -1,4 +1,4 @@
-import { ParameterTable } from "@/components/parameter-table";
+import { ParameterTable } from "@/components/docs-mdx/parameter-table";
 import { useHookData } from "../doc-data-context";
 
 export function ReturnsTable() {

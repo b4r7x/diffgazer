@@ -1,6 +1,6 @@
-import { useRef, useState } from "react";
-import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import type { IssueTab as TabId } from "@diffgazer/core/schemas/presentation";
+import type { ReviewIssue } from "@diffgazer/core/schemas/review";
+import { useRef, useState } from "react";
 
 interface UseIssueDetailsTabsOptions {
   selectedIssue: ReviewIssue | null;
@@ -33,7 +33,9 @@ export function useIssueDetailsTabs({ selectedIssue }: UseIssueDetailsTabsOption
 
     if (nextIndex < 0) return "boundary-left" as const;
     if (nextIndex >= availableTabs.length) return "boundary-right" as const;
-    setActiveTab(availableTabs[nextIndex]);
+    const nextTab = availableTabs[nextIndex];
+    if (nextTab === undefined) return "no-change" as const;
+    setActiveTab(nextTab);
     return "moved" as const;
   };
 

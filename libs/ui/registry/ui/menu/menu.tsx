@@ -2,24 +2,24 @@
 
 import {
   Children,
-  isValidElement,
-  type ReactNode,
-  type KeyboardEvent,
   type ComponentPropsWithRef,
   type ElementType,
+  isValidElement,
+  type KeyboardEvent,
+  type ReactNode,
   useCallback,
   useId,
   useMemo,
   useRef,
 } from "react";
-import { type ListboxMetadataItem, getEncodedListboxItemId, useListbox } from "@/hooks/use-listbox";
-import { cn } from "@/lib/utils";
+import { getEncodedListboxItemId, type ListboxMetadataItem, useListbox } from "@/hooks/use-listbox";
 import { composeRefs } from "@/lib/compose-refs";
-import { MenuContext, type CustomActivator, type MenuContextValue } from "./menu-context";
+import { cn } from "@/lib/utils";
+import { type CustomActivator, MenuContext, type MenuContextValue } from "./menu-context";
 import { MenuItem } from "./menu-item";
 import { MenuItemCheckbox } from "./menu-item-checkbox";
 import { MenuItemRadio } from "./menu-item-radio";
-import { MenuSubTrigger, MenuSubContent } from "./menu-sub";
+import { MenuSubContent, MenuSubTrigger } from "./menu-sub";
 
 export interface MenuProps<TId extends string = string>
   extends Omit<ComponentPropsWithRef<"div">, "children" | "onKeyDown" | "onSelect"> {
@@ -172,6 +172,7 @@ export function Menu<TId extends string = string>({
 
   return (
     <MenuContext value={contextValue}>
+      {/* biome-ignore lint/a11y/useAriaPropsSupportedByRole: getContainerProps applies role="menu"/"listbox" dynamically, which Biome cannot resolve; aria-label is valid for those roles. */}
       <div
         {...rootProps}
         {...getContainerProps(composeRefs(menuRef, ref))}

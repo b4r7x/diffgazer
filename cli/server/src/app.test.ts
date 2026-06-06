@@ -1,5 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SHUTDOWN_TOKEN_HEADER } from "@diffgazer/core/api";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "./app.js";
 import { resetShutdownStateForTests } from "./features/shutdown/service.js";
 

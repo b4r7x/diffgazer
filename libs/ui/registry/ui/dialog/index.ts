@@ -1,17 +1,17 @@
 "use client";
 
-import { Dialog as DialogRoot, type DialogProps } from "./dialog";
-import { DialogTrigger, type DialogTriggerProps, type DialogTriggerRenderProps } from "./dialog-trigger";
-import { DialogContent, dialogContentVariants, type DialogContentProps, type DialogCorners } from "./dialog-content";
-import { DialogHeader, type DialogHeaderProps } from "./dialog-header";
-import { DialogTitle, type DialogTitleProps } from "./dialog-title";
-import { DialogDescription, type DialogDescriptionProps } from "./dialog-description";
+import { type DialogProps, Dialog as DialogRoot } from "./dialog";
+import { DialogAction, type DialogActionProps } from "./dialog-action";
 import { DialogBody, type DialogBodyProps } from "./dialog-body";
-import { DialogFooter, type DialogFooterProps } from "./dialog-footer";
-import { DialogKeyboardHints, type DialogKeyboardHintsProps, type KeyboardHint } from "./dialog-keyboard-hints";
 import { DialogClose, type DialogCloseProps } from "./dialog-close";
 import { DialogCloseIcon, type DialogCloseIconProps } from "./dialog-close-icon";
-import { DialogAction, type DialogActionProps } from "./dialog-action";
+import { DialogContent, type DialogContentProps, type DialogCorners, dialogContentVariants } from "./dialog-content";
+import { DialogDescription, type DialogDescriptionProps } from "./dialog-description";
+import { DialogFooter, type DialogFooterProps } from "./dialog-footer";
+import { DialogHeader, type DialogHeaderProps } from "./dialog-header";
+import { DialogKeyboardHints, type DialogKeyboardHintsProps, type KeyboardHint } from "./dialog-keyboard-hints";
+import { DialogTitle, type DialogTitleProps } from "./dialog-title";
+import { DialogTrigger, type DialogTriggerProps, type DialogTriggerRenderProps } from "./dialog-trigger";
 
 const Dialog = Object.assign(DialogRoot, {
   Trigger: DialogTrigger,

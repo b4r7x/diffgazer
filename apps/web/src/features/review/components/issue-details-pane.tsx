@@ -1,18 +1,17 @@
-import { type Ref } from "react";
-import { cn } from "@diffgazer/ui/lib/utils";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@diffgazer/ui/components/tabs";
-import { SectionHeader } from "@diffgazer/ui/components/section-header";
-import { EmptyState } from "@diffgazer/ui/components/empty-state";
-import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
+import type { DetailsEmptyKind } from "@diffgazer/core/review";
+import { isIssueTab, type IssueTab as TabId } from "@diffgazer/core/schemas/presentation";
+import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { CodeBlock, type CodeBlockLineState } from "@diffgazer/ui/components/code-block";
 import { DiffView, parseDiff } from "@diffgazer/ui/components/diff-view";
+import { EmptyState } from "@diffgazer/ui/components/empty-state";
 import { Panel } from "@diffgazer/ui/components/panel";
+import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
+import { SectionHeader } from "@diffgazer/ui/components/section-header";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@diffgazer/ui/components/tabs";
+import { cn } from "@diffgazer/ui/lib/utils";
+import type { Ref } from "react";
 import { FixPlanChecklist } from "./fix-plan-checklist";
 import { IssueHeader } from "./issue-header";
-
-import type { ReviewIssue } from "@diffgazer/core/schemas/review";
-import { isIssueTab, type IssueTab as TabId } from "@diffgazer/core/schemas/presentation";
-import type { DetailsEmptyKind } from "@diffgazer/core/review";
 
 export type { DetailsEmptyKind };
 
@@ -154,7 +153,9 @@ export function IssueDetailsPane({
 
 function canRenderStructuredPatch(patch: string) {
   const files = parseDiff(patch);
-  return files.length === 1 && files[0]?.hunks.length > 0;
+  if (files.length !== 1) return false;
+  const [file] = files;
+  return file !== undefined && file.hunks.length > 0;
 }
 
 function getPatchLineState(line: string): CodeBlockLineState | undefined {

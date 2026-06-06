@@ -1,9 +1,9 @@
 "use client";
 
-import { Avatar as AvatarRoot, avatarVariants, type AvatarProps, type AvatarStatus } from "./avatar";
-import { AvatarImage, type AvatarImageProps } from "./avatar-image";
+import { type AvatarProps, Avatar as AvatarRoot, type AvatarStatus, avatarVariants } from "./avatar";
 import { AvatarFallback, type AvatarFallbackProps } from "./avatar-fallback";
-import { AvatarGroup, avatarGroupSpacingVariants, type AvatarGroupProps } from "./avatar-group";
+import { AvatarGroup, type AvatarGroupProps, avatarGroupSpacingVariants } from "./avatar-group";
+import { AvatarImage, type AvatarImageProps } from "./avatar-image";
 import { AvatarIndicator, type AvatarIndicatorProps } from "./avatar-indicator";
 
 const Avatar = Object.assign(AvatarRoot, {

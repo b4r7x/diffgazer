@@ -1,0 +1,308 @@
+• turbo 2.9.14
+
+   • Packages in scope: @diffgazer/add, @diffgazer/core, @diffgazer/docs, @diffgazer/keys, @diffgazer/keys-artifacts, @diffgazer/landing, @diffgazer/registry, @diffgazer/server, @diffgazer/ui, @diffgazer/web, diffgazer
+   • Running test in 11 packages
+   • Remote caching disabled
+
+@diffgazer/registry:test: cache miss, executing c7f379422a6e1cb3
+@diffgazer/core:test: cache miss, executing 7d10ac2b4a2e3ef6
+@diffgazer/core:test: 
+@diffgazer/core:test: > @diffgazer/core@0.0.1 test /Users/voitz/Projects/diffgazer-workspace/libs/core
+@diffgazer/core:test: > vitest run
+@diffgazer/core:test: 
+@diffgazer/registry:test: 
+@diffgazer/registry:test: > @diffgazer/registry@0.1.0 test /Users/voitz/Projects/diffgazer-workspace/libs/registry
+@diffgazer/registry:test: > vitest run
+@diffgazer/registry:test: 
+@diffgazer/core:test: 
+@diffgazer/registry:test: 
+@diffgazer/core:test: [1m[46m RUN [49m[22m [36mv4.1.0 [39m[90m/Users/voitz/Projects/diffgazer-workspace/libs/core[39m
+@diffgazer/registry:test: [1m[46m RUN [49m[22m [36mv4.1.0 [39m[90m/Users/voitz/Projects/diffgazer-workspace/libs/registry[39m
+@diffgazer/core:test: 
+@diffgazer/registry:test: 
+@diffgazer/registry:test: [90mstdout[2m | src/testing/init-workflow.test.ts[2m > [22m[2mrunInitWorkflow rollback[2m > [22m[2mremoves created files and keeps skipped pre-existing files when afterFiles fails
+@diffgazer/registry:test: [22m[39m
+@diffgazer/registry:test:   Detected:
+@diffgazer/registry:test: 
+@diffgazer/registry:test: 
+@diffgazer/registry:test:   Creating files...
+@diffgazer/registry:test:   + created/
+@diffgazer/registry:test:   + created/new.txt
+@diffgazer/registry:test:   skip existing/keep.txt
+@diffgazer/registry:test: 
+@diffgazer/registry:test: [90mstdout[2m | src/testing/init-workflow.test.ts[2m > [22m[2mrunInitWorkflow rollback[2m > [22m[2mrestores overwritten files and config writes when writeConfig fails
+@diffgazer/registry:test: [22m[39m
+@diffgazer/registry:test:   Detected:
+@diffgazer/registry:test: 
+@diffgazer/registry:test: 
+@diffgazer/registry:test:   Creating files...
+@diffgazer/registry:test:   skip pre-existing.txt
+@diffgazer/registry:test:   + created.txt
+@diffgazer/registry:test: 
+@diffgazer/registry:test: [90mstdout[2m | src/testing/init-workflow.test.ts[2m > [22m[2mrunInitWorkflow rollback[2m > [22m[2mpreserves an existing config (including ownership manifest) when forced re-init fails mid-write
+@diffgazer/registry:test: [22m[39m
+@diffgazer/registry:test:   Detected:
+@diffgazer/registry:test: 
+@diffgazer/registry:test: 
+@diffgazer/registry:test:   Creating files...
+@diffgazer/registry:test: 
+@diffgazer/registry:test: [90mstdout[2m | src/testing/init-workflow.test.ts[2m > [22m[2mrunInitWorkflow rollback[2m > [22m[2monly snapshots files declared in plannedPaths (no recursive tree walk)
+@diffgazer/registry:test: [22m[39m
+@diffgazer/registry:test:   Detected:
+@diffgazer/registry:test: 
+@diffgazer/registry:test: 
+@diffgazer/registry:test:   Creating files...
+@diffgazer/registry:test:   skip src/
+@diffgazer/registry:test:   skip src/styles.css
+@diffgazer/registry:test: 
+@diffgazer/registry:test: [90mstdout[2m | src/testing/init-workflow.test.ts[2m > [22m[2mrunInitWorkflow rollback[2m > [22m[2monly snapshots files declared in plannedPaths (no recursive tree walk)
+@diffgazer/registry:test: [22m[39m  + tool.json
+@diffgazer/registry:test: 
+@diffgazer/registry:test:   Done!
+@diffgazer/registry:test: 
+@diffgazer/registry:test: 
+@diffgazer/registry:test: [90mstdout[2m | src/testing/init-workflow.test.ts[2m > [22m[2mrunInitWorkflow rollback[2m > [22m[2mremoves a freshly-created planned-path file on rollback so installer side effects do not leak
+@diffgazer/registry:test: [22m[39m
+@diffgazer/registry:test:   Detected:
+@diffgazer/registry:test: 
+@diffgazer/registry:test: 
+@diffgazer/registry:test:   Creating files...
+@diffgazer/registry:test: 
+@diffgazer/registry:test: [90mstdout[2m | src/testing/init-workflow.test.ts[2m > [22m[2mrunInitWorkflow rollback[2m > [22m[2monly restores files explicitly listed in plannedPaths on rollback
+@diffgazer/registry:test: [22m[39m
+@diffgazer/registry:test:   Detected:
+@diffgazer/registry:test: 
+@diffgazer/registry:test: 
+@diffgazer/registry:test:   Creating files...
+@diffgazer/registry:test:   skip declared.txt
+@diffgazer/registry:test:   skip undeclared.txt
+@diffgazer/registry:test: 
+@diffgazer/registry:test:  [32m✓[39m src/testing/init-workflow.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+@diffgazer/registry:test:  [32m✓[39m src/testing/copy-bundle.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 27[2mms[22m[39m
+@diffgazer/core:test:  [32m✓[39m src/sse-parser.test.ts [2m([22m[2m14 tests[22m[2m)[22m[33m 316[2mms[22m[39m
+@diffgazer/registry:test: [90mstdout[2m | src/testing/copy-artifacts-to-package.test.ts[2m > [22m[2mcopyArtifactsToPackage[2m > [22m[2mcopies artifacts from source to package dist/artifacts
+@diffgazer/registry:test: [22m[39m[test-lib] copied artifacts from /tmp/rk-copy-pkg-fvIZAw/dist/artifacts
+@diffgazer/registry:test: 
+@diffgazer/registry:test: [90mstdout[2m | src/testing/copy-artifacts-to-package.test.ts[2m > [22m[2mcopyArtifactsToPackage[2m > [22m[2mskips manifest validation when validateManifest is false
+@diffgazer/registry:test: [22m[39m[test-lib] copied artifacts from /tmp/rk-copy-pkg-E6gznC/dist/artifacts
+@diffgazer/registry:test: 
+@diffgazer/registry:test: [90mstdout[2m | src/testing/copy-artifacts-to-package.test.ts[2m > [22m[2mcopyArtifactsToPackage[2m > [22m[2mcleans entire dist/ with parent-dist strategy (default)
+@diffgazer/registry:test: [22m[39m[test-lib] copied artifacts from /tmp/rk-copy-pkg-akKlqx/dist/artifacts
+@diffgazer/registry:test: 
+@diffgazer/registry:test: [90mstdout[2m | src/testing/copy-artifacts-to-package.test.ts[2m > [22m[2mcopyArtifactsToPackage[2m > [22m[2monly cleans artifact dir with artifact-dir strategy
+@diffgazer/registry:test: [22m[39m[test-lib] copied artifacts from /tmp/rk-copy-pkg-nyRYNs/dist/artifacts
+@diffgazer/registry:test: 
+@diffgazer/registry:test: [90mstdout[2m | src/testing/copy-artifacts-to-package.test.ts[2m > [22m[2mcopyArtifactsToPackage[2m > [22m[2msupports custom artifactDir
+@diffgazer/registry:test: [22m[39m[test-lib] copied artifacts from /tmp/rk-copy-pkg-fYSAeX/output/build-artifacts
+@diffgazer/registry:test: 
+@diffgazer/core:test:  [32m✓[39m src/catalog/catalog-snapshot.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 43[2mms[22m[39m
+@diffgazer/registry:test:  [32m✓[39m src/testing/copy-artifacts-to-package.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 24[2mms[22m[39m
+@diffgazer/registry:test:  [32m✓[39m src/testing/artifacts.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+@diffgazer/registry:test:  [31m❯[39m src/testing/shadcn.test.ts [2m([22m[2m49 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 186[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m returns undefined when no shadcn binary exists[32m 3[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m resolves shadcn binary in 'node_modules/.bin/ at startDir'[32m 2[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m resolves shadcn binary in '../node_modules/.bin/ one level up'[32m 3[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m resolves shadcn binary in '../../node_modules/.bin/ two levels up'[32m 2[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m throws when runShadcnRegistryBuild cannot find the shadcn binary[32m 1[2mms[22m[39m
+@diffgazer/registry:test: [31m     [31m×[31m keeps committed 'ui' public/r in sync with the source registry[39m[32m 27[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m keeps committed 'keys' public/r in sync with the source registry[32m 55[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m rejects 'item count mismatch'[32m 1[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m rejects 'missing source item in public registry'[32m 2[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m rejects stale public registry 'dependencies'[32m 3[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m rejects stale public registry 'title'[32m 1[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m rejects stale public registry 'description'[32m 3[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m rejects stale public registry 'meta'[32m 2[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m rejects stale public registry 'registryDependencies'[32m 1[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m rejects stale public registry 'devDependencies'[32m 2[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m rejects stale public registry 'cssVars'[32m 2[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m rejects stale public registry 'css'[32m 1[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m rejects stale public registry 'envVars'[32m 1[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m rejects stale public registry 'docs'[32m 1[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m rejects stale public registry 'categories'[32m 2[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m rejects stale public registry 'author'[32m 4[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m rejects 'file content drift'[32m 4[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m rejects 'missing public file entry'[32m 3[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m rejects 'extra public file entry'[32m 4[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m rejects stale public file 'target' metadata[32m 3[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m rejects stale public file 'type' metadata[32m 3[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m rejects stale public item JSON 'dependencies'[32m 2[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m rejects stale public item JSON 'registryDependencies'[32m 2[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m rejects stale public item JSON 'description'[32m 1[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m rejects stale public item JSON 'meta'[32m 1[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m rejects stale public item JSON 'devDependencies'[32m 1[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m rejects stale public item JSON 'cssVars'[32m 1[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m rejects stale public item JSON 'css'[32m 1[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m rejects stale public item JSON 'envVars'[32m 3[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m rejects stale public item JSON 'docs'[32m 3[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m rejects stale public item JSON 'categories'[32m 4[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m rejects stale public item JSON 'author'[32m 3[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m accepts file content that matches after the configured source transform[32m 1[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m accepts file metadata that matches after the configured source item transform[32m 1[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m rejects an 'absolute source file path' in the public registry validation path[32m 1[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m rejects an 'parent-escaping source file path' in the public registry validation path[32m 4[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m rejects an 'windows absolute source file path' in the public registry validation path[32m 2[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m rejects an unsafe file path that only appears in the public registry artifact[32m 1[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m rejects a safe file path with an 'parent-escaping' target[32m 1[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m rejects a safe file path with an 'absolute' target[32m 1[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m rejects an unsafe file path injected only into the public registry index[32m 1[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m rejects an unsafe target injected only into the public registry index[32m 1[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m rejects a public registry index whose file paths diverge from source[32m 1[2mms[22m[39m
+@diffgazer/registry:test:      [32m✓[39m accepts a registry with multiple items whose source and public artifacts match[32m 4[2mms[22m[39m
+@diffgazer/registry:test:  [32m✓[39m src/testing/manifest.test.ts [2m([22m[2m26 tests[22m[2m)[22m[32m 45[2mms[22m[39m
+@diffgazer/registry:test: [90mstdout[2m | src/testing/docs-sync.test.ts[2m > [22m[2msyncDocsFromArtifacts[2m > [22m[2mthrows when manifest.generated has duplicate output basenames
+@diffgazer/registry:test: [22m[39m[docs-sync] Mode: workspace
+@diffgazer/registry:test: 
+@diffgazer/registry:test: [90mstdout[2m | src/testing/docs-sync.test.ts[2m > [22m[2msyncDocsFromArtifacts[2m > [22m[2mthrows when workspace artifact fingerprint is stale
+@diffgazer/registry:test: [22m[39m[docs-sync] Mode: workspace
+@diffgazer/registry:test: 
+@diffgazer/registry:test: [90mstdout[2m | src/testing/bundler.test.ts[2m > [22m[2mcreateBundler[2m > [22m[2mwrites bundles whose integrity validates after installer schema parsing
+@diffgazer/registry:test: [22m[39m  Bundling registry...
+@diffgazer/registry:test: 
+@diffgazer/registry:test:   Bundle summary:
+@diffgazer/registry:test:   Bundled 1 items (1 files)
+@diffgazer/registry:test:   Bundle size: 0.4 KB
+@diffgazer/registry:test:   Integrity: sha256-b5e01c25eb9250e0f851beb819587a67d177307799a5306b2f035a239f1ff824
+@diffgazer/registry:test:   Output: /tmp/dg-registry-bundler-cvOShP/bundle.json
+@diffgazer/registry:test: 
+@diffgazer/registry:test: [90mstdout[2m | src/testing/bundler.test.ts[2m > [22m[2mcreateBundler[2m > [22m[2mrejects source file with 'parent-escape relative path'
+@diffgazer/registry:test: [22m[39m  Bundling registry...
+@diffgazer/registry:test: 
+@diffgazer/registry:test: [90mstdout[2m | src/testing/bundler.test.ts[2m > [22m[2mcreateBundler[2m > [22m[2mrejects source file with 'absolute path outside registry root'
+@diffgazer/registry:test: [22m[39m  Bundling registry...
+@diffgazer/registry:test: 
+@diffgazer/registry:test: [90mstdout[2m | src/testing/bundler.test.ts[2m > [22m[2mcreateBundler[2m > [22m[2mpreserves shadcn metadata fields and side-effect import dependencies
+@diffgazer/registry:test: [22m[39m  Bundling registry...
+@diffgazer/registry:test: 
+@diffgazer/registry:test:   Bundle summary:
+@diffgazer/registry:test:   Bundled 1 items (1 files)
+@diffgazer/registry:test:   Bundle size: 0.7 KB
+@diffgazer/registry:test:   Integrity: sha256-ca85fbc1803ce600d506be003d840678910917e7c3b973df790ef9e0bfa32313
+@diffgazer/registry:test:   Output: /tmp/dg-registry-bundler-ErfcW7/bundle.json
+@diffgazer/registry:test: 
+@diffgazer/registry:test:   Dependencies:
+@diffgazer/registry:test:     reset: normalize.css
+@diffgazer/registry:test: 
+@diffgazer/registry:test:  [32m✓[39m src/testing/bundler.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 25[2mms[22m[39m
+@diffgazer/registry:test: [90mstdout[2m | src/testing/docs-sync.test.ts[2m > [22m[2msyncDocsFromArtifacts[2m > [22m[2mrejects workspace directories outside the workspace root
+@diffgazer/registry:test: [22m[39m[docs-sync] Mode: workspace
+@diffgazer/registry:test: 
+@diffgazer/registry:test: [90mstdout[2m | src/testing/docs-sync.test.ts[2m > [22m[2msyncDocsFromArtifacts[2m > [22m[2mcopies generated files using manifest values and basename extraction
+@diffgazer/registry:test: [22m[39m[docs-sync] Mode: workspace
+@diffgazer/registry:test: [docs-sync] Syncing docs and generated artifacts...
+@diffgazer/registry:test: [docs-sync] Syncing registries (origin asserted: https://diffgazer.com)...
+@diffgazer/registry:test: [docs-sync] Done.
+@diffgazer/registry:test: 
+@diffgazer/registry:test: [90mstdout[2m | src/testing/docs-sync.test.ts[2m > [22m[2msyncDocsFromArtifacts[2m > [22m[2mappends configured extra root pages after the artifact namespaces
+@diffgazer/registry:test: [22m[39m[docs-sync] Mode: workspace
+@diffgazer/registry:test: [docs-sync] Syncing docs and generated artifacts...
+@diffgazer/registry:test: [docs-sync] Syncing registries (origin asserted: https://diffgazer.com)...
+@diffgazer/registry:test: [docs-sync] Done.
+@diffgazer/registry:test: 
+@diffgazer/registry:test:  [32m✓[39m src/testing/remove-workflow.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+@diffgazer/registry:test:  [32m✓[39m src/testing/package-manager-validation.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+@diffgazer/registry:test: [90mstdout[2m | src/testing/docs-sync.test.ts[2m > [22m[2msyncDocsFromArtifacts[2m > [22m[2mre-syncs and rewrites root pages when extra root pages change on a warm cache
+@diffgazer/registry:test: [22m[39m[docs-sync] Mode: workspace
+@diffgazer/registry:test: [docs-sync] Syncing docs and generated artifacts...
+@diffgazer/registry:test: [docs-sync] Syncing registries (origin asserted: https://diffgazer.com)...
+@diffgazer/registry:test: [docs-sync] Done.
+@diffgazer/registry:test: [docs-sync] Mode: workspace
+@diffgazer/registry:test: [docs-sync] Syncing docs and generated artifacts...
+@diffgazer/registry:test: [docs-sync] Syncing registries (origin asserted: https://diffgazer.com)...
+@diffgazer/registry:test: [docs-sync] Done.
+@diffgazer/registry:test: 
+@diffgazer/registry:test:  [32m✓[39m src/testing/registry.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 43[2mms[22m[39m
+@diffgazer/registry:test: [90mstdout[2m | src/testing/docs-sync.test.ts[2m > [22m[2msyncDocsFromArtifacts[2m > [22m[2mwrites only artifact namespaces when no extra root pages are configured
+@diffgazer/registry:test: [22m[39m[docs-sync] Mode: workspace
+@diffgazer/registry:test: [docs-sync] Syncing docs and generated artifacts...
+@diffgazer/registry:test: [docs-sync] Syncing registries (origin asserted: https://diffgazer.com)...
+@diffgazer/registry:test: [docs-sync] Done.
+@diffgazer/registry:test: 
+@diffgazer/registry:test:  [32m✓[39m src/testing/cli-detect.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 42[2mms[22m[39m
+@diffgazer/registry:test: [90mstdout[2m | src/testing/docs-sync.test.ts[2m > [22m[2msyncDocsFromArtifacts[2m > [22m[2mrewrites secondary demo indexes to the copied example namespace
+@diffgazer/registry:test: [22m[39m[docs-sync] Mode: workspace
+@diffgazer/registry:test: [docs-sync] Syncing docs and generated artifacts...
+@diffgazer/registry:test: [docs-sync] Copied keys examples to registry/examples/keys/
+@diffgazer/registry:test: [docs-sync] Syncing registries (origin asserted: https://diffgazer.com)...
+@diffgazer/registry:test: [docs-sync] Done.
+@diffgazer/registry:test: 
+@diffgazer/registry:test:  [32m✓[39m src/testing/utils-fs.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 46[2mms[22m[39m
+@diffgazer/registry:test: [90mstdout[2m | src/testing/docs-sync.test.ts[2m > [22m[2msyncDocsFromArtifacts[2m > [22m[2mresyncs when secondary copied examples are missing
+@diffgazer/registry:test: [22m[39m[docs-sync] Mode: workspace
+@diffgazer/registry:test: [docs-sync] Syncing docs and generated artifacts...
+@diffgazer/registry:test: [docs-sync] Copied keys examples to registry/examples/keys/
+@diffgazer/registry:test: [docs-sync] Syncing registries (origin asserted: https://diffgazer.com)...
+@diffgazer/registry:test: [docs-sync] Done.
+@diffgazer/registry:test: [docs-sync] Mode: workspace
+@diffgazer/registry:test: [docs-sync] Artifacts unchanged; skipping sync.
+@diffgazer/registry:test: [docs-sync] Mode: workspace
+@diffgazer/registry:test: [docs-sync] Syncing docs and generated artifacts...
+@diffgazer/registry:test: [docs-sync] Copied keys examples to registry/examples/keys/
+@diffgazer/registry:test: [docs-sync] Syncing registries (origin asserted: https://diffgazer.com)...
+@diffgazer/registry:test: [docs-sync] Done.
+@diffgazer/registry:test: 
+@diffgazer/registry:test: [90mstdout[2m | src/testing/docs-sync.test.ts[2m > [22m[2msyncDocsFromArtifacts[2m > [22m[2mskips sync when fingerprint and outputs are unchanged, then resyncs if outputs are missing
+@diffgazer/registry:test: [22m[39m[docs-sync] Mode: workspace
+@diffgazer/registry:test: [docs-sync] Syncing docs and generated artifacts...
+@diffgazer/registry:test: [docs-sync] Syncing registries (origin asserted: https://diffgazer.com)...
+@diffgazer/registry:test: [docs-sync] Done.
+@diffgazer/registry:test: [docs-sync] Mode: workspace
+@diffgazer/registry:test: [docs-sync] Artifacts unchanged; skipping sync.
+@diffgazer/registry:test: [docs-sync] Mode: workspace
+@diffgazer/registry:test: [docs-sync] Syncing docs and generated artifacts...
+@diffgazer/registry:test: [docs-sync] Syncing registries (origin asserted: https://diffgazer.com)...
+@diffgazer/registry:test: [docs-sync] Done.
+@diffgazer/registry:test: 
+@diffgazer/registry:test: [90mstdout[2m | src/testing/docs-sync.test.ts[2m > [22m[2msyncDocsFromArtifacts[2m > [22m[2msyncs package-mode artifacts from an installed node_modules package
+@diffgazer/registry:test: [22m[39m[docs-sync] Mode: package
+@diffgazer/registry:test: [docs-sync] Syncing docs and generated artifacts...
+@diffgazer/registry:test: [docs-sync] Syncing registries (origin asserted: https://diffgazer.com)...
+@diffgazer/registry:test: [docs-sync] Done.
+@diffgazer/registry:test: 
+@diffgazer/registry:test: [90mstdout[2m | src/testing/docs-sync.test.ts[2m > [22m[2msyncDocsFromArtifacts[2m > [22m[2mrejects unsafe package names in package mode
+@diffgazer/registry:test: [22m[39m[docs-sync] Mode: package
+@diffgazer/registry:test: 
+@diffgazer/registry:test: [90mstdout[2m | src/testing/docs-sync.test.ts[2m > [22m[2msyncDocsFromArtifacts[2m > [22m[2mrejects package-mode manifests with escaped artifact paths
+@diffgazer/registry:test: [22m[39m[docs-sync] Mode: package
+@diffgazer/registry:test: [docs-sync] Mode: package
+@diffgazer/registry:test: [docs-sync] Mode: package
+@diffgazer/registry:test: [docs-sync] Mode: package
+@diffgazer/registry:test: [docs-sync] Mode: package
+@diffgazer/registry:test: [docs-sync] Mode: package
+@diffgazer/registry:test: [docs-sync] Mode: package
+@diffgazer/registry:test: 
+@diffgazer/registry:test:  [32m✓[39m src/testing/docs-sync.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 235[2mms[22m[39m
+@diffgazer/core:test:  [32m✓[39m src/api/review.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 38[2mms[22m[39m
+@diffgazer/registry:test:  [32m✓[39m src/testing/docs-data.test.ts [2m([22m[2m17 tests[22m[2m)[22m[33m 517[2mms[22m[39m
+@diffgazer/registry:test:      [33m[2m✓[22m[39m returns CodeBlockLine[] with number and content [33m 395[2mms[22m[39m
+@diffgazer/registry:test: 
+@diffgazer/registry:test: [31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+@diffgazer/registry:test: 
+@diffgazer/registry:test: [41m[1m FAIL [22m[49m src/testing/shadcn.test.ts[2m > [22mvalidatePublicRegistryFresh[2m > [22mkeeps committed 'ui' public/r in sync with the source registry
+@diffgazer/registry:test: [31m[1mError[22m: Cannot find module 'file:///Users/voitz/Projects/diffgazer-workspace/libs/ui/scripts/transform-public-registry-keys-imports.ts' imported from /Users/voitz/Projects/diffgazer-workspace/libs/registry/src/testing/shadcn.test.ts[39m
+@diffgazer/registry:test: [36m [2m❯[22m loadExport src/testing/shadcn.test.ts:[2m27:18[22m[39m
+@diffgazer/registry:test: 
+@diffgazer/registry:test:     [90m 25|[39m
+@diffgazer/registry:test: [2m Test Files [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m13 passed[39m[22m[90m (14)[39m
+@diffgazer/registry:test: [2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m177 passed[39m[22m[90m (178)[39m
+@diffgazer/registry:test:     [90m 26|[39m async function loadExport<T>(modulePath: string, exportName: string): …
+@diffgazer/registry:test:     [90m 27|[39m   const loaded = await import(pathToFileURL(modulePath).href) as Recor…
+@diffgazer/registry:test: [2m   Start at [22m 17:57:24
+@diffgazer/registry:test: [2m   Duration [22m 1.05s[2m (transform 1.88s, setup 0ms, import 3.12s, tests 1.24s, environment 1ms)[22m
+@diffgazer/registry:test:     [90m   |[39m                  [31m^[39m
+@diffgazer/registry:test: 
+@diffgazer/registry:test:     [90m 28|[39m   [35mconst[39m value [33m=[39m loaded[exportName][33m;[39m
+@diffgazer/registry:test:     [90m 29|[39m   [35mif[39m ([35mtypeof[39m value [33m!==[39m [32m"function"[39m) {
+@diffgazer/registry:test: [90m [2m❯[22m src/testing/shadcn.test.ts:[2m189:11[22m[39m
+@diffgazer/registry:test: 
+@diffgazer/registry:test: [31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+@diffgazer/registry:test: 
+@diffgazer/registry:test:  ELIFECYCLE  Test failed. See above for more details.
+@diffgazer/core:test:  ELIFECYCLE  Test failed. See above for more details.
+ ERROR  @diffgazer/registry#test: command (/Users/voitz/Projects/diffgazer-workspace/libs/registry) /opt/homebrew/bin/pnpm run test exited (1)
+
+ Tasks:    0 successful, 2 total
+Cached:    0 cached, 2 total
+  Time:    1.879s 
+Failed:    @diffgazer/registry#test
+
+ ERROR  run failed: command  exited (1)

@@ -1,15 +1,15 @@
+import { InlineCode } from "@/components/ui/code-block"
 import {
   Dialog,
-  DialogTrigger,
+  DialogAction,
+  DialogBody,
+  DialogClose,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogBody,
-  DialogFooter,
-  DialogClose,
-  DialogAction,
+  DialogTrigger,
 } from "@/components/ui/dialog"
-import { InlineCode } from "@/components/ui/code-block"
 
 export default function DialogHeaderFlat() {
   return (

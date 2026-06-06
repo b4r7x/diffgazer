@@ -10,7 +10,7 @@ export const popoverDoc: ComponentDoc = {
   notes: [
     {
       title: "Requires @diffgazer/keys (package mode)",
-      content: "Popover's auto-focus on open (focusing the first focusable element in the content) imports from the optional @diffgazer/keys peer. Package/npm consumers must install it: `npm install @diffgazer/keys`. Importing @diffgazer/ui/components/popover without keys fails at module load with an error naming the missing @diffgazer/keys package. Copy/dgadd consumers do not need the package — copy mode rewrites the focusable helper to local source.",
+      content: "Popover's auto-focus on open (focusing the first focusable element in the content) imports from the required @diffgazer/keys peer. Package/npm consumers must install it: `npm install @diffgazer/keys`. Importing @diffgazer/ui/components/popover without keys fails at module load with an error naming the missing @diffgazer/keys package. Copy/dgadd consumers do not need the package — copy mode rewrites the focusable helper to local source.",
     },
     {
       title: "Trigger Modes",

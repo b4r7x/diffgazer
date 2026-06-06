@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { requireFrameDocument } from "../testing/assertions.js";
 import { getRestorableFocusTarget, restoreFocus } from "./focus-restore.js";
 
 function button(label: string, ownerDocument: Document = document) {
@@ -43,17 +44,16 @@ describe("focus restore utilities", () => {
   it("captures and restores focus in the provided ownerDocument", () => {
     const frame = document.createElement("iframe");
     document.body.append(frame);
-    const frameDocument = frame.contentDocument;
-    expect(frameDocument).not.toBeNull();
+    const frameDocument = requireFrameDocument(frame);
 
-    const trigger = button("Trigger", frameDocument!);
-    const other = button("Other", frameDocument!);
+    const trigger = button("Trigger", frameDocument);
+    const other = button("Other", frameDocument);
 
     trigger.focus();
-    expect(getRestorableFocusTarget(frameDocument!)).toBe(trigger);
+    expect(getRestorableFocusTarget(frameDocument)).toBe(trigger);
 
     other.focus();
     expect(restoreFocus(trigger)).toBe(true);
-    expect(frameDocument!.activeElement).toBe(trigger);
+    expect(frameDocument?.activeElement).toBe(trigger);
   });
 });

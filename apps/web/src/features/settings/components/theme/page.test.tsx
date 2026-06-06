@@ -1,14 +1,14 @@
-import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
+import { type BoundApi, createApi } from "@diffgazer/core/api";
+import { ApiProvider } from "@diffgazer/core/api/hooks";
+import { FooterProvider } from "@diffgazer/core/footer";
+import type { SettingsConfig } from "@diffgazer/core/schemas/config";
+import { KeyboardProvider } from "@diffgazer/keys";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { createApi, type BoundApi } from "@diffgazer/core/api";
-import { ApiProvider } from "@diffgazer/core/api/hooks";
-import { KeyboardProvider } from "@diffgazer/keys";
-import { FooterProvider } from "@diffgazer/core/footer";
-import { ThemeProvider } from "@/app/providers/theme-provider";
-import type { SettingsConfig } from "@diffgazer/core/schemas/config";
 import type { ReactNode } from "react";
+import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
+import { ThemeProvider } from "@/app/providers/theme";
 
 const mockNavigate = vi.fn();
 

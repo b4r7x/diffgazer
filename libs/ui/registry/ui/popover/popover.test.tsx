@@ -1,8 +1,8 @@
-import { render, screen, act, fireEvent } from "@testing-library/react"
+import { act, fireEvent, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { axe } from "../../../testing/utils"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { axe } from "../../../testing/axe"
 import { applyReducedMotionFixture } from "../../../testing/prefers-reduced-motion"
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { Popover } from "./index"
 
 function renderClickPopover(props: Record<string, unknown> = {}) {
@@ -284,7 +284,7 @@ describe("Popover", () => {
   it("closes only the top nested popover on outside click and Escape", async () => {
     render(
       <div>
-        <button>Outside</button>
+        <button type="button">Outside</button>
         <Popover defaultOpen>
           <Popover.Trigger>Outer</Popover.Trigger>
           <Popover.Content role="dialog" aria-label="Outer popover">
@@ -316,7 +316,7 @@ describe("Popover", () => {
     restorePointerEventSupport = setPointerEventSupport(true)
     const { rerender } = render(
       <div>
-        <button>Outside</button>
+        <button type="button">Outside</button>
         <Popover defaultOpen key="pointer">
           <Popover.Trigger>Open</Popover.Trigger>
           <Popover.Content>Popover body</Popover.Content>
@@ -336,7 +336,7 @@ describe("Popover", () => {
 
     rerender(
       <div>
-        <button>Outside</button>
+        <button type="button">Outside</button>
         <Popover defaultOpen key="touch">
           <Popover.Trigger>Open</Popover.Trigger>
           <Popover.Content>Popover body</Popover.Content>
@@ -453,9 +453,9 @@ function renderClickPopoverWithFocusables() {
     <Popover triggerMode="click" defaultOpen>
       <Popover.Trigger>Open</Popover.Trigger>
       <Popover.Content role="dialog" aria-label="Actions">
-        <button>First</button>
-        <button>Second</button>
-        <button>Third</button>
+        <button type="button">First</button>
+        <button type="button">Second</button>
+        <button type="button">Third</button>
       </Popover.Content>
     </Popover>
   )
@@ -508,8 +508,8 @@ describe("Popover non-modal focus", () => {
       <Popover triggerMode="click" defaultOpen>
         <Popover.Trigger>Open</Popover.Trigger>
         <Popover.Content>
-          <button>First</button>
-          <button>Second</button>
+          <button type="button">First</button>
+          <button type="button">Second</button>
         </Popover.Content>
       </Popover>,
     )
@@ -542,8 +542,8 @@ describe("Popover menu focus", () => {
       <Popover triggerMode="click">
         <Popover.Trigger>Open</Popover.Trigger>
         <Popover.Content role="menu" aria-label="Actions">
-          <button>First action</button>
-          <button>Second action</button>
+          <button type="button">First action</button>
+          <button type="button">Second action</button>
         </Popover.Content>
       </Popover>,
     )
@@ -560,11 +560,11 @@ describe("Popover menu focus", () => {
   it("does not move focus when autoFocus is false on a menu popover", async () => {
     render(
       <div>
-        <button>Outside</button>
+        <button type="button">Outside</button>
         <Popover triggerMode="click">
           <Popover.Trigger>Open</Popover.Trigger>
           <Popover.Content role="menu" aria-label="Actions" autoFocus={false}>
-            <button>First action</button>
+            <button type="button">First action</button>
           </Popover.Content>
         </Popover>
       </div>,
@@ -622,7 +622,7 @@ describe("Popover hover-mode touch", () => {
   it("closes hover-mode popover when a tap lands outside trigger and content", () => {
     render(
       <div>
-        <button>Outside</button>
+        <button type="button">Outside</button>
         <Popover triggerMode="hover" defaultOpen>
           <Popover.Trigger>Passive label</Popover.Trigger>
           <Popover.Content>Tooltip body</Popover.Content>
@@ -641,7 +641,7 @@ describe("Popover hover-mode touch", () => {
       <Popover triggerMode="hover" defaultOpen>
         <Popover.Trigger>Passive label</Popover.Trigger>
         <Popover.Content>
-          <button>Inside</button>
+          <button type="button">Inside</button>
         </Popover.Content>
       </Popover>,
     )

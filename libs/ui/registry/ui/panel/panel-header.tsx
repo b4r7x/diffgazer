@@ -1,9 +1,9 @@
 "use client";
 
-import { Children, isValidElement, type HTMLAttributes, type ReactNode } from "react";
+import { Children, type HTMLAttributes, isValidElement, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { PanelTitle } from "./panel-title";
 import { PanelDescription } from "./panel-description";
+import { PanelTitle } from "./panel-title";
 
 export interface PanelHeaderProps extends HTMLAttributes<HTMLDivElement> {
   marker?: "bar" | "none";

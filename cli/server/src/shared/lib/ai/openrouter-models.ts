@@ -1,14 +1,13 @@
 import { createHash } from "node:crypto";
 import { getErrorMessage } from "@diffgazer/core/errors";
-import { type Result, ok, err } from "@diffgazer/core/result";
+import { err, ok, type Result } from "@diffgazer/core/result";
 import {
+  type OpenRouterModel,
   OpenRouterModelCacheSchema,
   OpenRouterModelSchema,
-  type OpenRouterModel,
-  type OpenRouterModelCache,
 } from "@diffgazer/core/schemas/config";
 import { getGlobalOpenRouterModelsPath } from "../paths.js";
-import { loadDiskCache, withTtlAndFallback } from "./disk-cache.js";
+import { withTtlAndFallback } from "./disk-cache.js";
 
 const hashApiKey = (apiKey: string): string =>
   createHash("sha256").update(apiKey).digest("hex").slice(0, 16);
@@ -79,9 +78,6 @@ const mapOpenRouterModel = (raw: unknown): OpenRouterModel | null => {
 
 const countWithParams = (models: OpenRouterModel[]): number =>
   models.filter((model) => (model.supportedParameters?.length ?? 0) > 0).length;
-
-export const loadOpenRouterModelCache = (): OpenRouterModelCache | null =>
-  loadDiskCache(getGlobalOpenRouterModelsPath(), OpenRouterModelCacheSchema);
 
 export const fetchOpenRouterModels = async (apiKey: string): Promise<Result<OpenRouterModel[], { message: string }>> => {
   let response: Response;

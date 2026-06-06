@@ -1,10 +1,10 @@
-import { Box, Text } from "ink";
-import { useTheme } from "../../../theme/theme-context";
-import type { CliColorTokens } from "../../../theme/palettes";
-import { ScrollArea } from "../../../components/ui/scroll-area";
-import { Badge } from "../../../components/ui/badge";
-import { type LogEntryData, TAG_BADGE_VARIANTS } from "@diffgazer/core/schemas/presentation";
 import { formatTimestamp } from "@diffgazer/core/format";
+import { type LogEntryData, TAG_BADGE_VARIANTS } from "@diffgazer/core/schemas/presentation";
+import { Box, Text } from "ink";
+import { useTheme } from "../../../app/providers/theme";
+import { Badge } from "../../../components/ui/badge";
+import { ScrollArea } from "../../../components/ui/scroll-area";
+import type { CliColorTokens } from "../../../theme/palettes";
 
 export interface ActivityLogProps {
   entries: LogEntryData[];

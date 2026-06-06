@@ -1,8 +1,8 @@
 "use client";
 
-import type { ReactNode, MouseEventHandler, FocusEventHandler, Ref } from "react";
-import { useDialogDismiss } from "./dialog-context";
+import type { FocusEventHandler, MouseEventHandler, ReactNode, Ref } from "react";
 import { Button, type ButtonProps } from "../button/button";
+import { useDialogDismiss } from "./dialog-context";
 
 export interface DialogActionProps
   extends Pick<ButtonProps, "variant" | "size" | "bracket" | "className" | "disabled" | "loading" | "highlighted"> {

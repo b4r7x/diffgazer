@@ -1,11 +1,11 @@
-import { zValidator } from "@hono/zod-validator";
-import { Hono } from "hono";
 import { TrustConfigSchema } from "@diffgazer/core/schemas/config";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
-import { errorResponse, zodErrorHandler } from "../../shared/lib/http/response.js";
-import { createBodyLimitMiddleware } from "../../shared/middlewares/body-limit.js";
+import { zValidator } from "@hono/zod-validator";
+import { Hono } from "hono";
 import { getStore } from "../../shared/lib/config/store.js";
 import { getProjectRoot } from "../../shared/lib/http/request.js";
+import { errorResponse, zodErrorHandler } from "../../shared/lib/http/response.js";
+import { createBodyLimitMiddleware } from "../../shared/middlewares/body-limit.js";
 import { SettingsSchema } from "./schemas.js";
 
 const settingsRouter = new Hono();

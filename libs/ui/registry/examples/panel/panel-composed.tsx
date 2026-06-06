@@ -1,6 +1,6 @@
-import { Panel } from "@/components/ui/panel"
-import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Panel } from "@/components/ui/panel"
 
 export default function PanelComposed() {
   return (

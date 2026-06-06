@@ -1,7 +1,7 @@
 "use client";
 
-import type { ComponentProps } from "react";
 import { cva } from "class-variance-authority";
+import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils";
 import { Badge } from "../badge/badge";
 import type { SubstepStatus } from "./stepper-context";

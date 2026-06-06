@@ -1,9 +1,10 @@
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { writeFileSync } from "node:fs";
-import { afterEach, describe, it, expect, vi, beforeEach } from "vitest";
 import { AI_PROVIDERS } from "@diffgazer/core/schemas/config";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { requireValue } from "../../../testing/assertions.js";
+import type { StreamMetadata } from "./types.js";
 
 const keyring = vi.hoisted(() => ({
   deleteKeyringSecret: vi.fn(),
@@ -276,7 +277,7 @@ describe("generateStream", () => {
 
     const receivedChunks: string[] = [];
     let completedText = "";
-    let completedMeta: any = null;
+    let completedMeta: StreamMetadata | null = null;
 
     await clientResult.value.generateStream("test prompt", {
       onChunk: (chunk) => { receivedChunks.push(chunk); },
@@ -286,8 +287,9 @@ describe("generateStream", () => {
 
     expect(receivedChunks).toEqual(["Hello", " ", "world"]);
     expect(completedText).toBe("Hello world");
-    expect(completedMeta.truncated).toBe(false);
-    expect(completedMeta.finishReason).toBe("stop");
+    const meta = requireValue<StreamMetadata>(completedMeta, "completion metadata");
+    expect(meta.truncated).toBe(false);
+    expect(meta.finishReason).toBe("stop");
   });
 
   it("reports the thrown error via onError when the stream fails mid-flight", async () => {
@@ -312,8 +314,8 @@ describe("generateStream", () => {
       onError: (error) => { capturedError = error; },
     });
 
-    expect(capturedError).not.toBeNull();
-    expect(capturedError!.message).toBe("stream broke");
+    const error = requireValue<Error>(capturedError, "stream error");
+    expect(error.message).toBe("stream broke");
   });
 
   it("flags truncation in completion metadata when finishReason is length", async () => {
@@ -329,7 +331,7 @@ describe("generateStream", () => {
     const clientResult = createAIClient({ apiKey: "key", provider: "gemini" });
     if (!clientResult.ok) return;
 
-    let completedMeta: any = null;
+    let completedMeta: StreamMetadata | null = null;
 
     await clientResult.value.generateStream("test", {
       onChunk: () => {},
@@ -337,8 +339,9 @@ describe("generateStream", () => {
       onError: () => {},
     });
 
-    expect(completedMeta.truncated).toBe(true);
-    expect(completedMeta.finishReason).toBe("length");
+    const meta = requireValue<StreamMetadata>(completedMeta, "completion metadata");
+    expect(meta.truncated).toBe(true);
+    expect(meta.finishReason).toBe("length");
   });
 
   it("drops empty chunks from the consumer stream", async () => {
@@ -392,7 +395,7 @@ describe("createLanguageModel openai-compatible providers", () => {
     const { createAIClient } = await loadClient();
     const result = createAIClient({ apiKey: "test-key", provider: "cerebras" });
     expect(result.ok).toBe(true);
-    const chatModel = vi.mocked(createOpenAICompatible).mock.results[0]!.value.chatModel;
+    const chatModel = vi.mocked(createOpenAICompatible).mock.results[0]?.value.chatModel;
     expect(chatModel).toHaveBeenCalledWith(PROVIDER_OVERLAY.cerebras.defaultModel);
   });
 });

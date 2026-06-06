@@ -1,9 +1,9 @@
 "use client";
 
-import { useRef, type FocusEvent, type HTMLAttributes, type KeyboardEvent, type Ref } from "react";
-import { composeRefs } from "@/lib/compose-refs";
-import { useNavigation } from "@/hooks/use-navigation";
+import { type FocusEvent, type HTMLAttributes, type KeyboardEvent, type Ref, useRef } from "react";
 import { useFloatingIndicator } from "@/hooks/use-floating-indicator";
+import { useNavigation } from "@/hooks/use-navigation";
+import { composeRefs } from "@/lib/compose-refs";
 import {
   segmentedContainerVariants,
   segmentedPillIndicatorClass,

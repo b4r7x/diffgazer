@@ -1,10 +1,10 @@
 "use client";
 
-import { Accordion as AccordionRoot, type AccordionProps, type AccordionSingleProps, type AccordionMultipleProps } from "./accordion";
+import { type AccordionMultipleProps, type AccordionProps, Accordion as AccordionRoot, type AccordionSingleProps } from "./accordion";
+import { AccordionContent, type AccordionContentProps } from "./accordion-content";
 import { AccordionHeader, type AccordionHeaderProps } from "./accordion-header";
 import { AccordionItem, type AccordionItemProps } from "./accordion-item";
-import { AccordionTrigger, triggerVariants, type AccordionTriggerProps, type AccordionTriggerVariantProps } from "./accordion-trigger";
-import { AccordionContent, type AccordionContentProps } from "./accordion-content";
+import { AccordionTrigger, type AccordionTriggerProps, type AccordionTriggerVariantProps, triggerVariants } from "./accordion-trigger";
 
 const Accordion = Object.assign(AccordionRoot, {
   Header: AccordionHeader,

@@ -1,11 +1,11 @@
 import {
   Dialog,
-  DialogTrigger,
+  DialogBody,
+  DialogCloseIcon,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogBody,
-  DialogCloseIcon,
+  DialogTrigger,
 } from "@/components/ui/dialog"
 
 export default function DialogCloseIconExample() {

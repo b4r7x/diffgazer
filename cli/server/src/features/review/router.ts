@@ -5,13 +5,7 @@ import { createBodyLimitMiddleware, DEFAULT_BODY_LIMIT_KB } from "../../shared/m
 import { createRateLimitMiddleware } from "../../shared/middlewares/rate-limit.js";
 import { requireSetup } from "../../shared/middlewares/setup-guard.js";
 import { requireRepoAccess } from "../../shared/middlewares/trust-guard.js";
-import {
-  ActiveSessionQuerySchema,
-  ContextRefreshSchema,
-  CreateReviewBodySchema,
-  DrilldownRequestSchema,
-  ReviewIdParamSchema,
-} from "./schemas.js";
+import { getContextHandler, refreshContextHandler } from "./context/routes.js";
 import {
   cancelSessionHandler,
   createReviewHandler,
@@ -20,9 +14,15 @@ import {
   getActiveSessionHandler,
   getReviewHandler,
   listReviewsHandler,
-} from "./review-routes.js";
-import { resumeStreamById } from "./session-resume.js";
-import { getContextHandler, refreshContextHandler } from "./context-routes.js";
+} from "./handlers.js";
+import {
+  ActiveSessionQuerySchema,
+  ContextRefreshSchema,
+  CreateReviewBodySchema,
+  DrilldownRequestSchema,
+  ReviewIdParamSchema,
+} from "./schemas.js";
+import { resumeStreamById } from "./stream/resume.js";
 
 const reviewRouter = new Hono();
 

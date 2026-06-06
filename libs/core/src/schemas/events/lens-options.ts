@@ -1,5 +1,5 @@
 import type { LensId } from "../review/lens.js";
-import { LENS_TO_AGENT, AGENT_METADATA } from "./agent.js";
+import { AGENT_METADATA, LENS_TO_AGENT } from "./agent.js";
 
 export interface LensOption {
   id: LensId;

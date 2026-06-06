@@ -1,19 +1,19 @@
 "use client";
 
-import { Children, isValidElement, useCallback, useLayoutEffect, useRef, type ReactNode, type KeyboardEvent, type Ref } from "react";
+import { Children, isValidElement, type KeyboardEvent, type ReactNode, type Ref, useCallback, useLayoutEffect, useRef } from "react";
+import type { FloatingAlign, FloatingSide } from "@/hooks/use-floating-position";
 import { useNavigation } from "@/hooks/use-navigation";
-import { type FloatingSide, type FloatingAlign } from "@/hooks/use-floating-position";
 import { composeRefs } from "@/lib/compose-refs";
+import { matchesSearch } from "@/lib/search";
 import { cn } from "@/lib/utils";
 import { FloatingPanel } from "../floating-panel";
-import { useSelectContext } from "./select-context";
-import { matchesSearch } from "@/lib/search";
-import { isActiveOptionVisible, toOptionId } from "./select-utils";
-import { getVisibleEnabledOptions } from "./get-visible-enabled-options";
-import { useSelectTypeahead } from "./use-select-typeahead";
 import { SearchableContent, type SearchableListboxProps } from "./searchable-content";
-import { SelectSearch } from "./select-search";
 import type { SelectOptionMetadata } from "./select-context";
+import { useSelectContext } from "./select-context";
+import { SelectSearch } from "./select-search";
+import { isActiveOptionVisible, toOptionId } from "./selection";
+import { useSelectTypeahead } from "./use-typeahead";
+import { getVisibleEnabledOptions } from "./visible-options";
 
 export interface SelectContentProps {
   children: ReactNode;
@@ -85,7 +85,9 @@ export function SelectContent({
       currentIndex < 0
         ? direction > 0 ? 0 : visibleOptions.length - 1
         : (currentIndex + direction + visibleOptions.length) % visibleOptions.length;
-    setHighlighted(visibleOptions[nextIndex]!);
+    const nextOption = visibleOptions[nextIndex];
+    if (nextOption === undefined) return;
+    setHighlighted(nextOption);
   }
 
   function handleSearchInputNavigation(e: KeyboardEvent): void {
@@ -229,6 +231,7 @@ function MatchCount({ options, searchQuery }: { options: ReadonlyMap<string, Sel
     if (matchesSearch(option.label, searchQuery)) count++;
   }
   return (
+    // biome-ignore lint/a11y/useSemanticElements: role="status" is the sr-only results-count live region; <output> carries form-association semantics that do not fit here.
     <div role="status" aria-live="polite" className="sr-only">
       {count} results
     </div>

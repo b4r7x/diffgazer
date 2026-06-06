@@ -1,0 +1,209 @@
+
+> @diffgazer/repo@0.0.0 smoke /Users/voitz/Projects/diffgazer-workspace
+> pnpm run smoke:cli && pnpm run smoke:packages && pnpm run smoke:shadcn && pnpm run smoke:modelsdev
+
+
+> @diffgazer/repo@0.0.0 smoke:cli /Users/voitz/Projects/diffgazer-workspace
+> pnpm --filter @diffgazer/add build && node scripts/monorepo/smoke-cli.mjs
+
+
+> @diffgazer/add@0.1.1 prebuild /Users/voitz/Projects/diffgazer-workspace/cli/add
+> pnpm run generate:bundles
+
+
+> @diffgazer/add@0.1.1 generate:bundles /Users/voitz/Projects/diffgazer-workspace/cli/add
+> node --import tsx scripts/bundle-registry.ts && node --import tsx scripts/generate-keys-copy-bundle.ts
+
+  Bundling registry...
+
+  Bundle summary:
+  Bundled 83 components (323 files)
+  Bundle size: 814.8 KB
+  Integrity: sha256-93013e1cf651e7a7ee612da59b5ab125b05ff9db0bb48f239b3505e40a0f9b6a
+  Output: /Users/voitz/Projects/diffgazer-workspace/cli/add/src/generated/registry-bundle.json
+
+  Dependencies:
+    accordion: @diffgazer/keys
+    code-block: lowlight
+    logo: figlet
+    use-navigation: @diffgazer/keys
+    use-focus-restore: @diffgazer/keys
+    use-focus-trap: @diffgazer/keys
+    use-scroll-lock: @diffgazer/keys
+    popover: @diffgazer/keys
+Wrote keys copy bundle: /Users/voitz/Projects/diffgazer-workspace/cli/add/src/generated/keys-copy-bundle.json (5 items)
+
+> @diffgazer/add@0.1.1 build /Users/voitz/Projects/diffgazer-workspace/cli/add
+> rm -rf dist && tsup && node --import tsx scripts/copy-generated.ts
+
+CLI Building entry: src/index.ts
+CLI Using tsconfig: tsconfig.json
+CLI tsup v8.5.1
+CLI Using tsup config: /Users/voitz/Projects/diffgazer-workspace/cli/add/tsup.config.ts
+CLI Target: node18
+CLI Cleaning output folder
+ESM Build start
+ESM dist/index.js 814.84 KB
+ESM ⚡️ Build success in 36ms
+OK: diffgazer --help
+OK: diffgazer --version
+OK: diffgazer --theme without --tui
+OK: dgadd --help
+OK: dgadd ui item
+OK: dgadd keys item
+file:///Users/voitz/Projects/diffgazer-workspace/scripts/monorepo/smoke-shared.mjs:333
+      throw new CommandFailedError(cmd, {
+            ^
+
+CommandFailedError: Command failed (exit 2): pnpm run typecheck
+    at run (file:///Users/voitz/Projects/diffgazer-workspace/scripts/monorepo/smoke-shared.mjs:333:13)
+    at file:///Users/voitz/Projects/diffgazer-workspace/scripts/monorepo/smoke-cli.mjs:306:3
+    ... 2 lines matching cause stack trace ...
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+  cmd: 'pnpm run typecheck',
+  exitCode: 2,
+  stdout: '\n' +
+    '> dgadd-smoke@ typecheck /private/tmp/claude-501/dgadd-smoke-BHTb8a\n' +
+    '> tsc -p tsconfig.json\n' +
+    '\n' +
+    "src/hooks/use-focus-trap.ts(4,38): error TS2307: Cannot find module './utils/element-guards' or its corresponding type declarations.\n" +
+    "src/hooks/use-focus-trap.ts(86,53): error TS2345: Argument of type 'EventTarget | null' is not assignable to parameter of type 'Node | null'.\n" +
+    "  Type 'EventTarget' is missing the following properties from type 'Node': baseURI, childNodes, firstChild, isConnected, and 43 more.\n" +
+    "src/hooks/utils/focus-restore.ts(1,31): error TS2307: Cannot find module './element-guards' or its corresponding type declarations.\n" +
+    "src/hooks/utils/focus-restore.ts(18,8): error TS18047: 'activeElement' is possibly 'null'.\n" +
+    "src/hooks/utils/focus-restore.ts(20,3): error TS2322: Type 'Element | null' is not assignable to type 'HTMLElement | null'.\n" +
+    "  Type 'Element' is missing the following properties from type 'HTMLElement': accessKey, accessKeyLabel, autocapitalize, autocorrect, and 129 more.\n" +
+    "src/hooks/utils/focusable.ts(1,51): error TS2307: Cannot find module './element-guards' or its corresponding type declarations.\n" +
+    "src/hooks/utils/focusable.ts(59,8): error TS18047: 'element' is possibly 'null'.\n" +
+    "src/hooks/utils/focusable.ts(60,16): error TS2345: Argument of type 'HTMLElement | null' is not assignable to parameter of type 'HTMLElement'.\n" +
+    "  Type 'null' is not assignable to type 'HTMLElement'.\n" +
+    "src/hooks/utils/focusable.ts(61,15): error TS2345: Argument of type 'HTMLElement | null' is not assignable to parameter of type 'HTMLElement'.\n" +
+    "  Type 'null' is not assignable to type 'HTMLElement'.\n" +
+    "src/hooks/utils/focusable.ts(62,20): error TS2345: Argument of type 'HTMLElement | null' is not assignable to parameter of type 'HTMLElement'.\n" +
+    "  Type 'null' is not assignable to type 'HTMLElement'.\n" +
+    "src/hooks/utils/focusable.ts(63,32): error TS2345: Argument of type 'HTMLElement | null' is not assignable to parameter of type 'HTMLElement'.\n" +
+    "  Type 'null' is not assignable to type 'HTMLElement'.\n" +
+    "src/hooks/utils/focusable.ts(86,49): error TS2339: Property 'type' does not exist on type 'HTMLElement'.\n" +
+    "src/hooks/utils/keyboard-utils.ts(1,74): error TS2307: Cannot find module './element-guards' or its corresponding type declarations.\n" +
+    "src/hooks/utils/keyboard-utils.ts(137,15): error TS18047: 'target' is possibly 'null'.\n" +
+    "src/hooks/utils/keyboard-utils.ts(137,22): error TS2339: Property 'tagName' does not exist on type 'EventTarget'.\n" +
+    "src/hooks/utils/keyboard-utils.ts(142,5): error TS18047: 'target' is possibly 'null'.\n" +
+    "src/hooks/utils/keyboard-utils.ts(142,12): error TS2339: Property 'isContentEditable' does not exist on type 'EventTarget'.\n" +
+    "src/hooks/utils/keyboard-utils.ts(170,13): error TS18047: 'target' is possibly 'null'.\n" +
+    "src/hooks/utils/keyboard-utils.ts(170,20): error TS2339: Property 'disabled' does not exist on type 'EventTarget'.\n" +
+    "src/hooks/utils/keyboard-utils.ts(170,33): error TS18047: 'target' is possibly 'null'.\n" +
+    "src/hooks/utils/keyboard-utils.ts(170,40): error TS2339: Property 'readOnly' does not exist on type 'EventTarget'.\n" +
+    "src/hooks/utils/keyboard-utils.ts(174,9): error TS18047: 'target' is possibly 'null'.\n" +
+    "src/hooks/utils/keyboard-utils.ts(174,16): error TS2339: Property 'disabled' does not exist on type 'EventTarget'.\n" +
+    "src/hooks/utils/keyboard-utils.ts(174,28): error TS18047: 'target' is possibly 'null'.\n" +
+    "src/hooks/utils/keyboard-utils.ts(174,35): error TS2339: Property 'readOnly' does not exist on type 'EventTarget'.\n" +
+    "src/hooks/utils/keyboard-utils.ts(175,19): error TS18047: 'target' is possibly 'null'.\n" +
+    "src/hooks/utils/keyboard-utils.ts(175,26): error TS2339: Property 'type' does not exist on type 'EventTarget'.\n" +
+    "src/hooks/utils/keyboard-utils.ts(179,38): error TS2345: Argument of type 'EventTarget | null' is not assignable to parameter of type 'HTMLElement'.\n" +
+    "  Type 'null' is not assignable to type 'HTMLElement'.\n" +
+    ' ELIFECYCLE  Command failed with exit code 2.\n',
+  stderr: '',
+  cause: Error: Command failed: pnpm run typecheck
+      at genericNodeError (node:internal/errors:983:15)
+      at wrappedFn (node:internal/errors:537:14)
+      at checkExecSyncError (node:child_process:916:11)
+      at execSync (node:child_process:988:15)
+      at run (file:///Users/voitz/Projects/diffgazer-workspace/scripts/monorepo/smoke-shared.mjs:324:12)
+      at file:///Users/voitz/Projects/diffgazer-workspace/scripts/monorepo/smoke-cli.mjs:306:3
+      at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+      at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:665:26)
+      at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+    status: 2,
+    signal: null,
+    output: [
+      null,
+      '\n' +
+        '> dgadd-smoke@ typecheck /private/tmp/claude-501/dgadd-smoke-BHTb8a\n' +
+        '> tsc -p tsconfig.json\n' +
+        '\n' +
+        "src/hooks/use-focus-trap.ts(4,38): error TS2307: Cannot find module './utils/element-guards' or its corresponding type declarations.\n" +
+        "src/hooks/use-focus-trap.ts(86,53): error TS2345: Argument of type 'EventTarget | null' is not assignable to parameter of type 'Node | null'.\n" +
+        "  Type 'EventTarget' is missing the following properties from type 'Node': baseURI, childNodes, firstChild, isConnected, and 43 more.\n" +
+        "src/hooks/utils/focus-restore.ts(1,31): error TS2307: Cannot find module './element-guards' or its corresponding type declarations.\n" +
+        "src/hooks/utils/focus-restore.ts(18,8): error TS18047: 'activeElement' is possibly 'null'.\n" +
+        "src/hooks/utils/focus-restore.ts(20,3): error TS2322: Type 'Element | null' is not assignable to type 'HTMLElement | null'.\n" +
+        "  Type 'Element' is missing the following properties from type 'HTMLElement': accessKey, accessKeyLabel, autocapitalize, autocorrect, and 129 more.\n" +
+        "src/hooks/utils/focusable.ts(1,51): error TS2307: Cannot find module './element-guards' or its corresponding type declarations.\n" +
+        "src/hooks/utils/focusable.ts(59,8): error TS18047: 'element' is possibly 'null'.\n" +
+        "src/hooks/utils/focusable.ts(60,16): error TS2345: Argument of type 'HTMLElement | null' is not assignable to parameter of type 'HTMLElement'.\n" +
+        "  Type 'null' is not assignable to type 'HTMLElement'.\n" +
+        "src/hooks/utils/focusable.ts(61,15): error TS2345: Argument of type 'HTMLElement | null' is not assignable to parameter of type 'HTMLElement'.\n" +
+        "  Type 'null' is not assignable to type 'HTMLElement'.\n" +
+        "src/hooks/utils/focusable.ts(62,20): error TS2345: Argument of type 'HTMLElement | null' is not assignable to parameter of type 'HTMLElement'.\n" +
+        "  Type 'null' is not assignable to type 'HTMLElement'.\n" +
+        "src/hooks/utils/focusable.ts(63,32): error TS2345: Argument of type 'HTMLElement | null' is not assignable to parameter of type 'HTMLElement'.\n" +
+        "  Type 'null' is not assignable to type 'HTMLElement'.\n" +
+        "src/hooks/utils/focusable.ts(86,49): error TS2339: Property 'type' does not exist on type 'HTMLElement'.\n" +
+        "src/hooks/utils/keyboard-utils.ts(1,74): error TS2307: Cannot find module './element-guards' or its corresponding type declarations.\n" +
+        "src/hooks/utils/keyboard-utils.ts(137,15): error TS18047: 'target' is possibly 'null'.\n" +
+        "src/hooks/utils/keyboard-utils.ts(137,22): error TS2339: Property 'tagName' does not exist on type 'EventTarget'.\n" +
+        "src/hooks/utils/keyboard-utils.ts(142,5): error TS18047: 'target' is possibly 'null'.\n" +
+        "src/hooks/utils/keyboard-utils.ts(142,12): error TS2339: Property 'isContentEditable' does not exist on type 'EventTarget'.\n" +
+        "src/hooks/utils/keyboard-utils.ts(170,13): error TS18047: 'target' is possibly 'null'.\n" +
+        "src/hooks/utils/keyboard-utils.ts(170,20): error TS2339: Property 'disabled' does not exist on type 'EventTarget'.\n" +
+        "src/hooks/utils/keyboard-utils.ts(170,33): error TS18047: 'target' is possibly 'null'.\n" +
+        "src/hooks/utils/keyboard-utils.ts(170,40): error TS2339: Property 'readOnly' does not exist on type 'EventTarget'.\n" +
+        "src/hooks/utils/keyboard-utils.ts(174,9): error TS18047: 'target' is possibly 'null'.\n" +
+        "src/hooks/utils/keyboard-utils.ts(174,16): error TS2339: Property 'disabled' does not exist on type 'EventTarget'.\n" +
+        "src/hooks/utils/keyboard-utils.ts(174,28): error TS18047: 'target' is possibly 'null'.\n" +
+        "src/hooks/utils/keyboard-utils.ts(174,35): error TS2339: Property 'readOnly' does not exist on type 'EventTarget'.\n" +
+        "src/hooks/utils/keyboard-utils.ts(175,19): error TS18047: 'target' is possibly 'null'.\n" +
+        "src/hooks/utils/keyboard-utils.ts(175,26): error TS2339: Property 'type' does not exist on type 'EventTarget'.\n" +
+        "src/hooks/utils/keyboard-utils.ts(179,38): error TS2345: Argument of type 'EventTarget | null' is not assignable to parameter of type 'HTMLElement'.\n" +
+        "  Type 'null' is not assignable to type 'HTMLElement'.\n" +
+        ' ELIFECYCLE  Command failed with exit code 2.\n',
+      ''
+    ],
+    pid: 48931,
+    stdout: '\n' +
+      '> dgadd-smoke@ typecheck /private/tmp/claude-501/dgadd-smoke-BHTb8a\n' +
+      '> tsc -p tsconfig.json\n' +
+      '\n' +
+      "src/hooks/use-focus-trap.ts(4,38): error TS2307: Cannot find module './utils/element-guards' or its corresponding type declarations.\n" +
+      "src/hooks/use-focus-trap.ts(86,53): error TS2345: Argument of type 'EventTarget | null' is not assignable to parameter of type 'Node | null'.\n" +
+      "  Type 'EventTarget' is missing the following properties from type 'Node': baseURI, childNodes, firstChild, isConnected, and 43 more.\n" +
+      "src/hooks/utils/focus-restore.ts(1,31): error TS2307: Cannot find module './element-guards' or its corresponding type declarations.\n" +
+      "src/hooks/utils/focus-restore.ts(18,8): error TS18047: 'activeElement' is possibly 'null'.\n" +
+      "src/hooks/utils/focus-restore.ts(20,3): error TS2322: Type 'Element | null' is not assignable to type 'HTMLElement | null'.\n" +
+      "  Type 'Element' is missing the following properties from type 'HTMLElement': accessKey, accessKeyLabel, autocapitalize, autocorrect, and 129 more.\n" +
+      "src/hooks/utils/focusable.ts(1,51): error TS2307: Cannot find module './element-guards' or its corresponding type declarations.\n" +
+      "src/hooks/utils/focusable.ts(59,8): error TS18047: 'element' is possibly 'null'.\n" +
+      "src/hooks/utils/focusable.ts(60,16): error TS2345: Argument of type 'HTMLElement | null' is not assignable to parameter of type 'HTMLElement'.\n" +
+      "  Type 'null' is not assignable to type 'HTMLElement'.\n" +
+      "src/hooks/utils/focusable.ts(61,15): error TS2345: Argument of type 'HTMLElement | null' is not assignable to parameter of type 'HTMLElement'.\n" +
+      "  Type 'null' is not assignable to type 'HTMLElement'.\n" +
+      "src/hooks/utils/focusable.ts(62,20): error TS2345: Argument of type 'HTMLElement | null' is not assignable to parameter of type 'HTMLElement'.\n" +
+      "  Type 'null' is not assignable to type 'HTMLElement'.\n" +
+      "src/hooks/utils/focusable.ts(63,32): error TS2345: Argument of type 'HTMLElement | null' is not assignable to parameter of type 'HTMLElement'.\n" +
+      "  Type 'null' is not assignable to type 'HTMLElement'.\n" +
+      "src/hooks/utils/focusable.ts(86,49): error TS2339: Property 'type' does not exist on type 'HTMLElement'.\n" +
+      "src/hooks/utils/keyboard-utils.ts(1,74): error TS2307: Cannot find module './element-guards' or its corresponding type declarations.\n" +
+      "src/hooks/utils/keyboard-utils.ts(137,15): error TS18047: 'target' is possibly 'null'.\n" +
+      "src/hooks/utils/keyboard-utils.ts(137,22): error TS2339: Property 'tagName' does not exist on type 'EventTarget'.\n" +
+      "src/hooks/utils/keyboard-utils.ts(142,5): error TS18047: 'target' is possibly 'null'.\n" +
+      "src/hooks/utils/keyboard-utils.ts(142,12): error TS2339: Property 'isContentEditable' does not exist on type 'EventTarget'.\n" +
+      "src/hooks/utils/keyboard-utils.ts(170,13): error TS18047: 'target' is possibly 'null'.\n" +
+      "src/hooks/utils/keyboard-utils.ts(170,20): error TS2339: Property 'disabled' does not exist on type 'EventTarget'.\n" +
+      "src/hooks/utils/keyboard-utils.ts(170,33): error TS18047: 'target' is possibly 'null'.\n" +
+      "src/hooks/utils/keyboard-utils.ts(170,40): error TS2339: Property 'readOnly' does not exist on type 'EventTarget'.\n" +
+      "src/hooks/utils/keyboard-utils.ts(174,9): error TS18047: 'target' is possibly 'null'.\n" +
+      "src/hooks/utils/keyboard-utils.ts(174,16): error TS2339: Property 'disabled' does not exist on type 'EventTarget'.\n" +
+      "src/hooks/utils/keyboard-utils.ts(174,28): error TS18047: 'target' is possibly 'null'.\n" +
+      "src/hooks/utils/keyboard-utils.ts(174,35): error TS2339: Property 'readOnly' does not exist on type 'EventTarget'.\n" +
+      "src/hooks/utils/keyboard-utils.ts(175,19): error TS18047: 'target' is possibly 'null'.\n" +
+      "src/hooks/utils/keyboard-utils.ts(175,26): error TS2339: Property 'type' does not exist on type 'EventTarget'.\n" +
+      "src/hooks/utils/keyboard-utils.ts(179,38): error TS2345: Argument of type 'EventTarget | null' is not assignable to parameter of type 'HTMLElement'.\n" +
+      "  Type 'null' is not assignable to type 'HTMLElement'.\n" +
+      ' ELIFECYCLE  Command failed with exit code 2.\n',
+    stderr: ''
+  }
+}
+
+Node.js v22.22.2
+ ELIFECYCLE  Command failed with exit code 1.
+ ELIFECYCLE  Command failed with exit code 1.

@@ -10,7 +10,10 @@
     "src/**/*.ts",
     "src/**/*.tsx",
     "src/**/*.test.ts",
-    "src/**/*.test.tsx"
+    "src/**/*.test.tsx",
+    "registry/**/*.ts",
+    "registry/**/*.tsx",
+    "scripts/**/*.test.ts"
   ],
   "exclude": ["node_modules", "dist"]
 }

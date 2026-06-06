@@ -1,11 +1,11 @@
 "use client";
 
-import { cn } from "@/lib/utils";
-import { type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type Ref } from "react";
-import { composeRefs } from "@/lib/compose-refs";
+import type { KeyboardEvent as ReactKeyboardEvent, ReactNode, Ref } from "react";
 import { Kbd } from "@/components/ui/kbd";
+import { composeRefs } from "@/lib/compose-refs";
+import { cn } from "@/lib/utils";
 import { useCommandPaletteContext } from "./command-palette-context";
-import { getCommandPaletteItemDomId } from "./use-command-palette-state";
+import { getCommandPaletteItemDomId } from "./use-state";
 
 const INPUT_NAVIGATION_KEYS = new Set(["ArrowUp", "ArrowDown", "Enter"]);
 

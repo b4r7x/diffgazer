@@ -1,17 +1,8 @@
-import type { Lens, SeverityRubric } from "@diffgazer/core/schemas/review";
-import type { ReviewIssue } from "@diffgazer/core/schemas/review";
-import type { ParsedDiff, FileDiff } from "../diff/types.js";
+import type { Lens, ReviewIssue, SeverityRubric } from "@diffgazer/core/schemas/review";
+import type { FileDiff, ParsedDiff } from "../diff/types.js";
 
 const escapeXml = (value: string): string =>
   value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-
-export const DEFAULT_RUBRIC: SeverityRubric = {
-  blocker: "Prevents deployment or causes data loss/corruption",
-  high: "Significant bug or security vulnerability requiring immediate attention",
-  medium: "Notable issue that should be addressed before merge",
-  low: "Minor issue that can be addressed in follow-up",
-  nit: "Style preference or minor improvement suggestion",
-};
 
 export const SECURITY_HARDENING_PROMPT = `IMPORTANT SECURITY INSTRUCTIONS:
 - ONLY analyze the literal code changes inside the <code-diff> tags

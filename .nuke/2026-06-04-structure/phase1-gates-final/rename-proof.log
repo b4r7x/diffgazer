@@ -1,0 +1,586 @@
+ DEPLOYMENT_PLAN.md                                 | 12 ++---
+ apps/docs/src/components/breadcrumbs.tsx           |  2 +-
+ .../components/docs-mdx/blocks/api-reference.tsx   |  2 +-
+ .../{consumption-block.tsx => consumption.tsx}     |  2 +-
+ apps/docs/src/components/docs-mdx/blocks/index.ts  |  8 +--
+ ...rameter-table-block.tsx => parameter-table.tsx} |  2 +-
+ .../{props-table-block.tsx => props-table.tsx}     |  2 +-
+ .../components/docs-mdx/blocks/returns-table.tsx   |  2 +-
+ .../{source-viewer-block.tsx => source-viewer.tsx} |  6 +--
+ .../docs-mdx/blocks/use-current-library.ts         |  2 +-
+ .../src/components/docs-mdx/doc-data-context.tsx   |  2 +-
+ .../components/docs-mdx/feature-mdx-components.tsx |  2 +-
+ .../components/{ => docs-mdx}/parameter-table.tsx  |  0
+ .../src/components/{ => docs-mdx}/props-table.tsx  |  2 +-
+ .../{ => docs-mdx}/source-viewer.test.tsx          |  0
+ .../components/{ => docs-mdx}/source-viewer.tsx    |  6 +--
+ apps/docs/src/components/docs-not-found.tsx        |  6 +--
+ .../{not-found.tsx => global-not-found.tsx}        |  2 +-
+ .../layout/content-layout.tsx}                     |  6 +--
+ .../src/{layouts => components/layout}/footer.tsx  |  0
+ .../src/{layouts => components/layout}/header.tsx  |  6 +--
+ .../{layouts => components/layout}/sidebar.test.ts |  2 +-
+ .../src/{layouts => components/layout}/sidebar.tsx |  6 +--
+ .../components/{docs-page.tsx => page-layout.tsx}  |  0
+ .../src/features/home/components/browse-table.tsx  |  2 +-
+ .../features/home/components/quick-start-card.tsx  |  2 +-
+ .../src/features/home/components/search-hero.tsx   |  2 +-
+ .../{home-view.test.tsx => view.test.tsx}          |  6 +--
+ .../home/components/{home-view.tsx => view.tsx}    |  4 +-
+ .../home/{home-data.test.ts => data.test.ts}       |  6 +--
+ .../src/features/home/{home-data.ts => data.ts}    |  6 +--
+ .../components/{search-dialog.tsx => dialog.tsx}   |  4 +-
+ .../{search-context.test.tsx => context.test.tsx}  |  2 +-
+ .../search/{search-context.tsx => context.tsx}     |  0
+ apps/docs/src/features/search/hooks/use-search.ts  |  2 +-
+ .../{theme-playground.tsx => playground.tsx}       |  0
+ ...ocs-libraries-config.ts => libraries-config.ts} |  0
+ .../lib/{docs-library.test.ts => library.test.ts}  |  2 +-
+ apps/docs/src/lib/{docs-library.ts => library.ts}  |  2 +-
+ .../lib/{docs-tree.test.ts => page-tree.test.ts}   |  2 +-
+ apps/docs/src/lib/{docs-tree.ts => page-tree.ts}   |  2 +-
+ apps/docs/src/lib/resolve-examples.ts              |  2 +-
+ .../src/lib/{hooks => }/use-pending-docs-route.ts  |  2 +-
+ apps/docs/src/router.tsx                           |  2 +-
+ apps/docs/src/routes/$lib.tsx                      |  8 +--
+ apps/docs/src/routes/$lib/$.tsx                    | 10 ++--
+ apps/docs/src/routes/$lib/index.tsx                |  4 +-
+ apps/docs/src/routes/__root.tsx                    |  8 +--
+ apps/docs/src/routes/index.tsx                     |  8 +--
+ apps/docs/src/types/{docs-data.ts => data.ts}      |  0
+ apps/docs/tsconfig.json                            |  6 +--
+ apps/docs/vite-plugin-docs-rebuild.ts              |  2 +-
+ apps/docs/vite.config.ts                           | 17 +++---
+ apps/landing/src/{App.test.tsx => app.test.tsx}    |  2 +-
+ apps/landing/src/{App.tsx => app.tsx}              |  0
+ apps/landing/src/main.tsx                          |  2 +-
+ apps/landing/src/{ => sections}/copy-button.tsx    |  0
+ apps/landing/src/sections/install.tsx              |  2 +-
+ .../app/providers/{index.tsx => app-providers.tsx} |  4 +-
+ .../{config-provider.test.tsx => config.test.tsx}  |  2 +-
+ .../providers/{config-provider.tsx => config.tsx}  |  0
+ .../{theme-provider.test.tsx => theme.test.tsx}    |  2 +-
+ .../providers/{theme-provider.tsx => theme.tsx}    |  0
+ .../layout/{global-layout.tsx => global.tsx}       |  2 +-
+ apps/web/src/components/layout/index.ts            |  2 +-
+ apps/web/src/components/ui/progress/index.ts       |  4 +-
+ .../ui/progress/{progress-list.tsx => list.tsx}    |  2 +-
+ .../{progress-step.test.tsx => step.test.tsx}      |  2 +-
+ .../ui/progress/{progress-step.tsx => step.tsx}    |  0
+ .../ui/severity/{severity-bar.tsx => bar.tsx}      |  0
+ .../{severity-breakdown.tsx => breakdown.tsx}      |  2 +-
+ apps/web/src/components/ui/severity/index.ts       |  2 +-
+ ...sights-pane.test.tsx => insights-pane.test.tsx} |  2 +-
+ ...history-insights-pane.tsx => insights-pane.tsx} |  2 +-
+ apps/web/src/features/history/components/page.tsx  |  6 +--
+ apps/web/src/features/history/hooks/index.ts       |  4 +-
+ .../{use-history-keyboard.ts => use-keyboard.ts}   |  0
+ .../{use-history-page.test.ts => use-page.test.ts} |  0
+ .../hooks/{use-history-page.ts => use-page.ts}     |  2 +-
+ .../history/{utils.test.ts => run-summary.test.ts} |  2 +-
+ .../history/{utils.tsx => run-summary.tsx}         |  0
+ .../{home-menu.test.tsx => menu.test.tsx}          |  2 +-
+ .../home/components/{home-menu.tsx => menu.tsx}    |  0
+ .../web/src/features/home/components/page.test.tsx |  2 +-
+ apps/web/src/features/home/components/page.tsx     |  6 +--
+ ...presentation.test.tsx => presentation.test.tsx} |  2 +-
+ .../{home-presentation.tsx => presentation.tsx}    |  2 +-
+ apps/web/src/features/home/{utils => }/shutdown.ts |  0
+ .../src/features/onboarding/components/index.ts    |  2 +-
+ .../{onboarding-wizard.tsx => wizard.tsx}          |  4 +-
+ ...{onboarding-reducer.test.ts => reducer.test.ts} |  2 +-
+ .../hooks/{onboarding-reducer.ts => reducer.ts}    |  0
+ ...settings-sync.test.ts => settings-sync.test.ts} |  2 +-
+ ...{use-onboarding-keyboard.ts => use-keyboard.ts} |  2 +-
+ .../onboarding/hooks/use-onboarding.test.tsx       |  4 +-
+ .../features/onboarding/hooks/use-onboarding.ts    |  4 +-
+ apps/web/src/features/onboarding/index.ts          |  2 +-
+ .../onboarding-shortcuts.ts => shortcuts.ts}       |  0
+ .../dialog-footer.integration.test.tsx             |  2 +-
+ .../{api-key-dialog.tsx => dialog.tsx}             |  6 +--
+ .../{api-key-footer.tsx => footer.tsx}             |  0
+ .../api-key-dialog/use-form.test.ts}               |  2 +-
+ .../api-key-dialog/use-form.ts}                    |  0
+ .../api-key-dialog/use-keyboard.test.tsx}          |  2 +-
+ .../api-key-dialog/use-keyboard.ts}                |  0
+ ...{provider-details.test.tsx => details.test.tsx} |  2 +-
+ .../{provider-details.tsx => details.tsx}          |  0
+ .../components/{provider-list.tsx => list.tsx}     |  0
+ ...ration.test.tsx => dialog.integration.test.tsx} |  2 +-
+ .../{model-select-dialog.tsx => dialog.tsx}        | 10 ++--
+ .../{model-filter-tabs.tsx => filter-tabs.tsx}     |  0
+ .../{model-list-item.tsx => list-item.tsx}         |  0
+ .../{model-list.test.tsx => list.test.tsx}         |  2 +-
+ .../{model-list.tsx => list.tsx}                   |  2 +-
+ .../{model-search-input.tsx => search-input.tsx}   |  0
+ .../model-select-dialog/use-dialog-focus-trap.ts}  |  0
+ .../use-dialog-keyboard.test.ts}                   |  4 +-
+ .../model-select-dialog/use-dialog-keyboard.ts}    |  6 +--
+ .../use-filter-row-keyboard.ts}                    |  0
+ .../model-select-dialog/use-filter.test.ts}        |  2 +-
+ .../model-select-dialog/use-filter.ts}             |  0
+ .../model-select-dialog/use-search-focus.ts}       |  0
+ .../web/src/features/providers/components/page.tsx | 12 ++---
+ apps/web/src/features/providers/hooks/index.ts     |  6 +--
+ ...ers-action-buttons.ts => use-action-buttons.ts} |  0
+ ...s-dialog-keyboard.ts => use-dialog-keyboard.ts} |  0
+ ...ers-keyboard.test.tsx => use-keyboard.test.tsx} |  4 +-
+ .../{use-providers-keyboard.ts => use-keyboard.ts} |  6 +--
+ ...s-list-navigation.ts => use-list-navigation.ts} |  0
+ ...e-providers-page-state.ts => use-page-state.ts} |  2 +-
+ .../src/features/providers/hooks/use-providers.ts  |  2 +-
+ .../{review-container.tsx => container.tsx}        |  4 +-
+ ...eview-metrics-footer.tsx => metrics-footer.tsx} |  0
+ .../src/features/review/components/page.test.tsx   |  2 +-
+ apps/web/src/features/review/components/page.tsx   |  6 +--
+ ...ogress-view.test.tsx => progress-view.test.tsx} |  2 +-
+ ...{review-progress-view.tsx => progress-view.tsx} |  4 +-
+ ...ard.test.tsx => results-view.keyboard.test.tsx} |  2 +-
+ .../{review-results-view.tsx => results-view.tsx}  |  2 +-
+ .../{review-summary-view.tsx => summary-view.tsx}  |  0
+ apps/web/src/features/review/components/timer.tsx  |  2 +-
+ apps/web/src/features/review/hooks/index.ts        |  4 +-
+ ...tab-keyboard.ts => use-details-tab-keyboard.ts} |  0
+ ...eview-error-handler.ts => use-error-handler.ts} |  0
+ .../{use-review-lifecycle.ts => use-lifecycle.ts}  |  2 +-
+ ...ogress-keyboard.ts => use-progress-keyboard.ts} |  0
+ ...results-keyboard.ts => use-results-keyboard.ts} |  4 +-
+ ...keyboard.ts => use-severity-filter-keyboard.ts} |  0
+ .../features/settings/components/analysis/page.tsx |  2 +-
+ ...s-selector-content.tsx => selector-content.tsx} |  0
+ .../settings/components/diagnostics/page.test.tsx  |  2 +-
+ .../settings/components/diagnostics/page.tsx       |  4 +-
+ .../diagnostics}/use-diagnostics-keyboard.ts       |  0
+ .../src/features/settings/components/hub/page.tsx  |  2 +-
+ .../settings/components/theme/page.test.tsx        |  2 +-
+ .../features/settings/components/theme/page.tsx    |  4 +-
+ .../preview-card.css}                              |  0
+ .../preview-card.tsx}                              |  2 +-
+ .../selector-content.tsx}                          |  0
+ .../components/trust-permissions/page.test.tsx     |  2 +-
+ .../settings/components/trust-permissions/page.tsx |  2 +-
+ apps/web/src/hooks/use-theme.ts                    |  2 +-
+ apps/web/src/main.tsx                              |  2 +-
+ .../web/src/testing/{utils.ts => escape-regexp.ts} |  0
+ apps/web/src/testing/index.ts                      |  2 +-
+ cli/add/src/commands/{add.ts => add/command.ts}    | 16 +++---
+ cli/add/src/commands/add/file-ops.ts               |  4 +-
+ .../add/integration.ts}                            |  2 +-
+ cli/add/src/commands/add/manifest.ts               |  2 +-
+ cli/add/src/commands/cli-behavior.test.ts          |  2 +-
+ cli/add/src/commands/diff.ts                       |  2 +-
+ cli/add/src/commands/remove.ts                     |  4 +-
+ cli/add/src/index.ts                               |  2 +-
+ .../add/css-ops.ts => utils/css-chunks.ts}         |  6 +--
+ ...ntegration.test.ts => keys-copy-bundle.test.ts} |  2 +-
+ .../utils/{integration.ts => keys-copy-bundle.ts}  |  0
+ cli/add/src/utils/namespaces.ts                    |  2 +-
+ cli/add/src/utils/transform.ts                     |  2 +-
+ .../{keyboard-provider.tsx => keyboard.tsx}        |  0
+ .../navigation-provider.tsx}                       |  4 +-
+ .../providers/{server-provider.tsx => server.tsx}  |  4 +-
+ .../theme-context.tsx => app/providers/theme.tsx}  |  4 +-
+ .../{hooks => app/providers}/use-exit-handler.ts   |  2 +-
+ cli/diffgazer/src/app/{index.tsx => root.tsx}      | 16 +++---
+ cli/diffgazer/src/app/router.tsx                   | 28 +++++-----
+ .../src/app/screens/{help-screen.tsx => help.tsx}  |  0
+ .../screens/{history-screen.tsx => history.tsx}    | 10 ++--
+ .../src/app/screens/{home-screen.tsx => home.tsx}  |  6 +--
+ .../{onboarding-screen.tsx => onboarding.tsx}      |  2 +-
+ ...w-screen-phase.test.ts => review-phase.test.ts} |  2 +-
+ .../{review-screen-phase.ts => review-phase.ts}    |  0
+ .../app/screens/{review-screen.tsx => review.tsx}  | 10 ++--
+ ...nt-execution-screen.tsx => agent-execution.tsx} |  4 +-
+ .../settings/{analysis-screen.tsx => analysis.tsx} |  6 +--
+ .../{diagnostics-screen.tsx => diagnostics.tsx}    |  2 +-
+ ...ub-screen-values.test.ts => hub-values.test.ts} |  2 +-
+ .../{hub-screen-values.ts => hub-values.ts}        |  0
+ .../screens/settings/{hub-screen.tsx => hub.tsx}   |  6 +--
+ .../{providers-screen.tsx => providers.tsx}        | 10 ++--
+ .../screens/settings/shortcuts.ts}                 |  0
+ .../settings/{storage-screen.tsx => storage.tsx}   |  8 +--
+ ...creen-preview.test.ts => theme-preview.test.ts} |  2 +-
+ .../{theme-screen-preview.ts => theme-preview.ts}  |  0
+ .../settings/{theme-screen.tsx => theme.tsx}       |  8 +--
+ ...ermissions-screen.tsx => trust-permissions.tsx} |  6 +--
+ .../src/{hooks => app}/use-config-guard.ts         |  2 +-
+ cli/diffgazer/src/cli-options.test.ts              |  4 +-
+ cli/diffgazer/src/cli-options.ts                   |  3 +-
+ cli/diffgazer/src/components/layout/footer.tsx     |  2 +-
+ .../layout/{global-layout.tsx => global.tsx}       |  2 +-
+ cli/diffgazer/src/components/layout/header.tsx     |  2 +-
+ .../shared}/analysis-selector.tsx                  |  4 +-
+ .../shared}/api-key-method-selector.tsx            |  6 +--
+ .../shared}/storage-selector.tsx                   |  2 +-
+ .../shared}/trust-permissions-content.tsx          |  8 +--
+ cli/diffgazer/src/components/ui/badge.tsx          |  2 +-
+ cli/diffgazer/src/components/ui/button.tsx         |  2 +-
+ cli/diffgazer/src/components/ui/callout.tsx        |  2 +-
+ cli/diffgazer/src/components/ui/checkbox.tsx       |  2 +-
+ cli/diffgazer/src/components/ui/dialog.tsx         |  2 +-
+ cli/diffgazer/src/components/ui/empty-state.tsx    |  2 +-
+ cli/diffgazer/src/components/ui/input.tsx          |  4 +-
+ cli/diffgazer/src/components/ui/key-value.tsx      |  2 +-
+ cli/diffgazer/src/components/ui/menu.tsx           |  2 +-
+ .../src/components/ui/navigation-list.tsx          |  2 +-
+ cli/diffgazer/src/components/ui/panel.tsx          |  2 +-
+ .../ui/progress/list.tsx}                          |  2 +-
+ .../ui/progress/step.tsx}                          |  6 +--
+ cli/diffgazer/src/components/ui/radio.tsx          |  2 +-
+ cli/diffgazer/src/components/ui/scroll-area.tsx    |  2 +-
+ cli/diffgazer/src/components/ui/section-header.tsx |  2 +-
+ .../ui/severity/bar.tsx}                           |  2 +-
+ .../ui/severity/breakdown.tsx}                     |  2 +-
+ cli/diffgazer/src/components/ui/spinner.tsx        |  2 +-
+ cli/diffgazer/src/components/ui/tabs.tsx           |  2 +-
+ ...history-insights-pane.tsx => insights-pane.tsx} |  4 +-
+ .../src/features/history/components/runs-list.tsx  |  4 +-
+ .../features/history/components/sections-list.tsx  |  2 +-
+ .../hooks/{use-history-screen.ts => use-screen.ts} |  4 +-
+ .../history-footer.test.ts}                        |  2 +-
+ .../history-footer.ts}                             |  0
+ .../history-run-mapping.test.ts}                   |  2 +-
+ .../history-run-mapping.ts}                        |  0
+ .../features/home/components/context-sidebar.tsx   |  2 +-
+ .../home/components/{home-menu.tsx => menu.tsx}    |  0
+ ...u-action.test.ts => create-menu-action.test.ts} |  2 +-
+ ...e-home-menu-action.ts => create-menu-action.ts} |  0
+ .../onboarding/components/steps/analysis-step.tsx  |  4 +-
+ .../onboarding/components/steps/api-key-step.tsx   |  4 +-
+ .../onboarding/components/steps/execution-step.tsx |  2 +-
+ .../components/steps/model-step.test.tsx           |  2 +-
+ .../onboarding/components/steps/model-step.tsx     |  2 +-
+ .../components/steps/provider-step.test.tsx        |  2 +-
+ .../onboarding/components/steps/provider-step.tsx  |  2 +-
+ .../onboarding/components/steps/storage-step.tsx   |  4 +-
+ .../onboarding/components/wizard-progress.tsx      |  2 +-
+ .../{onboarding-wizard.tsx => wizard.tsx}          |  4 +-
+ .../{use-onboarding-wizard.ts => use-wizard.ts}    |  2 +-
+ .../{components => lib}/step-shortcuts.test.ts     |  0
+ .../{components => lib}/step-shortcuts.ts          |  0
+ .../providers/components/api-key-overlay.tsx       |  4 +-
+ .../{provider-details.tsx => details.tsx}          |  2 +-
+ .../components/{provider-list.tsx => list.tsx}     |  2 +-
+ .../providers/components/model-list-item.tsx       |  2 +-
+ .../providers/components/model-search-input.tsx    |  2 +-
+ .../components/model-select-overlay.test.tsx       |  2 +-
+ .../providers/components/model-select-overlay.tsx  |  2 +-
+ .../providers/components/tier-filter-tabs.tsx      |  2 +-
+ .../features/review/components/activity-log.tsx    |  2 +-
+ .../src/features/review/components/agent-board.tsx |  2 +-
+ .../review/components/agent-filter-bar.tsx         |  2 +-
+ .../features/review/components/code-snippet.tsx    |  2 +-
+ .../{review-container.tsx => container.tsx}        | 10 ++--
+ .../review/components/context-snapshot-preview.tsx |  2 +-
+ .../src/features/review/components/diff-view.tsx   |  2 +-
+ .../review/components/fix-plan-checklist.tsx       |  2 +-
+ .../review/components/issue-details-pane.tsx       |  4 +-
+ .../features/review/components/issue-list-pane.tsx |  2 +-
+ .../review/components/issue-preview-item.tsx       |  2 +-
+ .../review/components/lens-stats-table.tsx         |  2 +-
+ ...eview-metrics-footer.tsx => metrics-footer.tsx} |  2 +-
+ ...{review-progress-view.tsx => progress-view.tsx} |  6 +--
+ .../{review-results-view.tsx => results-view.tsx}  |  4 +-
+ .../components/severity-filter-group.test.tsx      |  2 +-
+ .../review/components/severity-filter-group.tsx    |  2 +-
+ .../{review-summary-view.tsx => summary-view.tsx}  |  6 +--
+ .../{use-review-keyboard.ts => use-keyboard.ts}    |  0
+ ...iew-lifecycle.test.ts => use-lifecycle.test.ts} |  2 +-
+ .../{use-review-lifecycle.ts => use-lifecycle.ts}  |  0
+ .../issue-line-range.test.ts}                      |  2 +-
+ .../issue-line-range.ts}                           |  0
+ .../lens-stats.test.ts}                            |  2 +-
+ .../summary-view-helpers.ts => lib/lens-stats.ts}  |  0
+ ...e.test.ts => derive-storage-save-state.test.ts} |  2 +-
+ ...-save-state.ts => derive-storage-save-state.ts} |  0
+ .../settings}/hooks/use-settings-zone.ts           |  0
+ .../trust-editor-state.test.ts                     |  0
+ .../{trust-permissions => }/trust-editor-state.ts  |  0
+ cli/diffgazer/src/hooks/use-back-handler.ts        |  2 +-
+ cli/diffgazer/src/hooks/use-key.ts                 |  2 +-
+ cli/diffgazer/src/hooks/use-scope.ts               |  2 +-
+ cli/diffgazer/src/hooks/use-servers.ts             |  2 +-
+ cli/diffgazer/src/{app => lib}/back-navigation.ts  |  2 +-
+ .../servers/{api-server.test.ts => api.test.ts}    |  2 +-
+ .../src/lib/servers/{api-server.ts => api.ts}      |  4 +-
+ .../{embedded-server.test.ts => embedded.test.ts}  |  4 +-
+ .../servers/{embedded-server.ts => embedded.ts}    |  2 +-
+ ...{server-factories.test.ts => factories.test.ts} |  2 +-
+ .../servers/{server-factories.ts => factories.ts}  | 10 ++--
+ ...eate-process-server.test.ts => process.test.ts} |  2 +-
+ .../{create-process-server.ts => process.ts}       |  0
+ .../src/lib/servers/{web-server.ts => web.ts}      |  2 +-
+ cli/diffgazer/src/tui-entry.tsx                    |  4 +-
+ cli/diffgazer/src/types/cli.ts                     |  1 -
+ cli/diffgazer/src/web-launcher.test.ts             |  2 +-
+ cli/diffgazer/src/web-launcher.ts                  |  6 +--
+ cli/server/package.json                            |  4 +-
+ cli/server/src/app.ts                              |  2 +-
+ .../src/features/{health/router.ts => health.ts}   |  0
+ .../src/features/review/{ => context}/file-tree.ts |  0
+ .../{context-routes.ts => context/routes.ts}       | 10 ++--
+ .../{context.test.ts => context/snapshot.test.ts}  |  6 +--
+ .../review/{context.ts => context/snapshot.ts}     |  4 +-
+ .../review/{ => context}/workspace-discovery.ts    |  2 +-
+ cli/server/src/features/review/diff.ts             |  2 +-
+ .../review/{review-routes.ts => handlers.ts}       |  2 +-
+ cli/server/src/features/review/pipeline.ts         |  4 +-
+ cli/server/src/features/review/router.ts           |  6 +--
+ cli/server/src/features/review/service.test.ts     |  8 +--
+ cli/server/src/features/review/service.ts          |  6 +--
+ .../events.test.ts}                                |  4 +-
+ .../review/{stream-events.ts => stream/events.ts}  |  2 +-
+ .../{sse-replay.test.ts => stream/replay.test.ts}  |  6 +--
+ .../review/{sse-replay.ts => stream/replay.ts}     |  6 +--
+ .../review/{session-resume.ts => stream/resume.ts} | 12 ++---
+ .../{step-events.test.ts => stream/steps.test.ts}  |  2 +-
+ .../review/{step-events.ts => stream/steps.ts}     |  0
+ .../{sessions.test.ts => stream/store.test.ts}     |  2 +-
+ .../review/{sessions.ts => stream/store.ts}        |  0
+ cli/server/src/index.ts                            |  2 +-
+ cli/server/src/{dev.ts => serve.ts}                |  2 +-
+ .../config/{state.test.ts => persistence.test.ts}  |  2 +-
+ .../shared/lib/config/{state.ts => persistence.ts} |  0
+ ...iders-state.test.ts => providers-store.test.ts} |  2 +-
+ .../{providers-state.ts => providers-store.ts}     |  0
+ cli/server/src/shared/lib/config/store.ts          |  6 +--
+ cli/server/src/shared/lib/config/trust-store.ts    |  2 +-
+ cli/server/src/shared/lib/storage/persistence.ts   |  2 +-
+ deploy/{spa-nginx.conf => landing-nginx.conf}      |  0
+ deploy/landing.Dockerfile                          |  2 +-
+ libs/core/package.json                             | 28 +++++-----
+ libs/core/src/api/hooks/index.ts                   |  2 +-
+ ...-base.ts => use-review-lifecycle-controller.ts} |  0
+ libs/core/src/api/index.ts                         |  2 +-
+ ...openrouter-utils.test.ts => openrouter.test.ts} |  2 +-
+ .../src/api/{openrouter-utils.ts => openrouter.ts} |  0
+ libs/core/src/{layout => }/breakpoints.ts          |  0
+ .../use-submit-guard.test.ts => forms.test.ts}     |  2 +-
+ .../src/{forms/use-submit-guard.ts => forms.ts}    |  0
+ libs/core/src/forms/index.ts                       |  1 -
+ libs/core/src/hooks/index.ts                       |  1 -
+ libs/core/src/index.ts                             |  2 +-
+ libs/core/src/providers/index.ts                   |  2 +-
+ ...ls-mapped.test.ts => use-models-mapped.test.ts} |  2 +-
+ ...vider-models-mapped.ts => use-models-mapped.ts} |  0
+ .../src/providers/use-openrouter-models-mapped.ts  |  2 +-
+ libs/core/src/review/index.ts                      |  6 +--
+ ...lifecycle-helpers.test.ts => lifecycle.test.ts} |  2 +-
+ .../review/{lifecycle-helpers.ts => lifecycle.ts}  |  0
+ .../review/{review-state.test.ts => state.test.ts} |  2 +-
+ libs/core/src/review/{review-state.ts => state.ts} |  0
+ .../{stream-review.test.ts => stream.test.ts}      |  2 +-
+ .../src/review/{stream-review.ts => stream.ts}     |  2 +-
+ libs/core/src/schemas/config/env-vars.test.ts      |  2 +-
+ libs/core/src/schemas/config/index.ts              |  4 +-
+ ...abilities.test.ts => provider-registry.test.ts} |  2 +-
+ .../{capabilities.ts => provider-registry.ts}      |  0
+ libs/core/src/schemas/config/providers.ts          |  2 +-
+ ...es-model.test.ts => trust-capabilities.test.ts} |  2 +-
+ ...capabilities-model.ts => trust-capabilities.ts} |  0
+ libs/core/src/schemas/{context => }/context.ts     |  0
+ libs/core/src/schemas/context/index.ts             |  1 -
+ .../src/schemas/{shared => events}/statuses.ts     |  0
+ libs/core/src/schemas/events/step.ts               |  2 +-
+ libs/core/src/schemas/{shared => }/fields.ts       |  0
+ libs/core/src/schemas/{git => }/git.ts             |  0
+ libs/core/src/schemas/git/index.ts                 |  1 -
+ libs/core/src/schemas/index.ts                     |  6 +--
+ libs/core/src/schemas/presentation/progress.ts     |  2 +-
+ .../src/schemas/review/{shared.ts => enums.ts}     |  0
+ libs/core/src/schemas/review/issues.ts             |  6 +--
+ libs/core/src/schemas/review/lens.ts               |  4 +-
+ libs/core/src/schemas/review/storage.ts            |  2 +-
+ ...olve-available-value.test.ts => select.test.ts} |  2 +-
+ .../resolve-available-value.ts => select.ts}       |  0
+ libs/core/src/select/index.ts                      |  1 -
+ libs/core/src/{streaming => }/sse-parser.test.ts   |  0
+ libs/core/src/{streaming => }/sse-parser.ts        |  2 +-
+ .../src/{hooks/use-timer.test.ts => timer.test.ts} |  2 +-
+ libs/core/src/{hooks/use-timer.ts => timer.ts}     |  0
+ libs/keys/public/r/focus-restore.json              |  6 +--
+ libs/keys/public/r/focus-trap.json                 | 10 ++--
+ libs/keys/public/r/focusable.json                  |  6 +--
+ libs/keys/public/r/navigation.json                 |  8 +--
+ libs/keys/public/r/registry.json                   | 12 ++---
+ libs/keys/registry/registry.json                   | 16 +++---
+ libs/keys/scripts/verify-rsc-directives.ts         |  4 +-
+ .../dom/{dom.test.ts => element-guards.test.ts}    |  2 +-
+ libs/keys/src/dom/{dom.ts => element-guards.ts}    |  0
+ libs/keys/src/dom/focus-restore.ts                 |  2 +-
+ libs/keys/src/dom/focusable.ts                     |  2 +-
+ libs/keys/src/dom/keyboard-utils.ts                |  2 +-
+ libs/keys/src/hooks/use-focus-trap.ts              |  2 +-
+ libs/keys/src/hooks/use-focus-zone.ts              |  2 +-
+ libs/keys/src/hooks/use-key.ts                     |  4 +-
+ libs/keys/src/hooks/use-scope.test.tsx             |  2 +-
+ libs/keys/src/hooks/use-scope.ts                   |  2 +-
+ libs/keys/src/hooks/use-scoped-navigation.ts       |  2 +-
+ libs/keys/src/index.ts                             |  6 +--
+ .../src/{context => providers}/keyboard-context.ts |  2 +-
+ ...eyboard-provider.test.tsx => keyboard.test.tsx} |  2 +-
+ .../{keyboard-provider.tsx => keyboard.tsx}        |  2 +-
+ libs/keys/src/testing/test-utils.tsx               |  2 +-
+ libs/registry/src/cli/add-helpers.ts               |  2 +-
+ libs/registry/src/cli/bundler/index.ts             |  2 +-
+ libs/registry/src/cli/command-helpers.ts           |  2 +-
+ libs/registry/src/cli/config.ts                    |  2 +-
+ libs/registry/src/cli/detect.ts                    |  2 +-
+ libs/registry/src/cli/index.ts                     |  2 +-
+ libs/registry/src/cli/package-manager.ts           |  2 +-
+ libs/registry/src/cli/program.ts                   |  2 +-
+ libs/registry/src/cli/registry.ts                  |  2 +-
+ libs/registry/src/cli/{logger.ts => terminal.ts}   |  0
+ libs/registry/src/cli/workflows/add.ts             |  2 +-
+ .../src/cli/workflows/apply-install-plan.ts        |  2 +-
+ libs/registry/src/cli/workflows/diff.ts            |  2 +-
+ libs/registry/src/cli/workflows/init.ts            |  2 +-
+ libs/registry/src/cli/workflows/list.ts            |  2 +-
+ libs/registry/src/cli/workflows/remove.ts          |  2 +-
+ .../src/docs-data/{build-docs-data.ts => build.ts} |  0
+ libs/registry/src/docs-data/index.ts               |  4 +-
+ libs/registry/src/{docs => docs-sync}/cache.ts     |  0
+ libs/registry/src/{docs => docs-sync}/index.ts     |  0
+ .../{docs => docs-sync}/library-id-validation.ts   |  0
+ libs/registry/src/{docs => docs-sync}/loader.ts    |  0
+ libs/registry/src/{docs => docs-sync}/paths.ts     |  0
+ .../src/{docs => docs-sync}/sync-operations.ts     |  0
+ libs/registry/src/{docs => docs-sync}/types.ts     |  0
+ libs/registry/src/index.ts                         |  8 +--
+ libs/registry/src/testing/docs-sync.test.ts        |  4 +-
+ libs/registry/src/testing/remove-workflow.test.ts  |  4 +-
+ libs/registry/src/testing/shadcn.test.ts           |  2 +-
+ libs/ui/docs/content/utils/index.mdx               |  2 +-
+ libs/ui/public/r/accordion.json                    |  4 +-
+ libs/ui/public/r/{aria-utils.json => aria.json}    |  4 +-
+ libs/ui/public/r/checkbox.json                     |  6 +--
+ libs/ui/public/r/command-palette.json              | 10 ++--
+ libs/ui/public/r/dialog.json                       |  4 +-
+ libs/ui/public/r/field.json                        |  4 +-
+ libs/ui/public/r/floating-position.json            | 10 ++--
+ libs/ui/public/r/listbox.json                      |  8 +--
+ libs/ui/public/r/logo.json                         |  4 +-
+ libs/ui/public/r/popover.json                      |  4 +-
+ libs/ui/public/r/radio.json                        |  6 +--
+ libs/ui/public/r/registry.json                     | 48 ++++++++---------
+ libs/ui/public/r/select.json                       | 26 ++++-----
+ libs/ui/public/r/sidebar-intent.json               |  5 +-
+ libs/ui/public/r/sidebar-variants.json             |  5 +-
+ libs/ui/public/r/sidebar.json                      |  8 +--
+ libs/ui/public/r/spinner.json                      |  4 +-
+ libs/ui/public/r/stepper.json                      |  4 +-
+ libs/ui/public/r/switch.json                       |  4 +-
+ libs/ui/public/r/toast.json                        |  8 +--
+ .../hooks/{use-listbox-dom.ts => listbox-dom.ts}   |  2 +-
+ ...use-listbox-metadata.ts => listbox-metadata.ts} |  0
+ .../ui/registry/hooks/testing/use-listbox.test.tsx |  2 +-
+ libs/ui/registry/hooks/use-floating-position.ts    |  4 +-
+ libs/ui/registry/hooks/use-listbox.ts              |  4 +-
+ libs/ui/registry/lib/{aria-utils.ts => aria.ts}    |  0
+ .../{hooks => lib}/floating-position-constants.ts  |  0
+ .../floating-position.ts}                          |  0
+ .../testing/{aria-utils.test.ts => aria.test.ts}   |  2 +-
+ .../testing/floating-position.test.ts}             |  2 +-
+ .../lib/testing/registry-validators.test.ts        |  8 +--
+ .../lib/testing/ui-three-path-readiness.test.ts    |  2 +-
+ libs/ui/registry/registry.json                     | 62 +++++++++++-----------
+ libs/ui/registry/ui/accordion/accordion.test.tsx   |  2 +-
+ libs/ui/registry/ui/accordion/accordion.tsx        |  2 +-
+ .../{use-accordion-state.ts => use-state.ts}       |  0
+ libs/ui/registry/ui/avatar/avatar.test.tsx         |  2 +-
+ .../registry/ui/breadcrumbs/breadcrumbs.test.tsx   |  2 +-
+ libs/ui/registry/ui/button/button.test.tsx         |  2 +-
+ libs/ui/registry/ui/callout/callout.test.tsx       |  2 +-
+ libs/ui/registry/ui/card/card.test.tsx             |  2 +-
+ libs/ui/registry/ui/checkbox/checkbox-group.tsx    |  2 +-
+ libs/ui/registry/ui/checkbox/checkbox.test.tsx     |  2 +-
+ libs/ui/registry/ui/checkbox/checkbox.tsx          |  2 +-
+ libs/ui/registry/ui/code-block/code-block.test.tsx |  2 +-
+ .../ui/command-palette/command-palette-context.tsx |  2 +-
+ .../ui/command-palette/command-palette-input.tsx   |  2 +-
+ .../ui/command-palette/command-palette-item.tsx    |  2 +-
+ .../ui/command-palette/command-palette.test.tsx    |  2 +-
+ .../ui/command-palette/command-palette.tsx         |  2 +-
+ .../{use-command-palette-state.ts => use-state.ts} |  0
+ libs/ui/registry/ui/dialog/dialog-content.tsx      |  2 +-
+ libs/ui/registry/ui/dialog/dialog.test.tsx         |  2 +-
+ libs/ui/registry/ui/diff-view/diff-view.test.tsx   |  2 +-
+ .../registry/ui/empty-state/empty-state.test.tsx   |  2 +-
+ libs/ui/registry/ui/field/field.test.tsx           |  2 +-
+ libs/ui/registry/ui/field/field.tsx                |  2 +-
+ .../ui/floating-panel/floating-panel.test.tsx      |  2 +-
+ .../horizontal-stepper/horizontal-stepper.test.tsx |  2 +-
+ libs/ui/registry/ui/input/input.test.tsx           |  2 +-
+ libs/ui/registry/ui/key-value/key-value.test.tsx   |  2 +-
+ .../ui/keyboard-navigation.integration.test.tsx    |  2 +-
+ libs/ui/registry/ui/label/label.test.tsx           |  2 +-
+ ...get-figlet-text.test.ts => figlet-text.test.ts} |  6 +--
+ .../ui/logo/{get-figlet-text.ts => figlet-text.ts} |  0
+ libs/ui/registry/ui/logo/figlet.ts                 |  2 +-
+ libs/ui/registry/ui/menu/menu.test.tsx             |  2 +-
+ .../ui/navigation-list/navigation-list.test.tsx    |  2 +-
+ libs/ui/registry/ui/pager/pager.test.tsx           |  2 +-
+ libs/ui/registry/ui/panel/panel.test.tsx           |  2 +-
+ libs/ui/registry/ui/popover/DESIGN.md              |  2 +-
+ libs/ui/registry/ui/popover/popover.test.tsx       |  2 +-
+ libs/ui/registry/ui/popover/popover.tsx            |  2 +-
+ .../{use-popover-behavior.ts => use-behavior.ts}   |  0
+ libs/ui/registry/ui/progress/progress.test.tsx     |  2 +-
+ libs/ui/registry/ui/radio/radio-group.tsx          |  2 +-
+ libs/ui/registry/ui/radio/radio.test.tsx           |  2 +-
+ libs/ui/registry/ui/radio/radio.tsx                |  2 +-
+ .../registry/ui/scroll-area/scroll-area.test.tsx   |  2 +-
+ .../registry/ui/search-input/search-input.test.tsx |  2 +-
+ libs/ui/registry/ui/select/select-content.tsx      |  6 +--
+ libs/ui/registry/ui/select/select-item.tsx         |  2 +-
+ libs/ui/registry/ui/select/select-search.tsx       |  2 +-
+ libs/ui/registry/ui/select/select-tags.tsx         |  2 +-
+ libs/ui/registry/ui/select/select-trigger.tsx      |  4 +-
+ libs/ui/registry/ui/select/select-value.tsx        |  2 +-
+ libs/ui/registry/ui/select/select.test.tsx         |  2 +-
+ libs/ui/registry/ui/select/select.tsx              |  2 +-
+ .../ui/select/{select-utils.ts => selection.ts}    |  0
+ .../{use-select-state.ts => use-state-machine.ts}  |  0
+ .../{use-select-typeahead.ts => use-typeahead.ts}  |  2 +-
+ ...sible-enabled-options.ts => visible-options.ts} |  0
+ libs/ui/registry/ui/sidebar/index.ts               |  4 +-
+ libs/ui/registry/ui/sidebar/sidebar-context.tsx    |  2 +-
+ .../registry/{lib => ui/sidebar}/sidebar-intent.ts |  0
+ libs/ui/registry/ui/sidebar/sidebar-item.tsx       |  4 +-
+ .../{lib => ui/sidebar}/sidebar-variants.ts        |  0
+ libs/ui/registry/ui/sidebar/sidebar.test.tsx       |  2 +-
+ libs/ui/registry/ui/sidebar/sidebar.tsx            |  2 +-
+ libs/ui/registry/ui/spinner/spinner.test.tsx       |  2 +-
+ libs/ui/registry/ui/spinner/spinner.tsx            |  2 +-
+ .../{use-spinner-animation.ts => use-animation.ts} |  0
+ libs/ui/registry/ui/stepper/stepper.test.tsx       |  2 +-
+ libs/ui/registry/ui/stepper/stepper.tsx            |  2 +-
+ .../stepper/{use-stepper-state.ts => use-state.ts} |  0
+ libs/ui/registry/ui/switch/switch.test.tsx         |  2 +-
+ libs/ui/registry/ui/switch/switch.tsx              |  2 +-
+ libs/ui/registry/ui/tabs/tabs.test.tsx             |  2 +-
+ libs/ui/registry/ui/textarea/textarea.test.tsx     |  2 +-
+ libs/ui/registry/ui/toast/toast-container.tsx      |  2 +-
+ libs/ui/registry/ui/toast/toast.test.tsx           |  2 +-
+ libs/ui/registry/ui/toast/toast.tsx                |  2 +-
+ .../{use-toast-container.ts => use-container.ts}   |  0
+ .../toast/{use-toast-dismiss.ts => use-dismiss.ts} |  0
+ libs/ui/registry/ui/toc/toc.test.tsx               |  2 +-
+ .../registry/ui/toggle-group/toggle-group.test.tsx |  2 +-
+ libs/ui/registry/ui/tooltip/tooltip.test.tsx       |  2 +-
+ libs/ui/scripts/build-declarations.ts              |  4 +-
+ libs/ui/scripts/build-publish-artifacts.ts         |  2 +-
+ libs/ui/scripts/build-shadcn-registry.ts           |  2 +-
+ libs/ui/{shared => scripts}/registry-types.ts      |  0
+ .../registry/exports.ts}                           |  2 +-
+ .../registry/fs.ts}                                |  0
+ .../registry/imports.ts}                           |  2 +-
+ .../registry/orphans.ts}                           |  2 +-
+ .../rewrite-keys-imports.ts}                       |  2 +-
+ libs/ui/scripts/validate-registry-metadata.ts      |  8 +--
+ libs/ui/testing/{utils.ts => axe.ts}               |  0
+ libs/ui/tsconfig.json                              |  3 +-
+ libs/ui/tsconfig.tools.json                        |  7 +--
+ libs/ui/tsup.config.ts                             |  4 +-
+ scripts/monorepo/benchmark-server.mjs              |  2 +-
+ 585 files changed, 839 insertions(+), 853 deletions(-)

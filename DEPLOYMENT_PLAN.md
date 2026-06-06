@@ -2,7 +2,7 @@
 
 ## What We're Building
 
-We need to deploy 4 services from a pnpm/Turborepo monorepo onto a Hostinger VPS
+We need to deploy 3 services from a pnpm/Turborepo monorepo onto a Hostinger VPS
 running Coolify (latest). Each service gets its own subdomain under `b4r7.dev`.
 The domain is registered at Hostinger Domains.
 
@@ -11,7 +11,11 @@ The domain is registered at Hostinger Domains.
 | **Registry** | `r.b4r7.dev` | Static shadcn-compatible JSON registry | Nginx static |
 | **Docs** | `docs.b4r7.dev` | Component library documentation | Node.js SSR (TanStack Start + Nitro) |
 | **Landing** | `diffgazer.b4r7.dev` | Product page for diffgazer CLI | Vite + React + @diffgazer/ui |
-| **Hub** | `b4r7.dev` | Portfolio / project hub (placeholder) | Nginx static (single page) |
+
+`apps/web` / `@diffgazer/web` is not a standalone Coolify Resource in this
+plan. It is the product review SPA that ships through the `diffgazer` CLI web
+mode, where `cli/diffgazer` builds the SPA and serves it behind the embedded
+`cli/server` backend for local use.
 
 ### Architecture Diagram
 
@@ -26,11 +30,10 @@ Traefik (managed by Coolify, auto-SSL via Let's Encrypt)
     |
     ├── r.b4r7.dev          → registry container (nginx, static JSON)
     ├── docs.b4r7.dev       → docs container (node:22-alpine, Nitro SSR)
-    ├── diffgazer.b4r7.dev  → landing container (nginx, static SPA)
-    └── b4r7.dev            → hub container (nginx, single HTML page)
+    └── diffgazer.b4r7.dev  → landing container (nginx, static SPA)
 ```
 
-All 4 are separate Coolify Resources pointing to the same Git repository.
+All 3 are separate Coolify Resources pointing to the same Git repository.
 Coolify auto-deploys on push to `main` (zero cost — built-in feature).
 
 > **Reverse proxy details**: See [`deploy/REVERSE_PROXY.md`](deploy/REVERSE_PROXY.md) for
@@ -58,7 +61,7 @@ To change the registry domain in the future:
 
 The docs domain (`docs.b4r7.dev`) is controlled via:
 - Build-time env var `VITE_PUBLIC_ORIGIN` set in Coolify Resource settings
-- Flows to `seo.ts`, `generate-sitemap.mjs`
+- Flows to `seo.ts`, `generate-sitemap.ts`
 - `robots.txt` must be updated manually (static file)
 
 ---
@@ -108,7 +111,7 @@ This section now records what is done, what remains, and how to verify.
 
 - `libs/registry/src/constants.ts` — `REGISTRY_ORIGIN = "https://r.b4r7.dev"`.
 - `apps/docs/src/lib/seo.ts` — `DEFAULT_ORIGIN = "https://docs.b4r7.dev"` (overridable via `VITE_PUBLIC_ORIGIN`).
-- `apps/docs/scripts/generate-sitemap.mjs` — `DEFAULT_ORIGIN = "https://docs.b4r7.dev"`.
+- `apps/docs/scripts/generate-sitemap.ts` — `DEFAULT_ORIGIN = "https://docs.b4r7.dev"`.
 - `apps/docs/src/lib/consumption-metadata.ts` — shadcn URLs derive from `REGISTRY_ORIGIN` / `VITE_REGISTRY_ORIGIN`, no hardcoded origin.
 - `Dockerfile` (root) — `ARG REGISTRY_ORIGIN=https://r.b4r7.dev` (and `VITE_REGISTRY_ORIGIN`).
 - `docker-compose.yml` (root) — `REGISTRY_ORIGIN`, `VITE_PUBLIC_ORIGIN`, `VITE_REGISTRY_ORIGIN` default to the production origins.
@@ -133,8 +136,7 @@ See the actual files for current configuration (these are the source of truth):
 - [`deploy/registry.Dockerfile`](deploy/registry.Dockerfile) -- builds registry artifacts and serves static JSON via nginx.
 - [`deploy/registry-nginx.conf`](deploy/registry-nginx.conf) -- nginx config for the registry (CORS, rate limiting, security headers, explicit `/r/ui/` and `/r/keys/` location blocks).
 - [`deploy/landing.Dockerfile`](deploy/landing.Dockerfile) -- builds the landing SPA and serves via nginx.
-- [`deploy/hub.Dockerfile`](deploy/hub.Dockerfile) -- serves the hub static page via nginx.
-- [`deploy/spa-nginx.conf`](deploy/spa-nginx.conf) -- shared nginx config for landing and hub (SPA fallback, security headers, gzip, asset caching).
+- [`deploy/landing-nginx.conf`](deploy/landing-nginx.conf) -- nginx config for landing (SPA fallback, security headers, gzip, asset caching).
 
 ### 2.5: Create apps/landing (minimal diffgazer product page)
 
@@ -146,7 +148,7 @@ apps/landing/
   index.html
   src/
     main.tsx
-    App.tsx
+    app.tsx
     styles/
       index.css
 ```
@@ -238,7 +240,7 @@ export default defineConfig({
 ```tsx
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { App } from "./App";
+import { App } from "./app";
 import "./styles/index.css";
 
 createRoot(document.getElementById("root")!).render(
@@ -258,7 +260,7 @@ createRoot(document.getElementById("root")!).render(
 @source "../";
 ```
 
-**File: `apps/landing/src/App.tsx`**
+**File: `apps/landing/src/app.tsx`**
 
 Build a simple landing page using @diffgazer/ui components (Panel, Button, Badge, etc).
 This is a placeholder — the user will build it out later. For now, just enough to verify
@@ -292,63 +294,9 @@ export function App() {
 }
 ```
 
-### 2.6: Create apps/hub (minimal portfolio placeholder)
+### 2.6: Update turbo.json
 
-```
-apps/hub/
-  public/
-    index.html
-```
-
-**File: `apps/hub/public/index.html`**
-
-```html
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>b4r7</title>
-    <style>
-      * { margin: 0; box-sizing: border-box; }
-      body {
-        font-family: "JetBrains Mono", monospace;
-        background: #0a0a0a; color: #e0e0e0;
-        display: flex; align-items: center; justify-content: center;
-        min-height: 100vh; padding: 2rem;
-      }
-      main { max-width: 480px; }
-      h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem; }
-      p { color: #888; font-size: 0.875rem; line-height: 1.6; }
-      a { color: #7aa2f7; text-decoration: underline; }
-      a:hover { color: #e0e0e0; }
-      ul { list-style: none; padding: 0; margin-top: 1.5rem; }
-      li { margin-bottom: 0.75rem; }
-      li::before { content: "> "; color: #555; }
-    </style>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
-  </head>
-  <body>
-    <main>
-      <h1>b4r7</h1>
-      <p>Developer tools and open source projects.</p>
-      <ul>
-        <li><a href="https://diffgazer.b4r7.dev">diffgazer</a> — AI code review CLI</li>
-        <li><a href="https://docs.b4r7.dev">docs</a> — component library & keyboard hooks</li>
-        <li><a href="https://github.com/b4r7x">github</a></li>
-      </ul>
-    </main>
-  </body>
-</html>
-```
-
-No package.json needed — this is raw HTML served by nginx.
-
-### 2.7: Update turbo.json
-
-Add task entries for the new apps:
+Add the landing build task entry:
 
 ```json
 "@diffgazer/landing#build": {
@@ -357,9 +305,7 @@ Add task entries for the new apps:
 }
 ```
 
-No turbo entry needed for hub (no build step).
-
-### 2.8: Update root package.json scripts
+### 2.7: Update root package.json scripts
 
 Add convenience scripts:
 
@@ -368,19 +314,19 @@ Add convenience scripts:
 "landing:build": "turbo run build --filter=@diffgazer/landing"
 ```
 
-### 2.9: Commit the deployment changes
+### 2.8: Commit the deployment changes
 
-The `deploy/`, `apps/landing/`, `apps/hub/`, origin, Dockerfile, compose, turbo, and
+The `deploy/`, `apps/landing/`, origin, Dockerfile, compose, turbo, and
 script changes from this Step already exist in the tree. Once the registry artifacts
 are regenerated (2.3), stage and commit the full set:
 
 ```sh
-git add deploy/ apps/landing/ apps/hub/
+git add deploy/ apps/landing/
 git add libs/registry/src/constants.ts
 git add libs/ui/public/r/ libs/keys/public/r/
 git add apps/docs/src/lib/seo.ts
 git add apps/docs/src/lib/consumption-metadata.ts
-git add apps/docs/scripts/generate-sitemap.mjs
+git add apps/docs/scripts/generate-sitemap.ts
 git add Dockerfile docker-compose.yml
 git add turbo.json package.json
 git commit -m "feat: deployment setup for Coolify with r.b4r7.dev registry"
@@ -447,20 +393,7 @@ In Coolify dashboard:
    - **Watch Paths**: `apps/landing/**`
    - **Auto Deploy**: Enabled
 
-### 3.5: Create Resource — Hub (b4r7.dev)
-
-1. New Resource → Application → Select the git repo
-2. Settings:
-   - **Name**: `hub`
-   - **Build Pack**: Dockerfile
-   - **Base Directory**: `/`
-   - **Dockerfile Location**: `deploy/hub.Dockerfile`
-   - **Domain**: `b4r7.dev`
-   - **Port**: `8080`
-   - **Watch Paths**: `apps/hub/**`
-   - **Auto Deploy**: Enabled
-
-### 3.6: SSL Certificates
+### 3.5: SSL Certificates
 
 Coolify + Traefik handle Let's Encrypt automatically per domain.
 If using a wildcard A record, Coolify can also issue a wildcard certificate
@@ -472,7 +405,7 @@ for `*.b4r7.dev` — check Coolify Settings → Server → Wildcard Domain.
 
 ### 4.1: Trigger Initial Deploy
 
-Push to `main` triggers all 4 Resources to build and deploy.
+Push to `main` triggers all 3 Resources to build and deploy.
 Or trigger manually from Coolify dashboard per Resource.
 
 ### 4.2: Verification Checklist
@@ -488,9 +421,6 @@ curl -sI https://docs.b4r7.dev | head -5
 
 # Landing — must return HTML
 curl -sI https://diffgazer.b4r7.dev | head -5
-
-# Hub — must return HTML
-curl -sI https://b4r7.dev | head -5
 
 # SSL — all must be valid
 echo | openssl s_client -servername r.b4r7.dev -connect r.b4r7.dev:443 2>/dev/null | openssl x509 -noout -dates
@@ -548,8 +478,12 @@ After deployment is verified, update the smoke test origin:
 Coolify supports Watch Paths — only files matching the pattern trigger a redeploy.
 This prevents the "push to docs → registry redeploys" problem.
 
-If Watch Paths are not available in your Coolify version, all 4 Resources will
+If Watch Paths are not available in your Coolify version, all 3 Resources will
 redeploy on every push. This is safe (idempotent) but wastes build time.
+
+`apps/web` changes do not trigger a Coolify resource in this plan. Validate them
+through the `diffgazer` CLI build/smoke path, because the web SPA is bundled for
+the local CLI web mode rather than deployed as a public VPS service.
 
 ### Resource Limits
 
@@ -560,10 +494,9 @@ On a Hostinger VPS with limited RAM, set container limits in Coolify:
 | registry | 0.25 | 64MB |
 | docs | 1.0 | 512MB |
 | landing | 0.25 | 64MB |
-| hub | 0.1 | 32MB |
 
 The docs container needs the most resources (Node.js SSR).
-Registry, landing, and hub are nginx serving static files — minimal resources.
+Registry and landing are nginx serving static files — minimal resources.
 
 ### Custom Networks
 
@@ -581,18 +514,15 @@ deploy/
   registry.Dockerfile
   registry-nginx.conf
   landing.Dockerfile
-  hub.Dockerfile
-  spa-nginx.conf
+  landing-nginx.conf
 apps/landing/
   package.json
   vite.config.ts
   tsconfig.json
   index.html
   src/main.tsx
-  src/App.tsx
+  src/app.tsx
   src/styles/index.css
-apps/hub/
-  public/index.html
 ```
 
 Modified files:
@@ -600,7 +530,7 @@ Modified files:
 libs/registry/src/constants.ts          (REGISTRY_ORIGIN → r.b4r7.dev)
 apps/docs/src/lib/seo.ts               (DEFAULT_ORIGIN → docs.b4r7.dev)
 apps/docs/src/lib/consumption-metadata.ts  (import REGISTRY_ORIGIN)
-apps/docs/scripts/generate-sitemap.mjs  (DEFAULT_ORIGIN → docs.b4r7.dev)
+apps/docs/scripts/generate-sitemap.ts   (DEFAULT_ORIGIN → docs.b4r7.dev)
 apps/docs/public/robots.txt            (sitemap URL → docs.b4r7.dev)
 Dockerfile                             (ARG default → r.b4r7.dev)
 docker-compose.yml                     (env default → r.b4r7.dev)

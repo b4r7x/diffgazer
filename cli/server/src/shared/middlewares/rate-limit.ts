@@ -24,7 +24,7 @@ const getOrResetWindow = (key: string, windowMs: number, now: number): WindowEnt
 };
 
 export const createRateLimitMiddleware = (key: string, config: RateLimitConfig) =>
-  async (c: Context, next: Next): Promise<Response | void> => {
+  async (c: Context, next: Next): Promise<Response | undefined> => {
     const now = Date.now();
     const entry = getOrResetWindow(key, config.windowMs, now);
     entry.count++;
@@ -35,7 +35,8 @@ export const createRateLimitMiddleware = (key: string, config: RateLimitConfig) 
       return errorResponse(c, "Too many requests", "RATE_LIMITED", 429);
     }
 
-    return next();
+    await next();
+    return undefined;
   };
 
 export const resetRateLimitsForTests = (): void => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useScrollLock, type UseScrollLockOptions } from "@diffgazer/keys";
+import { type UseScrollLockOptions, useScrollLock } from "@diffgazer/keys";
 
 export { useScrollLock };
 export type { UseScrollLockOptions };

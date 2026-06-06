@@ -1,8 +1,8 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { TrustConfig } from "@diffgazer/core/schemas/config";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const keyring = vi.hoisted(() => ({
   deleteKeyringSecret: vi.fn(),
@@ -319,7 +319,7 @@ describe("config store", () => {
     // two-phase migration) has already succeeded by the time secrets are written,
     // so this selectively breaks step 2 without affecting step 1.
     let configWriteCount = 0;
-    fsHooks.writeJsonFileSyncHook = (filePath: string, data: unknown, mode?: number) => {
+    fsHooks.writeJsonFileSyncHook = (filePath: string, data: unknown, _mode?: number) => {
       if (filePath.endsWith("secrets.json")) {
         throw new Error("Injected secrets.json write failure");
       }

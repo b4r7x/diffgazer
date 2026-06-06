@@ -1,10 +1,10 @@
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { createRef, useLayoutEffect } from "react"
-import { axe } from "../../../testing/utils"
-import { describe, it, expect } from "vitest"
-import { DiffView, computeDiff } from "./index"
+import { describe, expect, it } from "vitest"
 import type { ParsedDiff } from "@/lib/diff"
+import { axe } from "../../../testing/axe"
+import { computeDiff, DiffView } from "./index"
 
 const ONE_HUNK: ParsedDiff = {
   oldPath: "src/app.ts",
@@ -517,8 +517,8 @@ describe("DiffView", () => {
 
     expect(added.length).toBeGreaterThan(0)
     expect(removed.length).toBeGreaterThan(0)
-    added.forEach((cell) => expect(cell.textContent).toBe("+"))
-    removed.forEach((cell) => expect(cell.textContent).toBe("−"))
+    for (const cell of added) expect(cell.textContent).toBe("+")
+    for (const cell of removed) expect(cell.textContent).toBe("−")
   })
 
   it("has no a11y violations in variant=\"bare\"", async () => {

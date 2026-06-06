@@ -1,7 +1,7 @@
 "use client"
 
-import { useRef, useState } from "react"
 import { useNavigation } from "@diffgazer/keys"
+import { useRef, useState } from "react"
 
 const tabs = [
   { id: "general", label: "General", content: "Manage your account settings and preferences." },
@@ -12,7 +12,7 @@ const tabs = [
 
 export default function UseNavigationTabs() {
   const tabListRef = useRef<HTMLDivElement>(null)
-  const [activeTab, setActiveTab] = useState(tabs[0]!.id)
+  const [activeTab, setActiveTab] = useState(tabs[0]?.id ?? "general")
 
   const { isHighlighted, onKeyDown } = useNavigation({
     containerRef: tabListRef,

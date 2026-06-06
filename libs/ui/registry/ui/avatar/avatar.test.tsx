@@ -1,8 +1,8 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react"
-import { axe } from "../../../testing/utils"
-import { describe, it, expect, vi } from "vitest"
-import { Avatar } from "./index"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { describe, expect, it, vi } from "vitest"
+import { axe } from "../../../testing/axe"
 import { Card } from "../card/index"
+import { Avatar } from "./index"
 
 function getAvatarImage(container: HTMLElement): HTMLImageElement {
   // querySelector retained: <img> has no accessible role until it loads (jsdom never paints it); structural assertion is the contract — the test needs the element to fire load/error against

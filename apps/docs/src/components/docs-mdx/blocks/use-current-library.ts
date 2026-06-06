@@ -3,7 +3,7 @@ import {
 	type DocsLibraryId,
 	getDocsLibraryFromPathname,
 	PRIMARY_DOCS_LIBRARY_ID,
-} from "@/lib/docs-library";
+} from "@/lib/library";
 
 export function useCurrentLibrary(): DocsLibraryId {
 	const pathname = useLocation({ select: (location) => location.pathname });

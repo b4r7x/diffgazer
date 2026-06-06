@@ -1,10 +1,10 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("./lib/shutdown-token", () => ({
   ensureShutdownToken: vi.fn(),
 }));
 
-import type { ServerController } from "./lib/servers/create-process-server";
+import type { ServerController } from "./lib/servers/process";
 import { startWeb } from "./web-launcher";
 
 function createMockServer(): ServerController & { startCalls: number; stopCalls: number } {
@@ -92,5 +92,31 @@ describe("startWeb", () => {
     );
 
     await expect(stop()).resolves.toBeUndefined();
+  });
+
+  it("prints the banner before starting web servers and stops them on cleanup", async () => {
+    const events: string[] = [];
+
+    const stop = startWeb(
+      { mode: "prod", openBrowser: false },
+      {
+        printBanner: () => events.push("banner"),
+        createServerFactories: () => [
+          () => ({
+            start: () => events.push("start"),
+            stop: () => {
+              events.push("stop");
+              return Promise.resolve();
+            },
+          }),
+        ],
+      },
+    );
+
+    expect(events).toEqual(["banner", "start"]);
+    await stop();
+    await stop();
+
+    expect(events).toEqual(["banner", "start", "stop"]);
   });
 });

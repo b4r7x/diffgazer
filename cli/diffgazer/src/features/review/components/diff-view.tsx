@@ -1,5 +1,5 @@
 import { Box, Text } from "ink";
-import { useTheme } from "../../../theme/theme-context";
+import { useTheme } from "../../../app/providers/theme";
 
 export interface DiffViewProps {
   patch: string;
@@ -29,7 +29,7 @@ export function DiffView({ patch }: DiffViewProps) {
         }
 
         return (
-          <Text key={i} color={color}>
+          <Text key={`${i}:${line}`} color={color}>
             {line}
           </Text>
         );

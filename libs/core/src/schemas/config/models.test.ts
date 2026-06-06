@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import * as models from "./models.js";
-import { OpenRouterModelSchema, OpenRouterModelCacheSchema } from "./models.js";
+import { OpenRouterModelCacheSchema, OpenRouterModelSchema } from "./models.js";
 
 describe("schemas/config/models exports", () => {
   it("no longer exports the hand-maintained Gemini/GLM constants", () => {

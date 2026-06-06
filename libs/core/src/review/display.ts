@@ -7,7 +7,8 @@
  * which collapses "error" to "pending" because the web `ProgressStatus` has no
  * "error" variant. This is the single source of truth for step-status mapping.
  */
-import type { StepState, AgentState } from "@diffgazer/core/schemas/events";
+import type { AgentState, StepState } from "../schemas/events/index.js";
+import { pluralize } from "../strings.js";
 
 export type UIStepStatus = "pending" | "running" | "complete" | "error";
 
@@ -25,7 +26,7 @@ export function getAgentDetail(agent: AgentState): string {
     case "running":
       return `${Math.round(agent.progress)}%${agent.currentAction ? ` ${agent.currentAction}` : ""}`;
     case "complete":
-      return `${agent.issueCount} issue${agent.issueCount === 1 ? "" : "s"}`;
+      return pluralize(agent.issueCount, "issue");
     case "error":
       return "error";
     default:

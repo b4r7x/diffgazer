@@ -8,13 +8,14 @@ Primary workspace roots:
 
 - `apps/web` - private web app bundled into the product CLI.
 - `apps/docs` - private docs and registry host.
+- `apps/landing` - private `@diffgazer/landing` marketing/landing page.
 - `cli/diffgazer` - public product CLI, binary `diffgazer`.
 - `cli/add` - public registry installer CLI, binary `dgadd`.
 - `libs/ui` - public React UI package, `@diffgazer/ui`.
 - `libs/keys` - public React keyboard hooks package, `@diffgazer/keys`.
 - `libs/registry` - private registry/artifact tooling package.
 - `libs/core` - private shared product APIs, schemas, and utilities.
-- `libs/server` - private Hono server used by the product.
+- `cli/server` - private `@diffgazer/server` embedded Hono backend.
 
 ## Commands
 

@@ -9,3 +9,7 @@ export function truncate(str: string, maxLength: number, suffix = "..."): string
   return str.slice(0, maxLength - suffix.length) + suffix;
 }
 
+export function pluralize(count: number, word: string): string {
+  return `${count} ${word}${count === 1 ? "" : "s"}`;
+}
+

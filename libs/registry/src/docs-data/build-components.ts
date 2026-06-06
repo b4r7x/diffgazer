@@ -3,11 +3,12 @@ import {
   writeFileSync,
 } from "node:fs"
 import { resolve } from "node:path"
-import type { DocsHighlighter } from "./highlight.js"
-import { cleanDir, toYamlString } from "./utils.js"
-import type { RegistryItem, Registry } from "../registry-types.js"
-import { writeJson } from "../utils/json.js"
 import type { Logger } from "../logger.js"
+import type { Registry, RegistryItem } from "../registry-types.js"
+import { cleanDir } from "../utils/fs.js"
+import { writeJson } from "../utils/json.js"
+import type { DocsHighlighter } from "./highlight.js"
+import { toYamlString } from "./naming.js"
 
 export interface ComponentsConfig {
   contentDir: string

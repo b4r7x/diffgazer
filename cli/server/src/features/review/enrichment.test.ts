@@ -1,6 +1,6 @@
-import { describe, it, expect, vi } from "vitest";
-import { enrichIssues, type EnrichGitService } from "./enrichment.js";
+import { describe, expect, it, vi } from "vitest";
 import { makeIssue } from "../../shared/lib/testing/factories.js";
+import { type EnrichGitService, enrichIssues } from "./enrichment.js";
 
 const makeMockGitService = (): EnrichGitService => ({
   getBlame: vi.fn().mockResolvedValue({
@@ -34,8 +34,8 @@ describe("enrichIssues", () => {
     const result = await enrichIssues(issues, gitService, onEvent);
 
     expect(result).toHaveLength(1);
-    expect(result[0]!.enrichment).not.toBeNull();
-    expect(result[0]!.enrichment!.blame).toEqual({
+    expect(result[0]?.enrichment).not.toBeNull();
+    expect(result[0]?.enrichment?.blame).toEqual({
       author: "John",
       authorEmail: "john@test.com",
       commit: "abc123",
@@ -68,8 +68,8 @@ describe("enrichIssues", () => {
 
     const result = await enrichIssues(issues, gitService, onEvent);
 
-    expect(result[0]!.enrichment!.blame).toBeNull();
-    expect(result[0]!.enrichment!.context).toBeNull();
+    expect(result[0]?.enrichment?.blame).toBeNull();
+    expect(result[0]?.enrichment?.context).toBeNull();
     expect(gitService.getBlame).not.toHaveBeenCalled();
   });
 
@@ -86,9 +86,9 @@ describe("enrichIssues", () => {
 
     // First should succeed with null blame, second should fall back to original
     expect(result).toHaveLength(2);
-    expect(result[0]!.enrichment!.blame).toBeNull();
+    expect(result[0]?.enrichment?.blame).toBeNull();
     // Second issue failed entirely, falls back to original
-    expect(result[1]!.id).toBe("i2");
+    expect(result[1]?.id).toBe("i2");
   });
 
   it("returns the original issues unchanged when the signal is already aborted", async () => {

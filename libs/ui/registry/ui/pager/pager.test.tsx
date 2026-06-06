@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { axe } from "../../../testing/utils"
-import { describe, it, expect } from "vitest"
+import { describe, expect, it } from "vitest"
+import { axe } from "../../../testing/axe"
 import { Pager } from "./index"
 import type { PagerLinkRenderProps } from "./pager-link"
 

@@ -2,17 +2,16 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
   buildDocsData,
-  createHookDocLoader,
-  findExamples,
-  highlightCode,
-  DOCS_CODE_THEME_NAME,
-  type HookRegistryItem,
-  type RegistryItem,
-  type ComponentDoc,
   type CodeBlockLine,
+  type ComponentDoc,
+  createHookDocLoader,
+  DOCS_CODE_THEME_NAME,
   type DocsHighlighter,
-  type Registry,
+  findExamples,
+  type HookRegistryItem,
+  highlightCode,
 } from "@diffgazer/registry";
+import type { Registry, RegistryItem } from "@diffgazer/registry/schemas";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const REGISTRY_PATH = resolve(ROOT, "registry/registry.json");

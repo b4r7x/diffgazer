@@ -1,11 +1,11 @@
 "use client";
 
-import { useLayoutEffect } from "react";
 import { cva } from "class-variance-authority";
-import { cn } from "@/lib/utils";
+import { useLayoutEffect } from "react";
 import { matchesSearch } from "@/lib/search";
+import { cn } from "@/lib/utils";
 import { useSelectContext } from "./select-context";
-import { isActiveOptionVisible, toOptionId } from "./select-utils";
+import { isActiveOptionVisible, toOptionId } from "./selection";
 
 export interface SelectSearchProps {
   placeholder?: string;

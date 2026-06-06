@@ -1,7 +1,7 @@
-import type { InputHTMLAttributes, Ref } from "react";
 import type { VariantProps } from "class-variance-authority";
-import { cn } from "@/lib/utils";
+import type { InputHTMLAttributes, Ref } from "react";
 import { inputSizeClasses, inputVariants } from "@/lib/input-variants";
+import { cn } from "@/lib/utils";
 
 export { inputSizeClasses, inputVariants };
 

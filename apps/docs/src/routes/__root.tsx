@@ -1,4 +1,6 @@
 import { KeyboardProvider } from "@diffgazer/keys";
+import { Button } from "@diffgazer/ui/components/button";
+import { Toaster } from "@diffgazer/ui/components/toast";
 import {
 	createRootRoute,
 	HeadContent,
@@ -8,13 +10,11 @@ import {
 } from "@tanstack/react-router";
 import { TanstackProvider } from "fumadocs-core/framework/tanstack";
 import type { ReactNode } from "react";
-import { GlobalNotFound } from "@/components/not-found";
+import { GlobalNotFound } from "@/components/global-not-found";
 import { NotFoundState } from "@/components/not-found-state";
-import { Button } from "@/components/ui/button/button";
-import { Toaster } from "@/components/ui/toast";
-import { SearchDialog } from "@/features/search/components/search-dialog";
-import { SearchProvider } from "@/features/search/search-context";
-import { PRIMARY_DOCS_LIBRARY_ID } from "@/lib/docs-library";
+import { SearchDialog } from "@/features/search/components/dialog";
+import { PRIMARY_DOCS_LIBRARY_ID } from "@/lib/library";
+import { SearchProvider } from "@/lib/search-context";
 import { buildRootHeadDefaults } from "@/lib/seo";
 import appCss from "../index.css?url";
 

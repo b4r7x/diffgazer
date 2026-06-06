@@ -1,21 +1,21 @@
-import { generateObject, streamText, type LanguageModel } from "ai";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { createZhipu } from "zhipu-ai-provider";
-import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+import { PROVIDER_OVERLAY } from "@diffgazer/core/catalog";
+import { createError, toError } from "@diffgazer/core/errors";
+import { err, ok, type Result } from "@diffgazer/core/result";
+import { createOpenRouter } from "@openrouter/ai-sdk-provider";
+import { generateObject, type LanguageModel, streamText } from "ai";
+import { createZhipu } from "zhipu-ai-provider";
 import type { z } from "zod";
+import { getStore } from "../config/store.js";
+import { classifyError, type ErrorRule } from "../errors.js";
 import type {
   AIClient,
   AIClientConfig,
-  StreamCallbacks,
   AIError,
   AIErrorCode,
+  StreamCallbacks,
 } from "./types.js";
-import { type Result, ok, err } from "@diffgazer/core/result";
-import { createError, toError } from "@diffgazer/core/errors";
-import { PROVIDER_OVERLAY } from "@diffgazer/core/catalog";
-import { getStore } from "../config/store.js";
-import { classifyError, type ErrorRule } from "../errors.js";
 
 const DEFAULT_TEMPERATURE = 0.7;
 const DEFAULT_MAX_TOKENS = 65536;

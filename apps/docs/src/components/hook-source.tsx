@@ -1,11 +1,11 @@
-import { useState } from "react";
 import {
 	CodeBlock,
 	CodeBlockContent,
 	CodeBlockLine,
 	type CodeBlockLineProps,
-} from "@/components/ui/code-block";
-import { SectionHeader } from "@/components/ui/section-header/section-header";
+} from "@diffgazer/ui/components/code-block";
+import { SectionHeader } from "@diffgazer/ui/components/section-header";
+import { useState } from "react";
 import { hooksData } from "@/generated/library-data";
 import { CopyButton } from "./copy-button";
 

@@ -24,7 +24,7 @@ export function Kbd({ keys }: KbdProps) {
 
   return (
     <span>
-      {segments.map((seg, i) => {
+      {segments.map((seg) => {
         const mapped = keyMap[seg.toLowerCase()];
         const label = mapped ? (isMac ? mapped[0] : mapped[1]) : seg;
         return (

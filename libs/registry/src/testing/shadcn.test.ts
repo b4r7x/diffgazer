@@ -1,18 +1,18 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import {
-  mkdtempSync,
-  mkdirSync,
-  readFileSync,
-  writeFileSync,
-  rmSync,
   chmodSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import type { RegistryFile, RegistryItem } from "../registry-types.js";
 import { resolveLocalShadcnBin, runShadcnRegistryBuild } from "../shadcn/runner.js";
 import { validatePublicRegistryFresh } from "../shadcn/validate.js";
-import type { RegistryFile, RegistryItem } from "../registry-types.js";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../../..");
 const FIX_CMD = "pnpm build:registry";
@@ -165,7 +165,7 @@ describe("validatePublicRegistryFresh", () => {
       label: "ui",
       rootDir: resolve(repoRoot, "libs/ui"),
       fixCommand: "pnpm --filter @diffgazer/ui build:shadcn",
-      transformModule: resolve(repoRoot, "libs/ui/scripts/transform-public-registry-keys-imports.ts"),
+      transformModule: resolve(repoRoot, "libs/ui/scripts/registry/rewrite-keys-imports.ts"),
       transformExport: "transformUiPublicRegistryKeysImportContent",
       transformItemExport: "transformUiPublicRegistryItem" as string | undefined,
       useFactory: false,

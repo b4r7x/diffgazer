@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  mapShutdownResponseToResult,
   SHUTDOWN_CLOSE_BLOCKED_MESSAGE,
   SHUTDOWN_FAILED_MESSAGE,
-  mapShutdownResponseToResult,
   shutdownCloseBlockedResult,
   shutdownClosedResult,
   shutdownNetworkError,

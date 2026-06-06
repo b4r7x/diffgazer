@@ -1,16 +1,16 @@
-import { useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
-import type { TrustCapabilities, TrustConfig } from "@diffgazer/core/schemas/config";
-import type { Shortcut } from "@diffgazer/core/schemas/presentation";
+import { useDeleteTrust, useSaveTrust } from "@diffgazer/core/api/hooks";
 import { getErrorMessage } from "@diffgazer/core/errors";
-import { useKey, useScope } from "@diffgazer/keys";
 import { usePageFooter } from "@diffgazer/core/footer";
+import type { TrustCapabilities, TrustConfig } from "@diffgazer/core/schemas/config";
+import { NO_TRUST_CAPABILITIES, normalizeTrustCapabilities } from "@diffgazer/core/schemas/config";
+import type { Shortcut } from "@diffgazer/core/schemas/presentation";
+import { useKey, useScope } from "@diffgazer/keys";
 import { Panel } from "@diffgazer/ui/components/panel";
 import { toast } from "@diffgazer/ui/components/toast";
+import { useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
+import { useConfigData } from "@/app/providers/config";
 import { TrustPermissionsContent } from "@/components/shared/trust-permissions-content";
-import { NO_TRUST_CAPABILITIES, normalizeTrustCapabilities } from "@diffgazer/core/schemas/config";
-import { useConfigData } from "@/app/providers/config-provider";
-import { useSaveTrust, useDeleteTrust } from "@diffgazer/core/api/hooks";
 
 const SETTINGS_TRUST_PERMISSIONS_SCOPE = "settings-trust-permissions";
 

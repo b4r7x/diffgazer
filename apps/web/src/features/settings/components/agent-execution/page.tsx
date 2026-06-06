@@ -1,15 +1,15 @@
-import { useRef, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { matchQueryState, useSaveSettings, useSettings } from "@diffgazer/core/api/hooks";
+import { getErrorMessage } from "@diffgazer/core/errors";
+import { usePageFooter } from "@diffgazer/core/footer";
+import { deriveSaveState } from "@diffgazer/core/forms";
 import type { AgentExecution } from "@diffgazer/core/schemas/config";
 import type { Shortcut } from "@diffgazer/core/schemas/presentation";
-import { getErrorMessage } from "@diffgazer/core/errors";
+import { toVerticalBoundaryDirection, useActionRowNavigation, useKey, useScope } from "@diffgazer/keys";
 import { Button } from "@diffgazer/ui/components/button";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
+import { useNavigate } from "@tanstack/react-router";
+import { useRef, useState } from "react";
 import { CardLayout } from "@/components/ui/card-layout";
-import { toVerticalBoundaryDirection, useKey, useScope } from "@diffgazer/keys";
-import { usePageFooter } from "@diffgazer/core/footer";
-import { useActionRowNavigation } from "@diffgazer/keys";
-import { useSettings, useSaveSettings, matchQueryState } from "@diffgazer/core/api/hooks";
 
 const EXECUTION_MODES: AgentExecution[] = ["sequential", "parallel"];
 
@@ -28,12 +28,19 @@ export function SettingsAgentExecutionPage() {
   const isSaving = saveSettings.isPending;
 
   const settings = settingsQuery.data;
-  const effectiveMode = modeChoice ?? settings?.agentExecution ?? "sequential";
+  const { effective: effectiveMode } = deriveSaveState<AgentExecution>({
+    persisted: settings?.agentExecution,
+    choice: modeChoice,
+    saving: isSaving,
+    fallback: "sequential",
+  });
   const effectiveFocusedMode = focusedMode ?? effectiveMode;
 
   useScope("settings-agent-execution");
   useKey("Escape", () => navigate({ to: "/settings" }), { enabled: !isSaving });
 
+  // Until settings load, treat the page as not dirty so the save action stays
+  // disabled (the loading guard returns before render, but the footer hook runs).
   const isDirty = settings ? settings.agentExecution !== effectiveMode : false;
   const canSave = !isSaving && isDirty;
 

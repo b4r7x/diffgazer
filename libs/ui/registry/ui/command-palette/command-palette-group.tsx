@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, type ReactNode } from "react";
+import { type ReactNode, useId } from "react";
 import { cn } from "@/lib/utils";
 
 export interface CommandPaletteGroupProps {
@@ -12,6 +12,7 @@ export interface CommandPaletteGroupProps {
 export function CommandPaletteGroup({ heading, children, className }: CommandPaletteGroupProps) {
   const headingId = useId();
   return (
+    // biome-ignore lint/a11y/useSemanticElements: role="group" labels a related set of command options; <fieldset> is for form controls and is not appropriate here.
     <div
       role="group"
       aria-labelledby={headingId}

@@ -1,7 +1,7 @@
 "use client"
 
-import { useRef, useState } from "react"
 import { useScrollLock } from "@diffgazer/keys"
+import { useRef, useState } from "react"
 
 export default function UseScrollLockTarget() {
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -20,9 +20,9 @@ export default function UseScrollLockTarget() {
         ref={scrollRef}
         style={{ marginTop: 8, height: 120, overflow: "auto", border: "1px solid currentColor", padding: 8 }}
       >
-        {Array.from({ length: 20 }, (_, i) => (
-          <p key={i} style={{ margin: "4px 0" }}>
-            Scrollable row {i + 1}
+        {Array.from({ length: 20 }, (_, i) => `Scrollable row ${i + 1}`).map((row) => (
+          <p key={row} style={{ margin: "4px 0" }}>
+            {row}
           </p>
         ))}
       </div>

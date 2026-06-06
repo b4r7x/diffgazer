@@ -1,7 +1,6 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { cn } from "@/lib/utils";
 import {
   HORIZONTAL_STEP_INDICATOR_GLYPHS,
   horizontalStepperBreadcrumbSeparatorClass,
@@ -10,7 +9,8 @@ import {
   horizontalStepperLabelVariants,
   horizontalStepperStepVariants,
 } from "@/lib/stepper-variants";
-import { useStepInfo, useStepperContext, type HorizontalStepStatus } from "./horizontal-stepper-context";
+import { cn } from "@/lib/utils";
+import { type HorizontalStepStatus, useStepInfo, useStepperContext } from "./horizontal-stepper-context";
 
 const SR_LABEL: Record<HorizontalStepStatus, string> = {
   completed: "Completed: ",

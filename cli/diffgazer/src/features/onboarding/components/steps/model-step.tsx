@@ -1,16 +1,16 @@
-import type { ReactElement } from "react";
-import { Box, Text } from "ink";
-import { useTheme } from "../../../../theme/theme-context";
-import { RadioGroup } from "../../../../components/ui/radio";
-import { Badge } from "../../../../components/ui/badge";
-import { Spinner } from "../../../../components/ui/spinner";
-import { Input } from "../../../../components/ui/input";
 import {
   useOpenRouterModelsMapped,
   useProviderModelsMapped,
 } from "@diffgazer/core/providers";
-import { AVAILABLE_PROVIDERS, OPENROUTER_PROVIDER_ID } from "@diffgazer/core/schemas/config";
 import type { AIProvider, ModelInfo } from "@diffgazer/core/schemas/config";
+import { AVAILABLE_PROVIDERS, OPENROUTER_PROVIDER_ID } from "@diffgazer/core/schemas/config";
+import { Box, Text } from "ink";
+import type { ReactElement } from "react";
+import { useTheme } from "../../../../app/providers/theme";
+import { Badge } from "../../../../components/ui/badge";
+import { Input } from "../../../../components/ui/input";
+import { RadioGroup } from "../../../../components/ui/radio";
+import { Spinner } from "../../../../components/ui/spinner";
 
 interface ModelStepProps {
   value?: string;

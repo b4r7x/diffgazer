@@ -1,11 +1,11 @@
 "use client";
 
 import {
-  cloneElement,
   type ComponentPropsWithRef,
+  cloneElement,
   type FocusEventHandler,
-  type KeyboardEventHandler,
   isValidElement,
+  type KeyboardEventHandler,
   type MouseEventHandler,
   type PointerEventHandler,
   type ReactElement,
@@ -14,9 +14,9 @@ import {
   type RefCallback,
   useEffect,
 } from "react";
-import { cn } from "@/lib/utils";
 import { composeRefs } from "@/lib/compose-refs";
-import { usePopoverContext, type PopoverPopupRole } from "./popover-context";
+import { cn } from "@/lib/utils";
+import { type PopoverPopupRole, usePopoverContext } from "./popover-context";
 
 export interface PopoverTriggerRenderProps {
   ref: RefCallback<HTMLElement>;

@@ -1,20 +1,8 @@
 {
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "../../libs/core/tsconfig/react.json",
   "compilerOptions": {
-    "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
-    "lib": ["ES2023", "DOM", "DOM.Iterable"],
-    "jsx": "react-jsx",
-    "declaration": true,
-    "declarationMap": true,
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "verbatimModuleSyntax": true,
-    "isolatedModules": true,
-    "noUncheckedIndexedAccess": true,
-    "noImplicitOverride": true,
-    "noFallthroughCasesInSwitch": true,
+    "noEmit": false,
     "baseUrl": ".",
     "paths": {
       "@/lib/*": ["registry/lib/*"],
@@ -24,8 +12,7 @@
   },
   "include": [
     "registry/**/*.ts",
-    "registry/**/*.tsx",
-    "shared/**/*.ts"
+    "registry/**/*.tsx"
   ],
   "exclude": [
     "registry/**/*.test.ts",

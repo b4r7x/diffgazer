@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { TrustConfig } from "../schemas/config/settings.js";
 import { deriveTrustStatus } from "./trust-status.js";
 

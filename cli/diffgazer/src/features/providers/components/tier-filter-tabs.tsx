@@ -1,6 +1,6 @@
-import { Box, Text, useInput } from "ink";
-import { useTheme } from "../../../theme/theme-context";
 import { TIER_FILTERS, type TierFilter } from "@diffgazer/core/providers";
+import { Box, Text, useInput } from "ink";
+import { useTheme } from "../../../app/providers/theme";
 
 interface TierFilterTabsProps {
   value: TierFilter;

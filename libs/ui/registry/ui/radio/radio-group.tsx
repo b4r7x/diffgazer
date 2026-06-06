@@ -1,21 +1,21 @@
 "use client";
 
 import {
-  type ComponentPropsWithRef,
   type AriaAttributes,
+  type ComponentPropsWithRef,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
+  type Ref,
   useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
-  type ReactNode,
-  type Ref,
-  type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { useFormReset } from "@/hooks/use-form-reset";
 import { useNavigation } from "@/hooks/use-navigation";
-import { isHTMLElementForContainer, resolveAriaInvalid } from "@/lib/aria-utils";
+import { isHTMLElementForContainer, resolveAriaInvalid } from "@/lib/aria";
 import { composeRefs } from "@/lib/compose-refs";
 import {
   getEnabledSelectableCollectionItems,
@@ -24,9 +24,9 @@ import {
   resolveSelectableCollectionItemValue,
   useSelectableCollection,
 } from "@/lib/selectable-collection";
+import type { SelectableVariant } from "@/lib/selectable-variants";
 import { cn } from "@/lib/utils";
 import type { RadioSize } from "./radio";
-import type { SelectableVariant } from "@/lib/selectable-variants";
 import { RadioGroupContext, type RadioGroupContextValue } from "./radio-group-context";
 
 type RadioGroupRootProps = Omit<

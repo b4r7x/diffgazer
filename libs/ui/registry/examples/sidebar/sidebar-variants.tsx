@@ -3,13 +3,13 @@
 import { useState } from "react"
 import {
   Sidebar,
-  SidebarHeader,
   SidebarContent,
+  SidebarHeader,
+  SidebarItem,
+  SidebarItemBadge,
+  SidebarItemLabel,
   SidebarSection,
   SidebarSectionTitle,
-  SidebarItem,
-  SidebarItemLabel,
-  SidebarItemBadge,
   type SidebarVariant,
 } from "@/components/ui/sidebar"
 import { ToggleGroup } from "@/components/ui/toggle-group"

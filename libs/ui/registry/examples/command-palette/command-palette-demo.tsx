@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import { CommandPalette } from "@/components/ui/command-palette";
 import { Kbd } from "@/components/ui/kbd";
-import { Button } from "@/components/ui/button";
 
 export default function CommandPaletteDemo() {
   const [open, setOpen] = useState(false);

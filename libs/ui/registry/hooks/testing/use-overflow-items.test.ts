@@ -1,7 +1,7 @@
-import React from "react"
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { act, render, renderHook, screen } from "@testing-library/react"
-import { useOverflowItems, computeVisibleCount } from "../use-overflow-items"
+import React from "react"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { computeVisibleCount, useOverflowItems } from "../use-overflow-items"
 
 let resizeCallbacks: (() => void)[] = []
 let mutationCallbacks: (() => void)[] = []

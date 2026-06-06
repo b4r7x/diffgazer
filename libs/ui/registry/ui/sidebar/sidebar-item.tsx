@@ -1,6 +1,7 @@
 "use client";
 
-import { useId } from "react";
+
+import { cva } from "class-variance-authority";
 import type {
   AnchorHTMLAttributes,
   ButtonHTMLAttributes,
@@ -9,12 +10,11 @@ import type {
   ReactNode,
   Ref,
 } from "react";
-
-import { cva } from "class-variance-authority";
-import { resolveSidebarIntent, type SidebarIntent } from "@/lib/sidebar-intent";
-import { sidebarItemVariants, type SidebarVariant } from "@/lib/sidebar-variants";
+import { useId } from "react";
 import { cn } from "@/lib/utils";
 import { useSidebarChrome } from "./sidebar-context";
+import { resolveSidebarIntent, type SidebarIntent } from "./sidebar-intent";
+import { type SidebarVariant, sidebarItemVariants } from "./sidebar-variants";
 
 export interface SidebarItemRenderProps {
   ref?: Ref<HTMLElement>;
@@ -205,10 +205,12 @@ export function SidebarItem(props: SidebarItemProps): ReactNode {
   } = props;
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: this is a navigation anchor; href is provided by the consumer via anchorProps, so the onClick only guards the disabled state.
     <a
       {...anchorProps}
       ref={ref}
       {...sharedProps}
+      // biome-ignore lint/a11y/useValidAnchor: href is supplied by the consumer through anchorProps (spread), which Biome cannot see; the onClick guards disabled navigation rather than replacing the href.
       onClick={(event: ReactMouseEvent<HTMLAnchorElement>) => {
         if (disabled) {
           event.preventDefault();

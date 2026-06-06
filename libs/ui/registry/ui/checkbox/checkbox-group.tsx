@@ -1,29 +1,29 @@
 "use client";
 
 import {
-  type ComponentPropsWithRef,
   type AriaAttributes,
+  type ComponentPropsWithRef,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
+  type Ref,
   useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
-  type KeyboardEvent as ReactKeyboardEvent,
-  type ReactNode,
-  type Ref,
 } from "react";
-import { useNavigation } from "@/hooks/use-navigation";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { useFormReset } from "@/hooks/use-form-reset";
-import { isHTMLElementForContainer, resolveAriaInvalid } from "@/lib/aria-utils";
+import { useNavigation } from "@/hooks/use-navigation";
+import { isHTMLElementForContainer, resolveAriaInvalid } from "@/lib/aria";
 import { composeRefs } from "@/lib/compose-refs";
 import {
   getEnabledSelectableCollectionItems,
   resolveSelectableCollectionItem,
   useSelectableCollection,
 } from "@/lib/selectable-collection";
-import { cn } from "@/lib/utils";
 import type { SelectableVariant } from "@/lib/selectable-variants";
+import { cn } from "@/lib/utils";
 import type { CheckboxSize } from "./checkbox";
 import { CheckboxGroupContext } from "./checkbox-group-context";
 
@@ -194,6 +194,7 @@ export function CheckboxGroup<T extends string = string>(props: CheckboxGroupPro
 
   return (
     <CheckboxGroupContext value={contextValue}>
+      {/* biome-ignore lint/a11y/useSemanticElements: role="group" labels the set of related checkboxes; <fieldset> would impose default form styling/structure and break the group layout. */}
       <div
         {...rootProps}
         ref={composeRefs(containerRef, ref)}

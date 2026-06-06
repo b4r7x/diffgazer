@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, type RefObject } from "react";
-import { getOwnerView, isNode } from "../dom/dom.js";
+import { type RefObject, useEffect, useRef } from "react";
+import { getOwnerView, isNode } from "../dom/element-guards.js";
 import { restoreFocus as restoreFocusTarget } from "../dom/focus-restore.js";
 import { getFocusableElements, getTabbableElements, isFocusable } from "../dom/focusable.js";
 import { useFocusRestore } from "./use-focus-restore.js";

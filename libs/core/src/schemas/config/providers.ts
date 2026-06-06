@@ -1,7 +1,7 @@
 import { z } from "zod";
 import {
   timestampFields,
-} from "../shared/fields.js";
+} from "../fields.js";
 import { SettingsConfigSchema, TrustConfigSchema } from "./settings.js";
 
 export const AI_PROVIDERS = ["gemini", "zai", "zai-coding", "openrouter", "groq", "cerebras"] as const;

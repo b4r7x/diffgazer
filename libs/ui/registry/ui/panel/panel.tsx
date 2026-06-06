@@ -2,17 +2,17 @@
 
 import {
   Children,
-  isValidElement,
-  useId,
-  useMemo,
   type ComponentPropsWithRef,
   type ElementType,
+  isValidElement,
   type ReactNode,
+  useId,
+  useMemo,
 } from "react";
 import { cn } from "@/lib/utils";
 import { PanelContext, type PanelContextValue } from "./panel-context";
-import { PanelTitle } from "./panel-title";
 import { PanelDescription } from "./panel-description";
+import { PanelTitle } from "./panel-title";
 
 export type PanelElement = "div" | "article" | "section" | "aside";
 

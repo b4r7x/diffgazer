@@ -57,7 +57,9 @@ describe("downloadAsFile", () => {
   it("revokes the blob URL on a later tick", () => {
     downloadAsFile("hello", "notes.txt");
     const url = [...liveUrls][0];
-    expect(url).toBeDefined();
+    if (url === undefined) {
+      throw new Error("Expected a live blob URL");
+    }
 
     expect(liveUrls.has(url)).toBe(true);
     vi.runAllTimers();

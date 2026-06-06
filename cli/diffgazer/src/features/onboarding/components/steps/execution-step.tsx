@@ -1,6 +1,6 @@
-import type { ReactElement } from "react";
 import { Box, Text } from "ink";
-import { useTheme } from "../../../../theme/theme-context";
+import type { ReactElement } from "react";
+import { useTheme } from "../../../../app/providers/theme";
 import { RadioGroup } from "../../../../components/ui/radio";
 
 interface ExecutionStepProps {

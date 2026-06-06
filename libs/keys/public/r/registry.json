@@ -35,19 +35,14 @@
           "target": "src/hooks/utils/navigation-directions.ts"
         },
         {
-          "path": "src/dom/keyboard-utils.ts",
-          "type": "registry:hook",
-          "target": "src/hooks/utils/keyboard-utils.ts"
-        },
-        {
           "path": "src/dom/focusable.ts",
           "type": "registry:hook",
           "target": "src/hooks/utils/focusable.ts"
         },
         {
-          "path": "src/dom/dom.ts",
+          "path": "src/dom/element-guards.ts",
           "type": "registry:hook",
-          "target": "src/hooks/utils/dom.ts"
+          "target": "src/hooks/utils/element-guards.ts"
         }
       ]
     },
@@ -73,9 +68,9 @@
           "target": "src/hooks/utils/focus-restore.ts"
         },
         {
-          "path": "src/dom/dom.ts",
+          "path": "src/dom/element-guards.ts",
           "type": "registry:hook",
-          "target": "src/hooks/utils/dom.ts"
+          "target": "src/hooks/utils/element-guards.ts"
         }
       ]
     },
@@ -111,9 +106,9 @@
           "target": "src/hooks/utils/focusable.ts"
         },
         {
-          "path": "src/dom/dom.ts",
+          "path": "src/dom/element-guards.ts",
           "type": "registry:hook",
-          "target": "src/hooks/utils/dom.ts"
+          "target": "src/hooks/utils/element-guards.ts"
         }
       ]
     },

@@ -1,16 +1,17 @@
 "use client";
 
 import {
-  useId,
-  useMemo,
-  useRef,
-  useState,
   type CSSProperties,
   type KeyboardEvent,
   type ReactNode,
   type Ref,
   type RefObject,
+  useId,
+  useMemo,
+  useRef,
+  useState,
 } from "react";
+import { useNavigation } from "@/hooks/use-navigation";
 import {
   type DiffInputCompare,
   type DiffInputParsed,
@@ -18,9 +19,8 @@ import {
   parsedDiffIdentity,
   resolveDiffInput,
 } from "@/lib/diff";
-import { useNavigation } from "@/hooks/use-navigation";
-import { UnifiedView } from "./diff-view-unified";
 import { SplitView } from "./diff-view-split";
+import { UnifiedView } from "./diff-view-unified";
 
 export type DiffViewVariant =
   | "hairline"
@@ -175,6 +175,7 @@ export function DiffView(props: DiffViewProps) {
       />
     )
   ) : (
+    // biome-ignore lint/a11y/useSemanticElements: role="status" announces the empty diff state; <output> carries form-association semantics that do not fit here.
     <div data-slot="diff-view-empty" role="status">
       No changes
     </div>

@@ -1,15 +1,15 @@
-import { rewriteRelativeJsExtensionsForCopy } from "../../utils/transform.js";
-import { ctx } from "../../context.js";
-import type { ResolvedConfig, RegistryItem } from "../../context.js";
 import type { FileOp } from "@diffgazer/registry/cli";
+import type { RegistryItem, ResolvedConfig } from "../../context.js";
+import { ctx } from "../../context.js";
+import { resolveKeysCopyHookFiles } from "../../utils/keys-copy-bundle.js";
+import { assertInsideProject, resolveInstallPath } from "../../utils/paths.js";
 import {
-  prepareFileContentForIntegration,
   getInstallBaseForFilePath,
   getInstallDirForBase,
+  prepareFileContentForIntegration,
 } from "../../utils/registry.js";
-import { resolveKeysCopyHookFiles } from "../../utils/integration.js";
-import type { ResolvedIntegrationSelection } from "../../utils/add-integration.js";
-import { assertInsideProject, resolveInstallPath } from "../../utils/paths.js";
+import { rewriteRelativeJsExtensionsForCopy } from "../../utils/transform.js";
+import type { ResolvedIntegrationSelection } from "./integration.js";
 
 export type OwnedFileOp = FileOp & { sourceNames?: string[] };
 

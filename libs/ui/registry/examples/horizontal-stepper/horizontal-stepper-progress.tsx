@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react"
-import { HorizontalStepper } from "@/components/ui/horizontal-stepper"
 import { Button } from "@/components/ui/button"
+import { HorizontalStepper } from "@/components/ui/horizontal-stepper"
 
 const stepValues = ["init", "scan", "analyze", "report"] as const
 

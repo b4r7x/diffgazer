@@ -1,5 +1,5 @@
-import { AVAILABLE_PROVIDERS } from "@diffgazer/core/schemas/config";
-import { LENS_IDS } from "@diffgazer/core/schemas/review";
+import { AVAILABLE_PROVIDERS } from "../schemas/config/index.js";
+import { LENS_IDS } from "../schemas/review/index.js";
 import type { WizardData } from "./types.js";
 
 export function getInitialWizardData(): WizardData {

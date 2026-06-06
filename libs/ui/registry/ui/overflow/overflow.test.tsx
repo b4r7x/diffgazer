@@ -1,5 +1,5 @@
-import { createRef } from "react"
 import { act, render, screen } from "@testing-library/react"
+import { createRef } from "react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { Overflow } from "./index"
 import { OverflowText } from "./overflow-text"

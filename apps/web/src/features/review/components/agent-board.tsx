@@ -1,7 +1,7 @@
-import { cn } from '@diffgazer/ui/lib/utils';
-import { SectionHeader } from '@diffgazer/ui/components/section-header';
-import { Badge } from '@diffgazer/ui/components/badge';
 import type { AgentState } from '@diffgazer/core/schemas/events';
+import { Badge } from '@diffgazer/ui/components/badge';
+import { SectionHeader } from '@diffgazer/ui/components/section-header';
+import { cn } from '@diffgazer/ui/lib/utils';
 
 const AGENT_STATUS_META = {
   queued: { label: "WAIT", variant: "neutral", bar: "bg-tui-border" },

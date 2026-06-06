@@ -1,8 +1,8 @@
 import { execFile } from "node:child_process";
+import * as clack from "@clack/prompts";
 import type { PackageManager } from "./detect.js";
 import { readPackageJson } from "./detect.js";
-import * as clack from "@clack/prompts";
-import { error, isSilentMode } from "./logger.js";
+import { error, isSilentMode } from "./terminal.js";
 
 const VALID_PKG_NAME = /^(@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/i;
 const VERSION_SPEC_PATTERN = /^[a-zA-Z0-9._\-~/^*@:+]+$/;

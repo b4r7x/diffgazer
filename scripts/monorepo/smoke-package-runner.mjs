@@ -211,7 +211,17 @@ export function withTempPackageProject(root, workspacePackage, smoke) {
     const installDeps = networkAllowed()
       ? (smoke.installDeps ?? [])
       : [...writeOfflineOverrides(root, projectDir, workspacePackage, smoke).values()];
-    execFileSync("pnpm", ["add", ...pnpmAddFlags(), ...tgzPaths, ...installDeps], {
+    // The keys-absent fixture (T-608/F-234) deliberately installs @diffgazer/ui
+    // WITHOUT its required @diffgazer/keys peer to prove the load-time missing-peer
+    // signal. pnpm's default auto-install-peers would try to resolve that required
+    // peer from the registry, which fails offline because keys is publish-gated.
+    // Disable peer auto-install/strictness for this fixture so the install models a
+    // consumer who skipped the required peer; the runtime step then asserts the
+    // keys-backed subpath fails naming @diffgazer/keys.
+    const peerFlags = smoke.skipPeerAutoInstall
+      ? ["--config.auto-install-peers=false", "--config.strict-peer-dependencies=false"]
+      : [];
+    execFileSync("pnpm", ["add", ...pnpmAddFlags(), ...peerFlags, ...tgzPaths, ...installDeps], {
       cwd: projectDir,
       encoding: "utf-8",
       stdio: ["ignore", "pipe", "pipe"],

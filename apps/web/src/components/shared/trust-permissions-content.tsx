@@ -1,23 +1,23 @@
-import {
-  useRef,
-  useState,
-  type FocusEvent as ReactFocusEvent,
-} from "react";
 import type { TrustCapabilities } from "@diffgazer/core/schemas/config";
-import { Badge } from "@diffgazer/ui/components/badge";
-import { Callout } from "@diffgazer/ui/components/callout";
-import { Button } from "@diffgazer/ui/components/button";
-import { CheckboxGroup, CheckboxItem } from "@diffgazer/ui/components/checkbox";
-import { cn } from "@diffgazer/ui/lib/utils";
-import { focusNavigationItem } from "@diffgazer/keys";
-import { useTrustFormKeyboard } from "./use-trust-form-keyboard";
 import {
-  TRUST_CAPABILITY_OPTIONS,
   fromSelectedCapabilityIds,
   getInitialFocusedCapability,
   isFocusableCapability,
+  TRUST_CAPABILITY_OPTIONS,
   toSelectedCapabilityIds,
 } from "@diffgazer/core/schemas/config";
+import { focusNavigationItem } from "@diffgazer/keys";
+import { Badge } from "@diffgazer/ui/components/badge";
+import { Button } from "@diffgazer/ui/components/button";
+import { Callout } from "@diffgazer/ui/components/callout";
+import { CheckboxGroup, CheckboxItem } from "@diffgazer/ui/components/checkbox";
+import { cn } from "@diffgazer/ui/lib/utils";
+import {
+  type FocusEvent as ReactFocusEvent,
+  useRef,
+  useState,
+} from "react";
+import { useTrustFormKeyboard } from "./use-trust-form-keyboard";
 
 interface TrustPermissionsContentBaseProps {
   directory: string;
@@ -127,6 +127,7 @@ export function TrustPermissionsContent(props: TrustPermissionsContentProps) {
   }
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: onFocus/onBlur here are focus-delegation listeners for the descendant role="checkbox" items, not interactions on the container itself; the checkboxes own all keyboard/pointer behavior.
     <div ref={contentRef} className="flex flex-col gap-6" onFocus={handleContentFocus} onBlur={handleContentBlur}>
       <div className="border-b border-tui-border pb-3">
         <div className="text-tui-muted text-xs mb-2 uppercase tracking-wide">

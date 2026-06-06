@@ -1,7 +1,7 @@
 "use client";
 
-import { Badge, type BadgeProps } from "../badge/badge";
 import { cn } from "@/lib/utils";
+import { Badge, type BadgeProps } from "../badge/badge";
 
 export function NavigationListBadge({
   children,

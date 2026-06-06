@@ -1,0 +1,8 @@
+prepare-artifacts EXIT=0
+type-check EXIT=0
+validate-artifacts EXIT=0
+test EXIT=0
+smoke EXIT=1
+verify-monorepo EXIT=0
+git-diff-check EXIT=0
+diff-M-stat written (     562 lines)

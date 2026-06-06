@@ -1,26 +1,24 @@
-import { useEffect, useState } from "react";
-import type { ReactElement } from "react";
-import { Box, Text, useInput } from "ink";
-import type { AIProvider, ModelInfo } from "@diffgazer/core/schemas/config";
-import { OPENROUTER_PROVIDER_ID } from "@diffgazer/core/schemas/config";
-import { useTheme } from "../../../theme/theme-context";
-import type { CliColorTokens } from "../../../theme/palettes";
-import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions";
-import { Dialog } from "../../../components/ui/dialog";
-import { Button } from "../../../components/ui/button";
-import { Spinner } from "../../../components/ui/spinner";
 import { useActivateProvider } from "@diffgazer/core/api/hooks";
 import {
-  cycleTierFilter,
-  filterModels,
   getCompatibilityLabel,
+  useModelFilter,
   useOpenRouterModelsMapped,
   useProviderModelsMapped,
-  type TierFilter,
 } from "@diffgazer/core/providers";
+import type { AIProvider, ModelInfo } from "@diffgazer/core/schemas/config";
+import { OPENROUTER_PROVIDER_ID } from "@diffgazer/core/schemas/config";
+import { Box, Text, useInput } from "ink";
+import type { ReactElement } from "react";
+import { useEffect, useEffectEvent, useState } from "react";
+import { useTheme } from "../../../app/providers/theme";
+import { Button } from "../../../components/ui/button";
+import { Dialog } from "../../../components/ui/dialog";
+import { Spinner } from "../../../components/ui/spinner";
+import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions";
+import type { CliColorTokens } from "../../../theme/palettes";
+import { ModelListItem } from "./model-list-item";
 import { SearchInput } from "./model-search-input";
 import { TierFilterTabs } from "./tier-filter-tabs";
-import { ModelListItem } from "./model-list-item";
 
 type FocusZone = "search" | "filters" | "list";
 
@@ -104,12 +102,17 @@ export function ModelSelectOverlay({
 
   const models = isOpenRouter ? openRouter.models : catalog.models;
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const [tierFilter, setTierFilter] = useState<TierFilter>("all");
+  const {
+    searchQuery,
+    setSearchQuery,
+    tierFilter,
+    setTierFilter,
+    filteredModels,
+    cycleTierFilter,
+    resetFilters,
+  } = useModelFilter(models);
   const [focusZone, setFocusZone] = useState<FocusZone>("list");
   const [highlightIndex, setHighlightIndex] = useState(0);
-
-  const filteredModels = filterModels(models, tierFilter, searchQuery);
 
   // Derive the clamped index during render. Arrow handlers wrap with modulo
   // against the current filteredModels.length, so the stored highlightIndex
@@ -119,13 +122,14 @@ export function ModelSelectOverlay({
       ? 0
       : Math.min(highlightIndex, filteredModels.length - 1);
 
+  const resetOnOpen = useEffectEvent(() => {
+    resetFilters();
+    setFocusZone("list");
+    setHighlightIndex(0);
+  });
+
   useEffect(() => {
-    if (open) {
-      setSearchQuery("");
-      setTierFilter("all");
-      setFocusZone("list");
-      setHighlightIndex(0);
-    }
+    if (open) resetOnOpen();
   }, [open]);
 
   function handleSelect(modelId: string) {
@@ -167,7 +171,7 @@ export function ModelSelectOverlay({
       }
 
       if (input === "f" && focusZone !== "search") {
-        setTierFilter(cycleTierFilter);
+        cycleTierFilter();
         return;
       }
     },

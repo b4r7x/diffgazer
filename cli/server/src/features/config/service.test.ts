@@ -1,8 +1,9 @@
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AIProvider, TrustConfig } from "@diffgazer/core/schemas/config";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { requireValue } from "../../testing/assertions.js";
 
 const keyring = vi.hoisted(() => ({
   deleteKeyringSecret: vi.fn(),
@@ -283,7 +284,7 @@ describe("config service", () => {
 
     const store = await configureProvider("gemini", { model: "gemini-2.5-flash" });
     const project = store.ensureProjectFile(projectRoot);
-    await store.saveTrust(trustConfig(project.projectId!));
+    await store.saveTrust(trustConfig(requireValue(project.projectId, "project id")));
 
     expect(getSetupStatus(projectRoot)).toMatchObject({
       hasSecretsStorage: true,

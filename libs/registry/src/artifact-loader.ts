@@ -1,9 +1,9 @@
+import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
-import { readFileSync } from "node:fs";
 import { ARTIFACT_MANIFEST_REL_PATH } from "./constants.js";
-import { loadValidatedManifest } from "./manifest.js";
 import type { ArtifactManifest } from "./manifest.js";
+import { loadValidatedManifest } from "./manifest.js";
 import { ensureExists, resolveInside } from "./utils/fs.js";
 
 export interface LoadedArtifacts {

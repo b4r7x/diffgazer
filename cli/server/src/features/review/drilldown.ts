@@ -1,25 +1,25 @@
-import { type Result, ok, err } from "@diffgazer/core/result";
 import { createError } from "@diffgazer/core/errors";
+import { err, ok, type Result } from "@diffgazer/core/result";
+import { ErrorCode } from "@diffgazer/core/schemas/errors";
+import type { AgentStreamEvent } from "@diffgazer/core/schemas/events";
 import type {
   DrilldownResult,
-  TraceRef,
   ReviewIssue,
   ReviewResult,
   SavedReview,
+  TraceRef,
 } from "@diffgazer/core/schemas/review";
-import { ErrorCode } from "@diffgazer/core/schemas/errors";
-import type { AgentStreamEvent } from "@diffgazer/core/schemas/events";
 import type { AIClient, AIError } from "../../shared/lib/ai/types.js";
 import type { FileDiff, ParsedDiff } from "../../shared/lib/diff/types.js";
+import { buildDrilldownPrompt } from "../../shared/lib/review/prompts.js";
 import {
   addDrilldownToReview,
   getReview as getStoredReview,
 } from "../../shared/lib/storage/reviews.js";
-import { buildDrilldownPrompt } from "../../shared/lib/review/prompts.js";
-import { DrilldownResponseSchema } from "./schemas.js";
 import type { DrilldownAIResponse } from "./schemas.js";
-import type { DrilldownError, HandleDrilldownError } from "./types.js";
+import { DrilldownResponseSchema } from "./schemas.js";
 import { recordTrace } from "./trace.js";
+import type { DrilldownError, HandleDrilldownError } from "./types.js";
 
 const reviewLocks = new Map<string, Promise<unknown>>();
 

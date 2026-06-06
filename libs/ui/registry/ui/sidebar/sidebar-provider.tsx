@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useId, useMemo, type ReactNode } from "react";
+import { type ReactNode, useCallback, useEffect, useId, useMemo } from "react";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import { SidebarContext, type SidebarState } from "./sidebar-context";

@@ -1,14 +1,14 @@
-import { describe, it, expect } from "vitest";
 import type { Lens } from "@diffgazer/core/schemas/review";
-import type { ParsedDiff, FileDiff } from "../diff/types.js";
+import { describe, expect, it } from "vitest";
+import type { FileDiff, ParsedDiff } from "../diff/types.js";
+import { makeIssue } from "../testing/factories.js";
 import {
   buildDrilldownPrompt,
   buildReviewPrompt,
+  CORRECTNESS_SEVERITY_RUBRIC,
   CORRECTNESS_SYSTEM_PROMPT,
-  DEFAULT_RUBRIC,
   SECURITY_HARDENING_PROMPT,
 } from "./prompts.js";
-import { makeIssue } from "../testing/factories.js";
 
 function makeDiff(overrides: Partial<FileDiff> = {}): ParsedDiff {
   const file: FileDiff = {
@@ -31,7 +31,7 @@ function makeLens(overrides: Partial<Lens> = {}): Lens {
     id: "correctness",
     name: "Correctness",
     systemPrompt: CORRECTNESS_SYSTEM_PROMPT,
-    severityRubric: DEFAULT_RUBRIC,
+    severityRubric: CORRECTNESS_SEVERITY_RUBRIC,
     ...overrides,
   } as Lens;
 }
@@ -90,8 +90,8 @@ describe("buildReviewPrompt", () => {
     ]) {
       expect(prompt).toContain(section);
     }
-    expect(prompt).toContain(DEFAULT_RUBRIC.blocker);
-    expect(prompt).toContain(DEFAULT_RUBRIC.nit);
+    expect(prompt).toContain(CORRECTNESS_SEVERITY_RUBRIC.blocker);
+    expect(prompt).toContain(CORRECTNESS_SEVERITY_RUBRIC.nit);
   });
 
   it.each([

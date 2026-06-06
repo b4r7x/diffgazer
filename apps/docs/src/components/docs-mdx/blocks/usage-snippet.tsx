@@ -1,11 +1,11 @@
-import { CopyButton } from "@/components/copy-button";
 import {
 	CodeBlock,
 	CodeBlockContent,
 	CodeBlockHeader,
 	CodeBlockLabel,
 	CodeBlockLine,
-} from "@/components/ui/code-block";
+} from "@diffgazer/ui/components/code-block";
+import { CopyButton } from "@/components/copy-button";
 import { useDocData } from "../doc-data-context";
 
 export function UsageSnippet() {

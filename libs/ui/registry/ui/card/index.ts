@@ -1,10 +1,10 @@
-import { Card as CardRoot, cardVariants, type CardProps } from "./card";
+import { type CardProps, Card as CardRoot, cardVariants } from "./card";
 import { CardAction, type CardActionProps } from "./card-action";
 import { CardContent, type CardContentProps } from "./card-content";
 import { CardDescription, type CardDescriptionProps } from "./card-description";
 import { CardFooter, type CardFooterProps } from "./card-footer";
 import { CardHeader, type CardHeaderProps } from "./card-header";
-import { CardLabel, cardLabelVariants, type CardLabelProps } from "./card-label";
+import { CardLabel, type CardLabelProps, cardLabelVariants } from "./card-label";
 import { CardTitle, type CardTitleProps } from "./card-title";
 
 const Card = Object.assign(CardRoot, {

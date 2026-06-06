@@ -1,20 +1,38 @@
 import { randomUUID } from "node:crypto";
-import type { Lens } from "@diffgazer/core/schemas/review";
-import type {
-  ReviewIssue,
-  ReviewResult,
-} from "@diffgazer/core/schemas/review";
-import { ReviewResultSchema } from "@diffgazer/core/schemas/review";
-import type { AgentStreamEvent, StepEvent } from "@diffgazer/core/schemas/events";
-import { AGENT_METADATA, LENS_TO_AGENT } from "@diffgazer/core/schemas/events";
-import type { AIClient, AIError } from "../ai/types.js";
-import type { ParsedDiff } from "../diff/types.js";
 import type { Result } from "@diffgazer/core/result";
 import { ok } from "@diffgazer/core/result";
+import type { AgentStreamEvent, StepEvent } from "@diffgazer/core/schemas/events";
+import { AGENT_METADATA, LENS_TO_AGENT } from "@diffgazer/core/schemas/events";
+import type { Lens, ReviewIssue, ReviewResult } from "@diffgazer/core/schemas/review";
+import { ReviewResultSchema } from "@diffgazer/core/schemas/review";
+import { pluralize } from "@diffgazer/core/strings";
+import type { AIClient, AIError } from "../ai/types.js";
+import type { ParsedDiff } from "../diff/types.js";
 import { ensureIssueEvidence } from "./issues.js";
-import { estimateTokens, getThinkingMessage } from "./utils.js";
 import { buildReviewPrompt } from "./prompts.js";
-import type { LensResult, AgentRunContext } from "./types.js";
+import type { AgentRunContext, LensResult } from "./types.js";
+
+function estimateTokens(text: string): number {
+  if (!text) return 0;
+  return Math.ceil(text.length / 4);
+}
+
+function getThinkingMessage(lens: Lens): string {
+  switch (lens.id) {
+    case "correctness":
+      return "Analyzing diff for bugs and logic errors...";
+    case "security":
+      return "Analyzing diff for security vulnerabilities...";
+    case "performance":
+      return "Analyzing diff for performance issues...";
+    case "simplicity":
+      return "Analyzing diff for complexity and maintainability...";
+    case "tests":
+      return "Analyzing diff for test coverage and quality...";
+    default:
+      return `Analyzing diff with ${lens.name} lens...`;
+  }
+}
 
 export async function runLensAnalysis(
   client: AIClient,
@@ -59,9 +77,8 @@ export async function runLensAnalysis(
     spanId,
   });
 
-  for (let i = 0; i < diff.files.length; i++) {
+  for (const [i, file] of diff.files.entries()) {
     if (signal?.aborted) break;
-    const file = diff.files[i]!;
 
     onEvent({
       type: "file_start",
@@ -135,7 +152,7 @@ export async function runLensAnalysis(
   onEvent({
     type: "agent_thinking",
     agent: agentId,
-    thought: `Analyzing ${diff.files.length} file${diff.files.length !== 1 ? "s" : ""} for ${lens.name.toLowerCase()} issues...`,
+    thought: `Analyzing ${pluralize(diff.files.length, "file")} for ${lens.name.toLowerCase()} issues...`,
     timestamp: new Date().toISOString(),
     traceId,
     spanId,
@@ -163,7 +180,10 @@ export async function runLensAnalysis(
   ];
   let stageIndex = 0;
   progressTimer = setInterval(() => {
-    if (signal?.aborted) { clearInterval(progressTimer!); return; }
+    if (signal?.aborted) {
+      if (progressTimer !== null) clearInterval(progressTimer);
+      return;
+    }
     const elapsedMs = Date.now() - timerStart;
     if (stageIndex >= progressStages.length) return;
     const stage = progressStages[stageIndex];
@@ -221,7 +241,7 @@ export async function runLensAnalysis(
     type: "agent_progress",
     agent: agentId,
     progress: 90,
-    message: `Found ${issuesWithEvidence.length} issue${issuesWithEvidence.length === 1 ? "" : "s"}`,
+    message: `Found ${pluralize(issuesWithEvidence.length, "issue")}`,
     timestamp: new Date().toISOString(),
     traceId,
     spanId,
@@ -247,4 +267,3 @@ export async function runLensAnalysis(
     issues: issuesWithEvidence,
   });
 }
-

@@ -1,14 +1,14 @@
 import {
   Dialog,
-  DialogTrigger,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
+  DialogAction,
   DialogBody,
-  DialogFooter,
   DialogClose,
   DialogCloseIcon,
-  DialogAction,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog"
 
 export default function DialogBracketed() {

@@ -1,22 +1,22 @@
+export { canProceed } from "./can-proceed.js";
+export { getInitialWizardData } from "./defaults.js";
+export {
+  buildConfigPayload,
+  buildSettingsPayload,
+  type SaveWizardCallbacks,
+  type SaveWizardResult,
+  type SettingsPayload,
+  saveWizard,
+} from "./save-wizard.js";
+export { STEP_LABELS, STEP_TITLES } from "./steps.js";
 export type {
   InputMethod,
   OnboardingStep,
   WizardData,
 } from "./types.js";
 export { INPUT_METHODS, WIZARD_STEPS } from "./types.js";
-export { STEP_LABELS, STEP_TITLES } from "./steps.js";
-export { getInitialWizardData } from "./defaults.js";
-export { canProceed } from "./can-proceed.js";
 export {
-  buildSettingsPayload,
-  buildConfigPayload,
-  saveWizard,
-  type SettingsPayload,
-  type SaveWizardCallbacks,
-  type SaveWizardResult,
-} from "./save-wizard.js";
-export {
-  useWizardState,
-  type UseWizardStateResult,
   type EarlySaveCallbacks,
+  type UseWizardStateResult,
+  useWizardState,
 } from "./use-wizard-state.js";

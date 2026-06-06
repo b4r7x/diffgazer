@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, type ImgHTMLAttributes, type Ref } from "react";
+import { type ImgHTMLAttributes, type Ref, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useAvatarContext } from "./avatar-context";
 import { useImageStatus } from "./use-image-status";

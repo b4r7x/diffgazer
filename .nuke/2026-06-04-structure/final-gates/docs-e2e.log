@@ -1,0 +1,34 @@
+
+> @diffgazer/docs@ pretest:e2e /Users/voitz/Projects/diffgazer-workspace/apps/docs
+> test -f .output/public/index.html || (echo 'Error: .output/public/index.html not found. Run pnpm build first.' && exit 1)
+
+
+> @diffgazer/docs@ test:e2e /Users/voitz/Projects/diffgazer-workspace/apps/docs
+> env -u NO_COLOR playwright test
+
+[2m[WebServer] [22m
+[2m[WebServer] [22m [37m╭[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m [Build Info] [39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m╮[39m
+[2m[WebServer] [22m [37m│[39m                                    [37m│[39m
+[2m[WebServer] [22m [37m│[39m  - Build Directory: [36m.output[39m        [37m│[39m
+[2m[WebServer] [22m [37m│[39m  - Date: 6/6/2026, 11:52:46 AM     [37m│[39m
+[2m[WebServer] [22m [37m│[39m  - Nitro Version: 3.0.260429-beta  [37m│[39m
+[2m[WebServer] [22m [37m│[39m  - Nitro Preset: node-server       [37m│[39m
+[2m[WebServer] [22m [37m│[39m                                    [37m│[39m
+[2m[WebServer] [22m [37m╰[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m─[39m[37m╯[39m
+[2m[WebServer] [22m
+[2m[WebServer] [22m  [32m➜[39m  [1mLocal[22m:   [36mhttp://127.0.0.1:[1m4173[22m/[39m
+
+Running 10 tests using 5 workers
+
+  ✓   1 [chromium] › tests/e2e/button.e2e.ts:5:2 › Button › default examples render with no a11y violations (5.3s)
+  ✓   3 [chromium] › tests/e2e/accordion.e2e.ts:5:2 › Accordion › expands and collapses panels with no a11y violations (6.4s)
+  ✓   5 [chromium] › tests/e2e/dialog.e2e.ts:5:2 › Dialog › opens, traps focus, closes via Escape with no a11y violations (7.0s)
+  ✓   4 [chromium] › tests/e2e/command-palette.e2e.ts:5:2 › CommandPalette › filters items by typing and remains accessible (7.8s)
+  ✓   2 [chromium] › tests/e2e/menu.e2e.ts:5:2 › Menu › supports arrow-key navigation and is accessible (7.8s)
+  ✓   6 [chromium] › tests/e2e/popover.e2e.ts:5:2 › Popover › opens on click and exposes accessible content (6.3s)
+  ✓   8 [chromium] › tests/e2e/tabs.e2e.ts:5:2 › Tabs › switches via ArrowRight and is accessible (5.3s)
+  ✓  10 [chromium] › tests/e2e/tooltip.e2e.ts:5:2 › Tooltip › appears on hover and is accessible (5.1s)
+  ✓   9 [chromium] › tests/e2e/toast.e2e.ts:5:2 › Toast › appears on trigger, exposes status role, no a11y violations (6.7s)
+  ✓   7 [chromium] › tests/e2e/select.e2e.ts:5:2 › Select › opens listbox via keyboard and reports no a11y violations (9.5s)
+
+  10 passed (18.6s)

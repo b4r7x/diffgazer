@@ -1,6 +1,6 @@
+import { err, ok, type Result } from "@diffgazer/core/result";
 import type { z } from "zod";
-import { type Result, ok, err } from "@diffgazer/core/result";
-import { readJsonFileSync, readJsonFileSyncSafe, writeJsonFileSync } from "../fs.js";
+import { readJsonFileSync, writeJsonFileSync } from "../fs.js";
 
 interface DatedEntry {
   fetchedAt: string;
@@ -17,20 +17,6 @@ export type DiskCacheState<T extends DatedEntry> =
   | { status: "ok"; entry: T }
   | { status: "missing" }
   | { status: "corrupt" };
-
-/**
- * Like loadDiskCache, but distinguishes a genuinely-absent file from a
- * present-but-unloadable one (unreadable/invalid JSON, or a value that fails the
- * schema). Callers that derive a guard baseline from the cache need this so a
- * corrupt file does not masquerade as a baseline-free first run.
- */
-export const loadDiskCacheState = <T extends DatedEntry>(path: string, schema: z.ZodType<T>): DiskCacheState<T> => {
-  const read = readJsonFileSyncSafe<unknown>(path);
-  if (read.status === "missing") return { status: "missing" };
-  if (read.status === "corrupt") return { status: "corrupt" };
-  const parsed = schema.safeParse(read.data);
-  return parsed.success ? { status: "ok", entry: parsed.data } : { status: "corrupt" };
-};
 
 export const persistDiskCache = <T extends DatedEntry>(path: string, entry: T): void => {
   writeJsonFileSync(path, entry);

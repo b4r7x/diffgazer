@@ -1,13 +1,13 @@
 export { AccessibilityNotes } from "./accessibility-notes";
 export { APIReference } from "./api-reference";
-export { ConsumptionBlock } from "./consumption-block";
+export { ConsumptionBlock } from "./consumption";
 export { Example } from "./example";
 export { Examples } from "./examples";
 export { KeyboardNav } from "./keyboard-nav";
 export { Notes } from "./notes";
-export { ParameterTableBlock as ParameterTable } from "./parameter-table-block";
-export { PropsTableBlock as PropsTable } from "./props-table-block";
+export { ParameterTableBlock as ParameterTable } from "./parameter-table";
+export { PropsTableBlock as PropsTable } from "./props-table";
 export { ReturnsTable } from "./returns-table";
-export { SourceViewerBlock as SourceViewer } from "./source-viewer-block";
+export { SourceViewerBlock as SourceViewer } from "./source-viewer";
 export { Step, Steps } from "./steps";
 export { UsageSnippet } from "./usage-snippet";

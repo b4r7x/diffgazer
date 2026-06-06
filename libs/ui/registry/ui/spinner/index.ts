@@ -1,3 +1,3 @@
 "use client";
 
-export { Spinner, spinnerVariants, type SpinnerProps, type SpinnerVariant, type SpinnerSize, type SpinnerLabelPosition, type SpinnerGap } from "./spinner";
+export { Spinner, type SpinnerGap, type SpinnerLabelPosition, type SpinnerProps, type SpinnerSize, type SpinnerVariant, spinnerVariants } from "./spinner";

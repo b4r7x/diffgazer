@@ -1,0 +1,1571 @@
+• turbo 2.9.14
+
+   • Packages in scope: @diffgazer/add, @diffgazer/core, @diffgazer/docs, @diffgazer/keys, @diffgazer/keys-artifacts, @diffgazer/landing, @diffgazer/registry, @diffgazer/server, @diffgazer/ui, @diffgazer/web, diffgazer
+   • Running test in 11 packages
+   • Remote caching disabled
+
+@diffgazer/registry:test: cache hit, replaying logs 5f0a8d8023745ec4
+@diffgazer/registry:test: 
+@diffgazer/registry:test: > @diffgazer/registry@0.1.0 test /Users/voitz/Projects/diffgazer-workspace/libs/registry
+@diffgazer/registry:test: > vitest run
+@diffgazer/registry:test: 
+@diffgazer/registry:test: 
+@diffgazer/registry:test:  RUN  v4.1.0 /Users/voitz/Projects/diffgazer-workspace/libs/registry
+@diffgazer/registry:test: 
+@diffgazer/registry:test:  ✓ src/testing/verify-rsc.test.ts (6 tests) 16ms
+@diffgazer/registry:test: stdout | src/testing/init-workflow.test.ts > runInitWorkflow rollback > removes created files and keeps skipped pre-existing files when afterFiles fails
+@diffgazer/registry:test: 
+@diffgazer/registry:test:   Detected:
+@diffgazer/registry:test: 
+@diffgazer/registry:test: 
+@diffgazer/registry:test:   Creating files...
+@diffgazer/registry:test:   + created/
+@diffgazer/registry:test:   + created/new.txt
+@diffgazer/registry:test:   skip existing/keep.txt
+@diffgazer/registry:test: 
+@diffgazer/registry:test: stdout | src/testing/init-workflow.test.ts > runInitWorkflow rollback > restores overwritten files and config writes when writeConfig fails
+@diffgazer/registry:test: 
+@diffgazer/registry:test:   Detected:
+@diffgazer/registry:test: 
+@diffgazer/registry:test: 
+@diffgazer/registry:test:   Creating files...
+@diffgazer/registry:test:   skip pre-existing.txt
+@diffgazer/registry:test:   + created.txt
+@diffgazer/registry:test: 
+@diffgazer/registry:test: stdout | src/testing/init-workflow.test.ts > runInitWorkflow rollback > preserves an existing config (including ownership manifest) when forced re-init fails mid-write
+@diffgazer/registry:test: 
+@diffgazer/registry:test:   Detected:
+@diffgazer/registry:test: 
+@diffgazer/registry:test: 
+@diffgazer/registry:test:   Creating files...
+@diffgazer/registry:test: 
+@diffgazer/registry:test: stdout | src/testing/init-workflow.test.ts > runInitWorkflow rollback > only snapshots files declared in plannedPaths (no recursive tree walk)
+@diffgazer/registry:test: 
+@diffgazer/registry:test:   Detected:
+@diffgazer/registry:test: 
+@diffgazer/registry:test: 
+@diffgazer/registry:test:   Creating files...
+@diffgazer/registry:test:   skip src/
+@diffgazer/registry:test:   skip src/styles.css
+@diffgazer/registry:test: 
+@diffgazer/registry:test: stdout | src/testing/init-workflow.test.ts > runInitWorkflow rollback > only snapshots files declared in plannedPaths (no recursive tree walk)
+@diffgazer/registry:test:   + tool.json
+@diffgazer/registry:test: 
+@diffgazer/registry:test:   Done!
+@diffgazer/registry:test: 
+@diffgazer/registry:test: 
+@diffgazer/registry:test: stdout | src/testing/init-workflow.test.ts > runInitWorkflow rollback > removes a freshly-created planned-path file on rollback so installer side effects do not leak
+@diffgazer/registry:test: 
+@diffgazer/registry:test:   Detected:
+@diffgazer/registry:test: 
+@diffgazer/registry:test: 
+@diffgazer/registry:test:   Creating files...
+@diffgazer/registry:test: 
+@diffgazer/registry:test: stdout | src/testing/init-workflow.test.ts > runInitWorkflow rollback > only restores files explicitly listed in plannedPaths on rollback
+@diffgazer/registry:test: 
+@diffgazer/registry:test:   Detected:
+@diffgazer/registry:test: 
+@diffgazer/registry:test: 
+@diffgazer/registry:test:   Creating files...
+@diffgazer/registry:test:   skip declared.txt
+@diffgazer/registry:test:   skip undeclared.txt
+@diffgazer/registry:test: 
+@diffgazer/registry:test:  ✓ src/testing/init-workflow.test.ts (7 tests) 17ms
+@diffgazer/registry:test:  ✓ src/testing/copy-bundle.test.ts (7 tests) 32ms
+@diffgazer/registry:test: stdout | src/testing/copy-artifacts-to-package.test.ts > copyArtifactsToPackage > copies artifacts from source to package dist/artifacts
+@diffgazer/registry:test: [test-lib] copied artifacts from /tmp/rk-copy-pkg-hSx4hD/dist/artifacts
+@diffgazer/registry:test: 
+@diffgazer/registry:test: stdout | src/testing/copy-artifacts-to-package.test.ts > copyArtifactsToPackage > skips manifest validation when validateManifest is false
+@diffgazer/registry:test: [test-lib] copied artifacts from /tmp/rk-copy-pkg-eF1ifJ/dist/artifacts
+@diffgazer/registry:test: 
+@diffgazer/registry:test: stdout | src/testing/copy-artifacts-to-package.test.ts > copyArtifactsToPackage > cleans entire dist/ with parent-dist strategy (default)
+@diffgazer/registry:test: [test-lib] copied artifacts from /tmp/rk-copy-pkg-KVDwTW/dist/artifacts
+@diffgazer/registry:test: 
+@diffgazer/registry:test: stdout | src/testing/copy-artifacts-to-package.test.ts > copyArtifactsToPackage > only cleans artifact dir with artifact-dir strategy
+@diffgazer/registry:test: [test-lib] copied artifacts from /tmp/rk-copy-pkg-5bSOKQ/dist/artifacts
+@diffgazer/registry:test: 
+@diffgazer/registry:test:  ✓ src/testing/manifest.test.ts (26 tests) 17ms
+@diffgazer/registry:test: stdout | src/testing/copy-artifacts-to-package.test.ts > copyArtifactsToPackage > supports custom artifactDir
+@diffgazer/registry:test: [test-lib] copied artifacts from /tmp/rk-copy-pkg-NUasDH/output/build-artifacts
+@diffgazer/registry:test: 
+@diffgazer/registry:test:  ✓ src/testing/copy-artifacts-to-package.test.ts (8 tests) 34ms
+@diffgazer/registry:test: stdout | src/testing/bundler.test.ts > createBundler > writes bundles whose integrity validates after installer schema parsing
+@diffgazer/registry:test:   Bundling registry...
+@diffgazer/registry:test: 
+@diffgazer/registry:test:   Bundle summary:
+@diffgazer/registry:test:   Bundled 1 items (1 files)
+@diffgazer/registry:test:   Bundle size: 0.4 KB
+@diffgazer/registry:test:   Integrity: sha256-b5e01c25eb9250e0f851beb819587a67d177307799a5306b2f035a239f1ff824
+@diffgazer/registry:test:   Output: /tmp/dg-registry-bundler-az485N/bundle.json
+@diffgazer/registry:test: 
+@diffgazer/registry:test: stdout | src/testing/bundler.test.ts > createBundler > rejects source file with 'parent-escape relative path'
+@diffgazer/registry:test:   Bundling registry...
+@diffgazer/registry:test: 
+@diffgazer/registry:test: stdout | src/testing/bundler.test.ts > createBundler > rejects source file with 'absolute path outside registry root'
+@diffgazer/registry:test:   Bundling registry...
+@diffgazer/registry:test: 
+@diffgazer/registry:test: stdout | src/testing/bundler.test.ts > createBundler > preserves shadcn metadata fields and side-effect import dependencies
+@diffgazer/registry:test:   Bundling registry...
+@diffgazer/registry:test: 
+@diffgazer/registry:test:   Bundle summary:
+@diffgazer/registry:test:   Bundled 1 items (1 files)
+@diffgazer/registry:test:   Bundle size: 0.7 KB
+@diffgazer/registry:test:   Integrity: sha256-ca85fbc1803ce600d506be003d840678910917e7c3b973df790ef9e0bfa32313
+@diffgazer/registry:test:   Output: /tmp/dg-registry-bundler-NS952o/bundle.json
+@diffgazer/registry:test: 
+@diffgazer/registry:test:   Dependencies:
+@diffgazer/registry:test:     reset: normalize.css
+@diffgazer/registry:test: 
+@diffgazer/registry:test:  ✓ src/testing/bundler.test.ts (4 tests) 12ms
+@diffgazer/registry:test: stdout | src/testing/docs-sync.test.ts > syncDocsFromArtifacts > throws when manifest.generated has duplicate output basenames
+@diffgazer/registry:test: [docs-sync] Mode: workspace
+@diffgazer/registry:test: 
+@diffgazer/registry:test: stdout | src/testing/docs-sync.test.ts > syncDocsFromArtifacts > throws when workspace artifact fingerprint is stale
+@diffgazer/registry:test: [docs-sync] Mode: workspace
+@diffgazer/registry:test: 
+@diffgazer/registry:test: stdout | src/testing/docs-sync.test.ts > syncDocsFromArtifacts > rejects workspace directories outside the workspace root
+@diffgazer/registry:test: [docs-sync] Mode: workspace
+@diffgazer/registry:test: 
+@diffgazer/registry:test: stdout | src/testing/docs-sync.test.ts > syncDocsFromArtifacts > copies generated files using manifest values and basename extraction
+@diffgazer/registry:test: [docs-sync] Mode: workspace
+@diffgazer/registry:test: [docs-sync] Syncing docs and generated artifacts...
+@diffgazer/registry:test: [docs-sync] Syncing registries (origin asserted: https://diffgazer.com)...
+@diffgazer/registry:test: [docs-sync] Done.
+@diffgazer/registry:test: 
+@diffgazer/registry:test: stdout | src/testing/docs-sync.test.ts > syncDocsFromArtifacts > appends configured extra root pages after the artifact namespaces
+@diffgazer/registry:test: [docs-sync] Mode: workspace
+@diffgazer/registry:test: [docs-sync] Syncing docs and generated artifacts...
+@diffgazer/registry:test: [docs-sync] Copied keys examples to registry/examples/keys/
+@diffgazer/registry:test: [docs-sync] Syncing registries (origin asserted: https://diffgazer.com)...
+@diffgazer/registry:test: [docs-sync] Done.
+@diffgazer/registry:test: 
+@diffgazer/registry:test:  ✓ src/testing/utils-fs.test.ts (3 tests) 5ms
+@diffgazer/registry:test: stdout | src/testing/docs-sync.test.ts > syncDocsFromArtifacts > re-syncs and rewrites root pages when extra root pages change on a warm cache
+@diffgazer/registry:test: [docs-sync] Mode: workspace
+@diffgazer/registry:test: [docs-sync] Syncing docs and generated artifacts...
+@diffgazer/registry:test: [docs-sync] Copied keys examples to registry/examples/keys/
+@diffgazer/registry:test: [docs-sync] Syncing registries (origin asserted: https://diffgazer.com)...
+@diffgazer/registry:test: [docs-sync] Done.
+@diffgazer/registry:test: [docs-sync] Mode: workspace
+@diffgazer/registry:test: [docs-sync] Syncing docs and generated artifacts...
+@diffgazer/registry:test: [docs-sync] Copied keys examples to registry/examples/keys/
+@diffgazer/registry:test: [docs-sync] Syncing registries (origin asserted: https://diffgazer.com)...
+@diffgazer/registry:test: [docs-sync] Done.
+@diffgazer/registry:test: 
+@diffgazer/registry:test:  ✓ src/testing/artifacts.test.ts (7 tests) 16ms
+@diffgazer/registry:test: stdout | src/testing/docs-sync.test.ts > syncDocsFromArtifacts > writes only artifact namespaces when no extra root pages are configured
+@diffgazer/registry:test: [docs-sync] Mode: workspace
+@diffgazer/registry:test: [docs-sync] Syncing docs and generated artifacts...
+@diffgazer/registry:test: [docs-sync] Syncing registries (origin asserted: https://diffgazer.com)...
+@diffgazer/registry:test: [docs-sync] Done.
+@diffgazer/registry:test: 
+@diffgazer/registry:test: stdout | src/testing/docs-sync.test.ts > syncDocsFromArtifacts > rewrites secondary demo indexes to the copied example namespace
+@diffgazer/registry:test: [docs-sync] Mode: workspace
+@diffgazer/registry:test: [docs-sync] Syncing docs and generated artifacts...
+@diffgazer/registry:test: [docs-sync] Copied keys examples to registry/examples/keys/
+@diffgazer/registry:test: [docs-sync] Syncing registries (origin asserted: https://diffgazer.com)...
+@diffgazer/registry:test: [docs-sync] Done.
+@diffgazer/registry:test: 
+@diffgazer/registry:test:  ✓ src/testing/package-manager-validation.test.ts (17 tests) 6ms
+@diffgazer/registry:test:  ✓ src/testing/cli-detect.test.ts (5 tests) 10ms
+@diffgazer/registry:test: stdout | src/testing/docs-sync.test.ts > syncDocsFromArtifacts > resyncs when secondary copied examples are missing
+@diffgazer/registry:test: [docs-sync] Mode: workspace
+@diffgazer/registry:test: [docs-sync] Syncing docs and generated artifacts...
+@diffgazer/registry:test: [docs-sync] Copied keys examples to registry/examples/keys/
+@diffgazer/registry:test: [docs-sync] Syncing registries (origin asserted: https://diffgazer.com)...
+@diffgazer/registry:test: [docs-sync] Done.
+@diffgazer/registry:test: [docs-sync] Mode: workspace
+@diffgazer/registry:test: [docs-sync] Artifacts unchanged; skipping sync.
+@diffgazer/registry:test: [docs-sync] Mode: workspace
+@diffgazer/registry:test: [docs-sync] Syncing docs and generated artifacts...
+@diffgazer/registry:test: [docs-sync] Copied keys examples to registry/examples/keys/
+@diffgazer/registry:test: [docs-sync] Syncing registries (origin asserted: https://diffgazer.com)...
+@diffgazer/registry:test: [docs-sync] Done.
+@diffgazer/registry:test: 
+@diffgazer/registry:test: stdout | src/testing/docs-sync.test.ts > syncDocsFromArtifacts > skips sync when fingerprint and outputs are unchanged, then resyncs if outputs are missing
+@diffgazer/registry:test: [docs-sync] Mode: workspace
+@diffgazer/registry:test: [docs-sync] Syncing docs and generated artifacts...
+@diffgazer/registry:test: [docs-sync] Syncing registries (origin asserted: https://diffgazer.com)...
+@diffgazer/registry:test: [docs-sync] Done.
+@diffgazer/registry:test: [docs-sync] Mode: workspace
+@diffgazer/registry:test: [docs-sync] Artifacts unchanged; skipping sync.
+@diffgazer/registry:test: [docs-sync] Mode: workspace
+@diffgazer/registry:test: [docs-sync] Syncing docs and generated artifacts...
+@diffgazer/registry:test: [docs-sync] Syncing registries (origin asserted: https://diffgazer.com)...
+@diffgazer/registry:test: [docs-sync] Done.
+@diffgazer/registry:test: 
+@diffgazer/registry:test: stdout | src/testing/docs-sync.test.ts > syncDocsFromArtifacts > syncs package-mode artifacts from an installed node_modules package
+@diffgazer/registry:test: [docs-sync] Mode: package
+@diffgazer/registry:test: [docs-sync] Syncing docs and generated artifacts...
+@diffgazer/registry:test: [docs-sync] Syncing registries (origin asserted: https://diffgazer.com)...
+@diffgazer/registry:test: [docs-sync] Done.
+@diffgazer/registry:test: 
+@diffgazer/registry:test: stdout | src/testing/docs-sync.test.ts > syncDocsFromArtifacts > rejects unsafe package names in package mode
+@diffgazer/registry:test: [docs-sync] Mode: package
+@diffgazer/registry:test: 
+@diffgazer/registry:test:  ✓ src/testing/registry.test.ts (11 tests) 5ms
+@diffgazer/registry:test: stdout | src/testing/docs-sync.test.ts > syncDocsFromArtifacts > rejects package-mode manifests with escaped artifact paths
+@diffgazer/registry:test: [docs-sync] Mode: package
+@diffgazer/registry:test: [docs-sync] Mode: package
+@diffgazer/registry:test: [docs-sync] Mode: package
+@diffgazer/registry:test: [docs-sync] Mode: package
+@diffgazer/registry:test: [docs-sync] Mode: package
+@diffgazer/registry:test: [docs-sync] Mode: package
+@diffgazer/registry:test: [docs-sync] Mode: package
+@diffgazer/registry:test: 
+@diffgazer/registry:test:  ✓ src/testing/docs-sync.test.ts (15 tests) 169ms
+@diffgazer/registry:test:  ✓ src/testing/remove-workflow.test.ts (2 tests) 7ms
+@diffgazer/registry:test:  ✓ src/testing/docs-data.test.ts (17 tests) 323ms
+@diffgazer/registry:test:  ✓ src/testing/shadcn.test.ts (49 tests) 426ms
+@diffgazer/registry:test:      ✓ keeps committed 'ui' public/r in sync with the source registry  367ms
+@diffgazer/registry:test: 
+@diffgazer/registry:test:  Test Files  15 passed (15)
+@diffgazer/registry:test:       Tests  184 passed (184)
+@diffgazer/registry:test:    Start at  09:47:54
+@diffgazer/registry:test:    Duration  786ms (transform 1.40s, setup 0ms, import 2.08s, tests 1.09s, environment 1ms)
+@diffgazer/registry:test: 
+@diffgazer/add:generate:bundles: cache hit, replaying logs 6549b7f8d7fb34bf
+@diffgazer/add:generate:bundles: 
+@diffgazer/add:generate:bundles: > @diffgazer/add@0.1.1 generate:bundles /Users/voitz/Projects/diffgazer-workspace/cli/add
+@diffgazer/add:generate:bundles: > node --import tsx scripts/bundle-registry.ts && node --import tsx scripts/generate-keys-copy-bundle.ts
+@diffgazer/add:generate:bundles: 
+@diffgazer/add:generate:bundles:   Bundling registry...
+@diffgazer/add:generate:bundles: 
+@diffgazer/add:generate:bundles:   Bundle summary:
+@diffgazer/add:generate:bundles:   Bundled 81 components (321 files)
+@diffgazer/add:generate:bundles:   Bundle size: 826.8 KB
+@diffgazer/add:generate:bundles:   Integrity: sha256-4c5dbdd2cfdec7dbac65f6658afee33d28476762324b4fcea8c12a571ee1246e
+@diffgazer/add:generate:bundles:   Output: /Users/voitz/Projects/diffgazer-workspace/cli/add/src/generated/registry-bundle.json
+@diffgazer/add:generate:bundles: 
+@diffgazer/add:generate:bundles:   Dependencies:
+@diffgazer/add:generate:bundles:     accordion: @diffgazer/keys
+@diffgazer/add:generate:bundles:     code-block: lowlight
+@diffgazer/add:generate:bundles:     logo: figlet
+@diffgazer/add:generate:bundles:     use-navigation: @diffgazer/keys
+@diffgazer/add:generate:bundles:     use-focus-restore: @diffgazer/keys
+@diffgazer/add:generate:bundles:     use-focus-trap: @diffgazer/keys
+@diffgazer/add:generate:bundles:     use-scroll-lock: @diffgazer/keys
+@diffgazer/add:generate:bundles:     popover: @diffgazer/keys
+@diffgazer/add:generate:bundles: Wrote keys copy bundle: /Users/voitz/Projects/diffgazer-workspace/cli/add/src/generated/keys-copy-bundle.json (5 items)
+@diffgazer/registry:build: cache hit, replaying logs 6d5fcf90ae765e61
+@diffgazer/registry:build: 
+@diffgazer/registry:build: > @diffgazer/registry@0.1.0 build /Users/voitz/Projects/diffgazer-workspace/libs/registry
+@diffgazer/registry:build: > tsc
+@diffgazer/registry:build: 
+@diffgazer/core:test: cache hit, replaying logs 80518b1d98045613
+@diffgazer/keys:test: cache hit, replaying logs 81f24d5f34f4d865
+@diffgazer/core:test: 
+@diffgazer/core:test: > @diffgazer/core@0.0.1 test /Users/voitz/Projects/diffgazer-workspace/libs/core
+@diffgazer/core:test: > vitest run
+@diffgazer/core:test: 
+@diffgazer/core:test: 
+@diffgazer/core:test:  RUN  v4.1.0 /Users/voitz/Projects/diffgazer-workspace/libs/core
+@diffgazer/core:test: 
+@diffgazer/core:test:  ✓ src/sse-parser.test.ts (14 tests) 509ms
+@diffgazer/core:test:  ✓ src/forms.test.ts (12 tests) 18ms
+@diffgazer/core:test:  ✓ src/providers/use-model-filter.test.ts (3 tests) 152ms
+@diffgazer/core:test:  ✓ src/api/hooks/use-review-completion.test.ts (4 tests) 143ms
+@diffgazer/core:test:  ✓ src/footer/provider.test.ts (7 tests) 65ms
+@diffgazer/core:test:  ✓ src/api/hooks/config.test.ts (3 tests) 183ms
+@diffgazer/core:test:  ✓ src/footer/use-page-footer.test.ts (3 tests) 56ms
+@diffgazer/core:test:  ✓ src/api/hooks/use-review-start.test.ts (8 tests) 167ms
+@diffgazer/core:test:  ✓ src/api/client.test.ts (27 tests) 172ms
+@diffgazer/core:test:  ✓ src/review/history.test.ts (22 tests) 28ms
+@diffgazer/core:test:  ✓ src/format.test.ts (30 tests) 30ms
+@diffgazer/core:test:  ✓ src/catalog/schema.test.ts (7 tests) 13ms
+@diffgazer/core:test:  ✓ src/catalog/catalog-snapshot.test.ts (7 tests) 24ms
+@diffgazer/core:test:  ✓ src/providers/use-openrouter-models-mapped.test.ts (9 tests) 18ms
+@diffgazer/core:test:  ✓ src/providers/use-models-mapped.test.ts (6 tests) 193ms
+@diffgazer/core:test:  ✓ src/catalog/transform.test.ts (19 tests) 8ms
+@diffgazer/core:test:  ✓ src/review/stream.test.ts (3 tests) 9ms
+@diffgazer/core:test:  ✓ src/schemas/config/models.test.ts (2 tests) 7ms
+@diffgazer/core:test:  ✓ src/api/config.test.ts (5 tests) 6ms
+@diffgazer/core:test:  ✓ src/schemas/config/providers.test.ts (13 tests) 5ms
+@diffgazer/core:test:  ✓ src/catalog/capabilities.test.ts (12 tests) 12ms
+@diffgazer/core:test:  ✓ src/api/review.test.ts (7 tests) 17ms
+@diffgazer/core:test:  ✓ src/onboarding/save-wizard.test.ts (9 tests) 5ms
+@diffgazer/core:test:  ✓ src/schemas/config/trust-capabilities.test.ts (17 tests) 4ms
+@diffgazer/core:test:  ✓ src/navigation/back-target.test.ts (5 tests) 2ms
+@diffgazer/core:test:  ✓ src/errors.test.ts (7 tests) 6ms
+@diffgazer/core:test:  ✓ src/review/state.test.ts (14 tests) 15ms
+@diffgazer/core:test:  ✓ src/review/filtering.test.ts (5 tests) 4ms
+@diffgazer/core:test:  ✓ src/onboarding/use-wizard-state.test.ts (10 tests) 142ms
+@diffgazer/core:test:  ✓ src/providers/filter.test.ts (9 tests) 8ms
+@diffgazer/core:test:  ✓ src/review/build-summary.test.ts (4 tests) 3ms
+@diffgazer/core:test:  ✓ src/api/shutdown-result.test.ts (6 tests) 2ms
+@diffgazer/core:test:  ✓ src/onboarding/can-proceed.test.ts (12 tests) 9ms
+@diffgazer/core:test:  ✓ src/review/display.test.ts (9 tests) 3ms
+@diffgazer/core:test:  ✓ src/navigation/menu-disabling.test.ts (8 tests) 4ms
+@diffgazer/core:test:  ✓ src/navigation/group-menu-items.test.ts (8 tests) 14ms
+@diffgazer/core:test:  ✓ src/onboarding/defaults.test.ts (5 tests) 2ms
+@diffgazer/core:test:  ✓ src/timer.test.ts (5 tests) 61ms
+@diffgazer/core:test:  ✓ src/review/progress-mapping.test.ts (2 tests) 5ms
+@diffgazer/core:test:  ✓ src/api/shutdown.test.ts (1 test) 14ms
+@diffgazer/core:test:  ✓ src/api/hooks/use-review-stream.test.ts (8 tests) 54ms
+@diffgazer/core:test:  ✓ src/api/openrouter.test.ts (9 tests) 22ms
+@diffgazer/core:test:  ✓ src/theme/token-keys.test.ts (4 tests) 5ms
+@diffgazer/core:test:  ✓ src/api/hooks/match-query-state.test.ts (8 tests) 5ms
+@diffgazer/core:test:  ✓ src/schemas/config/provider-registry.test.ts (15 tests) 4ms
+@diffgazer/core:test:  ✓ src/json.test.ts (9 tests) 4ms
+@diffgazer/core:test:  ✓ src/providers/models.test.ts (10 tests) 65ms
+@diffgazer/core:test:  ✓ src/catalog/format.test.ts (4 tests) 4ms
+@diffgazer/core:test:  ✓ src/api/query-client.test.ts (3 tests) 6ms
+@diffgazer/core:test:  ✓ src/schemas/events/step.test.ts (2 tests) 3ms
+@diffgazer/core:test:  ✓ src/review/lifecycle.test.ts (11 tests) 4ms
+@diffgazer/core:test:  ✓ src/schemas/review/storage.test.ts (5 tests) 4ms
+@diffgazer/core:test:  ✓ src/review/details-empty.test.ts (3 tests) 2ms
+@diffgazer/core:test:  ✓ src/select.test.ts (5 tests) 3ms
+@diffgazer/core:test:  ✓ src/providers/list.test.ts (5 tests) 4ms
+@diffgazer/core:test:  ✓ src/env.test.ts (4 tests) 5ms
+@diffgazer/core:test:  ✓ src/review/event-to-log.test.ts (22 tests) 103ms
+@diffgazer/core:test:  ✓ src/providers/display-status.test.ts (7 tests) 3ms
+@diffgazer/core:test:  ✓ src/strings.test.ts (17 tests) 9ms
+@diffgazer/core:test:  ✓ src/navigation/trust-status.test.ts (6 tests) 2ms
+@diffgazer/core:test:  ✓ src/catalog/provider-overlay.test.ts (9 tests) 9ms
+@diffgazer/core:test:  ✓ src/schemas/presentation/severity.test.ts (5 tests) 3ms
+@diffgazer/core:test: 
+@diffgazer/core:test:  Test Files  62 passed (62)
+@diffgazer/core:test:       Tests  530 passed (530)
+@diffgazer/core:test:    Start at  09:47:56
+@diffgazer/core:test:    Duration  5.58s (transform 4.97s, setup 0ms, import 16.13s, tests 2.46s, environment 16.47s)
+@diffgazer/core:test: 
+@diffgazer/keys:test: 
+@diffgazer/keys:test: > @diffgazer/keys@0.2.0 test /Users/voitz/Projects/diffgazer-workspace/libs/keys
+@diffgazer/keys:test: > vitest run
+@diffgazer/keys:test: 
+@diffgazer/keys:test: Testing types with tsc and vue-tsc is an experimental feature.
+@diffgazer/keys:test: Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+@diffgazer/keys:test: 
+@diffgazer/keys:test:  RUN  v4.1.0 /Users/voitz/Projects/diffgazer-workspace/libs/keys
+@diffgazer/keys:test: 
+@diffgazer/keys:test:  ✓ src/providers/keyboard.test.tsx (19 tests) 1050ms
+@diffgazer/keys:test:      ✓ does not fire when a local keydown listener has already handled the event  399ms
+@diffgazer/keys:test:  ✓ src/hooks/use-key.test.tsx (15 tests) 711ms
+@diffgazer/keys:test:        ✓ keeps registration order stable across rerenders when the key set is unchanged  428ms
+@diffgazer/keys:test:  ✓ src/index.test.tsx (1 test) 640ms
+@diffgazer/keys:test:      ✓ exports the primary hooks and navigation helpers from the root entry  639ms
+@diffgazer/keys:test:  ✓ src/dom/focusable.test.ts (24 tests) 1663ms
+@diffgazer/keys:test:        ✓ returns visible buttons, links, inputs, and programmatically focusable elements  360ms
+@diffgazer/keys:test:  ✓ src/hooks/use-focus-zone.test.ts (31 tests) 1362ms
+@diffgazer/keys:test:        ✓ honors allowInInput so keys fire even when an input is focused  407ms
+@diffgazer/keys:test:  ✓ src/hooks/use-scoped-navigation.test.tsx (10 tests) 1472ms
+@diffgazer/keys:test:      ✓ routes navigation and activation through KeyboardProvider  495ms
+@diffgazer/keys:test:      ✓ moves focus from native radio controls  326ms
+@diffgazer/keys:test:  ✓ src/hooks/use-action-row-navigation.test.tsx (21 tests) 1613ms
+@diffgazer/keys:test:      ✓ focuses the default action when actions is the initial zone  326ms
+@diffgazer/keys:test:  ✓ src/hooks/use-focus-trap.test.ts (27 tests) 1969ms
+@diffgazer/keys:test:        ✓ focuses first focusable element  381ms
+@diffgazer/keys:test:  ✓ src/dom/navigation-items.test.ts (15 tests) 197ms
+@diffgazer/keys:test:  ✓ src/hooks/use-scroll-lock.test.ts (7 tests) 148ms
+@diffgazer/keys:test:  ✓ src/dom/focus-restore.test.ts (3 tests) 106ms
+@diffgazer/keys:test:  ✓ src/hooks/use-scope.test.tsx (13 tests) 380ms
+@diffgazer/keys:test:  ✓ src/dom/element-guards.test.ts (23 tests) 13ms
+@diffgazer/keys:test:  ✓ scripts/validate-registry-closure.test.ts (20 tests) 18ms
+@diffgazer/keys:test:  ✓ src/hooks/use-focus-restore.test.ts (4 tests) 64ms
+@diffgazer/keys:test:  ✓ src/dom/hotkey.test.ts (30 tests) 15ms
+@diffgazer/keys:test:  ✓ scripts/transform-public-registry-imports.test.ts (14 tests) 8ms
+@diffgazer/keys:test:  ✓ src/hooks/use-navigation.test.tsx (40 tests) 3459ms
+@diffgazer/keys:test:        ✓ moves focus to item 2 via 'ArrowDown'  418ms
+@diffgazer/keys:test:      ✓ scopes navigation to the owning container by default  303ms
+@diffgazer/keys:test:  ✓ src/core/list-navigation.test.ts (7 tests) 5ms
+@diffgazer/keys:test:  ✓ src/core/keys.test.ts (2 tests) 4ms
+@diffgazer/keys:test:  ✓ src/core/navigation-directions.test.ts (4 tests) 2ms
+@diffgazer/keys:test:  ✓  TS  src/hooks/use-navigation.test.tsx (36 tests)
+@diffgazer/keys:test:  ✓  TS  src/hooks/use-focus-trap.test.ts (27 tests)
+@diffgazer/keys:test:  ✓  TS  src/dom/focusable.test.ts (24 tests)
+@diffgazer/keys:test:  ✓  TS  src/hooks/use-action-row-navigation.test.tsx (18 tests)
+@diffgazer/keys:test:  ✓  TS  src/hooks/use-focus-zone.test.ts (31 tests)
+@diffgazer/keys:test:  ✓  TS  src/hooks/use-scoped-navigation.test.tsx (10 tests)
+@diffgazer/keys:test:  ✓  TS  src/providers/keyboard.test.tsx (16 tests)
+@diffgazer/keys:test:  ✓  TS  src/hooks/use-key.test.tsx (15 tests)
+@diffgazer/keys:test:  ✓  TS  src/index.test.tsx (1 test)
+@diffgazer/keys:test:  ✓  TS  src/dom/navigation-items.test.ts (15 tests)
+@diffgazer/keys:test:  ✓  TS  src/hooks/use-scroll-lock.test.ts (7 tests)
+@diffgazer/keys:test:  ✓  TS  src/hooks/use-scope.test.tsx (13 tests)
+@diffgazer/keys:test:  ✓  TS  src/dom/focus-restore.test.ts (3 tests)
+@diffgazer/keys:test:  ✓  TS  src/hooks/use-focus-restore.test.ts (4 tests)
+@diffgazer/keys:test:  ✓  TS  scripts/validate-registry-closure.test.ts (14 tests)
+@diffgazer/keys:test:  ✓  TS  src/dom/element-guards.test.ts (21 tests)
+@diffgazer/keys:test:  ✓  TS  src/dom/hotkey.test.ts (17 tests)
+@diffgazer/keys:test:  ✓  TS  scripts/transform-public-registry-imports.test.ts (6 tests)
+@diffgazer/keys:test:  ✓  TS  src/core/list-navigation.test.ts (7 tests)
+@diffgazer/keys:test:  ✓  TS  src/core/navigation-directions.test.ts (4 tests)
+@diffgazer/keys:test:  ✓  TS  src/core/keys.test.ts (2 tests)
+@diffgazer/keys:test: 
+@diffgazer/keys:test:  Test Files  42 passed (42)
+@diffgazer/keys:test:       Tests  621 passed (621)
+@diffgazer/keys:test: Type Errors  no errors
+@diffgazer/keys:test:    Start at  09:47:56
+@diffgazer/keys:test:    Duration  7.95s (transform 743ms, setup 0ms, import 5.30s, tests 14.90s, environment 25.70s, typecheck 1.96s)
+@diffgazer/keys:test: 
+@diffgazer/core:build: cache hit, replaying logs fe25cc13538e1291
+@diffgazer/core:build: 
+@diffgazer/core:build: > @diffgazer/core@0.0.1 build /Users/voitz/Projects/diffgazer-workspace/libs/core
+@diffgazer/core:build: > tsc && pnpm verify:dist-esm
+@diffgazer/core:build: 
+@diffgazer/core:build: 
+@diffgazer/core:build: > @diffgazer/core@0.0.1 verify:dist-esm /Users/voitz/Projects/diffgazer-workspace/libs/core
+@diffgazer/core:build: > node --import tsx scripts/verify-dist-esm-imports.ts
+@diffgazer/core:build: 
+@diffgazer/core:build: [core] dist ESM relative imports carry .js OK
+@diffgazer/server:test: cache hit, replaying logs de1c9de5e6f8bc34
+@diffgazer/server:test: 
+@diffgazer/server:test: > @diffgazer/server@0.1.0 test /Users/voitz/Projects/diffgazer-workspace/cli/server
+@diffgazer/server:test: > vitest run
+@diffgazer/server:test: 
+@diffgazer/server:test: 
+@diffgazer/server:test:  RUN  v4.1.0 /Users/voitz/Projects/diffgazer-workspace/cli/server
+@diffgazer/server:test: 
+@diffgazer/server:test:  ✓ src/features/config/router.test.ts (6 tests) 510ms
+@diffgazer/server:test:      ✓ returns live models end to end, free-first and with the recommended flag (source: live)  432ms
+@diffgazer/server:test:  ✓ src/shared/lib/config/store.test.ts (12 tests) 606ms
+@diffgazer/server:test:      ✓ loads default providers and settings when no files exist  421ms
+@diffgazer/server:test:  ✓ src/features/review/drilldown.test.ts (8 tests) 687ms
+@diffgazer/server:test:      ✓ uses the parsed diff context and returns the AI analysis with trace events  452ms
+@diffgazer/server:test:  ✓ src/shared/lib/ai/client.test.ts (28 tests) 479ms
+@diffgazer/server:test: stderr | src/shared/lib/config/persistence.test.ts > config state > validates trust records and drops invalid entries while preserving valid ones
+@diffgazer/server:test: [config] Dropping invalid trust record for proj-1: [
+@diffgazer/server:test:   {
+@diffgazer/server:test:     "expected": "string",
+@diffgazer/server:test:     "code": "invalid_type",
+@diffgazer/server:test:     "path": [
+@diffgazer/server:test:       "repoRoot"
+@diffgazer/server:test:     ],
+@diffgazer/server:test:     "message": "Invalid input: expected string, received undefined"
+@diffgazer/server:test:   },
+@diffgazer/server:test:   {
+@diffgazer/server:test:     "expected": "string",
+@diffgazer/server:test:     "code": "invalid_type",
+@diffgazer/server:test:     "path": [
+@diffgazer/server:test:       "trustedAt"
+@diffgazer/server:test:     ],
+@diffgazer/server:test:     "message": "Invalid input: expected string, received undefined"
+@diffgazer/server:test:   },
+@diffgazer/server:test:   {
+@diffgazer/server:test:     "expected": "object",
+@diffgazer/server:test:     "code": "invalid_type",
+@diffgazer/server:test:     "path": [
+@diffgazer/server:test:       "capabilities"
+@diffgazer/server:test:     ],
+@diffgazer/server:test:     "message": "Invalid input: expected object, received null"
+@diffgazer/server:test:   },
+@diffgazer/server:test:   {
+@diffgazer/server:test:     "code": "invalid_value",
+@diffgazer/server:test:     "values": [
+@diffgazer/server:test:       "persistent",
+@diffgazer/server:test:       "session"
+@diffgazer/server:test:     ],
+@diffgazer/server:test:     "path": [
+@diffgazer/server:test:       "trustMode"
+@diffgazer/server:test:     ],
+@diffgazer/server:test:     "message": "Invalid option: expected one of \"persistent\"|\"session\""
+@diffgazer/server:test:   }
+@diffgazer/server:test: ]
+@diffgazer/server:test: 
+@diffgazer/server:test:  ✓ src/features/config/service.test.ts (25 tests) 956ms
+@diffgazer/server:test:      ✓ reports providers and the active provider from the real store  478ms
+@diffgazer/server:test:  ✓ src/features/review/service.test.ts (14 tests) 766ms
+@diffgazer/server:test:  ✓ src/shared/lib/storage/reviews.test.ts (5 tests) 322ms
+@diffgazer/server:test:  ✓ src/features/review/context/snapshot.test.ts (9 tests) 956ms
+@diffgazer/server:test:      ✓ truncates file tree when node count exceeds cap  827ms
+@diffgazer/server:test:  ✓ src/shared/lib/config/persistence.test.ts (8 tests) 354ms
+@diffgazer/server:test: stderr | src/shared/lib/git/service.test.ts > createGitService > getStatus > returns an error when the git command fails
+@diffgazer/server:test: [git] failed to get status: fatal: not a git repository
+@diffgazer/server:test: 
+@diffgazer/server:test: stderr | src/shared/lib/git/service.test.ts > createGitService > isGitInstalled > returns false when the git binary is missing
+@diffgazer/server:test: [git] failed to check git installation: ENOENT
+@diffgazer/server:test: 
+@diffgazer/server:test: stderr | src/shared/lib/git/service.test.ts > createGitService > getBlame > returns null when the blame command fails
+@diffgazer/server:test: [git] failed to get blame for nonexistent.ts:1: fatal: no such path
+@diffgazer/server:test: 
+@diffgazer/server:test: stderr | src/shared/lib/git/service.test.ts > createGitService > getFileLines > returns an empty array when the underlying command fails
+@diffgazer/server:test: [git] failed to get file lines for nonexistent.ts: fatal: path not found
+@diffgazer/server:build: cache hit, replaying logs 9e22cddd3a0743fb
+@diffgazer/server:test: 
+@diffgazer/server:test: stderr | src/shared/lib/git/service.test.ts > createGitService > getFileLines > returns an empty array when worktree file read fails
+@diffgazer/server:test: [git] failed to get file lines for nonexistent.ts: ENOENT
+@diffgazer/server:test: 
+@diffgazer/server:test: stderr | src/shared/lib/git/service.test.ts > createGitService > getStatusHash > returns null when the underlying command fails
+@diffgazer/server:test: [git] failed to get status hash: git error
+@diffgazer/server:test: 
+@diffgazer/server:test:  ✓ src/shared/lib/git/service.test.ts (68 tests) 47ms
+@diffgazer/server:test:  ✓ src/shared/middlewares/trust-guard.test.ts (4 tests) 275ms
+@diffgazer/server:test:  ✓ src/shared/middlewares/setup-guard.test.ts (2 tests) 225ms
+@diffgazer/server:test:  ✓ src/features/review/stream/replay.test.ts (5 tests) 56ms
+@diffgazer/server:test:  ✓ src/shared/middlewares/rate-limit.test.ts (5 tests) 108ms
+@diffgazer/server:test:  ✓ src/shared/lib/ai/client-contract.test.ts (4 tests | 2 skipped) 351ms
+@diffgazer/server:test:      ✓ returns a usable client backed by a real LanguageModel for groq  327ms
+@diffgazer/server:test:  ✓ src/features/settings/router.test.ts (5 tests) 646ms
+@diffgazer/server:test:      ✓ GET /trust derives project from server, ignoring client projectId query  435ms
+@diffgazer/server:test: stderr | src/features/review/router.test.ts > POST /api/review/reviews validation > rejects a non-JSON content type
+@diffgazer/server:test: [git] failed to get status hash: Command failed: git --no-optional-locks -c core.fsmonitor=false status --porcelain
+@diffgazer/server:test: fatal: not a git repository: ''
+@diffgazer/server:test: 
+@diffgazer/server:test: 
+@diffgazer/server:test:  ✓ src/shared/lib/ai/disk-cache.test.ts (18 tests) 17ms
+@diffgazer/server:test:  ✓ src/shared/lib/http/response.test.ts (5 tests) 34ms
+@diffgazer/server:test: stderr | src/features/review/stream/store.test.ts > session bounds and subscriber failures > keeps terminal events observable when the event buffer is full
+@diffgazer/server:test: [sessions] Event cap (10000) reached for session event-cap
+@diffgazer/server:test: 
+@diffgazer/server:test:  ✓ src/shared/lib/paths.test.ts (8 tests) 102ms
+@diffgazer/server:test:  ✓ src/shared/lib/fs.test.ts (5 tests) 90ms
+@diffgazer/server:test:  ✓ src/features/review/stream/store.test.ts (21 tests) 28ms
+@diffgazer/server:test:  ✓ src/shared/lib/storage/persistence.test.ts (6 tests) 49ms
+@diffgazer/server:test: stdout | src/shared/lib/ai/models-dev-catalog.test.ts > getProviderModels — three-tier fallback > DIFFGAZER_OFFLINE: never fetches, serves cache when present
+@diffgazer/server:test: [models-dev-catalog] offline: serving stale cache (fetchedAt=2026-06-05T06:48:05.762Z) for gemini
+@diffgazer/server:test: 
+@diffgazer/server:test: stderr | src/shared/lib/ai/models-dev-catalog.test.ts > getProviderModels — three-tier fallback > live fetch dropping a provider while serving another: refuses to persist the poisoned catalog
+@diffgazer/server:test: [models-dev-catalog] refusing to persist live catalog: enabled source groq was dropped
+@diffgazer/server:test: 
+@diffgazer/server:test: stderr | src/shared/lib/ai/models-dev-catalog.test.ts > getProviderModels — three-tier fallback > disk-write failure on a live fetch: still serves the fetched models, never throws out of the request
+@diffgazer/server:test: [models-dev-catalog] failed to persist catalog cache: EACCES: permission denied, open '/tmp/dg-models-dev-YNy0uY/models-dev.json.ad42dc21-3df7-4de7-ad4e-676de483b61c.tmp'
+@diffgazer/server:test: 
+@diffgazer/server:test: stderr | src/shared/lib/ai/models-dev-catalog.test.ts > getProviderModels — three-tier fallback > corrupt cache file present: quarantines it and uses the snapshot baseline to guard a degenerate live fetch
+@diffgazer/server:test: [models-dev-catalog] quarantined unloadable cache to /tmp/dg-models-dev-V09VRY/models-dev.json.2026-06-06T07-48-05-769Z.backup
+@diffgazer/server:test: 
+@diffgazer/server:test:  ✓ src/shared/lib/ai/models-dev-catalog.test.ts (28 tests) 38ms
+@diffgazer/server:test:  ✓ src/app.test.ts (45 tests) 150ms
+@diffgazer/server:test: stderr | src/features/review/router.test.ts > POST /api/review/reviews files[] input limits > accepts files arrays within limits
+@diffgazer/server:test: [git] failed to get status hash: Command failed: git --no-optional-locks -c core.fsmonitor=false status --porcelain
+@diffgazer/server:test: fatal: not a git repository: ''
+@diffgazer/server:test: 
+@diffgazer/server:test: 
+@diffgazer/server:test: stderr | src/shared/lib/config/keyring.test.ts > keyring (unavailable) > reports unavailable when the native module fails to load
+@diffgazer/server:test: [diffgazer] Keyring module unavailable: Cannot find module '@napi-rs/keyring'
+@diffgazer/server:test: 
+@diffgazer/server:test: stderr | src/shared/lib/config/keyring.test.ts > keyring (unavailable) > returns KEYRING_UNAVAILABLE from 'read'
+@diffgazer/server:test: [diffgazer] Keyring module unavailable: Cannot find module '@napi-rs/keyring'
+@diffgazer/server:test: 
+@diffgazer/server:test: stderr | src/shared/lib/config/keyring.test.ts > keyring (unavailable) > returns KEYRING_UNAVAILABLE from 'write'
+@diffgazer/server:test: [diffgazer] Keyring module unavailable: Cannot find module '@napi-rs/keyring'
+@diffgazer/server:test: 
+@diffgazer/server:test: stderr | src/shared/lib/config/keyring.test.ts > keyring (unavailable) > returns KEYRING_UNAVAILABLE from 'delete'
+@diffgazer/server:test: [diffgazer] Keyring module unavailable: Cannot find module '@napi-rs/keyring'
+@diffgazer/server:test: 
+@diffgazer/server:test:  ✓ src/shared/lib/config/keyring.test.ts (11 tests) 26ms
+@diffgazer/server:test:  ✓ src/http-server.test.ts (4 tests) 11ms
+@diffgazer/server:test:  ✓ src/features/review/router.test.ts (14 tests) 1951ms
+@diffgazer/server:test:      ✓ lists reviews when the query project matches the trusted request project  786ms
+@diffgazer/server:test:  ✓ src/shared/lib/validation.test.ts (22 tests) 55ms
+@diffgazer/server:test: stdout | src/shared/lib/ai/openrouter-models.test.ts > getOpenRouterModelsWithCache > returns cached data within TTL
+@diffgazer/server:test: [openrouter-models] cache hit: models=1 withParams=1
+@diffgazer/server:test: 
+@diffgazer/server:test: stdout | src/shared/lib/ai/openrouter-models.test.ts > getOpenRouterModelsWithCache > refetches after TTL expires
+@diffgazer/server:test: [openrouter-models] fetched: models=1 withParams=0 cacheWasFresh=false
+@diffgazer/server:test: 
+@diffgazer/server:test: stdout | src/shared/lib/ai/openrouter-models.test.ts > getOpenRouterModelsWithCache > falls back to cache on fetch failure
+@diffgazer/server:test: [openrouter-models] fetch failed, using cache: models=1 withParams=1
+@diffgazer/server:test: 
+@diffgazer/server:build: 
+@diffgazer/server:build: > @diffgazer/server@0.1.0 build /Users/voitz/Projects/diffgazer-workspace/cli/server
+@diffgazer/server:build: > tsc
+@diffgazer/server:build: 
+@diffgazer/server:test:  ✓ src/shared/lib/ai/openrouter-models.test.ts (8 tests) 38ms
+@diffgazer/server:test:  ✓ src/shared/lib/diff/parser.test.ts (25 tests) 12ms
+@diffgazer/server:test:  ✓ src/shared/lib/review/issues.test.ts (8 tests) 13ms
+@diffgazer/server:test:  ✓ src/shared/lib/review/orchestrate.test.ts (6 tests) 12ms
+@diffgazer/server:test: stderr | src/features/review/enrichment.test.ts > enrichIssues > falls back to the original issue when blame retrieval throws
+@diffgazer/server:test: [enrich] failed for issue i2: blame failed
+@diffgazer/server:test: 
+@diffgazer/server:test:  ✓ src/features/review/enrichment.test.ts (6 tests) 12ms
+@diffgazer/server:test:  ✓ src/shared/lib/config/providers-store.test.ts (12 tests) 7ms
+@diffgazer/server:test: stderr | src/features/git/service.test.ts > resolveGitService (path traversal prevention) > returns GIT_NOT_FOUND when the git binary is unavailable
+@diffgazer/server:test: [git] failed to check git installation: ENOENT
+@diffgazer/server:test: 
+@diffgazer/server:test:  ✓ src/features/git/service.test.ts (10 tests) 3ms
+@diffgazer/server:test:  ✓ src/shared/lib/review/prompts.test.ts (11 tests) 6ms
+@diffgazer/server:test:  ✓ src/features/review/trace.test.ts (8 tests) 5ms
+@diffgazer/server:test:  ✓ src/features/review/stream/events.test.ts (12 tests) 16ms
+@diffgazer/server:test:  ✓ src/shared/lib/log.test.ts (3 tests) 4ms
+@diffgazer/server:test:  ✓ src/features/review/pipeline.test.ts (8 tests) 11ms
+@diffgazer/server:test:  ✓ src/shared/lib/http/request.test.ts (4 tests) 8ms
+@diffgazer/server:test:  ✓ src/shared/lib/review/analysis.test.ts (6 tests) 62ms
+@diffgazer/server:test:  ✓ src/shared/lib/config/secrets-migration.test.ts (11 tests) 6ms
+@diffgazer/server:test:  ✓ src/features/review/stream/steps.test.ts (3 tests) 3ms
+@diffgazer/server:test:  ✓ src/shared/lib/git/errors.test.ts (9 tests) 3ms
+@diffgazer/server:test:  ✓ src/shared/lib/errors.test.ts (7 tests) 4ms
+@diffgazer/server:test:  ✓ src/features/review/abort.test.ts (7 tests) 2ms
+@diffgazer/server:test: 
+@diffgazer/server:test:  Test Files  47 passed (47)
+@diffgazer/server:test:       Tests  557 passed | 2 skipped (559)
+@diffgazer/server:test:    Start at  09:48:03
+@diffgazer/server:test:    Duration  2.75s (transform 5.13s, setup 0ms, import 6.64s, tests 10.12s, environment 3ms)
+@diffgazer/server:test: 
+@diffgazer/keys:build: cache hit, replaying logs 13b593fc960fed13
+@diffgazer/keys:build: 
+@diffgazer/keys:build: > @diffgazer/keys@0.2.0 build /Users/voitz/Projects/diffgazer-workspace/libs/keys
+@diffgazer/keys:build: > pnpm validate:registry && rm -rf dist && tsc && pnpm verify:dist-esm && pnpm verify:rsc && pnpm build:shadcn && pnpm build:artifacts
+@diffgazer/keys:build: 
+@diffgazer/keys:build: 
+@diffgazer/keys:build: > @diffgazer/keys@0.2.0 validate:registry /Users/voitz/Projects/diffgazer-workspace/libs/keys
+@diffgazer/keys:build: > node --import tsx scripts/validate-registry-closure.ts
+@diffgazer/keys:build: 
+@diffgazer/keys:build: 
+@diffgazer/keys:build: > @diffgazer/keys@0.2.0 verify:dist-esm /Users/voitz/Projects/diffgazer-workspace/libs/keys
+@diffgazer/keys:build: > node --import tsx scripts/verify-dist-esm-imports.ts
+@diffgazer/keys:build: 
+@diffgazer/keys:build: [keys] dist ESM relative imports carry .js OK
+@diffgazer/keys:build: 
+@diffgazer/keys:build: > @diffgazer/keys@0.2.0 verify:rsc /Users/voitz/Projects/diffgazer-workspace/libs/keys
+@diffgazer/keys:build: > node --import tsx scripts/verify-rsc-directives.ts
+@diffgazer/keys:build: 
+@diffgazer/keys:build: [keys] RSC client directives OK (12 dist outputs guarded)
+@diffgazer/keys:build: 
+@diffgazer/keys:build: > @diffgazer/keys@0.2.0 build:shadcn /Users/voitz/Projects/diffgazer-workspace/libs/keys
+@diffgazer/keys:build: > node --import tsx scripts/build-shadcn-registry.ts
+@diffgazer/keys:build: 
+@diffgazer/keys:build: - Building navigation...
+@diffgazer/keys:build: - Building focus-restore...
+@diffgazer/keys:build: - Building focusable...
+@diffgazer/keys:build: - Building focus-trap...
+@diffgazer/keys:build: - Building scroll-lock...
+@diffgazer/keys:build: ✔ Building registry.
+@diffgazer/keys:build: 
+@diffgazer/keys:build: > @diffgazer/keys@0.2.0 build:artifacts /Users/voitz/Projects/diffgazer-workspace/libs/keys
+@diffgazer/keys:build: > pnpm build:docs-data && node --import tsx scripts/build-publish-artifacts.ts
+@diffgazer/keys:build: 
+@diffgazer/keys:build: 
+@diffgazer/keys:build: > @diffgazer/keys@0.2.0 build:docs-data /Users/voitz/Projects/diffgazer-workspace/libs/keys
+@diffgazer/keys:build: > node --import tsx scripts/build-docs-data.ts
+@diffgazer/keys:build: 
+@diffgazer/keys:build: Found 9 hooks (4 registry + 5 extra)
+@diffgazer/keys:build: Wrote 9 per-hook JSON files
+@diffgazer/keys:build: Wrote hook-list.json (9 entries)
+@diffgazer/keys:build: Skipped hook MDX generation (9 hooks, hand-authored MDX)
+@diffgazer/keys:build: Wrote 9 hook MDX pages + meta.json
+@diffgazer/keys:build: Wrote keys-hooks.json (4 hooks)
+@diffgazer/keys:build: Wrote demo-index.ts
+@diffgazer/keys:build: 
+@diffgazer/keys:build: --- Build Summary (keys) ---
+@diffgazer/keys:build: Hooks: 9
+@diffgazer/keys:build: Errors: 0
+@diffgazer/keys:build: Build completed successfully.
+@diffgazer/keys:build: [keys] artifact manifest written: /Users/voitz/Projects/diffgazer-workspace/libs/keys/dist/artifacts/artifact-manifest.json
+@diffgazer/keys:build: [keys] artifact fingerprint: 17182ab1a9b6ae65232f4b8fbb1d630e117bd746344f7891d8ff88557fb21737
+@diffgazer/keys:build: [keys-artifacts] copied artifacts from /Users/voitz/Projects/diffgazer-workspace/libs/keys/dist/artifacts
+@diffgazer/ui:test: cache hit, replaying logs bce4f712353b907c
+@diffgazer/ui:test: 
+@diffgazer/ui:test: > @diffgazer/ui@0.2.0 test /Users/voitz/Projects/diffgazer-workspace/libs/ui
+@diffgazer/ui:test: > vitest run
+@diffgazer/ui:test: 
+@diffgazer/ui:test: Testing types with tsc and vue-tsc is an experimental feature.
+@diffgazer/ui:test: Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+@diffgazer/ui:test: Testing types with tsc and vue-tsc is an experimental feature.
+@diffgazer/ui:test: Breaking changes might not follow SemVer, please pin Vitest's version when using it.
+@diffgazer/ui:test: 
+@diffgazer/ui:test:  RUN  v4.1.0 /Users/voitz/Projects/diffgazer-workspace/libs/ui
+@diffgazer/ui:test: 
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/panel/panel.test.tsx (28 tests) 1546ms
+@diffgazer/ui:test:      ✓ has no a11y violations across the full frame × tone matrix  954ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/stepper/stepper.test.tsx (26 tests) 1533ms
+@diffgazer/ui:test: stderr | registry/ui/dialog/dialog.test.tsx > Dialog > applies a fallback name when content has no Dialog.Title or explicit aria name
+@diffgazer/ui:test: Dialog: No accessible name provided. Add a <Dialog.Title>, aria-label, or aria-labelledby prop.
+@diffgazer/ui:test: 
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/accordion/accordion.test.tsx (32 tests) 1899ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/radio/radio.test.tsx (46 tests) 2242ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/navigation-list/navigation-list.test.tsx (67 tests) 2460ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/menu/menu.test.tsx (79 tests) 3438ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/select/select.test.tsx (65 tests) 3812ms
+@diffgazer/ui:test:      ✓ supports direct namespaced parts with custom option UI inside Select.Item  319ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/toggle-group/toggle-group.test.tsx (46 tests) 1902ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/checkbox/checkbox.test.tsx (41 tests) 2124ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/command-palette/command-palette.test.tsx (51 tests) 4398ms
+@diffgazer/ui:test:      ✓ filters a 200-item list down to the matching row  336ms
+@diffgazer/ui:test:      ✓ navigates items with ArrowDown/ArrowUp and wraps around  337ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/sidebar/sidebar.test.tsx (34 tests) 1320ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/tabs/tabs.test.tsx (43 tests) 1992ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/popover/popover.test.tsx (37 tests) 1542ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/dialog/dialog.test.tsx (88 tests) 4972ms
+@diffgazer/ui:test:      ✓ restores focus in close order for nested triggerless dialogs  301ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/callout/callout.test.tsx (18 tests) 1095ms
+@diffgazer/ui:test:      ✓ has no a11y violations across tones and frames  673ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/diff-view/diff-view.test.tsx (44 tests) 1425ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/toast/toast.test.tsx (33 tests) 940ms
+@diffgazer/ui:test:      ✓ renders the loading toast spinner via the lazy chunk  317ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/hooks/testing/use-form-reset.test.tsx (9 tests) 715ms
+@diffgazer/ui:test:  ✓ |jsdom| scripts/validate-registry-metadata.test.ts (4 tests) 915ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/switch/switch.test.tsx (18 tests) 779ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/button/button.test.tsx (13 tests) 739ms
+@diffgazer/ui:test:      ✓ renders the spinner indicator after the lazy chunk resolves  305ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/floating-panel/floating-panel.test.tsx (23 tests) 918ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/shared/nested-overlay-escape.test.tsx (3 tests) 930ms
+@diffgazer/ui:test:      ✓ Escape on open popover closes only the popover, not the dialog  446ms
+@diffgazer/ui:test:      ✓ restores focus to the parent's last focused element after closing the child dialog  367ms
+@diffgazer/ui:test: stderr | registry/ui/search-input/search-input.test.tsx > SearchInput > updates value when typing (uncontrolled)
+@diffgazer/ui:test: The tag <search> is unrecognized in this browser. If you meant to render a React component, start its name with an uppercase letter.
+@diffgazer/ui:test: 
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/typography/typography.test.tsx (27 tests) 433ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/scroll-area/scroll-area.test.tsx (12 tests) 541ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/code-block/code-block.test.tsx (32 tests) 721ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/search-input/search-input.test.tsx (12 tests) 693ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/hooks/testing/use-listbox.test.tsx (21 tests) 805ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/field/field.test.tsx (18 tests) 893ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/spinner/spinner.test.tsx (7 tests) 512ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/tooltip/tooltip.test.tsx (11 tests) 820ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/input/input.test.tsx (10 tests) 800ms
+@diffgazer/ui:test:      ✓ accepts typed text as a native textbox  343ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/horizontal-stepper/horizontal-stepper.test.tsx (11 tests) 272ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/hooks/testing/use-outside-click.test.ts (16 tests) 530ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/hooks/testing/use-floating-position.test.ts (13 tests) 443ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/textarea/textarea.test.tsx (6 tests) 433ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/block-bar/block-bar.test.tsx (12 tests) 369ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/shared/keyboard-navigation.integration.test.tsx (2 tests) 453ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/avatar/avatar.test.tsx (15 tests) 469ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/card/card.test.tsx (15 tests) 355ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/shared/portal-dialog.test.tsx (2 tests) 466ms
+@diffgazer/ui:test:      ✓ popover inside dialog renders within the dialog DOM tree  354ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/progress/progress.test.tsx (9 tests) 500ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/overflow/overflow.test.tsx (5 tests) 300ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/breadcrumbs/breadcrumbs.test.tsx (8 tests) 508ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/hooks/testing/use-overflow-items.test.ts (11 tests) 439ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/pager/pager.test.tsx (3 tests) 322ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/toc/toc.test.tsx (3 tests) 380ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/label/label.test.tsx (3 tests) 394ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/empty-state/empty-state.test.tsx (4 tests) 247ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/key-value/key-value.test.tsx (5 tests) 245ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/hooks/testing/use-presence.test.ts (15 tests) 86ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/divider/divider.test.tsx (2 tests) 205ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/icons/chevron.test.tsx (1 test) 227ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/shared/portal.test.tsx (3 tests) 30ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/logo/logo.test.tsx (2 tests) 209ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/hooks/testing/use-active-heading.test.ts (7 tests) 96ms
+@diffgazer/ui:test:  ✓ |jsdom| scripts/registry/rewrite-keys-imports.test.ts (24 tests) 50ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/logo/figlet-text.test.ts (3 tests) 25ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/lib/testing/compose-refs.test.ts (9 tests) 11ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/lib/testing/split.test.ts (5 tests) 8ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/hooks/testing/use-controllable-state.test.ts (12 tests) 102ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/hooks/testing/use-typeahead-buffer.test.ts (6 tests) 42ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/ui/skeleton/skeleton.test.tsx (3 tests) 41ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/lib/testing/word.test.ts (12 tests) 9ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/hooks/testing/use-overflow.test.ts (7 tests) 45ms
+@diffgazer/ui:test:  ✓ |jsdom| scripts/registry/imports.test.ts (3 tests) 9ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/lib/testing/floating-position.test.ts (15 tests) 6ms
+@diffgazer/ui:test:  ✓ |jsdom| scripts/registry/orphans.test.ts (2 tests) 10ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/lib/testing/parse.test.ts (6 tests) 12ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/lib/testing/identity.test.ts (4 tests) 5ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/lib/testing/aria.test.ts (18 tests) 8ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/lib/testing/resolve.test.ts (5 tests) 3ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/lib/testing/typeahead.test.ts (13 tests) 4ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/lib/testing/pairs.test.ts (4 tests) 31ms
+@diffgazer/ui:test:  ✓ |ssr| registry/hooks/testing/ssr/use-active-heading.test.tsx (2 tests) 11ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/lib/testing/lcs.test.ts (4 tests) 2ms
+@diffgazer/ui:test:  ✓ |jsdom| scripts/registry-dialog-css.test.ts (1 test) 4ms
+@diffgazer/ui:test:  ✓ |jsdom| scripts/registry/fs.test.ts (4 tests) 6ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/lib/testing/compute.test.ts (4 tests) 8ms
+@diffgazer/ui:test:  ✓ |jsdom| scripts/registry/exports.test.ts (3 tests) 2ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/lib/testing/search.test.ts (6 tests) 2ms
+@diffgazer/ui:test:  ✓ |ssr| registry/ui/section-header/ssr/section-header.test.tsx (2 tests) 45ms
+@diffgazer/ui:test:  ✓ |jsdom| registry/hooks/testing/use-navigation.test.tsx (1 test) 1ms
+@diffgazer/ui:test:  ✓ |ssr|  TS  registry/ui/section-header/ssr/section-header.test.tsx (2 tests)
+@diffgazer/ui:test:  ✓ |ssr|  TS  registry/hooks/testing/ssr/use-active-heading.test.tsx (2 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/dialog/dialog.test.tsx (80 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/command-palette/command-palette.test.tsx (51 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/select/select.test.tsx (58 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/menu/menu.test.tsx (73 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/navigation-list/navigation-list.test.tsx (61 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/radio/radio.test.tsx (46 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/panel/panel.test.tsx (21 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/stepper/stepper.test.tsx (23 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/accordion/accordion.test.tsx (26 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/toggle-group/toggle-group.test.tsx (46 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/checkbox/checkbox.test.tsx (41 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/tabs/tabs.test.tsx (37 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/sidebar/sidebar.test.tsx (34 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/popover/popover.test.tsx (33 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/diff-view/diff-view.test.tsx (38 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/callout/callout.test.tsx (17 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/toast/toast.test.tsx (33 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/switch/switch.test.tsx (18 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  scripts/validate-registry-metadata.test.ts (4 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/hooks/testing/use-form-reset.test.tsx (9 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/floating-panel/floating-panel.test.tsx (19 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/button/button.test.tsx (13 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/shared/nested-overlay-escape.test.tsx (3 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/field/field.test.tsx (18 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/scroll-area/scroll-area.test.tsx (12 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/code-block/code-block.test.tsx (32 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/hooks/testing/use-listbox.test.tsx (21 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/search-input/search-input.test.tsx (12 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/typography/typography.test.tsx (11 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/tooltip/tooltip.test.tsx (11 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/spinner/spinner.test.tsx (7 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/input/input.test.tsx (10 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/hooks/testing/use-outside-click.test.ts (16 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/horizontal-stepper/horizontal-stepper.test.tsx (11 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/hooks/testing/use-floating-position.test.ts (11 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/textarea/textarea.test.tsx (6 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/shared/keyboard-navigation.integration.test.tsx (2 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/avatar/avatar.test.tsx (15 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/block-bar/block-bar.test.tsx (12 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/shared/portal-dialog.test.tsx (2 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/card/card.test.tsx (11 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/progress/progress.test.tsx (9 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/breadcrumbs/breadcrumbs.test.tsx (8 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/overflow/overflow.test.tsx (5 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/hooks/testing/use-overflow-items.test.ts (6 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/pager/pager.test.tsx (3 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/toc/toc.test.tsx (3 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/label/label.test.tsx (3 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/empty-state/empty-state.test.tsx (4 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/key-value/key-value.test.tsx (5 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/icons/chevron.test.tsx (1 test)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/divider/divider.test.tsx (2 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/logo/logo.test.tsx (2 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/hooks/testing/use-presence.test.ts (15 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/shared/portal.test.tsx (3 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/hooks/testing/use-active-heading.test.ts (7 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  scripts/registry/rewrite-keys-imports.test.ts (17 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/logo/figlet-text.test.ts (3 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/lib/testing/compose-refs.test.ts (9 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/ui/skeleton/skeleton.test.tsx (3 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/hooks/testing/use-overflow.test.ts (3 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/hooks/testing/use-controllable-state.test.ts (12 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/hooks/testing/use-typeahead-buffer.test.ts (6 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/lib/testing/split.test.ts (5 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/lib/testing/word.test.ts (12 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  scripts/registry/imports.test.ts (3 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/lib/testing/floating-position.test.ts (15 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  scripts/registry/orphans.test.ts (2 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/lib/testing/aria.test.ts (11 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/lib/testing/parse.test.ts (6 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/lib/testing/identity.test.ts (4 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/lib/testing/typeahead.test.ts (6 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/lib/testing/resolve.test.ts (5 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/lib/testing/pairs.test.ts (4 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/lib/testing/lcs.test.ts (4 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  scripts/registry/fs.test.ts (4 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/lib/testing/compute.test.ts (4 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  scripts/registry-dialog-css.test.ts (1 test)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/lib/testing/search.test.ts (4 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  scripts/registry/exports.test.ts (3 tests)
+@diffgazer/ui:test:  ✓ |jsdom|  TS  registry/hooks/testing/use-navigation.test.tsx (1 test)
+@diffgazer/ui:test: 
+@diffgazer/ui:test:  Test Files  166 passed (166)
+@diffgazer/ui:test:       Tests  2580 passed (2580)
+@diffgazer/ui:test: Type Errors  no errors
+@diffgazer/ui:test:    Start at  09:48:07
+@diffgazer/ui:test:    Duration  20.74s (transform 5.16s, setup 11.09s, import 14.93s, tests 58.33s, environment 42.12s, typecheck 10.05s)
+@diffgazer/ui:test: 
+@diffgazer/ui:build: cache hit, replaying logs 09cbec40b85d794b
+@diffgazer/ui:build: 
+@diffgazer/ui:build: > @diffgazer/ui@0.2.0 build /Users/voitz/Projects/diffgazer-workspace/libs/ui
+@diffgazer/ui:build: > pnpm validate:registry && tsup && pnpm verify:rsc && pnpm build:declarations && pnpm build:shadcn && pnpm build:docs-data && pnpm build:artifacts
+@diffgazer/ui:build: 
+@diffgazer/ui:build: 
+@diffgazer/ui:build: > @diffgazer/ui@0.2.0 validate:registry /Users/voitz/Projects/diffgazer-workspace/libs/ui
+@diffgazer/ui:build: > node --import tsx scripts/validate-registry-metadata.ts
+@diffgazer/ui:build: 
+@diffgazer/ui:build: [ui] registry metadata OK
+@diffgazer/ui:build: CLI Building entry: {"components/accordion":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/accordion/index.ts","components/button":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/button/index.ts","components/avatar":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/avatar/index.ts","components/badge":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/badge/index.ts","components/input":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/input/index.ts","components/field":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/field/index.ts","components/textarea":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/textarea/index.ts","components/callout":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/callout/index.ts","components/checkbox":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/checkbox/index.ts","components/icons":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/icons/index.ts","components/radio":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/radio/index.ts","components/panel":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/panel/index.ts","components/scroll-area":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/scroll-area/index.ts","components/card":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/card/index.ts","components/block-bar":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/block-bar/index.ts","components/section-header":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/section-header/index.ts","components/empty-state":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/empty-state/index.ts","components/key-value":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/key-value/index.ts","components/label":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/label/index.ts","components/overflow":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/overflow/index.ts","components/tooltip":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/tooltip/index.ts","components/dialog":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/dialog/index.ts","components/kbd":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/kbd/index.ts","components/divider":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/divider/index.ts","components/tabs":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/tabs/index.ts","components/menu":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/menu/index.ts","components/navigation-list":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/navigation-list/index.ts","components/toast":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/toast/index.ts","components/stepper":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/stepper/index.ts","components/search-input":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/search-input/index.ts","components/toggle-group":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/toggle-group/index.ts","components/code-block":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/code-block/index.ts","components/diff-view":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/diff-view/index.ts","components/horizontal-stepper":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/horizontal-stepper/index.ts","components/command-palette":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/command-palette/index.ts","components/select":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/select/index.ts","components/spinner":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/spinner/index.ts","components/sidebar":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/sidebar/index.ts","components/pager":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/pager/index.ts","components/logo":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/logo/index.ts","components/breadcrumbs":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/breadcrumbs/index.ts","components/toc":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/toc/index.ts","components/typography":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/typography/index.ts","hooks/controllable-state":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/hooks/use-controllable-state.ts","hooks/form-reset":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/hooks/use-form-reset.ts","hooks/floating-indicator":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/hooks/use-floating-indicator.ts","hooks/active-heading":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/hooks/use-active-heading.ts","hooks/overflow-detection":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/hooks/use-overflow.ts","hooks/overflow-items":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/hooks/use-overflow-items.ts","hooks/outside-click":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/hooks/use-outside-click.ts","hooks/presence":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/hooks/use-presence.ts","lib/compose-refs":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/lib/compose-refs.ts","lib/utils":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/lib/utils.ts","lib/selectable-collection":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/lib/selectable-collection.ts","hooks/floating-position":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/hooks/use-floating-position.ts","components/floating-panel":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/floating-panel/index.ts","hooks/listbox":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/hooks/use-listbox.ts","components/popover":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/popover/index.ts","components/switch":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/switch/index.ts","components/progress":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/progress/index.ts","components/skeleton":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/skeleton/index.ts","components/logo/figlet":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/logo/figlet-text.ts","components/code-block/highlight":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/code-block/highlight.ts","components/command-palette/highlight":"/Users/voitz/Projects/diffgazer-workspace/libs/ui/registry/ui/command-palette/highlight.ts"}
+@diffgazer/ui:build: CLI Using tsconfig: tsconfig.json
+@diffgazer/ui:build: CLI tsup v8.5.1
+@diffgazer/ui:build: CLI Using tsup config: /Users/voitz/Projects/diffgazer-workspace/libs/ui/tsup.config.ts
+@diffgazer/ui:build: CLI Target: es2022
+@diffgazer/ui:build: CLI Cleaning output folder
+@diffgazer/ui:build: ESM Build start
+@diffgazer/ui:build: ESM dist/chunk-6AFY5L56.js                       0 B
+@diffgazer/ui:build: ESM dist/spinner-AFORF4I3.js                     153.00 B
+@diffgazer/ui:build: ESM dist/components/skeleton.js                  421.00 B
+@diffgazer/ui:build: ESM dist/components/popover.js                   574.00 B
+@diffgazer/ui:build: ESM dist/components/logo/figlet.js               1.19 KB
+@diffgazer/ui:build: ESM dist/components/code-block/highlight.js      2.18 KB
+@diffgazer/ui:build: ESM dist/components/switch.js                    4.31 KB
+@diffgazer/ui:build: ESM dist/hooks/listbox.js                        285.00 B
+@diffgazer/ui:build: ESM dist/lib/utils.js                            62.00 B
+@diffgazer/ui:build: ESM dist/lib/selectable-collection.js            560.00 B
+@diffgazer/ui:build: ESM dist/components/progress.js                  1.41 KB
+@diffgazer/ui:build: ESM dist/hooks/presence.js                       94.00 B
+@diffgazer/ui:build: ESM dist/hooks/floating-position.js              256.00 B
+@diffgazer/ui:build: ESM dist/components/command-palette/highlight.js 3.04 KB
+@diffgazer/ui:build: ESM dist/hooks/outside-click.js                  134.00 B
+@diffgazer/ui:build: ESM dist/hooks/overflow-items.js                 150.00 B
+@diffgazer/ui:build: ESM dist/components/floating-panel.js            338.00 B
+@diffgazer/ui:build: ESM dist/components/typography.js                2.03 KB
+@diffgazer/ui:build: ESM dist/components/breadcrumbs.js               4.06 KB
+@diffgazer/ui:build: ESM dist/hooks/form-reset.js                     96.00 B
+@diffgazer/ui:build: ESM dist/hooks/controllable-state.js             112.00 B
+@diffgazer/ui:build: ESM dist/components/toc.js                       2.51 KB
+@diffgazer/ui:build: ESM dist/lib/compose-refs.js                     80.00 B
+@diffgazer/ui:build: ESM dist/hooks/floating-indicator.js             112.00 B
+@diffgazer/ui:build: ESM dist/hooks/active-heading.js                 6.60 KB
+@diffgazer/ui:build: ESM dist/chunk-WMDYD524.js                       178.00 B
+@diffgazer/ui:build: ESM dist/hooks/overflow-detection.js             94.00 B
+@diffgazer/ui:build: ESM dist/components/horizontal-stepper.js        4.47 KB
+@diffgazer/ui:build: ESM dist/chunk-XTF4A2W7.js                       7.16 KB
+@diffgazer/ui:build: ESM dist/components/sidebar.js                   25.70 KB
+@diffgazer/ui:build: ESM dist/chunk-HDHTSATB.js                       5.57 KB
+@diffgazer/ui:build: ESM dist/components/spinner.js                   155.00 B
+@diffgazer/ui:build: ESM dist/components/command-palette.js           8.09 KB
+@diffgazer/ui:build: ESM dist/chunk-KMUSUPRI.js                       9.90 KB
+@diffgazer/ui:build: ESM dist/components/select.js                    37.77 KB
+@diffgazer/ui:build: ESM dist/components/diff-view.js                 29.02 KB
+@diffgazer/ui:build: ESM dist/components/pager.js                     1.62 KB
+@diffgazer/ui:build: ESM dist/components/logo.js                      555.00 B
+@diffgazer/ui:build: ESM dist/components/toast.js                     20.90 KB
+@diffgazer/ui:build: ESM dist/components/stepper.js                   14.37 KB
+@diffgazer/ui:build: ESM dist/components/navigation-list.js           21.79 KB
+@diffgazer/ui:build: ESM dist/components/menu.js                      26.20 KB
+@diffgazer/ui:build: ESM dist/components/search-input.js              2.52 KB
+@diffgazer/ui:build: ESM dist/components/tabs.js                      10.02 KB
+@diffgazer/ui:build: ESM dist/chunk-RJZDWL2N.js                       1.75 KB
+@diffgazer/ui:build: ESM dist/chunk-45UJA7NK.js                       1.47 KB
+@diffgazer/ui:build: ESM dist/chunk-TE2EECG3.js                       3.79 KB
+@diffgazer/ui:build: ESM dist/components/key-value.js                 3.26 KB
+@diffgazer/ui:build: ESM dist/components/overflow.js                  522.00 B
+@diffgazer/ui:build: ESM dist/chunk-4SBTAGLH.js                       10.53 KB
+@diffgazer/ui:build: ESM dist/chunk-XMRJJUFX.js                       3.93 KB
+@diffgazer/ui:build: ESM dist/components/toggle-group.js              11.16 KB
+@diffgazer/ui:build: ESM dist/components/empty-state.js               3.33 KB
+@diffgazer/ui:build: ESM dist/components/tooltip.js                   631.00 B
+@diffgazer/ui:build: ESM dist/components/divider.js                   2.06 KB
+@diffgazer/ui:build: ESM dist/chunk-D64DSFWG.js                       695.00 B
+@diffgazer/ui:build: ESM dist/chunk-Q45WJOHI.js                       14.67 KB
+@diffgazer/ui:build: ESM dist/components/dialog.js                    791.00 B
+@diffgazer/ui:build: ESM dist/components/label.js                     2.74 KB
+@diffgazer/ui:build: ESM dist/components/code-block.js                6.51 KB
+@diffgazer/ui:build: ESM dist/components/kbd.js                       188.00 B
+@diffgazer/ui:build: ESM dist/chunk-CUBJ5D4G.js                       3.46 KB
+@diffgazer/ui:build: ESM dist/chunk-55ZD2OFG.js                       3.45 KB
+@diffgazer/ui:build: ESM dist/components/checkbox.js                  11.87 KB
+@diffgazer/ui:build: ESM dist/chunk-M2SQNVUZ.js                       522.00 B
+@diffgazer/ui:build: ESM dist/components/block-bar.js                 5.90 KB
+@diffgazer/ui:build: ESM dist/components/panel.js                     7.44 KB
+@diffgazer/ui:build: ESM dist/chunk-GFKMJNZ4.js                       3.64 KB
+@diffgazer/ui:build: ESM dist/components/icons.js                     141.00 B
+@diffgazer/ui:build: ESM dist/components/section-header.js            985.00 B
+@diffgazer/ui:build: ESM dist/chunk-KYKFSG5L.js                       4.75 KB
+@diffgazer/ui:build: ESM dist/chunk-RQGDRR6O.js                       1.51 KB
+@diffgazer/ui:build: ESM dist/components/radio.js                     14.76 KB
+@diffgazer/ui:build: ESM dist/components/accordion.js                 9.24 KB
+@diffgazer/ui:build: ESM dist/components/button.js                    151.00 B
+@diffgazer/ui:build: ESM dist/chunk-LGSMLOLR.js                       2.63 KB
+@diffgazer/ui:build: ESM dist/chunk-JJ5ED7WE.js                       1.14 KB
+@diffgazer/ui:build: ESM dist/chunk-MQJBJRPK.js                       2.32 KB
+@diffgazer/ui:build: ESM dist/chunk-Y5E4GHAN.js                       1.94 KB
+@diffgazer/ui:build: ESM dist/chunk-7C42UDEK.js                       4.03 KB
+@diffgazer/ui:build: ESM dist/chunk-EHGK4J4L.js                       1.32 KB
+@diffgazer/ui:build: ESM dist/components/card.js                      5.48 KB
+@diffgazer/ui:build: ESM dist/chunk-WYNVWEDG.js                       3.86 KB
+@diffgazer/ui:build: ESM dist/components/scroll-area.js               167.00 B
+@diffgazer/ui:build: ESM dist/chunk-WY7PCRBB.js                       15.05 KB
+@diffgazer/ui:build: ESM dist/chunk-QQME7DQA.js                       1.44 KB
+@diffgazer/ui:build: ESM dist/components/badge.js                     133.00 B
+@diffgazer/ui:build: ESM dist/components/avatar.js                    7.19 KB
+@diffgazer/ui:build: ESM dist/chunk-C6JARL7D.js                       2.43 KB
+@diffgazer/ui:build: ESM dist/chunk-VOU576W7.js                       706.00 B
+@diffgazer/ui:build: ESM dist/chunk-ILJI4XJW.js                       7.59 KB
+@diffgazer/ui:build: ESM dist/components/input.js                     2.83 KB
+@diffgazer/ui:build: ESM dist/chunk-Y2JJSZWY.js                       1.12 KB
+@diffgazer/ui:build: ESM dist/chunk-XZYYRSBY.js                       1.61 KB
+@diffgazer/ui:build: ESM dist/chunk-PYM5PU5N.js                       7.96 KB
+@diffgazer/ui:build: ESM dist/chunk-REJ4LO5R.js                       803.00 B
+@diffgazer/ui:build: ESM dist/components/field.js                     5.57 KB
+@diffgazer/ui:build: ESM dist/components/textarea.js                  489.00 B
+@diffgazer/ui:build: ESM dist/chunk-22XYRA5X.js                       173.00 B
+@diffgazer/ui:build: ESM dist/components/callout.js                   6.81 KB
+@diffgazer/ui:build: ESM dist/chunk-QKG2NHDL.js                       765.00 B
+@diffgazer/ui:build: ESM dist/chunk-HQIGSRYH.js                       920.00 B
+@diffgazer/ui:build: ESM ⚡️ Build success in 85ms
+@diffgazer/ui:build: Injected "use client" into 0 entry points
+@diffgazer/ui:build: 
+@diffgazer/ui:build: > @diffgazer/ui@0.2.0 verify:rsc /Users/voitz/Projects/diffgazer-workspace/libs/ui
+@diffgazer/ui:build: > node --import tsx scripts/verify-rsc-directives.ts
+@diffgazer/ui:build: 
+@diffgazer/ui:build: [ui] RSC client directives OK
+@diffgazer/ui:build: 
+@diffgazer/ui:build: > @diffgazer/ui@0.2.0 build:declarations /Users/voitz/Projects/diffgazer-workspace/libs/ui
+@diffgazer/ui:build: > node --import tsx scripts/build-declarations.ts
+@diffgazer/ui:build: 
+@diffgazer/ui:build: 
+@diffgazer/ui:build: > @diffgazer/ui@0.2.0 build:shadcn /Users/voitz/Projects/diffgazer-workspace/libs/ui
+@diffgazer/ui:build: > node --import tsx scripts/build-shadcn-registry.ts
+@diffgazer/ui:build: 
+@diffgazer/ui:build: - Building accordion...
+@diffgazer/ui:build: - Building button...
+@diffgazer/ui:build: - Building avatar...
+@diffgazer/ui:build: - Building badge...
+@diffgazer/ui:build: - Building input...
+@diffgazer/ui:build: - Building field...
+@diffgazer/ui:build: - Building textarea...
+@diffgazer/ui:build: - Building callout...
+@diffgazer/ui:build: - Building portal...
+@diffgazer/ui:build: - Building checkbox...
+@diffgazer/ui:build: - Building icons...
+@diffgazer/ui:build: - Building radio...
+@diffgazer/ui:build: - Building panel...
+@diffgazer/ui:build: - Building scroll-area...
+@diffgazer/ui:build: - Building card...
+@diffgazer/ui:build: - Building block-bar...
+@diffgazer/ui:build: - Building section-header...
+@diffgazer/ui:build: - Building empty-state...
+@diffgazer/ui:build: - Building key-value...
+@diffgazer/ui:build: - Building label...
+@diffgazer/ui:build: - Building overflow...
+@diffgazer/ui:build: - Building tooltip...
+@diffgazer/ui:build: - Building dialog...
+@diffgazer/ui:build: - Building dialog-shell...
+@diffgazer/ui:build: - Building kbd...
+@diffgazer/ui:build: - Building divider...
+@diffgazer/ui:build: - Building tabs...
+@diffgazer/ui:build: - Building menu...
+@diffgazer/ui:build: - Building navigation-list...
+@diffgazer/ui:build: - Building toast...
+@diffgazer/ui:build: - Building stepper...
+@diffgazer/ui:build: - Building search-input...
+@diffgazer/ui:build: - Building toggle-group...
+@diffgazer/ui:build: - Building code-block...
+@diffgazer/ui:build: - Building diff-view...
+@diffgazer/ui:build: - Building horizontal-stepper...
+@diffgazer/ui:build: - Building command-palette...
+@diffgazer/ui:build: - Building select...
+@diffgazer/ui:build: - Building spinner...
+@diffgazer/ui:build: - Building sidebar...
+@diffgazer/ui:build: - Building pager...
+@diffgazer/ui:build: - Building logo...
+@diffgazer/ui:build: - Building breadcrumbs...
+@diffgazer/ui:build: - Building toc...
+@diffgazer/ui:build: - Building typography...
+@diffgazer/ui:build: - Building controllable-state...
+@diffgazer/ui:build: - Building form-reset...
+@diffgazer/ui:build: - Building floating-indicator...
+@diffgazer/ui:build: - Building active-heading...
+@diffgazer/ui:build: - Building overflow-detection...
+@diffgazer/ui:build: - Building overflow-items...
+@diffgazer/ui:build: - Building outside-click...
+@diffgazer/ui:build: - Building presence...
+@diffgazer/ui:build: - Building theme...
+@diffgazer/ui:build: - Building diff...
+@diffgazer/ui:build: - Building compose-refs...
+@diffgazer/ui:build: - Building utils...
+@diffgazer/ui:build: - Building aria...
+@diffgazer/ui:build: - Building typeahead...
+@diffgazer/ui:build: - Building selectable-variants...
+@diffgazer/ui:build: - Building segmented-variants...
+@diffgazer/ui:build: - Building selectable-collection...
+@diffgazer/ui:build: - Building input-variants...
+@diffgazer/ui:build: - Building step-status...
+@diffgazer/ui:build: - Building stepper-variants...
+@diffgazer/ui:build: - Building sidebar-variants...
+@diffgazer/ui:build: - Building sidebar-intent...
+@diffgazer/ui:build: - Building use-is-mobile...
+@diffgazer/ui:build: - Building use-navigation...
+@diffgazer/ui:build: - Building use-focus-restore...
+@diffgazer/ui:build: - Building use-focus-trap...
+@diffgazer/ui:build: - Building use-scroll-lock...
+@diffgazer/ui:build: - Building search...
+@diffgazer/ui:build: - Building floating-position...
+@diffgazer/ui:build: - Building floating-panel...
+@diffgazer/ui:build: - Building listbox...
+@diffgazer/ui:build: - Building typeahead-buffer...
+@diffgazer/ui:build: - Building popover...
+@diffgazer/ui:build: - Building switch...
+@diffgazer/ui:build: - Building progress...
+@diffgazer/ui:build: - Building skeleton...
+@diffgazer/ui:build: ✔ Building registry.
+@diffgazer/ui:build: 
+@diffgazer/ui:build: > @diffgazer/ui@0.2.0 build:docs-data /Users/voitz/Projects/diffgazer-workspace/libs/ui
+@diffgazer/ui:build: > node --import tsx scripts/build-docs-data.ts
+@diffgazer/ui:build: 
+@diffgazer/ui:build: Processing: accordion
+@diffgazer/ui:build: Processing: button
+@diffgazer/ui:build: Processing: avatar
+@diffgazer/ui:build: Processing: badge
+@diffgazer/ui:build: Processing: input
+@diffgazer/ui:build: Processing: field
+@diffgazer/ui:build: Processing: textarea
+@diffgazer/ui:build: Processing: callout
+@diffgazer/ui:build: Processing: checkbox
+@diffgazer/ui:build: Processing: icons
+@diffgazer/ui:build: Processing: radio
+@diffgazer/ui:build: Processing: panel
+@diffgazer/ui:build: Processing: scroll-area
+@diffgazer/ui:build: Processing: card
+@diffgazer/ui:build: Processing: block-bar
+@diffgazer/ui:build: Processing: section-header
+@diffgazer/ui:build: Processing: empty-state
+@diffgazer/ui:build: Processing: key-value
+@diffgazer/ui:build: Processing: label
+@diffgazer/ui:build: Processing: overflow
+@diffgazer/ui:build: Processing: tooltip
+@diffgazer/ui:build: Processing: dialog
+@diffgazer/ui:build: Processing: kbd
+@diffgazer/ui:build: Processing: divider
+@diffgazer/ui:build: Processing: tabs
+@diffgazer/ui:build: Processing: menu
+@diffgazer/ui:build: Processing: navigation-list
+@diffgazer/ui:build: Processing: toast
+@diffgazer/ui:build: Processing: stepper
+@diffgazer/ui:build: Processing: search-input
+@diffgazer/ui:build: Processing: toggle-group
+@diffgazer/ui:build: Processing: code-block
+@diffgazer/ui:build: Processing: diff-view
+@diffgazer/ui:build: Processing: command-palette
+@diffgazer/ui:build: Processing: select
+@diffgazer/ui:build: Processing: spinner
+@diffgazer/ui:build: Processing: sidebar
+@diffgazer/ui:build: Processing: pager
+@diffgazer/ui:build: Processing: logo
+@diffgazer/ui:build: Processing: breadcrumbs
+@diffgazer/ui:build: Processing: toc
+@diffgazer/ui:build: Processing: typography
+@diffgazer/ui:build: Processing: floating-panel
+@diffgazer/ui:build: Processing: popover
+@diffgazer/ui:build: Processing: switch
+@diffgazer/ui:build: Processing: progress
+@diffgazer/ui:build: Processing: skeleton
+@diffgazer/ui:build: Wrote 47 per-component JSON files
+@diffgazer/ui:build: Wrote component-list.json (47 entries)
+@diffgazer/ui:build: Skipped component MDX generation (47 components, hand-authored MDX)
+@diffgazer/ui:build: Found 10 hooks (10 registry + 0 extra)
+@diffgazer/ui:build: Wrote 10 per-hook JSON files
+@diffgazer/ui:build: Wrote hook-list.json (10 entries)
+@diffgazer/ui:build: Skipped hook MDX generation (10 hooks, hand-authored MDX)
+@diffgazer/ui:build: Wrote 10 hook MDX pages + meta.json
+@diffgazer/ui:build: Wrote ui-hooks.json (10 hooks)
+@diffgazer/ui:build: Wrote ui-libs.json (3 libs)
+@diffgazer/ui:build: Wrote demo-index.ts
+@diffgazer/ui:build: 
+@diffgazer/ui:build: --- Build Summary (ui) ---
+@diffgazer/ui:build: Components: 47
+@diffgazer/ui:build: Hooks: 10
+@diffgazer/ui:build: Libs: 3
+@diffgazer/ui:build: Errors: 0
+@diffgazer/ui:build: Build completed successfully.
+@diffgazer/ui:build: 
+@diffgazer/ui:build: > @diffgazer/ui@0.2.0 build:artifacts /Users/voitz/Projects/diffgazer-workspace/libs/ui
+@diffgazer/ui:build: > node --import tsx scripts/build-publish-artifacts.ts
+@diffgazer/ui:build: 
+@diffgazer/ui:build: [ui] artifact manifest written: /Users/voitz/Projects/diffgazer-workspace/libs/ui/dist/artifacts/artifact-manifest.json
+@diffgazer/ui:build: [ui] artifact fingerprint: 890d45f71a281ec3d03c37f23a8526c557b0d7041536972e30d2b4e66afa6bf5
+@diffgazer/add:test: cache hit, replaying logs c2b6283a1d972d0b
+@diffgazer/docs:test: cache hit, replaying logs e6564a1da7be7ba2
+@diffgazer/add:test: 
+@diffgazer/add:test: > @diffgazer/add@0.1.1 test /Users/voitz/Projects/diffgazer-workspace/cli/add
+@diffgazer/add:test: > vitest run
+@diffgazer/add:test: 
+@diffgazer/add:test: 
+@diffgazer/add:test:  RUN  v4.1.0 /Users/voitz/Projects/diffgazer-workspace/cli/add
+@diffgazer/add:test: 
+@diffgazer/add:test:   Item "keys/focusable" not found in public registry items. Run `dgadd list` to see available items.
+@diffgazer/add:test:   Item "button" not found in public registry items. Run `dgadd list` to see available items.
+@diffgazer/add:test:   Path traversal detected: "/tmp/outside" escapes "/tmp/dgadd-cli-v2yJzF"
+@diffgazer/add:test:   Invalid item name "button". Use a namespaced name: ui/button or keys/button. Run `dgadd list` to see available items.
+@diffgazer/add:test:   Selected components require keyboard hooks. Use --integration=copy to copy bundled hooks or --integration=keys to import @diffgazer/keys.
+@diffgazer/add:test:  ✓ tests/e2e/cli.e2e.ts (48 tests) 24386ms
+@diffgazer/add:test:      ✓ add records only files it wrote and remove keeps modified owned files  1004ms
+@diffgazer/add:test:      ✓ init uses a Vite-only custom alias when TypeScript paths are absent  938ms
+@diffgazer/add:test:      ✓ hidden keys utilities cannot be installed directly  624ms
+@diffgazer/add:test:      ✓ bare names without namespace prefix are rejected  893ms
+@diffgazer/add:test:      ✓ add does not adopt skipped pre-existing files into the ownership manifest  986ms
+@diffgazer/web:test: cache hit, replaying logs 7a10128f241a31a0
+@diffgazer/add:test:      ✓ keys add records ownership and remove deletes matching owned files without force  1466ms
+@diffgazer/add:test:      ✓ keys add preserves explicit ownership for hooks that overlap transitive files  1027ms
+@diffgazer/add:test:      ✓ sequential keys add adopts shared trusted files into the second item's manifest  1529ms
+@diffgazer/add:test:      ✓ keys add does not adopt arbitrary pre-existing files into the new item's manifest  467ms
+@diffgazer/add:test:      ✓ add appends required component CSS to the configured Tailwind entry  488ms
+@diffgazer/add:test:      ✓ repeated add does not duplicate component CSS chunks even after whitespace edits  1029ms
+@diffgazer/add:test:      ✓ invalid fs path config fails before writing outside the project  464ms
+@diffgazer/add:test:      ✓ windows-style config paths are normalized in ownership records  501ms
+@diffgazer/add:test:      ✓ remove --force deletes modified owned files and clears ownership  1028ms
+@diffgazer/add:test:      ✓ remove --force cleans stale manifest entries when owned files are already missing  927ms
+@diffgazer/add:test:      ✓ remove --dry-run previews owned files without changing files or manifest  562ms
+@diffgazer/add:test:      ✓ bare names are rejected for remove command too  410ms
+@diffgazer/add:test:      ✓ remove does not delete matching files without ownership metadata  387ms
+@diffgazer/add:test:      ✓ keys remove deletes transitive copied hook files owned by the key item  430ms
+@diffgazer/docs:test: 
+@diffgazer/docs:test: > @diffgazer/docs@ pretest /Users/voitz/Projects/diffgazer-workspace/apps/docs
+@diffgazer/docs:test: > pnpm prepare:generated
+@diffgazer/docs:test: 
+@diffgazer/docs:test: 
+@diffgazer/docs:test: > @diffgazer/docs@ prepare:generated /Users/voitz/Projects/diffgazer-workspace/apps/docs
+@diffgazer/docs:test: > node ./scripts/prepare-generated.mjs
+@diffgazer/docs:test: 
+@diffgazer/add:test:      ✓ remove blocks copied keys hooks still required by retained copy-mode UI  387ms
+@diffgazer/add:test:      ✓ mixed remove deletes copied keys hooks when their copy-mode UI dependent is removed too  389ms
+@diffgazer/add:test:      ✓ mixed remove updates manifest and output only for actually removed items  397ms
+@diffgazer/landing:test: cache hit, replaying logs 40bd46c080eaa5be
+@diffgazer/add:test:      ✓ remove of a transitive blocks when a retained item still depends on it  391ms
+@diffgazer/add:test:      ✓ remove of the explicit item cascades orphan transitives  375ms
+@diffgazer/add:test:      ✓ explicit installs are preserved as orphans when their dependent is removed  643ms
+@diffgazer/add:test:      ✓ default scope detects drift in hidden transitives  380ms
+@diffgazer/web:build: cache hit, replaying logs 1e01f37f540e7008
+@diffgazer/add:test:      ✓ accepts hidden transitive names as explicit arguments  372ms
+@diffgazer/add:test:      ✓ remove cleans CSS chunks it owns when no retained item owns them  371ms
+@diffgazer/add:test:      ✓ clean install reports zero CSS chunk drift entries  372ms
+@diffgazer/add:test:      ✓ user edit inside a CSS chunk surfaces as drift  363ms
+@diffgazer/add:test:      ✓ missing chunk in styles.css surfaces as drift  362ms
+@diffgazer/docs:test: [docs-sync] Mode: workspace
+@diffgazer/docs:test: [docs-sync] Artifacts unchanged; skipping sync.
+@diffgazer/docs:test: [logo-ascii] wrote 3 logo + 1 heading entries to /Users/voitz/Projects/diffgazer-workspace/apps/docs/src/generated/logo-ascii.ts
+@diffgazer/docs:test: [sections-with-index] wrote 17 sections to /Users/voitz/Projects/diffgazer-workspace/apps/docs/src/generated/sections-with-index.ts
+@diffgazer/docs:test: 
+@diffgazer/docs:test: > @diffgazer/docs@ test /Users/voitz/Projects/diffgazer-workspace/apps/docs
+@diffgazer/docs:test: > vitest run
+@diffgazer/docs:test: 
+@diffgazer/docs:test: [MDX] generated files in 8.975750000000062ms
+@diffgazer/docs:test: 
+@diffgazer/docs:test:  RUN  v4.1.0 /Users/voitz/Projects/diffgazer-workspace/apps/docs
+@diffgazer/docs:test: 
+@diffgazer/docs:test:  ✓ src/lib/load-doc-data.test.ts (3 tests) 23ms
+@diffgazer/docs:test:  ✓ src/components/breadcrumbs.test.ts (1 test) 4ms
+@diffgazer/docs:test:  ✓ scripts/generate-sitemap.test.ts (11 tests) 120ms
+@diffgazer/web:test: 
+@diffgazer/web:test: > @diffgazer/web@0.1.0 test /Users/voitz/Projects/diffgazer-workspace/apps/web
+@diffgazer/docs:test:  ✓ src/lib/search-context.test.tsx (2 tests) 80ms
+@diffgazer/docs:test:  ✓ src/lib/library.test.ts (25 tests) 1010ms
+@diffgazer/docs:test:      ✓ keeps public docs off removed API aliases  313ms
+@diffgazer/add:test:      ✓ shared chunk is preserved when one of two co-owners is removed  525ms
+@diffgazer/add:test:      ✓ unique chunks of a removed item are deleted from styles.css  354ms
+@diffgazer/add:test:      ✓ keys package integration diff is up to date immediately after add  362ms
+@diffgazer/add:test:      ✓ keys package integration diff reports modified installed files  357ms
+@diffgazer/add:test:      ✓ remove of remaining co-owner deletes shared files when other co-owner was manually purged from manifest  335ms
+@diffgazer/add:test:      ✓ add --overwrite replaces a locally-modified owned file and updates the ownership hash  341ms
+@diffgazer/landing:test: 
+@diffgazer/web:build: 
+@diffgazer/docs:test:      ✓ loads synced keys demos through the generated demo loader  653ms
+@diffgazer/docs:test:  ✓ src/features/theme/tui-primitives.test.ts (6 tests) 5ms
+@diffgazer/docs:test:  ✓ scripts/artifacts/docs-example-wiring.test.ts (20 tests) 1267ms
+@diffgazer/docs:test:      ✓ keeps public docs off removed API aliases  400ms
+@diffgazer/docs:test:      ✓ loads synced keys demos through the generated demo loader  813ms
+@diffgazer/docs:test:  ✓ src/lib/seo.test.ts (10 tests) 5ms
+@diffgazer/docs:test:  ✓ src/components/docs-mdx/source-viewer.test.tsx (6 tests) 649ms
+@diffgazer/add:test:      ✓ add without --overwrite keeps locally-modified content and does not corrupt the existing ownership entry  339ms
+@diffgazer/add:test:  ✓ src/utils/detect.test.ts (10 tests) 8ms
+@diffgazer/add:test: stdout | src/commands/init.test.ts > dgadd init rollback after install side effects > restores package.json and removes a freshly-created lockfile when writeConfig fails after install
+@diffgazer/add:test: 
+@diffgazer/add:test:   Detected:
+@diffgazer/add:test: 
+@diffgazer/add:test: 
+@diffgazer/landing:test: > @diffgazer/landing@ test /Users/voitz/Projects/diffgazer-workspace/apps/landing
+@diffgazer/landing:test: > vitest run
+@diffgazer/landing:test: 
+@diffgazer/landing:test: 
+@diffgazer/add:test:   Creating files...
+@diffgazer/add:test: 
+@diffgazer/web:build: > @diffgazer/web@0.1.0 build /Users/voitz/Projects/diffgazer-workspace/apps/web
+@diffgazer/web:build: > tsc -b && vite build
+@diffgazer/web:build: 
+@diffgazer/web:build: vite v7.3.3 building client environment for production...
+@diffgazer/web:build: transforming...
+@diffgazer/web:build: ✓ 566 modules transformed.
+@diffgazer/web:build: rendering chunks...
+@diffgazer/docs:test:      ✓ does not synthesize a public installer command when no installer is configured  447ms
+@diffgazer/docs:test:  ✓ src/lib/page-tree.test.ts (13 tests) 4ms
+@diffgazer/docs:test:  ✓ src/components/toc.test.tsx (8 tests) 1508ms
+@diffgazer/docs:test:      ✓ builds entries from rendered headings even when the static TOC is empty  453ms
+@diffgazer/docs:test:  ✓ src/features/home/components/view.test.tsx (7 tests) 1498ms
+@diffgazer/docs:test:      ✓ exposes an accessible Documentation heading  456ms
+@diffgazer/docs:test:      ✓ links the three documentation areas to their roots  409ms
+@diffgazer/docs:test:  ✓ src/components/layout/sidebar.test.ts (13 tests) 8ms
+@diffgazer/docs:test:  ✓ src/features/home/data.test.ts (3 tests) 5ms
+@diffgazer/add:test: stdout | src/commands/init.test.ts > dgadd init rollback after install side effects > restores a pre-existing lockfile content when writeConfig fails after install
+@diffgazer/add:test: 
+@diffgazer/add:test:   Detected:
+@diffgazer/add:test: 
+@diffgazer/add:test: 
+@diffgazer/add:test:   Creating files...
+@diffgazer/landing:test:  RUN  v4.1.0 /Users/voitz/Projects/diffgazer-workspace/apps/landing
+@diffgazer/landing:test: 
+@diffgazer/landing:test:  ✓ src/app.test.tsx (9 tests) 2176ms
+@diffgazer/landing:test:      ✓ has no axe violations  1559ms
+@diffgazer/landing:test: 
+@diffgazer/landing:test:  Test Files  1 passed (1)
+@diffgazer/docs:test: 
+@diffgazer/docs:test:  Test Files  14 passed (14)
+@diffgazer/docs:test:       Tests  128 passed (128)
+@diffgazer/docs:test:    Start at  09:48:32
+@diffgazer/docs:test:    Duration  4.41s (transform 1.72s, setup 3.87s, import 2.68s, tests 6.19s, environment 18.57s)
+@diffgazer/docs:test: 
+@diffgazer/web:build: computing gzip size...
+@diffgazer/web:build: dist/index.html                                     0.52 kB │ gzip:   0.31 kB
+@diffgazer/web:build: dist/assets/theme-iDuj8uSB.css                      2.80 kB │ gzip:   0.53 kB
+@diffgazer/web:build: dist/assets/index-f1puxMyU.css                    140.54 kB │ gzip:  21.31 kB
+@diffgazer/add:test: 
+@diffgazer/add:test:  ✓ src/commands/init.test.ts (4 tests) 7ms
+@diffgazer/add:test:  ✓ src/utils/transform.test.ts (6 tests) 4ms
+@diffgazer/add:test:  ✓ src/utils/registry.test.ts (9 tests) 2ms
+@diffgazer/add:test:  ✓ src/utils/keys-copy-bundle.test.ts (3 tests) 2ms
+@diffgazer/web:test: > vitest run
+@diffgazer/web:test: 
+@diffgazer/landing:test:       Tests  9 passed (9)
+@diffgazer/landing:test:    Start at  09:48:30
+@diffgazer/landing:test:    Duration  4.11s (transform 344ms, setup 257ms, import 559ms, tests 2.18s, environment 827ms)
+@diffgazer/landing:test: 
+@diffgazer/web:build: dist/assets/match-query-state-BPid6y1R.js           0.16 kB │ gzip:   0.14 kB
+@diffgazer/web:build: dist/assets/use-theme-BME1IyWp.js                   0.19 kB │ gzip:   0.17 kB
+@diffgazer/web:build: dist/assets/lens-options-GgldjU9t.js                0.23 kB │ gzip:   0.19 kB
+@diffgazer/web:build: dist/assets/forms-CxXtsCxq.js                       0.37 kB │ gzip:   0.28 kB
+@diffgazer/web:build: dist/assets/storage-selector-content-CMeKfJVO.js    1.30 kB │ gzip:   0.76 kB
+@diffgazer/web:build: dist/assets/search-input-2Zk3YXf7.js                1.37 kB │ gzip:   0.76 kB
+@diffgazer/web:build: dist/assets/help-CA2877wx.js                        1.60 kB │ gzip:   0.73 kB
+@diffgazer/add:test:  ✓ src/commands/remove.test.ts (3 tests) 2ms
+@diffgazer/add:test: 
+@diffgazer/add:test:  Test Files  7 passed (7)
+@diffgazer/add:test:       Tests  83 passed (83)
+@diffgazer/add:test:    Start at  09:48:30
+@diffgazer/add:test:    Duration  25.61s (transform 220ms, setup 0ms, import 570ms, tests 24.41s, environment 0ms)
+@diffgazer/add:test: 
+@diffgazer/web:build: dist/assets/trust-permissions-IXXJMqJD.js           2.08 kB │ gzip:   1.03 kB
+@diffgazer/web:build: dist/assets/settings-BLlto1wH.js                    2.31 kB │ gzip:   1.09 kB
+@diffgazer/web:build: dist/assets/spinner-AFORF4I3-CO4xuNub.js            2.59 kB │ gzip:   1.27 kB
+@diffgazer/web:build: dist/assets/storage-BY7X8Sk2.js                     2.60 kB │ gzip:   1.23 kB
+@diffgazer/web:build: dist/assets/agent-execution-B7weXvWJ.js             3.03 kB │ gzip:   1.40 kB
+@diffgazer/web:build: dist/assets/analysis-BuXod48r.js                    3.45 kB │ gzip:   1.60 kB
+@diffgazer/web:build: dist/assets/radio-DRNpcNY2.js                       6.01 kB │ gzip:   2.59 kB
+@diffgazer/web:build: dist/assets/theme-BsJjj00c.js                       6.32 kB │ gzip:   2.42 kB
+@diffgazer/web:build: dist/assets/diagnostics-C0vNXeIE.js                 7.20 kB │ gzip:   2.68 kB
+@diffgazer/web:build: dist/assets/history-JbJRNujm.js                    14.02 kB │ gzip:   4.69 kB
+@diffgazer/web:build: dist/assets/onboarding-DmiBV4cc.js                 18.51 kB │ gzip:   5.68 kB
+@diffgazer/web:build: dist/assets/providers-CrV5ogdx.js                  45.85 kB │ gzip:  13.90 kB
+@diffgazer/web:test: 
+@diffgazer/web:test:  RUN  v4.1.0 /Users/voitz/Projects/diffgazer-workspace/apps/web
+@diffgazer/web:test: 
+@diffgazer/web:build: dist/assets/api-key-method-selector-B2agG9sF.js   143.37 kB │ gzip:  20.84 kB
+@diffgazer/web:build: dist/assets/index-CzW-VfoA.js                     661.33 kB │ gzip: 202.27 kB
+@diffgazer/web:build: 
+@diffgazer/web:build: (!) Some chunks are larger than 500 kB after minification. Consider:
+@diffgazer/web:build: - Using dynamic import() to code-split the application
+@diffgazer/web:build: - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+@diffgazer/web:build: - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+@diffgazer/web:build: ✓ built in 1.84s
+@diffgazer/web:test: stderr | src/features/history/components/page.test.tsx > HistoryPage keyboard navigation > moves focus from timeline to runs at the boundary and opens the highlighted run
+@diffgazer/web:test: The tag <search> is unrecognized in this browser. If you meant to render a React component, start its name with an uppercase letter.
+@diffgazer/web:test: 
+@diffgazer/web:test:  ✓ src/features/review/components/no-changes-view.test.tsx (9 tests) 1146ms
+@diffgazer/web:test:  ✓ src/components/shared/trust-permissions-content.test.tsx (9 tests) 1426ms
+@diffgazer/web:test:      ✓ moves focus back to permissions when focused action buttons become disabled while loading  327ms
+@diffgazer/web:test:      ✓ restores checkbox highlight when focus returns to the list in passive mode  321ms
+@diffgazer/web:test: stderr | src/features/home/components/presentation.test.tsx > HomePagePresentation — Resume Last Review gating > disables Resume Last Review when no active session exists for either mode
+@diffgazer/web:test: Warning: useRouter must be used inside a <RouterProvider> component!
+@diffgazer/web:test: 
+@diffgazer/web:test: stderr | src/features/home/components/presentation.test.tsx > HomePagePresentation — Resume Last Review gating > does not navigate or start a new review when clicking the disabled Resume Last Review item
+@diffgazer/web:test: Warning: useRouter must be used inside a <RouterProvider> component!
+@diffgazer/web:test: 
+@diffgazer/web:test: stderr | src/features/providers/components/model-select-dialog/dialog.integration.test.tsx > ModelSelectDialog (catalog) > renders catalog models free-first with a free badge
+@diffgazer/web:test: The tag <search> is unrecognized in this browser. If you meant to render a React component, start its name with an uppercase letter.
+@diffgazer/web:test: 
+@diffgazer/web:test: stderr | src/features/home/components/presentation.test.tsx > HomePagePresentation — Resume Last Review gating > enables and resumes the unstaged session when only unstaged is active
+@diffgazer/web:test: Warning: useRouter must be used inside a <RouterProvider> component!
+@diffgazer/web:test: 
+@diffgazer/web:test: stderr | src/features/home/components/presentation.test.tsx > HomePagePresentation — Resume Last Review gating > enables and resumes the unstaged session when only unstaged is active
+@diffgazer/web:test: Warning: useRouter must be used inside a <RouterProvider> component!
+@diffgazer/web:test: 
+@diffgazer/web:test: stderr | src/features/home/components/presentation.test.tsx > HomePagePresentation — Resume Last Review gating > enables and resumes the unstaged session when only unstaged is active
+@diffgazer/web:test: Warning: useRouter must be used inside a <RouterProvider> component!
+@diffgazer/web:test: 
+@diffgazer/web:test: stderr | src/features/home/components/presentation.test.tsx > HomePagePresentation — Resume Last Review gating > enables and resumes the staged session when only staged is active
+@diffgazer/web:test: Warning: useRouter must be used inside a <RouterProvider> component!
+@diffgazer/web:test: 
+@diffgazer/web:test: stderr | src/features/home/components/presentation.test.tsx > HomePagePresentation — Resume Last Review gating > enables and resumes the staged session when only staged is active
+@diffgazer/web:test: Warning: useRouter must be used inside a <RouterProvider> component!
+@diffgazer/web:test: 
+@diffgazer/web:test: stderr | src/features/home/components/presentation.test.tsx > HomePagePresentation — Resume Last Review gating > enables and resumes the staged session when only staged is active
+@diffgazer/web:test: Warning: useRouter must be used inside a <RouterProvider> component!
+@diffgazer/web:test: 
+@diffgazer/web:test: stderr | src/features/home/components/presentation.test.tsx > HomePagePresentation — Resume Last Review gating > shows 'No Active Review' toast and does not start a new review when sessions disappear between query and click
+@diffgazer/web:test: Warning: useRouter must be used inside a <RouterProvider> component!
+@diffgazer/web:test: 
+@diffgazer/web:test: stderr | src/features/home/components/presentation.test.tsx > HomePagePresentation — Resume Last Review gating > shows 'No Active Review' toast and does not start a new review when sessions disappear between query and click
+@diffgazer/web:test: Warning: useRouter must be used inside a <RouterProvider> component!
+@diffgazer/web:test: 
+@diffgazer/web:test: stderr | src/features/home/components/presentation.test.tsx > HomePagePresentation — Resume Last Review gating > shows 'No Active Review' toast and does not start a new review when sessions disappear between query and click
+@diffgazer/web:test: Warning: useRouter must be used inside a <RouterProvider> component!
+@diffgazer/web:test: 
+@diffgazer/web:test: stderr | src/features/home/components/presentation.test.tsx > HomePagePresentation — startReview error surfacing > surfaces API_KEY_MISSING with an actionable message in the toast
+@diffgazer/web:test: Warning: useRouter must be used inside a <RouterProvider> component!
+@diffgazer/web:test: 
+@diffgazer/web:test: stderr | src/features/home/components/presentation.test.tsx > HomePagePresentation — startReview error surfacing > surfaces API_KEY_MISSING with an actionable message in the toast
+@diffgazer/web:test: Warning: useRouter must be used inside a <RouterProvider> component!
+@diffgazer/web:test: 
+@diffgazer/web:test: stderr | src/features/home/components/presentation.test.tsx > HomePagePresentation — startReview error surfacing > surfaces API_KEY_MISSING with an actionable message in the toast
+@diffgazer/web:test: Warning: useRouter must be used inside a <RouterProvider> component!
+@diffgazer/web:test: 
+@diffgazer/web:test: stderr | src/features/home/components/presentation.test.tsx > HomePagePresentation — startReview error surfacing > surfaces UNSUPPORTED_PROVIDER as 'Provider Not Configured'
+@diffgazer/web:test: Warning: useRouter must be used inside a <RouterProvider> component!
+@diffgazer/web:test: 
+@diffgazer/web:test: stderr | src/features/home/components/presentation.test.tsx > HomePagePresentation — startReview error surfacing > surfaces UNSUPPORTED_PROVIDER as 'Provider Not Configured'
+@diffgazer/web:test: Warning: useRouter must be used inside a <RouterProvider> component!
+@diffgazer/web:test: 
+@diffgazer/web:test: stderr | src/features/home/components/presentation.test.tsx > HomePagePresentation — startReview error surfacing > surfaces UNSUPPORTED_PROVIDER as 'Provider Not Configured'
+@diffgazer/web:test: Warning: useRouter must be used inside a <RouterProvider> component!
+@diffgazer/web:test: 
+@diffgazer/web:test:  ✓ src/features/settings/components/trust-permissions/page.test.tsx (8 tests) 2885ms
+@diffgazer/web:test:      ✓ resets the draft when async trust data arrives  675ms
+@diffgazer/web:test:      ✓ does not steal focus from the action row when async trust data arrives  450ms
+@diffgazer/web:test:      ✓ focuses the permissions list on entry so arrows work before mouse interaction  371ms
+@diffgazer/web:test:      ✓ revokes trust for the current project from the action row  372ms
+@diffgazer/web:test:      ✓ surfaces a revoke failure as an error toast and keeps trust state intact  374ms
+@diffgazer/web:test: stderr | src/features/home/components/presentation.test.tsx > HomePagePresentation — startReview error surfacing > falls back to a generic toast for unknown errors
+@diffgazer/web:test: Warning: useRouter must be used inside a <RouterProvider> component!
+@diffgazer/web:test: 
+@diffgazer/web:test: stderr | src/features/home/components/presentation.test.tsx > HomePagePresentation — startReview error surfacing > falls back to a generic toast for unknown errors
+@diffgazer/web:test: Warning: useRouter must be used inside a <RouterProvider> component!
+@diffgazer/web:test: 
+@diffgazer/web:test: stderr | src/features/home/components/presentation.test.tsx > HomePagePresentation — startReview error surfacing > falls back to a generic toast for unknown errors
+@diffgazer/web:test: Warning: useRouter must be used inside a <RouterProvider> component!
+@diffgazer/web:test: 
+@diffgazer/web:test:  ✓ src/features/home/components/presentation.test.tsx (8 tests) 2776ms
+@diffgazer/web:test:      ✓ disables Resume Last Review when no active session exists for either mode  689ms
+@diffgazer/web:test:      ✓ does not navigate or start a new review when clicking the disabled Resume Last Review item  530ms
+@diffgazer/web:test:      ✓ enables and resumes the staged session when only staged is active  336ms
+@diffgazer/web:test:      ✓ surfaces UNSUPPORTED_PROVIDER as 'Provider Not Configured'  361ms
+@diffgazer/web:test:  ✓ src/features/history/components/page.test.tsx (9 tests) 3274ms
+@diffgazer/web:test:      ✓ moves focus from timeline to runs at the boundary and opens the highlighted run  1050ms
+@diffgazer/web:test:      ✓ switches timeline keyboard behavior when clicking the selected section from runs  572ms
+@diffgazer/web:test:      ✓ focuses search with slash without typing slash into the field  338ms
+@diffgazer/web:test:      ✓ never marks more than one panel as focused as Tab moves the focus zone  348ms
+@diffgazer/web:test:      ✓ moves the insights highlight with j alias and routes Enter to the issue handler  609ms
+@diffgazer/web:test:  ✓ src/features/settings/components/theme/page.test.tsx (7 tests) 3225ms
+@diffgazer/web:test:      ✓ moves focus independently from selection and reaches button zone at list boundary  1211ms
+@diffgazer/web:test:      ✓ selects focused theme on Space without saving or exiting  344ms
+@diffgazer/web:test:      ✓ selects focused theme on Enter and saves + exits  303ms
+@diffgazer/web:test:      ✓ keeps preview scoped to the preview panel while focus changes  367ms
+@diffgazer/web:test:      ✓ updates preview on hover from focused list item even after entering button zone  460ms
+@diffgazer/web:test:  ✓ src/features/providers/components/model-select-dialog/use-dialog-keyboard.test.ts (12 tests) 1831ms
+@diffgazer/web:test:      ✓ focuses the first available model when models load after the dialog opens  695ms
+@diffgazer/web:test:  ✓ src/features/history/components/insights-pane.test.tsx (13 tests) 1516ms
+@diffgazer/web:test:      ✓ renders run metadata, severity breakdown, and issue list when a run is selected  484ms
+@diffgazer/web:test: stderr | src/features/providers/hooks/use-keyboard.test.tsx > ProviderList > exposes provider badge and model as the option description
+@diffgazer/web:test: The tag <search> is unrecognized in this browser. If you meant to render a React component, start its name with an uppercase letter.
+@diffgazer/web:test: 
+@diffgazer/web:test:  ✓ src/features/providers/components/model-select-dialog/dialog.integration.test.tsx (8 tests) 4862ms
+@diffgazer/web:test:      ✓ renders catalog models free-first with a free badge  1472ms
+@diffgazer/web:test:      ✓ narrows to free-only when the free tier filter is selected  1313ms
+@diffgazer/web:test:      ✓ pre-checks the current model when the dialog opens  646ms
+@diffgazer/web:test:      ✓ fires onSelect with the chosen model and closes when confirmed  506ms
+@diffgazer/web:test:  ✓ src/features/review/components/results-view.test.tsx (15 tests) 5590ms
+@diffgazer/web:test:      ✓ navigates issue list with ArrowDown immediately in list view  735ms
+@diffgazer/web:test:      ✓ navigates issue list with j and k in visible order  398ms
+@diffgazer/web:test:      ✓ switches right-panel tabs with left and right arrows  476ms
+@diffgazer/web:test:      ✓ falls back to details when the selected issue has no patch tab  737ms
+@diffgazer/web:test:      ✓ keeps completed fix-plan steps scoped to the selected issue  942ms
+@diffgazer/web:test:      ✓ moves from the last severity filter to issue details with ArrowRight  382ms
+@diffgazer/web:test:      ✓ toggles multiple severity filters and clears them via [Reset]  345ms
+@diffgazer/web:test:      ✓ reaches Reset via ArrowRight from the last severity when filter is active  308ms
+@diffgazer/web:test:  ✓ src/features/providers/components/api-key-dialog/dialog.integration.test.tsx (4 tests) 1159ms
+@diffgazer/web:test:      ✓ renders dialog kbd hints with the standardized wording and glyphs while open  636ms
+@diffgazer/web:test:      ✓ returns focus to the trigger button after the dialog closes  377ms
+@diffgazer/web:test:  ✓ src/features/settings/components/analysis/page.test.tsx (2 tests) 1061ms
+@diffgazer/web:test:      ✓ does not move footer focus onto a disabled save action  602ms
+@diffgazer/web:test:      ✓ focuses and activates save after the lens selection changes  458ms
+@diffgazer/web:test:  ✓ src/features/providers/hooks/use-keyboard.test.tsx (9 tests) 1428ms
+@diffgazer/web:test:      ✓ exposes provider badge and model as the option description  346ms
+@diffgazer/web:test:  ✓ src/features/review/components/page.test.tsx (11 tests) 1090ms
+@diffgazer/web:test:  ✓ src/features/review/components/api-key-missing-view.test.tsx (8 tests) 966ms
+@diffgazer/web:test:      ✓ focuses the Configure Provider action by default  382ms
+@diffgazer/web:test:  ✓ src/features/onboarding/components/wizard.test.tsx (6 tests) 7249ms
+@diffgazer/web:test:      ✓ disables the Next action on the api-key step until canProceed is satisfied  2733ms
+@diffgazer/web:test:      ✓ preselects the first provider and its default model in the visible steps  1240ms
+@diffgazer/web:test:      ✓ marks the app as configured after a successful completion  697ms
+@diffgazer/web:test:      ✓ submits the wizard payload derived from user selections  1134ms
+@diffgazer/web:test:      ✓ shows a saving label and disables the complete action while completion is pending  778ms
+@diffgazer/web:test:      ✓ shows an inline error when completion fails and keeps the user on the wizard  665ms
+@diffgazer/web:test:  ✓ src/features/onboarding/components/steps/model-step.test.tsx (5 tests) 843ms
+@diffgazer/web:test:      ✓ commits the current selected catalog model when Enter is pressed  373ms
+@diffgazer/web:test:  ✓ src/features/settings/components/agent-execution/page.test.tsx (2 tests) 496ms
+@diffgazer/web:test:      ✓ moves from execution mode choices to footer actions at the lower boundary  428ms
+@diffgazer/web:test:  ✓ src/features/settings/components/diagnostics/page.test.tsx (4 tests) 955ms
+@diffgazer/web:test:      ✓ activates diagnostics actions selected with left/right arrows  372ms
+@diffgazer/web:test:  ✓ src/components/shared/storage-selector-content.test.tsx (4 tests) 727ms
+@diffgazer/web:test:      ✓ moves highlight with arrows and selects with Space  400ms
+@diffgazer/web:test:  ✓ src/features/settings/components/storage/page.test.tsx (2 tests) 648ms
+@diffgazer/web:test:      ✓ does not move footer focus onto a disabled save action  459ms
+@diffgazer/web:test:  ✓ src/features/home/components/menu.test.tsx (6 tests) 949ms
+@diffgazer/web:test:      ✓ marks Resume Last Review aria-disabled when no resumable session  423ms
+@diffgazer/web:test:  ✓ src/app/providers/config.test.tsx (11 tests) 731ms
+@diffgazer/web:test:  ✓ src/features/providers/components/model-select-dialog/list.test.tsx (4 tests) 755ms
+@diffgazer/web:test:      ✓ confirms the double-clicked model directly  457ms
+@diffgazer/web:test:  ✓ src/features/onboarding/components/steps/provider-step.test.tsx (1 test) 515ms
+@diffgazer/web:test:      ✓ commits the current selected provider when Enter is pressed  513ms
+@diffgazer/web:test:  ✓ src/features/home/components/page.test.tsx (2 tests) 510ms
+@diffgazer/web:test:      ✓ renders the main menu with Resume Last Review disabled when no active session exists  408ms
+@diffgazer/web:test:  ✓ src/components/ui/progress/step.test.tsx (3 tests) 450ms
+@diffgazer/web:test:      ✓ passes app-specific step status labels (DONE/RUN/WAIT/FAIL) to the stepper trigger  410ms
+@diffgazer/web:test:  ✓ src/features/providers/components/api-key-dialog/use-keyboard.test.tsx (4 tests) 535ms
+@diffgazer/web:test:  ✓ src/features/home/components/info-field.test.tsx (6 tests) 503ms
+@diffgazer/web:test:      ✓ renders as a button when onClick is provided  313ms
+@diffgazer/web:test:  ✓ src/features/review/components/issue-list-pane.test.tsx (1 test) 370ms
+@diffgazer/web:test:      ✓ marks the highlighted row with data-active so theming can invert chip colors  369ms
+@diffgazer/web:test:  ✓ src/components/shared/api-key-method-selector.test.tsx (2 tests) 456ms
+@diffgazer/web:test:      ✓ preserves input handoff from the paste method  382ms
+@diffgazer/web:test:  ✓ src/features/history/components/timeline-list.test.tsx (1 test) 435ms
+@diffgazer/web:test:      ✓ exposes section counts as option descriptions  434ms
+@diffgazer/web:test:  ✓ src/components/layout/header.test.tsx (4 tests) 335ms
+@diffgazer/web:test:  ✓ src/features/review/hooks/use-issue-selection.test.tsx (2 tests) 364ms
+@diffgazer/web:test:  ✓ src/features/providers/components/api-key-dialog/use-form.test.ts (9 tests) 77ms
+@diffgazer/web:test:  ✓ src/features/review/components/issue-preview-item.test.tsx (4 tests) 342ms
+@diffgazer/web:test:  ✓ src/features/onboarding/hooks/use-onboarding.test.ts (1 test) 99ms
+@diffgazer/web:test:  ✓ src/lib/config-guards.test.ts (3 tests) 64ms
+@diffgazer/web:test:  ✓ src/components/layout/footer.integration.test.ts (2 tests) 125ms
+@diffgazer/web:test:  ✓ src/features/review/components/issue-details-pane.test.tsx (3 tests) 607ms
+@diffgazer/web:test:      ✓ keeps multi-file suggested patches visible instead of dropping later files  374ms
+@diffgazer/web:test: stderr | src/features/review/components/progress-view.test.tsx > ReviewProgressView > Enter does not fire onViewResults when it is not provided
+@diffgazer/web:test: Warning: useRouter must be used inside a <RouterProvider> component!
+@diffgazer/web:test: 
+@diffgazer/web:test:  ✓ src/features/review/components/progress-view.test.tsx (4 tests) 244ms
+@diffgazer/web:test:  ✓ src/app/providers/theme.test.tsx (7 tests) 92ms
+@diffgazer/web:test:  ✓ src/hooks/use-review-history.test.ts (1 test) 32ms
+@diffgazer/web:test:  ✓ src/hooks/use-scoped-route-state.test.ts (3 tests) 33ms
+@diffgazer/web:test:  ✓ src/features/providers/components/details.test.tsx (4 tests) 94ms
+@diffgazer/web:test: Not implemented: navigation to another Document
+@diffgazer/web:test:  ✓ src/utils/download.test.ts (3 tests) 9ms
+@diffgazer/web:test:  ✓ src/features/review/hooks/use-severity-filter.test.tsx (5 tests) 25ms
+@diffgazer/web:test:  ✓ src/lib/back-navigation.test.ts (7 tests) 2ms
+@diffgazer/web:test:  ✓ src/features/history/run-summary.test.ts (10 tests) 3ms
+@diffgazer/web:test:  ✓ src/features/history/hooks/use-page.test.ts (2 tests) 2ms
+@diffgazer/web:test: 
+@diffgazer/web:test:  Test Files  50 passed (50)
+@diffgazer/web:test:       Tests  270 passed (270)
+@diffgazer/web:test:    Start at  09:48:30
+@diffgazer/web:test:    Duration  14.04s (transform 8.55s, setup 8.57s, import 18.14s, tests 53.91s, environment 36.13s)
+@diffgazer/web:test: 
+diffgazer:test: cache hit, replaying logs 7b826bd235061546
+diffgazer:test: 
+diffgazer:test: > diffgazer@0.1.4 test /Users/voitz/Projects/diffgazer-workspace/cli/diffgazer
+diffgazer:test: > vitest run
+diffgazer:test: 
+diffgazer:test: 
+diffgazer:test:  RUN  v4.1.0 /Users/voitz/Projects/diffgazer-workspace/cli/diffgazer
+diffgazer:test: 
+diffgazer:test:  ✓ src/lib/servers/embedded.test.ts (6 tests) 420ms
+diffgazer:test:      ✓ aborts an active review session and clears its subscriber on shutdown  418ms
+diffgazer:test:  ✓ tests/e2e/cli-options.e2e.ts (3 tests) 411ms
+diffgazer:test:  ✓ src/features/providers/components/model-select-overlay.test.tsx (7 tests) 140ms
+diffgazer:test:  ✓ src/features/review/components/severity-filter-group.test.tsx (6 tests) 35ms
+diffgazer:test:  ✓ src/lib/servers/api.test.ts (5 tests) 56ms
+diffgazer:test:  ✓ src/lib/servers/process.test.ts (4 tests) 55ms
+diffgazer:test:  ✓ src/features/onboarding/components/steps/model-step.test.tsx (4 tests) 51ms
+diffgazer:test:  ✓ src/features/onboarding/components/steps/provider-step.test.tsx (1 test) 32ms
+diffgazer:test:  ✓ src/cli-options.test.ts (6 tests) 3ms
+diffgazer:test:  ✓ src/features/settings/lens-selection.test.ts (11 tests) 3ms
+diffgazer:test:  ✓ src/features/settings/trust-editor-state.test.ts (13 tests) 4ms
+diffgazer:test:  ✓ src/features/onboarding/lib/step-shortcuts.test.ts (6 tests) 2ms
+diffgazer:test:  ✓ src/features/settings/derive-storage-save-state.test.ts (6 tests) 2ms
+diffgazer:test:  ✓ src/web-launcher.test.ts (5 tests) 3ms
+diffgazer:test:  ✓ src/features/settings/diagnostics/derive-display.test.ts (25 tests) 3ms
+diffgazer:test:  ✓ src/lib/ink-key.test.ts (20 tests) 3ms
+diffgazer:test:  ✓ src/features/home/lib/create-menu-action.test.ts (9 tests) 3ms
+diffgazer:test:  ✓ src/app/screens/settings/hub-values.test.ts (14 tests) 3ms
+diffgazer:test:  ✓ src/lib/highlight-navigation.test.ts (10 tests) 3ms
+diffgazer:test:  ✓ src/app/screens/settings/theme-preview.test.ts (6 tests) 2ms
+diffgazer:test:  ✓ src/features/history/lib/history-footer.test.ts (8 tests) 2ms
+diffgazer:test:  ✓ src/lib/servers/browser-launch.test.ts (3 tests) 2ms
+diffgazer:test:  ✓ src/config.test.ts (2 tests) 2ms
+diffgazer:test:  ✓ src/features/history/lib/history-run-mapping.test.ts (7 tests) 2ms
+diffgazer:test:  ✓ src/app/screens/review-phase.test.ts (7 tests) 2ms
+diffgazer:test:  ✓ src/features/settings/diagnostics/derive-actions.test.ts (8 tests) 2ms
+diffgazer:test:  ✓ src/lib/visible-slice-offset.test.ts (5 tests) 2ms
+diffgazer:test:  ✓ src/lib/shutdown-token.test.ts (1 test) 1ms
+diffgazer:test:  ✓ src/features/review/hooks/use-lifecycle.test.ts (5 tests) 2ms
+diffgazer:test:  ✓ src/features/review/lib/issue-line-range.test.ts (4 tests) 1ms
+diffgazer:test: 
+diffgazer:test:  Test Files  30 passed (30)
+diffgazer:test:       Tests  217 passed (217)
+diffgazer:test:    Start at  09:48:45
+diffgazer:test:    Duration  4.63s (transform 544ms, setup 0ms, import 1.46s, tests 1.25s, environment 1ms)
+diffgazer:test: 
+
+ Tasks:    17 successful, 17 total
+Cached:    17 cached, 17 total
+  Time:    253ms >>> FULL TURBO
+

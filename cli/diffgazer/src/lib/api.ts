@@ -1,4 +1,4 @@
-import { createApi, type BoundApi } from "@diffgazer/core/api";
+import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { parsePortEnv } from "@diffgazer/core/env";
 import { config } from "../config";
 import { ensureShutdownToken } from "./shutdown-token";

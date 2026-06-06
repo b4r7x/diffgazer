@@ -3,9 +3,9 @@
 import { useState } from "react"
 import {
   Select,
-  SelectTrigger,
   SelectContent,
   SelectItem,
+  SelectTrigger,
 } from "@/components/ui/select"
 
 export default function SelectCard() {

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import { composeRefs } from "../compose-refs"
 
 describe("composeRefs", () => {
@@ -35,7 +35,7 @@ describe("composeRefs", () => {
 
   it("returns a cleanup function when callback ref returns one", () => {
     const cleanup = vi.fn()
-    const callbackRef = (el: any) => cleanup
+    const callbackRef = () => cleanup
     const composed = composeRefs(callbackRef)
     const el = document.createElement("div")
 

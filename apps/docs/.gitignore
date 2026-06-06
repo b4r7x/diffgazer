@@ -6,11 +6,8 @@
 .lighthouseci/
 src/routeTree.gen.ts
 src/generated/
-content/docs/components/
 content/docs/ui/
 content/docs/keys/
-registry/
-styles/
-public/library-assets/
+registry/examples/
 public/r/ui/
 public/r/keys/

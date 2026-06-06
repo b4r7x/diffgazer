@@ -1,12 +1,12 @@
 import { z } from "zod";
+import { LensIdSchema } from "./enums.js";
 import { ReviewIssueSchema, TraceRefSchema } from "./issues.js";
-import { LensIdSchema } from "./shared.js";
 
 export {
-  LENS_IDS, LensIdSchema, type LensId,
-  PROFILE_IDS, ProfileIdSchema, type ProfileId,
-  ReviewProfileSchema, type ReviewProfile,
-} from "./shared.js";
+  LENS_IDS, type LensId,LensIdSchema,
+  PROFILE_IDS, type ProfileId,ProfileIdSchema, type ReviewProfile,
+  ReviewProfileSchema,
+} from "./enums.js";
 
 export const SeverityRubricSchema = z.object({
   blocker: z.string(),

@@ -1,22 +1,22 @@
 "use client";
 
-import { lazy, Suspense, useLayoutEffect, useRef, type CSSProperties } from "react";
+import { type CSSProperties, lazy, Suspense, useLayoutEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
-import type { Toast as ToastType, ToastPosition } from "./toast-store";
+import type { ToastPosition, Toast as ToastType } from "./toast-store";
 import { getTimerSnapshot } from "./toast-store";
 import {
+  icons,
+  positionToSide,
+  type ToastTone,
   toastShellVariants,
+  toastSlideInVariants,
+  toastSlideOutVariants,
   toastToneBg,
   toastToneBorder,
   toastToneCornerBorder,
   toastToneText,
-  toastSlideInVariants,
-  toastSlideOutVariants,
-  icons,
-  positionToSide,
-  type ToastTone,
 } from "./toast-variants";
-import { useToastDismiss } from "./use-toast-dismiss";
+import { useToastDismiss } from "./use-dismiss";
 
 const LazySpinner = lazy(() =>
   import("../spinner/spinner").then((m) => ({ default: m.Spinner })),
@@ -71,7 +71,6 @@ function ToastLayout(props: ToastProps) {
     case "hud": return <HudLayout {...props} />;
     case "viewfinder": return <ViewfinderLayout {...props} />;
     case "countdown": return <CountdownLayout {...props} />;
-    case "card":
     default: return <CardLayout {...props} />;
   }
 }

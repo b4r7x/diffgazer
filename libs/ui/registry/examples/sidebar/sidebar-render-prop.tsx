@@ -1,15 +1,15 @@
+import type { Ref } from "react"
 import {
   Sidebar,
-  SidebarHeader,
   SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarItem,
+  SidebarItemBadge,
+  SidebarItemLabel,
   SidebarSection,
   SidebarSectionTitle,
-  SidebarItem,
-  SidebarItemLabel,
-  SidebarItemBadge,
-  SidebarFooter,
 } from "@/components/ui/sidebar"
-import type { Ref } from "react"
 
 export default function SidebarRenderProp() {
   return (

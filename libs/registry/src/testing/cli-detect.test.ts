@@ -1,7 +1,7 @@
-import { describe, expect, it, afterEach, beforeEach, vi } from "vitest";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { detectPackageManager, detectSourceDir } from "../cli/detect.js";
 
 describe("detectPackageManager", () => {
@@ -12,7 +12,7 @@ describe("detectPackageManager", () => {
     root = mkdtempSync(join(tmpdir(), "registry-detect-"));
     originalUserAgent = process.env.npm_config_user_agent;
     // Boundary mock: console.warn — detectPackageManager emits expected ambiguity
-    // warnings via cli/logger.warn (which writes to console.warn). Silence them
+    // warnings via cli/terminal (which writes to console.warn). Silence them
     // so the test runner output stays focused on real failures.
     vi.spyOn(console, "warn").mockImplementation(() => undefined);
   });

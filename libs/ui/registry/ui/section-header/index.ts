@@ -1,5 +1,5 @@
 export {
   SectionHeader,
-  sectionHeaderVariants,
   type SectionHeaderProps,
+  sectionHeaderVariants,
 } from "./section-header";

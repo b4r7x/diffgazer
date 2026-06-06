@@ -10,7 +10,7 @@
   "files": [
     {
       "path": "registry/hooks/use-focus-trap.ts",
-      "content": "\"use client\";\n\nimport { useFocusTrap, type UseFocusTrapOptions } from \"@/hooks/use-focus-trap\";\n\nexport { useFocusTrap, type UseFocusTrapOptions };\n",
+      "content": "\"use client\";\n\nimport { type UseFocusTrapOptions, useFocusTrap } from \"@/hooks/use-focus-trap\";\n\nexport { useFocusTrap, type UseFocusTrapOptions };\n",
       "type": "registry:hook"
     }
   ],

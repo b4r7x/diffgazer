@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffectEvent, useLayoutEffect, useRef, type RefObject } from "react";
+import { type RefObject, useEffectEvent, useLayoutEffect, useRef } from "react";
 
 interface FormSubscription {
   form: HTMLFormElement;

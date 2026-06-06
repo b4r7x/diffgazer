@@ -1,8 +1,8 @@
 "use client";
 
 import { Children, type ReactNode } from "react";
-import { CommandPaletteItem, type CommandPaletteItemProps, type CommandPaletteItemTone } from "./command-palette-item";
 import { useCommandPaletteContext } from "./command-palette-context";
+import { CommandPaletteItem, type CommandPaletteItemProps, type CommandPaletteItemTone } from "./command-palette-item";
 
 const TONE_RULES: ReadonlyArray<readonly [RegExp, CommandPaletteItemTone]> = [
   [/^(delete|remove|reset|drop|destroy|log\s*out|sign\s*out)\b/i, "destructive"],

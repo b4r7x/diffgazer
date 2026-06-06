@@ -1,14 +1,15 @@
 import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import { fileURLToPath } from "node:url"
-import { render, screen, fireEvent, waitFor, within } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { axe } from "../../../testing/utils"
-import { afterEach, afterAll, beforeAll, beforeEach, describe, it, expect, vi } from "vitest"
-import { useRef, useState, type ReactNode, type SyntheticEvent } from "react"
+import { type ReactNode, type SyntheticEvent, useRef, useState } from "react"
 import { renderToString } from "react-dom/server"
-import { Dialog } from "./index"
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest"
+import { axe } from "../../../testing/axe"
+import { requireAttribute } from "../../testing/assertions"
 import { Popover } from "../popover/index"
+import { Dialog } from "./index"
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -83,7 +84,7 @@ describe("Dialog", () => {
           <Dialog.Header>
             <Dialog.Title>Test</Dialog.Title>
           </Dialog.Header>
-          <button>Inside Button</button>
+          <button type="button">Inside Button</button>
           <Dialog.Close />
         </Dialog.Content>
       </Dialog>
@@ -271,7 +272,7 @@ describe("Dialog", () => {
             <Popover triggerMode="click" defaultOpen>
               <Popover.Trigger>Nested popover trigger</Popover.Trigger>
               <Popover.Content aria-label="Delayed nested popover">
-                <button>Nested action</button>
+                <button type="button">Nested action</button>
               </Popover.Content>
             </Popover>
           </Dialog.Content>
@@ -370,7 +371,7 @@ describe("Dialog", () => {
     )
 
     const dialog = screen.getByRole("dialog", { name: "Described dialog" })
-    const describedBy = dialog.getAttribute("aria-describedby")!
+    const describedBy = requireAttribute(dialog, "aria-describedby")
     expect(describedBy).toContain("external-help")
     const description = screen.getByText("Internal description")
     expect(describedBy).toContain(description.id)
@@ -636,9 +637,17 @@ describe("Dialog", () => {
 
     expect(onOpenChange2).toHaveBeenCalledWith(false)
     expect(onOpenChange1).not.toHaveBeenCalled()
-    await waitFor(() => expect(secondDialog).toHaveAttribute("data-state", "closed"))
-    expect(firstDialog).toHaveAttribute("data-state", "open")
-    expect(document.body).toContainElement(secondDialog)
+    // Assert the closing-but-still-present contract in a single synchronous
+    // waitFor snapshot: the top dialog is "closed" yet still mounted for its exit
+    // animation while the dialog below stays open. Observing all three facts in
+    // one callback prevents the presence exit-fallback timer (which unmounts the
+    // closing dialog after exitFallbackMs) from interleaving between the
+    // data-state check and the containment check under CPU load.
+    await waitFor(() => {
+      expect(secondDialog).toHaveAttribute("data-state", "closed")
+      expect(firstDialog).toHaveAttribute("data-state", "open")
+      expect(document.body).toContainElement(secondDialog)
+    })
 
     // fireEvent retained: animationend has no user-event equivalent
     fireEvent.animationEnd(secondDialog)

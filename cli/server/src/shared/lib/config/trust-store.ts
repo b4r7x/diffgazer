@@ -1,14 +1,14 @@
-import { type Result, ok, err } from "@diffgazer/core/result";
+import { err, ok, type Result } from "@diffgazer/core/result";
 import type { TrustConfig } from "@diffgazer/core/schemas/config";
+import { getFileMtimeMs } from "../fs.js";
+import { getGlobalTrustPath } from "../paths.js";
+import { loadTrust, persistTrustAsync } from "./persistence.js";
+import { persistError } from "./secrets-store.js";
 import type {
   SecretsStorageError,
   SecretsStorageErrorCode,
   TrustState,
 } from "./types.js";
-import { loadTrust, persistTrustAsync } from "./state.js";
-import { getFileMtimeMs } from "../fs.js";
-import { getGlobalTrustPath } from "../paths.js";
-import { persistError } from "./secrets-store.js";
 
 export interface TrustStore {
   getTrust(projectId: string): TrustConfig | null;
@@ -86,7 +86,11 @@ export function createTrustStore(): TrustStore {
       delete trustState.projects[projectId];
       const result = await persistTrust(true);
       if (!result.ok) {
-        trustState.projects[projectId] = backup!;
+        if (backup === undefined) {
+          delete trustState.projects[projectId];
+        } else {
+          trustState.projects[projectId] = backup;
+        }
         return result;
       }
     }

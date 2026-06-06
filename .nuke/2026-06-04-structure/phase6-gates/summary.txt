@@ -1,0 +1,10 @@
+pnpm-install EXIT=0
+prepare-artifacts EXIT=0
+type-check EXIT=0
+validate-artifacts EXIT=0
+test EXIT=0
+smoke EXIT=0
+verify-monorepo EXIT=0
+git-diff-check EXIT=0
+keys-pack-manifest-ban EXIT=0
+source-ts-files-changed: 726 (expected: only prior-phase files, no NEW ones from phase 6)

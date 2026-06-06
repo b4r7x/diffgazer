@@ -1,15 +1,15 @@
 "use client";
 
-import { useCallback } from "react";
-import {
-  useNavigationCore,
-  type UseNavigationOptions,
-} from "./use-navigation.js";
 import type { RefObject } from "react";
-import { useKey } from "./use-key.js";
+import { useCallback } from "react";
 import { keys } from "../core/keys.js";
-import { resolveDirectionKeys, dispatchNavigationKey } from "../core/navigation-dispatch.js";
-import { useKeyboardRegistryContext } from "../context/keyboard-context.js";
+import { dispatchNavigationKey, resolveDirectionKeys } from "../core/navigation-dispatch.js";
+import { useKeyboardRegistryContext } from "../providers/keyboard-context.js";
+import { useKey } from "./use-key.js";
+import {
+  type UseNavigationOptions,
+  useNavigationCore,
+} from "./use-navigation.js";
 
 export type UseScopedNavigationOptions<TValue extends string = string> = Omit<
   UseNavigationOptions<TValue>,

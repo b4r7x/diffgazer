@@ -1,8 +1,8 @@
 "use client";
 
 import type { ComponentPropsWithRef, ReactNode } from "react";
+import { type OverflowIndicatorRender, OverflowItems } from "./overflow-items";
 import { OverflowText } from "./overflow-text";
-import { OverflowItems, type OverflowIndicatorRender } from "./overflow-items";
 
 type DivRootProps = Omit<ComponentPropsWithRef<"div">, "children">;
 

@@ -1,0 +1,11 @@
+prepare-artifacts EXIT=0
+type-check EXIT=0
+validate-artifacts EXIT=0
+test EXIT=0
+test-scripts EXIT=0
+check EXIT=0
+knip-report EXIT=1
+(knip staged non-blocking per spec)
+smoke EXIT=0
+verify-monorepo EXIT=0
+git-diff-check EXIT=0

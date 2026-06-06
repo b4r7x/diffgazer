@@ -1,18 +1,18 @@
-import { useEffect, useRef, useState } from "react";
+import { isApiError } from "@diffgazer/core/api";
+import { useReview } from "@diffgazer/core/api/hooks";
+import type { ReviewIssue } from "@diffgazer/core/schemas/review";
+import { toast } from "@diffgazer/ui/components/toast";
 import {
   useNavigate,
   useParams,
   useRouter,
   useSearch,
 } from "@tanstack/react-router";
-import { ReviewContainer, ReviewLoadingMessage, type ReviewCompleteData } from "./review-container";
-import { ReviewSummaryView } from "./review-summary-view";
-import { ReviewResultsView } from "./review-results-view";
-import type { ReviewIssue } from "@diffgazer/core/schemas/review";
-import { useReviewErrorHandler } from "../hooks";
-import { isApiError } from "@diffgazer/core/api";
-import { useReview } from "@diffgazer/core/api/hooks";
-import { toast } from "@diffgazer/ui/components/toast";
+import { useEffect, useRef, useState } from "react";
+import { useReviewErrorHandler } from "../hooks/use-error-handler";
+import { type ReviewCompleteData, ReviewContainer, ReviewLoadingMessage } from "./container";
+import { ReviewResultsView } from "./results-view";
+import { ReviewSummaryView } from "./summary-view";
 
 interface ReviewData {
   issues: ReviewIssue[];

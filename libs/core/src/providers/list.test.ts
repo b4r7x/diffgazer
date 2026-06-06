@@ -1,8 +1,8 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import type {
   ProviderInfo,
   ProviderStatus,
-} from "@diffgazer/core/schemas/config";
+} from "../schemas/config/index.js";
 import { mapProvidersWithStatus } from "./list.js";
 
 const PROVIDERS: ProviderInfo[] = [

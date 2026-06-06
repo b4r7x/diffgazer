@@ -1,1 +1,1 @@
-export { getFigletText, type FigletFont } from "./get-figlet-text";
+export { type FigletFont, getFigletText } from "./figlet-text";

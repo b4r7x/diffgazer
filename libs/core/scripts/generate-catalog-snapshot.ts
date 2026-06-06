@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { parseModelsDevCatalog, type ModelsDevCatalog, type ModelsDevModel } from "../src/catalog/schema.js";
 import { PROVIDER_OVERLAY, SURFACED_OVERLAYS } from "../src/catalog/provider-overlay.js";
+import { type ModelsDevCatalog, type ModelsDevModel, parseModelsDevCatalog } from "../src/catalog/schema.js";
 
 const SOURCE = process.env.MODELSDEV_SOURCE;
 const OUT = resolve(import.meta.dirname, "..", "src", "catalog", "catalog-snapshot.ts");
