@@ -1,16 +1,16 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { DocsNotFoundBlock } from "@/components/docs-not-found";
-import { Footer } from "@/layouts/footer";
-import { Header } from "@/layouts/header";
+import { Footer } from "@/components/layout/footer";
+import { Header } from "@/components/layout/header";
 import {
 	type DocsLibraryId,
 	getDocsLibraryConfig,
 	isDocsLibraryId,
 	PRIMARY_DOCS_LIBRARY_ID,
 	parseDocsLibrary,
-} from "@/lib/docs-library";
-import { fromFumadocsRoot, mapPageTreeForLibrary } from "@/lib/docs-tree";
+} from "@/lib/library";
+import { fromFumadocsRoot, mapPageTreeForLibrary } from "@/lib/page-tree";
 
 const docsShellLoader = createServerFn({ method: "GET" })
 	.inputValidator((input: { library: DocsLibraryId }) => input)

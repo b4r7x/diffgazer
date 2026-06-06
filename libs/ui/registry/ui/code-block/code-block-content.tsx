@@ -2,8 +2,8 @@
 
 import { Children, type ComponentProps } from "react";
 import { ScrollArea } from "../scroll-area/scroll-area";
-import { CodeBlockLine } from "./code-block-line";
 import { useRequiredCodeBlockContext } from "./code-block-context";
+import { CodeBlockLine } from "./code-block-line";
 
 export interface CodeBlockContentProps extends ComponentProps<"div"> {
   showLineNumbers?: boolean;
@@ -45,6 +45,7 @@ export function CodeBlockContent({
       <pre data-slot="code-block-content" style={{ "--cb-line-number-w": `${gutterWidth}ch` } as React.CSSProperties}>
         {lines
           ? lines.map((line, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: code lines render in fixed source order and are never reordered; the line index is the stable identity (line content can repeat).
               <CodeBlockLine key={i} number={showLineNumbers ? i + 1 : undefined} content={line} />
             ))
           : children}

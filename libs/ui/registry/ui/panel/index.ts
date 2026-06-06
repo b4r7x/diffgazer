@@ -2,17 +2,17 @@
 
 import "../shared/panel.css";
 
-import { Panel as PanelRoot, type PanelProps } from "./panel";
-import { PanelHeader, type PanelHeaderProps } from "./panel-header";
-import { PanelTitle, type PanelTitleProps } from "./panel-title";
-import { PanelDescription, type PanelDescriptionProps } from "./panel-description";
+import { type PanelProps, Panel as PanelRoot } from "./panel";
 import {
   PanelContent,
-  panelContentVariants,
   type PanelContentProps,
+  panelContentVariants,
 } from "./panel-content";
+import { PanelDescription, type PanelDescriptionProps } from "./panel-description";
 import { PanelFooter, type PanelFooterProps } from "./panel-footer";
+import { PanelHeader, type PanelHeaderProps } from "./panel-header";
 import { PanelRow, type PanelRowProps } from "./panel-row";
+import { PanelTitle, type PanelTitleProps } from "./panel-title";
 
 const Panel = Object.assign(PanelRoot, {
   Header: PanelHeader,

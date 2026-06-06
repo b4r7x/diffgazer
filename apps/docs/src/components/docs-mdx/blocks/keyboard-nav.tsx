@@ -1,5 +1,5 @@
+import { Typography } from "@diffgazer/ui/components/typography";
 import { DemoPreview } from "@/components/demo-preview";
-import { Typography } from "@/components/ui/typography/typography";
 import { resolvePreviewFrame } from "@/lib/example-frames";
 import { useDemos } from "@/lib/use-demos";
 import { useComponentData } from "../doc-data-context";

@@ -1,5 +1,5 @@
-import { resolve } from "node:path";
 import { realpath } from "node:fs/promises";
+import { resolve } from "node:path";
 
 /**
  * Synchronous string-level guard: rejects null bytes and any `..` path segment.

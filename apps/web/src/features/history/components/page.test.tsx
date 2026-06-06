@@ -1,8 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { clearScopedRouteState } from "@/hooks/use-scoped-route-state";
-import { makeReview, renderWithProviders } from "@/testing";
+import { makeReview } from "@/testing/factories";
+import { renderWithProviders } from "@/testing/render";
 
 const { mockNavigate, mockUseReview, mockUseReviews } = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
@@ -152,7 +153,10 @@ describe("HistoryPage keyboard navigation", () => {
     await waitFor(() => expect(runsList).toHaveFocus());
 
     const options = within(runsList).getAllByRole("option");
-    const activeRun = options[0];
+    const [activeRun] = options;
+    if (activeRun === undefined) {
+      throw new Error("Expected at least one review run option");
+    }
     await waitFor(() => expect(activeRun).toHaveAttribute("data-active", "true"));
 
     expect(within(activeRun).getByText(/3 low/i)).toBeInTheDocument();

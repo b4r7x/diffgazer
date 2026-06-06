@@ -2,20 +2,20 @@ import type {
   ActivateProviderResponse,
   ConfigCheckResponse,
   CurrentConfigResponse as ConfigResponse,
-  DeleteProviderCredentialsResponse as DeleteProviderResponse,
   DeleteConfigResponse,
+  DeleteProviderCredentialsResponse as DeleteProviderResponse,
   InitResponse,
-  ProvidersStatusResponse,
   OpenRouterModelsResponse,
   ProviderModelsResponse,
+  ProvidersStatusResponse,
   SaveConfigRequest,
   SettingsConfig,
   TrustConfig,
-} from "@diffgazer/core/schemas/config";
+} from "../schemas/config/index.js";
 import {
   OpenRouterModelsResponseSchema,
   ProviderModelsResponseSchema,
-} from "@diffgazer/core/schemas/config";
+} from "../schemas/config/index.js";
 import type { ApiClient, TrustListResponse, TrustResponse } from "./types.js";
 
 export async function getProviderStatus(

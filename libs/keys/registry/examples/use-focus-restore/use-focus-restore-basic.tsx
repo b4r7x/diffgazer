@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
 import { useFocusRestore } from "@diffgazer/keys"
+import { useEffect, useRef, useState } from "react"
 
 export default function UseFocusRestoreBasic() {
   const [open, setOpen] = useState(false)

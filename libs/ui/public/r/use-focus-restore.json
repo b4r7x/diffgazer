@@ -10,7 +10,7 @@
   "files": [
     {
       "path": "registry/hooks/use-focus-restore.ts",
-      "content": "\"use client\";\n\nimport { useFocusRestore, type UseFocusRestoreOptions, type UseFocusRestoreReturn } from \"@/hooks/use-focus-restore\";\n\nexport { useFocusRestore, type UseFocusRestoreOptions, type UseFocusRestoreReturn };\n",
+      "content": "\"use client\";\n\nimport { type UseFocusRestoreOptions, type UseFocusRestoreReturn, useFocusRestore } from \"@/hooks/use-focus-restore\";\n\nexport { useFocusRestore, type UseFocusRestoreOptions, type UseFocusRestoreReturn };\n",
       "type": "registry:hook"
     }
   ],

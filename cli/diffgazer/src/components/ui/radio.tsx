@@ -1,10 +1,10 @@
-import { createContext, useState, useContext } from "react";
-import type { ReactElement, ReactNode } from "react";
+import { clampIndex } from "@diffgazer/keys";
 import { Box, Text, useInput } from "ink";
-import { useTheme } from "../../theme/theme-context";
-import type { CliColorTokens } from "../../theme/palettes";
+import type { ReactElement, ReactNode } from "react";
+import { createContext, useContext, useState } from "react";
+import { useTheme } from "../../app/providers/theme";
 import { collectChildItems } from "../../lib/list-navigation";
-import { stepIndex } from "../../lib/highlight-navigation";
+import type { CliColorTokens } from "../../theme/palettes";
 
 export interface RadioGroupProps {
   value?: string;
@@ -131,7 +131,7 @@ function RadioGroupRoot({
 
   function moveBy(direction: 1 | -1) {
     if (selectableItems.length === 0) return;
-    const nextIdx = stepIndex(highlightIndex, direction, selectableItems.length, wrap);
+    const nextIdx = clampIndex(highlightIndex, direction, selectableItems.length, wrap);
     setHighlightIndex(nextIdx);
     const nextItem = selectableItems[nextIdx];
     if (nextItem) {

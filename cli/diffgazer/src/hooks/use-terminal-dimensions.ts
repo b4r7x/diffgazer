@@ -1,6 +1,6 @@
+import { buildResponsiveResult, getBreakpointTier, type ResponsiveResult } from "@diffgazer/core/breakpoints";
 import { useStdout } from "ink";
-import { useState, useEffect } from "react";
-import { getBreakpointTier, buildResponsiveResult, type ResponsiveResult } from "@diffgazer/core";
+import { useEffect, useState } from "react";
 
 interface TerminalDimensions {
   columns: number;

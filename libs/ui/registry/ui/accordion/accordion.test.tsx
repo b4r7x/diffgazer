@@ -1,9 +1,9 @@
-import { createRef } from "react"
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+import { createRef } from "react"
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { testNavigationBehavior } from "../../../../keys/src/testing/navigation-behavior"
-import { axe } from "../../../testing/utils"
-import { afterAll, beforeAll, describe, it, expect, vi } from "vitest"
+import { axe } from "../../../testing/axe"
 import { Accordion } from "./index"
 
 function renderAccordion(props: Record<string, unknown> = {}) {
@@ -438,7 +438,7 @@ describe("Accordion inert on collapsed content", () => {
             <Accordion.Trigger>Section One</Accordion.Trigger>
           </Accordion.Header>
           <Accordion.Content>
-            <button>Button One</button>
+            <button type="button">Button One</button>
           </Accordion.Content>
         </Accordion.Item>
         <Accordion.Item value="two">
@@ -446,7 +446,7 @@ describe("Accordion inert on collapsed content", () => {
             <Accordion.Trigger>Section Two</Accordion.Trigger>
           </Accordion.Header>
           <Accordion.Content>
-            <button>Button Two</button>
+            <button type="button">Button Two</button>
           </Accordion.Content>
         </Accordion.Item>
       </Accordion>

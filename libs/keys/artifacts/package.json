@@ -22,7 +22,7 @@
     "@diffgazer/keys": "workspace:*"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20.0.0"
   },
   "license": "MIT"
 }

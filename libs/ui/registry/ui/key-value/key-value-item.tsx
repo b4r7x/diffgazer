@@ -1,9 +1,9 @@
 "use client";
 
-import type { ComponentPropsWithRef, ReactNode } from "react";
 import { cva } from "class-variance-authority";
+import type { ComponentPropsWithRef, ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { useKeyValueContext, type KeyValueLayout, type KeyValueVariant } from "./key-value-context";
+import { type KeyValueLayout, type KeyValueVariant, useKeyValueContext } from "./key-value-context";
 
 export interface KeyValueItemProps extends Omit<ComponentPropsWithRef<"dt">, "children"> {
   label: ReactNode;

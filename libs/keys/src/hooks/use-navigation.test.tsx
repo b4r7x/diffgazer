@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { useRef, useState } from "react";
 import { afterEach, describe, expect, expectTypeOf, it, vi } from "vitest";
 import { testNavigationBehavior } from "../testing/navigation-behavior.js";
-import { useNavigation, type UseNavigationOptions, type UseNavigationReturn } from "./use-navigation.js";
+import { type UseNavigationOptions, type UseNavigationReturn, useNavigation } from "./use-navigation.js";
 
 function itemId(value: string) {
   return value === "" ? "item-empty" : `item-${value}`;

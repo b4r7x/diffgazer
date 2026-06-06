@@ -12,6 +12,7 @@
     "url": "https://github.com/b4r7x/diffgazer/issues"
   },
   "license": "MIT",
+  "author": "diffgazer",
   "type": "module",
   "sideEffects": [
     "**/*.css"
@@ -283,10 +284,6 @@
     "dist",
     "!dist/artifacts",
     "!dist/artifacts/**",
-    "!dist/components/dialog-shell.js",
-    "!dist/components/dialog-shell.d.ts",
-    "!dist/components/portal.js",
-    "!dist/components/portal.d.ts",
     "!dist/_types/registry/ui/shared",
     "!dist/_types/registry/ui/shared/**",
     "!dist/_types/shared",
@@ -297,7 +294,7 @@
     "SUPPORT.md"
   ],
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "browserslist": [
     "Chrome >= 111",
@@ -309,14 +306,16 @@
     "last 2 Firefox versions"
   ],
   "scripts": {
-    "build": "pnpm validate:registry && tsup && pnpm build:declarations && pnpm build:shadcn && pnpm build:docs-data && pnpm build:artifacts",
+    "build": "pnpm validate:registry && tsup && pnpm verify:rsc && pnpm build:declarations && pnpm build:shadcn && pnpm build:docs-data && pnpm build:artifacts",
+    "verify:rsc": "node --import tsx scripts/verify-rsc-directives.ts",
     "build:declarations": "node --import tsx scripts/build-declarations.ts",
     "build:shadcn": "node --import tsx scripts/build-shadcn-registry.ts",
     "build:docs-data": "node --import tsx scripts/build-docs-data.ts",
     "build:artifacts": "node --import tsx scripts/build-publish-artifacts.ts",
     "validate:registry": "node --import tsx scripts/validate-registry-metadata.ts",
     "validate:artifacts": "pnpm --dir ../.. validate:artifacts",
-    "type-check": "tsc --noEmit && tsc --noEmit -p tsconfig.tools.json && tsc --noEmit -p tsconfig.test.json && tsc --noEmit -p scripts/tsconfig.json",
+    "type-check": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json && tsc --noEmit -p scripts/tsconfig.json",
+    "check": "biome check .",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:types": "vitest --typecheck --typecheck.only --run",
@@ -336,9 +335,6 @@
     "react-dom": ">=19.2.0"
   },
   "peerDependenciesMeta": {
-    "@diffgazer/keys": {
-      "optional": true
-    },
     "figlet": {
       "optional": true
     },
@@ -347,8 +343,11 @@
     }
   },
   "devDependencies": {
+    "@chialab/vitest-axe": "^0.19.1",
     "@diffgazer/keys": "workspace:*",
     "@diffgazer/registry": "workspace:*",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/figlet": "^1.7.0",
     "@types/hast": "^3.0.4",
     "@types/jsdom": "^28.0.3",
@@ -357,9 +356,11 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "esbuild": "^0.27.0",
+    "jsdom": "^28.1.0",
     "shadcn": "^4.7.0",
     "tsup": "^8.5.1",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.0"
   },
   "publishConfig": {
     "access": "public",

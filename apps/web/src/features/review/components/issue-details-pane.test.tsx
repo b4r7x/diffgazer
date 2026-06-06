@@ -1,8 +1,8 @@
-import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
-import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import type { IssueTab } from "@diffgazer/core/schemas/presentation";
-import { makeIssue } from "@/testing";
+import type { ReviewIssue } from "@diffgazer/core/schemas/review";
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { makeIssue } from "@/testing/factories";
 import { IssueDetailsPane } from "./issue-details-pane";
 
 function renderPane(issue: ReviewIssue | null, activeTab: IssueTab = "details") {

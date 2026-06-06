@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button"
 import {
   EmptyState,
   EmptyStateActions,
@@ -5,7 +6,6 @@ import {
   EmptyStateIcon,
   EmptyStateMessage,
 } from "@/components/ui/empty-state"
-import { Button } from "@/components/ui/button"
 
 export default function EmptyStateVariants() {
   return (

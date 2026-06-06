@@ -1,8 +1,10 @@
+import * as fs from "node:fs";
 import { homedir } from "node:os";
 import * as path from "node:path";
-import * as fs from "node:fs";
 
 export const PROJECT_ROOT_HEADER = "x-diffgazer-project-root";
+
+export const isPackaged = (): boolean => process.env.DIFFGAZER_PACKAGED === "1";
 
 const DEFAULT_GLOBAL_DIR = path.join(homedir(), ".diffgazer");
 

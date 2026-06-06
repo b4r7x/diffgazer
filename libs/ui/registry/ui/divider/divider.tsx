@@ -1,5 +1,5 @@
-import type { HTMLAttributes, Ref } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
+import type { HTMLAttributes, Ref } from "react";
 import { cn } from "@/lib/utils";
 
 export const dividerVariants = cva("flex opacity-40", {
@@ -38,6 +38,7 @@ export function Divider({
   ...props
 }: DividerProps) {
   return (
+    // biome-ignore lint/a11y/useAriaPropsSupportedByRole: role is conditionally "separator" (Biome cannot resolve the ternary); aria-orientation is applied only in that branch and is valid for the separator role.
     <div
       ref={ref}
       {...props}

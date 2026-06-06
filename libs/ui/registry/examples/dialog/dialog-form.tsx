@@ -1,16 +1,16 @@
 "use client";
 
-import { useState, useTransition, type MouseEvent } from "react"
+import { type MouseEvent, useState, useTransition } from "react"
 import {
   Dialog,
-  DialogTrigger,
+  DialogAction,
+  DialogBody,
+  DialogClose,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogBody,
-  DialogFooter,
-  DialogClose,
-  DialogAction,
+  DialogTrigger,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"

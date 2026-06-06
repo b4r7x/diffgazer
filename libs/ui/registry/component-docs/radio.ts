@@ -20,7 +20,7 @@ export const radioDoc: ComponentDoc = {
     {
       title: "Requires @diffgazer/keys (package mode)",
       content:
-        "RadioGroup's roving keyboard navigation imports from the optional @diffgazer/keys peer. Package/npm consumers must install it: `npm install @diffgazer/keys`. Importing @diffgazer/ui/components/radio without keys fails at module load with an error naming the missing @diffgazer/keys package. Copy/dgadd consumers do not need the package — copy mode rewrites the keyboard hooks to local source.",
+        "RadioGroup's roving keyboard navigation imports from the required @diffgazer/keys peer. Package/npm consumers must install it: `npm install @diffgazer/keys`. Importing @diffgazer/ui/components/radio without keys fails at module load with an error naming the missing @diffgazer/keys package. Copy/dgadd consumers do not need the package — copy mode rewrites the keyboard hooks to local source.",
     },
     {
       title: "Composition Contract",

@@ -1,16 +1,17 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import type { z } from "zod";
+import { err, ok } from "@diffgazer/core/result";
 import type { FullReviewStreamEvent } from "@diffgazer/core/schemas/events";
 import type { ReviewResult } from "@diffgazer/core/schemas/review";
 import { ReviewErrorCode } from "@diffgazer/core/schemas/review";
-import { err, ok } from "@diffgazer/core/result";
-import type { SSEWriter } from "../../shared/lib/http/types.js";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import type { z } from "zod";
 import type { AIClient } from "../../shared/lib/ai/types.js";
 import type { createGitService as createGitServiceType } from "../../shared/lib/git/service.js";
+import type { SSEWriter } from "../../shared/lib/http/types.js";
 import { makeIssue } from "../../shared/lib/testing/factories.js";
+import { requireValue } from "../../testing/assertions.js";
 
 // Boundary mock: git/service wraps the `git` CLI subprocess (external-process boundary); tests provide canned status/diff responses so review session lifecycle can be exercised without a real repository.
 vi.mock("../../shared/lib/git/service.js", () => ({
@@ -19,8 +20,8 @@ vi.mock("../../shared/lib/git/service.js", () => ({
 
 type GitService = ReturnType<typeof createGitServiceType>;
 type ServiceModule = typeof import("./service.js");
-type SseReplayModule = typeof import("./sse-replay.js");
-type SessionsModule = typeof import("./sessions.js");
+type SseReplayModule = typeof import("./stream/replay.js");
+type SessionsModule = typeof import("./stream/store.js");
 type GitModule = typeof import("../../shared/lib/git/service.js");
 const REVIEW_DIFF = [
   "diff --git a/src/app.ts b/src/app.ts",
@@ -182,8 +183,8 @@ beforeAll(async () => {
   );
 
   const service = await import("./service.js");
-  const sseReplay = await import("./sse-replay.js");
-  const sessions = await import("./sessions.js");
+  const sseReplay = await import("./stream/replay.js");
+  const sessions = await import("./stream/store.js");
   const git = await import("../../shared/lib/git/service.js");
   createReviewSession = service.createReviewSession;
   streamActiveSessionToSSE = sseReplay.streamActiveSessionToSSE;
@@ -235,8 +236,8 @@ describe("createReviewSession", () => {
     trackSessionWithRunner(result.value.reviewId);
     const session = getSession(result.value.reviewId);
     expect(session).toBeDefined();
-    expect(session!.isReady).toBe(true);
-    expect(session!.mode).toBe("unstaged");
+    expect(session?.isReady).toBe(true);
+    expect(session?.mode).toBe("unstaged");
   });
 
   it("returns the existing session when a matching ready session exists", async () => {
@@ -447,14 +448,15 @@ describe("POST-to-stream integration", () => {
 
     const session = getSession(result.value.reviewId);
     expect(session).toBeDefined();
+    const activeSession = requireValue(session, "review session");
 
     const stream = makeMockStream();
 
     await vi.waitFor(() => {
-      if (!session!.isComplete) throw new Error("session not complete yet");
+      if (!activeSession.isComplete) throw new Error("session not complete yet");
     });
 
-    await streamActiveSessionToSSE(stream, session!);
+    await streamActiveSessionToSSE(stream, activeSession);
 
     const events = parsedEvents(stream);
     const types = events.map((e) => e.type);
@@ -486,13 +488,14 @@ describe("POST-to-stream integration", () => {
 
     const session = getSession(result.value.reviewId);
     expect(session).toBeDefined();
+    const activeSession = requireValue(session, "review session");
 
     await vi.waitFor(() => {
-      if (!session!.isComplete) throw new Error("session not complete yet");
+      if (!activeSession.isComplete) throw new Error("session not complete yet");
     });
 
     const stream = makeMockStream();
-    await streamActiveSessionToSSE(stream, session!);
+    await streamActiveSessionToSSE(stream, activeSession);
 
     const events = parsedEvents(stream);
     const lastEvent = events[events.length - 1];

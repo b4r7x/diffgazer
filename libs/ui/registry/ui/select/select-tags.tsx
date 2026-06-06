@@ -3,7 +3,7 @@
 import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { useSelectContext } from "./select-context";
-import { toSelectedArray } from "./select-utils";
+import { toSelectedArray } from "./selection";
 
 const selectTagsPlaceholderVariants = cva("", {
   variants: {

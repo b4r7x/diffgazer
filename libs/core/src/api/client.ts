@@ -1,5 +1,5 @@
-import type { ApiClient, ApiClientConfig, ApiError, RequestOptions, ResponseValidator } from "./types.js";
 import { SHUTDOWN_TOKEN_HEADER } from "./protocol.js";
+import type { ApiClient, ApiClientConfig, ApiError, RequestOptions, ResponseValidator } from "./types.js";
 
 function createApiError(message: string, status: number, code?: string): ApiError {
   const error = new Error(message) as ApiError;

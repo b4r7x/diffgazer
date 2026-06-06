@@ -1,4 +1,4 @@
 "use client";
 
-export { Input, inputSizeClasses, inputVariants, type InputProps, type InputVariantProps } from "./input";
-export { InputGroup, inputGroupVariants, type InputGroupProps, type InputGroupVariantProps } from "./input-group";
+export { Input, type InputProps, type InputVariantProps, inputSizeClasses, inputVariants } from "./input";
+export { InputGroup, type InputGroupProps, type InputGroupVariantProps, inputGroupVariants } from "./input-group";

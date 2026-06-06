@@ -1,6 +1,6 @@
-import { cn } from "@diffgazer/ui/lib/utils";
-import { Typography } from "@diffgazer/ui/components/typography";
 import type { ReviewSeverity } from "@diffgazer/core/schemas/review";
+import { Typography } from "@diffgazer/ui/components/typography";
+import { cn } from "@diffgazer/ui/lib/utils";
 import { SEVERITY_CONFIG } from "@/components/ui/severity/constants";
 
 export interface IssueHeaderProps {

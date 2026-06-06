@@ -1,5 +1,5 @@
-import { Overflow } from "@/components/ui/overflow"
 import { Avatar } from "@/components/ui/avatar"
+import { Overflow } from "@/components/ui/overflow"
 
 const users = [
   { initials: "FX", name: "Felix" },

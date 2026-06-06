@@ -31,6 +31,7 @@
    * elsewhere.
    */
   [data-variant="ascii"] [data-stepper-cursor] {
+    /* biome-ignore lint/complexity/noImportantStyles: prefers-reduced-motion override must defeat the cursor keyframes regardless of specificity. */
     animation: none !important;
   }
 }

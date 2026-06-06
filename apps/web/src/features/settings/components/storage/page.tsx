@@ -1,16 +1,16 @@
-import { useRef, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { matchQueryState, useSaveSettings, useSettings } from "@diffgazer/core/api/hooks";
+import { getErrorMessage } from "@diffgazer/core/errors";
+import { usePageFooter } from "@diffgazer/core/footer";
+import { deriveSaveState } from "@diffgazer/core/forms";
 import type { SecretsStorage } from "@diffgazer/core/schemas/config";
 import type { Shortcut } from "@diffgazer/core/schemas/presentation";
-import { getErrorMessage } from "@diffgazer/core/errors";
+import { useActionRowNavigation, useKey, useScope } from "@diffgazer/keys";
 import { Button } from "@diffgazer/ui/components/button";
 import { Callout } from "@diffgazer/ui/components/callout";
-import { CardLayout } from "@/components/ui/card-layout";
+import { useNavigate } from "@tanstack/react-router";
+import { useRef, useState } from "react";
 import { StorageSelectorContent } from "@/components/shared/storage-selector-content";
-import { useSettings, useSaveSettings, matchQueryState } from "@diffgazer/core/api/hooks";
-import { useKey, useScope } from "@diffgazer/keys";
-import { usePageFooter } from "@diffgazer/core/footer";
-import { useActionRowNavigation } from "@diffgazer/keys";
+import { CardLayout } from "@/components/ui/card-layout";
 
 export function SettingsStoragePage() {
   const navigate = useNavigate();
@@ -23,12 +23,16 @@ export function SettingsStoragePage() {
   const [error, setError] = useState<string | null>(null);
   const isSaving = saveSettings.isPending;
 
-  const effectiveStorage = storageChoice ?? settings?.secretsStorage ?? null;
+  const { effective: effectiveStorage, isDirty } = deriveSaveState<SecretsStorage | null>({
+    persisted: settings?.secretsStorage,
+    choice: storageChoice,
+    saving: isSaving,
+    fallback: null,
+  });
 
   useScope("settings-storage");
   useKey("Escape", () => navigate({ to: "/settings" }), { enabled: !isSaving });
 
-  const isDirty = settings?.secretsStorage !== effectiveStorage;
   const canSave = !isSaving && !!effectiveStorage && isDirty;
   const isSaveDisabled = !canSave;
 

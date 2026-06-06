@@ -1,19 +1,19 @@
 import type { ReactElement } from "react";
-import { useNavigation } from "./navigation-context";
+import { useNavigation } from "./providers/navigation-provider";
 import type { ScreenName } from "./routes";
-import { HomeScreen } from "./screens/home-screen";
-import { ReviewScreen } from "./screens/review-screen";
-import { HelpScreen } from "./screens/help-screen";
-import { HistoryScreen } from "./screens/history-screen";
-import { OnboardingScreen } from "./screens/onboarding-screen";
-import { SettingsHubScreen } from "./screens/settings/hub-screen";
-import { ThemeScreen } from "./screens/settings/theme-screen";
-import { ProvidersScreen } from "./screens/settings/providers-screen";
-import { StorageScreen } from "./screens/settings/storage-screen";
-import { AnalysisScreen } from "./screens/settings/analysis-screen";
-import { AgentExecutionScreen } from "./screens/settings/agent-execution-screen";
-import { DiagnosticsScreen } from "./screens/settings/diagnostics-screen";
-import { TrustPermissionsScreen } from "./screens/settings/trust-permissions-screen";
+import { HelpScreen } from "./screens/help";
+import { HistoryScreen } from "./screens/history";
+import { HomeScreen } from "./screens/home";
+import { OnboardingScreen } from "./screens/onboarding";
+import { ReviewScreen } from "./screens/review";
+import { AgentExecutionScreen } from "./screens/settings/agent-execution";
+import { AnalysisScreen } from "./screens/settings/analysis";
+import { DiagnosticsScreen } from "./screens/settings/diagnostics";
+import { SettingsHubScreen } from "./screens/settings/hub";
+import { ProvidersScreen } from "./screens/settings/providers";
+import { StorageScreen } from "./screens/settings/storage";
+import { ThemeScreen } from "./screens/settings/theme";
+import { TrustPermissionsScreen } from "./screens/settings/trust-permissions";
 
 export const SCREEN_MAP: Record<ScreenName, () => ReactElement> = {
   "home": () => <HomeScreen />,

@@ -1,9 +1,9 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { z } from "zod";
-import { DEFAULT_ARTIFACT_ROOT, ARTIFACT_FINGERPRINT_FILENAME } from "./constants.js";
-import { readJson } from "./utils/json.js";
+import { ARTIFACT_FINGERPRINT_FILENAME, DEFAULT_ARTIFACT_ROOT } from "./constants.js";
 import { isRelativeSubpath } from "./utils/fs.js";
+import { readJson } from "./utils/json.js";
 
 const RelativeArtifactPathSchema = z.string().min(1).refine(
   isRelativeSubpath,

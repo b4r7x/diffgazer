@@ -1,9 +1,9 @@
+import { SEVERITY_LABELS, SEVERITY_ORDER } from "@diffgazer/core/schemas/presentation";
+import type { ReviewSeverity } from "@diffgazer/core/schemas/review";
+import { Button } from "@diffgazer/ui/components/button";
+import { ToggleGroup, ToggleGroupItem } from "@diffgazer/ui/components/toggle-group";
 import { cn } from "@diffgazer/ui/lib/utils";
 import type { KeyboardEvent, Ref } from "react";
-import type { ReviewSeverity } from "@diffgazer/core/schemas/review";
-import { SEVERITY_ORDER } from "@diffgazer/core/schemas/presentation";
-import { ToggleGroup, ToggleGroupItem } from "@diffgazer/ui/components/toggle-group";
-import { Button } from "@diffgazer/ui/components/button";
 import { SEVERITY_CONFIG } from "@/components/ui/severity/constants";
 
 export type SeverityFilter = ReadonlySet<ReviewSeverity>;
@@ -47,7 +47,7 @@ export function SeverityFilterGroup({
 
   const handleHighlightChange = (value: string | null) => {
     if (value === null) return;
-    const index = SEVERITY_ORDER.findIndex((s) => s === value);
+    const index = SEVERITY_ORDER.indexOf(value as ReviewSeverity);
     if (index >= 0) onFocusedIndexChange?.(index);
   };
 
@@ -76,7 +76,7 @@ export function SeverityFilterGroup({
       >
         {SEVERITY_ORDER.map((sev, index) => {
           const count = counts[sev];
-          const label = SEVERITY_CONFIG[sev].label;
+          const label = SEVERITY_LABELS[sev];
           const isActive = activeFilter.has(sev);
           return (
             <ToggleGroupItem

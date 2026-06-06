@@ -1,8 +1,8 @@
-import type { z } from "zod";
+import type { AppError } from "@diffgazer/core/errors";
+import type { Result } from "@diffgazer/core/result";
 import type { AIProvider } from "@diffgazer/core/schemas/config";
 import type { SharedErrorCode } from "@diffgazer/core/schemas/errors";
-import type { Result } from "@diffgazer/core/result";
-import type { AppError } from "@diffgazer/core/errors";
+import type { z } from "zod";
 
 export type AIErrorCode =
   | SharedErrorCode

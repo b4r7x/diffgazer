@@ -1,10 +1,10 @@
-import { createContext, useState, useContext } from "react";
-import type { ReactElement, ReactNode } from "react";
 import { Box, Text, useInput } from "ink";
-import { useTheme } from "../../theme/theme-context";
-import type { CliColorTokens } from "../../theme/palettes";
-import { collectChildItems } from "../../lib/list-navigation";
+import type { ReactElement, ReactNode } from "react";
+import { createContext, useContext, useState } from "react";
+import { useTheme } from "../../app/providers/theme";
 import { moveHighlight } from "../../lib/highlight-navigation";
+import { collectChildItems } from "../../lib/list-navigation";
+import type { CliColorTokens } from "../../theme/palettes";
 
 export interface MenuProps {
   highlightedId?: string | null;

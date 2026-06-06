@@ -1,11 +1,11 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
-  type PackageManager,
-  type PackageJson,
   detectPackageManager,
-  readPackageJson,
   detectSourceDir,
+  type PackageJson,
+  type PackageManager,
+  readPackageJson,
   readTsConfigPaths,
   warn,
 } from "@diffgazer/registry/cli";
@@ -38,9 +38,11 @@ function aliasPrefixFromKey(key: string): string | null {
 
 function pickSourceAlias(aliases: SourceAlias[]): SourceAlias | null {
   if (aliases.length === 0) return null;
+  const [firstAlias] = aliases;
   return aliases.find((alias) => alias.importPrefix === "@")
     ?? aliases.find((alias) => alias.importPrefix === "~")
-    ?? aliases[0]!;
+    ?? firstAlias
+    ?? null;
 }
 
 function detectTypeScriptAlias(cwd: string): SourceAlias | null {
@@ -101,8 +103,10 @@ function detectRsc(cwd: string, pkg: PackageJson | null): boolean {
     return false;
   }
   const [, major, minor] = match;
-  const maj = parseInt(major!, 10);
-  const min = parseInt(minor!, 10);
+  if (!major || !minor) return false;
+
+  const maj = parseInt(major, 10);
+  const min = parseInt(minor, 10);
   return maj > 13 || (maj === 13 && min >= 4);
 }
 

@@ -1,5 +1,5 @@
-import type { ComponentPropsWithRef } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
+import type { ComponentPropsWithRef } from "react";
 import { cn } from "@/lib/utils";
 
 export const cardLabelVariants = cva(

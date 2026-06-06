@@ -1,13 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { HomeView } from "@/features/home/components/home-view";
-import { buildHomeLibrary, type HomeLibrary } from "@/features/home/home-data";
-import { getEnabledDocsLibraries, parseDocsLibrary } from "@/lib/docs-library";
+import { HomeView } from "@/features/home/components/view";
+import { buildHomeLibrary, type HomeLibrary } from "@/features/home/data";
+import { getEnabledDocsLibraries, parseDocsLibrary } from "@/lib/library";
 import {
 	collectLandingSections,
 	fromFumadocsRoot,
 	mapPageTreeForLibrary,
-} from "@/lib/docs-tree";
+} from "@/lib/page-tree";
 import { buildPageSeo } from "@/lib/seo";
 
 const homeLoader = createServerFn({ method: "GET" }).handler(

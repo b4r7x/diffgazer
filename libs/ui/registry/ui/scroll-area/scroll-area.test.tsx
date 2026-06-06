@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { axe } from "../../../testing/utils"
-import { describe, it, expect, vi } from "vitest"
+import { describe, expect, it, vi } from "vitest"
+import { axe } from "../../../testing/axe"
 import { ScrollArea } from "./scroll-area"
 
 describe("ScrollArea", () => {

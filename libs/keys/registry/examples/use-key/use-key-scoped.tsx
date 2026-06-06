@@ -1,7 +1,7 @@
 "use client"
 
-import { useRef, useState } from "react"
 import { KeyboardProvider, useKey } from "@diffgazer/keys"
+import { useRef, useState } from "react"
 
 function Editor() {
   const [saved, setSaved] = useState(0)

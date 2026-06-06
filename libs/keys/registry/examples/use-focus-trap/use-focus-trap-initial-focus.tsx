@@ -1,7 +1,7 @@
 "use client"
 
-import { useRef, useState } from "react"
 import { useFocusTrap } from "@diffgazer/keys"
+import { useRef, useState } from "react"
 
 export default function UseFocusTrapInitialFocus() {
   const [open, setOpen] = useState(false)

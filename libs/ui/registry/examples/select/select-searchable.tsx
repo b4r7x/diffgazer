@@ -3,10 +3,10 @@
 import { useState } from "react"
 import {
   Select,
-  SelectTrigger,
   SelectContent,
   SelectItem,
   SelectSearch,
+  SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
 

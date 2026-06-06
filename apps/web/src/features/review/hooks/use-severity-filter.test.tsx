@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
-import { act, renderHook } from "@testing-library/react";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
+import { act, renderHook } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
 import { useSeverityFilter } from "./use-severity-filter";
 
 const makeIssue = (id: string, severity: ReviewIssue["severity"]): ReviewIssue => ({

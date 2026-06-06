@@ -2,10 +2,10 @@ import { resolve } from "node:path"
 import {
   buildDocsData,
   createHookDocLoader,
-  kebabToCamelCase,
   type HookRegistryItem,
-  type RegistryItem,
+  kebabToCamelCase,
 } from "@diffgazer/registry"
+import type { RegistryItem } from "@diffgazer/registry/schemas"
 
 const ROOT = resolve(import.meta.dirname, "..")
 

@@ -1,6 +1,6 @@
-import { cn } from "@diffgazer/ui/lib/utils";
-import { Checkbox } from "@diffgazer/ui/components/checkbox";
 import type { FixPlanStep } from "@diffgazer/core/schemas/review";
+import { Checkbox } from "@diffgazer/ui/components/checkbox";
+import { cn } from "@diffgazer/ui/lib/utils";
 
 export interface FixPlanChecklistProps {
   steps: FixPlanStep[];

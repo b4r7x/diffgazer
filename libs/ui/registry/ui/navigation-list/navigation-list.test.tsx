@@ -1,9 +1,10 @@
-import { createRef } from "react"
 import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+import { createRef } from "react"
+import { describe, expect, it, vi } from "vitest"
 import { testNavigationBehavior } from "../../../../keys/src/testing/navigation-behavior"
-import { axe } from "../../../testing/utils"
-import { describe, it, expect, vi } from "vitest"
+import { axe } from "../../../testing/axe"
+import { closestElement } from "../../testing/assertions"
 import { NavigationList } from "./index"
 
 function renderList(props: Record<string, unknown> = {}) {
@@ -465,7 +466,11 @@ describe("NavigationList", () => {
     )
 
     const listbox = screen.getByRole("listbox")
-    const option = screen.getByText("Empty id").closest("[role='option']")!
+    const option = closestElement(
+      screen.getByText("Empty id"),
+      "[role='option']",
+      "empty-id option",
+    )
 
     expect(listbox).toHaveAttribute("aria-activedescendant", option.id)
     expect(document.getElementById(option.id)).toBe(option)
@@ -664,7 +669,7 @@ describe("NavigationList.Progress", () => {
 })
 
 describe("NavigationList keyboard navigation", () => {
-  const ITEM_IDS = ["one", "two", "three"] as const
+  const ITEM_IDS = ["one", "two", "three"]
 
   testNavigationBehavior({
     setup: () => {
@@ -703,7 +708,7 @@ describe("NavigationList keyboard navigation", () => {
       if (!activeId) return -1
       const target = (listbox?.ownerDocument ?? document).getElementById(activeId)
       const value = target?.getAttribute("data-value") ?? ""
-      return ITEM_IDS.findIndex((id) => id === value)
+      return ITEM_IDS.indexOf(value)
     },
   })
 })

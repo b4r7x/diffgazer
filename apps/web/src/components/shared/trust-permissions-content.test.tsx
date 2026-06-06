@@ -1,9 +1,9 @@
-import { useState, type ReactNode } from "react";
-import { describe, expect, it, vi } from "vitest";
+import type { TrustCapabilities } from "@diffgazer/core/schemas/config";
+import { KeyboardProvider, useKey, useScope } from "@diffgazer/keys";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { KeyboardProvider, useKey, useScope } from "@diffgazer/keys";
-import type { TrustCapabilities } from "@diffgazer/core/schemas/config";
+import { type ReactNode, useState } from "react";
+import { describe, expect, it, vi } from "vitest";
 import { TrustPermissionsContent } from "./trust-permissions-content";
 
 const TEST_SCOPE = "trust-permissions-test";
@@ -245,7 +245,7 @@ describe("TrustPermissionsContent", () => {
             screen.getByRole("button", { name: "Action" }).focus();
           }}
         >
-          <button>Action</button>
+          <button type="button">Action</button>
         </PassiveTestHarness>
       </KeyboardProvider>,
     );
@@ -272,7 +272,7 @@ describe("TrustPermissionsContent", () => {
             screen.getByRole("button", { name: "Action" }).focus();
           }}
         >
-          <button>Action</button>
+          <button type="button">Action</button>
         </PassiveTestHarness>
       </KeyboardProvider>,
     );

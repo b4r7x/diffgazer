@@ -34,6 +34,8 @@ updates:
       - "/apps/*"
       - "/cli/*"
       - "/libs/*"
+      - "/libs/keys/artifacts"
+      - "/libs/keys/examples/playground"
     schedule:
       interval: "monthly"
     open-pull-requests-limit: 10

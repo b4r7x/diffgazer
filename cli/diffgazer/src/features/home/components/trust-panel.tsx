@@ -1,13 +1,13 @@
-import { useState } from "react";
-import type { ReactElement } from "react";
+import { guardQueryState, useInit, useSaveTrust } from "@diffgazer/core/api/hooks";
 import { Box, Text } from "ink";
-import { Spinner } from "../../../components/ui/spinner";
-import { useInit, useSaveTrust, guardQueryState } from "@diffgazer/core/api/hooks";
+import type { ReactElement } from "react";
+import { useState } from "react";
+import { Button } from "../../../components/ui/button";
+import { Callout } from "../../../components/ui/callout";
+import { CheckboxGroup } from "../../../components/ui/checkbox";
 import { Panel } from "../../../components/ui/panel";
 import { SectionHeader } from "../../../components/ui/section-header";
-import { Button } from "../../../components/ui/button";
-import { CheckboxGroup } from "../../../components/ui/checkbox";
-import { Callout } from "../../../components/ui/callout";
+import { Spinner } from "../../../components/ui/spinner";
 
 interface TrustPanelProps {
   onAccept: () => void;

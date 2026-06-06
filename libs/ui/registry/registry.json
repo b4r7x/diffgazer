@@ -55,7 +55,7 @@
           "type": "registry:ui"
         },
         {
-          "path": "registry/ui/accordion/use-accordion-state.ts",
+          "path": "registry/ui/accordion/use-state.ts",
           "type": "registry:ui"
         }
       ]
@@ -203,7 +203,7 @@
       "dependencies": [],
       "registryDependencies": [
         "theme",
-        "aria-utils",
+        "aria",
         "compose-refs",
         "utils"
       ],
@@ -328,7 +328,7 @@
       "dependencies": [],
       "registryDependencies": [
         "theme",
-        "aria-utils",
+        "aria",
         "controllable-state",
         "form-reset",
         "@diffgazer-keys/navigation",
@@ -400,7 +400,7 @@
       "dependencies": [],
       "registryDependencies": [
         "theme",
-        "aria-utils",
+        "aria",
         "controllable-state",
         "form-reset",
         "compose-refs",
@@ -819,7 +819,7 @@
         "compose-refs",
         "portal",
         "kbd",
-        "aria-utils",
+        "aria",
         "utils"
       ],
       "meta": {
@@ -1210,11 +1210,11 @@
           "type": "registry:ui"
         },
         {
-          "path": "registry/ui/toast/use-toast-dismiss.ts",
+          "path": "registry/ui/toast/use-dismiss.ts",
           "type": "registry:ui"
         },
         {
-          "path": "registry/ui/toast/use-toast-container.ts",
+          "path": "registry/ui/toast/use-container.ts",
           "type": "registry:ui"
         }
       ]
@@ -1252,7 +1252,7 @@
           "type": "registry:ui"
         },
         {
-          "path": "registry/ui/stepper/use-stepper-state.ts",
+          "path": "registry/ui/stepper/use-state.ts",
           "type": "registry:ui"
         },
         {
@@ -1584,7 +1584,7 @@
           "type": "registry:ui"
         },
         {
-          "path": "registry/ui/command-palette/use-command-palette-state.ts",
+          "path": "registry/ui/command-palette/use-state.ts",
           "type": "registry:ui"
         },
         {
@@ -1604,7 +1604,7 @@
       ],
       "registryDependencies": [
         "theme",
-        "aria-utils",
+        "aria",
         "controllable-state",
         "@diffgazer-keys/navigation",
         "compose-refs",
@@ -1638,7 +1638,7 @@
           "type": "registry:ui"
         },
         {
-          "path": "registry/ui/select/select-utils.ts",
+          "path": "registry/ui/select/selection.ts",
           "type": "registry:ui"
         },
         {
@@ -1650,11 +1650,11 @@
           "type": "registry:ui"
         },
         {
-          "path": "registry/ui/select/get-visible-enabled-options.ts",
+          "path": "registry/ui/select/visible-options.ts",
           "type": "registry:ui"
         },
         {
-          "path": "registry/ui/select/use-select-typeahead.ts",
+          "path": "registry/ui/select/use-typeahead.ts",
           "type": "registry:ui"
         },
         {
@@ -1682,7 +1682,7 @@
           "type": "registry:ui"
         },
         {
-          "path": "registry/ui/select/use-select-state.ts",
+          "path": "registry/ui/select/use-state-machine.ts",
           "type": "registry:ui"
         }
       ]
@@ -1712,7 +1712,7 @@
           "type": "registry:ui"
         },
         {
-          "path": "registry/ui/spinner/use-spinner-animation.ts",
+          "path": "registry/ui/spinner/use-animation.ts",
           "type": "registry:ui"
         },
         {
@@ -1872,7 +1872,7 @@
           "type": "registry:ui"
         },
         {
-          "path": "registry/ui/logo/get-figlet-text.ts",
+          "path": "registry/ui/logo/figlet-text.ts",
           "type": "registry:ui"
         }
       ]
@@ -2221,7 +2221,7 @@
       ]
     },
     {
-      "name": "aria-utils",
+      "name": "aria",
       "type": "registry:lib",
       "title": "ARIA Utilities",
       "description": "Shared ARIA helpers for form controls: resolveAriaInvalid, mergeIds, isHTMLElementForContainer.",
@@ -2231,7 +2231,7 @@
       },
       "files": [
         {
-          "path": "registry/lib/aria-utils.ts",
+          "path": "registry/lib/aria.ts",
           "type": "registry:lib"
         }
       ]
@@ -2248,22 +2248,6 @@
       "files": [
         {
           "path": "registry/lib/typeahead.ts",
-          "type": "registry:lib"
-        }
-      ]
-    },
-    {
-      "name": "resolve-tab-target",
-      "type": "registry:lib",
-      "title": "resolveTabTarget",
-      "description": "Roving tabindex utility — determines which item in a group should be the tab target based on selection state and disabled status.",
-      "meta": {
-        "client": false,
-        "hidden": true
-      },
-      "files": [
-        {
-          "path": "registry/lib/resolve-tab-target.ts",
           "type": "registry:lib"
         }
       ]
@@ -2346,22 +2330,6 @@
       ]
     },
     {
-      "name": "focus",
-      "type": "registry:lib",
-      "title": "Focus Utilities",
-      "description": "Shared focusable element selector and scoped selectable-item focus helpers for focus management, auto-focus, and keyboard handoff logic.",
-      "meta": {
-        "client": false,
-        "hidden": true
-      },
-      "files": [
-        {
-          "path": "registry/lib/focus.ts",
-          "type": "registry:lib"
-        }
-      ]
-    },
-    {
       "name": "step-status",
       "type": "registry:lib",
       "title": "Step Status",
@@ -2419,8 +2387,9 @@
       },
       "files": [
         {
-          "path": "registry/lib/sidebar-variants.ts",
-          "type": "registry:lib"
+          "path": "registry/ui/sidebar/sidebar-variants.ts",
+          "type": "registry:lib",
+          "target": "src/components/ui/sidebar/sidebar-variants.ts"
         }
       ]
     },
@@ -2437,8 +2406,9 @@
       },
       "files": [
         {
-          "path": "registry/lib/sidebar-intent.ts",
-          "type": "registry:lib"
+          "path": "registry/ui/sidebar/sidebar-intent.ts",
+          "type": "registry:lib",
+          "target": "src/components/ui/sidebar/sidebar-intent.ts"
         }
       ]
     },
@@ -2584,12 +2554,12 @@
           "type": "registry:hook"
         },
         {
-          "path": "registry/hooks/compute-floating-position.ts",
-          "type": "registry:hook"
+          "path": "registry/lib/floating-position.ts",
+          "type": "registry:lib"
         },
         {
-          "path": "registry/hooks/floating-position-constants.ts",
-          "type": "registry:hook"
+          "path": "registry/lib/floating-position-constants.ts",
+          "type": "registry:lib"
         }
       ]
     },
@@ -2646,11 +2616,11 @@
           "type": "registry:hook"
         },
         {
-          "path": "registry/hooks/use-listbox-dom.ts",
+          "path": "registry/hooks/listbox-dom.ts",
           "type": "registry:hook"
         },
         {
-          "path": "registry/hooks/use-listbox-metadata.ts",
+          "path": "registry/hooks/listbox-metadata.ts",
           "type": "registry:hook"
         }
       ]
@@ -2716,7 +2686,7 @@
           "type": "registry:ui"
         },
         {
-          "path": "registry/ui/popover/use-popover-behavior.ts",
+          "path": "registry/ui/popover/use-behavior.ts",
           "type": "registry:ui"
         },
         {
@@ -2735,7 +2705,7 @@
       ],
       "registryDependencies": [
         "theme",
-        "aria-utils",
+        "aria",
         "controllable-state",
         "form-reset",
         "compose-refs",

@@ -1,11 +1,11 @@
 import { render, screen, waitFor } from "@testing-library/react"
-import { useState } from "react"
 import userEvent from "@testing-library/user-event"
-import { axe } from "../../../testing/utils"
-import { describe, it, expect, expectTypeOf, vi } from "vitest"
-import { Radio, RadioGroup, type RadioGroupItemProps } from "./index"
-import { type RadioGroupProps } from "./radio-group"
+import { useState } from "react"
+import { describe, expect, expectTypeOf, it, vi } from "vitest"
+import { axe } from "../../../testing/axe"
 import { Field } from "../field/index"
+import { Radio, RadioGroup, type RadioGroupItemProps } from "./index"
+import type { RadioGroupProps } from "./radio-group"
 
 function getForm(): HTMLFormElement {
   const form = screen.getByRole("form", { name: "Test form" })

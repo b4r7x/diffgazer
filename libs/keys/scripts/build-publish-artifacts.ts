@@ -19,7 +19,6 @@ const ROOT = resolve(import.meta.dirname, "..");
 // only so changes invalidate the artifact cache.
 const INPUTS = [
   "docs/content",
-  "docs/assets",
   "docs/generated",
   "docs/hook-docs",
   "registry",
@@ -36,7 +35,6 @@ function main(): void {
     docs: {
       contentDir: "docs",
       metaFile: "docs/meta.json",
-      assetsDir: "assets",
       generatedDir: "generated",
     },
     registry: {
@@ -61,11 +59,6 @@ function main(): void {
     { from: "public/r", to: "registry" },
     { from: "registry", to: "source/registry" },
   ];
-
-  const assetsDir = resolve(ROOT, "docs/assets");
-  if (existsSync(assetsDir)) {
-    copyDirs.push({ from: "docs/assets", to: "assets" });
-  }
 
   copyDirs.push({ from: "docs/generated", to: "generated" });
 

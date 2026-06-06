@@ -1,7 +1,7 @@
-import { createRef } from "react"
 import { render, screen } from "@testing-library/react"
-import { axe } from "../../../testing/utils"
-import { afterEach, describe, it, expect, vi } from "vitest"
+import { createRef } from "react"
+import { afterEach, describe, expect, it, vi } from "vitest"
+import { axe } from "../../../testing/axe"
 import { Spinner } from "./index"
 
 const originalMatchMedia = window.matchMedia

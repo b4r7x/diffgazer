@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useLayoutEffect } from "react";
-import { useKeyboardRegistryContext } from "../context/keyboard-context.js";
+import { useKeyboardRegistryContext } from "../providers/keyboard-context.js";
 
 export interface UseScopeOptions {
   enabled?: boolean;

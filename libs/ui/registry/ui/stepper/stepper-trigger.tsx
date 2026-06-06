@@ -1,7 +1,6 @@
 "use client";
 
 import type { ComponentProps, ReactNode } from "react";
-import { cn } from "@/lib/utils";
 import { STEP_STATUSES, type StepStatus } from "@/lib/step-status";
 import {
   NUMBERED_COMPLETED_GLYPH,
@@ -9,11 +8,12 @@ import {
   NUMBERED_ERROR_GLYPH,
   NUMBERED_SKIPPED_GLYPH,
   STEP_INDICATOR_GLYPHS,
+  type StepperVariant,
   stepperIndicatorVariants,
   stepperLabelVariants,
   stepperTriggerVariants,
-  type StepperVariant,
 } from "@/lib/stepper-variants";
+import { cn } from "@/lib/utils";
 import {
   useStepperContext,
   useStepperStepContext,

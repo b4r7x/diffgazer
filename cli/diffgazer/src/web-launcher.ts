@@ -1,9 +1,9 @@
 import { printDiffgazerBanner } from "./banner";
+import type { CliMode } from "./cli-options";
 import { config } from "./config";
+import { createServerFactories as createModeServerFactories } from "./lib/servers/factories";
+import type { ServerController } from "./lib/servers/process";
 import { ensureShutdownToken } from "./lib/shutdown-token";
-import type { ServerController } from "./lib/servers/create-process-server";
-import { createServerFactories as createModeServerFactories } from "./lib/servers/server-factories";
-import type { CliMode } from "./types/cli";
 
 interface WebLauncherOptions {
   mode: CliMode;

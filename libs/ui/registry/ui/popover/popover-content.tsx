@@ -1,23 +1,23 @@
 "use client";
 
 import {
-  useMemo,
-  useRef,
   type ComponentPropsWithoutRef,
   type KeyboardEvent,
   type MouseEvent,
   type ReactNode,
   type Ref,
   type RefObject,
+  useMemo,
+  useRef,
 } from "react";
+import type {
+  FloatingAlign,
+  FloatingSide,
+} from "@/hooks/use-floating-position";
+import { useEscapeKey, useOutsideClick } from "@/hooks/use-outside-click";
 import { composeRefs } from "@/lib/compose-refs";
 import { FloatingPanel, useFloatingPanelContext } from "../floating-panel";
-import { useEscapeKey, useOutsideClick } from "@/hooks/use-outside-click";
-import {
-  type FloatingSide,
-  type FloatingAlign,
-} from "@/hooks/use-floating-position";
-import { usePopoverContext, type PopoverPopupRole } from "./popover-context";
+import { type PopoverPopupRole, usePopoverContext } from "./popover-context";
 import { useAutoFocus } from "./use-auto-focus";
 
 const FALLBACK_POPOVER_DIALOG_LABEL = "Popover";

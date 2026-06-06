@@ -1,7 +1,7 @@
 "use client";
 
-import { type ComponentPropsWithRef, type MouseEvent, type ReactNode } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
+import type { ComponentPropsWithRef, MouseEvent, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Chevron } from "../icons/chevron";
 import { useAccordionContext, useAccordionItemContext } from "./accordion-context";

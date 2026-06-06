@@ -1,3 +1,12 @@
+import { Callout } from "@diffgazer/ui/components/callout";
+import {
+	CodeBlock,
+	CodeBlockContent,
+	CodeBlockHeader,
+	CodeBlockLabel,
+	InlineCode,
+} from "@diffgazer/ui/components/code-block";
+import { Typography } from "@diffgazer/ui/components/typography";
 import { cn } from "@diffgazer/ui/lib/utils";
 import type { MDXComponents } from "mdx/types";
 import {
@@ -7,15 +16,6 @@ import {
 	type ReactNode,
 	useContext,
 } from "react";
-import { Callout } from "@/components/ui/callout";
-import {
-	CodeBlock,
-	CodeBlockContent,
-	CodeBlockHeader,
-	CodeBlockLabel,
-	InlineCode,
-} from "@/components/ui/code-block";
-import { Typography } from "@/components/ui/typography/typography";
 
 type CalloutTone = "warning" | "error" | "success" | "info";
 const PreCodeContext = createContext(false);

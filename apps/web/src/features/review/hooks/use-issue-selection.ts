@@ -1,5 +1,5 @@
-import { useRef, useState } from "react";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
+import { useRef, useState } from "react";
 
 interface UseIssueSelectionOptions {
   filteredIssues: ReviewIssue[];

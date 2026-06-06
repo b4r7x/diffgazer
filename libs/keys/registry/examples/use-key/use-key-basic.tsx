@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
 import { KeyboardProvider, useKey } from "@diffgazer/keys"
+import { useState } from "react"
 
 function Counter() {
   const [count, setCount] = useState(0)

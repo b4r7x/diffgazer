@@ -1,7 +1,8 @@
-import { cn } from "@diffgazer/ui/lib/utils";
+import { SEVERITY_LABELS } from '@diffgazer/core/schemas/presentation';
 import type { ReviewSeverity } from '@diffgazer/core/schemas/review';
 import { Badge } from '@diffgazer/ui/components/badge';
 import { Button } from '@diffgazer/ui/components/button';
+import { cn } from "@diffgazer/ui/lib/utils";
 import { SEVERITY_CONFIG } from '@/components/ui/severity/constants';
 
 export interface IssuePreviewItemProps {
@@ -77,7 +78,8 @@ export function IssuePreviewItem({
   onClick,
   className,
 }: IssuePreviewItemProps) {
-  const { icon, color, label, borderColor } = SEVERITY_CONFIG[severity];
+  const { icon, color, borderColor } = SEVERITY_CONFIG[severity];
+  const label = SEVERITY_LABELS[severity];
   const contentProps = { title, file, line, category, icon, color, label, borderColor };
   const sharedClassName = cn(
     'flex items-center justify-between p-3 w-full text-left',

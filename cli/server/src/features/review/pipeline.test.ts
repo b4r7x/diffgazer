@@ -1,9 +1,9 @@
-import { describe, it, expect } from "vitest";
+import type { ReviewIssue } from "@diffgazer/core/schemas/review";
+import { describe, expect, it } from "vitest";
+import type { ParsedDiff } from "../../shared/lib/diff/types.js";
+import type { createGitService } from "../../shared/lib/git/service.js";
 import { filterDiffByFiles, resolveGitDiff } from "./diff.js";
 import { generateExecutiveSummary, generateReport } from "./summary.js";
-import type { createGitService } from "../../shared/lib/git/service.js";
-import type { ParsedDiff } from "../../shared/lib/diff/types.js";
-import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 
 const makeFile = (filePath: string, additions = 1, deletions = 0) => ({
   filePath,

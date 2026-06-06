@@ -1,5 +1,5 @@
-import { Children, Fragment, isValidElement } from "react";
 import type { ReactElement, ReactNode } from "react";
+import { Children, Fragment, isValidElement } from "react";
 
 export function collectChildItems<T>(
   children: ReactNode,

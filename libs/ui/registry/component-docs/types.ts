@@ -3,8 +3,8 @@ import type { ComponentDoc as RegistryComponentDoc } from "@diffgazer/registry"
 export type {
   AnatomyNode,
   ComponentNote,
-  KeyboardSection,
   ExampleRef,
+  KeyboardSection,
   UsageSection,
 } from "@diffgazer/registry"
 

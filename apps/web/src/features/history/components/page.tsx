@@ -1,15 +1,15 @@
-import { useRef, type KeyboardEvent } from "react";
-import { NavigationList } from "@diffgazer/ui/components/navigation-list";
+import { matchQueryState } from "@diffgazer/core/api/hooks";
+import { isListNavigationKey, toVerticalBoundaryDirection } from "@diffgazer/keys";
 import { EmptyState } from "@diffgazer/ui/components/empty-state";
+import { NavigationList } from "@diffgazer/ui/components/navigation-list";
 import { Panel } from "@diffgazer/ui/components/panel";
 import { SearchInput } from "@diffgazer/ui/components/search-input";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
-import { matchQueryState } from "@diffgazer/core/api/hooks";
-import { isListNavigationKey, toVerticalBoundaryDirection } from "@diffgazer/keys";
+import { type KeyboardEvent, useRef } from "react";
+import { HistoryInsightsPane } from "@/features/history/components/insights-pane";
 import { TimelineList } from "@/features/history/components/timeline-list";
-import { HistoryInsightsPane } from "@/features/history/components/history-insights-pane";
-import { useHistoryKeyboard } from "@/features/history/hooks/use-history-keyboard";
-import { useHistoryPage } from "@/features/history/hooks/use-history-page";
+import { useHistoryKeyboard } from "@/features/history/hooks/use-keyboard";
+import { useHistoryPage } from "@/features/history/hooks/use-page";
 
 export function HistoryPage() {
   const {

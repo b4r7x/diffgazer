@@ -1,12 +1,12 @@
-import { useState, type ReactNode } from "react";
-import { AVAILABLE_PROVIDERS } from "@diffgazer/core/schemas/config";
-import type { AIProvider, ModelInfo } from "@diffgazer/core/schemas/config";
-import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
-import { Badge } from "@diffgazer/ui/components/badge";
-import { Input } from "@diffgazer/ui/components/input";
 import { useOpenRouterModelsMapped, useProviderModelsMapped } from "@diffgazer/core/providers";
+import type { AIProvider, ModelInfo } from "@diffgazer/core/schemas/config";
+import { AVAILABLE_PROVIDERS } from "@diffgazer/core/schemas/config";
 import { resolveAvailableValue } from "@diffgazer/core/select";
 import { toVerticalBoundaryDirection } from "@diffgazer/keys";
+import { Badge } from "@diffgazer/ui/components/badge";
+import { Input } from "@diffgazer/ui/components/input";
+import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
+import { type ReactNode, useState } from "react";
 
 interface ModelStepProps {
   provider: AIProvider;

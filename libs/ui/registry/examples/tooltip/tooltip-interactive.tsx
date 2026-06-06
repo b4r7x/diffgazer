@@ -1,4 +1,4 @@
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 
 export default function TooltipInteractiveExample() {
   return (
@@ -20,15 +20,15 @@ export default function TooltipInteractiveExample() {
       <Tooltip>
         <TooltipTrigger>
           {(triggerProps) => (
-            <span {...triggerProps} tabIndex={0} role="button" aria-disabled="true">
-              <button
-                className="border border-foreground/30 px-3 py-1 font-mono text-sm"
-                disabled
-                tabIndex={-1}
-              >
-                delete
-              </button>
-            </span>
+            <button
+              {...triggerProps}
+              type="button"
+              aria-disabled="true"
+              onClick={(event) => event.preventDefault()}
+              className="border border-foreground/30 px-3 py-1 font-mono text-sm opacity-50"
+            >
+              delete
+            </button>
           )}
         </TooltipTrigger>
         <TooltipContent>Remove selected items</TooltipContent>

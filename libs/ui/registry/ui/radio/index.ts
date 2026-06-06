@@ -2,11 +2,11 @@
 
 import { Radio, type RadioProps } from "./radio";
 import {
-  RadioGroup as RadioGroupRoot,
   type RadioGroupActivationMode,
   type RadioGroupBoundaryDirection,
   type RadioGroupNavigationDirection,
   type RadioGroupProps,
+  RadioGroup as RadioGroupRoot,
 } from "./radio-group";
 import { RadioGroupItem, type RadioGroupItemProps } from "./radio-group-item";
 

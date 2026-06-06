@@ -1,8 +1,9 @@
 {
-  "extends": "../../libs/core/tsconfig/node.json",
+  "extends": "../../libs/core/tsconfig/node-nodenext.json",
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src"
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["**/*.test.ts", "src/testing", "node_modules", "dist"]
 }

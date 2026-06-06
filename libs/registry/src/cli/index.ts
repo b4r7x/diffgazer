@@ -1,43 +1,47 @@
-export { createCli, runCli, type CliOptions } from "./program.js";
-
+export { createBundler } from "./bundler/bundle.js";
+export type { BundleFile, BundleItem, BundleResult, BundlerConfig } from "./bundler/types.js";
 export {
-  createInitCommand, createAddCommand, createListCommand,
-  createDiffCommand, createRemoveCommand,
+  createAddCommand,
+  createDiffCommand,
+  createInitCommand,
+  createListCommand,
+  createRemoveCommand,
   type ExtraOption,
 } from "./command-factories.js";
-
-export { runInitWorkflow, type InitWorkflowOptions } from "./workflows/init.js";
-
-export { createItemAccessors, createInstallChecker, parseEnumOption } from "./command-helpers.js";
-
 export {
-  createConfigModule,
-  loadJsonConfig, writeJsonConfig, updateManifest,
-  aliasPathSchema, resolveAliasedPaths,
+  aliasPathSchema,
   type ConfigLoadResult,
+  createConfigModule,
+  loadJsonConfig,
+  resolveAliasedPaths,
+  updateManifest,
+  writeJsonConfig,
 } from "./config.js";
-
+export { detectPackageManager, detectSourceDir, type PackageJson, type PackageManager, readPackageJson, readPackageVersion } from "./detect.js";
+export { registryItemToDistKey, resolveKeysHookFiles } from "./dist-keys.js";
+export type { FileOp } from "./file-write-rollback.js";
+export { atomicWriteFile, copyGeneratedDir, ensureWithinDir, isEnoent, readTsConfigPaths, writeFileSafe } from "./fs.js";
+export { createInstallChecker } from "./install-checker.js";
+export { createItemAccessors } from "./item-accessors.js";
+export { depName, getInstalledDeps, installDepsWithSpinner, normalizeVersionSpec } from "./package-manager.js";
+export { parseEnumOption } from "./parse-enum-option.js";
+export { type CliOptions, createCli, runCli } from "./program.js";
 export {
+  BaseRegistryBundleSchema,
+  createRegistryAccessors,
+  createRegistryLoader,
+  metaField,
+  parseRegistryDependencyRef,
   REGISTRY_ORIGIN,
+  type RegistryAccessors,
+  RegistryContentFileSchema,
+  type RegistryContentItem,
+  RegistryContentItemSchema,
+  type RegistryItem,
   RegistryItemSchema,
-  BaseRegistryBundleSchema, RegistryContentFileSchema, RegistryContentItemSchema,
-  createRegistryLoader, createRegistryAccessors,
-  metaField, parseRegistryDependencyRef,
-  type RegistryItem, type RegistryContentItem, type RegistryAccessors,
 } from "./registry.js";
-
+export { heading, info, promptSelect, warn } from "./terminal.js";
+export { assertDistEsmRelativeImports } from "./verify-dist-esm.js";
+export { assertRscClientDirectives, assertSourceRscClientDirectives } from "./verify-rsc.js";
+export { type InitWorkflowOptions, runInitWorkflow } from "./workflows/init.js";
 export { findOrphanedNpmDeps } from "./workflows/remove.js";
-
-export type { FileOp } from "./add-helpers.js";
-
-export { ensureWithinDir, readTsConfigPaths, writeFileSafe, copyGeneratedDir, atomicWriteFile, isEnoent } from "./fs.js";
-
-export { depName, normalizeVersionSpec, getInstalledDeps, installDepsWithSpinner } from "./package-manager.js";
-
-export { detectPackageManager, detectSourceDir, readPackageJson, readPackageVersion, type PackageManager, type PackageJson } from "./detect.js";
-
-export { info, warn, heading, promptSelect } from "./logger.js";
-
-export { createBundler } from "./bundler/index.js";
-
-export type { BundleFile, BundleItem, BundlerConfig, BundleResult } from "./bundler/types.js";

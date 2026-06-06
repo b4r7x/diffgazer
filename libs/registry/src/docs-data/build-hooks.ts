@@ -5,15 +5,16 @@ import {
   writeFileSync,
 } from "node:fs"
 import { resolve } from "node:path"
-import type { DocsHighlighter } from "./highlight.js"
-import { DOCS_CODE_THEME_NAME } from "./code-theme.js"
-import { generateHooksSource, generateEnrichedHookData } from "./hooks-source.js"
-import type { HookRegistryItem } from "./hooks-source.js"
-import { cleanDir, toYamlString } from "./utils.js"
-import type { RegistryItem, Registry } from "../registry-types.js"
-import type { EnrichedHookData } from "./types.js"
-import { writeJson } from "../utils/json.js"
 import type { Logger } from "../logger.js"
+import type { Registry, RegistryItem } from "../registry-types.js"
+import { cleanDir } from "../utils/fs.js"
+import { writeJson } from "../utils/json.js"
+import { DOCS_CODE_THEME_NAME } from "./code-theme.js"
+import type { DocsHighlighter } from "./highlight.js"
+import type { HookRegistryItem } from "./hooks-source.js"
+import { generateEnrichedHookData, generateHooksSource } from "./hooks-source.js"
+import { toYamlString } from "./naming.js"
+import type { EnrichedHookData } from "./types.js"
 
 export interface HooksConfig {
   contentDir: string

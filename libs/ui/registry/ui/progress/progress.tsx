@@ -1,7 +1,7 @@
 "use client";
 
-import type { Ref } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
+import type { Ref } from "react";
 import { cn } from "@/lib/utils";
 
 export type ProgressSize = NonNullable<VariantProps<typeof trackVariants>["size"]>;
@@ -44,7 +44,7 @@ export function Progress({
   const clampedValue = isIndeterminate
     ? undefined
     : Math.min(Math.max(0, value), max);
-  const percentage = isIndeterminate ? undefined : (clampedValue! / max) * 100;
+  const percentage = clampedValue === undefined ? undefined : (clampedValue / max) * 100;
 
   return (
     <div

@@ -1,12 +1,12 @@
 "use client";
 
-import { Children, isValidElement, useCallback, type ComponentPropsWithRef, type ReactNode, type KeyboardEvent, useId, useMemo, useRef } from "react";
-import { type ListboxMetadataItem, getEncodedListboxItemId, useListbox } from "@/hooks/use-listbox";
+import { Children, type ComponentPropsWithRef, isValidElement, type KeyboardEvent, type ReactNode, useCallback, useId, useMemo, useRef } from "react";
+import { getEncodedListboxItemId, type ListboxMetadataItem, useListbox } from "@/hooks/use-listbox";
 import { composeRefs } from "@/lib/compose-refs";
 import { cn } from "@/lib/utils";
-import { NavigationListContext, type NavigationListIndicator, type GroupHeaderRegistration } from "./navigation-list-context";
-import { NavigationListItem } from "./navigation-list-item";
+import { type GroupHeaderRegistration, NavigationListContext, type NavigationListIndicator } from "./navigation-list-context";
 import { NavigationListGroup } from "./navigation-list-group";
+import { NavigationListItem } from "./navigation-list-item";
 
 function collectNavigationListItems(children: ReactNode): ListboxMetadataItem[] {
   const items: ListboxMetadataItem[] = [];
@@ -176,6 +176,7 @@ export function NavigationList({
 
   return (
     <NavigationListContext value={contextValue}>
+      {/* biome-ignore lint/a11y/useAriaPropsSupportedByRole: getContainerProps applies role="listbox" dynamically, which Biome cannot resolve; aria-label and aria-orientation are valid for the listbox role. */}
       <div
         {...rootProps}
         {...getContainerProps(composeRefs(containerRef, ref))}

@@ -1,9 +1,9 @@
-import { describe, expect, it, vi } from "vitest";
+import type { AIProvider } from "@diffgazer/core/schemas/config";
+import { AVAILABLE_PROVIDERS } from "@diffgazer/core/schemas/config";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { AVAILABLE_PROVIDERS } from "@diffgazer/core/schemas/config";
-import type { AIProvider } from "@diffgazer/core/schemas/config";
-import { escapeRegExp } from "@/testing";
+import { describe, expect, it, vi } from "vitest";
+import { escapeRegExp } from "@/testing/escape-regexp";
 import { ProviderStep } from "./provider-step";
 
 describe("ProviderStep", () => {

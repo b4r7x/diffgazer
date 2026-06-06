@@ -1,5 +1,5 @@
-import { useCallback, useLayoutEffect, useRef } from "react";
 import { getFocusedNavigationValue, useFocusZone, useKey, useScopedNavigation } from "@diffgazer/keys";
+import { useCallback, useLayoutEffect, useRef } from "react";
 
 export type TrustFormFocusZone = "list" | "buttons";
 export type TrustFormAction = "save" | "revoke";

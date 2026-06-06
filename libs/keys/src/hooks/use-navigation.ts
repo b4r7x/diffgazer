@@ -1,19 +1,19 @@
 "use client";
 
 import {
-  useState,
-  useCallback,
-  type RefObject,
   type KeyboardEvent,
+  type RefObject,
+  useCallback,
+  useState,
 } from "react";
-import { resolveDirectionKeys, dispatchNavigationKey } from "../core/navigation-dispatch.js";
+import { dispatchNavigationKey, resolveDirectionKeys } from "../core/navigation-dispatch.js";
+import { isEditableElement } from "../dom/element-guards.js";
 import { containsActiveElement } from "../dom/focusable.js";
 import {
   getFocusedNavigationValue,
   getNavigationItems,
   type NavigationItemType,
 } from "../dom/navigation-items.js";
-import { isEditableElement } from "../dom/keyboard-utils.js";
 
 export type NavigationRole = NavigationItemType;
 

@@ -2,14 +2,14 @@
 
 import { Children, isValidElement, type ReactNode, useId, useMemo, useRef } from "react";
 import { useControllableState } from "@/hooks/use-controllable-state";
+import { PopoverContent } from "./popover-content";
 import {
   PopoverContext,
-  type PopoverPopupRole,
   type PopoverContextValue,
+  type PopoverPopupRole,
   type PopoverTriggerMode,
 } from "./popover-context";
-import { PopoverContent } from "./popover-content";
-import { usePopoverBehavior } from "./use-popover-behavior";
+import { usePopoverBehavior } from "./use-behavior";
 
 export interface PopoverProps {
   children: ReactNode;

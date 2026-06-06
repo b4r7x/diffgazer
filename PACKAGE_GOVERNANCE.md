@@ -7,9 +7,11 @@ This document defines the current package, artifact, release, and support contra
 Public package targets:
 
 - `diffgazer` - product CLI, binary `diffgazer`, Node >= 20.
-- `@diffgazer/add` - registry installer CLI, binary `dgadd`, Node >= 18.
-- `@diffgazer/ui` - React `>=19.2.0` component package.
-- `@diffgazer/keys` - React `>=19.2.0` keyboard hooks package.
+- `@diffgazer/add` - registry installer CLI, binary `dgadd`, Node >= 20.
+- `@diffgazer/ui` - React `>=19.2.0` component package, Node >= 20.
+- `@diffgazer/keys` - React `>=19.2.0` keyboard hooks package, Node >= 20.
+
+All four published packages declare a single `engines.node: ">=20.0.0"` floor (CI and Docker run Node 22, so Node 20 is the realistic minimum). The `check-invariants` script asserts this floor is uniform across the published surface so it cannot drift.
 
 **Publish gate: NOT YET PUBLISHED.** These are publish targets, not live npm packages. Verify current status before relying on any npm install path:
 
@@ -150,7 +152,7 @@ The release-readiness workflow must also run pack dry-runs for all public packag
 
 ## Publish Metadata
 
-Public packages are published through the root `pnpm run release` script, which runs `changeset publish --provenance`. Public package manifests also set `publishConfig.provenance` so one-off `npm publish` calls use the same provenance policy. Scoped public packages set `publishConfig.access` to `public`.
+Public packages are published through the root `pnpm run release` script, which runs `changeset publish --provenance`. Public package manifests also set `publishConfig.provenance` so one-off `npm publish` calls use the same provenance policy. Scoped public packages set `publishConfig.access` to `public`. The `author` field is uniform across the four published packages (`"author": "diffgazer"`); the `license` field intentionally splits MIT vs Apache-2.0 per the [Licensing](#licensing) section.
 
 `@diffgazer/keys-artifacts` is private and exists only as a workspace mirror for docs artifact handoff; it is not a public package target.
 
@@ -182,9 +184,13 @@ If the publish step fails after the Version PR is merged (network blip, npm regi
 The root `package.json` carries a `pnpm.overrides` block to keep shared transitive packages on a single version across the workspace. The current pins collapse duplicates that otherwise drift across apps and tooling:
 
 - `@types/node` pinned to `^25.2.3` so docs, registry, ui, keys, server, core, and cli packages resolve to one major.
+- `@types/react` pinned to `^19.2.13` and `@types/react-dom` pinned to `^19.2.3` so the whole workspace resolves to one React 19.2 type line, matching the shared React `>=19.2.0` runtime floor. Declared package ranges stay on the 19.2 line (`@diffgazer/core` declares `^19.2.13`, ui/keys/docs `^19.2.0`, web/landing/diffgazer `^19.2.13`); the override collapses them to a single resolution so a stray `^19.1` cannot reappear.
 - `tailwindcss` pinned to `^4.3.0` so `apps/web` and `apps/docs` resolve to one minor (no `4.2.x` / `4.3.x` split).
 - `postcss` pinned to `^8.5.14` so transitive Vite/Tailwind resolvers share one patch line.
 - `picomatch` pinned to `^4.0.4` so Vite, Vitest, Fumadocs, and Tailwind plugins share one version.
+- `vitest` pinned to `^4.1.0`, `@testing-library/react` to `^16.3.2`, `@testing-library/jest-dom` to `^6.9.1`, `jsdom` to `^28.1.0`, and `@vitejs/plugin-react` to `^5.1.3` so every workspace that imports a test tool resolves to one shared version of each (no `vitest 4.0` / `4.1`, `jsdom 27` / `28`, `@testing-library/react 16.0` / `16.2` / `16.3`, or `@vitejs/plugin-react 5.0` / `5.1` split).
+
+The `@tanstack/react-router` range is kept aligned across `apps/web` and `apps/docs` (both declare `^1.158.1`) so the two TanStack-Router consumers track one router minor; it is not overridden because the rest of the TanStack Start surface in `apps/docs` resolves its router transitively.
 
 Security-driven overrides — each clears one or more advisories from `pnpm audit --prod --audit-level=moderate`:
 

@@ -1,134 +1,31 @@
 export { buildRegistryArtifacts, copyArtifactsToPackage } from "./artifacts.js";
+export { REGISTRY_ORIGIN } from "./constants.js";
+export { buildCopyBundle, computeIntegrity } from "./copy-bundle.js";
+export { buildDocsData } from "./docs-data/build.js";
+export { DOCS_CODE_THEME_NAME, docsCodeTheme } from "./docs-data/code-theme.js";
+export { findExamples } from "./docs-data/examples.js";
+export type { DocsHighlighter } from "./docs-data/highlight.js";
+export { highlightCode } from "./docs-data/highlight.js";
+export { createHookDocLoader } from "./docs-data/hook-doc-loader.js";
+export type { HookRegistryItem } from "./docs-data/hooks-source.js";
+export { kebabToCamelCase } from "./docs-data/naming.js";
 export type {
-  CopyArtifactsToPackageOptions,
-  BuildRegistryArtifactsOptions,
-  BuildRegistryArtifactsResult,
-  CopyDirEntry,
-  RequiredPathEntry,
-  AfterCopyContext,
-} from "./artifacts.js";
-export {
-  buildShadcnRegistryWithOrigin,
-  runShadcnRegistryBuild,
-  ensurePublicRegistryReady,
-  validatePublicRegistryFresh,
-  resolveLocalShadcnBin,
-} from "./shadcn/index.js";
-export type {
-  BuildShadcnRegistryWithOriginOptions,
-  BuildShadcnRegistryWithOriginResult,
-  RunShadcnRegistryBuildOptions,
-  ValidatePublicRegistryFreshOptions,
-  EnsurePublicRegistryReadyOptions,
-} from "./shadcn/index.js";
-
-export { loadArtifactsFromPackage } from "./artifact-loader.js";
-export type { LoadedArtifacts, LoadFromPackageOptions } from "./artifact-loader.js";
-
-export { syncDocsFromArtifacts } from "./docs/index.js";
-export { resolveSyncOutputPaths } from "./docs/paths.js";
-export type {
-  SyncDocsOptions,
-  SyncDocsResult,
-  SyncLibraryConfig,
-  SyncOutputPathsConfig,
-  LoadedLibraryArtifacts,
-  AfterSyncContext,
-} from "./docs/types.js";
-export { DEFAULT_OUTPUT_PATHS } from "./docs/types.js";
-
-export { validateManifest, ArtifactManifestSchema, createArtifactManifest, loadValidatedManifest } from "./manifest.js";
-export type {
-  ArtifactManifest,
-  ArtifactManifestDocs,
-  ArtifactManifestRegistry,
-  ArtifactManifestIntegrity,
-  CreateArtifactManifestOptions,
-} from "./manifest.js";
-
-export { ARTIFACT_MANIFEST_FILENAME, ARTIFACT_FINGERPRINT_FILENAME, ARTIFACT_MANIFEST_REL_PATH, DEFAULT_ARTIFACT_ROOT, REGISTRY_ORIGIN } from "./constants.js";
-export { computeInputsFingerprint } from "./fingerprint.js";
-export { buildCopyBundle, computeIntegrity, CopyBundleItemSchema, CopyBundleSchema } from "./copy-bundle.js";
-export type {
-  CopyBundle,
-  CopyBundleItem,
-  BuildCopyBundleOptions,
-  BuildCopyBundleResult,
-} from "./copy-bundle.js";
-export {
-  normalizeOrigin,
-  rewriteOriginsInDir,
-} from "./origin.js";
-export type {
-  OriginRewriteOptions,
-  NormalizeOriginOptions,
-  RewriteOriginsResult,
-} from "./origin.js";
-export { ensureExists, resetDir } from "./utils/fs.js";
-
-export type {
-  DocNote,
-  ExampleRef,
-  UsageSection,
-  HookParameter,
-  HookReturn,
-  HookDoc,
-  CodeBlockToken,
-  CodeBlockLine,
-  HookSourceData,
-  EnrichedHookData,
   AnatomyNode,
-  ComponentNote,
-  KeyboardSection,
+  CodeBlockLine,
   ComponentDoc,
-  PropInfo,
+  ComponentNote,
   ComponentPropsTable,
-  ConsumptionLibrary,
   ConsumptionItemKind,
-  ConsumptionPathOption,
+  ConsumptionLibrary,
   ConsumptionMetadata,
-} from "./docs-data/index.js";
-
-export {
-  createDocsHighlighter,
-  highlightCode,
-  generateHooksSource,
-  generateEnrichedHookData,
-  docsCodeTheme,
-  DOCS_CODE_THEME_NAME,
-  kebabToCamelCase,
-  toDocExportName,
-  toYamlString,
-  createHookDocLoader,
-  findExamples,
-  generateDemoIndex,
-  buildDocsData,
-} from "./docs-data/index.js";
-export type {
-  HighlightLanguage,
-  DocsHighlighter,
-  CreateHighlighterOptions,
-  HookRegistryItem,
-  GenerateHooksSourceOptions,
-  GenerateEnrichedHookDataOptions,
-  BuildDocsDataConfig,
-  BuildDocsDataResult,
-  HooksConfig,
-  DemoIndexConfig,
-  ComponentsConfig,
-  LibsConfig,
-} from "./docs-data/index.js";
-
-export {
-  RegistryFileSchema,
-  RegistryItemSchema,
-  RegistrySchema,
-  type RegistryFile,
-  type RegistryItem,
-  type Registry,
-} from "./registry-types.js";
-
-export { defaultLogger } from "./logger.js";
-export type { Logger } from "./logger.js";
-
+  ExampleRef,
+  HookDoc,
+  KeyboardSection,
+  PropInfo,
+  UsageSection,
+} from "./docs-data/types.js";
+export { syncDocsFromArtifacts } from "./docs-sync/sync.js";
 export { KEYS_PACKAGE_IMPORT_TARGETS } from "./keys-imports.js";
+export { createArtifactManifest } from "./manifest.js";
+export { normalizeOrigin } from "./origin.js";
+export { buildShadcnRegistryWithOrigin } from "./shadcn/build.js";

@@ -1,8 +1,8 @@
 "use client";
 
 import type { HTMLAttributes } from "react";
-import { Kbd } from "../kbd/kbd";
 import { cn } from "@/lib/utils";
+import { Kbd } from "../kbd/kbd";
 
 export interface KeyboardHint {
   key: string;

@@ -1,4 +1,5 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+import { requireValue } from "../../../testing/assertions.js";
 import { parseDiff } from "./parser.js";
 
 describe("parseDiff", () => {
@@ -15,10 +16,10 @@ describe("parseDiff", () => {
     const result = parseDiff(diff);
 
     expect(result.files).toHaveLength(1);
-    expect(result.files[0]!.filePath).toBe("file.ts");
-    expect(result.files[0]!.operation).toBe("modify");
-    expect(result.files[0]!.stats.additions).toBe(1);
-    expect(result.files[0]!.stats.deletions).toBe(0);
+    expect(result.files[0]?.filePath).toBe("file.ts");
+    expect(result.files[0]?.operation).toBe("modify");
+    expect(result.files[0]?.stats.additions).toBe(1);
+    expect(result.files[0]?.stats.deletions).toBe(0);
   });
 
   it("counts both additions and deletions for a modified hunk", () => {
@@ -33,8 +34,8 @@ describe("parseDiff", () => {
 
     const result = parseDiff(diff);
 
-    expect(result.files[0]!.stats.additions).toBe(1);
-    expect(result.files[0]!.stats.deletions).toBe(1);
+    expect(result.files[0]?.stats.additions).toBe(1);
+    expect(result.files[0]?.stats.deletions).toBe(1);
   });
 
   it("splits a multi-file diff into one entry per file", () => {
@@ -56,8 +57,8 @@ diff --git a/b.ts b/b.ts
     const result = parseDiff(diff);
 
     expect(result.files).toHaveLength(2);
-    expect(result.files[0]!.filePath).toBe("a.ts");
-    expect(result.files[1]!.filePath).toBe("b.ts");
+    expect(result.files[0]?.filePath).toBe("a.ts");
+    expect(result.files[1]?.filePath).toBe("b.ts");
   });
 
   it.each([
@@ -90,10 +91,10 @@ diff --git a/b.ts b/b.ts
   ])("classifies the file as $operation when one side is /dev/null", ({ diff, operation, filePath, additions, deletions }) => {
     const result = parseDiff(diff);
 
-    expect(result.files[0]!.operation).toBe(operation);
-    expect(result.files[0]!.filePath).toBe(filePath);
-    expect(result.files[0]!.stats.additions).toBe(additions);
-    expect(result.files[0]!.stats.deletions).toBe(deletions);
+    expect(result.files[0]?.operation).toBe(operation);
+    expect(result.files[0]?.filePath).toBe(filePath);
+    expect(result.files[0]?.stats.additions).toBe(additions);
+    expect(result.files[0]?.stats.deletions).toBe(deletions);
   });
 
   it("classifies a renamed file and records the previous path", () => {
@@ -109,9 +110,9 @@ rename to new-name.ts
 
     const result = parseDiff(diff);
 
-    expect(result.files[0]!.operation).toBe("rename");
-    expect(result.files[0]!.filePath).toBe("new-name.ts");
-    expect(result.files[0]!.previousPath).toBe("old-name.ts");
+    expect(result.files[0]?.operation).toBe("rename");
+    expect(result.files[0]?.filePath).toBe("new-name.ts");
+    expect(result.files[0]?.previousPath).toBe("old-name.ts");
   });
 
   it("parses hunk headers with explicit start and count", () => {
@@ -127,7 +128,8 @@ rename to new-name.ts
  context`;
 
     const result = parseDiff(diff);
-    const hunk = result.files[0]!.hunks[0]!;
+    const file = requireValue(result.files[0], "parsed file");
+    const hunk = requireValue(file.hunks[0], "parsed hunk");
 
     expect(hunk.oldStart).toBe(10);
     expect(hunk.oldCount).toBe(5);
@@ -144,7 +146,8 @@ rename to new-name.ts
 +line2`;
 
     const result = parseDiff(diff);
-    const hunk = result.files[0]!.hunks[0]!;
+    const file = requireValue(result.files[0], "parsed file");
+    const hunk = requireValue(file.hunks[0], "parsed hunk");
 
     expect(hunk.oldStart).toBe(1);
     expect(hunk.oldCount).toBe(1);
@@ -169,10 +172,10 @@ rename to new-name.ts
 
     const result = parseDiff(diff);
 
-    expect(result.files[0]!.hunks).toHaveLength(2);
-    expect(result.files[0]!.hunks[0]!.oldStart).toBe(1);
-    expect(result.files[0]!.hunks[1]!.oldStart).toBe(10);
-    expect(result.files[0]!.stats.additions).toBe(2);
+    expect(result.files[0]?.hunks).toHaveLength(2);
+    expect(result.files[0]?.hunks[0]?.oldStart).toBe(1);
+    expect(result.files[0]?.hunks[1]?.oldStart).toBe(10);
+    expect(result.files[0]?.stats.additions).toBe(2);
   });
 
   it.each([
@@ -223,8 +226,8 @@ diff --git a/b.ts b/b.ts
 
     const result = parseDiff(diff);
 
-    expect(result.files[0]!.rawDiff).toContain("diff --git a/file.ts b/file.ts");
-    expect(result.files[0]!.rawDiff).toContain("+added");
+    expect(result.files[0]?.rawDiff).toContain("diff --git a/file.ts b/file.ts");
+    expect(result.files[0]?.rawDiff).toContain("+added");
   });
 
   it("records a non-zero sizeBytes for each file and rolls it into totalStats", () => {
@@ -238,7 +241,7 @@ diff --git a/b.ts b/b.ts
 
     const result = parseDiff(diff);
 
-    expect(result.files[0]!.stats.sizeBytes).toBeGreaterThan(0);
+    expect(result.files[0]?.stats.sizeBytes).toBeGreaterThan(0);
     expect(result.totalStats.totalSizeBytes).toBeGreaterThan(0);
   });
 
@@ -256,8 +259,8 @@ diff --git a/b.ts b/b.ts
 
     const result = parseDiff(diff);
 
-    expect(result.files[0]!.stats.additions).toBe(1);
-    expect(result.files[0]!.stats.deletions).toBe(0);
+    expect(result.files[0]?.stats.additions).toBe(1);
+    expect(result.files[0]?.stats.deletions).toBe(0);
   });
 
   it("ignores the no-newline marker while still counting the surrounding lines", () => {
@@ -274,8 +277,8 @@ diff --git a/b.ts b/b.ts
     const result = parseDiff(diff);
 
     expect(result.files).toHaveLength(1);
-    expect(result.files[0]!.stats.additions).toBe(1);
-    expect(result.files[0]!.stats.deletions).toBe(1);
+    expect(result.files[0]?.stats.additions).toBe(1);
+    expect(result.files[0]?.stats.deletions).toBe(1);
   });
 
   it("records a binary-file entry without any hunks", () => {
@@ -286,8 +289,8 @@ Binary files a/image.png and b/image.png differ`;
     const result = parseDiff(diff);
 
     expect(result.files).toHaveLength(1);
-    expect(result.files[0]!.filePath).toBe("image.png");
-    expect(result.files[0]!.hunks).toHaveLength(0);
+    expect(result.files[0]?.filePath).toBe("image.png");
+    expect(result.files[0]?.hunks).toHaveLength(0);
   });
 
   it("leaves previousPath null for a plain modify operation", () => {
@@ -301,8 +304,8 @@ Binary files a/image.png and b/image.png differ`;
 
     const result = parseDiff(diff);
 
-    expect(result.files[0]!.operation).toBe("modify");
-    expect(result.files[0]!.previousPath).toBeNull();
+    expect(result.files[0]?.operation).toBe("modify");
+    expect(result.files[0]?.previousPath).toBeNull();
   });
 
   it.each([
@@ -319,7 +322,7 @@ Binary files a/image.png and b/image.png differ`;
 
     const result = parseDiff(diff);
 
-    expect(result.files[0]!.filePath).toBe(path);
+    expect(result.files[0]?.filePath).toBe(path);
   });
 
   it("parses correctly when an index line sits between the diff header and the file markers", () => {
@@ -335,8 +338,8 @@ index abc1234..def5678 100644
     const result = parseDiff(diff);
 
     expect(result.files).toHaveLength(1);
-    expect(result.files[0]!.filePath).toBe("file.ts");
-    expect(result.files[0]!.stats.additions).toBe(1);
+    expect(result.files[0]?.filePath).toBe("file.ts");
+    expect(result.files[0]?.stats.additions).toBe(1);
   });
 
   it("includes the hunk header inside the captured hunk content", () => {
@@ -350,7 +353,7 @@ index abc1234..def5678 100644
  line3`;
 
     const result = parseDiff(diff);
-    const content = result.files[0]!.hunks[0]!.content;
+    const content = result.files[0]?.hunks[0]?.content;
 
     expect(content).toContain("@@ -1,3 +1,4 @@");
     expect(content).toContain("+added");
@@ -369,9 +372,9 @@ index abc1234..def5678 100644
     const result = parseDiff(diff);
 
     expect(result.files).toHaveLength(1);
-    expect(result.files[0]!.filePath).toBe('path with "quotes".ts');
-    expect(result.files[0]!.operation).toBe("modify");
-    expect(result.files[0]!.stats.additions).toBe(1);
+    expect(result.files[0]?.filePath).toBe('path with "quotes".ts');
+    expect(result.files[0]?.operation).toBe("modify");
+    expect(result.files[0]?.stats.additions).toBe(1);
   });
 
   it("parses Git quoted paths with tab escapes", () => {
@@ -386,7 +389,7 @@ index abc1234..def5678 100644
     const result = parseDiff(diff);
 
     expect(result.files).toHaveLength(1);
-    expect(result.files[0]!.filePath).toBe("dir\twith\ttabs/file.ts");
+    expect(result.files[0]?.filePath).toBe("dir\twith\ttabs/file.ts");
   });
 
   it("handles quoted rename paths", () => {
@@ -402,8 +405,8 @@ rename to "new \\"name\\".ts"
 
     const result = parseDiff(diff);
 
-    expect(result.files[0]!.operation).toBe("rename");
-    expect(result.files[0]!.filePath).toBe('new "name".ts');
-    expect(result.files[0]!.previousPath).toBe('old "name".ts');
+    expect(result.files[0]?.operation).toBe("rename");
+    expect(result.files[0]?.filePath).toBe('new "name".ts');
+    expect(result.files[0]?.previousPath).toBe('old "name".ts');
   });
 });

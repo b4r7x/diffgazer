@@ -1,15 +1,15 @@
 "use client";
 
 import { useState } from "react"
-import {
-  Select,
-  SelectTrigger,
-  SelectContent,
-  SelectItem,
-  SelectValue,
-} from "@/components/ui/select"
 import { Avatar } from "@/components/ui/avatar"
 import { Overflow } from "@/components/ui/overflow"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 const users = [
   { value: "felix", label: "Felix", initials: "FX" },

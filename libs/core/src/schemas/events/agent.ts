@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { LensIdSchema, type LensId } from "../review/lens.js";
 import { ReviewIssueSchema } from "../review/issues.js";
+import { type LensId, LensIdSchema } from "../review/lens.js";
 
 const AGENT_IDS = [
   "detective",

@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useRef, type FocusEvent } from "react";
+import { type FocusEvent, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
-import { useToastStore, dismiss, remove, pause, resume, type ToastPosition } from "./toast-store";
-import { toastPositionVariants } from "./toast-variants";
 import { Toast } from "./toast";
-import { useToastContainer } from "./use-toast-container";
+import { dismiss, pause, remove, resume, type ToastPosition, useToastStore } from "./toast-store";
+import { toastPositionVariants } from "./toast-variants";
+import { useToastContainer } from "./use-container";
 
 function handleBlur(e: FocusEvent<HTMLDivElement>) {
   if (!(e.relatedTarget instanceof Node) || !e.currentTarget.contains(e.relatedTarget)) resume();
@@ -56,6 +56,7 @@ export function Toaster({ position = "bottom-right" }: ToasterProps) {
   }, [hasToasts]);
 
   return (
+    // biome-ignore lint/a11y/useSemanticElements: role="region" with aria-label is the standard toast live-region container; swapping to <section> would change the styling element and add a page landmark.
     <div
       ref={containerRef}
       role="region"

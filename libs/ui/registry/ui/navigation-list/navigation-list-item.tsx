@@ -1,15 +1,15 @@
 "use client";
 
+import { cva, type VariantProps } from "class-variance-authority";
 import {
   Children,
-  isValidElement,
   type ComponentPropsWithRef,
   type FocusEvent,
+  isValidElement,
   type MouseEvent,
   type ReactNode,
   useMemo,
 } from "react";
-import { cva, type VariantProps } from "class-variance-authority";
 import { getEncodedListboxItemId } from "@/hooks/use-listbox";
 import { cn } from "@/lib/utils";
 import { useNavigationListContext } from "./navigation-list-context";
@@ -136,6 +136,8 @@ export function NavigationListItem({
 
   return (
     <NavigationListItemContext value={itemContextValue}>
+      {/* biome-ignore lint/a11y/useFocusableInteractive: WAI-ARIA listbox pattern — option stays non-focusable while the navigation list container holds focus and aria-activedescendant tracks the active option. */}
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: Enter/Space activation is handled centrally by the navigation list container, not per option. */}
       <div
         {...rootProps}
         ref={ref}

@@ -4,10 +4,9 @@ import { join } from "node:path";
 import { createDiffCommand } from "@diffgazer/registry/cli";
 import { ctx, type DiffgazerAddConfig, type ResolvedConfig } from "../context.js";
 import {
-  prepareFileContentForIntegration,
-  getInstallBaseForFilePath,
-  getInstallDirForBase,
-} from "../utils/registry.js";
+  buildExpectedChunkContentsForItem,
+  extractCssChunkContents,
+} from "../utils/css-chunks.js";
 import {
   getNamespacedItem,
   parseInstallName,
@@ -15,9 +14,10 @@ import {
 } from "../utils/namespaces.js";
 import { resolveInstallPath } from "../utils/paths.js";
 import {
-  buildExpectedChunkContentsForItem,
-  extractCssChunkContents,
-} from "./add/css-ops.js";
+  getInstallBaseForFilePath,
+  getInstallDirForBase,
+  prepareFileContentForIntegration,
+} from "../utils/registry.js";
 
 type InstalledComponents = NonNullable<DiffgazerAddConfig["installedComponents"]>;
 type IntegrationMode = NonNullable<InstalledComponents[string]>["integrationMode"];

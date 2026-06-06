@@ -1,5 +1,5 @@
 import type { Context } from "hono";
-import { errorResponse, type ErrorStatus } from "../../shared/lib/http/response.js";
+import { type ErrorStatus, errorResponse } from "../../shared/lib/http/response.js";
 import type {
   StoreError,
   StoreErrorCode,

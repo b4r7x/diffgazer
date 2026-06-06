@@ -34,18 +34,21 @@ function assertSmoke(name, result, expect = /OK/) {
 }
 
 const packages = [
-  // Runs first so the keys-optional contract (HANDOFF-1 / DECISION-1) is proven
-  // before any keys-installing fixture; it does not depend on a built keys package.
+  // Runs first so the keys required-peer signal (T-608/F-234) is proven before any
+  // keys-installing fixture; it does not depend on a built keys package. Asserts a
+  // package consumer who skips the required @diffgazer/keys peer still gets keys-free
+  // entries, and that keys-backed subpaths fail at load naming the missing peer.
   {
     name: "@diffgazer/ui",
-    label: "@diffgazer/ui without @diffgazer/keys (optional peer)",
+    label: "@diffgazer/ui without @diffgazer/keys (required peer missing signal)",
+    skipPeerAutoInstall: true,
     installDeps: [
       "react@^19.2.0",
       "react-dom@^19.2.0",
     ],
     prepare: (projectDir) => writeUiKeysAbsentSmoke(projectDir),
     steps: [step("node", "keys-absent.mjs")],
-    expect: /OK: @diffgazer\/ui works without @diffgazer\/keys/,
+    expect: /OK: keys-free @diffgazer\/ui entries work without @diffgazer\/keys/,
   },
   {
     name: "@diffgazer/ui",

@@ -1,11 +1,11 @@
-import type { KeyboardEvent, RefCallback, RefObject } from "react";
+import type { InputMethod } from "@diffgazer/core/onboarding";
+import { getVerticalArrowDirection } from "@diffgazer/keys";
 import { Field } from "@diffgazer/ui/components/field";
 import { InputGroup } from "@diffgazer/ui/components/input";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
 import { cn } from "@diffgazer/ui/lib/utils";
-import { getVerticalArrowDirection } from "@diffgazer/keys";
+import type { KeyboardEvent, RefCallback, RefObject } from "react";
 import type { FocusElement } from "@/types/focus-element";
-import type { InputMethod } from "@diffgazer/core/onboarding";
 
 interface ApiKeyMethodSelectorProps {
   value: InputMethod;
@@ -83,6 +83,8 @@ export function ApiKeyMethodSelector({
         />
         <Field className="pl-9" disabled={method !== "paste"}>
           <Field.Label className="sr-only">{providerName} API Key</Field.Label>
+          {/* biome-ignore lint/a11y/noStaticElementInteractions: mouse-only convenience zone that forwards clicks on the padding to the keyboard-accessible InputGroup below; the input itself owns all keyboard interaction. */}
+          {/* biome-ignore lint/a11y/useKeyWithClickEvents: keyboard users focus the wrapped InputGroup directly, so a duplicate key handler on this padding wrapper would be redundant. */}
           <div
             onClick={() => {
               onFocus("input");
@@ -132,6 +134,8 @@ export function ApiKeyMethodSelector({
           label="Import from Env"
         />
         <div className="pl-9">
+          {/* biome-ignore lint/a11y/noStaticElementInteractions: mouse-only convenience zone over a readOnly preview input; the keyboard-accessible "Import from Env" radio above owns selection. */}
+          {/* biome-ignore lint/a11y/useKeyWithClickEvents: env selection is reachable via the radio item above, so a key handler on this read-only preview wrapper would be redundant. */}
           <div
             className="w-full cursor-pointer"
             onClick={() => onFocus("env")}

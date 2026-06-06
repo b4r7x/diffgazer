@@ -1,6 +1,6 @@
+import { randomUUID } from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { randomUUID } from "node:crypto";
 import { getErrorMessage } from "@diffgazer/core/errors";
 
 const DEFAULT_DIR_MODE = 0o700;
@@ -35,11 +35,6 @@ export const quarantineCorruptFile = (filePath: string): string => {
   return backupPath;
 };
 
-export interface JsonFileWithMtime<T> {
-  data: T;
-  mtimeMs: number;
-}
-
 export const getFileMtimeMs = (filePath: string): number | null => {
   try {
     return fs.statSync(filePath).mtimeMs;
@@ -54,19 +49,6 @@ export const readJsonFileSync = <T>(filePath: string): T | null => {
   if (result.status === "missing") return null;
   console.warn(`[fs] Failed to parse JSON from ${filePath}:`, result.error);
   return null;
-};
-
-export const readJsonFileSyncWithMtime = <T>(filePath: string): JsonFileWithMtime<T> | null => {
-  try {
-    const content = fs.readFileSync(filePath, "utf-8");
-    const data = JSON.parse(content) as T;
-    const mtimeMs = fs.statSync(filePath).mtimeMs;
-    return { data, mtimeMs };
-  } catch (error) {
-    if (isNodeError(error, "ENOENT")) return null;
-    console.warn(`[fs] Failed to parse JSON from ${filePath}:`, getErrorMessage(error));
-    return null;
-  }
 };
 
 export const writeJsonFileSync = (

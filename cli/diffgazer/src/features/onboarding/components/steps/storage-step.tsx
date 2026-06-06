@@ -1,7 +1,7 @@
-import type { ReactElement } from "react";
 import { Box, Text } from "ink";
-import { useTheme } from "../../../../theme/theme-context";
-import { StorageSelector } from "../../../settings/components/storage-selector";
+import type { ReactElement } from "react";
+import { useTheme } from "../../../../app/providers/theme";
+import { StorageSelector } from "../../../../components/shared/storage-selector";
 
 interface StorageStepProps {
   value: string | null;

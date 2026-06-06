@@ -1,4 +1,5 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+import type { ThemeTokenKey } from "./token-keys.js";
 import {
   PRIMITIVE_TOKEN_KEYS,
   SEMANTIC_TOKEN_KEYS,
@@ -6,7 +7,6 @@ import {
   STATUS_TOKEN_KEYS,
   THEME_TOKEN_KEYS,
 } from "./token-keys.js";
-import type { ThemeTokenKey } from "./token-keys.js";
 import type { ThemeTokens } from "./types.js";
 
 describe("THEME_TOKEN_KEYS", () => {

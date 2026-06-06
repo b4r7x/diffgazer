@@ -1,9 +1,9 @@
+import { Button } from "@diffgazer/ui/components/button";
 import { Link } from "@tanstack/react-router";
+import { DocsContentLayout } from "@/components/layout/content-layout";
 import { NotFoundState } from "@/components/not-found-state";
-import { Button } from "@/components/ui/button/button";
-import { DocsContentLayout } from "@/layouts/docs-content-layout";
-import { type DocsLibraryId, getDocsLibraryConfig } from "@/lib/docs-library";
-import type { PageTree } from "@/lib/docs-tree";
+import { type DocsLibraryId, getDocsLibraryConfig } from "@/lib/library";
+import type { PageTree } from "@/lib/page-tree";
 
 interface DocsNotFoundBlockProps {
 	tree: PageTree;

@@ -1,5 +1,5 @@
-import { useState, useRef } from "react";
 import { useNavigation } from "@diffgazer/keys";
+import { useRef, useState } from "react";
 import { DemoWrapper } from "../components/demo-wrapper";
 
 const horizontalTabs = [
@@ -67,6 +67,7 @@ export function TabBarDemo() {
         >
           {horizontalTabs.map((tab) => (
             <button
+              type="button"
               key={tab.id}
               role="tab"
               data-value={tab.id}
@@ -101,6 +102,7 @@ export function TabBarDemo() {
           >
             {verticalTabs.map((tab) => (
               <button
+                type="button"
                 key={tab.id}
                 role="tab"
                 data-value={tab.id}

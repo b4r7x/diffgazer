@@ -1,18 +1,21 @@
-import { test, describe, afterEach, expect, vi } from "vitest";
-import { useState } from "react";
-import { render, cleanup } from "ink-testing-library";
 import {
   SEVERITY_LABELS,
   SEVERITY_ORDER,
   type UISeverityFilter,
 } from "@diffgazer/core/schemas/presentation";
-import { CliThemeProvider } from "../../../theme/theme-context";
+import { cleanup, render } from "ink-testing-library";
+import { useState } from "react";
+import { afterEach, describe, expect, test, vi } from "vitest";
+import { CliThemeProvider } from "../../../app/providers/theme";
 import { SeverityFilterGroup } from "./severity-filter-group";
 
 const ARROW_RIGHT = "[C";
 
 const ZERO_COUNTS = SEVERITY_ORDER.reduce(
-  (acc, severity) => ({ ...acc, [severity]: 0 }),
+  (acc, severity) => {
+    acc[severity] = 0;
+    return acc;
+  },
   {} as Record<(typeof SEVERITY_ORDER)[number], number>,
 );
 
@@ -52,7 +55,13 @@ describe("CLI SeverityFilterGroup keyboard model", () => {
 
   test("Enter toggles the focused severity into the filter set", async () => {
     let latest: UISeverityFilter = new Set();
-    const { stdin } = render(<Harness onChange={(next) => (latest = next)} />);
+    const { stdin } = render(
+      <Harness
+        onChange={(next) => {
+          latest = next;
+        }}
+      />,
+    );
     await flush();
 
     stdin.write("\r");
@@ -64,7 +73,13 @@ describe("CLI SeverityFilterGroup keyboard model", () => {
 
   test("ArrowRight moves the highlight to the next severity, and Space toggles it", async () => {
     let latest: UISeverityFilter = new Set();
-    const { stdin } = render(<Harness onChange={(next) => (latest = next)} />);
+    const { stdin } = render(
+      <Harness
+        onChange={(next) => {
+          latest = next;
+        }}
+      />,
+    );
     await flush();
 
     stdin.write(ARROW_RIGHT);
@@ -80,7 +95,12 @@ describe("CLI SeverityFilterGroup keyboard model", () => {
     let latest: UISeverityFilter = new Set();
     const initial = new Set([SEVERITY_ORDER[0], SEVERITY_ORDER[1]]);
     const { stdin } = render(
-      <Harness initialFilter={initial} onChange={(next) => (latest = next)} />,
+      <Harness
+        initialFilter={initial}
+        onChange={(next) => {
+          latest = next;
+        }}
+      />,
     );
     await flush();
 
@@ -97,7 +117,12 @@ describe("CLI SeverityFilterGroup keyboard model", () => {
   test("r shortcut clears all selected severities", async () => {
     let latest: UISeverityFilter = new Set([SEVERITY_ORDER[0]]);
     const { stdin } = render(
-      <Harness initialFilter={latest} onChange={(next) => (latest = next)} />,
+      <Harness
+        initialFilter={latest}
+        onChange={(next) => {
+          latest = next;
+        }}
+      />,
     );
     await flush();
 
@@ -152,9 +177,12 @@ describe("CLI SeverityFilterGroup focus clamping", () => {
     stdin.write("\r");
     await flush();
 
-    const lastSeverity = SEVERITY_ORDER[SEVERITY_ORDER.length - 1]!;
+    const lastSeverity = SEVERITY_ORDER.at(-1);
+    if (lastSeverity === undefined) throw new Error("SEVERITY_ORDER is empty");
     expect(onFilterChange).toHaveBeenCalledTimes(1);
-    const nextFilter = onFilterChange.mock.calls[0]![0] as UISeverityFilter;
+    const firstCall = onFilterChange.mock.calls[0];
+    if (firstCall === undefined) throw new Error("onFilterChange was not called");
+    const nextFilter = firstCall[0] as UISeverityFilter;
     expect(nextFilter.has(lastSeverity)).toBe(true);
   });
 

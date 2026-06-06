@@ -1,6 +1,6 @@
 "use client";
 
-import { type RefObject, createContext, useContext } from "react";
+import { createContext, type RefObject, useContext } from "react";
 
 export type PopoverTriggerMode = "click" | "hover";
 export type PopoverPopupRole = "dialog" | "menu" | "listbox" | "tree" | "grid";

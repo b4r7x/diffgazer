@@ -1,18 +1,18 @@
 "use client";
 
 import {
+  type HTMLAttributes,
+  type MouseEvent,
+  type ReactNode,
+  type Ref,
+  type RefObject,
+  type SyntheticEvent,
   useLayoutEffect,
   useRef,
   useState,
-  type ReactNode,
-  type HTMLAttributes,
-  type MouseEvent,
-  type RefObject,
-  type SyntheticEvent,
-  type Ref,
 } from "react";
-import { usePresence } from "@/hooks/use-presence";
 import { useFocusTrap } from "@/hooks/use-focus-trap";
+import { usePresence } from "@/hooks/use-presence";
 import { composeRefs } from "@/lib/compose-refs";
 
 export interface DialogShellProps
@@ -141,6 +141,7 @@ export function DialogShell({
     ? composeRefs(setShellRef, externalDialogRef)
     : setShellRef;
   return (
+    // biome-ignore lint/a11y/useKeyWithClickEvents: this onClick only detects backdrop (outside-rect) clicks to dismiss; keyboard dismissal is handled by the dialog's Escape behavior, so there is no keyboard equivalent for a backdrop click.
     <dialog
       {...props}
       ref={dialogRef}

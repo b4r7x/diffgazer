@@ -1,0 +1,38 @@
+---
+title: dgadd CLI
+description: Command line reference for installing and managing diffgazer registry items.
+---
+
+The `dgadd` CLI installs source-owned registry items into your app: `@diffgazer/ui` components and `@diffgazer/keys` hooks. Items are namespaced as `<namespace>/<item>`, for example `ui/button` or `keys/navigation`.
+
+`@diffgazer/add` is external publish-gated as of May 6, 2026. Use local packed tarballs for validation until `npm view @diffgazer/add version` succeeds.
+
+## Usage
+
+```bash
+pnpm exec dgadd <command> [options]
+```
+
+After publication, you can also run it without a local tarball:
+
+```bash
+npx @diffgazer/add <command> [options]
+```
+
+Use `npx @diffgazer/add` only after publication. Before that, install a local tarball and run `pnpm exec dgadd`.
+
+## Commands
+
+| Command | Purpose | Docs |
+|---------|---------|------|
+| `init` | Initialize `diffgazer.json` in a project | [init](/app/cli/init) |
+| `add` | Add `<namespace>/<item>` components and hooks | [add](/app/cli/add) |
+| `list` | List available or installed items | [list](/app/cli/list) |
+| `diff` | Compare local files with bundled registry versions | [diff](/app/cli/diff) |
+| `remove` | Remove installed items safely | [remove](/app/cli/remove) |
+
+## Global Option
+
+| Flag | Description |
+|------|-------------|
+| `-s, --silent` | Suppress non-error output |

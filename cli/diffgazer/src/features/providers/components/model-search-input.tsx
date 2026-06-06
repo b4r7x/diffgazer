@@ -1,5 +1,5 @@
 import { Box, Text, useInput } from "ink";
-import { useTheme } from "../../../theme/theme-context";
+import { useTheme } from "../../../app/providers/theme";
 
 interface SearchInputProps {
   value: string;

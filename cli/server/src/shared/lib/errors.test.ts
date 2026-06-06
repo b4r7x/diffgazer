@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { classifyError, type ErrorRule } from "./errors.js";
 
 type TestCode = "NETWORK" | "AUTH" | "UNKNOWN";

@@ -1,13 +1,13 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+import type { DiffHunk, FileDiff, ParsedDiff } from "../diff/types.js";
+import { makeIssue } from "../testing/factories.js";
 import {
   deduplicateIssues,
-  sortIssuesBySeverity,
-  filterIssuesByMinSeverity,
   ensureIssueEvidence,
+  filterIssuesByMinSeverity,
+  sortIssuesBySeverity,
   validateIssueCompleteness,
 } from "./issues.js";
-import type { ParsedDiff, FileDiff, DiffHunk } from "../diff/types.js";
-import { makeIssue } from "../testing/factories.js";
 
 function makeDiff(files: FileDiff[] = []): ParsedDiff {
   return {
@@ -121,11 +121,11 @@ describe("ensureIssueEvidence", () => {
     const nullLineResult = ensureIssueEvidence(nullLineIssue, diff);
 
     expect(result.evidence).toHaveLength(1);
-    expect(result.evidence![0]!.type).toBe("code");
-    expect(result.evidence![0]!.title).toContain("missing.ts");
-    expect(result.evidence![0]!.excerpt).toBe(issue.rationale);
+    expect(result.evidence?.[0]?.type).toBe("code");
+    expect(result.evidence?.[0]?.title).toContain("missing.ts");
+    expect(result.evidence?.[0]?.excerpt).toBe(issue.rationale);
     expect(nullLineResult.evidence).toHaveLength(1);
-    expect(nullLineResult.evidence![0]!.excerpt).toBe(nullLineIssue.rationale);
+    expect(nullLineResult.evidence?.[0]?.excerpt).toBe(nullLineIssue.rationale);
   });
 
   it("extracts evidence from a matching diff hunk", () => {
@@ -143,8 +143,8 @@ describe("ensureIssueEvidence", () => {
     const result = ensureIssueEvidence(issue, diff);
 
     expect(result.evidence).toHaveLength(1);
-    expect(result.evidence![0]!.type).toBe("code");
-    expect(result.evidence![0]!.range).toEqual({ start: 3, end: 4 });
+    expect(result.evidence?.[0]?.type).toBe("code");
+    expect(result.evidence?.[0]?.range).toEqual({ start: 3, end: 4 });
   });
 });
 

@@ -1,15 +1,15 @@
 import { existsSync, readFileSync } from "node:fs";
 import type { FileOp } from "@diffgazer/registry/cli";
-import { ctx, getRegistry, VERSION } from "../../context.js";
 import type {
   DiffgazerAddConfig,
   ManifestInstallMetadata,
   ManifestOwnedFile,
 } from "../../context.js";
-import type { ResolvedIntegrationSelection } from "../../utils/add-integration.js";
+import { ctx, getRegistry, VERSION } from "../../context.js";
 import { sha256 } from "../../utils/hashing.js";
 import { toPosixPath } from "../../utils/paths.js";
 import { isOwnedFileOp } from "./file-ops.js";
+import type { ResolvedIntegrationSelection } from "./integration.js";
 
 export function buildManifestMetadata(
   mode: ResolvedIntegrationSelection["mode"],

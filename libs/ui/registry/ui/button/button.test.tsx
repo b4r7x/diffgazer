@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { axe } from "../../../testing/utils"
-import { describe, it, expect, vi } from "vitest"
+import { describe, expect, it, vi } from "vitest"
+import { axe } from "../../../testing/axe"
 import type { ButtonRenderProps } from "./button"
 import { Button } from "./index"
 
@@ -82,9 +82,11 @@ describe("Button", () => {
   })
 
   it("keeps a consumer tabIndex on an enabled anchor but forces -1 when disabled", () => {
+    // biome-ignore lint/a11y/noPositiveTabindex: the test deliberately passes a positive tabIndex to assert the Button forwards a consumer-provided value.
     const { rerender } = render(<Button as="a" href="/test" tabIndex={3}>Link</Button>)
     expect(screen.getByRole("link")).toHaveAttribute("tabindex", "3")
 
+    // biome-ignore lint/a11y/noPositiveTabindex: the test deliberately passes a positive tabIndex to assert it is overridden to -1 when disabled.
     rerender(<Button as="a" href="/test" tabIndex={3} disabled>Link</Button>)
     expect(screen.getByRole("link")).toHaveAttribute("tabindex", "-1")
   })

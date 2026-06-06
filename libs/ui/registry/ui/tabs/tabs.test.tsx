@@ -1,13 +1,14 @@
 import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { testNavigationBehavior } from "../../../../keys/src/testing/navigation-behavior"
-import { axe } from "../../../testing/utils"
-import { describe, it, expect, expectTypeOf, vi } from "vitest"
-import { Tabs } from "./index"
-import { TabsTrigger, type TabsTriggerProps } from "./tabs-trigger"
-import { type TabsProps } from "./tabs"
 import { useState } from "react"
 import { renderToString } from "react-dom/server"
+import { describe, expect, expectTypeOf, it, vi } from "vitest"
+import { testNavigationBehavior } from "../../../../keys/src/testing/navigation-behavior"
+import { axe } from "../../../testing/axe"
+import { requireElement, requireValue } from "../../testing/assertions"
+import { Tabs } from "./index"
+import type { TabsProps } from "./tabs"
+import { TabsTrigger, type TabsTriggerProps } from "./tabs-trigger"
 
 function renderTabs(props: Record<string, unknown> = {}) {
   return render(
@@ -420,10 +421,9 @@ describe("Tabs", () => {
 
     const tab = screen.getByRole("tab", { name: "One" })
     const missing = screen.getByRole("tab", { name: "Missing panel" })
-    const panelId = tab.getAttribute("aria-controls")
+    const panelId = requireValue(tab.getAttribute("aria-controls"), "tab panel aria-controls")
 
-    expect(panelId).toBeTruthy()
-    expect(document.getElementById(panelId!)).toBeInTheDocument()
+    expect(requireElement(document.getElementById(panelId), "tab panel")).toBeInTheDocument()
     expect(missing).not.toHaveAttribute("aria-controls")
   })
 

@@ -1,5 +1,5 @@
-import { resolveProjectRoot } from "../paths.js";
-import { type Result, ok, err } from "@diffgazer/core/result";
+import { getErrorMessage } from "@diffgazer/core/errors";
+import { err, ok, type Result } from "@diffgazer/core/result";
 import type {
   AIProvider,
   CredentialRef,
@@ -8,29 +8,26 @@ import type {
   SettingsConfig,
   TrustConfig,
 } from "@diffgazer/core/schemas/config";
-import type {
-  ConfigState,
-  SecretsState,
-  SecretsStorageError,
-  SecretsStorageErrorCode,
-} from "./types.js";
+import { getFileMtimeMs } from "../fs.js";
+import { log } from "../log.js";
+import { getGlobalConfigPath, getGlobalSecretsPath, resolveProjectRoot } from "../paths.js";
 import {
   deleteKeyringSecret,
   readKeyringSecret,
   writeKeyringSecret,
 } from "./keyring.js";
 import {
+  createProjectFile,
   loadConfig,
   loadSecrets,
-  persistConfig as persistConfigSync_,
   persistConfigAsync,
+  persistConfig as persistConfigSync_,
   persistSecrets,
   persistSecretsAsync,
   readProjectFile,
-  createProjectFile,
   removeSecretsFile,
   syncProvidersWithSecrets,
-} from "./state.js";
+} from "./persistence.js";
 import {
   activeProvider,
   applyActiveProvider,
@@ -41,18 +38,20 @@ import {
   fileHasSecret,
   isFileStorage,
   isStorageConfigured,
-} from "./providers-state.js";
+} from "./providers-store.js";
 import {
   finalizeKeyringDeletions,
   getApiKeyName,
   migrateSecretsStorage,
 } from "./secrets-migration.js";
-import { toSecretEntry, resolveSecretEntry, persistError } from "./secrets-store.js";
+import { persistError, resolveSecretEntry, toSecretEntry } from "./secrets-store.js";
 import { createTrustStore, type TrustStore } from "./trust-store.js";
-import { getFileMtimeMs } from "../fs.js";
-import { getGlobalConfigPath, getGlobalSecretsPath } from "../paths.js";
-import { getErrorMessage } from "@diffgazer/core/errors";
-import { log } from "../log.js";
+import type {
+  ConfigState,
+  SecretsState,
+  SecretsStorageError,
+  SecretsStorageErrorCode,
+} from "./types.js";
 
 export interface ConfigStore {
   getSettings(): SettingsConfig;
@@ -73,7 +72,7 @@ export interface ConfigStore {
 
 /**
  * Composes the config store from the stateless persistence/migration helpers
- * (`state.ts`, `providers-state.ts`, `secrets-migration.ts`, `secrets-store.ts`,
+ * (`persistence.ts`, `providers-store.ts`, `secrets-migration.ts`, `secrets-store.ts`,
  * `keyring.ts`) and the one cleanly separable stateful slice, `trust-store.ts`.
  *
  * `config-persistence` and `providers-store` are deliberately retained inline

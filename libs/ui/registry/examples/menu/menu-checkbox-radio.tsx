@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Menu, MenuItemCheckbox, MenuItemRadio, MenuDivider, MenuLabel } from "@/components/ui/menu";
+import { Menu, MenuDivider, MenuItemCheckbox, MenuItemRadio, MenuLabel } from "@/components/ui/menu";
 
 export default function MenuCheckboxRadio() {
   const [showHidden, setShowHidden] = useState(true);

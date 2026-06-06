@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffectEvent, useLayoutEffect, useRef, useState, type RefObject } from "react";
+import { type RefObject, useCallback, useEffectEvent, useLayoutEffect, useRef, useState } from "react";
 
 export interface UseOverflowItemsOptions {
   itemCount: number;
@@ -31,8 +31,8 @@ export function computeVisibleCount(
   );
 
   let usedWidth = 0;
-  for (let i = 0; i < widths.length; i++) {
-    const nextWidth = usedWidth + widths[i]! + (i > 0 ? safeGap : 0);
+  for (const [i, width] of widths.entries()) {
+    const nextWidth = usedWidth + width + (i > 0 ? safeGap : 0);
     const remaining = widths.length - (i + 1);
     const reserve = remaining > 0 ? safeIndicatorWidth + safeGap : 0;
     if (nextWidth + reserve > safeContainerWidth && i > 0) return i;

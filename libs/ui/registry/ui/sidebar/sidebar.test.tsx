@@ -1,8 +1,9 @@
-import type { Ref } from "react"
 import { act, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { axe } from "../../../testing/utils"
-import { afterEach, describe, it, expect, vi } from "vitest"
+import type { Ref } from "react"
+import { afterEach, describe, expect, it, vi } from "vitest"
+import { axe } from "../../../testing/axe"
+import { requireAttribute, requireElement } from "../../testing/assertions"
 import { Sidebar } from "./index"
 
 type SidebarState = "open" | "rail" | "hidden"
@@ -316,8 +317,8 @@ describe("SidebarSection collapsible", () => {
       </Sidebar.Provider>,
     )
     const title = screen.getByRole("button", { name: "Files" })
-    const panelId = title.getAttribute("aria-controls")!
-    const panel = document.getElementById(panelId)!
+    const panelId = requireAttribute(title, "aria-controls")
+    const panel = requireElement(document.getElementById(panelId), "sidebar panel")
 
     // Open by default: no aria-hidden, no inert.
     expect(panel).not.toHaveAttribute("aria-hidden")

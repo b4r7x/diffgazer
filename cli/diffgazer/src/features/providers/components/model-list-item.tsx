@@ -1,6 +1,6 @@
-import { Box, Text } from "ink";
 import type { ModelInfo } from "@diffgazer/core/schemas/config";
-import { useTheme } from "../../../theme/theme-context";
+import { Box, Text } from "ink";
+import { useTheme } from "../../../app/providers/theme";
 import { Badge } from "../../../components/ui/badge";
 
 interface ModelListItemProps {
@@ -19,7 +19,7 @@ function getPrefix(isSelected: boolean, isHighlighted: boolean): string {
 function truncateDescription(description: string | undefined, maxLen: number): string | undefined {
   if (!description) return undefined;
   if (description.length <= maxLen) return description;
-  return description.slice(0, Math.max(0, maxLen - 1)) + "\u2026";
+  return `${description.slice(0, Math.max(0, maxLen - 1))}\u2026`;
 }
 
 export function ModelListItem({ model, isHighlighted, isSelected, maxWidth }: ModelListItemProps) {

@@ -1,4 +1,4 @@
-import { Typography } from "@/components/ui/typography/typography";
+import { Typography } from "@diffgazer/ui/components/typography";
 import { useComponentData } from "../doc-data-context";
 
 export function AccessibilityNotes() {

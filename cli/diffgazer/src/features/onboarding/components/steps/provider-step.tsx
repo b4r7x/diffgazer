@@ -1,11 +1,11 @@
-import type { ReactElement } from "react";
+import { guardQueryState, useProviderStatus } from "@diffgazer/core/api/hooks";
+import type { ProviderStatus } from "@diffgazer/core/schemas/config";
+import { AVAILABLE_PROVIDERS, OPENROUTER_PROVIDER_ID } from "@diffgazer/core/schemas/config";
 import { Box, Text } from "ink";
-import { useTheme } from "../../../../theme/theme-context";
+import type { ReactElement } from "react";
+import { useTheme } from "../../../../app/providers/theme";
 import { RadioGroup } from "../../../../components/ui/radio";
 import { Spinner } from "../../../../components/ui/spinner";
-import { useProviderStatus, guardQueryState } from "@diffgazer/core/api/hooks";
-import { AVAILABLE_PROVIDERS, OPENROUTER_PROVIDER_ID } from "@diffgazer/core/schemas/config";
-import type { ProviderStatus } from "@diffgazer/core/schemas/config";
 
 interface ProviderStepProps {
   value?: string;

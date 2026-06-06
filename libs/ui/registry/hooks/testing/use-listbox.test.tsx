@@ -1,12 +1,17 @@
+// biome-ignore-all lint/a11y/useFocusableInteractive: test harness builds a WAI-ARIA activedescendant listbox; option items stay non-focusable while the container holds focus.
+// biome-ignore-all lint/a11y/useAriaPropsSupportedByRole: the harness sets role/aria via dynamic props that Biome cannot statically resolve to the listbox/option roles that support them.
+// biome-ignore-all lint/a11y/noStaticElementInteractions: container keyboard handling is centralized on the listbox; option divs delegate activation to it.
+// biome-ignore-all lint/a11y/useKeyWithClickEvents: option click activation is paired with the listbox container's centralized key handling, not per-item key handlers.
 import { act, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { axe } from "../../../testing/utils"
-import { describe, it, expect, expectTypeOf, vi } from "vitest"
+import { describe, expect, expectTypeOf, it, vi } from "vitest"
+import { axe } from "../../../testing/axe"
+import { requireAttribute } from "../../testing/assertions"
 import {
   getEncodedListboxItemId,
-  useListbox,
   type UseListboxOptions,
   type UseListboxReturn,
+  useListbox,
 } from "../use-listbox"
 
 type ListboxItem = { id: string; label: string; disabled?: boolean }
@@ -23,7 +28,6 @@ function Listbox(
     : undefined
   const {
     selectedId,
-    highlighted,
     handleItemActivate,
     getContainerProps,
   } = useListbox({
@@ -403,11 +407,11 @@ describe("useListbox", () => {
     )
 
     const listbox = screen.getByRole("listbox")
-    const activeDescendant = listbox.getAttribute("aria-activedescendant")
+    const activeDescendant = requireAttribute(listbox, "aria-activedescendant")
     expect(activeDescendant).toBe(getEncodedListboxItemId("lb", "a b/slash"))
     expect(activeDescendant).not.toContain(" ")
     expect(activeDescendant).not.toContain("/")
-    expect(document.getElementById(activeDescendant!)).toHaveTextContent("Special")
+    expect(document.getElementById(activeDescendant)).toHaveTextContent("Special")
   })
 
   describe("types", () => {

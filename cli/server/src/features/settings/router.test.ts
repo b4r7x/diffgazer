@@ -1,9 +1,10 @@
 import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { SHUTDOWN_TOKEN_HEADER } from "@diffgazer/core/api";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PROJECT_ROOT_HEADER } from "../../shared/lib/paths.js";
+import { requireValue } from "../../testing/assertions.js";
 
 const TEST_TOKEN = "test-settings-token";
 
@@ -68,7 +69,7 @@ describe("settings trust routes — server-scoped project", () => {
     const store = await loadStore();
     const project = store.ensureProjectFile(projectRootA);
     expect(project.projectId).toBeTruthy();
-    const trust = trustForProject(project.projectId!, projectRootA);
+    const trust = trustForProject(requireValue(project.projectId, "project A id"), projectRootA);
     await store.saveTrust(trust);
 
     const app = await loadApp();
@@ -91,7 +92,7 @@ describe("settings trust routes — server-scoped project", () => {
     store.ensureProjectFile(projectRootA);
     const projectB = store.ensureProjectFile(projectRootB);
     expect(projectB.projectId).toBeTruthy();
-    const trust = trustForProject(projectB.projectId!, projectRootB);
+    const trust = trustForProject(requireValue(projectB.projectId, "project B id"), projectRootB);
     await store.saveTrust(trust);
 
     const app = await loadApp();
@@ -113,8 +114,8 @@ describe("settings trust routes — server-scoped project", () => {
     const projectB = store.ensureProjectFile(projectRootB);
     expect(projectA.projectId).toBeTruthy();
     expect(projectB.projectId).toBeTruthy();
-    await store.saveTrust(trustForProject(projectA.projectId!, projectRootA));
-    await store.saveTrust(trustForProject(projectB.projectId!, projectRootB));
+    await store.saveTrust(trustForProject(requireValue(projectA.projectId, "project A id"), projectRootA));
+    await store.saveTrust(trustForProject(requireValue(projectB.projectId, "project B id"), projectRootB));
 
     const app = await loadApp();
     const res = await app.request("/api/settings/trust/list", {
@@ -128,7 +129,7 @@ describe("settings trust routes — server-scoped project", () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as { projects: Array<{ projectId: string }> };
     expect(body.projects).toHaveLength(1);
-    expect(body.projects[0]!.projectId).toBe(projectA.projectId);
+    expect(body.projects[0]?.projectId).toBe(projectA.projectId);
   });
 
   it("POST /trust normalizes runCommands to false even when client sends true", async () => {
@@ -164,8 +165,10 @@ describe("settings trust routes — server-scoped project", () => {
     const projectB = store.ensureProjectFile(projectRootB);
     expect(projectA.projectId).toBeTruthy();
     expect(projectB.projectId).toBeTruthy();
-    await store.saveTrust(trustForProject(projectA.projectId!, projectRootA));
-    await store.saveTrust(trustForProject(projectB.projectId!, projectRootB));
+    const projectAId = requireValue(projectA.projectId, "project A id");
+    const projectBId = requireValue(projectB.projectId, "project B id");
+    await store.saveTrust(trustForProject(projectAId, projectRootA));
+    await store.saveTrust(trustForProject(projectBId, projectRootB));
 
     const app = await loadApp();
     // Attempt to delete trust while server resolves to projectRootA
@@ -183,8 +186,8 @@ describe("settings trust routes — server-scoped project", () => {
     // Server removed projectA's trust (the resolved project), not projectB's
     expect(body.removed).toBe(true);
     // projectB's trust is still intact
-    expect(store.getTrust(projectB.projectId!)).not.toBeNull();
+    expect(store.getTrust(projectBId)).not.toBeNull();
     // projectA's trust was removed
-    expect(store.getTrust(projectA.projectId!)).toBeNull();
+    expect(store.getTrust(projectAId)).toBeNull();
   });
 });

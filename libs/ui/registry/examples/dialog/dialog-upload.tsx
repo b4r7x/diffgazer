@@ -1,13 +1,13 @@
 import {
   Dialog,
-  DialogTrigger,
+  DialogAction,
+  DialogBody,
+  DialogClose,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogBody,
-  DialogFooter,
-  DialogClose,
-  DialogAction,
+  DialogTrigger,
 } from "@/components/ui/dialog"
 
 export default function DialogUpload() {

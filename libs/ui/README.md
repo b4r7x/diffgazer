@@ -104,7 +104,6 @@ Only install the optional peer an entry needs:
 
 | Optional peer | Entries that need it |
 | --- | --- |
-| `@diffgazer/keys` | keyboard-backed components: `./components/accordion`, `./components/select`, `./components/tabs`, `./components/checkbox`, `./components/radio`, `./components/sidebar`, `./components/toggle-group`, `./components/command-palette`, `./components/diff-view`, plus the re-export hooks `./hooks/*` that wrap keys |
 | `figlet` | `./components/logo/figlet` (lazy; the default `./components/logo` does not need it) |
 | `lowlight` | `./components/code-block` (lazy) |
 
@@ -137,7 +136,7 @@ field. Import the specific subpath you need (listed below); `exports`-aware tool
 
 - React `>=19.2.0`
 - React DOM `>=19.2.0`
-- `@diffgazer/keys >= 0.2.0` (optional — only keyboard-backed entries need it; see Optional peers by entry)
+- `@diffgazer/keys >= 0.2.0` (required — keyboard-backed entries import it at module top; see Keyboard Dependencies)
 - `figlet >= 1.10.0` (optional — only `./components/logo/figlet`)
 - `lowlight >= 3.0.0` (optional — only `./components/code-block`)
 

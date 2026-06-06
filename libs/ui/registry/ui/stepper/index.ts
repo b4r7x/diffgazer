@@ -2,25 +2,25 @@
 
 import "../shared/stepper.css";
 
-import { Stepper as StepperRoot, type StepperProps } from "./stepper";
-import { StepperStep, type StepperStepProps } from "./stepper-step";
+import { type StepperProps, Stepper as StepperRoot } from "./stepper";
+import { StepperContent, type StepperContentProps } from "./stepper-content";
 import type { StepStatus, SubstepStatus } from "./stepper-context";
+import { StepperStep, type StepperStepProps } from "./stepper-step";
 import {
-  StepperTrigger,
-  type StepperTriggerProps,
+  StepperSubstep,
+  type StepperSubstepProps,
+  SUBSTEP_STATUS_BADGE_VARIANTS,
+  type SubstepData,
+  substepLabelVariants,
+  substepVariants,
+} from "./stepper-substep";
+import {
   DEFAULT_STEP_STATUS_LABELS,
   getStepperIndicatorGlyph,
   STEP_STATUSES,
+  StepperTrigger,
+  type StepperTriggerProps,
 } from "./stepper-trigger";
-import { StepperContent, type StepperContentProps } from "./stepper-content";
-import {
-  StepperSubstep,
-  substepVariants,
-  substepLabelVariants,
-  type StepperSubstepProps,
-  type SubstepData,
-  SUBSTEP_STATUS_BADGE_VARIANTS,
-} from "./stepper-substep";
 
 const Stepper = Object.assign(StepperRoot, {
   Step: StepperStep,

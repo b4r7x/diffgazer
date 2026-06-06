@@ -1,11 +1,11 @@
 import { severityRank } from "@diffgazer/core/schemas/presentation";
 import type {
+  EvidenceRef,
   ReviewIssue,
   ReviewSeverity,
-  EvidenceRef,
   SeverityFilter,
 } from "@diffgazer/core/schemas/review";
-import type { ParsedDiff, FileDiff, DiffHunk } from "../diff/types.js";
+import type { DiffHunk, FileDiff, ParsedDiff } from "../diff/types.js";
 
 function severityMeetsMinimum(severity: ReviewSeverity, minSeverity: ReviewSeverity): boolean {
   return severityRank(severity) <= severityRank(minSeverity);

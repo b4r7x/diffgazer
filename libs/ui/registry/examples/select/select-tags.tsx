@@ -3,10 +3,10 @@
 import { useState } from "react"
 import {
   Select,
-  SelectTrigger,
   SelectContent,
   SelectItem,
   SelectTags,
+  SelectTrigger,
 } from "@/components/ui/select"
 
 export default function SelectTagsExample() {

@@ -25,7 +25,7 @@
 // dependency policy rules out adding autocannon/k6 for this). The hand-rolled
 // worker pool is sufficient for percentile + throughput SLOs on a single-process
 // local server. Run via `pnpm run bench`, which builds the dependency graph and
-// uses the same tsx loader as the server's dev entry so the Bundler-resolved
+// uses the same tsx loader as the server's serve entry so the Bundler-resolved
 // `@diffgazer/core` dist loads correctly.
 
 import { request as httpRequest } from "node:http";

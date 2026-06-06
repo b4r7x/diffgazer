@@ -1,7 +1,7 @@
-import { join, sep } from "node:path";
 import { realpath } from "node:fs/promises";
-import { type Result, ok, err } from "@diffgazer/core/result";
+import { join, sep } from "node:path";
 import type { AppError } from "@diffgazer/core/errors";
+import { err, ok, type Result } from "@diffgazer/core/result";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import { createGitService } from "../../shared/lib/git/service.js";
 

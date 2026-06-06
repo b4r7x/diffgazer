@@ -1,5 +1,5 @@
-import type { ProviderWithStatus } from "@diffgazer/core/schemas/config";
-import { PROVIDER_CAPABILITIES } from "@diffgazer/core/schemas/config";
+import type { ProviderWithStatus } from "../schemas/config/index.js";
+import { PROVIDER_CAPABILITIES } from "../schemas/config/index.js";
 
 export const PROVIDER_FILTERS = ["all", "configured", "needs-key", "free", "paid"] as const;
 export type ProviderFilter = (typeof PROVIDER_FILTERS)[number];

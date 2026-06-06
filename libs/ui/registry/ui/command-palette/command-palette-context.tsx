@@ -1,7 +1,7 @@
 "use client";
 
-import { createContext, useContext, type RefObject, type KeyboardEvent as ReactKeyboardEvent } from "react";
-import type { CommandPaletteItemRegistration } from "./use-command-palette-state";
+import { createContext, type KeyboardEvent as ReactKeyboardEvent, type RefObject, useContext } from "react";
+import type { CommandPaletteItemRegistration } from "./use-state";
 
 export interface CommandPaletteContextValue {
   open: boolean;

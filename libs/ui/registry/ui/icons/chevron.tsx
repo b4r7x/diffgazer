@@ -49,6 +49,7 @@ export function Chevron({
   const transformStyle: CSSProperties = { ...style, transform: `rotate(${deg}deg)` };
 
   return (
+    // biome-ignore lint/a11y/noSvgWithoutTitle: decorative chevron icon defaulting to aria-hidden; Biome cannot resolve the dynamic aria-hidden default, and consumers add a label when the icon is meaningful.
     <svg
       ref={ref}
       xmlns="http://www.w3.org/2000/svg"

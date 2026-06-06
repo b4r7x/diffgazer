@@ -1,6 +1,6 @@
 "use client";
 
-import { type ButtonHTMLAttributes, type FocusEvent, type MouseEvent, type ReactNode, type Ref } from "react";
+import type { ButtonHTMLAttributes, FocusEvent, MouseEvent, ReactNode, Ref } from "react";
 import { segmentedItemVariants } from "@/lib/segmented-variants";
 import { cn } from "@/lib/utils";
 import { getTabPanelId, getTabTriggerId, useTabsContext } from "./tabs-context";

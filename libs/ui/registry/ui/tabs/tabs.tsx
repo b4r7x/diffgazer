@@ -2,8 +2,8 @@
 
 import {
   Children,
-  isValidElement,
   type HTMLAttributes,
+  isValidElement,
   type ReactNode,
   type Ref,
   useId,
@@ -13,8 +13,8 @@ import {
 import { useControllableState } from "@/hooks/use-controllable-state";
 import type { SegmentedSize, SegmentedVariant } from "@/lib/segmented-variants";
 import { cn } from "@/lib/utils";
-import { TabsContext } from "./tabs-context";
 import { TabsContent } from "./tabs-content";
+import { TabsContext } from "./tabs-context";
 import { TabsTrigger } from "./tabs-trigger";
 
 export interface TabsProps<TValue extends string = string>

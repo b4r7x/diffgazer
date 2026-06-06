@@ -2,24 +2,24 @@
 
 import {
   Children,
+  type ComponentProps,
   isValidElement,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
   useCallback,
   useMemo,
   useRef,
-  type ComponentProps,
-  type KeyboardEvent as ReactKeyboardEvent,
-  type ReactNode,
 } from "react";
-import { cn } from "@/lib/utils";
-import {
-  stepperRootVariants,
-  type StepperVariant,
-} from "@/lib/stepper-variants";
 import { isStepInteractive, type StepStatus } from "@/lib/step-status";
+import {
+  type StepperVariant,
+  stepperRootVariants,
+} from "@/lib/stepper-variants";
+import { cn } from "@/lib/utils";
 import { StepperContext } from "./stepper-context";
 import { StepperStep, type StepperStepProps } from "./stepper-step";
 import { StepperTrigger, type StepperTriggerProps } from "./stepper-trigger";
-import { useStepperState } from "./use-stepper-state";
+import { useStepperState } from "./use-state";
 
 export interface StepperProps
   extends Omit<ComponentProps<"ol">, "children"> {
@@ -94,9 +94,13 @@ export function Stepper({
       ).filter((el) => el.getAttribute("aria-disabled") !== "true");
       if (triggers.length === 0) return false;
       const activeElement = list.ownerDocument.activeElement;
-      const currentIndex = triggers.findIndex((el) => el === activeElement);
+      const currentIndex = activeElement instanceof HTMLButtonElement
+        ? triggers.indexOf(activeElement)
+        : -1;
       const nextIndex = next(triggers.length, currentIndex);
-      triggers[nextIndex]?.focus();
+      const target = triggers[nextIndex];
+      if (!target) return false;
+      target.focus();
       return true;
     },
     [],
@@ -160,8 +164,10 @@ export function Stepper({
 
   return (
     <StepperContext value={ctx}>
+      {/* biome-ignore lint/a11y/useSemanticElements: this already is an <ol>; the explicit role="list" below restores list semantics that Tailwind preflight strips, and Biome should not suggest swapping the element. */}
       <ol
         ref={listRef}
+        // biome-ignore lint/a11y/noRedundantRoles: Tailwind preflight sets list-style:none on <ol>, which drops list semantics in Safari/VoiceOver; role="list" restores them.
         role="list"
         aria-label="Progress steps"
         {...props}
@@ -196,6 +202,7 @@ function StepperLiveRegion({ activeStepId, label, position, total }: StepperLive
     ? `Step ${position} of ${total}: ${label}`
     : `Step ${position} of ${total}`;
   return (
+    // biome-ignore lint/a11y/useSemanticElements: role="status" is the sr-only live region announcing step changes; <output> carries form-association semantics that do not fit here.
     <div
       key={activeStepId}
       role="status"

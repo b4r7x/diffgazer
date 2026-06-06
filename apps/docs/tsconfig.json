@@ -1,6 +1,11 @@
 {
   "include": ["**/*.ts", "**/*.tsx", "src/generated/**/*.json"],
-  "exclude": ["**/*.test.ts", "**/*.test.tsx", "registry/hooks/testing/**", "registry/testing/**", "registry/lib/testing/**"],
+  "exclude": [
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "registry/**/*.ts",
+    "registry/**/*.tsx"
+  ],
   "compilerOptions": {
     "target": "ES2022",
     "jsx": "react-jsx",
@@ -12,7 +17,7 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "allowImportingTsExtensions": true,
-    "verbatimModuleSyntax": false,
+    "verbatimModuleSyntax": true,
     "noEmit": true,
 
     /* Linting */
@@ -25,24 +30,6 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@/lib/utils": ["./src/lib/utils.ts"],
-      "@/lib/aria-utils": ["./registry/lib/aria-utils.ts"],
-      "@/lib/compose-refs": ["./registry/lib/compose-refs.ts"],
-      "@/lib/selectable-collection": ["./registry/lib/selectable-collection.ts"],
-      "@/lib/selectable-variants": ["./registry/lib/selectable-variants.ts"],
-      "@/lib/segmented-variants": ["./registry/lib/segmented-variants.ts"],
-      "@/lib/sidebar-variants": ["./registry/lib/sidebar-variants.ts"],
-      "@/lib/sidebar-intent": ["./registry/lib/sidebar-intent.ts"],
-      "@/lib/stepper-variants": ["./registry/lib/stepper-variants.ts"],
-      "@/lib/input-variants": ["./registry/lib/input-variants.ts"],
-      "@/lib/resolve-tab-target": ["./registry/lib/resolve-tab-target.ts"],
-      "@/lib/search": ["./registry/lib/search.ts"],
-      "@/lib/step-status": ["./registry/lib/step-status.ts"],
-      "@/lib/focus": ["./registry/lib/focus.ts"],
-      "@/lib/typeahead": ["./registry/lib/typeahead.ts"],
-      "@/lib/diff": ["./registry/lib/diff/index.ts"],
-      "@/components/ui/*": ["./registry/ui/*"],
-      "@/hooks/*": ["./registry/hooks/*"],
       "@diffgazer/keys": ["../../libs/keys/src/index.ts"],
       "@diffgazer/registry": ["../../libs/registry/src/index.ts"],
       "@diffgazer/registry/schemas": ["../../libs/registry/src/schemas.ts"],

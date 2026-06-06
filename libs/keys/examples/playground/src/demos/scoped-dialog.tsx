@@ -1,5 +1,5 @@
-import { useState } from "react";
 import { useKey, useScope } from "@diffgazer/keys";
+import { useState } from "react";
 import { DemoWrapper } from "../components/demo-wrapper";
 import { useTransientValue } from "./use-transient-value";
 
@@ -47,7 +47,8 @@ export function ScopedDialogDemo() {
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {[1, 2, 3, 4, 5].map((n) => (
-          <div
+          <button
+            type="button"
             key={n}
             className={`demo-card${selectedItem === n ? " demo-card--active" : ""}`}
             onClick={() => setSelectedItem(n)}
@@ -58,12 +59,12 @@ export function ScopedDialogDemo() {
                 selected
               </span>
             )}
-          </div>
+          </button>
         ))}
       </div>
 
       <div style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 12 }}>
-        <button className="demo-button" onClick={() => setDialogOpen(true)}>
+        <button type="button" className="demo-button" onClick={() => setDialogOpen(true)}>
           Open Dialog
         </button>
         <span className="demo-status">Press O to open dialog</span>
@@ -76,20 +77,28 @@ export function ScopedDialogDemo() {
       )}
 
       {dialogOpen && (
-        <div className="demo-overlay" onClick={() => setDialogOpen(false)}>
-          <div className="demo-dialog" onClick={(e) => e.stopPropagation()}>
+        <div className="demo-overlay">
+          <button
+            type="button"
+            aria-label="Close dialog"
+            className="demo-overlay-backdrop"
+            onClick={() => setDialogOpen(false)}
+          />
+          <div className="demo-dialog">
             <h3 style={{ marginBottom: 8 }}>Confirm Action</h3>
             <p style={{ fontSize: 14, color: "var(--color-text-muted)", marginBottom: 20 }}>
               Are you sure you want to proceed? Notice that pressing 1-5 does nothing while this dialog is open.
             </p>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
               <button
+                type="button"
                 className="demo-button--secondary demo-button"
                 onClick={() => setDialogOpen(false)}
               >
                 Cancel
               </button>
               <button
+                type="button"
                 className="demo-button"
                 onClick={confirmAction}
               >

@@ -1,6 +1,6 @@
-import type { DiffChange } from "./parse";
 import { buildLcsTable } from "./lcs";
 import { collectEditPairs } from "./pairs";
+import type { DiffChange } from "./parse";
 
 export interface WordSegment {
   text: string;

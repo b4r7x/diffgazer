@@ -1,4 +1,4 @@
-import type { CodeBlockLineProps } from "@/components/ui/code-block";
+import type { CodeBlockLineProps } from "@diffgazer/ui/components/code-block";
 import { hooksData, libsData } from "@/generated/library-data";
 
 type SourceEntry = {

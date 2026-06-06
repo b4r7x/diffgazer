@@ -1,9 +1,9 @@
-import { render, screen, act, waitFor, fireEvent } from "@testing-library/react"
-import { axe } from "../../../testing/utils"
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { toast, Toaster } from "./index"
-import { dismiss, remove, useToastStore } from "./toast-store"
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { axe } from "../../../testing/axe"
 import { Dialog } from "../dialog/index"
+import { Toaster, toast } from "./index"
+import { dismiss, remove, useToastStore } from "./toast-store"
 
 function StoreReader({ onRead }: { onRead: (ids: string[]) => void }) {
   const { toasts } = useToastStore()
@@ -495,7 +495,7 @@ describe("Toast", () => {
       try {
         render(<Toaster />)
         act(() => {
-          toast("Quick HUD", { variant: "hud", action: <button>Undo</button> })
+          toast("Quick HUD", { variant: "hud", action: <button type="button">Undo</button> })
         })
         expect(screen.getByText("Quick HUD")).toBeInTheDocument()
 
@@ -512,7 +512,7 @@ describe("Toast", () => {
       act(() => {
         toast("Saved", {
           variant: "hud",
-          action: <button>Undo</button>,
+          action: <button type="button">Undo</button>,
         })
       })
       const root = findToast("Saved")

@@ -1,13 +1,13 @@
 "use client";
 
-import { useCallback, useLayoutEffect, useRef, useState, type RefObject } from "react";
+import { type RefObject, useCallback, useLayoutEffect, useRef, useState } from "react";
 import {
   computePosition,
   resolveCollisionPosition,
   shift,
   wouldOverflow,
-} from "./compute-floating-position";
-import type { FloatingAlign, FloatingPlacement, FloatingSide, Viewport } from "./floating-position-constants";
+} from "@/lib/floating-position";
+import type { FloatingAlign, FloatingPlacement, FloatingSide, Viewport } from "@/lib/floating-position-constants";
 
 export { computePosition, resolveCollisionPosition, shift, wouldOverflow };
 export type { FloatingAlign, FloatingPlacement, FloatingSide };

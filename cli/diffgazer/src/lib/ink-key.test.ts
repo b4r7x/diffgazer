@@ -1,5 +1,5 @@
-import { test, describe, expect } from "vitest";
 import type { Key } from "ink";
+import { describe, expect, test } from "vitest";
 import { inkKeyToHotkey, isLetterKey } from "./ink-key";
 
 const emptyKey: Key = {

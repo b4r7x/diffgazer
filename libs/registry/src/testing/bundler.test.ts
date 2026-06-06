@@ -1,10 +1,10 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { z } from "zod";
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
+import { createBundler } from "../cli/bundler/bundle.js";
 import { BaseRegistryBundleSchema, createRegistryLoader } from "../cli/registry.js";
-import { createBundler } from "../cli/bundler/index.js";
 
 describe("createBundler", () => {
   it("writes bundles whose integrity validates after installer schema parsing", () => {
@@ -65,7 +65,7 @@ describe("createBundler", () => {
     },
     {
       label: "absolute path outside registry root",
-      buildPath: (rootDir: string) => {
+      buildPath: (_rootDir: string) => {
         const outsidePath = join(tmpdir(), "outside-registry-source.ts");
         writeFileSync(outsidePath, "export const outside = true;\n");
         return outsidePath;

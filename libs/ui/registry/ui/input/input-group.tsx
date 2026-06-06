@@ -1,5 +1,5 @@
-import type { InputHTMLAttributes, ReactNode, Ref } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
+import type { InputHTMLAttributes, ReactNode, Ref } from "react";
 import { inputSizeClasses } from "@/lib/input-variants";
 import { cn } from "@/lib/utils";
 

@@ -1,6 +1,6 @@
-import type { ReactNode } from "react";
-import { cn } from "@diffgazer/ui/lib/utils";
 import { Button } from "@diffgazer/ui/components/button";
+import { cn } from "@diffgazer/ui/lib/utils";
+import type { ReactNode } from "react";
 
 export type InfoFieldColor = "blue" | "violet" | "green" | "yellow" | "red" | "muted";
 

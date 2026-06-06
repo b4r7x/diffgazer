@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { queryTestElement, requireFrameDocument } from "../testing/assertions.js";
 import { getFirstFocusableElement, getFocusableElements, getTabbableElements, isFocusable } from "./focusable.js";
 
 function mount(html: string): HTMLDivElement {
@@ -222,42 +223,41 @@ describe("focusable utilities", () => {
     it("returns true for visible buttons", () => {
       const c = mount('<button id="a">A</button>');
       // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
-      expect(isFocusable(c.querySelector<HTMLElement>("#a")!)).toBe(true);
+      expect(isFocusable(queryTestElement(c, "#a"))).toBe(true);
     });
 
     it("returns true for negative-tabindex programmatic focus targets", () => {
       const c = mount('<div id="a" tabindex="-1">A</div>');
       // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
-      expect(isFocusable(c.querySelector<HTMLElement>("#a")!)).toBe(true);
+      expect(isFocusable(queryTestElement(c, "#a"))).toBe(true);
     });
 
     it("returns true for summary elements", () => {
       const c = mount('<details><summary id="a">Details</summary></details>');
       // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
-      expect(isFocusable(c.querySelector<HTMLElement>("#a")!)).toBe(true);
+      expect(isFocusable(queryTestElement(c, "#a"))).toBe(true);
     });
 
     it("returns false for disabled buttons", () => {
       const c = mount('<button id="a" disabled>A</button>');
       // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
-      expect(isFocusable(c.querySelector<HTMLElement>("#a")!)).toBe(false);
+      expect(isFocusable(queryTestElement(c, "#a"))).toBe(false);
     });
 
     it("returns false for elements inside an inert ancestor", () => {
       const c = mount('<div inert><button id="a">A</button></div>');
       // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
-      expect(isFocusable(c.querySelector<HTMLElement>("#a")!)).toBe(false);
+      expect(isFocusable(queryTestElement(c, "#a"))).toBe(false);
     });
 
     it("works with elements from another document realm", () => {
       const frame = document.createElement("iframe");
       document.body.append(frame);
-      const frameDocument = frame.contentDocument;
-      expect(frameDocument).not.toBeNull();
-      frameDocument!.body.innerHTML = '<div id="root"><button id="a">A</button></div>';
+      const frameDocument = requireFrameDocument(frame);
+      frameDocument.body.innerHTML = '<div id="root"><button id="a">A</button></div>';
 
-      const button = frameDocument!.getElementById("a") as HTMLElement;
-      const root = frameDocument!.getElementById("root") as HTMLElement;
+      const button = queryTestElement(frameDocument, "a");
+      const root = queryTestElement(frameDocument, "root");
 
       expect(isFocusable(button)).toBe(true);
       expect(getFocusableElements(root)).toEqual([button]);

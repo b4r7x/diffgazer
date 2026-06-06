@@ -1,15 +1,15 @@
 import { resolve } from "node:path";
 import { Command } from "commander";
-import { withErrorHandler } from "./command-helpers.js";
 import type { RegistryItem } from "./registry.js";
-import { runInitWorkflow } from "./workflows/init.js";
+import { withErrorHandler } from "./with-error-handler.js";
 import { runAddWorkflow } from "./workflows/add.js";
-import { runListWorkflow, type ListDisplayItem } from "./workflows/list.js";
-import { runDiffWorkflow, renderDiffPatch, type DiffWorkflowFile } from "./workflows/diff.js";
+import { type DiffWorkflowFile, renderDiffPatch, runDiffWorkflow } from "./workflows/diff.js";
+import { runInitWorkflow } from "./workflows/init.js";
+import { type ListDisplayItem, runListWorkflow } from "./workflows/list.js";
 import {
-  runRemoveWorkflow,
-  type RemoveWorkflowFile,
   type ExpandRequestedNamesResult,
+  type RemoveWorkflowFile,
+  runRemoveWorkflow,
 } from "./workflows/remove.js";
 
 export interface ExtraOption {

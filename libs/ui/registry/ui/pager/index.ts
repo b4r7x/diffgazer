@@ -1,6 +1,6 @@
 "use client";
 
-import { Pager as PagerRoot, type PagerProps } from "./pager";
+import { type PagerProps, Pager as PagerRoot } from "./pager";
 import { PagerLink, type PagerLinkProps, type PagerLinkRenderProps } from "./pager-link";
 
 const Pager = Object.assign(PagerRoot, {

@@ -4,8 +4,8 @@ import type { ComponentPropsWithRef, FocusEvent, MouseEvent, ReactNode, Ref } fr
 import { getEncodedListboxItemId } from "@/hooks/use-listbox";
 import { cn } from "@/lib/utils";
 import { useMenuContext } from "./menu-context";
-import { getItemState, menuItemBase, menuItemValue } from "./menu-item-variants";
 import { DefaultItemLayout, HubItemLayout } from "./menu-item-layouts";
+import { getItemState, menuItemBase, menuItemValue } from "./menu-item-variants";
 
 export interface MenuItemProps<TId extends string = string>
   extends Omit<
@@ -69,6 +69,9 @@ export function MenuItem<TId extends string = string>({
   };
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: menuitem with centralized keyboard handling — the menu container owns arrow/Enter/Space via useNavigation; the item only mirrors focus/click.
+    // biome-ignore lint/a11y/useAriaPropsSupportedByRole: role is the dynamic itemRole (menuitem/menuitemradio) that Biome cannot resolve; aria-checked is valid for menuitemradio.
+    // biome-ignore lint/a11y/useKeyWithClickEvents: Enter/Space activation is handled centrally by the menu container, not per item.
     <div
       {...rootProps}
       ref={ref}

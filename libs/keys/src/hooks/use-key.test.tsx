@@ -1,10 +1,10 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, renderHook, screen, cleanup, act } from "@testing-library/react";
+import { act, cleanup, render, renderHook, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { fireKey, KeyboardWrapper, StrictKeyboardWrapper } from "../testing/test-utils.js";
 import { useKey } from "./use-key.js";
 import { useScope } from "./use-scope.js";
-import { fireKey, KeyboardWrapper, StrictKeyboardWrapper } from "../testing/test-utils.js";
 
 describe("useKey", () => {
   afterEach(() => {

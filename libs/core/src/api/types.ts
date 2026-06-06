@@ -1,11 +1,11 @@
-import type { TrustConfig } from "@diffgazer/core/schemas/config";
+import type { TrustConfig } from "../schemas/config/index.js";
+import type { ProjectContextGraph, ProjectContextMeta } from "../schemas/context.js";
 import type {
-  ReviewMode,
-  ReviewMetadata,
-  SavedReview,
   DrilldownResult,
-} from "@diffgazer/core/schemas/review";
-import type { ProjectContextGraph, ProjectContextMeta } from "@diffgazer/core/schemas/context";
+  ReviewMetadata,
+  ReviewMode,
+  SavedReview,
+} from "../schemas/review/index.js";
 
 export interface ApiError extends Error {
   status: number;

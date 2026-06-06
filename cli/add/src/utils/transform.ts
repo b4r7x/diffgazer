@@ -1,17 +1,14 @@
 import { KEYS_PACKAGE_IMPORT_TARGETS } from "@diffgazer/registry";
 import type { ResolvedConfig } from "../context.js";
 import { SOURCE_ALIASES } from "../context.js";
-import { getKeysHookImportNames } from "./integration.js";
+import { getKeysHookImportNames } from "./keys-copy-bundle.js";
 
 const IMPORT_PREFIX = String.raw`(from\s+|import\(\s*|require\(\s*)(["'])`;
 
 // Mirrors the validate-artifacts gate (collectBundleRelativeJsImportErrors): the
 // bare side-effect form `import "./x.js"` must be stripped too, or the gate would
 // flag a copied side-effect import with no transform able to fix it.
-const RELATIVE_JS_IMPORT_RE = new RegExp(
-  String.raw`(from\s+|import\(\s*|require\(\s*|import\s+(?=["']))(["'])(\.{1,2}/[^"']+)\.js\2`,
-  "g",
-);
+const RELATIVE_JS_IMPORT_RE = /(from\s+|import\(\s*|require\(\s*|import\s+(?=["']))(["'])(\.{1,2}\/[^"']+)\.js\2/g;
 const KEYS_PACKAGE_IMPORT_LINE_RE =
   /^(\s*)import\s+(type\s+)?\{([^}]+)\}\s+from\s+(["'])@diffgazer\/keys\4;?\s*$/;
 
@@ -321,7 +318,8 @@ function replaceMatchedLines(
   const result: string[] = [];
   for (let i = 0; i < lines.length; i++) {
     if (!matchedIndices.has(i)) {
-      result.push(lines[i]!);
+      const line = lines[i];
+      if (line !== undefined) result.push(line);
       continue;
     }
     if (!inserted) {

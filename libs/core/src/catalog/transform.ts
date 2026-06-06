@@ -1,7 +1,7 @@
-import type { AIProvider, ModelInfo } from "@diffgazer/core/schemas/config";
-import type { ModelsDevCatalog, ModelsDevModel } from "./schema.js";
-import { PROVIDER_OVERLAY, type ProviderOverlay } from "./provider-overlay.js";
+import type { AIProvider, ModelInfo } from "../schemas/config/index.js";
 import { formatContextTokens } from "./format.js";
+import { PROVIDER_OVERLAY, type ProviderOverlay } from "./provider-overlay.js";
+import type { ModelsDevCatalog, ModelsDevModel } from "./schema.js";
 
 type PricingTier = "free" | "paid" | "unknown";
 

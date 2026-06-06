@@ -2,8 +2,8 @@
 
 import { useState } from "react"
 import {
-  useActiveHeading,
   type ActiveHeadingActivation,
+  useActiveHeading,
 } from "@/hooks/use-active-heading"
 
 const sections = [

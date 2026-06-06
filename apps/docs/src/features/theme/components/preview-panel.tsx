@@ -1,8 +1,12 @@
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button/button";
-import { Callout } from "@/components/ui/callout";
-import { Input } from "@/components/ui/input/input";
-import { Panel, PanelContent, PanelHeader } from "@/components/ui/panel";
+import { Badge } from "@diffgazer/ui/components/badge";
+import { Button } from "@diffgazer/ui/components/button";
+import { Callout } from "@diffgazer/ui/components/callout";
+import { Input } from "@diffgazer/ui/components/input";
+import {
+	Panel,
+	PanelContent,
+	PanelHeader,
+} from "@diffgazer/ui/components/panel";
 
 export function PreviewPanel() {
 	return (

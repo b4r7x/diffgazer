@@ -1,5 +1,5 @@
-import type { HTMLAttributes, Ref } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
+import type { HTMLAttributes, Ref } from "react";
 import { cn } from "@/lib/utils";
 
 type HeadingTag = "h2" | "h3" | "h4";

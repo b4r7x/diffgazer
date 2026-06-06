@@ -2,21 +2,21 @@
 
 import {
   Children,
+  type ElementType,
   isValidElement,
+  type KeyboardEvent,
+  type ReactNode,
+  type Ref,
   useCallback,
   useEffect,
   useEffectEvent,
   useLayoutEffect,
   useRef,
   useState,
-  type ElementType,
-  type KeyboardEvent,
-  type ReactNode,
-  type Ref,
 } from "react";
-import { useNavigation, type NavigationRole } from "@/hooks/use-navigation";
-import { useTypeaheadBuffer } from "@/hooks/use-typeahead-buffer";
 import { useControllableState } from "@/hooks/use-controllable-state";
+import { type NavigationRole, useNavigation } from "@/hooks/use-navigation";
+import { useTypeaheadBuffer } from "@/hooks/use-typeahead-buffer";
 import { composeRefs } from "@/lib/compose-refs";
 import { typeaheadSearch } from "@/lib/typeahead";
 import {
@@ -27,8 +27,8 @@ import {
   getListboxOwnerSelector,
   hasDomItem,
   resolveActiveDescendant,
-} from "./use-listbox-dom";
-import { hasEnabledMetadataItem, type ListboxMetadataItem } from "./use-listbox-metadata";
+} from "./listbox-dom";
+import { hasEnabledMetadataItem, type ListboxMetadataItem } from "./listbox-metadata";
 
 export { getEncodedListboxItemId };
 export type { ListboxMetadataItem };
@@ -156,10 +156,12 @@ export function useListbox<TId extends string = string>({
     setDomActiveDescendant((current) => (current === next ? current : next));
   });
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: syncDomActiveDescendant is a useEffectEvent; activeDescendantCandidate and items are intentional triggers that must re-run the DOM sync when they change.
   useLayoutEffect(() => {
     syncDomActiveDescendant();
   }, [activeDescendantCandidate, items]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: syncDomActiveDescendant is a useEffectEvent that reads containerRole/getItemId/idPrefix/itemRole; these are intentional triggers that must re-subscribe the MutationObserver when the listbox identity changes.
   useLayoutEffect(() => {
     if (items) return;
     syncDomActiveDescendant();
@@ -271,8 +273,9 @@ export function useListbox<TId extends string = string>({
     });
 
     if (match) {
-      // DOM boundary: data-value is opaque to TS; consumers parameterize TId.
-      setHighlighted(match.dataset.value! as TId);
+      const value = match.dataset.value;
+      if (value === undefined) return;
+      setHighlighted(value as TId);
       match.scrollIntoView?.({ block: "nearest" });
     }
   };

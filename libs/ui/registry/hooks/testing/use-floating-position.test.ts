@@ -1,15 +1,15 @@
-import { createElement, useRef } from "react"
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { act, render, screen, waitFor } from "@testing-library/react"
 import { JSDOM } from "jsdom"
+import { createElement, useRef } from "react"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import {
   computePosition,
+  type FloatingAlign,
+  type FloatingSide,
   resolveCollisionPosition,
   shift,
   useFloatingPosition,
   wouldOverflow,
-  type FloatingAlign,
-  type FloatingSide,
 } from "../use-floating-position"
 
 function makeDOMRect(x: number, y: number, width: number, height: number): DOMRect {
@@ -77,6 +77,7 @@ function FloatingHarness({
     "div",
     null,
     createElement("button", {
+      type: "button",
       ref: (node: HTMLButtonElement | null) => {
         triggerRef.current = node
         if (node) node.getBoundingClientRect = getTriggerRect
@@ -593,6 +594,7 @@ describe("useFloatingPosition", () => {
           },
         },
         createElement("button", {
+          type: "button",
           ref: (n: HTMLButtonElement | null) => {
             triggerRef.current = n
             if (n) n.getBoundingClientRect = () => triggerRect

@@ -1,7 +1,7 @@
 "use client"
 
-import { useRef } from "react"
 import { KeyboardProvider, useFocusZone } from "@diffgazer/keys"
+import { useRef } from "react"
 
 type Zone = "search" | "results" | "preview"
 const zones = ["search", "results", "preview"] as const

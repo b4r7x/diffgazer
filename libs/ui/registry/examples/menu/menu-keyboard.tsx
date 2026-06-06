@@ -1,8 +1,8 @@
 "use client"
 
 import { KeyboardProvider, useKey } from "@diffgazer/keys"
-import { Menu, MenuItem, MenuDivider } from "@/components/ui/menu"
 import { useState } from "react"
+import { Menu, MenuDivider, MenuItem } from "@/components/ui/menu"
 
 const hotkeys: Record<string, string> = {
   "1": "new",

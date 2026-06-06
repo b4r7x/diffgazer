@@ -19,6 +19,7 @@ export default function PopoverControlledExample() {
         <Popover.Content className="border border-border bg-background p-3 font-mono text-xs text-foreground shadow-md">
           Controlled popover
           <button
+            type="button"
             className="mt-2 block border border-foreground/30 px-2 py-0.5 text-xs"
             onClick={() => setOpen(false)}
           >

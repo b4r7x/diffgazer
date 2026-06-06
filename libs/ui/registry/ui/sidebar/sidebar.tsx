@@ -1,8 +1,7 @@
 "use client";
 
-import { useMemo, type HTMLAttributes, type ReactNode, type Ref } from "react";
+import { type HTMLAttributes, type ReactNode, type Ref, useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { sidebarContainerVariants, type SidebarVariant } from "@/lib/sidebar-variants";
 import { Dialog, DialogContent } from "../dialog";
 import {
   SidebarChromeContext,
@@ -10,6 +9,7 @@ import {
   useSidebar,
 } from "./sidebar-context";
 import { SidebarProvider } from "./sidebar-provider";
+import { type SidebarVariant, sidebarContainerVariants } from "./sidebar-variants";
 
 export interface SidebarProps extends HTMLAttributes<HTMLElement> {
   ref?: Ref<HTMLElement>;

@@ -1,10 +1,10 @@
+import { getAgentDetail } from "@diffgazer/core/review";
+import type { AgentState, AgentStatus } from "@diffgazer/core/schemas/events";
 import { Box, Text } from "ink";
+import { useTheme } from "../../../app/providers/theme";
 import { Badge, type BadgeProps } from "../../../components/ui/badge";
 import { SectionHeader } from "../../../components/ui/section-header";
 import { Spinner } from "../../../components/ui/spinner";
-import { useTheme } from "../../../theme/theme-context";
-import { getAgentDetail } from "@diffgazer/core/review";
-import type { AgentState, AgentStatus } from "@diffgazer/core/schemas/events";
 
 type BadgeVariant = NonNullable<BadgeProps["variant"]>;
 

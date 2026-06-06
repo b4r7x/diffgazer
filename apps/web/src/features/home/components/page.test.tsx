@@ -1,12 +1,12 @@
-import { render, screen } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { KeyboardProvider } from "@diffgazer/keys";
 import { FooterProvider } from "@diffgazer/core/footer";
-import { Toaster } from "@diffgazer/ui/components/toast";
-import { ConfigProvider } from "@/app/providers/config-provider";
-import type { ReactNode } from "react";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
+import { KeyboardProvider } from "@diffgazer/keys";
+import { Toaster } from "@diffgazer/ui/components/toast";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ConfigProvider } from "@/app/providers/config";
 
 type ActiveSessionState = { reviewId: string; mode: ReviewMode } | null;
 

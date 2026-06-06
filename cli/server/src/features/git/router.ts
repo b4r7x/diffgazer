@@ -1,12 +1,12 @@
-import { zValidator } from "@hono/zod-validator";
-import { Hono } from "hono";
-import type { Context } from "hono";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
-import { errorResponse, zodErrorHandler } from "../../shared/lib/http/response.js";
+import { zValidator } from "@hono/zod-validator";
+import type { Context } from "hono";
+import { Hono } from "hono";
 import { getProjectRoot } from "../../shared/lib/http/request.js";
+import { errorResponse, zodErrorHandler } from "../../shared/lib/http/response.js";
 import { requireRepoAccess } from "../../shared/middlewares/trust-guard.js";
-import { resolveGitService } from "./service.js";
 import { GitDiffQuerySchema } from "./schemas.js";
+import { resolveGitService } from "./service.js";
 
 const gitRouter = new Hono();
 

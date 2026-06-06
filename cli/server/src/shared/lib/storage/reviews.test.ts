@@ -1,8 +1,8 @@
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
+import type { DrilldownResult, SavedReview } from "@diffgazer/core/schemas/review";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { SavedReview, DrilldownResult } from "@diffgazer/core/schemas/review";
 import { makeIssue } from "../testing/factories.js";
 
 const REVIEW_ID = "550e8400-e29b-41d4-a716-446655440000";
@@ -18,7 +18,10 @@ beforeEach(async () => {
 
 afterEach(async () => {
   delete process.env.DIFFGAZER_HOME;
-  await rm(tempHome, { recursive: true, force: true });
+  // listReviews/getReview persist the project index and migrations as fire-and-forget
+  // writes that can still be recreating .index/ when teardown runs; retry past the
+  // resulting ENOTEMPTY race.
+  await rm(tempHome, { recursive: true, force: true, maxRetries: 3, retryDelay: 20 });
 });
 
 async function loadStorage() {

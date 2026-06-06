@@ -1,5 +1,6 @@
 "use client";
 
+import { cva, type VariantProps } from "class-variance-authority";
 import {
   type HTMLAttributes,
   type ReactNode,
@@ -9,13 +10,12 @@ import {
   useMemo,
   useState,
 } from "react";
-import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
-import { AvatarContext, useAvatarGroupContext, type AvatarStatus } from "./avatar-context";
-import { AvatarImage } from "./avatar-image";
+import { AvatarContext, type AvatarStatus, useAvatarGroupContext } from "./avatar-context";
 import { AvatarFallback } from "./avatar-fallback";
+import { AvatarImage } from "./avatar-image";
 
-export { type AvatarStatus };
+export type { AvatarStatus };
 
 export const avatarVariants = cva(
   "relative inline-flex items-center justify-center border border-foreground/40 font-mono font-medium text-foreground bg-background overflow-hidden shrink-0",
@@ -71,6 +71,7 @@ function AvatarRoot({
 
   return (
     <AvatarContext value={contextValue}>
+      {/* biome-ignore lint/a11y/useAriaPropsSupportedByRole: role is conditionally "img" (Biome cannot resolve the ternary); aria-label is set in the same branch and is valid for the img role. */}
       <span
         ref={ref}
         role={label ? "img" : "presentation"}

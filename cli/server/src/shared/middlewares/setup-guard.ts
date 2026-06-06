@@ -1,10 +1,10 @@
-import type { Context, Next } from "hono";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
-import { getSetupStatus } from "../../features/config/service.js";
+import type { Context, Next } from "hono";
+import { getSetupStatus } from "../lib/config/setup-status.js";
 import { getProjectRoot } from "../lib/http/request.js";
 import { errorResponse } from "../lib/http/response.js";
 
-export const requireSetup = async (c: Context, next: Next): Promise<Response | void> => {
+export const requireSetup = async (c: Context, next: Next): Promise<Response | undefined> => {
   const projectRoot = getProjectRoot(c);
   const status = getSetupStatus(projectRoot);
 
@@ -18,4 +18,5 @@ export const requireSetup = async (c: Context, next: Next): Promise<Response | v
   }
 
   await next();
+  return undefined;
 };

@@ -1,5 +1,5 @@
-import { type FileOp, type WriteFilesResult } from "../add-helpers.js";
-import { info, warn } from "../logger.js";
+import type { FileOp, WriteFilesResult } from "../file-write-rollback.js";
+import { info, warn } from "../terminal.js";
 import { applyInstallPlan } from "./apply-install-plan.js";
 
 function dedupeFileOpsStrict(fileOps: FileOp[]): FileOp[] {

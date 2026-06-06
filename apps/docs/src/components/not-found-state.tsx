@@ -1,13 +1,13 @@
-import { cn } from "@diffgazer/ui/lib/utils";
-import type { ReactNode } from "react";
 import {
 	EmptyState,
 	EmptyStateActions,
 	EmptyStateDescription,
 	EmptyStateMessage,
-} from "@/components/ui/empty-state";
-import { SectionHeader } from "@/components/ui/section-header/section-header";
-import { Typography } from "@/components/ui/typography/typography";
+} from "@diffgazer/ui/components/empty-state";
+import { SectionHeader } from "@diffgazer/ui/components/section-header";
+import { Typography } from "@diffgazer/ui/components/typography";
+import { cn } from "@diffgazer/ui/lib/utils";
+import type { ReactNode } from "react";
 
 type NotFoundVariant = "docs" | "global";
 

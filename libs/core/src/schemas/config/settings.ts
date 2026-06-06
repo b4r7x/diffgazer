@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { LensIdSchema, ProfileIdSchema } from "../review/lens.js";
 import { ReviewSeveritySchema } from "../review/issues.js";
+import { LensIdSchema, ProfileIdSchema } from "../review/lens.js";
 
 export const TrustCapabilitiesSchema = z.object({
   readFiles: z.boolean(),

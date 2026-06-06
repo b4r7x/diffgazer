@@ -1,12 +1,12 @@
-import { test, describe, expect } from "vitest";
 import type { SetupStatus } from "@diffgazer/core/schemas/config";
+import { describe, expect, test } from "vitest";
 import {
+  getContextLabel,
+  getContextVariant,
   getServerBadgeVariant,
   getServerLabel,
   getSetupLabel,
   getSetupVariant,
-  getContextLabel,
-  getContextVariant,
 } from "./derive-display";
 
 const SETUP_STATUS_READY: SetupStatus = {

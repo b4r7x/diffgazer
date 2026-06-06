@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { CommandPalette } from "@/components/ui/command-palette";
 import { Button } from "@/components/ui/button";
+import { CommandPalette } from "@/components/ui/command-palette";
 
 export default function CommandPaletteViewfinder() {
   const [open, setOpen] = useState(false);

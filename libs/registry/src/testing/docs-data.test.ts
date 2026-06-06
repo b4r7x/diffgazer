@@ -1,24 +1,25 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from "vitest";
-import { kebabToCamelCase, toDocExportName, toYamlString } from "../docs-data/utils.js";
 import {
-  mkdtempSync,
   mkdirSync,
-  writeFileSync,
+  mkdtempSync,
   rmSync,
+  writeFileSync,
 } from "node:fs";
-import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
   createDocsHighlighter,
-  highlightCode,
   type DocsHighlighter,
+  highlightCode,
 } from "../docs-data/highlight.js";
 import {
-  generateHooksSource,
   generateEnrichedHookData,
+  generateHooksSource,
   type HookRegistryItem,
 } from "../docs-data/hooks-source.js";
+import { kebabToCamelCase, toDocExportName, toYamlString } from "../docs-data/naming.js";
 import type { HookDoc } from "../docs-data/types.js";
+import { requireValue } from "./assertions.js";
 
 const TEST_THEME_NAME = "test-theme";
 const TEST_THEME = {
@@ -53,9 +54,9 @@ describe("highlightCode", () => {
 
   it("starts line numbering at 1", () => {
     const lines = highlightCode(highlighter, "a\nb\nc", "typescript", TEST_THEME_NAME);
-    expect(lines[0]!.number).toBe(1);
-    expect(lines[1]!.number).toBe(2);
-    expect(lines[2]!.number).toBe(3);
+    expect(lines[0]?.number).toBe(1);
+    expect(lines[1]?.number).toBe(2);
+    expect(lines[2]?.number).toBe(3);
   });
 
   it("preserves special characters in token text", () => {
@@ -107,7 +108,7 @@ describe("generateHooksSource", () => {
     });
 
     expect(result).toHaveProperty("alpha");
-    const entry = result["alpha"]!;
+    const entry = requireValue(result.alpha, "generated hook entry alpha");
     expect(entry.name).toBe("alpha");
     expect(entry.title).toBe("Alpha Hook");
     expect(entry.description).toBe("A test hook");
@@ -128,8 +129,8 @@ describe("generateHooksSource", () => {
       themeName: TEST_THEME_NAME,
     });
 
-    expect(result["alpha"]!.title).toBe("alpha");
-    expect(result["alpha"]!.description).toBe("");
+    expect(result.alpha?.title).toBe("alpha");
+    expect(result.alpha?.description).toBe("");
   });
 
   it("warns and skips when file is missing", () => {
@@ -198,7 +199,7 @@ describe("generateEnrichedHookData", () => {
     });
 
     expect(result).toHaveProperty("use-beta");
-    const entry = result["use-beta"]!;
+    const entry = requireValue(result["use-beta"], "generated hook entry use-beta");
 
     expect(entry.name).toBe("use-beta");
     expect(entry.title).toBe("Beta Hook");
@@ -212,8 +213,8 @@ describe("generateEnrichedHookData", () => {
 
     expect(entry.examples).toContain("basic");
     expect(entry.exampleSource).toHaveProperty("basic");
-    expect(entry.exampleSource["basic"]!.raw).toContain("useBeta");
-    expect(entry.exampleSource["basic"]!.highlighted.length).toBeGreaterThan(0);
+    expect(entry.exampleSource.basic?.raw).toContain("useBeta");
+    expect(entry.exampleSource.basic?.highlighted.length).toBeGreaterThan(0);
   });
 
   it("falls back when HookDoc is null", async () => {
@@ -225,7 +226,7 @@ describe("generateEnrichedHookData", () => {
       loadHookDoc: async () => null,
     });
 
-    const entry = result["use-beta"]!;
+    const entry = requireValue(result["use-beta"], "generated hook entry use-beta");
     expect(entry.docs).toBeNull();
     expect(entry.description).toBe("Beta description");
     expect(entry.usageSnippet).toBeUndefined();
@@ -247,11 +248,11 @@ describe("generateEnrichedHookData", () => {
       loadHookDoc: async () => hookDoc,
     });
 
-    const entry = result["use-beta"]!;
+    const entry = requireValue(result["use-beta"], "generated hook entry use-beta");
     expect(entry.usageSnippet).toBe("const val = useBeta();");
     expect(entry.usageSnippetHighlighted).toBeDefined();
     expect(Array.isArray(entry.usageSnippetHighlighted)).toBe(true);
-    expect(entry.usageSnippetHighlighted!.length).toBeGreaterThan(0);
+    expect(entry.usageSnippetHighlighted?.length).toBeGreaterThan(0);
   });
 
   it("collects and highlights example files from examplesDir", async () => {
@@ -269,12 +270,12 @@ describe("generateEnrichedHookData", () => {
       examplesDir: join(tempDir, "examples"),
     });
 
-    const entry = result["use-beta"]!;
+    const entry = requireValue(result["use-beta"], "generated hook entry use-beta");
     expect(entry.examples).toContain("basic");
     expect(entry.examples).toContain("advanced");
     expect(entry.examples).toEqual(["advanced", "basic"]);
-    expect(entry.exampleSource["advanced"]!.raw).toContain("Advanced");
-    expect(entry.exampleSource["advanced"]!.highlighted.length).toBeGreaterThan(0);
+    expect(entry.exampleSource.advanced?.raw).toContain("Advanced");
+    expect(entry.exampleSource.advanced?.highlighted.length).toBeGreaterThan(0);
   });
 
   it("resolves usage.example from examplesDir file", async () => {
@@ -291,7 +292,7 @@ describe("generateEnrichedHookData", () => {
       examplesDir: join(tempDir, "examples"),
     });
 
-    const entry = result["use-beta"]!;
+    const entry = requireValue(result["use-beta"], "generated hook entry use-beta");
     expect(entry.usageSnippet).toBeDefined();
     expect(entry.usageSnippet).toContain("useBeta");
     expect(entry.usageSnippetHighlighted).toBeDefined();

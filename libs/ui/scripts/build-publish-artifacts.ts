@@ -5,10 +5,10 @@ import {
   REGISTRY_ORIGIN,
 } from "@diffgazer/registry";
 import {
-  transformUiPublicRegistryKeysImportContent,
   transformUiPublicRegistryItem,
+  transformUiPublicRegistryKeysImportContent,
   transformUiPublicRegistryKeysImports,
-} from "./transform-public-registry-keys-imports.js";
+} from "./registry/rewrite-keys-imports.js";
 
 const ROOT = resolve(import.meta.dirname, "..");
 

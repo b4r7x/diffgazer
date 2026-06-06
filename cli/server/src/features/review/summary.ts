@@ -1,24 +1,16 @@
+import { calculateSeverityCounts, severityRank } from "@diffgazer/core/schemas/presentation";
 import type {
   ReviewIssue,
   ReviewResult,
   ReviewSeverity,
 } from "@diffgazer/core/schemas/review";
-import { severityRank } from "@diffgazer/core/schemas/presentation";
+import { pluralize } from "@diffgazer/core/strings";
 
 export function generateExecutiveSummary(
   issues: ReviewIssue[],
   orchestrationSummary: string,
 ): string {
-  const severityCounts: Record<ReviewSeverity, number> = {
-    blocker: 0,
-    high: 0,
-    medium: 0,
-    low: 0,
-    nit: 0,
-  };
-  for (const issue of issues) {
-    severityCounts[issue.severity]++;
-  }
+  const severityCounts = calculateSeverityCounts(issues);
 
   const uniqueFiles = new Set(issues.map((i) => i.file)).size;
 
@@ -31,7 +23,7 @@ export function generateExecutiveSummary(
     .join("\n");
 
   const summaryParts = [
-    `Found ${issues.length} issue${issues.length !== 1 ? "s" : ""} across ${uniqueFiles} file${uniqueFiles !== 1 ? "s" : ""}.`,
+    `Found ${pluralize(issues.length, "issue")} across ${pluralize(uniqueFiles, "file")}.`,
     "",
     "Severity breakdown:",
     severityLines,

@@ -1,6 +1,7 @@
-import type { ReviewMetadata, ReviewSeverity } from "@diffgazer/core/schemas/review";
-import type { TimelineItem } from "@diffgazer/core/schemas/presentation";
-import { getDateKey, getDateLabel, getTimestamp } from "@diffgazer/core/format";
+import { getDateKey, getDateLabel, getTimestamp } from "../format.js";
+import type { SeverityCounts, TimelineItem } from "../schemas/presentation/index.js";
+import type { ReviewMetadata, ReviewSeverity } from "../schemas/review/index.js";
+import { pluralize } from "../strings.js";
 
 export const HISTORY_SECTION_ALL_ID = "all";
 export const HISTORY_SECTION_ALL_LABEL = "All";
@@ -16,36 +17,12 @@ export interface RunSummaryParts {
   issueCount: number;
 }
 
-export interface ReviewListItem {
-  id: string;
-  displayId: string;
-  branch: string;
-  timestamp: string;
-  summary: string;
-  date: string;
-  issueCount: number;
-  severities: SeverityPart[];
-  duration: number;
-  mode: string;
-}
-
-export interface DateGroup<TItem = ReviewListItem> {
-  dateKey: string;
-  label: string;
-  reviews: TItem[];
-}
-
 export function getRunDisplayId(metadata: ReviewMetadata): string {
   return `#${metadata.id.slice(0, 4)}`;
 }
 
 export function getRunBranchLabel(metadata: ReviewMetadata): string {
   return metadata.mode === "staged" ? "Staged" : metadata.branch ?? "Main";
-}
-
-export function durationMsToSeconds(durationMs: number | undefined | null): number {
-  if (durationMs == null) return 0;
-  return Math.round(durationMs / 1000);
 }
 
 export function getRunSummaryParts(metadata: ReviewMetadata): RunSummaryParts {
@@ -69,24 +46,39 @@ export function getRunSummaryText(metadata: ReviewMetadata): string {
   const summary = getRunSummaryParts(metadata);
   if (summary.passed) return "Passed with no issues.";
   if (summary.parts.length === 0) {
-    return `Found ${summary.issueCount} issue${summary.issueCount === 1 ? "" : "s"}.`;
+    return `Found ${pluralize(summary.issueCount, "issue")}.`;
   }
   return summary.parts.map((p) => `${p.count} ${p.severity}`).join(", ");
 }
 
-export function buildReviewListItem(metadata: ReviewMetadata): ReviewListItem {
-  const summary = getRunSummaryParts(metadata);
+export interface HistoryRunSummary {
+  id: string;
+  displayId: string;
+  branch: string;
+  timestamp: string;
+  summary: string;
+}
+
+export function buildHistoryRunSummary(metadata: ReviewMetadata): HistoryRunSummary {
   return {
     id: metadata.id,
     displayId: getRunDisplayId(metadata),
     branch: getRunBranchLabel(metadata),
     timestamp: getTimestamp(metadata.createdAt),
     summary: getRunSummaryText(metadata),
-    date: metadata.createdAt,
-    issueCount: metadata.issueCount,
-    severities: summary.parts,
-    duration: durationMsToSeconds(metadata.durationMs),
-    mode: metadata.mode ?? "unstaged",
+  };
+}
+
+export function metadataToSeverityCounts(
+  metadata: ReviewMetadata | null,
+): SeverityCounts | null {
+  if (!metadata) return null;
+  return {
+    blocker: metadata.blockerCount,
+    high: metadata.highCount,
+    medium: metadata.mediumCount,
+    low: metadata.lowCount,
+    nit: metadata.nitCount,
   };
 }
 
@@ -102,25 +94,19 @@ export function matchesHistoryQuery(metadata: ReviewMetadata, query: string): bo
   return false;
 }
 
-export function groupByDate<TItem>(
+export function filterReviewsForHistory(
   reviews: ReviewMetadata[],
-  mapItem: (metadata: ReviewMetadata) => TItem,
-): DateGroup<TItem>[] {
-  const groups = new Map<string, { label: string; items: TItem[] }>();
+  selectedDateId: string,
+  searchQuery: string,
+): ReviewMetadata[] {
+  const bySection =
+    selectedDateId === HISTORY_SECTION_ALL_ID
+      ? reviews
+      : reviews.filter((r) => getDateKey(r.createdAt) === selectedDateId);
 
-  for (const review of reviews) {
-    const key = getDateKey(review.createdAt);
-    const existing = groups.get(key);
-    if (existing) {
-      existing.items.push(mapItem(review));
-    } else {
-      groups.set(key, { label: getDateLabel(review.createdAt), items: [mapItem(review)] });
-    }
-  }
-
-  return Array.from(groups.entries())
-    .sort(([a], [b]) => b.localeCompare(a))
-    .map(([dateKey, { label, items }]) => ({ dateKey, label, reviews: items }));
+  const query = searchQuery.trim().toLowerCase();
+  if (!query) return bySection;
+  return bySection.filter((r) => matchesHistoryQuery(r, query));
 }
 
 export function buildTimelineItems(reviews: ReviewMetadata[]): TimelineItem[] {

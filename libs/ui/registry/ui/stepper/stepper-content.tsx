@@ -13,6 +13,7 @@ export function StepperContent({ children, className, ...props }: StepperContent
   const { isExpanded, triggerId, contentId } = useStepperStepContext();
 
   return (
+    // biome-ignore lint/a11y/useSemanticElements: role="region" labels the collapsible step panel via aria-labelledby; the grid div owns the expand/collapse animation, so a <section> swap is not appropriate.
     <div
       {...props}
       className={cn(

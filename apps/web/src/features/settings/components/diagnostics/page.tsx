@@ -1,5 +1,4 @@
-import { useConfigData } from "@/app/providers/config-provider";
-import { useDiagnosticsData, type DiagnosticsData } from "@diffgazer/core/api/hooks";
+import { type DiagnosticsData, useDiagnosticsData } from "@diffgazer/core/api/hooks";
 import { formatTimestampOrNA } from "@diffgazer/core/format";
 import type { SetupStatus } from "@diffgazer/core/schemas/config";
 import { Button } from "@diffgazer/ui/components/button";
@@ -8,7 +7,8 @@ import { Divider } from "@diffgazer/ui/components/divider";
 import { KeyValue } from "@diffgazer/ui/components/key-value";
 import { Panel } from "@diffgazer/ui/components/panel";
 import { Typography } from "@diffgazer/ui/components/typography";
-import { useDiagnosticsKeyboard } from "../../hooks/use-diagnostics-keyboard";
+import { useConfigData } from "@/app/providers/config";
+import { useDiagnosticsKeyboard } from "./use-diagnostics-keyboard";
 
 type OverallState = "loading" | "error" | "empty" | "success";
 

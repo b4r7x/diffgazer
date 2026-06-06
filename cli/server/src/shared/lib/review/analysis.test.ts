@@ -1,11 +1,12 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import type { AIClient } from "../ai/types.js";
-import type { Lens, ReviewIssue } from "@diffgazer/core/schemas/review";
+import { err, ok } from "@diffgazer/core/result";
 import type { AgentStreamEvent, StepEvent } from "@diffgazer/core/schemas/events";
+import type { Lens, ReviewIssue } from "@diffgazer/core/schemas/review";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { requireValue } from "../../../testing/assertions.js";
+import type { AIClient } from "../ai/types.js";
 import type { ParsedDiff } from "../diff/types.js";
-import type { AgentRunContext } from "./types.js";
-import { ok, err } from "@diffgazer/core/result";
 import { runLensAnalysis } from "./analysis.js";
+import type { AgentRunContext } from "./types.js";
 
 const CORRECTNESS_LENS: Lens = {
   id: "correctness",
@@ -218,9 +219,9 @@ describe("runLensAnalysis", () => {
 
     expect(result.ok).toBe(true);
     if (result.ok) {
-      const resultIssue = result.value.issues[0]!;
+      const resultIssue = requireValue(result.value.issues[0], "result issue");
       expect(resultIssue.evidence).toBeDefined();
-      expect(resultIssue.evidence!.length).toBeGreaterThan(0);
+      expect(resultIssue.evidence?.length).toBeGreaterThan(0);
     }
   });
 
@@ -247,7 +248,7 @@ describe("runLensAnalysis", () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.value.issues).toHaveLength(1);
-      expect(result.value.issues[0]!.file).toBe("src/file-0.ts");
+      expect(result.value.issues[0]?.file).toBe("src/file-0.ts");
     }
 
     const issueEvents = events.filter((e) => e.type === "issue_found");

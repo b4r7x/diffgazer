@@ -1,9 +1,9 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { z } from "zod";
+import { RegistryFileSchema, RegistryItemSchema, RegistrySchema } from "../registry-types.js";
 import { ensureExists, isRelativeSubpath } from "../utils/fs.js";
 import { readJson } from "../utils/json.js";
-import { RegistryFileSchema, RegistryItemSchema, RegistrySchema } from "../registry-types.js";
 
 type RegistryItem = z.infer<typeof RegistrySchema>["items"][number];
 

@@ -1,5 +1,5 @@
-import { Button } from "@/components/ui/button/button";
-import { toast } from "@/components/ui/toast";
+import { Button } from "@diffgazer/ui/components/button";
+import { toast } from "@diffgazer/ui/components/toast";
 import { useCopyFeedback } from "@/lib/use-copy-feedback";
 
 interface CopyButtonProps {

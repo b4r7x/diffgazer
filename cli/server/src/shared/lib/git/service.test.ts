@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockExecFileAsync, mockReadFile, mockRealpath, mockLstat } = vi.hoisted(() => ({
   mockExecFileAsync: vi.fn(),
@@ -37,7 +37,7 @@ function setupExecError(error: Error) {
   mockExecFileAsync.mockRejectedValue(error);
 }
 
-function setupWorktreeFileRead(cwd: string, filePath: string, content: string) {
+function setupWorktreeFileRead(_cwd: string, _filePath: string, content: string) {
   mockRealpath.mockImplementation(async (p: string) => p);
   mockLstat.mockResolvedValue({ isFile: () => true });
   mockReadFile.mockResolvedValue(content);
@@ -290,11 +290,11 @@ describe("createGitService", () => {
       const blame = await git.getBlame("src/file.ts", 1);
 
       expect(blame).not.toBeNull();
-      expect(blame!.author).toBe("John Doe");
-      expect(blame!.authorEmail).toBe("john@example.com");
-      expect(blame!.commit).toBe("abc1234");
-      expect(blame!.summary).toBe("Fix the bug");
-      expect(blame!.commitDate).toBe(new Date(1700000000 * 1000).toISOString());
+      expect(blame?.author).toBe("John Doe");
+      expect(blame?.authorEmail).toBe("john@example.com");
+      expect(blame?.commit).toBe("abc1234");
+      expect(blame?.summary).toBe("Fix the bug");
+      expect(blame?.commitDate).toBe(new Date(1700000000 * 1000).toISOString());
     });
 
     it("passes the -- sentinel before the file path to prevent option injection", async () => {
@@ -507,8 +507,8 @@ describe("createGitService", () => {
 
       const args = mockExecFileAsync.mock.calls[0]?.[1];
       expect(args).toContain("--");
-      const dashDashIndex = args!.indexOf("--");
-      const fileIndex = args!.indexOf("src/file.ts");
+      const dashDashIndex = args?.indexOf("--");
+      const fileIndex = args?.indexOf("src/file.ts");
       expect(dashDashIndex).toBeLessThan(fileIndex);
     });
 

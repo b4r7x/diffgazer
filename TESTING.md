@@ -1,6 +1,6 @@
 # Testing Philosophy
 
-Test runner: **Vitest 4** for all 9 packages (`libs/core`, `libs/keys`, `libs/registry`, `libs/ui`, `apps/web`, `apps/docs`, `cli/add`, `cli/diffgazer`, `cli/server`). Test files are colocated with sources as `<name>.test.ts(x)`.
+Test runner: **Vitest 4** for all 10 packages (`libs/core`, `libs/keys`, `libs/registry`, `libs/ui`, `apps/web`, `apps/docs`, `apps/landing`, `cli/add`, `cli/diffgazer`, `cli/server`). Test files are colocated with sources as `<name>.test.ts(x)`.
 
 ## The Rules
 
@@ -99,7 +99,7 @@ Every package has `test:types` script: `vitest --typecheck --typecheck.only --ru
 
 - `libs/keys/src/testing/navigation-behavior.ts` — `testNavigationBehavior(options)`. Parameterizes keyboard nav tests across components that use `aria-activedescendant` or focus-tracking.
 - `libs/ui/registry/testing/form-behavior.ts` — `expectFieldInvalid`, `expectFieldDescribedBy`, `fillField`, `submitForm`. Shared form-validity assertions and form-flow actions.
-- `libs/ui/registry/testing/utils.ts` — `axe` re-export with the registered `toHaveNoViolations` matcher.
+- `libs/ui/testing/axe.ts` — `axe` re-export with the registered `toHaveNoViolations` matcher.
 
 Helpers live in per-package `testing/` directories (not a separate `@diffgazer/testing` package — extraction deferred until a 3rd consumer needs the shape).
 

@@ -1,7 +1,7 @@
 "use client"
 
-import { useRef } from "react"
 import { KeyboardProvider, useActionRowNavigation } from "@diffgazer/keys"
+import { useRef } from "react"
 
 const actions = ["Approve", "Request changes", "Skip"]
 // "Request changes" is disabled, so it is skipped during navigation.
@@ -33,7 +33,7 @@ function ReviewRow() {
         Pull request #128 — Add focus zone docs
       </button>
 
-      <div role="group" aria-label="Review actions" style={{ display: "flex", gap: 6 }}>
+      <div role="toolbar" aria-label="Review actions" style={{ display: "flex", gap: 6 }}>
         {actions.map((label, index) => (
           <button
             key={label}

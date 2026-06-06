@@ -1,15 +1,14 @@
-import { useNavigate } from "@tanstack/react-router";
+import { useSettings } from "@diffgazer/core/api/hooks";
+import { usePageFooter } from "@diffgazer/core/footer";
+import type { AgentExecution } from "@diffgazer/core/schemas/config";
+import { SETTINGS_MENU_ITEMS, SETTINGS_SHORTCUTS, type SettingsAction } from "@diffgazer/core/schemas/presentation";
+import { useKey, useScope } from "@diffgazer/keys";
 import { Menu, MenuItem } from "@diffgazer/ui/components/menu";
 import { Panel } from "@diffgazer/ui/components/panel";
-import { useConfigData } from "@/app/providers/config-provider";
-import { useScope, useKey } from "@diffgazer/keys";
-import { usePageFooter } from "@diffgazer/core/footer";
+import { useNavigate } from "@tanstack/react-router";
+import { useConfigData } from "@/app/providers/config";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { useTheme } from "@/hooks/use-theme";
-import { useSettings } from "@diffgazer/core/api/hooks";
-import type { AgentExecution } from "@diffgazer/core/schemas/config";
-import { SETTINGS_MENU_ITEMS, type SettingsAction } from "@diffgazer/core/schemas/presentation";
-import { SETTINGS_SHORTCUTS } from "@/config/navigation";
 
 const SETTINGS_ROUTES: Record<SettingsAction, string> = {
   trust: "/settings/trust-permissions",

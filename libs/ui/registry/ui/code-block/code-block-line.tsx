@@ -27,6 +27,7 @@ function renderContent(content: string | CodeBlockToken[] | undefined): ReactNod
   if (content == null) return null;
   if (typeof content === "string") return content;
   return content.map((token, i) => (
+    // biome-ignore lint/suspicious/noArrayIndexKey: syntax tokens render in fixed left-to-right order within a line and are never reordered; the token index is the stable identity.
     <span key={i} style={{ color: token.color }} className={token.className}>
       {token.text}
     </span>

@@ -2,7 +2,7 @@ import type { MDXComponents } from "mdx/types";
 import { HookSource, LibraryHookSource } from "@/components/hook-source";
 import { ColorGrid } from "@/features/theme/components/color-grid";
 import { DiffgazerPreview } from "@/features/theme/components/diffgazer-preview";
-import { ThemePlayground } from "@/features/theme/components/theme-playground";
+import { ThemePlayground } from "@/features/theme/components/playground";
 import { VariableDiagram } from "@/features/theme/components/variable-diagram";
 import {
 	AccessibilityNotes,

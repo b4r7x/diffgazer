@@ -1,5 +1,5 @@
-import { useState, useRef } from "react";
-import { useKey, useFocusTrap, useScrollLock } from "@diffgazer/keys";
+import { useFocusTrap, useKey, useScrollLock } from "@diffgazer/keys";
+import { useRef, useState } from "react";
 import { DemoWrapper } from "../components/demo-wrapper";
 
 export function FocusTrapDemo() {
@@ -41,25 +41,27 @@ export function FocusTrapDemo() {
           These hooks work independently of the KeyboardProvider. They attach their own event listeners directly to the container element, making them lightweight and composable with other keyboard management solutions.
         </p>
 
-        <button className="demo-button" onClick={() => setModalOpen(true)}>
+        <button type="button" className="demo-button" onClick={() => setModalOpen(true)}>
           Open Modal
         </button>
       </div>
 
       {modalOpen && (
-        <div className="demo-overlay" onClick={() => setModalOpen(false)}>
-          <div
-            ref={modalRef}
-            className="demo-dialog"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className="demo-overlay">
+          <button
+            type="button"
+            aria-label="Close modal"
+            className="demo-overlay-backdrop"
+            onClick={() => setModalOpen(false)}
+          />
+          <div ref={modalRef} className="demo-dialog">
             <h3 style={{ marginBottom: 16 }}>Modal Form</h3>
 
             <div style={{ marginBottom: 12 }}>
-              <label style={{ display: "block", fontSize: 13, marginBottom: 4, color: "var(--color-text-muted)" }}>
+              <label htmlFor="focus-trap-name" style={{ display: "block", fontSize: 13, marginBottom: 4, color: "var(--color-text-muted)" }}>
                 Name
               </label>
-              <input type="text" className="demo-input" style={{ width: "100%" }} placeholder="Enter your name" />
+              <input id="focus-trap-name" type="text" className="demo-input" style={{ width: "100%" }} placeholder="Enter your name" />
             </div>
 
             <div style={{ marginBottom: 20 }}>
@@ -70,10 +72,10 @@ export function FocusTrapDemo() {
             </div>
 
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button className="demo-button--secondary demo-button" onClick={() => setModalOpen(false)}>
+              <button type="button" className="demo-button--secondary demo-button" onClick={() => setModalOpen(false)}>
                 Close
               </button>
-              <button className="demo-button" onClick={() => setModalOpen(false)}>
+              <button type="button" className="demo-button" onClick={() => setModalOpen(false)}>
                 Submit
               </button>
             </div>

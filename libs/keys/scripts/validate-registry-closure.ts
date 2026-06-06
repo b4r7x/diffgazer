@@ -1,8 +1,6 @@
-import { readFileSync, readdirSync, existsSync } from "node:fs";
-import { dirname, join, resolve, posix } from "node:path";
-
-const RELATIVE_JS_IMPORT =
-  /((?:\bfrom\s+|\bimport\s*\(\s*|\brequire\s*\(\s*|\bimport\s+)(["']))(\.{1,2}\/[^"']+)\.js\2/g;
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { dirname, join, posix, resolve } from "node:path";
+import { RELATIVE_JS_IMPORT } from "./transform-public-registry-imports.js";
 
 interface RegistryFile {
   path: string;
@@ -121,8 +119,7 @@ function extractRelativeImports(content: string): string[] {
   ];
 
   for (const pattern of patterns) {
-    let match: RegExpExecArray | null;
-    while ((match = pattern.exec(content)) !== null) {
+    for (const match of content.matchAll(pattern)) {
       if (match[1]) imports.add(match[1]);
     }
   }
@@ -302,10 +299,12 @@ export function validateRegistryClosure(registryPath: string): boolean {
   const groupedErrors = new Map<string, ValidationError[]>();
 
   for (const error of errors) {
-    if (!groupedErrors.has(error.code)) {
-      groupedErrors.set(error.code, []);
+    let group = groupedErrors.get(error.code);
+    if (!group) {
+      group = [];
+      groupedErrors.set(error.code, group);
     }
-    groupedErrors.get(error.code)!.push(error);
+    group.push(error);
   }
 
   for (const [code, items] of groupedErrors) {

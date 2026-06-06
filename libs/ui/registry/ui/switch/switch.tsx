@@ -1,16 +1,16 @@
 "use client";
 
+import { cva } from "class-variance-authority";
 import {
-  useRef,
-  useState,
   type AriaAttributes,
   type ComponentPropsWithRef,
   type Ref,
+  useRef,
+  useState,
 } from "react";
-import { cva } from "class-variance-authority";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { useFormReset } from "@/hooks/use-form-reset";
-import { resolveAriaInvalid } from "@/lib/aria-utils";
+import { resolveAriaInvalid } from "@/lib/aria";
 import { composeRefs } from "@/lib/compose-refs";
 import { cn } from "@/lib/utils";
 

@@ -1,9 +1,9 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { cn } from "@/lib/utils";
-import { useSelectContext, type SelectOptionMetadata } from "./select-context";
 import { matchesSearch } from "@/lib/search";
+import { cn } from "@/lib/utils";
+import { type SelectOptionMetadata, useSelectContext } from "./select-context";
 
 export interface SelectEmptyProps {
   children?: ReactNode;

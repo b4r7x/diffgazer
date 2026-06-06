@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react"
-import { describe, it, expect } from "vitest"
+import { describe, expect, it } from "vitest"
 import { Dialog } from "../dialog/index"
 import { Popover } from "../popover/index"
 import { Select } from "../select/index"

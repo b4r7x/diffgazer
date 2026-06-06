@@ -1,4 +1,4 @@
-import type { ModelInfo } from "@diffgazer/core/schemas/config";
+import type { ModelInfo } from "../schemas/config/index.js";
 
 export const TIER_FILTERS = ["all", "free", "paid"] as const;
 export type TierFilter = (typeof TIER_FILTERS)[number];

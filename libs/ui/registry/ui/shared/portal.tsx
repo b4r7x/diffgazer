@@ -1,8 +1,8 @@
 "use client";
 
-import { createPortal } from "react-dom";
 import type { ReactNode } from "react";
-import { isPendingPortalContainer, usePortalContainer, type PortalContainerValue } from "./portal-context";
+import { createPortal } from "react-dom";
+import { isPendingPortalContainer, type PortalContainerValue, usePortalContainer } from "./portal-context";
 
 export interface PortalProps {
   children: ReactNode;

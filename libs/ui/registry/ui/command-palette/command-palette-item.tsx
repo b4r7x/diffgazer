@@ -1,9 +1,9 @@
 "use client";
 
-import { useId, useLayoutEffect, useRef, type ComponentPropsWithRef, type MouseEvent, type ReactNode } from "react";
+import { type ComponentPropsWithRef, type MouseEvent, type ReactNode, useId, useLayoutEffect, useRef } from "react";
 import { composeRefs } from "@/lib/compose-refs";
 import { useCommandPaletteContext } from "./command-palette-context";
-import { getCommandPaletteItemDomId } from "./use-command-palette-state";
+import { getCommandPaletteItemDomId } from "./use-state";
 
 export type CommandPaletteItemTone =
   | "neutral"
@@ -85,6 +85,8 @@ export function CommandPaletteItem({
   };
 
   return (
+    // biome-ignore lint/a11y/useFocusableInteractive: WAI-ARIA combobox/listbox pattern — option stays non-focusable while the input keeps focus and aria-activedescendant tracks the active option.
+    // biome-ignore lint/a11y/useKeyWithClickEvents: Enter activation is handled centrally by the command palette input, not per option.
     <div
       {...props}
       ref={composeRefs(rootRef, ref)}

@@ -1,7 +1,7 @@
 "use client";
 
-import { type ComponentPropsWithRef, type KeyboardEvent } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
+import type { ComponentPropsWithRef, KeyboardEvent } from "react";
 import { cn } from "@/lib/utils";
 
 export const scrollAreaVariants = cva(
@@ -108,6 +108,8 @@ export function ScrollArea({
   };
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: the scroll container conditionally takes a scrollbar/region role and owns keyboard scrolling; Biome cannot resolve the dynamic role.
+    // biome-ignore lint/a11y/useAriaPropsSupportedByRole: aria-label/aria-labelledby apply to the dynamic role assigned to this scroll region, which Biome cannot statically resolve.
     <div
       ref={ref}
       role={role}

@@ -1,6 +1,6 @@
 import { render } from "ink";
+import type { CliMode } from "./cli-options";
 import { ensureShutdownToken } from "./lib/shutdown-token";
-import type { CliMode } from "./types/cli";
 
 interface TuiOptions {
   mode: CliMode;
@@ -9,7 +9,7 @@ interface TuiOptions {
 
 export async function startTui(options: TuiOptions): Promise<void> {
   ensureShutdownToken();
-  const { App } = await import("./app/index");
+  const { App } = await import("./app/root");
 
   render(
     <App mode={options.mode} theme={options.theme} openBrowser={false} />,

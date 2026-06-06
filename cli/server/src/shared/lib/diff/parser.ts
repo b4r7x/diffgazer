@@ -1,4 +1,5 @@
-import type { FileDiff, DiffHunk, ParsedDiff, DiffOperation, DiffLineType } from "./types.js";
+import { computeTotalStats } from "./total-stats.js";
+import type { DiffHunk, DiffLineType, DiffOperation, FileDiff, ParsedDiff } from "./types.js";
 
 function classifyDiffLine(line: string): DiffLineType {
   if (line.startsWith("+") && !line.startsWith("+++")) return "addition";
@@ -173,15 +174,5 @@ export function parseDiff(diffText: string): ParsedDiff {
     }
   }
 
-  const totalStats = files.reduce(
-    (acc, file) => ({
-      filesChanged: acc.filesChanged + 1,
-      additions: acc.additions + file.stats.additions,
-      deletions: acc.deletions + file.stats.deletions,
-      totalSizeBytes: acc.totalSizeBytes + file.stats.sizeBytes,
-    }),
-    { filesChanged: 0, additions: 0, deletions: 0, totalSizeBytes: 0 }
-  );
-
-  return { files, totalStats };
+  return { files, totalStats: computeTotalStats(files) };
 }

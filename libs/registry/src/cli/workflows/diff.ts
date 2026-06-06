@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
-import pc from "picocolors";
 import { createTwoFilesPatch } from "diff";
-import { heading, info, isSilentMode, newline } from "../logger.js";
+import pc from "picocolors";
+import { heading, info, isSilentMode, newline } from "../terminal.js";
 
 export interface DiffWorkflowFile {
   itemName: string;

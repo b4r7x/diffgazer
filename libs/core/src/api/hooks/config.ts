@@ -1,7 +1,7 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { SettingsConfig, SaveConfigRequest } from "@diffgazer/core/schemas/config";
-import { configQueries } from "./queries/config.js";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { SaveConfigRequest, SettingsConfig } from "../../schemas/config/index.js";
 import { useApi } from "./context.js";
+import { configQueries } from "./queries/config.js";
 
 export function useSettings() {
   const api = useApi();

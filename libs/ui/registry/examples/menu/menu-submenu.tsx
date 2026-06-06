@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Menu, MenuItem, MenuDivider, MenuSub, MenuSubTrigger, MenuSubContent } from "@/components/ui/menu"
+import { Menu, MenuDivider, MenuItem, MenuSub, MenuSubContent, MenuSubTrigger } from "@/components/ui/menu"
 
 export default function MenuSubmenu() {
   const [lastAction, setLastAction] = useState<string | null>(null)

@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, posix, resolve } from "node:path";
 
-const RELATIVE_JS_IMPORT =
+export const RELATIVE_JS_IMPORT =
   /((?:\bfrom\s+|\bimport\s*\(\s*|\brequire\s*\(\s*|\bimport\s+)(["']))(\.{1,2}\/[^"']+)\.js\2/g;
 
 export function transformKeysPublicRegistryImportContent(content: string): string {
@@ -12,7 +12,7 @@ export function transformKeysPublicRegistryImportContent(content: string): strin
   );
 }
 
-const RELATIVE_IMPORT =
+export const RELATIVE_IMPORT =
   /((?:\bfrom\s+|\bimport\s*\(\s*|\brequire\s*\(\s*|\bimport\s+)(["']))(\.{1,2}\/[^"']+)\2/g;
 
 export function rewriteImportsForTargetLayout(

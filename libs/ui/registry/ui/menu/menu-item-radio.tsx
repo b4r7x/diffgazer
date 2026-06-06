@@ -68,6 +68,7 @@ export function MenuItemRadio({
   const state = getItemState({ disabled, isFocused, isSelected });
 
   return (
+    // biome-ignore lint/a11y/useKeyWithClickEvents: Enter/Space selection is handled centrally by the menu container via useNavigation, not per item.
     <div
       {...rootProps}
       ref={ref}

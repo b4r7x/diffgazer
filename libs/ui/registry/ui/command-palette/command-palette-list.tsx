@@ -1,9 +1,9 @@
 "use client";
 
-import { cn } from "@/lib/utils";
-import { composeRefs } from "@/lib/compose-refs";
-import { useCommandPaletteContext } from "./command-palette-context";
 import type { ReactNode, Ref } from "react";
+import { composeRefs } from "@/lib/compose-refs";
+import { cn } from "@/lib/utils";
+import { useCommandPaletteContext } from "./command-palette-context";
 
 export interface CommandPaletteListProps {
   children: ReactNode;

@@ -1,6 +1,6 @@
 "use client";
 
-import { type VariantProps } from "class-variance-authority";
+import type { VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { avatarVariants } from "./avatar";
 import { useAvatarGroupContext } from "./avatar-context";

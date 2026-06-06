@@ -1,4 +1,4 @@
-import { info, newline } from "../logger.js";
+import { info, newline } from "../terminal.js";
 
 export interface ListDisplayItem {
   name: string;
@@ -64,7 +64,10 @@ export function runListWorkflow<TItem, TConfig>(
     return;
   }
 
-  if (displayItems.length === 0) return printEmptyMessage(installedOnly, itemPlural);
+  if (displayItems.length === 0) {
+    printEmptyMessage(installedOnly, itemPlural);
+    return;
+  }
 
   printTable(displayItems, installedOnly, itemPlural);
 }

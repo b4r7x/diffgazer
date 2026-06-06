@@ -1,12 +1,12 @@
 import {
+  type EmptyStateProps,
   EmptyState as EmptyStateRoot,
   emptyStateVariants,
-  type EmptyStateProps,
 } from "./empty-state";
+import { EmptyStateActions } from "./empty-state-actions";
+import { EmptyStateDescription } from "./empty-state-description";
 import { EmptyStateIcon } from "./empty-state-icon";
 import { EmptyStateMessage } from "./empty-state-message";
-import { EmptyStateDescription } from "./empty-state-description";
-import { EmptyStateActions } from "./empty-state-actions";
 
 const EmptyState = Object.assign(EmptyStateRoot, {
   Icon: EmptyStateIcon,
@@ -16,8 +16,8 @@ const EmptyState = Object.assign(EmptyStateRoot, {
 });
 
 export { EmptyState, emptyStateVariants, type EmptyStateProps };
+export type { EmptyStateSize, EmptyStateVariant } from "./empty-state";
+export { EmptyStateActions, type EmptyStateActionsProps } from "./empty-state-actions";
+export { EmptyStateDescription, type EmptyStateDescriptionProps } from "./empty-state-description";
 export { EmptyStateIcon, type EmptyStateIconProps } from "./empty-state-icon";
 export { EmptyStateMessage, type EmptyStateMessageProps } from "./empty-state-message";
-export { EmptyStateDescription, type EmptyStateDescriptionProps } from "./empty-state-description";
-export { EmptyStateActions, type EmptyStateActionsProps } from "./empty-state-actions";
-export { type EmptyStateVariant, type EmptyStateSize } from "./empty-state";

@@ -1,11 +1,11 @@
 "use client";
 
+import { cva, type VariantProps } from "class-variance-authority";
 import type { HTMLAttributes, ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { cva, type VariantProps } from "class-variance-authority";
 import {
-  useBlockBarContext,
   computeFilledCount,
+  useBlockBarContext,
 } from "./block-bar-context";
 
 const segmentVariants = cva("", {

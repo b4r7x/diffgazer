@@ -1,17 +1,16 @@
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ok, err } from "@diffgazer/core/result";
+import { join } from "node:path";
 import type { Result } from "@diffgazer/core/result";
-import type { AIClient } from "../../shared/lib/ai/types.js";
-import type { AIError } from "../../shared/lib/ai/types.js";
+import { err, ok } from "@diffgazer/core/result";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { z } from "zod";
+import type { AIClient, AIError } from "../../shared/lib/ai/types.js";
+import { parseDiff } from "../../shared/lib/diff/parser.js";
 import type { ParsedDiff } from "../../shared/lib/diff/types.js";
 import { makeIssue } from "../../shared/lib/testing/factories.js";
-import { parseDiff } from "../../shared/lib/diff/parser.js";
 import type { DrilldownAIResponse } from "./schemas.js";
-import type { z } from "zod";
 
 // Boundary mock: git/service wraps the `git` CLI subprocess (external-process boundary); tests provide canned diff/blame/file-lines responses so drilldown behavior can be exercised without a real repository.
 vi.mock("../../shared/lib/git/service.js", () => ({
@@ -77,7 +76,10 @@ beforeEach(async () => {
 
 afterEach(async () => {
   delete process.env.DIFFGAZER_HOME;
-  await rm(tempHome, { recursive: true, force: true });
+  // Reviews storage persists the project index and migrations as fire-and-forget
+  // writes that can still be recreating .index/ when teardown runs; retry past the
+  // resulting ENOTEMPTY race.
+  await rm(tempHome, { recursive: true, force: true, maxRetries: 3, retryDelay: 20 });
 });
 
 async function loadDrilldown() {

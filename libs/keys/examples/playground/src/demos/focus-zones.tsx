@@ -1,5 +1,5 @@
+import { useFocusZone, useKey } from "@diffgazer/keys";
 import { useState } from "react";
-import { useKey, useFocusZone } from "@diffgazer/keys";
 import { DemoWrapper } from "../components/demo-wrapper";
 import { Kbd } from "../components/kbd";
 
@@ -61,12 +61,15 @@ export function FocusZonesDemo() {
           <div
             key={z}
             className={`demo-panel${zone === z ? " demo-panel--active" : ""}`}
-            onClick={() => setZone(z)}
-            style={{ cursor: "pointer" }}
           >
-            <span className={`demo-badge${zone === z ? " demo-badge--active" : ""}`}>
+            <button
+              type="button"
+              className={`demo-badge${zone === z ? " demo-badge--active" : ""}`}
+              onClick={() => setZone(z)}
+              style={{ cursor: "pointer" }}
+            >
               {z}
-            </span>
+            </button>
             <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 6 }}>
               {ZONE_SHORTCUTS[z].map((shortcut) => (
                 <div

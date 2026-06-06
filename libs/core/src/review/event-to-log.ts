@@ -1,15 +1,11 @@
-import type { AgentStreamEvent, AgentId, StepEvent, EnrichEvent } from "@diffgazer/core/schemas/events";
-import { AGENT_METADATA, STEP_METADATA } from "@diffgazer/core/schemas/events";
-import type { LogEntryData } from "@diffgazer/core/schemas/presentation";
-import { truncate } from "../strings.js";
+import type { AgentId, AgentStreamEvent, EnrichEvent, StepEvent } from "../schemas/events/index.js";
+import { AGENT_METADATA, STEP_METADATA } from "../schemas/events/index.js";
+import type { LogEntryData } from "../schemas/presentation/index.js";
+import { pluralize, truncate } from "../strings.js";
 
 function getAgent(agentId: AgentId): { label: string; name: string } {
   const meta = AGENT_METADATA[agentId];
   return { label: meta?.badgeLabel ?? "AGT", name: meta?.name ?? agentId };
-}
-
-function pluralize(count: number, word: string): string {
-  return `${count} ${word}${count === 1 ? "" : "s"}`;
 }
 
 function convertEventToLogEntry(

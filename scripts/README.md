@@ -12,10 +12,9 @@ pnpm run test-ci
 pnpm run release-check
 ```
 
-## Active Files
+## Source of Truth
 
-- `monorepo/check-invariants.mjs` checks workspace shape, package metadata, and local dependency protocols.
-- `monorepo/smoke-cli.mjs` checks the product CLI and registry installer CLI command surfaces.
-- `monorepo/smoke-package-install.mjs` packs public packages into isolated temp projects and verifies public imports/bins.
-- `monorepo/smoke-shadcn-install.mjs` verifies direct shadcn registry consumption in an isolated Vite fixture.
-- `monorepo/validate-artifacts.mjs` verifies public registry and docs artifact freshness.
+The live monorepo scripts are wired through the root `package.json` scripts
+(`verify:monorepo`, `validate:artifacts:check`, `smoke:*`, `bench`, `smoke:modelsdev`,
+`release-check`); see `package.json` for the authoritative invocation list and
+`scripts/monorepo/` for the modules they run.

@@ -1,6 +1,6 @@
-import type { ReactNode } from "react";
 import { Box, Text } from "ink";
-import { useTheme } from "../../theme/theme-context";
+import type { ReactNode } from "react";
+import { useTheme } from "../../app/providers/theme";
 
 export interface KeyValueProps {
   label: string;

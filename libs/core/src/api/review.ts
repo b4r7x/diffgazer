@@ -1,18 +1,18 @@
-import type { Result } from "@diffgazer/core/result";
-import { ok, err } from "@diffgazer/core/result";
+import type { Result } from "../result.js";
+import { err, ok } from "../result.js";
 import {
-  processReviewStream,
   type StreamReviewOptions as CoreStreamReviewOptions,
+  processReviewStream,
   type StreamReviewError,
-} from "@diffgazer/core/review";
-import { ReviewErrorCode, type ReviewMode } from "@diffgazer/core/schemas/review";
+} from "../review/index.js";
+import { ReviewErrorCode, type ReviewMode } from "../schemas/review/index.js";
 import type {
-  ApiClient,
   ActiveReviewSessionResponse,
-  ReviewContextResponse,
-  ReviewsResponse,
-  ReviewResponse,
+  ApiClient,
   DrilldownResponse,
+  ReviewContextResponse,
+  ReviewResponse,
+  ReviewsResponse,
 } from "./types.js";
 
 export type { StreamReviewError };
@@ -44,7 +44,7 @@ export interface ResumeReviewOptions {
 }
 
 export interface ResumeReviewResult {
-  result: import("@diffgazer/core/schemas/review").ReviewResult;
+  result: import("../schemas/review/index.js").ReviewResult;
   reviewId: string;
 }
 

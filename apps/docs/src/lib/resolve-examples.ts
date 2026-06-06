@@ -1,4 +1,4 @@
-import type { ExampleRef } from "@/types/docs-data";
+import type { ExampleRef } from "@/types/data";
 
 export function resolveExamples(data: {
 	docs?: { examples?: ExampleRef[] } | null;

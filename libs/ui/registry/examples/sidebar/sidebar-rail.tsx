@@ -1,17 +1,17 @@
 "use client";
 
+import { Kbd } from "@/components/ui/kbd"
 import {
   Sidebar,
-  SidebarProvider,
-  SidebarHeader,
   SidebarContent,
-  SidebarSection,
-  SidebarSectionTitle,
+  SidebarHeader,
   SidebarItem,
   SidebarItemLabel,
+  SidebarProvider,
+  SidebarSection,
+  SidebarSectionTitle,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
-import { Kbd } from "@/components/ui/kbd"
 
 // In rail mode (48px), each item collapses to an icon-only row centered in the
 // rail. `<SidebarItemLabel>` is hidden via the nav's `data-state="rail"`

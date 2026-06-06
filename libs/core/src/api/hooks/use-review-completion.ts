@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import type { StepState } from "@diffgazer/core/schemas/events";
+import { useEffect, useRef, useState } from "react";
+import type { StepState } from "../../schemas/events/index.js";
 
 // Hold the "completing" UI for ~2s so the user perceives the transition rather
 // than a flash. The extra 300ms when the report step has already completed
@@ -67,7 +67,10 @@ export function useReviewCompletion({
     }
 
     return () => {
-      clearTimer();
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
     };
   }, [isStreaming, error, hasStreamed]);
 

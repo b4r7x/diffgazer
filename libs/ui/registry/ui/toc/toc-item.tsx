@@ -1,5 +1,6 @@
 "use client";
 
+import { cva } from "class-variance-authority";
 import type {
   AnchorHTMLAttributes,
   ComponentPropsWithRef,
@@ -7,7 +8,6 @@ import type {
   ReactNode,
   Ref,
 } from "react";
-import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const INDENT_BASE_PX = 12;

@@ -1,4 +1,4 @@
-import { Menu, MenuItem, MenuGroup } from "@/components/ui/menu"
+import { Menu, MenuGroup, MenuItem } from "@/components/ui/menu"
 
 export default function MenuGrouped() {
   return (

@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext } from "react";
-import type { SidebarVariant } from "@/lib/sidebar-variants";
+import type { SidebarVariant } from "./sidebar-variants";
 
 export type SidebarState = "open" | "rail" | "hidden";
 

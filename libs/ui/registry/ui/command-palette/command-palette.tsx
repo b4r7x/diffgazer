@@ -1,11 +1,11 @@
 "use client";
 
 import type { ReactNode } from "react";
-import {
-  useCommandPaletteState,
-  type UseCommandPaletteStateOptions,
-} from "./use-command-palette-state";
 import { CommandPaletteContext } from "./command-palette-context";
+import {
+  type UseCommandPaletteStateOptions,
+  useCommandPaletteState,
+} from "./use-state";
 
 export interface CommandPaletteProps extends UseCommandPaletteStateOptions {
   children: ReactNode;

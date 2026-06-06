@@ -1,12 +1,12 @@
-import { cn } from '@diffgazer/ui/lib/utils';
+import type { AnalysisStats, IssuePreview, SeverityCounts } from '@diffgazer/core/schemas/presentation';
+import { Button } from '@diffgazer/ui/components/button';
 import { Panel, PanelContent } from '@diffgazer/ui/components/panel';
 import { SectionHeader } from '@diffgazer/ui/components/section-header';
-import { Button } from '@diffgazer/ui/components/button';
 import { Typography } from '@diffgazer/ui/components/typography';
-import { SeverityBreakdown } from '@/components/ui/severity';
+import { cn } from '@diffgazer/ui/lib/utils';
+import { SeverityBreakdown } from '@/components/ui/severity/breakdown';
 import { IssuePreviewItem } from './issue-preview-item';
-import { LensStatsTable, type LensStats } from './lens-stats-table';
-import type { AnalysisStats, SeverityCounts, IssuePreview } from '@diffgazer/core/schemas/presentation';
+import { type LensStats, LensStatsTable } from './lens-stats-table';
 
 export type { IssuePreview };
 

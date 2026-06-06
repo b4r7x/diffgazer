@@ -1,13 +1,13 @@
 import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { ARTIFACT_MANIFEST_FILENAME, ARTIFACT_FINGERPRINT_FILENAME, DEFAULT_ARTIFACT_ROOT } from "./constants.js";
+import { ARTIFACT_FINGERPRINT_FILENAME, ARTIFACT_MANIFEST_FILENAME, DEFAULT_ARTIFACT_ROOT } from "./constants.js";
 import { computeInputsFingerprint } from "./fingerprint.js";
+import { defaultLogger, type Logger } from "./logger.js";
+import type { ArtifactManifest } from "./manifest.js";
 import { normalizeOrigin, rewriteOriginsInDir } from "./origin.js";
+import { type EnsurePublicRegistryReadyOptions, ensurePublicRegistryReady } from "./shadcn/build.js";
 import { ensureExists, resetDir } from "./utils/fs.js";
 import { writeJson } from "./utils/json.js";
-import { ensurePublicRegistryReady, type EnsurePublicRegistryReadyOptions } from "./shadcn/index.js";
-import type { ArtifactManifest } from "./manifest.js";
-import { defaultLogger, type Logger } from "./logger.js";
 
 export interface CopyDirEntry {
   from: string;

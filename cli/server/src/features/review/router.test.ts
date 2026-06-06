@@ -1,10 +1,11 @@
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
-import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { Hono } from "hono";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PROJECT_ROOT_HEADER } from "../../shared/lib/paths.js";
 import { makeIssue } from "../../shared/lib/testing/factories.js";
+import { requireValue } from "../../testing/assertions.js";
 
 const REVIEW_A = "550e8400-e29b-41d4-a716-446655440000";
 const REVIEW_B = "660e8400-e29b-41d4-a716-446655440001";
@@ -41,7 +42,7 @@ async function trustProject(projectRoot: string): Promise<void> {
   const { getStore } = await import("../../shared/lib/config/store.js");
   const project = getStore().ensureProjectFile(projectRoot);
   await getStore().saveTrust({
-    projectId: project.projectId!,
+    projectId: requireValue(project.projectId, "project id"),
     repoRoot: projectRoot,
     trustedAt: "2024-01-01T00:00:00.000Z",
     capabilities: { readFiles: true, runCommands: false },

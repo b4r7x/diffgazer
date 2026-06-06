@@ -1,5 +1,5 @@
-import type { AIProvider, AgentExecution, SecretsStorage } from "@diffgazer/core/schemas/config";
-import type { LensId } from "@diffgazer/core/schemas/review";
+import type { AgentExecution, AIProvider, SecretsStorage } from "../schemas/config/index.js";
+import type { LensId } from "../schemas/review/index.js";
 
 export const INPUT_METHODS = ["paste", "env"] as const;
 export type InputMethod = (typeof INPUT_METHODS)[number];

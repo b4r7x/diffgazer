@@ -1,7 +1,8 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { act, renderHook } from "@testing-library/react"
 import { JSDOM } from "jsdom"
-import { useActiveHeading, type ActiveHeadingActivation } from "../use-active-heading"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { requireElement } from "../../testing/assertions"
+import { type ActiveHeadingActivation, useActiveHeading } from "../use-active-heading"
 
 const originalInnerHeight = Object.getOwnPropertyDescriptor(window, "innerHeight")
 const originalScrollY = Object.getOwnPropertyDescriptor(window, "scrollY")
@@ -263,8 +264,10 @@ describe("useActiveHeading", () => {
       h.id = id
       altDoc.body.appendChild(h)
     }
-    altDoc.getElementById("a1")!.getBoundingClientRect = () => makeDOMRect(0)
-    altDoc.getElementById("a2")!.getBoundingClientRect = () => makeDOMRect(100)
+    requireElement(altDoc.getElementById("a1"), "alt heading a1").getBoundingClientRect = () =>
+      makeDOMRect(0)
+    requireElement(altDoc.getElementById("a2"), "alt heading a2").getBoundingClientRect = () =>
+      makeDOMRect(100)
 
     const hostAddListener = vi.spyOn(window, "addEventListener")
     try {
@@ -301,7 +304,7 @@ describe("useActiveHeading", () => {
     const crossDoc = realm.window.document
 
     expect(crossDoc.getElementById).toBeDefined()
-    const cross = (id: string) => crossDoc.getElementById(id)!
+    const cross = (id: string) => requireElement(crossDoc.getElementById(id), `cross heading ${id}`)
 
     for (const id of ["x1", "x2"]) {
       const h = crossDoc.createElement("h2")

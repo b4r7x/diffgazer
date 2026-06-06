@@ -1,12 +1,12 @@
 "use client";
 
-import { Children, isValidElement, useId, useMemo, type ComponentProps, type ReactNode } from "react";
-import { CodeBlockLabel } from "./code-block-label";
+import { Children, type ComponentProps, isValidElement, type ReactNode, useId, useMemo } from "react";
 import {
-  CodeBlockProvider,
   type CodeBlockChrome,
+  CodeBlockProvider,
   type CodeBlockVariant,
 } from "./code-block-context";
+import { CodeBlockLabel } from "./code-block-label";
 
 function containsLabelElement(node: ReactNode): boolean {
   for (const child of Children.toArray(node)) {

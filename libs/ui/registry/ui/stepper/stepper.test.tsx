@@ -1,10 +1,11 @@
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { axe } from "../../../testing/utils"
-import { afterAll, beforeAll, describe, it, expect, vi } from "vitest"
-import type { StepperVariant } from "@/lib/stepper-variants"
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { STEP_STATUSES, type StepStatus } from "@/lib/step-status"
-import { Stepper, getStepperIndicatorGlyph } from "./index"
+import type { StepperVariant } from "@/lib/stepper-variants"
+import { axe } from "../../../testing/axe"
+import { requireElement, requireValue } from "../../testing/assertions"
+import { getStepperIndicatorGlyph, Stepper } from "./index"
 
 function renderStepper(props: Record<string, unknown> = {}) {
   return render(
@@ -125,10 +126,12 @@ describe("Stepper", () => {
 
     const withContent = screen.getByRole("button", { name: /With content/ })
     const withoutContent = screen.getByRole("button", { name: /No content/ })
-    const contentId = withContent.getAttribute("aria-controls")
+    const contentId = requireValue(
+      withContent.getAttribute("aria-controls"),
+      "step content aria-controls",
+    )
 
-    expect(contentId).toBeTruthy()
-    expect(document.getElementById(contentId!)).toBeInTheDocument()
+    expect(requireElement(document.getElementById(contentId), "step content")).toBeInTheDocument()
     expect(withoutContent).not.toHaveAttribute("aria-controls")
     expect(withoutContent).not.toHaveAttribute("aria-expanded")
   })

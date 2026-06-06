@@ -27,7 +27,7 @@ function defaultGetActiveIndex(rendered: RenderResult, items: readonly string[])
         rendered.container.querySelector(`[data-testid="${activeId}"]`);
       if (target) {
         const name = accessibleNameOf(target);
-        const index = items.findIndex((item) => item === name);
+        const index = items.indexOf(name);
         if (index >= 0) {
           return index;
         }
@@ -37,7 +37,7 @@ function defaultGetActiveIndex(rendered: RenderResult, items: readonly string[])
     const activeElement = (rendered.container.ownerDocument ?? document).activeElement;
     if (activeElement instanceof HTMLElement) {
       const name = accessibleNameOf(activeElement);
-      return items.findIndex((item) => item === name);
+      return items.indexOf(name);
     }
   } catch {
     return -1;

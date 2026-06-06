@@ -1,3 +1,5 @@
+import { isPackaged } from "./paths.js";
+
 type LogLevel = "debug" | "info" | "warn" | "error";
 
 const LEVEL_ORDER: Record<LogLevel, number> = { debug: 10, info: 20, warn: 30, error: 40 };
@@ -14,8 +16,7 @@ const resolveThreshold = (): number => {
   // default it to `warn` to keep per-request info logs out of the terminal.
   // Diagnostics stay available via an explicit DIFFGAZER_LOG_LEVEL=info. The
   // standalone/dev server keeps the verbose `info` default.
-  const packagedDefault = process.env.DIFFGAZER_PACKAGED === "1";
-  return packagedDefault ? LEVEL_ORDER.warn : LEVEL_ORDER.info;
+  return isPackaged() ? LEVEL_ORDER.warn : LEVEL_ORDER.info;
 };
 
 /**

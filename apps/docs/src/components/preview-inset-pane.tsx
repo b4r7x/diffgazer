@@ -1,7 +1,7 @@
+import { Kbd } from "@diffgazer/ui/components/kbd";
+import { Spinner } from "@diffgazer/ui/components/spinner";
 import type { ComponentType, LazyExoticComponent, ReactNode } from "react";
 import { Suspense } from "react";
-import { Kbd } from "@/components/ui/kbd/kbd";
-import { Spinner } from "@/components/ui/spinner/spinner";
 
 /**
  * A3 docs-shell inset for layout-shaped component examples (Sidebar, etc.).

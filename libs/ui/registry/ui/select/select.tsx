@@ -1,13 +1,13 @@
 "use client";
 
-import { Children, isValidElement, useMemo, type AriaAttributes, type ComponentPropsWithoutRef, type ReactNode, type Ref } from "react";
 import { cva } from "class-variance-authority";
+import { type AriaAttributes, Children, type ComponentPropsWithoutRef, isValidElement, type ReactNode, type Ref, useMemo } from "react";
 import { composeRefs } from "@/lib/compose-refs";
 import { cn } from "@/lib/utils";
 import { SelectContext, type SelectOptionMetadata } from "./select-context";
 import { SelectItem, type SelectItemProps } from "./select-item";
 import { SelectSearch } from "./select-search";
-import { useSelectState, type UseSelectStateOptions } from "./use-select-state";
+import { type UseSelectStateOptions, useSelectState } from "./use-state-machine";
 
 interface SelectBaseProps<TValue extends string = string>
   extends Omit<ComponentPropsWithoutRef<"div">, "defaultValue" | "onChange" | "id"> {

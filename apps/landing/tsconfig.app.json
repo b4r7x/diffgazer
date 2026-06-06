@@ -1,19 +1,8 @@
 {
+  "extends": "../../libs/core/tsconfig/react.json",
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
-    "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "types": ["vite/client"],
-    "jsx": "react-jsx",
-    "strict": true,
-    "noUncheckedIndexedAccess": true,
-    "noImplicitOverride": true,
-    "isolatedModules": true,
-    "verbatimModuleSyntax": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "noEmit": true
+    "types": ["vite/client"]
   },
   "include": ["src"],
   "exclude": ["**/*.test.ts", "**/*.test.tsx"]

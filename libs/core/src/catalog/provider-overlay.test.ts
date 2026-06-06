@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { AI_PROVIDERS } from "@diffgazer/core/schemas/config";
+import { describe, expect, it } from "vitest";
+import { AI_PROVIDERS } from "../schemas/config/index.js";
 import { PROVIDER_OVERLAY, SURFACED_OVERLAYS } from "./provider-overlay.js";
 
 describe("PROVIDER_OVERLAY", () => {
@@ -92,8 +92,8 @@ describe("SURFACED_OVERLAYS (data-only, not AIProvider members)", () => {
     for (const row of Object.values(SURFACED_OVERLAYS)) {
       expect(row.enabled).toBe(false);
     }
-    expect(SURFACED_OVERLAYS.mistral!.diffgazerEnvVar).toBe("MISTRAL_API_KEY");
-    expect(SURFACED_OVERLAYS.huggingface!.diffgazerEnvVar).toBe("HF_TOKEN");
-    expect(SURFACED_OVERLAYS["github-models"]!.diffgazerEnvVar).toBe("GITHUB_TOKEN");
+    expect(SURFACED_OVERLAYS.mistral?.diffgazerEnvVar).toBe("MISTRAL_API_KEY");
+    expect(SURFACED_OVERLAYS.huggingface?.diffgazerEnvVar).toBe("HF_TOKEN");
+    expect(SURFACED_OVERLAYS["github-models"]?.diffgazerEnvVar).toBe("GITHUB_TOKEN");
   });
 });

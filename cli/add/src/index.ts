@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
 import { createCli, runCli } from "@diffgazer/registry/cli";
-import { VERSION } from "./context.js";
-import { initCommand } from "./commands/init.js";
-import { addCommand } from "./commands/add.js";
-import { listCommand } from "./commands/list.js";
+import { addCommand } from "./commands/add/command.js";
 import { diffCommand } from "./commands/diff.js";
+import { initCommand } from "./commands/init.js";
+import { listCommand } from "./commands/list.js";
 import { removeCommand } from "./commands/remove.js";
+import { VERSION } from "./context.js";
 
 function normalizeShadcnStyleArgs(argv: string[]): string[] {
   const userArgs = argv.slice(2);

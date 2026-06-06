@@ -11,7 +11,7 @@ import {
   promptConfirm,
   success,
   toErrorMessage,
-} from "../logger.js";
+} from "../terminal.js";
 
 export interface RemoveWorkflowFile {
   absolutePath: string;

@@ -1,18 +1,18 @@
 "use client";
 
-import { useMemo, type KeyboardEvent, type RefObject } from "react";
+import { type KeyboardEvent, type RefObject, useMemo } from "react";
 import {
   type AnnotatedChange,
-  type ParsedDiff,
   annotateWordDiff,
   createWordDiffBudget,
+  type ParsedDiff,
 } from "@/lib/diff";
 import {
+  formatHunkHeader,
   LINE_PREFIX,
+  LineContent,
   ROW_STATE,
   SR_LABEL,
-  formatHunkHeader,
-  LineContent,
 } from "./diff-view-line";
 
 type UnifiedHunk = { hunk: ParsedDiff["hunks"][number]; changes: AnnotatedChange[] };
@@ -43,18 +43,22 @@ export function UnifiedView({
   }, [disableWordDiff, parsed.hunks]);
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: the diff viewer is a custom keyboard-navigable composite; row navigation is handled here via onKeyDown with no native role that fits.
+    // biome-ignore lint/a11y/useAriaPropsSupportedByRole: aria-label/aria-keyshortcuts describe the focusable diff navigation region; no role with a native element equivalent applies to this composite.
     <div
       ref={containerRef}
       data-slot="diff-view-rows"
       data-line-numbers={showLineNumbers ? "true" : "false"}
       aria-label="Unified diff"
       aria-keyshortcuts="j k Escape"
+      // biome-ignore lint/a11y/noNoninteractiveTabindex: the container must be focusable (tabIndex=0) to receive j/k/Escape shortcuts that move between diff rows.
       tabIndex={0}
       onKeyDown={onKeyDown}
       className="scrollbar-thin"
     >
       {hunks.map(({ hunk, changes }, hi) => (
         <UnifiedHunkBlock
+          // biome-ignore lint/suspicious/noArrayIndexKey: diff hunks render in fixed order for an immutable diff and are never reordered; the hunk index is the stable identity.
           key={hi}
           hunk={hunk}
           changes={changes}
@@ -106,6 +110,7 @@ function UnifiedHunkBlock({
       </span>
       {changes.map((change, ci) => (
         <span
+          // biome-ignore lint/suspicious/noArrayIndexKey: diff change rows render in fixed order within an immutable hunk and are never reordered; the change index is the stable identity.
           key={ci}
           data-row
           data-state={ROW_STATE[change.type]}

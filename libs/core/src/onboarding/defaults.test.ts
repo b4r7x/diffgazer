@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { AVAILABLE_PROVIDERS } from "@diffgazer/core/schemas/config";
-import { LENS_IDS } from "@diffgazer/core/schemas/review";
+import { AVAILABLE_PROVIDERS } from "../schemas/config/index.js";
+import { LENS_IDS } from "../schemas/review/index.js";
 import { getInitialWizardData } from "./defaults.js";
 
 describe("getInitialWizardData", () => {

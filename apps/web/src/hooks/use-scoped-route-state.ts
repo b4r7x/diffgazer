@@ -1,5 +1,5 @@
-import { useSyncExternalStore } from "react";
 import { useLocation } from "@tanstack/react-router";
+import { useSyncExternalStore } from "react";
 
 export type SetState<T> = (value: T | ((prev: T) => T)) => void;
 
@@ -8,7 +8,9 @@ const routeStateStore = new Map<string, unknown>();
 const subscribers = new Set<() => void>();
 
 function emitChange(): void {
-  subscribers.forEach((callback) => callback());
+  subscribers.forEach((callback) => {
+    callback();
+  });
 }
 
 function cleanupIfNeeded(): void {
@@ -18,7 +20,9 @@ function cleanupIfNeeded(): void {
     0,
     routeStateStore.size - MAX_ENTRIES
   );
-  keysToRemove.forEach((key) => routeStateStore.delete(key));
+  keysToRemove.forEach((key) => {
+    routeStateStore.delete(key);
+  });
 }
 
 function createStorageKey(key: string, scope: string): string {

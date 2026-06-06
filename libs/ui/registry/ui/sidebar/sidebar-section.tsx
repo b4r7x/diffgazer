@@ -1,8 +1,8 @@
 "use client";
 
-import { Children, isValidElement, useId, useMemo, type HTMLAttributes, type ReactNode, type Ref } from "react";
-import { cn } from "@/lib/utils";
+import { Children, type HTMLAttributes, isValidElement, type ReactNode, type Ref, useId, useMemo } from "react";
 import { useControllableState } from "@/hooks/use-controllable-state";
+import { cn } from "@/lib/utils";
 import { SidebarSectionContext } from "./sidebar-section-context";
 import { SidebarSectionTitle } from "./sidebar-section-title";
 
@@ -48,6 +48,7 @@ export function SidebarSection({
 
   return (
     <SidebarSectionContext value={contextValue}>
+      {/* biome-ignore lint/a11y/useSemanticElements: role="group" labels a collapsible sidebar section; <fieldset> is for form controls and is not appropriate here. */}
       <div
         {...rest}
         ref={ref}

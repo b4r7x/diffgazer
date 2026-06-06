@@ -1,7 +1,7 @@
-import { useState, useRef, Children } from "react";
-import type { ReactNode } from "react";
 import { Box, Text, useInput } from "ink";
-import { useTheme } from "../../theme/theme-context";
+import type { ReactNode } from "react";
+import { Children, useRef, useState } from "react";
+import { useTheme } from "../../app/providers/theme";
 
 export interface ScrollAreaProps {
   height: number;
@@ -24,7 +24,7 @@ export function ScrollArea({
   const childArray = Children.toArray(children);
   const totalItems = childArray.length;
   const maxOffset = Math.max(0, totalItems - height);
-  let clampedOffset = Math.min(scrollOffset, maxOffset);
+  const clampedOffset = Math.min(scrollOffset, maxOffset);
 
   if (clampedOffset !== scrollOffset) {
     setScrollOffset(clampedOffset);

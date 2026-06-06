@@ -1,6 +1,6 @@
+import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import type { Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
-import { ErrorCode } from "@diffgazer/core/schemas/errors";
 // `@hono/zod-validator`'s Hook surfaces zod's internal `$ZodError`, which is a
 // distinct type from the public `ZodError` (it lacks `format`/`flatten`/etc.).
 // The validator callback below must match that internal type exactly.

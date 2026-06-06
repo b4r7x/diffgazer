@@ -1,5 +1,5 @@
 import { createRouter } from "@tanstack/react-router";
-import { GlobalNotFound } from "@/components/not-found";
+import { GlobalNotFound } from "@/components/global-not-found";
 import { routeTree } from "./routeTree.gen";
 
 export const getRouter = () =>

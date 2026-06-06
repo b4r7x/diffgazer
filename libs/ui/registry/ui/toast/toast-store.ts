@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore, type ReactNode } from "react";
+import { type ReactNode, useSyncExternalStore } from "react";
 import type { ToastTone, ToastVariant } from "./toast-variants";
 
 export type ToastPosition =
@@ -116,8 +116,10 @@ function resolveNextToasts(current: Toast[], incoming: Toast): Toast[] {
 
   // First pass: evict oldest transient toasts
   for (let i = 0; i < remaining.length && evicted.length < evictCount; i++) {
-    if (isEvictable(remaining[i]!)) {
-      evicted.push(remaining.splice(i, 1)[0]!);
+    const toast = remaining[i];
+    if (toast && isEvictable(toast)) {
+      const [removed] = remaining.splice(i, 1);
+      if (removed) evicted.push(removed);
       i--; // adjust index after splice
     }
   }

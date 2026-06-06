@@ -1,10 +1,10 @@
 "use client";
 
-import type { ReactNode } from "react";
 import { cva } from "class-variance-authority";
+import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { useSelectContext, type SelectOptionMetadata } from "./select-context";
-import { toSelectedArray } from "./select-utils";
+import { type SelectOptionMetadata, useSelectContext } from "./select-context";
+import { toSelectedArray } from "./selection";
 
 const selectValuePlaceholderVariants = cva("", {
   variants: {
@@ -68,7 +68,6 @@ function MultiValue({
       );
     }
 
-    case "count":
     default:
       return <span>{selected.length} selected</span>;
   }

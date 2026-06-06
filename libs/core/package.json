@@ -6,12 +6,10 @@
   "sideEffects": [
     "./dist/testing/dom-polyfills.js"
   ],
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+    "./breakpoints": {
+      "types": "./dist/breakpoints.d.ts",
+      "import": "./dist/breakpoints.js"
     },
     "./errors": {
       "types": "./dist/errors.d.ts",
@@ -65,17 +63,17 @@
       "types": "./dist/navigation/index.d.ts",
       "import": "./dist/navigation/index.js"
     },
-    "./hooks": {
-      "types": "./dist/hooks/index.d.ts",
-      "import": "./dist/hooks/index.js"
+    "./timer": {
+      "types": "./dist/timer.d.ts",
+      "import": "./dist/timer.js"
     },
     "./select": {
-      "types": "./dist/select/index.d.ts",
-      "import": "./dist/select/index.js"
+      "types": "./dist/select.d.ts",
+      "import": "./dist/select.js"
     },
     "./forms": {
-      "types": "./dist/forms/index.d.ts",
-      "import": "./dist/forms/index.js"
+      "types": "./dist/forms.d.ts",
+      "import": "./dist/forms.js"
     },
     "./get-figlet": {
       "types": "./dist/get-figlet.d.ts",
@@ -101,9 +99,9 @@
       "types": "./dist/schemas/errors.d.ts",
       "import": "./dist/schemas/errors.js"
     },
-    "./schemas/shared/fields": {
-      "types": "./dist/schemas/shared/fields.d.ts",
-      "import": "./dist/schemas/shared/fields.js"
+    "./schemas/fields": {
+      "types": "./dist/schemas/fields.d.ts",
+      "import": "./dist/schemas/fields.js"
     },
     "./schemas/review": {
       "types": "./dist/schemas/review/index.d.ts",
@@ -118,12 +116,12 @@
       "import": "./dist/schemas/config/index.js"
     },
     "./schemas/git": {
-      "types": "./dist/schemas/git/index.d.ts",
-      "import": "./dist/schemas/git/index.js"
+      "types": "./dist/schemas/git.d.ts",
+      "import": "./dist/schemas/git.js"
     },
     "./schemas/context": {
-      "types": "./dist/schemas/context/index.d.ts",
-      "import": "./dist/schemas/context/index.js"
+      "types": "./dist/schemas/context.d.ts",
+      "import": "./dist/schemas/context.js"
     },
     "./schemas/presentation": {
       "types": "./dist/schemas/presentation/index.d.ts",
@@ -140,29 +138,37 @@
     "generate:catalog-snapshot": "node --import tsx scripts/generate-catalog-snapshot.ts",
     "dev": "tsc --watch",
     "type-check": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json && tsc --noEmit -p scripts/tsconfig.json",
+    "check": "biome check .",
     "test": "vitest run",
-    "test:watch": "vitest",
-    "test:types": "vitest --typecheck --typecheck.only --run"
+    "test:watch": "vitest"
   },
   "dependencies": {
-    "@tanstack/react-query": "^5.80.7",
     "figlet": "^1.10.0",
     "zod": "^4.3.6"
   },
   "peerDependencies": {
+    "@tanstack/react-query": "^5.80.7",
     "react": ">=19.2.0"
   },
   "peerDependenciesMeta": {
+    "@tanstack/react-query": {
+      "optional": true
+    },
     "react": {
       "optional": true
     }
   },
   "devDependencies": {
+    "@diffgazer/registry": "workspace:*",
+    "@tanstack/react-query": "^5.80.7",
+    "@testing-library/react": "^16.3.2",
     "@types/figlet": "^1.7.0",
-    "@types/node": "^25.2.0",
-    "@types/react": "^19.1.6",
+    "@types/node": "^25.2.3",
+    "@types/react": "^19.2.13",
+    "jsdom": "^28.1.0",
     "react": "^19.2.4",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.0"
   }
 }

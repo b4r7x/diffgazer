@@ -1,7 +1,7 @@
 "use client";
 
-import type { ComponentPropsWithRef, MouseEvent } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
+import type { ComponentPropsWithRef, MouseEvent } from "react";
 import { cn } from "@/lib/utils";
 
 export interface LabelProps extends ComponentPropsWithRef<"label"> {
@@ -64,6 +64,7 @@ export function Label({
 
   if (label) {
     return (
+      // biome-ignore lint/a11y/noLabelWithoutControl: reusable Label primitive; the control is associated by the consumer (or Field) via htmlFor on ...props or by nesting the control as a child, neither of which Biome can see.
       <label
         ref={ref}
         className={cn(labelWrapperVariants({ orientation }), className)}
@@ -80,6 +81,7 @@ export function Label({
   }
 
   return (
+    // biome-ignore lint/a11y/noLabelWithoutControl: reusable Label primitive; the control is associated by the consumer (or Field) via htmlFor on ...props or by nesting the control as a child, neither of which Biome can see.
     <label
       ref={ref}
       className={cn(

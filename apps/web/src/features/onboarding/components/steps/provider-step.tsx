@@ -1,11 +1,10 @@
-import { useState } from "react";
-import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
-import { Badge } from "@diffgazer/ui/components/badge";
-import { AVAILABLE_PROVIDERS } from "@diffgazer/core/schemas/config";
 import type { AIProvider } from "@diffgazer/core/schemas/config";
-import { PROVIDER_CAPABILITIES } from "@diffgazer/core/schemas/config";
+import { AVAILABLE_PROVIDERS, PROVIDER_CAPABILITIES } from "@diffgazer/core/schemas/config";
 import { resolveAvailableValue } from "@diffgazer/core/select";
 import { toVerticalBoundaryDirection } from "@diffgazer/keys";
+import { Badge } from "@diffgazer/ui/components/badge";
+import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
+import { useState } from "react";
 
 const PROVIDER_IDS = AVAILABLE_PROVIDERS.map((provider) => provider.id);
 

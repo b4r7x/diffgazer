@@ -1,0 +1,64 @@
+---
+title: dgadd add
+description: Add diffgazer registry items to your project.
+---
+
+## Usage
+
+```bash
+pnpm exec dgadd add <item> [item...]
+```
+
+Use `npx @diffgazer/add add ...` only after `npm view @diffgazer/add version` succeeds. Before publication, install a locally packed `@diffgazer/add` tarball into the target app and run `pnpm exec dgadd`.
+
+Items are namespaced as `<namespace>/<item>`. Bare names are rejected so install paths stay explicit:
+
+```bash
+pnpm exec dgadd add ui/button
+pnpm exec dgadd add ui/dialog ui/tabs keys/navigation
+```
+
+## Options
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--cwd <path>` | Working directory | `.` |
+| `--all` | Add all public UI items | `false` |
+| `--overwrite` | Overwrite existing files | `false` |
+| `--dry-run` | Preview changes without writing files | `false` |
+| `--skip-install` | Write files without installing npm dependencies | `false` |
+| `--integration <mode>` | Keyboard integration mode: `ask \| none \| copy \| keys` | `ask` |
+| `--keys-version <version>` | Version/range used when `--integration keys` installs `@diffgazer/keys` | `^0.2.0` |
+| `--yes` | Skip confirmation prompts | `false` |
+
+## Keyboard Integration
+
+`copy` mode installs bundled hook source into your app.
+
+```bash
+pnpm exec dgadd add ui/menu --integration copy
+```
+
+`keys` mode rewrites local hook imports to `@diffgazer/keys` and installs the package dependency.
+
+```bash
+pnpm exec dgadd add ui/menu --integration keys
+```
+
+Standalone hooks can be installed directly. They are copied as source files and have no runtime dependency on `@diffgazer/keys`:
+
+```bash
+pnpm exec dgadd add keys/navigation keys/focus-trap keys/focus-restore keys/scroll-lock
+```
+
+Provider-backed hooks (`useKey`, `useScope`, `useScopedNavigation`, `useActionRowNavigation`, `useFocusZone`) are package-only because they depend on `KeyboardProvider` runtime context. Install them with the package instead:
+
+```bash
+npm install @diffgazer/keys
+```
+
+## Notes
+
+- `dgadd` copies source files into your project; you own the installed code.
+- UI dependencies and internal component dependencies are resolved automatically.
+- Package-mode keys integration is separate from the `diffgazer` product CLI.

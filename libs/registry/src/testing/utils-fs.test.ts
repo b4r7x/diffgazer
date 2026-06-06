@@ -1,14 +1,14 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import {
   chmodSync,
   existsSync,
-  mkdtempSync,
   mkdirSync,
+  mkdtempSync,
   rmSync,
   symlinkSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ensureWithinDir } from "../cli/fs.js";
 import { resetDir } from "../utils/fs.js";
 

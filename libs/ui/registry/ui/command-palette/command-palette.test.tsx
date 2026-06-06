@@ -1,14 +1,14 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react"
-import userEvent from "@testing-library/user-event"
-import { axe } from "../../../testing/utils"
-import { afterEach, beforeAll, describe, it, expect, vi } from "vitest"
 import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import { fileURLToPath } from "node:url"
-import { CommandPalette } from "./index"
-import { CommandPaletteHighlightItem, categorize, matchPositions } from "./highlight"
-import { StrictMode, createRef, useState } from "react"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
+import { createRef, StrictMode, useState } from "react"
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest"
+import { axe } from "../../../testing/axe"
 import { Popover } from "../popover/index"
+import { CommandPaletteHighlightItem, categorize, matchPositions } from "./highlight"
+import { CommandPalette } from "./index"
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -789,7 +789,7 @@ describe("CommandPalette", () => {
           <Popover triggerMode="click" defaultOpen>
             <Popover.Trigger>Nested popover trigger</Popover.Trigger>
             <Popover.Content aria-label="Command nested popover">
-              <button>Nested action</button>
+              <button type="button">Nested action</button>
             </Popover.Content>
           </Popover>
           <CommandPalette.List>

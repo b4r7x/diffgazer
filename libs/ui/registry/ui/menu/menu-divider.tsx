@@ -8,8 +8,7 @@ export interface MenuDividerProps {
 
 export function MenuDivider({ className }: MenuDividerProps) {
   return (
-    <div
-      role="separator"
+    <hr
       aria-orientation="horizontal"
       className={cn("my-1 border-t border-border mx-4 opacity-50", className)}
     />

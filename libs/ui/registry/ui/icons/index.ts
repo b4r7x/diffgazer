@@ -1,1 +1,1 @@
-export { Chevron, chevronVariants, type ChevronProps } from "./chevron";
+export { Chevron, type ChevronProps, chevronVariants } from "./chevron";

@@ -1,8 +1,8 @@
-import { useContext, useEffect, useState } from "react";
-import { Box, Text, useInput } from "ink";
 import { TextInput } from "@inkjs/ui";
-import { useTheme } from "../../theme/theme-context";
-import { KeyboardContext } from "../../app/providers/keyboard-provider";
+import { Box, Text, useInput } from "ink";
+import { useContext, useEffect, useState } from "react";
+import { KeyboardContext } from "../../app/providers/keyboard";
+import { useTheme } from "../../app/providers/theme";
 import { useTerminalDimensions } from "../../hooks/use-terminal-dimensions";
 
 export interface InputProps {

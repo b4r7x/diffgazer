@@ -1,8 +1,8 @@
-import type { AIProvider } from "@diffgazer/core/schemas/config";
-import type { ModelsDevCatalog, ModelsDevModel } from "./schema.js";
-import { PROVIDER_OVERLAY } from "./provider-overlay.js";
-import { isModelFreeToUse, mergeModelsAcrossSources } from "./transform.js";
+import type { AIProvider } from "../schemas/config/index.js";
 import { formatContextTokens } from "./format.js";
+import { PROVIDER_OVERLAY } from "./provider-overlay.js";
+import type { ModelsDevCatalog, ModelsDevModel } from "./schema.js";
+import { isModelFreeToUse, mergeModelsAcrossSources } from "./transform.js";
 
 export type ProviderCapabilities = {
   toolCalling: string;

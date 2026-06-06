@@ -1,12 +1,13 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { PROVIDER_OVERLAY } from "@diffgazer/core/catalog";
-import { ProviderModelsResponseSchema } from "@diffgazer/core/schemas/config";
 import type { AIProvider } from "@diffgazer/core/schemas/config";
-import { MODELS_DEV_SAMPLE } from "./__fixtures__/models-dev-sample.js";
+import { ProviderModelsResponseSchema } from "@diffgazer/core/schemas/config";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { requireValue } from "../../../testing/assertions.js";
 import { fetchModelsDevCatalog, getProviderModels, ModelsDevCatalogCacheSchema, resetCatalogParseMemo } from "./models-dev-catalog.js";
+import { MODELS_DEV_SAMPLE } from "./models-dev-sample.js";
 
 let testHome: string;
 const cachePath = (): string => path.join(testHome, "models-dev.json");
@@ -46,14 +47,14 @@ describe("fetchModelsDevCatalog", () => {
       expect(result.value.groq).toBeDefined();
     }
     expect(spy).toHaveBeenCalledWith("https://models.dev/api.json", expect.objectContaining({ signal: expect.any(AbortSignal) }));
-    const [, init] = spy.mock.calls[0]!;
+    const [, init] = requireValue(spy.mock.calls[0], "fetch call");
     expect((init as RequestInit)?.headers).toBeUndefined();
   });
 
   it("rejects redirects so a 3xx to a foreign host cannot poison the cache", async () => {
     const spy = vi.spyOn(globalThis, "fetch").mockResolvedValue(okResponse(MODELS_DEV_SAMPLE));
     await fetchModelsDevCatalog();
-    const [, init] = spy.mock.calls[0]!;
+    const [, init] = requireValue(spy.mock.calls[0], "fetch call");
     expect((init as RequestInit)?.redirect).toBe("error");
   });
 

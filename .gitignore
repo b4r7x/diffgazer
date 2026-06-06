@@ -20,13 +20,7 @@ tmp/
 **/.turbo/
 .audit-runs/
 .cache/
-/cli/add/src/generated/
-/libs/keys/docs/generated/
-/libs/ui/docs/generated/
 *.tgz
 *.tsbuildinfo
 apps/docs/playwright-report/
 apps/docs/test-results/
-AUDIT_*.md
-OPUS_AUDIT_*.md
-FIX_SPEC_*.md

@@ -1,12 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ok, err } from "@diffgazer/core/result";
 import type { Result } from "@diffgazer/core/result";
-import type { ReviewIssue } from "@diffgazer/core/schemas/review";
-import type { ParsedDiff } from "../diff/types.js";
-import type { AIClient, AIError } from "../ai/types.js";
-import { orchestrateReview } from "./orchestrate.js";
-import { makeIssue } from "../testing/factories.js";
+import { err, ok } from "@diffgazer/core/result";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { z } from "zod";
+import type { AIClient, AIError } from "../ai/types.js";
+import type { ParsedDiff } from "../diff/types.js";
+import { makeIssue } from "../testing/factories.js";
+import { orchestrateReview } from "./orchestrate.js";
 
 const makeDiff = (files: string[]): ParsedDiff => ({
   files: files.map((filePath) => ({

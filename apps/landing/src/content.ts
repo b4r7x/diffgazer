@@ -15,7 +15,7 @@ export const GITHUB_URL = "https://github.com/b4r7x/diffgazer";
 
 export const DOCS_LINK_TEXT = "Documentation";
 
-export interface ValueProp {
+interface ValueProp {
   title: string;
   body: string;
 }

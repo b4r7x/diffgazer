@@ -1,8 +1,8 @@
 "use client";
 
-import { useId, useMemo, type ReactNode } from "react";
+import { type ReactNode, useId, useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { useAccordionContext, AccordionItemContext } from "./accordion-context";
+import { AccordionItemContext, useAccordionContext } from "./accordion-context";
 
 export interface AccordionItemProps {
   value: string;

@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { mkdtemp, mkdir, symlink, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { isValidProjectPath, resolvesToSameProject } from "./validation.js";
 
 describe("isValidProjectPath", () => {

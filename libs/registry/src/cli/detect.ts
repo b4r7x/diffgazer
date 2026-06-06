@@ -1,8 +1,8 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
-import { readTsConfigPaths, isEnoent } from "./fs.js";
-import { warn, toErrorMessage } from "./logger.js";
+import { isEnoent, readTsConfigPaths } from "./fs.js";
+import { toErrorMessage, warn } from "./terminal.js";
 
 export type PackageManager = "npm" | "pnpm" | "yarn" | "bun";
 

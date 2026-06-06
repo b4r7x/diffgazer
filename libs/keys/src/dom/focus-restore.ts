@@ -1,4 +1,4 @@
-import { isHTMLElement } from "./dom.js";
+import { isHTMLElement } from "./element-guards.js";
 
 export interface RestoreFocusOptions {
   preventScroll?: boolean;

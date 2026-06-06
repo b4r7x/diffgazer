@@ -7,6 +7,13 @@ import {
 } from "node:fs";
 import { isAbsolute, relative, resolve, win32 } from "node:path";
 
+export function cleanDir(dir: string, ext: string): void {
+  if (!existsSync(dir)) return;
+  for (const f of readdirSync(dir)) {
+    if (f.endsWith(ext)) rmSync(resolve(dir, f));
+  }
+}
+
 export function relativePath(base: string, filePath: string): string {
   return filePath.startsWith(`${base}/`) ? filePath.slice(base.length + 1) : filePath;
 }
@@ -23,15 +30,19 @@ export function isRelativeSubpath(path: string): boolean {
   return !path.split(/[\\/]+/).includes("..");
 }
 
+/** Plain relative-prefix containment: is `target` at or inside `base`? */
+export function isWithinDir(target: string, base: string): boolean {
+  const rel = relative(resolve(base), resolve(target));
+  return !rel.startsWith("..") && !isAbsolute(rel);
+}
+
 export function resolveInside(baseDir: string, relPath: string, label: string): string {
   if (!isRelativeSubpath(relPath)) {
     throw new Error(`${label} must be a relative path inside "${baseDir}": ${relPath}`);
   }
 
-  const base = resolve(baseDir);
-  const target = resolve(base, relPath);
-  const targetRel = relative(base, target);
-  if (targetRel === "" || (!targetRel.startsWith("..") && !isAbsolute(targetRel))) {
+  const target = resolve(baseDir, relPath);
+  if (isWithinDir(target, baseDir)) {
     return target;
   }
 

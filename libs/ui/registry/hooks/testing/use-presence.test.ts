@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, afterEach } from "vitest"
-import { renderHook, act } from "@testing-library/react"
+import { act, renderHook } from "@testing-library/react"
+import { type AnimationEvent, createRef } from "react"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { usePresence } from "../use-presence"
-import { createRef, type AnimationEvent } from "react"
 
 // usePresence callbacks read .target and .animationName from React's animation
 // event; a minimal stub is sufficient here, since the rest of the synthetic

@@ -1,14 +1,14 @@
 "use client";
 
-import type { ComponentPropsWithRef, KeyboardEvent, ReactNode } from "react";
 import { cva } from "class-variance-authority";
-import { resolveAriaInvalid } from "@/lib/aria-utils";
+import type { ComponentPropsWithRef, KeyboardEvent, ReactNode } from "react";
+import { resolveAriaInvalid } from "@/lib/aria";
 import { composeRefs } from "@/lib/compose-refs";
+import { matchesSearch } from "@/lib/search";
 import { cn } from "@/lib/utils";
 import { Chevron } from "../icons/chevron";
 import { useSelectContext } from "./select-context";
-import { matchesSearch } from "@/lib/search";
-import { isActiveOptionVisible, toOptionId } from "./select-utils";
+import { isActiveOptionVisible, toOptionId } from "./selection";
 
 const selectTriggerVariants = cva(
   "flex items-center justify-between w-full px-3 py-2 text-sm font-mono cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground",
@@ -68,6 +68,7 @@ export function SelectTrigger({
   };
 
   return (
+    // biome-ignore lint/a11y/useAriaPropsSupportedByRole: role is conditionally "combobox" (Biome cannot resolve the ternary); aria-activedescendant is applied in that same branch and is valid for the combobox role.
     <button
       {...props}
       ref={composeRefs(triggerRef, ref)}

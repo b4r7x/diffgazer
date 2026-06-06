@@ -1,8 +1,10 @@
 import { Link } from "@tanstack/react-router";
-import type { HomeBrowseRow } from "../home-data";
+import type { HomeBrowseRow } from "../data";
 
 function rowMeta(row: HomeBrowseRow): string {
-	return row.count > 0 ? `${row.count} ${row.count === 1 ? "page" : "pages"}` : "";
+	return row.count > 0
+		? `${row.count} ${row.count === 1 ? "page" : "pages"}`
+		: "";
 }
 
 export function BrowseTable({ rows }: { rows: HomeBrowseRow[] }) {

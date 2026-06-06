@@ -1,6 +1,6 @@
-import type { DiffHunk, ChangeType } from "./parse";
-import { computeWordSegments, createWordDiffBudget, type WordSegment } from "./word";
 import { collectEditPairs } from "./pairs";
+import type { ChangeType, DiffHunk } from "./parse";
+import { computeWordSegments, createWordDiffBudget, type WordSegment } from "./word";
 
 export interface SplitCell {
   type: ChangeType | "empty";

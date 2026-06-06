@@ -1,5 +1,4 @@
-import type { ReviewIssue } from "@diffgazer/core/schemas/review";
-import type { ReviewMetadata } from "@diffgazer/core/schemas/review";
+import type { ReviewIssue, ReviewMetadata } from "@diffgazer/core/schemas/review";
 
 export function makeIssue(overrides: Partial<ReviewIssue> = {}): ReviewIssue {
   return {

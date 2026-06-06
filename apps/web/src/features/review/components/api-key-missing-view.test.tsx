@@ -1,7 +1,7 @@
+import { FooterProvider } from "@diffgazer/core/footer";
+import { KeyboardProvider } from "@diffgazer/keys";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { KeyboardProvider } from "@diffgazer/keys";
-import { FooterProvider } from "@diffgazer/core/footer";
 import { describe, expect, it, vi } from "vitest";
 import { ApiKeyMissingView, type ApiKeyMissingViewProps } from "./api-key-missing-view";
 

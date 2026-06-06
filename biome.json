@@ -1,0 +1,194 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.3.14/schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    "ignoreUnknown": true,
+    "includes": [
+      "**",
+      "!**/coverage",
+      "!**/dist",
+      "!**/.turbo",
+      "!**/.output",
+      "!**/.diffgazer",
+      "!cli/add/src/generated",
+      "!libs/keys/docs/generated",
+      "!libs/ui/docs/generated",
+      "!**/libs/ui/styles/sources.css",
+      "!**/libs/ui/styles/theme-base.css",
+      "!apps/landing/src/styles/index.css",
+      "!apps/web/src/styles/index.css",
+      "!apps/web/src/styles/theme-overrides.css"
+    ]
+  },
+  "formatter": {
+    "enabled": false
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "style": {
+        "useFilenamingConvention": {
+          "level": "error",
+          "options": {
+            "filenameCases": ["kebab-case", "export"],
+            "requireAscii": true,
+            "strictCase": false
+          }
+        }
+      }
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["scripts/monorepo/**"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noTemplateCurlyInString": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["**/src/routes/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "useFilenamingConvention": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/**", "cli/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["**/index", "./index", "../index"],
+                    "message": "Do not import through an internal index.ts barrel; import the concrete module directly."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["libs/core/**", "!libs/core/**/registry/examples/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["@diffgazer/core", "@diffgazer/core/**"],
+                    "message": "Do not import @diffgazer/core from inside its own package; use relative imports."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "libs/keys/**",
+        "!libs/keys/registry/examples/**",
+        "!libs/keys/examples/playground/**"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["@diffgazer/keys", "@diffgazer/keys/**"],
+                    "message": "Do not import @diffgazer/keys from inside its own package; use relative imports."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["libs/ui/**", "!libs/ui/registry/examples/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["@diffgazer/ui", "@diffgazer/ui/**"],
+                    "message": "Do not import @diffgazer/ui from inside its own package; use relative imports."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["libs/registry/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["@diffgazer/registry", "@diffgazer/registry/**"],
+                    "message": "Do not import @diffgazer/registry from inside its own package; use relative imports."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["libs/keys/**/*.test.ts", "libs/keys/**/*.test.tsx"],
+      "linter": {
+        "rules": {
+          "a11y": {
+            "useFocusableInteractive": "off",
+            "useSemanticElements": "off",
+            "noNoninteractiveTabindex": "off",
+            "noStaticElementInteractions": "off",
+            "useAriaPropsSupportedByRole": "off",
+            "useButtonType": "off"
+          },
+          "correctness": {
+            "useExhaustiveDependencies": "off"
+          },
+          "suspicious": {
+            "noAssignInExpressions": "off",
+            "noArrayIndexKey": "off"
+          }
+        }
+      }
+    }
+  ]
+}

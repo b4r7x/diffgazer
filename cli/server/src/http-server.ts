@@ -1,5 +1,5 @@
-import { createAdaptorServer, type ServerType } from "@hono/node-server";
 import type { AddressInfo } from "node:net";
+import { createAdaptorServer, type ServerType } from "@hono/node-server";
 
 export const DEFAULT_DEV_SERVER_HOSTNAME = "127.0.0.1";
 export const DEFAULT_DEV_SERVER_PORT = 3000;

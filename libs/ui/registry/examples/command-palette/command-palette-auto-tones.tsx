@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import { CommandPalette } from "@/components/ui/command-palette";
 import { CommandPaletteHighlightItem } from "@/components/ui/command-palette/highlight";
-import { Button } from "@/components/ui/button";
 
 export default function CommandPaletteAutoTones() {
   const [open, setOpen] = useState(false);

@@ -1,12 +1,12 @@
-import { Fragment, type ReactNode, createRef } from "react"
 import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { axe } from "../../../testing/utils"
+import { createRef, Fragment, type ReactNode } from "react"
+import { describe, expect, expectTypeOf, it, vi } from "vitest"
+import { axe } from "../../../testing/axe"
 import { applyReducedMotionFixture } from "../../../testing/prefers-reduced-motion"
-import { describe, it, expect, expectTypeOf, vi } from "vitest"
 import { Field } from "../field/index"
 import { Select, type SelectProps } from "./index"
-import { type SelectItemProps } from "./select-item"
+import type { SelectItemProps } from "./select-item"
 
 const PICK_FRUIT = "Pick a fruit"
 
@@ -521,6 +521,7 @@ describe("Select search filtering", () => {
       defaultOpen: true,
       children: (
         <>
+          {/* biome-ignore lint/complexity/noUselessFragments: the Fragment wrapper is intentional — this test asserts that Fragment-wrapped Select.Search inputs stay outside listbox ownership. */}
           <Fragment>
             <Select.Search />
           </Fragment>

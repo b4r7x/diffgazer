@@ -1,8 +1,9 @@
 import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Hono } from "hono";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { requireValue } from "../../testing/assertions.js";
 import { PROJECT_ROOT_HEADER } from "../lib/paths.js";
 
 let diffgazerHome: string;
@@ -20,7 +21,7 @@ async function saveTrust(readFiles: boolean): Promise<void> {
   const store = (await import("../lib/config/store.js")).getStore();
   const project = store.ensureProjectFile(projectRoot);
   await store.saveTrust({
-    projectId: project.projectId!,
+    projectId: requireValue(project.projectId, "project id"),
     repoRoot: projectRoot,
     trustedAt: "2024-01-01T00:00:00.000Z",
     capabilities: { readFiles, runCommands: false },
@@ -94,7 +95,7 @@ describe("requireRepoAccess", () => {
     const store = (await import("../lib/config/store.js")).getStore();
     const project = store.ensureProjectFile(projectRoot);
     await store.saveTrust({
-      projectId: project.projectId!,
+      projectId: requireValue(project.projectId, "project id"),
       repoRoot: "/some/other/path",
       trustedAt: "2024-01-01T00:00:00.000Z",
       capabilities: { readFiles: true, runCommands: false },

@@ -205,7 +205,7 @@
   /*
    * Z-index scale for overlay surfaces. Native <dialog>.showModal() and the
    * HTML Popover API paint in the browser top-layer, which sits above every
-   * z-index value — see apps/docs/content/docs/ui/theme/overview.mdx.
+   * z-index value — see apps/docs/content/docs/ui/theme/index.mdx.
    */
   --z-base: 1;
   --z-dropdown: 100;

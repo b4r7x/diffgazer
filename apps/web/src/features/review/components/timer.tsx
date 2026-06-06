@@ -1,5 +1,5 @@
 import { formatTime } from '@diffgazer/core/format';
-import { useTimer } from '@diffgazer/core/hooks';
+import { useTimer } from '@diffgazer/core/timer';
 import { cn } from '@diffgazer/ui/lib/utils';
 
 export interface TimerProps {

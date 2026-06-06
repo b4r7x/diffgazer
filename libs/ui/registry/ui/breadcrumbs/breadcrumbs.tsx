@@ -2,12 +2,12 @@
 
 import {
   Children,
+  type ComponentPropsWithRef,
   cloneElement,
   isValidElement,
-  useMemo,
-  type ComponentPropsWithRef,
   type ReactElement,
   type ReactNode,
+  useMemo,
 } from "react"
 import { cn } from "@/lib/utils"
 import { BreadcrumbsContext } from "./breadcrumbs-context"

@@ -1,3 +1,4 @@
+import { Typography } from "@diffgazer/ui/components/typography";
 import {
 	Children,
 	cloneElement,
@@ -5,7 +6,6 @@ import {
 	type ReactElement,
 	type ReactNode,
 } from "react";
-import { Typography } from "@/components/ui/typography/typography";
 
 interface StepProps {
 	title: string;

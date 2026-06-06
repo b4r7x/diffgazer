@@ -1,18 +1,7 @@
-// @vitest-environment jsdom
-
-import "@testing-library/jest-dom/vitest";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import type { TableOfContents } from "fumadocs-core/toc";
-import {
-	cleanup,
-	render,
-	screen,
-	waitFor,
-	within,
-} from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { TableOfContentsPanel } from "./toc";
-
-afterEach(cleanup);
 
 function renderWithHeadings(
 	headings: Array<{ tag: "h2" | "h3"; id?: string; text: string }>,
@@ -54,7 +43,11 @@ describe("TableOfContentsPanel", () => {
 		renderWithHeadings(
 			[
 				{ tag: "h2", id: "setup", text: "Setup" },
-				{ tag: "h2", id: "configure-a-source-alias", text: "Configure a source alias" },
+				{
+					tag: "h2",
+					id: "configure-a-source-alias",
+					text: "Configure a source alias",
+				},
 				{ tag: "h2", id: "result", text: "Result" },
 			],
 			[{ title: "Setup", url: "#setup", depth: 2 }],
@@ -127,9 +120,7 @@ describe("TableOfContentsPanel", () => {
 			{ tag: "h3", id: "details", text: "Details" },
 		]);
 
-		await waitFor(() =>
-			expect(tocLinks()).toEqual(["Overview", "Details"]),
-		);
+		await waitFor(() => expect(tocLinks()).toEqual(["Overview", "Details"]));
 
 		const overview = screen.getByRole("link", { name: "Overview" });
 		const details = screen.getByRole("link", { name: "Details" });

@@ -1,8 +1,8 @@
 "use client";
 
 import { createContext, useContext } from "react";
-import type { RadioSize } from "./radio";
 import type { SelectableVariant } from "@/lib/selectable-variants";
+import type { RadioSize } from "./radio";
 
 export interface RadioGroupContextValue {
   value?: string;

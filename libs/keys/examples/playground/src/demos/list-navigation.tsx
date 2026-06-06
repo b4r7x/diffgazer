@@ -1,5 +1,5 @@
-import { useState, useRef } from "react";
 import { useScopedNavigation } from "@diffgazer/keys";
+import { useRef, useState } from "react";
 import { DemoWrapper } from "../components/demo-wrapper";
 import { useTransientValue } from "./use-transient-value";
 
@@ -61,6 +61,7 @@ export function ListNavigationDemo() {
         <div
           ref={containerRef}
           role="listbox"
+          tabIndex={0}
           aria-label="Fruits"
           aria-multiselectable="true"
           aria-activedescendant={highlighted ? `fruit-${highlighted}` : undefined}
@@ -71,6 +72,7 @@ export function ListNavigationDemo() {
             const focused = isHighlighted(value);
             const selected = selectedItems.has(value);
             return (
+              // biome-ignore lint/a11y/useFocusableInteractive: WAI-ARIA listbox/activedescendant pattern — options stay non-focusable; the listbox container holds focus and aria-activedescendant tracks the active option.
               <div
                 key={value}
                 id={`fruit-${value}`}

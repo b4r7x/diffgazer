@@ -10,7 +10,7 @@
   "files": [
     {
       "path": "registry/hooks/use-scroll-lock.ts",
-      "content": "\"use client\";\n\nimport { useScrollLock, type UseScrollLockOptions } from \"@/hooks/use-scroll-lock\";\n\nexport { useScrollLock };\nexport type { UseScrollLockOptions };\n",
+      "content": "\"use client\";\n\nimport { type UseScrollLockOptions, useScrollLock } from \"@/hooks/use-scroll-lock\";\n\nexport { useScrollLock };\nexport type { UseScrollLockOptions };\n",
       "type": "registry:hook"
     }
   ],

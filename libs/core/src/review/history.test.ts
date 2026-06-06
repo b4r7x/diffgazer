@@ -1,17 +1,17 @@
-import { describe, it, expect } from "vitest";
-import type { ReviewMetadata } from "@diffgazer/core/schemas/review";
+import { describe, expect, it } from "vitest";
+import type { ReviewMetadata } from "../schemas/review/index.js";
 import {
-  HISTORY_SECTION_ALL_ID,
-  buildReviewListItem,
+  buildHistoryRunSummary,
   buildTimelineItems,
-  durationMsToSeconds,
+  filterReviewsForHistory,
   getEmptyRunsMessage,
   getRunBranchLabel,
   getRunDisplayId,
   getRunSummaryParts,
   getRunSummaryText,
-  groupByDate,
+  HISTORY_SECTION_ALL_ID,
   matchesHistoryQuery,
+  metadataToSeverityCounts,
   resolveSelectedDateId,
   resolveSelectedRunId,
 } from "./history.js";
@@ -97,20 +97,9 @@ describe("getRunBranchLabel + getRunDisplayId", () => {
   });
 });
 
-describe("durationMsToSeconds", () => {
-  it("rounds milliseconds to whole seconds", () => {
-    expect(durationMsToSeconds(4500)).toBe(5);
-  });
-
-  it("returns 0 for null or undefined", () => {
-    expect(durationMsToSeconds(undefined)).toBe(0);
-    expect(durationMsToSeconds(null)).toBe(0);
-  });
-});
-
-describe("buildReviewListItem", () => {
-  it("derives an item with summary text, branch label, and severities", () => {
-    const item = buildReviewListItem(
+describe("buildHistoryRunSummary", () => {
+  it("projects the id, displayId, branch, timestamp, and summary subset", () => {
+    const summary = buildHistoryRunSummary(
       makeMetadata({
         id: "abcdef00-0000-4000-8000-000000000000",
         mode: "staged",
@@ -118,10 +107,66 @@ describe("buildReviewListItem", () => {
         highCount: 2,
       }),
     );
-    expect(item.displayId).toBe("#abcd");
-    expect(item.branch).toBe("Staged");
-    expect(item.summary).toBe("2 high");
-    expect(item.severities).toEqual([{ severity: "high", count: 2 }]);
+    expect(summary.id).toBe("abcdef00-0000-4000-8000-000000000000");
+    expect(summary.displayId).toBe("#abcd");
+    expect(summary.branch).toBe("Staged");
+    expect(summary.summary).toBe("2 high");
+    expect(typeof summary.timestamp).toBe("string");
+  });
+
+  it("labels an unstaged run with a missing branch as Main", () => {
+    const summary = buildHistoryRunSummary(
+      makeMetadata({ mode: "unstaged", branch: undefined, issueCount: 0 }),
+    );
+    expect(summary.branch).toBe("Main");
+    expect(summary.summary).toBe("Passed with no issues.");
+  });
+});
+
+describe("metadataToSeverityCounts", () => {
+  it("returns null when there is no metadata", () => {
+    expect(metadataToSeverityCounts(null)).toBeNull();
+  });
+
+  it("projects the five severity count fields", () => {
+    const counts = metadataToSeverityCounts(
+      makeMetadata({
+        blockerCount: 1,
+        highCount: 2,
+        mediumCount: 3,
+        lowCount: 4,
+        nitCount: 5,
+      }),
+    );
+    expect(counts).toEqual({ blocker: 1, high: 2, medium: 3, low: 4, nit: 5 });
+  });
+});
+
+describe("filterReviewsForHistory", () => {
+  it("returns all reviews when the all-section is selected and there is no query", () => {
+    const reviews = [
+      makeMetadata({ id: "a", createdAt: "2026-02-09T08:00:00.000Z" }),
+      makeMetadata({ id: "b", createdAt: "2026-02-08T08:00:00.000Z" }),
+    ];
+    expect(filterReviewsForHistory(reviews, HISTORY_SECTION_ALL_ID, "")).toEqual(reviews);
+  });
+
+  it("restricts to a date section by date key", () => {
+    const reviews = [
+      makeMetadata({ id: "a", createdAt: "2026-02-09T08:00:00.000Z" }),
+      makeMetadata({ id: "b", createdAt: "2026-02-08T08:00:00.000Z" }),
+    ];
+    const filtered = filterReviewsForHistory(reviews, "2026-02-09", "");
+    expect(filtered.map((r) => r.id)).toEqual(["a"]);
+  });
+
+  it("applies the search query within the selected section", () => {
+    const reviews = [
+      makeMetadata({ id: "a", branch: "feature/login", createdAt: "2026-02-09T08:00:00.000Z" }),
+      makeMetadata({ id: "b", branch: "main", createdAt: "2026-02-09T09:00:00.000Z" }),
+    ];
+    const filtered = filterReviewsForHistory(reviews, HISTORY_SECTION_ALL_ID, "feature");
+    expect(filtered.map((r) => r.id)).toEqual(["a"]);
   });
 });
 
@@ -143,22 +188,6 @@ describe("matchesHistoryQuery", () => {
   it("uses staged label when mode is staged", () => {
     const r = makeMetadata({ mode: "staged" });
     expect(matchesHistoryQuery(r, "staged")).toBe(true);
-  });
-});
-
-describe("groupByDate", () => {
-  it("groups reviews by date key descending and maps items", () => {
-    const reviews = [
-      makeMetadata({ id: "a-1", createdAt: "2026-02-09T08:00:00.000Z" }),
-      makeMetadata({ id: "a-2", createdAt: "2026-02-09T18:00:00.000Z" }),
-      makeMetadata({ id: "a-3", createdAt: "2026-02-08T12:00:00.000Z" }),
-    ];
-
-    const groups = groupByDate(reviews, (r) => r.id);
-
-    expect(groups.length).toBe(2);
-    expect(groups[0]?.reviews).toEqual(["a-1", "a-2"]);
-    expect(groups[1]?.reviews).toEqual(["a-3"]);
   });
 });
 

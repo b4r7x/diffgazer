@@ -1,13 +1,13 @@
 "use client";
 
-import { useMemo, type KeyboardEvent, type RefObject } from "react";
+import { type KeyboardEvent, type RefObject, useMemo } from "react";
 import { type ParsedDiff, type SplitCell, type SplitRow, toSplitRows } from "@/lib/diff";
 import {
+  formatHunkHeader,
   LINE_PREFIX,
+  LineContent,
   ROW_STATE,
   SR_LABEL,
-  formatHunkHeader,
-  LineContent,
 } from "./diff-view-line";
 
 export function SplitView({
@@ -41,11 +41,14 @@ export function SplitView({
     // containerRef on the outer split (not on each SplitSide rows): useNavigation
     // queries by data-diffgazer-navigation-item, which only the left side registers,
     // so one shared ref covers both panes without double-counting hunks.
+    // biome-ignore lint/a11y/noStaticElementInteractions: the diff viewer is a custom keyboard-navigable composite; row navigation is handled here via onKeyDown with no native role that fits.
+    // biome-ignore lint/a11y/useAriaPropsSupportedByRole: aria-label/aria-keyshortcuts describe the focusable diff navigation region; no role with a native element equivalent applies to this composite.
     <div
       ref={containerRef}
       data-slot="diff-view-split"
       aria-label="Split diff"
       aria-keyshortcuts="j k Escape"
+      // biome-ignore lint/a11y/noNoninteractiveTabindex: the container must be focusable (tabIndex=0) to receive j/k/Escape shortcuts that move between diff rows.
       tabIndex={0}
       onKeyDown={onKeyDown}
     >
@@ -115,6 +118,7 @@ function SplitSide({
   registerNavigationItems: boolean;
 }) {
   return (
+    // biome-ignore lint/a11y/useSemanticElements: role="group" labels one side of the split diff; <fieldset> is for form controls and is not appropriate here.
     <div
       data-slot="diff-view-rows"
       data-side={side}
@@ -128,6 +132,7 @@ function SplitSide({
           const { hunkIndex, row } = entry;
           return (
             <span
+              // biome-ignore lint/suspicious/noArrayIndexKey: diff rows render in fixed order for an immutable diff and are never reordered; the row index is the stable identity.
               key={i}
               data-row
               data-state="hunk"
@@ -150,6 +155,7 @@ function SplitSide({
 
         return (
           <SplitCellRow
+            // biome-ignore lint/suspicious/noArrayIndexKey: diff rows render in fixed order for an immutable diff and are never reordered; the row index is the stable identity.
             key={i}
             cell={entry.cell}
             showLineNumbers={showLineNumbers}

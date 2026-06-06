@@ -1,10 +1,11 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, renderHook, cleanup, act } from "@testing-library/react";
-import { useEffect, useState } from "react";
-import { useKeyboardContext } from "../context/keyboard-context.js";
+import { act, cleanup, render, renderHook } from "@testing-library/react";
+import { useEffect } from "react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import type { KeyHandler } from "../core/normalize-key-input.js";
+import { useKeyboardContext } from "../providers/keyboard-context.js";
+import { KeyboardWrapper, fireKey as pressKey, StrictKeyboardWrapper } from "../testing/test-utils.js";
 import { useKey } from "./use-key.js";
 import { useScope } from "./use-scope.js";
-import { fireKey as pressKey, KeyboardWrapper, StrictKeyboardWrapper } from "../testing/test-utils.js";
 
 describe("useScope", () => {
   afterEach(() => {
@@ -82,17 +83,17 @@ describe("useScope", () => {
   it("keeps the last sibling scope active when many scopes mount together", () => {
     const handlers = Array.from({ length: 40 }, () => vi.fn());
 
-    function ScopedConsumer({ index }: { index: number }) {
+    function ScopedConsumer({ index, handler }: { index: number; handler: KeyHandler }) {
       const scope = `scope-${index}`;
       useScope(scope);
-      useKey("Escape", handlers[index]!, { scope });
+      useKey("Escape", handler, { scope });
       return null;
     }
 
     render(
       <KeyboardWrapper>
-        {handlers.map((_, index) => (
-          <ScopedConsumer key={index} index={index} />
+        {handlers.map((handler, index) => (
+          <ScopedConsumer key={index} index={index} handler={handler} />
         ))}
       </KeyboardWrapper>,
     );

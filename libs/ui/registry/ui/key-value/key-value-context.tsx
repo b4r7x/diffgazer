@@ -1,7 +1,7 @@
 "use client";
 
-import { createContext, useContext } from "react";
 import type { VariantProps } from "class-variance-authority";
+import { createContext, useContext } from "react";
 import type { keyValueVariants } from "./key-value";
 import type { valueVariants } from "./key-value-item";
 

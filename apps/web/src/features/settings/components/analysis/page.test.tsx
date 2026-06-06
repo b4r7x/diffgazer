@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { renderWithProviders } from "@/testing";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { renderWithProviders } from "@/testing/render";
 
 const {
   allLenses,

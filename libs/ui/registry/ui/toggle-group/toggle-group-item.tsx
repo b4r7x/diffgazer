@@ -10,10 +10,10 @@ import {
   useLayoutEffect,
   useRef,
 } from "react";
-import { useToggleGroupContext } from "./toggle-group-context";
 import { composeRefs } from "@/lib/compose-refs";
 import { segmentedItemVariants } from "@/lib/segmented-variants";
 import { cn } from "@/lib/utils";
+import { useToggleGroupContext } from "./toggle-group-context";
 
 export interface ToggleGroupItemProps<TValue extends string = string>
   extends Omit<ComponentPropsWithRef<"button">, "children" | "disabled" | "value"> {
@@ -104,6 +104,7 @@ export function ToggleGroupItem<TValue extends string = string>({
     );
 
   return (
+    // biome-ignore lint/a11y/useAriaPropsSupportedByRole: role is conditionally "radio" (Biome cannot resolve the ternary); aria-checked is applied only in the radio branch and aria-pressed only in the button branch.
     <button
       {...props}
       ref={composeRefs(rootRef, ref)}

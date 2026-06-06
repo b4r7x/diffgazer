@@ -1,14 +1,14 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import type { Logger } from "../logger.js";
 import { findExamples } from "./examples.js";
-import { highlightCode, type DocsHighlighter, type HighlightLanguage } from "./highlight.js";
+import { type DocsHighlighter, type HighlightLanguage, highlightCode } from "./highlight.js";
 import type {
   CodeBlockLine,
-  HookSourceData,
   EnrichedHookData,
   HookDoc,
+  HookSourceData,
 } from "./types.js";
-import type { Logger } from "../logger.js";
 
 export interface HookRegistryItem {
   name: string;

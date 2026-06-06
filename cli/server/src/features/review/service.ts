@@ -1,38 +1,38 @@
 import { randomUUID } from "node:crypto";
-import { createGitService } from "../../shared/lib/git/service.js";
-import type { AIClient } from "../../shared/lib/ai/types.js";
+import type { Result } from "@diffgazer/core/result";
+import { err, ok } from "@diffgazer/core/result";
 import type { FullReviewStreamEvent, StepId } from "@diffgazer/core/schemas/events";
-import { log } from "../../shared/lib/log.js";
 import {
   ReviewErrorCode,
 } from "@diffgazer/core/schemas/review";
-import type { Result } from "@diffgazer/core/result";
-import { ok, err } from "@diffgazer/core/result";
+import type { AIClient } from "../../shared/lib/ai/types.js";
+import { createGitService } from "../../shared/lib/git/service.js";
+import { log } from "../../shared/lib/log.js";
+import { isReviewAbort } from "./abort.js";
+import { resolveGitDiff } from "./diff.js";
 import {
-  buildScopeKey,
-  createSession,
-  markReady,
-  addEvent,
-  markComplete,
-  getActiveSessionForProject,
-  getSession,
-  cancelStaleSessionsForProjectMode,
-  type ActiveSession,
-} from "./sessions.js";
-import type { EmitFn, StreamReviewParams } from "./types.js";
-import {
-  resolveReviewConfig,
   executeReview,
   finalizeReview,
+  resolveReviewConfig,
 } from "./pipeline.js";
-import { resolveGitDiff } from "./diff.js";
-import { isReviewAbort } from "./abort.js";
-import { stepError } from "./step-events.js";
 import {
   isAbortError,
   normalizeReviewStreamError,
   reviewStreamError,
-} from "./stream-events.js";
+} from "./stream/events.js";
+import { stepError } from "./stream/steps.js";
+import {
+  type ActiveSession,
+  addEvent,
+  buildScopeKey,
+  cancelStaleSessionsForProjectMode,
+  createSession,
+  getActiveSessionForProject,
+  getSession,
+  markComplete,
+  markReady,
+} from "./stream/store.js";
+import type { EmitFn, StreamReviewParams } from "./types.js";
 
 /** Logs per-step latency from the review stream so each phase is observable. */
 function logStepTiming(

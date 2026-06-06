@@ -1,9 +1,9 @@
 "use client";
 
-import { useRef, type HTMLAttributes, type KeyboardEvent, type Ref } from "react";
+import { type HTMLAttributes, type KeyboardEvent, type Ref, useRef } from "react";
 import { useNavigation } from "@/hooks/use-navigation";
-import { cn } from "@/lib/utils";
 import { composeRefs } from "@/lib/compose-refs";
+import { cn } from "@/lib/utils";
 import { useSidebar } from "./sidebar-context";
 
 export interface SidebarContentProps extends HTMLAttributes<HTMLDivElement> {

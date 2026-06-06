@@ -1,7 +1,7 @@
-import { createRef } from "react";
 import { render, screen } from "@testing-library/react";
+import { createRef } from "react";
 import { describe, expect, it } from "vitest";
-import { axe } from "../../../testing/utils";
+import { axe } from "../../../testing/axe";
 import { Card } from "./index";
 
 describe("Card", () => {

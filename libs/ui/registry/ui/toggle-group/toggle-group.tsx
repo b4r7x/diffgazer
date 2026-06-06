@@ -1,24 +1,24 @@
 "use client";
 
-import { useCallback, useMemo, useRef, type ReactNode, type Ref, type KeyboardEvent as ReactKeyboardEvent } from "react";
-import { useNavigation } from "@/hooks/use-navigation";
+import { type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type Ref, useCallback, useMemo, useRef } from "react";
 import { useControllableState } from "@/hooks/use-controllable-state";
-import { useFormReset } from "@/hooks/use-form-reset";
 import { useFloatingIndicator } from "@/hooks/use-floating-indicator";
+import { useFormReset } from "@/hooks/use-form-reset";
+import { useNavigation } from "@/hooks/use-navigation";
 import { composeRefs } from "@/lib/compose-refs";
+import {
+  type SegmentedSize,
+  type SegmentedVariant,
+  segmentedContainerVariants,
+  segmentedPillIndicatorClass,
+  segmentedUnderlineIndicatorClass,
+} from "@/lib/segmented-variants";
 import {
   getEnabledSelectableCollectionItems,
   getSelectableCollectionItemValue,
   resolveSelectableCollectionItemValue,
   useSelectableCollection,
 } from "@/lib/selectable-collection";
-import {
-  segmentedContainerVariants,
-  segmentedPillIndicatorClass,
-  segmentedUnderlineIndicatorClass,
-  type SegmentedSize,
-  type SegmentedVariant,
-} from "@/lib/segmented-variants";
 import { cn } from "@/lib/utils";
 import { ToggleGroupContext, type ToggleGroupSelectionMode } from "./toggle-group-context";
 
@@ -203,6 +203,8 @@ export function ToggleGroup<TValue extends string = string>(props: ToggleGroupPr
 
   return (
     <ToggleGroupContext value={contextValue}>
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: role is dynamically "group"/"radiogroup" and the container owns roving keyboard handling for its items; Biome cannot resolve the dynamic role. */}
+      {/* biome-ignore lint/a11y/useAriaPropsSupportedByRole: the aria props apply to the dynamic group/radiogroup role, which Biome cannot statically resolve. */}
       <div
         ref={composeRefs(containerRef, ref)}
         role={usesButtonSemantics ? "group" : "radiogroup"}

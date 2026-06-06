@@ -1,6 +1,6 @@
-import type { ReactNode } from "react";
 import { Box, Text, useInput } from "ink";
-import { useTheme } from "../../theme/theme-context";
+import type { ReactNode } from "react";
+import { useTheme } from "../../app/providers/theme";
 import { useTerminalDimensions } from "../../hooks/use-terminal-dimensions";
 
 export interface DialogProps {

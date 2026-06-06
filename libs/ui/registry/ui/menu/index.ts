@@ -1,13 +1,13 @@
 "use client";
 
-import { Menu as MenuRoot, type MenuProps } from "./menu";
+import { type MenuProps, Menu as MenuRoot } from "./menu";
+import { MenuDivider, type MenuDividerProps } from "./menu-divider";
+import { MenuGroup, type MenuGroupProps } from "./menu-group";
 import { MenuItem, type MenuItemProps } from "./menu-item";
 import { MenuItemCheckbox, type MenuItemCheckboxProps } from "./menu-item-checkbox";
 import { MenuItemRadio, type MenuItemRadioProps } from "./menu-item-radio";
-import { MenuDivider, type MenuDividerProps } from "./menu-divider";
-import { MenuGroup, type MenuGroupProps } from "./menu-group";
 import { MenuLabel, type MenuLabelProps } from "./menu-label";
-import { MenuSub, MenuSubTrigger, MenuSubContent, menuSubTriggerBase, type MenuSubProps, type MenuSubTriggerProps, type MenuSubContentProps, type MenuSubTriggerVariantProps } from "./menu-sub";
+import { MenuSub, MenuSubContent, type MenuSubContentProps, type MenuSubProps, MenuSubTrigger, type MenuSubTriggerProps, type MenuSubTriggerVariantProps, menuSubTriggerBase } from "./menu-sub";
 
 const Menu = Object.assign(MenuRoot, {
   Item: MenuItem,

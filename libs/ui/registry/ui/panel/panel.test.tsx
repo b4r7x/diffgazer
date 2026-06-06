@@ -1,7 +1,7 @@
-import { createRef } from "react";
 import { render, screen } from "@testing-library/react";
-import { afterEach, assertType, describe, expect, it, vi } from "vitest";
-import { axe } from "../../../testing/utils";
+import { createRef } from "react";
+import { assertType, describe, expect, it } from "vitest";
+import { axe } from "../../../testing/axe";
 import { Panel, type PanelProps } from "./index";
 
 function getRoot(container: HTMLElement): HTMLElement {
@@ -64,7 +64,7 @@ describe("Panel", () => {
     const root = getRoot(container);
     const description = container.querySelector('[data-slot="panel-description"]');
     expect(description).not.toBeNull();
-    expect(root).toHaveAttribute("aria-describedby", description!.id);
+    expect(root).toHaveAttribute("aria-describedby", description?.id);
   });
 
   it("polymorphic-ref type narrows by the `as` value (compile-time)", () => {

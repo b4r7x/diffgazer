@@ -1,9 +1,9 @@
-import { Hero } from "./sections/hero";
-import { ValueProps } from "./sections/value-props";
-import { Showcase } from "./sections/showcase";
-import { Install } from "./sections/install";
-import { Footer } from "./sections/footer";
 import { PRODUCT_NAME } from "./content";
+import { Footer } from "./sections/footer";
+import { Hero } from "./sections/hero";
+import { Install } from "./sections/install";
+import { Showcase } from "./sections/showcase";
+import { ValueProps } from "./sections/value-props";
 
 export function App() {
   return (

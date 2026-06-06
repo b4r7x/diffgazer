@@ -1,6 +1,4 @@
 @import "tailwindcss";
-@import "../styles/styles.css";
-@source "../registry/ui";
-@source "../registry/hooks";
+@import "@diffgazer/ui/sources.css";
+@import "@diffgazer/ui/styles.css";
 @source "../registry/examples";
-@source "../registry/lib";

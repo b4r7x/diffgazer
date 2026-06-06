@@ -55,7 +55,7 @@
           "type": "registry:ui"
         },
         {
-          "path": "registry/ui/accordion/use-accordion-state.ts",
+          "path": "registry/ui/accordion/use-state.ts",
           "type": "registry:ui"
         }
       ]
@@ -203,7 +203,7 @@
       "dependencies": [],
       "registryDependencies": [
         "https://r.b4r7.dev/r/ui/theme.json",
-        "https://r.b4r7.dev/r/ui/aria-utils.json",
+        "https://r.b4r7.dev/r/ui/aria.json",
         "https://r.b4r7.dev/r/ui/compose-refs.json",
         "https://r.b4r7.dev/r/ui/utils.json"
       ],
@@ -308,7 +308,7 @@
       "dependencies": [],
       "registryDependencies": [
         "https://r.b4r7.dev/r/ui/theme.json",
-        "https://r.b4r7.dev/r/ui/aria-utils.json",
+        "https://r.b4r7.dev/r/ui/aria.json",
         "https://r.b4r7.dev/r/ui/controllable-state.json",
         "https://r.b4r7.dev/r/ui/form-reset.json",
         "https://r.b4r7.dev/r/keys/navigation.json",
@@ -380,7 +380,7 @@
       "dependencies": [],
       "registryDependencies": [
         "https://r.b4r7.dev/r/ui/theme.json",
-        "https://r.b4r7.dev/r/ui/aria-utils.json",
+        "https://r.b4r7.dev/r/ui/aria.json",
         "https://r.b4r7.dev/r/ui/controllable-state.json",
         "https://r.b4r7.dev/r/ui/form-reset.json",
         "https://r.b4r7.dev/r/ui/compose-refs.json",
@@ -801,7 +801,7 @@
         "https://r.b4r7.dev/r/ui/compose-refs.json",
         "https://r.b4r7.dev/r/ui/portal.json",
         "https://r.b4r7.dev/r/ui/kbd.json",
-        "https://r.b4r7.dev/r/ui/aria-utils.json",
+        "https://r.b4r7.dev/r/ui/aria.json",
         "https://r.b4r7.dev/r/ui/utils.json"
       ],
       "meta": {
@@ -1161,11 +1161,11 @@
           "type": "registry:ui"
         },
         {
-          "path": "registry/ui/toast/use-toast-dismiss.ts",
+          "path": "registry/ui/toast/use-dismiss.ts",
           "type": "registry:ui"
         },
         {
-          "path": "registry/ui/toast/use-toast-container.ts",
+          "path": "registry/ui/toast/use-container.ts",
           "type": "registry:ui"
         }
       ]
@@ -1203,7 +1203,7 @@
           "type": "registry:ui"
         },
         {
-          "path": "registry/ui/stepper/use-stepper-state.ts",
+          "path": "registry/ui/stepper/use-state.ts",
           "type": "registry:ui"
         },
         {
@@ -1535,7 +1535,7 @@
           "type": "registry:ui"
         },
         {
-          "path": "registry/ui/command-palette/use-command-palette-state.ts",
+          "path": "registry/ui/command-palette/use-state.ts",
           "type": "registry:ui"
         },
         {
@@ -1555,7 +1555,7 @@
       ],
       "registryDependencies": [
         "https://r.b4r7.dev/r/ui/theme.json",
-        "https://r.b4r7.dev/r/ui/aria-utils.json",
+        "https://r.b4r7.dev/r/ui/aria.json",
         "https://r.b4r7.dev/r/ui/controllable-state.json",
         "https://r.b4r7.dev/r/keys/navigation.json",
         "https://r.b4r7.dev/r/ui/compose-refs.json",
@@ -1589,7 +1589,7 @@
           "type": "registry:ui"
         },
         {
-          "path": "registry/ui/select/select-utils.ts",
+          "path": "registry/ui/select/selection.ts",
           "type": "registry:ui"
         },
         {
@@ -1601,11 +1601,11 @@
           "type": "registry:ui"
         },
         {
-          "path": "registry/ui/select/get-visible-enabled-options.ts",
+          "path": "registry/ui/select/visible-options.ts",
           "type": "registry:ui"
         },
         {
-          "path": "registry/ui/select/use-select-typeahead.ts",
+          "path": "registry/ui/select/use-typeahead.ts",
           "type": "registry:ui"
         },
         {
@@ -1633,7 +1633,7 @@
           "type": "registry:ui"
         },
         {
-          "path": "registry/ui/select/use-select-state.ts",
+          "path": "registry/ui/select/use-state-machine.ts",
           "type": "registry:ui"
         }
       ]
@@ -1663,7 +1663,7 @@
           "type": "registry:ui"
         },
         {
-          "path": "registry/ui/spinner/use-spinner-animation.ts",
+          "path": "registry/ui/spinner/use-animation.ts",
           "type": "registry:ui"
         },
         {
@@ -1823,7 +1823,7 @@
           "type": "registry:ui"
         },
         {
-          "path": "registry/ui/logo/get-figlet-text.ts",
+          "path": "registry/ui/logo/figlet-text.ts",
           "type": "registry:ui"
         }
       ]
@@ -2156,12 +2156,12 @@
           "type": "registry:hook"
         },
         {
-          "path": "registry/hooks/compute-floating-position.ts",
-          "type": "registry:hook"
+          "path": "registry/lib/floating-position.ts",
+          "type": "registry:lib"
         },
         {
-          "path": "registry/hooks/floating-position-constants.ts",
-          "type": "registry:hook"
+          "path": "registry/lib/floating-position-constants.ts",
+          "type": "registry:lib"
         }
       ]
     },
@@ -2218,11 +2218,11 @@
           "type": "registry:hook"
         },
         {
-          "path": "registry/hooks/use-listbox-dom.ts",
+          "path": "registry/hooks/listbox-dom.ts",
           "type": "registry:hook"
         },
         {
-          "path": "registry/hooks/use-listbox-metadata.ts",
+          "path": "registry/hooks/listbox-metadata.ts",
           "type": "registry:hook"
         }
       ]
@@ -2270,7 +2270,7 @@
           "type": "registry:ui"
         },
         {
-          "path": "registry/ui/popover/use-popover-behavior.ts",
+          "path": "registry/ui/popover/use-behavior.ts",
           "type": "registry:ui"
         },
         {
@@ -2289,7 +2289,7 @@
       ],
       "registryDependencies": [
         "https://r.b4r7.dev/r/ui/theme.json",
-        "https://r.b4r7.dev/r/ui/aria-utils.json",
+        "https://r.b4r7.dev/r/ui/aria.json",
         "https://r.b4r7.dev/r/ui/controllable-state.json",
         "https://r.b4r7.dev/r/ui/form-reset.json",
         "https://r.b4r7.dev/r/ui/compose-refs.json",

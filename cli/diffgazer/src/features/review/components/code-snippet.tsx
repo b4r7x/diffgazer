@@ -1,5 +1,5 @@
 import { Box, Text } from "ink";
-import { useTheme } from "../../../theme/theme-context";
+import { useTheme } from "../../../app/providers/theme";
 
 export interface CodeSnippetProps {
   filePath: string;
@@ -21,9 +21,10 @@ export function CodeSnippet({ filePath, startLine = 1, code }: CodeSnippetProps)
         <Text color={tokens.accent}>{filePath}</Text>
       </Box>
       {lines.map((line, i) => {
-        const lineNum = String(startLine + i).padStart(4, " ");
+        const absoluteLine = startLine + i;
+        const lineNum = String(absoluteLine).padStart(4, " ");
         return (
-          <Box key={i} gap={1}>
+          <Box key={absoluteLine} gap={1}>
             <Text color={tokens.muted}>{lineNum}</Text>
             <Text>{line}</Text>
           </Box>

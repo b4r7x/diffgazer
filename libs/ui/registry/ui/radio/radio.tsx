@@ -1,31 +1,31 @@
 "use client";
 
 import {
-  useCallback,
-  useEffect,
-  useId,
-  useRef,
-  useState,
   type AriaAttributes,
   type ComponentPropsWithRef,
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
   type Ref,
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
 } from "react";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { useFormReset } from "@/hooks/use-form-reset";
-import { mergeIds, resolveAriaInvalid } from "@/lib/aria-utils";
+import { mergeIds, resolveAriaInvalid } from "@/lib/aria";
 import { composeRefs } from "@/lib/compose-refs";
 import {
-  selectableVariants,
-  selectableContainerClass,
-  selectableIndicatorVariants,
-  selectableLabelVariants,
-  selectableDescriptionVariants,
-  selectableIndicators,
   type SelectableSize,
   type SelectableVariant,
+  selectableContainerClass,
+  selectableDescriptionVariants,
+  selectableIndicators,
+  selectableIndicatorVariants,
+  selectableLabelVariants,
+  selectableVariants,
 } from "@/lib/selectable-variants";
 import { cn } from "@/lib/utils";
 
@@ -225,6 +225,7 @@ export function Radio({
           }}
         />
       )}
+      {/* biome-ignore lint/a11y/useSemanticElements: this is the custom-styled radio control; a hidden native <input type="radio"> (rendered separately) owns form submission, so the visible control uses role="radio". */}
       <div
         {...rootProps}
         ref={composeRefs(rootRef, ref)}

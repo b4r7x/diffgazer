@@ -1,7 +1,7 @@
+import * as clack from "@clack/prompts";
 import { Command } from "commander";
 import pc from "picocolors";
-import * as clack from "@clack/prompts";
-import { showBanner, setSilent, toErrorMessage, CancelError, promptSelect } from "./logger.js";
+import { CancelError, promptSelect, setSilent, showBanner, toErrorMessage } from "./terminal.js";
 
 export interface CliOptions {
   name: string;

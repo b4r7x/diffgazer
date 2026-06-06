@@ -1,5 +1,5 @@
-import { StrictMode, type ReactNode } from "react";
-import { KeyboardProvider } from "../providers/keyboard-provider.js";
+import { type ReactNode, StrictMode } from "react";
+import { KeyboardProvider } from "../providers/keyboard.js";
 
 export function fireKey(key: string, options?: Partial<KeyboardEventInit>): KeyboardEvent {
   const event = new KeyboardEvent("keydown", {

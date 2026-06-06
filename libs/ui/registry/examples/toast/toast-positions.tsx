@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react"
-import { toast, Toaster } from "@/components/ui/toast"
-import type { ToastPosition } from "@/components/ui/toast"
 import { Button } from "@/components/ui/button"
+import type { ToastPosition } from "@/components/ui/toast"
+import { Toaster, toast } from "@/components/ui/toast"
 import { ToggleGroup } from "@/components/ui/toggle-group"
 
 export default function ToastPositions() {

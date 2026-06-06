@@ -1,10 +1,10 @@
 "use client";
 
-import type { ReactNode, HTMLAttributes, Ref } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
+import type { HTMLAttributes, ReactNode, Ref } from "react";
 import { cn } from "@/lib/utils";
-import { useSpinnerAnimation } from "./use-spinner-animation";
-import { SnakeGrid, SNAKE_FRAME_COUNT } from "./spinner-snake-grid";
+import { SNAKE_FRAME_COUNT, SnakeGrid } from "./spinner-snake-grid";
+import { useSpinnerAnimation } from "./use-animation";
 
 export type SpinnerSize = "sm" | "md" | "lg";
 export type SpinnerVariant = "snake" | "braille" | "dots" | "pulse";
@@ -90,6 +90,7 @@ export function Spinner({
   const resolvedSize = size ?? "md";
 
   return (
+    // biome-ignore lint/a11y/useSemanticElements: role="status" is the idiomatic loading live-region on an inline span; <output> carries form-association semantics that do not fit a spinner.
     <span
       ref={ref}
       role="status"

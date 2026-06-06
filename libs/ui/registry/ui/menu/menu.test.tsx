@@ -1,10 +1,11 @@
-import { createRef } from "react"
 import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+import { createRef } from "react"
+import { describe, expect, expectTypeOf, it, vi } from "vitest"
 import { testNavigationBehavior } from "../../../../keys/src/testing/navigation-behavior"
-import { axe } from "../../../testing/utils"
-import { describe, it, expect, expectTypeOf, vi } from "vitest"
-import { Menu, type MenuProps, type MenuItemProps, MenuItemCheckbox, MenuItemRadio, MenuGroup, MenuLabel, MenuSub, MenuSubTrigger, MenuSubContent } from "./index"
+import { axe } from "../../../testing/axe"
+import { requireAttribute, requireValue } from "../../testing/assertions"
+import { Menu, type MenuItemProps, MenuLabel, type MenuProps } from "./index"
 
 function renderMenu(props: Record<string, unknown> = {}) {
   return render(
@@ -298,7 +299,7 @@ describe("Menu", () => {
 
     expect(item.id).toContain(encodeURIComponent(id))
     expect(menu).toHaveAttribute("aria-activedescendant", item.id)
-    expect(document.getElementById(menu.getAttribute("aria-activedescendant")!)).toBe(item)
+    expect(document.getElementById(requireAttribute(menu, "aria-activedescendant"))).toBe(item)
   })
 
   it("treats an empty string item id as a valid active descendant value", () => {
@@ -442,7 +443,7 @@ describe("Menu typeahead", () => {
 })
 
 describe("Menu keyboard navigation", () => {
-  const ITEM_IDS = ["one", "two", "three"] as const
+  const ITEM_IDS = ["one", "two", "three"]
 
   testNavigationBehavior({
     setup: () => {
@@ -474,7 +475,7 @@ describe("Menu keyboard navigation", () => {
       if (!activeId) return -1
       const target = (host?.ownerDocument ?? document).getElementById(activeId)
       const value = target?.getAttribute("data-value") ?? ""
-      return ITEM_IDS.findIndex((id) => id === value)
+      return ITEM_IDS.indexOf(value)
     },
   })
 })
@@ -573,7 +574,7 @@ describe("MenuGroup and MenuLabel", () => {
     expect(group).toHaveAttribute("aria-labelledby")
     expect(screen.getByText("Section")).toBeInTheDocument()
 
-    const labelId = group.getAttribute("aria-labelledby")!
+    const labelId = requireAttribute(group, "aria-labelledby")
     const label = document.getElementById(labelId)
     expect(label).toHaveTextContent("Section")
   })
@@ -755,7 +756,10 @@ describe("MenuSub", () => {
       expect(screen.getAllByRole("menu").length).toBeGreaterThan(1)
     })
 
-    const submenu = screen.getAllByRole("menu").find((m) => m !== menu)!
+    const submenu = requireValue(
+      screen.getAllByRole("menu").find((candidate) => candidate !== menu),
+      "submenu",
+    )
     submenu.focus()
     await userEvent.keyboard("{ArrowLeft}")
 
@@ -775,7 +779,10 @@ describe("MenuSub", () => {
       expect(screen.getAllByRole("menu").length).toBeGreaterThan(1)
     })
 
-    const submenu = screen.getAllByRole("menu").find((m) => m !== menu)!
+    const submenu = requireValue(
+      screen.getAllByRole("menu").find((candidate) => candidate !== menu),
+      "submenu",
+    )
     submenu.focus()
     await userEvent.keyboard("{Escape}")
 
@@ -795,7 +802,10 @@ describe("MenuSub", () => {
       expect(screen.getAllByRole("menu").length).toBeGreaterThan(1)
     })
 
-    const submenu = screen.getAllByRole("menu").find((m) => m !== menu)!
+    const submenu = requireValue(
+      screen.getAllByRole("menu").find((candidate) => candidate !== menu),
+      "submenu",
+    )
     submenu.focus()
 
     await waitFor(() => {
@@ -872,7 +882,10 @@ describe("MenuSub", () => {
       expect(screen.getAllByRole("menu").length).toBeGreaterThan(1)
     })
 
-    const submenu = screen.getAllByRole("menu").find((m) => m !== menu)!
+    const submenu = requireValue(
+      screen.getAllByRole("menu").find((candidate) => candidate !== menu),
+      "submenu",
+    )
     submenu.focus()
 
     await userEvent.keyboard("{Tab}")

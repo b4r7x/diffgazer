@@ -1,4 +1,4 @@
-import type { RefObject, Ref, RefCallback } from "react";
+import type { Ref, RefCallback, RefObject } from "react";
 
 function assignRef<T>(ref: Ref<T>, element: T | null): void {
   if (typeof ref === "function") {

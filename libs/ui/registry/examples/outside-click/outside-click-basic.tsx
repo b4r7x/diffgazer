@@ -13,6 +13,7 @@ export default function OutsideClickBasicExample() {
     <div className="flex flex-col gap-4 items-start">
       {!open && (
         <button
+          type="button"
           onClick={() => setOpen(true)}
           className="font-mono text-sm border border-border px-3 py-1.5 bg-background hover:bg-muted transition-colors"
         >

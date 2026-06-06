@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { ReviewIssue } from "@diffgazer/core/schemas/review";
-import { buildReviewSummary } from "./build-summary.js";
+import type { ReviewIssue } from "../schemas/review/index.js";
+import { buildLensStats, buildReviewSummary } from "./build-summary.js";
 
 function makeIssue(overrides: Partial<ReviewIssue> & Pick<ReviewIssue, "id" | "severity">): ReviewIssue {
   return {
@@ -51,5 +51,26 @@ describe("buildReviewSummary", () => {
       low: 1,
       nit: 0,
     });
+  });
+});
+
+describe("buildLensStats", () => {
+  it("returns an empty list for no issues", () => {
+    expect(buildLensStats([])).toEqual([]);
+  });
+
+  it("counts issues per category with a title-cased name", () => {
+    const issues: ReviewIssue[] = [
+      makeIssue({ id: "1", severity: "high", category: "security" }),
+      makeIssue({ id: "2", severity: "low", category: "security" }),
+      makeIssue({ id: "3", severity: "medium", category: "performance" }),
+    ];
+
+    const stats = buildLensStats(issues);
+
+    expect(stats).toEqual([
+      { id: "security", name: "Security", icon: "", count: 2, change: 0 },
+      { id: "performance", name: "Performance", icon: "", count: 1, change: 0 },
+    ]);
   });
 });

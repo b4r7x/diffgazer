@@ -1,13 +1,13 @@
+import { FooterProvider } from "@diffgazer/core/footer";
+import type { ReviewMode } from "@diffgazer/core/schemas/review";
+import { KeyboardProvider } from "@diffgazer/keys";
+import { Toaster, toast } from "@diffgazer/ui/components/toast";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { KeyboardProvider } from "@diffgazer/keys";
-import { toast, Toaster } from "@diffgazer/ui/components/toast";
-import { FooterProvider } from "@diffgazer/core/footer";
-import { ConfigProvider } from "@/app/providers/config-provider";
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
-import type { ReviewMode } from "@diffgazer/core/schemas/review";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ConfigProvider } from "@/app/providers/config";
 
 type ReviewQueryState = {
   data?: unknown;
@@ -76,7 +76,7 @@ vi.mock("@diffgazer/core/api/hooks", () => ({
   useSaveConfig: () => ({ isPending: false, error: null, mutateAsync: vi.fn() }),
 }));
 
-import { makeIssue } from "@/testing";
+import { makeIssue } from "@/testing/factories";
 import { ReviewPage } from "./page";
 
 function reviewQuery(state: Partial<ReviewQueryState>): ReviewQueryState {

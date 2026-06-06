@@ -1,9 +1,9 @@
 "use client";
 
-import { useId, useLayoutEffect, useRef, type ReactNode } from "react";
-import { useRadioGroupContext } from "./radio-group-context";
-import { Radio, type RadioProps } from "./radio";
+import { type ReactNode, useId, useLayoutEffect, useRef } from "react";
 import { composeRefs } from "@/lib/compose-refs";
+import { Radio, type RadioProps } from "./radio";
+import { useRadioGroupContext } from "./radio-group-context";
 
 export interface RadioGroupItemProps<TValue extends string = string>
   extends Omit<

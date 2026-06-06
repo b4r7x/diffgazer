@@ -1,5 +1,6 @@
 "use client";
 
+import { getNavigationItems } from "@diffgazer/keys";
 import {
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
@@ -7,11 +8,10 @@ import {
   useMemo,
   useRef,
 } from "react";
-import { getNavigationItems } from "@diffgazer/keys";
 import { composeRefs } from "@/lib/compose-refs";
 import { cn } from "@/lib/utils";
 import { AccordionContext } from "./accordion-context";
-import { useAccordionState } from "./use-accordion-state";
+import { useAccordionState } from "./use-state";
 
 const ACCORDION_ROOT_ATTRIBUTE = "data-diffgazer-accordion-root";
 
@@ -117,6 +117,7 @@ function AccordionRoot(props: AccordionProps) {
 
   return (
     <AccordionContext value={contextValue}>
+      {/* biome-ignore lint/a11y/useSemanticElements: role="group" labels the related set of accordion panels; <fieldset> is for form controls and is not appropriate here. */}
       <div
         ref={composeRefs(containerRef, ref)}
         role="group"

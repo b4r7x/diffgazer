@@ -1,36 +1,34 @@
-import type { AIClient } from "../../shared/lib/ai/types.js";
-import type { ParsedDiff } from "../../shared/lib/diff/types.js";
-import { saveReview } from "../../shared/lib/storage/reviews.js";
-import {
-  type LensId,
-  type ProfileId,
-  type ReviewMode,
-} from "@diffgazer/core/schemas/review";
-import { ErrorCode } from "@diffgazer/core/schemas/errors";
+import { getErrorMessage } from "@diffgazer/core/errors";
+import { err, ok, type Result } from "@diffgazer/core/result";
 import type { SettingsConfig } from "@diffgazer/core/schemas/config";
-import type {
-  ReviewResult,
-} from "@diffgazer/core/schemas/review";
+import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import type {
   EnrichProgressEvent,
 } from "@diffgazer/core/schemas/events";
+import type {
+  LensId,
+  ProfileId,
+  ReviewMode,
+  ReviewResult,
+} from "@diffgazer/core/schemas/review";
+import type { AIClient } from "../../shared/lib/ai/types.js";
 import { getStore } from "../../shared/lib/config/store.js";
-import { getProfile } from "../../shared/lib/review/profiles.js";
-import { orchestrateReview } from "../../shared/lib/review/orchestrate.js";
-import { buildProjectContextSnapshot } from "./context.js";
-import { enrichIssues } from "./enrichment.js";
+import type { ParsedDiff } from "../../shared/lib/diff/types.js";
 import type { createGitService } from "../../shared/lib/git/service.js";
+import { orchestrateReview } from "../../shared/lib/review/orchestrate.js";
+import { getProfile } from "../../shared/lib/review/profiles.js";
+import { saveReview } from "../../shared/lib/storage/reviews.js";
 import { reviewAbort } from "./abort.js";
-import {
-  type EmitFn,
-  type ResolvedConfig,
-  type ReviewAbort,
-  type ReviewOutcome,
-} from "./types.js";
-import { type Result, ok, err } from "@diffgazer/core/result";
-import { getErrorMessage } from "@diffgazer/core/errors";
-import { stepStart, stepComplete, stepError } from "./step-events.js";
+import { buildProjectContextSnapshot } from "./context/snapshot.js";
+import { enrichIssues } from "./enrichment.js";
+import { stepComplete, stepError, stepStart } from "./stream/steps.js";
 import { generateReport } from "./summary.js";
+import type {
+  EmitFn,
+  ResolvedConfig,
+  ReviewAbort,
+  ReviewOutcome,
+} from "./types.js";
 
 const DEFAULT_LENSES: LensId[] = ["correctness"];
 

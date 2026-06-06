@@ -1,5 +1,5 @@
-import { buttonVariants } from "@/components/ui/button/button";
-import { CodeBlock } from "@/components/ui/code-block";
+import { buttonVariants } from "@diffgazer/ui/components/button";
+import { CodeBlock } from "@diffgazer/ui/components/code-block";
 
 const REVIEW_LENSES = [
 	"Correctness",

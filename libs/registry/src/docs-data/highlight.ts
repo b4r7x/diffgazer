@@ -1,7 +1,7 @@
 import {
   createHighlighterCore,
-  type ThemedToken,
   type LanguageInput,
+  type ThemedToken,
 } from "shiki/core";
 import { createJavaScriptRegexEngine } from "shiki/engine/javascript";
 import type { CodeBlockLine } from "./types.js";

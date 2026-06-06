@@ -1,12 +1,13 @@
 /**
  * @vitest-environment jsdom
  */
-import { createElement, StrictMode, type ReactNode } from "react";
+
 import { renderHook, waitFor } from "@testing-library/react";
+import { createElement, type ReactNode, StrictMode } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { err, ok } from "@diffgazer/core/result";
-import { ReviewErrorCode } from "@diffgazer/core/schemas/review";
-import { useReviewStart, type UseReviewStartOptions } from "./use-review-start.js";
+import { err, ok } from "../../result.js";
+import { ReviewErrorCode } from "../../schemas/review/index.js";
+import { type UseReviewStartOptions, useReviewStart } from "./use-review-start.js";
 
 function StrictModeWrapper({ children }: { children: ReactNode }) {
   return createElement(StrictMode, null, children);

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../paths.js", () => ({
   PROJECT_ROOT_HEADER: "x-diffgazer-project-root",
+  isPackaged: () => process.env.DIFFGAZER_PACKAGED === "1",
   resolveProjectRoot: vi.fn((opts: { header?: string | null; env?: string | null; cwd?: string | null }) => {
     if (opts?.header) return `/from-header/${opts.header}`;
     if (opts?.env) return opts.env;
@@ -9,8 +10,8 @@ vi.mock("../paths.js", () => ({
   }),
 }));
 
-import { getProjectRoot } from "./request.js";
 import { resolveProjectRoot } from "../paths.js";
+import { getProjectRoot } from "./request.js";
 
 function createMockContext(headers: Record<string, string> = {}) {
   return {

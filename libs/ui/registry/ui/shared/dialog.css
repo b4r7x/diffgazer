@@ -77,6 +77,7 @@
 @media (prefers-reduced-motion: reduce) {
   dialog,
   dialog::backdrop {
+    /* biome-ignore lint/complexity/noImportantStyles: prefers-reduced-motion override must defeat the dialog animation declarations regardless of specificity. */
     animation: none !important;
   }
 }

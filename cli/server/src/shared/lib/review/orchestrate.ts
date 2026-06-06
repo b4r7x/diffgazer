@@ -1,19 +1,15 @@
 import { randomUUID } from "node:crypto";
-import type { LensId } from "@diffgazer/core/schemas/review";
-import type {
-  ReviewIssue,
-  ReviewOptions,
-} from "@diffgazer/core/schemas/review";
-import { type Result, ok, err } from "@diffgazer/core/result";
 import { getErrorMessage } from "@diffgazer/core/errors";
+import { err, ok, type Result } from "@diffgazer/core/result";
 import type { AgentStreamEvent, LensStat, StepEvent } from "@diffgazer/core/schemas/events";
 import { AGENT_METADATA, LENS_TO_AGENT } from "@diffgazer/core/schemas/events";
+import type { LensId, ReviewIssue, ReviewOptions } from "@diffgazer/core/schemas/review";
 import type { AIClient } from "../ai/types.js";
 import type { ParsedDiff } from "../diff/types.js";
-import { getLenses } from "./lenses.js";
-import { filterIssuesByMinSeverity, deduplicateIssues, sortIssuesBySeverity, validateIssueCompleteness } from "./issues.js";
 import { runLensAnalysis } from "./analysis.js";
-import type { ReviewError, OrchestrationOutcome, OrchestrationOptions } from "./types.js";
+import { deduplicateIssues, filterIssuesByMinSeverity, sortIssuesBySeverity, validateIssueCompleteness } from "./issues.js";
+import { getLenses } from "./lenses.js";
+import type { OrchestrationOptions, OrchestrationOutcome, ReviewError } from "./types.js";
 
 async function runWithConcurrency<T, R>(
   items: T[],
@@ -48,8 +44,16 @@ async function runWithConcurrency<T, R>(
 
       while (active < limit && nextIndex < items.length) {
         const currentIndex = nextIndex++;
+        const item = items[currentIndex];
+        if (item === undefined) {
+          results[currentIndex] = {
+            status: "rejected",
+            reason: new Error("Missing item"),
+          };
+          continue;
+        }
         active++;
-        Promise.resolve(worker(items[currentIndex]!, currentIndex))
+        Promise.resolve(worker(item, currentIndex))
           .then((value) => {
             results[currentIndex] = { status: "fulfilled", value };
           })

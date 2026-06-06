@@ -24,7 +24,7 @@ export const PUBLIC_ORIGIN: string = (() => {
 
 export const DEFAULT_SITE_NAME = "diffgazer docs";
 export const DEFAULT_SITE_DESCRIPTION =
-	"Unified documentation and generated registry artifacts for diffgazer libraries.";
+	"Unified documentation for diffgazer libraries and UI primitives.";
 export const DEFAULT_THEME_COLOR = "#000000";
 
 type MetaTag =

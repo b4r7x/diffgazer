@@ -1,5 +1,5 @@
 import type { Result } from "./result.js";
-import { ok, err } from "./result.js";
+import { err, ok } from "./result.js";
 
 function stripMarkdownCodeBlock(content: string): string {
   let cleaned = content.trim();

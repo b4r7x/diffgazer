@@ -1,5 +1,5 @@
-import { type HTMLAttributes, type Ref } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
+import type { HTMLAttributes, Ref } from "react";
 import { cn } from "@/lib/utils";
 
 export type BadgeVariant = "success" | "warning" | "error" | "info" | "neutral";

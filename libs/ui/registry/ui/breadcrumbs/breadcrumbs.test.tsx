@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react"
-import { axe } from "../../../testing/utils"
-import { describe, it, expect } from "vitest"
+import { describe, expect, it } from "vitest"
+import { axe } from "../../../testing/axe"
 import { Breadcrumbs } from "./index"
 
 describe("Breadcrumbs", () => {

@@ -11,15 +11,15 @@ export function areShortcutsEqual(a: Shortcut[], b: Shortcut[]): boolean {
   if (a === b) return true;
   if (a.length !== b.length) return false;
 
-  for (let i = 0; i < a.length; i++) {
-    const left = a[i]!;
-    const right = b[i]!;
-    if (left.key !== right.key || left.label !== right.label || left.disabled !== right.disabled) {
-      return false;
-    }
-  }
-
-  return true;
+  return a.every((left, index) => {
+    const right = b[index];
+    return (
+      right !== undefined
+      && left.key === right.key
+      && left.label === right.label
+      && left.disabled === right.disabled
+    );
+  });
 }
 
 // "Navigate"/"Select"/"Quit" matches the rest of the keyboard model
@@ -29,4 +29,11 @@ export const MAIN_MENU_SHORTCUTS: Shortcut[] = [
   { key: "↑/↓", label: "Navigate" },
   { key: "Enter", label: "Select" },
   { key: "q", label: "Quit" },
+];
+
+// Shared settings-hub footer shortcuts consumed by both the web and CLI hubs.
+export const SETTINGS_SHORTCUTS: Shortcut[] = [
+  { key: "↑/↓", label: "Navigate" },
+  { key: "Enter", label: "Edit" },
+  { key: "Esc", label: "Back" },
 ];
