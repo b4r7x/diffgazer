@@ -1,5 +1,5 @@
 # Stage 1: Build landing page
-FROM node:22-alpine@sha256:968df39aedcea65eeb078fb336ed7191baf48f972b4479711397108be0966920 AS builder
+FROM node:26-alpine@sha256:144769ec3f32e8ee36b3cfde91e82bee25d9367b20f31a151f3f7eea3a2a8541 AS builder
 
 RUN corepack enable && corepack prepare pnpm@10.28.2 --activate
 
@@ -25,7 +25,7 @@ RUN pnpm --filter @diffgazer/registry build \
  && pnpm --filter @diffgazer/landing build
 
 # Stage 2: Serve static SPA
-FROM nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10 AS runtime
+FROM nginx:1.31-alpine@sha256:8b1e78743a03dbb2c95171cc58639fef29abc8816598e27fb910ed2e621e589a AS runtime
 
 COPY --from=builder /app/apps/landing/dist /usr/share/nginx/html
 COPY deploy/landing-nginx.conf /etc/nginx/conf.d/default.conf
