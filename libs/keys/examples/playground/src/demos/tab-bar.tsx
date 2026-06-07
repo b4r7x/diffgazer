@@ -3,16 +3,44 @@ import { useRef, useState } from "react";
 import { DemoWrapper } from "../components/demo-wrapper";
 
 const horizontalTabs = [
-  { id: "dashboard", label: "Dashboard", content: "Overview of your account activity, recent notifications, and quick actions." },
-  { id: "settings", label: "Settings", content: "Configure application preferences, themes, and notification settings." },
-  { id: "profile", label: "Profile", content: "Manage your personal information, avatar, and public profile." },
-  { id: "help", label: "Help", content: "Browse documentation, FAQs, and contact support for assistance." },
+  {
+    id: "dashboard",
+    label: "Dashboard",
+    content: "Overview of your account activity, recent notifications, and quick actions.",
+  },
+  {
+    id: "settings",
+    label: "Settings",
+    content: "Configure application preferences, themes, and notification settings.",
+  },
+  {
+    id: "profile",
+    label: "Profile",
+    content: "Manage your personal information, avatar, and public profile.",
+  },
+  {
+    id: "help",
+    label: "Help",
+    content: "Browse documentation, FAQs, and contact support for assistance.",
+  },
 ];
 
 const verticalTabs = [
-  { id: "general", label: "General", content: "Basic application settings like language, timezone, and display preferences." },
-  { id: "security", label: "Security", content: "Two-factor authentication, password policies, and session management." },
-  { id: "notifications", label: "Notifications", content: "Email digests, push notifications, and alert preferences." },
+  {
+    id: "general",
+    label: "General",
+    content: "Basic application settings like language, timezone, and display preferences.",
+  },
+  {
+    id: "security",
+    label: "Security",
+    content: "Two-factor authentication, password policies, and session management.",
+  },
+  {
+    id: "notifications",
+    label: "Notifications",
+    content: "Email digests, push notifications, and alert preferences.",
+  },
 ];
 
 export function TabBarDemo() {
@@ -59,12 +87,7 @@ export function TabBarDemo() {
       ]}
     >
       <div className="demo-card">
-        <div
-          ref={hTabListRef}
-          role="tablist"
-          onKeyDown={hOnKeyDown}
-          className="demo-tabs"
-        >
+        <div ref={hTabListRef} role="tablist" onKeyDown={hOnKeyDown} className="demo-tabs">
           {horizontalTabs.map((tab) => (
             <button
               type="button"
@@ -112,9 +135,10 @@ export function TabBarDemo() {
                 className={`demo-tab${activeVTab === tab.id ? " demo-tab--active" : ""}`}
                 style={{
                   borderBottom: "none",
-                  borderRight: activeVTab === tab.id
-                    ? "2px solid var(--color-accent)"
-                    : "2px solid transparent",
+                  borderRight:
+                    activeVTab === tab.id
+                      ? "2px solid var(--color-accent)"
+                      : "2px solid transparent",
                   textAlign: "left",
                 }}
               >

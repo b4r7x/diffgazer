@@ -9,12 +9,7 @@ type QueryStateHandlers = {
   success: () => unknown;
 };
 
-const {
-  mockNavigate,
-  mockSaveSettings,
-  mockSettingsQuery,
-  mockIsSaving,
-} = vi.hoisted(() => ({
+const { mockNavigate, mockSaveSettings, mockSettingsQuery, mockIsSaving } = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
   mockSaveSettings: vi.fn(),
   mockSettingsQuery: {

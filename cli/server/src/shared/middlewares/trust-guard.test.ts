@@ -63,7 +63,7 @@ describe("requireRepoAccess", () => {
     const app = await createApp();
 
     const response = await request(app);
-    const body = await response.json() as { error: { code: string } };
+    const body = (await response.json()) as { error: { code: string } };
 
     expect(response.status).toBe(403);
     expect(body.error.code).toBe("TRUST_REQUIRED");
@@ -74,7 +74,7 @@ describe("requireRepoAccess", () => {
     const app = await createApp();
 
     const response = await request(app);
-    const body = await response.json() as { error: { code: string } };
+    const body = (await response.json()) as { error: { code: string } };
 
     expect(response.status).toBe(403);
     expect(body.error.code).toBe("TRUST_REQUIRED");
@@ -85,7 +85,7 @@ describe("requireRepoAccess", () => {
     const app = await createApp();
 
     const response = await request(app);
-    const body = await response.json() as { ok: boolean };
+    const body = (await response.json()) as { ok: boolean };
 
     expect(response.status).toBe(200);
     expect(body).toEqual({ ok: true });
@@ -104,7 +104,7 @@ describe("requireRepoAccess", () => {
     const app = await createApp();
 
     const response = await request(app);
-    const body = await response.json() as { error: { code: string } };
+    const body = (await response.json()) as { error: { code: string } };
 
     expect(response.status).toBe(403);
     expect(body.error.code).toBe("TRUST_REQUIRED");

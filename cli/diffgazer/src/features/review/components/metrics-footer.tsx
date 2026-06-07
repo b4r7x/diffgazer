@@ -22,9 +22,7 @@ export function ReviewMetricsFooter({
       <Text color={tokens.muted}>Files: </Text>
       <Text color={tokens.fg}>{filesProcessed}</Text>
       <Text color={tokens.muted}> | Issues: </Text>
-      <Text color={issuesFound > 0 ? tokens.warning : tokens.fg}>
-        {issuesFound}
-      </Text>
+      <Text color={issuesFound > 0 ? tokens.warning : tokens.fg}>{issuesFound}</Text>
       <Text color={tokens.muted}> | Time: </Text>
       <Text color={tokens.info}>{formatTime(elapsed)}</Text>
       {isStreaming ? <Text color={tokens.muted}> ...</Text> : null}

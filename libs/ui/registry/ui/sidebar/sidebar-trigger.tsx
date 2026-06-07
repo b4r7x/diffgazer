@@ -20,8 +20,12 @@ export function SidebarTrigger({
   const isOpen = isMobile ? state !== "hidden" : state === "open";
   const visualState: "open" | "collapsed" = isOpen ? "open" : "collapsed";
   const labelDefault = isMobile
-    ? (isOpen ? "Close navigation" : "Open navigation")
-    : (isOpen ? "Collapse sidebar" : "Expand sidebar");
+    ? isOpen
+      ? "Close navigation"
+      : "Open navigation"
+    : isOpen
+      ? "Collapse sidebar"
+      : "Expand sidebar";
 
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     onClick?.(event);
@@ -45,9 +49,7 @@ export function SidebarTrigger({
       className={cn("inline-flex items-center justify-center font-mono", className)}
       onClick={handleClick}
     >
-      {children ?? (
-        <span aria-hidden="true">{isOpen ? "[×]" : "[≡]"}</span>
-      )}
+      {children ?? <span aria-hidden="true">{isOpen ? "[×]" : "[≡]"}</span>}
     </button>
   );
 }

@@ -1,7 +1,4 @@
-import type {
-  TrustCapabilities,
-  TrustConfig,
-} from "@diffgazer/core/schemas/config";
+import type { TrustCapabilities, TrustConfig } from "@diffgazer/core/schemas/config";
 import { normalizeTrustCapabilities } from "@diffgazer/core/schemas/config";
 
 export interface TrustDraft {
@@ -21,11 +18,7 @@ export interface TrustEditorView {
   isTrusted: boolean;
 }
 
-export function getTrustEditorKey({
-  projectId,
-  repoRoot,
-  trust,
-}: TrustEditorInput): string {
+export function getTrustEditorKey({ projectId, repoRoot, trust }: TrustEditorInput): string {
   if (trust) return `${trust.projectId}:${trust.trustedAt}`;
   return `${projectId ?? "loading"}:${repoRoot ?? "loading"}:untrusted`;
 }
@@ -37,10 +30,7 @@ export function getInitialDraft(input: TrustEditorInput): TrustDraft {
   };
 }
 
-export function resolveEditorView(
-  draft: TrustDraft,
-  input: TrustEditorInput,
-): TrustEditorView {
+export function resolveEditorView(draft: TrustDraft, input: TrustEditorInput): TrustEditorView {
   const editorKey = getTrustEditorKey(input);
   const isTrusted = Boolean(input.trust?.capabilities.readFiles);
   if (draft.editorKey === editorKey) {

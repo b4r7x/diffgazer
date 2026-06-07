@@ -4,7 +4,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@/components/ui/select";
 
 export default function SelectDefault() {
   return (
@@ -22,5 +22,5 @@ export default function SelectDefault() {
         </SelectContent>
       </Select>
     </div>
-  )
+  );
 }

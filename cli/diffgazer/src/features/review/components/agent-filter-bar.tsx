@@ -82,10 +82,7 @@ export function AgentFilterBar({
             >
               [
             </Text>
-            <Badge
-              variant={agent.badgeVariant ?? "info"}
-              size="sm"
-            >
+            <Badge variant={agent.badgeVariant ?? "info"} size="sm">
               {agent.badgeLabel ?? agent.name.slice(0, 3).toUpperCase()}
             </Badge>
             <Text

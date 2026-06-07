@@ -3,6 +3,15 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { ENV } from "./artifacts/env.mjs";
+import { readJson } from "./artifacts/json.mjs";
+import { validateArtifactPackSurface } from "./artifacts/pack-surface.mjs";
+import { runValidationChecks } from "./artifacts/run-checks.mjs";
+import {
+  collectArtifactSyncValidationErrors,
+  getArtifactLibraries,
+  readDocsLibrariesConfig,
+} from "./artifacts/sync.mjs";
 import {
   assertNoDuplicateDemoKeys,
   collectBundleRelativeJsImportErrors,
@@ -10,15 +19,6 @@ import {
   validateIntegrityBundle,
   validateLibraryArtifacts,
 } from "./artifacts/validation.mjs";
-import {
-  collectArtifactSyncValidationErrors,
-  getArtifactLibraries,
-  readDocsLibrariesConfig,
-} from "./artifacts/sync.mjs";
-import { readJson } from "./artifacts/json.mjs";
-import { validateArtifactPackSurface } from "./artifacts/pack-surface.mjs";
-import { runValidationChecks } from "./artifacts/run-checks.mjs";
-import { ENV } from "./artifacts/env.mjs";
 
 const root = process.cwd();
 const docsRoot = resolve(root, "apps/docs");
@@ -98,18 +98,28 @@ function validateUiPackageExports() {
 
   const expectedExports = [...registryExports].sort();
   const errors = [];
-  const missingExports = expectedExports.filter((exportPath) => !actualExports.includes(exportPath));
+  const missingExports = expectedExports.filter(
+    (exportPath) => !actualExports.includes(exportPath),
+  );
   const extraExports = actualExports.filter((exportPath) => !registryExports.has(exportPath));
-  const exportedHiddenItems = hiddenExports.filter((exportPath) => actualExports.includes(exportPath));
+  const exportedHiddenItems = hiddenExports.filter((exportPath) =>
+    actualExports.includes(exportPath),
+  );
 
   if (missingExports.length) {
-    errors.push(`@diffgazer/ui package exports missing registry entries: ${missingExports.join(", ")}`);
+    errors.push(
+      `@diffgazer/ui package exports missing registry entries: ${missingExports.join(", ")}`,
+    );
   }
   if (extraExports.length) {
-    errors.push(`@diffgazer/ui package exports contain unsupported entries: ${extraExports.join(", ")}`);
+    errors.push(
+      `@diffgazer/ui package exports contain unsupported entries: ${extraExports.join(", ")}`,
+    );
   }
   if (exportedHiddenItems.length) {
-    errors.push(`@diffgazer/ui package exports expose hidden registry items: ${exportedHiddenItems.join(", ")}`);
+    errors.push(
+      `@diffgazer/ui package exports expose hidden registry items: ${exportedHiddenItems.join(", ")}`,
+    );
   }
 
   return errors;
@@ -193,7 +203,9 @@ function validatePackagePolicyFiles() {
       const relativePath = pkg.dir === "." ? file : `${pkg.dir}/${file}`;
       policyFiles.push(relativePath);
       if (!existsSync(resolve(root, relativePath))) {
-        errors.push(`${pkg.name} package policy file is listed or required but missing: ${relativePath}`);
+        errors.push(
+          `${pkg.name} package policy file is listed or required but missing: ${relativePath}`,
+        );
       }
     }
   }
@@ -255,19 +267,27 @@ const checks = [
   ...validatePackagePolicyFiles(),
 ];
 
-checks.push(...collectArtifactSyncValidationErrors({
-  docsRoot,
-  primaryLibraryId: docsLibraries.primaryLibraryId,
-  libraries: artifactLibraries,
-  artifacts: artifactLibraries.map(loadWorkspaceArtifact).filter(Boolean),
-}));
+checks.push(
+  ...collectArtifactSyncValidationErrors({
+    docsRoot,
+    primaryLibraryId: docsLibraries.primaryLibraryId,
+    libraries: artifactLibraries,
+    artifacts: artifactLibraries.map(loadWorkspaceArtifact).filter(Boolean),
+  }),
+);
 
 const registryBundle = readJson(resolve(root, "cli/add/src/generated/registry-bundle.json"));
-checks.push(...assertNoDuplicateDemoKeys(registryBundle.items ?? [], "@diffgazer/add registry bundle"));
+checks.push(
+  ...assertNoDuplicateDemoKeys(registryBundle.items ?? [], "@diffgazer/add registry bundle"),
+);
 
 const keysCopyBundle = readJson(resolve(root, "cli/add/src/generated/keys-copy-bundle.json"));
-checks.push(...collectBundleRelativeJsImportErrors(registryBundle.items, "@diffgazer/add registry bundle"));
-checks.push(...collectBundleRelativeJsImportErrors(keysCopyBundle.items, "@diffgazer/add keys copy bundle"));
+checks.push(
+  ...collectBundleRelativeJsImportErrors(registryBundle.items, "@diffgazer/add registry bundle"),
+);
+checks.push(
+  ...collectBundleRelativeJsImportErrors(keysCopyBundle.items, "@diffgazer/add keys copy bundle"),
+);
 
 // Exit-code contract: this validator exits non-zero when any check fails so CI
 // gates can branch on it. The shared runner reports failures and exits 1

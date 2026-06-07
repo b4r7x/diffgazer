@@ -16,12 +16,12 @@ import { ThemeScreen } from "./screens/settings/theme";
 import { TrustPermissionsScreen } from "./screens/settings/trust-permissions";
 
 export const SCREEN_MAP: Record<ScreenName, () => ReactElement> = {
-  "home": () => <HomeScreen />,
-  "onboarding": () => <OnboardingScreen />,
-  "review": () => <ReviewScreen />,
-  "history": () => <HistoryScreen />,
-  "help": () => <HelpScreen />,
-  "settings": () => <SettingsHubScreen />,
+  home: () => <HomeScreen />,
+  onboarding: () => <OnboardingScreen />,
+  review: () => <ReviewScreen />,
+  history: () => <HistoryScreen />,
+  help: () => <HelpScreen />,
+  settings: () => <SettingsHubScreen />,
   "settings/theme": () => <ThemeScreen />,
   "settings/providers": () => <ProvidersScreen />,
   "settings/storage": () => <StorageScreen />,

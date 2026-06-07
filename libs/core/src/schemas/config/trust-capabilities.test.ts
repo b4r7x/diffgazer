@@ -69,7 +69,9 @@ describe("trust capabilities model", () => {
 
   describe("getInitialFocusedCapability", () => {
     it("returns readFiles when it is enabled", () => {
-      expect(getInitialFocusedCapability({ readFiles: true, runCommands: false })).toBe("readFiles");
+      expect(getInitialFocusedCapability({ readFiles: true, runCommands: false })).toBe(
+        "readFiles",
+      );
     });
 
     it("returns the first non-disabled capability when readFiles is off", () => {

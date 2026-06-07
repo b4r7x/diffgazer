@@ -4,11 +4,7 @@ import type { AgentState, StepState } from "@diffgazer/core/schemas/events";
 import type { ReviewIssue, ReviewMode } from "@diffgazer/core/schemas/review";
 import { useState } from "react";
 
-export type ReviewPhase =
-  | "streaming"
-  | "completing"
-  | "summary"
-  | "results";
+export type ReviewPhase = "streaming" | "completing" | "summary" | "results";
 
 type LifecyclePhase = ReviewPhase | "loading";
 

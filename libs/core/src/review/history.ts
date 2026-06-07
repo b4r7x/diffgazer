@@ -22,7 +22,7 @@ export function getRunDisplayId(metadata: ReviewMetadata): string {
 }
 
 export function getRunBranchLabel(metadata: ReviewMetadata): string {
-  return metadata.mode === "staged" ? "Staged" : metadata.branch ?? "Main";
+  return metadata.mode === "staged" ? "Staged" : (metadata.branch ?? "Main");
 }
 
 export function getRunSummaryParts(metadata: ReviewMetadata): RunSummaryParts {
@@ -69,9 +69,7 @@ export function buildHistoryRunSummary(metadata: ReviewMetadata): HistoryRunSumm
   };
 }
 
-export function metadataToSeverityCounts(
-  metadata: ReviewMetadata | null,
-): SeverityCounts | null {
+export function metadataToSeverityCounts(metadata: ReviewMetadata | null): SeverityCounts | null {
   if (!metadata) return null;
   return {
     blocker: metadata.blockerCount,
@@ -88,7 +86,7 @@ export function matchesHistoryQuery(metadata: ReviewMetadata, query: string): bo
   if (metadata.id.toLowerCase().includes(normalized)) return true;
   if (getRunDisplayId(metadata).toLowerCase().includes(normalized)) return true;
   const branchText =
-    metadata.mode === "staged" ? "staged" : metadata.branch?.toLowerCase() ?? "main";
+    metadata.mode === "staged" ? "staged" : (metadata.branch?.toLowerCase() ?? "main");
   if (branchText.includes(normalized)) return true;
   if (metadata.projectPath.toLowerCase().includes(normalized)) return true;
   return false;

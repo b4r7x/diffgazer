@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ConfigState, } from "./types.js";
+import type { ConfigState } from "./types.js";
 
 const keyring = vi.hoisted(() => ({
   deleteKeyringSecret: vi.fn(),
@@ -166,12 +166,7 @@ describe("migrateSecretsStorage", () => {
   });
 
   it("reads keyring secrets and defers their deletion until the caller persists the file copy", () => {
-    const result = migrateSecretsStorage(
-      makeConfigState(),
-      { providers: {} },
-      "keyring",
-      "file",
-    );
+    const result = migrateSecretsStorage(makeConfigState(), { providers: {} }, "keyring", "file");
 
     expect(result.ok).toBe(true);
     if (result.ok) {
@@ -187,12 +182,7 @@ describe("migrateSecretsStorage", () => {
   });
 
   it("does NOT delete keyring entries if the caller crashes before persisting the file (crash-safety)", () => {
-    const result = migrateSecretsStorage(
-      makeConfigState(),
-      { providers: {} },
-      "keyring",
-      "file",
-    );
+    const result = migrateSecretsStorage(makeConfigState(), { providers: {} }, "keyring", "file");
     expect(result.ok).toBe(true);
 
     // Caller never invokes finalizeKeyringDeletions (process crashed).
@@ -210,12 +200,7 @@ describe("migrateSecretsStorage", () => {
   it("returns SECRET_NOT_FOUND when a keyring secret is missing during migration", () => {
     keyring.readKeyringSecret.mockReturnValue({ ok: true, value: null });
 
-    const result = migrateSecretsStorage(
-      makeConfigState(),
-      { providers: {} },
-      "keyring",
-      "file",
-    );
+    const result = migrateSecretsStorage(makeConfigState(), { providers: {} }, "keyring", "file");
 
     expect(result.ok).toBe(false);
     if (!result.ok) {

@@ -7,7 +7,7 @@ import {
   SidebarItemLabel,
   SidebarSection,
   SidebarSectionTitle,
-} from "@/components/ui/sidebar"
+} from "@/components/ui/sidebar";
 
 export default function SidebarVariantBlock() {
   return (
@@ -47,5 +47,5 @@ export default function SidebarVariantBlock() {
         </SidebarSection>
       </SidebarContent>
     </Sidebar>
-  )
+  );
 }

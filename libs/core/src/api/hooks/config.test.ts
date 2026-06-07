@@ -44,7 +44,9 @@ describe("useProviderModels", () => {
   });
 
   it("does not fetch when disabled", () => {
-    renderHook(() => useProviderModels("gemini", { enabled: false }), { wrapper: makeWrapper(api) });
+    renderHook(() => useProviderModels("gemini", { enabled: false }), {
+      wrapper: makeWrapper(api),
+    });
     expect(getProviderModels).not.toHaveBeenCalled();
   });
 

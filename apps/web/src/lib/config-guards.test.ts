@@ -22,8 +22,9 @@ async function expectRedirectTo(promise: Promise<unknown>, to: string) {
     await promise;
     throw new Error("Expected redirect");
   } catch (error) {
-    const target = (error as { to?: string; options?: { to?: string } }).to
-      ?? (error as { options?: { to?: string } }).options?.to;
+    const target =
+      (error as { to?: string; options?: { to?: string } }).to ??
+      (error as { options?: { to?: string } }).options?.to;
     expect(target).toBe(to);
   }
 }

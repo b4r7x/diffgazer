@@ -2,9 +2,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join, posix, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import {
-  extractRelativeImports as extractRegistryRelativeImports,
-} from "./validate-registry-closure.js";
+import { extractRelativeImports as extractRegistryRelativeImports } from "./validate-registry-closure.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const KEYS_ROOT = resolve(__dirname, "..");
@@ -69,7 +67,8 @@ function collectMissingTargetImports(item: RegistryItem): MissingTargetImport[] 
     const importer = file.target ?? file.path;
     const targetDir = posix.dirname(importer);
     for (const importPath of extractRegistryRelativeImports(file.content)) {
-      const resolved = posix.normalize(posix.join(targetDir, importPath))
+      const resolved = posix
+        .normalize(posix.join(targetDir, importPath))
         .replace(/\.(ts|tsx)$/, "");
       if (!targetPaths.has(resolved)) {
         missing.push({ importPath, importer, resolved });
@@ -87,19 +86,13 @@ describe("public registry target paths", () => {
   // The source registry is the single source of truth for install layout.
   // The public registry must mirror it exactly (hidden items are excluded
   // from the public index but still have per-item JSON files).
-  const visibleItems = registry.items.filter(
-    (item) => !item.meta?.hidden,
-  );
+  const visibleItems = registry.items.filter((item) => !item.meta?.hidden);
   for (const sourceItem of visibleItems) {
-    const expectedTargets = sourceItem.files
-      .map((file) => file.target ?? file.path)
-      .sort();
+    const expectedTargets = sourceItem.files.map((file) => file.target ?? file.path).sort();
 
     it(`${sourceItem.name} public registry targets match source registry`, () => {
       const publicItem = getRegistryItem(publicRegistry, sourceItem.name);
-      const publicTargets = publicItem.files
-        .map((file) => file.target ?? file.path)
-        .sort();
+      const publicTargets = publicItem.files.map((file) => file.target ?? file.path).sort();
       expect(publicTargets).toEqual(expectedTargets);
     });
 
@@ -116,13 +109,15 @@ describe("public registry target paths", () => {
 
 describe("public registry import parser coverage", () => {
   it("extracts static, side-effect, dynamic, and require relative imports", () => {
-    const imports = extractRegistryRelativeImports([
-      'import { value } from "./value.js";',
-      'export { value } from "./exported.js";',
-      'import "./setup.js";',
-      'const lazy = import("./lazy.js");',
-      'const required = require("./required.js");',
-    ].join("\n"));
+    const imports = extractRegistryRelativeImports(
+      [
+        'import { value } from "./value.js";',
+        'export { value } from "./exported.js";',
+        'import "./setup.js";',
+        'const lazy = import("./lazy.js");',
+        'const required = require("./required.js");',
+      ].join("\n"),
+    );
 
     expect(imports).toEqual([
       "./value.js",
@@ -209,27 +204,37 @@ describe("provider-backed hooks are package-only", () => {
   it("standalone hooks have public registry items", () => {
     const publicRegistry = loadPublicRegistry();
     const publicNames = new Set(
-      publicRegistry.items
-        .filter((item) => !item.meta?.hidden)
-        .map((item) => item.name),
+      publicRegistry.items.filter((item) => !item.meta?.hidden).map((item) => item.name),
     );
 
     for (const [hookName, registryName] of Object.entries(STANDALONE_REGISTRY_NAMES)) {
-      expect(publicNames.has(registryName), `${hookName} should be public as ${registryName}`).toBe(true);
+      expect(publicNames.has(registryName), `${hookName} should be public as ${registryName}`).toBe(
+        true,
+      );
     }
   });
 
   it("README documents package-only APIs", () => {
     const readme = readFileSync(resolve(KEYS_ROOT, "README.md"), "utf-8");
     expect(readme).toContain("Package-only");
-    for (const api of ["KeyboardProvider", "useKey", "useScope", "useScopedNavigation", "useActionRowNavigation", "useFocusZone"]) {
+    for (const api of [
+      "KeyboardProvider",
+      "useKey",
+      "useScope",
+      "useScopedNavigation",
+      "useActionRowNavigation",
+      "useFocusZone",
+    ]) {
       expect(readme).toContain(api);
     }
   });
 
   it("package-only hook docs do not render copy-install commands", () => {
     for (const name of packageOnlyHookDocs) {
-      const doc = readFileSync(resolve(KEYS_ROOT, "docs", "content", "hooks", `${name}.mdx`), "utf-8");
+      const doc = readFileSync(
+        resolve(KEYS_ROOT, "docs", "content", "hooks", `${name}.mdx`),
+        "utf-8",
+      );
       expect(doc).toContain("<ConsumptionBlock />");
       expect(doc).not.toContain("<InstallCommand />");
     }
@@ -256,9 +261,7 @@ describe("target-path install closure validation", () => {
     for (const entry of readdirSync(PUBLIC_DIR)) {
       if (!entry.endsWith(".json") || entry === "registry.json") continue;
 
-      const item: RegistryItem = JSON.parse(
-        readFileSync(join(PUBLIC_DIR, entry), "utf-8"),
-      );
+      const item: RegistryItem = JSON.parse(readFileSync(join(PUBLIC_DIR, entry), "utf-8"));
       if (item.type !== "registry:hook") continue;
 
       expect(collectMissingTargetImports(item)).toEqual([]);

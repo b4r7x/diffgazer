@@ -1,8 +1,8 @@
-import type { ComponentDoc } from "./types"
+import type { ComponentDoc } from "./types";
 
 export const switchDoc: ComponentDoc = {
   description:
-    "Terminal-styled binary toggle switch. Uses role=\"switch\" with checked/defaultChecked/onChange(boolean) pattern and a hidden native checkbox for form submission.",
+    'Terminal-styled binary toggle switch. Uses role="switch" with checked/defaultChecked/onChange(boolean) pattern and a hidden native checkbox for form submission.',
   anatomy: [
     {
       name: "Switch",
@@ -14,7 +14,7 @@ export const switchDoc: ComponentDoc = {
     {
       title: "Form Submission",
       content:
-        "Switch renders a hidden native checkbox when name or required is set. The value prop controls the form-submission string (default \"on\").",
+        'Switch renders a hidden native checkbox when name or required is set. The value prop controls the form-submission string (default "on").',
     },
     {
       title: "Keyboard",
@@ -23,9 +23,7 @@ export const switchDoc: ComponentDoc = {
     },
   ],
   usage: { example: "switch-default" },
-  examples: [
-    { name: "switch-default", title: "Default" },
-  ],
+  examples: [{ name: "switch-default", title: "Default" }],
   props: {
     Switch: {
       checked: {
@@ -78,4 +76,4 @@ export const switchDoc: ComponentDoc = {
       },
     },
   },
-}
+};

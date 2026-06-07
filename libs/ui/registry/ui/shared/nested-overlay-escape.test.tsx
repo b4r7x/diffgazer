@@ -1,16 +1,16 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
-import userEvent from "@testing-library/user-event"
-import { useState } from "react"
-import { describe, expect, it, vi } from "vitest"
-import { Dialog } from "../dialog/index"
-import { Popover } from "../popover/index"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { useState } from "react";
+import { describe, expect, it, vi } from "vitest";
+import { Dialog } from "../dialog/index";
+import { Popover } from "../popover/index";
 
 // axe skipped: nested-overlay escape behavior test; dialog/popover primitive tests own a11y assertions.
 
 describe("Nested overlay: Popover inside Dialog", () => {
   it("Escape on open popover closes only the popover, not the dialog", async () => {
-    const onDialogChange = vi.fn()
-    const onPopoverChange = vi.fn()
+    const onDialogChange = vi.fn();
+    const onPopoverChange = vi.fn();
 
     render(
       <Dialog defaultOpen onOpenChange={onDialogChange}>
@@ -26,35 +26,35 @@ describe("Nested overlay: Popover inside Dialog", () => {
             </Popover.Content>
           </Popover>
         </Dialog.Content>
-      </Dialog>
-    )
+      </Dialog>,
+    );
 
-    const dialog = screen.getByRole("dialog", { name: "Test Dialog" })
-    const popoverTrigger = screen.getByRole("button", { name: "Open Popover" })
-    const popoverId = popoverTrigger.getAttribute("aria-controls")
-    if (!popoverId) throw new Error("Expected popover trigger to control mounted content")
+    const dialog = screen.getByRole("dialog", { name: "Test Dialog" });
+    const popoverTrigger = screen.getByRole("button", { name: "Open Popover" });
+    const popoverId = popoverTrigger.getAttribute("aria-controls");
+    if (!popoverId) throw new Error("Expected popover trigger to control mounted content");
 
-    const popover = document.getElementById(popoverId)
-    expect(dialog).toHaveAttribute("data-state", "open")
-    expect(popoverTrigger).toHaveAttribute("aria-expanded", "true")
-    expect(popover).toHaveAttribute("aria-label", "Nested popover")
-    expect(popover).toHaveAttribute("data-state", "open")
+    const popover = document.getElementById(popoverId);
+    expect(dialog).toHaveAttribute("data-state", "open");
+    expect(popoverTrigger).toHaveAttribute("aria-expanded", "true");
+    expect(popover).toHaveAttribute("aria-label", "Nested popover");
+    expect(popover).toHaveAttribute("data-state", "open");
 
-    await userEvent.keyboard("{Escape}")
+    await userEvent.keyboard("{Escape}");
 
-    expect(onPopoverChange).toHaveBeenCalledWith(false)
-    expect(onDialogChange).not.toHaveBeenCalled()
-    expect(dialog).toHaveAttribute("data-state", "open")
-    expect(popoverTrigger).toHaveAttribute("aria-expanded", "false")
-    expect(popover).toHaveAttribute("data-state", "closed")
-  })
-})
+    expect(onPopoverChange).toHaveBeenCalledWith(false);
+    expect(onDialogChange).not.toHaveBeenCalled();
+    expect(dialog).toHaveAttribute("data-state", "open");
+    expect(popoverTrigger).toHaveAttribute("aria-expanded", "false");
+    expect(popover).toHaveAttribute("data-state", "closed");
+  });
+});
 
 describe("Nested overlay: Dialog inside Dialog", () => {
   it("restores focus to the parent's last focused element after closing the child dialog", async () => {
     function NestedDialogs() {
-      const [parentOpen, setParentOpen] = useState(false)
-      const [childOpen, setChildOpen] = useState(false)
+      const [parentOpen, setParentOpen] = useState(false);
+      const [childOpen, setChildOpen] = useState(false);
 
       return (
         <>
@@ -77,29 +77,29 @@ describe("Nested overlay: Dialog inside Dialog", () => {
             </Dialog.Content>
           </Dialog>
         </>
-      )
+      );
     }
 
-    render(<NestedDialogs />)
+    render(<NestedDialogs />);
 
-    await userEvent.click(screen.getByRole("button", { name: "Open parent" }))
-    const childOpener = screen.getByRole("button", { name: "Open child" })
-    await userEvent.click(childOpener)
+    await userEvent.click(screen.getByRole("button", { name: "Open parent" }));
+    const childOpener = screen.getByRole("button", { name: "Open child" });
+    await userEvent.click(childOpener);
 
-    const childDialog = screen.getByRole("dialog", { name: "Child dialog" })
-    await userEvent.click(screen.getByRole("button", { name: "Close child" }))
-    await waitFor(() => expect(childDialog).toHaveAttribute("data-state", "closed"))
+    const childDialog = screen.getByRole("dialog", { name: "Child dialog" });
+    await userEvent.click(screen.getByRole("button", { name: "Close child" }));
+    await waitFor(() => expect(childDialog).toHaveAttribute("data-state", "closed"));
     // fireEvent retained: animationend has no user-event equivalent; presence transitions complete on this event
-    fireEvent.animationEnd(childDialog)
+    fireEvent.animationEnd(childDialog);
 
-    const parentDialog = screen.getByRole("dialog", { name: "Parent dialog" })
-    expect(parentDialog).toHaveAttribute("data-state", "open")
-    await waitFor(() => expect(childOpener).toHaveFocus())
-  })
+    const parentDialog = screen.getByRole("dialog", { name: "Parent dialog" });
+    expect(parentDialog).toHaveAttribute("data-state", "open");
+    await waitFor(() => expect(childOpener).toHaveFocus());
+  });
 
   it("keeps the topmost stacked dialog focused and interactive", async () => {
-    const firstAction = vi.fn()
-    const secondAction = vi.fn()
+    const firstAction = vi.fn();
+    const secondAction = vi.fn();
 
     render(
       <>
@@ -107,7 +107,9 @@ describe("Nested overlay: Dialog inside Dialog", () => {
           <Dialog.Content>
             <Dialog.Title>Dialog 1</Dialog.Title>
             <Dialog.Body>First body</Dialog.Body>
-            <button type="button" onClick={firstAction}>First action</button>
+            <button type="button" onClick={firstAction}>
+              First action
+            </button>
           </Dialog.Content>
         </Dialog>
         <Dialog defaultOpen>
@@ -115,22 +117,24 @@ describe("Nested overlay: Dialog inside Dialog", () => {
             <Dialog.Title>Dialog 2</Dialog.Title>
             <Dialog.Body>Second body</Dialog.Body>
             {/* biome-ignore lint/a11y/noAutofocus: test fixture seeds initial focus inside the nested dialog to exercise nested-overlay focus/escape behavior. */}
-            <button type="button" autoFocus onClick={secondAction}>Second action</button>
+            <button type="button" autoFocus onClick={secondAction}>
+              Second action
+            </button>
           </Dialog.Content>
         </Dialog>
-      </>
-    )
+      </>,
+    );
 
-    const firstDialog = screen.getByRole("dialog", { name: "Dialog 1" })
-    const secondDialog = screen.getByRole("dialog", { name: "Dialog 2" })
-    const secondActionButton = screen.getByRole("button", { name: "Second action" })
+    const firstDialog = screen.getByRole("dialog", { name: "Dialog 1" });
+    const secondDialog = screen.getByRole("dialog", { name: "Dialog 2" });
+    const secondActionButton = screen.getByRole("button", { name: "Second action" });
 
-    await waitFor(() => expect(secondActionButton).toHaveFocus())
-    await userEvent.click(secondActionButton)
+    await waitFor(() => expect(secondActionButton).toHaveFocus());
+    await userEvent.click(secondActionButton);
 
-    expect(secondAction).toHaveBeenCalledOnce()
-    expect(firstAction).not.toHaveBeenCalled()
-    expect(firstDialog).toHaveAttribute("data-state", "open")
-    expect(secondDialog).toHaveAttribute("data-state", "open")
-  })
-})
+    expect(secondAction).toHaveBeenCalledOnce();
+    expect(firstAction).not.toHaveBeenCalled();
+    expect(firstDialog).toHaveAttribute("data-state", "open");
+    expect(secondDialog).toHaveAttribute("data-state", "open");
+  });
+});

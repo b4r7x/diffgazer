@@ -39,8 +39,6 @@ export function moveHighlight<T extends NavigableItem>(
   const isAtEnd = currentIdx === selectableItems.length - 1;
   const isAtStart = currentIdx === 0;
   const isMovingBackward = direction === MOVE_PREV;
-  const hitBoundary =
-    !wrap &&
-    ((isMovingForward && isAtEnd) || (isMovingBackward && isAtStart));
+  const hitBoundary = !wrap && ((isMovingForward && isAtEnd) || (isMovingBackward && isAtStart));
   return { index: nextIdx, id: nextItem.id, hitBoundary };
 }

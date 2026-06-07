@@ -1,4 +1,8 @@
-import { buildResponsiveResult, getBreakpointTier, type ResponsiveResult } from "@diffgazer/core/breakpoints";
+import {
+  buildResponsiveResult,
+  getBreakpointTier,
+  type ResponsiveResult,
+} from "@diffgazer/core/breakpoints";
 import { useStdout } from "ink";
 import { useEffect, useState } from "react";
 

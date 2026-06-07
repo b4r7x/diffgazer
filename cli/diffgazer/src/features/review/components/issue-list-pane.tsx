@@ -129,9 +129,7 @@ export function IssueListPane({
 
   return (
     <Box flexDirection="column">
-      <SectionHeader bordered>
-        {`Issues (${issues.length})`}
-      </SectionHeader>
+      <SectionHeader bordered>{`Issues (${issues.length})`}</SectionHeader>
       <Box marginBottom={1}>
         <SeverityFilterGroup
           currentFilter={severityFilter}

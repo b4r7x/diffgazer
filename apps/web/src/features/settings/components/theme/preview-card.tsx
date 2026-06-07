@@ -19,7 +19,9 @@ export function ThemePreviewCard({ previewTheme }: ThemePreviewCardProps) {
       <div className="w-full max-w-sm font-mono text-xs isolate">
         <Panel className="bg-tui-bg border-tui-border">
           <Panel.Header marker="none">
-            <Panel.Title as="h3" className="font-normal">PREVIEW.tsx</Panel.Title>
+            <Panel.Title as="h3" className="font-normal">
+              PREVIEW.tsx
+            </Panel.Title>
             <span className="text-foreground">RO</span>
           </Panel.Header>
           <Panel.Content spacing="none">

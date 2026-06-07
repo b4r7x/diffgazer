@@ -11,18 +11,14 @@ import {
   useRef,
 } from "react";
 import { isStepInteractive, type StepStatus } from "@/lib/step-status";
-import {
-  type StepperVariant,
-  stepperRootVariants,
-} from "@/lib/stepper-variants";
+import { type StepperVariant, stepperRootVariants } from "@/lib/stepper-variants";
 import { cn } from "@/lib/utils";
 import { StepperContext } from "./stepper-context";
 import { StepperStep, type StepperStepProps } from "./stepper-step";
 import { StepperTrigger, type StepperTriggerProps } from "./stepper-trigger";
 import { useStepperState } from "./use-state";
 
-export interface StepperProps
-  extends Omit<ComponentProps<"ol">, "children"> {
+export interface StepperProps extends Omit<ComponentProps<"ol">, "children"> {
   expandedIds?: string[];
   defaultExpandedIds?: string[];
   onExpandedChange?: (ids: string[]) => void;
@@ -85,26 +81,22 @@ export function Stepper({
   // `aria-disabled`, while useNavigation uses `data-value` + role-based
   // selectors. Routing through useNavigation would require rewriting the
   // step trigger data contract, which is a public API change.
-  const moveFocus = useCallback(
-    (next: (count: number, current: number) => number) => {
-      const list = listRef.current;
-      if (!list) return false;
-      const triggers = Array.from(
-        list.querySelectorAll<HTMLButtonElement>("[data-step-id]"),
-      ).filter((el) => el.getAttribute("aria-disabled") !== "true");
-      if (triggers.length === 0) return false;
-      const activeElement = list.ownerDocument.activeElement;
-      const currentIndex = activeElement instanceof HTMLButtonElement
-        ? triggers.indexOf(activeElement)
-        : -1;
-      const nextIndex = next(triggers.length, currentIndex);
-      const target = triggers[nextIndex];
-      if (!target) return false;
-      target.focus();
-      return true;
-    },
-    [],
-  );
+  const moveFocus = useCallback((next: (count: number, current: number) => number) => {
+    const list = listRef.current;
+    if (!list) return false;
+    const triggers = Array.from(list.querySelectorAll<HTMLButtonElement>("[data-step-id]")).filter(
+      (el) => el.getAttribute("aria-disabled") !== "true",
+    );
+    if (triggers.length === 0) return false;
+    const activeElement = list.ownerDocument.activeElement;
+    const currentIndex =
+      activeElement instanceof HTMLButtonElement ? triggers.indexOf(activeElement) : -1;
+    const nextIndex = next(triggers.length, currentIndex);
+    const target = triggers[nextIndex];
+    if (!target) return false;
+    target.focus();
+    return true;
+  }, []);
 
   const handleKeyDown = useCallback(
     (event: ReactKeyboardEvent<HTMLOListElement>) => {
@@ -119,11 +111,7 @@ export function Stepper({
       switch (event.key) {
         case "ArrowDown":
         case "ArrowRight": {
-          if (
-            moveFocus((count, current) =>
-              current === -1 ? 0 : (current + 1) % count,
-            )
-          ) {
+          if (moveFocus((count, current) => (current === -1 ? 0 : (current + 1) % count))) {
             event.preventDefault();
           }
           return;
@@ -158,9 +146,7 @@ export function Stepper({
   );
 
   const activeStep = steps.find((step) => step.status === "active");
-  const activeIndex = activeStep
-    ? steps.findIndex((step) => step.id === activeStep.id)
-    : -1;
+  const activeIndex = activeStep ? steps.findIndex((step) => step.id === activeStep.id) : -1;
 
   return (
     <StepperContext value={ctx}>
@@ -198,17 +184,10 @@ interface StepperLiveRegionProps {
 }
 
 function StepperLiveRegion({ activeStepId, label, position, total }: StepperLiveRegionProps) {
-  const message = label
-    ? `Step ${position} of ${total}: ${label}`
-    : `Step ${position} of ${total}`;
+  const message = label ? `Step ${position} of ${total}: ${label}` : `Step ${position} of ${total}`;
   return (
     // biome-ignore lint/a11y/useSemanticElements: role="status" is the sr-only live region announcing step changes; <output> carries form-association semantics that do not fit here.
-    <div
-      key={activeStepId}
-      role="status"
-      aria-live="polite"
-      className="sr-only"
-    >
+    <div key={activeStepId} role="status" aria-live="polite" className="sr-only">
       {message}
     </div>
   );

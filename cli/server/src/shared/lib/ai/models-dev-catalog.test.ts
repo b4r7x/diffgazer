@@ -6,7 +6,12 @@ import type { AIProvider } from "@diffgazer/core/schemas/config";
 import { ProviderModelsResponseSchema } from "@diffgazer/core/schemas/config";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { requireValue } from "../../../testing/assertions.js";
-import { fetchModelsDevCatalog, getProviderModels, ModelsDevCatalogCacheSchema, resetCatalogParseMemo } from "./models-dev-catalog.js";
+import {
+  fetchModelsDevCatalog,
+  getProviderModels,
+  ModelsDevCatalogCacheSchema,
+  resetCatalogParseMemo,
+} from "./models-dev-catalog.js";
 import { MODELS_DEV_SAMPLE } from "./models-dev-sample.js";
 
 let testHome: string;
@@ -20,7 +25,9 @@ const okResponse = (body: unknown, headers?: Record<string, string>): Response =
 const fresh = (): string => new Date().toISOString();
 const stale = (): string => new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
 
-const ENABLED_PROVIDERS = (Object.entries(PROVIDER_OVERLAY) as [AIProvider, (typeof PROVIDER_OVERLAY)[AIProvider]][])
+const ENABLED_PROVIDERS = (
+  Object.entries(PROVIDER_OVERLAY) as [AIProvider, (typeof PROVIDER_OVERLAY)[AIProvider]][]
+)
   .filter(([, overlay]) => overlay.enabled)
   .map(([id]) => id);
 
@@ -46,7 +53,10 @@ describe("fetchModelsDevCatalog", () => {
       expect(result.value.google).toBeDefined();
       expect(result.value.groq).toBeDefined();
     }
-    expect(spy).toHaveBeenCalledWith("https://models.dev/api.json", expect.objectContaining({ signal: expect.any(AbortSignal) }));
+    expect(spy).toHaveBeenCalledWith(
+      "https://models.dev/api.json",
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
     const [, init] = requireValue(spy.mock.calls[0], "fetch call");
     expect((init as RequestInit)?.headers).toBeUndefined();
   });
@@ -87,7 +97,9 @@ describe("fetchModelsDevCatalog", () => {
   });
 
   it("rejects a catalog that shrank far below the baseline (shrink-guard)", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(okResponse({ google: { id: "google", models: {} } }));
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      okResponse({ google: { id: "google", models: {} } }),
+    );
     const result = await fetchModelsDevCatalog({ baselineModelCount: 100 });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.message.toLowerCase()).toContain("shrink");
@@ -105,8 +117,11 @@ describe("fetchModelsDevCatalog", () => {
       "valid-a": { id: "valid-a", name: "A" },
       "valid-b": { id: "valid-b", name: "B" },
     };
-    for (let i = 0; i < 8; i++) models[`broken-${i}`] = { name: "missing id and bad cost", cost: "nope" };
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(okResponse({ google: { id: "google", models } }));
+    for (let i = 0; i < 8; i++)
+      models[`broken-${i}`] = { name: "missing id and bad cost", cost: "nope" };
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      okResponse({ google: { id: "google", models } }),
+    );
 
     const result = await fetchModelsDevCatalog();
     expect(result.ok).toBe(false);
@@ -115,10 +130,18 @@ describe("fetchModelsDevCatalog", () => {
 
 describe("ModelsDevCatalogCacheSchema", () => {
   it("accepts a keyless { catalog, fetchedAt } entry", () => {
-    expect(ModelsDevCatalogCacheSchema.safeParse({ catalog: { google: { id: "google", models: {} } }, fetchedAt: fresh() }).success).toBe(true);
+    expect(
+      ModelsDevCatalogCacheSchema.safeParse({
+        catalog: { google: { id: "google", models: {} } },
+        fetchedAt: fresh(),
+      }).success,
+    ).toBe(true);
   });
   it("rejects an entry missing fetchedAt", () => {
-    expect(ModelsDevCatalogCacheSchema.safeParse({ catalog: { google: { id: "google", models: {} } } }).success).toBe(false);
+    expect(
+      ModelsDevCatalogCacheSchema.safeParse({ catalog: { google: { id: "google", models: {} } } })
+        .success,
+    ).toBe(false);
   });
 });
 
@@ -170,7 +193,9 @@ describe("getProviderModels — three-tier fallback", () => {
     // Seed a non-zero baseline so the shrink-guard can actually trip.
     writeCache(MODELS_DEV_SAMPLE, stale());
     // A live payload with >0 models but far fewer than baseline*0.5 trips the shrink-guard.
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(okResponse({ google: { id: "google", models: {} } }));
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      okResponse({ google: { id: "google", models: {} } }),
+    );
     const result = await getProviderModels("gemini");
     expect(result.source).toBe("cache");
     expect(result.models.map((m) => m.id)).toContain("gemini-2.5-flash");
@@ -181,7 +206,9 @@ describe("getProviderModels — three-tier fallback", () => {
   });
 
   it("empty live payload with no usable cache: falls back to the snapshot", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(okResponse({ google: { id: "google", models: {} } }));
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      okResponse({ google: { id: "google", models: {} } }),
+    );
     const result = await getProviderModels("gemini");
     expect(result.source).toBe("snapshot");
     expect(result.models.length).toBeGreaterThan(0);
@@ -209,7 +236,9 @@ describe("getProviderModels — three-tier fallback", () => {
     expect(ENABLED_PROVIDERS).toContain("zai-coding");
     expect(ENABLED_PROVIDERS).toContain("openrouter");
     for (const id of ENABLED_PROVIDERS) {
-      expect((await getProviderModels(id)).models.length, `empty picker for ${id}`).toBeGreaterThan(0);
+      expect((await getProviderModels(id)).models.length, `empty picker for ${id}`).toBeGreaterThan(
+        0,
+      );
     }
   });
 
@@ -332,7 +361,12 @@ describe("getProviderModels — three-tier fallback", () => {
     // snapshot supplying the emergency baseline, the shrink-guard trips and the
     // half-populated catalog is rejected in favor of the snapshot.
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      okResponse({ google: { id: "google", models: { "gemini-2.5-flash": { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash" } } } }),
+      okResponse({
+        google: {
+          id: "google",
+          models: { "gemini-2.5-flash": { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash" } },
+        },
+      }),
     );
     const result = await getProviderModels("gemini");
     expect(result.models.length).toBeGreaterThan(0);

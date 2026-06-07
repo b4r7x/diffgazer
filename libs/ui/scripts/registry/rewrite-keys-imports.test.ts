@@ -2,9 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import {
-  transformUiPublicRegistryKeysImportContent,
-} from "./rewrite-keys-imports";
+import { transformUiPublicRegistryKeysImportContent } from "./rewrite-keys-imports";
 
 const ROOT = resolve(fileURLToPath(import.meta.url), "../../..");
 const PUBLIC_REGISTRY_DIR = resolve(ROOT, "public/r");
@@ -48,7 +46,9 @@ function readPublicRegistryItems(): PublicRegistryItem[] {
   const items: PublicRegistryItem[] = [];
   for (const entry of readdirSync(PUBLIC_REGISTRY_DIR)) {
     if (!entry.endsWith(".json") || entry === "registry.json") continue;
-    items.push(JSON.parse(readFileSync(resolve(PUBLIC_REGISTRY_DIR, entry), "utf-8")) as PublicRegistryItem);
+    items.push(
+      JSON.parse(readFileSync(resolve(PUBLIC_REGISTRY_DIR, entry), "utf-8")) as PublicRegistryItem,
+    );
   }
   return items;
 }
@@ -121,54 +121,42 @@ describe("Part B: unknown @diffgazer/keys copy imports fail validation", () => {
 
   it("throws when mixing known and unknown specifiers", () => {
     const input = `import { useNavigation, somethingUnknown } from "@diffgazer/keys";`;
-    expect(() => transformUiPublicRegistryKeysImportContent(input)).toThrow(
-      /somethingUnknown/,
-    );
+    expect(() => transformUiPublicRegistryKeysImportContent(input)).toThrow(/somethingUnknown/);
   });
 });
 
 describe("Part C: CSS-heavy components declare CSS in registry metadata", () => {
   const CSS_HEAVY_COMPONENTS = ["dialog", "command-palette"];
 
-  it.each(CSS_HEAVY_COMPONENTS)(
-    "%s depends on dialog-shell which declares component CSS",
-    (componentName) => {
-      const registry = readSourceRegistry();
-      const item = registry.items?.find((i) => i.name === componentName);
-      expect(item, `${componentName} must exist in registry`).toBeDefined();
+  it.each(
+    CSS_HEAVY_COMPONENTS,
+  )("%s depends on dialog-shell which declares component CSS", (componentName) => {
+    const registry = readSourceRegistry();
+    const item = registry.items?.find((i) => i.name === componentName);
+    expect(item, `${componentName} must exist in registry`).toBeDefined();
 
-      const deps = item?.registryDependencies ?? [];
-      expect(deps).toContain("dialog-shell");
+    const deps = item?.registryDependencies ?? [];
+    expect(deps).toContain("dialog-shell");
 
-      const dialogShell = registry.items?.find((i) => i.name === "dialog-shell");
-      expect(dialogShell).toBeDefined();
+    const dialogShell = registry.items?.find((i) => i.name === "dialog-shell");
+    expect(dialogShell).toBeDefined();
 
-      const cssFile = dialogShell?.files?.find((f) => f.path.endsWith(".css"));
-      expect(cssFile, "dialog-shell must include a CSS file").toBeDefined();
-      expect(cssFile?.type).toBe("registry:style");
-      expect(cssFile?.target).toMatch(/\.css$/);
-    },
-  );
+    const cssFile = dialogShell?.files?.find((f) => f.path.endsWith(".css"));
+    expect(cssFile, "dialog-shell must include a CSS file").toBeDefined();
+    expect(cssFile?.type).toBe("registry:style");
+    expect(cssFile?.target).toMatch(/\.css$/);
+  });
 });
 
 describe("Part D: public surface items are intentional", () => {
-  const HIDDEN_ITEMS = [
-    "diff",
-    "input-variants",
-    "search",
-    "selectable-variants",
-    "step-status",
-  ];
+  const HIDDEN_ITEMS = ["diff", "input-variants", "search", "selectable-variants", "step-status"];
 
-  it.each(HIDDEN_ITEMS)(
-    "%s is marked hidden in registry metadata",
-    (itemName) => {
-      const registry = readSourceRegistry();
-      const item = registry.items?.find((i) => i.name === itemName);
-      expect(item, `${itemName} must exist in registry`).toBeDefined();
-      expect(item?.meta?.hidden).toBe(true);
-    },
-  );
+  it.each(HIDDEN_ITEMS)("%s is marked hidden in registry metadata", (itemName) => {
+    const registry = readSourceRegistry();
+    const item = registry.items?.find((i) => i.name === itemName);
+    expect(item, `${itemName} must exist in registry`).toBeDefined();
+    expect(item?.meta?.hidden).toBe(true);
+  });
 
   it("hidden items are not exposed in package.json exports", () => {
     const pkg = JSON.parse(readFileSync(resolve(ROOT, "package.json"), "utf-8")) as {
@@ -181,25 +169,19 @@ describe("Part D: public surface items are intentional", () => {
     }
   });
 
-  const PUBLIC_LIB_ITEMS = [
-    "selectable-collection",
-    "compose-refs",
-  ];
+  const PUBLIC_LIB_ITEMS = ["selectable-collection", "compose-refs"];
 
-  it.each(PUBLIC_LIB_ITEMS)(
-    "%s is public and has a package.json export",
-    (itemName) => {
-      const registry = readSourceRegistry();
-      const item = registry.items?.find((i) => i.name === itemName);
-      expect(item, `${itemName} must exist in registry`).toBeDefined();
-      expect(item?.meta?.hidden).toBeFalsy();
+  it.each(PUBLIC_LIB_ITEMS)("%s is public and has a package.json export", (itemName) => {
+    const registry = readSourceRegistry();
+    const item = registry.items?.find((i) => i.name === itemName);
+    expect(item, `${itemName} must exist in registry`).toBeDefined();
+    expect(item?.meta?.hidden).toBeFalsy();
 
-      const pkg = JSON.parse(readFileSync(resolve(ROOT, "package.json"), "utf-8")) as {
-        exports?: Record<string, unknown>;
-      };
-      expect(pkg.exports).toHaveProperty(`./lib/${itemName}`);
-    },
-  );
+    const pkg = JSON.parse(readFileSync(resolve(ROOT, "package.json"), "utf-8")) as {
+      exports?: Record<string, unknown>;
+    };
+    expect(pkg.exports).toHaveProperty(`./lib/${itemName}`);
+  });
 });
 
 describe("Part E: stale dependency metadata removed", () => {
@@ -238,9 +220,9 @@ describe("Part F: CSS side-effect imports stripped from public registry content"
   it("transform strips CSS side-effect imports from content", () => {
     const input = [
       '"use client";',
-      '',
+      "",
       'import "../shared/stepper.css";',
-      '',
+      "",
       'import { Stepper } from "./stepper";',
     ].join("\n");
 
@@ -276,17 +258,14 @@ describe("Part G: export-from re-exports rewritten in public registry", () => {
 describe("Part H: stepper CSS declared in source registry", () => {
   const STEPPER_COMPONENTS = ["stepper", "horizontal-stepper"];
 
-  it.each(STEPPER_COMPONENTS)(
-    "%s declares stepper.css in its files array",
-    (componentName) => {
-      const registry = readSourceRegistry();
-      const item = registry.items?.find((i) => i.name === componentName);
-      expect(item, `${componentName} must exist in registry`).toBeDefined();
+  it.each(STEPPER_COMPONENTS)("%s declares stepper.css in its files array", (componentName) => {
+    const registry = readSourceRegistry();
+    const item = registry.items?.find((i) => i.name === componentName);
+    expect(item, `${componentName} must exist in registry`).toBeDefined();
 
-      const cssFile = item?.files?.find((f) => f.path.endsWith("stepper.css"));
-      expect(cssFile, `${componentName} must include stepper.css`).toBeDefined();
-      expect(cssFile?.type).toBe("registry:style");
-      expect(cssFile?.target).toBe("~/styles/stepper.css");
-    },
-  );
+    const cssFile = item?.files?.find((f) => f.path.endsWith("stepper.css"));
+    expect(cssFile, `${componentName} must include stepper.css`).toBeDefined();
+    expect(cssFile?.type).toBe("registry:style");
+    expect(cssFile?.target).toBe("~/styles/stepper.css");
+  });
 });

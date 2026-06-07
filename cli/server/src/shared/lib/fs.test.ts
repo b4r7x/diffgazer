@@ -36,10 +36,7 @@ describe("JSON file helpers", () => {
 
     expect(readJsonFileSync(join(tempRoot, "missing.json"))).toBeNull();
     expect(readJsonFileSync(corruptPath)).toBeNull();
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining(corruptPath),
-      expect.any(String),
-    );
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining(corruptPath), expect.any(String));
   });
 
   it("removes files and reports when they were already absent", async () => {

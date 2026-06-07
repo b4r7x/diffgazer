@@ -1,4 +1,4 @@
-import type { HookDoc } from "@diffgazer/registry"
+import type { HookDoc } from "@diffgazer/registry";
 
 export const useFocusTrapDoc: HookDoc = {
   description:
@@ -26,8 +26,7 @@ export const useFocusTrapDoc: HookDoc = {
       name: "options.restoreFocus",
       type: "boolean",
       required: false,
-      description:
-        "Restore focus to the previously focused element when the trap deactivates.",
+      description: "Restore focus to the previously focused element when the trap deactivates.",
       defaultValue: "true",
     },
     {
@@ -59,4 +58,4 @@ export const useFocusTrapDoc: HookDoc = {
     { name: "use-focus-trap-initial-focus", title: "Custom initial focus" },
   ],
   tags: ["standalone", "focus", "accessibility"],
-}
+};

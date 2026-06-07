@@ -35,9 +35,7 @@ export interface ReviewAbort {
   readonly step?: StepId;
 }
 
-export type DrilldownError =
-  | AIError
-  | { code: "ISSUE_NOT_FOUND"; message: string };
+export type DrilldownError = AIError | { code: "ISSUE_NOT_FOUND"; message: string };
 
 export type HandleDrilldownError =
   | DrilldownError

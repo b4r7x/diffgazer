@@ -14,8 +14,10 @@ function getDefaultApiUrl(): string {
 }
 
 function getShutdownToken(): string | undefined {
-  return (typeof window !== "undefined" ? window.__DIFFGAZER_SHUTDOWN_TOKEN__ : undefined)
-    || import.meta.env.VITE_DIFFGAZER_SHUTDOWN_TOKEN;
+  return (
+    (typeof window !== "undefined" ? window.__DIFFGAZER_SHUTDOWN_TOKEN__ : undefined) ||
+    import.meta.env.VITE_DIFFGAZER_SHUTDOWN_TOKEN
+  );
 }
 
 const BASE_URL = import.meta.env.VITE_API_URL || getDefaultApiUrl();

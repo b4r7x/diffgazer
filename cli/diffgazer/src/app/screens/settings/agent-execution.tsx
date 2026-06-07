@@ -110,9 +110,7 @@ export function AgentExecutionScreen(): ReactElement {
           <Panel.Content>
             <Box flexDirection="column" gap={1}>
               <SectionHeader>Agent Execution Mode</SectionHeader>
-              <Text dimColor>
-                Choose whether analysis agents run in sequence or in parallel.
-              </Text>
+              <Text dimColor>Choose whether analysis agents run in sequence or in parallel.</Text>
               <RadioGroup
                 value={effectiveMode}
                 onChange={handleModeChange}

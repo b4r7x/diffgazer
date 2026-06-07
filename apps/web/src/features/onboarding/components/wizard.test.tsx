@@ -195,9 +195,7 @@ describe("OnboardingWizard", () => {
 
     await user.click(getRadio(/import from env/i));
 
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: /^next$/i })).toBeEnabled(),
-    );
+    await waitFor(() => expect(screen.getByRole("button", { name: /^next$/i })).toBeEnabled());
   });
 
   it("preselects the first provider and its default model in the visible steps", async () => {

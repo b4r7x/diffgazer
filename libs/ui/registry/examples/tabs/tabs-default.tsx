@@ -1,4 +1,4 @@
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function TabsDefault() {
   return (
@@ -19,10 +19,8 @@ export default function TabsDefault() {
         </div>
       </TabsContent>
       <TabsContent value="tests">
-        <div className="border border-border p-4 text-sm text-success">
-          All 12 tests passing.
-        </div>
+        <div className="border border-border p-4 text-sm text-success">All 12 tests passing.</div>
       </TabsContent>
     </Tabs>
-  )
+  );
 }

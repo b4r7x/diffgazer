@@ -58,12 +58,7 @@ export interface UseFocusZoneReturn<T extends string> {
   getZoneProps: (zone: T) => FocusZoneProps;
 }
 
-const ARROW_KEYS = [
-  "ArrowLeft",
-  "ArrowRight",
-  "ArrowUp",
-  "ArrowDown",
-] as const;
+const ARROW_KEYS = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"] as const;
 
 function resolveFocusTargetRef(ref: FocusZoneTargetRef | undefined): HTMLElement | null {
   if (!ref) return null;
@@ -121,14 +116,17 @@ export function useFocusZone<T extends string>(
 
   const canCycleTabs = enabled && validatedTabCycle != null && validatedTabCycle.length > 1;
 
-  const setZoneValue = useCallback((next: T) => {
-    if (next === currentZone) return;
-    if (!zones.includes(next)) return;
-    onLeaveZone?.(currentZone);
-    onEnterZone?.(next);
-    if (controlledZone === undefined) setInternalZone(next);
-    onZoneChange?.(next);
-  }, [controlledZone, currentZone, onEnterZone, onLeaveZone, onZoneChange, zones]);
+  const setZoneValue = useCallback(
+    (next: T) => {
+      if (next === currentZone) return;
+      if (!zones.includes(next)) return;
+      onLeaveZone?.(currentZone);
+      onEnterZone?.(next);
+      if (controlledZone === undefined) setInternalZone(next);
+      onZoneChange?.(next);
+    },
+    [controlledZone, currentZone, onEnterZone, onLeaveZone, onZoneChange, zones],
+  );
 
   const stableTransitions = useCallback(
     (key: "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown") => {
@@ -142,33 +140,32 @@ export function useFocusZone<T extends string>(
     [currentZone, setZoneValue, transitions, zones],
   );
 
-  const cycleZone = useCallback((delta: 1 | -1) => {
-    if (!validatedTabCycle || validatedTabCycle.length === 0) return;
-    const cycle = validatedTabCycle;
-    const idx = cycle.indexOf(currentZone);
-    if (idx === -1) {
-      // Current zone is not part of the cycle; Tab enters the cycle from either end.
-      const next = delta > 0 ? cycle[0] : cycle[cycle.length - 1];
-      if (next) setZoneValue(next);
-      return;
-    }
-    const next = cycle[(idx + delta + cycle.length) % cycle.length] ?? cycle[0];
-    if (!next) return;
-    setZoneValue(next);
-  }, [currentZone, setZoneValue, validatedTabCycle]);
-
-  useKey(
-    ARROW_KEYS,
-    (e) => stableTransitions(e.key as typeof ARROW_KEYS[number]),
-    {
-      enabled: enabled && transitions != null,
-      scope,
-      containerRef,
-      focusWithinOnly,
-      allowInInput,
-      preventDefault,
+  const cycleZone = useCallback(
+    (delta: 1 | -1) => {
+      if (!validatedTabCycle || validatedTabCycle.length === 0) return;
+      const cycle = validatedTabCycle;
+      const idx = cycle.indexOf(currentZone);
+      if (idx === -1) {
+        // Current zone is not part of the cycle; Tab enters the cycle from either end.
+        const next = delta > 0 ? cycle[0] : cycle[cycle.length - 1];
+        if (next) setZoneValue(next);
+        return;
+      }
+      const next = cycle[(idx + delta + cycle.length) % cycle.length] ?? cycle[0];
+      if (!next) return;
+      setZoneValue(next);
     },
+    [currentZone, setZoneValue, validatedTabCycle],
   );
+
+  useKey(ARROW_KEYS, (e) => stableTransitions(e.key as (typeof ARROW_KEYS)[number]), {
+    enabled: enabled && transitions != null,
+    scope,
+    containerRef,
+    focusWithinOnly,
+    allowInInput,
+    preventDefault,
+  });
 
   useKey("Tab", () => cycleZone(1), {
     enabled: canCycleTabs,
@@ -189,7 +186,9 @@ export function useFocusZone<T extends string>(
   });
 
   const hasExplicitScope = "scope" in options;
-  useScope(hasExplicitScope ? (scope ?? null) : null, { enabled: enabled && hasExplicitScope && scope != null });
+  useScope(hasExplicitScope ? (scope ?? null) : null, {
+    enabled: enabled && hasExplicitScope && scope != null,
+  });
 
   useEffect(() => {
     if (!enabled || !focus) return;

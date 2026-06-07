@@ -10,7 +10,7 @@ function getAgent(agentId: AgentId): { label: string; name: string } {
 
 function convertEventToLogEntry(
   event: AgentStreamEvent | StepEvent | EnrichEvent,
-  index: number
+  index: number,
 ): LogEntryData | null {
   const id = `${event.type}-${index}`;
   const { timestamp } = event;
@@ -117,7 +117,14 @@ function convertEventToLogEntry(
 
     case "agent_thinking": {
       const { label, name } = getAgent(event.agent);
-      return { id, timestamp, tag: label, tagType: "thinking", message: truncate(event.thought, 100), source: name };
+      return {
+        id,
+        timestamp,
+        tag: label,
+        tagType: "thinking",
+        message: truncate(event.thought, 100),
+        source: name,
+      };
     }
 
     case "agent_progress": {
@@ -173,16 +180,37 @@ function convertEventToLogEntry(
 
     case "issue_found": {
       const { label, name } = getAgent(event.agent);
-      return { id, timestamp, tag: label, tagType: "warning", message: `Found: ${event.issue.title}`, isWarning: true, source: name };
+      return {
+        id,
+        timestamp,
+        tag: label,
+        tagType: "warning",
+        message: `Found: ${event.issue.title}`,
+        isWarning: true,
+        source: name,
+      };
     }
 
     case "agent_complete": {
       const { label, name } = getAgent(event.agent);
-      return { id, timestamp, tag: label, tagType: "agent", message: `Complete (${pluralize(event.issueCount, "issue")})`, source: name };
+      return {
+        id,
+        timestamp,
+        tag: label,
+        tagType: "agent",
+        message: `Complete (${pluralize(event.issueCount, "issue")})`,
+        source: name,
+      };
     }
 
     case "orchestrator_complete":
-      return { id, timestamp, tag: "DONE", tagType: "system", message: `Review complete: ${pluralize(event.totalIssues, "issue")} found` };
+      return {
+        id,
+        timestamp,
+        tag: "DONE",
+        tagType: "system",
+        message: `Review complete: ${pluralize(event.totalIssues, "issue")} found`,
+      };
 
     default: {
       const _exhaustive: never = event;
@@ -192,7 +220,7 @@ function convertEventToLogEntry(
 }
 
 export function convertAgentEventsToLogEntries(
-  events: (AgentStreamEvent | StepEvent | EnrichEvent)[]
+  events: (AgentStreamEvent | StepEvent | EnrichEvent)[],
 ): LogEntryData[] {
   return events
     .map(convertEventToLogEntry)

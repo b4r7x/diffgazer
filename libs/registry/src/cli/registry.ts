@@ -2,21 +2,23 @@ import { existsSync, readFileSync } from "node:fs";
 import { isAbsolute, win32 } from "node:path";
 import { z } from "zod";
 import { REGISTRY_ORIGIN } from "../constants.js";
-import { RegistryFileSchema as BaseRegistryFileSchema, RegistryItemSchema as BaseRegistryItemSchema } from "../registry-types.js";
+import {
+  RegistryFileSchema as BaseRegistryFileSchema,
+  RegistryItemSchema as BaseRegistryItemSchema,
+} from "../registry-types.js";
 import { getRelativePath } from "./fs.js";
 import { computeIntegrity } from "./integrity.js";
 import { toErrorMessage } from "./terminal.js";
 
 export const RegistryFileSchema = BaseRegistryFileSchema.extend({
-  path: z.string()
-    .refine(
-      (p) => !isAbsolute(p) && !win32.isAbsolute(p),
-      { message: "Registry file path must be relative" },
-    )
-    .refine(
-      (p) => !p.split("/").includes("..") && !p.split("\\").includes(".."),
-      { message: "Registry file path must not contain '..' segments" },
-    ),
+  path: z
+    .string()
+    .refine((p) => !isAbsolute(p) && !win32.isAbsolute(p), {
+      message: "Registry file path must be relative",
+    })
+    .refine((p) => !p.split("/").includes("..") && !p.split("\\").includes(".."), {
+      message: "Registry file path must not contain '..' segments",
+    }),
 });
 
 export const RegistryItemSchema = BaseRegistryItemSchema.extend({
@@ -130,7 +132,9 @@ export function collectNpmDeps(
 
 const CURRENT_SCHEMA_VERSION = 1;
 
-export function createRegistryLoader<TBundle extends { integrity?: string; schemaVersion?: number }>(
+export function createRegistryLoader<
+  TBundle extends { integrity?: string; schemaVersion?: number },
+>(
   bundlePath: string,
   bundleSchema: z.ZodType<TBundle>,
   integrityContent: (bundle: TBundle) => unknown,
@@ -153,7 +157,7 @@ function loadAndValidateBundle<TBundle extends { integrity?: string; schemaVersi
   if (!existsSync(bundlePath)) {
     throw new Error(
       `Registry bundle not found at ${bundlePath}. ` +
-      `This usually means the package was not built correctly — try reinstalling.`,
+        `This usually means the package was not built correctly — try reinstalling.`,
     );
   }
 
@@ -167,7 +171,9 @@ function readBundleJson(bundlePath: string): unknown {
   try {
     return JSON.parse(readFileSync(bundlePath, "utf-8"));
   } catch (e) {
-    throw new Error(`Failed to parse registry bundle at ${bundlePath}. (${toErrorMessage(e)})`, { cause: e });
+    throw new Error(`Failed to parse registry bundle at ${bundlePath}. (${toErrorMessage(e)})`, {
+      cause: e,
+    });
   }
 }
 
@@ -175,7 +181,7 @@ function validateSchemaVersion(bundle: { schemaVersion?: number }): void {
   if (bundle.schemaVersion !== undefined && bundle.schemaVersion > CURRENT_SCHEMA_VERSION) {
     throw new Error(
       `Registry bundle schema version ${bundle.schemaVersion} is newer than supported version ${CURRENT_SCHEMA_VERSION}. ` +
-      `Update this CLI to the latest version.`,
+        `Update this CLI to the latest version.`,
     );
   }
 }
@@ -190,7 +196,7 @@ function validateIntegrity<TBundle extends { integrity?: string }>(
   if (bundle.integrity !== expected) {
     throw new Error(
       "Registry bundle integrity mismatch. The bundle may have been tampered with. " +
-      "Reinstall the package or rebuild the registry bundle.",
+        "Reinstall the package or rebuild the registry bundle.",
     );
   }
 }
@@ -233,7 +239,9 @@ export interface RegistryAccessors {
   npmDeps: (names: string[]) => string[];
 }
 
-export function createRegistryAccessors(options: CreateRegistryAccessorsOptions): RegistryAccessors {
+export function createRegistryAccessors(
+  options: CreateRegistryAccessorsOptions,
+): RegistryAccessors {
   const { loader, itemLabel, pathPrefixes, itemTypeFilter } = options;
 
   let itemMap: Map<string, RegistryContentItem> | null = null;

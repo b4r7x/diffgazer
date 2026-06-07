@@ -19,11 +19,7 @@ export function AnalysisStep({
   return (
     <Box flexDirection="column" gap={1}>
       <Text color={tokens.muted}>Review Agents:</Text>
-      <AnalysisSelector
-        selectedLenses={selectedLenses}
-        onChange={onChange}
-        isActive={isActive}
-      />
+      <AnalysisSelector selectedLenses={selectedLenses} onChange={onChange} isActive={isActive} />
     </Box>
   );
 }

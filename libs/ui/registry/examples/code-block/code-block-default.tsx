@@ -1,4 +1,4 @@
-import { CodeBlock } from "@/components/ui/code-block"
+import { CodeBlock } from "@/components/ui/code-block";
 
 const code = `import { Button } from "@/components/ui/button"
 
@@ -8,7 +8,7 @@ export function App() {
       Click me
     </Button>
   )
-}`
+}`;
 
 export default function CodeBlockDefault() {
   return (
@@ -19,5 +19,5 @@ export default function CodeBlockDefault() {
       </CodeBlock.Header>
       <CodeBlock.Content>{code}</CodeBlock.Content>
     </CodeBlock>
-  )
+  );
 }

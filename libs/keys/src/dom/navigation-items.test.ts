@@ -82,10 +82,7 @@ describe("navigation item utilities", () => {
     appendElement(container, { role: "option", value: "role" });
     appendElement(container, { attributes: { [NAVIGATION_ITEM_ATTRIBUTE]: "option" } });
 
-    expect(values(getNavigationItems(container, { type: "option" }))).toEqual([
-      "contract",
-      "role",
-    ]);
+    expect(values(getNavigationItems(container, { type: "option" }))).toEqual(["contract", "role"]);
   });
 
   it("sorts merged selector groups in document order without the global Node constructor", () => {
@@ -119,7 +116,10 @@ describe("navigation item utilities", () => {
 
     expect(values(getNavigationItems(actions, { type: "button" }))).toEqual(["save", "cancel"]);
     expect(values(getNavigationItems(radios, { type: "radio" }))).toEqual(["small", "large"]);
-    expect(values(getNavigationItems(checkboxes, { type: "checkbox" }))).toEqual(["bold", "italic"]);
+    expect(values(getNavigationItems(checkboxes, { type: "checkbox" }))).toEqual([
+      "bold",
+      "italic",
+    ]);
   });
 
   it("does not let typed data-contract items satisfy another navigation type", () => {
@@ -142,10 +142,7 @@ describe("navigation item utilities", () => {
     appendElement(container, { role: "menuitem", value: "open" });
     appendElement(container, { role: "menuitem", value: "close" });
 
-    expect(values(getNavigationItems(container, { type: "menuitem" }))).toEqual([
-      "open",
-      "close",
-    ]);
+    expect(values(getNavigationItems(container, { type: "menuitem" }))).toEqual(["open", "close"]);
   });
 
   it("queries menuitemcheckbox items with data values", () => {
@@ -269,7 +266,9 @@ describe("navigation item utilities", () => {
     expect(focusNavigationItem(container, { type: "button", value: "missing" })).toBeNull();
     expect(document.activeElement).toBe(first);
 
-    expect(focusNavigationItem(container, { type: "button", value: "missing", fallback: "last" })).toBe("last");
+    expect(
+      focusNavigationItem(container, { type: "button", value: "missing", fallback: "last" }),
+    ).toBe("last");
     expect(document.activeElement).toBe(last);
   });
 
@@ -314,7 +313,8 @@ describe("navigation item utilities", () => {
     const unsafeItem = appendElement(container, { role: "option", value: unsafeValue });
     appendElement(container, { role: "option", value: "b" });
 
-    expect(findNavigationItemByValue(container, { type: "option", value: unsafeValue })).toBe(unsafeItem);
+    expect(findNavigationItemByValue(container, { type: "option", value: unsafeValue })).toBe(
+      unsafeItem,
+    );
   });
-
 });

@@ -35,7 +35,12 @@ export function HelpPage() {
           <Panel.Content>
             <div className="flex flex-col gap-6 pt-2">
               <section>
-                <Typography as="h2" size="xs" color="muted" className="uppercase tracking-wider mb-3">
+                <Typography
+                  as="h2"
+                  size="xs"
+                  color="muted"
+                  className="uppercase tracking-wider mb-3"
+                >
                   Keyboard Shortcuts
                 </Typography>
                 <div className="flex flex-col gap-1">
@@ -49,7 +54,12 @@ export function HelpPage() {
               </section>
 
               <section>
-                <Typography as="h2" size="xs" color="muted" className="uppercase tracking-wider mb-3">
+                <Typography
+                  as="h2"
+                  size="xs"
+                  color="muted"
+                  className="uppercase tracking-wider mb-3"
+                >
                   About
                 </Typography>
                 <p className="text-sm text-tui-muted">

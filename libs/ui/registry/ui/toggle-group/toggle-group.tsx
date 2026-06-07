@@ -1,6 +1,13 @@
 "use client";
 
-import { type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type Ref, useCallback, useMemo, useRef } from "react";
+import {
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
+  type Ref,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { useFloatingIndicator } from "@/hooks/use-floating-indicator";
 import { useFormReset } from "@/hooks/use-form-reset";
@@ -59,9 +66,8 @@ interface ToggleGroupBaseProps<TValue extends string = string> {
   ref?: Ref<HTMLDivElement>;
 }
 
-export type ToggleGroupProps<TValue extends string = string> =
-  & ToggleGroupBaseProps<TValue>
-  & (ToggleGroupSingleProps<TValue> | ToggleGroupMultipleProps<TValue>);
+export type ToggleGroupProps<TValue extends string = string> = ToggleGroupBaseProps<TValue> &
+  (ToggleGroupSingleProps<TValue> | ToggleGroupMultipleProps<TValue>);
 
 export function ToggleGroup<TValue extends string = string>(props: ToggleGroupProps<TValue>) {
   const {
@@ -133,13 +139,11 @@ export function ToggleGroup<TValue extends string = string>(props: ToggleGroupPr
       if (newValue === null) return;
       if (selectionMode === "multiple") {
         setMultipleValue((prev) =>
-          prev.includes(newValue)
-            ? prev.filter((v) => v !== newValue)
-            : [...prev, newValue],
+          prev.includes(newValue) ? prev.filter((v) => v !== newValue) : [...prev, newValue],
         );
         return;
       }
-      setSingleValue((prev) => (prev === newValue && allowDeselect) ? null : newValue);
+      setSingleValue((prev) => (prev === newValue && allowDeselect ? null : newValue));
     },
     [allowDeselect, selectionMode, setMultipleValue, setSingleValue],
   );
@@ -147,7 +151,11 @@ export function ToggleGroup<TValue extends string = string>(props: ToggleGroupPr
   const enabledItems = getEnabledSelectableCollectionItems(items, disabled);
   const activeHighlightedValue = getSelectableCollectionItemValue(enabledItems, highlightedValue);
   const selectedAnchor = selectionMode === "single" ? singleValue : null;
-  const tabTargetValue = resolveSelectableCollectionItemValue(enabledItems, highlightedValue, selectedAnchor);
+  const tabTargetValue = resolveSelectableCollectionItemValue(
+    enabledItems,
+    highlightedValue,
+    selectedAnchor,
+  );
 
   const { onKeyDown: navKeyDown } = useNavigation({
     containerRef,
@@ -171,28 +179,43 @@ export function ToggleGroup<TValue extends string = string>(props: ToggleGroupPr
     navKeyDown(e);
   };
 
-  const contextValue = useMemo(() => ({
-    selectionMode,
-    isItemSelected,
-    onChange: handleValueChange,
-    onHighlightChange: setHighlightedValue,
-    disabled,
-    size,
-    variant,
-    highlightedValue: activeHighlightedValue,
-    containerRef,
-    usesButtonSemantics,
-    tabTargetValue,
-    registerItem,
-    unregisterItem,
-  }), [selectionMode, isItemSelected, handleValueChange, setHighlightedValue, disabled, size, variant, activeHighlightedValue, usesButtonSemantics, tabTargetValue, registerItem, unregisterItem]);
+  const contextValue = useMemo(
+    () => ({
+      selectionMode,
+      isItemSelected,
+      onChange: handleValueChange,
+      onHighlightChange: setHighlightedValue,
+      disabled,
+      size,
+      variant,
+      highlightedValue: activeHighlightedValue,
+      containerRef,
+      usesButtonSemantics,
+      tabTargetValue,
+      registerItem,
+      unregisterItem,
+    }),
+    [
+      selectionMode,
+      isItemSelected,
+      handleValueChange,
+      setHighlightedValue,
+      disabled,
+      size,
+      variant,
+      activeHighlightedValue,
+      usesButtonSemantics,
+      tabTargetValue,
+      registerItem,
+      unregisterItem,
+    ],
+  );
 
   // Pill variant: a single absolutely-positioned indicator tracks the active
   // item's rect. The hook is null-fed for `selectionMode="multiple"` (which
   // uses button semantics with no single-active concept) and when the variant
   // doesn't use a pill indicator, so the observer is never created.
-  const pillTargetValue =
-    variant === "pill" && selectionMode === "single" ? singleValue : null;
+  const pillTargetValue = variant === "pill" && selectionMode === "single" ? singleValue : null;
   const pillRect = useFloatingIndicator(containerRef, pillTargetValue);
 
   const underlineTargetValue =

@@ -10,8 +10,6 @@ export const EnrichProgressEventSchema = z.object({
 
 export type EnrichProgressEvent = z.infer<typeof EnrichProgressEventSchema>;
 
-export const EnrichEventSchema = z.discriminatedUnion("type", [
-  EnrichProgressEventSchema,
-]);
+export const EnrichEventSchema = z.discriminatedUnion("type", [EnrichProgressEventSchema]);
 
 export type EnrichEvent = z.infer<typeof EnrichEventSchema>;

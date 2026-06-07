@@ -16,16 +16,16 @@ describe("extractLocalImports", () => {
   });
 
   it("ignores specifiers that appear only inside template literals", () => {
-    const source = "const code = `import { x } from \"@/hooks/fake\"`;";
+    const source = 'const code = `import { x } from "@/hooks/fake"`;';
     expect(extractLocalImports(source)).toEqual([]);
   });
-})
+});
 
 describe("stripTemplateLiterals", () => {
   it("blanks template-literal contents so embedded code is not parsed as imports", () => {
     expect(stripTemplateLiterals("a `import x` b")).toBe("a `` b");
   });
-})
+});
 
 describe("aliasImportBase", () => {
   it("maps @/ aliases to their registry directory", () => {
@@ -34,4 +34,4 @@ describe("aliasImportBase", () => {
     expect(aliasImportBase("@/components/ui/c")).toBe("registry/ui/c");
     expect(aliasImportBase("./relative")).toBeNull();
   });
-})
+});

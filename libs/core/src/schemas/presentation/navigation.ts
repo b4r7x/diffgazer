@@ -42,11 +42,19 @@ export const MENU_ITEMS: NavItem[] = [
 ];
 
 export const SETTINGS_MENU_ITEMS: SettingsMenuItem[] = [
-  { id: "trust", label: "Trust & Permissions", description: "Manage directory trust and capabilities" },
+  {
+    id: "trust",
+    label: "Trust & Permissions",
+    description: "Manage directory trust and capabilities",
+  },
   { id: "theme", label: "Theme", description: "Change color theme preferences" },
   { id: "provider", label: "Provider", description: "Select AI provider for code review" },
   { id: "storage", label: "Secrets Storage", description: "Choose where API keys are stored" },
-  { id: "agent-execution", label: "Agent Execution", description: "Control how analysis agents are scheduled" },
+  {
+    id: "agent-execution",
+    label: "Agent Execution",
+    description: "Control how analysis agents are scheduled",
+  },
   { id: "analysis", label: "Analysis", description: "Configure agents and context depth" },
   { id: "diagnostics", label: "Diagnostics", description: "Run system health checks" },
 ];

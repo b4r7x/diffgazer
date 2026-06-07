@@ -1,36 +1,55 @@
-import type { ComponentDoc } from "./types"
+import type { ComponentDoc } from "./types";
 
 export const popoverDoc: ComponentDoc = {
-  description: "Floating content anchored to a trigger element. Supports click-to-open (popover) and hover (infotip) modes with full 4-side positioning, automatic flip, shift, and viewport collision detection. Zero external dependencies.",
+  description:
+    "Floating content anchored to a trigger element. Supports click-to-open (popover) and hover (infotip) modes with full 4-side positioning, automatic flip, shift, and viewport collision detection. Zero external dependencies.",
   anatomy: [
-    { name: "Popover", indent: 0, note: "Root — manages open state, trigger mode (click/hover), delay" },
-    { name: "Popover.Trigger", indent: 1, note: "Element that activates the popover (click or hover)" },
-    { name: "Popover.Content", indent: 1, note: "Portal-rendered positioned content with collision avoidance" },
+    {
+      name: "Popover",
+      indent: 0,
+      note: "Root — manages open state, trigger mode (click/hover), delay",
+    },
+    {
+      name: "Popover.Trigger",
+      indent: 1,
+      note: "Element that activates the popover (click or hover)",
+    },
+    {
+      name: "Popover.Content",
+      indent: 1,
+      note: "Portal-rendered positioned content with collision avoidance",
+    },
   ],
   notes: [
     {
       title: "Requires @diffgazer/keys (package mode)",
-      content: "Popover's auto-focus on open (focusing the first focusable element in the content) imports from the required @diffgazer/keys peer. Package/npm consumers need @diffgazer/keys as a peer after public packages are published. Before publication, validate package mode with a locally packed @diffgazer/keys tarball and use public package commands only after `npm view @diffgazer/keys version` succeeds. Importing @diffgazer/ui/components/popover without keys fails at module load with an error naming the missing @diffgazer/keys package. Copy/dgadd consumers do not need the package — copy mode rewrites the focusable helper to local source.",
+      content:
+        "Popover's auto-focus on open (focusing the first focusable element in the content) imports from the required @diffgazer/keys peer. Package/npm consumers need @diffgazer/keys as a peer after public packages are published. Before publication, validate package mode with a locally packed @diffgazer/keys tarball and use public package commands only after `npm view @diffgazer/keys version` succeeds. Importing @diffgazer/ui/components/popover without keys fails at module load with an error naming the missing @diffgazer/keys package. Copy/dgadd consumers do not need the package — copy mode rewrites the focusable helper to local source.",
     },
     {
       title: "Trigger Modes",
-      content: "Set `triggerMode=\"click\"` (default) for interactive popovers that toggle on click. Set `triggerMode=\"hover\"` for tooltip-like behavior with delay. Hover mode renders with `role=\"tooltip\"` and content stays open while the pointer hovers it.",
+      content:
+        'Set `triggerMode="click"` (default) for interactive popovers that toggle on click. Set `triggerMode="hover"` for tooltip-like behavior with delay. Hover mode renders with `role="tooltip"` and content stays open while the pointer hovers it.',
     },
     {
       title: "Positioning",
-      content: "Content is positioned relative to the trigger with `side` (top/bottom/left/right), `align` (start/center/end), `sideOffset`, and `alignOffset`. When `avoidCollisions` is true (default), content flips to the opposite side if it would overflow, then tries cross-axis sides, then shifts within the viewport.",
+      content:
+        "Content is positioned relative to the trigger with `side` (top/bottom/left/right), `align` (start/center/end), `sideOffset`, and `alignOffset`. When `avoidCollisions` is true (default), content flips to the opposite side if it would overflow, then tries cross-axis sides, then shifts within the viewport.",
     },
     {
       title: "Click Mode",
-      content: "In click mode, the popover toggles on trigger click, dismisses on outside click or Escape key. Content is interactive (pointer-events enabled). Use for forms, menus, or rich content.",
+      content:
+        "In click mode, the popover toggles on trigger click, dismisses on outside click or Escape key. Content is interactive (pointer-events enabled). Use for forms, menus, or rich content.",
     },
     {
       title: "Controlled",
-      content: "Use `open` and `onOpenChange` props for controlled state. Works with both trigger modes.",
+      content:
+        "Use `open` and `onOpenChange` props for controlled state. Works with both trigger modes.",
     },
     {
       title: "Portal Rendering",
-      content: "Content renders through the shared Portal primitive. When a PortalContainerProvider is present, Popover.Content uses that scoped container; otherwise it falls back to document.body. This keeps nested overlay trees in the same portal scope while still escaping overflow:hidden ancestors by default.",
+      content:
+        "Content renders through the shared Portal primitive. When a PortalContainerProvider is present, Popover.Content uses that scoped container; otherwise it falls back to document.body. This keeps nested overlay trees in the same portal scope while still escaping overflow:hidden ancestors by default.",
     },
   ],
   usage: { example: "popover-basic" },
@@ -42,9 +61,7 @@ export const popoverDoc: ComponentDoc = {
   ],
   keyboard: {
     description: "In click mode, Escape closes the popover. Focus returns to the trigger element.",
-    examples: [
-      { name: "popover-basic", title: "Basic" },
-    ],
+    examples: [{ name: "popover-basic", title: "Basic" }],
   },
   props: {
     Popover: {
@@ -70,7 +87,8 @@ export const popoverDoc: ComponentDoc = {
         type: '"click" | "hover"',
         required: false,
         defaultValue: '"click"',
-        description: 'Click toggles; hover opens on pointer/focus enter with a delay and closes on leave.',
+        description:
+          "Click toggles; hover opens on pointer/focus enter with a delay and closes on leave.",
       },
       popupRole: {
         type: '"dialog" | "menu" | "listbox" | "tree" | "grid" | "tooltip"',
@@ -108,7 +126,8 @@ export const popoverDoc: ComponentDoc = {
         type: "ReactNode | (props: PopoverTriggerRenderProps) => ReactNode",
         required: true,
         defaultValue: null,
-        description: "Trigger element. Pass a single element (cloned with merged ARIA/handlers), text (wrapped in <button>), or a render function for full control.",
+        description:
+          "Trigger element. Pass a single element (cloned with merged ARIA/handlers), text (wrapped in <button>), or a render function for full control.",
       },
     },
     "Popover.Content": {
@@ -116,7 +135,8 @@ export const popoverDoc: ComponentDoc = {
         type: '"dialog" | "menu" | "listbox" | "tree" | "grid" | "tooltip"',
         required: false,
         defaultValue: null,
-        description: 'Popup ARIA role. Defaults to "tooltip" in hover mode. role="dialog" should have aria-label or aria-labelledby; a dev warning is logged and the content falls back to its fallback name when missing.',
+        description:
+          'Popup ARIA role. Defaults to "tooltip" in hover mode. role="dialog" should have aria-label or aria-labelledby; a dev warning is logged and the content falls back to its fallback name when missing.',
       },
       side: {
         type: '"top" | "bottom" | "left" | "right"',
@@ -146,19 +166,22 @@ export const popoverDoc: ComponentDoc = {
         type: "boolean",
         required: false,
         defaultValue: "true",
-        description: "Flips to the opposite side, then cross-axis sides, then shifts within the viewport.",
+        description:
+          "Flips to the opposite side, then cross-axis sides, then shifts within the viewport.",
       },
       collisionPadding: {
         type: "number",
         required: false,
         defaultValue: "8",
-        description: "Minimum gap between the content and the viewport edge during collision avoidance.",
+        description:
+          "Minimum gap between the content and the viewport edge during collision avoidance.",
       },
       autoFocus: {
         type: "boolean",
         required: false,
         defaultValue: "true",
-        description: 'Dialog and menu roles only. When true, focuses the first focusable child on open (or the content itself for role="dialog" without a focusable child).',
+        description:
+          'Dialog and menu roles only. When true, focuses the first focusable child on open (or the content itself for role="dialog" without a focusable child).',
       },
       children: {
         type: "ReactNode",
@@ -168,4 +191,4 @@ export const popoverDoc: ComponentDoc = {
       },
     },
   },
-}
+};

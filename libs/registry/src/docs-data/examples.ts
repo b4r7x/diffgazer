@@ -28,12 +28,12 @@ export function generateDemoIndex(config: {
       const existing = seenKeys.get(exampleName);
       if (existing) {
         logger?.warn?.(
-          `Demo index key collision: "${exampleName}" from "${item.name}" overwrites "${existing}"`
+          `Demo index key collision: "${exampleName}" from "${item.name}" overwrites "${existing}"`,
         );
       }
       seenKeys.set(exampleName, item.name);
       demoImports.push(
-        `  "${exampleName}": lazy(() => import("${importPathPrefix}/${item.name}/${exampleName}")),`
+        `  "${exampleName}": lazy(() => import("${importPathPrefix}/${item.name}/${exampleName}")),`,
       );
     }
   }

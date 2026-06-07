@@ -52,12 +52,7 @@ function extractCheckboxItem(element: ReactElement): CollectedItem | null {
   return { value: props.value, disabled: props.disabled ?? false };
 }
 
-function CheckboxItem({
-  value,
-  label,
-  description,
-  disabled = false,
-}: CheckboxItemProps) {
+function CheckboxItem({ value, label, description, disabled = false }: CheckboxItemProps) {
   const ctx = useCheckboxGroupContext();
   const isDisabled = disabled || ctx.groupDisabled;
   const isChecked = ctx.checkedValues.includes(value);
@@ -85,22 +80,25 @@ function CheckboxItem({
   return (
     <Box flexDirection="column">
       <Box gap={1}>
-        <Text
-          color={isHighlighted ? ctx.tokens.accent : undefined}
-          bold={isHighlighted}
-        >
+        <Text color={isHighlighted ? ctx.tokens.accent : undefined} bold={isHighlighted}>
           {indicator}
         </Text>
-        {typeof label === "string"
-          ? <Text color={isHighlighted ? ctx.tokens.accent : undefined} bold={isHighlighted}>{label}</Text>
-          : label}
+        {typeof label === "string" ? (
+          <Text color={isHighlighted ? ctx.tokens.accent : undefined} bold={isHighlighted}>
+            {label}
+          </Text>
+        ) : (
+          label
+        )}
       </Box>
       {description != null && (
         <Box>
           <Text>{"    "}</Text>
-          {typeof description === "string"
-            ? <Text color={ctx.tokens.muted}>{description}</Text>
-            : description}
+          {typeof description === "string" ? (
+            <Text color={ctx.tokens.muted}>{description}</Text>
+          ) : (
+            description
+          )}
         </Box>
       )}
     </Box>

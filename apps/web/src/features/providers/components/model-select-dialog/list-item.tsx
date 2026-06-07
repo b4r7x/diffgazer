@@ -7,10 +7,7 @@ interface ModelListItemProps {
   onDoubleClick: () => void;
 }
 
-export function ModelListItem({
-  model,
-  onDoubleClick,
-}: ModelListItemProps) {
+export function ModelListItem({ model, onDoubleClick }: ModelListItemProps) {
   return (
     <RadioGroupItem
       value={model.id}

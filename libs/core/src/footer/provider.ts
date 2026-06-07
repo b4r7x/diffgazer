@@ -1,11 +1,4 @@
-import {
-  createContext,
-  createElement,
-  type ReactNode,
-  useContext,
-  useMemo,
-  useState,
-} from "react";
+import { createContext, createElement, type ReactNode, useContext, useMemo, useState } from "react";
 import type { Shortcut } from "../schemas/presentation/index.js";
 import { areShortcutsEqual } from "../schemas/presentation/index.js";
 import type { FooterActions, FooterData } from "./types.js";

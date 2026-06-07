@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types"
+import type { ComponentDoc } from "./types";
 
 export const textareaDoc: ComponentDoc = {
   description:
@@ -28,8 +28,9 @@ export const textareaDoc: ComponentDoc = {
         type: 'boolean | "true" | "false" | "grammar" | "spelling"',
         required: false,
         defaultValue: null,
-        description: "The native ARIA invalid state. The destructive border treatment applies to true/\"true\". Field.Control sets this automatically when Field.invalid is true.",
+        description:
+          'The native ARIA invalid state. The destructive border treatment applies to true/"true". Field.Control sets this automatically when Field.invalid is true.',
       },
     },
   },
-}
+};

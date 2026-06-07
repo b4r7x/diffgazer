@@ -1,15 +1,27 @@
-import type { ComponentDoc } from "./types"
+import type { ComponentDoc } from "./types";
 
 export const cardDoc: ComponentDoc = {
   description:
     "Simple bordered card primitives with floating border labels and semantic HTML support.",
   anatomy: [
-    { name: "Card", indent: 0, note: "Main card surface with surface, size, interactive, and as props" },
-    { name: "CardLabel", indent: 1, note: "Floating border label with variant='border' or variant='gap'" },
+    {
+      name: "Card",
+      indent: 0,
+      note: "Main card surface with surface, size, interactive, and as props",
+    },
+    {
+      name: "CardLabel",
+      indent: 1,
+      note: "Floating border label with variant='border' or variant='gap'",
+    },
     { name: "CardHeader", indent: 1, note: "Header region with grid layout and bottom border" },
     { name: "CardTitle", indent: 2, note: "Title text with configurable heading level (as prop)" },
     { name: "CardDescription", indent: 2, note: "Supporting description text" },
-    { name: "CardAction", indent: 2, note: "Action slot in header (positioned top-right via grid)" },
+    {
+      name: "CardAction",
+      indent: 2,
+      note: "Action slot in header (positioned top-right via grid)",
+    },
     { name: "CardContent", indent: 1, note: "Body content region" },
     { name: "CardFooter", indent: 1, note: "Footer actions/meta region" },
   ],
@@ -71,13 +83,15 @@ export const cardDoc: ComponentDoc = {
         type: '"div" | "article" | "section" | "aside"',
         required: false,
         defaultValue: '"div"',
-        description: "Rendered HTML element. Use article/section/aside when the card is a self-contained content region.",
+        description:
+          "Rendered HTML element. Use article/section/aside when the card is a self-contained content region.",
       },
       surface: {
         type: '"flat" | "stacked" | "inset" | "dotted" | "glow"',
         required: false,
         defaultValue: '"flat"',
-        description: "Surface treatment. Flat is a clean border, stacked adds paper-stack depth, inset recesses into the page, dotted uses a dashed wireframe border, and glow adds subtle edge luminance.",
+        description:
+          "Surface treatment. Flat is a clean border, stacked adds paper-stack depth, inset recesses into the page, dotted uses a dashed wireframe border, and glow adds subtle edge luminance.",
       },
       interactive: {
         type: "boolean",
@@ -103,7 +117,8 @@ export const cardDoc: ComponentDoc = {
         type: '"border" | "gap"',
         required: false,
         defaultValue: '"border"',
-        description: "Visual treatment of the floating label. Border boxes the label; gap omits the box.",
+        description:
+          "Visual treatment of the floating label. Border boxes the label; gap omits the box.",
       },
       children: {
         type: "ReactNode",
@@ -139,7 +154,8 @@ export const cardDoc: ComponentDoc = {
         type: "ReactNode",
         required: false,
         defaultValue: null,
-        description: "Header content. When a Card.Action child is present, the header switches to a two-column grid.",
+        description:
+          "Header content. When a Card.Action child is present, the header switches to a two-column grid.",
       },
     },
     "Card.Action": {
@@ -167,4 +183,4 @@ export const cardDoc: ComponentDoc = {
       },
     },
   },
-}
+};

@@ -1,4 +1,4 @@
-import { Textarea } from "@/components/ui/textarea"
+import { Textarea } from "@/components/ui/textarea";
 
 export default function TextareaVariants() {
   return (
@@ -9,5 +9,5 @@ export default function TextareaVariants() {
       <Textarea aria-invalid placeholder="Error state" />
       <Textarea disabled placeholder="Disabled textarea" />
     </div>
-  )
+  );
 }

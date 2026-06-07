@@ -3,10 +3,7 @@ import open from "open";
 
 type BrowserOpener = (address: string) => Promise<unknown>;
 
-export function openBrowserAddress(
-  address: string,
-  opener: BrowserOpener = open,
-): void {
+export function openBrowserAddress(address: string, opener: BrowserOpener = open): void {
   void Promise.resolve()
     .then(() => opener(address))
     .catch((err: unknown) => {

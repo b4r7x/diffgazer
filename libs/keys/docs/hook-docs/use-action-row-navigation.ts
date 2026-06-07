@@ -1,4 +1,4 @@
-import type { HookDoc } from "@diffgazer/registry"
+import type { HookDoc } from "@diffgazer/registry";
 
 export const useActionRowNavigationDoc: HookDoc = {
   description:
@@ -71,7 +71,8 @@ export const useActionRowNavigationDoc: HookDoc = {
       name: "defaultZone",
       type: '"content" | "actions"',
       required: false,
-      description: "Initial zone. When set to actions, the hook focuses the default action on mount.",
+      description:
+        "Initial zone. When set to actions, the hook focuses the default action on mount.",
       defaultValue: '"content"',
     },
     {
@@ -92,7 +93,8 @@ export const useActionRowNavigationDoc: HookDoc = {
       name: "onNavigate",
       type: "(index: number) => void",
       required: false,
-      description: "Called when navigation lands on an action index, including when entering the actions zone.",
+      description:
+        "Called when navigation lands on an action index, including when entering the actions zone.",
     },
     {
       name: "onNavigationBoundaryReached",
@@ -174,8 +176,6 @@ export const useActionRowNavigationDoc: HookDoc = {
         "useActionRowNavigation registers keys through useKey and useFocusZone, so it must be used within a <KeyboardProvider> tree. It is package-only.",
     },
   ],
-  examples: [
-    { name: "use-action-row-navigation-basic", title: "Review row with inline actions" },
-  ],
+  examples: [{ name: "use-action-row-navigation-basic", title: "Review row with inline actions" }],
   tags: ["provider-dependent", "navigation", "actions", "row"],
-}
+};

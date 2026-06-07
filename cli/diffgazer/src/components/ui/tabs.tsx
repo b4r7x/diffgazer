@@ -94,7 +94,14 @@ function TabsList({ loop = true, isActive = true, children }: TabsListProps) {
   );
 
   return (
-    <Box gap={1} borderStyle="single" borderBottom={false} borderLeft={false} borderRight={false} borderColor={tokens.border}>
+    <Box
+      gap={1}
+      borderStyle="single"
+      borderBottom={false}
+      borderLeft={false}
+      borderRight={false}
+      borderColor={tokens.border}
+    >
       {children}
     </Box>
   );

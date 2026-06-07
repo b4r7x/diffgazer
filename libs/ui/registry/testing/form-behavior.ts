@@ -32,7 +32,7 @@ function matchesMessage(actual: string | null, expected: string | RegExp): boole
  * Reads aria-invalid, then resolves any aria-describedby ID -> element -> textContent.
  */
 export function expectFieldInvalid(field: HTMLElement, expectedMessage?: string | RegExp): void {
-  expect(field, "field should report aria-invalid=\"true\"").toHaveAttribute("aria-invalid", "true");
+  expect(field, 'field should report aria-invalid="true"').toHaveAttribute("aria-invalid", "true");
 
   if (expectedMessage === undefined) {
     return;
@@ -59,7 +59,9 @@ function findSiblingErrorText(field: HTMLElement): string | null {
   if (!parent) {
     return null;
   }
-  const candidates = parent.querySelectorAll('[role="alert"], [data-slot="field-error"], [aria-live]');
+  const candidates = parent.querySelectorAll(
+    '[role="alert"], [data-slot="field-error"], [aria-live]',
+  );
   for (const candidate of candidates) {
     if (candidate.textContent?.trim()) {
       return candidate.textContent.trim();
@@ -83,7 +85,11 @@ const FILLABLE_ROLES = ["textbox", "searchbox", "spinbutton", "combobox"] as con
  * Locate a form control by accessible name (label or aria-label) and type into it.
  * Clears existing content first.
  */
-export async function fillField(user: UserEvent, name: string | RegExp, value: string): Promise<void> {
+export async function fillField(
+  user: UserEvent,
+  name: string | RegExp,
+  value: string,
+): Promise<void> {
   let control: HTMLElement | null = null;
   for (const role of FILLABLE_ROLES) {
     control = screen.queryByRole(role, { name });

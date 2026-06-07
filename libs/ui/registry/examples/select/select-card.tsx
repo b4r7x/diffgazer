@@ -1,15 +1,10 @@
 "use client";
 
-import { useState } from "react"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-} from "@/components/ui/select"
+import { useState } from "react";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 
 export default function SelectCard() {
-  const [value, setValue] = useState<string[]>(["svelte"])
+  const [value, setValue] = useState<string[]>(["svelte"]);
   return (
     <div className="w-72">
       <Select multiple variant="card" defaultOpen value={value} onChange={setValue}>
@@ -24,5 +19,5 @@ export default function SelectCard() {
         </SelectContent>
       </Select>
     </div>
-  )
+  );
 }

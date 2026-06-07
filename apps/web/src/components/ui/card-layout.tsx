@@ -31,16 +31,15 @@ export function CardLayout({
   return (
     <div className={cn("flex-1 flex flex-col items-center justify-center px-4", className)}>
       <Card surface="stacked" size={size} className="border-tui-border bg-tui-bg">
-        {header ?? (title && (
-          <Card.Header className="border-tui-border bg-tui-selection/30 px-6 py-4">
-            <Typography as="h1" size="xl" className="text-tui-blue tracking-wide">
-              {title}
-            </Typography>
-            {subtitle && (
-              <p className="text-sm text-tui-muted mt-1">{subtitle}</p>
-            )}
-          </Card.Header>
-        ))}
+        {header ??
+          (title && (
+            <Card.Header className="border-tui-border bg-tui-selection/30 px-6 py-4">
+              <Typography as="h1" size="xl" className="text-tui-blue tracking-wide">
+                {title}
+              </Typography>
+              {subtitle && <p className="text-sm text-tui-muted mt-1">{subtitle}</p>}
+            </Card.Header>
+          ))}
 
         <Card.Content
           className={cn(

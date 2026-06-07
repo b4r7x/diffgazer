@@ -1,8 +1,7 @@
-import type { HookDoc } from "@diffgazer/registry"
+import type { HookDoc } from "@diffgazer/registry";
 
 export const formResetDoc: HookDoc = {
-  description:
-    "Resets uncontrolled custom control state when a parent native form is reset.",
+  description: "Resets uncontrolled custom control state when a parent native form is reset.",
   usage: {
     code: `const inputRef = useRef<HTMLInputElement>(null);
 const [value, setValue] = useState(defaultValue);
@@ -15,22 +14,19 @@ useFormReset(inputRef, defaultValue, setValue, value === undefined);`,
       name: "ref",
       type: "RefObject<HTMLElement | null>",
       required: true,
-      description:
-        "Element ref used to find the closest parent form.",
+      description: "Element ref used to find the closest parent form.",
     },
     {
       name: "resetValue",
       type: "T",
       required: true,
-      description:
-        "Value passed to onReset when the parent form dispatches a native reset event.",
+      description: "Value passed to onReset when the parent form dispatches a native reset event.",
     },
     {
       name: "onReset",
       type: "(value: T) => void",
       required: true,
-      description:
-        "Called with resetValue when the parent form resets.",
+      description: "Called with resetValue when the parent form resets.",
     },
     {
       name: "enabled",
@@ -43,8 +39,7 @@ useFormReset(inputRef, defaultValue, setValue, value === undefined);`,
   ],
   returns: {
     type: "void",
-    description:
-      "Registers a reset listener on the closest parent form while enabled.",
+    description: "Registers a reset listener on the closest parent form while enabled.",
   },
   notes: [
     {
@@ -58,8 +53,6 @@ useFormReset(inputRef, defaultValue, setValue, value === undefined);`,
         "The reset listener stays stable while reading the latest resetValue and onReset callback.",
     },
   ],
-  examples: [
-    { name: "form-reset-input", title: "Resettable Input" },
-  ],
+  examples: [{ name: "form-reset-input", title: "Resettable Input" }],
   tags: ["hook", "form", "reset", "uncontrolled"],
-}
+};

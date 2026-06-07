@@ -23,7 +23,7 @@ interface ResolveGitServiceOptions {
 }
 
 export const resolveGitService = async (
-  options: ResolveGitServiceOptions
+  options: ResolveGitServiceOptions,
 ): Promise<Result<GitService, AppError>> => {
   const { basePath, relativePath } = options;
 

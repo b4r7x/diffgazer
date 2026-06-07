@@ -3,10 +3,7 @@ import {
   type ReviewStreamEvent as BaseReviewStreamEvent,
   ReviewStreamEventSchema,
 } from "../review/issues.js";
-import {
-  type AgentStreamEvent,
-  AgentStreamEventSchema,
-} from "./agent.js";
+import { type AgentStreamEvent, AgentStreamEventSchema } from "./agent.js";
 import { type EnrichEvent, EnrichEventSchema } from "./enrich.js";
 import { type StepEvent, StepEventSchema } from "./step.js";
 
@@ -20,4 +17,8 @@ export const FullReviewStreamEventSchema = z.discriminatedUnion("type", [
   ...EnrichEventSchema.options,
 ]);
 
-export type FullReviewStreamEvent = BaseReviewStreamEvent | AgentStreamEvent | StepEvent | EnrichEvent;
+export type FullReviewStreamEvent =
+  | BaseReviewStreamEvent
+  | AgentStreamEvent
+  | StepEvent
+  | EnrichEvent;

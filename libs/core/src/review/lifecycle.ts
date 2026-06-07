@@ -2,8 +2,7 @@ import type { StepState } from "../schemas/events/index.js";
 
 export function isNoDiffError(error: string | null): boolean {
   return (
-    error?.includes("No staged changes") === true ||
-    error?.includes("No unstaged changes") === true
+    error?.includes("No staged changes") === true || error?.includes("No unstaged changes") === true
   );
 }
 

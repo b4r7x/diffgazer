@@ -65,13 +65,17 @@ function validateCredential(
 ): Result<void, { message: string; code: string }> {
   if (typeof apiKey === "string") {
     if (apiKey.trim().length === 0) {
-      return err(createError(ErrorCode.CREDENTIAL_INVALID, "API key must not be empty or whitespace-only"));
+      return err(
+        createError(ErrorCode.CREDENTIAL_INVALID, "API key must not be empty or whitespace-only"),
+      );
     }
     return ok(undefined);
   }
   if (apiKey.kind === "literal") {
     if (apiKey.value.trim().length === 0) {
-      return err(createError(ErrorCode.CREDENTIAL_INVALID, "API key must not be empty or whitespace-only"));
+      return err(
+        createError(ErrorCode.CREDENTIAL_INVALID, "API key must not be empty or whitespace-only"),
+      );
     }
     return ok(undefined);
   }
@@ -90,7 +94,7 @@ function validateCredential(
 }
 
 export const saveConfig = (
-  input: SaveConfigRequest
+  input: SaveConfigRequest,
 ): Promise<Result<ProviderStatus, SecretsStorageError | { message: string; code: string }>> => {
   const validation = validateCredential(input.provider, input.apiKey);
   if (!validation.ok) return Promise.resolve(validation);
@@ -128,7 +132,9 @@ export const activateProvider = async (input: {
 }): Promise<Result<ActivateProviderResponse, { message: string; code: string }>> => {
   const { provider, model } = input;
 
-  const existing = getStore().getProviders().find((p) => p.provider === provider);
+  const existing = getStore()
+    .getProviders()
+    .find((p) => p.provider === provider);
   if (!existing) {
     return err(createError("PROVIDER_NOT_FOUND", "Provider not found"));
   }
@@ -154,7 +160,10 @@ export const activateProvider = async (input: {
     const { models } = await getProviderModelsFromCatalog(provider);
     if (!models.some((m) => m.id === effectiveModel)) {
       return err(
-        createError("MODEL_ERROR", `Model "${effectiveModel}" is not available for provider "${provider}".`),
+        createError(
+          "MODEL_ERROR",
+          `Model "${effectiveModel}" is not available for provider "${provider}".`,
+        ),
       );
     }
   }
@@ -169,7 +178,7 @@ export const activateProvider = async (input: {
 };
 
 export const deleteProvider = async (
-  providerId: AIProvider
+  providerId: AIProvider,
 ): Promise<Result<DeleteProviderResponse, SecretsStorageError>> => {
   const deletedResult = await getStore().deleteProviderCredentials(providerId);
   if (!deletedResult.ok) return deletedResult;
@@ -180,7 +189,9 @@ export const deleteProvider = async (
   });
 };
 
-export const deleteConfig = async (): Promise<Result<DeleteConfigResponse, SecretsStorageError | AppError<"CONFIG_NOT_FOUND">>> => {
+export const deleteConfig = async (): Promise<
+  Result<DeleteConfigResponse, SecretsStorageError | AppError<"CONFIG_NOT_FOUND">>
+> => {
   const configResult = getConfig();
   if (!configResult.ok) return configResult;
   if (!configResult.value) {
@@ -199,30 +210,24 @@ export const getOpenRouterModels = async (): Promise<
   if (!apiKeyResult.ok) return err(apiKeyResult.error);
   if (!apiKeyResult.value) {
     return err(
-      createError(
-        ErrorCode.API_KEY_MISSING,
-        "OpenRouter API key is required to fetch models"
-      )
+      createError(ErrorCode.API_KEY_MISSING, "OpenRouter API key is required to fetch models"),
     );
   }
 
   const result = await getOpenRouterModelsWithCache(apiKeyResult.value);
   if (!result.ok) {
-    return err(
-      createError(
-        ErrorCode.INTERNAL_ERROR,
-        result.error.message
-      )
-    );
+    return err(createError(ErrorCode.INTERNAL_ERROR, result.error.message));
   }
   return ok(result.value);
 };
 
 /** Resolve a route provider id to its overlay, or null when the id is unknown. */
 function resolveProviderOverlay(providerId: string): ProviderOverlay | null {
-  return (PROVIDER_OVERLAY as Record<string, ProviderOverlay>)[providerId]
-    ?? SURFACED_OVERLAYS[providerId]
-    ?? null;
+  return (
+    (PROVIDER_OVERLAY as Record<string, ProviderOverlay>)[providerId] ??
+    SURFACED_OVERLAYS[providerId] ??
+    null
+  );
 }
 
 /**
@@ -242,12 +247,22 @@ export const getProviderModels = async (
   // from the live key-gated /provider/openrouter/models route because the catalog
   // lacks the per-model supported_parameters the compatibility gate depends on.
   if (providerId === "openrouter" || !overlay.enabled) {
-    return err(createError<CatalogErrorCode>(PROVIDER_DISABLED, `Provider '${providerId}' is not served by the catalog`));
+    return err(
+      createError<CatalogErrorCode>(
+        PROVIDER_DISABLED,
+        `Provider '${providerId}' is not served by the catalog`,
+      ),
+    );
   }
   try {
     const payload = await getProviderModelsFromCatalog(providerId as AIProvider);
     return ok(ProviderModelsResponseSchema.parse(payload));
   } catch (error) {
-    return err(createError(ErrorCode.INTERNAL_ERROR, getErrorMessage(error, "Failed to load provider models")));
+    return err(
+      createError(
+        ErrorCode.INTERNAL_ERROR,
+        getErrorMessage(error, "Failed to load provider models"),
+      ),
+    );
   }
 };

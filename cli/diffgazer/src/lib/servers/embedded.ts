@@ -66,9 +66,7 @@ export const isSpaNavigationRequest = (c: Context, pathname: string): boolean =>
   return accept.includes("text/html");
 };
 
-export function createEmbeddedServer(
-  config: EmbeddedServerConfig,
-): ServerController {
+export function createEmbeddedServer(config: EmbeddedServerConfig): ServerController {
   let server: ReturnType<typeof serve> | null = null;
   let state: EmbeddedServerState = "idle";
 
@@ -136,7 +134,9 @@ export function createEmbeddedServer(
       server.on("error", (err: NodeJS.ErrnoException) => {
         state = "idle";
         if (err.code === "EADDRINUSE") {
-          console.error(`Port ${config.port} is already in use. Close the other process or set a different PORT.`);
+          console.error(
+            `Port ${config.port} is already in use. Close the other process or set a different PORT.`,
+          );
         } else if (err.code === "EACCES") {
           console.error(`Permission denied binding to port ${config.port}. Try a port above 1024.`);
         } else {

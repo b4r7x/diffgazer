@@ -8,10 +8,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 function resolveGeneratedFile(fileName: string): string {
   const fallbackPath = resolve(__dirname, "./generated", fileName);
-  const candidates = [
-    fallbackPath,
-    resolve(__dirname, "../generated", fileName),
-  ];
+  const candidates = [fallbackPath, resolve(__dirname, "../generated", fileName)];
   return candidates.find((path) => existsSync(path)) ?? fallbackPath;
 }
 
@@ -101,9 +98,7 @@ function validateAndCollectFiles(
   for (const file of hookFiles) {
     const relativePath = toHookRelativePath(file.path);
     if (!relativePath || relativePath.includes("..")) {
-      throw new Error(
-        `Invalid bundled keys hook file path "${file.path}" for hook "${hookName}".`,
-      );
+      throw new Error(`Invalid bundled keys hook file path "${file.path}" for hook "${hookName}".`);
     }
     if (seenPaths.has(relativePath)) continue;
     seenPaths.add(relativePath);
@@ -124,7 +119,10 @@ export function resolveKeysCopyHookFiles(hooks: string[]): {
 
   for (const hookName of hooks) {
     const hook = byName.get(hookName);
-    if (!hook) { missingHooks.push(hookName); continue; }
+    if (!hook) {
+      missingHooks.push(hookName);
+      continue;
+    }
     files.push(...validateAndCollectFiles(hookName, hook.files, seenPaths));
   }
 
@@ -170,9 +168,7 @@ export function getKeysHookNames(): Set<string> {
 export function getPublicKeysHookNames(): Set<string> {
   const bundle = loadCopyBundle();
   return new Set(
-    bundle.items
-      .filter((hook) => hook.meta?.hidden !== true)
-      .map((hook) => hook.name),
+    bundle.items.filter((hook) => hook.meta?.hidden !== true).map((hook) => hook.name),
   );
 }
 

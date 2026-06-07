@@ -27,7 +27,9 @@ describe("validateRegistryImportClosure", () => {
       "registry/ui/widget/index.tsx": 'import { helper } from "@/lib/helper";\n',
       "registry/lib/helper.ts": "export const helper = 1;\n",
     });
-    const items = [{ name: "widget", type: "registry:ui", files: [{ path: "registry/ui/widget/index.tsx" }] }];
+    const items = [
+      { name: "widget", type: "registry:ui", files: [{ path: "registry/ui/widget/index.tsx" }] },
+    ];
     const errors = validateRegistryImportClosure(dir, items);
     expect(errors.some((e) => e.includes("not declared in any registry item"))).toBe(true);
   });
@@ -51,9 +53,14 @@ describe("validateRegistryImportClosure", () => {
       "registry/lib/helper.ts": "export const helper = 1;\n",
     });
     const items = [
-      { name: "widget", type: "registry:ui", registryDependencies: ["helper"], files: [{ path: "registry/ui/widget/index.tsx" }] },
+      {
+        name: "widget",
+        type: "registry:ui",
+        registryDependencies: ["helper"],
+        files: [{ path: "registry/ui/widget/index.tsx" }],
+      },
       { name: "helper", type: "registry:lib", files: [{ path: "registry/lib/helper.ts" }] },
     ];
     expect(validateRegistryImportClosure(dir, items)).toEqual([]);
   });
-})
+});

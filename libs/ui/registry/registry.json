@@ -8,9 +8,7 @@
       "type": "registry:ui",
       "title": "Accordion",
       "description": "Collapsible content sections with single or multiple open items",
-      "dependencies": [
-        "class-variance-authority"
-      ],
+      "dependencies": ["class-variance-authority"],
       "registryDependencies": [
         "theme",
         "controllable-state",
@@ -21,9 +19,7 @@
       ],
       "meta": {
         "client": true,
-        "optionalIntegrations": [
-          "keyboard-navigation"
-        ]
+        "optionalIntegrations": ["keyboard-navigation"]
       },
       "files": [
         {
@@ -65,14 +61,8 @@
       "type": "registry:ui",
       "title": "Button",
       "description": "Terminal-inspired button with variants",
-      "dependencies": [
-        "class-variance-authority"
-      ],
-      "registryDependencies": [
-        "theme",
-        "spinner",
-        "utils"
-      ],
+      "dependencies": ["class-variance-authority"],
+      "registryDependencies": ["theme", "spinner", "utils"],
       "meta": {
         "client": true
       },
@@ -92,14 +82,8 @@
       "type": "registry:ui",
       "title": "Avatar",
       "description": "Terminal-inspired avatar with image support, monospace initials fallback, and group stacking with overflow.",
-      "dependencies": [
-        "class-variance-authority"
-      ],
-      "registryDependencies": [
-        "theme",
-        "overflow",
-        "utils"
-      ],
+      "dependencies": ["class-variance-authority"],
+      "registryDependencies": ["theme", "overflow", "utils"],
       "meta": {
         "client": true
       },
@@ -143,13 +127,8 @@
       "type": "registry:ui",
       "title": "Badge",
       "description": "Terminal-styled badge for labels and status indicators",
-      "dependencies": [
-        "class-variance-authority"
-      ],
-      "registryDependencies": [
-        "theme",
-        "utils"
-      ],
+      "dependencies": ["class-variance-authority"],
+      "registryDependencies": ["theme", "utils"],
       "meta": {
         "client": false
       },
@@ -169,14 +148,8 @@
       "type": "registry:ui",
       "title": "Input",
       "description": "Terminal-styled text input",
-      "dependencies": [
-        "class-variance-authority"
-      ],
-      "registryDependencies": [
-        "theme",
-        "input-variants",
-        "utils"
-      ],
+      "dependencies": ["class-variance-authority"],
+      "registryDependencies": ["theme", "input-variants", "utils"],
       "meta": {
         "client": true
       },
@@ -201,12 +174,7 @@
       "title": "Field",
       "description": "Form field primitives for labels, controls, descriptions, and validation messages",
       "dependencies": [],
-      "registryDependencies": [
-        "theme",
-        "aria",
-        "compose-refs",
-        "utils"
-      ],
+      "registryDependencies": ["theme", "aria", "compose-refs", "utils"],
       "meta": {
         "client": true
       },
@@ -227,11 +195,7 @@
       "title": "Textarea",
       "description": "Terminal-styled multi-line text area",
       "dependencies": ["class-variance-authority"],
-      "registryDependencies": [
-        "theme",
-        "input-variants",
-        "utils"
-      ],
+      "registryDependencies": ["theme", "input-variants", "utils"],
       "meta": {
         "client": true
       },
@@ -251,14 +215,8 @@
       "type": "registry:ui",
       "title": "Callout",
       "description": "Highlighted message block for tips, warnings, and errors",
-      "dependencies": [
-        "class-variance-authority"
-      ],
-      "registryDependencies": [
-        "theme",
-        "controllable-state",
-        "utils"
-      ],
+      "dependencies": ["class-variance-authority"],
+      "registryDependencies": ["theme", "controllable-state", "utils"],
       "meta": {
         "client": true
       },
@@ -339,9 +297,7 @@
       ],
       "meta": {
         "client": true,
-        "optionalIntegrations": [
-          "keyboard-navigation"
-        ]
+        "optionalIntegrations": ["keyboard-navigation"]
       },
       "files": [
         {
@@ -371,13 +327,8 @@
       "type": "registry:ui",
       "title": "Icons",
       "description": "SVG icon components: directional chevron with rotation animation.",
-      "dependencies": [
-        "class-variance-authority"
-      ],
-      "registryDependencies": [
-        "theme",
-        "utils"
-      ],
+      "dependencies": ["class-variance-authority"],
+      "registryDependencies": ["theme", "utils"],
       "meta": {
         "client": false
       },
@@ -411,9 +362,7 @@
       ],
       "meta": {
         "client": true,
-        "optionalIntegrations": [
-          "keyboard-navigation"
-        ]
+        "optionalIntegrations": ["keyboard-navigation"]
       },
       "files": [
         {
@@ -443,13 +392,8 @@
       "type": "registry:ui",
       "title": "Panel",
       "description": "Card-like container with composable header, title, description, content, row, and footer primitives",
-      "dependencies": [
-        "class-variance-authority"
-      ],
-      "registryDependencies": [
-        "theme",
-        "utils"
-      ],
+      "dependencies": ["class-variance-authority"],
+      "registryDependencies": ["theme", "utils"],
       "meta": {
         "client": true
       },
@@ -503,10 +447,7 @@
       "title": "Scroll Area",
       "description": "Custom scrollable area with styled scrollbars",
       "dependencies": ["class-variance-authority"],
-      "registryDependencies": [
-        "theme",
-        "utils"
-      ],
+      "registryDependencies": ["theme", "utils"],
       "meta": {
         "client": true
       },
@@ -526,13 +467,8 @@
       "type": "registry:ui",
       "title": "Card",
       "description": "Simple bordered card primitives with floating border labels and semantic HTML support",
-      "dependencies": [
-        "class-variance-authority"
-      ],
-      "registryDependencies": [
-        "theme",
-        "utils"
-      ],
+      "dependencies": ["class-variance-authority"],
+      "registryDependencies": ["theme", "utils"],
       "meta": {
         "client": false
       },
@@ -580,13 +516,8 @@
       "type": "registry:ui",
       "title": "Block Bar",
       "description": "Segmented block-character bar for data visualization with multi-segment support",
-      "dependencies": [
-        "class-variance-authority"
-      ],
-      "registryDependencies": [
-        "theme",
-        "utils"
-      ],
+      "dependencies": ["class-variance-authority"],
+      "registryDependencies": ["theme", "utils"],
       "meta": {
         "client": true
       },
@@ -614,13 +545,8 @@
       "type": "registry:ui",
       "title": "Section Header",
       "description": "Section heading with terminal-style decoration",
-      "dependencies": [
-        "class-variance-authority"
-      ],
-      "registryDependencies": [
-        "theme",
-        "utils"
-      ],
+      "dependencies": ["class-variance-authority"],
+      "registryDependencies": ["theme", "utils"],
       "meta": {
         "client": false
       },
@@ -640,13 +566,8 @@
       "type": "registry:ui",
       "title": "Empty State",
       "description": "Placeholder for empty content areas",
-      "dependencies": [
-        "class-variance-authority"
-      ],
-      "registryDependencies": [
-        "theme",
-        "utils"
-      ],
+      "dependencies": ["class-variance-authority"],
+      "registryDependencies": ["theme", "utils"],
       "meta": {
         "client": false
       },
@@ -682,13 +603,8 @@
       "type": "registry:ui",
       "title": "Key Value",
       "description": "Compound component for labeled data display. KeyValue wraps KeyValue.Item rows in a semantic description list.",
-      "dependencies": [
-        "class-variance-authority"
-      ],
-      "registryDependencies": [
-        "theme",
-        "utils"
-      ],
+      "dependencies": ["class-variance-authority"],
+      "registryDependencies": ["theme", "utils"],
       "meta": {
         "client": true
       },
@@ -716,13 +632,8 @@
       "type": "registry:ui",
       "title": "Label",
       "description": "Styled label with optional form control wrapping and orientation support.",
-      "dependencies": [
-        "class-variance-authority"
-      ],
-      "registryDependencies": [
-        "theme",
-        "utils"
-      ],
+      "dependencies": ["class-variance-authority"],
+      "registryDependencies": ["theme", "utils"],
       "meta": {
         "client": true
       },
@@ -779,11 +690,7 @@
       "title": "Tooltip",
       "description": "Minimal tooltip with hover delay and terminal styling. Built on Popover primitive with all 4-side positioning. Compound API (Trigger + Content) or shorthand content prop.",
       "dependencies": [],
-      "registryDependencies": [
-        "theme",
-        "popover",
-        "utils"
-      ],
+      "registryDependencies": ["theme", "popover", "utils"],
       "meta": {
         "client": true
       },
@@ -807,9 +714,7 @@
       "type": "registry:ui",
       "title": "Dialog",
       "description": "Modal dialog with compound components",
-      "dependencies": [
-        "class-variance-authority"
-      ],
+      "dependencies": ["class-variance-authority"],
       "registryDependencies": [
         "theme",
         "button",
@@ -824,9 +729,7 @@
       ],
       "meta": {
         "client": true,
-        "optionalIntegrations": [
-          "keyboard-navigation"
-        ]
+        "optionalIntegrations": ["keyboard-navigation"]
       },
       "files": [
         {
@@ -902,9 +805,7 @@
       "meta": {
         "client": true,
         "hidden": true,
-        "optionalIntegrations": [
-          "keyboard-navigation"
-        ]
+        "optionalIntegrations": ["keyboard-navigation"]
       },
       "files": [
         {
@@ -923,13 +824,8 @@
       "type": "registry:ui",
       "title": "Kbd",
       "description": "Keyboard shortcut indicator",
-      "dependencies": [
-        "class-variance-authority"
-      ],
-      "registryDependencies": [
-        "theme",
-        "utils"
-      ],
+      "dependencies": ["class-variance-authority"],
+      "registryDependencies": ["theme", "utils"],
       "meta": {
         "client": false
       },
@@ -953,13 +849,8 @@
       "type": "registry:ui",
       "title": "Divider",
       "description": "Line separator with horizontal and vertical orientation, default and spaced variants.",
-      "dependencies": [
-        "class-variance-authority"
-      ],
-      "registryDependencies": [
-        "theme",
-        "utils"
-      ],
+      "dependencies": ["class-variance-authority"],
+      "registryDependencies": ["theme", "utils"],
       "meta": {
         "client": false
       },
@@ -979,9 +870,7 @@
       "type": "registry:ui",
       "title": "Tabs",
       "description": "Terminal-styled tabbed interface",
-      "dependencies": [
-        "class-variance-authority"
-      ],
+      "dependencies": ["class-variance-authority"],
       "registryDependencies": [
         "theme",
         "controllable-state",
@@ -993,9 +882,7 @@
       ],
       "meta": {
         "client": true,
-        "optionalIntegrations": [
-          "keyboard-navigation"
-        ]
+        "optionalIntegrations": ["keyboard-navigation"]
       },
       "files": [
         {
@@ -1029,20 +916,11 @@
       "type": "registry:ui",
       "title": "Menu",
       "description": "Terminal-styled selection list with keyboard navigation",
-      "dependencies": [
-        "class-variance-authority"
-      ],
-      "registryDependencies": [
-        "theme",
-        "listbox",
-        "utils",
-        "floating-panel"
-      ],
+      "dependencies": ["class-variance-authority"],
+      "registryDependencies": ["theme", "listbox", "utils", "floating-panel"],
       "meta": {
         "client": true,
-        "optionalIntegrations": [
-          "keyboard-navigation"
-        ]
+        "optionalIntegrations": ["keyboard-navigation"]
       },
       "files": [
         {
@@ -1100,21 +978,11 @@
       "type": "registry:ui",
       "title": "Navigation List",
       "description": "Terminal-styled navigation sidebar list",
-      "dependencies": [
-        "class-variance-authority"
-      ],
-      "registryDependencies": [
-        "theme",
-        "listbox",
-        "badge",
-        "utils",
-        "icons"
-      ],
+      "dependencies": ["class-variance-authority"],
+      "registryDependencies": ["theme", "listbox", "badge", "utils", "icons"],
       "meta": {
         "client": true,
-        "optionalIntegrations": [
-          "keyboard-navigation"
-        ]
+        "optionalIntegrations": ["keyboard-navigation"]
       },
       "files": [
         {
@@ -1176,15 +1044,8 @@
       "type": "registry:ui",
       "title": "Toast",
       "description": "Terminal-styled toast notification system",
-      "dependencies": [
-        "class-variance-authority"
-      ],
-      "registryDependencies": [
-        "theme",
-        "outside-click",
-        "spinner",
-        "utils"
-      ],
+      "dependencies": ["class-variance-authority"],
+      "registryDependencies": ["theme", "outside-click", "spinner", "utils"],
       "meta": {
         "client": true
       },
@@ -1227,9 +1088,7 @@
       "meta": {
         "client": true
       },
-      "dependencies": [
-        "class-variance-authority"
-      ],
+      "dependencies": ["class-variance-authority"],
       "registryDependencies": [
         "theme",
         "badge",
@@ -1283,9 +1142,7 @@
       "type": "registry:ui",
       "title": "Search Input",
       "description": "Terminal-styled search input with / prefix and keyboard callbacks.",
-      "dependencies": [
-        "class-variance-authority"
-      ],
+      "dependencies": ["class-variance-authority"],
       "registryDependencies": [
         "theme",
         "controllable-state",
@@ -1312,9 +1169,7 @@
       "type": "registry:ui",
       "title": "Toggle Group",
       "description": "Compound toggle button group for single selection with keyboard navigation",
-      "dependencies": [
-        "class-variance-authority"
-      ],
+      "dependencies": ["class-variance-authority"],
       "registryDependencies": [
         "theme",
         "@diffgazer-keys/navigation",
@@ -1328,9 +1183,7 @@
       ],
       "meta": {
         "client": true,
-        "optionalIntegrations": [
-          "keyboard-navigation"
-        ]
+        "optionalIntegrations": ["keyboard-navigation"]
       },
       "files": [
         {
@@ -1356,15 +1209,8 @@
       "type": "registry:ui",
       "title": "Code Block",
       "description": "Code display with three visual variants (hairline, bare, terminal), per-line diff/highlight states, optional copy button, and optional auto-coloring via lowlight",
-      "dependencies": [
-        "class-variance-authority",
-        "lowlight"
-      ],
-      "registryDependencies": [
-        "theme",
-        "scroll-area",
-        "utils"
-      ],
+      "dependencies": ["class-variance-authority", "lowlight"],
+      "registryDependencies": ["theme", "scroll-area", "utils"],
       "meta": {
         "client": true
       },
@@ -1426,16 +1272,10 @@
       "title": "Diff View",
       "description": "Diff viewer with unified and side-by-side modes. Accepts unified diff strings or before/after text. Keyboard navigation between hunks with j/k.",
       "dependencies": [],
-      "registryDependencies": [
-        "theme",
-        "diff",
-        "@diffgazer-keys/navigation"
-      ],
+      "registryDependencies": ["theme", "diff", "@diffgazer-keys/navigation"],
       "meta": {
         "client": true,
-        "optionalIntegrations": [
-          "keyboard-navigation"
-        ]
+        "optionalIntegrations": ["keyboard-navigation"]
       },
       "files": [
         {
@@ -1474,15 +1314,8 @@
         "client": true,
         "docsPage": false
       },
-      "dependencies": [
-        "class-variance-authority"
-      ],
-      "registryDependencies": [
-        "theme",
-        "step-status",
-        "stepper-variants",
-        "utils"
-      ],
+      "dependencies": ["class-variance-authority"],
+      "registryDependencies": ["theme", "step-status", "stepper-variants", "utils"],
       "files": [
         {
           "path": "registry/ui/horizontal-stepper/index.ts",
@@ -1512,9 +1345,7 @@
       "type": "registry:ui",
       "title": "Command Palette",
       "description": "Terminal-inspired command palette with search, keyboard navigation, grouped items, frame and density variants, and optional auto-coloring via the /highlight subpath",
-      "dependencies": [
-        "class-variance-authority"
-      ],
+      "dependencies": ["class-variance-authority"],
       "registryDependencies": [
         "theme",
         "controllable-state",
@@ -1530,9 +1361,7 @@
       ],
       "meta": {
         "client": true,
-        "optionalIntegrations": [
-          "keyboard-navigation"
-        ]
+        "optionalIntegrations": ["keyboard-navigation"]
       },
       "files": [
         {
@@ -1599,9 +1428,7 @@
       "type": "registry:ui",
       "title": "Select",
       "description": "Searchable dropdown for single or multiple selection",
-      "dependencies": [
-        "class-variance-authority"
-      ],
+      "dependencies": ["class-variance-authority"],
       "registryDependencies": [
         "theme",
         "aria",
@@ -1620,9 +1447,7 @@
       ],
       "meta": {
         "client": true,
-        "optionalIntegrations": [
-          "keyboard-navigation"
-        ]
+        "optionalIntegrations": ["keyboard-navigation"]
       },
       "files": [
         {
@@ -1692,13 +1517,8 @@
       "type": "registry:ui",
       "title": "Spinner",
       "description": "Terminal-inspired TUI spinner with four animation styles including a pixel snake, braille, dots, and pulse",
-      "dependencies": [
-        "class-variance-authority"
-      ],
-      "registryDependencies": [
-        "theme",
-        "utils"
-      ],
+      "dependencies": ["class-variance-authority"],
+      "registryDependencies": ["theme", "utils"],
       "meta": {
         "client": true
       },
@@ -1726,9 +1546,7 @@
       "type": "registry:ui",
       "title": "Sidebar",
       "description": "Compound sidebar navigation component",
-      "dependencies": [
-        "class-variance-authority"
-      ],
+      "dependencies": ["class-variance-authority"],
       "registryDependencies": [
         "theme",
         "icons",
@@ -1743,9 +1561,7 @@
       ],
       "meta": {
         "client": true,
-        "optionalIntegrations": [
-          "keyboard-navigation"
-        ]
+        "optionalIntegrations": ["keyboard-navigation"]
       },
       "files": [
         {
@@ -1821,10 +1637,7 @@
       "title": "Pager",
       "description": "Previous/next page navigation for sequential content",
       "dependencies": [],
-      "registryDependencies": [
-        "theme",
-        "utils"
-      ],
+      "registryDependencies": ["theme", "utils"],
       "meta": {
         "client": true
       },
@@ -1848,13 +1661,8 @@
       "type": "registry:ui",
       "title": "Logo",
       "description": "Static text logo primitive. Precompute ASCII art and pass it as asciiText.",
-      "dependencies": [
-        "figlet"
-      ],
-      "registryDependencies": [
-        "theme",
-        "utils"
-      ],
+      "dependencies": ["figlet"],
+      "registryDependencies": ["theme", "utils"],
       "meta": {
         "client": false
       },
@@ -1883,10 +1691,7 @@
       "title": "Breadcrumbs",
       "description": "Compound breadcrumb navigation with auto-separator and composable parts",
       "dependencies": [],
-      "registryDependencies": [
-        "theme",
-        "utils"
-      ],
+      "registryDependencies": ["theme", "utils"],
       "meta": {
         "client": true
       },
@@ -1922,13 +1727,8 @@
       "type": "registry:ui",
       "title": "TOC",
       "description": "Headless-friendly table of contents primitives for section navigation",
-      "dependencies": [
-        "class-variance-authority"
-      ],
-      "registryDependencies": [
-        "theme",
-        "utils"
-      ],
+      "dependencies": ["class-variance-authority"],
+      "registryDependencies": ["theme", "utils"],
       "meta": {
         "client": true
       },
@@ -1956,13 +1756,8 @@
       "type": "registry:ui",
       "title": "Typography",
       "description": "Terminal-styled typography wrapper for consistent text styling",
-      "dependencies": [
-        "class-variance-authority"
-      ],
-      "registryDependencies": [
-        "theme",
-        "utils"
-      ],
+      "dependencies": ["class-variance-authority"],
+      "registryDependencies": ["theme", "utils"],
       "meta": {
         "client": false
       },
@@ -2206,10 +2001,7 @@
       "type": "registry:lib",
       "title": "Utilities",
       "description": "Shared cn() class-name merge utility (clsx + tailwind-merge).",
-      "dependencies": [
-        "clsx",
-        "tailwind-merge"
-      ],
+      "dependencies": ["clsx", "tailwind-merge"],
       "meta": {
         "client": false
       },
@@ -2257,9 +2049,7 @@
       "type": "registry:lib",
       "title": "Selectable Variants",
       "description": "Shared CVA variant definitions for selectable items (checkbox, radio, etc.)",
-      "dependencies": [
-        "class-variance-authority"
-      ],
+      "dependencies": ["class-variance-authority"],
       "registryDependencies": [],
       "meta": {
         "client": false,
@@ -2277,9 +2067,7 @@
       "type": "registry:lib",
       "title": "Segmented Variants",
       "description": "Shared CVA + sliding-indicator class names for segmented controls (Tabs, ToggleGroup).",
-      "dependencies": [
-        "class-variance-authority"
-      ],
+      "dependencies": ["class-variance-authority"],
       "registryDependencies": [],
       "meta": {
         "client": false,
@@ -2314,9 +2102,7 @@
       "type": "registry:lib",
       "title": "Input Variants",
       "description": "Shared CVA variant definitions for input-family components (input, textarea)",
-      "dependencies": [
-        "class-variance-authority"
-      ],
+      "dependencies": ["class-variance-authority"],
       "registryDependencies": [],
       "meta": {
         "client": false,
@@ -2350,12 +2136,8 @@
       "type": "registry:lib",
       "title": "Stepper Variants",
       "description": "Shared CVA visual contracts, indicator glyph dictionaries, and keyframe CSS for vertical and horizontal stepper variants.",
-      "dependencies": [
-        "class-variance-authority"
-      ],
-      "registryDependencies": [
-        "step-status"
-      ],
+      "dependencies": ["class-variance-authority"],
+      "registryDependencies": ["step-status"],
       "meta": {
         "client": false,
         "hidden": true
@@ -2377,9 +2159,7 @@
       "type": "registry:lib",
       "title": "Sidebar Variants",
       "description": "Shared CVA visual contracts for the Sidebar primitive (container + item, six active-marker variants).",
-      "dependencies": [
-        "class-variance-authority"
-      ],
+      "dependencies": ["class-variance-authority"],
       "registryDependencies": [],
       "meta": {
         "client": false,
@@ -2436,15 +2216,11 @@
       "title": "useNavigation",
       "description": "Client re-export of @diffgazer/keys useNavigation for registry consumers.",
       "dependencies": [],
-      "registryDependencies": [
-        "@diffgazer-keys/navigation"
-      ],
+      "registryDependencies": ["@diffgazer-keys/navigation"],
       "meta": {
         "client": true,
         "hidden": true,
-        "optionalIntegrations": [
-          "keyboard-navigation"
-        ]
+        "optionalIntegrations": ["keyboard-navigation"]
       },
       "files": [
         {
@@ -2459,15 +2235,11 @@
       "title": "useFocusRestore",
       "description": "Client re-export of @diffgazer/keys useFocusRestore for registry consumers.",
       "dependencies": [],
-      "registryDependencies": [
-        "@diffgazer-keys/focus-restore"
-      ],
+      "registryDependencies": ["@diffgazer-keys/focus-restore"],
       "meta": {
         "client": true,
         "hidden": true,
-        "optionalIntegrations": [
-          "keyboard-navigation"
-        ]
+        "optionalIntegrations": ["keyboard-navigation"]
       },
       "files": [
         {
@@ -2482,15 +2254,11 @@
       "title": "useFocusTrap",
       "description": "Client re-export of @diffgazer/keys useFocusTrap for registry consumers.",
       "dependencies": [],
-      "registryDependencies": [
-        "@diffgazer-keys/focus-trap"
-      ],
+      "registryDependencies": ["@diffgazer-keys/focus-trap"],
       "meta": {
         "client": true,
         "hidden": true,
-        "optionalIntegrations": [
-          "keyboard-navigation"
-        ]
+        "optionalIntegrations": ["keyboard-navigation"]
       },
       "files": [
         {
@@ -2505,15 +2273,11 @@
       "title": "useScrollLock",
       "description": "Client re-export of @diffgazer/keys useScrollLock for registry consumers.",
       "dependencies": [],
-      "registryDependencies": [
-        "@diffgazer-keys/scroll-lock"
-      ],
+      "registryDependencies": ["@diffgazer-keys/scroll-lock"],
       "meta": {
         "client": true,
         "hidden": true,
-        "optionalIntegrations": [
-          "keyboard-navigation"
-        ]
+        "optionalIntegrations": ["keyboard-navigation"]
       },
       "files": [
         {
@@ -2606,9 +2370,7 @@
       ],
       "meta": {
         "client": true,
-        "optionalIntegrations": [
-          "keyboard-navigation"
-        ]
+        "optionalIntegrations": ["keyboard-navigation"]
       },
       "files": [
         {
@@ -2660,9 +2422,7 @@
       ],
       "meta": {
         "client": true,
-        "optionalIntegrations": [
-          "keyboard-navigation"
-        ]
+        "optionalIntegrations": ["keyboard-navigation"]
       },
       "files": [
         {
@@ -2700,9 +2460,7 @@
       "type": "registry:ui",
       "title": "Switch",
       "description": "Terminal-styled binary toggle switch",
-      "dependencies": [
-        "class-variance-authority"
-      ],
+      "dependencies": ["class-variance-authority"],
       "registryDependencies": [
         "theme",
         "aria",
@@ -2730,13 +2488,8 @@
       "type": "registry:ui",
       "title": "Progress",
       "description": "Horizontal progress bar with determinate and indeterminate modes",
-      "dependencies": [
-        "class-variance-authority"
-      ],
-      "registryDependencies": [
-        "theme",
-        "utils"
-      ],
+      "dependencies": ["class-variance-authority"],
+      "registryDependencies": ["theme", "utils"],
       "meta": {
         "client": true
       },
@@ -2757,10 +2510,7 @@
       "title": "Skeleton",
       "description": "Loading placeholder with pulse animation",
       "dependencies": [],
-      "registryDependencies": [
-        "theme",
-        "utils"
-      ],
+      "registryDependencies": ["theme", "utils"],
       "meta": {
         "client": false
       },

@@ -8,11 +8,7 @@ export interface PanelRowProps extends Omit<HTMLAttributes<HTMLDivElement>, "chi
 
 export function PanelRow({ label, value, className, ...props }: PanelRowProps) {
   return (
-    <div
-      {...props}
-      data-slot="panel-row"
-      className={cn("text-xs", className)}
-    >
+    <div {...props} data-slot="panel-row" className={cn("text-xs", className)}>
       <span data-slot="panel-row-label" className="text-muted-foreground">
         {label}
       </span>

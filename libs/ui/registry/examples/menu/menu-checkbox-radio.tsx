@@ -1,7 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Menu, MenuDivider, MenuItemCheckbox, MenuItemRadio, MenuLabel } from "@/components/ui/menu";
+import {
+  Menu,
+  MenuDivider,
+  MenuItemCheckbox,
+  MenuItemRadio,
+  MenuLabel,
+} from "@/components/ui/menu";
 
 export default function MenuCheckboxRadio() {
   const [showHidden, setShowHidden] = useState(true);
@@ -28,10 +34,18 @@ export default function MenuCheckboxRadio() {
         </MenuItemCheckbox>
         <MenuDivider />
         <MenuLabel>SORT BY</MenuLabel>
-        <MenuItemRadio id="name" value="name">Name</MenuItemRadio>
-        <MenuItemRadio id="date" value="date">Date Modified</MenuItemRadio>
-        <MenuItemRadio id="size" value="size">Size</MenuItemRadio>
-        <MenuItemRadio id="type" value="type">Type</MenuItemRadio>
+        <MenuItemRadio id="name" value="name">
+          Name
+        </MenuItemRadio>
+        <MenuItemRadio id="date" value="date">
+          Date Modified
+        </MenuItemRadio>
+        <MenuItemRadio id="size" value="size">
+          Size
+        </MenuItemRadio>
+        <MenuItemRadio id="type" value="type">
+          Type
+        </MenuItemRadio>
       </Menu>
     </div>
   );

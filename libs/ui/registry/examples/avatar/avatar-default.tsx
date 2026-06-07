@@ -1,4 +1,4 @@
-import { Avatar } from "@/components/ui/avatar"
+import { Avatar } from "@/components/ui/avatar";
 
 export default function AvatarDefault() {
   return (
@@ -11,5 +11,5 @@ export default function AvatarDefault() {
       <Avatar fallback="JD" />
       <Avatar fallback="AB" size="lg" />
     </div>
-  )
+  );
 }

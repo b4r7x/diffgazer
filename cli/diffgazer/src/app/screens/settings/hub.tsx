@@ -1,6 +1,10 @@
 import { guardQueryState, useInit, useSettings } from "@diffgazer/core/api/hooks";
 import { usePageFooter } from "@diffgazer/core/footer";
-import { SETTINGS_MENU_ITEMS, SETTINGS_SHORTCUTS, type SettingsAction } from "@diffgazer/core/schemas/presentation";
+import {
+  SETTINGS_MENU_ITEMS,
+  SETTINGS_SHORTCUTS,
+  type SettingsAction,
+} from "@diffgazer/core/schemas/presentation";
 import { Box, Text } from "ink";
 import type { ReactElement } from "react";
 import { Menu } from "../../../components/ui/menu";
@@ -15,13 +19,13 @@ import type { Route } from "../../routes";
 import { buildHubValues } from "./hub-values";
 
 const SETTINGS_ROUTE_MAP: Record<SettingsAction, Route["screen"]> = {
-  "trust": "settings/trust-permissions",
-  "theme": "settings/theme",
-  "provider": "settings/providers",
-  "storage": "settings/storage",
+  trust: "settings/trust-permissions",
+  theme: "settings/theme",
+  provider: "settings/providers",
+  storage: "settings/storage",
   "agent-execution": "settings/agent-execution",
-  "analysis": "settings/analysis",
-  "diagnostics": "settings/diagnostics",
+  analysis: "settings/analysis",
+  diagnostics: "settings/diagnostics",
 };
 
 export function SettingsHubScreen(): ReactElement {
@@ -102,11 +106,7 @@ export function SettingsHubScreen(): ReactElement {
               <SectionHeader>Settings Hub</SectionHeader>
               <Menu variant="hub" onSelect={onSelect}>
                 {SETTINGS_MENU_ITEMS.map((item) => (
-                  <Menu.Item
-                    key={item.id}
-                    id={item.id}
-                    value={values[item.id]}
-                  >
+                  <Menu.Item key={item.id} id={item.id} value={values[item.id]}>
                     {item.label}
                   </Menu.Item>
                 ))}

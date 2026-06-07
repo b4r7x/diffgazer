@@ -20,8 +20,7 @@ function resolveTooltipContent(
   return children;
 }
 
-export interface OverflowTextProps
-  extends Omit<ComponentPropsWithRef<"div">, "children"> {
+export interface OverflowTextProps extends Omit<ComponentPropsWithRef<"div">, "children"> {
   children: string;
   lines?: number;
   tooltip?: ReactNode | boolean;
@@ -68,7 +67,12 @@ export function OverflowText({
     return (
       <Tooltip enabled={isOverflowing}>
         <TooltipTrigger>
-          {({ ref: triggerRef, className: triggerCn, role, ...restTrigger }: PopoverTriggerRenderProps) => (
+          {({
+            ref: triggerRef,
+            className: triggerCn,
+            role,
+            ...restTrigger
+          }: PopoverTriggerRenderProps) => (
             <div
               ref={composeRefs(ref, forwardedRef, triggerRef)}
               role={role}

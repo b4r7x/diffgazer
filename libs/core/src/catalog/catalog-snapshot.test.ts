@@ -39,8 +39,9 @@ describe("CATALOG_SNAPSHOT", () => {
   });
 
   it("includes every enabled provider's default model in its derived list", () => {
-    const enabled = (Object.entries(PROVIDER_OVERLAY) as [AIProvider, (typeof PROVIDER_OVERLAY)[AIProvider]][])
-      .filter(([, o]) => o.enabled && o.defaultModel && o.sdkKind !== "openrouter");
+    const enabled = (
+      Object.entries(PROVIDER_OVERLAY) as [AIProvider, (typeof PROVIDER_OVERLAY)[AIProvider]][]
+    ).filter(([, o]) => o.enabled && o.defaultModel && o.sdkKind !== "openrouter");
     for (const [provider, overlay] of enabled) {
       const ids = catalogToModelInfo(CATALOG_SNAPSHOT, provider).map((m) => m.id);
       expect(ids, `${provider} snapshot must include default ${overlay.defaultModel}`).toContain(

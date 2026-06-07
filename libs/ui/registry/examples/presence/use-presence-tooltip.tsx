@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react"
-import { usePresence } from "@/hooks/use-presence"
+import { useState } from "react";
+import { usePresence } from "@/hooks/use-presence";
 
 export default function UsePresenceTooltipExample() {
-  const [open, setOpen] = useState(false)
-  const { present, onAnimationEnd } = usePresence({ open })
+  const [open, setOpen] = useState(false);
+  const { present, onAnimationEnd } = usePresence({ open });
 
   return (
     <div className="flex items-center justify-center py-12">
@@ -33,5 +33,5 @@ export default function UsePresenceTooltipExample() {
         )}
       </div>
     </div>
-  )
+  );
 }

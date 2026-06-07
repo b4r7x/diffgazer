@@ -5,9 +5,7 @@ export interface EditPairGroup {
   adds: DiffChange[];
 }
 
-export function* collectEditPairs(
-  changes: DiffChange[],
-): Generator<DiffChange | EditPairGroup> {
+export function* collectEditPairs(changes: DiffChange[]): Generator<DiffChange | EditPairGroup> {
   let i = 0;
   while (i < changes.length) {
     const head = changes[i];

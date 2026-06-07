@@ -5,7 +5,11 @@ import { ProgressStep } from "./step";
 
 function renderInStepper(node: React.ReactNode) {
   // Progress UI uses variant="tag" to render text status labels (DONE/RUN/etc).
-  return render(<Stepper variant="tag" defaultExpandedIds={["s1"]}>{node}</Stepper>);
+  return render(
+    <Stepper variant="tag" defaultExpandedIds={["s1"]}>
+      {node}
+    </Stepper>,
+  );
 }
 
 describe("ProgressStep label bridge", () => {

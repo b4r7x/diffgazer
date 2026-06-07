@@ -39,10 +39,12 @@ function aliasPrefixFromKey(key: string): string | null {
 function pickSourceAlias(aliases: SourceAlias[]): SourceAlias | null {
   if (aliases.length === 0) return null;
   const [firstAlias] = aliases;
-  return aliases.find((alias) => alias.importPrefix === "@")
-    ?? aliases.find((alias) => alias.importPrefix === "~")
-    ?? firstAlias
-    ?? null;
+  return (
+    aliases.find((alias) => alias.importPrefix === "@") ??
+    aliases.find((alias) => alias.importPrefix === "~") ??
+    firstAlias ??
+    null
+  );
 }
 
 function detectTypeScriptAlias(cwd: string): SourceAlias | null {
@@ -73,7 +75,10 @@ function detectViteAlias(cwd: string): SourceAlias | null {
     const aliases: SourceAlias[] = [];
     const targetExpression = String.raw`(?:(?:path\.)?resolve\([^,]+,\s*["']([^"']+)["']\)|fileURLToPath\(\s*new URL\(\s*["']([^"']+)["']\s*,\s*import\.meta\.url\s*\)\s*\)|new URL\(\s*["']([^"']+)["']\s*,\s*import\.meta\.url\s*\)\.pathname|["']([^"']+)["'])`;
     const objectEntry = new RegExp(String.raw`["']([^"']+)["']\s*:\s*${targetExpression}`, "g");
-    const arrayEntry = new RegExp(String.raw`find:\s*["']([^"']+)["'][\s\S]{0,160}?replacement:\s*${targetExpression}`, "g");
+    const arrayEntry = new RegExp(
+      String.raw`find:\s*["']([^"']+)["'][\s\S]{0,160}?replacement:\s*${targetExpression}`,
+      "g",
+    );
 
     for (const regex of [objectEntry, arrayEntry]) {
       for (const match of content.matchAll(regex)) {

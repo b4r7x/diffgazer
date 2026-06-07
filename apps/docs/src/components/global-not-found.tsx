@@ -4,23 +4,23 @@ import { NotFoundState } from "@/components/not-found-state";
 import { PRIMARY_DOCS_LIBRARY_ID } from "@/lib/library";
 
 export function GlobalNotFound() {
-	return (
-		<main id="main-content" className="px-4">
-			<NotFoundState
-				variant="global"
-				title="Page not found"
-				description="The requested route does not exist."
-				primaryAction={
-					<Link to="/$lib" params={{ lib: PRIMARY_DOCS_LIBRARY_ID }}>
-						<Button variant="primary">Open docs</Button>
-					</Link>
-				}
-				secondaryAction={
-					<Link to="/">
-						<Button variant="ghost">Go home</Button>
-					</Link>
-				}
-			/>
-		</main>
-	);
+  return (
+    <main id="main-content" className="px-4">
+      <NotFoundState
+        variant="global"
+        title="Page not found"
+        description="The requested route does not exist."
+        primaryAction={
+          <Link to="/$lib" params={{ lib: PRIMARY_DOCS_LIBRARY_ID }}>
+            <Button variant="primary">Open docs</Button>
+          </Link>
+        }
+        secondaryAction={
+          <Link to="/">
+            <Button variant="ghost">Go home</Button>
+          </Link>
+        }
+      />
+    </main>
+  );
 }

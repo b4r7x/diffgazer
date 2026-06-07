@@ -1,4 +1,4 @@
-import type { Theme } from '@diffgazer/core/schemas/config';
+import type { Theme } from "@diffgazer/core/schemas/config";
 import { toVerticalBoundaryDirection } from "@diffgazer/keys";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
 import { type KeyboardEvent, useState } from "react";
@@ -18,10 +18,10 @@ export interface ThemeSelectorContentProps {
 }
 
 const THEME_OPTIONS: Array<{ value: Theme; label: string; description: string }> = [
-  { value: 'auto', label: 'Auto', description: 'Follow system preference' },
-  { value: 'dark', label: 'Dark', description: 'Dark background with light text' },
-  { value: 'light', label: 'Light', description: 'Light background with dark text' },
-  { value: 'terminal', label: 'Terminal Default', description: 'Use terminal default colors' },
+  { value: "auto", label: "Auto", description: "Follow system preference" },
+  { value: "dark", label: "Dark", description: "Dark background with light text" },
+  { value: "light", label: "Light", description: "Light background with dark text" },
+  { value: "terminal", label: "Terminal Default", description: "Use terminal default colors" },
 ];
 
 function isThemeOption(value: string | null, optionValues: Theme[]): value is Theme {
@@ -39,18 +39,18 @@ export function ThemeSelectorContent({
   onFocus,
   onBoundaryReached,
   enabled = true,
-  showTerminalOption = false
+  showTerminalOption = false,
 }: ThemeSelectorContentProps) {
   const options = showTerminalOption
     ? THEME_OPTIONS
-    : THEME_OPTIONS.filter(opt => opt.value !== 'terminal');
+    : THEME_OPTIONS.filter((opt) => opt.value !== "terminal");
   const optionValues = options.map((option) => option.value);
 
   const [internalHighlight, setInternalHighlight] = useState<Theme>(highlighted ?? value);
   const rawHighlighted = highlighted ?? internalHighlight;
   const effectiveHighlighted = isThemeOption(rawHighlighted, optionValues)
     ? rawHighlighted
-    : optionValues[0] ?? "auto";
+    : (optionValues[0] ?? "auto");
 
   const handleHighlightChange = (nextValue: string | null) => {
     if (nextValue === null) return;

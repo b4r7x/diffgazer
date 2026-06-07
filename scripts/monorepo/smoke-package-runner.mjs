@@ -1,5 +1,13 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import {
@@ -26,7 +34,12 @@ function readPackageJson(root, workspacePackage) {
   return JSON.parse(readFileSync(resolve(root, packageDir, "package.json"), "utf-8"));
 }
 
-function resolveInstalledDependency(root, workspacePackage, packageName, sourcePackages = [workspacePackage]) {
+function resolveInstalledDependency(
+  root,
+  workspacePackage,
+  packageName,
+  sourcePackages = [workspacePackage],
+) {
   for (const sourcePackage of sourcePackages) {
     const packageDir = packageDirs[sourcePackage];
     if (!packageDir) {
@@ -64,7 +77,10 @@ function localDependencySpecs(root, workspacePackage, smoke) {
   for (const depSpec of smoke.installDeps ?? []) {
     const depName = packageNameFromSpec(depSpec);
     if (depName && !depName.startsWith("@diffgazer/")) {
-      specs.set(depName, `link:${resolveInstalledDependency(root, workspacePackage, depName, dependencySourcePackages)}`);
+      specs.set(
+        depName,
+        `link:${resolveInstalledDependency(root, workspacePackage, depName, dependencySourcePackages)}`,
+      );
     }
   }
 
@@ -137,20 +153,15 @@ function parsePackOutput(raw) {
 }
 
 function packWorkspacePackage(root, workspacePackage, packDir) {
-  const packOutput = execFileSync("pnpm", [
-    "--dir",
-    root,
-    "--filter",
-    workspacePackage,
-    "pack",
-    "--pack-destination",
-    packDir,
-    "--json",
-  ], {
-    cwd: root,
-    encoding: "utf-8",
-    stdio: ["ignore", "pipe", "pipe"],
-  }).trim();
+  const packOutput = execFileSync(
+    "pnpm",
+    ["--dir", root, "--filter", workspacePackage, "pack", "--pack-destination", packDir, "--json"],
+    {
+      cwd: root,
+      encoding: "utf-8",
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  ).trim();
 
   const parsedPack = parsePackOutput(packOutput);
   const packInfo = Array.isArray(parsedPack) ? parsedPack[0] : parsedPack;

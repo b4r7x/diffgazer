@@ -21,34 +21,45 @@ export const VERSION = readPackageVersion(import.meta.url, "../package.json");
 export const DiffgazerAddConfigSchema = z.object({
   $schema: z.string().optional(),
   version: z.string().optional(),
-  aliases: z.object({
-    components: aliasPathSchema,
-    utils: aliasPathSchema,
-    lib: aliasPathSchema,
-    hooks: aliasPathSchema,
-  }).optional(),
+  aliases: z
+    .object({
+      components: aliasPathSchema,
+      utils: aliasPathSchema,
+      lib: aliasPathSchema,
+      hooks: aliasPathSchema,
+    })
+    .optional(),
   componentsFsPath: z.string().optional(),
   libFsPath: z.string().optional(),
   hooksFsPath: z.string().optional(),
   rsc: z.boolean().optional(),
   tailwind: z.object({ css: z.string() }).optional(),
-  installedComponents: z.record(z.string(), z.object({
-    installedAt: z.string(),
-    integrationMode: z.enum(["none", "copy", "@diffgazer/keys"]).optional(),
-    keysVersion: z.string().optional(),
-    // "explicit" — user passed this name to `dgadd add`. "transitive" — pulled in as
-    // a registry dependency. Used to decide cascade-remove eligibility.
-    installedAs: z.enum(["explicit", "transitive"]).optional(),
-    cssChunks: z.array(z.string()).optional(),
-    files: z.array(z.object({
-      path: z.string(),
-      hash: z.string(),
-      item: z.string(),
-      registryIntegrity: z.string().optional(),
-      cliVersion: z.string().optional(),
-      integrationMode: z.enum(["none", "copy", "@diffgazer/keys"]).optional(),
-    })).optional(),
-  })).optional(),
+  installedComponents: z
+    .record(
+      z.string(),
+      z.object({
+        installedAt: z.string(),
+        integrationMode: z.enum(["none", "copy", "@diffgazer/keys"]).optional(),
+        keysVersion: z.string().optional(),
+        // "explicit" — user passed this name to `dgadd add`. "transitive" — pulled in as
+        // a registry dependency. Used to decide cascade-remove eligibility.
+        installedAs: z.enum(["explicit", "transitive"]).optional(),
+        cssChunks: z.array(z.string()).optional(),
+        files: z
+          .array(
+            z.object({
+              path: z.string(),
+              hash: z.string(),
+              item: z.string(),
+              registryIntegrity: z.string().optional(),
+              cliVersion: z.string().optional(),
+              integrationMode: z.enum(["none", "copy", "@diffgazer/keys"]).optional(),
+            }),
+          )
+          .optional(),
+      }),
+    )
+    .optional(),
 });
 
 export type DiffgazerAddConfig = z.infer<typeof DiffgazerAddConfigSchema>;
@@ -109,7 +120,9 @@ export function resolveConfig(raw: DiffgazerAddConfig, cwd?: string): ResolvedCo
   );
   const resolved = cwd
     ? {
-        components: toPosixPath(relative(resolve(cwd), resolveProjectPath(cwd, rawResolved.components))),
+        components: toPosixPath(
+          relative(resolve(cwd), resolveProjectPath(cwd, rawResolved.components)),
+        ),
         lib: toPosixPath(relative(resolve(cwd), resolveProjectPath(cwd, rawResolved.lib))),
         hooks: toPosixPath(relative(resolve(cwd), resolveProjectPath(cwd, rawResolved.hooks))),
       }
@@ -130,7 +143,11 @@ export function resolveConfig(raw: DiffgazerAddConfig, cwd?: string): ResolvedCo
 // `src/styles/styles.css`), so the theme registry item's `styles/*.css` paths
 // install into that same directory. Fall back to a sibling `styles/` next to
 // the lib dir when no tailwind config is present.
-function deriveStylesFsPath(tailwindCss: string | undefined, libFsPath: string, cwd?: string): string {
+function deriveStylesFsPath(
+  tailwindCss: string | undefined,
+  libFsPath: string,
+  cwd?: string,
+): string {
   if (tailwindCss) {
     const dir = toPosixPath(dirname(tailwindCss));
     if (!cwd) return dir;

@@ -89,11 +89,7 @@ export function SeverityFilterGroup({
         );
       })}
       {isFilterActive && (
-        <Text
-          color={tokens.accent}
-          bold
-          inverse={isActive && focusedIndex === resetIndex}
-        >
+        <Text color={tokens.accent} bold inverse={isActive && focusedIndex === resetIndex}>
           [Reset]
         </Text>
       )}

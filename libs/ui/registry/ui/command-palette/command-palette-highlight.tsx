@@ -2,7 +2,11 @@
 
 import { Children, type ReactNode } from "react";
 import { useCommandPaletteContext } from "./command-palette-context";
-import { CommandPaletteItem, type CommandPaletteItemProps, type CommandPaletteItemTone } from "./command-palette-item";
+import {
+  CommandPaletteItem,
+  type CommandPaletteItemProps,
+  type CommandPaletteItemTone,
+} from "./command-palette-item";
 
 const TONE_RULES: ReadonlyArray<readonly [RegExp, CommandPaletteItemTone]> = [
   [/^(delete|remove|reset|drop|destroy|log\s*out|sign\s*out)\b/i, "destructive"],
@@ -48,7 +52,9 @@ function renderWithMatches(value: string, search: string): ReactNode {
     const char = value[i] ?? "";
     if (set.has(i)) {
       nodes.push(
-        <mark key={i} data-slot="command-palette-item-match">{char}</mark>
+        <mark key={i} data-slot="command-palette-item-match">
+          {char}
+        </mark>,
       );
     } else {
       nodes.push(char);

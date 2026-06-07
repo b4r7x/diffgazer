@@ -12,7 +12,12 @@ export interface CommandPaletteListProps {
   ref?: Ref<HTMLDivElement>;
 }
 
-export function CommandPaletteList({ children, className, "aria-label": ariaLabel = "Command results", ref }: CommandPaletteListProps) {
+export function CommandPaletteList({
+  children,
+  className,
+  "aria-label": ariaLabel = "Command results",
+  ref,
+}: CommandPaletteListProps) {
   const { listRef, listId } = useCommandPaletteContext();
   return (
     <div

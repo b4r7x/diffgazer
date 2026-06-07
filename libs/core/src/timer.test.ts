@@ -22,9 +22,7 @@ describe("useTimer", () => {
   it("advances elapsed while running with a startTime", () => {
     const startTime = new Date(0);
     vi.setSystemTime(new Date(0));
-    const { result } = renderHook(() =>
-      useTimer({ startTime, elapsedMs: 0, running: true }),
-    );
+    const { result } = renderHook(() => useTimer({ startTime, elapsedMs: 0, running: true }));
 
     expect(result.current.elapsed).toBe(0);
 
@@ -38,9 +36,7 @@ describe("useTimer", () => {
   it("adds elapsedMs offset to live elapsed time", () => {
     const startTime = new Date(0);
     vi.setSystemTime(new Date(0));
-    const { result } = renderHook(() =>
-      useTimer({ startTime, elapsedMs: 1000, running: true }),
-    );
+    const { result } = renderHook(() => useTimer({ startTime, elapsedMs: 1000, running: true }));
 
     expect(result.current.elapsed).toBe(1000);
 
@@ -71,9 +67,7 @@ describe("useTimer", () => {
   it("does nothing while running is false (no interval scheduled)", () => {
     const startTime = new Date(0);
     vi.setSystemTime(new Date(0));
-    const { result } = renderHook(() =>
-      useTimer({ startTime, elapsedMs: 50, running: false }),
-    );
+    const { result } = renderHook(() => useTimer({ startTime, elapsedMs: 50, running: false }));
 
     act(() => {
       vi.advanceTimersByTime(5000);

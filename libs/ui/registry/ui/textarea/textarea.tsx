@@ -11,19 +11,10 @@ export interface TextareaProps
   ref?: Ref<HTMLTextAreaElement>;
 }
 
-export function Textarea({
-  className,
-  size,
-  ref,
-  ...props
-}: TextareaProps) {
+export function Textarea({ className, size, ref, ...props }: TextareaProps) {
   return (
     <textarea
-      className={cn(
-        inputVariants({ size }),
-        "h-auto min-h-20 resize-y",
-        className
-      )}
+      className={cn(inputVariants({ size }), "h-auto min-h-20 resize-y", className)}
       ref={ref}
       {...props}
     />

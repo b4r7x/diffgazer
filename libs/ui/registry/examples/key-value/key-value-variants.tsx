@@ -1,4 +1,4 @@
-import { KeyValue } from "@/components/ui/key-value"
+import { KeyValue } from "@/components/ui/key-value";
 
 export default function KeyValueVariants() {
   return (
@@ -18,5 +18,5 @@ export default function KeyValueVariants() {
         <KeyValue.Item label="Cost" value="$0.02" variant="success" />
       </KeyValue>
     </div>
-  )
+  );
 }

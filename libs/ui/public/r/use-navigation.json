@@ -4,22 +4,18 @@
   "title": "useNavigation",
   "description": "Client re-export of @diffgazer/keys useNavigation for registry consumers.",
   "dependencies": [],
-  "registryDependencies": [
-    "https://r.b4r7.dev/r/keys/navigation.json"
-  ],
+  "registryDependencies": ["https://r.b4r7.dev/r/keys/navigation.json"],
   "files": [
     {
       "path": "registry/hooks/use-navigation.ts",
-      "content": "\"use client\";\n\nimport { type NavigationRole, type UseNavigationOptions, type UseNavigationReturn, useNavigation } from \"@/hooks/use-navigation\";\n\nexport { useNavigation, type NavigationRole, type UseNavigationOptions, type UseNavigationReturn };\n",
+      "content": "\"use client\";\n\nimport {\n  type NavigationRole,\n  type UseNavigationOptions,\n  type UseNavigationReturn,\n  useNavigation,\n} from \"@diffgazer/keys\";\n\nexport { useNavigation, type NavigationRole, type UseNavigationOptions, type UseNavigationReturn };\n",
       "type": "registry:hook"
     }
   ],
   "meta": {
     "client": true,
     "hidden": true,
-    "optionalIntegrations": [
-      "keyboard-navigation"
-    ]
+    "optionalIntegrations": ["keyboard-navigation"]
   },
   "type": "registry:hook"
 }

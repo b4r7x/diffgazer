@@ -14,9 +14,7 @@ const ZONE_SHORTCUTS: Record<Zone, { keys: string; label: string }[]> = {
     { keys: "Enter", label: "Start editing" },
     { keys: "e", label: "Toggle edit mode" },
   ],
-  preview: [
-    { keys: "Escape", label: "Back to content" },
-  ],
+  preview: [{ keys: "Escape", label: "Back to content" }],
 };
 
 export function FocusZonesDemo() {
@@ -37,10 +35,14 @@ export function FocusZonesDemo() {
 
   useKey("Enter", () => setLastAction("Sidebar: opened item"), getKeyOptions("sidebar"));
   useKey("Enter", () => setLastAction("Content: editing"), getKeyOptions("content"));
-  useKey("Escape", () => {
-    setLastAction("Preview: back to content");
-    setZone("content");
-  }, getKeyOptions("preview"));
+  useKey(
+    "Escape",
+    () => {
+      setLastAction("Preview: back to content");
+      setZone("content");
+    },
+    getKeyOptions("preview"),
+  );
   useKey("d", () => setLastAction("Sidebar: deleted item"), getKeyOptions("sidebar"));
   useKey("e", () => setLastAction("Content: toggled edit mode"), getKeyOptions("content"));
 
@@ -58,10 +60,7 @@ export function FocusZonesDemo() {
     >
       <div style={{ display: "flex", gap: 12 }}>
         {(["sidebar", "content", "preview"] as const).map((z) => (
-          <div
-            key={z}
-            className={`demo-panel${zone === z ? " demo-panel--active" : ""}`}
-          >
+          <div key={z} className={`demo-panel${zone === z ? " demo-panel--active" : ""}`}>
             <button
               type="button"
               className={`demo-badge${zone === z ? " demo-badge--active" : ""}`}
@@ -85,9 +84,7 @@ export function FocusZonesDemo() {
         ))}
       </div>
 
-      <div className="demo-action-log">
-        Last action: {lastAction}
-      </div>
+      <div className="demo-action-log">Last action: {lastAction}</div>
     </DemoWrapper>
   );
 }

@@ -43,7 +43,7 @@ export const dialogContentVariants = cva(
       size: "md",
       frame: "border",
     },
-  }
+  },
 );
 
 const FALLBACK_DIALOG_LABEL = "Dialog";
@@ -193,9 +193,7 @@ export function DialogContent({
       aria-describedby={resolvedDescribedBy}
     >
       <PortalContainerProvider container={container}>
-        {resolvedCorners !== "none" ? (
-          <span aria-hidden="true" className="dlg-corners" />
-        ) : null}
+        {resolvedCorners !== "none" ? <span aria-hidden="true" className="dlg-corners" /> : null}
         {children}
       </PortalContainerProvider>
     </DialogShell>

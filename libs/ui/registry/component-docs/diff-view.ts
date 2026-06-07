@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types"
+import type { ComponentDoc } from "./types";
 
 export const diffViewDoc: ComponentDoc = {
   description:
@@ -37,7 +37,7 @@ export const diffViewDoc: ComponentDoc = {
     {
       title: "Word Diff",
       content:
-        "Intra-line word highlighting is enabled by default — changed slices on add/remove rows are wrapped in <span data-word=\"added|removed\"> and tinted with the strong-tier overlay. Disable per-line word annotation with `disableWordDiff`.",
+        'Intra-line word highlighting is enabled by default — changed slices on add/remove rows are wrapped in <span data-word="added|removed"> and tinted with the strong-tier overlay. Disable per-line word annotation with `disableWordDiff`.',
     },
     {
       title: "Vertical Scroll",
@@ -56,16 +56,48 @@ export const diffViewDoc: ComponentDoc = {
     },
   ],
   anatomy: [
-    { name: "DiffView", indent: 0, note: "Root <figure> with aria-roledescription=\"diff\"" },
-    { name: "figcaption", indent: 1, note: "File path / rename label; bound to the figure's accessible name; suppressed in variant=\"bare\"" },
-    { name: "[data-slot=\"diff-view-corners\"]", indent: 1, note: "Four bracketed corner spans (variant=\"viewfinder\" only)" },
-    { name: "[data-slot=\"diff-view-scroll-v\"]", indent: 1, note: "Vertical-scroll wrapper around the rows container (only when maxHeight is set)" },
-    { name: "[data-slot=\"diff-view-rows\"] | [data-slot=\"diff-view-split\"]", indent: 2, note: "Focusable, labeled, keyboard-navigable rows container (unified or split)" },
-    { name: "[data-row][data-state]", indent: 3, note: "Per-change row; state drives row tint, marker color, and word-diff overlay" },
+    { name: "DiffView", indent: 0, note: 'Root <figure> with aria-roledescription="diff"' },
+    {
+      name: "figcaption",
+      indent: 1,
+      note: 'File path / rename label; bound to the figure\'s accessible name; suppressed in variant="bare"',
+    },
+    {
+      name: '[data-slot="diff-view-corners"]',
+      indent: 1,
+      note: 'Four bracketed corner spans (variant="viewfinder" only)',
+    },
+    {
+      name: '[data-slot="diff-view-scroll-v"]',
+      indent: 1,
+      note: "Vertical-scroll wrapper around the rows container (only when maxHeight is set)",
+    },
+    {
+      name: '[data-slot="diff-view-rows"] | [data-slot="diff-view-split"]',
+      indent: 2,
+      note: "Focusable, labeled, keyboard-navigable rows container (unified or split)",
+    },
+    {
+      name: "[data-row][data-state]",
+      indent: 3,
+      note: "Per-change row; state drives row tint, marker color, and word-diff overlay",
+    },
     { name: ".diff-num", indent: 4, note: "Old / new line number cell (when showLineNumbers)" },
-    { name: ".diff-marker", indent: 4, note: "+ / − / space cell; user-selectable so copy-paste keeps the diff marker" },
-    { name: ".diff-code", indent: 4, note: "Code cell; may contain <span data-word=\"added|removed\"> for word-diff overlay" },
-    { name: "[data-slot=\"diff-view-statusbar\"]", indent: 1, note: "Consumer-filled bottom slot (variant=\"statusbar\" + statusBar prop)" },
+    {
+      name: ".diff-marker",
+      indent: 4,
+      note: "+ / − / space cell; user-selectable so copy-paste keeps the diff marker",
+    },
+    {
+      name: ".diff-code",
+      indent: 4,
+      note: 'Code cell; may contain <span data-word="added|removed"> for word-diff overlay',
+    },
+    {
+      name: '[data-slot="diff-view-statusbar"]',
+      indent: 1,
+      note: 'Consumer-filled bottom slot (variant="statusbar" + statusBar prop)',
+    },
   ],
   usage: { example: "diff-view-default" },
   examples: [
@@ -94,7 +126,8 @@ export const diffViewDoc: ComponentDoc = {
         type: "string",
         required: false,
         defaultValue: null,
-        description: "Unified diff string (git diff output). One of patch, before+after, or diff must be supplied.",
+        description:
+          "Unified diff string (git diff output). One of patch, before+after, or diff must be supplied.",
       },
       before: {
         type: "string",
@@ -112,7 +145,8 @@ export const diffViewDoc: ComponentDoc = {
         type: "ParsedDiff",
         required: false,
         defaultValue: null,
-        description: "Pre-parsed diff data, useful when displaying one file out of a multi-file parseDiff() result.",
+        description:
+          "Pre-parsed diff data, useful when displaying one file out of a multi-file parseDiff() result.",
       },
       variant: {
         type: '"hairline" | "bare" | "dense" | "viewfinder" | "statusbar"',
@@ -125,13 +159,15 @@ export const diffViewDoc: ComponentDoc = {
         type: '"compact" | "default" | "comfortable"',
         required: false,
         defaultValue: '"default" (or "compact" when variant="dense")',
-        description: 'Vertical density. Surfaces as data-density on the figure. Orthogonal to variant; variant="dense" defaults this to "compact" unless overridden.',
+        description:
+          'Vertical density. Surfaces as data-density on the figure. Orthogonal to variant; variant="dense" defaults this to "compact" unless overridden.',
       },
       palette: {
         type: '"default" | "okabe-ito"',
         required: false,
         defaultValue: '"default"',
-        description: 'Color palette for added/removed rows. "okabe-ito" overrides --success/--destructive with a colorblind-safe blue/orange pair. Surfaces as data-diff-palette on the figure.',
+        description:
+          'Color palette for added/removed rows. "okabe-ito" overrides --success/--destructive with a colorblind-safe blue/orange pair. Surfaces as data-diff-palette on the figure.',
       },
       mode: {
         type: '"unified" | "split"',
@@ -143,7 +179,8 @@ export const diffViewDoc: ComponentDoc = {
         type: "boolean",
         required: false,
         defaultValue: "false",
-        description: "Renders line-number gutters. Surfaces as data-line-numbers on the rows container.",
+        description:
+          "Renders line-number gutters. Surfaces as data-line-numbers on the rows container.",
       },
       disableWordDiff: {
         type: "boolean",
@@ -155,19 +192,22 @@ export const diffViewDoc: ComponentDoc = {
         type: "string",
         required: false,
         defaultValue: null,
-        description: "CSS length applied to an opt-in vertical scroll wrapper. When set, the rows container gets a fixed max-height and a y-axis scrollbar via the --dv-max-h CSS variable.",
+        description:
+          "CSS length applied to an opt-in vertical scroll wrapper. When set, the rows container gets a fixed max-height and a y-axis scrollbar via the --dv-max-h CSS variable.",
       },
       statusBar: {
         type: "ReactNode",
         required: false,
         defaultValue: null,
-        description: 'Headless bottom slot rendered when variant="statusbar". Fill with whatever your app needs (diff stats, Kbd hints, actions). Omit to suppress the slot entirely.',
+        description:
+          'Headless bottom slot rendered when variant="statusbar". Fill with whatever your app needs (diff stats, Kbd hints, actions). Omit to suppress the slot entirely.',
       },
       label: {
         type: "string",
         required: false,
         defaultValue: '"Diff output"',
-        description: "Accessible name applied as aria-label when no figcaption renders (variant=\"bare\" or a patch without paths).",
+        description:
+          'Accessible name applied as aria-label when no figcaption renders (variant="bare" or a patch without paths).',
       },
       className: {
         type: "string",
@@ -183,4 +223,4 @@ export const diffViewDoc: ComponentDoc = {
       },
     },
   },
-}
+};

@@ -89,13 +89,23 @@ describe("review session lifecycle", () => {
       isReady: false,
       isComplete: false,
     });
-    expect(getActiveSessionForProject("/project", { headCommit: "abc", statusHash: "hash", mode: "staged" })).toBeUndefined();
+    expect(
+      getActiveSessionForProject("/project", {
+        headCommit: "abc",
+        statusHash: "hash",
+        mode: "staged",
+      }),
+    ).toBeUndefined();
 
     expect(subscribe(session.reviewId, (event) => received.push(event))).toBeTypeOf("function");
     markReady(session.reviewId);
-    expect(getActiveSessionForProject("/project", { headCommit: "abc", statusHash: "hash", mode: "staged" })?.reviewId).toBe(
-      session.reviewId,
-    );
+    expect(
+      getActiveSessionForProject("/project", {
+        headCommit: "abc",
+        statusHash: "hash",
+        mode: "staged",
+      })?.reviewId,
+    ).toBe(session.reviewId);
 
     const event = stepEvent();
     addEvent(session.reviewId, event);
@@ -107,7 +117,13 @@ describe("review session lifecycle", () => {
     addEvent(session.reviewId, stepEvent("review"));
 
     expect(received).toEqual([event]);
-    expect(getActiveSessionForProject("/project", { headCommit: "abc", statusHash: "hash", mode: "staged" })).toBeUndefined();
+    expect(
+      getActiveSessionForProject("/project", {
+        headCommit: "abc",
+        statusHash: "hash",
+        mode: "staged",
+      }),
+    ).toBeUndefined();
 
     vi.advanceTimersByTime(5 * 60 * 1000 + 1);
     expect(getSession(session.reviewId)).toBeUndefined();
@@ -149,8 +165,16 @@ describe("session cancellation", () => {
     expect(received).toMatchObject([
       { type: "error", error: { code: ReviewErrorCode.SESSION_STALE } },
     ]);
-    expect(receivedEvents(session.reviewId).filter((event) => event.type === "error")).toHaveLength(1);
-    expect(getActiveSessionForProject("/project", { headCommit: "abc", statusHash: "hash", mode: "unstaged" })).toBeUndefined();
+    expect(receivedEvents(session.reviewId).filter((event) => event.type === "error")).toHaveLength(
+      1,
+    );
+    expect(
+      getActiveSessionForProject("/project", {
+        headCommit: "abc",
+        statusHash: "hash",
+        mode: "unstaged",
+      }),
+    ).toBeUndefined();
   });
 
   it("cancels only ready sessions for the same project and mode when git state changes", () => {
@@ -172,13 +196,27 @@ describe("session cancellation", () => {
     expect(staleEvents).toMatchObject([
       { type: "error", error: { code: ReviewErrorCode.SESSION_STALE } },
     ]);
-    expect(getActiveSessionForProject("/project", { headCommit: "old-head", statusHash: "old-hash", mode: "unstaged" })).toBeUndefined();
-    expect(getActiveSessionForProject("/project", { headCommit: "abc", statusHash: "hash", mode: "unstaged" })?.reviewId).toBe(
-      keptByState.reviewId,
-    );
-    expect(getActiveSessionForProject("/project", { headCommit: "abc", statusHash: "hash", mode: "staged" })?.reviewId).toBe(
-      keptByMode.reviewId,
-    );
+    expect(
+      getActiveSessionForProject("/project", {
+        headCommit: "old-head",
+        statusHash: "old-hash",
+        mode: "unstaged",
+      }),
+    ).toBeUndefined();
+    expect(
+      getActiveSessionForProject("/project", {
+        headCommit: "abc",
+        statusHash: "hash",
+        mode: "unstaged",
+      })?.reviewId,
+    ).toBe(keptByState.reviewId);
+    expect(
+      getActiveSessionForProject("/project", {
+        headCommit: "abc",
+        statusHash: "hash",
+        mode: "staged",
+      })?.reviewId,
+    ).toBe(keptByMode.reviewId);
   });
 
   it("keeps active sessions when the current git identity is unavailable", () => {
@@ -187,9 +225,13 @@ describe("session cancellation", () => {
 
     cancelStaleSessionsForProjectMode("/project", "unstaged", "", "");
 
-    expect(getActiveSessionForProject("/project", { headCommit: "abc", statusHash: "hash", mode: "unstaged" })?.reviewId).toBe(
-      session.reviewId,
-    );
+    expect(
+      getActiveSessionForProject("/project", {
+        headCommit: "abc",
+        statusHash: "hash",
+        mode: "unstaged",
+      })?.reviewId,
+    ).toBe(session.reviewId);
   });
 });
 
@@ -307,8 +349,7 @@ describe("session bounds and subscriber failures", () => {
     }
 
     const notices = received.filter(
-      (event): event is Extract<FullReviewStreamEvent, { type: "chunk" }> =>
-        event.type === "chunk",
+      (event): event is Extract<FullReviewStreamEvent, { type: "chunk" }> => event.type === "chunk",
     );
     expect(notices).toHaveLength(1);
     expect(notices[0]?.content).toContain("may be incomplete");
@@ -325,7 +366,9 @@ describe("onSessionComplete", () => {
   it("fires registered listeners when markComplete runs", () => {
     const session = createTrackedSession("on-complete-mark");
     let fired = false;
-    onSessionComplete(session.reviewId, () => { fired = true; });
+    onSessionComplete(session.reviewId, () => {
+      fired = true;
+    });
 
     markComplete(session.reviewId);
 
@@ -335,7 +378,9 @@ describe("onSessionComplete", () => {
   it("fires registered listeners when cancelSession runs", () => {
     const session = createTrackedSession("on-complete-cancel");
     let fired = false;
-    onSessionComplete(session.reviewId, () => { fired = true; });
+    onSessionComplete(session.reviewId, () => {
+      fired = true;
+    });
 
     cancelSession(session.reviewId);
 
@@ -347,7 +392,9 @@ describe("onSessionComplete", () => {
     markComplete(session.reviewId);
 
     let fired = false;
-    onSessionComplete(session.reviewId, () => { fired = true; });
+    onSessionComplete(session.reviewId, () => {
+      fired = true;
+    });
 
     expect(fired).toBe(true);
   });
@@ -359,7 +406,9 @@ describe("onSessionComplete", () => {
   it("allows the consumer to unsubscribe before completion", () => {
     const session = createTrackedSession("on-complete-unsubscribe");
     let fired = false;
-    const unsubscribe = onSessionComplete(session.reviewId, () => { fired = true; });
+    const unsubscribe = onSessionComplete(session.reviewId, () => {
+      fired = true;
+    });
     unsubscribe?.();
 
     markComplete(session.reviewId);
@@ -376,7 +425,9 @@ describe("onSessionComplete", () => {
     onSessionComplete(session.reviewId, () => {
       throw new Error("listener fail");
     });
-    onSessionComplete(session.reviewId, () => { secondRan = true; });
+    onSessionComplete(session.reviewId, () => {
+      secondRan = true;
+    });
 
     markComplete(session.reviewId);
 
@@ -417,7 +468,11 @@ describe("shutdownSessions", () => {
     // ...and the session is removed so no SSE client keeps the process alive.
     expect(getSession(session.reviewId)).toBeUndefined();
     expect(
-      getActiveSessionForProject("/project", { headCommit: "abc", statusHash: "hash", mode: "unstaged" }),
+      getActiveSessionForProject("/project", {
+        headCommit: "abc",
+        statusHash: "hash",
+        mode: "unstaged",
+      }),
     ).toBeUndefined();
   });
 });
@@ -436,7 +491,11 @@ describe("scoped active-session lookup", () => {
 
     // A mode-only lookup (empty scope key) must NOT match the scoped session.
     expect(
-      getActiveSessionForProject("/scoped", { headCommit: "head", statusHash: "status", mode: "unstaged" }),
+      getActiveSessionForProject("/scoped", {
+        headCommit: "head",
+        statusHash: "status",
+        mode: "unstaged",
+      }),
     ).toBeUndefined();
 
     // The same scope key resolves the session.

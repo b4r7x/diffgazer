@@ -1,4 +1,4 @@
-import { Stepper } from "@/components/ui/stepper"
+import { Stepper } from "@/components/ui/stepper";
 
 export default function StepperVariantNumbered() {
   return (
@@ -16,5 +16,5 @@ export default function StepperVariantNumbered() {
         <Stepper.Trigger>Invite team</Stepper.Trigger>
       </Stepper.Step>
     </Stepper>
-  )
+  );
 }

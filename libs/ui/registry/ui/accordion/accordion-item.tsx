@@ -11,18 +11,30 @@ export interface AccordionItemProps {
   className?: string;
 }
 
-export function AccordionItem({ value, disabled = false, children, className }: AccordionItemProps) {
+export function AccordionItem({
+  value,
+  disabled = false,
+  children,
+  className,
+}: AccordionItemProps) {
   const { value: openValues } = useAccordionContext();
   const isOpen = openValues.includes(value);
   const itemId = useId();
   const triggerId = `${itemId}-trigger`;
   const contentId = `${itemId}-content`;
 
-  const contextValue = useMemo(() => ({ value, isOpen, disabled, triggerId, contentId }), [value, isOpen, disabled, triggerId, contentId]);
+  const contextValue = useMemo(
+    () => ({ value, isOpen, disabled, triggerId, contentId }),
+    [value, isOpen, disabled, triggerId, contentId],
+  );
 
   return (
     <AccordionItemContext value={contextValue}>
-      <div className={cn("py-2", className)} data-state={isOpen ? "open" : "closed"} data-disabled={disabled || undefined}>
+      <div
+        className={cn("py-2", className)}
+        data-state={isOpen ? "open" : "closed"}
+        data-disabled={disabled || undefined}
+      >
         {children}
       </div>
     </AccordionItemContext>

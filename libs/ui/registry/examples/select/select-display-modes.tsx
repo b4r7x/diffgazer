@@ -1,36 +1,32 @@
 "use client";
 
-import { useState } from "react"
+import { useState } from "react";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@/components/ui/select";
 
-const items = ["bug", "feature", "docs", "refactor", "test"]
+const items = ["bug", "feature", "docs", "refactor", "test"];
 
 function SelectWithDisplay({
   label,
   display,
   truncateAfter,
 }: {
-  label: string
-  display: "count" | "list" | "truncate"
-  truncateAfter?: number
+  label: string;
+  display: "count" | "list" | "truncate";
+  truncateAfter?: number;
 }) {
-  const [value, setValue] = useState<string[]>(["bug", "feature", "docs"])
+  const [value, setValue] = useState<string[]>(["bug", "feature", "docs"]);
   return (
     <div className="space-y-1.5">
       <span className="text-xs font-mono text-muted-foreground">{label}</span>
       <Select multiple value={value} onChange={setValue}>
         <SelectTrigger>
-          <SelectValue
-            placeholder="Select..."
-            display={display}
-            truncateAfter={truncateAfter}
-          />
+          <SelectValue placeholder="Select..." display={display} truncateAfter={truncateAfter} />
         </SelectTrigger>
         <SelectContent>
           {items.map((item) => (
@@ -41,7 +37,7 @@ function SelectWithDisplay({
         </SelectContent>
       </Select>
     </div>
-  )
+  );
 }
 
 export default function SelectDisplayModes() {
@@ -55,5 +51,5 @@ export default function SelectDisplayModes() {
         truncateAfter={2}
       />
     </div>
-  )
+  );
 }

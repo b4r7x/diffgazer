@@ -2,12 +2,7 @@ import { isApiError } from "@diffgazer/core/api";
 import { useReview } from "@diffgazer/core/api/hooks";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { toast } from "@diffgazer/ui/components/toast";
-import {
-  useNavigate,
-  useParams,
-  useRouter,
-  useSearch,
-} from "@tanstack/react-router";
+import { useNavigate, useParams, useRouter, useSearch } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useReviewErrorHandler } from "../hooks/use-error-handler";
 import { type ReviewCompleteData, ReviewContainer, ReviewLoadingMessage } from "./container";
@@ -91,7 +86,9 @@ export function ReviewPage() {
   const isLiveReviewRoute = Boolean(reviewId && liveReviewId === reviewId);
   const shouldLoadSavedReview = Boolean(reviewId && !isLiveReviewRoute && !liveState);
   const savedReviewQuery = useReview(shouldLoadSavedReview ? (reviewId ?? "") : "");
-  const savedOutcome = shouldLoadSavedReview ? getSavedReviewOutcome(savedReviewQuery, streamNotFound) : null;
+  const savedOutcome = shouldLoadSavedReview
+    ? getSavedReviewOutcome(savedReviewQuery, streamNotFound)
+    : null;
   const savedOutcomeKind = savedOutcome?.kind ?? null;
   const savedErrorForReport = savedOutcome?.kind === "report-error" ? savedOutcome.error : null;
 

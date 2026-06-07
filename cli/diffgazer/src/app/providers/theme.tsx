@@ -43,9 +43,7 @@ interface CliThemeProviderProps {
 }
 
 export function CliThemeProvider({ initialTheme, children }: CliThemeProviderProps) {
-  const [theme, setThemeState] = useState(() =>
-    resolvePalette(initialTheme ?? "auto"),
-  );
+  const [theme, setThemeState] = useState(() => resolvePalette(initialTheme ?? "auto"));
 
   const setTheme = (name: string) => {
     setThemeState(resolvePalette(name));
@@ -57,11 +55,7 @@ export function CliThemeProvider({ initialTheme, children }: CliThemeProviderPro
     setTheme,
   };
 
-  return (
-    <CliThemeContext value={value}>
-      {children}
-    </CliThemeContext>
-  );
+  return <CliThemeContext value={value}>{children}</CliThemeContext>;
 }
 
 export function useTheme(): CliThemeContextValue {

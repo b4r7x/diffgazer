@@ -1,7 +1,4 @@
-import {
-  useOpenRouterModelsMapped,
-  useProviderModelsMapped,
-} from "@diffgazer/core/providers";
+import { useOpenRouterModelsMapped, useProviderModelsMapped } from "@diffgazer/core/providers";
 import type { AIProvider, ModelInfo } from "@diffgazer/core/schemas/config";
 import { AVAILABLE_PROVIDERS, OPENROUTER_PROVIDER_ID } from "@diffgazer/core/schemas/config";
 import { Box, Text } from "ink";
@@ -52,9 +49,7 @@ export function ModelStep({
   const openRouter = useOpenRouterModelsMapped(true, provider as AIProvider);
   const catalog = useProviderModelsMapped(true, provider as AIProvider);
 
-  const subtitle = isOpenRouter
-    ? "Select a model from OpenRouter."
-    : getSubtitle(provider);
+  const subtitle = isOpenRouter ? "Select a model from OpenRouter." : getSubtitle(provider);
   const loading = isOpenRouter ? openRouter.loading : catalog.loading;
   const error = isOpenRouter ? openRouter.error : catalog.error;
 
@@ -73,7 +68,9 @@ export function ModelStep({
         <Text color={tokens.muted}>{subtitle}</Text>
         <Text color={tokens.error}>Failed to load models: {error}</Text>
         <Text color={tokens.muted}>
-          {isOpenRouter ? "Enter a model ID manually (e.g. openai/gpt-4o):" : "Enter a model ID manually:"}
+          {isOpenRouter
+            ? "Enter a model ID manually (e.g. openai/gpt-4o):"
+            : "Enter a model ID manually:"}
         </Text>
         <Input
           value={value}
@@ -108,7 +105,9 @@ export function ModelStep({
               <Box gap={1}>
                 <Text>{model.name}</Text>
                 {model.badges.map((badge) => (
-                  <Badge key={badge.label} variant={badge.variant}>{badge.label}</Badge>
+                  <Badge key={badge.label} variant={badge.variant}>
+                    {badge.label}
+                  </Badge>
                 ))}
               </Box>
             }

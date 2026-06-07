@@ -49,9 +49,7 @@
           "type": "string"
         }
       },
-      "required": [
-        "css"
-      ]
+      "required": ["css"]
     },
     "installedComponents": {
       "type": "object",
@@ -63,21 +61,14 @@
           },
           "integrationMode": {
             "type": "string",
-            "enum": [
-              "none",
-              "copy",
-              "@diffgazer/keys"
-            ]
+            "enum": ["none", "copy", "@diffgazer/keys"]
           },
           "keysVersion": {
             "type": "string"
           },
           "installedAs": {
             "type": "string",
-            "enum": [
-              "explicit",
-              "transitive"
-            ]
+            "enum": ["explicit", "transitive"]
           },
           "cssChunks": {
             "type": "array",
@@ -107,24 +98,14 @@
                 },
                 "integrationMode": {
                   "type": "string",
-                  "enum": [
-                    "none",
-                    "copy",
-                    "@diffgazer/keys"
-                  ]
+                  "enum": ["none", "copy", "@diffgazer/keys"]
                 }
               },
-              "required": [
-                "path",
-                "hash",
-                "item"
-              ]
+              "required": ["path", "hash", "item"]
             }
           }
         },
-        "required": [
-          "installedAt"
-        ]
+        "required": ["installedAt"]
       }
     }
   }

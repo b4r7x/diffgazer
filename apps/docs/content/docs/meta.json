@@ -1,9 +1,5 @@
 {
   "title": "Documentation",
   "root": true,
-  "pages": [
-    "...app",
-    "...ui",
-    "...keys"
-  ]
+  "pages": ["...app", "...ui", "...keys"]
 }

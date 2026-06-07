@@ -17,7 +17,12 @@ export interface ToggleGroupContextValue {
   containerRef: RefObject<HTMLDivElement | null>;
   usesButtonSemantics: boolean;
   tabTargetValue: string | null;
-  registerItem: (itemId: string, value: string, disabled: boolean, element: HTMLElement | null) => void;
+  registerItem: (
+    itemId: string,
+    value: string,
+    disabled: boolean,
+    element: HTMLElement | null,
+  ) => void;
   unregisterItem: (itemId: string) => void;
 }
 

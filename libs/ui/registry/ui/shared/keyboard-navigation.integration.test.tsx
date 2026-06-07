@@ -15,7 +15,7 @@ function CheckboxGroupWithKeyboard() {
     setValue((current) =>
       current.includes(nextValue)
         ? current.filter((item) => item !== nextValue)
-        : [...current, nextValue]
+        : [...current, nextValue],
     );
   };
 
@@ -48,7 +48,11 @@ function CheckboxGroupWithKeyboard() {
 describe("UI keyboard navigation integration", () => {
   it("wires keys navigation into Checkbox.Group through public props", async () => {
     const user = userEvent.setup();
-    render(<KeyboardProvider><CheckboxGroupWithKeyboard /></KeyboardProvider>);
+    render(
+      <KeyboardProvider>
+        <CheckboxGroupWithKeyboard />
+      </KeyboardProvider>,
+    );
 
     const group = screen.getByRole("group", { name: "Choices" });
     const alpha = screen.getByRole("checkbox", { name: "Alpha" });
@@ -62,7 +66,9 @@ describe("UI keyboard navigation integration", () => {
 
   it("has no a11y violations", async () => {
     const { container } = render(
-      <KeyboardProvider><CheckboxGroupWithKeyboard /></KeyboardProvider>
+      <KeyboardProvider>
+        <CheckboxGroupWithKeyboard />
+      </KeyboardProvider>,
     );
     expect(await axe(container)).toHaveNoViolations();
   });

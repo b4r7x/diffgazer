@@ -15,7 +15,11 @@ import {
 } from "./sidebar-item";
 import { SidebarItemBadge, type SidebarItemBadgeProps } from "./sidebar-item-badge";
 import { SidebarItemLabel, type SidebarItemLabelProps } from "./sidebar-item-label";
-import { SIDEBAR_STATE_COOKIE, SidebarProvider, type SidebarProviderProps } from "./sidebar-provider";
+import {
+  SIDEBAR_STATE_COOKIE,
+  SidebarProvider,
+  type SidebarProviderProps,
+} from "./sidebar-provider";
 import { SidebarSection, type SidebarSectionProps } from "./sidebar-section";
 import { SidebarSectionContent, type SidebarSectionContentProps } from "./sidebar-section-content";
 import {

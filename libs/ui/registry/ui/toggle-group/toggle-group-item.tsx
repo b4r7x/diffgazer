@@ -97,11 +97,7 @@ export function ToggleGroupItem<TValue extends string = string>({
   // count renders as a separate styled span after the label, so the brackets
   // only ever wrap the actual children — never the count.
   const renderedChildren =
-    variant === "bracket" ? (
-      <BracketMarkers>{children}</BracketMarkers>
-    ) : (
-      children
-    );
+    variant === "bracket" ? <BracketMarkers>{children}</BracketMarkers> : children;
 
   return (
     // biome-ignore lint/a11y/useAriaPropsSupportedByRole: role is conditionally "radio" (Biome cannot resolve the ternary); aria-checked is applied only in the radio branch and aria-pressed only in the button branch.
@@ -130,7 +126,7 @@ export function ToggleGroupItem<TValue extends string = string>({
         segmentedItemVariants({
           variant,
           size: context.size,
-          highlighted: isHighlighted && !isActive || undefined,
+          highlighted: (isHighlighted && !isActive) || undefined,
         }),
         className,
       )}
@@ -139,10 +135,7 @@ export function ToggleGroupItem<TValue extends string = string>({
       {count != null && (
         <>
           {" "}
-          <span
-            data-slot="toggle-group-count"
-            className="tabular-nums opacity-70"
-          >
+          <span data-slot="toggle-group-count" className="tabular-nums opacity-70">
             {count}
           </span>
         </>

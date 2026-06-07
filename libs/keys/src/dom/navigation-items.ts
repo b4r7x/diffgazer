@@ -20,9 +20,7 @@ export interface NavigationItemQuery {
 }
 
 function disabledSelector(skipDisabled: boolean): string {
-  return skipDisabled
-    ? ':not([aria-disabled="true"]):not([data-disabled]):not(:disabled)'
-    : "";
+  return skipDisabled ? ':not([aria-disabled="true"]):not([data-disabled]):not(:disabled)' : "";
 }
 
 function findElements(container: HTMLElement, selector: string): HTMLElement[] {
@@ -59,13 +57,12 @@ function queryAllMatchingGroups(
 
 function matchesNavigationDataContract(element: HTMLElement, type: NavigationItemType): boolean {
   const explicitType = element.getAttribute(NAVIGATION_ITEM_ATTRIBUTE);
-  return explicitType === null || explicitType === "" || explicitType === "true" || explicitType === type;
+  return (
+    explicitType === null || explicitType === "" || explicitType === "true" || explicitType === type
+  );
 }
 
-function buildNavigationSelectors(
-  type: NavigationItemType,
-  skipDisabled: boolean,
-): string[] {
+function buildNavigationSelectors(type: NavigationItemType, skipDisabled: boolean): string[] {
   const disabled = disabledSelector(skipDisabled);
   const dataContractSelectors = [
     `[${NAVIGATION_ITEM_ATTRIBUTE}="${type}"][data-value]${disabled}`,
@@ -134,8 +131,9 @@ export function getNavigationItems(
   return queryAllMatchingGroups(
     container,
     buildNavigationSelectors(query.type, query.skipDisabled ?? true),
-    (element) => matchesNavigationDataContract(element, query.type)
-      && isOwnedByContainer(element, container, query),
+    (element) =>
+      matchesNavigationDataContract(element, query.type) &&
+      isOwnedByContainer(element, container, query),
   );
 }
 
@@ -143,7 +141,10 @@ export function findNavigationItemByValue(
   container: HTMLElement | null,
   query: NavigationItemQuery & { value: string },
 ): HTMLElement | null {
-  return getNavigationItems(container, query).find((element) => element.dataset.value === query.value) ?? null;
+  return (
+    getNavigationItems(container, query).find((element) => element.dataset.value === query.value) ??
+    null
+  );
 }
 
 export function getNavigationItemProps(

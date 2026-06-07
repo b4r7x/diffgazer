@@ -102,10 +102,7 @@ export function Callout({
         className={cn(className)}
         {...props}
       >
-        <div
-          data-has-icon={String(hasIcon)}
-          className={gridClassName(frame, hasIcon)}
-        >
+        <div data-has-icon={String(hasIcon)} className={gridClassName(frame, hasIcon)}>
           {frame === "bar" && (
             <span
               aria-hidden="true"

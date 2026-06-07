@@ -27,14 +27,16 @@ export const TRUST_CAPABILITY_OPTIONS = [
   disabled: boolean;
 }>;
 
-export function normalizeTrustCapabilities(value: TrustCapabilities | null | undefined): TrustCapabilities {
+export function normalizeTrustCapabilities(
+  value: TrustCapabilities | null | undefined,
+): TrustCapabilities {
   return { ...NO_TRUST_CAPABILITIES, ...(value ?? {}), runCommands: false };
 }
 
 export function toSelectedCapabilityIds(value: TrustCapabilities): TrustCapabilityId[] {
-  return TRUST_CAPABILITY_OPTIONS
-    .filter((capability) => !capability.disabled && value[capability.id])
-    .map((capability) => capability.id);
+  return TRUST_CAPABILITY_OPTIONS.filter(
+    (capability) => !capability.disabled && value[capability.id],
+  ).map((capability) => capability.id);
 }
 
 export function fromSelectedCapabilityIds(selected: readonly string[]): TrustCapabilities {
@@ -51,5 +53,7 @@ export function getInitialFocusedCapability(value: TrustCapabilities): TrustCapa
 
 export function isFocusableCapability(value: string | null): value is TrustCapabilityId {
   if (!value) return false;
-  return TRUST_CAPABILITY_OPTIONS.some((capability) => capability.id === value && !capability.disabled);
+  return TRUST_CAPABILITY_OPTIONS.some(
+    (capability) => capability.id === value && !capability.disabled,
+  );
 }

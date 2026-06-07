@@ -27,24 +27,21 @@ settingsRouter.post(
       return errorResponse(c, result.error.message, result.error.code, 400);
     }
     return c.json(result.value);
-  }
+  },
 );
 
-settingsRouter.get(
-  "/trust",
-  (c) => {
-    const projectRoot = getProjectRoot(c);
-    const project = getStore().getProjectInfo(projectRoot);
-    if (!project.projectId) {
-      return errorResponse(c, "Failed to resolve project identity", "PROJECT_ERROR", 500);
-    }
-    const trust = getStore().getTrust(project.projectId);
-    if (!trust) {
-      return errorResponse(c, "Trust not found for project", ErrorCode.NOT_FOUND, 404);
-    }
-    return c.json({ trust });
+settingsRouter.get("/trust", (c) => {
+  const projectRoot = getProjectRoot(c);
+  const project = getStore().getProjectInfo(projectRoot);
+  if (!project.projectId) {
+    return errorResponse(c, "Failed to resolve project identity", "PROJECT_ERROR", 500);
   }
-);
+  const trust = getStore().getTrust(project.projectId);
+  if (!trust) {
+    return errorResponse(c, "Trust not found for project", ErrorCode.NOT_FOUND, 404);
+  }
+  return c.json({ trust });
+});
 
 settingsRouter.get("/trust/list", (c) => {
   const projectRoot = getProjectRoot(c);
@@ -87,23 +84,20 @@ settingsRouter.post(
       return errorResponse(c, result.error.message, result.error.code, 400);
     }
     return c.json({ trust: result.value });
-  }
+  },
 );
 
-settingsRouter.delete(
-  "/trust",
-  async (c) => {
-    const projectRoot = getProjectRoot(c);
-    const project = getStore().getProjectInfo(projectRoot);
-    if (!project.projectId) {
-      return errorResponse(c, "Failed to resolve project identity", "PROJECT_ERROR", 500);
-    }
-    const result = await getStore().removeTrust(project.projectId);
-    if (!result.ok) {
-      return errorResponse(c, result.error.message, result.error.code, 400);
-    }
-    return c.json({ removed: result.value });
+settingsRouter.delete("/trust", async (c) => {
+  const projectRoot = getProjectRoot(c);
+  const project = getStore().getProjectInfo(projectRoot);
+  if (!project.projectId) {
+    return errorResponse(c, "Failed to resolve project identity", "PROJECT_ERROR", 500);
   }
-);
+  const result = await getStore().removeTrust(project.projectId);
+  if (!result.ok) {
+    return errorResponse(c, result.error.message, result.error.code, 400);
+  }
+  return c.json({ removed: result.value });
+});
 
 export { settingsRouter };

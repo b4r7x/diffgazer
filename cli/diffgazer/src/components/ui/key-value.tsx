@@ -11,16 +11,16 @@ export interface KeyValueProps {
 export function KeyValue({ label, value, labelWidth }: KeyValueProps) {
   const { tokens } = useTheme();
 
-  const displayLabel = labelWidth != null
-    ? label.padEnd(labelWidth)
-    : label;
+  const displayLabel = labelWidth != null ? label.padEnd(labelWidth) : label;
 
   return (
     <Box flexDirection="row">
-      <Text color={tokens.muted}>{displayLabel}:  </Text>
-      {typeof value === "string" || typeof value === "number"
-        ? <Text color={tokens.fg}>{value}</Text>
-        : value}
+      <Text color={tokens.muted}>{displayLabel}: </Text>
+      {typeof value === "string" || typeof value === "number" ? (
+        <Text color={tokens.fg}>{value}</Text>
+      ) : (
+        value
+      )}
     </Box>
   );
 }

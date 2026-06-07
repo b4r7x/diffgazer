@@ -14,7 +14,9 @@ export function validatePublicExportShape(
   const exportValue = exportsMap[exportPath];
 
   if (!isRecord(exportValue)) {
-    return [`package export ${exportPath} must be an object with top-level "types" and "import" conditions`];
+    return [
+      `package export ${exportPath} must be an object with top-level "types" and "import" conditions`,
+    ];
   }
 
   if (isRecord(exportValue.import)) {

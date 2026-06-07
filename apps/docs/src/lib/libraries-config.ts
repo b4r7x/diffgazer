@@ -2,29 +2,29 @@ import { z } from "zod";
 import rawConfig from "../../config/docs-libraries.json";
 
 const ArtifactSourceSchema = z.object({
-	workspaceDir: z.string().min(1),
-	packageName: z.string().min(1),
+  workspaceDir: z.string().min(1),
+  packageName: z.string().min(1),
 });
 
 const InstallerSchema = z.object({
-	command: z.string().min(1),
-	itemPrefix: z.string().optional(),
+  command: z.string().min(1),
+  itemPrefix: z.string().optional(),
 });
 
 const DocsLibraryConfigSchema = z.object({
-	id: z.string().min(1),
-	displayName: z.string().min(1),
-	logoText: z.string().min(1),
-	githubUrl: z.string().url(),
-	enabled: z.boolean(),
-	defaultRouteSlugs: z.array(z.string()),
-	installer: InstallerSchema.optional(),
-	artifactSource: ArtifactSourceSchema.optional(),
+  id: z.string().min(1),
+  displayName: z.string().min(1),
+  logoText: z.string().min(1),
+  githubUrl: z.string().url(),
+  enabled: z.boolean(),
+  defaultRouteSlugs: z.array(z.string()),
+  installer: InstallerSchema.optional(),
+  artifactSource: ArtifactSourceSchema.optional(),
 });
 
 const DocsLibrariesConfigSchema = z.object({
-	primaryLibraryId: z.string().min(1),
-	libraries: z.array(DocsLibraryConfigSchema).min(1),
+  primaryLibraryId: z.string().min(1),
+  libraries: z.array(DocsLibraryConfigSchema).min(1),
 });
 
 export type ArtifactSourceConfig = z.infer<typeof ArtifactSourceSchema>;

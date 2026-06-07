@@ -149,7 +149,9 @@ function create(options: ToastOptions): string {
 
   const effectiveAction = variant === "hud" ? undefined : options.action;
   const newToast: Toast = {
-    id, tone, variant,
+    id,
+    tone,
+    variant,
     title: options.title,
     message: options.message,
     duration: options.duration,
@@ -166,7 +168,7 @@ function create(options: ToastOptions): string {
   }
 
   const nextToasts = resolveNextToasts(state.toasts, newToast);
-  const nextIds = new Set(nextToasts.map(t => t.id));
+  const nextIds = new Set(nextToasts.map((t) => t.id));
   for (const dismissId of nextDismissing) {
     if (!nextIds.has(dismissId)) nextDismissing.delete(dismissId);
   }
@@ -183,7 +185,7 @@ export function dismiss(id?: string) {
       dismissingIds: new Set(state.dismissingIds).add(id),
     };
   } else {
-    state = { ...state, dismissingIds: new Set(state.toasts.map(t => t.id)) };
+    state = { ...state, dismissingIds: new Set(state.toasts.map((t) => t.id)) };
   }
   emit();
 }

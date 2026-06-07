@@ -7,10 +7,7 @@ interface WizardProgressProps {
   currentStep: number;
 }
 
-export function WizardProgress({
-  steps,
-  currentStep,
-}: WizardProgressProps): ReactElement {
+export function WizardProgress({ steps, currentStep }: WizardProgressProps): ReactElement {
   const { tokens } = useTheme();
 
   return (

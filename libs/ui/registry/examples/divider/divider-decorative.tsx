@@ -1,4 +1,4 @@
-import { Divider } from "@/components/ui/divider"
+import { Divider } from "@/components/ui/divider";
 
 export default function DividerDecorative() {
   return (
@@ -13,5 +13,5 @@ export default function DividerDecorative() {
         <p className="text-sm text-muted-foreground">Irreversible actions like account deletion.</p>
       </section>
     </div>
-  )
+  );
 }

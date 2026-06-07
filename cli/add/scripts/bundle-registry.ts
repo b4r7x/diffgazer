@@ -15,15 +15,21 @@ const bundle = createBundler({
     const basePath = resolve(rootDir, "styles/theme-base.css");
     const themePath = resolve(rootDir, "styles/theme.css");
     const stylesPath = resolve(rootDir, "styles/styles.css");
-    for (const [label, p] of [["theme-base", basePath], ["theme", themePath], ["styles", stylesPath]] as const) {
+    for (const [label, p] of [
+      ["theme-base", basePath],
+      ["theme", themePath],
+      ["styles", stylesPath],
+    ] as const) {
       if (!existsSync(p)) {
         throw new Error(`${label} file not found at ${p}. Ensure the styles/ directory is intact.`);
       }
     }
     // Inline the @import so CLI init writes a self-contained theme.css
     const baseContent = readFileSync(basePath, "utf-8");
-    const themeContent = readFileSync(themePath, "utf-8")
-      .replace(/^@import\s+["']\.\/theme-base\.css["'];\s*\n?/m, "");
+    const themeContent = readFileSync(themePath, "utf-8").replace(
+      /^@import\s+["']\.\/theme-base\.css["'];\s*\n?/m,
+      "",
+    );
     return {
       theme: `${baseContent}\n${themeContent}`,
       styles: readFileSync(stylesPath, "utf-8"),

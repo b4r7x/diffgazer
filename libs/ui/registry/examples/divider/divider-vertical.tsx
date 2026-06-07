@@ -1,4 +1,4 @@
-import { Divider } from "@/components/ui/divider"
+import { Divider } from "@/components/ui/divider";
 
 export default function DividerVertical() {
   return (
@@ -7,5 +7,5 @@ export default function DividerVertical() {
       <Divider orientation="vertical" />
       <span className="text-sm text-muted-foreground">Right</span>
     </div>
-  )
+  );
 }

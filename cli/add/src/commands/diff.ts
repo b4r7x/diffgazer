@@ -3,10 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createDiffCommand } from "@diffgazer/registry/cli";
 import { ctx, type DiffgazerAddConfig, type ResolvedConfig } from "../context.js";
-import {
-  buildExpectedChunkContentsForItem,
-  extractCssChunkContents,
-} from "../utils/css-chunks.js";
+import { buildExpectedChunkContentsForItem, extractCssChunkContents } from "../utils/css-chunks.js";
 import {
   getNamespacedItem,
   parseInstallName,
@@ -22,7 +19,11 @@ import {
 type InstalledComponents = NonNullable<DiffgazerAddConfig["installedComponents"]>;
 type IntegrationMode = NonNullable<InstalledComponents[string]>["integrationMode"];
 
-function resolveIntegrationMode(cwd: string, itemName: string, manifestPath: string): IntegrationMode {
+function resolveIntegrationMode(
+  cwd: string,
+  itemName: string,
+  manifestPath: string,
+): IntegrationMode {
   const manifest = ctx.config.getManifestItems(cwd) as InstalledComponents | undefined;
   const entry = manifest?.[itemName];
   const fileEntry = entry?.files?.find((file) => file.path === manifestPath);
@@ -88,9 +89,10 @@ function buildCssChunkDriftFiles(
 
   const installedChunks = extractCssChunkContents(cwd, config);
   const parsed = parseInstallName(itemName);
-  const expectedChunks = parsed.namespace === "ui"
-    ? buildExpectedChunkContentsForItem(parsed.name)
-    : new Map<string, string>();
+  const expectedChunks =
+    parsed.namespace === "ui"
+      ? buildExpectedChunkContentsForItem(parsed.name)
+      : new Map<string, string>();
 
   return chunkHashes.map((hash) => {
     const localContent = installedChunks.get(hash) ?? "";
@@ -110,8 +112,7 @@ export const diffCommand = createDiffCommand({
   itemPlural: "items",
   requireConfig: ctx.items.requireConfig,
   resolveDefaultNames: ({ cwd }) => {
-    return Object.keys(ctx.config.getManifestItems(cwd) ?? {})
-      .filter((name) => name.includes("/"));
+    return Object.keys(ctx.config.getManifestItems(cwd) ?? {}).filter((name) => name.includes("/"));
   },
   validateRequestedNames: validateAnyInstallableName,
   resolveFilesForName: ({ name, cwd, config }) => {

@@ -1,7 +1,11 @@
 import { useSettings } from "@diffgazer/core/api/hooks";
 import { usePageFooter } from "@diffgazer/core/footer";
 import type { AgentExecution } from "@diffgazer/core/schemas/config";
-import { SETTINGS_MENU_ITEMS, SETTINGS_SHORTCUTS, type SettingsAction } from "@diffgazer/core/schemas/presentation";
+import {
+  SETTINGS_MENU_ITEMS,
+  SETTINGS_SHORTCUTS,
+  type SettingsAction,
+} from "@diffgazer/core/schemas/presentation";
 import { useKey, useScope } from "@diffgazer/keys";
 import { Menu, MenuItem } from "@diffgazer/ui/components/menu";
 import { Panel } from "@diffgazer/ui/components/panel";
@@ -40,7 +44,7 @@ export function SettingsHubPage() {
   const { theme } = useTheme();
   const [highlighted, setHighlighted] = useScopedRouteState<string | null>(
     "highlighted",
-    SETTINGS_MENU_ITEMS[0]?.id ?? null
+    SETTINGS_MENU_ITEMS[0]?.id ?? null,
   );
   const effectiveHighlighted = getSettingsMenuHighlighted(highlighted);
   const isTrusted = Boolean(trust?.capabilities.readFiles);
@@ -60,11 +64,12 @@ export function SettingsHubPage() {
   };
 
   const providerLabel = isConfigured && provider ? provider.toUpperCase() : "Not configured";
-  const storageLabel = settings?.secretsStorage
-    ? settings.secretsStorage.toUpperCase()
-    : "Not set";
+  const storageLabel = settings?.secretsStorage ? settings.secretsStorage.toUpperCase() : "Not set";
 
-  const menuValues: Record<SettingsAction, { value: string; valueVariant?: "default" | "success" | "success-badge" | "muted" }> = {
+  const menuValues: Record<
+    SettingsAction,
+    { value: string; valueVariant?: "default" | "success" | "success-badge" | "muted" }
+  > = {
     trust: {
       value: isTrusted ? "Trusted" : "Not trusted",
       valueVariant: isTrusted ? "success-badge" : "muted",

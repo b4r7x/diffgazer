@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react"
-import { ToggleGroup } from "@/components/ui/toggle-group"
+import { useState } from "react";
+import { ToggleGroup } from "@/components/ui/toggle-group";
 
 export default function ToggleGroupVariants() {
-  const [filter, setFilter] = useState<string | null>("modified")
+  const [filter, setFilter] = useState<string | null>("modified");
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1.5">
@@ -38,7 +38,9 @@ export default function ToggleGroupVariants() {
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Underline</span>
+        <span className="text-[11px] uppercase tracking-wider text-muted-foreground">
+          Underline
+        </span>
         <ToggleGroup value={filter} onChange={setFilter} variant="underline">
           <ToggleGroup.Item value="all">All</ToggleGroup.Item>
           <ToggleGroup.Item value="added">Added</ToggleGroup.Item>
@@ -47,5 +49,5 @@ export default function ToggleGroupVariants() {
         </ToggleGroup>
       </div>
     </div>
-  )
+  );
 }

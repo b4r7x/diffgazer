@@ -15,10 +15,7 @@ describe("getStepShortcuts", () => {
         keys.some((key) => key.includes("↑/↓")),
         `expected step '${step}' to expose navigation hint`,
       ).toBeTruthy();
-      expect(
-        keys.includes("Tab"),
-        `expected step '${step}' to expose Tab focus hint`,
-      ).toBeTruthy();
+      expect(keys.includes("Tab"), `expected step '${step}' to expose Tab focus hint`).toBeTruthy();
     }
   });
 
@@ -56,12 +53,8 @@ describe("getStepShortcuts", () => {
   });
 
   test("nav-focus Tab shortcut is independent of the disabled gate", () => {
-    const disabledTab = getStepShortcuts("provider", "nav", true).find(
-      (s) => s.key === "Tab",
-    );
-    const enabledTab = getStepShortcuts("provider", "nav", false).find(
-      (s) => s.key === "Tab",
-    );
+    const disabledTab = getStepShortcuts("provider", "nav", true).find((s) => s.key === "Tab");
+    const enabledTab = getStepShortcuts("provider", "nav", false).find((s) => s.key === "Tab");
     expect(disabledTab?.disabled).not.toBe(true);
     expect(enabledTab?.disabled).not.toBe(true);
   });

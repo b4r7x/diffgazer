@@ -1,4 +1,4 @@
-import type { ProgressStatus, ProgressSubstepData } from '@diffgazer/core/schemas/presentation';
+import type { ProgressStatus, ProgressSubstepData } from "@diffgazer/core/schemas/presentation";
 import { Stepper, StepperSubstep, type SubstepStatus } from "@diffgazer/ui/components/stepper";
 import type { ReactNode } from "react";
 

@@ -264,7 +264,6 @@ describe("useFocusZone", () => {
 
       expect(fireKey("ArrowRight").defaultPrevented).toBe(false);
     });
-
   });
 
   describe("tab cycling", () => {
@@ -470,7 +469,11 @@ describe("useFocusZone", () => {
           null,
           createElement("div", { ref: mainRef, tabIndex: -1 }, "Main"),
           createElement("div", { ref: sidebarRef, tabIndex: -1 }, "Sidebar"),
-          createElement("button", { type: "button", onClick: () => focusZone.setZone("sidebar") }, "Move"),
+          createElement(
+            "button",
+            { type: "button", onClick: () => focusZone.setZone("sidebar") },
+            "Move",
+          ),
         );
       }
 
@@ -505,7 +508,11 @@ describe("useFocusZone", () => {
           "div",
           null,
           createElement("div", { ref: mainRef, tabIndex: -1 }, "Main"),
-          createElement("button", { type: "button", onClick: () => setZone("timeline") }, "Timeline"),
+          createElement(
+            "button",
+            { type: "button", onClick: () => setZone("timeline") },
+            "Timeline",
+          ),
           createElement("button", { type: "button", onClick: () => setZone("main") }, "Main zone"),
         );
       }
@@ -558,7 +565,11 @@ describe("useFocusZone", () => {
         return createElement(
           "div",
           null,
-          createElement("div", { ref: mainRef }, createElement("button", { type: "button" }, "Main")),
+          createElement(
+            "div",
+            { ref: mainRef },
+            createElement("button", { type: "button" }, "Main"),
+          ),
           createElement("iframe", { ref: iframeRef, title: "Frame" }),
           createElement("output", { "aria-label": "Frame ready" }, ready ? "ready" : "pending"),
           createElement("output", { "aria-label": "Current zone" }, focusZone.zone),
@@ -601,7 +612,11 @@ describe("useFocusZone", () => {
           "div",
           { ref: containerRef },
           createElement("button", { type: "button", ref: targetRef }, "First"),
-          createElement("button", { type: "button", onClick: () => setTick((value) => value + 1) }, `Second ${tick}`),
+          createElement(
+            "button",
+            { type: "button", onClick: () => setTick((value) => value + 1) },
+            `Second ${tick}`,
+          ),
         );
       }
 
@@ -650,19 +665,13 @@ describe("useFocusZone", () => {
 
       render(createElement(Host), { wrapper });
 
-      expect(document.activeElement).toBe(
-        screen.getByRole("button", { name: "Main action" }),
-      );
+      expect(document.activeElement).toBe(screen.getByRole("button", { name: "Main action" }));
 
       act(() => fireKey("Tab"));
-      expect(document.activeElement).toBe(
-        screen.getByRole("button", { name: "Sidebar action" }),
-      );
+      expect(document.activeElement).toBe(screen.getByRole("button", { name: "Sidebar action" }));
 
       act(() => fireKey("Tab", { shiftKey: true }));
-      expect(document.activeElement).toBe(
-        screen.getByRole("button", { name: "Main action" }),
-      );
+      expect(document.activeElement).toBe(screen.getByRole("button", { name: "Main action" }));
     });
   });
 

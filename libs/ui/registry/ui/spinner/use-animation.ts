@@ -11,15 +11,21 @@ export function useSpinnerAnimation({ totalFrames, speed }: UseSpinnerAnimationO
   const [frame, setFrame] = useState(0);
 
   useEffect(() => {
-    if (!Number.isFinite(totalFrames) || totalFrames <= 0 || !Number.isFinite(speed) || speed <= 0) {
+    if (
+      !Number.isFinite(totalFrames) ||
+      totalFrames <= 0 ||
+      !Number.isFinite(speed) ||
+      speed <= 0
+    ) {
       setFrame(0);
       return;
     }
 
     let intervalId: ReturnType<typeof setInterval> | undefined;
-    const mql = typeof window !== "undefined" && typeof window.matchMedia === "function"
-      ? window.matchMedia("(prefers-reduced-motion: reduce)")
-      : null;
+    const mql =
+      typeof window !== "undefined" && typeof window.matchMedia === "function"
+        ? window.matchMedia("(prefers-reduced-motion: reduce)")
+        : null;
 
     function sync() {
       if (intervalId !== undefined) {
@@ -29,7 +35,7 @@ export function useSpinnerAnimation({ totalFrames, speed }: UseSpinnerAnimationO
       if (mql?.matches) {
         setFrame(0);
       } else {
-        intervalId = setInterval(() => setFrame(f => (f + 1) % totalFrames), speed);
+        intervalId = setInterval(() => setFrame((f) => (f + 1) % totalFrames), speed);
       }
     }
 

@@ -1,4 +1,4 @@
-import { Stepper } from "@/components/ui/stepper"
+import { Stepper } from "@/components/ui/stepper";
 
 export default function StepperStateMatrix() {
   return (
@@ -22,5 +22,5 @@ export default function StepperStateMatrix() {
         <Stepper.Trigger>Disabled — policy gate (not reachable)</Stepper.Trigger>
       </Stepper.Step>
     </Stepper>
-  )
+  );
 }

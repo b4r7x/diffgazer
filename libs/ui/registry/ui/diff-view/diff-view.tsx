@@ -22,12 +22,7 @@ import {
 import { SplitView } from "./diff-view-split";
 import { UnifiedView } from "./diff-view-unified";
 
-export type DiffViewVariant =
-  | "hairline"
-  | "bare"
-  | "dense"
-  | "viewfinder"
-  | "statusbar";
+export type DiffViewVariant = "hairline" | "bare" | "dense" | "viewfinder" | "statusbar";
 
 export type DiffViewDensity = "compact" | "default" | "comfortable";
 export type DiffViewPalette = "default" | "okabe-ito";
@@ -46,11 +41,7 @@ interface DiffViewBaseProps {
   ref?: Ref<HTMLElement>;
 }
 
-export type DiffViewProps = (
-  | DiffInputPatch
-  | DiffInputCompare
-  | DiffInputParsed
-) &
+export type DiffViewProps = (DiffInputPatch | DiffInputCompare | DiffInputParsed) &
   DiffViewBaseProps;
 
 interface ActiveHunkState {
@@ -145,9 +136,7 @@ export function DiffView(props: DiffViewProps) {
   const ariaLabel = showFigCaption ? undefined : (label ?? "Diff output");
   const ariaLabelledBy = showFigCaption ? captionId : undefined;
 
-  const style = maxHeight
-    ? ({ "--dv-max-h": maxHeight } as CSSProperties)
-    : undefined;
+  const style = maxHeight ? ({ "--dv-max-h": maxHeight } as CSSProperties) : undefined;
 
   const isDense = variant === "dense";
   const hasHunks = parsed.hunks.length > 0;

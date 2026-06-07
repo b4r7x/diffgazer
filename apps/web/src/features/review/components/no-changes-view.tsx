@@ -1,9 +1,9 @@
 import { usePageFooter } from "@diffgazer/core/footer";
 import type { Shortcut } from "@diffgazer/core/schemas/presentation";
-import type { ReviewMode } from '@diffgazer/core/schemas/review';
-import { useActionRowNavigation, useKey, useScope } from '@diffgazer/keys';
-import { Button } from '@diffgazer/ui/components/button';
-import { useRef } from 'react';
+import type { ReviewMode } from "@diffgazer/core/schemas/review";
+import { useActionRowNavigation, useKey, useScope } from "@diffgazer/keys";
+import { Button } from "@diffgazer/ui/components/button";
+import { useRef } from "react";
 
 export interface NoChangesViewProps {
   mode: ReviewMode;
@@ -13,24 +13,26 @@ export interface NoChangesViewProps {
 
 const MESSAGES: Record<ReviewMode, { title: string; message: string; switchLabel: string }> = {
   staged: {
-    title: 'No Staged Changes',
-    message: "No staged changes found. Use 'git add' to stage files, or review unstaged changes instead.",
-    switchLabel: 'Review Unstaged',
+    title: "No Staged Changes",
+    message:
+      "No staged changes found. Use 'git add' to stage files, or review unstaged changes instead.",
+    switchLabel: "Review Unstaged",
   },
   unstaged: {
-    title: 'No Unstaged Changes',
-    message: 'No unstaged changes found. Make some edits first, or review staged changes instead.',
-    switchLabel: 'Review Staged',
+    title: "No Unstaged Changes",
+    message: "No unstaged changes found. Make some edits first, or review staged changes instead.",
+    switchLabel: "Review Staged",
   },
   files: {
-    title: 'No Changes in Selected Files',
-    message: 'No changes found in the selected files. Make some edits first, or select different files.',
-    switchLabel: 'Review Unstaged',
+    title: "No Changes in Selected Files",
+    message:
+      "No changes found in the selected files. Make some edits first, or select different files.",
+    switchLabel: "Review Unstaged",
   },
 };
 
 export function NoChangesView({ mode, onBack, onSwitchMode }: NoChangesViewProps) {
-  useScope('no-changes');
+  useScope("no-changes");
 
   const focusFallbackRef = useRef<HTMLDivElement>(null);
   const { title, message, switchLabel } = MESSAGES[mode];
@@ -46,22 +48,25 @@ export function NoChangesView({ mode, onBack, onSwitchMode }: NoChangesViewProps
     onAction: (index) => actions[index]?.(),
   });
 
-  useKey('Escape', onBack);
+  useKey("Escape", onBack);
 
   const focusedLabel = onSwitchMode
-    ? (footer.focusedIndex === 0 ? switchLabel : 'Back to Home')
-    : 'Back to Home';
+    ? footer.focusedIndex === 0
+      ? switchLabel
+      : "Back to Home"
+    : "Back to Home";
 
-  const footerShortcuts: Shortcut[] = actionCount > 1
-    ? [
-        { key: '←/→', label: 'Move Action' },
-        { key: 'Enter/Space', label: focusedLabel },
-      ]
-    : [{ key: 'Enter/Space', label: focusedLabel }];
+  const footerShortcuts: Shortcut[] =
+    actionCount > 1
+      ? [
+          { key: "←/→", label: "Move Action" },
+          { key: "Enter/Space", label: focusedLabel },
+        ]
+      : [{ key: "Enter/Space", label: focusedLabel }];
 
   usePageFooter({
     shortcuts: footerShortcuts,
-    rightShortcuts: [{ key: 'Esc', label: 'Back' }],
+    rightShortcuts: [{ key: "Esc", label: "Back" }],
   });
 
   return (

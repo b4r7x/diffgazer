@@ -33,16 +33,12 @@ export interface SelectContextValue {
   onNativeInvalid: () => void;
 }
 
-export const SelectContext = createContext<SelectContextValue | undefined>(
-  undefined
-);
+export const SelectContext = createContext<SelectContextValue | undefined>(undefined);
 
 export function useSelectContext(source?: string): SelectContextValue {
   const context = useContext(SelectContext);
   if (!context) {
-    throw new Error(
-      `${source ?? "Select compound components"} must be used within a Select`
-    );
+    throw new Error(`${source ?? "Select compound components"} must be used within a Select`);
   }
   return context;
 }

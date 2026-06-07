@@ -19,16 +19,18 @@ let statusHash = "hash-1";
 
 function makeGitService(overrides: Partial<GitService> = {}): GitService {
   return {
-    getStatus: vi.fn(async () => ok({
-      isGitRepo: true,
-      branch: "main",
-      remoteBranch: null,
-      ahead: 0,
-      behind: 0,
-      files: { staged: [], unstaged: [], untracked: [] },
-      hasChanges: false,
-      conflicted: [],
-    })),
+    getStatus: vi.fn(async () =>
+      ok({
+        isGitRepo: true,
+        branch: "main",
+        remoteBranch: null,
+        ahead: 0,
+        behind: 0,
+        files: { staged: [], unstaged: [], untracked: [] },
+        hasChanges: false,
+        conflicted: [],
+      }),
+    ),
     getDiff: vi.fn(async () => ""),
     isGitInstalled: vi.fn(async () => true),
     getBlame: vi.fn(async () => null),
@@ -68,8 +70,20 @@ async function writeProjectFile(relativePath: string, content: string): Promise<
 describe("loadContextSnapshot", () => {
   it("loads a snapshot from real context files", async () => {
     const contextDir = join(projectRoot, ".diffgazer");
-    const graph = { generatedAt: "2025-01-01", root: projectRoot, packages: [], edges: [], fileTree: [], changedFiles: [] };
-    const meta = { generatedAt: "2025-01-01", root: projectRoot, statusHash: "hash-1", charCount: 10 };
+    const graph = {
+      generatedAt: "2025-01-01",
+      root: projectRoot,
+      packages: [],
+      edges: [],
+      fileTree: [],
+      changedFiles: [],
+    };
+    const meta = {
+      generatedAt: "2025-01-01",
+      root: projectRoot,
+      statusHash: "hash-1",
+      charCount: 10,
+    };
     await mkdir(contextDir, { recursive: true });
     await writeFile(join(contextDir, "context.md"), "# cached", "utf-8");
     await writeJson(join(contextDir, "context.json"), graph);
@@ -96,21 +110,30 @@ describe("loadContextSnapshot", () => {
 
 describe("buildProjectContextSnapshot", () => {
   it("discovers project metadata, workspace packages, file tree, and persists the snapshot", async () => {
-    await writeProjectFile("package.json", JSON.stringify({
-      name: "root-app",
-      version: "1.0.0",
-      description: "Root package",
-    }));
+    await writeProjectFile(
+      "package.json",
+      JSON.stringify({
+        name: "root-app",
+        version: "1.0.0",
+        description: "Root package",
+      }),
+    );
     await writeProjectFile("README.md", "# Root\n\nReadme excerpt");
-    await writeProjectFile("apps/web/package.json", JSON.stringify({
-      name: "@repo/web",
-      dependencies: { "@repo/core": "workspace:*", react: "19" },
-      devDependencies: { vitest: "1" },
-    }));
-    await writeProjectFile("packages/core/package.json", JSON.stringify({
-      name: "@repo/core",
-      peerDependencies: { zod: "4" },
-    }));
+    await writeProjectFile(
+      "apps/web/package.json",
+      JSON.stringify({
+        name: "@repo/web",
+        dependencies: { "@repo/core": "workspace:*", react: "19" },
+        devDependencies: { vitest: "1" },
+      }),
+    );
+    await writeProjectFile(
+      "packages/core/package.json",
+      JSON.stringify({
+        name: "@repo/core",
+        peerDependencies: { zod: "4" },
+      }),
+    );
     await writeProjectFile("src/index.ts", "export const value = 1;\n");
     await writeProjectFile("node_modules/ignored/index.js", "");
     await writeProjectFile("dist/ignored.js", "");
@@ -136,13 +159,17 @@ describe("buildProjectContextSnapshot", () => {
       expect.arrayContaining([".diffgazer", ".git", "dist", "node_modules"]),
     );
 
-    await expect(readFile(join(projectRoot, ".diffgazer", "context.md"), "utf-8")).resolves.toBe(result.markdown);
+    await expect(readFile(join(projectRoot, ".diffgazer", "context.md"), "utf-8")).resolves.toBe(
+      result.markdown,
+    );
     await expect(readJson(join(projectRoot, ".diffgazer", "context.json"))).resolves.toMatchObject({
       root: projectRoot,
       packages: result.graph.packages,
       edges: result.graph.edges,
     });
-    await expect(readJson(join(projectRoot, ".diffgazer", "context.meta.json"))).resolves.toMatchObject({
+    await expect(
+      readJson(join(projectRoot, ".diffgazer", "context.meta.json")),
+    ).resolves.toMatchObject({
       root: projectRoot,
       statusHash: "hash-1",
       charCount: result.markdown.length,
@@ -201,7 +228,10 @@ describe("buildProjectContextSnapshot", () => {
   it("truncates context markdown when byte size exceeds cap", async () => {
     // Create a large README to push total context beyond 50KB
     const largeContent = "X".repeat(60_000);
-    await writeProjectFile("package.json", JSON.stringify({ name: "big-project", version: "1.0.0" }));
+    await writeProjectFile(
+      "package.json",
+      JSON.stringify({ name: "big-project", version: "1.0.0" }),
+    );
     await writeProjectFile("README.md", largeContent);
 
     const result = await buildProjectContextSnapshot(projectRoot, { force: true });

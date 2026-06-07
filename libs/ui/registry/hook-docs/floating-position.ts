@@ -1,4 +1,4 @@
-import type { HookDoc } from "@diffgazer/registry"
+import type { HookDoc } from "@diffgazer/registry";
 
 export const floatingPositionDoc: HookDoc = {
   description:
@@ -32,8 +32,7 @@ const { position, contentRef } = useFloatingPosition({
       name: "side",
       type: '"top" | "bottom" | "left" | "right"',
       required: false,
-      description:
-        "Preferred side for positioning. Auto-flips if there isn't enough space.",
+      description: "Preferred side for positioning. Auto-flips if there isn't enough space.",
       defaultValue: '"top"',
     },
     {
@@ -62,8 +61,7 @@ const { position, contentRef } = useFloatingPosition({
       name: "collisionPadding",
       type: "number",
       required: false,
-      description:
-        "Minimum distance in pixels from viewport edges when avoiding collisions.",
+      description: "Minimum distance in pixels from viewport edges when avoiding collisions.",
       defaultValue: "8",
     },
     {
@@ -77,8 +75,7 @@ const { position, contentRef } = useFloatingPosition({
   ],
   returns: {
     type: "UseFloatingPositionReturn",
-    description:
-      "Object containing computed position and a ref for the floating content element.",
+    description: "Object containing computed position and a ref for the floating content element.",
     properties: [
       {
         name: "position",
@@ -109,12 +106,9 @@ const { position, contentRef } = useFloatingPosition({
     },
     {
       title: "Used By",
-      content:
-        "Built into PopoverContent for automatic positioning of popovers and tooltips.",
+      content: "Built into PopoverContent for automatic positioning of popovers and tooltips.",
     },
   ],
-  examples: [
-    { name: "floating-position-basic", title: "Basic Positioning" },
-  ],
+  examples: [{ name: "floating-position-basic", title: "Basic Positioning" }],
   tags: ["hook", "positioning", "floating", "popover", "tooltip"],
-}
+};

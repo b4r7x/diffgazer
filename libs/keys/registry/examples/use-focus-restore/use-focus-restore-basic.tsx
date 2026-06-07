@@ -1,26 +1,26 @@
-"use client"
+"use client";
 
-import { useFocusRestore } from "@diffgazer/keys"
-import { useEffect, useRef, useState } from "react"
+import { useFocusRestore } from "@diffgazer/keys";
+import { useEffect, useRef, useState } from "react";
 
 export default function UseFocusRestoreBasic() {
-  const [open, setOpen] = useState(false)
-  const panelRef = useRef<HTMLDivElement>(null)
-  const focusRestore = useFocusRestore({ restoreOnUnmount: true })
+  const [open, setOpen] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const focusRestore = useFocusRestore({ restoreOnUnmount: true });
 
   useEffect(() => {
-    if (open) panelRef.current?.focus()
-  }, [open])
+    if (open) panelRef.current?.focus();
+  }, [open]);
 
   const openPanel = () => {
-    focusRestore.capture()
-    setOpen(true)
-  }
+    focusRestore.capture();
+    setOpen(true);
+  };
 
   const closePanel = () => {
-    setOpen(false)
-    focusRestore.restore()
-  }
+    setOpen(false);
+    focusRestore.restore();
+  };
 
   return (
     <div>
@@ -37,5 +37,5 @@ export default function UseFocusRestoreBasic() {
         </div>
       )}
     </div>
-  )
+  );
 }

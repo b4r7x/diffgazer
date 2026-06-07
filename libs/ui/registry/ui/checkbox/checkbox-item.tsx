@@ -26,7 +26,14 @@ export type CheckboxItemProps = Omit<
   ref?: Ref<HTMLDivElement>;
 };
 
-export function CheckboxItem({ value, label, description, disabled = false, ref, ...checkboxProps }: CheckboxItemProps) {
+export function CheckboxItem({
+  value,
+  label,
+  description,
+  disabled = false,
+  ref,
+  ...checkboxProps
+}: CheckboxItemProps) {
   const ctx = useCheckboxGroupContext();
   const itemId = useId();
   const rootRef = useRef<HTMLDivElement>(null);

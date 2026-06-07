@@ -132,9 +132,13 @@ export function useHistoryKeyboard({
     downKeys: ["ArrowDown", "j"],
   });
 
-  useKey("/", () => {
-    setFocusZone("search");
-  }, { scope: HISTORY_SCOPE, enabled: focusZone !== "search", preventDefault: true });
+  useKey(
+    "/",
+    () => {
+      setFocusZone("search");
+    },
+    { scope: HISTORY_SCOPE, enabled: focusZone !== "search", preventDefault: true },
+  );
 
   const navigateToSelectedRun = () => {
     if (activeRunId) {
@@ -145,9 +149,13 @@ export function useHistoryKeyboard({
   useKey("o", navigateToSelectedRun, { scope: HISTORY_SCOPE, enabled: focusZone === "runs" });
   useKey(" ", navigateToSelectedRun, { scope: HISTORY_SCOPE, enabled: focusZone === "runs" });
 
-  useKey("Escape", () => {
-    navigate({ to: "/" });
-  }, { scope: HISTORY_SCOPE });
+  useKey(
+    "Escape",
+    () => {
+      navigate({ to: "/" });
+    },
+    { scope: HISTORY_SCOPE },
+  );
 
   const { shortcuts, rightShortcuts } = getHistoryFooter(focusZone);
 

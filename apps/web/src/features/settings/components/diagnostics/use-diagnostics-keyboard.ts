@@ -50,10 +50,7 @@ export function useDiagnosticsKeyboard({
     setRefreshError(null);
 
     try {
-      const results = await Promise.allSettled([
-        retryServer(),
-        refetchContext(),
-      ]);
+      const results = await Promise.allSettled([retryServer(), refetchContext()]);
       const failedCount = results.filter((result) => result.status === "rejected").length;
       setLastRefreshedAt(new Date().toISOString());
       if (failedCount > 0) setRefreshError("Refresh failed for some diagnostics sources.");
@@ -94,16 +91,16 @@ export function useDiagnosticsKeyboard({
 
   const footerShortcuts: Shortcut[] = inActions
     ? [
-          {
-            key: "\u2190/\u2192",
-            label: "Move Action",
-            disabled: refreshAllDisabled && contextActionDisabled,
-          },
-          {
-            key: "Enter/Space",
-            label: "Activate",
-            disabled: focusedIndex === 0 ? refreshAllDisabled : contextActionDisabled,
-          },
+        {
+          key: "\u2190/\u2192",
+          label: "Move Action",
+          disabled: refreshAllDisabled && contextActionDisabled,
+        },
+        {
+          key: "Enter/Space",
+          label: "Activate",
+          disabled: focusedIndex === 0 ? refreshAllDisabled : contextActionDisabled,
+        },
         { key: "r/R", label: "Refresh All", disabled: refreshAllDisabled },
       ]
     : [
@@ -116,14 +113,26 @@ export function useDiagnosticsKeyboard({
     rightShortcuts: [{ key: "Esc", label: "Back" }],
   });
 
-  useKey("r", () => { void handleRefreshAll(); }, {
-    scope: SETTINGS_DIAGNOSTICS_SCOPE,
-    enabled: !refreshAllDisabled,
-  });
-  useKey("R", () => { void handleRefreshAll(); }, {
-    scope: SETTINGS_DIAGNOSTICS_SCOPE,
-    enabled: !refreshAllDisabled,
-  });
+  useKey(
+    "r",
+    () => {
+      void handleRefreshAll();
+    },
+    {
+      scope: SETTINGS_DIAGNOSTICS_SCOPE,
+      enabled: !refreshAllDisabled,
+    },
+  );
+  useKey(
+    "R",
+    () => {
+      void handleRefreshAll();
+    },
+    {
+      scope: SETTINGS_DIAGNOSTICS_SCOPE,
+      enabled: !refreshAllDisabled,
+    },
+  );
 
   useKey("Escape", () => navigate({ to: "/settings" }), { scope: SETTINGS_DIAGNOSTICS_SCOPE });
 

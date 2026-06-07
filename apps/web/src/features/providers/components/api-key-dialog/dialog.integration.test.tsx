@@ -67,13 +67,9 @@ describe("ApiKeyDialog footer integration", () => {
     expect(within(dialog).getByRole("button", { name: "Cancel" })).toBeInTheDocument();
     expect(within(dialog).getByRole("button", { name: "Confirm" })).toBeInTheDocument();
 
-    const kbdNodes = within(dialog).getAllByText(
-      (_, element) => element?.tagName === "KBD",
-    );
+    const kbdNodes = within(dialog).getAllByText((_, element) => element?.tagName === "KBD");
     const kbdTexts = kbdNodes.map((node) => node.textContent);
-    expect(kbdTexts).toEqual(
-      expect.arrayContaining(["↑/↓", "Enter/Space", "Esc", "Enter"]),
-    );
+    expect(kbdTexts).toEqual(expect.arrayContaining(["↑/↓", "Enter/Space", "Esc", "Enter"]));
 
     expect(within(dialog).getByText("Navigate")).toBeInTheDocument();
     expect(within(dialog).getByText("Select")).toBeInTheDocument();

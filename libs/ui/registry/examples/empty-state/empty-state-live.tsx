@@ -1,19 +1,13 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import {
-  EmptyState,
-  EmptyStateDescription,
-  EmptyStateMessage,
-} from "@/components/ui/empty-state"
+import { useState } from "react";
+import { EmptyState, EmptyStateDescription, EmptyStateMessage } from "@/components/ui/empty-state";
 
-const items = ["useNavigation", "useFocusTrap", "useScrollLock"]
+const items = ["useNavigation", "useFocusTrap", "useScrollLock"];
 
 export default function EmptyStateLive() {
-  const [query, setQuery] = useState("")
-  const filtered = items.filter((item) =>
-    item.toLowerCase().includes(query.toLowerCase()),
-  )
+  const [query, setQuery] = useState("");
+  const filtered = items.filter((item) => item.toLowerCase().includes(query.toLowerCase()));
 
   return (
     <div className="flex flex-col gap-4">
@@ -37,5 +31,5 @@ export default function EmptyStateLive() {
         </EmptyState>
       )}
     </div>
-  )
+  );
 }

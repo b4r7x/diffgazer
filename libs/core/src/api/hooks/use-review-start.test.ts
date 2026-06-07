@@ -13,9 +13,7 @@ function StrictModeWrapper({ children }: { children: ReactNode }) {
   return createElement(StrictMode, null, children);
 }
 
-function createOptions(
-  overrides: Partial<UseReviewStartOptions> = {},
-): UseReviewStartOptions {
+function createOptions(overrides: Partial<UseReviewStartOptions> = {}): UseReviewStartOptions {
   return {
     mode: "unstaged",
     configLoading: false,
@@ -46,7 +44,10 @@ describe("useReviewStart", () => {
     },
     {
       label: "reviewId='live-review' matches currentReviewId='live-review'",
-      overrides: { reviewId: "live-review", currentReviewId: "live-review" } as Partial<UseReviewStartOptions>,
+      overrides: {
+        reviewId: "live-review",
+        currentReviewId: "live-review",
+      } as Partial<UseReviewStartOptions>,
     },
     {
       label: "configLoading=true",
@@ -54,7 +55,10 @@ describe("useReviewStart", () => {
     },
     {
       label: "settingsLoading=true",
-      overrides: { reviewId: "review-123", settingsLoading: true } as Partial<UseReviewStartOptions>,
+      overrides: {
+        reviewId: "review-123",
+        settingsLoading: true,
+      } as Partial<UseReviewStartOptions>,
     },
     {
       label: "isConfigured=false",

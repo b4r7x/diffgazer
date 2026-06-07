@@ -1,4 +1,9 @@
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 export default function AccordionMultiple() {
   return (
@@ -28,5 +33,5 @@ export default function AccordionMultiple() {
         </AccordionContent>
       </AccordionItem>
     </Accordion>
-  )
+  );
 }

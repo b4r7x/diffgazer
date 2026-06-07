@@ -1,4 +1,9 @@
-import { getFocusedNavigationValue, useFocusZone, useKey, useScopedNavigation } from "@diffgazer/keys";
+import {
+  getFocusedNavigationValue,
+  useFocusZone,
+  useKey,
+  useScopedNavigation,
+} from "@diffgazer/keys";
 import { useCallback, useLayoutEffect, useRef } from "react";
 
 export type TrustFormFocusZone = "list" | "buttons";
@@ -60,9 +65,7 @@ export function useTrustFormKeyboard({
     scope,
     focusWithinOnly: true,
   });
-  const focusedAction = isTrustFormAction(highlighted)
-    ? highlighted
-    : "save";
+  const focusedAction = isTrustFormAction(highlighted) ? highlighted : "save";
 
   const enterListZone = useCallback(() => {
     setZone("list");
@@ -73,18 +76,24 @@ export function useTrustFormKeyboard({
     setZone("list");
   }, [setZone]);
 
-  const focusActionButton = useCallback((action: TrustFormAction = focusedAction) => {
-    if (actionsDisabled) return;
-    setZone("buttons");
-    highlight(action);
-    getActionButton(actionRowRef.current, action)?.focus();
-  }, [actionsDisabled, focusedAction, highlight, setZone]);
+  const focusActionButton = useCallback(
+    (action: TrustFormAction = focusedAction) => {
+      if (actionsDisabled) return;
+      setZone("buttons");
+      highlight(action);
+      getActionButton(actionRowRef.current, action)?.focus();
+    },
+    [actionsDisabled, focusedAction, highlight, setZone],
+  );
 
-  const handleActionFocus = useCallback((action: TrustFormAction) => {
-    if (actionsDisabled) return;
-    setZone("buttons");
-    highlight(action);
-  }, [actionsDisabled, highlight, setZone]);
+  const handleActionFocus = useCallback(
+    (action: TrustFormAction) => {
+      if (actionsDisabled) return;
+      setZone("buttons");
+      highlight(action);
+    },
+    [actionsDisabled, highlight, setZone],
+  );
 
   const activateCurrentAction = useCallback(() => {
     if (actionsDisabled) return;
@@ -100,7 +109,11 @@ export function useTrustFormKeyboard({
   }, [actionsDisabled, enabled, onListFocusRequest, setZone, zone]);
 
   useKey("ArrowUp", enterListZone, getKeyOptions("buttons", { enabled: keyboardEnabled }));
-  useKey(["Enter", " "], activateCurrentAction, getKeyOptions("buttons", { enabled: keyboardEnabled }));
+  useKey(
+    ["Enter", " "],
+    activateCurrentAction,
+    getKeyOptions("buttons", { enabled: keyboardEnabled }),
+  );
 
   return {
     actionRowRef,

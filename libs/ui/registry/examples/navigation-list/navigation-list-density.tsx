@@ -1,9 +1,9 @@
-"use client"
+"use client";
 
-import { NavigationList } from "@/components/ui/navigation-list"
+import { NavigationList } from "@/components/ui/navigation-list";
 
 export default function NavigationListDensity() {
-  const densities = ["compact", "default", "comfortable"] as const
+  const densities = ["compact", "default", "comfortable"] as const;
 
   return (
     <div className="flex flex-col gap-6">
@@ -27,5 +27,5 @@ export default function NavigationListDensity() {
         </div>
       ))}
     </div>
-  )
+  );
 }

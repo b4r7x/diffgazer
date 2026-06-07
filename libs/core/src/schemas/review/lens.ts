@@ -3,8 +3,13 @@ import { LensIdSchema } from "./enums.js";
 import { ReviewIssueSchema, TraceRefSchema } from "./issues.js";
 
 export {
-  LENS_IDS, type LensId,LensIdSchema,
-  PROFILE_IDS, type ProfileId,ProfileIdSchema, type ReviewProfile,
+  LENS_IDS,
+  type LensId,
+  LensIdSchema,
+  PROFILE_IDS,
+  type ProfileId,
+  ProfileIdSchema,
+  type ReviewProfile,
   ReviewProfileSchema,
 } from "./enums.js";
 

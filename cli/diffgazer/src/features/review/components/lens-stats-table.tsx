@@ -15,10 +15,7 @@ export function LensStatsTable({ lenses }: LensStatsTableProps) {
     return <Text color={tokens.muted}>No lens data</Text>;
   }
 
-  const nameWidth = Math.max(
-    "Lens".length,
-    ...lenses.map((l) => l.name.length),
-  );
+  const nameWidth = Math.max("Lens".length, ...lenses.map((l) => l.name.length));
 
   return (
     <Box flexDirection="column">

@@ -1,7 +1,7 @@
-"use client"
+"use client";
 
-import { useNavigation } from "@diffgazer/keys"
-import { useRef } from "react"
+import { useNavigation } from "@diffgazer/keys";
+import { useRef } from "react";
 import {
   Dialog,
   DialogAction,
@@ -13,17 +13,17 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
 
 export default function DialogKeyboard() {
-  const containerRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const { onKeyDown } = useNavigation({
     containerRef,
     role: "button",
     orientation: "horizontal",
     moveFocus: true,
-  })
+  });
 
   return (
     <Dialog>
@@ -31,9 +31,7 @@ export default function DialogKeyboard() {
       <DialogContent role="alertdialog" closeOnBackdropClick={false}>
         <DialogHeader>
           <DialogTitle>Delete Branch</DialogTitle>
-          <DialogDescription>
-            This action cannot be undone.
-          </DialogDescription>
+          <DialogDescription>This action cannot be undone.</DialogDescription>
         </DialogHeader>
         <DialogBody>
           <p className="text-sm text-muted-foreground leading-relaxed">
@@ -50,11 +48,15 @@ export default function DialogKeyboard() {
               { key: "Enter", label: "Confirm" },
             ]}
           >
-            <DialogClose data-value="cancel" bracket variant="ghost">Cancel</DialogClose>
-            <DialogAction data-value="delete" variant="destructive" bracket>Delete</DialogAction>
+            <DialogClose data-value="cancel" bracket variant="ghost">
+              Cancel
+            </DialogClose>
+            <DialogAction data-value="delete" variant="destructive" bracket>
+              Delete
+            </DialogAction>
           </DialogFooter>
         </div>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

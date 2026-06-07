@@ -60,12 +60,24 @@ export interface SpinnerProps
   ref?: Ref<HTMLSpanElement>;
 }
 
-function SpinnerAnimation({ variant, frame, size }: { variant: SpinnerVariant; frame: number; size: SpinnerSize }) {
+function SpinnerAnimation({
+  variant,
+  frame,
+  size,
+}: {
+  variant: SpinnerVariant;
+  frame: number;
+  size: SpinnerSize;
+}) {
   const safeFrame = frame % VARIANT_CONFIG[variant].frames;
   if (variant === "snake") return <SnakeGrid frame={safeFrame} size={size} />;
   if (variant === "braille") return <>{BRAILLE_FRAMES[safeFrame]}</>;
   if (variant === "dots") {
-    return <span className={cn("inline-block whitespace-pre", DOTS_FIXED_WIDTH)}>{DOTS_FRAMES[safeFrame]}</span>;
+    return (
+      <span className={cn("inline-block whitespace-pre", DOTS_FIXED_WIDTH)}>
+        {DOTS_FRAMES[safeFrame]}
+      </span>
+    );
   }
   return <>{PULSE_FRAMES[safeFrame]}</>;
 }
@@ -96,10 +108,7 @@ export function Spinner({
       role="status"
       aria-live="polite"
       aria-label={children ? undefined : "Loading"}
-      className={cn(
-        spinnerVariants({ size: resolvedSize, labelPosition, gap }),
-        className,
-      )}
+      className={cn(spinnerVariants({ size: resolvedSize, labelPosition, gap }), className)}
       {...props}
     >
       <span aria-hidden="true" className="inline-flex items-center">

@@ -44,7 +44,10 @@ async function readSavedReview(id: string): Promise<SavedReview> {
   return readJson<SavedReview>(reviewPath(id));
 }
 
-async function waitForSavedReview(id: string, predicate: (review: SavedReview) => boolean): Promise<SavedReview> {
+async function waitForSavedReview(
+  id: string,
+  predicate: (review: SavedReview) => boolean,
+): Promise<SavedReview> {
   return vi.waitFor(
     async () => {
       const review = await readSavedReview(id);
@@ -93,7 +96,14 @@ const makeSavedReview = (overrides: Partial<SavedReview> = {}): SavedReview => (
     summary: "Review summary",
     issues: [
       makeIssue({ id: "i1", title: "Bug", severity: "high", file: "a.ts" }),
-      makeIssue({ id: "i2", title: "Warn", severity: "medium", file: "b.ts", line_start: 5, line_end: 6 }),
+      makeIssue({
+        id: "i2",
+        title: "Warn",
+        severity: "medium",
+        file: "b.ts",
+        line_start: 5,
+        line_end: 6,
+      }),
     ],
   },
   gitContext: {
@@ -123,17 +133,19 @@ describe("reviews storage", () => {
   it("saves a review and persists the complete JSON document", async () => {
     const { saveReview } = await loadStorage();
 
-    const result = await saveReview(makeSaveOptions({
-      reviewId: REVIEW_ID,
-      result: {
-        summary: "test",
-        issues: [
-          makeIssue({ id: "i1", title: "A", severity: "blocker", file: "a.ts" }),
-          makeIssue({ id: "i2", title: "B", severity: "high", file: "b.ts" }),
-          makeIssue({ id: "i3", title: "C", severity: "nit", file: "c.ts" }),
-        ],
-      },
-    }));
+    const result = await saveReview(
+      makeSaveOptions({
+        reviewId: REVIEW_ID,
+        result: {
+          summary: "test",
+          issues: [
+            makeIssue({ id: "i1", title: "A", severity: "blocker", file: "a.ts" }),
+            makeIssue({ id: "i2", title: "B", severity: "high", file: "b.ts" }),
+            makeIssue({ id: "i3", title: "C", severity: "nit", file: "c.ts" }),
+          ],
+        },
+      }),
+    );
 
     expect(result.ok).toBe(true);
     if (result.ok) {
@@ -157,12 +169,26 @@ describe("reviews storage", () => {
   });
 
   it("lists reviews sorted by newest first and can filter by project path", async () => {
-    await writeSavedReview(makeSavedReview({
-      metadata: { ...makeSavedReview().metadata, id: REVIEW_ID, projectPath: "/proj/a", createdAt: "2024-01-01T00:00:00.000Z" },
-    }));
-    await writeSavedReview(makeSavedReview({
-      metadata: { ...makeSavedReview().metadata, id: REVIEW_ID_2, projectPath: "/proj/b", createdAt: "2025-06-01T00:00:00.000Z" },
-    }));
+    await writeSavedReview(
+      makeSavedReview({
+        metadata: {
+          ...makeSavedReview().metadata,
+          id: REVIEW_ID,
+          projectPath: "/proj/a",
+          createdAt: "2024-01-01T00:00:00.000Z",
+        },
+      }),
+    );
+    await writeSavedReview(
+      makeSavedReview({
+        metadata: {
+          ...makeSavedReview().metadata,
+          id: REVIEW_ID_2,
+          projectPath: "/proj/b",
+          createdAt: "2025-06-01T00:00:00.000Z",
+        },
+      }),
+    );
     const { listReviews } = await loadStorage();
 
     const all = await listReviews();
@@ -233,7 +259,9 @@ describe("reviews storage", () => {
       ok: true,
       value: undefined,
     });
-    await expect(addDrilldownToReview(REVIEW_ID, makeDrilldown("i1", "replacement"))).resolves.toEqual({
+    await expect(
+      addDrilldownToReview(REVIEW_ID, makeDrilldown("i1", "replacement")),
+    ).resolves.toEqual({
       ok: true,
       value: undefined,
     });

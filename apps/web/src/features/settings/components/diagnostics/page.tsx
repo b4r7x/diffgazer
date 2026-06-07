@@ -62,7 +62,8 @@ function getOverallState({
   contextStatus: DiagnosticsData["contextStatus"];
   provider: string | undefined;
 }): OverallState {
-  if (isRefreshingAll || serverState.status === "checking" || contextStatus === "loading") return "loading";
+  if (isRefreshingAll || serverState.status === "checking" || contextStatus === "loading")
+    return "loading";
   if (serverState.status === "error" && contextStatus === "error") return "error";
   if (!provider && contextStatus === "missing") return "empty";
   return "success";
@@ -114,10 +115,16 @@ export function DiagnosticsPage() {
           <span className="text-xs text-tui-muted">{overallState}</span>
         </Panel.Header>
 
-        <Panel.Content ref={focusFallbackRef} tabIndex={-1} className="p-6 space-y-8 focus:outline-none">
+        <Panel.Content
+          ref={focusFallbackRef}
+          tabIndex={-1}
+          className="p-6 space-y-8 focus:outline-none"
+        >
           <div className="grid grid-cols-2 gap-x-8 text-sm">
             <div className="flex flex-col">
-              <span className="text-tui-muted text-xs uppercase tracking-wider mb-1">Version Info</span>
+              <span className="text-tui-muted text-xs uppercase tracking-wider mb-1">
+                Version Info
+              </span>
               <div className="flex items-center gap-2">
                 <span className="text-tui-blue">Diffgazer Web</span>
                 <span className="text-tui-border">|</span>
@@ -126,7 +133,9 @@ export function DiagnosticsPage() {
             </div>
 
             <div className="flex flex-col">
-              <span className="text-tui-muted text-xs uppercase tracking-wider mb-1">Context Snapshot</span>
+              <span className="text-tui-muted text-xs uppercase tracking-wider mb-1">
+                Context Snapshot
+              </span>
               <div className="text-white flex items-center gap-2">
                 <span>[{contextStatus}]</span>
                 {contextStatus === "ready" && (
@@ -141,7 +150,9 @@ export function DiagnosticsPage() {
           <Divider className="border-dashed" />
 
           <div className="space-y-3">
-            <Typography as="h3" size="xs" className="text-tui-violet uppercase tracking-wider">Diagnostic Snapshot</Typography>
+            <Typography as="h3" size="xs" className="text-tui-violet uppercase tracking-wider">
+              Diagnostic Snapshot
+            </Typography>
             <KeyValue className="font-mono">
               <KeyValue.Item
                 label="Health"
@@ -160,7 +171,11 @@ export function DiagnosticsPage() {
               />
               <KeyValue.Item
                 label="Refreshed"
-                value={<span className="break-all">{formatTimestampOrNA(lastRefreshedAt, "Unavailable")}</span>}
+                value={
+                  <span className="break-all">
+                    {formatTimestampOrNA(lastRefreshedAt, "Unavailable")}
+                  </span>
+                }
                 variant="info"
               />
             </KeyValue>

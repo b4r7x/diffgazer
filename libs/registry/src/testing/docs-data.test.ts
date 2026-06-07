@@ -1,9 +1,4 @@
-import {
-  mkdirSync,
-  mkdtempSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -71,7 +66,6 @@ describe("highlightCode", () => {
     expect(allText).toContain("&amp;");
     expect(allText).toContain("</div>");
   });
-
 });
 
 describe("generateHooksSource", () => {
@@ -237,7 +231,7 @@ describe("generateEnrichedHookData", () => {
 
   it("highlights inline usage.code when provided", async () => {
     const hookDoc: HookDoc = {
-      usage: { code: 'const val = useBeta();', lang: "typescript" },
+      usage: { code: "const val = useBeta();", lang: "typescript" },
     };
 
     const result = await generateEnrichedHookData({
@@ -258,7 +252,7 @@ describe("generateEnrichedHookData", () => {
   it("collects and highlights example files from examplesDir", async () => {
     writeFileSync(
       join(tempDir, "examples/use-beta/advanced.tsx"),
-      'export default function Advanced() { return <div>advanced</div>; }\n',
+      "export default function Advanced() { return <div>advanced</div>; }\n",
     );
 
     const result = await generateEnrichedHookData({

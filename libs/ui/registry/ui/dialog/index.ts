@@ -5,13 +5,26 @@ import { DialogAction, type DialogActionProps } from "./dialog-action";
 import { DialogBody, type DialogBodyProps } from "./dialog-body";
 import { DialogClose, type DialogCloseProps } from "./dialog-close";
 import { DialogCloseIcon, type DialogCloseIconProps } from "./dialog-close-icon";
-import { DialogContent, type DialogContentProps, type DialogCorners, dialogContentVariants } from "./dialog-content";
+import {
+  DialogContent,
+  type DialogContentProps,
+  type DialogCorners,
+  dialogContentVariants,
+} from "./dialog-content";
 import { DialogDescription, type DialogDescriptionProps } from "./dialog-description";
 import { DialogFooter, type DialogFooterProps } from "./dialog-footer";
 import { DialogHeader, type DialogHeaderProps } from "./dialog-header";
-import { DialogKeyboardHints, type DialogKeyboardHintsProps, type KeyboardHint } from "./dialog-keyboard-hints";
+import {
+  DialogKeyboardHints,
+  type DialogKeyboardHintsProps,
+  type KeyboardHint,
+} from "./dialog-keyboard-hints";
 import { DialogTitle, type DialogTitleProps } from "./dialog-title";
-import { DialogTrigger, type DialogTriggerProps, type DialogTriggerRenderProps } from "./dialog-trigger";
+import {
+  DialogTrigger,
+  type DialogTriggerProps,
+  type DialogTriggerRenderProps,
+} from "./dialog-trigger";
 
 const Dialog = Object.assign(DialogRoot, {
   Trigger: DialogTrigger,

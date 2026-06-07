@@ -28,9 +28,7 @@ const isSameOrigin = (origin: string, hostHeader: string | undefined): boolean =
   if (!hostHeader) return false;
   try {
     const url = new URL(origin);
-    const originHost = url.port
-      ? `${url.hostname}:${url.port}`
-      : url.hostname;
+    const originHost = url.port ? `${url.hostname}:${url.port}` : url.hostname;
     return originHost === hostHeader;
   } catch {
     return false;
@@ -68,7 +66,10 @@ export const createApp = (): Hono<AppEnv> => {
   app.use("*", async (c, next) => {
     c.res.headers.set("X-Frame-Options", "DENY");
     c.res.headers.set("X-Content-Type-Options", "nosniff");
-    c.res.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=(), bluetooth=(), midi=(), display-capture=()");
+    c.res.headers.set(
+      "Permissions-Policy",
+      "camera=(), microphone=(), geolocation=(), payment=(), usb=(), bluetooth=(), midi=(), display-capture=()",
+    );
     c.res.headers.set("Referrer-Policy", "no-referrer");
     await next();
   });
@@ -114,8 +115,13 @@ export const createApp = (): Hono<AppEnv> => {
         return isLocalhostOrigin(origin) ? origin : "";
       },
       allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-      allowHeaders: ["Content-Type", "Authorization", "x-diffgazer-project-root", SHUTDOWN_TOKEN_HEADER],
-    })
+      allowHeaders: [
+        "Content-Type",
+        "Authorization",
+        "x-diffgazer-project-root",
+        SHUTDOWN_TOKEN_HEADER,
+      ],
+    }),
   );
 
   // Health at root for container/load-balancer probes, and under /api for API client consistency

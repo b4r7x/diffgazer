@@ -14,15 +14,10 @@ export function Showcase() {
   return (
     <section aria-labelledby="showcase-heading" className="flex flex-col gap-6">
       <div className="flex flex-col gap-2 text-center">
-        <h2
-          id="showcase-heading"
-          className="font-mono text-2xl font-bold text-foreground"
-        >
+        <h2 id="showcase-heading" className="font-mono text-2xl font-bold text-foreground">
           {SHOWCASE_HEADING}
         </h2>
-        <p className="mx-auto max-w-xl font-sans text-muted-foreground">
-          {SHOWCASE_CAPTION}
-        </p>
+        <p className="mx-auto max-w-xl font-sans text-muted-foreground">{SHOWCASE_CAPTION}</p>
       </div>
 
       <DiffView
@@ -44,9 +39,7 @@ export function Showcase() {
         <CodeBlock.Header>
           <CodeBlock.Label>{TERMINAL_TITLE}</CodeBlock.Label>
         </CodeBlock.Header>
-        <CodeBlock.Content showLineNumbers={false}>
-          {TERMINAL_OUTPUT}
-        </CodeBlock.Content>
+        <CodeBlock.Content showLineNumbers={false}>{TERMINAL_OUTPUT}</CodeBlock.Content>
       </CodeBlock>
     </section>
   );

@@ -41,7 +41,11 @@ export const valueVariants = cva("", {
     },
   },
   compoundVariants: [
-    { layout: "horizontal", bordered: true, class: "pt-4 border-t border-border [&:nth-child(2)]:border-t-0" },
+    {
+      layout: "horizontal",
+      bordered: true,
+      class: "pt-4 border-t border-border [&:nth-child(2)]:border-t-0",
+    },
   ],
   defaultVariants: { variant: "default", bordered: false, layout: "horizontal" },
 });

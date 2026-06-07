@@ -49,8 +49,13 @@ function isTargetInside(target: Node, element: HTMLElement | null): boolean {
 
 function isInEntry(event: Event, target: Node, entry: OutsideClickEntry): boolean {
   const path = getComposedPath(event);
-  if (pathContains(path, entry.ref.current) || isTargetInside(target, entry.ref.current)) return true;
-  return entry.excludeRefs?.some((r) => pathContains(path, r.current) || isTargetInside(target, r.current)) ?? false;
+  if (pathContains(path, entry.ref.current) || isTargetInside(target, entry.ref.current))
+    return true;
+  return (
+    entry.excludeRefs?.some(
+      (r) => pathContains(path, r.current) || isTargetInside(target, r.current),
+    ) ?? false
+  );
 }
 
 function getEntryElements(entry: OutsideClickEntry): HTMLElement[] {
@@ -61,7 +66,9 @@ function getEntryElements(entry: OutsideClickEntry): HTMLElement[] {
 function isNestedAbove(entry: OutsideClickEntry, below: OutsideClickEntry): boolean {
   const belowElements = getEntryElements(below);
   return getEntryElements(entry).some((element) =>
-    belowElements.some((belowElement) => belowElement !== element && belowElement.contains(element)),
+    belowElements.some(
+      (belowElement) => belowElement !== element && belowElement.contains(element),
+    ),
   );
 }
 
@@ -85,7 +92,9 @@ function getEscapeEntryElements(entry: EscapeKeyEntry): HTMLElement[] {
 function isEscapeNestedAbove(entry: EscapeKeyEntry, below: EscapeKeyEntry): boolean {
   const belowElements = getEscapeEntryElements(below);
   return getEscapeEntryElements(entry).some((element) =>
-    belowElements.some((belowElement) => belowElement !== element && belowElement.contains(element)),
+    belowElements.some(
+      (belowElement) => belowElement !== element && belowElement.contains(element),
+    ),
   );
 }
 
@@ -116,7 +125,10 @@ function isDuplicateTouchFallback(event: Event): boolean {
     return false;
   }
 
-  const isDuplicate = event.type === "mousedown" && lastTouchTarget === event.target && Date.now() - lastTouchTime < 750;
+  const isDuplicate =
+    event.type === "mousedown" &&
+    lastTouchTarget === event.target &&
+    Date.now() - lastTouchTime < 750;
   if (isDuplicate) lastTouchTarget = null;
   return isDuplicate;
 }
@@ -178,10 +190,22 @@ function detachPointerListeners(ownerDocument: Document) {
   pointerHandlers.delete(ownerDocument);
   if (!stored) return;
   if (stored.usesPointerEvents) {
-    ownerDocument.removeEventListener("pointerdown", stored.handler, DOCUMENT_POINTER_LISTENER_OPTIONS);
+    ownerDocument.removeEventListener(
+      "pointerdown",
+      stored.handler,
+      DOCUMENT_POINTER_LISTENER_OPTIONS,
+    );
   } else {
-    ownerDocument.removeEventListener("touchstart", stored.handler, DOCUMENT_POINTER_LISTENER_OPTIONS);
-    ownerDocument.removeEventListener("mousedown", stored.handler, DOCUMENT_POINTER_LISTENER_OPTIONS);
+    ownerDocument.removeEventListener(
+      "touchstart",
+      stored.handler,
+      DOCUMENT_POINTER_LISTENER_OPTIONS,
+    );
+    ownerDocument.removeEventListener(
+      "mousedown",
+      stored.handler,
+      DOCUMENT_POINTER_LISTENER_OPTIONS,
+    );
   }
 }
 
@@ -229,7 +253,8 @@ export function useOutsideClick(
     // Resolve at attach time. The ref points at a portal node owned by the same
     // document tree as the trigger; iframe overlays would otherwise listen on the
     // host document and miss interactions.
-    const ownerDocument = ref.current?.ownerDocument ?? (typeof document !== "undefined" ? document : null);
+    const ownerDocument =
+      ref.current?.ownerDocument ?? (typeof document !== "undefined" ? document : null);
     if (!ownerDocument) return;
     const id = Symbol("outside-click-layer");
     outsideClickEntries.push({

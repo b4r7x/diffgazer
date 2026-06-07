@@ -1,4 +1,4 @@
-import type { ComponentDoc as RegistryComponentDoc } from "@diffgazer/registry"
+import type { ComponentDoc as RegistryComponentDoc } from "@diffgazer/registry";
 
 export type {
   AnatomyNode,
@@ -6,7 +6,7 @@ export type {
   ExampleRef,
   KeyboardSection,
   UsageSection,
-} from "@diffgazer/registry"
+} from "@diffgazer/registry";
 
 /**
  * Public-component doc shape with a UI-only escape hatch.
@@ -16,5 +16,5 @@ export type {
  * public `registry:ui` item to either populate `props` or set `noProps: true`.
  */
 export type ComponentDoc = RegistryComponentDoc & {
-  noProps?: boolean
-}
+  noProps?: boolean;
+};

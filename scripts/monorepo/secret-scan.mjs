@@ -60,7 +60,8 @@ const SECRET_PATTERNS = [
   },
   {
     name: "generic-secret-assignment",
-    regex: /^\s*(?:export\s+)?[A-Z0-9_]*(?:API_KEY|SECRET|TOKEN|PASSWORD)[A-Z0-9_]*\s*=\s*["']?([^"'\s#]{32,})["']?/gm,
+    regex:
+      /^\s*(?:export\s+)?[A-Z0-9_]*(?:API_KEY|SECRET|TOKEN|PASSWORD)[A-Z0-9_]*\s*=\s*["']?([^"'\s#]{32,})["']?/gm,
     valueGroup: 1,
   },
 ];
@@ -80,11 +81,11 @@ function shouldSkipFile(path) {
 function isPlaceholder(value) {
   const normalized = value.toLowerCase();
   return (
-    normalized.includes("example")
-    || normalized.includes("placeholder")
-    || normalized.includes("replace-me")
-    || normalized.includes("your-")
-    || /^x+$/.test(normalized)
+    normalized.includes("example") ||
+    normalized.includes("placeholder") ||
+    normalized.includes("replace-me") ||
+    normalized.includes("your-") ||
+    /^x+$/.test(normalized)
   );
 }
 
@@ -161,7 +162,9 @@ if (isDirectRun) {
   const findings = collectSecretFindings(listRepoFiles());
 
   if (findings.length > 0) {
-    console.error("Secret scan failed. Remove the suspected secret or add a narrow scanner exception with reviewer approval.");
+    console.error(
+      "Secret scan failed. Remove the suspected secret or add a narrow scanner exception with reviewer approval.",
+    );
     for (const line of formatSecretFindings(findings)) {
       console.error(line);
     }

@@ -23,11 +23,7 @@ const resolveThreshold = (): number => {
  * Emits one structured JSON log line. Internal, dependency-free; the embedded
  * server is CLI-internal so this avoids a logging framework on purpose.
  */
-export const log = (
-  level: LogLevel,
-  event: string,
-  fields: Record<string, unknown> = {},
-): void => {
+export const log = (level: LogLevel, event: string, fields: Record<string, unknown> = {}): void => {
   if (LEVEL_ORDER[level] < resolveThreshold()) return;
   const line = JSON.stringify({ level, event, timestamp: new Date().toISOString(), ...fields });
   if (level === "error") {

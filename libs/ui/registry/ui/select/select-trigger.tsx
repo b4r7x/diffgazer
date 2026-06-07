@@ -20,10 +20,11 @@ const selectTriggerVariants = cva(
       },
     },
     defaultVariants: { variant: "default" },
-  }
+  },
 );
 
-export interface SelectTriggerProps extends Omit<ComponentPropsWithRef<"button">, "children" | "type" | "disabled" | "id"> {
+export interface SelectTriggerProps
+  extends Omit<ComponentPropsWithRef<"button">, "children" | "type" | "disabled" | "id"> {
   children: ReactNode;
   handle?: ReactNode | null;
 }
@@ -42,12 +43,30 @@ export function SelectTrigger({
   onKeyDown,
   ...props
 }: SelectTriggerProps) {
-  const { open, disabled, searchable, onOpenChange, triggerRef, variant, triggerId, listboxId, ariaInvalid, ariaDescribedBy, ariaLabelledBy, required, options, highlighted, searchQuery } = useSelectContext("SelectTrigger");
+  const {
+    open,
+    disabled,
+    searchable,
+    onOpenChange,
+    triggerRef,
+    variant,
+    triggerId,
+    listboxId,
+    ariaInvalid,
+    ariaDescribedBy,
+    ariaLabelledBy,
+    required,
+    options,
+    highlighted,
+    searchQuery,
+  } = useSelectContext("SelectTrigger");
   const resolvedAriaInvalid = resolveAriaInvalid(ariaInvalid ?? triggerAriaInvalid);
-  const activeDescendant = open && !searchable && isActiveOptionVisible(options, highlighted, searchQuery, matchesSearch)
-    ? toOptionId(listboxId, highlighted)
-    : undefined;
-  const composedDescribedBy = [ariaDescribedByProp, ariaDescribedBy].filter(Boolean).join(" ") || undefined;
+  const activeDescendant =
+    open && !searchable && isActiveOptionVisible(options, highlighted, searchQuery, matchesSearch)
+      ? toOptionId(listboxId, highlighted)
+      : undefined;
+  const composedDescribedBy =
+    [ariaDescribedByProp, ariaDescribedBy].filter(Boolean).join(" ") || undefined;
   const composedLabelledBy = ariaLabelledByProp ?? ariaLabelledBy;
 
   const handleKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
@@ -94,9 +113,10 @@ export function SelectTrigger({
       className={cn(selectTriggerVariants({ variant }), className)}
     >
       {children}
-      {handle !== null && (
-        handle ?? <Chevron direction="down" size="sm" className="text-muted-foreground shrink-0" />
-      )}
+      {handle !== null &&
+        (handle ?? (
+          <Chevron direction="down" size="sm" className="text-muted-foreground shrink-0" />
+        ))}
     </button>
   );
 }

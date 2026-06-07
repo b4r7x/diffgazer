@@ -1,18 +1,18 @@
-import type { ComponentDoc } from "./types"
+import type { ComponentDoc } from "./types";
 
 export const pagerDoc: ComponentDoc = {
-  description:
-    "Previous/next page navigation bar with arrow indicators.",
+  description: "Previous/next page navigation bar with arrow indicators.",
   notes: [
     {
       title: "Link Navigation",
-      content: "Use PagerLink with a direction prop for standard anchor links. For framework-specific link components (TanStack Link, Next.js Link), use the render-prop pattern: <PagerLink direction=\"next\">{(props) => <Link {...props} to=\"...\">text</Link>}</PagerLink>.",
+      content:
+        'Use PagerLink with a direction prop for standard anchor links. For framework-specific link components (TanStack Link, Next.js Link), use the render-prop pattern: <PagerLink direction="next">{(props) => <Link {...props} to="...">text</Link>}</PagerLink>.',
     },
   ],
   anatomy: [
     { name: "Pager", indent: 0, note: "Root nav element with top border and flex layout" },
-    { name: "PagerLink", indent: 1, note: "direction=\"previous\" — left-aligned with ← arrow" },
-    { name: "PagerLink", indent: 1, note: "direction=\"next\" — right-aligned with → arrow" },
+    { name: "PagerLink", indent: 1, note: 'direction="previous" — left-aligned with ← arrow' },
+    { name: "PagerLink", indent: 1, note: 'direction="next" — right-aligned with → arrow' },
   ],
   usage: { example: "pager-default" },
   examples: [
@@ -34,7 +34,7 @@ export const pagerDoc: ComponentDoc = {
         type: '"previous" | "next"',
         required: true,
         defaultValue: null,
-        description: 'Selects the arrow glyph, rel attribute (prev/next), and alignment.',
+        description: "Selects the arrow glyph, rel attribute (prev/next), and alignment.",
       },
       href: {
         type: "string",
@@ -46,8 +46,9 @@ export const pagerDoc: ComponentDoc = {
         type: "ReactNode | (props: PagerLinkRenderProps) => ReactNode",
         required: true,
         defaultValue: null,
-        description: "Link label, or a render function that receives ref, className, rel, direction, and remaining anchor props for framework Link integration.",
+        description:
+          "Link label, or a render function that receives ref, className, rel, direction, and remaining anchor props for framework Link integration.",
       },
     },
   },
-}
+};

@@ -18,9 +18,7 @@ import {
 } from "./toast-variants";
 import { useToastDismiss } from "./use-dismiss";
 
-const LazySpinner = lazy(() =>
-  import("../spinner/spinner").then((m) => ({ default: m.Spinner })),
-);
+const LazySpinner = lazy(() => import("../spinner/spinner").then((m) => ({ default: m.Spinner })));
 
 interface ToastProps extends ToastType {
   position: ToastPosition;
@@ -34,9 +32,9 @@ interface ToastProps extends ToastType {
 // so we rely on the role to carry the live-region contract.
 const TONE_ROLE: Record<ToastTone, "status" | "alert"> = {
   success: "status",
-  error:   "alert",
+  error: "alert",
   warning: "status",
-  info:    "status",
+  info: "status",
   loading: "status",
 };
 
@@ -68,10 +66,14 @@ export function Toast(props: ToastProps) {
 
 function ToastLayout(props: ToastProps) {
   switch (props.variant) {
-    case "hud": return <HudLayout {...props} />;
-    case "viewfinder": return <ViewfinderLayout {...props} />;
-    case "countdown": return <CountdownLayout {...props} />;
-    default: return <CardLayout {...props} />;
+    case "hud":
+      return <HudLayout {...props} />;
+    case "viewfinder":
+      return <ViewfinderLayout {...props} />;
+    case "countdown":
+      return <CountdownLayout {...props} />;
+    default:
+      return <CardLayout {...props} />;
   }
 }
 
@@ -86,7 +88,15 @@ function ToneIcon({ tone }: { tone: ToastTone }) {
   return icons[tone];
 }
 
-function CloseButton({ id, title, onDismiss }: { id: string; title: string; onDismiss: (id: string) => void }) {
+function CloseButton({
+  id,
+  title,
+  onDismiss,
+}: {
+  id: string;
+  title: string;
+  onDismiss: (id: string) => void;
+}) {
   return (
     <button
       type="button"
@@ -106,7 +116,10 @@ function CloseButton({ id, title, onDismiss }: { id: string; title: string; onDi
 function HudLayout({ tone, title, message }: ToastProps) {
   return (
     <>
-      <span className={cn("inline-flex w-3 justify-center font-bold", toastToneText({ tone }))} aria-hidden="true">
+      <span
+        className={cn("inline-flex w-3 justify-center font-bold", toastToneText({ tone }))}
+        aria-hidden="true"
+      >
         <ToneIcon tone={tone} />
       </span>
       <span className="sr-only">{tone}:</span>
@@ -151,7 +164,10 @@ function ViewfinderLayout({ id, tone, title, message, onDismiss }: ToastProps) {
       <ViewfinderCorners tone={tone} />
       <div className="flex items-center justify-between mb-2 gap-2">
         <span className="inline-flex items-stretch gap-2.5 text-xs font-bold tracking-wider uppercase text-foreground">
-          <span aria-hidden="true" className={cn("inline-block w-[3px] min-h-3.5", toastToneBg({ tone }))} />
+          <span
+            aria-hidden="true"
+            className={cn("inline-block w-[3px] min-h-3.5", toastToneBg({ tone }))}
+          />
           <span className="sr-only">{tone}:</span>
           {title}
         </span>
@@ -166,10 +182,30 @@ function ViewfinderCorners({ tone }: { tone: ToastTone }) {
   const colorClass = toastToneCornerBorder({ tone });
   return (
     <span aria-hidden="true" data-slot="toast-corners" className="pointer-events-none">
-      <span className={cn("absolute -top-px -left-px w-3.5 h-3.5 border-0 border-t-2 border-l-2", colorClass)} />
-      <span className={cn("absolute -top-px -right-px w-3.5 h-3.5 border-0 border-t-2 border-r-2", colorClass)} />
-      <span className={cn("absolute -bottom-px -left-px w-3.5 h-3.5 border-0 border-b-2 border-l-2", colorClass)} />
-      <span className={cn("absolute -bottom-px -right-px w-3.5 h-3.5 border-0 border-b-2 border-r-2", colorClass)} />
+      <span
+        className={cn(
+          "absolute -top-px -left-px w-3.5 h-3.5 border-0 border-t-2 border-l-2",
+          colorClass,
+        )}
+      />
+      <span
+        className={cn(
+          "absolute -top-px -right-px w-3.5 h-3.5 border-0 border-t-2 border-r-2",
+          colorClass,
+        )}
+      />
+      <span
+        className={cn(
+          "absolute -bottom-px -left-px w-3.5 h-3.5 border-0 border-b-2 border-l-2",
+          colorClass,
+        )}
+      />
+      <span
+        className={cn(
+          "absolute -bottom-px -right-px w-3.5 h-3.5 border-0 border-b-2 border-r-2",
+          colorClass,
+        )}
+      />
     </span>
   );
 }
@@ -224,10 +260,7 @@ function CountdownBar({ id, tone }: { id: string; tone: ToastTone }) {
     >
       <span
         ref={fillRef}
-        className={cn(
-          "absolute inset-0 origin-left motion-reduce:hidden",
-          toastToneBg({ tone }),
-        )}
+        className={cn("absolute inset-0 origin-left motion-reduce:hidden", toastToneBg({ tone }))}
         // `--remain` is the registry-facing CSS hook: consumers can override
         // the bar fill via `[data-slot="toast-countdown"] > span { transform:
         // scaleX(...) }` without touching the component. Starts at 1 and the

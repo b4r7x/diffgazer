@@ -1,4 +1,4 @@
-import type { HookDoc } from "@diffgazer/registry"
+import type { HookDoc } from "@diffgazer/registry";
 
 export const listboxDoc: HookDoc = {
   description:
@@ -40,7 +40,7 @@ return (
       type: "string",
       required: true,
       description:
-        "Prefix for generating aria-activedescendant IDs. Each option should have id=\"{idPrefix}-{itemId}\".",
+        'Prefix for generating aria-activedescendant IDs. Each option should have id="{idPrefix}-{itemId}".',
     },
     {
       name: "autoFocus",
@@ -95,7 +95,8 @@ return (
       name: "onHighlightChange",
       type: "(id: string | null) => void",
       required: false,
-      description: "Called when the highlighted item changes via keyboard navigation or is cleared.",
+      description:
+        "Called when the highlighted item changes via keyboard navigation or is cleared.",
     },
     {
       name: "onNavigationBoundaryReached",
@@ -109,8 +110,7 @@ return (
       type: "boolean",
       required: false,
       defaultValue: "true",
-      description:
-        "Whether keyboard navigation wraps from last item to first (and vice versa).",
+      description: "Whether keyboard navigation wraps from last item to first (and vice versa).",
     },
     {
       name: "onKeyDown",
@@ -138,8 +138,7 @@ return (
       type: "boolean",
       required: false,
       defaultValue: "false",
-      description:
-        "Enable type-ahead character search to jump to matching items.",
+      description: "Enable type-ahead character search to jump to matching items.",
     },
     {
       name: "items",
@@ -199,7 +198,7 @@ return (
     {
       title: "Keyboard Navigation",
       content:
-        "Arrow keys move highlight through items with role=\"option\" inside the container. Enter and Space select the highlighted item. Navigation uses @diffgazer/keys's useNavigation internally.",
+        'Arrow keys move highlight through items with role="option" inside the container. Enter and Space select the highlighted item. Navigation uses @diffgazer/keys\'s useNavigation internally.',
     },
     {
       title: "Controlled & Uncontrolled",
@@ -212,8 +211,6 @@ return (
         "Built into menu and navigation-list components. Provides the shared listbox interaction pattern so each component only needs to handle its own rendering.",
     },
   ],
-  examples: [
-    { name: "listbox-basic", title: "Basic Listbox" },
-  ],
+  examples: [{ name: "listbox-basic", title: "Basic Listbox" }],
   tags: ["hook", "listbox", "navigation", "selection", "keyboard", "aria"],
-}
+};

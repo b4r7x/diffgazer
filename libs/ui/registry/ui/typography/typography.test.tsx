@@ -32,18 +32,19 @@ describe("Typography", () => {
     { as: "h4" as const, level: 4, defaultSizeClass: "text-lg" },
     { as: "h5" as const, level: 5, defaultSizeClass: "text-base" },
     { as: "h6" as const, level: 6, defaultSizeClass: "text-sm" },
-  ])(
-    "renders $as as a semantic heading with default size $defaultSizeClass",
-    ({ as, level, defaultSizeClass }) => {
-      render(<Typography as={as}>Heading {level}</Typography>);
+  ])("renders $as as a semantic heading with default size $defaultSizeClass", ({
+    as,
+    level,
+    defaultSizeClass,
+  }) => {
+    render(<Typography as={as}>Heading {level}</Typography>);
 
-      const heading = screen.getByRole("heading", { level });
-      expect(heading).toBeInTheDocument();
-      expect(heading.tagName).toBe(as.toUpperCase());
-      // size variant IS the public contract — class assertion is the documented signal
-      expect(heading).toHaveClass(defaultSizeClass);
-    },
-  );
+    const heading = screen.getByRole("heading", { level });
+    expect(heading).toBeInTheDocument();
+    expect(heading.tagName).toBe(as.toUpperCase());
+    // size variant IS the public contract — class assertion is the documented signal
+    expect(heading).toHaveClass(defaultSizeClass);
+  });
 
   it("lets explicit size prop override the heading default", () => {
     render(
@@ -74,26 +75,20 @@ describe("Typography", () => {
     { weight: "medium" as const, expected: "font-medium" },
     { weight: "semibold" as const, expected: "font-semibold" },
     { weight: "bold" as const, expected: "font-bold" },
-  ])(
-    "renders $weight weight with class $expected",
-    ({ weight, expected }) => {
-      render(<Typography weight={weight}>Text</Typography>);
-      expect(screen.getByText("Text")).toHaveClass(expected);
-    },
-  );
+  ])("renders $weight weight with class $expected", ({ weight, expected }) => {
+    render(<Typography weight={weight}>Text</Typography>);
+    expect(screen.getByText("Text")).toHaveClass(expected);
+  });
 
   it.each([
     { color: "default" as const, expected: "text-muted-foreground" },
     { color: "muted" as const, expected: "text-muted-foreground" },
     { color: "foreground" as const, expected: "text-foreground" },
     { color: "accent" as const, expected: "text-primary" },
-  ])(
-    "renders $color color with class $expected",
-    ({ color, expected }) => {
-      render(<Typography color={color}>Text</Typography>);
-      expect(screen.getByText("Text")).toHaveClass(expected);
-    },
-  );
+  ])("renders $color color with class $expected", ({ color, expected }) => {
+    render(<Typography color={color}>Text</Typography>);
+    expect(screen.getByText("Text")).toHaveClass(expected);
+  });
 
   it("renders truncate class when truncate is true", () => {
     // `truncate` is a public prop; jsdom cannot compute text-overflow, so the
@@ -114,13 +109,10 @@ describe("Typography", () => {
     { as: "h4" as const, level: 4 },
     { as: "h5" as const, level: 5 },
     { as: "h6" as const, level: 6 },
-  ])(
-    "$as auto-defaults to bold weight",
-    ({ as, level }) => {
-      render(<Typography as={as}>Heading</Typography>);
-      expect(screen.getByRole("heading", { level })).toHaveClass("font-bold");
-    },
-  );
+  ])("$as auto-defaults to bold weight", ({ as, level }) => {
+    render(<Typography as={as}>Heading</Typography>);
+    expect(screen.getByRole("heading", { level })).toHaveClass("font-bold");
+  });
 
   it("explicit weight overrides heading auto-default", () => {
     render(

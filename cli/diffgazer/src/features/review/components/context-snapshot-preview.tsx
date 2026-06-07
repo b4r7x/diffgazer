@@ -23,14 +23,12 @@ export function ContextSnapshotPreview({ snapshot }: ContextSnapshotPreviewProps
 
   return (
     <Box flexDirection="column">
-      <SectionHeader variant="muted" bordered>Context Snapshot</SectionHeader>
+      <SectionHeader variant="muted" bordered>
+        Context Snapshot
+      </SectionHeader>
       <Box flexDirection="column" paddingTop={1} paddingLeft={1} gap={0}>
         <KeyValue label="Project" value={projectName} labelWidth={labelWidth} />
-        <KeyValue
-          label="Changed"
-          value={pluralize(changedFiles, "file")}
-          labelWidth={labelWidth}
-        />
+        <KeyValue label="Changed" value={pluralize(changedFiles, "file")} labelWidth={labelWidth} />
         {(totalAdditions > 0 || totalDeletions > 0) && (
           <KeyValue
             label="Diff"
@@ -45,11 +43,7 @@ export function ContextSnapshotPreview({ snapshot }: ContextSnapshotPreviewProps
           />
         )}
         {graph.packages.length > 0 && (
-          <KeyValue
-            label="Packages"
-            value={`${graph.packages.length}`}
-            labelWidth={labelWidth}
-          />
+          <KeyValue label="Packages" value={`${graph.packages.length}`} labelWidth={labelWidth} />
         )}
         <KeyValue
           label="Context"

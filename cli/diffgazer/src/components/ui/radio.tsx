@@ -53,12 +53,7 @@ function extractRadioItem(element: ReactElement): CollectedItem | null {
   return { value: props.value, disabled: props.disabled ?? false };
 }
 
-function RadioGroupItem({
-  value,
-  label,
-  description,
-  disabled = false,
-}: RadioGroupItemProps) {
+function RadioGroupItem({ value, label, description, disabled = false }: RadioGroupItemProps) {
   const ctx = useRadioGroupContext();
   const isDisabled = disabled || ctx.groupDisabled;
   const isSelected = ctx.selectedValue === value;
@@ -86,22 +81,25 @@ function RadioGroupItem({
   return (
     <Box flexDirection="column">
       <Box gap={1}>
-        <Text
-          color={isHighlighted ? ctx.tokens.accent : undefined}
-          bold={isHighlighted}
-        >
+        <Text color={isHighlighted ? ctx.tokens.accent : undefined} bold={isHighlighted}>
           {indicator}
         </Text>
-        {typeof label === "string"
-          ? <Text color={isHighlighted ? ctx.tokens.accent : undefined} bold={isHighlighted}>{label}</Text>
-          : label}
+        {typeof label === "string" ? (
+          <Text color={isHighlighted ? ctx.tokens.accent : undefined} bold={isHighlighted}>
+            {label}
+          </Text>
+        ) : (
+          label
+        )}
       </Box>
       {description != null && (
         <Box>
           <Text>{"      "}</Text>
-          {typeof description === "string"
-            ? <Text color={ctx.tokens.muted}>{description}</Text>
-            : description}
+          {typeof description === "string" ? (
+            <Text color={ctx.tokens.muted}>{description}</Text>
+          ) : (
+            description
+          )}
         </Box>
       )}
     </Box>

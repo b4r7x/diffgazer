@@ -1,4 +1,4 @@
-import { HorizontalStepper } from "@/components/ui/horizontal-stepper"
+import { HorizontalStepper } from "@/components/ui/horizontal-stepper";
 
 export default function HorizontalStepperVariantNumbered() {
   return (
@@ -14,5 +14,5 @@ export default function HorizontalStepperVariantNumbered() {
       <HorizontalStepper.Step value="review">Review</HorizontalStepper.Step>
       <HorizontalStepper.Step value="confirm">Confirm</HorizontalStepper.Step>
     </HorizontalStepper>
-  )
+  );
 }

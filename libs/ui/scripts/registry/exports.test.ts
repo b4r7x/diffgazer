@@ -19,4 +19,4 @@ describe("validatePublicExportShape", () => {
     const errors = validatePublicExportShape(exportsMap, "./components/x");
     expect(errors.some((e) => e.includes('nests "types" under "import"'))).toBe(true);
   });
-})
+});

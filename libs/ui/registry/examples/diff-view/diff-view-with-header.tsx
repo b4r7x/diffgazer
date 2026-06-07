@@ -1,4 +1,4 @@
-import { DiffView } from "@/components/ui/diff-view"
+import { DiffView } from "@/components/ui/diff-view";
 
 const patch = `--- a/src/utils/score.ts
 +++ b/src/utils/score.ts
@@ -14,8 +14,8 @@ const patch = `--- a/src/utils/score.ts
 +  }, 0)
  }
 
- export function isPassingScore(score: number): boolean {`
+ export function isPassingScore(score: number): boolean {`;
 
 export default function DiffViewWithHeader() {
-  return <DiffView patch={patch} label="Score helper diff" mode="split" showLineNumbers />
+  return <DiffView patch={patch} label="Score helper diff" mode="split" showLineNumbers />;
 }

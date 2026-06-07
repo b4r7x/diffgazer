@@ -7,19 +7,16 @@
 // finally cleanup and leak temp project directories.
 
 import {
+  verifyUiNextPackageSmoke,
+  verifyUiVitePackageSmoke,
   writeKeysPackageModeSmoke,
   writeUiCommonImportSmoke,
   writeUiKeysAbsentSmoke,
   writeUiNextPackageSmoke,
   writeUiPackageModeSmoke,
   writeUiVitePackageSmoke,
-  verifyUiNextPackageSmoke,
-  verifyUiVitePackageSmoke,
 } from "./smoke-package-fixtures.mjs";
-import {
-  shouldRunPackageSmoke,
-  withTempPackageProject,
-} from "./smoke-package-runner.mjs";
+import { shouldRunPackageSmoke, withTempPackageProject } from "./smoke-package-runner.mjs";
 
 const root = process.cwd();
 
@@ -42,10 +39,7 @@ const packages = [
     name: "@diffgazer/ui",
     label: "@diffgazer/ui without @diffgazer/keys (required peer missing signal)",
     skipPeerAutoInstall: true,
-    installDeps: [
-      "react@^19.2.0",
-      "react-dom@^19.2.0",
-    ],
+    installDeps: ["react@^19.2.0", "react-dom@^19.2.0"],
     prepare: (projectDir) => writeUiKeysAbsentSmoke(projectDir),
     steps: [step("node", "keys-absent.mjs")],
     expect: /OK: keys-free @diffgazer\/ui entries work without @diffgazer\/keys/,
@@ -54,10 +48,7 @@ const packages = [
     name: "@diffgazer/ui",
     label: "@diffgazer/ui common imports",
     workspaceDeps: ["@diffgazer/keys"],
-    installDeps: [
-      "react@^19.2.0",
-      "react-dom@^19.2.0",
-    ],
+    installDeps: ["react@^19.2.0", "react-dom@^19.2.0"],
     prepare: (projectDir) => writeUiCommonImportSmoke(root, projectDir),
     steps: [step("node", "common-imports.mjs")],
     expect: /OK: imported .* common @diffgazer\/ui exports/,
@@ -89,15 +80,12 @@ const packages = [
       step("pnpm", "exec", "vite", "build"),
     ],
     verify: verifyUiVitePackageSmoke,
-    expect: /OK: imported .* @diffgazer\/ui exports and resolved package CSS[\s\S]*OK: @diffgazer\/ui SSR render[\s\S]*OK: Vite package-mode Tailwind CSS output/,
+    expect:
+      /OK: imported .* @diffgazer\/ui exports and resolved package CSS[\s\S]*OK: @diffgazer\/ui SSR render[\s\S]*OK: Vite package-mode Tailwind CSS output/,
   },
   {
     name: "@diffgazer/keys",
-    installDeps: [
-      "react@^19.2.0",
-      "@types/react@^19.2.0",
-      "typescript@^5.9.0",
-    ],
+    installDeps: ["react@^19.2.0", "@types/react@^19.2.0", "typescript@^5.9.0"],
     prepare: writeKeysPackageModeSmoke,
     steps: [
       step(

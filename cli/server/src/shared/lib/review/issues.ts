@@ -11,7 +11,10 @@ function severityMeetsMinimum(severity: ReviewSeverity, minSeverity: ReviewSever
   return severityRank(severity) <= severityRank(minSeverity);
 }
 
-export function filterIssuesByMinSeverity(issues: ReviewIssue[], filter?: SeverityFilter): ReviewIssue[] {
+export function filterIssuesByMinSeverity(
+  issues: ReviewIssue[],
+  filter?: SeverityFilter,
+): ReviewIssue[] {
   if (!filter) return issues;
   return issues.filter((issue) => severityMeetsMinimum(issue.severity, filter.minSeverity));
 }
@@ -50,7 +53,11 @@ function stripDiffPrefix(line: string): string {
   return line;
 }
 
-function extractEvidenceFromDiff(file: FileDiff, lineStart: number | null, lineEnd: number | null): EvidenceRef[] {
+function extractEvidenceFromDiff(
+  file: FileDiff,
+  lineStart: number | null,
+  lineEnd: number | null,
+): EvidenceRef[] {
   if (lineStart === null) return [];
 
   const matchingHunk = file.hunks.find((hunk: DiffHunk) => {
@@ -151,6 +158,6 @@ export function validateIssueCompleteness(issue: ReviewIssue): boolean {
       issue.symptom &&
       issue.whyItMatters &&
       issue.evidence &&
-      issue.evidence.length > 0
+      issue.evidence.length > 0,
   );
 }

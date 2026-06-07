@@ -1,10 +1,5 @@
 import { defaultLogger } from "../logger.js";
-import {
-  computeSyncFingerprint,
-  readSyncState,
-  shouldSkipSync,
-  writeSyncState,
-} from "./cache.js";
+import { computeSyncFingerprint, readSyncState, shouldSkipSync, writeSyncState } from "./cache.js";
 import { assertSafeLibraryId } from "./library-id-validation.js";
 import { loadLibraryArtifacts } from "./loader.js";
 import { resolveSyncOutputPaths } from "./paths.js";
@@ -43,9 +38,7 @@ export function syncDocsFromArtifacts(options: SyncDocsOptions): SyncDocsResult 
 
   const primaryArtifact = artifacts.find((a) => a.id === primaryLibraryId);
   if (!primaryArtifact) {
-    throw new Error(
-      `Primary docs artifact "${primaryLibraryId}" is not configured.`,
-    );
+    throw new Error(`Primary docs artifact "${primaryLibraryId}" is not configured.`);
   }
 
   const syncFingerprint = computeSyncFingerprint(
@@ -57,19 +50,31 @@ export function syncDocsFromArtifacts(options: SyncDocsOptions): SyncDocsResult 
   );
   const syncState = readSyncState(paths.stateFilePath, logger);
 
-  if (shouldSkipSync({
-    syncState,
-    syncFingerprint,
-    artifacts,
-    paths,
-    primaryLibraryId,
-  })) {
+  if (
+    shouldSkipSync({
+      syncState,
+      syncFingerprint,
+      artifacts,
+      paths,
+      primaryLibraryId,
+    })
+  ) {
     logger.info("[docs-sync] Artifacts unchanged; skipping sync.");
     return { synced: false, fingerprint: syncFingerprint, artifacts };
   }
 
   logger.info("[docs-sync] Syncing docs and generated artifacts...");
-  runDocsSyncPass({ artifacts, primaryArtifact, paths, origin, sourceOrigin, afterSync, rootTitle, extraRootPages, logger });
+  runDocsSyncPass({
+    artifacts,
+    primaryArtifact,
+    paths,
+    origin,
+    sourceOrigin,
+    afterSync,
+    rootTitle,
+    extraRootPages,
+    logger,
+  });
 
   writeSyncState(paths.stateFilePath, {
     fingerprint: syncFingerprint,

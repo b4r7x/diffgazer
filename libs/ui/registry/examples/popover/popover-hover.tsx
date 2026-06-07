@@ -1,4 +1,4 @@
-import { Popover } from "@/components/ui/popover"
+import { Popover } from "@/components/ui/popover";
 
 export default function PopoverHoverExample() {
   return (
@@ -15,5 +15,5 @@ export default function PopoverHoverExample() {
         This field is required for validation.
       </Popover.Content>
     </Popover>
-  )
+  );
 }

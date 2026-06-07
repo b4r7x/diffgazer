@@ -33,7 +33,11 @@ export function useModelDialogFocusTrap({
   hasHandledInitialFocusRef,
 }: UseModelDialogFocusTrapOptions): UseModelDialogFocusTrapResult {
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
-  const { zone: focusZone, setZone: setFocusZone, isZone } = useFocusZone({
+  const {
+    zone: focusZone,
+    setZone: setFocusZone,
+    isZone,
+  } = useFocusZone({
     initial: "list" as FocusZone,
     zones: MODEL_DIALOG_ZONES,
     enabled: open,
@@ -62,5 +66,12 @@ export function useModelDialogFocusTrap({
 
   useKey("ArrowDown", focusSearchInput, { enabled: open && isZone("close"), preventDefault: true });
 
-  return { focusZone, setFocusZone, isZone, focusCloseButton, focusSearchInput, getCloseButtonProps };
+  return {
+    focusZone,
+    setFocusZone,
+    isZone,
+    focusCloseButton,
+    focusSearchInput,
+    getCloseButtonProps,
+  };
 }

@@ -25,10 +25,7 @@ export function HorizontalStepperRoot({
   className,
   "aria-label": ariaLabel,
 }: HorizontalStepperProps) {
-  const contextValue = useMemo(
-    () => ({ value, steps, variant }),
-    [value, steps, variant],
-  );
+  const contextValue = useMemo(() => ({ value, steps, variant }), [value, steps, variant]);
 
   return (
     <HorizontalStepperContext value={contextValue}>

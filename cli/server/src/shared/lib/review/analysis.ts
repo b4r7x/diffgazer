@@ -41,7 +41,7 @@ export async function runLensAnalysis(
   onEvent: (event: AgentStreamEvent | StepEvent) => void,
   context: AgentRunContext,
   projectContext?: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<Result<LensResult, AIError>> {
   const agentId = LENS_TO_AGENT[lens.id];
   const agentMeta = AGENT_METADATA[agentId];
@@ -135,9 +135,8 @@ export async function runLensAnalysis(
       parentSpanId,
     });
 
-    const progress = diff.files.length > 0
-      ? 15 + Math.round(((i + 1) / diff.files.length) * 35)
-      : 50;
+    const progress =
+      diff.files.length > 0 ? 15 + Math.round(((i + 1) / diff.files.length) * 35) : 50;
     onEvent({
       type: "agent_progress",
       agent: agentId,
@@ -209,7 +208,9 @@ export async function runLensAnalysis(
   }
 
   if (!result.ok) {
-    const errorLabel = result.error.code ? `${result.error.code}: ${result.error.message}` : result.error.message;
+    const errorLabel = result.error.code
+      ? `${result.error.code}: ${result.error.message}`
+      : result.error.message;
     onEvent({
       type: "agent_error",
       agent: agentId,

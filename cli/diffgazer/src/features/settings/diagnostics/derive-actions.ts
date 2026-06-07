@@ -11,10 +11,7 @@ export interface DiagnosticsActionState {
   contextActionDisabled: boolean;
 }
 
-function getContextActionLabel(
-  isRefreshing: boolean,
-  contextStatus: ContextStatus,
-): string {
+function getContextActionLabel(isRefreshing: boolean, contextStatus: ContextStatus): string {
   if (isRefreshing) return "Regenerating...";
   if (contextStatus === "ready") return "Regenerate Context";
   return "Generate Context";

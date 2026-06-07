@@ -3,7 +3,7 @@ import { canonicalizeHotkey, matchesHotkey } from "./hotkey.js";
 
 function makeKeyEvent(
   key: string,
-  mods: { ctrl?: boolean; meta?: boolean; shift?: boolean; alt?: boolean } = {}
+  mods: { ctrl?: boolean; meta?: boolean; shift?: boolean; alt?: boolean } = {},
 ): KeyboardEvent {
   return new KeyboardEvent("keydown", {
     key,
@@ -16,13 +16,48 @@ function makeKeyEvent(
 
 describe("matchesHotkey", () => {
   it.each([
-    { description: "matches a bare key by name", event: makeKeyEvent("Enter"), hotkey: "Enter", expected: true },
-    { description: "matches a key with the Ctrl modifier", event: makeKeyEvent("s", { ctrl: true }), hotkey: "Ctrl+s", expected: true },
-    { description: "is case insensitive for multi-char keys", event: makeKeyEvent("Enter"), hotkey: "enter", expected: true },
-    { description: "matches when multiple modifiers are held", event: makeKeyEvent("z", { ctrl: true, shift: true }), hotkey: "Ctrl+Shift+Z", expected: true },
-    { description: "does not match when the key differs", event: makeKeyEvent("a"), hotkey: "b", expected: false },
-    { description: "does not match when the required modifier is missing", event: makeKeyEvent("s"), hotkey: "Ctrl+S", expected: false },
-    { description: "does not match when an extra modifier is held", event: makeKeyEvent("s", { ctrl: true }), hotkey: "s", expected: false },
+    {
+      description: "matches a bare key by name",
+      event: makeKeyEvent("Enter"),
+      hotkey: "Enter",
+      expected: true,
+    },
+    {
+      description: "matches a key with the Ctrl modifier",
+      event: makeKeyEvent("s", { ctrl: true }),
+      hotkey: "Ctrl+s",
+      expected: true,
+    },
+    {
+      description: "is case insensitive for multi-char keys",
+      event: makeKeyEvent("Enter"),
+      hotkey: "enter",
+      expected: true,
+    },
+    {
+      description: "matches when multiple modifiers are held",
+      event: makeKeyEvent("z", { ctrl: true, shift: true }),
+      hotkey: "Ctrl+Shift+Z",
+      expected: true,
+    },
+    {
+      description: "does not match when the key differs",
+      event: makeKeyEvent("a"),
+      hotkey: "b",
+      expected: false,
+    },
+    {
+      description: "does not match when the required modifier is missing",
+      event: makeKeyEvent("s"),
+      hotkey: "Ctrl+S",
+      expected: false,
+    },
+    {
+      description: "does not match when an extra modifier is held",
+      event: makeKeyEvent("s", { ctrl: true }),
+      hotkey: "s",
+      expected: false,
+    },
   ])("$description (event vs hotkey '$hotkey') -> $expected", ({ event, hotkey, expected }) => {
     expect(matchesHotkey(event, hotkey)).toBe(expected);
   });
@@ -84,9 +119,7 @@ describe("matchesHotkey", () => {
     it("warns in development for an unknown modifier", () => {
       const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
       matchesHotkey(makeKeyEvent("k"), "Super+k");
-      expect(spy).toHaveBeenCalledWith(
-        expect.stringContaining("unknown modifier"),
-      );
+      expect(spy).toHaveBeenCalledWith(expect.stringContaining("unknown modifier"));
       spy.mockRestore();
     });
 

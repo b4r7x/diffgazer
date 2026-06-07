@@ -1,6 +1,6 @@
 "use client";
 
-import { type MouseEvent, useState, useTransition } from "react"
+import { type MouseEvent, useState, useTransition } from "react";
 import {
   Dialog,
   DialogAction,
@@ -11,41 +11,41 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
-const CREATE_DELAY_MS = 1000
+const CREATE_DELAY_MS = 1000;
 
 function wait(ms: number) {
-  return new Promise<void>((resolve) => window.setTimeout(resolve, ms))
+  return new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 }
 
 export default function DialogForm() {
-  const [open, setOpen] = useState(false)
-  const [name, setName] = useState("")
-  const [submitting, startCreate] = useTransition()
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [submitting, startCreate] = useTransition();
 
   const resetForm = () => {
-    setName("")
-  }
+    setName("");
+  };
 
   const handleOpenChange = (nextOpen: boolean) => {
-    if (submitting && !nextOpen) return
-    setOpen(nextOpen)
-    if (!nextOpen) resetForm()
-  }
+    if (submitting && !nextOpen) return;
+    setOpen(nextOpen);
+    if (!nextOpen) resetForm();
+  };
 
   const handleCreate = (event: MouseEvent<HTMLButtonElement>) => {
-    event.preventDefault()
-    if (!name.trim() || submitting) return
+    event.preventDefault();
+    if (!name.trim() || submitting) return;
 
     startCreate(async () => {
-      await wait(CREATE_DELAY_MS)
-      setName("")
-      setOpen(false)
-    })
-  }
+      await wait(CREATE_DELAY_MS);
+      setName("");
+      setOpen(false);
+    });
+  };
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -54,7 +54,7 @@ export default function DialogForm() {
         size="md"
         closeOnBackdropClick={!submitting}
         onEscapeKeyDown={(e) => {
-          if (submitting) e.preventDefault()
+          if (submitting) e.preventDefault();
         }}
       >
         <DialogHeader>
@@ -72,8 +72,15 @@ export default function DialogForm() {
             </Label>
           </div>
         </DialogBody>
-        <DialogFooter hints={[{ key: "Esc", label: "Close" }, { key: "Enter", label: "Submit" }]}>
-          <DialogClose bracket variant="ghost" disabled={submitting}>Cancel</DialogClose>
+        <DialogFooter
+          hints={[
+            { key: "Esc", label: "Close" },
+            { key: "Enter", label: "Submit" },
+          ]}
+        >
+          <DialogClose bracket variant="ghost" disabled={submitting}>
+            Cancel
+          </DialogClose>
           <DialogAction
             disabled={!name.trim() || submitting}
             loading={submitting}
@@ -84,5 +91,5 @@ export default function DialogForm() {
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

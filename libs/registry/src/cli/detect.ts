@@ -48,17 +48,19 @@ const LOCKFILES: Array<{ file: string; pm: PackageManager }> = [
 ];
 
 function fromLockfile(cwd: string): PackageManager | null {
-  const found = LOCKFILES
-    .map(({ file, pm }) => ({ path: resolve(cwd, file), pm }))
-    .filter(({ path }) => existsSync(path));
+  const found = LOCKFILES.map(({ file, pm }) => ({ path: resolve(cwd, file), pm })).filter(
+    ({ path }) => existsSync(path),
+  );
 
   if (found.length <= 1) return found[0]?.pm ?? null;
 
-  const uniquePms = [...new Set(found.map(f => f.pm))];
+  const uniquePms = [...new Set(found.map((f) => f.pm))];
   if (uniquePms.length > 1) {
-    warn(`Multiple lockfiles detected (${uniquePms.join(", ")}). Using the most recently modified.`);
+    warn(
+      `Multiple lockfiles detected (${uniquePms.join(", ")}). Using the most recently modified.`,
+    );
   }
-  const mtimes = new Map(found.map(f => [f.path, statSync(f.path).mtimeMs]));
+  const mtimes = new Map(found.map((f) => [f.path, statSync(f.path).mtimeMs]));
   found.sort((a, b) => (mtimes.get(b.path) ?? 0) - (mtimes.get(a.path) ?? 0));
   return found[0]?.pm ?? null;
 }
@@ -70,9 +72,13 @@ export function detectPackageManager(cwd: string, pkg?: PackageJson | null): Pac
   const userAgent = fromUserAgent();
 
   if (declared && userAgent && declared !== userAgent) {
-    warn(`Package manager mismatch: package.json declares ${declared}, but current executor looks like ${userAgent}. Using ${declared}.`);
+    warn(
+      `Package manager mismatch: package.json declares ${declared}, but current executor looks like ${userAgent}. Using ${declared}.`,
+    );
   } else if (!declared && lockfile && userAgent && lockfile !== userAgent) {
-    warn(`Package manager mismatch: lockfile suggests ${lockfile}, but current executor looks like ${userAgent}. Using ${lockfile}.`);
+    warn(
+      `Package manager mismatch: lockfile suggests ${lockfile}, but current executor looks like ${userAgent}. Using ${lockfile}.`,
+    );
   }
 
   return declared ?? lockfile ?? userAgent ?? "npm";

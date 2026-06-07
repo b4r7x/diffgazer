@@ -1,8 +1,8 @@
-import { describe, expect, it } from "vitest"
-import type { ParsedDiff } from "../diff/parse"
-import { resolveDiffInput } from "../diff/resolve"
+import { describe, expect, it } from "vitest";
+import type { ParsedDiff } from "../diff/parse";
+import { resolveDiffInput } from "../diff/resolve";
 
-const EMPTY: ParsedDiff = { oldPath: null, newPath: null, hunks: [] }
+const EMPTY: ParsedDiff = { oldPath: null, newPath: null, hunks: [] };
 
 describe("resolveDiffInput", () => {
   it("returns diff object directly when { diff } is provided", () => {
@@ -10,9 +10,9 @@ describe("resolveDiffInput", () => {
       oldPath: "a.ts",
       newPath: "b.ts",
       hunks: [{ oldStart: 1, oldCount: 1, newStart: 1, newCount: 1, heading: "", changes: [] }],
-    }
-    expect(resolveDiffInput({ diff })).toBe(diff)
-  })
+    };
+    expect(resolveDiffInput({ diff })).toBe(diff);
+  });
 
   it("parses patch string and returns first file", () => {
     const patch = `--- a/file.ts
@@ -21,25 +21,24 @@ describe("resolveDiffInput", () => {
  line1
 -old
 +new
- line3`
-    const result = resolveDiffInput({ patch })
-    expect(result.hunks).toHaveLength(1)
-    expect(result.hunks[0]?.changes).toHaveLength(4)
-  })
+ line3`;
+    const result = resolveDiffInput({ patch });
+    expect(result.hunks).toHaveLength(1);
+    expect(result.hunks[0]?.changes).toHaveLength(4);
+  });
 
   it("returns empty ParsedDiff for empty patch string", () => {
-    const result = resolveDiffInput({ patch: "" })
-    expect(result).toEqual(EMPTY)
-  })
+    const result = resolveDiffInput({ patch: "" });
+    expect(result).toEqual(EMPTY);
+  });
 
   it("computes diff from { before, after }", () => {
-    const result = resolveDiffInput({ before: "hello", after: "world" })
-    expect(result.hunks.length).toBeGreaterThan(0)
-  })
+    const result = resolveDiffInput({ before: "hello", after: "world" });
+    expect(result.hunks.length).toBeGreaterThan(0);
+  });
 
   it("returns no hunks for identical before/after", () => {
-    const result = resolveDiffInput({ before: "", after: "" })
-    expect(result.hunks).toHaveLength(0)
-  })
-
-})
+    const result = resolveDiffInput({ before: "", after: "" });
+    expect(result.hunks).toHaveLength(0);
+  });
+});

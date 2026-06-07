@@ -15,21 +15,33 @@ export interface KeyboardContextValue {
   activeScope: string | null;
   getActiveScope: () => string | null;
   pushScope: (scope: string) => () => void;
-  register: (scope: string, hotkey: string, handler: Handler, options?: HandlerOptions) => () => void;
+  register: (
+    scope: string,
+    hotkey: string,
+    handler: Handler,
+    options?: HandlerOptions,
+  ) => () => void;
 }
 
 export interface KeyboardRegistryContextValue {
   getActiveScope: () => string | null;
   getScopeForOrder: (order: string) => string | null;
   pushScope: (scope: string, order?: string) => () => void;
-  register: (scope: string, hotkey: string, handler: Handler, options?: HandlerOptions) => () => void;
+  register: (
+    scope: string,
+    hotkey: string,
+    handler: Handler,
+    options?: HandlerOptions,
+  ) => () => void;
 }
 
 export interface KeyboardScopeContextValue {
   activeScope: string | null;
 }
 
-export const KeyboardRegistryContext = createContext<KeyboardRegistryContextValue | undefined>(undefined);
+export const KeyboardRegistryContext = createContext<KeyboardRegistryContextValue | undefined>(
+  undefined,
+);
 export const KeyboardScopeContext = createContext<KeyboardScopeContextValue | undefined>(undefined);
 
 const KEYBOARD_PROVIDER_ERROR = "useKeyboardContext must be used within KeyboardProvider";

@@ -85,9 +85,7 @@ describe("applyCredentialsWithoutModel", () => {
   });
 
   it("deactivates a provider without a model", () => {
-    const noModel = [
-      { provider: "gemini" as const, hasApiKey: false, isActive: true },
-    ];
+    const noModel = [{ provider: "gemini" as const, hasApiKey: false, isActive: true }];
     const next = applyCredentialsWithoutModel(noModel, "gemini");
     expect(next[0]).toMatchObject({ hasApiKey: true, isActive: false });
   });

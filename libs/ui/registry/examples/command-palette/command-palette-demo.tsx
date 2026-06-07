@@ -18,11 +18,15 @@ export default function CommandPaletteDemo() {
             <CommandPalette.Empty>No matching commands.</CommandPalette.Empty>
             <CommandPalette.Group heading="Suggested">
               <CommandPalette.Item id="history">Go to History</CommandPalette.Item>
-              <CommandPalette.Item id="theme" shortcut="⌘T">Switch Theme</CommandPalette.Item>
+              <CommandPalette.Item id="theme" shortcut="⌘T">
+                Switch Theme
+              </CommandPalette.Item>
               <CommandPalette.Item id="export">Export PDF</CommandPalette.Item>
             </CommandPalette.Group>
             <CommandPalette.Group heading="System">
-              <CommandPalette.Item id="settings" shortcut=",">Settings Hub</CommandPalette.Item>
+              <CommandPalette.Item id="settings" shortcut=",">
+                Settings Hub
+              </CommandPalette.Item>
               <CommandPalette.Item id="diagnostics">Run Diagnostics</CommandPalette.Item>
               <CommandPalette.Item id="logout">Log Out</CommandPalette.Item>
             </CommandPalette.Group>

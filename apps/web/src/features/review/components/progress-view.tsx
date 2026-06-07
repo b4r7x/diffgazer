@@ -57,10 +57,7 @@ function AgentFilterBar({
       label="Agent filter"
       className="items-center pb-2"
     >
-      <ToggleGroupItem
-        value="all"
-        className="min-h-0 min-w-0 px-2 py-1 text-2xs"
-      >
+      <ToggleGroupItem value="all" className="min-h-0 min-w-0 px-2 py-1 text-2xs">
         All
       </ToggleGroupItem>
       {agents.map((agent) => (
@@ -69,11 +66,7 @@ function AgentFilterBar({
           value={agent.name}
           className="min-h-0 min-w-0 px-2 py-1 text-2xs"
         >
-          <Badge
-            variant={agent.badgeVariant ?? "info"}
-            size="sm"
-            className="mr-1"
-          >
+          <Badge variant={agent.badgeVariant ?? "info"} size="sm" className="mr-1">
             {agent.badgeLabel}
           </Badge>
           <span>{agent.name}</span>
@@ -102,13 +95,9 @@ function ErrorDisplay({
         </div>
         <div className="text-tui-muted font-mono text-sm mb-2">{error}</div>
         {isApiKeyError && (
-          <div className="text-tui-muted text-sm mb-4">
-            Your API key may be invalid or expired.
-          </div>
+          <div className="text-tui-muted text-sm mb-4">Your API key may be invalid or expired.</div>
         )}
-        <div
-          className={cn("flex gap-3 justify-center", !isApiKeyError && "mt-4")}
-        >
+        <div className={cn("flex gap-3 justify-center", !isApiKeyError && "mt-4")}>
           <Button variant="secondary" bracket onClick={onCancel}>
             Back to Home
           </Button>
@@ -132,11 +121,7 @@ const API_KEY_ERROR_PATTERN = /api.?key/i;
 
 function isReviewStepReadyToExpand(steps: ProgressStepData[]): boolean {
   const reviewStep = steps.find((s) => s.id === "review");
-  return (
-    reviewStep?.status === "active"
-    && !!reviewStep.substeps
-    && reviewStep.substeps.length > 0
-  );
+  return reviewStep?.status === "active" && !!reviewStep.substeps && reviewStep.substeps.length > 0;
 }
 
 export function ReviewProgressView({
@@ -175,9 +160,7 @@ export function ReviewProgressView({
 
   const failedAgents = agents.filter((agent) => agent.status === "error");
   const hasPartialFailure = failedAgents.length > 0;
-  const failedAgentNames = failedAgents
-    .map((agent) => agent.meta.name)
-    .join(", ");
+  const failedAgentNames = failedAgents.map((agent) => agent.meta.name).join(", ");
 
   const filteredEntries = agentFilter
     ? entries.filter((entry) => entry.source === agentFilter)
@@ -193,26 +176,18 @@ export function ReviewProgressView({
       >
         <div className="flex-1 overflow-y-auto scrollbar-hide pr-2">
           <div className="mb-8 pt-2">
-            <SectionHeader variant="muted" className="mb-4">Progress Overview</SectionHeader>
-            <ProgressList
-              steps={steps}
-              expandedIds={expandedIds}
-              onToggle={handleStepToggle}
-            />
+            <SectionHeader variant="muted" className="mb-4">
+              Progress Overview
+            </SectionHeader>
+            <ProgressList steps={steps} expandedIds={expandedIds} onToggle={handleStepToggle} />
           </div>
 
           <AgentBoard agents={agents} />
 
-          {contextSnapshot && !isRunning && (
-            <ContextSnapshotPreview snapshot={contextSnapshot} />
-          )}
+          {contextSnapshot && !isRunning && <ContextSnapshotPreview snapshot={contextSnapshot} />}
         </div>
 
-        <ReviewMetricsFooter
-          metrics={metrics}
-          startTime={startTime}
-          isRunning={isRunning}
-        />
+        <ReviewMetricsFooter metrics={metrics} startTime={startTime} isRunning={isRunning} />
       </div>
 
       <div
@@ -225,36 +200,25 @@ export function ReviewProgressView({
           <SectionHeader variant="muted" className="mb-0">
             Live Activity Log
           </SectionHeader>
-          <span className="text-2xs text-muted-foreground font-mono">
-            tail -f agent.log
-          </span>
+          <span className="text-2xs text-muted-foreground font-mono">tail -f agent.log</span>
         </div>
 
-        <AgentFilterBar
-          agents={agentOptions}
-          active={agentFilter}
-          onChange={setAgentFilter}
-        />
+        <AgentFilterBar agents={agentOptions} active={agentFilter} onChange={setAgentFilter} />
 
         {hasPartialFailure && !error && (
           <div className="pb-2">
             <Callout tone="warning">
               <Callout.Title>Partial Analysis</Callout.Title>
               <Callout.Content>
-                {pluralize(failedAgents.length, "agent")}{" "}
-                failed (likely rate limited): {failedAgentNames}. Results may be
-                incomplete.
+                {pluralize(failedAgents.length, "agent")} failed (likely rate limited):{" "}
+                {failedAgentNames}. Results may be incomplete.
               </Callout.Content>
             </Callout>
           </div>
         )}
 
         {error ? (
-          <ErrorDisplay
-            error={error}
-            isApiKeyError={isApiKeyError}
-            onCancel={onCancel}
-          />
+          <ErrorDisplay error={error} isApiKeyError={isApiKeyError} onCancel={onCancel} />
         ) : (
           <ActivityLog
             entries={filteredEntries}

@@ -1,8 +1,5 @@
 import { describe, expect, test } from "vitest";
-import {
-  deriveDiagnosticsActions,
-  triggerDiagnosticsRefreshAll,
-} from "./derive-actions";
+import { deriveDiagnosticsActions, triggerDiagnosticsRefreshAll } from "./derive-actions";
 
 describe("deriveDiagnosticsActions", () => {
   test("shows 'Generate Context' when no snapshot exists", () => {

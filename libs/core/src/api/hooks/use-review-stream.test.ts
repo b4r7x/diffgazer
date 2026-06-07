@@ -132,9 +132,9 @@ describe("useReviewStream", () => {
   });
 
   it("surfaces a non-abort stream rejection as state.error and halts streaming", async () => {
-    const resumeReviewStream = vi.fn<BoundApi["resumeReviewStream"]>().mockRejectedValue(
-      new Error("network failure"),
-    );
+    const resumeReviewStream = vi
+      .fn<BoundApi["resumeReviewStream"]>()
+      .mockRejectedValue(new Error("network failure"));
     const api = createApi({ resumeReviewStream });
 
     const { result } = renderHook(() => useReviewStream(), {
@@ -152,9 +152,18 @@ describe("useReviewStream", () => {
   it("older resume finishing does not null the newer controller ref", async () => {
     let resolveFirst: (result: Result<ResumeReviewResult, StreamReviewError>) => void = () => {};
     let resolveSecond: (result: Result<ResumeReviewResult, StreamReviewError>) => void = () => {};
-    const resumeReviewStream = vi.fn<BoundApi["resumeReviewStream"]>()
-      .mockReturnValueOnce(new Promise((r) => { resolveFirst = r; }))
-      .mockReturnValueOnce(new Promise((r) => { resolveSecond = r; }));
+    const resumeReviewStream = vi
+      .fn<BoundApi["resumeReviewStream"]>()
+      .mockReturnValueOnce(
+        new Promise((r) => {
+          resolveFirst = r;
+        }),
+      )
+      .mockReturnValueOnce(
+        new Promise((r) => {
+          resolveSecond = r;
+        }),
+      );
     const api = createApi({ resumeReviewStream });
 
     const { result } = renderHook(() => useReviewStream(), {
@@ -251,9 +260,9 @@ describe("useReviewStream", () => {
       code: ReviewErrorCode.SESSION_STALE,
       message: "stale",
     };
-    const resumeReviewStream = vi.fn<BoundApi["resumeReviewStream"]>().mockResolvedValue(
-      err(staleError),
-    );
+    const resumeReviewStream = vi
+      .fn<BoundApi["resumeReviewStream"]>()
+      .mockResolvedValue(err(staleError));
     const api = createApi({ resumeReviewStream });
 
     const { result } = renderHook(() => useReviewStream(), {

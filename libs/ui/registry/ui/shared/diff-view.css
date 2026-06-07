@@ -20,21 +20,21 @@
        --success to white). A diff that lost its red/green signal would be
        unreadable, so we ship GitHub-tuned defaults here and let consumers
        swap via [data-diff-palette] or per-instance custom property override. */
-    --diff-color-add:    #56d364;
+    --diff-color-add: #56d364;
     --diff-color-remove: #ff7b72;
-    --diff-color-hunk:   #79b8ff;
+    --diff-color-hunk: #79b8ff;
 
     /* Derived row tints. Percent tiers: ~14% subtle row tint, ~32% strong
        word-diff overlay, ~16% hunk separator, ~18% neutral empty-pane fill. */
-    --diff-added-bg:          color-mix(in oklab, var(--diff-color-add) 14%, transparent);
-    --diff-added-bg-strong:   color-mix(in oklab, var(--diff-color-add) 32%, transparent);
-    --diff-removed-bg:        color-mix(in oklab, var(--diff-color-remove) 14%, transparent);
+    --diff-added-bg: color-mix(in oklab, var(--diff-color-add) 14%, transparent);
+    --diff-added-bg-strong: color-mix(in oklab, var(--diff-color-add) 32%, transparent);
+    --diff-removed-bg: color-mix(in oklab, var(--diff-color-remove) 14%, transparent);
     --diff-removed-bg-strong: color-mix(in oklab, var(--diff-color-remove) 32%, transparent);
-    --diff-hunk-bg:           color-mix(in oklab, var(--diff-color-hunk) 16%, transparent);
-    --diff-hunk-fg:           color-mix(in oklab, var(--diff-color-hunk) 70%, var(--dv-fg));
-    --diff-line-num-fg:       color-mix(in oklab, var(--dv-muted) 90%, transparent);
-    --diff-marker-fg:         var(--dv-muted);
-    --diff-empty-bg:          color-mix(in oklab, var(--dv-muted) 18%, transparent);
+    --diff-hunk-bg: color-mix(in oklab, var(--diff-color-hunk) 16%, transparent);
+    --diff-hunk-fg: color-mix(in oklab, var(--diff-color-hunk) 70%, var(--dv-fg));
+    --diff-line-num-fg: color-mix(in oklab, var(--dv-muted) 90%, transparent);
+    --diff-marker-fg: var(--dv-muted);
+    --diff-empty-bg: color-mix(in oklab, var(--dv-muted) 18%, transparent);
 
     position: relative;
     display: block;
@@ -45,21 +45,30 @@
     font-family: var(--tui-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
     font-size: 13px;
     line-height: 1.5;
-    font-feature-settings: "calt" 0, "liga" 0, "zero" 1;
+    font-feature-settings:
+      "calt" 0,
+      "liga" 0,
+      "zero" 1;
     font-variant-ligatures: none;
     font-variant-numeric: tabular-nums;
     letter-spacing: 0;
   }
 
-  [data-slot="diff-view"][data-density="compact"]     { font-size: 12px; line-height: 1.45; }
-  [data-slot="diff-view"][data-density="comfortable"] { font-size: 14px; line-height: 1.6; }
+  [data-slot="diff-view"][data-density="compact"] {
+    font-size: 12px;
+    line-height: 1.45;
+  }
+  [data-slot="diff-view"][data-density="comfortable"] {
+    font-size: 14px;
+    line-height: 1.6;
+  }
 
   [data-slot="diff-view"][data-diff-palette="okabe-ito"] {
-    --diff-color-add:    #0072B2;
-    --diff-color-remove: #D55E00;
-    --diff-added-bg:          color-mix(in oklab, var(--diff-color-add) 18%, transparent);
-    --diff-added-bg-strong:   color-mix(in oklab, var(--diff-color-add) 40%, transparent);
-    --diff-removed-bg:        color-mix(in oklab, var(--diff-color-remove) 18%, transparent);
+    --diff-color-add: #0072b2;
+    --diff-color-remove: #d55e00;
+    --diff-added-bg: color-mix(in oklab, var(--diff-color-add) 18%, transparent);
+    --diff-added-bg-strong: color-mix(in oklab, var(--diff-color-add) 40%, transparent);
+    --diff-removed-bg: color-mix(in oklab, var(--diff-color-remove) 18%, transparent);
     --diff-removed-bg-strong: color-mix(in oklab, var(--diff-color-remove) 40%, transparent);
   }
 
@@ -87,7 +96,7 @@
       [num-l] minmax(2.5ch, max-content)
       [num-r] minmax(2.5ch, max-content)
       [marker] 1.25ch
-      [code]   1fr;
+      [code] 1fr;
     overflow-x: auto;
     overflow-y: hidden;
     scrollbar-width: thin;
@@ -105,7 +114,7 @@
     grid-template-columns:
       [num] minmax(2.5ch, max-content)
       [marker] 1.25ch
-      [code]   1fr;
+      [code] 1fr;
     min-width: 0;
   }
 
@@ -145,16 +154,27 @@
     padding-block: 1px;
   }
 
-  [data-row][data-state="added"]   { background: var(--diff-added-bg); }
-  [data-row][data-state="removed"] { background: var(--diff-removed-bg); }
-  [data-row][data-state="hunk"]    { background: var(--diff-hunk-bg); color: var(--diff-hunk-fg); }
-  [data-row][data-state="empty"]   { background: var(--diff-empty-bg); }
-  [data-row][data-active="true"]   { box-shadow: inset 2px 0 0 0 var(--ring, var(--dv-fg)); }
+  [data-row][data-state="added"] {
+    background: var(--diff-added-bg);
+  }
+  [data-row][data-state="removed"] {
+    background: var(--diff-removed-bg);
+  }
+  [data-row][data-state="hunk"] {
+    background: var(--diff-hunk-bg);
+    color: var(--diff-hunk-fg);
+  }
+  [data-row][data-state="empty"] {
+    background: var(--diff-empty-bg);
+  }
+  [data-row][data-active="true"] {
+    box-shadow: inset 2px 0 0 0 var(--ring, var(--dv-fg));
+  }
 
   .diff-num {
     color: var(--diff-line-num-fg);
     text-align: right;
-    padding-inline: .5ch;
+    padding-inline: 0.5ch;
     user-select: none;
   }
 
@@ -165,17 +185,23 @@
     user-select: text;
   }
 
-  [data-row][data-state="added"]   .diff-marker { color: var(--diff-color-add); }
-  [data-row][data-state="removed"] .diff-marker { color: var(--diff-color-remove); }
+  [data-row][data-state="added"] .diff-marker {
+    color: var(--diff-color-add);
+  }
+  [data-row][data-state="removed"] .diff-marker {
+    color: var(--diff-color-remove);
+  }
 
   .diff-code {
     white-space: pre;
     padding-inline-end: 1ch;
-    padding-inline-start: .5ch;
+    padding-inline-start: 0.5ch;
     min-width: 0;
   }
 
-  [data-row][data-state="hunk"] .diff-code { color: var(--diff-hunk-fg); }
+  [data-row][data-state="hunk"] .diff-code {
+    color: var(--diff-hunk-fg);
+  }
 
   /* Word-diff spans stack on top of the row tint with the strong tier. */
   [data-word="added"] {
@@ -247,7 +273,7 @@
       [num-r] minmax(3ch, max-content)
       [div-r] 1px
       [marker] 1.25ch
-      [code]   1fr;
+      [code] 1fr;
   }
   /* Split-side rows render a single number column per pane, so dense mode
      uses a 4-cell track here (num + divider + marker + code) instead of the
@@ -257,30 +283,33 @@
       [num] minmax(3ch, max-content)
       [div] 1px
       [marker] 1.25ch
-      [code]   1fr;
+      [code] 1fr;
   }
-  [data-slot="diff-view"][data-variant="dense"] [data-slot="diff-view-rows"][data-line-numbers="false"] {
+  [data-slot="diff-view"][data-variant="dense"]
+    [data-slot="diff-view-rows"][data-line-numbers="false"] {
     grid-template-columns: [marker] 1.25ch [code] 1fr;
   }
   [data-slot="diff-view"][data-variant="dense"] .diff-num-divider {
     background: color-mix(in oklab, var(--dv-border) 40%, transparent);
   }
-  [data-slot="diff-view"][data-variant="dense"] [data-row][data-state="added"]   .diff-num-divider {
+  [data-slot="diff-view"][data-variant="dense"] [data-row][data-state="added"] .diff-num-divider {
     background: color-mix(in oklab, var(--diff-color-add) 35%, transparent);
   }
   [data-slot="diff-view"][data-variant="dense"] [data-row][data-state="removed"] .diff-num-divider {
     background: color-mix(in oklab, var(--diff-color-remove) 35%, transparent);
   }
-  [data-slot="diff-view"][data-variant="dense"] .diff-num { padding-inline: .75ch; }
+  [data-slot="diff-view"][data-variant="dense"] .diff-num {
+    padding-inline: 0.75ch;
+  }
 
   /* ============================================================
      Variant: viewfinder — four bracketed corners, family consistency
      with dialog viewfinder language.
      ============================================================ */
   [data-slot="diff-view"][data-variant="viewfinder"] {
-    --vf-size:   14px;
+    --vf-size: 14px;
     --vf-weight: 1.5px;
-    --vf-color:  var(--dv-fg);
+    --vf-color: var(--dv-fg);
     --vf-offset: 0px;
     position: relative;
     background: var(--dv-bg);
@@ -295,28 +324,34 @@
     border: 0 solid var(--vf-color);
   }
   [data-slot="diff-view"][data-variant="viewfinder"] [data-slot="diff-view-corners"] > .vf-tl {
-    top:  var(--vf-offset); left:  var(--vf-offset);
-    border-top-width:    var(--vf-weight);
-    border-left-width:   var(--vf-weight);
+    top: var(--vf-offset);
+    left: var(--vf-offset);
+    border-top-width: var(--vf-weight);
+    border-left-width: var(--vf-weight);
   }
   [data-slot="diff-view"][data-variant="viewfinder"] [data-slot="diff-view-corners"] > .vf-tr {
-    top:  var(--vf-offset); right: var(--vf-offset);
-    border-top-width:    var(--vf-weight);
-    border-right-width:  var(--vf-weight);
+    top: var(--vf-offset);
+    right: var(--vf-offset);
+    border-top-width: var(--vf-weight);
+    border-right-width: var(--vf-weight);
   }
   [data-slot="diff-view"][data-variant="viewfinder"] [data-slot="diff-view-corners"] > .vf-bl {
-    bottom: var(--vf-offset); left:  var(--vf-offset);
+    bottom: var(--vf-offset);
+    left: var(--vf-offset);
     border-bottom-width: var(--vf-weight);
-    border-left-width:   var(--vf-weight);
+    border-left-width: var(--vf-weight);
   }
   [data-slot="diff-view"][data-variant="viewfinder"] [data-slot="diff-view-corners"] > .vf-br {
-    bottom: var(--vf-offset); right: var(--vf-offset);
+    bottom: var(--vf-offset);
+    right: var(--vf-offset);
     border-bottom-width: var(--vf-weight);
-    border-right-width:  var(--vf-weight);
+    border-right-width: var(--vf-weight);
   }
 
   [data-slot="diff-view"][data-variant="viewfinder"] [data-slot="diff-view-caption"] {
-    display: flex; align-items: baseline; gap: 8px;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
     padding: 0 4px 10px;
     border-bottom: none;
     font-size: 12px;

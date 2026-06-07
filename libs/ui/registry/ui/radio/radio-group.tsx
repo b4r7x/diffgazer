@@ -151,9 +151,10 @@ export function RadioGroup<TValue extends string = string>(props: RadioGroupProp
   const enabledItems = getEnabledSelectableCollectionItems(items, disabled);
   const validHighlightedValue = getSelectableCollectionItemValue(enabledItems, highlightedValue);
   const validSelectedValue = getSelectableCollectionItemValue(enabledItems, value);
-  const tabTargetValue = activationMode === "manual"
-    ? resolveSelectableCollectionItemValue(enabledItems, highlightedValue, value)
-    : resolveSelectableCollectionItemValue(enabledItems, value, highlightedValue);
+  const tabTargetValue =
+    activationMode === "manual"
+      ? resolveSelectableCollectionItemValue(enabledItems, highlightedValue, value)
+      : resolveSelectableCollectionItemValue(enabledItems, value, highlightedValue);
 
   useEffect(() => {
     if (!autoFocus || !keyboardNavigation || disabled) {
@@ -169,13 +170,24 @@ export function RadioGroup<TValue extends string = string>(props: RadioGroupProp
     target.element.focus();
     setHighlightedValue(target.value);
     hasAutoFocusedRef.current = true;
-  }, [autoFocus, keyboardNavigation, disabled, items, highlightedValue, value, setHighlightedValue]);
+  }, [
+    autoFocus,
+    keyboardNavigation,
+    disabled,
+    items,
+    highlightedValue,
+    value,
+    setHighlightedValue,
+  ]);
 
   // Stable ref required: dep of the contextValue memo below.
-  const handleValueChange = useCallback((next: string) => {
-    setRequiredInvalid(false);
-    setValue(next);
-  }, [setValue]);
+  const handleValueChange = useCallback(
+    (next: string) => {
+      setRequiredInvalid(false);
+      setValue(next);
+    },
+    [setValue],
+  );
 
   // Stable ref required: dep of the contextValue memo below.
   const handleRequiredInvalid = useCallback(() => {
@@ -221,10 +233,7 @@ export function RadioGroup<TValue extends string = string>(props: RadioGroupProp
     const eventTarget = isHTMLElementForContainer(event.target, containerRef.current)
       ? event.target
       : null;
-    if (
-      eventTarget
-      && eventTarget.closest('[role="radiogroup"]') !== containerRef.current
-    ) {
+    if (eventTarget && eventTarget.closest('[role="radiogroup"]') !== containerRef.current) {
       return;
     }
 
@@ -239,21 +248,38 @@ export function RadioGroup<TValue extends string = string>(props: RadioGroupProp
     }
   };
 
-  const contextValue: RadioGroupContextValue = useMemo(() => ({
-    value,
-    onChange: handleValueChange,
-    registerItem,
-    unregisterItem,
-    disabled,
-    keyboardNavigation,
-    size,
-    variant,
-    highlightedValue: validHighlightedValue,
-    name,
-    required,
-    onRequiredInvalid: handleRequiredInvalid,
-    tabTargetValue,
-  }), [value, handleValueChange, registerItem, unregisterItem, disabled, keyboardNavigation, size, variant, validHighlightedValue, name, required, handleRequiredInvalid, tabTargetValue]);
+  const contextValue: RadioGroupContextValue = useMemo(
+    () => ({
+      value,
+      onChange: handleValueChange,
+      registerItem,
+      unregisterItem,
+      disabled,
+      keyboardNavigation,
+      size,
+      variant,
+      highlightedValue: validHighlightedValue,
+      name,
+      required,
+      onRequiredInvalid: handleRequiredInvalid,
+      tabTargetValue,
+    }),
+    [
+      value,
+      handleValueChange,
+      registerItem,
+      unregisterItem,
+      disabled,
+      keyboardNavigation,
+      size,
+      variant,
+      validHighlightedValue,
+      name,
+      required,
+      handleRequiredInvalid,
+      tabTargetValue,
+    ],
+  );
 
   return (
     <RadioGroupContext value={contextValue}>
@@ -284,12 +310,15 @@ export function RadioGroup<TValue extends string = string>(props: RadioGroupProp
         aria-labelledby={ariaLabelledBy}
         aria-orientation={orientation}
         aria-required={required || undefined}
-        aria-invalid={resolveAriaInvalid(ariaInvalid, requiredInvalid && validSelectedValue === null)}
+        aria-invalid={resolveAriaInvalid(
+          ariaInvalid,
+          requiredInvalid && validSelectedValue === null,
+        )}
         aria-disabled={disabled || undefined}
         className={cn(
           "flex",
           orientation === "vertical" ? "flex-col gap-2" : "flex-row gap-4",
-          className
+          className,
         )}
         onKeyDown={handleKeyDown}
       >

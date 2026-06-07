@@ -1,33 +1,35 @@
-import { render, screen, waitFor } from "@testing-library/react"
-import userEvent from "@testing-library/user-event"
-import { createRef } from "react"
-import { describe, expect, expectTypeOf, it, vi } from "vitest"
-import { testNavigationBehavior } from "../../../../keys/src/testing/navigation-behavior"
-import { axe } from "../../../testing/axe"
-import { requireAttribute, requireValue } from "../../testing/assertions"
-import { Menu, type MenuItemProps, MenuLabel, type MenuProps } from "./index"
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { createRef } from "react";
+import { describe, expect, expectTypeOf, it, vi } from "vitest";
+import { testNavigationBehavior } from "../../../../keys/src/testing/navigation-behavior";
+import { axe } from "../../../testing/axe";
+import { requireAttribute, requireValue } from "../../testing/assertions";
+import { Menu, type MenuItemProps, MenuLabel, type MenuProps } from "./index";
 
 function renderMenu(props: Record<string, unknown> = {}) {
   return render(
     <Menu aria-label="Test menu" {...props}>
       <Menu.Item id="one">One</Menu.Item>
       <Menu.Item id="two">Two</Menu.Item>
-      <Menu.Item id="three" disabled>Three</Menu.Item>
-    </Menu>
-  )
+      <Menu.Item id="three" disabled>
+        Three
+      </Menu.Item>
+    </Menu>,
+  );
 }
 
 function getMenuItem(name: string | RegExp) {
-  return screen.getByRole("menuitem", { name })
+  return screen.getByRole("menuitem", { name });
 }
 
 function getMenuItemRadio(name: string | RegExp) {
-  return screen.getByRole("menuitemradio", { name })
+  return screen.getByRole("menuitemradio", { name });
 }
 
 describe("Menu", () => {
   it("supports direct namespaced items with custom item UI", async () => {
-    const onSelect = vi.fn()
+    const onSelect = vi.fn();
     render(
       <Menu aria-label="Test menu" onSelect={onSelect}>
         <Menu.Item id="one">
@@ -38,18 +40,18 @@ describe("Menu", () => {
           <span>Two</span>
         </Menu.Item>
       </Menu>,
-    )
+    );
 
-    await userEvent.click(getMenuItem("Two"))
+    await userEvent.click(getMenuItem("Two"));
 
-    expect(onSelect).toHaveBeenCalledWith("two")
-    expect(screen.getByRole("separator")).toBeInTheDocument()
-  })
+    expect(onSelect).toHaveBeenCalledWith("two");
+    expect(screen.getByRole("separator")).toBeInTheDocument();
+  });
 
   it("passes native root props and composes key handling with menu navigation", async () => {
-    const ref = createRef<HTMLDivElement>()
-    const onClick = vi.fn()
-    const onKeyDown = vi.fn()
+    const ref = createRef<HTMLDivElement>();
+    const onClick = vi.fn();
+    const onKeyDown = vi.fn();
 
     renderMenu({
       ref,
@@ -60,213 +62,218 @@ describe("Menu", () => {
       defaultHighlighted: "one",
       onClick,
       onKeyDown,
-    })
+    });
 
-    const menu = screen.getByRole("menu")
-    await userEvent.click(menu)
-    await userEvent.keyboard("{ArrowDown}")
+    const menu = screen.getByRole("menu");
+    await userEvent.click(menu);
+    await userEvent.keyboard("{ArrowDown}");
 
-    expect(menu).toHaveAttribute("id", "menu-root")
-    expect(menu).toHaveAttribute("data-state", "ready")
-    expect(menu).toHaveAttribute("aria-describedby", "menu-help")
-    expect(menu).toHaveStyle({ maxWidth: "12px" })
-    expect(menu).toHaveAttribute("tabindex", "0")
-    expect(onClick).toHaveBeenCalled()
-    expect(onKeyDown).toHaveBeenCalled()
-    expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-two"))
-    expect(ref.current).toBe(menu)
-  })
+    expect(menu).toHaveAttribute("id", "menu-root");
+    expect(menu).toHaveAttribute("data-state", "ready");
+    expect(menu).toHaveAttribute("aria-describedby", "menu-help");
+    expect(menu).toHaveStyle({ maxWidth: "12px" });
+    expect(menu).toHaveAttribute("tabindex", "0");
+    expect(onClick).toHaveBeenCalled();
+    expect(onKeyDown).toHaveBeenCalled();
+    expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-two"));
+    expect(ref.current).toBe(menu);
+  });
 
   it("fires onSelect when an item is clicked", async () => {
-    const onSelect = vi.fn()
-    renderMenu({ onSelect })
-    await userEvent.click(getMenuItem("One"))
-    expect(onSelect).toHaveBeenCalledWith("one")
-  })
+    const onSelect = vi.fn();
+    renderMenu({ onSelect });
+    await userEvent.click(getMenuItem("One"));
+    expect(onSelect).toHaveBeenCalledWith("one");
+  });
 
   it("does not fire onSelect for disabled items and marks them aria-disabled", async () => {
-    const onSelect = vi.fn()
-    renderMenu({ onSelect })
-    const disabledItem = getMenuItem("Three")
-    expect(disabledItem).toHaveAttribute("aria-disabled", "true")
-    await userEvent.click(disabledItem)
-    expect(onSelect).not.toHaveBeenCalled()
-  })
+    const onSelect = vi.fn();
+    renderMenu({ onSelect });
+    const disabledItem = getMenuItem("Three");
+    expect(disabledItem).toHaveAttribute("aria-disabled", "true");
+    await userEvent.click(disabledItem);
+    expect(onSelect).not.toHaveBeenCalled();
+  });
 
   it("does not move keyboard highlight on mouse hover", async () => {
-    renderMenu({ defaultHighlighted: "one" })
-    const menu = screen.getByRole("menu")
-    const oneItem = getMenuItem("One")
-    const twoItem = getMenuItem("Two")
+    renderMenu({ defaultHighlighted: "one" });
+    const menu = screen.getByRole("menu");
+    const oneItem = getMenuItem("One");
+    const twoItem = getMenuItem("Two");
 
-    expect(menu).toHaveAttribute("aria-activedescendant", oneItem.id)
-    await userEvent.hover(twoItem)
-    expect(menu).toHaveAttribute("aria-activedescendant", oneItem.id)
-  })
+    expect(menu).toHaveAttribute("aria-activedescendant", oneItem.id);
+    await userEvent.hover(twoItem);
+    expect(menu).toHaveAttribute("aria-activedescendant", oneItem.id);
+  });
 
   it("marks highlighted and selected items active with data-active", () => {
-    renderMenu({ defaultSelectedId: "two" })
-    const oneItem = getMenuItemRadio("One")
-    const twoItem = getMenuItemRadio("Two")
+    renderMenu({ defaultSelectedId: "two" });
+    const oneItem = getMenuItemRadio("One");
+    const twoItem = getMenuItemRadio("Two");
 
-    expect(twoItem).toHaveAttribute("data-active", "true")
-    expect(twoItem).toHaveAttribute("aria-checked", "true")
-    expect(oneItem).not.toHaveAttribute("data-active")
-  })
+    expect(twoItem).toHaveAttribute("data-active", "true");
+    expect(twoItem).toHaveAttribute("aria-checked", "true");
+    expect(oneItem).not.toHaveAttribute("data-active");
+  });
 
   it("does not keep selected state for plain command menus", async () => {
-    renderMenu({ defaultHighlighted: "one" })
-    const menu = screen.getByRole("menu")
-    const oneItem = getMenuItem("One")
-    const twoItem = getMenuItem("Two")
+    renderMenu({ defaultHighlighted: "one" });
+    const menu = screen.getByRole("menu");
+    const oneItem = getMenuItem("One");
+    const twoItem = getMenuItem("Two");
 
-    menu.focus()
-    await userEvent.keyboard("{Enter}{ArrowDown}")
+    menu.focus();
+    await userEvent.keyboard("{Enter}{ArrowDown}");
 
-    expect(oneItem).not.toHaveAttribute("data-active")
-    expect(twoItem).toHaveAttribute("data-active", "true")
-    expect(menu).toHaveAttribute("aria-activedescendant", twoItem.id)
-  })
+    expect(oneItem).not.toHaveAttribute("data-active");
+    expect(twoItem).toHaveAttribute("data-active", "true");
+    expect(menu).toHaveAttribute("aria-activedescendant", twoItem.id);
+  });
 
   it("marks selected hub items and renders their values", () => {
     const { rerender } = render(
       <Menu aria-label="Hub menu" variant="hub" defaultSelectedId="provider">
-        <Menu.Item id="provider" value="ready" valueVariant="success-badge">Provider</Menu.Item>
-        <Menu.Item id="delete" variant="danger" value="armed">Delete</Menu.Item>
-      </Menu>
-    )
+        <Menu.Item id="provider" value="ready" valueVariant="success-badge">
+          Provider
+        </Menu.Item>
+        <Menu.Item id="delete" variant="danger" value="armed">
+          Delete
+        </Menu.Item>
+      </Menu>,
+    );
 
-    const providerItem = getMenuItemRadio(/provider/i)
-    expect(providerItem).toHaveAttribute("aria-checked", "true")
-    expect(screen.getByText("ready")).toBeInTheDocument()
+    const providerItem = getMenuItemRadio(/provider/i);
+    expect(providerItem).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByText("ready")).toBeInTheDocument();
 
     rerender(
       <Menu aria-label="Hub menu" variant="hub" highlighted="delete">
-        <Menu.Item id="provider" value="ready" valueVariant="success-badge">Provider</Menu.Item>
-        <Menu.Item id="delete" variant="danger" value="armed">Delete</Menu.Item>
-      </Menu>
-    )
-    expect(screen.getByText("armed")).toBeInTheDocument()
-  })
+        <Menu.Item id="provider" value="ready" valueVariant="success-badge">
+          Provider
+        </Menu.Item>
+        <Menu.Item id="delete" variant="danger" value="armed">
+          Delete
+        </Menu.Item>
+      </Menu>,
+    );
+    expect(screen.getByText("armed")).toBeInTheDocument();
+  });
 
   it("selects defaultSelectedId initially", () => {
-    renderMenu({ defaultSelectedId: "two" })
-    const item = getMenuItemRadio("Two")
-    expect(item).toHaveAttribute("aria-checked", "true")
-  })
+    renderMenu({ defaultSelectedId: "two" });
+    const item = getMenuItemRadio("Two");
+    expect(item).toHaveAttribute("aria-checked", "true");
+  });
 
   it("fires onSelect in controlled mode without internal state change", async () => {
-    const onSelect = vi.fn()
+    const onSelect = vi.fn();
     const { rerender } = render(
       <Menu aria-label="Test menu" selectedId="one" onSelect={onSelect}>
         <Menu.Item id="one">One</Menu.Item>
         <Menu.Item id="two">Two</Menu.Item>
-      </Menu>
-    )
-    await userEvent.click(getMenuItemRadio("Two"))
-    expect(onSelect).toHaveBeenCalledWith("two")
-    expect(getMenuItemRadio("One")).toHaveAttribute(
-      "aria-checked",
-      "true",
-    )
+      </Menu>,
+    );
+    await userEvent.click(getMenuItemRadio("Two"));
+    expect(onSelect).toHaveBeenCalledWith("two");
+    expect(getMenuItemRadio("One")).toHaveAttribute("aria-checked", "true");
 
     rerender(
       <Menu aria-label="Test menu" selectedId="two" onSelect={onSelect}>
         <Menu.Item id="one">One</Menu.Item>
         <Menu.Item id="two">Two</Menu.Item>
-      </Menu>
-    )
-    expect(getMenuItemRadio("Two")).toHaveAttribute(
-      "aria-checked",
-      "true",
-    )
-  })
+      </Menu>,
+    );
+    expect(getMenuItemRadio("Two")).toHaveAttribute("aria-checked", "true");
+  });
 
   it("has no a11y violations", async () => {
-    const { container } = renderMenu()
-    expect(await axe(container)).toHaveNoViolations()
-  })
+    const { container } = renderMenu();
+    expect(await axe(container)).toHaveNoViolations();
+  });
 
   it("moves highlight with ArrowDown and ArrowUp", async () => {
-    renderMenu({ defaultHighlighted: "one" })
-    const menu = screen.getByRole("menu")
-    menu.focus()
-    await userEvent.keyboard("{ArrowDown}")
-    expect(menu).toHaveAttribute(
-      "aria-activedescendant",
-      expect.stringContaining("-two"),
-    )
-    await userEvent.keyboard("{ArrowUp}")
-    expect(menu).toHaveAttribute(
-      "aria-activedescendant",
-      expect.stringContaining("-one"),
-    )
-  })
+    renderMenu({ defaultHighlighted: "one" });
+    const menu = screen.getByRole("menu");
+    menu.focus();
+    await userEvent.keyboard("{ArrowDown}");
+    expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-two"));
+    await userEvent.keyboard("{ArrowUp}");
+    expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-one"));
+  });
 
   it("activates highlighted item with Enter", async () => {
-    const onSelect = vi.fn()
-    renderMenu({ defaultHighlighted: "one", onSelect })
-    const listbox = screen.getByRole("menu")
-    listbox.focus()
-    await userEvent.keyboard("{Enter}")
-    expect(onSelect).toHaveBeenCalledWith("one")
-  })
+    const onSelect = vi.fn();
+    renderMenu({ defaultHighlighted: "one", onSelect });
+    const listbox = screen.getByRole("menu");
+    listbox.focus();
+    await userEvent.keyboard("{Enter}");
+    expect(onSelect).toHaveBeenCalledWith("one");
+  });
 
   it("calls onClose when Escape is pressed", async () => {
-    const onClose = vi.fn()
-    renderMenu({ onClose, defaultHighlighted: "one" })
-    const menu = screen.getByRole("menu")
-    menu.focus()
-    await userEvent.keyboard("{Escape}")
-    expect(onClose).toHaveBeenCalled()
-  })
+    const onClose = vi.fn();
+    renderMenu({ onClose, defaultHighlighted: "one" });
+    const menu = screen.getByRole("menu");
+    menu.focus();
+    await userEvent.keyboard("{Escape}");
+    expect(onClose).toHaveBeenCalled();
+  });
 
   it("calls onClose on Tab and lets focus leave the menu", async () => {
-    const onClose = vi.fn()
-    const onKeyDown = vi.fn()
+    const onClose = vi.fn();
+    const onKeyDown = vi.fn();
     render(
       <>
-        <Menu aria-label="Test menu" onClose={onClose} onKeyDown={onKeyDown} defaultHighlighted="one">
+        <Menu
+          aria-label="Test menu"
+          onClose={onClose}
+          onKeyDown={onKeyDown}
+          defaultHighlighted="one"
+        >
           <Menu.Item id="one">One</Menu.Item>
           <Menu.Item id="two">Two</Menu.Item>
-          <Menu.Item id="three" disabled>Three</Menu.Item>
+          <Menu.Item id="three" disabled>
+            Three
+          </Menu.Item>
         </Menu>
         <button type="button">After</button>
-      </>
-    )
-    const menu = screen.getByRole("menu")
-    menu.focus()
+      </>,
+    );
+    const menu = screen.getByRole("menu");
+    menu.focus();
 
-    await userEvent.keyboard("{Tab}")
+    await userEvent.keyboard("{Tab}");
 
-    expect(onClose).toHaveBeenCalled()
-    expect(onKeyDown).toHaveBeenCalled()
-    expect(menu).not.toHaveFocus()
-    expect(screen.getByRole("button", { name: "After" })).toHaveFocus()
-  })
+    expect(onClose).toHaveBeenCalled();
+    expect(onKeyDown).toHaveBeenCalled();
+    expect(menu).not.toHaveFocus();
+    expect(screen.getByRole("button", { name: "After" })).toHaveFocus();
+  });
 
   it("focuses the container on mount when autoFocus is true", async () => {
-    renderMenu({ autoFocus: true, defaultHighlighted: "one" })
-    const menu = screen.getByRole("menu")
+    renderMenu({ autoFocus: true, defaultHighlighted: "one" });
+    const menu = screen.getByRole("menu");
     await waitFor(() => {
-      expect(menu).toHaveFocus()
-    })
-  })
+      expect(menu).toHaveFocus();
+    });
+  });
 
   it("autoFocus initializes the first menu item, including disabled items", async () => {
     render(
       <Menu aria-label="Test menu" autoFocus>
-        <Menu.Item id="one" disabled>One</Menu.Item>
+        <Menu.Item id="one" disabled>
+          One
+        </Menu.Item>
         <Menu.Item id="two">Two</Menu.Item>
-      </Menu>
-    )
-    const menu = screen.getByRole("menu")
-    const oneItem = getMenuItem("One")
+      </Menu>,
+    );
+    const menu = screen.getByRole("menu");
+    const oneItem = getMenuItem("One");
 
     await waitFor(() => {
-      expect(menu).toHaveAttribute("aria-activedescendant", oneItem.id)
-    })
-  })
+      expect(menu).toHaveAttribute("aria-activedescendant", oneItem.id);
+    });
+  });
 
   it("autoFocus preserves an empty string highlighted id", async () => {
     render(
@@ -274,33 +281,33 @@ describe("Menu", () => {
         <Menu.Item id="one">One</Menu.Item>
         <Menu.Item id="">Empty id</Menu.Item>
       </Menu>,
-    )
+    );
 
-    const menu = screen.getByRole("menu")
-    const emptyItem = getMenuItem("Empty id")
+    const menu = screen.getByRole("menu");
+    const emptyItem = getMenuItem("Empty id");
 
     await waitFor(() => {
-      expect(menu).toHaveFocus()
-      expect(menu).toHaveAttribute("aria-activedescendant", emptyItem.id)
-    })
-  })
+      expect(menu).toHaveFocus();
+      expect(menu).toHaveAttribute("aria-activedescendant", emptyItem.id);
+    });
+  });
 
   it("uses encoded item ids for active descendant references", () => {
-    const id = "release notes/v1.2?"
+    const id = "release notes/v1.2?";
     render(
       <Menu aria-label="Test menu" defaultHighlighted={id}>
         <Menu.Item id={id}>Release</Menu.Item>
         <Menu.Item id="other">Other</Menu.Item>
       </Menu>,
-    )
+    );
 
-    const menu = screen.getByRole("menu")
-    const item = getMenuItem("Release")
+    const menu = screen.getByRole("menu");
+    const item = getMenuItem("Release");
 
-    expect(item.id).toContain(encodeURIComponent(id))
-    expect(menu).toHaveAttribute("aria-activedescendant", item.id)
-    expect(document.getElementById(requireAttribute(menu, "aria-activedescendant"))).toBe(item)
-  })
+    expect(item.id).toContain(encodeURIComponent(id));
+    expect(menu).toHaveAttribute("aria-activedescendant", item.id);
+    expect(document.getElementById(requireAttribute(menu, "aria-activedescendant"))).toBe(item);
+  });
 
   it("treats an empty string item id as a valid active descendant value", () => {
     render(
@@ -308,26 +315,30 @@ describe("Menu", () => {
         <Menu.Item id="">Empty id</Menu.Item>
         <Menu.Item id="other">Other</Menu.Item>
       </Menu>,
-    )
+    );
 
-    const menu = screen.getByRole("menu")
-    const item = getMenuItem("Empty id")
+    const menu = screen.getByRole("menu");
+    const item = getMenuItem("Empty id");
 
-    expect(menu).toHaveAttribute("aria-activedescendant", item.id)
-    expect(document.getElementById(item.id)).toBe(item)
-  })
+    expect(menu).toHaveAttribute("aria-activedescendant", item.id);
+    expect(document.getElementById(item.id)).toBe(item);
+  });
 
   it("renders falsy hub item values that are explicit React nodes", () => {
     render(
       <Menu aria-label="Test menu" variant="hub">
-        <Menu.Item id="zero" value={0}>Zero</Menu.Item>
-        <Menu.Item id="empty" value="">Empty</Menu.Item>
+        <Menu.Item id="zero" value={0}>
+          Zero
+        </Menu.Item>
+        <Menu.Item id="empty" value="">
+          Empty
+        </Menu.Item>
       </Menu>,
-    )
+    );
 
-    expect(screen.getByText("0")).toBeInTheDocument()
-    expect(getMenuItem("Empty")).toHaveTextContent("Empty")
-  })
+    expect(screen.getByText("0")).toBeInTheDocument();
+    expect(getMenuItem("Empty")).toHaveTextContent("Empty");
+  });
 
   it("renders a divider as a separator", () => {
     render(
@@ -335,23 +346,25 @@ describe("Menu", () => {
         <Menu.Item id="one">One</Menu.Item>
         <Menu.Divider />
         <Menu.Item id="two">Two</Menu.Item>
-      </Menu>
-    )
-    expect(screen.getByRole("separator")).toHaveAttribute("aria-orientation", "horizontal")
-  })
+      </Menu>,
+    );
+    expect(screen.getByRole("separator")).toHaveAttribute("aria-orientation", "horizontal");
+  });
 
   it("does not render disabled item as selected when supplied via controlled selectedId", () => {
     render(
       <Menu aria-label="Test menu" selectedId="two">
         <Menu.Item id="one">One</Menu.Item>
-        <Menu.Item id="two" disabled>Two</Menu.Item>
+        <Menu.Item id="two" disabled>
+          Two
+        </Menu.Item>
       </Menu>,
-    )
-    const disabledItem = getMenuItemRadio("Two")
-    expect(disabledItem).toHaveAttribute("aria-disabled", "true")
-    expect(disabledItem).not.toHaveAttribute("aria-checked", "true")
-    expect(disabledItem).not.toHaveAttribute("data-active", "true")
-  })
+    );
+    const disabledItem = getMenuItemRadio("Two");
+    expect(disabledItem).toHaveAttribute("aria-disabled", "true");
+    expect(disabledItem).not.toHaveAttribute("aria-checked", "true");
+    expect(disabledItem).not.toHaveAttribute("data-active", "true");
+  });
 
   it("disabled highlighted menu item is the active descendant with focus indication but not selected", () => {
     // APG menu pattern: disabled menu items remain focusable (active descendant)
@@ -359,45 +372,49 @@ describe("Menu", () => {
     render(
       <Menu aria-label="Test menu" highlighted="two">
         <Menu.Item id="one">One</Menu.Item>
-        <Menu.Item id="two" disabled>Two</Menu.Item>
+        <Menu.Item id="two" disabled>
+          Two
+        </Menu.Item>
       </Menu>,
-    )
-    const menu = screen.getByRole("menu")
-    const disabledItem = getMenuItem("Two")
+    );
+    const menu = screen.getByRole("menu");
+    const disabledItem = getMenuItem("Two");
 
-    expect(menu).toHaveAttribute("aria-activedescendant", disabledItem.id)
-    expect(disabledItem).not.toHaveAttribute("data-active", "true")
-    expect(disabledItem).toHaveAttribute("data-focus", "true")
-    expect(disabledItem).not.toHaveAttribute("aria-checked", "true")
-  })
+    expect(menu).toHaveAttribute("aria-activedescendant", disabledItem.id);
+    expect(disabledItem).not.toHaveAttribute("data-active", "true");
+    expect(disabledItem).toHaveAttribute("data-focus", "true");
+    expect(disabledItem).not.toHaveAttribute("aria-checked", "true");
+  });
 
   it("APG: ArrowDown moves through disabled menu items but Enter does not activate them", async () => {
-    const onSelect = vi.fn()
+    const onSelect = vi.fn();
     render(
       <Menu aria-label="Test menu" defaultHighlighted="one" onSelect={onSelect}>
         <Menu.Item id="one">One</Menu.Item>
-        <Menu.Item id="two" disabled>Two</Menu.Item>
+        <Menu.Item id="two" disabled>
+          Two
+        </Menu.Item>
         <Menu.Item id="three">Three</Menu.Item>
       </Menu>,
-    )
-    const menu = screen.getByRole("menu")
-    const twoItem = getMenuItem("Two")
-    const threeItem = getMenuItem("Three")
+    );
+    const menu = screen.getByRole("menu");
+    const twoItem = getMenuItem("Two");
+    const threeItem = getMenuItem("Three");
 
-    menu.focus()
-    await userEvent.keyboard("{ArrowDown}")
-    expect(menu).toHaveAttribute("aria-activedescendant", twoItem.id)
+    menu.focus();
+    await userEvent.keyboard("{ArrowDown}");
+    expect(menu).toHaveAttribute("aria-activedescendant", twoItem.id);
 
-    await userEvent.keyboard("{Enter}")
-    expect(onSelect).not.toHaveBeenCalled()
+    await userEvent.keyboard("{Enter}");
+    expect(onSelect).not.toHaveBeenCalled();
 
-    await userEvent.keyboard("{ArrowDown}")
-    expect(menu).toHaveAttribute("aria-activedescendant", threeItem.id)
+    await userEvent.keyboard("{ArrowDown}");
+    expect(menu).toHaveAttribute("aria-activedescendant", threeItem.id);
 
-    await userEvent.keyboard("{Enter}")
-    expect(onSelect).toHaveBeenCalledWith("three")
-  })
-})
+    await userEvent.keyboard("{Enter}");
+    expect(onSelect).toHaveBeenCalledWith("three");
+  });
+});
 
 describe("Menu typeahead", () => {
   function renderTypeaheadMenu() {
@@ -407,43 +424,43 @@ describe("Menu typeahead", () => {
         <Menu.Item id="beta">Beta</Menu.Item>
         <Menu.Item id="charlie">Charlie</Menu.Item>
         <Menu.Item id="cherry">Cherry</Menu.Item>
-      </Menu>
-    )
+      </Menu>,
+    );
   }
 
   it("highlights item matching typed character", async () => {
-    const user = userEvent.setup()
-    renderTypeaheadMenu()
-    const menu = screen.getByRole("menu")
-    await user.click(menu)
-    await user.keyboard("b")
-    const betaItem = getMenuItem("Beta")
-    expect(menu).toHaveAttribute("aria-activedescendant", betaItem.id)
-  })
+    const user = userEvent.setup();
+    renderTypeaheadMenu();
+    const menu = screen.getByRole("menu");
+    await user.click(menu);
+    await user.keyboard("b");
+    const betaItem = getMenuItem("Beta");
+    expect(menu).toHaveAttribute("aria-activedescendant", betaItem.id);
+  });
 
   it("accumulates characters for multi-char typeahead", async () => {
-    const user = userEvent.setup()
-    renderTypeaheadMenu()
-    const menu = screen.getByRole("menu")
-    await user.click(menu)
-    await user.keyboard("ch")
-    const charlieItem = getMenuItem("Charlie")
-    expect(menu).toHaveAttribute("aria-activedescendant", charlieItem.id)
-  })
+    const user = userEvent.setup();
+    renderTypeaheadMenu();
+    const menu = screen.getByRole("menu");
+    await user.click(menu);
+    await user.keyboard("ch");
+    const charlieItem = getMenuItem("Charlie");
+    expect(menu).toHaveAttribute("aria-activedescendant", charlieItem.id);
+  });
 
   it("disambiguates items sharing a prefix with longer input", async () => {
-    const user = userEvent.setup()
-    renderTypeaheadMenu()
-    const menu = screen.getByRole("menu")
-    await user.click(menu)
-    await user.keyboard("che")
-    const cherryItem = getMenuItem("Cherry")
-    expect(menu).toHaveAttribute("aria-activedescendant", cherryItem.id)
-  })
-})
+    const user = userEvent.setup();
+    renderTypeaheadMenu();
+    const menu = screen.getByRole("menu");
+    await user.click(menu);
+    await user.keyboard("che");
+    const cherryItem = getMenuItem("Cherry");
+    expect(menu).toHaveAttribute("aria-activedescendant", cherryItem.id);
+  });
+});
 
 describe("Menu keyboard navigation", () => {
-  const ITEM_IDS = ["one", "two", "three"]
+  const ITEM_IDS = ["one", "two", "three"];
 
   testNavigationBehavior({
     setup: () => {
@@ -453,16 +470,20 @@ describe("Menu keyboard navigation", () => {
           <Menu.Item id="two">Two</Menu.Item>
           <Menu.Item id="three">Three</Menu.Item>
         </Menu>,
-      )
-      screen.getByRole("menu").focus()
-      return rendered
+      );
+      screen.getByRole("menu").focus();
+      return rendered;
     },
     items: ["one", "two", "three"],
     initialActive: 0,
     cases: [
       { key: "{ArrowDown}", expectedActiveIndex: 1, label: "ArrowDown" },
       { key: "{ArrowDown}{ArrowDown}", expectedActiveIndex: 2, label: "ArrowDown twice" },
-      { key: "{ArrowDown}{ArrowDown}{ArrowDown}", expectedActiveIndex: 0, label: "ArrowDown wraps" },
+      {
+        key: "{ArrowDown}{ArrowDown}{ArrowDown}",
+        expectedActiveIndex: 0,
+        label: "ArrowDown wraps",
+      },
       { key: "{ArrowUp}", expectedActiveIndex: 2, label: "ArrowUp wraps to end" },
       { key: "{End}", expectedActiveIndex: 2, label: "End jumps to last" },
       { key: "{Home}", expectedActiveIndex: 0, label: "Home stays at first" },
@@ -470,37 +491,41 @@ describe("Menu keyboard navigation", () => {
     // Menu items render a decorative MenuItemIndicator span; resolve by data-value instead.
     getActiveIndex: (rendered) => {
       // querySelector retained: the lookup key IS the aria-activedescendant attribute presence (the test verifies ARIA wiring directly, not any menu role match)
-      const host = rendered.container.querySelector("[aria-activedescendant]")
-      const activeId = host?.getAttribute("aria-activedescendant")
-      if (!activeId) return -1
-      const target = (host?.ownerDocument ?? document).getElementById(activeId)
-      const value = target?.getAttribute("data-value") ?? ""
-      return ITEM_IDS.indexOf(value)
+      const host = rendered.container.querySelector("[aria-activedescendant]");
+      const activeId = host?.getAttribute("aria-activedescendant");
+      if (!activeId) return -1;
+      const target = (host?.ownerDocument ?? document).getElementById(activeId);
+      const value = target?.getAttribute("data-value") ?? "";
+      return ITEM_IDS.indexOf(value);
     },
-  })
-})
+  });
+});
 
 describe("MenuItem icon prop", () => {
   it("renders icon content when icon is provided", () => {
     render(
       <Menu aria-label="Test menu">
-        <Menu.Item id="one" icon={<span>+</span>}>New File</Menu.Item>
+        <Menu.Item id="one" icon={<span>+</span>}>
+          New File
+        </Menu.Item>
       </Menu>,
-    )
-    expect(screen.getByText("+")).toBeInTheDocument()
-    expect(getMenuItem("New File")).toBeInTheDocument()
-  })
+    );
+    expect(screen.getByText("+")).toBeInTheDocument();
+    expect(getMenuItem("New File")).toBeInTheDocument();
+  });
 
   it("does not render indicator characters when icon is provided", () => {
     render(
       <Menu aria-label="Test menu" defaultHighlighted="one">
-        <Menu.Item id="one" icon={<span>+</span>}>New File</Menu.Item>
+        <Menu.Item id="one" icon={<span>+</span>}>
+          New File
+        </Menu.Item>
       </Menu>,
-    )
-    const item = getMenuItem("New File")
-    expect(item).not.toHaveTextContent("▌")
-    expect(item).not.toHaveTextContent(">")
-  })
+    );
+    const item = getMenuItem("New File");
+    expect(item).not.toHaveTextContent("▌");
+    expect(item).not.toHaveTextContent(">");
+  });
 
   it("renders indicator characters when icon is not provided", () => {
     render(
@@ -508,57 +533,67 @@ describe("MenuItem icon prop", () => {
         <Menu.Item id="one">One</Menu.Item>
         <Menu.Item id="two">Two</Menu.Item>
       </Menu>,
-    )
-    const focusedItem = getMenuItem("One")
-    expect(focusedItem).toHaveTextContent("▌")
-  })
+    );
+    const focusedItem = getMenuItem("One");
+    expect(focusedItem).toHaveTextContent("▌");
+  });
 
   it("icon item is navigable and activatable", async () => {
-    const onSelect = vi.fn()
+    const onSelect = vi.fn();
     render(
       <Menu aria-label="Test menu" defaultHighlighted="one" onSelect={onSelect}>
-        <Menu.Item id="one" icon={<span>+</span>}>New File</Menu.Item>
-        <Menu.Item id="two" icon={<span>/</span>}>Search</Menu.Item>
+        <Menu.Item id="one" icon={<span>+</span>}>
+          New File
+        </Menu.Item>
+        <Menu.Item id="two" icon={<span>/</span>}>
+          Search
+        </Menu.Item>
       </Menu>,
-    )
-    const menu = screen.getByRole("menu")
-    menu.focus()
-    await userEvent.keyboard("{ArrowDown}")
-    expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-two"))
-    await userEvent.keyboard("{Enter}")
-    expect(onSelect).toHaveBeenCalledWith("two")
-  })
+    );
+    const menu = screen.getByRole("menu");
+    menu.focus();
+    await userEvent.keyboard("{ArrowDown}");
+    expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-two"));
+    await userEvent.keyboard("{Enter}");
+    expect(onSelect).toHaveBeenCalledWith("two");
+  });
 
   it("renders icon in hub variant", () => {
     render(
       <Menu aria-label="Hub menu" variant="hub" defaultSelectedId="provider">
-        <Menu.Item id="provider" icon={<span>*</span>} value="ready">Provider</Menu.Item>
+        <Menu.Item id="provider" icon={<span>*</span>} value="ready">
+          Provider
+        </Menu.Item>
       </Menu>,
-    )
-    expect(screen.getByText("*")).toBeInTheDocument()
-    expect(getMenuItemRadio(/Provider/)).toHaveAttribute("aria-checked", "true")
-  })
-})
+    );
+    expect(screen.getByText("*")).toBeInTheDocument();
+    expect(getMenuItemRadio(/Provider/)).toHaveAttribute("aria-checked", "true");
+  });
+});
 
 describe("Menu types", () => {
   it("narrows selectedId/onSelect to the supplied literal union", () => {
-    type Narrow = MenuProps<"main" | "develop">
+    type Narrow = MenuProps<"main" | "develop">;
 
-    expectTypeOf<Narrow["selectedId"]>().toEqualTypeOf<"main" | "develop" | null | undefined>()
-    expectTypeOf<Narrow["defaultSelectedId"]>().toEqualTypeOf<"main" | "develop" | null | undefined>()
-    expectTypeOf<NonNullable<Narrow["onSelect"]>>().parameter(0).toEqualTypeOf<"main" | "develop">()
-  })
+    expectTypeOf<Narrow["selectedId"]>().toEqualTypeOf<"main" | "develop" | null | undefined>();
+    expectTypeOf<Narrow["defaultSelectedId"]>().toEqualTypeOf<
+      "main" | "develop" | null | undefined
+    >();
+    expectTypeOf<NonNullable<Narrow["onSelect"]>>()
+      .parameter(0)
+      .toEqualTypeOf<"main" | "develop">();
+  });
 
   it("rejects MenuItem ids outside the literal union", () => {
-    expectTypeOf<"feature">().not.toMatchTypeOf<MenuItemProps<"main" | "develop">["id"]>()
-    expectTypeOf<"main">().toMatchTypeOf<MenuItemProps<"main" | "develop">["id"]>()
-  })
+    expectTypeOf<"feature">().not.toMatchTypeOf<MenuItemProps<"main" | "develop">["id"]>();
+    expectTypeOf<"main">().toMatchTypeOf<MenuItemProps<"main" | "develop">["id"]>();
+  });
 
   it("keeps the loose default contract when no generic is supplied", () => {
-    expectTypeOf<MenuProps["selectedId"]>().toEqualTypeOf<string | null | undefined>()
-    expectTypeOf<MenuItemProps["id"]>().toEqualTypeOf<string>()
-  })
-})
+    expectTypeOf<MenuProps["selectedId"]>().toEqualTypeOf<string | null | undefined>();
+    expectTypeOf<MenuItemProps["id"]>().toEqualTypeOf<string>();
+  });
+});
 
 describe("MenuGroup and MenuLabel", () => {
   it("renders role=group with aria-labelledby when label prop is provided", () => {
@@ -568,16 +603,16 @@ describe("MenuGroup and MenuLabel", () => {
           <Menu.Item id="one">One</Menu.Item>
         </Menu.Group>
       </Menu>,
-    )
+    );
 
-    const group = screen.getByRole("group")
-    expect(group).toHaveAttribute("aria-labelledby")
-    expect(screen.getByText("Section")).toBeInTheDocument()
+    const group = screen.getByRole("group");
+    expect(group).toHaveAttribute("aria-labelledby");
+    expect(screen.getByText("Section")).toBeInTheDocument();
 
-    const labelId = requireAttribute(group, "aria-labelledby")
-    const label = document.getElementById(labelId)
-    expect(label).toHaveTextContent("Section")
-  })
+    const labelId = requireAttribute(group, "aria-labelledby");
+    const label = document.getElementById(labelId);
+    expect(label).toHaveTextContent("Section");
+  });
 
   it("renders role=group without aria-labelledby when no label prop", () => {
     render(
@@ -586,11 +621,11 @@ describe("MenuGroup and MenuLabel", () => {
           <Menu.Item id="one">One</Menu.Item>
         </Menu.Group>
       </Menu>,
-    )
+    );
 
-    const group = screen.getByRole("group")
-    expect(group).not.toHaveAttribute("aria-labelledby")
-  })
+    const group = screen.getByRole("group");
+    expect(group).not.toHaveAttribute("aria-labelledby");
+  });
 
   it("renders MenuLabel as a standalone presentation element", () => {
     render(
@@ -598,11 +633,11 @@ describe("MenuGroup and MenuLabel", () => {
         <MenuLabel>Custom Header</MenuLabel>
         <Menu.Item id="one">One</Menu.Item>
       </Menu>,
-    )
+    );
 
-    const label = screen.getByText("Custom Header")
-    expect(label).toHaveAttribute("role", "presentation")
-  })
+    const label = screen.getByText("Custom Header");
+    expect(label).toHaveAttribute("role", "presentation");
+  });
 
   it("keyboard navigation passes through groups seamlessly", async () => {
     render(
@@ -615,17 +650,17 @@ describe("MenuGroup and MenuLabel", () => {
           <Menu.Item id="three">Three</Menu.Item>
         </Menu.Group>
       </Menu>,
-    )
+    );
 
-    const menu = screen.getByRole("menu")
-    menu.focus()
+    const menu = screen.getByRole("menu");
+    menu.focus();
 
-    await userEvent.keyboard("{ArrowDown}")
-    expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-two"))
+    await userEvent.keyboard("{ArrowDown}");
+    expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-two"));
 
-    await userEvent.keyboard("{ArrowDown}")
-    expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-three"))
-  })
+    await userEvent.keyboard("{ArrowDown}");
+    expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-three"));
+  });
 
   it("has no a11y violations with grouped items", async () => {
     const { container } = render(
@@ -635,14 +670,16 @@ describe("MenuGroup and MenuLabel", () => {
           <Menu.Item id="two">Two</Menu.Item>
         </Menu.Group>
         <Menu.Group label="Danger zone">
-          <Menu.Item id="delete" variant="danger">Delete</Menu.Item>
+          <Menu.Item id="delete" variant="danger">
+            Delete
+          </Menu.Item>
         </Menu.Group>
       </Menu>,
-    )
+    );
 
-    expect(await axe(container)).toHaveNoViolations()
-  })
-})
+    expect(await axe(container)).toHaveNoViolations();
+  });
+});
 
 describe("MenuSub", () => {
   function renderSubmenu(props: Record<string, unknown> = {}) {
@@ -658,166 +695,166 @@ describe("MenuSub", () => {
         </Menu.Sub>
         <Menu.Item id="quit">Quit</Menu.Item>
       </Menu>,
-    )
+    );
   }
 
   it("SubTrigger renders with aria-haspopup='menu'", () => {
-    renderSubmenu()
-    const trigger = getMenuItem("Edit")
-    expect(trigger).toHaveAttribute("aria-haspopup", "menu")
-  })
+    renderSubmenu();
+    const trigger = getMenuItem("Edit");
+    expect(trigger).toHaveAttribute("aria-haspopup", "menu");
+  });
 
   it("SubTrigger shows aria-expanded when submenu is open", async () => {
-    renderSubmenu()
-    const trigger = getMenuItem("Edit")
-    expect(trigger).toHaveAttribute("aria-expanded", "false")
+    renderSubmenu();
+    const trigger = getMenuItem("Edit");
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
 
-    await userEvent.click(trigger)
-    expect(trigger).toHaveAttribute("aria-expanded", "true")
-  })
+    await userEvent.click(trigger);
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+  });
 
   it("ArrowRight on trigger opens submenu", async () => {
-    renderSubmenu()
-    const menu = screen.getByRole("menu")
-    menu.focus()
+    renderSubmenu();
+    const menu = screen.getByRole("menu");
+    menu.focus();
 
-    await userEvent.keyboard("{ArrowDown}")
-    expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-edit"))
+    await userEvent.keyboard("{ArrowDown}");
+    expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-edit"));
 
-    await userEvent.keyboard("{ArrowRight}")
-    const trigger = getMenuItem("Edit")
-    expect(trigger).toHaveAttribute("aria-expanded", "true")
+    await userEvent.keyboard("{ArrowRight}");
+    const trigger = getMenuItem("Edit");
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
 
     await waitFor(() => {
-      const submenus = screen.getAllByRole("menu")
-      expect(submenus.length).toBeGreaterThan(1)
-    })
-  })
+      const submenus = screen.getAllByRole("menu");
+      expect(submenus.length).toBeGreaterThan(1);
+    });
+  });
 
   it("Enter on trigger opens submenu", async () => {
-    renderSubmenu()
-    const menu = screen.getByRole("menu")
-    menu.focus()
+    renderSubmenu();
+    const menu = screen.getByRole("menu");
+    menu.focus();
 
-    await userEvent.keyboard("{ArrowDown}")
-    expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-edit"))
+    await userEvent.keyboard("{ArrowDown}");
+    expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-edit"));
 
-    await userEvent.keyboard("{Enter}")
-    const trigger = getMenuItem("Edit")
-    expect(trigger).toHaveAttribute("aria-expanded", "true")
+    await userEvent.keyboard("{Enter}");
+    const trigger = getMenuItem("Edit");
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
 
     await waitFor(() => {
-      const submenus = screen.getAllByRole("menu")
-      expect(submenus.length).toBeGreaterThan(1)
-    })
-  })
+      const submenus = screen.getAllByRole("menu");
+      expect(submenus.length).toBeGreaterThan(1);
+    });
+  });
 
   it("Space on trigger opens submenu", async () => {
-    renderSubmenu()
-    const menu = screen.getByRole("menu")
-    menu.focus()
+    renderSubmenu();
+    const menu = screen.getByRole("menu");
+    menu.focus();
 
-    await userEvent.keyboard("{ArrowDown}")
-    await userEvent.keyboard(" ")
-    const trigger = getMenuItem("Edit")
-    expect(trigger).toHaveAttribute("aria-expanded", "true")
+    await userEvent.keyboard("{ArrowDown}");
+    await userEvent.keyboard(" ");
+    const trigger = getMenuItem("Edit");
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
 
     await waitFor(() => {
-      const submenus = screen.getAllByRole("menu")
-      expect(submenus.length).toBeGreaterThan(1)
-    })
-  })
+      const submenus = screen.getAllByRole("menu");
+      expect(submenus.length).toBeGreaterThan(1);
+    });
+  });
 
   it("first item in submenu receives focus when opened", async () => {
-    renderSubmenu()
-    const menu = screen.getByRole("menu")
-    menu.focus()
+    renderSubmenu();
+    const menu = screen.getByRole("menu");
+    menu.focus();
 
-    await userEvent.keyboard("{ArrowDown}")
-    await userEvent.keyboard("{ArrowRight}")
+    await userEvent.keyboard("{ArrowDown}");
+    await userEvent.keyboard("{ArrowRight}");
 
     await waitFor(() => {
-      const submenus = screen.getAllByRole("menu")
-      const submenu = submenus.find((m) => m !== menu)
-      expect(submenu).toBeDefined()
-      expect(submenu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-undo"))
-    })
-  })
+      const submenus = screen.getAllByRole("menu");
+      const submenu = submenus.find((m) => m !== menu);
+      expect(submenu).toBeDefined();
+      expect(submenu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-undo"));
+    });
+  });
 
   it("ArrowLeft in submenu closes it and returns focus to trigger", async () => {
-    renderSubmenu()
-    const menu = screen.getByRole("menu")
-    menu.focus()
+    renderSubmenu();
+    const menu = screen.getByRole("menu");
+    menu.focus();
 
-    await userEvent.keyboard("{ArrowDown}")
-    await userEvent.keyboard("{ArrowRight}")
+    await userEvent.keyboard("{ArrowDown}");
+    await userEvent.keyboard("{ArrowRight}");
 
     await waitFor(() => {
-      expect(screen.getAllByRole("menu").length).toBeGreaterThan(1)
-    })
+      expect(screen.getAllByRole("menu").length).toBeGreaterThan(1);
+    });
 
     const submenu = requireValue(
       screen.getAllByRole("menu").find((candidate) => candidate !== menu),
       "submenu",
-    )
-    submenu.focus()
-    await userEvent.keyboard("{ArrowLeft}")
+    );
+    submenu.focus();
+    await userEvent.keyboard("{ArrowLeft}");
 
-    expect(menu).toHaveFocus()
-    expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-edit"))
-  })
+    expect(menu).toHaveFocus();
+    expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-edit"));
+  });
 
   it("Escape in submenu closes it and returns focus to trigger", async () => {
-    renderSubmenu()
-    const menu = screen.getByRole("menu")
-    menu.focus()
+    renderSubmenu();
+    const menu = screen.getByRole("menu");
+    menu.focus();
 
-    await userEvent.keyboard("{ArrowDown}")
-    await userEvent.keyboard("{ArrowRight}")
+    await userEvent.keyboard("{ArrowDown}");
+    await userEvent.keyboard("{ArrowRight}");
 
     await waitFor(() => {
-      expect(screen.getAllByRole("menu").length).toBeGreaterThan(1)
-    })
+      expect(screen.getAllByRole("menu").length).toBeGreaterThan(1);
+    });
 
     const submenu = requireValue(
       screen.getAllByRole("menu").find((candidate) => candidate !== menu),
       "submenu",
-    )
-    submenu.focus()
-    await userEvent.keyboard("{Escape}")
+    );
+    submenu.focus();
+    await userEvent.keyboard("{Escape}");
 
-    expect(menu).toHaveFocus()
-    expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-edit"))
-  })
+    expect(menu).toHaveFocus();
+    expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-edit"));
+  });
 
   it("submenu items have keyboard navigation (ArrowUp/Down)", async () => {
-    renderSubmenu()
-    const menu = screen.getByRole("menu")
-    menu.focus()
+    renderSubmenu();
+    const menu = screen.getByRole("menu");
+    menu.focus();
 
-    await userEvent.keyboard("{ArrowDown}")
-    await userEvent.keyboard("{ArrowRight}")
+    await userEvent.keyboard("{ArrowDown}");
+    await userEvent.keyboard("{ArrowRight}");
 
     await waitFor(() => {
-      expect(screen.getAllByRole("menu").length).toBeGreaterThan(1)
-    })
+      expect(screen.getAllByRole("menu").length).toBeGreaterThan(1);
+    });
 
     const submenu = requireValue(
       screen.getAllByRole("menu").find((candidate) => candidate !== menu),
       "submenu",
-    )
-    submenu.focus()
+    );
+    submenu.focus();
 
     await waitFor(() => {
-      expect(submenu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-undo"))
-    })
+      expect(submenu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-undo"));
+    });
 
-    await userEvent.keyboard("{ArrowDown}")
-    expect(submenu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-redo"))
+    await userEvent.keyboard("{ArrowDown}");
+    expect(submenu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-redo"));
 
-    await userEvent.keyboard("{ArrowUp}")
-    expect(submenu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-undo"))
-  })
+    await userEvent.keyboard("{ArrowUp}");
+    expect(submenu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-undo"));
+  });
 
   it("multiple SubMenus can exist in the same parent menu", () => {
     render(
@@ -835,189 +872,199 @@ describe("MenuSub", () => {
           </Menu.SubContent>
         </Menu.Sub>
       </Menu>,
-    )
+    );
 
-    const editTrigger = getMenuItem("Edit")
-    const viewTrigger = getMenuItem("View")
-    expect(editTrigger).toHaveAttribute("aria-haspopup", "menu")
-    expect(viewTrigger).toHaveAttribute("aria-haspopup", "menu")
-  })
+    const editTrigger = getMenuItem("Edit");
+    const viewTrigger = getMenuItem("View");
+    expect(editTrigger).toHaveAttribute("aria-haspopup", "menu");
+    expect(viewTrigger).toHaveAttribute("aria-haspopup", "menu");
+  });
 
   it("SubTrigger participates in parent menu keyboard navigation", async () => {
-    renderSubmenu()
-    const menu = screen.getByRole("menu")
-    menu.focus()
+    renderSubmenu();
+    const menu = screen.getByRole("menu");
+    menu.focus();
 
-    await userEvent.keyboard("{ArrowDown}")
-    expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-edit"))
+    await userEvent.keyboard("{ArrowDown}");
+    expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-edit"));
 
-    await userEvent.keyboard("{ArrowDown}")
-    expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-quit"))
-  })
+    await userEvent.keyboard("{ArrowDown}");
+    expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-quit"));
+  });
 
   it("submenu items do not leak into parent keyboard navigation", async () => {
-    renderSubmenu()
-    const menu = screen.getByRole("menu")
-    menu.focus()
+    renderSubmenu();
+    const menu = screen.getByRole("menu");
+    menu.focus();
 
-    await userEvent.keyboard("{ArrowDown}")
-    expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-edit"))
+    await userEvent.keyboard("{ArrowDown}");
+    expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-edit"));
 
-    await userEvent.keyboard("{ArrowDown}")
-    expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-quit"))
+    await userEvent.keyboard("{ArrowDown}");
+    expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-quit"));
 
-    await userEvent.keyboard("{ArrowDown}")
-    expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-file"))
-  })
+    await userEvent.keyboard("{ArrowDown}");
+    expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-file"));
+  });
 
   it("Tab in submenu closes the submenu", async () => {
-    renderSubmenu()
-    const menu = screen.getByRole("menu")
-    menu.focus()
+    renderSubmenu();
+    const menu = screen.getByRole("menu");
+    menu.focus();
 
-    await userEvent.keyboard("{ArrowDown}")
-    await userEvent.keyboard("{ArrowRight}")
+    await userEvent.keyboard("{ArrowDown}");
+    await userEvent.keyboard("{ArrowRight}");
 
     await waitFor(() => {
-      expect(screen.getAllByRole("menu").length).toBeGreaterThan(1)
-    })
+      expect(screen.getAllByRole("menu").length).toBeGreaterThan(1);
+    });
 
     const submenu = requireValue(
       screen.getAllByRole("menu").find((candidate) => candidate !== menu),
       "submenu",
-    )
-    submenu.focus()
+    );
+    submenu.focus();
 
-    await userEvent.keyboard("{Tab}")
+    await userEvent.keyboard("{Tab}");
 
-    const trigger = getMenuItem("Edit")
-    expect(trigger).toHaveAttribute("aria-expanded", "false")
-  })
+    const trigger = getMenuItem("Edit");
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+  });
 
   it("axe() accessibility audit passes", async () => {
-    const { container } = renderSubmenu()
-    expect(await axe(container)).toHaveNoViolations()
-  })
-})
+    const { container } = renderSubmenu();
+    expect(await axe(container)).toHaveNoViolations();
+  });
+});
 
 describe("MenuItemCheckbox", () => {
   function renderCheckboxMenu(props: Record<string, unknown> = {}) {
     return render(
       <Menu aria-label="Options" {...props}>
-        <Menu.ItemCheckbox id="hidden" defaultChecked>Show Hidden</Menu.ItemCheckbox>
+        <Menu.ItemCheckbox id="hidden" defaultChecked>
+          Show Hidden
+        </Menu.ItemCheckbox>
         <Menu.ItemCheckbox id="wrap">Word Wrap</Menu.ItemCheckbox>
-        <Menu.ItemCheckbox id="disabled-opt" disabled>Disabled Option</Menu.ItemCheckbox>
+        <Menu.ItemCheckbox id="disabled-opt" disabled>
+          Disabled Option
+        </Menu.ItemCheckbox>
       </Menu>,
-    )
+    );
   }
 
   it("renders with role=menuitemcheckbox", () => {
-    renderCheckboxMenu()
-    expect(screen.getByRole("menuitemcheckbox", { name: "Show Hidden" })).toBeInTheDocument()
-    expect(screen.getByRole("menuitemcheckbox", { name: "Word Wrap" })).toBeInTheDocument()
-  })
+    renderCheckboxMenu();
+    expect(screen.getByRole("menuitemcheckbox", { name: "Show Hidden" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitemcheckbox", { name: "Word Wrap" })).toBeInTheDocument();
+  });
 
   it("shows [x] when checked and [ ] when unchecked", () => {
-    renderCheckboxMenu()
-    const checked = screen.getByRole("menuitemcheckbox", { name: "Show Hidden" })
-    const unchecked = screen.getByRole("menuitemcheckbox", { name: "Word Wrap" })
-    expect(checked).toHaveTextContent("[x]")
-    expect(unchecked).toHaveTextContent("[ ]")
-  })
+    renderCheckboxMenu();
+    const checked = screen.getByRole("menuitemcheckbox", { name: "Show Hidden" });
+    const unchecked = screen.getByRole("menuitemcheckbox", { name: "Word Wrap" });
+    expect(checked).toHaveTextContent("[x]");
+    expect(unchecked).toHaveTextContent("[ ]");
+  });
 
   it("toggles on Enter key", async () => {
-    renderCheckboxMenu({ defaultHighlighted: "wrap" })
-    const menu = screen.getByRole("menu")
-    menu.focus()
+    renderCheckboxMenu({ defaultHighlighted: "wrap" });
+    const menu = screen.getByRole("menu");
+    menu.focus();
 
-    const item = screen.getByRole("menuitemcheckbox", { name: "Word Wrap" })
-    expect(item).toHaveAttribute("aria-checked", "false")
+    const item = screen.getByRole("menuitemcheckbox", { name: "Word Wrap" });
+    expect(item).toHaveAttribute("aria-checked", "false");
 
-    await userEvent.keyboard("{Enter}")
-    expect(item).toHaveAttribute("aria-checked", "true")
-    expect(item).toHaveTextContent("[x]")
+    await userEvent.keyboard("{Enter}");
+    expect(item).toHaveAttribute("aria-checked", "true");
+    expect(item).toHaveTextContent("[x]");
 
-    await userEvent.keyboard("{Enter}")
-    expect(item).toHaveAttribute("aria-checked", "false")
-    expect(item).toHaveTextContent("[ ]")
-  })
+    await userEvent.keyboard("{Enter}");
+    expect(item).toHaveAttribute("aria-checked", "false");
+    expect(item).toHaveTextContent("[ ]");
+  });
 
   it("toggles on Space key", async () => {
-    renderCheckboxMenu({ defaultHighlighted: "wrap" })
-    const menu = screen.getByRole("menu")
-    menu.focus()
+    renderCheckboxMenu({ defaultHighlighted: "wrap" });
+    const menu = screen.getByRole("menu");
+    menu.focus();
 
-    const item = screen.getByRole("menuitemcheckbox", { name: "Word Wrap" })
-    expect(item).toHaveAttribute("aria-checked", "false")
+    const item = screen.getByRole("menuitemcheckbox", { name: "Word Wrap" });
+    expect(item).toHaveAttribute("aria-checked", "false");
 
-    await userEvent.keyboard(" ")
-    expect(item).toHaveAttribute("aria-checked", "true")
-  })
+    await userEvent.keyboard(" ");
+    expect(item).toHaveAttribute("aria-checked", "true");
+  });
 
   it("respects controlled checked prop", () => {
     const { rerender } = render(
       <Menu aria-label="Options">
-        <Menu.ItemCheckbox id="opt" checked={false}>Option</Menu.ItemCheckbox>
+        <Menu.ItemCheckbox id="opt" checked={false}>
+          Option
+        </Menu.ItemCheckbox>
       </Menu>,
-    )
+    );
 
-    const item = screen.getByRole("menuitemcheckbox", { name: "Option" })
-    expect(item).toHaveAttribute("aria-checked", "false")
-    expect(item).toHaveTextContent("[ ]")
+    const item = screen.getByRole("menuitemcheckbox", { name: "Option" });
+    expect(item).toHaveAttribute("aria-checked", "false");
+    expect(item).toHaveTextContent("[ ]");
 
     rerender(
       <Menu aria-label="Options">
-        <Menu.ItemCheckbox id="opt" checked={true}>Option</Menu.ItemCheckbox>
+        <Menu.ItemCheckbox id="opt" checked={true}>
+          Option
+        </Menu.ItemCheckbox>
       </Menu>,
-    )
-    expect(item).toHaveAttribute("aria-checked", "true")
-    expect(item).toHaveTextContent("[x]")
-  })
+    );
+    expect(item).toHaveAttribute("aria-checked", "true");
+    expect(item).toHaveTextContent("[x]");
+  });
 
   it("works with defaultChecked (uncontrolled)", async () => {
-    renderCheckboxMenu({ defaultHighlighted: "hidden" })
-    const menu = screen.getByRole("menu")
-    menu.focus()
+    renderCheckboxMenu({ defaultHighlighted: "hidden" });
+    const menu = screen.getByRole("menu");
+    menu.focus();
 
-    const item = screen.getByRole("menuitemcheckbox", { name: "Show Hidden" })
-    expect(item).toHaveAttribute("aria-checked", "true")
+    const item = screen.getByRole("menuitemcheckbox", { name: "Show Hidden" });
+    expect(item).toHaveAttribute("aria-checked", "true");
 
-    await userEvent.keyboard("{Enter}")
-    expect(item).toHaveAttribute("aria-checked", "false")
-  })
+    await userEvent.keyboard("{Enter}");
+    expect(item).toHaveAttribute("aria-checked", "false");
+  });
 
   it("disabled item does not toggle", async () => {
     render(
       <Menu aria-label="Options" defaultHighlighted="disabled-opt">
-        <Menu.ItemCheckbox id="disabled-opt" disabled defaultChecked>Disabled</Menu.ItemCheckbox>
+        <Menu.ItemCheckbox id="disabled-opt" disabled defaultChecked>
+          Disabled
+        </Menu.ItemCheckbox>
       </Menu>,
-    )
-    const menu = screen.getByRole("menu")
-    menu.focus()
+    );
+    const menu = screen.getByRole("menu");
+    menu.focus();
 
-    const item = screen.getByRole("menuitemcheckbox", { name: "Disabled" })
-    expect(item).toHaveAttribute("aria-disabled", "true")
-    expect(item).toHaveAttribute("aria-checked", "true")
+    const item = screen.getByRole("menuitemcheckbox", { name: "Disabled" });
+    expect(item).toHaveAttribute("aria-disabled", "true");
+    expect(item).toHaveAttribute("aria-checked", "true");
 
-    await userEvent.keyboard("{Enter}")
-    expect(item).toHaveAttribute("aria-checked", "true")
+    await userEvent.keyboard("{Enter}");
+    expect(item).toHaveAttribute("aria-checked", "true");
 
-    await userEvent.click(item)
-    expect(item).toHaveAttribute("aria-checked", "true")
-  })
+    await userEvent.click(item);
+    expect(item).toHaveAttribute("aria-checked", "true");
+  });
 
   it("toggles on click", async () => {
-    renderCheckboxMenu()
-    const item = screen.getByRole("menuitemcheckbox", { name: "Word Wrap" })
-    expect(item).toHaveAttribute("aria-checked", "false")
+    renderCheckboxMenu();
+    const item = screen.getByRole("menuitemcheckbox", { name: "Word Wrap" });
+    expect(item).toHaveAttribute("aria-checked", "false");
 
-    await userEvent.click(item)
-    expect(item).toHaveAttribute("aria-checked", "true")
-    expect(item).toHaveTextContent("[x]")
+    await userEvent.click(item);
+    expect(item).toHaveAttribute("aria-checked", "true");
+    expect(item).toHaveTextContent("[x]");
 
-    await userEvent.click(item)
-    expect(item).toHaveAttribute("aria-checked", "false")
-  })
+    await userEvent.click(item);
+    expect(item).toHaveAttribute("aria-checked", "false");
+  });
 
   it("participates in arrow-key navigation", async () => {
     render(
@@ -1026,123 +1073,155 @@ describe("MenuItemCheckbox", () => {
         <Menu.ItemCheckbox id="check-opt">Toggle</Menu.ItemCheckbox>
         <Menu.Item id="another">Another</Menu.Item>
       </Menu>,
-    )
-    const menu = screen.getByRole("menu")
-    menu.focus()
+    );
+    const menu = screen.getByRole("menu");
+    menu.focus();
 
-    await userEvent.keyboard("{ArrowDown}")
-    expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-check-opt"))
+    await userEvent.keyboard("{ArrowDown}");
+    expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-check-opt"));
 
-    await userEvent.keyboard("{ArrowDown}")
-    expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-another"))
-  })
+    await userEvent.keyboard("{ArrowDown}");
+    expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-another"));
+  });
 
   it("calls onChange callback", async () => {
-    const onChange = vi.fn()
+    const onChange = vi.fn();
     render(
       <Menu aria-label="Options" defaultHighlighted="opt">
-        <Menu.ItemCheckbox id="opt" onChange={onChange}>Option</Menu.ItemCheckbox>
+        <Menu.ItemCheckbox id="opt" onChange={onChange}>
+          Option
+        </Menu.ItemCheckbox>
       </Menu>,
-    )
-    const menu = screen.getByRole("menu")
-    menu.focus()
+    );
+    const menu = screen.getByRole("menu");
+    menu.focus();
 
-    await userEvent.keyboard("{Enter}")
-    expect(onChange).toHaveBeenCalledWith(true)
+    await userEvent.keyboard("{Enter}");
+    expect(onChange).toHaveBeenCalledWith(true);
 
-    await userEvent.keyboard("{Enter}")
-    expect(onChange).toHaveBeenCalledWith(false)
-  })
+    await userEvent.keyboard("{Enter}");
+    expect(onChange).toHaveBeenCalledWith(false);
+  });
 
   it("axe() audit passes", async () => {
-    const { container } = renderCheckboxMenu()
-    expect(await axe(container)).toHaveNoViolations()
-  })
-})
+    const { container } = renderCheckboxMenu();
+    expect(await axe(container)).toHaveNoViolations();
+  });
+});
 
 describe("MenuItemRadio", () => {
   function renderRadioMenu(props: Record<string, unknown> = {}) {
     return render(
       <Menu aria-label="Sort" selectedId="name" onSelect={vi.fn()} {...props}>
-        <Menu.ItemRadio id="name" value="name">Name</Menu.ItemRadio>
-        <Menu.ItemRadio id="date" value="date">Date</Menu.ItemRadio>
-        <Menu.ItemRadio id="size" value="size" disabled>Size</Menu.ItemRadio>
+        <Menu.ItemRadio id="name" value="name">
+          Name
+        </Menu.ItemRadio>
+        <Menu.ItemRadio id="date" value="date">
+          Date
+        </Menu.ItemRadio>
+        <Menu.ItemRadio id="size" value="size" disabled>
+          Size
+        </Menu.ItemRadio>
       </Menu>,
-    )
+    );
   }
 
   it("renders with role=menuitemradio", () => {
-    renderRadioMenu()
-    expect(screen.getByRole("menuitemradio", { name: "Name" })).toBeInTheDocument()
-    expect(screen.getByRole("menuitemradio", { name: "Date" })).toBeInTheDocument()
-  })
+    renderRadioMenu();
+    expect(screen.getByRole("menuitemradio", { name: "Name" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitemradio", { name: "Date" })).toBeInTheDocument();
+  });
 
   it("shows (*) when selected and ( ) when not", () => {
-    renderRadioMenu()
-    const selected = screen.getByRole("menuitemradio", { name: "Name" })
-    const unselected = screen.getByRole("menuitemradio", { name: "Date" })
-    expect(selected).toHaveTextContent("(*)")
-    expect(unselected).toHaveTextContent("( )")
-  })
+    renderRadioMenu();
+    const selected = screen.getByRole("menuitemradio", { name: "Name" });
+    const unselected = screen.getByRole("menuitemradio", { name: "Date" });
+    expect(selected).toHaveTextContent("(*)");
+    expect(unselected).toHaveTextContent("( )");
+  });
 
   it("works with Menu selectedId/onSelect", async () => {
-    const onSelect = vi.fn()
-    renderRadioMenu({ onSelect })
-    await userEvent.click(screen.getByRole("menuitemradio", { name: "Date" }))
-    expect(onSelect).toHaveBeenCalledWith("date")
-  })
+    const onSelect = vi.fn();
+    renderRadioMenu({ onSelect });
+    await userEvent.click(screen.getByRole("menuitemradio", { name: "Date" }));
+    expect(onSelect).toHaveBeenCalledWith("date");
+  });
 
   it("aria-checked reflects selection state", () => {
     const { rerender } = render(
       <Menu aria-label="Sort" selectedId="name">
-        <Menu.ItemRadio id="name" value="name">Name</Menu.ItemRadio>
-        <Menu.ItemRadio id="date" value="date">Date</Menu.ItemRadio>
+        <Menu.ItemRadio id="name" value="name">
+          Name
+        </Menu.ItemRadio>
+        <Menu.ItemRadio id="date" value="date">
+          Date
+        </Menu.ItemRadio>
       </Menu>,
-    )
+    );
 
-    expect(screen.getByRole("menuitemradio", { name: "Name" })).toHaveAttribute("aria-checked", "true")
-    expect(screen.getByRole("menuitemradio", { name: "Date" })).toHaveAttribute("aria-checked", "false")
+    expect(screen.getByRole("menuitemradio", { name: "Name" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(screen.getByRole("menuitemradio", { name: "Date" })).toHaveAttribute(
+      "aria-checked",
+      "false",
+    );
 
     rerender(
       <Menu aria-label="Sort" selectedId="date">
-        <Menu.ItemRadio id="name" value="name">Name</Menu.ItemRadio>
-        <Menu.ItemRadio id="date" value="date">Date</Menu.ItemRadio>
+        <Menu.ItemRadio id="name" value="name">
+          Name
+        </Menu.ItemRadio>
+        <Menu.ItemRadio id="date" value="date">
+          Date
+        </Menu.ItemRadio>
       </Menu>,
-    )
+    );
 
-    expect(screen.getByRole("menuitemradio", { name: "Name" })).toHaveAttribute("aria-checked", "false")
-    expect(screen.getByRole("menuitemradio", { name: "Date" })).toHaveAttribute("aria-checked", "true")
-  })
+    expect(screen.getByRole("menuitemradio", { name: "Name" })).toHaveAttribute(
+      "aria-checked",
+      "false",
+    );
+    expect(screen.getByRole("menuitemradio", { name: "Date" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+  });
 
   it("participates in arrow-key navigation", async () => {
     render(
       <Menu aria-label="Mixed" selectedId="name" defaultHighlighted="action">
         <Menu.Item id="action">Action</Menu.Item>
-        <Menu.ItemRadio id="name" value="name">Name</Menu.ItemRadio>
-        <Menu.ItemRadio id="date" value="date">Date</Menu.ItemRadio>
+        <Menu.ItemRadio id="name" value="name">
+          Name
+        </Menu.ItemRadio>
+        <Menu.ItemRadio id="date" value="date">
+          Date
+        </Menu.ItemRadio>
       </Menu>,
-    )
-    const menu = screen.getByRole("menu")
-    menu.focus()
+    );
+    const menu = screen.getByRole("menu");
+    menu.focus();
 
-    await userEvent.keyboard("{ArrowDown}")
-    expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-name"))
+    await userEvent.keyboard("{ArrowDown}");
+    expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-name"));
 
-    await userEvent.keyboard("{ArrowDown}")
-    expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-date"))
-  })
+    await userEvent.keyboard("{ArrowDown}");
+    expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-date"));
+  });
 
   it("disabled radio does not select", async () => {
-    const onSelect = vi.fn()
-    renderRadioMenu({ onSelect })
-    const disabled = screen.getByRole("menuitemradio", { name: "Size" })
-    expect(disabled).toHaveAttribute("aria-disabled", "true")
-    await userEvent.click(disabled)
-    expect(onSelect).not.toHaveBeenCalled()
-  })
+    const onSelect = vi.fn();
+    renderRadioMenu({ onSelect });
+    const disabled = screen.getByRole("menuitemradio", { name: "Size" });
+    expect(disabled).toHaveAttribute("aria-disabled", "true");
+    await userEvent.click(disabled);
+    expect(onSelect).not.toHaveBeenCalled();
+  });
 
   it("axe() audit passes", async () => {
-    const { container } = renderRadioMenu()
-    expect(await axe(container)).toHaveNoViolations()
-  })
-})
+    const { container } = renderRadioMenu();
+    expect(await axe(container)).toHaveNoViolations();
+  });
+});

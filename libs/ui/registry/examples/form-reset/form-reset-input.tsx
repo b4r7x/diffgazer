@@ -1,14 +1,14 @@
-"use client"
+"use client";
 
-import { useRef, useState } from "react"
-import { useFormReset } from "@/hooks/use-form-reset"
+import { useRef, useState } from "react";
+import { useFormReset } from "@/hooks/use-form-reset";
 
 export default function FormResetInputExample() {
-  const inputRef = useRef<HTMLInputElement>(null)
-  const defaultValue = "Initial value"
-  const [value, setValue] = useState(defaultValue)
+  const inputRef = useRef<HTMLInputElement>(null);
+  const defaultValue = "Initial value";
+  const [value, setValue] = useState(defaultValue);
 
-  useFormReset(inputRef, defaultValue, setValue)
+  useFormReset(inputRef, defaultValue, setValue);
 
   return (
     <form className="flex max-w-sm flex-col gap-3">
@@ -28,5 +28,5 @@ export default function FormResetInputExample() {
         Reset
       </button>
     </form>
-  )
+  );
 }

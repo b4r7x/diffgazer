@@ -2,17 +2,9 @@ import type { FullReviewStreamEvent } from "@diffgazer/core/schemas/events";
 import { ReviewErrorCode } from "@diffgazer/core/schemas/review";
 import type { SSEWriter } from "../../../shared/lib/http/types.js";
 import { isAbortError, isTerminalEvent } from "./events.js";
-import {
-  type ActiveSession,
-  getSession,
-  onSessionComplete,
-  subscribe,
-} from "./store.js";
+import { type ActiveSession, getSession, onSessionComplete, subscribe } from "./store.js";
 
-async function writeStreamEvent(
-  stream: SSEWriter,
-  event: FullReviewStreamEvent,
-): Promise<void> {
+async function writeStreamEvent(stream: SSEWriter, event: FullReviewStreamEvent): Promise<void> {
   await stream.writeSSE({
     event: event.type,
     data: JSON.stringify(event),
@@ -187,8 +179,9 @@ export async function streamActiveSessionToSSE(
         finish(resolve);
         return;
       }
-      const terminalEvent = [...latest.events].slice(snapshotLength).reverse().find(isTerminalEvent)
-        ?? [...latest.events].reverse().find(isTerminalEvent);
+      const terminalEvent =
+        [...latest.events].slice(snapshotLength).reverse().find(isTerminalEvent) ??
+        [...latest.events].reverse().find(isTerminalEvent);
       if (terminalEvent) {
         writeTerminal(terminalEvent);
         return;

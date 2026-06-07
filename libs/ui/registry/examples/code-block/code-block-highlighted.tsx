@@ -1,12 +1,12 @@
-import { CodeBlock } from "@/components/ui/code-block"
-import { CodeBlockHighlight } from "@/components/ui/code-block/highlight"
+import { CodeBlock } from "@/components/ui/code-block";
+import { CodeBlockHighlight } from "@/components/ui/code-block/highlight";
 
 const code = `import { useState } from "react"
 
 export function Counter() {
   const [count, setCount] = useState(0)
   return <button onClick={() => setCount(count + 1)}>{count}</button>
-}`
+}`;
 
 export default function CodeBlockHighlighted() {
   return (
@@ -17,5 +17,5 @@ export default function CodeBlockHighlighted() {
       </CodeBlock.Header>
       <CodeBlockHighlight code={code} language="tsx" />
     </CodeBlock>
-  )
+  );
 }

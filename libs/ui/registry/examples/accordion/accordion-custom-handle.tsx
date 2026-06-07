@@ -1,4 +1,9 @@
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 export default function AccordionCustomHandle() {
   return (
@@ -14,9 +19,7 @@ export default function AccordionCustomHandle() {
         </AccordionContent>
       </AccordionItem>
       <AccordionItem value="item-2">
-        <AccordionTrigger handle={null}>
-          No handle (hidden)
-        </AccordionTrigger>
+        <AccordionTrigger handle={null}>No handle (hidden)</AccordionTrigger>
         <AccordionContent>
           <p className="text-sm text-muted-foreground">
             Pass handle={"{null}"} to hide the indicator entirely.
@@ -24,9 +27,7 @@ export default function AccordionCustomHandle() {
         </AccordionContent>
       </AccordionItem>
       <AccordionItem value="item-3">
-        <AccordionTrigger>
-          Default chevron
-        </AccordionTrigger>
+        <AccordionTrigger>Default chevron</AccordionTrigger>
         <AccordionContent>
           <p className="text-sm text-muted-foreground">
             Without the handle prop, the animated Chevron component is used by default.
@@ -34,5 +35,5 @@ export default function AccordionCustomHandle() {
         </AccordionContent>
       </AccordionItem>
     </Accordion>
-  )
+  );
 }

@@ -57,9 +57,10 @@ export function Input({
   const isMasked = type === "password";
 
   if (disabled) {
-    const display = isMasked && currentValue
-      ? "*".repeat(currentValue.length)
-      : (currentValue || placeholder || "");
+    const display =
+      isMasked && currentValue
+        ? "*".repeat(currentValue.length)
+        : currentValue || placeholder || "";
 
     return (
       <Box width={width} borderStyle="single" borderColor={tokens.muted}>
@@ -143,11 +144,7 @@ function ManualTextEdit({
 
   return (
     <Box width={width} borderStyle="single" borderColor={borderColor}>
-      {showPlaceholder ? (
-        <Text color={tokens.muted}>{placeholder}</Text>
-      ) : (
-        <Text>{display}</Text>
-      )}
+      {showPlaceholder ? <Text color={tokens.muted}>{placeholder}</Text> : <Text>{display}</Text>}
     </Box>
   );
 }

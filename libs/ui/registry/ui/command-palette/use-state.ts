@@ -39,9 +39,19 @@ export function useCommandPaletteState({
 }: UseCommandPaletteStateOptions): CommandPaletteContextValue {
   const [registeredItems, setRegisteredItems] = useState<CommandPaletteItemRegistration[]>([]);
   const filter = filterProp ?? defaultFilter;
-  const [isOpen, setIsOpen] = useControllableState({ value: controlledOpen, defaultValue: false, onChange: onOpenChange });
-  const [search, setSearch] = useControllableState({ value: controlledSearch, defaultValue: "", onChange: controlledOnSearchChange });
-  const [highlighted, setHighlighted, isHighlightedControlled] = useControllableState<string | null>({
+  const [isOpen, setIsOpen] = useControllableState({
+    value: controlledOpen,
+    defaultValue: false,
+    onChange: onOpenChange,
+  });
+  const [search, setSearch] = useControllableState({
+    value: controlledSearch,
+    defaultValue: "",
+    onChange: controlledOnSearchChange,
+  });
+  const [highlighted, setHighlighted, isHighlightedControlled] = useControllableState<
+    string | null
+  >({
     value: controlledHighlighted,
     controlled: controlledHighlighted !== undefined,
     defaultValue: null,
@@ -51,8 +61,10 @@ export function useCommandPaletteState({
   const inputRef = useRef<HTMLInputElement>(null);
   const paletteId = useId();
   const activeItems = useMemo(
-    () => sortSelectableCollectionItems(registeredItems)
-      .filter((item) => !item.disabled && item.element !== null),
+    () =>
+      sortSelectableCollectionItems(registeredItems).filter(
+        (item) => !item.disabled && item.element !== null,
+      ),
     [registeredItems],
   );
   const itemCallbacks = useMemo(
@@ -61,20 +73,28 @@ export function useCommandPaletteState({
   );
   const itemIds = useMemo(() => activeItems.map((item) => item.id), [activeItems]);
 
-  const handleOpenChange = useCallback((next: boolean) => {
-    if (!next) setSearch("");
-    setIsOpen(next);
-  }, [setIsOpen, setSearch]);
+  const handleOpenChange = useCallback(
+    (next: boolean) => {
+      if (!next) setSearch("");
+      setIsOpen(next);
+    },
+    [setIsOpen, setSearch],
+  );
 
-  const handleActivate = useCallback((id: string) => {
-    itemCallbacks.get(id)?.();
-    onActivate?.(id);
-    handleOpenChange(false);
-  }, [handleOpenChange, itemCallbacks, onActivate]);
+  const handleActivate = useCallback(
+    (id: string) => {
+      itemCallbacks.get(id)?.();
+      onActivate?.(id);
+      handleOpenChange(false);
+    },
+    [handleOpenChange, itemCallbacks, onActivate],
+  );
 
   const registerItem = useCallback((item: CommandPaletteItemRegistration) => {
     setRegisteredItems((current) => {
-      const existingIndex = current.findIndex((candidate) => candidate.registrationId === item.registrationId);
+      const existingIndex = current.findIndex(
+        (candidate) => candidate.registrationId === item.registrationId,
+      );
       const next = existingIndex === -1 ? [...current, item] : [...current];
       if (existingIndex !== -1) next[existingIndex] = item;
       return next;
@@ -82,7 +102,9 @@ export function useCommandPaletteState({
   }, []);
 
   const unregisterItem = useCallback((registrationId: string) => {
-    setRegisteredItems((current) => current.filter((item) => item.registrationId !== registrationId));
+    setRegisteredItems((current) =>
+      current.filter((item) => item.registrationId !== registrationId),
+    );
   }, []);
 
   const { onKeyDown: navKeyDown } = useNavigation({
@@ -96,13 +118,43 @@ export function useCommandPaletteState({
     scopeToContainer: true,
   });
 
-  return useMemo(() => ({
-    open: isOpen, onOpenChange: handleOpenChange, highlighted: getEffectiveHighlighted(highlighted, itemIds, isHighlightedControlled),
-    onHighlightChange: setHighlighted,
-    onActivate: handleActivate, search, onSearchChange: setSearch,
-    shouldFilter, filter, itemCount: itemIds.length,
-    listId: `${paletteId}-list`, listRef, inputRef, navKeyDown, registerItem, unregisterItem,
-  }), [isOpen, handleOpenChange, handleActivate, highlighted, itemIds, isHighlightedControlled, setHighlighted, search, setSearch, shouldFilter, filter, paletteId, navKeyDown, registerItem, unregisterItem]);
+  return useMemo(
+    () => ({
+      open: isOpen,
+      onOpenChange: handleOpenChange,
+      highlighted: getEffectiveHighlighted(highlighted, itemIds, isHighlightedControlled),
+      onHighlightChange: setHighlighted,
+      onActivate: handleActivate,
+      search,
+      onSearchChange: setSearch,
+      shouldFilter,
+      filter,
+      itemCount: itemIds.length,
+      listId: `${paletteId}-list`,
+      listRef,
+      inputRef,
+      navKeyDown,
+      registerItem,
+      unregisterItem,
+    }),
+    [
+      isOpen,
+      handleOpenChange,
+      handleActivate,
+      highlighted,
+      itemIds,
+      isHighlightedControlled,
+      setHighlighted,
+      search,
+      setSearch,
+      shouldFilter,
+      filter,
+      paletteId,
+      navKeyDown,
+      registerItem,
+      unregisterItem,
+    ],
+  );
 }
 
 export interface CommandPaletteItemMetadata {

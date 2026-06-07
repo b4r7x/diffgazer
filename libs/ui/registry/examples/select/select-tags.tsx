@@ -1,16 +1,16 @@
 "use client";
 
-import { useState } from "react"
+import { useState } from "react";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTags,
   SelectTrigger,
-} from "@/components/ui/select"
+} from "@/components/ui/select";
 
 export default function SelectTagsExample() {
-  const [value, setValue] = useState<string[]>(["typescript", "rust"])
+  const [value, setValue] = useState<string[]>(["typescript", "rust"]);
 
   return (
     <Select multiple width="lg" value={value} onChange={setValue}>
@@ -25,5 +25,5 @@ export default function SelectTagsExample() {
         <SelectItem value="zig">Zig</SelectItem>
       </SelectContent>
     </Select>
-  )
+  );
 }

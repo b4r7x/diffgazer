@@ -6,7 +6,15 @@ import {
   useActionRowNavigation,
   useScopedNavigation,
 } from "@diffgazer/keys";
-import { type KeyboardEvent as ReactKeyboardEvent, type RefCallback, type RefObject, useEffect, useEffectEvent, useRef, useState } from "react";
+import {
+  type KeyboardEvent as ReactKeyboardEvent,
+  type RefCallback,
+  type RefObject,
+  useEffect,
+  useEffectEvent,
+  useRef,
+  useState,
+} from "react";
 import { useModelDialogFocusTrap } from "./use-dialog-focus-trap";
 import { useModelFilters } from "./use-filter-row-keyboard";
 import { useModelSearchFocus } from "./use-search-focus";
@@ -109,9 +117,10 @@ export function useModelDialogKeyboard({
   const handleCancel = () => onOpenChange(false);
 
   const handleConfirm = (explicitModelId?: string) => {
-    const nextModelId = [explicitModelId, checkedModelId, focusedModelId]
-      .find((id) => id != null && filteredModels.some((model) => model.id === id))
-      ?? filteredModels[0]?.id;
+    const nextModelId =
+      [explicitModelId, checkedModelId, focusedModelId].find(
+        (id) => id != null && filteredModels.some((model) => model.id === id),
+      ) ?? filteredModels[0]?.id;
     if (!nextModelId) return;
     onSelect(nextModelId);
     onOpenChange(false);
@@ -221,9 +230,7 @@ export function useModelDialogKeyboard({
 
   const focusBoundaryModel = (target: "first" | "last") => {
     const targetId =
-      target === "last"
-        ? filteredModels[filteredModels.length - 1]?.id
-        : filteredModels[0]?.id;
+      target === "last" ? filteredModels[filteredModels.length - 1]?.id : filteredModels[0]?.id;
     if (targetId) focusModelElement(targetId);
   };
 

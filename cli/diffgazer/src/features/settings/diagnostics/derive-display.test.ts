@@ -56,19 +56,17 @@ describe("getServerLabel", () => {
 
 describe("getSetupLabel", () => {
   test("returns loading label while loading", () => {
-    expect(
-      getSetupLabel({ isLoading: true, error: null, setupStatus: null }),
-    ).toBe("loading...");
+    expect(getSetupLabel({ isLoading: true, error: null, setupStatus: null })).toBe("loading...");
   });
   test("returns error label when initError is set", () => {
-    expect(
-      getSetupLabel({ isLoading: false, error: "fail", setupStatus: null }),
-    ).toBe("error: fail");
+    expect(getSetupLabel({ isLoading: false, error: "fail", setupStatus: null })).toBe(
+      "error: fail",
+    );
   });
   test("returns ready when setupStatus is ready", () => {
-    expect(
-      getSetupLabel({ isLoading: false, error: null, setupStatus: SETUP_STATUS_READY }),
-    ).toBe("ready");
+    expect(getSetupLabel({ isLoading: false, error: null, setupStatus: SETUP_STATUS_READY })).toBe(
+      "ready",
+    );
   });
   test("lists missing fields when not ready", () => {
     expect(
@@ -76,22 +74,18 @@ describe("getSetupLabel", () => {
     ).toBe("incomplete (provider, model)");
   });
   test("falls back to unknown when setupStatus is null and not loading/error", () => {
-    expect(
-      getSetupLabel({ isLoading: false, error: null, setupStatus: null }),
-    ).toBe("incomplete (unknown)");
+    expect(getSetupLabel({ isLoading: false, error: null, setupStatus: null })).toBe(
+      "incomplete (unknown)",
+    );
   });
 });
 
 describe("getSetupVariant", () => {
   test("loading -> info", () => {
-    expect(
-      getSetupVariant({ isLoading: true, error: null, setupStatus: null }),
-    ).toBe("info");
+    expect(getSetupVariant({ isLoading: true, error: null, setupStatus: null })).toBe("info");
   });
   test("error -> error", () => {
-    expect(
-      getSetupVariant({ isLoading: false, error: "x", setupStatus: null }),
-    ).toBe("error");
+    expect(getSetupVariant({ isLoading: false, error: "x", setupStatus: null })).toBe("error");
   });
   test("ready -> success", () => {
     expect(
@@ -113,8 +107,7 @@ describe("getContextLabel", () => {
   test("loading", () => expect(getContextLabel("loading", null)).toBe("loading..."));
   test("ready", () => expect(getContextLabel("ready", null)).toBe("ready"));
   test("missing", () => expect(getContextLabel("missing", null)).toBe("missing"));
-  test("error with message", () =>
-    expect(getContextLabel("error", "boom")).toBe("error: boom"));
+  test("error with message", () => expect(getContextLabel("error", "boom")).toBe("error: boom"));
   test("error without message", () =>
     expect(getContextLabel("error", null)).toBe("error: unknown"));
 });

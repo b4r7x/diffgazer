@@ -1,7 +1,7 @@
-export const DOCS_CODE_THEME_NAME = "tui-theme"
+export const DOCS_CODE_THEME_NAME = "tui-theme";
 
 function v(name: string): string {
-  return `var(--code-${name})`
+  return `var(--code-${name})`;
 }
 
 export const docsCodeTheme = {
@@ -90,10 +90,7 @@ export const docsCodeTheme = {
       settings: { foreground: v("tag") },
     },
     {
-      scope: [
-        "keyword.operator",
-        "punctuation",
-      ],
+      scope: ["keyword.operator", "punctuation"],
       settings: { foreground: v("operator") },
     },
     {
@@ -118,20 +115,12 @@ export const docsCodeTheme = {
       settings: { foreground: v("keyword") },
     },
     {
-      scope: [
-        "markup.inserted",
-        "meta.diff.header.to-file",
-        "punctuation.definition.inserted",
-      ],
+      scope: ["markup.inserted", "meta.diff.header.to-file", "punctuation.definition.inserted"],
       settings: { foreground: v("function") },
     },
     {
-      scope: [
-        "markup.deleted",
-        "meta.diff.header.from-file",
-        "punctuation.definition.deleted",
-      ],
+      scope: ["markup.deleted", "meta.diff.header.from-file", "punctuation.definition.deleted"],
       settings: { foreground: v("operator") },
     },
   ],
-}
+};

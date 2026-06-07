@@ -20,9 +20,7 @@ function ShortcutRow({ shortcuts, tokens }: RowProps) {
         <Box key={`${shortcut.key}-${shortcut.label}`} flexDirection="row">
           <Text color={tokens.accent} bold>{`[${shortcut.key}]`}</Text>
           <Text color={tokens.muted}>{` ${shortcut.label}`}</Text>
-          {index < active.length - 1 ? (
-            <Text color={tokens.muted}>{"  •  "}</Text>
-          ) : null}
+          {index < active.length - 1 ? <Text color={tokens.muted}>{"  •  "}</Text> : null}
         </Box>
       ))}
     </Box>
@@ -33,12 +31,7 @@ export function Footer({ shortcuts, rightShortcuts }: FooterProps) {
   const { tokens } = useTheme();
 
   return (
-    <Box
-      flexDirection="row"
-      justifyContent="space-between"
-      paddingX={1}
-      paddingY={0}
-    >
+    <Box flexDirection="row" justifyContent="space-between" paddingX={1} paddingY={0}>
       <ShortcutRow shortcuts={shortcuts} tokens={tokens} />
       {rightShortcuts && rightShortcuts.length > 0 ? (
         <ShortcutRow shortcuts={rightShortcuts} tokens={tokens} />

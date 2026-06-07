@@ -143,19 +143,42 @@ describe("review-state", () => {
         { type: "EVENT", event: { type: "agent_start", agent: detective, timestamp: ts } },
         {
           type: "EVENT",
-          event: { type: "agent_thinking", agent: "detective", thought: "Analyzing patterns", timestamp: ts },
+          event: {
+            type: "agent_thinking",
+            agent: "detective",
+            thought: "Analyzing patterns",
+            timestamp: ts,
+          },
         },
         {
           type: "EVENT",
-          event: { type: "agent_progress", agent: "detective", progress: 75, message: "Almost done", timestamp: ts },
+          event: {
+            type: "agent_progress",
+            agent: "detective",
+            progress: 75,
+            message: "Almost done",
+            timestamp: ts,
+          },
         },
         {
           type: "EVENT",
-          event: { type: "tool_start", agent: "detective", tool: "searchCode", input: "query", timestamp: ts },
+          event: {
+            type: "tool_start",
+            agent: "detective",
+            tool: "searchCode",
+            input: "query",
+            timestamp: ts,
+          },
         },
         {
           type: "EVENT",
-          event: { type: "tool_result", agent: "detective", tool: "searchCode", summary: "", timestamp: ts },
+          event: {
+            type: "tool_result",
+            agent: "detective",
+            tool: "searchCode",
+            summary: "",
+            timestamp: ts,
+          },
         },
         {
           type: "EVENT",
@@ -191,10 +214,19 @@ describe("review-state", () => {
     const state = reduce(
       [
         { type: "EVENT", event: { type: "agent_start", agent: optimizer, timestamp: ts } },
-        { type: "EVENT", event: { type: "agent_progress", agent: "optimizer", progress: 50, timestamp: ts } },
         {
           type: "EVENT",
-          event: { type: "tool_result", agent: "optimizer", tool: "readFileContext", summary: "", timestamp: ts },
+          event: { type: "agent_progress", agent: "optimizer", progress: 50, timestamp: ts },
+        },
+        {
+          type: "EVENT",
+          event: {
+            type: "tool_result",
+            agent: "optimizer",
+            tool: "readFileContext",
+            summary: "",
+            timestamp: ts,
+          },
         },
       ],
       startedState(),
@@ -209,11 +241,25 @@ describe("review-state", () => {
       [
         {
           type: "EVENT",
-          event: { type: "file_start", file: "src/app.ts", index: 2, total: 5, scope: "orchestrator", timestamp: ts },
+          event: {
+            type: "file_start",
+            file: "src/app.ts",
+            index: 2,
+            total: 5,
+            scope: "orchestrator",
+            timestamp: ts,
+          },
         },
         {
           type: "EVENT",
-          event: { type: "file_start", file: "src/agent.ts", index: 3, total: 5, scope: "agent", timestamp: ts },
+          event: {
+            type: "file_start",
+            file: "src/agent.ts",
+            index: 3,
+            total: 5,
+            scope: "agent",
+            timestamp: ts,
+          },
         },
         {
           type: "EVENT",
@@ -226,11 +272,23 @@ describe("review-state", () => {
         { type: "EVENT", event: { type: "agent_start", agent: detective, timestamp: ts } },
         {
           type: "EVENT",
-          event: { type: "tool_call", agent: "detective", tool: "readFileContext", input: "src/index.ts", timestamp: ts },
+          event: {
+            type: "tool_call",
+            agent: "detective",
+            tool: "readFileContext",
+            input: "src/index.ts",
+            timestamp: ts,
+          },
         },
         {
           type: "EVENT",
-          event: { type: "tool_call", agent: "detective", tool: "readFileContext", input: "src/app.ts:10-50", timestamp: ts },
+          event: {
+            type: "tool_call",
+            agent: "detective",
+            tool: "readFileContext",
+            input: "src/app.ts:10-50",
+            timestamp: ts,
+          },
         },
         { type: "EVENT", event: issueFound("i1", "Bug A", "detective") },
         { type: "EVENT", event: issueFound("i2", "Bug B", "guardian") },
@@ -297,10 +355,19 @@ describe("review-state", () => {
     };
     const state = reduce(
       [
-        { type: "EVENT", event: { type: "step_start", step: "diff", timestamp: ts } satisfies StepEvent },
-        { type: "EVENT", event: { type: "step_complete", step: "diff", timestamp: ts } satisfies StepEvent },
+        {
+          type: "EVENT",
+          event: { type: "step_start", step: "diff", timestamp: ts } satisfies StepEvent,
+        },
+        {
+          type: "EVENT",
+          event: { type: "step_complete", step: "diff", timestamp: ts } satisfies StepEvent,
+        },
         { type: "EVENT", event: enrichEvent },
-        { type: "EVENT", event: { type: "step_error", step: "review", error: "AI provider down", timestamp: ts } },
+        {
+          type: "EVENT",
+          event: { type: "step_error", step: "review", error: "AI provider down", timestamp: ts },
+        },
       ],
       startedState(),
     );
@@ -344,7 +411,14 @@ describe("review-state", () => {
     it("routes orchestrator-scoped file events to file progress", () => {
       const state = reviewReducer(startedState(), {
         type: "EVENT",
-        event: { type: "file_start", file: "src/app.ts", index: 2, total: 5, scope: "orchestrator", timestamp: ts },
+        event: {
+          type: "file_start",
+          file: "src/app.ts",
+          index: 2,
+          total: 5,
+          scope: "orchestrator",
+          timestamp: ts,
+        },
       });
 
       expect(state.fileProgress.currentFile).toBe("src/app.ts");
@@ -374,13 +448,21 @@ describe("review-state", () => {
           { type: "EVENT", event: { type: "agent_start", agent: detective, timestamp: ts } },
           {
             type: "EVENT",
-            event: { type: "tool_call", agent: "detective", tool: "grep", input: "needle", timestamp: ts },
+            event: {
+              type: "tool_call",
+              agent: "detective",
+              tool: "grep",
+              input: "needle",
+              timestamp: ts,
+            },
           },
         ],
         startedState(),
       );
 
-      expect(state.agents.find((agent) => agent.id === "detective")?.currentAction).toBe("Using tool: grep");
+      expect(state.agents.find((agent) => agent.id === "detective")?.currentAction).toBe(
+        "Using tool: grep",
+      );
     });
 
     it("routes orchestrator_complete with a file count to the total", () => {
@@ -405,7 +487,9 @@ describe("review-state", () => {
         event: { type: "agent_start", agent: optimizer, timestamp: ts },
       });
 
-      expect(state.agents).toEqual([expect.objectContaining({ id: "optimizer", status: "running" })]);
+      expect(state.agents).toEqual([
+        expect.objectContaining({ id: "optimizer", status: "running" }),
+      ]);
     });
   });
 });

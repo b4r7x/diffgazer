@@ -27,17 +27,12 @@ const DIFFGAZER_KEYS_HOOK_FILES = resolveKeysHookFiles(registry.items);
 
 function registryItemToSourcePath(item: RegistryItem): string {
   return (
-    item.files.find((file) => file.path.endsWith("index.ts"))?.path ??
-    item.files[0]?.path ??
-    ""
+    item.files.find((file) => file.path.endsWith("index.ts"))?.path ?? item.files[0]?.path ?? ""
   );
 }
 
 function sourcePathToDeclarationPath(sourcePath: string): string {
-  return resolve(
-    declarationRoot,
-    sourcePath.replace(/\.(tsx|ts)$/, ".d.ts"),
-  );
+  return resolve(declarationRoot, sourcePath.replace(/\.(tsx|ts)$/, ".d.ts"));
 }
 
 function toSpecifier(fromFile: string, toDeclarationFile: string): string {
@@ -47,9 +42,7 @@ function toSpecifier(fromFile: string, toDeclarationFile: string): string {
   return specifier;
 }
 
-type AliasTarget =
-  | { kind: "file"; path: string }
-  | { kind: "external"; specifier: string };
+type AliasTarget = { kind: "file"; path: string } | { kind: "external"; specifier: string };
 
 function resolveAlias(alias: string): AliasTarget | null {
   if (alias.startsWith("@/lib/")) {
@@ -197,10 +190,7 @@ try {
     writePublicDeclaration(registryItemToDistKey(item), targetDeclaration);
   }
 
-  writePublicDeclaration(
-    "lib/utils",
-    resolve(declarationRoot, "registry/lib/utils.d.ts"),
-  );
+  writePublicDeclaration("lib/utils", resolve(declarationRoot, "registry/lib/utils.d.ts"));
   writePublicDeclaration(
     "components/logo/figlet",
     resolve(declarationRoot, "registry/ui/logo/figlet-text.d.ts"),

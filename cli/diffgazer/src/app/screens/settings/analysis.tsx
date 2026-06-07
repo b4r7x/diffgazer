@@ -10,7 +10,10 @@ import { Panel } from "../../../components/ui/panel";
 import { SectionHeader } from "../../../components/ui/section-header";
 import { Spinner } from "../../../components/ui/spinner";
 import { useSettingsZone } from "../../../features/settings/hooks/use-settings-zone";
-import { isLensSelectionDirty, resolveEffectiveLenses } from "../../../features/settings/lens-selection";
+import {
+  isLensSelectionDirty,
+  resolveEffectiveLenses,
+} from "../../../features/settings/lens-selection";
 import { useBackHandler } from "../../../hooks/use-back-handler";
 import { useScope } from "../../../hooks/use-scope";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions";
@@ -113,9 +116,7 @@ export function AnalysisScreen(): ReactElement {
                 isActive={isListActive}
                 disabled={isSaving}
               />
-              {!hasLensSelection && (
-                <Text color="red">Select at least one agent.</Text>
-              )}
+              {!hasLensSelection && <Text color="red">Select at least one agent.</Text>}
               <Box gap={1}>
                 <Button
                   variant="ghost"

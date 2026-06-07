@@ -3,9 +3,7 @@
   "name": "scroll-area",
   "title": "Scroll Area",
   "description": "Custom scrollable area with styled scrollbars",
-  "dependencies": [
-    "class-variance-authority"
-  ],
+  "dependencies": ["class-variance-authority"],
   "registryDependencies": [
     "https://r.b4r7.dev/r/ui/theme.json",
     "https://r.b4r7.dev/r/ui/utils.json"
@@ -13,7 +11,7 @@
   "files": [
     {
       "path": "registry/ui/scroll-area/index.ts",
-      "content": "\"use client\";\n\nexport { ScrollArea, type ScrollAreaProps, type ScrollOrientation, scrollAreaVariants } from \"./scroll-area\";\n",
+      "content": "\"use client\";\n\nexport {\n  ScrollArea,\n  type ScrollAreaProps,\n  type ScrollOrientation,\n  scrollAreaVariants,\n} from \"./scroll-area\";\n",
       "type": "registry:ui"
     },
     {

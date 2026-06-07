@@ -2,11 +2,7 @@ import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { describe, expect, test } from "vitest";
 import { selectReviewScreenPhase } from "./review-phase";
 
-function makeSavedData(opts: {
-  id: string;
-  durationMs?: number | null;
-  issues?: ReviewIssue[];
-}) {
+function makeSavedData(opts: { id: string; durationMs?: number | null; issues?: ReviewIssue[] }) {
   return {
     review: {
       metadata: { id: opts.id, durationMs: opts.durationMs },

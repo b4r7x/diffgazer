@@ -8,8 +8,7 @@ export const HERO_DESCRIPTION =
 
 export const INSTALL_COMMAND = "npm install -g diffgazer";
 
-export const DOCS_URL =
-  import.meta.env.VITE_DOCS_ORIGIN ?? "https://docs.b4r7.dev";
+export const DOCS_URL = import.meta.env.VITE_DOCS_ORIGIN ?? "https://docs.b4r7.dev";
 
 export const GITHUB_URL = "https://github.com/b4r7x/diffgazer";
 

@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Chevron } from "@/components/ui/icons"
+import { useState } from "react";
+import { Chevron } from "@/components/ui/icons";
 
 export default function ChevronAnimated() {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(false);
 
   return (
     <div className="flex flex-col gap-4">
@@ -31,5 +31,5 @@ export default function ChevronAnimated() {
         </div>
       </div>
     </div>
-  )
+  );
 }

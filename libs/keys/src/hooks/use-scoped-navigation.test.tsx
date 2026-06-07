@@ -36,7 +36,9 @@ function TestList({
       ref={ref}
       role="listbox"
       aria-label={label}
-      aria-activedescendant={result.highlighted === null ? undefined : itemId(result.highlighted, idPrefix)}
+      aria-activedescendant={
+        result.highlighted === null ? undefined : itemId(result.highlighted, idPrefix)
+      }
       tabIndex={0}
     >
       {items.map((item) => (
@@ -73,7 +75,9 @@ describe("useScopedNavigation", () => {
     const user = userEvent.setup();
     const onSelect = vi.fn();
     const onEnter = vi.fn();
-    render(<TestList defaultHighlighted="a" onSelect={onSelect} onEnter={onEnter} />, { wrapper: KeyboardWrapper });
+    render(<TestList defaultHighlighted="a" onSelect={onSelect} onEnter={onEnter} />, {
+      wrapper: KeyboardWrapper,
+    });
 
     await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}{End}{Home} {Enter}");
 
@@ -85,7 +89,9 @@ describe("useScopedNavigation", () => {
   it("requires KeyboardProvider", () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 
-    expect(() => render(<TestList />)).toThrow("useKeyboardContext must be used within KeyboardProvider");
+    expect(() => render(<TestList />)).toThrow(
+      "useKeyboardContext must be used within KeyboardProvider",
+    );
 
     consoleError.mockRestore();
   });
@@ -107,8 +113,12 @@ describe("useScopedNavigation", () => {
 
       return (
         <div ref={ref} role="group" aria-label="Actions">
-          <button type="button" data-value="a">A</button>
-          <button type="button" data-value="b">B</button>
+          <button type="button" data-value="a">
+            A
+          </button>
+          <button type="button" data-value="b">
+            B
+          </button>
         </div>
       );
     }
@@ -238,7 +248,13 @@ describe("useScopedNavigation", () => {
       useScope("outer");
       return (
         <>
-          <TestList scope="outer" defaultHighlighted="a" items={["a", "b"]} label="Outer items" idPrefix="outer" />
+          <TestList
+            scope="outer"
+            defaultHighlighted="a"
+            items={["a", "b"]}
+            label="Outer items"
+            idPrefix="outer"
+          />
           {showInner && <InnerList />}
         </>
       );
@@ -246,7 +262,15 @@ describe("useScopedNavigation", () => {
 
     function InnerList() {
       useScope("inner");
-      return <TestList scope="inner" defaultHighlighted="x" items={["x", "y"]} label="Inner items" idPrefix="inner" />;
+      return (
+        <TestList
+          scope="inner"
+          defaultHighlighted="x"
+          items={["x", "y"]}
+          label="Inner items"
+          idPrefix="inner"
+        />
+      );
     }
 
     const { rerender } = render(<ScopedHarness showInner />, { wrapper: KeyboardWrapper });
@@ -268,12 +292,16 @@ describe("useScopedNavigation", () => {
 
       expectTypeOf<Narrow["highlighted"]>().toEqualTypeOf<"a" | "b" | null | undefined>();
       expectTypeOf<NonNullable<Narrow["onSelect"]>>().parameter(0).toEqualTypeOf<"a" | "b">();
-      expectTypeOf<NonNullable<Narrow["onHighlightChange"]>>().parameter(0).toEqualTypeOf<"a" | "b" | null>();
+      expectTypeOf<NonNullable<Narrow["onHighlightChange"]>>()
+        .parameter(0)
+        .toEqualTypeOf<"a" | "b" | null>();
       expectTypeOf<ReturnNarrow["highlighted"]>().toEqualTypeOf<"a" | "b" | null>();
     });
 
     it("keeps the loose default contract when no generic is supplied", () => {
-      expectTypeOf<UseScopedNavigationOptions["highlighted"]>().toEqualTypeOf<string | null | undefined>();
+      expectTypeOf<UseScopedNavigationOptions["highlighted"]>().toEqualTypeOf<
+        string | null | undefined
+      >();
       expectTypeOf<UseScopedNavigationReturn["highlighted"]>().toEqualTypeOf<string | null>();
     });
   });

@@ -1,6 +1,10 @@
 import { useState } from "react";
 import type { ModelInfo } from "../schemas/config/index.js";
-import { cycleTierFilter as cycleTierFilterValue, filterModels, type TierFilter } from "./models.js";
+import {
+  cycleTierFilter as cycleTierFilterValue,
+  filterModels,
+  type TierFilter,
+} from "./models.js";
 
 export function useModelFilter(models: ModelInfo[]) {
   const [searchQuery, setSearchQuery] = useState("");

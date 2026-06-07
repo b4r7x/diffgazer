@@ -19,20 +19,19 @@ import type { DateFieldsOf, SaveReviewOptions, StoreError } from "./types.js";
 function filterByProjectAndSort<T extends { projectPath: string }>(
   items: T[],
   projectPath: string | undefined,
-  dateField: DateFieldsOf<T>
+  dateField: DateFieldsOf<T>,
 ): T[] {
   const filtered = projectPath ? items.filter((item) => item.projectPath === projectPath) : items;
   return filtered.sort(
     (a, b) =>
-      new Date(b[dateField] as string).getTime() - new Date(a[dateField] as string).getTime()
+      new Date(b[dateField] as string).getTime() - new Date(a[dateField] as string).getTime(),
   );
 }
 
 // Legacy on-disk directory name kept as "triage-reviews" to avoid data migration
 const REVIEWS_DIR = join(getGlobalDiffgazerDir(), "triage-reviews");
 const PROJECT_INDEX_DIR = join(REVIEWS_DIR, ".index");
-const getReviewFile = (reviewId: string): string =>
-  join(REVIEWS_DIR, `${reviewId}.json`);
+const getReviewFile = (reviewId: string): string => join(REVIEWS_DIR, `${reviewId}.json`);
 
 function projectIndexPath(projectPath: string): string {
   const hash = createHash("sha256").update(projectPath).digest("hex").slice(0, 16);
@@ -91,7 +90,11 @@ function migrateReview(review: SavedReview): SavedReview | null {
   if (issues.length === 0) return null;
 
   const totalCounted =
-    metadata.blockerCount + metadata.highCount + metadata.mediumCount + metadata.lowCount + metadata.nitCount;
+    metadata.blockerCount +
+    metadata.highCount +
+    metadata.mediumCount +
+    metadata.lowCount +
+    metadata.nitCount;
 
   if (totalCounted > 0 || metadata.issueCount === 0) return null;
 
@@ -110,7 +113,7 @@ function migrateReview(review: SavedReview): SavedReview | null {
 }
 
 export async function saveReview(
-  options: SaveReviewOptions
+  options: SaveReviewOptions,
 ): Promise<Result<ReviewMetadata, StoreError>> {
   const now = new Date().toISOString();
 
@@ -159,7 +162,7 @@ export async function saveReview(
 
 export async function addDrilldownToReview(
   reviewId: string,
-  drilldown: DrilldownResult
+  drilldown: DrilldownResult,
 ): Promise<Result<void, StoreError>> {
   const readResult = await reviewStore.read(reviewId);
   if (!readResult.ok) return readResult;
@@ -180,7 +183,11 @@ async function migrateMetadataList(items: ReviewMetadata[]): Promise<ReviewMetad
   return Promise.all(
     items.map(async (metadata) => {
       const totalCounted =
-        metadata.blockerCount + metadata.highCount + metadata.mediumCount + metadata.lowCount + metadata.nitCount;
+        metadata.blockerCount +
+        metadata.highCount +
+        metadata.mediumCount +
+        metadata.lowCount +
+        metadata.nitCount;
 
       if (totalCounted === 0 && metadata.issueCount > 0) {
         const reviewResult = await reviewStore.read(metadata.id);
@@ -188,18 +195,20 @@ async function migrateMetadataList(items: ReviewMetadata[]): Promise<ReviewMetad
 
         const migrated = migrateReview(reviewResult.value);
         if (migrated) {
-          reviewStore.write(migrated).catch((e) => console.warn('[reviews] migration write failed:', e));
+          reviewStore
+            .write(migrated)
+            .catch((e) => console.warn("[reviews] migration write failed:", e));
           return migrated.metadata;
         }
       }
 
       return metadata;
-    })
+    }),
   );
 }
 
 export async function listReviews(
-  projectPath?: string
+  projectPath?: string,
 ): Promise<Result<{ items: ReviewMetadata[]; warnings: string[] }, StoreError>> {
   // When a project path is given, try the project index first for faster lookup.
   if (projectPath) {
@@ -243,9 +252,7 @@ export async function listReviews(
   return ok({ items: migratedItems, warnings: result.value.warnings });
 }
 
-export async function getReview(
-  reviewId: string
-): Promise<Result<SavedReview, StoreError>> {
+export async function getReview(reviewId: string): Promise<Result<SavedReview, StoreError>> {
   const result = await reviewStore.read(reviewId);
   if (!result.ok) return result;
 
@@ -253,7 +260,7 @@ export async function getReview(
   const migrated = migrateReview(review);
   if (migrated) {
     // Persist migrated data in background (fire and forget)
-    reviewStore.write(migrated).catch((e) => console.warn('[reviews] migration write failed:', e));
+    reviewStore.write(migrated).catch((e) => console.warn("[reviews] migration write failed:", e));
     return ok(migrated);
   }
 

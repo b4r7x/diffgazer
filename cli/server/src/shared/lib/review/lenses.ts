@@ -63,4 +63,3 @@ const LENSES: Record<LensId, Lens> = {
 export function getLenses(ids: LensId[]): Lens[] {
   return ids.map((id) => LENSES[id]);
 }
-

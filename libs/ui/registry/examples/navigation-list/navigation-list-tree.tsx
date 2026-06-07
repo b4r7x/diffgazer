@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { NavigationList } from "@/components/ui/navigation-list"
+import { useState } from "react";
+import { NavigationList } from "@/components/ui/navigation-list";
 
 export default function NavigationListTree() {
-  const [selected, setSelected] = useState("input-tsx")
+  const [selected, setSelected] = useState("input-tsx");
 
   return (
     <NavigationList selectedId={selected} onSelect={setSelected} aria-label="File tree">
@@ -38,5 +38,5 @@ export default function NavigationListTree() {
         </NavigationList.Item>
       </NavigationList.Group>
     </NavigationList>
-  )
+  );
 }

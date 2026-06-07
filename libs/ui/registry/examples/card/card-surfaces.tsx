@@ -1,10 +1,4 @@
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function CardSurfaces() {
   return (
@@ -45,7 +39,9 @@ export default function CardSurfaces() {
           <CardDescription>Blueprint wireframe style</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">Dashed border for draft or placeholder content.</p>
+          <p className="text-sm text-muted-foreground">
+            Dashed border for draft or placeholder content.
+          </p>
         </CardContent>
       </Card>
 
@@ -59,5 +55,5 @@ export default function CardSurfaces() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

@@ -40,7 +40,11 @@ export function getSetupLabel({ isLoading, error, setupStatus }: SetupDisplayInp
   return `incomplete (${setupStatus?.missing.join(", ") ?? "unknown"})`;
 }
 
-export function getSetupVariant({ isLoading, error, setupStatus }: SetupDisplayInput): BadgeVariant {
+export function getSetupVariant({
+  isLoading,
+  error,
+  setupStatus,
+}: SetupDisplayInput): BadgeVariant {
   if (isLoading) return "info";
   if (error) return "error";
   if (setupStatus?.isReady) return "success";

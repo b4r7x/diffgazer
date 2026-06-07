@@ -4,26 +4,23 @@ import { cn } from "@/lib/utils";
 
 type HeadingTag = "h2" | "h3" | "h4";
 
-export const sectionHeaderVariants = cva(
-  "font-bold mb-2 uppercase tracking-wider",
-  {
-    variants: {
-      variant: {
-        default: "text-foreground",
-        muted: "text-muted-foreground",
-      },
-      bordered: {
-        true: "border-b border-border pb-2",
-      },
-      as: {
-        h2: "text-sm",
-        h3: "text-xs",
-        h4: "text-[11px]",
-      },
+export const sectionHeaderVariants = cva("font-bold mb-2 uppercase tracking-wider", {
+  variants: {
+    variant: {
+      default: "text-foreground",
+      muted: "text-muted-foreground",
     },
-    defaultVariants: { variant: "default", bordered: false, as: "h3" },
+    bordered: {
+      true: "border-b border-border pb-2",
+    },
+    as: {
+      h2: "text-sm",
+      h3: "text-xs",
+      h4: "text-[11px]",
+    },
   },
-);
+  defaultVariants: { variant: "default", bordered: false, as: "h3" },
+});
 
 export interface SectionHeaderProps
   extends HTMLAttributes<HTMLHeadingElement>,

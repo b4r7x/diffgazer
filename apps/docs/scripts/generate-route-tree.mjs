@@ -7,7 +7,7 @@ const DOCS_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const OUTPUT = resolve(DOCS_ROOT, "src/routeTree.gen.ts");
 
 if (existsSync(OUTPUT)) {
-	process.exit(0);
+  process.exit(0);
 }
 
 const config = getConfig({}, DOCS_ROOT);

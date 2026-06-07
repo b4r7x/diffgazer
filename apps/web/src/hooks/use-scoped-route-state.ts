@@ -18,7 +18,7 @@ function cleanupIfNeeded(): void {
 
   const keysToRemove = Array.from(routeStateStore.keys()).slice(
     0,
-    routeStateStore.size - MAX_ENTRIES
+    routeStateStore.size - MAX_ENTRIES,
   );
   keysToRemove.forEach((key) => {
     routeStateStore.delete(key);
@@ -47,17 +47,14 @@ function subscribe(callback: () => void): () => void {
   return () => subscribers.delete(callback);
 }
 
-export function useScopedRouteState<T>(
-  key: string,
-  defaultValue: T
-): [T, SetState<T>] {
+export function useScopedRouteState<T>(key: string, defaultValue: T): [T, SetState<T>] {
   const { pathname } = useLocation();
   const storageKey = createStorageKey(key, pathname);
 
   const state = useSyncExternalStore(
     subscribe,
     () => getSnapshot(storageKey, defaultValue),
-    () => defaultValue
+    () => defaultValue,
   );
 
   const setState = (valueOrUpdater: T | ((prev: T) => T)) => {

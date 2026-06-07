@@ -13,7 +13,7 @@ export const requireSetup = async (c: Context, next: Next): Promise<Response | u
       c,
       `Setup incomplete. Missing: ${status.missing.join(", ")}`,
       ErrorCode.SETUP_REQUIRED,
-      503
+      503,
     );
   }
 

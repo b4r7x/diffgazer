@@ -10,9 +10,7 @@ export function buildHubValues(
   const isConfigured = init?.setup?.isConfigured ?? false;
   const providerLabel = isConfigured && provider ? provider.toUpperCase() : "Not configured";
   const themeLabel = (settings?.theme ?? "auto").toUpperCase();
-  const storageLabel = settings?.secretsStorage
-    ? settings.secretsStorage.toUpperCase()
-    : "Not set";
+  const storageLabel = settings?.secretsStorage ? settings.secretsStorage.toUpperCase() : "Not set";
   const execution = settings?.agentExecution ?? "sequential";
   const executionLabel = execution === "parallel" ? "Parallel" : "Sequential";
   const lensCount = settings?.defaultLenses?.length ?? 0;

@@ -43,7 +43,10 @@ test("runValidationChecks reports failures on stderr and exits 1", async () => {
 
   let error;
   try {
-    execFileSync(process.execPath, ["-e", script], { encoding: "utf-8", stdio: ["ignore", "pipe", "pipe"] });
+    execFileSync(process.execPath, ["-e", script], {
+      encoding: "utf-8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
   } catch (caught) {
     error = caught;
   }

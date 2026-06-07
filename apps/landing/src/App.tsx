@@ -19,10 +19,7 @@ export function App() {
           {PRODUCT_NAME}
         </span>
       </header>
-      <main
-        id="main"
-        className="mx-auto flex max-w-3xl flex-col gap-24 px-4 py-16 sm:py-24"
-      >
+      <main id="main" className="mx-auto flex max-w-3xl flex-col gap-24 px-4 py-16 sm:py-24">
         <Hero />
         <ValueProps />
         <Showcase />

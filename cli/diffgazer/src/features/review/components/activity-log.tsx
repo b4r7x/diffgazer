@@ -29,13 +29,11 @@ export function ActivityLog({ entries, height = 10, isActive = false }: Activity
       {entries.map((entry) => (
         <Box key={entry.id} gap={1}>
           <Text color={tokens.muted}>{formatTimestamp(entry.timestamp)}</Text>
-          <Badge variant={TAG_BADGE_VARIANTS[entry.tagType ?? "system"] ?? "neutral"}>{entry.tag}</Badge>
-          {entry.source ? (
-            <Text color={tokens.muted}>[{entry.source}]</Text>
-          ) : null}
-          <Text color={getLogEntryColor(entry, tokens)}>
-            {entry.message}
-          </Text>
+          <Badge variant={TAG_BADGE_VARIANTS[entry.tagType ?? "system"] ?? "neutral"}>
+            {entry.tag}
+          </Badge>
+          {entry.source ? <Text color={tokens.muted}>[{entry.source}]</Text> : null}
+          <Text color={getLogEntryColor(entry, tokens)}>{entry.message}</Text>
         </Box>
       ))}
     </ScrollArea>

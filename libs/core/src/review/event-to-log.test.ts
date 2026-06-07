@@ -86,7 +86,13 @@ describe("convertAgentEventsToLogEntries", () => {
     ],
     [
       "enrich_progress",
-      { type: "enrich_progress", issueId: "issue-1", enrichmentType: "blame", status: "complete", timestamp },
+      {
+        type: "enrich_progress",
+        issueId: "issue-1",
+        enrichmentType: "blame",
+        status: "complete",
+        timestamp,
+      },
       { tag: "ENRICH", tagType: "system", messageIncludes: ["blame", "complete", "issue-1"] },
     ],
     [
@@ -106,7 +112,13 @@ describe("convertAgentEventsToLogEntries", () => {
     ],
     [
       "agent_progress",
-      { type: "agent_progress", agent: "optimizer", progress: 50, message: "Halfway done", timestamp },
+      {
+        type: "agent_progress",
+        agent: "optimizer",
+        progress: 50,
+        message: "Halfway done",
+        timestamp,
+      },
       { messageIncludes: ["50%", "Halfway done"] },
     ],
     [
@@ -116,12 +128,24 @@ describe("convertAgentEventsToLogEntries", () => {
     ],
     [
       "tool_call",
-      { type: "tool_call", agent: "detective", tool: "readFileContext", input: "src/index.ts:1-20", timestamp },
+      {
+        type: "tool_call",
+        agent: "detective",
+        tool: "readFileContext",
+        input: "src/index.ts:1-20",
+        timestamp,
+      },
       { tag: "TOOL", tagType: "tool", messageIncludes: ["readFileContext"] },
     ],
     [
       "tool_result",
-      { type: "tool_result", agent: "guardian", tool: "readFileContext", summary: "Read 50 lines", timestamp },
+      {
+        type: "tool_result",
+        agent: "guardian",
+        tool: "readFileContext",
+        summary: "Read 50 lines",
+        timestamp,
+      },
       { tag: "TOOL", messageIncludes: ["Read 50 lines"] },
     ],
     [
@@ -141,7 +165,14 @@ describe("convertAgentEventsToLogEntries", () => {
     ],
     [
       "orchestrator_complete",
-      { type: "orchestrator_complete", summary: "Review done", totalIssues: 7, lensStats: [], filesAnalyzed: 10, timestamp },
+      {
+        type: "orchestrator_complete",
+        summary: "Review done",
+        totalIssues: 7,
+        lensStats: [],
+        filesAnalyzed: 10,
+        timestamp,
+      },
       { tag: "DONE", messageIncludes: ["7 issues"] },
     ],
     [
@@ -157,13 +188,15 @@ describe("convertAgentEventsToLogEntries", () => {
   ])("maps %s", (_, event, expected) => {
     const [entry] = convertAgentEventsToLogEntries([event]);
 
-    expect(entry).toEqual(expect.objectContaining({
-      ...(expected.tag && { tag: expected.tag }),
-      ...(expected.tagType && { tagType: expected.tagType }),
-      ...(expected.source && { source: expected.source }),
-      ...(expected.isWarning !== undefined && { isWarning: expected.isWarning }),
-      ...(expected.isError !== undefined && { isError: expected.isError }),
-    }));
+    expect(entry).toEqual(
+      expect.objectContaining({
+        ...(expected.tag && { tag: expected.tag }),
+        ...(expected.tagType && { tagType: expected.tagType }),
+        ...(expected.source && { source: expected.source }),
+        ...(expected.isWarning !== undefined && { isWarning: expected.isWarning }),
+        ...(expected.isError !== undefined && { isError: expected.isError }),
+      }),
+    );
     for (const text of expected.messageIncludes ?? []) {
       expect(entry?.message).toContain(text);
     }

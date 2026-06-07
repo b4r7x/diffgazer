@@ -7,44 +7,42 @@ describe("resolveAriaInvalid", () => {
     { ariaInvalid: undefined, forceInvalid: true, expected: true },
     { ariaInvalid: false, forceInvalid: true, expected: true },
     { ariaInvalid: "false" as const, forceInvalid: true, expected: true },
-  ])(
-    "forceInvalid=$forceInvalid overrides ariaInvalid=$ariaInvalid → $expected",
-    ({ ariaInvalid, forceInvalid, expected }) => {
-      expect(resolveAriaInvalid(ariaInvalid, forceInvalid)).toBe(expected);
-    },
-  );
+  ])("forceInvalid=$forceInvalid overrides ariaInvalid=$ariaInvalid → $expected", ({
+    ariaInvalid,
+    forceInvalid,
+    expected,
+  }) => {
+    expect(resolveAriaInvalid(ariaInvalid, forceInvalid)).toBe(expected);
+  });
 
   it.each([
     { ariaInvalid: "grammar" as const, expected: "grammar" },
     { ariaInvalid: "spelling" as const, expected: "spelling" },
     { ariaInvalid: "true" as const, expected: "true" },
     { ariaInvalid: true, expected: true },
-  ])(
-    "passes through truthy aria-invalid variant $ariaInvalid",
-    ({ ariaInvalid, expected }) => {
-      expect(resolveAriaInvalid(ariaInvalid)).toBe(expected);
-    },
-  );
+  ])("passes through truthy aria-invalid variant $ariaInvalid", ({ ariaInvalid, expected }) => {
+    expect(resolveAriaInvalid(ariaInvalid)).toBe(expected);
+  });
 
   it.each([
     { ariaInvalid: false, expected: false },
     { ariaInvalid: "false" as const, expected: "false" },
-  ])(
-    "passes through explicit false-y aria-invalid variant $ariaInvalid",
-    ({ ariaInvalid, expected }) => {
-      expect(resolveAriaInvalid(ariaInvalid)).toBe(expected);
-    },
-  );
+  ])("passes through explicit false-y aria-invalid variant $ariaInvalid", ({
+    ariaInvalid,
+    expected,
+  }) => {
+    expect(resolveAriaInvalid(ariaInvalid)).toBe(expected);
+  });
 
   it.each([
     { ariaInvalid: undefined, forceInvalid: undefined },
     { ariaInvalid: undefined, forceInvalid: false },
-  ])(
-    "returns undefined when ariaInvalid=undefined and forceInvalid=$forceInvalid",
-    ({ ariaInvalid, forceInvalid }) => {
-      expect(resolveAriaInvalid(ariaInvalid, forceInvalid)).toBeUndefined();
-    },
-  );
+  ])("returns undefined when ariaInvalid=undefined and forceInvalid=$forceInvalid", ({
+    ariaInvalid,
+    forceInvalid,
+  }) => {
+    expect(resolveAriaInvalid(ariaInvalid, forceInvalid)).toBeUndefined();
+  });
 });
 
 describe("mergeIds", () => {

@@ -5,10 +5,7 @@ import { inkKeyToHotkey, isLetterKey } from "../../lib/ink-key";
 
 /** @see libs/keys/src/providers/keyboard.tsx KeyboardContextValue (browser-based variant with DOM event routing) */
 export interface KeyboardContextValue {
-  registerGlobalHandler: (
-    hotkey: string,
-    handler: () => void,
-  ) => () => void;
+  registerGlobalHandler: (hotkey: string, handler: () => void) => () => void;
   pushScope: (name: string) => void;
   popScope: () => void;
   activeScope: string | null;
@@ -22,17 +19,13 @@ interface TerminalKeyboardProviderProps {
   children: ReactNode;
 }
 
-export function TerminalKeyboardProvider({
-  children,
-}: TerminalKeyboardProviderProps) {
+export function TerminalKeyboardProvider({ children }: TerminalKeyboardProviderProps) {
   const [scopeStack, setScopeStack] = useState<string[]>([]);
   const globalHandlersRef = useRef<Map<string, Set<() => void>>>(new Map());
   const inputActiveRef = useRef(false);
   const [inputActive, setInputActiveState] = useState(false);
 
-  const activeScope = scopeStack.length > 0
-    ? scopeStack[scopeStack.length - 1] ?? null
-    : null;
+  const activeScope = scopeStack.length > 0 ? (scopeStack[scopeStack.length - 1] ?? null) : null;
 
   const setInputActive = useCallback((active: boolean) => {
     if (inputActiveRef.current === active) return;
@@ -40,10 +33,7 @@ export function TerminalKeyboardProvider({
     setInputActiveState(active);
   }, []);
 
-  const registerGlobalHandler = useCallback((
-    hotkey: string,
-    handler: () => void,
-  ): (() => void) => {
+  const registerGlobalHandler = useCallback((hotkey: string, handler: () => void): (() => void) => {
     const globals = globalHandlersRef.current;
     let handlers = globals.get(hotkey);
     if (!handlers) {
@@ -97,19 +87,8 @@ export function TerminalKeyboardProvider({
       setInputActive,
       inputActive,
     }),
-    [
-      registerGlobalHandler,
-      pushScope,
-      popScope,
-      activeScope,
-      setInputActive,
-      inputActive,
-    ],
+    [registerGlobalHandler, pushScope, popScope, activeScope, setInputActive, inputActive],
   );
 
-  return (
-    <KeyboardContext value={value}>
-      {children}
-    </KeyboardContext>
-  );
+  return <KeyboardContext value={value}>{children}</KeyboardContext>;
 }

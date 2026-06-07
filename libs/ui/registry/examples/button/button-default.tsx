@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
 
 export default function ButtonDefault() {
   return (
@@ -7,5 +7,5 @@ export default function ButtonDefault() {
       <Button variant="ghost">Cancel</Button>
       <Button bracket>Submit</Button>
     </div>
-  )
+  );
 }

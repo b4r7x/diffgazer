@@ -6,9 +6,7 @@ export {
   type UIStepStatus,
 } from "./display.js";
 export { convertAgentEventsToLogEntries } from "./event-to-log.js";
-export {
-  filterIssuesBySeverity,
-} from "./filtering.js";
+export { filterIssuesBySeverity } from "./filtering.js";
 export {
   buildHistoryRunSummary,
   buildTimelineItems,

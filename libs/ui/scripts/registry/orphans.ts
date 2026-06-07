@@ -30,7 +30,9 @@ export function validateOrphanFiles(root: string, items: RegistryItem[]): string
 
       const registryPath = normalizeRegistryPath(relative(root, entryPath));
       if (!declaredFiles.has(registryPath)) {
-        errors.push(`File ${registryPath} exists on disk but is not declared in any registry item's files[]`);
+        errors.push(
+          `File ${registryPath} exists on disk but is not declared in any registry item's files[]`,
+        );
       }
     }
   }

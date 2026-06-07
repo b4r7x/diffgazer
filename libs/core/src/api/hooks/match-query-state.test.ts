@@ -3,10 +3,7 @@ import { createElement } from "react";
 import { describe, expect, it } from "vitest";
 import { guardQueryState, matchQueryState } from "./match-query-state.js";
 
-type QueryShape<T> = Pick<
-  UseQueryResult<T>,
-  "isLoading" | "error" | "data" | "fetchStatus"
->;
+type QueryShape<T> = Pick<UseQueryResult<T>, "isLoading" | "error" | "data" | "fetchStatus">;
 
 function queryResult<T>(shape: QueryShape<T>): UseQueryResult<T> {
   return shape as UseQueryResult<T>;

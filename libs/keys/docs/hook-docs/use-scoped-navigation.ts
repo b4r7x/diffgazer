@@ -1,4 +1,4 @@
-import type { HookDoc } from "@diffgazer/registry"
+import type { HookDoc } from "@diffgazer/registry";
 
 export const useScopedNavigationDoc: HookDoc = {
   description:
@@ -23,8 +23,7 @@ export const useScopedNavigationDoc: HookDoc = {
       name: "role",
       type: '"radio" | "checkbox" | "option" | "menuitem" | "menuitemcheckbox" | "menuitemradio" | "button" | "tab"',
       required: true,
-      description:
-        "ARIA role used to query navigable children within the container.",
+      description: "ARIA role used to query navigable children within the container.",
     },
     {
       name: "highlighted",
@@ -36,7 +35,8 @@ export const useScopedNavigationDoc: HookDoc = {
       name: "onHighlightChange",
       type: "(value: string | null) => void",
       required: false,
-      description: "Called when the controlled highlight value should change. Receives null when highlight is cleared.",
+      description:
+        "Called when the controlled highlight value should change. Receives null when highlight is cleared.",
     },
     {
       name: "onSelect",
@@ -108,7 +108,8 @@ export const useScopedNavigationDoc: HookDoc = {
       name: "skipDisabled",
       type: "boolean",
       required: false,
-      description: "Skip items with aria-disabled=\"true\", data-disabled, or native disabled during navigation.",
+      description:
+        'Skip items with aria-disabled="true", data-disabled, or native disabled during navigation.',
       defaultValue: "true",
     },
     {
@@ -144,8 +145,7 @@ export const useScopedNavigationDoc: HookDoc = {
       name: "focusWithinOnly",
       type: "boolean",
       required: false,
-      description:
-        "Only handle navigation keys when focus is within the container element.",
+      description: "Only handle navigation keys when focus is within the container element.",
       defaultValue: "false",
     },
   ],
@@ -202,4 +202,4 @@ export const useScopedNavigationDoc: HookDoc = {
     },
   ],
   tags: ["provider-dependent", "navigation", "scope"],
-}
+};

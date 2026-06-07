@@ -1,4 +1,4 @@
-import { Chevron } from "@/components/ui/icons"
+import { Chevron } from "@/components/ui/icons";
 
 export default function ChevronDefault() {
   return (
@@ -6,5 +6,5 @@ export default function ChevronDefault() {
       <Chevron />
       <span className="text-sm font-mono">Default chevron (right, sm)</span>
     </div>
-  )
+  );
 }

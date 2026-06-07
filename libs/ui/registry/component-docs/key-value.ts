@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types"
+import type { ComponentDoc } from "./types";
 
 export const keyValueDoc: ComponentDoc = {
   description:
@@ -49,13 +49,15 @@ export const keyValueDoc: ComponentDoc = {
         type: '"horizontal" | "vertical"',
         required: false,
         defaultValue: '"horizontal"',
-        description: "Horizontal places label and value side-by-side; vertical stacks them. Propagated to KeyValue.Item via context.",
+        description:
+          "Horizontal places label and value side-by-side; vertical stacks them. Propagated to KeyValue.Item via context.",
       },
       bordered: {
         type: "boolean",
         required: false,
         defaultValue: "false",
-        description: "Adds row borders and switches items to compact xs sizing. Propagated to KeyValue.Item via context.",
+        description:
+          "Adds row borders and switches items to compact xs sizing. Propagated to KeyValue.Item via context.",
       },
       children: {
         type: "ReactNode",
@@ -81,7 +83,8 @@ export const keyValueDoc: ComponentDoc = {
         type: '"default" | "warning" | "info" | "success" | "error"',
         required: false,
         defaultValue: '"default"',
-        description: "Color token applied to the value. Info uses monospace; the rest are bold semantic colors.",
+        description:
+          "Color token applied to the value. Info uses monospace; the rest are bold semantic colors.",
       },
       layout: {
         type: '"horizontal" | "vertical"',
@@ -109,4 +112,4 @@ export const keyValueDoc: ComponentDoc = {
       },
     },
   },
-}
+};

@@ -17,7 +17,11 @@ export function AvatarIndicator({ count, size, className }: AvatarIndicatorProps
     <span
       role="img"
       aria-label={`${count} more`}
-      className={cn(avatarVariants({ size: resolvedSize }), "border-dashed bg-muted text-foreground", className)}
+      className={cn(
+        avatarVariants({ size: resolvedSize }),
+        "border-dashed bg-muted text-foreground",
+        className,
+      )}
     >
       <span aria-hidden="true">+{count}</span>
     </span>

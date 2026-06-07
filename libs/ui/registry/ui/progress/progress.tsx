@@ -41,9 +41,7 @@ export function Progress({
   ref,
 }: ProgressProps) {
   const isIndeterminate = value === undefined;
-  const clampedValue = isIndeterminate
-    ? undefined
-    : Math.min(Math.max(0, value), max);
+  const clampedValue = isIndeterminate ? undefined : Math.min(Math.max(0, value), max);
   const percentage = clampedValue === undefined ? undefined : (clampedValue / max) * 100;
 
   return (
@@ -62,9 +60,7 @@ export function Progress({
           "h-full bg-foreground transition-[width] duration-150",
           isIndeterminate && "progress-indeterminate",
         )}
-        style={
-          isIndeterminate ? undefined : { width: `${percentage}%` }
-        }
+        style={isIndeterminate ? undefined : { width: `${percentage}%` }}
       />
     </div>
   );

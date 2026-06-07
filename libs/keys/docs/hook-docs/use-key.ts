@@ -1,4 +1,4 @@
-import type { HookDoc } from "@diffgazer/registry"
+import type { HookDoc } from "@diffgazer/registry";
 
 export const useKeyDoc: HookDoc = {
   description:
@@ -19,8 +19,7 @@ export const useKeyDoc: HookDoc = {
       name: "handler",
       type: "KeyHandler",
       required: false,
-      description:
-        "Callback invoked when the hotkey fires. Not used with the key-map overload.",
+      description: "Callback invoked when the hotkey fires. Not used with the key-map overload.",
     },
     {
       name: "options.enabled",
@@ -48,15 +47,13 @@ export const useKeyDoc: HookDoc = {
       name: "options.containerRef",
       type: "RefObject<HTMLElement | null>",
       required: false,
-      description:
-        "DOM boundary used by focusWithinOnly to restrict when the handler fires.",
+      description: "DOM boundary used by focusWithinOnly to restrict when the handler fires.",
     },
     {
       name: "options.focusWithinOnly",
       type: "boolean",
       required: false,
-      description:
-        "Only fire the handler when focus is within the container element.",
+      description: "Only fire the handler when focus is within the container element.",
       defaultValue: "false",
     },
     {
@@ -99,4 +96,4 @@ export const useKeyDoc: HookDoc = {
     { name: "use-key-scoped", title: "Container-scoped shortcut" },
   ],
   tags: ["provider-dependent", "hotkey", "keyboard"],
-}
+};

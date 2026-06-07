@@ -12,7 +12,12 @@ interface UseSelectTypeaheadOptions {
   setHighlighted: (value: string) => void;
 }
 
-export function useSelectTypeahead({ options, searchQuery, highlighted, setHighlighted }: UseSelectTypeaheadOptions) {
+export function useSelectTypeahead({
+  options,
+  searchQuery,
+  highlighted,
+  setHighlighted,
+}: UseSelectTypeaheadOptions) {
   const readTypeaheadQuery = useTypeaheadBuffer();
 
   return function handleTypeahead(key: string): void {
@@ -22,9 +27,10 @@ export function useSelectTypeahead({ options, searchQuery, highlighted, setHighl
     const visibleOptions = getVisibleEnabledOptionEntries(options, searchQuery);
     if (visibleOptions.length === 0) return;
 
-    const currentIndex = highlighted === null
-      ? -1
-      : visibleOptions.findIndex(([itemValue]) => itemValue === highlighted);
+    const currentIndex =
+      highlighted === null
+        ? -1
+        : visibleOptions.findIndex(([itemValue]) => itemValue === highlighted);
 
     const match = typeaheadSearch({
       items: visibleOptions,

@@ -1,7 +1,7 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { NavigationList } from "@/components/ui/navigation-list"
+import { useState } from "react";
+import { NavigationList } from "@/components/ui/navigation-list";
 
 const stages = [
   { id: "build", title: "Build", progress: 100, status: "DONE" },
@@ -9,10 +9,10 @@ const stages = [
   { id: "scan", title: "Security Scan", progress: 60, status: "RUNNING" },
   { id: "staging", title: "Deploy Staging", progress: 0, status: "PENDING" },
   { id: "prod", title: "Deploy Prod", progress: 0, status: "BLOCKED" },
-]
+];
 
 export default function NavigationListProgress() {
-  const [selected, setSelected] = useState("build")
+  const [selected, setSelected] = useState("build");
   return (
     <div className="w-80 border border-border">
       <NavigationList selectedId={selected} onSelect={setSelected} aria-label="Pipeline">
@@ -27,5 +27,5 @@ export default function NavigationListProgress() {
         ))}
       </NavigationList>
     </div>
-  )
+  );
 }

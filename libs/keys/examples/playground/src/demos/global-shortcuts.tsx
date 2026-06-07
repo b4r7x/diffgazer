@@ -8,28 +8,39 @@ export function GlobalShortcutsDemo() {
   const searchRef = useRef<HTMLInputElement>(null);
 
   // Overload 1: single key + handler
-  useKey("mod+k", () => {
-    setSearchOpen((prev) => !prev);
-    setLastAction("Toggled search bar");
-  }, { preventDefault: true });
+  useKey(
+    "mod+k",
+    () => {
+      setSearchOpen((prev) => !prev);
+      setLastAction("Toggled search bar");
+    },
+    { preventDefault: true },
+  );
 
   // Overload 2: array of keys + handler
-  useKey(["Escape"], () => {
-    if (searchOpen) {
-      setSearchOpen(false);
-      setLastAction("Closed search bar");
-    }
-  }, { enabled: searchOpen });
-
-  // Overload 3: key map
-  useKey({
-    "/": () => {
+  useKey(
+    ["Escape"],
+    () => {
       if (searchOpen) {
-        searchRef.current?.focus();
-        setLastAction("Focused search input");
+        setSearchOpen(false);
+        setLastAction("Closed search bar");
       }
     },
-  }, { allowInInput: false, enabled: searchOpen });
+    { enabled: searchOpen },
+  );
+
+  // Overload 3: key map
+  useKey(
+    {
+      "/": () => {
+        if (searchOpen) {
+          searchRef.current?.focus();
+          setLastAction("Focused search input");
+        }
+      },
+    },
+    { allowInInput: false, enabled: searchOpen },
+  );
 
   useEffect(() => {
     if (searchOpen) {
@@ -49,12 +60,7 @@ export function GlobalShortcutsDemo() {
     >
       {searchOpen && (
         <div style={{ marginBottom: 16 }}>
-          <input
-            ref={searchRef}
-            type="text"
-            className="demo-search-bar"
-            placeholder="Search..."
-          />
+          <input ref={searchRef} type="text" className="demo-search-bar" placeholder="Search..." />
         </div>
       )}
 
@@ -64,9 +70,7 @@ export function GlobalShortcutsDemo() {
         </p>
       )}
 
-      {lastAction && (
-        <div className="demo-action-log">Last action: {lastAction}</div>
-      )}
+      {lastAction && <div className="demo-action-log">Last action: {lastAction}</div>}
     </DemoWrapper>
   );
 }

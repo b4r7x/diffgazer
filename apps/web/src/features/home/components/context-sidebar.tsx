@@ -53,7 +53,9 @@ export function ContextSidebar({ context, isTrusted, projectPath }: ContextSideb
             <div className="flex justify-between items-center">
               <span className="opacity-90">#{context.lastRunId}</span>
               {context.lastRunIssueCount !== undefined && (
-                <span className="text-tui-yellow text-xs">({context.lastRunIssueCount} issues)</span>
+                <span className="text-tui-yellow text-xs">
+                  ({context.lastRunIssueCount} issues)
+                </span>
               )}
             </div>
           </InfoField>

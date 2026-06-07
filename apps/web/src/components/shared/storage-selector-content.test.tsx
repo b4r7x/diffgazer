@@ -26,15 +26,23 @@ describe("StorageSelectorContent", () => {
 
     await user.keyboard(" ");
 
-    expect(screen.getByRole("radio", { name: /file storage/i })).toHaveAttribute("aria-checked", "false");
-    expect(screen.getByRole("radio", { name: /system keyring/i })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("radio", { name: /file storage/i })).toHaveAttribute(
+      "aria-checked",
+      "false",
+    );
+    expect(screen.getByRole("radio", { name: /system keyring/i })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
   });
 
   it("does not call onEnter when Space selects the highlighted storage", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
     const onEnter = vi.fn();
-    render(<StorageSelectorContent value="file" onChange={onChange} onEnter={onEnter} autoFocusList />);
+    render(
+      <StorageSelectorContent value="file" onChange={onChange} onEnter={onEnter} autoFocusList />,
+    );
 
     await waitFor(() => expect(screen.getByRole("radio", { name: /file storage/i })).toHaveFocus());
     await user.keyboard("{ArrowDown} ");
@@ -55,7 +63,9 @@ describe("StorageSelectorContent", () => {
     await user.keyboard("{ArrowDown}");
     expect(screen.getByRole("radio", { name: /system keyring/i })).toHaveFocus();
 
-    rerender(<StorageSelectorContent value="file" onChange={onChange} onEnter={onEnter} autoFocusList />);
+    rerender(
+      <StorageSelectorContent value="file" onChange={onChange} onEnter={onEnter} autoFocusList />,
+    );
     await user.keyboard("{Enter}");
 
     expect(onEnter).toHaveBeenCalledWith("keyring");
@@ -76,11 +86,7 @@ describe("StorageSelectorContent", () => {
     expect(keyringRadio).toHaveAttribute("data-highlighted", "true");
 
     rerender(
-      <StorageSelectorContent
-        value="file"
-        onChange={onChange}
-        keyboardNavigation={false}
-      />,
+      <StorageSelectorContent value="file" onChange={onChange} keyboardNavigation={false} />,
     );
 
     expect(keyringRadio).not.toHaveAttribute("data-highlighted");

@@ -1,6 +1,6 @@
 "use client";
 
-import { Progress } from "@/components/ui/progress"
+import { Progress } from "@/components/ui/progress";
 
 export default function ProgressDefault() {
   return (
@@ -8,5 +8,5 @@ export default function ProgressDefault() {
       <Progress value={60} aria-label="Upload progress" />
       <Progress aria-label="Loading" />
     </div>
-  )
+  );
 }

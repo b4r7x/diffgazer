@@ -8,10 +8,7 @@ import {
 } from "@tanstack/react-router";
 import { lazy } from "react";
 import { z } from "zod";
-import {
-  requireConfigured,
-  requireNotConfigured,
-} from "../lib/config-guards";
+import { requireConfigured, requireNotConfigured } from "../lib/config-guards";
 import { RootLayout } from "./routes/__root";
 import { HomePage } from "./routes/home";
 import { ReviewPage } from "./routes/review";
@@ -57,9 +54,7 @@ const SettingsAgentExecutionPage = lazy(() =>
     default: m.SettingsAgentExecutionPage,
   })),
 );
-const HelpPage = lazy(() =>
-  import("./routes/help").then((m) => ({ default: m.HelpPage })),
-);
+const HelpPage = lazy(() => import("./routes/help").then((m) => ({ default: m.HelpPage })));
 const OnboardingPage = lazy(() =>
   import("./routes/onboarding").then((m) => ({ default: m.OnboardingPage })),
 );
@@ -74,8 +69,7 @@ const ReviewSearchSchema = z.object({
   issueId: z.string().optional(),
 });
 
-const UUID_REGEX =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function SettingsLayout() {
   return <Outlet />;

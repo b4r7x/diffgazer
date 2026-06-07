@@ -14,10 +14,9 @@ describe("useKey", () => {
   it("hook lifecycle: registers, fires matching keys, respects enabled, and cleans up", () => {
     const handler = vi.fn();
     let enabled = false;
-    const { rerender, unmount } = renderHook(
-      () => useKey("Escape", handler, { enabled }),
-      { wrapper: KeyboardWrapper },
-    );
+    const { rerender, unmount } = renderHook(() => useKey("Escape", handler, { enabled }), {
+      wrapper: KeyboardWrapper,
+    });
 
     fireKey("Escape");
     expect(handler).not.toHaveBeenCalled();
@@ -87,11 +86,7 @@ describe("useKey", () => {
       const handler = vi.fn();
       let zone = "search";
       const { rerender } = renderHook(
-        () =>
-          useKey(
-            { ArrowDown: handler },
-            { enabled: zone === "list" },
-          ),
+        () => useKey({ ArrowDown: handler }, { enabled: zone === "list" }),
         { wrapper: KeyboardWrapper },
       );
 
@@ -108,10 +103,9 @@ describe("useKey", () => {
     it("cleans up old keys and enables new keys when the key map changes", () => {
       const handler = vi.fn();
       let key = "ArrowUp";
-      const { rerender } = renderHook(
-        () => useKey({ [key]: handler }),
-        { wrapper: KeyboardWrapper },
-      );
+      const { rerender } = renderHook(() => useKey({ [key]: handler }), {
+        wrapper: KeyboardWrapper,
+      });
 
       fireKey("ArrowUp");
       // call-count IS the contract: handler fires once for old key before rebind
@@ -136,10 +130,9 @@ describe("useKey", () => {
       const secondHandler = vi.fn(() => (callCount = 2));
 
       let handler = firstHandler;
-      const { rerender } = renderHook(
-        () => useKey("Escape", handler),
-        { wrapper: KeyboardWrapper },
-      );
+      const { rerender } = renderHook(() => useKey("Escape", handler), {
+        wrapper: KeyboardWrapper,
+      });
 
       fireKey("Escape");
       expect(firstHandler).toHaveBeenCalled();
@@ -343,10 +336,9 @@ describe("useKey", () => {
   describe("StrictMode cleanup", () => {
     it("does not leave duplicate registrations after StrictMode effect replay or unmount", () => {
       const handler = vi.fn();
-      const { rerender, unmount } = renderHook(
-        () => useKey("Escape", handler),
-        { wrapper: StrictKeyboardWrapper },
-      );
+      const { rerender, unmount } = renderHook(() => useKey("Escape", handler), {
+        wrapper: StrictKeyboardWrapper,
+      });
 
       fireKey("Escape");
       // call-count IS the contract: StrictMode must NOT cause duplicate registrations (count is 1, not 2)
@@ -367,19 +359,15 @@ describe("useKey", () => {
   describe("options", () => {
     it("only calls preventDefault when explicitly enabled", () => {
       const handler = vi.fn();
-      const { unmount } = renderHook(
-        () => useKey("Escape", handler),
-        { wrapper: KeyboardWrapper },
-      );
+      const { unmount } = renderHook(() => useKey("Escape", handler), { wrapper: KeyboardWrapper });
 
       const defaultEvent = fireKey("Escape");
       expect(defaultEvent.defaultPrevented).toBe(false);
       unmount();
 
-      renderHook(
-        () => useKey("Escape", handler, { preventDefault: true }),
-        { wrapper: KeyboardWrapper },
-      );
+      renderHook(() => useKey("Escape", handler, { preventDefault: true }), {
+        wrapper: KeyboardWrapper,
+      });
 
       const preventedEvent = fireKey("Escape");
       expect(preventedEvent.defaultPrevented).toBe(true);

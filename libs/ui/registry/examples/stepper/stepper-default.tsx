@@ -1,4 +1,4 @@
-import { Stepper } from "@/components/ui/stepper"
+import { Stepper } from "@/components/ui/stepper";
 
 export default function StepperDefault() {
   return (
@@ -13,5 +13,5 @@ export default function StepperDefault() {
         <Stepper.Trigger>Generate review report</Stepper.Trigger>
       </Stepper.Step>
     </Stepper>
-  )
+  );
 }

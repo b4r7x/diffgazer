@@ -1,10 +1,4 @@
-import {
-  existsSync,
-  mkdirSync,
-  readdirSync,
-  rmSync,
-  statSync,
-} from "node:fs";
+import { existsSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs";
 import { isAbsolute, relative, resolve, win32 } from "node:path";
 
 export function cleanDir(dir: string, ext: string): void {

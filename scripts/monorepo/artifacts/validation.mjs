@@ -9,9 +9,11 @@ const HASH_RE = /^[a-f0-9]{64}$/;
 const NAMESPACE_RE = /^@[a-z0-9][\w-]*(?:\/[a-z0-9][\w-]*)?$/i;
 
 function artifactCopyFilter(path) {
-  return !/\.(md)$/i.test(path)
-    && !/\.(test|spec)\.(ts|tsx|js|jsx)$/i.test(path)
-    && !path.includes("__tests__");
+  return (
+    !/\.(md)$/i.test(path) &&
+    !/\.(test|spec)\.(ts|tsx|js|jsx)$/i.test(path) &&
+    !path.includes("__tests__")
+  );
 }
 
 function isPlainObject(value) {
@@ -78,7 +80,10 @@ function validateArtifactManifest(manifest) {
   }
 
   if (validateObject(manifest.registry, "registry", errors)) {
-    if (typeof manifest.registry.namespace !== "string" || !NAMESPACE_RE.test(manifest.registry.namespace)) {
+    if (
+      typeof manifest.registry.namespace !== "string" ||
+      !NAMESPACE_RE.test(manifest.registry.namespace)
+    ) {
       errors.push("registry.namespace: Invalid registry namespace");
     }
     validateString(manifest.registry.basePath, "registry.basePath", errors);
@@ -157,10 +162,12 @@ function compareFileTrees(sourceDir, artifactDir, label, errors, options = {}) {
     return;
   }
 
-  const sourceFiles = collectFiles(sourceDir, { filter: options.sourceFilter })
-    .map((file) => toPosixPath(relative(sourceDir, file)));
-  const artifactFiles = collectFiles(artifactDir, { filter: options.artifactFilter })
-    .map((file) => toPosixPath(relative(artifactDir, file)));
+  const sourceFiles = collectFiles(sourceDir, { filter: options.sourceFilter }).map((file) =>
+    toPosixPath(relative(sourceDir, file)),
+  );
+  const artifactFiles = collectFiles(artifactDir, { filter: options.artifactFilter }).map((file) =>
+    toPosixPath(relative(artifactDir, file)),
+  );
   const expectedFiles = new Set(sourceFiles);
   const actualFiles = new Set(artifactFiles);
   const allFiles = new Set([...expectedFiles, ...actualFiles]);
@@ -241,8 +248,16 @@ function validateGeneratedEntries(rootDir, artifactRoot, generated, label, error
   if (!generated) return;
 
   for (const [name, relPath] of Object.entries(generated)) {
-    const sourcePath = resolveInside(resolve(rootDir, "docs"), relPath, `${label} generated ${name} source path`);
-    const artifactPath = resolveInside(artifactRoot, relPath, `${label} generated ${name} artifact path`);
+    const sourcePath = resolveInside(
+      resolve(rootDir, "docs"),
+      relPath,
+      `${label} generated ${name} source path`,
+    );
+    const artifactPath = resolveInside(
+      artifactRoot,
+      relPath,
+      `${label} generated ${name} artifact path`,
+    );
     compareCopiedPath(sourcePath, artifactPath, `${label} generated ${name}`, errors, {
       sourceFilter: artifactCopyFilter,
     });
@@ -271,7 +286,11 @@ function validateManifestDeclaredCopiedDirs(rootDir, artifactRootAbs, manifest, 
   if (manifest.docs.generatedDir) {
     compareFileTrees(
       resolve(rootDir, "docs/generated"),
-      resolveInside(artifactRootAbs, manifest.docs.generatedDir, `${label} docs generated artifact path`),
+      resolveInside(
+        artifactRootAbs,
+        manifest.docs.generatedDir,
+        `${label} docs generated artifact path`,
+      ),
       `${label} docs generated`,
       errors,
       { sourceFilter: artifactCopyFilter },
@@ -280,7 +299,11 @@ function validateManifestDeclaredCopiedDirs(rootDir, artifactRootAbs, manifest, 
 
   compareFileTrees(
     resolve(rootDir, "public/r"),
-    resolveInside(artifactRootAbs, manifest.registry.publicDir, `${label} public registry artifact path`),
+    resolveInside(
+      artifactRootAbs,
+      manifest.registry.publicDir,
+      `${label} public registry artifact path`,
+    ),
     `${label} public/r`,
     errors,
     { sourceFilter: artifactCopyFilter },
@@ -289,7 +312,11 @@ function validateManifestDeclaredCopiedDirs(rootDir, artifactRootAbs, manifest, 
   if (manifest.source?.registryDir) {
     compareFileTrees(
       resolve(rootDir, "registry"),
-      resolveInside(artifactRootAbs, manifest.source.registryDir, `${label} source registry artifact path`),
+      resolveInside(
+        artifactRootAbs,
+        manifest.source.registryDir,
+        `${label} source registry artifact path`,
+      ),
       `${label} source registry`,
       errors,
       { sourceFilter: artifactCopyFilter },
@@ -299,7 +326,11 @@ function validateManifestDeclaredCopiedDirs(rootDir, artifactRootAbs, manifest, 
   if (manifest.source?.stylesDir) {
     compareFileTrees(
       resolve(rootDir, "styles"),
-      resolveInside(artifactRootAbs, manifest.source.stylesDir, `${label} source styles artifact path`),
+      resolveInside(
+        artifactRootAbs,
+        manifest.source.stylesDir,
+        `${label} source styles artifact path`,
+      ),
       `${label} source styles`,
       errors,
       { sourceFilter: artifactCopyFilter },
@@ -316,7 +347,11 @@ export function validateLibraryArtifacts(options) {
   } catch (error) {
     return [error instanceof Error ? error.message : String(error)];
   }
-  const manifestPath = resolveInside(manifestRootAbs, "artifact-manifest.json", `${label} artifact manifest path`);
+  const manifestPath = resolveInside(
+    manifestRootAbs,
+    "artifact-manifest.json",
+    `${label} artifact manifest path`,
+  );
 
   if (!existsSync(manifestPath)) {
     return [`${label}: missing artifact manifest at ${manifestPath}`];
@@ -333,7 +368,11 @@ export function validateLibraryArtifacts(options) {
 
   let artifactRootAbs;
   try {
-    artifactRootAbs = resolveInside(rootDir, manifest.artifactRoot, `${label} manifest artifact root`);
+    artifactRootAbs = resolveInside(
+      rootDir,
+      manifest.artifactRoot,
+      `${label} manifest artifact root`,
+    );
   } catch (error) {
     return [error instanceof Error ? error.message : String(error)];
   }
@@ -364,7 +403,9 @@ export function validateLibraryArtifacts(options) {
     errors.push(`${label}: missing fingerprint input ${input}`);
   }
   if (recorded && fingerprint !== recorded) {
-    errors.push(`${label}: artifact fingerprint mismatch; expected ${fingerprint}, found ${recorded}`);
+    errors.push(
+      `${label}: artifact fingerprint mismatch; expected ${fingerprint}, found ${recorded}`,
+    );
   }
 
   try {
@@ -404,7 +445,9 @@ export function validateIntegrityBundle(filePath, keys, label) {
   if (errors.length === 0) {
     const expected = computeBundleIntegrity(bundle, keys);
     if (bundle.integrity !== expected) {
-      errors.push(`${label}: bundle integrity mismatch; expected ${expected}, found ${bundle.integrity}`);
+      errors.push(
+        `${label}: bundle integrity mismatch; expected ${expected}, found ${bundle.integrity}`,
+      );
     }
   }
 
@@ -422,7 +465,9 @@ export function collectBundleRelativeJsImportErrors(items, label) {
       if (typeof file?.content !== "string") continue;
       const matches = file.content.match(RELATIVE_JS_IMPORT);
       if (matches) {
-        errors.push(`${label}: ${file.target ?? file.path} has relative .js import specifiers: ${matches.join(", ")}`);
+        errors.push(
+          `${label}: ${file.target ?? file.path} has relative .js import specifiers: ${matches.join(", ")}`,
+        );
       }
     }
   }

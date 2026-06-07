@@ -11,26 +11,21 @@ import type {
 import { lazy, Suspense } from "react";
 import { cn } from "@/lib/utils";
 
-const LazySpinner = lazy(() =>
-  import("../spinner/spinner").then((m) => ({ default: m.Spinner })),
-);
+const LazySpinner = lazy(() => import("../spinner/spinner").then((m) => ({ default: m.Spinner })));
 
 export const buttonVariants = cva(
   "inline-flex items-center justify-center font-mono whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background cursor-pointer disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50",
   {
     variants: {
       variant: {
-        primary:
-          "bg-primary text-primary-foreground font-bold hover:bg-primary/90",
-        secondary:
-          "border border-border bg-transparent text-foreground hover:bg-secondary",
+        primary: "bg-primary text-primary-foreground font-bold hover:bg-primary/90",
+        secondary: "border border-border bg-transparent text-foreground hover:bg-secondary",
         destructive:
           "text-error-fg border border-error-border bg-transparent hover:bg-error-strong hover:text-error-strong-foreground",
         success:
           "bg-success-strong text-success-strong-foreground font-bold hover:bg-success-strong/90",
         ghost: "bg-transparent text-foreground hover:bg-secondary",
-        outline:
-          "border border-border bg-transparent text-foreground hover:bg-border",
+        outline: "border border-border bg-transparent text-foreground hover:bg-border",
         link: "bg-transparent text-info-fg underline-offset-2 hover:underline",
         action: "bg-action text-action-foreground font-bold hover:bg-action/90",
       },
@@ -65,21 +60,20 @@ interface ButtonSharedProps {
 }
 
 export interface ButtonAsButtonProps
-  extends ButtonHTMLAttributes<HTMLButtonElement>, ButtonSharedProps {
+  extends ButtonHTMLAttributes<HTMLButtonElement>,
+    ButtonSharedProps {
   as?: "button";
   ref?: Ref<HTMLButtonElement>;
 }
 
 export interface ButtonAsAnchorProps
-  extends AnchorHTMLAttributes<HTMLAnchorElement>, ButtonSharedProps {
+  extends AnchorHTMLAttributes<HTMLAnchorElement>,
+    ButtonSharedProps {
   as: "a";
   ref?: Ref<HTMLAnchorElement>;
 }
 
-export type ButtonProps =
-  | ButtonAsButtonProps
-  | ButtonAsAnchorProps
-  | ButtonRenderPropProps;
+export type ButtonProps = ButtonAsButtonProps | ButtonAsAnchorProps | ButtonRenderPropProps;
 
 export interface ButtonRenderProps<T extends HTMLElement = HTMLElement> {
   ref?: Ref<T>;
@@ -181,7 +175,13 @@ export function Button(props: ButtonProps): ReactNode {
       "data-loading": loading || undefined,
       ...(isDisabled && { tabIndex: -1 as const }),
     };
-    const { ref, href, onClick, role: consumerRole, ...anchorProps } = rest as Omit<
+    const {
+      ref,
+      href,
+      onClick,
+      role: consumerRole,
+      ...anchorProps
+    } = rest as Omit<
       ButtonAsAnchorProps,
       keyof ButtonSharedProps | "children" | "className" | "as"
     >;

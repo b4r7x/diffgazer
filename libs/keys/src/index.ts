@@ -1,6 +1,5 @@
 "use client";
 
-
 export { keys } from "./core/keys.js";
 export { clampIndex } from "./core/list-navigation.js";
 export type {
@@ -15,9 +14,7 @@ export {
 export type { Decline, KeyHandler } from "./core/normalize-key-input.js";
 export { DECLINE } from "./core/normalize-key-input.js";
 export { isEditableElement, isInputElement } from "./dom/element-guards.js";
-export type {
-  RestoreFocusOptions,
-} from "./dom/focus-restore.js";
+export type { RestoreFocusOptions } from "./dom/focus-restore.js";
 export {
   getRestorableFocusTarget,
   restoreFocus,
@@ -59,11 +56,18 @@ export type {
 export { useFocusZone } from "./hooks/use-focus-zone.js";
 export type { UseKeyOptions } from "./hooks/use-key.js";
 export { useKey } from "./hooks/use-key.js";
-export type { NavigationRole, UseNavigationOptions, UseNavigationReturn } from "./hooks/use-navigation.js";
+export type {
+  NavigationRole,
+  UseNavigationOptions,
+  UseNavigationReturn,
+} from "./hooks/use-navigation.js";
 export { useNavigation } from "./hooks/use-navigation.js";
 export type { UseScopeOptions } from "./hooks/use-scope.js";
 export { useScope } from "./hooks/use-scope.js";
-export type { UseScopedNavigationOptions, UseScopedNavigationReturn } from "./hooks/use-scoped-navigation.js";
+export type {
+  UseScopedNavigationOptions,
+  UseScopedNavigationReturn,
+} from "./hooks/use-scoped-navigation.js";
 export { useScopedNavigation } from "./hooks/use-scoped-navigation.js";
 export type { UseScrollLockOptions } from "./hooks/use-scroll-lock.js";
 export { useScrollLock } from "./hooks/use-scroll-lock.js";

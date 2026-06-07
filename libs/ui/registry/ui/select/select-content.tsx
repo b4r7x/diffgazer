@@ -1,6 +1,15 @@
 "use client";
 
-import { Children, isValidElement, type KeyboardEvent, type ReactNode, type Ref, useCallback, useLayoutEffect, useRef } from "react";
+import {
+  Children,
+  isValidElement,
+  type KeyboardEvent,
+  type ReactNode,
+  type Ref,
+  useCallback,
+  useLayoutEffect,
+  useRef,
+} from "react";
 import type { FloatingAlign, FloatingSide } from "@/hooks/use-floating-position";
 import { useNavigation } from "@/hooks/use-navigation";
 import { composeRefs } from "@/lib/compose-refs";
@@ -83,7 +92,9 @@ export function SelectContent({
     const currentIndex = highlighted === null ? -1 : visibleOptions.indexOf(highlighted);
     const nextIndex =
       currentIndex < 0
-        ? direction > 0 ? 0 : visibleOptions.length - 1
+        ? direction > 0
+          ? 0
+          : visibleOptions.length - 1
         : (currentIndex + direction + visibleOptions.length) % visibleOptions.length;
     const nextOption = visibleOptions[nextIndex];
     if (nextOption === undefined) return;
@@ -171,15 +182,23 @@ export function SelectContent({
   const listboxProps = hasSearch
     ? listboxPropsBase
     : { ...listboxPropsBase, onKeyDown: handleKeyDown };
-  const contentBody = hasSearch
-    ? <SearchableContent listboxProps={listboxProps} ref={containerRef}>{children}</SearchableContent>
-    : children;
+  const contentBody = hasSearch ? (
+    <SearchableContent listboxProps={listboxProps} ref={containerRef}>
+      {children}
+    </SearchableContent>
+  ) : (
+    children
+  );
 
   if (!isDropdown) {
     return (
       <div
         {...(hasSearch ? { onKeyDown: handleKeyDown } : listboxProps)}
-        ref={hasSearch ? composeRefs(selectContentRef, ref) : composeRefs(containerRef, selectContentRef, ref)}
+        ref={
+          hasSearch
+            ? composeRefs(selectContentRef, ref)
+            : composeRefs(containerRef, selectContentRef, ref)
+        }
         hidden={!open}
         className={cn("w-full overflow-hidden p-1 space-y-0.5 outline-none", className)}
       >
@@ -200,7 +219,11 @@ export function SelectContent({
       collisionPadding={collisionPadding}
       avoidCollisions
       matchTriggerWidth
-      ref={hasSearch ? composeRefs(selectContentRef, ref) : composeRefs(containerRef, selectContentRef, ref)}
+      ref={
+        hasSearch
+          ? composeRefs(selectContentRef, ref)
+          : composeRefs(containerRef, selectContentRef, ref)
+      }
       className={cn(
         "border border-border bg-background shadow-2xl rounded-sm overflow-hidden outline-none",
         className,
@@ -225,7 +248,13 @@ function isSelectSearchElement(child: ReactNode): boolean {
   return isValidElement(child) && child.type === SelectSearch;
 }
 
-function MatchCount({ options, searchQuery }: { options: ReadonlyMap<string, SelectOptionMetadata>; searchQuery: string }) {
+function MatchCount({
+  options,
+  searchQuery,
+}: {
+  options: ReadonlyMap<string, SelectOptionMetadata>;
+  searchQuery: string;
+}) {
   let count = 0;
   for (const option of options.values()) {
     if (matchesSearch(option.label, searchQuery)) count++;

@@ -63,13 +63,10 @@ export function useReviewStart(options: UseReviewStartOptions): UseReviewStartRe
       }
     });
 
-    return () => { ignore = true; };
-  }, [
-    options.configLoading,
-    options.settingsLoading,
-    options.isConfigured,
-    options.reviewId,
-  ]);
+    return () => {
+      ignore = true;
+    };
+  }, [options.configLoading, options.settingsLoading, options.isConfigured, options.reviewId]);
 
   return { hasStarted, hasStreamed, setHasStarted, setHasStreamed };
 }

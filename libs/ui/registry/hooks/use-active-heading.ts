@@ -82,7 +82,8 @@ function findLastAbove(elements: HTMLElement[], line: number, thresholdRatio = 0
 }
 
 function resolveScrollBehavior(view: (Window & typeof globalThis) | null): ScrollBehavior {
-  return view && typeof view.matchMedia === "function" &&
+  return view &&
+    typeof view.matchMedia === "function" &&
     view.matchMedia("(prefers-reduced-motion: reduce)").matches
     ? "auto"
     : "smooth";
@@ -218,43 +219,58 @@ export function useActiveHeading({
       if (frame !== 0) view.cancelAnimationFrame(frame);
       if (settleTimerRef.current !== 0) view.clearTimeout(settleTimerRef.current);
     };
-  }, [doc, idsKey, containerId, activation, topOffset, bottomMargin, threshold, bottomLock, enabled, settleDelay, observe]);
+  }, [
+    doc,
+    idsKey,
+    containerId,
+    activation,
+    topOffset,
+    bottomMargin,
+    threshold,
+    bottomLock,
+    enabled,
+    settleDelay,
+    observe,
+  ]);
 
-  const scrollTo = useCallback((id: string) => {
-    if (doc === null) return;
-    const heading = doc.getElementById(id);
-    if (!isOwnerHTMLElement(doc, heading)) return;
+  const scrollTo = useCallback(
+    (id: string) => {
+      if (doc === null) return;
+      const heading = doc.getElementById(id);
+      if (!isOwnerHTMLElement(doc, heading)) return;
 
-    scrollingToRef.current = id;
-    setActiveId(id);
+      scrollingToRef.current = id;
+      setActiveId(id);
 
-    const view = doc.defaultView;
-    const container = getContainer(doc, containerId);
-    const behavior = resolveScrollBehavior(view);
+      const view = doc.defaultView;
+      const container = getContainer(doc, containerId);
+      const behavior = resolveScrollBehavior(view);
 
-    if (container) {
-      const containerRect = container.getBoundingClientRect();
-      const headingRect = heading.getBoundingClientRect();
-      const relativeTop = headingRect.top - containerRect.top + container.scrollTop;
-      container.scrollTo({ top: Math.max(0, relativeTop - scrollOffset), behavior });
-    } else if (view) {
-      view.scrollTo({
-        top: Math.max(0, view.scrollY + heading.getBoundingClientRect().top - scrollOffset),
-        behavior,
-      });
-    }
+      if (container) {
+        const containerRect = container.getBoundingClientRect();
+        const headingRect = heading.getBoundingClientRect();
+        const relativeTop = headingRect.top - containerRect.top + container.scrollTop;
+        container.scrollTo({ top: Math.max(0, relativeTop - scrollOffset), behavior });
+      } else if (view) {
+        view.scrollTo({
+          top: Math.max(0, view.scrollY + heading.getBoundingClientRect().top - scrollOffset),
+          behavior,
+        });
+      }
 
-    // A no-movement programmatic scroll fires neither "scroll" nor "scrollend",
-    // so release the guard on a settle timer to keep scroll-spy from freezing.
-    if (view) {
-      if (settleTimerRef.current !== 0) view.clearTimeout(settleTimerRef.current);
-      settleTimerRef.current = view.setTimeout(() => {
-        settleTimerRef.current = 0;
-        scrollingToRef.current = null;
-        update();
-      }, settleDelay);
-    }
-  }, [doc, containerId, scrollOffset, settleDelay]);
+      // A no-movement programmatic scroll fires neither "scroll" nor "scrollend",
+      // so release the guard on a settle timer to keep scroll-spy from freezing.
+      if (view) {
+        if (settleTimerRef.current !== 0) view.clearTimeout(settleTimerRef.current);
+        settleTimerRef.current = view.setTimeout(() => {
+          settleTimerRef.current = 0;
+          scrollingToRef.current = null;
+          update();
+        }, settleDelay);
+      }
+    },
+    [doc, containerId, scrollOffset, settleDelay],
+  );
 
   return { activeId, scrollTo };
 }

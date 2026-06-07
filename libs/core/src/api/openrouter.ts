@@ -4,7 +4,9 @@ import type { ModelInfo, OpenRouterModel } from "../schemas/config/index.js";
  * Checks if an OpenRouter model supports structured output
  * (response_format or structured_outputs parameter).
  */
-export function isOpenRouterCompatible(model: Pick<OpenRouterModel, "supportedParameters">): boolean {
+export function isOpenRouterCompatible(
+  model: Pick<OpenRouterModel, "supportedParameters">,
+): boolean {
   const params = model.supportedParameters ?? [];
   return params.includes("response_format") || params.includes("structured_outputs");
 }

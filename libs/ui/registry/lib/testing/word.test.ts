@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DiffChange } from "../diff/parse";
-import {
-  annotateWordDiff,
-  computeWordSegments,
-  createWordDiffBudget,
-} from "../diff/word";
+import { annotateWordDiff, computeWordSegments, createWordDiffBudget } from "../diff/word";
 
 describe("computeWordSegments", () => {
   it("marks changed word in a sentence", () => {

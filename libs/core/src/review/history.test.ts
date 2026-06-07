@@ -67,9 +67,7 @@ describe("getRunSummaryText", () => {
   });
 
   it("joins severity parts with commas", () => {
-    const text = getRunSummaryText(
-      makeMetadata({ issueCount: 3, blockerCount: 1, highCount: 2 }),
-    );
+    const text = getRunSummaryText(makeMetadata({ issueCount: 3, blockerCount: 1, highCount: 2 }));
     expect(text).toBe("1 blocker, 2 high");
   });
 
@@ -85,9 +83,7 @@ describe("getRunBranchLabel + getRunDisplayId", () => {
   });
 
   it("returns Main when the branch is missing", () => {
-    expect(getRunBranchLabel(makeMetadata({ mode: "unstaged", branch: undefined }))).toBe(
-      "Main",
-    );
+    expect(getRunBranchLabel(makeMetadata({ mode: "unstaged", branch: undefined }))).toBe("Main");
   });
 
   it("displays a short id with a leading hash", () => {
@@ -211,10 +207,7 @@ describe("buildTimelineItems", () => {
 
 describe("resolveSelectedDateId + resolveSelectedRunId", () => {
   it("returns the current date id when present, else falls back to the first", () => {
-    const timeline = [
-      { id: HISTORY_SECTION_ALL_ID },
-      { id: "2026-02-09" },
-    ];
+    const timeline = [{ id: HISTORY_SECTION_ALL_ID }, { id: "2026-02-09" }];
     expect(resolveSelectedDateId("2026-02-09", timeline)).toBe("2026-02-09");
     expect(resolveSelectedDateId("missing", timeline)).toBe(HISTORY_SECTION_ALL_ID);
     expect(resolveSelectedDateId("missing", [])).toBe(HISTORY_SECTION_ALL_ID);

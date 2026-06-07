@@ -12,31 +12,47 @@ function runDgadd(args: string[], opts?: { silent?: boolean }): string {
   const silent = opts?.silent ?? true;
   return execFileSync(
     process.execPath,
-    ["--import", "tsx", resolve(repoRoot, "cli/add/src/index.ts"), ...(silent ? ["--silent"] : []), ...args],
+    [
+      "--import",
+      "tsx",
+      resolve(repoRoot, "cli/add/src/index.ts"),
+      ...(silent ? ["--silent"] : []),
+      ...args,
+    ],
     { cwd: repoRoot, encoding: "utf-8" },
   );
 }
 
 function writeFixtureConfig(): void {
   writeFileSync(join(root, "package.json"), JSON.stringify({ type: "module" }));
-  writeFileSync(join(root, "tsconfig.json"), JSON.stringify({
-    compilerOptions: {
-      baseUrl: ".",
-      paths: { "@/*": ["./src/*"] },
-    },
-  }));
-  writeFileSync(join(root, "diffgazer.json"), JSON.stringify({
-    aliases: {
-      components: "@/components/ui",
-      utils: "@/lib/utils",
-      lib: "@/lib",
-      hooks: "@/hooks",
-    },
-    componentsFsPath: "src/components/ui",
-    libFsPath: "src/lib",
-    hooksFsPath: "src/hooks",
-    tailwind: { css: "src/styles/styles.css" },
-  }, null, 2));
+  writeFileSync(
+    join(root, "tsconfig.json"),
+    JSON.stringify({
+      compilerOptions: {
+        baseUrl: ".",
+        paths: { "@/*": ["./src/*"] },
+      },
+    }),
+  );
+  writeFileSync(
+    join(root, "diffgazer.json"),
+    JSON.stringify(
+      {
+        aliases: {
+          components: "@/components/ui",
+          utils: "@/lib/utils",
+          lib: "@/lib",
+          hooks: "@/hooks",
+        },
+        componentsFsPath: "src/components/ui",
+        libFsPath: "src/lib",
+        hooksFsPath: "src/hooks",
+        tailwind: { css: "src/styles/styles.css" },
+      },
+      null,
+      2,
+    ),
+  );
 }
 
 beforeEach(() => {
@@ -55,7 +71,9 @@ describe("add command", () => {
     const config = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
     const ownedFiles = config.installedComponents["ui/button"].files;
     expect(ownedFiles.length).toBeGreaterThan(0);
-    expect(ownedFiles.every((file: { hash?: string }) => file.hash?.startsWith("sha256-"))).toBe(true);
+    expect(ownedFiles.every((file: { hash?: string }) => file.hash?.startsWith("sha256-"))).toBe(
+      true,
+    );
 
     const buttonIndex = join(root, "src/components/ui/button/index.ts");
     const buttonSource = join(root, "src/components/ui/button/button.tsx");
@@ -70,13 +88,16 @@ describe("add command", () => {
   test("init uses a Vite-only custom alias when TypeScript paths are absent", () => {
     rmSync(join(root, "diffgazer.json"), { force: true });
     rmSync(join(root, "tsconfig.json"), { force: true });
-    writeFileSync(join(root, "vite.config.ts"), [
-      "import path from 'node:path';",
-      "export default {",
-      "  resolve: { alias: { '~': path.resolve(__dirname, './src') } },",
-      "};",
-      "",
-    ].join("\n"));
+    writeFileSync(
+      join(root, "vite.config.ts"),
+      [
+        "import path from 'node:path';",
+        "export default {",
+        "  resolve: { alias: { '~': path.resolve(__dirname, './src') } },",
+        "};",
+        "",
+      ].join("\n"),
+    );
 
     runDgadd(["init", "--cwd", root, "--yes", "--skip-install"]);
 
@@ -96,15 +117,15 @@ describe("add command", () => {
   });
 
   test("hidden keys utilities cannot be installed directly", () => {
-    expect(
-      () => runDgadd(["add", "keys/focusable", "--cwd", root, "--yes", "--skip-install"]),
+    expect(() =>
+      runDgadd(["add", "keys/focusable", "--cwd", root, "--yes", "--skip-install"]),
     ).toThrow(/not found/);
   });
 
   test("bare names without namespace prefix are rejected", () => {
-    expect(
-      () => runDgadd(["add", "button", "--cwd", root, "--yes", "--skip-install"]),
-    ).toThrow(/not found|Invalid item name|Use a namespaced name/);
+    expect(() => runDgadd(["add", "button", "--cwd", root, "--yes", "--skip-install"])).toThrow(
+      /not found|Invalid item name|Use a namespaced name/,
+    );
     expect(existsSync(join(root, "src/components/ui/button/button.tsx"))).toBe(false);
   });
 
@@ -135,8 +156,14 @@ describe("add command", () => {
 
     const config = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
     const ownedFiles = config.installedComponents["keys/navigation"].files;
-    expect(ownedFiles.some((file: { path: string }) => file.path === "src/hooks/use-navigation.ts")).toBe(true);
-    expect(ownedFiles.some((file: { path: string }) => file.path === "src/hooks/utils/navigation-dispatch.ts")).toBe(true);
+    expect(
+      ownedFiles.some((file: { path: string }) => file.path === "src/hooks/use-navigation.ts"),
+    ).toBe(true);
+    expect(
+      ownedFiles.some(
+        (file: { path: string }) => file.path === "src/hooks/utils/navigation-dispatch.ts",
+      ),
+    ).toBe(true);
     expect(ownedFiles.every((file: { path: string }) => !file.path.includes("\\"))).toBe(true);
     expect(readFileSync(join(root, "src/hooks/use-navigation.ts"), "utf-8")).not.toMatch(
       /from "\.\.\/core\/navigation-dispatch\.js"/,
@@ -152,7 +179,15 @@ describe("add command", () => {
   });
 
   test("keys add preserves explicit ownership for hooks that overlap transitive files", () => {
-    runDgadd(["add", "keys/focus-trap", "keys/focus-restore", "--cwd", root, "--yes", "--skip-install"]);
+    runDgadd([
+      "add",
+      "keys/focus-trap",
+      "keys/focus-restore",
+      "--cwd",
+      root,
+      "--yes",
+      "--skip-install",
+    ]);
 
     const config = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
     expect(config.installedComponents?.["keys/focus-trap"]).toBeTruthy();
@@ -177,7 +212,8 @@ describe("add command", () => {
     expect(config.installedComponents?.["keys/focus-trap"]).toBeTruthy();
     expect(config.installedComponents?.["keys/focus-restore"]).toBeTruthy();
 
-    const restoreFiles: Array<{ path: string }> = config.installedComponents["keys/focus-restore"].files ?? [];
+    const restoreFiles: Array<{ path: string }> =
+      config.installedComponents["keys/focus-restore"].files ?? [];
     expect(
       restoreFiles.some((file) => file.path === "src/hooks/use-focus-restore.ts"),
       "second add should adopt shared use-focus-restore.ts via manifest",
@@ -235,10 +271,7 @@ describe("add command", () => {
 
   test("repeated add does not duplicate component CSS chunks even after whitespace edits", () => {
     mkdirSync(join(root, "src/styles"), { recursive: true });
-    writeFileSync(
-      join(root, "src/styles/styles.css"),
-      ['@import "./theme.css";', ""].join("\n"),
-    );
+    writeFileSync(join(root, "src/styles/styles.css"), ['@import "./theme.css";', ""].join("\n"));
 
     runDgadd(["add", "ui/dialog", "--cwd", root, "--yes", "--skip-install"]);
     const afterFirst = readFileSync(join(root, "src/styles/styles.css"), "utf-8");
@@ -260,7 +293,8 @@ describe("add command", () => {
       startCountSecond,
       "re-running add must not append duplicate chunks under whitespace/comment edits",
     ).toBe(startCountFirst);
-    const sentinelEnds = (afterSecond.match(/\/\* dgadd:css-end [a-f0-9]{16}(?: \S+)? \*\//g) ?? []).length;
+    const sentinelEnds = (afterSecond.match(/\/\* dgadd:css-end [a-f0-9]{16}(?: \S+)? \*\//g) ?? [])
+      .length;
     expect(sentinelEnds, "every chunk is bounded by matching markers").toBe(startCountSecond);
   });
 
@@ -269,8 +303,8 @@ describe("add command", () => {
     config.hooksFsPath = "../outside";
     writeFileSync(join(root, "diffgazer.json"), JSON.stringify(config, null, 2));
 
-    expect(
-      () => runDgadd(["add", "keys/navigation", "--cwd", root, "--yes", "--skip-install"]),
+    expect(() =>
+      runDgadd(["add", "keys/navigation", "--cwd", root, "--yes", "--skip-install"]),
     ).toThrow(/escapes|Project paths/);
     expect(existsSync(resolve(root, "..", "outside", "use-navigation.ts"))).toBe(false);
   });
@@ -284,7 +318,9 @@ describe("add command", () => {
 
     const updated = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
     const ownedFiles = updated.installedComponents["keys/navigation"].files;
-    expect(ownedFiles.some((file: { path: string }) => file.path === "src/hooks/use-navigation.ts")).toBe(true);
+    expect(
+      ownedFiles.some((file: { path: string }) => file.path === "src/hooks/use-navigation.ts"),
+    ).toBe(true);
     expect(ownedFiles.every((file: { path: string }) => !file.path.includes("\\"))).toBe(true);
   });
 });
@@ -295,7 +331,9 @@ describe("remove command", () => {
     const buttonIndex = join(root, "src/components/ui/button/index.ts");
     writeFileSync(buttonIndex, "// user edits\n");
 
-    const output = runDgadd(["remove", "ui/button", "--cwd", root, "--yes", "--force"], { silent: false });
+    const output = runDgadd(["remove", "ui/button", "--cwd", root, "--yes", "--force"], {
+      silent: false,
+    });
 
     expect(output).toMatch(/Removed \d+ file\(s\) \([^)]*ui\/button[^)]*\)/);
     expect(existsSync(buttonIndex)).toBe(false);
@@ -326,7 +364,9 @@ describe("remove command", () => {
     const buttonIndex = join(root, "src/components/ui/button/index.ts");
     const before = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
 
-    const output = runDgadd(["remove", "ui/button", "--cwd", root, "--dry-run", "--yes"], { silent: false });
+    const output = runDgadd(["remove", "ui/button", "--cwd", root, "--dry-run", "--yes"], {
+      silent: false,
+    });
 
     expect(output).toMatch(/Files to remove:/);
     expect(output).toMatch(/src\/components\/ui\/button\/index\.ts/);
@@ -339,9 +379,9 @@ describe("remove command", () => {
 
   test("bare names are rejected for remove command too", () => {
     runDgadd(["add", "ui/button", "--cwd", root, "--yes", "--skip-install"]);
-    expect(
-      () => runDgadd(["remove", "button", "--cwd", root, "--yes"]),
-    ).toThrow(/not found|Invalid item name|Use a namespaced name/);
+    expect(() => runDgadd(["remove", "button", "--cwd", root, "--yes"])).toThrow(
+      /not found|Invalid item name|Use a namespaced name/,
+    );
     expect(existsSync(join(root, "src/components/ui/button/button.tsx"))).toBe(true);
   });
 
@@ -377,7 +417,9 @@ describe("remove command", () => {
   test("remove blocks copied keys hooks still required by retained copy-mode UI", () => {
     runDgadd(["add", "ui/select", "--cwd", root, "--yes", "--skip-install"]);
 
-    const output = runDgadd(["remove", "keys/navigation", "--cwd", root, "--yes"], { silent: false });
+    const output = runDgadd(["remove", "keys/navigation", "--cwd", root, "--yes"], {
+      silent: false,
+    });
 
     expect(output).toMatch(/Keeping keys\/navigation/);
     expect(output).toMatch(/ui\/select/);
@@ -409,7 +451,9 @@ describe("remove command", () => {
     const navigationHook = join(root, "src/hooks/use-navigation.ts");
     writeFileSync(navigationHook, `${readFileSync(navigationHook, "utf-8")}\n// user edit\n`);
 
-    const output = runDgadd(["remove", "ui/select", "keys/navigation", "--cwd", root, "--yes"], { silent: false });
+    const output = runDgadd(["remove", "ui/select", "keys/navigation", "--cwd", root, "--yes"], {
+      silent: false,
+    });
 
     expect(output).toMatch(/Removed \d+ file\(s\) \([^)]*ui\/select[^)]*\)/);
     expect(output).not.toMatch(/Removed \d+ file\(s\) \([^)]*keys\/navigation[^)]*\)/);
@@ -477,7 +521,9 @@ describe("remove command", () => {
 
 describe("list command", () => {
   test("list json hides internal items and omits bare aliases by default", () => {
-    const items = JSON.parse(runDgadd(["list", "--cwd", root, "--json"])) as Array<{ name: string }>;
+    const items = JSON.parse(runDgadd(["list", "--cwd", root, "--json"])) as Array<{
+      name: string;
+    }>;
     const names = items.map((item) => item.name);
 
     expect(names).toContain("ui/button");
@@ -491,7 +537,9 @@ describe("list command", () => {
   });
 
   test("list json --all includes hidden internal items once", () => {
-    const items = JSON.parse(runDgadd(["list", "--cwd", root, "--json", "--all"])) as Array<{ name: string }>;
+    const items = JSON.parse(runDgadd(["list", "--cwd", root, "--json", "--all"])) as Array<{
+      name: string;
+    }>;
     const names = items.map((item) => item.name);
 
     expect(names.filter((name) => name === "ui/portal").length).toBe(1);
@@ -535,8 +583,9 @@ describe("css ownership", () => {
     runDgadd(["add", "ui/dialog", "--cwd", root, "--yes", "--skip-install"]);
 
     const manifest = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
-    const chunkOwner = Object.values(manifest.installedComponents as Record<string, { cssChunks?: string[] }>)
-      .find((entry) => (entry.cssChunks ?? []).length > 0);
+    const chunkOwner = Object.values(
+      manifest.installedComponents as Record<string, { cssChunks?: string[] }>,
+    ).find((entry) => (entry.cssChunks ?? []).length > 0);
     expect(chunkOwner, "at least one item records cssChunks").toBeTruthy();
   });
 
@@ -574,10 +623,7 @@ describe("css chunk drift detection", () => {
 
     const stylesPath = join(root, "src/styles/styles.css");
     const stylesContent = readFileSync(stylesPath, "utf-8");
-    const perturbed = stylesContent.replace(
-      /(dialog::backdrop)/,
-      "/* user added comment */\n$1",
-    );
+    const perturbed = stylesContent.replace(/(dialog::backdrop)/, "/* user added comment */\n$1");
     expect(perturbed).not.toBe(stylesContent);
     writeFileSync(stylesPath, perturbed);
 
@@ -620,8 +666,9 @@ describe("css chunk ownership on remove", () => {
     // dialog.css is keyed under its owning registry item (a transitive); pull
     // whichever manifest entry recorded chunks so the assertion does not bind
     // to which item happens to own the shared CSS today.
-    const chunkOwnerEntry = Object.entries(manifest.installedComponents as Record<string, { cssChunks?: string[] }>)
-      .find(([, record]) => (record.cssChunks ?? []).length > 0);
+    const chunkOwnerEntry = Object.entries(
+      manifest.installedComponents as Record<string, { cssChunks?: string[] }>,
+    ).find(([, record]) => (record.cssChunks ?? []).length > 0);
     expect(chunkOwnerEntry, "expected at least one item to record cssChunks").toBeTruthy();
     if (!chunkOwnerEntry) {
       throw new Error("Expected at least one item to record cssChunks.");
@@ -679,7 +726,16 @@ describe("integration modes", () => {
   });
 
   test("copy integration rewrites package-root keys imports to copied sources", () => {
-    runDgadd(["add", "ui/accordion", "--integration", "copy", "--cwd", root, "--yes", "--skip-install"]);
+    runDgadd([
+      "add",
+      "ui/accordion",
+      "--integration",
+      "copy",
+      "--cwd",
+      root,
+      "--yes",
+      "--skip-install",
+    ]);
 
     expect(existsSync(join(root, "src/hooks/utils/navigation-items.ts"))).toBe(true);
     expect(existsSync(join(root, "src/hooks/utils/focusable.ts"))).toBe(true);
@@ -690,17 +746,38 @@ describe("integration modes", () => {
   });
 
   test("copy integration installs focusable utilities for popover-backed UI", () => {
-    runDgadd(["add", "ui/popover", "--integration", "copy", "--cwd", root, "--yes", "--skip-install"]);
+    runDgadd([
+      "add",
+      "ui/popover",
+      "--integration",
+      "copy",
+      "--cwd",
+      root,
+      "--yes",
+      "--skip-install",
+    ]);
 
     expect(existsSync(join(root, "src/hooks/utils/focusable.ts"))).toBe(true);
 
-    const content = readFileSync(join(root, "src/components/ui/popover/use-auto-focus.ts"), "utf-8");
+    const content = readFileSync(
+      join(root, "src/components/ui/popover/use-auto-focus.ts"),
+      "utf-8",
+    );
     expect(content).not.toMatch(/@diffgazer\/keys/);
     expect(content).toMatch(/@\/hooks\/utils\/focusable/);
   });
 
   test("copy integration installs focus restore for dialog-backed UI", () => {
-    runDgadd(["add", "ui/command-palette", "--integration", "copy", "--cwd", root, "--yes", "--skip-install"]);
+    runDgadd([
+      "add",
+      "ui/command-palette",
+      "--integration",
+      "copy",
+      "--cwd",
+      root,
+      "--yes",
+      "--skip-install",
+    ]);
 
     expect(existsSync(join(root, "src/hooks/use-focus-restore.ts"))).toBe(true);
     expect(existsSync(join(root, "src/hooks/utils/focus-restore.ts"))).toBe(true);
@@ -714,7 +791,16 @@ describe("integration modes", () => {
   });
 
   test("copy integration installs navigation for radio-backed UI", () => {
-    runDgadd(["add", "ui/radio", "--integration", "copy", "--cwd", root, "--yes", "--skip-install"]);
+    runDgadd([
+      "add",
+      "ui/radio",
+      "--integration",
+      "copy",
+      "--cwd",
+      root,
+      "--yes",
+      "--skip-install",
+    ]);
 
     expect(existsSync(join(root, "src/hooks/use-navigation.ts"))).toBe(true);
     expect(existsSync(join(root, "src/hooks/utils/navigation-dispatch.ts"))).toBe(true);
@@ -726,15 +812,33 @@ describe("integration modes", () => {
   });
 
   test("none integration is rejected when selected components require keys hooks", () => {
-    expect(
-      () => runDgadd(["add", "ui/select", "--integration", "none", "--cwd", root, "--yes", "--skip-install"]),
+    expect(() =>
+      runDgadd([
+        "add",
+        "ui/select",
+        "--integration",
+        "none",
+        "--cwd",
+        root,
+        "--yes",
+        "--skip-install",
+      ]),
     ).toThrow(/require keyboard hooks|Components reference keyboard hooks/);
     expect(existsSync(join(root, "src/components/ui/select/select.tsx"))).toBe(false);
     expect(existsSync(join(root, "src/hooks/use-navigation.ts"))).toBe(false);
   });
 
   test("none integration installs components that do not require keys hooks", () => {
-    runDgadd(["add", "ui/button", "--integration", "none", "--cwd", root, "--yes", "--skip-install"]);
+    runDgadd([
+      "add",
+      "ui/button",
+      "--integration",
+      "none",
+      "--cwd",
+      root,
+      "--yes",
+      "--skip-install",
+    ]);
 
     const config = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
     expect(existsSync(join(root, "src/components/ui/button/button.tsx"))).toBe(true);
@@ -742,7 +846,16 @@ describe("integration modes", () => {
   });
 
   test("keys package integration diff is up to date immediately after add", () => {
-    runDgadd(["add", "ui/select", "--integration", "keys", "--cwd", root, "--yes", "--skip-install"]);
+    runDgadd([
+      "add",
+      "ui/select",
+      "--integration",
+      "keys",
+      "--cwd",
+      root,
+      "--yes",
+      "--skip-install",
+    ]);
 
     const selectContentSource = join(root, "src/components/ui/select/select-content.tsx");
     expect(readFileSync(selectContentSource, "utf-8")).toMatch(/from "@diffgazer\/keys"/);
@@ -752,10 +865,22 @@ describe("integration modes", () => {
   });
 
   test("keys package integration diff reports modified installed files", () => {
-    runDgadd(["add", "ui/select", "--integration", "keys", "--cwd", root, "--yes", "--skip-install"]);
+    runDgadd([
+      "add",
+      "ui/select",
+      "--integration",
+      "keys",
+      "--cwd",
+      root,
+      "--yes",
+      "--skip-install",
+    ]);
 
     const selectContentSource = join(root, "src/components/ui/select/select-content.tsx");
-    writeFileSync(selectContentSource, `${readFileSync(selectContentSource, "utf-8")}\n// user edit\n`);
+    writeFileSync(
+      selectContentSource,
+      `${readFileSync(selectContentSource, "utf-8")}\n// user edit\n`,
+    );
 
     const output = runDgadd(["diff", "ui/select", "--cwd", root], { silent: false });
     expect(output).toMatch(/Summary: \d+ changed/);
@@ -765,7 +890,15 @@ describe("integration modes", () => {
 
 describe("ownership boundaries", () => {
   test("remove of remaining co-owner deletes shared files when other co-owner was manually purged from manifest", () => {
-    runDgadd(["add", "keys/focus-trap", "keys/focus-restore", "--cwd", root, "--yes", "--skip-install"]);
+    runDgadd([
+      "add",
+      "keys/focus-trap",
+      "keys/focus-restore",
+      "--cwd",
+      root,
+      "--yes",
+      "--skip-install",
+    ]);
 
     const before = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
     expect(before.installedComponents?.["keys/focus-trap"]).toBeTruthy();
@@ -791,8 +924,9 @@ describe("ownership boundaries", () => {
 
     const buttonIndex = join(root, "src/components/ui/button/index.ts");
     const initialConfig = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
-    const initialHash = initialConfig.installedComponents["ui/button"].files
-      .find((file: { path: string }) => file.path === "src/components/ui/button/index.ts")?.hash;
+    const initialHash = initialConfig.installedComponents["ui/button"].files.find(
+      (file: { path: string }) => file.path === "src/components/ui/button/index.ts",
+    )?.hash;
     expect(initialHash, "initial install should hash the index file").toBeTruthy();
 
     writeFileSync(buttonIndex, "// user edits\n");
@@ -803,9 +937,13 @@ describe("ownership boundaries", () => {
     expect(reinstalledContent).not.toBe("// user edits\n");
 
     const updatedConfig = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
-    const updatedHash = updatedConfig.installedComponents["ui/button"].files
-      .find((file: { path: string }) => file.path === "src/components/ui/button/index.ts")?.hash;
-    expect(updatedHash, "reinstalled content matches registry, so the recorded hash is unchanged").toBe(initialHash);
+    const updatedHash = updatedConfig.installedComponents["ui/button"].files.find(
+      (file: { path: string }) => file.path === "src/components/ui/button/index.ts",
+    )?.hash;
+    expect(
+      updatedHash,
+      "reinstalled content matches registry, so the recorded hash is unchanged",
+    ).toBe(initialHash);
   });
 
   test("add without --overwrite keeps locally-modified content and does not corrupt the existing ownership entry", () => {

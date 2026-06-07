@@ -12,11 +12,7 @@ export function CodeSnippet({ filePath, startLine = 1, code }: CodeSnippetProps)
   const lines = code.split("\n");
 
   return (
-    <Box
-      flexDirection="column"
-      borderStyle="round"
-      borderColor={tokens.border}
-    >
+    <Box flexDirection="column" borderStyle="round" borderColor={tokens.border}>
       <Box marginBottom={1}>
         <Text color={tokens.accent}>{filePath}</Text>
       </Box>

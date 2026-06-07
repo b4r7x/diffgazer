@@ -31,10 +31,14 @@ describe("diffgazer CLI options", () => {
   });
 
   test("exits with an error for invalid options", () => {
-    const result = spawnSync(process.execPath, ["--import", "tsx", cliEntry, "--theme", "classic"], {
-      cwd: repoRoot,
-      encoding: "utf-8",
-    });
+    const result = spawnSync(
+      process.execPath,
+      ["--import", "tsx", cliEntry, "--theme", "classic"],
+      {
+        cwd: repoRoot,
+        encoding: "utf-8",
+      },
+    );
 
     expect(result.status).toBe(1);
     expect(result.stderr).toMatch(/--theme requires --tui\./);

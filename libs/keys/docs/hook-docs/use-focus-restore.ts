@@ -1,4 +1,4 @@
-import type { HookDoc } from "@diffgazer/registry"
+import type { HookDoc } from "@diffgazer/registry";
 
 export const useFocusRestoreDoc: HookDoc = {
   description:
@@ -34,8 +34,7 @@ export const useFocusRestoreDoc: HookDoc = {
       name: "options.fallback",
       type: "HTMLElement | null",
       required: false,
-      description:
-        "Fallback element to focus when the captured target is unavailable.",
+      description: "Fallback element to focus when the captured target is unavailable.",
       defaultValue: "null",
     },
   ],
@@ -61,4 +60,4 @@ export const useFocusRestoreDoc: HookDoc = {
     { name: "use-focus-restore-fallback", title: "Triggerless palette with fallback" },
   ],
   tags: ["standalone", "focus", "accessibility", "overlay"],
-}
+};

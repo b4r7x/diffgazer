@@ -10,7 +10,9 @@ function getItemOrThrow<T extends RegistryItem>(
 ): T {
   const item = getItem(name);
   if (!item) {
-    throw new Error(`${itemLabel} "${name}" not found in registry. Run \`${listCommand}\` to see available ${itemLabel.toLowerCase()}s.`);
+    throw new Error(
+      `${itemLabel} "${name}" not found in registry. Run \`${listCommand}\` to see available ${itemLabel.toLowerCase()}s.`,
+    );
   }
   return item;
 }
@@ -38,7 +40,9 @@ export interface CreateItemAccessorsOptions<TConfig, TItem extends RegistryItem 
   getItem: (name: string) => TItem | undefined;
 }
 
-export function createItemAccessors<TConfig, TItem extends RegistryItem = RegistryItem>(options: CreateItemAccessorsOptions<TConfig, TItem>) {
+export function createItemAccessors<TConfig, TItem extends RegistryItem = RegistryItem>(
+  options: CreateItemAccessorsOptions<TConfig, TItem>,
+) {
   const requireConfig = createRequireConfig({
     configFileName: options.configFileName,
     initCommand: options.initCommand,

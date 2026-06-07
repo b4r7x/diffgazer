@@ -1,4 +1,4 @@
-import { Stepper } from "@/components/ui/stepper"
+import { Stepper } from "@/components/ui/stepper";
 
 export default function StepperCustom() {
   return (
@@ -17,7 +17,12 @@ export default function StepperCustom() {
         <Stepper.Content>
           <div className="space-y-1">
             <Stepper.Substep tag="UT" label="Unit tests" status="completed" />
-            <Stepper.Substep tag="IT" label="Integration tests" status="error" detail="2 failures" />
+            <Stepper.Substep
+              tag="IT"
+              label="Integration tests"
+              status="error"
+              detail="2 failures"
+            />
             <Stepper.Substep tag="E2E" label="E2E tests" status="pending" />
           </div>
         </Stepper.Content>
@@ -26,5 +31,5 @@ export default function StepperCustom() {
         <Stepper.Trigger>Build artifacts</Stepper.Trigger>
       </Stepper.Step>
     </Stepper>
-  )
+  );
 }

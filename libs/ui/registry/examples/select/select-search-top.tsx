@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react"
+import { useState } from "react";
 import {
   Select,
   SelectContent,
@@ -9,10 +9,10 @@ import {
   SelectSearch,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@/components/ui/select";
 
 export default function SelectSearchTop() {
-  const [value, setValue] = useState<string>("")
+  const [value, setValue] = useState<string>("");
 
   return (
     <Select width="md" value={value} onChange={setValue}>
@@ -31,5 +31,5 @@ export default function SelectSearchTop() {
         <SelectEmpty />
       </SelectContent>
     </Select>
-  )
+  );
 }

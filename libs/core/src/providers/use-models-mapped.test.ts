@@ -19,7 +19,10 @@ const GEMINI_CATALOG: ProviderModelsResponse = {
   cached: false,
 };
 
-function makeWrapper(api: BoundApi, queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })) {
+function makeWrapper(
+  api: BoundApi,
+  queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } }),
+) {
   return ({ children }: { children: ReactNode }) =>
     createElement(
       QueryClientProvider,

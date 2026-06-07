@@ -2,11 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import { type AIProvider, AVAILABLE_PROVIDERS } from "../schemas/config/index.js";
 import { canProceed } from "./can-proceed.js";
 import { getInitialWizardData } from "./defaults.js";
-import {
-  getStepAt,
-  isFirstStepIndex,
-  isLastStepIndex,
-} from "./steps.js";
+import { getStepAt, isFirstStepIndex, isLastStepIndex } from "./steps.js";
 import { type OnboardingStep, WIZARD_STEPS, type WizardData } from "./types.js";
 
 export interface EarlySaveCallbacks {
@@ -61,8 +57,7 @@ export function useWizardState(
       (wizardData.apiKey || wizardData.inputMethod === "env")
     ) {
       setIsEarlySaving(true);
-      const apiKey =
-        wizardData.inputMethod === "env" ? "env" : wizardData.apiKey;
+      const apiKey = wizardData.inputMethod === "env" ? "env" : wizardData.apiKey;
       earlySave
         .saveCredentials(wizardData.provider, apiKey)
         .then(() => {

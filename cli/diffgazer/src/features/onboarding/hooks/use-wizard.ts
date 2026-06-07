@@ -1,4 +1,8 @@
-import { useDeleteProviderCredentials, useSaveConfig, useSaveSettings } from "@diffgazer/core/api/hooks";
+import {
+  useDeleteProviderCredentials,
+  useSaveConfig,
+  useSaveSettings,
+} from "@diffgazer/core/api/hooks";
 import { getErrorMessage } from "@diffgazer/core/errors";
 import {
   INPUT_METHODS,
@@ -6,11 +10,7 @@ import {
   saveWizard,
   useWizardState,
 } from "@diffgazer/core/onboarding";
-import type {
-  AgentExecution,
-  AIProvider,
-  SecretsStorage,
-} from "@diffgazer/core/schemas/config";
+import type { AgentExecution, AIProvider, SecretsStorage } from "@diffgazer/core/schemas/config";
 import {
   AGENT_EXECUTION_MODES,
   AI_PROVIDERS,

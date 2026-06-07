@@ -20,12 +20,7 @@ const ids = (models: ModelInfo[]) => models.map((m) => m.id);
 
 describe("filterModels", () => {
   it("returns all models when filter is 'all' and no search", () => {
-    expect(ids(filterModels(MODELS, "all", ""))).toEqual([
-      "gpt-4",
-      "gpt-35",
-      "claude",
-      "gemini",
-    ]);
+    expect(ids(filterModels(MODELS, "all", ""))).toEqual(["gpt-4", "gpt-35", "claude", "gemini"]);
   });
 
   it("filters to free tier only", () => {

@@ -1,12 +1,6 @@
 // disabled = gated by policy (locked); pending = not-yet-reached in order.
 // skipped = intentionally bypassed (not the same as completed).
-export type StepStatus =
-  | "completed"
-  | "active"
-  | "pending"
-  | "error"
-  | "skipped"
-  | "disabled";
+export type StepStatus = "completed" | "active" | "pending" | "error" | "skipped" | "disabled";
 
 export const STEP_STATUSES = [
   "pending",

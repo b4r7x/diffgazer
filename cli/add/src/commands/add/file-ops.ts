@@ -71,8 +71,11 @@ function mergeKeysHookFileOps(
         throw new Error(`Conflicting bundled keys hook content for "${file.relativePath}".`);
       }
       existing.sourceNames = [
-        ...new Set([existing.sourceName, ...(existing.sourceNames ?? []), sourceName]
-          .filter((name): name is string => name !== undefined)),
+        ...new Set(
+          [existing.sourceName, ...(existing.sourceNames ?? []), sourceName].filter(
+            (name): name is string => name !== undefined,
+          ),
+        ),
       ];
       continue;
     }
@@ -101,8 +104,8 @@ export function buildKeysFileOps(
 
   if (missingHooks.length > 0) {
     throw new Error(
-      `Missing bundled keys hook(s): ${missingHooks.join(", ")}\n`
-      + "Copy mode requires bundled keys hook sources. Rebuild dgadd and try again.",
+      `Missing bundled keys hook(s): ${missingHooks.join(", ")}\n` +
+        "Copy mode requires bundled keys hook sources. Rebuild dgadd and try again.",
     );
   }
 

@@ -1,22 +1,32 @@
-import type { ComponentDoc } from "./types"
+import type { ComponentDoc } from "./types";
 
 export const navigationListDoc: ComponentDoc = {
-  description: "Terminal-styled navigation sidebar list with selection, keyboard navigation, and composable item parts.",
+  description:
+    "Terminal-styled navigation sidebar list with selection, keyboard navigation, and composable item parts.",
   anatomy: [
     { name: "NavigationList", indent: 0, note: "Root (manages selection state)" },
-    { name: "NavigationList.Group", indent: 1, note: "Collapsible group with header (section or tree variant)" },
+    {
+      name: "NavigationList.Group",
+      indent: 1,
+      note: "Collapsible group with header (section or tree variant)",
+    },
     { name: "NavigationList.Item", indent: 1, note: "Selectable list item container" },
     { name: "NavigationList.Title", indent: 2, note: "Primary item label" },
     { name: "NavigationList.Status", indent: 2, note: "Top-right status marker" },
     { name: "NavigationList.Meta", indent: 2, note: "Row 2 container for badges and subtitles" },
-    { name: "NavigationList.Badge", indent: 2, note: "Standardized badge slot (uses Badge primitive)" },
+    {
+      name: "NavigationList.Badge",
+      indent: 2,
+      note: "Standardized badge slot (uses Badge primitive)",
+    },
     { name: "NavigationList.Subtitle", indent: 2, note: "Secondary metadata text" },
     { name: "NavigationList.Progress", indent: 3, note: "ASCII progress bar (in Meta)" },
   ],
   notes: [
     {
       title: "Composition Contract",
-      content: "Use NavigationList.Item and its static parts as explicit children in the NavigationList JSX tree. Custom item UI belongs inside NavigationList.Item. Components that create items internally from an opaque wrapper are not part of the current public contract.",
+      content:
+        "Use NavigationList.Item and its static parts as explicit children in the NavigationList JSX tree. Custom item UI belongs inside NavigationList.Item. Components that create items internally from an opaque wrapper are not part of the current public contract.",
     },
     {
       title: "Density",
@@ -24,15 +34,18 @@ export const navigationListDoc: ComponentDoc = {
     },
     {
       title: "Rich Items",
-      content: "NavigationList.Item supports compound parts: NavigationList.Title, NavigationList.Meta, NavigationList.Badge, NavigationList.Subtitle, and NavigationList.Status.",
+      content:
+        "NavigationList.Item supports compound parts: NavigationList.Title, NavigationList.Meta, NavigationList.Badge, NavigationList.Subtitle, and NavigationList.Status.",
     },
     {
       title: "Built-in Keyboard API",
-      content: "NavigationList includes arrow-key navigation and exposes highlighted, onHighlightChange, onEnter, onNavigationBoundaryReached, autoFocus, focused, and onKeyDown for controlled highlight state or extra app-level shortcuts.",
+      content:
+        "NavigationList includes arrow-key navigation and exposes highlighted, onHighlightChange, onEnter, onNavigationBoundaryReached, autoFocus, focused, and onKeyDown for controlled highlight state or extra app-level shortcuts.",
     },
     {
       title: "Group Expand/Collapse",
-      content: "Group expand/collapse is a mouse-only visual enhancement. Keyboard users navigate all visible items directly via arrow keys. The ARIA listbox pattern does not support focusable group toggles; keyboard-operable group toggling would require restructuring to the ARIA tree pattern.",
+      content:
+        "Group expand/collapse is a mouse-only visual enhancement. Keyboard users navigate all visible items directly via arrow keys. The ARIA listbox pattern does not support focusable group toggles; keyboard-operable group toggling would require restructuring to the ARIA tree pattern.",
     },
   ],
   usage: { example: "navigation-list-default" },
@@ -46,7 +59,8 @@ export const navigationListDoc: ComponentDoc = {
     { name: "navigation-list-indicators", title: "Indicator Variants" },
   ],
   keyboard: {
-    description: "Arrow keys navigate between items with wrapping. Enter activates the highlighted item. Home and End jump to the first and last items.",
+    description:
+      "Arrow keys navigate between items with wrapping. Enter activates the highlighted item. Home and End jump to the first and last items.",
     examples: [
       { name: "navigation-list-interactive", title: "External @diffgazer/keys navigation" },
     ],
@@ -87,7 +101,8 @@ export const navigationListDoc: ComponentDoc = {
         type: "(id: string, event: KeyboardEvent) => void",
         required: false,
         defaultValue: null,
-        description: "Fired when Enter activates an item. Receives the raw keyboard event for modifier-key handling.",
+        description:
+          "Fired when Enter activates an item. Receives the raw keyboard event for modifier-key handling.",
       },
       onHighlightChange: {
         type: "(id: string | null) => void",
@@ -99,13 +114,15 @@ export const navigationListDoc: ComponentDoc = {
         type: '(direction: "previous" | "next", event: KeyboardEvent, key: string) => void',
         required: false,
         defaultValue: null,
-        description: "Fired when arrow navigation reaches the first/last item with wrap disabled, enabling cross-list navigation.",
+        description:
+          "Fired when arrow navigation reaches the first/last item with wrap disabled, enabling cross-list navigation.",
       },
       focused: {
         type: "boolean",
         required: false,
         defaultValue: "true",
-        description: "When false, removes the active visual treatment from the selected/highlighted item (useful when focus is elsewhere).",
+        description:
+          "When false, removes the active visual treatment from the selected/highlighted item (useful when focus is elsewhere).",
       },
       wrap: {
         type: "boolean",
@@ -251,7 +268,8 @@ export const navigationListDoc: ComponentDoc = {
         type: '"tree" | "section"',
         required: false,
         defaultValue: '"section"',
-        description: 'Visual treatment. "section" shows uppercase headers with counts, "tree" shows indented hierarchy with ASCII connectors.',
+        description:
+          'Visual treatment. "section" shows uppercase headers with counts, "tree" shows indented hierarchy with ASCII connectors.',
       },
       children: {
         type: "ReactNode",
@@ -293,4 +311,4 @@ export const navigationListDoc: ComponentDoc = {
       },
     },
   },
-}
+};

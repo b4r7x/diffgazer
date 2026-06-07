@@ -24,13 +24,15 @@ export function parseInstallName(value: string): InstallName {
     return { namespace: "keys", name, publicName: `keys/${name}` };
   }
   throw new Error(
-    `Invalid item name "${value}". Use a namespaced name: ui/${value} or keys/${value}. `
-    + "Run `dgadd list` to see available items.",
+    `Invalid item name "${value}". Use a namespaced name: ui/${value} or keys/${value}. ` +
+      "Run `dgadd list` to see available items.",
   );
 }
 
 export function publicAvailableNames(): string[] {
-  const uiItems = ctx.registry.getPublicItems().filter((item) => CLI_INSTALLABLE_TYPES.has(item.type));
+  const uiItems = ctx.registry
+    .getPublicItems()
+    .filter((item) => CLI_INSTALLABLE_TYPES.has(item.type));
   const publicKeysHooks = [...getPublicKeysHookNames()];
   return [
     ...uiItems.map((item) => `ui/${item.name}`),
@@ -46,23 +48,25 @@ export function allListNames(): string[] {
   ];
 }
 
-function validateInstallNamesAgainst(names: string[], uiNames: Set<string>, keyNames: Set<string>): void {
+function validateInstallNamesAgainst(
+  names: string[],
+  uiNames: Set<string>,
+  keyNames: Set<string>,
+): void {
   for (const raw of names) {
     const parsed = parseInstallName(raw);
-    const valid = parsed.namespace === "ui"
-      ? uiNames.has(parsed.name)
-      : keyNames.has(parsed.name);
+    const valid = parsed.namespace === "ui" ? uiNames.has(parsed.name) : keyNames.has(parsed.name);
     if (!valid) {
-      throw new Error(`Item "${raw}" not found. Run \`dgadd list\` to see available ui/* and keys/* items.`);
+      throw new Error(
+        `Item "${raw}" not found. Run \`dgadd list\` to see available ui/* and keys/* items.`,
+      );
     }
   }
 }
 
 function installableUiNames(items: RegistryItem[]): Set<string> {
   return new Set(
-    items
-      .filter((item) => CLI_INSTALLABLE_TYPES.has(item.type))
-      .map((item) => item.name),
+    items.filter((item) => CLI_INSTALLABLE_TYPES.has(item.type)).map((item) => item.name),
   );
 }
 
@@ -126,7 +130,6 @@ export function getNamespacedItem(name: string): RegistryItem {
     meta: {},
   };
 }
-
 
 export function isNamespacedInstalled(cwd: string, config: ResolvedConfig, name: string): boolean {
   const parsed = parseInstallName(name);

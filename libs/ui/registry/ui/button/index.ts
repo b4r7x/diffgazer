@@ -1,3 +1,10 @@
 "use client";
 
-export { Button, type ButtonAsAnchorProps, type ButtonAsButtonProps, type ButtonProps, type ButtonRenderProps, buttonVariants } from "./button";
+export {
+  Button,
+  type ButtonAsAnchorProps,
+  type ButtonAsButtonProps,
+  type ButtonProps,
+  type ButtonRenderProps,
+  buttonVariants,
+} from "./button";

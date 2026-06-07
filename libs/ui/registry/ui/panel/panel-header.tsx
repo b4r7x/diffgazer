@@ -9,22 +9,12 @@ export interface PanelHeaderProps extends HTMLAttributes<HTMLDivElement> {
   marker?: "bar" | "none";
 }
 
-export function PanelHeader({
-  className,
-  children,
-  marker = "bar",
-  ...props
-}: PanelHeaderProps) {
+export function PanelHeader({ className, children, marker = "bar", ...props }: PanelHeaderProps) {
   const { bodyChildren, endChildren } = partitionHeaderChildren(children);
   const hasEnd = endChildren.length > 0;
 
   return (
-    <div
-      {...props}
-      data-slot="panel-header"
-      data-marker={marker}
-      className={cn(className)}
-    >
+    <div {...props} data-slot="panel-header" data-marker={marker} className={cn(className)}>
       <div data-slot="panel-header-body">{bodyChildren}</div>
       {hasEnd ? <div data-slot="panel-header-end">{endChildren}</div> : null}
     </div>

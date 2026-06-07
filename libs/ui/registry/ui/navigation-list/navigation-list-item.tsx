@@ -35,9 +35,7 @@ const itemVariants = cva("flex cursor-pointer group", {
       false: "",
     },
   },
-  compoundVariants: [
-    { tree: true, active: false, className: "hover:bg-transparent border-b-0" },
-  ],
+  compoundVariants: [{ tree: true, active: false, className: "hover:bg-transparent border-b-0" }],
   defaultVariants: {
     active: false,
     disabled: false,
@@ -60,7 +58,10 @@ const contentVariants = cva("flex-1 grid grid-cols-[1fr_auto] auto-rows-auto gap
 
 type Density = NonNullable<VariantProps<typeof contentVariants>["density"]>;
 
-function hasDescriptionChild(children: ReactNode, childType: typeof NavigationListMeta | typeof NavigationListSubtitle): boolean {
+function hasDescriptionChild(
+  children: ReactNode,
+  childType: typeof NavigationListMeta | typeof NavigationListSubtitle,
+): boolean {
   return Children.toArray(children).some((child) => {
     if (!isValidElement<{ children?: ReactNode }>(child)) return false;
     if (child.type === childType) return true;
@@ -71,7 +72,13 @@ function hasDescriptionChild(children: ReactNode, childType: typeof NavigationLi
 export interface NavigationListItemProps
   extends Omit<
     ComponentPropsWithRef<"div">,
-    "id" | "children" | "role" | "aria-selected" | "aria-disabled" | "aria-labelledby" | "aria-describedby"
+    | "id"
+    | "children"
+    | "role"
+    | "aria-selected"
+    | "aria-disabled"
+    | "aria-labelledby"
+    | "aria-describedby"
   > {
   id: string;
   density?: Density;
@@ -91,8 +98,16 @@ export function NavigationListItem({
   onFocus,
   ...rootProps
 }: NavigationListItemProps) {
-  const { selectedId, highlighted, activate, highlight, focusContainer, focused, idPrefix, indicator } =
-    useNavigationListContext();
+  const {
+    selectedId,
+    highlighted,
+    activate,
+    highlight,
+    focusContainer,
+    focused,
+    idPrefix,
+    indicator,
+  } = useNavigationListContext();
   const groupContext = useNavigationListGroupContext();
   const positionContext = useNavigationListGroupPositionContext();
   const isTree = groupContext.variant === "tree" && groupContext.depth > 0;
@@ -103,13 +118,19 @@ export function NavigationListItem({
   const itemId = getEncodedListboxItemId(idPrefix, id);
   const labelId = `${itemId}-label`;
   const descId = `${itemId}-desc`;
-  const describedBy = [
-    hasDescriptionChild(children, NavigationListMeta) ? `${descId}-meta` : null,
-    hasDescriptionChild(children, NavigationListSubtitle) ? `${descId}-sub` : null,
-  ].filter(Boolean).join(" ") || undefined;
+  const describedBy =
+    [
+      hasDescriptionChild(children, NavigationListMeta) ? `${descId}-meta` : null,
+      hasDescriptionChild(children, NavigationListSubtitle) ? `${descId}-sub` : null,
+    ]
+      .filter(Boolean)
+      .join(" ") || undefined;
 
-  const activeBarColorClass = indicator === "bar" ? "bg-primary-foreground/40" : "bg-primary-foreground";
-  const indicatorColorClass = isActive ? activeBarColorClass : "bg-transparent group-hover:bg-muted";
+  const activeBarColorClass =
+    indicator === "bar" ? "bg-primary-foreground/40" : "bg-primary-foreground";
+  const indicatorColorClass = isActive
+    ? activeBarColorClass
+    : "bg-transparent group-hover:bg-muted";
 
   const handleClick = (event: MouseEvent<HTMLDivElement>) => {
     onClick?.(event);
@@ -129,10 +150,7 @@ export function NavigationListItem({
     if (!event.defaultPrevented && !disabled) highlight(id);
   };
 
-  const itemContextValue = useMemo(
-    () => ({ labelId, descId, isTree }),
-    [labelId, descId, isTree],
-  );
+  const itemContextValue = useMemo(() => ({ labelId, descId, isTree }), [labelId, descId, isTree]);
 
   return (
     <NavigationListItemContext value={itemContextValue}>
@@ -160,15 +178,21 @@ export function NavigationListItem({
         )}
       >
         {isTree && (
-          <span aria-hidden="true" className="text-muted-foreground font-mono text-sm select-none shrink-0 self-center leading-none">
-            {groupContext.linePrefix}{positionContext?.isLast ? "└── " : "├── "}
+          <span
+            aria-hidden="true"
+            className="text-muted-foreground font-mono text-sm select-none shrink-0 self-center leading-none"
+          >
+            {groupContext.linePrefix}
+            {positionContext?.isLast ? "└── " : "├── "}
           </span>
         )}
         {isTree ? (
-          <div className={cn(
-            "flex-1 flex items-center rounded-sm",
-            isActive ? "bg-primary text-primary-foreground" : "hover:bg-secondary",
-          )}>
+          <div
+            className={cn(
+              "flex-1 flex items-center rounded-sm",
+              isActive ? "bg-primary text-primary-foreground" : "hover:bg-secondary",
+            )}
+          >
             <div className="flex-1 grid grid-cols-[1fr_auto] auto-rows-auto gap-y-0.5 py-0.5 px-1">
               {children}
             </div>
@@ -186,9 +210,7 @@ export function NavigationListItem({
                 (indicator === "arrow" || indicator === "bracket") && "w-1 bg-transparent",
               )}
             />
-            <div className={contentVariants({ density })}>
-              {children}
-            </div>
+            <div className={contentVariants({ density })}>{children}</div>
           </>
         )}
       </div>

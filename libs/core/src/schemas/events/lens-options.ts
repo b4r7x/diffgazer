@@ -10,16 +10,16 @@ export interface LensOption {
 }
 
 export function buildLensOptions(): LensOption[] {
-  return (
-    Object.entries(LENS_TO_AGENT) as Array<[LensId, keyof typeof AGENT_METADATA]>
-  ).map(([lensId, agentId]) => {
-    const meta = AGENT_METADATA[agentId];
-    return {
-      id: lensId,
-      label: meta.name,
-      badgeLabel: meta.badgeLabel,
-      badgeVariant: meta.badgeVariant,
-      description: meta.description,
-    };
-  });
+  return (Object.entries(LENS_TO_AGENT) as Array<[LensId, keyof typeof AGENT_METADATA]>).map(
+    ([lensId, agentId]) => {
+      const meta = AGENT_METADATA[agentId];
+      return {
+        id: lensId,
+        label: meta.name,
+        badgeLabel: meta.badgeLabel,
+        badgeVariant: meta.badgeVariant,
+        description: meta.description,
+      };
+    },
+  );
 }

@@ -36,16 +36,11 @@ export function AgentBoard({ agents }: AgentBoardProps) {
 
           return (
             <Box key={agent.id} gap={1}>
-              <Badge
-                variant={(agent.meta.badgeVariant ?? "info") as BadgeVariant}
-                size="sm"
-              >
+              <Badge variant={(agent.meta.badgeVariant ?? "info") as BadgeVariant} size="sm">
                 {agent.meta.badgeLabel}
               </Badge>
               <Text bold>{agent.meta.name}</Text>
-              {agent.status === "running" ? (
-                <Spinner variant="dots" size="sm" />
-              ) : null}
+              {agent.status === "running" ? <Spinner variant="dots" size="sm" /> : null}
               <Badge variant={status.variant} size="sm">
                 {status.label}
               </Badge>

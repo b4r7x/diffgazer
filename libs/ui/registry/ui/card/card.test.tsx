@@ -54,16 +54,19 @@ describe("Card", () => {
     expect(card).not.toHaveAttribute("data-interactive");
   });
 
-  it.each(["flat", "stacked", "inset", "dotted", "glow"] as const)(
-    "renders data-surface='%s' with data-slot='card'",
-    (surface) => {
-      render(<Card surface={surface}>{surface} content</Card>);
+  it.each([
+    "flat",
+    "stacked",
+    "inset",
+    "dotted",
+    "glow",
+  ] as const)("renders data-surface='%s' with data-slot='card'", (surface) => {
+    render(<Card surface={surface}>{surface} content</Card>);
 
-      const card = screen.getByText(`${surface} content`);
-      expect(card).toHaveAttribute("data-slot", "card");
-      expect(card).toHaveAttribute("data-surface", surface);
-    },
-  );
+    const card = screen.getByText(`${surface} content`);
+    expect(card).toHaveAttribute("data-slot", "card");
+    expect(card).toHaveAttribute("data-surface", surface);
+  });
 
   it("defaults data-surface to 'flat' when no surface is provided", () => {
     render(<Card>Default surface</Card>);

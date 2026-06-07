@@ -56,7 +56,9 @@ export function GlobalLayout({ children }: GlobalLayoutProps) {
         Skip to main content
       </a>
       <ConnectedHeader />
-      <main id="main-content" className="flex-1 flex flex-col overflow-hidden">{children}</main>
+      <main id="main-content" className="flex-1 flex flex-col overflow-hidden">
+        {children}
+      </main>
       <ConnectedFooter />
     </div>
   );

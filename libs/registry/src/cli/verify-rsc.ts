@@ -135,10 +135,7 @@ export function assertSourceRscClientDirectives({
   for (const sourceFile of collectSourceFiles(srcDir, skip)) {
     if (!startsWithUseClient(readFileSync(sourceFile, "utf-8"))) continue;
 
-    const distPath = resolve(
-      distDir,
-      relative(srcDir, sourceFile).replace(/\.tsx?$/, ".js"),
-    );
+    const distPath = resolve(distDir, relative(srcDir, sourceFile).replace(/\.tsx?$/, ".js"));
     if (!existsSync(distPath)) {
       missing.push(`${distPath} (missing dist output)`);
       continue;

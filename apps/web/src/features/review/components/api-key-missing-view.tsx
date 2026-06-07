@@ -1,9 +1,9 @@
 import { usePageFooter } from "@diffgazer/core/footer";
-import type { AIProvider } from '@diffgazer/core/schemas/config';
+import type { AIProvider } from "@diffgazer/core/schemas/config";
 import type { Shortcut } from "@diffgazer/core/schemas/presentation";
-import { useActionRowNavigation, useKey, useScope } from '@diffgazer/keys';
-import { Button } from '@diffgazer/ui/components/button';
-import { useRef } from 'react';
+import { useActionRowNavigation, useKey, useScope } from "@diffgazer/keys";
+import { Button } from "@diffgazer/ui/components/button";
+import { useRef } from "react";
 
 export interface ApiKeyMissingViewProps {
   activeProvider?: AIProvider;
@@ -18,7 +18,7 @@ export function ApiKeyMissingView({
   onBack,
   missingModel = false,
 }: ApiKeyMissingViewProps) {
-  useScope('api-key-missing');
+  useScope("api-key-missing");
 
   const focusFallbackRef = useRef<HTMLDivElement>(null);
 
@@ -32,18 +32,18 @@ export function ApiKeyMissingView({
     onAction: (index) => actions[index]?.(),
   });
 
-  useKey('Escape', onBack);
+  useKey("Escape", onBack);
 
-  const focusedLabel = footer.focusedIndex === 0 ? 'Configure Provider' : 'Back to Home';
+  const focusedLabel = footer.focusedIndex === 0 ? "Configure Provider" : "Back to Home";
 
   const footerShortcuts: Shortcut[] = [
-    { key: '←/→', label: 'Move Action' },
-    { key: 'Enter/Space', label: focusedLabel },
+    { key: "←/→", label: "Move Action" },
+    { key: "Enter/Space", label: focusedLabel },
   ];
 
   usePageFooter({
     shortcuts: footerShortcuts,
-    rightShortcuts: [{ key: 'Esc', label: 'Back' }],
+    rightShortcuts: [{ key: "Esc", label: "Back" }],
   });
 
   return (
@@ -58,9 +58,9 @@ export function ApiKeyMissingView({
         </div>
         <p className="text-tui-muted font-mono text-sm mb-6">
           {missingModel
-            ? `No model selected${activeProvider ? ` for ${activeProvider}` : ''}.`
-            : `No API key configured${activeProvider ? ` for ${activeProvider}` : ''}.`}
-          {" "}Please configure your provider settings to continue.
+            ? `No model selected${activeProvider ? ` for ${activeProvider}` : ""}.`
+            : `No API key configured${activeProvider ? ` for ${activeProvider}` : ""}.`}{" "}
+          Please configure your provider settings to continue.
         </p>
         <div className="flex gap-4 justify-center">
           <Button

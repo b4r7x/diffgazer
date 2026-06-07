@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types"
+import type { ComponentDoc } from "./types";
 
 export const tocDoc: ComponentDoc = {
   description:
@@ -16,8 +16,7 @@ export const tocDoc: ComponentDoc = {
     },
     {
       title: "Depth",
-      content:
-        "Use the depth prop on TocItem to indent nested headings consistently (h2/h3/h4).",
+      content: "Use the depth prop on TocItem to indent nested headings consistently (h2/h3/h4).",
     },
   ],
   usage: { example: "toc-default" },
@@ -61,13 +60,15 @@ export const tocDoc: ComponentDoc = {
         type: "number",
         required: false,
         defaultValue: "2",
-        description: "Heading depth (2 = h2). Drives left padding; values below 2 are treated as 2.",
+        description:
+          "Heading depth (2 = h2). Drives left padding; values below 2 are treated as 2.",
       },
       active: {
         type: "boolean",
         required: false,
         defaultValue: "false",
-        description: 'Marks the link as the current location. Adds aria-current="location" and data-active.',
+        description:
+          'Marks the link as the current location. Adds aria-current="location" and data-active.',
       },
       href: {
         type: "string",
@@ -83,4 +84,4 @@ export const tocDoc: ComponentDoc = {
       },
     },
   },
-}
+};

@@ -1,117 +1,117 @@
-import { render, screen, waitFor } from "@testing-library/react"
-import userEvent from "@testing-library/user-event"
-import { describe, expect, it, vi } from "vitest"
-import { axe } from "../../../testing/axe"
-import { SearchInput } from "./index"
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vitest";
+import { axe } from "../../../testing/axe";
+import { SearchInput } from "./index";
 
 function renderSearchInput(props: Record<string, unknown> = {}) {
-  return render(<SearchInput aria-label="Search" {...props} />)
+  return render(<SearchInput aria-label="Search" {...props} />);
 }
 
 describe("SearchInput", () => {
   it("updates value when typing (uncontrolled)", async () => {
-    const user = userEvent.setup()
-    renderSearchInput()
-    const input = screen.getByRole("searchbox")
-    await user.type(input, "hello")
-    expect(input).toHaveValue("hello")
-  })
+    const user = userEvent.setup();
+    renderSearchInput();
+    const input = screen.getByRole("searchbox");
+    await user.type(input, "hello");
+    expect(input).toHaveValue("hello");
+  });
 
   it("fires onChange in controlled mode", async () => {
-    const user = userEvent.setup()
-    const onChange = vi.fn()
-    renderSearchInput({ value: "", onChange })
-    const input = screen.getByRole("searchbox")
-    await user.type(input, "a")
-    expect(onChange).toHaveBeenCalledWith("a")
-  })
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    renderSearchInput({ value: "", onChange });
+    const input = screen.getByRole("searchbox");
+    await user.type(input, "a");
+    expect(onChange).toHaveBeenCalledWith("a");
+  });
 
   it("calls onEscape when Escape is pressed", async () => {
-    const user = userEvent.setup()
-    const onEscape = vi.fn()
-    renderSearchInput({ onEscape })
-    const input = screen.getByRole("searchbox")
-    input.focus()
-    await user.keyboard("{Escape}")
-    expect(onEscape).toHaveBeenCalledOnce()
-  })
+    const user = userEvent.setup();
+    const onEscape = vi.fn();
+    renderSearchInput({ onEscape });
+    const input = screen.getByRole("searchbox");
+    input.focus();
+    await user.keyboard("{Escape}");
+    expect(onEscape).toHaveBeenCalledOnce();
+  });
 
   it("calls onEnter when Enter is pressed", async () => {
-    const user = userEvent.setup()
-    const onEnter = vi.fn()
-    renderSearchInput({ onEnter })
-    const input = screen.getByRole("searchbox")
-    input.focus()
-    await user.keyboard("{Enter}")
-    expect(onEnter).toHaveBeenCalledOnce()
-  })
+    const user = userEvent.setup();
+    const onEnter = vi.fn();
+    renderSearchInput({ onEnter });
+    const input = screen.getByRole("searchbox");
+    input.focus();
+    await user.keyboard("{Enter}");
+    expect(onEnter).toHaveBeenCalledOnce();
+  });
 
   it("forwards custom onKeyDown alongside built-in handler", async () => {
-    const user = userEvent.setup()
-    const onKeyDown = vi.fn()
-    const onEnter = vi.fn()
-    renderSearchInput({ onEnter, onKeyDown })
-    const input = screen.getByRole("searchbox")
-    input.focus()
-    await user.keyboard("{Enter}")
-    expect(onKeyDown).toHaveBeenCalledOnce()
-    expect(onEnter).toHaveBeenCalledOnce()
-  })
+    const user = userEvent.setup();
+    const onKeyDown = vi.fn();
+    const onEnter = vi.fn();
+    renderSearchInput({ onEnter, onKeyDown });
+    const input = screen.getByRole("searchbox");
+    input.focus();
+    await user.keyboard("{Enter}");
+    expect(onKeyDown).toHaveBeenCalledOnce();
+    expect(onEnter).toHaveBeenCalledOnce();
+  });
 
   it("honors preventDefault in custom key handlers", async () => {
-    const user = userEvent.setup()
-    const onEnter = vi.fn()
-    renderSearchInput({ onEnter, onKeyDown: (event: KeyboardEvent) => event.preventDefault() })
-    const input = screen.getByRole("searchbox")
-    input.focus()
-    await user.keyboard("{Enter}")
-    expect(onEnter).not.toHaveBeenCalled()
-  })
+    const user = userEvent.setup();
+    const onEnter = vi.fn();
+    renderSearchInput({ onEnter, onKeyDown: (event: KeyboardEvent) => event.preventDefault() });
+    const input = screen.getByRole("searchbox");
+    input.focus();
+    await user.keyboard("{Enter}");
+    expect(onEnter).not.toHaveBeenCalled();
+  });
 
   it("resets uncontrolled value with native form reset", async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup();
     render(
       <form>
         <SearchInput name="query" aria-label="Search" defaultValue="initial" />
         <button type="reset">Reset search</button>
-      </form>
-    )
+      </form>,
+    );
 
-    const input = screen.getByRole("searchbox")
-    await user.clear(input)
-    await user.type(input, "changed")
-    expect(input).toHaveValue("changed")
+    const input = screen.getByRole("searchbox");
+    await user.clear(input);
+    await user.type(input, "changed");
+    expect(input).toHaveValue("changed");
 
-    await user.click(screen.getByRole("button", { name: "Reset search" }))
-    await waitFor(() => expect(input).toHaveValue("initial"))
-  })
+    await user.click(screen.getByRole("button", { name: "Reset search" }));
+    await waitFor(() => expect(input).toHaveValue("initial"));
+  });
 
   it("has no a11y violations", async () => {
-    const { container } = renderSearchInput()
-    expect(await axe(container)).toHaveNoViolations()
-  })
+    const { container } = renderSearchInput();
+    expect(await axe(container)).toHaveNoViolations();
+  });
 
   it("has no a11y violations when disabled", async () => {
-    const { container } = renderSearchInput({ disabled: true })
-    expect(await axe(container)).toHaveNoViolations()
-  })
+    const { container } = renderSearchInput({ disabled: true });
+    expect(await axe(container)).toHaveNoViolations();
+  });
 
   it("forwards aria-invalid through to the search input", () => {
-    renderSearchInput({ "aria-invalid": true })
-    expect(screen.getByRole("searchbox")).toHaveAttribute("aria-invalid", "true")
-  })
+    renderSearchInput({ "aria-invalid": true });
+    expect(screen.getByRole("searchbox")).toHaveAttribute("aria-invalid", "true");
+  });
 
   it("renders a custom prefix", () => {
-    renderSearchInput({ prefix: <span>find:</span> })
-    expect(screen.getByText("find:")).toBeInTheDocument()
-  })
+    renderSearchInput({ prefix: <span>find:</span> });
+    expect(screen.getByText("find:")).toBeInTheDocument();
+  });
 
   it("preserves caller-provided aria-invalid values", () => {
-    const { rerender } = renderSearchInput({ "aria-invalid": "false" })
+    const { rerender } = renderSearchInput({ "aria-invalid": "false" });
 
-    expect(screen.getByRole("searchbox")).toHaveAttribute("aria-invalid", "false")
+    expect(screen.getByRole("searchbox")).toHaveAttribute("aria-invalid", "false");
 
-    rerender(<SearchInput aria-label="Search" aria-invalid="grammar" />)
-    expect(screen.getByRole("searchbox")).toHaveAttribute("aria-invalid", "grammar")
-  })
-})
+    rerender(<SearchInput aria-label="Search" aria-invalid="grammar" />);
+    expect(screen.getByRole("searchbox")).toHaveAttribute("aria-invalid", "grammar");
+  });
+});

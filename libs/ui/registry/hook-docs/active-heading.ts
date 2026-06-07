@@ -1,4 +1,4 @@
-import type { HookDoc } from "@diffgazer/registry"
+import type { HookDoc } from "@diffgazer/registry";
 
 export const activeHeadingDoc: HookDoc = {
   description:
@@ -39,8 +39,7 @@ export const activeHeadingDoc: HookDoc = {
       type: "number",
       required: false,
       defaultValue: "96",
-      description:
-        'Pixel offset from the container top used by the "top-line" activation mode.',
+      description: 'Pixel offset from the container top used by the "top-line" activation mode.',
     },
     {
       name: "scrollOffset",
@@ -55,8 +54,7 @@ export const activeHeadingDoc: HookDoc = {
       type: "number",
       required: false,
       defaultValue: "0",
-      description:
-        "Fraction of viewport height used as bottom margin for bottomLock detection.",
+      description: "Fraction of viewport height used as bottom margin for bottomLock detection.",
     },
     {
       name: "threshold",
@@ -95,8 +93,7 @@ export const activeHeadingDoc: HookDoc = {
       type: "boolean",
       required: false,
       defaultValue: "true",
-      description:
-        "Watch for DOM changes via MutationObserver. Disable for static content.",
+      description: "Watch for DOM changes via MutationObserver. Disable for static content.",
     },
   ],
   returns: {
@@ -142,4 +139,4 @@ export const activeHeadingDoc: HookDoc = {
     { name: "active-heading-modes", title: "Activation Modes" },
   ],
   tags: ["hook", "scroll", "toc", "heading"],
-}
+};

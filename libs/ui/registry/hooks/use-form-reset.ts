@@ -21,7 +21,7 @@ export function useFormReset<T>(
   const subscriptionRef = useRef<FormSubscription | null>(null);
 
   useLayoutEffect(() => {
-    const nextForm = enabled ? ref.current?.closest("form") ?? null : null;
+    const nextForm = enabled ? (ref.current?.closest("form") ?? null) : null;
     const current = subscriptionRef.current;
     if (current?.form === nextForm) return;
 

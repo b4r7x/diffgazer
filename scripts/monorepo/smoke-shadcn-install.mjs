@@ -7,7 +7,6 @@
 // bypass the finally cleanup and leak the server and fixture directories.
 
 import { spawn } from "node:child_process";
-import { createServer } from "node:http";
 import {
   existsSync,
   mkdtempSync,
@@ -16,18 +15,19 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
+import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { ENV } from "./artifacts/env.mjs";
+import { collectMissingClosure } from "./registry-closure.mjs";
 import {
-  quoteArgs,
   assertBuiltCss,
   installViteFixtureDeps,
   joinLines,
+  quoteArgs,
   run,
   writeViteFixture,
 } from "./smoke-shared.mjs";
-import { ENV } from "./artifacts/env.mjs";
-import { collectMissingClosure } from "./registry-closure.mjs";
 
 const root = process.cwd();
 const uiPackageJsonPath = resolve(root, "libs/ui/package.json");
@@ -105,9 +105,11 @@ function runFileAsync(command, args, cwd = root, options = {}) {
         resolveRun(stdout);
         return;
       }
-      reject(new Error(
-        `Command failed (${signal ?? code}): ${command} ${args.join(" ")}\n${stdout}${stderr}`,
-      ));
+      reject(
+        new Error(
+          `Command failed (${signal ?? code}): ${command} ${args.join(" ")}\n${stdout}${stderr}`,
+        ),
+      );
     });
   });
 }
@@ -157,14 +159,20 @@ function assertDirectRegistryDependencies(registryDir, names, label) {
     for (const dep of item.registryDependencies ?? []) {
       if (dep.startsWith("http://") || dep.startsWith("https://")) {
         if (!registryRouteFromUrl(dep)) {
-          throw new Error(`${label} item "${name}" registry dependency "${dep}" is not a localizable registry URL`);
+          throw new Error(
+            `${label} item "${name}" registry dependency "${dep}" is not a localizable registry URL`,
+          );
         }
         continue;
       }
       if (dep.startsWith("@")) {
-        throw new Error(`${label} item "${name}" registry dependency "${dep}" is namespaced, not direct URL ready`);
+        throw new Error(
+          `${label} item "${name}" registry dependency "${dep}" is namespaced, not direct URL ready`,
+        );
       }
-      throw new Error(`${label} item "${name}" registry dependency "${dep}" is bare, not direct URL ready`);
+      throw new Error(
+        `${label} item "${name}" registry dependency "${dep}" is bare, not direct URL ready`,
+      );
     }
   }
 }
@@ -246,38 +254,38 @@ function writeSmokeApp(fixture) {
       "",
       "function App() {",
       "  return (",
-      "    <main className=\"min-h-screen bg-background text-foreground p-6\">",
-      "      <Button variant=\"primary\">Direct Button</Button>",
-      "      <Checkbox defaultChecked label=\"Direct Checkbox\" />",
-      "      <BlockBar label=\"Progress\" value={8} max={10} />",
-      "      <DiffView before=\"const value = 1;\" after=\"const value = 2;\" />",
+      '    <main className="min-h-screen bg-background text-foreground p-6">',
+      '      <Button variant="primary">Direct Button</Button>',
+      '      <Checkbox defaultChecked label="Direct Checkbox" />',
+      '      <BlockBar label="Progress" value={8} max={10} />',
+      '      <DiffView before="const value = 1;" after="const value = 2;" />',
       "      <Dialog defaultOpen>",
       "        <DialogContent>",
       "          <DialogHeader><DialogTitle>Direct Dialog</DialogTitle></DialogHeader>",
-      "          <DialogBody><p className=\"text-sm text-muted-foreground\">Dialog content</p></DialogBody>",
-      "          <DialogFooter><DialogClose variant=\"ghost\">Close</DialogClose></DialogFooter>",
+      '          <DialogBody><p className="text-sm text-muted-foreground">Dialog content</p></DialogBody>',
+      '          <DialogFooter><DialogClose variant="ghost">Close</DialogClose></DialogFooter>',
       "          <DialogCloseIcon />",
       "        </DialogContent>",
       "      </Dialog>",
-      "      <Select defaultOpen defaultValue=\"main\" width=\"md\">",
-      "        <SelectTrigger><SelectValue placeholder=\"Branch\" /></SelectTrigger>",
+      '      <Select defaultOpen defaultValue="main" width="md">',
+      '        <SelectTrigger><SelectValue placeholder="Branch" /></SelectTrigger>',
       "        <SelectContent>",
-      "          <SelectItem value=\"main\">main</SelectItem>",
-      "          <SelectItem value=\"develop\">develop</SelectItem>",
+      '          <SelectItem value="main">main</SelectItem>',
+      '          <SelectItem value="develop">develop</SelectItem>',
       "        </SelectContent>",
       "      </Select>",
       "      <Popover defaultOpen>",
-      "        <PopoverTrigger><Button variant=\"secondary\">Details</Button></PopoverTrigger>",
-      "        <PopoverContent aria-label=\"Details\">Popover content</PopoverContent>",
+      '        <PopoverTrigger><Button variant="secondary">Details</Button></PopoverTrigger>',
+      '        <PopoverContent aria-label="Details">Popover content</PopoverContent>',
       "      </Popover>",
       "      <Tooltip defaultOpen>",
-      "        <TooltipTrigger><Button variant=\"ghost\">Hint</Button></TooltipTrigger>",
+      '        <TooltipTrigger><Button variant="ghost">Hint</Button></TooltipTrigger>',
       "        <TooltipContent>Tooltip content</TooltipContent>",
       "      </Tooltip>",
       "      <CommandPalette open onOpenChange={() => undefined}>",
-      "        <CommandPaletteInput placeholder=\"Search\" />",
+      '        <CommandPaletteInput placeholder="Search" />',
       "        <CommandPaletteList>",
-      "          <CommandPaletteItem id=\"open\" value=\"open\">Open</CommandPaletteItem>",
+      '          <CommandPaletteItem id="open" value="open">Open</CommandPaletteItem>',
       "        </CommandPaletteList>",
       "      </CommandPalette>",
       "    </main>",
@@ -381,9 +389,10 @@ function startRegistryServer(uiRegistryDir, keysRegistryDir) {
       baseUrl = `http://127.0.0.1:${address.port}`;
       resolveServer({
         baseUrl,
-        close: () => new Promise((resolveClose, rejectClose) => {
-          server.close((error) => error ? rejectClose(error) : resolveClose());
-        }),
+        close: () =>
+          new Promise((resolveClose, rejectClose) => {
+            server.close((error) => (error ? rejectClose(error) : resolveClose()));
+          }),
       });
     });
   });
@@ -394,12 +403,7 @@ function writeShadcnFixture(fixture, baseUrl) {
     name: "shadcn-smoke",
     packageManager: "pnpm@10.28.2",
     withLibUtils: true,
-    indexCss: [
-      '@import "tailwindcss";',
-      '@import "../styles/styles.css";',
-      '@source ".";',
-      "",
-    ],
+    indexCss: ['@import "tailwindcss";', '@import "../styles/styles.css";', '@source ".";', ""],
     componentsJson: true,
     componentRegistries: {
       "@ui": `${baseUrl}/ui/{name}.json`,
@@ -411,7 +415,9 @@ function writeShadcnFixture(fixture, baseUrl) {
 
 function assertInstalledRegistryTree(fixture) {
   assertFileContains(fixture, "src/hooks/use-navigation.ts", ["useNavigation"]);
-  assertFileContains(fixture, "src/components/ui/checkbox/checkbox-group.tsx", ["@/hooks/use-navigation"]);
+  assertFileContains(fixture, "src/components/ui/checkbox/checkbox-group.tsx", [
+    "@/hooks/use-navigation",
+  ]);
   assertFileContains(fixture, "src/hooks/use-focus-trap.ts", ["useFocusTrap"]);
   assertFileContains(fixture, "src/components/ui/select/select-content.tsx", [
     "@/hooks/use-navigation",
@@ -419,11 +425,11 @@ function assertInstalledRegistryTree(fixture) {
   ]);
   assertFileContains(fixture, "src/components/ui/block-bar/block-bar.tsx", [
     "BlockBar",
-    "role={hasAccessibleName ? \"meter\" : undefined}",
+    'role={hasAccessibleName ? "meter" : undefined}',
   ]);
   assertFileContains(fixture, "src/components/ui/diff-view/diff-view.tsx", [
     "@/hooks/use-navigation",
-    "aria-roledescription=\"diff\"",
+    'aria-roledescription="diff"',
   ]);
   assertFileContains(fixture, "src/components/ui/popover/popover-content.tsx", [
     "@/hooks/use-outside-click",
@@ -467,8 +473,8 @@ function writeSoloButtonApp(fixture) {
       "",
       "function App() {",
       "  return (",
-      "    <main className=\"min-h-screen bg-background text-foreground p-6\">",
-      "      <Button variant=\"primary\">Solo Button</Button>",
+      '    <main className="min-h-screen bg-background text-foreground p-6">',
+      '      <Button variant="primary">Solo Button</Button>',
       "    </main>",
       "  );",
       "}",
@@ -528,18 +534,32 @@ const soloFixture = mkdtempSync(join(tmpdir(), "shadcn-smoke-solo-"));
 
 try {
   writeShadcnFixture(directFixture, registryServer.baseUrl);
-  await runShadcnAdd(directFixture, uiItems.map((name) => `${registryServer.baseUrl}/ui/${name}.json`));
-  console.log("OK: shadcn CLI installed UI items and transitive keys through direct local registry URLs");
+  await runShadcnAdd(
+    directFixture,
+    uiItems.map((name) => `${registryServer.baseUrl}/ui/${name}.json`),
+  );
+  console.log(
+    "OK: shadcn CLI installed UI items and transitive keys through direct local registry URLs",
+  );
 
-  await runShadcnAdd(directFixture, keysInstallItems.map((name) => `${registryServer.baseUrl}/keys/${name}.json`));
+  await runShadcnAdd(
+    directFixture,
+    keysInstallItems.map((name) => `${registryServer.baseUrl}/keys/${name}.json`),
+  );
   console.log("OK: shadcn CLI installed standalone keys items through direct local registry URLs");
   assertInstalledRegistryTree(directFixture);
 
   writeShadcnFixture(namespaceFixture, registryServer.baseUrl);
-  await runShadcnAdd(namespaceFixture, uiItems.map((name) => `@ui/${name}`));
+  await runShadcnAdd(
+    namespaceFixture,
+    uiItems.map((name) => `@ui/${name}`),
+  );
   console.log("OK: shadcn CLI installed UI items through local namespace registries");
 
-  await runShadcnAdd(namespaceFixture, keysInstallItems.map((name) => `@diffgazer-keys/${name}`));
+  await runShadcnAdd(
+    namespaceFixture,
+    keysInstallItems.map((name) => `@diffgazer-keys/${name}`),
+  );
   console.log("OK: shadcn CLI installed keys items through local namespace registries");
   assertInstalledRegistryTree(namespaceFixture);
 

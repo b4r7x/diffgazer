@@ -1,12 +1,11 @@
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { describe, expect, test } from "vitest";
-import {
-  HISTORY_ZONE_ORDER,
-  nextHistoryZone,
-  sortIssuesBySeverity,
-} from "./history-run-mapping";
+import { HISTORY_ZONE_ORDER, nextHistoryZone, sortIssuesBySeverity } from "./history-run-mapping";
 
-function makeIssue(severity: ReviewIssue["severity"], overrides: Partial<ReviewIssue> = {}): ReviewIssue {
+function makeIssue(
+  severity: ReviewIssue["severity"],
+  overrides: Partial<ReviewIssue> = {},
+): ReviewIssue {
   return {
     id: `${severity}-1`,
     severity,

@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types"
+import type { ComponentDoc } from "./types";
 
 export const checkboxDoc: ComponentDoc = {
   description:
@@ -52,9 +52,7 @@ export const checkboxDoc: ComponentDoc = {
   keyboard: {
     description:
       "CheckboxGroup includes arrow-key navigation with wrapping and real focus movement. Control highlighted/onHighlightChange when external state coordination is needed, use autoFocus when activating a composite region, use keyboardNavigation to suspend only arrow handling, and use onNavigationBoundaryReached for composite focus handoff. Standalone Checkbox responds to Space when focused.",
-    examples: [
-      { name: "checkbox-group", title: "Group with built-in keyboard navigation" },
-    ],
+    examples: [{ name: "checkbox-group", title: "Group with built-in keyboard navigation" }],
   },
   props: {
     Checkbox: {
@@ -62,7 +60,7 @@ export const checkboxDoc: ComponentDoc = {
         type: 'boolean | "indeterminate"',
         required: false,
         defaultValue: null,
-        description: "Controlled checked state. Use \"indeterminate\" for the mixed visual state.",
+        description: 'Controlled checked state. Use "indeterminate" for the mixed visual state.',
       },
       defaultChecked: {
         type: "boolean",
@@ -178,13 +176,15 @@ export const checkboxDoc: ComponentDoc = {
         type: '(direction: "previous" | "next", event: KeyboardEvent, key: string) => void',
         required: false,
         defaultValue: null,
-        description: "Called when non-wrapping navigation reaches the first or last item. Use event/key to decide whether to hand focus to adjacent controls.",
+        description:
+          "Called when non-wrapping navigation reaches the first or last item. Use event/key to decide whether to hand focus to adjacent controls.",
       },
       autoFocus: {
         type: "boolean",
         required: false,
         defaultValue: "false",
-        description: "Focuses the highlighted, selected, or first enabled item when the group becomes active.",
+        description:
+          "Focuses the highlighted, selected, or first enabled item when the group becomes active.",
       },
       disabled: {
         type: "boolean",
@@ -232,4 +232,4 @@ export const checkboxDoc: ComponentDoc = {
       },
     },
   },
-}
+};

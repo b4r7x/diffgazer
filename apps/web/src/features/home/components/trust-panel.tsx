@@ -24,10 +24,7 @@ function getActionLabel(isLoading: boolean, hasRepoAccess: boolean): string {
   return "Continue Without Trust";
 }
 
-export function TrustPanel({
-  directory,
-  projectId,
-}: TrustPanelProps) {
+export function TrustPanel({ directory, projectId }: TrustPanelProps) {
   const saveTrust = useSaveTrust();
   const isLoading = saveTrust.isPending;
   const [capabilities, setCapabilities] = useState<TrustCapabilities>(DEFAULT_CAPABILITIES);
@@ -39,7 +36,9 @@ export function TrustPanel({
   const handleButtonKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
     if (e.key !== "ArrowUp" || e.metaKey || e.ctrlKey || e.altKey) return;
     e.preventDefault();
-    const group = listContainerRef.current?.querySelector<HTMLElement>('[data-diffgazer-selectable-owner="checkbox"]');
+    const group = listContainerRef.current?.querySelector<HTMLElement>(
+      '[data-diffgazer-selectable-owner="checkbox"]',
+    );
     if (!group) return;
     focusNavigationItem(group, {
       type: "checkbox",
@@ -60,7 +59,9 @@ export function TrustPanel({
         trustedAt: new Date().toISOString(),
       });
     } catch (error) {
-      toast.error("Failed to save trust settings", { message: getErrorMessage(error, "Unknown error") });
+      toast.error("Failed to save trust settings", {
+        message: getErrorMessage(error, "Unknown error"),
+      });
     }
   }
 
@@ -71,7 +72,14 @@ export function TrustPanel({
       title="Trust This Repository?"
       subtitle="Diffgazer needs permissions to review your code"
       footer={
-        <Button ref={buttonRef} variant="success" size="sm" onClick={handleTrust} disabled={isLoading} onKeyDown={handleButtonKeyDown}>
+        <Button
+          ref={buttonRef}
+          variant="success"
+          size="sm"
+          onClick={handleTrust}
+          disabled={isLoading}
+          onKeyDown={handleButtonKeyDown}
+        >
           {actionLabel}
         </Button>
       }

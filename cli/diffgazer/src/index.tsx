@@ -8,8 +8,7 @@ import { startWeb } from "./web-launcher";
 // Replaced at build time by tsup `define`; undefined when run from source (tsx).
 declare const __DIFFGAZER_VERSION__: string | undefined;
 
-const VERSION =
-  typeof __DIFFGAZER_VERSION__ === "string" ? __DIFFGAZER_VERSION__ : "0.0.0-dev";
+const VERSION = typeof __DIFFGAZER_VERSION__ === "string" ? __DIFFGAZER_VERSION__ : "0.0.0-dev";
 
 async function main(): Promise<void> {
   const action = resolveCliAction(process.argv.slice(2));

@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types"
+import type { ComponentDoc } from "./types";
 
 export const spinnerDoc: ComponentDoc = {
   description:
@@ -51,7 +51,8 @@ export const spinnerDoc: ComponentDoc = {
         type: '"snake" | "braille" | "dots" | "pulse"',
         required: false,
         defaultValue: '"snake"',
-        description: "Animation style. Snake renders a 3x3 pixel grid; braille, dots, and pulse render text glyph sequences.",
+        description:
+          "Animation style. Snake renders a 3x3 pixel grid; braille, dots, and pulse render text glyph sequences.",
       },
       size: {
         type: '"sm" | "md" | "lg"',
@@ -75,14 +76,15 @@ export const spinnerDoc: ComponentDoc = {
         type: "number",
         required: false,
         defaultValue: null,
-        description: "Frame interval in milliseconds. Overrides the variant default (snake 100, braille 80, dots 300, pulse 80).",
+        description:
+          "Frame interval in milliseconds. Overrides the variant default (snake 100, braille 80, dots 300, pulse 80).",
       },
       children: {
         type: "ReactNode",
         required: false,
         defaultValue: null,
-        description: "Optional label. When omitted, the spinner uses aria-label=\"Loading\".",
+        description: 'Optional label. When omitted, the spinner uses aria-label="Loading".',
       },
     },
   },
-}
+};

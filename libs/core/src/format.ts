@@ -41,7 +41,11 @@ export function getDateLabel(dateStr: string, options?: { showYear?: boolean }):
 }
 
 export function getTimestamp(dateStr: string): string {
-  return new Date(dateStr).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+  return new Date(dateStr).toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
 }
 
 export function formatDuration(durationMs: number | null | undefined): string {
@@ -53,9 +57,6 @@ export function formatDuration(durationMs: number | null | undefined): string {
   return `${minutes}m ${seconds % 60}s`;
 }
 
-export function formatTimestampOrNA(
-  value: string | null | undefined,
-  fallback = "N/A",
-): string {
+export function formatTimestampOrNA(value: string | null | undefined, fallback = "N/A"): string {
   return value ? new Date(value).toLocaleString() : fallback;
 }

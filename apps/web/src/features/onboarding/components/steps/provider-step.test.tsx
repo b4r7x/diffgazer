@@ -22,9 +22,11 @@ describe("ProviderStep", () => {
       />,
     );
 
-    await waitFor(() => expect(
-      screen.getByRole("radio", { name: new RegExp(escapeRegExp(selectedProvider.name)) }),
-    ).toHaveFocus());
+    await waitFor(() =>
+      expect(
+        screen.getByRole("radio", { name: new RegExp(escapeRegExp(selectedProvider.name)) }),
+      ).toHaveFocus(),
+    );
     await user.keyboard("{Enter}");
 
     expect(onCommit).toHaveBeenCalledWith(selectedProvider.id);

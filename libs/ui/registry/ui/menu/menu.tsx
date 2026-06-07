@@ -95,63 +95,61 @@ export function Menu<TId extends string = string>({
     customActivators.current.delete(id);
   }, []);
 
-  const {
-    selectedId,
-    highlighted,
-    handleItemActivate,
-    handleItemHighlight,
-    getContainerProps,
-  } = useListbox<TId>({
-    selectedId: selectionEnabled ? controlledSelectedId : null,
-    defaultSelectedId: selectionEnabled ? defaultSelectedId : null,
-    highlighted: controlledHighlighted,
-    defaultHighlighted,
-    onSelect,
-    onHighlightChange,
-    wrap,
-    idPrefix,
-    onKeyDown: (e: KeyboardEvent) => {
-      if ((e.key === "Enter" || e.key === " ") && highlighted !== null) {
-        const handler = customActivators.current.get(highlighted);
-        if (handler) {
-          e.preventDefault();
-          handler();
-          return;
-        }
-      }
-      if (e.key === "ArrowRight") {
-        const container = menuRef.current;
-        const activeId = container?.getAttribute("aria-activedescendant");
-        if (activeId) {
-          const activeEl = container?.ownerDocument.getElementById(activeId);
-          if (activeEl?.getAttribute("aria-haspopup") === "menu") {
+  const { selectedId, highlighted, handleItemActivate, handleItemHighlight, getContainerProps } =
+    useListbox<TId>({
+      selectedId: selectionEnabled ? controlledSelectedId : null,
+      defaultSelectedId: selectionEnabled ? defaultSelectedId : null,
+      highlighted: controlledHighlighted,
+      defaultHighlighted,
+      onSelect,
+      onHighlightChange,
+      wrap,
+      idPrefix,
+      onKeyDown: (e: KeyboardEvent) => {
+        if ((e.key === "Enter" || e.key === " ") && highlighted !== null) {
+          const handler = customActivators.current.get(highlighted);
+          if (handler) {
             e.preventDefault();
-            activeEl.click();
+            handler();
             return;
           }
         }
-      }
-      if (e.key === "Escape") onClose?.();
-      if (e.key === "Tab") onClose?.();
-      onKeyDown?.(e);
-    },
-    role: "menu",
-    itemRole,
-    typeahead: true,
-    autoFocus,
-    items,
-    getItemId: getEncodedListboxItemId,
-  });
+        if (e.key === "ArrowRight") {
+          const container = menuRef.current;
+          const activeId = container?.getAttribute("aria-activedescendant");
+          if (activeId) {
+            const activeEl = container?.ownerDocument.getElementById(activeId);
+            if (activeEl?.getAttribute("aria-haspopup") === "menu") {
+              e.preventDefault();
+              activeEl.click();
+              return;
+            }
+          }
+        }
+        if (e.key === "Escape") onClose?.();
+        if (e.key === "Tab") onClose?.();
+        onKeyDown?.(e);
+      },
+      role: "menu",
+      itemRole,
+      typeahead: true,
+      autoFocus,
+      items,
+      getItemId: getEncodedListboxItemId,
+    });
 
-  const wrappedActivate = useCallback((id: string) => {
-    const handler = customActivators.current.get(id);
-    if (handler) {
-      handleItemHighlight(id as TId);
-      handler();
-      return;
-    }
-    handleItemActivate(id as TId);
-  }, [handleItemActivate, handleItemHighlight]);
+  const wrappedActivate = useCallback(
+    (id: string) => {
+      const handler = customActivators.current.get(id);
+      if (handler) {
+        handleItemHighlight(id as TId);
+        handler();
+        return;
+      }
+      handleItemActivate(id as TId);
+    },
+    [handleItemActivate, handleItemHighlight],
+  );
 
   // Public TId narrows the API; internal context stays string-keyed because the
   // DOM uses data-value strings and child MenuItem ids are opaque to TS.
@@ -167,7 +165,17 @@ export function Menu<TId extends string = string>({
       registerActivator,
       unregisterActivator,
     }),
-    [selectedId, highlighted, wrappedActivate, handleItemHighlight, variant, idPrefix, itemRole, registerActivator, unregisterActivator],
+    [
+      selectedId,
+      highlighted,
+      wrappedActivate,
+      handleItemHighlight,
+      variant,
+      idPrefix,
+      itemRole,
+      registerActivator,
+      unregisterActivator,
+    ],
   );
 
   return (

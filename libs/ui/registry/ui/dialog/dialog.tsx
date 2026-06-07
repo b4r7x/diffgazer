@@ -32,11 +32,7 @@ function DialogRoot({ open: controlledOpen, defaultOpen, onOpenChange, children 
     [isOpen, setIsOpen, dialogId],
   );
 
-  return (
-    <DialogContext value={contextValue}>
-      {children}
-    </DialogContext>
-  );
+  return <DialogContext value={contextValue}>{children}</DialogContext>;
 }
 
 export { DialogRoot as Dialog };

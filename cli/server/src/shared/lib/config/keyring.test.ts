@@ -3,7 +3,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // Track the last password set, so availability check's write/read roundtrip succeeds
 let lastSetPassword: string | null = null;
 const mockGetPassword = vi.fn(() => lastSetPassword);
-const mockSetPassword = vi.fn((value: string) => { lastSetPassword = value; });
+const mockSetPassword = vi.fn((value: string) => {
+  lastSetPassword = value;
+});
 const mockDeletePassword = vi.fn();
 
 const { mockRequireModule } = vi.hoisted(() => ({
@@ -18,7 +20,9 @@ vi.mock("node:module", () => ({
 function setupKeyringAvailable() {
   lastSetPassword = null;
   mockGetPassword.mockImplementation(() => lastSetPassword);
-  mockSetPassword.mockImplementation((value: string) => { lastSetPassword = value; });
+  mockSetPassword.mockImplementation((value: string) => {
+    lastSetPassword = value;
+  });
   mockDeletePassword.mockReturnValue(undefined);
 
   class MockEntry {
@@ -127,21 +131,22 @@ describe("keyring (available)", () => {
       },
       expectedCode: "KEYRING_WRITE_FAILED" as const,
     },
-  ])(
-    "surfaces $expectedCode when the underlying $operation throws",
-    async ({ throwingMock, run, expectedCode }) => {
-      const { isKeyringAvailable } = await import("./keyring.js");
-      isKeyringAvailable(); // prime availability cache
-      throwingMock();
+  ])("surfaces $expectedCode when the underlying $operation throws", async ({
+    throwingMock,
+    run,
+    expectedCode,
+  }) => {
+    const { isKeyringAvailable } = await import("./keyring.js");
+    isKeyringAvailable(); // prime availability cache
+    throwingMock();
 
-      const result = await run();
+    const result = await run();
 
-      expect(result.ok).toBe(false);
-      if (!result.ok) {
-        expect(result.error.code).toBe(expectedCode);
-      }
-    },
-  );
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe(expectedCode);
+    }
+  });
 });
 
 describe("keyring (unavailable)", () => {

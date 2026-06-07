@@ -19,15 +19,13 @@ import {
 import type { ApiClient, TrustListResponse, TrustResponse } from "./types.js";
 
 export async function getProviderStatus(
-  client: ApiClient
+  client: ApiClient,
 ): Promise<ProvidersStatusResponse["providers"]> {
   const response = await client.get<ProvidersStatusResponse>("/api/config/providers");
   return response.providers;
 }
 
-export async function getOpenRouterModels(
-  client: ApiClient
-): Promise<OpenRouterModelsResponse> {
+export async function getOpenRouterModels(client: ApiClient): Promise<OpenRouterModelsResponse> {
   // OpenRouter's model catalog is externally controlled and changes often, so
   // validate the payload shape rather than trusting the response type.
   return client.get<OpenRouterModelsResponse>(
@@ -39,7 +37,7 @@ export async function getOpenRouterModels(
 
 export async function getProviderModels(
   client: ApiClient,
-  providerId: string
+  providerId: string,
 ): Promise<ProviderModelsResponse> {
   // The catalog is models.dev-backed and changes often, so validate the slim
   // payload shape rather than trusting the response type.
@@ -60,7 +58,7 @@ export async function getSettings(client: ApiClient): Promise<SettingsConfig> {
 
 export async function saveSettings(
   client: ApiClient,
-  settings: Partial<SettingsConfig>
+  settings: Partial<SettingsConfig>,
 ): Promise<void> {
   await client.post("/api/settings", settings);
 }
@@ -68,17 +66,17 @@ export async function saveSettings(
 export async function activateProvider(
   client: ApiClient,
   providerId: string,
-  model?: string
+  model?: string,
 ): Promise<ActivateProviderResponse> {
   return client.post<ActivateProviderResponse>(
     `/api/config/provider/${providerId}/activate`,
-    model ? { model } : {}
+    model ? { model } : {},
   );
 }
 
 export async function deleteProviderCredentials(
   client: ApiClient,
-  providerId: string
+  providerId: string,
 ): Promise<DeleteProviderResponse> {
   return client.delete<DeleteProviderResponse>(`/api/config/provider/${providerId}`);
 }
@@ -113,7 +111,7 @@ export async function saveTrust(client: ApiClient, trust: TrustConfig): Promise<
 
 export async function deleteTrust(
   client: ApiClient,
-  projectId: string
+  projectId: string,
 ): Promise<{ removed: boolean }> {
   return client.delete<{ removed: boolean }>("/api/settings/trust", { projectId });
 }

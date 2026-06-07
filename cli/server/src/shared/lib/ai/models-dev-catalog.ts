@@ -92,7 +92,10 @@ const countRawModels = (payload: unknown): number => {
   if (!payload || typeof payload !== "object") return 0;
   let total = 0;
   for (const provider of Object.values(payload as Record<string, unknown>)) {
-    const models = provider && typeof provider === "object" ? (provider as Record<string, unknown>).models : undefined;
+    const models =
+      provider && typeof provider === "object"
+        ? (provider as Record<string, unknown>).models
+        : undefined;
     if (models && typeof models === "object") total += Object.keys(models).length;
   }
   return total;
@@ -128,19 +131,23 @@ const isOffline = (): boolean => {
  * deliberate test seam so the guards can be exercised directly; production reaches
  * it only through `getProviderModels`.
  */
-export const fetchModelsDevCatalog = async (
-  options?: { baselineModelCount?: number },
-): Promise<Result<ModelsDevCatalog, { message: string }>> => {
+export const fetchModelsDevCatalog = async (options?: {
+  baselineModelCount?: number;
+}): Promise<Result<ModelsDevCatalog, { message: string }>> => {
   let response: Response;
   try {
     // `redirect: "error"` pins the destination to models.dev: a 3xx to a foreign
     // (or internal/link-local) host must fail rather than be followed, parsed, and
     // persisted into the shared on-disk cache.
-    response = await fetch(MODELS_DEV_URL, { signal: AbortSignal.timeout(10_000), redirect: "error" });
+    response = await fetch(MODELS_DEV_URL, {
+      signal: AbortSignal.timeout(10_000),
+      redirect: "error",
+    });
   } catch (error) {
     return err({ message: getErrorMessage(error, "Failed to fetch models.dev catalog") });
   }
-  if (!response.ok) return err({ message: `models.dev catalog request failed: ${response.status}` });
+  if (!response.ok)
+    return err({ message: `models.dev catalog request failed: ${response.status}` });
 
   const declaredLength = Number(response.headers.get("content-length"));
   if (Number.isFinite(declaredLength) && declaredLength > MAX_RESPONSE_BYTES) {
@@ -162,12 +169,16 @@ export const fetchModelsDevCatalog = async (
   // payload, the post-parse count alone cannot see the mass-drop. Refuse a fetch
   // whose survivors fell far below the raw upstream size.
   if (rawCount > 0 && liveCount < rawCount * SHRINK_GUARD_RATIO) {
-    return err({ message: `models.dev catalog corruption-guard tripped: ${liveCount} of ${rawCount} raw models survived parsing` });
+    return err({
+      message: `models.dev catalog corruption-guard tripped: ${liveCount} of ${rawCount} raw models survived parsing`,
+    });
   }
 
   const baseline = options?.baselineModelCount ?? 0;
   if (baseline > 0 && liveCount < baseline * SHRINK_GUARD_RATIO) {
-    return err({ message: `models.dev catalog shrink-guard tripped: ${liveCount} models vs baseline ${baseline}` });
+    return err({
+      message: `models.dev catalog shrink-guard tripped: ${liveCount} models vs baseline ${baseline}`,
+    });
   }
   if (liveCount === 0) return err({ message: "models.dev catalog parsed to zero models" });
 
@@ -231,7 +242,9 @@ export const getProviderModels = async (providerId: AIProvider): Promise<Provide
       const backupPath = quarantineCorruptFile(path);
       console.warn(`[models-dev-catalog] quarantined unloadable cache to ${backupPath}`);
     } catch (error) {
-      console.warn(`[models-dev-catalog] failed to quarantine unloadable cache: ${getErrorMessage(error)}`);
+      console.warn(
+        `[models-dev-catalog] failed to quarantine unloadable cache: ${getErrorMessage(error)}`,
+      );
     }
   }
   const cache = cacheState.status === "ok" ? cacheState.entry : null;
@@ -250,7 +263,9 @@ export const getProviderModels = async (providerId: AIProvider): Promise<Provide
       // carries, and this log makes the stale offline serve observable server-side.
       const stale = resultIfNonEmpty(cache.catalog, providerId, cache.fetchedAt, "cache");
       if (stale) {
-        console.info(`[models-dev-catalog] offline: serving stale cache (fetchedAt=${cache.fetchedAt}) for ${providerId}`);
+        console.info(
+          `[models-dev-catalog] offline: serving stale cache (fetchedAt=${cache.fetchedAt}) for ${providerId}`,
+        );
         return stale;
       }
     }
@@ -303,7 +318,9 @@ const persistIfNotDroppingProviders = (
     const after = populatedEnabledSourceIds(catalog);
     for (const sourceId of before) {
       if (!after.has(sourceId)) {
-        console.warn(`[models-dev-catalog] refusing to persist live catalog: enabled source ${sourceId} was dropped`);
+        console.warn(
+          `[models-dev-catalog] refusing to persist live catalog: enabled source ${sourceId} was dropped`,
+        );
         return;
       }
     }

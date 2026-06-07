@@ -17,7 +17,8 @@ const STORAGE_OPTIONS: Array<{ value: SecretsStorage; label: string; description
   {
     value: "file",
     label: "File Storage (Local)",
-    description: "Store secrets in a local file with OS file permissions (mode 0600). Simple and portable. For stronger protection, consider the system keyring.",
+    description:
+      "Store secrets in a local file with OS file permissions (mode 0600). Simple and portable. For stronger protection, consider the system keyring.",
   },
   {
     value: "keyring",
@@ -60,7 +61,9 @@ export function StorageSelectorContent({
 
   return (
     <div className="space-y-3">
-      <div id={labelId} className="text-sm font-mono text-tui-fg/60">Select Storage Method:</div>
+      <div id={labelId} className="text-sm font-mono text-tui-fg/60">
+        Select Storage Method:
+      </div>
       <RadioGroup
         value={value ?? undefined}
         onChange={handleChange}

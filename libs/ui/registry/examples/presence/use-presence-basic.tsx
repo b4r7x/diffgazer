@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react"
-import { usePresence } from "@/hooks/use-presence"
+import { useState } from "react";
+import { usePresence } from "@/hooks/use-presence";
 
 export default function UsePresenceBasicExample() {
-  const [open, setOpen] = useState(false)
-  const { present, onAnimationEnd } = usePresence({ open })
+  const [open, setOpen] = useState(false);
+  const { present, onAnimationEnd } = usePresence({ open });
 
   return (
     <div className="flex flex-col gap-4">
@@ -31,5 +31,5 @@ export default function UsePresenceBasicExample() {
         open: {String(open)} · present: {String(present)}
       </span>
     </div>
-  )
+  );
 }

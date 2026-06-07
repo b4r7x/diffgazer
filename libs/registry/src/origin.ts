@@ -10,7 +10,10 @@ export interface NormalizeOriginOptions {
   defaultOrigin: string;
 }
 
-export function normalizeOrigin(raw: string | undefined | null, options: NormalizeOriginOptions): string {
+export function normalizeOrigin(
+  raw: string | undefined | null,
+  options: NormalizeOriginOptions,
+): string {
   const { defaultOrigin } = options;
   const value = (raw ?? defaultOrigin).trim();
   if (!/^https?:\/\//.test(value)) {
@@ -44,7 +47,10 @@ export interface RewriteOriginsResult {
   total: number;
 }
 
-export function rewriteOriginsInDir(dir: string, options: OriginRewriteOptions): RewriteOriginsResult {
+export function rewriteOriginsInDir(
+  dir: string,
+  options: OriginRewriteOptions,
+): RewriteOriginsResult {
   const { fromOrigin, toOrigin } = options;
   let changed = 0;
   const files = collectJsonFiles(dir);
@@ -72,7 +78,10 @@ export interface ResolveAndRewriteOriginOptions {
 }
 
 // Not in the public barrel — only used by shadcn/build.ts
-export function resolveAndRewriteOrigin(options: ResolveAndRewriteOriginOptions): { origin: string; rewriteResult: RewriteOriginsResult } {
+export function resolveAndRewriteOrigin(options: ResolveAndRewriteOriginOptions): {
+  origin: string;
+  rewriteResult: RewriteOriginsResult;
+} {
   const { dir, originRaw, defaultOrigin, fromOrigin = defaultOrigin } = options;
   const origin = normalizeOrigin(originRaw, { defaultOrigin });
   const rewriteResult = rewriteOriginsInDir(dir, { fromOrigin, toOrigin: origin });

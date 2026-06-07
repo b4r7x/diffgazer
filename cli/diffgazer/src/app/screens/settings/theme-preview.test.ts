@@ -25,13 +25,19 @@ describe("theme preview", () => {
     expect(flattened.length, "no key should appear in two groups").toBe(unique.size);
     expect(unique.size).toBe(THEME_TOKEN_KEYS.length);
     for (const key of THEME_TOKEN_KEYS) {
-      expect(unique.has(key), `THEME_TOKEN_KEYS member '${key}' missing from grid groups`).toBeTruthy();
+      expect(
+        unique.has(key),
+        `THEME_TOKEN_KEYS member '${key}' missing from grid groups`,
+      ).toBeTruthy();
     }
   });
 
   test("TOKEN_GROUPS keeps the canonical primitive → semantic → severity → status order", () => {
-    expect(TOKEN_GROUPS.map((g) => g.title)).toEqual(
-      ["Primitive", "Semantic", "Severity", "Status"],
-    );
+    expect(TOKEN_GROUPS.map((g) => g.title)).toEqual([
+      "Primitive",
+      "Semantic",
+      "Severity",
+      "Status",
+    ]);
   });
 });

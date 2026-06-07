@@ -96,7 +96,9 @@ export function OnboardingWizard(): ReactElement {
   const cleanupRef = useRef(wizard.cleanupEarlySave);
   cleanupRef.current = wizard.cleanupEarlySave;
   useEffect(() => {
-    return () => { void cleanupRef.current(); };
+    return () => {
+      void cleanupRef.current();
+    };
   }, []);
 
   usePageFooter({

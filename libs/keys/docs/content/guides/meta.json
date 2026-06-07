@@ -1,10 +1,4 @@
 {
   "title": "Guides",
-  "pages": [
-    "index",
-    "scopes",
-    "navigation",
-    "focus-zones",
-    "focus-and-scroll"
-  ]
+  "pages": ["index", "scopes", "navigation", "focus-zones", "focus-and-scroll"]
 }

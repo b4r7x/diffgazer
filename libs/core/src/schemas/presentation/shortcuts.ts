@@ -14,10 +14,10 @@ export function areShortcutsEqual(a: Shortcut[], b: Shortcut[]): boolean {
   return a.every((left, index) => {
     const right = b[index];
     return (
-      right !== undefined
-      && left.key === right.key
-      && left.label === right.label
-      && left.disabled === right.disabled
+      right !== undefined &&
+      left.key === right.key &&
+      left.label === right.label &&
+      left.disabled === right.disabled
     );
   });
 }

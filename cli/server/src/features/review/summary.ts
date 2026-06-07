@@ -1,9 +1,5 @@
 import { calculateSeverityCounts, severityRank } from "@diffgazer/core/schemas/presentation";
-import type {
-  ReviewIssue,
-  ReviewResult,
-  ReviewSeverity,
-} from "@diffgazer/core/schemas/review";
+import type { ReviewIssue, ReviewResult, ReviewSeverity } from "@diffgazer/core/schemas/review";
 import { pluralize } from "@diffgazer/core/strings";
 
 export function generateExecutiveSummary(
@@ -15,10 +11,7 @@ export function generateExecutiveSummary(
   const uniqueFiles = new Set(issues.map((i) => i.file)).size;
 
   const severityLines = Object.entries(severityCounts)
-    .sort(
-      ([a], [b]) =>
-        severityRank(a as ReviewSeverity) - severityRank(b as ReviewSeverity),
-    )
+    .sort(([a], [b]) => severityRank(a as ReviewSeverity) - severityRank(b as ReviewSeverity))
     .map(([severity, count]) => `- ${severity}: ${count}`)
     .join("\n");
 
@@ -36,10 +29,7 @@ export function generateExecutiveSummary(
   return summaryParts.join("\n");
 }
 
-export function generateReport(
-  issues: ReviewIssue[],
-  orchestrationSummary: string,
-): ReviewResult {
+export function generateReport(issues: ReviewIssue[], orchestrationSummary: string): ReviewResult {
   const summary = generateExecutiveSummary(issues, orchestrationSummary);
   return { summary, issues };
 }

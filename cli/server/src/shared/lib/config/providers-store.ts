@@ -80,9 +80,7 @@ export function clearProviderCredentials(
   });
 }
 
-export function activeProvider(
-  state: ConfigState,
-): ProviderStatus | null {
+export function activeProvider(state: ConfigState): ProviderStatus | null {
   const active = state.providers.find((provider) => provider.isActive);
   return active ? { ...active } : null;
 }
@@ -95,10 +93,7 @@ export function isStorageConfigured(state: ConfigState): boolean {
   return state.settings.secretsStorage !== null;
 }
 
-export function fileHasSecret(
-  secretsState: SecretsState,
-  providerId: string,
-): boolean {
+export function fileHasSecret(secretsState: SecretsState, providerId: string): boolean {
   return providerId in secretsState.providers;
 }
 

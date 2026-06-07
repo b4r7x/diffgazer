@@ -11,11 +11,7 @@ import type {
 import { getFileMtimeMs } from "../fs.js";
 import { log } from "../log.js";
 import { getGlobalConfigPath, getGlobalSecretsPath, resolveProjectRoot } from "../paths.js";
-import {
-  deleteKeyringSecret,
-  readKeyringSecret,
-  writeKeyringSecret,
-} from "./keyring.js";
+import { deleteKeyringSecret, readKeyringSecret, writeKeyringSecret } from "./keyring.js";
 import {
   createProjectFile,
   loadConfig,
@@ -55,7 +51,9 @@ import type {
 
 export interface ConfigStore {
   getSettings(): SettingsConfig;
-  updateSettings(patch: Partial<SettingsConfig>): Promise<Result<SettingsConfig, SecretsStorageError>>;
+  updateSettings(
+    patch: Partial<SettingsConfig>,
+  ): Promise<Result<SettingsConfig, SecretsStorageError>>;
   getProviders(): ProviderStatus[];
   getActiveProvider(): ProviderStatus | null;
   getProviderApiKey(providerId: string): Result<string | null, SecretsStorageError>;
@@ -65,8 +63,15 @@ export interface ConfigStore {
   listTrustedProjects(): TrustConfig[];
   saveTrust(config: TrustConfig): Promise<Result<TrustConfig, SecretsStorageError>>;
   removeTrust(projectId: string): Promise<Result<boolean, SecretsStorageError>>;
-  saveProviderCredentials(input: { provider: AIProvider; apiKey: string | CredentialRef; model?: string }): Promise<Result<ProviderStatus, SecretsStorageError>>;
-  activateProvider(input: { provider: AIProvider; model?: string }): Promise<Result<ProviderStatus | null, SecretsStorageError>>;
+  saveProviderCredentials(input: {
+    provider: AIProvider;
+    apiKey: string | CredentialRef;
+    model?: string;
+  }): Promise<Result<ProviderStatus, SecretsStorageError>>;
+  activateProvider(input: {
+    provider: AIProvider;
+    model?: string;
+  }): Promise<Result<ProviderStatus | null, SecretsStorageError>>;
   deleteProviderCredentials(providerId: AIProvider): Promise<Result<boolean, SecretsStorageError>>;
 }
 
@@ -227,9 +232,7 @@ export function createConfigStore(): ConfigStore {
 
   const getActiveProvider = (): ProviderStatus | null => activeProvider(configState);
 
-  const getProviderApiKey = (
-    providerId: string,
-  ): Result<string | null, SecretsStorageError> => {
+  const getProviderApiKey = (providerId: string): Result<string | null, SecretsStorageError> => {
     if (!isStorageConfigured(configState)) {
       return ok(null);
     }
@@ -331,9 +334,7 @@ export function createConfigStore(): ConfigStore {
     model?: string;
   }): Promise<Result<ProviderStatus | null, SecretsStorageError>> => {
     const { provider, model } = input;
-    const existing = configState.providers.find(
-      (item) => item.provider === provider,
-    );
+    const existing = configState.providers.find((item) => item.provider === provider);
     if (!existing) return ok(null);
     if (!model && !existing.model) return ok(null);
 
@@ -358,9 +359,7 @@ export function createConfigStore(): ConfigStore {
       });
     }
 
-    const providerExists = configState.providers.some(
-      (item) => item.provider === providerId,
-    );
+    const providerExists = configState.providers.some((item) => item.provider === providerId);
     let hadSecret = false;
 
     if (isFileStorage(configState)) {

@@ -16,13 +16,16 @@ export function ScopedDialogDemo() {
   };
 
   // Global scope: select items 1-5
-  useKey({
-    "1": () => setSelectedItem(1),
-    "2": () => setSelectedItem(2),
-    "3": () => setSelectedItem(3),
-    "4": () => setSelectedItem(4),
-    "5": () => setSelectedItem(5),
-  }, { allowInInput: false, scope: "global" });
+  useKey(
+    {
+      "1": () => setSelectedItem(1),
+      "2": () => setSelectedItem(2),
+      "3": () => setSelectedItem(3),
+      "4": () => setSelectedItem(4),
+      "5": () => setSelectedItem(5),
+    },
+    { allowInInput: false, scope: "global" },
+  );
 
   // Global scope: open dialog
   useKey("o", () => setDialogOpen(true), { allowInInput: false, scope: "global" });
@@ -87,7 +90,8 @@ export function ScopedDialogDemo() {
           <div className="demo-dialog">
             <h3 style={{ marginBottom: 8 }}>Confirm Action</h3>
             <p style={{ fontSize: 14, color: "var(--color-text-muted)", marginBottom: 20 }}>
-              Are you sure you want to proceed? Notice that pressing 1-5 does nothing while this dialog is open.
+              Are you sure you want to proceed? Notice that pressing 1-5 does nothing while this
+              dialog is open.
             </p>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
               <button
@@ -97,11 +101,7 @@ export function ScopedDialogDemo() {
               >
                 Cancel
               </button>
-              <button
-                type="button"
-                className="demo-button"
-                onClick={confirmAction}
-              >
+              <button type="button" className="demo-button" onClick={confirmAction}>
                 Confirm
               </button>
             </div>

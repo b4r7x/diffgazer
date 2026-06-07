@@ -6,8 +6,10 @@ export const cardVariants = cva("w-full relative bg-background", {
   variants: {
     surface: {
       flat: "border border-border/50",
-      stacked: "border border-border/50 shadow-[3px_3px_0_0_var(--background),4px_4px_0_0_color-mix(in_oklab,var(--border)_50%,transparent)]",
-      inset: "shadow-[inset_0_2px_4px_rgba(0,0,0,0.4),inset_0_0_0_1px_color-mix(in_oklab,var(--border)_25%,transparent)] bg-[color-mix(in_oklab,var(--foreground)_3%,var(--background))]",
+      stacked:
+        "border border-border/50 shadow-[3px_3px_0_0_var(--background),4px_4px_0_0_color-mix(in_oklab,var(--border)_50%,transparent)]",
+      inset:
+        "shadow-[inset_0_2px_4px_rgba(0,0,0,0.4),inset_0_0_0_1px_color-mix(in_oklab,var(--border)_25%,transparent)] bg-[color-mix(in_oklab,var(--foreground)_3%,var(--background))]",
       dotted: "border border-dashed border-border/70 bg-transparent",
       glow: "border border-border/50 shadow-[0_0_15px_color-mix(in_oklab,var(--border)_12%,transparent),0_0_5px_color-mix(in_oklab,var(--border)_8%,transparent)]",
     },
@@ -31,12 +33,14 @@ export const cardVariants = cva("w-full relative bg-background", {
     {
       surface: "stacked",
       interactive: true,
-      className: "hover:shadow-[5px_5px_0_0_var(--background),6px_6px_0_0_color-mix(in_oklab,var(--border)_50%,transparent)]",
+      className:
+        "hover:shadow-[5px_5px_0_0_var(--background),6px_6px_0_0_color-mix(in_oklab,var(--border)_50%,transparent)]",
     },
     {
       surface: "inset",
       interactive: true,
-      className: "hover:shadow-[inset_0_2px_6px_rgba(0,0,0,0.5),inset_0_0_0_1px_color-mix(in_oklab,var(--border)_35%,transparent)]",
+      className:
+        "hover:shadow-[inset_0_2px_6px_rgba(0,0,0,0.5),inset_0_0_0_1px_color-mix(in_oklab,var(--border)_35%,transparent)]",
     },
     {
       surface: "dotted",
@@ -46,7 +50,8 @@ export const cardVariants = cva("w-full relative bg-background", {
     {
       surface: "glow",
       interactive: true,
-      className: "hover:border-border/70 hover:shadow-[0_0_20px_color-mix(in_oklab,var(--border)_18%,transparent),0_0_8px_color-mix(in_oklab,var(--border)_12%,transparent)]",
+      className:
+        "hover:border-border/70 hover:shadow-[0_0_20px_color-mix(in_oklab,var(--border)_18%,transparent),0_0_8px_color-mix(in_oklab,var(--border)_12%,transparent)]",
     },
   ],
   defaultVariants: { surface: "flat", size: "default", interactive: false },

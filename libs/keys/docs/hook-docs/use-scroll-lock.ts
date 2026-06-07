@@ -1,4 +1,4 @@
-import type { HookDoc } from "@diffgazer/registry"
+import type { HookDoc } from "@diffgazer/registry";
 
 export const useScrollLockDoc: HookDoc = {
   description:
@@ -12,8 +12,7 @@ export const useScrollLockDoc: HookDoc = {
       name: "target",
       type: "RefObject<HTMLElement | null>",
       required: false,
-      description:
-        "Ref to the element to lock. Defaults to document.body when omitted.",
+      description: "Ref to the element to lock. Defaults to document.body when omitted.",
     },
     {
       name: "enabled",
@@ -44,4 +43,4 @@ export const useScrollLockDoc: HookDoc = {
     { name: "use-scroll-lock-target", title: "Lock a specific scroll container" },
   ],
   tags: ["standalone", "scroll", "utility"],
-}
+};

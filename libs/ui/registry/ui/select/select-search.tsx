@@ -63,9 +63,7 @@ export function SelectSearch({
 
   return (
     <div className={selectSearchVariants({ variant, position })}>
-      <span className="text-foreground/50 text-sm font-mono shrink-0">
-        &gt;
-      </span>
+      <span className="text-foreground/50 text-sm font-mono shrink-0">&gt;</span>
       <input
         ref={searchInputRef}
         type="search"

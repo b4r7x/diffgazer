@@ -1,6 +1,6 @@
-import { Overflow } from "@/components/ui/overflow"
+import { Overflow } from "@/components/ui/overflow";
 
-const tags = ["React", "TypeScript", "Tailwind", "Node.js", "Vitest", "Zod", "Prisma"]
+const tags = ["React", "TypeScript", "Tailwind", "Node.js", "Vitest", "Zod", "Prisma"];
 
 export default function OverflowItemsExample() {
   return (
@@ -45,5 +45,5 @@ export default function OverflowItemsExample() {
         </div>
       </div>
     </div>
-  )
+  );
 }

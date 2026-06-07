@@ -1,13 +1,13 @@
-"use client"
+"use client";
 
-import { useFocusTrap } from "@diffgazer/keys"
-import { useRef, useState } from "react"
+import { useFocusTrap } from "@diffgazer/keys";
+import { useRef, useState } from "react";
 
 export default function UseFocusTrapBasic() {
-  const [open, setOpen] = useState(false)
-  const trapRef = useRef<HTMLDivElement>(null)
+  const [open, setOpen] = useState(false);
+  const trapRef = useRef<HTMLDivElement>(null);
 
-  useFocusTrap(trapRef, { enabled: open, restoreFocus: true })
+  useFocusTrap(trapRef, { enabled: open, restoreFocus: true });
 
   return (
     <div>
@@ -25,10 +25,14 @@ export default function UseFocusTrapBasic() {
           style={{ marginTop: 8, padding: 12, border: "1px solid currentColor" }}
         >
           <p>Tab cycles through buttons; focus is trapped here.</p>
-          <button type="button" onClick={() => setOpen(false)}>Cancel</button>
-          <button type="button" onClick={() => setOpen(false)}>Confirm</button>
+          <button type="button" onClick={() => setOpen(false)}>
+            Cancel
+          </button>
+          <button type="button" onClick={() => setOpen(false)}>
+            Confirm
+          </button>
         </div>
       )}
     </div>
-  )
+  );
 }

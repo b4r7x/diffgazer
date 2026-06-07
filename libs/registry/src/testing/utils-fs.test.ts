@@ -1,11 +1,4 @@
-import {
-  chmodSync,
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  rmSync,
-  symlinkSync,
-} from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -30,7 +23,9 @@ describe("ensureWithinDir", () => {
     mkdirSync(outside, { recursive: true });
     symlinkSync(outside, join(base, "components"));
 
-    expect(() => ensureWithinDir(join(base, "components/button.tsx"), base)).toThrow(/symlink|realpath/);
+    expect(() => ensureWithinDir(join(base, "components/button.tsx"), base)).toThrow(
+      /symlink|realpath/,
+    );
   });
 });
 

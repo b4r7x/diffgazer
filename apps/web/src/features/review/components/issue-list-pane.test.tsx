@@ -4,8 +4,20 @@ import { makeIssue } from "@/testing/factories";
 import { IssueListPane } from "./issue-list-pane";
 
 const issues = [
-  makeIssue({ id: "issue-1", severity: "high", title: "Avoid unsafe cast", file: "src/a.ts", line_start: 1 }),
-  makeIssue({ id: "issue-2", severity: "low", title: "Tighten type", file: "src/b.ts", line_start: 2 }),
+  makeIssue({
+    id: "issue-1",
+    severity: "high",
+    title: "Avoid unsafe cast",
+    file: "src/a.ts",
+    line_start: 1,
+  }),
+  makeIssue({
+    id: "issue-2",
+    severity: "low",
+    title: "Tighten type",
+    file: "src/b.ts",
+    line_start: 2,
+  }),
 ];
 
 describe("IssueListPane row highlight inversion", () => {

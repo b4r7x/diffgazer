@@ -21,8 +21,7 @@ describe("createQueryClientBase", () => {
   it("lets overrides replace query defaults", () => {
     const queries = createQueryClientBase({
       defaultOptions: { queries: { retry: 1, staleTime: 30_000, networkMode: "always" } },
-    })
-      .getDefaultOptions().queries;
+    }).getDefaultOptions().queries;
 
     expect(queries?.retry).toBe(1);
     expect(queries?.staleTime).toBe(30_000);

@@ -14,15 +14,11 @@ export const kbdVariants = cva(
     defaultVariants: {
       size: "md",
     },
-  }
+  },
 );
 
-export interface KbdProps
-  extends ComponentProps<"kbd">,
-    VariantProps<typeof kbdVariants> {}
+export interface KbdProps extends ComponentProps<"kbd">, VariantProps<typeof kbdVariants> {}
 
 export function Kbd({ ref, className, size, ...props }: KbdProps) {
-  return (
-    <kbd ref={ref} className={cn(kbdVariants({ size }), className)} {...props} />
-  );
+  return <kbd ref={ref} className={cn(kbdVariants({ size }), className)} {...props} />;
 }

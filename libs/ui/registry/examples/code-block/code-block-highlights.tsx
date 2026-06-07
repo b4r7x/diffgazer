@@ -1,14 +1,17 @@
-import { CodeBlock } from "@/components/ui/code-block"
+import { CodeBlock } from "@/components/ui/code-block";
 
 const lines = [
   { content: "function calculateScore(review) {" },
   { content: "  const base = review.findings.length", state: "removed" as const },
-  { content: "  const base = review.findings.filter(f => f.severity !== 'info').length", state: "added" as const },
+  {
+    content: "  const base = review.findings.filter(f => f.severity !== 'info').length",
+    state: "added" as const,
+  },
   { content: "" },
   { content: "  // Apply severity weights", state: "highlight" as const },
   { content: "  return base * review.weight" },
   { content: "}" },
-]
+];
 
 export default function CodeBlockHighlights() {
   return (
@@ -23,5 +26,5 @@ export default function CodeBlockHighlights() {
         ))}
       </CodeBlock.Content>
     </CodeBlock>
-  )
+  );
 }

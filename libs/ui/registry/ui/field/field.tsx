@@ -85,10 +85,7 @@ function detectFieldSlots(
     }
   });
 
-  const describedBy = mergeIds(
-    descriptionId,
-    invalid ? errorId : undefined,
-  );
+  const describedBy = mergeIds(descriptionId, invalid ? errorId : undefined);
 
   return { labelId, descriptionId, errorId, describedBy };
 }
@@ -129,7 +126,17 @@ function FieldRoot({
       required,
       disabled,
     }),
-    [resolvedControlId, defaultLabelId, labelId, defaultDescriptionId, defaultErrorId, describedBy, invalid, required, disabled],
+    [
+      resolvedControlId,
+      defaultLabelId,
+      labelId,
+      defaultDescriptionId,
+      defaultErrorId,
+      describedBy,
+      invalid,
+      required,
+      disabled,
+    ],
   );
 
   return (
@@ -166,7 +173,12 @@ function FieldLabel({ className, children, ref, id, ...props }: FieldLabelProps)
       className={cn("text-xs uppercase font-bold text-muted-foreground select-none", className)}
     >
       {children}
-      {required && <span className="text-destructive" aria-hidden="true"> *</span>}
+      {required && (
+        <span className="text-destructive" aria-hidden="true">
+          {" "}
+          *
+        </span>
+      )}
     </label>
   );
 }
@@ -187,7 +199,8 @@ export interface FieldControlProps {
 }
 
 function FieldControl({ children, ref }: FieldControlProps) {
-  const { controlId, describedBy, labelId, invalid, required, disabled } = useFieldContext("Field.Control");
+  const { controlId, describedBy, labelId, invalid, required, disabled } =
+    useFieldContext("Field.Control");
   const child = Children.only(children);
   if (!isValidElement<FieldControlChildProps>(child)) {
     throw new Error("Field.Control expects a single React element child");
@@ -260,11 +273,4 @@ const Field = Object.assign(FieldRoot, {
   Error: FieldError,
 });
 
-export {
-  Field,
-  FieldRoot,
-  FieldLabel,
-  FieldControl,
-  FieldDescription,
-  FieldError,
-};
+export { Field, FieldRoot, FieldLabel, FieldControl, FieldDescription, FieldError };

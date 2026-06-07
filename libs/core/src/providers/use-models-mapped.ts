@@ -14,10 +14,7 @@ const EMPTY_STATE: ProviderModelsState = {
   error: null,
 };
 
-export function useProviderModelsMapped(
-  open: boolean,
-  provider: AIProvider,
-): ProviderModelsState {
+export function useProviderModelsMapped(open: boolean, provider: AIProvider): ProviderModelsState {
   // OpenRouter keeps its own key-scoped live path; this hook serves every other
   // provider from the models.dev-backed catalog route.
   const enabled = open && provider !== OPENROUTER_PROVIDER_ID;

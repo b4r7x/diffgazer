@@ -21,9 +21,7 @@ describe("waitForHealthy", () => {
     const fetchImpl = vi.fn().mockResolvedValue(okResponse());
     const sleep = vi.fn();
 
-    await expect(
-      waitForHealthy({ address: ADDRESS, fetchImpl, sleep }),
-    ).resolves.toBeUndefined();
+    await expect(waitForHealthy({ address: ADDRESS, fetchImpl, sleep })).resolves.toBeUndefined();
 
     expect(fetchImpl).toHaveBeenCalledExactlyOnceWith(`${ADDRESS}/api/health`);
     expect(sleep).not.toHaveBeenCalled();
@@ -91,9 +89,7 @@ describe("createApiServer readiness wiring", () => {
   it("probes GET /api/health after the ready pattern even without onReady", async () => {
     const child = createFakeChild();
     execaMock.mockReturnValue(child);
-    const fetchSpy = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValue(okResponse());
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(okResponse());
 
     const server = createApiServer({ cwd: "/srv", port: 4100 });
     server.start();

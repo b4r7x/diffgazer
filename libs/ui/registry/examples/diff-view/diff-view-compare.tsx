@@ -1,4 +1,4 @@
-import { DiffView } from "@/components/ui/diff-view"
+import { DiffView } from "@/components/ui/diff-view";
 
 const before = `import type { Review } from "../types"
 
@@ -8,7 +8,7 @@ export function calculateScore(review: Review): number {
 
 export function isPassingScore(score: number): boolean {
   return score >= 70
-}`
+}`;
 
 const after = `import type { Review } from "../types"
 
@@ -21,8 +21,8 @@ export function calculateScore(review: Review, weights: Record<string, number>):
 
 export function isPassingScore(score: number): boolean {
   return score >= 70
-}`
+}`;
 
 export default function DiffViewCompare() {
-  return <DiffView before={before} after={after} mode="split" />
+  return <DiffView before={before} after={after} mode="split" />;
 }

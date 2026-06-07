@@ -10,7 +10,7 @@ function requestContext(pathname: string, options: { method?: string; accept?: s
       method: options.method ?? "GET",
       url: `http://localhost:3000${pathname}`,
       header: (name: string) =>
-        name.toLowerCase() === "accept" ? options.accept ?? "text/html" : undefined,
+        name.toLowerCase() === "accept" ? (options.accept ?? "text/html") : undefined,
     },
   } as Parameters<typeof isSpaNavigationRequest>[0];
 }
@@ -34,7 +34,9 @@ interface SessionsModule {
 // is the one stop() aborts.
 async function loadSessions(): Promise<SessionsModule> {
   const entry = import.meta.resolve("@diffgazer/server");
-  return import(new URL("./features/review/stream/store.js", entry).href) as Promise<SessionsModule>;
+  return import(
+    new URL("./features/review/stream/store.js", entry).href
+  ) as Promise<SessionsModule>;
 }
 
 describe("buildHtmlShell", () => {
@@ -91,7 +93,10 @@ describe("isSpaNavigationRequest", () => {
     expect(isSpaNavigationRequest(requestContext("/assets/app.js"), "/assets/app.js")).toBe(false);
     expect(isSpaNavigationRequest(requestContext("/api/shutdown"), "/api/shutdown")).toBe(false);
     expect(
-      isSpaNavigationRequest(requestContext("/index.html", { accept: "application/json" }), "/index.html"),
+      isSpaNavigationRequest(
+        requestContext("/index.html", { accept: "application/json" }),
+        "/index.html",
+      ),
     ).toBe(false);
   });
 });

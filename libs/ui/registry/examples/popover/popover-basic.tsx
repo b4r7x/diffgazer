@@ -1,11 +1,14 @@
-import { Popover } from "@/components/ui/popover"
+import { Popover } from "@/components/ui/popover";
 
 export default function PopoverBasicExample() {
   return (
     <Popover>
       <Popover.Trigger>
         {(triggerProps) => (
-          <button {...triggerProps} className="border border-foreground/30 px-3 py-1 font-mono text-sm">
+          <button
+            {...triggerProps}
+            className="border border-foreground/30 px-3 py-1 font-mono text-sm"
+          >
             click me
           </button>
         )}
@@ -17,5 +20,5 @@ export default function PopoverBasicExample() {
         </button>
       </Popover.Content>
     </Popover>
-  )
+  );
 }

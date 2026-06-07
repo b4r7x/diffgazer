@@ -25,7 +25,10 @@ afterEach(() => {
 });
 
 describe("createLanguageModel real openai-compatible adapters", () => {
-  it.each(["groq", "cerebras"] as const)("returns a usable client backed by a real LanguageModel for %s", async (provider) => {
+  it.each([
+    "groq",
+    "cerebras",
+  ] as const)("returns a usable client backed by a real LanguageModel for %s", async (provider) => {
     const { createAIClient } = await import("./client.js");
     const result = createAIClient({ apiKey: "test-key", provider });
     expect(result.ok).toBe(true);
@@ -45,12 +48,18 @@ describe.runIf(LIVE)("createLanguageModel live generateObject smoke (network-gat
     { provider: "cerebras" as const, keyEnv: "CEREBRAS_API_KEY" },
   ])("produces a structured object via $provider", async ({ provider, keyEnv }) => {
     const apiKey = process.env[keyEnv];
-    if (!apiKey) { console.warn(`[smoke-skip] ${provider}: ${keyEnv} not set`); return; }
+    if (!apiKey) {
+      console.warn(`[smoke-skip] ${provider}: ${keyEnv} not set`);
+      return;
+    }
     const { createAIClient } = await import("./client.js");
     const clientResult = createAIClient({ apiKey, provider });
     expect(clientResult.ok).toBe(true);
     if (!clientResult.ok) return;
-    const result = await clientResult.value.generate("Return an object with field ok set to true.", z.object({ ok: z.boolean() }));
+    const result = await clientResult.value.generate(
+      "Return an object with field ok set to true.",
+      z.object({ ok: z.boolean() }),
+    );
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.value.ok).toBe(true);
   });

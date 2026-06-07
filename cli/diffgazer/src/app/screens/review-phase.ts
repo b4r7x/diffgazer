@@ -24,9 +24,7 @@ export interface SelectReviewScreenPhaseInput {
     | undefined;
 }
 
-export function selectReviewScreenPhase(
-  input: SelectReviewScreenPhaseInput,
-): ReviewScreenPhase {
+export function selectReviewScreenPhase(input: SelectReviewScreenPhaseInput): ReviewScreenPhase {
   if (!input.reviewId) return { kind: "streaming" };
   if (input.savedIsLoading) return { kind: "loading-saved" };
   if (input.savedData) {

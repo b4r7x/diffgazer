@@ -1,14 +1,26 @@
-import { getDisplayStatusBadge, PROVIDER_FILTER_LABELS, type ProviderFilter } from '@diffgazer/core/providers';
-import type { ProviderWithStatus } from '@diffgazer/core/schemas/config';
-import { PROVIDER_CAPABILITIES } from '@diffgazer/core/schemas/config';
+import {
+  getDisplayStatusBadge,
+  PROVIDER_FILTER_LABELS,
+  type ProviderFilter,
+} from "@diffgazer/core/providers";
+import type { ProviderWithStatus } from "@diffgazer/core/schemas/config";
+import { PROVIDER_CAPABILITIES } from "@diffgazer/core/schemas/config";
 import { toVerticalBoundaryDirection } from "@diffgazer/keys";
-import { EmptyState } from '@diffgazer/ui/components/empty-state';
-import { NavigationList, NavigationListBadge, NavigationListItem, NavigationListMeta, NavigationListStatus, NavigationListSubtitle, NavigationListTitle } from '@diffgazer/ui/components/navigation-list';
-import { SearchInput } from '@diffgazer/ui/components/search-input';
-import { SectionHeader } from '@diffgazer/ui/components/section-header';
+import { EmptyState } from "@diffgazer/ui/components/empty-state";
+import {
+  NavigationList,
+  NavigationListBadge,
+  NavigationListItem,
+  NavigationListMeta,
+  NavigationListStatus,
+  NavigationListSubtitle,
+  NavigationListTitle,
+} from "@diffgazer/ui/components/navigation-list";
+import { SearchInput } from "@diffgazer/ui/components/search-input";
+import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { ToggleGroup, ToggleGroupItem } from "@diffgazer/ui/components/toggle-group";
 import { cn } from "@diffgazer/ui/lib/utils";
-import type { KeyboardEvent as ReactKeyboardEvent, RefCallback } from 'react';
+import type { KeyboardEvent as ReactKeyboardEvent, RefCallback } from "react";
 
 interface ProviderListProps {
   providers: ProviderWithStatus[];
@@ -157,20 +169,18 @@ export function ProviderList({
           >
             {providers.map((provider) => {
               const capabilities = PROVIDER_CAPABILITIES[provider.id];
-              const tierBadge = capabilities?.tierBadge ?? 'PAID';
+              const tierBadge = capabilities?.tierBadge ?? "PAID";
               const badge = getDisplayStatusBadge(provider.displayStatus);
               const statusText = `[${badge.label.toUpperCase()}]`;
-              const subtitleText = !provider.model
-                ? "Select model"
-                : (provider.model || undefined);
+              const subtitleText = !provider.model ? "Select model" : provider.model || undefined;
 
               return (
                 <NavigationListItem
                   key={provider.id}
                   id={provider.id}
                   className={cn(
-                    'border-l-2 border-l-transparent',
-                    !isFocused && selectedId === provider.id && 'border-l-tui-blue/60 text-tui-fg'
+                    "border-l-2 border-l-transparent",
+                    !isFocused && selectedId === provider.id && "border-l-tui-blue/60 text-tui-fg",
                   )}
                 >
                   <NavigationListTitle>{provider.name}</NavigationListTitle>
@@ -178,7 +188,7 @@ export function ProviderList({
                   <div className="col-span-full row-start-2 flex min-w-0 items-center gap-2">
                     <NavigationListMeta className="shrink-0">
                       <NavigationListBadge
-                        variant={tierBadge === 'FREE' ? 'success' : 'neutral'}
+                        variant={tierBadge === "FREE" ? "success" : "neutral"}
                         className="shrink-0 text-3xs"
                       >
                         {tierBadge}

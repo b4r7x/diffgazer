@@ -18,7 +18,11 @@ function getDraftCapabilities(trust: TrustConfig | null): TrustCapabilities {
   return normalizeTrustCapabilities(trust?.capabilities);
 }
 
-function getTrustEditorKey(projectId: string | null, repoRoot: string | null, trust: TrustConfig | null): string {
+function getTrustEditorKey(
+  projectId: string | null,
+  repoRoot: string | null,
+  trust: TrustConfig | null,
+): string {
   if (trust) return `${trust.projectId}:${trust.trustedAt}`;
   return `${projectId ?? "loading"}:${repoRoot ?? "loading"}:untrusted`;
 }

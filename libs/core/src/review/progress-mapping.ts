@@ -55,9 +55,7 @@ export function mapStepsToProgressData(
 ): ProgressStepData[] {
   return steps.map((step) => {
     const substeps =
-      step.id === "review" && agents.length > 0
-        ? deriveSubstepsFromAgents(agents)
-        : undefined;
+      step.id === "review" && agents.length > 0 ? deriveSubstepsFromAgents(agents) : undefined;
 
     return {
       id: step.id,

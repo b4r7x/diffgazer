@@ -26,22 +26,17 @@ export const errorResponse = (
   ctx: Context,
   message: string,
   code: string,
-  status: ErrorStatus
+  status: ErrorStatus,
 ): Response => ctx.json({ error: { message, code } }, VALID_ERROR_STATUSES[status]);
 
 export const zodErrorHandler = <T>(
   result: { success: true; data: T } | { success: false; error: core.$ZodError },
-  ctx: Context
+  ctx: Context,
 ): Response | undefined => {
   if (!result.success) {
     const firstIssue = result.error.issues[0];
     const message = firstIssue?.message ?? "Invalid body";
-    return errorResponse(
-      ctx,
-      message,
-      ErrorCode.VALIDATION_ERROR,
-      400
-    );
+    return errorResponse(ctx, message, ErrorCode.VALIDATION_ERROR, 400);
   }
   return undefined;
 };

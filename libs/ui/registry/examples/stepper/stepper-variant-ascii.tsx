@@ -1,4 +1,4 @@
-import { Stepper } from "@/components/ui/stepper"
+import { Stepper } from "@/components/ui/stepper";
 
 export default function StepperVariantAscii() {
   return (
@@ -19,5 +19,5 @@ export default function StepperVariantAscii() {
         <Stepper.Trigger>Deploy</Stepper.Trigger>
       </Stepper.Step>
     </Stepper>
-  )
+  );
 }

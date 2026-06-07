@@ -1,4 +1,4 @@
-import { Panel } from "@/components/ui/panel"
+import { Panel } from "@/components/ui/panel";
 
 export default function PanelDefault() {
   return (
@@ -13,5 +13,5 @@ export default function PanelDefault() {
         <Panel.Row label="Author" value="developer@example.com" />
       </Panel.Content>
     </Panel>
-  )
+  );
 }

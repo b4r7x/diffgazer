@@ -11,32 +11,21 @@ import {
 import { stepperStepVariants } from "@/lib/stepper-variants";
 import { cn } from "@/lib/utils";
 import { StepperContent } from "./stepper-content";
-import {
-  StepperStepContext,
-  type StepStatus,
-  useStepperContext,
-} from "./stepper-context";
+import { StepperStepContext, type StepStatus, useStepperContext } from "./stepper-context";
 
-export interface StepperStepProps
-  extends Omit<ComponentProps<"li">, "children"> {
+export interface StepperStepProps extends Omit<ComponentProps<"li">, "children"> {
   stepId: string;
   status: StepStatus;
   children: ReactNode;
 }
 
 function hasStepperContent(children: ReactNode): boolean {
-  return Children.toArray(children).some((child) => (
-    isValidElement(child) && child.type === StepperContent
-  ));
+  return Children.toArray(children).some(
+    (child) => isValidElement(child) && child.type === StepperContent,
+  );
 }
 
-export function StepperStep({
-  stepId,
-  status,
-  children,
-  className,
-  ...props
-}: StepperStepProps) {
+export function StepperStep({ stepId, status, children, className, ...props }: StepperStepProps) {
   const { expandedIds } = useStepperContext();
   const isExpanded = expandedIds.includes(stepId);
 

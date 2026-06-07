@@ -1,4 +1,4 @@
-import { InputGroup } from "@/components/ui/input"
+import { InputGroup } from "@/components/ui/input";
 
 export default function InputGroupExample() {
   return (
@@ -8,5 +8,5 @@ export default function InputGroupExample() {
       suffix=".json"
       placeholder="diffgazer/config"
     />
-  )
+  );
 }

@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types"
+import type { ComponentDoc } from "./types";
 
 export const selectDoc: ComponentDoc = {
   description:
@@ -153,7 +153,8 @@ export const selectDoc: ComponentDoc = {
         type: "boolean",
         required: false,
         defaultValue: "false",
-        description: "Initial open state for uncontrolled usage. Useful with variant=\"card\" for a settings-panel layout that renders its list immediately.",
+        description:
+          'Initial open state for uncontrolled usage. Useful with variant="card" for a settings-panel layout that renders its list immediately.',
       },
       onOpenChange: {
         type: "(open: boolean) => void",
@@ -171,13 +172,14 @@ export const selectDoc: ComponentDoc = {
         type: '"default" | "card"',
         required: false,
         defaultValue: '"default"',
-        description: "Visual treatment. \"card\" renders the inline settings-panel layout (combine with defaultOpen).",
+        description:
+          'Visual treatment. "card" renders the inline settings-panel layout (combine with defaultOpen).',
       },
       width: {
         type: '"sm" | "md" | "lg" | "full"',
         required: false,
         defaultValue: null,
-        description: "Width preset for the Select container. \"full\" fills the parent.",
+        description: 'Width preset for the Select container. "full" fills the parent.',
       },
       disabled: {
         type: "boolean",
@@ -235,13 +237,14 @@ export const selectDoc: ComponentDoc = {
         type: '"count" | "list" | "truncate"',
         required: false,
         defaultValue: '"count"',
-        description: "Multi-select display mode. \"count\" shows N selected, \"list\" comma-separates, \"truncate\" shows first N + \"+M more\".",
+        description:
+          'Multi-select display mode. "count" shows N selected, "list" comma-separates, "truncate" shows first N + "+M more".',
       },
       truncateAfter: {
         type: "number",
         required: false,
         defaultValue: "2",
-        description: "Number of items shown before \"+N more\" when display=\"truncate\".",
+        description: 'Number of items shown before "+N more" when display="truncate".',
       },
       children: {
         type: "(state: { selected: string[]; labels: string[] }) => ReactNode",
@@ -263,7 +266,8 @@ export const selectDoc: ComponentDoc = {
         type: '"top" | "bottom"',
         required: false,
         defaultValue: '"bottom"',
-        description: "Where the search input sits in SelectContent. \"top\" flips the border direction.",
+        description:
+          'Where the search input sits in SelectContent. "top" flips the border direction.',
       },
     },
     SelectItem: {
@@ -277,7 +281,8 @@ export const selectDoc: ComponentDoc = {
         type: '"auto" | "checkbox" | "radio" | "none"',
         required: false,
         defaultValue: '"auto"',
-        description: "Selection indicator style. \"auto\" picks checkbox in multi mode and a check mark in single mode.",
+        description:
+          'Selection indicator style. "auto" picks checkbox in multi mode and a check mark in single mode.',
       },
       textValue: {
         type: "string",
@@ -301,4 +306,4 @@ export const selectDoc: ComponentDoc = {
       },
     },
   },
-}
+};

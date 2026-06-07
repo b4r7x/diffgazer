@@ -12,11 +12,7 @@ import { Button } from "@diffgazer/ui/components/button";
 import { Callout } from "@diffgazer/ui/components/callout";
 import { CheckboxGroup, CheckboxItem } from "@diffgazer/ui/components/checkbox";
 import { cn } from "@diffgazer/ui/lib/utils";
-import {
-  type FocusEvent as ReactFocusEvent,
-  useRef,
-  useState,
-} from "react";
+import { type FocusEvent as ReactFocusEvent, useRef, useState } from "react";
 import { useTrustFormKeyboard } from "./use-trust-form-keyboard";
 
 interface TrustPermissionsContentBaseProps {
@@ -63,7 +59,9 @@ export function TrustPermissionsContent(props: TrustPermissionsContentProps) {
   const onListBoundaryNext = !showActions ? props.onListBoundaryNext : undefined;
   const contentRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
-  const [listFocused, setListFocused] = useState<string | null>(() => getInitialFocusedCapability(value));
+  const [listFocused, setListFocused] = useState<string | null>(() =>
+    getInitialFocusedCapability(value),
+  );
   const [passiveListHasFocus, setPassiveListHasFocus] = useState(false);
 
   const selectedCapabilities = toSelectedCapabilityIds(value);
@@ -74,12 +72,14 @@ export function TrustPermissionsContent(props: TrustPermissionsContentProps) {
 
   const focusListItem = () => {
     if (effectiveListFocused === null) return false;
-    return focusNavigationItem(listRef.current, {
-      type: "checkbox",
-      value: effectiveListFocused,
-      fallback: "first",
-      preventScroll: true,
-    }) !== null;
+    return (
+      focusNavigationItem(listRef.current, {
+        type: "checkbox",
+        value: effectiveListFocused,
+        fallback: "first",
+        preventScroll: true,
+      }) !== null
+    );
   };
 
   const {
@@ -128,18 +128,17 @@ export function TrustPermissionsContent(props: TrustPermissionsContentProps) {
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: onFocus/onBlur here are focus-delegation listeners for the descendant role="checkbox" items, not interactions on the container itself; the checkboxes own all keyboard/pointer behavior.
-    <div ref={contentRef} className="flex flex-col gap-6" onFocus={handleContentFocus} onBlur={handleContentBlur}>
+    <div
+      ref={contentRef}
+      className="flex flex-col gap-6"
+      onFocus={handleContentFocus}
+      onBlur={handleContentBlur}
+    >
       <div className="border-b border-tui-border pb-3">
-        <div className="text-tui-muted text-xs mb-2 uppercase tracking-wide">
-          Target Directory
-        </div>
+        <div className="text-tui-muted text-xs mb-2 uppercase tracking-wide">Target Directory</div>
         <div className="flex items-center justify-between">
-          <span className="text-lg text-tui-blue font-bold truncate pr-4">
-            {directory}
-          </span>
-          {isTrusted && (
-            <Badge variant="success">TRUSTED</Badge>
-          )}
+          <span className="text-lg text-tui-blue font-bold truncate pr-4">{directory}</span>
+          {isTrusted && <Badge variant="success">TRUSTED</Badge>}
         </div>
       </div>
 
@@ -177,8 +176,8 @@ export function TrustPermissionsContent(props: TrustPermissionsContentProps) {
         <Callout.Icon />
         <Callout.Title>SECURITY WARNING</Callout.Title>
         <Callout.Content>
-          Run commands is currently unavailable. When enabled, it allows the AI to execute shell scripts.
-          This grants significant access to your system.
+          Run commands is currently unavailable. When enabled, it allows the AI to execute shell
+          scripts. This grants significant access to your system.
         </Callout.Content>
       </Callout>
 

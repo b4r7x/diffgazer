@@ -1,20 +1,20 @@
-"use client"
+"use client";
 
-import { KeyboardProvider, useFocusZone, useScopedNavigation } from "@diffgazer/keys"
-import { useRef } from "react"
+import { KeyboardProvider, useFocusZone, useScopedNavigation } from "@diffgazer/keys";
+import { useRef } from "react";
 
-type Zone = "sidebar" | "main"
+type Zone = "sidebar" | "main";
 
 function Layout() {
   const { zone, isZone } = useFocusZone<Zone>({
     initial: "sidebar",
     zones: ["sidebar", "main"],
     transitions: ({ zone, key }) => {
-      if (zone === "sidebar" && key === "ArrowRight") return "main"
-      if (zone === "main" && key === "ArrowLeft") return "sidebar"
-      return null
+      if (zone === "sidebar" && key === "ArrowRight") return "main";
+      if (zone === "main" && key === "ArrowLeft") return "sidebar";
+      return null;
     },
-  })
+  });
 
   return (
     <div>
@@ -39,7 +39,7 @@ function Layout() {
         />
       </div>
     </div>
-  )
+  );
 }
 
 function Pane({
@@ -48,22 +48,30 @@ function Pane({
   active,
   enabled,
 }: {
-  title: string
-  items: string[]
-  active: boolean
-  enabled: boolean
+  title: string;
+  items: string[];
+  active: boolean;
+  enabled: boolean;
 }) {
-  const containerRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const { isHighlighted } = useScopedNavigation({
     containerRef,
     role: "option",
     wrap: true,
     enabled,
-  })
+  });
 
   return (
-    <div style={{ minWidth: 160, padding: 8, borderWidth: 1, borderStyle: "solid", borderColor: active ? "currentColor" : "transparent" }}>
+    <div
+      style={{
+        minWidth: 160,
+        padding: 8,
+        borderWidth: 1,
+        borderStyle: "solid",
+        borderColor: active ? "currentColor" : "transparent",
+      }}
+    >
       <h4>{title}</h4>
       <div ref={containerRef} role="listbox">
         {items.map((item) => (
@@ -80,7 +88,7 @@ function Pane({
         ))}
       </div>
     </div>
-  )
+  );
 }
 
 export default function UseFocusZoneBasic() {
@@ -88,5 +96,5 @@ export default function UseFocusZoneBasic() {
     <KeyboardProvider>
       <Layout />
     </KeyboardProvider>
-  )
+  );
 }

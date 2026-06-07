@@ -84,8 +84,17 @@ export function ProvidersPage() {
   const actions = {
     onSetApiKey: () => dialogs.setApiKeyOpen(true),
     onSelectModel: () => dialogs.setModelOpen(true),
-    onRemoveKey: () => { if (selectedProvider) void handlers.removeKey(selectedProvider.id); },
-    onSelectProvider: () => { if (selectedProvider) void handlers.selectProvider(selectedProvider.id, selectedProvider.name, selectedProvider.model); },
+    onRemoveKey: () => {
+      if (selectedProvider) void handlers.removeKey(selectedProvider.id);
+    },
+    onSelectProvider: () => {
+      if (selectedProvider)
+        void handlers.selectProvider(
+          selectedProvider.id,
+          selectedProvider.name,
+          selectedProvider.model,
+        );
+    },
   };
 
   const handleProviderActivate = (id: string) => {
@@ -97,7 +106,9 @@ export function ProvidersPage() {
   if (isLoading) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <output className="text-tui-muted" aria-live="polite">Loading providers...</output>
+        <output className="text-tui-muted" aria-live="polite">
+          Loading providers...
+        </output>
       </div>
     );
   }
@@ -139,7 +150,9 @@ export function ProvidersPage() {
           provider={selectedProvider}
           actions={actions}
           disableSelectProvider={needsModel}
-          focusedButtonIndex={keyboard.focusZone === "buttons" && selectedProvider ? keyboard.buttonIndex : undefined}
+          focusedButtonIndex={
+            keyboard.focusZone === "buttons" && selectedProvider ? keyboard.buttonIndex : undefined
+          }
           isFocused={keyboard.focusZone === "buttons" && !!selectedProvider}
           getButtonProps={keyboard.getActionButtonProps}
         />
@@ -156,14 +169,10 @@ export function ProvidersPage() {
             secretsStorage={secretsStorage}
             onSubmit={(method, value) => {
               const apiKey: string | CredentialRef =
-                method === "env"
-                  ? { kind: "env", varName: value }
-                  : value;
-              return handlers.saveApiKey(
-                selectedProvider.id,
-                apiKey,
-                { openModelDialog: selectedProvider.id === "openrouter" && !selectedProvider.model },
-              );
+                method === "env" ? { kind: "env", varName: value } : value;
+              return handlers.saveApiKey(selectedProvider.id, apiKey, {
+                openModelDialog: selectedProvider.id === "openrouter" && !selectedProvider.model,
+              });
             }}
           />
           <ModelSelectDialog

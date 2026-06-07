@@ -1,10 +1,7 @@
 "use client";
 
 import { type PopoverProps, PopoverRoot } from "./popover";
-import {
-  PopoverContent,
-  type PopoverContentProps,
-} from "./popover-content";
+import { PopoverContent, type PopoverContentProps } from "./popover-content";
 import type { PopoverPopupRole, PopoverTriggerMode } from "./popover-context";
 import {
   PopoverTrigger,

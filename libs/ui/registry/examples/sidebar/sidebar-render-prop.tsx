@@ -1,4 +1,4 @@
-import type { Ref } from "react"
+import type { Ref } from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -9,7 +9,7 @@ import {
   SidebarItemLabel,
   SidebarSection,
   SidebarSectionTitle,
-} from "@/components/ui/sidebar"
+} from "@/components/ui/sidebar";
 
 export default function SidebarRenderProp() {
   return (
@@ -50,5 +50,5 @@ export default function SidebarRenderProp() {
         <span className="text-xs text-muted-foreground font-mono">Render prop pattern</span>
       </SidebarFooter>
     </Sidebar>
-  )
+  );
 }

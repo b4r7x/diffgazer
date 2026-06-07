@@ -27,15 +27,19 @@ export function useReviewDetailsTabKeyboard({
 }: UseReviewDetailsTabKeyboardOptions) {
   const hasIssue = !!selectedIssue;
 
-  useKey("ArrowLeft", () => {
-    if (!selectedIssue) {
-      enterList();
-      return;
-    }
+  useKey(
+    "ArrowLeft",
+    () => {
+      if (!selectedIssue) {
+        enterList();
+        return;
+      }
 
-    const result = moveTab(-1);
-    if (result === "boundary-left") enterList();
-  }, { scope, enabled });
+      const result = moveTab(-1);
+      if (result === "boundary-left") enterList();
+    },
+    { scope, enabled },
+  );
   useKey("ArrowRight", () => moveTab(1), { scope, enabled: enabled && hasIssue });
 
   useKey("ArrowUp", () => scrollDetails(-80), { scope, enabled });
@@ -44,5 +48,8 @@ export function useReviewDetailsTabKeyboard({
   useKey("1", () => setActiveTab("details"), { scope, enabled: enabled && hasIssue });
   useKey("2", () => setActiveTab("explain"), { scope, enabled: enabled && hasIssue });
   useKey("3", () => setActiveTab("trace"), { scope, enabled: enabled && hasIssue });
-  useKey("4", () => setActiveTab("patch"), { scope, enabled: enabled && hasIssue && !!selectedIssue.suggested_patch });
+  useKey("4", () => setActiveTab("patch"), {
+    scope,
+    enabled: enabled && hasIssue && !!selectedIssue.suggested_patch,
+  });
 }

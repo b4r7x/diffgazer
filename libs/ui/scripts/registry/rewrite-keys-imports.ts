@@ -3,10 +3,12 @@ import { join } from "node:path";
 import { KEYS_PACKAGE_IMPORT_TARGETS, REGISTRY_ORIGIN } from "@diffgazer/registry";
 
 function specifierName(specifier: string): string {
-  return specifier
-    .replace(/^type\s+/, "")
-    .split(/\s+as\s+/)[0]
-    ?.trim() ?? "";
+  return (
+    specifier
+      .replace(/^type\s+/, "")
+      .split(/\s+as\s+/)[0]
+      ?.trim() ?? ""
+  );
 }
 
 function renderImport(specifiers: string[], target: string, quote: string): string {
@@ -14,12 +16,14 @@ function renderImport(specifiers: string[], target: string, quote: string): stri
 }
 
 function rewriteKeysPackageImportLine(line: string): string {
-  const match = /^(\s*)import\s+(type\s+)?\{([^}]+)\}\s+from\s+(["'])@diffgazer\/keys\4;?\s*$/.exec(line);
+  const match = /^(\s*)import\s+(type\s+)?\{([^}]+)\}\s+from\s+(["'])@diffgazer\/keys\4;?\s*$/.exec(
+    line,
+  );
   if (!match) return line;
 
   const indent = match[1] ?? "";
   const typePrefix = match[2] ?? "";
-  const quote = match[4] ?? "\"";
+  const quote = match[4] ?? '"';
   const grouped = new Map<string, string[]>();
   const unknown: string[] = [];
 
@@ -41,12 +45,12 @@ function rewriteKeysPackageImportLine(line: string): string {
   if (unknown.length > 0) {
     throw new Error(
       `Unknown @diffgazer/keys import specifiers in public registry copy content: ${unknown.join(", ")}. ` +
-      `Add them to KEYS_PACKAGE_IMPORT_TARGETS in rewrite-keys-imports.ts.`,
+        `Add them to KEYS_PACKAGE_IMPORT_TARGETS in rewrite-keys-imports.ts.`,
     );
   }
 
-  const rewritten = [...grouped.entries()].map(([target, specifiers]) =>
-    indent + renderImport(specifiers, target, quote),
+  const rewritten = [...grouped.entries()].map(
+    ([target, specifiers]) => indent + renderImport(specifiers, target, quote),
   );
 
   return rewritten.length > 0 ? rewritten.join("\n") : line;
@@ -55,7 +59,8 @@ function rewriteKeysPackageImportLine(line: string): string {
 function stripRelativeJsExtensions(content: string): string {
   return content.replace(
     /(\bfrom\s+|\bimport\s+|\bimport\(\s*|\brequire\(\s*)(["'])(\.{1,2}\/[^"']+)\.js\2/g,
-    (_: string, prefix: string, quote: string, specifier: string) => `${prefix}${quote}${specifier}${quote}`,
+    (_: string, prefix: string, quote: string, specifier: string) =>
+      `${prefix}${quote}${specifier}${quote}`,
   );
 }
 
@@ -93,7 +98,9 @@ function toDirectRegistryDependency(dep: string): string {
   return `${REGISTRY_ORIGIN}/r/ui/${dep}.json`;
 }
 
-export function transformUiPublicRegistryItem<T extends { registryDependencies?: string[] }>(item: T): T {
+export function transformUiPublicRegistryItem<T extends { registryDependencies?: string[] }>(
+  item: T,
+): T {
   if (!Array.isArray(item.registryDependencies)) return item;
 
   return {

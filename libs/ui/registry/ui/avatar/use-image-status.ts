@@ -13,14 +13,12 @@ export function useImageStatus(src: string | undefined) {
     status: src ? "loading" : "idle",
   }));
 
-  const status = state.src === src ? state.status : (src ? "loading" : "idle");
+  const status = state.src === src ? state.status : src ? "loading" : "idle";
 
   useEffect(() => {
-    setState((current) => (
-      current.src === src
-        ? current
-        : { src, status: src ? "loading" : "idle" }
-    ));
+    setState((current) =>
+      current.src === src ? current : { src, status: src ? "loading" : "idle" },
+    );
   }, [src]);
 
   return {

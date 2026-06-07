@@ -26,10 +26,7 @@ afterEach(() => {
 });
 
 function writeRegistry(root: string, items: unknown[]): void {
-  writeFileSync(
-    join(root, "registry/registry.json"),
-    JSON.stringify({ items }),
-  );
+  writeFileSync(join(root, "registry/registry.json"), JSON.stringify({ items }));
 }
 
 function writeHookFile(root: string, name: string, content: string): void {
@@ -102,7 +99,12 @@ describe("buildCopyBundle", () => {
     });
 
     const output = JSON.parse(readFileSync(outputPath, "utf-8")) as {
-      items: Array<{ name: string; title: string; description: string; files: Array<{ path: string; content: string }> }>;
+      items: Array<{
+        name: string;
+        title: string;
+        description: string;
+        files: Array<{ path: string; content: string }>;
+      }>;
       integrity: string;
     };
 

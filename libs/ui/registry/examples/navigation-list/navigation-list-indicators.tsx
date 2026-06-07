@@ -1,17 +1,17 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { NavigationList } from "@/components/ui/navigation-list"
+import { useState } from "react";
+import { NavigationList } from "@/components/ui/navigation-list";
 
 const items = [
   { id: "dashboard", title: "Dashboard" },
   { id: "settings", title: "Settings" },
   { id: "profile", title: "Profile" },
   { id: "help", title: "Help" },
-]
+];
 
 export default function NavigationListIndicators() {
-  const [selected, setSelected] = useState("settings")
+  const [selected, setSelected] = useState("settings");
 
   return (
     <div className="grid grid-cols-2 gap-4">
@@ -35,5 +35,5 @@ export default function NavigationListIndicators() {
         </div>
       ))}
     </div>
-  )
+  );
 }

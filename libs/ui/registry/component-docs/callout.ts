@@ -1,11 +1,15 @@
-import type { ComponentDoc } from "./types"
+import type { ComponentDoc } from "./types";
 
 export const calloutDoc: ComponentDoc = {
   description:
     "Dismissible alert box with tone-driven coloring, frame variants (inline / rail / bar), and a compound API.",
   anatomy: [
     { name: "Callout", indent: 0, note: "Root (manages visibility, provides tone context)" },
-    { name: "Callout.Icon", indent: 1, note: "Tone icon — outlined 14px SVG (overridable via children)" },
+    {
+      name: "Callout.Icon",
+      indent: 1,
+      note: "Tone icon — outlined 14px SVG (overridable via children)",
+    },
     { name: "Callout.Title", indent: 1, note: "Bold title text in the tone color" },
     { name: "Callout.Content", indent: 1, note: "Body text in muted color" },
     { name: "Callout.Dismiss", indent: 1, note: "Close button (24×24 with 4px padding)" },
@@ -19,7 +23,7 @@ export const calloutDoc: ComponentDoc = {
     {
       title: "Frame variants",
       content:
-        "frame=\"inline\" (default): hairline border at tone color + subtle tone bg. frame=\"rail\": no border, 2px inline-start rail at tone color. frame=\"bar\": neutral border + 4px tone marker bar, matching Dialog.Header marker=\"bar\".",
+        'frame="inline" (default): hairline border at tone color + subtle tone bg. frame="rail": no border, 2px inline-start rail at tone color. frame="bar": neutral border + 4px tone marker bar, matching Dialog.Header marker="bar".',
     },
     {
       title: "Default icons",
@@ -34,7 +38,7 @@ export const calloutDoc: ComponentDoc = {
     {
       title: "Accessibility",
       content:
-        "Static callouts have no role. Pass live to opt into role=\"status\" (or role=\"alert\" for tone=\"error\") so assistive tech announces the message. A visually-hidden tone prefix (\"Warning:\", \"Error:\", …) is always rendered so the message is unambiguous without color.",
+        'Static callouts have no role. Pass live to opt into role="status" (or role="alert" for tone="error") so assistive tech announces the message. A visually-hidden tone prefix ("Warning:", "Error:", …) is always rendered so the message is unambiguous without color.',
     },
   ],
   usage: { example: "callout-default" },
@@ -76,13 +80,15 @@ export const calloutDoc: ComponentDoc = {
         type: "(open: boolean) => void",
         required: false,
         defaultValue: null,
-        description: "Called when Callout.Dismiss closes the callout or controlled state should change.",
+        description:
+          "Called when Callout.Dismiss closes the callout or controlled state should change.",
       },
       live: {
         type: "boolean",
         required: false,
         defaultValue: "false",
-        description: "Opt into role=\"status\" (or role=\"alert\" for tone=\"error\") for live-region announcement.",
+        description:
+          'Opt into role="status" (or role="alert" for tone="error") for live-region announcement.',
       },
     },
     "Callout.Icon": {
@@ -118,4 +124,4 @@ export const calloutDoc: ComponentDoc = {
       },
     },
   },
-}
+};

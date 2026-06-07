@@ -53,10 +53,19 @@ export function useProvidersActionButtons({
   const handleButtonAction = (index: number) => {
     if (!selectedProvider) return;
     switch (index) {
-      case 0: if (!needsModel) void onSelectProvider(selectedProvider.id, selectedProvider.name, selectedProvider.model); break;
-      case 1: onSetApiKey(); break;
-      case 2: if (selectedProvider.hasApiKey) void onRemoveKey(selectedProvider.id); break;
-      case 3: onSelectModel(); break;
+      case 0:
+        if (!needsModel)
+          void onSelectProvider(selectedProvider.id, selectedProvider.name, selectedProvider.model);
+        break;
+      case 1:
+        onSetApiKey();
+        break;
+      case 2:
+        if (selectedProvider.hasApiKey) void onRemoveKey(selectedProvider.id);
+        break;
+      case 3:
+        onSelectModel();
+        break;
     }
   };
 

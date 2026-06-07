@@ -57,7 +57,7 @@ describe("parseSSEStream", () => {
     },
     {
       name: "partial line at end of chunk",
-      chunks: ['data: {"id":1}\ndata: {"id"', ':2}\n'],
+      chunks: ['data: {"id":1}\ndata: {"id"', ":2}\n"],
       events: [{ id: 1 }, { id: 2 }],
     },
     {
@@ -92,8 +92,14 @@ describe("parseSSEStream", () => {
   });
 
   it("finishes cleanly for empty streams, whitespace, and truncated final JSON", async () => {
-    await expect(parseChunks([])).resolves.toMatchObject({ events: [], result: { completed: true } });
-    await expect(parseChunks(["   \n"])).resolves.toMatchObject({ events: [], result: { completed: true } });
+    await expect(parseChunks([])).resolves.toMatchObject({
+      events: [],
+      result: { completed: true },
+    });
+    await expect(parseChunks(["   \n"])).resolves.toMatchObject({
+      events: [],
+      result: { completed: true },
+    });
     await expect(parseChunks(['data: {"incomplete":'])).resolves.toMatchObject({
       events: [],
       result: { completed: true },
@@ -103,7 +109,11 @@ describe("parseSSEStream", () => {
   it("cancels parsing when the buffered data exceeds the limit", async () => {
     const onBufferOverflow = vi.fn();
     const chunkSize = 6 * 1024 * 1024;
-    const reader = createMockReader(["a".repeat(chunkSize), "b".repeat(chunkSize), "c".repeat(chunkSize)]);
+    const reader = createMockReader([
+      "a".repeat(chunkSize),
+      "b".repeat(chunkSize),
+      "c".repeat(chunkSize),
+    ]);
     const events: unknown[] = [];
 
     const result = await parseSSEStream(reader, {
@@ -160,7 +170,9 @@ describe("parseSSEStream", () => {
       throw new Error("Parse error");
     };
 
-    await expect(parseChunks(['data: {"message":"test"}\n'], parseEvent)).rejects.toThrow("Parse error");
+    await expect(parseChunks(['data: {"message":"test"}\n'], parseEvent)).rejects.toThrow(
+      "Parse error",
+    );
   });
 
   it("parses long final lines without a trailing newline", async () => {

@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
 
 export default function DialogUpload() {
   return (
@@ -28,16 +28,27 @@ export default function DialogUpload() {
               <span className="text-white">67%</span>
             </div>
             <div className="space-y-1 text-sm text-gray-300">
-              <p><span className="text-success">[x]</span> Checksum verified</p>
-              <p><span className="text-gray-600">[ ]</span> Signature verified</p>
+              <p>
+                <span className="text-success">[x]</span> Checksum verified
+              </p>
+              <p>
+                <span className="text-gray-600">[ ]</span> Signature verified
+              </p>
             </div>
           </div>
         </DialogBody>
-        <DialogFooter hints={[{ key: "Esc", label: "Close" }, { key: "Enter", label: "Confirm" }]}>
-          <DialogClose bracket variant="ghost">Cancel</DialogClose>
+        <DialogFooter
+          hints={[
+            { key: "Esc", label: "Close" },
+            { key: "Enter", label: "Confirm" },
+          ]}
+        >
+          <DialogClose bracket variant="ghost">
+            Cancel
+          </DialogClose>
           <DialogAction>Background</DialogAction>
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

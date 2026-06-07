@@ -47,11 +47,7 @@ export interface RunDiffWorkflowOptions<TConfig> {
   requireConfig: (cwd: string) => TConfig;
   resolveDefaultNames: (ctx: { cwd: string; config: TConfig }) => string[];
   validateRequestedNames: (names: string[]) => void;
-  resolveFilesForName: (ctx: {
-    name: string;
-    cwd: string;
-    config: TConfig;
-  }) => DiffWorkflowFile[];
+  resolveFilesForName: (ctx: { name: string; cwd: string; config: TConfig }) => DiffWorkflowFile[];
   noInstalledMessage: string;
   upToDateMessage: string;
   renderChangedFile: (ctx: {
@@ -100,7 +96,10 @@ function diffFile(
   return "changed";
 }
 
-function printSummary(counts: DiffCounts, options: Pick<RunDiffWorkflowOptions<unknown>, "itemPlural" | "upToDateMessage">): void {
+function printSummary(
+  counts: DiffCounts,
+  options: Pick<RunDiffWorkflowOptions<unknown>, "itemPlural" | "upToDateMessage">,
+): void {
   newline();
   if (counts.changed === 0 && counts.notInstalled === 0) {
     info(options.upToDateMessage);
@@ -114,9 +113,7 @@ function printSummary(counts: DiffCounts, options: Pick<RunDiffWorkflowOptions<u
   info(`Summary: ${parts.join(", ")} ${options.itemPlural}.`);
 }
 
-export function runDiffWorkflow<TConfig>(
-  options: RunDiffWorkflowOptions<TConfig>,
-): void {
+export function runDiffWorkflow<TConfig>(options: RunDiffWorkflowOptions<TConfig>): void {
   const config = options.requireConfig(options.cwd);
 
   const names = resolveNames(options, config);

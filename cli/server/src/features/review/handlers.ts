@@ -17,7 +17,12 @@ import { isValidProjectPath, resolvesToSameProject } from "../../shared/lib/vali
 import { handleDrilldownRequest } from "./drilldown.js";
 import { handleStoreError } from "./errors.js";
 import { createReviewSession } from "./service.js";
-import { cancelSession, deleteSession, getActiveSessionForProject, getSession } from "./stream/store.js";
+import {
+  cancelSession,
+  deleteSession,
+  getActiveSessionForProject,
+  getSession,
+} from "./stream/store.js";
 import type { HandleDrilldownError } from "./types.js";
 
 export async function getReviewForProject(id: string, projectPath: string) {
@@ -29,9 +34,7 @@ export async function getReviewForProject(id: string, projectPath: string) {
   return result;
 }
 
-type RequestedProjectPath =
-  | { ok: true; projectPath: string }
-  | { ok: false; response: Response };
+type RequestedProjectPath = { ok: true; projectPath: string } | { ok: false; response: Response };
 
 export async function getRequestedProjectPath(c: Context): Promise<RequestedProjectPath> {
   const projectPath = getProjectRoot(c);
@@ -39,7 +42,10 @@ export async function getRequestedProjectPath(c: Context): Promise<RequestedProj
   if (!queryProjectPath) return { ok: true, projectPath };
 
   if (!isValidProjectPath(queryProjectPath)) {
-    return { ok: false, response: errorResponse(c, "Invalid project path", ErrorCode.INVALID_PATH, 400) };
+    return {
+      ok: false,
+      response: errorResponse(c, "Invalid project path", ErrorCode.INVALID_PATH, 400),
+    };
   }
 
   // The requested path must identify the request's project root. The fast string
@@ -51,7 +57,12 @@ export async function getRequestedProjectPath(c: Context): Promise<RequestedProj
   if (!matchesProject) {
     return {
       ok: false,
-      response: errorResponse(c, "projectPath does not match request project", ErrorCode.VALIDATION_ERROR, 400),
+      response: errorResponse(
+        c,
+        "projectPath does not match request project",
+        ErrorCode.VALIDATION_ERROR,
+        400,
+      ),
     };
   }
 
@@ -135,9 +146,7 @@ export async function listReviewsHandler(c: Context): Promise<Response> {
 
   return c.json({
     reviews: result.value.items,
-    ...(result.value.warnings.length > 0
-      ? { warnings: result.value.warnings }
-      : {}),
+    ...(result.value.warnings.length > 0 ? { warnings: result.value.warnings } : {}),
   });
 }
 
@@ -197,16 +206,18 @@ export async function drilldownHandler(
     return errorResponse(c, clientResult.error.message, clientResult.error.code, 500);
   }
 
-  const result = await handleDrilldownRequest(
-    clientResult.value,
-    id,
-    body.issueId,
-    projectPath,
-    { review: reviewResult.value, signal: c.req.raw.signal },
-  );
+  const result = await handleDrilldownRequest(clientResult.value, id, body.issueId, projectPath, {
+    review: reviewResult.value,
+    signal: c.req.raw.signal,
+  });
 
   if (!result.ok) {
-    return errorResponse(c, result.error.message, result.error.code, drilldownErrorStatus(result.error.code));
+    return errorResponse(
+      c,
+      result.error.message,
+      result.error.code,
+      drilldownErrorStatus(result.error.code),
+    );
   }
 
   return c.json({ drilldown: result.value });

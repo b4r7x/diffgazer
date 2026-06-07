@@ -55,9 +55,7 @@ export function useReviewCompletion({
 
       const reportStep = stepsRef.current.find((s) => s.id === "report");
       const reportCompleted = reportStep?.status === "completed";
-      const delayMs = reportCompleted
-        ? REPORT_COMPLETE_DELAY_MS
-        : DEFAULT_COMPLETE_DELAY_MS;
+      const delayMs = reportCompleted ? REPORT_COMPLETE_DELAY_MS : DEFAULT_COMPLETE_DELAY_MS;
 
       timerRef.current = setTimeout(() => {
         timerRef.current = null;

@@ -9,13 +9,7 @@ export const SeverityFilterSchema = z.object({
 });
 export type SeverityFilter = z.infer<typeof SeverityFilterSchema>;
 
-export const LENS_IDS = [
-  "correctness",
-  "security",
-  "performance",
-  "simplicity",
-  "tests",
-] as const;
+export const LENS_IDS = ["correctness", "security", "performance", "simplicity", "tests"] as const;
 
 export const LensIdSchema = z.enum(LENS_IDS);
 export type LensId = z.infer<typeof LensIdSchema>;

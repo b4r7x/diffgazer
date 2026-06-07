@@ -1,11 +1,7 @@
 import { getErrorMessage } from "@diffgazer/core/errors";
 import type { AIProvider, CredentialRef } from "@diffgazer/core/schemas/config";
 import { PROVIDER_ENV_VARS } from "@diffgazer/core/schemas/config";
-import type {
-  SecretEntry,
-  SecretsStorageError,
-  SecretsStorageErrorCode,
-} from "./types.js";
+import type { SecretEntry, SecretsStorageError, SecretsStorageErrorCode } from "./types.js";
 
 /** Normalize a credential input (string or CredentialRef) into a SecretEntry for persistence. */
 export function toSecretEntry(

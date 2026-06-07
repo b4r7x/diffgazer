@@ -45,11 +45,7 @@ export function ModelSearchInput({
               e.preventDefault();
             }
           }}
-          onEnter={
-            showCustomAction && onUseCustom && canUseCustom
-              ? onUseCustom
-              : undefined
-          }
+          onEnter={showCustomAction && onUseCustom && canUseCustom ? onUseCustom : undefined}
           aria-label="Search models"
           placeholder="Search models..."
           size="sm"

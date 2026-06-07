@@ -72,24 +72,25 @@ export function MenuSub({
     [openState, setOpenState, triggerId],
   );
 
-  return (
-    <MenuSubContext value={ctx}>{children}</MenuSubContext>
-  );
+  return <MenuSubContext value={ctx}>{children}</MenuSubContext>;
 }
 
 const SUB_CHEVRON = "▶";
 const INDICATOR_ACTIVE = "▌";
 const INDICATOR_IDLE = ">";
 
-export const menuSubTriggerBase = cva("cursor-pointer w-full transition-colors px-4 py-3 flex items-center font-mono duration-75", {
-  variants: {
-    state: {
-      normal: "hover:bg-secondary group",
-      focused: "font-bold bg-primary text-primary-foreground",
+export const menuSubTriggerBase = cva(
+  "cursor-pointer w-full transition-colors px-4 py-3 flex items-center font-mono duration-75",
+  {
+    variants: {
+      state: {
+        normal: "hover:bg-secondary group",
+        focused: "font-bold bg-primary text-primary-foreground",
+      },
     },
+    defaultVariants: { state: "normal" },
   },
-  defaultVariants: { state: "normal" },
-});
+);
 
 export type MenuSubTriggerVariantProps = VariantProps<typeof menuSubTriggerBase>;
 
@@ -108,7 +109,8 @@ export function MenuSubTrigger({
   className,
   ref,
 }: MenuSubTriggerProps) {
-  const { highlighted, highlight, idPrefix, itemRole, registerActivator, unregisterActivator } = useMenuContext();
+  const { highlighted, highlight, idPrefix, itemRole, registerActivator, unregisterActivator } =
+    useMenuContext();
   const { open, onOpenChange, triggerRef } = useMenuSubContext();
 
   useEffect(() => {
@@ -162,7 +164,9 @@ export function MenuSubTrigger({
         aria-hidden="true"
         className={cn(
           "pr-4 shrink-0 inline-flex w-5 items-center justify-center self-center leading-none relative -top-[2px]",
-          isFocused ? undefined : "transition-opacity opacity-0 group-hover:opacity-100 text-foreground",
+          isFocused
+            ? undefined
+            : "transition-opacity opacity-0 group-hover:opacity-100 text-foreground",
         )}
       >
         {isFocused ? INDICATOR_ACTIVE : INDICATOR_IDLE}
@@ -183,11 +187,7 @@ export interface MenuSubContentProps {
   sideOffset?: number;
 }
 
-export function MenuSubContent({
-  children,
-  className,
-  sideOffset = 0,
-}: MenuSubContentProps) {
+export function MenuSubContent({ children, className, sideOffset = 0 }: MenuSubContentProps) {
   const { open, onOpenChange, triggerRef } = useMenuSubContext();
   const parentMenu = useMenuContext();
 

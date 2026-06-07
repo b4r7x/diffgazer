@@ -36,17 +36,25 @@ export function CommandPaletteDemo() {
     }
   };
 
-  useKey("mod+k", () => {
-    setOpen(true);
-    setQuery("");
-  }, { preventDefault: true, scope: "global" });
+  useKey(
+    "mod+k",
+    () => {
+      setOpen(true);
+      setQuery("");
+    },
+    { preventDefault: true, scope: "global" },
+  );
 
   useScope("command-palette", { enabled: open });
 
-  useKey("Escape", () => {
-    setOpen(false);
-    setQuery("");
-  }, { enabled: open, scope: "command-palette" });
+  useKey(
+    "Escape",
+    () => {
+      setOpen(false);
+      setQuery("");
+    },
+    { enabled: open, scope: "command-palette" },
+  );
 
   const { isHighlighted } = useScopedNavigation({
     containerRef,
@@ -83,12 +91,21 @@ export function CommandPaletteDemo() {
           fontSize: 14,
         }}
       >
-        Press <kbd className="kbd" style={{ margin: "0 4px" }}>Cmd</kbd>
-        <kbd className="kbd" style={{ margin: "0 4px" }}>K</kbd> to open command palette
+        Press{" "}
+        <kbd className="kbd" style={{ margin: "0 4px" }}>
+          Cmd
+        </kbd>
+        <kbd className="kbd" style={{ margin: "0 4px" }}>
+          K
+        </kbd>{" "}
+        to open command palette
       </div>
 
       {toastMessage && (
-        <div className="demo-action-log" style={{ textAlign: "center", color: "var(--color-success)" }}>
+        <div
+          className="demo-action-log"
+          style={{ textAlign: "center", color: "var(--color-success)" }}
+        >
           {toastMessage}
         </div>
       )}
@@ -99,7 +116,10 @@ export function CommandPaletteDemo() {
             type="button"
             aria-label="Close command palette"
             className="demo-overlay-backdrop"
-            onClick={() => { setOpen(false); setQuery(""); }}
+            onClick={() => {
+              setOpen(false);
+              setQuery("");
+            }}
           />
           <div className="demo-dialog">
             <input
@@ -127,7 +147,9 @@ export function CommandPaletteDemo() {
                 </button>
               ))}
               {filtered.length === 0 && (
-                <div style={{ padding: "10px 12px", color: "var(--color-text-muted)", fontSize: 14 }}>
+                <div
+                  style={{ padding: "10px 12px", color: "var(--color-text-muted)", fontSize: 14 }}
+                >
                   No commands found
                 </div>
               )}

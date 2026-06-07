@@ -1,4 +1,4 @@
-import { Kbd } from "@/components/ui/kbd"
+import { Kbd } from "@/components/ui/kbd";
 
 export default function KbdDefault() {
   return (
@@ -9,5 +9,5 @@ export default function KbdDefault() {
       <Kbd>Tab</Kbd>
       <Kbd>Ctrl</Kbd>
     </div>
-  )
+  );
 }

@@ -38,9 +38,15 @@ export interface MenuItemWithDivider {
  * callers do not need to keep their menu definitions group-sorted.
  */
 export function withGroupDividers(items: readonly NavItem[]): MenuItemWithDivider[] {
-  const groupRank = new Map<MenuGroup, number>(MENU_GROUP_ORDER.map((group, index) => [group, index]));
+  const groupRank = new Map<MenuGroup, number>(
+    MENU_GROUP_ORDER.map((group, index) => [group, index]),
+  );
   const sorted = items
-    .map((item, index) => ({ item, index, rank: groupRank.get(item.group) ?? MENU_GROUP_ORDER.length }))
+    .map((item, index) => ({
+      item,
+      index,
+      rank: groupRank.get(item.group) ?? MENU_GROUP_ORDER.length,
+    }))
     .sort((a, b) => a.rank - b.rank || a.index - b.index)
     .map(({ item }) => item);
 

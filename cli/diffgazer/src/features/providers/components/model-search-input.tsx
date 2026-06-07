@@ -29,13 +29,12 @@ export function SearchInput({ value, onChange, isActive }: SearchInputProps) {
   return (
     <Box>
       <Text color={tokens.muted}>/ </Text>
-      <Box
-        borderStyle="single"
-        borderColor={isActive ? tokens.accent : tokens.border}
-        flexGrow={1}
-      >
+      <Box borderStyle="single" borderColor={isActive ? tokens.accent : tokens.border} flexGrow={1}>
         {value ? (
-          <Text>{value}<Text color={isActive ? tokens.fg : tokens.muted}>{isActive ? "\u2588" : ""}</Text></Text>
+          <Text>
+            {value}
+            <Text color={isActive ? tokens.fg : tokens.muted}>{isActive ? "\u2588" : ""}</Text>
+          </Text>
         ) : (
           <Text color={tokens.muted}>Search models...{isActive ? "\u2588" : ""}</Text>
         )}

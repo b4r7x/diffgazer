@@ -1,5 +1,5 @@
-import { BlockBar } from "@/components/ui/block-bar"
+import { BlockBar } from "@/components/ui/block-bar";
 
 export default function BlockBarDefault() {
-  return <BlockBar label="Progress" value={14} max={20} />
+  return <BlockBar label="Progress" value={14} max={20} />;
 }

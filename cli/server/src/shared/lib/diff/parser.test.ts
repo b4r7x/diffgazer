@@ -88,7 +88,13 @@ diff --git a/b.ts b/b.ts
       additions: 0,
       deletions: 3,
     },
-  ])("classifies the file as $operation when one side is /dev/null", ({ diff, operation, filePath, additions, deletions }) => {
+  ])("classifies the file as $operation when one side is /dev/null", ({
+    diff,
+    operation,
+    filePath,
+    additions,
+    deletions,
+  }) => {
     const result = parseDiff(diff);
 
     expect(result.files[0]?.operation).toBe(operation);
@@ -180,7 +186,10 @@ rename to new-name.ts
 
   it.each([
     { description: "empty input", input: "" },
-    { description: "text that is not in diff format", input: "some random text\nwithout diff format" },
+    {
+      description: "text that is not in diff format",
+      input: "some random text\nwithout diff format",
+    },
   ])("returns no files for $description", ({ input }) => {
     const result = parseDiff(input);
 

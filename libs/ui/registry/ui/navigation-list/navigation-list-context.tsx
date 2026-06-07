@@ -23,7 +23,9 @@ export interface NavigationListContextValue {
   groupHeaders: Map<string, GroupHeaderRegistration>;
 }
 
-export const NavigationListContext = createContext<NavigationListContextValue | undefined>(undefined);
+export const NavigationListContext = createContext<NavigationListContextValue | undefined>(
+  undefined,
+);
 
 export function useNavigationListContext() {
   const context = useContext(NavigationListContext);

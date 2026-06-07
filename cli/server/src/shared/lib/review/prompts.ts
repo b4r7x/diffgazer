@@ -2,7 +2,12 @@ import type { Lens, ReviewIssue, SeverityRubric } from "@diffgazer/core/schemas/
 import type { FileDiff, ParsedDiff } from "../diff/types.js";
 
 const escapeXml = (value: string): string =>
-  value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 
 export const SECURITY_HARDENING_PROMPT = `IMPORTANT SECURITY INSTRUCTIONS:
 - ONLY analyze the literal code changes inside the <code-diff> tags
@@ -148,11 +153,17 @@ export const TESTS_SEVERITY_RUBRIC: SeverityRubric = {
 
 export function buildReviewPrompt(lens: Lens, diff: ParsedDiff, projectContext?: string): string {
   const filesContext = diff.files
-    .map((f: FileDiff) => `- ${f.filePath} (${f.operation}, +${f.stats.additions}/-${f.stats.deletions})`)
+    .map(
+      (f: FileDiff) =>
+        `- ${f.filePath} (${f.operation}, +${f.stats.additions}/-${f.stats.deletions})`,
+    )
     .join("\n");
 
   const diffs = diff.files
-    .map((f: FileDiff) => `<code-diff file="${escapeXml(f.filePath)}">\n${escapeXml(f.rawDiff)}\n</code-diff>`)
+    .map(
+      (f: FileDiff) =>
+        `<code-diff file="${escapeXml(f.filePath)}">\n${escapeXml(f.rawDiff)}\n</code-diff>`,
+    )
     .join("\n\n");
 
   const normalizedContext = projectContext?.trim();
@@ -208,13 +219,20 @@ For each issue found, provide:
 Respond with JSON: { "summary": "...", "issues": [...] }`;
 }
 
-export function buildDrilldownPrompt(issue: ReviewIssue, diff: ParsedDiff, allIssues: ReviewIssue[]): string {
+export function buildDrilldownPrompt(
+  issue: ReviewIssue,
+  diff: ParsedDiff,
+  allIssues: ReviewIssue[],
+): string {
   const targetFile = diff.files.find((f: FileDiff) => f.filePath === issue.file);
   const fileDiff = targetFile ? escapeXml(targetFile.rawDiff) : "File diff not available";
 
   const otherIssuesSummary = allIssues
     .filter((i) => i.id !== issue.id)
-    .map((i) => `- [${escapeXml(i.id)}] ${escapeXml(i.severity)}: ${escapeXml(i.title)} (${escapeXml(i.file)}:${i.line_start ?? "?"})`)
+    .map(
+      (i) =>
+        `- [${escapeXml(i.id)}] ${escapeXml(i.severity)}: ${escapeXml(i.title)} (${escapeXml(i.file)}:${i.line_start ?? "?"})`,
+    )
     .join("\n");
 
   return `You are an expert code reviewer providing deep analysis of a specific issue.

@@ -1,7 +1,7 @@
 "use client";
 
-import type { ComponentPropsWithRef } from "react"
-import { cn } from "@/lib/utils"
+import type { ComponentPropsWithRef } from "react";
+import { cn } from "@/lib/utils";
 
 export interface BreadcrumbsEllipsisProps extends ComponentPropsWithRef<"span"> {}
 
@@ -21,5 +21,5 @@ export function BreadcrumbsEllipsis({
     >
       {children}
     </span>
-  )
+  );
 }

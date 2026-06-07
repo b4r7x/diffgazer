@@ -41,7 +41,8 @@ export function RadioGroupItem<TValue extends string = string>({
   const isSelected = context.value === value;
   const isDisabled = context.disabled || !!itemDisabled;
   const isHighlighted = context.highlightedValue === value;
-  const isTabTarget = !isDisabled && (!context.keyboardNavigation || context.tabTargetValue === value);
+  const isTabTarget =
+    !isDisabled && (!context.keyboardNavigation || context.tabTargetValue === value);
   const { registerItem, unregisterItem } = context;
 
   useLayoutEffect(() => {

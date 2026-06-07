@@ -145,7 +145,11 @@ export function IssueListPane({
               >
                 <NavigationList.Title className="min-w-0">
                   <span
-                    className={cn("mr-2", config.color, "group-data-[active]:text-primary-foreground")}
+                    className={cn(
+                      "mr-2",
+                      config.color,
+                      "group-data-[active]:text-primary-foreground",
+                    )}
                     aria-hidden="true"
                   >
                     {config.icon}
@@ -162,7 +166,9 @@ export function IssueListPane({
           })}
         </NavigationList>
         {issues.length === 0 && (
-          <EmptyState variant="inline" size="sm">{emptyMessage}</EmptyState>
+          <EmptyState variant="inline" size="sm">
+            {emptyMessage}
+          </EmptyState>
         )}
       </div>
     </Panel>

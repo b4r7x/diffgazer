@@ -151,7 +151,11 @@ describe("CLI SeverityFilterGroup focus clamping", () => {
       </CliThemeProvider>
     );
     const result = render(ui(filter));
-    return { ...result, onFilterChange, rerenderWith: (next: UISeverityFilter) => result.rerender(ui(next)) };
+    return {
+      ...result,
+      onFilterChange,
+      rerenderWith: (next: UISeverityFilter) => result.rerender(ui(next)),
+    };
   }
 
   test("clamps the focused index when the Reset chip disappears after an external filter clear", async () => {

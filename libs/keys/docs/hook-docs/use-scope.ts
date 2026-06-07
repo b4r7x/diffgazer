@@ -1,4 +1,4 @@
-import type { HookDoc } from "@diffgazer/registry"
+import type { HookDoc } from "@diffgazer/registry";
 
 export const useScopeDoc: HookDoc = {
   description:
@@ -12,7 +12,8 @@ export const useScopeDoc: HookDoc = {
       name: "name",
       type: "string | null",
       required: true,
-      description: "Unique name for the scope pushed onto the stack. Pass null to skip pushing without violating Hook call order.",
+      description:
+        "Unique name for the scope pushed onto the stack. Pass null to skip pushing without violating Hook call order.",
     },
     {
       name: "options.enabled",
@@ -48,4 +49,4 @@ export const useScopeDoc: HookDoc = {
     { name: "use-scope-nested", title: "Nested scopes resolve deepest-first" },
   ],
   tags: ["provider-dependent", "scope"],
-}
+};

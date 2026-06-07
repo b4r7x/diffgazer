@@ -1,4 +1,4 @@
-import { Stepper } from "@/components/ui/stepper"
+import { Stepper } from "@/components/ui/stepper";
 
 export default function StepperVariantProgress() {
   return (
@@ -16,5 +16,5 @@ export default function StepperVariantProgress() {
         <Stepper.Trigger>Apply</Stepper.Trigger>
       </Stepper.Step>
     </Stepper>
-  )
+  );
 }

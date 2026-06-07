@@ -3,10 +3,7 @@ import { basename, resolve } from "node:path";
 import { assertSafeLibraryId } from "./config.mjs";
 import { readJson } from "./json.mjs";
 import { resolveInside } from "./paths.mjs";
-import {
-  collectPathParityErrors,
-  collectTreeParityErrors,
-} from "./validation.mjs";
+import { collectPathParityErrors, collectTreeParityErrors } from "./validation.mjs";
 
 export {
   getArtifactLibraries,
@@ -18,7 +15,11 @@ export {
 export function collectMissingWorkspaceArtifactFiles(workspaceRoot, libraries) {
   return libraries.flatMap((library) => {
     assertSafeLibraryId(library.id, `${library.id} artifact library id`);
-    const libraryRoot = resolveInside(workspaceRoot, library.workspaceDir, `${library.id} workspace directory`);
+    const libraryRoot = resolveInside(
+      workspaceRoot,
+      library.workspaceDir,
+      `${library.id} workspace directory`,
+    );
     const artifactRoot = resolve(libraryRoot, "dist/artifacts");
     const manifestRelPath = `${library.workspaceDir}/dist/artifacts/artifact-manifest.json`;
     const manifestPath = resolve(workspaceRoot, manifestRelPath);
@@ -87,12 +88,20 @@ function collectBaseOutputErrors(docsRoot, artifact) {
 
   return [
     ...collectTreeParityErrors(
-      resolveInside(artifact.artifactRoot, artifact.manifest.docs.contentDir, `${libraryId} docs content artifact path`),
+      resolveInside(
+        artifact.artifactRoot,
+        artifact.manifest.docs.contentDir,
+        `${libraryId} docs content artifact path`,
+      ),
       resolve(docsRoot, "content/docs", libraryId),
       `${libraryId} docs content sync`,
     ),
     ...collectTreeParityErrors(
-      resolveInside(artifact.artifactRoot, artifact.manifest.registry.publicDir, `${libraryId} public registry artifact path`),
+      resolveInside(
+        artifact.artifactRoot,
+        artifact.manifest.registry.publicDir,
+        `${libraryId} public registry artifact path`,
+      ),
       resolve(docsRoot, "public/r", libraryId),
       `${libraryId} public registry sync`,
     ),
@@ -103,14 +112,14 @@ function collectAssetOutputErrors(docsRoot, artifact) {
   if (!artifact.manifest.docs.assetsDir) return [];
 
   const libraryId = artifact.id;
-  const artifactAssetsDir = resolveInside(artifact.artifactRoot, artifact.manifest.docs.assetsDir, `${libraryId} assets artifact path`);
+  const artifactAssetsDir = resolveInside(
+    artifact.artifactRoot,
+    artifact.manifest.docs.assetsDir,
+    `${libraryId} assets artifact path`,
+  );
   const outputAssetsDir = resolve(docsRoot, "public/library-assets", libraryId);
   if (existsSync(artifactAssetsDir)) {
-    return collectTreeParityErrors(
-      artifactAssetsDir,
-      outputAssetsDir,
-      `${libraryId} assets sync`,
-    );
+    return collectTreeParityErrors(artifactAssetsDir, outputAssetsDir, `${libraryId} assets sync`);
   }
   if (existsSync(outputAssetsDir) && directoryHasFiles(outputAssetsDir)) {
     return [`${libraryId} assets sync: stale output directory ${outputAssetsDir}`];
@@ -142,12 +151,14 @@ function collectPrimaryGeneratedErrors(docsRoot, artifact) {
   ];
 
   if (artifact.manifest.generated?.demoIndex) {
-    errors.push(...collectGeneratedDemoIndexErrors(
-      resolve(artifactGeneratedDir, "demo-index.ts"),
-      resolve(outputGeneratedDir, "demo-index.ts"),
-      `${artifact.id} generated sync demo-index.ts`,
-      (content) => rewriteDemoIndexForViteGlob(content),
-    ));
+    errors.push(
+      ...collectGeneratedDemoIndexErrors(
+        resolve(artifactGeneratedDir, "demo-index.ts"),
+        resolve(outputGeneratedDir, "demo-index.ts"),
+        `${artifact.id} generated sync demo-index.ts`,
+        (content) => rewriteDemoIndexForViteGlob(content),
+      ),
+    );
   }
 
   return errors;
@@ -155,9 +166,7 @@ function collectPrimaryGeneratedErrors(docsRoot, artifact) {
 
 export function rewriteDemoIndexForViteGlob(content) {
   const entries = Array.from(
-    content.matchAll(
-      /^\s+"([^"]+)": lazy\(\(\) => import\("([^"]+)"\)\),$/gm,
-    ),
+    content.matchAll(/^\s+"([^"]+)": lazy\(\(\) => import\("([^"]+)"\)\),$/gm),
   );
   if (entries.length === 0) return content;
 
@@ -191,11 +200,7 @@ function collectSecondaryGeneratedErrors(docsRoot, artifact) {
     : Object.values(artifact.manifest.generated ?? {});
 
   return generatedFiles.flatMap((generatedFile) =>
-    collectSecondaryGeneratedFileErrors(
-      docsRoot,
-      artifact,
-      generatedFile,
-    )
+    collectSecondaryGeneratedFileErrors(docsRoot, artifact, generatedFile),
   );
 }
 
@@ -211,11 +216,7 @@ function collectSecondaryExampleErrors(docsRoot, artifact) {
   const outputDir = resolve(docsRoot, "registry/examples", artifact.id);
 
   if (existsSync(examplesDir)) {
-    return collectTreeParityErrors(
-      examplesDir,
-      outputDir,
-      `${artifact.id} examples sync`,
-    );
+    return collectTreeParityErrors(examplesDir, outputDir, `${artifact.id} examples sync`);
   }
   if (existsSync(outputDir) && directoryHasFiles(outputDir)) {
     return [`${artifact.id} examples sync: stale output directory ${outputDir}`];
@@ -245,7 +246,9 @@ function collectGeneratedDemoIndexErrors(artifactPath, outputPath, label, rewrit
 
   const expected = rewriteExpected(readFileSync(artifactPath, "utf-8"));
   const actual = readFileSync(outputPath, "utf-8");
-  return expected === actual ? [] : [`${label}: artifact differs from rewritten docs runtime demo index`];
+  return expected === actual
+    ? []
+    : [`${label}: artifact differs from rewritten docs runtime demo index`];
 }
 
 function collectSecondaryGeneratedFileErrors(docsRoot, artifact, generatedFile) {
@@ -261,22 +264,13 @@ function collectSecondaryGeneratedFileErrors(docsRoot, artifact, generatedFile) 
     return collectPathParityErrors(artifactPath, outputPath, label);
   }
 
-  return collectGeneratedDemoIndexErrors(
-    artifactPath,
-    outputPath,
-    label,
-    (content) => rewriteDemoIndexForViteGlob(
-      rewriteSecondaryDemoIndexImports(content, artifact.id),
-    ),
+  return collectGeneratedDemoIndexErrors(artifactPath, outputPath, label, (content) =>
+    rewriteDemoIndexForViteGlob(rewriteSecondaryDemoIndexImports(content, artifact.id)),
   );
 }
 
 function collectArtifactOutputParityErrors(params) {
-  const {
-    docsRoot,
-    primaryLibraryId,
-    artifacts = [],
-  } = params;
+  const { docsRoot, primaryLibraryId, artifacts = [] } = params;
   const errors = [];
 
   for (const artifact of artifacts) {
@@ -299,11 +293,7 @@ function collectArtifactOutputParityErrors(params) {
 }
 
 export function collectArtifactSyncValidationErrors(params) {
-  const {
-    docsRoot,
-    primaryLibraryId,
-    libraries,
-  } = params;
+  const { docsRoot, primaryLibraryId, libraries } = params;
 
   const errors = [];
 
@@ -326,10 +316,7 @@ export function collectArtifactSyncValidationErrors(params) {
     );
   }
 
-  const requiredRootFiles = [
-    "content/docs/meta.json",
-    "src/generated/demo-loaders.ts",
-  ];
+  const requiredRootFiles = ["content/docs/meta.json", "src/generated/demo-loaders.ts"];
 
   for (const relPath of requiredRootFiles) {
     const absPath = resolve(docsRoot, relPath);
@@ -342,8 +329,16 @@ export function collectArtifactSyncValidationErrors(params) {
     const contentMetaRelPath = `content/docs/${libraryId}/meta.json`;
     const publicRegistryRelPath = `public/r/${libraryId}/registry.json`;
     const generatedNamespaceRelPath = `src/generated/${libraryId}`;
-    const contentMetaPath = resolveInside(docsRoot, contentMetaRelPath, `${libraryId} docs namespace content output`);
-    const publicRegistryPath = resolveInside(docsRoot, publicRegistryRelPath, `${libraryId} public registry namespace output`);
+    const contentMetaPath = resolveInside(
+      docsRoot,
+      contentMetaRelPath,
+      `${libraryId} docs namespace content output`,
+    );
+    const publicRegistryPath = resolveInside(
+      docsRoot,
+      publicRegistryRelPath,
+      `${libraryId} public registry namespace output`,
+    );
     const generatedNamespaceAbsPath = resolveInside(
       docsRoot,
       generatedNamespaceRelPath,
@@ -377,10 +372,5 @@ export function assertArtifactSyncOutputs(params) {
   const errors = collectArtifactSyncValidationErrors(params);
   if (errors.length === 0) return;
 
-  throw new Error(
-    [
-      "Artifact sync validation failed in docs host.",
-      ...errors,
-    ].join("\n"),
-  );
+  throw new Error(["Artifact sync validation failed in docs host.", ...errors].join("\n"));
 }

@@ -118,9 +118,7 @@ export function ModelSelectOverlay({
   // against the current filteredModels.length, so the stored highlightIndex
   // can never persist out of range across user actions.
   const safeHighlightIndex =
-    filteredModels.length === 0
-      ? 0
-      : Math.min(highlightIndex, filteredModels.length - 1);
+    filteredModels.length === 0 ? 0 : Math.min(highlightIndex, filteredModels.length - 1);
 
   const resetOnOpen = useEffectEvent(() => {
     resetFilters();
@@ -183,15 +181,11 @@ export function ModelSelectOverlay({
       if (filteredModels.length === 0) return;
 
       if (key.upArrow) {
-        setHighlightIndex(
-          (safeHighlightIndex - 1 + filteredModels.length) % filteredModels.length,
-        );
+        setHighlightIndex((safeHighlightIndex - 1 + filteredModels.length) % filteredModels.length);
         return;
       }
       if (key.downArrow) {
-        setHighlightIndex(
-          (safeHighlightIndex + 1) % filteredModels.length,
-        );
+        setHighlightIndex((safeHighlightIndex + 1) % filteredModels.length);
         return;
       }
       if (key.return) {
@@ -205,9 +199,7 @@ export function ModelSelectOverlay({
 
   const contentWidth = Math.min(columns - 8, 70);
 
-  const compatibilityLabel = isOpenRouter
-    ? getCompatibilityLabel(openRouter)
-    : null;
+  const compatibilityLabel = isOpenRouter ? getCompatibilityLabel(openRouter) : null;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>

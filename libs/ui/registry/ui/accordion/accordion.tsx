@@ -67,7 +67,12 @@ function containsActiveElement(el: HTMLElement): boolean {
 }
 
 function AccordionRoot(props: AccordionProps) {
-  const { ref, onKeyDown: externalOnKeyDown, "aria-label": ariaLabel, "aria-labelledby": ariaLabelledBy } = props;
+  const {
+    ref,
+    onKeyDown: externalOnKeyDown,
+    "aria-label": ariaLabel,
+    "aria-labelledby": ariaLabelledBy,
+  } = props;
   const { openValues, onToggle, collapsible } = useAccordionState(props);
   const containerRef = useRef<HTMLDivElement>(null);
 

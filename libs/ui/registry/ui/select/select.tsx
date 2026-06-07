@@ -1,7 +1,15 @@
 "use client";
 
 import { cva } from "class-variance-authority";
-import { type AriaAttributes, Children, type ComponentPropsWithoutRef, isValidElement, type ReactNode, type Ref, useMemo } from "react";
+import {
+  type AriaAttributes,
+  Children,
+  type ComponentPropsWithoutRef,
+  isValidElement,
+  type ReactNode,
+  type Ref,
+  useMemo,
+} from "react";
 import { composeRefs } from "@/lib/compose-refs";
 import { cn } from "@/lib/utils";
 import { SelectContext, type SelectOptionMetadata } from "./select-context";
@@ -162,80 +170,78 @@ export function Select<TValue extends string = string>(props: SelectProps<TValue
       <div
         {...rootProps}
         ref={composeRefs(wrapperRef, ref)}
-        className={cn(
-          selectRootVariants({ variant, width: width ?? undefined }),
-          className
-        )}
+        className={cn(selectRootVariants({ variant, width: width ?? undefined }), className)}
       >
         {children}
-        {(name || required) && (
-          Array.isArray(contextValue.value)
-            ? (
-                <>
-                  <select
-                    name={name}
-                    multiple
-                    value={contextValue.value}
-                    required={required}
-                    disabled={disabled}
-                    tabIndex={-1}
-                    aria-hidden={true}
-                    aria-label={typeof name === "string" ? name : undefined}
-                    className="sr-only"
-                    // Value is driven by the custom select; the no-op keeps this
-                    // hidden form mirror controlled without React's warning.
-                    onChange={() => {}}
-                    onInvalid={(event) => {
-                      event.preventDefault();
-                      contextValue.onNativeInvalid();
-                    }}
-                  >
-                    {contextValue.value.map((v) => (
-                      <option key={v} value={v}>{v}</option>
-                    ))}
-                  </select>
-                  {required && (
-                    <input
-                      type="checkbox"
-                      required
-                      checked={contextValue.value.length > 0}
-                      disabled={disabled}
-                      tabIndex={-1}
-                      aria-hidden={true}
-                      aria-label={typeof name === "string" ? `${name} required` : undefined}
-                      readOnly
-                      className="sr-only"
-                      onInvalid={(event) => {
-                        event.preventDefault();
-                        contextValue.onNativeInvalid();
-                      }}
-                    />
-                  )}
-                </>
-              )
-            : (
-                <select
-                  name={name}
-                  value={contextValue.value ?? ""}
-                  required={required}
+        {(name || required) &&
+          (Array.isArray(contextValue.value) ? (
+            <>
+              <select
+                name={name}
+                multiple
+                value={contextValue.value}
+                required={required}
+                disabled={disabled}
+                tabIndex={-1}
+                aria-hidden={true}
+                aria-label={typeof name === "string" ? name : undefined}
+                className="sr-only"
+                // Value is driven by the custom select; the no-op keeps this
+                // hidden form mirror controlled without React's warning.
+                onChange={() => {}}
+                onInvalid={(event) => {
+                  event.preventDefault();
+                  contextValue.onNativeInvalid();
+                }}
+              >
+                {contextValue.value.map((v) => (
+                  <option key={v} value={v}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+              {required && (
+                <input
+                  type="checkbox"
+                  required
+                  checked={contextValue.value.length > 0}
                   disabled={disabled}
                   tabIndex={-1}
                   aria-hidden={true}
-                  aria-label={typeof name === "string" ? name : undefined}
+                  aria-label={typeof name === "string" ? `${name} required` : undefined}
+                  readOnly
                   className="sr-only"
-                  // Value is driven by the custom select; the no-op keeps this
-                  // hidden form mirror controlled without React's warning.
-                  onChange={() => {}}
                   onInvalid={(event) => {
                     event.preventDefault();
                     contextValue.onNativeInvalid();
                   }}
-                >
-                  <option value="" />
-                  {contextValue.value !== null && <option value={contextValue.value}>{contextValue.value}</option>}
-                </select>
-              )
-        )}
+                />
+              )}
+            </>
+          ) : (
+            <select
+              name={name}
+              value={contextValue.value ?? ""}
+              required={required}
+              disabled={disabled}
+              tabIndex={-1}
+              aria-hidden={true}
+              aria-label={typeof name === "string" ? name : undefined}
+              className="sr-only"
+              // Value is driven by the custom select; the no-op keeps this
+              // hidden form mirror controlled without React's warning.
+              onChange={() => {}}
+              onInvalid={(event) => {
+                event.preventDefault();
+                contextValue.onNativeInvalid();
+              }}
+            >
+              <option value="" />
+              {contextValue.value !== null && (
+                <option value={contextValue.value}>{contextValue.value}</option>
+              )}
+            </select>
+          ))}
       </div>
     </SelectContext>
   );

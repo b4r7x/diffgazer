@@ -6,7 +6,10 @@ interface DatedEntry {
   fetchedAt: string;
 }
 
-export const loadDiskCache = <T extends DatedEntry>(path: string, schema: z.ZodType<T>): T | null => {
+export const loadDiskCache = <T extends DatedEntry>(
+  path: string,
+  schema: z.ZodType<T>,
+): T | null => {
   const data = readJsonFileSync<unknown>(path);
   if (!data) return null;
   const parsed = schema.safeParse(data);
@@ -58,11 +61,13 @@ export const withTtlAndFallback = async <T extends DatedEntry>(
   const { path, schema, ttlMs, fetcher, isCacheUsable, keyHashOf, currentKeyHash } = options;
 
   const cache = loadDiskCache(path, schema);
-  const keyMatches = keyHashOf === undefined || cache === null || keyHashOf(cache) === currentKeyHash;
+  const keyMatches =
+    keyHashOf === undefined || cache === null || keyHashOf(cache) === currentKeyHash;
   const cacheUsable = isCacheUsable === undefined || (cache !== null && isCacheUsable(cache));
   const cacheWasFresh = cache !== null && isEntryFresh(cache, ttlMs);
 
-  if (cache && cacheWasFresh && cacheUsable && keyMatches) return ok({ entry: cache, cached: true, cacheWasFresh });
+  if (cache && cacheWasFresh && cacheUsable && keyMatches)
+    return ok({ entry: cache, cached: true, cacheWasFresh });
 
   const fetchResult = await fetcher();
   if (fetchResult.ok) {

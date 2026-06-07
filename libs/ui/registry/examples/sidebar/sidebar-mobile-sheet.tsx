@@ -9,7 +9,7 @@ import {
   SidebarSection,
   SidebarSectionTitle,
   SidebarTrigger,
-} from "@/components/ui/sidebar"
+} from "@/components/ui/sidebar";
 
 /**
  * Renders the sidebar in its mobile sheet mode. `breakpoint={9999}` forces
@@ -50,5 +50,5 @@ export default function SidebarMobileSheet() {
         </p>
       </div>
     </SidebarProvider>
-  )
+  );
 }

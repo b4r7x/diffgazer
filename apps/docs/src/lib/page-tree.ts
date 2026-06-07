@@ -1,55 +1,52 @@
-import type {
-	Node as FumadocsNode,
-	Root as FumadocsRoot,
-} from "fumadocs-core/page-tree";
+import type { Node as FumadocsNode, Root as FumadocsRoot } from "fumadocs-core/page-tree";
 import {
-	type DocsLibraryId,
-	docsPath,
-	getDocsLibraryConfig,
-	routeSlugsFromSourcePath,
+  type DocsLibraryId,
+  docsPath,
+  getDocsLibraryConfig,
+  routeSlugsFromSourcePath,
 } from "@/lib/library";
 
 export interface PageTreeNode {
-	type: "page" | "separator" | "folder";
-	name: string;
-	url?: string;
-	children?: PageTreeNode[];
+  type: "page" | "separator" | "folder";
+  name: string;
+  url?: string;
+  children?: PageTreeNode[];
 }
 
 export interface PageTree {
-	name: string;
-	children: PageTreeNode[];
+  name: string;
+  children: PageTreeNode[];
 }
 
 export interface LandingItem {
-	name: string;
-	url: string;
+  name: string;
+  url: string;
 }
 
 export interface LandingSection {
-	name: string;
-	items: LandingItem[];
+  name: string;
+  items: LandingItem[];
 }
 
 function toLandingItem(node: PageTreeNode): LandingItem | null {
-	if (node.type === "page" && node.url) {
-		return { name: node.name, url: node.url };
-	}
-	return null;
+  if (node.type === "page" && node.url) {
+    return { name: node.name, url: node.url };
+  }
+  return null;
 }
 
 /** Depth-first list of navigable pages in sidebar order, skipping separators and url-less folders. */
 function flattenPageTree(tree: PageTree): LandingItem[] {
-	const pages: LandingItem[] = [];
-	const walk = (nodes: PageTreeNode[]) => {
-		for (const node of nodes) {
-			const item = toLandingItem(node);
-			if (item) pages.push(item);
-			if (node.children) walk(node.children);
-		}
-	};
-	walk(tree.children);
-	return pages;
+  const pages: LandingItem[] = [];
+  const walk = (nodes: PageTreeNode[]) => {
+    for (const node of nodes) {
+      const item = toLandingItem(node);
+      if (item) pages.push(item);
+      if (node.children) walk(node.children);
+    }
+  };
+  walk(tree.children);
+  return pages;
 }
 
 /**
@@ -58,22 +55,22 @@ function flattenPageTree(tree: PageTree): LandingItem[] {
  * root redirects here so visitors never land on an empty library shell.
  */
 export function firstNavigablePage(tree: PageTree): LandingItem | null {
-	return flattenPageTree(tree)[0] ?? null;
+  return flattenPageTree(tree)[0] ?? null;
 }
 
 export interface PageNeighbors {
-	previous: LandingItem | null;
-	next: LandingItem | null;
+  previous: LandingItem | null;
+  next: LandingItem | null;
 }
 
 export function findPageNeighbors(tree: PageTree, url: string): PageNeighbors {
-	const pages = flattenPageTree(tree);
-	const index = pages.findIndex((page) => page.url === url);
-	if (index === -1) return { previous: null, next: null };
-	return {
-		previous: pages[index - 1] ?? null,
-		next: pages[index + 1] ?? null,
-	};
+  const pages = flattenPageTree(tree);
+  const index = pages.findIndex((page) => page.url === url);
+  if (index === -1) return { previous: null, next: null };
+  return {
+    previous: pages[index - 1] ?? null,
+    next: pages[index + 1] ?? null,
+  };
 }
 
 /**
@@ -82,23 +79,23 @@ export function findPageNeighbors(tree: PageTree, url: string): PageNeighbors {
  * empty sections are dropped.
  */
 export function collectLandingSections(tree: PageTree): LandingSection[] {
-	const sections: LandingSection[] = [];
-	let current: LandingSection | null = null;
-	for (const node of tree.children) {
-		if (node.type === "separator") {
-			current = { name: node.name, items: [] };
-			sections.push(current);
-			continue;
-		}
-		const item = toLandingItem(node);
-		if (!item) continue;
-		if (!current) {
-			current = { name: tree.name, items: [] };
-			sections.push(current);
-		}
-		current.items.push(item);
-	}
-	return sections.filter((section) => section.items.length > 0);
+  const sections: LandingSection[] = [];
+  let current: LandingSection | null = null;
+  for (const node of tree.children) {
+    if (node.type === "separator") {
+      current = { name: node.name, items: [] };
+      sections.push(current);
+      continue;
+    }
+    const item = toLandingItem(node);
+    if (!item) continue;
+    if (!current) {
+      current = { name: tree.name, items: [] };
+      sections.push(current);
+    }
+    current.items.push(item);
+  }
+  return sections.filter((section) => section.items.length > 0);
 }
 
 /**
@@ -107,31 +104,31 @@ export function collectLandingSections(tree: PageTree): LandingSection[] {
  * the boundary instead of casting the whole tree.
  */
 function nodeName(name: unknown): string {
-	return typeof name === "string" ? name : "";
+  return typeof name === "string" ? name : "";
 }
 
 function fromFumadocsNode(node: FumadocsNode): PageTreeNode {
-	if (node.type === "folder") {
-		// fumadocs folders carry no top-level url (only an optional `index` page);
-		// the local tree treats folders as url-less groups.
-		return {
-			type: "folder",
-			name: nodeName(node.name),
-			children: node.children.map(fromFumadocsNode),
-		};
-	}
-	if (node.type === "separator") {
-		return { type: "separator", name: nodeName(node.name) };
-	}
-	return { type: "page", name: nodeName(node.name), url: node.url };
+  if (node.type === "folder") {
+    // fumadocs folders carry no top-level url (only an optional `index` page);
+    // the local tree treats folders as url-less groups.
+    return {
+      type: "folder",
+      name: nodeName(node.name),
+      children: node.children.map(fromFumadocsNode),
+    };
+  }
+  if (node.type === "separator") {
+    return { type: "separator", name: nodeName(node.name) };
+  }
+  return { type: "page", name: nodeName(node.name), url: node.url };
 }
 
 /** Adapt the fumadocs `Root` (ReactNode names) into the local string-typed `PageTree`. */
 export function fromFumadocsRoot(root: FumadocsRoot): PageTree {
-	return {
-		name: nodeName(root.name),
-		children: root.children.map(fromFumadocsNode),
-	};
+  return {
+    name: nodeName(root.name),
+    children: root.children.map(fromFumadocsNode),
+  };
 }
 
 /**
@@ -143,82 +140,74 @@ export function fromFumadocsRoot(root: FumadocsRoot): PageTree {
  * the surviving label belongs to the pages that follow it.
  */
 function normalizeSeparators(nodes: PageTreeNode[]): PageTreeNode[] {
-	const result: PageTreeNode[] = [];
-	let pendingSeparator: PageTreeNode | null = null;
+  const result: PageTreeNode[] = [];
+  let pendingSeparator: PageTreeNode | null = null;
 
-	for (const node of nodes) {
-		if (node.type === "separator") {
-			pendingSeparator = node;
-			continue;
-		}
-		if (pendingSeparator) {
-			result.push(pendingSeparator);
-			pendingSeparator = null;
-		}
-		result.push(node);
-	}
+  for (const node of nodes) {
+    if (node.type === "separator") {
+      pendingSeparator = node;
+      continue;
+    }
+    if (pendingSeparator) {
+      result.push(pendingSeparator);
+      pendingSeparator = null;
+    }
+    result.push(node);
+  }
 
-	return result;
+  return result;
 }
 
-function mapNodeForLibrary(
-	node: PageTreeNode,
-	library: DocsLibraryId,
-): PageTreeNode | null {
-	if (node.type === "separator") {
-		return { ...node };
-	}
+function mapNodeForLibrary(node: PageTreeNode, library: DocsLibraryId): PageTreeNode | null {
+  if (node.type === "separator") {
+    return { ...node };
+  }
 
-	if (node.type === "page") {
-		if (!node.url) return null;
+  if (node.type === "page") {
+    if (!node.url) return null;
 
-		const routeSlugs = routeSlugsFromSourcePath(library, node.url);
-		if (!routeSlugs) return null;
+    const routeSlugs = routeSlugsFromSourcePath(library, node.url);
+    if (!routeSlugs) return null;
 
-		return {
-			...node,
-			url: docsPath(library, routeSlugs),
-		};
-	}
+    return {
+      ...node,
+      url: docsPath(library, routeSlugs),
+    };
+  }
 
-	const mappedChildren = normalizeSeparators(
-		(node.children ?? [])
-			.map((child) => mapNodeForLibrary(child, library))
-			.filter((child): child is PageTreeNode => Boolean(child)),
-	);
+  const mappedChildren = normalizeSeparators(
+    (node.children ?? [])
+      .map((child) => mapNodeForLibrary(child, library))
+      .filter((child): child is PageTreeNode => Boolean(child)),
+  );
 
-	if (mappedChildren.length === 0) {
-		return null;
-	}
+  if (mappedChildren.length === 0) {
+    return null;
+  }
 
-	const routeSlugs = node.url
-		? routeSlugsFromSourcePath(library, node.url)
-		: null;
+  const routeSlugs = node.url ? routeSlugsFromSourcePath(library, node.url) : null;
 
-	return {
-		...node,
-		url: routeSlugs ? docsPath(library, routeSlugs) : undefined,
-		children: mappedChildren,
-	};
+  return {
+    ...node,
+    url: routeSlugs ? docsPath(library, routeSlugs) : undefined,
+    children: mappedChildren,
+  };
 }
 
-export function mapPageTreeForLibrary(
-	inputTree: PageTree,
-	library: DocsLibraryId,
-): PageTree {
-	const mappedChildren = normalizeSeparators(
-		inputTree.children
-			.map((child) => mapNodeForLibrary(child, library))
-			.filter((child): child is PageTreeNode => Boolean(child)),
-	);
+export function mapPageTreeForLibrary(inputTree: PageTree, library: DocsLibraryId): PageTree {
+  const mappedChildren = normalizeSeparators(
+    inputTree.children
+      .map((child) => mapNodeForLibrary(child, library))
+      .filter((child): child is PageTreeNode => Boolean(child)),
+  );
 
-	let children = mappedChildren;
-	if (mappedChildren.length === 1 && mappedChildren[0]?.type === "folder") {
-		children = normalizeSeparators(mappedChildren[0].children ?? []);
-	}
+  let children = mappedChildren;
+  if (mappedChildren.length === 1 && mappedChildren[0]?.type === "folder") {
+    children = normalizeSeparators(mappedChildren[0].children ?? []);
+  }
 
-	return {
-		name: getDocsLibraryConfig(library).displayName,
-		children,
-	};
+  return {
+    name: getDocsLibraryConfig(library).displayName,
+    children,
+  };
 }

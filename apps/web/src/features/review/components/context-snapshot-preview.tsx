@@ -17,10 +17,10 @@ export function ContextSnapshotPreview({ snapshot }: ContextSnapshotPreviewProps
 
   return (
     <div className="mb-8">
-      <SectionHeader variant="muted" bordered>Context Snapshot</SectionHeader>
-      <div className="text-xs text-tui-muted">
-        {snapshot.meta.charCount.toLocaleString()} chars
-      </div>
+      <SectionHeader variant="muted" bordered>
+        Context Snapshot
+      </SectionHeader>
+      <div className="text-xs text-tui-muted">{snapshot.meta.charCount.toLocaleString()} chars</div>
       <CodeBlock label="Context snapshot preview" className="mt-3">
         <CodeBlock.Content showLineNumbers={false} className="max-h-28 text-2xs text-tui-muted">
           {contextPreview.preview}
@@ -49,7 +49,11 @@ export function ContextSnapshotPreview({ snapshot }: ContextSnapshotPreviewProps
           size="sm"
           bracket
           onClick={() =>
-            downloadAsFile(JSON.stringify(snapshot.graph, null, 2), "context.json", "application/json")
+            downloadAsFile(
+              JSON.stringify(snapshot.graph, null, 2),
+              "context.json",
+              "application/json",
+            )
           }
         >
           Download .json

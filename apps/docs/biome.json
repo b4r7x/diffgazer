@@ -1,34 +1,39 @@
 {
-	"$schema": "https://biomejs.dev/schemas/2.3.14/schema.json",
-	"extends": "//",
-	"files": {
-		"ignoreUnknown": false,
-		"includes": [
-			"src/**/*.ts",
-			"src/**/*.tsx",
-			"scripts/**/*.ts",
-			"vite.config.ts",
-			"vite-plugin-docs-rebuild.ts",
-			"source.config.ts",
-			"!src/routeTree.gen.ts",
-			"!src/index.css",
-			"!src/generated"
-		]
-	},
-	"formatter": {
-		"enabled": true,
-		"indentStyle": "tab"
-	},
-	"assist": {
-		"actions": {
-			"source": {
-				"organizeImports": "on"
-			}
-		}
-	},
-	"javascript": {
-		"formatter": {
-			"quoteStyle": "double"
-		}
-	}
+  "$schema": "https://biomejs.dev/schemas/2.3.14/schema.json",
+  "extends": "//",
+  "files": {
+    "ignoreUnknown": false,
+    "includes": [
+      "**/*.js",
+      "**/*.jsx",
+      "**/*.ts",
+      "**/*.tsx",
+      "**/*.mjs",
+      "**/*.cjs",
+      "**/*.json",
+      "**/*.jsonc",
+      "**/*.md",
+      "**/*.mdx",
+      "!src/routeTree.gen.ts",
+      "!src/index.css",
+      "!src/generated",
+      "!content/docs/ui",
+      "!content/docs/keys",
+      "!registry/examples",
+      "!public/r/ui",
+      "!public/r/keys"
+    ]
+  },
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "double"
+    }
+  }
 }

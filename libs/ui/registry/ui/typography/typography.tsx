@@ -75,16 +75,7 @@ const HEADING_DEFAULT_WEIGHT: Record<HeadingTag, TypographyWeight> = {
   h6: "bold",
 };
 
-type TypographyElement =
-  | "div"
-  | "p"
-  | "span"
-  | "h1"
-  | "h2"
-  | "h3"
-  | "h4"
-  | "h5"
-  | "h6";
+type TypographyElement = "div" | "p" | "span" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
 
 type TypographyOwnProps = VariantProps<typeof typographyVariants>;
 
@@ -96,18 +87,18 @@ export type TypographyProps<T extends TypographyElement = "div"> = Omit<
     as?: T;
   };
 
-export function Typography<T extends TypographyElement = "div">(
-  props: TypographyProps<T>,
-) {
+export function Typography<T extends TypographyElement = "div">(props: TypographyProps<T>) {
   const { as, className, variant, size, weight, color, lineClamp, truncate, ref, ...rest } =
     props as TypographyProps<TypographyElement>;
   const Tag = as ?? "div";
   const resolvedSize =
-    size ?? (Tag in HEADING_DEFAULT_SIZE
+    size ??
+    (Tag in HEADING_DEFAULT_SIZE
       ? HEADING_DEFAULT_SIZE[Tag as keyof typeof HEADING_DEFAULT_SIZE]
       : undefined);
   const resolvedWeight =
-    weight ?? (Tag in HEADING_DEFAULT_WEIGHT
+    weight ??
+    (Tag in HEADING_DEFAULT_WEIGHT
       ? HEADING_DEFAULT_WEIGHT[Tag as keyof typeof HEADING_DEFAULT_WEIGHT]
       : undefined);
   return (
@@ -116,7 +107,14 @@ export function Typography<T extends TypographyElement = "div">(
       // so the ref type cannot be narrowed inside the generic component body.
       ref={ref as never}
       className={cn(
-        typographyVariants({ variant, size: resolvedSize, weight: resolvedWeight, color, lineClamp, truncate }),
+        typographyVariants({
+          variant,
+          size: resolvedSize,
+          weight: resolvedWeight,
+          color,
+          lineClamp,
+          truncate,
+        }),
         className,
       )}
       {...rest}

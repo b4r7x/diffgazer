@@ -26,7 +26,10 @@ export const substepVariants = cva("flex items-center gap-2 py-1 text-sm", {
   defaultVariants: { status: "pending" },
 });
 
-export const SUBSTEP_STATUS_BADGE_VARIANTS: Record<SubstepStatus, "success" | "info" | "error" | "neutral"> = {
+export const SUBSTEP_STATUS_BADGE_VARIANTS: Record<
+  SubstepStatus,
+  "success" | "info" | "error" | "neutral"
+> = {
   pending: "neutral",
   active: "info",
   completed: "success",
@@ -64,12 +67,21 @@ export function StepperSubstep({
 
   return (
     <div {...props} className={cn(substepVariants({ status }), className)}>
-      <Badge variant={SUBSTEP_STATUS_BADGE_VARIANTS[status]} size="sm" className="min-w-[40px] justify-center">
+      <Badge
+        variant={SUBSTEP_STATUS_BADGE_VARIANTS[status]}
+        size="sm"
+        className="min-w-[40px] justify-center"
+      >
         {tag}
       </Badge>
       <span>{label}</span>
       {statusText && (
-        <span className={cn("ml-auto text-xs", detail ? "text-muted-foreground" : substepLabelVariants({ status }))}>
+        <span
+          className={cn(
+            "ml-auto text-xs",
+            detail ? "text-muted-foreground" : substepLabelVariants({ status }),
+          )}
+        >
           {statusText}
         </span>
       )}

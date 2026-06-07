@@ -1,4 +1,4 @@
-import type { HookDoc } from "@diffgazer/registry"
+import type { HookDoc } from "@diffgazer/registry";
 
 export const useNavigationDoc: HookDoc = {
   description:
@@ -23,8 +23,7 @@ export const useNavigationDoc: HookDoc = {
       name: "role",
       type: '"radio" | "checkbox" | "option" | "menuitem" | "menuitemcheckbox" | "menuitemradio" | "button" | "tab"',
       required: true,
-      description:
-        "ARIA role used to query navigable children within the container.",
+      description: "ARIA role used to query navigable children within the container.",
     },
     {
       name: "highlighted",
@@ -37,7 +36,8 @@ export const useNavigationDoc: HookDoc = {
       name: "onHighlightChange",
       type: "(value: string | null) => void",
       required: false,
-      description: "Called when the controlled highlight value should change. Receives null when highlight is cleared.",
+      description:
+        "Called when the controlled highlight value should change. Receives null when highlight is cleared.",
     },
     {
       name: "onSelect",
@@ -110,7 +110,8 @@ export const useNavigationDoc: HookDoc = {
       name: "skipDisabled",
       type: "boolean",
       required: false,
-      description: "Skip items with aria-disabled=\"true\", data-disabled, or native disabled during navigation.",
+      description:
+        'Skip items with aria-disabled="true", data-disabled, or native disabled during navigation.',
       defaultValue: "true",
     },
     {
@@ -138,8 +139,7 @@ export const useNavigationDoc: HookDoc = {
   ],
   returns: {
     type: "UseNavigationReturn",
-    description:
-      "Object with highlight state and an onKeyDown handler to attach to the container.",
+    description: "Object with highlight state and an onKeyDown handler to attach to the container.",
     properties: [
       {
         name: "highlighted",
@@ -163,8 +163,7 @@ export const useNavigationDoc: HookDoc = {
         name: "onKeyDown",
         type: "(event: KeyboardEvent) => void",
         required: true,
-        description:
-          "Keyboard event handler to attach to the container element.",
+        description: "Keyboard event handler to attach to the container element.",
       },
     ],
   },
@@ -195,4 +194,4 @@ export const useNavigationDoc: HookDoc = {
     { name: "use-navigation-tabs", title: "Horizontal tab navigation" },
   ],
   tags: ["standalone", "navigation", "list"],
-}
+};

@@ -5,8 +5,7 @@ import { cn } from "@/lib/utils";
 import { useAvatarContext } from "./avatar-context";
 import { useImageStatus } from "./use-image-status";
 
-export interface AvatarImageProps
-  extends Omit<ImgHTMLAttributes<HTMLImageElement>, "alt"> {
+export interface AvatarImageProps extends Omit<ImgHTMLAttributes<HTMLImageElement>, "alt"> {
   /**
    * Accessible name for the image. Defaults to `""`, treating the avatar as
    * decorative so it is skipped by assistive tech and the surrounding control
@@ -17,13 +16,7 @@ export interface AvatarImageProps
   ref?: Ref<HTMLImageElement>;
 }
 
-export function AvatarImage({
-  src,
-  alt,
-  className,
-  ref,
-  ...imgProps
-}: AvatarImageProps) {
+export function AvatarImage({ src, alt, className, ref, ...imgProps }: AvatarImageProps) {
   const { setImageStatus } = useAvatarContext();
   const { status, showImage, onLoad, onError } = useImageStatus(src);
 

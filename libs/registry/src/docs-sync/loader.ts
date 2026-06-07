@@ -13,10 +13,7 @@ function getManifestGeneratedFiles(manifest: ArtifactManifest): string[] {
   return Object.values(manifest.generated);
 }
 
-function assertUniqueGeneratedOutputNames(
-  libraryId: string,
-  generatedFiles: string[],
-): void {
+function assertUniqueGeneratedOutputNames(libraryId: string, generatedFiles: string[]): void {
   const seen = new Map<string, string>();
 
   for (const generatedFile of generatedFiles) {
@@ -44,14 +41,7 @@ function toLoadedLibraryArtifacts(params: {
   fingerprintPath: string;
   fingerprint: string;
 }): LoadedLibraryArtifacts {
-  const {
-    id,
-    manifest,
-    manifestPath,
-    artifactRoot,
-    fingerprintPath,
-    fingerprint,
-  } = params;
+  const { id, manifest, manifestPath, artifactRoot, fingerprintPath, fingerprint } = params;
   const generatedFiles = getManifestGeneratedFiles(manifest);
   assertUniqueGeneratedOutputNames(id, generatedFiles);
 
@@ -66,10 +56,7 @@ function toLoadedLibraryArtifacts(params: {
   };
 }
 
-function loadFromPackage(
-  config: SyncLibraryConfig,
-  docsRoot: string,
-): LoadedLibraryArtifacts {
+function loadFromPackage(config: SyncLibraryConfig, docsRoot: string): LoadedLibraryArtifacts {
   const loaded = loadArtifactsFromPackage({
     packageName: config.packageName,
     from: docsRoot,
@@ -119,10 +106,7 @@ function loadFromWorkspace(
   ensureExists(fingerprintPath, `${config.id} artifact fingerprint`);
 
   const expectedFingerprint = readFileSync(fingerprintPath, "utf-8").trim();
-  const currentFingerprint = computeInputsFingerprint(
-    libraryRoot,
-    manifest.inputs,
-  );
+  const currentFingerprint = computeInputsFingerprint(libraryRoot, manifest.inputs);
 
   if (expectedFingerprint !== currentFingerprint) {
     throw new Error(

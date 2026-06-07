@@ -19,13 +19,11 @@ export function Header({ providerName, providerStatus, onBack }: HeaderProps) {
   return (
     <Box flexDirection="column" paddingX={1} paddingTop={1} paddingBottom={0}>
       <Box flexDirection="row" justifyContent="space-between" width="100%">
-        <Box minWidth={10}>
-          {onBack ? (
-            <Text color={tokens.muted}>{"← Back"}</Text>
-          ) : null}
-        </Box>
+        <Box minWidth={10}>{onBack ? <Text color={tokens.muted}>{"← Back"}</Text> : null}</Box>
         <Box>
-          <Text color={tokens.accent} bold>diffgazer</Text>
+          <Text color={tokens.accent} bold>
+            diffgazer
+          </Text>
         </Box>
         <Box minWidth={10} justifyContent="flex-end">
           <Text color={statusColor}>●</Text>

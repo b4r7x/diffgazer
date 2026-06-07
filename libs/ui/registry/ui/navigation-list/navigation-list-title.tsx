@@ -23,13 +23,23 @@ export function NavigationListTitle({ children, className }: NavigationListTitle
   const glyph = INDICATOR_GLYPHS[indicator];
 
   return (
-    <span id={labelId} className={cn("col-start-1 row-start-1 font-bold flex items-center group-data-[active]:text-primary-foreground", className)}>
+    <span
+      id={labelId}
+      className={cn(
+        "col-start-1 row-start-1 font-bold flex items-center group-data-[active]:text-primary-foreground",
+        className,
+      )}
+    >
       {!isTree && (
-        <span aria-hidden="true" className="mr-2 opacity-30 group-data-[active]:opacity-100">{glyph}</span>
+        <span aria-hidden="true" className="mr-2 opacity-30 group-data-[active]:opacity-100">
+          {glyph}
+        </span>
       )}
       {children}
       {!isTree && indicator === "bracket" && (
-        <span aria-hidden="true" className="ml-2 opacity-30 group-data-[active]:opacity-100">{"]"}</span>
+        <span aria-hidden="true" className="ml-2 opacity-30 group-data-[active]:opacity-100">
+          {"]"}
+        </span>
       )}
     </span>
   );

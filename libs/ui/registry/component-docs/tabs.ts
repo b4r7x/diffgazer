@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types"
+import type { ComponentDoc } from "./types";
 
 export const tabsDoc: ComponentDoc = {
   description: "Terminal-styled tabbed interface with horizontal and vertical orientation support.",
@@ -35,9 +35,7 @@ export const tabsDoc: ComponentDoc = {
   keyboard: {
     description:
       "TabsList has built-in keyboard navigation via @diffgazer/keys. ArrowLeft/ArrowRight (horizontal) or ArrowUp/ArrowDown (vertical) navigate between tabs. Home/End jump to first/last tab. Enter/Space activate the focused tab.",
-    examples: [
-      { name: "tabs-keyboard", title: "Keyboard Navigation" },
-    ],
+    examples: [{ name: "tabs-keyboard", title: "Keyboard Navigation" }],
   },
   props: {
     Tabs: {
@@ -51,7 +49,8 @@ export const tabsDoc: ComponentDoc = {
         type: "string",
         required: false,
         defaultValue: null,
-        description: "Initial active tab value for uncontrolled mode. Defaults to the first enabled Trigger.",
+        description:
+          "Initial active tab value for uncontrolled mode. Defaults to the first enabled Trigger.",
       },
       onChange: {
         type: "(value: string) => void",
@@ -133,4 +132,4 @@ export const tabsDoc: ComponentDoc = {
       },
     },
   },
-}
+};

@@ -15,8 +15,7 @@ export type OverflowIndicatorRender =
 
 const hiddenClass = "invisible absolute pointer-events-none";
 
-export interface OverflowItemsProps
-  extends Omit<ComponentPropsWithRef<"div">, "children"> {
+export interface OverflowItemsProps extends Omit<ComponentPropsWithRef<"div">, "children"> {
   children: ReactNode;
   indicator?: OverflowIndicatorRender;
   gap?: string;
@@ -24,13 +23,22 @@ export interface OverflowItemsProps
 
 function DefaultBadge() {
   return (
-    <span aria-hidden="true" className="inline-flex items-center border border-dashed border-foreground/30 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+    <span
+      aria-hidden="true"
+      className="inline-flex items-center border border-dashed border-foreground/30 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground"
+    >
       …
     </span>
   );
 }
 
-function IndicatorDisplay({ indicator, count }: { indicator?: OverflowIndicatorRender; count: number }) {
+function IndicatorDisplay({
+  indicator,
+  count,
+}: {
+  indicator?: OverflowIndicatorRender;
+  count: number;
+}) {
   if (typeof indicator === "function") {
     return <>{indicator({ count })}</>;
   }
@@ -46,8 +54,7 @@ export function OverflowItems({
   ...props
 }: OverflowItemsProps) {
   const itemCount = Children.count(children);
-  const { ref: overflowRef, visibleCount, overflowCount } =
-    useOverflowItems({ itemCount });
+  const { ref: overflowRef, visibleCount, overflowCount } = useOverflowItems({ itemCount });
 
   return (
     <div
@@ -56,7 +63,10 @@ export function OverflowItems({
       {...props}
     >
       {Children.map(children, (item, i) => (
-        <div className={cn("shrink-0", i >= visibleCount && hiddenClass)} inert={i >= visibleCount || undefined}>
+        <div
+          className={cn("shrink-0", i >= visibleCount && hiddenClass)}
+          inert={i >= visibleCount || undefined}
+        >
           {item}
         </div>
       ))}

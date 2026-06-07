@@ -1,10 +1,24 @@
 "use client";
 
-import { Children, type ComponentPropsWithRef, isValidElement, type KeyboardEvent, type ReactNode, useCallback, useId, useMemo, useRef } from "react";
+import {
+  Children,
+  type ComponentPropsWithRef,
+  isValidElement,
+  type KeyboardEvent,
+  type ReactNode,
+  useCallback,
+  useId,
+  useMemo,
+  useRef,
+} from "react";
 import { getEncodedListboxItemId, type ListboxMetadataItem, useListbox } from "@/hooks/use-listbox";
 import { composeRefs } from "@/lib/compose-refs";
 import { cn } from "@/lib/utils";
-import { type GroupHeaderRegistration, NavigationListContext, type NavigationListIndicator } from "./navigation-list-context";
+import {
+  type GroupHeaderRegistration,
+  NavigationListContext,
+  type NavigationListIndicator,
+} from "./navigation-list-context";
 import { NavigationListGroup } from "./navigation-list-group";
 import { NavigationListItem } from "./navigation-list-item";
 
@@ -12,14 +26,27 @@ function collectNavigationListItems(children: ReactNode): ListboxMetadataItem[] 
   const items: ListboxMetadataItem[] = [];
 
   Children.forEach(children, (child) => {
-    if (!isValidElement<{ id?: string; disabled?: boolean; children?: ReactNode; variant?: string; headerId?: string }>(child)) return;
+    if (
+      !isValidElement<{
+        id?: string;
+        disabled?: boolean;
+        children?: ReactNode;
+        variant?: string;
+        headerId?: string;
+      }>(child)
+    )
+      return;
 
     if (child.type === NavigationListItem && typeof child.props.id === "string") {
       items.push({ id: child.props.id, disabled: child.props.disabled });
       return;
     }
 
-    if (child.type === NavigationListGroup && child.props.variant === "tree" && typeof child.props.headerId === "string") {
+    if (
+      child.type === NavigationListGroup &&
+      child.props.variant === "tree" &&
+      typeof child.props.headerId === "string"
+    ) {
       items.push({ id: child.props.headerId });
     }
 
@@ -83,71 +110,69 @@ export function NavigationList({
   const groupHeadersRef = useRef<Map<string, GroupHeaderRegistration>>(new Map());
   const items = useMemo(() => collectNavigationListItems(children), [children]);
 
-  const handleGroupKeyDown = useCallback((event: KeyboardEvent) => {
-    onKeyDown?.(event);
-    if (event.defaultPrevented) return;
+  const handleGroupKeyDown = useCallback(
+    (event: KeyboardEvent) => {
+      onKeyDown?.(event);
+      if (event.defaultPrevented) return;
 
-    const key = event.key;
-    if (key !== "ArrowLeft" && key !== "ArrowRight" && key !== "Enter" && key !== " ") return;
+      const key = event.key;
+      if (key !== "ArrowLeft" && key !== "ArrowRight" && key !== "Enter" && key !== " ") return;
 
-    const container = containerRef.current;
-    if (!container) return;
-    const activeId = container.getAttribute("aria-activedescendant");
-    if (!activeId) return;
+      const container = containerRef.current;
+      if (!container) return;
+      const activeId = container.getAttribute("aria-activedescendant");
+      if (!activeId) return;
 
-    const activeEl = container.ownerDocument.getElementById(activeId);
-    if (!activeEl) return;
-    const itemValue = activeEl.dataset.value;
-    if (!itemValue) return;
+      const activeEl = container.ownerDocument.getElementById(activeId);
+      if (!activeEl) return;
+      const itemValue = activeEl.dataset.value;
+      if (!itemValue) return;
 
-    const registration = groupHeadersRef.current.get(itemValue);
-    if (!registration) return;
+      const registration = groupHeadersRef.current.get(itemValue);
+      if (!registration) return;
 
-    if (key === "ArrowRight") {
-      if (!registration.expanded) {
+      if (key === "ArrowRight") {
+        if (!registration.expanded) {
+          event.preventDefault();
+          registration.toggle();
+        }
+        return;
+      }
+
+      if (key === "ArrowLeft") {
+        if (registration.expanded) {
+          event.preventDefault();
+          registration.toggle();
+        }
+        return;
+      }
+
+      if (key === "Enter" || key === " ") {
         event.preventDefault();
         registration.toggle();
       }
-      return;
-    }
+    },
+    [onKeyDown],
+  );
 
-    if (key === "ArrowLeft") {
-      if (registration.expanded) {
-        event.preventDefault();
-        registration.toggle();
-      }
-      return;
-    }
-
-    if (key === "Enter" || key === " ") {
-      event.preventDefault();
-      registration.toggle();
-    }
-  }, [onKeyDown]);
-
-  const {
-    selectedId,
-    highlighted,
-    handleItemActivate,
-    handleItemHighlight,
-    getContainerProps,
-  } = useListbox({
-    selectedId: controlledSelectedId,
-    defaultSelectedId,
-    highlighted: controlledHighlighted,
-    defaultHighlighted,
-    onSelect,
-    onEnter,
-    onHighlightChange,
-    onNavigationBoundaryReached,
-    wrap,
-    idPrefix,
-    autoFocus,
-    onKeyDown: handleGroupKeyDown,
-    typeahead: true,
-    items,
-    getItemId: getEncodedListboxItemId,
-  });
+  const { selectedId, highlighted, handleItemActivate, handleItemHighlight, getContainerProps } =
+    useListbox({
+      selectedId: controlledSelectedId,
+      defaultSelectedId,
+      highlighted: controlledHighlighted,
+      defaultHighlighted,
+      onSelect,
+      onEnter,
+      onHighlightChange,
+      onNavigationBoundaryReached,
+      wrap,
+      idPrefix,
+      autoFocus,
+      onKeyDown: handleGroupKeyDown,
+      typeahead: true,
+      items,
+      getItemId: getEncodedListboxItemId,
+    });
 
   const registerGroupHeader = useCallback((id: string, registration: GroupHeaderRegistration) => {
     groupHeadersRef.current.set(id, registration);
@@ -171,7 +196,17 @@ export function NavigationList({
       unregisterGroupHeader,
       groupHeaders: groupHeadersRef.current,
     }),
-    [selectedId, highlighted, handleItemActivate, handleItemHighlight, focused, idPrefix, indicator, registerGroupHeader, unregisterGroupHeader],
+    [
+      selectedId,
+      highlighted,
+      handleItemActivate,
+      handleItemHighlight,
+      focused,
+      idPrefix,
+      indicator,
+      registerGroupHeader,
+      unregisterGroupHeader,
+    ],
   );
 
   return (

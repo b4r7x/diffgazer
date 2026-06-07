@@ -3,11 +3,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../paths.js", () => ({
   PROJECT_ROOT_HEADER: "x-diffgazer-project-root",
   isPackaged: () => process.env.DIFFGAZER_PACKAGED === "1",
-  resolveProjectRoot: vi.fn((opts: { header?: string | null; env?: string | null; cwd?: string | null }) => {
-    if (opts?.header) return `/from-header/${opts.header}`;
-    if (opts?.env) return opts.env;
-    return "/fallback";
-  }),
+  resolveProjectRoot: vi.fn(
+    (opts: { header?: string | null; env?: string | null; cwd?: string | null }) => {
+      if (opts?.header) return `/from-header/${opts.header}`;
+      if (opts?.env) return opts.env;
+      return "/fallback";
+    },
+  ),
 }));
 
 import { resolveProjectRoot } from "../paths.js";
@@ -70,9 +72,7 @@ describe("getProjectRoot", () => {
 
     getProjectRoot(c);
 
-    expect(resolveProjectRoot).toHaveBeenCalledWith(
-      expect.objectContaining({ header: undefined }),
-    );
+    expect(resolveProjectRoot).toHaveBeenCalledWith(expect.objectContaining({ header: undefined }));
   });
 
   it("ignores the client header in packaged mode", () => {
@@ -81,9 +81,7 @@ describe("getProjectRoot", () => {
 
     getProjectRoot(c);
 
-    expect(resolveProjectRoot).toHaveBeenCalledWith(
-      expect.objectContaining({ header: undefined }),
-    );
+    expect(resolveProjectRoot).toHaveBeenCalledWith(expect.objectContaining({ header: undefined }));
   });
 
   it("falls through to env when packaged and header is present", () => {

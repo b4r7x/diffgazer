@@ -4,68 +4,65 @@ import { DocsNotFoundBlock } from "@/components/docs-not-found";
 import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
 import {
-	getDocsLibraryConfig,
-	isDocsLibraryId,
-	PRIMARY_DOCS_LIBRARY_ID,
-	parseDocsLibrary,
+  getDocsLibraryConfig,
+  isDocsLibraryId,
+  PRIMARY_DOCS_LIBRARY_ID,
+  parseDocsLibrary,
 } from "@/lib/library";
 import { fromFumadocsRoot, mapPageTreeForLibrary } from "@/lib/page-tree";
 import { parseDocsShellInput } from "@/lib/server-inputs";
 
 const docsShellLoader = createServerFn({ method: "GET" })
-	.inputValidator(parseDocsShellInput)
-	.handler(async ({ data }) => {
-		const { source } = await import("@/lib/source");
-		const pageTree = mapPageTreeForLibrary(
-			fromFumadocsRoot(source.pageTree),
-			data.library,
-		);
+  .inputValidator(parseDocsShellInput)
+  .handler(async ({ data }) => {
+    const { source } = await import("@/lib/source");
+    const pageTree = mapPageTreeForLibrary(fromFumadocsRoot(source.pageTree), data.library);
 
-		return {
-			library: data.library,
-			pageTree,
-		};
-	});
+    return {
+      library: data.library,
+      pageTree,
+    };
+  });
 
 export const Route = createFileRoute("/$lib")({
-	pendingMs: 150,
-	staleTime: Infinity,
-	beforeLoad: ({ params }) => {
-		if (!isDocsLibraryId(params.lib)) {
-			throw redirect({
-				to: "/$lib",
-				params: { lib: PRIMARY_DOCS_LIBRARY_ID },
-			});
-		}
+  pendingMs: 150,
+  staleTime: Infinity,
+  beforeLoad: ({ params }) => {
+    if (!isDocsLibraryId(params.lib)) {
+      throw redirect({
+        to: "/$lib",
+        params: { lib: PRIMARY_DOCS_LIBRARY_ID },
+      });
+    }
 
-		if (!getDocsLibraryConfig(params.lib).enabled) {
-			throw redirect({
-				to: "/$lib",
-				params: { lib: PRIMARY_DOCS_LIBRARY_ID },
-			});
-		}
-	},
-	loader: async ({ params }) =>
-		docsShellLoader({ data: { library: parseDocsLibrary(params.lib) } }),
-	component: DocsShell,
-	notFoundComponent: DocsNotFoundPage,
+    if (!getDocsLibraryConfig(params.lib).enabled) {
+      throw redirect({
+        to: "/$lib",
+        params: { lib: PRIMARY_DOCS_LIBRARY_ID },
+      });
+    }
+  },
+  loader: async ({ params }) =>
+    docsShellLoader({ data: { library: parseDocsLibrary(params.lib) } }),
+  component: DocsShell,
+  notFoundComponent: DocsNotFoundPage,
 });
 
 function DocsShell() {
-	const { library } = Route.useLoaderData();
+  const { library } = Route.useLoaderData();
 
-	return (
-		<div className="flex flex-col h-screen overflow-hidden">
-			<Header library={library} />
-			<div className="flex-1 min-w-0 min-h-0 overflow-hidden flex flex-col">
-				<Outlet />
-			</div>
-			<Footer />
-		</div>
-	);
+  return (
+    <div className="flex flex-col h-screen overflow-hidden">
+      <Header library={library} />
+      <div className="flex-1 min-w-0 min-h-0 overflow-hidden flex flex-col">
+        <Outlet />
+      </div>
+      <Footer />
+    </div>
+  );
 }
 
 function DocsNotFoundPage() {
-	const { pageTree, library } = Route.useLoaderData();
-	return <DocsNotFoundBlock tree={pageTree} library={library} />;
+  const { pageTree, library } = Route.useLoaderData();
+  return <DocsNotFoundBlock tree={pageTree} library={library} />;
 }

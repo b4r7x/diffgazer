@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { NavigationList } from "@/components/ui/navigation-list"
+import { useState } from "react";
+import { NavigationList } from "@/components/ui/navigation-list";
 
 export default function NavigationListSections() {
-  const [selected, setSelected] = useState("pr-1")
+  const [selected, setSelected] = useState("pr-1");
 
   return (
     <NavigationList selectedId={selected} onSelect={setSelected} aria-label="Project items">
@@ -49,5 +49,5 @@ export default function NavigationListSections() {
         </NavigationList.Item>
       </NavigationList.Group>
     </NavigationList>
-  )
+  );
 }

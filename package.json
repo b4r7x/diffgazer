@@ -14,6 +14,7 @@
   "packageManager": "pnpm@10.28.2",
   "scripts": {
     "build": "turbo run build",
+    "format": "biome format --write .",
     "type-check": "sh scripts/monorepo/run-with-artifacts.sh turbo run type-check",
     "test": "sh scripts/monorepo/run-with-artifacts.sh turbo run test",
     "test:types": "sh scripts/monorepo/run-with-artifacts.sh turbo run test:types",
@@ -26,7 +27,7 @@
     "test-ci": "sh scripts/monorepo/run-with-artifacts.sh sh -c 'pnpm run validate:artifacts:check && pnpm run secret-scan && pnpm run check && turbo run type-check && turbo run test && turbo run test:types && pnpm run test:scripts && DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run smoke && DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run bench && pnpm run verify:monorepo'",
     "release-check": "sh scripts/monorepo/run-with-artifacts.sh sh -c 'pnpm run validate:artifacts:check && pnpm run secret-scan && pnpm run check && pnpm run test:scripts && turbo run type-check && turbo run test && turbo run test:types && DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run smoke && DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run bench && pnpm --filter @diffgazer/add pack --dry-run && pnpm --filter @diffgazer/ui pack --dry-run && pnpm --filter @diffgazer/keys pack --dry-run && pnpm --filter diffgazer pack --dry-run && pnpm run verify:monorepo && git diff --check'",
     "verify:monorepo": "node scripts/monorepo/check-invariants.mjs",
-    "prepare:library-artifacts": "pnpm --filter @diffgazer/core generate:catalog-snapshot && pnpm --filter @diffgazer/registry build && pnpm --filter @diffgazer/keys build && pnpm --filter @diffgazer/ui build && pnpm --filter @diffgazer/add generate:bundles && node --import tsx cli/add/scripts/copy-generated.ts",
+    "prepare:library-artifacts": "pnpm --filter @diffgazer/core generate:catalog-snapshot && biome format --write libs/core/src/catalog/catalog-snapshot.ts && pnpm --filter @diffgazer/registry build && pnpm --filter @diffgazer/keys build && pnpm --filter @diffgazer/ui build && pnpm --filter @diffgazer/add generate:bundles && node --import tsx cli/add/scripts/copy-generated.ts",
     "prepare:artifacts": "pnpm run prepare:library-artifacts && DIFFGAZER_SKIP_ARTIFACT_PREPARE=1 pnpm --filter @diffgazer/docs prepare:generated",
     "validate:artifacts": "sh scripts/monorepo/run-with-artifacts.sh pnpm run validate:artifacts:check",
     "validate:artifacts:check": "node scripts/monorepo/validate-artifacts.mjs",

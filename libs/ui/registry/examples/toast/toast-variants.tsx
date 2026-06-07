@@ -1,7 +1,7 @@
 "use client";
 
-import { Button } from "@/components/ui/button"
-import { Toaster, toast } from "@/components/ui/toast"
+import { Button } from "@/components/ui/button";
+import { Toaster, toast } from "@/components/ui/toast";
 
 export default function ToastVariants() {
   return (
@@ -63,5 +63,5 @@ export default function ToastVariants() {
       </div>
       <Toaster />
     </>
-  )
+  );
 }

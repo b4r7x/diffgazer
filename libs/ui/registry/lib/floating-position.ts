@@ -108,12 +108,26 @@ export function resolveCollisionPosition(
   ];
 
   for (const side of candidates) {
-    const pos = computePosition(triggerRect, contentRect, side, preferredAlign, sideOffset, alignOffset);
+    const pos = computePosition(
+      triggerRect,
+      contentRect,
+      side,
+      preferredAlign,
+      sideOffset,
+      alignOffset,
+    );
     if (!wouldOverflow(pos.x, pos.y, contentRect, collisionPadding, vp)) {
       return { ...pos, side };
     }
   }
 
-  const fallback = computePosition(triggerRect, contentRect, preferredSide, preferredAlign, sideOffset, alignOffset);
+  const fallback = computePosition(
+    triggerRect,
+    contentRect,
+    preferredSide,
+    preferredAlign,
+    sideOffset,
+    alignOffset,
+  );
   return { ...fallback, side: preferredSide };
 }

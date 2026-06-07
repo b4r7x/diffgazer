@@ -18,7 +18,7 @@ export const commandPaletteContentVariants = cva(
       size: { sm: "max-w-sm", md: "max-w-xl", lg: "max-w-2xl" },
     },
     defaultVariants: { size: "md" },
-  }
+  },
 );
 
 function getLiveText(search: string, itemCount: number): string {
@@ -27,7 +27,8 @@ function getLiveText(search: string, itemCount: number): string {
   return `${itemCount} result${itemCount === 1 ? "" : "s"} available`;
 }
 
-export interface CommandPaletteContentProps extends VariantProps<typeof commandPaletteContentVariants> {
+export interface CommandPaletteContentProps
+  extends VariantProps<typeof commandPaletteContentVariants> {
   children: ReactNode;
   className?: string;
   label?: string;
@@ -43,7 +44,8 @@ export function CommandPaletteContent({
   density,
   label = "Command palette",
 }: CommandPaletteContentProps) {
-  const { open, onOpenChange, search, onSearchChange, itemCount, inputRef } = useCommandPaletteContext();
+  const { open, onOpenChange, search, onSearchChange, itemCount, inputRef } =
+    useCommandPaletteContext();
   const [container, setContainer] = useState<Element | null>(null);
   const focusRestore = useFocusRestore({ restoreOnUnmount: false });
 
@@ -67,7 +69,7 @@ export function CommandPaletteContent({
       onBeforeShowModal={focusRestore.capture}
       onAfterShowModal={focusSearchInput}
       onBackdropClick={() => onOpenChange(false)}
-      onCancel={() => search ? onSearchChange("") : onOpenChange(false)}
+      onCancel={() => (search ? onSearchChange("") : onOpenChange(false))}
       onClose={focusRestore.restore}
       className={cn(commandPaletteContentVariants({ size }), className)}
       data-slot="command-palette-content"
@@ -77,9 +79,7 @@ export function CommandPaletteContent({
       aria-label={label}
     >
       <PortalContainerProvider container={container}>
-        {resolvedFrame === "viewfinder" ? (
-          <span aria-hidden="true" className="cp-corners" />
-        ) : null}
+        {resolvedFrame === "viewfinder" ? <span aria-hidden="true" className="cp-corners" /> : null}
         {children}
         {/* biome-ignore lint/a11y/useSemanticElements: role="status" is the sr-only results-count live region; <output> carries form-association semantics that do not fit here. */}
         <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">

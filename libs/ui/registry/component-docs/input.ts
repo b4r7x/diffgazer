@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types"
+import type { ComponentDoc } from "./types";
 
 export const inputDoc: ComponentDoc = {
   description:
@@ -32,10 +32,11 @@ export const inputDoc: ComponentDoc = {
         description: "Height/padding/font size token.",
       },
       "aria-invalid": {
-        type: "boolean | \"true\" | \"false\" | \"grammar\" | \"spelling\"",
+        type: 'boolean | "true" | "false" | "grammar" | "spelling"',
         required: false,
         defaultValue: null,
-        description: "The native ARIA invalid state. The destructive border treatment applies to true/\"true\". Field.Control sets this automatically when Field.invalid is true.",
+        description:
+          'The native ARIA invalid state. The destructive border treatment applies to true/"true". Field.Control sets this automatically when Field.invalid is true.',
       },
     },
     InputGroup: {
@@ -49,20 +50,23 @@ export const inputDoc: ComponentDoc = {
         type: "ReactNode",
         required: false,
         defaultValue: null,
-        description: "Decorative content rendered before the input. Plain text is aria-hidden; interactive affixes must provide their own accessible labels.",
+        description:
+          "Decorative content rendered before the input. Plain text is aria-hidden; interactive affixes must provide their own accessible labels.",
       },
       suffix: {
         type: "ReactNode",
         required: false,
         defaultValue: null,
-        description: "Decorative content rendered after the input. Plain text is aria-hidden; interactive affixes must provide their own accessible labels.",
+        description:
+          "Decorative content rendered after the input. Plain text is aria-hidden; interactive affixes must provide their own accessible labels.",
       },
       inputClassName: {
         type: "string",
         required: false,
         defaultValue: null,
-        description: "className applied to the inner input element. The outer className targets the wrapper.",
+        description:
+          "className applied to the inner input element. The outer className targets the wrapper.",
       },
     },
   },
-}
+};

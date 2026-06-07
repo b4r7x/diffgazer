@@ -7,7 +7,12 @@ import type { RadioSize } from "./radio";
 export interface RadioGroupContextValue {
   value?: string;
   onChange: (value: string) => void;
-  registerItem: (itemId: string, itemValue: string, disabled: boolean, element: HTMLElement | null) => void;
+  registerItem: (
+    itemId: string,
+    itemValue: string,
+    disabled: boolean,
+    element: HTMLElement | null,
+  ) => void;
   unregisterItem: (itemId: string) => void;
   disabled: boolean;
   keyboardNavigation: boolean;

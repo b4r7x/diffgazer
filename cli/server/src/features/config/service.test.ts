@@ -165,17 +165,17 @@ describe("config service", () => {
       source: "live",
       cached: false,
     });
-    expect(await activateProvider({ provider: "gemini", model: "gemini-2.5-pro" }))
-      .toMatchObject({
-        ok: true,
-        value: { provider: "gemini", model: "gemini-2.5-pro" },
-      });
+    expect(await activateProvider({ provider: "gemini", model: "gemini-2.5-pro" })).toMatchObject({
+      ok: true,
+      value: { provider: "gemini", model: "gemini-2.5-pro" },
+    });
 
-    expect(await activateProvider({ provider: "unknown" as AIProvider, model: "m1" }))
-      .toMatchObject({
-        ok: false,
-        error: { code: "PROVIDER_NOT_FOUND" },
-      });
+    expect(
+      await activateProvider({ provider: "unknown" as AIProvider, model: "m1" }),
+    ).toMatchObject({
+      ok: false,
+      error: { code: "PROVIDER_NOT_FOUND" },
+    });
   });
 
   it("rejects a model that is absent from the provider's catalog with MODEL_ERROR", async () => {
@@ -200,7 +200,10 @@ describe("config service", () => {
     await configureProvider("openrouter", { apiKey: "sk-openrouter", model: "some-router-model" });
     const { activateProvider } = await loadService();
 
-    const result = await activateProvider({ provider: "openrouter", model: "any/router-model:free" });
+    const result = await activateProvider({
+      provider: "openrouter",
+      model: "any/router-model:free",
+    });
 
     expect(catalog.getProviderModels).not.toHaveBeenCalled();
     expect(result).toMatchObject({
@@ -458,7 +461,15 @@ describe("getProviderModels (catalog)", () => {
 
   it("returns the slim catalog payload for an enabled provider", async () => {
     catalog.getProviderModels.mockResolvedValue({
-      models: [{ id: "gemini-2.5-flash", name: "Gemini 2.5 Flash", description: "1M context", tier: "free", recommended: true }],
+      models: [
+        {
+          id: "gemini-2.5-flash",
+          name: "Gemini 2.5 Flash",
+          description: "1M context",
+          tier: "free",
+          recommended: true,
+        },
+      ],
       fetchedAt: "2026-06-02T00:00:00.000Z",
       source: "live",
       cached: false,
@@ -466,7 +477,14 @@ describe("getProviderModels (catalog)", () => {
     const { getProviderModels } = await loadService();
     const result = await getProviderModels("gemini");
     expect(catalog.getProviderModels).toHaveBeenCalledWith("gemini");
-    expect(result).toMatchObject({ ok: true, value: { models: [{ id: "gemini-2.5-flash", tier: "free", recommended: true }], source: "live", cached: false } });
+    expect(result).toMatchObject({
+      ok: true,
+      value: {
+        models: [{ id: "gemini-2.5-flash", tier: "free", recommended: true }],
+        source: "live",
+        cached: false,
+      },
+    });
   });
 
   it("rejects an unknown provider id with VALIDATION_ERROR without touching the catalog", async () => {
@@ -519,6 +537,9 @@ describe("getProviderModels (catalog)", () => {
     catalog.getProviderModels.mockRejectedValue(new Error("catalog unavailable"));
     const { getProviderModels } = await loadService();
     const result = await getProviderModels("groq");
-    expect(result).toMatchObject({ ok: false, error: { code: "INTERNAL_ERROR", message: "catalog unavailable" } });
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "INTERNAL_ERROR", message: "catalog unavailable" },
+    });
   });
 });

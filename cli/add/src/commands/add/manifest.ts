@@ -62,8 +62,12 @@ function toManifestPath(op: FileOp): string {
 }
 
 function getSourceNames(op: FileOp): string[] {
-  const sourceNames = isOwnedFileOp(op) ? op.sourceNames ?? [] : [];
-  return [...new Set([op.sourceName, ...sourceNames].filter((name): name is string => name !== undefined))];
+  const sourceNames = isOwnedFileOp(op) ? (op.sourceNames ?? []) : [];
+  return [
+    ...new Set(
+      [op.sourceName, ...sourceNames].filter((name): name is string => name !== undefined),
+    ),
+  ];
 }
 
 function buildOwnedFile(
@@ -90,7 +94,9 @@ function buildOwnedFilesByItem(
   const registryIntegrity = getRegistry().integrity;
   const byItem = new Map<string, ManifestOwnedFile[]>();
   const writtenHashByTargetPath = new Map<string, string>();
-  const existingManifest = (ctx.config.getManifestItems(cwd) ?? {}) as NonNullable<DiffgazerAddConfig["installedComponents"]>;
+  const existingManifest = (ctx.config.getManifestItems(cwd) ?? {}) as NonNullable<
+    DiffgazerAddConfig["installedComponents"]
+  >;
 
   function addOwnedFile(sourceName: string, op: FileOp): void {
     const path = toManifestPath(op);
@@ -145,7 +151,9 @@ export interface OwnedManifestUpdate {
 export function updateOwnedManifestEntries(cwd: string, update: OwnedManifestUpdate): void {
   const { writeResult, metadata, explicitNames, cssChunksByItem } = update;
   const filesByItem = buildOwnedFilesByItem(cwd, writeResult, metadata.integrationMode ?? "none");
-  const existingManifest = (ctx.config.getManifestItems(cwd) ?? {}) as NonNullable<DiffgazerAddConfig["installedComponents"]>;
+  const existingManifest = (ctx.config.getManifestItems(cwd) ?? {}) as NonNullable<
+    DiffgazerAddConfig["installedComponents"]
+  >;
   const allItemNames = new Set<string>([...filesByItem.keys(), ...cssChunksByItem.keys()]);
 
   for (const name of allItemNames) {

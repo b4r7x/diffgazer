@@ -148,7 +148,9 @@ export function OnboardingWizard() {
               size="sm"
               onClick={handleBack}
               disabled={isBusy}
-              className={cn(footer.inActions && footer.focusedIndex === 0 && !isBusy && "ring-2 ring-tui-blue")}
+              className={cn(
+                footer.inActions && footer.focusedIndex === 0 && !isBusy && "ring-2 ring-tui-blue",
+              )}
             >
               Back
             </Button>
@@ -160,7 +162,12 @@ export function OnboardingWizard() {
               size="sm"
               onClick={handlePrimaryAction}
               disabled={!canActivatePrimary}
-              className={cn(footer.inActions && footer.focusedIndex === primaryButtonIndex && canActivatePrimary && "ring-2 ring-tui-blue")}
+              className={cn(
+                footer.inActions &&
+                  footer.focusedIndex === primaryButtonIndex &&
+                  canActivatePrimary &&
+                  "ring-2 ring-tui-blue",
+              )}
             >
               {isBusy ? "Saving..." : "Complete Setup"}
             </Button>
@@ -170,7 +177,12 @@ export function OnboardingWizard() {
               size="sm"
               onClick={handlePrimaryAction}
               disabled={!canActivatePrimary}
-              className={cn(footer.inActions && footer.focusedIndex === primaryButtonIndex && canActivatePrimary && "ring-2 ring-tui-blue")}
+              className={cn(
+                footer.inActions &&
+                  footer.focusedIndex === primaryButtonIndex &&
+                  canActivatePrimary &&
+                  "ring-2 ring-tui-blue",
+              )}
             >
               Next
             </Button>

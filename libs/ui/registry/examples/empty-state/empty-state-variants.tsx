@@ -1,11 +1,11 @@
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
 import {
   EmptyState,
   EmptyStateActions,
   EmptyStateDescription,
   EmptyStateIcon,
   EmptyStateMessage,
-} from "@/components/ui/empty-state"
+} from "@/components/ui/empty-state";
 
 export default function EmptyStateVariants() {
   return (
@@ -32,5 +32,5 @@ export default function EmptyStateVariants() {
         </EmptyState>
       </div>
     </div>
-  )
+  );
 }

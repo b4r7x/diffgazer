@@ -29,12 +29,15 @@ describe("detectProject aliases", () => {
   }
 
   test("detects a custom TypeScript source alias", () => {
-    writeFileSync(join(root, "tsconfig.json"), JSON.stringify({
-      compilerOptions: {
-        baseUrl: ".",
-        paths: { "~/*": ["./src/*"] },
-      },
-    }));
+    writeFileSync(
+      join(root, "tsconfig.json"),
+      JSON.stringify({
+        compilerOptions: {
+          baseUrl: ".",
+          paths: { "~/*": ["./src/*"] },
+        },
+      }),
+    );
 
     const project = detectProject(root);
 
@@ -116,12 +119,15 @@ describe("detectProject aliases", () => {
   }
 
   test("ignores subpath-only TypeScript aliases", () => {
-    writeFileSync(join(root, "tsconfig.json"), JSON.stringify({
-      compilerOptions: {
-        baseUrl: ".",
-        paths: { "@components/*": ["./src/components/*"] },
-      },
-    }));
+    writeFileSync(
+      join(root, "tsconfig.json"),
+      JSON.stringify({
+        compilerOptions: {
+          baseUrl: ".",
+          paths: { "@components/*": ["./src/components/*"] },
+        },
+      }),
+    );
 
     const project = detectProject(root);
 
@@ -130,15 +136,18 @@ describe("detectProject aliases", () => {
   });
 
   test("prefers root TypeScript aliases over subpath aliases", () => {
-    writeFileSync(join(root, "tsconfig.json"), JSON.stringify({
-      compilerOptions: {
-        baseUrl: ".",
-        paths: {
-          "@components/*": ["./src/components/*"],
-          "~/*": ["./src/*"],
+    writeFileSync(
+      join(root, "tsconfig.json"),
+      JSON.stringify({
+        compilerOptions: {
+          baseUrl: ".",
+          paths: {
+            "@components/*": ["./src/components/*"],
+            "~/*": ["./src/*"],
+          },
         },
-      },
-    }));
+      }),
+    );
 
     const project = detectProject(root);
 
@@ -148,15 +157,18 @@ describe("detectProject aliases", () => {
   });
 
   test("prefers @ root aliases over subpath aliases", () => {
-    writeFileSync(join(root, "tsconfig.json"), JSON.stringify({
-      compilerOptions: {
-        baseUrl: ".",
-        paths: {
-          "@components/*": ["./src/components/*"],
-          "@/*": ["./src/*"],
+    writeFileSync(
+      join(root, "tsconfig.json"),
+      JSON.stringify({
+        compilerOptions: {
+          baseUrl: ".",
+          paths: {
+            "@components/*": ["./src/components/*"],
+            "@/*": ["./src/*"],
+          },
         },
-      },
-    }));
+      }),
+    );
 
     const project = detectProject(root);
 
@@ -164,5 +176,4 @@ describe("detectProject aliases", () => {
     expect(project.importAliasPrefix).toBe("@");
     expect(project.sourceDir).toBe("src");
   });
-
 });

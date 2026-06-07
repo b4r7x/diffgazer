@@ -1,8 +1,7 @@
-import type { ComponentDoc } from "./types"
+import type { ComponentDoc } from "./types";
 
 export const radioDoc: ComponentDoc = {
-  description:
-    "Terminal-styled radio button and radio group for single-selection.",
+  description: "Terminal-styled radio button and radio group for single-selection.",
   anatomy: [
     { name: "Radio", indent: 0, note: "Standalone radio button (controlled or uncontrolled)" },
     {
@@ -30,7 +29,7 @@ export const radioDoc: ComponentDoc = {
     {
       title: "Keyboard Navigation",
       content:
-        "RadioGroup delegates roving focus to @diffgazer/keys navigation. All four arrow keys move focus and select items by default regardless of orientation (per WAI-ARIA APG radio group pattern). Home/End jump to first/last item. Space selects the focused item. Enter commit is a Diffgazer extension for preview/commit flows, not the APG baseline. Use activationMode=\"manual\" with onNavigate/onChange when arrows should move focus and highlight without changing value, and onEnter when Enter should commit the focused item. Use autoFocus to focus the highlighted, selected, or first enabled item when the group becomes active. Use keyboardNavigation to suspend RadioGroup-managed key handling; when suspended, enabled items remain tabbable. Use onNavigationBoundaryReached(direction, event, key) to hand focus to adjacent controls and filter vertical-only handoffs by key when needed.",
+        'RadioGroup delegates roving focus to @diffgazer/keys navigation. All four arrow keys move focus and select items by default regardless of orientation (per WAI-ARIA APG radio group pattern). Home/End jump to first/last item. Space selects the focused item. Enter commit is a Diffgazer extension for preview/commit flows, not the APG baseline. Use activationMode="manual" with onNavigate/onChange when arrows should move focus and highlight without changing value, and onEnter when Enter should commit the focused item. Use autoFocus to focus the highlighted, selected, or first enabled item when the group becomes active. Use keyboardNavigation to suspend RadioGroup-managed key handling; when suspended, enabled items remain tabbable. Use onNavigationBoundaryReached(direction, event, key) to hand focus to adjacent controls and filter vertical-only handoffs by key when needed.',
     },
     {
       title: "Orientation",
@@ -46,9 +45,7 @@ export const radioDoc: ComponentDoc = {
   keyboard: {
     description:
       "All four arrow keys move focus and select items in automatic activation mode (per WAI-ARIA APG). Manual activation mode moves focus and emits onNavigate without changing value. Space selects the focused item. Enter commit via onEnter is a Diffgazer extension for preview/commit flows. Home/End jump to first/last item. Composite UIs can opt into initial focus with autoFocus, suspend RadioGroup-managed key handling with keyboardNavigation, and listen for onNavigationBoundaryReached(direction, event, key).",
-    examples: [
-      { name: "radio-group-default", title: "Default" },
-    ],
+    examples: [{ name: "radio-group-default", title: "Default" }],
   },
   props: {
     Radio: {
@@ -80,7 +77,8 @@ export const radioDoc: ComponentDoc = {
         type: "string",
         required: false,
         defaultValue: null,
-        description: "Hidden native input name used for same-name radio behavior and form submission.",
+        description:
+          "Hidden native input name used for same-name radio behavior and form submission.",
       },
       required: {
         type: "boolean",
@@ -166,13 +164,15 @@ export const radioDoc: ComponentDoc = {
         type: '"vertical" | "horizontal"',
         required: false,
         defaultValue: '"vertical"',
-        description: "Layout orientation. All four arrow keys still navigate per APG radio behavior.",
+        description:
+          "Layout orientation. All four arrow keys still navigate per APG radio behavior.",
       },
       activationMode: {
         type: '"automatic" | "manual"',
         required: false,
         defaultValue: '"automatic"',
-        description: "Automatic selects on arrow navigation; manual moves focus/highlight until Space or Enter commits.",
+        description:
+          "Automatic selects on arrow navigation; manual moves focus/highlight until Space or Enter commits.",
       },
       wrap: {
         type: "boolean",
@@ -196,7 +196,8 @@ export const radioDoc: ComponentDoc = {
         type: "boolean",
         required: false,
         defaultValue: "false",
-        description: "Focuses the highlighted, selected, or first enabled item when the group becomes active.",
+        description:
+          "Focuses the highlighted, selected, or first enabled item when the group becomes active.",
       },
       name: {
         type: "string",
@@ -238,4 +239,4 @@ export const radioDoc: ComponentDoc = {
       },
     },
   },
-}
+};

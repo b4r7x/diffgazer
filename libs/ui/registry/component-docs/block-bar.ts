@@ -1,11 +1,15 @@
-import type { ComponentDoc } from "./types"
+import type { ComponentDoc } from "./types";
 
 export const blockBarDoc: ComponentDoc = {
   description:
     "Unicode block-character bar for displaying proportional values. Supports single-value and multi-segment stacked bars.",
   anatomy: [
     { name: "BlockBar", indent: 0, note: "Root meter element with ARIA attributes" },
-    { name: "BlockBar.Segment", indent: 1, note: "Customizable colored segment with optional children content" },
+    {
+      name: "BlockBar.Segment",
+      indent: 1,
+      note: "Customizable colored segment with optional children content",
+    },
   ],
   notes: [
     {
@@ -30,8 +34,7 @@ export const blockBarDoc: ComponentDoc = {
     },
     {
       title: "Color Variants",
-      content:
-        "The variant prop accepts: default, muted, error, warning, success, info.",
+      content: "The variant prop accepts: default, muted, error, warning, success, info.",
     },
     {
       title: "Custom Characters",
@@ -52,7 +55,8 @@ export const blockBarDoc: ComponentDoc = {
         type: "number",
         required: false,
         defaultValue: null,
-        description: "Current value. Required unless segments are provided or BlockBar.Segment children are passed (in which case the value is derived from their sum).",
+        description:
+          "Current value. Required unless segments are provided or BlockBar.Segment children are passed (in which case the value is derived from their sum).",
       },
       max: {
         type: "number",
@@ -82,13 +86,15 @@ export const blockBarDoc: ComponentDoc = {
         type: "string",
         required: false,
         defaultValue: null,
-        description: 'Visible label rendered to the left of the bar in simple mode. Also used as accessible name when aria-label is omitted.',
+        description:
+          "Visible label rendered to the left of the bar in simple mode. Also used as accessible name when aria-label is omitted.",
       },
       "aria-label": {
         type: "string",
         required: false,
         defaultValue: null,
-        description: 'Accessible name. When set (or label is set), the bar exposes role="meter" with aria-valuemin/max/now/text.',
+        description:
+          'Accessible name. When set (or label is set), the bar exposes role="meter" with aria-valuemin/max/now/text.',
       },
       "aria-labelledby": {
         type: "string",
@@ -106,19 +112,22 @@ export const blockBarDoc: ComponentDoc = {
         type: '"default" | "muted" | "error" | "warning" | "success" | "info"',
         required: false,
         defaultValue: '"default"',
-        description: "Color token applied to the implicit single segment when no segments or children are provided.",
+        description:
+          "Color token applied to the implicit single segment when no segments or children are provided.",
       },
       segments: {
         type: "{ value: number; variant?: SegmentVariant; char?: string }[]",
         required: false,
         defaultValue: null,
-        description: "Multi-segment stack. When provided, takes precedence over children and derives value from the sum.",
+        description:
+          "Multi-segment stack. When provided, takes precedence over children and derives value from the sum.",
       },
       children: {
         type: "ReactNode",
         required: false,
         defaultValue: null,
-        description: "BlockBar.Segment children for fully custom rendering. Throws when neither value nor segments are provided and children are not BlockBar.Segment elements.",
+        description:
+          "BlockBar.Segment children for fully custom rendering. Throws when neither value nor segments are provided and children are not BlockBar.Segment elements.",
       },
     },
     "BlockBar.Segment": {
@@ -148,4 +157,4 @@ export const blockBarDoc: ComponentDoc = {
       },
     },
   },
-}
+};

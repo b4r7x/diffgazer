@@ -198,7 +198,9 @@ export const horizontalStepperRootVariants = cva(
   },
 );
 
-export type HorizontalStepperVariant = NonNullable<VariantProps<typeof horizontalStepperRootVariants>["variant"]>;
+export type HorizontalStepperVariant = NonNullable<
+  VariantProps<typeof horizontalStepperRootVariants>["variant"]
+>;
 
 export const horizontalStepperStepVariants = cva("relative inline-flex items-center", {
   variants: {

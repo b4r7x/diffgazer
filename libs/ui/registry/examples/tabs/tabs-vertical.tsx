@@ -1,4 +1,4 @@
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function TabsVertical() {
   return (
@@ -28,5 +28,5 @@ export default function TabsVertical() {
         </div>
       </div>
     </Tabs>
-  )
+  );
 }

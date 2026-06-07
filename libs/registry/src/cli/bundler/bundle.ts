@@ -8,7 +8,6 @@ import { type DetectNpmImportsOptions, detectNpmImports } from "./detect-imports
 import { type RegistrySourceItem, RegistrySourceSchema } from "./schemas.js";
 import type { BundleFile, BundleItem, BundleResult, BundlerConfig } from "./types.js";
 
-
 interface BundleContext {
   rootDir: string;
   itemLabel: string;
@@ -42,7 +41,9 @@ function readRegistryJson(registryPath: string): unknown {
 function parseRegistrySource(raw: unknown): RegistrySourceItem[] {
   const parsed = RegistrySourceSchema.safeParse(raw);
   if (!parsed.success) {
-    const issues = parsed.error.issues.map((issue) => `  - ${issue.path.join(".")}: ${issue.message}`).join("\n");
+    const issues = parsed.error.issues
+      .map((issue) => `  - ${issue.path.join(".")}: ${issue.message}`)
+      .join("\n");
     throw new Error(`Invalid registry.json schema:\n${issues}`);
   }
   return parsed.data.items;
@@ -91,7 +92,9 @@ function readAndBundleFiles(
   for (const file of sourceItem.files) {
     const filePath = resolve(rootDir, file.path);
     if (!existsSync(filePath)) {
-      throw new Error(`File not found for ${itemLabel} "${sourceItem.name}": ${file.path}\n  Expected at: ${filePath}`);
+      throw new Error(
+        `File not found for ${itemLabel} "${sourceItem.name}": ${file.path}\n  Expected at: ${filePath}`,
+      );
     }
 
     const content = readFileSync(filePath, "utf-8");
@@ -110,12 +113,14 @@ function readAndBundleFiles(
   return { files, detectedDeps };
 }
 
-function bundleItem(
-  sourceItem: RegistrySourceItem,
-  ctx: BundleContext,
-): BundleItem {
+function bundleItem(sourceItem: RegistrySourceItem, ctx: BundleContext): BundleItem {
   const { files, detectedDeps } = readAndBundleFiles(sourceItem, ctx);
-  const { files: _sourceFiles, dependencies: _sourceDependencies, meta: sourceMeta, ...itemFields } = sourceItem;
+  const {
+    files: _sourceFiles,
+    dependencies: _sourceDependencies,
+    meta: sourceMeta,
+    ...itemFields
+  } = sourceItem;
 
   if (ctx.excludedDeps) {
     for (const d of ctx.excludedDeps) detectedDeps.delete(d);
@@ -147,7 +152,7 @@ function reportBundleSummary(summary: BundleSummary, items: BundleItem[]): void 
   info(`Integrity: ${integrity}`);
   info(`Output: ${outputPath}`);
 
-  const itemsWithDeps = items.filter(i => i.dependencies.length > 0);
+  const itemsWithDeps = items.filter((i) => i.dependencies.length > 0);
   if (itemsWithDeps.length > 0) {
     heading("Dependencies:");
     for (const item of itemsWithDeps) {
@@ -178,11 +183,26 @@ export function createBundler(config: BundlerConfig): () => BundleResult {
 
     const extra = extraContent ? extraContent(rootDir) : {};
     const integrity = computeIntegrity(JSON.stringify({ items: normalizedItems, ...extra }));
-    const bundleJson = JSON.stringify({ schemaVersion: 1, items: normalizedItems, ...extra, integrity });
+    const bundleJson = JSON.stringify({
+      schemaVersion: 1,
+      items: normalizedItems,
+      ...extra,
+      integrity,
+    });
 
     atomicWriteFile(outputPath, bundleJson);
     const totalFiles = items.reduce((acc, i) => acc + i.files.length, 0);
-    reportBundleSummary({ itemCount: items.length, fileCount: totalFiles, bundleJson, integrity, outputPath, itemLabel }, items);
+    reportBundleSummary(
+      {
+        itemCount: items.length,
+        fileCount: totalFiles,
+        bundleJson,
+        integrity,
+        outputPath,
+        itemLabel,
+      },
+      items,
+    );
 
     return { items, integrity, extra };
   };

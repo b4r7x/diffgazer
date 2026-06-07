@@ -1,5 +1,4 @@
-const isMac =
-  typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.userAgent);
+const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.userAgent);
 
 const keyMap: Record<string, [mac: string, other: string]> = {
   mod: ["\u2318", "Ctrl"],

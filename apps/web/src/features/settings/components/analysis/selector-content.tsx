@@ -31,14 +31,11 @@ export function AnalysisSelectorContent({
   autoFocusList = false,
   onBoundaryReached,
 }: AnalysisSelectorContentProps) {
-  const [focusedLens, setFocusedLens] = useState<LensId | null>(() =>
-    options[0]?.id ?? null,
-  );
+  const [focusedLens, setFocusedLens] = useState<LensId | null>(() => options[0]?.id ?? null);
 
   const optionIds = options.map((option) => option.id);
-  const effectiveFocusedLens = focusedLens && optionIds.includes(focusedLens)
-    ? focusedLens
-    : optionIds[0] ?? null;
+  const effectiveFocusedLens =
+    focusedLens && optionIds.includes(focusedLens) ? focusedLens : (optionIds[0] ?? null);
 
   const navigationEnabled = enabled && !disabled && options.length > 0;
   const autoFocusReady = autoFocusList && navigationEnabled;
@@ -49,9 +46,7 @@ export function AnalysisSelectorContent({
 
   return (
     <div className="space-y-3">
-      <div className="text-xs text-tui-muted uppercase tracking-wider font-bold">
-        Active Agents
-      </div>
+      <div className="text-xs text-tui-muted uppercase tracking-wider font-bold">Active Agents</div>
       <ScrollArea className="max-h-90 pr-2">
         <CheckboxGroup
           value={value}

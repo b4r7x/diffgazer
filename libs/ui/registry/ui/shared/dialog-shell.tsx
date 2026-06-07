@@ -15,8 +15,7 @@ import { useFocusTrap } from "@/hooks/use-focus-trap";
 import { usePresence } from "@/hooks/use-presence";
 import { composeRefs } from "@/lib/compose-refs";
 
-export interface DialogShellProps
-  extends HTMLAttributes<HTMLDialogElement> {
+export interface DialogShellProps extends HTMLAttributes<HTMLDialogElement> {
   open: boolean;
   onBackdropClick?: (e: MouseEvent<HTMLDialogElement>) => void;
   onCancel?: (e: SyntheticEvent<HTMLDialogElement>) => void;
@@ -52,7 +51,10 @@ function popShell(element: HTMLElement): void {
   notifyShellStack();
 }
 
-function isClickOutsideDialogRect(event: MouseEvent<HTMLDialogElement>, dialog: HTMLDialogElement): boolean {
+function isClickOutsideDialogRect(
+  event: MouseEvent<HTMLDialogElement>,
+  dialog: HTMLDialogElement,
+): boolean {
   const rect = dialog.getBoundingClientRect();
   return (
     event.clientX < rect.left ||
@@ -150,7 +152,11 @@ export function DialogShell({
       onClick={(e: MouseEvent<HTMLDialogElement>) => {
         onClick?.(e);
         const element = shellRef.current;
-        if (element instanceof HTMLDialogElement && e.target === element && isClickOutsideDialogRect(e, element)) {
+        if (
+          element instanceof HTMLDialogElement &&
+          e.target === element &&
+          isClickOutsideDialogRect(e, element)
+        ) {
           onBackdropClick?.(e);
         }
       }}

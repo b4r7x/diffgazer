@@ -6,11 +6,7 @@ import {
   type ThemeTokenKey,
 } from "@diffgazer/core/theme";
 import type { CliTheme } from "../../../features/settings/components/theme-selector";
-import {
-  type CliColorTokens,
-  darkPalette,
-  lightPalette,
-} from "../../../theme/palettes";
+import { type CliColorTokens, darkPalette, lightPalette } from "../../../theme/palettes";
 
 /** Palette swatch grouping shown in the Live Preview panel. */
 export const TOKEN_GROUPS: ReadonlyArray<{
@@ -28,10 +24,7 @@ export const TOKEN_GROUPS: ReadonlyArray<{
  * `auto` keeps the currently-active palette so the preview reflects what the
  * user will see after saving "auto" on this terminal.
  */
-export function paletteForTheme(
-  theme: CliTheme,
-  activePalette: CliColorTokens,
-): CliColorTokens {
+export function paletteForTheme(theme: CliTheme, activePalette: CliColorTokens): CliColorTokens {
   if (theme === "dark") return darkPalette;
   if (theme === "light") return lightPalette;
   return activePalette;

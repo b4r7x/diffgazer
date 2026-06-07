@@ -1,11 +1,4 @@
-import {
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -80,7 +73,10 @@ describe("copyArtifactsToPackage", () => {
       existingFile: { name: "artifact-manifest.json", body: "{}" },
       expectedMessage: "artifact fingerprint",
     },
-  ])("throws when artifact $label file is missing during manifest validation", ({ existingFile, expectedMessage }) => {
+  ])("throws when artifact $label file is missing during manifest validation", ({
+    existingFile,
+    expectedMessage,
+  }) => {
     const sourceRoot = createTempDir();
     const packageRoot = createTempDir();
     const artifactsDir = join(sourceRoot, "dist/artifacts");
@@ -174,6 +170,8 @@ describe("copyArtifactsToPackage", () => {
     });
 
     expect(existsSync(join(packageRoot, "output/build-artifacts/data.json"))).toBe(true);
-    expect(readFileSync(join(packageRoot, "output/build-artifacts/data.json"), "utf-8")).toBe('{"custom": true}');
+    expect(readFileSync(join(packageRoot, "output/build-artifacts/data.json"), "utf-8")).toBe(
+      '{"custom": true}',
+    );
   });
 });

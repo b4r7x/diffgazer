@@ -1,8 +1,7 @@
-import type { ComponentDoc } from "./types"
+import type { ComponentDoc } from "./types";
 
 export const toggleGroupDoc: ComponentDoc = {
-  description:
-    "Compound toggle button group with keyboard navigation for single selection.",
+  description: "Compound toggle button group with keyboard navigation for single selection.",
   notes: [
     {
       title: "Requires @diffgazer/keys (package mode)",
@@ -38,9 +37,7 @@ export const toggleGroupDoc: ComponentDoc = {
   keyboard: {
     description:
       "Arrow keys move focus between toggle items with wrapping. Enter and Space select the focused item.",
-    examples: [
-      { name: "toggle-group-default", title: "With keyboard navigation" },
-    ],
+    examples: [{ name: "toggle-group-default", title: "With keyboard navigation" }],
   },
   props: {
     ToggleGroup: {
@@ -48,13 +45,15 @@ export const toggleGroupDoc: ComponentDoc = {
         type: '"single" | "multiple"',
         required: false,
         defaultValue: '"single"',
-        description: 'Switches between radio-style single selection and pressed-button-style multiple selection. Switches value/onChange/defaultValue from string|null to readonly string[].',
+        description:
+          "Switches between radio-style single selection and pressed-button-style multiple selection. Switches value/onChange/defaultValue from string|null to readonly string[].",
       },
       value: {
         type: "string | null | readonly string[]",
         required: false,
         defaultValue: null,
-        description: "Controlled selected value(s). string|null for single mode, readonly string[] for multiple.",
+        description:
+          "Controlled selected value(s). string|null for single mode, readonly string[] for multiple.",
       },
       defaultValue: {
         type: "string | null | readonly string[]",
@@ -72,7 +71,8 @@ export const toggleGroupDoc: ComponentDoc = {
         type: "boolean",
         required: false,
         defaultValue: "false",
-        description: "Single mode only. When true, clicking the active item deselects it (allowing a null value).",
+        description:
+          "Single mode only. When true, clicking the active item deselects it (allowing a null value).",
       },
       disabled: {
         type: "boolean",
@@ -132,7 +132,8 @@ export const toggleGroupDoc: ComponentDoc = {
         type: "string",
         required: false,
         defaultValue: null,
-        description: "Single mode only. Form field name; renders a hidden input for native form submission.",
+        description:
+          "Single mode only. Form field name; renders a hidden input for native form submission.",
       },
       children: {
         type: "ReactNode",
@@ -168,4 +169,4 @@ export const toggleGroupDoc: ComponentDoc = {
       },
     },
   },
-}
+};

@@ -1,77 +1,77 @@
 export interface DocNote {
-  title: string
-  content: string
+  title: string;
+  content: string;
 }
 
 export interface ExampleRef {
-  name: string
-  title: string
+  name: string;
+  title: string;
 }
 
 export interface UsageSection {
-  code?: string
-  example?: string
-  lang?: "tsx" | "typescript" | "css" | "bash" | "json" | "html"
+  code?: string;
+  example?: string;
+  lang?: "tsx" | "typescript" | "css" | "bash" | "json" | "html";
 }
 
 export interface HookParameter {
-  name: string
-  type: string
-  required: boolean
-  description: string
-  defaultValue?: string
+  name: string;
+  type: string;
+  required: boolean;
+  description: string;
+  defaultValue?: string;
 }
 
 export interface HookReturn {
-  type: string
-  description: string
-  properties?: HookParameter[]
+  type: string;
+  description: string;
+  properties?: HookParameter[];
 }
 
 export interface HookDoc {
-  description?: string
-  usage?: UsageSection
-  parameters?: HookParameter[]
-  returns?: HookReturn
-  notes?: DocNote[]
-  examples?: ExampleRef[]
-  tags?: string[]
+  description?: string;
+  usage?: UsageSection;
+  parameters?: HookParameter[];
+  returns?: HookReturn;
+  notes?: DocNote[];
+  examples?: ExampleRef[];
+  tags?: string[];
 }
 
 export interface AnatomyNode {
-  name: string
-  indent: number
-  note?: string
+  name: string;
+  indent: number;
+  note?: string;
 }
 
 export interface ComponentNote {
-  title: string
-  content: string
+  title: string;
+  content: string;
 }
 
 export interface KeyboardSection {
-  description: string
-  examples: ExampleRef[]
+  description: string;
+  examples: ExampleRef[];
 }
 
 export interface PropInfo {
-  type: string
-  required: boolean
-  defaultValue: string | null
-  description: string
+  type: string;
+  required: boolean;
+  defaultValue: string | null;
+  description: string;
 }
 
-export type ComponentPropsTable = Record<string, Record<string, PropInfo>>
+export type ComponentPropsTable = Record<string, Record<string, PropInfo>>;
 
 export interface ComponentDoc {
-  description?: string
-  usage?: UsageSection
-  notes?: ComponentNote[]
-  examples?: ExampleRef[]
-  anatomy?: AnatomyNode[]
-  keyboard?: KeyboardSection | null
-  tags?: string[]
-  props?: ComponentPropsTable
+  description?: string;
+  usage?: UsageSection;
+  notes?: ComponentNote[];
+  examples?: ExampleRef[];
+  anatomy?: AnatomyNode[];
+  keyboard?: KeyboardSection | null;
+  tags?: string[];
+  props?: ComponentPropsTable;
   /**
    * Optional list of other registry item names whose examples should also be
    * loaded into this component's docs page. Used when a single MDX page
@@ -80,7 +80,7 @@ export interface ComponentDoc {
    * of the primary `examples` list so explicit `<Example name="..." />`
    * references still resolve.
    */
-  companionExamples?: string[]
+  companionExamples?: string[];
 }
 
 /**
@@ -90,59 +90,59 @@ export interface ComponentDoc {
  * unused by the docs-data pipeline.
  */
 export interface CodeBlockToken {
-  text: string
-  color?: string
-  className?: string
+  text: string;
+  color?: string;
+  className?: string;
 }
 
 export interface CodeBlockLine {
-  number: number
-  content: CodeBlockToken[]
-  state?: "highlight" | "added" | "removed"
+  number: number;
+  content: CodeBlockToken[];
+  state?: "highlight" | "added" | "removed";
 }
 
 export interface HookSourceData {
-  name: string
-  title: string
-  description: string
+  name: string;
+  title: string;
+  description: string;
   source: {
-    raw: string
-    highlighted: CodeBlockLine[]
-  }
+    raw: string;
+    highlighted: CodeBlockLine[];
+  };
 }
 
-export type ConsumptionLibrary = "ui" | "keys"
+export type ConsumptionLibrary = "ui" | "keys";
 
-export type ConsumptionItemKind = "component" | "hook" | "lib"
+export type ConsumptionItemKind = "component" | "hook" | "lib";
 
 export interface ConsumptionPathOption {
-  available: boolean
-  command?: string
-  note?: string
+  available: boolean;
+  command?: string;
+  note?: string;
 }
 
 export interface ConsumptionMetadata {
-  library: ConsumptionLibrary
-  itemId: string
-  itemKind: ConsumptionItemKind
-  packageImport?: string
-  copyPath?: string
-  dgaddName: string
-  publishGated: boolean
+  library: ConsumptionLibrary;
+  itemId: string;
+  itemKind: ConsumptionItemKind;
+  packageImport?: string;
+  copyPath?: string;
+  dgaddName: string;
+  publishGated: boolean;
   paths: {
-    copy: ConsumptionPathOption
-    dgadd: ConsumptionPathOption
-    package: ConsumptionPathOption
-  }
-  cssNote?: string
+    copy: ConsumptionPathOption;
+    dgadd: ConsumptionPathOption;
+    package: ConsumptionPathOption;
+  };
+  cssNote?: string;
 }
 
 export interface EnrichedHookData extends HookSourceData {
-  docs: HookDoc | null
-  usageSnippet?: string
-  usageSnippetHighlighted?: CodeBlockLine[]
-  examples: string[]
-  exampleSource: Record<string, { raw: string; highlighted: CodeBlockLine[] }>
-  parameters?: HookParameter[]
-  returns?: HookReturn
+  docs: HookDoc | null;
+  usageSnippet?: string;
+  usageSnippetHighlighted?: CodeBlockLine[];
+  examples: string[];
+  exampleSource: Record<string, { raw: string; highlighted: CodeBlockLine[] }>;
+  parameters?: HookParameter[];
+  returns?: HookReturn;
 }

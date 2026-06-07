@@ -11,7 +11,9 @@ const EMPTY_COMPLETED_STEPS: Set<number> = Object.freeze(new Set<number>()) as S
 
 export function useIssueDetailsTabs({ selectedIssue }: UseIssueDetailsTabsOptions) {
   const [requestedTab, setRequestedTab] = useState<TabId>("details");
-  const [completedStepsByIssue, setCompletedStepsByIssue] = useState<Record<string, Set<number>>>({});
+  const [completedStepsByIssue, setCompletedStepsByIssue] = useState<Record<string, Set<number>>>(
+    {},
+  );
   const detailsScrollRef = useRef<HTMLDivElement>(null);
 
   const availableTabs: TabId[] = selectedIssue?.suggested_patch
@@ -19,7 +21,7 @@ export function useIssueDetailsTabs({ selectedIssue }: UseIssueDetailsTabsOption
     : ["details", "explain", "trace"];
   const activeTab = availableTabs.includes(requestedTab) ? requestedTab : "details";
   const completedSteps = selectedIssue
-    ? completedStepsByIssue[selectedIssue.id] ?? DEFAULT_COMPLETED_STEPS
+    ? (completedStepsByIssue[selectedIssue.id] ?? DEFAULT_COMPLETED_STEPS)
     : EMPTY_COMPLETED_STEPS;
 
   const setActiveTab = (tab: TabId) => {

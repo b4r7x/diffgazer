@@ -24,8 +24,13 @@ export function CodeBlockContent({
   const hasExplicitName = Boolean(ariaLabel || ariaLabelledBy);
   // Only reference labelId when a CodeBlock.Label is actually rendered,
   // otherwise the aria-labelledby would point at a non-existent element.
-  const resolvedLabelledBy = ariaLabelledBy ?? (hasExplicitName || !context.hasLabel ? undefined : context.labelId);
-  const resolvedLabel = hasExplicitName ? ariaLabel : (context.hasLabel ? undefined : context.fallbackName);
+  const resolvedLabelledBy =
+    ariaLabelledBy ?? (hasExplicitName || !context.hasLabel ? undefined : context.labelId);
+  const resolvedLabel = hasExplicitName
+    ? ariaLabel
+    : context.hasLabel
+      ? undefined
+      : context.fallbackName;
 
   const isString = typeof children === "string";
   const lines = isString ? (children as string).split("\n") : null;
@@ -42,7 +47,10 @@ export function CodeBlockContent({
       className={className}
       {...props}
     >
-      <pre data-slot="code-block-content" style={{ "--cb-line-number-w": `${gutterWidth}ch` } as React.CSSProperties}>
+      <pre
+        data-slot="code-block-content"
+        style={{ "--cb-line-number-w": `${gutterWidth}ch` } as React.CSSProperties}
+      >
         {lines
           ? lines.map((line, i) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: code lines render in fixed source order and are never reordered; the line index is the stable identity (line content can repeat).

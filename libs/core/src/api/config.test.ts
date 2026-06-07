@@ -54,9 +54,6 @@ describe("config API functions", () => {
 
     await activateProvider(client, "gemini", model);
 
-    expect(client.post).toHaveBeenCalledWith(
-      "/api/config/provider/gemini/activate",
-      expectedBody,
-    );
+    expect(client.post).toHaveBeenCalledWith("/api/config/provider/gemini/activate", expectedBody);
   });
 });

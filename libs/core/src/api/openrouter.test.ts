@@ -4,17 +4,35 @@ import { isOpenRouterCompatible, mapOpenRouterModels } from "./openrouter.js";
 
 describe("isOpenRouterCompatible", () => {
   it.each([
-    { label: "supportedParameters=['response_format']", input: { supportedParameters: ["response_format"] }, expected: true },
-    { label: "supportedParameters=['structured_outputs']", input: { supportedParameters: ["structured_outputs"] }, expected: true },
-    { label: "supportedParameters=['temperature','top_p']", input: { supportedParameters: ["temperature", "top_p"] }, expected: false },
-    { label: "supportedParameters=undefined", input: { supportedParameters: undefined }, expected: false },
+    {
+      label: "supportedParameters=['response_format']",
+      input: { supportedParameters: ["response_format"] },
+      expected: true,
+    },
+    {
+      label: "supportedParameters=['structured_outputs']",
+      input: { supportedParameters: ["structured_outputs"] },
+      expected: true,
+    },
+    {
+      label: "supportedParameters=['temperature','top_p']",
+      input: { supportedParameters: ["temperature", "top_p"] },
+      expected: false,
+    },
+    {
+      label: "supportedParameters=undefined",
+      input: { supportedParameters: undefined },
+      expected: false,
+    },
     { label: "supportedParameters omitted", input: {}, expected: false },
   ])("returns $expected for $label", ({ input, expected }) => {
     expect(isOpenRouterCompatible(input)).toBe(expected);
   });
 });
 
-function makeModel(overrides: Partial<OpenRouterModel> & Pick<OpenRouterModel, "id">): OpenRouterModel {
+function makeModel(
+  overrides: Partial<OpenRouterModel> & Pick<OpenRouterModel, "id">,
+): OpenRouterModel {
   // Cast: the literal omits no required field, but the spread's inferred type is
   // widened by `Partial<OpenRouterModel>`, so the assertion restores the full shape.
   return {
@@ -51,7 +69,11 @@ describe("mapOpenRouterModels", () => {
     const [mapped] = mapOpenRouterModels([
       // Cast: deliberately feeds `undefined` into the non-optional `description`
       // to exercise the runtime id-fallback path that types alone forbid.
-      makeModel({ id: "openrouter/no-desc", name: "n", description: undefined as unknown as string }),
+      makeModel({
+        id: "openrouter/no-desc",
+        name: "n",
+        description: undefined as unknown as string,
+      }),
     ]);
     expect(mapped?.description).toBe("openrouter/no-desc");
   });

@@ -1,18 +1,8 @@
-import {
-  createHighlighterCore,
-  type LanguageInput,
-  type ThemedToken,
-} from "shiki/core";
+import { createHighlighterCore, type LanguageInput, type ThemedToken } from "shiki/core";
 import { createJavaScriptRegexEngine } from "shiki/engine/javascript";
 import type { CodeBlockLine } from "./types.js";
 
-export type HighlightLanguage =
-  | "tsx"
-  | "typescript"
-  | "css"
-  | "bash"
-  | "json"
-  | "html";
+export type HighlightLanguage = "tsx" | "typescript" | "css" | "bash" | "json" | "html";
 
 export interface CreateHighlighterOptions {
   theme: Record<string, unknown>;
@@ -42,7 +32,7 @@ const DEFAULT_LANGS = [
 ];
 
 export async function createDocsHighlighter(
-  options: CreateHighlighterOptions
+  options: CreateHighlighterOptions,
 ): Promise<DocsHighlighter> {
   return createHighlighterCore({
     engine: createJavaScriptRegexEngine(),
@@ -55,7 +45,7 @@ export function highlightCode(
   highlighter: DocsHighlighter,
   code: string,
   lang: HighlightLanguage = "tsx",
-  themeName: string
+  themeName: string,
 ): CodeBlockLine[] {
   const result = highlighter.codeToTokensBase(code, {
     lang,

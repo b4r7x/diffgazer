@@ -1,15 +1,15 @@
 "use client";
 
-import { useState } from "react"
-import { Avatar } from "@/components/ui/avatar"
-import { Overflow } from "@/components/ui/overflow"
+import { useState } from "react";
+import { Avatar } from "@/components/ui/avatar";
+import { Overflow } from "@/components/ui/overflow";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@/components/ui/select";
 
 const users = [
   { value: "felix", label: "Felix", initials: "FX" },
@@ -17,10 +17,10 @@ const users = [
   { value: "dev", label: "Dev", initials: "DV" },
   { value: "kai", label: "Kai", initials: "KI" },
   { value: "nova", label: "Nova", initials: "NV" },
-]
+];
 
 export default function SelectAvatar() {
-  const [value, setValue] = useState<string[]>([])
+  const [value, setValue] = useState<string[]>([]);
 
   return (
     <Select multiple value={value} onChange={setValue} width="lg">
@@ -37,14 +37,8 @@ export default function SelectAvatar() {
               )}
             >
               {selected.map((v) => {
-                const user = users.find((u) => u.value === v)
-                return (
-                  <Avatar
-                    key={v}
-                    fallback={user?.initials ?? "?"}
-                    size="sm"
-                  />
-                )
+                const user = users.find((u) => u.value === v);
+                return <Avatar key={v} fallback={user?.initials ?? "?"} size="sm" />;
               })}
             </Overflow>
           )}
@@ -61,5 +55,5 @@ export default function SelectAvatar() {
         ))}
       </SelectContent>
     </Select>
-  )
+  );
 }

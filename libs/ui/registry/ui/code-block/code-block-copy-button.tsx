@@ -91,7 +91,9 @@ export function CodeBlockCopyButton({
   };
 
   const renderedChildren =
-    typeof children === "function" ? children(state) : children ?? <ClipboardIcon state={state} />;
+    typeof children === "function"
+      ? children(state)
+      : (children ?? <ClipboardIcon state={state} />);
 
   return (
     <>

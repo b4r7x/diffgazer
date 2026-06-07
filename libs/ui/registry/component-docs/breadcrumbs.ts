@@ -1,12 +1,20 @@
-import type { ComponentDoc } from "./types"
+import type { ComponentDoc } from "./types";
 
 export const breadcrumbsDoc: ComponentDoc = {
   description:
     "Compound breadcrumb navigation with auto-separator and composable parts for links, collapsed items, and custom separators.",
   anatomy: [
     { name: "Breadcrumbs", indent: 0, note: "Root container (nav + ol). Accepts separator prop." },
-    { name: "Breadcrumbs.Item", indent: 1, note: "List item — auto-inserts separator. Use current prop to mark the current page." },
-    { name: "Breadcrumbs.Link", indent: 2, note: "Navigation link. Supports render-prop for custom components." },
+    {
+      name: "Breadcrumbs.Item",
+      indent: 1,
+      note: "List item — auto-inserts separator. Use current prop to mark the current page.",
+    },
+    {
+      name: "Breadcrumbs.Link",
+      indent: 2,
+      note: "Navigation link. Supports render-prop for custom components.",
+    },
     { name: "Breadcrumbs.Ellipsis", indent: 2, note: "Collapsed items placeholder" },
   ],
   notes: [
@@ -46,7 +54,8 @@ export const breadcrumbsDoc: ComponentDoc = {
         type: "ReactNode",
         required: false,
         defaultValue: null,
-        description: "Breadcrumbs.Item children. The last item is auto-marked current when no item already sets current.",
+        description:
+          "Breadcrumbs.Item children. The last item is auto-marked current when no item already sets current.",
       },
     },
     "Breadcrumbs.Item": {
@@ -54,7 +63,8 @@ export const breadcrumbsDoc: ComponentDoc = {
         type: "boolean",
         required: false,
         defaultValue: "false",
-        description: 'Marks the item as the current page. Auto-applied to the last item when no item explicitly sets it. Adds aria-current="page" and bold styling.',
+        description:
+          'Marks the item as the current page. Auto-applied to the last item when no item explicitly sets it. Adds aria-current="page" and bold styling.',
       },
       children: {
         type: "ReactNode",
@@ -74,7 +84,8 @@ export const breadcrumbsDoc: ComponentDoc = {
         type: "ReactNode | (props: BreadcrumbsLinkRenderProps) => ReactNode",
         required: true,
         defaultValue: null,
-        description: "Link label, or a render function that receives ref, className, aria-current, and remaining anchor props.",
+        description:
+          "Link label, or a render function that receives ref, className, aria-current, and remaining anchor props.",
       },
     },
     "Breadcrumbs.Ellipsis": {
@@ -86,4 +97,4 @@ export const breadcrumbsDoc: ComponentDoc = {
       },
     },
   },
-}
+};

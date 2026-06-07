@@ -1,6 +1,5 @@
 "use client";
 
-
 import { cva } from "class-variance-authority";
 import type {
   AnchorHTMLAttributes,
@@ -129,7 +128,8 @@ export function SidebarItem(props: SidebarItemProps): ReactNode {
   const resolvedValue = props.value ?? generatedId;
   const resolvedIntent = autoTone ? resolveSidebarIntent(props.intent, props.value) : props.intent;
 
-  const guardedClick = (onClick?: MouseEventHandler<HTMLElement>): MouseEventHandler<HTMLElement> =>
+  const guardedClick =
+    (onClick?: MouseEventHandler<HTMLElement>): MouseEventHandler<HTMLElement> =>
     (event) => {
       if (disabled) {
         event.preventDefault();

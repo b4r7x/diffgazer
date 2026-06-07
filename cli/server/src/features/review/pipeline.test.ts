@@ -110,7 +110,9 @@ describe("resolveGitDiff", () => {
       gitService: makeGitService(TWO_FILE_DIFF),
       mode: "unstaged",
       files: ["src/index.ts"],
-      emit: async (event) => { events.push(event); },
+      emit: async (event) => {
+        events.push(event);
+      },
       reviewId: "review-1",
     });
 
@@ -129,7 +131,9 @@ describe("resolveGitDiff", () => {
       gitService: makeGitService(TWO_FILE_DIFF),
       mode: "unstaged",
       files: ["missing.ts"],
-      emit: async (event) => { events.push(event); },
+      emit: async (event) => {
+        events.push(event);
+      },
       reviewId: "review-1",
     });
 

@@ -3,9 +3,7 @@
   "name": "section-header",
   "title": "Section Header",
   "description": "Section heading with terminal-style decoration",
-  "dependencies": [
-    "class-variance-authority"
-  ],
+  "dependencies": ["class-variance-authority"],
   "registryDependencies": [
     "https://r.b4r7.dev/r/ui/theme.json",
     "https://r.b4r7.dev/r/ui/utils.json"
@@ -18,7 +16,7 @@
     },
     {
       "path": "registry/ui/section-header/section-header.tsx",
-      "content": "import { cva, type VariantProps } from \"class-variance-authority\";\nimport type { HTMLAttributes, Ref } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\ntype HeadingTag = \"h2\" | \"h3\" | \"h4\";\n\nexport const sectionHeaderVariants = cva(\n  \"font-bold mb-2 uppercase tracking-wider\",\n  {\n    variants: {\n      variant: {\n        default: \"text-foreground\",\n        muted: \"text-muted-foreground\",\n      },\n      bordered: {\n        true: \"border-b border-border pb-2\",\n      },\n      as: {\n        h2: \"text-sm\",\n        h3: \"text-xs\",\n        h4: \"text-[11px]\",\n      },\n    },\n    defaultVariants: { variant: \"default\", bordered: false, as: \"h3\" },\n  },\n);\n\nexport interface SectionHeaderProps\n  extends HTMLAttributes<HTMLHeadingElement>,\n    VariantProps<typeof sectionHeaderVariants> {\n  as?: HeadingTag;\n  ref?: Ref<HTMLHeadingElement>;\n}\n\nexport function SectionHeader({\n  ref,\n  className,\n  variant,\n  bordered,\n  as: Tag = \"h3\",\n  children,\n  ...props\n}: SectionHeaderProps) {\n  return (\n    <Tag\n      ref={ref}\n      className={cn(sectionHeaderVariants({ variant, bordered, as: Tag }), className)}\n      {...props}\n    >\n      {children}\n    </Tag>\n  );\n}\n",
+      "content": "import { cva, type VariantProps } from \"class-variance-authority\";\nimport type { HTMLAttributes, Ref } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\ntype HeadingTag = \"h2\" | \"h3\" | \"h4\";\n\nexport const sectionHeaderVariants = cva(\"font-bold mb-2 uppercase tracking-wider\", {\n  variants: {\n    variant: {\n      default: \"text-foreground\",\n      muted: \"text-muted-foreground\",\n    },\n    bordered: {\n      true: \"border-b border-border pb-2\",\n    },\n    as: {\n      h2: \"text-sm\",\n      h3: \"text-xs\",\n      h4: \"text-[11px]\",\n    },\n  },\n  defaultVariants: { variant: \"default\", bordered: false, as: \"h3\" },\n});\n\nexport interface SectionHeaderProps\n  extends HTMLAttributes<HTMLHeadingElement>,\n    VariantProps<typeof sectionHeaderVariants> {\n  as?: HeadingTag;\n  ref?: Ref<HTMLHeadingElement>;\n}\n\nexport function SectionHeader({\n  ref,\n  className,\n  variant,\n  bordered,\n  as: Tag = \"h3\",\n  children,\n  ...props\n}: SectionHeaderProps) {\n  return (\n    <Tag\n      ref={ref}\n      className={cn(sectionHeaderVariants({ variant, bordered, as: Tag }), className)}\n      {...props}\n    >\n      {children}\n    </Tag>\n  );\n}\n",
       "type": "registry:ui"
     }
   ],

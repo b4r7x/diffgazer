@@ -1,7 +1,13 @@
 "use client";
 
 import { cva } from "class-variance-authority";
-import { type InputHTMLAttributes, type KeyboardEvent, type ReactNode, type Ref, useRef } from "react";
+import {
+  type InputHTMLAttributes,
+  type KeyboardEvent,
+  type ReactNode,
+  type Ref,
+  useRef,
+} from "react";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { useFormReset } from "@/hooks/use-form-reset";
 import { composeRefs } from "@/lib/compose-refs";
@@ -24,7 +30,11 @@ const searchInputVariants = cva(
   },
 );
 
-const defaultPrefix = <span className="text-foreground font-bold" aria-hidden="true">/</span>;
+const defaultPrefix = (
+  <span className="text-foreground font-bold" aria-hidden="true">
+    /
+  </span>
+);
 
 export interface SearchInputProps
   extends Omit<
@@ -79,12 +89,7 @@ export function SearchInput({
   };
 
   return (
-    <div
-      className={cn(
-        searchInputVariants({ size, disabled }),
-        className,
-      )}
-    >
+    <div className={cn(searchInputVariants({ size, disabled }), className)}>
       {prefix}
       <input
         ref={composeRefs(inputRef, ref)}

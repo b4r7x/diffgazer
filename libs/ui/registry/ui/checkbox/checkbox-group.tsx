@@ -102,7 +102,7 @@ export function CheckboxGroup<T extends string = string>(props: CheckboxGroupPro
   const hasAutoFocusedRef = useRef(false);
   const { items, registerItem, unregisterItem } = useSelectableCollection(containerRef);
   const [value, setValue] = useControllableState<T[]>({
-    value: "value" in props ? controlledValue ?? [] : undefined,
+    value: "value" in props ? (controlledValue ?? []) : undefined,
     controlled: "value" in props,
     defaultValue,
     onChange,
@@ -150,28 +150,34 @@ export function CheckboxGroup<T extends string = string>(props: CheckboxGroupPro
     target.element.focus();
     setHighlightedValue(target.value);
     hasAutoFocusedRef.current = true;
-  }, [autoFocus, keyboardNavigation, disabled, items, highlightedValue, value, setHighlightedValue]);
+  }, [
+    autoFocus,
+    keyboardNavigation,
+    disabled,
+    items,
+    highlightedValue,
+    value,
+    setHighlightedValue,
+  ]);
 
-  const toggle = useCallback((itemValue: string) => {
-    if (disabled) return;
-    setNativeInvalid(false);
-    setValue((cur) => {
-      const nextValue = itemValue as T;
-      const selected = cur.includes(nextValue);
-      return selected
-        ? cur.filter((v) => v !== itemValue)
-        : [...cur, nextValue];
-    });
-  }, [disabled, setValue]);
+  const toggle = useCallback(
+    (itemValue: string) => {
+      if (disabled) return;
+      setNativeInvalid(false);
+      setValue((cur) => {
+        const nextValue = itemValue as T;
+        const selected = cur.includes(nextValue);
+        return selected ? cur.filter((v) => v !== itemValue) : [...cur, nextValue];
+      });
+    },
+    [disabled, setValue],
+  );
 
   const handleKeyDown = (event: ReactKeyboardEvent) => {
     const eventTarget = isHTMLElementForContainer(event.target, containerRef.current)
       ? event.target
       : null;
-    if (
-      eventTarget
-      && eventTarget.closest('[role="group"]') !== containerRef.current
-    ) {
+    if (eventTarget && eventTarget.closest('[role="group"]') !== containerRef.current) {
       return;
     }
 
@@ -179,18 +185,32 @@ export function CheckboxGroup<T extends string = string>(props: CheckboxGroupPro
     if (!event.defaultPrevented && event.key !== " ") navKeyDown(event);
   };
 
-  const contextValue = useMemo(() => ({
-    value,
-    toggle,
-    registerItem,
-    unregisterItem,
-    disabled,
-    size,
-    variant,
-    strikethrough,
-    highlightedValue: highlightedValue ?? null,
-    name,
-  }), [value, toggle, registerItem, unregisterItem, disabled, size, variant, strikethrough, highlightedValue, name]);
+  const contextValue = useMemo(
+    () => ({
+      value,
+      toggle,
+      registerItem,
+      unregisterItem,
+      disabled,
+      size,
+      variant,
+      strikethrough,
+      highlightedValue: highlightedValue ?? null,
+      name,
+    }),
+    [
+      value,
+      toggle,
+      registerItem,
+      unregisterItem,
+      disabled,
+      size,
+      variant,
+      strikethrough,
+      highlightedValue,
+      name,
+    ],
+  );
 
   return (
     <CheckboxGroupContext value={contextValue}>
@@ -203,7 +223,10 @@ export function CheckboxGroup<T extends string = string>(props: CheckboxGroupPro
         aria-label={ariaLabel ?? label}
         aria-labelledby={ariaLabelledBy}
         aria-disabled={disabled || undefined}
-        aria-invalid={resolveAriaInvalid(ariaInvalid, nativeInvalid && required && !hasValidSelectedValue)}
+        aria-invalid={resolveAriaInvalid(
+          ariaInvalid,
+          nativeInvalid && required && !hasValidSelectedValue,
+        )}
         className={cn("flex flex-col gap-2", className)}
         onKeyDown={handleKeyDown}
       >

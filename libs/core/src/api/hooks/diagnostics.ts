@@ -34,19 +34,15 @@ interface QueryLike {
 function deriveContextStatus(query: QueryLike): ContextStatus {
   if (query.isLoading) return "loading";
   if (query.error) {
-    const status = "status" in query.error
-      ? (query.error as { status?: number }).status
-      : undefined;
+    const status =
+      "status" in query.error ? (query.error as { status?: number }).status : undefined;
     return status === 404 ? "missing" : "error";
   }
   if (query.data) return "ready";
   return "missing";
 }
 
-function deriveContextError(
-  queryError: Error | null,
-  refreshError: Error | null,
-): string | null {
+function deriveContextError(queryError: Error | null, refreshError: Error | null): string | null {
   if (refreshError) return refreshError.message;
   if (!queryError) return null;
   return queryError.message;

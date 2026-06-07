@@ -68,11 +68,7 @@ function NavigationListTitle({ children }: NavigationListTitleProps) {
   );
 }
 
-function NavigationListItem({
-  id,
-  disabled = false,
-  children,
-}: NavigationListItemProps) {
+function NavigationListItem({ id, disabled = false, children }: NavigationListItemProps) {
   const ctx = useNavigationListContext();
   const isHighlighted = ctx.highlightedId === id;
   const isSelected = ctx.selectedId === id;
@@ -97,9 +93,7 @@ function NavigationListItem({
       >
         {prefix}
       </Text>
-      <Box>
-        {children}
-      </Box>
+      <Box>{children}</Box>
     </Box>
   );
 }
@@ -119,10 +113,7 @@ function NavigationListRoot({
 
   const [internalIndex, setInternalIndex] = useState(0);
 
-  const currentHighlightedId =
-    controlledHighlightedId ??
-    selectableItems[internalIndex]?.id ??
-    "";
+  const currentHighlightedId = controlledHighlightedId ?? selectableItems[internalIndex]?.id ?? "";
 
   function moveBy(direction: 1 | -1) {
     const result = moveHighlight(selectableItems, currentHighlightedId, direction, wrap);

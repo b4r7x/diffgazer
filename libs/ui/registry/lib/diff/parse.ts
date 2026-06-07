@@ -22,14 +22,30 @@ export interface ParsedDiff {
   hunks: DiffHunk[];
 }
 
-export interface DiffInputPatch { patch: string; diff?: never; before?: never; after?: never; }
-export interface DiffInputCompare { before: string; after: string; patch?: never; diff?: never; }
-export interface DiffInputParsed { diff: ParsedDiff; patch?: never; before?: never; after?: never; }
+export interface DiffInputPatch {
+  patch: string;
+  diff?: never;
+  before?: never;
+  after?: never;
+}
+export interface DiffInputCompare {
+  before: string;
+  after: string;
+  patch?: never;
+  diff?: never;
+}
+export interface DiffInputParsed {
+  diff: ParsedDiff;
+  patch?: never;
+  before?: never;
+  after?: never;
+}
 export type DiffInput = DiffInputPatch | DiffInputCompare | DiffInputParsed;
 
 const HUNK_RE = /^@@\s+-(\d+)(?:,(\d+))?\s+\+(\d+)(?:,(\d+))?\s+@@(.*)$/;
 
-const SKIP_RE = /^(index |new file mode|deleted file mode|old mode|new mode|similarity index|rename from|rename to|Binary files|copy from|copy to)/;
+const SKIP_RE =
+  /^(index |new file mode|deleted file mode|old mode|new mode|similarity index|rename from|rename to|Binary files|copy from|copy to)/;
 
 export function parseDiff(patch: string): ParsedDiff[] {
   const lines = patch.split("\n");

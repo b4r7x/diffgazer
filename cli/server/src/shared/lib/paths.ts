@@ -61,7 +61,9 @@ export const resolveProjectRoot = (options?: {
   if (header) {
     const resolved = normalizePath(header);
     if (!isAllowedPath(resolved)) {
-      throw new Error("Invalid project root: path must be under user home or contain a .git directory");
+      throw new Error(
+        "Invalid project root: path must be under user home or contain a .git directory",
+      );
     }
     return resolved;
   }
@@ -80,14 +82,12 @@ export const getGlobalDiffgazerDir = (): string => {
   return DEFAULT_GLOBAL_DIR;
 };
 
-export const getGlobalConfigPath = (): string =>
-  path.join(getGlobalDiffgazerDir(), "config.json");
+export const getGlobalConfigPath = (): string => path.join(getGlobalDiffgazerDir(), "config.json");
 
 export const getGlobalSecretsPath = (): string =>
   path.join(getGlobalDiffgazerDir(), "secrets.json");
 
-export const getGlobalTrustPath = (): string =>
-  path.join(getGlobalDiffgazerDir(), "trust.json");
+export const getGlobalTrustPath = (): string => path.join(getGlobalDiffgazerDir(), "trust.json");
 
 export const getGlobalOpenRouterModelsPath = (): string =>
   path.join(getGlobalDiffgazerDir(), "openrouter-models.json");

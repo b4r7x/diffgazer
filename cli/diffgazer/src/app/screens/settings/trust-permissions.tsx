@@ -1,9 +1,4 @@
-import {
-  guardQueryState,
-  useDeleteTrust,
-  useInit,
-  useSaveTrust,
-} from "@diffgazer/core/api/hooks";
+import { guardQueryState, useDeleteTrust, useInit, useSaveTrust } from "@diffgazer/core/api/hooks";
 import { getErrorMessage } from "@diffgazer/core/errors";
 import { usePageFooter } from "@diffgazer/core/footer";
 import type { TrustCapabilities } from "@diffgazer/core/schemas/config";
@@ -58,9 +53,10 @@ export function TrustPermissionsScreen(): ReactElement {
   };
 
   const [draft, setDraft] = useState<TrustDraft>(() => getInitialDraft(editorInput));
-  const [statusMessage, setStatusMessage] = useState<
-    { tone: "success" | "error"; text: string } | null
-  >(null);
+  const [statusMessage, setStatusMessage] = useState<{
+    tone: "success" | "error";
+    text: string;
+  } | null>(null);
 
   const view = resolveEditorView(draft, editorInput);
   if (draft.editorKey !== view.editorKey) {

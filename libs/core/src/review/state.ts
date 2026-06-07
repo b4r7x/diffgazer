@@ -1,4 +1,11 @@
-import type { AgentState, AgentStreamEvent, EnrichEvent, StepEvent, StepId, StepState } from "../schemas/events/index.js";
+import type {
+  AgentState,
+  AgentStreamEvent,
+  EnrichEvent,
+  StepEvent,
+  StepId,
+  StepState,
+} from "../schemas/events/index.js";
 import { createInitialSteps, isStepEvent } from "../schemas/events/index.js";
 import type { ReviewIssue } from "../schemas/review/index.js";
 
@@ -59,10 +66,12 @@ export function createInitialReviewState(): ReviewState {
   };
 }
 
-function updateStepStatus(steps: StepState[], stepId: StepId, status: StepState["status"]): StepState[] {
-  return steps.map((step) =>
-    step.id === stepId ? { ...step, status } : step
-  );
+function updateStepStatus(
+  steps: StepState[],
+  stepId: StepId,
+  status: StepState["status"],
+): StepState[] {
+  return steps.map((step) => (step.id === stepId ? { ...step, status } : step));
 }
 
 function upsertAgent(agents: AgentState[], newAgent: AgentState): AgentState[] {
@@ -102,41 +111,55 @@ function updateAgents(agents: AgentState[], event: AgentStreamEvent): AgentState
       });
 
     case "agent_thinking":
-      return agents.map((a) =>
-        a.id === event.agent ? { ...a, currentAction: event.thought } : a
-      );
+      return agents.map((a) => (a.id === event.agent ? { ...a, currentAction: event.thought } : a));
 
     case "agent_progress":
       return agents.map((a) =>
         a.id === event.agent
           ? { ...a, progress: event.progress, currentAction: event.message ?? a.currentAction }
-          : a
+          : a,
       );
 
     case "tool_call":
     case "tool_start":
       return agents.map((a) =>
-        a.id === event.agent ? { ...a, currentAction: `Using tool: ${event.tool}`, lastToolCall: event.tool } : a
+        a.id === event.agent
+          ? { ...a, currentAction: `Using tool: ${event.tool}`, lastToolCall: event.tool }
+          : a,
       );
 
     case "tool_result":
     case "tool_end":
       return agents.map((a) =>
-        a.id === event.agent ? { ...a, currentAction: event.summary || undefined } : a
+        a.id === event.agent ? { ...a, currentAction: event.summary || undefined } : a,
       );
 
     case "agent_error":
       return agents.map((a) =>
         a.id === event.agent
-          ? { ...a, status: "error", error: event.error, currentAction: "Failed", completedAt: event.timestamp, progress: 100 }
-          : a
+          ? {
+              ...a,
+              status: "error",
+              error: event.error,
+              currentAction: "Failed",
+              completedAt: event.timestamp,
+              progress: 100,
+            }
+          : a,
       );
 
     case "agent_complete":
       return agents.map((a) =>
         a.id === event.agent
-          ? { ...a, status: "complete", issueCount: event.issueCount, currentAction: "Completed", progress: 100, completedAt: event.timestamp }
-          : a
+          ? {
+              ...a,
+              status: "complete",
+              issueCount: event.issueCount,
+              currentAction: "Completed",
+              progress: 100,
+              completedAt: event.timestamp,
+            }
+          : a,
       );
 
     default:
@@ -240,7 +263,7 @@ function handleToolEvent(
   event: Extract<AgentStreamEvent, { type: "tool_call" | "tool_start" }>,
 ): ReviewState {
   if (event.tool === "readFileContext") {
-    const colonIndex = event.input.indexOf(':');
+    const colonIndex = event.input.indexOf(":");
     const filePath = colonIndex === -1 ? event.input : event.input.substring(0, colonIndex);
     const newCompleted = state.fileProgress.completed.includes(filePath)
       ? state.fileProgress.completed

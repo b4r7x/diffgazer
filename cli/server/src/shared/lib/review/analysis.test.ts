@@ -98,19 +98,11 @@ describe("runLensAnalysis", () => {
   it("emits the agent, file, tool, and issue events in order on success", async () => {
     const diff = makeDiff(2);
     const issues = [makeIssue("1", "src/file-0.ts")];
-    const client = makeMockAIClient(
-      ok({ summary: "Found 1 issue", issues }),
-    );
+    const client = makeMockAIClient(ok({ summary: "Found 1 issue", issues }));
     const events: Array<AgentStreamEvent | StepEvent> = [];
     const onEvent = (e: AgentStreamEvent | StepEvent) => events.push(e);
 
-    const promise = runLensAnalysis(
-      client,
-      CORRECTNESS_LENS,
-      diff,
-      onEvent,
-      makeContext(),
-    );
+    const promise = runLensAnalysis(client, CORRECTNESS_LENS, diff, onEvent, makeContext());
 
     await vi.advanceTimersByTimeAsync(100);
     const result = await promise;
@@ -141,19 +133,11 @@ describe("runLensAnalysis", () => {
 
   it("propagates the AI client error and emits an agent_error event", async () => {
     const diff = makeDiff(1);
-    const client = makeMockAIClient(
-      err({ code: "MODEL_ERROR" as const, message: "Model failed" }),
-    );
+    const client = makeMockAIClient(err({ code: "MODEL_ERROR" as const, message: "Model failed" }));
     const events: Array<AgentStreamEvent | StepEvent> = [];
     const onEvent = (e: AgentStreamEvent | StepEvent) => events.push(e);
 
-    const promise = runLensAnalysis(
-      client,
-      CORRECTNESS_LENS,
-      diff,
-      onEvent,
-      makeContext(),
-    );
+    const promise = runLensAnalysis(client, CORRECTNESS_LENS, diff, onEvent, makeContext());
     await vi.advanceTimersByTimeAsync(100);
     const result = await promise;
 
@@ -201,19 +185,11 @@ describe("runLensAnalysis", () => {
     const issue = makeIssue("1", "src/file-0.ts");
     issue.evidence = [];
 
-    const client = makeMockAIClient(
-      ok({ summary: "Found issue", issues: [issue] }),
-    );
+    const client = makeMockAIClient(ok({ summary: "Found issue", issues: [issue] }));
     const events: Array<AgentStreamEvent | StepEvent> = [];
     const onEvent = (e: AgentStreamEvent | StepEvent) => events.push(e);
 
-    const promise = runLensAnalysis(
-      client,
-      CORRECTNESS_LENS,
-      diff,
-      onEvent,
-      makeContext(),
-    );
+    const promise = runLensAnalysis(client, CORRECTNESS_LENS, diff, onEvent, makeContext());
     await vi.advanceTimersByTimeAsync(100);
     const result = await promise;
 
@@ -235,13 +211,7 @@ describe("runLensAnalysis", () => {
     const events: Array<AgentStreamEvent | StepEvent> = [];
     const onEvent = (e: AgentStreamEvent | StepEvent) => events.push(e);
 
-    const promise = runLensAnalysis(
-      client,
-      CORRECTNESS_LENS,
-      diff,
-      onEvent,
-      makeContext(),
-    );
+    const promise = runLensAnalysis(client, CORRECTNESS_LENS, diff, onEvent, makeContext());
     await vi.advanceTimersByTimeAsync(100);
     const result = await promise;
 
@@ -266,13 +236,7 @@ describe("runLensAnalysis", () => {
     const events: Array<AgentStreamEvent | StepEvent> = [];
     const onEvent = (e: AgentStreamEvent | StepEvent) => events.push(e);
 
-    const promise = runLensAnalysis(
-      client,
-      CORRECTNESS_LENS,
-      diff,
-      onEvent,
-      makeContext(),
-    );
+    const promise = runLensAnalysis(client, CORRECTNESS_LENS, diff, onEvent, makeContext());
 
     // Await the rejection immediately so it doesn't leak as unhandled
     await expect(promise).rejects.toThrow("Network failure");

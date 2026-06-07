@@ -3,11 +3,7 @@
 import { type HTMLAttributes, type ReactNode, type Ref, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent } from "../dialog";
-import {
-  SidebarChromeContext,
-  useOptionalSidebar,
-  useSidebar,
-} from "./sidebar-context";
+import { SidebarChromeContext, useOptionalSidebar, useSidebar } from "./sidebar-context";
 import { SidebarProvider } from "./sidebar-provider";
 import { type SidebarVariant, sidebarContainerVariants } from "./sidebar-variants";
 

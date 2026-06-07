@@ -5,7 +5,7 @@ import { type RefObject, useCallback, useLayoutEffect, useRef, useState } from "
 export type OverflowDirection = "horizontal" | "vertical" | "both";
 
 export function useOverflow<T extends HTMLElement = HTMLElement>(
-  direction: OverflowDirection = "horizontal"
+  direction: OverflowDirection = "horizontal",
 ): { ref: RefObject<T | null>; isOverflowing: boolean } {
   const ref = useRef<T | null>(null);
   const frameRef = useRef<number | null>(null);

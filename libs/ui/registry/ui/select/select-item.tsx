@@ -29,15 +29,28 @@ const selectItemVariants = cva(
       },
     },
     compoundVariants: [
-      { variant: "card", state: ["default", "selectedMulti"], className: "text-muted-foreground hover:bg-border/30" },
+      {
+        variant: "card",
+        state: ["default", "selectedMulti"],
+        className: "text-muted-foreground hover:bg-border/30",
+      },
       { variant: "card", state: "highlighted", className: "text-muted-foreground bg-border/30" },
-      { variant: "card", state: ["selected", "selectedMultiHighlighted"], className: "bg-muted-foreground text-background font-medium" },
+      {
+        variant: "card",
+        state: ["selected", "selectedMultiHighlighted"],
+        className: "bg-muted-foreground text-background font-medium",
+      },
     ],
     defaultVariants: { state: "default", variant: "default" },
-  }
+  },
 );
 
-type ItemState = "default" | "highlighted" | "selected" | "selectedMulti" | "selectedMultiHighlighted";
+type ItemState =
+  | "default"
+  | "highlighted"
+  | "selected"
+  | "selectedMulti"
+  | "selectedMultiHighlighted";
 
 function getItemState(isSelected: boolean, isHighlighted: boolean, multiple: boolean): ItemState {
   if (!isSelected) return isHighlighted ? "highlighted" : "default";
@@ -83,16 +96,8 @@ export function SelectItem<TValue extends string = string>({
   onMouseEnter,
   ...props
 }: SelectItemProps<TValue>) {
-  const {
-    value,
-    open,
-    multiple,
-    highlighted,
-    searchQuery,
-    selectItem,
-    variant,
-    listboxId,
-  } = useSelectContext("SelectItem");
+  const { value, open, multiple, highlighted, searchQuery, selectItem, variant, listboxId } =
+    useSelectContext("SelectItem");
 
   const label = textValue ?? (typeof children === "string" ? children : itemValue);
 
@@ -132,10 +137,13 @@ export function SelectItem<TValue extends string = string>({
       )}
     >
       {showIndicatorSlot && (
-        <span aria-hidden="true" className={cn(
-          "font-mono shrink-0 whitespace-nowrap min-w-[3ch]",
-          !indicatorText && "invisible"
-        )}>
+        <span
+          aria-hidden="true"
+          className={cn(
+            "font-mono shrink-0 whitespace-nowrap min-w-[3ch]",
+            !indicatorText && "invisible",
+          )}
+        >
           {indicatorText ?? CHECKMARK}
         </span>
       )}
@@ -147,7 +155,9 @@ export function SelectItem<TValue extends string = string>({
         <span className="flex-1 min-w-0 truncate">{children}</span>
       )}
       {variant === "card" && isHighlighted && isSelected && (
-        <span aria-hidden="true" className="ml-auto text-[10px] motion-safe:animate-pulse">&lt;</span>
+        <span aria-hidden="true" className="ml-auto text-[10px] motion-safe:animate-pulse">
+          &lt;
+        </span>
       )}
     </div>
   );

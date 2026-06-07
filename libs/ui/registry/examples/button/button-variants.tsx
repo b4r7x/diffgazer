@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
 
 export default function ButtonVariants() {
   return (
@@ -13,5 +13,5 @@ export default function ButtonVariants() {
       <Button variant="action">Action</Button>
       <Button bracket>Bracket</Button>
     </div>
-  )
+  );
 }

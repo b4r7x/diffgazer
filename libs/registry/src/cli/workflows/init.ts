@@ -48,10 +48,14 @@ function checkExistingConfig<TConfig>(
     return "skip";
   }
 
-  if (!existing.ok && (existing.error === "parse_error" || existing.error === "validation_error") && !force) {
+  if (
+    !existing.ok &&
+    (existing.error === "parse_error" || existing.error === "validation_error") &&
+    !force
+  ) {
     throw new Error(
-      `${configFileName} is malformed: ${existing.message}\n`
-      + `Fix the syntax error, delete ${configFileName}, or use --force to re-initialize.`,
+      `${configFileName} is malformed: ${existing.message}\n` +
+        `Fix the syntax error, delete ${configFileName}, or use --force to re-initialize.`,
     );
   }
 
@@ -69,10 +73,7 @@ function showDetected(display: Array<[label: string, value: string]>): void {
 function logFileResults(results: Array<{ action: "created" | "skipped"; path: string }>): void {
   heading("Creating files...");
   for (const result of results) {
-    fileAction(
-      result.action === "created" ? pc.green("+") : pc.dim("skip"),
-      result.path,
-    );
+    fileAction(result.action === "created" ? pc.green("+") : pc.dim("skip"), result.path);
   }
 }
 
@@ -208,15 +209,31 @@ function showNextSteps(steps: string[]): void {
   newline();
 }
 
-export async function runInitWorkflow<TConfig>(options: InitWorkflowOptions<TConfig>): Promise<void> {
-  const { cwd, configFileName, yes, force, dryRun, skipInstall, loadConfig, detectProject, plannedPaths, createFiles, afterFiles, writeConfig, nextSteps } = options;
+export async function runInitWorkflow<TConfig>(
+  options: InitWorkflowOptions<TConfig>,
+): Promise<void> {
+  const {
+    cwd,
+    configFileName,
+    yes,
+    force,
+    dryRun,
+    skipInstall,
+    loadConfig,
+    detectProject,
+    plannedPaths,
+    createFiles,
+    afterFiles,
+    writeConfig,
+    nextSteps,
+  } = options;
 
   if (typeof plannedPaths !== "function") {
     throw new TypeError(
-      "runInitWorkflow requires a `plannedPaths` callback that lists every file or "
-      + "directory the init may create, write, or touch (config file is included "
-      + "automatically). This is mandatory so rollback can restore package.json, "
-      + "lockfiles, and freshly-created files when writeConfig fails after install.",
+      "runInitWorkflow requires a `plannedPaths` callback that lists every file or " +
+        "directory the init may create, write, or touch (config file is included " +
+        "automatically). This is mandatory so rollback can restore package.json, " +
+        "lockfiles, and freshly-created files when writeConfig fails after install.",
     );
   }
 
@@ -229,7 +246,10 @@ export async function runInitWorkflow<TConfig>(options: InitWorkflowOptions<TCon
 
   if (!yes) {
     const proceed = await promptConfirm("Continue with initialization?");
-    if (!proceed) { info("Cancelled."); return; }
+    if (!proceed) {
+      info("Cancelled.");
+      return;
+    }
   }
 
   if (dryRun) {

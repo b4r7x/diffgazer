@@ -1,8 +1,8 @@
-import { render, screen } from "@testing-library/react"
-import { describe, expect, it } from "vitest"
-import { Dialog } from "../dialog/index"
-import { Popover } from "../popover/index"
-import { Select } from "../select/index"
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import { Dialog } from "../dialog/index";
+import { Popover } from "../popover/index";
+import { Select } from "../select/index";
 
 // axe skipped: portal-tree integration test; dialog/popover/select primitive tests own a11y assertions.
 
@@ -24,14 +24,14 @@ describe("Portal-in-Dialog focus containment", () => {
             </Popover>
           </Dialog.Body>
         </Dialog.Content>
-      </Dialog>
-    )
+      </Dialog>,
+    );
 
-    const dialog = screen.getByRole("dialog", { name: "Test Dialog" })
-    const popoverContent = screen.getByText("Popover content")
+    const dialog = screen.getByRole("dialog", { name: "Test Dialog" });
+    const popoverContent = screen.getByText("Popover content");
 
-    expect(dialog.contains(popoverContent)).toBe(true)
-  })
+    expect(dialog.contains(popoverContent)).toBe(true);
+  });
 
   it("default-variant select inside dialog portals listbox into the dialog DOM tree", async () => {
     render(
@@ -50,18 +50,18 @@ describe("Portal-in-Dialog focus containment", () => {
             </Select>
           </Dialog.Body>
         </Dialog.Content>
-      </Dialog>
-    )
+      </Dialog>,
+    );
 
-    const dialog = screen.getByRole("dialog", { name: "Test Dialog" })
-    const trigger = screen.getByRole("combobox")
-    const listboxId = trigger.getAttribute("aria-controls")
-    if (!listboxId) throw new Error("Expected combobox to control a listbox")
+    const dialog = screen.getByRole("dialog", { name: "Test Dialog" });
+    const trigger = screen.getByRole("combobox");
+    const listboxId = trigger.getAttribute("aria-controls");
+    if (!listboxId) throw new Error("Expected combobox to control a listbox");
 
-    const listbox = document.getElementById(listboxId)
-    if (!listbox) throw new Error("Expected listbox to be mounted")
+    const listbox = document.getElementById(listboxId);
+    if (!listbox) throw new Error("Expected listbox to be mounted");
 
-    expect(dialog.contains(listbox)).toBe(true)
-    expect(listbox.parentElement).not.toBe(document.body)
-  })
-})
+    expect(dialog.contains(listbox)).toBe(true);
+    expect(listbox.parentElement).not.toBe(document.body);
+  });
+});

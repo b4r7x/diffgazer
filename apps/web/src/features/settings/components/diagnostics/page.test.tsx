@@ -94,22 +94,26 @@ function renderPage() {
 
 async function waitForReady() {
   await waitFor(() => {
-    expect(
-      screen.getByRole("button", { name: "Refresh Diagnostics" }),
-    ).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Refresh Diagnostics" })).toBeEnabled();
   });
 }
 
 describe("DiagnosticsPage keyboard footer navigation", () => {
   beforeEach(() => {
     mockNavigate.mockReset();
-    mockRequest = vi.fn<BoundApi["request"]>().mockResolvedValue({ ok: true } as unknown as Response);
+    mockRequest = vi
+      .fn<BoundApi["request"]>()
+      .mockResolvedValue({ ok: true } as unknown as Response);
     mockLoadInit = vi.fn<BoundApi["loadInit"]>().mockResolvedValue(makeInitResponse());
     mockGetProviderStatus = vi
       .fn<BoundApi["getProviderStatus"]>()
       .mockResolvedValue([{ provider: "openrouter", hasApiKey: true, isActive: true }]);
-    mockGetReviewContext = vi.fn<BoundApi["getReviewContext"]>().mockResolvedValue(makeContextResponse());
-    mockRefreshReviewContext = vi.fn<BoundApi["refreshReviewContext"]>().mockResolvedValue(makeContextResponse());
+    mockGetReviewContext = vi
+      .fn<BoundApi["getReviewContext"]>()
+      .mockResolvedValue(makeContextResponse());
+    mockRefreshReviewContext = vi
+      .fn<BoundApi["refreshReviewContext"]>()
+      .mockResolvedValue(makeContextResponse());
   });
 
   it("activates diagnostics actions selected with left/right arrows", async () => {
@@ -165,14 +169,16 @@ describe("DiagnosticsPage keyboard footer navigation", () => {
 
     // Stub the next refetches to block until we resolve.
     mockRequest.mockImplementationOnce(
-      () => new Promise((resolve) => {
-        resolveHealth = resolve;
-      }),
+      () =>
+        new Promise((resolve) => {
+          resolveHealth = resolve;
+        }),
     );
     mockGetReviewContext.mockImplementationOnce(
-      () => new Promise((resolve) => {
-        resolveContext = resolve;
-      }),
+      () =>
+        new Promise((resolve) => {
+          resolveContext = resolve;
+        }),
     );
 
     const diagnosticsPanel = screen.getByRole("region", { name: /system diagnostics/i });

@@ -32,4 +32,3 @@ const PROFILES: Record<ProfileId, ReviewProfile> = {
 export function getProfile(id: ProfileId): ReviewProfile {
   return PROFILES[id];
 }
-

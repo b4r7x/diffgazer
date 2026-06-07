@@ -39,67 +39,80 @@ export function ApiKeyStep({
     inputRef.current?.focus();
   };
 
-  useKey("ArrowDown", () => {
-    if (effectiveFocused === "paste") {
-      if (method === "paste") {
-        focusInput();
-      } else {
-        setFocused("env");
+  useKey(
+    "ArrowDown",
+    () => {
+      if (effectiveFocused === "paste") {
+        if (method === "paste") {
+          focusInput();
+        } else {
+          setFocused("env");
+        }
+        return;
       }
-      return;
-    }
 
-    if (effectiveFocused === "input") {
-      inputRef.current?.blur();
-      setFocused("env");
-      return;
-    }
+      if (effectiveFocused === "input") {
+        inputRef.current?.blur();
+        setFocused("env");
+        return;
+      }
 
-    if (effectiveFocused === "env") {
-      onBoundaryReached?.("down");
-    }
-  }, { enabled, allowInInput: true });
+      if (effectiveFocused === "env") {
+        onBoundaryReached?.("down");
+      }
+    },
+    { enabled, allowInInput: true },
+  );
 
-  useKey("ArrowUp", () => {
-    if (effectiveFocused === "env") {
-      if (method === "paste") {
-        focusInput();
-      } else {
+  useKey(
+    "ArrowUp",
+    () => {
+      if (effectiveFocused === "env") {
+        if (method === "paste") {
+          focusInput();
+        } else {
+          setFocused("paste");
+        }
+        return;
+      }
+
+      if (effectiveFocused === "input") {
+        inputRef.current?.blur();
         setFocused("paste");
       }
-      return;
-    }
+    },
+    { enabled, allowInInput: true },
+  );
 
-    if (effectiveFocused === "input") {
-      inputRef.current?.blur();
-      setFocused("paste");
-    }
-  }, { enabled, allowInInput: true });
+  useKey(
+    " ",
+    () => {
+      if (effectiveFocused === "paste") {
+        onChange("paste");
+      } else if (effectiveFocused === "env") {
+        onChange("env");
+      }
+    },
+    { enabled },
+  );
 
-  useKey(" ", () => {
-    if (effectiveFocused === "paste") {
-      onChange("paste");
-    } else if (effectiveFocused === "env") {
-      onChange("env");
-    }
-  }, { enabled });
+  useKey(
+    "Enter",
+    () => {
+      if (effectiveFocused === "paste") {
+        onChange("paste");
+        onCommit?.({ inputMethod: "paste", apiKey: keyValue });
+      } else if (effectiveFocused === "env") {
+        onChange("env");
+        onCommit?.({ inputMethod: "env", apiKey: keyValue });
+      } else if (effectiveFocused === "input") {
+        onCommit?.({ inputMethod: method, apiKey: keyValue });
+      }
+    },
+    { enabled },
+  );
 
-  useKey("Enter", () => {
-    if (effectiveFocused === "paste") {
-      onChange("paste");
-      onCommit?.({ inputMethod: "paste", apiKey: keyValue });
-    } else if (effectiveFocused === "env") {
-      onChange("env");
-      onCommit?.({ inputMethod: "env", apiKey: keyValue });
-    } else if (effectiveFocused === "input") {
-      onCommit?.({ inputMethod: method, apiKey: keyValue });
-    }
-  }, { enabled });
-
-  const handleMethodKeyDown = (
-    event: KeyboardEvent,
-    focusedMethod: InputMethod,
-  ) => {
+  const handleMethodKeyDown = (event: KeyboardEvent, focusedMethod: InputMethod) => {
     const direction = getVerticalArrowDirection(event.key);
     if (direction === null) return;
 
@@ -123,9 +136,7 @@ export function ApiKeyStep({
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-tui-muted font-mono">
-        Provide your API key for {providerName}.
-      </p>
+      <p className="text-sm text-tui-muted font-mono">Provide your API key for {providerName}.</p>
       <ApiKeyMethodSelector
         value={method}
         onChange={onChange}

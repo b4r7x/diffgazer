@@ -28,15 +28,15 @@
 // uses the same tsx loader as the server's serve entry so the Bundler-resolved
 // `@diffgazer/core` dist loads correctly.
 
-import { request as httpRequest } from "node:http";
-import { performance } from "node:perf_hooks";
-import { createRequire } from "node:module";
 import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync } from "node:fs";
+import { request as httpRequest } from "node:http";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { performance } from "node:perf_hooks";
 import { pathToFileURL } from "node:url";
-import { ENV } from "./artifacts/env.mjs";
 import { checkSlo, summarizeStatuses } from "./artifacts/benchmark-slo.mjs";
+import { ENV } from "./artifacts/env.mjs";
 
 const root = process.cwd();
 
@@ -92,7 +92,9 @@ function timeRequest(baseUrl, path, headers) {
     const start = performance.now();
     const req = httpRequest(new URL(path, baseUrl), { headers }, (res) => {
       res.resume();
-      res.on("end", () => resolveRequest({ ms: performance.now() - start, status: res.statusCode }));
+      res.on("end", () =>
+        resolveRequest({ ms: performance.now() - start, status: res.statusCode }),
+      );
       res.on("error", reject);
     });
     req.on("error", reject);
@@ -142,8 +144,8 @@ function listen(server) {
 
 function report(label, result) {
   console.log(
-    `${label}: ${result.count} reqs | p50 ${result.p50.toFixed(2)}ms | p95 ${result.p95.toFixed(2)}ms | `
-    + `p99 ${result.p99.toFixed(2)}ms | max ${result.max.toFixed(2)}ms | ${result.requestsPerSecond.toFixed(0)} req/s`,
+    `${label}: ${result.count} reqs | p50 ${result.p50.toFixed(2)}ms | p95 ${result.p95.toFixed(2)}ms | ` +
+      `p99 ${result.p99.toFixed(2)}ms | max ${result.max.toFixed(2)}ms | ${result.requestsPerSecond.toFixed(0)} req/s`,
   );
 }
 
@@ -180,9 +182,18 @@ async function main() {
 
     // Warm up so JIT / first-request costs do not skew the percentiles.
     await runScenario(baseUrl, { path: "/health", totalRequests: 50, concurrency: 5 });
-    await runScenario(baseUrl, { path: "/api/config/init", headers: authHeaders, totalRequests: 50, concurrency: 5 });
+    await runScenario(baseUrl, {
+      path: "/api/config/init",
+      headers: authHeaders,
+      totalRequests: 50,
+      concurrency: 5,
+    });
 
-    const health = await runScenario(baseUrl, { path: "/health", totalRequests: 2000, concurrency: 50 });
+    const health = await runScenario(baseUrl, {
+      path: "/health",
+      totalRequests: 2000,
+      concurrency: 50,
+    });
     report("GET /health", health);
     checkSlo(collectors, "GET /health", health, SLO.health);
 
@@ -202,7 +213,9 @@ async function main() {
   // mode; otherwise warn so machine-dependent timings do not fail CI by default.
   const strict = process.env[ENV.smokeStrictSkips] === "1";
   if (latencyBreaches.length > 0) {
-    const heading = strict ? "Benchmark SLO breach (strict):" : "WARN: benchmark latency below SLO (not gating):";
+    const heading = strict
+      ? "Benchmark SLO breach (strict):"
+      : "WARN: benchmark latency below SLO (not gating):";
     (strict ? console.error : console.warn)([heading, ...latencyBreaches].join("\n"));
   }
   const gating = [...functionalFailures, ...(strict ? latencyBreaches : [])];

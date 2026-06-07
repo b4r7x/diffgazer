@@ -13,12 +13,16 @@ describe("schemas/config/models exports", () => {
   it("keeps the OpenRouter schemas for the live OpenRouter path", () => {
     expect(
       OpenRouterModelSchema.safeParse({
-        id: "openai/gpt-4o", name: "GPT-4o", contextLength: 128000,
-        pricing: { prompt: "0", completion: "0" }, isFree: false,
+        id: "openai/gpt-4o",
+        name: "GPT-4o",
+        contextLength: 128000,
+        pricing: { prompt: "0", completion: "0" },
+        isFree: false,
       }).success,
     ).toBe(true);
     expect(
-      OpenRouterModelCacheSchema.safeParse({ models: [], fetchedAt: new Date().toISOString() }).success,
+      OpenRouterModelCacheSchema.safeParse({ models: [], fetchedAt: new Date().toISOString() })
+        .success,
     ).toBe(true);
   });
 });

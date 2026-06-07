@@ -27,13 +27,7 @@ export const PRIMITIVE_TOKEN_KEYS = [
   "muted",
 ] as const;
 
-export const SEMANTIC_TOKEN_KEYS = [
-  "success",
-  "warning",
-  "error",
-  "info",
-  "accent",
-] as const;
+export const SEMANTIC_TOKEN_KEYS = ["success", "warning", "error", "info", "accent"] as const;
 
 export const SEVERITY_TOKEN_KEYS = [
   "severityBlocker",
@@ -43,11 +37,7 @@ export const SEVERITY_TOKEN_KEYS = [
   "severityNit",
 ] as const;
 
-export const STATUS_TOKEN_KEYS = [
-  "statusRunning",
-  "statusComplete",
-  "statusPending",
-] as const;
+export const STATUS_TOKEN_KEYS = ["statusRunning", "statusComplete", "statusPending"] as const;
 
 export const THEME_TOKEN_KEYS = [
   ...PRIMITIVE_TOKEN_KEYS,

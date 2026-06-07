@@ -1,5 +1,5 @@
-import { DiffView } from "@/components/ui/diff-view"
-import { Kbd } from "@/components/ui/kbd"
+import { DiffView } from "@/components/ui/diff-view";
+import { Kbd } from "@/components/ui/kbd";
 
 const patch = `--- a/src/utils/score.ts
 +++ b/src/utils/score.ts
@@ -15,7 +15,7 @@ const patch = `--- a/src/utils/score.ts
 +  }, 0)
  }
 
- export function isPassingScore(score: number): boolean {`
+ export function isPassingScore(score: number): boolean {`;
 
 export default function DiffViewStatusbar() {
   return (
@@ -34,5 +34,5 @@ export default function DiffViewStatusbar() {
         </div>
       }
     />
-  )
+  );
 }

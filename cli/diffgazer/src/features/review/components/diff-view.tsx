@@ -11,11 +11,7 @@ export function DiffView({ patch }: DiffViewProps) {
   const lines = patch.split("\n");
 
   return (
-    <Box
-      flexDirection="column"
-      borderStyle="round"
-      borderColor={tokens.border}
-    >
+    <Box flexDirection="column" borderStyle="round" borderColor={tokens.border}>
       {lines.map((line, i) => {
         let color = tokens.fg;
         if (line.startsWith("--- ") || line.startsWith("+++ ")) {

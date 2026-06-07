@@ -1,4 +1,4 @@
-import { Spinner } from "@/components/ui/spinner"
+import { Spinner } from "@/components/ui/spinner";
 
 export default function SpinnerLabelPositions() {
   return (
@@ -16,5 +16,5 @@ export default function SpinnerLabelPositions() {
         <span className="text-muted-foreground">top</span>
       </Spinner>
     </div>
-  )
+  );
 }

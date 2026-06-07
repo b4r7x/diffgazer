@@ -38,9 +38,7 @@ describe("getProviderDisplay", () => {
   });
 
   it("joins provider and model with a slash when both are set", () => {
-    expect(getProviderDisplay("gemini", "gemini-2.5-flash")).toBe(
-      "gemini / gemini-2.5-flash",
-    );
+    expect(getProviderDisplay("gemini", "gemini-2.5-flash")).toBe("gemini / gemini-2.5-flash");
   });
 
   it("returns the provider name when no model is set", () => {

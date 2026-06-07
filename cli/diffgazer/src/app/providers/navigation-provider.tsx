@@ -11,9 +11,7 @@ export interface NavigationContextValue {
   canGoBack: boolean;
 }
 
-export const NavigationContext = createContext<NavigationContextValue | null>(
-  null,
-);
+export const NavigationContext = createContext<NavigationContextValue | null>(null);
 
 export function NavigationProvider({
   initialRoute,
@@ -53,9 +51,7 @@ export function NavigationProvider({
   };
 
   const canGoBack =
-    getBackTarget(route.screen) !== null ||
-    stack.length > 0 ||
-    route.screen !== "home";
+    getBackTarget(route.screen) !== null || stack.length > 0 || route.screen !== "home";
 
   const value: NavigationContextValue = {
     route,

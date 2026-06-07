@@ -76,15 +76,15 @@ export interface RunRemoveWorkflowOptions<TItem, TConfig> {
   }) => boolean;
   resolveAllowedBaseDirs: (ctx: { cwd: string; config: TConfig }) => string[];
   updateManifest: (ctx: { cwd: string; removedNames: string[] }) => void;
-  findOrphanedDeps?: (ctx: {
-    removedNames: string[];
-    cwd: string;
-    config: TConfig;
-  }) => string[];
+  findOrphanedDeps?: (ctx: { removedNames: string[]; cwd: string; config: TConfig }) => string[];
   // Expands user-requested names with cascade-orphaned transitives and surfaces
   // items kept because a retained item still depends on them. Reported items are
   // skipped, not failed.
-  expandRequestedNames?: (ctx: { cwd: string; config: TConfig; names: string[] }) => ExpandRequestedNamesResult;
+  expandRequestedNames?: (ctx: {
+    cwd: string;
+    config: TConfig;
+    names: string[];
+  }) => ExpandRequestedNamesResult;
   // Runs after file removal completes successfully. Used for derived artifacts
   // (e.g. CSS chunks) whose ownership is tracked in the manifest.
   onAfterRemove?: (ctx: { cwd: string; config: TConfig; removedNames: string[] }) => void;
@@ -134,8 +134,20 @@ function collectFilesToRemove<TItem, TConfig>(
         continue;
       }
       if (retainedFiles.has(file.absolutePath)) continue;
-      if (ctx.canRemoveFile && !ctx.canRemoveFile({ cwd: ctx.cwd, config: ctx.config, item, file, force: ctx.force, requestedNames: ctx.requestedNames })) {
-        info(`Skipping ${name}: ${relative(ctx.cwd, file.absolutePath)} has been modified (use --force to override)`);
+      if (
+        ctx.canRemoveFile &&
+        !ctx.canRemoveFile({
+          cwd: ctx.cwd,
+          config: ctx.config,
+          item,
+          file,
+          force: ctx.force,
+          requestedNames: ctx.requestedNames,
+        })
+      ) {
+        info(
+          `Skipping ${name}: ${relative(ctx.cwd, file.absolutePath)} has been modified (use --force to override)`,
+        );
         blocked = true;
         break;
       }
@@ -215,7 +227,8 @@ function finalizeRemoval<TConfig>(opts: {
   opts.updateManifest({ cwd: opts.cwd, removedNames: opts.names });
   opts.onAfterRemove?.({ cwd: opts.cwd, config: opts.config, removedNames: opts.names });
 
-  const orphaned = opts.findOrphanedDeps?.({ removedNames: opts.names, cwd: opts.cwd, config: opts.config }) ?? [];
+  const orphaned =
+    opts.findOrphanedDeps?.({ removedNames: opts.names, cwd: opts.cwd, config: opts.config }) ?? [];
   if (orphaned.length > 0) {
     info(`Note: You may want to remove unused packages: ${orphaned.join(", ")}`);
   }
@@ -233,17 +246,24 @@ function collectRemovalTargets<TItem, TConfig>(
   const { cwd } = options;
   const removedSet = new Set(expandedNames);
   const ctx = { cwd, config, resolveFilesForItem: options.resolveFilesForItem };
-  const retainedItems = options.getAllItems().filter(
-    (i) => !removedSet.has(options.getItemName(i)) && options.isInstalled({ cwd, config, item: i }),
-  );
+  const retainedItems = options
+    .getAllItems()
+    .filter(
+      (i) =>
+        !removedSet.has(options.getItemName(i)) && options.isInstalled({ cwd, config, item: i }),
+    );
   const retainedFiles = collectRetainedFiles(ctx, retainedItems);
-  return collectFilesToRemove({
-    ...ctx,
-    getItemOrThrow: options.getItemOrThrow,
-    canRemoveFile: options.canRemoveFile,
-    force: options.force,
-    requestedNames: expandedNames,
-  }, expandedNames, retainedFiles);
+  return collectFilesToRemove(
+    {
+      ...ctx,
+      getItemOrThrow: options.getItemOrThrow,
+      canRemoveFile: options.canRemoveFile,
+      force: options.force,
+      requestedNames: expandedNames,
+    },
+    expandedNames,
+    retainedFiles,
+  );
 }
 
 async function executeRemoval<TItem, TConfig>(
@@ -262,12 +282,18 @@ async function executeRemoval<TItem, TConfig>(
   const { removed, failures } = deleteFiles(cwd, files, allowedBaseDirs);
 
   if (failures.length > 0) {
-    error(`Aborting: ${failures.length} file(s) could not be removed. Manifest and CSS left unchanged.`);
+    error(
+      `Aborting: ${failures.length} file(s) could not be removed. Manifest and CSS left unchanged.`,
+    );
     return;
   }
 
   finalizeRemoval({
-    cwd, names: removedNames, removed, dirs, config,
+    cwd,
+    names: removedNames,
+    removed,
+    dirs,
+    config,
     updateManifest: options.updateManifest,
     findOrphanedDeps: options.findOrphanedDeps,
     onAfterRemove: options.onAfterRemove,
@@ -286,8 +312,11 @@ export async function runRemoveWorkflow<TItem, TConfig>(
   const config = options.requireConfig(options.cwd);
   options.validateNames(options.names);
 
-  const expansion = options.expandRequestedNames?.({ cwd: options.cwd, config, names: options.names })
-    ?? { toRemove: options.names, blocked: [] };
+  const expansion = options.expandRequestedNames?.({
+    cwd: options.cwd,
+    config,
+    names: options.names,
+  }) ?? { toRemove: options.names, blocked: [] };
   reportBlocked(expansion.blocked);
 
   if (expansion.toRemove.length === 0) {
@@ -311,10 +340,14 @@ export async function runRemoveWorkflow<TItem, TConfig>(
       options.updateManifest({ cwd: options.cwd, removedNames });
       options.onAfterRemove?.({ cwd: options.cwd, config, removedNames });
       newline();
-      success(`Cleaned ${removedNames.length} stale manifest entry/entries (${removedNames.join(", ")}).`);
+      success(
+        `Cleaned ${removedNames.length} stale manifest entry/entries (${removedNames.join(", ")}).`,
+      );
       newline();
     } else {
-      info(`Would clean ${removedNames.length} stale manifest entry/entries (${removedNames.join(", ")}).`);
+      info(
+        `Would clean ${removedNames.length} stale manifest entry/entries (${removedNames.join(", ")}).`,
+      );
       info("(dry run - no changes made)");
     }
     return;

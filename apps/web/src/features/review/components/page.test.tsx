@@ -16,22 +16,17 @@ type ReviewQueryState = {
   isSuccess: boolean;
 };
 
-const {
-  mockBack,
-  mockNavigate,
-  mockUseReview,
-  mockUseReviewLifecycleBase,
-  routeState,
-} = vi.hoisted(() => ({
-  mockBack: vi.fn(),
-  mockNavigate: vi.fn(),
-  mockUseReview: vi.fn(),
-  mockUseReviewLifecycleBase: vi.fn(),
-  routeState: {
-    params: {} as { reviewId?: string },
-    search: {} as { mode?: ReviewMode; live?: boolean },
-  },
-}));
+const { mockBack, mockNavigate, mockUseReview, mockUseReviewLifecycleBase, routeState } =
+  vi.hoisted(() => ({
+    mockBack: vi.fn(),
+    mockNavigate: vi.fn(),
+    mockUseReview: vi.fn(),
+    mockUseReviewLifecycleBase: vi.fn(),
+    routeState: {
+      params: {} as { reviewId?: string },
+      search: {} as { mode?: ReviewMode; live?: boolean },
+    },
+  }));
 
 // Boundary mock: Router is the routing library; tests provide a stub Router context so navigation assertions can be made without a real route tree.
 vi.mock("@tanstack/react-router", () => ({
@@ -163,7 +158,11 @@ describe("ReviewPage saved review loading", () => {
   });
 
   it("renders saved review results with fetched issues and review id", async () => {
-    const issue = makeIssue({ id: "issue-1", title: "Saved result issue", symptom: "Saved result issue symptom" });
+    const issue = makeIssue({
+      id: "issue-1",
+      title: "Saved result issue",
+      symptom: "Saved result issue symptom",
+    });
     routeState.params = { reviewId: "review-saved" };
     routeState.search = { mode: "staged" };
     mockUseReview.mockReturnValue(
@@ -205,7 +204,12 @@ describe("ReviewPage saved review loading", () => {
       },
       checks: { loadingMessage: null, isNoDiffError: false, isCheckingForChanges: false },
       completion: { isCompleting: false, skipDelay: vi.fn(), resetCompletion: vi.fn() },
-      start: { hasStarted: true, hasStreamed: true, setHasStarted: vi.fn(), setHasStreamed: vi.fn() },
+      start: {
+        hasStarted: true,
+        hasStreamed: true,
+        setHasStarted: vi.fn(),
+        setHasStreamed: vi.fn(),
+      },
     });
 
     renderPage();
@@ -314,7 +318,12 @@ describe("ReviewPage stale live session falls back to saved review", () => {
           },
           checks: { loadingMessage: null, isNoDiffError: false, isCheckingForChanges: false },
           completion: { isCompleting: false, skipDelay: vi.fn(), resetCompletion: vi.fn() },
-          start: { hasStarted: true, hasStreamed: true, setHasStarted: vi.fn(), setHasStreamed: vi.fn() },
+          start: {
+            hasStarted: true,
+            hasStreamed: true,
+            setHasStarted: vi.fn(),
+            setHasStreamed: vi.fn(),
+          },
         };
       },
     );
@@ -383,8 +392,18 @@ describe("ReviewPage stale live session falls back to saved review", () => {
 describe("ReviewPage live review phase transitions", () => {
   const LIVE_REVIEW_ID = "22222222-2222-4222-8222-222222222222";
   const completedIssues = [
-    makeIssue({ id: "live-issue-1", title: "Live issue one", file: "src/a.ts", category: "correctness" }),
-    makeIssue({ id: "live-issue-2", title: "Live issue two", file: "src/b.ts", category: "security" }),
+    makeIssue({
+      id: "live-issue-1",
+      title: "Live issue one",
+      file: "src/a.ts",
+      category: "correctness",
+    }),
+    makeIssue({
+      id: "live-issue-2",
+      title: "Live issue two",
+      file: "src/b.ts",
+      category: "security",
+    }),
   ];
 
   let capturedOnComplete: (() => void) | null;
@@ -405,7 +424,12 @@ describe("ReviewPage live review phase transitions", () => {
         },
         checks: { loadingMessage: null, isNoDiffError: false, isCheckingForChanges: false },
         completion: { isCompleting: false, skipDelay: vi.fn(), resetCompletion: vi.fn() },
-        start: { hasStarted: true, hasStreamed: true, setHasStarted: vi.fn(), setHasStreamed: vi.fn() },
+        start: {
+          hasStarted: true,
+          hasStreamed: true,
+          setHasStarted: vi.fn(),
+          setHasStreamed: vi.fn(),
+        },
       };
     });
   });

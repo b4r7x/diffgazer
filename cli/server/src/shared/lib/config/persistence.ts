@@ -1,18 +1,29 @@
 import { randomUUID } from "node:crypto";
-import { AI_PROVIDERS, type AIProvider, PROVIDER_ENV_VARS, type ProviderStatus, type SecretsStorage, type SettingsConfig, type TrustConfig, TrustConfigSchema } from "@diffgazer/core/schemas/config";
-import { quarantineCorruptFile, readJsonFileSync, readJsonFileSyncSafe, removeFileSync, writeJsonFile, writeJsonFileSync } from "../fs.js";
+import {
+  AI_PROVIDERS,
+  type AIProvider,
+  PROVIDER_ENV_VARS,
+  type ProviderStatus,
+  type SecretsStorage,
+  type SettingsConfig,
+  type TrustConfig,
+  TrustConfigSchema,
+} from "@diffgazer/core/schemas/config";
+import {
+  quarantineCorruptFile,
+  readJsonFileSync,
+  readJsonFileSyncSafe,
+  removeFileSync,
+  writeJsonFile,
+  writeJsonFileSync,
+} from "../fs.js";
 import {
   getGlobalConfigPath,
   getGlobalSecretsPath,
   getGlobalTrustPath,
   getProjectInfoPath,
 } from "../paths.js";
-import type {
-  ConfigState,
-  ProjectFile,
-  SecretsState,
-  TrustState,
-} from "./types.js";
+import type { ConfigState, ProjectFile, SecretsState, TrustState } from "./types.js";
 
 const isValidAIProvider = (value: string): value is AIProvider => {
   return AI_PROVIDERS.includes(value as AIProvider);
@@ -65,7 +76,9 @@ const loadOrQuarantine = <T>(filePath: string, label: string): T | null => {
   if (result.status === "ok") return result.data;
   if (result.status === "missing") return null;
   const backupPath = quarantineCorruptFile(filePath);
-  console.warn(`[config] Corrupt ${label} at ${filePath} — quarantined as ${backupPath}. Loading defaults.`);
+  console.warn(
+    `[config] Corrupt ${label} at ${filePath} — quarantined as ${backupPath}. Loading defaults.`,
+  );
   return null;
 };
 

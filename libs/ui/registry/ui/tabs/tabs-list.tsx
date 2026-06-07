@@ -17,8 +17,17 @@ export interface TabsListProps extends HTMLAttributes<HTMLDivElement> {
   ref?: Ref<HTMLDivElement>;
 }
 
-export function TabsList({ children, className, loop = true, onBlur, onKeyDown, ref, ...rest }: TabsListProps) {
-  const { orientation, variant, value, tabbableValue, onChange, onFocusChange, activationMode } = useTabsContext();
+export function TabsList({
+  children,
+  className,
+  loop = true,
+  onBlur,
+  onKeyDown,
+  ref,
+  ...rest
+}: TabsListProps) {
+  const { orientation, variant, value, tabbableValue, onChange, onFocusChange, activationMode } =
+    useTabsContext();
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -54,8 +63,9 @@ export function TabsList({ children, className, loop = true, onBlur, onKeyDown, 
     const container = containerRef.current;
     const nextTarget = event.relatedTarget;
     const View = container?.ownerDocument.defaultView;
-    const focusRemainsInside =
-      Boolean(View && nextTarget instanceof View.Node && container?.contains(nextTarget));
+    const focusRemainsInside = Boolean(
+      View && nextTarget instanceof View.Node && container?.contains(nextTarget),
+    );
 
     if (!focusRemainsInside) onFocusChange(null);
   };
@@ -78,10 +88,7 @@ export function TabsList({ children, className, loop = true, onBlur, onKeyDown, 
       aria-orientation={orientation}
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
-      className={cn(
-        segmentedContainerVariants({ variant, orientation }),
-        className,
-      )}
+      className={cn(segmentedContainerVariants({ variant, orientation }), className)}
       {...rest}
     >
       {variant === "pill" && pillRect && (

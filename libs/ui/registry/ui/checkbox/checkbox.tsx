@@ -110,9 +110,7 @@ export function Checkbox({
   const labelId = `${generatedId}-label`;
   const descriptionId = `${generatedId}-desc`;
   const isIndeterminate = controlledChecked === "indeterminate";
-  const controlledBool = controlledChecked === undefined
-    ? undefined
-    : controlledChecked === true;
+  const controlledBool = controlledChecked === undefined ? undefined : controlledChecked === true;
 
   const rootRef = useRef<HTMLDivElement>(null);
   const [isChecked, setIsChecked] = useControllableState<boolean>({
@@ -122,7 +120,10 @@ export function Checkbox({
   });
   const state = resolveCheckboxState(isIndeterminate, isChecked);
   const [nativeInvalid, setNativeInvalid] = useState(false);
-  const resolvedAriaInvalid = resolveAriaInvalid(ariaInvalid, nativeInvalid && required && !isChecked);
+  const resolvedAriaInvalid = resolveAriaInvalid(
+    ariaInvalid,
+    nativeInvalid && required && !isChecked,
+  );
   const resolvedAriaLabelledBy = ariaLabel
     ? undefined
     : mergeIds(ariaLabelledBy, label ? labelId : undefined);
@@ -211,14 +212,27 @@ export function Checkbox({
           className,
         )}
       >
-        <span aria-hidden="true" className={selectableIndicatorVariants({ size, checked: isChecked, highlighted })}>
+        <span
+          aria-hidden="true"
+          className={selectableIndicatorVariants({ size, checked: isChecked, highlighted })}
+        >
           {indicator}
         </span>
         {label && (
           <div className={cn("flex flex-col min-w-0", !description && "justify-center")}>
-            <span id={labelId} className={cn(selectableLabelVariants({ size }), strikethrough && isChecked && "text-muted-foreground line-through")}>{label}</span>
+            <span
+              id={labelId}
+              className={cn(
+                selectableLabelVariants({ size }),
+                strikethrough && isChecked && "text-muted-foreground line-through",
+              )}
+            >
+              {label}
+            </span>
             {description && (
-              <span id={descriptionId} className={selectableDescriptionVariants({ highlighted })}>{description}</span>
+              <span id={descriptionId} className={selectableDescriptionVariants({ highlighted })}>
+                {description}
+              </span>
             )}
           </div>
         )}

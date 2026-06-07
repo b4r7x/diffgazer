@@ -50,18 +50,34 @@ export function parseDocsLibrariesConfig(rawConfig) {
       if (library.artifactSource === undefined) {
         return { id: library.id, enabled: library.enabled };
       }
-      if (!library.artifactSource || typeof library.artifactSource !== "object" || Array.isArray(library.artifactSource)) {
-        throw new Error(`docs libraries config libraries[${index}].artifactSource must be an object`);
+      if (
+        !library.artifactSource ||
+        typeof library.artifactSource !== "object" ||
+        Array.isArray(library.artifactSource)
+      ) {
+        throw new Error(
+          `docs libraries config libraries[${index}].artifactSource must be an object`,
+        );
       }
-      if (typeof library.artifactSource.workspaceDir !== "string" || library.artifactSource.workspaceDir.length === 0) {
-        throw new Error(`docs libraries config libraries[${index}].artifactSource.workspaceDir must be a non-empty string`);
+      if (
+        typeof library.artifactSource.workspaceDir !== "string" ||
+        library.artifactSource.workspaceDir.length === 0
+      ) {
+        throw new Error(
+          `docs libraries config libraries[${index}].artifactSource.workspaceDir must be a non-empty string`,
+        );
       }
       assertRelativeSubpath(
         library.artifactSource.workspaceDir,
         `docs libraries config libraries[${index}].artifactSource.workspaceDir`,
       );
-      if (typeof library.artifactSource.packageName !== "string" || library.artifactSource.packageName.length === 0) {
-        throw new Error(`docs libraries config libraries[${index}].artifactSource.packageName must be a non-empty string`);
+      if (
+        typeof library.artifactSource.packageName !== "string" ||
+        library.artifactSource.packageName.length === 0
+      ) {
+        throw new Error(
+          `docs libraries config libraries[${index}].artifactSource.packageName must be a non-empty string`,
+        );
       }
       assertPackageName(
         library.artifactSource.packageName,
@@ -119,7 +135,9 @@ export function resolveArtifactSyncMode(env = process.env, options = {}) {
   if (env.CI) return "package";
   if (libraries.length === 0) return "package";
 
-  const hasUnresolvableArtifactPackage = libraries.some((library) => !resolvePackage(library.packageName));
+  const hasUnresolvableArtifactPackage = libraries.some(
+    (library) => !resolvePackage(library.packageName),
+  );
 
   return hasUnresolvableArtifactPackage ? "workspace" : "package";
 }

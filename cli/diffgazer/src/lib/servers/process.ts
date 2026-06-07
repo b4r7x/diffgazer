@@ -51,9 +51,7 @@ export function formatProcessError(error: unknown): string {
   return String(error);
 }
 
-export function createProcessServer(
-  config: ProcessServerConfig,
-): ServerController {
+export function createProcessServer(config: ProcessServerConfig): ServerController {
   let serverProcess: ResultPromise | null = null;
   let signaledReady = false;
 

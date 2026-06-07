@@ -28,35 +28,47 @@ describe("IssueDetailsPane", () => {
   });
 
   it("keeps multi-file suggested patches visible instead of dropping later files", () => {
-    renderPane(makeIssue({ suggested_patch: [
-      "diff --git a/src/a.ts b/src/a.ts",
-      "--- a/src/a.ts",
-      "+++ b/src/a.ts",
-      "@@ -1 +1 @@",
-      "-oldA",
-      "+newA",
-      "diff --git a/src/b.ts b/src/b.ts",
-      "--- a/src/b.ts",
-      "+++ b/src/b.ts",
-      "@@ -1 +1 @@",
-      "-oldB",
-      "+newB",
-    ].join("\n") }), "patch");
+    renderPane(
+      makeIssue({
+        suggested_patch: [
+          "diff --git a/src/a.ts b/src/a.ts",
+          "--- a/src/a.ts",
+          "+++ b/src/a.ts",
+          "@@ -1 +1 @@",
+          "-oldA",
+          "+newA",
+          "diff --git a/src/b.ts b/src/b.ts",
+          "--- a/src/b.ts",
+          "+++ b/src/b.ts",
+          "@@ -1 +1 @@",
+          "-oldB",
+          "+newB",
+        ].join("\n"),
+      }),
+      "patch",
+    );
 
     expect(screen.queryByText("No changes")).not.toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Suggested patch" })).toHaveTextContent("newB");
   });
 
   it("keeps loose hunk snippets visible when they are not parseable unified diffs", () => {
-    renderPane(makeIssue({ suggested_patch: [
-      "--- a/src/example.ts",
-      "+++ b/src/example.ts",
-      "@@",
-      "-const value = 1;",
-      "+const value = 2;",
-    ].join("\n") }), "patch");
+    renderPane(
+      makeIssue({
+        suggested_patch: [
+          "--- a/src/example.ts",
+          "+++ b/src/example.ts",
+          "@@",
+          "-const value = 1;",
+          "+const value = 2;",
+        ].join("\n"),
+      }),
+      "patch",
+    );
 
     expect(screen.queryByText("No changes")).not.toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Suggested patch" })).toHaveTextContent("const value = 2");
+    expect(screen.getByRole("region", { name: "Suggested patch" })).toHaveTextContent(
+      "const value = 2",
+    );
   });
 });

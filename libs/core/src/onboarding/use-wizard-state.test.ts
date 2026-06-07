@@ -143,7 +143,9 @@ describe("useWizardState", () => {
     act(() => result.current.acknowledgeEarlySave());
 
     // Cleanup should be a no-op since we acknowledged
-    await act(async () => { await result.current.cleanupEarlySave(); });
+    await act(async () => {
+      await result.current.cleanupEarlySave();
+    });
     expect(deleteCredentials).not.toHaveBeenCalled();
   });
 
@@ -173,7 +175,9 @@ describe("useWizardState", () => {
     expect(saveCredentials).toHaveBeenCalled();
 
     // Without acknowledging, cleanup should delete
-    await act(async () => { await result.current.cleanupEarlySave(); });
+    await act(async () => {
+      await result.current.cleanupEarlySave();
+    });
     expect(deleteCredentials).toHaveBeenCalledWith("openrouter");
   });
 

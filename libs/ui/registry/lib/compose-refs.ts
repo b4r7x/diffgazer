@@ -9,9 +9,7 @@ function assignRef<T>(ref: Ref<T>, element: T | null): void {
   (ref as RefObject<T | null>).current = element;
 }
 
-export function composeRefs<T>(
-  ...refs: Array<Ref<T> | null | undefined>
-): RefCallback<T> {
+export function composeRefs<T>(...refs: Array<Ref<T> | null | undefined>): RefCallback<T> {
   return (element: T | null) => {
     const cleanups: Array<() => void> = [];
     const callbackRefs: Array<RefCallback<T>> = [];

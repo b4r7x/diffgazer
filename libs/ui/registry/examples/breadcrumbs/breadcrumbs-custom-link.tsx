@@ -1,8 +1,10 @@
-import { Breadcrumbs } from "@/components/ui/breadcrumbs"
+import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 
 // Simulated framework link component (replace with Next.js Link, React Router NavLink, etc.)
-function AppLink(props: React.AnchorHTMLAttributes<HTMLAnchorElement> & { ref?: React.Ref<HTMLAnchorElement> }) {
-  return <a {...props} />
+function AppLink(
+  props: React.AnchorHTMLAttributes<HTMLAnchorElement> & { ref?: React.Ref<HTMLAnchorElement> },
+) {
+  return <a {...props} />;
 }
 
 export default function BreadcrumbsCustomLink() {
@@ -10,15 +12,23 @@ export default function BreadcrumbsCustomLink() {
     <Breadcrumbs>
       <Breadcrumbs.Item>
         <Breadcrumbs.Link>
-          {(props) => <AppLink href="/ui/docs" {...props}>Docs</AppLink>}
+          {(props) => (
+            <AppLink href="/ui/docs" {...props}>
+              Docs
+            </AppLink>
+          )}
         </Breadcrumbs.Link>
       </Breadcrumbs.Item>
       <Breadcrumbs.Item>
         <Breadcrumbs.Link>
-          {(props) => <AppLink href="/ui/docs/components" {...props}>Components</AppLink>}
+          {(props) => (
+            <AppLink href="/ui/docs/components" {...props}>
+              Components
+            </AppLink>
+          )}
         </Breadcrumbs.Link>
       </Breadcrumbs.Item>
       <Breadcrumbs.Item>Breadcrumbs</Breadcrumbs.Item>
     </Breadcrumbs>
-  )
+  );
 }

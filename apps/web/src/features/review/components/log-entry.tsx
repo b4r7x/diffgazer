@@ -1,9 +1,12 @@
-import { formatTimestamp } from '@diffgazer/core/format';
-import type { LogTagType } from '@diffgazer/core/schemas/presentation';
-import { Badge } from '@diffgazer/ui/components/badge';
-import { cn } from '@diffgazer/ui/lib/utils';
+import { formatTimestamp } from "@diffgazer/core/format";
+import type { LogTagType } from "@diffgazer/core/schemas/presentation";
+import { Badge } from "@diffgazer/ui/components/badge";
+import { cn } from "@diffgazer/ui/lib/utils";
 
-const TAG_VARIANTS: Record<LogTagType, { variant: "success" | "warning" | "error" | "info" | "neutral"; className?: string }> = {
+const TAG_VARIANTS: Record<
+  LogTagType,
+  { variant: "success" | "warning" | "error" | "info" | "neutral"; className?: string }
+> = {
   system: { variant: "neutral" },
   tool: { variant: "info" },
   lens: { variant: "info" },
@@ -13,8 +16,7 @@ const TAG_VARIANTS: Record<LogTagType, { variant: "success" | "warning" | "error
   thinking: { variant: "neutral", className: "opacity-70" },
 };
 
-export interface LogEntryProps
-  extends Omit<React.HTMLAttributes<HTMLDivElement>, 'children'> {
+export interface LogEntryProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "children"> {
   timestamp: Date | string;
   tag: string;
   tagType?: LogTagType;
@@ -36,8 +38,8 @@ export function LogEntry({
 }: LogEntryProps) {
   const tagStyle = TAG_VARIANTS[tagType ?? "system"];
   return (
-    <div className={cn('font-mono text-sm leading-relaxed', className)}>
-      <span className="text-tui-muted">[{formatTimestamp(timestamp)}]</span>{' '}
+    <div className={cn("font-mono text-sm leading-relaxed", className)}>
+      <span className="text-tui-muted">[{formatTimestamp(timestamp)}]</span>{" "}
       <Badge
         variant={tagStyle.variant}
         size="sm"
@@ -51,7 +53,9 @@ export function LogEntry({
           <span className="text-tui-muted"> → </span>
         </>
       )}
-      <span className={cn('text-tui-muted', isWarning && 'text-tui-yellow', isError && 'text-tui-red')}>
+      <span
+        className={cn("text-tui-muted", isWarning && "text-tui-yellow", isError && "text-tui-red")}
+      >
         {message}
       </span>
     </div>

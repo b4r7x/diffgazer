@@ -21,7 +21,11 @@ export function getListboxOwnerSelector(containerRole: ContainerRole) {
   return containerRole === "listbox" ? '[role="listbox"]' : '[role="menu"]';
 }
 
-export function isOwnedListboxItem(element: HTMLElement, container: HTMLElement, containerRole: ContainerRole) {
+export function isOwnedListboxItem(
+  element: HTMLElement,
+  container: HTMLElement,
+  containerRole: ContainerRole,
+) {
   const owner = element.closest(getListboxOwnerSelector(containerRole));
   return owner === null || owner === container;
 }
@@ -35,7 +39,8 @@ export function hasDomItem(options: {
   const { container, query, id, includeDisabled = false } = options;
   if (!container || id === null) return false;
   const element = container.ownerDocument.getElementById(query.getItemId(query.idPrefix, id));
-  const disabled = element?.getAttribute("aria-disabled") === "true" || element?.hasAttribute("data-disabled");
+  const disabled =
+    element?.getAttribute("aria-disabled") === "true" || element?.hasAttribute("data-disabled");
   return Boolean(
     element &&
       container.contains(element) &&
@@ -54,9 +59,9 @@ export function getListboxItems(
 ) {
   if (!container) return [];
   const disabledFilter = includeDisabled ? "" : ':not([aria-disabled="true"]):not([data-disabled])';
-  return Array.from(container.querySelectorAll<HTMLElement>(
-    `[role="${itemRole}"]${disabledFilter}`,
-  )).filter((item) => isOwnedListboxItem(item, container, containerRole));
+  return Array.from(
+    container.querySelectorAll<HTMLElement>(`[role="${itemRole}"]${disabledFilter}`),
+  ).filter((item) => isOwnedListboxItem(item, container, containerRole));
 }
 
 export function getFirstNavigableItemId<TId extends string>(
@@ -66,13 +71,17 @@ export function getFirstNavigableItemId<TId extends string>(
   items?: ListboxMetadataItem<TId>[],
 ): TId | null {
   if (items) {
-    const item = containerRole === "menu"
-      ? items[0]
-      : items.find((candidate) => !candidate.disabled);
+    const item =
+      containerRole === "menu" ? items[0] : items.find((candidate) => !candidate.disabled);
     return item?.id ?? null;
   }
 
-  const firstItem = getListboxItems(container, itemRole, containerRole, containerRole === "menu")[0];
+  const firstItem = getListboxItems(
+    container,
+    itemRole,
+    containerRole,
+    containerRole === "menu",
+  )[0];
   // DOM boundary: data-value is opaque to TS; consumers parameterize TId.
   return firstItem?.dataset.value !== undefined ? (firstItem.dataset.value as TId) : null;
 }

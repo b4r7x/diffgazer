@@ -22,10 +22,15 @@ function makeSetupStatus(overrides: Record<string, unknown> = {}) {
 function makeInitResponse(overrides: Record<string, unknown> = {}) {
   return {
     config: { provider: "gemini", model: "gemini-2.5-flash" },
-    providers: [
-      { provider: "gemini", hasApiKey: true, isActive: true },
-    ],
-    settings: { theme: "terminal", defaultLenses: [], defaultProfile: null, severityThreshold: "low", secretsStorage: null, agentExecution: "parallel" },
+    providers: [{ provider: "gemini", hasApiKey: true, isActive: true }],
+    settings: {
+      theme: "terminal",
+      defaultLenses: [],
+      defaultProfile: null,
+      severityThreshold: "low",
+      secretsStorage: null,
+      agentExecution: "parallel",
+    },
     configured: true,
     project: { projectId: "proj-1", path: "/tmp/repo", trust: null },
     setup: makeSetupStatus(),
@@ -34,9 +39,7 @@ function makeInitResponse(overrides: Record<string, unknown> = {}) {
 }
 
 function makeProviderStatus() {
-  return [
-    { provider: "gemini", hasApiKey: true, isActive: true },
-  ];
+  return [{ provider: "gemini", hasApiKey: true, isActive: true }];
 }
 
 function createMockApi() {
@@ -68,7 +71,10 @@ function ConfigConsumer() {
       <button type="button" onClick={() => actions.activateProvider("gemini", "gemini-2.5-pro")}>
         Activate Gemini
       </button>
-      <button type="button" onClick={() => actions.saveCredentials("gemini", "sk-key", "gemini-2.5-flash")}>
+      <button
+        type="button"
+        onClick={() => actions.saveCredentials("gemini", "sk-key", "gemini-2.5-flash")}
+      >
         Save Gemini credentials
       </button>
       <button type="button" onClick={() => actions.deleteProviderCredentials("gemini")}>
@@ -172,13 +178,11 @@ describe("ConfigProvider", () => {
 
   it("shows the refreshed active model after activating a provider", async () => {
     const user = userEvent.setup();
-    mockApi.loadInit
-      .mockResolvedValueOnce(makeInitResponse())
-      .mockResolvedValueOnce(
-        makeInitResponse({
-          config: { provider: "gemini", model: "gemini-2.5-pro" },
-        }),
-      );
+    mockApi.loadInit.mockResolvedValueOnce(makeInitResponse()).mockResolvedValueOnce(
+      makeInitResponse({
+        config: { provider: "gemini", model: "gemini-2.5-pro" },
+      }),
+    );
 
     renderWithProvider();
 
@@ -229,15 +233,13 @@ describe("ConfigProvider", () => {
 
   it("shows the cleared provider state after deleting credentials", async () => {
     const user = userEvent.setup();
-    mockApi.loadInit
-      .mockResolvedValueOnce(makeInitResponse())
-      .mockResolvedValueOnce(
-        makeInitResponse({
-          config: null,
-          providers: [{ provider: "gemini", hasApiKey: false, isActive: false }],
-          setup: makeSetupStatus({ isConfigured: false, hasProvider: false, hasModel: false }),
-        }),
-      );
+    mockApi.loadInit.mockResolvedValueOnce(makeInitResponse()).mockResolvedValueOnce(
+      makeInitResponse({
+        config: null,
+        providers: [{ provider: "gemini", hasApiKey: false, isActive: false }],
+        setup: makeSetupStatus({ isConfigured: false, hasProvider: false, hasModel: false }),
+      }),
+    );
 
     renderWithProvider();
 
@@ -278,9 +280,7 @@ describe("ConfigProvider", () => {
       return null;
     }
 
-    expect(() => render(<Orphan />)).toThrow(
-      "useConfigData must be used within a ConfigProvider",
-    );
+    expect(() => render(<Orphan />)).toThrow("useConfigData must be used within a ConfigProvider");
   });
 
   it("throws when useConfigActions is called outside the provider", () => {

@@ -4,19 +4,21 @@ import { createApp } from "./app.js";
 import { resetShutdownStateForTests } from "./features/shutdown/service.js";
 
 describe("host validation middleware", () => {
-  it.each(["localhost:3000", "127.0.0.1:3000", "[::1]:3000", "localhost"])(
-    "serves health for trusted host header %s",
-    async (hostHeader) => {
-      const app = createApp();
-      const res = await app.request("/api/health", {
-        headers: { Host: hostHeader },
-      });
+  it.each([
+    "localhost:3000",
+    "127.0.0.1:3000",
+    "[::1]:3000",
+    "localhost",
+  ])("serves health for trusted host header %s", async (hostHeader) => {
+    const app = createApp();
+    const res = await app.request("/api/health", {
+      headers: { Host: hostHeader },
+    });
 
-      expect(res.status).toBe(200);
-      const body = (await res.json()) as { status: string };
-      expect(body.status).toBe("ok");
-    }
-  );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { status: string };
+    expect(body.status).toBe("ok");
+  });
 
   it.each([
     { label: "external hostname", host: "evil.com" },
@@ -246,19 +248,21 @@ describe("API token middleware", () => {
     expect(res.status).toBe(200);
   });
 
-  it.each(["/api/config", "/api/settings", "/api/git", "/api/review"])(
-    "rejects %s without a valid token",
-    async (route) => {
-      const app = createApp();
-      const res = await app.request(route, {
-        headers: { Host: "localhost:3000" },
-      });
+  it.each([
+    "/api/config",
+    "/api/settings",
+    "/api/git",
+    "/api/review",
+  ])("rejects %s without a valid token", async (route) => {
+    const app = createApp();
+    const res = await app.request(route, {
+      headers: { Host: "localhost:3000" },
+    });
 
-      expect(res.status).toBe(401);
-      const body = (await res.json()) as { error: { message: string } };
-      expect(body.error.message).toBe("Unauthorized");
-    }
-  );
+    expect(res.status).toBe(401);
+    const body = (await res.json()) as { error: { message: string } };
+    expect(body.error.message).toBe("Unauthorized");
+  });
 
   it("returns 401 for a malformed multibyte token header", async () => {
     process.env.DIFFGAZER_SHUTDOWN_TOKEN = "abc";
@@ -598,7 +602,7 @@ describe("shutdown route", () => {
     expect(killSpy).toHaveBeenCalledWith(4321, "SIGTERM");
     expect(consoleSpy).toHaveBeenCalledWith(
       "Failed to terminate CLI process via /api/shutdown:",
-      killError
+      killError,
     );
   });
 

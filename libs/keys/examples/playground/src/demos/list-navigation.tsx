@@ -3,16 +3,7 @@ import { useRef, useState } from "react";
 import { DemoWrapper } from "../components/demo-wrapper";
 import { useTransientValue } from "./use-transient-value";
 
-const fruits = [
-  "Apple",
-  "Banana",
-  "Cherry",
-  "Date",
-  "Elderberry",
-  "Fig",
-  "Grape",
-  "Honeydew",
-];
+const fruits = ["Apple", "Banana", "Cherry", "Date", "Elderberry", "Fig", "Grape", "Honeydew"];
 
 export function ListNavigationDemo() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -98,9 +89,7 @@ export function ListNavigationDemo() {
         Focused: {highlighted ?? "none"} | Selected: {selectedItems.size} items
       </div>
 
-      {activatedItem && (
-        <div className="demo-action-log">Activated: {activatedItem}</div>
-      )}
+      {activatedItem && <div className="demo-action-log">Activated: {activatedItem}</div>}
     </DemoWrapper>
   );
 }

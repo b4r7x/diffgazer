@@ -5,9 +5,15 @@ import { NavigationListBadge } from "./navigation-list-badge";
 import { NavigationListGroup, type NavigationListGroupProps } from "./navigation-list-group";
 import { NavigationListItem, type NavigationListItemProps } from "./navigation-list-item";
 import { NavigationListMeta, type NavigationListMetaProps } from "./navigation-list-meta";
-import { NavigationListProgress, type NavigationListProgressProps } from "./navigation-list-progress";
+import {
+  NavigationListProgress,
+  type NavigationListProgressProps,
+} from "./navigation-list-progress";
 import { NavigationListStatus, type NavigationListStatusProps } from "./navigation-list-status";
-import { NavigationListSubtitle, type NavigationListSubtitleProps } from "./navigation-list-subtitle";
+import {
+  NavigationListSubtitle,
+  type NavigationListSubtitleProps,
+} from "./navigation-list-subtitle";
 import { NavigationListTitle, type NavigationListTitleProps } from "./navigation-list-title";
 
 const NavigationList = Object.assign(NavigationListRoot, {

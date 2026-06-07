@@ -23,7 +23,9 @@ export interface SelectValueRenderProps {
   labels: ReadonlyMap<string, string>;
 }
 
-function getLabelMap(options: ReadonlyMap<string, SelectOptionMetadata>): ReadonlyMap<string, string> {
+function getLabelMap(
+  options: ReadonlyMap<string, SelectOptionMetadata>,
+): ReadonlyMap<string, string> {
   return new Map(Array.from(options, ([value, option]) => [value, option.label]));
 }
 
@@ -48,7 +50,9 @@ function MultiValue({
 }): ReactNode {
   if (selected.length === 1) {
     const firstSelected = selected[0];
-    return firstSelected === undefined ? null : <span>{options.get(firstSelected)?.label ?? firstSelected}</span>;
+    return firstSelected === undefined ? null : (
+      <span>{options.get(firstSelected)?.label ?? firstSelected}</span>
+    );
   }
 
   const labels = selected.map((v) => options.get(v)?.label ?? v);
@@ -84,7 +88,8 @@ export function SelectValue({
 
   const selected = toSelectedArray(value, multiple);
   // Treat "" as unset unless the consumer explicitly registers an option with value="".
-  const isUnsetEmptyString = !multiple && selected.length === 1 && selected[0] === "" && !options.has("");
+  const isUnsetEmptyString =
+    !multiple && selected.length === 1 && selected[0] === "" && !options.has("");
 
   if (selected.length === 0 || isUnsetEmptyString) {
     return (
@@ -95,12 +100,19 @@ export function SelectValue({
   }
 
   if (typeof children === "function") {
-    return <span className={className}>{children({ selected, labels: getLabelMap(options) })}</span>;
+    return (
+      <span className={className}>{children({ selected, labels: getLabelMap(options) })}</span>
+    );
   }
 
   return (
     <span className={className}>
-      <MultiValue selected={selected} options={options} display={display} truncateAfter={truncateAfter} />
+      <MultiValue
+        selected={selected}
+        options={options}
+        display={display}
+        truncateAfter={truncateAfter}
+      />
     </span>
   );
 }

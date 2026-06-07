@@ -10,7 +10,9 @@ export interface SidebarSectionContextValue {
   panelId: string;
 }
 
-export const SidebarSectionContext = createContext<SidebarSectionContextValue | undefined>(undefined);
+export const SidebarSectionContext = createContext<SidebarSectionContextValue | undefined>(
+  undefined,
+);
 
 export function useSidebarSectionContext() {
   const context = useContext(SidebarSectionContext);

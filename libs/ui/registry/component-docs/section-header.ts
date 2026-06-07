@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types"
+import type { ComponentDoc } from "./types";
 
 export const sectionHeaderDoc: ComponentDoc = {
   description:
@@ -6,11 +6,13 @@ export const sectionHeaderDoc: ComponentDoc = {
   notes: [
     {
       title: "Variant",
-      content: "The variant prop controls visual intensity. Default uses foreground color, muted uses muted-foreground.",
+      content:
+        "The variant prop controls visual intensity. Default uses foreground color, muted uses muted-foreground.",
     },
     {
       title: "Heading Level",
-      content: "The as prop renders as h2, h3, or h4 (defaults to h3). H2 reads largest, h3 is the default size, h4 reads smallest — all sharing the same uppercase tracking-wider styling.",
+      content:
+        "The as prop renders as h2, h3, or h4 (defaults to h3). H2 reads largest, h3 is the default size, h4 reads smallest — all sharing the same uppercase tracking-wider styling.",
     },
   ],
   usage: { example: "section-header-default" },
@@ -47,4 +49,4 @@ export const sectionHeaderDoc: ComponentDoc = {
       },
     },
   },
-}
+};

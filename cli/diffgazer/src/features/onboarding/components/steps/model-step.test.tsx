@@ -92,7 +92,10 @@ describe("ModelStep (TUI catalog)", () => {
     const getProviderModels = vi
       .fn<() => Promise<ProviderModelsResponse>>()
       .mockRejectedValue(new Error("catalog unavailable"));
-    const api = { ...createApi({ baseUrl: "http://localhost" }), getProviderModels } satisfies BoundApi;
+    const api = {
+      ...createApi({ baseUrl: "http://localhost" }),
+      getProviderModels,
+    } satisfies BoundApi;
 
     const { lastFrame } = render(
       <Wrapper api={api}>
@@ -129,15 +132,16 @@ describe("ModelStep (TUI catalog)", () => {
   });
 
   test("shows the empty-state message when the catalog returns no models", async () => {
-    const getProviderModels = vi
-      .fn<() => Promise<ProviderModelsResponse>>()
-      .mockResolvedValue({
-        models: [],
-        fetchedAt: new Date().toISOString(),
-        source: "snapshot",
-        cached: true,
-      });
-    const api = { ...createApi({ baseUrl: "http://localhost" }), getProviderModels } satisfies BoundApi;
+    const getProviderModels = vi.fn<() => Promise<ProviderModelsResponse>>().mockResolvedValue({
+      models: [],
+      fetchedAt: new Date().toISOString(),
+      source: "snapshot",
+      cached: true,
+    });
+    const api = {
+      ...createApi({ baseUrl: "http://localhost" }),
+      getProviderModels,
+    } satisfies BoundApi;
 
     const { lastFrame } = render(
       <Wrapper api={api}>

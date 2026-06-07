@@ -12,7 +12,11 @@ interface UseReviewProgressKeyboardOptions {
 // `isInteractiveTarget` helper could be extracted to @diffgazer/keys later.
 function isInteractiveTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
-  return Boolean(target.closest("button,a,input,select,textarea,[role='button'],[tabindex]:not([tabindex='-1'])"));
+  return Boolean(
+    target.closest(
+      "button,a,input,select,textarea,[role='button'],[tabindex]:not([tabindex='-1'])",
+    ),
+  );
 }
 
 export function useReviewProgressKeyboard({
@@ -30,10 +34,14 @@ export function useReviewProgressKeyboard({
     },
   });
 
-  useKey("Enter", (event) => {
-    if (isInteractiveTarget(event.target)) return;
-    onViewResults?.();
-  }, { enabled: !!onViewResults });
+  useKey(
+    "Enter",
+    (event) => {
+      if (isInteractiveTarget(event.target)) return;
+      onViewResults?.();
+    },
+    { enabled: !!onViewResults },
+  );
   useKey("Escape", () => onCancel?.(), { enabled: !!onCancel });
 
   usePageFooter({

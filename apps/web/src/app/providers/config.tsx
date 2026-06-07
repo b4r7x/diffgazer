@@ -6,15 +6,16 @@ import {
   useProviderStatus,
   useSaveConfig,
 } from "@diffgazer/core/api/hooks";
-import type { AIProvider, CredentialRef, ProviderStatus, SecretsStorage, SetupStatus, TrustConfig } from "@diffgazer/core/schemas/config";
+import type {
+  AIProvider,
+  CredentialRef,
+  ProviderStatus,
+  SecretsStorage,
+  SetupStatus,
+  TrustConfig,
+} from "@diffgazer/core/schemas/config";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  createContext,
-  type ReactNode,
-  useCallback,
-  useContext,
-  useMemo,
-} from "react";
+import { createContext, type ReactNode, useCallback, useContext, useMemo } from "react";
 
 // Stable data context — changes only when config data itself changes
 interface ConfigDataContextValue {
@@ -69,9 +70,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
 
   const queryError = initQuery.error ?? providersQuery.error;
   const mutationError =
-    activateMutation.error ??
-    saveConfigMutation.error ??
-    deleteCredentialsMutation.error;
+    activateMutation.error ?? saveConfigMutation.error ?? deleteCredentialsMutation.error;
   const error = mutationError?.message ?? queryError?.message ?? null;
 
   const provider = initData?.config?.provider;
@@ -130,7 +129,18 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       setupStatus,
       secretsStorage,
     }),
-    [isLoading, provider, model, isConfigured, providerStatus, projectId, repoRoot, trust, setupStatus, secretsStorage],
+    [
+      isLoading,
+      provider,
+      model,
+      isConfigured,
+      providerStatus,
+      projectId,
+      repoRoot,
+      trust,
+      setupStatus,
+      secretsStorage,
+    ],
   );
 
   const actionsValue = useMemo<ConfigActionsContextValue>(
@@ -147,9 +157,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
 
   return (
     <ConfigDataContext.Provider value={dataValue}>
-      <ConfigActionsContext.Provider value={actionsValue}>
-        {children}
-      </ConfigActionsContext.Provider>
+      <ConfigActionsContext.Provider value={actionsValue}>{children}</ConfigActionsContext.Provider>
     </ConfigDataContext.Provider>
   );
 }
@@ -169,4 +177,3 @@ export function useConfigActions(): ConfigActionsContextValue {
   }
   return context;
 }
-

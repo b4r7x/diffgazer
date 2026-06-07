@@ -96,9 +96,7 @@ export interface UseActionRowNavigationReturn {
   };
 }
 
-export function useActionRowNavigation<
-  Actions extends readonly unknown[] = readonly unknown[],
->({
+export function useActionRowNavigation<Actions extends readonly unknown[] = readonly unknown[]>({
   enabled,
   actionCount,
   onAction,
@@ -129,20 +127,26 @@ export function useActionRowNavigation<
   const inActions = focusZone.isZone("actions");
   const setZone = focusZone.setZone;
 
-  const getEnabledTargetIndex = useCallback((index: number) => {
-    return isIndexEnabled(index, actionCount, disabledKey)
-      ? index
-      : getFirstEnabled(actionCount, disabledKey);
-  }, [actionCount, disabledKey]);
+  const getEnabledTargetIndex = useCallback(
+    (index: number) => {
+      return isIndexEnabled(index, actionCount, disabledKey)
+        ? index
+        : getFirstEnabled(actionCount, disabledKey);
+    },
+    [actionCount, disabledKey],
+  );
 
-  const focusAction = useCallback((index: number) => {
-    const targetIndex = getEnabledTargetIndex(index);
-    if (targetIndex === null) return null;
+  const focusAction = useCallback(
+    (index: number) => {
+      const targetIndex = getEnabledTargetIndex(index);
+      if (targetIndex === null) return null;
 
-    setFocusedIndex(targetIndex);
-    actionRefs.current.get(targetIndex)?.focus();
-    return targetIndex;
-  }, [getEnabledTargetIndex]);
+      setFocusedIndex(targetIndex);
+      actionRefs.current.get(targetIndex)?.focus();
+      return targetIndex;
+    },
+    [getEnabledTargetIndex],
+  );
 
   const focusDisabledFallback = useCallback(() => {
     const fallback = disabledFocusFallbackRef?.current;

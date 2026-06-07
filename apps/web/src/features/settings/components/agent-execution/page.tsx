@@ -4,7 +4,12 @@ import { usePageFooter } from "@diffgazer/core/footer";
 import { deriveSaveState } from "@diffgazer/core/forms";
 import type { AgentExecution } from "@diffgazer/core/schemas/config";
 import type { Shortcut } from "@diffgazer/core/schemas/presentation";
-import { toVerticalBoundaryDirection, useActionRowNavigation, useKey, useScope } from "@diffgazer/keys";
+import {
+  toVerticalBoundaryDirection,
+  useActionRowNavigation,
+  useKey,
+  useScope,
+} from "@diffgazer/keys";
 import { Button } from "@diffgazer/ui/components/button";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
 import { useNavigate } from "@tanstack/react-router";
@@ -161,7 +166,10 @@ export function SettingsAgentExecutionPage() {
           autoFocus={navigationEnabled}
           wrap={false}
           onNavigationBoundaryReached={(direction, event) => {
-            if (direction === "next" && toVerticalBoundaryDirection(direction, event.key) === "down") {
+            if (
+              direction === "next" &&
+              toVerticalBoundaryDirection(direction, event.key) === "down"
+            ) {
               footer.enterActions();
             }
           }}

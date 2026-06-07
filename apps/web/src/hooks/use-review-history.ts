@@ -33,7 +33,9 @@ export function useReviewHistory() {
     currentReview,
     isLoading: isLoadingList || isLoadingReview,
     error: listError || loadError,
-    refresh: () => { reviewsQuery.refetch(); },
+    refresh: () => {
+      reviewsQuery.refetch();
+    },
     loadReview,
     removeReview,
     clearCurrentReview: () => setSelectedId(null),

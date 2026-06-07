@@ -28,14 +28,24 @@ describe("public package surface", () => {
       return (
         <div>
           <div ref={listRef} role="listbox" aria-label="Items" onKeyDown={onKeyDown} tabIndex={0}>
-            <div role="option" aria-selected={highlighted === "one"} {...getNavigationItemProps("option", "one")}>
+            <div
+              role="option"
+              aria-selected={highlighted === "one"}
+              {...getNavigationItemProps("option", "one")}
+            >
               One
             </div>
-            <div role="option" aria-selected={highlighted === "two"} {...getNavigationItemProps("option", "two")}>
+            <div
+              role="option"
+              aria-selected={highlighted === "two"}
+              {...getNavigationItemProps("option", "two")}
+            >
               Two
             </div>
           </div>
-          <output aria-label="Captured focus">{focusRestore.target?.getAttribute("aria-label") ?? "none"}</output>
+          <output aria-label="Captured focus">
+            {focusRestore.target?.getAttribute("aria-label") ?? "none"}
+          </output>
         </div>
       );
     }

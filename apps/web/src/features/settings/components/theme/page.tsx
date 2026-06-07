@@ -40,11 +40,7 @@ interface SettingsThemeEditorProps {
   setTheme: (theme: WebTheme) => void;
 }
 
-function SettingsThemeEditor({
-  savedTheme,
-  systemResolved,
-  setTheme,
-}: SettingsThemeEditorProps) {
+function SettingsThemeEditor({ savedTheme, systemResolved, setTheme }: SettingsThemeEditorProps) {
   const navigate = useNavigate();
   const [selectedTheme, setSelectedTheme] = useState<WebTheme>(savedTheme);
   const [focusedTheme, setFocusedTheme] = useState<WebTheme | null>(savedTheme);
@@ -87,11 +83,11 @@ function SettingsThemeEditor({
   const footerShortcuts: Shortcut[] = footer.inActions
     ? [
         { key: "←/→", label: "Move Action" },
-          {
-            key: "Enter/Space",
-            label: footer.focusedIndex === 0 ? "Cancel" : "Save",
-            disabled: footer.isFocusedActionDisabled,
-          },
+        {
+          key: "Enter/Space",
+          label: footer.focusedIndex === 0 ? "Cancel" : "Save",
+          disabled: footer.isFocusedActionDisabled,
+        },
       ]
     : [
         { key: "↑/↓", label: "Navigate" },
@@ -145,15 +141,23 @@ function SettingsThemeEditor({
   useKey("ArrowDown", () => moveFocus(1), { enabled: !footer.inActions });
   useKey("ArrowUp", () => moveFocus(-1), { enabled: !footer.inActions });
 
-  useKey(" ", () => {
-    const theme = focusedTheme ?? selectedTheme;
-    selectTheme(theme);
-  }, { enabled: !footer.inActions });
+  useKey(
+    " ",
+    () => {
+      const theme = focusedTheme ?? selectedTheme;
+      selectTheme(theme);
+    },
+    { enabled: !footer.inActions },
+  );
 
-  useKey("Enter", () => {
-    const theme = focusedTheme ?? selectedTheme;
-    handleEnterOnList(theme);
-  }, { enabled: !footer.inActions });
+  useKey(
+    "Enter",
+    () => {
+      const theme = focusedTheme ?? selectedTheme;
+      handleEnterOnList(theme);
+    },
+    { enabled: !footer.inActions },
+  );
 
   return (
     <div className="flex-1 flex flex-col p-6 min-h-0">

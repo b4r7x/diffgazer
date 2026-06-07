@@ -18,7 +18,8 @@ const GIT_ERROR_RULES: ErrorRule<GitDiffErrorCode>[] = [
   {
     patterns: ["etimedout", "timed out", "timeout"],
     code: "TIMEOUT",
-    message: "Git operation timed out. The repository may be too large or the system is under heavy load.",
+    message:
+      "Git operation timed out. The repository may be too large or the system is under heavy load.",
   },
   {
     patterns: ["maxbuffer", "stdout maxbuffer"],

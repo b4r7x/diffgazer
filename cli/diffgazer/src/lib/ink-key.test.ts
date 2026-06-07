@@ -48,10 +48,9 @@ describe("inkKeyToHotkey", () => {
     expect(inkKeyToHotkey("", { ...emptyKey, [flag]: true })).toBe(hotkey);
   });
 
-  test.each([
-    { input: "a" },
-    { input: "1" },
-  ])("falls back to printable input '$input'", ({ input }) => {
+  test.each([{ input: "a" }, { input: "1" }])("falls back to printable input '$input'", ({
+    input,
+  }) => {
     expect(inkKeyToHotkey(input, emptyKey)).toBe(input);
   });
 

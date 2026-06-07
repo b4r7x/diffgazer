@@ -1,7 +1,7 @@
-import type { AgentState } from '@diffgazer/core/schemas/events';
-import { Badge } from '@diffgazer/ui/components/badge';
-import { SectionHeader } from '@diffgazer/ui/components/section-header';
-import { cn } from '@diffgazer/ui/lib/utils';
+import type { AgentState } from "@diffgazer/core/schemas/events";
+import { Badge } from "@diffgazer/ui/components/badge";
+import { SectionHeader } from "@diffgazer/ui/components/section-header";
+import { cn } from "@diffgazer/ui/lib/utils";
 
 const AGENT_STATUS_META = {
   queued: { label: "WAIT", variant: "neutral", bar: "bg-tui-border" },
@@ -19,7 +19,9 @@ export function AgentBoard({ agents }: AgentBoardProps) {
 
   return (
     <div className="mb-8">
-      <SectionHeader variant="muted" bordered>Agent Board</SectionHeader>
+      <SectionHeader variant="muted" bordered>
+        Agent Board
+      </SectionHeader>
       <div className="space-y-2">
         {agents.map((agent) => {
           const status = AGENT_STATUS_META[agent.status];

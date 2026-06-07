@@ -109,15 +109,12 @@ describe("createAIClient", () => {
     }
   });
 
-  it.each([...AI_PROVIDERS])(
-    "creates a client bound to the %s provider",
-    async (provider) => {
-      const { createAIClient } = await loadClient();
-      const result = createAIClient({ apiKey: "test-key", provider, model: "some-model" });
-      expect(result.ok).toBe(true);
-      if (result.ok) expect(result.value.provider).toBe(provider);
-    },
-  );
+  it.each([...AI_PROVIDERS])("creates a client bound to the %s provider", async (provider) => {
+    const { createAIClient } = await loadClient();
+    const result = createAIClient({ apiKey: "test-key", provider, model: "some-model" });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.value.provider).toBe(provider);
+  });
 });
 
 describe("initializeAIClient", () => {
@@ -159,7 +156,9 @@ describe("initializeAIClient", () => {
   it("reports MODEL_ERROR when the keyring read fails", async () => {
     writeJson(join(diffgazerHome, "config.json"), {
       settings: { secretsStorage: "keyring" },
-      providers: [{ provider: "gemini", hasApiKey: true, isActive: true, model: "gemini-2.5-flash" }],
+      providers: [
+        { provider: "gemini", hasApiKey: true, isActive: true, model: "gemini-2.5-flash" },
+      ],
     });
     keyring.readKeyringSecret.mockReturnValue({
       ok: false,
@@ -178,7 +177,9 @@ describe("initializeAIClient", () => {
   it("reports API_KEY_MISSING when no secret has been stored", async () => {
     writeJson(join(diffgazerHome, "config.json"), {
       settings: { secretsStorage: "file" },
-      providers: [{ provider: "gemini", hasApiKey: true, isActive: true, model: "gemini-2.5-flash" }],
+      providers: [
+        { provider: "gemini", hasApiKey: true, isActive: true, model: "gemini-2.5-flash" },
+      ],
     });
     // No secrets.json → getProviderApiKey returns null
 
@@ -194,7 +195,9 @@ describe("initializeAIClient", () => {
   it("returns a usable client when the active provider has a stored key", async () => {
     writeJson(join(diffgazerHome, "config.json"), {
       settings: { secretsStorage: "file" },
-      providers: [{ provider: "gemini", hasApiKey: true, isActive: true, model: "gemini-2.5-flash" }],
+      providers: [
+        { provider: "gemini", hasApiKey: true, isActive: true, model: "gemini-2.5-flash" },
+      ],
     });
     writeJson(join(diffgazerHome, "secrets.json"), { providers: { gemini: "test-api-key" } });
 
@@ -217,26 +220,26 @@ describe("classifyError (via generate)", () => {
     { providerMessage: "401 Unauthorized: invalid_api_key", expectedCode: "API_KEY_INVALID" },
     { providerMessage: "429 too many requests", expectedCode: "RATE_LIMITED" },
     { providerMessage: "fetch failed: ECONNREFUSED", expectedCode: "NETWORK_ERROR" },
-  ])(
-    "maps provider error \"$providerMessage\" to $expectedCode",
-    async ({ providerMessage, expectedCode }) => {
-      const { generateObject } = await import("ai");
-      vi.mocked(generateObject).mockRejectedValue(new Error(providerMessage));
+  ])('maps provider error "$providerMessage" to $expectedCode', async ({
+    providerMessage,
+    expectedCode,
+  }) => {
+    const { generateObject } = await import("ai");
+    vi.mocked(generateObject).mockRejectedValue(new Error(providerMessage));
 
-      const { createAIClient } = await loadClient();
-      const clientResult = createAIClient({ apiKey: "key", provider: "gemini" });
-      expect(clientResult.ok).toBe(true);
-      if (!clientResult.ok) return;
+    const { createAIClient } = await loadClient();
+    const clientResult = createAIClient({ apiKey: "key", provider: "gemini" });
+    expect(clientResult.ok).toBe(true);
+    if (!clientResult.ok) return;
 
-      const { z } = await import("zod");
-      const result = await clientResult.value.generate("test", z.object({ x: z.string() }));
+    const { z } = await import("zod");
+    const result = await clientResult.value.generate("test", z.object({ x: z.string() }));
 
-      expect(result.ok).toBe(false);
-      if (!result.ok) {
-        expect(result.error.code).toBe(expectedCode);
-      }
-    },
-  );
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe(expectedCode);
+    }
+  });
 
   it("surfaces model errors to caller for unclassified provider errors", async () => {
     const { generateObject } = await import("ai");
@@ -280,8 +283,13 @@ describe("generateStream", () => {
     let completedMeta: StreamMetadata | null = null;
 
     await clientResult.value.generateStream("test prompt", {
-      onChunk: (chunk) => { receivedChunks.push(chunk); },
-      onComplete: (text, meta) => { completedText = text; completedMeta = meta; },
+      onChunk: (chunk) => {
+        receivedChunks.push(chunk);
+      },
+      onComplete: (text, meta) => {
+        completedText = text;
+        completedMeta = meta;
+      },
       onError: () => {},
     });
 
@@ -311,7 +319,9 @@ describe("generateStream", () => {
     await clientResult.value.generateStream("test", {
       onChunk: () => {},
       onComplete: () => {},
-      onError: (error) => { capturedError = error; },
+      onError: (error) => {
+        capturedError = error;
+      },
     });
 
     const error = requireValue<Error>(capturedError, "stream error");
@@ -335,7 +345,9 @@ describe("generateStream", () => {
 
     await clientResult.value.generateStream("test", {
       onChunk: () => {},
-      onComplete: (_text, meta) => { completedMeta = meta; },
+      onComplete: (_text, meta) => {
+        completedMeta = meta;
+      },
       onError: () => {},
     });
 
@@ -363,8 +375,12 @@ describe("generateStream", () => {
     let completedText = "";
 
     await clientResult.value.generateStream("test", {
-      onChunk: (chunk) => { receivedChunks.push(chunk); },
-      onComplete: (text) => { completedText = text; },
+      onChunk: (chunk) => {
+        receivedChunks.push(chunk);
+      },
+      onComplete: (text) => {
+        completedText = text;
+      },
       onError: () => {},
     });
 
@@ -380,13 +396,18 @@ describe("createLanguageModel openai-compatible providers", () => {
   it.each([
     { provider: "groq" as const, baseURL: "https://api.groq.com/openai/v1" },
     { provider: "cerebras" as const, baseURL: "https://api.cerebras.ai/v1" },
-  ])("creates a $provider client via the openai-compatible factory using the overlay baseURL", async ({ provider, baseURL }) => {
+  ])("creates a $provider client via the openai-compatible factory using the overlay baseURL", async ({
+    provider,
+    baseURL,
+  }) => {
     const { createOpenAICompatible } = await import("@ai-sdk/openai-compatible");
     const { createAIClient } = await loadClient();
     const result = createAIClient({ apiKey: "test-key", provider });
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.value.provider).toBe(provider);
-    expect(createOpenAICompatible).toHaveBeenCalledWith(expect.objectContaining({ apiKey: "test-key", baseURL, name: provider }));
+    expect(createOpenAICompatible).toHaveBeenCalledWith(
+      expect.objectContaining({ apiKey: "test-key", baseURL, name: provider }),
+    );
   });
 
   it("uses the overlay defaultModel when no model is supplied for an openai-compatible provider", async () => {
@@ -404,21 +425,21 @@ describe("createLanguageModel zhipu providers", () => {
   beforeEach(setupTempHome);
   afterEach(teardownTempHome);
 
-  it.each(["zai", "zai-coding"] as const)(
-    "creates a %s client via the zhipu factory using the overlay baseURL",
-    async (provider) => {
-      const { createZhipu } = await import("zhipu-ai-provider");
-      const { PROVIDER_OVERLAY } = await import("@diffgazer/core/catalog");
-      const { createAIClient } = await loadClient();
-      const result = createAIClient({ apiKey: "test-key", provider });
-      expect(result.ok).toBe(true);
-      if (result.ok) expect(result.value.provider).toBe(provider);
-      expect(createZhipu).toHaveBeenCalledWith({
-        apiKey: "test-key",
-        baseURL: PROVIDER_OVERLAY[provider].baseURL,
-      });
-    },
-  );
+  it.each([
+    "zai",
+    "zai-coding",
+  ] as const)("creates a %s client via the zhipu factory using the overlay baseURL", async (provider) => {
+    const { createZhipu } = await import("zhipu-ai-provider");
+    const { PROVIDER_OVERLAY } = await import("@diffgazer/core/catalog");
+    const { createAIClient } = await loadClient();
+    const result = createAIClient({ apiKey: "test-key", provider });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.value.provider).toBe(provider);
+    expect(createZhipu).toHaveBeenCalledWith({
+      apiKey: "test-key",
+      baseURL: PROVIDER_OVERLAY[provider].baseURL,
+    });
+  });
 });
 
 describe("createLanguageModel openrouter without a model", () => {

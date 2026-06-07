@@ -1,7 +1,7 @@
-import { BlockBar } from "@/components/ui/block-bar"
+import { BlockBar } from "@/components/ui/block-bar";
 
 export default function BlockBarStats() {
-  const max = 45
+  const max = 45;
   return (
     <div className="flex flex-col gap-2">
       <BlockBar label="Errors" value={3} max={max} variant="error" />
@@ -9,5 +9,5 @@ export default function BlockBarStats() {
       <BlockBar label="Info" value={27} max={max} />
       <BlockBar label="Style" value={3} max={max} variant="muted" />
     </div>
-  )
+  );
 }

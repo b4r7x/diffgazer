@@ -8,7 +8,13 @@
     },
     "@diffgazer/docs#build": {
       "dependsOn": ["^build"],
-      "env": ["REGISTRY_ORIGIN", "VITE_REGISTRY_ORIGIN", "VITE_PUBLIC_ORIGIN", "DOCS_PRERENDER", "DIFFGAZER_DEV"],
+      "env": [
+        "REGISTRY_ORIGIN",
+        "VITE_REGISTRY_ORIGIN",
+        "VITE_PUBLIC_ORIGIN",
+        "DOCS_PRERENDER",
+        "DIFFGAZER_DEV"
+      ],
       "outputs": ["dist/**", ".output/**"]
     },
     "@diffgazer/landing#build": {

@@ -51,10 +51,7 @@ describe("useFocusTrap", () => {
     container?.remove();
   });
 
-  function renderTrap(
-    containerEl: HTMLDivElement,
-    options?: Parameters<typeof useFocusTrap>[1],
-  ) {
+  function renderTrap(containerEl: HTMLDivElement, options?: Parameters<typeof useFocusTrap>[1]) {
     return renderHook(
       ({ opts }) => {
         const ref = useRef<HTMLElement>(containerEl);
@@ -66,10 +63,7 @@ describe("useFocusTrap", () => {
 
   describe("initial focus", () => {
     it("focuses first focusable element", () => {
-      container = createContainer(
-        '<button id="a">A</button>',
-        '<button id="b">B</button>',
-      );
+      container = createContainer('<button id="a">A</button>', '<button id="b">B</button>');
       renderTrap(container);
       // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       expect(document.activeElement).toBe(container.querySelector("#a"));
@@ -86,10 +80,7 @@ describe("useFocusTrap", () => {
     });
 
     it("respects initialFocus ref", () => {
-      container = createContainer(
-        '<button id="a">A</button>',
-        '<button id="b">B</button>',
-      );
+      container = createContainer('<button id="a">A</button>', '<button id="b">B</button>');
       // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       const targetEl = queryTestElement(container, "b");
 
@@ -103,10 +94,7 @@ describe("useFocusTrap", () => {
     });
 
     it("respects programmatic initialFocus targets with negative tabindex", () => {
-      container = createContainer(
-        '<div id="a" tabindex="-1">A</div>',
-        '<button id="b">B</button>',
-      );
+      container = createContainer('<div id="a" tabindex="-1">A</div>', '<button id="b">B</button>');
       // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       const targetEl = queryTestElement(container, "a");
 
@@ -144,10 +132,7 @@ describe("useFocusTrap", () => {
     });
 
     it("includes focusable nodes added after the trap activated", () => {
-      container = createContainer(
-        '<button id="a">A</button>',
-        '<button id="b">B</button>',
-      );
+      container = createContainer('<button id="a">A</button>', '<button id="b">B</button>');
       renderTrap(container);
 
       container.insertAdjacentHTML("beforeend", '<button id="c">C</button>');
@@ -407,10 +392,7 @@ describe("useFocusTrap", () => {
     });
 
     it("recaptures focus when the focused element becomes disabled", async () => {
-      container = createContainer(
-        '<button id="a">A</button>',
-        '<button id="b">B</button>',
-      );
+      container = createContainer('<button id="a">A</button>', '<button id="b">B</button>');
       renderTrap(container);
       // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       const btnA = queryTestElement<HTMLButtonElement>(container, "a");
@@ -427,10 +409,7 @@ describe("useFocusTrap", () => {
 
   describe("initialFocus guards", () => {
     it("ignores initialFocus when its node is outside the container", () => {
-      container = createContainer(
-        '<button id="a">A</button>',
-        '<button id="b">B</button>',
-      );
+      container = createContainer('<button id="a">A</button>', '<button id="b">B</button>');
 
       const outsideButton = document.createElement("button");
       outsideButton.id = "outside";
@@ -498,16 +477,10 @@ describe("useFocusTrap", () => {
   describe("nested trap stack", () => {
     it("inner trap captures focus while outer trap is suspended, and outer recaptures on inner release", () => {
       // Set up outer trap
-      container = createContainer(
-        '<button id="o1">O1</button>',
-        '<button id="o2">O2</button>',
-      );
+      container = createContainer('<button id="o1">O1</button>', '<button id="o2">O2</button>');
       const outerEl = container;
       const outerRef: RefObject<HTMLElement | null> = { current: outerEl };
-      const innerEl = createContainer(
-        '<button id="i1">I1</button>',
-        '<button id="i2">I2</button>',
-      );
+      const innerEl = createContainer('<button id="i1">I1</button>', '<button id="i2">I2</button>');
       const innerRef: RefObject<HTMLElement | null> = { current: innerEl };
 
       // Render both traps in a single component to share the React tree.
@@ -571,10 +544,7 @@ describe("useFocusTrap", () => {
 
   describe("document-level capture and focusin recapture", () => {
     it("recaptures focus on the next Tab when focus has escaped outside the container", () => {
-      container = createContainer(
-        '<button id="a">A</button>',
-        '<button id="b">B</button>',
-      );
+      container = createContainer('<button id="a">A</button>', '<button id="b">B</button>');
       const outsideButton = document.createElement("button");
       outsideButton.id = "outside";
       document.body.appendChild(outsideButton);

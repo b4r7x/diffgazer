@@ -3,10 +3,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll } from "vitest";
 
-const THEME_BASE_CSS_PATH = resolve(
-  fileURLToPath(import.meta.url),
-  "../../styles/theme-base.css",
-);
+const THEME_BASE_CSS_PATH = resolve(fileURLToPath(import.meta.url), "../../styles/theme-base.css");
 
 const REDUCED_MOTION_BLOCK_RE =
   /@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{\s*:root\s*\{[^}]*\}\s*\}/;
@@ -23,11 +20,7 @@ function extractReducedMotionRootRule(): string {
     );
   }
   const rootRule = block.match(/:root\s*\{[^}]*\}/)?.[0];
-  if (
-    !rootRule ||
-    !REQUIRED_ENTER_TOKEN.test(rootRule) ||
-    !REQUIRED_EXIT_TOKEN.test(rootRule)
-  ) {
+  if (!rootRule || !REQUIRED_ENTER_TOKEN.test(rootRule) || !REQUIRED_EXIT_TOKEN.test(rootRule)) {
     throw new Error(
       "theme-base.css reduced-motion block must override --ui-content-enter-from-* to ui-content-enter-fade and --ui-content-exit-to-* to ui-content-exit-fade",
     );

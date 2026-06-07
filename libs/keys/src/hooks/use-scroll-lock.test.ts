@@ -22,10 +22,9 @@ describe("useScrollLock", () => {
   it("respects enabled flag", () => {
     document.body.style.overflow = "scroll";
 
-    const { rerender, unmount } = renderHook(
-      ({ enabled }) => useScrollLock({ enabled }),
-      { initialProps: { enabled: false } },
-    );
+    const { rerender, unmount } = renderHook(({ enabled }) => useScrollLock({ enabled }), {
+      initialProps: { enabled: false },
+    });
     expect(document.body.style.overflow).toBe("scroll");
 
     rerender({ enabled: true });

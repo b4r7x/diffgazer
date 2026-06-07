@@ -1,6 +1,14 @@
 "use client";
 
-import { Children, type HTMLAttributes, isValidElement, type ReactNode, type Ref, useId, useMemo } from "react";
+import {
+  Children,
+  type HTMLAttributes,
+  isValidElement,
+  type ReactNode,
+  type Ref,
+  useId,
+  useMemo,
+} from "react";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { cn } from "@/lib/utils";
 import { SidebarSectionContext } from "./sidebar-section-context";
@@ -27,7 +35,8 @@ export function SidebarSection({
 }: SidebarSectionProps) {
   const titleId = useId();
   const panelId = useId();
-  const labelSourceId = ariaLabelledBy ?? (containsSidebarSectionTitleElement(children) ? titleId : undefined);
+  const labelSourceId =
+    ariaLabelledBy ?? (containsSidebarSectionTitleElement(children) ? titleId : undefined);
 
   const [isOpen, setIsOpen] = useControllableState<boolean>({
     value: controlledOpen,
@@ -39,7 +48,7 @@ export function SidebarSection({
     () => ({
       collapsible,
       open: isOpen,
-      onToggle: () => setIsOpen(prev => !prev),
+      onToggle: () => setIsOpen((prev) => !prev),
       titleId,
       panelId,
     }),

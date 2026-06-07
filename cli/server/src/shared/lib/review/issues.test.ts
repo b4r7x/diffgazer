@@ -31,24 +31,50 @@ function makeFileDiff(overrides: Partial<FileDiff> = {}): FileDiff {
 describe("deduplicateIssues", () => {
   it("deduplicates by file, line, and case-insensitive title while keeping the highest severity", () => {
     const issues = [
-      makeIssue({ id: "duplicate-low", file: "a.ts", line_start: 10, title: "NULL REFERENCE", severity: "low" }),
-      makeIssue({ id: "duplicate-high", file: "a.ts", line_start: 10, title: "null reference", severity: "high" }),
+      makeIssue({
+        id: "duplicate-low",
+        file: "a.ts",
+        line_start: 10,
+        title: "NULL REFERENCE",
+        severity: "low",
+      }),
+      makeIssue({
+        id: "duplicate-high",
+        file: "a.ts",
+        line_start: 10,
+        title: "null reference",
+        severity: "high",
+      }),
       makeIssue({ id: "different-file", file: "b.ts", line_start: 10, title: "null reference" }),
       makeIssue({ id: "different-line", file: "a.ts", line_start: 20, title: "null reference" }),
-      makeIssue({ id: "null-line-one", file: "c.ts", line_start: null, title: "Same null line", severity: "medium" }),
-      makeIssue({ id: "null-line-two", file: "c.ts", line_start: null, title: "Same null line", severity: "nit" }),
+      makeIssue({
+        id: "null-line-one",
+        file: "c.ts",
+        line_start: null,
+        title: "Same null line",
+        severity: "medium",
+      }),
+      makeIssue({
+        id: "null-line-two",
+        file: "c.ts",
+        line_start: null,
+        title: "Same null line",
+        severity: "nit",
+      }),
     ];
     const result = deduplicateIssues(issues);
     const duplicate = result.find((issue) => issue.file === "a.ts" && issue.line_start === 10);
 
     expect(result).toHaveLength(4);
     expect(duplicate?.id).toBe("duplicate-high");
-    expect(result.map((issue) => issue.id)).toEqual(expect.arrayContaining([
-      "duplicate-high",
-      "different-file",
-      "different-line",
-      "null-line-one",
-    ]));
+    expect(result.map((issue) => issue.id)).toEqual(
+      expect.arrayContaining([
+        "duplicate-high",
+        "different-file",
+        "different-line",
+        "null-line-one",
+      ]),
+    );
   });
 });
 
@@ -103,7 +129,9 @@ describe("filterIssuesByMinSeverity", () => {
 describe("ensureIssueEvidence", () => {
   it("returns issue unchanged when evidence already exists", () => {
     const issue = makeIssue({
-      evidence: [{ type: "code", title: "existing", sourceId: "s1", file: "test.ts", excerpt: "code" }],
+      evidence: [
+        { type: "code", title: "existing", sourceId: "s1", file: "test.ts", excerpt: "code" },
+      ],
     });
     const diff = makeDiff();
 
@@ -114,7 +142,12 @@ describe("ensureIssueEvidence", () => {
 
   it("creates fallback evidence when the diff cannot provide a matching hunk", () => {
     const issue = makeIssue({ file: "missing.ts", evidence: [] });
-    const nullLineIssue = makeIssue({ id: "null-line", file: "test.ts", line_start: null, evidence: [] });
+    const nullLineIssue = makeIssue({
+      id: "null-line",
+      file: "test.ts",
+      line_start: null,
+      evidence: [],
+    });
     const diff = makeDiff([makeFileDiff({ filePath: "test.ts" })]);
 
     const result = ensureIssueEvidence(issue, diff);

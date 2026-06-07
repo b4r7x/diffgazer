@@ -8,7 +8,8 @@ const IMPORT_PREFIX = String.raw`(from\s+|import\(\s*|require\(\s*)(["'])`;
 // Mirrors the validate-artifacts gate (collectBundleRelativeJsImportErrors): the
 // bare side-effect form `import "./x.js"` must be stripped too, or the gate would
 // flag a copied side-effect import with no transform able to fix it.
-const RELATIVE_JS_IMPORT_RE = /(from\s+|import\(\s*|require\(\s*|import\s+(?=["']))(["'])(\.{1,2}\/[^"']+)\.js\2/g;
+const RELATIVE_JS_IMPORT_RE =
+  /(from\s+|import\(\s*|require\(\s*|import\s+(?=["']))(["'])(\.{1,2}\/[^"']+)\.js\2/g;
 const KEYS_PACKAGE_IMPORT_LINE_RE =
   /^(\s*)import\s+(type\s+)?\{([^}]+)\}\s+from\s+(["'])@diffgazer\/keys\4;?\s*$/;
 
@@ -39,13 +40,26 @@ interface CompiledAliasRegexes {
 function compileAliasRegexes(): CompiledAliasRegexes {
   return {
     reExactUtils: new RegExp(`${IMPORT_PREFIX}${escapeForRegex(SOURCE_ALIASES.utils)}\\2`, "g"),
-    rePrefixLib: new RegExp(`${IMPORT_PREFIX}${escapeForRegex(SOURCE_ALIASES.lib)}([^"']+)\\2`, "g"),
-    rePrefixHooks: new RegExp(`${IMPORT_PREFIX}${escapeForRegex(SOURCE_ALIASES.hooks)}([^"']+)\\2`, "g"),
-    rePrefixComponents: new RegExp(`${IMPORT_PREFIX}${escapeForRegex(SOURCE_ALIASES.components)}([^"']+)\\2`, "g"),
+    rePrefixLib: new RegExp(
+      `${IMPORT_PREFIX}${escapeForRegex(SOURCE_ALIASES.lib)}([^"']+)\\2`,
+      "g",
+    ),
+    rePrefixHooks: new RegExp(
+      `${IMPORT_PREFIX}${escapeForRegex(SOURCE_ALIASES.hooks)}([^"']+)\\2`,
+      "g",
+    ),
+    rePrefixComponents: new RegExp(
+      `${IMPORT_PREFIX}${escapeForRegex(SOURCE_ALIASES.components)}([^"']+)\\2`,
+      "g",
+    ),
   };
 }
 
-function replaceLine(text: string, aliases: ResolvedConfig["aliases"], regexes: CompiledAliasRegexes): string {
+function replaceLine(
+  text: string,
+  aliases: ResolvedConfig["aliases"],
+  regexes: CompiledAliasRegexes,
+): string {
   let result = text.replace(
     regexes.reExactUtils,
     (_: string, prefix: string, quote: string) => `${prefix}${quote}${aliases.utils}${quote}`,
@@ -54,8 +68,16 @@ function replaceLine(text: string, aliases: ResolvedConfig["aliases"], regexes: 
     if (subpath === "utils") return match;
     return `${prefix}${quote}${aliases.lib}/${subpath}${quote}`;
   });
-  result = replaceSubpathAlias({ text: result, regex: regexes.rePrefixHooks, aliasBase: aliases.hooks });
-  result = replaceSubpathAlias({ text: result, regex: regexes.rePrefixComponents, aliasBase: aliases.components });
+  result = replaceSubpathAlias({
+    text: result,
+    regex: regexes.rePrefixHooks,
+    aliasBase: aliases.hooks,
+  });
+  result = replaceSubpathAlias({
+    text: result,
+    regex: regexes.rePrefixComponents,
+    aliasBase: aliases.components,
+  });
   return result;
 }
 
@@ -108,10 +130,7 @@ function replaceLineSkippingComments(
   return replaceLine(line, aliases, regexes);
 }
 
-export function transformImports(
-  content: string,
-  aliases: ResolvedConfig["aliases"],
-): string {
+export function transformImports(content: string, aliases: ResolvedConfig["aliases"]): string {
   const regexes = compileAliasRegexes();
   const lines = content.split("\n");
   let inBlockComment = false;
@@ -140,21 +159,23 @@ function findLineCommentStart(line: string): number {
   for (let i = 0; i < line.length; i++) {
     const ch = line[i];
     if (inString) {
-      if (ch === "\\") { i++; continue; }
+      if (ch === "\\") {
+        i++;
+        continue;
+      }
       if (ch === inString) inString = null;
       continue;
     }
-    if (ch === '"' || ch === "'" || ch === "`") { inString = ch; continue; }
+    if (ch === '"' || ch === "'" || ch === "`") {
+      inString = ch;
+      continue;
+    }
     if (ch === "/" && line[i + 1] === "/") return i;
   }
   return -1;
 }
 
-export function handleRscDirective(
-  content: string,
-  isClient: boolean,
-  rsc: boolean
-): string {
+export function handleRscDirective(content: string, isClient: boolean, rsc: boolean): string {
   const directive = /^\uFEFF?\s*["']use client["'];?\s*(\r?\n)*/;
   const hasDirective = directive.test(content);
   if (hasDirective) return content;
@@ -164,15 +185,18 @@ export function handleRscDirective(
 export function rewriteRelativeJsExtensionsForCopy(content: string): string {
   return content.replace(
     RELATIVE_JS_IMPORT_RE,
-    (_: string, prefix: string, quote: string, specifier: string) => `${prefix}${quote}${specifier}${quote}`,
+    (_: string, prefix: string, quote: string, specifier: string) =>
+      `${prefix}${quote}${specifier}${quote}`,
   );
 }
 
 function specifierName(specifier: string): string {
-  return specifier
-    .replace(/^type\s+/, "")
-    .split(/\s+as\s+/)[0]
-    ?.trim() ?? "";
+  return (
+    specifier
+      .replace(/^type\s+/, "")
+      .split(/\s+as\s+/)[0]
+      ?.trim() ?? ""
+  );
 }
 
 function renderImport(specifiers: string[], target: string, quote: string): string {
@@ -186,7 +210,7 @@ function rewriteKeysPackageImportLine(line: string): string {
 
   const indent = match[1] ?? "";
   const typePrefix = match[2] ?? "";
-  const quote = match[4] ?? "\"";
+  const quote = match[4] ?? '"';
   const grouped = new Map<string, string[]>();
   const unknown: string[] = [];
 
@@ -211,14 +235,14 @@ function rewriteKeysPackageImportLine(line: string): string {
   // import-target map stays in sync with the keys public surface.
   if (unknown.length > 0) {
     throw new Error(
-      `Cannot rewrite @diffgazer/keys import for copy mode: no local hook target for `
-      + `${unknown.map((name) => `"${name}"`).join(", ")}. `
-      + "Update KEYS_PACKAGE_IMPORT_TARGETS in @diffgazer/registry.",
+      `Cannot rewrite @diffgazer/keys import for copy mode: no local hook target for ` +
+        `${unknown.map((name) => `"${name}"`).join(", ")}. ` +
+        "Update KEYS_PACKAGE_IMPORT_TARGETS in @diffgazer/registry.",
     );
   }
 
-  const rewritten = [...grouped.entries()].map(([target, specifiers]) =>
-    indent + renderImport(specifiers, target, quote)
+  const rewritten = [...grouped.entries()].map(
+    ([target, specifiers]) => indent + renderImport(specifiers, target, quote),
   );
 
   return rewritten.length > 0 ? rewritten.join("\n") : line;
@@ -282,7 +306,10 @@ function parseKeysImportLine(options: ParseKeysImportLineOptions): ParsedKeysImp
   return {
     lineIndex,
     quote: m[2] ?? '"',
-    specifiers: (m[1] ?? "").split(",").map((s) => s.trim()).filter(Boolean),
+    specifiers: (m[1] ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean),
     isTypeImport: /^\s*import\s+type\s/.test(line),
   };
 }

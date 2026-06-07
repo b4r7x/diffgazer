@@ -1,7 +1,7 @@
-import { Popover } from "@/components/ui/popover"
+import { Popover } from "@/components/ui/popover";
 
 export default function PopoverPlacementExample() {
-  const sides = ["top", "bottom", "left", "right"] as const
+  const sides = ["top", "bottom", "left", "right"] as const;
 
   return (
     <div className="flex flex-wrap items-center gap-4">
@@ -9,7 +9,10 @@ export default function PopoverPlacementExample() {
         <Popover key={side}>
           <Popover.Trigger>
             {(triggerProps) => (
-              <button {...triggerProps} className="border border-foreground/30 px-3 py-1 font-mono text-sm">
+              <button
+                {...triggerProps}
+                className="border border-foreground/30 px-3 py-1 font-mono text-sm"
+              >
                 {side}
               </button>
             )}
@@ -23,5 +26,5 @@ export default function PopoverPlacementExample() {
         </Popover>
       ))}
     </div>
-  )
+  );
 }

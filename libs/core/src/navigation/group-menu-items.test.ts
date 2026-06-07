@@ -80,18 +80,18 @@ describe("withGroupDividers", () => {
     // caller's input order is preserved (stable sort).
     expect(annotated.map((entry) => entry.item.id)).toEqual([
       "review-unstaged", // review (came at index 3 in input — first review item)
-      "review-staged",   // review (came at index 5 in input)
-      "settings",        // navigation (came at index 2 in input — first nav item)
-      "history",         // navigation (came at index 4)
-      "quit",            // system (came at index 0 in input — first system item)
-      "help",            // system (came at index 1)
+      "review-staged", // review (came at index 5 in input)
+      "settings", // navigation (came at index 2 in input — first nav item)
+      "history", // navigation (came at index 4)
+      "quit", // system (came at index 0 in input — first system item)
+      "help", // system (came at index 1)
     ]);
     expect(annotated.map((entry) => entry.showDividerBefore)).toEqual([
       false, // review-unstaged — first
       false, // review-staged — same group (review)
-      true,  // settings — new group (navigation)
+      true, // settings — new group (navigation)
       false, // history — same group
-      true,  // quit — new group (system)
+      true, // quit — new group (system)
       false, // help — same group
     ]);
   });

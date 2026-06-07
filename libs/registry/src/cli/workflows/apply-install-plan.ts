@@ -22,9 +22,7 @@ export interface ApplyInstallPlanOptions {
   onApplied?: (result: WriteFilesResult) => Promise<void> | void;
 }
 
-export async function applyInstallPlan(
-  options: ApplyInstallPlanOptions,
-): Promise<void> {
+export async function applyInstallPlan(options: ApplyInstallPlanOptions): Promise<void> {
   if (options.dryRun) {
     handleDryRun(options);
     return;
@@ -83,8 +81,5 @@ function showSkippedDeps(missingDeps: string[], fromFlag: boolean): void {
 function isTruthyFlag(value: string | undefined): boolean {
   if (!value) return false;
   const normalized = value.trim().toLowerCase();
-  return normalized === "1"
-    || normalized === "true"
-    || normalized === "yes"
-    || normalized === "on";
+  return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
 }

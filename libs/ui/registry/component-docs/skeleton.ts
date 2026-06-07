@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types"
+import type { ComponentDoc } from "./types";
 
 export const skeletonDoc: ComponentDoc = {
   description:
@@ -23,8 +23,6 @@ export const skeletonDoc: ComponentDoc = {
     },
   ],
   usage: { example: "skeleton-default" },
-  examples: [
-    { name: "skeleton-default", title: "Default" },
-  ],
+  examples: [{ name: "skeleton-default", title: "Default" }],
   noProps: true,
-}
+};

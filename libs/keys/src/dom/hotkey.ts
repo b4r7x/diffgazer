@@ -49,14 +49,14 @@ export function canonicalizeHotkey(hotkey: string): string {
       rawParts.pop();
     }
   }
-  const parts = rawParts.map(p => p.toLowerCase());
+  const parts = rawParts.map((p) => p.toLowerCase());
 
   for (const part of parts) {
     if (!KNOWN_MODIFIERS.has(part)) {
       if (typeof process !== "undefined" && process.env.NODE_ENV !== "production") {
         console.warn(
           `canonicalizeHotkey: unknown modifier "${part}" in hotkey "${hotkey}". ` +
-          `Known modifiers: ${[...KNOWN_MODIFIERS].join(", ")}.`,
+            `Known modifiers: ${[...KNOWN_MODIFIERS].join(", ")}.`,
         );
       }
     }
@@ -92,14 +92,14 @@ export function matchesHotkey(event: KeyboardEvent, hotkey: string): boolean {
       rawParts.pop();
     }
   }
-  const parts = rawParts.map(p => p.toLowerCase());
+  const parts = rawParts.map((p) => p.toLowerCase());
 
   for (const part of parts) {
     if (!KNOWN_MODIFIERS.has(part)) {
       if (typeof process !== "undefined" && process.env.NODE_ENV !== "production") {
         console.warn(
           `matchesHotkey: unknown modifier "${part}" in hotkey "${hotkey}". ` +
-          `Known modifiers: ${[...KNOWN_MODIFIERS].join(", ")}.`,
+            `Known modifiers: ${[...KNOWN_MODIFIERS].join(", ")}.`,
         );
       }
       return false;

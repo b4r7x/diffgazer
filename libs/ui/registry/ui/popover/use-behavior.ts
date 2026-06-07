@@ -66,7 +66,7 @@ export function usePopoverBehavior({
 
   const onTriggerClick = () => {
     if (!enabled || triggerMode !== "click") return;
-    onOpenChange(prev => !prev);
+    onOpenChange((prev) => !prev);
   };
 
   const onContentEnter = () => {

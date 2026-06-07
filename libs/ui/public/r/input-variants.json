@@ -3,14 +3,12 @@
   "name": "input-variants",
   "title": "Input Variants",
   "description": "Shared CVA variant definitions for input-family components (input, textarea)",
-  "dependencies": [
-    "class-variance-authority"
-  ],
+  "dependencies": ["class-variance-authority"],
   "registryDependencies": [],
   "files": [
     {
       "path": "registry/lib/input-variants.ts",
-      "content": "import { cva } from \"class-variance-authority\";\n\n// iOS Safari zooms (and does NOT zoom back) when a focused input has computed\n// font-size < 16px. `max-md:text-base` bumps sm/md to 16px on viewports <=768px.\n// See WebKit bug 60125. Desktop keeps the compact 12/14px variants.\nexport const inputSizeClasses = {\n  sm: \"h-7 px-2 py-1 text-xs max-md:text-base\",\n  md: \"h-9 px-3 py-2 text-sm max-md:text-base\",\n  lg: \"h-11 px-4 py-2 text-base\",\n} as const;\n\nexport const inputVariants = cva(\n  \"flex w-full bg-background border border-border text-foreground font-mono placeholder:text-foreground/50 transition-colors focus:border-foreground focus:ring-1 focus:ring-foreground focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed aria-invalid:border-2 aria-invalid:border-destructive aria-invalid:focus:border-destructive aria-invalid:focus:ring-destructive\",\n  {\n    variants: {\n      size: inputSizeClasses,\n    },\n    defaultVariants: {\n      size: \"md\",\n    },\n  }\n);\n",
+      "content": "import { cva } from \"class-variance-authority\";\n\n// iOS Safari zooms (and does NOT zoom back) when a focused input has computed\n// font-size < 16px. `max-md:text-base` bumps sm/md to 16px on viewports <=768px.\n// See WebKit bug 60125. Desktop keeps the compact 12/14px variants.\nexport const inputSizeClasses = {\n  sm: \"h-7 px-2 py-1 text-xs max-md:text-base\",\n  md: \"h-9 px-3 py-2 text-sm max-md:text-base\",\n  lg: \"h-11 px-4 py-2 text-base\",\n} as const;\n\nexport const inputVariants = cva(\n  \"flex w-full bg-background border border-border text-foreground font-mono placeholder:text-foreground/50 transition-colors focus:border-foreground focus:ring-1 focus:ring-foreground focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed aria-invalid:border-2 aria-invalid:border-destructive aria-invalid:focus:border-destructive aria-invalid:focus:ring-destructive\",\n  {\n    variants: {\n      size: inputSizeClasses,\n    },\n    defaultVariants: {\n      size: \"md\",\n    },\n  },\n);\n",
       "type": "registry:lib"
     }
   ],

@@ -7,12 +7,7 @@ export interface DialogHeaderProps extends HTMLAttributes<HTMLDivElement> {
   marker?: "bar" | "none";
 }
 
-export function DialogHeader({
-  className,
-  children,
-  marker = "bar",
-  ...props
-}: DialogHeaderProps) {
+export function DialogHeader({ className, children, marker = "bar", ...props }: DialogHeaderProps) {
   if (marker === "bar") {
     return (
       <div

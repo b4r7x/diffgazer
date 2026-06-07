@@ -10,11 +10,8 @@ function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
 
 export function formatListenError(error: unknown, hostname: string, port: number): string {
   if (isErrnoException(error) && error.code === "EADDRINUSE") {
-    const suggestedPort = port === DEFAULT_DEV_SERVER_PORT
-      ? 3002
-      : port < 65535
-        ? port + 1
-        : DEFAULT_DEV_SERVER_PORT;
+    const suggestedPort =
+      port === DEFAULT_DEV_SERVER_PORT ? 3002 : port < 65535 ? port + 1 : DEFAULT_DEV_SERVER_PORT;
 
     return [
       `Port ${port} is already in use on ${hostname}.`,

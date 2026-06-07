@@ -1,8 +1,4 @@
-import {
-  EmptyState,
-  EmptyStateDescription,
-  EmptyStateMessage,
-} from "@/components/ui/empty-state"
+import { EmptyState, EmptyStateDescription, EmptyStateMessage } from "@/components/ui/empty-state";
 
 export default function EmptyStateDefault() {
   return (
@@ -10,5 +6,5 @@ export default function EmptyStateDefault() {
       <EmptyStateMessage>No reviews found</EmptyStateMessage>
       <EmptyStateDescription>Start a new review to see results here.</EmptyStateDescription>
     </EmptyState>
-  )
+  );
 }

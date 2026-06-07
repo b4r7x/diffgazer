@@ -1,4 +1,4 @@
-import type { HookDoc } from "@diffgazer/registry"
+import type { HookDoc } from "@diffgazer/registry";
 
 export const overflowItemsDoc: HookDoc = {
   description:
@@ -41,8 +41,7 @@ return (
   ],
   returns: {
     type: "{ ref: RefObject<HTMLDivElement | null>; visibleCount: number; overflowCount: number }",
-    description:
-      "A ref to attach to the container and reactive counts.",
+    description: "A ref to attach to the container and reactive counts.",
     properties: [
       {
         name: "ref",
@@ -84,8 +83,6 @@ return (
         "The hook uses useLayoutEffect which fires before the browser paints. On the first render all items are visible in the flex flow, measured synchronously, then visibleCount is set — triggering a re-render before paint. The user never sees the intermediate state.",
     },
   ],
-  examples: [
-    { name: "overflow-items-basic", title: "Basic Overflow Badge" },
-  ],
+  examples: [{ name: "overflow-items-basic", title: "Basic Overflow Badge" }],
   tags: ["hook", "overflow", "resize-observer", "items"],
-}
+};

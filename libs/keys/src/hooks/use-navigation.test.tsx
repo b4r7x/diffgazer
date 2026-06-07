@@ -3,7 +3,11 @@ import userEvent from "@testing-library/user-event";
 import { useRef, useState } from "react";
 import { afterEach, describe, expect, expectTypeOf, it, vi } from "vitest";
 import { testNavigationBehavior } from "../testing/navigation-behavior.js";
-import { type UseNavigationOptions, type UseNavigationReturn, useNavigation } from "./use-navigation.js";
+import {
+  type UseNavigationOptions,
+  type UseNavigationReturn,
+  useNavigation,
+} from "./use-navigation.js";
 
 function itemId(value: string) {
   return value === "" ? "item-empty" : `item-${value}`;
@@ -109,11 +113,19 @@ describe("useNavigation", () => {
     const user = await focusListbox();
 
     await user.keyboard("{ArrowDown}");
-    expect(onNavigationBoundaryReached).toHaveBeenCalledWith("next", expect.any(KeyboardEvent), "ArrowDown");
+    expect(onNavigationBoundaryReached).toHaveBeenCalledWith(
+      "next",
+      expect.any(KeyboardEvent),
+      "ArrowDown",
+    );
     expectActiveOptionText("c");
 
     await user.keyboard("{ArrowUp}{ArrowUp}{ArrowUp}");
-    expect(onNavigationBoundaryReached).toHaveBeenCalledWith("previous", expect.any(KeyboardEvent), "ArrowUp");
+    expect(onNavigationBoundaryReached).toHaveBeenCalledWith(
+      "previous",
+      expect.any(KeyboardEvent),
+      "ArrowUp",
+    );
     expectActiveOptionText("a");
   });
 
@@ -142,13 +154,21 @@ describe("useNavigation", () => {
             ref={ref}
             role="listbox"
             aria-label="Items"
-            aria-activedescendant={result.highlighted === null ? undefined : itemId(result.highlighted)}
+            aria-activedescendant={
+              result.highlighted === null ? undefined : itemId(result.highlighted)
+            }
             tabIndex={0}
             onKeyDown={result.onKeyDown}
           >
-            <div id="item-a" role="option" data-value="a">a</div>
-            <div id="item-b" role="option" data-value="b">b</div>
-            <div id="item-c" role="option" data-value="c">c</div>
+            <div id="item-a" role="option" data-value="a">
+              a
+            </div>
+            <div id="item-b" role="option" data-value="b">
+              b
+            </div>
+            <div id="item-c" role="option" data-value="c">
+              c
+            </div>
           </div>
         </div>
       );
@@ -198,7 +218,9 @@ describe("useNavigation", () => {
           ref={ref}
           role="listbox"
           aria-label="Items"
-          aria-activedescendant={result.highlighted === null ? undefined : itemId(result.highlighted)}
+          aria-activedescendant={
+            result.highlighted === null ? undefined : itemId(result.highlighted)
+          }
           tabIndex={0}
           onKeyDown={result.onKeyDown}
         >
@@ -293,9 +315,11 @@ describe("useNavigation", () => {
     const user = userEvent.setup();
     await user.click(screen.getByRole("radiogroup", { name: "Outer choices" }));
     await user.keyboard("{ArrowDown}");
-    expect(screen.getByRole("radiogroup", { name: "Outer choices" }).getAttribute("aria-activedescendant")).toBe(
-      "item-outer-b",
-    );
+    expect(
+      screen
+        .getByRole("radiogroup", { name: "Outer choices" })
+        .getAttribute("aria-activedescendant"),
+    ).toBe("item-outer-b");
   });
 
   it("navigates into nested containers when scopeToContainer is false", async () => {
@@ -303,9 +327,11 @@ describe("useNavigation", () => {
     const user = userEvent.setup();
     await user.click(screen.getByRole("radiogroup", { name: "Outer choices" }));
     await user.keyboard("{ArrowDown}");
-    expect(screen.getByRole("radiogroup", { name: "Outer choices" }).getAttribute("aria-activedescendant")).toBe(
-      "item-inner-a",
-    );
+    expect(
+      screen
+        .getByRole("radiogroup", { name: "Outer choices" })
+        .getAttribute("aria-activedescendant"),
+    ).toBe("item-inner-a");
   });
 
   it("keeps grouped options navigable while filtering nested listboxes", async () => {
@@ -323,18 +349,28 @@ describe("useNavigation", () => {
           ref={ref}
           role="listbox"
           aria-label="Commands"
-          aria-activedescendant={result.highlighted === null ? undefined : itemId(result.highlighted)}
+          aria-activedescendant={
+            result.highlighted === null ? undefined : itemId(result.highlighted)
+          }
           tabIndex={0}
           onKeyDown={result.onKeyDown}
         >
           <div role="group" aria-label="Actions">
-            <div id="item-copy" role="option" data-value="copy">Copy</div>
-            <div id="item-paste" role="option" data-value="paste">Paste</div>
+            <div id="item-copy" role="option" data-value="copy">
+              Copy
+            </div>
+            <div id="item-paste" role="option" data-value="paste">
+              Paste
+            </div>
           </div>
           <div role="listbox" aria-label="Nested">
-            <div id="item-nested" role="option" data-value="nested">Nested</div>
+            <div id="item-nested" role="option" data-value="nested">
+              Nested
+            </div>
           </div>
-          <div id="item-delete" role="option" data-value="delete">Delete</div>
+          <div id="item-delete" role="option" data-value="delete">
+            Delete
+          </div>
         </div>
       );
     }
@@ -344,9 +380,9 @@ describe("useNavigation", () => {
     await user.click(screen.getByRole("listbox", { name: "Commands" }));
     await user.keyboard("{ArrowDown}{ArrowDown}");
 
-    expect(screen.getByRole("listbox", { name: "Commands" }).getAttribute("aria-activedescendant")).toBe(
-      "item-delete",
-    );
+    expect(
+      screen.getByRole("listbox", { name: "Commands" }).getAttribute("aria-activedescendant"),
+    ).toBe("item-delete");
   });
 
   it("activates virtual highlighted item with Space and Enter on listbox", async () => {
@@ -378,12 +414,16 @@ describe("useNavigation", () => {
     render(<TestList items={["", "b"]} defaultHighlighted="" onSelect={onSelect} />);
     const user = await focusListbox();
 
-    expect(screen.getByRole("option", { name: "Empty" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("option", { name: "Empty" }).getAttribute("aria-selected")).toBe(
+      "true",
+    );
 
     await user.keyboard("{Enter}{ArrowDown}{ArrowUp}");
 
     expect(onSelect).toHaveBeenCalledWith("", expect.any(KeyboardEvent));
-    expect(screen.getByRole("option", { name: "Empty" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("option", { name: "Empty" }).getAttribute("aria-selected")).toBe(
+      "true",
+    );
   });
 
   it("ignores navigation and activation when enabled is false", async () => {
@@ -405,7 +445,9 @@ describe("useNavigation", () => {
   });
 
   it("navigates with custom upKeys and downKeys", async () => {
-    render(<TestList defaultHighlighted="a" upKeys={["ArrowUp", "k"]} downKeys={["ArrowDown", "j"]} />);
+    render(
+      <TestList defaultHighlighted="a" upKeys={["ArrowUp", "k"]} downKeys={["ArrowDown", "j"]} />,
+    );
     const user = await focusListbox();
     await user.keyboard("j");
     expectActiveOptionText("b");
@@ -436,13 +478,21 @@ describe("useNavigation", () => {
           ref={ref}
           role="listbox"
           aria-label="Items"
-          aria-activedescendant={result.highlighted === null ? undefined : itemId(result.highlighted)}
+          aria-activedescendant={
+            result.highlighted === null ? undefined : itemId(result.highlighted)
+          }
           tabIndex={0}
           onKeyDown={result.onKeyDown}
         >
-          <div id="item-a" role="option" data-value="a">A</div>
-          <div id="item-b" role="option" data-value="b" aria-disabled="true">B</div>
-          <div id="item-c" role="option" data-value="c">C</div>
+          <div id="item-a" role="option" data-value="a">
+            A
+          </div>
+          <div id="item-b" role="option" data-value="b" aria-disabled="true">
+            B
+          </div>
+          <div id="item-c" role="option" data-value="c">
+            C
+          </div>
         </div>
       );
     }
@@ -468,13 +518,21 @@ describe("useNavigation", () => {
           ref={ref}
           role="listbox"
           aria-label="Items"
-          aria-activedescendant={result.highlighted === null ? undefined : itemId(result.highlighted)}
+          aria-activedescendant={
+            result.highlighted === null ? undefined : itemId(result.highlighted)
+          }
           tabIndex={0}
           onKeyDown={result.onKeyDown}
         >
-          <div id="item-a" role="option" data-value="a">A</div>
-          <div id="item-b" role="option" data-value="b" aria-disabled="true">B</div>
-          <div id="item-c" role="option" data-value="c">C</div>
+          <div id="item-a" role="option" data-value="a">
+            A
+          </div>
+          <div id="item-b" role="option" data-value="b" aria-disabled="true">
+            B
+          </div>
+          <div id="item-c" role="option" data-value="c">
+            C
+          </div>
         </div>
       );
     }
@@ -497,9 +555,15 @@ describe("useNavigation", () => {
 
       return (
         <div ref={ref} role="group" aria-label="Actions" tabIndex={0} onKeyDown={result.onKeyDown}>
-          <button type="button" data-value="a">A</button>
-          <button type="button" data-value="b">B</button>
-          <button type="button" data-value="c">C</button>
+          <button type="button" data-value="a">
+            A
+          </button>
+          <button type="button" data-value="b">
+            B
+          </button>
+          <button type="button" data-value="c">
+            C
+          </button>
         </div>
       );
     }
@@ -530,8 +594,12 @@ describe("useNavigation", () => {
 
       return (
         <div ref={ref} role="group" aria-label="Actions" tabIndex={0} onKeyDown={result.onKeyDown}>
-          <button type="button" data-value="a">A</button>
-          <button type="button" data-value="b">B</button>
+          <button type="button" data-value="a">
+            A
+          </button>
+          <button type="button" data-value="b">
+            B
+          </button>
         </div>
       );
     }
@@ -611,11 +679,17 @@ describe("useNavigation", () => {
             ref={ref}
             role="listbox"
             aria-label="Items"
-            aria-activedescendant={result.highlighted === null ? undefined : itemId(result.highlighted)}
+            aria-activedescendant={
+              result.highlighted === null ? undefined : itemId(result.highlighted)
+            }
             tabIndex={0}
           >
-            <div id="item-a" role="option" data-value="a">A</div>
-            <div id="item-b" role="option" data-value="b">B</div>
+            <div id="item-a" role="option" data-value="a">
+              A
+            </div>
+            <div id="item-b" role="option" data-value="b">
+              B
+            </div>
           </div>
         </div>
       );
@@ -634,7 +708,9 @@ describe("useNavigation", () => {
 
       expect(input.selectionStart).toBe(input.value.length);
       // Listbox should not have advanced highlight
-      expect(screen.getByRole("listbox", { name: "Items" }).getAttribute("aria-activedescendant")).toBe("item-a");
+      expect(
+        screen.getByRole("listbox", { name: "Items" }).getAttribute("aria-activedescendant"),
+      ).toBe("item-a");
     });
 
     it("does not consume Enter/Space keys originating in a textarea above the listbox", async () => {
@@ -670,11 +746,17 @@ describe("useNavigation", () => {
               ref={ref}
               role="listbox"
               aria-label="Items"
-              aria-activedescendant={result.highlighted === null ? undefined : itemId(result.highlighted)}
+              aria-activedescendant={
+                result.highlighted === null ? undefined : itemId(result.highlighted)
+              }
               tabIndex={0}
             >
-              <div id="item-a" role="option" data-value="a">A</div>
-              <div id="item-b" role="option" data-value="b">B</div>
+              <div id="item-a" role="option" data-value="a">
+                A
+              </div>
+              <div id="item-b" role="option" data-value="b">
+                B
+              </div>
             </div>
           </div>
         );
@@ -687,7 +769,9 @@ describe("useNavigation", () => {
       const user = userEvent.setup();
       await user.keyboard("{ArrowDown}");
 
-      expect(screen.getByRole("listbox", { name: "Items" }).getAttribute("aria-activedescendant")).toBe("item-a");
+      expect(
+        screen.getByRole("listbox", { name: "Items" }).getAttribute("aria-activedescendant"),
+      ).toBe("item-a");
     });
 
     it("still navigates when an editable element is itself a navigation item", async () => {
@@ -728,12 +812,18 @@ describe("useNavigation", () => {
           ref={ref}
           role="listbox"
           aria-label="Items"
-          aria-activedescendant={result.highlighted === null ? undefined : itemId(result.highlighted)}
+          aria-activedescendant={
+            result.highlighted === null ? undefined : itemId(result.highlighted)
+          }
           tabIndex={0}
           onKeyDown={result.onKeyDown}
         >
-          <div id="item-a" role="option" data-value="a">A</div>
-          <div id="item-b" role="option" data-value="b">B</div>
+          <div id="item-a" role="option" data-value="a">
+            A
+          </div>
+          <div id="item-b" role="option" data-value="b">
+            B
+          </div>
         </div>
       );
     }
@@ -775,11 +865,15 @@ describe("useNavigation", () => {
             ref={ref}
             role="listbox"
             aria-label="Items"
-            aria-activedescendant={result.highlighted === null ? undefined : itemId(result.highlighted)}
+            aria-activedescendant={
+              result.highlighted === null ? undefined : itemId(result.highlighted)
+            }
             tabIndex={0}
             onKeyDown={result.onKeyDown}
           >
-            <div id="item-a" role="option" data-value="a">A</div>
+            <div id="item-a" role="option" data-value="a">
+              A
+            </div>
           </div>
         );
       }
@@ -809,7 +903,9 @@ describe("useNavigation", () => {
             ref={ref}
             role="listbox"
             aria-label="Items"
-            aria-activedescendant={result.highlighted === null ? undefined : itemId(result.highlighted)}
+            aria-activedescendant={
+              result.highlighted === null ? undefined : itemId(result.highlighted)
+            }
             tabIndex={0}
             onKeyDown={result.onKeyDown}
           >
@@ -846,7 +942,9 @@ describe("useNavigation", () => {
             ref={ref}
             role="listbox"
             aria-label="Items"
-            aria-activedescendant={result.highlighted === null ? undefined : itemId(result.highlighted)}
+            aria-activedescendant={
+              result.highlighted === null ? undefined : itemId(result.highlighted)
+            }
             tabIndex={0}
             onKeyDown={result.onKeyDown}
           >
@@ -880,9 +978,15 @@ describe("useNavigation", () => {
         });
         return (
           <div ref={ref} role="menu" aria-label="Menu" onKeyDown={result.onKeyDown}>
-            <div id="item-a" role="menuitem" data-value="a" tabIndex={0}>A</div>
-            <div id="item-b" role="menuitem" data-value="b" aria-disabled="true" tabIndex={-1}>B</div>
-            <div id="item-c" role="menuitem" data-value="c" tabIndex={-1}>C</div>
+            <div id="item-a" role="menuitem" data-value="a" tabIndex={0}>
+              A
+            </div>
+            <div id="item-b" role="menuitem" data-value="b" aria-disabled="true" tabIndex={-1}>
+              B
+            </div>
+            <div id="item-c" role="menuitem" data-value="c" tabIndex={-1}>
+              C
+            </div>
           </div>
         );
       }
@@ -904,18 +1008,26 @@ describe("useNavigation", () => {
 
       expectTypeOf<Narrow["highlighted"]>().toEqualTypeOf<"a" | "b" | null | undefined>();
       expectTypeOf<NonNullable<Narrow["onSelect"]>>().parameter(0).toEqualTypeOf<"a" | "b">();
-      expectTypeOf<NonNullable<Narrow["onHighlightChange"]>>().parameter(0).toEqualTypeOf<"a" | "b" | null>();
+      expectTypeOf<NonNullable<Narrow["onHighlightChange"]>>()
+        .parameter(0)
+        .toEqualTypeOf<"a" | "b" | null>();
       expectTypeOf<ReturnNarrow["highlighted"]>().toEqualTypeOf<"a" | "b" | null>();
     });
 
     it("keeps the loose default contract when no generic is supplied", () => {
-      expectTypeOf<UseNavigationOptions["highlighted"]>().toEqualTypeOf<string | null | undefined>();
+      expectTypeOf<UseNavigationOptions["highlighted"]>().toEqualTypeOf<
+        string | null | undefined
+      >();
       expectTypeOf<UseNavigationReturn["highlighted"]>().toEqualTypeOf<string | null>();
     });
   });
 });
 
-function FocusedActionList({ onSelect }: { onSelect: (value: string, event: KeyboardEvent) => void }) {
+function FocusedActionList({
+  onSelect,
+}: {
+  onSelect: (value: string, event: KeyboardEvent) => void;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const result = useNavigation({
     containerRef: ref,
@@ -926,8 +1038,12 @@ function FocusedActionList({ onSelect }: { onSelect: (value: string, event: Keyb
 
   return (
     <div ref={ref} role="group" aria-label="Actions" tabIndex={0} onKeyDown={result.onKeyDown}>
-      <button type="button" data-value="a">A</button>
-      <button type="button" data-value="b">B</button>
+      <button type="button" data-value="a">
+        A
+      </button>
+      <button type="button" data-value="b">
+        B
+      </button>
     </div>
   );
 }

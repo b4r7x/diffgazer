@@ -90,7 +90,10 @@ function makeProjectRoot(): string {
   mkdirSync(join(root, "src"), { recursive: true });
   writeFileSync(join(root, "package.json"), JSON.stringify({ name: "fixture", version: "0.0.0" }));
   writeFileSync(join(root, "README.md"), "# Fixture\n");
-  writeFileSync(join(root, "src/app.ts"), "export function add(a: number, b: number) {\n  return a + b;\n}\n");
+  writeFileSync(
+    join(root, "src/app.ts"),
+    "export function add(a: number, b: number) {\n  return a + b;\n}\n",
+  );
   return root;
 }
 
@@ -112,12 +115,14 @@ function parsedEvents(stream: { events: Array<{ data: string }> }): FullReviewSt
   return stream.events.map((event) => JSON.parse(event.data) as FullReviewStreamEvent);
 }
 
-function makeGitService(options: {
-  diff?: string;
-  headCommit?: string;
-  headCommitError?: string;
-  statusHash?: string;
-} = {}): GitService {
+function makeGitService(
+  options: {
+    diff?: string;
+    headCommit?: string;
+    headCommitError?: string;
+    statusHash?: string;
+  } = {},
+): GitService {
   const {
     diff = REVIEW_DIFF,
     headCommit = "abc123",
@@ -126,16 +131,17 @@ function makeGitService(options: {
   } = options;
 
   return {
-    getStatus: async () => ok({
-      isGitRepo: true,
-      branch: "main",
-      remoteBranch: null,
-      ahead: 0,
-      behind: 0,
-      files: { staged: [], unstaged: [], untracked: [] },
-      hasChanges: false,
-      conflicted: [],
-    }),
+    getStatus: async () =>
+      ok({
+        isGitRepo: true,
+        branch: "main",
+        remoteBranch: null,
+        ahead: 0,
+        behind: 0,
+        files: { staged: [], unstaged: [], untracked: [] },
+        hasChanges: false,
+        conflicted: [],
+      }),
     getDiff: async () => diff,
     isGitInstalled: async () => true,
     getBlame: async () => ({
@@ -156,10 +162,12 @@ function makeGitService(options: {
   };
 }
 
-function makeAIClient(result: ReviewResult = {
-  summary: "Model found one correctness issue.",
-  issues: [makeIssue({ title: "Subtraction used in addition helper", file: "src/app.ts" })],
-}): AIClient {
+function makeAIClient(
+  result: ReviewResult = {
+    summary: "Model found one correctness issue.",
+    issues: [makeIssue({ title: "Subtraction used in addition helper", file: "src/app.ts" })],
+  },
+): AIClient {
   const generate: AIClient["generate"] = async <T extends z.ZodType>(
     _prompt: string,
     schema: T,
@@ -241,7 +249,12 @@ describe("createReviewSession", () => {
   });
 
   it("returns the existing session when a matching ready session exists", async () => {
-    const existing = createSession("existing-dedup", { projectPath: projectRoot, headCommit: "abc123", statusHash: "hash123", mode: "unstaged" });
+    const existing = createSession("existing-dedup", {
+      projectPath: projectRoot,
+      headCommit: "abc123",
+      statusHash: "hash123",
+      mode: "unstaged",
+    });
     trackSession(existing.reviewId);
     markReady(existing.reviewId);
 
@@ -299,7 +312,12 @@ describe("createReviewSession", () => {
   });
 
   it("cancels stale sessions before creating a new one", async () => {
-    const stale = createSession("stale-review", { projectPath: projectRoot, headCommit: "old-head", statusHash: "old-hash", mode: "unstaged" });
+    const stale = createSession("stale-review", {
+      projectPath: projectRoot,
+      headCommit: "old-head",
+      statusHash: "old-hash",
+      mode: "unstaged",
+    });
     trackSession(stale.reviewId);
     markReady(stale.reviewId);
 
@@ -319,11 +337,21 @@ describe("createReviewSession", () => {
 describe("streamActiveSessionToSSE", () => {
   it("replays buffered events to the SSE stream", async () => {
     const stream = makeMockStream();
-    const session = createSession("replay-session", { projectPath: projectRoot, headCommit: "abc123", statusHash: "hash123", mode: "unstaged" });
+    const session = createSession("replay-session", {
+      projectPath: projectRoot,
+      headCommit: "abc123",
+      statusHash: "hash123",
+      mode: "unstaged",
+    });
     trackSession(session.reviewId);
     const events: FullReviewStreamEvent[] = [
       { type: "step_start", step: "diff", timestamp: new Date().toISOString() },
-      { type: "complete", result: { issues: [], summary: "Clean" }, reviewId: session.reviewId, durationMs: 100 },
+      {
+        type: "complete",
+        result: { issues: [], summary: "Clean" },
+        reviewId: session.reviewId,
+        durationMs: 100,
+      },
     ];
     session.events.push(...events);
     session.isComplete = true;
@@ -335,7 +363,12 @@ describe("streamActiveSessionToSSE", () => {
 
   it("streams live events until a terminal event arrives", async () => {
     const stream = makeMockStream();
-    const session = createSession("live-session", { projectPath: projectRoot, headCommit: "abc123", statusHash: "hash123", mode: "unstaged" });
+    const session = createSession("live-session", {
+      projectPath: projectRoot,
+      headCommit: "abc123",
+      statusHash: "hash123",
+      mode: "unstaged",
+    });
     trackSession(session.reviewId);
 
     const replay = streamActiveSessionToSSE(stream, session);
@@ -348,14 +381,17 @@ describe("streamActiveSessionToSSE", () => {
 
     await replay;
 
-    expect(parsedEvents(stream)).toMatchObject([
-      { type: "complete", reviewId: session.reviewId },
-    ]);
+    expect(parsedEvents(stream)).toMatchObject([{ type: "complete", reviewId: session.reviewId }]);
   });
 
   it("writes a stale error when the session cannot be subscribed", async () => {
     const stream = makeMockStream();
-    const session = createSession("stale-session", { projectPath: projectRoot, headCommit: "abc123", statusHash: "hash123", mode: "unstaged" });
+    const session = createSession("stale-session", {
+      projectPath: projectRoot,
+      headCommit: "abc123",
+      statusHash: "hash123",
+      mode: "unstaged",
+    });
     trackSession(session.reviewId);
     deleteSession(session.reviewId);
 
@@ -368,7 +404,12 @@ describe("streamActiveSessionToSSE", () => {
 
   it("stops without writing when the client aborts", async () => {
     const stream = makeMockStream();
-    const session = createSession("abort-session", { projectPath: projectRoot, headCommit: "abc123", statusHash: "hash123", mode: "unstaged" });
+    const session = createSession("abort-session", {
+      projectPath: projectRoot,
+      headCommit: "abc123",
+      statusHash: "hash123",
+      mode: "unstaged",
+    });
     const controller = new AbortController();
     trackSession(session.reviewId);
 
@@ -382,7 +423,12 @@ describe("streamActiveSessionToSSE", () => {
 
   it("writes a terminal event delivered via addEvent without depending on a timer", async () => {
     const stream = makeMockStream();
-    const session = createSession("real-flow", { projectPath: projectRoot, headCommit: "abc123", statusHash: "hash123", mode: "unstaged" });
+    const session = createSession("real-flow", {
+      projectPath: projectRoot,
+      headCommit: "abc123",
+      statusHash: "hash123",
+      mode: "unstaged",
+    });
     trackSession(session.reviewId);
 
     const replay = streamActiveSessionToSSE(stream, session);
@@ -398,14 +444,17 @@ describe("streamActiveSessionToSSE", () => {
 
     await replay;
 
-    expect(parsedEvents(stream)).toMatchObject([
-      { type: "complete", reviewId: session.reviewId },
-    ]);
+    expect(parsedEvents(stream)).toMatchObject([{ type: "complete", reviewId: session.reviewId }]);
   });
 
   it("resolves promptly when the session completes without emitting a terminal event", async () => {
     const stream = makeMockStream();
-    const session = createSession("silent-complete", { projectPath: projectRoot, headCommit: "abc123", statusHash: "hash123", mode: "unstaged" });
+    const session = createSession("silent-complete", {
+      projectPath: projectRoot,
+      headCommit: "abc123",
+      statusHash: "hash123",
+      mode: "unstaged",
+    });
     trackSession(session.reviewId);
 
     const replay = streamActiveSessionToSSE(stream, session);
@@ -419,7 +468,12 @@ describe("streamActiveSessionToSSE", () => {
 
   it("emits the stale error from cancelSession via the subscriber path", async () => {
     const stream = makeMockStream();
-    const session = createSession("cancel-stream", { projectPath: projectRoot, headCommit: "abc123", statusHash: "hash123", mode: "unstaged" });
+    const session = createSession("cancel-stream", {
+      projectPath: projectRoot,
+      headCommit: "abc123",
+      statusHash: "hash123",
+      mode: "unstaged",
+    });
     trackSession(session.reviewId);
 
     const replay = streamActiveSessionToSSE(stream, session);

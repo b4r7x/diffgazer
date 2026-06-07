@@ -21,7 +21,10 @@ export function createWordDiffBudget(maxCells = DEFAULT_WORD_DIFF_CELL_BUDGET): 
   return { remainingCells: maxCells };
 }
 
-function changedLineSegments(oldContent: string, newContent: string): { old: WordSegment[]; new: WordSegment[] } {
+function changedLineSegments(
+  oldContent: string,
+  newContent: string,
+): { old: WordSegment[]; new: WordSegment[] } {
   return {
     old: [{ text: oldContent, changed: true }],
     new: [{ text: newContent, changed: true }],
@@ -64,7 +67,8 @@ export function computeWordSegments(
     if (i > 0 && j > 0 && oldWords[i - 1] === newWords[j - 1]) {
       oldSegs.push({ text: oldWord, changed: false });
       newSegs.push({ text: newWord, changed: false });
-      i--; j--;
+      i--;
+      j--;
       continue;
     }
     const upRow = dp[i - 1] ?? [];

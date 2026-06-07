@@ -1,15 +1,15 @@
-"use client"
+"use client";
 
-import { useFocusTrap } from "@diffgazer/keys"
-import { useRef, useState } from "react"
+import { useFocusTrap } from "@diffgazer/keys";
+import { useRef, useState } from "react";
 
 export default function UseFocusTrapInitialFocus() {
-  const [open, setOpen] = useState(false)
-  const dialogRef = useRef<HTMLDivElement>(null)
-  const saveRef = useRef<HTMLButtonElement>(null)
+  const [open, setOpen] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const saveRef = useRef<HTMLButtonElement>(null);
 
   // initialFocus moves focus to Save instead of the first focusable element.
-  useFocusTrap(dialogRef, { enabled: open, initialFocus: saveRef, restoreFocus: true })
+  useFocusTrap(dialogRef, { enabled: open, initialFocus: saveRef, restoreFocus: true });
 
   return (
     <div>
@@ -36,5 +36,5 @@ export default function UseFocusTrapInitialFocus() {
         </div>
       )}
     </div>
-  )
+  );
 }

@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  type KeyboardEvent,
-  type RefObject,
-  useCallback,
-  useState,
-} from "react";
+import { type KeyboardEvent, type RefObject, useCallback, useState } from "react";
 import { dispatchNavigationKey, resolveDirectionKeys } from "../core/navigation-dispatch.js";
 import { isEditableElement } from "../dom/element-guards.js";
 import { containsActiveElement } from "../dom/focusable.js";
@@ -98,15 +93,19 @@ export function useNavigationCore<TValue extends string = string>({
 }: UseNavigationOptions<TValue>): UseNavigationCoreReturn<TValue> {
   const [internalHighlighted, setInternalHighlighted] = useState<TValue | null>(defaultHighlighted);
   const isControlled = controlledHighlighted !== undefined;
-  const highlighted = isControlled ? controlledHighlighted ?? null : internalHighlighted;
+  const highlighted = isControlled ? (controlledHighlighted ?? null) : internalHighlighted;
 
-  const setFocusedValue = useCallback((nextValue: TValue | null) => {
-    if (!isControlled) setInternalHighlighted(nextValue);
-    onHighlightChange?.(nextValue);
-  }, [isControlled, onHighlightChange]);
+  const setFocusedValue = useCallback(
+    (nextValue: TValue | null) => {
+      if (!isControlled) setInternalHighlighted(nextValue);
+      onHighlightChange?.(nextValue);
+    },
+    [isControlled, onHighlightChange],
+  );
 
   const getElements = useCallback(
-    () => queryNavigationElements(containerRef, role, skipDisabled, scopeToContainer, ownerSelector),
+    () =>
+      queryNavigationElements(containerRef, role, skipDisabled, scopeToContainer, ownerSelector),
     [containerRef, role, skipDisabled, scopeToContainer, ownerSelector],
   );
 
@@ -144,51 +143,72 @@ export function useNavigationCore<TValue extends string = string>({
     return null;
   }, [containerRef, getElements, highlighted, ownerSelector, role, scopeToContainer, skipDisabled]);
 
-  const focusIndex = useCallback((index: number) => {
-    const elements = getElements();
-    const el = elements[index];
-    if (!el) return;
-    const nextValue = el.dataset.value;
-    if (nextValue === undefined) return;
+  const focusIndex = useCallback(
+    (index: number) => {
+      const elements = getElements();
+      const el = elements[index];
+      if (!el) return;
+      const nextValue = el.dataset.value;
+      if (nextValue === undefined) return;
 
-    el.scrollIntoView?.({ block: "nearest" });
-    if (moveFocus) el.focus();
-    // DOM boundary: data-value is opaque to TS; consumers parameterize TValue.
-    setFocusedValue(nextValue as TValue);
-  }, [getElements, moveFocus, setFocusedValue]);
+      el.scrollIntoView?.({ block: "nearest" });
+      if (moveFocus) el.focus();
+      // DOM boundary: data-value is opaque to TS; consumers parameterize TValue.
+      setFocusedValue(nextValue as TValue);
+    },
+    [getElements, moveFocus, setFocusedValue],
+  );
 
-  const move = useCallback((delta: 1 | -1, event?: globalThis.KeyboardEvent, key?: string) => {
-    const elements = getElements();
-    if (elements.length === 0) return;
+  const move = useCallback(
+    (delta: 1 | -1, event?: globalThis.KeyboardEvent, key?: string) => {
+      const elements = getElements();
+      if (elements.length === 0) return;
 
-    const current = getFocusedIndex();
-    const rawNext = current + delta;
-    const next = wrapIndex(rawNext, elements.length, wrap);
-    if (next === null) {
-      const direction = delta < 0 ? "previous" : "next";
-      if (event && key) onNavigationBoundaryReached?.(direction, event, key);
-      return;
-    }
+      const current = getFocusedIndex();
+      const rawNext = current + delta;
+      const next = wrapIndex(rawNext, elements.length, wrap);
+      if (next === null) {
+        const direction = delta < 0 ? "previous" : "next";
+        if (event && key) onNavigationBoundaryReached?.(direction, event, key);
+        return;
+      }
 
-    focusIndex(next);
-  }, [focusIndex, getElements, getFocusedIndex, onNavigationBoundaryReached, wrap]);
+      focusIndex(next);
+    },
+    [focusIndex, getElements, getFocusedIndex, onNavigationBoundaryReached, wrap],
+  );
 
-  const handleSelect = useCallback((event: globalThis.KeyboardEvent) => {
-    const currentValue = getCurrentValue();
-    if (currentValue !== null) onSelect?.(currentValue, event);
-  }, [getCurrentValue, onSelect]);
+  const handleSelect = useCallback(
+    (event: globalThis.KeyboardEvent) => {
+      const currentValue = getCurrentValue();
+      if (currentValue !== null) onSelect?.(currentValue, event);
+    },
+    [getCurrentValue, onSelect],
+  );
 
-  const handleEnter = useCallback((event: globalThis.KeyboardEvent) => {
-    const currentValue = getCurrentValue();
-    if (currentValue === null) return;
-    if (onEnter) onEnter(currentValue, event);
-    else onSelect?.(currentValue, event);
-  }, [getCurrentValue, onEnter, onSelect]);
+  const handleEnter = useCallback(
+    (event: globalThis.KeyboardEvent) => {
+      const currentValue = getCurrentValue();
+      if (currentValue === null) return;
+      if (onEnter) onEnter(currentValue, event);
+      else onSelect?.(currentValue, event);
+    },
+    [getCurrentValue, onEnter, onSelect],
+  );
 
   const isHighlighted = useCallback((v: TValue) => highlighted === v, [highlighted]);
   const highlight = useCallback((v: TValue | null) => setFocusedValue(v), [setFocusedValue]);
 
-  return { highlighted, isHighlighted, highlight, move, focusIndex, handleSelect, handleEnter, getElements };
+  return {
+    highlighted,
+    isHighlighted,
+    highlight,
+    move,
+    focusIndex,
+    handleSelect,
+    handleEnter,
+    getElements,
+  };
 }
 
 export function useNavigation<TValue extends string = string>(
@@ -206,66 +226,79 @@ export function useNavigation<TValue extends string = string>(
 
   const { resolvedUpKeys, resolvedDownKeys } = resolveDirectionKeys(orientation, upKeys, downKeys);
 
-  const { highlighted, isHighlighted, highlight, move, focusIndex, handleSelect, handleEnter, getElements } =
-    useNavigationCore(options);
-  const handlesEnter = Boolean(onEnter || onSelect);
-  const handlesSpace = Boolean(onSelect);
-
-  const onKeyDown = useCallback((event: KeyboardEvent) => {
-    if (!enabled) return;
-
-    const key = event.key;
-    const isMoveKey = resolvedUpKeys.includes(key) || resolvedDownKeys.includes(key);
-    const isSpecialKey =
-      key === "Home"
-      || key === "End"
-      || (key === "Enter" && handlesEnter)
-      || (key === " " && handlesSpace);
-    if (!isMoveKey && !isSpecialKey) return;
-
-    const elements = getElements();
-
-    // Editable target guard: when an editable element bubbles a key into a wrapper
-    // that ALSO owns the navigation container, let the native control handle the key.
-    // We only skip when:
-    //   1) the event target is editable,
-    //   2) the target is NOT itself a navigation item,
-    //   3) currentTarget is an ancestor of the items (natural bubble case),
-    //      so the user did not explicitly forward the event from the editable.
-    if (isEditableElement(event.target)) {
-      const target = event.target as HTMLElement;
-      const isOwnItem = elements.some((el) => el === target || el.contains(target));
-      const currentTarget = event.currentTarget;
-      const ownsItems =
-        currentTarget != null && elements.length > 0 && elements.every((el) => currentTarget.contains(el));
-      if (!isOwnItem && ownsItems) return;
-    }
-
-    if (preventDefault) event.preventDefault();
-
-    dispatchNavigationKey(key, {
-      resolvedUpKeys,
-      resolvedDownKeys,
-      move: (delta) => move(delta, event.nativeEvent, key),
-      focusIndex,
-      handleSelect: handlesSpace ? (e) => handleSelect(e) : undefined,
-      handleEnter: handlesEnter ? (e) => handleEnter(e) : undefined,
-      total: elements.length,
-      nativeEvent: event.nativeEvent,
-    });
-  }, [
-    enabled,
-    resolvedUpKeys,
-    resolvedDownKeys,
-    preventDefault,
-    handlesEnter,
-    handlesSpace,
+  const {
+    highlighted,
+    isHighlighted,
+    highlight,
     move,
     focusIndex,
     handleSelect,
     handleEnter,
     getElements,
-  ]);
+  } = useNavigationCore(options);
+  const handlesEnter = Boolean(onEnter || onSelect);
+  const handlesSpace = Boolean(onSelect);
+
+  const onKeyDown = useCallback(
+    (event: KeyboardEvent) => {
+      if (!enabled) return;
+
+      const key = event.key;
+      const isMoveKey = resolvedUpKeys.includes(key) || resolvedDownKeys.includes(key);
+      const isSpecialKey =
+        key === "Home" ||
+        key === "End" ||
+        (key === "Enter" && handlesEnter) ||
+        (key === " " && handlesSpace);
+      if (!isMoveKey && !isSpecialKey) return;
+
+      const elements = getElements();
+
+      // Editable target guard: when an editable element bubbles a key into a wrapper
+      // that ALSO owns the navigation container, let the native control handle the key.
+      // We only skip when:
+      //   1) the event target is editable,
+      //   2) the target is NOT itself a navigation item,
+      //   3) currentTarget is an ancestor of the items (natural bubble case),
+      //      so the user did not explicitly forward the event from the editable.
+      if (isEditableElement(event.target)) {
+        const target = event.target as HTMLElement;
+        const isOwnItem = elements.some((el) => el === target || el.contains(target));
+        const currentTarget = event.currentTarget;
+        const ownsItems =
+          currentTarget != null &&
+          elements.length > 0 &&
+          elements.every((el) => currentTarget.contains(el));
+        if (!isOwnItem && ownsItems) return;
+      }
+
+      if (preventDefault) event.preventDefault();
+
+      dispatchNavigationKey(key, {
+        resolvedUpKeys,
+        resolvedDownKeys,
+        move: (delta) => move(delta, event.nativeEvent, key),
+        focusIndex,
+        handleSelect: handlesSpace ? (e) => handleSelect(e) : undefined,
+        handleEnter: handlesEnter ? (e) => handleEnter(e) : undefined,
+        total: elements.length,
+        nativeEvent: event.nativeEvent,
+      });
+    },
+    [
+      enabled,
+      resolvedUpKeys,
+      resolvedDownKeys,
+      preventDefault,
+      handlesEnter,
+      handlesSpace,
+      move,
+      focusIndex,
+      handleSelect,
+      handleEnter,
+      getElements,
+    ],
+  );
 
   return { highlighted, isHighlighted, highlight, onKeyDown };
 }

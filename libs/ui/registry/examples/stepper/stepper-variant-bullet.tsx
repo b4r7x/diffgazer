@@ -1,4 +1,4 @@
-import { Stepper } from "@/components/ui/stepper"
+import { Stepper } from "@/components/ui/stepper";
 
 export default function StepperVariantBullet() {
   return (
@@ -19,5 +19,5 @@ export default function StepperVariantBullet() {
         <Stepper.Trigger>Merge</Stepper.Trigger>
       </Stepper.Step>
     </Stepper>
-  )
+  );
 }

@@ -22,7 +22,9 @@ import { defineConfig } from "tsup";
 import type { Registry } from "./scripts/registry/types.js";
 
 const registryRoot = resolve(import.meta.dirname, "registry");
-const registry = JSON.parse(readFileSync(resolve(registryRoot, "registry.json"), "utf-8")) as Registry;
+const registry = JSON.parse(
+  readFileSync(resolve(registryRoot, "registry.json"), "utf-8"),
+) as Registry;
 
 /** Keys hooks derived from registry refs, with `use-` prefix for hook matching. */
 const DIFFGAZER_KEYS_HOOKS = resolveKeysHookFiles(registry.items);
@@ -51,7 +53,10 @@ for (const item of registry.items) {
 entry["lib/utils"] = resolve(registryRoot, "lib/utils.ts");
 entry["components/logo/figlet"] = resolve(registryRoot, "ui/logo/figlet-text.ts");
 entry["components/code-block/highlight"] = resolve(registryRoot, "ui/code-block/highlight.ts");
-entry["components/command-palette/highlight"] = resolve(registryRoot, "ui/command-palette/highlight.ts");
+entry["components/command-palette/highlight"] = resolve(
+  registryRoot,
+  "ui/command-palette/highlight.ts",
+);
 
 /**
  * Esbuild plugin that rewrites @/ alias imports and drops .css imports.
@@ -169,10 +174,12 @@ export default defineConfig({
 
     // Validate that every UI item makes an explicit client/server decision.
     const uiWithoutClient = registry.items.filter(
-      (i) => i.type === "registry:ui" && i.meta?.client == null
+      (i) => i.type === "registry:ui" && i.meta?.client == null,
     );
     if (uiWithoutClient.length) {
-      throw new Error(`UI items missing meta.client: ${uiWithoutClient.map((i) => i.name).join(", ")}`);
+      throw new Error(
+        `UI items missing meta.client: ${uiWithoutClient.map((i) => i.name).join(", ")}`,
+      );
     }
 
     // Validate all entries produced output
@@ -191,9 +198,9 @@ export default defineConfig({
     // import targets. This fails the build if a registry item is added without
     // a matching export (orphan dist entry) or an export points at a missing
     // entry, keeping the published surface and the dist contents in lockstep.
-    const pkg = JSON.parse(
-      readFileSync(resolve(import.meta.dirname, "package.json"), "utf-8"),
-    ) as { exports: Record<string, { import?: string } | string> };
+    const pkg = JSON.parse(readFileSync(resolve(import.meta.dirname, "package.json"), "utf-8")) as {
+      exports: Record<string, { import?: string } | string>;
+    };
     const exportKeys = new Set(
       Object.values(pkg.exports)
         .map((value) => (typeof value === "object" ? value.import : undefined))
@@ -206,8 +213,12 @@ export default defineConfig({
     if (orphanEntries.length || unbackedExports.length) {
       throw new Error(
         `dist entry set does not match exports map.\n` +
-          (orphanEntries.length ? `  dist entries not in exports: ${orphanEntries.sort().join(", ")}\n` : "") +
-          (unbackedExports.length ? `  exports with no dist entry: ${unbackedExports.sort().join(", ")}\n` : ""),
+          (orphanEntries.length
+            ? `  dist entries not in exports: ${orphanEntries.sort().join(", ")}\n`
+            : "") +
+          (unbackedExports.length
+            ? `  exports with no dist entry: ${unbackedExports.sort().join(", ")}\n`
+            : ""),
       );
     }
   },

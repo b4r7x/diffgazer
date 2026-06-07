@@ -8,9 +8,7 @@ export interface AvatarGroupContextValue {
   size?: "sm" | "md" | "lg" | null;
 }
 
-export const AvatarGroupContext = createContext<
-  AvatarGroupContextValue | undefined
->(undefined);
+export const AvatarGroupContext = createContext<AvatarGroupContextValue | undefined>(undefined);
 
 export function useAvatarGroupContext() {
   return useContext(AvatarGroupContext);
@@ -21,16 +19,12 @@ export interface AvatarContextValue {
   setImageStatus: (status: AvatarStatus) => void;
 }
 
-export const AvatarContext = createContext<AvatarContextValue | undefined>(
-  undefined,
-);
+export const AvatarContext = createContext<AvatarContextValue | undefined>(undefined);
 
 export function useAvatarContext() {
   const ctx = useContext(AvatarContext);
   if (!ctx) {
-    throw new Error(
-      "Avatar.Image and Avatar.Fallback must be used within Avatar",
-    );
+    throw new Error("Avatar.Image and Avatar.Fallback must be used within Avatar");
   }
   return ctx;
 }

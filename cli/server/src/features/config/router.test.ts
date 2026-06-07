@@ -38,14 +38,32 @@ afterEach(() => {
 
 describe("GET /config/provider/:id/models", () => {
   it("returns live models end to end, free-first and with the recommended flag (source: live)", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(okResponse({
-      google: { id: "google", name: "Google", models: {
-        // A paid model whose name sorts BEFORE the free one alphabetically, so only
-        // the free-first contract (not the name tiebreak) can put flash first.
-        "gemini-2.0-pro": { id: "gemini-2.0-pro", name: "Gemini 2.0 Pro", cost: { input: 1.25, output: 5 }, limit: { context: 1_000_000 }, tool_call: true },
-        "gemini-2.5-flash": { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash", cost: { input: 0.3, output: 2.5 }, limit: { context: 1_000_000 }, tool_call: true },
-      } },
-    }));
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      okResponse({
+        google: {
+          id: "google",
+          name: "Google",
+          models: {
+            // A paid model whose name sorts BEFORE the free one alphabetically, so only
+            // the free-first contract (not the name tiebreak) can put flash first.
+            "gemini-2.0-pro": {
+              id: "gemini-2.0-pro",
+              name: "Gemini 2.0 Pro",
+              cost: { input: 1.25, output: 5 },
+              limit: { context: 1_000_000 },
+              tool_call: true,
+            },
+            "gemini-2.5-flash": {
+              id: "gemini-2.5-flash",
+              name: "Gemini 2.5 Flash",
+              cost: { input: 0.3, output: 2.5 },
+              limit: { context: 1_000_000 },
+              tool_call: true,
+            },
+          },
+        },
+      }),
+    );
 
     const app = await loadRouter();
     const res = await app.request("/config/provider/gemini/models");
@@ -60,7 +78,11 @@ describe("GET /config/provider/:id/models", () => {
     expect(body.cached).toBe(false);
     expect(body.fetchedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     // gemini-2.5-flash is forced free + recommended; it must lead the paid gemini-2.0-pro.
-    expect(body.models[0]).toMatchObject({ id: "gemini-2.5-flash", tier: "free", recommended: true });
+    expect(body.models[0]).toMatchObject({
+      id: "gemini-2.5-flash",
+      tier: "free",
+      recommended: true,
+    });
     expect(body.models.map((m) => m.tier)).toEqual(["free", "paid"]);
   });
 

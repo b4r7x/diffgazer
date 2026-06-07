@@ -1,4 +1,4 @@
-import { Tooltip } from "@/components/ui/tooltip"
+import { Tooltip } from "@/components/ui/tooltip";
 
 export default function TooltipBasicExample() {
   return (
@@ -20,5 +20,5 @@ export default function TooltipBasicExample() {
         </Tooltip.Content>
       </Tooltip>
     </div>
-  )
+  );
 }

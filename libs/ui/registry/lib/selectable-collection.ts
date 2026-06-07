@@ -21,18 +21,19 @@ function compareSelectableItems(a: SelectableCollectionItem, b: SelectableCollec
   return 0;
 }
 
-function areSelectableItemsEqual(
-  a: SelectableCollectionItem[],
-  b: SelectableCollectionItem[],
-) {
-  return a.length === b.length
-    && a.every((item, index) => {
+function areSelectableItemsEqual(a: SelectableCollectionItem[], b: SelectableCollectionItem[]) {
+  return (
+    a.length === b.length &&
+    a.every((item, index) => {
       const other = b[index];
-      return other?.id === item.id
-        && other.value === item.value
-        && other.disabled === item.disabled
-        && other.element === item.element;
-    });
+      return (
+        other?.id === item.id &&
+        other.value === item.value &&
+        other.disabled === item.disabled &&
+        other.element === item.element
+      );
+    })
+  );
 }
 
 export function sortSelectableCollectionItems<T extends SelectableCollectionItem>(items: T[]) {
@@ -44,7 +45,9 @@ export function getEnabledSelectableCollectionItems(
   disabled: boolean,
 ) {
   if (disabled) return [];
-  return sortSelectableCollectionItems(items).filter((item) => !item.disabled && item.element !== null);
+  return sortSelectableCollectionItems(items).filter(
+    (item) => !item.disabled && item.element !== null,
+  );
 }
 
 export function getSelectableCollectionItemByValue(
@@ -66,8 +69,9 @@ export function resolveSelectableCollectionItem(
   items: SelectableCollectionItem[],
   ...values: Array<string | null | undefined>
 ): SelectableCollectionItem | null {
-  const enabledItems = sortSelectableCollectionItems(items)
-    .filter((item) => !item.disabled && item.element !== null);
+  const enabledItems = sortSelectableCollectionItems(items).filter(
+    (item) => !item.disabled && item.element !== null,
+  );
 
   for (const value of values) {
     const item = getSelectableCollectionItemByValue(enabledItems, value);
@@ -105,22 +109,20 @@ export function useSelectableCollection(containerRef: RefObject<HTMLElement | nu
     return () => observer.disconnect();
   }, [containerRef, syncOrder]);
 
-  const registerItem = useCallback((
-    itemId: string,
-    value: string,
-    disabled: boolean,
-    element: HTMLElement | null,
-  ) => {
-    setItems((current) => {
-      const existingIndex = current.findIndex((item) => item.id === itemId);
-      const nextItem = { id: itemId, value, disabled, element };
-      const next = existingIndex === -1 ? [...current, nextItem] : [...current];
-      if (existingIndex !== -1) next[existingIndex] = nextItem;
+  const registerItem = useCallback(
+    (itemId: string, value: string, disabled: boolean, element: HTMLElement | null) => {
+      setItems((current) => {
+        const existingIndex = current.findIndex((item) => item.id === itemId);
+        const nextItem = { id: itemId, value, disabled, element };
+        const next = existingIndex === -1 ? [...current, nextItem] : [...current];
+        if (existingIndex !== -1) next[existingIndex] = nextItem;
 
-      const sorted = sortSelectableCollectionItems(next);
-      return areSelectableItemsEqual(current, sorted) ? current : sorted;
-    });
-  }, []);
+        const sorted = sortSelectableCollectionItems(next);
+        return areSelectableItemsEqual(current, sorted) ? current : sorted;
+      });
+    },
+    [],
+  );
 
   const unregisterItem = useCallback((itemId: string) => {
     setItems((current) => current.filter((item) => item.id !== itemId));

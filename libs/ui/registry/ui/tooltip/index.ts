@@ -6,10 +6,7 @@ import {
   type PopoverTriggerRenderProps as TooltipTriggerRenderProps,
 } from "../popover/popover-trigger";
 import { type TooltipProps, TooltipRoot } from "./tooltip";
-import {
-  TooltipContent,
-  type TooltipContentProps,
-} from "./tooltip-content";
+import { TooltipContent, type TooltipContentProps } from "./tooltip-content";
 
 const Tooltip = Object.assign(TooltipRoot, {
   Trigger: TooltipTrigger,

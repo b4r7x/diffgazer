@@ -1,7 +1,5 @@
 import { z } from "zod";
-import {
-  createDomainErrorSchema,
-} from "../errors.js";
+import { createDomainErrorSchema } from "../errors.js";
 import {
   type LensId,
   type ReviewProfile,
@@ -136,9 +134,19 @@ export type ReviewError = z.infer<typeof ReviewErrorSchema>;
 
 export const ReviewStreamEventSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("chunk"), content: z.string() }),
-  z.object({ type: z.literal("lens_start"), lens: z.string(), index: z.number(), total: z.number() }),
+  z.object({
+    type: z.literal("lens_start"),
+    lens: z.string(),
+    index: z.number(),
+    total: z.number(),
+  }),
   z.object({ type: z.literal("lens_complete"), lens: z.string() }),
-  z.object({ type: z.literal("complete"), result: ReviewResultSchema, reviewId: z.string(), durationMs: z.number().optional() }),
+  z.object({
+    type: z.literal("complete"),
+    result: ReviewResultSchema,
+    reviewId: z.string(),
+    durationMs: z.number().optional(),
+  }),
   z.object({ type: z.literal("error"), error: ReviewErrorSchema }),
 ]);
 export type ReviewStreamEvent = z.infer<typeof ReviewStreamEventSchema>;

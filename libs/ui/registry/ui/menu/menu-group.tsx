@@ -16,11 +16,7 @@ export function MenuGroup({ label, children, className }: MenuGroupProps) {
 
   return (
     // biome-ignore lint/a11y/useSemanticElements: role="group" labels a related set of menu items; <fieldset> is for form controls and is not appropriate inside a menu.
-    <div
-      role="group"
-      aria-labelledby={hasLabel ? labelId : undefined}
-      className={cn(className)}
-    >
+    <div role="group" aria-labelledby={hasLabel ? labelId : undefined} className={cn(className)}>
       {hasLabel && <MenuLabel id={labelId}>{label}</MenuLabel>}
       {children}
     </div>

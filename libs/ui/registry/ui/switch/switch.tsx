@@ -1,13 +1,7 @@
 "use client";
 
 import { cva } from "class-variance-authority";
-import {
-  type AriaAttributes,
-  type ComponentPropsWithRef,
-  type Ref,
-  useRef,
-  useState,
-} from "react";
+import { type AriaAttributes, type ComponentPropsWithRef, type Ref, useRef, useState } from "react";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { useFormReset } from "@/hooks/use-form-reset";
 import { resolveAriaInvalid } from "@/lib/aria";
@@ -136,7 +130,10 @@ export function Switch({
     onChange,
   });
   const [nativeInvalid, setNativeInvalid] = useState(false);
-  const resolvedAriaInvalid = resolveAriaInvalid(ariaInvalid, nativeInvalid && required && !isChecked);
+  const resolvedAriaInvalid = resolveAriaInvalid(
+    ariaInvalid,
+    nativeInvalid && required && !isChecked,
+  );
 
   useFormReset(rootRef, defaultChecked, setIsChecked, controlledChecked === undefined);
 
@@ -193,10 +190,7 @@ export function Switch({
         onClick={handleClick}
         className={cn(trackVariants({ size, checked: isChecked, disabled }), className)}
       >
-        <span
-          aria-hidden="true"
-          className={thumbVariants({ size, checked: isChecked })}
-        />
+        <span aria-hidden="true" className={thumbVariants({ size, checked: isChecked })} />
       </button>
     </>
   );

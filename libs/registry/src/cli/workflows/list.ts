@@ -22,7 +22,15 @@ export interface RunListWorkflowOptions<TItem, TConfig> {
 }
 
 function resolveItems<TItem, TConfig>(options: RunListWorkflowOptions<TItem, TConfig>): TItem[] {
-  const { cwd, includeAll, installedOnly, getAllItems, getPublicItems, requireConfig, isInstalled } = options;
+  const {
+    cwd,
+    includeAll,
+    installedOnly,
+    getAllItems,
+    getPublicItems,
+    requireConfig,
+    isInstalled,
+  } = options;
 
   const items = includeAll ? getAllItems() : getPublicItems();
   if (!installedOnly) return items;
@@ -37,7 +45,11 @@ function printEmptyMessage(installedOnly: boolean, itemPlural: string): void {
   newline();
 }
 
-function printTable(displayItems: ListDisplayItem[], installedOnly: boolean, itemPlural: string): void {
+function printTable(
+  displayItems: ListDisplayItem[],
+  installedOnly: boolean,
+  itemPlural: string,
+): void {
   const label = installedOnly ? "Installed" : "Available";
   newline();
   info(`${label} ${itemPlural} (${displayItems.length}):`);

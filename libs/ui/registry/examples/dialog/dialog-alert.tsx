@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
 
 export default function DialogAlertExample() {
   return (
@@ -18,22 +18,24 @@ export default function DialogAlertExample() {
       <DialogContent role="alertdialog" closeOnBackdropClick={false}>
         <DialogHeader>
           <DialogTitle>Delete Repository</DialogTitle>
-          <DialogDescription>
-            This action is permanent and cannot be undone.
-          </DialogDescription>
+          <DialogDescription>This action is permanent and cannot be undone.</DialogDescription>
         </DialogHeader>
         <DialogBody>
           <p className="text-sm text-gray-300 leading-relaxed">
             All files, commits, and branches in{" "}
-            <span className="text-foreground font-mono">voitz/diffgazer</span>{" "}
-            will be permanently deleted. This includes all issues, pull requests, and CI/CD pipelines.
+            <span className="text-foreground font-mono">voitz/diffgazer</span> will be permanently
+            deleted. This includes all issues, pull requests, and CI/CD pipelines.
           </p>
         </DialogBody>
         <DialogFooter hints={[{ key: "Esc", label: "Close" }]}>
-          <DialogClose bracket variant="ghost" autoFocus>Cancel</DialogClose>
-          <DialogAction variant="destructive" bracket>Delete</DialogAction>
+          <DialogClose bracket variant="ghost" autoFocus>
+            Cancel
+          </DialogClose>
+          <DialogAction variant="destructive" bracket>
+            Delete
+          </DialogAction>
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

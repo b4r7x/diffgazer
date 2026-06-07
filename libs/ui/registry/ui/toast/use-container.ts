@@ -5,10 +5,7 @@ import { useEscapeKey } from "@/hooks/use-outside-click";
 import type { Toast } from "./toast-store";
 import { dismiss, pause, resume } from "./toast-store";
 
-export function useToastContainer(
-  toasts: Toast[],
-  dismissingIds: Set<string>,
-) {
+export function useToastContainer(toasts: Toast[], dismissingIds: Set<string>) {
   const handleEscape = () => {
     if (document.querySelector("dialog[open]")) return;
     const last = toasts.findLast((t) => !dismissingIds.has(t.id));

@@ -1,7 +1,7 @@
 "use client";
 
-import { Button } from "@/components/ui/button"
-import { Toaster, toast } from "@/components/ui/toast"
+import { Button } from "@/components/ui/button";
+import { Toaster, toast } from "@/components/ui/toast";
 
 function simulateAsync(shouldFail = false): Promise<{ count: number }> {
   return new Promise((resolve, reject) => {
@@ -36,7 +36,7 @@ export default function ToastPromise() {
             toast.promise(simulateAsync(true), {
               loading: "Analyzing files...",
               success: "Done",
-              error: (err) => err instanceof Error ? err.message : "Unknown error",
+              error: (err) => (err instanceof Error ? err.message : "Unknown error"),
             })
           }
         >
@@ -45,5 +45,5 @@ export default function ToastPromise() {
       </div>
       <Toaster />
     </>
-  )
+  );
 }

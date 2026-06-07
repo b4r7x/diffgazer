@@ -2,7 +2,11 @@ import { cva } from "class-variance-authority";
 
 export type ItemState = "normal" | "focused" | "selected" | "disabled" | "disabledFocused";
 
-export function getItemState(options: { disabled: boolean; isFocused: boolean; isSelected: boolean }): ItemState {
+export function getItemState(options: {
+  disabled: boolean;
+  isFocused: boolean;
+  isSelected: boolean;
+}): ItemState {
   const { disabled, isFocused, isSelected } = options;
   if (disabled && isFocused) return "disabledFocused";
   if (disabled) return "disabled";
@@ -32,10 +36,22 @@ export const menuItemBase = cva("cursor-pointer w-full transition-colors", {
   compoundVariants: [
     { state: "focused", menuVariant: "hub", class: "shadow-[inset_0_0_15px_rgba(0,0,0,0.1)]" },
     { state: "disabled", menuVariant: "default", class: "hover:bg-transparent" },
-    { state: "disabledFocused", menuVariant: "hub", class: "shadow-[inset_0_0_15px_rgba(0,0,0,0.1)]" },
-    { colorVariant: "danger", state: "focused", class: "bg-destructive text-destructive-foreground" },
+    {
+      state: "disabledFocused",
+      menuVariant: "hub",
+      class: "shadow-[inset_0_0_15px_rgba(0,0,0,0.1)]",
+    },
+    {
+      colorVariant: "danger",
+      state: "focused",
+      class: "bg-destructive text-destructive-foreground",
+    },
     { colorVariant: "default", state: "focused", class: "bg-primary text-primary-foreground" },
-    { colorVariant: "danger", state: "selected", class: "bg-destructive text-destructive-foreground" },
+    {
+      colorVariant: "danger",
+      state: "selected",
+      class: "bg-destructive text-destructive-foreground",
+    },
     { colorVariant: "default", state: "selected", class: "bg-primary text-primary-foreground" },
     { colorVariant: "danger", state: "normal", menuVariant: "default", class: "text-destructive" },
   ],
@@ -85,12 +101,20 @@ export const menuItemValue = cva("font-mono text-xs", {
   compoundVariants: [
     { valueVariant: "default", active: false, class: "text-muted-foreground" },
     { valueVariant: "success", active: false, class: "text-success" },
-    { valueVariant: "success-badge", active: false, class: "text-success border-success/30 bg-success/10" },
+    {
+      valueVariant: "success-badge",
+      active: false,
+      class: "text-success border-success/30 bg-success/10",
+    },
     { valueVariant: "muted", active: false, class: "text-muted-foreground/60" },
     { valueVariant: "default", active: true, class: "text-current" },
     { valueVariant: "success", active: true, class: "text-current" },
     { valueVariant: "muted", active: true, class: "text-current" },
-    { valueVariant: "success-badge", active: true, class: "border-success bg-success text-success-foreground" },
+    {
+      valueVariant: "success-badge",
+      active: true,
+      class: "border-success bg-success text-success-foreground",
+    },
   ],
   defaultVariants: { valueVariant: "default", focused: false, active: false },
 });

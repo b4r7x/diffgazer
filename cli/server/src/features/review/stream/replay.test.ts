@@ -3,19 +3,18 @@ import { ReviewErrorCode } from "@diffgazer/core/schemas/review";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { SSEWriter } from "../../../shared/lib/http/types.js";
 import { streamActiveSessionToSSE } from "./replay.js";
-import {
-  addEvent,
-  createSession,
-  deleteSession,
-  markComplete,
-  markReady,
-} from "./store.js";
+import { addEvent, createSession, deleteSession, markComplete, markReady } from "./store.js";
 
 const trackedIds = new Set<string>();
 
 function createTrackedSession(reviewId: string) {
   trackedIds.add(reviewId);
-  const session = createSession(reviewId, { projectPath: "/project", headCommit: "abc", statusHash: "hash", mode: "staged" });
+  const session = createSession(reviewId, {
+    projectPath: "/project",
+    headCommit: "abc",
+    statusHash: "hash",
+    mode: "staged",
+  });
   markReady(reviewId);
   return session;
 }
@@ -92,10 +91,7 @@ describe("streamActiveSessionToSSE — terminal write failures", () => {
 
     await expect(streamActiveSessionToSSE(stream, session)).rejects.toBe(failure);
 
-    expect(consoleWarn).toHaveBeenCalledWith(
-      "SSE terminal write failed:",
-      failure,
-    );
+    expect(consoleWarn).toHaveBeenCalledWith("SSE terminal write failed:", failure);
   });
 
   it("logs and rejects when the subscriber write rejects mid-stream", async () => {
@@ -116,10 +112,7 @@ describe("streamActiveSessionToSSE — terminal write failures", () => {
     addEvent(session.reviewId, stepEvent());
 
     await expect(streamPromise).rejects.toBe(failure);
-    expect(consoleWarn).toHaveBeenCalledWith(
-      "SSE subscriber write failed:",
-      failure,
-    );
+    expect(consoleWarn).toHaveBeenCalledWith("SSE subscriber write failed:", failure);
   });
 
   it("resolves quietly when the client has already aborted before a write failure surfaces", async () => {
@@ -155,8 +148,12 @@ describe("streamActiveSessionToSSE — terminal write failures", () => {
     // without depending on real wall-clock timing.
     let outcome: "pending" | "resolved" | "rejected" | "other" = "pending";
     streamActiveSessionToSSE(stream, session).then(
-      () => { outcome = "resolved"; },
-      (e) => { outcome = e === failure ? "rejected" : "other"; },
+      () => {
+        outcome = "resolved";
+      },
+      (e) => {
+        outcome = e === failure ? "rejected" : "other";
+      },
     );
 
     await vi.waitFor(() => {
@@ -179,8 +176,6 @@ describe("streamActiveSessionToSSE — terminal write failures", () => {
     expect(writes.map((w) => w.event)).toEqual(["step_start", "complete"]);
     expect(consoleWarn).not.toHaveBeenCalled();
     // Sanity: SESSION_STALE error never appears in the happy path.
-    expect(
-      writes.some((w) => w.data.includes(ReviewErrorCode.SESSION_STALE)),
-    ).toBe(false);
+    expect(writes.some((w) => w.data.includes(ReviewErrorCode.SESSION_STALE))).toBe(false);
   });
 });

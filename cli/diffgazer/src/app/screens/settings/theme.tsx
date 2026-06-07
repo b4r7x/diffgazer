@@ -73,12 +73,15 @@ function SettingsThemeEditor({ savedTheme }: SettingsThemeEditorProps): ReactEle
   }
 
   function commitAndExit(next: CliTheme): void {
-    saveSettings.mutate({ theme: next }, {
-      onSuccess: () => {
-        applyTheme(next);
-        goBack();
+    saveSettings.mutate(
+      { theme: next },
+      {
+        onSuccess: () => {
+          applyTheme(next);
+          goBack();
+        },
       },
-    });
+    );
   }
 
   function handleSave(): void {
@@ -103,20 +106,25 @@ function SettingsThemeEditor({ savedTheme }: SettingsThemeEditorProps): ReactEle
   );
 
   usePageFooter({
-    shortcuts: zone === "buttons"
-      ? [
-          { key: "←/→", label: "Move Action" },
-          { key: "Enter", label: isButtonActive(0) ? "Cancel" : "Save", disabled: isButtonActive(1) && !canSave },
-          { key: "Tab", label: "Switch Zone" },
-          { key: "Esc", label: "Back" },
-        ]
-      : [
-          { key: "↑/↓", label: "Navigate" },
-          { key: "Space", label: "Select Theme" },
-          { key: "Enter", label: "Save & Exit" },
-          { key: "Tab", label: "Switch Zone" },
-          { key: "Esc", label: "Back" },
-        ],
+    shortcuts:
+      zone === "buttons"
+        ? [
+            { key: "←/→", label: "Move Action" },
+            {
+              key: "Enter",
+              label: isButtonActive(0) ? "Cancel" : "Save",
+              disabled: isButtonActive(1) && !canSave,
+            },
+            { key: "Tab", label: "Switch Zone" },
+            { key: "Esc", label: "Back" },
+          ]
+        : [
+            { key: "↑/↓", label: "Navigate" },
+            { key: "Space", label: "Select Theme" },
+            { key: "Enter", label: "Save & Exit" },
+            { key: "Tab", label: "Switch Zone" },
+            { key: "Esc", label: "Back" },
+          ],
   });
 
   const saveError = saveSettings.error?.message ?? null;
@@ -124,11 +132,7 @@ function SettingsThemeEditor({ savedTheme }: SettingsThemeEditorProps): ReactEle
 
   return (
     <Box flexGrow={1} justifyContent="center">
-      <Box
-        flexDirection={isWide ? "row" : "column"}
-        gap={1}
-        width={Math.min(columns, 120)}
-      >
+      <Box flexDirection={isWide ? "row" : "column"} gap={1} width={Math.min(columns, 120)}>
         <Box flexDirection="column" width={isWide ? "40%" : "100%"}>
           <Panel>
             <Panel.Content>
@@ -148,11 +152,7 @@ function SettingsThemeEditor({ savedTheme }: SettingsThemeEditorProps): ReactEle
                   Focus previews themes live. Space selects, Enter saves & exits.
                 </Text>
                 <Box gap={2}>
-                  <Button
-                    variant="ghost"
-                    onPress={handleCancel}
-                    isActive={isButtonActive(0)}
-                  >
+                  <Button variant="ghost" onPress={handleCancel} isActive={isButtonActive(0)}>
                     Cancel
                   </Button>
                   <Button

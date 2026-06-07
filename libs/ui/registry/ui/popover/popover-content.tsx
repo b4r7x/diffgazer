@@ -10,10 +10,7 @@ import {
   useMemo,
   useRef,
 } from "react";
-import type {
-  FloatingAlign,
-  FloatingSide,
-} from "@/hooks/use-floating-position";
+import type { FloatingAlign, FloatingSide } from "@/hooks/use-floating-position";
 import { useEscapeKey, useOutsideClick } from "@/hooks/use-outside-click";
 import { composeRefs } from "@/lib/compose-refs";
 import { FloatingPanel, useFloatingPanelContext } from "../floating-panel";
@@ -65,15 +62,8 @@ export function PopoverContent({
   onKeyDown,
   ...rest
 }: PopoverContentProps) {
-  const {
-    open,
-    triggerRef,
-    popoverId,
-    triggerMode,
-    onOpenChange,
-    onContentEnter,
-    onContentLeave,
-  } = usePopoverContext();
+  const { open, triggerRef, popoverId, triggerMode, onOpenChange, onContentEnter, onContentLeave } =
+    usePopoverContext();
   const contentRef = useRef<HTMLDivElement>(null);
 
   const isHover = triggerMode === "hover";
@@ -86,7 +76,8 @@ export function PopoverContent({
     () => ({ ref: contentRef, excludeRefs: triggerExcludeRefs }),
     [triggerExcludeRefs],
   );
-  const resolvedAriaLabel = ariaLabel ?? (isDialog && !ariaLabelledBy ? FALLBACK_POPOVER_DIALOG_LABEL : undefined);
+  const resolvedAriaLabel =
+    ariaLabel ?? (isDialog && !ariaLabelledBy ? FALLBACK_POPOVER_DIALOG_LABEL : undefined);
 
   useOutsideClick(
     contentRef,
@@ -98,12 +89,16 @@ export function PopoverContent({
     triggerExcludeRefs,
   );
 
-  useEscapeKey((e) => {
-    e.stopPropagation();
-    e.preventDefault();
-    onOpenChange(false);
-    triggerRef.current?.focus();
-  }, open, escapeKeyOptions);
+  useEscapeKey(
+    (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      onOpenChange(false);
+      triggerRef.current?.focus();
+    },
+    open,
+    escapeKeyOptions,
+  );
 
   const handleMouseEnter = (e: MouseEvent<HTMLDivElement>) => {
     onMouseEnter?.(e);
@@ -151,7 +146,11 @@ export function PopoverContent({
       onKeyDown={handleKeyDown}
       className={className}
     >
-      <PopoverAutoFocus contentRef={contentRef} enabled={shouldAutoFocus} fallbackToContainer={isDialog} />
+      <PopoverAutoFocus
+        contentRef={contentRef}
+        enabled={shouldAutoFocus}
+        fallbackToContainer={isDialog}
+      />
       {children}
     </FloatingPanel>
   );

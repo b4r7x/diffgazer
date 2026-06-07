@@ -46,11 +46,11 @@ export function SidebarProvider({
   const isMobile = useIsMobile(breakpoint);
 
   const toggleSidebar = useCallback(() => {
-    setState(prev => (prev === "open" ? "rail" : "open"));
+    setState((prev) => (prev === "open" ? "rail" : "open"));
   }, [setState]);
 
   const toggleHidden = useCallback(() => {
-    setState(prev => (prev === "hidden" ? "open" : "hidden"));
+    setState((prev) => (prev === "hidden" ? "open" : "hidden"));
   }, [setState]);
 
   useEffect(() => {
@@ -83,9 +83,5 @@ export function SidebarProvider({
     [state, isMobile, setState, sidebarId, toggleSidebar, toggleHidden],
   );
 
-  return (
-    <SidebarContext value={contextValue}>
-      {children}
-    </SidebarContext>
-  );
+  return <SidebarContext value={contextValue}>{children}</SidebarContext>;
 }

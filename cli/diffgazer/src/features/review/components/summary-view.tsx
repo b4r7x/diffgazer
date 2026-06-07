@@ -23,9 +23,7 @@ export interface ReviewSummaryViewProps {
   onBack?: () => void;
 }
 
-const SUMMARY_SHORTCUTS_LEFT: Shortcut[] = [
-  { key: "Enter", label: "View Results" },
-];
+const SUMMARY_SHORTCUTS_LEFT: Shortcut[] = [{ key: "Enter", label: "View Results" }];
 const SUMMARY_SHORTCUTS_RIGHT: Shortcut[] = [{ key: "Esc", label: "Back" }];
 
 export function ReviewSummaryView({
@@ -81,9 +79,7 @@ export function ReviewSummaryView({
     <Box justifyContent="center" flexGrow={1}>
       <Box flexDirection="column" width={width} gap={1}>
         <Box flexDirection="column">
-          <SectionHeader bordered>
-            {`Analysis Complete #${runId}`}
-          </SectionHeader>
+          <SectionHeader bordered>{`Analysis Complete #${runId}`}</SectionHeader>
           <Box flexDirection="column" paddingTop={1}>
             <Box>
               <Text color={tokens.muted}>Found </Text>
@@ -156,11 +152,7 @@ export function ReviewSummaryView({
 
         <Box gap={2} marginTop={1}>
           {onContinue ? (
-            <Button
-              variant="primary"
-              isActive={buttonIndex === 0}
-              onPress={onContinue}
-            >
+            <Button variant="primary" isActive={buttonIndex === 0} onPress={onContinue}>
               View Results (Enter)
             </Button>
           ) : null}

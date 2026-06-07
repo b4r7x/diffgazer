@@ -10,7 +10,13 @@ export interface SidebarContentProps extends HTMLAttributes<HTMLDivElement> {
   ref?: Ref<HTMLDivElement>;
 }
 
-export function SidebarContent({ ref, children, className, onKeyDown, ...props }: SidebarContentProps) {
+export function SidebarContent({
+  ref,
+  children,
+  className,
+  onKeyDown,
+  ...props
+}: SidebarContentProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const { state, contentId } = useSidebar();
   const hidden = state === "hidden";

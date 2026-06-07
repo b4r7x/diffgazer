@@ -11,11 +11,7 @@ export interface AvatarFallbackProps {
   className?: string;
 }
 
-export function AvatarFallback({
-  src,
-  children,
-  className,
-}: AvatarFallbackProps) {
+export function AvatarFallback({ src, children, className }: AvatarFallbackProps) {
   const { imageStatus } = useAvatarContext();
   const fallbackImage = useImageStatus(src);
 

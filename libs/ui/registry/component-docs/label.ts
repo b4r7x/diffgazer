@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types"
+import type { ComponentDoc } from "./types";
 
 export const labelDoc: ComponentDoc = {
   description:
@@ -46,13 +46,15 @@ export const labelDoc: ComponentDoc = {
         type: "string",
         required: false,
         defaultValue: null,
-        description: "When set, switches to wrapper mode: renders the label text alongside children inside a single native <label>.",
+        description:
+          "When set, switches to wrapper mode: renders the label text alongside children inside a single native <label>.",
       },
       orientation: {
         type: '"vertical" | "horizontal"',
         required: false,
         defaultValue: '"vertical"',
-        description: "Wrapper-mode layout direction. Vertical stacks the label above; horizontal places it inline.",
+        description:
+          "Wrapper-mode layout direction. Vertical stacks the label above; horizontal places it inline.",
       },
       required: {
         type: "boolean",
@@ -68,4 +70,4 @@ export const labelDoc: ComponentDoc = {
       },
     },
   },
-}
+};

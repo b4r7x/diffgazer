@@ -32,9 +32,10 @@ const mapOpenRouterModel = (raw: unknown): OpenRouterModel | null => {
   const name = typeof r.name === "string" ? r.name : id;
   const description = typeof r.description === "string" ? r.description : undefined;
 
-  const topProvider = r.top_provider && typeof r.top_provider === "object"
-    ? (r.top_provider as Record<string, unknown>)
-    : null;
+  const topProvider =
+    r.top_provider && typeof r.top_provider === "object"
+      ? (r.top_provider as Record<string, unknown>)
+      : null;
   const contextLengthRaw =
     r.context_length ??
     r.context_window ??
@@ -42,9 +43,7 @@ const mapOpenRouterModel = (raw: unknown): OpenRouterModel | null => {
     r.contextWindow ??
     topProvider?.context_length ??
     topProvider?.contextLength;
-  const contextLength = Number.isFinite(Number(contextLengthRaw))
-    ? Number(contextLengthRaw)
-    : 0;
+  const contextLength = Number.isFinite(Number(contextLengthRaw)) ? Number(contextLengthRaw) : 0;
 
   const supportedParametersRaw = Array.isArray(r.supported_parameters)
     ? r.supported_parameters
@@ -52,7 +51,10 @@ const mapOpenRouterModel = (raw: unknown): OpenRouterModel | null => {
       ? r.supportedParameters
       : undefined;
 
-  const pricingRaw = (r.pricing && typeof r.pricing === "object" ? r.pricing : {}) as Record<string, unknown>;
+  const pricingRaw = (r.pricing && typeof r.pricing === "object" ? r.pricing : {}) as Record<
+    string,
+    unknown
+  >;
   const prompt = pricingRaw.prompt ?? "0";
   const completion = pricingRaw.completion ?? "0";
 
@@ -79,7 +81,9 @@ const mapOpenRouterModel = (raw: unknown): OpenRouterModel | null => {
 const countWithParams = (models: OpenRouterModel[]): number =>
   models.filter((model) => (model.supportedParameters?.length ?? 0) > 0).length;
 
-export const fetchOpenRouterModels = async (apiKey: string): Promise<Result<OpenRouterModel[], { message: string }>> => {
+export const fetchOpenRouterModels = async (
+  apiKey: string,
+): Promise<Result<OpenRouterModel[], { message: string }>> => {
   let response: Response;
   try {
     response = await fetch(OPENROUTER_MODELS_URL, {
@@ -107,15 +111,15 @@ export const fetchOpenRouterModels = async (apiKey: string): Promise<Result<Open
   }
 
   return ok(
-    rawModels
-      .map(mapOpenRouterModel)
-      .filter((model): model is OpenRouterModel => model !== null)
+    rawModels.map(mapOpenRouterModel).filter((model): model is OpenRouterModel => model !== null),
   );
 };
 
 export const getOpenRouterModelsWithCache = async (
-  apiKey: string
-): Promise<Result<{ models: OpenRouterModel[]; fetchedAt: string; cached: boolean }, { message: string }>> => {
+  apiKey: string,
+): Promise<
+  Result<{ models: OpenRouterModel[]; fetchedAt: string; cached: boolean }, { message: string }>
+> => {
   const currentKeyHash = hashApiKey(apiKey);
 
   const resolution = await withTtlAndFallback({
@@ -128,7 +132,11 @@ export const getOpenRouterModelsWithCache = async (
     fetcher: async () => {
       const fetchResult = await fetchOpenRouterModels(apiKey);
       if (!fetchResult.ok) return fetchResult;
-      return ok({ models: fetchResult.value, fetchedAt: new Date().toISOString(), keyHash: currentKeyHash });
+      return ok({
+        models: fetchResult.value,
+        fetchedAt: new Date().toISOString(),
+        keyHash: currentKeyHash,
+      });
     },
   });
 

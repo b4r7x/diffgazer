@@ -1,4 +1,4 @@
-import { Input } from "@/components/ui/input"
+import { Input } from "@/components/ui/input";
 
 export default function InputVariants() {
   return (
@@ -9,5 +9,5 @@ export default function InputVariants() {
       <Input aria-invalid placeholder="Error state" />
       <Input disabled placeholder="Disabled input" />
     </div>
-  )
+  );
 }

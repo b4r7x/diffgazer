@@ -1,9 +1,8 @@
 import { describe, expect, test } from "vitest";
 import { moveHighlight } from "./highlight-navigation";
 
-const items = (
-  ids: string[],
-): { id: string; disabled: boolean }[] => ids.map((id) => ({ id, disabled: false }));
+const items = (ids: string[]): { id: string; disabled: boolean }[] =>
+  ids.map((id) => ({ id, disabled: false }));
 
 describe("moveHighlight", () => {
   test("moves forward to next selectable id", () => {

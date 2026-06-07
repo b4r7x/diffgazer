@@ -68,7 +68,7 @@ function MenuItem({
   if (disabled) {
     return (
       <Box>
-        {ctx.menuVariant === "default" && <Text dimColor>  </Text>}
+        {ctx.menuVariant === "default" && <Text dimColor> </Text>}
         <Text dimColor>{children}</Text>
       </Box>
     );
@@ -87,9 +87,7 @@ function MenuItem({
           {hotkey != null && <Text dimColor>{`${hotkey}. `}</Text>}
           {children}
         </Text>
-        {value != null && (
-          <Text color={ctx.tokens.muted}> {value}</Text>
-        )}
+        {value != null && <Text color={ctx.tokens.muted}> {value}</Text>}
       </Box>
     );
   }
@@ -115,7 +113,7 @@ function MenuDivider() {
   const ctx = useMenuContext();
   return (
     <Box>
-      {ctx.menuVariant === "default" && <Text dimColor>  </Text>}
+      {ctx.menuVariant === "default" && <Text dimColor> </Text>}
       <Text color={ctx.tokens.border}>{"─".repeat(20)}</Text>
     </Box>
   );
@@ -137,10 +135,7 @@ function MenuRoot({
 
   const [internalIndex, setInternalIndex] = useState(0);
 
-  const currentHighlightedId =
-    controlledHighlightedId ??
-    selectableItems[internalIndex]?.id ??
-    "";
+  const currentHighlightedId = controlledHighlightedId ?? selectableItems[internalIndex]?.id ?? "";
 
   function moveBy(direction: 1 | -1) {
     const result = moveHighlight(selectableItems, currentHighlightedId, direction, wrap);

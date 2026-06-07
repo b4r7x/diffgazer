@@ -39,8 +39,7 @@ export function useRefreshReviewContext() {
   const api = useApi();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (options?: { force?: boolean }) =>
-      api.refreshReviewContext(options),
+    mutationFn: (options?: { force?: boolean }) => api.refreshReviewContext(options),
     onSuccess: () =>
       qc.invalidateQueries({
         queryKey: reviewQueries.context(api).queryKey,
@@ -51,7 +50,6 @@ export function useRefreshReviewContext() {
 export function useCreateReview() {
   const api = useApi();
   return useMutation({
-    mutationFn: (options: Parameters<typeof api.createReview>[0]) =>
-      api.createReview(options),
+    mutationFn: (options: Parameters<typeof api.createReview>[0]) => api.createReview(options),
   });
 }

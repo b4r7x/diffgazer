@@ -21,7 +21,10 @@ function itemNamesByFile(items: RegistryItem[]): Map<string, string> {
   return namesByFile;
 }
 
-function resolveRegistryDependencyClosure(item: RegistryItem, itemsByName: Map<string, RegistryItem>): Set<string> {
+function resolveRegistryDependencyClosure(
+  item: RegistryItem,
+  itemsByName: Map<string, RegistryItem>,
+): Set<string> {
   const closure = new Set<string>([item.name]);
   const pending = [...(item.registryDependencies ?? [])];
 
@@ -71,10 +74,11 @@ export function validateRegistryImportClosure(root: string, items: RegistryItem[
           // A UI hook shim (e.g. use-focus-trap) that re-exports from @diffgazer/keys
           // is satisfied when the importer already depends on the matching @diffgazer-keys/* item.
           const importedItem = itemsByName.get(importedItemName);
-          const shimKeysDeps = (importedItem?.registryDependencies ?? []).filter(
-            (dep) => KEYS_REGISTRY_PREFIXES.some((prefix) => dep.startsWith(prefix)),
+          const shimKeysDeps = (importedItem?.registryDependencies ?? []).filter((dep) =>
+            KEYS_REGISTRY_PREFIXES.some((prefix) => dep.startsWith(prefix)),
           );
-          const satisfiedByKeys = shimKeysDeps.length > 0 && shimKeysDeps.every((dep) => closure.has(dep));
+          const satisfiedByKeys =
+            shimKeysDeps.length > 0 && shimKeysDeps.every((dep) => closure.has(dep));
 
           if (!satisfiedByKeys) {
             errors.push(

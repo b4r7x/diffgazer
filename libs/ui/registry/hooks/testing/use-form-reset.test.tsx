@@ -18,10 +18,15 @@ function ResettableInput({
   const ref = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState(defaultValue);
 
-  useFormReset(ref, defaultValue, (nextValue) => {
-    onReset?.(nextValue);
-    setValue(nextValue);
-  }, enabled);
+  useFormReset(
+    ref,
+    defaultValue,
+    (nextValue) => {
+      onReset?.(nextValue);
+      setValue(nextValue);
+    },
+    enabled,
+  );
 
   const input = (
     <input
@@ -78,7 +83,9 @@ describe("useFormReset", () => {
     await userEvent.clear(input);
     await userEvent.type(input, "changed");
 
-    screen.getByRole("form", { name: /profile/i }).dispatchEvent(new Event("reset", { bubbles: true }));
+    screen
+      .getByRole("form", { name: /profile/i })
+      .dispatchEvent(new Event("reset", { bubbles: true }));
 
     expect(input).toHaveValue("changed");
     expect(onReset).not.toHaveBeenCalled();
@@ -114,9 +121,13 @@ describe("useFormReset", () => {
     const { rerender } = render(<ResettableInput defaultValue="initial" onReset={onReset} />);
 
     rerender(<ResettableInput defaultValue="updated" onReset={onReset} />);
-    screen.getByRole("form", { name: /profile/i }).dispatchEvent(new Event("reset", { bubbles: true }));
+    screen
+      .getByRole("form", { name: /profile/i })
+      .dispatchEvent(new Event("reset", { bubbles: true }));
 
-    await waitFor(() => expect(screen.getByRole("textbox", { name: /name/i })).toHaveValue("updated"));
+    await waitFor(() =>
+      expect(screen.getByRole("textbox", { name: /name/i })).toHaveValue("updated"),
+    );
     expect(onReset).toHaveBeenCalledWith("updated");
   });
 
@@ -126,7 +137,9 @@ describe("useFormReset", () => {
 
     rerender(<ResettableInput defaultValue="updated" onReset={onReset} />);
     rerender(<ResettableInput defaultValue="updated" onReset={onReset} />);
-    screen.getByRole("form", { name: /profile/i }).dispatchEvent(new Event("reset", { bubbles: true }));
+    screen
+      .getByRole("form", { name: /profile/i })
+      .dispatchEvent(new Event("reset", { bubbles: true }));
 
     await waitFor(() => expect(onReset).toHaveBeenCalledOnce());
     expect(onReset).toHaveBeenCalledWith("updated");
@@ -134,7 +147,9 @@ describe("useFormReset", () => {
 
   it("resubscribes when the control moves to another form", async () => {
     const onReset = vi.fn();
-    const { rerender } = render(<MovableResettableInput defaultValue="initial" formName="A" onReset={onReset} />);
+    const { rerender } = render(
+      <MovableResettableInput defaultValue="initial" formName="A" onReset={onReset} />,
+    );
     const formA = screen.getByRole("form", { name: /profile a/i });
     const input = screen.getByRole("textbox", { name: /name/i });
 
@@ -147,7 +162,9 @@ describe("useFormReset", () => {
     expect(screen.getByRole("textbox", { name: /name/i })).toHaveValue("changed");
     expect(onReset).not.toHaveBeenCalled();
 
-    screen.getByRole("form", { name: /profile b/i }).dispatchEvent(new Event("reset", { bubbles: true }));
+    screen
+      .getByRole("form", { name: /profile b/i })
+      .dispatchEvent(new Event("reset", { bubbles: true }));
 
     await waitFor(() => expect(screen.getByRole("textbox", { name: /name/i })).toHaveValue("next"));
     expect(onReset).toHaveBeenCalledWith("next");
@@ -206,7 +223,9 @@ describe("useFormReset", () => {
       rerender(<ResettableInput defaultValue="initial" onReset={onReset} />);
     }
 
-    screen.getByRole("form", { name: /profile/i }).dispatchEvent(new Event("reset", { bubbles: true }));
+    screen
+      .getByRole("form", { name: /profile/i })
+      .dispatchEvent(new Event("reset", { bubbles: true }));
 
     await waitFor(() => expect(onReset).toHaveBeenCalledOnce());
     expect(onReset).toHaveBeenCalledWith("initial");

@@ -80,11 +80,7 @@ export async function resumeStreamById(c: Context): Promise<Response> {
       await streamActiveSessionToSSE(stream, session, c.req.raw.signal);
     } catch (error) {
       try {
-        await writeSSEError(
-          stream,
-          getErrorMessage(error),
-          ReviewErrorCode.GENERATION_FAILED,
-        );
+        await writeSSEError(stream, getErrorMessage(error), ReviewErrorCode.GENERATION_FAILED);
       } catch (e) {
         console.warn("SSE error write failed:", e);
       }

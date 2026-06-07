@@ -1,19 +1,27 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Menu, MenuDivider, MenuItem, MenuSub, MenuSubContent, MenuSubTrigger } from "@/components/ui/menu"
+import { useState } from "react";
+import {
+  Menu,
+  MenuDivider,
+  MenuItem,
+  MenuSub,
+  MenuSubContent,
+  MenuSubTrigger,
+} from "@/components/ui/menu";
 
 export default function MenuSubmenu() {
-  const [lastAction, setLastAction] = useState<string | null>(null)
+  const [lastAction, setLastAction] = useState<string | null>(null);
 
   return (
     <div className="w-64 border border-border">
-      <Menu
-        aria-label="Application menu"
-        onSelect={(id) => setLastAction(id)}
-      >
-        <MenuItem id="new" hotkey={1}>New File</MenuItem>
-        <MenuItem id="open" hotkey={2}>Open File</MenuItem>
+      <Menu aria-label="Application menu" onSelect={(id) => setLastAction(id)}>
+        <MenuItem id="new" hotkey={1}>
+          New File
+        </MenuItem>
+        <MenuItem id="open" hotkey={2}>
+          Open File
+        </MenuItem>
         <MenuDivider />
         <MenuSub>
           <MenuSubTrigger id="edit">Edit</MenuSubTrigger>
@@ -35,7 +43,9 @@ export default function MenuSubmenu() {
           </MenuSubContent>
         </MenuSub>
         <MenuDivider />
-        <MenuItem id="quit" variant="danger">Quit</MenuItem>
+        <MenuItem id="quit" variant="danger">
+          Quit
+        </MenuItem>
       </Menu>
       {lastAction && (
         <p className="px-3 py-2 text-xs text-muted-foreground border-t border-border">
@@ -43,5 +53,5 @@ export default function MenuSubmenu() {
         </p>
       )}
     </div>
-  )
+  );
 }

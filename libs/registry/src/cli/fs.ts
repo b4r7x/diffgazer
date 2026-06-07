@@ -1,5 +1,15 @@
 import { randomBytes } from "node:crypto";
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { isWithinDir } from "../utils/fs.js";
 
@@ -16,9 +26,20 @@ function stripJsonComments(json: string): string {
       continue;
     }
 
-    if (ch === '"') { inString = true; result += ch; i++; continue; }
-    if (ch === "/" && json[i + 1] === "/") { i = skipLineComment(json, i, len); continue; }
-    if (ch === "/" && json[i + 1] === "*") { i = skipBlockComment(json, i, len); continue; }
+    if (ch === '"') {
+      inString = true;
+      result += ch;
+      i++;
+      continue;
+    }
+    if (ch === "/" && json[i + 1] === "/") {
+      i = skipLineComment(json, i, len);
+      continue;
+    }
+    if (ch === "/" && json[i + 1] === "*") {
+      i = skipBlockComment(json, i, len);
+      continue;
+    }
 
     result += ch;
     i++;
@@ -26,7 +47,12 @@ function stripJsonComments(json: string): string {
   return result;
 }
 
-function consumeStringChar(json: string, result: string, i: number, len: number): [string, number, boolean] {
+function consumeStringChar(
+  json: string,
+  result: string,
+  i: number,
+  len: number,
+): [string, number, boolean] {
   const ch = json[i];
   if (ch === "\\" && i + 1 < len) return [result + ch + json[i + 1], i + 2, true];
   return [result + ch, i + 1, ch !== '"'];
@@ -53,9 +79,7 @@ export function ensureWithinDir(targetPath: string, baseDir: string): void {
   const resolvedTarget = resolve(targetPath);
   const resolvedBase = resolve(baseDir);
   if (!isWithinDir(resolvedTarget, resolvedBase)) {
-    throw new Error(
-      `Path traversal detected: "${targetPath}" escapes "${baseDir}"`,
-    );
+    throw new Error(`Path traversal detected: "${targetPath}" escapes "${baseDir}"`);
   }
 
   ensureRealPathWithinDir(resolvedTarget, resolvedBase);
@@ -65,10 +89,14 @@ export function ensureWithinAnyDir(targetPath: string, baseDirs: string[]): void
   const resolvedTarget = resolve(targetPath);
   for (const dir of baseDirs) {
     const resolvedBase = resolve(dir);
-    if (isWithinDir(resolvedTarget, resolvedBase) && isRealPathWithinDir(resolvedTarget, resolvedBase)) return;
+    if (
+      isWithinDir(resolvedTarget, resolvedBase) &&
+      isRealPathWithinDir(resolvedTarget, resolvedBase)
+    )
+      return;
   }
   throw new Error(
-    `Path traversal detected: "${targetPath}" escapes all allowed directories: ${baseDirs.map(d => `"${d}"`).join(", ")}`,
+    `Path traversal detected: "${targetPath}" escapes all allowed directories: ${baseDirs.map((d) => `"${d}"`).join(", ")}`,
   );
 }
 
@@ -96,8 +124,12 @@ function nearestExistingRealpath(path: string): string | null {
 }
 
 function isRealPathWithinDir(targetPath: string, baseDir: string): boolean {
-  const realBase = realpathExisting(baseDir) ?? nearestExistingRealpath(baseDir) ?? resolve(baseDir);
-  const realTarget = realpathExisting(targetPath) ?? nearestExistingRealpath(dirname(targetPath)) ?? resolve(dirname(targetPath));
+  const realBase =
+    realpathExisting(baseDir) ?? nearestExistingRealpath(baseDir) ?? resolve(baseDir);
+  const realTarget =
+    realpathExisting(targetPath) ??
+    nearestExistingRealpath(dirname(targetPath)) ??
+    resolve(dirname(targetPath));
   return isWithinDir(realTarget, realBase);
 }
 
@@ -117,7 +149,9 @@ export function cleanEmptyDirs(dirs: string[]): void {
 function tryRemoveIfEmpty(dir: string): void {
   try {
     if (existsSync(dir) && readdirSync(dir).length === 0) rmSync(dir, { recursive: true });
-  } catch { /* Best-effort cleanup of empty dirs */ }
+  } catch {
+    /* Best-effort cleanup of empty dirs */
+  }
 }
 
 export function readTsConfigPaths(cwd: string): Record<string, string[]> | null {
@@ -143,11 +177,15 @@ function tryReadPaths(configPath: string, seen: Set<string>): Record<string, str
     for (const reference of config.references ?? []) {
       if (!reference?.path || typeof reference.path !== "string") continue;
       const referenced = resolve(dirname(configPath), reference.path);
-      const referencedConfig = referenced.endsWith(".json") ? referenced : resolve(referenced, "tsconfig.json");
+      const referencedConfig = referenced.endsWith(".json")
+        ? referenced
+        : resolve(referenced, "tsconfig.json");
       const referencedPaths = tryReadPaths(referencedConfig, seen);
       if (referencedPaths) return referencedPaths;
     }
-  } catch { /* Optional tsconfig reading; missing file is OK */ }
+  } catch {
+    /* Optional tsconfig reading; missing file is OK */
+  }
   return null;
 }
 
@@ -158,7 +196,11 @@ function resolveExtendsPath(value: unknown, baseDir: string): string | null {
   return resolved.endsWith(".json") ? resolved : `${resolved}.json`;
 }
 
-export function atomicWriteFile(targetPath: string, content: string, opts?: { ensureDir?: boolean }): void {
+export function atomicWriteFile(
+  targetPath: string,
+  content: string,
+  opts?: { ensureDir?: boolean },
+): void {
   if (opts?.ensureDir !== false) {
     mkdirSync(dirname(targetPath), { recursive: true });
   }
@@ -167,7 +209,11 @@ export function atomicWriteFile(targetPath: string, content: string, opts?: { en
     writeFileSync(tmpPath, content);
     renameSync(tmpPath, targetPath);
   } catch (e) {
-    try { rmSync(tmpPath); } catch { /* Best-effort temp file cleanup; original error is re-thrown */ }
+    try {
+      rmSync(tmpPath);
+    } catch {
+      /* Best-effort temp file cleanup; original error is re-thrown */
+    }
     throw e;
   }
 }
@@ -190,11 +236,7 @@ export function writeFileSafe(
   return exists ? "overwritten" : "written";
 }
 
-export function copyGeneratedDir(
-  pkgRoot: string,
-  srcRelative: string,
-  distRelative: string,
-): void {
+export function copyGeneratedDir(pkgRoot: string, srcRelative: string, distRelative: string): void {
   const src = resolve(pkgRoot, srcRelative);
   if (!existsSync(src)) {
     throw new Error(`${srcRelative}/ not found. Run prebuild first.`);
@@ -202,16 +244,13 @@ export function copyGeneratedDir(
   cpSync(src, resolve(pkgRoot, distRelative), { recursive: true, force: true });
 }
 
-export function getRelativePath(
-  file: { path: string },
-  prefixes: string[],
-): string {
+export function getRelativePath(file: { path: string }, prefixes: string[]): string {
   for (const prefix of prefixes) {
     if (file.path.startsWith(prefix)) {
       return file.path.slice(prefix.length);
     }
   }
   throw new Error(
-    `Unsupported registry file path "${file.path}". Expected path to start with one of: ${prefixes.map(p => `"${p}"`).join(", ")}.`,
+    `Unsupported registry file path "${file.path}". Expected path to start with one of: ${prefixes.map((p) => `"${p}"`).join(", ")}.`,
   );
 }

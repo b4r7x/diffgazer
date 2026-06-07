@@ -7,7 +7,12 @@ import {
   shift,
   wouldOverflow,
 } from "@/lib/floating-position";
-import type { FloatingAlign, FloatingPlacement, FloatingSide, Viewport } from "@/lib/floating-position-constants";
+import type {
+  FloatingAlign,
+  FloatingPlacement,
+  FloatingSide,
+  Viewport,
+} from "@/lib/floating-position-constants";
 
 export { computePosition, resolveCollisionPosition, shift, wouldOverflow };
 export type { FloatingAlign, FloatingPlacement, FloatingSide };
@@ -66,7 +71,9 @@ function isOverflowElement(element: Element): boolean {
   const view = element.ownerDocument?.defaultView ?? window;
   const { overflow, overflowX, overflowY, display } = view.getComputedStyle(element);
   return (
-    /auto|scroll|overlay|hidden|clip/.test((overflow ?? "") + (overflowY ?? "") + (overflowX ?? "")) &&
+    /auto|scroll|overlay|hidden|clip/.test(
+      (overflow ?? "") + (overflowY ?? "") + (overflowX ?? ""),
+    ) &&
     display !== "inline" &&
     display !== "contents"
   );
@@ -120,9 +127,32 @@ export function useFloatingPosition({
     const contentRect = content.getBoundingClientRect();
     const vp: Viewport = { width: view.innerWidth, height: view.innerHeight };
 
-    const { x: resolvedX, y: resolvedY, side: finalSide } = avoidCollisions
-      ? resolveCollisionPosition(triggerRect, contentRect, preferredSide, preferredAlign, sideOffset, alignOffset, collisionPadding, vp)
-      : { ...computePosition(triggerRect, contentRect, preferredSide, preferredAlign, sideOffset, alignOffset), side: preferredSide };
+    const {
+      x: resolvedX,
+      y: resolvedY,
+      side: finalSide,
+    } = avoidCollisions
+      ? resolveCollisionPosition(
+          triggerRect,
+          contentRect,
+          preferredSide,
+          preferredAlign,
+          sideOffset,
+          alignOffset,
+          collisionPadding,
+          vp,
+        )
+      : {
+          ...computePosition(
+            triggerRect,
+            contentRect,
+            preferredSide,
+            preferredAlign,
+            sideOffset,
+            alignOffset,
+          ),
+          side: preferredSide,
+        };
 
     const pos = avoidCollisions
       ? shift(resolvedX, resolvedY, contentRect, collisionPadding, vp)
@@ -135,7 +165,15 @@ export function useFloatingPosition({
       align: preferredAlign,
       triggerWidth: triggerRect.width,
     });
-  }, [alignOffset, avoidCollisions, collisionPadding, preferredAlign, preferredSide, sideOffset, triggerRef]);
+  }, [
+    alignOffset,
+    avoidCollisions,
+    collisionPadding,
+    preferredAlign,
+    preferredSide,
+    sideOffset,
+    triggerRef,
+  ]);
 
   const scheduleUpdate = useCallback(() => {
     if (frameRef.current != null) return;
@@ -160,7 +198,8 @@ export function useFloatingPosition({
 
     const view = trigger.ownerDocument?.defaultView ?? window;
     const ResizeObserverCtor = view.ResizeObserver;
-    const observer = typeof ResizeObserverCtor === "function" ? new ResizeObserverCtor(scheduleUpdate) : null;
+    const observer =
+      typeof ResizeObserverCtor === "function" ? new ResizeObserverCtor(scheduleUpdate) : null;
     observer?.observe(trigger);
     observer?.observe(content);
 

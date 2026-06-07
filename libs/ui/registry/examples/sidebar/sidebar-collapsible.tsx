@@ -9,7 +9,7 @@ import {
   SidebarSection,
   SidebarSectionContent,
   SidebarSectionTitle,
-} from "@/components/ui/sidebar"
+} from "@/components/ui/sidebar";
 
 // `block` variant — items use a soft fill on active rather than the `▸` glyph
 // prefix; the section title's own chevron (▾/▸) is the single disclosure cue
@@ -55,5 +55,5 @@ export default function SidebarCollapsible() {
         <span className="text-xs text-muted-foreground font-mono">3 sections</span>
       </SidebarFooter>
     </Sidebar>
-  )
+  );
 }

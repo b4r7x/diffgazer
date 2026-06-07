@@ -23,10 +23,7 @@ export function DialogTitle({
       {...props}
       id={titleId}
       data-slot="dialog-title"
-      className={cn(
-        "flex items-center gap-2.5 text-sm font-bold text-foreground",
-        className,
-      )}
+      className={cn("flex items-center gap-2.5 text-sm font-bold text-foreground", className)}
     >
       <span className="min-w-0 flex-1 truncate">{children}</span>
       {meta ? (

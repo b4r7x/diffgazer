@@ -41,7 +41,9 @@ const IMPERATIVE_SCOPE_ORDER_PREFIX = "\uffff";
 const REACT_ID_RADIX = 32;
 
 function getScopeOrderSegments(order: string): number[] {
-  return (order.toLowerCase().match(/[0-9a-v]+/g) ?? []).map((segment) => parseInt(segment, REACT_ID_RADIX));
+  return (order.toLowerCase().match(/[0-9a-v]+/g) ?? []).map((segment) =>
+    parseInt(segment, REACT_ID_RADIX),
+  );
 }
 
 function compareScopeEntries(a: ScopeStackEntry, b: ScopeStackEntry): number {
@@ -61,7 +63,10 @@ function compareScopeEntries(a: ScopeStackEntry, b: ScopeStackEntry): number {
   return a.id - b.id;
 }
 
-function isEventWithinContainer(eventTarget: EventTarget | null, options?: HandlerOptions): boolean {
+function isEventWithinContainer(
+  eventTarget: EventTarget | null,
+  options?: HandlerOptions,
+): boolean {
   const containerRef = options?.containerRef;
   const focusWithinOnly = options?.focusWithinOnly;
   if (!containerRef || !focusWithinOnly) return true;
@@ -73,7 +78,9 @@ function isEventWithinContainer(eventTarget: EventTarget | null, options?: Handl
 }
 
 export function KeyboardProvider({ children }: { children: ReactNode }) {
-  const [scopeStack, setScopeStack] = useState<ScopeStackEntry[]>(() => [{ name: "global", id: 0, order: "" }]);
+  const [scopeStack, setScopeStack] = useState<ScopeStackEntry[]>(() => [
+    { name: "global", id: 0, order: "" },
+  ]);
   const scopeStackRef = useRef(scopeStack);
   const handlers = useRef(new Map<string, HandlerMap>());
   const nextHandlerId = useRef(1);
@@ -81,7 +88,10 @@ export function KeyboardProvider({ children }: { children: ReactNode }) {
 
   const activeScope = scopeStack[scopeStack.length - 1]?.name ?? null;
 
-  const getActiveScope = useCallback(() => scopeStackRef.current[scopeStackRef.current.length - 1]?.name ?? null, []);
+  const getActiveScope = useCallback(
+    () => scopeStackRef.current[scopeStackRef.current.length - 1]?.name ?? null,
+    [],
+  );
 
   const getScopeForOrder = useCallback((order: string) => {
     const stack = scopeStackRef.current;
@@ -100,8 +110,9 @@ export function KeyboardProvider({ children }: { children: ReactNode }) {
   const pushScope = useCallback((scope: string, order?: string) => {
     const id = nextScopeId.current++;
     const scopeOrder = order ?? `${IMPERATIVE_SCOPE_ORDER_PREFIX}${String(id).padStart(8, "0")}`;
-    const next = [...scopeStackRef.current, { name: scope, id, order: scopeOrder }]
-      .sort(compareScopeEntries);
+    const next = [...scopeStackRef.current, { name: scope, id, order: scopeOrder }].sort(
+      compareScopeEntries,
+    );
     scopeStackRef.current = next;
     setScopeStack(next);
 
@@ -158,57 +169,55 @@ export function KeyboardProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  const register = useCallback((scope: string, hotkey: string, handler: Handler, options?: HandlerOptions) => {
-    const canonical = canonicalizeHotkey(hotkey);
-    let scopeHandlers = handlers.current.get(scope);
-    if (!scopeHandlers) {
-      scopeHandlers = new Map<string, HandlerEntry[]>();
-      handlers.current.set(scope, scopeHandlers);
-    }
-
-    const existingEntries = scopeHandlers.get(canonical) ?? [];
-    const entry: HandlerEntry = {
-      id: nextHandlerId.current,
-      handler,
-      options,
-    };
-    nextHandlerId.current += 1;
-    scopeHandlers.set(canonical, [...existingEntries, entry]);
-
-    return () => {
-      const activeScopeHandlers = handlers.current.get(scope);
-      if (!activeScopeHandlers) return;
-
-      const currentEntries = activeScopeHandlers.get(canonical);
-      if (!currentEntries) return;
-
-      const remainingEntries = currentEntries.filter((candidate) => candidate.id !== entry.id);
-      if (remainingEntries.length === 0) {
-        activeScopeHandlers.delete(canonical);
-        if (activeScopeHandlers.size === 0) {
-          handlers.current.delete(scope);
-        }
-      } else {
-        activeScopeHandlers.set(canonical, remainingEntries);
+  const register = useCallback(
+    (scope: string, hotkey: string, handler: Handler, options?: HandlerOptions) => {
+      const canonical = canonicalizeHotkey(hotkey);
+      let scopeHandlers = handlers.current.get(scope);
+      if (!scopeHandlers) {
+        scopeHandlers = new Map<string, HandlerEntry[]>();
+        handlers.current.set(scope, scopeHandlers);
       }
-    };
-  }, []);
+
+      const existingEntries = scopeHandlers.get(canonical) ?? [];
+      const entry: HandlerEntry = {
+        id: nextHandlerId.current,
+        handler,
+        options,
+      };
+      nextHandlerId.current += 1;
+      scopeHandlers.set(canonical, [...existingEntries, entry]);
+
+      return () => {
+        const activeScopeHandlers = handlers.current.get(scope);
+        if (!activeScopeHandlers) return;
+
+        const currentEntries = activeScopeHandlers.get(canonical);
+        if (!currentEntries) return;
+
+        const remainingEntries = currentEntries.filter((candidate) => candidate.id !== entry.id);
+        if (remainingEntries.length === 0) {
+          activeScopeHandlers.delete(canonical);
+          if (activeScopeHandlers.size === 0) {
+            handlers.current.delete(scope);
+          }
+        } else {
+          activeScopeHandlers.set(canonical, remainingEntries);
+        }
+      };
+    },
+    [],
+  );
 
   const registryValue = useMemo<KeyboardRegistryContextValue>(
     () => ({ getActiveScope, getScopeForOrder, pushScope, register }),
     [getActiveScope, getScopeForOrder, pushScope, register],
   );
 
-  const scopeValue = useMemo<KeyboardScopeContextValue>(
-    () => ({ activeScope }),
-    [activeScope],
-  );
+  const scopeValue = useMemo<KeyboardScopeContextValue>(() => ({ activeScope }), [activeScope]);
 
   return (
     <KeyboardRegistryContext.Provider value={registryValue}>
-      <KeyboardScopeContext.Provider value={scopeValue}>
-        {children}
-      </KeyboardScopeContext.Provider>
+      <KeyboardScopeContext.Provider value={scopeValue}>{children}</KeyboardScopeContext.Provider>
     </KeyboardRegistryContext.Provider>
   );
 }

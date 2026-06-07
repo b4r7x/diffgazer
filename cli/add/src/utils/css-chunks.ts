@@ -75,11 +75,7 @@ function collectComponentCssChunks(resolved: string[]): ItemCssChunk[] {
 }
 
 function appendCssChunks(existing: string, wrappedChunks: string[]): string {
-  const prefix = existing.length === 0
-    ? ""
-    : existing.endsWith("\n")
-      ? "\n"
-      : "\n\n";
+  const prefix = existing.length === 0 ? "" : existing.endsWith("\n") ? "\n" : "\n\n";
   return `${existing}${prefix}${wrappedChunks.join("\n\n")}\n`;
 }
 
@@ -115,7 +111,10 @@ export function planComponentCss(
   return {
     fileOp: {
       targetPath,
-      content: appendCssChunks(existing, missing.map((c) => wrapChunk(c.content))),
+      content: appendCssChunks(
+        existing,
+        missing.map((c) => wrapChunk(c.content)),
+      ),
       relativePath: basename(cssPath),
       installDir: toPosixPath(dirname(cssPath)),
       overwrite: true,
@@ -143,7 +142,11 @@ function findChunkSlices(content: string): CssChunkSlice[] {
   return slices;
 }
 
-function trimSurroundingBlanks(content: string, start: number, end: number): { start: number; end: number } {
+function trimSurroundingBlanks(
+  content: string,
+  start: number,
+  end: number,
+): { start: number; end: number } {
   let trimmedStart = start;
   let trimmedEnd = end;
   while (trimmedEnd < content.length && content[trimmedEnd] === "\n") trimmedEnd++;
@@ -178,7 +181,8 @@ export function removeCssChunks(
   for (const slice of slices) {
     const { start, end } = trimSurroundingBlanks(updated, slice.start, slice.end);
     updated = `${updated.slice(0, start)}${updated.slice(end)}`;
-    if (start > 0 && start < updated.length) updated = `${updated.slice(0, start)}\n${updated.slice(start)}`;
+    if (start > 0 && start < updated.length)
+      updated = `${updated.slice(0, start)}\n${updated.slice(start)}`;
   }
 
   return {

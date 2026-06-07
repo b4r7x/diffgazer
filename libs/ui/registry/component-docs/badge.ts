@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types"
+import type { ComponentDoc } from "./types";
 
 export const badgeDoc: ComponentDoc = {
   description: "Inline status label with semantic color variants.",
@@ -13,7 +13,7 @@ export const badgeDoc: ComponentDoc = {
     {
       title: "Dynamic Content",
       content:
-        "For badges with content that updates (e.g., unread counts), add role=\"status\" to the Badge for screen reader announcements. Static badges (labels like \"Beta\" or \"New\") need no additional ARIA.",
+        'For badges with content that updates (e.g., unread counts), add role="status" to the Badge for screen reader announcements. Static badges (labels like "Beta" or "New") need no additional ARIA.',
     },
   ],
   usage: { example: "badge-default" },
@@ -29,7 +29,8 @@ export const badgeDoc: ComponentDoc = {
         type: '"success" | "warning" | "error" | "info" | "neutral"',
         required: false,
         defaultValue: '"neutral"',
-        description: "Semantic color token. Picks foreground, background, border, and dot color together.",
+        description:
+          "Semantic color token. Picks foreground, background, border, and dot color together.",
       },
       size: {
         type: '"sm" | "md" | "lg"',
@@ -51,4 +52,4 @@ export const badgeDoc: ComponentDoc = {
       },
     },
   },
-}
+};

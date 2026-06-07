@@ -1,8 +1,5 @@
 import { usePageFooter } from "@diffgazer/core/footer";
-import {
-  filterIssuesBySeverity,
-  selectDetailsEmptyKind,
-} from "@diffgazer/core/review";
+import { filterIssuesBySeverity, selectDetailsEmptyKind } from "@diffgazer/core/review";
 import type { Shortcut, UISeverityFilter } from "@diffgazer/core/schemas/presentation";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { Box, Text } from "ink";
@@ -35,19 +32,12 @@ export function ReviewResultsView({
 }: ReviewResultsViewProps): ReactElement {
   const { tokens } = useTheme();
   const { columns, rows, isNarrow, isMedium } = useResponsive();
-  const [severityFilter, setSeverityFilter] =
-    useState<UISeverityFilter>(() => new Set());
-  const [selectedIssueId, setSelectedIssueId] = useState<string | undefined>(
-    issues[0]?.id,
-  );
+  const [severityFilter, setSeverityFilter] = useState<UISeverityFilter>(() => new Set());
+  const [selectedIssueId, setSelectedIssueId] = useState<string | undefined>(issues[0]?.id);
   const [activeZone, setActiveZone] = useState<Zone>("list");
   const [listSubZone, setListSubZone] = useState<IssueListSubZone>("issues");
-  const [completedSteps, setCompletedSteps] = useState<Set<number>>(
-    () => new Set(),
-  );
-  const [lastIssueId, setLastIssueId] = useState<string | undefined>(
-    issues[0]?.id,
-  );
+  const [completedSteps, setCompletedSteps] = useState<Set<number>>(() => new Set());
+  const [lastIssueId, setLastIssueId] = useState<string | undefined>(issues[0]?.id);
 
   usePageFooter({
     shortcuts: RESULTS_SHORTCUTS_LEFT,
@@ -64,9 +54,7 @@ export function ReviewResultsView({
   useReviewKeyboard({
     onIssueNav(direction) {
       if (activeZone !== "list" || listSubZone === "filter" || filteredIssues.length === 0) return;
-      const currentIndex = filteredIssues.findIndex(
-        (i) => i.id === selectedIssueId,
-      );
+      const currentIndex = filteredIssues.findIndex((i) => i.id === selectedIssueId);
       const nextIndex =
         direction === "down"
           ? Math.min(currentIndex + 1, filteredIssues.length - 1)
@@ -94,20 +82,13 @@ export function ReviewResultsView({
   };
 
   const selectedIssue = filteredIssues.find((i) => i.id === selectedIssueId);
-  const detailsEmptyKind = selectDetailsEmptyKind(
-    issues.length,
-    filteredIssues.length,
-  );
+  const detailsEmptyKind = selectDetailsEmptyKind(issues.length, filteredIssues.length);
   const listWidth = isMedium
     ? Math.max(Math.floor(columns * 0.35), 26)
     : Math.max(Math.floor(columns * 0.4), 30);
   const paneHeight = Math.max(rows - 8, 8);
-  const listScrollHeight = isNarrow
-    ? Math.max(Math.floor(paneHeight / 2), 6)
-    : paneHeight;
-  const detailScrollHeight = isNarrow
-    ? Math.max(Math.floor(paneHeight / 2), 6)
-    : paneHeight;
+  const listScrollHeight = isNarrow ? Math.max(Math.floor(paneHeight / 2), 6) : paneHeight;
+  const detailScrollHeight = isNarrow ? Math.max(Math.floor(paneHeight / 2), 6) : paneHeight;
 
   return (
     <Box flexDirection="column">
@@ -116,16 +97,11 @@ export function ReviewResultsView({
           {`Analysis #${reviewId ?? "unknown"}`}
         </Text>
       </Box>
-      <Box
-        flexDirection={isNarrow ? "column" : "row"}
-        marginTop={1}
-      >
+      <Box flexDirection={isNarrow ? "column" : "row"} marginTop={1}>
         <Box
           width={isNarrow ? undefined : listWidth}
           borderStyle="single"
-          borderColor={
-            activeZone === "list" ? tokens.accent : tokens.border
-          }
+          borderColor={activeZone === "list" ? tokens.accent : tokens.border}
         >
           <IssueListPane
             issues={filteredIssues}
@@ -144,9 +120,7 @@ export function ReviewResultsView({
         <Box
           flexGrow={1}
           borderStyle="single"
-          borderColor={
-            activeZone === "details" ? tokens.accent : tokens.border
-          }
+          borderColor={activeZone === "details" ? tokens.accent : tokens.border}
         >
           <IssueDetailsPane
             issue={selectedIssue}

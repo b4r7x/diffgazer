@@ -5,7 +5,13 @@ import { resolve, sep } from "node:path";
 import { promisify } from "node:util";
 import { getErrorMessage } from "@diffgazer/core/errors";
 import { err, ok, type Result } from "@diffgazer/core/result";
-import { GIT_FILE_STATUS_CODES, type GitFileEntry, type GitFileStatusCode, type GitStatus, type GitStatusFiles } from "@diffgazer/core/schemas/git";
+import {
+  GIT_FILE_STATUS_CODES,
+  type GitFileEntry,
+  type GitFileStatusCode,
+  type GitStatus,
+  type GitStatusFiles,
+} from "@diffgazer/core/schemas/git";
 import type { GitBlameInfo, ReviewMode } from "@diffgazer/core/schemas/review";
 import type { BranchInfo, CategorizedFile } from "./types.js";
 
@@ -104,7 +110,8 @@ function parseGitStatusOutput(output: string): {
   const lines = output.split("\n").filter((line) => line.length > 0);
   let branch: string | null = null;
   let remoteBranch: string | null = null;
-  let ahead = 0, behind = 0;
+  let ahead = 0,
+    behind = 0;
   const staged: GitFileEntry[] = [];
   const unstaged: GitFileEntry[] = [];
   const untracked: GitFileEntry[] = [];
@@ -131,12 +138,21 @@ function parseGitStatusOutput(output: string): {
     if (isUnstaged) unstaged.push(entry);
   }
 
-  return { branch, remoteBranch, ahead, behind, files: { staged, unstaged, untracked }, conflicted };
+  return {
+    branch,
+    remoteBranch,
+    ahead,
+    behind,
+    files: { staged, unstaged, untracked },
+    conflicted,
+  };
 }
 
 function isInternalDiffgazerPath(pathPart: string): boolean {
   const normalized = pathPart.trim();
-  return normalized === INTERNAL_DIFFGAZER_DIR || normalized.startsWith(`${INTERNAL_DIFFGAZER_DIR}/`);
+  return (
+    normalized === INTERNAL_DIFFGAZER_DIR || normalized.startsWith(`${INTERNAL_DIFFGAZER_DIR}/`)
+  );
 }
 
 function isUntrackedLine(line: string): boolean {
@@ -148,7 +164,10 @@ function isExternalStatusLine(line: string): boolean {
   const pathPart = line.slice(3).trim();
   if (!pathPart) return false;
 
-  const paths = pathPart.split(" -> ").map((part) => part.trim()).filter(Boolean);
+  const paths = pathPart
+    .split(" -> ")
+    .map((part) => part.trim())
+    .filter(Boolean);
   return paths.every((path) => !isInternalDiffgazerPath(path));
 }
 
@@ -191,13 +210,19 @@ export function createGitService(options: { cwd?: string; timeout?: number } = {
   }
 
   async function getDiff(mode: ReviewMode = "unstaged", pathspecs?: string[]): Promise<string> {
-    const args = mode === "staged"
-      ? ["diff", "--cached", "--no-ext-diff", "--no-textconv", "--no-color"]
-      : ["diff", "--no-ext-diff", "--no-textconv", "--no-color"];
+    const args =
+      mode === "staged"
+        ? ["diff", "--cached", "--no-ext-diff", "--no-textconv", "--no-color"]
+        : ["diff", "--no-ext-diff", "--no-textconv", "--no-color"];
     if (pathspecs && pathspecs.length > 0) {
       args.push("--", ...pathspecs);
     }
-    const { stdout } = await execFileAsync("git", args, { cwd, timeout, maxBuffer: GIT_DIFF_MAX_BUFFER, env: safeEnv() });
+    const { stdout } = await execFileAsync("git", args, {
+      cwd,
+      timeout,
+      maxBuffer: GIT_DIFF_MAX_BUFFER,
+      env: safeEnv(),
+    });
     return stdout;
   }
 
@@ -208,10 +233,14 @@ export function createGitService(options: { cwd?: string; timeout?: number } = {
 
       const lines = stdout.split("\n");
       const commit = lines[0]?.split(" ")[0] ?? "";
-      const author = lines.find(l => l.startsWith("author "))?.slice(7) ?? "Unknown";
-      const authorEmail = lines.find(l => l.startsWith("author-mail "))?.slice(12).replace(/[<>]/g, "") ?? "";
-      const commitTime = lines.find(l => l.startsWith("author-time "))?.slice(12) ?? "0";
-      const summary = lines.find(l => l.startsWith("summary "))?.slice(8) ?? "";
+      const author = lines.find((l) => l.startsWith("author "))?.slice(7) ?? "Unknown";
+      const authorEmail =
+        lines
+          .find((l) => l.startsWith("author-mail "))
+          ?.slice(12)
+          .replace(/[<>]/g, "") ?? "";
+      const commitTime = lines.find((l) => l.startsWith("author-time "))?.slice(12) ?? "0";
+      const summary = lines.find((l) => l.startsWith("summary "))?.slice(8) ?? "";
 
       return {
         author,
@@ -226,7 +255,12 @@ export function createGitService(options: { cwd?: string; timeout?: number } = {
     }
   }
 
-  async function getFileLines(file: string, startLine: number, endLine: number, source: "HEAD" | "worktree" = "worktree"): Promise<string[]> {
+  async function getFileLines(
+    file: string,
+    startLine: number,
+    endLine: number,
+    source: "HEAD" | "worktree" = "worktree",
+  ): Promise<string[]> {
     try {
       if (source === "worktree") {
         const resolved = resolve(cwd, file);
@@ -246,7 +280,12 @@ export function createGitService(options: { cwd?: string; timeout?: number } = {
       // Note: git show object syntax (HEAD:path) doesn't accept a -- separator;
       // option injection is structurally impossible since the arg starts with "HEAD:".
       const args = ["show", `HEAD:${file}`];
-      const { stdout } = await execFileAsync("git", args, { cwd, timeout, maxBuffer: GIT_DIFF_MAX_BUFFER, env: safeEnv() });
+      const { stdout } = await execFileAsync("git", args, {
+        cwd,
+        timeout,
+        maxBuffer: GIT_DIFF_MAX_BUFFER,
+        env: safeEnv(),
+      });
       const allLines = stdout.split("\n");
       return allLines.slice(Math.max(0, startLine - 1), endLine);
     } catch (error) {
@@ -257,7 +296,11 @@ export function createGitService(options: { cwd?: string; timeout?: number } = {
 
   async function getHeadCommit(): Promise<Result<string, { message: string }>> {
     try {
-      const { stdout } = await execFileAsync("git", ["rev-parse", "HEAD"], { cwd, timeout, env: safeEnv() });
+      const { stdout } = await execFileAsync("git", ["rev-parse", "HEAD"], {
+        cwd,
+        timeout,
+        env: safeEnv(),
+      });
       const commit = stdout.trim();
       if (!commit) {
         return err({ message: "Empty commit hash returned from git rev-parse HEAD" });
@@ -296,8 +339,17 @@ export function createGitService(options: { cwd?: string; timeout?: number } = {
       // even if the status lines remain the same.
       try {
         const [{ stdout: unstagedDiff }, { stdout: stagedDiff }] = await Promise.all([
-          execFileAsync("git", ["diff", "--no-ext-diff", "--no-textconv", "--no-color"], { cwd, timeout, maxBuffer: GIT_DIFF_MAX_BUFFER, env: safeEnv() }),
-          execFileAsync("git", ["diff", "--cached", "--no-ext-diff", "--no-textconv", "--no-color"], { cwd, timeout, maxBuffer: GIT_DIFF_MAX_BUFFER, env: safeEnv() }),
+          execFileAsync("git", ["diff", "--no-ext-diff", "--no-textconv", "--no-color"], {
+            cwd,
+            timeout,
+            maxBuffer: GIT_DIFF_MAX_BUFFER,
+            env: safeEnv(),
+          }),
+          execFileAsync(
+            "git",
+            ["diff", "--cached", "--no-ext-diff", "--no-textconv", "--no-color"],
+            { cwd, timeout, maxBuffer: GIT_DIFF_MAX_BUFFER, env: safeEnv() },
+          ),
         ]);
         if (unstagedDiff) hash.update(unstagedDiff);
         if (stagedDiff) hash.update(stagedDiff);
@@ -312,5 +364,13 @@ export function createGitService(options: { cwd?: string; timeout?: number } = {
     }
   }
 
-  return { getStatus, getDiff, isGitInstalled, getBlame, getFileLines, getHeadCommit, getStatusHash };
+  return {
+    getStatus,
+    getDiff,
+    isGitInstalled,
+    getBlame,
+    getFileLines,
+    getHeadCommit,
+    getStatusHash,
+  };
 }

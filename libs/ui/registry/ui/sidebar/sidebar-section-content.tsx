@@ -27,10 +27,7 @@ export function SidebarSectionContent({
       aria-hidden={isClosed || undefined}
       inert={isClosed || undefined}
     >
-      <div
-        data-slot="sidebar-section-content-inner"
-        className={cn("flex flex-col", className)}
-      >
+      <div data-slot="sidebar-section-content-inner" className={cn("flex flex-col", className)}>
         {children}
       </div>
     </div>

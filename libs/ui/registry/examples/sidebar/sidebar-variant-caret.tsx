@@ -7,7 +7,7 @@ import {
   SidebarItemLabel,
   SidebarSection,
   SidebarSectionTitle,
-} from "@/components/ui/sidebar"
+} from "@/components/ui/sidebar";
 
 export default function SidebarVariantCaret() {
   return (
@@ -47,5 +47,5 @@ export default function SidebarVariantCaret() {
         </SidebarSection>
       </SidebarContent>
     </Sidebar>
-  )
+  );
 }

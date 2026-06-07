@@ -287,37 +287,42 @@ describe("Panel", () => {
     expect(await axe(container)).toHaveNoViolations();
   });
 
-  it.each(["hairline", "rail", "viewfinder", "surface"] as const)(
-    "has no a11y violations for frame=%s",
-    async (frame) => {
-      const { container } = render(
-        <Panel frame={frame}>
-          <Panel.Header>
-            <Panel.Title>Release</Panel.Title>
-          </Panel.Header>
-          <Panel.Content>Body</Panel.Content>
-        </Panel>,
-      );
+  it.each([
+    "hairline",
+    "rail",
+    "viewfinder",
+    "surface",
+  ] as const)("has no a11y violations for frame=%s", async (frame) => {
+    const { container } = render(
+      <Panel frame={frame}>
+        <Panel.Header>
+          <Panel.Title>Release</Panel.Title>
+        </Panel.Header>
+        <Panel.Content>Body</Panel.Content>
+      </Panel>,
+    );
 
-      expect(await axe(container)).toHaveNoViolations();
-    },
-  );
+    expect(await axe(container)).toHaveNoViolations();
+  });
 
-  it.each(["info", "success", "warning", "error", "accent"] as const)(
-    "has no a11y violations for tone=%s",
-    async (tone) => {
-      const { container } = render(
-        <Panel tone={tone}>
-          <Panel.Header>
-            <Panel.Title>Release</Panel.Title>
-          </Panel.Header>
-          <Panel.Content>Body</Panel.Content>
-        </Panel>,
-      );
+  it.each([
+    "info",
+    "success",
+    "warning",
+    "error",
+    "accent",
+  ] as const)("has no a11y violations for tone=%s", async (tone) => {
+    const { container } = render(
+      <Panel tone={tone}>
+        <Panel.Header>
+          <Panel.Title>Release</Panel.Title>
+        </Panel.Header>
+        <Panel.Content>Body</Panel.Content>
+      </Panel>,
+    );
 
-      expect(await axe(container)).toHaveNoViolations();
-    },
-  );
+    expect(await axe(container)).toHaveNoViolations();
+  });
 
   it("has no a11y violations across the full frame × tone matrix", async () => {
     const frames = ["hairline", "rail", "viewfinder", "surface"] as const;

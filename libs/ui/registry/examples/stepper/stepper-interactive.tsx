@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react"
-import { Stepper } from "@/components/ui/stepper"
+import { useState } from "react";
+import { Stepper } from "@/components/ui/stepper";
 
 export default function StepperInteractive() {
-  const [expandedIds, setExpandedIds] = useState<string[]>(["step-2"])
+  const [expandedIds, setExpandedIds] = useState<string[]>(["step-2"]);
 
   return (
     <Stepper expandedIds={expandedIds} onExpandedChange={setExpandedIds}>
@@ -30,5 +30,5 @@ export default function StepperInteractive() {
         <Stepper.Trigger>Deploy</Stepper.Trigger>
       </Stepper.Step>
     </Stepper>
-  )
+  );
 }

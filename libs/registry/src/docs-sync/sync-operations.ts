@@ -1,10 +1,4 @@
-import {
-  cpSync,
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  writeFileSync,
-} from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import { defaultLogger, type Logger } from "../logger.js";
 import { collectJsonFiles, ensureExists, resetDir, resolveInside } from "../utils/fs.js";
@@ -35,10 +29,9 @@ function assertNoUnrewrittenOrigin(
     try {
       raw = readFileSync(jsonFile, "utf-8");
     } catch (error) {
-      throw new Error(
-        `Failed to read registry output for origin check: ${jsonFile}`,
-        { cause: error },
-      );
+      throw new Error(`Failed to read registry output for origin check: ${jsonFile}`, {
+        cause: error,
+      });
     }
     if (raw.includes(sourceOrigin)) {
       offenders.push(jsonFile);
@@ -133,10 +126,7 @@ function syncLibraryDocs(
       generatedFile,
       `${artifact.id} generated artifact path ${generatedFile}`,
     );
-    ensureExists(
-      sourcePath,
-      `${artifact.id} generated artifact ${generatedFile}`,
-    );
+    ensureExists(sourcePath, `${artifact.id} generated artifact ${generatedFile}`);
     const targetDir = resolveNamespaceDir(
       generatedDir,
       artifact.id,
@@ -196,10 +186,7 @@ function writeRootMeta(
   title = "Documentation",
   extraRootPages: string[] = [],
 ): void {
-  const pages = [
-    ...artifacts.map((artifact) => `...${artifact.id}`),
-    ...extraRootPages,
-  ];
+  const pages = [...artifacts.map((artifact) => `...${artifact.id}`), ...extraRootPages];
   writeJson(resolve(contentDir, "meta.json"), {
     title,
     root: true,
@@ -263,9 +250,7 @@ function copyExamplesForLibrary(
   );
   mkdirSync(targetExamplesDir, { recursive: true });
   cpSync(artExamplesDir, targetExamplesDir, { recursive: true });
-  logger.info(
-    `[docs-sync] Copied ${artifact.id} examples to registry/examples/${artifact.id}/`,
-  );
+  logger.info(`[docs-sync] Copied ${artifact.id} examples to registry/examples/${artifact.id}/`);
 }
 
 // Precondition: every `artifact.id` (including `primaryArtifact.id`) must already
@@ -305,24 +290,12 @@ export function runDocsSyncPass(params: {
       resetDir(join(paths.libraryAssetsDir, artifact.id));
     }
   }
-  syncPrimaryArtifacts(
-    primaryArtifact,
-    paths.generatedDir,
-    paths.registryDir,
-  );
+  syncPrimaryArtifacts(primaryArtifact, paths.generatedDir, paths.registryDir);
 
   for (const artifact of artifacts) {
-    syncLibraryDocs(
-      artifact,
-      paths.contentDir,
-      paths.generatedDir,
-      paths.libraryAssetsDir,
-      {
-        secondaryExampleNamespace: artifact.id === primaryArtifact.id
-          ? undefined
-          : artifact.id,
-      },
-    );
+    syncLibraryDocs(artifact, paths.contentDir, paths.generatedDir, paths.libraryAssetsDir, {
+      secondaryExampleNamespace: artifact.id === primaryArtifact.id ? undefined : artifact.id,
+    });
 
     copyExamplesForLibrary(artifact, primaryArtifact.id, paths.registryDir, logger);
 
@@ -338,8 +311,6 @@ export function runDocsSyncPass(params: {
 
   writeRootMeta(artifacts, paths.contentDir, rootTitle, extraRootPages);
 
-  logger.info(
-    `[docs-sync] Syncing registries (origin asserted: ${origin})...`,
-  );
+  logger.info(`[docs-sync] Syncing registries (origin asserted: ${origin})...`);
   syncRegistries(artifacts, paths.publicRegistryDir, origin, sourceOrigin, logger);
 }

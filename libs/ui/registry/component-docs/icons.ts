@@ -1,10 +1,13 @@
-import type { ComponentDoc } from "./types"
+import type { ComponentDoc } from "./types";
 
 export const iconsDoc: ComponentDoc = {
-  description:
-    "SVG icon components for use as indicators, triggers, and decorative elements.",
+  description: "SVG icon components for use as indicators, triggers, and decorative elements.",
   anatomy: [
-    { name: "Chevron", indent: 0, note: "Directional SVG icon with rotation animation and size variants" },
+    {
+      name: "Chevron",
+      indent: 0,
+      note: "Directional SVG icon with rotation animation and size variants",
+    },
   ],
   notes: [
     {
@@ -42,7 +45,8 @@ export const iconsDoc: ComponentDoc = {
         type: "boolean",
         required: false,
         defaultValue: "false",
-        description: "Rotates 90 degrees clockwise from the base direction. Use for expand/collapse toggles.",
+        description:
+          "Rotates 90 degrees clockwise from the base direction. Use for expand/collapse toggles.",
       },
       size: {
         type: '"sm" | "md" | "lg"',
@@ -52,4 +56,4 @@ export const iconsDoc: ComponentDoc = {
       },
     },
   },
-}
+};

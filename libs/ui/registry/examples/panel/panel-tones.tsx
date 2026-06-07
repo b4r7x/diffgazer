@@ -1,4 +1,4 @@
-import { Panel } from "@/components/ui/panel"
+import { Panel } from "@/components/ui/panel";
 
 export default function PanelTones() {
   return (
@@ -26,7 +26,9 @@ export default function PanelTones() {
       <Panel tone="error">
         <Panel.Header>
           <Panel.Title>Error tone</Panel.Title>
-          <Panel.Description>For real alerts (icon, role=alert, dismissable), use Callout.</Panel.Description>
+          <Panel.Description>
+            For real alerts (icon, role=alert, dismissable), use Callout.
+          </Panel.Description>
         </Panel.Header>
         <Panel.Content>
           <Panel.Row label="Failures" value="3" />
@@ -43,5 +45,5 @@ export default function PanelTones() {
         </Panel.Content>
       </Panel>
     </div>
-  )
+  );
 }

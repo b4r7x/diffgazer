@@ -20,7 +20,9 @@
  */
 
 @keyframes stepper-blink {
-  50% { opacity: 0; }
+  50% {
+    opacity: 0;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -105,11 +107,14 @@
  * filled timeline. Bullet uses `border-left-color` because the connector is
  * a border, not a background.
  */
-[data-orientation="vertical"][data-variant="ascii"] > li[data-status="completed"]:not(:last-child)::before,
-[data-orientation="vertical"][data-variant="numbered"] > li[data-status="completed"]:not(:last-child)::before {
+[data-orientation="vertical"][data-variant="ascii"]
+  > li[data-status="completed"]:not(:last-child)::before,
+[data-orientation="vertical"][data-variant="numbered"]
+  > li[data-status="completed"]:not(:last-child)::before {
   background: var(--color-success);
 }
 
-[data-orientation="vertical"][data-variant="bullet"] > li[data-status="completed"]:not(:last-child)::before {
+[data-orientation="vertical"][data-variant="bullet"]
+  > li[data-status="completed"]:not(:last-child)::before {
   border-left-color: var(--color-success);
 }

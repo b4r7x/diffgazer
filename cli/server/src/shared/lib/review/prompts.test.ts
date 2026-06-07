@@ -172,7 +172,9 @@ describe("buildDrilldownPrompt", () => {
   });
 
   it("includes the required drilldown prompt sections", () => {
-    const prompt = buildDrilldownPrompt(makeIssue({ file: "test.ts" }), makeDiff(), [makeIssue({ file: "test.ts" })]);
+    const prompt = buildDrilldownPrompt(makeIssue({ file: "test.ts" }), makeDiff(), [
+      makeIssue({ file: "test.ts" }),
+    ]);
 
     for (const section of [
       SECURITY_HARDENING_PROMPT,

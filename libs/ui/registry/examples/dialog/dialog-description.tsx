@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
 
 export default function DialogDescriptionExample() {
   return (
@@ -24,15 +24,24 @@ export default function DialogDescriptionExample() {
         </DialogHeader>
         <DialogBody>
           <p className="text-sm text-gray-300 leading-relaxed">
-            Your current config in <span className="text-foreground font-mono">.diffgazer/config.json</span> will be overwritten.
-            A backup will be saved as <span className="text-foreground font-mono">config.json.bak</span>.
+            Your current config in{" "}
+            <span className="text-foreground font-mono">.diffgazer/config.json</span> will be
+            overwritten. A backup will be saved as{" "}
+            <span className="text-foreground font-mono">config.json.bak</span>.
           </p>
         </DialogBody>
-        <DialogFooter hints={[{ key: "Esc", label: "Close" }, { key: "Enter", label: "Confirm" }]}>
-          <DialogClose bracket variant="ghost">Cancel</DialogClose>
+        <DialogFooter
+          hints={[
+            { key: "Esc", label: "Close" },
+            { key: "Enter", label: "Confirm" },
+          ]}
+        >
+          <DialogClose bracket variant="ghost">
+            Cancel
+          </DialogClose>
           <DialogAction>Reset</DialogAction>
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

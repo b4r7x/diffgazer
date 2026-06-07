@@ -7,13 +7,7 @@ import { HistoryInsightsPane } from "./insights-pane";
 
 describe("HistoryInsightsPane", () => {
   it("shows an empty placeholder when no run is selected", () => {
-    render(
-      <HistoryInsightsPane
-        runId={null}
-        severityCounts={null}
-        issues={[]}
-      />,
-    );
+    render(<HistoryInsightsPane runId={null} severityCounts={null} issues={[]} />);
     expect(screen.getByText(/select a run to view insights/i)).toBeInTheDocument();
   });
 
@@ -81,7 +75,6 @@ describe("HistoryInsightsPane keyboard navigation", () => {
         severityCounts={null}
         issues={issues}
         isFocused
-
         highlightedIssueId="issue-1"
       />,
     );
@@ -97,7 +90,6 @@ describe("HistoryInsightsPane keyboard navigation", () => {
         severityCounts={null}
         issues={issues}
         isFocused
-
         highlightedIssueId="issue-1"
       />,
     );
@@ -117,7 +109,6 @@ describe("HistoryInsightsPane keyboard navigation", () => {
         severityCounts={null}
         issues={issues}
         isFocused
-
         highlightedIssueId="issue-1"
         onHighlightIssue={onHighlight}
       />,
@@ -139,7 +130,6 @@ describe("HistoryInsightsPane keyboard navigation", () => {
         severityCounts={null}
         issues={issues}
         isFocused
-
         highlightedIssueId="issue-2"
         onHighlightIssue={onHighlight}
       />,
@@ -161,7 +151,6 @@ describe("HistoryInsightsPane keyboard navigation", () => {
         severityCounts={null}
         issues={issues}
         isFocused
-
         highlightedIssueId="issue-2"
         onHighlightIssue={onHighlight}
       />,
@@ -179,7 +168,6 @@ describe("HistoryInsightsPane keyboard navigation", () => {
         severityCounts={null}
         issues={issues}
         isFocused
-
         highlightedIssueId="issue-3"
         onHighlightIssue={onHighlight}
       />,
@@ -198,7 +186,6 @@ describe("HistoryInsightsPane keyboard navigation", () => {
         severityCounts={null}
         issues={issues}
         isFocused
-
         highlightedIssueId="issue-3"
         onListBoundaryReached={onBoundary}
       />,
@@ -219,7 +206,6 @@ describe("HistoryInsightsPane keyboard navigation", () => {
         severityCounts={null}
         issues={issues}
         isFocused
-
         highlightedIssueId="issue-1"
         onHighlightIssue={vi.fn()}
       />,
@@ -242,7 +228,6 @@ describe("HistoryInsightsPane keyboard navigation", () => {
         severityCounts={null}
         issues={issues}
         isFocused
-
         highlightedIssueId="issue-2"
         onSelectIssue={onSelectIssue}
       />,
@@ -264,7 +249,6 @@ describe("HistoryInsightsPane keyboard navigation", () => {
         severityCounts={counts}
         issues={issues}
         isFocused
-
         highlightedIssueId="issue-1"
       />,
     );
@@ -281,7 +265,6 @@ describe("HistoryInsightsPane keyboard navigation", () => {
         severityCounts={null}
         issues={issues}
         isFocused
-
         highlightedIssueId="issue-2"
       />,
     );
@@ -302,7 +285,6 @@ describe("HistoryInsightsPane keyboard navigation", () => {
         severityCounts={null}
         issues={newIssues}
         isFocused
-
         highlightedIssueId="issue-x"
       />,
     );

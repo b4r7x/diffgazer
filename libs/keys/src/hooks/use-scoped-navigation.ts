@@ -6,10 +6,7 @@ import { keys } from "../core/keys.js";
 import { dispatchNavigationKey, resolveDirectionKeys } from "../core/navigation-dispatch.js";
 import { useKeyboardRegistryContext } from "../providers/keyboard-context.js";
 import { useKey } from "./use-key.js";
-import {
-  type UseNavigationOptions,
-  useNavigationCore,
-} from "./use-navigation.js";
+import { type UseNavigationOptions, useNavigationCore } from "./use-navigation.js";
 
 export type UseScopedNavigationOptions<TValue extends string = string> = Omit<
   UseNavigationOptions<TValue>,
@@ -50,24 +47,45 @@ export function useScopedNavigation<TValue extends string = string>(
 
   const { resolvedUpKeys, resolvedDownKeys } = resolveDirectionKeys(orientation, upKeys, downKeys);
 
-  const { highlighted, isHighlighted, highlight, move, focusIndex, handleSelect, handleEnter, getElements } =
-    useNavigationCore({ ...options, containerRef });
+  const {
+    highlighted,
+    isHighlighted,
+    highlight,
+    move,
+    focusIndex,
+    handleSelect,
+    handleEnter,
+    getElements,
+  } = useNavigationCore({ ...options, containerRef });
   const handlesEnter = Boolean(onEnter || onSelect);
   const handlesSpace = Boolean(onSelect);
 
   // Editable-target filtering is handled by the keyboard provider via `allowInInput`.
-  const dispatch = useCallback((key: string, nativeEvent: globalThis.KeyboardEvent) => {
-    dispatchNavigationKey(key, {
-      resolvedUpKeys,
-      resolvedDownKeys,
-      move: (delta) => move(delta, nativeEvent, key),
+  const dispatch = useCallback(
+    (key: string, nativeEvent: globalThis.KeyboardEvent) => {
+      dispatchNavigationKey(key, {
+        resolvedUpKeys,
+        resolvedDownKeys,
+        move: (delta) => move(delta, nativeEvent, key),
+        focusIndex,
+        handleSelect: handlesSpace ? (e) => handleSelect(e) : undefined,
+        handleEnter: handlesEnter ? (e) => handleEnter(e) : undefined,
+        total: getElements().length,
+        nativeEvent,
+      });
+    },
+    [
       focusIndex,
-      handleSelect: handlesSpace ? (e) => handleSelect(e) : undefined,
-      handleEnter: handlesEnter ? (e) => handleEnter(e) : undefined,
-      total: getElements().length,
-      nativeEvent,
-    });
-  }, [focusIndex, getElements, handleEnter, handleSelect, handlesEnter, handlesSpace, move, resolvedDownKeys, resolvedUpKeys]);
+      getElements,
+      handleEnter,
+      handleSelect,
+      handlesEnter,
+      handlesSpace,
+      move,
+      resolvedDownKeys,
+      resolvedUpKeys,
+    ],
+  );
 
   const handlers: Record<string, (event: globalThis.KeyboardEvent) => void> = {
     ...keys(resolvedUpKeys, (e) => dispatch(e.key, e)),
@@ -83,16 +101,13 @@ export function useScopedNavigation<TValue extends string = string>(
     handlers[" "] = (e) => dispatch(" ", e);
   }
 
-  useKey(
-    handlers,
-    {
-      enabled,
-      preventDefault,
-      containerRef,
-      focusWithinOnly: resolvedFocusWithinOnly,
-      scope,
-    },
-  );
+  useKey(handlers, {
+    enabled,
+    preventDefault,
+    containerRef,
+    focusWithinOnly: resolvedFocusWithinOnly,
+    scope,
+  });
 
   return { highlighted, isHighlighted, highlight };
 }

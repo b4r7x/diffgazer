@@ -19,14 +19,8 @@ export async function loadContextSnapshot(
   try {
     const markdownPath = path.join(contextDir, "context.md");
     const markdown = await readFile(markdownPath, "utf8");
-    const graphRaw = await readFile(
-      path.join(contextDir, "context.json"),
-      "utf8",
-    );
-    const metaRaw = await readFile(
-      path.join(contextDir, "context.meta.json"),
-      "utf8",
-    );
+    const graphRaw = await readFile(path.join(contextDir, "context.json"), "utf8");
+    const metaRaw = await readFile(path.join(contextDir, "context.meta.json"), "utf8");
     const graph = JSON.parse(graphRaw) as ProjectContextGraph;
     const meta = JSON.parse(metaRaw) as ProjectContextMeta;
     return { markdown, graph, meta };
@@ -76,9 +70,7 @@ export async function buildProjectContextSnapshot(
 
   const readmePath = path.join(projectPath, "README.md");
   const readmeRaw = await readFile(readmePath, "utf8").catch(() => "");
-  const readmeLines = readmeRaw
-    ? readmeRaw.split("\n").slice(0, 40).join("\n")
-    : "";
+  const readmeLines = readmeRaw ? readmeRaw.split("\n").slice(0, 40).join("\n") : "";
 
   const markdownSections: string[] = [];
   markdownSections.push(`# Project Context Snapshot`);
@@ -113,7 +105,9 @@ export async function buildProjectContextSnapshot(
 
   let rawMarkdown = markdownSections.join("\n");
   if (Buffer.byteLength(rawMarkdown, "utf-8") > MAX_CONTEXT_BYTES) {
-    rawMarkdown = Buffer.from(rawMarkdown, "utf-8").subarray(0, MAX_CONTEXT_BYTES).toString("utf-8");
+    rawMarkdown = Buffer.from(rawMarkdown, "utf-8")
+      .subarray(0, MAX_CONTEXT_BYTES)
+      .toString("utf-8");
     rawMarkdown += "\n\n(Context truncated to fit size limit)";
   }
 
@@ -127,9 +121,7 @@ export async function buildProjectContextSnapshot(
     })),
     edges: packages.map((pkg) => ({
       from: pkg.name,
-      to: pkg.dependencies.filter((dep) =>
-        packages.some((p) => p.name === dep),
-      ),
+      to: pkg.dependencies.filter((dep) => packages.some((p) => p.name === dep)),
     })),
     fileTree,
     changedFiles: [],
@@ -144,15 +136,9 @@ export async function buildProjectContextSnapshot(
     ...(treeCounter.truncated ? { treeTruncated: true } : {}),
   };
 
-  await atomicWriteFile(
-    path.join(contextDir, "context.json"),
-    JSON.stringify(graph, null, 2),
-  );
+  await atomicWriteFile(path.join(contextDir, "context.json"), JSON.stringify(graph, null, 2));
   await atomicWriteFile(path.join(contextDir, "context.md"), rawMarkdown);
-  await atomicWriteFile(
-    path.join(contextDir, "context.meta.json"),
-    JSON.stringify(meta, null, 2),
-  );
+  await atomicWriteFile(path.join(contextDir, "context.meta.json"), JSON.stringify(meta, null, 2));
 
   return { markdown: rawMarkdown, graph, meta };
 }

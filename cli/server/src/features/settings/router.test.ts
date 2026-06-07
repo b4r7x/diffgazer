@@ -114,8 +114,12 @@ describe("settings trust routes — server-scoped project", () => {
     const projectB = store.ensureProjectFile(projectRootB);
     expect(projectA.projectId).toBeTruthy();
     expect(projectB.projectId).toBeTruthy();
-    await store.saveTrust(trustForProject(requireValue(projectA.projectId, "project A id"), projectRootA));
-    await store.saveTrust(trustForProject(requireValue(projectB.projectId, "project B id"), projectRootB));
+    await store.saveTrust(
+      trustForProject(requireValue(projectA.projectId, "project A id"), projectRootA),
+    );
+    await store.saveTrust(
+      trustForProject(requireValue(projectB.projectId, "project B id"), projectRootB),
+    );
 
     const app = await loadApp();
     const res = await app.request("/api/settings/trust/list", {

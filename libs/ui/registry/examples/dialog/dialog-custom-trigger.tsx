@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogAction,
@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
 
 export default function DialogCustomTrigger() {
   return (
@@ -27,14 +27,19 @@ export default function DialogCustomTrigger() {
         </DialogHeader>
         <DialogBody>
           <p className="text-sm text-gray-300 leading-relaxed">
-            This dialog was opened from a <span className="font-mono text-foreground">&lt;Button&gt;</span> using the render-prop pattern, avoiding <span className="font-mono text-foreground">&lt;button&gt;&lt;button&gt;</span> nesting.
+            This dialog was opened from a{" "}
+            <span className="font-mono text-foreground">&lt;Button&gt;</span> using the render-prop
+            pattern, avoiding{" "}
+            <span className="font-mono text-foreground">&lt;button&gt;&lt;button&gt;</span> nesting.
           </p>
         </DialogBody>
         <DialogFooter>
-          <DialogClose bracket variant="ghost">Close</DialogClose>
+          <DialogClose bracket variant="ghost">
+            Close
+          </DialogClose>
           <DialogAction>Confirm</DialogAction>
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

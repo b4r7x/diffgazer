@@ -14,12 +14,7 @@ const padding: Record<NonNullable<BadgeProps["size"]>, string> = {
   lg: "  ",
 };
 
-export function Badge({
-  variant = "neutral",
-  size = "sm",
-  dot = false,
-  children,
-}: BadgeProps) {
+export function Badge({ variant = "neutral", size = "sm", dot = false, children }: BadgeProps) {
   const { tokens } = useTheme();
 
   const colorMap = {
@@ -38,7 +33,8 @@ export function Badge({
   return (
     <Box>
       <Text color={color}>
-        [{pad}{dotPrefix}
+        [{pad}
+        {dotPrefix}
       </Text>
       <Text color={color}>{children}</Text>
       <Text color={color}>{pad}]</Text>

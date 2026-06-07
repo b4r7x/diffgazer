@@ -2,13 +2,7 @@
 
 import { type KeyboardEvent, type RefObject, useMemo } from "react";
 import { type ParsedDiff, type SplitCell, type SplitRow, toSplitRows } from "@/lib/diff";
-import {
-  formatHunkHeader,
-  LINE_PREFIX,
-  LineContent,
-  ROW_STATE,
-  SR_LABEL,
-} from "./diff-view-line";
+import { formatHunkHeader, LINE_PREFIX, LineContent, ROW_STATE, SR_LABEL } from "./diff-view-line";
 
 export function SplitView({
   parsed,
@@ -32,10 +26,7 @@ export function SplitView({
     [disableWordDiff, parsed.hunks],
   );
 
-  const { leftRows, rightRows } = useMemo(
-    () => partitionSplitRows(rows),
-    [rows],
-  );
+  const { leftRows, rightRows } = useMemo(() => partitionSplitRows(rows), [rows]);
 
   return (
     // containerRef on the outer split (not on each SplitSide rows): useNavigation
@@ -208,9 +199,7 @@ function SplitCellRow({
         {LINE_PREFIX[cell.type]}
       </span>
       <span className="diff-code">
-        {SR_LABEL[cell.type] && (
-          <span className="sr-only">{SR_LABEL[cell.type]}</span>
-        )}
+        {SR_LABEL[cell.type] && <span className="sr-only">{SR_LABEL[cell.type]}</span>}
         <LineContent
           content={cell.content}
           wordSegments={disableWordDiff ? undefined : cell.wordSegments}

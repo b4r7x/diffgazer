@@ -46,12 +46,20 @@ function resumeEntry(entry: TrapEntry): void {
   if (!entry.suspended) return;
   entry.ownerDocument.addEventListener("keydown", entry.handleKeyDown, true);
   entry.ownerDocument.addEventListener("focusin", entry.handleFocusIn, true);
-  entry.observer.observe(entry.container, { childList: true, subtree: true, attributes: true, attributeFilter: ["disabled", "hidden", "tabindex", "aria-hidden", "inert"] });
+  entry.observer.observe(entry.container, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["disabled", "hidden", "tabindex", "aria-hidden", "inert"],
+  });
   entry.suspended = false;
   // Recapture focus into the resumed trap's container
-  const target = entry.container.contains(entry.lastFocused) && entry.lastFocused.isConnected && isFocusable(entry.lastFocused)
-    ? entry.lastFocused
-    : pickInitialTarget(entry.container, entry.initialFocus);
+  const target =
+    entry.container.contains(entry.lastFocused) &&
+    entry.lastFocused.isConnected &&
+    isFocusable(entry.lastFocused)
+      ? entry.lastFocused
+      : pickInitialTarget(entry.container, entry.initialFocus);
   target.focus();
 }
 
@@ -81,7 +89,10 @@ function pickInitialTarget(
   return getFocusableElements(container)[0] ?? container;
 }
 
-function isInsideContainer(container: HTMLElement, target: EventTarget | null): target is HTMLElement {
+function isInsideContainer(
+  container: HTMLElement,
+  target: EventTarget | null,
+): target is HTMLElement {
   const View = getOwnerView(container);
   return isNode(target, View) && container.contains(target);
 }
@@ -133,9 +144,10 @@ export function useFocusTrap(
     let lastFocused: HTMLElement = container;
 
     const recapture = () => {
-      const target = container.contains(lastFocused) && lastFocused.isConnected && isFocusable(lastFocused)
-        ? lastFocused
-        : pickInitialTarget(container, initialFocus);
+      const target =
+        container.contains(lastFocused) && lastFocused.isConnected && isFocusable(lastFocused)
+          ? lastFocused
+          : pickInitialTarget(container, initialFocus);
       target.focus();
     };
 
@@ -190,7 +202,8 @@ export function useFocusTrap(
     };
 
     const observer = new MutationObserver(() => {
-      if (lastFocused.isConnected && container.contains(lastFocused) && isFocusable(lastFocused)) return;
+      if (lastFocused.isConnected && container.contains(lastFocused) && isFocusable(lastFocused))
+        return;
       recapture();
     });
 
@@ -213,7 +226,12 @@ export function useFocusTrap(
     // Attach listeners and focus now that the outer trap is suspended
     ownerDocument.addEventListener("keydown", handleKeyDown, true);
     ownerDocument.addEventListener("focusin", handleFocusIn, true);
-    observer.observe(container, { childList: true, subtree: true, attributes: true, attributeFilter: ["disabled", "hidden", "tabindex", "aria-hidden", "inert"] });
+    observer.observe(container, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["disabled", "hidden", "tabindex", "aria-hidden", "inert"],
+    });
 
     const initialTarget = pickInitialTarget(container, initialFocus);
     initialTarget.focus();

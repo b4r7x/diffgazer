@@ -1,7 +1,7 @@
 "use client";
 
-import { Button } from "@/components/ui/button"
-import { Toaster, toast } from "@/components/ui/toast"
+import { Button } from "@/components/ui/button";
+import { Toaster, toast } from "@/components/ui/toast";
 
 export default function ToastActions() {
   return (
@@ -13,7 +13,11 @@ export default function ToastActions() {
           onClick={() =>
             toast.success("Review Submitted", {
               message: "Your code review has been submitted for 3 files.",
-              action: <Button variant="ghost" size="sm">Undo</Button>,
+              action: (
+                <Button variant="ghost" size="sm">
+                  Undo
+                </Button>
+              ),
             })
           }
         >
@@ -34,5 +38,5 @@ export default function ToastActions() {
       </div>
       <Toaster />
     </>
-  )
+  );
 }

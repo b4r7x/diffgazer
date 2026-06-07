@@ -15,11 +15,7 @@ describe("InfoField", () => {
   });
 
   it("renders as a div without button role when no onClick", () => {
-    render(
-      <InfoField label="Provider">
-        OpenAI
-      </InfoField>,
-    );
+    render(<InfoField label="Provider">OpenAI</InfoField>);
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
     expect(screen.getByText("Provider")).toBeInTheDocument();
   });

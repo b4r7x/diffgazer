@@ -1,7 +1,8 @@
-import type { ComponentDoc } from "./types"
+import type { ComponentDoc } from "./types";
 
 export const menuDoc: ComponentDoc = {
-  description: "Terminal-styled selection list with keyboard navigation, highlighting and optional hotkey indicators.",
+  description:
+    "Terminal-styled selection list with keyboard navigation, highlighting and optional hotkey indicators.",
   anatomy: [
     { name: "Menu", indent: 0, note: "Root (manages selection, variant context)" },
     { name: "MenuItem", indent: 1, note: "Selectable item with optional hotkey, value, variant" },
@@ -17,11 +18,13 @@ export const menuDoc: ComponentDoc = {
   notes: [
     {
       title: "Composition Contract",
-      content: "Use Menu.Item and Menu.Divider as explicit children in the Menu JSX tree. Custom item UI belongs inside Menu.Item. Components that create items internally from an opaque wrapper are not part of the current public contract.",
+      content:
+        "Use Menu.Item and Menu.Divider as explicit children in the Menu JSX tree. Custom item UI belongs inside Menu.Item. Components that create items internally from an opaque wrapper are not part of the current public contract.",
     },
     {
       title: "Built-in Keyboard Navigation",
-      content: "Menu includes keyboard navigation via useListbox (Arrow keys, Home/End, Enter/Space). For custom key bindings or cross-component navigation, use the highlighted, onHighlightChange, and onKeyDown props to add external handlers alongside the built-in behavior.",
+      content:
+        "Menu includes keyboard navigation via useListbox (Arrow keys, Home/End, Enter/Space). For custom key bindings or cross-component navigation, use the highlighted, onHighlightChange, and onKeyDown props to add external handlers alongside the built-in behavior.",
     },
   ],
   usage: { example: "menu-default" },
@@ -34,10 +37,9 @@ export const menuDoc: ComponentDoc = {
     { name: "menu-submenu", title: "Submenu" },
   ],
   keyboard: {
-    description: "Keyboard navigation is built-in. The menu-keyboard example demonstrates controlled mode with explicit state management. Arrow keys move focus, Enter activates selection.",
-    examples: [
-      { name: "menu-keyboard", title: "Controlled keyboard navigation" },
-    ],
+    description:
+      "Keyboard navigation is built-in. The menu-keyboard example demonstrates controlled mode with explicit state management. Arrow keys move focus, Enter activates selection.",
+    examples: [{ name: "menu-keyboard", title: "Controlled keyboard navigation" }],
   },
   props: {
     Menu: {
@@ -45,13 +47,15 @@ export const menuDoc: ComponentDoc = {
         type: "string | null",
         required: false,
         defaultValue: null,
-        description: 'Controlled selected item id. Pair with onSelect. Switches item role to "menuitemradio" with aria-checked.',
+        description:
+          'Controlled selected item id. Pair with onSelect. Switches item role to "menuitemradio" with aria-checked.',
       },
       defaultSelectedId: {
         type: "string | null",
         required: false,
         defaultValue: "null",
-        description: "Initial selected id for uncontrolled mode. Setting this to a non-null value enables selection semantics.",
+        description:
+          "Initial selected id for uncontrolled mode. Setting this to a non-null value enables selection semantics.",
       },
       highlighted: {
         type: "string | null",
@@ -87,7 +91,8 @@ export const menuDoc: ComponentDoc = {
         type: '"default" | "hub"',
         required: false,
         defaultValue: '"default"',
-        description: "Visual layout. Hub uses larger rows with right-aligned values for hub-style menus.",
+        description:
+          "Visual layout. Hub uses larger rows with right-aligned values for hub-style menus.",
       },
       wrap: {
         type: "boolean",
@@ -99,7 +104,8 @@ export const menuDoc: ComponentDoc = {
         type: "boolean",
         required: false,
         defaultValue: null,
-        description: "Auto-focus the menu container on mount so arrow keys work without an explicit click.",
+        description:
+          "Auto-focus the menu container on mount so arrow keys work without an explicit click.",
       },
       "aria-label": {
         type: "string",
@@ -119,13 +125,15 @@ export const menuDoc: ComponentDoc = {
         type: "string",
         required: true,
         defaultValue: null,
-        description: "Stable identifier matched against selectedId/highlighted and passed to onSelect.",
+        description:
+          "Stable identifier matched against selectedId/highlighted and passed to onSelect.",
       },
       disabled: {
         type: "boolean",
         required: false,
         defaultValue: "false",
-        description: "Disables activation while keeping the item in the navigation order with aria-disabled.",
+        description:
+          "Disables activation while keeping the item in the navigation order with aria-disabled.",
       },
       variant: {
         type: '"default" | "danger"',
@@ -155,7 +163,8 @@ export const menuDoc: ComponentDoc = {
         type: "ReactNode",
         required: false,
         defaultValue: null,
-        description: "Leading icon rendered in the indicator slot. Replaces the default ▐/> indicator when provided.",
+        description:
+          "Leading icon rendered in the indicator slot. Replaces the default ▐/> indicator when provided.",
       },
       children: {
         type: "ReactNode",
@@ -169,7 +178,8 @@ export const menuDoc: ComponentDoc = {
         type: "string",
         required: false,
         defaultValue: null,
-        description: "Class applied to the separator. Renders role=\"separator\" with horizontal orientation.",
+        description:
+          'Class applied to the separator. Renders role="separator" with horizontal orientation.',
       },
     },
     MenuGroup: {
@@ -177,7 +187,8 @@ export const menuDoc: ComponentDoc = {
         type: "ReactNode",
         required: false,
         defaultValue: null,
-        description: "Optional label rendered via MenuLabel. When provided, the group is labelled via aria-labelledby.",
+        description:
+          "Optional label rendered via MenuLabel. When provided, the group is labelled via aria-labelledby.",
       },
       children: {
         type: "ReactNode",
@@ -319,4 +330,4 @@ export const menuDoc: ComponentDoc = {
       },
     },
   },
-}
+};

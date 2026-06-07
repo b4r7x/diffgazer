@@ -1,19 +1,16 @@
-"use client"
+"use client";
 
-import { useMemo } from "react"
-import { getEncodedListboxItemId, useListbox } from "@/hooks/use-listbox"
+import { useMemo } from "react";
+import { getEncodedListboxItemId, useListbox } from "@/hooks/use-listbox";
 
 const options = [
   { id: "alpha", label: "Alpha" },
   { id: "beta", label: "Beta" },
   { id: "gamma", label: "Gamma" },
-]
+];
 
 export default function ListboxBasicExample() {
-  const items = useMemo(
-    () => options.map((option) => ({ id: option.id })),
-    [],
-  )
+  const items = useMemo(() => options.map((option) => ({ id: option.id })), []);
   const {
     selectedId,
     highlighted: highlightedItemId,
@@ -23,7 +20,7 @@ export default function ListboxBasicExample() {
     idPrefix: "example-listbox",
     items,
     defaultSelectedId: "beta",
-  })
+  });
 
   return (
     // biome-ignore lint/a11y/useAriaPropsSupportedByRole: getContainerProps applies role="listbox" dynamically, which Biome cannot resolve; aria-label is valid for the listbox role.
@@ -33,8 +30,8 @@ export default function ListboxBasicExample() {
       className="flex w-64 flex-col border border-border bg-background p-1"
     >
       {options.map((option) => {
-        const selected = selectedId === option.id
-        const highlighted = highlightedItemId === option.id
+        const selected = selectedId === option.id;
+        const highlighted = highlightedItemId === option.id;
         return (
           // biome-ignore lint/a11y/useFocusableInteractive: WAI-ARIA listbox/activedescendant pattern — options stay non-focusable; the listbox container holds focus and aria-activedescendant tracks the active option.
           // biome-ignore lint/a11y/useKeyWithClickEvents: option activation via Enter/Space is handled by the listbox container's onKeyDown, not per option.
@@ -53,8 +50,8 @@ export default function ListboxBasicExample() {
           >
             {option.label}
           </div>
-        )
+        );
       })}
     </div>
-  )
+  );
 }

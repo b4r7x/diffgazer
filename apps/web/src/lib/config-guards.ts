@@ -1,9 +1,6 @@
 import { redirect } from "@tanstack/react-router";
 import { api } from "@/lib/api";
-import {
-  getConfiguredGuardCache,
-  setConfiguredGuardCache,
-} from "./config-guard-cache";
+import { getConfiguredGuardCache, setConfiguredGuardCache } from "./config-guard-cache";
 
 export const CONFIG_CACHE_TTL = 30_000;
 

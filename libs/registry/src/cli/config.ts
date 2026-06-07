@@ -7,7 +7,10 @@ import { toErrorMessage, warn } from "./terminal.js";
 
 const ALIAS_PATTERN = /^(\.\.?\/|[@~#][\w-]*\/)/;
 
-export const aliasPathSchema = z.string().regex(ALIAS_PATTERN, 'Must start with an import alias such as "@/" or "~/" or a relative path').optional();
+export const aliasPathSchema = z
+  .string()
+  .regex(ALIAS_PATTERN, 'Must start with an import alias such as "@/" or "~/" or a relative path')
+  .optional();
 
 function aliasToFsPath(alias: string, sourceDir?: string): string {
   const stripped = alias.replace(/^[@~#][\w-]*\//, "");
@@ -16,7 +19,11 @@ function aliasToFsPath(alias: string, sourceDir?: string): string {
 
 export type ConfigLoadResult<T> =
   | { ok: true; config: T }
-  | { ok: false; error: "not_found" | "parse_error" | "validation_error" | "unknown_error"; message?: string };
+  | {
+      ok: false;
+      error: "not_found" | "parse_error" | "validation_error" | "unknown_error";
+      message?: string;
+    };
 
 export function loadJsonConfig<T>(
   configFileName: string,
@@ -51,7 +58,11 @@ function validateParsed<T>(
   } catch (e) {
     if (e instanceof z.ZodError) {
       const details = e.issues.map((i) => `  - ${i.path.join(".")}: ${i.message}`).join("\n");
-      return { ok: false, error: "validation_error", message: `Invalid ${configFileName}:\n${details}` };
+      return {
+        ok: false,
+        error: "validation_error",
+        message: `Invalid ${configFileName}:\n${details}`,
+      };
     }
     return { ok: false, error: "unknown_error", message: toErrorMessage(e) };
   }
@@ -98,8 +109,14 @@ export function updateManifest<T extends Record<string, unknown>>(opts: {
   const config: Record<string, unknown> = { ...result.config };
   const existing = config[opts.manifestKey];
   const manifest = mutateManifest(
-    { ...(existing && typeof existing === "object" && !Array.isArray(existing) ? existing as Record<string, unknown> : {}) },
-    opts.add, opts.remove, opts.metadata,
+    {
+      ...(existing && typeof existing === "object" && !Array.isArray(existing)
+        ? (existing as Record<string, unknown>)
+        : {}),
+    },
+    opts.add,
+    opts.remove,
+    opts.metadata,
   );
 
   if (Object.keys(manifest).length > 0) {
@@ -136,12 +153,7 @@ export function createConfigModule<
     writeJsonConfig(configFileName, config, cwd);
   }
 
-  function update(
-    cwd: string,
-    add?: string[],
-    remove?: string[],
-    metadata?: TMetadata,
-  ): void {
+  function update(cwd: string, add?: string[], remove?: string[], metadata?: TMetadata): void {
     updateManifest({ configFileName, schema, manifestKey, cwd, add, remove, metadata });
   }
 
@@ -150,7 +162,7 @@ export function createConfigModule<
     if (!result.ok) return undefined;
     const val = result.config[manifestKey];
     return val && typeof val === "object" && !Array.isArray(val)
-      ? val as Record<string, unknown>
+      ? (val as Record<string, unknown>)
       : undefined;
   }
 

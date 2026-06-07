@@ -1,4 +1,4 @@
-import { Divider } from "@/components/ui/divider"
+import { Divider } from "@/components/ui/divider";
 
 export default function DividerVariants() {
   return (
@@ -9,5 +9,5 @@ export default function DividerVariants() {
       <Divider variant="spaced" />
       <p className="text-sm text-muted-foreground">Content continues</p>
     </div>
-  )
+  );
 }

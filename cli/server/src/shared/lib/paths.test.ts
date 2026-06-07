@@ -2,7 +2,11 @@ import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import * as path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { getGlobalDiffgazerDir, getGlobalModelsDevCatalogPath, resolveProjectRoot } from "./paths.js";
+import {
+  getGlobalDiffgazerDir,
+  getGlobalModelsDevCatalogPath,
+  resolveProjectRoot,
+} from "./paths.js";
 
 let tempRoot: string;
 
@@ -20,17 +24,21 @@ describe("resolveProjectRoot", () => {
   it("prioritizes header, then env, then cwd", () => {
     const home = homedir();
 
-    expect(resolveProjectRoot({
-      header: `${home}/from/header`,
-      env: path.join(tempRoot, "env"),
-      cwd: path.join(tempRoot, "cwd"),
-    })).toBe(`${home}/from/header`);
+    expect(
+      resolveProjectRoot({
+        header: `${home}/from/header`,
+        env: path.join(tempRoot, "env"),
+        cwd: path.join(tempRoot, "cwd"),
+      }),
+    ).toBe(`${home}/from/header`);
 
-    expect(resolveProjectRoot({
-      header: null,
-      env: path.join(tempRoot, "env"),
-      cwd: path.join(tempRoot, "cwd"),
-    })).toBe(path.join(tempRoot, "env"));
+    expect(
+      resolveProjectRoot({
+        header: null,
+        env: path.join(tempRoot, "env"),
+        cwd: path.join(tempRoot, "cwd"),
+      }),
+    ).toBe(path.join(tempRoot, "env"));
   });
 
   it("walks up from cwd to the nearest git root", async () => {

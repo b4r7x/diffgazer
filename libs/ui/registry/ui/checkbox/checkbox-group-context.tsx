@@ -7,7 +7,12 @@ import type { CheckboxSize } from "./checkbox";
 export type CheckboxGroupContextValue = {
   value: string[];
   toggle: (itemValue: string) => void;
-  registerItem: (itemId: string, itemValue: string, disabled: boolean, element: HTMLElement | null) => void;
+  registerItem: (
+    itemId: string,
+    itemValue: string,
+    disabled: boolean,
+    element: HTMLElement | null,
+  ) => void;
   unregisterItem: (itemId: string) => void;
   disabled: boolean;
   size: CheckboxSize;

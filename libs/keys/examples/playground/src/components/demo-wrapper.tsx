@@ -25,9 +25,7 @@ export function DemoWrapper({
     <div className="demo-wrapper">
       <div className="demo-wrapper__header">
         <h1 className="demo-wrapper__title">{title}</h1>
-        {activeScope && (
-          <span className="demo-wrapper__scope">{activeScope}</span>
-        )}
+        {activeScope && <span className="demo-wrapper__scope">{activeScope}</span>}
       </div>
       <p className="demo-wrapper__description">{description}</p>
       <div className="demo-wrapper__content">{children}</div>

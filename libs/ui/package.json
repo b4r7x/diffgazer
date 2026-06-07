@@ -309,7 +309,7 @@
     "build": "pnpm validate:registry && tsup && pnpm verify:rsc && pnpm build:declarations && pnpm build:shadcn && pnpm build:docs-data && pnpm build:artifacts",
     "verify:rsc": "node --import tsx scripts/verify-rsc-directives.ts",
     "build:declarations": "node --import tsx scripts/build-declarations.ts",
-    "build:shadcn": "node --import tsx scripts/build-shadcn-registry.ts",
+    "build:shadcn": "node --import tsx scripts/build-shadcn-registry.ts && biome format --write public/r",
     "build:docs-data": "node --import tsx scripts/build-docs-data.ts",
     "build:artifacts": "node --import tsx scripts/build-publish-artifacts.ts",
     "validate:registry": "node --import tsx scripts/validate-registry-metadata.ts",

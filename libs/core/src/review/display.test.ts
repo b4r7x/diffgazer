@@ -44,15 +44,9 @@ describe("getAgentDetail", () => {
   });
 
   it("pluralizes the issue count when complete", () => {
-    expect(getAgentDetail(makeAgent({ status: "complete", issueCount: 0 }))).toBe(
-      "0 issues",
-    );
-    expect(getAgentDetail(makeAgent({ status: "complete", issueCount: 1 }))).toBe(
-      "1 issue",
-    );
-    expect(getAgentDetail(makeAgent({ status: "complete", issueCount: 5 }))).toBe(
-      "5 issues",
-    );
+    expect(getAgentDetail(makeAgent({ status: "complete", issueCount: 0 }))).toBe("0 issues");
+    expect(getAgentDetail(makeAgent({ status: "complete", issueCount: 1 }))).toBe("1 issue");
+    expect(getAgentDetail(makeAgent({ status: "complete", issueCount: 5 }))).toBe("5 issues");
   });
 
   it("returns the literal 'error' for failed agents", () => {

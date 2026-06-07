@@ -12,7 +12,7 @@ const isValidUuid = (id: string): boolean => UuidSchema.safeParse(id).success;
 const validateSchema = <T, E>(
   value: unknown,
   schema: ZodType<T>,
-  errorFactory: (message: string) => E
+  errorFactory: (message: string) => E,
 ): Result<T, E> => {
   const result = schema.safeParse(value);
   if (!result.success) {
@@ -25,7 +25,7 @@ const parseAndValidate = <T, E>(
   content: string,
   schema: ZodType<T>,
   parseErrorFactory: (message: string) => E,
-  validationErrorFactory: (message: string) => E
+  validationErrorFactory: (message: string) => E,
 ): Result<T, E> => {
   const parseResult = safeParseJson(content, parseErrorFactory);
   if (!parseResult.ok) {
@@ -60,7 +60,7 @@ async function ensureDirectory(dirPath: string, name: string): Promise<Result<vo
       return err(createStoreError("PERMISSION_ERROR", `Permission denied: ${dirPath}`));
     }
     return err(
-      createStoreError("WRITE_ERROR", `Failed to create ${name} directory`, getErrorMessage(error))
+      createStoreError("WRITE_ERROR", `Failed to create ${name} directory`, getErrorMessage(error)),
     );
   }
 }
@@ -68,7 +68,7 @@ async function ensureDirectory(dirPath: string, name: string): Promise<Result<vo
 async function safeAtomicWrite(
   path: string,
   content: string,
-  name: string
+  name: string,
 ): Promise<Result<void, StoreError>> {
   try {
     await atomicWrite(path, content);
@@ -84,13 +84,13 @@ async function safeAtomicWrite(
 async function extractMetadataFromFile<M>(
   path: string,
   schema: ZodType<M>,
-  name: string
+  name: string,
 ): Promise<Result<M, StoreError>> {
   const readResult = await safeReadFile(path, name);
   if (!readResult.ok) return readResult;
 
   const parseResult = safeParseJson(readResult.value, (message) =>
-    createStoreError("PARSE_ERROR", `${name}: ${message}`)
+    createStoreError("PARSE_ERROR", `${name}: ${message}`),
   );
   if (!parseResult.ok) return parseResult;
 
@@ -100,7 +100,7 @@ async function extractMetadataFromFile<M>(
   }
 
   return validateSchema(metadata, schema, (message) =>
-    createStoreError("VALIDATION_ERROR", `${name} metadata validation failed`, message)
+    createStoreError("VALIDATION_ERROR", `${name} metadata validation failed`, message),
   );
 }
 
@@ -121,7 +121,7 @@ export function createCollection<T, M>(config: CollectionConfig<T, M>): Collecti
       readResult.value,
       schema,
       (message) => createStoreError("PARSE_ERROR", `${name}: ${message}`),
-      (message) => createStoreError("VALIDATION_ERROR", `${name} failed validation`, message)
+      (message) => createStoreError("VALIDATION_ERROR", `${name} failed validation`, message),
     );
   }
 
@@ -149,19 +149,19 @@ export function createCollection<T, M>(config: CollectionConfig<T, M>): Collecti
       if (isNodeError(error, "EACCES")) {
         return err(createStoreError("PERMISSION_ERROR", `Permission denied: ${dir}`));
       }
-      return err(createStoreError("PARSE_ERROR", `Failed to read ${name} directory`, getErrorMessage(error)));
+      return err(
+        createStoreError("PARSE_ERROR", `Failed to read ${name} directory`, getErrorMessage(error)),
+      );
     }
 
     const jsonFiles = files.filter((f) => f.endsWith(".json"));
-    const ids = jsonFiles
-      .map((f) => f.replace(".json", ""))
-      .filter(isValidUuid);
+    const ids = jsonFiles.map((f) => f.replace(".json", "")).filter(isValidUuid);
 
     const items: M[] = [];
 
     if (metadataSchema) {
       const results = await Promise.all(
-        ids.map((id) => extractMetadataFromFile(filePath(id), metadataSchema, name))
+        ids.map((id) => extractMetadataFromFile(filePath(id), metadataSchema, name)),
       );
       results.forEach((result, i) => {
         if (result.ok) {
@@ -197,10 +197,11 @@ export function createCollection<T, M>(config: CollectionConfig<T, M>): Collecti
       if (isNodeError(error, "EACCES")) {
         return err(createStoreError("PERMISSION_ERROR", `Permission denied: ${path}`));
       }
-      return err(createStoreError("WRITE_ERROR", `Failed to delete ${name}`, getErrorMessage(error)));
+      return err(
+        createStoreError("WRITE_ERROR", `Failed to delete ${name}`, getErrorMessage(error)),
+      );
     }
   }
 
   return { ensureDir, read, write, list, remove };
 }
-

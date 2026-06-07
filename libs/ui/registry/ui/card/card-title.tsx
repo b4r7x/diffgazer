@@ -6,5 +6,11 @@ export type CardTitleProps = ComponentPropsWithRef<"h3"> & {
 };
 
 export function CardTitle({ as: Tag = "h3", className, ...props }: CardTitleProps) {
-  return <Tag data-slot="card-title" className={cn("text-xl font-bold text-foreground tracking-wide", className)} {...props} />;
+  return (
+    <Tag
+      data-slot="card-title"
+      className={cn("text-xl font-bold text-foreground tracking-wide", className)}
+      {...props}
+    />
+  );
 }

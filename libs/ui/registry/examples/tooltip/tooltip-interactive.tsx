@@ -1,4 +1,4 @@
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 export default function TooltipInteractiveExample() {
   return (
@@ -34,5 +34,5 @@ export default function TooltipInteractiveExample() {
         <TooltipContent>Remove selected items</TooltipContent>
       </Tooltip>
     </div>
-  )
+  );
 }

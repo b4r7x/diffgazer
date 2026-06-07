@@ -1,13 +1,13 @@
-"use client"
+"use client";
 
-import { KeyboardProvider, useScopedNavigation } from "@diffgazer/keys"
-import { useRef } from "react"
+import { KeyboardProvider, useScopedNavigation } from "@diffgazer/keys";
+import { useRef } from "react";
 
-const left = ["Inbox", "Drafts", "Sent", "Archive"]
-const right = ["Today", "This week", "Later"]
+const left = ["Inbox", "Drafts", "Sent", "Archive"];
+const right = ["Today", "This week", "Later"];
 
 function List({ label, items }: { label: string; items: string[] }) {
-  const listRef = useRef<HTMLDivElement>(null)
+  const listRef = useRef<HTMLDivElement>(null);
 
   // focusWithinOnly: arrow keys only drive the list whose focus is active, so
   // both lists coexist under one provider without an explicit scope each.
@@ -16,7 +16,7 @@ function List({ label, items }: { label: string; items: string[] }) {
     role: "option",
     wrap: true,
     focusWithinOnly: true,
-  })
+  });
 
   return (
     <div style={{ minWidth: 140 }}>
@@ -42,7 +42,7 @@ function List({ label, items }: { label: string; items: string[] }) {
         ))}
       </div>
     </div>
-  )
+  );
 }
 
 export default function UseScopedNavigationFocusWithin() {
@@ -56,5 +56,5 @@ export default function UseScopedNavigationFocusWithin() {
         </div>
       </div>
     </KeyboardProvider>
-  )
+  );
 }

@@ -15,9 +15,7 @@ export interface ReviewStreamState extends ReviewState {
   reviewId: string | null;
 }
 
-type StreamAction =
-  | ReviewAction
-  | { type: "SET_REVIEW_ID"; reviewId: string };
+type StreamAction = ReviewAction | { type: "SET_REVIEW_ID"; reviewId: string };
 
 function createInitialStreamState(): ReviewStreamState {
   return {

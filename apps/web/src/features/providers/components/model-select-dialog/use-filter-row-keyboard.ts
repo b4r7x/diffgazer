@@ -39,13 +39,17 @@ export function useModelFilters({
   enterFooter,
 }: UseModelFiltersOptions): UseModelFiltersResult {
   useKey("ArrowUp", focusSearchInput, { enabled: open && inFilters, preventDefault: true });
-  useKey("ArrowDown", () => {
-    if (!hasFilteredModels) {
-      enterFooter(0);
-      return;
-    }
-    enterListFromBoundary("first");
-  }, { enabled: open && inFilters, preventDefault: true });
+  useKey(
+    "ArrowDown",
+    () => {
+      if (!hasFilteredModels) {
+        enterFooter(0);
+        return;
+      }
+      enterListFromBoundary("first");
+    },
+    { enabled: open && inFilters, preventDefault: true },
+  );
 
   useKey("f", cycleTierFilter, { enabled: open && !inSearch });
 

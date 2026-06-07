@@ -1,6 +1,11 @@
 "use client";
 
-import { createContext, type KeyboardEvent as ReactKeyboardEvent, type RefObject, useContext } from "react";
+import {
+  createContext,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type RefObject,
+  useContext,
+} from "react";
 import type { CommandPaletteItemRegistration } from "./use-state";
 
 export interface CommandPaletteContextValue {
@@ -22,10 +27,13 @@ export interface CommandPaletteContextValue {
   unregisterItem: (registrationId: string) => void;
 }
 
-export const CommandPaletteContext = createContext<CommandPaletteContextValue | undefined>(undefined);
+export const CommandPaletteContext = createContext<CommandPaletteContextValue | undefined>(
+  undefined,
+);
 
 export function useCommandPaletteContext() {
   const context = useContext(CommandPaletteContext);
-  if (!context) throw new Error("CommandPalette compound components must be used within a CommandPalette");
+  if (!context)
+    throw new Error("CommandPalette compound components must be used within a CommandPalette");
   return context;
 }

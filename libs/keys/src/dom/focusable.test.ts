@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { queryTestElement, requireFrameDocument } from "../testing/assertions.js";
-import { getFirstFocusableElement, getFocusableElements, getTabbableElements, isFocusable } from "./focusable.js";
+import {
+  getFirstFocusableElement,
+  getFocusableElements,
+  getTabbableElements,
+  isFocusable,
+} from "./focusable.js";
 
 function mount(html: string): HTMLDivElement {
   const container = document.createElement("div");
@@ -126,7 +131,7 @@ describe("focusable utilities", () => {
       expect(ids).toEqual(["c"]);
     });
 
-    it("excludes the whole subtree under aria-hidden=\"true\" even when a child sets aria-hidden=\"false\"", () => {
+    it('excludes the whole subtree under aria-hidden="true" even when a child sets aria-hidden="false"', () => {
       const c = mount(`
         <div aria-hidden="true"><div aria-hidden="false"><button id="a">A</button></div></div>
         <div aria-hidden="false"><button id="b">B</button></div>

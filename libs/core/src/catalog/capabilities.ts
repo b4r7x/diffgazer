@@ -37,7 +37,10 @@ function resolveTier(models: ModelsDevModel[], provider: AIProvider): "free" | "
   return "paid";
 }
 
-export function deriveCapabilities(catalog: ModelsDevCatalog, provider: AIProvider): ProviderCapabilities {
+export function deriveCapabilities(
+  catalog: ModelsDevCatalog,
+  provider: AIProvider,
+): ProviderCapabilities {
   const overlay = PROVIDER_OVERLAY[provider];
   const models = mergeModelsAcrossSources(catalog, overlay.modelsDevIds);
 

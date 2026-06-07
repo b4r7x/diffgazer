@@ -11,23 +11,28 @@ interface HeaderProps {
   onBack?: () => void;
 }
 
-export function Header({
-  providerName,
-  providerStatus,
-  onBack,
-}: HeaderProps) {
+export function Header({ providerName, providerStatus, onBack }: HeaderProps) {
   return (
     <header className="relative p-4 pb-2 shrink-0">
       {onBack && (
         <div className="absolute top-4 left-4">
-          <Button variant="ghost" size="sm" onClick={onBack} className="text-tui-muted hover:text-tui-fg">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onBack}
+            className="text-tui-muted hover:text-tui-fg"
+          >
             ← Back
           </Button>
         </div>
       )}
 
-      <output className="absolute top-4 right-4 text-xs" aria-label={`Provider: ${providerName}, Status: ${providerStatus}`}>
-        <span className="text-tui-muted">●</span> {providerName} <span className="text-tui-muted">•</span>{" "}
+      <output
+        className="absolute top-4 right-4 text-xs"
+        aria-label={`Provider: ${providerName}, Status: ${providerStatus}`}
+      >
+        <span className="text-tui-muted">●</span> {providerName}{" "}
+        <span className="text-tui-muted">•</span>{" "}
         <span className="text-tui-muted capitalize">{providerStatus}</span>
       </output>
 

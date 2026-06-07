@@ -16,7 +16,7 @@ export function NavigationListBadge({
       size={size}
       className={cn(
         "group-data-[active]:bg-primary-foreground/15 group-data-[active]:text-primary-foreground group-data-[active]:border-primary-foreground/40",
-        className
+        className,
       )}
       {...props}
     >

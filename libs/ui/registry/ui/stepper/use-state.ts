@@ -20,11 +20,12 @@ export function useStepperState({
     onChange: onExpandedChange,
   });
 
-  const toggle = useCallback((id: string) => {
-    setExpanded((prev) =>
-      prev.includes(id) ? prev.filter((v) => v !== id) : [...prev, id],
-    );
-  }, [setExpanded]);
+  const toggle = useCallback(
+    (id: string) => {
+      setExpanded((prev) => (prev.includes(id) ? prev.filter((v) => v !== id) : [...prev, id]));
+    },
+    [setExpanded],
+  );
 
   return { expandedIds: expanded, toggle };
 }

@@ -34,7 +34,14 @@ export type EmptyStateProps = ComponentPropsWithRef<"div"> & {
   live?: boolean;
 };
 
-export function EmptyState({ variant = "centered", size = "md", live = false, className, children, ...props }: EmptyStateProps) {
+export function EmptyState({
+  variant = "centered",
+  size = "md",
+  live = false,
+  className,
+  children,
+  ...props
+}: EmptyStateProps) {
   return (
     <div
       data-size={size}

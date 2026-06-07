@@ -53,13 +53,15 @@ describe("http server startup", () => {
   it("formats EADDRINUSE as an actionable message", () => {
     const error = Object.assign(new Error("listen EADDRINUSE"), { code: "EADDRINUSE" });
 
-    expect(formatListenError(error, "127.0.0.1", 3000)).toBe([
-      "Port 3000 is already in use on 127.0.0.1.",
-      "Stop the existing process or choose another API port:",
-      "  PORT=3002 pnpm --filter @diffgazer/server dev",
-      "If running apps/web against that port:",
-      "  VITE_API_URL=http://127.0.0.1:3002 pnpm --filter @diffgazer/web dev",
-    ].join("\n"));
+    expect(formatListenError(error, "127.0.0.1", 3000)).toBe(
+      [
+        "Port 3000 is already in use on 127.0.0.1.",
+        "Stop the existing process or choose another API port:",
+        "  PORT=3002 pnpm --filter @diffgazer/server dev",
+        "If running apps/web against that port:",
+        "  VITE_API_URL=http://127.0.0.1:3002 pnpm --filter @diffgazer/web dev",
+      ].join("\n"),
+    );
   });
 
   it("handles listen errors without an unhandled server error", async () => {

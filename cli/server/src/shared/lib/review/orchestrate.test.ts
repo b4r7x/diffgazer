@@ -109,7 +109,10 @@ describe("orchestrateReview", () => {
 
   it("keeps successful lens output and reports failed lenses", async () => {
     const client = makeClient([
-      ok({ summary: "Found correctness issues", issues: [makeIssue({ id: "issue-1", file: "src/a.ts" })] }),
+      ok({
+        summary: "Found correctness issues",
+        issues: [makeIssue({ id: "issue-1", file: "src/a.ts" })],
+      }),
       err({ code: "MODEL_ERROR", message: "Second lens failed" }),
     ]);
 
@@ -162,7 +165,10 @@ describe("orchestrateReview", () => {
     expect(partial.ok).toBe(true);
     if (partial.ok) {
       expect(partial.value.issues).toEqual([]);
-      expect(partial.value.failedLenses.map((lens) => lens.lensId)).toEqual(["correctness", "security"]);
+      expect(partial.value.failedLenses.map((lens) => lens.lensId)).toEqual([
+        "correctness",
+        "security",
+      ]);
     }
   });
 
@@ -213,7 +219,10 @@ describe("orchestrateReview", () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.value.lensStats).toHaveLength(3);
-      expect(result.value.failedLenses.map((lens) => lens.lensId)).toEqual(["security", "performance"]);
+      expect(result.value.failedLenses.map((lens) => lens.lensId)).toEqual([
+        "security",
+        "performance",
+      ]);
     }
   });
 });

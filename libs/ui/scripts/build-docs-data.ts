@@ -25,14 +25,13 @@ function rewriteSnippetImports(snippet: string): string {
 }
 
 function loadRegistryItems(): RegistryItem[] {
-  return (JSON.parse(readFileSync(REGISTRY_PATH, "utf-8")) as { items?: RegistryItem[] }).items ?? [];
+  return (
+    (JSON.parse(readFileSync(REGISTRY_PATH, "utf-8")) as { items?: RegistryItem[] }).items ?? []
+  );
 }
 
 const registryItems = loadRegistryItems();
-const loadHookDoc = createHookDocLoader(
-  resolve(ROOT, "registry/hook-docs"),
-  (name) => name,
-);
+const loadHookDoc = createHookDocLoader(resolve(ROOT, "registry/hook-docs"), (name) => name);
 const COMPONENT_DOCS_DIR = resolve(ROOT, "registry/component-docs");
 
 function isPublicItem(item: RegistryItem): boolean {
@@ -61,14 +60,18 @@ async function loadComponentDoc(name: string): Promise<ComponentDoc | null> {
   const docPath = resolve(COMPONENT_DOCS_DIR, `${name}.ts`);
   if (!existsSync(docPath)) return null;
 
-  const exports = await import(docPath) as Record<string, unknown>;
+  const exports = (await import(docPath)) as Record<string, unknown>;
   const doc = Object.values(exports).find((value): value is ComponentDoc => {
     return Boolean(value && typeof value === "object" && !Array.isArray(value));
   });
   return doc ?? null;
 }
 
-function readRegistrySourceFile(item: RegistryItem, file: RegistryItem["files"][number], highlighter: DocsHighlighter) {
+function readRegistrySourceFile(
+  item: RegistryItem,
+  file: RegistryItem["files"][number],
+  highlighter: DocsHighlighter,
+) {
   const filePath = resolve(ROOT, file.path);
   const raw = file.content ?? (existsSync(filePath) ? readFileSync(filePath, "utf-8") : null);
   if (raw === null) {
@@ -81,15 +84,21 @@ function readRegistrySourceFile(item: RegistryItem, file: RegistryItem["files"][
   };
 }
 
-function readExamples(itemName: string, highlighter: DocsHighlighter): {
-  examples: string[]
-  exampleSource: Record<string, { raw: string; highlighted: CodeBlockLine[] }>
+function readExamples(
+  itemName: string,
+  highlighter: DocsHighlighter,
+): {
+  examples: string[];
+  exampleSource: Record<string, { raw: string; highlighted: CodeBlockLine[] }>;
 } {
   const examples = findExamples(resolve(ROOT, "registry/examples"), itemName);
   const exampleSource: Record<string, { raw: string; highlighted: CodeBlockLine[] }> = {};
 
   for (const exampleName of examples) {
-    const raw = readFileSync(resolve(ROOT, "registry/examples", itemName, `${exampleName}.tsx`), "utf-8");
+    const raw = readFileSync(
+      resolve(ROOT, "registry/examples", itemName, `${exampleName}.tsx`),
+      "utf-8",
+    );
     exampleSource[exampleName] = {
       raw,
       highlighted: highlightCode(highlighter, raw, "tsx", DOCS_CODE_THEME_NAME),
@@ -122,9 +131,10 @@ async function processComponent(
     const companionData = readExamples(companionName, highlighter);
     Object.assign(examplesData.exampleSource, companionData.exampleSource);
   }
-  const rawSnippet = docs?.usage?.code
-    ?? (usageExample ? examplesData.exampleSource[usageExample]?.raw : undefined)
-    ?? "";
+  const rawSnippet =
+    docs?.usage?.code ??
+    (usageExample ? examplesData.exampleSource[usageExample]?.raw : undefined) ??
+    "";
   const usageSnippet = rawSnippet ? rewriteSnippetImports(rawSnippet) : "";
 
   return {

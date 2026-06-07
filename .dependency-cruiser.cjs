@@ -21,7 +21,8 @@ module.exports = {
     {
       name: "no-circular",
       severity: "error",
-      comment: "Runtime circular dependencies break tree-shaking and module init order. (Computed on runtime deps only; type-only cycles are erased at compile time.)",
+      comment:
+        "Runtime circular dependencies break tree-shaking and module init order. (Computed on runtime deps only; type-only cycles are erased at compile time.)",
       from: {
         // Grandfathered: the recursive submenu pattern (Menu <-> MenuSub) is a
         // pre-existing runtime cycle that works via deferred render-time imports.
@@ -32,7 +33,8 @@ module.exports = {
     {
       name: "no-orphans",
       severity: "warn",
-      comment: "Orphan modules (imported by nothing) are usually dead code; entrypoints and generated files are exempt.",
+      comment:
+        "Orphan modules (imported by nothing) are usually dead code; entrypoints and generated files are exempt.",
       from: {
         orphan: true,
         pathNot: [
@@ -100,7 +102,8 @@ module.exports = {
     {
       name: "no-cross-feature",
       severity: "error",
-      comment: "Features are vertical slices; a feature must not import a sibling feature. Promote shared code to the app-shared tier.",
+      comment:
+        "Features are vertical slices; a feature must not import a sibling feature. Promote shared code to the app-shared tier.",
       from: { path: "/features/([^/]+)/" },
       to: {
         path: "^@/features/",
@@ -115,7 +118,8 @@ module.exports = {
     {
       name: "components-not-features",
       severity: "error",
-      comment: "The app-shared components/ tier must not import from features/* (shared->feature is the wrong direction).",
+      comment:
+        "The app-shared components/ tier must not import from features/* (shared->feature is the wrong direction).",
       from: { path: "/src/components/" },
       to: {
         path: "^@/features/",
@@ -126,7 +130,8 @@ module.exports = {
     {
       name: "landing-only-ui",
       severity: "error",
-      comment: "apps/landing is marketing-only and may depend on @diffgazer/ui exclusively, never on other workspace packages.",
+      comment:
+        "apps/landing is marketing-only and may depend on @diffgazer/ui exclusively, never on other workspace packages.",
       from: { path: "^apps/landing/" },
       to: {
         path: "^@diffgazer/(?!ui(/|$))",

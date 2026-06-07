@@ -1,4 +1,4 @@
-import { Menu, MenuItem } from "@/components/ui/menu"
+import { Menu, MenuItem } from "@/components/ui/menu";
 
 export default function MenuNested() {
   return (
@@ -18,5 +18,5 @@ export default function MenuNested() {
         </MenuItem>
       </Menu>
     </div>
-  )
+  );
 }

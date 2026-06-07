@@ -26,7 +26,14 @@ export interface AvatarGroupProps {
   "aria-label"?: string;
 }
 
-export function AvatarGroup({ max, spacing = "overlap", children, size = "md", className, "aria-label": ariaLabel = "Avatars" }: AvatarGroupProps) {
+export function AvatarGroup({
+  max,
+  spacing = "overlap",
+  children,
+  size = "md",
+  className,
+  "aria-label": ariaLabel = "Avatars",
+}: AvatarGroupProps) {
   const allItems = Children.toArray(children);
   const groupContextValue = useMemo(() => ({ size }), [size]);
 
@@ -37,7 +44,15 @@ export function AvatarGroup({ max, spacing = "overlap", children, size = "md", c
     return (
       <AvatarGroupContext value={groupContextValue}>
         {/* biome-ignore lint/a11y/useSemanticElements: role="group" labels the related set of avatars; <fieldset> is for form controls and is not appropriate here. */}
-        <div role="group" aria-label={ariaLabel} className={cn("flex w-fit items-center", avatarGroupSpacingVariants({ spacing }), className)}>
+        <div
+          role="group"
+          aria-label={ariaLabel}
+          className={cn(
+            "flex w-fit items-center",
+            avatarGroupSpacingVariants({ spacing }),
+            className,
+          )}
+        >
           {visibleItems}
           {overflowCount > 0 && <AvatarIndicator count={overflowCount} />}
         </div>

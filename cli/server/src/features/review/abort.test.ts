@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  isReviewAbort,
-  reviewAbort,
-} from "./abort.js";
+import { isReviewAbort, reviewAbort } from "./abort.js";
 
 describe("reviewAbort", () => {
   it("creates review abort objects with an optional step", () => {

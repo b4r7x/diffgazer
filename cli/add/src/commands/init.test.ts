@@ -23,7 +23,9 @@ describe("dgadd init plannedPaths", () => {
   test("includes package.json and every known lockfile so installer side effects can be rolled back", () => {
     const paths = buildInitPlannedPaths(root, { componentsDir: "src/components/ui" });
 
-    expect(paths, "package.json must be planned for install-step rollback").toContain("package.json");
+    expect(paths, "package.json must be planned for install-step rollback").toContain(
+      "package.json",
+    );
     for (const lockfile of KNOWN_LOCKFILES) {
       expect(
         paths,
@@ -71,7 +73,9 @@ describe("dgadd init rollback after install side effects", () => {
           writeFileSync(join(cwd, "package.json"), mutated);
           writeFileSync(join(cwd, "pnpm-lock.yaml"), "lockfileVersion: '9.0'\n");
         },
-        writeConfig: () => { throw new Error("simulated writeConfig failure"); },
+        writeConfig: () => {
+          throw new Error("simulated writeConfig failure");
+        },
         nextSteps: [],
       }),
     ).rejects.toThrow(/simulated writeConfig failure/);
@@ -107,10 +111,15 @@ describe("dgadd init rollback after install side effects", () => {
         plannedPaths: (cwd) => buildInitPlannedPaths(cwd, { componentsDir: "src/components/ui" }),
         createFiles: () => [],
         afterFiles: async (cwd) => {
-          writeFileSync(join(cwd, "package.json"), JSON.stringify({ name: "fixture", dependencies: {} }));
+          writeFileSync(
+            join(cwd, "package.json"),
+            JSON.stringify({ name: "fixture", dependencies: {} }),
+          );
           writeFileSync(join(cwd, "pnpm-lock.yaml"), "lockfileVersion: '9.0'\n# mutated\n");
         },
-        writeConfig: () => { throw new Error("boom"); },
+        writeConfig: () => {
+          throw new Error("boom");
+        },
         nextSteps: [],
       }),
     ).rejects.toThrow(/boom/);

@@ -1,24 +1,24 @@
-"use client"
+"use client";
 
-import { KeyboardProvider, useScope, useScopedNavigation } from "@diffgazer/keys"
-import { useRef, useState } from "react"
+import { KeyboardProvider, useScope, useScopedNavigation } from "@diffgazer/keys";
+import { useRef, useState } from "react";
 
-const commands = ["New File", "Open File", "Save", "Save As", "Close"]
+const commands = ["New File", "Open File", "Save", "Save As", "Close"];
 
 function CommandPalette({ onClose }: { onClose: () => void }) {
-  const listRef = useRef<HTMLDivElement>(null)
+  const listRef = useRef<HTMLDivElement>(null);
 
-  useScope("command-palette")
+  useScope("command-palette");
 
   const { isHighlighted } = useScopedNavigation({
     containerRef: listRef,
     role: "option",
     wrap: true,
     onSelect: (value) => {
-      alert(`Executed: ${value}`)
-      onClose()
+      alert(`Executed: ${value}`);
+      onClose();
     },
-  })
+  });
 
   return (
     <div style={{ marginTop: 8, padding: 8, border: "1px solid currentColor" }}>
@@ -39,11 +39,11 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
         ))}
       </div>
     </div>
-  )
+  );
 }
 
 function App() {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(false);
 
   return (
     <div>
@@ -52,7 +52,7 @@ function App() {
       </button>
       {open && <CommandPalette onClose={() => setOpen(false)} />}
     </div>
-  )
+  );
 }
 
 export default function UseScopedNavigationBasic() {
@@ -60,5 +60,5 @@ export default function UseScopedNavigationBasic() {
     <KeyboardProvider>
       <App />
     </KeyboardProvider>
-  )
+  );
 }

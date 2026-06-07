@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types"
+import type { ComponentDoc } from "./types";
 
 export const selectableVariantsDoc: ComponentDoc = {
   description:
@@ -44,4 +44,4 @@ export const selectableVariantsDoc: ComponentDoc = {
     lang: "tsx",
   },
   tags: ["lib", "variants", "cva", "styling", "selectable"],
-}
+};

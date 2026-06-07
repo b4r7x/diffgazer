@@ -42,9 +42,7 @@ export function ProviderStep({
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-tui-muted font-mono">
-        Select an AI provider for code reviews.
-      </p>
+      <p className="text-sm text-tui-muted font-mono">Select an AI provider for code reviews.</p>
       <RadioGroup
         aria-label="Select AI provider"
         value={value ?? undefined}
@@ -70,7 +68,7 @@ export function ProviderStep({
             <RadioGroupItem
               key={provider.id}
               value={provider.id}
-              label={(
+              label={
                 <span className="flex items-center gap-2">
                   <span>{provider.name}</span>
                   <Badge
@@ -81,7 +79,7 @@ export function ProviderStep({
                     {tierBadge}
                   </Badge>
                 </span>
-              )}
+              }
               description={provider.defaultModel || "Select model after setup"}
             />
           );

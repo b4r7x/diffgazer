@@ -24,14 +24,19 @@ export function getInstallBaseForFilePath(filePath: string): RegistryInstallBase
 
   throw new Error(
     `Unsupported registry file path "${filePath}". Expected path to start with ` +
-    `"${REGISTRY_UI_PREFIX}", "${REGISTRY_HOOKS_PREFIX}", "${REGISTRY_LIB_PREFIX}", ` +
-    `or "${REGISTRY_STYLES_PREFIX}".`
+      `"${REGISTRY_UI_PREFIX}", "${REGISTRY_HOOKS_PREFIX}", "${REGISTRY_LIB_PREFIX}", ` +
+      `or "${REGISTRY_STYLES_PREFIX}".`,
   );
 }
 
 export function getInstallDirForBase(
   base: RegistryInstallBase,
-  config: { componentsFsPath: string; hooksFsPath: string; libFsPath: string; stylesFsPath: string },
+  config: {
+    componentsFsPath: string;
+    hooksFsPath: string;
+    libFsPath: string;
+    stylesFsPath: string;
+  },
 ): string {
   if (base === "components") return config.componentsFsPath;
   if (base === "hooks") return config.hooksFsPath;

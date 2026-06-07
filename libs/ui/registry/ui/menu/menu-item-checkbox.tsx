@@ -20,7 +20,14 @@ const CHECKBOX_UNCHECKED = "[ ]";
 export interface MenuItemCheckboxProps
   extends Omit<
     ComponentPropsWithRef<"div">,
-    "id" | "children" | "role" | "aria-checked" | "aria-disabled" | "data-value" | "onChange" | "ref"
+    | "id"
+    | "children"
+    | "role"
+    | "aria-checked"
+    | "aria-disabled"
+    | "data-value"
+    | "onChange"
+    | "ref"
   > {
   id: string;
   checked?: boolean;
@@ -103,15 +110,18 @@ export function MenuItemCheckbox({
       onMouseDown={handleMouseDown}
       onClick={handleClick}
       onFocus={handleFocus}
-      className={cn(menuItemBase({ menuVariant: "default", state, colorVariant: "default" }), className)}
+      className={cn(
+        menuItemBase({ menuVariant: "default", state, colorVariant: "default" }),
+        className,
+      )}
     >
       <span
         aria-hidden="true"
-        className={menuItemIndicator({ idle: !isFocused && !disabled || undefined })}
+        className={menuItemIndicator({ idle: (!isFocused && !disabled) || undefined })}
       >
         {isChecked ? CHECKBOX_CHECKED : CHECKBOX_UNCHECKED}
       </span>
-      <span className={menuItemLabel({ idle: !isFocused && !disabled || undefined })}>
+      <span className={menuItemLabel({ idle: (!isFocused && !disabled) || undefined })}>
         {children}
       </span>
     </div>

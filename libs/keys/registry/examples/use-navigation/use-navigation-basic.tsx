@@ -1,22 +1,22 @@
-"use client"
+"use client";
 
-import { useNavigation } from "@diffgazer/keys"
-import { useRef } from "react"
+import { useNavigation } from "@diffgazer/keys";
+import { useRef } from "react";
 
-const items = ["Apple", "Banana", "Cherry", "Date", "Elderberry"]
+const items = ["Apple", "Banana", "Cherry", "Date", "Elderberry"];
 
 function getOptionId(item: string) {
-  return `fruit-${item.toLowerCase()}`
+  return `fruit-${item.toLowerCase()}`;
 }
 
 export default function UseNavigationBasic() {
-  const containerRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null);
   const { highlighted, isHighlighted, onKeyDown } = useNavigation({
     containerRef,
     role: "option",
     wrap: true,
     onSelect: (value) => alert(`Selected: ${value}`),
-  })
+  });
 
   return (
     <div>
@@ -45,5 +45,5 @@ export default function UseNavigationBasic() {
         ))}
       </div>
     </div>
-  )
+  );
 }

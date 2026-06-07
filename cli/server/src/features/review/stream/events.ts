@@ -31,9 +31,10 @@ export function normalizeReviewStreamError(
     const candidate = error as { code?: unknown; message?: unknown };
     return {
       code: resolveCode(candidate.code),
-      message: typeof candidate.message === "string" && candidate.message.length > 0
-        ? candidate.message
-        : getErrorMessage(error),
+      message:
+        typeof candidate.message === "string" && candidate.message.length > 0
+          ? candidate.message
+          : getErrorMessage(error),
     };
   }
 
@@ -47,9 +48,10 @@ export function reviewStreamError(
   return {
     type: "error",
     error: {
-      code: typeof code === "string" && isReviewStreamErrorCode(code)
-        ? code
-        : ReviewErrorCode.GENERATION_FAILED,
+      code:
+        typeof code === "string" && isReviewStreamErrorCode(code)
+          ? code
+          : ReviewErrorCode.GENERATION_FAILED,
       message,
     },
   };

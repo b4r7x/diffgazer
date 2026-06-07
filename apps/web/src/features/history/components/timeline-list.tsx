@@ -26,9 +26,7 @@ export function TimelineList({
     onSelect(id);
   };
 
-  const getCountDescription = (count: number) => (
-    `${count} ${count === 1 ? "review" : "reviews"}`
-  );
+  const getCountDescription = (count: number) => `${count} ${count === 1 ? "review" : "reviews"}`;
 
   return (
     <NavigationList

@@ -1,7 +1,7 @@
-"use client"
+"use client";
 
-import { Toc, TocItem, TocList } from "@/components/ui/toc"
-import { useActiveHeading } from "@/hooks/use-active-heading"
+import { Toc, TocItem, TocList } from "@/components/ui/toc";
+import { useActiveHeading } from "@/hooks/use-active-heading";
 
 const sections = [
   { id: "overview", title: "Overview", depth: 2 },
@@ -9,11 +9,11 @@ const sections = [
   { id: "npm", title: "npm", depth: 3 },
   { id: "pnpm", title: "pnpm", depth: 3 },
   { id: "usage", title: "Usage", depth: 2 },
-]
+];
 
 export default function TocActive() {
-  const ids = sections.map((s) => s.id)
-  const { activeId, scrollTo } = useActiveHeading({ ids })
+  const ids = sections.map((s) => s.id);
+  const { activeId, scrollTo } = useActiveHeading({ ids });
 
   return (
     <div className="flex gap-8">
@@ -26,8 +26,8 @@ export default function TocActive() {
               depth={section.depth}
               active={activeId === section.id}
               onClick={(e) => {
-                e.preventDefault()
-                scrollTo(section.id)
+                e.preventDefault();
+                scrollTo(section.id);
               }}
             >
               {section.title}
@@ -39,19 +39,16 @@ export default function TocActive() {
       <div className="flex flex-col gap-16">
         {sections.map((section) => (
           <section key={section.id}>
-            <h2
-              id={section.id}
-              className="mb-4 text-lg font-medium text-neutral-100"
-            >
+            <h2 id={section.id} className="mb-4 text-lg font-medium text-neutral-100">
               {section.title}
             </h2>
             <p className="text-sm text-neutral-400">
-              Content for the {section.title.toLowerCase()} section. Scroll to
-              see the active heading update in the sidebar.
+              Content for the {section.title.toLowerCase()} section. Scroll to see the active
+              heading update in the sidebar.
             </p>
           </section>
         ))}
       </div>
     </div>
-  )
+  );
 }

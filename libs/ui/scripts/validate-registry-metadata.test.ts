@@ -46,15 +46,21 @@ function registryItems() {
 }
 
 function writeFixtureSources(root: string) {
-  writeFile(resolve(root, "registry/ui/widget/index.tsx"), [
-    '"use client";',
-    'import { helper } from "@/lib/helper";',
-    "export function Widget() { return helper; }",
-    "",
-  ].join("\n"));
+  writeFile(
+    resolve(root, "registry/ui/widget/index.tsx"),
+    [
+      '"use client";',
+      'import { helper } from "@/lib/helper";',
+      "export function Widget() { return helper; }",
+      "",
+    ].join("\n"),
+  );
   writeFile(resolve(root, "registry/lib/helper.ts"), "export const helper = 'helper';\n");
   writeFile(resolve(root, "registry/ui/hidden-card/index.ts"), "export const HiddenCard = null;\n");
-  writeFile(resolve(root, "registry/ui/keyboard-widget/index.tsx"), "export const KeyboardWidget = null;\n");
+  writeFile(
+    resolve(root, "registry/ui/keyboard-widget/index.tsx"),
+    "export const KeyboardWidget = null;\n",
+  );
 }
 
 function createInvalidFixture() {
@@ -199,34 +205,36 @@ describe("validate-registry-metadata", () => {
 
     expect(output).toContain('package export "./components/*" uses a wildcard');
     expect(output).toContain('package export ./components/bad-export nests "types" under "import"');
-    expect(output).toContain("hidden-card is hidden but package.json exposes ./components/hidden-card");
+    expect(output).toContain(
+      "hidden-card is hidden but package.json exposes ./components/hidden-card",
+    );
     expect(output).toContain("widget contains a client file but omits meta.client");
     expect(output).toContain("widget imports @/lib/helper");
     expect(output).toContain("package.json sideEffects must preserve CSS exports");
 
-    expect(output).toContain("keyboard-widget depends on keys registry hooks but omits meta.optionalIntegrations keyboard-navigation");
+    expect(output).toContain(
+      "keyboard-widget depends on keys registry hooks but omits meta.optionalIntegrations keyboard-navigation",
+    );
   });
 
   it("accepts a public keys-backed item when keys is a plain required peer", () => {
     const output = runValidator(createKeysRequiredPeerFixture());
 
     expect(output).not.toContain('peerDependencies must declare "@diffgazer/keys"');
-    expect(output).not.toContain('peerDependenciesMeta["@diffgazer/keys"].optional must not be true');
+    expect(output).not.toContain(
+      'peerDependenciesMeta["@diffgazer/keys"].optional must not be true',
+    );
   });
 
   it("rejects re-flagging the keys peer optional when a public item imports keys hooks", () => {
     const output = runValidator(createKeysOptionalFlagFixture());
 
-    expect(output).toContain(
-      'peerDependenciesMeta["@diffgazer/keys"].optional must not be true',
-    );
+    expect(output).toContain('peerDependenciesMeta["@diffgazer/keys"].optional must not be true');
   });
 
   it("rejects dropping keys from peerDependencies when a public item imports keys hooks", () => {
     const output = runValidator(createKeysMissingPeerFixture());
 
-    expect(output).toContain(
-      'package.json peerDependencies must declare "@diffgazer/keys"',
-    );
+    expect(output).toContain('package.json peerDependencies must declare "@diffgazer/keys"');
   });
 });

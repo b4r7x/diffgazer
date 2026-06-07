@@ -1,8 +1,8 @@
-import { CodeBlock } from "@/components/ui/code-block"
+import { CodeBlock } from "@/components/ui/code-block";
 
 const code = `function add(a: number, b: number) {
   return a + b
-}`
+}`;
 
 export default function CodeBlockHairline() {
   return (
@@ -13,5 +13,5 @@ export default function CodeBlockHairline() {
       </CodeBlock.Header>
       <CodeBlock.Content>{code}</CodeBlock.Content>
     </CodeBlock>
-  )
+  );
 }

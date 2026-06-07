@@ -94,11 +94,7 @@ describe("createHomeMenuAction", () => {
     h.dispatch("history");
     h.dispatch("settings");
     h.dispatch("help");
-    expect(h.routes).toEqual([
-      { screen: "history" },
-      { screen: "settings" },
-      { screen: "help" },
-    ]);
+    expect(h.routes).toEqual([{ screen: "history" }, { screen: "settings" }, { screen: "help" }]);
   });
 
   test("quit calls shutdown.mutate and exits on settled", () => {

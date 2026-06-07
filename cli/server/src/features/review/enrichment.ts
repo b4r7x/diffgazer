@@ -15,11 +15,7 @@ export interface EnrichGitService {
     commitDate: string;
     summary: string;
   } | null>;
-  getFileLines(
-    file: string,
-    startLine: number,
-    endLine: number,
-  ): Promise<string[]>;
+  getFileLines(file: string, startLine: number, endLine: number): Promise<string[]>;
 }
 
 async function enrichIssue(

@@ -41,12 +41,12 @@ export function ModelListItem({ model, isHighlighted, isSelected, maxWidth }: Mo
       >
         {prefix}
       </Text>
-      <Text color={isSelected ? tokens.info : undefined} bold>{check} </Text>
+      <Text color={isSelected ? tokens.info : undefined} bold>
+        {check}{" "}
+      </Text>
       <Box gap={1} flexShrink={1}>
         <Text bold>{model.name}</Text>
-        <Badge variant={model.tier === "free" ? "info" : "neutral"}>
-          {model.tier}
-        </Badge>
+        <Badge variant={model.tier === "free" ? "info" : "neutral"}>{model.tier}</Badge>
         {desc && <Text dimColor>{desc}</Text>}
       </Box>
     </Box>

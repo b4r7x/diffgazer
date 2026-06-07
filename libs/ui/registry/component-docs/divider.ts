@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types"
+import type { ComponentDoc } from "./types";
 
 export const dividerDoc: ComponentDoc = {
   description:
@@ -47,14 +47,16 @@ export const dividerDoc: ComponentDoc = {
         type: "boolean",
         required: false,
         defaultValue: "true",
-        description: 'Renders with role="none" and aria-hidden when true. Set to false for meaningful section boundaries; renders role="separator" with aria-orientation.',
+        description:
+          'Renders with role="none" and aria-hidden when true. Set to false for meaningful section boundaries; renders role="separator" with aria-orientation.',
       },
       children: {
         type: "ReactNode",
         required: false,
         defaultValue: "✦",
-        description: 'Optional label text rendered between the rules. Only shown when variant="spaced".',
+        description:
+          'Optional label text rendered between the rules. Only shown when variant="spaced".',
       },
     },
   },
-}
+};

@@ -3,28 +3,24 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "@/testing/render";
 
-const {
-  allLenses,
-  mockNavigate,
-  mockSaveSettings,
-  mockSettingsQuery,
-  mockIsSaving,
-} = vi.hoisted(() => {
-  const lensIds = ["correctness", "security", "performance", "simplicity", "tests"];
-  return {
-    allLenses: lensIds,
-    mockNavigate: vi.fn(),
-    mockSaveSettings: vi.fn(),
-    mockSettingsQuery: {
-      current: {
-        data: { defaultLenses: lensIds },
-        error: null,
-        isLoading: false,
+const { allLenses, mockNavigate, mockSaveSettings, mockSettingsQuery, mockIsSaving } = vi.hoisted(
+  () => {
+    const lensIds = ["correctness", "security", "performance", "simplicity", "tests"];
+    return {
+      allLenses: lensIds,
+      mockNavigate: vi.fn(),
+      mockSaveSettings: vi.fn(),
+      mockSettingsQuery: {
+        current: {
+          data: { defaultLenses: lensIds },
+          error: null,
+          isLoading: false,
+        },
       },
-    },
-    mockIsSaving: { current: false },
-  };
-});
+      mockIsSaving: { current: false },
+    };
+  },
+);
 
 // Boundary mock: Router is the routing library; tests provide a stub Router context so navigation assertions can be made without a real route tree.
 vi.mock("@tanstack/react-router", () => ({

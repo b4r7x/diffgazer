@@ -31,7 +31,11 @@
     font-size: 13px;
     line-height: 1.45;
     letter-spacing: 0;
-    font-feature-settings: "calt" 0, "liga" 0, "zero" 1, "ss01" 1;
+    font-feature-settings:
+      "calt" 0,
+      "liga" 0,
+      "zero" 1,
+      "ss01" 1;
     font-variant-ligatures: none;
     font-variant-numeric: tabular-nums;
   }
@@ -179,7 +183,8 @@
   }
 
   /* Self-protecting: hide chrome dots if no header is rendered. */
-  [data-slot="code-block"]:not(:has([data-slot="code-block-header"])) [data-slot="code-block-dots"] {
+  [data-slot="code-block"]:not(:has([data-slot="code-block-header"]))
+    [data-slot="code-block-dots"] {
     display: none;
   }
 
@@ -197,7 +202,9 @@
     border-radius: 2px;
     color: color-mix(in oklab, var(--cb-fg) 60%, transparent);
     cursor: pointer;
-    transition: color 120ms ease, background-color 120ms ease;
+    transition:
+      color 120ms ease,
+      background-color 120ms ease;
   }
 
   [data-slot="code-block-copy-button"]:hover {

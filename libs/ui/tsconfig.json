@@ -10,10 +10,7 @@
       "@/components/ui/*": ["registry/ui/*"]
     }
   },
-  "include": [
-    "registry/**/*.ts",
-    "registry/**/*.tsx"
-  ],
+  "include": ["registry/**/*.ts", "registry/**/*.tsx"],
   "exclude": [
     "registry/**/*.test.ts",
     "registry/**/*.test.tsx",

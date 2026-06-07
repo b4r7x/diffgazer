@@ -7,7 +7,7 @@ export interface AppError<C extends string = string> {
 export const createError = <C extends string>(
   code: C,
   message: string,
-  details?: string
+  details?: string,
 ): AppError<C> => ({ code, message, details });
 
 export function getErrorMessage(error: unknown, fallback?: string): string {

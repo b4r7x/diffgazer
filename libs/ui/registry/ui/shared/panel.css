@@ -27,12 +27,24 @@
   }
 
   /* Density rhythm — single source of truth. */
-  [data-slot="panel"][data-density="default"] [data-slot="panel-header"]  { padding: 14px 20px 12px; }
-  [data-slot="panel"][data-density="default"] [data-slot="panel-content"] { padding: 14px 20px; }
-  [data-slot="panel"][data-density="default"] [data-slot="panel-footer"]  { padding: 10px 20px; }
-  [data-slot="panel"][data-density="compact"] [data-slot="panel-header"]  { padding: 10px 14px 8px; }
-  [data-slot="panel"][data-density="compact"] [data-slot="panel-content"] { padding: 10px 14px; }
-  [data-slot="panel"][data-density="compact"] [data-slot="panel-footer"]  { padding: 8px 14px; }
+  [data-slot="panel"][data-density="default"] [data-slot="panel-header"] {
+    padding: 14px 20px 12px;
+  }
+  [data-slot="panel"][data-density="default"] [data-slot="panel-content"] {
+    padding: 14px 20px;
+  }
+  [data-slot="panel"][data-density="default"] [data-slot="panel-footer"] {
+    padding: 10px 20px;
+  }
+  [data-slot="panel"][data-density="compact"] [data-slot="panel-header"] {
+    padding: 10px 14px 8px;
+  }
+  [data-slot="panel"][data-density="compact"] [data-slot="panel-content"] {
+    padding: 10px 14px;
+  }
+  [data-slot="panel"][data-density="compact"] [data-slot="panel-footer"] {
+    padding: 8px 14px;
+  }
 
   /* Header. align-items: center so action chips sit on the title's vertical
      center; the marker bar uses align-self: stretch to span full header height. */
@@ -196,35 +208,75 @@
      frame's color signal. Tone is a pure visual cue; semantic
      status messaging belongs in Callout (see callout.css).
      ============================================================ */
-  [data-slot="panel"][data-tone="info"]    { --panel-tone: var(--info-fg); }
-  [data-slot="panel"][data-tone="success"] { --panel-tone: var(--success-fg); }
-  [data-slot="panel"][data-tone="warning"] { --panel-tone: var(--warning-fg); }
-  [data-slot="panel"][data-tone="error"]   { --panel-tone: var(--error-fg); }
-  [data-slot="panel"][data-tone="accent"]  { --panel-tone: var(--action); }
+  [data-slot="panel"][data-tone="info"] {
+    --panel-tone: var(--info-fg);
+  }
+  [data-slot="panel"][data-tone="success"] {
+    --panel-tone: var(--success-fg);
+  }
+  [data-slot="panel"][data-tone="warning"] {
+    --panel-tone: var(--warning-fg);
+  }
+  [data-slot="panel"][data-tone="error"] {
+    --panel-tone: var(--error-fg);
+  }
+  [data-slot="panel"][data-tone="accent"] {
+    --panel-tone: var(--action);
+  }
 
   /* Hairline frame: border + bar adopt the tone color. */
-  [data-slot="panel"][data-frame="hairline"][data-tone="info"]    { border-color: var(--info-border); }
-  [data-slot="panel"][data-frame="hairline"][data-tone="success"] { border-color: var(--success-border); }
-  [data-slot="panel"][data-frame="hairline"][data-tone="warning"] { border-color: var(--warning-border); }
-  [data-slot="panel"][data-frame="hairline"][data-tone="error"]   { border-color: var(--error-border); }
-  [data-slot="panel"][data-frame="hairline"][data-tone="accent"]  { border-color: var(--action); }
+  [data-slot="panel"][data-frame="hairline"][data-tone="info"] {
+    border-color: var(--info-border);
+  }
+  [data-slot="panel"][data-frame="hairline"][data-tone="success"] {
+    border-color: var(--success-border);
+  }
+  [data-slot="panel"][data-frame="hairline"][data-tone="warning"] {
+    border-color: var(--warning-border);
+  }
+  [data-slot="panel"][data-frame="hairline"][data-tone="error"] {
+    border-color: var(--error-border);
+  }
+  [data-slot="panel"][data-frame="hairline"][data-tone="accent"] {
+    border-color: var(--action);
+  }
 
   /* Rail frame: rail color. */
-  [data-slot="panel"][data-frame="rail"][data-tone="info"]    { border-inline-start-color: var(--info-border); }
-  [data-slot="panel"][data-frame="rail"][data-tone="success"] { border-inline-start-color: var(--success-border); }
-  [data-slot="panel"][data-frame="rail"][data-tone="warning"] { border-inline-start-color: var(--warning-border); }
-  [data-slot="panel"][data-frame="rail"][data-tone="error"]   { border-inline-start-color: var(--error-border); }
-  [data-slot="panel"][data-frame="rail"][data-tone="accent"]  { border-inline-start-color: var(--action); }
+  [data-slot="panel"][data-frame="rail"][data-tone="info"] {
+    border-inline-start-color: var(--info-border);
+  }
+  [data-slot="panel"][data-frame="rail"][data-tone="success"] {
+    border-inline-start-color: var(--success-border);
+  }
+  [data-slot="panel"][data-frame="rail"][data-tone="warning"] {
+    border-inline-start-color: var(--warning-border);
+  }
+  [data-slot="panel"][data-frame="rail"][data-tone="error"] {
+    border-inline-start-color: var(--error-border);
+  }
+  [data-slot="panel"][data-frame="rail"][data-tone="accent"] {
+    border-inline-start-color: var(--action);
+  }
 
   /* Viewfinder frame: corner color. */
-  [data-slot="panel"][data-frame="viewfinder"][data-tone="info"]    { --vf-color: var(--info-fg); }
-  [data-slot="panel"][data-frame="viewfinder"][data-tone="success"] { --vf-color: var(--success-fg); }
-  [data-slot="panel"][data-frame="viewfinder"][data-tone="warning"] { --vf-color: var(--warning-fg); }
-  [data-slot="panel"][data-frame="viewfinder"][data-tone="error"]   { --vf-color: var(--error-fg); }
-  [data-slot="panel"][data-frame="viewfinder"][data-tone="accent"]  { --vf-color: var(--action); }
+  [data-slot="panel"][data-frame="viewfinder"][data-tone="info"] {
+    --vf-color: var(--info-fg);
+  }
+  [data-slot="panel"][data-frame="viewfinder"][data-tone="success"] {
+    --vf-color: var(--success-fg);
+  }
+  [data-slot="panel"][data-frame="viewfinder"][data-tone="warning"] {
+    --vf-color: var(--warning-fg);
+  }
+  [data-slot="panel"][data-frame="viewfinder"][data-tone="error"] {
+    --vf-color: var(--error-fg);
+  }
+  [data-slot="panel"][data-frame="viewfinder"][data-tone="accent"] {
+    --vf-color: var(--action);
+  }
 
   /* Surface frame: subtle header tint + colored bottom-border on header. */
-  [data-slot="panel"][data-frame="surface"][data-tone="info"]    [data-slot="panel-header"] {
+  [data-slot="panel"][data-frame="surface"][data-tone="info"] [data-slot="panel-header"] {
     background: color-mix(in oklab, var(--info-fg) 6%, transparent);
     border-block-end-color: var(--info-border);
   }
@@ -236,11 +288,11 @@
     background: color-mix(in oklab, var(--warning-fg) 8%, transparent);
     border-block-end-color: var(--warning-border);
   }
-  [data-slot="panel"][data-frame="surface"][data-tone="error"]   [data-slot="panel-header"] {
+  [data-slot="panel"][data-frame="surface"][data-tone="error"] [data-slot="panel-header"] {
     background: color-mix(in oklab, var(--error-fg) 8%, transparent);
     border-block-end-color: var(--error-border);
   }
-  [data-slot="panel"][data-frame="surface"][data-tone="accent"]  [data-slot="panel-header"] {
+  [data-slot="panel"][data-frame="surface"][data-tone="accent"] [data-slot="panel-header"] {
     background: color-mix(in oklab, var(--action) 6%, transparent);
     border-block-end-color: var(--action);
   }

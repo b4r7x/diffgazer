@@ -29,11 +29,7 @@ export function ProviderList({
   const { tokens } = useTheme();
 
   return (
-    <NavigationList
-      selectedId={selectedId}
-      onSelect={onSelect}
-      isActive={isActive}
-    >
+    <NavigationList selectedId={selectedId} onSelect={onSelect} isActive={isActive}>
       {providers.map((provider) => {
         const badge = getDisplayStatusBadge(provider.displayStatus);
         return (
@@ -43,9 +39,7 @@ export function ProviderList({
               <Badge variant={badge.variant} dot>
                 {badge.label}
               </Badge>
-              {provider.model && (
-                <Text color={tokens.muted}>{provider.model}</Text>
-              )}
+              {provider.model && <Text color={tokens.muted}>{provider.model}</Text>}
             </Box>
           </NavigationList.Item>
         );

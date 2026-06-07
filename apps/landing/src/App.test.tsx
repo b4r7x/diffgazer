@@ -3,11 +3,7 @@ import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
 import { describe, expect, it } from "vitest";
 import { App } from "./app";
-import {
-  DOCS_URL,
-  GITHUB_URL,
-  INSTALL_COMMAND,
-} from "./content";
+import { DOCS_URL, GITHUB_URL, INSTALL_COMMAND } from "./content";
 
 // jsdom cannot compute layout, so color-contrast is unreliable here and is
 // disabled — mirrors the @diffgazer/ui axe helper.
@@ -20,18 +16,13 @@ async function runAxe(container: Element) {
 describe("Landing App", () => {
   it("renders the product name as the page heading", () => {
     render(<App />);
-    expect(
-      screen.getByRole("heading", { level: 1, name: /diffgazer/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: /diffgazer/i })).toBeInTheDocument();
   });
 
   it("exposes hero CTAs linked to install, docs, and GitHub", () => {
     render(<App />);
 
-    expect(screen.getByRole("link", { name: /^install$/i })).toHaveAttribute(
-      "href",
-      "#install",
-    );
+    expect(screen.getByRole("link", { name: /^install$/i })).toHaveAttribute("href", "#install");
 
     // Docs and GitHub appear in the hero and the footer; every instance must
     // resolve to the canonical target.
@@ -71,13 +62,9 @@ describe("Landing App", () => {
     const user = userEvent.setup();
     render(<App />);
 
-    expect(screen.getByLabelText("Install command")).toHaveTextContent(
-      INSTALL_COMMAND,
-    );
+    expect(screen.getByLabelText("Install command")).toHaveTextContent(INSTALL_COMMAND);
 
-    await user.click(
-      screen.getByRole("button", { name: /copy install command/i }),
-    );
+    await user.click(screen.getByRole("button", { name: /copy install command/i }));
 
     expect(await navigator.clipboard.readText()).toBe(INSTALL_COMMAND);
     expect(screen.getByRole("button", { name: /copied/i })).toBeInTheDocument();
@@ -94,9 +81,7 @@ describe("Landing App", () => {
     const user = userEvent.setup();
     render(<App />);
     await user.tab();
-    expect(
-      screen.getByRole("link", { name: /skip to content/i }),
-    ).toHaveFocus();
+    expect(screen.getByRole("link", { name: /skip to content/i })).toHaveFocus();
   });
 
   it("exposes banner, main, and contentinfo landmarks", () => {

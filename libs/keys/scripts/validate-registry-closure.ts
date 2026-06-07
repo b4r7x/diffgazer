@@ -79,9 +79,7 @@ function validateImportClosure(registry: Registry, registryRoot: string) {
         for (const tryPath of tryPaths) {
           if (existsSync(tryPath)) {
             found = true;
-            foundRelativePath = resolve(tryPath).slice(
-              resolve(registryRoot).length + 1
-            );
+            foundRelativePath = resolve(tryPath).slice(resolve(registryRoot).length + 1);
             foundRelativePath = foundRelativePath.replace(/\\/g, "/");
             break;
           }
@@ -91,7 +89,7 @@ function validateImportClosure(registry: Registry, registryRoot: string) {
           addError(
             "REGISTRY_IMPORT_CLOSURE",
             item.name,
-            `Cannot resolve import "${importPathRaw}" from ${file.path}`
+            `Cannot resolve import "${importPathRaw}" from ${file.path}`,
           );
           continue;
         }
@@ -100,7 +98,7 @@ function validateImportClosure(registry: Registry, registryRoot: string) {
           addError(
             "REGISTRY_IMPORT_CLOSURE",
             item.name,
-            `Missing transitive import in registry: ${importPathRaw} (resolves to ${foundRelativePath})`
+            `Missing transitive import in registry: ${importPathRaw} (resolves to ${foundRelativePath})`,
           );
         }
       }
@@ -144,9 +142,7 @@ function validateRegistryStructure(registry: Registry) {
       continue;
     }
 
-    const hasSourceFile = item.files.some(
-      (f) => f.path.endsWith(".ts") || f.path.endsWith(".tsx")
-    );
+    const hasSourceFile = item.files.some((f) => f.path.endsWith(".ts") || f.path.endsWith(".tsx"));
     if (!hasSourceFile) {
       addError("REGISTRY_HOOK_FILES", item.name, `Hook has no TypeScript source files`);
     }

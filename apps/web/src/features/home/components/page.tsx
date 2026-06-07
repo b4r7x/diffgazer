@@ -36,7 +36,7 @@ export function HomePage() {
 
   const [highlighted, setHighlighted] = useScopedRouteState<string | null>(
     "highlighted",
-    MAIN_MENU_ITEMS[0]?.id ?? null
+    MAIN_MENU_ITEMS[0]?.id ?? null,
   );
 
   return (

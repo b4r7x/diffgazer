@@ -10,10 +10,7 @@ export interface ContextSidebarProps {
   projectPath?: string;
 }
 
-function formatProviderValue(
-  name: string | undefined,
-  mode: string | undefined,
-): string {
+function formatProviderValue(name: string | undefined, mode: string | undefined): string {
   if (name == null) return "Not configured";
   if (mode == null) return name;
   return `${name} (${mode})`;

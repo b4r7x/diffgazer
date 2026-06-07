@@ -1,9 +1,4 @@
 {
   "title": "Utils",
-  "pages": [
-    "index",
-    "shadcn-namespace",
-    "compose-refs",
-    "selectable-collection"
-  ]
+  "pages": ["index", "shadcn-namespace", "compose-refs", "selectable-collection"]
 }

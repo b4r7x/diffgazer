@@ -3,7 +3,9 @@ import { isStepEvent, StepEventSchema } from "./step.js";
 
 describe("isStepEvent", () => {
   it("recognizes every discriminant declared in StepEventSchema", () => {
-    const discriminants = StepEventSchema.options.flatMap((option) => [...option.shape.type.values]);
+    const discriminants = StepEventSchema.options.flatMap((option) => [
+      ...option.shape.type.values,
+    ]);
 
     for (const type of discriminants) {
       expect(isStepEvent({ type })).toBe(true);

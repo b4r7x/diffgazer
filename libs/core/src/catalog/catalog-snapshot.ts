@@ -4,9239 +4,9219 @@
 import type { ModelsDevCatalog } from "./schema.js";
 
 export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
-  "cerebras": {
-    "id": "cerebras",
-    "name": "Cerebras",
-    "env": [
-      "CEREBRAS_API_KEY"
-    ],
-    "models": {
+  cerebras: {
+    id: "cerebras",
+    name: "Cerebras",
+    env: ["CEREBRAS_API_KEY"],
+    models: {
       "gpt-oss-120b": {
-        "id": "gpt-oss-120b",
-        "name": "GPT OSS 120B",
-        "family": "gpt-oss",
-        "cost": {
-          "input": 0.25,
-          "output": 0.69
+        id: "gpt-oss-120b",
+        name: "GPT OSS 120B",
+        family: "gpt-oss",
+        cost: {
+          input: 0.25,
+          output: 0.69,
         },
-        "limit": {
-          "context": 131072,
-          "output": 32768
+        limit: {
+          context: 131072,
+          output: 32768,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2025-08-05",
-        "last_updated": "2025-08-05"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2025-08-05",
+        last_updated: "2025-08-05",
       },
       "llama3.1-8b": {
-        "id": "llama3.1-8b",
-        "name": "Llama 3.1 8B",
-        "family": "llama",
-        "cost": {
-          "input": 0.1,
-          "output": 0.1
+        id: "llama3.1-8b",
+        name: "Llama 3.1 8B",
+        family: "llama",
+        cost: {
+          input: 0.1,
+          output: 0.1,
         },
-        "limit": {
-          "context": 32000,
-          "output": 8000
+        limit: {
+          context: 32000,
+          output: 8000,
         },
-        "tool_call": true,
-        "reasoning": false,
-        "release_date": "2025-01-01",
-        "last_updated": "2025-01-01"
+        tool_call: true,
+        reasoning: false,
+        release_date: "2025-01-01",
+        last_updated: "2025-01-01",
       },
       "zai-glm-4.7": {
-        "id": "zai-glm-4.7",
-        "name": "Z.AI GLM-4.7",
-        "cost": {
-          "input": 2.25,
-          "output": 2.75
+        id: "zai-glm-4.7",
+        name: "Z.AI GLM-4.7",
+        cost: {
+          input: 2.25,
+          output: 2.75,
         },
-        "limit": {
-          "context": 131072,
-          "output": 40000
+        limit: {
+          context: 131072,
+          output: 40000,
         },
-        "tool_call": true,
-        "reasoning": false,
-        "release_date": "2026-01-10",
-        "last_updated": "2026-01-10"
-      }
-    }
+        tool_call: true,
+        reasoning: false,
+        release_date: "2026-01-10",
+        last_updated: "2026-01-10",
+      },
+    },
   },
   "github-models": {
-    "id": "github-models",
-    "name": "GitHub Models",
-    "api": "https://models.github.ai/inference",
-    "env": [
-      "GITHUB_TOKEN"
-    ],
-    "models": {
+    id: "github-models",
+    name: "GitHub Models",
+    api: "https://models.github.ai/inference",
+    env: ["GITHUB_TOKEN"],
+    models: {
       "ai21-labs/ai21-jamba-1.5-large": {
-        "id": "ai21-labs/ai21-jamba-1.5-large",
-        "name": "AI21 Jamba 1.5 Large",
-        "family": "jamba",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "ai21-labs/ai21-jamba-1.5-large",
+        name: "AI21 Jamba 1.5 Large",
+        family: "jamba",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 256000,
-          "output": 4096
+        limit: {
+          context: 256000,
+          output: 4096,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2024-08-29",
-        "last_updated": "2024-08-29"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2024-08-29",
+        last_updated: "2024-08-29",
       },
       "ai21-labs/ai21-jamba-1.5-mini": {
-        "id": "ai21-labs/ai21-jamba-1.5-mini",
-        "name": "AI21 Jamba 1.5 Mini",
-        "family": "jamba",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "ai21-labs/ai21-jamba-1.5-mini",
+        name: "AI21 Jamba 1.5 Mini",
+        family: "jamba",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 256000,
-          "output": 4096
+        limit: {
+          context: 256000,
+          output: 4096,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2024-08-29",
-        "last_updated": "2024-08-29"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2024-08-29",
+        last_updated: "2024-08-29",
       },
       "cohere/cohere-command-a": {
-        "id": "cohere/cohere-command-a",
-        "name": "Cohere Command A",
-        "family": "command-a",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "cohere/cohere-command-a",
+        name: "Cohere Command A",
+        family: "command-a",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 128000,
-          "output": 4096
+        limit: {
+          context: 128000,
+          output: 4096,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2024-11-01",
-        "last_updated": "2024-11-01"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2024-11-01",
+        last_updated: "2024-11-01",
       },
       "cohere/cohere-command-r": {
-        "id": "cohere/cohere-command-r",
-        "name": "Cohere Command R",
-        "family": "command-r",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "cohere/cohere-command-r",
+        name: "Cohere Command R",
+        family: "command-r",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 128000,
-          "output": 4096
+        limit: {
+          context: 128000,
+          output: 4096,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2024-03-11",
-        "last_updated": "2024-08-01"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2024-03-11",
+        last_updated: "2024-08-01",
       },
       "cohere/cohere-command-r-08-2024": {
-        "id": "cohere/cohere-command-r-08-2024",
-        "name": "Cohere Command R 08-2024",
-        "family": "command-r",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "cohere/cohere-command-r-08-2024",
+        name: "Cohere Command R 08-2024",
+        family: "command-r",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 128000,
-          "output": 4096
+        limit: {
+          context: 128000,
+          output: 4096,
         },
-        "tool_call": true,
-        "reasoning": false,
-        "release_date": "2024-08-01",
-        "last_updated": "2024-08-01"
+        tool_call: true,
+        reasoning: false,
+        release_date: "2024-08-01",
+        last_updated: "2024-08-01",
       },
       "cohere/cohere-command-r-plus": {
-        "id": "cohere/cohere-command-r-plus",
-        "name": "Cohere Command R+",
-        "family": "command-r",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "cohere/cohere-command-r-plus",
+        name: "Cohere Command R+",
+        family: "command-r",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 128000,
-          "output": 4096
+        limit: {
+          context: 128000,
+          output: 4096,
         },
-        "tool_call": true,
-        "reasoning": false,
-        "release_date": "2024-04-04",
-        "last_updated": "2024-08-01"
+        tool_call: true,
+        reasoning: false,
+        release_date: "2024-04-04",
+        last_updated: "2024-08-01",
       },
       "cohere/cohere-command-r-plus-08-2024": {
-        "id": "cohere/cohere-command-r-plus-08-2024",
-        "name": "Cohere Command R+ 08-2024",
-        "family": "command-r",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "cohere/cohere-command-r-plus-08-2024",
+        name: "Cohere Command R+ 08-2024",
+        family: "command-r",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 128000,
-          "output": 4096
+        limit: {
+          context: 128000,
+          output: 4096,
         },
-        "tool_call": true,
-        "reasoning": false,
-        "release_date": "2024-08-01",
-        "last_updated": "2024-08-01"
+        tool_call: true,
+        reasoning: false,
+        release_date: "2024-08-01",
+        last_updated: "2024-08-01",
       },
       "core42/jais-30b-chat": {
-        "id": "core42/jais-30b-chat",
-        "name": "JAIS 30b Chat",
-        "family": "jais",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "core42/jais-30b-chat",
+        name: "JAIS 30b Chat",
+        family: "jais",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 8192,
-          "output": 2048
+        limit: {
+          context: 8192,
+          output: 2048,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2023-08-30",
-        "last_updated": "2023-08-30"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2023-08-30",
+        last_updated: "2023-08-30",
       },
       "deepseek/deepseek-r1": {
-        "id": "deepseek/deepseek-r1",
-        "name": "DeepSeek-R1",
-        "family": "deepseek-thinking",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "deepseek/deepseek-r1",
+        name: "DeepSeek-R1",
+        family: "deepseek-thinking",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 65536,
-          "output": 8192
+        limit: {
+          context: 65536,
+          output: 8192,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2025-01-20",
-        "last_updated": "2025-01-20"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2025-01-20",
+        last_updated: "2025-01-20",
       },
       "deepseek/deepseek-r1-0528": {
-        "id": "deepseek/deepseek-r1-0528",
-        "name": "DeepSeek-R1-0528",
-        "family": "deepseek-thinking",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "deepseek/deepseek-r1-0528",
+        name: "DeepSeek-R1-0528",
+        family: "deepseek-thinking",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 65536,
-          "output": 8192
+        limit: {
+          context: 65536,
+          output: 8192,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2025-05-28",
-        "last_updated": "2025-05-28"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2025-05-28",
+        last_updated: "2025-05-28",
       },
       "deepseek/deepseek-v3-0324": {
-        "id": "deepseek/deepseek-v3-0324",
-        "name": "DeepSeek-V3-0324",
-        "family": "deepseek",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "deepseek/deepseek-v3-0324",
+        name: "DeepSeek-V3-0324",
+        family: "deepseek",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 128000,
-          "output": 8192
+        limit: {
+          context: 128000,
+          output: 8192,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2025-03-24",
-        "last_updated": "2025-03-24"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2025-03-24",
+        last_updated: "2025-03-24",
       },
       "meta/llama-3.2-11b-vision-instruct": {
-        "id": "meta/llama-3.2-11b-vision-instruct",
-        "name": "Llama-3.2-11B-Vision-Instruct",
-        "family": "llama",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "meta/llama-3.2-11b-vision-instruct",
+        name: "Llama-3.2-11B-Vision-Instruct",
+        family: "llama",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 128000,
-          "output": 8192
+        limit: {
+          context: 128000,
+          output: 8192,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2024-09-25",
-        "last_updated": "2024-09-25"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2024-09-25",
+        last_updated: "2024-09-25",
       },
       "meta/llama-3.2-90b-vision-instruct": {
-        "id": "meta/llama-3.2-90b-vision-instruct",
-        "name": "Llama-3.2-90B-Vision-Instruct",
-        "family": "llama",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "meta/llama-3.2-90b-vision-instruct",
+        name: "Llama-3.2-90B-Vision-Instruct",
+        family: "llama",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 128000,
-          "output": 8192
+        limit: {
+          context: 128000,
+          output: 8192,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2024-09-25",
-        "last_updated": "2024-09-25"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2024-09-25",
+        last_updated: "2024-09-25",
       },
       "meta/llama-3.3-70b-instruct": {
-        "id": "meta/llama-3.3-70b-instruct",
-        "name": "Llama-3.3-70B-Instruct",
-        "family": "llama",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "meta/llama-3.3-70b-instruct",
+        name: "Llama-3.3-70B-Instruct",
+        family: "llama",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 128000,
-          "output": 32768
+        limit: {
+          context: 128000,
+          output: 32768,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2024-12-06",
-        "last_updated": "2024-12-06"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2024-12-06",
+        last_updated: "2024-12-06",
       },
       "meta/llama-4-maverick-17b-128e-instruct-fp8": {
-        "id": "meta/llama-4-maverick-17b-128e-instruct-fp8",
-        "name": "Llama 4 Maverick 17B 128E Instruct FP8",
-        "family": "llama",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "meta/llama-4-maverick-17b-128e-instruct-fp8",
+        name: "Llama 4 Maverick 17B 128E Instruct FP8",
+        family: "llama",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 128000,
-          "output": 8192
+        limit: {
+          context: 128000,
+          output: 8192,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2025-01-31",
-        "last_updated": "2025-01-31"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2025-01-31",
+        last_updated: "2025-01-31",
       },
       "meta/llama-4-scout-17b-16e-instruct": {
-        "id": "meta/llama-4-scout-17b-16e-instruct",
-        "name": "Llama 4 Scout 17B 16E Instruct",
-        "family": "llama",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "meta/llama-4-scout-17b-16e-instruct",
+        name: "Llama 4 Scout 17B 16E Instruct",
+        family: "llama",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 128000,
-          "output": 8192
+        limit: {
+          context: 128000,
+          output: 8192,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2025-01-31",
-        "last_updated": "2025-01-31"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2025-01-31",
+        last_updated: "2025-01-31",
       },
       "meta/meta-llama-3-70b-instruct": {
-        "id": "meta/meta-llama-3-70b-instruct",
-        "name": "Meta-Llama-3-70B-Instruct",
-        "family": "llama",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "meta/meta-llama-3-70b-instruct",
+        name: "Meta-Llama-3-70B-Instruct",
+        family: "llama",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 8192,
-          "output": 2048
+        limit: {
+          context: 8192,
+          output: 2048,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2024-04-18",
-        "last_updated": "2024-04-18"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2024-04-18",
+        last_updated: "2024-04-18",
       },
       "meta/meta-llama-3-8b-instruct": {
-        "id": "meta/meta-llama-3-8b-instruct",
-        "name": "Meta-Llama-3-8B-Instruct",
-        "family": "llama",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "meta/meta-llama-3-8b-instruct",
+        name: "Meta-Llama-3-8B-Instruct",
+        family: "llama",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 8192,
-          "output": 2048
+        limit: {
+          context: 8192,
+          output: 2048,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2024-04-18",
-        "last_updated": "2024-04-18"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2024-04-18",
+        last_updated: "2024-04-18",
       },
       "meta/meta-llama-3.1-405b-instruct": {
-        "id": "meta/meta-llama-3.1-405b-instruct",
-        "name": "Meta-Llama-3.1-405B-Instruct",
-        "family": "llama",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "meta/meta-llama-3.1-405b-instruct",
+        name: "Meta-Llama-3.1-405B-Instruct",
+        family: "llama",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 128000,
-          "output": 32768
+        limit: {
+          context: 128000,
+          output: 32768,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2024-07-23",
-        "last_updated": "2024-07-23"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2024-07-23",
+        last_updated: "2024-07-23",
       },
       "meta/meta-llama-3.1-70b-instruct": {
-        "id": "meta/meta-llama-3.1-70b-instruct",
-        "name": "Meta-Llama-3.1-70B-Instruct",
-        "family": "llama",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "meta/meta-llama-3.1-70b-instruct",
+        name: "Meta-Llama-3.1-70B-Instruct",
+        family: "llama",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 128000,
-          "output": 32768
+        limit: {
+          context: 128000,
+          output: 32768,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2024-07-23",
-        "last_updated": "2024-07-23"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2024-07-23",
+        last_updated: "2024-07-23",
       },
       "meta/meta-llama-3.1-8b-instruct": {
-        "id": "meta/meta-llama-3.1-8b-instruct",
-        "name": "Meta-Llama-3.1-8B-Instruct",
-        "family": "llama",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "meta/meta-llama-3.1-8b-instruct",
+        name: "Meta-Llama-3.1-8B-Instruct",
+        family: "llama",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 128000,
-          "output": 32768
+        limit: {
+          context: 128000,
+          output: 32768,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2024-07-23",
-        "last_updated": "2024-07-23"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2024-07-23",
+        last_updated: "2024-07-23",
       },
       "microsoft/mai-ds-r1": {
-        "id": "microsoft/mai-ds-r1",
-        "name": "MAI-DS-R1",
-        "family": "mai",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "microsoft/mai-ds-r1",
+        name: "MAI-DS-R1",
+        family: "mai",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 65536,
-          "output": 8192
+        limit: {
+          context: 65536,
+          output: 8192,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2025-01-20",
-        "last_updated": "2025-01-20"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2025-01-20",
+        last_updated: "2025-01-20",
       },
       "microsoft/phi-3-medium-128k-instruct": {
-        "id": "microsoft/phi-3-medium-128k-instruct",
-        "name": "Phi-3-medium instruct (128k)",
-        "family": "phi",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "microsoft/phi-3-medium-128k-instruct",
+        name: "Phi-3-medium instruct (128k)",
+        family: "phi",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 128000,
-          "output": 4096
+        limit: {
+          context: 128000,
+          output: 4096,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2024-04-23",
-        "last_updated": "2024-04-23"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2024-04-23",
+        last_updated: "2024-04-23",
       },
       "microsoft/phi-3-medium-4k-instruct": {
-        "id": "microsoft/phi-3-medium-4k-instruct",
-        "name": "Phi-3-medium instruct (4k)",
-        "family": "phi",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "microsoft/phi-3-medium-4k-instruct",
+        name: "Phi-3-medium instruct (4k)",
+        family: "phi",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 4096,
-          "output": 1024
+        limit: {
+          context: 4096,
+          output: 1024,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2024-04-23",
-        "last_updated": "2024-04-23"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2024-04-23",
+        last_updated: "2024-04-23",
       },
       "microsoft/phi-3-mini-128k-instruct": {
-        "id": "microsoft/phi-3-mini-128k-instruct",
-        "name": "Phi-3-mini instruct (128k)",
-        "family": "phi",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "microsoft/phi-3-mini-128k-instruct",
+        name: "Phi-3-mini instruct (128k)",
+        family: "phi",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 128000,
-          "output": 4096
+        limit: {
+          context: 128000,
+          output: 4096,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2024-04-23",
-        "last_updated": "2024-04-23"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2024-04-23",
+        last_updated: "2024-04-23",
       },
       "microsoft/phi-3-mini-4k-instruct": {
-        "id": "microsoft/phi-3-mini-4k-instruct",
-        "name": "Phi-3-mini instruct (4k)",
-        "family": "phi",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "microsoft/phi-3-mini-4k-instruct",
+        name: "Phi-3-mini instruct (4k)",
+        family: "phi",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 4096,
-          "output": 1024
+        limit: {
+          context: 4096,
+          output: 1024,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2024-04-23",
-        "last_updated": "2024-04-23"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2024-04-23",
+        last_updated: "2024-04-23",
       },
       "microsoft/phi-3-small-128k-instruct": {
-        "id": "microsoft/phi-3-small-128k-instruct",
-        "name": "Phi-3-small instruct (128k)",
-        "family": "phi",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "microsoft/phi-3-small-128k-instruct",
+        name: "Phi-3-small instruct (128k)",
+        family: "phi",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 128000,
-          "output": 4096
+        limit: {
+          context: 128000,
+          output: 4096,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2024-04-23",
-        "last_updated": "2024-04-23"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2024-04-23",
+        last_updated: "2024-04-23",
       },
       "microsoft/phi-3-small-8k-instruct": {
-        "id": "microsoft/phi-3-small-8k-instruct",
-        "name": "Phi-3-small instruct (8k)",
-        "family": "phi",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "microsoft/phi-3-small-8k-instruct",
+        name: "Phi-3-small instruct (8k)",
+        family: "phi",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 8192,
-          "output": 2048
+        limit: {
+          context: 8192,
+          output: 2048,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2024-04-23",
-        "last_updated": "2024-04-23"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2024-04-23",
+        last_updated: "2024-04-23",
       },
       "microsoft/phi-3.5-mini-instruct": {
-        "id": "microsoft/phi-3.5-mini-instruct",
-        "name": "Phi-3.5-mini instruct (128k)",
-        "family": "phi",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "microsoft/phi-3.5-mini-instruct",
+        name: "Phi-3.5-mini instruct (128k)",
+        family: "phi",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 128000,
-          "output": 4096
+        limit: {
+          context: 128000,
+          output: 4096,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2024-08-20",
-        "last_updated": "2024-08-20"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2024-08-20",
+        last_updated: "2024-08-20",
       },
       "microsoft/phi-3.5-moe-instruct": {
-        "id": "microsoft/phi-3.5-moe-instruct",
-        "name": "Phi-3.5-MoE instruct (128k)",
-        "family": "phi",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "microsoft/phi-3.5-moe-instruct",
+        name: "Phi-3.5-MoE instruct (128k)",
+        family: "phi",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 128000,
-          "output": 4096
+        limit: {
+          context: 128000,
+          output: 4096,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2024-08-20",
-        "last_updated": "2024-08-20"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2024-08-20",
+        last_updated: "2024-08-20",
       },
       "microsoft/phi-3.5-vision-instruct": {
-        "id": "microsoft/phi-3.5-vision-instruct",
-        "name": "Phi-3.5-vision instruct (128k)",
-        "family": "phi",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "microsoft/phi-3.5-vision-instruct",
+        name: "Phi-3.5-vision instruct (128k)",
+        family: "phi",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 128000,
-          "output": 4096
+        limit: {
+          context: 128000,
+          output: 4096,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2024-08-20",
-        "last_updated": "2024-08-20"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2024-08-20",
+        last_updated: "2024-08-20",
       },
       "microsoft/phi-4": {
-        "id": "microsoft/phi-4",
-        "name": "Phi-4",
-        "family": "phi",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "microsoft/phi-4",
+        name: "Phi-4",
+        family: "phi",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 16000,
-          "output": 4096
+        limit: {
+          context: 16000,
+          output: 4096,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2024-12-11",
-        "last_updated": "2024-12-11"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2024-12-11",
+        last_updated: "2024-12-11",
       },
       "microsoft/phi-4-mini-instruct": {
-        "id": "microsoft/phi-4-mini-instruct",
-        "name": "Phi-4-mini-instruct",
-        "family": "phi",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "microsoft/phi-4-mini-instruct",
+        name: "Phi-4-mini-instruct",
+        family: "phi",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 128000,
-          "output": 4096
+        limit: {
+          context: 128000,
+          output: 4096,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2024-12-11",
-        "last_updated": "2024-12-11"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2024-12-11",
+        last_updated: "2024-12-11",
       },
       "microsoft/phi-4-mini-reasoning": {
-        "id": "microsoft/phi-4-mini-reasoning",
-        "name": "Phi-4-mini-reasoning",
-        "family": "phi",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "microsoft/phi-4-mini-reasoning",
+        name: "Phi-4-mini-reasoning",
+        family: "phi",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 128000,
-          "output": 4096
+        limit: {
+          context: 128000,
+          output: 4096,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2024-12-11",
-        "last_updated": "2024-12-11"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2024-12-11",
+        last_updated: "2024-12-11",
       },
       "microsoft/phi-4-multimodal-instruct": {
-        "id": "microsoft/phi-4-multimodal-instruct",
-        "name": "Phi-4-multimodal-instruct",
-        "family": "phi",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "microsoft/phi-4-multimodal-instruct",
+        name: "Phi-4-multimodal-instruct",
+        family: "phi",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 128000,
-          "output": 4096
+        limit: {
+          context: 128000,
+          output: 4096,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2024-12-11",
-        "last_updated": "2024-12-11"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2024-12-11",
+        last_updated: "2024-12-11",
       },
       "microsoft/phi-4-reasoning": {
-        "id": "microsoft/phi-4-reasoning",
-        "name": "Phi-4-Reasoning",
-        "family": "phi",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "microsoft/phi-4-reasoning",
+        name: "Phi-4-Reasoning",
+        family: "phi",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 128000,
-          "output": 4096
+        limit: {
+          context: 128000,
+          output: 4096,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2024-12-11",
-        "last_updated": "2024-12-11"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2024-12-11",
+        last_updated: "2024-12-11",
       },
       "mistral-ai/codestral-2501": {
-        "id": "mistral-ai/codestral-2501",
-        "name": "Codestral 25.01",
-        "family": "codestral",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "mistral-ai/codestral-2501",
+        name: "Codestral 25.01",
+        family: "codestral",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 32000,
-          "output": 8192
+        limit: {
+          context: 32000,
+          output: 8192,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2025-01-01",
-        "last_updated": "2025-01-01"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2025-01-01",
+        last_updated: "2025-01-01",
       },
       "mistral-ai/ministral-3b": {
-        "id": "mistral-ai/ministral-3b",
-        "name": "Ministral 3B",
-        "family": "ministral",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "mistral-ai/ministral-3b",
+        name: "Ministral 3B",
+        family: "ministral",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 128000,
-          "output": 8192
+        limit: {
+          context: 128000,
+          output: 8192,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2024-10-22",
-        "last_updated": "2024-10-22"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2024-10-22",
+        last_updated: "2024-10-22",
       },
       "mistral-ai/mistral-large-2411": {
-        "id": "mistral-ai/mistral-large-2411",
-        "name": "Mistral Large 24.11",
-        "family": "mistral-large",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "mistral-ai/mistral-large-2411",
+        name: "Mistral Large 24.11",
+        family: "mistral-large",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 128000,
-          "output": 32768
+        limit: {
+          context: 128000,
+          output: 32768,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2024-11-01",
-        "last_updated": "2024-11-01"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2024-11-01",
+        last_updated: "2024-11-01",
       },
       "mistral-ai/mistral-medium-2505": {
-        "id": "mistral-ai/mistral-medium-2505",
-        "name": "Mistral Medium 3 (25.05)",
-        "family": "mistral-medium",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "mistral-ai/mistral-medium-2505",
+        name: "Mistral Medium 3 (25.05)",
+        family: "mistral-medium",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 128000,
-          "output": 32768
+        limit: {
+          context: 128000,
+          output: 32768,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2025-05-01",
-        "last_updated": "2025-05-01"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2025-05-01",
+        last_updated: "2025-05-01",
       },
       "mistral-ai/mistral-nemo": {
-        "id": "mistral-ai/mistral-nemo",
-        "name": "Mistral Nemo",
-        "family": "mistral-nemo",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "mistral-ai/mistral-nemo",
+        name: "Mistral Nemo",
+        family: "mistral-nemo",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 128000,
-          "output": 8192
+        limit: {
+          context: 128000,
+          output: 8192,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2024-07-18",
-        "last_updated": "2024-07-18"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2024-07-18",
+        last_updated: "2024-07-18",
       },
       "mistral-ai/mistral-small-2503": {
-        "id": "mistral-ai/mistral-small-2503",
-        "name": "Mistral Small 3.1",
-        "family": "mistral-small",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "mistral-ai/mistral-small-2503",
+        name: "Mistral Small 3.1",
+        family: "mistral-small",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 128000,
-          "output": 32768
+        limit: {
+          context: 128000,
+          output: 32768,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2025-03-01",
-        "last_updated": "2025-03-01"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2025-03-01",
+        last_updated: "2025-03-01",
       },
       "openai/gpt-4.1": {
-        "id": "openai/gpt-4.1",
-        "name": "GPT-4.1",
-        "family": "gpt",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "openai/gpt-4.1",
+        name: "GPT-4.1",
+        family: "gpt",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 128000,
-          "output": 16384
+        limit: {
+          context: 128000,
+          output: 16384,
         },
-        "tool_call": true,
-        "reasoning": false,
-        "release_date": "2025-04-14",
-        "last_updated": "2025-04-14"
+        tool_call: true,
+        reasoning: false,
+        release_date: "2025-04-14",
+        last_updated: "2025-04-14",
       },
       "openai/gpt-4.1-mini": {
-        "id": "openai/gpt-4.1-mini",
-        "name": "GPT-4.1-mini",
-        "family": "gpt-mini",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "openai/gpt-4.1-mini",
+        name: "GPT-4.1-mini",
+        family: "gpt-mini",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 128000,
-          "output": 16384
+        limit: {
+          context: 128000,
+          output: 16384,
         },
-        "tool_call": true,
-        "reasoning": false,
-        "release_date": "2025-04-14",
-        "last_updated": "2025-04-14"
+        tool_call: true,
+        reasoning: false,
+        release_date: "2025-04-14",
+        last_updated: "2025-04-14",
       },
       "openai/gpt-4.1-nano": {
-        "id": "openai/gpt-4.1-nano",
-        "name": "GPT-4.1-nano",
-        "family": "gpt-nano",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "openai/gpt-4.1-nano",
+        name: "GPT-4.1-nano",
+        family: "gpt-nano",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 128000,
-          "output": 16384
+        limit: {
+          context: 128000,
+          output: 16384,
         },
-        "tool_call": true,
-        "reasoning": false,
-        "release_date": "2025-04-14",
-        "last_updated": "2025-04-14"
+        tool_call: true,
+        reasoning: false,
+        release_date: "2025-04-14",
+        last_updated: "2025-04-14",
       },
       "openai/gpt-4o": {
-        "id": "openai/gpt-4o",
-        "name": "GPT-4o",
-        "family": "gpt",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "openai/gpt-4o",
+        name: "GPT-4o",
+        family: "gpt",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 128000,
-          "output": 16384
+        limit: {
+          context: 128000,
+          output: 16384,
         },
-        "tool_call": true,
-        "reasoning": false,
-        "release_date": "2024-05-13",
-        "last_updated": "2024-05-13"
+        tool_call: true,
+        reasoning: false,
+        release_date: "2024-05-13",
+        last_updated: "2024-05-13",
       },
       "openai/gpt-4o-mini": {
-        "id": "openai/gpt-4o-mini",
-        "name": "GPT-4o mini",
-        "family": "gpt-mini",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "openai/gpt-4o-mini",
+        name: "GPT-4o mini",
+        family: "gpt-mini",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 128000,
-          "output": 16384
+        limit: {
+          context: 128000,
+          output: 16384,
         },
-        "tool_call": true,
-        "reasoning": false,
-        "release_date": "2024-07-18",
-        "last_updated": "2024-07-18"
+        tool_call: true,
+        reasoning: false,
+        release_date: "2024-07-18",
+        last_updated: "2024-07-18",
       },
       "openai/o1": {
-        "id": "openai/o1",
-        "name": "OpenAI o1",
-        "family": "o",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "openai/o1",
+        name: "OpenAI o1",
+        family: "o",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 200000,
-          "output": 100000
+        limit: {
+          context: 200000,
+          output: 100000,
         },
-        "tool_call": false,
-        "reasoning": true,
-        "release_date": "2024-09-12",
-        "last_updated": "2024-12-17"
+        tool_call: false,
+        reasoning: true,
+        release_date: "2024-09-12",
+        last_updated: "2024-12-17",
       },
       "openai/o1-mini": {
-        "id": "openai/o1-mini",
-        "name": "OpenAI o1-mini",
-        "family": "o-mini",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "openai/o1-mini",
+        name: "OpenAI o1-mini",
+        family: "o-mini",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 128000,
-          "output": 65536
+        limit: {
+          context: 128000,
+          output: 65536,
         },
-        "tool_call": false,
-        "reasoning": true,
-        "release_date": "2024-09-12",
-        "last_updated": "2024-12-17"
+        tool_call: false,
+        reasoning: true,
+        release_date: "2024-09-12",
+        last_updated: "2024-12-17",
       },
       "openai/o1-preview": {
-        "id": "openai/o1-preview",
-        "name": "OpenAI o1-preview",
-        "family": "o",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "openai/o1-preview",
+        name: "OpenAI o1-preview",
+        family: "o",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 128000,
-          "output": 32768
+        limit: {
+          context: 128000,
+          output: 32768,
         },
-        "tool_call": false,
-        "reasoning": true,
-        "release_date": "2024-09-12",
-        "last_updated": "2024-09-12"
+        tool_call: false,
+        reasoning: true,
+        release_date: "2024-09-12",
+        last_updated: "2024-09-12",
       },
       "openai/o3": {
-        "id": "openai/o3",
-        "name": "OpenAI o3",
-        "family": "o",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "openai/o3",
+        name: "OpenAI o3",
+        family: "o",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 200000,
-          "output": 100000
+        limit: {
+          context: 200000,
+          output: 100000,
         },
-        "tool_call": false,
-        "reasoning": true,
-        "release_date": "2025-01-31",
-        "last_updated": "2025-01-31"
+        tool_call: false,
+        reasoning: true,
+        release_date: "2025-01-31",
+        last_updated: "2025-01-31",
       },
       "openai/o3-mini": {
-        "id": "openai/o3-mini",
-        "name": "OpenAI o3-mini",
-        "family": "o-mini",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "openai/o3-mini",
+        name: "OpenAI o3-mini",
+        family: "o-mini",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 200000,
-          "output": 100000
+        limit: {
+          context: 200000,
+          output: 100000,
         },
-        "tool_call": false,
-        "reasoning": true,
-        "release_date": "2025-01-31",
-        "last_updated": "2025-01-31"
+        tool_call: false,
+        reasoning: true,
+        release_date: "2025-01-31",
+        last_updated: "2025-01-31",
       },
       "openai/o4-mini": {
-        "id": "openai/o4-mini",
-        "name": "OpenAI o4-mini",
-        "family": "o-mini",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "openai/o4-mini",
+        name: "OpenAI o4-mini",
+        family: "o-mini",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 200000,
-          "output": 100000
+        limit: {
+          context: 200000,
+          output: 100000,
         },
-        "tool_call": false,
-        "reasoning": true,
-        "release_date": "2025-01-31",
-        "last_updated": "2025-01-31"
+        tool_call: false,
+        reasoning: true,
+        release_date: "2025-01-31",
+        last_updated: "2025-01-31",
       },
       "xai/grok-3": {
-        "id": "xai/grok-3",
-        "name": "Grok 3",
-        "family": "grok",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "xai/grok-3",
+        name: "Grok 3",
+        family: "grok",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 128000,
-          "output": 8192
+        limit: {
+          context: 128000,
+          output: 8192,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2024-12-09",
-        "last_updated": "2024-12-09"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2024-12-09",
+        last_updated: "2024-12-09",
       },
       "xai/grok-3-mini": {
-        "id": "xai/grok-3-mini",
-        "name": "Grok 3 Mini",
-        "family": "grok",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "xai/grok-3-mini",
+        name: "Grok 3 Mini",
+        family: "grok",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 128000,
-          "output": 8192
+        limit: {
+          context: 128000,
+          output: 8192,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2024-12-09",
-        "last_updated": "2024-12-09"
-      }
-    }
+        tool_call: true,
+        reasoning: true,
+        release_date: "2024-12-09",
+        last_updated: "2024-12-09",
+      },
+    },
   },
-  "google": {
-    "id": "google",
-    "name": "Google",
-    "env": [
-      "GOOGLE_API_KEY",
-      "GOOGLE_GENERATIVE_AI_API_KEY",
-      "GEMINI_API_KEY"
-    ],
-    "models": {
+  google: {
+    id: "google",
+    name: "Google",
+    env: ["GOOGLE_API_KEY", "GOOGLE_GENERATIVE_AI_API_KEY", "GEMINI_API_KEY"],
+    models: {
       "gemini-2.0-flash": {
-        "id": "gemini-2.0-flash",
-        "name": "Gemini 2.0 Flash",
-        "family": "gemini-flash",
-        "cost": {
-          "input": 0.1,
-          "output": 0.4
+        id: "gemini-2.0-flash",
+        name: "Gemini 2.0 Flash",
+        family: "gemini-flash",
+        cost: {
+          input: 0.1,
+          output: 0.4,
         },
-        "limit": {
-          "context": 1048576,
-          "output": 8192
+        limit: {
+          context: 1048576,
+          output: 8192,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2024-12-11",
-        "last_updated": "2024-12-11"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2024-12-11",
+        last_updated: "2024-12-11",
       },
       "gemini-2.0-flash-lite": {
-        "id": "gemini-2.0-flash-lite",
-        "name": "Gemini 2.0 Flash-Lite",
-        "family": "gemini-flash-lite",
-        "cost": {
-          "input": 0.075,
-          "output": 0.3
+        id: "gemini-2.0-flash-lite",
+        name: "Gemini 2.0 Flash-Lite",
+        family: "gemini-flash-lite",
+        cost: {
+          input: 0.075,
+          output: 0.3,
         },
-        "limit": {
-          "context": 1048576,
-          "output": 8192
+        limit: {
+          context: 1048576,
+          output: 8192,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2024-12-11",
-        "last_updated": "2024-12-11"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2024-12-11",
+        last_updated: "2024-12-11",
       },
       "gemini-2.5-flash": {
-        "id": "gemini-2.5-flash",
-        "name": "Gemini 2.5 Flash",
-        "family": "gemini-flash",
-        "cost": {
-          "input": 0.3,
-          "output": 2.5
+        id: "gemini-2.5-flash",
+        name: "Gemini 2.5 Flash",
+        family: "gemini-flash",
+        cost: {
+          input: 0.3,
+          output: 2.5,
         },
-        "limit": {
-          "context": 1048576,
-          "output": 65536
+        limit: {
+          context: 1048576,
+          output: 65536,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-03-20",
-        "last_updated": "2025-06-05"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-03-20",
+        last_updated: "2025-06-05",
       },
       "gemini-2.5-flash-image": {
-        "id": "gemini-2.5-flash-image",
-        "name": "Nano Banana",
-        "family": "gemini-flash",
-        "cost": {
-          "input": 0.3,
-          "output": 30
+        id: "gemini-2.5-flash-image",
+        name: "Nano Banana",
+        family: "gemini-flash",
+        cost: {
+          input: 0.3,
+          output: 30,
         },
-        "limit": {
-          "context": 32768,
-          "output": 32768
+        limit: {
+          context: 32768,
+          output: 32768,
         },
-        "tool_call": false,
-        "reasoning": true,
-        "release_date": "2025-08-26",
-        "last_updated": "2025-08-26"
+        tool_call: false,
+        reasoning: true,
+        release_date: "2025-08-26",
+        last_updated: "2025-08-26",
       },
       "gemini-2.5-flash-lite": {
-        "id": "gemini-2.5-flash-lite",
-        "name": "Gemini 2.5 Flash-Lite",
-        "family": "gemini-flash-lite",
-        "cost": {
-          "input": 0.1,
-          "output": 0.4
+        id: "gemini-2.5-flash-lite",
+        name: "Gemini 2.5 Flash-Lite",
+        family: "gemini-flash-lite",
+        cost: {
+          input: 0.1,
+          output: 0.4,
         },
-        "limit": {
-          "context": 1048576,
-          "output": 65536
+        limit: {
+          context: 1048576,
+          output: 65536,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-06-17",
-        "last_updated": "2025-06-17"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-06-17",
+        last_updated: "2025-06-17",
       },
       "gemini-2.5-flash-preview-tts": {
-        "id": "gemini-2.5-flash-preview-tts",
-        "name": "Gemini 2.5 Flash Preview TTS",
-        "family": "gemini-flash",
-        "cost": {
-          "input": 0.5,
-          "output": 10
+        id: "gemini-2.5-flash-preview-tts",
+        name: "Gemini 2.5 Flash Preview TTS",
+        family: "gemini-flash",
+        cost: {
+          input: 0.5,
+          output: 10,
         },
-        "limit": {
-          "context": 8192,
-          "output": 16384
+        limit: {
+          context: 8192,
+          output: 16384,
         },
-        "tool_call": false,
-        "reasoning": false,
-        "release_date": "2025-05-01",
-        "last_updated": "2025-05-01"
+        tool_call: false,
+        reasoning: false,
+        release_date: "2025-05-01",
+        last_updated: "2025-05-01",
       },
       "gemini-2.5-pro": {
-        "id": "gemini-2.5-pro",
-        "name": "Gemini 2.5 Pro",
-        "family": "gemini-pro",
-        "cost": {
-          "input": 1.25,
-          "output": 10
+        id: "gemini-2.5-pro",
+        name: "Gemini 2.5 Pro",
+        family: "gemini-pro",
+        cost: {
+          input: 1.25,
+          output: 10,
         },
-        "limit": {
-          "context": 1048576,
-          "output": 65536
+        limit: {
+          context: 1048576,
+          output: 65536,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-03-20",
-        "last_updated": "2025-06-05"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-03-20",
+        last_updated: "2025-06-05",
       },
       "gemini-2.5-pro-preview-tts": {
-        "id": "gemini-2.5-pro-preview-tts",
-        "name": "Gemini 2.5 Pro Preview TTS",
-        "family": "gemini-flash",
-        "cost": {
-          "input": 1,
-          "output": 20
+        id: "gemini-2.5-pro-preview-tts",
+        name: "Gemini 2.5 Pro Preview TTS",
+        family: "gemini-flash",
+        cost: {
+          input: 1,
+          output: 20,
         },
-        "limit": {
-          "context": 8192,
-          "output": 16384
+        limit: {
+          context: 8192,
+          output: 16384,
         },
-        "tool_call": false,
-        "reasoning": false,
-        "release_date": "2025-05-01",
-        "last_updated": "2025-05-01"
+        tool_call: false,
+        reasoning: false,
+        release_date: "2025-05-01",
+        last_updated: "2025-05-01",
       },
       "gemini-3-flash-preview": {
-        "id": "gemini-3-flash-preview",
-        "name": "Gemini 3 Flash Preview",
-        "family": "gemini-flash",
-        "cost": {
-          "input": 0.5,
-          "output": 3
+        id: "gemini-3-flash-preview",
+        name: "Gemini 3 Flash Preview",
+        family: "gemini-flash",
+        cost: {
+          input: 0.5,
+          output: 3,
         },
-        "limit": {
-          "context": 1048576,
-          "output": 65536
+        limit: {
+          context: 1048576,
+          output: 65536,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-12-17",
-        "last_updated": "2025-12-17"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-12-17",
+        last_updated: "2025-12-17",
       },
       "gemini-3-pro-preview": {
-        "id": "gemini-3-pro-preview",
-        "name": "Gemini 3 Pro Preview",
-        "family": "gemini-pro",
-        "cost": {
-          "input": 2,
-          "output": 12
+        id: "gemini-3-pro-preview",
+        name: "Gemini 3 Pro Preview",
+        family: "gemini-pro",
+        cost: {
+          input: 2,
+          output: 12,
         },
-        "limit": {
-          "context": 1048576,
-          "output": 65536
+        limit: {
+          context: 1048576,
+          output: 65536,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-11-18",
-        "last_updated": "2025-11-18"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-11-18",
+        last_updated: "2025-11-18",
       },
       "gemini-3.1-flash-image-preview": {
-        "id": "gemini-3.1-flash-image-preview",
-        "name": "Nano Banana 2",
-        "family": "gemini-flash",
-        "cost": {
-          "input": 0.5,
-          "output": 60
+        id: "gemini-3.1-flash-image-preview",
+        name: "Nano Banana 2",
+        family: "gemini-flash",
+        cost: {
+          input: 0.5,
+          output: 60,
         },
-        "limit": {
-          "context": 65536,
-          "output": 65536
+        limit: {
+          context: 65536,
+          output: 65536,
         },
-        "tool_call": false,
-        "reasoning": true,
-        "release_date": "2026-02-26",
-        "last_updated": "2026-02-26"
+        tool_call: false,
+        reasoning: true,
+        release_date: "2026-02-26",
+        last_updated: "2026-02-26",
       },
       "gemini-3.1-flash-lite": {
-        "id": "gemini-3.1-flash-lite",
-        "name": "Gemini 3.1 Flash Lite",
-        "family": "gemini-flash-lite",
-        "cost": {
-          "input": 0.25,
-          "output": 1.5
+        id: "gemini-3.1-flash-lite",
+        name: "Gemini 3.1 Flash Lite",
+        family: "gemini-flash-lite",
+        cost: {
+          input: 0.25,
+          output: 1.5,
         },
-        "limit": {
-          "context": 1048576,
-          "output": 65536
+        limit: {
+          context: 1048576,
+          output: 65536,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-05-07",
-        "last_updated": "2026-05-07"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-05-07",
+        last_updated: "2026-05-07",
       },
       "gemini-3.1-flash-lite-preview": {
-        "id": "gemini-3.1-flash-lite-preview",
-        "name": "Gemini 3.1 Flash Lite Preview",
-        "family": "gemini-flash-lite",
-        "cost": {
-          "input": 0.25,
-          "output": 1.5
+        id: "gemini-3.1-flash-lite-preview",
+        name: "Gemini 3.1 Flash Lite Preview",
+        family: "gemini-flash-lite",
+        cost: {
+          input: 0.25,
+          output: 1.5,
         },
-        "limit": {
-          "context": 1048576,
-          "output": 65536
+        limit: {
+          context: 1048576,
+          output: 65536,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-03-03",
-        "last_updated": "2026-03-03"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-03-03",
+        last_updated: "2026-03-03",
       },
       "gemini-3.1-pro-preview": {
-        "id": "gemini-3.1-pro-preview",
-        "name": "Gemini 3.1 Pro Preview",
-        "family": "gemini-pro",
-        "cost": {
-          "input": 2,
-          "output": 12
+        id: "gemini-3.1-pro-preview",
+        name: "Gemini 3.1 Pro Preview",
+        family: "gemini-pro",
+        cost: {
+          input: 2,
+          output: 12,
         },
-        "limit": {
-          "context": 1048576,
-          "output": 65536
+        limit: {
+          context: 1048576,
+          output: 65536,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-02-19",
-        "last_updated": "2026-02-19"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-02-19",
+        last_updated: "2026-02-19",
       },
       "gemini-3.1-pro-preview-customtools": {
-        "id": "gemini-3.1-pro-preview-customtools",
-        "name": "Gemini 3.1 Pro Preview Custom Tools",
-        "family": "gemini-pro",
-        "cost": {
-          "input": 2,
-          "output": 12
+        id: "gemini-3.1-pro-preview-customtools",
+        name: "Gemini 3.1 Pro Preview Custom Tools",
+        family: "gemini-pro",
+        cost: {
+          input: 2,
+          output: 12,
         },
-        "limit": {
-          "context": 1048576,
-          "output": 65536
+        limit: {
+          context: 1048576,
+          output: 65536,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-02-19",
-        "last_updated": "2026-02-19"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-02-19",
+        last_updated: "2026-02-19",
       },
       "gemini-3.5-flash": {
-        "id": "gemini-3.5-flash",
-        "name": "Gemini 3.5 Flash",
-        "family": "gemini-flash",
-        "cost": {
-          "input": 1.5,
-          "output": 9
+        id: "gemini-3.5-flash",
+        name: "Gemini 3.5 Flash",
+        family: "gemini-flash",
+        cost: {
+          input: 1.5,
+          output: 9,
         },
-        "limit": {
-          "context": 1048576,
-          "output": 65536
+        limit: {
+          context: 1048576,
+          output: 65536,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-05-19",
-        "last_updated": "2026-05-19"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-05-19",
+        last_updated: "2026-05-19",
       },
       "gemini-embedding-001": {
-        "id": "gemini-embedding-001",
-        "name": "Gemini Embedding 001",
-        "family": "gemini",
-        "cost": {
-          "input": 0.15,
-          "output": 0
+        id: "gemini-embedding-001",
+        name: "Gemini Embedding 001",
+        family: "gemini",
+        cost: {
+          input: 0.15,
+          output: 0,
         },
-        "limit": {
-          "context": 2048,
-          "output": 1
+        limit: {
+          context: 2048,
+          output: 1,
         },
-        "tool_call": false,
-        "reasoning": false,
-        "release_date": "2025-05-20",
-        "last_updated": "2025-05-20"
+        tool_call: false,
+        reasoning: false,
+        release_date: "2025-05-20",
+        last_updated: "2025-05-20",
       },
       "gemini-flash-latest": {
-        "id": "gemini-flash-latest",
-        "name": "Gemini Flash Latest",
-        "family": "gemini-flash",
-        "cost": {
-          "input": 0.3,
-          "output": 2.5
+        id: "gemini-flash-latest",
+        name: "Gemini Flash Latest",
+        family: "gemini-flash",
+        cost: {
+          input: 0.3,
+          output: 2.5,
         },
-        "limit": {
-          "context": 1048576,
-          "output": 65536
+        limit: {
+          context: 1048576,
+          output: 65536,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-09-25",
-        "last_updated": "2025-09-25"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-09-25",
+        last_updated: "2025-09-25",
       },
       "gemini-flash-lite-latest": {
-        "id": "gemini-flash-lite-latest",
-        "name": "Gemini Flash-Lite Latest",
-        "family": "gemini-flash-lite",
-        "cost": {
-          "input": 0.1,
-          "output": 0.4
+        id: "gemini-flash-lite-latest",
+        name: "Gemini Flash-Lite Latest",
+        family: "gemini-flash-lite",
+        cost: {
+          input: 0.1,
+          output: 0.4,
         },
-        "limit": {
-          "context": 1048576,
-          "output": 65536
+        limit: {
+          context: 1048576,
+          output: 65536,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-09-25",
-        "last_updated": "2025-09-25"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-09-25",
+        last_updated: "2025-09-25",
       },
       "gemma-4-26b-a4b-it": {
-        "id": "gemma-4-26b-a4b-it",
-        "name": "Gemma 4 26B A4B IT",
-        "family": "gemma",
-        "limit": {
-          "context": 262144,
-          "output": 32768
+        id: "gemma-4-26b-a4b-it",
+        name: "Gemma 4 26B A4B IT",
+        family: "gemma",
+        limit: {
+          context: 262144,
+          output: 32768,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-04-02",
-        "last_updated": "2026-04-02"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-04-02",
+        last_updated: "2026-04-02",
       },
       "gemma-4-31b-it": {
-        "id": "gemma-4-31b-it",
-        "name": "Gemma 4 31B IT",
-        "family": "gemma",
-        "limit": {
-          "context": 262144,
-          "output": 32768
+        id: "gemma-4-31b-it",
+        name: "Gemma 4 31B IT",
+        family: "gemma",
+        limit: {
+          context: 262144,
+          output: 32768,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-04-02",
-        "last_updated": "2026-04-02"
-      }
-    }
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-04-02",
+        last_updated: "2026-04-02",
+      },
+    },
   },
-  "groq": {
-    "id": "groq",
-    "name": "Groq",
-    "env": [
-      "GROQ_API_KEY"
-    ],
-    "models": {
+  groq: {
+    id: "groq",
+    name: "Groq",
+    env: ["GROQ_API_KEY"],
+    models: {
       "allam-2-7b": {
-        "id": "allam-2-7b",
-        "name": "ALLaM-2-7b",
-        "family": "allam",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "allam-2-7b",
+        name: "ALLaM-2-7b",
+        family: "allam",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 4096,
-          "output": 4096
+        limit: {
+          context: 4096,
+          output: 4096,
         },
-        "tool_call": false,
-        "reasoning": false,
-        "release_date": "2024-09",
-        "last_updated": "2024-09"
+        tool_call: false,
+        reasoning: false,
+        release_date: "2024-09",
+        last_updated: "2024-09",
       },
       "canopylabs/orpheus-arabic-saudi": {
-        "id": "canopylabs/orpheus-arabic-saudi",
-        "name": "Orpheus Arabic Saudi",
-        "family": "canopylabs",
-        "cost": {
-          "input": 40,
-          "output": 0
+        id: "canopylabs/orpheus-arabic-saudi",
+        name: "Orpheus Arabic Saudi",
+        family: "canopylabs",
+        cost: {
+          input: 40,
+          output: 0,
         },
-        "limit": {
-          "context": 4000,
-          "output": 50000
+        limit: {
+          context: 4000,
+          output: 50000,
         },
-        "tool_call": false,
-        "reasoning": false,
-        "release_date": "2025-12-16",
-        "last_updated": "2025-12-16"
+        tool_call: false,
+        reasoning: false,
+        release_date: "2025-12-16",
+        last_updated: "2025-12-16",
       },
       "canopylabs/orpheus-v1-english": {
-        "id": "canopylabs/orpheus-v1-english",
-        "name": "Orpheus V1 English",
-        "family": "canopylabs",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "canopylabs/orpheus-v1-english",
+        name: "Orpheus V1 English",
+        family: "canopylabs",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 4000,
-          "output": 50000
+        limit: {
+          context: 4000,
+          output: 50000,
         },
-        "tool_call": false,
-        "reasoning": false,
-        "release_date": "2025-12-19",
-        "last_updated": "2025-12-19"
+        tool_call: false,
+        reasoning: false,
+        release_date: "2025-12-19",
+        last_updated: "2025-12-19",
       },
       "deepseek-r1-distill-llama-70b": {
-        "id": "deepseek-r1-distill-llama-70b",
-        "name": "DeepSeek R1 Distill Llama 70B",
-        "family": "deepseek-thinking",
-        "cost": {
-          "input": 0.75,
-          "output": 0.99
+        id: "deepseek-r1-distill-llama-70b",
+        name: "DeepSeek R1 Distill Llama 70B",
+        family: "deepseek-thinking",
+        cost: {
+          input: 0.75,
+          output: 0.99,
         },
-        "limit": {
-          "context": 131072,
-          "output": 8192
+        limit: {
+          context: 131072,
+          output: 8192,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2025-01-20",
-        "last_updated": "2025-01-20"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2025-01-20",
+        last_updated: "2025-01-20",
       },
       "gemma2-9b-it": {
-        "id": "gemma2-9b-it",
-        "name": "Gemma 2 9B",
-        "family": "gemma",
-        "cost": {
-          "input": 0.2,
-          "output": 0.2
+        id: "gemma2-9b-it",
+        name: "Gemma 2 9B",
+        family: "gemma",
+        cost: {
+          input: 0.2,
+          output: 0.2,
         },
-        "limit": {
-          "context": 8192,
-          "output": 8192
+        limit: {
+          context: 8192,
+          output: 8192,
         },
-        "tool_call": true,
-        "reasoning": false,
-        "release_date": "2024-06-27",
-        "last_updated": "2024-06-27"
+        tool_call: true,
+        reasoning: false,
+        release_date: "2024-06-27",
+        last_updated: "2024-06-27",
       },
       "groq/compound": {
-        "id": "groq/compound",
-        "name": "Compound",
-        "family": "groq",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "groq/compound",
+        name: "Compound",
+        family: "groq",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 131072,
-          "output": 8192
+        limit: {
+          context: 131072,
+          output: 8192,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2025-09-04",
-        "last_updated": "2025-09-04"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2025-09-04",
+        last_updated: "2025-09-04",
       },
       "groq/compound-mini": {
-        "id": "groq/compound-mini",
-        "name": "Compound Mini",
-        "family": "groq",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "groq/compound-mini",
+        name: "Compound Mini",
+        family: "groq",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 131072,
-          "output": 8192
+        limit: {
+          context: 131072,
+          output: 8192,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2025-09-04",
-        "last_updated": "2025-09-04"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2025-09-04",
+        last_updated: "2025-09-04",
       },
       "llama-3.1-8b-instant": {
-        "id": "llama-3.1-8b-instant",
-        "name": "Llama 3.1 8B Instant",
-        "family": "llama",
-        "cost": {
-          "input": 0.05,
-          "output": 0.08
+        id: "llama-3.1-8b-instant",
+        name: "Llama 3.1 8B Instant",
+        family: "llama",
+        cost: {
+          input: 0.05,
+          output: 0.08,
         },
-        "limit": {
-          "context": 131072,
-          "output": 131072
+        limit: {
+          context: 131072,
+          output: 131072,
         },
-        "tool_call": true,
-        "reasoning": false,
-        "release_date": "2024-07-23",
-        "last_updated": "2024-07-23"
+        tool_call: true,
+        reasoning: false,
+        release_date: "2024-07-23",
+        last_updated: "2024-07-23",
       },
       "llama-3.3-70b-versatile": {
-        "id": "llama-3.3-70b-versatile",
-        "name": "Llama 3.3 70B Versatile",
-        "family": "llama",
-        "cost": {
-          "input": 0.59,
-          "output": 0.79
+        id: "llama-3.3-70b-versatile",
+        name: "Llama 3.3 70B Versatile",
+        family: "llama",
+        cost: {
+          input: 0.59,
+          output: 0.79,
         },
-        "limit": {
-          "context": 131072,
-          "output": 32768
+        limit: {
+          context: 131072,
+          output: 32768,
         },
-        "tool_call": true,
-        "reasoning": false,
-        "release_date": "2024-12-06",
-        "last_updated": "2024-12-06"
+        tool_call: true,
+        reasoning: false,
+        release_date: "2024-12-06",
+        last_updated: "2024-12-06",
       },
       "llama-guard-3-8b": {
-        "id": "llama-guard-3-8b",
-        "name": "Llama Guard 3 8B",
-        "family": "llama",
-        "cost": {
-          "input": 0.2,
-          "output": 0.2
+        id: "llama-guard-3-8b",
+        name: "Llama Guard 3 8B",
+        family: "llama",
+        cost: {
+          input: 0.2,
+          output: 0.2,
         },
-        "limit": {
-          "context": 8192,
-          "output": 8192
+        limit: {
+          context: 8192,
+          output: 8192,
         },
-        "tool_call": false,
-        "reasoning": false,
-        "release_date": "2024-07-23",
-        "last_updated": "2024-07-23"
+        tool_call: false,
+        reasoning: false,
+        release_date: "2024-07-23",
+        last_updated: "2024-07-23",
       },
       "llama3-70b-8192": {
-        "id": "llama3-70b-8192",
-        "name": "Llama 3 70B",
-        "family": "llama",
-        "cost": {
-          "input": 0.59,
-          "output": 0.79
+        id: "llama3-70b-8192",
+        name: "Llama 3 70B",
+        family: "llama",
+        cost: {
+          input: 0.59,
+          output: 0.79,
         },
-        "limit": {
-          "context": 8192,
-          "output": 8192
+        limit: {
+          context: 8192,
+          output: 8192,
         },
-        "tool_call": true,
-        "reasoning": false,
-        "release_date": "2024-04-18",
-        "last_updated": "2024-04-18"
+        tool_call: true,
+        reasoning: false,
+        release_date: "2024-04-18",
+        last_updated: "2024-04-18",
       },
       "llama3-8b-8192": {
-        "id": "llama3-8b-8192",
-        "name": "Llama 3 8B",
-        "family": "llama",
-        "cost": {
-          "input": 0.05,
-          "output": 0.08
+        id: "llama3-8b-8192",
+        name: "Llama 3 8B",
+        family: "llama",
+        cost: {
+          input: 0.05,
+          output: 0.08,
         },
-        "limit": {
-          "context": 8192,
-          "output": 8192
+        limit: {
+          context: 8192,
+          output: 8192,
         },
-        "tool_call": true,
-        "reasoning": false,
-        "release_date": "2024-04-18",
-        "last_updated": "2024-04-18"
+        tool_call: true,
+        reasoning: false,
+        release_date: "2024-04-18",
+        last_updated: "2024-04-18",
       },
       "meta-llama/llama-4-maverick-17b-128e-instruct": {
-        "id": "meta-llama/llama-4-maverick-17b-128e-instruct",
-        "name": "Llama 4 Maverick 17B",
-        "family": "llama",
-        "cost": {
-          "input": 0.2,
-          "output": 0.6
+        id: "meta-llama/llama-4-maverick-17b-128e-instruct",
+        name: "Llama 4 Maverick 17B",
+        family: "llama",
+        cost: {
+          input: 0.2,
+          output: 0.6,
         },
-        "limit": {
-          "context": 131072,
-          "output": 8192
+        limit: {
+          context: 131072,
+          output: 8192,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-04-05",
-        "last_updated": "2025-04-05"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-04-05",
+        last_updated: "2025-04-05",
       },
       "meta-llama/llama-4-scout-17b-16e-instruct": {
-        "id": "meta-llama/llama-4-scout-17b-16e-instruct",
-        "name": "Llama 4 Scout 17B",
-        "family": "llama",
-        "cost": {
-          "input": 0.11,
-          "output": 0.34
+        id: "meta-llama/llama-4-scout-17b-16e-instruct",
+        name: "Llama 4 Scout 17B",
+        family: "llama",
+        cost: {
+          input: 0.11,
+          output: 0.34,
         },
-        "limit": {
-          "context": 131072,
-          "output": 8192
+        limit: {
+          context: 131072,
+          output: 8192,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-04-05",
-        "last_updated": "2025-04-05"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-04-05",
+        last_updated: "2025-04-05",
       },
       "meta-llama/llama-guard-4-12b": {
-        "id": "meta-llama/llama-guard-4-12b",
-        "name": "Llama Guard 4 12B",
-        "family": "llama",
-        "cost": {
-          "input": 0.2,
-          "output": 0.2
+        id: "meta-llama/llama-guard-4-12b",
+        name: "Llama Guard 4 12B",
+        family: "llama",
+        cost: {
+          input: 0.2,
+          output: 0.2,
         },
-        "limit": {
-          "context": 131072,
-          "output": 1024
+        limit: {
+          context: 131072,
+          output: 1024,
         },
-        "tool_call": false,
-        "reasoning": false,
-        "release_date": "2025-04-05",
-        "last_updated": "2025-04-05"
+        tool_call: false,
+        reasoning: false,
+        release_date: "2025-04-05",
+        last_updated: "2025-04-05",
       },
       "meta-llama/llama-prompt-guard-2-22m": {
-        "id": "meta-llama/llama-prompt-guard-2-22m",
-        "name": "Llama Prompt Guard 2 22M",
-        "family": "llama",
-        "cost": {
-          "input": 0.03,
-          "output": 0.03
+        id: "meta-llama/llama-prompt-guard-2-22m",
+        name: "Llama Prompt Guard 2 22M",
+        family: "llama",
+        cost: {
+          input: 0.03,
+          output: 0.03,
         },
-        "limit": {
-          "context": 512,
-          "output": 512
+        limit: {
+          context: 512,
+          output: 512,
         },
-        "tool_call": false,
-        "reasoning": false,
-        "release_date": "2024-10-01",
-        "last_updated": "2024-10-01"
+        tool_call: false,
+        reasoning: false,
+        release_date: "2024-10-01",
+        last_updated: "2024-10-01",
       },
       "meta-llama/llama-prompt-guard-2-86m": {
-        "id": "meta-llama/llama-prompt-guard-2-86m",
-        "name": "Llama Prompt Guard 2 86M",
-        "family": "llama",
-        "cost": {
-          "input": 0.04,
-          "output": 0.04
+        id: "meta-llama/llama-prompt-guard-2-86m",
+        name: "Llama Prompt Guard 2 86M",
+        family: "llama",
+        cost: {
+          input: 0.04,
+          output: 0.04,
         },
-        "limit": {
-          "context": 512,
-          "output": 512
+        limit: {
+          context: 512,
+          output: 512,
         },
-        "tool_call": false,
-        "reasoning": false,
-        "release_date": "2024-10-01",
-        "last_updated": "2024-10-01"
+        tool_call: false,
+        reasoning: false,
+        release_date: "2024-10-01",
+        last_updated: "2024-10-01",
       },
       "mistral-saba-24b": {
-        "id": "mistral-saba-24b",
-        "name": "Mistral Saba 24B",
-        "family": "mistral",
-        "cost": {
-          "input": 0.79,
-          "output": 0.79
+        id: "mistral-saba-24b",
+        name: "Mistral Saba 24B",
+        family: "mistral",
+        cost: {
+          input: 0.79,
+          output: 0.79,
         },
-        "limit": {
-          "context": 32768,
-          "output": 32768
+        limit: {
+          context: 32768,
+          output: 32768,
         },
-        "tool_call": true,
-        "reasoning": false,
-        "release_date": "2025-02-06",
-        "last_updated": "2025-02-06"
+        tool_call: true,
+        reasoning: false,
+        release_date: "2025-02-06",
+        last_updated: "2025-02-06",
       },
       "moonshotai/kimi-k2-instruct": {
-        "id": "moonshotai/kimi-k2-instruct",
-        "name": "Kimi K2 Instruct",
-        "family": "kimi",
-        "cost": {
-          "input": 1,
-          "output": 3
+        id: "moonshotai/kimi-k2-instruct",
+        name: "Kimi K2 Instruct",
+        family: "kimi",
+        cost: {
+          input: 1,
+          output: 3,
         },
-        "limit": {
-          "context": 131072,
-          "output": 16384
+        limit: {
+          context: 131072,
+          output: 16384,
         },
-        "tool_call": true,
-        "reasoning": false,
-        "release_date": "2025-07-14",
-        "last_updated": "2025-07-14"
+        tool_call: true,
+        reasoning: false,
+        release_date: "2025-07-14",
+        last_updated: "2025-07-14",
       },
       "moonshotai/kimi-k2-instruct-0905": {
-        "id": "moonshotai/kimi-k2-instruct-0905",
-        "name": "Kimi K2 Instruct 0905",
-        "family": "kimi",
-        "cost": {
-          "input": 1,
-          "output": 3
+        id: "moonshotai/kimi-k2-instruct-0905",
+        name: "Kimi K2 Instruct 0905",
+        family: "kimi",
+        cost: {
+          input: 1,
+          output: 3,
         },
-        "limit": {
-          "context": 262144,
-          "output": 16384
+        limit: {
+          context: 262144,
+          output: 16384,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-09-05",
-        "last_updated": "2026-05-27"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-09-05",
+        last_updated: "2026-05-27",
       },
       "openai/gpt-oss-120b": {
-        "id": "openai/gpt-oss-120b",
-        "name": "GPT OSS 120B",
-        "family": "gpt-oss",
-        "cost": {
-          "input": 0.15,
-          "output": 0.6
+        id: "openai/gpt-oss-120b",
+        name: "GPT OSS 120B",
+        family: "gpt-oss",
+        cost: {
+          input: 0.15,
+          output: 0.6,
         },
-        "limit": {
-          "context": 131072,
-          "output": 65536
+        limit: {
+          context: 131072,
+          output: 65536,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-08-05",
-        "last_updated": "2026-05-27"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-08-05",
+        last_updated: "2026-05-27",
       },
       "openai/gpt-oss-20b": {
-        "id": "openai/gpt-oss-20b",
-        "name": "GPT OSS 20B",
-        "family": "gpt-oss",
-        "cost": {
-          "input": 0.075,
-          "output": 0.3
+        id: "openai/gpt-oss-20b",
+        name: "GPT OSS 20B",
+        family: "gpt-oss",
+        cost: {
+          input: 0.075,
+          output: 0.3,
         },
-        "limit": {
-          "context": 131072,
-          "output": 65536
+        limit: {
+          context: 131072,
+          output: 65536,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-08-05",
-        "last_updated": "2026-05-27"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-08-05",
+        last_updated: "2026-05-27",
       },
       "openai/gpt-oss-safeguard-20b": {
-        "id": "openai/gpt-oss-safeguard-20b",
-        "name": "Safety GPT OSS 20B",
-        "family": "gpt-oss",
-        "cost": {
-          "input": 0.075,
-          "output": 0.3
+        id: "openai/gpt-oss-safeguard-20b",
+        name: "Safety GPT OSS 20B",
+        family: "gpt-oss",
+        cost: {
+          input: 0.075,
+          output: 0.3,
         },
-        "limit": {
-          "context": 131072,
-          "output": 65536
+        limit: {
+          context: 131072,
+          output: 65536,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2025-03-05",
-        "last_updated": "2025-03-05"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2025-03-05",
+        last_updated: "2025-03-05",
       },
       "qwen-qwq-32b": {
-        "id": "qwen-qwq-32b",
-        "name": "Qwen QwQ 32B",
-        "family": "qwen",
-        "cost": {
-          "input": 0.29,
-          "output": 0.39
+        id: "qwen-qwq-32b",
+        name: "Qwen QwQ 32B",
+        family: "qwen",
+        cost: {
+          input: 0.29,
+          output: 0.39,
         },
-        "limit": {
-          "context": 131072,
-          "output": 16384
+        limit: {
+          context: 131072,
+          output: 16384,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2024-11-27",
-        "last_updated": "2024-11-27"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2024-11-27",
+        last_updated: "2024-11-27",
       },
       "qwen/qwen3-32b": {
-        "id": "qwen/qwen3-32b",
-        "name": "Qwen3 32B",
-        "family": "qwen",
-        "cost": {
-          "input": 0.29,
-          "output": 0.59
+        id: "qwen/qwen3-32b",
+        name: "Qwen3 32B",
+        family: "qwen",
+        cost: {
+          input: 0.29,
+          output: 0.59,
         },
-        "limit": {
-          "context": 131072,
-          "output": 40960
+        limit: {
+          context: 131072,
+          output: 40960,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2024-12-23",
-        "last_updated": "2024-12-23"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2024-12-23",
+        last_updated: "2024-12-23",
       },
       "whisper-large-v3": {
-        "id": "whisper-large-v3",
-        "name": "Whisper Large V3",
-        "family": "whisper",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "whisper-large-v3",
+        name: "Whisper Large V3",
+        family: "whisper",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 448,
-          "output": 448
+        limit: {
+          context: 448,
+          output: 448,
         },
-        "tool_call": false,
-        "reasoning": false,
-        "release_date": "2023-09-01",
-        "last_updated": "2025-09-05"
+        tool_call: false,
+        reasoning: false,
+        release_date: "2023-09-01",
+        last_updated: "2025-09-05",
       },
       "whisper-large-v3-turbo": {
-        "id": "whisper-large-v3-turbo",
-        "name": "Whisper Large v3 Turbo",
-        "family": "whisper",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "whisper-large-v3-turbo",
+        name: "Whisper Large v3 Turbo",
+        family: "whisper",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 448,
-          "output": 448
+        limit: {
+          context: 448,
+          output: 448,
         },
-        "tool_call": false,
-        "reasoning": false,
-        "release_date": "2024-10-01",
-        "last_updated": "2024-10-01"
-      }
-    }
+        tool_call: false,
+        reasoning: false,
+        release_date: "2024-10-01",
+        last_updated: "2024-10-01",
+      },
+    },
   },
-  "huggingface": {
-    "id": "huggingface",
-    "name": "Hugging Face",
-    "api": "https://router.huggingface.co/v1",
-    "env": [
-      "HF_TOKEN"
-    ],
-    "models": {
+  huggingface: {
+    id: "huggingface",
+    name: "Hugging Face",
+    api: "https://router.huggingface.co/v1",
+    env: ["HF_TOKEN"],
+    models: {
       "MiniMaxAI/MiniMax-M2.1": {
-        "id": "MiniMaxAI/MiniMax-M2.1",
-        "name": "MiniMax-M2.1",
-        "family": "minimax",
-        "cost": {
-          "input": 0.3,
-          "output": 1.2
+        id: "MiniMaxAI/MiniMax-M2.1",
+        name: "MiniMax-M2.1",
+        family: "minimax",
+        cost: {
+          input: 0.3,
+          output: 1.2,
         },
-        "limit": {
-          "context": 204800,
-          "output": 131072
+        limit: {
+          context: 204800,
+          output: 131072,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2025-12-23",
-        "last_updated": "2025-12-23"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2025-12-23",
+        last_updated: "2025-12-23",
       },
       "MiniMaxAI/MiniMax-M2.5": {
-        "id": "MiniMaxAI/MiniMax-M2.5",
-        "name": "MiniMax-M2.5",
-        "family": "minimax",
-        "cost": {
-          "input": 0.3,
-          "output": 1.2
+        id: "MiniMaxAI/MiniMax-M2.5",
+        name: "MiniMax-M2.5",
+        family: "minimax",
+        cost: {
+          input: 0.3,
+          output: 1.2,
         },
-        "limit": {
-          "context": 204800,
-          "output": 131072
+        limit: {
+          context: 204800,
+          output: 131072,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2026-02-12",
-        "last_updated": "2026-02-12"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2026-02-12",
+        last_updated: "2026-02-12",
       },
       "MiniMaxAI/MiniMax-M2.7": {
-        "id": "MiniMaxAI/MiniMax-M2.7",
-        "name": "MiniMax-M2.7",
-        "family": "minimax",
-        "cost": {
-          "input": 0.3,
-          "output": 1.2
+        id: "MiniMaxAI/MiniMax-M2.7",
+        name: "MiniMax-M2.7",
+        family: "minimax",
+        cost: {
+          input: 0.3,
+          output: 1.2,
         },
-        "limit": {
-          "context": 204800,
-          "output": 131072
+        limit: {
+          context: 204800,
+          output: 131072,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-03-18",
-        "last_updated": "2026-03-18"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-03-18",
+        last_updated: "2026-03-18",
       },
       "Qwen/Qwen3-235B-A22B-Thinking-2507": {
-        "id": "Qwen/Qwen3-235B-A22B-Thinking-2507",
-        "name": "Qwen3-235B-A22B-Thinking-2507",
-        "family": "qwen",
-        "cost": {
-          "input": 0.3,
-          "output": 3
+        id: "Qwen/Qwen3-235B-A22B-Thinking-2507",
+        name: "Qwen3-235B-A22B-Thinking-2507",
+        family: "qwen",
+        cost: {
+          input: 0.3,
+          output: 3,
         },
-        "limit": {
-          "context": 262144,
-          "output": 131072
+        limit: {
+          context: 262144,
+          output: 131072,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2025-07-25",
-        "last_updated": "2025-07-25"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2025-07-25",
+        last_updated: "2025-07-25",
       },
       "Qwen/Qwen3-Coder-480B-A35B-Instruct": {
-        "id": "Qwen/Qwen3-Coder-480B-A35B-Instruct",
-        "name": "Qwen3-Coder-480B-A35B-Instruct",
-        "family": "qwen",
-        "cost": {
-          "input": 2,
-          "output": 2
+        id: "Qwen/Qwen3-Coder-480B-A35B-Instruct",
+        name: "Qwen3-Coder-480B-A35B-Instruct",
+        family: "qwen",
+        cost: {
+          input: 2,
+          output: 2,
         },
-        "limit": {
-          "context": 262144,
-          "output": 66536
+        limit: {
+          context: 262144,
+          output: 66536,
         },
-        "tool_call": true,
-        "reasoning": false,
-        "release_date": "2025-07-23",
-        "last_updated": "2025-07-23"
+        tool_call: true,
+        reasoning: false,
+        release_date: "2025-07-23",
+        last_updated: "2025-07-23",
       },
       "Qwen/Qwen3-Coder-Next": {
-        "id": "Qwen/Qwen3-Coder-Next",
-        "name": "Qwen3-Coder-Next",
-        "family": "qwen",
-        "cost": {
-          "input": 0.2,
-          "output": 1.5
+        id: "Qwen/Qwen3-Coder-Next",
+        name: "Qwen3-Coder-Next",
+        family: "qwen",
+        cost: {
+          input: 0.2,
+          output: 1.5,
         },
-        "limit": {
-          "context": 262144,
-          "output": 65536
+        limit: {
+          context: 262144,
+          output: 65536,
         },
-        "tool_call": true,
-        "reasoning": false,
-        "release_date": "2026-02-03",
-        "last_updated": "2026-02-03"
+        tool_call: true,
+        reasoning: false,
+        release_date: "2026-02-03",
+        last_updated: "2026-02-03",
       },
       "Qwen/Qwen3-Embedding-4B": {
-        "id": "Qwen/Qwen3-Embedding-4B",
-        "name": "Qwen 3 Embedding 4B",
-        "family": "qwen",
-        "cost": {
-          "input": 0.01,
-          "output": 0
+        id: "Qwen/Qwen3-Embedding-4B",
+        name: "Qwen 3 Embedding 4B",
+        family: "qwen",
+        cost: {
+          input: 0.01,
+          output: 0,
         },
-        "limit": {
-          "context": 32000,
-          "output": 2048
+        limit: {
+          context: 32000,
+          output: 2048,
         },
-        "tool_call": false,
-        "reasoning": false,
-        "release_date": "2025-01-01",
-        "last_updated": "2025-01-01"
+        tool_call: false,
+        reasoning: false,
+        release_date: "2025-01-01",
+        last_updated: "2025-01-01",
       },
       "Qwen/Qwen3-Embedding-8B": {
-        "id": "Qwen/Qwen3-Embedding-8B",
-        "name": "Qwen 3 Embedding 8B",
-        "family": "qwen",
-        "cost": {
-          "input": 0.01,
-          "output": 0
+        id: "Qwen/Qwen3-Embedding-8B",
+        name: "Qwen 3 Embedding 8B",
+        family: "qwen",
+        cost: {
+          input: 0.01,
+          output: 0,
         },
-        "limit": {
-          "context": 32000,
-          "output": 4096
+        limit: {
+          context: 32000,
+          output: 4096,
         },
-        "tool_call": false,
-        "reasoning": false,
-        "release_date": "2025-01-01",
-        "last_updated": "2025-01-01"
+        tool_call: false,
+        reasoning: false,
+        release_date: "2025-01-01",
+        last_updated: "2025-01-01",
       },
       "Qwen/Qwen3-Next-80B-A3B-Instruct": {
-        "id": "Qwen/Qwen3-Next-80B-A3B-Instruct",
-        "name": "Qwen3-Next-80B-A3B-Instruct",
-        "family": "qwen",
-        "cost": {
-          "input": 0.25,
-          "output": 1
+        id: "Qwen/Qwen3-Next-80B-A3B-Instruct",
+        name: "Qwen3-Next-80B-A3B-Instruct",
+        family: "qwen",
+        cost: {
+          input: 0.25,
+          output: 1,
         },
-        "limit": {
-          "context": 262144,
-          "output": 66536
+        limit: {
+          context: 262144,
+          output: 66536,
         },
-        "tool_call": true,
-        "reasoning": false,
-        "release_date": "2025-09-11",
-        "last_updated": "2025-09-11"
+        tool_call: true,
+        reasoning: false,
+        release_date: "2025-09-11",
+        last_updated: "2025-09-11",
       },
       "Qwen/Qwen3-Next-80B-A3B-Thinking": {
-        "id": "Qwen/Qwen3-Next-80B-A3B-Thinking",
-        "name": "Qwen3-Next-80B-A3B-Thinking",
-        "family": "qwen",
-        "cost": {
-          "input": 0.3,
-          "output": 2
+        id: "Qwen/Qwen3-Next-80B-A3B-Thinking",
+        name: "Qwen3-Next-80B-A3B-Thinking",
+        family: "qwen",
+        cost: {
+          input: 0.3,
+          output: 2,
         },
-        "limit": {
-          "context": 262144,
-          "output": 131072
+        limit: {
+          context: 262144,
+          output: 131072,
         },
-        "tool_call": true,
-        "reasoning": false,
-        "release_date": "2025-09-11",
-        "last_updated": "2025-09-11"
+        tool_call: true,
+        reasoning: false,
+        release_date: "2025-09-11",
+        last_updated: "2025-09-11",
       },
       "Qwen/Qwen3.5-397B-A17B": {
-        "id": "Qwen/Qwen3.5-397B-A17B",
-        "name": "Qwen3.5-397B-A17B",
-        "family": "qwen",
-        "cost": {
-          "input": 0.6,
-          "output": 3.6
+        id: "Qwen/Qwen3.5-397B-A17B",
+        name: "Qwen3.5-397B-A17B",
+        family: "qwen",
+        cost: {
+          input: 0.6,
+          output: 3.6,
         },
-        "limit": {
-          "context": 262144,
-          "output": 32768
+        limit: {
+          context: 262144,
+          output: 32768,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2026-02-01",
-        "last_updated": "2026-02-01"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2026-02-01",
+        last_updated: "2026-02-01",
       },
       "XiaomiMiMo/MiMo-V2-Flash": {
-        "id": "XiaomiMiMo/MiMo-V2-Flash",
-        "name": "MiMo-V2-Flash",
-        "family": "mimo",
-        "cost": {
-          "input": 0.1,
-          "output": 0.3
+        id: "XiaomiMiMo/MiMo-V2-Flash",
+        name: "MiMo-V2-Flash",
+        family: "mimo",
+        cost: {
+          input: 0.1,
+          output: 0.3,
         },
-        "limit": {
-          "context": 262144,
-          "output": 4096
+        limit: {
+          context: 262144,
+          output: 4096,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2025-12-16",
-        "last_updated": "2025-12-16"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2025-12-16",
+        last_updated: "2025-12-16",
       },
       "deepseek-ai/DeepSeek-R1-0528": {
-        "id": "deepseek-ai/DeepSeek-R1-0528",
-        "name": "DeepSeek-R1-0528",
-        "family": "deepseek-thinking",
-        "cost": {
-          "input": 3,
-          "output": 5
+        id: "deepseek-ai/DeepSeek-R1-0528",
+        name: "DeepSeek-R1-0528",
+        family: "deepseek-thinking",
+        cost: {
+          input: 3,
+          output: 5,
         },
-        "limit": {
-          "context": 163840,
-          "output": 163840
+        limit: {
+          context: 163840,
+          output: 163840,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2025-05-28",
-        "last_updated": "2025-05-28"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2025-05-28",
+        last_updated: "2025-05-28",
       },
       "deepseek-ai/DeepSeek-V3.2": {
-        "id": "deepseek-ai/DeepSeek-V3.2",
-        "name": "DeepSeek-V3.2",
-        "family": "deepseek",
-        "cost": {
-          "input": 0.28,
-          "output": 0.4
+        id: "deepseek-ai/DeepSeek-V3.2",
+        name: "DeepSeek-V3.2",
+        family: "deepseek",
+        cost: {
+          input: 0.28,
+          output: 0.4,
         },
-        "limit": {
-          "context": 163840,
-          "output": 65536
+        limit: {
+          context: 163840,
+          output: 65536,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2025-12-01",
-        "last_updated": "2025-12-01"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2025-12-01",
+        last_updated: "2025-12-01",
       },
       "deepseek-ai/DeepSeek-V4-Pro": {
-        "id": "deepseek-ai/DeepSeek-V4-Pro",
-        "name": "DeepSeek V4 Pro",
-        "family": "deepseek-thinking",
-        "cost": {
-          "input": 0.435,
-          "output": 0.87
+        id: "deepseek-ai/DeepSeek-V4-Pro",
+        name: "DeepSeek V4 Pro",
+        family: "deepseek-thinking",
+        cost: {
+          input: 0.435,
+          output: 0.87,
         },
-        "limit": {
-          "context": 1048576,
-          "output": 393216
+        limit: {
+          context: 1048576,
+          output: 393216,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-04-24",
-        "last_updated": "2026-04-24"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-04-24",
+        last_updated: "2026-04-24",
       },
       "moonshotai/Kimi-K2-Instruct": {
-        "id": "moonshotai/Kimi-K2-Instruct",
-        "name": "Kimi-K2-Instruct",
-        "family": "kimi",
-        "cost": {
-          "input": 1,
-          "output": 3
+        id: "moonshotai/Kimi-K2-Instruct",
+        name: "Kimi-K2-Instruct",
+        family: "kimi",
+        cost: {
+          input: 1,
+          output: 3,
         },
-        "limit": {
-          "context": 131072,
-          "output": 16384
+        limit: {
+          context: 131072,
+          output: 16384,
         },
-        "tool_call": true,
-        "reasoning": false,
-        "release_date": "2025-07-14",
-        "last_updated": "2025-07-14"
+        tool_call: true,
+        reasoning: false,
+        release_date: "2025-07-14",
+        last_updated: "2025-07-14",
       },
       "moonshotai/Kimi-K2-Instruct-0905": {
-        "id": "moonshotai/Kimi-K2-Instruct-0905",
-        "name": "Kimi-K2-Instruct-0905",
-        "family": "kimi",
-        "cost": {
-          "input": 1,
-          "output": 3
+        id: "moonshotai/Kimi-K2-Instruct-0905",
+        name: "Kimi-K2-Instruct-0905",
+        family: "kimi",
+        cost: {
+          input: 1,
+          output: 3,
         },
-        "limit": {
-          "context": 262144,
-          "output": 16384
+        limit: {
+          context: 262144,
+          output: 16384,
         },
-        "tool_call": true,
-        "reasoning": false,
-        "release_date": "2025-09-04",
-        "last_updated": "2025-09-04"
+        tool_call: true,
+        reasoning: false,
+        release_date: "2025-09-04",
+        last_updated: "2025-09-04",
       },
       "moonshotai/Kimi-K2-Thinking": {
-        "id": "moonshotai/Kimi-K2-Thinking",
-        "name": "Kimi-K2-Thinking",
-        "family": "kimi-thinking",
-        "cost": {
-          "input": 0.6,
-          "output": 2.5
+        id: "moonshotai/Kimi-K2-Thinking",
+        name: "Kimi-K2-Thinking",
+        family: "kimi-thinking",
+        cost: {
+          input: 0.6,
+          output: 2.5,
         },
-        "limit": {
-          "context": 262144,
-          "output": 262144
+        limit: {
+          context: 262144,
+          output: 262144,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2025-11-06",
-        "last_updated": "2025-11-06"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2025-11-06",
+        last_updated: "2025-11-06",
       },
       "moonshotai/Kimi-K2.5": {
-        "id": "moonshotai/Kimi-K2.5",
-        "name": "Kimi-K2.5",
-        "family": "kimi",
-        "cost": {
-          "input": 0.6,
-          "output": 3
+        id: "moonshotai/Kimi-K2.5",
+        name: "Kimi-K2.5",
+        family: "kimi",
+        cost: {
+          input: 0.6,
+          output: 3,
         },
-        "limit": {
-          "context": 262144,
-          "output": 262144
+        limit: {
+          context: 262144,
+          output: 262144,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2026-01-01",
-        "last_updated": "2026-01-01"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2026-01-01",
+        last_updated: "2026-01-01",
       },
       "moonshotai/Kimi-K2.6": {
-        "id": "moonshotai/Kimi-K2.6",
-        "name": "Kimi-K2.6",
-        "family": "kimi",
-        "cost": {
-          "input": 0.95,
-          "output": 4
+        id: "moonshotai/Kimi-K2.6",
+        name: "Kimi-K2.6",
+        family: "kimi",
+        cost: {
+          input: 0.95,
+          output: 4,
         },
-        "limit": {
-          "context": 262144,
-          "output": 262144
+        limit: {
+          context: 262144,
+          output: 262144,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2026-04-20",
-        "last_updated": "2026-04-20"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2026-04-20",
+        last_updated: "2026-04-20",
       },
       "zai-org/GLM-4.7": {
-        "id": "zai-org/GLM-4.7",
-        "name": "GLM-4.7",
-        "family": "glm",
-        "cost": {
-          "input": 0.6,
-          "output": 2.2
+        id: "zai-org/GLM-4.7",
+        name: "GLM-4.7",
+        family: "glm",
+        cost: {
+          input: 0.6,
+          output: 2.2,
         },
-        "limit": {
-          "context": 204800,
-          "output": 131072
+        limit: {
+          context: 204800,
+          output: 131072,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2025-12-22",
-        "last_updated": "2025-12-22"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2025-12-22",
+        last_updated: "2025-12-22",
       },
       "zai-org/GLM-4.7-Flash": {
-        "id": "zai-org/GLM-4.7-Flash",
-        "name": "GLM-4.7-Flash",
-        "family": "glm",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "zai-org/GLM-4.7-Flash",
+        name: "GLM-4.7-Flash",
+        family: "glm",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 200000,
-          "output": 128000
+        limit: {
+          context: 200000,
+          output: 128000,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2025-08-08",
-        "last_updated": "2025-08-08"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2025-08-08",
+        last_updated: "2025-08-08",
       },
       "zai-org/GLM-5": {
-        "id": "zai-org/GLM-5",
-        "name": "GLM-5",
-        "family": "glm",
-        "cost": {
-          "input": 1,
-          "output": 3.2
+        id: "zai-org/GLM-5",
+        name: "GLM-5",
+        family: "glm",
+        cost: {
+          input: 1,
+          output: 3.2,
         },
-        "limit": {
-          "context": 202752,
-          "output": 131072
+        limit: {
+          context: 202752,
+          output: 131072,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2026-02-11",
-        "last_updated": "2026-02-11"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2026-02-11",
+        last_updated: "2026-02-11",
       },
       "zai-org/GLM-5.1": {
-        "id": "zai-org/GLM-5.1",
-        "name": "GLM-5.1",
-        "family": "glm",
-        "cost": {
-          "input": 1,
-          "output": 3.2
+        id: "zai-org/GLM-5.1",
+        name: "GLM-5.1",
+        family: "glm",
+        cost: {
+          input: 1,
+          output: 3.2,
         },
-        "limit": {
-          "context": 202752,
-          "output": 131072
+        limit: {
+          context: 202752,
+          output: 131072,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2026-04-03",
-        "last_updated": "2026-04-03"
-      }
-    }
+        tool_call: true,
+        reasoning: true,
+        release_date: "2026-04-03",
+        last_updated: "2026-04-03",
+      },
+    },
   },
-  "mistral": {
-    "id": "mistral",
-    "name": "Mistral",
-    "env": [
-      "MISTRAL_API_KEY"
-    ],
-    "models": {
+  mistral: {
+    id: "mistral",
+    name: "Mistral",
+    env: ["MISTRAL_API_KEY"],
+    models: {
       "codestral-latest": {
-        "id": "codestral-latest",
-        "name": "Codestral (latest)",
-        "family": "codestral",
-        "cost": {
-          "input": 0.3,
-          "output": 0.9
+        id: "codestral-latest",
+        name: "Codestral (latest)",
+        family: "codestral",
+        cost: {
+          input: 0.3,
+          output: 0.9,
         },
-        "limit": {
-          "context": 256000,
-          "output": 4096
+        limit: {
+          context: 256000,
+          output: 4096,
         },
-        "tool_call": true,
-        "reasoning": false,
-        "release_date": "2024-05-29",
-        "last_updated": "2025-01-04"
+        tool_call: true,
+        reasoning: false,
+        release_date: "2024-05-29",
+        last_updated: "2025-01-04",
       },
       "devstral-2512": {
-        "id": "devstral-2512",
-        "name": "Devstral 2",
-        "family": "devstral",
-        "cost": {
-          "input": 0.4,
-          "output": 2
+        id: "devstral-2512",
+        name: "Devstral 2",
+        family: "devstral",
+        cost: {
+          input: 0.4,
+          output: 2,
         },
-        "limit": {
-          "context": 262144,
-          "output": 262144
+        limit: {
+          context: 262144,
+          output: 262144,
         },
-        "tool_call": true,
-        "reasoning": false,
-        "release_date": "2025-12-09",
-        "last_updated": "2025-12-09"
+        tool_call: true,
+        reasoning: false,
+        release_date: "2025-12-09",
+        last_updated: "2025-12-09",
       },
       "devstral-medium-2507": {
-        "id": "devstral-medium-2507",
-        "name": "Devstral Medium",
-        "family": "devstral",
-        "cost": {
-          "input": 0.4,
-          "output": 2
+        id: "devstral-medium-2507",
+        name: "Devstral Medium",
+        family: "devstral",
+        cost: {
+          input: 0.4,
+          output: 2,
         },
-        "limit": {
-          "context": 128000,
-          "output": 128000
+        limit: {
+          context: 128000,
+          output: 128000,
         },
-        "tool_call": true,
-        "reasoning": false,
-        "release_date": "2025-07-10",
-        "last_updated": "2025-07-10"
+        tool_call: true,
+        reasoning: false,
+        release_date: "2025-07-10",
+        last_updated: "2025-07-10",
       },
       "devstral-medium-latest": {
-        "id": "devstral-medium-latest",
-        "name": "Devstral 2 (latest)",
-        "family": "devstral",
-        "cost": {
-          "input": 0.4,
-          "output": 2
+        id: "devstral-medium-latest",
+        name: "Devstral 2 (latest)",
+        family: "devstral",
+        cost: {
+          input: 0.4,
+          output: 2,
         },
-        "limit": {
-          "context": 262144,
-          "output": 262144
+        limit: {
+          context: 262144,
+          output: 262144,
         },
-        "tool_call": true,
-        "reasoning": false,
-        "release_date": "2025-12-02",
-        "last_updated": "2025-12-02"
+        tool_call: true,
+        reasoning: false,
+        release_date: "2025-12-02",
+        last_updated: "2025-12-02",
       },
       "devstral-small-2505": {
-        "id": "devstral-small-2505",
-        "name": "Devstral Small 2505",
-        "family": "devstral",
-        "cost": {
-          "input": 0.1,
-          "output": 0.3
+        id: "devstral-small-2505",
+        name: "Devstral Small 2505",
+        family: "devstral",
+        cost: {
+          input: 0.1,
+          output: 0.3,
         },
-        "limit": {
-          "context": 128000,
-          "output": 128000
+        limit: {
+          context: 128000,
+          output: 128000,
         },
-        "tool_call": true,
-        "reasoning": false,
-        "release_date": "2025-05-07",
-        "last_updated": "2025-05-07"
+        tool_call: true,
+        reasoning: false,
+        release_date: "2025-05-07",
+        last_updated: "2025-05-07",
       },
       "devstral-small-2507": {
-        "id": "devstral-small-2507",
-        "name": "Devstral Small",
-        "family": "devstral",
-        "cost": {
-          "input": 0.1,
-          "output": 0.3
+        id: "devstral-small-2507",
+        name: "Devstral Small",
+        family: "devstral",
+        cost: {
+          input: 0.1,
+          output: 0.3,
         },
-        "limit": {
-          "context": 128000,
-          "output": 128000
+        limit: {
+          context: 128000,
+          output: 128000,
         },
-        "tool_call": true,
-        "reasoning": false,
-        "release_date": "2025-07-10",
-        "last_updated": "2025-07-10"
+        tool_call: true,
+        reasoning: false,
+        release_date: "2025-07-10",
+        last_updated: "2025-07-10",
       },
       "labs-devstral-small-2512": {
-        "id": "labs-devstral-small-2512",
-        "name": "Devstral Small 2",
-        "family": "devstral",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "labs-devstral-small-2512",
+        name: "Devstral Small 2",
+        family: "devstral",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 256000,
-          "output": 256000
+        limit: {
+          context: 256000,
+          output: 256000,
         },
-        "tool_call": true,
-        "reasoning": false,
-        "release_date": "2025-12-09",
-        "last_updated": "2025-12-09"
+        tool_call: true,
+        reasoning: false,
+        release_date: "2025-12-09",
+        last_updated: "2025-12-09",
       },
       "magistral-medium-latest": {
-        "id": "magistral-medium-latest",
-        "name": "Magistral Medium (latest)",
-        "family": "magistral-medium",
-        "cost": {
-          "input": 2,
-          "output": 5
+        id: "magistral-medium-latest",
+        name: "Magistral Medium (latest)",
+        family: "magistral-medium",
+        cost: {
+          input: 2,
+          output: 5,
         },
-        "limit": {
-          "context": 128000,
-          "output": 16384
+        limit: {
+          context: 128000,
+          output: 16384,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2025-03-17",
-        "last_updated": "2025-03-20"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2025-03-17",
+        last_updated: "2025-03-20",
       },
       "magistral-small": {
-        "id": "magistral-small",
-        "name": "Magistral Small",
-        "family": "magistral-small",
-        "cost": {
-          "input": 0.5,
-          "output": 1.5
+        id: "magistral-small",
+        name: "Magistral Small",
+        family: "magistral-small",
+        cost: {
+          input: 0.5,
+          output: 1.5,
         },
-        "limit": {
-          "context": 128000,
-          "output": 128000
+        limit: {
+          context: 128000,
+          output: 128000,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2025-03-17",
-        "last_updated": "2025-03-17"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2025-03-17",
+        last_updated: "2025-03-17",
       },
       "ministral-3b-latest": {
-        "id": "ministral-3b-latest",
-        "name": "Ministral 3B (latest)",
-        "family": "ministral",
-        "cost": {
-          "input": 0.04,
-          "output": 0.04
+        id: "ministral-3b-latest",
+        name: "Ministral 3B (latest)",
+        family: "ministral",
+        cost: {
+          input: 0.04,
+          output: 0.04,
         },
-        "limit": {
-          "context": 128000,
-          "output": 128000
+        limit: {
+          context: 128000,
+          output: 128000,
         },
-        "tool_call": true,
-        "reasoning": false,
-        "release_date": "2024-10-01",
-        "last_updated": "2024-10-04"
+        tool_call: true,
+        reasoning: false,
+        release_date: "2024-10-01",
+        last_updated: "2024-10-04",
       },
       "ministral-8b-latest": {
-        "id": "ministral-8b-latest",
-        "name": "Ministral 8B (latest)",
-        "family": "ministral",
-        "cost": {
-          "input": 0.1,
-          "output": 0.1
+        id: "ministral-8b-latest",
+        name: "Ministral 8B (latest)",
+        family: "ministral",
+        cost: {
+          input: 0.1,
+          output: 0.1,
         },
-        "limit": {
-          "context": 128000,
-          "output": 128000
+        limit: {
+          context: 128000,
+          output: 128000,
         },
-        "tool_call": true,
-        "reasoning": false,
-        "release_date": "2024-10-01",
-        "last_updated": "2024-10-04"
+        tool_call: true,
+        reasoning: false,
+        release_date: "2024-10-01",
+        last_updated: "2024-10-04",
       },
       "mistral-embed": {
-        "id": "mistral-embed",
-        "name": "Mistral Embed",
-        "family": "mistral-embed",
-        "cost": {
-          "input": 0.1,
-          "output": 0
+        id: "mistral-embed",
+        name: "Mistral Embed",
+        family: "mistral-embed",
+        cost: {
+          input: 0.1,
+          output: 0,
         },
-        "limit": {
-          "context": 8000,
-          "output": 3072
+        limit: {
+          context: 8000,
+          output: 3072,
         },
-        "tool_call": false,
-        "reasoning": false,
-        "release_date": "2023-12-11",
-        "last_updated": "2023-12-11"
+        tool_call: false,
+        reasoning: false,
+        release_date: "2023-12-11",
+        last_updated: "2023-12-11",
       },
       "mistral-large-2411": {
-        "id": "mistral-large-2411",
-        "name": "Mistral Large 2.1",
-        "family": "mistral-large",
-        "cost": {
-          "input": 2,
-          "output": 6
+        id: "mistral-large-2411",
+        name: "Mistral Large 2.1",
+        family: "mistral-large",
+        cost: {
+          input: 2,
+          output: 6,
         },
-        "limit": {
-          "context": 131072,
-          "output": 16384
+        limit: {
+          context: 131072,
+          output: 16384,
         },
-        "tool_call": true,
-        "reasoning": false,
-        "release_date": "2024-11-01",
-        "last_updated": "2024-11-04"
+        tool_call: true,
+        reasoning: false,
+        release_date: "2024-11-01",
+        last_updated: "2024-11-04",
       },
       "mistral-large-2512": {
-        "id": "mistral-large-2512",
-        "name": "Mistral Large 3",
-        "family": "mistral-large",
-        "cost": {
-          "input": 0.5,
-          "output": 1.5
+        id: "mistral-large-2512",
+        name: "Mistral Large 3",
+        family: "mistral-large",
+        cost: {
+          input: 0.5,
+          output: 1.5,
         },
-        "limit": {
-          "context": 262144,
-          "output": 262144
+        limit: {
+          context: 262144,
+          output: 262144,
         },
-        "tool_call": true,
-        "reasoning": false,
-        "release_date": "2024-11-01",
-        "last_updated": "2025-12-02"
+        tool_call: true,
+        reasoning: false,
+        release_date: "2024-11-01",
+        last_updated: "2025-12-02",
       },
       "mistral-large-latest": {
-        "id": "mistral-large-latest",
-        "name": "Mistral Large (latest)",
-        "family": "mistral-large",
-        "cost": {
-          "input": 0.5,
-          "output": 1.5
+        id: "mistral-large-latest",
+        name: "Mistral Large (latest)",
+        family: "mistral-large",
+        cost: {
+          input: 0.5,
+          output: 1.5,
         },
-        "limit": {
-          "context": 262144,
-          "output": 262144
+        limit: {
+          context: 262144,
+          output: 262144,
         },
-        "tool_call": true,
-        "reasoning": false,
-        "release_date": "2024-11-01",
-        "last_updated": "2025-12-02"
+        tool_call: true,
+        reasoning: false,
+        release_date: "2024-11-01",
+        last_updated: "2025-12-02",
       },
       "mistral-medium-2505": {
-        "id": "mistral-medium-2505",
-        "name": "Mistral Medium 3",
-        "family": "mistral-medium",
-        "cost": {
-          "input": 0.4,
-          "output": 2
+        id: "mistral-medium-2505",
+        name: "Mistral Medium 3",
+        family: "mistral-medium",
+        cost: {
+          input: 0.4,
+          output: 2,
         },
-        "limit": {
-          "context": 131072,
-          "output": 131072
+        limit: {
+          context: 131072,
+          output: 131072,
         },
-        "tool_call": true,
-        "reasoning": false,
-        "release_date": "2025-05-07",
-        "last_updated": "2025-05-07"
+        tool_call: true,
+        reasoning: false,
+        release_date: "2025-05-07",
+        last_updated: "2025-05-07",
       },
       "mistral-medium-2508": {
-        "id": "mistral-medium-2508",
-        "name": "Mistral Medium 3.1",
-        "family": "mistral-medium",
-        "cost": {
-          "input": 0.4,
-          "output": 2
+        id: "mistral-medium-2508",
+        name: "Mistral Medium 3.1",
+        family: "mistral-medium",
+        cost: {
+          input: 0.4,
+          output: 2,
         },
-        "limit": {
-          "context": 262144,
-          "output": 262144
+        limit: {
+          context: 262144,
+          output: 262144,
         },
-        "tool_call": true,
-        "reasoning": false,
-        "release_date": "2025-08-12",
-        "last_updated": "2025-08-12"
+        tool_call: true,
+        reasoning: false,
+        release_date: "2025-08-12",
+        last_updated: "2025-08-12",
       },
       "mistral-medium-2604": {
-        "id": "mistral-medium-2604",
-        "name": "Mistral Medium 3.5",
-        "family": "mistral-medium",
-        "cost": {
-          "input": 1.5,
-          "output": 7.5
+        id: "mistral-medium-2604",
+        name: "Mistral Medium 3.5",
+        family: "mistral-medium",
+        cost: {
+          input: 1.5,
+          output: 7.5,
         },
-        "limit": {
-          "context": 262144,
-          "output": 262144
+        limit: {
+          context: 262144,
+          output: 262144,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-04-29",
-        "last_updated": "2026-04-29"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-04-29",
+        last_updated: "2026-04-29",
       },
       "mistral-medium-latest": {
-        "id": "mistral-medium-latest",
-        "name": "Mistral Medium (latest)",
-        "family": "mistral-medium",
-        "cost": {
-          "input": 1.5,
-          "output": 7.5
+        id: "mistral-medium-latest",
+        name: "Mistral Medium (latest)",
+        family: "mistral-medium",
+        cost: {
+          input: 1.5,
+          output: 7.5,
         },
-        "limit": {
-          "context": 262144,
-          "output": 262144
+        limit: {
+          context: 262144,
+          output: 262144,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-04-29",
-        "last_updated": "2026-04-29"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-04-29",
+        last_updated: "2026-04-29",
       },
       "mistral-nemo": {
-        "id": "mistral-nemo",
-        "name": "Mistral Nemo",
-        "family": "mistral-nemo",
-        "cost": {
-          "input": 0.15,
-          "output": 0.15
+        id: "mistral-nemo",
+        name: "Mistral Nemo",
+        family: "mistral-nemo",
+        cost: {
+          input: 0.15,
+          output: 0.15,
         },
-        "limit": {
-          "context": 128000,
-          "output": 128000
+        limit: {
+          context: 128000,
+          output: 128000,
         },
-        "tool_call": true,
-        "reasoning": false,
-        "release_date": "2024-07-01",
-        "last_updated": "2024-07-01"
+        tool_call: true,
+        reasoning: false,
+        release_date: "2024-07-01",
+        last_updated: "2024-07-01",
       },
       "mistral-small-2506": {
-        "id": "mistral-small-2506",
-        "name": "Mistral Small 3.2",
-        "family": "mistral-small",
-        "cost": {
-          "input": 0.1,
-          "output": 0.3
+        id: "mistral-small-2506",
+        name: "Mistral Small 3.2",
+        family: "mistral-small",
+        cost: {
+          input: 0.1,
+          output: 0.3,
         },
-        "limit": {
-          "context": 128000,
-          "output": 16384
+        limit: {
+          context: 128000,
+          output: 16384,
         },
-        "tool_call": true,
-        "reasoning": false,
-        "release_date": "2025-06-20",
-        "last_updated": "2025-06-20"
+        tool_call: true,
+        reasoning: false,
+        release_date: "2025-06-20",
+        last_updated: "2025-06-20",
       },
       "mistral-small-2603": {
-        "id": "mistral-small-2603",
-        "name": "Mistral Small 4",
-        "family": "mistral-small",
-        "cost": {
-          "input": 0.15,
-          "output": 0.6
+        id: "mistral-small-2603",
+        name: "Mistral Small 4",
+        family: "mistral-small",
+        cost: {
+          input: 0.15,
+          output: 0.6,
         },
-        "limit": {
-          "context": 256000,
-          "output": 256000
+        limit: {
+          context: 256000,
+          output: 256000,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2026-03-16",
-        "last_updated": "2026-03-16"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2026-03-16",
+        last_updated: "2026-03-16",
       },
       "mistral-small-latest": {
-        "id": "mistral-small-latest",
-        "name": "Mistral Small (latest)",
-        "family": "mistral-small",
-        "cost": {
-          "input": 0.15,
-          "output": 0.6
+        id: "mistral-small-latest",
+        name: "Mistral Small (latest)",
+        family: "mistral-small",
+        cost: {
+          input: 0.15,
+          output: 0.6,
         },
-        "limit": {
-          "context": 256000,
-          "output": 256000
+        limit: {
+          context: 256000,
+          output: 256000,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2026-03-16",
-        "last_updated": "2026-03-16"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2026-03-16",
+        last_updated: "2026-03-16",
       },
       "open-mistral-7b": {
-        "id": "open-mistral-7b",
-        "name": "Mistral 7B",
-        "family": "mistral",
-        "cost": {
-          "input": 0.25,
-          "output": 0.25
+        id: "open-mistral-7b",
+        name: "Mistral 7B",
+        family: "mistral",
+        cost: {
+          input: 0.25,
+          output: 0.25,
         },
-        "limit": {
-          "context": 8000,
-          "output": 8000
+        limit: {
+          context: 8000,
+          output: 8000,
         },
-        "tool_call": true,
-        "reasoning": false,
-        "release_date": "2023-09-27",
-        "last_updated": "2023-09-27"
+        tool_call: true,
+        reasoning: false,
+        release_date: "2023-09-27",
+        last_updated: "2023-09-27",
       },
       "open-mixtral-8x22b": {
-        "id": "open-mixtral-8x22b",
-        "name": "Mixtral 8x22B",
-        "family": "mixtral",
-        "cost": {
-          "input": 2,
-          "output": 6
+        id: "open-mixtral-8x22b",
+        name: "Mixtral 8x22B",
+        family: "mixtral",
+        cost: {
+          input: 2,
+          output: 6,
         },
-        "limit": {
-          "context": 64000,
-          "output": 64000
+        limit: {
+          context: 64000,
+          output: 64000,
         },
-        "tool_call": true,
-        "reasoning": false,
-        "release_date": "2024-04-17",
-        "last_updated": "2024-04-17"
+        tool_call: true,
+        reasoning: false,
+        release_date: "2024-04-17",
+        last_updated: "2024-04-17",
       },
       "open-mixtral-8x7b": {
-        "id": "open-mixtral-8x7b",
-        "name": "Mixtral 8x7B",
-        "family": "mixtral",
-        "cost": {
-          "input": 0.7,
-          "output": 0.7
+        id: "open-mixtral-8x7b",
+        name: "Mixtral 8x7B",
+        family: "mixtral",
+        cost: {
+          input: 0.7,
+          output: 0.7,
         },
-        "limit": {
-          "context": 32000,
-          "output": 32000
+        limit: {
+          context: 32000,
+          output: 32000,
         },
-        "tool_call": true,
-        "reasoning": false,
-        "release_date": "2023-12-11",
-        "last_updated": "2023-12-11"
+        tool_call: true,
+        reasoning: false,
+        release_date: "2023-12-11",
+        last_updated: "2023-12-11",
       },
       "pixtral-12b": {
-        "id": "pixtral-12b",
-        "name": "Pixtral 12B",
-        "family": "pixtral",
-        "cost": {
-          "input": 0.15,
-          "output": 0.15
+        id: "pixtral-12b",
+        name: "Pixtral 12B",
+        family: "pixtral",
+        cost: {
+          input: 0.15,
+          output: 0.15,
         },
-        "limit": {
-          "context": 128000,
-          "output": 128000
+        limit: {
+          context: 128000,
+          output: 128000,
         },
-        "tool_call": true,
-        "reasoning": false,
-        "release_date": "2024-09-01",
-        "last_updated": "2024-09-01"
+        tool_call: true,
+        reasoning: false,
+        release_date: "2024-09-01",
+        last_updated: "2024-09-01",
       },
       "pixtral-large-latest": {
-        "id": "pixtral-large-latest",
-        "name": "Pixtral Large (latest)",
-        "family": "pixtral",
-        "cost": {
-          "input": 2,
-          "output": 6
+        id: "pixtral-large-latest",
+        name: "Pixtral Large (latest)",
+        family: "pixtral",
+        cost: {
+          input: 2,
+          output: 6,
         },
-        "limit": {
-          "context": 128000,
-          "output": 128000
+        limit: {
+          context: 128000,
+          output: 128000,
         },
-        "tool_call": true,
-        "reasoning": false,
-        "release_date": "2024-11-01",
-        "last_updated": "2024-11-04"
-      }
-    }
+        tool_call: true,
+        reasoning: false,
+        release_date: "2024-11-01",
+        last_updated: "2024-11-04",
+      },
+    },
   },
-  "openrouter": {
-    "id": "openrouter",
-    "name": "OpenRouter",
-    "api": "https://openrouter.ai/api/v1",
-    "env": [
-      "OPENROUTER_API_KEY"
-    ],
-    "models": {
+  openrouter: {
+    id: "openrouter",
+    name: "OpenRouter",
+    api: "https://openrouter.ai/api/v1",
+    env: ["OPENROUTER_API_KEY"],
+    models: {
       "ai21/jamba-large-1.7": {
-        "id": "ai21/jamba-large-1.7",
-        "name": "Jamba Large 1.7",
-        "family": "jamba",
-        "cost": {
-          "input": 2,
-          "output": 8
+        id: "ai21/jamba-large-1.7",
+        name: "Jamba Large 1.7",
+        family: "jamba",
+        cost: {
+          input: 2,
+          output: 8,
         },
-        "limit": {
-          "context": 256000,
-          "output": 4096
+        limit: {
+          context: 256000,
+          output: 4096,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2025-08-08",
-        "last_updated": "2025-08-08"
+        tool_call: true,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2025-08-08",
+        last_updated: "2025-08-08",
       },
       "aion-labs/aion-1.0": {
-        "id": "aion-labs/aion-1.0",
-        "name": "Aion-1.0",
-        "cost": {
-          "input": 4,
-          "output": 8
+        id: "aion-labs/aion-1.0",
+        name: "Aion-1.0",
+        cost: {
+          input: 4,
+          output: 8,
         },
-        "limit": {
-          "context": 131072,
-          "output": 32768
+        limit: {
+          context: 131072,
+          output: 32768,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2025-02-04",
-        "last_updated": "2025-02-04"
+        tool_call: false,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2025-02-04",
+        last_updated: "2025-02-04",
       },
       "aion-labs/aion-1.0-mini": {
-        "id": "aion-labs/aion-1.0-mini",
-        "name": "Aion-1.0-Mini",
-        "cost": {
-          "input": 0.7,
-          "output": 1.4
+        id: "aion-labs/aion-1.0-mini",
+        name: "Aion-1.0-Mini",
+        cost: {
+          input: 0.7,
+          output: 1.4,
         },
-        "limit": {
-          "context": 131072,
-          "output": 32768
+        limit: {
+          context: 131072,
+          output: 32768,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2025-02-04",
-        "last_updated": "2025-02-04"
+        tool_call: false,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2025-02-04",
+        last_updated: "2025-02-04",
       },
       "aion-labs/aion-2.0": {
-        "id": "aion-labs/aion-2.0",
-        "name": "Aion-2.0",
-        "cost": {
-          "input": 0.8,
-          "output": 1.6
+        id: "aion-labs/aion-2.0",
+        name: "Aion-2.0",
+        cost: {
+          input: 0.8,
+          output: 1.6,
         },
-        "limit": {
-          "context": 131072,
-          "output": 32768
+        limit: {
+          context: 131072,
+          output: 32768,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2026-02-23",
-        "last_updated": "2026-02-23"
+        tool_call: false,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2026-02-23",
+        last_updated: "2026-02-23",
       },
       "aion-labs/aion-rp-llama-3.1-8b": {
-        "id": "aion-labs/aion-rp-llama-3.1-8b",
-        "name": "Aion-RP 1.0 (8B)",
-        "family": "llama",
-        "cost": {
-          "input": 0.8,
-          "output": 1.6
+        id: "aion-labs/aion-rp-llama-3.1-8b",
+        name: "Aion-RP 1.0 (8B)",
+        family: "llama",
+        cost: {
+          input: 0.8,
+          output: 1.6,
         },
-        "limit": {
-          "context": 32768,
-          "output": 32768
+        limit: {
+          context: 32768,
+          output: 32768,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2025-02-04",
-        "last_updated": "2025-02-04"
+        tool_call: false,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2025-02-04",
+        last_updated: "2025-02-04",
       },
       "allenai/olmo-3-32b-think": {
-        "id": "allenai/olmo-3-32b-think",
-        "name": "Olmo 3 32B Think",
-        "family": "allenai",
-        "cost": {
-          "input": 0.15,
-          "output": 0.5
+        id: "allenai/olmo-3-32b-think",
+        name: "Olmo 3 32B Think",
+        family: "allenai",
+        cost: {
+          input: 0.15,
+          output: 0.5,
         },
-        "limit": {
-          "context": 65536,
-          "output": 65536
+        limit: {
+          context: 65536,
+          output: 65536,
         },
-        "tool_call": false,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-11-21",
-        "last_updated": "2025-11-21"
+        tool_call: false,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-11-21",
+        last_updated: "2025-11-21",
       },
       "amazon/nova-2-lite-v1": {
-        "id": "amazon/nova-2-lite-v1",
-        "name": "Nova 2 Lite",
-        "family": "nova",
-        "cost": {
-          "input": 0.3,
-          "output": 2.5
+        id: "amazon/nova-2-lite-v1",
+        name: "Nova 2 Lite",
+        family: "nova",
+        cost: {
+          input: 0.3,
+          output: 2.5,
         },
-        "limit": {
-          "context": 1000000,
-          "output": 65535
+        limit: {
+          context: 1000000,
+          output: 65535,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2025-12-02",
-        "last_updated": "2025-12-02"
+        tool_call: true,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2025-12-02",
+        last_updated: "2025-12-02",
       },
       "amazon/nova-lite-v1": {
-        "id": "amazon/nova-lite-v1",
-        "name": "Nova Lite 1.0",
-        "family": "nova-lite",
-        "cost": {
-          "input": 0.06,
-          "output": 0.24
+        id: "amazon/nova-lite-v1",
+        name: "Nova Lite 1.0",
+        family: "nova-lite",
+        cost: {
+          input: 0.06,
+          output: 0.24,
         },
-        "limit": {
-          "context": 300000,
-          "output": 5120
+        limit: {
+          context: 300000,
+          output: 5120,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2024-12-05",
-        "last_updated": "2024-12-05"
+        tool_call: true,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2024-12-05",
+        last_updated: "2024-12-05",
       },
       "amazon/nova-micro-v1": {
-        "id": "amazon/nova-micro-v1",
-        "name": "Nova Micro 1.0",
-        "family": "nova-micro",
-        "cost": {
-          "input": 0.035,
-          "output": 0.14
+        id: "amazon/nova-micro-v1",
+        name: "Nova Micro 1.0",
+        family: "nova-micro",
+        cost: {
+          input: 0.035,
+          output: 0.14,
         },
-        "limit": {
-          "context": 128000,
-          "output": 5120
+        limit: {
+          context: 128000,
+          output: 5120,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2024-12-05",
-        "last_updated": "2024-12-05"
+        tool_call: true,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2024-12-05",
+        last_updated: "2024-12-05",
       },
       "amazon/nova-premier-v1": {
-        "id": "amazon/nova-premier-v1",
-        "name": "Nova Premier 1.0",
-        "family": "nova",
-        "cost": {
-          "input": 2.5,
-          "output": 12.5
+        id: "amazon/nova-premier-v1",
+        name: "Nova Premier 1.0",
+        family: "nova",
+        cost: {
+          input: 2.5,
+          output: 12.5,
         },
-        "limit": {
-          "context": 1000000,
-          "output": 32000
+        limit: {
+          context: 1000000,
+          output: 32000,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2025-10-31",
-        "last_updated": "2025-10-31"
+        tool_call: true,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2025-10-31",
+        last_updated: "2025-10-31",
       },
       "amazon/nova-pro-v1": {
-        "id": "amazon/nova-pro-v1",
-        "name": "Nova Pro 1.0",
-        "family": "nova-pro",
-        "cost": {
-          "input": 0.8,
-          "output": 3.2
+        id: "amazon/nova-pro-v1",
+        name: "Nova Pro 1.0",
+        family: "nova-pro",
+        cost: {
+          input: 0.8,
+          output: 3.2,
         },
-        "limit": {
-          "context": 300000,
-          "output": 5120
+        limit: {
+          context: 300000,
+          output: 5120,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2024-12-05",
-        "last_updated": "2024-12-05"
+        tool_call: true,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2024-12-05",
+        last_updated: "2024-12-05",
       },
       "anthracite-org/magnum-v4-72b": {
-        "id": "anthracite-org/magnum-v4-72b",
-        "name": "Magnum v4 72B",
-        "cost": {
-          "input": 3,
-          "output": 5
+        id: "anthracite-org/magnum-v4-72b",
+        name: "Magnum v4 72B",
+        cost: {
+          input: 3,
+          output: 5,
         },
-        "limit": {
-          "context": 16384,
-          "output": 2048
+        limit: {
+          context: 16384,
+          output: 2048,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2024-10-22",
-        "last_updated": "2024-10-22"
+        tool_call: false,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2024-10-22",
+        last_updated: "2024-10-22",
       },
       "anthropic/claude-3-haiku": {
-        "id": "anthropic/claude-3-haiku",
-        "name": "Claude 3 Haiku",
-        "family": "claude",
-        "cost": {
-          "input": 0.25,
-          "output": 1.25
+        id: "anthropic/claude-3-haiku",
+        name: "Claude 3 Haiku",
+        family: "claude",
+        cost: {
+          input: 0.25,
+          output: 1.25,
         },
-        "limit": {
-          "context": 200000,
-          "output": 4096
+        limit: {
+          context: 200000,
+          output: 4096,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2024-03-13",
-        "last_updated": "2024-03-13"
+        tool_call: true,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2024-03-13",
+        last_updated: "2024-03-13",
       },
       "anthropic/claude-3.5-haiku": {
-        "id": "anthropic/claude-3.5-haiku",
-        "name": "Claude 3.5 Haiku",
-        "family": "claude",
-        "cost": {
-          "input": 0.8,
-          "output": 4
+        id: "anthropic/claude-3.5-haiku",
+        name: "Claude 3.5 Haiku",
+        family: "claude",
+        cost: {
+          input: 0.8,
+          output: 4,
         },
-        "limit": {
-          "context": 200000,
-          "output": 8192
+        limit: {
+          context: 200000,
+          output: 8192,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2024-11-04",
-        "last_updated": "2024-11-04"
+        tool_call: true,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2024-11-04",
+        last_updated: "2024-11-04",
       },
       "anthropic/claude-haiku-4.5": {
-        "id": "anthropic/claude-haiku-4.5",
-        "name": "Claude Haiku 4.5 (latest)",
-        "family": "claude-haiku",
-        "cost": {
-          "input": 1,
-          "output": 5
+        id: "anthropic/claude-haiku-4.5",
+        name: "Claude Haiku 4.5 (latest)",
+        family: "claude-haiku",
+        cost: {
+          input: 1,
+          output: 5,
         },
-        "limit": {
-          "context": 200000,
-          "output": 64000
+        limit: {
+          context: 200000,
+          output: 64000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-10-15",
-        "last_updated": "2025-10-15"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-10-15",
+        last_updated: "2025-10-15",
       },
       "anthropic/claude-opus-4": {
-        "id": "anthropic/claude-opus-4",
-        "name": "Claude Opus 4",
-        "family": "claude-opus",
-        "cost": {
-          "input": 15,
-          "output": 75
+        id: "anthropic/claude-opus-4",
+        name: "Claude Opus 4",
+        family: "claude-opus",
+        cost: {
+          input: 15,
+          output: 75,
         },
-        "limit": {
-          "context": 200000,
-          "output": 32000
+        limit: {
+          context: 200000,
+          output: 32000,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2025-05-22",
-        "last_updated": "2025-05-22"
+        tool_call: true,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2025-05-22",
+        last_updated: "2025-05-22",
       },
       "anthropic/claude-opus-4.1": {
-        "id": "anthropic/claude-opus-4.1",
-        "name": "Claude Opus 4.1 (latest)",
-        "family": "claude-opus",
-        "cost": {
-          "input": 15,
-          "output": 75
+        id: "anthropic/claude-opus-4.1",
+        name: "Claude Opus 4.1 (latest)",
+        family: "claude-opus",
+        cost: {
+          input: 15,
+          output: 75,
         },
-        "limit": {
-          "context": 200000,
-          "output": 32000
+        limit: {
+          context: 200000,
+          output: 32000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-08-05",
-        "last_updated": "2025-08-05"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-08-05",
+        last_updated: "2025-08-05",
       },
       "anthropic/claude-opus-4.5": {
-        "id": "anthropic/claude-opus-4.5",
-        "name": "Claude Opus 4.5 (latest)",
-        "family": "claude-opus",
-        "cost": {
-          "input": 5,
-          "output": 25
+        id: "anthropic/claude-opus-4.5",
+        name: "Claude Opus 4.5 (latest)",
+        family: "claude-opus",
+        cost: {
+          input: 5,
+          output: 25,
         },
-        "limit": {
-          "context": 200000,
-          "output": 64000
+        limit: {
+          context: 200000,
+          output: 64000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-11-24",
-        "last_updated": "2025-11-24"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-11-24",
+        last_updated: "2025-11-24",
       },
       "anthropic/claude-opus-4.6": {
-        "id": "anthropic/claude-opus-4.6",
-        "name": "Claude Opus 4.6",
-        "family": "claude-opus",
-        "cost": {
-          "input": 5,
-          "output": 25
+        id: "anthropic/claude-opus-4.6",
+        name: "Claude Opus 4.6",
+        family: "claude-opus",
+        cost: {
+          input: 5,
+          output: 25,
         },
-        "limit": {
-          "context": 1000000,
-          "output": 128000
+        limit: {
+          context: 1000000,
+          output: 128000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-02-05",
-        "last_updated": "2026-03-13"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-02-05",
+        last_updated: "2026-03-13",
       },
       "anthropic/claude-opus-4.6-fast": {
-        "id": "anthropic/claude-opus-4.6-fast",
-        "name": "Claude Opus 4.6 (Fast)",
-        "family": "claude-opus",
-        "cost": {
-          "input": 30,
-          "output": 150
+        id: "anthropic/claude-opus-4.6-fast",
+        name: "Claude Opus 4.6 (Fast)",
+        family: "claude-opus",
+        cost: {
+          input: 30,
+          output: 150,
         },
-        "limit": {
-          "context": 1000000,
-          "output": 128000
+        limit: {
+          context: 1000000,
+          output: 128000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-04-07",
-        "last_updated": "2026-04-07"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-04-07",
+        last_updated: "2026-04-07",
       },
       "anthropic/claude-opus-4.7": {
-        "id": "anthropic/claude-opus-4.7",
-        "name": "Claude Opus 4.7",
-        "family": "claude-opus",
-        "cost": {
-          "input": 5,
-          "output": 25
+        id: "anthropic/claude-opus-4.7",
+        name: "Claude Opus 4.7",
+        family: "claude-opus",
+        cost: {
+          input: 5,
+          output: 25,
         },
-        "limit": {
-          "context": 1000000,
-          "output": 128000
+        limit: {
+          context: 1000000,
+          output: 128000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-04-16",
-        "last_updated": "2026-04-16"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-04-16",
+        last_updated: "2026-04-16",
       },
       "anthropic/claude-opus-4.7-fast": {
-        "id": "anthropic/claude-opus-4.7-fast",
-        "name": "Claude Opus 4.7 (Fast)",
-        "family": "claude-opus",
-        "cost": {
-          "input": 30,
-          "output": 150
+        id: "anthropic/claude-opus-4.7-fast",
+        name: "Claude Opus 4.7 (Fast)",
+        family: "claude-opus",
+        cost: {
+          input: 30,
+          output: 150,
         },
-        "limit": {
-          "context": 1000000,
-          "output": 128000
+        limit: {
+          context: 1000000,
+          output: 128000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-05-12",
-        "last_updated": "2026-05-12"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-05-12",
+        last_updated: "2026-05-12",
       },
       "anthropic/claude-opus-4.8": {
-        "id": "anthropic/claude-opus-4.8",
-        "name": "Claude Opus 4.8",
-        "family": "claude-opus",
-        "cost": {
-          "input": 5,
-          "output": 25
+        id: "anthropic/claude-opus-4.8",
+        name: "Claude Opus 4.8",
+        family: "claude-opus",
+        cost: {
+          input: 5,
+          output: 25,
         },
-        "limit": {
-          "context": 1000000,
-          "output": 128000
+        limit: {
+          context: 1000000,
+          output: 128000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-05-28",
-        "last_updated": "2026-05-28"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-05-28",
+        last_updated: "2026-05-28",
       },
       "anthropic/claude-opus-4.8-fast": {
-        "id": "anthropic/claude-opus-4.8-fast",
-        "name": "Claude Opus 4.8 (Fast)",
-        "family": "claude-opus",
-        "cost": {
-          "input": 10,
-          "output": 50
+        id: "anthropic/claude-opus-4.8-fast",
+        name: "Claude Opus 4.8 (Fast)",
+        family: "claude-opus",
+        cost: {
+          input: 10,
+          output: 50,
         },
-        "limit": {
-          "context": 1000000,
-          "output": 128000
+        limit: {
+          context: 1000000,
+          output: 128000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-05-27",
-        "last_updated": "2026-05-27"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-05-27",
+        last_updated: "2026-05-27",
       },
       "anthropic/claude-sonnet-4": {
-        "id": "anthropic/claude-sonnet-4",
-        "name": "Claude Sonnet 4",
-        "family": "claude-sonnet",
-        "cost": {
-          "input": 3,
-          "output": 15
+        id: "anthropic/claude-sonnet-4",
+        name: "Claude Sonnet 4",
+        family: "claude-sonnet",
+        cost: {
+          input: 3,
+          output: 15,
         },
-        "limit": {
-          "context": 1000000,
-          "output": 64000
+        limit: {
+          context: 1000000,
+          output: 64000,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2025-05-22",
-        "last_updated": "2025-05-22"
+        tool_call: true,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2025-05-22",
+        last_updated: "2025-05-22",
       },
       "anthropic/claude-sonnet-4.5": {
-        "id": "anthropic/claude-sonnet-4.5",
-        "name": "Claude Sonnet 4.5 (latest)",
-        "family": "claude-sonnet",
-        "cost": {
-          "input": 3,
-          "output": 15
+        id: "anthropic/claude-sonnet-4.5",
+        name: "Claude Sonnet 4.5 (latest)",
+        family: "claude-sonnet",
+        cost: {
+          input: 3,
+          output: 15,
         },
-        "limit": {
-          "context": 1000000,
-          "output": 64000
+        limit: {
+          context: 1000000,
+          output: 64000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-09-29",
-        "last_updated": "2025-09-29"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-09-29",
+        last_updated: "2025-09-29",
       },
       "anthropic/claude-sonnet-4.6": {
-        "id": "anthropic/claude-sonnet-4.6",
-        "name": "Claude Sonnet 4.6",
-        "family": "claude-sonnet",
-        "cost": {
-          "input": 3,
-          "output": 15
+        id: "anthropic/claude-sonnet-4.6",
+        name: "Claude Sonnet 4.6",
+        family: "claude-sonnet",
+        cost: {
+          input: 3,
+          output: 15,
         },
-        "limit": {
-          "context": 1000000,
-          "output": 128000
+        limit: {
+          context: 1000000,
+          output: 128000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-02-17",
-        "last_updated": "2026-03-13"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-02-17",
+        last_updated: "2026-03-13",
       },
       "arcee-ai/coder-large": {
-        "id": "arcee-ai/coder-large",
-        "name": "Coder Large",
-        "cost": {
-          "input": 0.5,
-          "output": 0.8
+        id: "arcee-ai/coder-large",
+        name: "Coder Large",
+        cost: {
+          input: 0.5,
+          output: 0.8,
         },
-        "limit": {
-          "context": 32768,
-          "output": 32768
+        limit: {
+          context: 32768,
+          output: 32768,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2025-05-05",
-        "last_updated": "2025-05-05"
+        tool_call: false,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2025-05-05",
+        last_updated: "2025-05-05",
       },
       "arcee-ai/maestro-reasoning": {
-        "id": "arcee-ai/maestro-reasoning",
-        "name": "Maestro Reasoning",
-        "cost": {
-          "input": 0.9,
-          "output": 3.3
+        id: "arcee-ai/maestro-reasoning",
+        name: "Maestro Reasoning",
+        cost: {
+          input: 0.9,
+          output: 3.3,
         },
-        "limit": {
-          "context": 131072,
-          "output": 32000
+        limit: {
+          context: 131072,
+          output: 32000,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2025-05-05",
-        "last_updated": "2025-05-05"
+        tool_call: false,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2025-05-05",
+        last_updated: "2025-05-05",
       },
       "arcee-ai/spotlight": {
-        "id": "arcee-ai/spotlight",
-        "name": "Spotlight",
-        "cost": {
-          "input": 0.18,
-          "output": 0.18
+        id: "arcee-ai/spotlight",
+        name: "Spotlight",
+        cost: {
+          input: 0.18,
+          output: 0.18,
         },
-        "limit": {
-          "context": 131072,
-          "output": 65537
+        limit: {
+          context: 131072,
+          output: 65537,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2025-05-05",
-        "last_updated": "2025-05-05"
+        tool_call: false,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2025-05-05",
+        last_updated: "2025-05-05",
       },
       "arcee-ai/trinity-large-thinking": {
-        "id": "arcee-ai/trinity-large-thinking",
-        "name": "Trinity Large Thinking",
-        "family": "trinity",
-        "cost": {
-          "input": 0.22,
-          "output": 0.85
+        id: "arcee-ai/trinity-large-thinking",
+        name: "Trinity Large Thinking",
+        family: "trinity",
+        cost: {
+          input: 0.22,
+          output: 0.85,
         },
-        "limit": {
-          "context": 262144,
-          "output": 262144
+        limit: {
+          context: 262144,
+          output: 262144,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-04-01",
-        "last_updated": "2026-04-01"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-04-01",
+        last_updated: "2026-04-01",
       },
       "arcee-ai/trinity-mini": {
-        "id": "arcee-ai/trinity-mini",
-        "name": "Trinity Mini",
-        "family": "trinity-mini",
-        "cost": {
-          "input": 0.045,
-          "output": 0.15
+        id: "arcee-ai/trinity-mini",
+        name: "Trinity Mini",
+        family: "trinity-mini",
+        cost: {
+          input: 0.045,
+          output: 0.15,
         },
-        "limit": {
-          "context": 131072,
-          "output": 131072
+        limit: {
+          context: 131072,
+          output: 131072,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-12-01",
-        "last_updated": "2025-12-01"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-12-01",
+        last_updated: "2025-12-01",
       },
       "arcee-ai/virtuoso-large": {
-        "id": "arcee-ai/virtuoso-large",
-        "name": "Virtuoso Large",
-        "cost": {
-          "input": 0.75,
-          "output": 1.2
+        id: "arcee-ai/virtuoso-large",
+        name: "Virtuoso Large",
+        cost: {
+          input: 0.75,
+          output: 1.2,
         },
-        "limit": {
-          "context": 131072,
-          "output": 64000
+        limit: {
+          context: 131072,
+          output: 64000,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2025-05-05",
-        "last_updated": "2025-05-05"
+        tool_call: true,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2025-05-05",
+        last_updated: "2025-05-05",
       },
       "baidu/ernie-4.5-300b-a47b": {
-        "id": "baidu/ernie-4.5-300b-a47b",
-        "name": "ERNIE 4.5 300B A47B ",
-        "family": "ernie",
-        "cost": {
-          "input": 0.28,
-          "output": 1.1
+        id: "baidu/ernie-4.5-300b-a47b",
+        name: "ERNIE 4.5 300B A47B ",
+        family: "ernie",
+        cost: {
+          input: 0.28,
+          output: 1.1,
         },
-        "limit": {
-          "context": 123000,
-          "output": 12000
+        limit: {
+          context: 123000,
+          output: 12000,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2025-06-30",
-        "last_updated": "2025-06-30"
+        tool_call: false,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2025-06-30",
+        last_updated: "2025-06-30",
       },
       "baidu/ernie-4.5-vl-28b-a3b": {
-        "id": "baidu/ernie-4.5-vl-28b-a3b",
-        "name": "ERNIE 4.5 VL 28B A3B",
-        "family": "ernie",
-        "cost": {
-          "input": 0.14,
-          "output": 0.56
+        id: "baidu/ernie-4.5-vl-28b-a3b",
+        name: "ERNIE 4.5 VL 28B A3B",
+        family: "ernie",
+        cost: {
+          input: 0.14,
+          output: 0.56,
         },
-        "limit": {
-          "context": 30000,
-          "output": 8000
+        limit: {
+          context: 30000,
+          output: 8000,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2025-08-12",
-        "last_updated": "2025-08-12"
+        tool_call: true,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2025-08-12",
+        last_updated: "2025-08-12",
       },
       "baidu/ernie-4.5-vl-424b-a47b": {
-        "id": "baidu/ernie-4.5-vl-424b-a47b",
-        "name": "ERNIE 4.5 VL 424B A47B ",
-        "family": "ernie",
-        "cost": {
-          "input": 0.42,
-          "output": 1.25
+        id: "baidu/ernie-4.5-vl-424b-a47b",
+        name: "ERNIE 4.5 VL 424B A47B ",
+        family: "ernie",
+        cost: {
+          input: 0.42,
+          output: 1.25,
         },
-        "limit": {
-          "context": 123000,
-          "output": 16000
+        limit: {
+          context: 123000,
+          output: 16000,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2025-06-30",
-        "last_updated": "2025-06-30"
+        tool_call: false,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2025-06-30",
+        last_updated: "2025-06-30",
       },
       "bytedance-seed/seed-1.6": {
-        "id": "bytedance-seed/seed-1.6",
-        "name": "Seed 1.6",
-        "family": "seed",
-        "cost": {
-          "input": 0.25,
-          "output": 2
+        id: "bytedance-seed/seed-1.6",
+        name: "Seed 1.6",
+        family: "seed",
+        cost: {
+          input: 0.25,
+          output: 2,
         },
-        "limit": {
-          "context": 262144,
-          "output": 32768
+        limit: {
+          context: 262144,
+          output: 32768,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-12-23",
-        "last_updated": "2025-12-23"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-12-23",
+        last_updated: "2025-12-23",
       },
       "bytedance-seed/seed-1.6-flash": {
-        "id": "bytedance-seed/seed-1.6-flash",
-        "name": "Seed 1.6 Flash",
-        "family": "seed",
-        "cost": {
-          "input": 0.075,
-          "output": 0.3
+        id: "bytedance-seed/seed-1.6-flash",
+        name: "Seed 1.6 Flash",
+        family: "seed",
+        cost: {
+          input: 0.075,
+          output: 0.3,
         },
-        "limit": {
-          "context": 262144,
-          "output": 32768
+        limit: {
+          context: 262144,
+          output: 32768,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-12-23",
-        "last_updated": "2025-12-23"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-12-23",
+        last_updated: "2025-12-23",
       },
       "bytedance-seed/seed-2.0-lite": {
-        "id": "bytedance-seed/seed-2.0-lite",
-        "name": "Seed-2.0-Lite",
-        "family": "seed",
-        "cost": {
-          "input": 0.25,
-          "output": 2
+        id: "bytedance-seed/seed-2.0-lite",
+        name: "Seed-2.0-Lite",
+        family: "seed",
+        cost: {
+          input: 0.25,
+          output: 2,
         },
-        "limit": {
-          "context": 262144,
-          "output": 131072
+        limit: {
+          context: 262144,
+          output: 131072,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-03-10",
-        "last_updated": "2026-03-10"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-03-10",
+        last_updated: "2026-03-10",
       },
       "bytedance-seed/seed-2.0-mini": {
-        "id": "bytedance-seed/seed-2.0-mini",
-        "name": "Seed-2.0-Mini",
-        "family": "seed",
-        "cost": {
-          "input": 0.1,
-          "output": 0.4
+        id: "bytedance-seed/seed-2.0-mini",
+        name: "Seed-2.0-Mini",
+        family: "seed",
+        cost: {
+          input: 0.1,
+          output: 0.4,
         },
-        "limit": {
-          "context": 262144,
-          "output": 131072
+        limit: {
+          context: 262144,
+          output: 131072,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-02-26",
-        "last_updated": "2026-02-26"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-02-26",
+        last_updated: "2026-02-26",
       },
       "bytedance/ui-tars-1.5-7b": {
-        "id": "bytedance/ui-tars-1.5-7b",
-        "name": "UI-TARS 7B ",
-        "cost": {
-          "input": 0.1,
-          "output": 0.2
+        id: "bytedance/ui-tars-1.5-7b",
+        name: "UI-TARS 7B ",
+        cost: {
+          input: 0.1,
+          output: 0.2,
         },
-        "limit": {
-          "context": 128000,
-          "output": 2048
+        limit: {
+          context: 128000,
+          output: 2048,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2025-07-22",
-        "last_updated": "2025-07-22"
+        tool_call: false,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2025-07-22",
+        last_updated: "2025-07-22",
       },
       "cognitivecomputations/dolphin-mistral-24b-venice-edition:free": {
-        "id": "cognitivecomputations/dolphin-mistral-24b-venice-edition:free",
-        "name": "Uncensored (free)",
-        "family": "mistral",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "cognitivecomputations/dolphin-mistral-24b-venice-edition:free",
+        name: "Uncensored (free)",
+        family: "mistral",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 32768,
-          "output": 32768
+        limit: {
+          context: 32768,
+          output: 32768,
         },
-        "tool_call": false,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-07-09",
-        "last_updated": "2025-07-09"
+        tool_call: false,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-07-09",
+        last_updated: "2025-07-09",
       },
       "cohere/command-a": {
-        "id": "cohere/command-a",
-        "name": "Command A",
-        "family": "command-a",
-        "cost": {
-          "input": 2.5,
-          "output": 10
+        id: "cohere/command-a",
+        name: "Command A",
+        family: "command-a",
+        cost: {
+          input: 2.5,
+          output: 10,
         },
-        "limit": {
-          "context": 256000,
-          "output": 8192
+        limit: {
+          context: 256000,
+          output: 8192,
         },
-        "tool_call": false,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-03-13",
-        "last_updated": "2025-03-13"
+        tool_call: false,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-03-13",
+        last_updated: "2025-03-13",
       },
       "cohere/command-r-08-2024": {
-        "id": "cohere/command-r-08-2024",
-        "name": "Command R",
-        "family": "command-r",
-        "cost": {
-          "input": 0.15,
-          "output": 0.6
+        id: "cohere/command-r-08-2024",
+        name: "Command R",
+        family: "command-r",
+        cost: {
+          input: 0.15,
+          output: 0.6,
         },
-        "limit": {
-          "context": 128000,
-          "output": 4000
+        limit: {
+          context: 128000,
+          output: 4000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2024-08-30",
-        "last_updated": "2024-08-30"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2024-08-30",
+        last_updated: "2024-08-30",
       },
       "cohere/command-r-plus-08-2024": {
-        "id": "cohere/command-r-plus-08-2024",
-        "name": "Command R+",
-        "family": "command-r",
-        "cost": {
-          "input": 2.5,
-          "output": 10
+        id: "cohere/command-r-plus-08-2024",
+        name: "Command R+",
+        family: "command-r",
+        cost: {
+          input: 2.5,
+          output: 10,
         },
-        "limit": {
-          "context": 128000,
-          "output": 4000
+        limit: {
+          context: 128000,
+          output: 4000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2024-08-30",
-        "last_updated": "2024-08-30"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2024-08-30",
+        last_updated: "2024-08-30",
       },
       "cohere/command-r7b-12-2024": {
-        "id": "cohere/command-r7b-12-2024",
-        "name": "Command R7B",
-        "family": "command-r",
-        "cost": {
-          "input": 0.0375,
-          "output": 0.15
+        id: "cohere/command-r7b-12-2024",
+        name: "Command R7B",
+        family: "command-r",
+        cost: {
+          input: 0.0375,
+          output: 0.15,
         },
-        "limit": {
-          "context": 128000,
-          "output": 4000
+        limit: {
+          context: 128000,
+          output: 4000,
         },
-        "tool_call": false,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2024-02-27",
-        "last_updated": "2024-02-27"
+        tool_call: false,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2024-02-27",
+        last_updated: "2024-02-27",
       },
       "deepcogito/cogito-v2.1-671b": {
-        "id": "deepcogito/cogito-v2.1-671b",
-        "name": "Cogito v2.1 671B",
-        "family": "cogito",
-        "cost": {
-          "input": 1.25,
-          "output": 1.25
+        id: "deepcogito/cogito-v2.1-671b",
+        name: "Cogito v2.1 671B",
+        family: "cogito",
+        cost: {
+          input: 1.25,
+          output: 1.25,
         },
-        "limit": {
-          "context": 128000,
-          "output": 128000
+        limit: {
+          context: 128000,
+          output: 128000,
         },
-        "tool_call": false,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-11-13",
-        "last_updated": "2025-11-13"
+        tool_call: false,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-11-13",
+        last_updated: "2025-11-13",
       },
       "deepseek/deepseek-chat": {
-        "id": "deepseek/deepseek-chat",
-        "name": "DeepSeek Chat",
-        "family": "deepseek",
-        "cost": {
-          "input": 0.2002,
-          "output": 0.8001
+        id: "deepseek/deepseek-chat",
+        name: "DeepSeek Chat",
+        family: "deepseek",
+        cost: {
+          input: 0.2002,
+          output: 0.8001,
         },
-        "limit": {
-          "context": 128000,
-          "output": 16000
+        limit: {
+          context: 128000,
+          output: 16000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-12-01",
-        "last_updated": "2026-02-28"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-12-01",
+        last_updated: "2026-02-28",
       },
       "deepseek/deepseek-chat-v3-0324": {
-        "id": "deepseek/deepseek-chat-v3-0324",
-        "name": "DeepSeek V3 0324",
-        "family": "deepseek",
-        "cost": {
-          "input": 0.2,
-          "output": 0.77
+        id: "deepseek/deepseek-chat-v3-0324",
+        name: "DeepSeek V3 0324",
+        family: "deepseek",
+        cost: {
+          input: 0.2,
+          output: 0.77,
         },
-        "limit": {
-          "context": 163840,
-          "output": 16384
+        limit: {
+          context: 163840,
+          output: 16384,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-03-24",
-        "last_updated": "2025-03-24"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-03-24",
+        last_updated: "2025-03-24",
       },
       "deepseek/deepseek-chat-v3.1": {
-        "id": "deepseek/deepseek-chat-v3.1",
-        "name": "DeepSeek V3.1",
-        "family": "deepseek",
-        "cost": {
-          "input": 0.21,
-          "output": 0.79
+        id: "deepseek/deepseek-chat-v3.1",
+        name: "DeepSeek V3.1",
+        family: "deepseek",
+        cost: {
+          input: 0.21,
+          output: 0.79,
         },
-        "limit": {
-          "context": 163840,
-          "output": 32768
+        limit: {
+          context: 163840,
+          output: 32768,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-08-21",
-        "last_updated": "2025-08-21"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-08-21",
+        last_updated: "2025-08-21",
       },
       "deepseek/deepseek-r1": {
-        "id": "deepseek/deepseek-r1",
-        "name": "R1",
-        "family": "deepseek-thinking",
-        "cost": {
-          "input": 0.7,
-          "output": 2.5
+        id: "deepseek/deepseek-r1",
+        name: "R1",
+        family: "deepseek-thinking",
+        cost: {
+          input: 0.7,
+          output: 2.5,
         },
-        "limit": {
-          "context": 64000,
-          "output": 16000
+        limit: {
+          context: 64000,
+          output: 16000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-01-20",
-        "last_updated": "2025-01-20"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-01-20",
+        last_updated: "2025-01-20",
       },
       "deepseek/deepseek-r1-0528": {
-        "id": "deepseek/deepseek-r1-0528",
-        "name": "R1 0528",
-        "family": "deepseek",
-        "cost": {
-          "input": 0.5,
-          "output": 2.15
+        id: "deepseek/deepseek-r1-0528",
+        name: "R1 0528",
+        family: "deepseek",
+        cost: {
+          input: 0.5,
+          output: 2.15,
         },
-        "limit": {
-          "context": 163840,
-          "output": 32768
+        limit: {
+          context: 163840,
+          output: 32768,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-05-28",
-        "last_updated": "2025-05-28"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-05-28",
+        last_updated: "2025-05-28",
       },
       "deepseek/deepseek-r1-distill-llama-70b": {
-        "id": "deepseek/deepseek-r1-distill-llama-70b",
-        "name": "R1 Distill Llama 70B",
-        "family": "deepseek-thinking",
-        "cost": {
-          "input": 0.7,
-          "output": 0.8
+        id: "deepseek/deepseek-r1-distill-llama-70b",
+        name: "R1 Distill Llama 70B",
+        family: "deepseek-thinking",
+        cost: {
+          input: 0.7,
+          output: 0.8,
         },
-        "limit": {
-          "context": 131072,
-          "output": 16384
+        limit: {
+          context: 131072,
+          output: 16384,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2025-01-23",
-        "last_updated": "2025-01-23"
+        tool_call: false,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2025-01-23",
+        last_updated: "2025-01-23",
       },
       "deepseek/deepseek-r1-distill-qwen-32b": {
-        "id": "deepseek/deepseek-r1-distill-qwen-32b",
-        "name": "R1 Distill Qwen 32B",
-        "family": "deepseek",
-        "cost": {
-          "input": 0.29,
-          "output": 0.29
+        id: "deepseek/deepseek-r1-distill-qwen-32b",
+        name: "R1 Distill Qwen 32B",
+        family: "deepseek",
+        cost: {
+          input: 0.29,
+          output: 0.29,
         },
-        "limit": {
-          "context": 32768,
-          "output": 32768
+        limit: {
+          context: 32768,
+          output: 32768,
         },
-        "tool_call": false,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-01-29",
-        "last_updated": "2025-01-29"
+        tool_call: false,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-01-29",
+        last_updated: "2025-01-29",
       },
       "deepseek/deepseek-v3.1-terminus": {
-        "id": "deepseek/deepseek-v3.1-terminus",
-        "name": "DeepSeek V3.1 Terminus",
-        "family": "deepseek",
-        "cost": {
-          "input": 0.27,
-          "output": 0.95
+        id: "deepseek/deepseek-v3.1-terminus",
+        name: "DeepSeek V3.1 Terminus",
+        family: "deepseek",
+        cost: {
+          input: 0.27,
+          output: 0.95,
         },
-        "limit": {
-          "context": 163840,
-          "output": 32768
+        limit: {
+          context: 163840,
+          output: 32768,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-09-22",
-        "last_updated": "2025-09-22"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-09-22",
+        last_updated: "2025-09-22",
       },
       "deepseek/deepseek-v3.2": {
-        "id": "deepseek/deepseek-v3.2",
-        "name": "DeepSeek V3.2",
-        "family": "deepseek",
-        "cost": {
-          "input": 0.2288,
-          "output": 0.3432
+        id: "deepseek/deepseek-v3.2",
+        name: "DeepSeek V3.2",
+        family: "deepseek",
+        cost: {
+          input: 0.2288,
+          output: 0.3432,
         },
-        "limit": {
-          "context": 128000,
-          "output": 64000
+        limit: {
+          context: 128000,
+          output: 64000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-12-01",
-        "last_updated": "2025-12-01"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-12-01",
+        last_updated: "2025-12-01",
       },
       "deepseek/deepseek-v3.2-exp": {
-        "id": "deepseek/deepseek-v3.2-exp",
-        "name": "DeepSeek V3.2 Exp",
-        "family": "deepseek",
-        "cost": {
-          "input": 0.27,
-          "output": 0.41
+        id: "deepseek/deepseek-v3.2-exp",
+        name: "DeepSeek V3.2 Exp",
+        family: "deepseek",
+        cost: {
+          input: 0.27,
+          output: 0.41,
         },
-        "limit": {
-          "context": 163840,
-          "output": 65536
+        limit: {
+          context: 163840,
+          output: 65536,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-09-29",
-        "last_updated": "2025-09-29"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-09-29",
+        last_updated: "2025-09-29",
       },
       "deepseek/deepseek-v4-flash": {
-        "id": "deepseek/deepseek-v4-flash",
-        "name": "DeepSeek V4 Flash",
-        "family": "deepseek-flash",
-        "cost": {
-          "input": 0.0983,
-          "output": 0.1966
+        id: "deepseek/deepseek-v4-flash",
+        name: "DeepSeek V4 Flash",
+        family: "deepseek-flash",
+        cost: {
+          input: 0.0983,
+          output: 0.1966,
         },
-        "limit": {
-          "context": 1048576,
-          "output": 131072
+        limit: {
+          context: 1048576,
+          output: 131072,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-04-24",
-        "last_updated": "2026-04-24"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-04-24",
+        last_updated: "2026-04-24",
       },
       "deepseek/deepseek-v4-pro": {
-        "id": "deepseek/deepseek-v4-pro",
-        "name": "DeepSeek V4 Pro",
-        "family": "deepseek-thinking",
-        "cost": {
-          "input": 0.435,
-          "output": 0.87
+        id: "deepseek/deepseek-v4-pro",
+        name: "DeepSeek V4 Pro",
+        family: "deepseek-thinking",
+        cost: {
+          input: 0.435,
+          output: 0.87,
         },
-        "limit": {
-          "context": 1048576,
-          "output": 384000
+        limit: {
+          context: 1048576,
+          output: 384000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-04-24",
-        "last_updated": "2026-04-24"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-04-24",
+        last_updated: "2026-04-24",
       },
       "essentialai/rnj-1-instruct": {
-        "id": "essentialai/rnj-1-instruct",
-        "name": "Rnj 1 Instruct",
-        "family": "rnj",
-        "cost": {
-          "input": 0.15,
-          "output": 0.15
+        id: "essentialai/rnj-1-instruct",
+        name: "Rnj 1 Instruct",
+        family: "rnj",
+        cost: {
+          input: 0.15,
+          output: 0.15,
         },
-        "limit": {
-          "context": 32768,
-          "output": 32768
+        limit: {
+          context: 32768,
+          output: 32768,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-12-07",
-        "last_updated": "2025-12-07"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-12-07",
+        last_updated: "2025-12-07",
       },
       "google/gemini-2.5-flash": {
-        "id": "google/gemini-2.5-flash",
-        "name": "Gemini 2.5 Flash",
-        "family": "gemini-flash",
-        "cost": {
-          "input": 0.3,
-          "output": 2.5
+        id: "google/gemini-2.5-flash",
+        name: "Gemini 2.5 Flash",
+        family: "gemini-flash",
+        cost: {
+          input: 0.3,
+          output: 2.5,
         },
-        "limit": {
-          "context": 1048576,
-          "output": 65535
+        limit: {
+          context: 1048576,
+          output: 65535,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-03-20",
-        "last_updated": "2025-06-05"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-03-20",
+        last_updated: "2025-06-05",
       },
       "google/gemini-2.5-flash-image": {
-        "id": "google/gemini-2.5-flash-image",
-        "name": "Nano Banana",
-        "family": "gemini-flash",
-        "cost": {
-          "input": 0.3,
-          "output": 2.5
+        id: "google/gemini-2.5-flash-image",
+        name: "Nano Banana",
+        family: "gemini-flash",
+        cost: {
+          input: 0.3,
+          output: 2.5,
         },
-        "limit": {
-          "context": 32768,
-          "output": 32768
+        limit: {
+          context: 32768,
+          output: 32768,
         },
-        "tool_call": false,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-08-26",
-        "last_updated": "2025-08-26"
+        tool_call: false,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-08-26",
+        last_updated: "2025-08-26",
       },
       "google/gemini-2.5-flash-lite": {
-        "id": "google/gemini-2.5-flash-lite",
-        "name": "Gemini 2.5 Flash-Lite",
-        "family": "gemini-flash-lite",
-        "cost": {
-          "input": 0.1,
-          "output": 0.4
+        id: "google/gemini-2.5-flash-lite",
+        name: "Gemini 2.5 Flash-Lite",
+        family: "gemini-flash-lite",
+        cost: {
+          input: 0.1,
+          output: 0.4,
         },
-        "limit": {
-          "context": 1048576,
-          "output": 65535
+        limit: {
+          context: 1048576,
+          output: 65535,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-06-17",
-        "last_updated": "2025-06-17"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-06-17",
+        last_updated: "2025-06-17",
       },
       "google/gemini-2.5-flash-lite-preview-09-2025": {
-        "id": "google/gemini-2.5-flash-lite-preview-09-2025",
-        "name": "Gemini 2.5 Flash Lite Preview 09-2025",
-        "family": "gemini-flash-lite",
-        "cost": {
-          "input": 0.1,
-          "output": 0.4
+        id: "google/gemini-2.5-flash-lite-preview-09-2025",
+        name: "Gemini 2.5 Flash Lite Preview 09-2025",
+        family: "gemini-flash-lite",
+        cost: {
+          input: 0.1,
+          output: 0.4,
         },
-        "limit": {
-          "context": 1048576,
-          "output": 65535
+        limit: {
+          context: 1048576,
+          output: 65535,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-09-25",
-        "last_updated": "2025-09-25"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-09-25",
+        last_updated: "2025-09-25",
       },
       "google/gemini-2.5-pro": {
-        "id": "google/gemini-2.5-pro",
-        "name": "Gemini 2.5 Pro",
-        "family": "gemini-pro",
-        "cost": {
-          "input": 1.25,
-          "output": 10
+        id: "google/gemini-2.5-pro",
+        name: "Gemini 2.5 Pro",
+        family: "gemini-pro",
+        cost: {
+          input: 1.25,
+          output: 10,
         },
-        "limit": {
-          "context": 1048576,
-          "output": 65536
+        limit: {
+          context: 1048576,
+          output: 65536,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-03-20",
-        "last_updated": "2025-06-05"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-03-20",
+        last_updated: "2025-06-05",
       },
       "google/gemini-2.5-pro-preview": {
-        "id": "google/gemini-2.5-pro-preview",
-        "name": "Gemini 2.5 Pro Preview 06-05",
-        "family": "gemini",
-        "cost": {
-          "input": 1.25,
-          "output": 10
+        id: "google/gemini-2.5-pro-preview",
+        name: "Gemini 2.5 Pro Preview 06-05",
+        family: "gemini",
+        cost: {
+          input: 1.25,
+          output: 10,
         },
-        "limit": {
-          "context": 1048576,
-          "output": 65536
+        limit: {
+          context: 1048576,
+          output: 65536,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-06-05",
-        "last_updated": "2025-06-05"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-06-05",
+        last_updated: "2025-06-05",
       },
       "google/gemini-2.5-pro-preview-05-06": {
-        "id": "google/gemini-2.5-pro-preview-05-06",
-        "name": "Gemini 2.5 Pro Preview 05-06",
-        "family": "gemini-pro",
-        "cost": {
-          "input": 1.25,
-          "output": 10
+        id: "google/gemini-2.5-pro-preview-05-06",
+        name: "Gemini 2.5 Pro Preview 05-06",
+        family: "gemini-pro",
+        cost: {
+          input: 1.25,
+          output: 10,
         },
-        "limit": {
-          "context": 1048576,
-          "output": 65535
+        limit: {
+          context: 1048576,
+          output: 65535,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-05-07",
-        "last_updated": "2025-05-07"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-05-07",
+        last_updated: "2025-05-07",
       },
       "google/gemini-3-flash-preview": {
-        "id": "google/gemini-3-flash-preview",
-        "name": "Gemini 3 Flash Preview",
-        "family": "gemini-flash",
-        "cost": {
-          "input": 0.5,
-          "output": 3
+        id: "google/gemini-3-flash-preview",
+        name: "Gemini 3 Flash Preview",
+        family: "gemini-flash",
+        cost: {
+          input: 0.5,
+          output: 3,
         },
-        "limit": {
-          "context": 1048576,
-          "output": 65536
+        limit: {
+          context: 1048576,
+          output: 65536,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-12-17",
-        "last_updated": "2025-12-17"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-12-17",
+        last_updated: "2025-12-17",
       },
       "google/gemini-3-pro-image-preview": {
-        "id": "google/gemini-3-pro-image-preview",
-        "name": "Nano Banana Pro (Gemini 3 Pro Image Preview)",
-        "family": "gemini",
-        "cost": {
-          "input": 2,
-          "output": 12
+        id: "google/gemini-3-pro-image-preview",
+        name: "Nano Banana Pro (Gemini 3 Pro Image Preview)",
+        family: "gemini",
+        cost: {
+          input: 2,
+          output: 12,
         },
-        "limit": {
-          "context": 65536,
-          "output": 32768
+        limit: {
+          context: 65536,
+          output: 32768,
         },
-        "tool_call": false,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-11-20",
-        "last_updated": "2025-11-20"
+        tool_call: false,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-11-20",
+        last_updated: "2025-11-20",
       },
       "google/gemini-3.1-flash-image-preview": {
-        "id": "google/gemini-3.1-flash-image-preview",
-        "name": "Nano Banana 2",
-        "family": "gemini-flash",
-        "cost": {
-          "input": 0.5,
-          "output": 3
+        id: "google/gemini-3.1-flash-image-preview",
+        name: "Nano Banana 2",
+        family: "gemini-flash",
+        cost: {
+          input: 0.5,
+          output: 3,
         },
-        "limit": {
-          "context": 65536,
-          "output": 65536
+        limit: {
+          context: 65536,
+          output: 65536,
         },
-        "tool_call": false,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-02-26",
-        "last_updated": "2026-02-26"
+        tool_call: false,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-02-26",
+        last_updated: "2026-02-26",
       },
       "google/gemini-3.1-flash-lite": {
-        "id": "google/gemini-3.1-flash-lite",
-        "name": "Gemini 3.1 Flash Lite",
-        "family": "gemini-flash-lite",
-        "cost": {
-          "input": 0.25,
-          "output": 1.5
+        id: "google/gemini-3.1-flash-lite",
+        name: "Gemini 3.1 Flash Lite",
+        family: "gemini-flash-lite",
+        cost: {
+          input: 0.25,
+          output: 1.5,
         },
-        "limit": {
-          "context": 1048576,
-          "output": 65536
+        limit: {
+          context: 1048576,
+          output: 65536,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-05-07",
-        "last_updated": "2026-05-07"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-05-07",
+        last_updated: "2026-05-07",
       },
       "google/gemini-3.1-flash-lite-preview": {
-        "id": "google/gemini-3.1-flash-lite-preview",
-        "name": "Gemini 3.1 Flash Lite Preview",
-        "family": "gemini-flash-lite",
-        "cost": {
-          "input": 0.25,
-          "output": 1.5
+        id: "google/gemini-3.1-flash-lite-preview",
+        name: "Gemini 3.1 Flash Lite Preview",
+        family: "gemini-flash-lite",
+        cost: {
+          input: 0.25,
+          output: 1.5,
         },
-        "limit": {
-          "context": 1048576,
-          "output": 65536
+        limit: {
+          context: 1048576,
+          output: 65536,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-03-03",
-        "last_updated": "2026-03-03"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-03-03",
+        last_updated: "2026-03-03",
       },
       "google/gemini-3.1-pro-preview": {
-        "id": "google/gemini-3.1-pro-preview",
-        "name": "Gemini 3.1 Pro Preview",
-        "family": "gemini-pro",
-        "cost": {
-          "input": 2,
-          "output": 12
+        id: "google/gemini-3.1-pro-preview",
+        name: "Gemini 3.1 Pro Preview",
+        family: "gemini-pro",
+        cost: {
+          input: 2,
+          output: 12,
         },
-        "limit": {
-          "context": 1048576,
-          "output": 65536
+        limit: {
+          context: 1048576,
+          output: 65536,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-02-19",
-        "last_updated": "2026-02-19"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-02-19",
+        last_updated: "2026-02-19",
       },
       "google/gemini-3.1-pro-preview-customtools": {
-        "id": "google/gemini-3.1-pro-preview-customtools",
-        "name": "Gemini 3.1 Pro Preview Custom Tools",
-        "family": "gemini-pro",
-        "cost": {
-          "input": 2,
-          "output": 12
+        id: "google/gemini-3.1-pro-preview-customtools",
+        name: "Gemini 3.1 Pro Preview Custom Tools",
+        family: "gemini-pro",
+        cost: {
+          input: 2,
+          output: 12,
         },
-        "limit": {
-          "context": 1048576,
-          "output": 65536
+        limit: {
+          context: 1048576,
+          output: 65536,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-02-19",
-        "last_updated": "2026-02-19"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-02-19",
+        last_updated: "2026-02-19",
       },
       "google/gemini-3.5-flash": {
-        "id": "google/gemini-3.5-flash",
-        "name": "Gemini 3.5 Flash",
-        "family": "gemini-flash",
-        "cost": {
-          "input": 1.5,
-          "output": 9
+        id: "google/gemini-3.5-flash",
+        name: "Gemini 3.5 Flash",
+        family: "gemini-flash",
+        cost: {
+          input: 1.5,
+          output: 9,
         },
-        "limit": {
-          "context": 1048576,
-          "output": 65536
+        limit: {
+          context: 1048576,
+          output: 65536,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-05-19",
-        "last_updated": "2026-05-19"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-05-19",
+        last_updated: "2026-05-19",
       },
       "google/gemma-2-27b-it": {
-        "id": "google/gemma-2-27b-it",
-        "name": "Gemma 2 27B",
-        "family": "gemma",
-        "cost": {
-          "input": 0.65,
-          "output": 0.65
+        id: "google/gemma-2-27b-it",
+        name: "Gemma 2 27B",
+        family: "gemma",
+        cost: {
+          input: 0.65,
+          output: 0.65,
         },
-        "limit": {
-          "context": 8192,
-          "output": 2048
+        limit: {
+          context: 8192,
+          output: 2048,
         },
-        "tool_call": false,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2024-07-13",
-        "last_updated": "2024-07-13"
+        tool_call: false,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2024-07-13",
+        last_updated: "2024-07-13",
       },
       "google/gemma-3-12b-it": {
-        "id": "google/gemma-3-12b-it",
-        "name": "Gemma 3 12B",
-        "family": "gemma",
-        "cost": {
-          "input": 0.04,
-          "output": 0.13
+        id: "google/gemma-3-12b-it",
+        name: "Gemma 3 12B",
+        family: "gemma",
+        cost: {
+          input: 0.04,
+          output: 0.13,
         },
-        "limit": {
-          "context": 131072,
-          "output": 16384
+        limit: {
+          context: 131072,
+          output: 16384,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-03-13",
-        "last_updated": "2025-03-13"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-03-13",
+        last_updated: "2025-03-13",
       },
       "google/gemma-3-27b-it": {
-        "id": "google/gemma-3-27b-it",
-        "name": "Gemma 3 27B",
-        "family": "gemma",
-        "cost": {
-          "input": 0.08,
-          "output": 0.16
+        id: "google/gemma-3-27b-it",
+        name: "Gemma 3 27B",
+        family: "gemma",
+        cost: {
+          input: 0.08,
+          output: 0.16,
         },
-        "limit": {
-          "context": 131072,
-          "output": 16384
+        limit: {
+          context: 131072,
+          output: 16384,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-03-12",
-        "last_updated": "2025-03-12"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-03-12",
+        last_updated: "2025-03-12",
       },
       "google/gemma-3-4b-it": {
-        "id": "google/gemma-3-4b-it",
-        "name": "Gemma 3 4B",
-        "family": "gemma",
-        "cost": {
-          "input": 0.04,
-          "output": 0.08
+        id: "google/gemma-3-4b-it",
+        name: "Gemma 3 4B",
+        family: "gemma",
+        cost: {
+          input: 0.04,
+          output: 0.08,
         },
-        "limit": {
-          "context": 131072,
-          "output": 16384
+        limit: {
+          context: 131072,
+          output: 16384,
         },
-        "tool_call": false,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-03-13",
-        "last_updated": "2025-03-13"
+        tool_call: false,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-03-13",
+        last_updated: "2025-03-13",
       },
       "google/gemma-3n-e4b-it": {
-        "id": "google/gemma-3n-e4b-it",
-        "name": "Gemma 3n 4B",
-        "family": "gemma",
-        "cost": {
-          "input": 0.06,
-          "output": 0.12
+        id: "google/gemma-3n-e4b-it",
+        name: "Gemma 3n 4B",
+        family: "gemma",
+        cost: {
+          input: 0.06,
+          output: 0.12,
         },
-        "limit": {
-          "context": 32768,
-          "output": 32768
+        limit: {
+          context: 32768,
+          output: 32768,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2025-05-20",
-        "last_updated": "2025-05-20"
+        tool_call: false,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2025-05-20",
+        last_updated: "2025-05-20",
       },
       "google/gemma-4-26b-a4b-it": {
-        "id": "google/gemma-4-26b-a4b-it",
-        "name": "Gemma 4 26B A4B IT",
-        "family": "gemma",
-        "cost": {
-          "input": 0.06,
-          "output": 0.33
+        id: "google/gemma-4-26b-a4b-it",
+        name: "Gemma 4 26B A4B IT",
+        family: "gemma",
+        cost: {
+          input: 0.06,
+          output: 0.33,
         },
-        "limit": {
-          "context": 262144,
-          "output": 262144
+        limit: {
+          context: 262144,
+          output: 262144,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-04-02",
-        "last_updated": "2026-04-02"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-04-02",
+        last_updated: "2026-04-02",
       },
       "google/gemma-4-26b-a4b-it:free": {
-        "id": "google/gemma-4-26b-a4b-it:free",
-        "name": "Gemma 4 26B A4B  (free)",
-        "family": "gemma",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "google/gemma-4-26b-a4b-it:free",
+        name: "Gemma 4 26B A4B  (free)",
+        family: "gemma",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 262144,
-          "output": 32768
+        limit: {
+          context: 262144,
+          output: 32768,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2026-04-02",
-        "last_updated": "2026-04-02"
+        tool_call: true,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2026-04-02",
+        last_updated: "2026-04-02",
       },
       "google/gemma-4-31b-it": {
-        "id": "google/gemma-4-31b-it",
-        "name": "Gemma 4 31B IT",
-        "family": "gemma",
-        "cost": {
-          "input": 0.12,
-          "output": 0.37
+        id: "google/gemma-4-31b-it",
+        name: "Gemma 4 31B IT",
+        family: "gemma",
+        cost: {
+          input: 0.12,
+          output: 0.37,
         },
-        "limit": {
-          "context": 262144,
-          "output": 16384
+        limit: {
+          context: 262144,
+          output: 16384,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-04-02",
-        "last_updated": "2026-04-02"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-04-02",
+        last_updated: "2026-04-02",
       },
       "google/gemma-4-31b-it:free": {
-        "id": "google/gemma-4-31b-it:free",
-        "name": "Gemma 4 31B (free)",
-        "family": "gemma",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "google/gemma-4-31b-it:free",
+        name: "Gemma 4 31B (free)",
+        family: "gemma",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 262144,
-          "output": 32768
+        limit: {
+          context: 262144,
+          output: 32768,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2026-04-02",
-        "last_updated": "2026-04-02"
+        tool_call: true,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2026-04-02",
+        last_updated: "2026-04-02",
       },
       "google/lyria-3-clip-preview": {
-        "id": "google/lyria-3-clip-preview",
-        "name": "Lyria 3 Clip Preview",
-        "family": "lyria",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "google/lyria-3-clip-preview",
+        name: "Lyria 3 Clip Preview",
+        family: "lyria",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 1048576,
-          "output": 65536
+        limit: {
+          context: 1048576,
+          output: 65536,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2026-03-30",
-        "last_updated": "2026-03-30"
+        tool_call: false,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2026-03-30",
+        last_updated: "2026-03-30",
       },
       "google/lyria-3-pro-preview": {
-        "id": "google/lyria-3-pro-preview",
-        "name": "Lyria 3 Pro Preview",
-        "family": "lyria",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "google/lyria-3-pro-preview",
+        name: "Lyria 3 Pro Preview",
+        family: "lyria",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 1048576,
-          "output": 65536
+        limit: {
+          context: 1048576,
+          output: 65536,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2026-03-30",
-        "last_updated": "2026-03-30"
+        tool_call: false,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2026-03-30",
+        last_updated: "2026-03-30",
       },
       "gryphe/mythomax-l2-13b": {
-        "id": "gryphe/mythomax-l2-13b",
-        "name": "MythoMax 13B",
-        "cost": {
-          "input": 0.06,
-          "output": 0.06
+        id: "gryphe/mythomax-l2-13b",
+        name: "MythoMax 13B",
+        cost: {
+          input: 0.06,
+          output: 0.06,
         },
-        "limit": {
-          "context": 4096,
-          "output": 4096
+        limit: {
+          context: 4096,
+          output: 4096,
         },
-        "tool_call": false,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2023-07-02",
-        "last_updated": "2023-07-02"
+        tool_call: false,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2023-07-02",
+        last_updated: "2023-07-02",
       },
       "ibm-granite/granite-4.0-h-micro": {
-        "id": "ibm-granite/granite-4.0-h-micro",
-        "name": "Granite 4.0 Micro",
-        "family": "granite",
-        "cost": {
-          "input": 0.017,
-          "output": 0.112
+        id: "ibm-granite/granite-4.0-h-micro",
+        name: "Granite 4.0 Micro",
+        family: "granite",
+        cost: {
+          input: 0.017,
+          output: 0.112,
         },
-        "limit": {
-          "context": 131000,
-          "output": 131000
+        limit: {
+          context: 131000,
+          output: 131000,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2025-10-20",
-        "last_updated": "2025-10-20"
+        tool_call: false,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2025-10-20",
+        last_updated: "2025-10-20",
       },
       "ibm-granite/granite-4.1-8b": {
-        "id": "ibm-granite/granite-4.1-8b",
-        "name": "Granite 4.1 8B",
-        "family": "granite",
-        "cost": {
-          "input": 0.05,
-          "output": 0.1
+        id: "ibm-granite/granite-4.1-8b",
+        name: "Granite 4.1 8B",
+        family: "granite",
+        cost: {
+          input: 0.05,
+          output: 0.1,
         },
-        "limit": {
-          "context": 131072,
-          "output": 131072
+        limit: {
+          context: 131072,
+          output: 131072,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2026-04-30",
-        "last_updated": "2026-04-30"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2026-04-30",
+        last_updated: "2026-04-30",
       },
       "inception/mercury-2": {
-        "id": "inception/mercury-2",
-        "name": "Mercury 2",
-        "family": "mercury",
-        "cost": {
-          "input": 0.25,
-          "output": 0.75
+        id: "inception/mercury-2",
+        name: "Mercury 2",
+        family: "mercury",
+        cost: {
+          input: 0.25,
+          output: 0.75,
         },
-        "limit": {
-          "context": 128000,
-          "output": 50000
+        limit: {
+          context: 128000,
+          output: 50000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-03-04",
-        "last_updated": "2026-03-04"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-03-04",
+        last_updated: "2026-03-04",
       },
       "inclusionai/ling-2.6-1t": {
-        "id": "inclusionai/ling-2.6-1t",
-        "name": "Ling-2.6-1T",
-        "family": "ling",
-        "cost": {
-          "input": 0.075,
-          "output": 0.625
+        id: "inclusionai/ling-2.6-1t",
+        name: "Ling-2.6-1T",
+        family: "ling",
+        cost: {
+          input: 0.075,
+          output: 0.625,
         },
-        "limit": {
-          "context": 262144,
-          "output": 32768
+        limit: {
+          context: 262144,
+          output: 32768,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2026-04-23",
-        "last_updated": "2026-04-23"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2026-04-23",
+        last_updated: "2026-04-23",
       },
       "inclusionai/ling-2.6-flash": {
-        "id": "inclusionai/ling-2.6-flash",
-        "name": "Ling-2.6-flash",
-        "family": "ling",
-        "cost": {
-          "input": 0.01,
-          "output": 0.03
+        id: "inclusionai/ling-2.6-flash",
+        name: "Ling-2.6-flash",
+        family: "ling",
+        cost: {
+          input: 0.01,
+          output: 0.03,
         },
-        "limit": {
-          "context": 262144,
-          "output": 32768
+        limit: {
+          context: 262144,
+          output: 32768,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2026-04-21",
-        "last_updated": "2026-04-21"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2026-04-21",
+        last_updated: "2026-04-21",
       },
       "inclusionai/ring-2.6-1t": {
-        "id": "inclusionai/ring-2.6-1t",
-        "name": "Ring-2.6-1T",
-        "family": "ring",
-        "cost": {
-          "input": 0.3,
-          "output": 2.5
+        id: "inclusionai/ring-2.6-1t",
+        name: "Ring-2.6-1T",
+        family: "ring",
+        cost: {
+          input: 0.3,
+          output: 2.5,
         },
-        "limit": {
-          "context": 262144,
-          "output": 65536
+        limit: {
+          context: 262144,
+          output: 65536,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2026-05-08",
-        "last_updated": "2026-05-08"
+        tool_call: true,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2026-05-08",
+        last_updated: "2026-05-08",
       },
       "inflection/inflection-3-pi": {
-        "id": "inflection/inflection-3-pi",
-        "name": "Inflection 3 Pi",
-        "cost": {
-          "input": 2.5,
-          "output": 10
+        id: "inflection/inflection-3-pi",
+        name: "Inflection 3 Pi",
+        cost: {
+          input: 2.5,
+          output: 10,
         },
-        "limit": {
-          "context": 8000,
-          "output": 1024
+        limit: {
+          context: 8000,
+          output: 1024,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2024-10-11",
-        "last_updated": "2024-10-11"
+        tool_call: false,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2024-10-11",
+        last_updated: "2024-10-11",
       },
       "inflection/inflection-3-productivity": {
-        "id": "inflection/inflection-3-productivity",
-        "name": "Inflection 3 Productivity",
-        "cost": {
-          "input": 2.5,
-          "output": 10
+        id: "inflection/inflection-3-productivity",
+        name: "Inflection 3 Productivity",
+        cost: {
+          input: 2.5,
+          output: 10,
         },
-        "limit": {
-          "context": 8000,
-          "output": 1024
+        limit: {
+          context: 8000,
+          output: 1024,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2024-10-11",
-        "last_updated": "2024-10-11"
+        tool_call: false,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2024-10-11",
+        last_updated: "2024-10-11",
       },
       "kwaipilot/kat-coder-pro-v2": {
-        "id": "kwaipilot/kat-coder-pro-v2",
-        "name": "KAT-Coder-Pro V2",
-        "family": "kat-coder",
-        "cost": {
-          "input": 0.3,
-          "output": 1.2
+        id: "kwaipilot/kat-coder-pro-v2",
+        name: "KAT-Coder-Pro V2",
+        family: "kat-coder",
+        cost: {
+          input: 0.3,
+          output: 1.2,
         },
-        "limit": {
-          "context": 256000,
-          "output": 80000
+        limit: {
+          context: 256000,
+          output: 80000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2026-03-27",
-        "last_updated": "2026-03-27"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2026-03-27",
+        last_updated: "2026-03-27",
       },
       "liquid/lfm-2-24b-a2b": {
-        "id": "liquid/lfm-2-24b-a2b",
-        "name": "LFM2-24B-A2B",
-        "family": "liquid",
-        "cost": {
-          "input": 0.03,
-          "output": 0.12
+        id: "liquid/lfm-2-24b-a2b",
+        name: "LFM2-24B-A2B",
+        family: "liquid",
+        cost: {
+          input: 0.03,
+          output: 0.12,
         },
-        "limit": {
-          "context": 32768,
-          "output": 32768
+        limit: {
+          context: 32768,
+          output: 32768,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2026-02-25",
-        "last_updated": "2026-02-25"
+        tool_call: false,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2026-02-25",
+        last_updated: "2026-02-25",
       },
       "liquid/lfm-2.5-1.2b-instruct:free": {
-        "id": "liquid/lfm-2.5-1.2b-instruct:free",
-        "name": "LFM2.5-1.2B-Instruct (free)",
-        "family": "liquid",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "liquid/lfm-2.5-1.2b-instruct:free",
+        name: "LFM2.5-1.2B-Instruct (free)",
+        family: "liquid",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 32768,
-          "output": 32768
+        limit: {
+          context: 32768,
+          output: 32768,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2026-01-20",
-        "last_updated": "2026-01-20"
+        tool_call: false,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2026-01-20",
+        last_updated: "2026-01-20",
       },
       "liquid/lfm-2.5-1.2b-thinking:free": {
-        "id": "liquid/lfm-2.5-1.2b-thinking:free",
-        "name": "LFM2.5-1.2B-Thinking (free)",
-        "family": "liquid",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "liquid/lfm-2.5-1.2b-thinking:free",
+        name: "LFM2.5-1.2B-Thinking (free)",
+        family: "liquid",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 32768,
-          "output": 32768
+        limit: {
+          context: 32768,
+          output: 32768,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2026-01-20",
-        "last_updated": "2026-01-20"
+        tool_call: false,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2026-01-20",
+        last_updated: "2026-01-20",
       },
       "mancer/weaver": {
-        "id": "mancer/weaver",
-        "name": "Weaver (alpha)",
-        "family": "alpha",
-        "cost": {
-          "input": 0.75,
-          "output": 1
+        id: "mancer/weaver",
+        name: "Weaver (alpha)",
+        family: "alpha",
+        cost: {
+          input: 0.75,
+          output: 1,
         },
-        "limit": {
-          "context": 8000,
-          "output": 2000
+        limit: {
+          context: 8000,
+          output: 2000,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2023-08-02",
-        "last_updated": "2023-08-02"
+        tool_call: false,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2023-08-02",
+        last_updated: "2023-08-02",
       },
       "meta-llama/llama-3-70b-instruct": {
-        "id": "meta-llama/llama-3-70b-instruct",
-        "name": "Llama 3 70B Instruct",
-        "family": "llama",
-        "cost": {
-          "input": 0.51,
-          "output": 0.74
+        id: "meta-llama/llama-3-70b-instruct",
+        name: "Llama 3 70B Instruct",
+        family: "llama",
+        cost: {
+          input: 0.51,
+          output: 0.74,
         },
-        "limit": {
-          "context": 8192,
-          "output": 8000
+        limit: {
+          context: 8192,
+          output: 8000,
         },
-        "tool_call": false,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2024-04-18",
-        "last_updated": "2024-04-18"
+        tool_call: false,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2024-04-18",
+        last_updated: "2024-04-18",
       },
       "meta-llama/llama-3-8b-instruct": {
-        "id": "meta-llama/llama-3-8b-instruct",
-        "name": "Llama 3 8B Instruct",
-        "family": "llama",
-        "cost": {
-          "input": 0.04,
-          "output": 0.04
+        id: "meta-llama/llama-3-8b-instruct",
+        name: "Llama 3 8B Instruct",
+        family: "llama",
+        cost: {
+          input: 0.04,
+          output: 0.04,
         },
-        "limit": {
-          "context": 8192,
-          "output": 8192
+        limit: {
+          context: 8192,
+          output: 8192,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2024-04-18",
-        "last_updated": "2024-04-18"
+        tool_call: false,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2024-04-18",
+        last_updated: "2024-04-18",
       },
       "meta-llama/llama-3.1-70b-instruct": {
-        "id": "meta-llama/llama-3.1-70b-instruct",
-        "name": "Llama 3.1 70B Instruct",
-        "family": "llama",
-        "cost": {
-          "input": 0.4,
-          "output": 0.4
+        id: "meta-llama/llama-3.1-70b-instruct",
+        name: "Llama 3.1 70B Instruct",
+        family: "llama",
+        cost: {
+          input: 0.4,
+          output: 0.4,
         },
-        "limit": {
-          "context": 131072,
-          "output": 16384
+        limit: {
+          context: 131072,
+          output: 16384,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2024-07-23",
-        "last_updated": "2024-07-23"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2024-07-23",
+        last_updated: "2024-07-23",
       },
       "meta-llama/llama-3.1-8b-instruct": {
-        "id": "meta-llama/llama-3.1-8b-instruct",
-        "name": "Llama 3.1 8B Instruct",
-        "family": "llama",
-        "cost": {
-          "input": 0.02,
-          "output": 0.05
+        id: "meta-llama/llama-3.1-8b-instruct",
+        name: "Llama 3.1 8B Instruct",
+        family: "llama",
+        cost: {
+          input: 0.02,
+          output: 0.05,
         },
-        "limit": {
-          "context": 16384,
-          "output": 16384
+        limit: {
+          context: 16384,
+          output: 16384,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2024-07-23",
-        "last_updated": "2024-07-23"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2024-07-23",
+        last_updated: "2024-07-23",
       },
       "meta-llama/llama-3.2-11b-vision-instruct": {
-        "id": "meta-llama/llama-3.2-11b-vision-instruct",
-        "name": "Llama 3.2 11B Vision Instruct",
-        "family": "llama",
-        "cost": {
-          "input": 0.245,
-          "output": 0.245
+        id: "meta-llama/llama-3.2-11b-vision-instruct",
+        name: "Llama 3.2 11B Vision Instruct",
+        family: "llama",
+        cost: {
+          input: 0.245,
+          output: 0.245,
         },
-        "limit": {
-          "context": 131072,
-          "output": 16384
+        limit: {
+          context: 131072,
+          output: 16384,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2024-09-25",
-        "last_updated": "2024-09-25"
+        tool_call: false,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2024-09-25",
+        last_updated: "2024-09-25",
       },
       "meta-llama/llama-3.2-1b-instruct": {
-        "id": "meta-llama/llama-3.2-1b-instruct",
-        "name": "Llama 3.2 1B Instruct",
-        "family": "llama",
-        "cost": {
-          "input": 0.027,
-          "output": 0.201
+        id: "meta-llama/llama-3.2-1b-instruct",
+        name: "Llama 3.2 1B Instruct",
+        family: "llama",
+        cost: {
+          input: 0.027,
+          output: 0.201,
         },
-        "limit": {
-          "context": 60000,
-          "output": 60000
+        limit: {
+          context: 60000,
+          output: 60000,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2024-09-25",
-        "last_updated": "2024-09-25"
+        tool_call: false,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2024-09-25",
+        last_updated: "2024-09-25",
       },
       "meta-llama/llama-3.2-3b-instruct": {
-        "id": "meta-llama/llama-3.2-3b-instruct",
-        "name": "Llama 3.2 3B Instruct",
-        "family": "llama",
-        "cost": {
-          "input": 0.0509,
-          "output": 0.335
+        id: "meta-llama/llama-3.2-3b-instruct",
+        name: "Llama 3.2 3B Instruct",
+        family: "llama",
+        cost: {
+          input: 0.0509,
+          output: 0.335,
         },
-        "limit": {
-          "context": 80000,
-          "output": 80000
+        limit: {
+          context: 80000,
+          output: 80000,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2024-09-25",
-        "last_updated": "2024-09-25"
+        tool_call: false,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2024-09-25",
+        last_updated: "2024-09-25",
       },
       "meta-llama/llama-3.2-3b-instruct:free": {
-        "id": "meta-llama/llama-3.2-3b-instruct:free",
-        "name": "Llama 3.2 3B Instruct (free)",
-        "family": "llama",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "meta-llama/llama-3.2-3b-instruct:free",
+        name: "Llama 3.2 3B Instruct (free)",
+        family: "llama",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 131072,
-          "output": 131072
+        limit: {
+          context: 131072,
+          output: 131072,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2024-09-25",
-        "last_updated": "2024-09-25"
+        tool_call: false,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2024-09-25",
+        last_updated: "2024-09-25",
       },
       "meta-llama/llama-3.3-70b-instruct": {
-        "id": "meta-llama/llama-3.3-70b-instruct",
-        "name": "Llama-3.3-70B-Instruct",
-        "family": "llama",
-        "cost": {
-          "input": 0.1,
-          "output": 0.32
+        id: "meta-llama/llama-3.3-70b-instruct",
+        name: "Llama-3.3-70B-Instruct",
+        family: "llama",
+        cost: {
+          input: 0.1,
+          output: 0.32,
         },
-        "limit": {
-          "context": 131072,
-          "output": 16384
+        limit: {
+          context: 131072,
+          output: 16384,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2024-12-06",
-        "last_updated": "2024-12-06"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2024-12-06",
+        last_updated: "2024-12-06",
       },
       "meta-llama/llama-3.3-70b-instruct:free": {
-        "id": "meta-llama/llama-3.3-70b-instruct:free",
-        "name": "Llama 3.3 70B Instruct (free)",
-        "family": "llama",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "meta-llama/llama-3.3-70b-instruct:free",
+        name: "Llama 3.3 70B Instruct (free)",
+        family: "llama",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 65536,
-          "output": 131072
+        limit: {
+          context: 65536,
+          output: 131072,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2024-12-06",
-        "last_updated": "2024-12-06"
+        tool_call: true,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2024-12-06",
+        last_updated: "2024-12-06",
       },
       "meta-llama/llama-4-maverick": {
-        "id": "meta-llama/llama-4-maverick",
-        "name": "Llama 4 Maverick",
-        "family": "llama",
-        "cost": {
-          "input": 0.15,
-          "output": 0.6
+        id: "meta-llama/llama-4-maverick",
+        name: "Llama 4 Maverick",
+        family: "llama",
+        cost: {
+          input: 0.15,
+          output: 0.6,
         },
-        "limit": {
-          "context": 1048576,
-          "output": 16384
+        limit: {
+          context: 1048576,
+          output: 16384,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-04-05",
-        "last_updated": "2025-04-05"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-04-05",
+        last_updated: "2025-04-05",
       },
       "meta-llama/llama-4-scout": {
-        "id": "meta-llama/llama-4-scout",
-        "name": "Llama 4 Scout",
-        "family": "llama",
-        "cost": {
-          "input": 0.08,
-          "output": 0.3
+        id: "meta-llama/llama-4-scout",
+        name: "Llama 4 Scout",
+        family: "llama",
+        cost: {
+          input: 0.08,
+          output: 0.3,
         },
-        "limit": {
-          "context": 327680,
-          "output": 16384
+        limit: {
+          context: 327680,
+          output: 16384,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-04-05",
-        "last_updated": "2025-04-05"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-04-05",
+        last_updated: "2025-04-05",
       },
       "meta-llama/llama-guard-3-8b": {
-        "id": "meta-llama/llama-guard-3-8b",
-        "name": "Llama Guard 3 8B",
-        "family": "llama",
-        "cost": {
-          "input": 0.484,
-          "output": 0.03
+        id: "meta-llama/llama-guard-3-8b",
+        name: "Llama Guard 3 8B",
+        family: "llama",
+        cost: {
+          input: 0.484,
+          output: 0.03,
         },
-        "limit": {
-          "context": 131072,
-          "output": 131072
+        limit: {
+          context: 131072,
+          output: 131072,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2025-02-12",
-        "last_updated": "2025-02-12"
+        tool_call: false,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2025-02-12",
+        last_updated: "2025-02-12",
       },
       "meta-llama/llama-guard-4-12b": {
-        "id": "meta-llama/llama-guard-4-12b",
-        "name": "Llama Guard 4 12B",
-        "family": "llama",
-        "cost": {
-          "input": 0.18,
-          "output": 0.18
+        id: "meta-llama/llama-guard-4-12b",
+        name: "Llama Guard 4 12B",
+        family: "llama",
+        cost: {
+          input: 0.18,
+          output: 0.18,
         },
-        "limit": {
-          "context": 163840,
-          "output": 16384
+        limit: {
+          context: 163840,
+          output: 16384,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2025-04-30",
-        "last_updated": "2025-04-30"
+        tool_call: false,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2025-04-30",
+        last_updated: "2025-04-30",
       },
       "microsoft/phi-4": {
-        "id": "microsoft/phi-4",
-        "name": "Phi 4",
-        "family": "phi",
-        "cost": {
-          "input": 0.065,
-          "output": 0.14
+        id: "microsoft/phi-4",
+        name: "Phi 4",
+        family: "phi",
+        cost: {
+          input: 0.065,
+          output: 0.14,
         },
-        "limit": {
-          "context": 16384,
-          "output": 16384
+        limit: {
+          context: 16384,
+          output: 16384,
         },
-        "tool_call": false,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-01-10",
-        "last_updated": "2025-01-10"
+        tool_call: false,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-01-10",
+        last_updated: "2025-01-10",
       },
       "microsoft/phi-4-mini-instruct": {
-        "id": "microsoft/phi-4-mini-instruct",
-        "name": "Phi 4 Mini Instruct",
-        "family": "phi",
-        "cost": {
-          "input": 0.08,
-          "output": 0.35
+        id: "microsoft/phi-4-mini-instruct",
+        name: "Phi 4 Mini Instruct",
+        family: "phi",
+        cost: {
+          input: 0.08,
+          output: 0.35,
         },
-        "limit": {
-          "context": 128000,
-          "output": 128000
+        limit: {
+          context: 128000,
+          output: 128000,
         },
-        "tool_call": false,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-10-17",
-        "last_updated": "2025-10-17"
+        tool_call: false,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-10-17",
+        last_updated: "2025-10-17",
       },
       "microsoft/wizardlm-2-8x22b": {
-        "id": "microsoft/wizardlm-2-8x22b",
-        "name": "WizardLM-2 8x22B",
-        "cost": {
-          "input": 0.62,
-          "output": 0.62
+        id: "microsoft/wizardlm-2-8x22b",
+        name: "WizardLM-2 8x22B",
+        cost: {
+          input: 0.62,
+          output: 0.62,
         },
-        "limit": {
-          "context": 65535,
-          "output": 8000
+        limit: {
+          context: 65535,
+          output: 8000,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2024-04-16",
-        "last_updated": "2024-04-16"
+        tool_call: false,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2024-04-16",
+        last_updated: "2024-04-16",
       },
       "minimax/minimax-01": {
-        "id": "minimax/minimax-01",
-        "name": "MiniMax-01",
-        "family": "minimax",
-        "cost": {
-          "input": 0.2,
-          "output": 1.1
+        id: "minimax/minimax-01",
+        name: "MiniMax-01",
+        family: "minimax",
+        cost: {
+          input: 0.2,
+          output: 1.1,
         },
-        "limit": {
-          "context": 1000192,
-          "output": 1000192
+        limit: {
+          context: 1000192,
+          output: 1000192,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2025-01-15",
-        "last_updated": "2025-01-15"
+        tool_call: false,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2025-01-15",
+        last_updated: "2025-01-15",
       },
       "minimax/minimax-m1": {
-        "id": "minimax/minimax-m1",
-        "name": "MiniMax M1",
-        "family": "minimax",
-        "cost": {
-          "input": 0.4,
-          "output": 2.2
+        id: "minimax/minimax-m1",
+        name: "MiniMax M1",
+        family: "minimax",
+        cost: {
+          input: 0.4,
+          output: 2.2,
         },
-        "limit": {
-          "context": 1000000,
-          "output": 40000
+        limit: {
+          context: 1000000,
+          output: 40000,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2025-06-17",
-        "last_updated": "2025-06-17"
+        tool_call: true,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2025-06-17",
+        last_updated: "2025-06-17",
       },
       "minimax/minimax-m2": {
-        "id": "minimax/minimax-m2",
-        "name": "MiniMax-M2",
-        "family": "minimax",
-        "cost": {
-          "input": 0.255,
-          "output": 1
+        id: "minimax/minimax-m2",
+        name: "MiniMax-M2",
+        family: "minimax",
+        cost: {
+          input: 0.255,
+          output: 1,
         },
-        "limit": {
-          "context": 196608,
-          "output": 196608
+        limit: {
+          context: 196608,
+          output: 196608,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-10-27",
-        "last_updated": "2025-10-27"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-10-27",
+        last_updated: "2025-10-27",
       },
       "minimax/minimax-m2-her": {
-        "id": "minimax/minimax-m2-her",
-        "name": "MiniMax M2-her",
-        "family": "minimax",
-        "cost": {
-          "input": 0.3,
-          "output": 1.2
+        id: "minimax/minimax-m2-her",
+        name: "MiniMax M2-her",
+        family: "minimax",
+        cost: {
+          input: 0.3,
+          output: 1.2,
         },
-        "limit": {
-          "context": 65536,
-          "output": 2048
+        limit: {
+          context: 65536,
+          output: 2048,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2026-01-23",
-        "last_updated": "2026-01-23"
+        tool_call: false,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2026-01-23",
+        last_updated: "2026-01-23",
       },
       "minimax/minimax-m2.1": {
-        "id": "minimax/minimax-m2.1",
-        "name": "MiniMax-M2.1",
-        "family": "minimax",
-        "cost": {
-          "input": 0.29,
-          "output": 0.95
+        id: "minimax/minimax-m2.1",
+        name: "MiniMax-M2.1",
+        family: "minimax",
+        cost: {
+          input: 0.29,
+          output: 0.95,
         },
-        "limit": {
-          "context": 196608,
-          "output": 196608
+        limit: {
+          context: 196608,
+          output: 196608,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-12-23",
-        "last_updated": "2025-12-23"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-12-23",
+        last_updated: "2025-12-23",
       },
       "minimax/minimax-m2.5": {
-        "id": "minimax/minimax-m2.5",
-        "name": "MiniMax-M2.5",
-        "family": "minimax",
-        "cost": {
-          "input": 0.15,
-          "output": 1.15
+        id: "minimax/minimax-m2.5",
+        name: "MiniMax-M2.5",
+        family: "minimax",
+        cost: {
+          input: 0.15,
+          output: 1.15,
         },
-        "limit": {
-          "context": 196608,
-          "output": 196608
+        limit: {
+          context: 196608,
+          output: 196608,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-02-12",
-        "last_updated": "2026-02-12"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-02-12",
+        last_updated: "2026-02-12",
       },
       "minimax/minimax-m2.7": {
-        "id": "minimax/minimax-m2.7",
-        "name": "MiniMax-M2.7",
-        "family": "minimax",
-        "cost": {
-          "input": 0.279,
-          "output": 1.2
+        id: "minimax/minimax-m2.7",
+        name: "MiniMax-M2.7",
+        family: "minimax",
+        cost: {
+          input: 0.279,
+          output: 1.2,
         },
-        "limit": {
-          "context": 196608,
-          "output": 131072
+        limit: {
+          context: 196608,
+          output: 131072,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-03-18",
-        "last_updated": "2026-03-18"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-03-18",
+        last_updated: "2026-03-18",
       },
       "minimax/minimax-m3": {
-        "id": "minimax/minimax-m3",
-        "name": "MiniMax M3",
-        "family": "minimax-m3",
-        "cost": {
-          "input": 0.3,
-          "output": 1.2
+        id: "minimax/minimax-m3",
+        name: "MiniMax M3",
+        family: "minimax-m3",
+        cost: {
+          input: 0.3,
+          output: 1.2,
         },
-        "limit": {
-          "context": 524288,
-          "output": 512000
+        limit: {
+          context: 524288,
+          output: 512000,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2026-05-31",
-        "last_updated": "2026-05-31"
+        tool_call: true,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2026-05-31",
+        last_updated: "2026-05-31",
       },
       "mistralai/codestral-2508": {
-        "id": "mistralai/codestral-2508",
-        "name": "Codestral 2508",
-        "family": "codestral",
-        "cost": {
-          "input": 0.3,
-          "output": 0.9
+        id: "mistralai/codestral-2508",
+        name: "Codestral 2508",
+        family: "codestral",
+        cost: {
+          input: 0.3,
+          output: 0.9,
         },
-        "limit": {
-          "context": 256000,
-          "output": 256000
+        limit: {
+          context: 256000,
+          output: 256000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-08-01",
-        "last_updated": "2025-08-01"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-08-01",
+        last_updated: "2025-08-01",
       },
       "mistralai/devstral-2512": {
-        "id": "mistralai/devstral-2512",
-        "name": "Devstral 2",
-        "family": "devstral",
-        "cost": {
-          "input": 0.4,
-          "output": 2
+        id: "mistralai/devstral-2512",
+        name: "Devstral 2",
+        family: "devstral",
+        cost: {
+          input: 0.4,
+          output: 2,
         },
-        "limit": {
-          "context": 262144,
-          "output": 262144
+        limit: {
+          context: 262144,
+          output: 262144,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-12-09",
-        "last_updated": "2025-12-09"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-12-09",
+        last_updated: "2025-12-09",
       },
       "mistralai/ministral-14b-2512": {
-        "id": "mistralai/ministral-14b-2512",
-        "name": "Ministral 3 14B 2512",
-        "family": "ministral",
-        "cost": {
-          "input": 0.2,
-          "output": 0.2
+        id: "mistralai/ministral-14b-2512",
+        name: "Ministral 3 14B 2512",
+        family: "ministral",
+        cost: {
+          input: 0.2,
+          output: 0.2,
         },
-        "limit": {
-          "context": 262144,
-          "output": 262144
+        limit: {
+          context: 262144,
+          output: 262144,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-12-02",
-        "last_updated": "2025-12-02"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-12-02",
+        last_updated: "2025-12-02",
       },
       "mistralai/ministral-3b-2512": {
-        "id": "mistralai/ministral-3b-2512",
-        "name": "Ministral 3 3B 2512",
-        "family": "ministral",
-        "cost": {
-          "input": 0.1,
-          "output": 0.1
+        id: "mistralai/ministral-3b-2512",
+        name: "Ministral 3 3B 2512",
+        family: "ministral",
+        cost: {
+          input: 0.1,
+          output: 0.1,
         },
-        "limit": {
-          "context": 131072,
-          "output": 131072
+        limit: {
+          context: 131072,
+          output: 131072,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-12-02",
-        "last_updated": "2025-12-02"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-12-02",
+        last_updated: "2025-12-02",
       },
       "mistralai/ministral-8b-2512": {
-        "id": "mistralai/ministral-8b-2512",
-        "name": "Ministral 3 8B 2512",
-        "family": "ministral",
-        "cost": {
-          "input": 0.15,
-          "output": 0.15
+        id: "mistralai/ministral-8b-2512",
+        name: "Ministral 3 8B 2512",
+        family: "ministral",
+        cost: {
+          input: 0.15,
+          output: 0.15,
         },
-        "limit": {
-          "context": 262144,
-          "output": 262144
+        limit: {
+          context: 262144,
+          output: 262144,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-12-02",
-        "last_updated": "2025-12-02"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-12-02",
+        last_updated: "2025-12-02",
       },
       "mistralai/mistral-large": {
-        "id": "mistralai/mistral-large",
-        "name": "Mistral Large",
-        "family": "mistral-large",
-        "cost": {
-          "input": 2,
-          "output": 6
+        id: "mistralai/mistral-large",
+        name: "Mistral Large",
+        family: "mistral-large",
+        cost: {
+          input: 2,
+          output: 6,
         },
-        "limit": {
-          "context": 128000,
-          "output": 128000
+        limit: {
+          context: 128000,
+          output: 128000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2024-02-26",
-        "last_updated": "2024-02-26"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2024-02-26",
+        last_updated: "2024-02-26",
       },
       "mistralai/mistral-large-2407": {
-        "id": "mistralai/mistral-large-2407",
-        "name": "Mistral Large 2407",
-        "family": "mistral-large",
-        "cost": {
-          "input": 2,
-          "output": 6
+        id: "mistralai/mistral-large-2407",
+        name: "Mistral Large 2407",
+        family: "mistral-large",
+        cost: {
+          input: 2,
+          output: 6,
         },
-        "limit": {
-          "context": 131072,
-          "output": 131072
+        limit: {
+          context: 131072,
+          output: 131072,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2024-11-19",
-        "last_updated": "2024-11-19"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2024-11-19",
+        last_updated: "2024-11-19",
       },
       "mistralai/mistral-large-2512": {
-        "id": "mistralai/mistral-large-2512",
-        "name": "Mistral Large 3",
-        "family": "mistral-large",
-        "cost": {
-          "input": 0.5,
-          "output": 1.5
+        id: "mistralai/mistral-large-2512",
+        name: "Mistral Large 3",
+        family: "mistral-large",
+        cost: {
+          input: 0.5,
+          output: 1.5,
         },
-        "limit": {
-          "context": 262144,
-          "output": 262144
+        limit: {
+          context: 262144,
+          output: 262144,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2024-11-01",
-        "last_updated": "2025-12-02"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2024-11-01",
+        last_updated: "2025-12-02",
       },
       "mistralai/mistral-medium-3": {
-        "id": "mistralai/mistral-medium-3",
-        "name": "Mistral Medium 3",
-        "family": "mistral-medium",
-        "cost": {
-          "input": 0.4,
-          "output": 2
+        id: "mistralai/mistral-medium-3",
+        name: "Mistral Medium 3",
+        family: "mistral-medium",
+        cost: {
+          input: 0.4,
+          output: 2,
         },
-        "limit": {
-          "context": 131072,
-          "output": 131072
+        limit: {
+          context: 131072,
+          output: 131072,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-05-07",
-        "last_updated": "2025-05-07"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-05-07",
+        last_updated: "2025-05-07",
       },
       "mistralai/mistral-medium-3-5": {
-        "id": "mistralai/mistral-medium-3-5",
-        "name": "Mistral Medium 3.5",
-        "family": "mistral-medium",
-        "cost": {
-          "input": 1.5,
-          "output": 7.5
+        id: "mistralai/mistral-medium-3-5",
+        name: "Mistral Medium 3.5",
+        family: "mistral-medium",
+        cost: {
+          input: 1.5,
+          output: 7.5,
         },
-        "limit": {
-          "context": 262144,
-          "output": 262144
+        limit: {
+          context: 262144,
+          output: 262144,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-04-30",
-        "last_updated": "2026-04-30"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-04-30",
+        last_updated: "2026-04-30",
       },
       "mistralai/mistral-medium-3.1": {
-        "id": "mistralai/mistral-medium-3.1",
-        "name": "Mistral Medium 3.1",
-        "family": "mistral-medium",
-        "cost": {
-          "input": 0.4,
-          "output": 2
+        id: "mistralai/mistral-medium-3.1",
+        name: "Mistral Medium 3.1",
+        family: "mistral-medium",
+        cost: {
+          input: 0.4,
+          output: 2,
         },
-        "limit": {
-          "context": 131072,
-          "output": 262144
+        limit: {
+          context: 131072,
+          output: 262144,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-08-13",
-        "last_updated": "2025-08-13"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-08-13",
+        last_updated: "2025-08-13",
       },
       "mistralai/mistral-nemo": {
-        "id": "mistralai/mistral-nemo",
-        "name": "Mistral Nemo",
-        "family": "mistral-nemo",
-        "cost": {
-          "input": 0.02,
-          "output": 0.03
+        id: "mistralai/mistral-nemo",
+        name: "Mistral Nemo",
+        family: "mistral-nemo",
+        cost: {
+          input: 0.02,
+          output: 0.03,
         },
-        "limit": {
-          "context": 131072,
-          "output": 131072
+        limit: {
+          context: 131072,
+          output: 131072,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2024-07-01",
-        "last_updated": "2024-07-01"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2024-07-01",
+        last_updated: "2024-07-01",
       },
       "mistralai/mistral-saba": {
-        "id": "mistralai/mistral-saba",
-        "name": "Saba",
-        "family": "mistral",
-        "cost": {
-          "input": 0.2,
-          "output": 0.6
+        id: "mistralai/mistral-saba",
+        name: "Saba",
+        family: "mistral",
+        cost: {
+          input: 0.2,
+          output: 0.6,
         },
-        "limit": {
-          "context": 32768,
-          "output": 32768
+        limit: {
+          context: 32768,
+          output: 32768,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-02-17",
-        "last_updated": "2025-02-17"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-02-17",
+        last_updated: "2025-02-17",
       },
       "mistralai/mistral-small-24b-instruct-2501": {
-        "id": "mistralai/mistral-small-24b-instruct-2501",
-        "name": "Mistral Small 3",
-        "family": "mistral-small",
-        "cost": {
-          "input": 0.05,
-          "output": 0.08
+        id: "mistralai/mistral-small-24b-instruct-2501",
+        name: "Mistral Small 3",
+        family: "mistral-small",
+        cost: {
+          input: 0.05,
+          output: 0.08,
         },
-        "limit": {
-          "context": 32768,
-          "output": 16384
+        limit: {
+          context: 32768,
+          output: 16384,
         },
-        "tool_call": false,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-01-30",
-        "last_updated": "2025-01-30"
+        tool_call: false,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-01-30",
+        last_updated: "2025-01-30",
       },
       "mistralai/mistral-small-2603": {
-        "id": "mistralai/mistral-small-2603",
-        "name": "Mistral Small 4",
-        "family": "mistral-small",
-        "cost": {
-          "input": 0.15,
-          "output": 0.6
+        id: "mistralai/mistral-small-2603",
+        name: "Mistral Small 4",
+        family: "mistral-small",
+        cost: {
+          input: 0.15,
+          output: 0.6,
         },
-        "limit": {
-          "context": 262144,
-          "output": 262144
+        limit: {
+          context: 262144,
+          output: 262144,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-03-16",
-        "last_updated": "2026-03-16"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-03-16",
+        last_updated: "2026-03-16",
       },
       "mistralai/mistral-small-3.1-24b-instruct": {
-        "id": "mistralai/mistral-small-3.1-24b-instruct",
-        "name": "Mistral Small 3.1 24B",
-        "family": "mistral-small",
-        "cost": {
-          "input": 0.351,
-          "output": 0.555
+        id: "mistralai/mistral-small-3.1-24b-instruct",
+        name: "Mistral Small 3.1 24B",
+        family: "mistral-small",
+        cost: {
+          input: 0.351,
+          output: 0.555,
         },
-        "limit": {
-          "context": 128000,
-          "output": 128000
+        limit: {
+          context: 128000,
+          output: 128000,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2025-03-17",
-        "last_updated": "2025-03-17"
+        tool_call: false,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2025-03-17",
+        last_updated: "2025-03-17",
       },
       "mistralai/mistral-small-3.2-24b-instruct": {
-        "id": "mistralai/mistral-small-3.2-24b-instruct",
-        "name": "Mistral Small 3.2 24B",
-        "family": "mistral-small",
-        "cost": {
-          "input": 0.075,
-          "output": 0.2
+        id: "mistralai/mistral-small-3.2-24b-instruct",
+        name: "Mistral Small 3.2 24B",
+        family: "mistral-small",
+        cost: {
+          input: 0.075,
+          output: 0.2,
         },
-        "limit": {
-          "context": 128000,
-          "output": 16384
+        limit: {
+          context: 128000,
+          output: 16384,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-06-20",
-        "last_updated": "2025-06-20"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-06-20",
+        last_updated: "2025-06-20",
       },
       "mistralai/mixtral-8x22b-instruct": {
-        "id": "mistralai/mixtral-8x22b-instruct",
-        "name": "Mixtral 8x22B Instruct",
-        "family": "mistral",
-        "cost": {
-          "input": 2,
-          "output": 6
+        id: "mistralai/mixtral-8x22b-instruct",
+        name: "Mixtral 8x22B Instruct",
+        family: "mistral",
+        cost: {
+          input: 2,
+          output: 6,
         },
-        "limit": {
-          "context": 65536,
-          "output": 65536
+        limit: {
+          context: 65536,
+          output: 65536,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2024-04-17",
-        "last_updated": "2024-04-17"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2024-04-17",
+        last_updated: "2024-04-17",
       },
       "mistralai/voxtral-small-24b-2507": {
-        "id": "mistralai/voxtral-small-24b-2507",
-        "name": "Voxtral Small 24B 2507",
-        "family": "mistral",
-        "cost": {
-          "input": 0.1,
-          "output": 0.3
+        id: "mistralai/voxtral-small-24b-2507",
+        name: "Voxtral Small 24B 2507",
+        family: "mistral",
+        cost: {
+          input: 0.1,
+          output: 0.3,
         },
-        "limit": {
-          "context": 32000,
-          "output": 32000
+        limit: {
+          context: 32000,
+          output: 32000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-10-30",
-        "last_updated": "2025-10-30"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-10-30",
+        last_updated: "2025-10-30",
       },
       "moonshotai/kimi-k2": {
-        "id": "moonshotai/kimi-k2",
-        "name": "Kimi K2 0711",
-        "family": "kimi",
-        "cost": {
-          "input": 0.57,
-          "output": 2.3
+        id: "moonshotai/kimi-k2",
+        name: "Kimi K2 0711",
+        family: "kimi",
+        cost: {
+          input: 0.57,
+          output: 2.3,
         },
-        "limit": {
-          "context": 131072,
-          "output": 32768
+        limit: {
+          context: 131072,
+          output: 32768,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2025-07-11",
-        "last_updated": "2025-07-11"
+        tool_call: true,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2025-07-11",
+        last_updated: "2025-07-11",
       },
       "moonshotai/kimi-k2-0905": {
-        "id": "moonshotai/kimi-k2-0905",
-        "name": "Kimi K2 0905",
-        "family": "kimi",
-        "cost": {
-          "input": 0.6,
-          "output": 2.5
+        id: "moonshotai/kimi-k2-0905",
+        name: "Kimi K2 0905",
+        family: "kimi",
+        cost: {
+          input: 0.6,
+          output: 2.5,
         },
-        "limit": {
-          "context": 262144,
-          "output": 262144
+        limit: {
+          context: 262144,
+          output: 262144,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-09-04",
-        "last_updated": "2025-09-04"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-09-04",
+        last_updated: "2025-09-04",
       },
       "moonshotai/kimi-k2-thinking": {
-        "id": "moonshotai/kimi-k2-thinking",
-        "name": "Kimi K2 Thinking",
-        "family": "kimi-thinking",
-        "cost": {
-          "input": 0.6,
-          "output": 2.5
+        id: "moonshotai/kimi-k2-thinking",
+        name: "Kimi K2 Thinking",
+        family: "kimi-thinking",
+        cost: {
+          input: 0.6,
+          output: 2.5,
         },
-        "limit": {
-          "context": 262144,
-          "output": 262144
+        limit: {
+          context: 262144,
+          output: 262144,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-11-06",
-        "last_updated": "2025-11-06"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-11-06",
+        last_updated: "2025-11-06",
       },
       "moonshotai/kimi-k2.5": {
-        "id": "moonshotai/kimi-k2.5",
-        "name": "Kimi K2.5",
-        "family": "kimi-k2.5",
-        "cost": {
-          "input": 0.4,
-          "output": 1.9
+        id: "moonshotai/kimi-k2.5",
+        name: "Kimi K2.5",
+        family: "kimi-k2.5",
+        cost: {
+          input: 0.4,
+          output: 1.9,
         },
-        "limit": {
-          "context": 262144,
-          "output": 262144
+        limit: {
+          context: 262144,
+          output: 262144,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-01",
-        "last_updated": "2026-01"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-01",
+        last_updated: "2026-01",
       },
       "moonshotai/kimi-k2.6": {
-        "id": "moonshotai/kimi-k2.6",
-        "name": "Kimi K2.6",
-        "family": "kimi-k2.6",
-        "cost": {
-          "input": 0.684,
-          "output": 3.42
+        id: "moonshotai/kimi-k2.6",
+        name: "Kimi K2.6",
+        family: "kimi-k2.6",
+        cost: {
+          input: 0.684,
+          output: 3.42,
         },
-        "limit": {
-          "context": 262144,
-          "output": 262144
+        limit: {
+          context: 262144,
+          output: 262144,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-04-21",
-        "last_updated": "2026-04-21"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-04-21",
+        last_updated: "2026-04-21",
       },
       "moonshotai/kimi-k2.6:free": {
-        "id": "moonshotai/kimi-k2.6:free",
-        "name": "Kimi K2.6 (free)",
-        "family": "kimi-k2.6",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "moonshotai/kimi-k2.6:free",
+        name: "Kimi K2.6 (free)",
+        family: "kimi-k2.6",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 262144,
-          "output": 262144
+        limit: {
+          context: 262144,
+          output: 262144,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2026-04-21",
-        "last_updated": "2026-04-21"
+        tool_call: true,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2026-04-21",
+        last_updated: "2026-04-21",
       },
       "morph/morph-v3-fast": {
-        "id": "morph/morph-v3-fast",
-        "name": "Morph V3 Fast",
-        "family": "morph",
-        "cost": {
-          "input": 0.8,
-          "output": 1.2
+        id: "morph/morph-v3-fast",
+        name: "Morph V3 Fast",
+        family: "morph",
+        cost: {
+          input: 0.8,
+          output: 1.2,
         },
-        "limit": {
-          "context": 81920,
-          "output": 38000
+        limit: {
+          context: 81920,
+          output: 38000,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2025-07-07",
-        "last_updated": "2025-07-07"
+        tool_call: false,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2025-07-07",
+        last_updated: "2025-07-07",
       },
       "morph/morph-v3-large": {
-        "id": "morph/morph-v3-large",
-        "name": "Morph V3 Large",
-        "family": "morph",
-        "cost": {
-          "input": 0.9,
-          "output": 1.9
+        id: "morph/morph-v3-large",
+        name: "Morph V3 Large",
+        family: "morph",
+        cost: {
+          input: 0.9,
+          output: 1.9,
         },
-        "limit": {
-          "context": 262144,
-          "output": 131072
+        limit: {
+          context: 262144,
+          output: 131072,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2025-07-07",
-        "last_updated": "2025-07-07"
+        tool_call: false,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2025-07-07",
+        last_updated: "2025-07-07",
       },
       "nex-agi/deepseek-v3.1-nex-n1": {
-        "id": "nex-agi/deepseek-v3.1-nex-n1",
-        "name": "DeepSeek V3.1 Nex N1",
-        "family": "deepseek",
-        "cost": {
-          "input": 0.135,
-          "output": 0.5
+        id: "nex-agi/deepseek-v3.1-nex-n1",
+        name: "DeepSeek V3.1 Nex N1",
+        family: "deepseek",
+        cost: {
+          input: 0.135,
+          output: 0.5,
         },
-        "limit": {
-          "context": 131072,
-          "output": 163840
+        limit: {
+          context: 131072,
+          output: 163840,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-12-08",
-        "last_updated": "2025-12-08"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-12-08",
+        last_updated: "2025-12-08",
       },
       "nousresearch/hermes-2-pro-llama-3-8b": {
-        "id": "nousresearch/hermes-2-pro-llama-3-8b",
-        "name": "Hermes 2 Pro - Llama-3 8B",
-        "family": "nousresearch",
-        "cost": {
-          "input": 0.14,
-          "output": 0.14
+        id: "nousresearch/hermes-2-pro-llama-3-8b",
+        name: "Hermes 2 Pro - Llama-3 8B",
+        family: "nousresearch",
+        cost: {
+          input: 0.14,
+          output: 0.14,
         },
-        "limit": {
-          "context": 8192,
-          "output": 8192
+        limit: {
+          context: 8192,
+          output: 8192,
         },
-        "tool_call": false,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2024-05-27",
-        "last_updated": "2024-05-27"
+        tool_call: false,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2024-05-27",
+        last_updated: "2024-05-27",
       },
       "nousresearch/hermes-3-llama-3.1-405b": {
-        "id": "nousresearch/hermes-3-llama-3.1-405b",
-        "name": "Hermes 3 405B Instruct",
-        "family": "nousresearch",
-        "cost": {
-          "input": 1,
-          "output": 1
+        id: "nousresearch/hermes-3-llama-3.1-405b",
+        name: "Hermes 3 405B Instruct",
+        family: "nousresearch",
+        cost: {
+          input: 1,
+          output: 1,
         },
-        "limit": {
-          "context": 131072,
-          "output": 16384
+        limit: {
+          context: 131072,
+          output: 16384,
         },
-        "tool_call": false,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2024-08-16",
-        "last_updated": "2024-08-16"
+        tool_call: false,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2024-08-16",
+        last_updated: "2024-08-16",
       },
       "nousresearch/hermes-3-llama-3.1-405b:free": {
-        "id": "nousresearch/hermes-3-llama-3.1-405b:free",
-        "name": "Hermes 3 405B Instruct (free)",
-        "family": "hermes",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "nousresearch/hermes-3-llama-3.1-405b:free",
+        name: "Hermes 3 405B Instruct (free)",
+        family: "hermes",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 131072,
-          "output": 131072
+        limit: {
+          context: 131072,
+          output: 131072,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2024-08-16",
-        "last_updated": "2024-08-16"
+        tool_call: false,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2024-08-16",
+        last_updated: "2024-08-16",
       },
       "nousresearch/hermes-3-llama-3.1-70b": {
-        "id": "nousresearch/hermes-3-llama-3.1-70b",
-        "name": "Hermes 3 70B Instruct",
-        "family": "nousresearch",
-        "cost": {
-          "input": 0.3,
-          "output": 0.3
+        id: "nousresearch/hermes-3-llama-3.1-70b",
+        name: "Hermes 3 70B Instruct",
+        family: "nousresearch",
+        cost: {
+          input: 0.3,
+          output: 0.3,
         },
-        "limit": {
-          "context": 131072,
-          "output": 16384
+        limit: {
+          context: 131072,
+          output: 16384,
         },
-        "tool_call": false,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2024-08-18",
-        "last_updated": "2024-08-18"
+        tool_call: false,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2024-08-18",
+        last_updated: "2024-08-18",
       },
       "nousresearch/hermes-4-405b": {
-        "id": "nousresearch/hermes-4-405b",
-        "name": "Hermes 4 405B",
-        "family": "hermes",
-        "cost": {
-          "input": 1,
-          "output": 3
+        id: "nousresearch/hermes-4-405b",
+        name: "Hermes 4 405B",
+        family: "hermes",
+        cost: {
+          input: 1,
+          output: 3,
         },
-        "limit": {
-          "context": 131072,
-          "output": 131072
+        limit: {
+          context: 131072,
+          output: 131072,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2025-08-26",
-        "last_updated": "2025-08-26"
+        tool_call: false,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2025-08-26",
+        last_updated: "2025-08-26",
       },
       "nousresearch/hermes-4-70b": {
-        "id": "nousresearch/hermes-4-70b",
-        "name": "Hermes 4 70B",
-        "family": "hermes",
-        "cost": {
-          "input": 0.13,
-          "output": 0.4
+        id: "nousresearch/hermes-4-70b",
+        name: "Hermes 4 70B",
+        family: "hermes",
+        cost: {
+          input: 0.13,
+          output: 0.4,
         },
-        "limit": {
-          "context": 131072,
-          "output": 131072
+        limit: {
+          context: 131072,
+          output: 131072,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2025-08-26",
-        "last_updated": "2025-08-26"
+        tool_call: false,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2025-08-26",
+        last_updated: "2025-08-26",
       },
       "nvidia/llama-3.3-nemotron-super-49b-v1.5": {
-        "id": "nvidia/llama-3.3-nemotron-super-49b-v1.5",
-        "name": "Llama 3.3 Nemotron Super 49B V1.5",
-        "family": "nemotron",
-        "cost": {
-          "input": 0.1,
-          "output": 0.4
+        id: "nvidia/llama-3.3-nemotron-super-49b-v1.5",
+        name: "Llama 3.3 Nemotron Super 49B V1.5",
+        family: "nemotron",
+        cost: {
+          input: 0.1,
+          output: 0.4,
         },
-        "limit": {
-          "context": 131072,
-          "output": 16384
+        limit: {
+          context: 131072,
+          output: 16384,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2025-10-10",
-        "last_updated": "2025-10-10"
+        tool_call: true,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2025-10-10",
+        last_updated: "2025-10-10",
       },
       "nvidia/nemotron-3-nano-30b-a3b": {
-        "id": "nvidia/nemotron-3-nano-30b-a3b",
-        "name": "Nemotron 3 Nano 30B A3B",
-        "family": "nemotron",
-        "cost": {
-          "input": 0.05,
-          "output": 0.2
+        id: "nvidia/nemotron-3-nano-30b-a3b",
+        name: "Nemotron 3 Nano 30B A3B",
+        family: "nemotron",
+        cost: {
+          input: 0.05,
+          output: 0.2,
         },
-        "limit": {
-          "context": 262144,
-          "output": 228000
+        limit: {
+          context: 262144,
+          output: 228000,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2025-12-14",
-        "last_updated": "2025-12-14"
+        tool_call: true,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2025-12-14",
+        last_updated: "2025-12-14",
       },
       "nvidia/nemotron-3-nano-30b-a3b:free": {
-        "id": "nvidia/nemotron-3-nano-30b-a3b:free",
-        "name": "Nemotron 3 Nano 30B A3B (free)",
-        "family": "nemotron",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "nvidia/nemotron-3-nano-30b-a3b:free",
+        name: "Nemotron 3 Nano 30B A3B (free)",
+        family: "nemotron",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 256000,
-          "output": 256000
+        limit: {
+          context: 256000,
+          output: 256000,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2025-12-14",
-        "last_updated": "2025-12-14"
+        tool_call: true,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2025-12-14",
+        last_updated: "2025-12-14",
       },
       "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free": {
-        "id": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
-        "name": "Nemotron 3 Nano Omni (free)",
-        "family": "nemotron",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+        name: "Nemotron 3 Nano Omni (free)",
+        family: "nemotron",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 256000,
-          "output": 65536
+        limit: {
+          context: 256000,
+          output: 65536,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2026-04-28",
-        "last_updated": "2026-04-28"
+        tool_call: true,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2026-04-28",
+        last_updated: "2026-04-28",
       },
       "nvidia/nemotron-3-super-120b-a12b": {
-        "id": "nvidia/nemotron-3-super-120b-a12b",
-        "name": "Nemotron 3 Super",
-        "family": "nemotron",
-        "cost": {
-          "input": 0.09,
-          "output": 0.45
+        id: "nvidia/nemotron-3-super-120b-a12b",
+        name: "Nemotron 3 Super",
+        family: "nemotron",
+        cost: {
+          input: 0.09,
+          output: 0.45,
         },
-        "limit": {
-          "context": 262144,
-          "output": 262144
+        limit: {
+          context: 262144,
+          output: 262144,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2026-03-11",
-        "last_updated": "2026-03-11"
+        tool_call: true,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2026-03-11",
+        last_updated: "2026-03-11",
       },
       "nvidia/nemotron-3-super-120b-a12b:free": {
-        "id": "nvidia/nemotron-3-super-120b-a12b:free",
-        "name": "Nemotron 3 Super (free)",
-        "family": "nemotron",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "nvidia/nemotron-3-super-120b-a12b:free",
+        name: "Nemotron 3 Super (free)",
+        family: "nemotron",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 262144,
-          "output": 262144
+        limit: {
+          context: 262144,
+          output: 262144,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-03-11",
-        "last_updated": "2026-03-11"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-03-11",
+        last_updated: "2026-03-11",
       },
       "nvidia/nemotron-nano-12b-v2-vl:free": {
-        "id": "nvidia/nemotron-nano-12b-v2-vl:free",
-        "name": "Nemotron Nano 12B 2 VL (free)",
-        "family": "nemotron",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "nvidia/nemotron-nano-12b-v2-vl:free",
+        name: "Nemotron Nano 12B 2 VL (free)",
+        family: "nemotron",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 128000,
-          "output": 128000
+        limit: {
+          context: 128000,
+          output: 128000,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2025-10-28",
-        "last_updated": "2025-10-28"
+        tool_call: true,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2025-10-28",
+        last_updated: "2025-10-28",
       },
       "nvidia/nemotron-nano-9b-v2": {
-        "id": "nvidia/nemotron-nano-9b-v2",
-        "name": "Nemotron Nano 9B V2",
-        "family": "nemotron",
-        "cost": {
-          "input": 0.04,
-          "output": 0.16
+        id: "nvidia/nemotron-nano-9b-v2",
+        name: "Nemotron Nano 9B V2",
+        family: "nemotron",
+        cost: {
+          input: 0.04,
+          output: 0.16,
         },
-        "limit": {
-          "context": 131072,
-          "output": 16384
+        limit: {
+          context: 131072,
+          output: 16384,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2025-09-05",
-        "last_updated": "2025-09-05"
+        tool_call: true,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2025-09-05",
+        last_updated: "2025-09-05",
       },
       "nvidia/nemotron-nano-9b-v2:free": {
-        "id": "nvidia/nemotron-nano-9b-v2:free",
-        "name": "Nemotron Nano 9B V2 (free)",
-        "family": "nemotron",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "nvidia/nemotron-nano-9b-v2:free",
+        name: "Nemotron Nano 9B V2 (free)",
+        family: "nemotron",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 128000,
-          "output": 128000
+        limit: {
+          context: 128000,
+          output: 128000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-09-05",
-        "last_updated": "2025-09-05"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-09-05",
+        last_updated: "2025-09-05",
       },
       "openai/gpt-3.5-turbo": {
-        "id": "openai/gpt-3.5-turbo",
-        "name": "GPT-3.5-turbo",
-        "family": "gpt",
-        "cost": {
-          "input": 0.5,
-          "output": 1.5
+        id: "openai/gpt-3.5-turbo",
+        name: "GPT-3.5-turbo",
+        family: "gpt",
+        cost: {
+          input: 0.5,
+          output: 1.5,
         },
-        "limit": {
-          "context": 16385,
-          "output": 4096
+        limit: {
+          context: 16385,
+          output: 4096,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2023-03-01",
-        "last_updated": "2023-11-06"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2023-03-01",
+        last_updated: "2023-11-06",
       },
       "openai/gpt-3.5-turbo-0613": {
-        "id": "openai/gpt-3.5-turbo-0613",
-        "name": "GPT-3.5 Turbo (older v0613)",
-        "family": "gpt",
-        "cost": {
-          "input": 1,
-          "output": 2
+        id: "openai/gpt-3.5-turbo-0613",
+        name: "GPT-3.5 Turbo (older v0613)",
+        family: "gpt",
+        cost: {
+          input: 1,
+          output: 2,
         },
-        "limit": {
-          "context": 4095,
-          "output": 4096
+        limit: {
+          context: 4095,
+          output: 4096,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2024-01-25",
-        "last_updated": "2024-01-25"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2024-01-25",
+        last_updated: "2024-01-25",
       },
       "openai/gpt-3.5-turbo-16k": {
-        "id": "openai/gpt-3.5-turbo-16k",
-        "name": "GPT-3.5 Turbo 16k",
-        "family": "gpt",
-        "cost": {
-          "input": 3,
-          "output": 4
+        id: "openai/gpt-3.5-turbo-16k",
+        name: "GPT-3.5 Turbo 16k",
+        family: "gpt",
+        cost: {
+          input: 3,
+          output: 4,
         },
-        "limit": {
-          "context": 16385,
-          "output": 4096
+        limit: {
+          context: 16385,
+          output: 4096,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2023-08-28",
-        "last_updated": "2023-08-28"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2023-08-28",
+        last_updated: "2023-08-28",
       },
       "openai/gpt-3.5-turbo-instruct": {
-        "id": "openai/gpt-3.5-turbo-instruct",
-        "name": "GPT-3.5 Turbo Instruct",
-        "family": "gpt",
-        "cost": {
-          "input": 1.5,
-          "output": 2
+        id: "openai/gpt-3.5-turbo-instruct",
+        name: "GPT-3.5 Turbo Instruct",
+        family: "gpt",
+        cost: {
+          input: 1.5,
+          output: 2,
         },
-        "limit": {
-          "context": 4095,
-          "output": 4096
+        limit: {
+          context: 4095,
+          output: 4096,
         },
-        "tool_call": false,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2023-09-28",
-        "last_updated": "2023-09-28"
+        tool_call: false,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2023-09-28",
+        last_updated: "2023-09-28",
       },
       "openai/gpt-4": {
-        "id": "openai/gpt-4",
-        "name": "GPT-4",
-        "family": "gpt",
-        "cost": {
-          "input": 30,
-          "output": 60
+        id: "openai/gpt-4",
+        name: "GPT-4",
+        family: "gpt",
+        cost: {
+          input: 30,
+          output: 60,
         },
-        "limit": {
-          "context": 8191,
-          "output": 4096
+        limit: {
+          context: 8191,
+          output: 4096,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2023-11-06",
-        "last_updated": "2024-04-09"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2023-11-06",
+        last_updated: "2024-04-09",
       },
       "openai/gpt-4-0314": {
-        "id": "openai/gpt-4-0314",
-        "name": "GPT-4 (older v0314)",
-        "family": "gpt",
-        "cost": {
-          "input": 30,
-          "output": 60
+        id: "openai/gpt-4-0314",
+        name: "GPT-4 (older v0314)",
+        family: "gpt",
+        cost: {
+          input: 30,
+          output: 60,
         },
-        "limit": {
-          "context": 8191,
-          "output": 4096
+        limit: {
+          context: 8191,
+          output: 4096,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2023-05-28",
-        "last_updated": "2023-05-28"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2023-05-28",
+        last_updated: "2023-05-28",
       },
       "openai/gpt-4-1106-preview": {
-        "id": "openai/gpt-4-1106-preview",
-        "name": "GPT-4 Turbo (older v1106)",
-        "family": "gpt",
-        "cost": {
-          "input": 10,
-          "output": 30
+        id: "openai/gpt-4-1106-preview",
+        name: "GPT-4 Turbo (older v1106)",
+        family: "gpt",
+        cost: {
+          input: 10,
+          output: 30,
         },
-        "limit": {
-          "context": 128000,
-          "output": 4096
+        limit: {
+          context: 128000,
+          output: 4096,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2023-11-06",
-        "last_updated": "2023-11-06"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2023-11-06",
+        last_updated: "2023-11-06",
       },
       "openai/gpt-4-turbo": {
-        "id": "openai/gpt-4-turbo",
-        "name": "GPT-4 Turbo",
-        "family": "gpt",
-        "cost": {
-          "input": 10,
-          "output": 30
+        id: "openai/gpt-4-turbo",
+        name: "GPT-4 Turbo",
+        family: "gpt",
+        cost: {
+          input: 10,
+          output: 30,
         },
-        "limit": {
-          "context": 128000,
-          "output": 4096
+        limit: {
+          context: 128000,
+          output: 4096,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2023-11-06",
-        "last_updated": "2024-04-09"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2023-11-06",
+        last_updated: "2024-04-09",
       },
       "openai/gpt-4-turbo-preview": {
-        "id": "openai/gpt-4-turbo-preview",
-        "name": "GPT-4 Turbo Preview",
-        "family": "gpt",
-        "cost": {
-          "input": 10,
-          "output": 30
+        id: "openai/gpt-4-turbo-preview",
+        name: "GPT-4 Turbo Preview",
+        family: "gpt",
+        cost: {
+          input: 10,
+          output: 30,
         },
-        "limit": {
-          "context": 128000,
-          "output": 4096
+        limit: {
+          context: 128000,
+          output: 4096,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2024-01-25",
-        "last_updated": "2024-01-25"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2024-01-25",
+        last_updated: "2024-01-25",
       },
       "openai/gpt-4.1": {
-        "id": "openai/gpt-4.1",
-        "name": "GPT-4.1",
-        "family": "gpt",
-        "cost": {
-          "input": 2,
-          "output": 8
+        id: "openai/gpt-4.1",
+        name: "GPT-4.1",
+        family: "gpt",
+        cost: {
+          input: 2,
+          output: 8,
         },
-        "limit": {
-          "context": 1047576,
-          "output": 32768
+        limit: {
+          context: 1047576,
+          output: 32768,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-04-14",
-        "last_updated": "2025-04-14"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-04-14",
+        last_updated: "2025-04-14",
       },
       "openai/gpt-4.1-mini": {
-        "id": "openai/gpt-4.1-mini",
-        "name": "GPT-4.1 mini",
-        "family": "gpt-mini",
-        "cost": {
-          "input": 0.4,
-          "output": 1.6
+        id: "openai/gpt-4.1-mini",
+        name: "GPT-4.1 mini",
+        family: "gpt-mini",
+        cost: {
+          input: 0.4,
+          output: 1.6,
         },
-        "limit": {
-          "context": 1047576,
-          "output": 32768
+        limit: {
+          context: 1047576,
+          output: 32768,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-04-14",
-        "last_updated": "2025-04-14"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-04-14",
+        last_updated: "2025-04-14",
       },
       "openai/gpt-4.1-nano": {
-        "id": "openai/gpt-4.1-nano",
-        "name": "GPT-4.1 nano",
-        "family": "gpt-nano",
-        "cost": {
-          "input": 0.1,
-          "output": 0.4
+        id: "openai/gpt-4.1-nano",
+        name: "GPT-4.1 nano",
+        family: "gpt-nano",
+        cost: {
+          input: 0.1,
+          output: 0.4,
         },
-        "limit": {
-          "context": 1047576,
-          "output": 32768
+        limit: {
+          context: 1047576,
+          output: 32768,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-04-14",
-        "last_updated": "2025-04-14"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-04-14",
+        last_updated: "2025-04-14",
       },
       "openai/gpt-4o": {
-        "id": "openai/gpt-4o",
-        "name": "GPT-4o",
-        "family": "gpt",
-        "cost": {
-          "input": 2.5,
-          "output": 10
+        id: "openai/gpt-4o",
+        name: "GPT-4o",
+        family: "gpt",
+        cost: {
+          input: 2.5,
+          output: 10,
         },
-        "limit": {
-          "context": 128000,
-          "output": 16384
+        limit: {
+          context: 128000,
+          output: 16384,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2024-05-13",
-        "last_updated": "2024-08-06"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2024-05-13",
+        last_updated: "2024-08-06",
       },
       "openai/gpt-4o-2024-05-13": {
-        "id": "openai/gpt-4o-2024-05-13",
-        "name": "GPT-4o (2024-05-13)",
-        "family": "gpt",
-        "cost": {
-          "input": 5,
-          "output": 15
+        id: "openai/gpt-4o-2024-05-13",
+        name: "GPT-4o (2024-05-13)",
+        family: "gpt",
+        cost: {
+          input: 5,
+          output: 15,
         },
-        "limit": {
-          "context": 128000,
-          "output": 4096
+        limit: {
+          context: 128000,
+          output: 4096,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2024-05-13",
-        "last_updated": "2024-05-13"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2024-05-13",
+        last_updated: "2024-05-13",
       },
       "openai/gpt-4o-2024-08-06": {
-        "id": "openai/gpt-4o-2024-08-06",
-        "name": "GPT-4o (2024-08-06)",
-        "family": "gpt",
-        "cost": {
-          "input": 2.5,
-          "output": 10
+        id: "openai/gpt-4o-2024-08-06",
+        name: "GPT-4o (2024-08-06)",
+        family: "gpt",
+        cost: {
+          input: 2.5,
+          output: 10,
         },
-        "limit": {
-          "context": 128000,
-          "output": 16384
+        limit: {
+          context: 128000,
+          output: 16384,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2024-08-06",
-        "last_updated": "2024-08-06"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2024-08-06",
+        last_updated: "2024-08-06",
       },
       "openai/gpt-4o-2024-11-20": {
-        "id": "openai/gpt-4o-2024-11-20",
-        "name": "GPT-4o (2024-11-20)",
-        "family": "gpt",
-        "cost": {
-          "input": 2.5,
-          "output": 10
+        id: "openai/gpt-4o-2024-11-20",
+        name: "GPT-4o (2024-11-20)",
+        family: "gpt",
+        cost: {
+          input: 2.5,
+          output: 10,
         },
-        "limit": {
-          "context": 128000,
-          "output": 16384
+        limit: {
+          context: 128000,
+          output: 16384,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2024-11-20",
-        "last_updated": "2024-11-20"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2024-11-20",
+        last_updated: "2024-11-20",
       },
       "openai/gpt-4o-mini": {
-        "id": "openai/gpt-4o-mini",
-        "name": "GPT-4o mini",
-        "family": "gpt-mini",
-        "cost": {
-          "input": 0.15,
-          "output": 0.6
+        id: "openai/gpt-4o-mini",
+        name: "GPT-4o mini",
+        family: "gpt-mini",
+        cost: {
+          input: 0.15,
+          output: 0.6,
         },
-        "limit": {
-          "context": 128000,
-          "output": 16384
+        limit: {
+          context: 128000,
+          output: 16384,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2024-07-18",
-        "last_updated": "2024-07-18"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2024-07-18",
+        last_updated: "2024-07-18",
       },
       "openai/gpt-4o-mini-2024-07-18": {
-        "id": "openai/gpt-4o-mini-2024-07-18",
-        "name": "GPT-4o-mini (2024-07-18)",
-        "family": "o-mini",
-        "cost": {
-          "input": 0.15,
-          "output": 0.6
+        id: "openai/gpt-4o-mini-2024-07-18",
+        name: "GPT-4o-mini (2024-07-18)",
+        family: "o-mini",
+        cost: {
+          input: 0.15,
+          output: 0.6,
         },
-        "limit": {
-          "context": 128000,
-          "output": 16384
+        limit: {
+          context: 128000,
+          output: 16384,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2024-07-18",
-        "last_updated": "2024-07-18"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2024-07-18",
+        last_updated: "2024-07-18",
       },
       "openai/gpt-4o-mini-search-preview": {
-        "id": "openai/gpt-4o-mini-search-preview",
-        "name": "GPT-4o-mini Search Preview",
-        "family": "o-mini",
-        "cost": {
-          "input": 0.15,
-          "output": 0.6
+        id: "openai/gpt-4o-mini-search-preview",
+        name: "GPT-4o-mini Search Preview",
+        family: "o-mini",
+        cost: {
+          input: 0.15,
+          output: 0.6,
         },
-        "limit": {
-          "context": 128000,
-          "output": 16384
+        limit: {
+          context: 128000,
+          output: 16384,
         },
-        "tool_call": false,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-03-12",
-        "last_updated": "2025-03-12"
+        tool_call: false,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-03-12",
+        last_updated: "2025-03-12",
       },
       "openai/gpt-4o-search-preview": {
-        "id": "openai/gpt-4o-search-preview",
-        "name": "GPT-4o Search Preview",
-        "family": "gpt",
-        "cost": {
-          "input": 2.5,
-          "output": 10
+        id: "openai/gpt-4o-search-preview",
+        name: "GPT-4o Search Preview",
+        family: "gpt",
+        cost: {
+          input: 2.5,
+          output: 10,
         },
-        "limit": {
-          "context": 128000,
-          "output": 16384
+        limit: {
+          context: 128000,
+          output: 16384,
         },
-        "tool_call": false,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-03-12",
-        "last_updated": "2025-03-12"
+        tool_call: false,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-03-12",
+        last_updated: "2025-03-12",
       },
       "openai/gpt-5": {
-        "id": "openai/gpt-5",
-        "name": "GPT-5",
-        "family": "gpt",
-        "cost": {
-          "input": 1.25,
-          "output": 10
+        id: "openai/gpt-5",
+        name: "GPT-5",
+        family: "gpt",
+        cost: {
+          input: 1.25,
+          output: 10,
         },
-        "limit": {
-          "context": 400000,
-          "output": 128000
+        limit: {
+          context: 400000,
+          output: 128000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-08-07",
-        "last_updated": "2025-08-07"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-08-07",
+        last_updated: "2025-08-07",
       },
       "openai/gpt-5-chat": {
-        "id": "openai/gpt-5-chat",
-        "name": "GPT-5 Chat",
-        "family": "gpt-codex",
-        "cost": {
-          "input": 1.25,
-          "output": 10
+        id: "openai/gpt-5-chat",
+        name: "GPT-5 Chat",
+        family: "gpt-codex",
+        cost: {
+          input: 1.25,
+          output: 10,
         },
-        "limit": {
-          "context": 128000,
-          "output": 16384
+        limit: {
+          context: 128000,
+          output: 16384,
         },
-        "tool_call": false,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-08-07",
-        "last_updated": "2025-08-07"
+        tool_call: false,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-08-07",
+        last_updated: "2025-08-07",
       },
       "openai/gpt-5-codex": {
-        "id": "openai/gpt-5-codex",
-        "name": "GPT-5-Codex",
-        "family": "gpt-codex",
-        "cost": {
-          "input": 1.25,
-          "output": 10
+        id: "openai/gpt-5-codex",
+        name: "GPT-5-Codex",
+        family: "gpt-codex",
+        cost: {
+          input: 1.25,
+          output: 10,
         },
-        "limit": {
-          "context": 400000,
-          "output": 128000
+        limit: {
+          context: 400000,
+          output: 128000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-09-15",
-        "last_updated": "2025-09-15"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-09-15",
+        last_updated: "2025-09-15",
       },
       "openai/gpt-5-image": {
-        "id": "openai/gpt-5-image",
-        "name": "GPT-5 Image",
-        "family": "gpt",
-        "cost": {
-          "input": 10,
-          "output": 10
+        id: "openai/gpt-5-image",
+        name: "GPT-5 Image",
+        family: "gpt",
+        cost: {
+          input: 10,
+          output: 10,
         },
-        "limit": {
-          "context": 400000,
-          "output": 128000
+        limit: {
+          context: 400000,
+          output: 128000,
         },
-        "tool_call": false,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-10-14",
-        "last_updated": "2025-10-14"
+        tool_call: false,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-10-14",
+        last_updated: "2025-10-14",
       },
       "openai/gpt-5-image-mini": {
-        "id": "openai/gpt-5-image-mini",
-        "name": "GPT-5 Image Mini",
-        "family": "gpt",
-        "cost": {
-          "input": 2.5,
-          "output": 2
+        id: "openai/gpt-5-image-mini",
+        name: "GPT-5 Image Mini",
+        family: "gpt",
+        cost: {
+          input: 2.5,
+          output: 2,
         },
-        "limit": {
-          "context": 400000,
-          "output": 128000
+        limit: {
+          context: 400000,
+          output: 128000,
         },
-        "tool_call": false,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-10-16",
-        "last_updated": "2025-10-16"
+        tool_call: false,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-10-16",
+        last_updated: "2025-10-16",
       },
       "openai/gpt-5-mini": {
-        "id": "openai/gpt-5-mini",
-        "name": "GPT-5 Mini",
-        "family": "gpt-mini",
-        "cost": {
-          "input": 0.25,
-          "output": 2
+        id: "openai/gpt-5-mini",
+        name: "GPT-5 Mini",
+        family: "gpt-mini",
+        cost: {
+          input: 0.25,
+          output: 2,
         },
-        "limit": {
-          "context": 400000,
-          "output": 128000
+        limit: {
+          context: 400000,
+          output: 128000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-08-07",
-        "last_updated": "2025-08-07"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-08-07",
+        last_updated: "2025-08-07",
       },
       "openai/gpt-5-nano": {
-        "id": "openai/gpt-5-nano",
-        "name": "GPT-5 Nano",
-        "family": "gpt-nano",
-        "cost": {
-          "input": 0.05,
-          "output": 0.4
+        id: "openai/gpt-5-nano",
+        name: "GPT-5 Nano",
+        family: "gpt-nano",
+        cost: {
+          input: 0.05,
+          output: 0.4,
         },
-        "limit": {
-          "context": 400000,
-          "output": 128000
+        limit: {
+          context: 400000,
+          output: 128000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-08-07",
-        "last_updated": "2025-08-07"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-08-07",
+        last_updated: "2025-08-07",
       },
       "openai/gpt-5-pro": {
-        "id": "openai/gpt-5-pro",
-        "name": "GPT-5 Pro",
-        "family": "gpt-pro",
-        "cost": {
-          "input": 15,
-          "output": 120
+        id: "openai/gpt-5-pro",
+        name: "GPT-5 Pro",
+        family: "gpt-pro",
+        cost: {
+          input: 15,
+          output: 120,
         },
-        "limit": {
-          "context": 400000,
-          "output": 128000
+        limit: {
+          context: 400000,
+          output: 128000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-10-06",
-        "last_updated": "2025-10-06"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-10-06",
+        last_updated: "2025-10-06",
       },
       "openai/gpt-5.1": {
-        "id": "openai/gpt-5.1",
-        "name": "GPT-5.1",
-        "family": "gpt",
-        "cost": {
-          "input": 1.25,
-          "output": 10
+        id: "openai/gpt-5.1",
+        name: "GPT-5.1",
+        family: "gpt",
+        cost: {
+          input: 1.25,
+          output: 10,
         },
-        "limit": {
-          "context": 400000,
-          "output": 128000
+        limit: {
+          context: 400000,
+          output: 128000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-11-13",
-        "last_updated": "2025-11-13"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-11-13",
+        last_updated: "2025-11-13",
       },
       "openai/gpt-5.1-chat": {
-        "id": "openai/gpt-5.1-chat",
-        "name": "GPT-5.1 Chat",
-        "family": "gpt-codex",
-        "cost": {
-          "input": 1.25,
-          "output": 10
+        id: "openai/gpt-5.1-chat",
+        name: "GPT-5.1 Chat",
+        family: "gpt-codex",
+        cost: {
+          input: 1.25,
+          output: 10,
         },
-        "limit": {
-          "context": 128000,
-          "output": 32000
+        limit: {
+          context: 128000,
+          output: 32000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-11-13",
-        "last_updated": "2025-11-13"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-11-13",
+        last_updated: "2025-11-13",
       },
       "openai/gpt-5.1-codex": {
-        "id": "openai/gpt-5.1-codex",
-        "name": "GPT-5.1 Codex",
-        "family": "gpt-codex",
-        "cost": {
-          "input": 1.25,
-          "output": 10
+        id: "openai/gpt-5.1-codex",
+        name: "GPT-5.1 Codex",
+        family: "gpt-codex",
+        cost: {
+          input: 1.25,
+          output: 10,
         },
-        "limit": {
-          "context": 400000,
-          "output": 128000
+        limit: {
+          context: 400000,
+          output: 128000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-11-13",
-        "last_updated": "2025-11-13"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-11-13",
+        last_updated: "2025-11-13",
       },
       "openai/gpt-5.1-codex-max": {
-        "id": "openai/gpt-5.1-codex-max",
-        "name": "GPT-5.1 Codex Max",
-        "family": "gpt-codex",
-        "cost": {
-          "input": 1.25,
-          "output": 10
+        id: "openai/gpt-5.1-codex-max",
+        name: "GPT-5.1 Codex Max",
+        family: "gpt-codex",
+        cost: {
+          input: 1.25,
+          output: 10,
         },
-        "limit": {
-          "context": 400000,
-          "output": 128000
+        limit: {
+          context: 400000,
+          output: 128000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-11-13",
-        "last_updated": "2025-11-13"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-11-13",
+        last_updated: "2025-11-13",
       },
       "openai/gpt-5.1-codex-mini": {
-        "id": "openai/gpt-5.1-codex-mini",
-        "name": "GPT-5.1 Codex mini",
-        "family": "gpt-codex",
-        "cost": {
-          "input": 0.25,
-          "output": 2
+        id: "openai/gpt-5.1-codex-mini",
+        name: "GPT-5.1 Codex mini",
+        family: "gpt-codex",
+        cost: {
+          input: 0.25,
+          output: 2,
         },
-        "limit": {
-          "context": 400000,
-          "output": 100000
+        limit: {
+          context: 400000,
+          output: 100000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-11-13",
-        "last_updated": "2025-11-13"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-11-13",
+        last_updated: "2025-11-13",
       },
       "openai/gpt-5.2": {
-        "id": "openai/gpt-5.2",
-        "name": "GPT-5.2",
-        "family": "gpt",
-        "cost": {
-          "input": 1.75,
-          "output": 14
+        id: "openai/gpt-5.2",
+        name: "GPT-5.2",
+        family: "gpt",
+        cost: {
+          input: 1.75,
+          output: 14,
         },
-        "limit": {
-          "context": 400000,
-          "output": 128000
+        limit: {
+          context: 400000,
+          output: 128000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-12-11",
-        "last_updated": "2025-12-11"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-12-11",
+        last_updated: "2025-12-11",
       },
       "openai/gpt-5.2-chat": {
-        "id": "openai/gpt-5.2-chat",
-        "name": "GPT-5.2 Chat",
-        "family": "gpt-codex",
-        "cost": {
-          "input": 1.75,
-          "output": 14
+        id: "openai/gpt-5.2-chat",
+        name: "GPT-5.2 Chat",
+        family: "gpt-codex",
+        cost: {
+          input: 1.75,
+          output: 14,
         },
-        "limit": {
-          "context": 128000,
-          "output": 16384
+        limit: {
+          context: 128000,
+          output: 16384,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-12-10",
-        "last_updated": "2025-12-10"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-12-10",
+        last_updated: "2025-12-10",
       },
       "openai/gpt-5.2-codex": {
-        "id": "openai/gpt-5.2-codex",
-        "name": "GPT-5.2 Codex",
-        "family": "gpt-codex",
-        "cost": {
-          "input": 1.75,
-          "output": 14
+        id: "openai/gpt-5.2-codex",
+        name: "GPT-5.2 Codex",
+        family: "gpt-codex",
+        cost: {
+          input: 1.75,
+          output: 14,
         },
-        "limit": {
-          "context": 400000,
-          "output": 128000
+        limit: {
+          context: 400000,
+          output: 128000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-12-11",
-        "last_updated": "2025-12-11"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-12-11",
+        last_updated: "2025-12-11",
       },
       "openai/gpt-5.2-pro": {
-        "id": "openai/gpt-5.2-pro",
-        "name": "GPT-5.2 Pro",
-        "family": "gpt-pro",
-        "cost": {
-          "input": 21,
-          "output": 168
+        id: "openai/gpt-5.2-pro",
+        name: "GPT-5.2 Pro",
+        family: "gpt-pro",
+        cost: {
+          input: 21,
+          output: 168,
         },
-        "limit": {
-          "context": 400000,
-          "output": 128000
+        limit: {
+          context: 400000,
+          output: 128000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-12-11",
-        "last_updated": "2025-12-11"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-12-11",
+        last_updated: "2025-12-11",
       },
       "openai/gpt-5.3-chat": {
-        "id": "openai/gpt-5.3-chat",
-        "name": "GPT-5.3 Chat",
-        "family": "gpt",
-        "cost": {
-          "input": 1.75,
-          "output": 14
+        id: "openai/gpt-5.3-chat",
+        name: "GPT-5.3 Chat",
+        family: "gpt",
+        cost: {
+          input: 1.75,
+          output: 14,
         },
-        "limit": {
-          "context": 128000,
-          "output": 16384
+        limit: {
+          context: 128000,
+          output: 16384,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2026-03-03",
-        "last_updated": "2026-03-03"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2026-03-03",
+        last_updated: "2026-03-03",
       },
       "openai/gpt-5.3-codex": {
-        "id": "openai/gpt-5.3-codex",
-        "name": "GPT-5.3 Codex",
-        "family": "gpt-codex",
-        "cost": {
-          "input": 1.75,
-          "output": 14
+        id: "openai/gpt-5.3-codex",
+        name: "GPT-5.3 Codex",
+        family: "gpt-codex",
+        cost: {
+          input: 1.75,
+          output: 14,
         },
-        "limit": {
-          "context": 400000,
-          "output": 128000
+        limit: {
+          context: 400000,
+          output: 128000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-02-05",
-        "last_updated": "2026-02-05"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-02-05",
+        last_updated: "2026-02-05",
       },
       "openai/gpt-5.4": {
-        "id": "openai/gpt-5.4",
-        "name": "GPT-5.4",
-        "family": "gpt",
-        "cost": {
-          "input": 2.5,
-          "output": 15
+        id: "openai/gpt-5.4",
+        name: "GPT-5.4",
+        family: "gpt",
+        cost: {
+          input: 2.5,
+          output: 15,
         },
-        "limit": {
-          "context": 1050000,
-          "output": 128000
+        limit: {
+          context: 1050000,
+          output: 128000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-03-05",
-        "last_updated": "2026-03-05"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-03-05",
+        last_updated: "2026-03-05",
       },
       "openai/gpt-5.4-image-2": {
-        "id": "openai/gpt-5.4-image-2",
-        "name": "GPT-5.4 Image 2",
-        "family": "gpt",
-        "cost": {
-          "input": 8,
-          "output": 15
+        id: "openai/gpt-5.4-image-2",
+        name: "GPT-5.4 Image 2",
+        family: "gpt",
+        cost: {
+          input: 8,
+          output: 15,
         },
-        "limit": {
-          "context": 272000,
-          "output": 128000
+        limit: {
+          context: 272000,
+          output: 128000,
         },
-        "tool_call": false,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-04-21",
-        "last_updated": "2026-04-21"
+        tool_call: false,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-04-21",
+        last_updated: "2026-04-21",
       },
       "openai/gpt-5.4-mini": {
-        "id": "openai/gpt-5.4-mini",
-        "name": "GPT-5.4 mini",
-        "family": "gpt-mini",
-        "cost": {
-          "input": 0.75,
-          "output": 4.5
+        id: "openai/gpt-5.4-mini",
+        name: "GPT-5.4 mini",
+        family: "gpt-mini",
+        cost: {
+          input: 0.75,
+          output: 4.5,
         },
-        "limit": {
-          "context": 400000,
-          "output": 128000
+        limit: {
+          context: 400000,
+          output: 128000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-03-17",
-        "last_updated": "2026-03-17"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-03-17",
+        last_updated: "2026-03-17",
       },
       "openai/gpt-5.4-nano": {
-        "id": "openai/gpt-5.4-nano",
-        "name": "GPT-5.4 nano",
-        "family": "gpt-nano",
-        "cost": {
-          "input": 0.2,
-          "output": 1.25
+        id: "openai/gpt-5.4-nano",
+        name: "GPT-5.4 nano",
+        family: "gpt-nano",
+        cost: {
+          input: 0.2,
+          output: 1.25,
         },
-        "limit": {
-          "context": 400000,
-          "output": 128000
+        limit: {
+          context: 400000,
+          output: 128000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-03-17",
-        "last_updated": "2026-03-17"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-03-17",
+        last_updated: "2026-03-17",
       },
       "openai/gpt-5.4-pro": {
-        "id": "openai/gpt-5.4-pro",
-        "name": "GPT-5.4 Pro",
-        "family": "gpt-pro",
-        "cost": {
-          "input": 30,
-          "output": 180
+        id: "openai/gpt-5.4-pro",
+        name: "GPT-5.4 Pro",
+        family: "gpt-pro",
+        cost: {
+          input: 30,
+          output: 180,
         },
-        "limit": {
-          "context": 1050000,
-          "output": 128000
+        limit: {
+          context: 1050000,
+          output: 128000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-03-05",
-        "last_updated": "2026-03-05"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-03-05",
+        last_updated: "2026-03-05",
       },
       "openai/gpt-5.5": {
-        "id": "openai/gpt-5.5",
-        "name": "GPT-5.5",
-        "family": "gpt",
-        "cost": {
-          "input": 5,
-          "output": 30
+        id: "openai/gpt-5.5",
+        name: "GPT-5.5",
+        family: "gpt",
+        cost: {
+          input: 5,
+          output: 30,
         },
-        "limit": {
-          "context": 1050000,
-          "output": 128000
+        limit: {
+          context: 1050000,
+          output: 128000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-04-23",
-        "last_updated": "2026-04-23"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-04-23",
+        last_updated: "2026-04-23",
       },
       "openai/gpt-5.5-pro": {
-        "id": "openai/gpt-5.5-pro",
-        "name": "GPT-5.5 Pro",
-        "family": "gpt-pro",
-        "cost": {
-          "input": 30,
-          "output": 180
+        id: "openai/gpt-5.5-pro",
+        name: "GPT-5.5 Pro",
+        family: "gpt-pro",
+        cost: {
+          input: 30,
+          output: 180,
         },
-        "limit": {
-          "context": 1050000,
-          "output": 128000
+        limit: {
+          context: 1050000,
+          output: 128000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-04-23",
-        "last_updated": "2026-04-23"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-04-23",
+        last_updated: "2026-04-23",
       },
       "openai/gpt-audio": {
-        "id": "openai/gpt-audio",
-        "name": "GPT Audio",
-        "family": "gpt",
-        "cost": {
-          "input": 2.5,
-          "output": 10
+        id: "openai/gpt-audio",
+        name: "GPT Audio",
+        family: "gpt",
+        cost: {
+          input: 2.5,
+          output: 10,
         },
-        "limit": {
-          "context": 128000,
-          "output": 16384
+        limit: {
+          context: 128000,
+          output: 16384,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2026-01-19",
-        "last_updated": "2026-01-19"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2026-01-19",
+        last_updated: "2026-01-19",
       },
       "openai/gpt-audio-mini": {
-        "id": "openai/gpt-audio-mini",
-        "name": "GPT Audio Mini",
-        "family": "o-mini",
-        "cost": {
-          "input": 0.6,
-          "output": 2.4
+        id: "openai/gpt-audio-mini",
+        name: "GPT Audio Mini",
+        family: "o-mini",
+        cost: {
+          input: 0.6,
+          output: 2.4,
         },
-        "limit": {
-          "context": 128000,
-          "output": 16384
+        limit: {
+          context: 128000,
+          output: 16384,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2026-01-19",
-        "last_updated": "2026-01-19"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2026-01-19",
+        last_updated: "2026-01-19",
       },
       "openai/gpt-chat-latest": {
-        "id": "openai/gpt-chat-latest",
-        "name": "GPT Chat Latest",
-        "family": "gpt",
-        "cost": {
-          "input": 5,
-          "output": 30
+        id: "openai/gpt-chat-latest",
+        name: "GPT Chat Latest",
+        family: "gpt",
+        cost: {
+          input: 5,
+          output: 30,
         },
-        "limit": {
-          "context": 400000,
-          "output": 128000
+        limit: {
+          context: 400000,
+          output: 128000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2026-05-05",
-        "last_updated": "2026-05-05"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2026-05-05",
+        last_updated: "2026-05-05",
       },
       "openai/gpt-oss-120b": {
-        "id": "openai/gpt-oss-120b",
-        "name": "gpt-oss-120b",
-        "family": "gpt-oss",
-        "cost": {
-          "input": 0.039,
-          "output": 0.18
+        id: "openai/gpt-oss-120b",
+        name: "gpt-oss-120b",
+        family: "gpt-oss",
+        cost: {
+          input: 0.039,
+          output: 0.18,
         },
-        "limit": {
-          "context": 131072,
-          "output": 32768
+        limit: {
+          context: 131072,
+          output: 32768,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-08-05",
-        "last_updated": "2025-08-05"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-08-05",
+        last_updated: "2025-08-05",
       },
       "openai/gpt-oss-120b:free": {
-        "id": "openai/gpt-oss-120b:free",
-        "name": "gpt-oss-120b (free)",
-        "family": "gpt-oss",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "openai/gpt-oss-120b:free",
+        name: "gpt-oss-120b (free)",
+        family: "gpt-oss",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 131072,
-          "output": 131072
+        limit: {
+          context: 131072,
+          output: 131072,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2025-08-05",
-        "last_updated": "2025-08-05"
+        tool_call: true,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2025-08-05",
+        last_updated: "2025-08-05",
       },
       "openai/gpt-oss-20b": {
-        "id": "openai/gpt-oss-20b",
-        "name": "gpt-oss-20b",
-        "family": "gpt-oss",
-        "cost": {
-          "input": 0.029,
-          "output": 0.14
+        id: "openai/gpt-oss-20b",
+        name: "gpt-oss-20b",
+        family: "gpt-oss",
+        cost: {
+          input: 0.029,
+          output: 0.14,
         },
-        "limit": {
-          "context": 131072,
-          "output": 131072
+        limit: {
+          context: 131072,
+          output: 131072,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-08-05",
-        "last_updated": "2025-08-05"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-08-05",
+        last_updated: "2025-08-05",
       },
       "openai/gpt-oss-20b:free": {
-        "id": "openai/gpt-oss-20b:free",
-        "name": "gpt-oss-20b (free)",
-        "family": "gpt-oss",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "openai/gpt-oss-20b:free",
+        name: "gpt-oss-20b (free)",
+        family: "gpt-oss",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 131072,
-          "output": 8192
+        limit: {
+          context: 131072,
+          output: 8192,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2025-08-05",
-        "last_updated": "2025-08-05"
+        tool_call: true,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2025-08-05",
+        last_updated: "2025-08-05",
       },
       "openai/gpt-oss-safeguard-20b": {
-        "id": "openai/gpt-oss-safeguard-20b",
-        "name": "gpt-oss-safeguard-20b",
-        "family": "gpt-oss",
-        "cost": {
-          "input": 0.075,
-          "output": 0.3
+        id: "openai/gpt-oss-safeguard-20b",
+        name: "gpt-oss-safeguard-20b",
+        family: "gpt-oss",
+        cost: {
+          input: 0.075,
+          output: 0.3,
         },
-        "limit": {
-          "context": 131072,
-          "output": 65536
+        limit: {
+          context: 131072,
+          output: 65536,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2025-10-29",
-        "last_updated": "2025-10-29"
+        tool_call: true,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2025-10-29",
+        last_updated: "2025-10-29",
       },
       "openai/o1": {
-        "id": "openai/o1",
-        "name": "o1",
-        "family": "o",
-        "cost": {
-          "input": 15,
-          "output": 60
+        id: "openai/o1",
+        name: "o1",
+        family: "o",
+        cost: {
+          input: 15,
+          output: 60,
         },
-        "limit": {
-          "context": 200000,
-          "output": 100000
+        limit: {
+          context: 200000,
+          output: 100000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2024-12-05",
-        "last_updated": "2024-12-05"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2024-12-05",
+        last_updated: "2024-12-05",
       },
       "openai/o1-pro": {
-        "id": "openai/o1-pro",
-        "name": "o1-pro",
-        "family": "o-pro",
-        "cost": {
-          "input": 150,
-          "output": 600
+        id: "openai/o1-pro",
+        name: "o1-pro",
+        family: "o-pro",
+        cost: {
+          input: 150,
+          output: 600,
         },
-        "limit": {
-          "context": 200000,
-          "output": 100000
+        limit: {
+          context: 200000,
+          output: 100000,
         },
-        "tool_call": false,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-03-19",
-        "last_updated": "2025-03-19"
+        tool_call: false,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-03-19",
+        last_updated: "2025-03-19",
       },
       "openai/o3": {
-        "id": "openai/o3",
-        "name": "o3",
-        "family": "o",
-        "cost": {
-          "input": 2,
-          "output": 8
+        id: "openai/o3",
+        name: "o3",
+        family: "o",
+        cost: {
+          input: 2,
+          output: 8,
         },
-        "limit": {
-          "context": 200000,
-          "output": 100000
+        limit: {
+          context: 200000,
+          output: 100000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-04-16",
-        "last_updated": "2025-04-16"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-04-16",
+        last_updated: "2025-04-16",
       },
       "openai/o3-deep-research": {
-        "id": "openai/o3-deep-research",
-        "name": "o3-deep-research",
-        "family": "o",
-        "cost": {
-          "input": 10,
-          "output": 40
+        id: "openai/o3-deep-research",
+        name: "o3-deep-research",
+        family: "o",
+        cost: {
+          input: 10,
+          output: 40,
         },
-        "limit": {
-          "context": 200000,
-          "output": 100000
+        limit: {
+          context: 200000,
+          output: 100000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2024-06-26",
-        "last_updated": "2024-06-26"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2024-06-26",
+        last_updated: "2024-06-26",
       },
       "openai/o3-mini": {
-        "id": "openai/o3-mini",
-        "name": "o3-mini",
-        "family": "o-mini",
-        "cost": {
-          "input": 1.1,
-          "output": 4.4
+        id: "openai/o3-mini",
+        name: "o3-mini",
+        family: "o-mini",
+        cost: {
+          input: 1.1,
+          output: 4.4,
         },
-        "limit": {
-          "context": 200000,
-          "output": 100000
+        limit: {
+          context: 200000,
+          output: 100000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2024-12-20",
-        "last_updated": "2025-01-29"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2024-12-20",
+        last_updated: "2025-01-29",
       },
       "openai/o3-mini-high": {
-        "id": "openai/o3-mini-high",
-        "name": "o3 Mini High",
-        "family": "o",
-        "cost": {
-          "input": 1.1,
-          "output": 4.4
+        id: "openai/o3-mini-high",
+        name: "o3 Mini High",
+        family: "o",
+        cost: {
+          input: 1.1,
+          output: 4.4,
         },
-        "limit": {
-          "context": 200000,
-          "output": 100000
+        limit: {
+          context: 200000,
+          output: 100000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-02-12",
-        "last_updated": "2025-02-12"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-02-12",
+        last_updated: "2025-02-12",
       },
       "openai/o3-pro": {
-        "id": "openai/o3-pro",
-        "name": "o3-pro",
-        "family": "o-pro",
-        "cost": {
-          "input": 20,
-          "output": 80
+        id: "openai/o3-pro",
+        name: "o3-pro",
+        family: "o-pro",
+        cost: {
+          input: 20,
+          output: 80,
         },
-        "limit": {
-          "context": 200000,
-          "output": 100000
+        limit: {
+          context: 200000,
+          output: 100000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-06-10",
-        "last_updated": "2025-06-10"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-06-10",
+        last_updated: "2025-06-10",
       },
       "openai/o4-mini": {
-        "id": "openai/o4-mini",
-        "name": "o4-mini",
-        "family": "o-mini",
-        "cost": {
-          "input": 1.1,
-          "output": 4.4
+        id: "openai/o4-mini",
+        name: "o4-mini",
+        family: "o-mini",
+        cost: {
+          input: 1.1,
+          output: 4.4,
         },
-        "limit": {
-          "context": 200000,
-          "output": 100000
+        limit: {
+          context: 200000,
+          output: 100000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-04-16",
-        "last_updated": "2025-04-16"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-04-16",
+        last_updated: "2025-04-16",
       },
       "openai/o4-mini-deep-research": {
-        "id": "openai/o4-mini-deep-research",
-        "name": "o4-mini-deep-research",
-        "family": "o-mini",
-        "cost": {
-          "input": 2,
-          "output": 8
+        id: "openai/o4-mini-deep-research",
+        name: "o4-mini-deep-research",
+        family: "o-mini",
+        cost: {
+          input: 2,
+          output: 8,
         },
-        "limit": {
-          "context": 200000,
-          "output": 100000
+        limit: {
+          context: 200000,
+          output: 100000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2024-06-26",
-        "last_updated": "2024-06-26"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2024-06-26",
+        last_updated: "2024-06-26",
       },
       "openai/o4-mini-high": {
-        "id": "openai/o4-mini-high",
-        "name": "o4 Mini High",
-        "family": "o",
-        "cost": {
-          "input": 1.1,
-          "output": 4.4
+        id: "openai/o4-mini-high",
+        name: "o4 Mini High",
+        family: "o",
+        cost: {
+          input: 1.1,
+          output: 4.4,
         },
-        "limit": {
-          "context": 200000,
-          "output": 100000
+        limit: {
+          context: 200000,
+          output: 100000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-04-16",
-        "last_updated": "2025-04-16"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-04-16",
+        last_updated: "2025-04-16",
       },
       "openrouter/auto": {
-        "id": "openrouter/auto",
-        "name": "Auto Router",
-        "family": "auto",
-        "limit": {
-          "context": 2000000,
-          "output": 2000000
+        id: "openrouter/auto",
+        name: "Auto Router",
+        family: "auto",
+        limit: {
+          context: 2000000,
+          output: 2000000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2023-11-08",
-        "last_updated": "2023-11-08"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2023-11-08",
+        last_updated: "2023-11-08",
       },
       "openrouter/bodybuilder": {
-        "id": "openrouter/bodybuilder",
-        "name": "Body Builder (beta)",
-        "limit": {
-          "context": 128000,
-          "output": 128000
+        id: "openrouter/bodybuilder",
+        name: "Body Builder (beta)",
+        limit: {
+          context: 128000,
+          output: 128000,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2025-12-05",
-        "last_updated": "2025-12-05"
+        tool_call: false,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2025-12-05",
+        last_updated: "2025-12-05",
       },
       "openrouter/free": {
-        "id": "openrouter/free",
-        "name": "Free Models Router",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "openrouter/free",
+        name: "Free Models Router",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 200000,
-          "output": 8000
+        limit: {
+          context: 200000,
+          output: 8000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-02-01",
-        "last_updated": "2026-02-01"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-02-01",
+        last_updated: "2026-02-01",
       },
       "openrouter/owl-alpha": {
-        "id": "openrouter/owl-alpha",
-        "name": "Owl Alpha",
-        "family": "alpha",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "openrouter/owl-alpha",
+        name: "Owl Alpha",
+        family: "alpha",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 1048756,
-          "output": 262144
+        limit: {
+          context: 1048756,
+          output: 262144,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2026-04-28",
-        "last_updated": "2026-04-28"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2026-04-28",
+        last_updated: "2026-04-28",
       },
       "openrouter/pareto-code": {
-        "id": "openrouter/pareto-code",
-        "name": "Pareto Code Router",
-        "limit": {
-          "context": 2000000,
-          "output": 200000
+        id: "openrouter/pareto-code",
+        name: "Pareto Code Router",
+        limit: {
+          context: 2000000,
+          output: 200000,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2026-04-21",
-        "last_updated": "2026-04-21"
+        tool_call: false,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2026-04-21",
+        last_updated: "2026-04-21",
       },
       "perceptron/perceptron-mk1": {
-        "id": "perceptron/perceptron-mk1",
-        "name": "Perceptron Mk1",
-        "cost": {
-          "input": 0.15,
-          "output": 1.5
+        id: "perceptron/perceptron-mk1",
+        name: "Perceptron Mk1",
+        cost: {
+          input: 0.15,
+          output: 1.5,
         },
-        "limit": {
-          "context": 32768,
-          "output": 8192
+        limit: {
+          context: 32768,
+          output: 8192,
         },
-        "tool_call": false,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-05-12",
-        "last_updated": "2026-05-12"
+        tool_call: false,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-05-12",
+        last_updated: "2026-05-12",
       },
       "perplexity/sonar": {
-        "id": "perplexity/sonar",
-        "name": "Sonar",
-        "family": "sonar",
-        "cost": {
-          "input": 1,
-          "output": 1
+        id: "perplexity/sonar",
+        name: "Sonar",
+        family: "sonar",
+        cost: {
+          input: 1,
+          output: 1,
         },
-        "limit": {
-          "context": 127072,
-          "output": 127072
+        limit: {
+          context: 127072,
+          output: 127072,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2025-01-27",
-        "last_updated": "2025-01-27"
+        tool_call: false,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2025-01-27",
+        last_updated: "2025-01-27",
       },
       "perplexity/sonar-deep-research": {
-        "id": "perplexity/sonar-deep-research",
-        "name": "Sonar Deep Research",
-        "family": "sonar-deep-research",
-        "cost": {
-          "input": 2,
-          "output": 8
+        id: "perplexity/sonar-deep-research",
+        name: "Sonar Deep Research",
+        family: "sonar-deep-research",
+        cost: {
+          input: 2,
+          output: 8,
         },
-        "limit": {
-          "context": 128000,
-          "output": 128000
+        limit: {
+          context: 128000,
+          output: 128000,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2025-03-07",
-        "last_updated": "2025-03-07"
+        tool_call: false,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2025-03-07",
+        last_updated: "2025-03-07",
       },
       "perplexity/sonar-pro": {
-        "id": "perplexity/sonar-pro",
-        "name": "Sonar Pro",
-        "family": "sonar-pro",
-        "cost": {
-          "input": 3,
-          "output": 15
+        id: "perplexity/sonar-pro",
+        name: "Sonar Pro",
+        family: "sonar-pro",
+        cost: {
+          input: 3,
+          output: 15,
         },
-        "limit": {
-          "context": 200000,
-          "output": 8000
+        limit: {
+          context: 200000,
+          output: 8000,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2025-03-07",
-        "last_updated": "2025-03-07"
+        tool_call: false,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2025-03-07",
+        last_updated: "2025-03-07",
       },
       "perplexity/sonar-pro-search": {
-        "id": "perplexity/sonar-pro-search",
-        "name": "Sonar Pro Search",
-        "family": "sonar-pro",
-        "cost": {
-          "input": 3,
-          "output": 15
+        id: "perplexity/sonar-pro-search",
+        name: "Sonar Pro Search",
+        family: "sonar-pro",
+        cost: {
+          input: 3,
+          output: 15,
         },
-        "limit": {
-          "context": 200000,
-          "output": 8000
+        limit: {
+          context: 200000,
+          output: 8000,
         },
-        "tool_call": false,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-10-30",
-        "last_updated": "2025-10-30"
+        tool_call: false,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-10-30",
+        last_updated: "2025-10-30",
       },
       "perplexity/sonar-reasoning-pro": {
-        "id": "perplexity/sonar-reasoning-pro",
-        "name": "Sonar Reasoning Pro",
-        "family": "sonar-reasoning",
-        "cost": {
-          "input": 2,
-          "output": 8
+        id: "perplexity/sonar-reasoning-pro",
+        name: "Sonar Reasoning Pro",
+        family: "sonar-reasoning",
+        cost: {
+          input: 2,
+          output: 8,
         },
-        "limit": {
-          "context": 128000,
-          "output": 128000
+        limit: {
+          context: 128000,
+          output: 128000,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2025-03-07",
-        "last_updated": "2025-03-07"
+        tool_call: false,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2025-03-07",
+        last_updated: "2025-03-07",
       },
       "poolside/laguna-m.1:free": {
-        "id": "poolside/laguna-m.1:free",
-        "name": "Laguna M.1 (free)",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "poolside/laguna-m.1:free",
+        name: "Laguna M.1 (free)",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 262144,
-          "output": 32768
+        limit: {
+          context: 262144,
+          output: 32768,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2026-04-28",
-        "last_updated": "2026-04-28"
+        tool_call: true,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2026-04-28",
+        last_updated: "2026-04-28",
       },
       "poolside/laguna-xs.2:free": {
-        "id": "poolside/laguna-xs.2:free",
-        "name": "Laguna XS.2 (free)",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "poolside/laguna-xs.2:free",
+        name: "Laguna XS.2 (free)",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 262144,
-          "output": 32768
+        limit: {
+          context: 262144,
+          output: 32768,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2026-04-28",
-        "last_updated": "2026-04-28"
+        tool_call: true,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2026-04-28",
+        last_updated: "2026-04-28",
       },
       "prime-intellect/intellect-3": {
-        "id": "prime-intellect/intellect-3",
-        "name": "INTELLECT-3",
-        "family": "glm",
-        "cost": {
-          "input": 0.2,
-          "output": 1.1
+        id: "prime-intellect/intellect-3",
+        name: "INTELLECT-3",
+        family: "glm",
+        cost: {
+          input: 0.2,
+          output: 1.1,
         },
-        "limit": {
-          "context": 131072,
-          "output": 131072
+        limit: {
+          context: 131072,
+          output: 131072,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-11-27",
-        "last_updated": "2025-11-27"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-11-27",
+        last_updated: "2025-11-27",
       },
       "qwen/qwen-2.5-72b-instruct": {
-        "id": "qwen/qwen-2.5-72b-instruct",
-        "name": "Qwen2.5 72B Instruct",
-        "family": "qwen",
-        "cost": {
-          "input": 0.36,
-          "output": 0.4
+        id: "qwen/qwen-2.5-72b-instruct",
+        name: "Qwen2.5 72B Instruct",
+        family: "qwen",
+        cost: {
+          input: 0.36,
+          output: 0.4,
         },
-        "limit": {
-          "context": 32768,
-          "output": 16384
+        limit: {
+          context: 32768,
+          output: 16384,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2024-09-19",
-        "last_updated": "2024-09-19"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2024-09-19",
+        last_updated: "2024-09-19",
       },
       "qwen/qwen-2.5-7b-instruct": {
-        "id": "qwen/qwen-2.5-7b-instruct",
-        "name": "Qwen2.5 7B Instruct",
-        "family": "qwen",
-        "cost": {
-          "input": 0.04,
-          "output": 0.1
+        id: "qwen/qwen-2.5-7b-instruct",
+        name: "Qwen2.5 7B Instruct",
+        family: "qwen",
+        cost: {
+          input: 0.04,
+          output: 0.1,
         },
-        "limit": {
-          "context": 32768,
-          "output": 32768
+        limit: {
+          context: 32768,
+          output: 32768,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2024-10-16",
-        "last_updated": "2024-10-16"
+        tool_call: false,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2024-10-16",
+        last_updated: "2024-10-16",
       },
       "qwen/qwen-2.5-coder-32b-instruct": {
-        "id": "qwen/qwen-2.5-coder-32b-instruct",
-        "name": "Qwen2.5 Coder 32B Instruct",
-        "family": "qwen",
-        "cost": {
-          "input": 0.66,
-          "output": 1
+        id: "qwen/qwen-2.5-coder-32b-instruct",
+        name: "Qwen2.5 Coder 32B Instruct",
+        family: "qwen",
+        cost: {
+          input: 0.66,
+          output: 1,
         },
-        "limit": {
-          "context": 32768,
-          "output": 32768
+        limit: {
+          context: 32768,
+          output: 32768,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2024-11-11",
-        "last_updated": "2024-11-11"
+        tool_call: false,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2024-11-11",
+        last_updated: "2024-11-11",
       },
       "qwen/qwen-plus": {
-        "id": "qwen/qwen-plus",
-        "name": "Qwen-Plus",
-        "family": "qwen",
-        "cost": {
-          "input": 0.26,
-          "output": 0.78
+        id: "qwen/qwen-plus",
+        name: "Qwen-Plus",
+        family: "qwen",
+        cost: {
+          input: 0.26,
+          output: 0.78,
         },
-        "limit": {
-          "context": 1000000,
-          "output": 32768
+        limit: {
+          context: 1000000,
+          output: 32768,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2025-02-01",
-        "last_updated": "2025-02-01"
+        tool_call: true,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2025-02-01",
+        last_updated: "2025-02-01",
       },
       "qwen/qwen-plus-2025-07-28": {
-        "id": "qwen/qwen-plus-2025-07-28",
-        "name": "Qwen Plus 0728",
-        "family": "qwen",
-        "cost": {
-          "input": 0.26,
-          "output": 0.78
+        id: "qwen/qwen-plus-2025-07-28",
+        name: "Qwen Plus 0728",
+        family: "qwen",
+        cost: {
+          input: 0.26,
+          output: 0.78,
         },
-        "limit": {
-          "context": 1000000,
-          "output": 32768
+        limit: {
+          context: 1000000,
+          output: 32768,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-09-08",
-        "last_updated": "2025-09-08"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-09-08",
+        last_updated: "2025-09-08",
       },
       "qwen/qwen-plus-2025-07-28:thinking": {
-        "id": "qwen/qwen-plus-2025-07-28:thinking",
-        "name": "Qwen Plus 0728 (thinking)",
-        "family": "qwen",
-        "cost": {
-          "input": 0.26,
-          "output": 0.78
+        id: "qwen/qwen-plus-2025-07-28:thinking",
+        name: "Qwen Plus 0728 (thinking)",
+        family: "qwen",
+        cost: {
+          input: 0.26,
+          output: 0.78,
         },
-        "limit": {
-          "context": 1000000,
-          "output": 32768
+        limit: {
+          context: 1000000,
+          output: 32768,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-09-08",
-        "last_updated": "2025-09-08"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-09-08",
+        last_updated: "2025-09-08",
       },
       "qwen/qwen2.5-vl-72b-instruct": {
-        "id": "qwen/qwen2.5-vl-72b-instruct",
-        "name": "Qwen2.5 VL 72B Instruct",
-        "family": "qwen",
-        "cost": {
-          "input": 0.25,
-          "output": 0.75
+        id: "qwen/qwen2.5-vl-72b-instruct",
+        name: "Qwen2.5 VL 72B Instruct",
+        family: "qwen",
+        cost: {
+          input: 0.25,
+          output: 0.75,
         },
-        "limit": {
-          "context": 32000,
-          "output": 8192
+        limit: {
+          context: 32000,
+          output: 8192,
         },
-        "tool_call": false,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-02-01",
-        "last_updated": "2025-02-01"
+        tool_call: false,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-02-01",
+        last_updated: "2025-02-01",
       },
       "qwen/qwen3-14b": {
-        "id": "qwen/qwen3-14b",
-        "name": "Qwen3 14B",
-        "family": "qwen",
-        "cost": {
-          "input": 0.1,
-          "output": 0.24
+        id: "qwen/qwen3-14b",
+        name: "Qwen3 14B",
+        family: "qwen",
+        cost: {
+          input: 0.1,
+          output: 0.24,
         },
-        "limit": {
-          "context": 40960,
-          "output": 40960
+        limit: {
+          context: 40960,
+          output: 40960,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-04-28",
-        "last_updated": "2025-04-28"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-04-28",
+        last_updated: "2025-04-28",
       },
       "qwen/qwen3-235b-a22b": {
-        "id": "qwen/qwen3-235b-a22b",
-        "name": "Qwen3 235B A22B",
-        "family": "qwen",
-        "cost": {
-          "input": 0.455,
-          "output": 1.82
+        id: "qwen/qwen3-235b-a22b",
+        name: "Qwen3 235B A22B",
+        family: "qwen",
+        cost: {
+          input: 0.455,
+          output: 1.82,
         },
-        "limit": {
-          "context": 131072,
-          "output": 8192
+        limit: {
+          context: 131072,
+          output: 8192,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2025-04-28",
-        "last_updated": "2025-04-28"
+        tool_call: true,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2025-04-28",
+        last_updated: "2025-04-28",
       },
       "qwen/qwen3-235b-a22b-2507": {
-        "id": "qwen/qwen3-235b-a22b-2507",
-        "name": "Qwen3 235B A22B Instruct 2507",
-        "family": "qwen",
-        "cost": {
-          "input": 0.071,
-          "output": 0.1
+        id: "qwen/qwen3-235b-a22b-2507",
+        name: "Qwen3 235B A22B Instruct 2507",
+        family: "qwen",
+        cost: {
+          input: 0.071,
+          output: 0.1,
         },
-        "limit": {
-          "context": 262144,
-          "output": 16384
+        limit: {
+          context: 262144,
+          output: 16384,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-07-21",
-        "last_updated": "2025-07-21"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-07-21",
+        last_updated: "2025-07-21",
       },
       "qwen/qwen3-235b-a22b-thinking-2507": {
-        "id": "qwen/qwen3-235b-a22b-thinking-2507",
-        "name": "Qwen3 235B A22B Thinking 2507",
-        "family": "qwen",
-        "cost": {
-          "input": 0.1,
-          "output": 0.1
+        id: "qwen/qwen3-235b-a22b-thinking-2507",
+        name: "Qwen3 235B A22B Thinking 2507",
+        family: "qwen",
+        cost: {
+          input: 0.1,
+          output: 0.1,
         },
-        "limit": {
-          "context": 262144,
-          "output": 262144
+        limit: {
+          context: 262144,
+          output: 262144,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-07-25",
-        "last_updated": "2025-07-25"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-07-25",
+        last_updated: "2025-07-25",
       },
       "qwen/qwen3-30b-a3b": {
-        "id": "qwen/qwen3-30b-a3b",
-        "name": "Qwen3 30B A3B",
-        "family": "qwen",
-        "cost": {
-          "input": 0.09,
-          "output": 0.45
+        id: "qwen/qwen3-30b-a3b",
+        name: "Qwen3 30B A3B",
+        family: "qwen",
+        cost: {
+          input: 0.09,
+          output: 0.45,
         },
-        "limit": {
-          "context": 40960,
-          "output": 20000
+        limit: {
+          context: 40960,
+          output: 20000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-04-28",
-        "last_updated": "2025-04-28"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-04-28",
+        last_updated: "2025-04-28",
       },
       "qwen/qwen3-30b-a3b-instruct-2507": {
-        "id": "qwen/qwen3-30b-a3b-instruct-2507",
-        "name": "Qwen3 30B A3B Instruct 2507",
-        "family": "qwen",
-        "cost": {
-          "input": 0.0428,
-          "output": 0.1716
+        id: "qwen/qwen3-30b-a3b-instruct-2507",
+        name: "Qwen3 30B A3B Instruct 2507",
+        family: "qwen",
+        cost: {
+          input: 0.0428,
+          output: 0.1716,
         },
-        "limit": {
-          "context": 128000,
-          "output": 32000
+        limit: {
+          context: 128000,
+          output: 32000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-07-29",
-        "last_updated": "2025-07-29"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-07-29",
+        last_updated: "2025-07-29",
       },
       "qwen/qwen3-30b-a3b-thinking-2507": {
-        "id": "qwen/qwen3-30b-a3b-thinking-2507",
-        "name": "Qwen3 30B A3B Thinking 2507",
-        "family": "qwen",
-        "cost": {
-          "input": 0.08,
-          "output": 0.4
+        id: "qwen/qwen3-30b-a3b-thinking-2507",
+        name: "Qwen3 30B A3B Thinking 2507",
+        family: "qwen",
+        cost: {
+          input: 0.08,
+          output: 0.4,
         },
-        "limit": {
-          "context": 131072,
-          "output": 131072
+        limit: {
+          context: 131072,
+          output: 131072,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-08-28",
-        "last_updated": "2025-08-28"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-08-28",
+        last_updated: "2025-08-28",
       },
       "qwen/qwen3-32b": {
-        "id": "qwen/qwen3-32b",
-        "name": "Qwen3 32B",
-        "family": "qwen",
-        "cost": {
-          "input": 0.08,
-          "output": 0.28
+        id: "qwen/qwen3-32b",
+        name: "Qwen3 32B",
+        family: "qwen",
+        cost: {
+          input: 0.08,
+          output: 0.28,
         },
-        "limit": {
-          "context": 40960,
-          "output": 16384
+        limit: {
+          context: 40960,
+          output: 16384,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-04-28",
-        "last_updated": "2025-04-28"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-04-28",
+        last_updated: "2025-04-28",
       },
       "qwen/qwen3-8b": {
-        "id": "qwen/qwen3-8b",
-        "name": "Qwen3 8B",
-        "family": "qwen",
-        "cost": {
-          "input": 0.05,
-          "output": 0.4
+        id: "qwen/qwen3-8b",
+        name: "Qwen3 8B",
+        family: "qwen",
+        cost: {
+          input: 0.05,
+          output: 0.4,
         },
-        "limit": {
-          "context": 40960,
-          "output": 8192
+        limit: {
+          context: 40960,
+          output: 8192,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-04-28",
-        "last_updated": "2025-04-28"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-04-28",
+        last_updated: "2025-04-28",
       },
       "qwen/qwen3-coder": {
-        "id": "qwen/qwen3-coder",
-        "name": "Qwen3 Coder 480B A35B",
-        "family": "qwen",
-        "cost": {
-          "input": 0.22,
-          "output": 1.8
+        id: "qwen/qwen3-coder",
+        name: "Qwen3 Coder 480B A35B",
+        family: "qwen",
+        cost: {
+          input: 0.22,
+          output: 1.8,
         },
-        "limit": {
-          "context": 262144,
-          "output": 65536
+        limit: {
+          context: 262144,
+          output: 65536,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-07-23",
-        "last_updated": "2025-07-23"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-07-23",
+        last_updated: "2025-07-23",
       },
       "qwen/qwen3-coder-30b-a3b-instruct": {
-        "id": "qwen/qwen3-coder-30b-a3b-instruct",
-        "name": "Qwen3 Coder 30B A3B Instruct",
-        "family": "qwen",
-        "cost": {
-          "input": 0.07,
-          "output": 0.27
+        id: "qwen/qwen3-coder-30b-a3b-instruct",
+        name: "Qwen3 Coder 30B A3B Instruct",
+        family: "qwen",
+        cost: {
+          input: 0.07,
+          output: 0.27,
         },
-        "limit": {
-          "context": 160000,
-          "output": 32768
+        limit: {
+          context: 160000,
+          output: 32768,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-07-31",
-        "last_updated": "2025-07-31"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-07-31",
+        last_updated: "2025-07-31",
       },
       "qwen/qwen3-coder-flash": {
-        "id": "qwen/qwen3-coder-flash",
-        "name": "Qwen3 Coder Flash",
-        "family": "qwen",
-        "cost": {
-          "input": 0.195,
-          "output": 0.975
+        id: "qwen/qwen3-coder-flash",
+        name: "Qwen3 Coder Flash",
+        family: "qwen",
+        cost: {
+          input: 0.195,
+          output: 0.975,
         },
-        "limit": {
-          "context": 1000000,
-          "output": 65536
+        limit: {
+          context: 1000000,
+          output: 65536,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2025-09-17",
-        "last_updated": "2025-09-17"
+        tool_call: true,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2025-09-17",
+        last_updated: "2025-09-17",
       },
       "qwen/qwen3-coder-next": {
-        "id": "qwen/qwen3-coder-next",
-        "name": "Qwen3 Coder Next",
-        "family": "qwen",
-        "cost": {
-          "input": 0.11,
-          "output": 0.8
+        id: "qwen/qwen3-coder-next",
+        name: "Qwen3 Coder Next",
+        family: "qwen",
+        cost: {
+          input: 0.11,
+          output: 0.8,
         },
-        "limit": {
-          "context": 262144,
-          "output": 262144
+        limit: {
+          context: 262144,
+          output: 262144,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2026-02-04",
-        "last_updated": "2026-02-04"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2026-02-04",
+        last_updated: "2026-02-04",
       },
       "qwen/qwen3-coder-plus": {
-        "id": "qwen/qwen3-coder-plus",
-        "name": "Qwen3 Coder Plus",
-        "family": "qwen",
-        "cost": {
-          "input": 0.65,
-          "output": 3.25
+        id: "qwen/qwen3-coder-plus",
+        name: "Qwen3 Coder Plus",
+        family: "qwen",
+        cost: {
+          input: 0.65,
+          output: 3.25,
         },
-        "limit": {
-          "context": 1000000,
-          "output": 65536
+        limit: {
+          context: 1000000,
+          output: 65536,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-09-23",
-        "last_updated": "2025-09-23"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-09-23",
+        last_updated: "2025-09-23",
       },
       "qwen/qwen3-coder:free": {
-        "id": "qwen/qwen3-coder:free",
-        "name": "Qwen3 Coder 480B A35B (free)",
-        "family": "qwen",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "qwen/qwen3-coder:free",
+        name: "Qwen3 Coder 480B A35B (free)",
+        family: "qwen",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 262000,
-          "output": 262000
+        limit: {
+          context: 262000,
+          output: 262000,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2025-07-23",
-        "last_updated": "2025-07-23"
+        tool_call: true,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2025-07-23",
+        last_updated: "2025-07-23",
       },
       "qwen/qwen3-max": {
-        "id": "qwen/qwen3-max",
-        "name": "Qwen3 Max",
-        "family": "qwen",
-        "cost": {
-          "input": 0.78,
-          "output": 3.9
+        id: "qwen/qwen3-max",
+        name: "Qwen3 Max",
+        family: "qwen",
+        cost: {
+          input: 0.78,
+          output: 3.9,
         },
-        "limit": {
-          "context": 262144,
-          "output": 32768
+        limit: {
+          context: 262144,
+          output: 32768,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2025-09-23",
-        "last_updated": "2025-09-23"
+        tool_call: true,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2025-09-23",
+        last_updated: "2025-09-23",
       },
       "qwen/qwen3-max-thinking": {
-        "id": "qwen/qwen3-max-thinking",
-        "name": "Qwen3 Max Thinking",
-        "family": "qwen",
-        "cost": {
-          "input": 0.78,
-          "output": 3.9
+        id: "qwen/qwen3-max-thinking",
+        name: "Qwen3 Max Thinking",
+        family: "qwen",
+        cost: {
+          input: 0.78,
+          output: 3.9,
         },
-        "limit": {
-          "context": 262144,
-          "output": 32768
+        limit: {
+          context: 262144,
+          output: 32768,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-02-09",
-        "last_updated": "2026-02-09"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-02-09",
+        last_updated: "2026-02-09",
       },
       "qwen/qwen3-next-80b-a3b-instruct": {
-        "id": "qwen/qwen3-next-80b-a3b-instruct",
-        "name": "Qwen3 Next 80B A3B Instruct",
-        "family": "qwen",
-        "cost": {
-          "input": 0.09,
-          "output": 1.1
+        id: "qwen/qwen3-next-80b-a3b-instruct",
+        name: "Qwen3 Next 80B A3B Instruct",
+        family: "qwen",
+        cost: {
+          input: 0.09,
+          output: 1.1,
         },
-        "limit": {
-          "context": 262144,
-          "output": 16384
+        limit: {
+          context: 262144,
+          output: 16384,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-09-11",
-        "last_updated": "2025-09-11"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-09-11",
+        last_updated: "2025-09-11",
       },
       "qwen/qwen3-next-80b-a3b-instruct:free": {
-        "id": "qwen/qwen3-next-80b-a3b-instruct:free",
-        "name": "Qwen3 Next 80B A3B Instruct (free)",
-        "family": "qwen",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "qwen/qwen3-next-80b-a3b-instruct:free",
+        name: "Qwen3 Next 80B A3B Instruct (free)",
+        family: "qwen",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 262144,
-          "output": 262144
+        limit: {
+          context: 262144,
+          output: 262144,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-09-11",
-        "last_updated": "2025-09-11"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-09-11",
+        last_updated: "2025-09-11",
       },
       "qwen/qwen3-next-80b-a3b-thinking": {
-        "id": "qwen/qwen3-next-80b-a3b-thinking",
-        "name": "Qwen3 Next 80B A3B Thinking",
-        "family": "qwen",
-        "cost": {
-          "input": 0.0975,
-          "output": 0.78
+        id: "qwen/qwen3-next-80b-a3b-thinking",
+        name: "Qwen3 Next 80B A3B Thinking",
+        family: "qwen",
+        cost: {
+          input: 0.0975,
+          output: 0.78,
         },
-        "limit": {
-          "context": 131072,
-          "output": 32768
+        limit: {
+          context: 131072,
+          output: 32768,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-09-11",
-        "last_updated": "2025-09-11"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-09-11",
+        last_updated: "2025-09-11",
       },
       "qwen/qwen3-vl-235b-a22b-instruct": {
-        "id": "qwen/qwen3-vl-235b-a22b-instruct",
-        "name": "Qwen3 VL 235B A22B Instruct",
-        "family": "qwen",
-        "cost": {
-          "input": 0.2,
-          "output": 0.88
+        id: "qwen/qwen3-vl-235b-a22b-instruct",
+        name: "Qwen3 VL 235B A22B Instruct",
+        family: "qwen",
+        cost: {
+          input: 0.2,
+          output: 0.88,
         },
-        "limit": {
-          "context": 262144,
-          "output": 16384
+        limit: {
+          context: 262144,
+          output: 16384,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-09-23",
-        "last_updated": "2025-09-23"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-09-23",
+        last_updated: "2025-09-23",
       },
       "qwen/qwen3-vl-235b-a22b-thinking": {
-        "id": "qwen/qwen3-vl-235b-a22b-thinking",
-        "name": "Qwen3 VL 235B A22B Thinking",
-        "family": "qwen",
-        "cost": {
-          "input": 0.26,
-          "output": 2.6
+        id: "qwen/qwen3-vl-235b-a22b-thinking",
+        name: "Qwen3 VL 235B A22B Thinking",
+        family: "qwen",
+        cost: {
+          input: 0.26,
+          output: 2.6,
         },
-        "limit": {
-          "context": 131072,
-          "output": 32768
+        limit: {
+          context: 131072,
+          output: 32768,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2025-09-23",
-        "last_updated": "2025-09-23"
+        tool_call: true,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2025-09-23",
+        last_updated: "2025-09-23",
       },
       "qwen/qwen3-vl-30b-a3b-instruct": {
-        "id": "qwen/qwen3-vl-30b-a3b-instruct",
-        "name": "Qwen3 VL 30B A3B Instruct",
-        "family": "qwen",
-        "cost": {
-          "input": 0.13,
-          "output": 0.52
+        id: "qwen/qwen3-vl-30b-a3b-instruct",
+        name: "Qwen3 VL 30B A3B Instruct",
+        family: "qwen",
+        cost: {
+          input: 0.13,
+          output: 0.52,
         },
-        "limit": {
-          "context": 131072,
-          "output": 32768
+        limit: {
+          context: 131072,
+          output: 32768,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-10-06",
-        "last_updated": "2025-10-06"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-10-06",
+        last_updated: "2025-10-06",
       },
       "qwen/qwen3-vl-30b-a3b-thinking": {
-        "id": "qwen/qwen3-vl-30b-a3b-thinking",
-        "name": "Qwen3 VL 30B A3B Thinking",
-        "family": "qwen",
-        "cost": {
-          "input": 0.13,
-          "output": 1.56
+        id: "qwen/qwen3-vl-30b-a3b-thinking",
+        name: "Qwen3 VL 30B A3B Thinking",
+        family: "qwen",
+        cost: {
+          input: 0.13,
+          output: 1.56,
         },
-        "limit": {
-          "context": 131072,
-          "output": 32768
+        limit: {
+          context: 131072,
+          output: 32768,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-10-06",
-        "last_updated": "2025-10-06"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-10-06",
+        last_updated: "2025-10-06",
       },
       "qwen/qwen3-vl-32b-instruct": {
-        "id": "qwen/qwen3-vl-32b-instruct",
-        "name": "Qwen3 VL 32B Instruct",
-        "family": "qwen",
-        "cost": {
-          "input": 0.104,
-          "output": 0.416
+        id: "qwen/qwen3-vl-32b-instruct",
+        name: "Qwen3 VL 32B Instruct",
+        family: "qwen",
+        cost: {
+          input: 0.104,
+          output: 0.416,
         },
-        "limit": {
-          "context": 131072,
-          "output": 32768
+        limit: {
+          context: 131072,
+          output: 32768,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2025-10-23",
-        "last_updated": "2025-10-23"
+        tool_call: true,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2025-10-23",
+        last_updated: "2025-10-23",
       },
       "qwen/qwen3-vl-8b-instruct": {
-        "id": "qwen/qwen3-vl-8b-instruct",
-        "name": "Qwen3 VL 8B Instruct",
-        "family": "qwen",
-        "cost": {
-          "input": 0.08,
-          "output": 0.5
+        id: "qwen/qwen3-vl-8b-instruct",
+        name: "Qwen3 VL 8B Instruct",
+        family: "qwen",
+        cost: {
+          input: 0.08,
+          output: 0.5,
         },
-        "limit": {
-          "context": 131072,
-          "output": 32768
+        limit: {
+          context: 131072,
+          output: 32768,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2025-10-14",
-        "last_updated": "2025-10-14"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2025-10-14",
+        last_updated: "2025-10-14",
       },
       "qwen/qwen3-vl-8b-thinking": {
-        "id": "qwen/qwen3-vl-8b-thinking",
-        "name": "Qwen3 VL 8B Thinking",
-        "family": "qwen",
-        "cost": {
-          "input": 0.117,
-          "output": 1.365
+        id: "qwen/qwen3-vl-8b-thinking",
+        name: "Qwen3 VL 8B Thinking",
+        family: "qwen",
+        cost: {
+          input: 0.117,
+          output: 1.365,
         },
-        "limit": {
-          "context": 131072,
-          "output": 32768
+        limit: {
+          context: 131072,
+          output: 32768,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-10-14",
-        "last_updated": "2025-10-14"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-10-14",
+        last_updated: "2025-10-14",
       },
       "qwen/qwen3.5-122b-a10b": {
-        "id": "qwen/qwen3.5-122b-a10b",
-        "name": "Qwen3.5-122B-A10B",
-        "family": "qwen3.5",
-        "cost": {
-          "input": 0.26,
-          "output": 2.08
+        id: "qwen/qwen3.5-122b-a10b",
+        name: "Qwen3.5-122B-A10B",
+        family: "qwen3.5",
+        cost: {
+          input: 0.26,
+          output: 2.08,
         },
-        "limit": {
-          "context": 262144,
-          "output": 262144
+        limit: {
+          context: 262144,
+          output: 262144,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-02-25",
-        "last_updated": "2026-02-25"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-02-25",
+        last_updated: "2026-02-25",
       },
       "qwen/qwen3.5-27b": {
-        "id": "qwen/qwen3.5-27b",
-        "name": "Qwen3.5-27B",
-        "family": "qwen3.5",
-        "cost": {
-          "input": 0.195,
-          "output": 1.56
+        id: "qwen/qwen3.5-27b",
+        name: "Qwen3.5-27B",
+        family: "qwen3.5",
+        cost: {
+          input: 0.195,
+          output: 1.56,
         },
-        "limit": {
-          "context": 262144,
-          "output": 65536
+        limit: {
+          context: 262144,
+          output: 65536,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-02-25",
-        "last_updated": "2026-02-25"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-02-25",
+        last_updated: "2026-02-25",
       },
       "qwen/qwen3.5-35b-a3b": {
-        "id": "qwen/qwen3.5-35b-a3b",
-        "name": "Qwen3.5-35B-A3B",
-        "family": "qwen3.5",
-        "cost": {
-          "input": 0.14,
-          "output": 1
+        id: "qwen/qwen3.5-35b-a3b",
+        name: "Qwen3.5-35B-A3B",
+        family: "qwen3.5",
+        cost: {
+          input: 0.14,
+          output: 1,
         },
-        "limit": {
-          "context": 262144,
-          "output": 262144
+        limit: {
+          context: 262144,
+          output: 262144,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-02-25",
-        "last_updated": "2026-02-25"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-02-25",
+        last_updated: "2026-02-25",
       },
       "qwen/qwen3.5-397b-a17b": {
-        "id": "qwen/qwen3.5-397b-a17b",
-        "name": "Qwen3.5 397B A17B",
-        "family": "qwen",
-        "cost": {
-          "input": 0.39,
-          "output": 2.34
+        id: "qwen/qwen3.5-397b-a17b",
+        name: "Qwen3.5 397B A17B",
+        family: "qwen",
+        cost: {
+          input: 0.39,
+          output: 2.34,
         },
-        "limit": {
-          "context": 262144,
-          "output": 65536
+        limit: {
+          context: 262144,
+          output: 65536,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-02-16",
-        "last_updated": "2026-02-16"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-02-16",
+        last_updated: "2026-02-16",
       },
       "qwen/qwen3.5-9b": {
-        "id": "qwen/qwen3.5-9b",
-        "name": "Qwen3.5-9B",
-        "family": "qwen3.5",
-        "cost": {
-          "input": 0.04,
-          "output": 0.15
+        id: "qwen/qwen3.5-9b",
+        name: "Qwen3.5-9B",
+        family: "qwen3.5",
+        cost: {
+          input: 0.04,
+          output: 0.15,
         },
-        "limit": {
-          "context": 262144,
-          "output": 81920
+        limit: {
+          context: 262144,
+          output: 81920,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-03-10",
-        "last_updated": "2026-03-10"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-03-10",
+        last_updated: "2026-03-10",
       },
       "qwen/qwen3.5-flash-02-23": {
-        "id": "qwen/qwen3.5-flash-02-23",
-        "name": "Qwen3.5-Flash",
-        "family": "qwen",
-        "cost": {
-          "input": 0.065,
-          "output": 0.26
+        id: "qwen/qwen3.5-flash-02-23",
+        name: "Qwen3.5-Flash",
+        family: "qwen",
+        cost: {
+          input: 0.065,
+          output: 0.26,
         },
-        "limit": {
-          "context": 1000000,
-          "output": 65536
+        limit: {
+          context: 1000000,
+          output: 65536,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-02-25",
-        "last_updated": "2026-02-25"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-02-25",
+        last_updated: "2026-02-25",
       },
       "qwen/qwen3.5-plus-02-15": {
-        "id": "qwen/qwen3.5-plus-02-15",
-        "name": "Qwen3.5 Plus 2026-02-15",
-        "family": "qwen",
-        "cost": {
-          "input": 0.26,
-          "output": 1.56
+        id: "qwen/qwen3.5-plus-02-15",
+        name: "Qwen3.5 Plus 2026-02-15",
+        family: "qwen",
+        cost: {
+          input: 0.26,
+          output: 1.56,
         },
-        "limit": {
-          "context": 1000000,
-          "output": 65536
+        limit: {
+          context: 1000000,
+          output: 65536,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-02-16",
-        "last_updated": "2026-02-16"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-02-16",
+        last_updated: "2026-02-16",
       },
       "qwen/qwen3.5-plus-20260420": {
-        "id": "qwen/qwen3.5-plus-20260420",
-        "name": "Qwen3.5 Plus 2026-04-20",
-        "family": "qwen3.5",
-        "cost": {
-          "input": 0.3,
-          "output": 1.8
+        id: "qwen/qwen3.5-plus-20260420",
+        name: "Qwen3.5 Plus 2026-04-20",
+        family: "qwen3.5",
+        cost: {
+          input: 0.3,
+          output: 1.8,
         },
-        "limit": {
-          "context": 1000000,
-          "output": 65536
+        limit: {
+          context: 1000000,
+          output: 65536,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-04-27",
-        "last_updated": "2026-04-27"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-04-27",
+        last_updated: "2026-04-27",
       },
       "qwen/qwen3.6-27b": {
-        "id": "qwen/qwen3.6-27b",
-        "name": "Qwen3.6 27B",
-        "family": "qwen3.6",
-        "cost": {
-          "input": 0.29,
-          "output": 3.2
+        id: "qwen/qwen3.6-27b",
+        name: "Qwen3.6 27B",
+        family: "qwen3.6",
+        cost: {
+          input: 0.29,
+          output: 3.2,
         },
-        "limit": {
-          "context": 262140,
-          "output": 262140
+        limit: {
+          context: 262140,
+          output: 262140,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-04-27",
-        "last_updated": "2026-04-27"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-04-27",
+        last_updated: "2026-04-27",
       },
       "qwen/qwen3.6-35b-a3b": {
-        "id": "qwen/qwen3.6-35b-a3b",
-        "name": "Qwen3.6 35B A3B",
-        "family": "qwen3.6",
-        "cost": {
-          "input": 0.14,
-          "output": 1
+        id: "qwen/qwen3.6-35b-a3b",
+        name: "Qwen3.6 35B A3B",
+        family: "qwen3.6",
+        cost: {
+          input: 0.14,
+          output: 1,
         },
-        "limit": {
-          "context": 262140,
-          "output": 262140
+        limit: {
+          context: 262140,
+          output: 262140,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-04-27",
-        "last_updated": "2026-04-27"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-04-27",
+        last_updated: "2026-04-27",
       },
       "qwen/qwen3.6-flash": {
-        "id": "qwen/qwen3.6-flash",
-        "name": "Qwen3.6 Flash",
-        "family": "qwen3.6",
-        "cost": {
-          "input": 0.1875,
-          "output": 1.125
+        id: "qwen/qwen3.6-flash",
+        name: "Qwen3.6 Flash",
+        family: "qwen3.6",
+        cost: {
+          input: 0.1875,
+          output: 1.125,
         },
-        "limit": {
-          "context": 1000000,
-          "output": 65536
+        limit: {
+          context: 1000000,
+          output: 65536,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-04-27",
-        "last_updated": "2026-04-27"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-04-27",
+        last_updated: "2026-04-27",
       },
       "qwen/qwen3.6-max-preview": {
-        "id": "qwen/qwen3.6-max-preview",
-        "name": "Qwen3.6 Max Preview",
-        "family": "qwen3.6",
-        "cost": {
-          "input": 1.04,
-          "output": 6.24
+        id: "qwen/qwen3.6-max-preview",
+        name: "Qwen3.6 Max Preview",
+        family: "qwen3.6",
+        cost: {
+          input: 1.04,
+          output: 6.24,
         },
-        "limit": {
-          "context": 262144,
-          "output": 65536
+        limit: {
+          context: 262144,
+          output: 65536,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-04-27",
-        "last_updated": "2026-04-27"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-04-27",
+        last_updated: "2026-04-27",
       },
       "qwen/qwen3.6-plus": {
-        "id": "qwen/qwen3.6-plus",
-        "name": "Qwen3.6 Plus",
-        "family": "qwen",
-        "cost": {
-          "input": 0.325,
-          "output": 1.95
+        id: "qwen/qwen3.6-plus",
+        name: "Qwen3.6 Plus",
+        family: "qwen",
+        cost: {
+          input: 0.325,
+          output: 1.95,
         },
-        "limit": {
-          "context": 1000000,
-          "output": 65536
+        limit: {
+          context: 1000000,
+          output: 65536,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-04-02",
-        "last_updated": "2026-04-02"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-04-02",
+        last_updated: "2026-04-02",
       },
       "qwen/qwen3.7-max": {
-        "id": "qwen/qwen3.7-max",
-        "name": "Qwen3.7 Max",
-        "family": "qwen",
-        "cost": {
-          "input": 1.25,
-          "output": 3.75
+        id: "qwen/qwen3.7-max",
+        name: "Qwen3.7 Max",
+        family: "qwen",
+        cost: {
+          input: 1.25,
+          output: 3.75,
         },
-        "limit": {
-          "context": 1000000,
-          "output": 65536
+        limit: {
+          context: 1000000,
+          output: 65536,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-05-21",
-        "last_updated": "2026-05-21"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-05-21",
+        last_updated: "2026-05-21",
       },
       "rekaai/reka-edge": {
-        "id": "rekaai/reka-edge",
-        "name": "Reka Edge",
-        "family": "reka",
-        "cost": {
-          "input": 0.1,
-          "output": 0.1
+        id: "rekaai/reka-edge",
+        name: "Reka Edge",
+        family: "reka",
+        cost: {
+          input: 0.1,
+          output: 0.1,
         },
-        "limit": {
-          "context": 16384,
-          "output": 16384
+        limit: {
+          context: 16384,
+          output: 16384,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2026-03-20",
-        "last_updated": "2026-03-20"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2026-03-20",
+        last_updated: "2026-03-20",
       },
       "rekaai/reka-flash-3": {
-        "id": "rekaai/reka-flash-3",
-        "name": "Reka Flash 3",
-        "family": "reka",
-        "cost": {
-          "input": 0.1,
-          "output": 0.2
+        id: "rekaai/reka-flash-3",
+        name: "Reka Flash 3",
+        family: "reka",
+        cost: {
+          input: 0.1,
+          output: 0.2,
         },
-        "limit": {
-          "context": 65536,
-          "output": 65536
+        limit: {
+          context: 65536,
+          output: 65536,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2025-03-12",
-        "last_updated": "2025-03-12"
+        tool_call: false,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2025-03-12",
+        last_updated: "2025-03-12",
       },
       "relace/relace-apply-3": {
-        "id": "relace/relace-apply-3",
-        "name": "Relace Apply 3",
-        "cost": {
-          "input": 0.85,
-          "output": 1.25
+        id: "relace/relace-apply-3",
+        name: "Relace Apply 3",
+        cost: {
+          input: 0.85,
+          output: 1.25,
         },
-        "limit": {
-          "context": 256000,
-          "output": 128000
+        limit: {
+          context: 256000,
+          output: 128000,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2025-09-26",
-        "last_updated": "2025-09-26"
+        tool_call: false,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2025-09-26",
+        last_updated: "2025-09-26",
       },
       "relace/relace-search": {
-        "id": "relace/relace-search",
-        "name": "Relace Search",
-        "cost": {
-          "input": 1,
-          "output": 3
+        id: "relace/relace-search",
+        name: "Relace Search",
+        cost: {
+          input: 1,
+          output: 3,
         },
-        "limit": {
-          "context": 256000,
-          "output": 128000
+        limit: {
+          context: 256000,
+          output: 128000,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2025-12-08",
-        "last_updated": "2025-12-08"
+        tool_call: true,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2025-12-08",
+        last_updated: "2025-12-08",
       },
       "sao10k/l3-euryale-70b": {
-        "id": "sao10k/l3-euryale-70b",
-        "name": "Llama 3 Euryale 70B v2.1",
-        "family": "llama",
-        "cost": {
-          "input": 1.48,
-          "output": 1.48
+        id: "sao10k/l3-euryale-70b",
+        name: "Llama 3 Euryale 70B v2.1",
+        family: "llama",
+        cost: {
+          input: 1.48,
+          output: 1.48,
         },
-        "limit": {
-          "context": 8192,
-          "output": 8192
+        limit: {
+          context: 8192,
+          output: 8192,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2024-06-18",
-        "last_updated": "2024-06-18"
+        tool_call: true,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2024-06-18",
+        last_updated: "2024-06-18",
       },
       "sao10k/l3-lunaris-8b": {
-        "id": "sao10k/l3-lunaris-8b",
-        "name": "Llama 3 8B Lunaris",
-        "family": "llama",
-        "cost": {
-          "input": 0.04,
-          "output": 0.05
+        id: "sao10k/l3-lunaris-8b",
+        name: "Llama 3 8B Lunaris",
+        family: "llama",
+        cost: {
+          input: 0.04,
+          output: 0.05,
         },
-        "limit": {
-          "context": 8192,
-          "output": 16384
+        limit: {
+          context: 8192,
+          output: 16384,
         },
-        "tool_call": false,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2024-08-13",
-        "last_updated": "2024-08-13"
+        tool_call: false,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2024-08-13",
+        last_updated: "2024-08-13",
       },
       "sao10k/l3.1-70b-hanami-x1": {
-        "id": "sao10k/l3.1-70b-hanami-x1",
-        "name": "Llama 3.1 70B Hanami x1",
-        "family": "llama",
-        "cost": {
-          "input": 3,
-          "output": 3
+        id: "sao10k/l3.1-70b-hanami-x1",
+        name: "Llama 3.1 70B Hanami x1",
+        family: "llama",
+        cost: {
+          input: 3,
+          output: 3,
         },
-        "limit": {
-          "context": 16000,
-          "output": 16000
+        limit: {
+          context: 16000,
+          output: 16000,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2025-01-08",
-        "last_updated": "2025-01-08"
+        tool_call: false,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2025-01-08",
+        last_updated: "2025-01-08",
       },
       "sao10k/l3.1-euryale-70b": {
-        "id": "sao10k/l3.1-euryale-70b",
-        "name": "Llama 3.1 Euryale 70B v2.2",
-        "family": "llama",
-        "cost": {
-          "input": 0.85,
-          "output": 0.85
+        id: "sao10k/l3.1-euryale-70b",
+        name: "Llama 3.1 Euryale 70B v2.2",
+        family: "llama",
+        cost: {
+          input: 0.85,
+          output: 0.85,
         },
-        "limit": {
-          "context": 131072,
-          "output": 16384
+        limit: {
+          context: 131072,
+          output: 16384,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2024-08-28",
-        "last_updated": "2024-08-28"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2024-08-28",
+        last_updated: "2024-08-28",
       },
       "sao10k/l3.3-euryale-70b": {
-        "id": "sao10k/l3.3-euryale-70b",
-        "name": "Llama 3.3 Euryale 70B",
-        "family": "llama",
-        "cost": {
-          "input": 0.65,
-          "output": 0.75
+        id: "sao10k/l3.3-euryale-70b",
+        name: "Llama 3.3 Euryale 70B",
+        family: "llama",
+        cost: {
+          input: 0.65,
+          output: 0.75,
         },
-        "limit": {
-          "context": 131072,
-          "output": 16384
+        limit: {
+          context: 131072,
+          output: 16384,
         },
-        "tool_call": false,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2024-12-18",
-        "last_updated": "2024-12-18"
+        tool_call: false,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2024-12-18",
+        last_updated: "2024-12-18",
       },
       "stepfun/step-3.5-flash": {
-        "id": "stepfun/step-3.5-flash",
-        "name": "Step 3.5 Flash",
-        "family": "step",
-        "cost": {
-          "input": 0.09,
-          "output": 0.3
+        id: "stepfun/step-3.5-flash",
+        name: "Step 3.5 Flash",
+        family: "step",
+        cost: {
+          input: 0.09,
+          output: 0.3,
         },
-        "limit": {
-          "context": 262144,
-          "output": 16384
+        limit: {
+          context: 262144,
+          output: 16384,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2026-01-29",
-        "last_updated": "2026-01-29"
+        tool_call: true,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2026-01-29",
+        last_updated: "2026-01-29",
       },
       "stepfun/step-3.7-flash": {
-        "id": "stepfun/step-3.7-flash",
-        "name": "Step 3.7 Flash",
-        "family": "step",
-        "cost": {
-          "input": 0.2,
-          "output": 1.15
+        id: "stepfun/step-3.7-flash",
+        name: "Step 3.7 Flash",
+        family: "step",
+        cost: {
+          input: 0.2,
+          output: 1.15,
         },
-        "limit": {
-          "context": 256000,
-          "output": 256000
+        limit: {
+          context: 256000,
+          output: 256000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-05-28",
-        "last_updated": "2026-05-28"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-05-28",
+        last_updated: "2026-05-28",
       },
       "switchpoint/router": {
-        "id": "switchpoint/router",
-        "name": "Switchpoint Router",
-        "cost": {
-          "input": 0.85,
-          "output": 3.4
+        id: "switchpoint/router",
+        name: "Switchpoint Router",
+        cost: {
+          input: 0.85,
+          output: 3.4,
         },
-        "limit": {
-          "context": 131072,
-          "output": 131072
+        limit: {
+          context: 131072,
+          output: 131072,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2025-07-11",
-        "last_updated": "2025-07-11"
+        tool_call: false,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2025-07-11",
+        last_updated: "2025-07-11",
       },
       "tencent/hunyuan-a13b-instruct": {
-        "id": "tencent/hunyuan-a13b-instruct",
-        "name": "Hunyuan A13B Instruct",
-        "family": "hunyuan",
-        "cost": {
-          "input": 0.14,
-          "output": 0.57
+        id: "tencent/hunyuan-a13b-instruct",
+        name: "Hunyuan A13B Instruct",
+        family: "hunyuan",
+        cost: {
+          input: 0.14,
+          output: 0.57,
         },
-        "limit": {
-          "context": 131072,
-          "output": 131072
+        limit: {
+          context: 131072,
+          output: 131072,
         },
-        "tool_call": false,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-07-08",
-        "last_updated": "2025-07-08"
+        tool_call: false,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-07-08",
+        last_updated: "2025-07-08",
       },
       "tencent/hy3-preview": {
-        "id": "tencent/hy3-preview",
-        "name": "Hy3 preview",
-        "family": "Hy",
-        "cost": {
-          "input": 0.063,
-          "output": 0.21
+        id: "tencent/hy3-preview",
+        name: "Hy3 preview",
+        family: "Hy",
+        cost: {
+          input: 0.063,
+          output: 0.21,
         },
-        "limit": {
-          "context": 262144,
-          "output": 262144
+        limit: {
+          context: 262144,
+          output: 262144,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2026-04-22",
-        "last_updated": "2026-04-22"
+        tool_call: true,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2026-04-22",
+        last_updated: "2026-04-22",
       },
       "thedrummer/cydonia-24b-v4.1": {
-        "id": "thedrummer/cydonia-24b-v4.1",
-        "name": "Cydonia 24B V4.1",
-        "cost": {
-          "input": 0.3,
-          "output": 0.5
+        id: "thedrummer/cydonia-24b-v4.1",
+        name: "Cydonia 24B V4.1",
+        cost: {
+          input: 0.3,
+          output: 0.5,
         },
-        "limit": {
-          "context": 131072,
-          "output": 131072
+        limit: {
+          context: 131072,
+          output: 131072,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2025-09-27",
-        "last_updated": "2025-09-27"
+        tool_call: false,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2025-09-27",
+        last_updated: "2025-09-27",
       },
       "thedrummer/rocinante-12b": {
-        "id": "thedrummer/rocinante-12b",
-        "name": "Rocinante 12B",
-        "cost": {
-          "input": 0.17,
-          "output": 0.43
+        id: "thedrummer/rocinante-12b",
+        name: "Rocinante 12B",
+        cost: {
+          input: 0.17,
+          output: 0.43,
         },
-        "limit": {
-          "context": 32768,
-          "output": 32768
+        limit: {
+          context: 32768,
+          output: 32768,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2024-09-30",
-        "last_updated": "2024-09-30"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2024-09-30",
+        last_updated: "2024-09-30",
       },
       "thedrummer/skyfall-36b-v2": {
-        "id": "thedrummer/skyfall-36b-v2",
-        "name": "Skyfall 36B V2",
-        "cost": {
-          "input": 0.55,
-          "output": 0.8
+        id: "thedrummer/skyfall-36b-v2",
+        name: "Skyfall 36B V2",
+        cost: {
+          input: 0.55,
+          output: 0.8,
         },
-        "limit": {
-          "context": 32768,
-          "output": 32768
+        limit: {
+          context: 32768,
+          output: 32768,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2025-03-10",
-        "last_updated": "2025-03-10"
+        tool_call: false,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2025-03-10",
+        last_updated: "2025-03-10",
       },
       "thedrummer/unslopnemo-12b": {
-        "id": "thedrummer/unslopnemo-12b",
-        "name": "UnslopNemo 12B",
-        "cost": {
-          "input": 0.4,
-          "output": 0.4
+        id: "thedrummer/unslopnemo-12b",
+        name: "UnslopNemo 12B",
+        cost: {
+          input: 0.4,
+          output: 0.4,
         },
-        "limit": {
-          "context": 32768,
-          "output": 32768
+        limit: {
+          context: 32768,
+          output: 32768,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2024-11-08",
-        "last_updated": "2024-11-08"
+        tool_call: true,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2024-11-08",
+        last_updated: "2024-11-08",
       },
       "undi95/remm-slerp-l2-13b": {
-        "id": "undi95/remm-slerp-l2-13b",
-        "name": "ReMM SLERP 13B",
-        "cost": {
-          "input": 0.45,
-          "output": 0.65
+        id: "undi95/remm-slerp-l2-13b",
+        name: "ReMM SLERP 13B",
+        cost: {
+          input: 0.45,
+          output: 0.65,
         },
-        "limit": {
-          "context": 6144,
-          "output": 4096
+        limit: {
+          context: 6144,
+          output: 4096,
         },
-        "tool_call": false,
-        "structured_output": true,
-        "reasoning": false,
-        "release_date": "2023-07-22",
-        "last_updated": "2023-07-22"
+        tool_call: false,
+        structured_output: true,
+        reasoning: false,
+        release_date: "2023-07-22",
+        last_updated: "2023-07-22",
       },
       "upstage/solar-pro-3": {
-        "id": "upstage/solar-pro-3",
-        "name": "Solar Pro 3",
-        "family": "solar-pro",
-        "cost": {
-          "input": 0.15,
-          "output": 0.6
+        id: "upstage/solar-pro-3",
+        name: "Solar Pro 3",
+        family: "solar-pro",
+        cost: {
+          input: 0.15,
+          output: 0.6,
         },
-        "limit": {
-          "context": 128000,
-          "output": 128000
+        limit: {
+          context: 128000,
+          output: 128000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-01-27",
-        "last_updated": "2026-01-27"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-01-27",
+        last_updated: "2026-01-27",
       },
       "writer/palmyra-x5": {
-        "id": "writer/palmyra-x5",
-        "name": "Palmyra X5",
-        "family": "palmyra",
-        "cost": {
-          "input": 0.6,
-          "output": 6
+        id: "writer/palmyra-x5",
+        name: "Palmyra X5",
+        family: "palmyra",
+        cost: {
+          input: 0.6,
+          output: 6,
         },
-        "limit": {
-          "context": 1040000,
-          "output": 8192
+        limit: {
+          context: 1040000,
+          output: 8192,
         },
-        "tool_call": false,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2026-01-21",
-        "last_updated": "2026-01-21"
+        tool_call: false,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2026-01-21",
+        last_updated: "2026-01-21",
       },
       "x-ai/grok-4.20": {
-        "id": "x-ai/grok-4.20",
-        "name": "Grok 4.20",
-        "family": "grok",
-        "cost": {
-          "input": 1.25,
-          "output": 2.5
+        id: "x-ai/grok-4.20",
+        name: "Grok 4.20",
+        family: "grok",
+        cost: {
+          input: 1.25,
+          output: 2.5,
         },
-        "limit": {
-          "context": 2000000,
-          "output": 2000000
+        limit: {
+          context: 2000000,
+          output: 2000000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-03-31",
-        "last_updated": "2026-03-31"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-03-31",
+        last_updated: "2026-03-31",
       },
       "x-ai/grok-4.20-multi-agent": {
-        "id": "x-ai/grok-4.20-multi-agent",
-        "name": "Grok 4.20 Multi-Agent",
-        "family": "grok",
-        "cost": {
-          "input": 2,
-          "output": 6
+        id: "x-ai/grok-4.20-multi-agent",
+        name: "Grok 4.20 Multi-Agent",
+        family: "grok",
+        cost: {
+          input: 2,
+          output: 6,
         },
-        "limit": {
-          "context": 2000000,
-          "output": 2000000
+        limit: {
+          context: 2000000,
+          output: 2000000,
         },
-        "tool_call": false,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-03-31",
-        "last_updated": "2026-03-31"
+        tool_call: false,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-03-31",
+        last_updated: "2026-03-31",
       },
       "x-ai/grok-4.3": {
-        "id": "x-ai/grok-4.3",
-        "name": "Grok 4.3",
-        "family": "grok",
-        "cost": {
-          "input": 1.25,
-          "output": 2.5
+        id: "x-ai/grok-4.3",
+        name: "Grok 4.3",
+        family: "grok",
+        cost: {
+          input: 1.25,
+          output: 2.5,
         },
-        "limit": {
-          "context": 1000000,
-          "output": 1000000
+        limit: {
+          context: 1000000,
+          output: 1000000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-04-17",
-        "last_updated": "2026-04-17"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-04-17",
+        last_updated: "2026-04-17",
       },
       "x-ai/grok-build-0.1": {
-        "id": "x-ai/grok-build-0.1",
-        "name": "Grok Build 0.1",
-        "family": "grok-build",
-        "cost": {
-          "input": 1,
-          "output": 2
+        id: "x-ai/grok-build-0.1",
+        name: "Grok Build 0.1",
+        family: "grok-build",
+        cost: {
+          input: 1,
+          output: 2,
         },
-        "limit": {
-          "context": 256000,
-          "output": 256000
+        limit: {
+          context: 256000,
+          output: 256000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-04-16",
-        "last_updated": "2026-04-16"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-04-16",
+        last_updated: "2026-04-16",
       },
       "xiaomi/mimo-v2-flash": {
-        "id": "xiaomi/mimo-v2-flash",
-        "name": "MiMo-V2-Flash",
-        "family": "mimo",
-        "cost": {
-          "input": 0.1,
-          "output": 0.3
+        id: "xiaomi/mimo-v2-flash",
+        name: "MiMo-V2-Flash",
+        family: "mimo",
+        cost: {
+          input: 0.1,
+          output: 0.3,
         },
-        "limit": {
-          "context": 262144,
-          "output": 65536
+        limit: {
+          context: 262144,
+          output: 65536,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2025-12-16",
-        "last_updated": "2026-02-04"
+        tool_call: true,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2025-12-16",
+        last_updated: "2026-02-04",
       },
       "xiaomi/mimo-v2.5": {
-        "id": "xiaomi/mimo-v2.5",
-        "name": "MiMo-V2.5",
-        "family": "mimo",
-        "cost": {
-          "input": 0.14,
-          "output": 0.28
+        id: "xiaomi/mimo-v2.5",
+        name: "MiMo-V2.5",
+        family: "mimo",
+        cost: {
+          input: 0.14,
+          output: 0.28,
         },
-        "limit": {
-          "context": 1048576,
-          "output": 131072
+        limit: {
+          context: 1048576,
+          output: 131072,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2026-04-22",
-        "last_updated": "2026-04-22"
+        tool_call: true,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2026-04-22",
+        last_updated: "2026-04-22",
       },
       "xiaomi/mimo-v2.5-pro": {
-        "id": "xiaomi/mimo-v2.5-pro",
-        "name": "MiMo-V2.5-Pro",
-        "family": "mimo",
-        "cost": {
-          "input": 0.435,
-          "output": 0.87
+        id: "xiaomi/mimo-v2.5-pro",
+        name: "MiMo-V2.5-Pro",
+        family: "mimo",
+        cost: {
+          input: 0.435,
+          output: 0.87,
         },
-        "limit": {
-          "context": 1048576,
-          "output": 131072
+        limit: {
+          context: 1048576,
+          output: 131072,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-04-22",
-        "last_updated": "2026-04-22"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-04-22",
+        last_updated: "2026-04-22",
       },
       "z-ai/glm-4-32b": {
-        "id": "z-ai/glm-4-32b",
-        "name": "GLM 4 32B ",
-        "family": "glm",
-        "cost": {
-          "input": 0.1,
-          "output": 0.1
+        id: "z-ai/glm-4-32b",
+        name: "GLM 4 32B ",
+        family: "glm",
+        cost: {
+          input: 0.1,
+          output: 0.1,
         },
-        "limit": {
-          "context": 128000,
-          "output": 128000
+        limit: {
+          context: 128000,
+          output: 128000,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": false,
-        "release_date": "2025-07-24",
-        "last_updated": "2025-07-24"
+        tool_call: true,
+        structured_output: false,
+        reasoning: false,
+        release_date: "2025-07-24",
+        last_updated: "2025-07-24",
       },
       "z-ai/glm-4.5": {
-        "id": "z-ai/glm-4.5",
-        "name": "GLM-4.5",
-        "family": "glm",
-        "cost": {
-          "input": 0.6,
-          "output": 2.2
+        id: "z-ai/glm-4.5",
+        name: "GLM-4.5",
+        family: "glm",
+        cost: {
+          input: 0.6,
+          output: 2.2,
         },
-        "limit": {
-          "context": 131072,
-          "output": 98304
+        limit: {
+          context: 131072,
+          output: 98304,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2025-07-28",
-        "last_updated": "2025-07-28"
+        tool_call: true,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2025-07-28",
+        last_updated: "2025-07-28",
       },
       "z-ai/glm-4.5-air": {
-        "id": "z-ai/glm-4.5-air",
-        "name": "GLM-4.5-Air",
-        "family": "glm-air",
-        "cost": {
-          "input": 0.125,
-          "output": 0.85
+        id: "z-ai/glm-4.5-air",
+        name: "GLM-4.5-Air",
+        family: "glm-air",
+        cost: {
+          input: 0.125,
+          output: 0.85,
         },
-        "limit": {
-          "context": 131070,
-          "output": 131070
+        limit: {
+          context: 131070,
+          output: 131070,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2025-07-28",
-        "last_updated": "2025-07-28"
+        tool_call: true,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2025-07-28",
+        last_updated: "2025-07-28",
       },
       "z-ai/glm-4.5-air:free": {
-        "id": "z-ai/glm-4.5-air:free",
-        "name": "GLM 4.5 Air (free)",
-        "family": "glm-air",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "z-ai/glm-4.5-air:free",
+        name: "GLM 4.5 Air (free)",
+        family: "glm-air",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 131072,
-          "output": 96000
+        limit: {
+          context: 131072,
+          output: 96000,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2025-07-28",
-        "last_updated": "2025-07-28"
+        tool_call: true,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2025-07-28",
+        last_updated: "2025-07-28",
       },
       "z-ai/glm-4.5v": {
-        "id": "z-ai/glm-4.5v",
-        "name": "GLM-4.5V",
-        "family": "glm",
-        "cost": {
-          "input": 0.6,
-          "output": 1.8
+        id: "z-ai/glm-4.5v",
+        name: "GLM-4.5V",
+        family: "glm",
+        cost: {
+          input: 0.6,
+          output: 1.8,
         },
-        "limit": {
-          "context": 65536,
-          "output": 16384
+        limit: {
+          context: 65536,
+          output: 16384,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2025-08-11",
-        "last_updated": "2025-08-11"
+        tool_call: true,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2025-08-11",
+        last_updated: "2025-08-11",
       },
       "z-ai/glm-4.6": {
-        "id": "z-ai/glm-4.6",
-        "name": "GLM-4.6",
-        "family": "glm",
-        "cost": {
-          "input": 0.43,
-          "output": 1.74
+        id: "z-ai/glm-4.6",
+        name: "GLM-4.6",
+        family: "glm",
+        cost: {
+          input: 0.43,
+          output: 1.74,
         },
-        "limit": {
-          "context": 202752,
-          "output": 131072
+        limit: {
+          context: 202752,
+          output: 131072,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-09-30",
-        "last_updated": "2025-09-30"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-09-30",
+        last_updated: "2025-09-30",
       },
       "z-ai/glm-4.6v": {
-        "id": "z-ai/glm-4.6v",
-        "name": "GLM-4.6V",
-        "family": "glm",
-        "cost": {
-          "input": 0.3,
-          "output": 0.9
+        id: "z-ai/glm-4.6v",
+        name: "GLM-4.6V",
+        family: "glm",
+        cost: {
+          input: 0.3,
+          output: 0.9,
         },
-        "limit": {
-          "context": 131072,
-          "output": 24000
+        limit: {
+          context: 131072,
+          output: 24000,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2025-12-08",
-        "last_updated": "2025-12-08"
+        tool_call: true,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2025-12-08",
+        last_updated: "2025-12-08",
       },
       "z-ai/glm-4.7": {
-        "id": "z-ai/glm-4.7",
-        "name": "GLM-4.7",
-        "family": "glm",
-        "cost": {
-          "input": 0.4,
-          "output": 1.75
+        id: "z-ai/glm-4.7",
+        name: "GLM-4.7",
+        family: "glm",
+        cost: {
+          input: 0.4,
+          output: 1.75,
         },
-        "limit": {
-          "context": 202752,
-          "output": 131072
+        limit: {
+          context: 202752,
+          output: 131072,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2025-12-22",
-        "last_updated": "2025-12-22"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2025-12-22",
+        last_updated: "2025-12-22",
       },
       "z-ai/glm-4.7-flash": {
-        "id": "z-ai/glm-4.7-flash",
-        "name": "GLM-4.7-Flash",
-        "family": "glm-flash",
-        "cost": {
-          "input": 0.06,
-          "output": 0.4
+        id: "z-ai/glm-4.7-flash",
+        name: "GLM-4.7-Flash",
+        family: "glm-flash",
+        cost: {
+          input: 0.06,
+          output: 0.4,
         },
-        "limit": {
-          "context": 202752,
-          "output": 16384
+        limit: {
+          context: 202752,
+          output: 16384,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-01-19",
-        "last_updated": "2026-01-19"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-01-19",
+        last_updated: "2026-01-19",
       },
       "z-ai/glm-5": {
-        "id": "z-ai/glm-5",
-        "name": "GLM-5",
-        "family": "glm",
-        "cost": {
-          "input": 0.6,
-          "output": 2.08
+        id: "z-ai/glm-5",
+        name: "GLM-5",
+        family: "glm",
+        cost: {
+          input: 0.6,
+          output: 2.08,
         },
-        "limit": {
-          "context": 202752,
-          "output": 16384
+        limit: {
+          context: 202752,
+          output: 16384,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-02-11",
-        "last_updated": "2026-02-11"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-02-11",
+        last_updated: "2026-02-11",
       },
       "z-ai/glm-5-turbo": {
-        "id": "z-ai/glm-5-turbo",
-        "name": "GLM-5-Turbo",
-        "family": "glm",
-        "cost": {
-          "input": 1.2,
-          "output": 4
+        id: "z-ai/glm-5-turbo",
+        name: "GLM-5-Turbo",
+        family: "glm",
+        cost: {
+          input: 1.2,
+          output: 4,
         },
-        "limit": {
-          "context": 202752,
-          "output": 131072
+        limit: {
+          context: 202752,
+          output: 131072,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2026-03-16",
-        "last_updated": "2026-03-16"
+        tool_call: true,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2026-03-16",
+        last_updated: "2026-03-16",
       },
       "z-ai/glm-5.1": {
-        "id": "z-ai/glm-5.1",
-        "name": "GLM-5.1",
-        "family": "glm",
-        "cost": {
-          "input": 0.98,
-          "output": 3.08
+        id: "z-ai/glm-5.1",
+        name: "GLM-5.1",
+        family: "glm",
+        cost: {
+          input: 0.98,
+          output: 3.08,
         },
-        "limit": {
-          "context": 202752,
-          "output": 131072
+        limit: {
+          context: 202752,
+          output: 131072,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-03-27",
-        "last_updated": "2026-03-27"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-03-27",
+        last_updated: "2026-03-27",
       },
       "z-ai/glm-5v-turbo": {
-        "id": "z-ai/glm-5v-turbo",
-        "name": "GLM-5V-Turbo",
-        "family": "glm",
-        "cost": {
-          "input": 1.2,
-          "output": 4
+        id: "z-ai/glm-5v-turbo",
+        name: "GLM-5V-Turbo",
+        family: "glm",
+        cost: {
+          input: 1.2,
+          output: 4,
         },
-        "limit": {
-          "context": 202752,
-          "output": 131072
+        limit: {
+          context: 202752,
+          output: 131072,
         },
-        "tool_call": true,
-        "structured_output": false,
-        "reasoning": true,
-        "release_date": "2026-04-01",
-        "last_updated": "2026-04-01"
+        tool_call: true,
+        structured_output: false,
+        reasoning: true,
+        release_date: "2026-04-01",
+        last_updated: "2026-04-01",
       },
       "~anthropic/claude-haiku-latest": {
-        "id": "~anthropic/claude-haiku-latest",
-        "name": "Anthropic Claude Haiku Latest",
-        "family": "claude-haiku",
-        "cost": {
-          "input": 1,
-          "output": 5
+        id: "~anthropic/claude-haiku-latest",
+        name: "Anthropic Claude Haiku Latest",
+        family: "claude-haiku",
+        cost: {
+          input: 1,
+          output: 5,
         },
-        "limit": {
-          "context": 200000,
-          "output": 64000
+        limit: {
+          context: 200000,
+          output: 64000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-04-27",
-        "last_updated": "2026-04-27"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-04-27",
+        last_updated: "2026-04-27",
       },
       "~anthropic/claude-opus-latest": {
-        "id": "~anthropic/claude-opus-latest",
-        "name": "Claude Opus Latest",
-        "family": "claude-opus",
-        "cost": {
-          "input": 5,
-          "output": 25
+        id: "~anthropic/claude-opus-latest",
+        name: "Claude Opus Latest",
+        family: "claude-opus",
+        cost: {
+          input: 5,
+          output: 25,
         },
-        "limit": {
-          "context": 1000000,
-          "output": 128000
+        limit: {
+          context: 1000000,
+          output: 128000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-04-21",
-        "last_updated": "2026-04-21"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-04-21",
+        last_updated: "2026-04-21",
       },
       "~anthropic/claude-sonnet-latest": {
-        "id": "~anthropic/claude-sonnet-latest",
-        "name": "Anthropic Claude Sonnet Latest",
-        "family": "claude-sonnet",
-        "cost": {
-          "input": 3,
-          "output": 15
+        id: "~anthropic/claude-sonnet-latest",
+        name: "Anthropic Claude Sonnet Latest",
+        family: "claude-sonnet",
+        cost: {
+          input: 3,
+          output: 15,
         },
-        "limit": {
-          "context": 1000000,
-          "output": 128000
+        limit: {
+          context: 1000000,
+          output: 128000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-04-27",
-        "last_updated": "2026-04-27"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-04-27",
+        last_updated: "2026-04-27",
       },
       "~google/gemini-flash-latest": {
-        "id": "~google/gemini-flash-latest",
-        "name": "Google Gemini Flash Latest",
-        "family": "gemini-flash",
-        "cost": {
-          "input": 1.5,
-          "output": 9
+        id: "~google/gemini-flash-latest",
+        name: "Google Gemini Flash Latest",
+        family: "gemini-flash",
+        cost: {
+          input: 1.5,
+          output: 9,
         },
-        "limit": {
-          "context": 1048576,
-          "output": 65536
+        limit: {
+          context: 1048576,
+          output: 65536,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-04-27",
-        "last_updated": "2026-04-27"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-04-27",
+        last_updated: "2026-04-27",
       },
       "~google/gemini-pro-latest": {
-        "id": "~google/gemini-pro-latest",
-        "name": "Google Gemini Pro Latest",
-        "family": "gemini-pro",
-        "cost": {
-          "input": 2,
-          "output": 12
+        id: "~google/gemini-pro-latest",
+        name: "Google Gemini Pro Latest",
+        family: "gemini-pro",
+        cost: {
+          input: 2,
+          output: 12,
         },
-        "limit": {
-          "context": 1048576,
-          "output": 65536
+        limit: {
+          context: 1048576,
+          output: 65536,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-04-27",
-        "last_updated": "2026-04-27"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-04-27",
+        last_updated: "2026-04-27",
       },
       "~moonshotai/kimi-latest": {
-        "id": "~moonshotai/kimi-latest",
-        "name": "MoonshotAI Kimi Latest",
-        "family": "kimi",
-        "cost": {
-          "input": 0.684,
-          "output": 3.42
+        id: "~moonshotai/kimi-latest",
+        name: "MoonshotAI Kimi Latest",
+        family: "kimi",
+        cost: {
+          input: 0.684,
+          output: 3.42,
         },
-        "limit": {
-          "context": 262144,
-          "output": 262144
+        limit: {
+          context: 262144,
+          output: 262144,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-04-27",
-        "last_updated": "2026-04-27"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-04-27",
+        last_updated: "2026-04-27",
       },
       "~openai/gpt-latest": {
-        "id": "~openai/gpt-latest",
-        "name": "OpenAI GPT Latest",
-        "family": "gpt",
-        "cost": {
-          "input": 5,
-          "output": 30
+        id: "~openai/gpt-latest",
+        name: "OpenAI GPT Latest",
+        family: "gpt",
+        cost: {
+          input: 5,
+          output: 30,
         },
-        "limit": {
-          "context": 1050000,
-          "output": 128000
+        limit: {
+          context: 1050000,
+          output: 128000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-04-27",
-        "last_updated": "2026-04-27"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-04-27",
+        last_updated: "2026-04-27",
       },
       "~openai/gpt-mini-latest": {
-        "id": "~openai/gpt-mini-latest",
-        "name": "OpenAI GPT Mini Latest",
-        "family": "gpt-mini",
-        "cost": {
-          "input": 0.75,
-          "output": 4.5
+        id: "~openai/gpt-mini-latest",
+        name: "OpenAI GPT Mini Latest",
+        family: "gpt-mini",
+        cost: {
+          input: 0.75,
+          output: 4.5,
         },
-        "limit": {
-          "context": 400000,
-          "output": 128000
+        limit: {
+          context: 400000,
+          output: 128000,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-04-27",
-        "last_updated": "2026-04-27"
-      }
-    }
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-04-27",
+        last_updated: "2026-04-27",
+      },
+    },
   },
-  "zai": {
-    "id": "zai",
-    "name": "Z.AI",
-    "api": "https://api.z.ai/api/paas/v4",
-    "env": [
-      "ZHIPU_API_KEY"
-    ],
-    "models": {
+  zai: {
+    id: "zai",
+    name: "Z.AI",
+    api: "https://api.z.ai/api/paas/v4",
+    env: ["ZHIPU_API_KEY"],
+    models: {
       "glm-4.5": {
-        "id": "glm-4.5",
-        "name": "GLM-4.5",
-        "family": "glm",
-        "cost": {
-          "input": 0.6,
-          "output": 2.2
+        id: "glm-4.5",
+        name: "GLM-4.5",
+        family: "glm",
+        cost: {
+          input: 0.6,
+          output: 2.2,
         },
-        "limit": {
-          "context": 131072,
-          "output": 98304
+        limit: {
+          context: 131072,
+          output: 98304,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2025-07-28",
-        "last_updated": "2025-07-28"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2025-07-28",
+        last_updated: "2025-07-28",
       },
       "glm-4.5-air": {
-        "id": "glm-4.5-air",
-        "name": "GLM-4.5-Air",
-        "family": "glm-air",
-        "cost": {
-          "input": 0.2,
-          "output": 1.1
+        id: "glm-4.5-air",
+        name: "GLM-4.5-Air",
+        family: "glm-air",
+        cost: {
+          input: 0.2,
+          output: 1.1,
         },
-        "limit": {
-          "context": 131072,
-          "output": 98304
+        limit: {
+          context: 131072,
+          output: 98304,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2025-07-28",
-        "last_updated": "2025-07-28"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2025-07-28",
+        last_updated: "2025-07-28",
       },
       "glm-4.5-flash": {
-        "id": "glm-4.5-flash",
-        "name": "GLM-4.5-Flash",
-        "family": "glm-flash",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "glm-4.5-flash",
+        name: "GLM-4.5-Flash",
+        family: "glm-flash",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 131072,
-          "output": 98304
+        limit: {
+          context: 131072,
+          output: 98304,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2025-07-28",
-        "last_updated": "2025-07-28"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2025-07-28",
+        last_updated: "2025-07-28",
       },
       "glm-4.5v": {
-        "id": "glm-4.5v",
-        "name": "GLM-4.5V",
-        "family": "glm",
-        "cost": {
-          "input": 0.6,
-          "output": 1.8
+        id: "glm-4.5v",
+        name: "GLM-4.5V",
+        family: "glm",
+        cost: {
+          input: 0.6,
+          output: 1.8,
         },
-        "limit": {
-          "context": 64000,
-          "output": 16384
+        limit: {
+          context: 64000,
+          output: 16384,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2025-08-11",
-        "last_updated": "2025-08-11"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2025-08-11",
+        last_updated: "2025-08-11",
       },
       "glm-4.6": {
-        "id": "glm-4.6",
-        "name": "GLM-4.6",
-        "family": "glm",
-        "cost": {
-          "input": 0.6,
-          "output": 2.2
+        id: "glm-4.6",
+        name: "GLM-4.6",
+        family: "glm",
+        cost: {
+          input: 0.6,
+          output: 2.2,
         },
-        "limit": {
-          "context": 204800,
-          "output": 131072
+        limit: {
+          context: 204800,
+          output: 131072,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2025-09-30",
-        "last_updated": "2025-09-30"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2025-09-30",
+        last_updated: "2025-09-30",
       },
       "glm-4.6v": {
-        "id": "glm-4.6v",
-        "name": "GLM-4.6V",
-        "family": "glm",
-        "cost": {
-          "input": 0.3,
-          "output": 0.9
+        id: "glm-4.6v",
+        name: "GLM-4.6V",
+        family: "glm",
+        cost: {
+          input: 0.3,
+          output: 0.9,
         },
-        "limit": {
-          "context": 128000,
-          "output": 32768
+        limit: {
+          context: 128000,
+          output: 32768,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2025-12-08",
-        "last_updated": "2025-12-08"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2025-12-08",
+        last_updated: "2025-12-08",
       },
       "glm-4.7": {
-        "id": "glm-4.7",
-        "name": "GLM-4.7",
-        "family": "glm",
-        "cost": {
-          "input": 0.6,
-          "output": 2.2
+        id: "glm-4.7",
+        name: "GLM-4.7",
+        family: "glm",
+        cost: {
+          input: 0.6,
+          output: 2.2,
         },
-        "limit": {
-          "context": 204800,
-          "output": 131072
+        limit: {
+          context: 204800,
+          output: 131072,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2025-12-22",
-        "last_updated": "2025-12-22"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2025-12-22",
+        last_updated: "2025-12-22",
       },
       "glm-4.7-flash": {
-        "id": "glm-4.7-flash",
-        "name": "GLM-4.7-Flash",
-        "family": "glm-flash",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "glm-4.7-flash",
+        name: "GLM-4.7-Flash",
+        family: "glm-flash",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 200000,
-          "output": 131072
+        limit: {
+          context: 200000,
+          output: 131072,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2026-01-19",
-        "last_updated": "2026-01-19"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2026-01-19",
+        last_updated: "2026-01-19",
       },
       "glm-4.7-flashx": {
-        "id": "glm-4.7-flashx",
-        "name": "GLM-4.7-FlashX",
-        "family": "glm-flash",
-        "cost": {
-          "input": 0.07,
-          "output": 0.4
+        id: "glm-4.7-flashx",
+        name: "GLM-4.7-FlashX",
+        family: "glm-flash",
+        cost: {
+          input: 0.07,
+          output: 0.4,
         },
-        "limit": {
-          "context": 200000,
-          "output": 131072
+        limit: {
+          context: 200000,
+          output: 131072,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2026-01-19",
-        "last_updated": "2026-01-19"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2026-01-19",
+        last_updated: "2026-01-19",
       },
       "glm-5": {
-        "id": "glm-5",
-        "name": "GLM-5",
-        "family": "glm",
-        "cost": {
-          "input": 1,
-          "output": 3.2
+        id: "glm-5",
+        name: "GLM-5",
+        family: "glm",
+        cost: {
+          input: 1,
+          output: 3.2,
         },
-        "limit": {
-          "context": 204800,
-          "output": 131072
+        limit: {
+          context: 204800,
+          output: 131072,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2026-02-11",
-        "last_updated": "2026-02-11"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2026-02-11",
+        last_updated: "2026-02-11",
       },
       "glm-5-turbo": {
-        "id": "glm-5-turbo",
-        "name": "GLM-5-Turbo",
-        "family": "glm",
-        "cost": {
-          "input": 1.2,
-          "output": 4
+        id: "glm-5-turbo",
+        name: "GLM-5-Turbo",
+        family: "glm",
+        cost: {
+          input: 1.2,
+          output: 4,
         },
-        "limit": {
-          "context": 200000,
-          "output": 131072
+        limit: {
+          context: 200000,
+          output: 131072,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-03-16",
-        "last_updated": "2026-03-16"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-03-16",
+        last_updated: "2026-03-16",
       },
       "glm-5.1": {
-        "id": "glm-5.1",
-        "name": "GLM-5.1",
-        "family": "glm",
-        "cost": {
-          "input": 1.4,
-          "output": 4.4
+        id: "glm-5.1",
+        name: "GLM-5.1",
+        family: "glm",
+        cost: {
+          input: 1.4,
+          output: 4.4,
         },
-        "limit": {
-          "context": 200000,
-          "output": 131072
+        limit: {
+          context: 200000,
+          output: 131072,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-03-27",
-        "last_updated": "2026-03-27"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-03-27",
+        last_updated: "2026-03-27",
       },
       "glm-5v-turbo": {
-        "id": "glm-5v-turbo",
-        "name": "GLM-5V-Turbo",
-        "family": "glm",
-        "cost": {
-          "input": 1.2,
-          "output": 4
+        id: "glm-5v-turbo",
+        name: "GLM-5V-Turbo",
+        family: "glm",
+        cost: {
+          input: 1.2,
+          output: 4,
         },
-        "limit": {
-          "context": 200000,
-          "output": 131072
+        limit: {
+          context: 200000,
+          output: 131072,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2026-04-01",
-        "last_updated": "2026-04-01"
-      }
-    }
+        tool_call: true,
+        reasoning: true,
+        release_date: "2026-04-01",
+        last_updated: "2026-04-01",
+      },
+    },
   },
   "zai-coding-plan": {
-    "id": "zai-coding-plan",
-    "name": "Z.AI Coding Plan",
-    "api": "https://api.z.ai/api/coding/paas/v4",
-    "env": [
-      "ZHIPU_API_KEY"
-    ],
-    "models": {
+    id: "zai-coding-plan",
+    name: "Z.AI Coding Plan",
+    api: "https://api.z.ai/api/coding/paas/v4",
+    env: ["ZHIPU_API_KEY"],
+    models: {
       "glm-4.5-air": {
-        "id": "glm-4.5-air",
-        "name": "GLM-4.5-Air",
-        "family": "glm-air",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "glm-4.5-air",
+        name: "GLM-4.5-Air",
+        family: "glm-air",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 131072,
-          "output": 98304
+        limit: {
+          context: 131072,
+          output: 98304,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2025-07-28",
-        "last_updated": "2025-07-28"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2025-07-28",
+        last_updated: "2025-07-28",
       },
       "glm-4.7": {
-        "id": "glm-4.7",
-        "name": "GLM-4.7",
-        "family": "glm",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "glm-4.7",
+        name: "GLM-4.7",
+        family: "glm",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 204800,
-          "output": 131072
+        limit: {
+          context: 204800,
+          output: 131072,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2025-12-22",
-        "last_updated": "2025-12-22"
+        tool_call: true,
+        reasoning: true,
+        release_date: "2025-12-22",
+        last_updated: "2025-12-22",
       },
       "glm-5-turbo": {
-        "id": "glm-5-turbo",
-        "name": "GLM-5-Turbo",
-        "family": "glm",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "glm-5-turbo",
+        name: "GLM-5-Turbo",
+        family: "glm",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 200000,
-          "output": 131072
+        limit: {
+          context: 200000,
+          output: 131072,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-03-16",
-        "last_updated": "2026-03-16"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-03-16",
+        last_updated: "2026-03-16",
       },
       "glm-5.1": {
-        "id": "glm-5.1",
-        "name": "GLM-5.1",
-        "family": "glm",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "glm-5.1",
+        name: "GLM-5.1",
+        family: "glm",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 200000,
-          "output": 131072
+        limit: {
+          context: 200000,
+          output: 131072,
         },
-        "tool_call": true,
-        "structured_output": true,
-        "reasoning": true,
-        "release_date": "2026-03-27",
-        "last_updated": "2026-03-27"
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-03-27",
+        last_updated: "2026-03-27",
       },
       "glm-5v-turbo": {
-        "id": "glm-5v-turbo",
-        "name": "GLM-5V-Turbo",
-        "family": "glm",
-        "cost": {
-          "input": 0,
-          "output": 0
+        id: "glm-5v-turbo",
+        name: "GLM-5V-Turbo",
+        family: "glm",
+        cost: {
+          input: 0,
+          output: 0,
         },
-        "limit": {
-          "context": 200000,
-          "output": 131072
+        limit: {
+          context: 200000,
+          output: 131072,
         },
-        "tool_call": true,
-        "reasoning": true,
-        "release_date": "2026-04-01",
-        "last_updated": "2026-04-01"
-      }
-    }
-  }
+        tool_call: true,
+        reasoning: true,
+        release_date: "2026-04-01",
+        last_updated: "2026-04-01",
+      },
+    },
+  },
 };

@@ -19,7 +19,10 @@ const resolveServiceOrResponse = async (c: Context) => {
 
   if (!result.ok) {
     const status = result.error.code === ErrorCode.GIT_NOT_FOUND ? 500 : 400;
-    return { ok: false as const, response: errorResponse(c, result.error.message, result.error.code, status) };
+    return {
+      ok: false as const,
+      response: errorResponse(c, result.error.message, result.error.code, status),
+    };
   }
 
   return { ok: true as const, service: result.value };
@@ -40,28 +43,32 @@ gitRouter.get("/status", async (c): Promise<Response> => {
   return c.json(status);
 });
 
-gitRouter.get("/diff", zValidator("query", GitDiffQuerySchema, zodErrorHandler), async (c): Promise<Response> => {
-  const result = await resolveServiceOrResponse(c);
-  if (!result.ok) return result.response;
+gitRouter.get(
+  "/diff",
+  zValidator("query", GitDiffQuerySchema, zodErrorHandler),
+  async (c): Promise<Response> => {
+    const result = await resolveServiceOrResponse(c);
+    if (!result.ok) return result.response;
 
-  const { mode: modeParam } = c.req.valid("query");
-  const mode = modeParam ?? "unstaged";
+    const { mode: modeParam } = c.req.valid("query");
+    const mode = modeParam ?? "unstaged";
 
-  const statusResult = await result.service.getStatus();
-  if (!statusResult.ok) {
-    return errorResponse(c, statusResult.error.message, ErrorCode.COMMAND_FAILED, 500);
-  }
-  if (!statusResult.value.isGitRepo) {
-    return errorResponse(c, "Not a git repository", ErrorCode.NOT_GIT_REPO, 400);
-  }
+    const statusResult = await result.service.getStatus();
+    if (!statusResult.ok) {
+      return errorResponse(c, statusResult.error.message, ErrorCode.COMMAND_FAILED, 500);
+    }
+    if (!statusResult.value.isGitRepo) {
+      return errorResponse(c, "Not a git repository", ErrorCode.NOT_GIT_REPO, 400);
+    }
 
-  try {
-    const diff = await result.service.getDiff(mode);
-    return c.json({ diff, mode });
-  } catch (error) {
-    console.error("[diffgazer] git diff error:", error);
-    return errorResponse(c, "Failed to retrieve git diff", ErrorCode.COMMAND_FAILED, 500);
-  }
-});
+    try {
+      const diff = await result.service.getDiff(mode);
+      return c.json({ diff, mode });
+    } catch (error) {
+      console.error("[diffgazer] git diff error:", error);
+      return errorResponse(c, "Failed to retrieve git diff", ErrorCode.COMMAND_FAILED, 500);
+    }
+  },
+);
 
 export { gitRouter };

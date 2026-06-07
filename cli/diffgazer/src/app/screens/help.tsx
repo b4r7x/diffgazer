@@ -44,9 +44,7 @@ export function HelpScreen(): ReactElement {
                 ))}
               </Box>
               <SectionHeader>About</SectionHeader>
-              <Text>
-                diffgazer — Local-only AI code review for your terminal.
-              </Text>
+              <Text>diffgazer — Local-only AI code review for your terminal.</Text>
             </Box>
           </Panel.Content>
         </Panel>

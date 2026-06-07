@@ -103,8 +103,13 @@ export function ModelSelectDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl overflow-hidden border border-tui-border shadow-2xl">
-        <DialogHeader marker="none" className="flex-row items-center justify-between gap-3 bg-tui-selection/50 px-4 py-3">
-          <DialogTitle className="min-w-0 flex-1 w-auto text-tui-blue tracking-wide">Select Model</DialogTitle>
+        <DialogHeader
+          marker="none"
+          className="flex-row items-center justify-between gap-3 bg-tui-selection/50 px-4 py-3"
+        >
+          <DialogTitle className="min-w-0 flex-1 w-auto text-tui-blue tracking-wide">
+            Select Model
+          </DialogTitle>
           <DialogClose
             {...getCloseButtonProps()}
             size="sm"
@@ -138,9 +143,7 @@ export function ModelSelectDialog({
           />
           {isOpenRouter && (
             <div className="px-4 pb-2 text-2xs text-tui-muted">
-              {getCompatibilityLabel(openRouter)}
-              {" "}
-              You can enter a custom model ID at your own risk.
+              {getCompatibilityLabel(openRouter)} You can enter a custom model ID at your own risk.
             </div>
           )}
 
@@ -175,7 +178,9 @@ export function ModelSelectDialog({
             size="sm"
             bracket
             disabled={filteredModels.length === 0}
-            highlighted={focusZone === "footer" && footerButtonIndex === 1 && filteredModels.length > 0}
+            highlighted={
+              focusZone === "footer" && footerButtonIndex === 1 && filteredModels.length > 0
+            }
             onClick={(event) => {
               event.preventDefault();
               handleConfirm();

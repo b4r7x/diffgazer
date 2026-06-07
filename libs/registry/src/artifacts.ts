@@ -1,11 +1,18 @@
 import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { ARTIFACT_FINGERPRINT_FILENAME, ARTIFACT_MANIFEST_FILENAME, DEFAULT_ARTIFACT_ROOT } from "./constants.js";
+import {
+  ARTIFACT_FINGERPRINT_FILENAME,
+  ARTIFACT_MANIFEST_FILENAME,
+  DEFAULT_ARTIFACT_ROOT,
+} from "./constants.js";
 import { computeInputsFingerprint } from "./fingerprint.js";
 import { defaultLogger, type Logger } from "./logger.js";
 import type { ArtifactManifest } from "./manifest.js";
 import { normalizeOrigin, rewriteOriginsInDir } from "./origin.js";
-import { type EnsurePublicRegistryReadyOptions, ensurePublicRegistryReady } from "./shadcn/build.js";
+import {
+  type EnsurePublicRegistryReadyOptions,
+  ensurePublicRegistryReady,
+} from "./shadcn/build.js";
 import { ensureExists, resetDir } from "./utils/fs.js";
 import { writeJson } from "./utils/json.js";
 
@@ -51,7 +58,9 @@ export interface BuildRegistryArtifactsResult {
   fingerprintPath: string;
 }
 
-export function buildRegistryArtifacts(options: BuildRegistryArtifactsOptions): BuildRegistryArtifactsResult {
+export function buildRegistryArtifacts(
+  options: BuildRegistryArtifactsOptions,
+): BuildRegistryArtifactsResult {
   const {
     rootDir,
     artifactRoot = DEFAULT_ARTIFACT_ROOT,
@@ -97,9 +106,10 @@ export function buildRegistryArtifacts(options: BuildRegistryArtifactsOptions): 
     cpSync(from, to, {
       recursive: true,
       force: true,
-      filter: (src) => !/\.(md)$/i.test(src)
-        && !/\.(test|spec)\.(ts|tsx|js|jsx)$/i.test(src)
-        && !src.includes("__tests__"),
+      filter: (src) =>
+        !/\.(md)$/i.test(src) &&
+        !/\.(test|spec)\.(ts|tsx|js|jsx)$/i.test(src) &&
+        !src.includes("__tests__"),
     });
   }
 

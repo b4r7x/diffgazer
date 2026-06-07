@@ -19,7 +19,9 @@ export function CommandPaletteGroup({ heading, children, className }: CommandPal
       data-slot="command-palette-group"
       className={cn("hidden has-[[role=option]]:block", className)}
     >
-      <div id={headingId} data-slot="command-palette-group-heading">{heading}</div>
+      <div id={headingId} data-slot="command-palette-group-heading">
+        {heading}
+      </div>
       <div>{children}</div>
     </div>
   );

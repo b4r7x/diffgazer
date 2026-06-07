@@ -17,13 +17,32 @@ export {
   updateManifest,
   writeJsonConfig,
 } from "./config.js";
-export { detectPackageManager, detectSourceDir, type PackageJson, type PackageManager, readPackageJson, readPackageVersion } from "./detect.js";
+export {
+  detectPackageManager,
+  detectSourceDir,
+  type PackageJson,
+  type PackageManager,
+  readPackageJson,
+  readPackageVersion,
+} from "./detect.js";
 export { registryItemToDistKey, resolveKeysHookFiles } from "./dist-keys.js";
 export type { FileOp } from "./file-write-rollback.js";
-export { atomicWriteFile, copyGeneratedDir, ensureWithinDir, isEnoent, readTsConfigPaths, writeFileSafe } from "./fs.js";
+export {
+  atomicWriteFile,
+  copyGeneratedDir,
+  ensureWithinDir,
+  isEnoent,
+  readTsConfigPaths,
+  writeFileSafe,
+} from "./fs.js";
 export { createInstallChecker } from "./install-checker.js";
 export { createItemAccessors } from "./item-accessors.js";
-export { depName, getInstalledDeps, installDepsWithSpinner, normalizeVersionSpec } from "./package-manager.js";
+export {
+  depName,
+  getInstalledDeps,
+  installDepsWithSpinner,
+  normalizeVersionSpec,
+} from "./package-manager.js";
 export { parseEnumOption } from "./parse-enum-option.js";
 export { type CliOptions, createCli, runCli } from "./program.js";
 export {

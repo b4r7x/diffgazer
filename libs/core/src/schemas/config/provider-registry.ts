@@ -57,9 +57,10 @@ export const PROVIDER_CAPABILITIES = Object.fromEntries(
 ) as Record<AIProvider, ProviderCapabilities>;
 
 export const PROVIDER_ENV_VARS = Object.fromEntries(
-  (Object.entries(PROVIDER_OVERLAY) as [AIProvider, ProviderOverlay][]).map(
-    ([id, overlay]) => [id, overlay.diffgazerEnvVar],
-  ),
+  (Object.entries(PROVIDER_OVERLAY) as [AIProvider, ProviderOverlay][]).map(([id, overlay]) => [
+    id,
+    overlay.diffgazerEnvVar,
+  ]),
 ) as Record<AIProvider, string>;
 
 /** The set of env var names that are valid for `CredentialRef` with `kind: "env"`. */

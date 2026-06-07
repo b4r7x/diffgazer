@@ -1,19 +1,13 @@
-import type { HTMLAttributes, Ref } from "react"
-import { cn } from "@/lib/utils"
+import type { HTMLAttributes, Ref } from "react";
+import { cn } from "@/lib/utils";
 
 export interface LogoProps extends HTMLAttributes<HTMLPreElement> {
-  text: string
-  asciiText?: string
-  ref?: Ref<HTMLPreElement>
+  text: string;
+  asciiText?: string;
+  ref?: Ref<HTMLPreElement>;
 }
 
-export function Logo({
-  ref,
-  text,
-  asciiText,
-  className,
-  ...props
-}: LogoProps) {
+export function Logo({ ref, text, asciiText, className, ...props }: LogoProps) {
   return (
     <pre
       ref={ref}
@@ -28,5 +22,5 @@ export function Logo({
     >
       {asciiText ?? text}
     </pre>
-  )
+  );
 }

@@ -39,8 +39,15 @@ export function MenuItem<TId extends string = string>({
   onMouseDown,
   ...rootProps
 }: MenuItemProps<TId>) {
-  const { selectedId, highlighted, activate, highlight, variant: menuVariant, idPrefix, itemRole } =
-    useMenuContext();
+  const {
+    selectedId,
+    highlighted,
+    activate,
+    highlight,
+    variant: menuVariant,
+    idPrefix,
+    itemRole,
+  } = useMenuContext();
 
   const isSelected = !disabled && selectedId === id;
   const isFocused = highlighted === id;
@@ -101,7 +108,13 @@ export function MenuItem<TId extends string = string>({
           {children}
         </HubItemLayout>
       ) : (
-        <DefaultItemLayout isFocused={isFocused} isSelected={isSelected} isDanger={isDanger} hotkey={hotkey} icon={icon}>
+        <DefaultItemLayout
+          isFocused={isFocused}
+          isSelected={isSelected}
+          isDanger={isDanger}
+          hotkey={hotkey}
+          icon={icon}
+        >
           {children}
         </DefaultItemLayout>
       )}

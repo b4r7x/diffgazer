@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import type { AgentState, StepState } from "../schemas/events/index.js";
 import { mapStepsToProgressData } from "./progress-mapping.js";
 
-function makeStep(id: StepState["id"], label: string, status: StepState["status"] = "pending"): StepState {
+function makeStep(
+  id: StepState["id"],
+  label: string,
+  status: StepState["status"] = "pending",
+): StepState {
   return { id, label, status };
 }
 

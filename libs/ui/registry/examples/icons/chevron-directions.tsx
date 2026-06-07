@@ -1,4 +1,4 @@
-import { Chevron } from "@/components/ui/icons"
+import { Chevron } from "@/components/ui/icons";
 
 export default function ChevronDirections() {
   return (
@@ -10,5 +10,5 @@ export default function ChevronDirections() {
         </div>
       ))}
     </div>
-  )
+  );
 }

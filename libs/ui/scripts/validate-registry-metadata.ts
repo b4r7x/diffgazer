@@ -1,9 +1,6 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { relative, resolve } from "node:path";
-import {
-  validatePublicComponentProps,
-  validatePublicExportShape,
-} from "./registry/exports.js";
+import { validatePublicComponentProps, validatePublicExportShape } from "./registry/exports.js";
 import {
   extractLocalImports,
   hasKeysRegistryDependency,
@@ -31,10 +28,7 @@ const ROOT = process.env.DIFFGAZER_UI_REGISTRY_ROOT
   : resolve(import.meta.dirname, "..");
 const REGISTRY_SCHEMA = "https://ui.shadcn.com/schema/registry.json";
 const KEYBOARD_NAVIGATION_INTEGRATION = "keyboard-navigation";
-const ALLOWED_REGISTRY_DEP_ORIGINS = [
-  "https://docs.b4r7.dev",
-  "https://r.b4r7.dev",
-] as const;
+const ALLOWED_REGISTRY_DEP_ORIGINS = ["https://docs.b4r7.dev", "https://r.b4r7.dev"] as const;
 
 function readJson<T>(relativePath: string): T {
   return JSON.parse(readFileSync(resolve(ROOT, relativePath), "utf-8")) as T;
@@ -118,7 +112,9 @@ function validateExamplesAvoidHiddenPaths(items: RegistryItem[]): string[] {
       if (!importedPath) continue;
 
       if (hiddenFiles.has(importedPath)) {
-        errors.push(`${exampleRelPath} imports hidden registry path "${specifier}" (resolves to ${importedPath})`);
+        errors.push(
+          `${exampleRelPath} imports hidden registry path "${specifier}" (resolves to ${importedPath})`,
+        );
       }
     }
   }
@@ -168,7 +164,9 @@ const KEYS_PEER_NAME = "@diffgazer/keys";
 // keys is therefore a REQUIRED peer for package mode: it must be present in
 // peerDependencies and must NOT be flagged optional in peerDependenciesMeta.
 function validateKeysRequiredPeer(packageJson: PackageJson, items: RegistryItem[]): string[] {
-  const hasPublicKeysItem = items.some((item) => !item.meta?.hidden && hasKeysRegistryDependency(item));
+  const hasPublicKeysItem = items.some(
+    (item) => !item.meta?.hidden && hasKeysRegistryDependency(item),
+  );
   if (!hasPublicKeysItem) return [];
 
   const errors: string[] = [];
@@ -229,13 +227,17 @@ function validate(): string[] {
   for (const item of items) {
     for (const file of item.files ?? []) {
       if (!existsSync(resolve(ROOT, file.path))) {
-        errors.push(`File declared in registry but missing from disk: ${file.path} (item: ${item.name})`);
+        errors.push(
+          `File declared in registry but missing from disk: ${file.path} (item: ${item.name})`,
+        );
       }
     }
 
     for (const dep of item.registryDependencies ?? []) {
       if (dep.startsWith("@diffgazer/keys/")) {
-        errors.push(`${item.name} uses scoped package-style keys dependency "${dep}"; use @diffgazer-keys/<hook>`);
+        errors.push(
+          `${item.name} uses scoped package-style keys dependency "${dep}"; use @diffgazer-keys/<hook>`,
+        );
       }
 
       if (dep.startsWith("http://") || dep.startsWith("https://")) {
@@ -253,7 +255,10 @@ function validate(): string[] {
       }
     }
 
-    if (itemSourceContains(item, "class-variance-authority") && !item.dependencies?.includes("class-variance-authority")) {
+    if (
+      itemSourceContains(item, "class-variance-authority") &&
+      !item.dependencies?.includes("class-variance-authority")
+    ) {
       errors.push(`${item.name} imports class-variance-authority but omits it from dependencies`);
     }
 
@@ -266,10 +271,12 @@ function validate(): string[] {
     }
 
     if (
-      hasKeysRegistryDependency(item)
-      && !item.meta?.optionalIntegrations?.includes(KEYBOARD_NAVIGATION_INTEGRATION)
+      hasKeysRegistryDependency(item) &&
+      !item.meta?.optionalIntegrations?.includes(KEYBOARD_NAVIGATION_INTEGRATION)
     ) {
-      errors.push(`${item.name} depends on keys registry hooks but omits meta.optionalIntegrations keyboard-navigation`);
+      errors.push(
+        `${item.name} depends on keys registry hooks but omits meta.optionalIntegrations keyboard-navigation`,
+      );
     }
 
     const exportPath = itemExportPath(item);
@@ -298,7 +305,9 @@ function validate(): string[] {
 
 const errors = validate();
 if (errors.length > 0) {
-  throw new Error(`Invalid @diffgazer/ui registry metadata:\n${errors.map((error) => `- ${error}`).join("\n")}`);
+  throw new Error(
+    `Invalid @diffgazer/ui registry metadata:\n${errors.map((error) => `- ${error}`).join("\n")}`,
+  );
 }
 
 console.log("[ui] registry metadata OK");

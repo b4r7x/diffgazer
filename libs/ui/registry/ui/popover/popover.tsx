@@ -55,24 +55,34 @@ export function PopoverRoot({
   });
   const contentPopupRole = triggerMode === "click" ? getContentPopupRole(children) : undefined;
 
-  const ctx: PopoverContextValue = useMemo(() => ({
-    open: openState && enabled,
-    triggerRef,
-    popoverId,
-    triggerMode,
-    popupRole: popupRoleProp ?? contentPopupRole,
-    onOpenChange: setOpenState,
-    onTriggerEnter: behavior.onTriggerEnter,
-    onTriggerLeave: behavior.onTriggerLeave,
-    onTriggerClick: behavior.onTriggerClick,
-    onContentEnter: behavior.onContentEnter,
-    onContentLeave: behavior.onContentLeave,
-    enabled,
-  }), [openState, enabled, popoverId, triggerMode, popupRoleProp, contentPopupRole, setOpenState, behavior]);
-
-  return (
-    <PopoverContext value={ctx}>{children}</PopoverContext>
+  const ctx: PopoverContextValue = useMemo(
+    () => ({
+      open: openState && enabled,
+      triggerRef,
+      popoverId,
+      triggerMode,
+      popupRole: popupRoleProp ?? contentPopupRole,
+      onOpenChange: setOpenState,
+      onTriggerEnter: behavior.onTriggerEnter,
+      onTriggerLeave: behavior.onTriggerLeave,
+      onTriggerClick: behavior.onTriggerClick,
+      onContentEnter: behavior.onContentEnter,
+      onContentLeave: behavior.onContentLeave,
+      enabled,
+    }),
+    [
+      openState,
+      enabled,
+      popoverId,
+      triggerMode,
+      popupRoleProp,
+      contentPopupRole,
+      setOpenState,
+      behavior,
+    ],
   );
+
+  return <PopoverContext value={ctx}>{children}</PopoverContext>;
 }
 
 function getContentPopupRole(children: ReactNode): PopoverPopupRole | undefined {

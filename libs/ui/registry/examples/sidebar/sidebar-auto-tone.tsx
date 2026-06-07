@@ -7,7 +7,7 @@ import {
   SidebarItemLabel,
   SidebarSection,
   SidebarSectionTitle,
-} from "@/components/ui/sidebar"
+} from "@/components/ui/sidebar";
 
 /**
  * Demonstrates `autoTone`: each item's intent dot color is derived from its
@@ -85,5 +85,5 @@ export default function SidebarAutoTone() {
         </SidebarSection>
       </SidebarContent>
     </Sidebar>
-  )
+  );
 }

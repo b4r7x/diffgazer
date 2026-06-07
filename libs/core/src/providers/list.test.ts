@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type {
-  ProviderInfo,
-  ProviderStatus,
-} from "../schemas/config/index.js";
+import type { ProviderInfo, ProviderStatus } from "../schemas/config/index.js";
 import { mapProvidersWithStatus } from "./list.js";
 
 const PROVIDERS: ProviderInfo[] = [
@@ -25,9 +22,7 @@ describe("mapProvidersWithStatus", () => {
   });
 
   it("marks provider with API key but not active as 'configured'", () => {
-    const statuses: ProviderStatus[] = [
-      { provider: "zai", hasApiKey: true, isActive: false },
-    ];
+    const statuses: ProviderStatus[] = [{ provider: "zai", hasApiKey: true, isActive: false }];
     const result = mapProvidersWithStatus(statuses, PROVIDERS);
     const zai = result.find((p) => p.id === "zai");
     expect(zai?.displayStatus).toBe("configured");

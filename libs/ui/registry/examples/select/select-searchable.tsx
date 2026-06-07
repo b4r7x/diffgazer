@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react"
+import { useState } from "react";
 import {
   Select,
   SelectContent,
@@ -8,17 +8,14 @@ import {
   SelectSearch,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@/components/ui/select";
 
 export default function SelectSearchable() {
-  const [value, setValue] = useState<string>("")
+  const [value, setValue] = useState<string>("");
 
   return (
     <div className="w-64">
-      <Select
-        value={value}
-        onChange={setValue}
-      >
+      <Select value={value} onChange={setValue}>
         <SelectTrigger>
           <SelectValue placeholder="Search commands..." />
         </SelectTrigger>
@@ -34,5 +31,5 @@ export default function SelectSearchable() {
         </SelectContent>
       </Select>
     </div>
-  )
+  );
 }

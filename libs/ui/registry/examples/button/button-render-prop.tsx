@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
 
 export default function ButtonRenderProp() {
   return (
@@ -25,5 +25,5 @@ export default function ButtonRenderProp() {
         )}
       </Button>
     </div>
-  )
+  );
 }

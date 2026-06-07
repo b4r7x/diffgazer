@@ -5,7 +5,10 @@ import { Button, type ButtonProps } from "../button/button";
 import { useDialogDismiss } from "./dialog-context";
 
 export interface DialogCloseProps
-  extends Pick<ButtonProps, "variant" | "size" | "bracket" | "className" | "disabled" | "highlighted"> {
+  extends Pick<
+    ButtonProps,
+    "variant" | "size" | "bracket" | "className" | "disabled" | "highlighted"
+  > {
   children?: ReactNode;
   onClick?: MouseEventHandler<HTMLButtonElement>;
   onFocus?: FocusEventHandler<HTMLButtonElement>;

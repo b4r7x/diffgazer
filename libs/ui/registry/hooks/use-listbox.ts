@@ -140,7 +140,12 @@ export function useListbox<TId extends string = string>({
     onChange: onHighlightChange,
   });
 
-  const activeDescendantCandidate = resolveActiveDescendant<TId>(items, highlighted, selectedId, containerRole);
+  const activeDescendantCandidate = resolveActiveDescendant<TId>(
+    items,
+    highlighted,
+    selectedId,
+    containerRole,
+  );
   const activeDescendant = items ? activeDescendantCandidate : (domActiveDescendant as TId | null);
 
   const syncDomActiveDescendant = useEffectEvent(() => {
@@ -203,7 +208,12 @@ export function useListbox<TId extends string = string>({
 
   const ensureActiveItem = useCallback(() => {
     if (activeDescendant !== null) return;
-    const firstItemId = getFirstNavigableItemId<TId>(containerRef.current, itemRole, containerRole, items);
+    const firstItemId = getFirstNavigableItemId<TId>(
+      containerRef.current,
+      itemRole,
+      containerRole,
+      items,
+    );
     if (firstItemId !== null) setHighlighted(firstItemId);
   }, [activeDescendant, containerRole, itemRole, items, setHighlighted]);
 
@@ -256,14 +266,19 @@ export function useListbox<TId extends string = string>({
     const queryText = readTypeaheadQuery(event.key);
     if (queryText === null) return;
 
-    const typeaheadItems = getListboxItems(container, itemRole, containerRole, containerRole === "menu")
-      .filter((item) => item.dataset.value !== undefined);
+    const typeaheadItems = getListboxItems(
+      container,
+      itemRole,
+      containerRole,
+      containerRole === "menu",
+    ).filter((item) => item.dataset.value !== undefined);
     if (typeaheadItems.length === 0) return;
 
     const currentValue = highlighted ?? selectedId;
-    const currentIndex = currentValue === null
-      ? -1
-      : typeaheadItems.findIndex((item) => item.dataset.value === currentValue);
+    const currentIndex =
+      currentValue === null
+        ? -1
+        : typeaheadItems.findIndex((item) => item.dataset.value === currentValue);
 
     const match = typeaheadSearch({
       items: typeaheadItems,
@@ -292,9 +307,8 @@ export function useListbox<TId extends string = string>({
     ref: composeRefs(containerRef, ref),
     role: containerRole,
     tabIndex: 0 as const,
-    "aria-activedescendant": activeDescendant !== null
-      ? getItemId(idPrefix, activeDescendant)
-      : undefined,
+    "aria-activedescendant":
+      activeDescendant !== null ? getItemId(idPrefix, activeDescendant) : undefined,
     onKeyDown: handleKeyDown,
   });
 

@@ -9,7 +9,12 @@ export interface FixPlanChecklistProps {
   className?: string;
 }
 
-export function FixPlanChecklist({ steps, completedSteps, onToggle, className }: FixPlanChecklistProps) {
+export function FixPlanChecklist({
+  steps,
+  completedSteps,
+  onToggle,
+  className,
+}: FixPlanChecklistProps) {
   return (
     <div className={cn("space-y-1 text-sm", className)}>
       {steps.map((step) => {

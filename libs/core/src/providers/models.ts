@@ -20,9 +20,7 @@ export function filterModels(
   if (trimmed) {
     const query = trimmed.toLowerCase();
     filtered = filtered.filter(
-      (m) =>
-        m.name.toLowerCase().includes(query) ||
-        m.description.toLowerCase().includes(query),
+      (m) => m.name.toLowerCase().includes(query) || m.description.toLowerCase().includes(query),
     );
   }
 

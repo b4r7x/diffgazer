@@ -63,7 +63,10 @@ function renderGemini(props: {
   const getProviderModels = vi
     .fn<() => Promise<ProviderModelsResponse>>()
     .mockResolvedValue(GEMINI_CATALOG);
-  const api = { ...createApi({ baseUrl: "http://localhost" }), getProviderModels } satisfies BoundApi;
+  const api = {
+    ...createApi({ baseUrl: "http://localhost" }),
+    getProviderModels,
+  } satisfies BoundApi;
   render(
     <ModelStep
       provider="gemini"

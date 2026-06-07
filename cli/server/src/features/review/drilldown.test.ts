@@ -39,16 +39,18 @@ const DIFF = [
 
 function makeGitService(overrides: Partial<GitService> = {}): GitService {
   return {
-    getStatus: vi.fn(async () => ok({
-      isGitRepo: true,
-      branch: "main",
-      remoteBranch: null,
-      ahead: 0,
-      behind: 0,
-      files: { staged: [], unstaged: [], untracked: [] },
-      hasChanges: true,
-      conflicted: [],
-    })),
+    getStatus: vi.fn(async () =>
+      ok({
+        isGitRepo: true,
+        branch: "main",
+        remoteBranch: null,
+        ahead: 0,
+        behind: 0,
+        files: { staged: [], unstaged: [], untracked: [] },
+        hasChanges: true,
+        conflicted: [],
+      }),
+    ),
     getDiff: async () => {
       if (failNextDiff) {
         failNextDiff = false;
@@ -90,15 +92,17 @@ async function loadReviewStorage() {
   return import("../../shared/lib/storage/reviews.js");
 }
 
-function makeMockClient(generateResult: Result<DrilldownAIResponse, AIError> = ok({
-  detailedAnalysis: "analysis",
-  rootCause: "cause",
-  impact: "impact",
-  suggestedFix: "fix",
-  patch: null,
-  relatedIssues: [],
-  references: [],
-})): AIClient {
+function makeMockClient(
+  generateResult: Result<DrilldownAIResponse, AIError> = ok({
+    detailedAnalysis: "analysis",
+    rootCause: "cause",
+    impact: "impact",
+    suggestedFix: "fix",
+    patch: null,
+    relatedIssues: [],
+    references: [],
+  }),
+): AIClient {
   return {
     provider: "openrouter",
     generate: async <T extends z.ZodType>(_prompt: string, schema: T) => {
@@ -112,7 +116,10 @@ function makeMockClient(generateResult: Result<DrilldownAIResponse, AIError> = o
   };
 }
 
-async function saveReviewWithIssues(issues: ReviewIssue[], projectPath = "/project"): Promise<void> {
+async function saveReviewWithIssues(
+  issues: ReviewIssue[],
+  projectPath = "/project",
+): Promise<void> {
   const { saveReview } = await loadReviewStorage();
   const result = await saveReview({
     reviewId: REVIEW_ID,
@@ -243,12 +250,7 @@ describe("handleDrilldownRequest", () => {
     const { handleDrilldownRequest } = await loadDrilldown();
     const { getReview } = await loadReviewStorage();
 
-    const result = await handleDrilldownRequest(
-      makeMockClient(),
-      REVIEW_ID,
-      "issue-1",
-      "/project",
-    );
+    const result = await handleDrilldownRequest(makeMockClient(), REVIEW_ID, "issue-1", "/project");
 
     expect(result.ok).toBe(true);
     expect(createGitService).not.toHaveBeenCalled();
@@ -271,18 +273,33 @@ describe("handleDrilldownRequest", () => {
   it("returns storage, git, and issue lookup failures as observable errors", async () => {
     const { handleDrilldownRequest } = await loadDrilldown();
 
-    const missingReview = await handleDrilldownRequest(makeMockClient(), REVIEW_ID, "issue-1", "/project");
+    const missingReview = await handleDrilldownRequest(
+      makeMockClient(),
+      REVIEW_ID,
+      "issue-1",
+      "/project",
+    );
     expect(missingReview.ok).toBe(false);
     if (!missingReview.ok) expect(missingReview.error.code).toBe("NOT_FOUND");
 
     await saveReviewWithIssues([makeIssue()]);
     await removeStoredDiff();
-    const missingDiff = await handleDrilldownRequest(makeMockClient(), REVIEW_ID, "issue-1", "/project");
+    const missingDiff = await handleDrilldownRequest(
+      makeMockClient(),
+      REVIEW_ID,
+      "issue-1",
+      "/project",
+    );
     expect(missingDiff.ok).toBe(false);
     if (!missingDiff.ok) expect(missingDiff.error.code).toBe("COMMAND_FAILED");
 
     await saveReviewWithIssues([makeIssue()]);
-    const missingIssue = await handleDrilldownRequest(makeMockClient(), REVIEW_ID, "missing", "/project");
+    const missingIssue = await handleDrilldownRequest(
+      makeMockClient(),
+      REVIEW_ID,
+      "missing",
+      "/project",
+    );
     expect(missingIssue.ok).toBe(false);
     if (!missingIssue.ok) expect(missingIssue.error.code).toBe("ISSUE_NOT_FOUND");
   });
@@ -292,12 +309,7 @@ describe("handleDrilldownRequest", () => {
     const { handleDrilldownRequest } = await loadDrilldown();
     const { getReview } = await loadReviewStorage();
 
-    const result = await handleDrilldownRequest(
-      makeMockClient(),
-      REVIEW_ID,
-      "issue-1",
-      "/project",
-    );
+    const result = await handleDrilldownRequest(makeMockClient(), REVIEW_ID, "issue-1", "/project");
 
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.code).toBe("NOT_FOUND");

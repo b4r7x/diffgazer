@@ -1,38 +1,36 @@
-"use client"
+"use client";
 
-import { useNavigation } from "@diffgazer/keys"
-import { useRef, useState } from "react"
-import { SearchInput } from "@/components/ui/search-input"
+import { useNavigation } from "@diffgazer/keys";
+import { useRef, useState } from "react";
+import { SearchInput } from "@/components/ui/search-input";
 
-const items = ["Components", "Hooks", "Utilities", "Themes", "Plugins"]
-const listboxId = "search-results"
+const items = ["Components", "Hooks", "Utilities", "Themes", "Plugins"];
+const listboxId = "search-results";
 
 function getOptionId(item: string) {
-  return `${listboxId}-${item.toLowerCase()}`
+  return `${listboxId}-${item.toLowerCase()}`;
 }
 
 export default function SearchInputKeyboard() {
-  const [query, setQuery] = useState("")
-  const listRef = useRef<HTMLUListElement>(null)
+  const [query, setQuery] = useState("");
+  const listRef = useRef<HTMLUListElement>(null);
 
-  const filtered = items.filter((item) =>
-    item.toLowerCase().includes(query.toLowerCase())
-  )
+  const filtered = items.filter((item) => item.toLowerCase().includes(query.toLowerCase()));
 
   const { isHighlighted, highlighted, onKeyDown, highlight } = useNavigation({
     containerRef: listRef,
     role: "option",
     wrap: true,
     onSelect: (value) => setQuery(value),
-  })
+  });
 
   return (
     <div className="w-72 border border-border">
       <SearchInput
         value={query}
         onChange={(v) => {
-          setQuery(v)
-          highlight("")
+          setQuery(v);
+          highlight("");
         }}
         placeholder="Search items..."
         role="combobox"
@@ -41,11 +39,11 @@ export default function SearchInputKeyboard() {
         aria-expanded={filtered.length > 0}
         aria-autocomplete="list"
         onEscape={() => {
-          setQuery("")
-          highlight("")
+          setQuery("");
+          highlight("");
         }}
         onEnter={() => {
-          if (highlighted) setQuery(highlighted)
+          if (highlighted) setQuery(highlighted);
         }}
         onKeyDown={onKeyDown}
       />
@@ -71,5 +69,5 @@ export default function SearchInputKeyboard() {
         ))}
       </ul>
     </div>
-  )
+  );
 }

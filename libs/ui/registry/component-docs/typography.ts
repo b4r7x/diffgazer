@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types"
+import type { ComponentDoc } from "./types";
 
 export const typographyDoc: ComponentDoc = {
   description:
@@ -21,9 +21,7 @@ export const typographyDoc: ComponentDoc = {
     },
   ],
   usage: { example: "typography-default" },
-  examples: [
-    { name: "typography-default", title: "Default" },
-  ],
+  examples: [{ name: "typography-default", title: "Default" }],
   keyboard: null,
   props: {
     Typography: {
@@ -37,7 +35,8 @@ export const typographyDoc: ComponentDoc = {
         type: '"default" | "prose" | "compact"',
         required: false,
         defaultValue: '"default"',
-        description: "Line-height token. Default for UI text, prose for long-form, compact for dense info.",
+        description:
+          "Line-height token. Default for UI text, prose for long-form, compact for dense info.",
       },
       size: {
         type: '"xs" | "sm" | "base" | "lg" | "xl" | "2xl" | "3xl"',
@@ -55,7 +54,8 @@ export const typographyDoc: ComponentDoc = {
         type: '"default" | "muted" | "foreground" | "accent"',
         required: false,
         defaultValue: '"default"',
-        description: "Text color token. Default and muted use muted-foreground, foreground uses the primary text color, accent uses the theme primary.",
+        description:
+          "Text color token. Default and muted use muted-foreground, foreground uses the primary text color, accent uses the theme primary.",
       },
       lineClamp: {
         type: "1 | 2 | 3 | 4 | 5 | 6",
@@ -77,4 +77,4 @@ export const typographyDoc: ComponentDoc = {
       },
     },
   },
-}
+};

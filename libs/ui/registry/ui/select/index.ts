@@ -7,7 +7,12 @@ import { SelectItem, type SelectItemProps } from "./select-item";
 import { SelectSearch, type SelectSearchProps } from "./select-search";
 import { SelectTags, type SelectTagsProps } from "./select-tags";
 import { SelectTrigger, type SelectTriggerProps } from "./select-trigger";
-import { SelectValue, type SelectValueDisplay, type SelectValueProps, type SelectValueRenderProps } from "./select-value";
+import {
+  SelectValue,
+  type SelectValueDisplay,
+  type SelectValueProps,
+  type SelectValueRenderProps,
+} from "./select-value";
 
 const Select = Object.assign(SelectRoot, {
   Trigger: SelectTrigger,

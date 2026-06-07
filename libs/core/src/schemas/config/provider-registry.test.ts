@@ -22,8 +22,12 @@ describe("AVAILABLE_PROVIDERS (derived from overlay)", () => {
   });
 
   it("carries each enabled provider's default model from the overlay", () => {
-    expect(AVAILABLE_PROVIDERS.find((p) => p.id === "gemini")?.defaultModel).toBe("gemini-2.5-flash");
-    expect(AVAILABLE_PROVIDERS.find((p) => p.id === "groq")?.defaultModel).toBe("meta-llama/llama-4-scout-17b-16e-instruct");
+    expect(AVAILABLE_PROVIDERS.find((p) => p.id === "gemini")?.defaultModel).toBe(
+      "gemini-2.5-flash",
+    );
+    expect(AVAILABLE_PROVIDERS.find((p) => p.id === "groq")?.defaultModel).toBe(
+      "meta-llama/llama-4-scout-17b-16e-instruct",
+    );
   });
 
   it("resolves the curated displayName override for gemini", () => {

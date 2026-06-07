@@ -40,13 +40,15 @@ interface RadioCheckEventDetail {
 }
 
 function dispatchRadioCheck(source: HTMLElement, name: string) {
-  source.ownerDocument.dispatchEvent(new CustomEvent<RadioCheckEventDetail>(RADIO_CHECK_EVENT, {
-    detail: {
-      name,
-      form: source.closest("form"),
-      source,
-    },
-  }));
+  source.ownerDocument.dispatchEvent(
+    new CustomEvent<RadioCheckEventDetail>(RADIO_CHECK_EVENT, {
+      detail: {
+        name,
+        form: source.closest("form"),
+        source,
+      },
+    }),
+  );
 }
 
 type RadioRootProps = Omit<
@@ -128,7 +130,10 @@ export function Radio({
     onChange,
   });
   const [nativeInvalid, setNativeInvalid] = useState(false);
-  const resolvedAriaInvalid = resolveAriaInvalid(ariaInvalid, nativeInvalid && required && !isChecked);
+  const resolvedAriaInvalid = resolveAriaInvalid(
+    ariaInvalid,
+    nativeInvalid && required && !isChecked,
+  );
   const resolvedAriaLabelledBy = ariaLabel
     ? undefined
     : mergeIds(ariaLabelledBy, label ? labelId : undefined);
@@ -220,7 +225,9 @@ export function Radio({
             onNativeInvalid?.();
             if (!onNativeInvalid) setNativeInvalid(true);
             const group = rootRef.current?.closest('[role="radiogroup"]');
-            const owner = group?.querySelector<HTMLElement>('[role="radio"]:not([aria-disabled="true"])');
+            const owner = group?.querySelector<HTMLElement>(
+              '[role="radio"]:not([aria-disabled="true"])',
+            );
             (owner ?? rootRef.current)?.focus();
           }}
         />
@@ -246,7 +253,7 @@ export function Radio({
           selectableVariants({ highlighted, disabled }),
           selectableContainerClass,
           description && "items-start",
-          className
+          className,
         )}
       >
         <span
@@ -260,13 +267,10 @@ export function Radio({
           {selectableIndicators[variant][isChecked ? "checked" : "unchecked"]}
         </span>
         {label && (
-          <div
-            className={cn(
-              "flex flex-col min-w-0",
-              !description && "justify-center"
-            )}
-          >
-            <span id={labelId} className={selectableLabelVariants({ size })}>{label}</span>
+          <div className={cn("flex flex-col min-w-0", !description && "justify-center")}>
+            <span id={labelId} className={selectableLabelVariants({ size })}>
+              {label}
+            </span>
             {description && (
               <span id={descriptionId} className={selectableDescriptionVariants({ highlighted })}>
                 {description}

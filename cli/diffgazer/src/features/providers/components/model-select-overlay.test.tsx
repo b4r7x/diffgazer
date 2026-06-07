@@ -97,14 +97,18 @@ function Wrapper({ children, api }: { children: ReactNode; api?: BoundApi }) {
   );
 }
 
-function countPrefixes(frame: string | undefined, name: string): {
+function countPrefixes(
+  frame: string | undefined,
+  name: string,
+): {
   highlighted: number;
   unhighlighted: number;
 } {
   if (!frame) return { highlighted: 0, unhighlighted: 0 };
   const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const highlightedMatches = frame.match(new RegExp(`>\\s+\\[\\s\\]\\s+${escaped}`, "g")) ?? [];
-  const unhighlightedMatches = frame.match(new RegExp(`(?<!>)\\s\\s+\\[\\s\\]\\s+${escaped}`, "g")) ?? [];
+  const unhighlightedMatches =
+    frame.match(new RegExp(`(?<!>)\\s\\s+\\[\\s\\]\\s+${escaped}`, "g")) ?? [];
   return {
     highlighted: highlightedMatches.length,
     unhighlighted: unhighlightedMatches.length,
@@ -223,7 +227,11 @@ const OPENROUTER_MODELS: OpenRouterModelsResponse = {
   cached: false,
 };
 
-function createDeferred<T>(): { promise: Promise<T>; resolve: (value: T) => void; reject: (reason: unknown) => void } {
+function createDeferred<T>(): {
+  promise: Promise<T>;
+  resolve: (value: T) => void;
+  reject: (reason: unknown) => void;
+} {
   let resolve!: (value: T) => void;
   let reject!: (reason: unknown) => void;
   const promise = new Promise<T>((res, rej) => {
@@ -369,7 +377,10 @@ describe("ModelSelectOverlay selected marker", () => {
 
     // The selected row renders the "[*]" check; every other row renders "[ ]".
     expect(frame.match(new RegExp(`\\[\\*\\]\\s+${escapedSelected}`)) ?? []).toHaveLength(1);
-    expect((frame.match(/\[\*\]/g) ?? []).length, `only one row should be marked selected. Frame: ${frame}`).toBe(1);
+    expect(
+      (frame.match(/\[\*\]/g) ?? []).length,
+      `only one row should be marked selected. Frame: ${frame}`,
+    ).toBe(1);
   });
 });
 
@@ -382,7 +393,10 @@ describe("ModelSelectOverlay OpenRouter compatibility", () => {
     const getOpenRouterModels = vi
       .fn<() => Promise<OpenRouterModelsResponse>>()
       .mockResolvedValue(OPENROUTER_MODELS);
-    const api = { ...createApi({ baseUrl: "http://localhost" }), getOpenRouterModels } satisfies BoundApi;
+    const api = {
+      ...createApi({ baseUrl: "http://localhost" }),
+      getOpenRouterModels,
+    } satisfies BoundApi;
 
     const { lastFrame } = render(
       <Wrapper api={api}>
@@ -410,7 +424,9 @@ describe("ModelSelectOverlay long description", () => {
     const longDescription =
       "A very long model description that easily overflows the terminal row width FULLTAILVISIBLE";
     const catalog: ProviderModelsResponse = {
-      models: [{ id: "gemini-2.5-flash", name: "Flash", description: longDescription, tier: "free" }],
+      models: [
+        { id: "gemini-2.5-flash", name: "Flash", description: longDescription, tier: "free" },
+      ],
       fetchedAt: new Date().toISOString(),
       source: "live",
       cached: false,
@@ -418,7 +434,10 @@ describe("ModelSelectOverlay long description", () => {
     const getProviderModels = vi
       .fn<() => Promise<ProviderModelsResponse>>()
       .mockResolvedValue(catalog);
-    const api = { ...createApi({ baseUrl: "http://localhost" }), getProviderModels } satisfies BoundApi;
+    const api = {
+      ...createApi({ baseUrl: "http://localhost" }),
+      getProviderModels,
+    } satisfies BoundApi;
 
     const { lastFrame } = render(
       <Wrapper api={api}>

@@ -1,6 +1,13 @@
 "use client";
 
-import { type ComponentPropsWithRef, type MouseEvent, type ReactNode, useId, useLayoutEffect, useRef } from "react";
+import {
+  type ComponentPropsWithRef,
+  type MouseEvent,
+  type ReactNode,
+  useId,
+  useLayoutEffect,
+  useRef,
+} from "react";
 import { composeRefs } from "@/lib/compose-refs";
 import { useCommandPaletteContext } from "./command-palette-context";
 import { getCommandPaletteItemDomId } from "./use-state";
@@ -67,7 +74,16 @@ export function CommandPaletteItem({
       element: isVisible ? rootRef.current : null,
     });
     return () => unregisterItem(registrationId);
-  }, [disabled, id, isVisible, onSelect, registerItem, registrationId, searchValue, unregisterItem]);
+  }, [
+    disabled,
+    id,
+    isVisible,
+    onSelect,
+    registerItem,
+    registrationId,
+    searchValue,
+    unregisterItem,
+  ]);
 
   if (!isVisible) return null;
 
@@ -101,13 +117,9 @@ export function CommandPaletteItem({
       onMouseMove={handleMouseMove}
       className={className}
     >
-      {icon !== undefined && (
-        <span data-slot="command-palette-item-icon">{icon}</span>
-      )}
+      {icon !== undefined && <span data-slot="command-palette-item-icon">{icon}</span>}
       <span data-slot="command-palette-item-label">{children}</span>
-      {shortcut ? (
-        <span data-slot="command-palette-item-shortcut">{shortcut}</span>
-      ) : null}
+      {shortcut ? <span data-slot="command-palette-item-shortcut">{shortcut}</span> : null}
     </div>
   );
 }

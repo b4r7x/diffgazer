@@ -6,7 +6,4 @@ import type { ThemeTokenKey } from "./token-keys.js";
  * generic parameter exists so callers can keep their string subtype (literal
  * hex) when annotating concrete palettes.
  */
-export type ThemeTokens<TValue extends string = string> = Record<
-  ThemeTokenKey,
-  TValue
->;
+export type ThemeTokens<TValue extends string = string> = Record<ThemeTokenKey, TValue>;

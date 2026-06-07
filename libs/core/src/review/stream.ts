@@ -1,7 +1,18 @@
 import { err, ok, type Result } from "../result.js";
-import type { AgentStreamEvent, EnrichEvent, FullReviewStreamEvent, StepEvent } from "../schemas/events/index.js";
+import type {
+  AgentStreamEvent,
+  EnrichEvent,
+  FullReviewStreamEvent,
+  StepEvent,
+} from "../schemas/events/index.js";
 import { FullReviewStreamEventSchema } from "../schemas/events/index.js";
-import type { LensId, ProfileId, ReviewError, ReviewMode, ReviewResult } from "../schemas/review/index.js";
+import type {
+  LensId,
+  ProfileId,
+  ReviewError,
+  ReviewMode,
+  ReviewResult,
+} from "../schemas/review/index.js";
 import { parseSSEStream } from "../sse-parser.js";
 
 interface StreamReviewRequest {
@@ -31,9 +42,10 @@ export type StreamReviewError = ReviewError | { code: "STREAM_ERROR"; message: s
 
 export async function processReviewStream(
   reader: ReadableStreamDefaultReader<Uint8Array>,
-  options: Omit<StreamReviewOptions, keyof StreamReviewRequest>
+  options: Omit<StreamReviewOptions, keyof StreamReviewRequest>,
 ): Promise<Result<StreamReviewResult, StreamReviewError>> {
-  const { onAgentEvent, onStepEvent, onEnrichEvent, onChunk, onLensStart, onLensComplete } = options;
+  const { onAgentEvent, onStepEvent, onEnrichEvent, onChunk, onLensStart, onLensComplete } =
+    options;
 
   const agentEvents: AgentStreamEvent[] = [];
   let reviewResult: ReviewResult | null = null;

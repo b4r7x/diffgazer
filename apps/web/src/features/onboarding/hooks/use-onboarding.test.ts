@@ -68,11 +68,7 @@ function createWrapper() {
     createElement(
       QueryClientProvider,
       { client: queryClient },
-      createElement(
-        ApiProvider,
-        { value: api },
-        createElement(ConfigProvider, null, children),
-      ),
+      createElement(ApiProvider, { value: api }, createElement(ConfigProvider, null, children)),
     );
 }
 
@@ -98,9 +94,7 @@ describe("onboarding/settings synchronization", () => {
       agentExecution: "sequential",
     };
 
-    mockGetSettings
-      .mockResolvedValueOnce(SETTINGS_FIXTURE)
-      .mockResolvedValue(updatedSettings);
+    mockGetSettings.mockResolvedValueOnce(SETTINGS_FIXTURE).mockResolvedValue(updatedSettings);
 
     const wrapper = createWrapper();
     const settingsHook = renderHook(() => useSettings(), { wrapper });

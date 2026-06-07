@@ -14,9 +14,7 @@ export default function AvatarGroupExample() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
-        <span className="text-xs font-mono text-muted-foreground">
-          overlap (default) — max=3
-        </span>
+        <span className="text-xs font-mono text-muted-foreground">overlap (default) — max=3</span>
         <AvatarGroup max={3} size="md">
           {users.map((u) => (
             <Avatar key={u.initials} fallback={u.initials} />
@@ -25,9 +23,7 @@ export default function AvatarGroupExample() {
       </div>
 
       <div className="flex flex-col gap-2">
-        <span className="text-xs font-mono text-muted-foreground">
-          spacing="gap" — max=3
-        </span>
+        <span className="text-xs font-mono text-muted-foreground">spacing="gap" — max=3</span>
         <AvatarGroup max={3} size="md" spacing="gap">
           {users.map((u) => (
             <Avatar key={u.initials} fallback={u.initials} />

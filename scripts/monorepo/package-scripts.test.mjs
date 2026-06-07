@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
 import { readFileSync } from "node:fs";
+import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { ENV } from "./artifacts/env.mjs";
 
@@ -12,10 +12,7 @@ const rootPackageJson = JSON.parse(
 // CI/release chains must run `pnpm run bench` with the strict env var or
 // breaches silently pass.
 test("test-ci runs the benchmark under strict skip mode", () => {
-  assert.match(
-    rootPackageJson.scripts["test-ci"],
-    /DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run bench/,
-  );
+  assert.match(rootPackageJson.scripts["test-ci"], /DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run bench/);
 });
 
 test("release-check runs the benchmark under strict skip mode", () => {

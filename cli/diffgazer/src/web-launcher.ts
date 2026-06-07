@@ -57,10 +57,7 @@ async function stopServers(servers: ServerController[]): Promise<void> {
   await Promise.allSettled(servers.map((server) => server.stop()));
 }
 
-async function stopWithTimeout(
-  stop: () => Promise<void>,
-  timeoutMs: number,
-): Promise<void> {
+async function stopWithTimeout(stop: () => Promise<void>, timeoutMs: number): Promise<void> {
   const timeout = new Promise<"timeout">((resolve) => {
     setTimeout(() => resolve("timeout"), timeoutMs);
   });

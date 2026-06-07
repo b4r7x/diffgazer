@@ -1,4 +1,8 @@
-import { HISTORY_SECTION_ALL_ID, resolveSelectedDateId, resolveSelectedRunId } from "@diffgazer/core/review";
+import {
+  HISTORY_SECTION_ALL_ID,
+  resolveSelectedDateId,
+  resolveSelectedRunId,
+} from "@diffgazer/core/review";
 import { describe, expect, it } from "vitest";
 import type { Run } from "@/features/history/types";
 

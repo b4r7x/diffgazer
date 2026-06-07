@@ -13,11 +13,7 @@ import {
 import type { SeverityCounts } from "@diffgazer/core/schemas/presentation";
 import type { ReviewIssue, ReviewMetadata } from "@diffgazer/core/schemas/review";
 import { useState } from "react";
-import {
-  type MappedRun,
-  nextHistoryZone,
-  sortIssuesBySeverity,
-} from "../lib/history-run-mapping";
+import { type MappedRun, nextHistoryZone, sortIssuesBySeverity } from "../lib/history-run-mapping";
 import type { HistoryFocusZone } from "../types";
 
 export type { MappedRun } from "../lib/history-run-mapping";
@@ -56,7 +52,9 @@ interface UseHistoryScreenOptions {
   onOpenReview: (runId: string) => void;
 }
 
-export function useHistoryScreen({ onOpenReview }: UseHistoryScreenOptions): UseHistoryScreenResult {
+export function useHistoryScreen({
+  onOpenReview,
+}: UseHistoryScreenOptions): UseHistoryScreenResult {
   const reviewsQuery = useReviews();
   const reviews = reviewsQuery.data?.reviews ?? [];
 

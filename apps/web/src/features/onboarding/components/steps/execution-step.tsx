@@ -33,9 +33,7 @@ export function ExecutionStep({
 
   return (
     <div className="space-y-3">
-      <div className="text-sm font-mono text-tui-fg/60">
-        Agent Execution Mode:
-      </div>
+      <div className="text-sm font-mono text-tui-fg/60">Agent Execution Mode:</div>
       <RadioGroup
         value={value}
         onChange={(nextValue) => {

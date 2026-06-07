@@ -28,11 +28,7 @@ export function rewriteImportsForTargetLayout(
     RELATIVE_IMPORT,
     (match: string, prefix: string, quote: string, specifier: string) => {
       const resolvedSource = posix.normalize(posix.join(sourceDir, specifier));
-      const candidates = [
-        resolvedSource,
-        `${resolvedSource}.ts`,
-        `${resolvedSource}.tsx`,
-      ];
+      const candidates = [resolvedSource, `${resolvedSource}.ts`, `${resolvedSource}.tsx`];
 
       let resolvedTarget: string | null = null;
       for (const candidate of candidates) {
@@ -70,8 +66,14 @@ interface PublicRegistryIndexJson {
 }
 
 function buildItemPathMaps(registryPath: string): Map<string, Map<string, string>> {
-  interface RegistryFile { path: string; target?: string }
-  interface RegistryItem { name: string; files?: RegistryFile[] }
+  interface RegistryFile {
+    path: string;
+    target?: string;
+  }
+  interface RegistryItem {
+    name: string;
+    files?: RegistryFile[];
+  }
   const registry = JSON.parse(readFileSync(registryPath, "utf-8")) as { items?: RegistryItem[] };
   const maps = new Map<string, Map<string, string>>();
   for (const item of registry.items ?? []) {
@@ -107,7 +109,9 @@ export function assertNoRelativeJsImports(outputDir: string): void {
   for (const entry of readdirSync(outputDir)) {
     if (!entry.endsWith(".json")) continue;
 
-    const item = JSON.parse(readFileSync(join(outputDir, entry), "utf-8")) as PublicRegistryItemJson;
+    const item = JSON.parse(
+      readFileSync(join(outputDir, entry), "utf-8"),
+    ) as PublicRegistryItemJson;
     for (const file of item.files ?? []) {
       if (typeof file.content !== "string") continue;
       const matches = file.content.match(new RegExp(RELATIVE_JS_IMPORT.source, "g"));

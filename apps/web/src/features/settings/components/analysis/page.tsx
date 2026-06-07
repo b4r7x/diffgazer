@@ -92,18 +92,12 @@ export function SettingsAnalysisPage() {
 
   const pendingUI = matchQueryState(settingsQuery, {
     loading: () => (
-      <CardLayout
-        title="Analysis Settings"
-        subtitle="Choose which agents run during reviews."
-      >
+      <CardLayout title="Analysis Settings" subtitle="Choose which agents run during reviews.">
         <p className="text-tui-muted">Loading settings...</p>
       </CardLayout>
     ),
     error: (err) => (
-      <CardLayout
-        title="Analysis Settings"
-        subtitle="Choose which agents run during reviews."
-      >
+      <CardLayout title="Analysis Settings" subtitle="Choose which agents run during reviews.">
         <p className="text-tui-red text-sm">{err.message}</p>
       </CardLayout>
     ),
@@ -154,9 +148,7 @@ export function SettingsAnalysisPage() {
             }
           }}
         />
-        {!hasLensSelection && (
-          <p className="text-tui-red text-xs">Select at least one agent.</p>
-        )}
+        {!hasLensSelection && <p className="text-tui-red text-xs">Select at least one agent.</p>}
       </div>
       {error && <p className="text-tui-red text-sm">{error}</p>}
     </CardLayout>

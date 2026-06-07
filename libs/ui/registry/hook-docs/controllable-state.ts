@@ -1,4 +1,4 @@
-import type { HookDoc } from "@diffgazer/registry"
+import type { HookDoc } from "@diffgazer/registry";
 
 export const controllableStateDoc: HookDoc = {
   description:
@@ -16,8 +16,7 @@ export const controllableStateDoc: HookDoc = {
       name: "value",
       type: "T | undefined",
       required: false,
-      description:
-        "Controlled value. When provided, the component is in controlled mode.",
+      description: "Controlled value. When provided, the component is in controlled mode.",
     },
     {
       name: "defaultValue",
@@ -29,8 +28,7 @@ export const controllableStateDoc: HookDoc = {
       name: "onChange",
       type: "(value: T) => void",
       required: false,
-      description:
-        "Called when the value changes, in both controlled and uncontrolled modes.",
+      description: "Called when the value changes, in both controlled and uncontrolled modes.",
     },
   ],
   returns: {
@@ -42,22 +40,19 @@ export const controllableStateDoc: HookDoc = {
         name: "currentValue",
         type: "T",
         required: true,
-        description:
-          "The current value, whether controlled or uncontrolled.",
+        description: "The current value, whether controlled or uncontrolled.",
       },
       {
         name: "setValue",
         type: "(next: T | ((prev: T) => T)) => void",
         required: true,
-        description:
-          "State setter that works in both modes. Supports functional updates.",
+        description: "State setter that works in both modes. Supports functional updates.",
       },
       {
         name: "isControlled",
         type: "boolean",
         required: true,
-        description:
-          "Whether the consumer is driving the value externally.",
+        description: "Whether the consumer is driving the value externally.",
       },
     ],
   },
@@ -78,4 +73,4 @@ export const controllableStateDoc: HookDoc = {
     { name: "controllable-state-toggle", title: "Toggle" },
   ],
   tags: ["hook", "state", "controlled", "uncontrolled"],
-}
+};

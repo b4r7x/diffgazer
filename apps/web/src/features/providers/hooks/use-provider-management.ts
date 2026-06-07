@@ -6,13 +6,7 @@ import { useState } from "react";
 import { useProviders } from "./use-providers";
 
 export function useProviderManagement() {
-  const {
-    providers,
-    isLoading,
-    saveApiKey,
-    removeApiKey,
-    selectProvider,
-  } = useProviders();
+  const { providers, isLoading, saveApiKey, removeApiKey, selectProvider } = useProviders();
   const [apiKeyDialogOpen, setApiKeyDialogOpen] = useState(false);
   const [modelDialogOpen, setModelDialogOpen] = useState(false);
   const { isSubmitting, withGuard } = useSubmitGuard();

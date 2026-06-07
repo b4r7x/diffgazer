@@ -4,9 +4,7 @@ export function parseEnumOption<T extends string>(
   optionName: string,
 ): T {
   if (!(validValues as readonly string[]).includes(value)) {
-    throw new Error(
-      `Invalid ${optionName}: "${value}". Must be one of: ${validValues.join(", ")}`,
-    );
+    throw new Error(`Invalid ${optionName}: "${value}". Must be one of: ${validValues.join(", ")}`);
   }
   return value as T;
 }

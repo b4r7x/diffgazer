@@ -45,20 +45,34 @@ export interface ApiClientConfig {
 export type ResponseValidator<T> = (body: unknown) => T;
 
 export interface ApiClient {
-  get: <T>(path: string, params?: Record<string, string>, schema?: ResponseValidator<T>) => Promise<T>;
-  post: <T>(path: string, body?: unknown, options?: Omit<RequestOptions, "body" | "params">, schema?: ResponseValidator<T>) => Promise<T>;
-  put: <T>(path: string, body?: unknown, options?: Omit<RequestOptions, "body" | "params">, schema?: ResponseValidator<T>) => Promise<T>;
-  delete: <T>(path: string, params?: Record<string, string>, schema?: ResponseValidator<T>) => Promise<T>;
+  get: <T>(
+    path: string,
+    params?: Record<string, string>,
+    schema?: ResponseValidator<T>,
+  ) => Promise<T>;
+  post: <T>(
+    path: string,
+    body?: unknown,
+    options?: Omit<RequestOptions, "body" | "params">,
+    schema?: ResponseValidator<T>,
+  ) => Promise<T>;
+  put: <T>(
+    path: string,
+    body?: unknown,
+    options?: Omit<RequestOptions, "body" | "params">,
+    schema?: ResponseValidator<T>,
+  ) => Promise<T>;
+  delete: <T>(
+    path: string,
+    params?: Record<string, string>,
+    schema?: ResponseValidator<T>,
+  ) => Promise<T>;
   /**
    * Issue a raw HTTP request and return the unparsed `Response`. Used for
    * streaming bodies (SSE) and any endpoint where the caller does not want
    * the client to consume the body as JSON.
    */
-  request: (
-    method: string,
-    path: string,
-    options?: RequestOptions
-  ) => Promise<Response>;
+  request: (method: string, path: string, options?: RequestOptions) => Promise<Response>;
 }
 
 export interface TrustResponse {

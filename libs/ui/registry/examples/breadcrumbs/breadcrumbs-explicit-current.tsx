@@ -1,4 +1,4 @@
-import { Breadcrumbs } from "@/components/ui/breadcrumbs"
+import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 
 export default function BreadcrumbsExplicitCurrent() {
   return (
@@ -11,5 +11,5 @@ export default function BreadcrumbsExplicitCurrent() {
       </Breadcrumbs.Item>
       <Breadcrumbs.Item>Breadcrumbs</Breadcrumbs.Item>
     </Breadcrumbs>
-  )
+  );
 }

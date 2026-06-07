@@ -109,5 +109,10 @@ export function usePresence({
     return () => clearTimeout(timer);
   }, [exitFallbackMs, phase]);
 
-  return { present: phase !== "hidden", exiting: phase === "closing", onAnimationEnd, onAnimationCancel } as const;
+  return {
+    present: phase !== "hidden",
+    exiting: phase === "closing",
+    onAnimationEnd,
+    onAnimationCancel,
+  } as const;
 }

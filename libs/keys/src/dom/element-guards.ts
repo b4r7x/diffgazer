@@ -18,19 +18,17 @@ export function isHTMLTextAreaElement(value: unknown): value is HTMLTextAreaElem
   return Boolean(View && value instanceof View.HTMLTextAreaElement);
 }
 
-export function isNode(value: unknown, ownerView: (Window & typeof globalThis) | null): value is Node {
+export function isNode(
+  value: unknown,
+  ownerView: (Window & typeof globalThis) | null,
+): value is Node {
   return Boolean(ownerView && value instanceof ownerView.Node);
 }
 
 export function isInputElement(target: EventTarget | null): boolean {
   if (!isHTMLElement(target)) return false;
   const tag = target.tagName.toLowerCase();
-  return (
-    tag === "input" ||
-    tag === "textarea" ||
-    tag === "select" ||
-    target.isContentEditable
-  );
+  return tag === "input" || tag === "textarea" || tag === "select" || target.isContentEditable;
 }
 
 const NON_EDITABLE_INPUT_TYPES = new Set([

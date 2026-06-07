@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -6,7 +6,7 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
+} from "@/components/ui/card";
 
 export default function CardArticle() {
   return (
@@ -54,5 +54,5 @@ export default function CardArticle() {
         </CardFooter>
       </Card>
     </div>
-  )
+  );
 }

@@ -35,10 +35,7 @@ const agentStarted = {
 describe("processReviewStream", () => {
   it("returns the complete review result and collected agent events", async () => {
     const result = await processReviewStream(
-      createSSEReader([
-        agentStarted,
-        { type: "complete", reviewId: "r1", result: reviewResult },
-      ]),
+      createSSEReader([agentStarted, { type: "complete", reviewId: "r1", result: reviewResult }]),
       {},
     );
 
@@ -65,7 +62,12 @@ describe("processReviewStream", () => {
 
     const incompleteResult = await processReviewStream(
       createSSEReader([
-        { type: "review_started", reviewId: "r1", filesTotal: 3, timestamp: "2025-01-01T00:00:00Z" },
+        {
+          type: "review_started",
+          reviewId: "r1",
+          filesTotal: 3,
+          timestamp: "2025-01-01T00:00:00Z",
+        },
       ]),
       {},
     );
@@ -89,7 +91,12 @@ describe("processReviewStream", () => {
 
     const result = await processReviewStream(
       createSSEReader([
-        { type: "review_started", reviewId: "r1", filesTotal: 5, timestamp: "2025-01-01T00:00:00Z" },
+        {
+          type: "review_started",
+          reviewId: "r1",
+          filesTotal: 5,
+          timestamp: "2025-01-01T00:00:00Z",
+        },
         { type: "step_start", step: "diff", timestamp: "2025-01-01T00:00:00Z" },
         { type: "step_complete", step: "diff", timestamp: "2025-01-01T00:00:01Z" },
         agentStarted,
@@ -122,7 +129,9 @@ describe("processReviewStream", () => {
       expect.objectContaining({ type: "step_complete", step: "diff" }),
     ]);
     expect(agentEvents).toEqual([expect.objectContaining({ type: "agent_start" })]);
-    expect(enrichEvents).toEqual([expect.objectContaining({ type: "enrich_progress", issueId: "i1" })]);
+    expect(enrichEvents).toEqual([
+      expect.objectContaining({ type: "enrich_progress", issueId: "i1" }),
+    ]);
     expect(chunks).toEqual(["partial"]);
     expect(lensesStarted).toEqual([{ lens: "security", index: 1, total: 2 }]);
     expect(lensesCompleted).toEqual(["security"]);

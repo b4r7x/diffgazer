@@ -3,12 +3,7 @@ import { resolve } from "node:path";
 import type { Logger } from "../logger.js";
 import { findExamples } from "./examples.js";
 import { type DocsHighlighter, type HighlightLanguage, highlightCode } from "./highlight.js";
-import type {
-  CodeBlockLine,
-  EnrichedHookData,
-  HookDoc,
-  HookSourceData,
-} from "./types.js";
+import type { CodeBlockLine, EnrichedHookData, HookDoc, HookSourceData } from "./types.js";
 
 export interface HookRegistryItem {
   name: string;
@@ -32,7 +27,7 @@ export interface GenerateEnrichedHookDataOptions extends GenerateHooksSourceOpti
 }
 
 export function generateHooksSource(
-  options: GenerateHooksSourceOptions
+  options: GenerateHooksSourceOptions,
 ): Record<string, HookSourceData> {
   const { items, rootDir, highlighter, themeName, lang = "typescript", logger } = options;
   const data: Record<string, HookSourceData> = {};
@@ -65,7 +60,7 @@ export function generateHooksSource(
 }
 
 export async function generateEnrichedHookData(
-  options: GenerateEnrichedHookDataOptions
+  options: GenerateEnrichedHookDataOptions,
 ): Promise<Record<string, EnrichedHookData>> {
   const {
     items,
@@ -151,7 +146,7 @@ export async function generateEnrichedHookData(
 function findExampleFile(
   examplesDir: string,
   hookName: string,
-  exampleName: string
+  exampleName: string,
 ): string | null {
   const hookDir = resolve(examplesDir, hookName);
   if (!existsSync(hookDir)) return null;

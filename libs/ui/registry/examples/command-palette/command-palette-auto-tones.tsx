@@ -17,13 +17,25 @@ export default function CommandPaletteAutoTones() {
           <CommandPalette.List>
             <CommandPalette.Empty>No matching commands.</CommandPalette.Empty>
             <CommandPalette.Group heading="Suggestions">
-              <CommandPaletteHighlightItem id="go-history">Go to History</CommandPaletteHighlightItem>
-              <CommandPaletteHighlightItem id="open-settings">Open Settings</CommandPaletteHighlightItem>
+              <CommandPaletteHighlightItem id="go-history">
+                Go to History
+              </CommandPaletteHighlightItem>
+              <CommandPaletteHighlightItem id="open-settings">
+                Open Settings
+              </CommandPaletteHighlightItem>
               <CommandPaletteHighlightItem id="run-tests">Run tests</CommandPaletteHighlightItem>
-              <CommandPaletteHighlightItem id="deploy-prod">Deploy production</CommandPaletteHighlightItem>
-              <CommandPaletteHighlightItem id="ask-ai">Ask the assistant</CommandPaletteHighlightItem>
-              <CommandPaletteHighlightItem id="toggle-theme">Toggle theme</CommandPaletteHighlightItem>
-              <CommandPaletteHighlightItem id="delete-branch">Delete branch</CommandPaletteHighlightItem>
+              <CommandPaletteHighlightItem id="deploy-prod">
+                Deploy production
+              </CommandPaletteHighlightItem>
+              <CommandPaletteHighlightItem id="ask-ai">
+                Ask the assistant
+              </CommandPaletteHighlightItem>
+              <CommandPaletteHighlightItem id="toggle-theme">
+                Toggle theme
+              </CommandPaletteHighlightItem>
+              <CommandPaletteHighlightItem id="delete-branch">
+                Delete branch
+              </CommandPaletteHighlightItem>
               <CommandPaletteHighlightItem id="logout">Log out</CommandPaletteHighlightItem>
             </CommandPalette.Group>
           </CommandPalette.List>

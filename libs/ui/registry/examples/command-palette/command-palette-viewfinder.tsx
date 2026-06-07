@@ -17,7 +17,9 @@ export default function CommandPaletteViewfinder() {
             <CommandPalette.Empty>No matching commands.</CommandPalette.Empty>
             <CommandPalette.Group heading="Suggested">
               <CommandPalette.Item id="history">Go to History</CommandPalette.Item>
-              <CommandPalette.Item id="theme" shortcut="⌘T">Switch Theme</CommandPalette.Item>
+              <CommandPalette.Item id="theme" shortcut="⌘T">
+                Switch Theme
+              </CommandPalette.Item>
               <CommandPalette.Item id="export">Export PDF</CommandPalette.Item>
             </CommandPalette.Group>
           </CommandPalette.List>

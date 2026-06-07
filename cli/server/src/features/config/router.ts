@@ -3,11 +3,22 @@ import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { getProjectRoot } from "../../shared/lib/http/request.js";
-import { type ErrorStatus, errorResponse, zodErrorHandler } from "../../shared/lib/http/response.js";
-import { createBodyLimitMiddleware, DEFAULT_BODY_LIMIT_KB } from "../../shared/middlewares/body-limit.js";
+import {
+  type ErrorStatus,
+  errorResponse,
+  zodErrorHandler,
+} from "../../shared/lib/http/response.js";
+import {
+  createBodyLimitMiddleware,
+  DEFAULT_BODY_LIMIT_KB,
+} from "../../shared/middlewares/body-limit.js";
 import { createRateLimitMiddleware } from "../../shared/middlewares/rate-limit.js";
 import { requireRepoAccess } from "../../shared/middlewares/trust-guard.js";
-import { ActivateProviderBodySchema, ProviderModelsParamSchema, ProviderParamSchema } from "./schemas.js";
+import {
+  ActivateProviderBodySchema,
+  ProviderModelsParamSchema,
+  ProviderParamSchema,
+} from "./schemas.js";
 import {
   activateProvider,
   checkConfig,
@@ -25,8 +36,14 @@ import {
 const configRouter = new Hono();
 
 const bodyLimitMiddleware = createBodyLimitMiddleware(DEFAULT_BODY_LIMIT_KB);
-const openRouterModelFetchLimit = createRateLimitMiddleware("config:openrouter-models", { maxRequests: 30, windowMs: 60_000 });
-const catalogModelFetchLimit = createRateLimitMiddleware("config:catalog-models", { maxRequests: 30, windowMs: 60_000 });
+const openRouterModelFetchLimit = createRateLimitMiddleware("config:openrouter-models", {
+  maxRequests: 30,
+  windowMs: 60_000,
+});
+const catalogModelFetchLimit = createRateLimitMiddleware("config:catalog-models", {
+  maxRequests: 30,
+  windowMs: 60_000,
+});
 
 configRouter.get("/init", (c): Response => {
   const projectRoot = getProjectRoot(c);
@@ -48,12 +65,7 @@ configRouter.get("/", (c): Response => {
     return errorResponse(c, result.error.message, result.error.code, 400);
   }
   if (!result.value) {
-    return errorResponse(
-      c,
-      "Configuration not found",
-      ErrorCode.CONFIG_NOT_FOUND,
-      404,
-    );
+    return errorResponse(c, "Configuration not found", ErrorCode.CONFIG_NOT_FOUND, 404);
   }
   return c.json(result.value);
 });
@@ -63,14 +75,18 @@ configRouter.get("/providers", (c): Response => {
   return c.json(data);
 });
 
-configRouter.get("/provider/openrouter/models", openRouterModelFetchLimit, async (c): Promise<Response> => {
-  const result = await getOpenRouterModels();
-  if (!result.ok) {
-    const status = result.error.code === ErrorCode.API_KEY_MISSING ? 400 : 500;
-    return errorResponse(c, result.error.message, result.error.code, status);
-  }
-  return c.json(result.value);
-});
+configRouter.get(
+  "/provider/openrouter/models",
+  openRouterModelFetchLimit,
+  async (c): Promise<Response> => {
+    const result = await getOpenRouterModels();
+    if (!result.ok) {
+      const status = result.error.code === ErrorCode.API_KEY_MISSING ? 400 : 500;
+      return errorResponse(c, result.error.message, result.error.code, status);
+    }
+    return c.json(result.value);
+  },
+);
 
 const PROVIDER_MODELS_ERROR_STATUS: Record<ProviderModelsErrorCode, ErrorStatus> = {
   [ErrorCode.VALIDATION_ERROR]: 400,

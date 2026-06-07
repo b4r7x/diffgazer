@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { NavigationList } from "@/components/ui/navigation-list"
+import { useState } from "react";
+import { NavigationList } from "@/components/ui/navigation-list";
 
 export default function NavigationListDefault() {
-  const [selected, setSelected] = useState("review-1")
+  const [selected, setSelected] = useState("review-1");
 
   return (
     <NavigationList selectedId={selected} onSelect={setSelected} aria-label="Reviews">
@@ -37,5 +37,5 @@ export default function NavigationListDefault() {
         </NavigationList.Meta>
       </NavigationList.Item>
     </NavigationList>
-  )
+  );
 }

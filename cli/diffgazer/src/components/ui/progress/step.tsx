@@ -1,7 +1,4 @@
-import type {
-  ProgressStatus,
-  ProgressSubstepData,
-} from "@diffgazer/core/schemas/presentation";
+import type { ProgressStatus, ProgressSubstepData } from "@diffgazer/core/schemas/presentation";
 import { Box, Text } from "ink";
 import { useTheme } from "../../../app/providers/theme";
 import type { CliColorTokens } from "../../../theme/palettes";
@@ -48,12 +45,7 @@ function getSubstepColor(status: SubstepStatus, tokens: CliColorTokens): string 
   return tokens.fg;
 }
 
-export function ProgressStep({
-  name,
-  status,
-  substeps,
-  duration,
-}: ProgressStepProps) {
+export function ProgressStep({ name, status, substeps, duration }: ProgressStepProps) {
   const { tokens } = useTheme();
 
   const stepColor = getStepColor(status, tokens);
@@ -70,9 +62,7 @@ export function ProgressStep({
       <Box gap={1}>
         {icon}
         <Text color={stepColor}>{name}</Text>
-        {duration != null ? (
-          <Text color={tokens.muted}>({duration}ms)</Text>
-        ) : null}
+        {duration != null ? <Text color={tokens.muted}>({duration}ms)</Text> : null}
       </Box>
       {substeps && substeps.length > 0 ? (
         <Box flexDirection="column" marginLeft={3}>
@@ -81,12 +71,8 @@ export function ProgressStep({
               <Badge variant={SUBSTEP_BADGE_VARIANT[sub.status]} size="sm">
                 {sub.tag}
               </Badge>
-              <Text color={getSubstepColor(sub.status, tokens)}>
-                {sub.label}
-              </Text>
-              {sub.detail ? (
-                <Text color={tokens.muted}>{sub.detail}</Text>
-              ) : null}
+              <Text color={getSubstepColor(sub.status, tokens)}>{sub.label}</Text>
+              {sub.detail ? <Text color={tokens.muted}>{sub.detail}</Text> : null}
             </Box>
           ))}
         </Box>

@@ -11,8 +11,16 @@ export function resolveSyncOutputPaths(
     contentDir: resolveInside(docsRoot, paths.contentDir, "docs content output path"),
     generatedDir: resolveInside(docsRoot, paths.generatedDir, "docs generated output path"),
     registryDir: resolveInside(docsRoot, paths.registryDir, "docs registry output path"),
-    publicRegistryDir: resolveInside(docsRoot, paths.publicRegistryDir, "docs public registry output path"),
-    libraryAssetsDir: resolveInside(docsRoot, paths.libraryAssetsDir, "docs library assets output path"),
+    publicRegistryDir: resolveInside(
+      docsRoot,
+      paths.publicRegistryDir,
+      "docs public registry output path",
+    ),
+    libraryAssetsDir: resolveInside(
+      docsRoot,
+      paths.libraryAssetsDir,
+      "docs library assets output path",
+    ),
     stateFilePath: resolveInside(docsRoot, paths.stateFile, "docs sync state output path"),
   };
 }

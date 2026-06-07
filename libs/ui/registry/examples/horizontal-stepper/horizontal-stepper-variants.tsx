@@ -1,17 +1,20 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { HorizontalStepper, type HorizontalStepperVariant } from "@/components/ui/horizontal-stepper"
-import { ToggleGroup } from "@/components/ui/toggle-group"
+import { useState } from "react";
+import {
+  HorizontalStepper,
+  type HorizontalStepperVariant,
+} from "@/components/ui/horizontal-stepper";
+import { ToggleGroup } from "@/components/ui/toggle-group";
 
 const VARIANTS: { value: HorizontalStepperVariant; label: string }[] = [
   { value: "ascii", label: "ascii" },
   { value: "numbered", label: "numbered" },
   { value: "breadcrumb", label: "breadcrumb" },
-]
+];
 
 export default function HorizontalStepperVariants() {
-  const [variant, setVariant] = useState<HorizontalStepperVariant>("ascii")
+  const [variant, setVariant] = useState<HorizontalStepperVariant>("ascii");
 
   return (
     <div className="flex flex-col gap-4">
@@ -39,5 +42,5 @@ export default function HorizontalStepperVariants() {
         <HorizontalStepper.Step value="verify">Verify</HorizontalStepper.Step>
       </HorizontalStepper>
     </div>
-  )
+  );
 }

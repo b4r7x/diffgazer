@@ -1,5 +1,5 @@
-import { Field } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 
 export default function FieldInput() {
   return (
@@ -11,5 +11,5 @@ export default function FieldInput() {
       <Field.Description>Used for review notifications.</Field.Description>
       <Field.Error>Email is required.</Field.Error>
     </Field>
-  )
+  );
 }

@@ -1,4 +1,4 @@
-import { ScrollArea } from "@/components/ui/scroll-area"
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function ScrollAreaBoth() {
   return (
@@ -12,5 +12,5 @@ export default function ScrollAreaBoth() {
         ))}
       </div>
     </ScrollArea>
-  )
+  );
 }

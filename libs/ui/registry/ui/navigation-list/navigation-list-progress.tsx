@@ -73,7 +73,8 @@ export function NavigationListProgress({
         className,
       )}
     >
-      {bar}{label}
+      {bar}
+      {label}
     </span>
   );
 }

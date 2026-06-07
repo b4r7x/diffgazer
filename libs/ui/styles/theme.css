@@ -16,10 +16,10 @@
   --tui-selection: #333333;
 
   /* Accent colors - simplified for minimal theme */
-  --tui-blue: #ccccff;  /* light for links */
+  --tui-blue: #ccccff; /* light for links */
   --tui-violet: #787878;
   --tui-green: #e5e5e5; /* white for success in minimal */
-  --tui-red: #ff7b72;   /* keep for error */
+  --tui-red: #ff7b72; /* keep for error */
   --tui-yellow: #d29922; /* keep for warning */
 
   /* Code syntax palette (shared by Fumadocs + generated snippets) */
@@ -35,8 +35,9 @@
   --code-variable: var(--tui-fg);
   --code-type: var(--tui-blue);
 
-  --tui-font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
-    "Liberation Mono", monospace;
+  --tui-font-mono:
+    "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono",
+    monospace;
 
   /* Semantic mappings */
   --background: var(--tui-bg);

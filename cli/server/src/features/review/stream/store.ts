@@ -64,9 +64,7 @@ function isCapWarningEvent(event: FullReviewStreamEvent | undefined): boolean {
   return event?.type === "chunk" && event.content === CAP_WARNING_CONTENT;
 }
 
-type StoreEventResult =
-  | { stored: true }
-  | { stored: false; firstDrop: boolean };
+type StoreEventResult = { stored: true } | { stored: false; firstDrop: boolean };
 
 /**
  * Appends an event to the session buffer, bounding growth at
@@ -84,7 +82,9 @@ function storeSessionEvent(session: ActiveSession, event: FullReviewStreamEvent)
   const firstDrop = !session.capWarningEmitted;
   if (firstDrop) {
     session.capWarningEmitted = true;
-    console.warn(`[sessions] Event cap (${MAX_EVENTS_PER_SESSION}) reached for session ${session.reviewId}`);
+    console.warn(
+      `[sessions] Event cap (${MAX_EVENTS_PER_SESSION}) reached for session ${session.reviewId}`,
+    );
   }
 
   if (!isTerminalEvent(event)) {
@@ -105,8 +105,8 @@ function storeSessionEvent(session: ActiveSession, event: FullReviewStreamEvent)
 }
 
 function notifySubscribers(session: ActiveSession, event: FullReviewStreamEvent): void {
-  const handleError = (e: unknown) => console.error('Subscriber callback error:', e);
-  session.subscribers.forEach(cb => {
+  const handleError = (e: unknown) => console.error("Subscriber callback error:", e);
+  session.subscribers.forEach((cb) => {
     try {
       Promise.resolve(cb(event)).catch(handleError);
     } catch (e) {
@@ -116,11 +116,11 @@ function notifySubscribers(session: ActiveSession, event: FullReviewStreamEvent)
 }
 
 function notifyCompletion(session: ActiveSession): void {
-  session.completionListeners.forEach(cb => {
+  session.completionListeners.forEach((cb) => {
     try {
       cb();
     } catch (e) {
-      console.error('Completion listener error:', e);
+      console.error("Completion listener error:", e);
     }
   });
   session.completionListeners.clear();
@@ -312,7 +312,7 @@ export function cancelStaleSessionsForProjectMode(
   projectPath: string,
   mode: ReviewMode,
   headCommit: string,
-  statusHash: string
+  statusHash: string,
 ): void {
   if (!headCommit || !statusHash) {
     return;
@@ -331,7 +331,7 @@ export function cancelStaleSessionsForProjectMode(
 
 export function subscribe(
   reviewId: string,
-  callback: (event: FullReviewStreamEvent) => void
+  callback: (event: FullReviewStreamEvent) => void,
 ): (() => void) | null {
   const session = activeSessions.get(reviewId);
   if (session) {
@@ -341,10 +341,7 @@ export function subscribe(
   return null;
 }
 
-export function onSessionComplete(
-  reviewId: string,
-  callback: () => void
-): (() => void) | null {
+export function onSessionComplete(reviewId: string, callback: () => void): (() => void) | null {
   const session = activeSessions.get(reviewId);
   if (!session) return null;
   if (session.isComplete) {

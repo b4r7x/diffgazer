@@ -38,10 +38,17 @@ export const labelWrapperVariants = cva(
 );
 
 export type LabelColor = NonNullable<VariantProps<typeof labelVariants>["color"]>;
-export type LabelOrientation = NonNullable<VariantProps<typeof labelWrapperVariants>["orientation"]>;
+export type LabelOrientation = NonNullable<
+  VariantProps<typeof labelWrapperVariants>["orientation"]
+>;
 
 function RequiredIndicator() {
-  return <span className="text-destructive" aria-hidden="true"> *</span>;
+  return (
+    <span className="text-destructive" aria-hidden="true">
+      {" "}
+      *
+    </span>
+  );
 }
 
 export function Label({

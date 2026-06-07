@@ -7,7 +7,9 @@ const DEFAULT_DIR_MODE = 0o700;
 const DEFAULT_FILE_MODE = 0o600;
 
 export const isNodeError = (error: unknown, code?: string): error is NodeJS.ErrnoException =>
-  error instanceof Error && "code" in error && (code === undefined || (error as NodeJS.ErrnoException).code === code);
+  error instanceof Error &&
+  "code" in error &&
+  (code === undefined || (error as NodeJS.ErrnoException).code === code);
 
 const ensureDirSync = (dirPath: string, mode: number = DEFAULT_DIR_MODE): void => {
   fs.mkdirSync(dirPath, { recursive: true, mode });
@@ -54,7 +56,7 @@ export const readJsonFileSync = <T>(filePath: string): T | null => {
 export const writeJsonFileSync = (
   filePath: string,
   data: unknown,
-  mode: number = DEFAULT_FILE_MODE
+  mode: number = DEFAULT_FILE_MODE,
 ): void => {
   const dir = path.dirname(filePath);
   ensureDirSync(dir, DEFAULT_DIR_MODE);
@@ -89,7 +91,7 @@ export const readJsonFile = async <T>(filePath: string): Promise<T | null> => {
 export async function writeJsonFile(
   filePath: string,
   data: unknown,
-  mode: number = DEFAULT_FILE_MODE
+  mode: number = DEFAULT_FILE_MODE,
 ): Promise<void> {
   const dir = path.dirname(filePath);
   await fs.promises.mkdir(dir, { recursive: true, mode: DEFAULT_DIR_MODE });
@@ -103,7 +105,9 @@ export async function writeJsonFile(
   } catch (error) {
     // Best-effort temp-file cleanup; the original error is what callers need, and
     // a leftover .tmp on an unlink failure is harmless (it is uniquely named).
-    try { await fs.promises.unlink(tempPath); } catch {}
+    try {
+      await fs.promises.unlink(tempPath);
+    } catch {}
     throw error;
   }
 }
@@ -111,7 +115,7 @@ export async function writeJsonFile(
 export async function atomicWriteFile(
   filePath: string,
   content: string,
-  mode: number = DEFAULT_FILE_MODE
+  mode: number = DEFAULT_FILE_MODE,
 ): Promise<void> {
   const tempPath = `${filePath}.${randomUUID()}.tmp`;
   try {
@@ -120,7 +124,9 @@ export async function atomicWriteFile(
   } catch (error) {
     // Best-effort temp-file cleanup; the original error is what callers need, and
     // a leftover .tmp on an unlink failure is harmless (it is uniquely named).
-    try { await fs.promises.unlink(tempPath); } catch {}
+    try {
+      await fs.promises.unlink(tempPath);
+    } catch {}
     throw error;
   }
 }

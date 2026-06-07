@@ -147,7 +147,9 @@ export function SettingsStoragePage() {
           <Callout.Content>Changes will take effect immediately after saving.</Callout.Content>
         </Callout>
 
-        {(error || settingsError) && <p className="text-tui-red text-sm">{error || settingsError}</p>}
+        {(error || settingsError) && (
+          <p className="text-tui-red text-sm">{error || settingsError}</p>
+        )}
       </div>
     </CardLayout>
   );

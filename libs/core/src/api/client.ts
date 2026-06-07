@@ -1,5 +1,11 @@
 import { SHUTDOWN_TOKEN_HEADER } from "./protocol.js";
-import type { ApiClient, ApiClientConfig, ApiError, RequestOptions, ResponseValidator } from "./types.js";
+import type {
+  ApiClient,
+  ApiClientConfig,
+  ApiError,
+  RequestOptions,
+  ResponseValidator,
+} from "./types.js";
 
 function createApiError(message: string, status: number, code?: string): ApiError {
   const error = new Error(message) as ApiError;
@@ -52,11 +58,7 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
     return body as T;
   }
 
-  async function send(
-    method: string,
-    path: string,
-    options?: RequestOptions,
-  ): Promise<Response> {
+  async function send(method: string, path: string, options?: RequestOptions): Promise<Response> {
     const normalizedPath = path.startsWith("/") ? path : `/${path}`;
     let url = `${normalizedBaseUrl}${normalizedPath}`;
     if (options?.params) {
@@ -89,7 +91,7 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
       throw createApiError(
         responseBody?.error?.message ?? `HTTP ${response.status}`,
         response.status,
-        responseBody?.error?.code
+        responseBody?.error?.code,
       );
     }
 
@@ -97,19 +99,37 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
   }
 
   return {
-    get: async <T>(path: string, params?: Record<string, string>, schema?: ResponseValidator<T>): Promise<T> => {
+    get: async <T>(
+      path: string,
+      params?: Record<string, string>,
+      schema?: ResponseValidator<T>,
+    ): Promise<T> => {
       const response = await send("GET", path, { params });
       return parse<T>(response, schema);
     },
-    post: async <T>(path: string, body?: unknown, options?: Omit<RequestOptions, "body" | "params">, schema?: ResponseValidator<T>): Promise<T> => {
+    post: async <T>(
+      path: string,
+      body?: unknown,
+      options?: Omit<RequestOptions, "body" | "params">,
+      schema?: ResponseValidator<T>,
+    ): Promise<T> => {
       const response = await send("POST", path, { body, ...options });
       return parse<T>(response, schema);
     },
-    put: async <T>(path: string, body?: unknown, options?: Omit<RequestOptions, "body" | "params">, schema?: ResponseValidator<T>): Promise<T> => {
+    put: async <T>(
+      path: string,
+      body?: unknown,
+      options?: Omit<RequestOptions, "body" | "params">,
+      schema?: ResponseValidator<T>,
+    ): Promise<T> => {
       const response = await send("PUT", path, { body, ...options });
       return parse<T>(response, schema);
     },
-    delete: async <T>(path: string, params?: Record<string, string>, schema?: ResponseValidator<T>): Promise<T> => {
+    delete: async <T>(
+      path: string,
+      params?: Record<string, string>,
+      schema?: ResponseValidator<T>,
+    ): Promise<T> => {
       const response = await send("DELETE", path, { params });
       return parse<T>(response, schema);
     },

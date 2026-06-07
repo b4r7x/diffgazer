@@ -1,4 +1,4 @@
-import { Callout } from "@/components/ui/callout"
+import { Callout } from "@/components/ui/callout";
 
 export default function CalloutTones() {
   return (
@@ -34,5 +34,5 @@ export default function CalloutTones() {
         <Callout.Dismiss />
       </Callout>
     </div>
-  )
+  );
 }

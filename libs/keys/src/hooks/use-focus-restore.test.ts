@@ -63,9 +63,7 @@ describe("useFocusRestore", () => {
   it("uses fallback when the captured target is unavailable", () => {
     const trigger = button("Trigger");
     const fallback = button("Fallback");
-    const focusRestore = renderHook(() =>
-      useFocusRestore({ fallback, restoreOnUnmount: false }),
-    );
+    const focusRestore = renderHook(() => useFocusRestore({ fallback, restoreOnUnmount: false }));
 
     trigger.focus();
     act(() => {

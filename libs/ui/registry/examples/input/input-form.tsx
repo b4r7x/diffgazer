@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react"
-import { Field } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
+import { useState } from "react";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function InputForm() {
-  const [name, setName] = useState("")
-  const [email, setEmail] = useState("")
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   return (
     <div className="flex flex-col gap-4 max-w-sm">
       <Field>
@@ -19,7 +19,12 @@ export default function InputForm() {
       <Field>
         <Field.Label>Email</Field.Label>
         <Field.Control>
-          <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
+          <Input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
+          />
         </Field.Control>
       </Field>
       <Field>
@@ -29,5 +34,5 @@ export default function InputForm() {
         </Field.Control>
       </Field>
     </div>
-  )
+  );
 }

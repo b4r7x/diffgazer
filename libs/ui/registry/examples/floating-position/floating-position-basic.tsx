@@ -1,17 +1,17 @@
 "use client";
 
-import { useRef, useState } from "react"
-import { useFloatingPosition } from "@/hooks/use-floating-position"
+import { useRef, useState } from "react";
+import { useFloatingPosition } from "@/hooks/use-floating-position";
 
 export default function FloatingPositionBasicExample() {
-  const [open, setOpen] = useState(false)
-  const triggerRef = useRef<HTMLButtonElement>(null)
+  const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const { position, contentRef } = useFloatingPosition({
     triggerRef,
     open,
     side: "bottom",
     align: "start",
-  })
+  });
 
   return (
     <div className="relative py-12">
@@ -41,5 +41,5 @@ export default function FloatingPositionBasicExample() {
         </div>
       )}
     </div>
-  )
+  );
 }

@@ -16,7 +16,14 @@ interface EnsureSameValueParams {
   fixCommand: string;
 }
 
-function ensureSameValue({ label, a, b, defaultValue, itemName, fixCommand }: EnsureSameValueParams): void {
+function ensureSameValue({
+  label,
+  a,
+  b,
+  defaultValue,
+  itemName,
+  fixCommand,
+}: EnsureSameValueParams): void {
   const left = defaultValue !== undefined ? (a ?? defaultValue) : a;
   const right = defaultValue !== undefined ? (b ?? defaultValue) : b;
   if (JSON.stringify(left) !== JSON.stringify(right)) {
@@ -34,15 +41,8 @@ export interface ValidatePublicRegistryFreshOptions {
   fixCommand: string;
   sourceRegistryPath?: string;
   publicRegistryDir?: string;
-  transformSourceItem?: (ctx: {
-    itemName: string;
-    item: RegistryItem;
-  }) => RegistryItem;
-  transformSourceContent?: (ctx: {
-    itemName: string;
-    filePath: string;
-    content: string;
-  }) => string;
+  transformSourceItem?: (ctx: { itemName: string; item: RegistryItem }) => RegistryItem;
+  transformSourceContent?: (ctx: { itemName: string; filePath: string; content: string }) => string;
 }
 
 const PublicItemSchema = RegistryItemSchema.extend({
@@ -54,8 +54,16 @@ const PublicItemSchema = RegistryItemSchema.extend({
 const itemFields = (Object.keys(RegistryItemSchema.shape) as (keyof RegistryItem)[]).filter(
   (field) => field !== "files",
 );
-const fileMetadataFields = Object.keys(RegistryFileSchema.shape).filter((field) => field !== "content");
-const arrayDefaultFields = new Set(["dependencies", "registryDependencies", "devDependencies", "envVars", "categories"]);
+const fileMetadataFields = Object.keys(RegistryFileSchema.shape).filter(
+  (field) => field !== "content",
+);
+const arrayDefaultFields = new Set([
+  "dependencies",
+  "registryDependencies",
+  "devDependencies",
+  "envVars",
+  "categories",
+]);
 
 function compareItemFields(
   prefix: string,
@@ -96,7 +104,10 @@ export function validatePublicRegistryFresh(options: ValidatePublicRegistryFresh
   } = options;
 
   const sourceRegistry = readJson(resolve(rootDir, sourceRegistryPath), RegistrySchema);
-  const publicRegistry = readJson(resolve(rootDir, publicRegistryDir, "registry.json"), RegistrySchema);
+  const publicRegistry = readJson(
+    resolve(rootDir, publicRegistryDir, "registry.json"),
+    RegistrySchema,
+  );
   const allSourceItems = sourceRegistry.items;
   // Hidden items are intentionally stripped from the public registry index by
   // afterBuild transforms. Only compare visible items for the count check.
@@ -108,19 +119,19 @@ export function validatePublicRegistryFresh(options: ValidatePublicRegistryFresh
 
   if (visibleSourceItems.length !== publicItems.length) {
     throw new Error(
-      [
-        "Public registry item count does not match source registry.",
-        `Run: ${fixCommand}`,
-      ].join("\n"),
+      ["Public registry item count does not match source registry.", `Run: ${fixCommand}`].join(
+        "\n",
+      ),
     );
   }
 
   for (const sourceItem of allSourceItems) {
     const isHidden = (sourceItem.meta as Record<string, unknown> | undefined)?.hidden;
-    const expectedItem = transformSourceItem?.({
-      itemName: sourceItem.name,
-      item: sourceItem,
-    }) ?? sourceItem;
+    const expectedItem =
+      transformSourceItem?.({
+        itemName: sourceItem.name,
+        item: sourceItem,
+      }) ?? sourceItem;
 
     // Visible items must appear in the public registry index.
     // Hidden items are stripped from the index by afterBuild transforms,
@@ -129,10 +140,7 @@ export function validatePublicRegistryFresh(options: ValidatePublicRegistryFresh
       const publicItem = publicByName.get(sourceItem.name);
       if (!publicItem) {
         throw new Error(
-          [
-            `Public registry missing item "${sourceItem.name}".`,
-            `Run: ${fixCommand}`,
-          ].join("\n"),
+          [`Public registry missing item "${sourceItem.name}".`, `Run: ${fixCommand}`].join("\n"),
         );
       }
 
@@ -167,7 +175,9 @@ export function validatePublicRegistryFresh(options: ValidatePublicRegistryFresh
       if (file.target) ensureSafeFilePath(file.target, sourceItem.name, "public registry");
     }
 
-    const publicFilesByPath = new Map((publicItemJson.files ?? []).map((file) => [file.path, file]));
+    const publicFilesByPath = new Map(
+      (publicItemJson.files ?? []).map((file) => [file.path, file]),
+    );
 
     compareItemFields("item JSON ", expectedItem, publicItemJson, sourceItem.name, fixCommand);
 
@@ -186,11 +196,12 @@ export function validatePublicRegistryFresh(options: ValidatePublicRegistryFresh
       ensureExists(sourcePath, `source registry file (${sourceItem.name})`);
 
       const rawContent = readFileSync(sourcePath, "utf-8");
-      const sourceContent = transformSourceContent?.({
-        itemName: sourceItem.name,
-        filePath: expectedFile.path,
-        content: rawContent,
-      }) ?? rawContent;
+      const sourceContent =
+        transformSourceContent?.({
+          itemName: sourceItem.name,
+          filePath: expectedFile.path,
+          content: rawContent,
+        }) ?? rawContent;
       const publicFile = publicFilesByPath.get(expectedFile.path);
 
       if (!publicFile || typeof publicFile.content !== "string") {

@@ -1,8 +1,4 @@
-export function downloadAsFile(
-  content: string,
-  filename: string,
-  mimeType = "text/plain",
-): void {
+export function downloadAsFile(content: string, filename: string, mimeType = "text/plain"): void {
   const blob = new Blob([content], { type: mimeType });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");

@@ -16,11 +16,7 @@ export interface UseKeyOptions {
   preventDefault?: boolean;
 }
 
-export function useKey(
-  hotkey: string,
-  handler: KeyHandler,
-  options?: UseKeyOptions,
-): void;
+export function useKey(hotkey: string, handler: KeyHandler, options?: UseKeyOptions): void;
 
 export function useKey(
   hotkeys: readonly string[],
@@ -28,10 +24,7 @@ export function useKey(
   options?: UseKeyOptions,
 ): void;
 
-export function useKey(
-  handlers: Record<string, KeyHandler>,
-  options?: UseKeyOptions,
-): void;
+export function useKey(handlers: Record<string, KeyHandler>, options?: UseKeyOptions): void;
 
 export function useKey(
   first: string | readonly string[] | Record<string, KeyHandler>,
@@ -52,9 +45,7 @@ export function useKey(
   const focusWithinOnly = options?.focusWithinOnly;
   const preventDefault = options?.preventDefault;
 
-  const dispatch = useEffectEvent((key: string, event: KeyboardEvent) => (
-    handlerMap[key]?.(event)
-  ));
+  const dispatch = useEffectEvent((key: string, event: KeyboardEvent) => handlerMap[key]?.(event));
 
   const registrationKeys = Object.keys(handlerMap).sort();
   const registrationVersion = registrationKeys.map((key) => `${key.length}:${key}`).join("|");

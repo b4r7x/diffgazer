@@ -1,12 +1,16 @@
-import type { AnalysisStats, IssuePreview, SeverityCounts } from '@diffgazer/core/schemas/presentation';
-import { Button } from '@diffgazer/ui/components/button';
-import { Panel, PanelContent } from '@diffgazer/ui/components/panel';
-import { SectionHeader } from '@diffgazer/ui/components/section-header';
-import { Typography } from '@diffgazer/ui/components/typography';
-import { cn } from '@diffgazer/ui/lib/utils';
-import { SeverityBreakdown } from '@/components/ui/severity/breakdown';
-import { IssuePreviewItem } from './issue-preview-item';
-import { type LensStats, LensStatsTable } from './lens-stats-table';
+import type {
+  AnalysisStats,
+  IssuePreview,
+  SeverityCounts,
+} from "@diffgazer/core/schemas/presentation";
+import { Button } from "@diffgazer/ui/components/button";
+import { Panel, PanelContent } from "@diffgazer/ui/components/panel";
+import { SectionHeader } from "@diffgazer/ui/components/section-header";
+import { Typography } from "@diffgazer/ui/components/typography";
+import { cn } from "@diffgazer/ui/lib/utils";
+import { SeverityBreakdown } from "@/components/ui/severity/breakdown";
+import { IssuePreviewItem } from "./issue-preview-item";
+import { type LensStats, LensStatsTable } from "./lens-stats-table";
 
 export type { IssuePreview };
 
@@ -30,18 +34,22 @@ export function AnalysisSummary({
   className,
 }: AnalysisSummaryProps) {
   return (
-    <div className={cn('flex flex-col gap-6', className)}>
+    <div className={cn("flex flex-col gap-6", className)}>
       <div className="border-l-4 border-tui-green pl-6 py-2 bg-tui-selection/20">
         <Typography as="h1" size="2xl" className="text-tui-green mb-2">
           Analysis Complete #{stats.runId}
         </Typography>
         <p className="text-sm text-tui-muted">
-          Found <span className="text-tui-fg font-bold">{stats.totalIssues} issues</span> across{' '}
+          Found <span className="text-tui-fg font-bold">{stats.totalIssues} issues</span> across{" "}
           <span className="text-tui-fg font-bold">{stats.filesAnalyzed} files</span>.
           {stats.criticalCount > 0 && (
             <>
-              {' '}Security lens flagged{' '}
-              <span className="text-tui-red font-bold">{stats.criticalCount} critical blockers</span>.
+              {" "}
+              Security lens flagged{" "}
+              <span className="text-tui-red font-bold">
+                {stats.criticalCount} critical blockers
+              </span>
+              .
             </>
           )}
         </p>
@@ -69,7 +77,11 @@ export function AnalysisSummary({
 
       {topIssues.length > 0 && (
         <div>
-          <Typography as="h3" size="sm" className="text-tui-violet mb-3 flex items-center gap-2 uppercase tracking-wider">
+          <Typography
+            as="h3"
+            size="sm"
+            className="text-tui-violet mb-3 flex items-center gap-2 uppercase tracking-wider"
+          >
             <span aria-hidden="true">!</span> Top Issues Preview
           </Typography>
           <div className="border border-tui-border rounded-sm overflow-hidden">

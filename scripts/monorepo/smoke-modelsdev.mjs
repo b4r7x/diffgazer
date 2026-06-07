@@ -1,14 +1,14 @@
 #!/usr/bin/env node
-import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { ENV } from "./artifacts/env.mjs";
-import { networkAllowed } from "./smoke-shared.mjs";
 import {
   assertCatalogProviders,
   enabledSnapshotProviders,
   findSnapshotInBundle,
 } from "./artifacts/smoke-modelsdev.mjs";
+import { networkAllowed } from "./smoke-shared.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const LABEL = "live models.dev catalog";
@@ -21,32 +21,37 @@ const DIFFGAZER_DIST = resolve(root, "cli/diffgazer/dist");
 function assertSnapshotInlinedInBundle(snapshotMarker) {
   if (!existsSync(DIFFGAZER_DIST)) {
     const message =
-      `diffgazer bundle not built at ${DIFFGAZER_DIST}; cannot verify the snapshot is `
-      + `inlined. Run \`pnpm --filter diffgazer build\` first`;
+      `diffgazer bundle not built at ${DIFFGAZER_DIST}; cannot verify the snapshot is ` +
+      `inlined. Run \`pnpm --filter diffgazer build\` first`;
     if (process.env[ENV.smokeStrictSkips] === "1") {
       throw new Error(`${message} (or unset ${ENV.smokeStrictSkips}).`);
     }
-    console.log(`SKIP: snapshot tsup-inlining check (${message}; set ${ENV.smokeStrictSkips}=1 to fail).`);
+    console.log(
+      `SKIP: snapshot tsup-inlining check (${message}; set ${ENV.smokeStrictSkips}=1 to fail).`,
+    );
     return;
   }
 
   const bundleFiles = readdirSync(DIFFGAZER_DIST)
     .filter((name) => name.endsWith(".js"))
     .map((name) => resolve(DIFFGAZER_DIST, name));
-  const match = findSnapshotInBundle(bundleFiles, (path) => readFileSync(path, "utf8"), snapshotMarker);
+  const match = findSnapshotInBundle(
+    bundleFiles,
+    (path) => readFileSync(path, "utf8"),
+    snapshotMarker,
+  );
   if (!match) {
     throw new Error(
-      `diffgazer bundle does not inline CATALOG_SNAPSHOT: '${snapshotMarker}' not found in `
-      + `${DIFFGAZER_DIST}. A blank first-run picker would ship. Check tsup noExternal for @diffgazer/core.`,
+      `diffgazer bundle does not inline CATALOG_SNAPSHOT: '${snapshotMarker}' not found in ` +
+        `${DIFFGAZER_DIST}. A blank first-run picker would ship. Check tsup noExternal for @diffgazer/core.`,
     );
   }
   console.log(`OK: CATALOG_SNAPSHOT inlined in diffgazer bundle (found '${snapshotMarker}')`);
 }
 
 async function run() {
-  const { catalogToModelInfo, CATALOG_SNAPSHOT, parseModelsDevCatalog, PROVIDER_OVERLAY } = await import(
-    resolve(root, "libs/core/dist/catalog/index.js")
-  );
+  const { catalogToModelInfo, CATALOG_SNAPSHOT, parseModelsDevCatalog, PROVIDER_OVERLAY } =
+    await import(resolve(root, "libs/core/dist/catalog/index.js"));
 
   const enabledProviders = enabledSnapshotProviders(PROVIDER_OVERLAY);
 

@@ -1,10 +1,10 @@
-import type { ReviewStreamState } from '@diffgazer/core/api/hooks';
-import { useReviewLifecycleBase } from '@diffgazer/core/api/hooks';
-import type { ReviewIssue, ReviewMode } from '@diffgazer/core/schemas/review';
-import { toast } from '@diffgazer/ui/components/toast';
-import { useNavigate, useParams } from '@tanstack/react-router';
-import { useRef } from 'react';
-import { useConfigData } from '@/app/providers/config';
+import type { ReviewStreamState } from "@diffgazer/core/api/hooks";
+import { useReviewLifecycleBase } from "@diffgazer/core/api/hooks";
+import type { ReviewIssue, ReviewMode } from "@diffgazer/core/schemas/review";
+import { toast } from "@diffgazer/ui/components/toast";
+import { useNavigate, useParams } from "@tanstack/react-router";
+import { useRef } from "react";
+import { useConfigData } from "@/app/providers/config";
 
 export interface ReviewCompleteData {
   issues: ReviewIssue[];
@@ -17,7 +17,11 @@ interface UseReviewLifecycleOptions {
   onStreamNotFound?: (reviewId: string) => void;
 }
 
-export function useReviewLifecycle({ mode, onComplete, onStreamNotFound }: UseReviewLifecycleOptions) {
+export function useReviewLifecycle({
+  mode,
+  onComplete,
+  onStreamNotFound,
+}: UseReviewLifecycleOptions) {
   const navigate = useNavigate();
   const params = useParams({ strict: false });
   const { isConfigured, provider, model, isLoading: configLoading } = useConfigData();
@@ -44,12 +48,14 @@ export function useReviewLifecycle({ mode, onComplete, onStreamNotFound }: UseRe
       if (onStreamNotFoundRef.current) {
         onStreamNotFoundRef.current(reviewId);
       } else {
-        navigate({ to: '/' });
+        navigate({ to: "/" });
       }
     },
     onStaleSession: () => {
-      toast.error('Session Expired', { message: 'The review session has become stale. Please start a new review.' });
-      navigate({ to: '/' });
+      toast.error("Session Expired", {
+        message: "The review session has become stale. Please start a new review.",
+      });
+      navigate({ to: "/" });
     },
   });
 
@@ -57,7 +63,7 @@ export function useReviewLifecycle({ mode, onComplete, onStreamNotFound }: UseRe
 
   const handleCancel = () => {
     base.stream.cancel(streamStateRef.current?.reviewId ?? null);
-    navigate({ to: '/' });
+    navigate({ to: "/" });
   };
 
   const handleViewResults = () => {
@@ -66,12 +72,12 @@ export function useReviewLifecycle({ mode, onComplete, onStreamNotFound }: UseRe
 
   const handleSetupProvider = () => {
     base.stream.cancel(streamStateRef.current?.reviewId ?? null);
-    navigate({ to: '/settings/providers' });
+    navigate({ to: "/settings/providers" });
   };
 
   const handleSwitchMode = () => {
     base.stream.cancel(streamStateRef.current?.reviewId ?? null);
-    navigate({ to: '/', replace: true });
+    navigate({ to: "/", replace: true });
   };
 
   return {

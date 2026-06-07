@@ -2,7 +2,13 @@ import { usePageFooter } from "@diffgazer/core/footer";
 import type { Shortcut } from "@diffgazer/core/schemas/presentation";
 import { SEVERITY_ORDER } from "@diffgazer/core/schemas/presentation";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
-import { findNavigationItemByValue, getNavigationItems, useFocusZone, useKey, useScopedNavigation } from "@diffgazer/keys";
+import {
+  findNavigationItemByValue,
+  getNavigationItems,
+  useFocusZone,
+  useKey,
+  useScopedNavigation,
+} from "@diffgazer/keys";
 import { useCanGoBack, useLocation, useRouter } from "@tanstack/react-router";
 import { type KeyboardEvent, useRef, useState } from "react";
 import { RESET_FILTER_VALUE } from "@/features/review/components/severity-filter-group";
@@ -73,7 +79,10 @@ function severityFilterToKey(filter: ReadonlySet<ReviewIssue["severity"]>): stri
   return Array.from(filter).sort().join(",");
 }
 
-export function useReviewResultsKeyboard({ issues, initialIssueId }: UseReviewResultsKeyboardOptions) {
+export function useReviewResultsKeyboard({
+  issues,
+  initialIssueId,
+}: UseReviewResultsKeyboardOptions) {
   const router = useRouter();
   const canGoBack = useCanGoBack();
   const { pathname } = useLocation();
@@ -92,16 +101,27 @@ export function useReviewResultsKeyboard({ issues, initialIssueId }: UseReviewRe
   } = useSeverityFilter({ issues });
 
   const { selectedIssue, selectedIssueId, setSelectedIssueId, highlightedIssueId, listRef } =
-    useIssueSelection({ filteredIssues, sourceKey: severityFilterToKey(severityFilter), initialIssueId });
+    useIssueSelection({
+      filteredIssues,
+      sourceKey: severityFilterToKey(severityFilter),
+      initialIssueId,
+    });
 
-  const { activeTab, setActiveTab, completedSteps, handleToggleStep, detailsScrollRef, moveTab, scrollDetails } =
-    useIssueDetailsTabs({ selectedIssue });
+  const {
+    activeTab,
+    setActiveTab,
+    completedSteps,
+    handleToggleStep,
+    detailsScrollRef,
+    moveTab,
+    scrollDetails,
+  } = useIssueDetailsTabs({ selectedIssue });
 
   const lastFilterIndex = SEVERITY_ORDER.length - 1;
   const resetIndex = SEVERITY_ORDER.length;
 
   const focusTargetValueForIndex = (index: number): string =>
-    index === resetIndex ? RESET_FILTER_VALUE : SEVERITY_ORDER[index] ?? SEVERITY_ORDER[0];
+    index === resetIndex ? RESET_FILTER_VALUE : (SEVERITY_ORDER[index] ?? SEVERITY_ORDER[0]);
 
   useFocusZone({
     initial: "list" as FocusZone,
@@ -119,10 +139,12 @@ export function useReviewResultsKeyboard({ issues, initialIssueId }: UseReviewRe
               type: "button",
               value: focusTargetValueForIndex(focusedFilterIndex),
               ownerSelector: null,
-            }) ?? getNavigationItems(filterRef.current, {
+            }) ??
+            getNavigationItems(filterRef.current, {
               type: "button",
               ownerSelector: null,
-            })[0] ?? filterRef.current,
+            })[0] ??
+            filterRef.current,
         },
         list: listRef,
         details: detailsScrollRef,
@@ -188,14 +210,18 @@ export function useReviewResultsKeyboard({ issues, initialIssueId }: UseReviewRe
     enabled: focusZone === "list" && filteredIssues.length === 0,
   });
 
-  useKey("Escape", () => {
-    const action = resolveBackAction(pathname, canGoBack);
-    if (action.type === "navigate") {
-      void router.navigate({ to: action.to });
-    } else if (action.type === "history") {
-      router.history.back();
-    }
-  }, { scope: REVIEW_SCOPE });
+  useKey(
+    "Escape",
+    () => {
+      const action = resolveBackAction(pathname, canGoBack);
+      if (action.type === "navigate") {
+        void router.navigate({ to: action.to });
+      } else if (action.type === "history") {
+        router.history.back();
+      }
+    },
+    { scope: REVIEW_SCOPE },
+  );
 
   const handleSeverityFilterBoundary = (direction: "previous" | "next") => {
     if (direction !== "next") return;

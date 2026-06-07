@@ -1,38 +1,36 @@
 import {
-	CodeBlock,
-	CodeBlockContent,
-	CodeBlockHeader,
-	CodeBlockLabel,
+  CodeBlock,
+  CodeBlockContent,
+  CodeBlockHeader,
+  CodeBlockLabel,
 } from "@diffgazer/ui/components/code-block";
 import { CopyButton } from "@/components/copy-button";
 
 interface CssOutputProps {
-	primitives: Record<string, string>;
-	defaults: Record<string, string>;
+  primitives: Record<string, string>;
+  defaults: Record<string, string>;
 }
 
 export function CssOutput({ primitives, defaults }: CssOutputProps) {
-	const changed = Object.entries(primitives).filter(
-		([key, val]) => val !== defaults[key],
-	);
+  const changed = Object.entries(primitives).filter(([key, val]) => val !== defaults[key]);
 
-	if (changed.length === 0) {
-		return (
-			<p className="text-xs text-muted-foreground font-mono">
-				No changes yet. Edit a color above to generate CSS.
-			</p>
-		);
-	}
+  if (changed.length === 0) {
+    return (
+      <p className="text-xs text-muted-foreground font-mono">
+        No changes yet. Edit a color above to generate CSS.
+      </p>
+    );
+  }
 
-	const css = `:root {\n${changed.map(([k, v]) => `  ${k}: ${v};`).join("\n")}\n}`;
+  const css = `:root {\n${changed.map(([k, v]) => `  ${k}: ${v};`).join("\n")}\n}`;
 
-	return (
-		<CodeBlock>
-			<CodeBlockHeader>
-				<CodeBlockLabel>css</CodeBlockLabel>
-				<CopyButton text={css} />
-			</CodeBlockHeader>
-			<CodeBlockContent>{css}</CodeBlockContent>
-		</CodeBlock>
-	);
+  return (
+    <CodeBlock>
+      <CodeBlockHeader>
+        <CodeBlockLabel>css</CodeBlockLabel>
+        <CopyButton text={css} />
+      </CodeBlockHeader>
+      <CodeBlockContent>{css}</CodeBlockContent>
+    </CodeBlock>
+  );
 }

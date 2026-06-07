@@ -45,10 +45,7 @@ interface PassiveTestHarnessProps {
   children?: ReactNode;
 }
 
-function PassiveTestHarness({
-  onListBoundaryNext,
-  children,
-}: PassiveTestHarnessProps) {
+function PassiveTestHarness({ onListBoundaryNext, children }: PassiveTestHarnessProps) {
   const [value, setValue] = useState<TrustCapabilities>({
     readFiles: true,
     runCommands: false,
@@ -316,7 +313,7 @@ describe("TrustPermissionsContent", () => {
     render(
       <KeyboardProvider>
         <Host />
-      </KeyboardProvider>
+      </KeyboardProvider>,
     );
 
     await user.keyboard("s");

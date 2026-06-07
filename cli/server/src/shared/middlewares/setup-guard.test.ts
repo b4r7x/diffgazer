@@ -69,7 +69,7 @@ describe("requireSetup", () => {
     const app = await createApp();
 
     const response = await request(app);
-    const body = await response.json() as {
+    const body = (await response.json()) as {
       error: { code: string; message: string };
     };
 
@@ -86,7 +86,7 @@ describe("requireSetup", () => {
     const app = await createApp();
 
     const response = await request(app);
-    const body = await response.json() as { ok: boolean };
+    const body = (await response.json()) as { ok: boolean };
 
     expect(response.status).toBe(200);
     expect(body).toEqual({ ok: true });

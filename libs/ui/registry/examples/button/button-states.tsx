@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
 
 export default function ButtonStates() {
   return (
@@ -10,9 +10,11 @@ export default function ButtonStates() {
       </div>
       <div className="flex items-center gap-3">
         <Button loading>Loading</Button>
-        <Button bracket loading>Loading</Button>
+        <Button bracket loading>
+          Loading
+        </Button>
         <Button disabled>Disabled</Button>
       </div>
     </div>
-  )
+  );
 }

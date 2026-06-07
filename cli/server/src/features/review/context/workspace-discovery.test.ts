@@ -31,13 +31,7 @@ describe("discoverWorkspacePackages", () => {
   it("includes exact pnpm workspace package entries", async () => {
     await writeProjectFile(
       "pnpm-workspace.yaml",
-      [
-        "packages:",
-        '  - "apps/*"',
-        '  - "libs/*"',
-        '  - "libs/keys/artifacts"',
-        "",
-      ].join("\n"),
+      ["packages:", '  - "apps/*"', '  - "libs/*"', '  - "libs/keys/artifacts"', ""].join("\n"),
     );
     await writePackage("apps/web", "@diffgazer/web");
     await writePackage("libs/keys", "@diffgazer/keys");
@@ -59,12 +53,7 @@ describe("discoverWorkspacePackages", () => {
   it("deduplicates packages matched by both a glob and an exact entry", async () => {
     await writeProjectFile(
       "pnpm-workspace.yaml",
-      [
-        "packages:",
-        '  - "packages/*"',
-        '  - "packages/core"',
-        "",
-      ].join("\n"),
+      ["packages:", '  - "packages/*"', '  - "packages/core"', ""].join("\n"),
     );
     await writePackage("packages/core", "@diffgazer/core");
 

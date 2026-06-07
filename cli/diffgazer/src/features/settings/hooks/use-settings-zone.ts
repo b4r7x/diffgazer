@@ -53,7 +53,6 @@ export function useSettingsZone({
     zone,
     buttonIndex,
     isListActive: zone === "list" && !disabled,
-    isButtonActive: (index: number) =>
-      zone === "buttons" && buttonIndex === index && !disabled,
+    isButtonActive: (index: number) => zone === "buttons" && buttonIndex === index && !disabled,
   };
 }

@@ -150,7 +150,9 @@ describe("HomePagePresentation — Resume Last Review gating", () => {
   it("shows 'No Active Review' toast and does not start a new review when sessions disappear between query and click", async () => {
     const navigate = vi.fn();
     const createReview = vi.fn();
-    const getActiveReviewSession = vi.fn(async (): Promise<ActiveSessionResult> => ({ session: null }));
+    const getActiveReviewSession = vi.fn(
+      async (): Promise<ActiveSessionResult> => ({ session: null }),
+    );
     const props = buildProps({
       hasResumableSession: true,
       navigate: navigate as unknown as HomePagePresentationProps["navigate"],

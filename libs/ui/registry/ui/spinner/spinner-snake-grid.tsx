@@ -43,7 +43,8 @@ const CELL_INDICES = [0, 1, 2, 3, 4, 5, 6, 7, 8] as const;
 function getCellOpacity(frame: number, cellIndex: number): number {
   const positionInPerimeter = PERIMETER_POSITION.get(cellIndex);
   if (positionInPerimeter === undefined) return 0;
-  const distanceBehindHead = (frame - positionInPerimeter + SNAKE_PERIMETER.length) % SNAKE_PERIMETER.length;
+  const distanceBehindHead =
+    (frame - positionInPerimeter + SNAKE_PERIMETER.length) % SNAKE_PERIMETER.length;
   return TRAIL_OPACITIES[distanceBehindHead] ?? INACTIVE_OPACITY;
 }
 
@@ -57,7 +58,7 @@ export function SnakeGrid({ frame, size }: SnakeGridProps) {
 
   return (
     <span className={snakeGridContainerVariants({ size })}>
-      {CELL_INDICES.map(cellIndex => (
+      {CELL_INDICES.map((cellIndex) => (
         <span
           key={cellIndex}
           className={dotClassName}

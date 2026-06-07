@@ -1,5 +1,5 @@
-import type { LensStats } from '@diffgazer/core/schemas/presentation';
-import { cn } from '@diffgazer/ui/lib/utils';
+import type { LensStats } from "@diffgazer/core/schemas/presentation";
+import { cn } from "@diffgazer/ui/lib/utils";
 
 export type { LensStats };
 
@@ -10,7 +10,7 @@ export interface LensStatsTableProps {
 
 export function LensStatsTable({ lenses, className }: LensStatsTableProps) {
   return (
-    <table className={cn('w-full text-sm text-left border-collapse', className)}>
+    <table className={cn("w-full text-sm text-left border-collapse", className)}>
       <thead>
         <tr className="text-tui-muted border-b border-tui-border text-xs uppercase">
           <th className="pb-2 font-normal pl-2">Lens</th>
@@ -22,12 +22,12 @@ export function LensStatsTable({ lenses, className }: LensStatsTableProps) {
           <tr
             key={lens.id}
             className={cn(
-              'hover:bg-tui-selection',
-              index < lenses.length - 1 && 'border-b border-tui-border/50'
+              "hover:bg-tui-selection",
+              index < lenses.length - 1 && "border-b border-tui-border/50",
             )}
           >
             <td className="py-3 pl-2 flex items-center gap-2">
-              <span className={cn('text-base', lens.iconColor)} aria-hidden="true">
+              <span className={cn("text-base", lens.iconColor)} aria-hidden="true">
                 {lens.icon}
               </span>
               {lens.name}

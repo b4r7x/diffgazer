@@ -10,10 +10,7 @@ import { ReviewSummaryView } from "../../features/review/components/summary-view
 import { useBackHandler } from "../../hooks/use-back-handler";
 import { useScope } from "../../hooks/use-scope";
 import { useNavigation } from "../providers/navigation-provider";
-import {
-  type SavedReviewData,
-  selectReviewScreenPhase,
-} from "./review-phase";
+import { type SavedReviewData, selectReviewScreenPhase } from "./review-phase";
 
 interface SavedReviewViewProps {
   saved: SavedReviewData;
@@ -60,8 +57,7 @@ export function ReviewScreen(): ReactElement {
 
   useScope("review");
 
-  const routeMode: ReviewMode =
-    route.screen === "review" && route.mode ? route.mode : "unstaged";
+  const routeMode: ReviewMode = route.screen === "review" && route.mode ? route.mode : "unstaged";
   const reviewId = route.screen === "review" ? route.reviewId : undefined;
 
   const savedReview = useReview(reviewId ?? "");

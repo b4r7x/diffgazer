@@ -61,7 +61,8 @@ export function ApiKeyMethodSelector({
         if (isInputMethod(nextMethod)) onFocus(nextMethod);
       }}
       onNavigationBoundaryReached={(direction, event) => {
-        if (direction === "next" && getVerticalArrowDirection(event.key) === "down") onFocus("cancel");
+        if (direction === "next" && getVerticalArrowDirection(event.key) === "down")
+          onFocus("cancel");
       }}
       onKeyDown={(event) => {
         if (getVerticalArrowDirection(event.key) !== null && highlightedMethod) {
@@ -122,7 +123,7 @@ export function ApiKeyMethodSelector({
       <div
         className={cn(
           "space-y-2 transition-opacity",
-          method === "env" ? "opacity-100" : "opacity-60 hover:opacity-100"
+          method === "env" ? "opacity-100" : "opacity-60 hover:opacity-100",
         )}
       >
         <RadioGroupItem
@@ -136,10 +137,7 @@ export function ApiKeyMethodSelector({
         <div className="pl-9">
           {/* biome-ignore lint/a11y/noStaticElementInteractions: mouse-only convenience zone over a readOnly preview input; the keyboard-accessible "Import from Env" radio above owns selection. */}
           {/* biome-ignore lint/a11y/useKeyWithClickEvents: env selection is reachable via the radio item above, so a key handler on this read-only preview wrapper would be redundant. */}
-          <div
-            className="w-full cursor-pointer"
-            onClick={() => onFocus("env")}
-          >
+          <div className="w-full cursor-pointer" onClick={() => onFocus("env")}>
             <InputGroup
               value={envVarName}
               readOnly

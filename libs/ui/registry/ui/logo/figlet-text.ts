@@ -1,52 +1,49 @@
-import type figlet from "figlet"
+import type figlet from "figlet";
 
-export type FigletFont = "Big" | "Small"
+export type FigletFont = "Big" | "Small";
 
-type FigletModule = typeof figlet
+type FigletModule = typeof figlet;
 
 const FONT_FILES: Record<FigletFont, string> = {
   Big: "figlet/importable-fonts/Big.js",
   Small: "figlet/importable-fonts/Small.js",
-}
+};
 
 const MISSING_DEPENDENCY_MESSAGE =
-  "@diffgazer/ui/components/logo/figlet requires the optional peer dependency 'figlet'. Install it with: npm install figlet"
+  "@diffgazer/ui/components/logo/figlet requires the optional peer dependency 'figlet'. Install it with: npm install figlet";
 
-let figletPromise: Promise<FigletModule> | null = null
-const fontPromises = new Map<FigletFont, Promise<void>>()
+let figletPromise: Promise<FigletModule> | null = null;
+const fontPromises = new Map<FigletFont, Promise<void>>();
 
 function loadFiglet(): Promise<FigletModule> {
   if (!figletPromise) {
     figletPromise = import("figlet")
       .then((mod) => (mod.default ?? mod) as FigletModule)
       .catch(() => {
-        throw new Error(MISSING_DEPENDENCY_MESSAGE)
-      })
+        throw new Error(MISSING_DEPENDENCY_MESSAGE);
+      });
   }
-  return figletPromise
+  return figletPromise;
 }
 
 function loadFont(figletModule: FigletModule, font: FigletFont): Promise<void> {
-  let promise = fontPromises.get(font)
+  let promise = fontPromises.get(font);
   if (!promise) {
     promise = import(/* @vite-ignore */ FONT_FILES[font])
       .then((mod) => {
-        const data = (mod.default ?? mod) as string
-        figletModule.parseFont(font, data)
+        const data = (mod.default ?? mod) as string;
+        figletModule.parseFont(font, data);
       })
       .catch(() => {
-        throw new Error(MISSING_DEPENDENCY_MESSAGE)
-      })
-    fontPromises.set(font, promise)
+        throw new Error(MISSING_DEPENDENCY_MESSAGE);
+      });
+    fontPromises.set(font, promise);
   }
-  return promise
+  return promise;
 }
 
-export async function getFigletText(
-  text: string,
-  font: FigletFont = "Big",
-): Promise<string> {
-  const figletModule = await loadFiglet()
-  await loadFont(figletModule, font)
-  return figletModule.textSync(text, { font })
+export async function getFigletText(text: string, font: FigletFont = "Big"): Promise<string> {
+  const figletModule = await loadFiglet();
+  await loadFont(figletModule, font);
+  return figletModule.textSync(text, { font });
 }

@@ -27,9 +27,7 @@ function assertPackageName(name: string): void {
   throw new Error(`Artifact package name must be an npm package name: ${name}`);
 }
 
-export function loadArtifactsFromPackage(
-  options: LoadFromPackageOptions,
-): LoadedArtifacts {
+export function loadArtifactsFromPackage(options: LoadFromPackageOptions): LoadedArtifacts {
   const {
     packageName,
     manifestRelPath = ARTIFACT_MANIFEST_REL_PATH,
@@ -44,9 +42,7 @@ export function loadArtifactsFromPackage(
     const pkgJsonPath = require.resolve(`${packageName}/package.json`);
     packageDir = dirname(pkgJsonPath);
   } catch {
-    throw new Error(
-      `Cannot resolve package "${packageName}" from "${from}". Is it installed?`,
-    );
+    throw new Error(`Cannot resolve package "${packageName}" from "${from}". Is it installed?`);
   }
 
   const manifestPath = resolveInside(

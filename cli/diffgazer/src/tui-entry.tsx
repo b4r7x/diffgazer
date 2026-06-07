@@ -11,8 +11,7 @@ export async function startTui(options: TuiOptions): Promise<void> {
   ensureShutdownToken();
   const { App } = await import("./app/root");
 
-  render(
-    <App mode={options.mode} theme={options.theme} openBrowser={false} />,
-    { exitOnCtrlC: false },
-  );
+  render(<App mode={options.mode} theme={options.theme} openBrowser={false} />, {
+    exitOnCtrlC: false,
+  });
 }

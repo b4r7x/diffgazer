@@ -24,7 +24,7 @@ function parseSSELine(line: string): unknown | undefined {
 function emitParsedEvent<T>(
   parsed: unknown,
   onEvent: (data: T) => void,
-  parseEvent: (jsonData: unknown) => T | undefined
+  parseEvent: (jsonData: unknown) => T | undefined,
 ): void {
   const event = parseEvent(parsed);
   if (event !== undefined) {
@@ -34,7 +34,7 @@ function emitParsedEvent<T>(
 
 export async function parseSSEStream<T>(
   reader: ReadableStreamDefaultReader<Uint8Array>,
-  options: SSEParserOptions<T>
+  options: SSEParserOptions<T>,
 ): Promise<SSEParseResult> {
   const { onEvent, parseEvent, onBufferOverflow } = options;
   const decoder = new TextDecoder();

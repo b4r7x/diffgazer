@@ -34,9 +34,7 @@ export function ApiKeyStep({
 
   return (
     <Box flexDirection="column" gap={1}>
-      <Text color={tokens.muted}>
-        Provide your API key for {providerName}.
-      </Text>
+      <Text color={tokens.muted}>Provide your API key for {providerName}.</Text>
       <ApiKeyMethodSelector
         method={resolvedMethod}
         onMethodChange={onMethodChange}

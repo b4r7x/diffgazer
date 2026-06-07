@@ -10,13 +10,7 @@ export function CodeBlockLabel({ id, className, children, ref, ...props }: CodeB
   const resolvedId = id ?? context.labelId;
 
   return (
-    <span
-      ref={ref}
-      id={resolvedId}
-      data-slot="code-block-label"
-      className={className}
-      {...props}
-    >
+    <span ref={ref} id={resolvedId} data-slot="code-block-label" className={className} {...props}>
       {children}
     </span>
   );

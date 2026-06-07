@@ -26,21 +26,15 @@ describe("canProceed", () => {
   });
 
   it("allows api-key step when env method is selected even without a key", () => {
-    expect(
-      canProceed("api-key", withData({ inputMethod: "env", apiKey: "" })),
-    ).toBe(true);
+    expect(canProceed("api-key", withData({ inputMethod: "env", apiKey: "" }))).toBe(true);
   });
 
   it("blocks api-key step when paste method has empty key", () => {
-    expect(
-      canProceed("api-key", withData({ inputMethod: "paste", apiKey: "" })),
-    ).toBe(false);
+    expect(canProceed("api-key", withData({ inputMethod: "paste", apiKey: "" }))).toBe(false);
   });
 
   it("allows api-key step when paste method has a key", () => {
-    expect(
-      canProceed("api-key", withData({ inputMethod: "paste", apiKey: "secret" })),
-    ).toBe(true);
+    expect(canProceed("api-key", withData({ inputMethod: "paste", apiKey: "secret" }))).toBe(true);
   });
 
   it("blocks model step when model is null", () => {
@@ -56,17 +50,11 @@ describe("canProceed", () => {
   });
 
   it("allows analysis step when at least one lens is selected", () => {
-    expect(
-      canProceed("analysis", withData({ defaultLenses: ["security"] })),
-    ).toBe(true);
+    expect(canProceed("analysis", withData({ defaultLenses: ["security"] }))).toBe(true);
   });
 
   it("allows execution step regardless of mode", () => {
-    expect(canProceed("execution", withData({ agentExecution: "parallel" }))).toBe(
-      true,
-    );
-    expect(canProceed("execution", withData({ agentExecution: "sequential" }))).toBe(
-      true,
-    );
+    expect(canProceed("execution", withData({ agentExecution: "parallel" }))).toBe(true);
+    expect(canProceed("execution", withData({ agentExecution: "sequential" }))).toBe(true);
   });
 });

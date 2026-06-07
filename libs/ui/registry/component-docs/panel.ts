@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types"
+import type { ComponentDoc } from "./types";
 
 export const panelDoc: ComponentDoc = {
   description:
@@ -24,7 +24,11 @@ export const panelDoc: ComponentDoc = {
       indent: 2,
       note: "Paragraph description. Auto-wires aria-describedby on the Panel root.",
     },
-    { name: "PanelContent", indent: 1, note: "Padded content area with configurable inner spacing." },
+    {
+      name: "PanelContent",
+      indent: 1,
+      note: "Padded content area with configurable inner spacing.",
+    },
     {
       name: "PanelRow",
       indent: 2,
@@ -46,12 +50,12 @@ export const panelDoc: ComponentDoc = {
     {
       title: "Density",
       content:
-        "`density=\"default\"` uses 14/20 padding rhythm; `density=\"compact\"` uses 10/14. Header, Content, and Footer read padding from the root's data-density attribute via shared/panel.css.",
+        '`density="default"` uses 14/20 padding rhythm; `density="compact"` uses 10/14. Header, Content, and Footer read padding from the root\'s data-density attribute via shared/panel.css.',
     },
     {
       title: "Header marker",
       content:
-        "`PanelHeader marker=\"bar\"` (default) renders a 4px foreground bar to the left of Title/Description, matching Dialog's marker=\"bar\". Set `marker=\"none\"` for rail/custom layouts where the bar would clash.",
+        '`PanelHeader marker="bar"` (default) renders a 4px foreground bar to the left of Title/Description, matching Dialog\'s marker="bar". Set `marker="none"` for rail/custom layouts where the bar would clash.',
     },
     {
       title: "Accessibility",
@@ -61,7 +65,7 @@ export const panelDoc: ComponentDoc = {
     {
       title: "Eyebrow tags",
       content:
-        "There is no Title `meta` prop on Panel (unlike Dialog) because the header has a right-slot for actions. Compose eyebrow tags (e.g. \"MAIN\", \"PROD\") as plain siblings inside PanelHeader; they land in the right slot, vertically centered next to action buttons.",
+        'There is no Title `meta` prop on Panel (unlike Dialog) because the header has a right-slot for actions. Compose eyebrow tags (e.g. "MAIN", "PROD") as plain siblings inside PanelHeader; they land in the right slot, vertically centered next to action buttons.',
     },
   ],
   usage: { example: "panel-default" },
@@ -78,19 +82,22 @@ export const panelDoc: ComponentDoc = {
         type: '"div" | "article" | "section" | "aside"',
         required: false,
         defaultValue: '"div" (or "section" when Title/aria-label present)',
-        description: "Rendered HTML element. Defaults to <section> when a Panel.Title or aria-label is supplied, otherwise <div>.",
+        description:
+          "Rendered HTML element. Defaults to <section> when a Panel.Title or aria-label is supplied, otherwise <div>.",
       },
       frame: {
         type: '"hairline" | "rail" | "viewfinder" | "surface"',
         required: false,
         defaultValue: '"hairline"',
-        description: "Visual chrome. Hairline = soft border + marker bar; rail = inline-start rail only; viewfinder = corner brackets; surface = elevated --surface-1 background.",
+        description:
+          "Visual chrome. Hairline = soft border + marker bar; rail = inline-start rail only; viewfinder = corner brackets; surface = elevated --surface-1 background.",
       },
       tone: {
         type: '"info" | "success" | "warning" | "error" | "accent"',
         required: false,
         defaultValue: "undefined",
-        description: "Border-color tint. Visual cue only — no semantic role, no live announcement. Use Callout for real status messaging.",
+        description:
+          "Border-color tint. Visual cue only — no semantic role, no live announcement. Use Callout for real status messaging.",
       },
       density: {
         type: '"default" | "compact"',
@@ -110,13 +117,14 @@ export const panelDoc: ComponentDoc = {
         type: '"bar" | "none"',
         required: false,
         defaultValue: '"bar"',
-        description: "Toggle the 4px foreground marker bar. Use \"none\" for rail or custom layouts.",
+        description: 'Toggle the 4px foreground marker bar. Use "none" for rail or custom layouts.',
       },
       children: {
         type: "ReactNode",
         required: false,
         defaultValue: null,
-        description: "Title and Description go in a left column; any other child lands in a right slot.",
+        description:
+          "Title and Description go in a left column; any other child lands in a right slot.",
       },
     },
     PanelTitle: {
@@ -146,7 +154,8 @@ export const panelDoc: ComponentDoc = {
         type: '"none" | "sm" | "md"',
         required: false,
         defaultValue: '"md"',
-        description: "Vertical gap applied between direct children inside the content area. Use spacing=\"none\" when composing Panel.Row (rows own their own padding).",
+        description:
+          'Vertical gap applied between direct children inside the content area. Use spacing="none" when composing Panel.Row (rows own their own padding).',
       },
       children: {
         type: "ReactNode",
@@ -178,4 +187,4 @@ export const panelDoc: ComponentDoc = {
       },
     },
   },
-}
+};

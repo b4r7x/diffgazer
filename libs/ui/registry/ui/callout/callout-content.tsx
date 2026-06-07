@@ -11,10 +11,7 @@ export function CalloutContent({ children, className, style, ...props }: Callout
   return (
     <div
       style={{ gridArea: "body", ...style }}
-      className={cn(
-        "text-[12px] leading-[1.55] text-muted-foreground",
-        className,
-      )}
+      className={cn("text-[12px] leading-[1.55] text-muted-foreground", className)}
       {...props}
     >
       {children}

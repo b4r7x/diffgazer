@@ -25,8 +25,11 @@ export function useProvidersDialogKeyboard({
     const ownerDocument = listContainer.ownerDocument;
     const activeElement = ownerDocument.activeElement;
     const View = ownerDocument.defaultView;
-    const focusIsUnclaimed = activeElement === ownerDocument.body || activeElement === ownerDocument.documentElement;
-    const focusIsWithinList = Boolean(View && activeElement instanceof View.Node && listContainer.contains(activeElement));
+    const focusIsUnclaimed =
+      activeElement === ownerDocument.body || activeElement === ownerDocument.documentElement;
+    const focusIsWithinList = Boolean(
+      View && activeElement instanceof View.Node && listContainer.contains(activeElement),
+    );
     if (!focusIsUnclaimed && !focusIsWithinList) return;
 
     setZone("list");

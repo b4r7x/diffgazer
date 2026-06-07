@@ -18,5 +18,11 @@ export const cardLabelVariants = cva(
 export type CardLabelProps = ComponentPropsWithRef<"div"> & VariantProps<typeof cardLabelVariants>;
 
 export function CardLabel({ className, variant, ...props }: CardLabelProps) {
-  return <div data-slot="card-label" className={cn(cardLabelVariants({ variant }), className)} {...props} />;
+  return (
+    <div
+      data-slot="card-label"
+      className={cn(cardLabelVariants({ variant }), className)}
+      {...props}
+    />
+  );
 }

@@ -1,11 +1,4 @@
-import {
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -98,7 +91,10 @@ describe("buildRegistryArtifacts", () => {
       inputs: [],
     });
 
-    const written = JSON.parse(readFileSync(result.manifestPath, "utf-8")) as Record<string, unknown>;
+    const written = JSON.parse(readFileSync(result.manifestPath, "utf-8")) as Record<
+      string,
+      unknown
+    >;
     expect(written.library).toBe("test-lib");
     expect(written.package).toBe("@test/lib");
     expect(written.schemaVersion).toBe(1);
@@ -138,8 +134,12 @@ describe("buildRegistryArtifacts", () => {
       },
     });
 
-    expect(readFileSync(join(root, "dist/artifacts/copied/file.txt"), "utf-8")).toBe("created before build");
-    expect(readFileSync(join(root, "dist/artifacts/copied/origin.txt"), "utf-8")).toBe("https://example.com");
+    expect(readFileSync(join(root, "dist/artifacts/copied/file.txt"), "utf-8")).toBe(
+      "created before build",
+    );
+    expect(readFileSync(join(root, "dist/artifacts/copied/origin.txt"), "utf-8")).toBe(
+      "https://example.com",
+    );
   });
 
   it("throws if required paths are missing", () => {

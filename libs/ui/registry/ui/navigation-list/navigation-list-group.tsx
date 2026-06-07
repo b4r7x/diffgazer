@@ -1,6 +1,14 @@
 "use client";
 
-import { Children, type FocusEvent, type MouseEvent, type ReactNode, useEffect, useId, useMemo } from "react";
+import {
+  Children,
+  type FocusEvent,
+  type MouseEvent,
+  type ReactNode,
+  useEffect,
+  useId,
+  useMemo,
+} from "react";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { getEncodedListboxItemId } from "@/hooks/use-listbox";
 import { cn } from "@/lib/utils";
@@ -65,10 +73,7 @@ export function NavigationListGroup({
     [variant, depth, linePrefix],
   );
 
-  const groupLabel =
-    variant === "section" && count !== undefined
-      ? `${label} (${count})`
-      : label;
+  const groupLabel = variant === "section" && count !== undefined ? `${label} (${count})` : label;
 
   const wrappedChildren = (
     <NavigationListGroupContext value={groupContextValue}>
@@ -89,10 +94,7 @@ export function NavigationListGroup({
     <div
       role="group"
       aria-label={groupLabel}
-      className={cn(
-        variant === "section" && "border-t border-border first:border-t-0",
-        className,
-      )}
+      className={cn(variant === "section" && "border-t border-border first:border-t-0", className)}
     >
       {variant === "section" ? (
         <SectionHeader label={label} count={count} expanded={expanded} toggle={toggle} />
@@ -112,7 +114,12 @@ export function NavigationListGroup({
   );
 }
 
-function SectionHeader({ label, count, expanded, toggle }: {
+function SectionHeader({
+  label,
+  count,
+  expanded,
+  toggle,
+}: {
   label: string;
   count?: number;
   expanded: boolean;
@@ -132,7 +139,15 @@ function SectionHeader({ label, count, expanded, toggle }: {
   );
 }
 
-function TreeHeader({ headerId, label, expanded, toggle, depth, parentLinePrefix, isLast }: {
+function TreeHeader({
+  headerId,
+  label,
+  expanded,
+  toggle,
+  depth,
+  parentLinePrefix,
+  isLast,
+}: {
   headerId: string;
   label: string;
   expanded: boolean;
@@ -141,8 +156,15 @@ function TreeHeader({ headerId, label, expanded, toggle, depth, parentLinePrefix
   parentLinePrefix: string;
   isLast: boolean;
 }) {
-  const { highlighted, highlight, focusContainer, focused, idPrefix, registerGroupHeader, unregisterGroupHeader } =
-    useNavigationListContext();
+  const {
+    highlighted,
+    highlight,
+    focusContainer,
+    focused,
+    idPrefix,
+    registerGroupHeader,
+    unregisterGroupHeader,
+  } = useNavigationListContext();
 
   const itemId = getEncodedListboxItemId(idPrefix, headerId);
   const isHighlighted = highlighted === headerId;

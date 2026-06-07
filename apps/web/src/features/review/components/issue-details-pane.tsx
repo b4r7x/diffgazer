@@ -125,7 +125,11 @@ export function IssueDetailsPane({
             />
 
             <TabsContent value="details" className="mt-0">
-              <DetailsTabContent issue={issue} completedSteps={completedSteps} onToggleStep={onToggleStep} />
+              <DetailsTabContent
+                issue={issue}
+                completedSteps={completedSteps}
+                onToggleStep={onToggleStep}
+              />
             </TabsContent>
 
             <TabsContent value="explain" className="mt-0">
@@ -246,7 +250,9 @@ function DetailsTabContent({
           <SectionHeader>BETTER OPTIONS</SectionHeader>
           <ul className="list-disc pl-4 space-y-1">
             {issue.betterOptions.map((opt) => (
-              <li key={opt} className="text-sm leading-relaxed text-tui-fg/80">{opt}</li>
+              <li key={opt} className="text-sm leading-relaxed text-tui-fg/80">
+                {opt}
+              </li>
             ))}
           </ul>
         </div>
@@ -257,7 +263,9 @@ function DetailsTabContent({
           <SectionHeader>TESTS TO ADD</SectionHeader>
           <ul className="list-disc pl-4 space-y-1">
             {issue.testsToAdd.map((test) => (
-              <li key={test} className="text-sm leading-relaxed text-tui-fg/80">{test}</li>
+              <li key={test} className="text-sm leading-relaxed text-tui-fg/80">
+                {test}
+              </li>
             ))}
           </ul>
         </div>
@@ -275,7 +283,9 @@ function TraceTabContent({ issue }: { issue: ReviewIssue }) {
     <div className="space-y-2">
       {issue.trace.map((t) => (
         <div key={t.step} className="border-l-2 border-tui-border pl-2">
-          <div className="text-tui-fg text-sm">Step {t.step}: {t.tool}</div>
+          <div className="text-tui-fg text-sm">
+            Step {t.step}: {t.tool}
+          </div>
           <div className="text-tui-muted text-xs">{t.outputSummary}</div>
         </div>
       ))}

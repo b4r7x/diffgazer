@@ -117,7 +117,11 @@ export function DiagnosticsScreen(): ReactElement {
                 labelWidth={14}
               />
               {contextStatus === "ready" && contextGeneratedAt && (
-                <KeyValue label="Generated at" value={formatTimestampOrNA(contextGeneratedAt)} labelWidth={14} />
+                <KeyValue
+                  label="Generated at"
+                  value={formatTimestampOrNA(contextGeneratedAt)}
+                  labelWidth={14}
+                />
               )}
               <KeyValue label="Node version" value={nodeVersion} labelWidth={14} />
               <Box gap={1} marginTop={1}>
@@ -133,9 +137,7 @@ export function DiagnosticsScreen(): ReactElement {
                   {contextActionLabel}
                 </Button>
               </Box>
-              {isRefreshing && (
-                <Spinner label="Regenerating context snapshot..." />
-              )}
+              {isRefreshing && <Spinner label="Regenerating context snapshot..." />}
               {contextError && <Text color="red">{contextError}</Text>}
             </Box>
           </Panel.Content>

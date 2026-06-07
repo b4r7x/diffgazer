@@ -27,7 +27,9 @@ describe("validateOrphanFiles", () => {
       "registry/lib/declared.ts": "export const a = 1;\n",
       "registry/lib/orphan.ts": "export const b = 2;\n",
     });
-    const items = [{ name: "declared", type: "registry:lib", files: [{ path: "registry/lib/declared.ts" }] }];
+    const items = [
+      { name: "declared", type: "registry:lib", files: [{ path: "registry/lib/declared.ts" }] },
+    ];
     const errors = validateOrphanFiles(dir, items);
     expect(errors.some((e) => e.includes("registry/lib/orphan.ts"))).toBe(true);
   });
@@ -37,7 +39,9 @@ describe("validateOrphanFiles", () => {
       "registry/lib/declared.ts": "export const a = 1;\n",
       "registry/lib/declared.test.ts": "test stub\n",
     });
-    const items = [{ name: "declared", type: "registry:lib", files: [{ path: "registry/lib/declared.ts" }] }];
+    const items = [
+      { name: "declared", type: "registry:lib", files: [{ path: "registry/lib/declared.ts" }] },
+    ];
     expect(validateOrphanFiles(dir, items)).toEqual([]);
   });
-})
+});

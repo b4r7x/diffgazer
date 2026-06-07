@@ -37,9 +37,7 @@ export interface ReviewProgressViewProps {
 }
 
 const STREAMING_SHORTCUTS: Shortcut[] = [];
-const COMPLETING_SHORTCUTS: Shortcut[] = [
-  { key: "Enter", label: "View Results" },
-];
+const COMPLETING_SHORTCUTS: Shortcut[] = [{ key: "Enter", label: "View Results" }];
 
 function getResponsiveWidth(
   isWide: boolean,
@@ -163,20 +161,14 @@ export function ReviewProgressView({
       ) : null}
 
       <Box paddingTop={1}>
-        <ActivityLog
-          entries={filteredEntries}
-          height={progressSteps.length + 8}
-        />
+        <ActivityLog entries={filteredEntries} height={progressSteps.length + 8} />
       </Box>
     </Box>
   );
 
   return (
     <Box flexDirection="column">
-      <Box
-        flexDirection={sideBySide ? "row" : "column"}
-        gap={sideBySide ? 2 : 1}
-      >
+      <Box flexDirection={sideBySide ? "row" : "column"} gap={sideBySide ? 2 : 1}>
         {progressPane}
         {logPane}
       </Box>

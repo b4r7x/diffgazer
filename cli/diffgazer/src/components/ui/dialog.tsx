@@ -97,11 +97,7 @@ function DialogFooter({ children }: DialogFooterProps) {
   );
 }
 
-function DialogRoot({
-  open = false,
-  onOpenChange,
-  children,
-}: DialogProps) {
+function DialogRoot({ open = false, onOpenChange, children }: DialogProps) {
   const { columns, rows } = useTerminalDimensions();
 
   useInput(

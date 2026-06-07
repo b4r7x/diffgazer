@@ -9,7 +9,11 @@ vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => vi.fn(),
 }));
 
-import { type ReviewProgressData, ReviewProgressView, type ReviewProgressViewProps } from "./progress-view";
+import {
+  type ReviewProgressData,
+  ReviewProgressView,
+  type ReviewProgressViewProps,
+} from "./progress-view";
 
 function FooterView() {
   const { shortcuts, rightShortcuts } = useFooterData();

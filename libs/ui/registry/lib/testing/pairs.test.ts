@@ -3,13 +3,14 @@ import { requireValue } from "../../testing/assertions";
 import { collectEditPairs, type EditPairGroup } from "../diff/pairs";
 import type { DiffChange } from "../diff/parse";
 
-const change = (
-  type: DiffChange["type"],
-  content: string,
-): DiffChange => ({ type, content, oldLine: null, newLine: null });
+const change = (type: DiffChange["type"], content: string): DiffChange => ({
+  type,
+  content,
+  oldLine: null,
+  newLine: null,
+});
 
-const isGroup = (item: DiffChange | EditPairGroup): item is EditPairGroup =>
-  !("type" in item);
+const isGroup = (item: DiffChange | EditPairGroup): item is EditPairGroup => !("type" in item);
 
 describe("collectEditPairs", () => {
   it("yields context changes individually", () => {
@@ -19,11 +20,9 @@ describe("collectEditPairs", () => {
   });
 
   it("groups adjacent removes and adds into one edit pair", () => {
-    const result = [...collectEditPairs([
-      change("remove", "a"),
-      change("remove", "b"),
-      change("add", "c"),
-    ])];
+    const result = [
+      ...collectEditPairs([change("remove", "a"), change("remove", "b"), change("add", "c")]),
+    ];
     expect(result).toHaveLength(1);
     const [group] = result;
     if (!group || !isGroup(group)) throw new Error("expected group");
@@ -40,11 +39,9 @@ describe("collectEditPairs", () => {
   });
 
   it("splits edit groups around an intervening context change", () => {
-    const result = [...collectEditPairs([
-      change("remove", "a"),
-      change("context", "ctx"),
-      change("add", "b"),
-    ])];
+    const result = [
+      ...collectEditPairs([change("remove", "a"), change("context", "ctx"), change("add", "b")]),
+    ];
     expect(result).toHaveLength(3);
     expect(isGroup(requireValue(result[0], "diff pair item 0"))).toBe(true);
     expect(result[1]).toMatchObject({ type: "context", content: "ctx" });

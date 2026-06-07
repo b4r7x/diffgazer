@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { ReviewIssue } from "../schemas/review/index.js";
 import { buildLensStats, buildReviewSummary } from "./build-summary.js";
 
-function makeIssue(overrides: Partial<ReviewIssue> & Pick<ReviewIssue, "id" | "severity">): ReviewIssue {
+function makeIssue(
+  overrides: Partial<ReviewIssue> & Pick<ReviewIssue, "id" | "severity">,
+): ReviewIssue {
   return {
     title: "Issue",
     category: "correctness",

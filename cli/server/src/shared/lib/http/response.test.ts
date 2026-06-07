@@ -13,16 +13,14 @@ type ErrorBody = {
   };
 };
 
-async function requestError(
-  handler: Handler,
-): Promise<{ response: Response; body: ErrorBody }> {
+async function requestError(handler: Handler): Promise<{ response: Response; body: ErrorBody }> {
   const app = new Hono();
   app.get("/", handler);
 
   const response = await app.request("/");
   return {
     response,
-    body: await response.json() as ErrorBody,
+    body: (await response.json()) as ErrorBody,
   };
 }
 
@@ -40,9 +38,7 @@ describe("errorResponse", () => {
 
   it("emits each declared error status, including 413 payload-too-large", async () => {
     for (const status of [400, 401, 403, 404, 409, 413, 422, 429, 500, 503] as const) {
-      const { response } = await requestError((ctx) =>
-        errorResponse(ctx, "err", "CODE", status),
-      );
+      const { response } = await requestError((ctx) => errorResponse(ctx, "err", "CODE", status));
       expect(response.status).toBe(status);
     }
   });
@@ -55,7 +51,7 @@ describe("zodErrorHandler", () => {
       age: "nope",
     });
     const { response, body } = await requestError((ctx) =>
-      requireValue(zodErrorHandler(result, ctx), "zod error response")
+      requireValue(zodErrorHandler(result, ctx), "zod error response"),
     );
 
     expect(response.status).toBe(400);
@@ -71,7 +67,7 @@ describe("zodErrorHandler", () => {
     app.get("/", (ctx) => zodErrorHandler(result, ctx) ?? ctx.json({ ok: true }));
 
     const response = await app.request("/");
-    const body = await response.json() as { ok: boolean };
+    const body = (await response.json()) as { ok: boolean };
 
     expect(response.status).toBe(200);
     expect(body).toEqual({ ok: true });
@@ -83,7 +79,7 @@ describe("zodErrorHandler", () => {
       error: { issues: [] } as unknown as z.core.$ZodError,
     };
     const { body } = await requestError((ctx) =>
-      requireValue(zodErrorHandler(result, ctx), "zod error response")
+      requireValue(zodErrorHandler(result, ctx), "zod error response"),
     );
 
     expect(body.error.message).toBe("Invalid body");

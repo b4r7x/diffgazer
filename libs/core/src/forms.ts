@@ -40,9 +40,7 @@ export function useSubmitGuard(): UseSubmitGuardResult {
   const isSubmittingRef = useRef(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const withGuard = async <T,>(
-    fn: () => Promise<T>,
-  ): Promise<T | undefined> => {
+  const withGuard = async <T>(fn: () => Promise<T>): Promise<T | undefined> => {
     if (isSubmittingRef.current) return undefined;
     isSubmittingRef.current = true;
     setIsSubmitting(true);

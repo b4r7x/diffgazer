@@ -1,7 +1,7 @@
-import { ScrollArea } from "@/components/ui/scroll-area"
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function ScrollAreaDefault() {
-  const items = Array.from({ length: 20 }, (_, i) => `Item ${i + 1}`)
+  const items = Array.from({ length: 20 }, (_, i) => `Item ${i + 1}`);
   return (
     <ScrollArea className="h-48 border border-border p-2">
       {items.map((item) => (
@@ -10,5 +10,5 @@ export default function ScrollAreaDefault() {
         </div>
       ))}
     </ScrollArea>
-  )
+  );
 }

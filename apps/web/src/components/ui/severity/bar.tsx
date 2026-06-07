@@ -1,7 +1,7 @@
-import type { ReviewSeverity } from '@diffgazer/core/schemas/review';
-import { BlockBar } from '@diffgazer/ui/components/block-bar';
-import { cn } from '@diffgazer/ui/lib/utils';
-import { BAR_EMPTY_CHAR, BAR_FILLED_CHAR, DEFAULT_BAR_WIDTH, SEVERITY_CONFIG } from './constants';
+import type { ReviewSeverity } from "@diffgazer/core/schemas/review";
+import { BlockBar } from "@diffgazer/ui/components/block-bar";
+import { cn } from "@diffgazer/ui/lib/utils";
+import { BAR_EMPTY_CHAR, BAR_FILLED_CHAR, DEFAULT_BAR_WIDTH, SEVERITY_CONFIG } from "./constants";
 
 export interface SeverityBarProps {
   label: string;
@@ -15,7 +15,7 @@ export function SeverityBar({ label, count, max, severity, className }: Severity
   const { color } = SEVERITY_CONFIG[severity];
 
   return (
-    <div className={cn('flex items-center font-mono text-sm', className)}>
+    <div className={cn("flex items-center font-mono text-sm", className)}>
       <span className="w-20 text-xs text-tui-muted">{label}</span>
       <BlockBar
         label={label}
@@ -29,7 +29,7 @@ export function SeverityBar({ label, count, max, severity, className }: Severity
       >
         <BlockBar.Segment value={count} className={color} />
       </BlockBar>
-      <span className={cn('w-6 text-right font-bold', color)}>{count}</span>
+      <span className={cn("w-6 text-right font-bold", color)}>{count}</span>
     </div>
   );
 }

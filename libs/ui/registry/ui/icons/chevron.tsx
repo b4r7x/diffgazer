@@ -15,7 +15,7 @@ export const chevronVariants = cva(
     defaultVariants: {
       size: "sm",
     },
-  }
+  },
 );
 
 type ChevronDirection = "down" | "up" | "left" | "right";

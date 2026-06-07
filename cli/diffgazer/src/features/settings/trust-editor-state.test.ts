@@ -28,15 +28,15 @@ describe("getTrustEditorKey", () => {
   });
 
   test("falls back to projectId/repoRoot composite when untrusted", () => {
-    expect(
-      getTrustEditorKey({ projectId: "proj-1", repoRoot: "/work/proj", trust: null }),
-    ).toBe("proj-1:/work/proj:untrusted");
+    expect(getTrustEditorKey({ projectId: "proj-1", repoRoot: "/work/proj", trust: null })).toBe(
+      "proj-1:/work/proj:untrusted",
+    );
   });
 
   test("uses loading sentinel when project info is missing", () => {
-    expect(
-      getTrustEditorKey({ projectId: null, repoRoot: null, trust: null }),
-    ).toBe("loading:loading:untrusted");
+    expect(getTrustEditorKey({ projectId: null, repoRoot: null, trust: null })).toBe(
+      "loading:loading:untrusted",
+    );
   });
 });
 

@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types"
+import type { ComponentDoc } from "./types";
 
 export const logoDoc: ComponentDoc = {
   description:
@@ -40,8 +40,9 @@ export const logoDoc: ComponentDoc = {
         type: "string",
         required: false,
         defaultValue: null,
-        description: 'Precomputed ASCII art. When set, renders inside <pre role="img" aria-label={text}>.',
+        description:
+          'Precomputed ASCII art. When set, renders inside <pre role="img" aria-label={text}>.',
       },
     },
   },
-}
+};

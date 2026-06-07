@@ -1,4 +1,4 @@
-import { HorizontalStepper } from "@/components/ui/horizontal-stepper"
+import { HorizontalStepper } from "@/components/ui/horizontal-stepper";
 
 export default function HorizontalStepperVariantAscii() {
   return (
@@ -14,5 +14,5 @@ export default function HorizontalStepperVariantAscii() {
       <HorizontalStepper.Step value="deploy">Deploy</HorizontalStepper.Step>
       <HorizontalStepper.Step value="verify">Verify</HorizontalStepper.Step>
     </HorizontalStepper>
-  )
+  );
 }

@@ -50,7 +50,7 @@ export interface ResumeReviewResult {
 
 export async function resumeReviewStream(
   client: ApiClient,
-  options: ResumeReviewOptions
+  options: ResumeReviewOptions,
 ): Promise<Result<ResumeReviewResult, StreamReviewError>> {
   const { reviewId, signal, ...handlers } = options;
 
@@ -58,10 +58,16 @@ export async function resumeReviewStream(
   try {
     response = await client.request("GET", `/api/review/reviews/${reviewId}/stream`, { signal });
   } catch (error) {
-    const status = error instanceof Error && "status" in error ? (error as { status: number }).status : undefined;
+    const status =
+      error instanceof Error && "status" in error
+        ? (error as { status: number }).status
+        : undefined;
     const message = error instanceof Error ? error.message : String(error);
     if (status === 404) {
-      return err({ code: ReviewErrorCode.SESSION_NOT_FOUND, message: message || "Session not found" });
+      return err({
+        code: ReviewErrorCode.SESSION_NOT_FOUND,
+        message: message || "Session not found",
+      });
     }
     if (status === 409) {
       return err({ code: ReviewErrorCode.SESSION_STALE, message: message || "Session is stale" });
@@ -92,16 +98,13 @@ export async function resumeReviewStream(
 
 export async function getReviews(
   client: ApiClient,
-  projectPath?: string
+  projectPath?: string,
 ): Promise<ReviewsResponse> {
   const params = projectPath ? { projectPath } : undefined;
   return client.get<ReviewsResponse>("/api/review/reviews", params);
 }
 
-export async function getReview(
-  client: ApiClient,
-  id: string
-): Promise<ReviewResponse> {
+export async function getReview(client: ApiClient, id: string): Promise<ReviewResponse> {
   return client.get<ReviewResponse>(`/api/review/reviews/${id}`);
 }
 
@@ -115,23 +118,18 @@ export async function getActiveReviewSession(
   );
 }
 
-export async function getReviewContext(
-  client: ApiClient
-): Promise<ReviewContextResponse> {
+export async function getReviewContext(client: ApiClient): Promise<ReviewContextResponse> {
   return client.get<ReviewContextResponse>("/api/review/context");
 }
 
 export async function refreshReviewContext(
   client: ApiClient,
-  options: { force?: boolean } = {}
+  options: { force?: boolean } = {},
 ): Promise<ReviewContextResponse> {
   return client.post<ReviewContextResponse>("/api/review/context/refresh", options);
 }
 
-export async function deleteReview(
-  client: ApiClient,
-  id: string
-): Promise<{ existed: boolean }> {
+export async function deleteReview(client: ApiClient, id: string): Promise<{ existed: boolean }> {
   return client.delete<{ existed: boolean }>(`/api/review/reviews/${id}`);
 }
 
@@ -145,7 +143,7 @@ export async function cancelReviewSession(
 export async function runReviewDrilldown(
   client: ApiClient,
   reviewId: string,
-  issueId: string
+  issueId: string,
 ): Promise<DrilldownResponse> {
   return client.post<DrilldownResponse>(`/api/review/reviews/${reviewId}/drilldown`, {
     issueId,

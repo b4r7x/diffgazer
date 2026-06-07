@@ -1,4 +1,4 @@
-import type { HookDoc } from "@diffgazer/registry"
+import type { HookDoc } from "@diffgazer/registry";
 
 export const useFocusZoneDoc: HookDoc = {
   description:
@@ -29,8 +29,7 @@ export const useFocusZoneDoc: HookDoc = {
       name: "zone",
       type: "T",
       required: false,
-      description:
-        "Controlled zone value. When provided, the hook operates in controlled mode.",
+      description: "Controlled zone value. When provided, the hook operates in controlled mode.",
     },
     {
       name: "onZoneChange",
@@ -68,21 +67,20 @@ export const useFocusZoneDoc: HookDoc = {
       name: "scope",
       type: "string | null",
       required: false,
-      description: "Keyboard scope name to push while the focus zone is active. Null skips scope registration.",
+      description:
+        "Keyboard scope name to push while the focus zone is active. Null skips scope registration.",
     },
     {
       name: "containerRef",
       type: "RefObject<HTMLElement | null>",
       required: false,
-      description:
-        "Optional DOM subtree used to scope registered focus-zone keys.",
+      description: "Optional DOM subtree used to scope registered focus-zone keys.",
     },
     {
       name: "focusWithinOnly",
       type: "boolean",
       required: false,
-      description:
-        "When true, focus-zone keys only run while focus is inside containerRef.",
+      description: "When true, focus-zone keys only run while focus is inside containerRef.",
     },
     {
       name: "allowInInput",
@@ -114,8 +112,7 @@ export const useFocusZoneDoc: HookDoc = {
   ],
   returns: {
     type: "UseFocusZoneReturn<T>",
-    description:
-      "Object with zone state and helpers for conditional rendering and key options.",
+    description: "Object with zone state and helpers for conditional rendering and key options.",
     properties: [
       {
         name: "zone",
@@ -133,8 +130,7 @@ export const useFocusZoneDoc: HookDoc = {
         name: "isZone",
         type: "(...zones: T[]) => boolean",
         required: true,
-        description:
-          "Returns true if the current zone matches any of the provided zones.",
+        description: "Returns true if the current zone matches any of the provided zones.",
       },
       {
         name: "getKeyOptions",
@@ -179,4 +175,4 @@ export const useFocusZoneDoc: HookDoc = {
     { name: "use-focus-zone-tab-cycle", title: "Tab-cycle regions with focus targets" },
   ],
   tags: ["provider-dependent", "focus", "zones"],
-}
+};

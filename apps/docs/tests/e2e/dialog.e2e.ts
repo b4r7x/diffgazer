@@ -1,25 +1,25 @@
-import AxeBuilder from "@axe-core/playwright"
-import { expect, test } from "@playwright/test"
+import AxeBuilder from "@axe-core/playwright";
+import { expect, test } from "@playwright/test";
 
 test.describe("Dialog", () => {
-	test("opens, traps focus, closes via Escape with no a11y violations", async ({ page }) => {
-		await page.goto("/ui/components/dialog")
-		await expect(page.getByRole("heading", { level: 1, name: /dialog/i })).toBeVisible()
+  test("opens, traps focus, closes via Escape with no a11y violations", async ({ page }) => {
+    await page.goto("/ui/components/dialog");
+    await expect(page.getByRole("heading", { level: 1, name: /dialog/i })).toBeVisible();
 
-		const trigger = page.getByRole("button", { name: /open dialog/i }).first()
-		await trigger.click()
+    const trigger = page.getByRole("button", { name: /open dialog/i }).first();
+    await trigger.click();
 
-		const dialog = page.getByRole("dialog").first()
-		await expect(dialog).toBeVisible()
-		await expect(dialog).toHaveScreenshot("dialog-open.png")
+    const dialog = page.getByRole("dialog").first();
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toHaveScreenshot("dialog-open.png");
 
-		const results = await new AxeBuilder({ page })
-			.include('[aria-modal="true"]')
-			.withTags(["wcag2a", "wcag2aa"])
-			.analyze()
-		expect(results.violations).toEqual([])
+    const results = await new AxeBuilder({ page })
+      .include('[aria-modal="true"]')
+      .withTags(["wcag2a", "wcag2aa"])
+      .analyze();
+    expect(results.violations).toEqual([]);
 
-		await page.keyboard.press("Escape")
-		await expect(dialog).toBeHidden()
-	})
-})
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+  });
+});

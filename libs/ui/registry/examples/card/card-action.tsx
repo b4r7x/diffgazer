@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardAction,
@@ -7,7 +7,7 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
+} from "@/components/ui/card";
 
 export default function CardActionExample() {
   return (
@@ -38,5 +38,5 @@ export default function CardActionExample() {
         <Button variant="primary">Visit</Button>
       </CardFooter>
     </Card>
-  )
+  );
 }

@@ -144,27 +144,39 @@ function TestModelFooterKeyboard({
       "div",
       { ref: listContainerRef, role: "radiogroup" },
       ...filteredModels.map((model) =>
-        createElement("div", {
-          key: model.id,
-          role: "radio",
-          "data-value": model.id,
-          tabIndex: 0,
-        }, model.name),
+        createElement(
+          "div",
+          {
+            key: model.id,
+            role: "radio",
+            "data-value": model.id,
+            tabIndex: 0,
+          },
+          model.name,
+        ),
       ),
     ),
-    createElement("button", {
-      type: "button",
-      ref: cancelProps.ref,
-      onFocus: cancelProps.onFocus,
-      onClick: () => keyboard.handleCancel(),
-    }, "Cancel"),
-    createElement("button", {
-      type: "button",
-      ref: confirmProps.ref,
-      onFocus: confirmProps.onFocus,
-      onClick: () => keyboard.handleConfirm(),
-      disabled: filteredModels.length === 0,
-    }, "Confirm"),
+    createElement(
+      "button",
+      {
+        type: "button",
+        ref: cancelProps.ref,
+        onFocus: cancelProps.onFocus,
+        onClick: () => keyboard.handleCancel(),
+      },
+      "Cancel",
+    ),
+    createElement(
+      "button",
+      {
+        type: "button",
+        ref: confirmProps.ref,
+        onFocus: confirmProps.onFocus,
+        onClick: () => keyboard.handleConfirm(),
+        disabled: filteredModels.length === 0,
+      },
+      "Confirm",
+    ),
   );
 }
 
@@ -173,11 +185,13 @@ function renderDialogSubject(models: ModelInfo[], currentModel?: string) {
   const onSelect = vi.fn();
   const onOpenChange = vi.fn();
 
-  render(createElement(
-    KeyboardProvider,
-    null,
-    createElement(TestModelDialogKeyboard, { models, currentModel, onSelect, onOpenChange }),
-  ));
+  render(
+    createElement(
+      KeyboardProvider,
+      null,
+      createElement(TestModelDialogKeyboard, { models, currentModel, onSelect, onOpenChange }),
+    ),
+  );
 
   return { user, onSelect, onOpenChange };
 }
@@ -187,23 +201,27 @@ function renderFooterSubject(models: ModelInfo[], filteredModels = models) {
   const onSelect = vi.fn();
   const onOpenChange = vi.fn();
 
-  const view = render(createElement(
-    KeyboardProvider,
-    null,
-    createElement(TestModelFooterKeyboard, { models, filteredModels, onSelect, onOpenChange }),
-  ));
-
-  const rerenderFooterSubject = (nextFilteredModels: ModelInfo[]) => {
-    view.rerender(createElement(
+  const view = render(
+    createElement(
       KeyboardProvider,
       null,
-      createElement(TestModelFooterKeyboard, {
-        models,
-        filteredModels: nextFilteredModels,
-        onSelect,
-        onOpenChange,
-      }),
-    ));
+      createElement(TestModelFooterKeyboard, { models, filteredModels, onSelect, onOpenChange }),
+    ),
+  );
+
+  const rerenderFooterSubject = (nextFilteredModels: ModelInfo[]) => {
+    view.rerender(
+      createElement(
+        KeyboardProvider,
+        null,
+        createElement(TestModelFooterKeyboard, {
+          models,
+          filteredModels: nextFilteredModels,
+          onSelect,
+          onOpenChange,
+        }),
+      ),
+    );
   };
 
   return { rerenderFooterSubject, user, onSelect, onOpenChange };
@@ -254,14 +272,18 @@ function TestInteractiveModelDialogKeyboard({
   return createElement(
     "div",
     null,
-    createElement("button", {
-      type: "button",
-      ref: (node: HTMLButtonElement | null) => {
-        closeButtonRef.current = node;
-        closeButtonProps.ref(node);
+    createElement(
+      "button",
+      {
+        type: "button",
+        ref: (node: HTMLButtonElement | null) => {
+          closeButtonRef.current = node;
+          closeButtonProps.ref(node);
+        },
+        onFocus: closeButtonProps.onFocus,
       },
-      onFocus: closeButtonProps.onFocus,
-    }, "Close"),
+      "Close",
+    ),
     createElement("input", {
       "aria-label": "Search models",
       ref: searchInputRef,
@@ -285,25 +307,37 @@ function TestInteractiveModelDialogKeyboard({
       "div",
       { ref: listContainerRef, role: "radiogroup" },
       ...models.map((model) =>
-        createElement("div", {
-          key: model.id,
-          role: "radio",
-          "data-value": model.id,
-          tabIndex: 0,
-        }, model.name),
+        createElement(
+          "div",
+          {
+            key: model.id,
+            role: "radio",
+            "data-value": model.id,
+            tabIndex: 0,
+          },
+          model.name,
+        ),
       ),
     ),
-    createElement("button", {
-      type: "button",
-      ref: cancelProps.ref,
-      onFocus: cancelProps.onFocus,
-    }, "Cancel"),
-    createElement("button", {
-      type: "button",
-      ref: confirmProps.ref,
-      onFocus: confirmProps.onFocus,
-      disabled: models.length === 0,
-    }, "Confirm"),
+    createElement(
+      "button",
+      {
+        type: "button",
+        ref: cancelProps.ref,
+        onFocus: cancelProps.onFocus,
+      },
+      "Cancel",
+    ),
+    createElement(
+      "button",
+      {
+        type: "button",
+        ref: confirmProps.ref,
+        onFocus: confirmProps.onFocus,
+        disabled: models.length === 0,
+      },
+      "Confirm",
+    ),
   );
 }
 
@@ -313,11 +347,13 @@ function renderInteractiveSubject(
 ) {
   const user = userEvent.setup();
 
-  render(createElement(
-    KeyboardProvider,
-    null,
-    createElement(TestInteractiveModelDialogKeyboard, { onTierFilter, ...options }),
-  ));
+  render(
+    createElement(
+      KeyboardProvider,
+      null,
+      createElement(TestInteractiveModelDialogKeyboard, { onTierFilter, ...options }),
+    ),
+  );
 
   return { user, onTierFilter };
 }
@@ -375,7 +411,9 @@ describe("useModelDialogKeyboard", () => {
 
   it("repairs footer focus when the filtered model list becomes empty", async () => {
     const visibleModel = makeModel("visible-model");
-    const { rerenderFooterSubject, user, onSelect, onOpenChange } = renderFooterSubject([visibleModel]);
+    const { rerenderFooterSubject, user, onSelect, onOpenChange } = renderFooterSubject([
+      visibleModel,
+    ]);
 
     await waitFor(() => {
       expect(screen.getByRole("radio", { name: "visible-model" })).toHaveFocus();
@@ -398,7 +436,10 @@ describe("useModelDialogKeyboard", () => {
   });
 
   it("confirms the first filtered model when checked and focused models are stale", async () => {
-    const { user, onSelect, onOpenChange } = renderDialogSubject([makeModel("visible-model")], "stale-model");
+    const { user, onSelect, onOpenChange } = renderDialogSubject(
+      [makeModel("visible-model")],
+      "stale-model",
+    );
 
     await user.click(screen.getByRole("button", { name: /confirm/i }));
 

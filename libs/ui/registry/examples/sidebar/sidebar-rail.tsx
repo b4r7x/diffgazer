@@ -1,6 +1,6 @@
 "use client";
 
-import { Kbd } from "@/components/ui/kbd"
+import { Kbd } from "@/components/ui/kbd";
 import {
   Sidebar,
   SidebarContent,
@@ -11,7 +11,7 @@ import {
   SidebarSection,
   SidebarSectionTitle,
   SidebarTrigger,
-} from "@/components/ui/sidebar"
+} from "@/components/ui/sidebar";
 
 // In rail mode (48px), each item collapses to an icon-only row centered in the
 // rail. `<SidebarItemLabel>` is hidden via the nav's `data-state="rail"`
@@ -66,12 +66,19 @@ export default function SidebarRail() {
         </Sidebar>
         <div className="flex flex-col gap-2 p-4 text-xs text-muted-foreground font-mono">
           <SidebarTrigger className="self-start border border-border px-2 py-1" />
-          <p>Toggle the rail with the trigger or <Kbd size="sm">Cmd/Ctrl</Kbd><Kbd size="sm">B</Kbd>.</p>
-          <p><Kbd size="sm">Shift</Kbd><Kbd size="sm">Cmd/Ctrl</Kbd><Kbd size="sm">B</Kbd> toggles the hidden state.</p>
+          <p>
+            Toggle the rail with the trigger or <Kbd size="sm">Cmd/Ctrl</Kbd>
+            <Kbd size="sm">B</Kbd>.
+          </p>
+          <p>
+            <Kbd size="sm">Shift</Kbd>
+            <Kbd size="sm">Cmd/Ctrl</Kbd>
+            <Kbd size="sm">B</Kbd> toggles the hidden state.
+          </p>
         </div>
       </div>
     </SidebarProvider>
-  )
+  );
 }
 
 // Single-letter icon stand-in matching the R1 preview. Real consumers replace
@@ -79,8 +86,11 @@ export default function SidebarRail() {
 // shifting layout when label/glyph show in `open` state.
 function RailIcon({ children }: { children: string }) {
   return (
-    <span aria-hidden="true" className="inline-flex items-center justify-center w-4 text-foreground font-bold">
+    <span
+      aria-hidden="true"
+      className="inline-flex items-center justify-center w-4 text-foreground font-bold"
+    >
       {children}
     </span>
-  )
+  );
 }

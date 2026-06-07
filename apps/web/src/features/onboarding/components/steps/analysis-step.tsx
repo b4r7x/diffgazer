@@ -15,9 +15,7 @@ function isLensId(value: string | null): value is LensId {
 interface AnalysisStepProps {
   lenses: LensId[];
   onLensesChange: (lenses: LensId[]) => void;
-  onCommit?: (nextValue: {
-    defaultLenses: LensId[];
-  }) => void;
+  onCommit?: (nextValue: { defaultLenses: LensId[] }) => void;
   enabled?: boolean;
   onBoundaryReached?: (direction: "up" | "down") => void;
 }
@@ -29,9 +27,7 @@ export function AnalysisStep({
   enabled = true,
   onBoundaryReached,
 }: AnalysisStepProps) {
-  const [highlighted, setHighlighted] = useState<string | null>(
-    LENS_OPTIONS[0]?.id ?? null,
-  );
+  const [highlighted, setHighlighted] = useState<string | null>(LENS_OPTIONS[0]?.id ?? null);
 
   const handleKeyDown = (e: KeyboardEvent) => {
     if (!enabled) return;
@@ -76,11 +72,7 @@ export function AnalysisStep({
                 label={
                   <span className="flex items-center gap-2">
                     {option.label}
-                    <Badge
-                      variant={option.badgeVariant}
-                      size="sm"
-                      className="text-3xs"
-                    >
+                    <Badge variant={option.badgeVariant} size="sm" className="text-3xs">
                       {option.badgeLabel}
                     </Badge>
                   </span>

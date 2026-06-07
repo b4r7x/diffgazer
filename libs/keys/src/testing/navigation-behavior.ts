@@ -60,24 +60,28 @@ interface PreparedCase extends NavigationCase {
 // Must be called inside a describe() block -- it calls it.each directly.
 export function testNavigationBehavior(options: TestNavigationBehaviorOptions): void {
   const { setup, items, cases, getActiveIndex } = options;
-  const resolveActiveIndex = getActiveIndex ?? ((rendered: RenderResult) => defaultGetActiveIndex(rendered, items));
+  const resolveActiveIndex =
+    getActiveIndex ?? ((rendered: RenderResult) => defaultGetActiveIndex(rendered, items));
   const prepared: readonly PreparedCase[] = cases.map((entry) => ({
     ...entry,
     displayLabel: entry.label ?? entry.key,
   }));
 
-  it.each(prepared)(
-    "moves focus to item $expectedActiveIndex via $displayLabel",
-    async ({ key, expectedActiveIndex, displayLabel }) => {
-      const rendered = setup();
-      const user = userEvent.setup();
+  it.each(prepared)("moves focus to item $expectedActiveIndex via $displayLabel", async ({
+    key,
+    expectedActiveIndex,
+    displayLabel,
+  }) => {
+    const rendered = setup();
+    const user = userEvent.setup();
 
-      await user.keyboard(key);
+    await user.keyboard(key);
 
-      const actual = resolveActiveIndex(rendered);
-      expect(actual, `expected active index ${expectedActiveIndex} via ${displayLabel}`).toBe(expectedActiveIndex);
+    const actual = resolveActiveIndex(rendered);
+    expect(actual, `expected active index ${expectedActiveIndex} via ${displayLabel}`).toBe(
+      expectedActiveIndex,
+    );
 
-      rendered.unmount();
-    },
-  );
+    rendered.unmount();
+  });
 }

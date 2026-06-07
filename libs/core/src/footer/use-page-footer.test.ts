@@ -48,10 +48,9 @@ describe("usePageFooter", () => {
   });
 
   it("keeps the actions reference stable across data changes (split contract)", () => {
-    const { result } = renderHook(
-      () => ({ actions: useFooterActions(), data: useFooterData() }),
-      { wrapper },
-    );
+    const { result } = renderHook(() => ({ actions: useFooterActions(), data: useFooterData() }), {
+      wrapper,
+    });
 
     const initialActions = result.current.actions;
 

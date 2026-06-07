@@ -106,7 +106,11 @@ export function HistoryPage() {
           }
         }}
         placeholder="Search runs by ID..."
-        prefix={<span aria-hidden="true" className="text-tui-blue font-bold">/</span>}
+        prefix={
+          <span aria-hidden="true" className="text-tui-blue font-bold">
+            /
+          </span>
+        }
         className="border-tui-border bg-tui-bg text-sm"
       />
 
@@ -142,7 +146,12 @@ export function HistoryPage() {
           data-focused={focusZone === "runs" || undefined}
           className="flex-1 min-w-0 flex flex-col overflow-hidden border border-tui-border data-[focused]:border-tui-blue focus:outline-none"
         >
-          <SectionHeader as="h2" variant="muted" bordered className="mb-0 flex justify-between overflow-hidden p-3 border-tui-border">
+          <SectionHeader
+            as="h2"
+            variant="muted"
+            bordered
+            className="mb-0 flex justify-between overflow-hidden p-3 border-tui-border"
+          >
             <span className="truncate">Reviews</span>
             <span className="shrink-0 ml-2">Sort: Recent</span>
           </SectionHeader>

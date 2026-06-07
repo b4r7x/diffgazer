@@ -40,7 +40,10 @@ function addExtraOptions(cmd: Command, extras: ExtraOption[] | undefined): void 
   }
 }
 
-type RegistryLikeItem = Pick<RegistryItem, 'name' | 'title' | 'description' | 'dependencies' | 'files'>;
+type RegistryLikeItem = Pick<
+  RegistryItem,
+  "name" | "title" | "description" | "dependencies" | "files"
+>;
 
 export interface ListCommandConfig<TItem extends RegistryLikeItem, TConfig> {
   itemPlural: string;
@@ -55,13 +58,15 @@ export interface ListCommandConfig<TItem extends RegistryLikeItem, TConfig> {
 function buildListAction<TItem extends RegistryLikeItem, TConfig>(
   config: ListCommandConfig<TItem, TConfig>,
 ) {
-  const toDisplay = config.toDisplayItem ?? ((item: TItem): ListDisplayItem => ({
-    name: item.name,
-    title: item.title,
-    description: item.description,
-    dependencies: item.dependencies,
-    files: item.files.map((file) => config.getRelativePath(file)),
-  }));
+  const toDisplay =
+    config.toDisplayItem ??
+    ((item: TItem): ListDisplayItem => ({
+      name: item.name,
+      title: item.title,
+      description: item.description,
+      dependencies: item.dependencies,
+      files: item.files.map((file) => config.getRelativePath(file)),
+    }));
 
   return withErrorHandler(async (opts: SharedCommandOptions) => {
     const cwd = resolveCwd(opts);
@@ -126,9 +131,7 @@ function buildDiffAction<TConfig>(config: DiffCommandConfig<TConfig>) {
   });
 }
 
-export function createDiffCommand<TConfig>(
-  config: DiffCommandConfig<TConfig>,
-): Command {
+export function createDiffCommand<TConfig>(config: DiffCommandConfig<TConfig>): Command {
   return new Command("diff")
     .description(`Compare local ${config.itemPlural} with registry versions`)
     .argument(`[${config.itemPlural}...]`, `${config.itemPlural} to diff`)
@@ -156,13 +159,15 @@ export interface RemoveCommandConfig<TItem, TConfig> {
   resolveAllowedBaseDirs: (ctx: { cwd: string; config: TConfig }) => string[];
   updateManifest: (ctx: { cwd: string; removedNames: string[] }) => void;
   findOrphanedDeps?: (ctx: { removedNames: string[]; cwd: string; config: TConfig }) => string[];
-  expandRequestedNames?: (ctx: { cwd: string; config: TConfig; names: string[] }) => ExpandRequestedNamesResult;
+  expandRequestedNames?: (ctx: {
+    cwd: string;
+    config: TConfig;
+    names: string[];
+  }) => ExpandRequestedNamesResult;
   onAfterRemove?: (ctx: { cwd: string; config: TConfig; removedNames: string[] }) => void;
 }
 
-function buildRemoveAction<TItem, TConfig>(
-  config: RemoveCommandConfig<TItem, TConfig>,
-) {
+function buildRemoveAction<TItem, TConfig>(config: RemoveCommandConfig<TItem, TConfig>) {
   return withErrorHandler(async (names: string[], opts: SharedCommandOptions) => {
     const cwd = resolveCwd(opts);
 
@@ -199,14 +204,21 @@ export function createRemoveCommand<TItem, TConfig>(
     .option("--cwd <path>", "Working directory", ".")
     .option("-y, --yes", "Skip confirmation prompts", false)
     .option("--dry-run", "Preview changes without removing files", false)
-    .option("--force", "Remove files even when ownership metadata is missing or content changed", false)
+    .option(
+      "--force",
+      "Remove files even when ownership metadata is missing or content changed",
+      false,
+    )
     .action(buildRemoveAction(config));
 }
 
 export interface InitCommandConfig<TConfig> {
   configFileName: string;
   loadConfig: (cwd: string) => import("./config.js").ConfigLoadResult<TConfig>;
-  detectProject: (cwd: string, opts: SharedCommandOptions) => { display: Array<[label: string, value: string]> };
+  detectProject: (
+    cwd: string,
+    opts: SharedCommandOptions,
+  ) => { display: Array<[label: string, value: string]> };
   /**
    * Required preflight: declare every path that `createFiles`, `afterFiles`, and
    * `writeConfig` may create, write, or touch (directories end with `/`). The
@@ -220,7 +232,10 @@ export interface InitCommandConfig<TConfig> {
    * must be a compile error, not a silent rollback hole.
    */
   plannedPaths: (cwd: string, opts: SharedCommandOptions) => string[];
-  createFiles: (cwd: string, opts: SharedCommandOptions) => Array<{ action: "created" | "skipped"; path: string }>;
+  createFiles: (
+    cwd: string,
+    opts: SharedCommandOptions,
+  ) => Array<{ action: "created" | "skipped"; path: string }>;
   afterFiles?: (cwd: string) => Promise<void>;
   writeConfig: (cwd: string, opts: SharedCommandOptions) => void | Promise<void>;
   nextSteps: string[];
@@ -248,9 +263,7 @@ function buildInitAction<TConfig>(config: InitCommandConfig<TConfig>) {
   });
 }
 
-export function createInitCommand<TConfig>(
-  config: InitCommandConfig<TConfig>,
-): Command {
+export function createInitCommand<TConfig>(config: InitCommandConfig<TConfig>): Command {
   const cmd = new Command("init")
     .description("Initialize project configuration")
     .option("--cwd <path>", "Working directory", ".")
@@ -279,7 +292,9 @@ export interface AddCommandConfig<TConfig> {
     names: string[];
     all: boolean;
     opts: SharedCommandOptions;
-  }) => Promise<import("./workflows/add.js").AddWorkflowPlan> | import("./workflows/add.js").AddWorkflowPlan;
+  }) =>
+    | Promise<import("./workflows/add.js").AddWorkflowPlan>
+    | import("./workflows/add.js").AddWorkflowPlan;
   extraOptions?: ExtraOption[];
 }
 
@@ -307,9 +322,7 @@ function buildAddAction<TConfig>(config: AddCommandConfig<TConfig>) {
   });
 }
 
-export function createAddCommand<TConfig>(
-  config: AddCommandConfig<TConfig>,
-): Command {
+export function createAddCommand<TConfig>(config: AddCommandConfig<TConfig>): Command {
   const cmd = new Command("add")
     .description(`Add ${config.itemPlural} to your project`)
     .argument(`[${config.itemPlural}...]`, `${config.itemLabel} names to add`)

@@ -1,5 +1,5 @@
-import { Avatar } from "@/components/ui/avatar"
-import { Overflow } from "@/components/ui/overflow"
+import { Avatar } from "@/components/ui/avatar";
+import { Overflow } from "@/components/ui/overflow";
 
 const users = [
   { initials: "FX", name: "Felix" },
@@ -10,7 +10,7 @@ const users = [
   { initials: "ZR", name: "Zara" },
   { initials: "LN", name: "Luna" },
   { initials: "RX", name: "Rex" },
-]
+];
 
 export default function OverflowAvatarsExample() {
   return (
@@ -53,5 +53,5 @@ export default function OverflowAvatarsExample() {
         </div>
       </div>
     </div>
-  )
+  );
 }

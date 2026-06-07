@@ -1,4 +1,4 @@
-import { Typography } from "@/components/ui/typography"
+import { Typography } from "@/components/ui/typography";
 
 export default function TypographyDefault() {
   return (
@@ -8,8 +8,8 @@ export default function TypographyDefault() {
           default (sm)
         </span>
         <Typography>
-          Standard body text for UI labels, descriptions, and general content.
-          Optimized for readability at small sizes with relaxed line spacing.
+          Standard body text for UI labels, descriptions, and general content. Optimized for
+          readability at small sizes with relaxed line spacing.
         </Typography>
       </div>
 
@@ -18,9 +18,9 @@ export default function TypographyDefault() {
           prose
         </span>
         <Typography as="p" variant="prose">
-          Prose variant uses looser line spacing for comfortable reading of
-          longer-form content like documentation and articles. Multiple
-          paragraphs flow naturally with consistent vertical rhythm.
+          Prose variant uses looser line spacing for comfortable reading of longer-form content like
+          documentation and articles. Multiple paragraphs flow naturally with consistent vertical
+          rhythm.
         </Typography>
       </div>
 
@@ -29,8 +29,8 @@ export default function TypographyDefault() {
           compact (xs)
         </span>
         <Typography as="p" variant="compact" size="xs">
-          Compact variant uses smaller text with tighter spacing, suitable for
-          secondary information, captions, and dense data displays.
+          Compact variant uses smaller text with tighter spacing, suitable for secondary
+          information, captions, and dense data displays.
         </Typography>
       </div>
 
@@ -57,11 +57,11 @@ export default function TypographyDefault() {
           lineClamp=2
         </span>
         <Typography lineClamp={2} className="max-w-sm">
-          This text is clamped to two lines. Any content beyond the second line
-          will be hidden with an ellipsis. Useful for card descriptions, preview
-          text, and anywhere you need controlled text overflow.
+          This text is clamped to two lines. Any content beyond the second line will be hidden with
+          an ellipsis. Useful for card descriptions, preview text, and anywhere you need controlled
+          text overflow.
         </Typography>
       </div>
     </div>
-  )
+  );
 }

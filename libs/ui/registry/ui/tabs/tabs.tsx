@@ -85,7 +85,10 @@ function TabsRoot<TValue extends string = string>({
   ...rest
 }: TabsProps<TValue>) {
   const tabsId = useId();
-  const { enabledValues, panelValues, triggerValues } = useMemo(() => collectTabMetadata(children), [children]);
+  const { enabledValues, panelValues, triggerValues } = useMemo(
+    () => collectTabMetadata(children),
+    [children],
+  );
   const [value, setValue] = useControllableState<string>({
     value: controlledValue,
     defaultValue: defaultValue ?? "",
@@ -95,9 +98,8 @@ function TabsRoot<TValue extends string = string>({
   const [focusedValue, setFocusedValue] = useState<string | null>(null);
   const firstEnabledTab = enabledValues[0] ?? "";
   const resolvedValue = enabledValues.includes(value) ? value : firstEnabledTab;
-  const resolvedFocusedValue = focusedValue !== null && enabledValues.includes(focusedValue)
-    ? focusedValue
-    : resolvedValue;
+  const resolvedFocusedValue =
+    focusedValue !== null && enabledValues.includes(focusedValue) ? focusedValue : resolvedValue;
 
   const contextValue = useMemo(
     () => ({
@@ -113,7 +115,18 @@ function TabsRoot<TValue extends string = string>({
       size,
       activationMode,
     }),
-    [tabsId, resolvedValue, resolvedFocusedValue, activationMode, setValue, panelValues, triggerValues, orientation, variant, size],
+    [
+      tabsId,
+      resolvedValue,
+      resolvedFocusedValue,
+      activationMode,
+      setValue,
+      panelValues,
+      triggerValues,
+      orientation,
+      variant,
+      size,
+    ],
   );
 
   return (

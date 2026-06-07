@@ -3,11 +3,7 @@
 import "../shared/panel.css";
 
 import { type PanelProps, Panel as PanelRoot } from "./panel";
-import {
-  PanelContent,
-  type PanelContentProps,
-  panelContentVariants,
-} from "./panel-content";
+import { PanelContent, type PanelContentProps, panelContentVariants } from "./panel-content";
 import { PanelDescription, type PanelDescriptionProps } from "./panel-description";
 import { PanelFooter, type PanelFooterProps } from "./panel-footer";
 import { PanelHeader, type PanelHeaderProps } from "./panel-header";

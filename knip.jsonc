@@ -7,7 +7,7 @@
 // false positives. Triage the reported findings, then promote individual rules to
 // errors (via the `rules` map) and add `knip` to the gate as a follow-up.
 {
-  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "$schema": "https://unpkg.com/knip@6/schema-jsonc.json",
   "ignoreBinaries": ["depcruise", "biome", "turbo", "playwright", "lhci"],
   "ignoreDependencies": ["@diffgazer/.+"],
   "ignore": [
@@ -58,12 +58,7 @@
       "entry": ["src/**/index.ts", "src/*.ts", "scripts/**/*.ts", "vitest.config.ts"]
     },
     "libs/keys": {
-      "entry": [
-        "src/index.ts",
-        "scripts/**/*.ts",
-        "registry/**/*.{ts,tsx}",
-        "vitest.config.ts"
-      ]
+      "entry": ["src/index.ts", "scripts/**/*.ts", "registry/**/*.{ts,tsx}", "vitest.config.ts"]
     },
     "libs/ui": {
       "entry": [

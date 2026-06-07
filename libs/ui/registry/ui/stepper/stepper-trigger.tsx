@@ -14,10 +14,7 @@ import {
   stepperTriggerVariants,
 } from "@/lib/stepper-variants";
 import { cn } from "@/lib/utils";
-import {
-  useStepperContext,
-  useStepperStepContext,
-} from "./stepper-context";
+import { useStepperContext, useStepperStepContext } from "./stepper-context";
 
 export const DEFAULT_STEP_STATUS_LABELS: Record<StepStatus, string> = {
   completed: "DONE",
@@ -37,8 +34,7 @@ const STATUS_SR_PREFIX: Record<StepStatus, string> = {
   disabled: "Disabled:",
 };
 
-export interface StepperTriggerProps
-  extends Omit<ComponentProps<"button">, "children" | "type"> {
+export interface StepperTriggerProps extends Omit<ComponentProps<"button">, "children" | "type"> {
   children: ReactNode;
   statusLabels?: Partial<Record<StepStatus, string>>;
 }
@@ -52,14 +48,7 @@ export function StepperTrigger({
   ...props
 }: StepperTriggerProps) {
   const { onToggle, variant, tabTargetId } = useStepperContext();
-  const {
-    stepId,
-    isExpanded,
-    status,
-    triggerId,
-    contentId,
-    hasContent,
-  } = useStepperStepContext();
+  const { stepId, isExpanded, status, triggerId, contentId, hasContent } = useStepperStepContext();
 
   const isDisabled = disabledProp || status === "disabled";
   const isInteractive = status !== "disabled";
@@ -136,10 +125,7 @@ function Glyph({ variant, status, tagLabel }: GlyphProps) {
   return <>{STEP_INDICATOR_GLYPHS[variant][status]}</>;
 }
 
-export function getStepperIndicatorGlyph(
-  variant: StepperVariant,
-  status: StepStatus,
-): string {
+export function getStepperIndicatorGlyph(variant: StepperVariant, status: StepStatus): string {
   if (variant === "numbered") {
     switch (status) {
       case "completed":

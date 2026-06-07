@@ -11,7 +11,14 @@ export interface SplitCell {
 
 export type SplitRow =
   | { kind: "change"; left: SplitCell; right: SplitCell }
-  | { kind: "separator"; oldStart: number; oldCount: number; newStart: number; newCount: number; heading: string };
+  | {
+      kind: "separator";
+      oldStart: number;
+      oldCount: number;
+      newStart: number;
+      newCount: number;
+      heading: string;
+    };
 
 export function toSplitRows(hunks: DiffHunk[], wordDiff: boolean): SplitRow[] {
   const rows: SplitRow[] = [];
@@ -47,7 +54,11 @@ export function toSplitRows(hunks: DiffHunk[], wordDiff: boolean): SplitRow[] {
         let rightSegs: WordSegment[] | undefined;
 
         if (wordDiff && remove && add) {
-          const { old: oSegs, new: nSegs } = computeWordSegments(remove.content, add.content, wordDiffBudget);
+          const { old: oSegs, new: nSegs } = computeWordSegments(
+            remove.content,
+            add.content,
+            wordDiffBudget,
+          );
           leftSegs = oSegs;
           rightSegs = nSegs;
         }
@@ -55,10 +66,20 @@ export function toSplitRows(hunks: DiffHunk[], wordDiff: boolean): SplitRow[] {
         rows.push({
           kind: "change",
           left: remove
-            ? { type: "remove", content: remove.content, lineNumber: remove.oldLine, wordSegments: leftSegs }
+            ? {
+                type: "remove",
+                content: remove.content,
+                lineNumber: remove.oldLine,
+                wordSegments: leftSegs,
+              }
             : { type: "empty", content: "", lineNumber: null },
           right: add
-            ? { type: "add", content: add.content, lineNumber: add.newLine, wordSegments: rightSegs }
+            ? {
+                type: "add",
+                content: add.content,
+                lineNumber: add.newLine,
+                wordSegments: rightSegs,
+              }
             : { type: "empty", content: "", lineNumber: null },
         });
       }

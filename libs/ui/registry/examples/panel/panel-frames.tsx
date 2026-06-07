@@ -1,4 +1,4 @@
-import { Panel } from "@/components/ui/panel"
+import { Panel } from "@/components/ui/panel";
 
 export default function PanelFrames() {
   return (
@@ -36,12 +36,14 @@ export default function PanelFrames() {
       <Panel frame="surface">
         <Panel.Header>
           <Panel.Title>Surface</Panel.Title>
-          <Panel.Description>Linear-style elevated surface with inner top highlight.</Panel.Description>
+          <Panel.Description>
+            Linear-style elevated surface with inner top highlight.
+          </Panel.Description>
         </Panel.Header>
         <Panel.Content>
           <Panel.Row label="Frame" value="surface" />
         </Panel.Content>
       </Panel>
     </div>
-  )
+  );
 }

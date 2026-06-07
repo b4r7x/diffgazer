@@ -20,10 +20,17 @@ export interface BlockBarSegmentData {
   char?: string;
 }
 
-export interface BlockBarProps extends Omit<
-  HTMLAttributes<HTMLDivElement>,
-  "aria-label" | "aria-labelledby" | "aria-valuemax" | "aria-valuemin" | "aria-valuenow" | "aria-valuetext" | "role"
-> {
+export interface BlockBarProps
+  extends Omit<
+    HTMLAttributes<HTMLDivElement>,
+    | "aria-label"
+    | "aria-labelledby"
+    | "aria-valuemax"
+    | "aria-valuemin"
+    | "aria-valuenow"
+    | "aria-valuetext"
+    | "role"
+  > {
   value?: number;
   max: number;
   barWidth?: number;
@@ -42,9 +49,7 @@ function getSegmentChildValue(child: ReactNode): number | null {
   if (!isValidElement(child) || child.type !== BlockBarSegment) return null;
 
   const segment = child as ReactElement<BlockBarSegmentData>;
-  return Number.isFinite(segment.props.value)
-    ? Math.max(0, segment.props.value)
-    : 0;
+  return Number.isFinite(segment.props.value) ? Math.max(0, segment.props.value) : 0;
 }
 
 function deriveValueFromSegmentChildren(children: ReactNode): number | null {
@@ -86,23 +91,25 @@ function BlockBarRoot({
   const hasChildren = children !== undefined && children !== null;
   const childValue = hasChildren ? deriveValueFromSegmentChildren(children) : null;
   if (hasChildren && value === undefined && !segments && childValue === null) {
-    throw new Error("BlockBar requires `value` when custom children are not BlockBar.Segment elements.");
+    throw new Error(
+      "BlockBar requires `value` when custom children are not BlockBar.Segment elements.",
+    );
   }
 
   const rawValue =
-    value ?? (segments ? segments.reduce((sum, seg) => (
-      Number.isFinite(seg.value) ? sum + Math.max(0, seg.value) : sum
-    ), 0) : childValue ?? 0);
-  const displayValue = Number.isFinite(rawValue)
-    ? Math.min(Math.max(0, rawValue), safeMax)
-    : 0;
+    value ??
+    (segments
+      ? segments.reduce(
+          (sum, seg) => (Number.isFinite(seg.value) ? sum + Math.max(0, seg.value) : sum),
+          0,
+        )
+      : (childValue ?? 0));
+  const displayValue = Number.isFinite(rawValue) ? Math.min(Math.max(0, rawValue), safeMax) : 0;
   const resolvedValueText = valueText ?? `${displayValue} of ${safeMax}`;
   const resolvedSegments = segments
     ? segments.map((segment) => ({
         ...segment,
-        value: Number.isFinite(segment.value)
-          ? Math.min(Math.max(0, segment.value), safeMax)
-          : 0,
+        value: Number.isFinite(segment.value) ? Math.min(Math.max(0, segment.value), safeMax) : 0,
       }))
     : [{ value: displayValue, variant }];
 
@@ -126,9 +133,7 @@ function BlockBarRoot({
         className={cn("flex items-center font-mono text-sm", className)}
       >
         {(!hasChildren || segments) && label && (
-          <span className="w-20 truncate text-xs text-muted-foreground">
-            {label}
-          </span>
+          <span className="w-20 truncate text-xs text-muted-foreground">{label}</span>
         )}
         <span
           className="relative inline-block max-w-full shrink-0 overflow-hidden tracking-widest"
@@ -140,14 +145,14 @@ function BlockBarRoot({
           <span className="absolute inset-0 flex">
             {segments || !hasChildren
               ? resolvedSegments.map((seg, i) => (
-                <BlockBarSegment
-                  // biome-ignore lint/suspicious/noArrayIndexKey: bar segments render in fixed left-to-right order and are never reordered; segments have no stable id, so the index is the identity.
-                  key={i}
-                  value={seg.value}
-                  variant={seg.variant}
-                  char={seg.char}
-                />
-              ))
+                  <BlockBarSegment
+                    // biome-ignore lint/suspicious/noArrayIndexKey: bar segments render in fixed left-to-right order and are never reordered; segments have no stable id, so the index is the identity.
+                    key={i}
+                    value={seg.value}
+                    variant={seg.variant}
+                    char={seg.char}
+                  />
+                ))
               : children}
           </span>
         </span>

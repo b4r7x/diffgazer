@@ -1,8 +1,5 @@
 import { useReviewContext } from "@diffgazer/core/api/hooks";
-import {
-  convertAgentEventsToLogEntries,
-  mapStepsToProgressData,
-} from "@diffgazer/core/review";
+import { convertAgentEventsToLogEntries, mapStepsToProgressData } from "@diffgazer/core/review";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
 import { Box } from "ink";
 import { type ReactElement, useEffect, useRef } from "react";
@@ -24,13 +21,12 @@ interface ReviewContainerProps {
 
 export function ReviewContainer({ mode }: ReviewContainerProps): ReactElement {
   const { navigate } = useNavigation();
-  const { state, start, goToSummary, goToResults, reset } =
-    useReviewLifecycle();
+  const { state, start, goToSummary, goToResults, reset } = useReviewLifecycle();
 
   const contextStep = state.steps.find((s) => s.id === "context");
   const contextReady = contextStep?.status === "completed" && !!state.reviewId;
   const { data: contextData } = useReviewContext({ enabled: contextReady });
-  const contextSnapshot = contextReady ? contextData ?? null : null;
+  const contextSnapshot = contextReady ? (contextData ?? null) : null;
 
   const hasStarted = useRef(false);
 
@@ -78,11 +74,7 @@ export function ReviewContainer({ mode }: ReviewContainerProps): ReactElement {
     );
   }
 
-  if (
-    state.error &&
-    state.phase !== "streaming" &&
-    state.phase !== "completing"
-  ) {
+  if (state.error && state.phase !== "streaming" && state.phase !== "completing") {
     return (
       <Box flexDirection="column" gap={1}>
         <Callout variant="error">
@@ -129,11 +121,7 @@ export function ReviewContainer({ mode }: ReviewContainerProps): ReactElement {
         <ReviewSummaryView
           issues={state.issues}
           reviewId={state.reviewId ?? undefined}
-          durationMs={
-            state.startedAt
-              ? Date.now() - state.startedAt.getTime()
-              : undefined
-          }
+          durationMs={state.startedAt ? Date.now() - state.startedAt.getTime() : undefined}
           onContinue={goToResults}
           onBack={reset}
         />

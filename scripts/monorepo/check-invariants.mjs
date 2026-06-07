@@ -41,7 +41,15 @@ function hasExport(exportsKeys, expectedExport) {
   return exportsKeys.some((name) => name.startsWith(prefix) && !name.includes("*"));
 }
 
-function assertPackageMetadata(path, expectedName, expectedHomePageSuffix, expectedRepoDir, expectedExports, expectedFiles, expectedSideEffects) {
+function assertPackageMetadata(
+  path,
+  expectedName,
+  expectedHomePageSuffix,
+  expectedRepoDir,
+  expectedExports,
+  expectedFiles,
+  expectedSideEffects,
+) {
   const pkg = readJson(path);
   const missing = [];
 
@@ -77,14 +85,16 @@ function assertPackageMetadata(path, expectedName, expectedHomePageSuffix, expec
 
   checkPolicyFiles(path, missing);
 
-  addResult(
-    `${path}: package metadata`,
-    missing.length === 0,
-    missing.join("; "),
-  );
+  addResult(`${path}: package metadata`, missing.length === 0, missing.join("; "));
 }
 
-function assertCliPackageMetadata(path, expectedName, expectedBinName, expectedRepoDir, expectedFiles) {
+function assertCliPackageMetadata(
+  path,
+  expectedName,
+  expectedBinName,
+  expectedRepoDir,
+  expectedFiles,
+) {
   const pkg = readJson(path);
   const missing = [];
 
@@ -115,11 +125,7 @@ function assertCliPackageMetadata(path, expectedName, expectedBinName, expectedR
 
   checkPolicyFiles(path, missing);
 
-  addResult(
-    `${path}: CLI package metadata`,
-    missing.length === 0,
-    missing.join("; "),
-  );
+  addResult(`${path}: CLI package metadata`, missing.length === 0, missing.join("; "));
 }
 
 function assertRootMetadata() {
@@ -159,7 +165,9 @@ function assertLicenseFilesMatch(parsedPackages) {
 
     const marker = LICENSE_MARKERS[licenseField];
     if (!marker) {
-      mismatches.push(`${file}: unknown license "${licenseField}" (expected one of ${Object.keys(LICENSE_MARKERS).join(", ")})`);
+      mismatches.push(
+        `${file}: unknown license "${licenseField}" (expected one of ${Object.keys(LICENSE_MARKERS).join(", ")})`,
+      );
       continue;
     }
 
@@ -168,17 +176,18 @@ function assertLicenseFilesMatch(parsedPackages) {
     }
   }
 
-  addResult("package license fields match LICENSE files", mismatches.length === 0, mismatches.slice(0, 10).join("; "));
+  addResult(
+    "package license fields match LICENSE files",
+    mismatches.length === 0,
+    mismatches.slice(0, 10).join("; "),
+  );
 }
 
 function listPackageJsonFiles() {
   const files = execSync("rg --files -g 'package.json' -g '!node_modules/**' --no-heading", {
     encoding: "utf8",
   });
-  return files
-    .trim()
-    .split("\n")
-    .filter(Boolean);
+  return files.trim().split("\n").filter(Boolean);
 }
 
 addResult("root workspace file exists", existsSync("pnpm-workspace.yaml"));
@@ -187,13 +196,14 @@ assertRootMetadata();
 
 const workspaceYaml = readFileSync("pnpm-workspace.yaml", "utf8");
 const globs = workspaceYaml
-  .split('\n')
+  .split("\n")
   .map((line) => line.trim())
-  .filter((line) => line.startsWith('- '))
-  .map((line) => line.slice(2).replace(/"|'/g, ''));
+  .filter((line) => line.startsWith("- "))
+  .map((line) => line.slice(2).replace(/"|'/g, ""));
 addResult(
   "workspace globs match target roots",
-  JSON.stringify(globs.slice().sort()) === JSON.stringify(["apps/*", "cli/*", "libs/*", "libs/keys/artifacts"]),
+  JSON.stringify(globs.slice().sort()) ===
+    JSON.stringify(["apps/*", "cli/*", "libs/*", "libs/keys/artifacts"]),
   `found ${JSON.stringify(globs)}`,
 );
 
@@ -210,11 +220,17 @@ addResult("no gitlink entries", gitLinks.length === 0, gitLinks.slice(0, 10).joi
 let nestedRepoConfig = "";
 try {
   // Split to avoid grep self-match
-  nestedRepoConfig = execSync(`git config --get-regexp '^${"sub"}${"module"}\\.'`, { encoding: "utf8" }).trim();
+  nestedRepoConfig = execSync(`git config --get-regexp '^${"sub"}${"module"}\\.'`, {
+    encoding: "utf8",
+  }).trim();
 } catch {
   nestedRepoConfig = "";
 }
-addResult("no nested repo config", nestedRepoConfig.length === 0, nestedRepoConfig.split("\n").slice(0, 10).join(", "));
+addResult(
+  "no nested repo config",
+  nestedRepoConfig.length === 0,
+  nestedRepoConfig.split("\n").slice(0, 10).join(", "),
+);
 
 const nestedGitDirs = execSync(
   "find . -path './.worktrees' -prune -o -type d -name .git -not -path './.git' -print",
@@ -223,7 +239,11 @@ const nestedGitDirs = execSync(
   .trim()
   .split("\n")
   .filter(Boolean);
-addResult("no nested .git directories", nestedGitDirs.length === 0, nestedGitDirs.slice(0, 5).join(", "));
+addResult(
+  "no nested .git directories",
+  nestedGitDirs.length === 0,
+  nestedGitDirs.slice(0, 5).join(", "),
+);
 
 const nestedLocks = execSync(
   "find . -path './.worktrees' -prune -o -name pnpm-lock.yaml -type f -not -path './pnpm-lock.yaml' -not -path './node_modules/*' -print",
@@ -241,7 +261,11 @@ const nestedWorkspaces = execSync(
   .trim()
   .split("\n")
   .filter(Boolean);
-addResult("no nested pnpm-workspace.yaml", nestedWorkspaces.length === 0, nestedWorkspaces.slice(0, 5).join(", "));
+addResult(
+  "no nested pnpm-workspace.yaml",
+  nestedWorkspaces.length === 0,
+  nestedWorkspaces.slice(0, 5).join(", "),
+);
 
 const packageFiles = listPackageJsonFiles();
 const badLinkFile = [];
@@ -285,8 +309,16 @@ for (const [file, parsed] of parsedPackages) {
   }
 }
 
-addResult("no link: or file: local deps", badLinkFile.length === 0, badLinkFile.slice(0, 10).join(", "));
-addResult("internal local deps use workspace protocol", badInternalProtocol.length === 0, badInternalProtocol.slice(0, 10).join(", "));
+addResult(
+  "no link: or file: local deps",
+  badLinkFile.length === 0,
+  badLinkFile.slice(0, 10).join(", "),
+);
+addResult(
+  "internal local deps use workspace protocol",
+  badInternalProtocol.length === 0,
+  badInternalProtocol.slice(0, 10).join(", "),
+);
 
 assertLicenseFilesMatch(parsedPackages);
 
@@ -313,10 +345,13 @@ const nestedPackageFiles = packageFiles
   .filter((path) => /^(apps|cli|libs)\/.+\/package\.json$/.test(path))
   .filter((path) => !workspacePackageFiles.includes(path))
   .sort();
-const unexpectedNestedPackageFiles = nestedPackageFiles.filter((path) => !allowedNestedPackageFiles.includes(path));
+const unexpectedNestedPackageFiles = nestedPackageFiles.filter(
+  (path) => !allowedNestedPackageFiles.includes(path),
+);
 addResult(
   "workspace package list under target roots",
-  JSON.stringify(workspacePackageFiles) === JSON.stringify(expectedWorkspacePackageFiles.slice().sort()),
+  JSON.stringify(workspacePackageFiles) ===
+    JSON.stringify(expectedWorkspacePackageFiles.slice().sort()),
   `found ${workspacePackageFiles.length}: ${workspacePackageFiles.join(", ")}`,
 );
 addResult(
@@ -330,7 +365,15 @@ assertPackageMetadata(
   "@diffgazer/ui",
   "libs/ui",
   "libs/ui",
-  ["./components/*", "./hooks/*", "./lib/*", "./theme-base.css", "./theme.css", "./sources.css", "./styles.css"],
+  [
+    "./components/*",
+    "./hooks/*",
+    "./lib/*",
+    "./theme-base.css",
+    "./theme.css",
+    "./sources.css",
+    "./styles.css",
+  ],
   ["dist", "LICENSE", "README.md", "SECURITY.md", "SUPPORT.md"],
   ["**/*.css"],
 );
@@ -345,21 +388,22 @@ assertPackageMetadata(
   false,
 );
 
-assertCliPackageMetadata(
-  "cli/diffgazer/package.json",
-  "diffgazer",
-  "diffgazer",
-  "cli/diffgazer",
-  ["dist", "bin/diffgazer.js", "README.md", "LICENSE", "SECURITY.md", "SUPPORT.md"],
-);
+assertCliPackageMetadata("cli/diffgazer/package.json", "diffgazer", "diffgazer", "cli/diffgazer", [
+  "dist",
+  "bin/diffgazer.js",
+  "README.md",
+  "LICENSE",
+  "SECURITY.md",
+  "SUPPORT.md",
+]);
 
-assertCliPackageMetadata(
-  "cli/add/package.json",
-  "@diffgazer/add",
-  "dgadd",
-  "cli/add",
-  ["dist", "README.md", "LICENSE", "SECURITY.md", "SUPPORT.md"],
-);
+assertCliPackageMetadata("cli/add/package.json", "@diffgazer/add", "dgadd", "cli/add", [
+  "dist",
+  "README.md",
+  "LICENSE",
+  "SECURITY.md",
+  "SUPPORT.md",
+]);
 
 // Publishable packages are the non-private workspaces that carry a
 // `publishConfig` block (today: diffgazer, @diffgazer/add, @diffgazer/ui,

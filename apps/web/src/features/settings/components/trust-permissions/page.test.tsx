@@ -119,25 +119,27 @@ describe("TrustPermissionsPage", () => {
     mockGetProviderStatus = vi
       .fn<BoundApi["getProviderStatus"]>()
       .mockResolvedValue([{ provider: "gemini", hasApiKey: true, isActive: true }]);
-    mockSaveTrust = vi
-      .fn<BoundApi["saveTrust"]>()
-      .mockResolvedValue({ trust: TRUSTED_FIXTURE });
-    mockDeleteTrust = vi
-      .fn<BoundApi["deleteTrust"]>()
-      .mockResolvedValue({ removed: true });
+    mockSaveTrust = vi.fn<BoundApi["saveTrust"]>().mockResolvedValue({ trust: TRUSTED_FIXTURE });
+    mockDeleteTrust = vi.fn<BoundApi["deleteTrust"]>().mockResolvedValue({ removed: true });
   });
 
   it("resets the draft when async trust data arrives", async () => {
     renderPage();
     await waitForConfigReady();
 
-    expect(screen.getByRole("checkbox", { name: /repository access/i })).toHaveAttribute("aria-checked", "false");
+    expect(screen.getByRole("checkbox", { name: /repository access/i })).toHaveAttribute(
+      "aria-checked",
+      "false",
+    );
 
     mockLoadInit.mockResolvedValue(makeInitResponse(TRUSTED_FIXTURE));
     await refetchInit();
 
     await waitFor(() => {
-      expect(screen.getByRole("checkbox", { name: /repository access/i })).toHaveAttribute("aria-checked", "true");
+      expect(screen.getByRole("checkbox", { name: /repository access/i })).toHaveAttribute(
+        "aria-checked",
+        "true",
+      );
     });
   });
 
@@ -146,7 +148,9 @@ describe("TrustPermissionsPage", () => {
     renderPage();
     await waitForConfigReady();
 
-    await waitFor(() => expect(screen.getByRole("checkbox", { name: /repository access/i })).toHaveFocus());
+    await waitFor(() =>
+      expect(screen.getByRole("checkbox", { name: /repository access/i })).toHaveFocus(),
+    );
     await user.keyboard("{ArrowDown}");
     const saveButton = screen.getByRole("button", { name: /save changes/i });
     expect(saveButton).toHaveFocus();
@@ -159,7 +163,10 @@ describe("TrustPermissionsPage", () => {
     await refetchInit();
 
     await waitFor(() => {
-      expect(screen.getByRole("checkbox", { name: /repository access/i })).toHaveAttribute("aria-checked", "false");
+      expect(screen.getByRole("checkbox", { name: /repository access/i })).toHaveAttribute(
+        "aria-checked",
+        "false",
+      );
     });
     expect(saveButton).toHaveFocus();
   });
@@ -182,7 +189,9 @@ describe("TrustPermissionsPage", () => {
     renderPage();
     await waitForConfigReady();
 
-    await waitFor(() => expect(screen.getByRole("checkbox", { name: /repository access/i })).toHaveFocus());
+    await waitFor(() =>
+      expect(screen.getByRole("checkbox", { name: /repository access/i })).toHaveFocus(),
+    );
     await user.keyboard("{Escape}");
 
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/settings" });
@@ -221,14 +230,22 @@ describe("TrustPermissionsPage", () => {
     renderPage();
     await waitForConfigReady();
 
-    await waitFor(() => expect(screen.getByRole("checkbox", { name: /repository access/i })).toHaveFocus());
     await waitFor(() =>
-      expect(screen.getByRole("checkbox", { name: /repository access/i })).toHaveAttribute("aria-checked", "true"),
+      expect(screen.getByRole("checkbox", { name: /repository access/i })).toHaveFocus(),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole("checkbox", { name: /repository access/i })).toHaveAttribute(
+        "aria-checked",
+        "true",
+      ),
     );
     await user.keyboard("{ArrowDown}{ArrowRight}{Enter}");
 
     await waitFor(() => expect(mockDeleteTrust).toHaveBeenCalledWith("project-1"));
-    expect(screen.getByRole("checkbox", { name: /repository access/i })).toHaveAttribute("aria-checked", "false");
+    expect(screen.getByRole("checkbox", { name: /repository access/i })).toHaveAttribute(
+      "aria-checked",
+      "false",
+    );
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
@@ -258,14 +275,22 @@ describe("TrustPermissionsPage", () => {
     renderPage();
     await waitForConfigReady();
 
-    await waitFor(() => expect(screen.getByRole("checkbox", { name: /repository access/i })).toHaveFocus());
     await waitFor(() =>
-      expect(screen.getByRole("checkbox", { name: /repository access/i })).toHaveAttribute("aria-checked", "true"),
+      expect(screen.getByRole("checkbox", { name: /repository access/i })).toHaveFocus(),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole("checkbox", { name: /repository access/i })).toHaveAttribute(
+        "aria-checked",
+        "true",
+      ),
     );
     await user.keyboard("{ArrowDown}{ArrowRight}{Enter}");
 
     expect(await screen.findByText("Network down")).toBeVisible();
-    expect(screen.getByRole("checkbox", { name: /repository access/i })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("checkbox", { name: /repository access/i })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 });

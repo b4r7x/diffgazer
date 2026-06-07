@@ -6,7 +6,11 @@ export type SelectableVariant = "x" | "bullet";
 
 export const selectableIndicators = {
   x: { checked: "[x]", unchecked: "[ ]", indeterminate: "[-]" },
-  bullet: { checked: "[\u00a0\u25cf\u00a0]", unchecked: "[\u00a0\u00a0\u00a0]", indeterminate: "[ - ]" },
+  bullet: {
+    checked: "[\u00a0\u25cf\u00a0]",
+    unchecked: "[\u00a0\u00a0\u00a0]",
+    indeterminate: "[ - ]",
+  },
 } satisfies Record<SelectableVariant, Record<string, string>>;
 
 const selectableHighlightClass =
@@ -29,38 +33,39 @@ export const selectableVariants = cva(
       highlighted: false,
       disabled: false,
     },
-  }
+  },
 );
 
 export const selectableContainerClass = "flex items-center gap-3 px-3 py-2";
 
-export const selectableIndicatorVariants = cva("font-bold shrink-0 whitespace-nowrap group-focus-visible/selectable:text-foreground", {
-  variants: {
-    size: {
-      sm: "text-sm min-w-[3ch]",
-      md: "min-w-[4ch]",
-      lg: "text-lg min-w-[4ch]",
+export const selectableIndicatorVariants = cva(
+  "font-bold shrink-0 whitespace-nowrap group-focus-visible/selectable:text-foreground",
+  {
+    variants: {
+      size: {
+        sm: "text-sm min-w-[3ch]",
+        md: "min-w-[4ch]",
+        lg: "text-lg min-w-[4ch]",
+      },
+      // checked/highlighted carry no standalone classes but must be declared so the
+      // typed call sites can pass them and the compound variant below can match.
+      checked: {
+        true: "",
+        false: "",
+      },
+      highlighted: {
+        true: "",
+        false: "",
+      },
     },
-    // checked/highlighted carry no standalone classes but must be declared so the
-    // typed call sites can pass them and the compound variant below can match.
-    checked: {
-      true: "",
-      false: "",
-    },
-    highlighted: {
-      true: "",
-      false: "",
+    compoundVariants: [{ checked: true, highlighted: false, className: "text-success" }],
+    defaultVariants: {
+      size: "md",
+      checked: false,
+      highlighted: false,
     },
   },
-  compoundVariants: [
-    { checked: true, highlighted: false, className: "text-success" },
-  ],
-  defaultVariants: {
-    size: "md",
-    checked: false,
-    highlighted: false,
-  },
-});
+);
 
 export const selectableLabelVariants = cva("", {
   variants: {

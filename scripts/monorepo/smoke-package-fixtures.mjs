@@ -40,7 +40,7 @@ function uiImportLoopBody() {
     "  }",
     "  const message = String(caught?.message ?? caught);",
     "  if (!message.includes('optional peer dependency')) {",
-    "    throw new Error(`Expected error message to include \"optional peer dependency\"; got: ${message}`);",
+    '    throw new Error(`Expected error message to include "optional peer dependency"; got: ${message}`);',
     "  }",
     "}",
   ];
@@ -100,7 +100,10 @@ export function writeUiPackageModeSmoke(root, projectDir) {
   writeFileSync(
     resolve(projectDir, "strict.ts"),
     joinLines(
-      ...exports.map((exportPath, index) => `type UiExport${index} = typeof import(${JSON.stringify(exportPath)});`),
+      ...exports.map(
+        (exportPath, index) =>
+          `type UiExport${index} = typeof import(${JSON.stringify(exportPath)});`,
+      ),
       "import { Button } from '@diffgazer/ui/components/button';",
       "import type { ButtonProps } from '@diffgazer/ui/components/button';",
       "import { useKey } from '@diffgazer/keys';",
@@ -117,33 +120,41 @@ export function writeUiPackageModeSmoke(root, projectDir) {
   );
   writeFileSync(
     resolve(projectDir, "tsconfig.json"),
-    JSON.stringify({
-      compilerOptions: {
-        strict: true,
-        target: "ES2022",
-        module: "NodeNext",
-        moduleResolution: "NodeNext",
-        jsx: "react-jsx",
-        skipLibCheck: false,
-        noEmit: true,
+    JSON.stringify(
+      {
+        compilerOptions: {
+          strict: true,
+          target: "ES2022",
+          module: "NodeNext",
+          moduleResolution: "NodeNext",
+          jsx: "react-jsx",
+          skipLibCheck: false,
+          noEmit: true,
+        },
+        include: ["strict.ts"],
       },
-      include: ["strict.ts"],
-    }, null, 2),
+      null,
+      2,
+    ),
   );
   writeFileSync(
     resolve(projectDir, "tsconfig.bundler.json"),
-    JSON.stringify({
-      compilerOptions: {
-        strict: true,
-        target: "ES2022",
-        module: "ESNext",
-        moduleResolution: "Bundler",
-        jsx: "react-jsx",
-        skipLibCheck: false,
-        noEmit: true,
+    JSON.stringify(
+      {
+        compilerOptions: {
+          strict: true,
+          target: "ES2022",
+          module: "ESNext",
+          moduleResolution: "Bundler",
+          jsx: "react-jsx",
+          skipLibCheck: false,
+          noEmit: true,
+        },
+        include: ["strict.ts"],
       },
-      include: ["strict.ts"],
-    }, null, 2),
+      null,
+      2,
+    ),
   );
 }
 
@@ -307,7 +318,7 @@ export function writeUiNextPackageSmoke(_root, projectDir) {
       "import type { ReactNode } from 'react';",
       "",
       "export default function RootLayout({ children }: { children: ReactNode }) {",
-      "  return <html lang=\"en\"><body>{children}</body></html>;",
+      '  return <html lang="en"><body>{children}</body></html>;',
       "}",
       "",
     ),
@@ -366,17 +377,21 @@ export function writeKeysPackageModeSmoke(projectDir) {
   );
   writeFileSync(
     resolve(projectDir, "tsconfig.json"),
-    JSON.stringify({
-      compilerOptions: {
-        strict: true,
-        target: "ES2022",
-        module: "NodeNext",
-        moduleResolution: "NodeNext",
-        jsx: "react-jsx",
-        skipLibCheck: false,
-        noEmit: true,
+    JSON.stringify(
+      {
+        compilerOptions: {
+          strict: true,
+          target: "ES2022",
+          module: "NodeNext",
+          moduleResolution: "NodeNext",
+          jsx: "react-jsx",
+          skipLibCheck: false,
+          noEmit: true,
+        },
+        include: ["strict.ts"],
       },
-      include: ["strict.ts"],
-    }, null, 2),
+      null,
+      2,
+    ),
   );
 }

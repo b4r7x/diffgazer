@@ -66,8 +66,7 @@ interface RenderOptions {
 
 function renderDialog(options: RenderOptions = {}) {
   const getProviderModels =
-    options.getProviderModels ??
-    vi.fn<BoundApi["getProviderModels"]>().mockResolvedValue(RESPONSE);
+    options.getProviderModels ?? vi.fn<BoundApi["getProviderModels"]>().mockResolvedValue(RESPONSE);
   const getOpenRouterModels =
     options.getOpenRouterModels ??
     vi.fn<BoundApi["getOpenRouterModels"]>().mockResolvedValue(OPENROUTER_RESPONSE);
@@ -128,9 +127,7 @@ describe("ModelSelectDialog (catalog)", () => {
 
     expect(within(filterTabs).getByRole("radio", { name: /^free$/i })).toBeChecked();
     await waitFor(() =>
-      expect(
-        screen.queryByRole("radio", { name: /Gemini 3 Pro Preview/ }),
-      ).not.toBeInTheDocument(),
+      expect(screen.queryByRole("radio", { name: /Gemini 3 Pro Preview/ })).not.toBeInTheDocument(),
     );
     expect(screen.getByRole("radio", { name: /Gemini 2\.5 Flash/ })).toBeInTheDocument();
   });

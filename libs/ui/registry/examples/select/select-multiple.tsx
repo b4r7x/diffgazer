@@ -1,16 +1,16 @@
 "use client";
 
-import { useState } from "react"
+import { useState } from "react";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@/components/ui/select";
 
 export default function SelectMultiple() {
-  const [value, setValue] = useState<string[]>(["typescript"])
+  const [value, setValue] = useState<string[]>(["typescript"]);
   return (
     <div className="w-64">
       <Select multiple variant="card" value={value} onChange={setValue}>
@@ -26,5 +26,5 @@ export default function SelectMultiple() {
         </SelectContent>
       </Select>
     </div>
-  )
+  );
 }

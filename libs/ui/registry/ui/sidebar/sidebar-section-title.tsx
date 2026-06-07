@@ -1,6 +1,12 @@
 "use client";
 
-import { createElement, type HTMLAttributes, type MouseEvent, type ReactNode, type Ref } from "react";
+import {
+  createElement,
+  type HTMLAttributes,
+  type MouseEvent,
+  type ReactNode,
+  type Ref,
+} from "react";
 import { cn } from "@/lib/utils";
 import { Chevron } from "../icons/chevron";
 import { useSidebarSectionContext } from "./sidebar-section-context";

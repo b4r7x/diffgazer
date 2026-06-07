@@ -38,10 +38,14 @@ export interface AIClientConfig {
 
 export interface AIClient {
   readonly provider: AIProvider;
-  generate<T extends z.ZodType>(prompt: string, schema: T, options?: { signal?: AbortSignal }): Promise<Result<z.infer<T>, AIError>>;
+  generate<T extends z.ZodType>(
+    prompt: string,
+    schema: T,
+    options?: { signal?: AbortSignal },
+  ): Promise<Result<z.infer<T>, AIError>>;
   generateStream(
     prompt: string,
     callbacks: StreamCallbacks,
-    options?: { signal?: AbortSignal }
+    options?: { signal?: AbortSignal },
   ): Promise<void>;
 }

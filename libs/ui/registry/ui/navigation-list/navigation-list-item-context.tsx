@@ -8,7 +8,9 @@ export interface NavigationListItemContextValue {
   isTree: boolean;
 }
 
-export const NavigationListItemContext = createContext<NavigationListItemContextValue | undefined>(undefined);
+export const NavigationListItemContext = createContext<NavigationListItemContextValue | undefined>(
+  undefined,
+);
 
 export function useNavigationListItemContext() {
   const context = useContext(NavigationListItemContext);

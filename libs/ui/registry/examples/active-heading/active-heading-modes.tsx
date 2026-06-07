@@ -1,26 +1,23 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import {
-  type ActiveHeadingActivation,
-  useActiveHeading,
-} from "@/hooks/use-active-heading"
+import { useState } from "react";
+import { type ActiveHeadingActivation, useActiveHeading } from "@/hooks/use-active-heading";
 
 const sections = [
   { id: "intro", title: "Introduction" },
   { id: "setup", title: "Setup" },
   { id: "config", title: "Configuration" },
   { id: "deploy", title: "Deployment" },
-]
+];
 
 export default function ActiveHeadingModes() {
-  const [mode, setMode] = useState<ActiveHeadingActivation>("top-line")
-  const ids = sections.map((s) => s.id)
+  const [mode, setMode] = useState<ActiveHeadingActivation>("top-line");
+  const ids = sections.map((s) => s.id);
 
   const { activeId, scrollTo } = useActiveHeading({
     ids,
     activation: mode,
-  })
+  });
 
   return (
     <div className="flex flex-col gap-6">
@@ -63,21 +60,17 @@ export default function ActiveHeadingModes() {
         <div className="flex flex-col gap-16">
           {sections.map((section) => (
             <section key={section.id}>
-              <h2
-                id={section.id}
-                className="mb-4 text-lg font-medium text-neutral-100"
-              >
+              <h2 id={section.id} className="mb-4 text-lg font-medium text-neutral-100">
                 {section.title}
               </h2>
               <p className="text-sm text-neutral-400">
-                Content for {section.title.toLowerCase()}. Switch between
-                top-line and viewport-center modes to see how the active heading
-                detection changes.
+                Content for {section.title.toLowerCase()}. Switch between top-line and
+                viewport-center modes to see how the active heading detection changes.
               </p>
             </section>
           ))}
         </div>
       </div>
     </div>
-  )
+  );
 }

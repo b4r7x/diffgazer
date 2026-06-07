@@ -1,15 +1,15 @@
-"use client"
+"use client";
 
-import { KeyboardProvider, useActionRowNavigation } from "@diffgazer/keys"
-import { useRef } from "react"
+import { KeyboardProvider, useActionRowNavigation } from "@diffgazer/keys";
+import { useRef } from "react";
 
-const actions = ["Approve", "Request changes", "Skip"]
+const actions = ["Approve", "Request changes", "Skip"];
 // "Request changes" is disabled, so it is skipped during navigation.
-const disabledActions = [false, true, false] as const
+const disabledActions = [false, true, false] as const;
 
 function ReviewRow() {
-  const rowRef = useRef<HTMLDivElement>(null)
-  const titleRef = useRef<HTMLButtonElement>(null)
+  const rowRef = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLButtonElement>(null);
 
   const row = useActionRowNavigation({
     enabled: true,
@@ -18,12 +18,18 @@ function ReviewRow() {
     containerRef: rowRef,
     disabledFocusFallbackRef: titleRef,
     onAction: (index) => alert(`Action: ${actions[index]}`),
-  })
+  });
 
   return (
     <div
       ref={rowRef}
-      style={{ display: "flex", alignItems: "center", gap: 12, padding: 8, border: "1px solid currentColor" }}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+        padding: 8,
+        border: "1px solid currentColor",
+      }}
     >
       <button
         ref={titleRef}
@@ -51,7 +57,7 @@ function ReviewRow() {
         ))}
       </div>
     </div>
-  )
+  );
 }
 
 export default function UseActionRowNavigationBasic() {
@@ -66,5 +72,5 @@ export default function UseActionRowNavigationBasic() {
         <ReviewRow />
       </div>
     </KeyboardProvider>
-  )
+  );
 }

@@ -37,5 +37,4 @@ describe("computeDiff", () => {
     const result = computeDiff(lines.join("\n"), modified.join("\n"));
     expect(result.hunks.length).toBe(2);
   });
-
 });

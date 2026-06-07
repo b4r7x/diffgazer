@@ -52,9 +52,7 @@ export function SeverityFilterGroup({
   };
 
   const valueArray = Array.from(activeFilter);
-  const highlightedSeverity = isFocused
-    ? SEVERITY_ORDER[focusedIndex ?? 0] ?? null
-    : null;
+  const highlightedSeverity = isFocused ? (SEVERITY_ORDER[focusedIndex ?? 0] ?? null) : null;
 
   return (
     <div
@@ -89,7 +87,9 @@ export function SeverityFilterGroup({
                 isFocused && focusedIndex === index && "border-tui-blue bg-tui-selection",
               )}
             >
-              <span aria-hidden="true">[{label} {count}]</span>
+              <span aria-hidden="true">
+                [{label} {count}]
+              </span>
             </ToggleGroupItem>
           );
         })}

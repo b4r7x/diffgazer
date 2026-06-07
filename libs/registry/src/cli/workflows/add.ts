@@ -17,12 +17,14 @@ function dedupeFileOpsStrict(fileOps: FileOp[]): FileOp[] {
       );
     }
 
-    const sourceNames = new Set([
-      existing.sourceName,
-      ...(existing.sourceNames ?? []),
-      op.sourceName,
-      ...(op.sourceNames ?? []),
-    ].filter((sourceName): sourceName is string => sourceName !== undefined));
+    const sourceNames = new Set(
+      [
+        existing.sourceName,
+        ...(existing.sourceNames ?? []),
+        op.sourceName,
+        ...(op.sourceNames ?? []),
+      ].filter((sourceName): sourceName is string => sourceName !== undefined),
+    );
     existing.sourceNames = [...sourceNames];
   }
   return [...byTargetPath.values()];
@@ -67,7 +69,10 @@ export interface RunAddWorkflowOptions<TConfig> {
   }) => Promise<AddWorkflowPlan> | AddWorkflowPlan;
 }
 
-function resolveNames<TConfig>(options: RunAddWorkflowOptions<TConfig>, publicNames: string[]): string[] {
+function resolveNames<TConfig>(
+  options: RunAddWorkflowOptions<TConfig>,
+  publicNames: string[],
+): string[] {
   if (options.all) {
     if (options.requestedNames.length > 0 && options.allIgnoresSpecifiedWarning) {
       warn(options.allIgnoresSpecifiedWarning);
@@ -76,7 +81,9 @@ function resolveNames<TConfig>(options: RunAddWorkflowOptions<TConfig>, publicNa
   }
 
   if (options.requestedNames.length === 0) {
-    throw new Error(`${options.emptyRequestedMessage}\nRun \`${options.listCommand}\` to see available ${options.itemPlural}.`);
+    throw new Error(
+      `${options.emptyRequestedMessage}\nRun \`${options.listCommand}\` to see available ${options.itemPlural}.`,
+    );
   }
 
   validateAgainstRegistry(options.requestedNames, new Set(publicNames), options);
@@ -108,11 +115,7 @@ function emitPlanWarnings(plan: AddWorkflowPlan, dryRun: boolean): void {
   }
 }
 
-function buildConfirmMessage(
-  plan: AddWorkflowPlan,
-  fileOps: FileOp[],
-  all: boolean,
-): string {
+function buildConfirmMessage(plan: AddWorkflowPlan, fileOps: FileOp[], all: boolean): string {
   if (plan.confirmMessage) return plan.confirmMessage;
 
   const count = plan.resolvedNames.length;

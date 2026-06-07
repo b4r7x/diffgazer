@@ -15,9 +15,7 @@ export function Hero() {
         {PRODUCT_NAME}
       </h1>
       <p className="max-w-xl text-balance text-lg text-foreground/90">{TAGLINE}</p>
-      <p className="max-w-xl text-balance font-sans text-muted-foreground">
-        {HERO_DESCRIPTION}
-      </p>
+      <p className="max-w-xl text-balance font-sans text-muted-foreground">{HERO_DESCRIPTION}</p>
       <div className="flex flex-wrap items-center justify-center gap-3">
         <Button as="a" href="#install" variant="primary">
           Install

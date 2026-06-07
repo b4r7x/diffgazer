@@ -12,10 +12,9 @@ vi.mock("node:fs/promises", () => ({
 
 // Boundary mock: node:child_process is the Node.js external-process boundary; resolveGitService probes for the `git` binary, so tests stub execFile to control the probe result.
 vi.mock("node:child_process", () => {
-  const execFileFn = Object.assign(
-    (..._args: unknown[]) => ({}),
-    { [Symbol.for("nodejs.util.promisify.custom")]: mockExecFileAsync },
-  );
+  const execFileFn = Object.assign((..._args: unknown[]) => ({}), {
+    [Symbol.for("nodejs.util.promisify.custom")]: mockExecFileAsync,
+  });
   return { execFile: execFileFn };
 });
 

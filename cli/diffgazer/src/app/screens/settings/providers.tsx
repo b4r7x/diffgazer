@@ -1,4 +1,8 @@
-import { guardQueryState, useDeleteProviderCredentials, useProviderStatus } from "@diffgazer/core/api/hooks";
+import {
+  guardQueryState,
+  useDeleteProviderCredentials,
+  useProviderStatus,
+} from "@diffgazer/core/api/hooks";
 import { usePageFooter } from "@diffgazer/core/footer";
 import { mapProvidersWithStatus } from "@diffgazer/core/providers";
 import { AVAILABLE_PROVIDERS, OPENROUTER_PROVIDER_ID } from "@diffgazer/core/schemas/config";
@@ -55,7 +59,12 @@ function getListWidth({
 
 export function ProvidersScreen(): ReactElement {
   useScope("providers");
-  usePageFooter({ shortcuts: [{ key: "Esc", label: "Back" }, { key: "Enter", label: "Select" }] });
+  usePageFooter({
+    shortcuts: [
+      { key: "Esc", label: "Back" },
+      { key: "Enter", label: "Select" },
+    ],
+  });
   const { columns, isNarrow, isMedium } = useResponsive();
   const { tokens } = useTheme();
   const listWidth = getListWidth({ isNarrow, isMedium, columns });

@@ -11,11 +11,7 @@ function wrapper({ children }: { children: ReactNode }) {
   return createElement(FooterProvider, null, children);
 }
 
-function wrapperWithInitial({
-  initialShortcuts,
-}: {
-  initialShortcuts: Shortcut[];
-}) {
+function wrapperWithInitial({ initialShortcuts }: { initialShortcuts: Shortcut[] }) {
   return ({ children }: { children: ReactNode }) =>
     createElement(FooterProvider, { initialShortcuts, children });
 }
@@ -36,10 +32,9 @@ describe("FooterProvider", () => {
   });
 
   it("updates data when actions setShortcuts is called with a different array", () => {
-    const { result } = renderHook(
-      () => ({ data: useFooterData(), actions: useFooterActions() }),
-      { wrapper },
-    );
+    const { result } = renderHook(() => ({ data: useFooterData(), actions: useFooterActions() }), {
+      wrapper,
+    });
 
     act(() => {
       result.current.actions.setShortcuts([{ key: "Enter", label: "Confirm" }]);
@@ -53,10 +48,9 @@ describe("FooterProvider", () => {
   });
 
   it("skips the state update when next shortcuts are content-equal (referential stability)", () => {
-    const { result } = renderHook(
-      () => ({ data: useFooterData(), actions: useFooterActions() }),
-      { wrapper },
-    );
+    const { result } = renderHook(() => ({ data: useFooterData(), actions: useFooterActions() }), {
+      wrapper,
+    });
 
     act(() => {
       result.current.actions.setShortcuts([{ key: "Enter", label: "Confirm" }]);

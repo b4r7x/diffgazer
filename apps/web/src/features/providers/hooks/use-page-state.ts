@@ -29,10 +29,10 @@ export function useProvidersPageState() {
 
   const effectiveSelectedId = filteredProviders.some((provider) => provider.id === selectedId)
     ? selectedId
-    : filteredProviders[0]?.id ?? null;
+    : (filteredProviders[0]?.id ?? null);
 
   const selectedProvider = effectiveSelectedId
-    ? filteredProviders.find((p) => p.id === effectiveSelectedId) ?? null
+    ? (filteredProviders.find((p) => p.id === effectiveSelectedId) ?? null)
     : null;
 
   const dialogOpen = apiKeyDialogOpen || modelDialogOpen;

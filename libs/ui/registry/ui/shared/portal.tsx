@@ -2,7 +2,11 @@
 
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { isPendingPortalContainer, type PortalContainerValue, usePortalContainer } from "./portal-context";
+import {
+  isPendingPortalContainer,
+  type PortalContainerValue,
+  usePortalContainer,
+} from "./portal-context";
 
 export interface PortalProps {
   children: ReactNode;
@@ -28,16 +32,18 @@ export interface PortalProps {
  */
 export function Portal({ children, container }: PortalProps) {
   const scopedContainer = usePortalContainer();
-  const fallback = scopedContainer !== undefined && !isPendingPortalContainer(scopedContainer)
-    ? scopedContainer.ownerDocument.body
-    : typeof document !== "undefined"
-      ? document.body
-      : null;
-  const target = container !== undefined
-    ? container
-    : scopedContainer !== undefined
-      ? scopedContainer
-      : fallback;
+  const fallback =
+    scopedContainer !== undefined && !isPendingPortalContainer(scopedContainer)
+      ? scopedContainer.ownerDocument.body
+      : typeof document !== "undefined"
+        ? document.body
+        : null;
+  const target =
+    container !== undefined
+      ? container
+      : scopedContainer !== undefined
+        ? scopedContainer
+        : fallback;
 
   if (!target || isPendingPortalContainer(target)) return null;
   return createPortal(children, target);

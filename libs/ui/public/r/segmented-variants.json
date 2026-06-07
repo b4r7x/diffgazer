@@ -3,9 +3,7 @@
   "name": "segmented-variants",
   "title": "Segmented Variants",
   "description": "Shared CVA + sliding-indicator class names for segmented controls (Tabs, ToggleGroup).",
-  "dependencies": [
-    "class-variance-authority"
-  ],
+  "dependencies": ["class-variance-authority"],
   "registryDependencies": [],
   "files": [
     {

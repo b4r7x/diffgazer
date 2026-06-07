@@ -5,7 +5,12 @@ export function resolveAriaInvalid(
   forceInvalid?: boolean,
 ) {
   if (forceInvalid) return true;
-  if (ariaInvalid === true || ariaInvalid === "true" || ariaInvalid === "grammar" || ariaInvalid === "spelling") {
+  if (
+    ariaInvalid === true ||
+    ariaInvalid === "true" ||
+    ariaInvalid === "grammar" ||
+    ariaInvalid === "spelling"
+  ) {
     return ariaInvalid;
   }
   if (ariaInvalid === false || ariaInvalid === "false") return ariaInvalid;
@@ -17,7 +22,10 @@ export function mergeIds(...values: Array<string | undefined>) {
   return ids.length > 0 ? ids.join(" ") : undefined;
 }
 
-export function isHTMLElementForContainer(value: unknown, container: HTMLElement | null): value is HTMLElement {
+export function isHTMLElementForContainer(
+  value: unknown,
+  container: HTMLElement | null,
+): value is HTMLElement {
   const View = container?.ownerDocument.defaultView;
   return Boolean(View && value instanceof View.HTMLElement);
 }

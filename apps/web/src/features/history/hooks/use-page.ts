@@ -23,7 +23,10 @@ function useHistoryData() {
   const reviews = reviewsQuery.data?.reviews ?? [];
   const isLoading = reviewsQuery.isLoading;
   const error = reviewsQuery.error?.message ?? null;
-  const [selectedRunId, setSelectedRunId] = useScopedRouteState<string | null>("run", reviews[0]?.id ?? null);
+  const [selectedRunId, setSelectedRunId] = useScopedRouteState<string | null>(
+    "run",
+    reviews[0]?.id ?? null,
+  );
 
   return {
     reviewsQuery,
@@ -47,7 +50,9 @@ function useSelectedRunData(reviews: ReviewMetadata[], selectedRunId: string | n
 
   const issues = reviewDetail?.result?.issues;
   const sortedIssues = issues
-    ? [...issues].sort((a, b) => SEVERITY_ORDER.indexOf(a.severity) - SEVERITY_ORDER.indexOf(b.severity))
+    ? [...issues].sort(
+        (a, b) => SEVERITY_ORDER.indexOf(a.severity) - SEVERITY_ORDER.indexOf(b.severity),
+      )
     : [];
 
   return {
@@ -103,7 +108,9 @@ export function useHistoryPage() {
     setHighlightedIssueId(null);
   }
   const firstIssueId = selectedRunData.sortedIssues[0]?.id ?? null;
-  const effectiveHighlightedIssueId = selectedRunData.sortedIssues.some((i) => i.id === highlightedIssueId)
+  const effectiveHighlightedIssueId = selectedRunData.sortedIssues.some(
+    (i) => i.id === highlightedIssueId,
+  )
     ? highlightedIssueId
     : firstIssueId;
 
@@ -156,7 +163,11 @@ export function useHistoryPage() {
   const handleIssueClick = (issueId: string) => {
     setHighlightedIssueId(issueId);
     if (selectedRunId) {
-      navigate({ to: "/review/{-$reviewId}", params: { reviewId: selectedRunId }, search: { issueId } });
+      navigate({
+        to: "/review/{-$reviewId}",
+        params: { reviewId: selectedRunId },
+        search: { issueId },
+      });
     }
   };
 

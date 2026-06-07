@@ -56,9 +56,7 @@ export function FixPlanChecklist({
     (input, key) => {
       if (steps.length === 0) return;
       if (key.upArrow) {
-        setHighlightIndex(
-          (i) => (i - 1 + steps.length) % steps.length,
-        );
+        setHighlightIndex((i) => (i - 1 + steps.length) % steps.length);
         return;
       }
       if (key.downArrow) {
@@ -93,9 +91,7 @@ export function FixPlanChecklist({
             >
               {step.action}
             </Text>
-            {step.risk ? (
-              <Badge variant={riskVariant(step.risk)}>{step.risk}</Badge>
-            ) : null}
+            {step.risk ? <Badge variant={riskVariant(step.risk)}>{step.risk}</Badge> : null}
           </Box>
         );
       })}

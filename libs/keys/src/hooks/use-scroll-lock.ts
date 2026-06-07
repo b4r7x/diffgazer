@@ -42,7 +42,7 @@ export function useScrollLock(options: UseScrollLockOptions = {}): void {
   // No dependency array on purpose; see hook-level comment above.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    const nextElement = enabled ? target?.current ?? document.body : null;
+    const nextElement = enabled ? (target?.current ?? document.body) : null;
     if (lockedElementRef.current === nextElement) return;
 
     releaseRef.current?.();

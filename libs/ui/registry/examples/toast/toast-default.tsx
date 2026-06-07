@@ -1,7 +1,7 @@
 "use client";
 
-import { Button } from "@/components/ui/button"
-import { Toaster, toast } from "@/components/ui/toast"
+import { Button } from "@/components/ui/button";
+import { Toaster, toast } from "@/components/ui/toast";
 
 export default function ToastDefault() {
   return (
@@ -38,5 +38,5 @@ export default function ToastDefault() {
       </div>
       <Toaster />
     </>
-  )
+  );
 }

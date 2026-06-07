@@ -12,7 +12,9 @@ const SAMPLE_ITEMS: CopyBundle["items"] = [
     name: "focus-trap",
     title: "focus-trap",
     description: "Keys hook",
-    files: [{ path: "hooks/use-focus-trap.ts", content: "export const useFocusTrap = () => {};\n" }],
+    files: [
+      { path: "hooks/use-focus-trap.ts", content: "export const useFocusTrap = () => {};\n" },
+    ],
   },
 ];
 
@@ -43,6 +45,8 @@ describe("verifyBundleIntegrity", () => {
   });
 
   test("rejects a bundle with no integrity hash", () => {
-    expect(() => verifyBundleIntegrity({ items: SAMPLE_ITEMS })).toThrow(/missing an integrity hash/);
+    expect(() => verifyBundleIntegrity({ items: SAMPLE_ITEMS })).toThrow(
+      /missing an integrity hash/,
+    );
   });
 });

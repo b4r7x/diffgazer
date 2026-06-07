@@ -134,7 +134,11 @@ describe("useActionRowNavigation", () => {
       initialActive: 0,
       cases: [
         { key: "{ArrowRight}", expectedActiveIndex: 1, label: "ArrowRight" },
-        { key: "{ArrowRight}{ArrowRight}", expectedActiveIndex: 0, label: "ArrowRight ArrowRight (wraps)" },
+        {
+          key: "{ArrowRight}{ArrowRight}",
+          expectedActiveIndex: 0,
+          label: "ArrowRight ArrowRight (wraps)",
+        },
         { key: "{ArrowLeft}", expectedActiveIndex: 1, label: "ArrowLeft (wraps from start)" },
       ],
       getActiveIndex: getActionRowActiveIndex,
@@ -304,7 +308,9 @@ describe("useActionRowNavigation", () => {
       type Options = UseActionRowNavigationOptions<TwoActions>;
 
       expectTypeOf<Options["actionCount"]>().toEqualTypeOf<2>();
-      expectTypeOf<NonNullable<Options["disabledActions"]>>().toEqualTypeOf<readonly [boolean, boolean]>();
+      expectTypeOf<NonNullable<Options["disabledActions"]>>().toEqualTypeOf<
+        readonly [boolean, boolean]
+      >();
       // Tuple index narrowing: onAction/onNavigate accept only 0 | 1 (not number).
       // We assert by checking that number is NOT assignable to the parameter.
       expectTypeOf<number>().not.toMatchTypeOf<Parameters<Options["onAction"]>[0]>();
@@ -325,13 +331,19 @@ describe("useActionRowNavigation", () => {
     it("rejects actionCount that disagrees with Actions length", () => {
       type ThreeActions = readonly [() => void, () => void, () => void];
 
-      expectTypeOf<2>().not.toMatchTypeOf<UseActionRowNavigationOptions<ThreeActions>["actionCount"]>();
+      expectTypeOf<2>().not.toMatchTypeOf<
+        UseActionRowNavigationOptions<ThreeActions>["actionCount"]
+      >();
     });
 
     it("keeps the loose default contract when no generic is supplied", () => {
       expectTypeOf<UseActionRowNavigationOptions["actionCount"]>().toEqualTypeOf<number>();
-      expectTypeOf<UseActionRowNavigationOptions["onAction"]>().parameter(0).toEqualTypeOf<number>();
-      expectTypeOf<NonNullable<UseActionRowNavigationOptions["disabledActions"]>>().toEqualTypeOf<readonly boolean[]>();
+      expectTypeOf<UseActionRowNavigationOptions["onAction"]>()
+        .parameter(0)
+        .toEqualTypeOf<number>();
+      expectTypeOf<NonNullable<UseActionRowNavigationOptions["disabledActions"]>>().toEqualTypeOf<
+        readonly boolean[]
+      >();
     });
   });
 });

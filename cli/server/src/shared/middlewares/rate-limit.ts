@@ -23,7 +23,8 @@ const getOrResetWindow = (key: string, windowMs: number, now: number): WindowEnt
   return fresh;
 };
 
-export const createRateLimitMiddleware = (key: string, config: RateLimitConfig) =>
+export const createRateLimitMiddleware =
+  (key: string, config: RateLimitConfig) =>
   async (c: Context, next: Next): Promise<Response | undefined> => {
     const now = Date.now();
     const entry = getOrResetWindow(key, config.windowMs, now);

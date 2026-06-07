@@ -1,7 +1,4 @@
-import {
-  createProcessServer,
-  type ServerController,
-} from "./process";
+import { createProcessServer, type ServerController } from "./process";
 
 export interface WebServerConfig {
   cwd: string;

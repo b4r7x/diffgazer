@@ -7,13 +7,7 @@ import {
   createWordDiffBudget,
   type ParsedDiff,
 } from "@/lib/diff";
-import {
-  formatHunkHeader,
-  LINE_PREFIX,
-  LineContent,
-  ROW_STATE,
-  SR_LABEL,
-} from "./diff-view-line";
+import { formatHunkHeader, LINE_PREFIX, LineContent, ROW_STATE, SR_LABEL } from "./diff-view-line";
 
 type UnifiedHunk = { hunk: ParsedDiff["hunks"][number]; changes: AnnotatedChange[] };
 
@@ -133,9 +127,7 @@ function UnifiedHunkBlock({
             {LINE_PREFIX[change.type]}
           </span>
           <span className="diff-code">
-            {SR_LABEL[change.type] && (
-              <span className="sr-only">{SR_LABEL[change.type]}</span>
-            )}
+            {SR_LABEL[change.type] && <span className="sr-only">{SR_LABEL[change.type]}</span>}
             <LineContent
               content={change.content}
               wordSegments={change.wordSegments}

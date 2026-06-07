@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types"
+import type { ComponentDoc } from "./types";
 
 export const avatarDoc: ComponentDoc = {
   description:
@@ -61,7 +61,8 @@ export const avatarDoc: ComponentDoc = {
         type: "string",
         required: false,
         defaultValue: null,
-        description: 'Image alt text and accessible name. When omitted, falls back to a string `fallback`. When neither is set, the avatar uses role="presentation".',
+        description:
+          'Image alt text and accessible name. When omitted, falls back to a string `fallback`. When neither is set, the avatar uses role="presentation".',
       },
       fallback: {
         type: "ReactNode",
@@ -85,7 +86,8 @@ export const avatarDoc: ComponentDoc = {
         type: "ReactNode",
         required: false,
         defaultValue: null,
-        description: "Custom inner content. Replaces the default AvatarImage + AvatarFallback composition.",
+        description:
+          "Custom inner content. Replaces the default AvatarImage + AvatarFallback composition.",
       },
     },
     AvatarImage: {
@@ -99,7 +101,8 @@ export const avatarDoc: ComponentDoc = {
         type: "string",
         required: false,
         defaultValue: '""',
-        description: "Alt text. Defaults to empty when omitted since the parent Avatar already exposes a name.",
+        description:
+          "Alt text. Defaults to empty when omitted since the parent Avatar already exposes a name.",
       },
     },
     AvatarFallback: {
@@ -121,13 +124,14 @@ export const avatarDoc: ComponentDoc = {
         type: "number",
         required: false,
         defaultValue: null,
-        description: "Hard cap on visible avatars. Extras render as an AvatarIndicator. When omitted, AvatarGroup measures overflow with Overflow.",
+        description:
+          "Hard cap on visible avatars. Extras render as an AvatarIndicator. When omitted, AvatarGroup measures overflow with Overflow.",
       },
       spacing: {
         type: '"overlap" | "gap"',
         required: false,
         defaultValue: '"overlap"',
-        description: 'Overlap stacks avatars; gap spaces them apart.',
+        description: "Overlap stacks avatars; gap spaces them apart.",
       },
       size: {
         type: '"sm" | "md" | "lg" | null',
@@ -153,7 +157,8 @@ export const avatarDoc: ComponentDoc = {
         type: "number",
         required: true,
         defaultValue: null,
-        description: 'Number rendered as "+N". Used by AvatarGroup for overflow but available standalone.',
+        description:
+          'Number rendered as "+N". Used by AvatarGroup for overflow but available standalone.',
       },
       size: {
         type: '"sm" | "md" | "lg"',
@@ -163,4 +168,4 @@ export const avatarDoc: ComponentDoc = {
       },
     },
   },
-}
+};

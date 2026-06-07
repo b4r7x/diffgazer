@@ -162,7 +162,9 @@ function CatalogModelList({
   if (models.length === 0) {
     return (
       <div className="space-y-4">
-        <p className="text-sm text-tui-muted font-mono">No models available. Enter a model ID manually:</p>
+        <p className="text-sm text-tui-muted font-mono">
+          No models available. Enter a model ID manually:
+        </p>
         <Input
           type="text"
           value={value ?? ""}

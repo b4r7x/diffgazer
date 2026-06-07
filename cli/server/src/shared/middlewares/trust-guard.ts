@@ -4,10 +4,7 @@ import { getStore } from "../lib/config/store.js";
 import { getProjectRoot } from "../lib/http/request.js";
 import { errorResponse } from "../lib/http/response.js";
 
-export const requireRepoAccess = async (
-  c: Context,
-  next: Next
-): Promise<Response | undefined> => {
+export const requireRepoAccess = async (c: Context, next: Next): Promise<Response | undefined> => {
   const projectRoot = getProjectRoot(c);
   const { trust } = getStore().getProjectInfo(projectRoot);
 
@@ -16,7 +13,7 @@ export const requireRepoAccess = async (
       c,
       "Repository access not granted. Update Trust & Permissions to continue.",
       ErrorCode.TRUST_REQUIRED,
-      403
+      403,
     );
   }
 
@@ -25,7 +22,7 @@ export const requireRepoAccess = async (
       c,
       "Trust was granted for a different repository root. Re-grant trust for this directory.",
       ErrorCode.TRUST_REQUIRED,
-      403
+      403,
     );
   }
 

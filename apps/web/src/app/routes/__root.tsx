@@ -11,7 +11,10 @@ interface RouteErrorBoundaryState {
   error: Error | null;
 }
 
-class RouteErrorBoundary extends React.Component<{ children: React.ReactNode }, RouteErrorBoundaryState> {
+class RouteErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  RouteErrorBoundaryState
+> {
   override state: RouteErrorBoundaryState = { error: null };
 
   static getDerivedStateFromError(error: Error): RouteErrorBoundaryState {
@@ -72,7 +75,13 @@ export function RootLayout() {
     <FooterProvider>
       <GlobalLayout>
         <RouteErrorBoundary>
-          <Suspense fallback={<div className="flex h-full items-center justify-center bg-tui-bg text-tui-fg font-mono"><span className="text-tui-muted">Loading...</span></div>}>
+          <Suspense
+            fallback={
+              <div className="flex h-full items-center justify-center bg-tui-bg text-tui-fg font-mono">
+                <span className="text-tui-muted">Loading...</span>
+              </div>
+            }
+          >
             <Outlet />
           </Suspense>
         </RouteErrorBoundary>

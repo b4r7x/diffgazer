@@ -28,10 +28,18 @@ const mockUseSaveSettings = useSaveSettings as ReturnType<typeof vi.fn>;
 const localStorageStore = new Map<string, string>();
 const storageMock: Storage = {
   getItem: (key: string) => localStorageStore.get(key) ?? null,
-  setItem: (key: string, value: string) => { localStorageStore.set(key, value); },
-  removeItem: (key: string) => { localStorageStore.delete(key); },
-  clear: () => { localStorageStore.clear(); },
-  get length() { return localStorageStore.size; },
+  setItem: (key: string, value: string) => {
+    localStorageStore.set(key, value);
+  },
+  removeItem: (key: string) => {
+    localStorageStore.delete(key);
+  },
+  clear: () => {
+    localStorageStore.clear();
+  },
+  get length() {
+    return localStorageStore.size;
+  },
   key: (index: number) => [...localStorageStore.keys()][index] ?? null,
 };
 Object.defineProperty(globalThis, "localStorage", { value: storageMock, writable: true });
@@ -43,8 +51,10 @@ function mockMatchMedia(matches: boolean) {
   const mql = {
     matches,
     media: "(prefers-color-scheme: dark)",
-    addEventListener: (_: string, cb: (e: MediaQueryListEvent) => void) => matchMediaListeners.add(cb),
-    removeEventListener: (_: string, cb: (e: MediaQueryListEvent) => void) => matchMediaListeners.delete(cb),
+    addEventListener: (_: string, cb: (e: MediaQueryListEvent) => void) =>
+      matchMediaListeners.add(cb),
+    removeEventListener: (_: string, cb: (e: MediaQueryListEvent) => void) =>
+      matchMediaListeners.delete(cb),
     addListener: vi.fn(),
     removeListener: vi.fn(),
     onchange: null,
@@ -54,11 +64,7 @@ function mockMatchMedia(matches: boolean) {
   return mql;
 }
 
-function ThemeConsumer({
-  onRender,
-}: {
-  onRender: (ctx: ThemeContextValue) => void;
-}) {
+function ThemeConsumer({ onRender }: { onRender: (ctx: ThemeContextValue) => void }) {
   const ctx = useContext(ThemeContext);
   if (!ctx) return null;
   onRender(ctx);
@@ -103,7 +109,7 @@ describe("ThemeProvider", () => {
     render(
       <ThemeProvider>
         <div />
-      </ThemeProvider>
+      </ThemeProvider>,
     );
 
     expect(document.documentElement.getAttribute("data-theme")).toBe("light");
@@ -113,7 +119,7 @@ describe("ThemeProvider", () => {
     render(
       <ThemeProvider>
         <div />
-      </ThemeProvider>
+      </ThemeProvider>,
     );
 
     expect(document.documentElement.getAttribute("data-theme")).toBe("light");
@@ -124,7 +130,7 @@ describe("ThemeProvider", () => {
     render(
       <ThemeProvider>
         <div />
-      </ThemeProvider>
+      </ThemeProvider>,
     );
 
     expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
@@ -142,8 +148,12 @@ describe("ThemeProvider", () => {
 
     render(
       <ThemeProvider>
-        <ThemeConsumer onRender={(ctx) => { capturedSetTheme = ctx.setTheme; }} />
-      </ThemeProvider>
+        <ThemeConsumer
+          onRender={(ctx) => {
+            capturedSetTheme = ctx.setTheme;
+          }}
+        />
+      </ThemeProvider>,
     );
 
     expect(capturedSetTheme).toBeDefined();
@@ -169,8 +179,12 @@ describe("ThemeProvider", () => {
 
     render(
       <ThemeProvider>
-        <ThemeConsumer onRender={(ctx) => { capturedSetTheme = ctx.setTheme; }} />
-      </ThemeProvider>
+        <ThemeConsumer
+          onRender={(ctx) => {
+            capturedSetTheme = ctx.setTheme;
+          }}
+        />
+      </ThemeProvider>,
     );
 
     expect(document.documentElement.getAttribute("data-theme")).toBe("light");
@@ -193,7 +207,7 @@ describe("ThemeProvider", () => {
     render(
       <ThemeProvider>
         <div />
-      </ThemeProvider>
+      </ThemeProvider>,
     );
 
     expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
@@ -205,7 +219,7 @@ describe("ThemeProvider", () => {
     render(
       <ThemeProvider>
         <div />
-      </ThemeProvider>
+      </ThemeProvider>,
     );
 
     expect(document.documentElement.getAttribute("data-theme")).toBe("light");

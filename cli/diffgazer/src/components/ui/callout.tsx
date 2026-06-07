@@ -44,13 +44,7 @@ export function Callout({ variant = "info", children }: CalloutProps) {
   const icon = variantIcons[variant];
 
   return (
-    <Box
-      borderStyle="round"
-      borderColor={color}
-      paddingX={1}
-      flexDirection="row"
-      gap={1}
-    >
+    <Box borderStyle="round" borderColor={color} paddingX={1} flexDirection="row" gap={1}>
       <Text color={color}>{icon}</Text>
       <Box flexDirection="column">{children}</Box>
     </Box>

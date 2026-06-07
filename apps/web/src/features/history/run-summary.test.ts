@@ -17,7 +17,9 @@ describe("severityChipClass", () => {
     });
 
     it(`returns the active-row inversion class for ${severity} severity`, () => {
-      expect(severityChipClass(severity)).toContain("group-data-[active]:text-primary-foreground/85");
+      expect(severityChipClass(severity)).toContain(
+        "group-data-[active]:text-primary-foreground/85",
+      );
     });
   }
 });

@@ -29,8 +29,5 @@
     "hooks/**/*.ts",
     "hooks/**/*.tsx"
   ],
-  "exclude": [
-    "**/*.test.ts",
-    "**/*.test.tsx"
-  ]
+  "exclude": ["**/*.test.ts", "**/*.test.tsx"]
 }

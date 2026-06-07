@@ -1,4 +1,4 @@
-import { Checkbox } from "@/components/ui/checkbox"
+import { Checkbox } from "@/components/ui/checkbox";
 
 export default function CheckboxVariants() {
   return (
@@ -19,5 +19,5 @@ export default function CheckboxVariants() {
         description="This checkbox has additional descriptive text below the label."
       />
     </div>
-  )
+  );
 }

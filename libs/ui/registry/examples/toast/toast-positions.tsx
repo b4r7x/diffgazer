@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import type { ToastPosition } from "@/components/ui/toast"
-import { Toaster, toast } from "@/components/ui/toast"
-import { ToggleGroup } from "@/components/ui/toggle-group"
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import type { ToastPosition } from "@/components/ui/toast";
+import { Toaster, toast } from "@/components/ui/toast";
+import { ToggleGroup } from "@/components/ui/toggle-group";
 
 export default function ToastPositions() {
-  const [position, setPosition] = useState<string | null>("bottom-right")
+  const [position, setPosition] = useState<string | null>("bottom-right");
   return (
     <div className="flex flex-col gap-4">
       <ToggleGroup value={position} onChange={setPosition}>
@@ -21,13 +21,11 @@ export default function ToastPositions() {
       <Button
         variant="primary"
         size="sm"
-        onClick={() =>
-          toast.info("Notification", { message: "Check the selected corner." })
-        }
+        onClick={() => toast.info("Notification", { message: "Check the selected corner." })}
       >
         Show Toast
       </Button>
       <Toaster position={(position ?? "bottom-right") as ToastPosition} />
     </div>
-  )
+  );
 }

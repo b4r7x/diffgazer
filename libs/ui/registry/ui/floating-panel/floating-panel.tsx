@@ -41,8 +41,7 @@ export function useFloatingPanelContext(): FloatingPanelContextValue {
   return ctx;
 }
 
-export interface FloatingPanelProps
-  extends Omit<ComponentPropsWithoutRef<"div">, "style"> {
+export interface FloatingPanelProps extends Omit<ComponentPropsWithoutRef<"div">, "style"> {
   open: boolean;
   triggerRef: RefObject<HTMLElement | null>;
   side?: FloatingSide;

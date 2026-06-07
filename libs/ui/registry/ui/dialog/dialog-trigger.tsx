@@ -40,7 +40,14 @@ interface DialogTriggerElementProps {
   onClick?: MouseEventHandler<HTMLElement>;
 }
 
-const nativeInteractiveElements = new Set(["button", "a", "input", "select", "textarea", "summary"]);
+const nativeInteractiveElements = new Set([
+  "button",
+  "a",
+  "input",
+  "select",
+  "textarea",
+  "summary",
+]);
 
 function isNativeInteractiveElement(element: ReactElement<DialogTriggerElementProps>): boolean {
   return typeof element.type === "string" && nativeInteractiveElements.has(element.type);

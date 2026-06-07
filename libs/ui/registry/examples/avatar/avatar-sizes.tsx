@@ -1,4 +1,4 @@
-import { Avatar } from "@/components/ui/avatar"
+import { Avatar } from "@/components/ui/avatar";
 
 export default function AvatarSizes() {
   return (
@@ -7,5 +7,5 @@ export default function AvatarSizes() {
       <Avatar fallback="MD" size="md" />
       <Avatar fallback="LG" size="lg" />
     </div>
-  )
+  );
 }

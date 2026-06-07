@@ -40,7 +40,9 @@ export function rollbackFiles(
   createdDirs: string[],
 ): void {
   const results = [
-    ...backups.map((b) => tryQuietly(() => writeFileSafe(b.path, b.content, true), `restore ${b.path}`)),
+    ...backups.map((b) =>
+      tryQuietly(() => writeFileSafe(b.path, b.content, true), `restore ${b.path}`),
+    ),
     ...newFiles.map((f) => tryQuietly(() => rmSync(f), `rollback ${f}`)),
   ];
   cleanEmptyDirs(createdDirs.reverse());
@@ -50,13 +52,22 @@ export function rollbackFiles(
   }
 }
 
-function trackNewDir(dir: string, existingDirs: Set<string>, createdDirs: string[], createdDirSet: Set<string>): void {
+function trackNewDir(
+  dir: string,
+  existingDirs: Set<string>,
+  createdDirs: string[],
+  createdDirSet: Set<string>,
+): void {
   if (existingDirs.has(dir) || createdDirSet.has(dir)) return;
   createdDirSet.add(dir);
   createdDirs.push(dir);
 }
 
-function backupIfOverwriting(targetPath: string, overwrite: boolean, backups: Array<{ path: string; content: string }>): void {
+function backupIfOverwriting(
+  targetPath: string,
+  overwrite: boolean,
+  backups: Array<{ path: string; content: string }>,
+): void {
   if (!existsSync(targetPath) || !overwrite) return;
   backups.push({ path: targetPath, content: readFileSync(targetPath, "utf-8") });
 }
@@ -73,7 +84,11 @@ function logWriteResult(result: WriteResult, op: FileOp, newFiles: string[]): vo
   }
 }
 
-function countResults(results: WriteResult[]): { written: number; skipped: number; overwritten: number } {
+function countResults(results: WriteResult[]): {
+  written: number;
+  skipped: number;
+  overwritten: number;
+} {
   let written = 0;
   let skipped = 0;
   let overwritten = 0;
@@ -85,10 +100,7 @@ function countResults(results: WriteResult[]): { written: number; skipped: numbe
   return { written, skipped, overwritten };
 }
 
-export function writeFilesWithRollback(
-  fileOps: FileOp[],
-  overwrite: boolean,
-): WriteFilesResult {
+export function writeFilesWithRollback(fileOps: FileOp[], overwrite: boolean): WriteFilesResult {
   const newFiles: string[] = [];
   const backups: Array<{ path: string; content: string }> = [];
   const existingDirs = new Set(

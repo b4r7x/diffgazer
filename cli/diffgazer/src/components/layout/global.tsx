@@ -41,7 +41,9 @@ export function GlobalLayout({ children }: GlobalLayoutProps) {
   if (columns < MIN_COLUMNS) {
     return (
       <Box width={columns} height={rows} justifyContent="center" alignItems="center">
-        <Text>Terminal too small ({columns} cols). Minimum: {MIN_COLUMNS}.</Text>
+        <Text>
+          Terminal too small ({columns} cols). Minimum: {MIN_COLUMNS}.
+        </Text>
       </Box>
     );
   }

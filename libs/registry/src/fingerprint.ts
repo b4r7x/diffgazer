@@ -4,7 +4,11 @@ import { resolve } from "node:path";
 import { defaultLogger, type Logger } from "./logger.js";
 import { collectAllFiles, relativePath } from "./utils/fs.js";
 
-export function computeInputsFingerprint(rootDir: string, inputs: string[], logger: Logger = defaultLogger): string {
+export function computeInputsFingerprint(
+  rootDir: string,
+  inputs: string[],
+  logger: Logger = defaultLogger,
+): string {
   const hash = createHash("sha256");
 
   for (const inputRel of inputs) {

@@ -48,10 +48,7 @@ export function computeIntegrity(content: string): string {
   return `sha256-${createHash("sha256").update(content).digest("hex")}`;
 }
 
-function normalizeFilePath(
-  path: string,
-  mapping?: { from: string; to: string },
-): string {
+function normalizeFilePath(path: string, mapping?: { from: string; to: string }): string {
   if (!mapping) return path;
   if (mapping.to && path.startsWith(mapping.to)) return path;
   if (path.startsWith(mapping.from)) {
@@ -62,9 +59,7 @@ function normalizeFilePath(
   );
 }
 
-export function buildCopyBundle(
-  options: BuildCopyBundleOptions,
-): BuildCopyBundleResult {
+export function buildCopyBundle(options: BuildCopyBundleOptions): BuildCopyBundleResult {
   const {
     sourceRoot,
     outputPath,

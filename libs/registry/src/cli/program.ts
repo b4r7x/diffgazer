@@ -22,8 +22,10 @@ function enforceNodeVersion(name: string): void {
 
 function isHelpOrVersion(): boolean {
   return (
-    process.argv.includes("--help") || process.argv.includes("-h") ||
-    process.argv.includes("--version") || process.argv.includes("-V")
+    process.argv.includes("--help") ||
+    process.argv.includes("-h") ||
+    process.argv.includes("--version") ||
+    process.argv.includes("-V")
   );
 }
 
@@ -66,9 +68,7 @@ export function createCli(options: CliOptions): Command {
 }
 
 export function runCli(program: Command, argv?: string[]): void {
-  const parsePromise = argv
-    ? program.parseAsync(argv, { from: "user" })
-    : program.parseAsync();
+  const parsePromise = argv ? program.parseAsync(argv, { from: "user" }) : program.parseAsync();
   parsePromise.catch((err) => {
     if (err instanceof CancelError) {
       clack.cancel("Cancelled.");

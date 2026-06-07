@@ -7,7 +7,12 @@ import type { LensId, ReviewIssue, ReviewOptions } from "@diffgazer/core/schemas
 import type { AIClient } from "../ai/types.js";
 import type { ParsedDiff } from "../diff/types.js";
 import { runLensAnalysis } from "./analysis.js";
-import { deduplicateIssues, filterIssuesByMinSeverity, sortIssuesBySeverity, validateIssueCompleteness } from "./issues.js";
+import {
+  deduplicateIssues,
+  filterIssuesByMinSeverity,
+  sortIssuesBySeverity,
+  validateIssueCompleteness,
+} from "./issues.js";
 import { getLenses } from "./lenses.js";
 import type { OrchestrationOptions, OrchestrationOutcome, ReviewError } from "./types.js";
 
@@ -15,7 +20,7 @@ async function runWithConcurrency<T, R>(
   items: T[],
   limit: number,
   worker: (item: T, index: number) => Promise<R>,
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<PromiseSettledResult<R>[]> {
   const results: PromiseSettledResult<R>[] = new Array(items.length);
   let nextIndex = 0;
@@ -122,11 +127,19 @@ export async function orchestrateReview(
     concurrency,
     async (task) => {
       try {
-        return await runLensAnalysis(client, task.lens, diff, onEvent, {
-          traceId,
-          spanId: task.spanId,
-          parentSpanId: orchestratorSpanId,
-        }, orchestrationOptions.projectContext, orchestrationOptions.signal);
+        return await runLensAnalysis(
+          client,
+          task.lens,
+          diff,
+          onEvent,
+          {
+            traceId,
+            spanId: task.spanId,
+            parentSpanId: orchestratorSpanId,
+          },
+          orchestrationOptions.projectContext,
+          orchestrationOptions.signal,
+        );
       } catch (error) {
         onEvent({
           type: "agent_error",
@@ -155,7 +168,13 @@ export async function orchestrateReview(
     if (settled.status === "rejected") {
       const errorMsg = getErrorMessage(settled.reason);
       lastError = { code: "NETWORK_ERROR", message: errorMsg };
-      lensStats.push({ lensId: lens.id, issueCount: 0, status: "failed", errorCode: "NETWORK_ERROR", errorMessage: errorMsg });
+      lensStats.push({
+        lensId: lens.id,
+        issueCount: 0,
+        status: "failed",
+        errorCode: "NETWORK_ERROR",
+        errorMessage: errorMsg,
+      });
       failedLenses.push({ lensId: lens.id, errorCode: "NETWORK_ERROR", errorMessage: errorMsg });
       return;
     }
@@ -163,14 +182,28 @@ export async function orchestrateReview(
     const result = settled.value;
     if (!result.ok) {
       lastError = result.error;
-      lensStats.push({ lensId: lens.id, issueCount: 0, status: "failed", errorCode: result.error.code, errorMessage: result.error.message });
-      failedLenses.push({ lensId: lens.id, errorCode: result.error.code, errorMessage: result.error.message });
+      lensStats.push({
+        lensId: lens.id,
+        issueCount: 0,
+        status: "failed",
+        errorCode: result.error.code,
+        errorMessage: result.error.message,
+      });
+      failedLenses.push({
+        lensId: lens.id,
+        errorCode: result.error.code,
+        errorMessage: result.error.message,
+      });
       return;
     }
 
     allIssues.push(...result.value.issues);
     summaries.push(`[${result.value.lensName}] ${result.value.summary}`);
-    lensStats.push({ lensId: result.value.lensId, issueCount: result.value.issues.length, status: "success" });
+    lensStats.push({
+      lensId: result.value.lensId,
+      issueCount: result.value.issues.length,
+      status: "success",
+    });
   });
 
   const deduplicated = deduplicateIssues(allIssues);
@@ -178,9 +211,10 @@ export async function orchestrateReview(
   const validated = filtered.filter(validateIssueCompleteness);
   const sorted = sortIssuesBySeverity(validated);
 
-  const failedSummary = failedLenses.length > 0
-    ? `Partial analysis: ${failedLenses.map((f) => `${f.lensId}${f.errorCode ? ` (${f.errorCode})` : ""}`).join(", ")} failed.`
-    : "";
+  const failedSummary =
+    failedLenses.length > 0
+      ? `Partial analysis: ${failedLenses.map((f) => `${f.lensId}${f.errorCode ? ` (${f.errorCode})` : ""}`).join(", ")} failed.`
+      : "";
   const combinedSummary = [summaries.join("\n\n"), failedSummary].filter(Boolean).join("\n\n");
 
   onEvent({

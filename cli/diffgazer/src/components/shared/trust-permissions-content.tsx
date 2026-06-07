@@ -60,7 +60,8 @@ export function TrustPermissionsContent({
       <Callout variant="warning">
         <Callout.Title>SECURITY WARNING</Callout.Title>
         <Callout.Content>
-          Run commands is currently unavailable. When enabled, it allows the AI to execute shell scripts. This grants significant access to your system.
+          Run commands is currently unavailable. When enabled, it allows the AI to execute shell
+          scripts. This grants significant access to your system.
         </Callout.Content>
       </Callout>
     </Box>

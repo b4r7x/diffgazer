@@ -37,11 +37,7 @@ export function KeyValue({
 
   return (
     <KeyValueContext value={contextValue}>
-      <dl
-        ref={ref}
-        className={cn(keyValueVariants({ layout, bordered }), className)}
-        {...props}
-      >
+      <dl ref={ref} className={cn(keyValueVariants({ layout, bordered }), className)} {...props}>
         {children}
       </dl>
     </KeyValueContext>

@@ -27,7 +27,8 @@ interface IssueOptions {
   severity?: ReviewIssue["severity"];
 }
 
-const suggestedPatch = "--- a/src/example.ts\n+++ b/src/example.ts\n@@\n-const a = 1;\n+const a = 2;";
+const suggestedPatch =
+  "--- a/src/example.ts\n+++ b/src/example.ts\n@@\n-const a = 1;\n+const a = 2;";
 
 function makeIssue(id: string, title: string, options: IssueOptions = {}): ReviewIssue {
   return {
@@ -70,7 +71,9 @@ function FooterView() {
   return <Footer shortcuts={shortcuts} rightShortcuts={rightShortcuts} />;
 }
 
-function renderView(issues: ReviewIssue[] = [makeIssue("issue-1", "Issue one"), makeIssue("issue-2", "Issue two")]) {
+function renderView(
+  issues: ReviewIssue[] = [makeIssue("issue-1", "Issue one"), makeIssue("issue-2", "Issue two")],
+) {
   return render(
     <KeyboardProvider>
       <FooterProvider>
@@ -142,7 +145,9 @@ describe("ReviewResultsView keyboard regression", () => {
     ]);
 
     await user.keyboard("{ArrowRight}");
-    await waitFor(() => expect(screen.getByRole("region", { name: "Issue details" })).toHaveFocus());
+    await waitFor(() =>
+      expect(screen.getByRole("region", { name: "Issue details" })).toHaveFocus(),
+    );
     await user.keyboard("4");
     expect(screen.getByRole("tab", { name: "Patch" })).toHaveAttribute("aria-selected", "true");
 
@@ -199,7 +204,10 @@ describe("ReviewResultsView keyboard regression", () => {
 
   it("scrolls issue details with up and down arrows after moving focus into details", async () => {
     const user = userEvent.setup();
-    const originalScrollByDescriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollBy");
+    const originalScrollByDescriptor = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      "scrollBy",
+    );
     const scrollOptions: ScrollToOptions[] = [];
     // Patch `scrollBy` (not `scrollIntoView`): the public keyboard contract is
     // "advance one viewport per ArrowDown / ArrowUp", which the component
@@ -221,7 +229,9 @@ describe("ReviewResultsView keyboard regression", () => {
       screen.getByRole("listbox").focus();
       await user.keyboard("{ArrowRight}");
       expect(screen.getByRole("tab", { name: "Details" })).toHaveAttribute("aria-selected", "true");
-      await waitFor(() => expect(screen.getByRole("region", { name: "Issue details" })).toHaveFocus());
+      await waitFor(() =>
+        expect(screen.getByRole("region", { name: "Issue details" })).toHaveFocus(),
+      );
 
       await user.keyboard("{ArrowDown}");
       await user.keyboard("{ArrowUp}");
@@ -269,7 +279,9 @@ describe("ReviewResultsView keyboard regression", () => {
     }
     await user.keyboard("{ArrowRight}");
 
-    await waitFor(() => expect(screen.getByRole("region", { name: "Issue details" })).toHaveFocus());
+    await waitFor(() =>
+      expect(screen.getByRole("region", { name: "Issue details" })).toHaveFocus(),
+    );
   });
 
   it("renders a passed-review empty state when there are no issues", () => {
@@ -283,9 +295,7 @@ describe("ReviewResultsView keyboard regression", () => {
 
   it("distinguishes filtered-out issues from passed reviews", async () => {
     const user = userEvent.setup();
-    renderView([
-      makeIssue("issue-1", "High issue", { severity: "high" }),
-    ]);
+    renderView([makeIssue("issue-1", "High issue", { severity: "high" })]);
 
     await user.click(screen.getByRole("button", { name: /low severity/i }));
 
@@ -324,9 +334,7 @@ describe("ReviewResultsView keyboard regression", () => {
 
   it("reaches Reset via ArrowRight from the last severity when filter is active", async () => {
     const user = userEvent.setup();
-    renderView([
-      makeIssue("issue-1", "High issue", { severity: "high" }),
-    ]);
+    renderView([makeIssue("issue-1", "High issue", { severity: "high" })]);
 
     await user.keyboard("{ArrowUp}");
     const filterGroup = screen.getByRole("group", { name: "Severity filter" });
@@ -336,7 +344,10 @@ describe("ReviewResultsView keyboard regression", () => {
 
     await user.keyboard("{ArrowRight}");
     await user.keyboard("{Enter}");
-    expect(screen.getByRole("button", { name: /high severity/i })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: /high severity/i })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
     const reset = await screen.findByRole("button", { name: /reset severity filter/i });
     expect(reset).toBeInTheDocument();
 
@@ -362,6 +373,8 @@ describe("ReviewResultsView keyboard regression", () => {
     await user.keyboard("r");
 
     await waitFor(() => expect(screen.getAllByRole("option")).toHaveLength(2));
-    expect(screen.queryByRole("button", { name: /reset severity filter/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /reset severity filter/i }),
+    ).not.toBeInTheDocument();
   });
 });

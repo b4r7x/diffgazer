@@ -24,11 +24,7 @@ export const ErrorCode = {
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
 
-export const SHARED_ERROR_CODES = [
-  "INTERNAL_ERROR",
-  "API_KEY_MISSING",
-  "RATE_LIMITED",
-] as const;
+export const SHARED_ERROR_CODES = ["INTERNAL_ERROR", "API_KEY_MISSING", "RATE_LIMITED"] as const;
 
 export type SharedErrorCode = (typeof SHARED_ERROR_CODES)[number];
 
@@ -38,7 +34,7 @@ export function createDomainErrorCodes<const T extends readonly string[]>(specif
 
 export function createDomainErrorSchema<const T extends readonly string[]>(
   specificCodes: T,
-  options?: { includeDetails?: boolean }
+  options?: { includeDetails?: boolean },
 ) {
   const allCodes = createDomainErrorCodes(specificCodes);
   const codeSchema = z.enum(allCodes);

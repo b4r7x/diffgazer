@@ -1,10 +1,10 @@
-import { Toc, TocItem, TocList } from "@/components/ui/toc"
+import { Toc, TocItem, TocList } from "@/components/ui/toc";
 
 const items = [
   { title: "Overview", href: "#overview", depth: 2 },
   { title: "Installation", href: "#installation", depth: 2 },
   { title: "Configuration", href: "#configuration", depth: 2 },
-]
+];
 
 export default function TocDefault() {
   return (
@@ -17,5 +17,5 @@ export default function TocDefault() {
         ))}
       </TocList>
     </Toc>
-  )
+  );
 }

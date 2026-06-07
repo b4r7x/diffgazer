@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import { useState } from "react"
+import { useState } from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -11,8 +11,8 @@ import {
   SidebarSection,
   SidebarSectionTitle,
   type SidebarVariant,
-} from "@/components/ui/sidebar"
-import { ToggleGroup } from "@/components/ui/toggle-group"
+} from "@/components/ui/sidebar";
+import { ToggleGroup } from "@/components/ui/toggle-group";
 
 const VARIANTS: { value: SidebarVariant; label: string }[] = [
   { value: "caret", label: "caret" },
@@ -21,10 +21,10 @@ const VARIANTS: { value: SidebarVariant; label: string }[] = [
   { value: "bracket", label: "bracket" },
   { value: "block", label: "block" },
   { value: "terminal", label: "terminal" },
-]
+];
 
 export default function SidebarVariants() {
-  const [variant, setVariant] = useState<SidebarVariant>("caret")
+  const [variant, setVariant] = useState<SidebarVariant>("caret");
 
   return (
     <div className="flex h-full flex-col gap-4">
@@ -65,5 +65,5 @@ export default function SidebarVariants() {
         </SidebarContent>
       </Sidebar>
     </div>
-  )
+  );
 }

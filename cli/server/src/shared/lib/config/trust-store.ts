@@ -4,11 +4,7 @@ import { getFileMtimeMs } from "../fs.js";
 import { getGlobalTrustPath } from "../paths.js";
 import { loadTrust, persistTrustAsync } from "./persistence.js";
 import { persistError } from "./secrets-store.js";
-import type {
-  SecretsStorageError,
-  SecretsStorageErrorCode,
-  TrustState,
-} from "./types.js";
+import type { SecretsStorageError, SecretsStorageErrorCode, TrustState } from "./types.js";
 
 export interface TrustStore {
   getTrust(projectId: string): TrustConfig | null;
@@ -74,9 +70,7 @@ export function createTrustStore(): TrustStore {
     return ok(config);
   };
 
-  const removeTrust = async (
-    projectId: string,
-  ): Promise<Result<boolean, SecretsStorageError>> => {
+  const removeTrust = async (projectId: string): Promise<Result<boolean, SecretsStorageError>> => {
     const inSession = projectId in sessionTrust;
     const inPersistent = projectId in trustState.projects;
     if (!inSession && !inPersistent) return ok(false);

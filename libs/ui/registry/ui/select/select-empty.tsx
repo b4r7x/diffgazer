@@ -16,12 +16,7 @@ export function SelectEmpty({ children, className }: SelectEmptyProps) {
   if (!searchQuery || hasMatch(options, searchQuery)) return null;
 
   return (
-    <div
-      className={cn(
-        "px-3 py-4 text-sm font-mono text-muted-foreground",
-        className
-      )}
-    >
+    <div className={cn("px-3 py-4 text-sm font-mono text-muted-foreground", className)}>
       {children ?? "> no results."}
     </div>
   );

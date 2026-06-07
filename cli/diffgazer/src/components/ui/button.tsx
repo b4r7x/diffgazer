@@ -64,7 +64,7 @@ export function Button({
         {loading ? (
           <>
             <Spinner type="dots" />
-            <Text>{" "}</Text>
+            <Text> </Text>
           </>
         ) : null}
         {bracket ? "[ " : "> "}

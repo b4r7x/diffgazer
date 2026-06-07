@@ -1,18 +1,20 @@
 "use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { HorizontalStepper } from "@/components/ui/horizontal-stepper"
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { HorizontalStepper } from "@/components/ui/horizontal-stepper";
 
-const stepValues = ["init", "scan", "analyze", "report"] as const
+const stepValues = ["init", "scan", "analyze", "report"] as const;
 
 export default function HorizontalStepperProgress() {
-  const [currentIndex, setCurrentIndex] = useState(0)
+  const [currentIndex, setCurrentIndex] = useState(0);
   return (
     <div className="flex flex-col gap-4 items-start">
       <HorizontalStepper steps={[...stepValues]} value={stepValues[currentIndex] ?? stepValues[0]}>
         {stepValues.map((v) => (
-          <HorizontalStepper.Step key={v} value={v}>{v.toUpperCase()}</HorizontalStepper.Step>
+          <HorizontalStepper.Step key={v} value={v}>
+            {v.toUpperCase()}
+          </HorizontalStepper.Step>
         ))}
       </HorizontalStepper>
       <div className="flex gap-2">
@@ -34,5 +36,5 @@ export default function HorizontalStepperProgress() {
         </Button>
       </div>
     </div>
-  )
+  );
 }

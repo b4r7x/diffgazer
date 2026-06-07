@@ -1,10 +1,5 @@
 import { createHash } from "node:crypto";
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, relative, resolve } from "node:path";
 import { defaultLogger, type Logger } from "../logger.js";
 import { collectAllFiles, resolveInside } from "../utils/fs.js";
@@ -35,7 +30,10 @@ export function computeSyncFingerprint(
   return hash.digest("hex");
 }
 
-export function readSyncState(stateFilePath: string, logger: Logger = defaultLogger): SyncState | null {
+export function readSyncState(
+  stateFilePath: string,
+  logger: Logger = defaultLogger,
+): SyncState | null {
   if (!existsSync(stateFilePath)) return null;
   try {
     const parsed = JSON.parse(readFileSync(stateFilePath, "utf-8"));
@@ -48,7 +46,9 @@ export function readSyncState(stateFilePath: string, logger: Logger = defaultLog
       syncedAt: parsed.syncedAt,
     };
   } catch (err) {
-    logger.debug(`Failed to parse sync state at ${stateFilePath}: ${err instanceof Error ? err.message : String(err)}`);
+    logger.debug(
+      `Failed to parse sync state at ${stateFilePath}: ${err instanceof Error ? err.message : String(err)}`,
+    );
     return null;
   }
 }
@@ -67,13 +67,9 @@ function docsOutputsExist(
 
   for (const artifact of artifacts) {
     required.push(resolve(paths.contentDir, artifact.id, "meta.json"));
-    required.push(
-      resolve(paths.publicRegistryDir, artifact.id, "registry.json"),
-    );
+    required.push(resolve(paths.publicRegistryDir, artifact.id, "registry.json"));
     for (const generatedFile of artifact.generatedFiles) {
-      required.push(
-        resolve(paths.generatedDir, artifact.id, basename(generatedFile)),
-      );
+      required.push(resolve(paths.generatedDir, artifact.id, basename(generatedFile)));
     }
 
     const sourceAssetsDirRel = artifact.manifest.docs.assetsDir;

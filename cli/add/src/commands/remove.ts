@@ -3,7 +3,11 @@ import { createRemoveCommand, findOrphanedNpmDeps } from "@diffgazer/registry/cl
 import { ctx, type DiffgazerAddConfig, type ResolvedConfig } from "../context.js";
 import { readInstalledCssChunkHashes, removeCssChunks } from "../utils/css-chunks.js";
 import { sha256 } from "../utils/hashing.js";
-import { getKeysHookNames, resolveKeysCopyHookFiles, resolveKeysHooksFromRegistry } from "../utils/keys-copy-bundle.js";
+import {
+  getKeysHookNames,
+  resolveKeysCopyHookFiles,
+  resolveKeysHooksFromRegistry,
+} from "../utils/keys-copy-bundle.js";
 import {
   getNamespacedItem,
   isNamespacedInstalled,
@@ -30,8 +34,10 @@ function ownedFileHash(cwd: string, itemName: string, absolutePath: string): str
 }
 
 function hasCopyModeFiles(record: ManifestEntry): boolean {
-  return record.integrationMode === "copy"
-    || (record.files ?? []).some((file) => file.integrationMode === "copy");
+  return (
+    record.integrationMode === "copy" ||
+    (record.files ?? []).some((file) => file.integrationMode === "copy")
+  );
 }
 
 function loadManifest(cwd: string): Manifest {
@@ -45,11 +51,7 @@ function uiRegistryDependencyNames(installedName: string): string[] {
   return ctx.registry.resolveDeps([parsed.name]).filter((n) => n !== parsed.name);
 }
 
-function dependentsOf(
-  candidate: string,
-  manifest: Manifest,
-  removed: Set<string>,
-): string[] {
+function dependentsOf(candidate: string, manifest: Manifest, removed: Set<string>): string[] {
   const parsed = parseInstallName(candidate);
   const dependents = new Set<string>();
 
@@ -185,8 +187,12 @@ export function createRemoveWorkflowContext(): RemoveWorkflowContext {
   let activeCwd: string | null = null;
   let preRemovalChunksByItem = new Map<string, string[]>();
   return {
-    get activeCwd() { return activeCwd; },
-    get preRemovalChunksByItem() { return preRemovalChunksByItem; },
+    get activeCwd() {
+      return activeCwd;
+    },
+    get preRemovalChunksByItem() {
+      return preRemovalChunksByItem;
+    },
     beginInvocation(cwd) {
       activeCwd = cwd;
       preRemovalChunksByItem = new Map();
@@ -223,7 +229,8 @@ export const removeCommand = createRemoveCommand({
     return ctx.items.requireConfig(cwd);
   },
   validateNames: validateInstallNames,
-  getAllItems: () => removeWorkflow.activeCwd ? manifestItemsForResolve(removeWorkflow.activeCwd) : [],
+  getAllItems: () =>
+    removeWorkflow.activeCwd ? manifestItemsForResolve(removeWorkflow.activeCwd) : [],
   getItemOrThrow: getNamespacedItem,
   getItemName: (item) => item.name,
   isInstalled: ({ cwd, config, item }) => {

@@ -1,4 +1,9 @@
-import { useActiveReviewSession, useInit, useReviews, useShutdown } from "@diffgazer/core/api/hooks";
+import {
+  useActiveReviewSession,
+  useInit,
+  useReviews,
+  useShutdown,
+} from "@diffgazer/core/api/hooks";
 import { usePageFooter } from "@diffgazer/core/footer";
 import { deriveTrustStatus } from "@diffgazer/core/navigation";
 import type { ContextInfo, Shortcut } from "@diffgazer/core/schemas/presentation";

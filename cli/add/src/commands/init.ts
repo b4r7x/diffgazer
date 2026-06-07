@@ -1,5 +1,12 @@
 import { existsSync, mkdirSync } from "node:fs";
-import { createInitCommand, heading, installDepsWithSpinner, REGISTRY_ORIGIN, warn, writeFileSafe } from "@diffgazer/registry/cli";
+import {
+  createInitCommand,
+  heading,
+  installDepsWithSpinner,
+  REGISTRY_ORIGIN,
+  warn,
+  writeFileSafe,
+} from "@diffgazer/registry/cli";
 import { z } from "zod";
 import { ctx, getRegistry, VERSION } from "../context.js";
 import { detectProject } from "../utils/detect.js";
@@ -8,10 +15,12 @@ import { assertInsideProject, resolveInstallPath, resolveProjectPath } from "../
 // The init command declares `--components-dir <path>` (defaulted) and
 // `--allow-missing-alias`. Commander hands callbacks a loosely-typed options
 // bag, so validate the init-specific fields at the boundary instead of casting.
-const InitOptionsSchema = z.object({
-  componentsDir: z.string().default("src/components/ui"),
-  allowMissingAlias: z.boolean().optional(),
-}).passthrough();
+const InitOptionsSchema = z
+  .object({
+    componentsDir: z.string().default("src/components/ui"),
+    allowMissingAlias: z.boolean().optional(),
+  })
+  .passthrough();
 
 export type InitOptions = z.infer<typeof InitOptionsSchema>;
 
@@ -43,11 +52,11 @@ export const KNOWN_LOCKFILES = [
  * Exported so a behavior test can lock in the install-side-effect rollback
  * contract end-to-end alongside the workflow.
  */
-export function buildInitPlannedPaths(
-  cwd: string,
-  opts: Record<string, unknown>,
-): string[] {
-  const { componentsDir, libDir, stylesDir, hooksDir } = derivePaths(cwd, parseInitOptions(opts).componentsDir);
+export function buildInitPlannedPaths(cwd: string, opts: Record<string, unknown>): string[] {
+  const { componentsDir, libDir, stylesDir, hooksDir } = derivePaths(
+    cwd,
+    parseInitOptions(opts).componentsDir,
+  );
   return [
     `${componentsDir}/`,
     `${hooksDir}/`,
@@ -65,9 +74,10 @@ function derivePaths(cwd: string, componentsDir: string) {
   const project = detectProject(cwd);
   const sourcePrefix = project.sourceDir === "." ? "" : `${project.sourceDir}/`;
   const requestedDir = componentsDir.replace(/\\/g, "/");
-  const resolvedComponentsDir = requestedDir === "src/components/ui" && project.sourceDir !== "src"
-    ? `${sourcePrefix}components/ui`
-    : requestedDir;
+  const resolvedComponentsDir =
+    requestedDir === "src/components/ui" && project.sourceDir !== "src"
+      ? `${sourcePrefix}components/ui`
+      : requestedDir;
   return {
     project,
     componentsDir: resolvedComponentsDir,
@@ -131,12 +141,22 @@ export const initCommand = createInitCommand({
   configFileName: "diffgazer.json",
   loadConfig: ctx.config.loadConfig,
   extraOptions: [
-    { flags: "--components-dir <path>", description: "Component install directory", default: "src/components/ui" },
-    { flags: "--allow-missing-alias", description: "Initialize even when the app has no TypeScript/bundler source alias" },
+    {
+      flags: "--components-dir <path>",
+      description: "Component install directory",
+      default: "src/components/ui",
+    },
+    {
+      flags: "--allow-missing-alias",
+      description: "Initialize even when the app has no TypeScript/bundler source alias",
+    },
   ],
   detectProject: (cwd, opts) => {
     const initOptions = parseInitOptions(opts);
-    const { project, componentsDir, libDir, stylesDir, hooksDir } = derivePaths(cwd, initOptions.componentsDir);
+    const { project, componentsDir, libDir, stylesDir, hooksDir } = derivePaths(
+      cwd,
+      initOptions.componentsDir,
+    );
 
     assertInsideProject(cwd, componentsDir);
     assertInsideProject(cwd, libDir);
@@ -145,9 +165,9 @@ export const initCommand = createInitCommand({
 
     if (!project.hasPathAlias && !initOptions.allowMissingAlias) {
       throw new Error(
-        "dgadd requires a TypeScript or Vite alias that resolves to your source directory. "
-        + "Configure it in your TypeScript and bundler config, then rerun init. "
-        + "Use --allow-missing-alias only if your app already resolves source aliases another way.",
+        "dgadd requires a TypeScript or Vite alias that resolves to your source directory. " +
+          "Configure it in your TypeScript and bundler config, then rerun init. " +
+          "Use --allow-missing-alias only if your app already resolves source aliases another way.",
       );
     }
 
@@ -163,14 +183,29 @@ export const initCommand = createInitCommand({
   },
   plannedPaths: (cwd, opts) => buildInitPlannedPaths(cwd, opts),
   createFiles: (cwd, opts) => {
-    const { componentsDir, libDir, stylesDir, hooksDir } = derivePaths(cwd, parseInitOptions(opts).componentsDir);
+    const { componentsDir, libDir, stylesDir, hooksDir } = derivePaths(
+      cwd,
+      parseInitOptions(opts).componentsDir,
+    );
     const registry = getRegistry();
 
     return [
       ...createDirs(cwd, componentsDir, hooksDir),
-      writeFileResult(resolveInstallPath(cwd, libDir, "utils.ts"), UTILS_CONTENT, `${libDir}/utils.ts`),
-      writeFileResult(resolveInstallPath(cwd, stylesDir, "theme.css"), registry.theme, `${stylesDir}/theme.css`),
-      writeFileResult(resolveInstallPath(cwd, stylesDir, "styles.css"), buildStylesContent(registry), `${stylesDir}/styles.css`),
+      writeFileResult(
+        resolveInstallPath(cwd, libDir, "utils.ts"),
+        UTILS_CONTENT,
+        `${libDir}/utils.ts`,
+      ),
+      writeFileResult(
+        resolveInstallPath(cwd, stylesDir, "theme.css"),
+        registry.theme,
+        `${stylesDir}/theme.css`,
+      ),
+      writeFileResult(
+        resolveInstallPath(cwd, stylesDir, "styles.css"),
+        buildStylesContent(registry),
+        `${stylesDir}/styles.css`,
+      ),
     ];
   },
   afterFiles: async (cwd) => {
@@ -181,7 +216,10 @@ export const initCommand = createInitCommand({
     if (!ok) warn("You can install them manually later.");
   },
   writeConfig: (cwd, opts) => {
-    const { project, componentsDir, libDir, stylesDir, hooksDir } = derivePaths(cwd, parseInitOptions(opts).componentsDir);
+    const { project, componentsDir, libDir, stylesDir, hooksDir } = derivePaths(
+      cwd,
+      parseInitOptions(opts).componentsDir,
+    );
 
     const stripSource = (p: string) => {
       const prefix = project.sourceDir === "." ? "" : `${project.sourceDir}/`;

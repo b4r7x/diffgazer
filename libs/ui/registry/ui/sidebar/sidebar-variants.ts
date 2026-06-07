@@ -1,12 +1,6 @@
 import { cva } from "class-variance-authority";
 
-export type SidebarVariant =
-  | "caret"
-  | "inverted"
-  | "bar"
-  | "bracket"
-  | "block"
-  | "terminal";
+export type SidebarVariant = "caret" | "inverted" | "bar" | "bracket" | "block" | "terminal";
 
 export const sidebarContainerVariants = cva(
   [

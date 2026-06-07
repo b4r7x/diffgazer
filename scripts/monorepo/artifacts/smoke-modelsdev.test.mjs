@@ -11,7 +11,7 @@ import {
 // resolve to at least one model, otherwise the picker would be blank.
 
 test("assertCatalogProviders returns a summary line per provider when all resolve to models", () => {
-  const resolve = (_catalog, provider) => ({ gemini: [1, 2], groq: [1, 2, 3] }[provider]);
+  const resolve = (_catalog, provider) => ({ gemini: [1, 2], groq: [1, 2, 3] })[provider];
   const lines = assertCatalogProviders({}, ["gemini", "groq"], resolve, "test source");
   assert.deepEqual(lines, [
     "OK: gemini -> 2 models (test source)",

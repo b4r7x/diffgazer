@@ -1,7 +1,8 @@
-import type { ComponentDoc } from "./types"
+import type { ComponentDoc } from "./types";
 
 export const dialogDoc: ComponentDoc = {
-  description: "Modal dialog with compound component architecture. Built on the native dialog element with two orthogonal visual axes: frame (border or none) and corners (none, subtle, standard, bold, or outset), and an optional header marker bar spanning the title and description.",
+  description:
+    "Modal dialog with compound component architecture. Built on the native dialog element with two orthogonal visual axes: frame (border or none) and corners (none, subtle, standard, bold, or outset), and an optional header marker bar spanning the title and description.",
   anatomy: [
     { name: "Dialog", indent: 0, note: "Root (manages open state)" },
     { name: "DialogTrigger", indent: 1, note: "Opens the dialog" },
@@ -15,7 +16,11 @@ export const dialogDoc: ComponentDoc = {
     { name: "DialogFooter.Actions", indent: 3, note: "Action button row" },
     { name: "DialogClose", indent: 3, note: "Close button" },
     { name: "DialogAction", indent: 3, note: "Primary action button (closes unless prevented)" },
-    { name: "DialogCloseIcon", indent: 2, note: "Optional top-right close button — render LAST inside DialogContent so DOM/Tab order is correct (it absolute-positions itself)" },
+    {
+      name: "DialogCloseIcon",
+      indent: 2,
+      note: "Optional top-right close button — render LAST inside DialogContent so DOM/Tab order is correct (it absolute-positions itself)",
+    },
   ],
   notes: [
     {
@@ -103,7 +108,8 @@ export const dialogDoc: ComponentDoc = {
         type: "(open: boolean) => void",
         required: false,
         defaultValue: null,
-        description: "Called whenever open state changes (trigger click, Escape, backdrop click, programmatic close).",
+        description:
+          "Called whenever open state changes (trigger click, Escape, backdrop click, programmatic close).",
       },
     },
     DialogContent: {
@@ -117,31 +123,36 @@ export const dialogDoc: ComponentDoc = {
         type: '"border" | "none"',
         required: false,
         defaultValue: '"border"',
-        description: 'Border frame style. "border" renders a 1px border around the dialog. "none" removes the border (pair with corners for a frameless viewfinder look).',
+        description:
+          'Border frame style. "border" renders a 1px border around the dialog. "none" removes the border (pair with corners for a frameless viewfinder look).',
       },
       corners: {
         type: '"none" | "subtle" | "standard" | "bold" | "outset"',
         required: false,
         defaultValue: '"none"',
-        description: 'Corner accent marks drawn at the dialog corners. "none" skips them. "subtle" uses border color and tighter 12px arms. "standard" uses foreground color 18px arms. "bold" uses foreground color 28px arms. "outset" is standard shifted 3px outside the dialog edge. Combine with frame="none" for a pure viewfinder look or frame="border" for a bracketed-frame look.',
+        description:
+          'Corner accent marks drawn at the dialog corners. "none" skips them. "subtle" uses border color and tighter 12px arms. "standard" uses foreground color 18px arms. "bold" uses foreground color 28px arms. "outset" is standard shifted 3px outside the dialog edge. Combine with frame="none" for a pure viewfinder look or frame="border" for a bracketed-frame look.',
       },
       role: {
         type: '"dialog" | "alertdialog"',
         required: false,
         defaultValue: '"dialog"',
-        description: "Set role=\"alertdialog\" for destructive confirmations. Per WAI-ARIA APG, alert dialogs should not close on outside interaction.",
+        description:
+          'Set role="alertdialog" for destructive confirmations. Per WAI-ARIA APG, alert dialogs should not close on outside interaction.',
       },
       closeOnBackdropClick: {
         type: "boolean",
         required: false,
         defaultValue: "true",
-        description: "When false, clicking the backdrop does not close the dialog (recommended for alertdialog).",
+        description:
+          "When false, clicking the backdrop does not close the dialog (recommended for alertdialog).",
       },
       onEscapeKeyDown: {
         type: "(e: SyntheticEvent<HTMLDialogElement>) => void",
         required: false,
         defaultValue: null,
-        description: "Intercept Escape. Call e.preventDefault() to keep the dialog open during async operations.",
+        description:
+          "Intercept Escape. Call e.preventDefault() to keep the dialog open during async operations.",
       },
       onCancel: {
         type: "(e: SyntheticEvent<HTMLDialogElement>) => void",
@@ -155,7 +166,8 @@ export const dialogDoc: ComponentDoc = {
         type: '"bar" | "none"',
         required: false,
         defaultValue: '"bar"',
-        description: "Header leading marker. \"bar\" (default) renders a 4px foreground accent bar with flex gap-3 outer spacing and a nested text column. \"none\" is the neutral form — no bar, no gap, children render as direct flex-col descendants — intended for headers with a background color, horizontal title-row layouts, or custom compositions. Consumer className overrides (padding, flex direction, background) merge cleanly on both variants via tailwind-merge.",
+        description:
+          'Header leading marker. "bar" (default) renders a 4px foreground accent bar with flex gap-3 outer spacing and a nested text column. "none" is the neutral form — no bar, no gap, children render as direct flex-col descendants — intended for headers with a background color, horizontal title-row layouts, or custom compositions. Consumer className overrides (padding, flex direction, background) merge cleanly on both variants via tailwind-merge.',
       },
     },
     DialogTitle: {
@@ -169,7 +181,8 @@ export const dialogDoc: ComponentDoc = {
         type: "string",
         required: false,
         defaultValue: null,
-        description: "Optional right-aligned eyebrow tag (e.g. \"CONFIRM\", \"DESTRUCTIVE\"). Decorative — rendered aria-hidden so it does not leak into the accessible name.",
+        description:
+          'Optional right-aligned eyebrow tag (e.g. "CONFIRM", "DESTRUCTIVE"). Decorative — rendered aria-hidden so it does not leak into the accessible name.',
       },
     },
     DialogTrigger: {
@@ -177,7 +190,8 @@ export const dialogDoc: ComponentDoc = {
         type: "ReactNode | (renderProps: DialogTriggerRenderProps) => ReactNode",
         required: true,
         defaultValue: null,
-        description: "Trigger button or render function. The render form receives ref, className, aria-haspopup/expanded/controls, and onClick.",
+        description:
+          "Trigger button or render function. The render form receives ref, className, aria-haspopup/expanded/controls, and onClick.",
       },
     },
     DialogAction: {
@@ -185,7 +199,8 @@ export const dialogDoc: ComponentDoc = {
         type: "(e: MouseEvent<HTMLButtonElement>) => void",
         required: false,
         defaultValue: null,
-        description: "Primary action handler. Call e.preventDefault() to keep the dialog open (e.g. failed form validation).",
+        description:
+          "Primary action handler. Call e.preventDefault() to keep the dialog open (e.g. failed form validation).",
       },
     },
     DialogClose: {
@@ -201,7 +216,8 @@ export const dialogDoc: ComponentDoc = {
         type: "string",
         required: false,
         defaultValue: '"Close dialog"',
-        description: "Accessible name for the close button. Override for localization or alternative phrasing.",
+        description:
+          "Accessible name for the close button. Override for localization or alternative phrasing.",
       },
     },
     DialogFooter: {
@@ -209,8 +225,9 @@ export const dialogDoc: ComponentDoc = {
         type: "KeyboardHint[]",
         required: false,
         defaultValue: null,
-        description: "Inline keyboard shortcut hints rendered alongside the action buttons. Use the shorthand instead of composing DialogFooter.Hints when the hints belong with the footer actions.",
+        description:
+          "Inline keyboard shortcut hints rendered alongside the action buttons. Use the shorthand instead of composing DialogFooter.Hints when the hints belong with the footer actions.",
       },
     },
   },
-}
+};

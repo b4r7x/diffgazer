@@ -7,10 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const hashApiKey = (apiKey: string): string =>
   createHash("sha256").update(apiKey).digest("hex").slice(0, 16);
 
-import {
-  fetchOpenRouterModels,
-  getOpenRouterModelsWithCache,
-} from "./openrouter-models.js";
+import { fetchOpenRouterModels, getOpenRouterModelsWithCache } from "./openrouter-models.js";
 
 let testHome: string;
 
@@ -83,7 +80,12 @@ describe("fetchOpenRouterModels", () => {
       ok: true,
       json: async () => ({
         data: [
-          { id: "valid/model", name: "Valid", context_length: 4096, pricing: { prompt: "0", completion: "0" } },
+          {
+            id: "valid/model",
+            name: "Valid",
+            context_length: 4096,
+            pricing: { prompt: "0", completion: "0" },
+          },
           { name: "No ID", context_length: 4096 },
           null,
         ],
@@ -103,7 +105,12 @@ describe("fetchOpenRouterModels", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
       json: async () => [
-        { id: "model/1", name: "M1", context_length: 4096, pricing: { prompt: "0", completion: "0" } },
+        {
+          id: "model/1",
+          name: "M1",
+          context_length: 4096,
+          pricing: { prompt: "0", completion: "0" },
+        },
       ],
     } as Response);
 
@@ -146,7 +153,16 @@ describe("getOpenRouterModelsWithCache", () => {
   it("refetches after TTL expires", async () => {
     const oldDate = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
     writeCacheFile({
-      models: [{ id: "old", name: "Old", contextLength: 0, pricing: { prompt: "0", completion: "0" }, isFree: true, supportedParameters: ["temperature"] }],
+      models: [
+        {
+          id: "old",
+          name: "Old",
+          contextLength: 0,
+          pricing: { prompt: "0", completion: "0" },
+          isFree: true,
+          supportedParameters: ["temperature"],
+        },
+      ],
       fetchedAt: oldDate,
     });
 
@@ -154,7 +170,12 @@ describe("getOpenRouterModelsWithCache", () => {
       ok: true,
       json: async () => ({
         data: [
-          { id: "new/model", name: "New", context_length: 4096, pricing: { prompt: "0", completion: "0" } },
+          {
+            id: "new/model",
+            name: "New",
+            context_length: 4096,
+            pricing: { prompt: "0", completion: "0" },
+          },
         ],
       }),
     } as Response);

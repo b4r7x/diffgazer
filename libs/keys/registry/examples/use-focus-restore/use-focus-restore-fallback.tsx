@@ -1,28 +1,28 @@
-"use client"
+"use client";
 
-import { useFocusRestore } from "@diffgazer/keys"
-import { useRef, useState } from "react"
+import { useFocusRestore } from "@diffgazer/keys";
+import { useRef, useState } from "react";
 
 export default function UseFocusRestoreFallback() {
-  const [open, setOpen] = useState(false)
-  const [anchor, setAnchor] = useState<HTMLDivElement | null>(null)
-  const paletteRef = useRef<HTMLDivElement>(null)
+  const [open, setOpen] = useState(false);
+  const [anchor, setAnchor] = useState<HTMLDivElement | null>(null);
+  const paletteRef = useRef<HTMLDivElement>(null);
 
   // Summon opens the palette and captures the current focus. On close, focus
   // returns there; `fallback` (the editor surface) catches the case where
   // nothing was focused at open time so focus never lands on <body>.
-  const focusRestore = useFocusRestore({ fallback: anchor })
+  const focusRestore = useFocusRestore({ fallback: anchor });
 
   const openPalette = () => {
-    focusRestore.capture()
-    setOpen(true)
-    queueMicrotask(() => paletteRef.current?.focus())
-  }
+    focusRestore.capture();
+    setOpen(true);
+    queueMicrotask(() => paletteRef.current?.focus());
+  };
 
   const closePalette = () => {
-    setOpen(false)
-    focusRestore.restore()
-  }
+    setOpen(false);
+    focusRestore.restore();
+  };
 
   return (
     <div>
@@ -49,5 +49,5 @@ export default function UseFocusRestoreFallback() {
         </div>
       )}
     </div>
-  )
+  );
 }

@@ -7,10 +7,7 @@ export type ServerState =
   | { status: "connected" }
   | { status: "error"; message: string };
 
-function deriveServerState(
-  isLoading: boolean,
-  error: Error | null,
-): ServerState {
+function deriveServerState(isLoading: boolean, error: Error | null): ServerState {
   if (isLoading) return { status: "checking" };
   if (error) return { status: "error", message: error.message };
   return { status: "connected" };

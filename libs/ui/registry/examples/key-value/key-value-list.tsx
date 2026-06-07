@@ -1,4 +1,4 @@
-import { KeyValue } from "@/components/ui/key-value"
+import { KeyValue } from "@/components/ui/key-value";
 
 export default function KeyValueList() {
   return (
@@ -9,5 +9,5 @@ export default function KeyValueList() {
       <KeyValue.Item label="Branch" value="feature/add-toasts" variant="info" />
       <KeyValue.Item label="Files Changed" value="7" variant="success" />
     </KeyValue>
-  )
+  );
 }

@@ -1,10 +1,15 @@
 import { z } from "zod";
-import {
-  timestampFields,
-} from "../fields.js";
+import { timestampFields } from "../fields.js";
 import { SettingsConfigSchema, TrustConfigSchema } from "./settings.js";
 
-export const AI_PROVIDERS = ["gemini", "zai", "zai-coding", "openrouter", "groq", "cerebras"] as const;
+export const AI_PROVIDERS = [
+  "gemini",
+  "zai",
+  "zai-coding",
+  "openrouter",
+  "groq",
+  "cerebras",
+] as const;
 export const AIProviderSchema = z.enum(AI_PROVIDERS);
 export type AIProvider = z.infer<typeof AIProviderSchema>;
 
@@ -84,7 +89,9 @@ export const DeleteProviderCredentialsResponseSchema = z.object({
   deleted: z.boolean(),
   provider: AIProviderSchema,
 });
-export type DeleteProviderCredentialsResponse = z.infer<typeof DeleteProviderCredentialsResponseSchema>;
+export type DeleteProviderCredentialsResponse = z.infer<
+  typeof DeleteProviderCredentialsResponseSchema
+>;
 
 export const ProviderStatusSchema = z.object({
   provider: AIProviderSchema,
@@ -130,10 +137,12 @@ export const SetupStatusSchema = z.object({
 export type SetupStatus = z.infer<typeof SetupStatusSchema>;
 
 export const InitResponseSchema = z.object({
-  config: z.object({
-    provider: AIProviderSchema,
-    model: z.string().optional(),
-  }).nullable(),
+  config: z
+    .object({
+      provider: AIProviderSchema,
+      model: z.string().optional(),
+    })
+    .nullable(),
   settings: SettingsConfigSchema,
   providers: z.array(ProviderStatusSchema),
   configured: z.boolean(),

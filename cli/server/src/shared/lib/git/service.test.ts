@@ -12,7 +12,8 @@ vi.mock("node:child_process", () => {
   const execFileFn = Object.assign(
     (...args: unknown[]) => {
       const cb = args[args.length - 1];
-      if (typeof cb === "function") (cb as (err: null, stdout: string, stderr: string) => void)(null, "", "");
+      if (typeof cb === "function")
+        (cb as (err: null, stdout: string, stderr: string) => void)(null, "", "");
       return {};
     },
     { [Symbol.for("nodejs.util.promisify.custom")]: mockExecFileAsync },
@@ -93,7 +94,13 @@ describe("createGitService", () => {
         ahead: 0,
         behind: 0,
       },
-    ])("parses branch header with $scenario", async ({ output, branch, remoteBranch, ahead, behind }) => {
+    ])("parses branch header with $scenario", async ({
+      output,
+      branch,
+      remoteBranch,
+      ahead,
+      behind,
+    }) => {
       setupExecResult(output);
       const git = createGitService({ cwd: "/test" });
 
@@ -108,9 +115,27 @@ describe("createGitService", () => {
     });
 
     it.each([
-      { kind: "staged modified", output: "## main\nM  src/file.ts\n", path: "src/file.ts", indexStatus: "M", group: "staged" as const },
-      { kind: "staged added", output: "## main\nA  new-file.ts\n", path: "new-file.ts", indexStatus: "A", group: "staged" as const },
-      { kind: "staged deleted", output: "## main\nD  old-file.ts\n", path: "old-file.ts", indexStatus: "D", group: "staged" as const },
+      {
+        kind: "staged modified",
+        output: "## main\nM  src/file.ts\n",
+        path: "src/file.ts",
+        indexStatus: "M",
+        group: "staged" as const,
+      },
+      {
+        kind: "staged added",
+        output: "## main\nA  new-file.ts\n",
+        path: "new-file.ts",
+        indexStatus: "A",
+        group: "staged" as const,
+      },
+      {
+        kind: "staged deleted",
+        output: "## main\nD  old-file.ts\n",
+        path: "old-file.ts",
+        indexStatus: "D",
+        group: "staged" as const,
+      },
     ])("places $kind file in the staged bucket", async ({ output, path, indexStatus }) => {
       setupExecResult(output);
       const git = createGitService({ cwd: "/test" });
@@ -240,10 +265,22 @@ describe("createGitService", () => {
 
   describe("getDiff", () => {
     it.each([
-      { mode: "staged" as const, expectedArgs: ["diff", "--cached", "--no-ext-diff", "--no-textconv", "--no-color"] },
-      { mode: "unstaged" as const, expectedArgs: ["diff", "--no-ext-diff", "--no-textconv", "--no-color"] },
-      { mode: "files" as const, expectedArgs: ["diff", "--no-ext-diff", "--no-textconv", "--no-color"] },
-    ])("returns diff output for mode=$mode and invokes git with $expectedArgs", async ({ mode, expectedArgs }) => {
+      {
+        mode: "staged" as const,
+        expectedArgs: ["diff", "--cached", "--no-ext-diff", "--no-textconv", "--no-color"],
+      },
+      {
+        mode: "unstaged" as const,
+        expectedArgs: ["diff", "--no-ext-diff", "--no-textconv", "--no-color"],
+      },
+      {
+        mode: "files" as const,
+        expectedArgs: ["diff", "--no-ext-diff", "--no-textconv", "--no-color"],
+      },
+    ])("returns diff output for mode=$mode and invokes git with $expectedArgs", async ({
+      mode,
+      expectedArgs,
+    }) => {
       const diffOutput = "diff --git a/file.ts b/file.ts\n";
       setupExecResult(diffOutput);
       const git = createGitService({ cwd: "/test" });
@@ -298,7 +335,9 @@ describe("createGitService", () => {
     });
 
     it("passes the -- sentinel before the file path to prevent option injection", async () => {
-      setupExecResult("abc1234 1 1 1\nauthor Test\nauthor-mail <t@t.com>\nauthor-time 0\nsummary s\n");
+      setupExecResult(
+        "abc1234 1 1 1\nauthor Test\nauthor-mail <t@t.com>\nauthor-time 0\nsummary s\n",
+      );
       const git = createGitService({ cwd: "/test" });
 
       await git.getBlame("--malicious-file.ts", 1);
@@ -646,7 +685,10 @@ describe("createGitService", () => {
     });
 
     it.each([
-      { description: "similarly named top-level directories", output: " M .diffgazer-backup/config.json\n" },
+      {
+        description: "similarly named top-level directories",
+        output: " M .diffgazer-backup/config.json\n",
+      },
       { description: "nested .diffgazer directories", output: " M src/.diffgazer/config.json\n" },
     ])("includes $description in the hash", async ({ output }) => {
       setupExecResult(output);

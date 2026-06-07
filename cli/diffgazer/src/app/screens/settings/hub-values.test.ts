@@ -81,18 +81,19 @@ describe("buildHubValues — settings hub parity with web", () => {
     { secretsStorage: "keyring" as const, rendered: "KEYRING" },
     { secretsStorage: null, rendered: "Not set" },
   ])("renders secrets storage '$secretsStorage' as '$rendered'", ({ secretsStorage, rendered }) => {
-    expect(
-      buildHubValues(makeInit(), makeSettings({ secretsStorage })).storage,
-    ).toBe(rendered);
+    expect(buildHubValues(makeInit(), makeSettings({ secretsStorage })).storage).toBe(rendered);
   });
 
   test.each([
     { agentExecution: "parallel" as const, rendered: "Parallel" },
     { agentExecution: "sequential" as const, rendered: "Sequential" },
-  ])("renders agent execution '$agentExecution' as '$rendered' (matches web casing)", ({ agentExecution, rendered }) => {
-    expect(
-      buildHubValues(makeInit(), makeSettings({ agentExecution }))["agent-execution"],
-    ).toBe(rendered);
+  ])("renders agent execution '$agentExecution' as '$rendered' (matches web casing)", ({
+    agentExecution,
+    rendered,
+  }) => {
+    expect(buildHubValues(makeInit(), makeSettings({ agentExecution }))["agent-execution"]).toBe(
+      rendered,
+    );
   });
 
   test("trust value reflects readFiles capability (Trusted / Not trusted)", () => {
@@ -114,14 +115,12 @@ describe("buildHubValues — settings hub parity with web", () => {
   });
 
   test("analysis shows agent count or 'Default'", () => {
+    expect(buildHubValues(makeInit(), makeSettings({ defaultLenses: [] })).analysis).toBe(
+      "Default",
+    );
     expect(
-      buildHubValues(makeInit(), makeSettings({ defaultLenses: [] })).analysis,
-    ).toBe("Default");
-    expect(
-      buildHubValues(
-        makeInit(),
-        makeSettings({ defaultLenses: ["correctness", "security"] }),
-      ).analysis,
+      buildHubValues(makeInit(), makeSettings({ defaultLenses: ["correctness", "security"] }))
+        .analysis,
     ).toBe("2 agents");
   });
 

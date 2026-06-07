@@ -1,7 +1,11 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { PROVIDER_OVERLAY, SURFACED_OVERLAYS } from "../src/catalog/provider-overlay.js";
-import { type ModelsDevCatalog, type ModelsDevModel, parseModelsDevCatalog } from "../src/catalog/schema.js";
+import {
+  type ModelsDevCatalog,
+  type ModelsDevModel,
+  parseModelsDevCatalog,
+} from "../src/catalog/schema.js";
 
 const SOURCE = process.env.MODELSDEV_SOURCE;
 const OUT = resolve(import.meta.dirname, "..", "src", "catalog", "catalog-snapshot.ts");
@@ -23,7 +27,8 @@ function trimModel(model: ModelsDevModel): ModelsDevModel {
     name: model.name,
     family: model.family,
     cost: model.cost && dropUndefined({ input: model.cost.input, output: model.cost.output }),
-    limit: model.limit && dropUndefined({ context: model.limit.context, output: model.limit.output }),
+    limit:
+      model.limit && dropUndefined({ context: model.limit.context, output: model.limit.output }),
     tool_call: model.tool_call,
     structured_output: model.structured_output,
     reasoning: model.reasoning,

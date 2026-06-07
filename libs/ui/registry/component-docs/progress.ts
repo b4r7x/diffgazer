@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types"
+import type { ComponentDoc } from "./types";
 
 export const progressDoc: ComponentDoc = {
   description:
@@ -28,9 +28,7 @@ export const progressDoc: ComponentDoc = {
     },
   ],
   usage: { example: "progress-default" },
-  examples: [
-    { name: "progress-default", title: "Default" },
-  ],
+  examples: [{ name: "progress-default", title: "Default" }],
   props: {
     Progress: {
       value: {
@@ -53,4 +51,4 @@ export const progressDoc: ComponentDoc = {
       },
     },
   },
-}
+};

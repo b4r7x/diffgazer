@@ -13,7 +13,10 @@ const DISPLAY_STATUS_CONFIG: Record<DisplayStatus, DisplayStatusConfig> = {
   "needs-key": { label: "Needs Key", badgeLabel: "needs key", badgeVariant: "neutral" },
 } as const;
 
-export function getDisplayStatusBadge(status: DisplayStatus): { label: string; variant: BadgeVariant } {
+export function getDisplayStatusBadge(status: DisplayStatus): {
+  label: string;
+  variant: BadgeVariant;
+} {
   const config = DISPLAY_STATUS_CONFIG[status];
   return { label: config.badgeLabel, variant: config.badgeVariant };
 }

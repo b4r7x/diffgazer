@@ -20,11 +20,7 @@ const gapBySize = {
   lg: 2,
 } as const;
 
-export function Spinner({
-  variant = "dots",
-  label,
-  size = "md",
-}: SpinnerProps) {
+export function Spinner({ variant = "dots", label, size = "md" }: SpinnerProps) {
   const { tokens } = useTheme();
 
   const spinnerType = variantToType[variant];

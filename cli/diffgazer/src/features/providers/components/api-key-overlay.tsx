@@ -36,9 +36,7 @@ export function ApiKeyOverlay({
     if (!value || saving) return;
 
     const credentialRef: CredentialRef =
-      method === "env"
-        ? { kind: "env", varName: value }
-        : { kind: "literal", value };
+      method === "env" ? { kind: "env", varName: value } : { kind: "literal", value };
 
     saveConfig.mutate(
       { provider: providerId as AIProvider, apiKey: credentialRef },
@@ -65,9 +63,7 @@ export function ApiKeyOverlay({
         </Dialog.Header>
         <Dialog.Body>
           <Box flexDirection="column" gap={1}>
-            <Text color={tokens.muted}>
-              Choose how to provide the API key for {providerId}:
-            </Text>
+            <Text color={tokens.muted}>Choose how to provide the API key for {providerId}:</Text>
             <ApiKeyMethodSelector
               method={method}
               onMethodChange={handleMethodChange}
@@ -77,9 +73,7 @@ export function ApiKeyOverlay({
               onEnvVarChange={setEnvVar}
               isActive={open && !saving}
             />
-            {error != null ? (
-              <Text color={tokens.error}>{error}</Text>
-            ) : null}
+            {error != null ? <Text color={tokens.error}>{error}</Text> : null}
           </Box>
         </Dialog.Body>
         <Dialog.Footer>

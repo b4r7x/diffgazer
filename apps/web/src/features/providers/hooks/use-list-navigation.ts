@@ -1,7 +1,13 @@
 import { PROVIDER_FILTERS, type ProviderFilter } from "@diffgazer/core/providers";
 import type { AIProvider } from "@diffgazer/core/schemas/config";
 import { useKey } from "@diffgazer/keys";
-import { type KeyboardEvent as ReactKeyboardEvent, type RefCallback, type RefObject, useRef, useState } from "react";
+import {
+  type KeyboardEvent as ReactKeyboardEvent,
+  type RefCallback,
+  type RefObject,
+  useRef,
+  useState,
+} from "react";
 
 type FocusZone = "input" | "filters" | "list" | "buttons";
 
@@ -102,32 +108,52 @@ export function useProvidersListNavigation({
     inputRef.current?.blur();
   };
 
-  useKey("ArrowDown", () => {
-    focusFilterButton(PROVIDER_FILTERS.indexOf(filter));
-    inputRef.current?.blur();
-  }, { enabled: !dialogOpen && inInput, allowInInput: true, preventDefault: true });
+  useKey(
+    "ArrowDown",
+    () => {
+      focusFilterButton(PROVIDER_FILTERS.indexOf(filter));
+      inputRef.current?.blur();
+    },
+    { enabled: !dialogOpen && inInput, allowInInput: true, preventDefault: true },
+  );
   useKey("Escape", handleSearchEscape, { enabled: !dialogOpen && inInput, allowInInput: true });
 
-  useKey("ArrowUp", () => {
-    setZone("input");
-    inputRef.current?.focus();
-  }, { enabled: !dialogOpen && inFilters, preventDefault: true });
-  useKey("ArrowDown", () => {
-    if (filteredProviders.length > 0) {
-      setZone("list");
-      focusFirstProvider();
-      focusProviderList();
-    }
-  }, { enabled: !dialogOpen && inFilters, preventDefault: true });
+  useKey(
+    "ArrowUp",
+    () => {
+      setZone("input");
+      inputRef.current?.focus();
+    },
+    { enabled: !dialogOpen && inFilters, preventDefault: true },
+  );
+  useKey(
+    "ArrowDown",
+    () => {
+      if (filteredProviders.length > 0) {
+        setZone("list");
+        focusFirstProvider();
+        focusProviderList();
+      }
+    },
+    { enabled: !dialogOpen && inFilters, preventDefault: true },
+  );
 
-  useKey("ArrowRight", () => {
-    enterButtons(0);
-  }, { enabled: !dialogOpen && inList && selectedProvider !== null });
+  useKey(
+    "ArrowRight",
+    () => {
+      enterButtons(0);
+    },
+    { enabled: !dialogOpen && inList && selectedProvider !== null },
+  );
 
-  useKey("/", () => {
-    setZone("input");
-    inputRef.current?.focus();
-  }, { enabled: !dialogOpen && !inInput, preventDefault: true });
+  useKey(
+    "/",
+    () => {
+      setZone("input");
+      inputRef.current?.focus();
+    },
+    { enabled: !dialogOpen && !inInput, preventDefault: true },
+  );
 
   const handleListBoundary = (direction: "up" | "down") => {
     if (direction === "up") {

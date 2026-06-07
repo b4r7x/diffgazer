@@ -66,7 +66,11 @@ export function useReviewLifecycleBase(
     onStaleSession: options.onStaleSession,
   });
 
-  const { isCompleting, skipDelay, reset: resetCompletion } = useReviewCompletion({
+  const {
+    isCompleting,
+    skipDelay,
+    reset: resetCompletion,
+  } = useReviewCompletion({
     isStreaming: stream.state.isStreaming,
     error: stream.state.error,
     hasStreamed,

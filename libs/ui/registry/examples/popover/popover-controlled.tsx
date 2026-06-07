@@ -1,17 +1,20 @@
 "use client";
 
-import { useState } from "react"
-import { Popover } from "@/components/ui/popover"
+import { useState } from "react";
+import { Popover } from "@/components/ui/popover";
 
 export default function PopoverControlledExample() {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(false);
 
   return (
     <div className="flex items-center gap-4">
       <Popover open={open} onOpenChange={setOpen}>
         <Popover.Trigger>
           {(triggerProps) => (
-            <button {...triggerProps} className="border border-foreground/30 px-3 py-1 font-mono text-sm">
+            <button
+              {...triggerProps}
+              className="border border-foreground/30 px-3 py-1 font-mono text-sm"
+            >
               {open ? "close" : "open"}
             </button>
           )}
@@ -32,5 +35,5 @@ export default function PopoverControlledExample() {
         state: {open ? "open" : "closed"}
       </span>
     </div>
-  )
+  );
 }

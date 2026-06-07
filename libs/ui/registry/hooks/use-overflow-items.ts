@@ -1,6 +1,13 @@
 "use client";
 
-import { type RefObject, useCallback, useEffectEvent, useLayoutEffect, useRef, useState } from "react";
+import {
+  type RefObject,
+  useCallback,
+  useEffectEvent,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
 export interface UseOverflowItemsOptions {
   itemCount: number;
@@ -19,16 +26,10 @@ export function computeVisibleCount(
   gap: number,
   indicatorWidth: number,
 ): number {
-  const safeContainerWidth = Number.isFinite(containerWidth)
-    ? Math.max(0, containerWidth)
-    : 0;
+  const safeContainerWidth = Number.isFinite(containerWidth) ? Math.max(0, containerWidth) : 0;
   const safeGap = Number.isFinite(gap) ? Math.max(0, gap) : 0;
-  const safeIndicatorWidth = Number.isFinite(indicatorWidth)
-    ? Math.max(0, indicatorWidth)
-    : 0;
-  const widths = itemWidths.map((width) =>
-    Number.isFinite(width) ? Math.max(0, width) : 0,
-  );
+  const safeIndicatorWidth = Number.isFinite(indicatorWidth) ? Math.max(0, indicatorWidth) : 0;
+  const widths = itemWidths.map((width) => (Number.isFinite(width) ? Math.max(0, width) : 0));
 
   let usedWidth = 0;
   for (const [i, width] of widths.entries()) {
@@ -42,9 +43,7 @@ export function computeVisibleCount(
 }
 
 function clampCount(count: number, itemCount: number): number {
-  const safeItemCount = Number.isFinite(itemCount)
-    ? Math.max(0, Math.floor(itemCount))
-    : 0;
+  const safeItemCount = Number.isFinite(itemCount) ? Math.max(0, Math.floor(itemCount)) : 0;
   if (!Number.isFinite(count)) return 0;
   return Math.min(Math.max(0, Math.floor(count)), safeItemCount);
 }
@@ -82,7 +81,7 @@ export function useOverflowItems({
     const items = children.slice(0, safeItemCount);
     const indicator = children[safeItemCount];
 
-    const itemWidths = items.map(el => el.offsetWidth);
+    const itemWidths = items.map((el) => el.offsetWidth);
     const indicatorWidth = indicator ? indicator.offsetWidth : 0;
 
     const count = clampCount(

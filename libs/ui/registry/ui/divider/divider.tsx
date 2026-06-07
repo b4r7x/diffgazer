@@ -49,14 +49,29 @@ export function Divider({
     >
       {variant === "spaced" ? (
         <>
-          <span className={cn("flex-1 border-border", orientation === "horizontal" ? "border-t" : "border-l")} />
+          <span
+            className={cn(
+              "flex-1 border-border",
+              orientation === "horizontal" ? "border-t" : "border-l",
+            )}
+          />
           <span className={cn("font-light", orientation === "horizontal" ? "px-2" : "py-2")}>
             {children ?? "\u2726"}
           </span>
-          <span className={cn("flex-1 border-border", orientation === "horizontal" ? "border-t" : "border-l")} />
+          <span
+            className={cn(
+              "flex-1 border-border",
+              orientation === "horizontal" ? "border-t" : "border-l",
+            )}
+          />
         </>
       ) : (
-        <span className={cn("flex-1 border-border", orientation === "horizontal" ? "border-t" : "border-l")} />
+        <span
+          className={cn(
+            "flex-1 border-border",
+            orientation === "horizontal" ? "border-t" : "border-l",
+          )}
+        />
       )}
     </div>
   );

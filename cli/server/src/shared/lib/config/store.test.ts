@@ -168,8 +168,9 @@ describe("config store", () => {
       model: "gemini-2.5-flash",
     });
     expect(store.getProviderApiKey("gemini")).toEqual({ ok: true, value: "new-key" });
-    await expect(readJsonEventually<{ providers: Record<string, string> }>(secretsPath()))
-      .resolves.toMatchObject({ providers: { gemini: "new-key" } });
+    await expect(
+      readJsonEventually<{ providers: Record<string, string> }>(secretsPath()),
+    ).resolves.toMatchObject({ providers: { gemini: "new-key" } });
 
     const deleteResult = await store.deleteProviderCredentials("gemini");
 
@@ -231,8 +232,14 @@ describe("config store", () => {
     const openrouterResult = await store.activateProvider({ provider: "openrouter" });
     expect(openrouterResult).toMatchObject({ ok: true, value: null });
 
-    const geminiResult = await store.activateProvider({ provider: "gemini", model: "gemini-2.5-pro" });
-    expect(geminiResult).toMatchObject({ ok: true, value: { provider: "gemini", model: "gemini-2.5-pro" } });
+    const geminiResult = await store.activateProvider({
+      provider: "gemini",
+      model: "gemini-2.5-pro",
+    });
+    expect(geminiResult).toMatchObject({
+      ok: true,
+      value: { provider: "gemini", model: "gemini-2.5-pro" },
+    });
   });
 
   it("saves, lists, and removes trust records", async () => {
@@ -244,8 +251,9 @@ describe("config store", () => {
 
     expect(store.getTrust(trust.projectId)).toEqual(trust);
     expect(store.listTrustedProjects()).toEqual([trust]);
-    await expect(readJsonEventually<{ projects: Record<string, TrustConfig> }>(trustPath()))
-      .resolves.toMatchObject({ projects: { [trust.projectId]: trust } });
+    await expect(
+      readJsonEventually<{ projects: Record<string, TrustConfig> }>(trustPath()),
+    ).resolves.toMatchObject({ projects: { [trust.projectId]: trust } });
 
     const removeResult1 = await store.removeTrust(trust.projectId);
     expect(removeResult1).toMatchObject({ ok: true, value: true });

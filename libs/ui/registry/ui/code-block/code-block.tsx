@@ -1,6 +1,13 @@
 "use client";
 
-import { Children, type ComponentProps, isValidElement, type ReactNode, useId, useMemo } from "react";
+import {
+  Children,
+  type ComponentProps,
+  isValidElement,
+  type ReactNode,
+  useId,
+  useMemo,
+} from "react";
 import {
   type CodeBlockChrome,
   CodeBlockProvider,
@@ -48,7 +55,8 @@ export function CodeBlock({
   ...props
 }: CodeBlockProps) {
   const resolvedVariant: CodeBlockVariant = variant ?? "hairline";
-  const resolvedChrome: CodeBlockChrome = chrome ?? (resolvedVariant === "terminal" ? "dots" : "none");
+  const resolvedChrome: CodeBlockChrome =
+    chrome ?? (resolvedVariant === "terminal" ? "dots" : "none");
   const labelId = useId();
 
   const fallbackName = label ?? (language ? `${language} code` : "Code block");
@@ -56,7 +64,14 @@ export function CodeBlock({
   const hasLabel = containsLabelElement(children);
 
   const contextValue = useMemo(
-    () => ({ variant: resolvedVariant, chrome: resolvedChrome, labelId, hasLabel, language, fallbackName }),
+    () => ({
+      variant: resolvedVariant,
+      chrome: resolvedChrome,
+      labelId,
+      hasLabel,
+      language,
+      fallbackName,
+    }),
     [resolvedVariant, resolvedChrome, labelId, hasLabel, language, fallbackName],
   );
 

@@ -1,21 +1,49 @@
-import type { ComponentDoc } from "./types"
+import type { ComponentDoc } from "./types";
 
 export const sidebarDoc: ComponentDoc = {
   description:
     "Full-height navigation sidebar with tri-state visibility (open/rail/hidden), six active-marker variants, collapsible sections, optional intent tones, mobile sheet, and a configurable global hotkey. Composable parts plus two context providers.",
   anatomy: [
-    { name: "SidebarProvider", indent: 0, note: "Optional wrapper for external state control. Owns breakpoint + shortcutKey." },
-    { name: "Sidebar", indent: 1, note: "Root nav element (standalone or within SidebarProvider). Owns variant + autoTone." },
+    {
+      name: "SidebarProvider",
+      indent: 0,
+      note: "Optional wrapper for external state control. Owns breakpoint + shortcutKey.",
+    },
+    {
+      name: "Sidebar",
+      indent: 1,
+      note: "Root nav element (standalone or within SidebarProvider). Owns variant + autoTone.",
+    },
     { name: "SidebarHeader", indent: 2, note: "Top section with bottom border" },
     { name: "SidebarContent", indent: 2, note: "Scrollable middle area" },
-    { name: "SidebarSection", indent: 3, note: "Grouping container (optional collapsible, supports controlled open/onOpenChange)" },
-    { name: "SidebarSectionTitle", indent: 4, note: "Section label heading. Disclosure-pattern toggle when collapsible." },
-    { name: "SidebarSectionContent", indent: 4, note: "Panel slot for collapsible sections. Wraps items so the title's aria-controls targets a single id." },
-    { name: "SidebarItem", indent: 5, note: "Nav row. Renders as <a> by default; pass as=\"button\" for actions. Render-prop variant supported." },
+    {
+      name: "SidebarSection",
+      indent: 3,
+      note: "Grouping container (optional collapsible, supports controlled open/onOpenChange)",
+    },
+    {
+      name: "SidebarSectionTitle",
+      indent: 4,
+      note: "Section label heading. Disclosure-pattern toggle when collapsible.",
+    },
+    {
+      name: "SidebarSectionContent",
+      indent: 4,
+      note: "Panel slot for collapsible sections. Wraps items so the title's aria-controls targets a single id.",
+    },
+    {
+      name: "SidebarItem",
+      indent: 5,
+      note: 'Nav row. Renders as <a> by default; pass as="button" for actions. Render-prop variant supported.',
+    },
     { name: "SidebarItemLabel", indent: 6, note: "Truncated text label slot for SidebarItem" },
     { name: "SidebarItemBadge", indent: 6, note: "Trailing metadata/badge slot for SidebarItem" },
     { name: "SidebarFooter", indent: 2, note: "Bottom section with top border" },
-    { name: "SidebarTrigger", indent: 1, note: "Toggle button. Desktop cycles open ↔ rail; mobile cycles open ↔ hidden." },
+    {
+      name: "SidebarTrigger",
+      indent: 1,
+      note: "Toggle button. Desktop cycles open ↔ rail; mobile cycles open ↔ hidden.",
+    },
   ],
   notes: [
     {
@@ -26,7 +54,7 @@ export const sidebarDoc: ComponentDoc = {
     {
       title: "Tri-state visibility",
       content:
-        "Sidebar tracks three states via SidebarProvider: \"open\" (full width), \"rail\" (collapsed glyph rail, desktop only), and \"hidden\" (off-canvas; mobile sheet target). The provider exposes state/defaultState/onStateChange and helpers toggleSidebar (open ↔ rail) and toggleHidden (open ↔ hidden).",
+        'Sidebar tracks three states via SidebarProvider: "open" (full width), "rail" (collapsed glyph rail, desktop only), and "hidden" (off-canvas; mobile sheet target). The provider exposes state/defaultState/onStateChange and helpers toggleSidebar (open ↔ rail) and toggleHidden (open ↔ hidden).',
     },
     {
       title: "Mobile sheet",
@@ -36,7 +64,7 @@ export const sidebarDoc: ComponentDoc = {
     {
       title: "Global hotkey",
       content:
-        "SidebarProvider binds a configurable global shortcut. Cmd/Ctrl+<key> cycles open ↔ rail; Shift+Cmd/Ctrl+<key> toggles hidden. Default key is \"b\" (VS Code convention). Pass shortcutKey={null} to disable. Editable targets (input/textarea/contenteditable/select) skip the handler.",
+        'SidebarProvider binds a configurable global shortcut. Cmd/Ctrl+<key> cycles open ↔ rail; Shift+Cmd/Ctrl+<key> toggles hidden. Default key is "b" (VS Code convention). Pass shortcutKey={null} to disable. Editable targets (input/textarea/contenteditable/select) skip the handler.',
     },
     {
       title: "SidebarProvider vs standalone",
@@ -112,7 +140,8 @@ export const sidebarDoc: ComponentDoc = {
         type: '"open" | "rail" | "hidden"',
         required: false,
         defaultValue: null,
-        description: 'Controlled visibility state. "open" = full width, "rail" = collapsed glyph rail (desktop), "hidden" = off-canvas (used by the mobile sheet).',
+        description:
+          'Controlled visibility state. "open" = full width, "rail" = collapsed glyph rail (desktop), "hidden" = off-canvas (used by the mobile sheet).',
       },
       defaultState: {
         type: '"open" | "rail" | "hidden"',
@@ -130,13 +159,15 @@ export const sidebarDoc: ComponentDoc = {
         type: "number",
         required: false,
         defaultValue: "1024",
-        description: "Viewport width (px) below which the sidebar collapses into a mobile sheet. Default matches Tailwind lg.",
+        description:
+          "Viewport width (px) below which the sidebar collapses into a mobile sheet. Default matches Tailwind lg.",
       },
       shortcutKey: {
         type: "string | null",
         required: false,
         defaultValue: '"b"',
-        description: "Case-insensitive hotkey. Cmd/Ctrl+<key> cycles open ↔ rail; Shift+Cmd/Ctrl+<key> toggles hidden. Pass null to disable.",
+        description:
+          "Case-insensitive hotkey. Cmd/Ctrl+<key> cycles open ↔ rail; Shift+Cmd/Ctrl+<key> toggles hidden. Pass null to disable.",
       },
       children: {
         type: "ReactNode",
@@ -149,7 +180,8 @@ export const sidebarDoc: ComponentDoc = {
       "aria-label": {
         type: "string",
         required: false,
-        defaultValue: '"Expand sidebar" / "Collapse sidebar" / "Open navigation" / "Close navigation"',
+        defaultValue:
+          '"Expand sidebar" / "Collapse sidebar" / "Open navigation" / "Close navigation"',
         description: "Accessible name. Defaults to a state- and device-derived label.",
       },
       children: {
@@ -172,7 +204,8 @@ export const sidebarDoc: ComponentDoc = {
         type: "ReactNode",
         required: false,
         defaultValue: null,
-        description: "Scrollable middle region. Hidden, aria-hidden, and inert when the sidebar is in the rail/hidden state.",
+        description:
+          "Scrollable middle region. Hidden, aria-hidden, and inert when the sidebar is in the rail/hidden state.",
       },
     },
     "Sidebar.Section": {
@@ -180,7 +213,8 @@ export const sidebarDoc: ComponentDoc = {
         type: "boolean",
         required: false,
         defaultValue: "false",
-        description: "When true, Sidebar.SectionTitle becomes a disclosure toggle that expands/collapses the section.",
+        description:
+          "When true, Sidebar.SectionTitle becomes a disclosure toggle that expands/collapses the section.",
       },
       open: {
         type: "boolean",
@@ -218,7 +252,7 @@ export const sidebarDoc: ComponentDoc = {
       handle: {
         type: "ReactNode | null",
         required: false,
-        defaultValue: "<Chevron open={isOpen} size=\"sm\" />",
+        defaultValue: '<Chevron open={isOpen} size="sm" />',
         description: "Custom handle element for collapsible sections. Pass null to hide.",
       },
       children: {
@@ -233,7 +267,8 @@ export const sidebarDoc: ComponentDoc = {
         type: "ReactNode",
         required: false,
         defaultValue: null,
-        description: "Panel for collapsible sections. Wires the section title's aria-controls and applies hidden when the section is closed. For non-collapsible sections this is a no-op wrapper and may be omitted.",
+        description:
+          "Panel for collapsible sections. Wires the section title's aria-controls and applies hidden when the section is closed. For non-collapsible sections this is a no-op wrapper and may be omitted.",
       },
     },
     "Sidebar.Item": {
@@ -241,25 +276,29 @@ export const sidebarDoc: ComponentDoc = {
         type: '"a" | "button"',
         required: false,
         defaultValue: '"a"',
-        description: 'Rendered element. Items are navigation links by default; pass as="button" for non-navigation actions.',
+        description:
+          'Rendered element. Items are navigation links by default; pass as="button" for non-navigation actions.',
       },
       active: {
         type: "boolean",
         required: false,
         defaultValue: "false",
-        description: 'Marks the item as the current page. Adds aria-current="page", data-active="true", and the variant\'s active styling.',
+        description:
+          'Marks the item as the current page. Adds aria-current="page", data-active="true", and the variant\'s active styling.',
       },
       value: {
         type: "string",
         required: false,
         defaultValue: "auto-generated id",
-        description: "Stable identifier exposed as data-value for keyboard navigation and intent lookup.",
+        description:
+          "Stable identifier exposed as data-value for keyboard navigation and intent lookup.",
       },
       intent: {
         type: '"neutral" | "info" | "success" | "warning" | "danger" | "accent"',
         required: false,
         defaultValue: "undefined (or auto from value when autoTone is enabled)",
-        description: "Item intent. Renders as data-intent. When autoTone is enabled on Sidebar and intent is omitted, it is inferred from value via the built-in dictionary. Color is decoration only — pair with a text/glyph cue.",
+        description:
+          "Item intent. Renders as data-intent. When autoTone is enabled on Sidebar and intent is omitted, it is inferred from value via the built-in dictionary. Color is decoration only — pair with a text/glyph cue.",
       },
       disabled: {
         type: "boolean",
@@ -271,7 +310,8 @@ export const sidebarDoc: ComponentDoc = {
         type: "ReactNode | (props: SidebarItemRenderProps) => ReactNode",
         required: true,
         defaultValue: null,
-        description: "Item content or a render function (for framework Link components) that receives ref, className, disabled, aria-current, aria-disabled, data-active, data-intent, data-value, onClick, tabIndex.",
+        description:
+          "Item content or a render function (for framework Link components) that receives ref, className, disabled, aria-current, aria-disabled, data-active, data-intent, data-value, onClick, tabIndex.",
       },
     },
     "Sidebar.ItemLabel": {
@@ -299,4 +339,4 @@ export const sidebarDoc: ComponentDoc = {
       },
     },
   },
-}
+};

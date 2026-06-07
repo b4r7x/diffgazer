@@ -21,9 +21,9 @@ export interface HistoryInsightsPaneProps {
 }
 
 function toSeverityList(counts: SeverityCounts) {
-  return SEVERITY_ORDER
-    .map((severity) => ({ severity, count: counts[severity] }))
-    .filter((entry) => entry.count > 0);
+  return SEVERITY_ORDER.map((severity) => ({ severity, count: counts[severity] })).filter(
+    (entry) => entry.count > 0,
+  );
 }
 
 export function HistoryInsightsPane({
@@ -90,7 +90,9 @@ export function HistoryInsightsPane({
       </ScrollArea>
       {duration ? (
         <Box marginTop={1} flexDirection="column">
-          <Text color={tokens.muted} dimColor>DURATION</Text>
+          <Text color={tokens.muted} dimColor>
+            DURATION
+          </Text>
           <Text color={tokens.fg}>{duration}</Text>
         </Box>
       ) : null}

@@ -67,7 +67,14 @@ interface HoverTriggerElementProps {
   disabled?: boolean;
 }
 
-const nativeInteractiveElements = new Set(["button", "a", "input", "select", "textarea", "summary"]);
+const nativeInteractiveElements = new Set([
+  "button",
+  "a",
+  "input",
+  "select",
+  "textarea",
+  "summary",
+]);
 
 function mergeHandlers<Event extends { defaultPrevented?: boolean }>(
   existing: ((event: Event) => void) | undefined,
@@ -89,11 +96,7 @@ function usesButtonLikeHoverSemantics(element: ReactElement<HoverTriggerElementP
   return isNativeInteractiveElement(element) || element.props.role === "button";
 }
 
-export function PopoverTrigger({
-  children,
-  className,
-  ref,
-}: PopoverTriggerProps) {
+export function PopoverTrigger({ children, className, ref }: PopoverTriggerProps) {
   const {
     triggerRef,
     popoverId,
@@ -185,9 +188,7 @@ export function PopoverTrigger({
     onBlur: onTriggerLeave,
   };
 
-  const triggerProps = isClick
-    ? clickTriggerProps
-    : interactiveHoverTriggerProps;
+  const triggerProps = isClick ? clickTriggerProps : interactiveHoverTriggerProps;
 
   const passiveTriggerProps = isClick ? clickTriggerProps : passiveHoverTriggerProps;
 
@@ -214,10 +215,15 @@ export function PopoverTrigger({
 
     if (isClick) {
       const buttonProps = triggerProps satisfies ComponentPropsWithRef<"button">;
-      return <button type="button" {...buttonProps}>{children}</button>;
+      return (
+        <button type="button" {...buttonProps}>
+          {children}
+        </button>
+      );
     }
 
-    const needsTabIndex = enabled && child.props.tabIndex === undefined && child.props.role === "button";
+    const needsTabIndex =
+      enabled && child.props.tabIndex === undefined && child.props.role === "button";
     const isDisabledNative = triggerMode === "hover" && isNativeInteractive && child.props.disabled;
 
     if (isDisabledNative) {
@@ -251,7 +257,11 @@ export function PopoverTrigger({
 
   if (isClick) {
     const buttonProps = triggerProps satisfies ComponentPropsWithRef<"button">;
-    return <button type="button" {...buttonProps}>{children}</button>;
+    return (
+      <button type="button" {...buttonProps}>
+        {children}
+      </button>
+    );
   }
 
   const spanProps = passiveTriggerProps satisfies ComponentPropsWithRef<"span">;

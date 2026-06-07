@@ -1,6 +1,11 @@
 "use client";
 
-import { type AvatarProps, Avatar as AvatarRoot, type AvatarStatus, avatarVariants } from "./avatar";
+import {
+  type AvatarProps,
+  Avatar as AvatarRoot,
+  type AvatarStatus,
+  avatarVariants,
+} from "./avatar";
 import { AvatarFallback, type AvatarFallbackProps } from "./avatar-fallback";
 import { AvatarGroup, type AvatarGroupProps, avatarGroupSpacingVariants } from "./avatar-group";
 import { AvatarImage, type AvatarImageProps } from "./avatar-image";

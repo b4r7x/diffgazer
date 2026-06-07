@@ -2,7 +2,7 @@ import type { ReviewIssue, ReviewSeverity } from "../schemas/review/index.js";
 
 export function filterIssuesBySeverity(
   issues: ReviewIssue[],
-  severityFilter: ReadonlySet<ReviewSeverity>
+  severityFilter: ReadonlySet<ReviewSeverity>,
 ): ReviewIssue[] {
   if (severityFilter.size === 0) {
     return issues;

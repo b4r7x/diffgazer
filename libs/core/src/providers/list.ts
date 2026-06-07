@@ -1,8 +1,4 @@
-import type {
-  ProviderInfo,
-  ProviderStatus,
-  ProviderWithStatus,
-} from "../schemas/config/index.js";
+import type { ProviderInfo, ProviderStatus, ProviderWithStatus } from "../schemas/config/index.js";
 import { AVAILABLE_PROVIDERS } from "../schemas/config/index.js";
 
 export function mapProvidersWithStatus(

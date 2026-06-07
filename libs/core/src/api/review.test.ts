@@ -1,9 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  createReview,
-  getActiveReviewSession,
-  resumeReviewStream,
-} from "./review.js";
+import { createReview, getActiveReviewSession, resumeReviewStream } from "./review.js";
 import { createMockClient as createClient } from "./test-helpers.js";
 
 function streamResponse(events: unknown[]): Response {
@@ -75,9 +71,7 @@ describe("resumeReviewStream", () => {
     const client = createClient();
     const signal = new AbortController().signal;
     vi.mocked(client.request).mockResolvedValue(
-      streamResponse([
-        { type: "complete", reviewId: "r1", result: reviewResult },
-      ]),
+      streamResponse([{ type: "complete", reviewId: "r1", result: reviewResult }]),
     );
 
     const result = await resumeReviewStream(client, {

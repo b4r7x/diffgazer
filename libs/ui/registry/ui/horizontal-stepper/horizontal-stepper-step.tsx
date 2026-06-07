@@ -10,7 +10,11 @@ import {
   horizontalStepperStepVariants,
 } from "@/lib/stepper-variants";
 import { cn } from "@/lib/utils";
-import { type HorizontalStepStatus, useStepInfo, useStepperContext } from "./horizontal-stepper-context";
+import {
+  type HorizontalStepStatus,
+  useStepInfo,
+  useStepperContext,
+} from "./horizontal-stepper-context";
 
 const SR_LABEL: Record<HorizontalStepStatus, string> = {
   completed: "Completed: ",

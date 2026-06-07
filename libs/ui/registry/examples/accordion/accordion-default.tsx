@@ -1,5 +1,11 @@
-import { Accordion, AccordionContent, AccordionHeader, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
-import { InlineCode } from "@/components/ui/code-block"
+import {
+  Accordion,
+  AccordionContent,
+  AccordionHeader,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { InlineCode } from "@/components/ui/code-block";
 
 export default function AccordionDefault() {
   return (
@@ -10,7 +16,8 @@ export default function AccordionDefault() {
         </AccordionHeader>
         <AccordionContent>
           <p className="text-sm text-muted-foreground">
-            A terminal-inspired component registry for React. Install components via CLI and own the source.
+            A terminal-inspired component registry for React. Install components via CLI and own the
+            source.
           </p>
         </AccordionContent>
       </AccordionItem>
@@ -35,5 +42,5 @@ export default function AccordionDefault() {
         </AccordionContent>
       </AccordionItem>
     </Accordion>
-  )
+  );
 }

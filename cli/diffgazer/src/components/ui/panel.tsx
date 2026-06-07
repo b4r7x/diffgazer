@@ -32,12 +32,7 @@ function PanelRoot({ variant = "default", children }: PanelProps) {
   }
 
   return (
-    <Box
-      flexDirection="column"
-      width="100%"
-      borderStyle="round"
-      borderColor={tokens.border}
-    >
+    <Box flexDirection="column" width="100%" borderStyle="round" borderColor={tokens.border}>
       {children}
     </Box>
   );

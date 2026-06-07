@@ -57,9 +57,7 @@ function releaseEntry(
   );
 }
 
-export function useFocusRestore(
-  options: UseFocusRestoreOptions = {},
-): UseFocusRestoreReturn {
+export function useFocusRestore(options: UseFocusRestoreOptions = {}): UseFocusRestoreReturn {
   const resolvedOptions = resolveOptions(options);
   const optionsRef = useRef(resolvedOptions);
   const entryRef = useRef<FocusRestoreEntry | null>(null);

@@ -9,7 +9,9 @@ describe("@diffgazer/ui registry closure metadata", () => {
   const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../../..");
   const registry = JSON.parse(
     readFileSync(resolve(repoRoot, "libs/ui/registry/registry.json"), "utf-8"),
-  ) as { items: Array<{ name: string; registryDependencies?: string[]; files: Array<{ path: string }> }> };
+  ) as {
+    items: Array<{ name: string; registryDependencies?: string[]; files: Array<{ path: string }> }>;
+  };
 
   function item(name: string) {
     const found = registry.items.find((entry) => entry.name === name);
@@ -28,7 +30,9 @@ describe("@diffgazer/ui registry closure metadata", () => {
   });
 
   it("keeps dialog and popover portal context imports reachable", () => {
-    expect(item("portal").files.map((file) => file.path)).toContain("registry/ui/shared/portal-context.tsx");
+    expect(item("portal").files.map((file) => file.path)).toContain(
+      "registry/ui/shared/portal-context.tsx",
+    );
     expect(item("dialog").registryDependencies).toContain("portal");
     // Popover composes FloatingPanel, which transitively pulls in portal.
     expect(transitiveRegistryDeps("popover")).toContain("portal");

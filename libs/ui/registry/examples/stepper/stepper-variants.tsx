@@ -1,8 +1,8 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Stepper, type StepperVariant } from "@/components/ui/stepper"
-import { ToggleGroup } from "@/components/ui/toggle-group"
+import { useState } from "react";
+import { Stepper, type StepperVariant } from "@/components/ui/stepper";
+import { ToggleGroup } from "@/components/ui/toggle-group";
 
 const VARIANTS: { value: StepperVariant; label: string }[] = [
   { value: "ascii", label: "ascii" },
@@ -10,10 +10,10 @@ const VARIANTS: { value: StepperVariant; label: string }[] = [
   { value: "bullet", label: "bullet" },
   { value: "tag", label: "tag" },
   { value: "progress", label: "progress" },
-]
+];
 
 export default function StepperVariants() {
-  const [variant, setVariant] = useState<StepperVariant>("ascii")
+  const [variant, setVariant] = useState<StepperVariant>("ascii");
 
   return (
     <div className="flex flex-col gap-4">
@@ -53,5 +53,5 @@ export default function StepperVariants() {
         </Stepper.Step>
       </Stepper>
     </div>
-  )
+  );
 }

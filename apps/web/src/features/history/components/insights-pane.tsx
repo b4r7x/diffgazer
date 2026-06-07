@@ -41,11 +41,7 @@ export function HistoryInsightsPane({
   className,
 }: HistoryInsightsPaneProps) {
   if (!runId) {
-    return (
-      <EmptyState className={className}>
-        Select a run to view insights
-      </EmptyState>
-    );
+    return <EmptyState className={className}>Select a run to view insights</EmptyState>;
   }
 
   return (

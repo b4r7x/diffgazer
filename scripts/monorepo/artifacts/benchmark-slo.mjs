@@ -31,8 +31,8 @@ function formatCountsByStatus(countsByStatus) {
 export function checkSlo({ functionalFailures, latencyBreaches }, label, result, slo) {
   if (result.nonOkCount > 0) {
     functionalFailures.push(
-      `${label} returned ${result.nonOkCount} non-200 response(s) `
-      + `(first ${result.firstFailingStatus}; by status: ${formatCountsByStatus(result.countsByStatus)})`,
+      `${label} returned ${result.nonOkCount} non-200 response(s) ` +
+        `(first ${result.firstFailingStatus}; by status: ${formatCountsByStatus(result.countsByStatus)})`,
     );
     return;
   }

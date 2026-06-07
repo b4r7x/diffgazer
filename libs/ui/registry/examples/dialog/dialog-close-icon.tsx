@@ -6,7 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
 
 export default function DialogCloseIconExample() {
   return (
@@ -24,5 +24,5 @@ export default function DialogCloseIconExample() {
         <DialogCloseIcon />
       </DialogContent>
     </Dialog>
-  )
+  );
 }

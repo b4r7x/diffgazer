@@ -1,12 +1,6 @@
 "use client";
 
-import type {
-  ComponentPropsWithRef,
-  FocusEvent,
-  MouseEvent,
-  ReactNode,
-  Ref,
-} from "react";
+import type { ComponentPropsWithRef, FocusEvent, MouseEvent, ReactNode, Ref } from "react";
 import { getEncodedListboxItemId } from "@/hooks/use-listbox";
 import { cn } from "@/lib/utils";
 import { useMenuContext } from "./menu-context";
@@ -39,8 +33,7 @@ export function MenuItemRadio({
   onMouseDown,
   ...rootProps
 }: MenuItemRadioProps) {
-  const { selectedId, highlighted, activate, highlight, idPrefix } =
-    useMenuContext();
+  const { selectedId, highlighted, activate, highlight, idPrefix } = useMenuContext();
 
   const isSelected = !disabled && selectedId === id;
   const isFocused = highlighted === id;
@@ -85,15 +78,18 @@ export function MenuItemRadio({
       onMouseDown={handleMouseDown}
       onClick={handleClick}
       onFocus={handleFocus}
-      className={cn(menuItemBase({ menuVariant: "default", state, colorVariant: "default" }), className)}
+      className={cn(
+        menuItemBase({ menuVariant: "default", state, colorVariant: "default" }),
+        className,
+      )}
     >
       <span
         aria-hidden="true"
-        className={menuItemIndicator({ idle: !isActive && !disabled || undefined })}
+        className={menuItemIndicator({ idle: (!isActive && !disabled) || undefined })}
       >
         {isSelected ? RADIO_SELECTED : RADIO_UNSELECTED}
       </span>
-      <span className={menuItemLabel({ idle: !isActive && !disabled || undefined })}>
+      <span className={menuItemLabel({ idle: (!isActive && !disabled) || undefined })}>
         {children}
       </span>
     </div>

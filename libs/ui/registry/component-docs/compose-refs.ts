@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types"
+import type { ComponentDoc } from "./types";
 
 export const composeRefsDoc: ComponentDoc = {
   description:
@@ -28,4 +28,4 @@ export const composeRefsDoc: ComponentDoc = {
     lang: "tsx",
   },
   tags: ["lib", "ref", "composition", "react-19"],
-}
+};

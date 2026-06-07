@@ -1,5 +1,11 @@
 import type { SecretsStorage } from "@diffgazer/core/schemas/config";
-import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle } from "@diffgazer/ui/components/dialog";
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@diffgazer/ui/components/dialog";
 import { useRef } from "react";
 import { ApiKeyMethodSelector } from "@/components/shared/api-key-method-selector";
 import type { FocusElement } from "@/types/focus-element";

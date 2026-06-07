@@ -1,4 +1,4 @@
-import { Stepper } from "@/components/ui/stepper"
+import { Stepper } from "@/components/ui/stepper";
 
 // Tone is derived from `status` by the built-in variant dictionary:
 //   completed → success · active → foreground · error → destructive
@@ -24,5 +24,5 @@ export default function StepperAutoTone() {
         <Stepper.Trigger>Notify Slack</Stepper.Trigger>
       </Stepper.Step>
     </Stepper>
-  )
+  );
 }

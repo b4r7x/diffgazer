@@ -1,6 +1,15 @@
 export { computeDiff } from "./compute";
 export { parsedDiffIdentity } from "./identity";
-export type { ChangeType, DiffChange, DiffHunk, DiffInput, DiffInputCompare, DiffInputParsed, DiffInputPatch, ParsedDiff } from "./parse";
+export type {
+  ChangeType,
+  DiffChange,
+  DiffHunk,
+  DiffInput,
+  DiffInputCompare,
+  DiffInputParsed,
+  DiffInputPatch,
+  ParsedDiff,
+} from "./parse";
 export { parseDiff } from "./parse";
 export { resolveDiffInput } from "./resolve";
 export type { SplitCell, SplitRow } from "./split";

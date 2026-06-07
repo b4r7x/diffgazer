@@ -77,7 +77,8 @@ export function TrustPanel({ onAccept }: TrustPanelProps): ReactElement {
           <Callout variant="warning">
             <Callout.Title>First-Time Setup</Callout.Title>
             <Callout.Content>
-              Grant permissions so the AI reviewer can analyze your code. You can change these later in Settings.
+              Grant permissions so the AI reviewer can analyze your code. You can change these later
+              in Settings.
             </Callout.Content>
           </Callout>
 
@@ -97,7 +98,12 @@ export function TrustPanel({ onAccept }: TrustPanelProps): ReactElement {
           </CheckboxGroup>
 
           <Box gap={1}>
-            <Button variant="success" onPress={handleAccept} isActive={!saving && !!initQuery.data} disabled={saving || !initQuery.data}>
+            <Button
+              variant="success"
+              onPress={handleAccept}
+              isActive={!saving && !!initQuery.data}
+              disabled={saving || !initQuery.data}
+            >
               {actionLabel}
             </Button>
           </Box>

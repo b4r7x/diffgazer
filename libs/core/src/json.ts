@@ -17,7 +17,7 @@ function stripMarkdownCodeBlock(content: string): string {
 
 export function safeParseJson<E = undefined>(
   content: string,
-  errorFactory: (message: string, details?: string) => E
+  errorFactory: (message: string, details?: string) => E,
 ): Result<unknown, E> {
   const cleaned = stripMarkdownCodeBlock(content);
 

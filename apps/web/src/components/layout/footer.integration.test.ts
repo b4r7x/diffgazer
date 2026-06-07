@@ -21,21 +21,11 @@ function PageFooterSubject({ shortcuts, rightShortcuts }: PageFooterSubjectProps
 }
 
 function renderPageFooter(props: PageFooterSubjectProps) {
-  return render(
-    createElement(
-      FooterProvider,
-      null,
-      createElement(PageFooterSubject, props),
-    ),
-  );
+  return render(createElement(FooterProvider, null, createElement(PageFooterSubject, props)));
 }
 
 function createPageFooterElement(props: PageFooterSubjectProps) {
-  return createElement(
-    FooterProvider,
-    null,
-    createElement(PageFooterSubject, props),
-  );
+  return createElement(FooterProvider, null, createElement(PageFooterSubject, props));
 }
 
 describe("usePageFooter", () => {

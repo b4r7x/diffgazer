@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "prepare:generated": "node ./scripts/prepare-generated.mjs",
+    "prepare:generated": "node ./scripts/prepare-generated.mjs && biome format --write content/docs/meta.json",
     "predev": "pnpm prepare:generated",
     "dev": "vite dev",
     "prebuild": "pnpm prepare:generated",
@@ -17,7 +17,7 @@
     "test:types": "tsc --noEmit -p tsconfig.test.json",
     "format": "biome format",
     "lint": "biome lint",
-    "check": "biome check src scripts vite.config.ts vite-plugin-docs-rebuild.ts source.config.ts",
+    "check": "biome check .",
     "pretype-check": "pnpm prepare:generated && node ./scripts/generate-route-tree.mjs",
     "type-check": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
     "pretest:e2e": "test -f .output/public/index.html || (echo 'Error: .output/public/index.html not found. Run pnpm build first.' && exit 1)",

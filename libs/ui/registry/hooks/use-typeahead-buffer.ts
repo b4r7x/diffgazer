@@ -24,16 +24,19 @@ export function useTypeaheadBuffer(resetMs = DEFAULT_TYPEAHEAD_RESET_MS) {
     };
   }, []);
 
-  return useCallback((key: string): string | null => {
-    if (key.length !== 1 || key === " ") return null;
-    if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+  return useCallback(
+    (key: string): string | null => {
+      if (key.length !== 1 || key === " ") return null;
+      if (timerRef.current !== null) window.clearTimeout(timerRef.current);
 
-    bufferRef.current += key;
-    timerRef.current = window.setTimeout(() => {
-      bufferRef.current = "";
-      timerRef.current = null;
-    }, resetMs);
+      bufferRef.current += key;
+      timerRef.current = window.setTimeout(() => {
+        bufferRef.current = "";
+        timerRef.current = null;
+      }, resetMs);
 
-    return bufferRef.current.toLocaleLowerCase();
-  }, [resetMs]);
+      return bufferRef.current.toLocaleLowerCase();
+    },
+    [resetMs],
+  );
 }

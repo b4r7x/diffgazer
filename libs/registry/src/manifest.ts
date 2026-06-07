@@ -5,10 +5,9 @@ import { ARTIFACT_FINGERPRINT_FILENAME, DEFAULT_ARTIFACT_ROOT } from "./constant
 import { isRelativeSubpath } from "./utils/fs.js";
 import { readJson } from "./utils/json.js";
 
-const RelativeArtifactPathSchema = z.string().min(1).refine(
-  isRelativeSubpath,
-  { message: "Path must be relative and must not contain '..' segments" },
-);
+const RelativeArtifactPathSchema = z.string().min(1).refine(isRelativeSubpath, {
+  message: "Path must be relative and must not contain '..' segments",
+});
 
 export const ArtifactManifestDocsSchema = z.object({
   contentDir: RelativeArtifactPathSchema,
@@ -106,9 +105,7 @@ export function loadValidatedManifest(path: string, label: string): ArtifactMani
   const raw = readJson(path);
   const validation = validateManifest(raw);
   if (!validation.success) {
-    throw new Error(
-      `${label} manifest validation failed:\n${validation.errors.join("\n")}`,
-    );
+    throw new Error(`${label} manifest validation failed:\n${validation.errors.join("\n")}`);
   }
   return validation.data;
 }

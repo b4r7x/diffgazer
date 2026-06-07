@@ -2,15 +2,8 @@ import { getErrorMessage } from "@diffgazer/core/errors";
 import { err, ok, type Result } from "@diffgazer/core/result";
 import type { SettingsConfig } from "@diffgazer/core/schemas/config";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
-import type {
-  EnrichProgressEvent,
-} from "@diffgazer/core/schemas/events";
-import type {
-  LensId,
-  ProfileId,
-  ReviewMode,
-  ReviewResult,
-} from "@diffgazer/core/schemas/review";
+import type { EnrichProgressEvent } from "@diffgazer/core/schemas/events";
+import type { LensId, ProfileId, ReviewMode, ReviewResult } from "@diffgazer/core/schemas/review";
 import type { AIClient } from "../../shared/lib/ai/types.js";
 import { getStore } from "../../shared/lib/config/store.js";
 import type { ParsedDiff } from "../../shared/lib/diff/types.js";
@@ -23,12 +16,7 @@ import { buildProjectContextSnapshot } from "./context/snapshot.js";
 import { enrichIssues } from "./enrichment.js";
 import { stepComplete, stepError, stepStart } from "./stream/steps.js";
 import { generateReport } from "./summary.js";
-import type {
-  EmitFn,
-  ResolvedConfig,
-  ReviewAbort,
-  ReviewOutcome,
-} from "./types.js";
+import type { EmitFn, ResolvedConfig, ReviewAbort, ReviewOutcome } from "./types.js";
 
 const DEFAULT_LENSES: LensId[] = ["correctness"];
 
@@ -93,7 +81,8 @@ export async function executeReview(params: {
       await emit(event);
     },
     {
-      concurrency: getStore().getSettings().agentExecution === "parallel" ? config.activeLenses.length : 1,
+      concurrency:
+        getStore().getSettings().agentExecution === "parallel" ? config.activeLenses.length : 1,
       projectContext: config.projectContext,
       partialOnAllFailed: false,
       signal,
@@ -106,7 +95,11 @@ export async function executeReview(params: {
 
   await emit(stepComplete("review"));
 
-  return ok({ issues: result.value.issues, summary: result.value.summary, lensStats: result.value.lensStats });
+  return ok({
+    issues: result.value.issues,
+    summary: result.value.summary,
+    lensStats: result.value.lensStats,
+  });
 }
 
 export async function finalizeReview(params: {

@@ -2,7 +2,10 @@ import { isAbsolute, relative, resolve } from "node:path";
 import { ensureWithinDir } from "@diffgazer/registry/cli";
 
 export function toPosixPath(path: string): string {
-  return path.split(/[\\/]+/).filter(Boolean).join("/");
+  return path
+    .split(/[\\/]+/)
+    .filter(Boolean)
+    .join("/");
 }
 
 export function normalizeManifestPath(cwd: string, absolutePath: string): string {

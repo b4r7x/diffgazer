@@ -14,10 +14,7 @@ import { CodeSnippet } from "./code-snippet";
 import { DiffView } from "./diff-view";
 import { FixPlanChecklist } from "./fix-plan-checklist";
 
-const EMPTY_COPY: Record<
-  DetailsEmptyKind,
-  { title: string; description?: string }
-> = {
+const EMPTY_COPY: Record<DetailsEmptyKind, { title: string; description?: string }> = {
   "no-issues": {
     title: "No issues in this review",
     description: "This analysis passed without findings.",
@@ -76,9 +73,7 @@ function DetailsTab({
           {issue.severity}
         </Badge>
         <Badge variant="neutral">{issue.category}</Badge>
-        <Text color={tokens.muted}>
-          confidence: {Math.round(issue.confidence * 100)}%
-        </Text>
+        <Text color={tokens.muted}>confidence: {Math.round(issue.confidence * 100)}%</Text>
       </Box>
 
       <SectionHeader variant="muted">Symptom</SectionHeader>
@@ -232,9 +227,7 @@ export function IssueDetailsPane({
     setActiveTab("details");
   }
 
-  const effectiveTab =
-    activeTab === "patch" && !issue?.suggested_patch ? "details" : activeTab;
-
+  const effectiveTab = activeTab === "patch" && !issue?.suggested_patch ? "details" : activeTab;
 
   if (!issue) {
     const empty = EMPTY_COPY[emptyKind];
@@ -258,9 +251,7 @@ export function IssueDetailsPane({
           <Tabs.Trigger value="details">Details</Tabs.Trigger>
           <Tabs.Trigger value="explain">Explain</Tabs.Trigger>
           <Tabs.Trigger value="trace">Trace</Tabs.Trigger>
-          {issue.suggested_patch ? (
-            <Tabs.Trigger value="patch">Patch</Tabs.Trigger>
-          ) : null}
+          {issue.suggested_patch ? <Tabs.Trigger value="patch">Patch</Tabs.Trigger> : null}
         </Tabs.List>
         <Tabs.Content value="details">
           <ScrollArea height={scrollHeight} isActive={isActive}>

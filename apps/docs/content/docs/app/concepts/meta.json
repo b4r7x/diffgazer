@@ -1,10 +1,4 @@
 {
   "title": "Concepts",
-  "pages": [
-    "index",
-    "how-it-works",
-    "review-pipeline",
-    "providers-and-models",
-    "privacy"
-  ]
+  "pages": ["index", "how-it-works", "review-pipeline", "providers-and-models", "privacy"]
 }

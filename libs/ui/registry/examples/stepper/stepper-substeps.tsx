@@ -1,4 +1,4 @@
-import { Stepper } from "@/components/ui/stepper"
+import { Stepper } from "@/components/ui/stepper";
 
 export default function StepperSubsteps() {
   return (
@@ -32,5 +32,5 @@ export default function StepperSubsteps() {
         </Stepper.Content>
       </Stepper.Step>
     </Stepper>
-  )
+  );
 }

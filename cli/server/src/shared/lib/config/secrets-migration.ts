@@ -1,4 +1,4 @@
-import { createError, } from "@diffgazer/core/errors";
+import { createError } from "@diffgazer/core/errors";
 import { err, ok, type Result } from "@diffgazer/core/result";
 import type { SecretsStorage } from "@diffgazer/core/schemas/config";
 import {
@@ -55,13 +55,21 @@ export function migrateSecretsStorage(
   toStorage: SecretsStorage,
 ): Result<MigrationResult, SecretsStorageError> {
   if (fromStorage === toStorage) {
-    return ok({ nextSecrets: secretsState, removedFileSecrets: false, shouldDeleteSecretsFile: false, keyringDeletions: [] });
+    return ok({
+      nextSecrets: secretsState,
+      removedFileSecrets: false,
+      shouldDeleteSecretsFile: false,
+      keyringDeletions: [],
+    });
   }
 
   if (fromStorage === "file" && toStorage === "keyring") {
     if (!isKeyringAvailable()) {
       return err(
-        createError<SecretsStorageErrorCode>("KEYRING_UNAVAILABLE", "System keyring is not available"),
+        createError<SecretsStorageErrorCode>(
+          "KEYRING_UNAVAILABLE",
+          "System keyring is not available",
+        ),
       );
     }
 
@@ -146,7 +154,12 @@ export function migrateSecretsStorage(
     });
   }
 
-  return ok({ nextSecrets: secretsState, removedFileSecrets: false, shouldDeleteSecretsFile: false, keyringDeletions: [] });
+  return ok({
+    nextSecrets: secretsState,
+    removedFileSecrets: false,
+    shouldDeleteSecretsFile: false,
+    keyringDeletions: [],
+  });
 }
 
 /**

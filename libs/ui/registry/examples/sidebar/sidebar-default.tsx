@@ -8,7 +8,7 @@ import {
   SidebarItemLabel,
   SidebarSection,
   SidebarSectionTitle,
-} from "@/components/ui/sidebar"
+} from "@/components/ui/sidebar";
 
 export default function SidebarDefault() {
   return (
@@ -39,5 +39,5 @@ export default function SidebarDefault() {
         <span className="text-xs text-muted-foreground font-mono">v1.0.0</span>
       </SidebarFooter>
     </Sidebar>
-  )
+  );
 }

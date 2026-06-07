@@ -42,9 +42,6 @@ describe("resolveCliAction", () => {
   });
 
   test("rejects --theme without --tui", () => {
-    expect(() => resolveCliAction(["--theme", "classic"])).toThrow(
-      /--theme requires --tui\./,
-    );
+    expect(() => resolveCliAction(["--theme", "classic"])).toThrow(/--theme requires --tui\./);
   });
-
 });

@@ -1,12 +1,12 @@
-import { formatTime } from '@diffgazer/core/format';
-import { useTimer } from '@diffgazer/core/timer';
-import { cn } from '@diffgazer/ui/lib/utils';
+import { formatTime } from "@diffgazer/core/format";
+import { useTimer } from "@diffgazer/core/timer";
+import { cn } from "@diffgazer/ui/lib/utils";
 
 export interface TimerProps {
   startTime?: Date;
   elapsedMs?: number;
   running?: boolean;
-  format?: 'short' | 'long';
+  format?: "short" | "long";
   className?: string;
 }
 
@@ -14,14 +14,12 @@ export function Timer({
   startTime,
   elapsedMs = 0,
   running = false,
-  format = 'short',
+  format = "short",
   className,
 }: TimerProps) {
   const { elapsed } = useTimer({ startTime, elapsedMs, running });
 
   return (
-    <span className={cn('text-tui-blue font-mono', className)}>
-      {formatTime(elapsed, format)}
-    </span>
+    <span className={cn("text-tui-blue font-mono", className)}>{formatTime(elapsed, format)}</span>
   );
 }

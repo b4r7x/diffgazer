@@ -4,8 +4,7 @@ import type { ComponentProps, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { useStepperStepContext } from "./stepper-context";
 
-export interface StepperContentProps
-  extends Omit<ComponentProps<"div">, "children"> {
+export interface StepperContentProps extends Omit<ComponentProps<"div">, "children"> {
   children: ReactNode;
 }
 

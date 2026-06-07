@@ -34,9 +34,10 @@ describe("useReviewHistory", () => {
   it("does not clear a newer selection when an older delete finishes", async () => {
     let resolveDelete: (() => void) | null = null;
     mockDeleteReview.mockImplementation(
-      () => new Promise<void>((resolve) => {
-        resolveDelete = resolve;
-      }),
+      () =>
+        new Promise<void>((resolve) => {
+          resolveDelete = resolve;
+        }),
     );
 
     const { result } = renderHook(() => useReviewHistory());

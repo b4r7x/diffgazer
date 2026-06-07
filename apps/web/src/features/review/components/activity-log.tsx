@@ -1,15 +1,14 @@
-import type { LogEntryData as BaseLogEntryData } from '@diffgazer/core/schemas/presentation';
-import { ScrollArea } from '@diffgazer/ui/components/scroll-area';
-import { cn } from '@diffgazer/ui/lib/utils';
-import { useEffect, useRef, useState } from 'react';
-import { LogEntry } from './log-entry';
+import type { LogEntryData as BaseLogEntryData } from "@diffgazer/core/schemas/presentation";
+import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
+import { cn } from "@diffgazer/ui/lib/utils";
+import { useEffect, useRef, useState } from "react";
+import { LogEntry } from "./log-entry";
 
-export interface LogEntryData extends Omit<BaseLogEntryData, 'message'> {
+export interface LogEntryData extends Omit<BaseLogEntryData, "message"> {
   message: React.ReactNode;
 }
 
-export interface ActivityLogProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+export interface ActivityLogProps extends React.HTMLAttributes<HTMLDivElement> {
   entries: LogEntryData[];
   showCursor?: boolean;
   autoScroll?: boolean;
@@ -48,7 +47,7 @@ export function ActivityLog({
       role="log"
       aria-live="polite"
       aria-label="Activity log"
-      className={cn('flex-1 font-mono text-sm leading-relaxed', className)}
+      className={cn("flex-1 font-mono text-sm leading-relaxed", className)}
       {...props}
     >
       <div className="space-y-1 p-2">

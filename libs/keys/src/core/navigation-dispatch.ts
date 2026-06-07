@@ -10,7 +10,8 @@ export function resolveDirectionKeys(
 ): { resolvedUpKeys: readonly string[]; resolvedDownKeys: readonly string[] } {
   return {
     resolvedUpKeys: upKeys ?? (orientation === "vertical" ? VERTICAL_UP_KEYS : HORIZONTAL_UP_KEYS),
-    resolvedDownKeys: downKeys ?? (orientation === "vertical" ? VERTICAL_DOWN_KEYS : HORIZONTAL_DOWN_KEYS),
+    resolvedDownKeys:
+      downKeys ?? (orientation === "vertical" ? VERTICAL_DOWN_KEYS : HORIZONTAL_DOWN_KEYS),
   };
 }
 

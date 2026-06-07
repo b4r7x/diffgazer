@@ -53,14 +53,17 @@ export function StorageScreen(): ReactElement {
   function handleSave() {
     if (!canSave) return;
     setSaveError(null);
-    saveSettings.mutate({ secretsStorage: effectiveStorage }, {
-      onSuccess: () => {
-        goBack();
+    saveSettings.mutate(
+      { secretsStorage: effectiveStorage },
+      {
+        onSuccess: () => {
+          goBack();
+        },
+        onError: (err) => {
+          setSaveError(err instanceof Error ? err.message : "Failed to save settings");
+        },
       },
-      onError: (err) => {
-        setSaveError(err instanceof Error ? err.message : "Failed to save settings");
-      },
-    });
+    );
   }
 
   const guard = guardQueryState(settingsQuery, {
@@ -89,9 +92,7 @@ export function StorageScreen(): ReactElement {
           <Panel.Content>
             <Box flexDirection="column" gap={1}>
               <SectionHeader>Configure Secrets Storage</SectionHeader>
-              <Text dimColor>
-                Choose where API keys and sensitive data should be stored.
-              </Text>
+              <Text dimColor>Choose where API keys and sensitive data should be stored.</Text>
               <StorageSelector
                 value={effectiveStorage}
                 onChange={(v) => setStorage(v as SecretsStorage)}
@@ -101,10 +102,20 @@ export function StorageScreen(): ReactElement {
                 <Text>Changes will take effect immediately after saving.</Text>
               </Callout>
               <Box gap={1}>
-                <Button variant="secondary" onPress={goBack} disabled={saving} isActive={isButtonActive(0)}>
+                <Button
+                  variant="secondary"
+                  onPress={goBack}
+                  disabled={saving}
+                  isActive={isButtonActive(0)}
+                >
                   Cancel
                 </Button>
-                <Button variant="primary" onPress={handleSave} disabled={!canSave} isActive={isButtonActive(1)}>
+                <Button
+                  variant="primary"
+                  onPress={handleSave}
+                  disabled={!canSave}
+                  isActive={isButtonActive(1)}
+                >
                   {saving ? "Saving..." : "Save"}
                 </Button>
               </Box>

@@ -9,7 +9,7 @@ import { useProvidersListNavigation } from "./use-list-navigation";
 
 const PROVIDER_ZONES = ["input", "filters", "list", "buttons"] as const;
 
-type FocusZone = typeof PROVIDER_ZONES[number];
+type FocusZone = (typeof PROVIDER_ZONES)[number];
 
 interface ProvidersKeyboardOptions {
   selectedProvider: { id: AIProvider; hasApiKey: boolean; model?: string; name: string } | null;
@@ -64,14 +64,19 @@ export function useProvidersKeyboard({
 }: ProvidersKeyboardOptions): ProvidersKeyboardReturn {
   const navigate = useNavigate();
 
-  const { zone: internalZone, setZone, isZone } = useFocusZone({
+  const {
+    zone: internalZone,
+    setZone,
+    isZone,
+  } = useFocusZone({
     initial: "list",
     zones: PROVIDER_ZONES,
     scope: "providers",
     enabled: !dialogOpen,
   });
 
-  const effectiveFocusZone = (!selectedProvider && internalZone === "buttons") ? "list" : internalZone;
+  const effectiveFocusZone =
+    !selectedProvider && internalZone === "buttons" ? "list" : internalZone;
   const inInput = effectiveFocusZone === "input";
   const inFilters = effectiveFocusZone === "filters";
   const inButtons = effectiveFocusZone === "buttons";

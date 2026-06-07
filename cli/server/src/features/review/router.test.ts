@@ -86,7 +86,7 @@ describe("review router project boundaries", () => {
       `/api/review/reviews?projectPath=${encodeURIComponent(projectA)}`,
       requestOptions(projectA),
     );
-    const body = await response.json() as { reviews: Array<{ id: string }> };
+    const body = (await response.json()) as { reviews: Array<{ id: string }> };
 
     expect(response.status).toBe(200);
     expect(body.reviews.map((review) => review.id)).toEqual([REVIEW_A]);
@@ -117,10 +117,10 @@ describe("review router project boundaries", () => {
     );
     expect(readResponse.status).toBe(404);
 
-    const deleteResponse = await app.request(
-      `/api/review/reviews/${REVIEW_B}`,
-      { ...requestOptions(projectA), method: "DELETE" },
-    );
+    const deleteResponse = await app.request(`/api/review/reviews/${REVIEW_B}`, {
+      ...requestOptions(projectA),
+      method: "DELETE",
+    });
     expect(deleteResponse.status).toBe(200);
     await expect(deleteResponse.json()).resolves.toEqual({ existed: false });
 
@@ -133,10 +133,10 @@ describe("review router project boundaries", () => {
     await trustProject(projectA);
     const app = await createReviewApp();
 
-    const response = await app.request(
-      `/api/review/reviews/${REVIEW_A}`,
-      { ...requestOptions(projectA), method: "DELETE" },
-    );
+    const response = await app.request(`/api/review/reviews/${REVIEW_A}`, {
+      ...requestOptions(projectA),
+      method: "DELETE",
+    });
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ existed: false });
@@ -148,21 +148,18 @@ describe("POST /api/review/reviews", () => {
     await trustProject(projectA);
     const app = await createReviewApp();
 
-    const response = await app.request(
-      "/api/review/reviews",
-      {
-        ...requestOptions(projectA),
-        method: "POST",
-        headers: {
-          [PROJECT_ROOT_HEADER]: projectA,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ mode: "unstaged" }),
+    const response = await app.request("/api/review/reviews", {
+      ...requestOptions(projectA),
+      method: "POST",
+      headers: {
+        [PROJECT_ROOT_HEADER]: projectA,
+        "Content-Type": "application/json",
       },
-    );
+      body: JSON.stringify({ mode: "unstaged" }),
+    });
 
     expect(response.status).toBe(503);
-    const body = await response.json() as { error: { code: string } };
+    const body = (await response.json()) as { error: { code: string } };
     expect(body.error.code).toBe("SETUP_REQUIRED");
   });
 
@@ -172,18 +169,15 @@ describe("POST /api/review/reviews", () => {
     await trustProject(projectA);
     const app = await createReviewApp();
 
-    const response = await app.request(
-      "/api/review/reviews",
-      {
-        ...requestOptions(projectA),
-        method: "POST",
-        headers: {
-          [PROJECT_ROOT_HEADER]: projectA,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ mode: "unstaged" }),
+    const response = await app.request("/api/review/reviews", {
+      ...requestOptions(projectA),
+      method: "POST",
+      headers: {
+        [PROJECT_ROOT_HEADER]: projectA,
+        "Content-Type": "application/json",
       },
-    );
+      body: JSON.stringify({ mode: "unstaged" }),
+    });
 
     expect(response.headers.get("content-type")).not.toContain("text/event-stream");
   });
@@ -323,10 +317,7 @@ describe("review router param validation", () => {
     await trustProject(projectA);
     const app = await createReviewApp();
 
-    const response = await app.request(
-      "/api/review/reviews/not-a-uuid",
-      requestOptions(projectA),
-    );
+    const response = await app.request("/api/review/reviews/not-a-uuid", requestOptions(projectA));
 
     expect(response.status).toBe(400);
     const body = (await response.json()) as { error: { code: string } };

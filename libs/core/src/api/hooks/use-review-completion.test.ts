@@ -3,10 +3,7 @@
  */
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  type UseReviewCompletionOptions,
-  useReviewCompletion,
-} from "./use-review-completion.js";
+import { type UseReviewCompletionOptions, useReviewCompletion } from "./use-review-completion.js";
 
 function createOptions(
   overrides: Partial<UseReviewCompletionOptions> = {},

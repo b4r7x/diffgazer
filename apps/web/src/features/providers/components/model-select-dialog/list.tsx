@@ -72,11 +72,7 @@ export function ModelList({
       className="min-h-0 px-4 py-3 space-y-1 max-h-[50vh] overflow-y-auto scrollbar-thin"
     >
       {models.map((model) => (
-        <ModelListItem
-          key={model.id}
-          model={model}
-          onDoubleClick={() => onConfirm(model.id)}
-        />
+        <ModelListItem key={model.id} model={model} onDoubleClick={() => onConfirm(model.id)} />
       ))}
     </RadioGroup>
   );

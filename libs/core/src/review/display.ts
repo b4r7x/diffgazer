@@ -14,10 +14,14 @@ export type UIStepStatus = "pending" | "running" | "complete" | "error";
 
 export function mapStepStatus(status: StepState["status"]): UIStepStatus {
   switch (status) {
-    case "active": return "running";
-    case "completed": return "complete";
-    case "error": return "error";
-    default: return "pending";
+    case "active":
+      return "running";
+    case "completed":
+      return "complete";
+    case "error":
+      return "error";
+    default:
+      return "pending";
   }
 }
 

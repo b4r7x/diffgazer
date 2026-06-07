@@ -170,7 +170,9 @@ export function HomePagePresentation({
     }
 
     if (isReviewStartAction(action) && !isTrusted) {
-      toast.error("Directory Not Trusted", { message: "Grant permissions in Settings → Trust & Permissions first." });
+      toast.error("Directory Not Trusted", {
+        message: "Grant permissions in Settings → Trust & Permissions first.",
+      });
       return;
     }
 
@@ -223,11 +225,7 @@ export function HomePagePresentation({
 
   return (
     <div className="flex flex-1 flex-col lg:flex-row items-center lg:items-start justify-start lg:justify-center p-4 md:p-6 lg:p-8 gap-4 md:gap-6 lg:gap-8 overflow-auto">
-      <ContextSidebar
-        context={context}
-        isTrusted={isTrusted}
-        projectPath={repoRoot ?? undefined}
-      />
+      <ContextSidebar context={context} isTrusted={isTrusted} projectPath={repoRoot ?? undefined} />
       <HomeMenu
         highlighted={effectiveHighlighted}
         onHighlightChange={onHighlightChange}

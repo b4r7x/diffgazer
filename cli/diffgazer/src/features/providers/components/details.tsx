@@ -23,10 +23,7 @@ interface ProviderDetailsProps {
   onRemove?: () => void;
 }
 
-function formatProviderModel(
-  model: string | undefined,
-  defaultModel: string | undefined,
-): string {
+function formatProviderModel(model: string | undefined, defaultModel: string | undefined): string {
   if (model) return model;
   if (defaultModel) return `${defaultModel} (default)`;
   return "none";
@@ -90,14 +87,27 @@ export function ProviderDetails({
       />
 
       <Box gap={1} marginTop={1}>
-        <Button variant="primary" isActive={isActive && clampedIndex === 0} onPress={onConfigureKey}>
+        <Button
+          variant="primary"
+          isActive={isActive && clampedIndex === 0}
+          onPress={onConfigureKey}
+        >
           Configure API Key
         </Button>
-        <Button variant="secondary" isActive={isActive && clampedIndex === 1} onPress={onSelectModel} disabled={provider.displayStatus === "needs-key"}>
+        <Button
+          variant="secondary"
+          isActive={isActive && clampedIndex === 1}
+          onPress={onSelectModel}
+          disabled={provider.displayStatus === "needs-key"}
+        >
           Select Model
         </Button>
         {showRemove && (
-          <Button variant="destructive" isActive={isActive && clampedIndex === 2} onPress={onRemove}>
+          <Button
+            variant="destructive"
+            isActive={isActive && clampedIndex === 2}
+            onPress={onRemove}
+          >
             Remove
           </Button>
         )}

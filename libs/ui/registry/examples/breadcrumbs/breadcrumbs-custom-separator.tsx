@@ -1,5 +1,5 @@
-import { Breadcrumbs } from "@/components/ui/breadcrumbs"
-import { Chevron } from "@/components/ui/icons"
+import { Breadcrumbs } from "@/components/ui/breadcrumbs";
+import { Chevron } from "@/components/ui/icons";
 
 export default function BreadcrumbsCustomSeparator() {
   return (
@@ -12,5 +12,5 @@ export default function BreadcrumbsCustomSeparator() {
       </Breadcrumbs.Item>
       <Breadcrumbs.Item>Breadcrumbs</Breadcrumbs.Item>
     </Breadcrumbs>
-  )
+  );
 }

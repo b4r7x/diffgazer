@@ -21,7 +21,9 @@ export function useDialogContext() {
   return context;
 }
 
-export function useDialogDismiss<T extends HTMLElement = HTMLElement>(onClick?: MouseEventHandler<T>): MouseEventHandler<T> {
+export function useDialogDismiss<T extends HTMLElement = HTMLElement>(
+  onClick?: MouseEventHandler<T>,
+): MouseEventHandler<T> {
   const { onOpenChange } = useDialogContext();
   return (e) => {
     onClick?.(e);

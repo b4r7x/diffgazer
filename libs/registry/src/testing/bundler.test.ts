@@ -133,7 +133,10 @@ describe("createBundler", () => {
           ],
         }),
       );
-      writeFileSync(join(uiDir, "reset.ts"), "import 'normalize.css/reset.css';\nexport const reset = true;\n");
+      writeFileSync(
+        join(uiDir, "reset.ts"),
+        "import 'normalize.css/reset.css';\nexport const reset = true;\n",
+      );
 
       const result = createBundler({
         rootDir,

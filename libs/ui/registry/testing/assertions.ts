@@ -5,10 +5,7 @@ export function requireValue<T>(value: T | null | undefined, label: string): Non
   return value;
 }
 
-export function requireElement<T extends Element>(
-  element: T | null | undefined,
-  label: string,
-): T {
+export function requireElement<T extends Element>(element: T | null | undefined, label: string): T {
   return requireValue(element, label);
 }
 

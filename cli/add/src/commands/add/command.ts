@@ -1,8 +1,11 @@
 import {
-  createAddCommand,depName, 
+  createAddCommand,
+  depName,
   type FileOp,
-  getInstalledDeps, info,normalizeVersionSpec,
-  parseEnumOption, 
+  getInstalledDeps,
+  info,
+  normalizeVersionSpec,
+  parseEnumOption,
 } from "@diffgazer/registry/cli";
 import type { ResolvedConfig } from "../../context.js";
 import { ctx } from "../../context.js";
@@ -24,7 +27,8 @@ import { buildManifestMetadata, updateOwnedManifestEntries } from "./manifest.js
 
 function logIntegrationMode(mode: ResolvedIntegrationSelection["mode"]): void {
   if (mode === "copy") info("Including integration: keyboard-navigation (copy hooks)");
-  if (mode === "@diffgazer/keys") info("Including integration: keyboard-navigation + @diffgazer/keys package");
+  if (mode === "@diffgazer/keys")
+    info("Including integration: keyboard-navigation + @diffgazer/keys package");
 }
 
 interface CollectedFileOps {
@@ -69,8 +73,16 @@ const addBaseCommand = createAddCommand<ResolvedConfig>({
   getPublicNames: () => publicAvailableNames(),
   validateRequestedNames: validateInstallNames,
   extraOptions: [
-    { flags: "--integration <mode>", description: "Optional keyboard integration mode: ask | none | copy | keys", default: "ask" },
-    { flags: "--keys-version <version>", description: "Version/range of @diffgazer/keys used for package mode", default: DEFAULT_KEYS_VERSION_SPEC },
+    {
+      flags: "--integration <mode>",
+      description: "Optional keyboard integration mode: ask | none | copy | keys",
+      default: "ask",
+    },
+    {
+      flags: "--keys-version <version>",
+      description: "Version/range of @diffgazer/keys used for package mode",
+      default: DEFAULT_KEYS_VERSION_SPEC,
+    },
   ],
   buildPlan: async ({ cwd, config, names, opts }) => {
     const namesByNamespace = splitInstallNames(names);
@@ -80,9 +92,14 @@ const addBaseCommand = createAddCommand<ResolvedConfig>({
       ["ask", "none", "copy", "@diffgazer/keys", "keys"] as const,
       "--integration",
     );
-    const normalizedIntegrationMode = integrationMode === "keys" ? "@diffgazer/keys" : integrationMode;
+    const normalizedIntegrationMode =
+      integrationMode === "keys" ? "@diffgazer/keys" : integrationMode;
     const resolved = ctx.registry.resolveDeps(namesByNamespace.ui);
-    const selection = await resolveIntegrations(resolved, normalizedIntegrationMode, Boolean(opts.yes));
+    const selection = await resolveIntegrations(
+      resolved,
+      normalizedIntegrationMode,
+      Boolean(opts.yes),
+    );
     logIntegrationMode(selection.mode);
 
     const neededKeysHooks = resolveKeysHooksFromRegistry(
@@ -99,12 +116,11 @@ const addBaseCommand = createAddCommand<ResolvedConfig>({
         ...resolved.map((name) => `ui/${name}`),
         ...namesByNamespace.keys.map((name) => `keys/${name}`),
       ],
-      fileOps: [
-        ...collected.fileOps,
-        ...buildKeysFileOps(namesByNamespace.keys, cwd, config),
-      ],
+      fileOps: [...collected.fileOps, ...buildKeysFileOps(namesByNamespace.keys, cwd, config)],
       missingDeps: computeMissingDeps(resolved, selection, keysVersionSpec, cwd),
-      extraDependencies: resolved.filter((r) => !namesByNamespace.ui.includes(r)).map((name) => `ui/${name}`),
+      extraDependencies: resolved
+        .filter((r) => !namesByNamespace.ui.includes(r))
+        .map((name) => `ui/${name}`),
       headingMessage: "Adding Diffgazer items...",
       onDryRun: () => {
         if (selection.hasKeyboardIntegration && selection.mode === "copy") {

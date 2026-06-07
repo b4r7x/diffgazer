@@ -34,19 +34,27 @@ export function useModelSearchFocus({
   focusFilterButton,
   enterListFromBoundary,
 }: UseModelSearchFocusOptions): UseModelSearchFocusResult {
-  useKey("ArrowDown", () => {
-    focusFilterButton(filterIndex);
-    blurSearchInput();
-  }, { enabled: open && inSearch, allowInInput: true, preventDefault: true });
+  useKey(
+    "ArrowDown",
+    () => {
+      focusFilterButton(filterIndex);
+      blurSearchInput();
+    },
+    { enabled: open && inSearch, allowInInput: true, preventDefault: true },
+  );
   useKey("ArrowUp", focusCloseButton, {
     enabled: open && inSearch,
     allowInInput: true,
     preventDefault: true,
   });
 
-  useKey("/", () => {
-    if (!inSearch) focusSearchInput();
-  }, { enabled: open, preventDefault: true });
+  useKey(
+    "/",
+    () => {
+      if (!inSearch) focusSearchInput();
+    },
+    { enabled: open, preventDefault: true },
+  );
 
   const handleSearchEscape = () => {
     if (searchQuery) {

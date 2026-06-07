@@ -10,19 +10,21 @@ const makeMockGitService = (): EnrichGitService => ({
     commitDate: "2024-01-01",
     summary: "initial commit",
   }),
-  getFileLines: vi.fn().mockResolvedValue([
-    "line 1",
-    "line 2",
-    "line 3",
-    "line 4",
-    "line 5",
-    "line 6",
-    "line 7",
-    "line 8",
-    "line 9",
-    "line 10",
-    "line 11",
-  ]),
+  getFileLines: vi
+    .fn()
+    .mockResolvedValue([
+      "line 1",
+      "line 2",
+      "line 3",
+      "line 4",
+      "line 5",
+      "line 6",
+      "line 7",
+      "line 8",
+      "line 9",
+      "line 10",
+      "line 11",
+    ]),
 });
 
 describe("enrichIssues", () => {
@@ -98,12 +100,7 @@ describe("enrichIssues", () => {
     const controller = new AbortController();
     controller.abort();
 
-    const result = await enrichIssues(
-      issues,
-      gitService,
-      onEvent,
-      controller.signal,
-    );
+    const result = await enrichIssues(issues, gitService, onEvent, controller.signal);
 
     expect(result).toBe(issues);
     expect(gitService.getBlame).not.toHaveBeenCalled();

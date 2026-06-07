@@ -17,10 +17,14 @@ const byId = (id: string, provider: keyof typeof PROVIDER_OVERLAY) => {
 
 describe("isModelFreeToUse", () => {
   it("gemini-2.5-flash is free despite a positive sticker price (in freeTier.ids)", () => {
-    expect(isModelFreeToUse(byId("gemini-2.5-flash", "gemini"), PROVIDER_OVERLAY.gemini)).toBe(true);
+    expect(isModelFreeToUse(byId("gemini-2.5-flash", "gemini"), PROVIDER_OVERLAY.gemini)).toBe(
+      true,
+    );
   });
   it("gemini-3-pro-preview is paid (priced and NOT in the freeTier selector)", () => {
-    expect(isModelFreeToUse(byId("gemini-3-pro-preview", "gemini"), PROVIDER_OVERLAY.gemini)).toBe(false);
+    expect(isModelFreeToUse(byId("gemini-3-pro-preview", "gemini"), PROVIDER_OVERLAY.gemini)).toBe(
+      false,
+    );
   });
   it("zai glm-4.7-flash is free (zero list price, no curation needed)", () => {
     expect(isModelFreeToUse(byId("glm-4.7-flash", "zai"), PROVIDER_OVERLAY.zai)).toBe(true);
@@ -29,15 +33,22 @@ describe("isModelFreeToUse", () => {
     expect(isModelFreeToUse(byId("glm-4.7", "zai"), PROVIDER_OVERLAY.zai)).toBe(false);
   });
   it("zai-coding glm-4.7 is paid despite cost 0/0 (hasFreeTier: false)", () => {
-    expect(isModelFreeToUse(byId("glm-4.7", "zai-coding"), PROVIDER_OVERLAY["zai-coding"])).toBe(false);
+    expect(isModelFreeToUse(byId("glm-4.7", "zai-coding"), PROVIDER_OVERLAY["zai-coding"])).toBe(
+      false,
+    );
   });
   it("groq priced model is free (freeTier: 'all')", () => {
     expect(
-      isModelFreeToUse(byId("meta-llama/llama-4-scout-17b-16e-instruct", "groq"), PROVIDER_OVERLAY.groq),
+      isModelFreeToUse(
+        byId("meta-llama/llama-4-scout-17b-16e-instruct", "groq"),
+        PROVIDER_OVERLAY.groq,
+      ),
     ).toBe(true);
   });
   it("cerebras priced model is free (freeTier: 'all')", () => {
-    expect(isModelFreeToUse(byId("gpt-oss-120b", "cerebras"), PROVIDER_OVERLAY.cerebras)).toBe(true);
+    expect(isModelFreeToUse(byId("gpt-oss-120b", "cerebras"), PROVIDER_OVERLAY.cerebras)).toBe(
+      true,
+    );
   });
 
   it("a priced model whose family is in freeTier.families is free", () => {
@@ -102,7 +113,11 @@ describe("catalogToModelInfo", () => {
       google: {
         id: "google",
         models: {
-          "gemini-2.5-flash": { id: "gemini-2.5-flash", name: "Bare Flash", cost: { input: 1, output: 1 } },
+          "gemini-2.5-flash": {
+            id: "gemini-2.5-flash",
+            name: "Bare Flash",
+            cost: { input: 1, output: 1 },
+          },
         },
       },
     });
@@ -145,15 +160,35 @@ describe("catalogToModelInfo", () => {
       google: {
         id: "google",
         models: {
-          "dup-model": { id: "dup-model", name: "Old Name", cost: { input: 1, output: 1 }, last_updated: "2024-01-01" },
-          "google-only": { id: "google-only", name: "Google Only", cost: { input: 1, output: 1 }, last_updated: "2024-06-01" },
+          "dup-model": {
+            id: "dup-model",
+            name: "Old Name",
+            cost: { input: 1, output: 1 },
+            last_updated: "2024-01-01",
+          },
+          "google-only": {
+            id: "google-only",
+            name: "Google Only",
+            cost: { input: 1, output: 1 },
+            last_updated: "2024-06-01",
+          },
         },
       },
       "google-extra": {
         id: "google-extra",
         models: {
-          "dup-model": { id: "dup-model", name: "New Name", cost: { input: 2, output: 2 }, last_updated: "2025-12-01" },
-          "extra-only": { id: "extra-only", name: "Extra Only", cost: { input: 3, output: 3 }, last_updated: "2025-01-01" },
+          "dup-model": {
+            id: "dup-model",
+            name: "New Name",
+            cost: { input: 2, output: 2 },
+            last_updated: "2025-12-01",
+          },
+          "extra-only": {
+            id: "extra-only",
+            name: "Extra Only",
+            cost: { input: 3, output: 3 },
+            last_updated: "2025-01-01",
+          },
         },
       },
     });
@@ -177,13 +212,23 @@ describe("catalogToModelInfo", () => {
       google: {
         id: "google",
         models: {
-          "dup-model": { id: "dup-model", name: "Has last_updated", cost: { input: 1, output: 1 }, last_updated: "2025-12-01" },
+          "dup-model": {
+            id: "dup-model",
+            name: "Has last_updated",
+            cost: { input: 1, output: 1 },
+            last_updated: "2025-12-01",
+          },
         },
       },
       "google-extra": {
         id: "google-extra",
         models: {
-          "dup-model": { id: "dup-model", name: "Release only", cost: { input: 2, output: 2 }, release_date: "2026-01-01" },
+          "dup-model": {
+            id: "dup-model",
+            name: "Release only",
+            cost: { input: 2, output: 2 },
+            release_date: "2026-01-01",
+          },
         },
       },
     });
@@ -198,13 +243,23 @@ describe("catalogToModelInfo", () => {
       google: {
         id: "google",
         models: {
-          "dup-model": { id: "dup-model", name: "Older release", cost: { input: 1, output: 1 }, release_date: "2024-01-01" },
+          "dup-model": {
+            id: "dup-model",
+            name: "Older release",
+            cost: { input: 1, output: 1 },
+            release_date: "2024-01-01",
+          },
         },
       },
       "google-extra": {
         id: "google-extra",
         models: {
-          "dup-model": { id: "dup-model", name: "Newer release", cost: { input: 2, output: 2 }, release_date: "2025-06-01" },
+          "dup-model": {
+            id: "dup-model",
+            name: "Newer release",
+            cost: { input: 2, output: 2 },
+            release_date: "2025-06-01",
+          },
         },
       },
     });

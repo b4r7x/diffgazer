@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types"
+import type { ComponentDoc } from "./types";
 
 export const codeBlockDoc: ComponentDoc = {
   description:
@@ -27,7 +27,7 @@ export const codeBlockDoc: ComponentDoc = {
     {
       title: "Optional Auto-Coloring",
       content:
-        "CodeBlockHighlight is a separate subpath import: `import { CodeBlockHighlight } from \"@diffgazer/ui/components/code-block/highlight\"`. It is split from the main <CodeBlock> bundle so consumers who never render it are not charged for the lowlight grammar bundle. `lowlight` is declared as an optional peer dependency — install it only when you import CodeBlockHighlight. The component emits highlight.js-compatible class names (hljs-keyword, hljs-string, ...) which the shared CSS maps onto the --code-* theme tokens.",
+        'CodeBlockHighlight is a separate subpath import: `import { CodeBlockHighlight } from "@diffgazer/ui/components/code-block/highlight"`. It is split from the main <CodeBlock> bundle so consumers who never render it are not charged for the lowlight grammar bundle. `lowlight` is declared as an optional peer dependency — install it only when you import CodeBlockHighlight. The component emits highlight.js-compatible class names (hljs-keyword, hljs-string, ...) which the shared CSS maps onto the --code-* theme tokens.',
     },
     {
       title: "Keyboard Scrolling",
@@ -42,12 +42,32 @@ export const codeBlockDoc: ComponentDoc = {
   ],
   anatomy: [
     { name: "CodeBlock", indent: 0, note: "Root <figure>" },
-    { name: "CodeBlock.Header", indent: 1, note: "Header row (filename + actions); hidden in bare variant" },
-    { name: "CodeBlock.Label", indent: 2, note: "Filename label, wired to figure's accessible name" },
+    {
+      name: "CodeBlock.Header",
+      indent: 1,
+      note: "Header row (filename + actions); hidden in bare variant",
+    },
+    {
+      name: "CodeBlock.Label",
+      indent: 2,
+      note: "Filename label, wired to figure's accessible name",
+    },
     { name: "CodeBlock.CopyButton", indent: 2, note: "Optional copy-to-clipboard button" },
-    { name: "CodeBlock.Content", indent: 1, note: "Scrollable <pre> body (auto-split or composed)" },
-    { name: "CodeBlock.Line", indent: 2, note: "Single line with optional gutter, diff state, and token coloring" },
-    { name: "CodeBlockHighlight", indent: 1, note: "Optional auto-colored content (subpath import; uses lowlight)" },
+    {
+      name: "CodeBlock.Content",
+      indent: 1,
+      note: "Scrollable <pre> body (auto-split or composed)",
+    },
+    {
+      name: "CodeBlock.Line",
+      indent: 2,
+      note: "Single line with optional gutter, diff state, and token coloring",
+    },
+    {
+      name: "CodeBlockHighlight",
+      indent: 1,
+      note: "Optional auto-colored content (subpath import; uses lowlight)",
+    },
   ],
   usage: { example: "code-block-default" },
   examples: [
@@ -72,19 +92,22 @@ export const codeBlockDoc: ComponentDoc = {
         type: "string",
         required: false,
         defaultValue: null,
-        description: 'Language identifier exposed as data-language and used in the default aria-label ("{language} code").',
+        description:
+          'Language identifier exposed as data-language and used in the default aria-label ("{language} code").',
       },
       label: {
         type: "string",
         required: false,
         defaultValue: null,
-        description: 'Optional accessible name when no <CodeBlock.Label> is rendered. Falls back to "{language} code" or "Code block".',
+        description:
+          'Optional accessible name when no <CodeBlock.Label> is rendered. Falls back to "{language} code" or "Code block".',
       },
       chrome: {
         type: '"dots" | "none"',
         required: false,
         defaultValue: '"dots" for variant="terminal", "none" otherwise',
-        description: 'Decorative chrome in the header strip. "dots" renders three desaturated terminal-style dots on the left edge and reserves symmetric padding so a centered label stays balanced. "none" disables chrome — useful for a terminal pane without window dots.',
+        description:
+          'Decorative chrome in the header strip. "dots" renders three desaturated terminal-style dots on the left edge and reserves symmetric padding so a centered label stays balanced. "none" disables chrome — useful for a terminal pane without window dots.',
       },
       children: {
         type: "ReactNode",
@@ -98,7 +121,8 @@ export const codeBlockDoc: ComponentDoc = {
         type: "ReactNode",
         required: false,
         defaultValue: null,
-        description: "Typically a CodeBlock.Label and optional action buttons. Returns null when the parent variant is \"bare\".",
+        description:
+          'Typically a CodeBlock.Label and optional action buttons. Returns null when the parent variant is "bare".',
       },
     },
     CodeBlockLabel: {
@@ -106,7 +130,8 @@ export const codeBlockDoc: ComponentDoc = {
         type: "ReactNode",
         required: false,
         defaultValue: null,
-        description: "Filename or language text. Bound to the figure's accessible name via aria-labelledby.",
+        description:
+          "Filename or language text. Bound to the figure's accessible name via aria-labelledby.",
       },
     },
     CodeBlockContent: {
@@ -120,13 +145,15 @@ export const codeBlockDoc: ComponentDoc = {
         type: '"default" | "diff"',
         required: false,
         defaultValue: '"default"',
-        description: "Surfaces as data-tone on the <pre>. Use \"diff\" when the content contains added/removed lines.",
+        description:
+          'Surfaces as data-tone on the <pre>. Use "diff" when the content contains added/removed lines.',
       },
       children: {
         type: "string | ReactNode",
         required: false,
         defaultValue: null,
-        description: "Code source: a string is auto-split into numbered CodeBlock.Line children; composed CodeBlock.Line children render as-is.",
+        description:
+          "Code source: a string is auto-split into numbered CodeBlock.Line children; composed CodeBlock.Line children render as-is.",
       },
     },
     CodeBlockLine: {
@@ -140,19 +167,22 @@ export const codeBlockDoc: ComponentDoc = {
         type: "string | { text: string; color?: string; className?: string }[]",
         required: false,
         defaultValue: null,
-        description: "Line content. Either a plain string or an array of tokens for syntax coloring. Ignored when `children` is provided.",
+        description:
+          "Line content. Either a plain string or an array of tokens for syntax coloring. Ignored when `children` is provided.",
       },
       children: {
         type: "ReactNode",
         required: false,
         defaultValue: null,
-        description: "Pre-rendered line body (e.g. highlighted React elements). Takes precedence over `content` and renders inside the <code> element.",
+        description:
+          "Pre-rendered line body (e.g. highlighted React elements). Takes precedence over `content` and renders inside the <code> element.",
       },
       state: {
         type: '"highlight" | "added" | "removed"',
         required: false,
         defaultValue: null,
-        description: 'Per-line visual state. "highlight" tints the row; "added"/"removed" render gutter sign characters (+/−), color tint, and an sr-only "Added: "/"Removed: " prefix for assistive tech.',
+        description:
+          'Per-line visual state. "highlight" tints the row; "added"/"removed" render gutter sign characters (+/−), color tint, and an sr-only "Added: "/"Removed: " prefix for assistive tech.',
       },
     },
     CodeBlockCopyButton: {
@@ -198,7 +228,8 @@ export const codeBlockDoc: ComponentDoc = {
         type: "string",
         required: false,
         defaultValue: null,
-        description: "Language identifier consumed by lowlight (e.g. \"ts\", \"tsx\", \"bash\", \"json\"). Omit to use lowlight's auto-detection.",
+        description:
+          'Language identifier consumed by lowlight (e.g. "ts", "tsx", "bash", "json"). Omit to use lowlight\'s auto-detection.',
       },
       showLineNumbers: {
         type: "boolean",
@@ -207,11 +238,12 @@ export const codeBlockDoc: ComponentDoc = {
         description: "Renders a line-number gutter when true.",
       },
       lineStates: {
-        type: "Record<number, \"highlight\" | \"added\" | \"removed\">",
+        type: 'Record<number, "highlight" | "added" | "removed">',
         required: false,
         defaultValue: null,
-        description: "Optional per-line state map keyed by 1-based line number. Applied to the underlying CodeBlock.Line for each row.",
+        description:
+          "Optional per-line state map keyed by 1-based line number. Applied to the underlying CodeBlock.Line for each row.",
       },
     },
   },
-}
+};

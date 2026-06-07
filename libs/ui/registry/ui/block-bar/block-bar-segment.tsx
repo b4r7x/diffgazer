@@ -3,10 +3,7 @@
 import { cva, type VariantProps } from "class-variance-authority";
 import type { HTMLAttributes, ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import {
-  computeFilledCount,
-  useBlockBarContext,
-} from "./block-bar-context";
+import { computeFilledCount, useBlockBarContext } from "./block-bar-context";
 
 const segmentVariants = cva("", {
   variants: {
@@ -22,9 +19,7 @@ const segmentVariants = cva("", {
   defaultVariants: { variant: "default" },
 });
 
-export type SegmentVariant = NonNullable<
-  VariantProps<typeof segmentVariants>["variant"]
->;
+export type SegmentVariant = NonNullable<VariantProps<typeof segmentVariants>["variant"]>;
 
 export interface BlockBarSegmentProps
   extends VariantProps<typeof segmentVariants>,
@@ -47,11 +42,7 @@ export function BlockBarSegment({
   const displayChar = char ?? filledChar;
 
   return (
-    <span
-      aria-hidden="true"
-      className={cn(segmentVariants({ variant }), className)}
-      {...props}
-    >
+    <span aria-hidden="true" className={cn(segmentVariants({ variant }), className)} {...props}>
       {displayChar.repeat(chars)}
       {children}
     </span>

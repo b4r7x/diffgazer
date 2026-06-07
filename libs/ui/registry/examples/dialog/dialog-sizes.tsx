@@ -1,4 +1,4 @@
-import { InlineCode } from "@/components/ui/code-block"
+import { InlineCode } from "@/components/ui/code-block";
 import {
   Dialog,
   DialogBody,
@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
 
 export default function DialogSizes() {
   return (
@@ -26,11 +26,13 @@ export default function DialogSizes() {
               </p>
             </DialogBody>
             <DialogFooter hints={[{ key: "Esc", label: "Close" }]}>
-              <DialogClose bracket variant="ghost">Close</DialogClose>
+              <DialogClose bracket variant="ghost">
+                Close
+              </DialogClose>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       ))}
     </div>
-  )
+  );
 }

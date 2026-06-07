@@ -72,15 +72,11 @@ export function ScrollArea({
 
   return (
     <Box flexDirection="column">
-      {canScrollUp ? (
-        <Text color={tokens.muted}>{"\u25B2"}</Text>
-      ) : null}
+      {canScrollUp ? <Text color={tokens.muted}>{"\u25B2"}</Text> : null}
       <Box flexDirection="column" height={height} overflow="hidden">
         {visibleChildren}
       </Box>
-      {canScrollDown ? (
-        <Text color={tokens.muted}>{"\u25BC"}</Text>
-      ) : null}
+      {canScrollDown ? <Text color={tokens.muted}>{"\u25BC"}</Text> : null}
     </Box>
   );
 }

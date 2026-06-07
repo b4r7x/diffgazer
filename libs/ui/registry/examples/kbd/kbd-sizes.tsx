@@ -1,4 +1,4 @@
-import { Kbd } from "@/components/ui/kbd"
+import { Kbd } from "@/components/ui/kbd";
 
 export default function KbdSizes() {
   return (
@@ -6,5 +6,5 @@ export default function KbdSizes() {
       <Kbd size="sm">sm</Kbd>
       <Kbd size="md">md</Kbd>
     </div>
-  )
+  );
 }

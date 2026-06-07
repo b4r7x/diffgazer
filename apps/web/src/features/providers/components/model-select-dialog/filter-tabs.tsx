@@ -43,7 +43,7 @@ export function ModelFilterTabs({
       value={value}
       onChange={handleFilterChange}
       onHighlightChange={handleHighlightChange}
-      highlighted={isFocused ? TIER_FILTERS[focusedIndex] ?? null : null}
+      highlighted={isFocused ? (TIER_FILTERS[focusedIndex] ?? null) : null}
       onKeyDown={onKeyDown}
       label="Model tier filter"
       className="px-4 pb-2"

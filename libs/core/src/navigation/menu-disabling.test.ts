@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  isMenuActionDisabled,
-  isReviewAction,
-  isReviewStartAction,
-} from "./menu-disabling.js";
+import { isMenuActionDisabled, isReviewAction, isReviewStartAction } from "./menu-disabling.js";
 
 describe("isReviewStartAction", () => {
   it("matches the three review-start ids only", () => {
@@ -43,19 +39,19 @@ describe("isMenuActionDisabled", () => {
 
   it("disables resume-review when there is no resumable session even if trusted", () => {
     expect(
-      isMenuActionDisabled("resume-review", { isTrusted: true, hasResumableSession: false })
+      isMenuActionDisabled("resume-review", { isTrusted: true, hasResumableSession: false }),
     ).toBe(true);
   });
 
   it("enables resume-review when trusted and a resumable session exists", () => {
     expect(
-      isMenuActionDisabled("resume-review", { isTrusted: true, hasResumableSession: true })
+      isMenuActionDisabled("resume-review", { isTrusted: true, hasResumableSession: true }),
     ).toBe(false);
   });
 
   it("disables resume-review when untrusted regardless of resumable session", () => {
     expect(
-      isMenuActionDisabled("resume-review", { isTrusted: false, hasResumableSession: true })
+      isMenuActionDisabled("resume-review", { isTrusted: false, hasResumableSession: true }),
     ).toBe(true);
   });
 

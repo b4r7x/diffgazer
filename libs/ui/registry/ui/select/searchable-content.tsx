@@ -1,6 +1,15 @@
 "use client";
 
-import { type AriaAttributes, Children, cloneElement, Fragment, isValidElement, type KeyboardEvent, type ReactNode, type Ref } from "react";
+import {
+  type AriaAttributes,
+  Children,
+  cloneElement,
+  Fragment,
+  isValidElement,
+  type KeyboardEvent,
+  type ReactNode,
+  type Ref,
+} from "react";
 import { SelectEmpty } from "./select-empty";
 import { SelectSearch } from "./select-search";
 
@@ -68,7 +77,10 @@ function partitionSelectSearchChildren(children: ReactNode): {
       return;
     }
 
-    if (!isValidElement<{ children?: ReactNode }>(child) || !containsPartitionedSelectElement(child.props.children)) {
+    if (
+      !isValidElement<{ children?: ReactNode }>(child) ||
+      !containsPartitionedSelectElement(child.props.children)
+    ) {
       optionChildren.push(child);
       return;
     }

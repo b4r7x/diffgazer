@@ -57,7 +57,9 @@ describe("isEntryFresh", () => {
   });
 
   it("treats an entry older than the TTL as stale", () => {
-    expect(isEntryFresh({ fetchedAt: new Date(Date.now() - ttl - 1000).toISOString() }, ttl)).toBe(false);
+    expect(isEntryFresh({ fetchedAt: new Date(Date.now() - ttl - 1000).toISOString() }, ttl)).toBe(
+      false,
+    );
   });
 
   it("treats a future-dated entry as not fresh so a refresh can re-run", () => {
@@ -77,7 +79,12 @@ describe("withTtlAndFallback", () => {
   it("returns the fresh cache without fetching", async () => {
     persistDiskCache(cachePath(), { payload: ["cached"], fetchedAt: fresh() } satisfies Entry);
     const fetcher = vi.fn();
-    const result = await withTtlAndFallback({ path: cachePath(), schema: EntrySchema, ttlMs: ttl, fetcher });
+    const result = await withTtlAndFallback({
+      path: cachePath(),
+      schema: EntrySchema,
+      ttlMs: ttl,
+      fetcher,
+    });
     expect(fetcher).not.toHaveBeenCalled();
     expect(result.ok).toBe(true);
     if (result.ok) {
@@ -89,7 +96,12 @@ describe("withTtlAndFallback", () => {
   it("fetches and persists when no cache exists", async () => {
     const entry: Entry = { payload: ["live"], fetchedAt: fresh() };
     const fetcher = vi.fn().mockResolvedValue({ ok: true, value: entry });
-    const result = await withTtlAndFallback({ path: cachePath(), schema: EntrySchema, ttlMs: ttl, fetcher });
+    const result = await withTtlAndFallback({
+      path: cachePath(),
+      schema: EntrySchema,
+      ttlMs: ttl,
+      fetcher,
+    });
     expect(fetcher).toHaveBeenCalledOnce();
     expect(result.ok).toBe(true);
     if (result.ok) {
@@ -101,8 +113,16 @@ describe("withTtlAndFallback", () => {
 
   it("fetches when the cache is stale", async () => {
     persistDiskCache(cachePath(), { payload: ["old"], fetchedAt: stale() } satisfies Entry);
-    const fetcher = vi.fn().mockResolvedValue({ ok: true, value: { payload: ["new"], fetchedAt: fresh() } satisfies Entry });
-    const result = await withTtlAndFallback({ path: cachePath(), schema: EntrySchema, ttlMs: ttl, fetcher });
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      value: { payload: ["new"], fetchedAt: fresh() } satisfies Entry,
+    });
+    const result = await withTtlAndFallback({
+      path: cachePath(),
+      schema: EntrySchema,
+      ttlMs: ttl,
+      fetcher,
+    });
     expect(fetcher).toHaveBeenCalledOnce();
     if (result.ok) expect(result.value.entry.payload).toEqual(["new"]);
   });
@@ -110,7 +130,12 @@ describe("withTtlAndFallback", () => {
   it("falls back to the stale cache when the fetch fails", async () => {
     persistDiskCache(cachePath(), { payload: ["old"], fetchedAt: stale() } satisfies Entry);
     const fetcher = vi.fn().mockResolvedValue({ ok: false, error: { message: "boom" } });
-    const result = await withTtlAndFallback({ path: cachePath(), schema: EntrySchema, ttlMs: ttl, fetcher });
+    const result = await withTtlAndFallback({
+      path: cachePath(),
+      schema: EntrySchema,
+      ttlMs: ttl,
+      fetcher,
+    });
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.value.cached).toBe(true);
@@ -120,23 +145,48 @@ describe("withTtlAndFallback", () => {
 
   it("returns the fetch error when it fails and no cache exists", async () => {
     const fetcher = vi.fn().mockResolvedValue({ ok: false, error: { message: "boom" } });
-    const result = await withTtlAndFallback({ path: cachePath(), schema: EntrySchema, ttlMs: ttl, fetcher });
+    const result = await withTtlAndFallback({
+      path: cachePath(),
+      schema: EntrySchema,
+      ttlMs: ttl,
+      fetcher,
+    });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.message).toBe("boom");
   });
 
   it("treats a fresh cache as a miss when isCacheUsable returns false", async () => {
     persistDiskCache(cachePath(), { payload: [], fetchedAt: fresh() } satisfies Entry);
-    const fetcher = vi.fn().mockResolvedValue({ ok: true, value: { payload: ["refreshed"], fetchedAt: fresh() } satisfies Entry });
-    const result = await withTtlAndFallback({ path: cachePath(), schema: EntrySchema, ttlMs: ttl, fetcher, isCacheUsable: (c) => c.payload.length > 0 });
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      value: { payload: ["refreshed"], fetchedAt: fresh() } satisfies Entry,
+    });
+    const result = await withTtlAndFallback({
+      path: cachePath(),
+      schema: EntrySchema,
+      ttlMs: ttl,
+      fetcher,
+      isCacheUsable: (c) => c.payload.length > 0,
+    });
     expect(fetcher).toHaveBeenCalledOnce();
     if (result.ok) expect(result.value.entry.payload).toEqual(["refreshed"]);
   });
 
   it("does not reuse a stale cache whose keyHash does not match", async () => {
-    persistDiskCache(cachePath(), { payload: ["old"], fetchedAt: stale(), keyHash: "OTHER" } satisfies Entry);
+    persistDiskCache(cachePath(), {
+      payload: ["old"],
+      fetchedAt: stale(),
+      keyHash: "OTHER",
+    } satisfies Entry);
     const fetcher = vi.fn().mockResolvedValue({ ok: false, error: { message: "down" } });
-    const result = await withTtlAndFallback({ path: cachePath(), schema: EntrySchema, ttlMs: ttl, fetcher, keyHashOf: (c) => c.keyHash, currentKeyHash: "MINE" });
+    const result = await withTtlAndFallback({
+      path: cachePath(),
+      schema: EntrySchema,
+      ttlMs: ttl,
+      fetcher,
+      keyHashOf: (c) => c.keyHash,
+      currentKeyHash: "MINE",
+    });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.message).toBe("down");
   });
@@ -172,7 +222,12 @@ describe("withTtlAndFallback", () => {
 
   it("reports whether the loaded cache was TTL-fresh", async () => {
     persistDiskCache(cachePath(), { payload: ["cached"], fetchedAt: fresh() } satisfies Entry);
-    const fresh1 = await withTtlAndFallback({ path: cachePath(), schema: EntrySchema, ttlMs: ttl, fetcher: vi.fn() });
+    const fresh1 = await withTtlAndFallback({
+      path: cachePath(),
+      schema: EntrySchema,
+      ttlMs: ttl,
+      fetcher: vi.fn(),
+    });
     expect(fresh1.ok).toBe(true);
     if (fresh1.ok) expect(fresh1.value.cacheWasFresh).toBe(true);
 
@@ -181,7 +236,10 @@ describe("withTtlAndFallback", () => {
       path: cachePath(),
       schema: EntrySchema,
       ttlMs: ttl,
-      fetcher: vi.fn().mockResolvedValue({ ok: true, value: { payload: ["new"], fetchedAt: fresh() } satisfies Entry }),
+      fetcher: vi.fn().mockResolvedValue({
+        ok: true,
+        value: { payload: ["new"], fetchedAt: fresh() } satisfies Entry,
+      }),
     });
     expect(stale1.ok).toBe(true);
     if (stale1.ok) expect(stale1.value.cacheWasFresh).toBe(false);

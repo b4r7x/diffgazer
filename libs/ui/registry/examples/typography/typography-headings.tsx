@@ -1,4 +1,4 @@
-import { Typography } from "@/components/ui/typography"
+import { Typography } from "@/components/ui/typography";
 
 export default function TypographyHeadings() {
   return (
@@ -16,5 +16,5 @@ export default function TypographyHeadings() {
         </Typography>
       </div>
     </div>
-  )
+  );
 }

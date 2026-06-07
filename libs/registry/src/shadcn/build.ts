@@ -14,7 +14,9 @@ export interface EnsurePublicRegistryReadyOptions {
   label?: string;
   afterBuild?: (ctx: { rootDir: string; outputDir: string }) => void;
   transformSourceItem?: Parameters<typeof validatePublicRegistryFresh>[0]["transformSourceItem"];
-  transformSourceContent?: Parameters<typeof validatePublicRegistryFresh>[0]["transformSourceContent"];
+  transformSourceContent?: Parameters<
+    typeof validatePublicRegistryFresh
+  >[0]["transformSourceContent"];
 }
 
 export function ensurePublicRegistryReady(options: EnsurePublicRegistryReadyOptions): void {
@@ -50,13 +52,27 @@ export function ensurePublicRegistryReady(options: EnsurePublicRegistryReadyOpti
   }
 
   try {
-    validatePublicRegistryFresh({ rootDir, fixCommand, sourceRegistryPath, publicRegistryDir, transformSourceItem, transformSourceContent });
+    validatePublicRegistryFresh({
+      rootDir,
+      fixCommand,
+      sourceRegistryPath,
+      publicRegistryDir,
+      transformSourceItem,
+      transformSourceContent,
+    });
   } catch (error) {
     if (!hasLocalShadcn) throw error;
 
     runShadcnRegistryBuild({ rootDir, registryPath, outputDir });
     afterBuild?.({ rootDir, outputDir: resolve(rootDir, outputDir) });
-    validatePublicRegistryFresh({ rootDir, fixCommand, sourceRegistryPath, publicRegistryDir, transformSourceItem, transformSourceContent });
+    validatePublicRegistryFresh({
+      rootDir,
+      fixCommand,
+      sourceRegistryPath,
+      publicRegistryDir,
+      transformSourceItem,
+      transformSourceContent,
+    });
   }
 }
 
@@ -76,7 +92,9 @@ export interface BuildShadcnRegistryWithOriginResult {
   outputDir: string;
 }
 
-export function buildShadcnRegistryWithOrigin(options: BuildShadcnRegistryWithOriginOptions): BuildShadcnRegistryWithOriginResult {
+export function buildShadcnRegistryWithOrigin(
+  options: BuildShadcnRegistryWithOriginOptions,
+): BuildShadcnRegistryWithOriginResult {
   const {
     rootDir,
     registryPath = "registry/registry.json",

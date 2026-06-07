@@ -20,7 +20,10 @@ export function IssueHeader({ title, severity, file, line, className }: IssueHea
         {title}
       </Typography>
       <div className="text-xs text-tui-muted">
-        Location: <span className="text-tui-fg">{file}:{line}</span>
+        Location:{" "}
+        <span className="text-tui-fg">
+          {file}:{line}
+        </span>
       </div>
     </div>
   );

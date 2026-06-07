@@ -8,36 +8,44 @@ import {
   type ReactElement,
   type ReactNode,
   useMemo,
-} from "react"
-import { cn } from "@/lib/utils"
-import { BreadcrumbsContext } from "./breadcrumbs-context"
-import { BreadcrumbsItem, type BreadcrumbsItemProps } from "./breadcrumbs-item"
+} from "react";
+import { cn } from "@/lib/utils";
+import { BreadcrumbsContext } from "./breadcrumbs-context";
+import { BreadcrumbsItem, type BreadcrumbsItemProps } from "./breadcrumbs-item";
 
 export interface BreadcrumbsProps extends ComponentPropsWithRef<"nav"> {
-  separator?: ReactNode
+  separator?: ReactNode;
 }
 
 function isBreadcrumbsItemElement(child: ReactNode): child is ReactElement<BreadcrumbsItemProps> {
-  return isValidElement<BreadcrumbsItemProps>(child) && child.type === BreadcrumbsItem
+  return isValidElement<BreadcrumbsItemProps>(child) && child.type === BreadcrumbsItem;
 }
 
 function resolveCurrentItem(children: ReactNode): ReactNode {
-  const childArray = Children.toArray(children)
-  const hasCurrentItem = childArray.some((child) => isBreadcrumbsItemElement(child) && child.props.current)
-  const lastItemIndex = hasCurrentItem ? -1 : childArray.findLastIndex(isBreadcrumbsItemElement)
+  const childArray = Children.toArray(children);
+  const hasCurrentItem = childArray.some(
+    (child) => isBreadcrumbsItemElement(child) && child.props.current,
+  );
+  const lastItemIndex = hasCurrentItem ? -1 : childArray.findLastIndex(isBreadcrumbsItemElement);
 
-  if (lastItemIndex < 0) return children
+  if (lastItemIndex < 0) return children;
 
-  return childArray.map((child, index) => (
+  return childArray.map((child, index) =>
     index === lastItemIndex && isBreadcrumbsItemElement(child)
       ? cloneElement(child, { current: true })
-      : child
-  ))
+      : child,
+  );
 }
 
-export function Breadcrumbs({ separator = "/", className, children, ref, ...props }: BreadcrumbsProps) {
+export function Breadcrumbs({
+  separator = "/",
+  className,
+  children,
+  ref,
+  ...props
+}: BreadcrumbsProps) {
   const contextValue = useMemo(() => ({ separator }), [separator]);
-  const resolvedChildren = resolveCurrentItem(children)
+  const resolvedChildren = resolveCurrentItem(children);
 
   return (
     <BreadcrumbsContext value={contextValue}>
@@ -52,5 +60,5 @@ export function Breadcrumbs({ separator = "/", className, children, ref, ...prop
         </ol>
       </nav>
     </BreadcrumbsContext>
-  )
+  );
 }

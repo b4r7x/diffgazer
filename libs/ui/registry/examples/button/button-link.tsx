@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
 
 export default function ButtonLink() {
   return (
@@ -13,5 +13,5 @@ export default function ButtonLink() {
         Small Link
       </Button>
     </div>
-  )
+  );
 }

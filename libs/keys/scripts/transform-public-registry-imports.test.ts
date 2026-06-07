@@ -78,13 +78,15 @@ describe("public registry import parser coverage", () => {
       'const required = require("./required.js");',
     ].join("\n");
 
-    expect(transformKeysPublicRegistryImportContent(input)).toBe([
-      'import { value } from "./value";',
-      'export { value } from "./exported";',
-      'import "./setup";',
-      'const lazy = import("./lazy");',
-      'const required = require("./required");',
-    ].join("\n"));
+    expect(transformKeysPublicRegistryImportContent(input)).toBe(
+      [
+        'import { value } from "./value";',
+        'export { value } from "./exported";',
+        'import "./setup";',
+        'const lazy = import("./lazy");',
+        'const required = require("./required");',
+      ].join("\n"),
+    );
   });
 
   it("rewrites side-effect imports for the installed target layout", () => {
@@ -103,17 +105,21 @@ describe("public registry import parser coverage", () => {
     ].join("\n");
     const stripped = transformKeysPublicRegistryImportContent(input);
 
-    expect(rewriteImportsForTargetLayout(
-      stripped,
-      "src/hooks/use-demo.ts",
-      "src/hooks/use-demo.ts",
-      pathMap,
-    )).toBe([
-      'import { value } from "./value";',
-      'import "./utils/setup";',
-      'const lazy = import("./lazy");',
-      'const required = require("./utils/required");',
-    ].join("\n"));
+    expect(
+      rewriteImportsForTargetLayout(
+        stripped,
+        "src/hooks/use-demo.ts",
+        "src/hooks/use-demo.ts",
+        pathMap,
+      ),
+    ).toBe(
+      [
+        'import { value } from "./value";',
+        'import "./utils/setup";',
+        'const lazy = import("./lazy");',
+        'const required = require("./utils/required");',
+      ].join("\n"),
+    );
   });
 });
 
@@ -136,14 +142,16 @@ describe("build-side relative .js assertion", () => {
   it("throws when generated registry content carries a relative .js specifier", () => {
     writeItem("use-bad", 'import { x } from "./utils/x.js";\n');
 
-    expect(() => assertNoRelativeJsImports(requireValue(dir, "test registry directory"))).toThrowError(
-      /relative \.js import specifiers/,
-    );
+    expect(() =>
+      assertNoRelativeJsImports(requireValue(dir, "test registry directory")),
+    ).toThrowError(/relative \.js import specifiers/);
   });
 
   it("passes when generated registry content has no relative .js specifiers", () => {
     writeItem("use-good", 'import { x } from "./utils/x";\n');
 
-    expect(() => assertNoRelativeJsImports(requireValue(dir, "test registry directory"))).not.toThrow();
+    expect(() =>
+      assertNoRelativeJsImports(requireValue(dir, "test registry directory")),
+    ).not.toThrow();
   });
 });

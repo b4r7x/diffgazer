@@ -1,8 +1,6 @@
 import { err, ok, type Result } from "@diffgazer/core/result";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
-import type {
-  ReviewStartedEvent,
-} from "@diffgazer/core/schemas/events";
+import type { ReviewStartedEvent } from "@diffgazer/core/schemas/events";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
 import { parseDiff } from "../../shared/lib/diff/parser.js";
 import { computeTotalStats } from "../../shared/lib/diff/total-stats.js";
@@ -21,10 +19,7 @@ function isDiffgazerPath(filePath: string): boolean {
   return normalized === ".diffgazer" || normalized.startsWith(DIFFGAZER_DIR_PREFIX);
 }
 
-export function filterDiffByFiles(
-  parsed: ParsedDiff,
-  files: string[],
-): ParsedDiff {
+export function filterDiffByFiles(parsed: ParsedDiff, files: string[]): ParsedDiff {
   if (files.length === 0) {
     return parsed;
   }
@@ -54,11 +49,7 @@ export async function resolveGitDiff(params: {
   try {
     diff = await gitService.getDiff(mode, files);
   } catch (error: unknown) {
-    return err(reviewAbort(
-      createGitDiffError(error).message,
-      ErrorCode.GIT_NOT_FOUND,
-      "diff",
-    ));
+    return err(reviewAbort(createGitDiffError(error).message, ErrorCode.GIT_NOT_FOUND, "diff"));
   }
 
   if (!diff.trim()) {
@@ -79,22 +70,22 @@ export async function resolveGitDiff(params: {
   if (files && files.length > 0) {
     parsed = filterDiffByFiles(parsed, files);
     if (parsed.files.length === 0) {
-      return err(reviewAbort(
-        `None of the specified files have ${mode} changes`,
-        "NO_DIFF",
-        "diff",
-      ));
+      return err(
+        reviewAbort(`None of the specified files have ${mode} changes`, "NO_DIFF", "diff"),
+      );
     }
   }
 
   if (parsed.totalStats.totalSizeBytes > MAX_DIFF_SIZE_BYTES) {
     const sizeMB = (parsed.totalStats.totalSizeBytes / 1024 / 1024).toFixed(2);
     const maxMB = (MAX_DIFF_SIZE_BYTES / 1024 / 1024).toFixed(2);
-    return err(reviewAbort(
-      `Diff too large (${sizeMB}MB exceeds ${maxMB}MB limit). Try reviewing fewer files or use file filtering.`,
-      ErrorCode.VALIDATION_ERROR,
-      "diff",
-    ));
+    return err(
+      reviewAbort(
+        `Diff too large (${sizeMB}MB exceeds ${maxMB}MB limit). Try reviewing fewer files or use file filtering.`,
+        ErrorCode.VALIDATION_ERROR,
+        "diff",
+      ),
+    );
   }
 
   await emit(stepComplete("diff"));

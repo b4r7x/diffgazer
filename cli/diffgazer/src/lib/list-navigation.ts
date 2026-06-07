@@ -9,12 +9,7 @@ export function collectChildItems<T>(
   Children.forEach(children, (child) => {
     if (!isValidElement(child)) return;
     if (child.type === Fragment) {
-      items.push(
-        ...collectChildItems(
-          (child.props as { children: ReactNode }).children,
-          extract,
-        ),
-      );
+      items.push(...collectChildItems((child.props as { children: ReactNode }).children, extract));
       return;
     }
     const result = extract(child);

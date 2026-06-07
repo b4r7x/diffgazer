@@ -1,4 +1,4 @@
-import type { HookDoc } from "@diffgazer/registry"
+import type { HookDoc } from "@diffgazer/registry";
 
 export const overflowDetectionDoc: HookDoc = {
   description:
@@ -39,8 +39,7 @@ return (
         name: "isOverflowing",
         type: "boolean",
         required: true,
-        description:
-          "True when content exceeds container bounds in the specified direction.",
+        description: "True when content exceeds container bounds in the specified direction.",
       },
     ],
   },
@@ -56,8 +55,6 @@ return (
         "The ref'd element must have constrained dimensions. For horizontal detection, the element needs a width constraint (e.g. truncate, max-w-*, fixed width). For vertical, it needs a height constraint.",
     },
   ],
-  examples: [
-    { name: "overflow-detection-basic", title: "Basic Detection" },
-  ],
+  examples: [{ name: "overflow-detection-basic", title: "Basic Detection" }],
   tags: ["hook", "overflow", "resize-observer", "detection"],
-}
+};

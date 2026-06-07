@@ -65,9 +65,7 @@ function parseWorkspaceYaml(content: string): string[] {
   return globs;
 }
 
-function resolveWorkspaceRoots(
-  globs: string[],
-): WorkspaceRoot[] {
+function resolveWorkspaceRoots(globs: string[]): WorkspaceRoot[] {
   return globs.map((glob) => {
     const includeChildren = glob.endsWith("/*");
     const dir = includeChildren ? glob.replace(/\/\*$/, "") : glob;
@@ -92,9 +90,7 @@ async function filterEscapedRoots(
   return results;
 }
 
-async function getWorkspaceRoots(
-  projectPath: string,
-): Promise<WorkspaceRoot[]> {
+async function getWorkspaceRoots(projectPath: string): Promise<WorkspaceRoot[]> {
   const yamlPath = path.join(projectPath, "pnpm-workspace.yaml");
   try {
     const content = await readFile(yamlPath, "utf8");
@@ -138,9 +134,7 @@ async function readWorkspacePackage(
   };
 }
 
-export async function discoverWorkspacePackages(
-  projectPath: string,
-): Promise<WorkspacePackage[]> {
+export async function discoverWorkspacePackages(projectPath: string): Promise<WorkspacePackage[]> {
   const roots = await getWorkspaceRoots(projectPath);
 
   const packages: WorkspacePackage[] = [];
@@ -155,7 +149,11 @@ export async function discoverWorkspacePackages(
 
   for (const root of roots) {
     const absoluteRoot = path.join(projectPath, root.dir);
-    try { await access(absoluteRoot); } catch { continue; }
+    try {
+      await access(absoluteRoot);
+    } catch {
+      continue;
+    }
 
     if (root.includeSelf) {
       addPackage(await readWorkspacePackage(projectPath, root.dir, root.kind));
@@ -165,7 +163,9 @@ export async function discoverWorkspacePackages(
     const entries = await readFileDirectory(absoluteRoot);
     for (const entry of entries) {
       if (!entry.isDirectory) continue;
-      addPackage(await readWorkspacePackage(projectPath, path.join(root.dir, entry.name), root.kind));
+      addPackage(
+        await readWorkspacePackage(projectPath, path.join(root.dir, entry.name), root.kind),
+      );
     }
   }
 

@@ -55,10 +55,7 @@ describe("filterProviders", () => {
   });
 
   it("filters to providers needing a key", () => {
-    expect(ids(filterProviders(PROVIDERS, "needs-key"))).toEqual([
-      "zai-coding",
-      "openrouter",
-    ]);
+    expect(ids(filterProviders(PROVIDERS, "needs-key"))).toEqual(["zai-coding", "openrouter"]);
   });
 
   it("filters 'free' to providers with a curated free tier", () => {

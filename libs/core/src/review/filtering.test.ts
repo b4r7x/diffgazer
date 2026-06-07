@@ -19,8 +19,7 @@ const makeIssue = (severity: ReviewIssue["severity"], id: string): ReviewIssue =
   evidence: [],
 });
 
-const issueSummary = (items: ReviewIssue[]) =>
-  items.map(({ id, severity }) => ({ id, severity }));
+const issueSummary = (items: ReviewIssue[]) => items.map(({ id, severity }) => ({ id, severity }));
 
 const issues: ReviewIssue[] = [
   makeIssue("blocker", "blocker-1"),

@@ -45,9 +45,7 @@ interface CreateLibraryFixtureOptions {
   staleFingerprint?: boolean;
 }
 
-function createLibraryFixture(
-  options: CreateLibraryFixtureOptions,
-): TestLibraryFixture {
+function createLibraryFixture(options: CreateLibraryFixtureOptions): TestLibraryFixture {
   const {
     workspaceRoot,
     id = "demo",
@@ -130,8 +128,8 @@ function createLibraryFixture(
     },
     libraryRoot,
     manifest,
-    generatedOutputBasenames: Object.values(generated).map((relPath) =>
-      relPath.split("/").at(-1) ?? relPath,
+    generatedOutputBasenames: Object.values(generated).map(
+      (relPath) => relPath.split("/").at(-1) ?? relPath,
     ),
   };
 }
@@ -291,19 +289,17 @@ describe("syncDocsFromArtifacts", () => {
 
     expect(result.synced).toBe(true);
     expect(existsSync(join(docsRoot, "content/docs/meta.json"))).toBe(true);
-    expect(existsSync(join(docsRoot, "content/docs", fixture.config.id, "meta.json"))).toBe(
-      true,
-    );
+    expect(existsSync(join(docsRoot, "content/docs", fixture.config.id, "meta.json"))).toBe(true);
 
     for (const basename of fixture.generatedOutputBasenames) {
       const outputPath = join(docsRoot, "src/generated", fixture.config.id, basename);
       expect(existsSync(outputPath)).toBe(true);
-      expect(readFileSync(outputPath, "utf-8")).toContain("\"from\":");
+      expect(readFileSync(outputPath, "utf-8")).toContain('"from":');
     }
 
-    expect(
-      existsSync(join(docsRoot, "src/generated", fixture.config.id, "logical-name")),
-    ).toBe(false);
+    expect(existsSync(join(docsRoot, "src/generated", fixture.config.id, "logical-name"))).toBe(
+      false,
+    );
   });
 
   it("appends configured extra root pages after the artifact namespaces", () => {
@@ -330,9 +326,7 @@ describe("syncDocsFromArtifacts", () => {
     });
 
     expect(result.synced).toBe(true);
-    const rootMeta = JSON.parse(
-      readFileSync(join(docsRoot, "content/docs/meta.json"), "utf-8"),
-    );
+    const rootMeta = JSON.parse(readFileSync(join(docsRoot, "content/docs/meta.json"), "utf-8"));
     expect(rootMeta.pages).toEqual(["...ui", "...keys", "...app"]);
   });
 
@@ -362,9 +356,7 @@ describe("syncDocsFromArtifacts", () => {
     }
 
     function readRootPages(): unknown {
-      return JSON.parse(
-        readFileSync(join(docsRoot, "content/docs/meta.json"), "utf-8"),
-      ).pages;
+      return JSON.parse(readFileSync(join(docsRoot, "content/docs/meta.json"), "utf-8")).pages;
     }
 
     const first = syncWithExtraRootPages(["...app"]);
@@ -386,9 +378,7 @@ describe("syncDocsFromArtifacts", () => {
     const result = runSync(fixture.config);
 
     expect(result.synced).toBe(true);
-    const rootMeta = JSON.parse(
-      readFileSync(join(docsRoot, "content/docs/meta.json"), "utf-8"),
-    );
+    const rootMeta = JSON.parse(readFileSync(join(docsRoot, "content/docs/meta.json"), "utf-8"));
     expect(rootMeta.pages).toEqual([`...${fixture.config.id}`]);
   });
 
@@ -408,11 +398,7 @@ describe("syncDocsFromArtifacts", () => {
     });
 
     writeText(
-      join(
-        secondary.libraryRoot,
-        secondary.manifest.artifactRoot,
-        "generated/demo-index.ts",
-      ),
+      join(secondary.libraryRoot, secondary.manifest.artifactRoot, "generated/demo-index.ts"),
       [
         `import { lazy } from "react"`,
         `export const demos = {`,
@@ -441,12 +427,12 @@ describe("syncDocsFromArtifacts", () => {
     });
 
     expect(result.synced).toBe(true);
-    expect(
-      existsSync(join(docsRoot, "registry/examples/keys/use-key/use-key-basic.tsx")),
-    ).toBe(true);
-    expect(
-      readFileSync(join(docsRoot, "src/generated/keys/demo-index.ts"), "utf-8"),
-    ).toContain('import("../../../registry/examples/keys/use-key/use-key-basic")');
+    expect(existsSync(join(docsRoot, "registry/examples/keys/use-key/use-key-basic.tsx"))).toBe(
+      true,
+    );
+    expect(readFileSync(join(docsRoot, "src/generated/keys/demo-index.ts"), "utf-8")).toContain(
+      'import("../../../registry/examples/keys/use-key/use-key-basic")',
+    );
   });
 
   it("resyncs when secondary copied examples are missing", () => {
@@ -521,7 +507,12 @@ describe("syncDocsFromArtifacts", () => {
       fixture.generatedOutputBasenames[0],
       "fixture generated output basename",
     );
-    const missingOutput = join(docsRoot, "src/generated", fixture.config.id, generatedOutputBasename);
+    const missingOutput = join(
+      docsRoot,
+      "src/generated",
+      fixture.config.id,
+      generatedOutputBasename,
+    );
     unlinkSync(missingOutput);
 
     const third = runSync(fixture.config);

@@ -17,14 +17,14 @@ import {
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import {
-  quoteArgs,
-  packageNameFromSpec,
-  networkAllowed,
-  pnpmAddFlags,
   assertBuiltCss,
   CommandFailedError,
   installViteFixtureDeps,
   joinLines,
+  networkAllowed,
+  packageNameFromSpec,
+  pnpmAddFlags,
+  quoteArgs,
   resolveAndCollectMissing,
   resolveLocalDependency as resolveWorkspaceDependency,
   run,
@@ -81,7 +81,7 @@ function writeNextCopyFirstApp(fixture) {
       "import type { ReactNode } from 'react';",
       "",
       "export default function RootLayout({ children }: { children: ReactNode }) {",
-      "  return <html lang=\"en\"><body>{children}</body></html>;",
+      '  return <html lang="en"><body>{children}</body></html>;',
       "}",
       "",
     ),
@@ -108,12 +108,7 @@ function writeNextCopyFirstApp(fixture) {
 function writeCopyFirstApp(fixture) {
   writeFileSync(
     join(fixture, "src/index.css"),
-    joinLines(
-      '@import "tailwindcss";',
-      '@import "./styles/styles.css";',
-      '@source ".";',
-      "",
-    ),
+    joinLines('@import "tailwindcss";', '@import "./styles/styles.css";', '@source ".";', ""),
   );
   writeFileSync(
     join(fixture, "src/main.tsx"),
@@ -154,11 +149,11 @@ function writeKeysPackageSelectApp(fixture) {
       "",
       "function App() {",
       "  return (",
-      "    <Select defaultOpen defaultValue=\"main\" width=\"md\">",
-      "      <SelectTrigger><SelectValue placeholder=\"Branch\" /></SelectTrigger>",
+      '    <Select defaultOpen defaultValue="main" width="md">',
+      '      <SelectTrigger><SelectValue placeholder="Branch" /></SelectTrigger>',
       "      <SelectContent>",
-      "        <SelectItem value=\"main\">main</SelectItem>",
-      "        <SelectItem value=\"develop\">develop</SelectItem>",
+      '        <SelectItem value="main">main</SelectItem>',
+      '        <SelectItem value="develop">develop</SelectItem>',
       "      </SelectContent>",
       "    </Select>",
       "  );",
@@ -179,7 +174,9 @@ function assertCopyFirstCssInstall(fixture) {
     throw new Error("Copy-first dialog shell still imports component-level global CSS");
   }
   if (existsSync(join(fixture, "src/components/ui/shared/dialog.css"))) {
-    throw new Error("Copy-first dialog CSS should be aggregated into src/styles/styles.css, not copied as a component file");
+    throw new Error(
+      "Copy-first dialog CSS should be aggregated into src/styles/styles.css, not copied as a component file",
+    );
   }
   if (!styles.includes("dialog::backdrop")) {
     throw new Error("Copy-first styles.css does not include dialog global CSS");
@@ -217,7 +214,9 @@ function runOptionalNextCopyFirstSmoke(dgadd) {
     writeNextFixture(fixture, { root, withSrc: true, paths: true });
     installDeps(fixture, nextDeps);
     run(`${dgadd} init --cwd ${JSON.stringify(fixture)} --yes --skip-install`);
-    run(`${dgadd} add ui/button ui/dialog ui/select ui/form-reset --cwd ${JSON.stringify(fixture)} --yes --skip-install`);
+    run(
+      `${dgadd} add ui/button ui/dialog ui/select ui/form-reset --cwd ${JSON.stringify(fixture)} --yes --skip-install`,
+    );
     assertCopyFirstCssInstall(fixture);
     writeNextCopyFirstApp(fixture);
     run("pnpm exec next build --webpack", fixture);
@@ -228,7 +227,9 @@ function runOptionalNextCopyFirstSmoke(dgadd) {
   }
 }
 
-const diffgazerPackage = JSON.parse(readFileSync(resolve(root, "cli/diffgazer/package.json"), "utf-8"));
+const diffgazerPackage = JSON.parse(
+  readFileSync(resolve(root, "cli/diffgazer/package.json"), "utf-8"),
+);
 
 const commands = [
   {
@@ -282,7 +283,9 @@ for (const check of commands) {
   const output = check.expectFailure ? runFailure(check.command) : run(check.command);
 
   if (!check.expect.test(output)) {
-    throw new Error(`Smoke check failed for ${check.label}: expected ${check.expect}, got ${output.slice(0, 250)}`);
+    throw new Error(
+      `Smoke check failed for ${check.label}: expected ${check.expect}, got ${output.slice(0, 250)}`,
+    );
   }
 
   console.log(`OK: ${check.name}`);
@@ -295,7 +298,9 @@ try {
 
   const dgadd = `node ${JSON.stringify(resolve(root, "cli/add/dist/index.js"))}`;
   run(`${dgadd} init --cwd ${JSON.stringify(fixture)} --yes --skip-install`);
-  run(`${dgadd} add ui/button ui/dialog ui/select ui/checkbox ui/radio ui/toggle-group ui/form-reset keys/navigation --cwd ${JSON.stringify(fixture)} --yes --skip-install`);
+  run(
+    `${dgadd} add ui/button ui/dialog ui/select ui/checkbox ui/radio ui/toggle-group ui/form-reset keys/navigation --cwd ${JSON.stringify(fixture)} --yes --skip-install`,
+  );
   assertCopyFirstCssInstall(fixture);
   if (!existsSync(join(fixture, "src/lib/selectable-collection.ts"))) {
     throw new Error("selectable-collection helper was not copied for selectable UI components");
@@ -306,15 +311,21 @@ try {
   run("pnpm run typecheck", fixture);
   run("pnpm run build", fixture);
   assertBuiltCss(fixture, { label: "Built copy-first" });
-  const removeOutput = run(`${dgadd} remove keys/navigation --cwd ${JSON.stringify(fixture)} --yes`);
+  const removeOutput = run(
+    `${dgadd} remove keys/navigation --cwd ${JSON.stringify(fixture)} --yes`,
+  );
 
   if (!/Keeping keys\/navigation/.test(removeOutput)) {
-    throw new Error(`keys/navigation removal was not clearly blocked. Output: ${removeOutput.slice(0, 250)}`);
+    throw new Error(
+      `keys/navigation removal was not clearly blocked. Output: ${removeOutput.slice(0, 250)}`,
+    );
   }
 
   const config = JSON.parse(readFileSync(join(fixture, "diffgazer.json"), "utf-8"));
   if (!config.installedComponents?.["keys/navigation"]) {
-    throw new Error("keys/navigation manifest entry was removed while copy-mode UI still depends on it");
+    throw new Error(
+      "keys/navigation manifest entry was removed while copy-mode UI still depends on it",
+    );
   }
   if (!existsSync(join(fixture, "src/hooks/use-navigation.ts"))) {
     throw new Error("keys/navigation hook was removed while copy-mode UI still depends on it");
@@ -339,7 +350,7 @@ function runInstallDependencySmoke() {
       overrides: {
         ...(pkg.pnpm?.overrides ?? {}),
         "class-variance-authority": resolveWorkspaceDependency(root, "class-variance-authority"),
-        "clsx": resolveWorkspaceDependency(root, "clsx"),
+        clsx: resolveWorkspaceDependency(root, "clsx"),
         "tailwind-merge": resolveWorkspaceDependency(root, "tailwind-merge"),
       },
     };
@@ -376,19 +387,27 @@ function runKeysPackageIntegrationSmoke() {
 
     const dgaddKeys = `node ${JSON.stringify(resolve(root, "cli/add/dist/index.js"))}`;
     run(`${dgaddKeys} init --cwd ${JSON.stringify(fixture)} --yes --skip-install`);
-    run(`${dgaddKeys} add ui/button --integration keys --cwd ${JSON.stringify(fixture)} --yes --skip-install`);
+    run(
+      `${dgaddKeys} add ui/button --integration keys --cwd ${JSON.stringify(fixture)} --yes --skip-install`,
+    );
 
     const keysDepConfig = JSON.parse(readFileSync(join(fixture, "diffgazer.json"), "utf-8"));
     if (keysDepConfig.installedComponents?.["ui/button"]?.integrationMode === "@diffgazer/keys") {
-      throw new Error("button has no keyboard integration but was installed with @diffgazer/keys mode");
+      throw new Error(
+        "button has no keyboard integration but was installed with @diffgazer/keys mode",
+      );
     }
 
     const localKeysVersion = `link:${realpathSync(resolve(root, "libs/keys"))}`;
-    run(`${dgaddKeys} add ui/select --integration keys --keys-version ${JSON.stringify(localKeysVersion)} --cwd ${JSON.stringify(fixture)} --yes`);
+    run(
+      `${dgaddKeys} add ui/select --integration keys --keys-version ${JSON.stringify(localKeysVersion)} --cwd ${JSON.stringify(fixture)} --yes`,
+    );
     const keysSelectConfig = JSON.parse(readFileSync(join(fixture, "diffgazer.json"), "utf-8"));
     const selectRecord = keysSelectConfig.installedComponents?.["ui/select"];
     if (selectRecord?.integrationMode !== "@diffgazer/keys") {
-      throw new Error(`Expected select integrationMode to be "@diffgazer/keys", got "${selectRecord?.integrationMode}"`);
+      throw new Error(
+        `Expected select integrationMode to be "@diffgazer/keys", got "${selectRecord?.integrationMode}"`,
+      );
     }
 
     const selectContentPath = join(fixture, "src/components/ui/select/select-content.tsx");
@@ -401,7 +420,9 @@ function runKeysPackageIntegrationSmoke() {
     }
     const keysDepPackage = JSON.parse(readFileSync(join(fixture, "package.json"), "utf-8"));
     if (keysDepPackage.dependencies?.["@diffgazer/keys"] !== localKeysVersion) {
-      throw new Error("ui/select --integration keys did not install the local @diffgazer/keys dependency");
+      throw new Error(
+        "ui/select --integration keys did not install the local @diffgazer/keys dependency",
+      );
     }
     if (existsSync(join(fixture, "src/hooks/use-navigation.ts"))) {
       throw new Error("keys package mode should not copy local use-navigation.ts");
@@ -422,7 +443,9 @@ function runBareNameRejectionSmoke() {
     writeViteFixture(fixture);
     const dgaddBare = `node ${JSON.stringify(resolve(root, "cli/add/dist/index.js"))}`;
     run(`${dgaddBare} init --cwd ${JSON.stringify(fixture)} --yes`);
-    const bareOutput = runFailure(`${dgaddBare} add button --cwd ${JSON.stringify(fixture)} --yes --skip-install`);
+    const bareOutput = runFailure(
+      `${dgaddBare} add button --cwd ${JSON.stringify(fixture)} --yes --skip-install`,
+    );
     if (!/not found|Invalid item name|Use a namespaced name/.test(bareOutput)) {
       throw new Error(`Expected bare name rejection, got: ${bareOutput.slice(0, 250)}`);
     }

@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types"
+import type { ComponentDoc } from "./types";
 
 export const fieldDoc: ComponentDoc = {
   description:
@@ -16,9 +16,7 @@ export const fieldDoc: ComponentDoc = {
     },
   ],
   usage: { example: "field-input" },
-  examples: [
-    { name: "field-input", title: "Input" },
-  ],
+  examples: [{ name: "field-input", title: "Input" }],
   keyboard: null,
   props: {
     Field: {
@@ -26,19 +24,22 @@ export const fieldDoc: ComponentDoc = {
         type: "string",
         required: false,
         defaultValue: null,
-        description: "Override the auto-generated id used by the wrapped control, label, description, and error.",
+        description:
+          "Override the auto-generated id used by the wrapped control, label, description, and error.",
       },
       invalid: {
         type: "boolean",
         required: false,
         defaultValue: "false",
-        description: "Marks the control as invalid; sets aria-invalid and surfaces Field.Error in aria-describedby.",
+        description:
+          "Marks the control as invalid; sets aria-invalid and surfaces Field.Error in aria-describedby.",
       },
       required: {
         type: "boolean",
         required: false,
         defaultValue: null,
-        description: "Marks the control as required and shows a required indicator next to Field.Label.",
+        description:
+          "Marks the control as required and shows a required indicator next to Field.Label.",
       },
       disabled: {
         type: "boolean",
@@ -58,7 +59,8 @@ export const fieldDoc: ComponentDoc = {
         type: "string",
         required: false,
         defaultValue: null,
-        description: "Override the auto-generated label id used for aria-labelledby on the control.",
+        description:
+          "Override the auto-generated label id used for aria-labelledby on the control.",
       },
     },
     "Field.Control": {
@@ -66,7 +68,8 @@ export const fieldDoc: ComponentDoc = {
         type: "ReactElement",
         required: true,
         defaultValue: null,
-        description: "Single child control. Field clones it with id, disabled, required, aria-invalid, aria-describedby, and aria-labelledby.",
+        description:
+          "Single child control. Field clones it with id, disabled, required, aria-invalid, aria-describedby, and aria-labelledby.",
       },
     },
     "Field.Description": {
@@ -82,8 +85,9 @@ export const fieldDoc: ComponentDoc = {
         type: "ReactNode",
         required: false,
         defaultValue: null,
-        description: "Validation message. Surfaced in aria-describedby only while Field is invalid.",
+        description:
+          "Validation message. Surfaced in aria-describedby only while Field is invalid.",
       },
     },
   },
-}
+};

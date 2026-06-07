@@ -26,11 +26,7 @@ export interface RunShadcnRegistryBuildOptions {
 }
 
 export function runShadcnRegistryBuild(options: RunShadcnRegistryBuildOptions): void {
-  const {
-    rootDir,
-    registryPath = "registry/registry.json",
-    outputDir = "public/r",
-  } = options;
+  const { rootDir, registryPath = "registry/registry.json", outputDir = "public/r" } = options;
 
   const localBin = resolveLocalShadcnBin(rootDir);
   if (!localBin) {

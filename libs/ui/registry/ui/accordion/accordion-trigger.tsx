@@ -20,7 +20,7 @@ export const triggerVariants = cva(
       },
     },
     defaultVariants: { variant: "default", disabled: false },
-  }
+  },
 );
 
 export type AccordionTriggerVariantProps = VariantProps<typeof triggerVariants>;
@@ -74,7 +74,10 @@ export function AccordionTrigger({
       aria-disabled={isAriaDisabled || disabled || undefined}
       aria-expanded={isOpen}
       aria-controls={contentId}
-      className={cn(triggerVariants({ variant, disabled: isDisabled || isAriaDisabled }), className)}
+      className={cn(
+        triggerVariants({ variant, disabled: isDisabled || isAriaDisabled }),
+        className,
+      )}
     >
       {resolvedHandle}
       {children}

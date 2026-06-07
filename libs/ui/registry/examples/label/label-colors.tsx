@@ -1,4 +1,4 @@
-import { Label } from "@/components/ui/label"
+import { Label } from "@/components/ui/label";
 
 export default function LabelColors() {
   return (
@@ -9,5 +9,5 @@ export default function LabelColors() {
       <Label color="warning">Warning</Label>
       <Label color="error">Error</Label>
     </div>
-  )
+  );
 }

@@ -28,8 +28,12 @@ function withReviewLock<T>(reviewId: string, fn: () => Promise<T>): Promise<T> {
   const next = prev.then(fn, fn);
   reviewLocks.set(reviewId, next);
   next.then(
-    () => { if (reviewLocks.get(reviewId) === next) reviewLocks.delete(reviewId); },
-    () => { if (reviewLocks.get(reviewId) === next) reviewLocks.delete(reviewId); },
+    () => {
+      if (reviewLocks.get(reviewId) === next) reviewLocks.delete(reviewId);
+    },
+    () => {
+      if (reviewLocks.get(reviewId) === next) reviewLocks.delete(reviewId);
+    },
   );
   return next;
 }
@@ -55,9 +59,7 @@ export async function drilldownIssue(
   const steps: TraceRef[] = options?.traceSteps ?? [];
   const onEvent = options?.onEvent ?? (() => {});
 
-  const targetFile = diff.files.find(
-    (f: FileDiff) => f.filePath === issue.file,
-  );
+  const targetFile = diff.files.find((f: FileDiff) => f.filePath === issue.file);
   if (targetFile) {
     const lineCount = targetFile.rawDiff.split("\n").length;
     const startLine = issue.line_start ?? targetFile.hunks[0]?.newStart ?? 1;
@@ -143,18 +145,12 @@ export async function handleDrilldownRequest(
 
   const parsed = savedReview.diff;
   if (!parsed) {
-    return err(
-      createError(ErrorCode.COMMAND_FAILED, "Stored diff is missing for this review"),
-    );
+    return err(createError(ErrorCode.COMMAND_FAILED, "Stored diff is missing for this review"));
   }
 
-  const drilldownResult = await drilldownIssueById(
-    client,
-    issueId,
-    savedReview.result,
-    parsed,
-    { signal: options.signal },
-  );
+  const drilldownResult = await drilldownIssueById(client, issueId, savedReview.result, parsed, {
+    signal: options.signal,
+  });
 
   if (!drilldownResult.ok) return drilldownResult;
 

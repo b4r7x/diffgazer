@@ -28,7 +28,8 @@ export function CommandPaletteInput({
   className,
   ref,
 }: CommandPaletteInputProps) {
-  const { open, search, onSearchChange, navKeyDown, highlighted, listId, inputRef } = useCommandPaletteContext();
+  const { open, search, onSearchChange, navKeyDown, highlighted, listId, inputRef } =
+    useCommandPaletteContext();
 
   return (
     <div data-slot="command-palette-input" className={cn(className)}>
@@ -45,7 +46,9 @@ export function CommandPaletteInput({
         aria-expanded={open}
         aria-autocomplete="list"
         aria-controls={listId}
-        aria-activedescendant={highlighted !== null ? getCommandPaletteItemDomId(listId, highlighted) : undefined}
+        aria-activedescendant={
+          highlighted !== null ? getCommandPaletteItemDomId(listId, highlighted) : undefined
+        }
         value={search}
         onChange={(e) => onSearchChange(e.target.value)}
         onKeyDown={(e) => {

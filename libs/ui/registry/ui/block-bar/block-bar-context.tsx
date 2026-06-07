@@ -9,9 +9,7 @@ interface BlockBarContextValue {
   emptyChar: string;
 }
 
-export const BlockBarContext = createContext<BlockBarContextValue | undefined>(
-  undefined,
-);
+export const BlockBarContext = createContext<BlockBarContextValue | undefined>(undefined);
 
 export function useBlockBarContext() {
   const context = useContext(BlockBarContext);
@@ -21,19 +19,10 @@ export function useBlockBarContext() {
   return context;
 }
 
-export function computeFilledCount(
-  value: number,
-  max: number,
-  barWidth: number,
-): number {
+export function computeFilledCount(value: number, max: number, barWidth: number): number {
   if (!Number.isFinite(value) || !Number.isFinite(max) || max <= 0) return 0;
 
-  const safeBarWidth = Number.isFinite(barWidth)
-    ? Math.max(0, Math.floor(barWidth))
-    : 0;
+  const safeBarWidth = Number.isFinite(barWidth) ? Math.max(0, Math.floor(barWidth)) : 0;
 
-  return Math.max(
-    0,
-    Math.min(Math.round((Math.max(0, value) / max) * safeBarWidth), safeBarWidth),
-  );
+  return Math.max(0, Math.min(Math.round((Math.max(0, value) / max) * safeBarWidth), safeBarWidth));
 }

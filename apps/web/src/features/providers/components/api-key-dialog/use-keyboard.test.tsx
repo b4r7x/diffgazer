@@ -19,11 +19,7 @@ function Subject({
 }) {
   const [method, setMethod] = useState<InputMethod>("paste");
   const inputRef = useRef<HTMLInputElement>(null);
-  const {
-    getMethodOptionProps,
-    getCancelProps,
-    getConfirmProps,
-  } = useApiKeyDialogKeyboard({
+  const { getMethodOptionProps, getCancelProps, getConfirmProps } = useApiKeyDialogKeyboard({
     open: true,
     method,
     setMethod,
@@ -39,20 +35,25 @@ function Subject({
   return (
     <>
       {/* biome-ignore lint/a11y/useSemanticElements: harness reproduces the production custom div role="radio" so the keyboard hook is exercised against the real DOM shape; a native <input type="radio"> would intercept arrow keys and reject the spread props. */}
-      <div role="radio" aria-checked={method === "paste"} tabIndex={0} {...getMethodOptionProps("paste")}>
+      <div
+        role="radio"
+        aria-checked={method === "paste"}
+        tabIndex={0}
+        {...getMethodOptionProps("paste")}
+      >
         Paste
       </div>
       <input ref={inputRef} aria-label="API key" />
       {/* biome-ignore lint/a11y/useSemanticElements: harness reproduces the production custom div role="radio" so the keyboard hook is exercised against the real DOM shape; a native <input type="radio"> would intercept arrow keys and reject the spread props. */}
-      <div role="radio" aria-checked={method === "env"} tabIndex={0} {...getMethodOptionProps("env")}>
+      <div
+        role="radio"
+        aria-checked={method === "env"}
+        tabIndex={0}
+        {...getMethodOptionProps("env")}
+      >
         Env
       </div>
-      <button
-        ref={cancelProps.ref}
-        type="button"
-        onFocus={cancelProps.onFocus}
-        onClick={onClose}
-      >
+      <button ref={cancelProps.ref} type="button" onFocus={cancelProps.onFocus} onClick={onClose}>
         Cancel
       </button>
       <button

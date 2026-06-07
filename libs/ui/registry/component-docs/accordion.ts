@@ -1,11 +1,16 @@
-import type { ComponentDoc } from "./types"
+import type { ComponentDoc } from "./types";
 
 export const accordionDoc: ComponentDoc = {
-  description: "Collapsible content sections with single or multiple open items. Supports controlled and uncontrolled modes.",
+  description:
+    "Collapsible content sections with single or multiple open items. Supports controlled and uncontrolled modes.",
   anatomy: [
     { name: "Accordion", indent: 0, note: "Root (manages open state, single or multiple mode)" },
     { name: "AccordionItem", indent: 1, note: "Wrapper for each collapsible section" },
-    { name: "AccordionHeader", indent: 2, note: "Heading wrapper for trigger (h3 by default, configurable via as prop)" },
+    {
+      name: "AccordionHeader",
+      indent: 2,
+      note: "Heading wrapper for trigger (h3 by default, configurable via as prop)",
+    },
     { name: "AccordionTrigger", indent: 3, note: "Clickable button that toggles content" },
     { name: "AccordionContent", indent: 2, note: "Collapsible body region" },
   ],
@@ -53,7 +58,8 @@ export const accordionDoc: ComponentDoc = {
         type: '"single" | "multiple"',
         required: false,
         defaultValue: '"single"',
-        description: "Single allows one open item; multiple allows several open at once. Switches the value/onChange/defaultValue shape from string to string[].",
+        description:
+          "Single allows one open item; multiple allows several open at once. Switches the value/onChange/defaultValue shape from string to string[].",
       },
       value: {
         type: "string | string[]",
@@ -71,13 +77,15 @@ export const accordionDoc: ComponentDoc = {
         type: "(value: string | undefined) => void | (value: string[]) => void",
         required: false,
         defaultValue: null,
-        description: "Fired when the open value(s) change. Receives the next value; in single non-collapsible mode it never receives undefined.",
+        description:
+          "Fired when the open value(s) change. Receives the next value; in single non-collapsible mode it never receives undefined.",
       },
       collapsible: {
         type: "boolean",
         required: false,
         defaultValue: "true (single mode)",
-        description: 'Single mode only. When false, the currently open item cannot be closed by clicking it.',
+        description:
+          "Single mode only. When false, the currently open item cannot be closed by clicking it.",
       },
       children: {
         type: "ReactNode",
@@ -130,7 +138,7 @@ export const accordionDoc: ComponentDoc = {
       handle: {
         type: "ReactNode | null",
         required: false,
-        defaultValue: "<Chevron open={isOpen} size=\"sm\" />",
+        defaultValue: '<Chevron open={isOpen} size="sm" />',
         description: "Custom handle element. Pass null to hide the chevron entirely.",
       },
       children: {
@@ -145,7 +153,8 @@ export const accordionDoc: ComponentDoc = {
         type: "boolean",
         required: false,
         defaultValue: "false",
-        description: 'Opt in to role="region" with aria-labelledby pointing at the trigger while the panel is open. Off by default per the APG accordion pattern (region is listed as optional). Enable for a small number of substantive panels (typically six or fewer); leave it off for many short items to avoid landmark noise.',
+        description:
+          'Opt in to role="region" with aria-labelledby pointing at the trigger while the panel is open. Off by default per the APG accordion pattern (region is listed as optional). Enable for a small number of substantive panels (typically six or fewer); leave it off for many short items to avoid landmark noise.',
       },
       children: {
         type: "ReactNode",
@@ -155,4 +164,4 @@ export const accordionDoc: ComponentDoc = {
       },
     },
   },
-}
+};

@@ -3,7 +3,11 @@ import { useEffect } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { KeyHandler } from "../core/normalize-key-input.js";
 import { useKeyboardContext } from "../providers/keyboard-context.js";
-import { KeyboardWrapper, fireKey as pressKey, StrictKeyboardWrapper } from "../testing/test-utils.js";
+import {
+  KeyboardWrapper,
+  fireKey as pressKey,
+  StrictKeyboardWrapper,
+} from "../testing/test-utils.js";
 import { useKey } from "./use-key.js";
 import { useScope } from "./use-scope.js";
 
@@ -63,7 +67,10 @@ describe("useScope", () => {
       useEffect(() => {
         const c1 = register("global", "Escape", globalHandler);
         const c2 = register("modal", "Escape", modalHandler);
-        return () => { c1(); c2(); };
+        return () => {
+          c1();
+          c2();
+        };
       }, []);
       return <div>consumer</div>;
     }

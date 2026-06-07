@@ -39,15 +39,16 @@ describe("createGitDiffError", () => {
       expectedFragment: "buffer limit",
       includesOriginal: true,
     },
-  ])(
-    "produces a $kind message that wraps the original error",
-    ({ input, expectedFragment, includesOriginal }) => {
-      const result = createGitDiffError(input);
+  ])("produces a $kind message that wraps the original error", ({
+    input,
+    expectedFragment,
+    includesOriginal,
+  }) => {
+    const result = createGitDiffError(input);
 
-      expect(result.message).toContain(expectedFragment);
-      if (includesOriginal) expect(result.message).toContain("Original:");
-    },
-  );
+    expect(result.message).toContain(expectedFragment);
+    if (includesOriginal) expect(result.message).toContain("Original:");
+  });
 
   it("returns a generic 'Failed to get git diff' message for unrecognized errors", () => {
     const result = createGitDiffError(new Error("something completely unexpected"));

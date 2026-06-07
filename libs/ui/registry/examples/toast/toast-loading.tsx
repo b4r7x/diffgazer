@@ -1,7 +1,7 @@
 "use client";
 
-import { Button } from "@/components/ui/button"
-import { Toaster, toast } from "@/components/ui/toast"
+import { Button } from "@/components/ui/button";
+import { Toaster, toast } from "@/components/ui/toast";
 
 export default function ToastLoading() {
   return (
@@ -14,15 +14,11 @@ export default function ToastLoading() {
         >
           Show Loading Toast
         </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => toast.dismiss()}
-        >
+        <Button variant="ghost" size="sm" onClick={() => toast.dismiss()}>
           Dismiss All
         </Button>
       </div>
       <Toaster />
     </>
-  )
+  );
 }

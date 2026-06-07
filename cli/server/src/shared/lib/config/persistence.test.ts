@@ -30,7 +30,8 @@ async function readJson<T>(filePath: string): Promise<T> {
 
 describe("config state", () => {
   it("loads default config, secrets, and trust when no files exist", async () => {
-    const { loadConfig, loadSecrets, loadTrust, DEFAULT_PROVIDERS, DEFAULT_SETTINGS } = await loadState();
+    const { loadConfig, loadSecrets, loadTrust, DEFAULT_PROVIDERS, DEFAULT_SETTINGS } =
+      await loadState();
 
     expect(loadConfig()).toEqual({
       settings: DEFAULT_SETTINGS,
@@ -139,20 +140,26 @@ describe("config state", () => {
     const projectRoot = path.join(tempHome, "project");
     const projectFile = path.join(projectRoot, ".diffgazer", "project.json");
     await mkdir(path.dirname(projectFile), { recursive: true });
-    await writeFile(projectFile, JSON.stringify({
-      projectId: "existing-id",
-      repoRoot: projectRoot,
-      createdAt: "2024-01-01",
-    }), "utf-8");
+    await writeFile(
+      projectFile,
+      JSON.stringify({
+        projectId: "existing-id",
+        repoRoot: projectRoot,
+        createdAt: "2024-01-01",
+      }),
+      "utf-8",
+    );
 
     expect(createProjectFile(projectRoot).projectId).toBe("existing-id");
 
     const newRoot = path.join(tempHome, "new-project");
     const created = createProjectFile(newRoot);
     expect(created).toMatchObject({ repoRoot: newRoot });
-    await expect(readJson(path.join(newRoot, ".diffgazer", "project.json"))).resolves.toMatchObject({
-      projectId: created.projectId,
-      repoRoot: newRoot,
-    });
+    await expect(readJson(path.join(newRoot, ".diffgazer", "project.json"))).resolves.toMatchObject(
+      {
+        projectId: created.projectId,
+        repoRoot: newRoot,
+      },
+    );
   });
 });

@@ -2,24 +2,14 @@ import { randomUUID } from "node:crypto";
 import type { Result } from "@diffgazer/core/result";
 import { err, ok } from "@diffgazer/core/result";
 import type { FullReviewStreamEvent, StepId } from "@diffgazer/core/schemas/events";
-import {
-  ReviewErrorCode,
-} from "@diffgazer/core/schemas/review";
+import { ReviewErrorCode } from "@diffgazer/core/schemas/review";
 import type { AIClient } from "../../shared/lib/ai/types.js";
 import { createGitService } from "../../shared/lib/git/service.js";
 import { log } from "../../shared/lib/log.js";
 import { isReviewAbort } from "./abort.js";
 import { resolveGitDiff } from "./diff.js";
-import {
-  executeReview,
-  finalizeReview,
-  resolveReviewConfig,
-} from "./pipeline.js";
-import {
-  isAbortError,
-  normalizeReviewStreamError,
-  reviewStreamError,
-} from "./stream/events.js";
+import { executeReview, finalizeReview, resolveReviewConfig } from "./pipeline.js";
+import { isAbortError, normalizeReviewStreamError, reviewStreamError } from "./stream/events.js";
 import { stepError } from "./stream/steps.js";
 import {
   type ActiveSession,
@@ -57,11 +47,7 @@ function logStepTiming(
   }
 }
 
-async function handleReviewFailure(
-  error: unknown,
-  emit: EmitFn,
-  reviewId: string,
-): Promise<void> {
+async function handleReviewFailure(error: unknown, emit: EmitFn, reviewId: string): Promise<void> {
   if (isAbortError(error)) {
     markComplete(reviewId);
     return;
@@ -101,7 +87,13 @@ export async function createReviewSession(
   aiClient: AIClient,
   options: StreamReviewParams,
 ): Promise<Result<CreateReviewSessionResult, { code: string; message: string }>> {
-  const { mode = "unstaged", files, lenses: lensIds, profile: profileId, projectPath: projectPathOption } = options;
+  const {
+    mode = "unstaged",
+    files,
+    lenses: lensIds,
+    profile: profileId,
+    projectPath: projectPathOption,
+  } = options;
   const projectPath = projectPathOption ?? process.cwd();
   const gitService = createGitService({ cwd: projectPath });
 
@@ -122,7 +114,12 @@ export async function createReviewSession(
   const scopeKey = buildScopeKey({ files, lenses: lensIds, profile: profileId });
 
   if (headCommit && statusHashResult !== null) {
-    const existingSession = getActiveSessionForProject(projectPath, { headCommit, statusHash, mode, scopeKey });
+    const existingSession = getActiveSessionForProject(projectPath, {
+      headCommit,
+      statusHash,
+      mode,
+      scopeKey,
+    });
     if (existingSession) {
       return ok({ reviewId: existingSession.reviewId, session: existingSession });
     }
@@ -191,8 +188,17 @@ async function runReviewSession(
     const headCommit = headCommitResult.ok ? headCommitResult.value : undefined;
 
     const finalResultResult = await finalizeReview({
-      outcome, gitService, emit, reviewId, projectPath, mode,
-      parsed, profileId, activeLenses: config.activeLenses, startTime, signal,
+      outcome,
+      gitService,
+      emit,
+      reviewId,
+      projectPath,
+      mode,
+      parsed,
+      profileId,
+      activeLenses: config.activeLenses,
+      startTime,
+      signal,
       headCommit,
     });
     if (!finalResultResult.ok) {

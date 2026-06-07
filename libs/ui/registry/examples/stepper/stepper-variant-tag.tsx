@@ -1,4 +1,4 @@
-import { Stepper } from "@/components/ui/stepper"
+import { Stepper } from "@/components/ui/stepper";
 
 export default function StepperVariantTag() {
   return (
@@ -19,5 +19,5 @@ export default function StepperVariantTag() {
         <Stepper.Trigger>Deploy preview</Stepper.Trigger>
       </Stepper.Step>
     </Stepper>
-  )
+  );
 }

@@ -1,4 +1,4 @@
-import type { HookDoc } from "@diffgazer/registry"
+import type { HookDoc } from "@diffgazer/registry";
 
 export const presenceDoc: HookDoc = {
   description:
@@ -74,7 +74,7 @@ return present ? (
     {
       title: "CSS animation pattern",
       content:
-        "Pair with data-state attribute and CSS @keyframes. Set data-state=\"open\"|\"closed\" and use data-[state=open]:animate-[...] / data-[state=closed]:animate-[...] for enter/exit animations.",
+        'Pair with data-state attribute and CSS @keyframes. Set data-state="open"|"closed" and use data-[state=open]:animate-[...] / data-[state=closed]:animate-[...] for enter/exit animations.',
     },
     {
       title: "Used by",
@@ -87,4 +87,4 @@ return present ? (
     { name: "use-presence-tooltip", title: "Tooltip Hover" },
   ],
   tags: ["hook", "animation", "mount", "unmount", "presence"],
-}
+};

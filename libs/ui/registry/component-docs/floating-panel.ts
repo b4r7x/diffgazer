@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types"
+import type { ComponentDoc } from "./types";
 
 export const floatingPanelDoc: ComponentDoc = {
   description:
@@ -84,19 +84,22 @@ export const floatingPanelDoc: ComponentDoc = {
         type: "boolean",
         required: false,
         defaultValue: "true",
-        description: "Flips to the opposite side, then cross-axis sides, then shifts within the viewport.",
+        description:
+          "Flips to the opposite side, then cross-axis sides, then shifts within the viewport.",
       },
       collisionPadding: {
         type: "number",
         required: false,
         defaultValue: "8",
-        description: "Minimum gap between the panel and the viewport edge during collision avoidance.",
+        description:
+          "Minimum gap between the panel and the viewport edge during collision avoidance.",
       },
       matchTriggerWidth: {
         type: "boolean",
         required: false,
         defaultValue: "false",
-        description: "When true, exposes `--ui-floating-trigger-width` on the panel so callers can size the panel against the trigger (use as `width`, `min-width`, or `max-width`).",
+        description:
+          "When true, exposes `--ui-floating-trigger-width` on the panel so callers can size the panel against the trigger (use as `width`, `min-width`, or `max-width`).",
       },
       exitFallbackMs: {
         type: "number",
@@ -116,7 +119,8 @@ export const floatingPanelDoc: ComponentDoc = {
         type: "() => void",
         required: false,
         defaultValue: null,
-        description: "Fired after the exit animation resolves (or the fallback timer fires) and the panel unmounts.",
+        description:
+          "Fired after the exit animation resolves (or the fallback timer fires) and the panel unmounts.",
       },
       style: {
         type: "CSSProperties",
@@ -141,7 +145,8 @@ export const floatingPanelDoc: ComponentDoc = {
         type: "Ref<HTMLDivElement>",
         required: false,
         defaultValue: null,
-        description: "Forwarded ref to the panel element. Composed with the internal measurement ref.",
+        description:
+          "Forwarded ref to the panel element. Composed with the internal measurement ref.",
       },
     },
     useFloatingPanelContext: {
@@ -156,16 +161,14 @@ export const floatingPanelDoc: ComponentDoc = {
         type: '"top" | "bottom" | "left" | "right" | null',
         required: true,
         defaultValue: null,
-        description:
-          "Resolved side after collision handling. Null before the first measure.",
+        description: "Resolved side after collision handling. Null before the first measure.",
       },
       align: {
         type: '"start" | "center" | "end" | null',
         required: true,
         defaultValue: null,
-        description:
-          "Resolved align after collision handling. Null before the first measure.",
+        description: "Resolved align after collision handling. Null before the first measure.",
       },
     },
   },
-}
+};

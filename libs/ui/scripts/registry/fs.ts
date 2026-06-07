@@ -68,13 +68,19 @@ export function extractLocalImports(source: string): string[] {
 }
 
 export function aliasImportBase(specifier: string): string | null {
-  if (specifier.startsWith("@/hooks/")) return `registry/hooks/${specifier.slice("@/hooks/".length)}`;
+  if (specifier.startsWith("@/hooks/"))
+    return `registry/hooks/${specifier.slice("@/hooks/".length)}`;
   if (specifier.startsWith("@/lib/")) return `registry/lib/${specifier.slice("@/lib/".length)}`;
-  if (specifier.startsWith("@/components/ui/")) return `registry/ui/${specifier.slice("@/components/ui/".length)}`;
+  if (specifier.startsWith("@/components/ui/"))
+    return `registry/ui/${specifier.slice("@/components/ui/".length)}`;
   return null;
 }
 
-export function resolveImportToRegistryPath(root: string, fromFile: string, specifier: string): string | null {
+export function resolveImportToRegistryPath(
+  root: string,
+  fromFile: string,
+  specifier: string,
+): string | null {
   const aliasBase = aliasImportBase(specifier);
   if (aliasBase) return existingRegistryPath(root, aliasBase);
 

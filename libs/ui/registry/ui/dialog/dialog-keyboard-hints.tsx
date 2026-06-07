@@ -14,7 +14,12 @@ export interface DialogKeyboardHintsProps extends HTMLAttributes<HTMLDivElement>
   size?: "sm" | "md";
 }
 
-export function DialogKeyboardHints({ hints, size = "md", className, ...props }: DialogKeyboardHintsProps) {
+export function DialogKeyboardHints({
+  hints,
+  size = "md",
+  className,
+  ...props
+}: DialogKeyboardHintsProps) {
   if (!hints.length) return null;
 
   return (
@@ -24,7 +29,9 @@ export function DialogKeyboardHints({ hints, size = "md", className, ...props }:
     >
       {hints.map((hint) => (
         <span key={`${hint.key}-${hint.label}`} className="inline-flex items-center gap-1">
-          <Kbd size={size} aria-hidden="true">{hint.key}</Kbd>
+          <Kbd size={size} aria-hidden="true">
+            {hint.key}
+          </Kbd>
           <span>{hint.label}</span>
         </span>
       ))}

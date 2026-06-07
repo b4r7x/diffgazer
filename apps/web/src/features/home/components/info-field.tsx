@@ -41,7 +41,10 @@ export function InfoField({
     return (
       <Button
         variant="ghost"
-        className={cn("w-full text-left h-auto whitespace-normal p-0 justify-start hover:bg-transparent hover:opacity-80 transition-opacity", className)}
+        className={cn(
+          "w-full text-left h-auto whitespace-normal p-0 justify-start hover:bg-transparent hover:opacity-80 transition-opacity",
+          className,
+        )}
         onClick={onClick}
         aria-label={ariaLabel ?? `${label} settings`}
       >
@@ -50,9 +53,5 @@ export function InfoField({
     );
   }
 
-  return (
-    <div className={className}>
-      {content}
-    </div>
-  );
+  return <div className={className}>{content}</div>;
 }

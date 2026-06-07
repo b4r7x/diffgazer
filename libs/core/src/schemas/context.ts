@@ -13,7 +13,7 @@ export const FileTreeNodeSchema: z.ZodType<FileTreeNode> = z.lazy(() =>
     path: z.string(),
     type: z.enum(["file", "dir"]),
     children: z.array(FileTreeNodeSchema).optional(),
-  })
+  }),
 );
 
 export const ProjectContextGraphSchema = z.object({
@@ -24,13 +24,13 @@ export const ProjectContextGraphSchema = z.object({
       name: z.string(),
       dir: z.string(),
       kind: z.enum(["app", "package"]),
-    })
+    }),
   ),
   edges: z.array(
     z.object({
       from: z.string(),
       to: z.array(z.string()),
-    })
+    }),
   ),
   fileTree: z.array(FileTreeNodeSchema),
   changedFiles: z.array(
@@ -39,7 +39,7 @@ export const ProjectContextGraphSchema = z.object({
       operation: z.string(),
       additions: z.number(),
       deletions: z.number(),
-    })
+    }),
   ),
 });
 export type ProjectContextGraph = z.infer<typeof ProjectContextGraphSchema>;

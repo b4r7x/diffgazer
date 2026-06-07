@@ -45,7 +45,7 @@ describe("createApiClient", () => {
 
       expect(mockFetch).toHaveBeenCalledWith(
         "http://localhost:3000/api/health",
-        expect.any(Object)
+        expect.any(Object),
       );
     });
 
@@ -55,10 +55,7 @@ describe("createApiClient", () => {
 
       await slashClient.get("/api/test");
 
-      expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:3000/api/test",
-        expect.any(Object)
-      );
+      expect(mockFetch).toHaveBeenCalledWith("http://localhost:3000/api/test", expect.any(Object));
     });
 
     it("normalizes path without leading slash", async () => {
@@ -66,10 +63,7 @@ describe("createApiClient", () => {
 
       await client.get("api/test");
 
-      expect(mockFetch).toHaveBeenCalledWith(
-        "http://localhost:3000/api/test",
-        expect.any(Object)
-      );
+      expect(mockFetch).toHaveBeenCalledWith("http://localhost:3000/api/test", expect.any(Object));
     });
 
     it("appends query params", async () => {
@@ -211,25 +205,29 @@ describe("createApiClient", () => {
       },
     ];
 
-    it.each(cases)(
-      "$method request sets method=$method, body=$expectedBody and returns the parsed response",
-      async ({ method, expectedBody, response, invoke }) => {
-        mockFetch.mockResolvedValue(jsonResponse(response));
+    it.each(
+      cases,
+    )("$method request sets method=$method, body=$expectedBody and returns the parsed response", async ({
+      method,
+      expectedBody,
+      response,
+      invoke,
+    }) => {
+      mockFetch.mockResolvedValue(jsonResponse(response));
 
-        const result = await invoke();
+      const result = await invoke();
 
-        expect(result).toEqual(response);
-        const [, options] = lastCall();
-        expect(options.method).toBe(method);
-        expect(options.body).toBe(expectedBody);
-      },
-    );
+      expect(result).toEqual(response);
+      const [, options] = lastCall();
+      expect(options.method).toBe(method);
+      expect(options.body).toBe(expectedBody);
+    });
   });
 
   describe("error handling", () => {
     it("throws ApiError with message from response body", async () => {
       mockFetch.mockResolvedValue(
-        errorResponse(400, { error: { message: "Invalid input", code: "VALIDATION" } })
+        errorResponse(400, { error: { message: "Invalid input", code: "VALIDATION" } }),
       );
 
       await expect(client.get("/api/test")).rejects.toThrow("Invalid input");
@@ -237,9 +235,7 @@ describe("createApiClient", () => {
 
     it("throws ApiError with status code", async () => {
       expect.assertions(1);
-      mockFetch.mockResolvedValue(
-        errorResponse(404, { error: { message: "Not found" } })
-      );
+      mockFetch.mockResolvedValue(errorResponse(404, { error: { message: "Not found" } }));
 
       try {
         await client.get("/api/test");
@@ -251,7 +247,7 @@ describe("createApiClient", () => {
     it("throws ApiError with error code from body", async () => {
       expect.assertions(1);
       mockFetch.mockResolvedValue(
-        errorResponse(409, { error: { message: "Conflict", code: "SESSION_STALE" } })
+        errorResponse(409, { error: { message: "Conflict", code: "SESSION_STALE" } }),
       );
 
       try {
@@ -274,7 +270,9 @@ describe("createApiClient", () => {
     });
 
     it("throws ApiError when response body is not valid JSON", async () => {
-      mockFetch.mockResolvedValue(new Response("not json", { status: 200, headers: { "Content-Type": "text/plain" } }));
+      mockFetch.mockResolvedValue(
+        new Response("not json", { status: 200, headers: { "Content-Type": "text/plain" } }),
+      );
 
       await expect(client.get("/api/test")).rejects.toThrow("Invalid JSON response");
     });
@@ -282,7 +280,11 @@ describe("createApiClient", () => {
 
   describe("response validation", () => {
     const numberSchema = (body: unknown): { value: number } => {
-      if (typeof body !== "object" || body === null || typeof (body as { value?: unknown }).value !== "number") {
+      if (
+        typeof body !== "object" ||
+        body === null ||
+        typeof (body as { value?: unknown }).value !== "number"
+      ) {
         throw new Error("Expected { value: number }");
       }
       return body as { value: number };
@@ -323,7 +325,9 @@ describe("createApiClient", () => {
       const body = new ReadableStream();
       mockFetch.mockResolvedValue(new Response(body, { status: 200 }));
 
-      const response = await client.request("GET", "/api/review/stream", { params: { mode: "staged" } });
+      const response = await client.request("GET", "/api/review/stream", {
+        params: { mode: "staged" },
+      });
 
       expect(response).toBeInstanceOf(Response);
       expect(response.body).toBe(body);

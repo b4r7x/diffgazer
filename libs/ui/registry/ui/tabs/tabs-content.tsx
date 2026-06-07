@@ -10,7 +10,13 @@ export interface TabsContentProps<TValue extends string = string>
   ref?: Ref<HTMLDivElement>;
 }
 
-export function TabsContent<TValue extends string = string>({ value, children, className, ref, ...rest }: TabsContentProps<TValue>) {
+export function TabsContent<TValue extends string = string>({
+  value,
+  children,
+  className,
+  ref,
+  ...rest
+}: TabsContentProps<TValue>) {
   const { tabsId, value: selectedValue, orientation, triggerValues } = useTabsContext();
   const isActive = selectedValue === value;
   const triggerId = triggerValues.includes(value) ? getTabTriggerId(tabsId, value) : undefined;
@@ -25,7 +31,10 @@ export function TabsContent<TValue extends string = string>({ value, children, c
       data-orientation={orientation}
       hidden={!isActive}
       tabIndex={isActive ? 0 : undefined}
-      className={cn("mt-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground focus-visible:outline-offset-2", className)}
+      className={cn(
+        "mt-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground focus-visible:outline-offset-2",
+        className,
+      )}
       {...rest}
     >
       {children}

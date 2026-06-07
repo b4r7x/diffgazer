@@ -20,7 +20,7 @@ function DialogFooterRoot({ hints, className, children, ...props }: DialogFooter
       className={cn(
         "flex gap-3 items-center px-5 pt-3 pb-4 shrink-0 bg-background text-foreground",
         hasHints ? "justify-between" : "justify-end",
-        className
+        className,
       )}
       {...props}
     >

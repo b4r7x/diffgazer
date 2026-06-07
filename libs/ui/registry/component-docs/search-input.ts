@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types"
+import type { ComponentDoc } from "./types";
 
 export const searchInputDoc: ComponentDoc = {
   description:
@@ -92,8 +92,9 @@ export const searchInputDoc: ComponentDoc = {
         type: 'boolean | "true" | "false" | "grammar" | "spelling"',
         required: false,
         defaultValue: null,
-        description: "Forwarded to the native search input and used by the wrapper for invalid styling.",
+        description:
+          "Forwarded to the native search input and used by the wrapper for invalid styling.",
       },
     },
   },
-}
+};

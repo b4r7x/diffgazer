@@ -11,10 +11,7 @@ export function Skeleton({ className, ref, ...props }: SkeletonProps) {
     <div
       ref={ref}
       aria-hidden="true"
-      className={cn(
-        "rounded-sm bg-secondary motion-safe:animate-pulse",
-        className,
-      )}
+      className={cn("rounded-sm bg-secondary motion-safe:animate-pulse", className)}
       {...props}
     />
   );
