@@ -9,7 +9,11 @@ node_modules/
 /.opencode/
 /.specify/
 .source/
-/docs/
+/docs/*
+!/docs/assets/
+!/docs/assets/diffgazer-demo.gif
+!/docs/assets/diffgazer-wordmark-figlet.svg
+!/docs/assets/logo.png
 /specs/
 .worktrees/
 tmp/

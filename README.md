@@ -1,6 +1,44 @@
-# diffgazer
+<p align="center">
+  <img src="docs/assets/diffgazer-wordmark-figlet.svg" alt="Diffgazer" width="820" />
+</p>
 
-Diffgazer is a single pnpm monorepo for the CLI, docs app, shared registry tooling, keyboard hooks, and UI packages.
+<p align="center">
+  <img src="docs/assets/logo.png" alt="Diffgazer logo" width="112" />
+</p>
+
+Local AI code review. Run one command, get a review from AI agents, and keep the app on your machine.
+
+![Diffgazer demo](docs/assets/diffgazer-demo.gif)
+
+## Why
+
+I wanted my own code reviewer. Tools like Claude Code and Codex are great for writing code, but burning tokens on review when you could spend them building felt wrong.
+
+Code review matters, especially now that we're all shipping AI-generated code faster than we can read it. Solo devs rarely get their code reviewed. Privacy, fear of judgment, or just nobody around. Diffgazer is my answer to that.
+
+Run one command, get a review. Only the diff and prompt content go to the provider you choose.
+
+## Features
+
+- **Local-first review** - the CLI starts an embedded server and web UI on localhost.
+- **Review pipeline** - diff, context, review, enrich, and report steps run in order.
+- **Web and terminal modes** - use the browser UI by default, or the Ink terminal UI when you want to stay in the shell.
+- **Issue drilldowns** - read findings inline against your diff and dig into details.
+- **Provider choice** - Gemini, Z.ai, Z.ai Coding Plan, OpenRouter, Groq, and Cerebras.
+- **Privacy controls** - localhost binding, host allowlist, CSRF protection, per-run token, and explicit repo trust.
+- **Registry and packages** - `@diffgazer/ui`, `@diffgazer/keys`, and `dgadd` support copy-first and package consumption paths.
+
+## Quick Start
+
+```bash
+npm install -g diffgazer
+cd your-project
+diffgazer
+```
+
+First run walks you through provider setup, credentials storage, model selection, and repo trust.
+
+Diffgazer is also a pnpm monorepo for the CLI, docs app, shared registry tooling, keyboard hooks, and UI packages.
 
 ## Workspace
 
@@ -15,7 +53,7 @@ Diffgazer is a single pnpm monorepo for the CLI, docs app, shared registry tooli
 - `apps/web` - private `@diffgazer/web` product frontend
 - `apps/landing` - private `@diffgazer/landing` landing page
 
-## Quick Start
+## Source Setup
 
 ```bash
 git clone https://github.com/b4r7x/diffgazer.git
