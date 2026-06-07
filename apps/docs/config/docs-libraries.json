@@ -2,6 +2,14 @@
   "primaryLibraryId": "ui",
   "libraries": [
     {
+      "id": "app",
+      "displayName": "diffgazer",
+      "logoText": "diffgazer",
+      "githubUrl": "https://github.com/b4r7x/diffgazer",
+      "enabled": true,
+      "defaultRouteSlugs": ["getting-started"]
+    },
+    {
       "id": "ui",
       "displayName": "@diffgazer/ui",
       "logoText": "@diffgazer/ui",
@@ -24,14 +32,6 @@
         "workspaceDir": "libs/keys",
         "packageName": "@diffgazer/keys"
       }
-    },
-    {
-      "id": "app",
-      "displayName": "diffgazer",
-      "logoText": "diffgazer",
-      "githubUrl": "https://github.com/b4r7x/diffgazer",
-      "enabled": true,
-      "defaultRouteSlugs": ["getting-started"]
     }
   ]
 }

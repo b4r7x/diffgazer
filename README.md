@@ -77,7 +77,7 @@ This repository is one workspace with a single root install and lockfile.
 
 ## Consumption Paths
 
-`@diffgazer/ui` and `@diffgazer/keys` support three consumption paths. All npm package names are publish-gated as of May 2026 -- public npm commands are valid only after `npm view` returns versions. Local tarballs are the package-mode validation path before publication.
+`@diffgazer/ui` and `@diffgazer/keys` support three consumption paths. All npm package names are publish-gated: public npm commands are valid only after `npm view` returns versions. Local tarballs are the package-mode validation path before publication.
 
 | Path | @diffgazer/ui | @diffgazer/keys |
 |------|---------------|-----------------|

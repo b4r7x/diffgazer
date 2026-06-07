@@ -46,6 +46,20 @@ const syncResult = syncDocsFromArtifacts({
 	extraRootPages: authoredRootPages,
 });
 
+const rootMetaContent = `${JSON.stringify(
+	{
+		title: "Documentation",
+		root: true,
+		pages: docsLibraries.libraries
+			.filter((library) => library.enabled)
+			.map((library) => `...${library.id}`),
+	},
+	null,
+	2,
+)}\n`;
+
+writeFileSync(join(DOCS_ROOT, "content/docs/meta.json"), rootMetaContent);
+
 const demoEntries = artifactLibraries
 	.filter((lib) =>
 		existsSync(join(DOCS_ROOT, "src/generated", lib.id, "demo-index.ts")),

@@ -1,0 +1,54 @@
+---
+title: Story
+description: Why diffgazer exists and what the product is optimizing for.
+---
+
+diffgazer started from a simple frustration: code review tools are useful, but the fast AI path often asks you to paste a diff into a chat window, lose the thread, and repeat the same setup every time. That is fine once. It is annoying when review is part of daily work.
+
+The product is built around a different default: keep the workflow local, make the review repeatable, and let the user choose the model provider.
+
+## The problem
+
+Most AI review workflows make one of three tradeoffs.
+
+They are **manual**, so you copy a diff, explain the repo, ask for findings, then rebuild that context for the next review.
+
+They are **remote-first**, so source code, metadata, and review history move into a service before you have decided what should leave your machine.
+
+They are **too shallow**, so the model only sees a raw patch and misses the surrounding code, project shape, or reason a change is risky.
+
+diffgazer tries to keep the useful parts without accepting those defaults.
+
+## The shape of diffgazer
+
+Run `diffgazer` in a repository and it starts a local review app on your machine. The CLI, embedded server, web UI, git access, config, and review history all run locally. Nothing is uploaded to a diffgazer service.
+
+When you start a review, diffgazer gathers the git diff, builds project context, sends the review request to the provider you configured, then turns the result into a structured report. The only network request with your code is the one sent to your chosen model provider.
+
+That makes diffgazer closer to a local developer tool than a hosted review platform. The project sites, registry, and documentation can be deployed publicly, but the review app itself is a local binary.
+
+## What it optimizes for
+
+diffgazer is meant to help before a human review, not replace one. The useful output is a short list of concrete risks: correctness issues, security problems, missing tests, performance traps, API regressions, or code that became harder to maintain.
+
+The target experience is:
+
+- run one command from the repo you are editing;
+- choose a provider and model you already control;
+- review unstaged or staged changes;
+- keep findings tied to files, context, severity, and rationale;
+- avoid sending code anywhere except the provider you selected.
+
+## Why local-first matters
+
+Local-first is not just a privacy line. It also keeps the tool simple to reason about.
+
+Your git repository stays on disk. Your config lives under your diffgazer home. Your API keys are stored locally or read from environment variables. The browser UI talks to a localhost server that rejects non-local hosts and cross-origin state-changing requests.
+
+For the exact security boundary, see [Privacy and security](/app/concepts/privacy) and [Server lifecycle and ports](/app/reference/server).
+
+## Where the project is going
+
+The next useful work is not to make diffgazer more magical. It is to make the current path steadier: clearer docs, safer release gates, better provider ergonomics, stronger registry handoff, and fewer places where a reviewer has to guess what the tool did.
+
+See [Roadmap](/app/roadmap) for the current direction.

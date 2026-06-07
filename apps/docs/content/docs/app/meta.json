@@ -4,6 +4,11 @@
   "pages": [
     "---Getting Started---",
     "...getting-started",
+    "---Product---",
+    "story",
+    "architecture",
+    "roadmap",
+    "contributing",
     "---Concepts---",
     "...concepts",
     "---Web Mode---",
@@ -12,7 +17,7 @@
     "...tui",
     "---Reference---",
     "...reference",
-    "---CLI---",
+    "---Registry CLI---",
     "...cli",
     "---Operations---",
     "...operations"

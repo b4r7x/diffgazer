@@ -2,6 +2,7 @@
   "title": "Reference",
   "pages": [
     "index",
+    "api",
     "cli",
     "configuration",
     "providers",

@@ -1,0 +1,74 @@
+---
+title: Roadmap
+description: The direction of diffgazer without treating plans as promises.
+---
+
+This page describes the direction of the project. It is not a release contract. The priority is to keep the public surface small, understandable, and safe before adding more modes.
+
+## Current focus
+
+The current focus is public handoff quality.
+
+That means the install path, docs, registry, release checks, and hosted project sites should all tell the same story. A user should be able to install the CLI, understand what runs locally, configure a provider, run a review, and know what data leaves the machine.
+
+Work in this area includes:
+
+- keeping docs aligned with the current CLI, embedded server, and provider list;
+- validating registry artifacts before release;
+- keeping generated handoff files reproducible;
+- making deployment targets explicit: docs, landing, and registry are deployable sites; the review app is a local CLI tool;
+- hardening release and deployment workflows so secrets stay outside the repository and build logs.
+
+## Product direction
+
+diffgazer is staying local-first. The core product remains a CLI-launched review app that runs against the repository on your machine.
+
+The useful product work is:
+
+- clearer setup and trust flows;
+- stronger provider and model selection;
+- better review history and filtering;
+- more precise findings with less noise;
+- richer context around why a change is risky;
+- continued web-mode polish;
+- a terminal UI only when it can match the expectations of terminal users.
+
+The terminal UI exists, but it is still beta. Web mode is the default and the full-featured path.
+
+## Provider direction
+
+The supported provider list should stay practical, not maximal. diffgazer already supports several bring-your-own-key providers, and disabled catalog entries can exist without being selectable by default.
+
+Future provider work should improve reliability and clarity first:
+
+- model discovery where the provider supports it;
+- explicit default and recommended models;
+- better errors for missing keys, disabled providers, and rate limits;
+- clearer separation between environment variables and locally stored keys;
+- optional local-provider support when the experience is good enough to document.
+
+## Developer direction
+
+The repo is a monorepo with separate public surfaces. The direction is to keep those boundaries sharp.
+
+- `cli/diffgazer` owns the public binary.
+- `cli/server` owns the embedded local API used by that binary.
+- `apps/web` owns the local browser review UI.
+- `apps/docs`, `apps/landing`, and the registry are the public hosted surfaces.
+- `libs/core`, `libs/keys`, `libs/ui`, and `libs/registry` own reusable contracts.
+
+New work should preserve that split. Product widgets stay in apps. Generic primitives can move to libraries once they have a real reusable contract.
+
+## Release direction
+
+Release work should bias toward explicit gates over hidden automation. Build and test automation is useful, but deploys should still be deliberate.
+
+The safest shape is:
+
+- CI validates type-checks, tests, artifacts, and Docker builds;
+- images can be built and pushed only from trusted workflows;
+- runtime secrets live in the deployment platform, not in git;
+- Coolify deploys selected images or branches intentionally;
+- package publish, docs deploy, landing deploy, and registry deploy remain separate enough to reason about.
+
+See [Contributing](/app/contributing) for the local checks expected before handoff.

@@ -1,0 +1,88 @@
+---
+title: Local API reference
+description: The localhost API exposed by the embedded diffgazer server.
+---
+
+The API documented here is the local API used by the diffgazer web app. It is not a hosted public API and it is not meant to be deployed as a standalone internet service.
+
+In web mode, the `diffgazer` CLI starts the embedded server, serves the browser app, and keeps both on the same localhost origin. Packaged runs require the internal shutdown token header for API access outside health checks and preflight requests.
+
+## Health
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/health` | Server health check mounted at the root router. |
+| `GET` | `/api/health` | Server health check mounted under `/api`. |
+
+Health responses include a status and timestamp. They are intentionally lightweight and do not require repository trust.
+
+## Config
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/config/init` | Resolve initial setup state for the current project. |
+| `GET` | `/api/config/check` | Check whether global configuration is valid. |
+| `GET` | `/api/config` | Read the saved configuration. |
+| `POST` | `/api/config` | Save configuration. |
+| `DELETE` | `/api/config` | Delete saved configuration. |
+| `GET` | `/api/config/providers` | List provider status and availability. |
+| `GET` | `/api/config/provider/openrouter/models` | Fetch OpenRouter models. |
+| `GET` | `/api/config/provider/:id/models` | Fetch catalog-backed models for a provider. |
+| `POST` | `/api/config/provider/:providerId/activate` | Activate a provider and model for the current project. |
+| `DELETE` | `/api/config/provider/:providerId` | Remove a provider from saved config. |
+
+Config writes use JSON body validation and body-size limits. Provider model routes have route-specific rate limits.
+
+## Settings and trust
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/settings` | Read local UI and runtime settings. |
+| `POST` | `/api/settings` | Patch local settings. |
+| `GET` | `/api/settings/trust` | Read trust for the current project. |
+| `GET` | `/api/settings/trust/list` | List trust records scoped to the current project identity. |
+| `POST` | `/api/settings/trust` | Save trust for the current project. |
+| `DELETE` | `/api/settings/trust` | Remove trust for the current project. |
+
+The server derives project identity itself when saving trust. Client-supplied identity fields are not trusted. Command execution trust is currently stripped to `false` because command execution is not supported.
+
+## Git
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/git/status` | Read git status for the current repository. |
+| `GET` | `/api/git/diff?mode=unstaged` | Read unstaged diff. |
+| `GET` | `/api/git/diff?mode=staged` | Read staged diff. |
+
+Git routes require repository trust. If the current directory is not a git repository, the API returns a structured error instead of attempting a review.
+
+## Review
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `POST` | `/api/review/reviews` | Create and start a review. |
+| `GET` | `/api/review/reviews/:id/stream` | Resume or replay a review event stream. |
+| `GET` | `/api/review/sessions/active` | Read the active review session for a diff mode. |
+| `DELETE` | `/api/review/sessions/:id` | Cancel an active review session. |
+| `GET` | `/api/review/context` | Read current review context. |
+| `POST` | `/api/review/context/refresh` | Refresh review context. |
+| `GET` | `/api/review/reviews` | List saved reviews. |
+| `GET` | `/api/review/reviews/:id` | Read one saved review. |
+| `DELETE` | `/api/review/reviews/:id` | Delete one saved review. |
+| `POST` | `/api/review/reviews/:id/drilldown` | Ask a follow-up question about a saved finding or review. |
+
+Review creation and drilldown routes require setup, repository trust, JSON validation, body-size limits, and route-specific rate limits.
+
+## Shutdown
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `POST` | `/api/shutdown` | Ask the embedded server to terminate the CLI process gracefully. |
+
+Shutdown is protected by the same local API guard and internal token behavior as the rest of the packaged API. If the server does not know which process to stop, it returns an unavailable response instead of killing anything.
+
+## Related
+
+- [Server lifecycle and ports](/app/reference/server)
+- [Architecture](/app/architecture)
+- [Privacy and security](/app/concepts/privacy)

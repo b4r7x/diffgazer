@@ -1,0 +1,61 @@
+---
+title: Architecture
+description: How the diffgazer monorepo is split across the CLI, local server, apps, and libraries.
+---
+
+diffgazer is a monorepo with one local product and several public project surfaces. The review product runs on the user's machine. The deployable web surfaces are the docs, landing page, and registry-related handoff.
+
+## Runtime shape
+
+The public review entrypoint is the `diffgazer` CLI binary in `cli/diffgazer`.
+
+In the default web mode, the CLI starts an embedded Hono server from `cli/server`, serves the built `apps/web` single-page app, and opens the local URL in the browser. The server binds to localhost and exposes the local API the web app uses for config, git state, review sessions, history, settings, and shutdown.
+
+The terminal UI is also launched by `cli/diffgazer`, but it is opt-in with `--tui` and still beta. Web mode is the default review surface.
+
+## Workspace boundaries
+
+| Workspace | Owns |
+| --- | --- |
+| `cli/diffgazer` | The public `diffgazer` binary, web-mode launcher, TUI launcher, CLI options, and thin runtime wiring. |
+| `cli/server` | The embedded Hono backend used by the CLI: config, git, review pipeline, settings, shutdown, middleware, and local security guards. |
+| `apps/web` | The product-specific browser UI served by the embedded server. |
+| `apps/docs` | The public documentation site for diffgazer, `@diffgazer/ui`, and `@diffgazer/keys`. |
+| `apps/landing` | The marketing landing page. |
+| `libs/core` | Shared schemas, types, provider metadata, review contracts, utilities, and private business logic shared by apps and CLIs. |
+| `libs/keys` | Reusable keyboard, focus, scope, focus-zone, and navigation primitives. |
+| `libs/ui` | Reusable UI primitives and registry-distributed component source. |
+| `libs/registry` | Registry contracts, validation, public registry building, copy-bundle behavior, and CLI workflow helpers. |
+| `cli/add` | The `dgadd` component installation CLI. |
+
+The important rule is direction: apps and CLIs can consume libraries, but libraries do not import from apps or CLIs.
+
+## Review flow
+
+A review starts in the web UI or TUI and runs through the embedded server.
+
+```text
+git diff -> context -> provider request -> enrich -> report
+```
+
+The server reads repository state, builds context, calls the configured model provider, enriches the response, and stores review history locally. The pipeline is described in more detail in [The review pipeline](/app/concepts/review-pipeline).
+
+## Local API boundary
+
+The server API is local product infrastructure, not a hosted public API. It exists so the CLI-launched UI can talk to git, config, settings, and review services running on the same machine.
+
+Security-sensitive behavior sits at this boundary:
+
+- requests are limited to localhost hosts;
+- state-changing cross-origin requests are rejected;
+- packaged builds require the shutdown token header for API access outside health checks and preflight;
+- body limits and route-specific rate limits guard write-heavy routes;
+- repository access is gated by trust checks before git and review routes run.
+
+See [Local API reference](/app/reference/api), [Server lifecycle and ports](/app/reference/server), and [Privacy and security](/app/concepts/privacy).
+
+## Public site boundary
+
+The docs, landing page, and registry can be deployed as public web surfaces. They do not make the review CLI a server product.
+
+For deployment, treat each public app as its own build target and Docker image. Runtime secrets belong in the deployment platform, such as Coolify environment variables, not in the repository, Dockerfile, image, or build logs.

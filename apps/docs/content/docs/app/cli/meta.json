@@ -1,4 +1,4 @@
 {
-  "title": "CLI",
+  "title": "Registry CLI",
   "pages": ["index", "init", "add", "list", "diff", "remove"]
 }

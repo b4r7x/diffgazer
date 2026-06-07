@@ -1,0 +1,84 @@
+---
+title: Contributing
+description: How to work on diffgazer without crossing package, app, or release boundaries.
+---
+
+diffgazer is a monorepo, so the safest way to contribute is to keep each change inside the surface that owns it. Start from the workspace boundary, then run the narrowest checks that prove the change.
+
+## Setup
+
+Install dependencies from the repository root:
+
+```bash
+pnpm install
+```
+
+Useful local commands:
+
+```bash
+pnpm run docs:dev
+pnpm run diffgazer:dev
+pnpm run type-check
+pnpm run test
+```
+
+For registry, CLI, docs, or public handoff changes, regenerate and validate artifacts before broader checks:
+
+```bash
+pnpm run prepare:artifacts
+pnpm run validate:artifacts:check
+```
+
+## Pick the right owner
+
+Use the existing workspace split before adding a new abstraction.
+
+| Change | Usual owner |
+| --- | --- |
+| Public `diffgazer` binary behavior | `cli/diffgazer` |
+| Embedded local API behavior | `cli/server` |
+| Browser review UI | `apps/web` |
+| Documentation site content and docs app behavior | `apps/docs` |
+| Marketing page | `apps/landing` |
+| Shared config, schemas, providers, review contracts, and utilities | `libs/core` |
+| Keyboard, focus, scope, and navigation behavior | `libs/keys` |
+| Reusable UI primitives and public component source | `libs/ui` |
+| Registry contracts, generated public registries, and copy bundles | `libs/registry` |
+| Component install CLI | `cli/add` |
+
+Product-specific UI stays in apps. Generic primitives move to libraries only when they have a clear reusable contract.
+
+## Public handoff rules
+
+When a change affects public install or copy paths, update the whole handoff together:
+
+- source registry files;
+- public registry JSON under `libs/ui/public/r` or `libs/keys/public/r`;
+- generated bundles and artifact validation;
+- docs and examples;
+- package exports and declarations when package consumers are affected;
+- `dgadd` direct-copy and package paths when component installation changes.
+
+Do not commit deterministic generated data under internal generated folders. Public registries are different: they are committed because they are the reviewable handoff contract.
+
+## Security rules
+
+Keep secrets out of git, Dockerfiles, build args, generated artifacts, and logs. Runtime secrets belong in the environment of the place running the app, for example Coolify environment variables.
+
+For the review product, remember the boundary: `cli/diffgazer`, `cli/server`, and `apps/web` are local product pieces, not VPS services. The public deploy targets are docs, landing, and registry-related surfaces.
+
+When adding API behavior to the embedded server, validate input at the HTTP boundary, keep localhost and trust guards intact, and avoid moving app-specific behavior into shared libraries.
+
+## Review checklist
+
+Before handoff, run the narrow checks for the changed surface. For cross-package or public handoff work, also run the broader gates:
+
+```bash
+DIFFGAZER_SKIP_ARTIFACT_PREPARE=1 pnpm exec turbo run type-check
+DIFFGAZER_SKIP_ARTIFACT_PREPARE=1 pnpm exec turbo run test
+DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run smoke
+pnpm run verify:monorepo
+git diff --check
+```
+
+If generated files are missing or stale, run `pnpm run prepare:artifacts` first instead of skipping artifact preparation.
