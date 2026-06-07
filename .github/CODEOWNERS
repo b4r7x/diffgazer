@@ -1,0 +1,12 @@
+.github/workflows/** @b4r7x
+.github/dependabot.yml @b4r7x
+Dockerfile @b4r7x
+deploy/*.Dockerfile @b4r7x
+deploy/*.md @b4r7x
+deploy/*.conf @b4r7x
+PACKAGE_GOVERNANCE.md @b4r7x
+.dockerignore @b4r7x
+.env.example @b4r7x
+apps/docs/.env.example @b4r7x
+scripts/monorepo/secret-scan.mjs @b4r7x
+scripts/monorepo/secret-scan.test.mjs @b4r7x

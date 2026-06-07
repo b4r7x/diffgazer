@@ -57,7 +57,7 @@ Trust the directory when prompted, leaving "read files" enabled so diffgazer can
 
 <Step title="Start a review">
 
-From the main menu, choose `Review Unstaged` (or `Review Staged`) to start a review.
+From the main menu, choose `Review Unstaged` (or `Review Staged`) to start a review. At this point, diffgazer sends the diff and prompt content to the provider you selected under that provider's policy.
 
 </Step>
 
@@ -75,7 +75,7 @@ Skim the summary, press Enter to open the full review, then move through the iss
 
 On first launch diffgazer has no saved configuration, so the browser opens straight into the setup wizard. It walks through six steps in order:
 
-- **Secrets storage.** Where your API keys live: a local file (saved with `0600` permissions) or your operating system keyring.
+- **Secrets storage.** Where your API keys live: a plaintext JSON file saved with `0600` permissions, or your operating system keyring.
 - **Provider.** The AI provider to review with. The list is generated from the providers diffgazer supports, and the top option is preselected.
 - **API key.** Paste your key, or point diffgazer at the provider's environment variable if you already export one.
 - **Model.** The model to run. The list loads from the provider, with recommended and free-tier models tagged.

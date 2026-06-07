@@ -55,6 +55,7 @@
     "type-check": "tsc --noEmit",
     "check": "biome check .",
     "test": "vitest run",
+    "test:types": "tsc --noEmit -p tsconfig.test.json",
     "test:watch": "vitest"
   },
   "dependencies": {

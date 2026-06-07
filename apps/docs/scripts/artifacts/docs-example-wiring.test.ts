@@ -248,12 +248,13 @@ describe("docs example wiring", () => {
 		expect(meta.packageImport).toBe("@diffgazer/ui/lib/compose-refs");
 		expect(meta.copyPath).toBe("src/lib/compose-refs.ts");
 		expect(meta.dgaddName).toBe("ui/compose-refs");
-		expect(meta.paths.copy.command).toBe(
-			"npx shadcn add https://r.b4r7.dev/r/ui/compose-refs.json",
-		);
+		expect(meta.paths.copy.available).toBe(false);
+		expect(meta.paths.copy.note).toContain("r.b4r7.dev does not resolve");
 		expect(meta.paths.dgadd.command).toBe(
 			"pnpm exec dgadd add ui/compose-refs",
 		);
+		expect(meta.paths.dgadd.note).toContain("tarball");
+		expect(meta.paths.package.available).toBe(false);
 	});
 
 	it("maps prefixed keys hook docs to registry ids without double use prefixes", () => {
@@ -261,12 +262,12 @@ describe("docs example wiring", () => {
 
 		expect(meta.copyPath).toBe("src/hooks/use-navigation.ts");
 		expect(meta.dgaddName).toBe("keys/navigation");
-		expect(meta.paths.copy.command).toBe(
-			"npx shadcn add https://r.b4r7.dev/r/keys/navigation.json",
-		);
+		expect(meta.paths.copy.available).toBe(false);
+		expect(meta.paths.copy.note).toContain("r.b4r7.dev does not resolve");
 		expect(meta.paths.dgadd.command).toBe(
 			"pnpm exec dgadd add keys/navigation",
 		);
+		expect(meta.paths.dgadd.note).toContain("tarball");
 	});
 
 	it("marks provider-backed keys hooks as package-only while keeping package import metadata", () => {
@@ -280,7 +281,8 @@ describe("docs example wiring", () => {
 		expect(meta.packageImport).toBe("@diffgazer/keys");
 		expect(meta.paths.copy.available).toBe(false);
 		expect(meta.paths.dgadd.available).toBe(false);
-		expect(meta.paths.package.available).toBe(true);
+		expect(meta.paths.package.available).toBe(false);
+		expect(meta.paths.package.note).toContain("not live yet");
 	});
 
 	it("uses deterministic docs preview without npx network dependency", () => {

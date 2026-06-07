@@ -8,6 +8,10 @@ import {
 	SOURCE_DOCS_PREFIX,
 } from "@/lib/library";
 import { searchAPI } from "@/lib/search-server";
+import {
+	normalizeSearchQuery,
+	parseSearchQueryInput,
+} from "@/lib/server-inputs";
 
 export interface SearchResult {
 	id: string;
@@ -36,8 +40,10 @@ interface ServerSearchResult {
 }
 
 const doSearch = createServerFn({ method: "GET" })
-	.inputValidator((query: string) => query)
+	.inputValidator(parseSearchQueryInput)
 	.handler(async ({ data: query }): Promise<ServerSearchResult[]> => {
+		if (!query) return [];
+
 		const results = await searchAPI.search(query);
 		return results.slice(0, 16).map((result) => ({
 			id: result.id,
@@ -113,7 +119,7 @@ export function useSearch() {
 	const generation = useRef(0);
 
 	useEffect(() => {
-		const trimmedQuery = query.trim();
+		const trimmedQuery = normalizeSearchQuery(query);
 
 		if (!trimmedQuery) {
 			setSearchState(SEARCH_IDLE_STATE);

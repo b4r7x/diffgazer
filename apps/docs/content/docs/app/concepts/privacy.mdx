@@ -1,9 +1,9 @@
 ---
 title: Privacy and security
-description: Why your code and your keys stay on your machine.
+description: How diffgazer handles source, credentials, and provider requests.
 ---
 
-The pitch is simple: **diffgazer runs an embedded local server and reviews your code on your own machine, so your source and your API keys never reach a service we run.** The only thing that ever leaves your computer is the request you choose to send to your own model provider. This page walks through how that holds up, layer by layer, so you can trust the claim instead of taking it on faith.
+diffgazer runs an embedded local server and reviews your code on your own machine, so your source and API keys never reach a service we run. A network request leaves your computer only when you ask for a review. At that point, the diff and prompt content go to the model provider you chose, under that provider's policy.
 
 ## Localhost binding and the host allowlist
 
@@ -40,9 +40,9 @@ Because the token is minted new on each run and lives only in process memory and
 
 ## Where secrets are stored
 
-Your provider API keys are not kept in plaintext lying around. diffgazer prefers your operating system keyring, the same vault your OS uses for other credentials, through a native keyring binding registered under the app name `diffgazer`. Before trusting it, diffgazer runs a quick self-test that writes, reads back, and deletes a throwaway value, so it only uses the keyring when the keyring actually works on your system.
+diffgazer prefers your operating system keyring, the same vault your OS uses for other credentials, through a native keyring binding registered under the app name `diffgazer`. Before trusting it, diffgazer runs a quick self-test that writes, reads back, and deletes a throwaway value, so it only uses the keyring when the keyring actually works on your system.
 
-When the keyring is not available, diffgazer falls back to a file under your global config directory. That file is written with `0600` permissions, meaning only your user account can read or write it; group and other users get nothing. The same `0600` mode is used for the config, secrets, and trust files, and for the per-project info file. So even in the file fallback, a secret on disk is readable only by you.
+When the keyring is not available, diffgazer falls back to a file under your global config directory. The file backend stores secrets as plaintext JSON and writes that file with `0600` permissions, meaning only your user account can read or write it; group and other users get nothing. The same `0600` mode is used for the config, secrets, and trust files, and for the per-project info file.
 
 > Tip: If you would rather keep keys out of any diffgazer-managed storage entirely, providers can also be backed by an environment variable reference instead of a stored secret. See [Providers and models](/app/concepts/providers-and-models) and [Configuration](/app/reference/configuration) for how that is set up.
 

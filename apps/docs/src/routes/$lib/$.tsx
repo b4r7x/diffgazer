@@ -27,6 +27,7 @@ import {
 import { loadDocData } from "@/lib/load-doc-data";
 import { findPageNeighbors, type PageTree } from "@/lib/page-tree";
 import { buildPageSeo } from "@/lib/seo";
+import { parseDocsPageInput } from "@/lib/server-inputs";
 import { useMDXComponents } from "@/mdx-components";
 import { Route as DocsRoute } from "@/routes/$lib";
 import type { ComponentData } from "@/types/data";
@@ -73,9 +74,7 @@ export const Route = createFileRoute("/$lib/$")({
 });
 
 const serverLoader = createServerFn({ method: "GET" })
-	.inputValidator(
-		(input: { library: DocsLibraryId; routeSlugs: string[] }) => input,
-	)
+	.inputValidator(parseDocsPageInput)
 	.handler(async ({ data }): Promise<LoaderData | null> => {
 		const { source } = await import("@/lib/source");
 		const sourceSlugs = sourceSlugsForLibrary(data.library, data.routeSlugs);

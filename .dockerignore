@@ -5,14 +5,22 @@
 node_modules
 **/node_modules
 tmp
+.nuke
+.nuke/
 **/dist
 **/.output
 **/.cache
 **/.source
 **/.turbo
 **/coverage
+**/build
 *.tgz
 *.tsbuildinfo
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # Secrets and environment files
 .env

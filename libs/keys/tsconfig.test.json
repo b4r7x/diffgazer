@@ -4,7 +4,11 @@
   "compilerOptions": {
     "noEmit": true,
     "rootDir": ".",
-    "types": ["node", "vitest/globals", "@testing-library/jest-dom"]
+    "types": ["node", "vitest/globals", "@testing-library/jest-dom"],
+    "baseUrl": ".",
+    "paths": {
+      "@diffgazer/keys": ["./src/index.ts"]
+    }
   },
   "include": [
     "src/**/*.ts",

@@ -31,6 +31,7 @@
     "type-check": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
     "check": "biome check .",
     "test": "vitest run",
+    "test:types": "tsc --noEmit -p tsconfig.test.json",
     "test:watch": "vitest"
   },
   "repository": {

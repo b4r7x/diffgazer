@@ -1,10 +1,10 @@
 export const PRODUCT_NAME = "diffgazer";
 
 export const TAGLINE =
-  "AI code review for your terminal. Local-first. Privacy-respecting.";
+  "AI code review that runs on your machine. Local web workspace, local control.";
 
 export const HERO_DESCRIPTION =
-  "Point it at a branch, get a structured review in your terminal. Your code and your model keys stay on your machine.";
+  "Run it in a repo to start an embedded localhost server and open the web app. Source remains local until you send a review to your chosen provider; then the diff and prompt go to that provider under its policy.";
 
 export const INSTALL_COMMAND = "npm install -g diffgazer";
 
@@ -23,15 +23,15 @@ interface ValueProp {
 export const VALUE_PROPS: ValueProp[] = [
   {
     title: "Local-first",
-    body: "Runs as a CLI on your machine. No server to deploy, no diff uploaded to a dashboard you do not control.",
+    body: "Runs as a CLI on your machine and serves the review workspace from localhost. There is no remote Diffgazer service to deploy.",
   },
   {
     title: "Privacy-respecting",
-    body: "Your source and your provider keys stay local. diffgazer talks to your chosen model, nothing else.",
+    body: "Your provider keys are stored locally or read from your environment. Review requests go directly to the model provider you choose.",
   },
   {
-    title: "Terminal-native review",
-    body: "Reads a unified diff and returns findings inline, with j/k hunk navigation and keyboard-first flow.",
+    title: "Web review by default",
+    body: "The default command opens a local web workspace for onboarding, model selection, diff review, and findings.",
   },
   {
     title: "Provider-agnostic",
@@ -42,20 +42,21 @@ export const VALUE_PROPS: ValueProp[] = [
 export const SHOWCASE_HEADING = "See the review, not a screenshot of one";
 
 export const SHOWCASE_CAPTION =
-  "A real diff rendered by the same component the CLI ships. Use j and k to move between hunks.";
+  "A real diff rendered in the local review workspace. Use j and k to navigate.";
 
 export const DIFF_STATS = "+5 −2 · 1 hunk";
 
-export const TERMINAL_TITLE = "~/acme-api · zsh";
+export const TERMINAL_TITLE = "~/acme-api · local web mode";
 
-export const TERMINAL_OUTPUT = `$ diffgazer review --base main
-✓ Parsed 1 changed file (src/utils/score.ts)
-→ 1 finding · weights param is unvalidated
-Done in 1.4s`;
+export const TERMINAL_OUTPUT = `$ diffgazer
+→ Starting embedded server on http://127.0.0.1:3000
+→ Opening the local review workspace
+Ready. Press Ctrl+C to stop.`;
 
 export const INSTALL_HEADING = "Install";
 
-export const INSTALL_CAPTION = "Node 18+. One global binary, then run it in any repo.";
+export const INSTALL_CAPTION =
+  "Node 20+. Install the published CLI, then run diffgazer from inside a repository with changes.";
 
 // A short, self-explanatory unified diff rendered by <DiffView>. It tells a
 // tiny story on its own: a scoring helper gains a `weights` argument and folds

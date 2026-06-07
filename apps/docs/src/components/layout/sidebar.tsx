@@ -182,39 +182,57 @@ export function DocsSidebar({ tree, library, onNavigate }: DocsSidebarProps) {
 										const indented = isIndentedItem(url);
 
 										const isPending = pendingPathname === url;
+										const isCurrentUrl = pathname === url;
+										const itemContent = isPending ? (
+											<Spinner size="sm" className="ml-2" />
+										) : (
+											<span
+												className={cn(
+													"text-xs font-mono",
+													indented && "pl-3 text-muted-foreground",
+												)}
+											>
+												{indented ? `· ${label}` : label}
+											</span>
+										);
 
 										return (
 											<SidebarItem
 												key={url}
 												active={pathname === url || isPending}
 												onClick={(event) => {
-													if (isPrimaryNavigationClick(event)) onNavigate?.();
+													if (!isPrimaryNavigationClick(event)) return;
+													onNavigate?.();
 												}}
 											>
-												{({ ref: _ref, ...itemProps }) => (
-													<Link
-														to="/$lib/$"
-														params={{
-															lib: library,
-															_splat: routeSplatFromDocsPath(url),
-														}}
-														data-value={url}
-														{...itemProps}
-													>
-														{isPending ? (
-															<Spinner size="sm" className="ml-2" />
-														) : (
-															<span
-																className={cn(
-																	"text-xs font-mono",
-																	indented && "pl-3 text-muted-foreground",
-																)}
-															>
-																{indented ? `· ${label}` : label}
-															</span>
-														)}
-													</Link>
-												)}
+												{({ ref: _ref, ...itemProps }) =>
+													isCurrentUrl ? (
+														<a
+															href={url}
+															{...itemProps}
+															data-value={url}
+															onClick={(event) => {
+																itemProps.onClick?.(event);
+																if (isPrimaryNavigationClick(event))
+																	event.preventDefault();
+															}}
+														>
+															{itemContent}
+														</a>
+													) : (
+														<Link
+															to="/$lib/$"
+															params={{
+																lib: library,
+																_splat: routeSplatFromDocsPath(url),
+															}}
+															{...itemProps}
+															data-value={url}
+														>
+															{itemContent}
+														</Link>
+													)
+												}
 											</SidebarItem>
 										);
 									})}

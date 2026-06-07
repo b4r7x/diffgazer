@@ -39,7 +39,7 @@ pnpm exec dgadd add ui/dialog ui/tabs keys/navigation
 pnpm exec dgadd add ui/menu --integration copy
 ```
 
-`keys` mode rewrites local hook imports to `@diffgazer/keys` and installs the package dependency.
+`keys` mode rewrites local hook imports to `@diffgazer/keys` and installs the package dependency. Use it only after `@diffgazer/keys` is published, or after you make a local tarball available to the target app.
 
 ```bash
 pnpm exec dgadd add ui/menu --integration keys
@@ -51,10 +51,11 @@ Standalone hooks can be installed directly. They are copied as source files and 
 pnpm exec dgadd add keys/navigation keys/focus-trap keys/focus-restore keys/scroll-lock
 ```
 
-Provider-backed hooks (`useKey`, `useScope`, `useScopedNavigation`, `useActionRowNavigation`, `useFocusZone`) are package-only because they depend on `KeyboardProvider` runtime context. Install them with the package instead:
+Provider-backed hooks (`useKey`, `useScope`, `useScopedNavigation`, `useActionRowNavigation`, `useFocusZone`) are package-only because they depend on `KeyboardProvider` runtime context. The public package is not live yet; before publication, pack it from this workspace and install the tarball:
 
 ```bash
-npm install @diffgazer/keys
+pnpm --filter @diffgazer/keys pack --pack-destination /tmp/diffgazer-packs
+npm install /tmp/diffgazer-packs/diffgazer-keys-*.tgz
 ```
 
 ## Notes

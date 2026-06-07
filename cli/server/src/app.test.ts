@@ -260,6 +260,22 @@ describe("API token middleware", () => {
     }
   );
 
+  it("returns 401 for a malformed multibyte token header", async () => {
+    process.env.DIFFGAZER_SHUTDOWN_TOKEN = "abc";
+    const app = createApp();
+
+    const res = await app.request("/api/config", {
+      headers: {
+        Host: "localhost:3000",
+        [SHUTDOWN_TOKEN_HEADER]: "abé",
+      },
+    });
+
+    expect(res.status).toBe(401);
+    const body = (await res.json()) as { error: { message: string } };
+    expect(body.error.message).toBe("Unauthorized");
+  });
+
   it("uses 401 for a missing token and reserves 403 for a forbidden host", async () => {
     const app = createApp();
 

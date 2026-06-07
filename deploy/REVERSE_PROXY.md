@@ -30,41 +30,45 @@ Traefik runs as a Coolify-managed service. It:
 - Redirects HTTP (port 80) to HTTPS (port 443)
 - Sets HSTS headers at the proxy level
 
-All containers listen on internal ports only. The `docker-compose.yml` binds
-host ports to `127.0.0.1` so they are never exposed to the public internet.
+Production uses three separate Coolify Docker Image resources. Each resource
+pulls a GHCR `:prod` image that was promoted from a scanned SHA tag by the
+manual deploy workflow. This project does not keep a production or local
+Docker Compose deploy path.
 
 ---
 
 ## Subdomain Mapping
 
-| Subdomain | Container | Internal Port | Dockerfile | Content |
+| Subdomain | Container | Internal Port | Runtime artifact | Content |
 |---|---|---|---|---|
-| `r.b4r7.dev` | registry | 8080 | `deploy/registry.Dockerfile` | Static JSON (shadcn registry) |
-| `docs.b4r7.dev` | docs | 3000 | `Dockerfile` (root) | Node.js SSR (TanStack Start + Nitro) |
-| `diffgazer.b4r7.dev` | landing | 8080 | `deploy/landing.Dockerfile` | Static SPA (Vite + React) |
+| `r.b4r7.dev` | registry | 8080 | `ghcr.io/b4r7x/diffgazer-registry:prod` | Static JSON (shadcn registry) |
+| `docs.b4r7.dev` | docs | 3000 | `ghcr.io/b4r7x/diffgazer-docs:prod` | Node.js SSR (TanStack Start + Nitro) |
+| `diffgazer.b4r7.dev` | landing | 8080 | `ghcr.io/b4r7x/diffgazer-landing:prod` | Static SPA (Vite + React) |
 
 ---
 
 ## Coolify Domain Configuration
 
-For each service, set the domain in the Coolify Resource settings:
+For each service, create a Coolify Docker Image resource. Turn Auto Deploy off;
+the manual GitHub Actions deploy promotes scanned SHA images to `:prod`, then
+calls the selected Coolify webhooks. See
+[`deploy/PUBLIC_DEPLOYMENT.md`](./PUBLIC_DEPLOYMENT.md) for the full runbook.
 
 ### Registry (`r.b4r7.dev`)
 
 - **Domain**: `r.b4r7.dev`
+- **Image**: `ghcr.io/b4r7x/diffgazer-registry:prod`
 - **Port**: `8080`
 - **Health Check Path**: `/r/ui/registry.json`
-- **Watch Paths**: `libs/ui/public/r/**,libs/keys/public/r/**,deploy/registry*`
+- **Auto Deploy**: off
 
 ### Docs (`docs.b4r7.dev`)
 
 - **Domain**: `docs.b4r7.dev`
+- **Image**: `ghcr.io/b4r7x/diffgazer-docs:prod`
 - **Port**: `3000`
 - **Health Check Path**: `/`
-- **Watch Paths**: `apps/docs/**,libs/**,scripts/**`
-- **Build-time env vars**:
-  - `REGISTRY_ORIGIN=https://r.b4r7.dev`
-  - `VITE_PUBLIC_ORIGIN=https://docs.b4r7.dev`
+- **Auto Deploy**: off
 - **Runtime env vars**:
   - `NODE_ENV=production`
   - `PORT=3000`
@@ -72,11 +76,10 @@ For each service, set the domain in the Coolify Resource settings:
 ### Landing (`diffgazer.b4r7.dev`)
 
 - **Domain**: `diffgazer.b4r7.dev`
+- **Image**: `ghcr.io/b4r7x/diffgazer-landing:prod`
 - **Port**: `8080`
 - **Health Check Path**: `/`
-- **Watch Paths**: `apps/landing/**,libs/ui/**`
-- **Build-time env vars**:
-  - `VITE_DOCS_ORIGIN=https://docs.b4r7.dev`
+- **Auto Deploy**: off
 
 ---
 
@@ -157,6 +160,17 @@ HSTS on its own. In addition, they set:
 - `Content-Security-Policy` (per-service)
 - `Permissions-Policy` (restrictive)
 
+### Docs CSP script exception
+
+The docs app currently keeps `script-src 'unsafe-inline'` in its CSP. TanStack
+Start renders hydration scripts through the root `<Scripts />` outlet, and this
+app does not yet wire a per-request nonce into `apps/docs/src/router.tsx`.
+The generated TanStack/React server runtime contains nonce plumbing, but without
+a request-level nonce handoff a static nonce would be weaker than the current
+explicit exception. The exception is limited to scripts; all docs responses,
+including static assets and copied registry JSON under `/r/**`, receive the same
+security headers through `apps/docs/src/server.ts` and Nitro `routeRules`.
+
 ---
 
 ## Firewall Requirements
@@ -169,17 +183,16 @@ Port 443  (TCP)  -- HTTPS, terminated by Traefik
 Port 22   (TCP)  -- SSH (for management only, key auth only)
 ```
 
-All container ports are bound to `127.0.0.1` in `docker-compose.yml`:
+Coolify Docker Image resources expose only internal container ports to Traefik:
 
 ```yaml
-ports:
-  - "127.0.0.1:3000:3000"   # docs
-  - "127.0.0.1:8081:8080"   # registry
-  - "127.0.0.1:8082:8080"   # landing
+expose:
+  - "3000"   # docs
+  - "8080"   # registry and landing
 ```
 
-This prevents direct access to container ports from the public internet.
-All traffic must go through Traefik.
+There should be no host `ports:` mappings for these public resources. All
+production traffic must go through Traefik.
 
 To verify firewall rules:
 
@@ -287,9 +300,7 @@ npx shadcn@latest add https://r.b4r7.dev/r/ui/button.json
 
 ### Custom Docker networks
 
-Do NOT define custom Docker networks in docker-compose or Dockerfiles for
-Coolify-managed services. Coolify manages Traefik networking automatically.
-Custom networks cause intermittent HTTPS outages per Coolify docs.
-
-The `diffgazer` bridge network in `docker-compose.yml` is for local development
-only. Coolify overrides networking when deploying.
+Do not define custom Docker networks for production Docker Image resources or
+Dockerfiles for Coolify-managed services. Coolify manages Traefik networking
+automatically. Custom networks cause intermittent HTTPS outages per Coolify
+docs.

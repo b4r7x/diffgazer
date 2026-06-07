@@ -24,12 +24,11 @@ import {
 	sourceSlugsForLibrary,
 } from "@/lib/library";
 import { useSearchOpen } from "@/lib/search-context";
+import { parseLibrarySwitchInput } from "@/lib/server-inputs";
 import { usePendingDocsRoute } from "@/lib/use-pending-docs-route";
 
 const resolveLibrarySwitchPath = createServerFn({ method: "GET" })
-	.inputValidator(
-		(input: { targetLibrary: DocsLibraryId; currentSlugs: string[] }) => input,
-	)
+	.inputValidator(parseLibrarySwitchInput)
 	.handler(async ({ data }) => {
 		const { source } = await import("@/lib/source");
 		const sourceSlugs = sourceSlugsForLibrary(

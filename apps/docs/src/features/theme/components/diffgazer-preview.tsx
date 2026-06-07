@@ -28,8 +28,8 @@ export function DiffgazerPreview() {
 			</header>
 
 			<p className="text-sm text-muted-foreground max-w-2xl">
-				Run one command and get a structured review from dedicated AI agents.
-				Your workflow stays local and you pick the provider.
+				Install the published CLI, then get a structured review from dedicated
+				AI agents.
 			</p>
 
 			<div className="grid gap-2 sm:grid-cols-2">

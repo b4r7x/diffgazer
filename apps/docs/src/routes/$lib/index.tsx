@@ -1,18 +1,15 @@
 import { createFileRoute, notFound, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import {
-	type DocsLibraryId,
-	parseDocsLibrary,
-	routeSplatFromDocsPath,
-} from "@/lib/library";
+import { parseDocsLibrary, routeSplatFromDocsPath } from "@/lib/library";
 import {
 	firstNavigablePage,
 	fromFumadocsRoot,
 	mapPageTreeForLibrary,
 } from "@/lib/page-tree";
+import { parseDocsShellInput } from "@/lib/server-inputs";
 
 const resolveFirstPageSplat = createServerFn({ method: "GET" })
-	.inputValidator((input: { library: DocsLibraryId }) => input)
+	.inputValidator(parseDocsShellInput)
 	.handler(async ({ data }): Promise<string | null> => {
 		const { source } = await import("@/lib/source");
 		const tree = mapPageTreeForLibrary(

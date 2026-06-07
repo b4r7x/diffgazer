@@ -11,13 +11,13 @@ description: Local AI code review workflow, review lenses, and quick start.
 
 Diffgazer gives solo developers a local-first code review loop:
 
-- only your `git diff` is sent to the provider you choose
+- review requests send diff and prompt content to the provider you choose
 - independent review lenses focus on different failure modes
 - review history and issue drilldowns keep context in one place
 
 ## Quick Start
 
-The public `diffgazer` package is published. Run `npm view diffgazer version` to verify the current published version, then install it globally when you want the packaged CLI instead of the workspace development commands:
+The public `diffgazer` package is published. Run `npm view diffgazer version engines --json` to verify the current published version and Node floor, then install it globally:
 
 ```bash
 npm install -g diffgazer

@@ -74,7 +74,7 @@ pnpm run release
 
 `smoke:packages` currently covers local tarball installs, all exported `@diffgazer/ui` subpaths, CSS export resolution, React SSR rendering, strict NodeNext type checking, and the shared React `>=19.2.0` floor. Public handoff also requires clean consumer checks in Vite and Next apps with npm, pnpm, yarn, and bun after the packages are actually published.
 
-A checked-in release-readiness workflow should wire to the root scripts above and block public handoff when install, build, generated-file cleanliness, verify, changeset, smoke, or pack checks fail.
+The checked-in release-readiness workflow wires to the root scripts above and blocks public handoff when install, build, generated-file cleanliness, verify, changeset, smoke, or pack checks fail. It is verification-only; it must not call production webhooks, read Coolify secrets, or trigger production deploys.
 
 ## Release Process
 
@@ -138,6 +138,30 @@ A checked-in release-readiness workflow should wire to the root scripts above an
    Build each fixture after adding the required `@/*` alias, app CSS import, and package-mode Tailwind `@source` entry.
 
 The current `smoke:packages` script validates packed local packages, not freshly published registry packages. The npm, yarn, and bun matrix above is an external publish-gate check until registry packages exist.
+
+## Public Surface Deployment
+
+Public hosting is separate from package publishing. Production deploys are manual
+only through `.github/workflows/deploy.yml` and are limited to docs, registry,
+and landing. The workflow requires `confirm_production=deploy`, refuses
+non-`main` refs, pushes SHA-tagged GHCR images, scans those pushed images, waits
+for the `production` environment approval, promotes the scanned SHA tags to
+`:prod`, and calls the selected Coolify webhooks.
+
+Docs and registry deploy together from the same SHA. Landing may deploy
+separately. The `diffgazer` CLI, embedded server, and web app are not VPS public
+deploy targets.
+
+Coolify production resources are three separate Docker Image resources with Auto
+Deploy off:
+
+- `ghcr.io/b4r7x/diffgazer-docs:prod`
+- `ghcr.io/b4r7x/diffgazer-registry:prod`
+- `ghcr.io/b4r7x/diffgazer-landing:prod`
+
+There is no Docker Compose deployment path for the public surfaces. Deployment
+setup, secret boundaries, public checks, and rollback steps are documented in
+[`deploy/PUBLIC_DEPLOYMENT.md`](./deploy/PUBLIC_DEPLOYMENT.md).
 
 ## Package Build Guards
 
@@ -211,6 +235,9 @@ Workspace package manifests should keep declared ranges compatible with the over
 - **Patch and minor drift**: bump opportunistically alongside related work. Re-run `pnpm dedupe --check` after a bump and update the override if a new duplicate appears.
 - **Major drift**: review quarterly. Each major bump (TypeScript, Vite, Vitest, React, Tailwind, Next, Hono, fumadocs, TanStack) requires its own task and changeset because of the public-API blast radius.
 - **CI audit gate**: the release-readiness workflow runs `pnpm audit --prod --audit-level=high` as a **hard gate**. HIGH and critical advisories block release. Moderate advisories surface in the audit output but do not fail the build; review them and patch where reasonable. Overrides for known-unfixable transitive advisories are listed in the Overrides section of this document; each override has a stated sunset condition.
+- **Secret scan gate**: release readiness runs `pnpm run secret-scan` as a hard gate before build. The scanner reports high-confidence findings with redacted values.
+- **Update automation**: Dependabot covers GitHub Actions, Docker base images in `/` and `/deploy`, and npm/pnpm workspace dependencies. Review those PRs with extra attention to workflow, Dockerfile, and public package blast radius.
+- **Protected deploy files**: `.github/CODEOWNERS` requires owner review for workflows, deploy Dockerfiles, deploy runbooks, nginx deploy configs, `Dockerfile`, and this governance file.
 
 ### Verifying overrides
 
@@ -268,12 +295,14 @@ Until the hosted registry endpoints serve `200 OK` for `/r/ui/registry.json`, `/
 - Runtime npm packages from locally packed tarballs: `npm install ./diffgazer-ui-*.tgz ./diffgazer-keys-*.tgz`.
 - Direct file copy from GitHub: `https://github.com/b4r7x/diffgazer/tree/main/libs/ui/registry/ui/<component>`.
 
-After deployment, hosted-registry availability is verified by:
+Release readiness runs `pnpm run registry:live-check`. That script reads the docs consumption metadata and skips only while public hosted-registry install commands remain gated. If the registry is ungated, or if `DIFFGAZER_LIVE_REGISTRY_REQUIRED=1` is set, the check is a hard gate.
+
+After deployment or ungating, hosted-registry availability is verified by:
 
 1. `host r.b4r7.dev` resolves to the deploy target.
 2. `curl -fI https://r.b4r7.dev/r/ui/registry.json` returns `200`.
 3. `curl -fI https://r.b4r7.dev/r/ui/button.json` returns `200`.
-4. A CI smoke step in the release-readiness workflow asserts the same three responses on every release run.
+4. `curl -fI https://r.b4r7.dev/r/keys/navigation.json` returns `200`.
 
 Once those checks pass, un-gate the hosted-shadcn install snippets in `README.md`, `libs/ui/README.md`, `libs/keys/README.md`, and `apps/docs/content/docs/**/*.mdx`, and remove the "future" preambles introduced by T-DIST-DEPLOY.
 

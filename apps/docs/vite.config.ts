@@ -9,6 +9,7 @@ import { defineConfig } from "vite";
 import viteTsConfigPaths from "vite-tsconfig-paths";
 import { getPreRenderPages as enumeratePreRenderPages } from "./scripts/generate-sitemap.ts";
 import * as MdxConfig from "./source.config";
+import { DOCS_SECURITY_HEADERS } from "./src/security-headers";
 import { docsDataRebuild } from "./vite-plugin-docs-rebuild";
 
 function getPreRenderPages(): Array<{ path: string }> {
@@ -39,7 +40,15 @@ const config = defineConfig(() => {
 					pages: getPreRenderPages(),
 				})
 			: null,
-		!isVitest ? nitro() : null,
+		!isVitest
+			? nitro({
+					routeRules: {
+						"/**": {
+							headers: DOCS_SECURITY_HEADERS,
+						},
+					},
+				})
+			: null,
 		viteReact(),
 	];
 

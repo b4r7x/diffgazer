@@ -15,6 +15,7 @@
   ],
   "scripts": {
     "build": "node scripts/copy-artifacts.mjs",
+    "test:types": "node -e \"console.log('artifact-only package: no TypeScript tests')\"",
     "prepublishOnly": "test -f dist/artifacts/artifact-manifest.json && test -f dist/artifacts/fingerprint.sha256"
   },
   "devDependencies": {

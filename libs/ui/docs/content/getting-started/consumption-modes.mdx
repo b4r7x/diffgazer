@@ -3,7 +3,7 @@ title: Consumption Modes
 description: Choose copy-first source you own or versioned runtime package imports.
 ---
 
-`@diffgazer/ui` has two intended consumption modes. The npm packages are external publish-gated as of May 6, 2026, so public npm commands stay gated until `npm view @diffgazer/add version`, `npm view @diffgazer/ui version`, and `npm view @diffgazer/keys version` succeed.
+`@diffgazer/ui` has two intended consumption modes. The npm packages are external publish-gated as of June 6, 2026, so public npm commands stay gated until `npm view @diffgazer/add version`, `npm view @diffgazer/ui version`, and `npm view @diffgazer/keys version` succeed.
 
 ## Copy-First Mode
 
@@ -36,11 +36,15 @@ Prerequisites:
 
 Use runtime package mode when you want versioned imports and do not need source customization.
 
-Before publication, validate this path with locally packed `@diffgazer/ui` and `@diffgazer/keys` tarballs. After publication, install the public packages:
+Before publication, validate this path with locally packed `@diffgazer/ui` and `@diffgazer/keys` tarballs:
 
 ```bash
-npm install @diffgazer/ui @diffgazer/keys
+pnpm --filter @diffgazer/ui pack --pack-destination /tmp/diffgazer-packs
+pnpm --filter @diffgazer/keys pack --pack-destination /tmp/diffgazer-packs
+npm install /tmp/diffgazer-packs/diffgazer-ui-*.tgz /tmp/diffgazer-packs/diffgazer-keys-*.tgz
 ```
+
+After publication, switch those tarball installs to the public package names once the matching `npm view` checks succeed.
 
 Prerequisites:
 

@@ -23,9 +23,7 @@ These are safe to set in your shell or process environment. Anything not listed 
 | `GROQ_API_KEY` | API key for Groq. | Unset |
 | `CEREBRAS_API_KEY` | API key for Cerebras. | Unset |
 
-The five provider keys map to the six enabled providers because Z.ai and Z.ai Coding Plan share `ZAI_API_KEY`. You do not have to put a key in the environment at all: you can store it in diffgazer instead, or store only the variable's name and let diffgazer read the live value each run. For the full provider-to-variable mapping and how stored keys work, see [Providers](/app/reference/providers).
-
-> Note: The root `.env.example` is out of date and does not document `DIFFGAZER_HOME`, `DIFFGAZER_LOG_LEVEL`, `DIFFGAZER_OFFLINE`, `DIFFGAZER_FORCE_KILL_DELAY_MS`, or `DIFFGAZER_PROJECT_ROOT`, and it lists only three of the five provider keys. The variables read in code, not the example file, are authoritative. This table reflects the code.
+The five provider keys map to the six enabled providers because Z.ai and Z.ai Coding Plan share `ZAI_API_KEY`. You do not have to put a key in the environment at all: you can store it in diffgazer instead, or store only the variable's name and let diffgazer read the live value each run. The root `.env.example` mirrors these user-set variables. For the full provider-to-variable mapping and how stored keys work, see [Providers](/app/reference/providers).
 
 ## Set automatically
 

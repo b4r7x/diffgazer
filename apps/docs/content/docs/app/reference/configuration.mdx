@@ -31,7 +31,7 @@ These are the fields in the settings config. Anything you do not set falls back 
 
 ## Secrets storage
 
-`secretsStorage` decides where your API keys live once you save them. With `file`, keys are written to `~/.diffgazer/secrets.json` (the same `0600` permissions as the rest). With `keyring`, diffgazer hands them to your operating system's credential store instead of writing them to that file. The default is `null`, which means the choice has not been made yet, so pick one before you save a key. Either way, keys stay on your machine. You can also skip stored secrets entirely and point a provider at an environment variable, which is covered under [Providers](/app/reference/providers) and [Environment variables](/app/reference/environment-variables).
+`secretsStorage` decides where your API keys live once you save them. With `file`, keys are written as plaintext JSON to `~/.diffgazer/secrets.json` with the same `0600` permissions as the rest. With `keyring`, diffgazer hands them to your operating system's credential store instead of writing them to that file. The default is `null`, which means the choice has not been made yet, so pick one before you save a key. Either way, credentials stay local to your machine. You can also skip stored secrets entirely and point a provider at an environment variable, which is covered under [Providers](/app/reference/providers) and [Environment variables](/app/reference/environment-variables).
 
 ## Trust
 

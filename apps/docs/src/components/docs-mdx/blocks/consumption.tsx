@@ -22,6 +22,16 @@ import { useComponentData, useHookData } from "../doc-data-context";
 type PathState = ConsumptionMetadata["paths"]["copy"];
 type Caption = { label: string; value?: string };
 
+function getUnavailableNotes(paths: PathState[]): string[] {
+	return Array.from(
+		new Set(
+			paths
+				.map((path) => path.note)
+				.filter((note): note is string => Boolean(note)),
+		),
+	);
+}
+
 function getRouteItem(
 	pathname: string,
 	library: ConsumptionLibrary,
@@ -179,9 +189,13 @@ export function ConsumptionBlock() {
 					))}
 				</Tabs>
 			) : (
-				<Typography as="p" size="xs" className="italic">
-					Not available
-				</Typography>
+				<div className="space-y-2">
+					{getUnavailableNotes(tabs.map((tab) => tab.path)).map((note) => (
+						<Typography key={note} as="p" size="xs" className="leading-relaxed">
+							{note}
+						</Typography>
+					))}
+				</div>
 			)}
 
 			{meta.cssNote && library === "ui" && (

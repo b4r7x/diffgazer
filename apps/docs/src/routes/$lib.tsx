@@ -4,16 +4,16 @@ import { DocsNotFoundBlock } from "@/components/docs-not-found";
 import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
 import {
-	type DocsLibraryId,
 	getDocsLibraryConfig,
 	isDocsLibraryId,
 	PRIMARY_DOCS_LIBRARY_ID,
 	parseDocsLibrary,
 } from "@/lib/library";
 import { fromFumadocsRoot, mapPageTreeForLibrary } from "@/lib/page-tree";
+import { parseDocsShellInput } from "@/lib/server-inputs";
 
 const docsShellLoader = createServerFn({ method: "GET" })
-	.inputValidator((input: { library: DocsLibraryId }) => input)
+	.inputValidator(parseDocsShellInput)
 	.handler(async ({ data }) => {
 		const { source } = await import("@/lib/source");
 		const pageTree = mapPageTreeForLibrary(

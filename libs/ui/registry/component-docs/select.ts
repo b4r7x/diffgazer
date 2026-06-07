@@ -49,7 +49,7 @@ export const selectDoc: ComponentDoc = {
     {
       title: "Requires @diffgazer/keys (package mode)",
       content:
-        "Select's built-in keyboard navigation imports from the required @diffgazer/keys peer. Package/npm consumers must install it: `npm install @diffgazer/keys`. Importing @diffgazer/ui/components/select without keys fails at module load with an error naming the missing @diffgazer/keys package. Copy/dgadd consumers do not need the package — copy mode rewrites the keyboard hooks to local source.",
+        "Select's built-in keyboard navigation imports from the required @diffgazer/keys peer. Package/npm consumers need @diffgazer/keys as a peer after public packages are published. Before publication, validate package mode with a locally packed @diffgazer/keys tarball and use public package commands only after `npm view @diffgazer/keys version` succeeds. Importing @diffgazer/ui/components/select without keys fails at module load with an error naming the missing @diffgazer/keys package. Copy/dgadd consumers do not need the package — copy mode rewrites the keyboard hooks to local source.",
     },
     {
       title: "Composition Contract",

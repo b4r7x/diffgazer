@@ -9,7 +9,6 @@ import { QuickStartLinkCard } from "./quick-start-card";
 import { SearchHero } from "./search-hero";
 
 const GITHUB_URL = "https://github.com/b4r7x/diffgazer";
-const NPM_URL = "https://www.npmjs.com/package/@diffgazer/ui";
 
 function findLibrary(libraries: HomeLibrary[], id: DocsLibraryId) {
 	return libraries.find((library) => library.id === id);
@@ -37,7 +36,7 @@ function AppCard() {
 			to="/$lib"
 			params={{ lib: "app" }}
 			title="diffgazer"
-			description="AI code review in your terminal. Local-first, keyboard-driven, provider-agnostic."
+			description="AI code review in a local web workspace served from an embedded localhost server."
 			footer={<CardFooterLabel>Open diffgazer docs</CardFooterLabel>}
 		/>
 	);
@@ -50,7 +49,7 @@ function UiCard({ components }: { components?: HomeSectionLink }) {
 			to="/$lib"
 			params={{ lib: "ui" }}
 			title="@diffgazer/ui"
-			description="Primitive and compound terminal-UI building blocks for keyboard-first apps."
+			description="Primitive and compound React UI building blocks for keyboard-first apps."
 			footer={<CardFooterLabel>{`Browse ${count} components`}</CardFooterLabel>}
 		/>
 	);
@@ -103,9 +102,9 @@ export function HomeView({ libraries }: { libraries: HomeLibrary[] }) {
 							/>
 						</div>
 						<p className="max-w-2xl border-l-2 border-foreground pl-4 font-mono text-sm leading-relaxed text-muted-foreground">
-							Reference for diffgazer's keyboard-first terminal UI primitives
-							and the headless keys layer they are built on. Copy components in
-							with the CLI or read each library's components, hooks, and guides.
+							Reference for diffgazer's keyboard-first React UI primitives and
+							the headless keys layer they are built on. Public install paths
+							are gated until the registry and npm packages are live.
 						</p>
 					</section>
 
@@ -147,14 +146,6 @@ export function HomeView({ libraries }: { libraries: HomeLibrary[] }) {
 							className="transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
 						>
 							GitHub
-						</a>
-						<a
-							href={NPM_URL}
-							target="_blank"
-							rel="noopener noreferrer"
-							className="transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
-						>
-							NPM
 						</a>
 						<Link
 							to="/$lib"

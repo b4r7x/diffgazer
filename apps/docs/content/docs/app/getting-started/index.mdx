@@ -13,11 +13,11 @@ diffgazer takes the diff of your working changes, gathers the surrounding code a
 
 ## Two ways to review
 
-By default `diffgazer` starts a local web environment and opens it in your browser. That is the path most people should use. The same review also runs in a keyboard-first terminal UI behind the `--tui` flag, but that mode is an incomplete beta and not recommended yet. The marketing copy still calls diffgazer terminal-native; the honest version is that the browser is the default today and the terminal UI is catching up. See [web mode](/app/web/index) and the [terminal UI](/app/tui/index) for the details of each.
+By default `diffgazer` starts a local web environment and opens it in your browser. That is the path most people should use. The same review also runs in a keyboard-first terminal UI behind the `--tui` flag, but that mode is an incomplete beta and not recommended yet. See [web mode](/app/web/index) and the [terminal UI](/app/tui/index) for the details of each.
 
 ## Local and private
 
-diffgazer runs entirely on your machine. There is no server to deploy, and nothing about your diff is uploaded to a dashboard you do not control. Your source and your provider keys stay local; the only thing that leaves is the request to the model provider you chose. See [privacy](/app/concepts/privacy) for what is sent and what is not.
+diffgazer runs on your machine. There is no remote Diffgazer service to deploy, and nothing about your diff is uploaded to a dashboard you do not control. Credentials are stored locally or read from your environment; when you start a review, the diff and prompt content go to the model provider you chose under that provider's policy. See [privacy](/app/concepts/privacy) for what is sent and what is not.
 
 ## Where to go next
 

@@ -3,7 +3,7 @@ title: Quickstart
 description: From install to your first review in a few commands.
 ---
 
-The fastest path to a review is three commands, run from inside a git repository that has uncommitted changes. You also need a key for one supported provider before diffgazer will let a review start.
+The fastest path to a review starts with the published CLI. Run diffgazer from inside a git repository that has uncommitted changes. You also need a key for one supported provider before diffgazer will let a review start.
 
 ## Prerequisites
 
@@ -16,6 +16,8 @@ The fastest path to a review is three commands, run from inside a git repository
 <Steps>
 
 <Step title="Install the CLI">
+
+Install the published `diffgazer` package:
 
 ```bash
 npm install -g diffgazer
@@ -49,7 +51,7 @@ Pick a provider, paste your key, choose a model, and trust the repo.
 
 <Step title="Start a review">
 
-Start a review from the web environment.
+Start a review from the web environment. Source files remain local until this step sends a review request; then the diff and prompt content go to the provider you selected under that provider's policy.
 
 </Step>
 
@@ -70,7 +72,7 @@ diffgazer blocks a review until setup is complete and returns a clear list of wh
 - Node.js 20 or newer is installed.
 - `git` is installed and you are inside a git repository.
 - The repository has changes to review.
-- A secrets storage backend is chosen during onboarding (your OS keyring or an encrypted file).
+- A secrets storage backend is chosen during onboarding: your OS keyring or a plaintext JSON file protected by `0600` filesystem permissions.
 - A provider is active, its API key is saved and readable, and a model is selected.
 - The current directory is trusted so diffgazer can read its files.
 

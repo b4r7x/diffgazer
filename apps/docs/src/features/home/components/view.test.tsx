@@ -166,7 +166,7 @@ describe("HomeView", () => {
 		}
 	});
 
-	it("exposes real external links in the footer", () => {
+	it("exposes available external links in the footer", () => {
 		renderHome();
 
 		const footerNav = screen.getByRole("navigation", {
@@ -176,8 +176,8 @@ describe("HomeView", () => {
 			within(footerNav).getByRole("link", { name: "GitHub" }),
 		).toHaveAttribute("href", "https://github.com/b4r7x/diffgazer");
 		expect(
-			within(footerNav).getByRole("link", { name: "NPM" }),
-		).toHaveAttribute("href", "https://www.npmjs.com/package/@diffgazer/ui");
+			within(footerNav).queryByRole("link", { name: "NPM" }),
+		).not.toBeInTheDocument();
 		expect(
 			within(footerNav).getByRole("link", { name: "Docs" }),
 		).toHaveAttribute("href", "/ui");

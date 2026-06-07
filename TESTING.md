@@ -93,7 +93,7 @@ Both `cli/add` and `cli/diffgazer` run on Vitest 4 with `environment: "node"`. S
 
 ### 10. Type-check enforcement
 
-Every package has `test:types` script: `vitest --typecheck --typecheck.only --run`. The CI gate (`pnpm run verify`) runs `turbo run test:types` after `test`. Test files participate in `tsconfig.test.json` (separate from production `tsconfig.json` to keep production type-check fast and prevent jest-dom/vitest-globals types from leaking into prod source).
+Every workspace package has an explicit `test:types` script so `turbo run test:types` cannot silently skip packages through nonexistent tasks. Packages with type-level Vitest assertions use `vitest --typecheck --typecheck.only --run`; packages with ordinary runtime tests use `tsc --noEmit -p tsconfig.test.json` so test files participate in `tsconfig.test.json` without leaking jest-dom/vitest-globals types into production source. Artifact-only packages may use an explicit no-op script and must keep that exception obvious in `package.json`.
 
 ## Shared test helpers
 

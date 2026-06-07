@@ -13,6 +13,8 @@
     "preview": "vite preview --outDir .output/public",
     "pretest": "pnpm prepare:generated",
     "test": "vitest run",
+    "pretest:types": "pnpm prepare:generated && node ./scripts/generate-route-tree.mjs",
+    "test:types": "tsc --noEmit -p tsconfig.test.json",
     "format": "biome format",
     "lint": "biome lint",
     "check": "biome check src scripts vite.config.ts vite-plugin-docs-rebuild.ts source.config.ts",

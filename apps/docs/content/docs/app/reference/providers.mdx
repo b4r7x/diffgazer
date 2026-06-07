@@ -38,14 +38,14 @@ diffgazer's bundled catalog also carries data for a few providers that are prese
 | Hugging Face | `HF_TOKEN` | Disabled, not shown in any picker |
 | GitHub Models | `GITHUB_TOKEN` | Disabled, not shown in any picker |
 
-> Note: The root `.env.example` is out of date. It lists only `GOOGLE_API_KEY`, `ZAI_API_KEY`, and `OPENROUTER_API_KEY`, so it omits `GROQ_API_KEY` and `CEREBRAS_API_KEY` for two enabled providers. The table under [Providers](#providers) is authoritative; the schema and overlay in the code, not the example file, decide which variable a provider reads.
+The root `.env.example` lists the same enabled provider keys shown above.
 
 ## Credentials
 
 How a key is supplied and where it lives:
 
 - A key can be stored two ways. As a literal value, diffgazer keeps the secret itself. As an environment reference, diffgazer stores only the name of the variable to read at runtime, so the secret never enters its own files. You choose between these when you add the key during [onboarding](/app/web/onboarding) or in [settings](/app/web/settings).
-- Stored secrets live in one of two places, depending on your Secrets Storage choice: a local `secrets.json` file under `~/.diffgazer/` (written with `0600` permissions), or your operating system keyring. Switching storage migrates existing keys to the new location.
+- Stored secrets live in one of two places, depending on your Secrets Storage choice: your operating system keyring, or a local `secrets.json` file under `~/.diffgazer/`. The file backend stores plaintext JSON protected by `0600` filesystem permissions. Switching storage migrates existing keys to the new location.
 - An environment reference must point at that provider's own variable. The accepted names are exactly the env vars in the [Providers](#providers) table, the set `ALLOWED_CREDENTIAL_ENV_VARS` derived from the per-provider env-var map. Pointing one provider at another provider's variable is rejected, so for example a Groq credential may only reference `GROQ_API_KEY`.
 - Activating a provider checks the model. The model you select must exist in that provider's resolved catalog, or activation fails. OpenRouter is the exception: because its models come from its live key-gated route rather than the catalog, any model id you choose for it is accepted.
 

@@ -4,15 +4,6 @@ import type {
 	ConsumptionMetadata,
 } from "@diffgazer/registry";
 
-/**
- * Origin that serves the public shadcn registry JSON (`/r/<library>/<item>.json`).
- * Production points at `https://r.b4r7.dev`; set `VITE_REGISTRY_ORIGIN` to a
- * preview/local origin to render install commands against a different registry.
- */
-const DEFAULT_REGISTRY_ORIGIN = "https://r.b4r7.dev";
-const REGISTRY_ORIGIN =
-	import.meta.env.VITE_REGISTRY_ORIGIN ?? DEFAULT_REGISTRY_ORIGIN;
-
 /** Keys hooks that require KeyboardProvider and are only available through the npm package. */
 const KEYS_PACKAGE_ONLY = new Set([
 	"use-key",
@@ -25,11 +16,17 @@ const KEYS_PACKAGE_ONLY = new Set([
 	"use-optional-keyboard-context",
 ]);
 
-/** All packages are publish-gated as of the current date. */
+/** All public registry and package paths are publish-gated as of June 6, 2026. */
 export const PUBLISH_GATED = true;
 
 export const PUBLISH_GATE_NOTE =
-	"Public npm commands are publish-gated until npm view returns versions for @diffgazer/add, @diffgazer/ui, and @diffgazer/keys.";
+	"Public npm commands are not live yet. Use a locally packed tarball from this workspace until npm view returns versions for @diffgazer/add, @diffgazer/ui, and @diffgazer/keys.";
+
+const HOSTED_REGISTRY_GATE_NOTE =
+	"The hosted registry is not public yet because r.b4r7.dev does not resolve. Use this source checkout or a local registry preview until the endpoint returns 200.";
+
+const LOCAL_DGADD_GATE_NOTE =
+	"dgadd is not public on npm yet. Pack @diffgazer/add from this workspace, install the tarball in your app, then run this command.";
 
 function getKeysHookFileName(itemId: string): string {
 	return itemId.startsWith("use-") ? itemId : `use-${itemId}`;
@@ -81,25 +78,24 @@ export function getConsumptionMetadata(
 				copy: isKeysPackageOnly
 					? {
 							available: false,
-							note: "Requires KeyboardProvider; package-only.",
+							note: "Requires KeyboardProvider and the @diffgazer/keys package, which is not public on npm yet.",
 						}
 					: {
-							available: true,
-							command: `npx shadcn add ${REGISTRY_ORIGIN}/r/keys/${registryItemId}.json`,
+							available: false,
+							note: HOSTED_REGISTRY_GATE_NOTE,
 						},
 				dgadd: isKeysPackageOnly
 					? {
 							available: false,
-							note: "Requires KeyboardProvider; package-only.",
+							note: "Requires KeyboardProvider and the @diffgazer/keys package, which is not public on npm yet.",
 						}
 					: {
 							available: true,
 							command: `pnpm exec dgadd add ${dgaddName}`,
-							note: PUBLISH_GATED ? PUBLISH_GATE_NOTE : undefined,
+							note: PUBLISH_GATED ? LOCAL_DGADD_GATE_NOTE : undefined,
 						},
 				package: {
-					available: true,
-					command: `npm install @diffgazer/keys`,
+					available: false,
 					note: PUBLISH_GATED ? PUBLISH_GATE_NOTE : undefined,
 				},
 			},
@@ -121,21 +117,20 @@ export function getConsumptionMetadata(
 		publishGated: PUBLISH_GATED,
 		paths: {
 			copy: {
-				available: true,
-				command: `npx shadcn add ${REGISTRY_ORIGIN}/r/ui/${itemId}.json`,
+				available: false,
+				note: HOSTED_REGISTRY_GATE_NOTE,
 			},
 			dgadd: {
 				available: true,
 				command: `pnpm exec dgadd add ui/${itemId}`,
-				note: PUBLISH_GATED ? PUBLISH_GATE_NOTE : undefined,
+				note: PUBLISH_GATED ? LOCAL_DGADD_GATE_NOTE : undefined,
 			},
 			package: {
-				available: true,
-				command: `npm install @diffgazer/ui @diffgazer/keys`,
+				available: false,
 				note: PUBLISH_GATED ? PUBLISH_GATE_NOTE : undefined,
 			},
 		},
 		cssNote:
-			"UI components require Tailwind CSS v4. Copy mode imports src/styles/styles.css; package mode imports @diffgazer/ui/sources.css and @diffgazer/ui/styles.css.",
+			"UI components require Tailwind CSS v4. Local copy mode imports src/styles/styles.css; package mode is publish-gated with @diffgazer/ui CSS.",
 	};
 }

@@ -7,7 +7,7 @@ description: Install @diffgazer/keys as a package, or copy standalone hooks into
 
 > **Installing via dgadd:** Only standalone hooks (`keys/navigation`, `keys/focus-trap`, `keys/focus-restore`, `keys/scroll-lock`) are copyable; provider-backed hooks are package-only. For the full command and flag reference — `init`, `add`, `list`, `diff`, `remove` — see the [dgadd CLI reference](/app/cli).
 
-> **Warning:** Both `@diffgazer/keys` and `@diffgazer/add` are external publish-gated as of May 6, 2026. Run the package-manager commands below only after `npm view @diffgazer/keys version` and `npm view @diffgazer/add version` succeed; until then, validate against a locally packed workspace tarball.
+> **Warning:** Both `@diffgazer/keys` and `@diffgazer/add` are external publish-gated as of June 6, 2026. Use package-manager commands against public package names only after `npm view @diffgazer/keys version` and `npm view @diffgazer/add version` succeed; until then, validate against locally packed workspace tarballs.
 
 ## Package install
 
@@ -15,10 +15,11 @@ Use the package when you need provider-backed hooks: `KeyboardProvider`, `useKey
 
 <Steps>
 
-<Step title="Install the package">
+<Step title="Pack and install the package">
 
 ```bash
-npm install @diffgazer/keys
+pnpm --filter @diffgazer/keys pack --pack-destination /tmp/diffgazer-packs
+npm install /tmp/diffgazer-packs/diffgazer-keys-*.tgz
 ```
 
 </Step>
@@ -68,12 +69,7 @@ For a single item you can drop the `add` keyword — `pnpm exec dgadd keys/navig
 
 ## Direct shadcn / manual copy
 
-The hosted registry at `https://r.b4r7.dev/` is not yet live. After publication, public keys registry items will be installable directly with shadcn:
-
-```bash
-npx shadcn add https://r.b4r7.dev/r/keys/navigation.json
-npx shadcn add https://r.b4r7.dev/r/keys/focus-trap.json
-```
+The hosted registry at `https://r.b4r7.dev/` is not yet live. After DNS resolves and the registry endpoints return 200, public keys registry items will be installable directly with shadcn from their `/r/keys/<item>.json` URLs.
 
 Until then, use `pnpm exec dgadd add keys/navigation`, or copy source directly from [the keys hooks on GitHub](https://github.com/b4r7x/diffgazer/tree/main/libs/keys/src/hooks). Files install to `src/hooks/use-navigation.ts`, `src/hooks/utils/navigation-items.ts`, and so on.
 

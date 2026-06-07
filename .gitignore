@@ -24,3 +24,4 @@ tmp/
 *.tsbuildinfo
 apps/docs/playwright-report/
 apps/docs/test-results/
+.nuke

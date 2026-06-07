@@ -1,105 +1,254 @@
-name: Deploy
+name: Deploy Public Surfaces
 
 on:
-  workflow_run:
-    workflows: ["Release Readiness"]
-    types: [completed]
-    branches: [main]
   workflow_dispatch:
+    inputs:
+      target:
+        description: Public surfaces to deploy
+        required: true
+        default: docs-registry
+        type: choice
+        options:
+          - docs-registry
+          - landing
+          - all
+      confirm_production:
+        description: Type "deploy" to confirm production deployment
+        required: true
+        type: string
 
 concurrency:
-  group: deploy-${{ github.ref }}
-  cancel-in-progress: true
+  group: deploy-public-surfaces-production
+  cancel-in-progress: false
 
 permissions:
   contents: read
-  packages: write
 
 jobs:
-  build-and-push:
-    name: Build and Push Images
-    if: ${{ (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main') || github.event_name == 'workflow_dispatch' }}
+  validate-request:
+    name: Validate Manual Request
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Require production confirmation
+        env:
+          CONFIRM_PRODUCTION: ${{ inputs.confirm_production }}
+        run: |
+          if [ "${CONFIRM_PRODUCTION}" != "deploy" ]; then
+            echo "::error::confirm_production must equal 'deploy'."
+            exit 1
+          fi
+
+      - name: Require main branch
+        env:
+          DEPLOY_REF: ${{ github.ref }}
+        run: |
+          if [ "${DEPLOY_REF}" != "refs/heads/main" ]; then
+            echo "::error::Production deploys must run from refs/heads/main."
+            exit 1
+          fi
+
+  build-scan:
+    name: Build and Scan ${{ matrix.service.name }}
+    needs: validate-request
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
     strategy:
+      fail-fast: false
       matrix:
         service:
           - name: docs
             dockerfile: Dockerfile
             image: diffgazer-docs
+            port: "3000"
+            targets: docs-registry,all
           - name: registry
             dockerfile: deploy/registry.Dockerfile
             image: diffgazer-registry
+            port: "8080"
+            targets: docs-registry,all
           - name: landing
             dockerfile: deploy/landing.Dockerfile
             image: diffgazer-landing
+            port: "8080"
+            targets: landing,all
+    env:
+      IMAGE_REF: ghcr.io/b4r7x/${{ matrix.service.image }}:${{ github.sha }}
     steps:
       - name: Checkout
+        if: ${{ contains(matrix.service.targets, inputs.target) }}
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+          ref: ${{ github.sha }}
+          persist-credentials: false
 
       - name: Set up Docker Buildx
+        if: ${{ contains(matrix.service.targets, inputs.target) }}
         uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2e3ecddb7b43c4e34e7e # v3.10.0
 
       - name: Log in to GHCR
+        if: ${{ contains(matrix.service.targets, inputs.target) }}
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7a67f568d # v3.4.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build image
-        uses: docker/build-push-action@14487ce63c7a62a4a324b0bfb37086795e31c6c1 # v6.16.0
-        with:
-          context: .
-          file: ${{ matrix.service.dockerfile }}
-          push: false
-          load: true
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/${{ matrix.service.image }}:latest
-            ghcr.io/${{ github.repository_owner }}/${{ matrix.service.image }}:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Scan image for vulnerabilities
-        uses: aquasecurity/trivy-action@915b19bbe73b92a6cf82a1bc12b087c9a19a5fe2 # v0.28.0
-        with:
-          image-ref: ghcr.io/${{ github.repository_owner }}/${{ matrix.service.image }}:${{ github.sha }}
-          format: table
-          exit-code: 1
-          severity: CRITICAL,HIGH
-
-      - name: Push image
+      - name: Build and push SHA image
+        if: ${{ contains(matrix.service.targets, inputs.target) }}
         uses: docker/build-push-action@14487ce63c7a62a4a324b0bfb37086795e31c6c1 # v6.16.0
         with:
           context: .
           file: ${{ matrix.service.dockerfile }}
           push: true
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/${{ matrix.service.image }}:latest
-            ghcr.io/${{ github.repository_owner }}/${{ matrix.service.image }}:${{ github.sha }}
+          tags: ${{ env.IMAGE_REF }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.url=https://github.com/${{ github.repository }}
+            org.opencontainers.image.title=${{ matrix.service.image }}
+          provenance: mode=max
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  deploy:
-    name: Deploy to VPS
-    if: ${{ (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main') || github.event_name == 'workflow_dispatch' }}
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    environment: production
-    steps:
-      - name: Trigger Coolify deployment
-        run: |
-          curl -f -X POST "${{ secrets.COOLIFY_WEBHOOK_URL }}" \
-            -H "Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}" \
-            -H "Content-Type: application/json"
+      - name: Scan pushed SHA image
+        if: ${{ contains(matrix.service.targets, inputs.target) }}
+        uses: aquasecurity/trivy-action@915b19bbe73b92a6cf82a1bc12b087c9a19a5fe2 # v0.28.0
+        with:
+          image-ref: ${{ env.IMAGE_REF }}
+          format: table
+          exit-code: 1
+          severity: CRITICAL,HIGH
 
-      - name: Verify deployment health
-        if: success()
+  promote-deploy:
+    name: Promote and Deploy
+    needs: build-scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    permissions:
+      packages: write
+    env:
+      IMAGE_OWNER: ghcr.io/b4r7x
+      DEPLOY_TARGET: ${{ inputs.target }}
+      SOURCE_TAG: ${{ github.sha }}
+      GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GHCR_USERNAME: ${{ github.actor }}
+      COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+      COOLIFY_WEBHOOK_DOCS: ${{ secrets.COOLIFY_WEBHOOK_DOCS }}
+      COOLIFY_WEBHOOK_REGISTRY: ${{ secrets.COOLIFY_WEBHOOK_REGISTRY }}
+      COOLIFY_WEBHOOK_LANDING: ${{ secrets.COOLIFY_WEBHOOK_LANDING }}
+    steps:
+      - name: Promote scanned images and trigger Coolify
         run: |
+          set -euo pipefail
+
+          require_env() {
+            name="$1"
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Missing required environment value: ${name}"
+              exit 1
+            fi
+          }
+
+          require_selected_secrets() {
+            require_env GHCR_TOKEN
+            require_env COOLIFY_TOKEN
+
+            case "${DEPLOY_TARGET}" in
+              docs-registry)
+                require_env COOLIFY_WEBHOOK_DOCS
+                require_env COOLIFY_WEBHOOK_REGISTRY
+                ;;
+              landing)
+                require_env COOLIFY_WEBHOOK_LANDING
+                ;;
+              all)
+                require_env COOLIFY_WEBHOOK_DOCS
+                require_env COOLIFY_WEBHOOK_REGISTRY
+                require_env COOLIFY_WEBHOOK_LANDING
+                ;;
+              *)
+                echo "::error::Unknown deploy target: ${DEPLOY_TARGET}"
+                exit 1
+                ;;
+            esac
+          }
+
+          promote() {
+            image="$1"
+            docker buildx imagetools create \
+              --tag "${IMAGE_OWNER}/${image}:prod" \
+              "${IMAGE_OWNER}/${image}:${SOURCE_TAG}"
+          }
+
+          trigger() {
+            name="$1"
+            webhook="$2"
+            curl -fsS -X POST "$webhook" \
+              -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -d "{\"image_tag\":\"prod\",\"source_sha\":\"${SOURCE_TAG}\",\"surface\":\"${name}\"}"
+          }
+
+          require_selected_secrets
+          printf '%s' "${GHCR_TOKEN}" | docker login ghcr.io -u "${GHCR_USERNAME}" --password-stdin
+
+          case "${DEPLOY_TARGET}" in
+            docs-registry)
+              promote diffgazer-docs
+              promote diffgazer-registry
+              trigger docs "${COOLIFY_WEBHOOK_DOCS}"
+              trigger registry "${COOLIFY_WEBHOOK_REGISTRY}"
+              ;;
+            landing)
+              promote diffgazer-landing
+              trigger landing "${COOLIFY_WEBHOOK_LANDING}"
+              ;;
+            all)
+              promote diffgazer-docs
+              promote diffgazer-registry
+              promote diffgazer-landing
+              trigger docs "${COOLIFY_WEBHOOK_DOCS}"
+              trigger registry "${COOLIFY_WEBHOOK_REGISTRY}"
+              trigger landing "${COOLIFY_WEBHOOK_LANDING}"
+              ;;
+            *)
+              echo "::error::Unknown deploy target: ${DEPLOY_TARGET}"
+              exit 1
+              ;;
+          esac
+
+      - name: Verify selected public endpoints
+        run: |
+          set -euo pipefail
           sleep 30
-          curl -fsS --retry 5 --retry-delay 15 https://docs.b4r7.dev > /dev/null
-          curl -fsS --retry 5 --retry-delay 15 https://r.b4r7.dev/r/ui/registry.json > /dev/null
-          curl -fsS --retry 5 --retry-delay 15 https://diffgazer.b4r7.dev > /dev/null
+
+          check() {
+            curl -fsS --retry 5 --retry-delay 15 "$1" > /dev/null
+          }
+
+          case "${DEPLOY_TARGET}" in
+            docs-registry)
+              check https://docs.b4r7.dev
+              check https://r.b4r7.dev/r/ui/registry.json
+              check https://r.b4r7.dev/r/ui/button.json
+              ;;
+            landing)
+              check https://diffgazer.b4r7.dev
+              ;;
+            all)
+              check https://docs.b4r7.dev
+              check https://r.b4r7.dev/r/ui/registry.json
+              check https://r.b4r7.dev/r/ui/button.json
+              check https://diffgazer.b4r7.dev
+              ;;
+            *)
+              echo "::error::Unknown deploy target: ${DEPLOY_TARGET}"
+              exit 1
+              ;;
+          esac
